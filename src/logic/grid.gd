@@ -8,6 +8,7 @@ var terrain: Array[int] = []
 var opacity: Array[float] = []
 var cover_value: Array[float] = []
 var occupant_id: Array[int] = []
+var blockers: Dictionary = {}  # Vector2i -> Part; the object backing a cover_value > 0 cell, if any
 
 const NEIGHBOR_OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1),

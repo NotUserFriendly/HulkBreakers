@@ -138,6 +138,11 @@ static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 			if rng.randf() < COVER_PROBABILITY:
 				var value: float = FULL_COVER_VALUE if rng.randf() < FULL_COVER_CHANCE else HALF_COVER_VALUE
 				grid.set_cover_value(cell, value)
+				# Terrain-scattered cover is permanent (never destructible).
+				var cover_object := Part.new()
+				cover_object.id = &"terrain_cover"
+				cover_object.is_destructible = false
+				grid.blockers[cell] = cover_object
 
 
 ## Picks the two carved rooms whose centers are farthest apart (Chebyshev) and
