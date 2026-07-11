@@ -79,3 +79,27 @@ func test_swap_rejects_when_insufficient_ap() -> void:
 
 	var action := SwapPartAction.new(unit, Enums.SlotType.R_ARM, backpack, spare)
 	assert_false(action.is_legal(state))
+
+
+func test_swap_rejects_when_displaced_part_would_not_fit_back_in_container() -> void:
+	var grid := Grid.new(5, 5)
+	var chassis := Chassis.new()
+	var bulky_old_weapon := _make_weapon(&"old_gun", 3)
+	bulky_old_weapon.volume = 10.0
+	chassis.install(bulky_old_weapon)
+
+	var backpack := Part.new()
+	backpack.is_container = true
+	backpack.max_volume = 5.0  # too small for the bulky old weapon once it's displaced
+
+	var spare_weapon := _make_weapon(&"spare_gun", 7)
+	spare_weapon.volume = 1.0
+	backpack.contents = [spare_weapon]
+
+	var unit := Unit.new(Matrix.new(), chassis, Vector2i(0, 0), 0)
+	var state := CombatState.new(grid, [unit])
+
+	var action := SwapPartAction.new(unit, Enums.SlotType.R_ARM, backpack, spare_weapon)
+	assert_false(action.is_legal(state))
+	assert_false(state.try_apply(action))
+	assert_eq(chassis.slots[Enums.SlotType.R_ARM], bulky_old_weapon, "a rejected swap must not mutate the chassis")

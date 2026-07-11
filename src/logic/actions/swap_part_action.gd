@@ -2,8 +2,10 @@ class_name SwapPartAction
 extends CombatAction
 
 ## Swaps the part installed in `slot_type` with `new_part`, drawn from
-## `container` (a container Part the unit carries). Phase 9 replaces the raw
-## contents erase/append below with volume/mass-checked attach()/detach().
+## `container` (a container Part the unit carries). The displaced old part
+## goes back into `container`, checked against its volume/mass limits
+## (Inventory.can_attach) — a swap is rejected if the old part wouldn't fit
+## back in once the new one is removed.
 
 const AP_COST: int = 1
 
@@ -31,16 +33,28 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if not container.contents.has(new_part):
 		return false
-	return new_part.slot_type == slot_type
+	if new_part.slot_type != slot_type:
+		return false
+
+	var old_part: Part = unit.chassis.slots.get(slot_type, null)
+	if old_part == null:
+		return true
+
+	# Simulate freeing new_part's space before checking whether old_part fits;
+	# reverted immediately, so no observable mutation from is_legal.
+	container.contents.erase(new_part)
+	var old_part_fits: bool = Inventory.can_attach(old_part, container, unit.chassis)
+	container.contents.append(new_part)
+	return old_part_fits
 
 
 func apply(state: CombatState) -> void:
 	unit.ap -= AP_COST
 	var old_part: Part = unit.chassis.remove(slot_type)
-	container.contents.erase(new_part)
+	Inventory.detach(new_part, container)
 	unit.chassis.install(new_part)
 	if old_part != null:
-		container.contents.append(old_part)
+		Inventory.attach(old_part, container, unit.chassis)
 	state.log_action("SwapPartAction: unit %d swapped slot %d" % [unit.id, slot_type])
 
 
