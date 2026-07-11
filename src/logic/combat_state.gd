@@ -7,12 +7,17 @@ var squads: Dictionary = {}  # squad_id(int) -> Array[Unit]
 var turn_index: int = 0
 var action_log: Array[String] = []
 var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0}
+var rng: RandomNumberGenerator
 
 var _next_id: int = 0
 
 
-func _init(p_grid: Grid, initial_units: Array[Unit] = []) -> void:
+## `combat_seed` seeds all rolls made during this fight (Appendix A: hit
+## resolution must be reproducible from a seed).
+func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) -> void:
 	grid = p_grid
+	rng = RandomNumberGenerator.new()
+	rng.seed = combat_seed
 	for unit: Unit in initial_units:
 		add_unit(unit)
 	if not units.is_empty():

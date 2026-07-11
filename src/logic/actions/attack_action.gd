@@ -1,10 +1,10 @@
 class_name AttackAction
 extends CombatAction
 
-## Placeholder resolution: damages the target's first living part with no
-## exposure weighting or cover interception. Phase 8 (Targeting.resolve_hit +
-## DamageResolver) replaces this body; Phase 7 only needs AP-gated legality
-## and turn-log behavior to be correct.
+## Resolves via Targeting.resolve_hit (exposure-weighted part selection + cover
+## interception, Appendix C) and DamageResolver.apply. Requires the attacker to
+## have at least one living WEAPON part — destroying an attacker's only weapon
+## removes its ability to attack.
 
 const AP_COST: int = 1
 const DEFAULT_RANGE: int = 8
@@ -28,6 +28,8 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if attacker.ap < AP_COST:
 		return false
+	if not _has_living_weapon(attacker):
+		return false
 	if Grid.distance_chebyshev(attacker.cell, target.cell) > DEFAULT_RANGE:
 		return false
 	if not LoS.has_los(state.grid, attacker.cell, target.cell):
@@ -37,16 +39,16 @@ func is_legal(state: CombatState) -> bool:
 
 func apply(state: CombatState) -> void:
 	attacker.ap -= AP_COST
-	var living: Array[Part] = target.chassis.living_parts()
-	if not living.is_empty():
-		var part: Part = living[0]
-		part.hp = maxi(part.hp - DEFAULT_DAMAGE, 0)
-
-	if target.chassis.living_parts().is_empty():
-		target.alive = false
-		state.grid.set_occupant_id(target.cell, -1)
-
+	var hit: HitResult = Targeting.resolve_hit(attacker, target, state.grid, state.rng)
+	DamageResolver.apply(hit, DEFAULT_DAMAGE, state, target)
 	state.log_action("AttackAction: unit %d attacked unit %d" % [attacker.id, target.id])
+
+
+func _has_living_weapon(unit: Unit) -> bool:
+	for part: Part in unit.chassis.slots.values():
+		if part.part_type == Enums.PartType.WEAPON and part.hp > 0:
+			return true
+	return false
 
 
 func describe() -> String:

@@ -36,6 +36,7 @@ static func between(grid: Grid, from: Vector2i, to: Vector2i) -> CoverInfo:
 	info.level = best_level
 	info.profile = (HALF_PROFILE.duplicate() if best_level == CoverInfo.Level.HALF else FULL_PROFILE.duplicate())
 	info.object = grid.blockers.get(best_cell, null)
+	info.cell = best_cell
 	return info
 
 

@@ -4,10 +4,20 @@ extends GutTest
 func _make_unit(cell: Vector2i, squad: int) -> Unit:
 	var core := Part.new()
 	core.slot_type = Enums.SlotType.CORE
+	core.part_type = Enums.PartType.ARMOR  # anything but WEAPON — Part.part_type defaults to WEAPON
 	core.hp = 5
 	core.max_hp = 5
+	core.exposure_weight = 40.0  # sole living part in these fixtures — must be selectable
+
+	var weapon := Part.new()
+	weapon.slot_type = Enums.SlotType.R_ARM
+	weapon.part_type = Enums.PartType.WEAPON
+	weapon.hp = 3
+	weapon.max_hp = 3
+
 	var chassis := Chassis.new()
 	chassis.install(core)
+	chassis.install(weapon)
 	return Unit.new(Matrix.new(), chassis, cell, squad)
 
 
@@ -26,7 +36,7 @@ func test_attack_deals_damage_and_costs_ap() -> void:
 	assert_eq(core.hp, 5 - AttackAction.DEFAULT_DAMAGE)
 
 
-func test_attack_kills_target_when_last_part_destroyed() -> void:
+func test_attack_kills_target_when_core_destroyed() -> void:
 	var grid := Grid.new(10, 10)
 	var attacker := _make_unit(Vector2i(0, 0), 0)
 	var target := _make_unit(Vector2i(1, 0), 1)
@@ -71,4 +81,28 @@ func test_attack_rejects_when_insufficient_ap() -> void:
 	var target := _make_unit(Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [attacker, target])
 	attacker.ap = 0
+	assert_false(AttackAction.new(attacker, target).is_legal(state))
+
+
+func test_attack_rejects_when_attacker_has_no_living_weapon() -> void:
+	var grid := Grid.new(10, 10)
+	var attacker := _make_unit(Vector2i(0, 0), 0)
+	var target := _make_unit(Vector2i(1, 0), 1)
+	attacker.chassis.slots[Enums.SlotType.R_ARM].hp = 0
+	var state := CombatState.new(grid, [attacker, target])
+	assert_false(AttackAction.new(attacker, target).is_legal(state))
+
+
+func test_destroying_attackers_weapon_removes_its_attack() -> void:
+	var grid := Grid.new(10, 10)
+	var attacker := _make_unit(Vector2i(0, 0), 0)
+	var target := _make_unit(Vector2i(1, 0), 1)
+	var state := CombatState.new(grid, [attacker, target])
+
+	assert_true(AttackAction.new(attacker, target).is_legal(state))
+
+	var weapon: Part = attacker.chassis.slots[Enums.SlotType.R_ARM]
+	weapon.hp = 0
+	attacker.chassis.remove(Enums.SlotType.R_ARM)
+
 	assert_false(AttackAction.new(attacker, target).is_legal(state))

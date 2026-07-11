@@ -9,9 +9,19 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 	var chassis := Chassis.new()
 	var core := Part.new()
 	core.slot_type = Enums.SlotType.CORE
+	core.part_type = Enums.PartType.ARMOR  # anything but WEAPON — Part.part_type defaults to WEAPON
 	core.hp = 5
 	core.max_hp = 5
+	core.exposure_weight = 40.0  # sole living part in this fixture — must be selectable
+
+	var weapon := Part.new()
+	weapon.slot_type = Enums.SlotType.R_ARM
+	weapon.part_type = Enums.PartType.WEAPON
+	weapon.hp = 3
+	weapon.max_hp = 3
+
 	chassis.install(core)
+	chassis.install(weapon)
 	return Unit.new(Matrix.new(), chassis, cell, squad)
 
 
