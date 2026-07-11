@@ -1,0 +1,10 @@
+# Godot 4 — rebuilt on import, never commit
+.godot/
+.import/
+
+# Export artifacts
+export_presets.cfg
+*.tmp
+
+# Cloned GUT working dir if you clone to repo root by mistake
+/tmp/gut/

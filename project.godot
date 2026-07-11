@@ -1,0 +1,10 @@
+; Engine configuration file.
+; Minimal on purpose — Godot fills in the rest on first import.
+
+config_version=5
+
+[application]
+
+config/name="ModularTactics"
+config/features=PackedStringArray("4.7")
+run/main_scene=""
