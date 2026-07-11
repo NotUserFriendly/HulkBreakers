@@ -8,3 +8,6 @@ export_presets.cfg
 
 # Cloned GUT working dir if you clone to repo root by mistake
 /tmp/gut/
+
+# Local build/workflow notes — not published
+/CLAUDE.md

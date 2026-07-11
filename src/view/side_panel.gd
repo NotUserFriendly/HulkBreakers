@@ -2,7 +2,7 @@ class_name SidePanel
 extends PanelContainer
 
 ## Selected unit's parts/HP/AP + a swap control, and a New Battle button.
-## Built entirely in code — scenes stay minimal (CLAUDE.md).
+## Built entirely in code — scenes stay minimal.
 
 signal swap_requested(slot_type: Enums.SlotType, container: Part, new_part: Part)
 signal new_battle_requested
