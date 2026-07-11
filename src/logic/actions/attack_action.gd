@@ -12,6 +12,7 @@ const DEFAULT_DAMAGE: int = 3
 
 var attacker: Unit
 var target: Unit
+var last_hit: HitResult = null  # set by apply(); lets callers (e.g. the view) show what happened
 
 
 func _init(p_attacker: Unit, p_target: Unit) -> void:
@@ -40,6 +41,7 @@ func is_legal(state: CombatState) -> bool:
 func apply(state: CombatState) -> void:
 	attacker.ap -= AP_COST
 	var hit: HitResult = Targeting.resolve_hit(attacker, target, state.grid, state.rng)
+	last_hit = hit
 	DamageResolver.apply(hit, DEFAULT_DAMAGE, state, target)
 	state.log_action("AttackAction: unit %d attacked unit %d" % [attacker.id, target.id])
 
