@@ -26,3 +26,10 @@ enum TerrainType {
 	SPAWN_A,
 	SPAWN_B,
 }
+
+## A matrix's fate at battle end (Phase 10). RECOVERED is the default for a
+## matrix that never ejected.
+enum RecoveryState {
+	RECOVERED,
+	LEFT_BEHIND,
+}

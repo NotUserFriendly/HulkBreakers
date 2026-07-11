@@ -6,3 +6,5 @@ extends Resource
 @export var level: int = 1
 @export var xp: int = 0
 @export var perks: Array[StringName] = []
+@export var recovery_state: Enums.RecoveryState = Enums.RecoveryState.RECOVERED
+@export var pending_return_penalty: bool = false  # flag only — the penalty mechanic itself is a later tunable
