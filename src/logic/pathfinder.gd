@@ -42,12 +42,14 @@ func _min_possible_cost() -> float:
 
 
 ## Shortest MP-cost path from a to b, inclusive of both endpoints. Empty array
-## if no path exists (or either endpoint is unwalkable).
+## if no path exists (or b is unwalkable). `a` is never checked for
+## walkability — the mover already stands there, occupying its own cell, so
+## gating on that would make every real in-game path request fail.
 func astar(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
-	if not is_walkable(a) or not is_walkable(b):
-		return []
 	if a == b:
 		return [a]
+	if not is_walkable(b):
+		return []
 
 	var heuristic_scale: float = _min_possible_cost()
 	var open_set: Array[Vector2i] = [a]

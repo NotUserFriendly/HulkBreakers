@@ -60,6 +60,24 @@ func test_astar_same_cell_returns_single_cell_path() -> void:
 	assert_eq(path, [Vector2i(1, 1)])
 
 
+func test_astar_succeeds_when_origin_cell_is_occupied_by_the_mover_itself() -> void:
+	# The walking unit always occupies its own starting cell — that must never
+	# block pathing away from it (regression: this broke real AI movement).
+	var grid := Grid.new(5, 5)
+	grid.set_occupant_id(Vector2i(0, 0), 7)
+	var pf := Pathfinder.new(grid)
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
+	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)])
+
+
+func test_astar_rejects_occupied_destination() -> void:
+	var grid := Grid.new(5, 5)
+	grid.set_occupant_id(Vector2i(4, 0), 9)
+	var pf := Pathfinder.new(grid)
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
+	assert_eq(path, [] as Array[Vector2i])
+
+
 func test_reachable_respects_mp_budget_exactly() -> void:
 	var grid := Grid.new(5, 1)
 	grid.set_terrain(Vector2i(2, 0), TERRAIN_DIFFICULT)
