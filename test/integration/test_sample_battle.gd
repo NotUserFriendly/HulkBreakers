@@ -1,9 +1,16 @@
 extends GutTest
 
 ## Headless end-to-end proof: seed -> MapGen -> two assembled squads -> a
-## simple deterministic AI (approach, take cover, attack, swap a destroyed
-## weapon) fights until one squad is down. No rendering; progress is logged
-## to stdout via print().
+## simple deterministic AI (approach, attack, swap a destroyed weapon) fights
+## until one squad is down. No rendering; progress is logged to stdout via
+## print().
+##
+## Movement always follows a real shortest path (see _try_move_toward) rather
+## than greedily chasing straight-line distance, which is a known local-
+## minima trap on maze-like maps — deliberate cover-seeking was dropped in
+## favor of that correctness guarantee. Cover itself still gets exercised
+## naturally: MapGen scatters it across ~8-30% of floor cells, so plenty of
+## shots land near/behind it during a normal fight.
 
 const MAP_WIDTH := 24
 const MAP_HEIGHT := 18
@@ -142,45 +149,50 @@ func _try_swap_weapon(state: CombatState, unit: Unit) -> bool:
 	return false
 
 
-## Greedily closes distance to `target`; among reachable cells at roughly the
-## same best distance, prefers one that would grant cover from the target's
-## side ("take cover").
+## Closes distance to `target` along a real shortest path to a walkable cell
+## adjacent to it (target's own cell is occupied, so unreachable). Straight-
+## line "closer" cells are a local-minima trap on maze-like maps — a maze can
+## force a detour that temporarily increases raw distance before decreasing
+## it, so picking by raw distance alone can strand a unit forever. Real path
+## cost guarantees monotonic progress whenever any route exists.
 func _try_move_toward(state: CombatState, unit: Unit, target: Unit) -> bool:
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+
+	var best_path: Array[Vector2i] = []
+	var best_cost: float = INF
+	for neighbor: Vector2i in state.grid.neighbors(target.cell):
+		if not pf.is_walkable(neighbor):
+			continue
+		var path: Array[Vector2i] = pf.astar(unit.cell, neighbor)
+		if path.is_empty():
+			continue
+		var cost: float = 0.0
+		for i in range(1, path.size()):
+			cost += pf.move_cost(path[i])
+		if cost < best_cost:
+			best_cost = cost
+			best_path = path
+
+	if best_path.size() < 2:
+		return false  # no route to the target at all
+
+	# Trim to whatever the unit can actually afford this turn.
 	var budget: float = unit.mp + float(unit.ap) * unit.mp_per_ap()
-	var reachable: Array[Vector2i] = pf.reachable(unit.cell, budget)
-	if reachable.size() <= 1:
-		return false
-
-	var best_dist: int = Grid.distance_chebyshev(unit.cell, target.cell)
-	var best_cell: Vector2i = unit.cell
-	for cell: Vector2i in reachable:
-		if cell == unit.cell:
-			continue
-		var d: int = Grid.distance_chebyshev(cell, target.cell)
-		if d < best_dist:
-			best_dist = d
-			best_cell = cell
-
-	if best_cell == unit.cell:
-		return false
-
-	for cell: Vector2i in reachable:
-		if cell == unit.cell or cell == best_cell:
-			continue
-		if Grid.distance_chebyshev(cell, target.cell) > best_dist + 1:
-			continue
-		var cov: CoverInfo = Cover.between(state.grid, target.cell, cell)
-		if cov.level != CoverInfo.Level.NONE:
-			best_cell = cell
+	var affordable_path: Array[Vector2i] = [best_path[0]]
+	var spent: float = 0.0
+	for i in range(1, best_path.size()):
+		var step_cost: float = pf.move_cost(best_path[i])
+		if spent + step_cost > budget:
 			break
+		spent += step_cost
+		affordable_path.append(best_path[i])
 
-	var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
-	if path.is_empty():
+	if affordable_path.size() < 2:
+		return false  # can't afford even one step this turn
+
+	if not state.try_apply(MoveAction.new(unit, affordable_path)):
 		return false
-	if not state.try_apply(MoveAction.new(unit, path)):
-		return false
-	print("  unit %d moved to %s" % [unit.id, best_cell])
+	print("  unit %d moved to %s" % [unit.id, unit.cell])
 	return true
 
 
