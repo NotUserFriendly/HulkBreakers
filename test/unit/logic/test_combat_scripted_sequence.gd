@@ -7,12 +7,12 @@ extends GutTest
 
 func _make_unit(cell: Vector2i, squad: int) -> Unit:
 	var chassis := Chassis.new()
-	var core := Part.new()
-	core.slot_type = Enums.SlotType.CORE
-	core.part_type = Enums.PartType.ARMOR  # anything but WEAPON — Part.part_type defaults to WEAPON
-	core.hp = 5
-	core.max_hp = 5
-	core.exposure_weight = 40.0  # sole living part in this fixture — must be selectable
+	var torso := Part.new()
+	torso.slot_type = Enums.SlotType.TORSO
+	torso.part_type = Enums.PartType.ARMOR  # anything but WEAPON — Part.part_type defaults to WEAPON
+	torso.hp = 5
+	torso.max_hp = 5
+	torso.exposure_weight = 40.0  # sole living part in this fixture — must be selectable
 
 	var weapon := Part.new()
 	weapon.slot_type = Enums.SlotType.R_ARM
@@ -20,7 +20,7 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 	weapon.hp = 3
 	weapon.max_hp = 3
 
-	chassis.install(core)
+	chassis.install(torso)
 	chassis.install(weapon)
 	return Unit.new(Matrix.new(), chassis, cell, squad)
 
@@ -47,8 +47,8 @@ func test_scripted_turn_sequence() -> void:
 	# Legal: a attacks b.
 	var attack := AttackAction.new(a, b)
 	assert_true(state.try_apply(attack))
-	var b_core: Part = b.chassis.slots[Enums.SlotType.CORE]
-	assert_eq(b_core.hp, 5 - AttackAction.DEFAULT_DAMAGE)
+	var b_torso: Part = b.chassis.slots[Enums.SlotType.TORSO]
+	assert_eq(b_torso.hp, 5 - AttackAction.DEFAULT_DAMAGE)
 	assert_true(b.alive)
 
 	# Legal: a ends turn.

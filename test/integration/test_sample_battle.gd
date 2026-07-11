@@ -12,10 +12,11 @@ const BATTLE_SEED := 20260711
 const SQUAD_SIZE := 2
 
 # Appendix C's default table, reshuffled so this fight actually exercises
-# every mechanic within a bounded number of turns: CORE must be reachable at
-# all (not in that default table), and the weapon needs to be squishy and
-# heavily exposed so it reliably breaks and forces an in-combat swap:
-# TORSO 20, LEGS 15, L_ARM 10, HEAD 10, CORE 15, R_ARM(weapon) 30 -> 100.
+# every mechanic within a bounded number of turns: TORSO is the vital slot
+# (its destruction disables the chassis and ejects the matrix), and the
+# weapon needs to be squishy and heavily exposed so it reliably breaks and
+# forces an in-combat swap: TORSO 35, LEGS 15, L_ARM 10, HEAD 10,
+# R_ARM(weapon) 30 -> 100.
 
 
 func _build_chassis(prefix: String) -> Chassis:
@@ -26,7 +27,7 @@ func _build_chassis(prefix: String) -> Chassis:
 	torso.id = StringName("%s_torso" % prefix)
 	torso.slot_type = Enums.SlotType.TORSO
 	torso.part_type = Enums.PartType.ARMOR
-	torso.exposure_weight = 20.0
+	torso.exposure_weight = 35.0
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.is_container = true  # doubles as the unit's spare-parts container
@@ -60,15 +61,6 @@ func _build_chassis(prefix: String) -> Chassis:
 	head.hp = 6
 	head.max_hp = 6
 	chassis.install(head)
-
-	var core := Part.new()
-	core.id = StringName("%s_core" % prefix)
-	core.slot_type = Enums.SlotType.CORE
-	core.part_type = Enums.PartType.ARMOR
-	core.exposure_weight = 15.0
-	core.hp = 6
-	core.max_hp = 6
-	chassis.install(core)
 
 	var weapon := Part.new()
 	weapon.id = StringName("%s_weapon" % prefix)

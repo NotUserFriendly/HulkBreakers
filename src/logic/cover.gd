@@ -8,7 +8,7 @@ extends RefCounted
 
 const HALF_PROFILE: Array[Enums.SlotType] = [Enums.SlotType.LEGS]
 const FULL_PROFILE: Array[Enums.SlotType] = [
-	Enums.SlotType.HEAD, Enums.SlotType.TORSO, Enums.SlotType.CORE,
+	Enums.SlotType.HEAD, Enums.SlotType.TORSO,
 	Enums.SlotType.L_ARM, Enums.SlotType.R_ARM, Enums.SlotType.LEGS,
 ]
 

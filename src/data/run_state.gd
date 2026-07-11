@@ -54,7 +54,7 @@ func _ensure_in_roster(matrix: Matrix) -> void:
 
 
 ## RECOVERED: still piloting at end, picked up (held), or never ejected.
-## LEFT_BEHIND: an ejected MatrixCore is still lying on the field.
+## LEFT_BEHIND: an ejected Matrix is still lying on the field.
 func _apply_recovery_states(state: CombatState) -> void:
 	var recovered: Dictionary = {}  # Matrix -> true
 	var on_ground: Dictionary = {}  # Matrix -> true
@@ -62,13 +62,13 @@ func _apply_recovery_states(state: CombatState) -> void:
 	for unit: Unit in state.units:
 		if unit.alive:
 			recovered[unit.matrix] = true
-		if unit.held_core != null:
-			recovered[unit.held_core.matrix] = true
+		if unit.held_matrix != null:
+			recovered[unit.held_matrix] = true
 
 	for items: Array in state.grid.field_items.values():
 		for item: Variant in items:
-			if item is MatrixCore:
-				on_ground[item.matrix] = true
+			if item is Matrix:
+				on_ground[item] = true
 
 	for matrix: Matrix in recovered.keys():
 		matrix.recovery_state = Enums.RecoveryState.RECOVERED

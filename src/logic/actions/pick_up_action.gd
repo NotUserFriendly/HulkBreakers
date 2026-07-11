@@ -1,17 +1,17 @@
 class_name PickUpAction
 extends CombatAction
 
-## Collects a field item (dropped Part, salvage, or an ejected MatrixCore)
-## from an adjacent (or the unit's own) cell. A picked-up Part goes into
-## `container`, a container Part the unit is already carrying; a MatrixCore
-## goes into unit.held_core instead (it isn't inventory — ImplantAction
+## Collects a field item (dropped Part, salvage, or an ejected Matrix) from
+## an adjacent (or the unit's own) cell. A picked-up Part goes into
+## `container`, a container Part the unit is already carrying; a Matrix
+## goes into unit.held_matrix instead (it isn't inventory — ImplantAction
 ## consumes it directly), so `container` is ignored for that case.
 
 const AP_COST: int = 1
 
 var unit: Unit
 var item_cell: Vector2i
-var item: Resource  # Part or MatrixCore
+var item: Resource  # Part or Matrix
 var container: Part
 
 
@@ -36,7 +36,7 @@ func is_legal(state: CombatState) -> bool:
 	if not (state.grid.field_items[item_cell] as Array).has(item):
 		return false
 
-	if item is MatrixCore:
+	if item is Matrix:
 		return true
 
 	if container == null or not container.is_container:
@@ -51,8 +51,8 @@ func apply(state: CombatState) -> void:
 	if items.is_empty():
 		state.grid.field_items.erase(item_cell)
 
-	if item is MatrixCore:
-		unit.held_core = item
+	if item is Matrix:
+		unit.held_matrix = item
 	else:
 		container.contents.append(item)
 

@@ -4,7 +4,6 @@ extends RefCounted
 enum SlotType {
 	HEAD,
 	TORSO,
-	CORE,
 	L_ARM,
 	R_ARM,
 	LEGS,

@@ -1,7 +1,7 @@
 class_name ImplantAction
 extends CombatAction
 
-## Installs unit.held_core into target_chassis, spawning a new active Unit at
+## Installs unit.held_matrix into target_chassis, spawning a new active Unit at
 ## target_cell mid-combat. Where target_chassis comes from (reserve stash vs.
 ## a chassis found on the field) is a Phase 10 concern — this action just
 ## needs an already-resolved empty chassis to implant into.
@@ -28,7 +28,7 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if unit.ap < AP_COST:
 		return false
-	if unit.held_core == null:
+	if unit.held_matrix == null:
 		return false
 	if target_chassis == null:
 		return false
@@ -41,10 +41,10 @@ func is_legal(state: CombatState) -> bool:
 
 func apply(state: CombatState) -> void:
 	unit.ap -= AP_COST
-	var core: MatrixCore = unit.held_core
-	unit.held_core = null
+	var matrix: Matrix = unit.held_matrix
+	unit.held_matrix = null
 
-	var new_unit := Unit.new(core.matrix, target_chassis, target_cell, squad_id)
+	var new_unit := Unit.new(matrix, target_chassis, target_cell, squad_id)
 	state.add_unit(new_unit)
 
 	state.log_action("ImplantAction: unit %d implanted a matrix at %s (new unit %d)" % [unit.id, target_cell, new_unit.id])

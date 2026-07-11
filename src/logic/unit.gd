@@ -19,7 +19,7 @@ var max_ap: int = DEFAULT_MAX_AP
 var mp: float = 0.0  # movement pool; discarded (not banked) at end of turn
 var alive: bool = true
 
-var held_core: MatrixCore = null  # a MatrixCore carried after PickUpAction, awaiting ImplantAction
+var held_matrix: Matrix = null  # a Matrix carried after PickUpAction, awaiting ImplantAction
 
 
 func _init(p_matrix: Matrix, p_chassis: Chassis, p_cell: Vector2i, p_squad_id: int = 0) -> void:

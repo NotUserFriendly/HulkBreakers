@@ -19,8 +19,11 @@ and pass for that phase.
 ## Phase 1 — Data models (Resources)
 **Goal:** the modular part/chassis/matrix data layer.
 **Build (in `res://src/data/`):**
-- `enums.gd` — `SlotType` (HEAD, TORSO, CORE, L_ARM, R_ARM, LEGS, ...) and
-  `PartType` (WEAPON, ARMOR, SENSOR, MOBILITY, STORAGE, ...).
+- `enums.gd` — `SlotType` (HEAD, TORSO, L_ARM, R_ARM, LEGS, ...) and
+  `PartType` (WEAPON, ARMOR, SENSOR, MOBILITY, STORAGE, ...). TORSO is the
+  vital slot — destroying it disables the chassis (see Phase 8). `CORE` is
+  reserved for a future development phase; do not reuse it as a `SlotType` or
+  anywhere in Matrix-related naming in the current build.
 - `Part` (`Resource`): `id, display_name, part_type, slot_type, hp, max_hp,`
   `mass: float, volume: float, exposure_weight: float, stat_mods: Dictionary,`
   `is_container: bool, max_volume: float, mass_multiplier: float (default 1.0),`
@@ -106,9 +109,10 @@ downgrades the cover level and empties its profile; terrain never downgrades.
   - `MoveAction` follows the AP→MP economy in **Appendix E**: movement spends MP per
     tile; when MP is short the unit burns 1 AP for `+mp_per_ap` MP (repeat while AP
     remains); leftover MP is discarded at end of turn.
-  - `PickUpAction` collects a field item (dropped part, salvage, or an ejected
-    `MatrixCore`) from an adjacent cell into a container the unit is carrying.
-  - `ImplantAction` installs a held `MatrixCore` into an available empty chassis,
+  - `PickUpAction` collects a field item (dropped Part, salvage, or an ejected
+    Matrix — a Matrix can sit directly on the grid as a field item, no wrapper
+    class involved) from an adjacent cell into a container the unit is carrying.
+  - `ImplantAction` installs a held Matrix into an available empty chassis,
     spawning a new active `Unit` mid-combat (chassis source — reserve vs field — is a
     Phase 10 detail).
 **Acceptance:** a scripted turn sequence yields the expected action log; illegal
@@ -129,8 +133,9 @@ cover interception reroutes the hit to the covering object (destructible) or abs
   container `contents` onto adjacent cells / into salvage.
 - cover_object → damage the cover; on `hp <= 0` destroy it (Phase 6 downgrade).
 - blocked → no effect (terrain soaked the shot).
-Destroying the CORE disables the chassis and **ejects the matrix as a `MatrixCore`
-field item**: place it on the free cell adjacent to the disabled chassis that is
+Destroying the TORSO disables the chassis and **ejects the matrix directly as a
+field item** (no wrapper class — `Grid.field_items` holds the Matrix Resource
+itself): place it on the free cell adjacent to the disabled chassis that is
 nearest the closest living ally (ties broken by lowest `Vector2i` index for
 determinism). An ally can retrieve it via `PickUpAction`. The matrix itself persists
 regardless (Phase 10) — recovery is a tactical layer, not a survival condition.
@@ -141,8 +146,8 @@ regardless (Phase 10) — recovery is a tactical layer, not a survival condition
   to `blocked` (terrain); a part NOT in the profile is hit directly even under cover.
 - Chipping a destructible cover to hp 0 removes its protection, so previously-covered
   parts become hittable on subsequent rolls.
-- Destroying a weapon part removes its attack. Destroying the core disables the chassis,
-  spawns a `MatrixCore` item on the deterministic cell toward the nearest ally, and
+- Destroying a weapon part removes its attack. Destroying the torso disables the chassis,
+  drops the matrix on the deterministic cell toward the nearest ally, and
   leaves the matrix flagged alive; an adjacent ally's `PickUpAction` recovers it.
 
 ---
@@ -176,11 +181,11 @@ salvage/credits, seed. `resolve_defeat()` — strip all parts from surviving mat
 chassis, keep the matrices (+XP), lose the parts. `resolve_victory()` — matrices gain
 XP, enemy parts salvaged into the stash. `apply_perk(matrix, perk)`.
 
-Matrix recovery at battle end — set a `recovery_state` per matrix that was ejected as a
-`MatrixCore` during the fight:
-- **RECOVERED** — the core was picked up, re-implanted (Phase 7 `ImplantAction`), or
+Matrix recovery at battle end — set a `recovery_state` per matrix that was ejected onto
+the field during the fight:
+- **RECOVERED** — the matrix was picked up, re-implanted (Phase 7 `ImplantAction`), or
   still piloting at end. Extracts clean, no penalty.
-- **LEFT_BEHIND** — the core was still on the field at battle end. The matrix still
+- **LEFT_BEHIND** — the matrix was still on the field at battle end. The matrix still
   returns to the roster (roguelike rule is absolute), but gets flagged
   `pending_return_penalty = true`. The penalty mechanic itself is TBD — set the flag
   only; do not invent numbers or effects.

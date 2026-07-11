@@ -2,8 +2,8 @@ class_name DamageResolver
 extends RefCounted
 
 ## Applies a resolved HitResult. Needs more than (hit, amount) to fulfil what
-## PLAN.md describes (cover lives on a grid cell; destroying the CORE ejects a
-## MatrixCore near an ally) — state and the target Unit are threaded through.
+## PLAN.md describes (cover lives on a grid cell; destroying the TORSO ejects
+## the matrix near an ally) — state and the target Unit are threaded through.
 
 static func apply(hit: HitResult, amount: int, state: CombatState, target: Unit) -> void:
 	if hit.part != null:
@@ -21,7 +21,7 @@ static func _apply_to_part(part: Part, amount: int, state: CombatState, target: 
 	target.chassis.remove(part.slot_type)
 	_drop_contents(part, state, target.cell)
 
-	if part.slot_type == Enums.SlotType.CORE:
+	if part.slot_type == Enums.SlotType.TORSO:
 		_disable_chassis_and_eject(state, target)
 
 
@@ -37,11 +37,11 @@ static func _drop_contents(part: Part, state: CombatState, cell: Vector2i) -> vo
 	part.contents = []
 
 
-## Disables the unit and ejects its matrix as a MatrixCore onto the free cell
+## Disables the unit and ejects its matrix directly onto the free cell
 ## adjacent to it that's nearest the closest living ally (ties broken by
 ## lowest row-major cell index). With no living ally, falls back to the free
 ## neighbor nearest the unit's own cell; with no free neighbor at all, drops
-## the core on the unit's own cell.
+## the matrix on the unit's own cell.
 static func _disable_chassis_and_eject(state: CombatState, unit: Unit) -> void:
 	var cell: Vector2i = unit.cell
 	unit.alive = false
@@ -58,11 +58,9 @@ static func _disable_chassis_and_eject(state: CombatState, unit: Unit) -> void:
 		var reference: Vector2i = ally.cell if ally != null else cell
 		drop_cell = _nearest_cell(candidates, reference, state.grid.width)
 
-	var core := MatrixCore.new()
-	core.matrix = unit.matrix
 	if not state.grid.field_items.has(drop_cell):
 		state.grid.field_items[drop_cell] = []
-	state.grid.field_items[drop_cell].append(core)
+	state.grid.field_items[drop_cell].append(unit.matrix)
 
 
 static func _closest_living_ally(state: CombatState, unit: Unit) -> Unit:

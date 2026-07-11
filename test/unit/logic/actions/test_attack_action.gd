@@ -2,12 +2,12 @@ extends GutTest
 
 
 func _make_unit(cell: Vector2i, squad: int) -> Unit:
-	var core := Part.new()
-	core.slot_type = Enums.SlotType.CORE
-	core.part_type = Enums.PartType.ARMOR  # anything but WEAPON — Part.part_type defaults to WEAPON
-	core.hp = 5
-	core.max_hp = 5
-	core.exposure_weight = 40.0  # sole living part in these fixtures — must be selectable
+	var torso := Part.new()
+	torso.slot_type = Enums.SlotType.TORSO
+	torso.part_type = Enums.PartType.ARMOR  # anything but WEAPON — Part.part_type defaults to WEAPON
+	torso.hp = 5
+	torso.max_hp = 5
+	torso.exposure_weight = 40.0  # sole living part in these fixtures — must be selectable
 
 	var weapon := Part.new()
 	weapon.slot_type = Enums.SlotType.R_ARM
@@ -16,7 +16,7 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 	weapon.max_hp = 3
 
 	var chassis := Chassis.new()
-	chassis.install(core)
+	chassis.install(torso)
 	chassis.install(weapon)
 	return Unit.new(Matrix.new(), chassis, cell, squad)
 
@@ -32,16 +32,16 @@ func test_attack_deals_damage_and_costs_ap() -> void:
 	assert_true(state.try_apply(action))
 
 	assert_eq(attacker.ap, attacker.max_ap - AttackAction.AP_COST)
-	var core: Part = target.chassis.slots[Enums.SlotType.CORE]
-	assert_eq(core.hp, 5 - AttackAction.DEFAULT_DAMAGE)
+	var torso: Part = target.chassis.slots[Enums.SlotType.TORSO]
+	assert_eq(torso.hp, 5 - AttackAction.DEFAULT_DAMAGE)
 
 
-func test_attack_kills_target_when_core_destroyed() -> void:
+func test_attack_kills_target_when_torso_destroyed() -> void:
 	var grid := Grid.new(10, 10)
 	var attacker := _make_unit(Vector2i(0, 0), 0)
 	var target := _make_unit(Vector2i(1, 0), 1)
-	var core: Part = target.chassis.slots[Enums.SlotType.CORE]
-	core.hp = 1
+	var torso: Part = target.chassis.slots[Enums.SlotType.TORSO]
+	torso.hp = 1
 	var state := CombatState.new(grid, [attacker, target])
 
 	assert_true(state.try_apply(AttackAction.new(attacker, target)))

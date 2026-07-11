@@ -31,22 +31,21 @@ func test_pick_up_part_into_carried_container() -> void:
 	assert_eq(unit.ap, unit.max_ap - PickUpAction.AP_COST)
 
 
-func test_pick_up_matrix_core_goes_to_held_core_not_container() -> void:
+func test_pick_up_matrix_goes_to_held_matrix_not_container() -> void:
 	var grid := Grid.new(5, 5)
 	var rig: Dictionary = _make_unit_with_backpack(Vector2i(0, 0))
 	var unit: Unit = rig["unit"]
 	var backpack: Part = rig["backpack"]
 	var state := CombatState.new(grid, [unit])
 
-	var core := MatrixCore.new()
-	core.matrix = Matrix.new()
-	grid.field_items[Vector2i(0, 1)] = [core]
+	var matrix := Matrix.new()
+	grid.field_items[Vector2i(0, 1)] = [matrix]
 
-	var action := PickUpAction.new(unit, Vector2i(0, 1), core)
+	var action := PickUpAction.new(unit, Vector2i(0, 1), matrix)
 	assert_true(action.is_legal(state))
 	assert_true(state.try_apply(action))
 
-	assert_eq(unit.held_core, core)
+	assert_eq(unit.held_matrix, matrix)
 	assert_eq(backpack.contents.size(), 0)
 
 

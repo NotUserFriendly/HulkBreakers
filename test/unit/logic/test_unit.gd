@@ -45,9 +45,9 @@ func test_mp_per_ap_reflects_live_part_swaps() -> void:
 	assert_true(unit.mp_per_ap() > before)
 
 
-func test_new_unit_starts_alive_with_no_held_core() -> void:
+func test_new_unit_starts_alive_with_no_held_matrix() -> void:
 	var unit := Unit.new(Matrix.new(), Chassis.new(), Vector2i(1, 1), 2)
 	assert_true(unit.alive)
-	assert_null(unit.held_core)
+	assert_null(unit.held_matrix)
 	assert_eq(unit.squad_id, 2)
 	assert_eq(unit.id, -1)

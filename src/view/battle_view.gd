@@ -115,7 +115,7 @@ func _make_chassis(prefix: String) -> Chassis:
 	torso.id = StringName("%s_torso" % prefix)
 	torso.slot_type = Enums.SlotType.TORSO
 	torso.part_type = Enums.PartType.ARMOR
-	torso.exposure_weight = 30.0
+	torso.exposure_weight = 45.0
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.is_container = true
@@ -150,15 +150,6 @@ func _make_chassis(prefix: String) -> Chassis:
 	head.max_hp = 6
 	chassis.install(head)
 
-	var core := Part.new()
-	core.id = StringName("%s_core" % prefix)
-	core.slot_type = Enums.SlotType.CORE
-	core.part_type = Enums.PartType.ARMOR
-	core.exposure_weight = 15.0
-	core.hp = 6
-	core.max_hp = 6
-	chassis.install(core)
-
 	var weapon := Part.new()
 	weapon.id = StringName("%s_weapon" % prefix)
 	weapon.slot_type = Enums.SlotType.R_ARM
@@ -180,7 +171,12 @@ func _make_chassis(prefix: String) -> Chassis:
 	return chassis
 
 
+var input_enabled: bool = true  # off while an external driver (e.g. an AI demo) is in control
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if not input_enabled:
+		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var local_pos: Vector2 = grid_view.get_local_mouse_position()
 		var cell: Vector2i = grid_view.local_to_map(local_pos)

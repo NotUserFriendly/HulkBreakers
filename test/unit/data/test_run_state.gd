@@ -3,18 +3,18 @@ extends GutTest
 
 func _make_unit(cell: Vector2i, squad: int, matrix_id: StringName) -> Unit:
 	var chassis := Chassis.new()
-	var core := Part.new()
-	core.slot_type = Enums.SlotType.CORE
-	core.part_type = Enums.PartType.ARMOR
-	core.hp = 5
-	core.max_hp = 5
-	core.exposure_weight = 40.0
+	var torso := Part.new()
+	torso.slot_type = Enums.SlotType.TORSO
+	torso.part_type = Enums.PartType.ARMOR
+	torso.hp = 5
+	torso.max_hp = 5
+	torso.exposure_weight = 40.0
 	var weapon := Part.new()
 	weapon.slot_type = Enums.SlotType.R_ARM
 	weapon.part_type = Enums.PartType.WEAPON
 	weapon.hp = 3
 	weapon.max_hp = 3
-	chassis.install(core)
+	chassis.install(torso)
 	chassis.install(weapon)
 	var matrix := Matrix.new()
 	matrix.id = matrix_id
@@ -48,7 +48,7 @@ func test_resolve_victory_grants_xp_and_salvages_enemy_parts() -> void:
 	assert_true(run.roster.has(a.matrix))
 	assert_eq(a.matrix.xp, 5 + RunState.VICTORY_XP_REWARD)
 	assert_true(b.chassis.slots.is_empty())
-	assert_eq(run.part_stash.size(), 2)  # enemy's core + weapon
+	assert_eq(run.part_stash.size(), 2)  # enemy's torso + weapon
 	assert_true(run.chassis_stash.has(b.chassis))
 
 
@@ -72,16 +72,16 @@ func test_ejected_and_recovered_matrix_ends_recovered_with_no_flag() -> void:
 	var enemy := _make_unit(Vector2i(0, 0), 1, &"enemy_a")
 	var state := CombatState.new(grid, [victim, ally, enemy])
 
-	var core: Part = victim.chassis.slots[Enums.SlotType.CORE]
-	core.hp = 1
+	var torso: Part = victim.chassis.slots[Enums.SlotType.TORSO]
+	torso.hp = 1
 	var hit := HitResult.new()
-	hit.part = core
-	DamageResolver.apply(hit, 5, state, victim)  # ejects victim's matrix as a MatrixCore
+	hit.part = torso
+	DamageResolver.apply(hit, 5, state, victim)  # ejects victim's matrix
 
 	assert_false(victim.alive)
 
 	var drop_cell := Vector2i(4, 4)  # unique free neighbor of (3,3) nearest ally at (5,5)
-	var ejected: MatrixCore = state.grid.field_items[drop_cell][0]
+	var ejected: Matrix = state.grid.field_items[drop_cell][0]
 	state.advance_turn()  # victim is dead -> lands directly on ally, next in turn order
 	assert_eq(state.current_unit(), ally)
 
@@ -102,10 +102,10 @@ func test_ejected_and_abandoned_matrix_ends_left_behind_but_stays_in_roster() ->
 	var enemy := _make_unit(Vector2i(0, 0), 1, &"enemy_a")
 	var state := CombatState.new(grid, [victim, enemy])
 
-	var core: Part = victim.chassis.slots[Enums.SlotType.CORE]
-	core.hp = 1
+	var torso: Part = victim.chassis.slots[Enums.SlotType.TORSO]
+	torso.hp = 1
 	var hit := HitResult.new()
-	hit.part = core
+	hit.part = torso
 	DamageResolver.apply(hit, 5, state, victim)  # ejects, nobody picks it up
 
 	var run := RunState.new()
