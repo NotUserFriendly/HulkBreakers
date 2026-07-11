@@ -17,3 +17,12 @@ enum PartType {
 	MOBILITY,
 	STORAGE,
 }
+
+## Values for Grid.terrain. Cover (Grid.cover_value) is a separate overlay —
+## terrain only governs walkability and vision blocking.
+enum TerrainType {
+	OPEN,
+	WALL,
+	SPAWN_A,
+	SPAWN_B,
+}
