@@ -29,6 +29,10 @@ case "$N" in
     TEST_TARGET="res://test/checkpoints/test_checkpoint_4.gd"
     SUMMARY="20 randomly deep-struck cyborgs from a small part pool (docs/00/04/07 randomization stress test), each with an ASCII shot-plane dump and a stat block (parts, mass, RAM, effective level, armed status). Look for: any malformed assembly, any crash, anything that should be armed but reads unarmed or vice versa."
     ;;
+  5)
+    TEST_TARGET="res://test/integration/test_full_mission.gd"
+    SUMMARY="A full seeded mission, start to extraction (docs/09/11 — \"this is the definition of done\"): seed -> hulk -> insert both modes (a landing squad, a deep-struck enemy squad) -> a deterministic AI queuing multi-action turns through the real two-phase resolve loop -> gather -> extract. combat.log is included alongside this README. Look for: does it terminate well within the turn cap? Does the log read as a coherent battle? Is every mechanic (shot plane, dartboard, DT/ricochet, cook-off, RAM, surrogate decay, tactics/resolution abort-and-continue, extraction) visibly exercised somewhere in it?"
+    ;;
   *)
     echo "No checkpoint script wired for checkpoint ${N} yet." >&2
     exit 1
@@ -48,6 +52,12 @@ GODOT_DISABLE_LEAK_CHECKS=1 "$GODOT" --headless -d \
 sed -E 's/\x1b\[[0-9;]*m//g' "$RAW_OUTPUT" > "${OUT_DIR}/output.txt"
 rm -f "$RAW_OUTPUT"
 
+COMBAT_LOG_NOTE=""
+if [ "$N" = "5" ] && [ -f "out/combat.log" ]; then
+  cp "out/combat.log" "${OUT_DIR}/combat.log"
+  COMBAT_LOG_NOTE=$'\n'"See \`combat.log\` for the full structured event stream (docs/09) — \`output.txt\` is just the test's own summary printout."
+fi
+
 cat > "${OUT_DIR}/README.md" <<EOF
 # Checkpoint ${N}
 
@@ -55,7 +65,7 @@ Generated $(date -u +"%Y-%m-%dT%H:%M:%SZ").
 
 ${SUMMARY}
 
-See \`output.txt\` for the full run.
+See \`output.txt\` for the full run.${COMBAT_LOG_NOTE}
 EOF
 
 echo "Wrote ${OUT_DIR}/README.md and ${OUT_DIR}/output.txt"

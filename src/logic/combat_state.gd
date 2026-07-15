@@ -132,6 +132,7 @@ func try_apply(action: CombatAction) -> bool:
 func _start_turn(unit: Unit) -> void:
 	unit.ap = unit.max_ap
 	unit.mp = 0.0  # leftover MP from a prior turn is discarded here (Appendix E)
+	unit.tick_organics_decay(SurrogateLadder.default_ladder())
 
 
 ## Advances to the next living unit in turn order, resetting its AP/MP.

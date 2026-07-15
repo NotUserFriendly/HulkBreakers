@@ -1,0 +1,16 @@
+[T0/RESOLUTION] unit 2 impact: forced calibration shot: DEFLECT
+[T3/RESOLUTION] unit 3 impact: PENETRATE on torso
+[T3/RESOLUTION] unit 3 impact: PENETRATE on alice_torso
+[T3/RESOLUTION] unit 3 impact: PENETRATE on jerry_torso
+[T0/RESOLUTION] unit 0 impact: PENETRATE on jerry_torso
+[T0/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 1 impact: PENETRATE on alice_torso
+[T1/RESOLUTION] unit 1 impact: PENETRATE on torso
+[T1/RESOLUTION] unit 1 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 1 impact: DEFLECT on jerry_torso
+[T1/RESOLUTION] unit 1 impact: PENETRATE on jerry_torso
+[T1/RESOLUTION] unit 1 impact: PENETRATE on alice_torso
+[T1/RESOLUTION] unit 1 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 1 impact: PENETRATE on torso
+[T1/RESOLUTION] unit 1 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 1 action_aborted: aborted at resolution (no longer legal): EndTurnAction(unit=1)

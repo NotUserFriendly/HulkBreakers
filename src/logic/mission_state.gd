@@ -51,8 +51,12 @@ func terminate() -> void:
 
 func _return_every_matrix() -> void:
 	for matrix: Matrix in _all_matrices():
-		if not run_state.roster.has(matrix):
-			run_state.roster.append(matrix)
+		# The roster holds base identities (docs/04: "the Base Matrix stays
+		# on the ship") — a link is just the field vessel it was written
+		# into, and doesn't persist as its own roster entry.
+		var base: Matrix = matrix.base if matrix.base != null else matrix
+		if not run_state.roster.has(base):
+			run_state.roster.append(base)
 
 
 ## Every matrix this mission ever had, piloting or merely carried —
