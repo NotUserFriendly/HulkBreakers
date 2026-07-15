@@ -141,7 +141,11 @@ func _try_swap_weapon(state: CombatState, unit: Unit) -> bool:
 		return false
 
 	for spare: Part in container.contents:
-		if spare.slot_type == Enums.SlotType.R_ARM and spare.part_type == Enums.PartType.WEAPON and spare.hp > 0:
+		if (
+			spare.slot_type == Enums.SlotType.R_ARM
+			and spare.part_type == Enums.PartType.WEAPON
+			and spare.hp > 0
+		):
 			var action := SwapPartAction.new(unit, Enums.SlotType.R_ARM, container, spare)
 			if state.try_apply(action):
 				print("  unit %d swapped in a spare weapon" % unit.id)
@@ -197,7 +201,12 @@ func _try_move_toward(state: CombatState, unit: Unit, target: Unit) -> bool:
 
 
 func _take_ai_turn(state: CombatState, unit: Unit, enemies: Array[Unit]) -> void:
-	print("--- unit %d (squad %d) turn, ap=%d, cell=%s ---" % [unit.id, unit.squad_id, unit.ap, unit.cell])
+	print(
+		(
+			"--- unit %d (squad %d) turn, ap=%d, cell=%s ---"
+			% [unit.id, unit.squad_id, unit.ap, unit.cell]
+		)
+	)
 	while unit.ap > 0:
 		var target: Unit = _pick_best_target(unit, enemies)
 		if target == null:
@@ -233,7 +242,12 @@ func test_sample_battle_runs_to_a_conclusion() -> void:
 	var state := CombatState.new(grid, all_units, BATTLE_SEED)
 
 	print("=== Sample battle: seed %d, %dx%d map ===" % [BATTLE_SEED, MAP_WIDTH, MAP_HEIGHT])
-	print("Squad A spawns at %s; Squad B spawns at %s" % [spawn_a.slice(0, squad_a.size()), spawn_b.slice(0, squad_b.size())])
+	print(
+		(
+			"Squad A spawns at %s; Squad B spawns at %s"
+			% [spawn_a.slice(0, squad_a.size()), spawn_b.slice(0, squad_b.size())]
+		)
+	)
 
 	var turn_count := 0
 	while not state.is_over() and turn_count < TURN_CAP:
@@ -258,4 +272,6 @@ func test_sample_battle_runs_to_a_conclusion() -> void:
 	var joined_log: String = "\n".join(state.action_log)
 	assert_true(joined_log.contains("AttackAction"), "combat should have included attacks")
 	assert_true(joined_log.contains("MoveAction"), "combat should have included movement")
-	assert_true(joined_log.contains("SwapPartAction"), "a destroyed weapon should have forced a swap")
+	assert_true(
+		joined_log.contains("SwapPartAction"), "a destroyed weapon should have forced a swap"
+	)

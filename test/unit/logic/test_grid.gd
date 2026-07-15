@@ -84,10 +84,18 @@ func test_line_vertical() -> void:
 
 func test_line_exact_diagonal_includes_both_bordering_cells() -> void:
 	var l: Array[Vector2i] = Grid.line(Vector2i(0, 0), Vector2i(2, 2))
-	assert_eq(l, [
-		Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1),
-		Vector2i(2, 1), Vector2i(1, 2), Vector2i(2, 2),
-	])
+	assert_eq(
+		l,
+		[
+			Vector2i(0, 0),
+			Vector2i(1, 0),
+			Vector2i(0, 1),
+			Vector2i(1, 1),
+			Vector2i(2, 1),
+			Vector2i(1, 2),
+			Vector2i(2, 2),
+		]
+	)
 
 
 func test_line_endpoints_are_first_and_last() -> void:

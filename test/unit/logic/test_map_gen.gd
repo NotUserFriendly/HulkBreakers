@@ -18,7 +18,12 @@ func _find_cells(grid: Grid, terrain_code: int) -> Array[Vector2i]:
 func _grids_equal(a: Grid, b: Grid) -> bool:
 	if a.width != b.width or a.height != b.height:
 		return false
-	return a.terrain == b.terrain and a.opacity == b.opacity and a.cover_value == b.cover_value and a.occupant_id == b.occupant_id
+	return (
+		a.terrain == b.terrain
+		and a.opacity == b.opacity
+		and a.cover_value == b.cover_value
+		and a.occupant_id == b.occupant_id
+	)
 
 
 func test_same_seed_is_byte_identical() -> void:
@@ -62,7 +67,9 @@ func test_cover_density_within_target_band() -> void:
 				if grid.get_cover_value(cell) > 0.0:
 					cover_count += 1
 		var density: float = float(cover_count) / float(open_count)
-		assert_between(density, 0.08, 0.30, "seed %d: cover density %.3f out of band" % [map_seed, density])
+		assert_between(
+			density, 0.08, 0.30, "seed %d: cover density %.3f out of band" % [map_seed, density]
+		)
 
 
 func test_walls_are_opaque_and_open_cells_are_not() -> void:

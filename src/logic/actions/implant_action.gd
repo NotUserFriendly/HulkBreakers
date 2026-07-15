@@ -14,7 +14,9 @@ var target_cell: Vector2i
 var squad_id: int
 
 
-func _init(p_unit: Unit, p_target_chassis: Chassis, p_target_cell: Vector2i, p_squad_id: int = -1) -> void:
+func _init(
+	p_unit: Unit, p_target_chassis: Chassis, p_target_cell: Vector2i, p_squad_id: int = -1
+) -> void:
 	unit = p_unit
 	target_chassis = p_target_chassis
 	target_cell = p_target_cell
@@ -47,7 +49,12 @@ func apply(state: CombatState) -> void:
 	var new_unit := Unit.new(matrix, target_chassis, target_cell, squad_id)
 	state.add_unit(new_unit)
 
-	state.log_action("ImplantAction: unit %d implanted a matrix at %s (new unit %d)" % [unit.id, target_cell, new_unit.id])
+	state.log_action(
+		(
+			"ImplantAction: unit %d implanted a matrix at %s (new unit %d)"
+			% [unit.id, target_cell, new_unit.id]
+		)
+	)
 
 
 func describe() -> String:

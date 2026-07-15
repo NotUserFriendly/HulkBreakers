@@ -67,7 +67,9 @@ func show_unit(unit: Unit) -> void:
 		var part: Part = unit.chassis.slots[slot_type]
 		var label := Label.new()
 		var part_name: String = part.display_name if part.display_name != "" else String(part.id)
-		label.text = "%s: %s  hp %d/%d" % [Enums.SlotType.keys()[slot_type], part_name, part.hp, part.max_hp]
+		label.text = (
+			"%s: %s  hp %d/%d" % [Enums.SlotType.keys()[slot_type], part_name, part.hp, part.max_hp]
+		)
 		_parts_container.add_child(label)
 
 	for part: Part in unit.chassis.slots.values():
@@ -77,8 +79,12 @@ func show_unit(unit: Unit) -> void:
 			if spare.hp <= 0:
 				continue
 			var btn := Button.new()
-			btn.text = "Swap in %s (%s)" % [String(spare.id), Enums.SlotType.keys()[spare.slot_type]]
+			btn.text = (
+				"Swap in %s (%s)" % [String(spare.id), Enums.SlotType.keys()[spare.slot_type]]
+			)
 			var container_ref: Part = part
 			var spare_ref: Part = spare
-			btn.pressed.connect(func() -> void: swap_requested.emit(spare_ref.slot_type, container_ref, spare_ref))
+			btn.pressed.connect(
+				func() -> void: swap_requested.emit(spare_ref.slot_type, container_ref, spare_ref)
+			)
 			_parts_container.add_child(btn)

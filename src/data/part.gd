@@ -15,4 +15,5 @@ extends Resource
 @export var max_volume: float = 0.0
 @export var mass_multiplier: float = 1.0
 @export var contents: Array[Part] = []
-@export var is_destructible: bool = true  # false marks permanent terrain (e.g. cover that can never be destroyed)
+## false marks permanent terrain (e.g. cover that can never be destroyed).
+@export var is_destructible: bool = true

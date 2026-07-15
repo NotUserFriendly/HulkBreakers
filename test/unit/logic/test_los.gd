@@ -46,7 +46,9 @@ func test_los_ignores_opacity_of_endpoint_cells() -> void:
 	var b := Vector2i(4, 0)
 	grid.set_opacity(a, 1.0)
 	grid.set_opacity(b, 1.0)
-	assert_true(LoS.has_los(grid, a, b), "opacity of the shooter's/target's own cell must not self-block")
+	assert_true(
+		LoS.has_los(grid, a, b), "opacity of the shooter's/target's own cell must not self-block"
+	)
 
 
 func test_corner_blocking_rule_on_exact_diagonal() -> void:
@@ -54,8 +56,13 @@ func test_corner_blocking_rule_on_exact_diagonal() -> void:
 	# A wall on either bordering cell of a corner crossing must block the diagonal shot.
 	var grid := _open_grid(5)
 	grid.set_opacity(Vector2i(1, 0), 1.0)
-	assert_false(LoS.has_los(grid, Vector2i(0, 0), Vector2i(2, 2)), "wall at one corner-bordering cell blocks the diagonal")
-	assert_false(LoS.has_los(grid, Vector2i(2, 2), Vector2i(0, 0)), "must block symmetrically in reverse")
+	assert_false(
+		LoS.has_los(grid, Vector2i(0, 0), Vector2i(2, 2)),
+		"wall at one corner-bordering cell blocks the diagonal"
+	)
+	assert_false(
+		LoS.has_los(grid, Vector2i(2, 2), Vector2i(0, 0)), "must block symmetrically in reverse"
+	)
 
 
 func test_corner_blocking_rule_other_bordering_cell() -> void:
@@ -67,7 +74,9 @@ func test_corner_blocking_rule_other_bordering_cell() -> void:
 func test_cover_does_not_block_los() -> void:
 	var grid := _open_grid(7)
 	grid.set_cover_value(Vector2i(3, 3), 1.0)  # full cover, but not opaque
-	assert_true(LoS.has_los(grid, Vector2i(0, 3), Vector2i(6, 3)), "cover_value must not affect vision")
+	assert_true(
+		LoS.has_los(grid, Vector2i(0, 3), Vector2i(6, 3)), "cover_value must not affect vision"
+	)
 
 
 func test_visible_cells_open_ground_matches_chebyshev_disc() -> void:

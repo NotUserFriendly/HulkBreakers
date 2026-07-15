@@ -63,7 +63,12 @@ func test_distribution_tracks_exposure_weight_ratios() -> void:
 	}
 	for slot: Variant in expected.keys():
 		var ratio: float = float(counts.get(slot, 0)) / float(trials)
-		assert_almost_eq(ratio, expected[slot], 0.03, "slot %s ratio %.4f expected ~%.2f" % [slot, ratio, expected[slot]])
+		assert_almost_eq(
+			ratio,
+			expected[slot],
+			0.03,
+			"slot %s ratio %.4f expected ~%.2f" % [slot, ratio, expected[slot]]
+		)
 
 
 func test_zero_weight_parts_are_never_selected() -> void:

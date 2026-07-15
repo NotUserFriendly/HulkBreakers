@@ -32,3 +32,11 @@ enum RecoveryState {
 	RECOVERED,
 	LEFT_BEHIND,
 }
+
+## Turn structure (docs/09). TACTICS queues intents against a speculative
+## state copy and mutates nothing; RESOLUTION executes the queue and owns
+## every mutation. A closed engine state — not open data.
+enum Phase {
+	TACTICS,
+	RESOLUTION,
+}

@@ -5,6 +5,7 @@ extends RefCounted
 ## stays a replayable action log (Appendix B: keeps the door open for a future
 ## networked layer without building any networking now).
 
+
 func is_legal(_state: CombatState) -> bool:
 	return false
 

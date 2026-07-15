@@ -113,7 +113,9 @@ func test_ejected_and_abandoned_matrix_ends_left_behind_but_stays_in_roster() ->
 
 	assert_eq(victim.matrix.recovery_state, Enums.RecoveryState.LEFT_BEHIND)
 	assert_true(victim.matrix.pending_return_penalty)
-	assert_true(run.roster.has(victim.matrix), "roguelike rule is absolute: the matrix still returns")
+	assert_true(
+		run.roster.has(victim.matrix), "roguelike rule is absolute: the matrix still returns"
+	)
 
 
 func test_apply_perk_is_idempotent() -> void:

@@ -8,8 +8,11 @@ extends RefCounted
 
 const HALF_PROFILE: Array[Enums.SlotType] = [Enums.SlotType.LEGS]
 const FULL_PROFILE: Array[Enums.SlotType] = [
-	Enums.SlotType.HEAD, Enums.SlotType.TORSO,
-	Enums.SlotType.L_ARM, Enums.SlotType.R_ARM, Enums.SlotType.LEGS,
+	Enums.SlotType.HEAD,
+	Enums.SlotType.TORSO,
+	Enums.SlotType.L_ARM,
+	Enums.SlotType.R_ARM,
+	Enums.SlotType.LEGS,
 ]
 
 
@@ -34,7 +37,9 @@ static func between(grid: Grid, from: Vector2i, to: Vector2i) -> CoverInfo:
 		return info
 
 	info.level = best_level
-	info.profile = (HALF_PROFILE.duplicate() if best_level == CoverInfo.Level.HALF else FULL_PROFILE.duplicate())
+	info.profile = (
+		HALF_PROFILE.duplicate() if best_level == CoverInfo.Level.HALF else FULL_PROFILE.duplicate()
+	)
 	info.object = grid.blockers.get(best_cell, null)
 	info.cell = best_cell
 	return info
@@ -63,7 +68,7 @@ static func _level_at(grid: Grid, cell: Vector2i) -> CoverInfo.Level:
 	var v: float = grid.get_cover_value(cell)
 	if v >= 1.0:
 		return CoverInfo.Level.FULL
-	elif v > 0.0:
+	if v > 0.0:
 		return CoverInfo.Level.HALF
 	return CoverInfo.Level.NONE
 

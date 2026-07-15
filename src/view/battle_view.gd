@@ -22,6 +22,7 @@ var overlay: OverlayLayer
 var units_container: Node2D
 var camera: Camera2D
 var panel: SidePanel
+var input_enabled: bool = true  # off while an external driver (e.g. an AI demo) is in control
 var _markers: Dictionary = {}  # Unit -> UnitMarker
 
 
@@ -103,7 +104,9 @@ func _make_squad(spawn_cells: Array[Vector2i], squad_id: int, prefix: String) ->
 	for i in range(count):
 		var matrix := Matrix.new()
 		matrix.id = StringName("%s_matrix_%d" % [prefix, i])
-		units.append(Unit.new(matrix, _make_chassis("%s%d" % [prefix, i]), spawn_cells[i], squad_id))
+		units.append(
+			Unit.new(matrix, _make_chassis("%s%d" % [prefix, i]), spawn_cells[i], squad_id)
+		)
 	return units
 
 
@@ -169,9 +172,6 @@ func _make_chassis(prefix: String) -> Chassis:
 	torso.contents.append(spare_weapon)
 
 	return chassis
-
-
-var input_enabled: bool = true  # off while an external driver (e.g. an AI demo) is in control
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -245,7 +245,10 @@ func _refresh_overlays() -> void:
 		for y in range(grid.height):
 			for x in range(grid.width):
 				var c := Vector2i(x, y)
-				if Grid.distance_chebyshev(selected_unit.cell, c) <= AttackAction.DEFAULT_RANGE and LoS.has_los(grid, selected_unit.cell, c):
+				if (
+					Grid.distance_chebyshev(selected_unit.cell, c) <= AttackAction.DEFAULT_RANGE
+					and LoS.has_los(grid, selected_unit.cell, c)
+				):
 					cells.append(c)
 		overlay.set_attack_range(cells)
 		overlay.set_reachable([])

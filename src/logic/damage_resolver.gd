@@ -5,6 +5,7 @@ extends RefCounted
 ## PLAN.md describes (cover lives on a grid cell; destroying the TORSO ejects
 ## the matrix near an ally) — state and the target Unit are threaded through.
 
+
 static func apply(hit: HitResult, amount: int, state: CombatState, target: Unit) -> void:
 	if hit.part != null:
 		_apply_to_part(hit.part, amount, state, target)
@@ -76,7 +77,9 @@ static func _closest_living_ally(state: CombatState, unit: Unit) -> Unit:
 	return best
 
 
-static func _nearest_cell(candidates: Array[Vector2i], reference: Vector2i, grid_width: int) -> Vector2i:
+static func _nearest_cell(
+	candidates: Array[Vector2i], reference: Vector2i, grid_width: int
+) -> Vector2i:
 	var best: Vector2i = candidates[0]
 	var best_dist: int = Grid.distance_chebyshev(candidates[0], reference)
 	var best_index: int = best.y * grid_width + best.x

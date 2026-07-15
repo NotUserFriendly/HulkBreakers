@@ -7,7 +7,8 @@ extends RefCounted
 const DEFAULT_COST: float = 1.0
 
 var _grid: Grid
-var _terrain_costs: Dictionary  # terrain(int) -> float MP cost; missing = DEFAULT_COST, negative = blocked
+## terrain(int) -> float MP cost; missing = DEFAULT_COST, negative = blocked.
+var _terrain_costs: Dictionary
 
 
 func _init(grid: Grid, terrain_costs: Dictionary = {}) -> void:
@@ -78,7 +79,9 @@ func astar(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 			if tentative_g < g_score.get(neighbor, INF):
 				came_from[neighbor] = current
 				g_score[neighbor] = tentative_g
-				f_score[neighbor] = tentative_g + Grid.distance_chebyshev(neighbor, b) * heuristic_scale
+				f_score[neighbor] = (
+					tentative_g + Grid.distance_chebyshev(neighbor, b) * heuristic_scale
+				)
 				if not open_set.has(neighbor):
 					open_set.append(neighbor)
 

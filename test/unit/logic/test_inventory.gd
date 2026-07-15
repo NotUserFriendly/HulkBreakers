@@ -1,7 +1,9 @@
 extends GutTest
 
 
-func _make_container(volume: float, max_volume: float, mass: float = 0.0, mult: float = 1.0) -> Part:
+func _make_container(
+	volume: float, max_volume: float, mass: float = 0.0, mult: float = 1.0
+) -> Part:
 	var c := Part.new()
 	c.is_container = true
 	c.volume = volume

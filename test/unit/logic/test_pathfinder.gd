@@ -16,7 +16,9 @@ func test_astar_straight_line_uniform_cost() -> void:
 	var grid := Grid.new(5, 5)
 	var pf := Pathfinder.new(grid)
 	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
-	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)])
+	assert_eq(
+		path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
+	)
 	assert_almost_eq(_sum_path_cost(pf, path), 4.0, 0.0001)
 
 
@@ -26,7 +28,9 @@ func test_astar_path_length_with_mixed_terrain_cost() -> void:
 	grid.set_terrain(Vector2i(2, 0), TERRAIN_DIFFICULT)
 	var pf := Pathfinder.new(grid, {TERRAIN_DIFFICULT: 5.0})
 	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
-	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)])
+	assert_eq(
+		path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
+	)
 	# 1 (into x=1) + 5 (into difficult x=2) + 1 + 1 = 8
 	assert_almost_eq(_sum_path_cost(pf, path), 8.0, 0.0001)
 
@@ -67,7 +71,9 @@ func test_astar_succeeds_when_origin_cell_is_occupied_by_the_mover_itself() -> v
 	grid.set_occupant_id(Vector2i(0, 0), 7)
 	var pf := Pathfinder.new(grid)
 	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
-	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)])
+	assert_eq(
+		path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
+	)
 
 
 func test_astar_rejects_occupied_destination() -> void:

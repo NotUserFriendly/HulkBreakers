@@ -20,19 +20,19 @@ static func has_los(grid: Grid, a: Vector2i, b: Vector2i) -> bool:
 	return true
 
 
-## All cells within Chebyshev `range` of origin (inclusive) that have LoS from
-## origin. Includes origin itself.
-static func visible_cells(grid: Grid, origin: Vector2i, range: int) -> Array[Vector2i]:
+## All cells within Chebyshev `radius` of origin (inclusive) that have LoS
+## from origin. Includes origin itself.
+static func visible_cells(grid: Grid, origin: Vector2i, radius: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	var y_start: int = maxi(origin.y - range, 0)
-	var y_end: int = mini(origin.y + range, grid.height - 1)
-	var x_start: int = maxi(origin.x - range, 0)
-	var x_end: int = mini(origin.x + range, grid.width - 1)
+	var y_start: int = maxi(origin.y - radius, 0)
+	var y_end: int = mini(origin.y + radius, grid.height - 1)
+	var x_start: int = maxi(origin.x - radius, 0)
+	var x_end: int = mini(origin.x + radius, grid.width - 1)
 
 	for y in range(y_start, y_end + 1):
 		for x in range(x_start, x_end + 1):
 			var cell := Vector2i(x, y)
-			if Grid.distance_chebyshev(origin, cell) > range:
+			if Grid.distance_chebyshev(origin, cell) > radius:
 				continue
 			if has_los(grid, origin, cell):
 				result.append(cell)

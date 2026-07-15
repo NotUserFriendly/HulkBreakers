@@ -3,7 +3,10 @@ extends RefCounted
 
 ## Appendix C: exposure-weighted part selection first, then cover interception.
 
-static func resolve_hit(attacker: Unit, target: Unit, grid: Grid, rng: RandomNumberGenerator) -> HitResult:
+
+static func resolve_hit(
+	attacker: Unit, target: Unit, grid: Grid, rng: RandomNumberGenerator
+) -> HitResult:
 	var parts: Array[Part] = target.chassis.living_parts()
 	var part: Part = _weighted_choice(parts, rng)
 	var hit := HitResult.new()

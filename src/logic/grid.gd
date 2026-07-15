@@ -1,6 +1,17 @@
 class_name Grid
 extends RefCounted
 
+const NEIGHBOR_OFFSETS: Array[Vector2i] = [
+	Vector2i(1, 0),
+	Vector2i(1, 1),
+	Vector2i(0, 1),
+	Vector2i(-1, 1),
+	Vector2i(-1, 0),
+	Vector2i(-1, -1),
+	Vector2i(0, -1),
+	Vector2i(1, -1),
+]
+
 var width: int
 var height: int
 
@@ -10,11 +21,6 @@ var cover_value: Array[float] = []
 var occupant_id: Array[int] = []
 var blockers: Dictionary = {}  # Vector2i -> Part; the object backing a cover_value > 0 cell, if any
 var field_items: Dictionary = {}  # Vector2i -> Array[Part|Matrix]; loose items lying on the ground
-
-const NEIGHBOR_OFFSETS: Array[Vector2i] = [
-	Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1),
-	Vector2i(-1, 0), Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
-]
 
 
 func _init(p_width: int, p_height: int) -> void:

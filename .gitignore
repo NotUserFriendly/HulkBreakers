@@ -11,3 +11,7 @@ export_presets.cfg
 
 # Local build/workflow notes — not published
 /CLAUDE.md
+
+# Regenerated every run — checkpoint artifacts under out/checkpoints/ ARE
+# committed (docs/09); this rolling log is not.
+/out/combat.log

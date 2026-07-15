@@ -37,7 +37,14 @@ func _draw() -> void:
 			draw_circle(center, 4.0, color)
 
 	if last_hit_cell.x >= 0 and not last_hit_label.is_empty():
-		draw_string(ThemeDB.fallback_font, _cell_center(last_hit_cell) + Vector2(-TILE_PX / 2.0, -TILE_PX / 2.0 - 4.0), last_hit_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+		draw_string(
+			ThemeDB.fallback_font,
+			_cell_center(last_hit_cell) + Vector2(-TILE_PX / 2.0, -TILE_PX / 2.0 - 4.0),
+			last_hit_label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			12
+		)
 
 
 func _cell_rect(cell: Vector2i) -> Rect2:

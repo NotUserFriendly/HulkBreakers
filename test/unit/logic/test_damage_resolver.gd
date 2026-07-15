@@ -61,7 +61,8 @@ func test_destroying_weapon_part_removes_it_from_chassis() -> void:
 func test_destroying_torso_disables_chassis_and_ejects_matrix() -> void:
 	var grid := Grid.new(7, 7)
 	var victim := _make_torso_only_unit(Vector2i(3, 3), 0, &"victim_matrix")
-	var ally := _make_torso_only_unit(Vector2i(5, 5), 0, &"ally_matrix")  # pure-diagonal offset -> unique nearest neighbor
+	# pure-diagonal offset -> unique nearest neighbor
+	var ally := _make_torso_only_unit(Vector2i(5, 5), 0, &"ally_matrix")
 	var enemy := _make_torso_only_unit(Vector2i(0, 0), 1, &"enemy_matrix")
 	var state := CombatState.new(grid, [victim, ally, enemy])
 

@@ -1,0 +1,231 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+
+---  GUT  ---
+[1m[INFO]:  [0musing [/home/locad/.local/share/godot/app_userdata/ModularTactics] for temporary output.
+Godot version:  4.7.0
+GUT version:  9.7.1
+WARNING: The function parameter "seed" has the same name as a built-in function.
+     at: GDScript::reload (res://src/logic/map_gen.gd:21)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:61)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:62)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:72)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:73)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:113)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:171)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+WARNING: Integer division. Decimal part will be discarded.
+     at: GDScript::reload (res://src/logic/map_gen.gd:172)
+     GDScript backtrace (most recent call first):
+         [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+         [1] _parse_script (res://addons/gut/test_collector.gd:76)
+         [2] add_script (res://addons/gut/test_collector.gd:128)
+         [3] add_script (res://addons/gut/gut.gd:1070)
+         [4] _apply_options (res://addons/gut/gut_config.gd:139)
+         [5] apply_options (res://addons/gut/gut_config.gd:207)
+         [6] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+         [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+         [8] main (res://addons/gut/cli/gut_cli.gd:297)
+         [9] _init (res://addons/gut/gut_cmdln.gd:39)
+[4m
+
+res://test/checkpoints/test_checkpoint_1.gd
+[0m* test_dump_ascii_maps_across_several_seeds
+
+=== seed 1 ===
+############################
+####################bb...###
+#########...########bb.oo###
+#aa...###...########...oo###
+#aa..............O.......###
+#o.o.o......########.....###
+#o....###...########o....###
+#....o###O..########.O...###
+#.....###...#########.######
+###.#################.######
+###.###############.o.O.####
+###O##########...##....o####
+###...ooo#####...##...o.####
+###..o..o.o......###########
+####....o#####...###########
+############################
+
+=== seed 2 ===
+############################
+##aa....O....###.......o..##
+##aaoo............o.......##
+##o..........###.....ooo..##
+#######.####################
+#######.####################
+#######.####################
+#######...##################
+#######o..##################
+#######o........obb........#
+#######...#######bbo.OO....#
+#######...#######.o...o....#
+#################.Oooo...oo#
+############################
+############################
+############################
+
+=== seed 3 ===
+############################
+############O...######bb..##
+############.o.o######bb..##
+#aa...o..###..............##
+#aa....O.###..o.######....##
+#.........o....o######....##
+#.o..O...#####o#########.###
+######.#######.#########.###
+######.#####....O.######.###
+######.#####.....O###...O..#
+######.#####......###......#
+#####...####oO..o.###O..O..#
+#####oO.####.o....###......#
+#####...#############o.O..o#
+#####...####################
+############################
+
+=== seed 4 ===
+############################
+##aa.#######.....####bb....#
+##aa........O......o.bb....#
+##...#######....O####...O..#
+###.########################
+###.########################
+###o########################
+###.##.oo.o##.....##########
+###.##.....##.....##########
+###o##o....##.....##oo...O.#
+###o##Oo.......OoO##o.....o#
+###..O.....##..o...Oo...O..#
+######.....##.....##.......#
+######.....#################
+######o...O#################
+############################
+
+=== seed 5 ===
+############################
+####################......##
+#aa.o..o.##.....####..o...##
+#aa..O...##o....####......##
+#.o......##...o.####......##
+#.....o.....o..o.....o...O##
+#O.......##.....####......##
+#........##.....####......##
+#O..o.oo.###########.O....##
+#####.######################
+#####o######################
+####..O..######o..#####bb..#
+####.............o....obb..#
+####oO.o.######..O#####....#
+#######################....#
+############################
+
+=== combat log sample ===
+[T0/RESOLUTION] unit 0 checkpoint: Checkpoint 1 artifact generated
+[1m1/1 passed.
+[0m
+
+
+
+[33m==============================================
+[0m[33m= Run Summary
+[0m[33m==============================================
+[0m
+Totals
+------
+Scripts               1
+Tests                 1
+Passing Tests         1
+Asserts              14
+Time              0.458s
+
+
+[32m---- All tests passed! ----
+[0m
+WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2535)
+ERROR: 1 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:822)

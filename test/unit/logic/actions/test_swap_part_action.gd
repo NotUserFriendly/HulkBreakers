@@ -102,4 +102,8 @@ func test_swap_rejects_when_displaced_part_would_not_fit_back_in_container() -> 
 	var action := SwapPartAction.new(unit, Enums.SlotType.R_ARM, backpack, spare_weapon)
 	assert_false(action.is_legal(state))
 	assert_false(state.try_apply(action))
-	assert_eq(chassis.slots[Enums.SlotType.R_ARM], bulky_old_weapon, "a rejected swap must not mutate the chassis")
+	assert_eq(
+		chassis.slots[Enums.SlotType.R_ARM],
+		bulky_old_weapon,
+		"a rejected swap must not mutate the chassis"
+	)

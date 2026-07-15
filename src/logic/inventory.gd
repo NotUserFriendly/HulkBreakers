@@ -6,6 +6,7 @@ extends RefCounted
 ## (`detach(part, from)`, `attach(part, into)`) rather than PLAN.md's bare
 ## `detach(part)`.
 
+
 ## True if `part` could be attached into `into` right now: `into` must be a
 ## container, attaching must not create a cycle, must not exceed `into`'s
 ## max_volume (by direct children's external volume), and — when `chassis`

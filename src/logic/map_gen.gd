@@ -40,7 +40,9 @@ static func generate(seed: int, width: int, height: int) -> Grid:
 	return grid
 
 
-static func _split_and_carve(grid: Grid, rect: Rect2i, rng: RandomNumberGenerator, rooms: Array[Rect2i]) -> Vector2i:
+static func _split_and_carve(
+	grid: Grid, rect: Rect2i, rng: RandomNumberGenerator, rooms: Array[Rect2i]
+) -> Vector2i:
 	var can_split_x: bool = rect.size.x >= MIN_LEAF_SIZE * 2
 	var can_split_y: bool = rect.size.y >= MIN_LEAF_SIZE * 2
 
@@ -63,7 +65,9 @@ static func _split_and_carve(grid: Grid, rect: Rect2i, rng: RandomNumberGenerato
 		var offset: int = rng.randi_range(lo, hi)
 		var split_at: int = rect.position.x + offset
 		child_a = Rect2i(rect.position, Vector2i(offset, rect.size.y))
-		child_b = Rect2i(Vector2i(split_at, rect.position.y), Vector2i(rect.size.x - offset, rect.size.y))
+		child_b = Rect2i(
+			Vector2i(split_at, rect.position.y), Vector2i(rect.size.x - offset, rect.size.y)
+		)
 	else:
 		var lo_y: int = maxi(MIN_CHILD_SIZE, rect.size.y / 3)
 		var hi_y: int = mini(rect.size.y - MIN_CHILD_SIZE, rect.size.y * 2 / 3)
@@ -72,7 +76,9 @@ static func _split_and_carve(grid: Grid, rect: Rect2i, rng: RandomNumberGenerato
 		var offset_y: int = rng.randi_range(lo_y, hi_y)
 		var split_at_y: int = rect.position.y + offset_y
 		child_a = Rect2i(rect.position, Vector2i(rect.size.x, offset_y))
-		child_b = Rect2i(Vector2i(rect.position.x, split_at_y), Vector2i(rect.size.x, rect.size.y - offset_y))
+		child_b = Rect2i(
+			Vector2i(rect.position.x, split_at_y), Vector2i(rect.size.x, rect.size.y - offset_y)
+		)
 
 	var point_a: Vector2i = _split_and_carve(grid, child_a, rng, rooms)
 	var point_b: Vector2i = _split_and_carve(grid, child_b, rng, rooms)
@@ -80,7 +86,9 @@ static func _split_and_carve(grid: Grid, rect: Rect2i, rng: RandomNumberGenerato
 	return point_a
 
 
-static func _carve_room(grid: Grid, leaf: Rect2i, rng: RandomNumberGenerator, rooms: Array[Rect2i]) -> Vector2i:
+static func _carve_room(
+	grid: Grid, leaf: Rect2i, rng: RandomNumberGenerator, rooms: Array[Rect2i]
+) -> Vector2i:
 	var max_w: int = maxi(MIN_ROOM_SIZE, leaf.size.x - 2)
 	var max_h: int = maxi(MIN_ROOM_SIZE, leaf.size.y - 2)
 	var room_w: int = mini(rng.randi_range(MIN_ROOM_SIZE, max_w), leaf.size.x - 2)
@@ -93,7 +101,9 @@ static func _carve_room(grid: Grid, leaf: Rect2i, rng: RandomNumberGenerator, ro
 	var offset_x: int = rng.randi_range(0, max_offset_x)
 	var offset_y: int = rng.randi_range(0, max_offset_y)
 
-	var room := Rect2i(leaf.position + Vector2i(1 + offset_x, 1 + offset_y), Vector2i(room_w, room_h))
+	var room := Rect2i(
+		leaf.position + Vector2i(1 + offset_x, 1 + offset_y), Vector2i(room_w, room_h)
+	)
 
 	for y in range(room.position.y, room.position.y + room.size.y):
 		for x in range(room.position.x, room.position.x + room.size.x):
@@ -103,7 +113,9 @@ static func _carve_room(grid: Grid, leaf: Rect2i, rng: RandomNumberGenerator, ro
 	return room.position + room.size / 2
 
 
-static func _carve_corridor(grid: Grid, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator) -> void:
+static func _carve_corridor(
+	grid: Grid, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
+) -> void:
 	var mid: Vector2i = Vector2i(b.x, a.y) if rng.randf() < 0.5 else Vector2i(a.x, b.y)
 	_carve_straight(grid, a, mid)
 	_carve_straight(grid, mid, b)
@@ -136,7 +148,9 @@ static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 			if grid.get_terrain(cell) != Enums.TerrainType.OPEN:
 				continue
 			if rng.randf() < COVER_PROBABILITY:
-				var value: float = FULL_COVER_VALUE if rng.randf() < FULL_COVER_CHANCE else HALF_COVER_VALUE
+				var value: float = (
+					FULL_COVER_VALUE if rng.randf() < FULL_COVER_CHANCE else HALF_COVER_VALUE
+				)
 				grid.set_cover_value(cell, value)
 				# Terrain-scattered cover is permanent (never destructible).
 				var cover_object := Part.new()

@@ -34,7 +34,10 @@ func _draw() -> void:
 	var bar_h := 3.0
 	var bar_origin := Vector2(-bar_w / 2.0, -RADIUS - 8.0)
 	draw_rect(Rect2(bar_origin, Vector2(bar_w, bar_h)), Color(0.2, 0.2, 0.2))
-	draw_rect(Rect2(bar_origin, Vector2(bar_w * hp_frac, bar_h)), Color(0.2, 0.9, 0.2).lerp(Color(0.9, 0.2, 0.2), 1.0 - hp_frac))
+	draw_rect(
+		Rect2(bar_origin, Vector2(bar_w * hp_frac, bar_h)),
+		Color(0.2, 0.9, 0.2).lerp(Color(0.9, 0.2, 0.2), 1.0 - hp_frac)
+	)
 
 
 func _hp_fraction() -> float:

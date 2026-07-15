@@ -116,8 +116,12 @@ func test_save_load_round_trip_with_nested_containers() -> void:
 	assert_eq(ResourceSaver.save(chassis, chassis_path), OK)
 	assert_eq(ResourceSaver.save(matrix, matrix_path), OK)
 
-	var loaded_chassis: Chassis = ResourceLoader.load(chassis_path, "", ResourceLoader.CACHE_MODE_IGNORE)
-	var loaded_matrix: Matrix = ResourceLoader.load(matrix_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	var loaded_chassis: Chassis = ResourceLoader.load(
+		chassis_path, "", ResourceLoader.CACHE_MODE_IGNORE
+	)
+	var loaded_matrix: Matrix = ResourceLoader.load(
+		matrix_path, "", ResourceLoader.CACHE_MODE_IGNORE
+	)
 
 	assert_eq(loaded_chassis.max_mass, 150.0)
 	var loaded_torso: Part = loaded_chassis.slots[Enums.SlotType.TORSO]
@@ -143,7 +147,9 @@ func test_save_load_round_trip_with_nested_containers() -> void:
 
 	# Appendix D: pouch's 0.8 multiplier is ignored since it's nested, not worn directly;
 	# only the backpack's 0.5 applies to the flat sum of pouch (1kg) + loose item (10kg).
-	assert_almost_eq(loaded_chassis.carried_mass(), _torso_part.mass + 2.0 + (1.0 + 10.0) * 0.5, 0.0001)
+	assert_almost_eq(
+		loaded_chassis.carried_mass(), _torso_part.mass + 2.0 + (1.0 + 10.0) * 0.5, 0.0001
+	)
 
 	DirAccess.remove_absolute(chassis_path)
 	DirAccess.remove_absolute(matrix_path)
