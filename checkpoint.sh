@@ -27,11 +27,18 @@ case "$N" in
     ;;
 esac
 
+RAW_OUTPUT=$(mktemp)
 GODOT_DISABLE_LEAK_CHECKS=1 "$GODOT" --headless -d \
   --display-driver headless --audio-driver Dummy \
   --path . \
   -s res://addons/gut/gut_cmdln.gd \
-  -gtest="$TEST_TARGET" -gexit > "${OUT_DIR}/output.txt" 2>&1 || true
+  -gtest="$TEST_TARGET" -gdisable_colors -gexit > "$RAW_OUTPUT" 2>&1 || true
+
+# -gdisable_colors misses GUT's own pre-option startup log line, so strip any
+# leftover ANSI escapes unconditionally — committed artifacts must be plain
+# text, not terminal-colored bytes.
+sed -E 's/\x1b\[[0-9;]*m//g' "$RAW_OUTPUT" > "${OUT_DIR}/output.txt"
+rm -f "$RAW_OUTPUT"
 
 cat > "${OUT_DIR}/README.md" <<EOF
 # Checkpoint ${N}

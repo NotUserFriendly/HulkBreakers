@@ -1,7 +1,7 @@
 Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
 
 ---  GUT  ---
-[1m[INFO]:  [0musing [/home/locad/.local/share/godot/app_userdata/ModularTactics] for temporary output.
+[INFO]:  using [/home/locad/.local/share/godot/app_userdata/HulkBreakers] for temporary output.
 Godot version:  4.7.0
 GUT version:  9.7.1
 WARNING: The function parameter "seed" has the same name as a built-in function.
@@ -108,10 +108,10 @@ WARNING: Integer division. Decimal part will be discarded.
          [7] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
          [8] main (res://addons/gut/cli/gut_cli.gd:297)
          [9] _init (res://addons/gut/gut_cmdln.gd:39)
-[4m
+
 
 res://test/checkpoints/test_checkpoint_1.gd
-[0m* test_dump_ascii_maps_across_several_seeds
+* test_dump_ascii_maps_across_several_seeds
 
 === seed 1 ===
 ############################
@@ -205,27 +205,27 @@ res://test/checkpoints/test_checkpoint_1.gd
 
 === combat log sample ===
 [T0/RESOLUTION] unit 0 checkpoint: Checkpoint 1 artifact generated
-[1m1/1 passed.
-[0m
+1/1 passed.
 
 
 
-[33m==============================================
-[0m[33m= Run Summary
-[0m[33m==============================================
-[0m
+
+==============================================
+= Run Summary
+==============================================
+
 Totals
 ------
 Scripts               1
 Tests                 1
 Passing Tests         1
 Asserts              14
-Time              0.458s
+Time              0.452s
 
 
-[32m---- All tests passed! ----
-[0m
-WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+---- All tests passed! ----
+
+WARNING: 4 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2535)
-ERROR: 1 resources still in use at exit (run with --verbose for details).
+ERROR: 3 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:822)
