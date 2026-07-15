@@ -12,6 +12,12 @@ extends RefCounted
 ## World-space ground direction a unit with orientation == 0.0 faces.
 const WORLD_FORWARD := Vector2(0.0, 1.0)
 
+## A box's four in-plane face normals in local space (top/bottom ignored —
+## shots travel horizontally in this abstraction).
+const _LOCAL_FACE_NORMALS: Array[Vector2] = [
+	Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, 1.0), Vector2(0.0, -1.0)
+]
+
 
 ## Projects every living part of `unit`'s frame into view-plane Regions.
 static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
@@ -51,5 +57,24 @@ static func _project_box(
 	var min_x: float = xs.min()
 	var max_x: float = xs.max()
 	var rect := Rect2(min_x, box.center.y - half.y, max_x - min_x, box.size.y)
-	var normal := Vector3(-dir.x, 0.0, -dir.y)
+	var normal := _face_normal(orientation, dir)
 	return Region.new(rect, depth, part, normal)
+
+
+## Which of the box's four flat faces was actually hit (docs/03: "surface_
+## normal comes free from the projection — the box face that was hit").
+## Picks whichever local face normal, rotated into world space, points most
+## toward the shooter — real geometry, snapping only at the physical
+## boundary between two adjacent faces of the same box, never a facing
+## abstraction.
+static func _face_normal(orientation: float, dir: Vector2) -> Vector3:
+	var toward_shooter: Vector2 = -dir
+	var best: Vector2 = _LOCAL_FACE_NORMALS[0].rotated(orientation)
+	var best_dot: float = best.dot(toward_shooter)
+	for i in range(1, _LOCAL_FACE_NORMALS.size()):
+		var candidate: Vector2 = _LOCAL_FACE_NORMALS[i].rotated(orientation)
+		var dot: float = candidate.dot(toward_shooter)
+		if dot > best_dot:
+			best_dot = dot
+			best = candidate
+	return Vector3(best.x, 0.0, best.y)

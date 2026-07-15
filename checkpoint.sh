@@ -21,6 +21,10 @@ case "$N" in
     TEST_TARGET="res://test/checkpoints/test_checkpoint_2.gd"
     SUMMARY="One cyborg's shot plane dumped from 12 angles swept continuously (docs/02 projection). Look for: do the boxes track the angle sanely? Does the rear ammo rack appear only from behind? Any pop or discontinuity between adjacent angles is a bug."
     ;;
+  3)
+    TEST_TARGET="res://test/checkpoints/test_checkpoint_3.gd"
+    SUMMARY="A seeded 10-round burst fired at a steel-plated torso (docs/03 armor and ricochet). Look for: does the deflection retain a plausible fraction of damage? Does the ricochet land somewhere plausible — here, tagging a bystander standing in its path? Is the spray chaotic but not insane?"
+    ;;
   *)
     echo "No checkpoint script wired for checkpoint ${N} yet." >&2
     exit 1

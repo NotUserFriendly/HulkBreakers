@@ -43,3 +43,11 @@ enum ModSourceKind {
 	STATUS,
 	STANCE,
 }
+
+## What resolve_impact decides for one region (docs/03) — real geometry,
+## never a roll. A closed engine state, not open data.
+enum Outcome {
+	PENETRATE,
+	STOP_DEAD,
+	DEFLECT,
+}

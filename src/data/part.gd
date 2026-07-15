@@ -72,3 +72,10 @@ extends Resource
 ## i's annulus spans (scatter[i-1].radius, scatter[i].radius]. N rings, never
 ## a fixed three — nothing may assume a count.
 @export var scatter: Array[Ring] = []
+
+## Cook-off (docs/03): a VOLATILE part with a non-zero cook_off_damage
+## explodes on destruction, dealing this much area damage within
+## cook_off_radius cells. Both default to 0 (inert) — an ammo rack's actual
+## numbers are authored data, not a code constant.
+@export var cook_off_damage: float = 0.0
+@export var cook_off_radius: float = 0.0

@@ -79,3 +79,18 @@ func test_rear_part_is_occluded_from_the_front_but_frontmost_from_behind() -> vo
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(front, 2.0), 4, 2))
 	print("\n=== rear ammo rack: viewed from behind (rack now frontmost) ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(rear, 2.0), 4, 2))
+
+
+func test_surface_normal_is_the_actual_face_hit_not_always_toward_the_shooter() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+
+	var front: Region = BodyProjector.project(unit, Vector2(0, -1))[0]
+	assert_eq(front.surface_normal, Vector3(0.0, 0.0, 1.0), "front hit: the front face was hit")
+
+	var flank: Region = BodyProjector.project(unit, Vector2(1, 0))[0]
+	assert_eq(flank.surface_normal, Vector3(-1.0, 0.0, 0.0), "flank hit: the side face was hit")
