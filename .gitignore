@@ -2,6 +2,11 @@
 .godot/
 .import/
 
+# Checkpoint screenshots (out/checkpoints/) are documentation artifacts, not
+# game assets — the .import sidecar Godot generates for them is regenerated
+# identically on any checkout and isn't worth committing.
+out/checkpoints/**/*.import
+
 # Export artifacts
 export_presets.cfg
 *.tmp
