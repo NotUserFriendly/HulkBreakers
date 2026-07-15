@@ -2,14 +2,11 @@ extends GutTest
 
 
 func _make_unit(cell: Vector2i, agility: float = 0.0) -> Unit:
-	var legs := Part.new()
-	legs.slot_type = Enums.SlotType.LEGS
-	legs.hp = 5
-	legs.max_hp = 5
-	legs.stat_mods = {"agility": agility}
-	var chassis := Chassis.new()
-	chassis.install(legs)
-	return Unit.new(Matrix.new(), chassis, cell, 0)
+	var root := Part.new()
+	root.hp = 5
+	root.max_hp = 5
+	root.stat_mods = {"agility": agility}
+	return Unit.new(Matrix.new(), Frame.new(root), cell, 0)
 
 
 func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:

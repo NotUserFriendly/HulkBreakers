@@ -5,6 +5,6 @@ config_version=5
 
 [application]
 
-config/name="ModularTactics"
+config/name="HulkBreakers"
 config/features=PackedStringArray("4.7")
-run/main_scene="res://src/view/battle_view.tscn"
+run/main_scene=""

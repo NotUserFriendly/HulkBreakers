@@ -1,22 +1,6 @@
 class_name Enums
 extends RefCounted
 
-enum SlotType {
-	HEAD,
-	TORSO,
-	L_ARM,
-	R_ARM,
-	LEGS,
-}
-
-enum PartType {
-	WEAPON,
-	ARMOR,
-	SENSOR,
-	MOBILITY,
-	STORAGE,
-}
-
 ## Values for Grid.terrain. Cover (Grid.cover_value) is a separate overlay —
 ## terrain only governs walkability and vision blocking.
 enum TerrainType {

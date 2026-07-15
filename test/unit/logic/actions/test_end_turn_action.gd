@@ -2,13 +2,10 @@ extends GutTest
 
 
 func _make_unit(cell: Vector2i, squad: int) -> Unit:
-	var chassis := Chassis.new()
-	var torso := Part.new()
-	torso.slot_type = Enums.SlotType.TORSO
-	torso.hp = 5
-	torso.max_hp = 5
-	chassis.install(torso)
-	return Unit.new(Matrix.new(), chassis, cell, squad)
+	var root := Part.new()
+	root.hp = 5
+	root.max_hp = 5
+	return Unit.new(Matrix.new(), Frame.new(root), cell, squad)
 
 
 func test_end_turn_advances_turn_order() -> void:
