@@ -176,7 +176,10 @@ effective level but carries the base's top perks; a torso chewed to SPINAL still
 exposed organics decay per turn; **matrices are never lost on any path**.
 **Fuzz test (the real point):** generate N random valid cyborgs from a part pool across many
 seeds — every one must satisfy socket/mass/bulk/RAM invariants, project a sane shot plane, and
-either be armed or be knowably unarmed. No crashes, no malformed assemblies.
+either be armed or be knowably unarmed. No crashes, no malformed assemblies. Every assembly must
+project a **non-degenerate** shot plane — not just a root box floating alone — and every living
+part must actually appear in it; a part with `hp > 0` and no `volume` is a
+`validate_assembly()` violation, not a silent gap in the plane.
 ### ▶ CHECKPOINT 4 — 20 random deep-strike cyborgs, ASCII + stat blocks. **Stop for review.**
 
 ---
@@ -225,10 +228,116 @@ cook-off + RAM + surrogate decay + tactics/resolution + extraction, zero errors.
 
 ---
 
-## Phase 12 — 3D view (bonus / next session) (`docs/08`)
-HL2-era budgets, CC0 placeholders. Grid render, unit markers, click-to-select, click-to-move.
-Third-person zoom on attack showing the dartboard over the target; plain click = default burst.
-**Acceptance:** a human plays one mission end to end.
+## Phase 12 — 3D view (`docs/10`)
+Read `docs/10` first. Phase 12 is a **view over** the simulation: it reads, RESOLUTION
+writes, and no number is born in a UI script (`docs/10`, three laws).
+
+One battle. No mission loop. The goal is something a human can see, play, and show off.
+
+**Sub-phases are sequential.** 12.0 is a hard prerequisite and is fully headless — it goes
+green before any scene exists. Checkpoints 6 and 7 are hard stops.
+
+### Phase 12.0 — Socket transforms (headless, do first)
+**Goal:** make modularity geometrically real. Without this the 3D view is a lie.
+
+Today `Socket` is `{socket_type, occupant}` and `Part.volume` is authored in absolute
+unit-local coordinates; `BodyProjector` never consults sockets. So a torso with 12 `SHOULDER`
+sockets hosting 12 arms places **all twelve arms at identical coordinates**. The `docs/01`
+modularity pillar isn't expressible in geometry, and the shot plane is only correct for
+single-box bodies.
+
+**Build:**
+- `Socket.transform: Transform3D` — the attachment frame, in the **host part's** local space.
+- `Part.volume` boxes become relative to the **part's own** origin, not the unit's.
+- `BodyProjector`: compose transforms down the socket tree (`world = parent ∘ socket ∘ local`)
+  before projecting. Cache per projection call; don't recompute per box.
+- Migrate every existing fixture to part-local coordinates.
+
+**Acceptance:**
+- A torso with 2 `SHOULDER` sockets at mirrored transforms, hosting **the same arm Part
+  resource twice**, projects **two arms in two different places**.
+- Scale it: 12 sockets → 12 non-overlapping arms.
+- The same weapon Part attached to a left vs right shoulder projects at different x.
+- Deep chain (shoulder → upper arm → forearm → hand → pistol) composes: rotating the shoulder
+  socket moves the pistol.
+- **Regression:** every Phase 3/5 test still passes — union invariant, graze/right-angle
+  spread, layered targets, continuity sweep. Silhouettes must not change shape for
+  single-box fixtures.
+- Checkpoint 2's angle sweep still shows no discontinuity.
+
+### Phase 12.1 — Board, bodies, camera
+**Goal:** the battle renders. No input yet.
+**Build:** `res://src/view/` — `BattleScene` root; `BoardView` (grid → tiles, blockers →
+meshes); `UnitView` (walks the socket tree, emits a `BoxMesh` per `Box` at its composed
+transform — **render is hitbox**, `docs/10`); material→colour from `HulkTheme`; `CameraRig`
+with orbit/pan/zoom. `project.godot` main scene set. A "New Battle" button seeds a fight.
+**Acceptance:** launches via `godot --path .`; a seeded battle draws; every unit's visible
+geometry matches its `volume` boxes exactly; destroyed parts disappear; camera orbits without
+gimbal weirdness.
+### ▶ CHECKPOINT 6 — screenshots: the board, a cyborg close-up, a 12-arm test rig. **Stop.**
+
+### Phase 12.2 — Selection & queued movement (TACTICS)
+**Build:** `SelectionController` (pure): click → unit; `Pathfinder.reachable(cell, mp)` →
+highlight set. Click a reachable cell → **queue** a `MoveAction` against the speculative
+clone (`docs/09`), draw a ghost path. Multiple queued actions stack visibly. `End Turn`
+button. **Nothing mutates authoritative state in TACTICS** — that's a test.
+**Acceptance:** reachable highlight matches `Pathfinder.reachable` exactly (assert the
+controller, not pixels); queuing two moves shows two ghosts; a headless test proves
+`CombatState` is byte-identical before and after queuing.
+
+### Phase 12.3 — The aim UI (the signature screen)
+**Build:** per `docs/10`. `AimController` (pure, testable): `(plane, reticle, layer_index) →
+{layers, reading, resolves, rings}`.
+- Group the shot plane's regions by owning body → ordered layers, nearest first.
+- **Scroll steps the layer index; it never moves the reticle.** The aim point is fixed in
+  plane coords, shared across layers.
+- Draw: layer N solid + highlighted; layers < N ghosted (the occlusion you'd thread); scatter
+  rings around the reticle from the resolved `Array[Ring]` — **read the array's size, never
+  assume 3**.
+- Readout shows **both**, never conflated:
+  `READING: enemy_b (layer 2 of 3)` and `RESOLVES: enemy_a / torso_plate`.
+  `RESOLVES` is always `resolve_projectile(whole_plane, reticle)` — frontmost-first against
+  the entire plane. Scrolling must not change it.
+- Confirm → queue an `AttackAction` carrying the reticle's `aim_offset`.
+- Plain click on an enemy with no interaction → default burst at centre.
+**Acceptance (all on the controller, headless):**
+- Scrolling changes `reading` and **never** changes `resolves` — the load-bearing test.
+- With a near body fully occluding a far one, no reticle position resolves to the far body.
+- Punch a gap in the near body → a reticle in that gap resolves to the far body while
+  `reading` can still be either. **That's the sniper thread, asserted.**
+- A 1-ring and a 5-ring weapon both render correct ring counts.
+- Layer count matches the number of distinct bodies in the plane.
+
+### Phase 12.4 — Resolution playback
+**Build:** `LogPlayback` (pure): `Array[LogEvent] → ordered [{time, cue}]`. The view **replays
+the log** — it does not drive the sim (`docs/10`). Sequence: banner + lock input → wait
+`RESOLVE_LEAD_IN` (~1.0s) → play cues, projectiles staggered `PROJECTILE_STAGGER` (~40ms),
+tracers may be raycast fakes (muzzle→impact line is enough) → wait `RESOLVE_TAIL` (~1.0s) →
+banner TACTICS + unlock. All timings are constants in one place. Destroyed parts hide — **no
+ragdolls this phase**.
+**Acceptance:** `LogPlayback` maps a known event stream to the expected cue list with expected
+offsets (headless); replaying the same seed twice produces an identical cue list; input is
+locked for the whole of RESOLUTION.
+
+### Phase 12.5 — Terminal shell
+**Build:** real OFL monospace font into `HulkTheme` (one-line swap from the built-in
+default); rolling combat log panel fed by the existing `UISink`; selected-unit stat block via
+`StatBlockView` with `docs/08` drill-down; the aim readout panel. Six colours, one `Theme`,
+no per-scene styling. **No CRT/scanline/glow** — later shader pass.
+**Acceptance:** the log panel streams during playback; a stat block drill-down shows
+`sources`; the transparency proof still holds — the tooltip's predicted damage equals what
+the log reports for that shot.
+### ▶ CHECKPOINT 7 — a recorded playthrough of one full battle. **Stop for review.**
+
+### Definition of done for Phase 12
+A human launches the game, selects a cyborg, queues a move and an aimed shot, scrolls the
+dartboard to inspect a target behind the first one, ends the turn, watches the burst fire and
+ricochet, and reads the log — repeatedly, until one side is down.
+
+### Out of scope for Phase 12
+Mission loop, gather/extract UI, roster/meta screens, ragdolls, real meshes, sound, the ship,
+deep-strike UI, height levels, giant units. All later — none of them are blocked by anything
+here except the grid's height component.
 
 ---
 
