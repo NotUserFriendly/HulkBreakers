@@ -31,17 +31,6 @@ func living_parts() -> Array[Part]:
 	return result
 
 
-## Sums stat_mods across every part in the assembly. Phase 2's StatResolver
-## replaces this ad-hoc sum with a provenance-tracking pipeline; Frame needs
-## a working baseline until then.
-func aggregate_stats() -> Dictionary:
-	var result: Dictionary = {}
-	for part: Part in all_parts():
-		for key: Variant in part.stat_mods.keys():
-			result[key] = result.get(key, 0) + part.stat_mods[key]
-	return result
-
-
 ## Recursive felt mass (Appendix D / docs/05): a container's mass_multiplier
 ## discount applies once, only at the directly-worn layer, across the whole
 ## assembly (not just root-level attachments — a pistol in a hand three

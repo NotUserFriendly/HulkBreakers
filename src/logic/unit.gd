@@ -6,7 +6,7 @@ extends RefCounted
 
 const BASE_MP: float = 2.0
 const DEFAULT_MAX_AP: int = 2
-const AGILITY_STAT_KEY: String = "agility"
+const AGILITY_STAT_KEY: StringName = &"agility"
 
 var id: int = -1  # assigned by CombatState.add_unit; matches Grid.occupant_id
 var matrix: Matrix
@@ -29,9 +29,11 @@ func _init(p_matrix: Matrix, p_frame: Frame, p_cell: Vector2i, p_squad_id: int =
 	squad_id = p_squad_id
 
 
-## MP granted per AP burned for movement (Appendix E). Derived live from
-## aggregate_stats() so part swaps immediately affect mobility.
+## MP granted per AP burned for movement (Appendix E). Resolved live through
+## StatResolver (docs/08) so part swaps immediately affect mobility, and so
+## this stays the one true source of the number — not an ad-hoc sum.
 func mp_per_ap() -> float:
-	var stats: Dictionary = frame.aggregate_stats()
-	var agility: float = stats.get(AGILITY_STAT_KEY, 0.0)
+	var context := ResolverContext.new()
+	context.parts = frame.all_parts()
+	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility

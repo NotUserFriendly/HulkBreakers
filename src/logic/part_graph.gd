@@ -115,7 +115,9 @@ static func _augment(
 		visited[m] = true
 		var reassignable: bool = (
 			match_for_manipulator[m] == -1
-			or _augment(match_for_manipulator[m], slots, manipulators, match_for_manipulator, visited)
+			or _augment(
+				match_for_manipulator[m], slots, manipulators, match_for_manipulator, visited
+			)
 		)
 		if reassignable:
 			match_for_manipulator[m] = slot_index

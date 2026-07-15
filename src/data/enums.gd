@@ -24,3 +24,22 @@ enum Phase {
 	TACTICS,
 	RESOLUTION,
 }
+
+## How a ModSource combines with what came before it in StatResolver
+## (docs/08). A closed, small set of arithmetic operations — not open data.
+enum ModOp {
+	ADD,
+	MULTIPLY,
+	OVERRIDE,
+}
+
+## Where a stat modifier came from (docs/08) — a closed structural
+## classification, distinct from the open `tags`/`capabilities` vocabularies.
+enum ModSourceKind {
+	PART,
+	PERK,
+	SKILL,
+	AMMO,
+	STATUS,
+	STANCE,
+}

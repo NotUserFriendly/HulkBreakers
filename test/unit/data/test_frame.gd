@@ -33,17 +33,22 @@ func test_living_parts_excludes_destroyed() -> void:
 	assert_eq(living[0], torso)
 
 
-func test_aggregate_stats_sums_across_the_whole_tree() -> void:
+func test_stat_resolver_sums_a_stat_across_the_whole_tree() -> void:
+	# Frame itself no longer sums stats directly (Phase 2: StatResolver is the
+	# only place a final stat is computed) — this proves all_parts() feeds it
+	# correctly across a real socket tree, not just a flat list.
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
-	torso.stat_mods = {"armor": 5}
+	torso.stat_mods = {&"armor": 5}
 	var arm := _socketed_part(&"arm")
-	arm.stat_mods = {"armor": 2, "reach": 1}
+	arm.stat_mods = {&"armor": 2, &"reach": 1}
 	torso.sockets[0].occupant = arm
 
 	var frame := Frame.new(torso)
-	var stats: Dictionary = frame.aggregate_stats()
-	assert_eq(stats["armor"], 7)
-	assert_eq(stats["reach"], 1)
+	var context := ResolverContext.new()
+	context.parts = frame.all_parts()
+
+	assert_eq(StatResolver.resolve(&"armor", context).current, 7.0)
+	assert_eq(StatResolver.resolve(&"reach", context).current, 1.0)
 
 
 func test_save_load_round_trips_a_frame() -> void:
