@@ -17,3 +17,4 @@ var is_double_crit: bool = false
 var bypassed_armor: bool = false
 var destroyed_part: bool = false
 var cooked_off_units: Array[Unit] = []
+var ejected_matrix: Matrix = null

@@ -10,11 +10,14 @@ enum TerrainType {
 	SPAWN_B,
 }
 
-## A matrix's fate at battle end (Phase 10). RECOVERED is the default for a
-## matrix that never ejected.
+## A matrix's fate at battle end (docs/04). PILOTING is the default — still
+## in a body, nothing went wrong. Matrices are never lost on any path; this
+## only ever flags how they came home, not whether they did.
 enum RecoveryState {
-	RECOVERED,
-	LEFT_BEHIND,
+	PILOTING,  # still in a body at extraction
+	CARRIED,  # picked up by an ally, extracted
+	LEFT_BEHIND,  # still on the hulk floor at mission end; returns anyway
+	LINK_KILLED,  # link matrix destroyed; returns, death-feedback applies
 }
 
 ## Turn structure (docs/09). TACTICS queues intents against a speculative

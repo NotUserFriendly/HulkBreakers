@@ -85,6 +85,38 @@ static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## Destroying the part hosting a unit's Matrix ejects it as a loose field
+## item (docs/01: "destroy that part -> eject") and demotes the unit's
+## surrogate one rung (docs/04: "a torso chewed to SPINAL still functions"
+## — the body degrades, the matrix does not). The unit itself goes
+## unpiloted (alive false) — matrices are never lost, but an ejected one
+## leaves its frame behind. Returns the ejected Matrix, or null if `part`
+## wasn't hosting one belonging to a real unit.
+static func eject_matrix_if_needed(part: Part, state: CombatState) -> Matrix:
+	if part.hp > 0 or not part.hosts_matrix or part.hosted_matrix == null:
+		return null
+	var owner: Unit = _owning_unit(part, state)
+	if owner == null:
+		return null
+
+	var ejected: Matrix = part.hosted_matrix
+	part.hosted_matrix = null
+	if not state.grid.field_items.has(owner.cell):
+		state.grid.field_items[owner.cell] = []
+	state.grid.field_items[owner.cell].append(ejected)
+
+	owner.demote_surrogate(SurrogateLadder.default_ladder())
+	owner.alive = false
+	return ejected
+
+
+static func _owning_unit(part: Part, state: CombatState) -> Unit:
+	for unit: Unit in state.units:
+		if part in unit.frame.all_parts():
+			return unit
+	return null
+
+
 ## Every part sharing a body with `part` (its whole unit, if any — otherwise
 ## just itself). A ricochet's new origin sits right where it just left, so
 ## excluding only the one part it bounced off still lets it immediately
@@ -202,11 +234,13 @@ static func resolve_shot(
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
 					impact.cooked_off_units = cook_off(region.part, state)
+					impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
 				continue
 			Enums.Outcome.STOP_DEAD:
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
 					impact.cooked_off_units = cook_off(region.part, state)
+					impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
 				return results
 			Enums.Outcome.DEFLECT:
 				var next_damage: float = damage * impact.retained_fraction

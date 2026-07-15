@@ -65,6 +65,15 @@ func _flat_contents(container: Part) -> float:
 	return total
 
 
+## Sum of every part's ram_cost (docs/05) — systems control, checked
+## against max_ram the same way carried_mass() is checked against max_mass.
+func total_ram() -> float:
+	var total := 0.0
+	for part: Part in all_parts():
+		total += part.ram_cost
+	return total
+
+
 ## A fully independent copy of the whole assembly, for TACTICS-time
 ## speculative previews (docs/09) — Part.duplicate(true) recurses through
 ## sockets/contents/hosted_matrix, so no shared Part is ever mutated by a

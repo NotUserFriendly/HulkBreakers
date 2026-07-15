@@ -44,3 +44,40 @@ func test_new_unit_starts_alive_with_no_held_matrix() -> void:
 	assert_null(unit.held_matrix)
 	assert_eq(unit.squad_id, 2)
 	assert_eq(unit.id, -1)
+
+
+func test_new_unit_starts_at_the_top_of_the_surrogate_ladder() -> void:
+	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	assert_eq(unit.surrogate_tier.id, &"FULL")
+	assert_eq(unit.exposed_turns, 0)
+
+
+func test_demote_surrogate_steps_one_rung_and_starts_the_exposure_clock() -> void:
+	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
+
+	unit.demote_surrogate(ladder)
+
+	assert_eq(unit.surrogate_tier.id, &"PERIPHERAL")
+	assert_eq(unit.exposed_turns, 1)
+
+
+func test_tick_organics_decay_demotes_further_every_decay_turns() -> void:
+	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
+	unit.demote_surrogate(ladder)  # PERIPHERAL, exposed_turns 1
+
+	for i in range(Unit.DECAY_TURNS - 1):
+		unit.tick_organics_decay(ladder)
+	assert_eq(unit.surrogate_tier.id, &"PERIPHERAL", "must not demote before DECAY_TURNS elapse")
+
+	unit.tick_organics_decay(ladder)
+	assert_eq(unit.surrogate_tier.id, &"TORSIC", "one more rung down once DECAY_TURNS elapse")
+
+
+func test_tick_organics_decay_is_a_no_op_while_never_exposed() -> void:
+	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
+	for i in range(10):
+		unit.tick_organics_decay(ladder)
+	assert_eq(unit.surrogate_tier.id, &"FULL")

@@ -431,3 +431,63 @@ func test_cook_off_is_a_no_op_without_the_volatile_tag_or_zero_damage() -> void:
 		[] as Array[Unit],
 		"VOLATILE with cook_off_damage 0 must still be inert"
 	)
+
+
+func _make_matrix_hosting_torso(cell: Vector2i) -> Dictionary:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 5
+	torso.max_hp = 5
+	torso.hosts_matrix = true
+	var link := Matrix.new()
+	link.id = &"link"
+	torso.hosted_matrix = link
+	var unit := Unit.new(Matrix.new(), Frame.new(torso), cell)
+	return {"unit": unit, "torso": torso, "link": link}
+
+
+func test_destroying_the_matrix_hosting_part_ejects_it_demotes_and_disables() -> void:
+	var built: Dictionary = _make_matrix_hosting_torso(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var torso: Part = built.torso
+	var link: Matrix = built.link
+	var grid := Grid.new(5, 5)
+	var state := CombatState.new(grid, [unit])
+
+	DamageResolver.apply_damage_to_part(torso, 10.0)
+	var ejected: Matrix = DamageResolver.eject_matrix_if_needed(torso, state)
+
+	assert_eq(ejected, link)
+	assert_null(torso.hosted_matrix, "the part no longer hosts the matrix once it's ejected")
+	assert_true(
+		state.grid.field_items[Vector2i(2, 2)].has(link),
+		"the ejected matrix must land as a recoverable field item, never simply discarded"
+	)
+	assert_false(unit.alive, "unpiloted once its matrix ejects")
+	assert_eq(unit.surrogate_tier.id, &"PERIPHERAL", "one rung down from FULL")
+	assert_eq(unit.exposed_turns, 1, "the exposure clock must start ticking")
+
+
+func test_eject_matrix_if_needed_is_a_no_op_for_a_part_that_hosts_none() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 0
+	torso.max_hp = 5
+	var state := CombatState.new(Grid.new(5, 5))
+	assert_null(DamageResolver.eject_matrix_if_needed(torso, state))
+
+
+func test_a_torso_chewed_to_spinal_still_functions_it_only_stops_at_matrix_ejection() -> void:
+	# docs/04: demotion tracks matrix-hosting-part destruction, not simply
+	# taking damage — a hit that doesn't destroy the host leaves the
+	# surrogate tier untouched.
+	var built: Dictionary = _make_matrix_hosting_torso(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var torso: Part = built.torso
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+
+	DamageResolver.apply_damage_to_part(torso, 2.0)  # 5 hp -> 3, still alive
+	DamageResolver.eject_matrix_if_needed(torso, state)
+
+	assert_eq(unit.surrogate_tier.id, &"FULL", "the host survived, nothing should have demoted yet")
+	assert_true(unit.alive)

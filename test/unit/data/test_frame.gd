@@ -51,6 +51,17 @@ func test_stat_resolver_sums_a_stat_across_the_whole_tree() -> void:
 	assert_eq(StatResolver.resolve(&"reach", context).current, 1.0)
 
 
+func test_total_ram_sums_ram_cost_across_the_whole_assembly() -> void:
+	var torso := _socketed_part(&"torso", [&"SHOULDER"])
+	torso.ram_cost = 1.0
+	var arm := _socketed_part(&"arm")
+	arm.ram_cost = 0.5
+	torso.sockets[0].occupant = arm
+
+	var frame := Frame.new(torso)
+	assert_almost_eq(frame.total_ram(), 1.5, 0.0001)
+
+
 func test_save_load_round_trips_a_frame() -> void:
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
 	var arm := _socketed_part(&"arm")

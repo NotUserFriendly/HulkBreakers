@@ -1,11 +1,55 @@
 class_name Matrix
 extends Resource
 
+## docs/04: the Base Matrix stays on the ship and writes itself into a Link
+## Matrix (a standard Logic Matrix) in the field. One class serves both
+## roles rather than two — `base == null` means this instance IS a base (or
+## an unlinked bot's own matrix); `base` set means this instance is the
+## physical Link deployed in the field, and effective_level()/active_perks()
+## defer to whatever the base actually has. A low-tier link caps capability
+## but still lets the player choose which of the base's perks travel.
+
 @export var id: StringName
 @export var display_name: String = ""
 @export var level: int = 1
 @export var xp: int = 0
 @export var perks: Array[StringName] = []
-@export var recovery_state: Enums.RecoveryState = Enums.RecoveryState.RECOVERED
-## Flag only — the penalty mechanic itself is a later tunable.
-@export var pending_return_penalty: bool = false
+@export var recovery_state: Enums.RecoveryState = Enums.RecoveryState.PILOTING
+
+## Link-only fields (docs/04). `perk_slots` is explicitly "not final" in the
+## docs — a flagged, tunable default, not a design decision.
+@export var base: Matrix = null
+@export var tier_ratio: float = 1.0
+@export var perk_slots: int = 3
+@export var chosen_perks: Array[StringName] = []
+
+
+## `base.level * link.tier_ratio` when linked; this instance's own level
+## when it IS the base (or an unlinked matrix).
+func effective_level() -> float:
+	if base == null:
+		return float(level)
+	return float(base.level) * tier_ratio
+
+
+## The base's full perk pool when this instance IS the base; the player-
+## chosen subset (bounded by perk_slots) when it's a link.
+func active_perks() -> Array[StringName]:
+	if base == null:
+		return perks
+	return chosen_perks
+
+
+## Link destroyed (docs/04): "the feeling of dying mirrors back to the
+## base." Recovery state moves to LINK_KILLED and one perk is docked from
+## the base's pool — the concrete mechanic docs/04 offers as its own
+## example ("perk reduction"), not an invented number. A no-op if this
+## instance isn't actually a link, or the base has no perks left to lose.
+func destroy(rng: RandomNumberGenerator) -> StringName:
+	if base == null:
+		return &""
+	base.recovery_state = Enums.RecoveryState.LINK_KILLED
+	if base.perks.is_empty():
+		return &""
+	var index: int = rng.randi_range(0, base.perks.size() - 1)
+	return base.perks.pop_at(index)

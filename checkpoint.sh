@@ -25,6 +25,10 @@ case "$N" in
     TEST_TARGET="res://test/checkpoints/test_checkpoint_3.gd"
     SUMMARY="A seeded 10-round burst fired at a steel-plated torso (docs/03 armor and ricochet). Look for: does the deflection retain a plausible fraction of damage? Does the ricochet land somewhere plausible — here, tagging a bystander standing in its path? Is the spray chaotic but not insane?"
     ;;
+  4)
+    TEST_TARGET="res://test/checkpoints/test_checkpoint_4.gd"
+    SUMMARY="20 randomly deep-struck cyborgs from a small part pool (docs/00/04/07 randomization stress test), each with an ASCII shot-plane dump and a stat block (parts, mass, RAM, effective level, armed status). Look for: any malformed assembly, any crash, anything that should be armed but reads unarmed or vice versa."
+    ;;
   *)
     echo "No checkpoint script wired for checkpoint ${N} yet." >&2
     exit 1
