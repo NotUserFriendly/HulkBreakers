@@ -14,6 +14,17 @@ func _find(regions: Array[Region], part_id: StringName) -> Region:
 	return null
 
 
+## The min x across every visible face's rect — a box can show 1 or 2 faces
+## now, but their union is the same whole-box silhouette the old single-rect
+## model produced, so continuity is a property of the union, not of any one
+## face.
+func _union_min_x(regions: Array[Region]) -> float:
+	var result := INF
+	for region: Region in regions:
+		result = minf(result, region.rect.position.x)
+	return result
+
+
 func test_rotating_view_angle_produces_continuously_changing_rects() -> void:
 	var part := Part.new()
 	part.id = &"plate"
@@ -27,9 +38,10 @@ func test_rotating_view_angle_produces_continuously_changing_rects() -> void:
 	for i in range(SAMPLES):
 		var angle: float = i * TAU / SAMPLES
 		var view_dir := Vector2(cos(angle), sin(angle))
-		var region: Region = BodyProjector.project_part(part, view_dir)[0]
-		positions.append(region.rect.position.x)
-		seen_x[snappedf(region.rect.position.x, 0.0001)] = true
+		var regions: Array[Region] = BodyProjector.project_part(part, view_dir)
+		var min_x: float = _union_min_x(regions)
+		positions.append(min_x)
+		seen_x[snappedf(min_x, 0.0001)] = true
 
 	assert_eq(
 		seen_x.size(), SAMPLES, "no two of %d evenly-spaced angles should snap to the same rect"
@@ -39,6 +51,74 @@ func test_rotating_view_angle_produces_continuously_changing_rects() -> void:
 	for i in range(1, positions.size()):
 		max_jump = maxf(max_jump, absf(positions[i] - positions[i - 1]))
 	assert_true(max_jump < 1.0, "adjacent angles must not produce a discontinuous jump")
+
+
+## docs/03: a box viewed corner-on shows two faces in adjacent, non-
+## overlapping screen spans whose union reconstructs exactly the silhouette
+## the old single-whole-box projection produced — the split must not change
+## the shape of anything, only which surface_normal each slice reports.
+func test_visible_face_rects_union_to_the_same_silhouette_as_the_whole_box() -> void:
+	var box := Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 1.4))
+	var orientation := 0.0
+	var dir := Vector2(3, 4).normalized()  # oblique: two faces visible
+	var perp := Vector2(-dir.y, dir.x)
+
+	var half := box.size * 0.5
+	var whole_box_xs: Array[float] = []
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var local := Vector2(box.center.x + sx * half.x, box.center.z + sz * half.z)
+			whole_box_xs.append(local.rotated(orientation).dot(perp))
+	var whole_min: float = whole_box_xs.min()
+	var whole_max: float = whole_box_xs.max()
+
+	var part := Part.new()
+	part.id = &"box"
+	part.hp = 1
+	part.max_hp = 1
+	part.volume = [box]
+	var regions: Array[Region] = BodyProjector.project_part(part, dir, orientation)
+
+	assert_eq(regions.size(), 2, "an oblique corner-on view must show exactly two faces")
+	var union_min := INF
+	var union_max := -INF
+	for region: Region in regions:
+		union_min = minf(union_min, region.rect.position.x)
+		union_max = maxf(union_max, region.rect.position.x + region.rect.size.x)
+	assert_almost_eq(union_min, whole_min, 0.0001)
+	assert_almost_eq(union_max, whole_max, 0.0001)
+
+	# Non-overlapping: the two faces tile the silhouette, they don't double it.
+	var total_face_width: float = 0.0
+	for region: Region in regions:
+		total_face_width += region.rect.size.x
+	assert_almost_eq(total_face_width, whole_max - whole_min, 0.0001)
+
+
+## The old "pick whichever face is closest" model capped incidence at 45
+## degrees by construction. Per-face projection removes that ceiling: a
+## nearly-edge-on secondary face reads a steep, near-grazing incidence.
+func test_a_near_edge_on_face_reads_incidence_well_past_45_degrees() -> void:
+	var part := Part.new()
+	part.id = &"box"
+	part.hp = 1
+	part.max_hp = 1
+	part.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+
+	var dir := Vector2(0.1, -0.995).normalized()
+	var regions: Array[Region] = BodyProjector.project_part(part, dir)
+	assert_eq(regions.size(), 2, "a near-axis-aligned direction still shows a sliver side face")
+
+	var max_incidence_deg := 0.0
+	for region: Region in regions:
+		var normal_2d := Vector2(region.surface_normal.x, region.surface_normal.z)
+		var incidence: float = rad_to_deg(acos(clampf((-dir).dot(normal_2d), -1.0, 1.0)))
+		max_incidence_deg = maxf(max_incidence_deg, incidence)
+
+	assert_true(
+		max_incidence_deg > 45.0,
+		"the near-edge-on face must read well past the old 45 degree ceiling"
+	)
 
 
 func _torso_with_rear_ammo_rack() -> Unit:

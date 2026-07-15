@@ -6,11 +6,10 @@ extends Resource
 ## materials are authored as data, never a code edit.
 
 @export var dt: float = 0.0
-## BodyProjector picks whichever of a box's 4 axis-aligned face normals
-## faces the shooter most directly, so the incidence angle it ever hands
-## resolve_impact cannot exceed 45 degrees (the midpoint between two
-## adjacent faces). 30 leaves both STOP_DEAD and DEFLECT reachable; a
-## default of 45+ would make deflection unreachable, not merely rare.
+## Incidence now spans the full 0-90 degrees (BodyProjector projects one
+## face per visible side, docs/02) so this is a real tunable across that
+## whole range. 30 is a flagged placeholder, not a design decision — ask
+## before changing it.
 @export var deflect_threshold_deg: float = 30.0
 ## Reserved: docs/03 names this field but specifies no formula for it yet.
 ## Storage only — do not derive ricochet behavior from it without asking.

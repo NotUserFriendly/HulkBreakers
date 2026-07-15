@@ -47,7 +47,7 @@ static func resolve_impact(
 	result.reflected_dir = reflected
 	var deflection_deg: float = rad_to_deg(acos(clampf(dir.dot(reflected), -1.0, 1.0)))
 	var t: float = clampf(deflection_deg / table.max_bend_deg, 0.0, 1.0)
-	result.retained_fraction = lerp(table.retain_min, table.retain_max, t)
+	result.retained_fraction = lerp(table.retain_at_zero_bend, table.retain_at_max_bend, t)
 	return result
 
 
@@ -155,6 +155,14 @@ static func resolve_shot(
 
 	var start: int = 0
 	var skip_parts: Array[Part] = exclude_parts
+	# Every projectile in a burst shares the nominal `dir` used to build the
+	# plane, but scatter puts each one at a different point — a different
+	# muzzle-to-impact ray, not just a different landing spot. Derived once
+	# per flight, from the first surface this round actually reaches, and
+	# reused unchanged through whatever it goes on to penetrate (a round
+	# doesn't bend just because it punched through).
+	var shot_dir: Vector2 = dir
+	var shot_dir_ready := false
 	while start < plane.size():
 		var found_index: int = _find_next(plane, start, point, skip_parts)
 		skip_parts = []  # the exclusion applies only to this call's first hit
@@ -162,6 +170,11 @@ static func resolve_shot(
 			break
 		var region: Region = plane[found_index]
 		start = found_index + 1
+
+		if not shot_dir_ready:
+			var muzzle_to_impact: Vector2 = dir * region.depth + perp * point.x
+			shot_dir = muzzle_to_impact.normalized()
+			shot_dir_ready = true
 
 		var material: MaterialEntry = table.get_entry(region.part.material)
 		var effects: Dictionary = _crit_effects(
@@ -171,7 +184,7 @@ static func resolve_shot(
 		if effects.bypass:
 			var bypass_result := ImpactResult.new()
 			bypass_result.region = region
-			bypass_result.incoming_dir = dir
+			bypass_result.incoming_dir = shot_dir
 			bypass_result.is_crit = crit.is_crit
 			bypass_result.is_double_crit = crit.is_double_crit
 			bypass_result.bypassed_armor = true
@@ -179,7 +192,7 @@ static func resolve_shot(
 			continue
 
 		var applied_damage: float = damage * (crit_bonus_multiplier if effects.bonus else 1.0)
-		var impact: ImpactResult = resolve_impact(dir, applied_damage, region, table)
+		var impact: ImpactResult = resolve_impact(shot_dir, applied_damage, region, table)
 		impact.is_crit = crit.is_crit
 		impact.is_double_crit = crit.is_double_crit
 		results.append(impact)

@@ -20,7 +20,12 @@ resolve_impact(projectile, region) -> Outcome:
 ```
 
 `surface_normal` comes free from the projection (`02`) — the box face that was hit. Angle is
-real geometry, not a roll.
+real geometry, not a roll. Because a box projects one Region per visible face rather than one
+guessed region for the whole box, incidence spans the full 0–90 degrees, not a narrower band —
+a graze reads close to 90, a near-head-on hit close to 0. Each projectile also carries its own
+muzzle-to-impact direction, not the burst's nominal aim direction: a scattered round that lands
+off-center genuinely arrived at a shallower angle, so a burst across one surface reads a spread
+of incidences, not one repeated value.
 
 This gives heavy units a real identity: **a steel combat unit shrugs off an entire chaingun
 burst** because every round is under its DT. One high-damage rifle round goes straight

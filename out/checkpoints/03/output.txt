@@ -10,12 +10,12 @@ res://test/checkpoints/test_checkpoint_3.gd
 * test_seeded_burst_into_armor
 
 === seeded burst into a steel-plated torso (seed 20260715) ===
-PP...B..
+...PP...
 ........
 
 --- round 1 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
-  PENETRATE on bystander (1.5 damage)
+  DEFLECT on plate (retained 66%, reflected (0.832373, 0.554216))
+  PENETRATE on bystander (2.0 damage)
 
 --- round 2 ---
   clean miss — nothing in the plane at this point
@@ -24,29 +24,29 @@ PP...B..
   clean miss — nothing in the plane at this point
 
 --- round 4 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
-  PENETRATE on bystander (1.5 damage)
+  DEFLECT on plate (retained 66%, reflected (0.832834, 0.553523))
+  PENETRATE on bystander (2.0 damage)
 
 --- round 5 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
-  PENETRATE on bystander (1.5 damage)
+  DEFLECT on plate (retained 64%, reflected (0.810146, 0.586228))
+  PENETRATE on bystander (1.9 damage)
 
 --- round 6 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
-  PENETRATE on bystander (1.5 damage)
+  DEFLECT on plate (retained 66%, reflected (0.836945, 0.547287))
+  PENETRATE on bystander (2.0 damage)
 
 --- round 7 ---
   clean miss — nothing in the plane at this point
 
 --- round 8 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
-  PENETRATE on bystander (1.5 damage)
+  DEFLECT on plate (retained 66%, reflected (0.838915, 0.544263))
+  PENETRATE on bystander (2.0 damage)
 
 --- round 9 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
+  DEFLECT on plate (retained 66%, reflected (0.834556, 0.550923))
 
 --- round 10 ---
-  DEFLECT on plate (retained 52%, reflected (0.6, 0.8))
+  clean miss — nothing in the plane at this point
 
 plate hp: 20/20   torso hp: 20/20   bystander hp: 0/10
 1/1 passed.
@@ -64,7 +64,7 @@ Scripts               1
 Tests                 1
 Passing Tests         1
 Asserts               1
-Time              0.451s
+Time              0.444s
 
 
 ---- All tests passed! ----

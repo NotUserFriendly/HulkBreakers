@@ -56,24 +56,26 @@ func test_seeded_burst_into_armor() -> void:
 	var target := _armored_unit(Vector2i(10, 10))
 	# In the path of the expected ricochet, so a deflected round has a
 	# plausible chance of tagging someone else entirely.
-	var bystander := _bystander_unit(Vector2i(13, 14))
-	var grid := Grid.new(20, 20)
+	var bystander := _bystander_unit(Vector2i(14, 13))
+	var grid := Grid.new(30, 30)
 	var state := CombatState.new(grid, [target, bystander])
 	var table := MaterialTable.default_table()
 
-	# Front-on (the unit's front faces world +Y at orientation 0) and
-	# oblique enough (incidence ~37 degrees) to clear the 30-degree default
-	# deflect threshold, so this burst actually exercises ricochets rather
-	# than just stopping dead every round.
-	var origin := Vector2(10, 15)
-	var direction := Vector2(3, -4)
+	# `origin` is placed exactly along `direction` back from the target's
+	# cell, so aiming dead-center genuinely reproduces this nominal ~53
+	# degree incidence (each scattered round then reads its own, slightly
+	# different angle from its own muzzle-to-impact ray — docs/03). 53
+	# degrees clears the 30-degree default deflect threshold with enough
+	# margin that scatter doesn't flip most rounds to stopping dead.
+	var direction := Vector2(4, -3)
 	var dir: Vector2 = direction.normalized()
+	var origin: Vector2 = Vector2(10, 10) - dir * 8.0
 
 	var plane: Array[Region] = ShotPlane.build(origin, dir, state)
 	var plate_region: Region = null
 	for region: Region in plane:
-		if region.part.id == &"plate":
-			plate_region = region
+		if region.part.id == &"plate" and region.surface_normal.z > 0.5:
+			plate_region = region  # the front face specifically, not the side sliver
 	var aim_point: Vector2 = plate_region.rect.get_center()
 
 	var rng := RandomNumberGenerator.new()

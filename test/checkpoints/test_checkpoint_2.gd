@@ -33,19 +33,30 @@ func _torso_with_rear_ammo_rack() -> Unit:
 	return Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
 
 
-func _find(plane: Array[Region], part_id: StringName) -> Region:
+## A part can show 1 or 2 visible faces now (docs/02/03) — the min x and
+## min depth across whichever faces are visible is the property that stays
+## continuous / comparable, not any one arbitrarily-chosen face.
+func _min_x(plane: Array[Region], part_id: StringName) -> float:
+	var result := INF
 	for region: Region in plane:
 		if region.part.id == part_id:
-			return region
-	return null
+			result = minf(result, region.rect.position.x)
+	return result
 
 
-## The rack only reads as "visible" if it wins depth against the torso —
-## same rule resolve_projectile uses at any shared pixel.
+func _min_depth(plane: Array[Region], part_id: StringName) -> float:
+	var result := INF
+	for region: Region in plane:
+		if region.part.id == part_id:
+			result = minf(result, region.depth)
+	return result
+
+
+## The rack only reads as "visible" if its closest face wins depth against
+## the torso's closest face — same rule resolve_projectile uses at any
+## shared pixel.
 func _rack_wins_depth(plane: Array[Region]) -> bool:
-	var torso := _find(plane, &"torso")
-	var rack := _find(plane, &"rack")
-	return rack.depth < torso.depth
+	return _min_depth(plane, &"rack") < _min_depth(plane, &"torso")
 
 
 func test_shot_plane_sweeps_continuously_across_a_dozen_angles() -> void:
@@ -67,7 +78,7 @@ func test_shot_plane_sweeps_continuously_across_a_dozen_angles() -> void:
 			)
 		)
 
-		var torso_x: float = _find(plane, &"torso").rect.position.x
+		var torso_x: float = _min_x(plane, &"torso")
 		if previous_torso_x != INF:
 			var jump: float = absf(torso_x - previous_torso_x)
 			assert_true(jump < 1.0, "angle %d: torso rect must not pop between adjacent angles" % i)

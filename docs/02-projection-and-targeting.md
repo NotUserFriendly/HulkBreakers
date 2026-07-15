@@ -24,9 +24,16 @@ project(unit, view_dir) -> Array[Region]
 Region: { rect: Rect2, depth: float, part: Part, surface_normal: Vector3 }
 ```
 
-Rotate each box by the angle between `view_dir` and the unit's orientation, take its extent
-on the view plane, and record its distance along the view axis as `depth`. Cheap,
-deterministic, no physics.
+Rotate each box by the angle between `view_dir` and the unit's orientation. A box projects
+**one Region per visible face**, not one guessed region for the whole box: a face is visible
+when its rotated normal points at least partly back toward the shooter, and an edge-on face
+(near-zero projected width) is dropped rather than emitted as a sliver. `surface_normal`
+belongs to the specific face that produced that Region — real geometry, not a guess about the
+box as a whole. A box viewed corner-on shows two adjacent faces in non-overlapping screen
+spans, one closer to head-on and one closer to grazing; their union is exactly the same
+silhouette a single whole-box projection would produce, just split by which face was hit. Each
+Region still records its own distance along the view axis as `depth`. Cheap, deterministic, no
+physics.
 
 **Everything falls out of this. Nothing below is a special case.**
 

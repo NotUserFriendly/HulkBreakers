@@ -8,14 +8,34 @@ extends RefCounted
 ## shooter into the world would take — so depth increases the farther a
 ## point sits from the shooter, and per-unit Regions compose directly with
 ## ShotPlane's inter-unit depth offsets by simple addition.
+##
+## A box projects one Region PER VISIBLE FACE, not one region guessed for
+## the whole box (docs/03): surface_normal belongs to the specific face that
+## was hit. A face is visible when its rotated normal points at least partly
+## toward the shooter; an edge-on face projects to near-zero width and is
+## dropped. This lets incidence span the full 0-90 degree range — a box
+## viewed corner-on shows two adjacent faces, one near head-on and one
+## near-grazing, in non-overlapping screen spans.
 
 ## World-space ground direction a unit with orientation == 0.0 faces.
 const WORLD_FORWARD := Vector2(0.0, 1.0)
 
-## A box's four in-plane face normals in local space (top/bottom ignored —
-## shots travel horizontally in this abstraction).
-const _LOCAL_FACE_NORMALS: Array[Vector2] = [
+## Below this projected width (world units), a face is edge-on enough to
+## drop rather than emit a degenerate sliver region.
+const _MIN_FACE_WIDTH := 0.001
+
+## A box's four in-plane side faces (top/bottom ignored — shots travel
+## horizontally in this abstraction), as parallel arrays: each face's local
+## normal and the two +/-1 corner multipliers (of the box's half-extents)
+## spanning it.
+const _FACE_NORMALS: Array[Vector2] = [
 	Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, 1.0), Vector2(0.0, -1.0)
+]
+const _FACE_CORNERS_A: Array[Vector2] = [
+	Vector2(1.0, -1.0), Vector2(-1.0, -1.0), Vector2(-1.0, 1.0), Vector2(-1.0, -1.0)
+]
+const _FACE_CORNERS_B: Array[Vector2] = [
+	Vector2(1.0, 1.0), Vector2(-1.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, -1.0)
 ]
 
 
@@ -38,43 +58,41 @@ static func project_part(part: Part, view_dir: Vector2, orientation: float = 0.0
 	var perp := Vector2(-dir.y, dir.x)
 	var regions: Array[Region] = []
 	for box: Box in part.volume:
-		regions.append(_project_box(box, dir, perp, orientation, part))
+		regions.append_array(_project_box(box, dir, perp, orientation, part))
 	return regions
 
 
 static func _project_box(
 	box: Box, dir: Vector2, perp: Vector2, orientation: float, part: Part
-) -> Region:
+) -> Array[Region]:
 	var half := box.size * 0.5
-	var xs: Array[float] = []
-	for sx in [-1.0, 1.0]:
-		for sz in [-1.0, 1.0]:
-			var local := Vector2(box.center.x + sx * half.x, box.center.z + sz * half.z)
-			var world: Vector2 = local.rotated(orientation)
-			xs.append(world.dot(perp))
-	var center_world: Vector2 = Vector2(box.center.x, box.center.z).rotated(orientation)
-	var depth: float = center_world.dot(dir)
-	var min_x: float = xs.min()
-	var max_x: float = xs.max()
-	var rect := Rect2(min_x, box.center.y - half.y, max_x - min_x, box.size.y)
-	var normal := _face_normal(orientation, dir)
-	return Region.new(rect, depth, part, normal)
-
-
-## Which of the box's four flat faces was actually hit (docs/03: "surface_
-## normal comes free from the projection — the box face that was hit").
-## Picks whichever local face normal, rotated into world space, points most
-## toward the shooter — real geometry, snapping only at the physical
-## boundary between two adjacent faces of the same box, never a facing
-## abstraction.
-static func _face_normal(orientation: float, dir: Vector2) -> Vector3:
 	var toward_shooter: Vector2 = -dir
-	var best: Vector2 = _LOCAL_FACE_NORMALS[0].rotated(orientation)
-	var best_dot: float = best.dot(toward_shooter)
-	for i in range(1, _LOCAL_FACE_NORMALS.size()):
-		var candidate: Vector2 = _LOCAL_FACE_NORMALS[i].rotated(orientation)
-		var dot: float = candidate.dot(toward_shooter)
-		if dot > best_dot:
-			best_dot = dot
-			best = candidate
-	return Vector3(best.x, 0.0, best.y)
+	var regions: Array[Region] = []
+
+	for i in range(_FACE_NORMALS.size()):
+		var world_normal: Vector2 = _FACE_NORMALS[i].rotated(orientation)
+		if world_normal.dot(toward_shooter) <= 0.0:
+			continue  # facing away from the shooter
+
+		var corner_a := Vector2(
+			box.center.x + _FACE_CORNERS_A[i].x * half.x,
+			box.center.z + _FACE_CORNERS_A[i].y * half.z
+		)
+		var corner_b := Vector2(
+			box.center.x + _FACE_CORNERS_B[i].x * half.x,
+			box.center.z + _FACE_CORNERS_B[i].y * half.z
+		)
+		var screen_a: float = corner_a.rotated(orientation).dot(perp)
+		var screen_b: float = corner_b.rotated(orientation).dot(perp)
+		var min_x: float = minf(screen_a, screen_b)
+		var max_x: float = maxf(screen_a, screen_b)
+		if max_x - min_x < _MIN_FACE_WIDTH:
+			continue  # edge-on: a vanishing sliver, not a real target
+
+		var face_center_local: Vector2 = (corner_a + corner_b) * 0.5
+		var depth: float = face_center_local.rotated(orientation).dot(dir)
+		var rect := Rect2(min_x, box.center.y - half.y, max_x - min_x, box.size.y)
+		var normal3 := Vector3(world_normal.x, 0.0, world_normal.y)
+		regions.append(Region.new(rect, depth, part, normal3))
+
+	return regions

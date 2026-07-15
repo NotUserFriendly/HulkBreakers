@@ -6,12 +6,15 @@ extends Resource
 ## also explicitly called out as table tunables, not constants in code.
 
 @export var entries: Dictionary = {}  # StringName -> MaterialEntry
-@export var retain_min: float = 0.90
-@export var retain_max: float = 0.25
+## Retention at bend 0 (a graze that barely turns the path) and at
+## max_bend_deg (a full reversal) — the lerp endpoints, named for what they
+## mean rather than which is numerically bigger.
+@export var retain_at_zero_bend: float = 0.90
+@export var retain_at_max_bend: float = 0.25
 @export var max_bend_deg: float = 180.0
 
 
-## Unknown materials default to DT 0 / 45-degree deflect threshold — bare,
+## Unknown materials default to DT 0 / 30-degree deflect threshold — bare,
 ## unarmored — rather than erroring; authoring an entry is opt-in.
 func get_entry(material: StringName) -> MaterialEntry:
 	if entries.has(material):
@@ -25,7 +28,7 @@ func set_entry(material: StringName, entry: MaterialEntry) -> void:
 
 ## The docs/03 reference table (DT values only — deflect_threshold_deg is
 ## not specified per material there, so every entry uses MaterialEntry's
-## documented 45-degree default until a designer tunes otherwise).
+## documented 30-degree default until a designer tunes otherwise).
 static func default_table() -> MaterialTable:
 	var table := MaterialTable.new()
 	table.set_entry(&"flesh", MaterialEntry.new(0.0))

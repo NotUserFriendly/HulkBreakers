@@ -117,6 +117,54 @@ func test_a_graze_retains_about_90_percent_a_near_right_angle_bounce_about_25_pe
 	assert_almost_eq(bounce_result.retained_fraction, 0.25, 0.05)
 
 
+## Each round in a burst has its own muzzle-to-impact ray (docs/03 fix: a
+## burst previously reused one shared `dir` for every round, so every
+## deflection off the same flat surface read an identical incidence — this
+## is what made checkpoint 3 show one repeated retained value). Aiming at
+## different points across a wide, close-range surface should now read
+## visibly different angles and retain visibly different fractions.
+func test_a_burst_across_a_wide_surface_retains_a_spread_not_one_repeated_value() -> void:
+	var grid := Grid.new(10, 10)
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.material = &"wide_test"
+	wall.hp = 50
+	wall.max_hp = 50
+	wall.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(4.0, 1.0, 0.6))]
+	grid.blockers[Vector2i(5, 2)] = wall
+
+	var table := MaterialTable.default_table()
+	# Low threshold: everything but a near dead-center shot reads oblique
+	# enough to deflect, so the whole spread below is comparable.
+	table.set_entry(&"wide_test", MaterialEntry.new(6.0, 5.0))
+	var state := CombatState.new(grid)
+	var origin := Vector2(5, 0)
+	var direction := Vector2(0, 1)
+
+	var retained_by_offset: Dictionary = {}
+	for offset in [0.6, 1.2, 1.8]:
+		var point := Vector2(offset, 0.5)
+		var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+			origin, direction, point, 3.0, 0.0, state, table, _rng(1)
+		)
+		assert_eq(results.size(), 1)
+		assert_eq(results[0].outcome, Enums.Outcome.DEFLECT, "offset %s must deflect" % offset)
+		retained_by_offset[offset] = results[0].retained_fraction
+
+	# Further off-center means a shallower, more grazing muzzle-to-impact
+	# angle, which retains *more* (a graze barely turns the path) — the
+	# near-dead-center shot bends hardest and retains least.
+	var values: Array = retained_by_offset.values()
+	assert_true(
+		values[0] < values[1] and values[1] < values[2],
+		"retention must rise as the point moves further off-center: %s" % [values]
+	)
+	assert_true(
+		values[2] - values[0] > 0.15,
+		"the spread across one burst must clear the old ~11-point band: %s" % [values]
+	)
+
+
 func test_depth_cap_of_zero_stops_a_deflection_from_spawning_any_ricochet() -> void:
 	var grid := Grid.new(6, 6)
 	var state := CombatState.new(grid)
@@ -199,7 +247,13 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 	var cover_region := _find_region(plane, cover)
 	var aim_point: Vector2 = cover_region.rect.get_center()
 
-	var probe := DamageResolver.resolve_impact(dir, 3.0, cover_region, table)
+	# resolve_shot derives each projectile's own muzzle-to-impact direction
+	# rather than reusing the nominal `dir` (a burst's rounds land at
+	# different points, not just different angles from the same ray) —
+	# mirror that here so the probe predicts the same ricochet resolve_shot
+	# will actually spawn.
+	var shot_dir: Vector2 = (dir * cover_region.depth + perp * aim_point.x).normalized()
+	var probe := DamageResolver.resolve_impact(shot_dir, 3.0, cover_region, table)
 	assert_eq(probe.outcome, Enums.Outcome.DEFLECT, "fixture must actually deflect")
 
 	var world_hit: Vector2 = origin + dir * cover_region.depth + perp * aim_point.x
