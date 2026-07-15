@@ -19,6 +19,11 @@ var max_ap: int = DEFAULT_MAX_AP
 var mp: float = 0.0  # movement pool; discarded (not banked) at end of turn
 var alive: bool = true
 
+## Radians, ground-plane facing (docs/02). 0.0 faces
+## BodyProjector.WORLD_FORWARD; continuous, never snapped to
+## FRONT/BACK/LEFT/RIGHT.
+var orientation: float = 0.0
+
 var held_matrix: Matrix = null  # a Matrix carried after PickUpAction, awaiting ImplantAction
 
 

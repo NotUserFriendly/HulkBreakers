@@ -17,6 +17,10 @@ case "$N" in
     TEST_TARGET="res://test/checkpoints/test_checkpoint_1.gd"
     SUMMARY="ASCII maps across several seeds (docs/00 hulk gen). Look for: does the map read as a place? Are seeds actually different?"
     ;;
+  2)
+    TEST_TARGET="res://test/checkpoints/test_checkpoint_2.gd"
+    SUMMARY="One cyborg's shot plane dumped from 12 angles swept continuously (docs/02 projection). Look for: do the boxes track the angle sanely? Does the rear ammo rack appear only from behind? Any pop or discontinuity between adjacent angles is a bug."
+    ;;
   *)
     echo "No checkpoint script wired for checkpoint ${N} yet." >&2
     exit 1

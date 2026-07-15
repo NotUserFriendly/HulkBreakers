@@ -100,6 +100,25 @@ static func _part_glyph(part: Variant) -> String:
 	return glyph_name.substr(0, 1).to_upper()
 
 
+## Shot planes (docs/02) are naturally authored around the line of fire
+## (x == 0), which plane_to_text would clip since it only draws
+## non-negative coordinates. Returns shifted Region copies — never mutates
+## `plane` — so a dump can be recentred into positive space for display
+## without touching the coordinates anything else resolves against.
+static func recenter(plane: Array, dx: float, dy: float = 0.0) -> Array:
+	var shifted: Array = []
+	for region: Variant in plane:
+		shifted.append(
+			Region.new(
+				Rect2(region.rect.position + Vector2(dx, dy), region.rect.size),
+				region.depth,
+				region.part,
+				region.surface_normal
+			)
+		)
+	return shifted
+
+
 ## Overlays impact markers onto an already-rendered text block (from
 ## grid_to_text or plane_to_text), replacing whatever glyph sits at each
 ## impact point with `*` — for diffable before/after dumps of a seeded burst.
