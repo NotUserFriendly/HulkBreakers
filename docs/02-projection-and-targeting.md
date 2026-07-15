@@ -5,12 +5,21 @@ refactored. **Facings are also dead** — there is no FRONT/BACK/LEFT/RIGHT snap
 continuous and projected from the shooter's actual angle.
 
 ## Body space
-Every part declares a **volume**: one or more boxes positioned in the unit's local space.
+Every part declares a **volume**: one or more boxes positioned in **that part's own local
+space** — not the unit's (`docs/10`, Phase 12.0).
 
 ```
-Box:  { center: Vector3, size: Vector3 }        # unit-local; +X right, +Y up, +Z forward
-Part: { volume: Array[Box], ... }
+Box:    { center: Vector3, size: Vector3 }      # part-local; +X right, +Y up, +Z forward
+Socket: { socket_type, occupant, transform: Transform3D }  # host-part-local attachment frame
+Part:   { volume: Array[Box], ... }
 ```
+
+`BodyProjector` composes a part's world-relevant transform by walking the socket tree down from
+the frame's root (`world = parent ∘ socket.transform ∘ local`) before projecting its boxes —
+that's what makes a torso with 12 mirrored `SHOULDER` sockets place 12 arms in 12 different
+places instead of one. A socket with the default identity transform places its occupant
+exactly where the host's own local origin is, so single-part fixtures and un-migrated sockets
+project unchanged.
 
 - **One box per part is the common case.** Authoring is a single box, not four rect-sets.
 - **Multiple boxes express holes.** A shield with an eyehole is four boxes around a gap. No

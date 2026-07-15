@@ -174,3 +174,194 @@ func test_surface_normal_is_the_actual_face_hit_not_always_toward_the_shooter() 
 
 	var flank: Region = BodyProjector.project(unit, Vector2(1, 0))[0]
 	assert_eq(flank.surface_normal, Vector3(-1.0, 0.0, 0.0), "flank hit: the side face was hit")
+
+
+## Phase 12.0: Socket.transform makes modularity geometrically real. A box's
+## `volume` is authored part-local (near its own origin); where it actually
+## lands is entirely the hosting socket's composed transform.
+func _small_box_part(id: StringName) -> Part:
+	var part := Part.new()
+	part.id = id
+	part.hp = 4
+	part.max_hp = 4
+	part.volume = [Box.new(Vector3.ZERO, Vector3(0.4, 0.9, 0.4))]
+	return part
+
+
+func _center_x(regions: Array[Region]) -> float:
+	var min_x := INF
+	var max_x := -INF
+	for region: Region in regions:
+		min_x = minf(min_x, region.rect.position.x)
+		max_x = maxf(max_x, region.rect.position.x + region.rect.size.x)
+	return (min_x + max_x) * 0.5
+
+
+func test_the_same_arm_resource_at_two_mirrored_sockets_projects_in_two_places() -> void:
+	var arm := _small_box_part(&"arm")
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var left := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(-1.0, 0.5, 0.0)))
+	var right := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.0, 0.5, 0.0)))
+	left.occupant = arm
+	right.occupant = arm  # the exact same Part resource, not a duplicate
+	torso.sockets = [left, right]
+
+	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+
+	var arm_regions: Array[Region] = []
+	for region: Region in regions:
+		if region.part == arm:
+			arm_regions.append(region)
+	assert_eq(arm_regions.size(), 2, "the shared resource must project once per socket")
+
+	var region_a := [arm_regions[0]] as Array[Region]
+	var region_b := [arm_regions[1]] as Array[Region]
+	assert_ne(
+		_center_x(region_a),
+		_center_x(region_b),
+		"two sockets sharing one Part resource must still project at two different places"
+	)
+
+
+func test_twelve_shoulder_sockets_project_twelve_non_overlapping_arms() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+
+	const SOCKET_COUNT := 12
+	const SPACING := 0.6  # wider than the arm box (0.4) so none can overlap
+	var sockets: Array[Socket] = []
+	for i in range(SOCKET_COUNT):
+		var x: float = (i - (SOCKET_COUNT - 1) / 2.0) * SPACING
+		var socket := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(x, 0.5, 0.0)))
+		socket.occupant = _small_box_part(StringName("arm_%d" % i))
+		sockets.append(socket)
+	torso.sockets = sockets
+
+	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+
+	var arm_ids: Array[StringName] = []
+	for socket: Socket in sockets:
+		arm_ids.append(socket.occupant.id)
+
+	var centers: Array[float] = []
+	for arm_id: StringName in arm_ids:
+		var arm_regions: Array[Region] = []
+		for region: Region in regions:
+			if region.part.id == arm_id:
+				arm_regions.append(region)
+		assert_true(arm_regions.size() > 0, "arm %s must appear in the plane" % arm_id)
+		centers.append(_center_x(arm_regions))
+
+	centers.sort()
+	assert_eq(centers.size(), SOCKET_COUNT)
+	for i in range(1, centers.size()):
+		assert_true(
+			centers[i] - centers[i - 1] > 0.0001,
+			"12 shoulder sockets must produce 12 distinct, non-overlapping positions"
+		)
+
+
+func test_the_same_weapon_on_left_vs_right_shoulder_projects_at_different_x() -> void:
+	var weapon := Part.new()
+	weapon.id = &"rifle"
+	weapon.hp = 2
+	weapon.max_hp = 2
+	weapon.volume = [Box.new(Vector3.ZERO, Vector3(0.1, 0.15, 0.7))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var left := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(-1.0, 0.5, 0.0)))
+	var right := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.0, 0.5, 0.0)))
+	left.occupant = weapon
+	torso.sockets = [left]
+	var unit_left := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var left_x := _center_x(BodyProjector.project(unit_left, Vector2(0, -1)))
+
+	var torso_right := Part.new()
+	torso_right.id = &"torso"
+	torso_right.hp = 10
+	torso_right.max_hp = 10
+	right.occupant = weapon
+	torso_right.sockets = [right]
+	var unit_right := Unit.new(Matrix.new(), Frame.new(torso_right), Vector2i(0, 0))
+	var right_x := _center_x(BodyProjector.project(unit_right, Vector2(0, -1)))
+
+	assert_ne(left_x, right_x, "the same weapon Part must project differently per shoulder")
+
+
+## shoulder -> upper_arm -> forearm -> hand -> pistol: a deep chain composes,
+## so rotating the shoulder socket must move the pistol at the far end.
+func _deep_chain_torso(shoulder_transform: Transform3D) -> Part:
+	var pistol := _small_box_part(&"pistol")
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 3
+	hand.max_hp = 3
+	var grip := Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.0, 0.0, 0.2)))
+	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var forearm := Part.new()
+	forearm.id = &"forearm"
+	forearm.hp = 4
+	forearm.max_hp = 4
+	var wrist := Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.5, 0.0)))
+	wrist.occupant = hand
+	forearm.sockets = [wrist]
+
+	var upper_arm := Part.new()
+	upper_arm.id = &"upper_arm"
+	upper_arm.hp = 5
+	upper_arm.max_hp = 5
+	var elbow := Socket.new(&"FOREARM", Transform3D(Basis(), Vector3(0.0, -0.5, 0.0)))
+	elbow.occupant = forearm
+	upper_arm.sockets = [elbow]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shoulder := Socket.new(&"SHOULDER", shoulder_transform)
+	shoulder.occupant = upper_arm
+	torso.sockets = [shoulder]
+	return torso
+
+
+func test_rotating_the_shoulder_socket_moves_the_pistol_at_the_end_of_the_chain() -> void:
+	var straight := Transform3D(Basis(), Vector3(1.0, 0.5, 0.0))
+	var unit_straight := Unit.new(
+		Matrix.new(), Frame.new(_deep_chain_torso(straight)), Vector2i(0, 0)
+	)
+	var straight_x := _center_x(
+		_find_all(BodyProjector.project(unit_straight, Vector2(0, -1)), &"pistol")
+	)
+
+	var rotated := Transform3D(Basis(Vector3.UP, deg_to_rad(45.0)), Vector3(1.0, 0.5, 0.0))
+	var unit_rotated := Unit.new(
+		Matrix.new(), Frame.new(_deep_chain_torso(rotated)), Vector2i(0, 0)
+	)
+	var rotated_x := _center_x(
+		_find_all(BodyProjector.project(unit_rotated, Vector2(0, -1)), &"pistol")
+	)
+
+	assert_ne(
+		straight_x, rotated_x, "rotating the shoulder socket must move the pistol at the far end"
+	)
+
+
+func _find_all(regions: Array[Region], part_id: StringName) -> Array[Region]:
+	var found: Array[Region] = []
+	for region: Region in regions:
+		if region.part.id == part_id:
+			found.append(region)
+	return found

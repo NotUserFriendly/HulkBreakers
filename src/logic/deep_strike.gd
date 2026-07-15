@@ -34,29 +34,32 @@ static func default_part_pool() -> Array[Part]:
 	torso.ram_cost = 5.0
 	torso.tags = [&"ROOT"]
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	# Mirrored SHOULDER/HIP transforms (Phase 12.0) are the actual point: the
+	# same arm/leg template attaches at either socket and BodyProjector's
+	# composed transform places each occupant at its own socket's position,
+	# not the root's.
 	torso.sockets = [
-		Socket.new(&"SHOULDER"),
-		Socket.new(&"SHOULDER"),
-		Socket.new(&"HIP"),
-		Socket.new(&"HIP"),
+		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(-1.0, 0.5, 0.0))),
+		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.0, 0.5, 0.0))),
+		Socket.new(&"HIP", Transform3D(Basis(), Vector3(-0.5, -0.5, 0.0))),
+		Socket.new(&"HIP", Transform3D(Basis(), Vector3(0.5, -0.5, 0.0))),
 		Socket.new(&"MATRIX"),
 	]
 
 	# Every part below carries a `volume` so a deep-struck cyborg is never
 	# just a floating torso (taskblock correction 2) — validate_assembly()
-	# now rejects any living part without one. Positions are a plausible
-	# placeholder, not exact per-socket geometry: BodyProjector doesn't
-	# compose socket transforms yet (that's Phase 12.0), so two arms landing
-	# on the torso's two SHOULDER sockets will still project at the same
-	# coordinates until then.
+	# rejects any living part without one. Boxes are authored PART-local
+	# (Phase 12.0): each part only describes its own shape, centered on its
+	# own origin: where it actually sits on the body is entirely the hosting
+	# socket's `transform`, composed by BodyProjector down the tree.
 	var arm := Part.new()
 	arm.id = &"arm"
 	arm.hp = 6
 	arm.max_hp = 6
 	arm.mass = 4.0
 	arm.attaches_to = [&"SHOULDER"]
-	arm.sockets = [Socket.new(&"WRIST")]
-	arm.volume = [Box.new(Vector3(1.0, 0.5, 0.0), Vector3(0.4, 0.9, 0.4))]
+	arm.sockets = [Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.45, 0.1)))]
+	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.4, 0.9, 0.4))]
 
 	var saw_arm := Part.new()
 	saw_arm.id = &"saw_arm"
@@ -65,7 +68,7 @@ static func default_part_pool() -> Array[Part]:
 	saw_arm.mass = 5.0
 	saw_arm.attaches_to = [&"SHOULDER"]
 	saw_arm.capabilities = [&"SUPPORT"]
-	saw_arm.volume = [Box.new(Vector3(1.0, 0.5, 0.0), Vector3(0.4, 0.9, 0.4))]
+	saw_arm.volume = [Box.new(Vector3.ZERO, Vector3(0.4, 0.9, 0.4))]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -75,8 +78,8 @@ static func default_part_pool() -> Array[Part]:
 	hand.ram_cost = 1.0
 	hand.attaches_to = [&"WRIST"]
 	hand.capabilities = [&"TRIGGER", &"GRIP", &"POWER"]
-	hand.sockets = [Socket.new(&"GRIP")]
-	hand.volume = [Box.new(Vector3(1.0, 0.0, 0.3), Vector3(0.25, 0.25, 0.25))]
+	hand.sockets = [Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.0, 0.0, 0.15)))]
+	hand.volume = [Box.new(Vector3.ZERO, Vector3(0.25, 0.25, 0.25))]
 
 	var leg := Part.new()
 	leg.id = &"leg"
@@ -84,7 +87,7 @@ static func default_part_pool() -> Array[Part]:
 	leg.max_hp = 6
 	leg.mass = 6.0
 	leg.attaches_to = [&"HIP"]
-	leg.volume = [Box.new(Vector3(0.5, -0.8, 0.0), Vector3(0.4, 1.0, 0.4))]
+	leg.volume = [Box.new(Vector3(0.0, -0.5, 0.0), Vector3(0.4, 1.0, 0.4))]
 
 	var pistol := Part.new()
 	pistol.id = &"pistol"
@@ -96,7 +99,7 @@ static func default_part_pool() -> Array[Part]:
 	pistol.damage = 4.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0), Ring.new(0.5, 2.0)]
-	pistol.volume = [Box.new(Vector3(1.0, 0.0, 0.5), Vector3(0.1, 0.2, 0.4))]
+	pistol.volume = [Box.new(Vector3(0.0, 0.0, 0.2), Vector3(0.1, 0.2, 0.4))]
 
 	var rifle := Part.new()
 	rifle.id = &"rifle"
@@ -108,7 +111,7 @@ static func default_part_pool() -> Array[Part]:
 	rifle.damage = 6.0
 	rifle.ap_cost = 2
 	rifle.scatter = [Ring.new(0.05, 1.0), Ring.new(0.3, 1.5)]
-	rifle.volume = [Box.new(Vector3(1.0, 0.0, 0.6), Vector3(0.12, 0.15, 0.7))]
+	rifle.volume = [Box.new(Vector3(0.0, 0.0, 0.3), Vector3(0.12, 0.15, 0.7))]
 
 	var two_handed_sword := Part.new()
 	two_handed_sword.id = &"two_handed_sword"
@@ -120,7 +123,7 @@ static func default_part_pool() -> Array[Part]:
 	two_handed_sword.damage = 8.0
 	two_handed_sword.ap_cost = 2
 	two_handed_sword.scatter = [Ring.new(0.2, 1.0)]
-	two_handed_sword.volume = [Box.new(Vector3(1.0, 0.0, 0.7), Vector3(0.1, 0.1, 1.0))]
+	two_handed_sword.volume = [Box.new(Vector3(0.0, 0.0, 0.35), Vector3(0.1, 0.1, 1.0))]
 
 	return [torso, arm, saw_arm, hand, leg, pistol, rifle, two_handed_sword]
 

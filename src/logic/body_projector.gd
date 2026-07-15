@@ -39,49 +39,101 @@ const _FACE_CORNERS_B: Array[Vector2] = [
 ]
 
 
-## Projects every living part of `unit`'s frame into view-plane Regions.
+## Projects every living part of `unit`'s frame into view-plane Regions,
+## composing each part's Socket.transform chain from the frame root first
+## (Phase 12.0) so a part attached deep in the tree — or twice, at mirrored
+## sockets, even the exact same Part resource in both — projects at its own
+## composed position, never the root's or a sibling occurrence's.
 static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 	var regions: Array[Region] = []
-	for part: Part in unit.frame.living_parts():
-		regions.append_array(project_part(part, view_dir, unit.orientation))
+	if unit.frame.root == null:
+		return regions
+	_project_tree(unit.frame.root, Transform3D.IDENTITY, view_dir, unit.orientation, regions)
 	return regions
+
+
+## Depth-first walk composing `world = parent ∘ socket.transform ∘ ...` as it
+## descends. Deliberately walks the tree directly rather than building a
+## Part -> Transform3D map first: a Dictionary keyed by Part identity would
+## collapse two sockets sharing one Part resource down to a single (last-
+## write-wins) transform. Each occurrence gets its own transform, computed
+## once here and reused across all of that occurrence's boxes in
+## `project_part` — never recomputed per box.
+static func _project_tree(
+	part: Part,
+	part_transform: Transform3D,
+	view_dir: Vector2,
+	orientation: float,
+	regions: Array[Region]
+) -> void:
+	regions.append_array(project_part(part, view_dir, orientation, part_transform))
+	for socket: Socket in part.sockets:
+		if socket.occupant == null:
+			continue
+		_project_tree(
+			socket.occupant, part_transform * socket.transform, view_dir, orientation, regions
+		)
 
 
 ## Projects a single part's own boxes, rotated by `orientation` (a unit's
 ## facing, or 0.0 for a static, world-aligned cover/obstacle part) relative
-## to `view_dir`. Shared by `project()` and ShotPlane's cover placement so
-## both go through identical math.
-static func project_part(part: Part, view_dir: Vector2, orientation: float = 0.0) -> Array[Region]:
+## to `view_dir`. `local_transform` is the part's composed position/rotation
+## within its own frame (identity for a standalone part, or when called
+## directly outside a socket tree — the common case in tests and for
+## ShotPlane's cover placement, both of which go through identical math).
+static func project_part(
+	part: Part,
+	view_dir: Vector2,
+	orientation: float = 0.0,
+	local_transform: Transform3D = Transform3D.IDENTITY
+) -> Array[Region]:
 	if part.hp <= 0:
 		return []
 	var dir: Vector2 = view_dir.normalized()
 	var perp := Vector2(-dir.y, dir.x)
 	var regions: Array[Region] = []
 	for box: Box in part.volume:
-		regions.append_array(_project_box(box, dir, perp, orientation, part))
+		regions.append_array(_project_box(box, dir, perp, orientation, part, local_transform))
 	return regions
 
 
 static func _project_box(
-	box: Box, dir: Vector2, perp: Vector2, orientation: float, part: Part
+	box: Box,
+	dir: Vector2,
+	perp: Vector2,
+	orientation: float,
+	part: Part,
+	local_transform: Transform3D
 ) -> Array[Region]:
 	var half := box.size * 0.5
 	var toward_shooter: Vector2 = -dir
 	var regions: Array[Region] = []
+	var center_in_frame: Vector3 = local_transform * box.center
 
 	for i in range(_FACE_NORMALS.size()):
-		var world_normal: Vector2 = _FACE_NORMALS[i].rotated(orientation)
+		var local_normal := Vector3(_FACE_NORMALS[i].x, 0.0, _FACE_NORMALS[i].y)
+		var normal_in_frame: Vector3 = local_transform.basis * local_normal
+		var world_normal: Vector2 = Vector2(normal_in_frame.x, normal_in_frame.z).rotated(
+			orientation
+		)
 		if world_normal.dot(toward_shooter) <= 0.0:
 			continue  # facing away from the shooter
 
-		var corner_a := Vector2(
+		var corner_a_local := Vector3(
 			box.center.x + _FACE_CORNERS_A[i].x * half.x,
+			box.center.y,
 			box.center.z + _FACE_CORNERS_A[i].y * half.z
 		)
-		var corner_b := Vector2(
+		var corner_b_local := Vector3(
 			box.center.x + _FACE_CORNERS_B[i].x * half.x,
+			box.center.y,
 			box.center.z + _FACE_CORNERS_B[i].y * half.z
 		)
+		var corner_a_in_frame: Vector3 = local_transform * corner_a_local
+		var corner_b_in_frame: Vector3 = local_transform * corner_b_local
+		var corner_a := Vector2(corner_a_in_frame.x, corner_a_in_frame.z)
+		var corner_b := Vector2(corner_b_in_frame.x, corner_b_in_frame.z)
+
 		var screen_a: float = corner_a.rotated(orientation).dot(perp)
 		var screen_b: float = corner_b.rotated(orientation).dot(perp)
 		var min_x: float = minf(screen_a, screen_b)
@@ -91,7 +143,7 @@ static func _project_box(
 
 		var face_center_local: Vector2 = (corner_a + corner_b) * 0.5
 		var depth: float = face_center_local.rotated(orientation).dot(dir)
-		var rect := Rect2(min_x, box.center.y - half.y, max_x - min_x, box.size.y)
+		var rect := Rect2(min_x, center_in_frame.y - half.y, max_x - min_x, box.size.y)
 		var normal3 := Vector3(world_normal.x, 0.0, world_normal.y)
 		regions.append(Region.new(rect, depth, part, normal3))
 

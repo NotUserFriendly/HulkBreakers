@@ -13,6 +13,15 @@ extends Resource
 @export var socket_type: StringName = &""
 @export var occupant: Part = null
 
+## The attachment frame, in the HOST part's own local space (docs/02/10,
+## Phase 12.0): where and how the occupant sits relative to the part this
+## socket lives on. Identity by default, so un-migrated content still
+## composes correctly — the occupant simply sits at the host's own origin.
+@export var transform: Transform3D = Transform3D.IDENTITY
 
-func _init(p_socket_type: StringName = &"") -> void:
+
+func _init(
+	p_socket_type: StringName = &"", p_transform: Transform3D = Transform3D.IDENTITY
+) -> void:
 	socket_type = p_socket_type
+	transform = p_transform

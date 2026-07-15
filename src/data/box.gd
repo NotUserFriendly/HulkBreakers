@@ -2,9 +2,11 @@ class_name Box
 extends Resource
 
 ## A body-space volume: one or more of these per Part express its geometry
-## (docs/02). Unit-local space: +X right, +Y up, +Z forward. Projection into
-## a Region (rect/depth) is Phase 3 — this phase only needs the data shape so
-## Part.volume can round-trip.
+## (docs/02). PART-local space (Phase 12.0): +X right, +Y up, +Z forward,
+## relative to the part's own origin — not the unit's. BodyProjector composes
+## each part's Socket.transform chain from the frame root before projecting,
+## so a part's boxes only need to describe its own shape, never where it
+## sits on the body.
 
 @export var center: Vector3 = Vector3.ZERO
 @export var size: Vector3 = Vector3.ONE

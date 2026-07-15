@@ -27,8 +27,11 @@ extends Resource
 
 ## Key into the material table -> DT (Phase 5). Open StringName, not an enum.
 @export var material: StringName = &""
-## Body-space geometry — one or more boxes in the unit's local space (docs/02).
-## Not container capacity; see `bulk` for that (docs/05 naming note).
+## Body-space geometry — one or more boxes in this PART's own local space,
+## not the unit's (docs/02/10, Phase 12.0). Where it actually sits on the
+## body comes from whatever socket hosts this part, composed by
+## BodyProjector down the tree. Not container capacity; see `bulk` for that
+## (docs/05 naming note).
 @export var volume: Array[Box] = []
 
 @export var hp: int = 1
