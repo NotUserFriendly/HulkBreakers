@@ -62,6 +62,26 @@ func test_total_ram_sums_ram_cost_across_the_whole_assembly() -> void:
 	assert_almost_eq(frame.total_ram(), 1.5, 0.0001)
 
 
+func test_total_ram_also_counts_items_carried_in_a_container() -> void:
+	var torso := _socketed_part(&"torso", [&"BACK"])
+	var bag := _socketed_part(&"bag")
+	bag.is_container = true
+	bag.max_bulk = 10.0
+	torso.sockets[0].occupant = bag
+
+	var gadget := Part.new()
+	gadget.id = &"gadget"
+	gadget.hp = 1
+	gadget.max_hp = 1
+	gadget.ram_cost = 2.0
+	bag.contents = [gadget]
+
+	var frame := Frame.new(torso)
+	assert_almost_eq(
+		frame.total_ram(), 2.0, 0.0001, "a bagged item's RAM must not be discounted away"
+	)
+
+
 func test_save_load_round_trips_a_frame() -> void:
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
 	var arm := _socketed_part(&"arm")

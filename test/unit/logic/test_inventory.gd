@@ -79,6 +79,31 @@ func test_attach_respects_frame_max_mass() -> void:
 	assert_false(bag.contents.has(heavy))
 
 
+## docs/05: mass, bulk, and RAM are three independent constraints that fail
+## differently, which is the point — a weightless drone swarm control
+## module can pass mass entirely and still fail on RAM alone.
+func test_a_weightless_drone_swarm_fails_on_ram_while_passing_mass() -> void:
+	var root := Part.new()
+	root.sockets = [Socket.new(&"BACK")]
+	var frame := Frame.new(root)
+	frame.max_mass = 1000.0
+	frame.max_ram = 20.0
+	var bag := _make_container(1.0, 100.0, 0.0, 1.0)
+	root.sockets[0].occupant = bag
+
+	var drone_swarm := Part.new()
+	drone_swarm.bulk = 1.0
+	drone_swarm.mass = 0.0  # weightless — a swarm of tiny drones
+	drone_swarm.ram_cost = 30.0  # squad of flamethrower drones (docs/05: 25-50 TB)
+
+	assert_false(
+		Inventory.attach(drone_swarm, bag, frame),
+		"must fail on RAM even though mass is nowhere near the limit"
+	)
+	assert_false(bag.contents.has(drone_swarm))
+	assert_true(frame.carried_mass() <= frame.max_mass, "mass alone would have passed")
+
+
 func test_detach_removes_part_and_returns_true() -> void:
 	var bag := _make_container(1.0, 10.0)
 	var item := _make_item(1.0)

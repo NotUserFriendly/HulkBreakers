@@ -67,10 +67,24 @@ func _flat_contents(container: Part) -> float:
 
 ## Sum of every part's ram_cost (docs/05) — systems control, checked
 ## against max_ram the same way carried_mass() is checked against max_mass.
+## Unlike mass, nothing discounts RAM for being carried in a container —
+## controlling an external thing doesn't get cheaper by bagging it — so
+## contents are summed flat with no mass_multiplier-style factor.
 func total_ram() -> float:
 	var total := 0.0
 	for part: Part in all_parts():
 		total += part.ram_cost
+		if part.is_container:
+			total += _flat_ram(part)
+	return total
+
+
+func _flat_ram(container: Part) -> float:
+	var total := 0.0
+	for child: Part in container.contents:
+		total += child.ram_cost
+		if child.is_container:
+			total += _flat_ram(child)
 	return total
 
 

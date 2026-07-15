@@ -55,6 +55,14 @@ extends Resource
 ## (a carried body, docs/05), ...
 @export var tags: Array[StringName] = []
 
+## docs/07: empty for most items — the same design bought from a merchant
+## or found on a hulk is a plain, undifferentiated item. A handful of
+## designs deliberately overlap between the two loot pools; on those,
+## LootTable sets this to distinguish "standard" (merchant) from
+## "original_pattern" / "prototype" (hulk) — minor but visible, not a
+## separate stat-rolled item (that's backlog, docs/99).
+@export var variant_tag: StringName = &""
+
 ## False marks permanent terrain (e.g. cover that can never be destroyed,
 ## docs/02).
 @export var is_destructible: bool = true
