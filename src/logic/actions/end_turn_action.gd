@@ -8,8 +8,11 @@ func _init(p_unit: Unit) -> void:
 	unit = p_unit
 
 
+## Resolved through state.find_unit(), not the stored reference directly
+## (docs/09): a preview's units are independent clones sharing `unit.id`.
 func is_legal(state: CombatState) -> bool:
-	return unit.alive and state.current_unit() == unit
+	var actual: Unit = state.find_unit(unit.id)
+	return actual != null and actual.alive and state.current_unit() == actual
 
 
 func apply(state: CombatState) -> void:

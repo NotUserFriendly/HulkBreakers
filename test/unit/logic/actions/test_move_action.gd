@@ -10,9 +10,12 @@ func _make_unit(cell: Vector2i, agility: float = 0.0) -> Unit:
 
 
 func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:
-	# agility=0 -> mp_per_ap = BASE_MP = 2.0; max_ap default = 2.
+	# agility=0 -> mp_per_ap = BASE_MP = 2.0; max_ap pinned to 2 here so the
+	# chunk-burning arithmetic below is exercised regardless of the docs/05
+	# baseline (6) the default actually carries.
 	var grid := Grid.new(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
+	unit.max_ap = 2
 	var state := CombatState.new(grid, [unit])
 
 	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]

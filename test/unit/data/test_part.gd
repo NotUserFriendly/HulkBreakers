@@ -44,6 +44,7 @@ func test_save_load_round_trips_a_full_socket_tree() -> void:
 	pistol.recoil = 2.0
 	pistol.weapon_max_range = 12.0
 	pistol.ap_cost = 1
+	pistol.crit_chance = 0.1
 	pistol.scatter = [Ring.new(0.1, 1.0), Ring.new(0.5, 2.0)]
 	grip_socket.occupant = pistol
 
@@ -71,6 +72,7 @@ func test_save_load_round_trips_a_full_socket_tree() -> void:
 	assert_eq(loaded_pistol.recoil, 2.0)
 	assert_eq(loaded_pistol.weapon_max_range, 12.0)
 	assert_eq(loaded_pistol.ap_cost, 1)
+	assert_eq(loaded_pistol.crit_chance, 0.1)
 	assert_eq(loaded_pistol.scatter.size(), 2)
 	assert_eq(loaded_pistol.scatter[0].radius, 0.1)
 	assert_eq(loaded_pistol.scatter[1].weight, 2.0)

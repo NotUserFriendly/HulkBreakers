@@ -5,7 +5,9 @@ extends RefCounted
 ## Frame (disposable body) on the grid.
 
 const BASE_MP: float = 2.0
-const DEFAULT_MAX_AP: int = 2
+## Appendix E / docs/05: "a standard cyborg has 6 AP per turn, before perks
+## and upgrades." Every other AP cost in the docs is quoted against this.
+const DEFAULT_MAX_AP: int = 6
 const AGILITY_STAT_KEY: StringName = &"agility"
 
 var id: int = -1  # assigned by CombatState.add_unit; matches Grid.occupant_id
@@ -42,3 +44,18 @@ func mp_per_ap() -> float:
 	context.parts = frame.all_parts()
 	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility
+
+
+## A fully independent copy — matrix, whole frame tree, and every scalar
+## field — for TACTICS-time speculative previews (docs/09). Mutating a dup
+## must never be observable on the original.
+func dup() -> Unit:
+	var cloned := Unit.new(matrix.duplicate(true) as Matrix, frame.dup(), cell, squad_id)
+	cloned.id = id
+	cloned.ap = ap
+	cloned.max_ap = max_ap
+	cloned.mp = mp
+	cloned.alive = alive
+	cloned.orientation = orientation
+	cloned.held_matrix = held_matrix.duplicate(true) as Matrix if held_matrix != null else null
+	return cloned

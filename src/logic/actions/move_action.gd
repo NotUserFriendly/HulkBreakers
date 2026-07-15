@@ -15,18 +15,23 @@ func _init(p_unit: Unit, p_path: Array[Vector2i]) -> void:
 	path = p_path
 
 
+## Actions never trust a bare Unit reference across states (docs/09): a
+## preview's units are independent clones sharing `unit.id`, not the same
+## object, so every read/write below goes through the unit `state` itself
+## actually holds.
 func is_legal(state: CombatState) -> bool:
-	if not unit.alive:
+	var actual: Unit = state.find_unit(unit.id)
+	if actual == null or not actual.alive:
 		return false
-	if state.current_unit() != unit:
+	if state.current_unit() != actual:
 		return false
-	if path.size() < 2 or path[0] != unit.cell:
+	if path.size() < 2 or path[0] != actual.cell:
 		return false
 
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	var sim_ap: int = unit.ap
-	var sim_mp: float = unit.mp
-	var per_ap: float = unit.mp_per_ap()
+	var sim_ap: int = actual.ap
+	var sim_mp: float = actual.mp
+	var per_ap: float = actual.mp_per_ap()
 
 	for i in range(1, path.size()):
 		if Grid.distance_chebyshev(path[i - 1], path[i]) != 1:
@@ -45,20 +50,21 @@ func is_legal(state: CombatState) -> bool:
 
 
 func apply(state: CombatState) -> void:
+	var actual: Unit = state.find_unit(unit.id)
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	var per_ap: float = unit.mp_per_ap()
+	var per_ap: float = actual.mp_per_ap()
 
 	for i in range(1, path.size()):
 		var step_cost: float = pf.move_cost(path[i])
-		while unit.mp < step_cost:
-			unit.ap -= 1
-			unit.mp += per_ap
-		unit.mp -= step_cost
-		state.grid.set_occupant_id(unit.cell, -1)
-		unit.cell = path[i]
-		state.grid.set_occupant_id(unit.cell, unit.id)
+		while actual.mp < step_cost:
+			actual.ap -= 1
+			actual.mp += per_ap
+		actual.mp -= step_cost
+		state.grid.set_occupant_id(actual.cell, -1)
+		actual.cell = path[i]
+		state.grid.set_occupant_id(actual.cell, actual.id)
 
-	state.log_action("MoveAction: unit %d moved to %s" % [unit.id, unit.cell])
+	state.log_action("MoveAction: unit %d moved to %s" % [actual.id, actual.cell])
 
 
 func describe() -> String:

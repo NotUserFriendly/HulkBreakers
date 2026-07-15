@@ -8,6 +8,21 @@ var turn_index: int = 0
 var action_log: Array[String] = []
 var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0}
 var rng: RandomNumberGenerator
+## Structured log (docs/09) — no sinks by default; the caller wires whichever
+## it wants (Memory/Stdout/File/UI). Every impact and abort in resolve_turn()
+## emits here.
+var combat_log: CombatLog = CombatLog.new()
+## Shared across the whole battle (docs/03) so every attack resolves DT and
+## ricochet against the same tuning, not a fresh default per shot.
+var material_table: MaterialTable = MaterialTable.default_table()
+## True only on a dup() built for a TACTICS-time preview (docs/09). An
+## attack's hit/damage outcome is the one genuinely probabilistic effect a
+## preview must never resolve — not because randomness is expensive, but
+## because a preview that *did* accurately predict it would make "the world
+## moved" abort case at RESOLUTION unreachable: queuing would already have
+## rejected anything RESOLUTION could later invalidate, since both would
+## agree. AttackAction checks this to skip real damage resolution here.
+var is_preview: bool = false
 
 var _next_id: int = 0
 
@@ -42,8 +57,67 @@ func current_unit() -> Unit:
 	return units[turn_index]
 
 
+## The unit with this id, or null. Actions resolve their target through
+## this rather than holding a bare Unit reference across states — a
+## preview's units are independent clones (docs/09) sharing the same id,
+## not the same object, so an identity comparison against a stored
+## reference would wrongly read as "not this state's unit."
+func find_unit(id: int) -> Unit:
+	for unit: Unit in units:
+		if unit.id == id:
+			return unit
+	return null
+
+
 func log_action(text: String) -> void:
 	action_log.append(text)
+
+
+## A fully independent copy — grid, every unit's whole frame tree, ground
+## items — for TACTICS-time speculative previews (docs/09): ActionQueue
+## replays already-queued actions onto a dup() to preview the next one.
+## Marked `is_preview` so a replayed AttackAction spends AP but skips real
+## damage resolution — structural mutations (move, swap, pick up) still
+## replay for real against this disposable copy, since those aren't
+## probabilistic. `action_log`/`combat_log` start empty — a preview's own
+## log noise is never worth keeping.
+func dup() -> CombatState:
+	var cloned_units: Array[Unit] = []
+	for unit: Unit in units:
+		cloned_units.append(unit.dup())
+
+	var cloned := CombatState.new(grid.dup(), [], rng.seed)
+	cloned.is_preview = true
+	cloned.terrain_costs = terrain_costs.duplicate()
+	cloned.material_table = material_table
+	for unit: Unit in cloned_units:
+		cloned.add_unit(unit)
+	cloned.turn_index = turn_index
+	return cloned
+
+
+## Executes every action in `queue` in order against this (authoritative)
+## state, re-validating each one first (docs/09): the world may have moved
+## since it was queued against a mere preview. An action that's no longer
+## legal aborts — logged, never crashed, never silently skipped without a
+## trace — and the queue continues to the next one regardless.
+func resolve_turn(queue: ActionQueue) -> void:
+	for action: CombatAction in queue.actions:
+		if action.is_legal(self):
+			action.apply(self)
+			continue
+		var reason: String = "aborted at resolution (no longer legal): %s" % action.describe()
+		log_action(reason)
+		combat_log.emit(
+			LogEvent.new(
+				turn_index,
+				Enums.Phase.RESOLUTION,
+				queue.unit.id,
+				&"action_aborted",
+				{"action": action.describe()},
+				reason
+			)
+		)
 
 
 ## Attempts an action: rejects (returns false, no mutation) if illegal,

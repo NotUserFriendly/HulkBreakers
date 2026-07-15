@@ -68,6 +68,9 @@ extends Resource
 @export var recoil: float = 0.0
 @export var weapon_max_range: float = 0.0
 @export var ap_cost: int = 1
+## Float, not a bool (docs/03): >1.0 always crits, and the excess is the
+## double-crit chance. 0.0 (never crits) is the inert default.
+@export var crit_chance: float = 0.0
 ## Ordered inner -> outer; each Ring's radius is its own outer edge, so ring
 ## i's annulus spans (scatter[i-1].radius, scatter[i].radius]. N rings, never
 ## a fixed three — nothing may assume a count.

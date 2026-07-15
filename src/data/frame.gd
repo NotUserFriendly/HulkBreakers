@@ -31,6 +31,18 @@ func living_parts() -> Array[Part]:
 	return result
 
 
+## The first part in this assembly whose id matches — actions resolve a
+## targeted part this way rather than holding a bare Part reference across
+## states (docs/09): a preview's frame is an independent clone. Assumes a
+## single frame doesn't carry two parts sharing the same id, a reasonable
+## bound for one loadout.
+func find_part(part_id: StringName) -> Part:
+	for part: Part in all_parts():
+		if part.id == part_id:
+			return part
+	return null
+
+
 ## Recursive felt mass (Appendix D / docs/05): a container's mass_multiplier
 ## discount applies once, only at the directly-worn layer, across the whole
 ## assembly (not just root-level attachments — a pistol in a hand three
@@ -51,3 +63,14 @@ func _flat_contents(container: Part) -> float:
 		if child.is_container:
 			total += _flat_contents(child)
 	return total
+
+
+## A fully independent copy of the whole assembly, for TACTICS-time
+## speculative previews (docs/09) — Part.duplicate(true) recurses through
+## sockets/contents/hosted_matrix, so no shared Part is ever mutated by a
+## preview that turns out to fire a weapon or take damage.
+func dup() -> Frame:
+	var cloned := Frame.new(root.duplicate(true) as Part if root != null else null)
+	cloned.max_mass = max_mass
+	cloned.max_ram = max_ram
+	return cloned

@@ -77,6 +77,40 @@ func set_occupant_id(cell: Vector2i, value: int) -> void:
 	occupant_id[_index(cell)] = value
 
 
+## A fully independent copy for TACTICS-time speculative previews (docs/09).
+## Dictionary.duplicate(true) only deep-copies nested containers, not the
+## Part/Matrix objects they hold, so blockers and field_items are rebuilt
+## with their own values individually duplicated — a preview attack that
+## destroys cover must never touch the real Part.
+func dup() -> Grid:
+	var cloned := Grid.new(width, height)
+	cloned.terrain = terrain.duplicate()
+	cloned.opacity = opacity.duplicate()
+	cloned.cover_value = cover_value.duplicate()
+	cloned.occupant_id = occupant_id.duplicate()
+	for cell: Vector2i in blockers:
+		cloned.blockers[cell] = (blockers[cell] as Part).duplicate(true)
+	for cell: Vector2i in field_items:
+		var cloned_items: Array = []
+		for item: Variant in field_items[cell]:
+			cloned_items.append(item.duplicate(true))
+		cloned.field_items[cell] = cloned_items
+	return cloned
+
+
+## The first loose Part or Matrix at `cell` whose id matches, or null.
+## Actions resolve a targeted ground item this way rather than holding a
+## bare reference across states (docs/09): a preview's field_items are
+## independently cloned.
+func find_field_item(cell: Vector2i, item_id: StringName) -> Variant:
+	if not field_items.has(cell):
+		return null
+	for item: Variant in field_items[cell]:
+		if item.id == item_id:
+			return item
+	return null
+
+
 func neighbors(cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	for offset: Vector2i in NEIGHBOR_OFFSETS:
