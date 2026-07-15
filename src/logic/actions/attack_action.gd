@@ -13,18 +13,24 @@ var unit: Unit
 var weapon_id: StringName
 var target_cell: Vector2i
 var aim_offset: Vector2
+## Perk/ammo/stance modifiers on top of the weapon's own part-level mods
+## (docs/08) — empty until those systems exist, but resolved through the same
+## WeaponResolver call a tooltip would use, never a separate code path.
+var extra_sources: Array[ModSource]
 
 
 func _init(
 	p_unit: Unit,
 	p_weapon_id: StringName,
 	p_target_cell: Vector2i,
-	p_aim_offset: Vector2 = Vector2.ZERO
+	p_aim_offset: Vector2 = Vector2.ZERO,
+	p_extra_sources: Array[ModSource] = []
 ) -> void:
 	unit = p_unit
 	weapon_id = p_weapon_id
 	target_cell = p_target_cell
 	aim_offset = p_aim_offset
+	extra_sources = p_extra_sources
 
 
 func is_legal(state: CombatState) -> bool:
@@ -75,21 +81,20 @@ func apply(state: CombatState) -> void:
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 
 	var aim_point: Vector2 = _center_mass(plane, target) + aim_offset
-	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon)
+	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon, extra_sources)
 	var points: Array[Vector2] = Dartboard.sample(
 		aim_point, resolved_scatter, state.rng, weapon.burst
 	)
 
+	# docs/08: the damage/crit numbers used here must be the exact same
+	# ones a tooltip built from WeaponResolver would show — never a raw
+	# Part field read directly.
+	var damage: float = WeaponResolver.resolve_damage(weapon, extra_sources).current
+	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
+
 	for point: Vector2 in points:
 		var results: Array[ImpactResult] = DamageResolver.resolve_shot(
-			origin,
-			direction,
-			point,
-			weapon.damage,
-			weapon.crit_chance,
-			state,
-			state.material_table,
-			state.rng
+			origin, direction, point, damage, crit_chance, state, state.material_table, state.rng
 		)
 		for result: ImpactResult in results:
 			_log_impact(state, actual, result)

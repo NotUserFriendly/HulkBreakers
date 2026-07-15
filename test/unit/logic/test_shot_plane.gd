@@ -105,6 +105,40 @@ func test_layered_targets_a_gap_in_the_near_unit_falls_through_to_the_far_unit()
 	assert_eq(hit_near.part.id, &"near")
 
 
+## docs/08: a UI must be able to show a stat panel for a partially obscured
+## target deeper in the plane, not only the one a shot at a given point
+## would actually hit.
+func test_units_along_lists_every_layered_target_nearest_first() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
+	var far_unit := _standing_unit(&"far", 1.0, Vector2i(2, 6))
+	state.add_unit(near_unit)
+	state.add_unit(far_unit)
+
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var units: Array[Unit] = ShotPlane.units_along(plane, state)
+
+	assert_eq(units, [near_unit, far_unit])
+
+
+func test_units_along_excludes_a_dead_unit_with_no_region_in_the_plane() -> void:
+	# BodyProjector/ShotPlane.build project every *alive* unit regardless of
+	# how far off-axis it sits (there's no distance culling) — the one
+	# thing that actually removes a unit from the plane entirely is not
+	# being alive.
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var visible_unit := _standing_unit(&"visible", 0.5, Vector2i(2, 2))
+	var dead_unit := _standing_unit(&"dead", 0.5, Vector2i(2, 4))
+	dead_unit.alive = false
+	state.add_unit(visible_unit)
+	state.add_unit(dead_unit)
+
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	assert_eq(ShotPlane.units_along(plane, state), [visible_unit])
+
+
 func test_destroying_cover_removes_its_region_from_the_plane() -> void:
 	var grid := Grid.new(5, 5)
 	var state := CombatState.new(grid)

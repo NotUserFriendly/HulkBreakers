@@ -44,6 +44,26 @@ static func resolve_projectile(plane: Array[Region], point: Vector2) -> Region:
 	return null
 
 
+## Every unit with at least one Region in `plane`, nearest-first by its
+## closest region's depth (docs/08): a UI must be able to show stats for a
+## partially obscured target deeper in the plane, not only the one
+## resolve_projectile would actually hit at a given point.
+static func units_along(plane: Array[Region], state: CombatState) -> Array[Unit]:
+	var best_depth: Dictionary = {}  # Unit -> float
+	for unit: Unit in state.units:
+		var unit_parts: Array[Part] = unit.frame.all_parts()
+		for region: Region in plane:
+			if unit_parts.has(region.part):
+				if not best_depth.has(unit) or region.depth < best_depth[unit]:
+					best_depth[unit] = region.depth
+
+	var units: Array[Unit] = []
+	for unit: Variant in best_depth.keys():
+		units.append(unit)
+	units.sort_custom(func(a: Unit, b: Unit) -> bool: return best_depth[a] < best_depth[b])
+	return units
+
+
 static func _offset(cell: Vector2i, origin: Vector2, dir: Vector2, perp: Vector2) -> Vector2:
 	var world := Vector2(cell.x, cell.y) - origin
 	return Vector2(world.dot(perp), world.dot(dir))
