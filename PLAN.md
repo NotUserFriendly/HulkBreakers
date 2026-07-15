@@ -1,318 +1,244 @@
-# PLAN.md — Build Order
+# PLAN.md — v2.1 Build Order
 
-Work phases in order. Each phase ends **green** (`./run_tests.sh` exits 0) and
-**committed** before the next begins. "Acceptance" = the GUT tests you must write
-and pass for that phase.
+Read `docs/` first. **`docs/02` (projection & shot plane), `docs/08` (transparency pipeline)
+and `docs/09` (turn phases, log, checkpoints) govern everything downstream** — read all three
+before writing any code.
+
+Work phases **in order**. Each ends green (`./run_tests.sh` exits 0) and committed.
+"Acceptance" = the GUT tests you must write and pass.
+
+**Checkpoints are hard stops.** At a checkpoint, run `./checkpoint.sh N`, commit the
+artifacts, and **wait for a go before proceeding.** Five of them, at `docs/09`.
 
 ---
 
-## Phase 0 — Test harness & GUT
-**Goal:** a working headless test loop.
+## Open-endedness: the standing rule
+> **Enums for engine states. Open `StringName` vocabularies for content.**
+
+CC will not be around to maintain this game. Anything a designer might add later must be
+addable **as data, without a code edit**.
+
+| Enum is correct | Must be open data |
+|---|---|
+| `Phase {TACTICS, RESOLUTION}` | socket types, attach tags, capability tags |
+| `Outcome {PENETRATE, STOP_DEAD, DEFLECT}` | materials + DT + ricochet curve |
+| `RecoveryState` | resource ids, part tags, perk ids |
+| | surrogate tiers (ordered data ladder) |
+| | scatter rings (**N rings, never 3**) |
+| | AP costs, tunables, balance numbers |
+
+If a test needs a specific list, the test authors that list as a fixture. Production code
+must not know it exists.
+
+---
+
+## What survives from v1
+| Verdict | Files |
+|---|---|
+| **Keep as-is** | `grid.gd`, `pathfinder.gd`, `map_gen.gd`, `combat_action.gd`, GUT harness |
+| **Keep, extend** | `los.gd`, `combat_state.gd`, `inventory.gd`, actions |
+| **Rewrite** | `part.gd`/`chassis.gd` → socket graph (`01`); `cover.gd` → a region in the shot plane (`02`); `run_state.gd` → mission loop (`07`) |
+| **DELETE** | `Enums.SlotType`, `Part.slot_type`, `Part.exposure_weight`, `Targeting._weighted_choice`, `CoverInfo.profile` — the exposure table is obsolete (`02`) |
+
+---
+
+## Phase 0 — Harness, eyes & log
+**Goal:** CC can see spatial state, and you can watch it. Nothing later is verifiable without
+this.
 **Build:**
-- Clone GUT 9.x and copy its `addons/gut` into `res://addons/gut`:
-  `git clone --depth 1 https://github.com/bitwes/Gut /tmp/gut && cp -r /tmp/gut/addons/gut addons/gut`
-- Create `res://test/unit/test_smoke.gd` extending `GutTest` with one passing assert.
-**Acceptance:** `./run_tests.sh` exits 0 and reports ≥1 passing test.
+- **Fix the v1 bug:** `los.gd::visible_cells` names its param `range`, shadowing the builtin
+  `range()` it calls. Rename to `radius`.
+- `src/debug/ascii_render.gd`: `grid_to_text()`, `plane_to_text()`, `overlay_impacts()`.
+- `src/logic/combat_log.gd`: structured `LogEvent` + **pluggable sinks** (Memory, Stdout,
+  File → `out/combat.log`). See `docs/09`.
+- `checkpoint.sh N` → writes `out/checkpoints/NN/` with a `README.md` + artifacts.
+- Add `gdlint src test` to `run_tests.sh` as a pre-test gate (`pip install gdtoolkit`).
+- `test/determinism/`: helper asserting same-seed → identical output for any generator.
+**Acceptance:** suite green; an ASCII grid prints in test output; a `FileSink` log appears at
+`out/combat.log`; lint gate fails the build on a deliberate violation.
+### ▶ CHECKPOINT 1 — ASCII maps across several seeds. **Stop for review.**
 
 ---
 
-## Phase 1 — Data models (Resources)
-**Goal:** the modular part/chassis/matrix data layer.
-**Build (in `res://src/data/`):**
-- `enums.gd` — `SlotType` (HEAD, TORSO, L_ARM, R_ARM, LEGS, ...) and
-  `PartType` (WEAPON, ARMOR, SENSOR, MOBILITY, STORAGE, ...). TORSO is the
-  vital slot — destroying it disables the chassis (see Phase 8). `CORE` is
-  reserved for a future development phase; do not reuse it as a `SlotType` or
-  anywhere in Matrix-related naming in the current build.
-- `Part` (`Resource`): `id, display_name, part_type, slot_type, hp, max_hp,`
-  `mass: float, volume: float, exposure_weight: float, stat_mods: Dictionary,`
-  `is_container: bool, max_volume: float, mass_multiplier: float (default 1.0),`
-  `contents: Array[Part]`.
-  (`exposure_weight` drives hit location — see Appendix C. `max_volume` /
-  `mass_multiplier` drive encumbrance — see Appendix D.)
-- `Chassis` (`Resource`): `slots: Dictionary` (SlotType→Part), `max_mass: float`;
-  methods `install(part), remove(slot_type), aggregate_stats() -> Dictionary`,
-  `carried_mass() -> float`, `living_parts() -> Array[Part]`.
-- `Matrix` (`Resource`): `id, display_name, level, xp, perks: Array[StringName]`.
-  Persistent; carries no chassis reference in saved data.
+## Phase 1 — Part graph (`docs/01`)
+**Goal:** inverted, tag-matched attachment.
+**Build:** `Socket` (`socket_type`, `occupant`); `Part` (`attaches_to`, `sockets`,
+`capabilities`, `material`, `volume: Array[Box]`, `ram_cost`, `mass`, `bulk`, `tags`,
+container fields); `Frame` (`root: Part`, `max_mass`, `max_ram`, tree walks,
+`aggregate_stats()`).
 **Acceptance:**
-- Installing parts fills slots; `aggregate_stats()` sums `stat_mods` across installed parts.
-- Removing a part removes its stat contribution.
-- `ResourceSaver`/`ResourceLoader` round-trips a chassis-with-parts (including nested
-  container `contents`, `volume`, `mass`, `max_volume`, `mass_multiplier`) and a matrix intact.
+- A torso with 12 `SHOULDER` sockets hosts 12 arms.
+- A part tagged `attaches_to: [SHOULDER]` mounts on *any* shoulder, any frame, no
+  parent-specific code.
+- Deep tree: shoulder → upper arm → forearm → hand → pistol; a forearm sword blocks neither
+  the upper-arm plate nor the shoulder pod.
+- A drill on `WRIST` exposes no `GRIP` → pistol attach fails, **with no rule written for it**.
+- **Capabilities:** a rifle requiring `{TRIGGER:1, SUPPORT:1}` is usable by a
+  hand+saw cyborg; a pistol requiring `{TRIGGER:1}` is not usable by the saw; a saw adds no
+  `POWER` to a melee swing.
+- **Destroying a part drops its subtree as ONE intact assembly**, sockets still populated —
+  not a pile of bits.
+- No cycles; one occupant per socket; save/load round-trips a full tree.
 
 ---
 
-## Phase 2 — Grid & coordinates
-**Goal:** the abstract tactical grid.
-**Build (`res://src/logic/`):**
-- `Grid` (`RefCounted`): `width, height`, per-cell data (`terrain`, `opacity`,
-  `cover_value`, `occupant_id`). `Vector2i` coords.
-- Helpers: `in_bounds()`, `neighbors()`, `distance_chebyshev()`, `distance_manhattan()`,
-  `line(a, b)` (supercover/Bresenham cell list).
-**Acceptance:** distance, neighbor, and line tests on fixed small grids.
+## Phase 2 — Modifier pipeline & provenance (`docs/08`)
+**Goal:** one resolver, recorded sources. Build **before** weapons — everything downstream must
+be born inside it. Retrofitting means touching every system twice.
+**Build:** `StatValue {base, current, sources}`, `ModSource {source_name, source_kind, op,
+delta}`, `StatResolver.resolve(stat_id, context)`. Pure, deterministic. `DescriptionBuilder`
+renders a resolved block to text, marking changed values.
+**Acceptance:** a stat fed by part + perk + ammo resolves once and `sources` names all three;
+the rendered description marks exactly the changed numbers; **nothing outside the resolver
+computes a final stat** (grep test).
 
 ---
 
-## Phase 3 — Pathfinding & movement
-**Goal:** movement within a Movement-Point (MP) budget.
-**Build:** `Pathfinder` over walkable cells with per-cell move cost (in MP); `astar(a, b)`;
-`reachable(origin, mp) -> Array[Vector2i]`. MP is the movement currency; AP converts
-into MP in combat (see Phase 7 / Appendix E). Pathfinding itself only knows MP.
-**Acceptance:** known-map path length (summed per-tile MP cost) is correct; `reachable`
-excludes blocked cells and respects the MP budget exactly.
-
----
-
-## Phase 4 — Procedural map generation
-**Goal:** seeded, connected battle maps with cover.
-**Build:** `MapGen`: `generate(seed, width, height) -> Grid`. Rooms + corridors
-(BSP or drunkard's walk), scatter half/full cover, place two opposing spawn zones.
-Guarantee spawn zones are path-connected.
+## Phase 3 — Body space & the shot plane (`docs/02`)
+**Goal:** the spatial core. No facings — continuous projection.
+**Build:** `Box` volumes in unit-local space; `project(unit, view_dir) -> Array[Region]`
+(`rect`, `depth`, `part`, `surface_normal`); `ShotPlane.build(origin, dir, world)` projecting
+**every** unit, cover object and obstacle along the line of fire into one depth-sorted plane;
+`resolve_projectile(plane, point)` → frontmost region, or null.
 **Acceptance:**
-- For 50 seeds, both spawn zones are reachable from each other.
-- Same seed → byte-identical grid (determinism).
-- Cover density falls within a target band.
+- Rotating the view angle continuously produces continuously-changing rects — **no
+  discontinuities, no facing snap**.
+- A rear ammo rack is occluded from the front, frontmost from behind, purely by depth.
+- A plate over a part returns the plate; a point in a gap returns null.
+- A shield authored as boxes-around-a-hole: a point in the hole returns the part behind.
+- **Layered targets:** a near unit and a far unit in one plane — a point missing the near
+  unit's boxes resolves to the far unit's. Same code path as a gap.
+- Cover is just a region; destroying it removes its regions.
+- ASCII plane dumps of all of the above in the test log.
+### ▶ CHECKPOINT 2 — shot plane swept across 8+ angles. **Stop for review.**
 
 ---
 
-## Phase 5 — Line of sight & visibility
-**Goal:** who can see whom.
-**Build:** `LoS.has_los(grid, a, b)` via `grid.line` + cell opacity;
-`visible_cells(grid, origin, range)`. Fixed, consistent corner-blocking rule.
-**Acceptance:** LoS is symmetric on open ground; walls block; known-geometry fixtures pass.
+## Phase 4 — Weapons & the dartboard (`docs/02`)
+**Build:** weapon stats (`damage`, `burst`, `recoil`, `scatter: Array[Ring]`, `range`,
+`ap_cost`, `requires`) — **all through the Phase 2 resolver**. `Dartboard.sample(aim_point,
+scatter, rng, count)`. Radii scale with range (linear to start, tunable).
+**Acceptance:** same seed → identical impact points; **an N-ring weapon works with N ∈ {1,2,3,5}**
+(no code assumes 3); ring weights hold over many samples; a tight-inner-ring sniper hits a
+named small region, a chaingun cannot; "Spin Up" shrinks a ring **via the resolver** and shows
+up in `sources`.
 
 ---
 
-## Phase 6 — Cover
-**Goal:** none / half / full cover, destructible and terrain.
-**Build:** `Cover.between(grid, from, to) -> CoverInfo` where `CoverInfo` has
-`level: {NONE, HALF, FULL}`, `profile: Array[SlotType]` (which slots this cover
-protects), and `object` (the covering blocker, or null). Derived from blockers
-adjacent to the target along the incoming LoS. Distinguish **destructible cover**
-(an object/Part with `hp` on the cell) from **terrain** (permanent).
-Default profiles (per-cover-object, tunable): HALF → `[LEGS]`; FULL → all slots.
-Destroying a destructible cover object mutates the grid and downgrades its level.
-**Acceptance:** cover-level + profile fixtures pass; destructible cover at hp 0
-downgrades the cover level and empties its profile; terrain never downgrades.
-
----
-
-## Phase 7 — Combat state machine
-**Goal:** turns, AP, and validated actions.
-**Build:**
-- `Unit` (runtime): matrix ref, chassis ref, `cell`, `ap`, `mp` (movement pool),
-  `mp_per_ap` (derived from agility/speed via `aggregate_stats()`), `alive`.
-- `CombatState`: squads, turn order, per-turn AP reset, action log.
-- Action objects: `MoveAction`, `AttackAction`, `SwapPartAction`, `PickUpAction`,
-  `ImplantAction`, `EndTurnAction`, each with `is_legal(state)` and `apply(state)`.
-  - `MoveAction` follows the AP→MP economy in **Appendix E**: movement spends MP per
-    tile; when MP is short the unit burns 1 AP for `+mp_per_ap` MP (repeat while AP
-    remains); leftover MP is discarded at end of turn.
-  - `PickUpAction` collects a field item (dropped Part, salvage, or an ejected
-    Matrix — a Matrix can sit directly on the grid as a field item, no wrapper
-    class involved) from an adjacent cell into a container the unit is carrying.
-  - `ImplantAction` installs a held Matrix into an available empty chassis,
-    spawning a new active `Unit` mid-combat (chassis source — reserve vs field — is a
-    Phase 10 detail).
-**Acceptance:** a scripted turn sequence yields the expected action log; illegal
-actions are rejected; turn order advances correctly. Moving a path costs the right MP,
-burns AP in `mp_per_ap` chunks when the pool is short, fails when AP runs out mid-path,
-and discards leftover MP at end of turn.
-
----
-
-## Phase 8 — Targeting & body-part damage
-**Goal:** shots that land on specific parts.
-**Build:** `Targeting.resolve_hit(attacker, target, grid, rng) -> HitResult` per the
-algorithm in **Appendix C** — exposure-weighted roll picks a living part FIRST, then
-cover interception reroutes the hit to the covering object (destructible) or absorbs it
-(terrain). `HitResult` carries one of: `part`, `cover_object`, or `blocked`.
-`DamageResolver.apply(hit, amount)`:
-- part → damage the part; on `hp <= 0` destroy it: remove its `stat_mods`, drop
-  container `contents` onto adjacent cells / into salvage.
-- cover_object → damage the cover; on `hp <= 0` destroy it (Phase 6 downgrade).
-- blocked → no effect (terrain soaked the shot).
-Destroying the TORSO disables the chassis and **ejects the matrix directly as a
-field item** (no wrapper class — `Grid.field_items` holds the Matrix Resource
-itself): place it on the free cell adjacent to the disabled chassis that is
-nearest the closest living ally (ties broken by lowest `Vector2i` index for
-determinism). An ally can retrieve it via `PickUpAction`. The matrix itself persists
-regardless (Phase 10) — recovery is a tactical layer, not a survival condition.
+## Phase 5 — Armor, DT & ricochet (`docs/03`)
+**Build:** material table **as a Resource** (`dt`, `deflect_threshold`, ricochet curve).
+`resolve_impact()`: penetrate / stop-dead / deflect, decided by real geometry — `bend_angle`
+between incoming vector and the hit box's `surface_normal`. Deflection spawns a ricochet
+travelling the world.
+**Damage retention:** `retained = lerp(0.90, 0.25, clamp(bend_angle / MAX_BEND, 0, 1))` —
+endpoints and curve live in the material table, not in code. Cap ricochet depth (default 2) +
+damage floor; **the sim must terminate**. Crits: bypass armor if armored, bonus damage if not;
+crit chance is a float, >100% enables double crit. `VOLATILE` parts cook off.
 **Acceptance:**
-- Seeded rolls → deterministic part selection; distribution over many rolls tracks
-  `exposure_weight` ratios.
-- A part in the cover's `profile` routes the hit to the cover object (destructible) or
-  to `blocked` (terrain); a part NOT in the profile is hit directly even under cover.
-- Chipping a destructible cover to hp 0 removes its protection, so previously-covered
-  parts become hittable on subsequent rolls.
-- Destroying a weapon part removes its attack. Destroying the torso disables the chassis,
-  drops the matrix on the deterministic cell toward the nearest ally, and
-  leaves the matrix flagged alive; an adjacent ally's `PickUpAction` recovers it.
+- A chaingun burst under DT fails to penetrate steel; a rifle round over DT damages plate
+  **and** the part behind.
+- Stop-dead damages the plate; deflect does not.
+- **A graze retains ~90% and can kill someone behind; a near-right-angle bounce retains ~25%.**
+- Ricochets terminate; a seeded burst replays identically and can be shown tagging a third party.
+- Double crit fires at 125% and applies both effects. Ammo rack destruction cooks off.
+### ▶ CHECKPOINT 3 — seeded burst into armor: deflections, paths, retained damage. **Stop.**
 
 ---
 
-## Phase 9 — Inventory & mid-combat part swapping
-**Goal:** the nesting inventory and hot-swapping.
-**Build:** container-tree ops on `Part.contents`, per **Appendix D**:
-- `attach(part, into)` — rejects if it would exceed the container's `max_volume`
-  (by direct children's external `volume`) or push the chassis over `max_mass`
-  (by nested effective mass). Enforce no cycles.
-- `detach(part)`, `walk()`, `flatten()`.
-- `Chassis.carried_mass()` — recursive, applies each container's `mass_multiplier`
-  to everything strictly inside it (multipliers compose through nesting).
-Wire `SwapPartAction`: detach a slot part ↔ attach one from a container, costs AP.
-**Acceptance:**
-- Nesting invariants hold: no cycles; a container's direct contents' volume ≤ `max_volume`;
-  a nested container occupies its parent by its own external `volume`, not its contents.
-- `carried_mass()` matches Appendix D: 50kg in a directly-worn ×0.5 backpack → 25kg;
-  a ×0.8 pouch nested inside that backpack does NOT apply its 0.8 — its contents are
-  flat-summed and discounted only by the backpack's 0.5 (10kg → 5kg). The backpack's
-  own mass counts full. Worn directly, the pouch's 0.8 applies.
-- Over-volume or over-mass `attach` is rejected; a swap changes `aggregate_stats()`
-  mid-combat and deducts AP.
+## Phase 6 — Tactics/Resolution & combat integration (`docs/09`, `docs/03`, `docs/05`)
+**Goal:** the two-phase turn. Structural — do not defer it.
+**Build:** `Phase {TACTICS, RESOLUTION}`; `ActionQueue` per unit; queue-time validation against
+a **speculative** state copy (previews only, **no authoritative mutation in TACTICS**);
+`resolve_turn()` executing all queues deterministically with **re-validation** — an action made
+illegal by the moving world aborts, **logs a reason**, and the queue continues.
+Rebuild actions against the socket model: `MoveAction` (AP→MP economy unchanged, 6 AP
+baseline), `AttackAction` (aim point → dartboard → shot plane → impact), `SwapPartAction`,
+`ModifyAssemblyAction` (strip a dropped assembly, costs AP), `PickUpAction`, `CarryBodyAction`
+(→ `BACK` socket, `INERT`: contributes mass + volume boxes only — no stats, no weapons, no RAM,
+and blocks a backpack), `EndTurnAction`.
+**Acceptance:** queuing mutates nothing; a queued attack on a target that dies earlier in
+resolution aborts with a logged reason and the rest of the queue proceeds; a carried body eats
+rounds aimed at the carrier's back via the projection alone; flanking exposes rear regions; the
+turn replays identically from a seed.
 
 ---
 
-## Phase 10 — Roguelike run / meta layer
-**Goal:** persistence rules across fights.
-**Build:** `RunState`: `roster: Array[Matrix]` (persistent), stash of parts/chassis,
-salvage/credits, seed. `resolve_defeat()` — strip all parts from surviving matrices'
-chassis, keep the matrices (+XP), lose the parts. `resolve_victory()` — matrices gain
-XP, enemy parts salvaged into the stash. `apply_perk(matrix, perk)`.
-
-Matrix recovery at battle end — set a `recovery_state` per matrix that was ejected onto
-the field during the fight:
-- **RECOVERED** — the matrix was picked up, re-implanted (Phase 7 `ImplantAction`), or
-  still piloting at end. Extracts clean, no penalty.
-- **LEFT_BEHIND** — the matrix was still on the field at battle end. The matrix still
-  returns to the roster (roguelike rule is absolute), but gets flagged
-  `pending_return_penalty = true`. The penalty mechanic itself is TBD — set the flag
-  only; do not invent numbers or effects.
-Matrices that never ejected are RECOVERED by default.
-**Acceptance:** simulated defeat → matrices persist with XP, parts gone; simulated
-victory → parts salvaged; an ejected-and-recovered matrix ends RECOVERED with no flag;
-an ejected-and-abandoned matrix ends LEFT_BEHIND with `pending_return_penalty` set yet
-still present in the roster; `RunState` save/load round-trips (including `recovery_state`).
+## Phase 7 — Matrices, surrogates & deep strike (`docs/04`, `docs/00`)
+**Goal:** the mind layer — and the randomization stress test.
+**Build:** base/link matrix split; `effective_level = base.level * link.tier_ratio`;
+`perk_slots` from link tier, player-chosen. Surrogate tier as an **ordered data ladder** with
+damage-driven demotion and a turn clock decaying exposed organics. Ejection from the
+`MATRIX`-socket part. Recovery states: PILOTING, CARRIED, LEFT_BEHIND, LINK_KILLED.
+**Deep strike:** insert matrices with **no loadout**; assemble cyborgs from whatever frames the
+hulk has; force enemy matrices out of occupied frames.
+**Acceptance:** link destruction flags death feedback on the base; a low-tier link caps
+effective level but carries the base's top perks; a torso chewed to SPINAL still functions;
+exposed organics decay per turn; **matrices are never lost on any path**.
+**Fuzz test (the real point):** generate N random valid cyborgs from a part pool across many
+seeds — every one must satisfy socket/mass/bulk/RAM invariants, project a sane shot plane, and
+either be armed or be knowably unarmed. No crashes, no malformed assemblies.
+### ▶ CHECKPOINT 4 — 20 random deep-strike cyborgs, ASCII + stat blocks. **Stop for review.**
 
 ---
 
-## Phase 11 — Headless sample combat (integration)
-**Goal:** prove the whole logic stack works end to end, no rendering.
-**Build:** `res://test/integration/test_sample_battle.gd`: `seed → MapGen →` spawn two
-squads of assembled chassis+matrices → run a simple deterministic AI (approach, take
-cover, attack best target, swap in a spare weapon when one is destroyed) until one
-squad is down. Log each turn to stdout.
-**Acceptance:** runs under `./run_tests.sh`, terminates within a turn cap, produces a
-winner, and exercises LoS + cover + body-part damage + swap + defeat with zero errors.
+## Phase 8 — RAM, inventory & loot (`docs/05`, `docs/07`)
+**Build:** `max_ram`/`ram_cost` checked alongside mass and bulk — three independent
+constraints. Encumbrance rules from v1 **unchanged**. Loot tables: `merchant_pool` and
+`hulk_pool` **mostly exclusive with a deliberate small overlap** — shared designs appear as
+`standard` from merchants and `original_pattern` / `prototype` from hulks, minor but visible
+differences. Tool tiers priced in AP against the 6 AP baseline.
+**Acceptance:** a weightless drone swarm fails on RAM while passing mass; v1 mass/bulk tests
+pass verbatim; the overlap set is small, intentional, and variant-tagged rather than
+duplicated.
 
 ---
 
-## Phase 12 — Thin view layer (the human finally looks)
-**Goal:** a playable sample battle.
-**Build (`res://src/view/`):** `TileMapLayer` render of a `Grid`, unit markers,
-click-to-select, click-to-move with reachable-cell highlight, click-to-attack showing
-hit location + cover, and a minimal panel: selected unit's parts/HP/AP + a swap control.
-A "New Battle" button calls `MapGen` and spawns squads. Programmer-primitive visuals only.
-**Acceptance:** launches via `godot --path .`; a human can play a full sample battle
-end to end.
+## Phase 9 — Mission loop (`docs/07`)
+**Build:** `MissionState`: objectives, `extract()` (keep loot), `terminate()` (lose loot,
+matrices return). `RunState` v2: roster, stash, resource counters (**data-driven ids**),
+credits, seed. Hulk pseudo-persistence: map fixed by seed, population re-rolled per visit.
+**Acceptance:** extract banks loot; terminate loses loot and returns every matrix; revisiting a
+seed yields an identical map with a different population; save/load round-trips.
 
 ---
 
-## Appendix A — determinism rules
-- Never call `randi()`/`randf()` directly in logic. Pass an `RandomNumberGenerator`
-  seeded from `RunState.seed` (or a per-battle seed) into any code that rolls.
-- Map generation, hit-location rolls, and AI tie-breaks must all be reproducible from a seed.
-
-## Appendix B — out of scope (leave hooks, build nothing)
-- **Co-op / netcode.** Keep `CombatState` fully serializable and all mutations flowing
-  through Action objects, so a future authoritative-host layer could replay actions.
-  Do not add multiplayer, RPCs, or `MultiplayerAPI` usage.
-
-## Appendix C — hit resolution
-Exposure-weighted part selection first, then cover interception.
-
+## Phase 10 — Terminal UI & the transparency proof (`docs/08`)
+**Build:** `RichTextLabel`/BBCode terminal panels; a `Theme` resource (6 colors, one mono
+font); stat block rendering with changed-value highlighting and drill-down to `sources`;
+burn-stack decimal rule + explainer; **the rolling combat log panel** as a `UISink` (`09`);
+stat panels for **partially obscured targets deeper in the shot plane**, not just the nearest.
+**Acceptance — the headline test:**
 ```
-resolve_hit(attacker, target, grid, rng) -> HitResult:
-    parts = target.living_parts()              # destroyed parts are not selectable
-    part  = weighted_choice(parts, key = exposure_weight, rng)   # roll the location
-
-    cov = Cover.between(grid, attacker.cell, target.cell)        # CoverInfo, Phase 6
-    if cov.object != null and part.slot_type in cov.profile:
-        if cov.object.is_destructible:
-            return HitResult(cover_object = cov.object)   # cover eats the shot; chip it down
-        else:
-            return HitResult(blocked = true)              # terrain soaks it → no damage
-    return HitResult(part = part)                         # clean hit on the part
+for every (loadout, target, seed):
+    assert tooltip_predicted_damage(...) == simulate_damage(..., seed)
 ```
 
-Notes:
-- `exposure_weight` is per-part data. Default starting table (tune later):
-  TORSO 40, LEGS 26, L_ARM 12, R_ARM 12, HEAD 10. Zero-weight or missing/destroyed
-  parts are excluded from the roll.
-- Cover does NOT reweight the roll; it reroutes the outcome. This is what makes a
-  covered target soak fire into its cover until the cover breaks, at which point the
-  protected slots re-open on later rolls. Reweighting by stance is a later tunable.
-- `weighted_choice` must draw from the passed `rng` so results are seed-reproducible.
+---
 
-## Appendix D — encumbrance (volume + felt mass)
-Two independent constraints.
+## Phase 11 — Headless full mission (integration)
+**Build:** `test/integration/test_full_mission.gd`: seed → hulk → insert (both modes) →
+deterministic AI queuing multi-action turns → gather objective → extract. Full `combat.log`.
+**Acceptance:** terminates within a turn cap; exercises shot plane + dartboard + DT/ricochet +
+cook-off + RAM + surrogate decay + tactics/resolution + extraction, zero errors.
+**This is the definition of done.**
+### ▶ CHECKPOINT 5 — full mission combat log. **Stop for review.**
 
-**Volume — per container, non-composing.** Each container checks the sum of its
-*direct* children's external `volume` against its own `max_volume`. A nested container
-occupies its parent by its own `volume` only — its contents do not bulge the exterior.
+---
 
-**Mass — discount applies ONCE, only at the directly-worn layer.** "Felt weight" is
-only reduced by a container the character wears/installs directly. A container nested
-inside another container contributes NOTHING of its own `mass_multiplier`; it and all
-its contents are summed flat and then discounted by the single worn container above them.
-Multipliers never compose.
+## Phase 12 — 3D view (bonus / next session) (`docs/08`)
+HL2-era budgets, CC0 placeholders. Grid render, unit markers, click-to-select, click-to-move.
+Third-person zoom on attack showing the dartboard over the target; plain click = default burst.
+**Acceptance:** a human plays one mission end to end.
 
-```
-# Effective (felt) mass a chassis carries, checked against chassis.max_mass.
-carried_mass(chassis) -> float:
-    total = 0.0
-    for part in chassis.slots.values():
-        total += part.mass                          # worn/installed part, full weight
-        if part.is_container:
-            # everything inside the worn container, summed flat, discounted ONCE:
-            total += _flat_contents(part) * part.mass_multiplier
-    return total
+---
 
-_flat_contents(container) -> float:                 # ignore nested multipliers entirely
-    total = 0.0
-    for child in container.contents:
-        total += child.mass                         # flat, no discount
-        if child.is_container:
-            total += _flat_contents(child)          # still flat, recurse for mass only
-    return total
-```
-
-Worked example: backpack (own mass 2kg, `mass_multiplier` 0.5) directly worn, holding
-50kg of loose gear → contributes 2 (bag, full) + 50×0.5 = 27kg. Now put a pouch
-(own mass 1kg, `mass_multiplier` 0.8) holding a 10kg item *inside* that backpack: the
-pouch is not directly worn, so its 0.8 is ignored — the pouch's 1kg and the 10kg are
-flat-summed (11kg) and discounted only by the backpack's 0.5 → the 10kg becomes 5kg.
-Worn the pouch directly instead and its 0.8 would apply: 1 (pouch, full) + 10×0.8 = 9kg.
-
-(If you meant a *flat* subtractive offset instead of a proportional multiplier, swap
-`child.mass * mult` for a clamped `max(0, child.mass - offset)` and drop composition —
-but the multiplier model above is the default.)
-
-## Appendix E — movement economy (AP → MP)
-AP is the turn currency; movement runs on a separate Movement-Point pool that AP feeds.
-
-- Each unit has `mp_per_ap`, derived from its agility/speed stat (from
-  `aggregate_stats()`). Formula is a later tunable — start simple, e.g.
-  `mp_per_ap = base_mp + agility`.
-- Movement spends MP: each tile stepped costs `move_cost(cell)` MP.
-- When the MP pool can't cover the next tile, the unit burns **1 AP** to add
-  `mp_per_ap` MP. Repeat while AP remains. A `MoveAction` for a path does this
-  automatically and fails if AP runs out before the path completes.
-- Leftover MP is **discarded at end of turn** (does not bank across turns). Tunable.
-- Within a turn, the farthest a unit can reach = `reachable(origin, current_mp +
-  remaining_ap * mp_per_ap)` in MP terms (Phase 3).
-
-## Session definition of done
-Phase 11 green (headless sample battle passes) is the minimum bar. Phase 12 is a bonus
-if time remains.
+## Appendix — standing rules
+- **Determinism:** never call `randi()`/`randf()` in logic. Pass a seeded
+  `RandomNumberGenerator`. Mapgen, scatter, crits, ricochet, AI tie-breaks — all reproducible.
+  Deflection angle is **geometry, not a roll**.
+- **Terminology:** matrix / surrogate / frame / cyborg / bot. **"Robot" is retired** (`docs/00`).
+- **Out of scope:** co-op/netcode (keep `CombatState` serializable and action-queue-driven,
+  build nothing), and everything in `docs/99`.
+- **Ask, don't invent:** if a formula isn't specified (`mp_per_ap`, tier ratios, the
+  LEFT_BEHIND penalty), use the stated default or leave a flagged hook. Never invent balance
+  numbers and present them as design.
