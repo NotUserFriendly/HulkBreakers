@@ -18,9 +18,9 @@ const FULL_COVER_VALUE: float = 1.0
 const SPAWN_ZONE_SIZE: int = 2
 
 
-static func generate(seed: int, width: int, height: int) -> Grid:
+static func generate(map_seed: int, width: int, height: int) -> Grid:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed
+	rng.seed = map_seed
 
 	var grid := Grid.new(width, height)
 	for y in range(height):
@@ -58,7 +58,9 @@ static func _split_and_carve(
 	var child_a: Rect2i
 	var child_b: Rect2i
 	if split_x:
+		@warning_ignore("integer_division")
 		var lo: int = maxi(MIN_CHILD_SIZE, rect.size.x / 3)
+		@warning_ignore("integer_division")
 		var hi: int = mini(rect.size.x - MIN_CHILD_SIZE, rect.size.x * 2 / 3)
 		if hi < lo:
 			hi = lo
@@ -69,7 +71,9 @@ static func _split_and_carve(
 			Vector2i(split_at, rect.position.y), Vector2i(rect.size.x - offset, rect.size.y)
 		)
 	else:
+		@warning_ignore("integer_division")
 		var lo_y: int = maxi(MIN_CHILD_SIZE, rect.size.y / 3)
+		@warning_ignore("integer_division")
 		var hi_y: int = mini(rect.size.y - MIN_CHILD_SIZE, rect.size.y * 2 / 3)
 		if hi_y < lo_y:
 			hi_y = lo_y
@@ -110,6 +114,7 @@ static func _carve_room(
 			_set_open(grid, Vector2i(x, y))
 
 	rooms.append(room)
+	@warning_ignore("integer_division")
 	return room.position + room.size / 2
 
 
@@ -168,7 +173,9 @@ static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
 	var best_dist: int = -1
 	for i in range(rooms.size()):
 		for j in range(i + 1, rooms.size()):
+			@warning_ignore("integer_division")
 			var center_i: Vector2i = rooms[i].position + rooms[i].size / 2
+			@warning_ignore("integer_division")
 			var center_j: Vector2i = rooms[j].position + rooms[j].size / 2
 			var d: int = Grid.distance_chebyshev(center_i, center_j)
 			if d > best_dist:

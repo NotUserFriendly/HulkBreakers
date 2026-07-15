@@ -46,6 +46,23 @@ func test_carry_body_attaches_to_back_and_tags_inert() -> void:
 	assert_false(grid.field_items.has(Vector2i(0, 0)))
 
 
+func test_carry_body_emits_a_carry_body_event() -> void:
+	var carrier := _make_carrier(Vector2i(0, 0))
+	var grid := Grid.new(5, 5)
+	var body := _make_body()
+	grid.field_items[Vector2i(0, 0)] = [body]
+	var state := CombatState.new(grid, [carrier])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	CarryBodyAction.new(carrier, Vector2i(0, 0), &"downed_ally").apply(state)
+
+	var carries: Array[LogEvent] = sink.events_of_kind(&"carry_body")
+	assert_eq(carries.size(), 1)
+	assert_eq(carries[0].unit_id, carrier.id)
+	assert_eq(carries[0].data.get("body"), &"downed_ally")
+
+
 func test_carry_body_occupies_back_so_a_second_body_has_nowhere_to_go() -> void:
 	var carrier := _make_carrier(Vector2i(0, 0))
 	var grid := Grid.new(5, 5)

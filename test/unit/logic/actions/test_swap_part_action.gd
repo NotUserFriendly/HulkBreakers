@@ -44,6 +44,25 @@ func test_swap_part_detaches_old_and_attaches_replacement() -> void:
 	assert_eq(unit.ap, unit.max_ap - 2)
 
 
+func test_swap_part_emits_a_swap_part_event() -> void:
+	var old_arm := _make_arm(&"stump")
+	var unit := _make_unit(Vector2i(0, 0), old_arm)
+	var grid := Grid.new(5, 5)
+	var replacement := _make_arm(&"gun_arm")
+	grid.field_items[Vector2i(0, 0)] = [replacement]
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	SwapPartAction.new(unit, &"torso", &"SHOULDER", &"gun_arm", 2).apply(state)
+
+	var swaps: Array[LogEvent] = sink.events_of_kind(&"swap_part")
+	assert_eq(swaps.size(), 1)
+	assert_eq(swaps[0].unit_id, unit.id)
+	assert_eq(swaps[0].data.get("replacement"), &"gun_arm")
+	assert_eq(swaps[0].data.get("removed"), &"stump")
+
+
 func test_swap_part_illegal_when_replacement_does_not_fit_the_socket_type() -> void:
 	var old_arm := _make_arm(&"stump")
 	var unit := _make_unit(Vector2i(0, 0), old_arm)

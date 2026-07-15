@@ -93,8 +93,27 @@ func apply(state: CombatState) -> void:
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
 
 	for point: Vector2 in points:
+		# The shooter's own body sits at the ray's own origin (depth <= 0)
+		# and can otherwise satisfy `_find_next`'s point-containment check
+		# just like the target can when the two happen to share a lateral
+		# position — excluded on this first lookup only, the same mechanism
+		# a ricochet uses to skip the body it just bounced off, so a shot
+		# fired at a collinear target never reaches back into the shooter's
+		# own chest.
 		var results: Array[ImpactResult] = DamageResolver.resolve_shot(
-			origin, direction, point, damage, crit_chance, state, state.material_table, state.rng
+			origin,
+			direction,
+			point,
+			damage,
+			crit_chance,
+			state,
+			state.material_table,
+			state.rng,
+			0,
+			DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
+			DamageResolver.DEFAULT_DAMAGE_FLOOR,
+			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
+			actual.frame.all_parts()
 		)
 		for result: ImpactResult in results:
 			_log_impact(state, actual, result)
@@ -153,9 +172,78 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 		"is_double_crit": result.is_double_crit,
 	}
 	var event := LogEvent.new(
-		state.turn_index, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text
+		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text
 	)
 	state.combat_log.emit(event)
+
+	if result.destroyed_part:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"part_destroyed",
+				{"part": result.region.part.id},
+				"part_destroyed: %s" % result.region.part.id
+			)
+		)
+	for cooked: Unit in result.cooked_off_units:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"cook_off",
+				{"source_part": result.region.part.id, "unit": cooked.id},
+				"cook_off: %s hit unit %d" % [result.region.part.id, cooked.id]
+			)
+		)
+	if result.ejected_matrix != null:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"matrix_ejected",
+				{"host_part": result.region.part.id, "matrix": result.ejected_matrix.id},
+				"matrix_ejected: %s from %s" % [result.ejected_matrix.id, result.region.part.id]
+			)
+		)
+	if result.demoted_unit != null:
+		var demotion_data: Dictionary = {
+			"from": result.demoted_tier_before.id,
+			"to": result.demoted_unit.surrogate_tier.id,
+			"cause": "matrix_ejected",
+		}
+		var demotion_text: String = (
+			"surrogate_demoted: unit %d %s -> %s (matrix ejected)"
+			% [
+				result.demoted_unit.id,
+				result.demoted_tier_before.id,
+				result.demoted_unit.surrogate_tier.id,
+			]
+		)
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				result.demoted_unit.id,
+				&"surrogate_demoted",
+				demotion_data,
+				demotion_text
+			)
+		)
+	if result.dropped_subtree != null:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"subtree_dropped",
+				{"part": result.dropped_subtree.id},
+				"subtree_dropped: %s" % result.dropped_subtree.id
+			)
+		)
 
 
 func describe() -> String:

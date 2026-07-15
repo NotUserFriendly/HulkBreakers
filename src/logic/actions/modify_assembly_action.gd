@@ -49,9 +49,21 @@ func apply(state: CombatState) -> void:
 	state.grid.field_items[assembly_cell].append(target)
 
 	actual.ap -= ap_cost
-	state.log_action(
+	var text: String = (
 		"ModifyAssemblyAction: unit %d stripped %s from %s" % [actual.id, target_id, assembly_id]
 	)
+	state.log_action(text)
+	if not state.is_preview:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				actual.id,
+				&"strip_part",
+				{"assembly": assembly_id, "stripped": target_id},
+				text
+			)
+		)
 
 
 ## `target_id` anywhere in the assembly's subtree, the assembly's own root

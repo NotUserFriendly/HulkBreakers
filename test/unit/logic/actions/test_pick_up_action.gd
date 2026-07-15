@@ -38,6 +38,25 @@ func test_pick_up_matrix_goes_to_held_matrix() -> void:
 	assert_false(grid.field_items.has(Vector2i(0, 0)))
 
 
+func test_pick_up_emits_a_pick_up_event() -> void:
+	var unit := _make_unit(Vector2i(0, 0))
+	var grid := Grid.new(5, 5)
+	var matrix := Matrix.new()
+	matrix.id = &"loose_matrix"
+	grid.field_items[Vector2i(0, 0)] = [matrix]
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	PickUpAction.new(unit, Vector2i(0, 0), &"loose_matrix").apply(state)
+
+	var pick_ups: Array[LogEvent] = sink.events_of_kind(&"pick_up")
+	assert_eq(pick_ups.size(), 1)
+	assert_eq(pick_ups[0].unit_id, unit.id)
+	assert_eq(pick_ups[0].data.get("item"), &"loose_matrix")
+	assert_true(pick_ups[0].data.get("is_matrix"))
+
+
 func test_pick_up_matrix_illegal_when_already_carrying_one() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.held_matrix = Matrix.new()

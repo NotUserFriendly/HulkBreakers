@@ -5,6 +5,10 @@ var grid: Grid
 var units: Array[Unit] = []  # turn order
 var squads: Dictionary = {}  # squad_id(int) -> Array[Unit]
 var turn_index: int = 0
+## The actual round number (docs/09 LogEvent.turn), distinct from turn_index
+## (a position in the turn-order array). Incremented in advance_turn() each
+## time turn order wraps back to the front, not once per unit's turn.
+var round_number: int = 0
 var action_log: Array[String] = []
 var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0}
 var rng: RandomNumberGenerator
@@ -93,6 +97,7 @@ func dup() -> CombatState:
 	for unit: Unit in cloned_units:
 		cloned.add_unit(unit)
 	cloned.turn_index = turn_index
+	cloned.round_number = round_number
 	return cloned
 
 
@@ -110,7 +115,7 @@ func resolve_turn(queue: ActionQueue) -> void:
 		log_action(reason)
 		combat_log.emit(
 			LogEvent.new(
-				turn_index,
+				round_number,
 				Enums.Phase.RESOLUTION,
 				queue.unit.id,
 				&"action_aborted",
@@ -132,17 +137,53 @@ func try_apply(action: CombatAction) -> bool:
 func _start_turn(unit: Unit) -> void:
 	unit.ap = unit.max_ap
 	unit.mp = 0.0  # leftover MP from a prior turn is discarded here (Appendix E)
+	var tier_before: SurrogateTier = unit.surrogate_tier
 	unit.tick_organics_decay(SurrogateLadder.default_ladder())
+
+	if not is_preview:
+		combat_log.emit(
+			LogEvent.new(
+				round_number,
+				Enums.Phase.RESOLUTION,
+				unit.id,
+				&"turn_start",
+				{},
+				"turn_start: unit %d" % unit.id
+			)
+		)
+		if unit.surrogate_tier != tier_before:
+			combat_log.emit(
+				LogEvent.new(
+					round_number,
+					Enums.Phase.RESOLUTION,
+					unit.id,
+					&"surrogate_demoted",
+					{
+						"from": tier_before.id,
+						"to": unit.surrogate_tier.id,
+						"cause": "organics_decay"
+					},
+					(
+						"surrogate_demoted: unit %d %s -> %s (organics decay)"
+						% [unit.id, tier_before.id, unit.surrogate_tier.id]
+					)
+				)
+			)
 
 
 ## Advances to the next living unit in turn order, resetting its AP/MP.
+## Bumps round_number whenever this wraps back to the front of turn order —
+## a round is "everyone's had a turn," not "one more unit acted."
 func advance_turn() -> void:
 	var n: int = units.size()
 	if n == 0:
 		return
+	var previous_index: int = turn_index
 	for i in range(1, n + 1):
-		var idx: int = (turn_index + i) % n
+		var idx: int = (previous_index + i) % n
 		if units[idx].alive:
+			if idx <= previous_index:
+				round_number += 1
 			turn_index = idx
 			_start_turn(units[idx])
 			return

@@ -117,6 +117,46 @@ static func _owning_unit(part: Part, state: CombatState) -> Unit:
 	return null
 
 
+## Destroying any non-root part drops its whole subtree as one intact
+## assembly (docs/01: "blow a shoulder off and the entire subtree below it
+## drops as one item... not exploded into a pile of disparate bits"). The
+## frame's own root is handled separately (eject_matrix_if_needed, if it
+## hosts one) — there's no parent within the same frame to drop it from,
+## since the root destroyed IS the unit. Returns the dropped part (the
+## subtree's own root), or null if nothing was actually dropped.
+static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Part:
+	if part.hp > 0:
+		return null
+	var owner: Unit = _owning_unit(part, state)
+	if owner == null or owner.frame.root == part:
+		return null
+	if not PartGraph.drop(owner.frame.root, part):
+		return null
+
+	if not state.grid.field_items.has(owner.cell):
+		state.grid.field_items[owner.cell] = []
+	state.grid.field_items[owner.cell].append(part)
+	return part
+
+
+## Every consequence of a part actually reaching 0 hp, gathered onto one
+## ImpactResult: cook-off, matrix ejection (plus the demotion it always
+## carries — docs/04), and the subtree drop. `demoted_tier_before` is
+## captured ahead of eject_matrix_if_needed() since that call is what
+## changes it.
+static func _resolve_destruction_consequences(
+	impact: ImpactResult, region: Region, state: CombatState
+) -> void:
+	impact.cooked_off_units = cook_off(region.part, state)
+	var owner: Unit = _owning_unit(region.part, state)
+	var tier_before: SurrogateTier = owner.surrogate_tier if owner != null else null
+	impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
+	if impact.ejected_matrix != null:
+		impact.demoted_unit = owner
+		impact.demoted_tier_before = tier_before
+	impact.dropped_subtree = drop_subtree_if_destroyed(region.part, state)
+
+
 ## Every part sharing a body with `part` (its whole unit, if any — otherwise
 ## just itself). A ricochet's new origin sits right where it just left, so
 ## excluding only the one part it bounced off still lets it immediately
@@ -233,14 +273,12 @@ static func resolve_shot(
 			Enums.Outcome.PENETRATE:
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
-					impact.cooked_off_units = cook_off(region.part, state)
-					impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
+					_resolve_destruction_consequences(impact, region, state)
 				continue
 			Enums.Outcome.STOP_DEAD:
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
-					impact.cooked_off_units = cook_off(region.part, state)
-					impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
+					_resolve_destruction_consequences(impact, region, state)
 				return results
 			Enums.Outcome.DEFLECT:
 				var next_damage: float = damage * impact.retained_fraction

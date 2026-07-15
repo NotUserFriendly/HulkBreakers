@@ -1,17 +1,24 @@
 extends GutTest
 
 ## Phase 11 — "this is the definition of done" (PLAN.md). Seed -> hulk ->
-## insert both modes (a landing squad with a chosen loadout, a deep-struck
-## enemy squad wearing whatever the hulk had) -> a deterministic AI queuing
-## multi-action turns through the real two-phase resolve loop -> gather ->
-## extract. Exercises shot plane + dartboard + DT/ricochet + cook-off +
-## RAM + surrogate decay + tactics/resolution + extraction end to end,
-## with a full combat.log, and must terminate within a turn cap.
+## insert both modes (a 3-cyborg landing squad with a chosen loadout, a
+## 3-unit deep-struck defense wearing whatever the hulk had) -> a
+## deterministic AI queuing multi-action turns through the real two-phase
+## resolve loop -> gather the objective off the map -> reach the extraction
+## zone -> extract. Every mechanic below fires because the simulation
+## produced it, not because the test reached in and triggered it by hand —
+## anything that doesn't fire naturally is a finding for PLAN.md, not
+## something to force.
 
 const SEED := 20260715
 const WIDTH := 24
 const HEIGHT := 16
-const TURN_CAP := 300
+const TURN_CAP := 400
+## Up to this many shots fired at the same target in one turn once already
+## in range — enough AP-budget headroom that a target dying to the first
+## real (non-preview) shot leaves a second queued shot to abort for real at
+## resolution (docs/09: "the world moved").
+const MAX_SHOTS_PER_TURN := 3
 
 
 func _cells_of_terrain(grid: Grid, terrain: int) -> Array[Vector2i]:
@@ -57,8 +64,12 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 
 	var torso := Part.new()
 	torso.id = StringName("%s_torso" % unit_id)
-	torso.hp = 10
-	torso.max_hp = 10
+	# Generous relative to incoming fire (docs/03: ricochets keep real damage,
+	# and can bounce back toward whoever's standing near the shooter) — the
+	# squad needs to survive stray chaos, not just direct hits, to reach
+	# gather/extract at all.
+	torso.hp = 24
+	torso.max_hp = 24
 	torso.material = &"sheet_steel"
 	torso.hosts_matrix = true
 	torso.hosted_matrix = link
@@ -71,6 +82,62 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 	frame.max_mass = 200.0
 	frame.max_ram = 20.0
 	return Unit.new(link, frame, cell, 0)
+
+
+## A hand-built (not deep-struck) defender whose MATRIX hosts on its ARM, not
+## its torso (docs/01: "it is not always the torso") — the arm's own volume
+## box sits frontmost, so incoming fire reaches it before the torso, and
+## destroying it must both eject the matrix and drop the arm (with the hand
+## and pistol still attached) as one intact assembly.
+func _arm_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
+	var link := Matrix.new()
+	link.id = StringName("%s_link" % unit_id)
+
+	var pistol := Part.new()
+	pistol.id = StringName("%s_pistol" % unit_id)
+	pistol.hp = 3
+	pistol.max_hp = 3
+	pistol.attaches_to = [&"GRIP"]
+	pistol.requires = {&"TRIGGER": 1}
+	pistol.damage = 4.0
+	pistol.ap_cost = 1
+	pistol.scatter = [Ring.new(0.15, 1.0)]
+
+	var hand := Part.new()
+	hand.id = StringName("%s_hand" % unit_id)
+	hand.hp = 3
+	hand.max_hp = 3
+	hand.attaches_to = [&"WRIST"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var arm := Part.new()
+	arm.id = StringName("%s_arm" % unit_id)
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.attaches_to = [&"SHOULDER"]
+	arm.hosts_matrix = true
+	arm.hosted_matrix = link
+	arm.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(1.6, 1.0, 0.3))]
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	arm.sockets = [wrist]
+
+	var torso := Part.new()
+	torso.id = StringName("%s_torso" % unit_id)
+	torso.hp = 12
+	torso.max_hp = 12
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var shoulder := Socket.new(&"SHOULDER")
+	shoulder.occupant = arm
+	torso.sockets = [shoulder]
+
+	var frame := Frame.new(torso)
+	frame.max_mass = 200.0
+	frame.max_ram = 20.0
+	return Unit.new(link, frame, cell, 1)
 
 
 ## The pistol/rifle/two_handed_sword templates carry damage > 0; this
@@ -95,28 +162,19 @@ func _nearest_living_enemy(unit: Unit, state: CombatState) -> Unit:
 	return nearest
 
 
-## A minimal, fully deterministic AI: attack the nearest living enemy if
-## already possible, otherwise close the distance and try again, then
-## always end turn. Every decision is a plain function of the (seeded)
-## CombatState — no randomness of its own.
-func _queue_turn(unit: Unit, state: CombatState) -> ActionQueue:
-	var queue := ActionQueue.new(unit)
-	var enemy: Unit = _nearest_living_enemy(unit, state)
-	if enemy == null:
-		queue.enqueue(EndTurnAction.new(unit), state)
-		return queue
-
-	var weapon_id: StringName = _find_weapon_id(unit)
-	if weapon_id != &"" and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state):
-		queue.enqueue(EndTurnAction.new(unit), state)
-		return queue
-
+## Greedily closes the distance to `target_cell` by one reachable-this-turn
+## step, queuing a MoveAction if that step actually goes anywhere.
+func _path_toward(
+	unit: Unit, target_cell: Vector2i, state: CombatState, queue: ActionQueue
+) -> void:
+	if unit.cell == target_cell:
+		return
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
 	var best_cell: Vector2i = unit.cell
-	var best_dist: int = Grid.distance_chebyshev(unit.cell, enemy.cell)
+	var best_dist: int = Grid.distance_chebyshev(unit.cell, target_cell)
 	for cell: Vector2i in reachable:
-		var d: int = Grid.distance_chebyshev(cell, enemy.cell)
+		var d: int = Grid.distance_chebyshev(cell, target_cell)
 		if d < best_dist:
 			best_dist = d
 			best_cell = cell
@@ -125,10 +183,97 @@ func _queue_turn(unit: Unit, state: CombatState) -> ActionQueue:
 		if path.size() >= 2:
 			queue.enqueue(MoveAction.new(unit, path), state)
 
-	if weapon_id != &"":
-		queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+
+func _squad_has_survivors(state: CombatState, squad_id: int) -> bool:
+	for unit: Unit in state.units:
+		if unit.squad_id == squad_id and unit.alive:
+			return true
+	return false
+
+
+## A minimal, fully deterministic AI, purely a function of the (seeded)
+## CombatState and MissionState — no randomness of its own:
+##   1. an enemy is alive and reachable/visible -> fight it (closing the
+##      distance first if needed; fire repeatedly if already in range);
+##   2. otherwise, if this is a landing-squad unit with the gather
+##      objective still open -> walk to the resource node and gather it;
+##   3. otherwise (objective complete) -> walk to the extraction zone and
+##      call it.
+func _queue_turn(unit: Unit, state: CombatState, mission: MissionState) -> ActionQueue:
+	var queue := ActionQueue.new(unit)
+	var enemy: Unit = _nearest_living_enemy(unit, state)
+
+	if enemy != null:
+		var weapon_id: StringName = _find_weapon_id(unit)
+		var already_in_range: bool = (
+			weapon_id != &"" and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+		)
+		if already_in_range:
+			var extra := 1
+			while (
+				extra < MAX_SHOTS_PER_TURN
+				and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+			):
+				extra += 1
+		else:
+			_path_toward(unit, enemy.cell, state, queue)
+			if weapon_id != &"":
+				queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+		queue.enqueue(EndTurnAction.new(unit), state)
+		return queue
+
+	if unit.squad_id != 0:
+		queue.enqueue(EndTurnAction.new(unit), state)
+		return queue
+
+	var incomplete: bool = mission.objectives.any(
+		func(o: StringName) -> bool: return o not in mission.completed_objectives
+	)
+	if incomplete:
+		var node_cell: Vector2i = mission.resource_nodes.keys()[0]
+		if unit.cell == node_cell:
+			queue.enqueue(GatherAction.new(mission, unit, node_cell), state)
+		else:
+			_path_toward(unit, node_cell, state, queue)
+	else:
+		var extraction_cell: Vector2i = mission.extraction_cells[0]
+		if unit.cell == extraction_cell:
+			queue.enqueue(ExtractAction.new(mission, unit), state)
+		else:
+			_path_toward(unit, extraction_cell, state, queue)
+
 	queue.enqueue(EndTurnAction.new(unit), state)
 	return queue
+
+
+## The farthest OPEN cell reachable from `from` — guarantees the gather
+## objective is a real trek across the map, not a same-cell freebie, while
+## still being provably reachable before the mission ever starts.
+func _pick_resource_cell(grid: Grid, from: Vector2i) -> Vector2i:
+	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	var best: Vector2i = from
+	var best_len := -1
+	for cell: Vector2i in _cells_of_terrain(grid, Enums.TerrainType.OPEN):
+		var path: Array[Vector2i] = pf.astar(from, cell)
+		if path.is_empty():
+			continue
+		if path.size() > best_len:
+			best_len = path.size()
+			best = cell
+	return best
+
+
+## DeepStrike.validate_assembly's own structural checks (mass/ram/bulk),
+## minus the "still hosts its matrix" check — a unit real combat killed by
+## ejecting its matrix (docs/04) no longer hosts one on its root by design,
+## which isn't the same thing as a broken assembly.
+func _structural_violations(unit: Unit) -> Array[String]:
+	var violations: Array[String] = DeepStrike.validate_assembly(unit)
+	if unit.alive:
+		return violations
+	return violations.filter(
+		func(v: String) -> bool: return not v.begins_with("root part must host")
+	)
 
 
 func test_full_mission_seed_to_extraction() -> void:
@@ -141,13 +286,16 @@ func test_full_mission_seed_to_extraction() -> void:
 	var spawn_b: Array[Vector2i] = _cells_of_terrain(grid, Enums.TerrainType.SPAWN_B)
 	assert_true(spawn_a.size() > 0 and spawn_b.size() > 0, "the map must have both spawn zones")
 
-	# --- Insert, landing mode: the player's own chosen loadout ---
+	# --- Insert, landing mode: a 3-cyborg squad, the player's own loadout ---
 	var jerry := _landing_unit(&"jerry", spawn_a[0], &"pistol")
 	var alice := _landing_unit(
 		&"alice", spawn_a[1] if spawn_a.size() > 1 else spawn_a[0] + Vector2i(1, 0), &"rifle"
 	)
+	var bob := _landing_unit(
+		&"bob", spawn_a[2] if spawn_a.size() > 2 else spawn_a[0] + Vector2i(0, 1), &"shotgun"
+	)
 
-	# --- Insert, deep strike: enemies wearing whatever the hulk had ---
+	# --- Insert, deep strike: a 3-unit defense wearing whatever the hulk had ---
 	var pool: Array[Part] = DeepStrike.default_part_pool()
 	var enemy_matrix_a := Matrix.new()
 	enemy_matrix_a.id = &"logic_matrix_a"
@@ -168,124 +316,153 @@ func test_full_mission_seed_to_extraction() -> void:
 		spawn_b[1] if spawn_b.size() > 1 else spawn_b[0] + Vector2i(1, 0),
 		1
 	)
-	# A volatile ammo rack (docs/03 cook-off), so a real fight has a chance
-	# to blow it — an INTERNAL socket added post-assembly for this purpose.
+	# A volatile ammo rack (docs/03 cook-off) wired onto whatever enemy_b
+	# happened to assemble into — an INTERNAL socket added post-assembly.
+	# Frontmost, same convention as the arm/plate elsewhere in this file:
+	# LootTable's own template carries no volume (an internal component
+	# has no exterior face by default), which would leave it permanently
+	# untargetable by gunfire — this instance needs one to ever be reached
+	# by natural fire instead of a test reaching in to destroy it by hand.
 	var reactor_core: Part = LootTable.hulk_only_pool()[0]
 	reactor_core.hp = 4
+	reactor_core.volume = [Box.new(Vector3(0.0, 0.5, 0.35), Vector3(1.4, 0.8, 0.2))]
 	var internal_socket := Socket.new(&"INTERNAL")
 	enemy_b.frame.root.sockets.append(internal_socket)
 	PartGraph.attach(reactor_core, enemy_b.frame.root, internal_socket)
 
+	var enemy_c := _arm_hosted_defender(
+		&"enemy_c", spawn_b[2] if spawn_b.size() > 2 else spawn_b[0] + Vector2i(0, 1)
+	)
+
 	var combat_state := CombatState.new(
-		grid, [jerry, alice, enemy_a, enemy_b], hulk.population_seed()
+		grid, [jerry, alice, bob, enemy_a, enemy_b, enemy_c], hulk.population_seed()
 	)
 	var memory_sink := MemorySink.new()
 	var file_sink := FileSink.new("res://out/combat.log")
 	combat_state.combat_log.add_sink(memory_sink)
 	combat_state.combat_log.add_sink(file_sink)
 
-	# --- A guaranteed oblique hit on the steel enemy, so DT/ricochet are
-	# exercised deterministically rather than left to the AI's aim. ---
-	var direction := Vector2(4, -3)  # ~53 degree incidence, clears the deflect threshold
-	var dir: Vector2 = direction.normalized()
-	var origin: Vector2 = Vector2(enemy_a.cell) - dir * 12.0
-	var plane: Array[Region] = ShotPlane.build(origin, dir, combat_state)
-	var target_region: Region = null
-	for region: Region in plane:
-		if region.part == enemy_a.frame.root:
-			target_region = region
-	assert_not_null(target_region, "the forced shot must find the steel enemy's torso")
-	var forced_results: Array[ImpactResult] = DamageResolver.resolve_shot(
-		origin,
-		direction,
-		target_region.rect.get_center(),
-		3.0,
-		0.0,
-		combat_state,
-		combat_state.material_table,
-		combat_state.rng
-	)
-	for result: ImpactResult in forced_results:
-		combat_state.combat_log.emit(
-			LogEvent.new(
-				0,
-				Enums.Phase.RESOLUTION,
-				enemy_a.id,
-				&"impact",
-				{"outcome": result.outcome},
-				"forced calibration shot: %s" % Enums.Outcome.keys()[result.outcome]
-			)
-		)
-	assert_eq(
-		forced_results[0].outcome, Enums.Outcome.DEFLECT, "the forced shot must actually deflect"
-	)
-
-	# --- The AI-driven battle, through the real two-phase turn loop ---
-	var turn_count := 0
-	while not combat_state.is_over() and turn_count < TURN_CAP:
-		var acting_unit: Unit = combat_state.current_unit()
-		var queue: ActionQueue = _queue_turn(acting_unit, combat_state)
-		combat_state.resolve_turn(queue)
-		turn_count += 1
-	assert_true(turn_count < TURN_CAP, "the mission must resolve within the turn cap")
-	assert_true(combat_state.is_over(), "one side must have won")
-
-	# Cook-off: destroy the reactor core directly if the battle didn't
-	# already (a real fight isn't guaranteed to focus it) — the mechanism
-	# itself, not the AI's targeting priorities, is what this phase proves.
-	if reactor_core.hp > 0:
-		DamageResolver.apply_damage_to_part(reactor_core, 10.0)
-	var cooked_off: Array[Unit] = DamageResolver.cook_off(reactor_core, combat_state)
-	assert_true(reactor_core.hp <= 0)
-
-	# --- Gather & extract ---
+	# --- The mission loop itself: a real objective on the map and a real
+	# extraction zone, not a test calling MissionState's bookkeeping by hand ---
 	var run_state := RunState.new()
 	var mission := MissionState.new(run_state, combat_state)
 	mission.objectives = [&"gather_minerals"]
-	mission.gather_resource(&"minerals", 20)
-	mission.complete_objective(&"gather_minerals")
-	mission.extract()
+	var resource_cell: Vector2i = _pick_resource_cell(grid, spawn_a[0])
+	mission.resource_nodes[resource_cell] = {
+		resource = &"minerals", amount = 20, objective = &"gather_minerals"
+	}
+	mission.extraction_cells = spawn_a.duplicate()
 
+	# --- The AI-driven mission, through the real two-phase turn loop:
+	# fight -> gather -> extract, all as real queued actions ---
+	var turn_count := 0
+	var extracted := false
+	while turn_count < TURN_CAP:
+		if not _squad_has_survivors(combat_state, 0):
+			break
+		var acting_unit: Unit = combat_state.current_unit()
+		var queue: ActionQueue = _queue_turn(acting_unit, combat_state, mission)
+		combat_state.resolve_turn(queue)
+		turn_count += 1
+		if memory_sink.events_of_kind(&"extract").size() > 0:
+			extracted = true
+			break
+	assert_true(turn_count < TURN_CAP, "the mission must resolve within the turn cap")
+	assert_true(
+		_squad_has_survivors(combat_state, 0), "the landing squad must have survived to extract"
+	)
+	assert_true(extracted, "the mission must actually reach extraction, not just stop fighting")
+
+	file_sink.close()
+
+	# --- Gather & extract: real verbs, real consequences ---
+	assert_eq(mission.completed_objectives, [&"gather_minerals"])
 	assert_eq(run_state.resource_count(&"minerals"), 20)
 	assert_true(run_state.roster.has(jerry.matrix.base))
 	assert_true(run_state.roster.has(alice.matrix.base))
-	assert_eq(mission.completed_objectives, [&"gather_minerals"])
+	assert_true(run_state.roster.has(bob.matrix.base))
+	var gather_events: Array[LogEvent] = memory_sink.events_of_kind(&"gather")
+	assert_eq(gather_events.size(), 1, "the objective must be gathered exactly once")
+	assert_eq(gather_events[0].data.get("resource"), &"minerals")
+	assert_eq(memory_sink.events_of_kind(&"extract").size(), 1)
 
-	# --- Everything this phase promises got exercised ---
+	# --- Shot plane + dartboard: real gunfire actually landed ---
 	var impacts: Array[LogEvent] = memory_sink.events_of_kind(&"impact")
 	assert_true(impacts.size() > 0, "shot plane + dartboard: at least one impact must be logged")
+
+	# --- DT/ricochet: a deflection from the AI's own aim, no forced shot ---
 	var deflects := 0
 	for event: LogEvent in impacts:
 		if event.data.get("outcome") == Enums.Outcome.DEFLECT:
 			deflects += 1
 	assert_true(deflects > 0, "DT/ricochet: at least one deflection must appear in the log")
-	assert_true(
-		cooked_off.size() > 0 or reactor_core.hp <= 0, "cook-off: the volatile part must be gone"
-	)
+
+	# --- Cook-off: the volatile reactor must have gone off on its own ---
+	var cook_off_events: Array[LogEvent] = memory_sink.events_of_kind(&"cook_off")
+	assert_true(cook_off_events.size() > 0, "cook-off: the volatile reactor must fire naturally")
+	assert_eq(cook_off_events[0].data.get("source_part"), reactor_core.id)
+
+	# --- Subtree drop: a non-root part's own assembly must fall intact ---
+	var drop_events: Array[LogEvent] = memory_sink.events_of_kind(&"subtree_dropped")
+	assert_true(drop_events.size() > 0, "a destroyed non-root part must drop its subtree intact")
+
+	# --- Matrix ejection + surrogate demotion: attributable to a real unit,
+	# not just an aggregate "any of N" check across the whole roster ---
+	var known_ids: Array = [jerry.id, alice.id, bob.id, enemy_a.id, enemy_b.id, enemy_c.id]
+	var ejections: Array[LogEvent] = memory_sink.events_of_kind(&"matrix_ejected")
+	assert_true(ejections.size() > 0, "at least one matrix-hosting part must be destroyed")
+	assert_true(ejections[0].unit_id in known_ids)
+
+	var demotions: Array[LogEvent] = memory_sink.events_of_kind(&"surrogate_demoted")
+	assert_true(demotions.size() > 0, "at least one specific unit must have demoted a tier")
+	assert_true(demotions[0].unit_id in known_ids)
+	assert_ne(demotions[0].data.get("to"), &"FULL", "a demotion must actually step down the ladder")
+
+	# --- RAM/mass/bulk: deep-struck assemblies must still validate. A unit
+	# real combat legitimately killed by ejecting its matrix (docs/04) no
+	# longer hosts one on its root by design — that's not a structural
+	# violation, so it's excluded here rather than asserting every deep-
+	# struck unit must have survived. ---
 	assert_eq(
-		DeepStrike.validate_assembly(enemy_a),
+		_structural_violations(enemy_a),
 		[] as Array[String],
 		"RAM/mass/bulk: the deep-struck assembly must still validate after combat"
 	)
-	var any_demoted := false
-	for unit: Unit in [jerry, alice, enemy_a, enemy_b]:
-		if unit.surrogate_tier.id != &"FULL" or unit.exposed_turns > 0:
-			any_demoted = true
-	assert_true(any_demoted, "surrogate decay: at least one destroyed host must have demoted")
-	var aborted: Array[String] = combat_state.action_log.filter(
-		func(line: String) -> bool: return line.begins_with("aborted")
-	)
-	print(
-		(
-			"tactics/resolution: %d turns resolved, %d actions aborted and recovered"
-			% [turn_count, aborted.size()]
-		)
-	)
+	assert_eq(_structural_violations(enemy_b), [] as Array[String])
 
-	file_sink.close()
+	# --- Tactics/Resolution: a queued action really did abort at
+	# resolution, and the queue really did continue past it ---
+	var aborts: Array[LogEvent] = memory_sink.events_of_kind(&"action_aborted")
+	assert_true(
+		aborts.size() > 0, "at least one queued action must abort at resolution (the world moved)"
+	)
+	var first_abort: LogEvent = aborts[0]
+	var abort_index: int = memory_sink.events.find(first_abort)
+	var continued := false
+	for i in range(abort_index + 1, memory_sink.events.size()):
+		var event: LogEvent = memory_sink.events[i]
+		if event.unit_id != first_abort.unit_id or event.kind == &"action_aborted":
+			continue  # a later action in the same queue may also abort; keep scanning
+		continued = event.kind == &"turn_end"
+		break
+	assert_true(continued, "the queue must reach this unit's own turn_end, not halt on the abort")
+
+	var summary_fmt := (
+		"\nfull mission: %d turns, %d impacts, %d deflections, %d cook-offs, "
+		+ "%d subtree drops, %d matrix ejections, %d demotions, %d aborts"
+	)
 	print(
 		(
-			"\nfull mission: %d turns, %d impacts logged, %d deflections"
-			% [turn_count, impacts.size(), deflects]
+			summary_fmt
+			% [
+				turn_count,
+				impacts.size(),
+				deflects,
+				cook_off_events.size(),
+				drop_events.size(),
+				ejections.size(),
+				demotions.size(),
+				aborts.size(),
+			]
 		)
 	)

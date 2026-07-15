@@ -59,6 +59,60 @@ func test_advance_turn_skips_dead_units() -> void:
 	assert_eq(state.current_unit(), c)
 
 
+func test_round_number_increments_once_per_full_cycle_not_per_unit_turn() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(1, 0), 1)
+	var c := _make_unit(Vector2i(2, 0), 0)
+	var state := CombatState.new(grid, [a, b, c])
+	assert_eq(state.round_number, 0)
+
+	state.advance_turn()  # a -> b, still round 0
+	assert_eq(state.current_unit(), b)
+	assert_eq(state.round_number, 0)
+
+	state.advance_turn()  # b -> c, still round 0
+	assert_eq(state.current_unit(), c)
+	assert_eq(state.round_number, 0)
+
+	state.advance_turn()  # c -> a, wraps: round 1
+	assert_eq(state.current_unit(), a)
+	assert_eq(state.round_number, 1)
+
+	state.advance_turn()
+	state.advance_turn()
+	state.advance_turn()
+	assert_eq(state.round_number, 2)
+
+
+func test_round_number_increments_every_turn_with_a_single_unit() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(grid, [a])
+	assert_eq(state.round_number, 0)
+	state.advance_turn()
+	assert_eq(state.round_number, 1)
+	state.advance_turn()
+	assert_eq(state.round_number, 2)
+
+
+func test_round_number_wraps_correctly_around_a_dead_unit() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(1, 0), 1)
+	var c := _make_unit(Vector2i(2, 0), 0)
+	var state := CombatState.new(grid, [a, b, c])
+	b.alive = false
+
+	state.advance_turn()  # a -> c (b skipped), still round 0
+	assert_eq(state.current_unit(), c)
+	assert_eq(state.round_number, 0)
+
+	state.advance_turn()  # c -> a, wraps: round 1
+	assert_eq(state.current_unit(), a)
+	assert_eq(state.round_number, 1)
+
+
 func test_is_over_when_one_squad_remains() -> void:
 	var grid := Grid.new(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
@@ -67,6 +121,42 @@ func test_is_over_when_one_squad_remains() -> void:
 	assert_false(state.is_over())
 	b.alive = false
 	assert_true(state.is_over())
+
+
+func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(1, 0), 1)
+	var state := CombatState.new(grid, [a, b])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	state.advance_turn()
+
+	var starts: Array[LogEvent] = sink.events_of_kind(&"turn_start")
+	assert_eq(starts.size(), 1)
+	assert_eq(starts[0].unit_id, b.id)
+
+
+func test_organics_decay_demotion_emits_surrogate_demoted() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(grid, [a])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	a.exposed_turns = 1
+	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
+	while a.exposed_turns < Unit.DECAY_TURNS:
+		state.advance_turn()
+		assert_true(sink.events_of_kind(&"surrogate_demoted").is_empty())
+
+	state.advance_turn()  # crosses the decay threshold: demotes exactly once
+
+	var demotions: Array[LogEvent] = sink.events_of_kind(&"surrogate_demoted")
+	assert_eq(demotions.size(), 1)
+	assert_eq(demotions[0].unit_id, a.id)
+	assert_eq(demotions[0].data.get("to"), SurrogateLadder.demote(ladder[0], ladder).id)
 
 
 func test_try_apply_rejects_illegal_action_without_mutating() -> void:

@@ -18,3 +18,10 @@ var bypassed_armor: bool = false
 var destroyed_part: bool = false
 var cooked_off_units: Array[Unit] = []
 var ejected_matrix: Matrix = null
+var dropped_subtree: Part = null
+## Set alongside `ejected_matrix` (docs/04: ejection always demotes the
+## surrogate one rung) — captured here rather than re-derived afterward,
+## since the demoted unit's owning part may already be detached from its
+## frame by the time a caller gets around to logging this impact.
+var demoted_unit: Unit = null
+var demoted_tier_before: SurrogateTier = null

@@ -49,6 +49,24 @@ func test_modify_assembly_strips_a_sub_part_off_a_dropped_assembly() -> void:
 	assert_eq(unit.ap, unit.max_ap - 2)
 
 
+func test_modify_assembly_emits_a_strip_part_event() -> void:
+	var unit := _make_unit(Vector2i(0, 0))
+	var grid := Grid.new(5, 5)
+	var arm := _make_dropped_arm()
+	grid.field_items[Vector2i(0, 0)] = [arm]
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ModifyAssemblyAction.new(unit, Vector2i(0, 0), &"arm", &"pistol", 2).apply(state)
+
+	var strips: Array[LogEvent] = sink.events_of_kind(&"strip_part")
+	assert_eq(strips.size(), 1)
+	assert_eq(strips[0].unit_id, unit.id)
+	assert_eq(strips[0].data.get("assembly"), &"arm")
+	assert_eq(strips[0].data.get("stripped"), &"pistol")
+
+
 func test_modify_assembly_illegal_for_a_part_not_in_the_assembly() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
 	var grid := Grid.new(5, 5)

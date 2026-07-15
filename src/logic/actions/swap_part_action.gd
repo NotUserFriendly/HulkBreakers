@@ -67,9 +67,21 @@ func apply(state: CombatState) -> void:
 
 	PartGraph.attach(replacement, owner, socket)
 	actual.ap -= ap_cost
-	state.log_action(
+	var text: String = (
 		"SwapPartAction: unit %d swapped in %s at %s" % [actual.id, replacement_id, socket_type]
 	)
+	state.log_action(text)
+	if not state.is_preview:
+		var data: Dictionary = {
+			"socket_owner": socket_owner_id,
+			"socket_type": socket_type,
+			"replacement": replacement_id,
+			"removed": old.id if old != null else &"",
+		}
+		var event := LogEvent.new(
+			state.round_number, Enums.Phase.RESOLUTION, actual.id, &"swap_part", data, text
+		)
+		state.combat_log.emit(event)
 
 
 func _find_socket(owner: Part, type: StringName) -> Socket:

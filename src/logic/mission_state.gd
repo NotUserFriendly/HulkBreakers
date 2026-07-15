@@ -12,6 +12,15 @@ var objectives: Array[StringName] = []  # open ids, e.g. &"gather_minerals"
 var completed_objectives: Array[StringName] = []
 var gathered_resources: Dictionary = {}  # this mission's own haul, not yet banked
 var gathered_items: Array[Part] = []
+## Vector2i -> {resource: StringName, amount: int, objective: StringName}.
+## What GatherAction actually consumes (docs/07: "gather resources ... on
+## the map") — `objective`, if non-empty, is completed the instant this
+## node is gathered. Mission-scoped, not CombatState's — a TACTICS preview
+## must never touch it (see GatherAction.apply).
+var resource_nodes: Dictionary = {}
+## Cells ExtractAction requires a unit stand on to call the mission (docs/07:
+## "EXTRACT with loot").
+var extraction_cells: Array[Vector2i] = []
 
 
 func _init(p_run_state: RunState, p_combat_state: CombatState) -> void:

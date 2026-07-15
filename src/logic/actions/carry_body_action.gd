@@ -55,7 +55,19 @@ func apply(state: CombatState) -> void:
 		body.tags.append(&"INERT")
 
 	actual.ap -= ap_cost
-	state.log_action("CarryBodyAction: unit %d slung %s across their back" % [actual.id, body_id])
+	var text: String = "CarryBodyAction: unit %d slung %s across their back" % [actual.id, body_id]
+	state.log_action(text)
+	if not state.is_preview:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				actual.id,
+				&"carry_body",
+				{"body": body_id},
+				text
+			)
+		)
 
 
 ## The first free BACK socket anywhere in the frame, not just on the root —

@@ -64,7 +64,19 @@ func apply(state: CombatState) -> void:
 		actual.cell = path[i]
 		state.grid.set_occupant_id(actual.cell, actual.id)
 
-	state.log_action("MoveAction: unit %d moved to %s" % [actual.id, actual.cell])
+	var text: String = "MoveAction: unit %d moved to %s" % [actual.id, actual.cell]
+	state.log_action(text)
+	if not state.is_preview:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				actual.id,
+				&"move",
+				{"path": path, "destination": actual.cell},
+				text
+			)
+		)
 
 
 func describe() -> String:

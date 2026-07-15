@@ -31,6 +31,22 @@ func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:
 	assert_almost_eq(unit.mp, 1.0, 0.0001)
 
 
+func test_move_emits_a_move_event_to_the_destination() -> void:
+	var grid := Grid.new(10, 10)
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]
+	assert_true(state.try_apply(MoveAction.new(unit, path)))
+
+	var moves: Array[LogEvent] = sink.events_of_kind(&"move")
+	assert_eq(moves.size(), 1)
+	assert_eq(moves[0].unit_id, unit.id)
+	assert_eq(moves[0].data.get("destination"), Vector2i(2, 0))
+
+
 func test_move_fails_when_ap_runs_out_mid_path() -> void:
 	var grid := Grid.new(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))

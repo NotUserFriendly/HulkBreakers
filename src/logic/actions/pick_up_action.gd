@@ -65,7 +65,19 @@ func apply(state: CombatState) -> void:
 		Inventory.attach(item, container, actual.frame)
 
 	actual.ap -= ap_cost
-	state.log_action("PickUpAction: unit %d picked up %s" % [actual.id, item_id])
+	var text: String = "PickUpAction: unit %d picked up %s" % [actual.id, item_id]
+	state.log_action(text)
+	if not state.is_preview:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				actual.id,
+				&"pick_up",
+				{"item": item_id, "is_matrix": item is Matrix},
+				text
+			)
+		)
 
 
 func describe() -> String:
