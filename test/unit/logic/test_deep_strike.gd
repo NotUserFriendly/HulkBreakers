@@ -17,7 +17,7 @@ func test_assemble_random_hosts_the_matrix_on_the_root_part() -> void:
 	var unit := DeepStrike.assemble_random(
 		base, 0.5, DeepStrike.default_part_pool(), _rng(1), Vector2i(0, 0)
 	)
-	assert_true(unit.frame.root.hosts_matrix)
+	assert_true(unit.frame.root.hosts_matrix())
 	assert_eq(unit.frame.root.hosted_matrix.base, base)
 	assert_almost_eq(unit.frame.root.hosted_matrix.effective_level(), base.level * 0.5, 0.0001)
 
@@ -58,7 +58,7 @@ func test_is_armed_true_when_a_weapon_has_its_required_manipulators() -> void:
 	torso.id = &"torso"
 	torso.hp = 5
 	torso.max_hp = 5
-	torso.hosts_matrix = true
+	torso.sockets = [Socket.new(&"MATRIX")]
 	torso.hosted_matrix = Matrix.new()
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -108,6 +108,46 @@ func test_is_armed_false_when_the_weapon_has_no_capable_manipulator() -> void:
 
 	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
 	assert_false(DeepStrike.is_armed(unit))
+
+
+## Taskblock correction 2: before every pool part carried a `volume`, a
+## deep-struck cyborg's arms/hands/weapons contributed mass, RAM,
+## capabilities, and could fire — but had no geometry, so a burst could only
+## ever land on the torso. Find a seed that actually attaches a limb and
+## sweep the projected silhouette to prove a non-root part is now reachable.
+func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -> void:
+	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var unit: Unit = null
+	for seed_value in range(50):
+		var candidate := DeepStrike.assemble_random(
+			Matrix.new(), 1.0, pool, _rng(seed_value), Vector2i(0, 0)
+		)
+		if candidate.frame.living_parts().size() > 1:
+			unit = candidate
+			break
+	assert_not_null(unit, "expected at least one of 50 seeds to attach a limb")
+
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	print("\n=== deep-struck cyborg silhouette (limb-hit sweep) ===")
+	print(AsciiRender.plane_to_text(AsciiRender.recenter(regions, 2.0), 4, 2))
+
+	var hit_parts: Array[StringName] = []
+	var x := -2.0
+	while x <= 2.0:
+		var region: Region = ShotPlane.resolve_projectile(regions, Vector2(x, 0.5))
+		if region != null and not hit_parts.has(region.part.id):
+			hit_parts.append(region.part.id)
+		x += 0.05
+
+	var hit_a_limb := false
+	for part_id: StringName in hit_parts:
+		if part_id != unit.frame.root.id:
+			hit_a_limb = true
+			break
+	assert_true(
+		hit_a_limb,
+		"a sweep across the silhouette only ever hit the root: %s" % [hit_parts]
+	)
 
 
 ## docs/07's "real point": no crashes, no malformed assemblies, across many

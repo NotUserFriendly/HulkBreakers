@@ -76,3 +76,45 @@ func test_save_load_round_trips_a_full_socket_tree() -> void:
 	assert_eq(loaded_pistol.scatter.size(), 2)
 	assert_eq(loaded_pistol.scatter[0].radius, 0.1)
 	assert_eq(loaded_pistol.scatter[1].weight, 2.0)
+
+
+## docs/01: a matrix docks only into a part that declares a MATRIX socket —
+## never a free-standing flag any part can claim.
+func test_hosts_matrix_is_false_without_a_matrix_socket() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.sockets = [Socket.new(&"WRIST")]
+	assert_false(arm.hosts_matrix())
+
+
+func test_hosts_matrix_is_true_with_a_matrix_socket() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.sockets = [Socket.new(&"MATRIX")]
+	assert_true(torso.hosts_matrix())
+
+
+func test_dock_matrix_fails_on_a_part_with_no_matrix_socket() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.sockets = [Socket.new(&"WRIST")]
+	var matrix := Matrix.new()
+	assert_false(arm.dock_matrix(matrix), "an arm can never host a matrix")
+	assert_null(arm.hosted_matrix)
+
+
+func test_dock_matrix_succeeds_on_a_part_with_a_free_matrix_socket() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.sockets = [Socket.new(&"MATRIX")]
+	var matrix := Matrix.new()
+	assert_true(torso.dock_matrix(matrix))
+	assert_eq(torso.hosted_matrix, matrix)
+
+
+func test_dock_matrix_fails_when_already_hosting() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.sockets = [Socket.new(&"MATRIX")]
+	assert_true(torso.dock_matrix(Matrix.new()))
+	assert_false(torso.dock_matrix(Matrix.new()), "a MATRIX socket can only ever hold one matrix")

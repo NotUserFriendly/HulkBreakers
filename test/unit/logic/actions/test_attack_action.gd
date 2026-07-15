@@ -196,44 +196,46 @@ func test_flanking_exposes_a_rear_part_a_frontal_shot_cannot_reach() -> void:
 	assert_lt(rack_rear.hp, 5, "attacking from behind must expose the rear rack instead")
 
 
-## A target whose ARM — not its torso root — is frontmost, hosts a matrix,
+## A target whose HEAD — not its torso root — is frontmost, hosts a matrix,
 ## and is VOLATILE: one shot destroying it should cascade through every
 ## consequence DamageResolver tracks (destroyed/cooked-off/ejected/dropped),
 ## and each of those must reach the combat log (docs/09: "if it changed the
-## world, it's in the log"), not just the bare "impact" event.
+## world, it's in the log"), not just the bare "impact" event. Only torso
+## and head templates ever declare a MATRIX socket (docs/01) — an arm never
+## can — so the non-root host here is a head, docked via a NECK socket.
 func _make_armed_matrix_hosting_target(cell: Vector2i) -> Dictionary:
-	var arm := Part.new()
-	arm.id = &"arm"
-	arm.hp = 5
-	arm.max_hp = 5
-	arm.attaches_to = [&"SHOULDER"]
-	arm.hosts_matrix = true
+	var head := Part.new()
+	head.id = &"head"
+	head.hp = 5
+	head.max_hp = 5
+	head.attaches_to = [&"NECK"]
+	head.sockets = [Socket.new(&"MATRIX")]
 	var link := Matrix.new()
 	link.id = &"link"
-	arm.hosted_matrix = link
-	arm.tags = [&"VOLATILE"]
-	arm.cook_off_damage = 2.0
-	arm.cook_off_radius = 2.0  # reaches the target itself, not the shooter 5 cells away
+	head.dock_matrix(link)
+	head.tags = [&"VOLATILE"]
+	head.cook_off_damage = 2.0
+	head.cook_off_radius = 2.0  # reaches the target itself, not the shooter 5 cells away
 	# Frontmost: sits just ahead of the torso's own box along local +z
 	# (docs/02's front-facing convention, same as the plate in
 	# test_rifle_round_over_dt), wide enough that dartboard scatter can't
 	# miss it and land on the torso behind instead.
-	arm.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(1.5, 1.0, 0.3))]
+	head.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(1.5, 1.0, 0.3))]
 
-	# High hp: the cascading shot (docs/03) that destroys the arm keeps
+	# High hp: the cascading shot (docs/03) that destroys the head keeps
 	# traveling and also lands on this torso — it must survive so the test
-	# isolates exactly one destroyed part (the arm).
+	# isolates exactly one destroyed part (the head).
 	var torso := Part.new()
 	torso.id = &"torso"
 	torso.hp = 100
 	torso.max_hp = 100
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	var shoulder := Socket.new(&"SHOULDER")
-	shoulder.occupant = arm
-	torso.sockets = [shoulder]
+	var neck := Socket.new(&"NECK")
+	neck.occupant = head
+	torso.sockets = [neck]
 
 	var unit := Unit.new(Matrix.new(), Frame.new(torso), cell, 1)
-	return {"unit": unit, "torso": torso, "arm": arm, "link": link}
+	return {"unit": unit, "torso": torso, "head": head, "link": link}
 
 
 ## Same shape as _make_shooter, but with high torso hp — collinear with the
@@ -262,12 +264,12 @@ func _make_tough_shooter(cell: Vector2i, weapon: Part) -> Unit:
 	return Unit.new(Matrix.new(), Frame.new(torso), cell, 0)
 
 
-func test_destroying_the_arm_logs_every_cascading_consequence() -> void:
+func test_destroying_the_head_logs_every_cascading_consequence() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_tough_shooter(Vector2i(0, 5), weapon)
 	var built: Dictionary = _make_armed_matrix_hosting_target(Vector2i(0, 0))
 	var target: Unit = built.unit
-	var arm: Part = built.arm
+	var head: Part = built.head
 	var link: Matrix = built.link
 	var grid := Grid.new(20, 20)
 	var state := CombatState.new(grid, [shooter, target])
@@ -276,10 +278,10 @@ func test_destroying_the_arm_logs_every_cascading_consequence() -> void:
 
 	AttackAction.new(shooter, &"pistol", Vector2i(0, 0)).apply(state)
 
-	assert_eq(arm.hp, 0, "the arm must actually have been destroyed by this shot")
+	assert_eq(head.hp, 0, "the head must actually have been destroyed by this shot")
 
 	assert_eq(sink.events_of_kind(&"part_destroyed").size(), 1)
-	assert_eq(sink.events_of_kind(&"part_destroyed")[0].data.get("part"), &"arm")
+	assert_eq(sink.events_of_kind(&"part_destroyed")[0].data.get("part"), &"head")
 
 	var cook_offs: Array[LogEvent] = sink.events_of_kind(&"cook_off")
 	assert_eq(cook_offs.size(), 1)
@@ -291,7 +293,7 @@ func test_destroying_the_arm_logs_every_cascading_consequence() -> void:
 
 	var drops: Array[LogEvent] = sink.events_of_kind(&"subtree_dropped")
 	assert_eq(drops.size(), 1)
-	assert_eq(drops[0].data.get("part"), &"arm")
+	assert_eq(drops[0].data.get("part"), &"head")
 
 	var demotions: Array[LogEvent] = sink.events_of_kind(&"surrogate_demoted")
 	assert_eq(demotions.size(), 1, "ejection must carry its own demotion into the log")

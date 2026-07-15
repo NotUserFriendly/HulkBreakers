@@ -46,9 +46,11 @@ extends Resource
 @export var mass_multiplier: float = 1.0
 @export var contents: Array[Part] = []
 
-## A part with a MATRIX socket (see `sockets`) can be piloted; `hosted_matrix`
-## is the Matrix currently seated there, if any.
-@export var hosts_matrix: bool = false
+## `hosted_matrix` is the Matrix currently seated in this part's MATRIX
+## socket, if any. Whether one exists at all is derived from `sockets` via
+## `hosts_matrix()`, below — never set directly. Only torso and head
+## templates declare a MATRIX socket today (docs/01); an arm can never
+## host a matrix.
 @export var hosted_matrix: Matrix = null
 
 ## Open vocabulary: VOLATILE (cooks off, Phase 5), ORGANIC, SALVAGE, INERT
@@ -90,3 +92,22 @@ extends Resource
 ## numbers are authored data, not a code constant.
 @export var cook_off_damage: float = 0.0
 @export var cook_off_radius: float = 0.0
+
+
+## True if this part declares a MATRIX socket — the only thing that makes a
+## part pilotable (docs/01). Derived from `sockets`, never a settable flag.
+func hosts_matrix() -> bool:
+	for socket: Socket in sockets:
+		if socket.socket_type == &"MATRIX":
+			return true
+	return false
+
+
+## Docks `matrix` into this part's MATRIX socket. Fails (returns false,
+## `hosted_matrix` untouched) if this part has no MATRIX socket or is
+## already hosting one — the only legal way to set `hosted_matrix`.
+func dock_matrix(matrix: Matrix) -> bool:
+	if not hosts_matrix() or hosted_matrix != null:
+		return false
+	hosted_matrix = matrix
+	return true

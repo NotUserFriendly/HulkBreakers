@@ -57,3 +57,13 @@ func test_twenty_random_deep_strike_cyborgs() -> void:
 
 		assert_eq(violations, [] as Array[String], "seed %d must be a valid assembly" % seed_value)
 		assert_true(regions.size() > 0, "seed %d must project a sane shot plane" % seed_value)
+
+		var projected_parts: Array[Part] = []
+		for region: Region in regions:
+			if not projected_parts.has(region.part):
+				projected_parts.append(region.part)
+		for part: Part in unit.frame.living_parts():
+			assert_true(
+				projected_parts.has(part),
+				"seed %d: living part %s must appear in the shot plane" % [seed_value, part.id]
+			)

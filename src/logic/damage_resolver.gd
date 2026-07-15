@@ -93,7 +93,7 @@ static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
 ## leaves its frame behind. Returns the ejected Matrix, or null if `part`
 ## wasn't hosting one belonging to a real unit.
 static func eject_matrix_if_needed(part: Part, state: CombatState) -> Matrix:
-	if part.hp > 0 or not part.hosts_matrix or part.hosted_matrix == null:
+	if part.hp > 0 or not part.hosts_matrix() or part.hosted_matrix == null:
 		return null
 	var owner: Unit = _owning_unit(part, state)
 	if owner == null:

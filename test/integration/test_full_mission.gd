@@ -71,12 +71,11 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 	torso.hp = 24
 	torso.max_hp = 24
 	torso.material = &"sheet_steel"
-	torso.hosts_matrix = true
 	torso.hosted_matrix = link
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	var hand_socket := Socket.new(&"HAND")
 	hand_socket.occupant = hand
-	torso.sockets = [hand_socket]
+	torso.sockets = [hand_socket, Socket.new(&"MATRIX")]
 
 	var frame := Frame.new(torso)
 	frame.max_mass = 200.0
@@ -84,12 +83,13 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 	return Unit.new(link, frame, cell, 0)
 
 
-## A hand-built (not deep-struck) defender whose MATRIX hosts on its ARM, not
-## its torso (docs/01: "it is not always the torso") — the arm's own volume
-## box sits frontmost, so incoming fire reaches it before the torso, and
-## destroying it must both eject the matrix and drop the arm (with the hand
-## and pistol still attached) as one intact assembly.
-func _arm_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
+## A hand-built (not deep-struck) defender whose MATRIX hosts on its HEAD,
+## not its torso (docs/01: only torso and head templates ever declare a
+## MATRIX socket — an arm never can) — the head's own volume box sits
+## frontmost, so incoming fire reaches it before the torso, and destroying
+## it must both eject the matrix and drop the head (with its own sockets,
+## if any, still attached) as one intact assembly.
+func _head_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	var link := Matrix.new()
 	link.id = StringName("%s_link" % unit_id)
 
@@ -118,12 +118,18 @@ func _arm_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	arm.hp = 4
 	arm.max_hp = 4
 	arm.attaches_to = [&"SHOULDER"]
-	arm.hosts_matrix = true
-	arm.hosted_matrix = link
-	arm.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(1.6, 1.0, 0.3))]
 	var wrist := Socket.new(&"WRIST")
 	wrist.occupant = hand
 	arm.sockets = [wrist]
+
+	var head := Part.new()
+	head.id = StringName("%s_head" % unit_id)
+	head.hp = 4
+	head.max_hp = 4
+	head.attaches_to = [&"NECK"]
+	head.sockets = [Socket.new(&"MATRIX")]
+	head.dock_matrix(link)
+	head.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(1.6, 1.0, 0.3))]
 
 	var torso := Part.new()
 	torso.id = StringName("%s_torso" % unit_id)
@@ -132,7 +138,9 @@ func _arm_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	var shoulder := Socket.new(&"SHOULDER")
 	shoulder.occupant = arm
-	torso.sockets = [shoulder]
+	var neck := Socket.new(&"NECK")
+	neck.occupant = head
+	torso.sockets = [shoulder, neck]
 
 	var frame := Frame.new(torso)
 	frame.max_mass = 200.0
@@ -330,7 +338,7 @@ func test_full_mission_seed_to_extraction() -> void:
 	enemy_b.frame.root.sockets.append(internal_socket)
 	PartGraph.attach(reactor_core, enemy_b.frame.root, internal_socket)
 
-	var enemy_c := _arm_hosted_defender(
+	var enemy_c := _head_hosted_defender(
 		&"enemy_c", spawn_b[2] if spawn_b.size() > 2 else spawn_b[0] + Vector2i(0, 1)
 	)
 

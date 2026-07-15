@@ -113,13 +113,14 @@ Implementation: the dropped field item *is* the subtree root Part, sockets still
 | `ram_cost: float` | systems control (see `05`) |
 | `stat_mods` | feeds the modifier pipeline (see `08`) |
 | `is_container`, `max_bulk`, `mass_multiplier`, `contents` | inventory (see `05`) |
-| `hosts_matrix: bool`, `hosted_matrix` | a `MATRIX` socket makes a part pilotable |
+| `hosted_matrix` | the Matrix docked in this part's `MATRIX` socket, if any |
 | `tags: Array[StringName]` | open set, e.g. `VOLATILE`, `ORGANIC`, `SALVAGE`, `INERT` |
 
 ## Rules
 - Attachment is a **tree**. No cycles, one occupant per socket.
 - Destroying a part drops its subtree **intact, as one assembly**.
-- The matrix lives in whatever part has a `MATRIX` socket. Destroy *that* part → eject
-  (see `04`). It is **not** always the torso.
+- A matrix docks only into a part that declares a `MATRIX` socket — never a free-standing
+  flag any part can claim. Destroy *that* part → eject (see `04`). Today only the torso and
+  head templates declare one; an arm can never host a matrix.
 - `sockets` (structural) and `contents` (inventory) are **different relationships**. A
   backpack is *attached* to a `BACK` socket and *contains* items.
