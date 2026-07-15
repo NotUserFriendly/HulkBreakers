@@ -58,3 +58,17 @@ extends Resource
 ## False marks permanent terrain (e.g. cover that can never be destroyed,
 ## docs/02).
 @export var is_destructible: bool = true
+
+## Weapon stats (docs/02, Phase 4) — a weapon is just a Part whose
+## `requires` names the manipulator capabilities it needs to fire (already
+## exercised by PartGraph.can_operate in Phase 1). Not `range`: that shadows
+## the builtin range() function.
+@export var damage: float = 0.0
+@export var burst: int = 1
+@export var recoil: float = 0.0
+@export var weapon_max_range: float = 0.0
+@export var ap_cost: int = 1
+## Ordered inner -> outer; each Ring's radius is its own outer edge, so ring
+## i's annulus spans (scatter[i-1].radius, scatter[i].radius]. N rings, never
+## a fixed three — nothing may assume a count.
+@export var scatter: Array[Ring] = []

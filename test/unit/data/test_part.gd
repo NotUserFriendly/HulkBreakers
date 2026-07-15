@@ -39,6 +39,12 @@ func test_save_load_round_trips_a_full_socket_tree() -> void:
 	pistol.attaches_to = [&"GRIP"]
 	pistol.capabilities = []
 	pistol.requires = {&"TRIGGER": 1}
+	pistol.damage = 8.0
+	pistol.burst = 1
+	pistol.recoil = 2.0
+	pistol.weapon_max_range = 12.0
+	pistol.ap_cost = 1
+	pistol.scatter = [Ring.new(0.1, 1.0), Ring.new(0.5, 2.0)]
 	grip_socket.occupant = pistol
 
 	var path := "user://tmp_test_part_tree.tres"
@@ -60,3 +66,11 @@ func test_save_load_round_trips_a_full_socket_tree() -> void:
 	var loaded_pistol: Part = loaded_arm.sockets[0].occupant
 	assert_eq(loaded_pistol.id, &"pistol")
 	assert_eq(loaded_pistol.requires, {&"TRIGGER": 1})
+	assert_eq(loaded_pistol.damage, 8.0)
+	assert_eq(loaded_pistol.burst, 1)
+	assert_eq(loaded_pistol.recoil, 2.0)
+	assert_eq(loaded_pistol.weapon_max_range, 12.0)
+	assert_eq(loaded_pistol.ap_cost, 1)
+	assert_eq(loaded_pistol.scatter.size(), 2)
+	assert_eq(loaded_pistol.scatter[0].radius, 0.1)
+	assert_eq(loaded_pistol.scatter[1].weight, 2.0)
