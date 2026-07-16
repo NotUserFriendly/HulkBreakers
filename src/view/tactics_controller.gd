@@ -82,6 +82,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			turn_selected(FACE_STEP)
 		elif key_event.keycode == KEY_F and aiming_at != null:
 			reset_framing()
+		elif key_event.keycode == KEY_R:
+			reset_turn()
 
 
 func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
@@ -90,7 +92,7 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 	if button_event.button_index == MOUSE_BUTTON_LEFT:
 		var from: Vector3 = camera.project_ray_origin(button_event.position)
 		var dir: Vector3 = camera.project_ray_normal(button_event.position)
-		var cell: Variant = BoardPicker.cell_at_ray(from, dir)
+		var cell: Variant = _cell_at(from, dir)
 		if cell != null:
 			click_cell(cell)
 		elif aiming_at == null:
@@ -101,10 +103,33 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			deselect()
 	elif button_event.button_index == MOUSE_BUTTON_RIGHT and aiming_at != null:
 		cancel_aim()
+	elif button_event.button_index == MOUSE_BUTTON_RIGHT:
+		# docs/10 taskblock03 D3: RMB pops the last queued action; with
+		# nothing left to pop, it's a plain deselect.
+		if not selection.undo_last():
+			deselect()
+		else:
+			_refresh_overlay()
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and aiming_at != null:
 		scroll_layer(1)
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and aiming_at != null:
 		scroll_layer(-1)
+
+
+## docs/10 taskblock03 D1: "click the body, not just the tile" — nearest hit
+## wins between a unit's own boxes and the ground plane, so a click square
+## on a unit's mesh selects it even when the ray would also cross the tile
+## underneath at a farther distance (impossible here, but a mesh that
+## overhangs a neighboring tile is exactly the case this guards).
+func _cell_at(from: Vector3, dir: Vector3) -> Variant:
+	var unit_hit: Dictionary = UnitPicker.hit(selection.state.units, from, dir)
+	var ground_t: Variant = BoardPicker.plane_hit_t(from, dir)
+	if not unit_hit.is_empty():
+		if ground_t == null or (unit_hit["t"] as float) <= (ground_t as float):
+			return (unit_hit["unit"] as Unit).cell
+	if ground_t == null:
+		return null
+	return BoardPicker.cell_at_ray(from, dir)
 
 
 ## While aiming: any click confirms the shot (docs/10: "click / confirm ->
@@ -149,6 +174,20 @@ func turn_selected(delta: float) -> void:
 	if input_locked or selection == null or selection.selected_unit == null:
 		return
 	selection.queue_face(selection.previewed_orientation() + delta)
+	_refresh_overlay()
+
+
+## docs/10 taskblock03 D4: Reset Turn — button + R. Cancels any live aim
+## (there's nothing left to aim from once the queue that led here is gone)
+## and hands off to SelectionController.reset_turn(), which is the entire
+## fix (docs/09: TACTICS never mutated authoritative state in the first
+## place, so there's nothing else to roll back).
+func reset_turn() -> void:
+	if input_locked or selection == null or selection.selected_unit == null:
+		return
+	if aiming_at != null:
+		cancel_aim()
+	selection.reset_turn()
 	_refresh_overlay()
 
 
@@ -210,23 +249,51 @@ func move_reticle(delta: Vector2) -> void:
 		aim_changed.emit()
 
 
-## The shot plane for the current shooter -> aiming_at line of fire, with
-## the shooter's own body excluded — the same exclusion AttackAction's own
-## first hit-lookup applies (its own body sits right at the ray's origin
-## and would otherwise resolve as a phantom "nearest layer" the aim UI has
-## no business reading).
-func aim_plane() -> Array[Region]:
+## docs/10 taskblock03 D5: "aim from where the unit WILL BE." Everything the
+## aim UI needs, read from ONE speculative preview clone — the same one
+## TACTICS already previews every queued action against
+## (SelectionController._previewed_unit()'s own source), never the
+## authoritative `selection.state` — so a queued move behind cover changes
+## what the reticle resolves to before the human commits anything.
+## `{"shooter": Unit, "target": Unit, "plane": Array[Region]}`, or an empty
+## Dictionary while not aiming. All three MUST come from the same preview:
+## calling `.preview()` a second time to fetch shooter/target separately
+## would hand back an unrelated clone whose Parts never object-match the
+## first clone's Regions, silently breaking anything that matches
+## Region.part/body identity (ShotPlane.center_of, AimController.resolve).
+## That clone already carries every unit (allies included), just with only
+## the shooter's own queued actions replayed onto it — nothing extra is
+## needed for "other units who have also queued moves" until this
+## architecture ever lets more than one unit queue at once.
+func aim_state() -> Dictionary:
 	if aiming_at == null or selection.selected_unit == null:
-		return []
-	var shooter: Unit = selection.selected_unit
+		return {}
+	var preview: CombatState = selection.current_queue().preview(selection.state)
+	var shooter: Unit = preview.find_unit(selection.selected_unit.id)
+	var target: Unit = preview.find_unit(aiming_at.id)
+	if shooter == null or target == null:
+		return {}
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
-	var direction := Vector2(aiming_at.cell - shooter.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), selection.state)
-	var filtered: Array[Region] = []
-	for region: Region in plane:
+	var direction := Vector2(target.cell - shooter.cell)
+	var raw: Array[Region] = ShotPlane.build(origin, direction.normalized(), preview)
+	# The shooter's own body sits right at the ray's origin and would
+	# otherwise resolve as a phantom "nearest layer" the aim UI has no
+	# business reading — the same exclusion AttackAction's own first
+	# hit-lookup applies.
+	var plane: Array[Region] = []
+	for region: Region in raw:
 		if region.body != shooter:
-			filtered.append(region)
-	return filtered
+			plane.append(region)
+	return {"shooter": shooter, "target": target, "plane": plane}
+
+
+## Convenience for a caller that only needs the plane itself — see
+## aim_state() when shooter/target identity matters too.
+func aim_plane() -> Array[Region]:
+	var aim: Dictionary = aim_state()
+	if aim.is_empty():
+		return []
+	return aim["plane"]
 
 
 ## Queues an AttackAction carrying the reticle's current aim_offset, using
@@ -289,4 +356,4 @@ func _refresh_overlay() -> void:
 		board_view.clear_overlays()
 		return
 	board_view.show_reachable(selection.reachable_cells())
-	board_view.show_ghost_paths(selection.ghost_paths())
+	board_view.show_ghost_paths(selection.ghost_paths(), selection.leg_costs())

@@ -20,6 +20,17 @@ const GHOST_HEIGHT := 0.03
 const OVERLAY_SIZE := 0.8
 const REACHABLE_COLOR := Color(0.55, 0.55, 0.52)
 const GHOST_COLOR := Color(0.95, 0.82, 0.25)
+## docs/10 taskblock03 D2: each queued leg gets its own tint so consecutive
+## moves read as distinct segments instead of one merged smear — cycled if
+## the queue ever outgrows this list, since nothing caps queue length.
+const LEG_COLORS: Array[Color] = [
+	Color(0.95, 0.82, 0.25),
+	Color(0.35, 0.85, 0.95),
+	Color(0.95, 0.45, 0.85),
+	Color(0.55, 0.95, 0.45),
+]
+const WAYPOINT_LABEL_HEIGHT := 0.6
+const WAYPOINT_FONT_SIZE := 24
 ## docs/10 taskblock02 G3: a subtle reference, not decoration — a value or
 ## two off WorldPalette.GROUND (#2E4A32), never bright.
 const GRID_LINE_COLOR := Color("#253B29")
@@ -118,16 +129,60 @@ func show_reachable(cells: Array[Vector2i]) -> void:
 ## One queued MoveAction's path per entry — multiple queued moves must stack
 ## visibly, so this never collapses them into a single overlay. Never
 ## touches the reachable-highlight overlay.
-func show_ghost_paths(paths: Array) -> void:
+##
+## docs/10 taskblock03 D2: "waypoints must read as waypoints" — each leg
+## gets its own tint and its own polyline (a distinct segment, not one
+## merged smear), plus a numbered label at its destination cell showing
+## that leg's own MP cost and the running total, so queue order is obvious
+## at a glance. `leg_costs` is parallel to `paths` — SelectionController.
+## leg_costs() is the one source for the numbers, never re-derived here.
+func show_ghost_paths(paths: Array, leg_costs: Array[float] = []) -> void:
 	_clear(_ghost_overlay)
-	for path: Array in paths:
+	var running_total: float = 0.0
+	for i in range(paths.size()):
+		var path: Array = paths[i]
+		var color: Color = LEG_COLORS[i % LEG_COLORS.size()]
 		for cell: Vector2i in path:
-			_ghost_overlay.add_child(_marker(cell, GHOST_COLOR, GHOST_HEIGHT))
+			_ghost_overlay.add_child(_marker(cell, color, GHOST_HEIGHT))
+		if path.is_empty():
+			continue
+		_ghost_overlay.add_child(_leg_line(path, color))
+		var leg_cost: float = leg_costs[i] if i < leg_costs.size() else 0.0
+		running_total += leg_cost
+		_ghost_overlay.add_child(
+			_waypoint_label(path[path.size() - 1], i + 1, leg_cost, running_total)
+		)
 
 
 func clear_overlays() -> void:
 	_clear(_reachable_overlay)
 	_clear(_ghost_overlay)
+
+
+## A distinct polyline through one leg's cells (docs/10 taskblock03 D2) — a
+## real segment a human can trace, not just a row of same-looking dots.
+func _leg_line(path: Array, color: Color) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, WorldPalette.overlay_material(color))
+	for cell: Vector2i in path:
+		mesh.surface_add_vertex(Vector3(cell.x, GHOST_HEIGHT, cell.y) * UnitGeometry.CELL_SIZE)
+	mesh.surface_end()
+	instance.mesh = mesh
+	return instance
+
+
+## "1: 2.0 (2.0)" — this leg's own number and MP cost, then the running
+## total in parens, at the leg's destination cell.
+func _waypoint_label(cell: Vector2i, number: int, leg_cost: float, running_total: float) -> Label3D:
+	var label := Label3D.new()
+	label.text = "%d: %.1f (%.1f)" % [number, leg_cost, running_total]
+	label.font_size = WAYPOINT_FONT_SIZE
+	label.modulate = GHOST_COLOR
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = Vector3(cell.x, WAYPOINT_LABEL_HEIGHT, cell.y) * UnitGeometry.CELL_SIZE
+	return label
 
 
 func _marker(cell: Vector2i, color: Color, height: float) -> MeshInstance3D:
