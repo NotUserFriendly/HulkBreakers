@@ -146,9 +146,15 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 		"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
 	)
 	var text: String = "%s on %s" % [outcome_name, result.region.part.id]
+	# docs/09 "if it changed the world, it's in the log": which UNIT actually
+	# took the hit (not just which part) — a ricochet can tag a third party,
+	# so this is never assumed to be the shooter's own original target.
+	# -1 for cover/terrain, which has no unit id.
+	var target_unit_id: int = result.region.body.id if result.region.body is Unit else -1
 	var data: Dictionary = {
 		"outcome": result.outcome,
 		"part": result.region.part.id,
+		"target_unit_id": target_unit_id,
 		"damage": result.part_damage,
 		"bypassed_armor": result.bypassed_armor,
 		"is_crit": result.is_crit,
