@@ -11,10 +11,25 @@ static func is_legal_attachment(part: Part, socket: Socket) -> bool:
 	return socket.socket_type in part.attaches_to and socket.occupant == null
 
 
-## First free socket of `socket_type` on `target`, or null.
+## First free socket of `socket_type` on `target`, or null. Order-dependent
+## ("whichever is free first") — legitimate only for genuinely "any will
+## do" cases like deep-strike scavenging. Never use this where it matters
+## WHICH socket; see `find_socket`.
 static func find_free_socket(target: Part, socket_type: StringName) -> Socket:
 	for socket: Socket in target.sockets:
 		if socket.socket_type == socket_type and socket.occupant == null:
+			return socket
+	return null
+
+
+## The socket on `target` (not recursive) whose own `id` matches — the
+## assembly path for anything that cares WHICH socket, not just "a free one
+## of this type" (docs/01 taskblock02 Pass B). Order-independent: reversing
+## `target.sockets`'s declaration order changes nothing about what this
+## returns.
+static func find_socket(target: Part, socket_id: StringName) -> Socket:
+	for socket: Socket in target.sockets:
+		if socket.id == socket_id:
 			return socket
 	return null
 

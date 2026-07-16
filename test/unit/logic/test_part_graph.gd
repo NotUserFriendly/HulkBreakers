@@ -10,8 +10,8 @@ func _make_part(id: StringName, attaches_to: Array[StringName] = []) -> Part:
 	return p
 
 
-func _add_socket(owner: Part, socket_type: StringName) -> Socket:
-	var s := Socket.new(socket_type)
+func _add_socket(owner: Part, socket_type: StringName, socket_id: StringName = &"") -> Socket:
+	var s := Socket.new(socket_type, Transform3D.IDENTITY, socket_id)
 	owner.sockets.append(s)
 	return s
 
@@ -259,3 +259,25 @@ func test_single_versatile_hand_cannot_alone_satisfy_a_two_slot_weapon() -> void
 func test_part_with_no_requirements_is_always_operable() -> void:
 	var armor_plate := _make_part(&"plate")
 	assert_true(PartGraph.can_operate(armor_plate, []))
+
+
+func test_find_socket_returns_the_socket_with_that_id_regardless_of_declaration_order() -> void:
+	var torso := _make_part(&"torso")
+	_add_socket(torso, &"ARMOR", &"ARMOR_FRONT")
+	_add_socket(torso, &"ARMOR", &"ARMOR_REAR")
+
+	assert_eq(PartGraph.find_socket(torso, &"ARMOR_FRONT"), torso.sockets[0])
+	assert_eq(PartGraph.find_socket(torso, &"ARMOR_REAR"), torso.sockets[1])
+
+	# The landmine B0 exists to kill: swap the declaration order and the
+	# same ids must still resolve to the same logical sockets — nothing may
+	# depend on "whichever is first."
+	torso.sockets.reverse()
+	assert_eq(PartGraph.find_socket(torso, &"ARMOR_FRONT"), torso.sockets[1])
+	assert_eq(PartGraph.find_socket(torso, &"ARMOR_REAR"), torso.sockets[0])
+
+
+func test_find_socket_returns_null_for_an_unknown_id() -> void:
+	var torso := _make_part(&"torso")
+	_add_socket(torso, &"ARMOR", &"ARMOR_FRONT")
+	assert_null(PartGraph.find_socket(torso, &"ARMOR_REAR"))

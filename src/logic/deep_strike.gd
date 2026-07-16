@@ -48,16 +48,42 @@ static func default_part_pool() -> Array[Part]:
 	# instead of a copy of the pre-Phase-12.0/1a "legs below the floor" bug.
 	const ROOT_ELEVATION := 1.25
 	torso.volume = [Box.new(Vector3(0.0, ROOT_ELEVATION, 0.0), Vector3(0.50, 0.70, 0.28))]
+	# Every socket that could collide with a same-typed sibling on this same
+	# part gets its own id (docs/01 taskblock02 Pass B) — ARMOR_FRONT vs.
+	# ARMOR_REAR, SHOULDER_L vs. SHOULDER_R, HIP_L vs. HIP_R — so an
+	# assembler targets exactly one by `PartGraph.find_socket`, never
+	# "whichever is free first." Reversing this array changes nothing about
+	# where anything lands.
 	torso.sockets = [
-		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, 0.15))),  # front
-		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, -0.15))),  # rear
-		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(-0.31, ROOT_ELEVATION + 0.28, 0.0))),  # left
-		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(0.31, ROOT_ELEVATION + 0.28, 0.0))),  # right
-		Socket.new(&"HIP", Transform3D(Basis(), Vector3(-0.14, ROOT_ELEVATION - 0.35, 0.0))),  # left
-		Socket.new(&"HIP", Transform3D(Basis(), Vector3(0.14, ROOT_ELEVATION - 0.35, 0.0))),  # right
-		Socket.new(&"NECK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.40, 0.0))),
-		Socket.new(&"BACK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.05, -0.17))),
-		Socket.new(&"MATRIX"),
+		Socket.new(
+			&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, 0.15)), &"ARMOR_FRONT"
+		),
+		Socket.new(
+			&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, -0.15)), &"ARMOR_REAR"
+		),
+		Socket.new(
+			&"SHOULDER",
+			Transform3D(Basis(), Vector3(-0.31, ROOT_ELEVATION + 0.28, 0.0)),
+			&"SHOULDER_L"
+		),
+		Socket.new(
+			&"SHOULDER",
+			Transform3D(Basis(), Vector3(0.31, ROOT_ELEVATION + 0.28, 0.0)),
+			&"SHOULDER_R"
+		),
+		Socket.new(
+			&"HIP", Transform3D(Basis(), Vector3(-0.14, ROOT_ELEVATION - 0.35, 0.0)), &"HIP_L"
+		),
+		Socket.new(
+			&"HIP", Transform3D(Basis(), Vector3(0.14, ROOT_ELEVATION - 0.35, 0.0)), &"HIP_R"
+		),
+		Socket.new(
+			&"NECK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.40, 0.0)), &"NECK"
+		),
+		Socket.new(
+			&"BACK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.05, -0.17)), &"BACK"
+		),
+		Socket.new(&"MATRIX", Transform3D.IDENTITY, &"MATRIX"),
 	]
 
 	var head := Part.new()
@@ -70,8 +96,8 @@ static func default_part_pool() -> Array[Part]:
 	head.material = &"artificial_bone"
 	head.volume = [Box.new(Vector3(0.0, 0.12, 0.0), Vector3(0.22, 0.24, 0.22))]
 	head.sockets = [
-		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, 0.12, 0.12))),
-		Socket.new(&"MATRIX"),
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, 0.12, 0.12)), &"ARMOR"),
+		Socket.new(&"MATRIX", Transform3D.IDENTITY, &"MATRIX"),
 	]
 
 	var arm := Part.new()
@@ -83,8 +109,8 @@ static func default_part_pool() -> Array[Part]:
 	arm.material = &"artificial_bone"
 	arm.volume = [Box.new(Vector3(0.0, -0.17, 0.0), Vector3(0.14, 0.34, 0.14))]
 	arm.sockets = [
-		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09))),
-		Socket.new(&"FOREARM", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0))),
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09)), &"ARMOR"),
+		Socket.new(&"FOREARM", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0)), &"FOREARM"),
 	]
 
 	var forearm := Part.new()
@@ -96,11 +122,13 @@ static func default_part_pool() -> Array[Part]:
 	forearm.material = &"artificial_bone"
 	forearm.volume = [Box.new(Vector3(0.0, -0.17, 0.0), Vector3(0.12, 0.34, 0.12))]
 	forearm.sockets = [
-		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.08))),
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.08)), &"ARMOR"),
 		# FOREARM_TOOL (docs/01: folding_sword etc.) is open vocabulary with no
 		# authored occupant yet — left unfilled, not a gap to force content into.
-		Socket.new(&"FOREARM_TOOL", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09))),
-		Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0))),
+		Socket.new(
+			&"FOREARM_TOOL", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09)), &"FOREARM_TOOL"
+		),
+		Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0)), &"WRIST"),
 	]
 
 	var hand := Part.new()
@@ -113,7 +141,7 @@ static func default_part_pool() -> Array[Part]:
 	hand.capabilities = [&"TRIGGER", &"GRIP", &"POWER"]
 	hand.material = &"artificial_muscle"
 	hand.volume = [Box.new(Vector3(0.0, -0.05, 0.0), Vector3(0.10, 0.10, 0.10))]
-	hand.sockets = [Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.0, -0.05, 0.08)))]
+	hand.sockets = [Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.0, -0.05, 0.08)), &"GRIP")]
 
 	# docs/01's own worked example: a saw REPLACES the hand at the wrist
 	# (hand replacement is emergent, not an arm-level special case) — it
@@ -137,7 +165,7 @@ static func default_part_pool() -> Array[Part]:
 	leg.attaches_to = [&"HIP"]
 	leg.material = &"artificial_bone"
 	leg.volume = [Box.new(Vector3(0.0, -0.45, 0.0), Vector3(0.16, 0.90, 0.16))]
-	leg.sockets = [Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.45, 0.09)))]
+	leg.sockets = [Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.45, 0.09)), &"ARMOR")]
 
 	# Plates are FACINGS, not shells (docs/01): a thin box on one face of
 	# their parent, authored part-local at the part's own origin — the
@@ -319,59 +347,101 @@ static func _fill_sockets(
 		_fill_sockets(chosen, pool, rng, depth + 1)
 
 
-## The complete, deterministic reference humanoid (docs/01 "The Reference
-## Humanoid") — every socket filled with its own correctly-matched
-## template (both arms, both legs, both plates, head, head plate, back-
-## mounted ammo rack, a pistol in each hand), no randomness anywhere.
-## Distinct from assemble_random's "scrap-heap landing," which is allowed
-## to be incomplete: body-shape-driven mechanics (cover masking, flanking,
-## armor-as-facings) can't be tested against a shapeless or partial body,
-## so this is the known-good one they're tested against.
-static func assemble_reference_humanoid(matrix: Matrix, cell: Vector2i, squad_id: int = 0) -> Unit:
+## The reference humanoid's fixed skeleton (docs/01 "The Reference
+## Humanoid"), as data: every Mount is exact — `find_socket` by id, never
+## "whichever ARMOR socket is free first" — so both arms, both legs, both
+## plates, head, head plate, and the back-mounted ammo rack always land
+## exactly where docs/01 says, regardless of pool declaration order.
+## GRIP is deliberately left unmounted here: which weapon (if any) sits in
+## each hand is `default_loadout()`'s job, not the skeleton's, so a second
+## armament is a second `Loadout`, not a second template.
+static func reference_humanoid_template() -> ShellTemplate:
+	var arm_mount := func(shoulder_id: StringName, hand_part_id: StringName) -> Mount:
+		return (
+			Mount
+			. new(
+				shoulder_id,
+				&"arm",
+				[
+					Mount.new(&"ARMOR", &"arm_plate"),
+					Mount.new(
+						&"FOREARM",
+						&"forearm",
+						[Mount.new(&"ARMOR", &"arm_plate"), Mount.new(&"WRIST", hand_part_id)]
+					),
+				]
+			)
+		)
+	var leg_mount := func(hip_id: StringName) -> Mount:
+		return Mount.new(hip_id, &"leg", [Mount.new(&"ARMOR", &"leg_plate")])
+
+	return (
+		ShellTemplate
+		. new(
+			&"torso",
+			[
+				Mount.new(&"NECK", &"head", [Mount.new(&"ARMOR", &"head_plate")]),
+				arm_mount.call(&"SHOULDER_L", &"hand_l"),
+				arm_mount.call(&"SHOULDER_R", &"hand_r"),
+				leg_mount.call(&"HIP_L"),
+				leg_mount.call(&"HIP_R"),
+				Mount.new(&"ARMOR_FRONT", &"torso_plate_front"),
+				Mount.new(&"ARMOR_REAR", &"torso_plate_rear"),
+				Mount.new(&"BACK", &"ammo_rack"),
+			],
+			DEFAULT_MAX_MASS,
+			DEFAULT_MAX_RAM
+		)
+	)
+
+
+## A pistol in each hand — docs/01's "known-good, fully armed" default.
+## `GRIP_L`/`GRIP_R` (not a bare `GRIP` shared by both hands) is exactly why
+## `hand_l`/`hand_r` exist as distinct pool ids: a flat Loadout can't
+## otherwise address "the left hand's grip" independently of the right's.
+static func default_loadout() -> Loadout:
+	return Loadout.new({&"GRIP_L": &"pistol", &"GRIP_R": &"pistol"})
+
+
+## `default_part_pool()` plus `hand_l`/`hand_r`: the same `hand` template,
+## split into two so their GRIP sockets carry distinct ids — needed only for
+## `Loadout`-addressed assembly (`reference_humanoid_template`), so kept out
+## of the shared pool `assemble_random` scavenges from (which is blind to
+## socket ids and would only be diluted by two extra near-duplicates).
+static func _reference_humanoid_pool() -> Dictionary:
 	var pool: Dictionary = {}
 	for template: Part in default_part_pool():
 		pool[template.id] = template
 
-	var torso: Part = (pool[&"torso"] as Part).duplicate(true)
-	torso.dock_matrix(matrix)
+	var hand_l: Part = (pool[&"hand"] as Part).duplicate(true)
+	hand_l.id = &"hand_l"
+	hand_l.sockets[0].id = &"GRIP_L"
+	pool[&"hand_l"] = hand_l
 
-	var head: Part = (pool[&"head"] as Part).duplicate(true)
-	_attach(head, torso, &"NECK")
-	_attach((pool[&"head_plate"] as Part).duplicate(true), head, &"ARMOR")
+	var hand_r: Part = (pool[&"hand"] as Part).duplicate(true)
+	hand_r.id = &"hand_r"
+	hand_r.sockets[0].id = &"GRIP_R"
+	pool[&"hand_r"] = hand_r
 
-	for i in range(2):
-		var arm: Part = (pool[&"arm"] as Part).duplicate(true)
-		_attach(arm, torso, &"SHOULDER")
-		_attach((pool[&"arm_plate"] as Part).duplicate(true), arm, &"ARMOR")
-
-		var forearm: Part = (pool[&"forearm"] as Part).duplicate(true)
-		_attach(forearm, arm, &"FOREARM")
-		_attach((pool[&"arm_plate"] as Part).duplicate(true), forearm, &"ARMOR")
-
-		var hand: Part = (pool[&"hand"] as Part).duplicate(true)
-		_attach(hand, forearm, &"WRIST")
-		_attach((pool[&"pistol"] as Part).duplicate(true), hand, &"GRIP")
-
-		var leg: Part = (pool[&"leg"] as Part).duplicate(true)
-		_attach(leg, torso, &"HIP")
-		_attach((pool[&"leg_plate"] as Part).duplicate(true), leg, &"ARMOR")
-
-	# torso's ARMOR sockets are declared front-then-rear (see
-	# default_part_pool) — find_free_socket always returns the first free
-	# one, so attaching in this order lands each plate correctly.
-	_attach((pool[&"torso_plate_front"] as Part).duplicate(true), torso, &"ARMOR")
-	_attach((pool[&"torso_plate_rear"] as Part).duplicate(true), torso, &"ARMOR")
-	_attach((pool[&"ammo_rack"] as Part).duplicate(true), torso, &"BACK")
-
-	var shell := Shell.new(torso)
-	shell.max_mass = DEFAULT_MAX_MASS
-	shell.max_ram = DEFAULT_MAX_RAM
-	return Unit.new(matrix, shell, cell, squad_id)
+	return pool
 
 
-static func _attach(part: Part, target: Part, socket_type: StringName) -> void:
-	var socket: Socket = PartGraph.find_free_socket(target, socket_type)
-	PartGraph.attach(part, target, socket)
+## The complete, deterministic reference humanoid — no randomness anywhere.
+## Distinct from assemble_random's "scrap-heap landing," which is allowed
+## to be incomplete: body-shape-driven mechanics (cover masking, flanking,
+## armor-as-facings) can't be tested against a shapeless or partial body,
+## so this is the known-good one they're tested against. A thin convenience
+## over `BodyAssembler` — the actual structure lives in
+## `reference_humanoid_template()`/`default_loadout()`, not here.
+static func assemble_reference_humanoid(matrix: Matrix, cell: Vector2i, squad_id: int = 0) -> Unit:
+	return BodyAssembler.assemble(
+		reference_humanoid_template(),
+		default_loadout(),
+		_reference_humanoid_pool(),
+		matrix,
+		cell,
+		squad_id
+	)
 
 
 ## Socket/mass/RAM/bulk invariants (Phase 7 fuzz test): every violation
