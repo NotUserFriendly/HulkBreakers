@@ -48,6 +48,77 @@ func test_astar_routes_around_single_blocked_cell() -> void:
 	assert_almost_eq(_sum_path_cost(pf, path), 4.0, 0.0001)
 
 
+func _direction_changes(path: Array[Vector2i]) -> int:
+	var changes := 0
+	for i in range(2, path.size()):
+		if path[i - 1] - path[i - 2] != path[i] - path[i - 1]:
+			changes += 1
+	return changes
+
+
+## docs/10 taskblock04 B: a per-cell MP cost plus a Chebyshev heuristic ties
+## every ordering of the same step multiset — without a tie-break, the open
+## set returns whichever ordering it happens to pop first. This is the
+## reproduced case: the untouched frontier order sends the path diagonally
+## PAST the destination's own column and back (2 turns); tie-broken on
+## fewest direction changes, it goes diagonal-then-straight instead (1).
+func test_astar_prefers_the_smoother_of_two_equal_cost_paths() -> void:
+	var grid := Grid.new(15, 15)
+	var pf := Pathfinder.new(grid)
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(3, 8))
+
+	assert_almost_eq(_sum_path_cost(pf, path), 8.0, 0.0001, "B1: cost must not change by a point")
+	assert_eq(_direction_changes(path), 1, "the smoothest available equal-cost path")
+
+
+## "No fractional MP, no irrational costs... this is cosmetic only: the
+## path's MP cost must not change by one point" — asserted hard, across a
+## corpus, not just the one case the tie-break was built to fix.
+func test_astar_total_cost_is_unchanged_across_a_corpus_of_open_ground_paths() -> void:
+	var grid := Grid.new(15, 15)
+	var pf := Pathfinder.new(grid)
+	var origin := Vector2i(0, 0)
+	var destinations: Array[Vector2i] = [
+		Vector2i(8, 3),
+		Vector2i(3, 8),
+		Vector2i(10, 4),
+		Vector2i(4, 10),
+		Vector2i(7, 2),
+		Vector2i(2, 7),
+		Vector2i(12, 12),
+		Vector2i(1, 5),
+	]
+	for destination: Vector2i in destinations:
+		var path: Array[Vector2i] = pf.astar(origin, destination)
+		var expected_cost: float = float(Grid.distance_chebyshev(origin, destination))
+		assert_almost_eq(
+			_sum_path_cost(pf, path),
+			expected_cost,
+			0.0001,
+			"cost to %s must equal the Chebyshev distance on open ground" % [destination]
+		)
+
+
+## A straight line has no diagonal shortcut to prefer over — the tie-break
+## must never invent a detour where the direct path was already the unique
+## shortest one.
+func test_astar_with_no_diagonal_shortcut_is_unchanged() -> void:
+	var grid := Grid.new(5, 5)
+	var pf := Pathfinder.new(grid)
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
+	assert_eq(
+		path, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)]
+	)
+
+
+func test_astar_is_deterministic() -> void:
+	var grid := Grid.new(15, 15)
+	var pf := Pathfinder.new(grid)
+	var a: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(3, 8))
+	var b: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(3, 8))
+	assert_eq(a, b)
+
+
 func test_astar_returns_empty_when_unreachable() -> void:
 	var grid := Grid.new(3, 3)
 	for y in range(3):
