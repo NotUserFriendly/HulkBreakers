@@ -10,6 +10,11 @@ extends Node3D
 ## the thin shell docs/10 asks for: it only translates input events into
 ## state changes and state into transforms.
 
+## docs/10 taskblock03 C1: how long easing to the attack camera's default
+## framing takes — "ease (don't cut)," one constant, a flagged placeholder
+## like every other un-pinned timing number in this view layer.
+const ATTACK_TWEEN_DURATION := 0.4
+
 var state := CameraOrbitState.new()
 ## docs/10: in the aim UI, scroll steps the dartboard layer instead of
 ## zooming (TacticsController clears this while aiming). Orbit/pan stay
@@ -19,6 +24,7 @@ var zoom_enabled: bool = true
 var _yaw_pivot: Node3D
 var _pitch_pivot: Node3D
 var _camera: Camera3D
+var _active_tween: Tween
 
 
 func _ready() -> void:
@@ -38,19 +44,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			_kill_active_tween()
 			state.orbit(motion.relative)
 			_apply_state()
 		elif Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
-			state.pan(motion.relative, _yaw_pivot.transform.basis.x, _yaw_pivot.transform.basis.z)
+			_kill_active_tween()
+			# docs/10 taskblock03 C3: Godot's mouse Y is down-positive; negate
+			# it at this input boundary (ours to fix, not a Godot default) so
+			# dragging down pans the field down instead of up. X is fine as
+			# reported — left alone.
+			state.pan(
+				Vector2(motion.relative.x, -motion.relative.y),
+				_yaw_pivot.transform.basis.x,
+				_yaw_pivot.transform.basis.z
+			)
 			_apply_state()
 	elif event is InputEventMouseButton and zoom_enabled:
 		var button_event := event as InputEventMouseButton
 		if not button_event.pressed:
 			return
 		if button_event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_kill_active_tween()
 			state.zoom_in()
 			_apply_state()
 		elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_kill_active_tween()
 			state.zoom_out()
 			_apply_state()
 
@@ -60,6 +78,41 @@ func _unhandled_input(event: InputEvent) -> void:
 func center_on(world_position: Vector3) -> void:
 	state.pan_offset = world_position
 	_apply_state()
+
+
+## docs/10 taskblock03 C1/C2: eases (never cuts) to the attack camera's own
+## over-the-shoulder default — on entering aim, and again on the F "reset
+## framing" key, which is the identical target framing, just a different
+## trigger. Orbit/pan/zoom stay live once this starts (C2: "a default
+## framing, not a lock"): any of them kills the tween outright via
+## `_kill_active_tween`, so live input always wins immediately instead of
+## fighting the ease for its remaining duration.
+func ease_to_attack_framing(shooter_pos: Vector3, target_pos: Vector3) -> void:
+	var target: Dictionary = state.attack_framing(shooter_pos, target_pos)
+	var from_yaw: float = state.yaw
+	var from_pitch: float = state.pitch
+	var from_zoom: float = state.zoom
+	var from_pan: Vector3 = state.pan_offset
+
+	_kill_active_tween()
+	_active_tween = create_tween()
+	_active_tween.tween_method(
+		func(t: float) -> void:
+			state.yaw = lerp_angle(from_yaw, target.yaw, t)
+			state.pitch = lerpf(from_pitch, target.pitch, t)
+			state.zoom = lerpf(from_zoom, target.zoom, t)
+			state.pan_offset = from_pan.lerp(target.pan_offset, t)
+			_apply_state(),
+		0.0,
+		1.0,
+		ATTACK_TWEEN_DURATION
+	)
+
+
+func _kill_active_tween() -> void:
+	if _active_tween != null:
+		_active_tween.kill()
+		_active_tween = null
 
 
 ## The actual Camera3D — for anything that needs to cast a ray through it

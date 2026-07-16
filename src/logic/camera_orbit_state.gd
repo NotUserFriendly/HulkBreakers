@@ -17,6 +17,13 @@ const ZOOM_STEP := 1.0
 const DEFAULT_PITCH := -0.6
 const DEFAULT_ZOOM := 12.0
 
+## docs/10 taskblock03 C1: the attack camera's own default framing —
+## shallower (closer to eye-level, "over the shoulder") and closer than
+## the tactical default. Flagged placeholders, same as RETICLE_SENSITIVITY
+## elsewhere — docs/10 asks for the framing, not exact numbers.
+const ATTACK_PITCH := -0.25
+const ATTACK_ZOOM := 6.0
+
 var yaw: float = 0.0
 var pitch: float = DEFAULT_PITCH
 var zoom: float = DEFAULT_ZOOM
@@ -43,3 +50,29 @@ func zoom_in() -> void:
 
 func zoom_out() -> void:
 	zoom = clampf(zoom + ZOOM_STEP, MIN_ZOOM, MAX_ZOOM)
+
+
+## docs/10 taskblock03 C1: pure math for "ease to a third-person
+## over-the-shoulder framing of the shooter with the target framed" — a
+## Dictionary of the {yaw, pitch, zoom, pan_offset} CameraRig eases toward,
+## never applied directly here (this class holds the CURRENT state; a
+## caller tweens toward this as the TARGET). Centers on the shooter (the
+## shoulder the shot is framed over). The rig's camera sits at local +Z from
+## its pivot and looks down its own -Z, so pointing that -Z at the target is
+## exactly `yaw = angle_to(to_target)` with no extra offset — verified
+## against the real Camera3D transform, not hand-derived, since this sign is
+## exactly the kind of thing that's easy to get backwards on paper (see
+## scratchpad diag_yaw.gd). That same yaw places the camera's own position
+## on the opposite side of the pivot from the target, i.e. behind the
+## shooter — the "over the shoulder" part falls out for free.
+func attack_framing(shooter_pos: Vector3, target_pos: Vector3) -> Dictionary:
+	var to_target := Vector2(target_pos.x - shooter_pos.x, target_pos.z - shooter_pos.z)
+	var framing_yaw: float = yaw
+	if to_target != Vector2.ZERO:
+		framing_yaw = Vector2(0.0, 1.0).angle_to(to_target.normalized())
+	return {
+		"yaw": framing_yaw,
+		"pitch": ATTACK_PITCH,
+		"zoom": ATTACK_ZOOM,
+		"pan_offset": shooter_pos,
+	}
