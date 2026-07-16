@@ -187,14 +187,3 @@ func advance_turn() -> void:
 			turn_index = idx
 			_start_turn(units[idx])
 			return
-
-
-## True once at most one squad still has a living unit.
-func is_over() -> bool:
-	var squads_alive: int = 0
-	for squad_units: Array in squads.values():
-		for unit: Unit in squad_units:
-			if unit.alive:
-				squads_alive += 1
-				break
-	return squads_alive < 2

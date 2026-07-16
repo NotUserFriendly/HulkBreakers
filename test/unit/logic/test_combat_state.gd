@@ -113,16 +113,6 @@ func test_round_number_wraps_correctly_around_a_dead_unit() -> void:
 	assert_eq(state.round_number, 1)
 
 
-func test_is_over_when_one_squad_remains() -> void:
-	var grid := Grid.new(5, 5)
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var b := _make_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(grid, [a, b])
-	assert_false(state.is_over())
-	b.alive = false
-	assert_true(state.is_over())
-
-
 func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
 	var grid := Grid.new(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
