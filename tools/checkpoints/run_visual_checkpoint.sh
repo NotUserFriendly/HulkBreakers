@@ -81,11 +81,13 @@ native \`.avi\` output via \`ffmpeg -c:v libx264\` for a small file instead of t
 
 Phase 12 (docs/10, PLAN.md): "a human launches the game, selects a cyborg, queues a move and an
 aimed shot... ends the turn, watches the burst fire and ricochet, and reads the log —
-repeatedly, until one side is down." This recording exercises that loop for real: two hand-armed
-cyborgs (\`jerry\`, \`raider\`) trade pistol fire across several rounds until one side is down or
-the script ends. Phase 12.5's terminal shell (real OFL monospace font, six-color palette,
-rolling combat log via \`UISink\`, selected-unit stat block via \`StatBlockView\`/
-\`WeaponResolver\`, one \`Theme\` resource) is visible and live throughout.
+repeatedly, until one side is down." This recording exercises that loop for real: two
+\`DeepStrike.assemble_reference_humanoid()\` cyborgs (docs/01 "The Reference Humanoid" — full
+skeleton, head/arms/legs/plates/ammo rack, a pistol in each hand, deterministic and guaranteed
+armed, unlike the default battle's \`assemble_random\` loadouts) trade pistol fire across several
+rounds until one side is down or the script ends. Phase 12.5's terminal shell (real OFL
+monospace font, six-color palette, rolling combat log via \`UISink\`, selected-unit stat block
+via \`StatBlockView\`/\`WeaponResolver\`, one \`Theme\` resource) is visible and live throughout.
 
 **\`playthrough.mp4\`** — the full recording. Watch for:
 - The \`RESOLUTION\` banner (docs/10 Phase 12.4) holding through each turn's playback window,
