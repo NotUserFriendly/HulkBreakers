@@ -51,7 +51,7 @@ func test_a_bare_matrix_cannot_dock_where_only_a_surrogate_socket_exists() -> vo
 	assert_push_error("cannot host a matrix")
 
 
-func test_a_full_surrogate_cannot_dock_in_a_spinal_only_socket_rank_too_big() -> void:
+func test_a_full_surrogate_cannot_dock_in_a_spinal_only_socket_unreachable() -> void:
 	var ladder := SurrogateLadder.default_ladder()
 	var pool := {&"torso": _spinal_only_torso()}
 
@@ -87,11 +87,15 @@ func test_a_brain_only_surrogate_also_fits_a_spinal_socket_smaller_fits_bigger()
 
 func test_attaches_to_is_derived_so_a_new_ladder_rung_updates_every_surrogate() -> void:
 	var custom_ladder: Array[SurrogateTier] = [
-		SurrogateTier.new(&"FULL", "Full", 0, &"SURROGATE_FULL", []),
+		SurrogateTier.new(&"FULL", "Full", [], &"SURROGATE_FULL", []),
 		SurrogateTier.new(
-			&"HALF", "Half — a rung nobody hand-edited anything for", 1, &"SURROGATE_HALF", []
+			&"HALF",
+			"Half — a rung nobody hand-edited anything for",
+			[&"FULL"],
+			&"SURROGATE_HALF",
+			[]
 		),
-		SurrogateTier.new(&"BRAIN_ONLY", "Brain", 2, &"SURROGATE_BRAIN", []),
+		SurrogateTier.new(&"BRAIN_ONLY", "Brain", [&"HALF"], &"SURROGATE_BRAIN", []),
 	]
 	var full: Array[StringName] = SurrogateLadder.derive_attaches_to(
 		custom_ladder[0], custom_ladder
@@ -103,9 +107,16 @@ func test_attaches_to_is_derived_so_a_new_ladder_rung_updates_every_surrogate() 
 		custom_ladder[2], custom_ladder
 	)
 
+	# Reachable SET, not declaration order — derive_attaches_to's own
+	# traversal order isn't part of the contract.
 	assert_eq(full, [&"SURROGATE_FULL"])
-	assert_eq(half, [&"SURROGATE_FULL", &"SURROGATE_HALF"])
-	assert_eq(brain, [&"SURROGATE_FULL", &"SURROGATE_HALF", &"SURROGATE_BRAIN"])
+	assert_eq(half.size(), 2)
+	assert_has(half, &"SURROGATE_FULL")
+	assert_has(half, &"SURROGATE_HALF")
+	assert_eq(brain.size(), 3)
+	assert_has(brain, &"SURROGATE_FULL")
+	assert_has(brain, &"SURROGATE_HALF")
+	assert_has(brain, &"SURROGATE_BRAIN")
 
 
 func test_the_matrix_docks_inside_the_surrogate_and_unit_resolves_it_through_two_levels() -> void:
@@ -192,8 +203,8 @@ func test_a_part_needing_a_capability_the_surrogate_lacks_is_inert_but_still_sho
 
 func test_a_part_needing_a_capability_the_surrogate_has_is_usable() -> void:
 	var ladder := SurrogateLadder.default_ladder()
-	# FULL (rank 0, carries LOCOMOTION) needs a cavity roomy enough for it —
-	# the SPINAL-only fixture above is deliberately too small for this one.
+	# FULL (carries LOCOMOTION) needs a cavity roomy enough for it — the
+	# SPINAL-only fixture above is deliberately too small for this one.
 	var torso := _spinal_only_torso()
 	torso.sockets[0].socket_type = &"SURROGATE_FULL"
 	var pool := {&"torso": torso}

@@ -1,11 +1,16 @@
 class_name SurrogateLadder
 extends RefCounted
 
-## Ops on the ordered surrogate-tier ladder (docs/04): "degradation is a
-## ladder, not a health bar." default_ladder() is the docs/04 reference
-## ladder (FULL -> PERIPHERAL -> TORSIC -> SPINAL -> BRAIN_ONLY); demote()
-## steps one rung toward BRAIN_ONLY and holds there — a bare matrix is the
-## floor, never a further loss.
+## Ops on the surrogate-tier DAG (docs/04): "degradation is a ladder, not a
+## health bar" — except taskblock03 Pass A corrects taskblock02's mistake
+## of modeling it as a straight LINE. It's a DAG:
+##
+##   BRAIN_ONLY -> SPINAL -+-> PERIPHERAL -+-> FULL
+##                          +-> TORSIC ----+
+##
+## PERIPHERAL and TORSIC are mutually exclusive branches of the same
+## stage, not neighbouring rungs — a PERIPHERAL surrogate must never fit a
+## SURROGATE_TORSIC socket or vice versa.
 
 
 ## `socket_type` and `capabilities` (docs/04 taskblock02 Pass D) are
@@ -16,47 +21,88 @@ extends RefCounted
 ## ask" — one tag, for the one mechanic that needs it today).
 static func default_ladder() -> Array[SurrogateTier]:
 	return [
-		SurrogateTier.new(&"FULL", "Full body", 0, &"SURROGATE_FULL", [&"LOCOMOTION"]),
+		SurrogateTier.new(&"FULL", "Full body", [], &"SURROGATE_FULL", [&"LOCOMOTION"]),
 		SurrogateTier.new(
 			&"PERIPHERAL",
 			"Arms + legs around a hollow core",
-			1,
+			[&"FULL"],
 			&"SURROGATE_PERIPHERAL",
 			[&"LOCOMOTION"]
 		),
-		SurrogateTier.new(&"TORSIC", "Torso and head", 2, &"SURROGATE_TORSIC", []),
-		SurrogateTier.new(&"SPINAL", "Head and spine", 3, &"SURROGATE_SPINAL", []),
+		SurrogateTier.new(&"TORSIC", "Torso and head", [&"FULL"], &"SURROGATE_TORSIC", []),
 		SurrogateTier.new(
-			&"BRAIN_ONLY", "Just the matrix and its casing", 4, &"SURROGATE_BRAIN", []
+			&"SPINAL", "Head and spine", [&"PERIPHERAL", &"TORSIC"], &"SURROGATE_SPINAL", []
+		),
+		SurrogateTier.new(
+			&"BRAIN_ONLY", "Just the matrix and its casing", [&"SPINAL"], &"SURROGATE_BRAIN", []
 		),
 	]
 
 
-## The next-worse tier in `ladder`, or `current` unchanged if already at
-## the bottom rung.
+## docs/04 taskblock03 Pass A2: demotion on a DAG is genuinely ambiguous
+## wherever more than one tier promotes into `current` — today, only FULL
+## (both PERIPHERAL and TORSIC promote there). "It presumably depends on
+## what was destroyed" (taskblock03), and that rule is deliberately NOT
+## invented here. For that ambiguous case this picks the first branch in
+## `ladder`'s own declaration order as a flagged, deterministic
+## placeholder — `push_warning`'d every time it fires — never final
+## design. Every tier with exactly one upstream branch demotes to it
+## unambiguously; a tier with none (BRAIN_ONLY, the floor) holds.
 static func demote(current: SurrogateTier, ladder: Array[SurrogateTier]) -> SurrogateTier:
-	var next_rank: int = current.rank + 1
-	for tier: SurrogateTier in ladder:
-		if tier.rank == next_rank:
-			return tier
-	return current
+	var candidates: Array[SurrogateTier] = []
+	for candidate: SurrogateTier in ladder:
+		if current.id in candidate.promotes_to:
+			candidates.append(candidate)
+
+	if candidates.is_empty():
+		return current
+	if candidates.size() > 1:
+		push_warning(
+			(
+				(
+					"SurrogateLadder.demote: ambiguous demotion from %s (%d branches lead here) — "
+					+ "picking the first in ladder order as an unresolved, flagged placeholder "
+					+ "(taskblock03 Pass A2, not a design decision)"
+				)
+				% [current.id, candidates.size()]
+			)
+		)
+	return candidates[0]
 
 
-## docs/04 taskblock02 Pass D2: "any surrogate fits a larger box" — a
-## surrogate's own rank is a MAXIMUM the socket it lands in must be at
-## least as protective as, never an exact match. Lower rank = less
-## degraded = bigger box, so a tier at rank R fits every socket type whose
-## own tier ranks R or lower (its own box, and everything roomier than
-## it). The author writes one field (`Part.surrogate_tier`); this list is
-## generated — adding a new rung to `ladder` updates every surrogate with
-## no hand-editing.
+## docs/04 taskblock03 Pass A1: "any surrogate fits a larger box" survives
+## the DAG correction — "larger" now means *downstream in the promotion
+## graph* rather than *higher in a line*. A tier's `attaches_to` is every
+## socket type reachable from itself via `promotes_to` (itself included),
+## computed by transitive reachability, never a rank comparison — a
+## PERIPHERAL surrogate reaches FULL but never TORSIC, and vice versa. The
+## author writes one field (`Part.surrogate_tier`); this list is
+## generated — adding a branch to `ladder` updates every surrogate with no
+## hand-editing.
 static func derive_attaches_to(
 	tier: SurrogateTier, ladder: Array[SurrogateTier]
 ) -> Array[StringName]:
-	var socket_types: Array[StringName] = []
+	var by_id: Dictionary = {}
 	for candidate: SurrogateTier in ladder:
-		if candidate.rank <= tier.rank:
-			socket_types.append(candidate.socket_type)
+		by_id[candidate.id] = candidate
+
+	var reached: Array[StringName] = [tier.id]
+	var frontier: Array[StringName] = [tier.id]
+	while not frontier.is_empty():
+		var current_id: StringName = frontier.pop_back()
+		var current_tier: SurrogateTier = by_id.get(current_id)
+		if current_tier == null:
+			continue
+		for next_id: StringName in current_tier.promotes_to:
+			if not next_id in reached:
+				reached.append(next_id)
+				frontier.append(next_id)
+
+	var socket_types: Array[StringName] = []
+	for reached_id: StringName in reached:
+		var reached_tier: SurrogateTier = by_id.get(reached_id)
+		if reached_tier != null:
+			socket_types.append(reached_tier.socket_type)
 	return socket_types
 
 
