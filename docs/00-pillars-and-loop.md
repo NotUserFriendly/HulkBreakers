@@ -35,18 +35,24 @@ not used anywhere in code, docs, or UI.
 ## The loop
 ```
 Ship → pick a hulk → insert team → mission (gather resources / hit objective)
-     → EXTRACT with loot   ──┐
-     → or TERMINATE MISSION ─┤ (kill your own surrogates, consciousness blinks back)
-                             ↓
+     → EXTRACT with loot        ──┐
+     → or TERMINATE MISSION     ──┤ (kill your own surrogates, consciousness blinks back)
+     → or STRANDED (involuntary)─┤ (no player matrix can act — not a loss)
+                                  ↓
               turn in for credits → buy/refine → upgrade ship & matrices → repeat
 ```
+
+Combat does not end because the enemy is dead — a mission ends only when the player chooses,
+or can't continue. Three outcomes (`Enums.MissionOutcome`, `07`): `EXTRACTED`, `TERMINATED`,
+`STRANDED`.
 
 - **Credits** are currency. Credits *can* buy resources, but harvesting from hulks is far
   more efficient — the loop should always pull you back into a hulk.
 - **Terminate mission** is a real option, not a failure state: you lose the bodies and the
   loot, keep the matrices, and save the time.
-- **Failure** costs bodies and cargo, never matrices. If a *linked* matrix is destroyed, the
-  death feedback carries a penalty to the base matrix (see `04`).
+- **Failure** costs bodies and cargo, never matrices — `STRANDED` (`07`) is the involuntary
+  version of the same guarantee. If a *linked* matrix is destroyed, the death feedback carries
+  a penalty to the base matrix (see `04`).
 
 ## Two insertion modes
 | Mode | How | Consequence |

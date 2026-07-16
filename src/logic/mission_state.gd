@@ -21,6 +21,14 @@ var resource_nodes: Dictionary = {}
 ## Cells ExtractAction requires a unit stand on to call the mission (docs/07:
 ## "EXTRACT with loot").
 var extraction_cells: Array[Vector2i] = []
+## docs/00 taskblock02 Pass E: how this mission actually ended. Never set
+## by "the enemy squad is dead" — that was never an ending. UNDECIDED
+## (still in progress) until extract()/terminate()/strand() sets it.
+var outcome: Enums.MissionOutcome = Enums.MissionOutcome.UNDECIDED
+## Which squad_id is the player's — `is_stranded()`'s own definition of
+## "no player matrix can act." Convention throughout the codebase (deep
+## strike, BattleScene) is squad 0; a flagged default, not hardcoded logic.
+var player_squad_id: int = 0
 
 
 func _init(p_run_state: RunState, p_combat_state: CombatState) -> void:
@@ -47,15 +55,43 @@ func extract() -> void:
 	_return_every_matrix()
 	gathered_resources.clear()
 	gathered_items.clear()
+	outcome = Enums.MissionOutcome.EXTRACTED
 
 
 ## The mission's own haul is discarded, not banked — "you lose the bodies
 ## and the loot, keep the matrices, and save the time" (docs/00). Every
-## matrix still comes home regardless.
+## matrix still comes home regardless. The player's own choice — never
+## the "lose" button (docs/07).
 func terminate() -> void:
+	_discard_and_return(Enums.MissionOutcome.TERMINATED)
+
+
+## docs/00 taskblock02 Pass E: no player matrix can act. Involuntary, and
+## explicitly **not** a loss — matrices persist exactly as they do on
+## every other path, only the label differs (`docs/00`: "the roguelike
+## rule is absolute"). Mechanically identical to terminate() (the mission's
+## own haul is lost either way); the distinct outcome is what a run-summary
+## screen would actually show the player.
+func strand() -> void:
+	_discard_and_return(Enums.MissionOutcome.STRANDED)
+
+
+func _discard_and_return(ending: Enums.MissionOutcome) -> void:
 	gathered_resources.clear()
 	gathered_items.clear()
 	_return_every_matrix()
+	outcome = ending
+
+
+## True once no living unit on the player's own squad remains — the one
+## real, involuntary ending (docs/00), never "the enemy squad is down"
+## (that was deleted, not renamed: docs/09-era CombatState.is_over() no
+## longer exists at all).
+func is_stranded() -> bool:
+	for unit: Unit in combat_state.units:
+		if unit.squad_id == player_squad_id and unit.alive:
+			return false
+	return true
 
 
 func _return_every_matrix() -> void:

@@ -3,13 +3,20 @@
 ## Mission structure
 ```
 insert → explore / fight → gather resources or hit objective → EXIT
-EXIT = EXTRACT (keep loot)  |  TERMINATE (kill surrogates, matrices blink back, lose loot)
 ```
 
-Turn in → credits → buy/refine/upgrade → next hulk.
+Combat does **not** end because the enemy squad is dead (taskblock02 Pass E: that condition is
+deleted, not renamed — `CombatState.is_over()` no longer exists). If a map is clear, the player
+still has things to do: shore it up, cut apart shells, haul loot. A mission ends only when the
+player chooses, or can't continue — three outcomes, `Enums.MissionOutcome`:
 
-**Terminate mission is a legitimate play.** Cut losses, save time, keep the crew. It should
-never feel like the "lose" button — it's the tourniquet.
+| Outcome | Trigger | Matrices |
+|---|---|---|
+| `EXTRACTED` | Reach extraction, leave with what was carried. | Come home with the haul. |
+| `TERMINATED` | The player's own choice (kill your own surrogates). Never the "lose" button — it's the tourniquet. | Come home; loot lost. |
+| `STRANDED` | Involuntary — no player matrix can act (`MissionState.is_stranded()`). | Come home regardless — **not a loss**; the roguelike rule is absolute. |
+
+Turn in → credits → buy/refine/upgrade → next hulk.
 
 ## Hulk persistence
 Hulks are **pseudo-persistent**:

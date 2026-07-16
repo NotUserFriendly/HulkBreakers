@@ -97,6 +97,67 @@ func test_a_carried_matrix_that_was_never_reimplanted_still_comes_home() -> void
 	assert_true(run_state.roster.has(picked_up))
 
 
+## docs/00 taskblock02 Pass E: the three real endings — never "the enemy
+## squad is down," which was deleted outright (CombatState.is_over() no
+## longer exists).
+func test_extract_sets_the_extracted_outcome() -> void:
+	var mission := MissionState.new(RunState.new(), CombatState.new(Grid.new(5, 5)))
+	assert_eq(mission.outcome, Enums.MissionOutcome.UNDECIDED, "still in progress until an exit")
+
+	mission.extract()
+
+	assert_eq(mission.outcome, Enums.MissionOutcome.EXTRACTED)
+
+
+func test_terminate_sets_the_terminated_outcome() -> void:
+	var mission := MissionState.new(RunState.new(), CombatState.new(Grid.new(5, 5)))
+
+	mission.terminate()
+
+	assert_eq(mission.outcome, Enums.MissionOutcome.TERMINATED)
+
+
+func test_strand_sets_the_stranded_outcome_and_still_returns_every_matrix() -> void:
+	var run_state := RunState.new()
+	var alice := Matrix.new()
+	alice.id = &"alice"
+	var unit_a := _make_unit(Vector2i(0, 0), alice)
+	var combat_state := CombatState.new(Grid.new(5, 5), [unit_a])
+	var mission := MissionState.new(run_state, combat_state)
+	mission.gather_resource(&"minerals", 999)
+
+	mission.strand()
+
+	assert_eq(mission.outcome, Enums.MissionOutcome.STRANDED)
+	assert_true(run_state.roster.has(alice), "involuntary, but still not a loss")
+	assert_eq(run_state.resource_count(&"minerals"), 0, "the mission's own haul is still lost")
+
+
+func test_is_stranded_false_while_a_player_unit_is_alive() -> void:
+	var unit_a := _make_unit(Vector2i(0, 0), Matrix.new())
+	unit_a.squad_id = 0
+	var combat_state := CombatState.new(Grid.new(5, 5), [unit_a])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	assert_false(mission.is_stranded())
+
+
+func test_is_stranded_true_once_no_player_unit_remains_alive() -> void:
+	var player_unit := _make_unit(Vector2i(0, 0), Matrix.new())
+	player_unit.squad_id = 0
+	var enemy_unit := _make_unit(Vector2i(1, 0), Matrix.new())
+	enemy_unit.squad_id = 1
+	var combat_state := CombatState.new(Grid.new(5, 5), [player_unit, enemy_unit])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	player_unit.alive = false
+
+	assert_true(
+		mission.is_stranded(), "no player matrix can act — involuntary, not a loss, but real"
+	)
+	assert_true(enemy_unit.alive, "the enemy still standing changes nothing about this")
+
+
 func test_complete_objective_only_tracks_known_ids_once() -> void:
 	var run_state := RunState.new()
 	var combat_state := CombatState.new(Grid.new(5, 5))

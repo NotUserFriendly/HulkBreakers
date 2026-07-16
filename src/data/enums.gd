@@ -54,3 +54,13 @@ enum Outcome {
 	STOP_DEAD,
 	DEFLECT,
 }
+
+## How a mission actually ended (docs/00/07 taskblock02 Pass E) — never
+## "one squad is down"; that's not an ending at all. A closed, small set.
+## UNDECIDED is the default: still in progress.
+enum MissionOutcome {
+	UNDECIDED,
+	EXTRACTED,  # reached extraction, kept the haul
+	TERMINATED,  # the player's own choice: cut losses, matrices blink back, loot lost
+	STRANDED,  # involuntary — no player matrix can act. NOT a loss; matrices persist regardless
+}

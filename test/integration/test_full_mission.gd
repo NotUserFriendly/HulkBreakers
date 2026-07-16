@@ -366,7 +366,7 @@ func test_full_mission_seed_to_extraction() -> void:
 	var turn_count := 0
 	var extracted := false
 	while turn_count < TURN_CAP:
-		if not _squad_has_survivors(combat_state, 0):
+		if mission.is_stranded():
 			break
 		var acting_unit: Unit = combat_state.current_unit()
 		var queue: ActionQueue = _queue_turn(acting_unit, combat_state, mission)
