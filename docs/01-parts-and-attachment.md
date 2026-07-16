@@ -152,18 +152,26 @@ is **~1.85 tall** and fits inside its cell. Feet at `y = 0`. Nothing may extend 
 All socket transforms are in the **host part's** local space; all volumes are **part-local**,
 centred on the part's own origin (Phase 12.0).
 
+All of torso's own numbers below are relative to **torso's own origin** — but torso is the
+frame **ROOT**, and `UnitGeometry` places a root at exactly the unit's cell height (`y = 0`)
+with no separate "standing height" concept. So torso's origin itself carries a
+`ROOT_ELEVATION = 1.25` baked into its volume and every socket it hosts directly (derived, not
+invented: leg height `0.90` + the `HIP` socket's own `0.35` drop below torso's origin) — that's
+what makes "feet at `y ≈ 0`" literally true instead of the legs hanging below the floor.
+Everything **below** torso (arm/forearm/hand/leg's own sockets) stays exactly as authored,
+unaffected — the elevation only applies once, at the root.
+
 ```
-torso            volume  c(0, 0, 0)        s(0.50, 0.70, 0.28)      # attaches to nothing: ROOT
-  NECK           t(0,  0.40,  0)      -> head
-  SHOULDER       t(-0.31, 0.28, 0)    -> arm          # left
-  SHOULDER       t( 0.31, 0.28, 0)    -> arm          # right
-  HIP            t(-0.14,-0.35, 0)    -> leg          # left
-  HIP            t( 0.14,-0.35, 0)    -> leg          # right
-  BACK           t(0,  0.05,-0.17)    -> backpack / ammo rack / carried body
-  ARMOR          t(0,  0.00, 0.15)    -> torso_plate_front
-  ARMOR          t(0,  0.00,-0.15)    -> torso_plate_rear
+torso            volume  c(0, 1.25, 0)      s(0.50, 0.70, 0.28)      # attaches to nothing: ROOT
+  NECK           t(0,  1.65,  0)      -> head
+  SHOULDER       t(-0.31, 1.53, 0)    -> arm          # left
+  SHOULDER       t( 0.31, 1.53, 0)    -> arm          # right
+  HIP            t(-0.14, 0.90, 0)    -> leg          # left
+  HIP            t( 0.14, 0.90, 0)    -> leg          # right
+  BACK           t(0,  1.30,-0.17)    -> backpack / ammo rack / carried body
+  ARMOR          t(0,  1.25, 0.15)    -> torso_plate_front
+  ARMOR          t(0,  1.25,-0.15)    -> torso_plate_rear
   MATRIX
-  (torso sits at unit y 0.90 .. 1.60 via the HIP/leg chain below)
 
 head             volume  c(0, 0.12, 0)     s(0.22, 0.24, 0.22)
   MATRIX

@@ -10,143 +10,143 @@ res://test/checkpoints/test_checkpoint_4.gd
 * test_twenty_random_deep_strike_cyborgs
 
 === cyborg 1/20 (seed 1) ===
-parts: torso, saw_arm, leg
-mass 31.0/500.0   ram 5.0/50.0   effective_level 4.25   armed: false
+parts: torso, torso_plate_front, arm, arm_plate, forearm, leg_plate, saw_hand, leg, leg_plate, leg, arm_plate, head
+mass 52.7/500.0   ram 6.0/50.0   effective_level 4.25   armed: false
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 2/20 (seed 2) ===
-parts: torso, arm, hand, pistol, saw_arm, leg, leg
-mass 43.5/500.0   ram 6.0/50.0   effective_level 6.34   armed: true
+parts: torso, torso_plate_rear, leg_plate, arm, head_plate, forearm, arm_plate, hand, two_handed_sword, arm, torso_plate_front, forearm, torso_plate_rear, hand, two_handed_sword, leg, torso_plate_front, leg, torso_plate_rear, ammo_rack
+mass 74.5/500.0   ram 7.0/50.0   effective_level 6.34   armed: true
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 3/20 (seed 3) ===
-parts: torso, arm, hand, pistol, saw_arm, leg, leg
-mass 43.5/500.0   ram 6.0/50.0   effective_level 5.20   armed: true
+parts: torso, leg_plate, torso_plate_rear, arm, torso_plate_front, forearm, head_plate, saw_hand, arm, forearm, head_plate, hand, leg, torso_plate_front, leg, arm_plate, head, torso_plate_rear, ammo_rack
+mass 68.7/500.0   ram 7.0/50.0   effective_level 5.20   armed: false
 violations: none
-.TT.
-....
+.L..
+.T..
 
 === cyborg 4/20 (seed 4) ===
-parts: torso, saw_arm, saw_arm, leg
-mass 36.0/500.0   ram 5.0/50.0   effective_level 7.44   armed: false
+parts: torso, torso_plate_rear, leg_plate, arm, forearm, leg_plate, saw_hand, arm, head_plate, leg, torso_plate_front, leg, torso_plate_rear, head, leg_plate, ammo_rack
+mass 62.7/500.0   ram 6.0/50.0   effective_level 7.44   armed: false
 violations: none
-.TT.
-....
+.T..
+.L..
 
 === cyborg 5/20 (seed 5) ===
-parts: torso, arm, hand, pistol, arm, hand, pistol, leg, leg
-mass 45.0/500.0   ram 7.0/50.0   effective_level 5.54   armed: true
+parts: torso, head_plate, head_plate, arm, arm_plate, forearm, arm_plate, hand, two_handed_sword, arm, head_plate, forearm, leg_plate, hand, two_handed_sword, leg, head_plate, leg, torso_plate_rear, head, head_plate, ammo_rack
+mass 71.0/500.0   ram 8.0/50.0   effective_level 5.54   armed: true
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 6/20 (seed 6) ===
-parts: torso, saw_arm, saw_arm, leg, leg
-mass 42.0/500.0   ram 5.0/50.0   effective_level 7.49   armed: false
+parts: torso, leg_plate, leg_plate, arm, torso_plate_front, arm, arm_plate, leg, torso_plate_front, leg, arm_plate, head, leg_plate, ammo_rack
+mass 61.0/500.0   ram 6.0/50.0   effective_level 7.49   armed: false
 violations: none
-.TT.
-....
+.L..
+.L..
 
 === cyborg 7/20 (seed 7) ===
-parts: torso, arm, hand, rifle, saw_arm, leg, leg
-mass 45.0/500.0   ram 6.0/50.0   effective_level 4.82   armed: true
+parts: torso, torso_plate_rear, torso_plate_front, arm, torso_plate_front, forearm, torso_plate_rear, hand, pistol, arm, forearm, leg_plate, saw_hand, leg, head_plate, head, torso_plate_front, ammo_rack
+mass 65.7/500.0   ram 7.0/50.0   effective_level 4.82   armed: true
 violations: none
-.TT.
-....
+.T..
+.T..
 
 === cyborg 8/20 (seed 8) ===
-parts: torso, arm, leg, leg
-mass 36.0/500.0   ram 5.0/50.0   effective_level 4.77   armed: false
+parts: torso, arm_plate, arm, leg_plate, forearm, torso_plate_front, saw_hand, leg, leg, torso_plate_front, head
+mass 53.2/500.0   ram 6.0/50.0   effective_level 4.77   armed: false
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 9/20 (seed 9) ===
-parts: torso, saw_arm, arm, leg, leg
-mass 41.0/500.0   ram 5.0/50.0   effective_level 7.42   armed: false
+parts: torso, torso_plate_rear, head_plate, arm, leg_plate, leg, torso_plate_front, leg, arm_plate, head, torso_plate_front
+mass 52.5/500.0   ram 6.0/50.0   effective_level 7.42   armed: false
 violations: none
-.TT.
-....
+.T..
+.T..
 
 === cyborg 10/20 (seed 10) ===
-parts: torso, saw_arm, arm, hand, leg, leg
-mass 42.0/500.0   ram 6.0/50.0   effective_level 6.02   armed: false
+parts: torso, leg_plate, arm_plate, arm, forearm, leg_plate, arm, forearm, arm_plate, leg, torso_plate_front, leg, arm_plate, head, leg_plate, ammo_rack
+mass 63.5/500.0   ram 6.0/50.0   effective_level 6.02   armed: false
 violations: none
-.TT.
-....
+.L..
+.L..
 
 === cyborg 11/20 (seed 11) ===
-parts: torso, arm, hand, two_handed_sword, saw_arm, leg, leg
-mass 46.0/500.0   ram 6.0/50.0   effective_level 7.03   armed: false
+parts: torso, head_plate, head_plate, arm, torso_plate_front, forearm, arm_plate, hand, pistol, arm, forearm, head_plate, saw_hand, leg, leg, torso_plate_front, head, torso_plate_front, ammo_rack
+mass 69.2/500.0   ram 7.0/50.0   effective_level 7.03   armed: true
 violations: none
-.TT.
-....
+.T..
+.T..
 
 === cyborg 12/20 (seed 12) ===
-parts: torso, arm, leg, leg
-mass 36.0/500.0   ram 5.0/50.0   effective_level 7.44   armed: false
+parts: torso, arm_plate, arm, leg_plate, leg, arm_plate
+mass 34.0/500.0   ram 5.0/50.0   effective_level 7.44   armed: false
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 13/20 (seed 13) ===
-parts: torso, arm, saw_arm, leg, leg
-mass 41.0/500.0   ram 5.0/50.0   effective_level 2.75   armed: false
+parts: torso, torso_plate_front, arm, leg_plate, forearm, saw_hand, leg, torso_plate_front, leg, head, torso_plate_front, ammo_rack
+mass 58.7/500.0   ram 6.0/50.0   effective_level 2.75   armed: false
 violations: none
-.TT.
-....
+.T..
+.T..
 
 === cyborg 14/20 (seed 14) ===
-parts: torso, saw_arm, arm, hand, rifle, leg, leg
-mass 45.0/500.0   ram 6.0/50.0   effective_level 7.98   armed: true
+parts: torso, head_plate, leg_plate, arm, leg_plate, forearm, torso_plate_front, saw_hand, arm, arm_plate, forearm, leg_plate, saw_hand, head, arm_plate, ammo_rack
+mass 53.4/500.0   ram 6.0/50.0   effective_level 7.98   armed: false
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 15/20 (seed 15) ===
-parts: torso, arm, hand, rifle, arm, hand, rifle, leg
-mass 42.0/500.0   ram 7.0/50.0   effective_level 4.87   armed: false
+parts: torso, head_plate, head_plate, arm, head_plate, forearm, arm_plate, hand, two_handed_sword, arm, leg_plate, forearm, arm_plate, saw_hand, leg, torso_plate_rear, head, leg_plate
+mass 58.2/500.0   ram 7.0/50.0   effective_level 4.87   armed: false
 violations: none
-.TT.
-....
+.T..
+.L..
 
 === cyborg 16/20 (seed 16) ===
-parts: torso, saw_arm, arm, hand, leg, leg
-mass 42.0/500.0   ram 6.0/50.0   effective_level 5.32   armed: false
+parts: torso, leg_plate, torso_plate_rear, arm, forearm, torso_plate_front, hand, rifle, arm, forearm, head_plate, saw_hand, leg, leg, head_plate, head, torso_plate_rear
+mass 63.2/500.0   ram 7.0/50.0   effective_level 5.32   armed: true
 violations: none
-.TT.
-....
+.L..
+.T..
 
 === cyborg 17/20 (seed 17) ===
-parts: torso, arm, hand, rifle, arm, hand, two_handed_sword, leg, leg
-mass 49.0/500.0   ram 7.0/50.0   effective_level 3.71   armed: true
+parts: torso, head_plate, head_plate, arm, arm_plate, forearm, head_plate, saw_hand, arm, forearm, torso_plate_front, saw_hand, leg, torso_plate_front, leg, arm_plate, head
+mass 62.4/500.0   ram 6.0/50.0   effective_level 3.71   armed: false
 violations: none
-.TT.
+.T..
 ....
 
 === cyborg 18/20 (seed 18) ===
-parts: torso, saw_arm, saw_arm, leg, leg
-mass 42.0/500.0   ram 5.0/50.0   effective_level 5.92   armed: false
+parts: torso, head_plate, leg_plate, arm, head_plate, forearm, head_plate, saw_hand, arm, forearm, arm_plate, saw_hand, leg, head_plate, head, leg_plate, ammo_rack
+mass 54.9/500.0   ram 6.0/50.0   effective_level 5.92   armed: false
 violations: none
-.TT.
-....
+.T..
+.L..
 
 === cyborg 19/20 (seed 19) ===
-parts: torso, saw_arm, leg, leg
-mass 37.0/500.0   ram 5.0/50.0   effective_level 7.96   armed: false
+parts: torso, leg_plate, arm, head_plate, forearm, head_plate, arm, head_plate, forearm, torso_plate_rear, saw_hand, leg, head_plate, ammo_rack
+mass 49.2/500.0   ram 5.0/50.0   effective_level 7.96   armed: false
 violations: none
-.TT.
+.L..
 ....
 
 === cyborg 20/20 (seed 20) ===
-parts: torso, arm, hand, rifle, saw_arm, leg, leg
-mass 45.0/500.0   ram 6.0/50.0   effective_level 7.13   armed: true
+parts: torso, leg_plate, torso_plate_rear, arm, arm_plate, forearm, torso_plate_front, saw_hand, arm, arm_plate, forearm, hand, two_handed_sword, leg, leg_plate, leg, torso_plate_rear, head, ammo_rack
+mass 70.2/500.0   ram 7.0/50.0   effective_level 7.13   armed: false
 violations: none
-.TT.
+.L..
 ....
 1/1 passed.
 
@@ -162,8 +162,8 @@ Totals
 Scripts               1
 Tests                 1
 Passing Tests         1
-Asserts             159
-Time              0.452s
+Asserts             354
+Time              0.445s
 
 
 ---- All tests passed! ----
@@ -172,3 +172,5 @@ WARNING: 5 ObjectDB instances were leaked at exit (run with `--verbose` for deta
    at: cleanup (core/object/object.cpp:2535)
 ERROR: 4 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:822)
+ERROR: Pages in use exist at exit in PagedAllocator: N12VariantPools12BucketMediumE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:170)

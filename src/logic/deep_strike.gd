@@ -20,11 +20,13 @@ const DEFAULT_MAX_MASS := 500.0
 const DEFAULT_MAX_RAM := 50.0
 
 
-## A modest, prototype-scope pool (docs/04: "skip vat simulation, growth
-## time, appearance generation" — content stays utilitarian): one root
-## torso, one pair of arm variants (a normal arm and a saw arm), one hand
-## variant, one leg, and three weapons spanning the capability rules
-## docs/01 calls out (pistol/rifle/two-handed).
+## The reference humanoid's part templates (docs/01 "The Reference
+## Humanoid"): a real body shape, not a shapeless placeholder — legs low,
+## torso mid, head high, plates as thin facings on one side of their
+## parent, never a shell. Every part carries a real material (docs/10:
+## no pool part may have `material == ""`) and a part-local volume, so a
+## random deep-struck assembly is never a floating torso and its plates
+## are never bare structure wearing nothing.
 static func default_part_pool() -> Array[Part]:
 	var torso := Part.new()
 	torso.id = &"torso"
@@ -33,42 +35,77 @@ static func default_part_pool() -> Array[Part]:
 	torso.mass = 20.0
 	torso.ram_cost = 5.0
 	torso.tags = [&"ROOT"]
-	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	# Mirrored SHOULDER/HIP transforms (Phase 12.0) are the actual point: the
-	# same arm/leg template attaches at either socket and BodyProjector's
-	# composed transform places each occupant at its own socket's position,
-	# not the root's.
+	torso.material = &"artificial_bone"
+	# docs/01a's socket transforms are authored relative to the torso's own
+	# origin, and its own worked example ("legs 0.00-0.90, torso 0.90-1.60")
+	# only holds if that origin sits at world y=1.25 — but the torso is the
+	# frame ROOT, and UnitGeometry places a root at exactly the unit's cell
+	# height (y=0) with no separate "standing height" concept. ROOT_ELEVATION
+	# bridges that gap: leg height (0.90) + the HIP socket's own drop below
+	# torso's origin (0.35) = 1.25, derived from docs/01a's own numbers, not
+	# invented — bake it into torso's volume and every socket torso itself
+	# hosts so the composed skeleton actually stands with its feet at y=0
+	# instead of a copy of the pre-Phase-12.0/1a "legs below the floor" bug.
+	const ROOT_ELEVATION := 1.25
+	torso.volume = [Box.new(Vector3(0.0, ROOT_ELEVATION, 0.0), Vector3(0.50, 0.70, 0.28))]
 	torso.sockets = [
-		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(-1.0, 0.5, 0.0))),
-		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.0, 0.5, 0.0))),
-		Socket.new(&"HIP", Transform3D(Basis(), Vector3(-0.5, -0.5, 0.0))),
-		Socket.new(&"HIP", Transform3D(Basis(), Vector3(0.5, -0.5, 0.0))),
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, 0.15))),  # front
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, -0.15))),  # rear
+		Socket.new(
+			&"SHOULDER", Transform3D(Basis(), Vector3(-0.31, ROOT_ELEVATION + 0.28, 0.0))
+		),  # left
+		Socket.new(
+			&"SHOULDER", Transform3D(Basis(), Vector3(0.31, ROOT_ELEVATION + 0.28, 0.0))
+		),  # right
+		Socket.new(&"HIP", Transform3D(Basis(), Vector3(-0.14, ROOT_ELEVATION - 0.35, 0.0))),  # left
+		Socket.new(&"HIP", Transform3D(Basis(), Vector3(0.14, ROOT_ELEVATION - 0.35, 0.0))),  # right
+		Socket.new(&"NECK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.40, 0.0))),
+		Socket.new(&"BACK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.05, -0.17))),
 		Socket.new(&"MATRIX"),
 	]
 
-	# Every part below carries a `volume` so a deep-struck cyborg is never
-	# just a floating torso (taskblock correction 2) — validate_assembly()
-	# rejects any living part without one. Boxes are authored PART-local
-	# (Phase 12.0): each part only describes its own shape, centered on its
-	# own origin: where it actually sits on the body is entirely the hosting
-	# socket's `transform`, composed by BodyProjector down the tree.
+	var head := Part.new()
+	head.id = &"head"
+	head.hp = 6
+	head.max_hp = 6
+	head.mass = 3.0
+	head.ram_cost = 1.0
+	head.attaches_to = [&"NECK"]
+	head.material = &"artificial_bone"
+	head.volume = [Box.new(Vector3(0.0, 0.12, 0.0), Vector3(0.22, 0.24, 0.22))]
+	head.sockets = [
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, 0.12, 0.12))),
+		Socket.new(&"MATRIX"),
+	]
+
 	var arm := Part.new()
 	arm.id = &"arm"
 	arm.hp = 6
 	arm.max_hp = 6
-	arm.mass = 4.0
+	arm.mass = 3.0
 	arm.attaches_to = [&"SHOULDER"]
-	arm.sockets = [Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.45, 0.1)))]
-	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.4, 0.9, 0.4))]
+	arm.material = &"artificial_bone"
+	arm.volume = [Box.new(Vector3(0.0, -0.17, 0.0), Vector3(0.14, 0.34, 0.14))]
+	arm.sockets = [
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09))),
+		Socket.new(&"FOREARM", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0))),
+	]
 
-	var saw_arm := Part.new()
-	saw_arm.id = &"saw_arm"
-	saw_arm.hp = 6
-	saw_arm.max_hp = 6
-	saw_arm.mass = 5.0
-	saw_arm.attaches_to = [&"SHOULDER"]
-	saw_arm.capabilities = [&"SUPPORT"]
-	saw_arm.volume = [Box.new(Vector3.ZERO, Vector3(0.4, 0.9, 0.4))]
+	var forearm := Part.new()
+	forearm.id = &"forearm"
+	forearm.hp = 5
+	forearm.max_hp = 5
+	forearm.mass = 2.5
+	forearm.attaches_to = [&"FOREARM"]
+	forearm.material = &"artificial_bone"
+	forearm.volume = [Box.new(Vector3(0.0, -0.17, 0.0), Vector3(0.12, 0.34, 0.12))]
+	forearm.sockets = [
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.08))),
+		# FOREARM_TOOL (docs/01: folding_sword etc.) is open vocabulary with no
+		# authored occupant yet — left unfilled, not a gap to force content into.
+		Socket.new(&"FOREARM_TOOL", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09))),
+		Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0))),
+	]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -78,8 +115,23 @@ static func default_part_pool() -> Array[Part]:
 	hand.ram_cost = 1.0
 	hand.attaches_to = [&"WRIST"]
 	hand.capabilities = [&"TRIGGER", &"GRIP", &"POWER"]
-	hand.sockets = [Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.0, 0.0, 0.15)))]
-	hand.volume = [Box.new(Vector3.ZERO, Vector3(0.25, 0.25, 0.25))]
+	hand.material = &"artificial_muscle"
+	hand.volume = [Box.new(Vector3(0.0, -0.05, 0.0), Vector3(0.10, 0.10, 0.10))]
+	hand.sockets = [Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.0, -0.05, 0.08)))]
+
+	# docs/01's own worked example: a saw REPLACES the hand at the wrist
+	# (hand replacement is emergent, not an arm-level special case) — it
+	# advertises SUPPORT but no TRIGGER/GRIP/POWER, so a rifle still fires
+	# with one good hand and one saw, but a pistol or sword cannot.
+	var saw_hand := Part.new()
+	saw_hand.id = &"saw_hand"
+	saw_hand.hp = 4
+	saw_hand.max_hp = 4
+	saw_hand.mass = 1.2
+	saw_hand.attaches_to = [&"WRIST"]
+	saw_hand.capabilities = [&"SUPPORT"]
+	saw_hand.material = &"artificial_muscle"
+	saw_hand.volume = [Box.new(Vector3(0.0, -0.05, 0.0), Vector3(0.10, 0.10, 0.10))]
 
 	var leg := Part.new()
 	leg.id = &"leg"
@@ -87,7 +139,75 @@ static func default_part_pool() -> Array[Part]:
 	leg.max_hp = 6
 	leg.mass = 6.0
 	leg.attaches_to = [&"HIP"]
-	leg.volume = [Box.new(Vector3(0.0, -0.5, 0.0), Vector3(0.4, 1.0, 0.4))]
+	leg.material = &"artificial_bone"
+	leg.volume = [Box.new(Vector3(0.0, -0.45, 0.0), Vector3(0.16, 0.90, 0.16))]
+	leg.sockets = [Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.45, 0.09)))]
+
+	# Plates are FACINGS, not shells (docs/01): a thin box on one face of
+	# their parent, authored part-local at the part's own origin — the
+	# hosting ARMOR socket's transform is what actually places them.
+	var torso_plate_front := Part.new()
+	torso_plate_front.id = &"torso_plate_front"
+	torso_plate_front.hp = 8
+	torso_plate_front.max_hp = 8
+	torso_plate_front.mass = 4.0
+	torso_plate_front.attaches_to = [&"ARMOR"]
+	torso_plate_front.material = &"steel"
+	torso_plate_front.volume = [Box.new(Vector3.ZERO, Vector3(0.54, 0.66, 0.05))]
+
+	var torso_plate_rear := Part.new()
+	torso_plate_rear.id = &"torso_plate_rear"
+	torso_plate_rear.hp = 5
+	torso_plate_rear.max_hp = 5
+	torso_plate_rear.mass = 2.0
+	torso_plate_rear.attaches_to = [&"ARMOR"]
+	torso_plate_rear.material = &"sheet_steel"
+	torso_plate_rear.volume = [Box.new(Vector3.ZERO, Vector3(0.54, 0.66, 0.03))]
+
+	var head_plate := Part.new()
+	head_plate.id = &"head_plate"
+	head_plate.hp = 4
+	head_plate.max_hp = 4
+	head_plate.mass = 1.0
+	head_plate.attaches_to = [&"ARMOR"]
+	head_plate.material = &"ceramic"
+	head_plate.volume = [Box.new(Vector3.ZERO, Vector3(0.24, 0.20, 0.04))]
+
+	# Shared by both the arm's own ARMOR socket and its forearm's (docs/01):
+	# one template, reused wherever an ARMOR socket wants arm-tier plating.
+	var arm_plate := Part.new()
+	arm_plate.id = &"arm_plate"
+	arm_plate.hp = 4
+	arm_plate.max_hp = 4
+	arm_plate.mass = 1.5
+	arm_plate.attaches_to = [&"ARMOR"]
+	arm_plate.material = &"steel"
+	arm_plate.volume = [Box.new(Vector3.ZERO, Vector3(0.16, 0.30, 0.04))]
+
+	var leg_plate := Part.new()
+	leg_plate.id = &"leg_plate"
+	leg_plate.hp = 5
+	leg_plate.max_hp = 5
+	leg_plate.mass = 2.0
+	leg_plate.attaches_to = [&"ARMOR"]
+	leg_plate.material = &"sheet_steel"
+	leg_plate.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.70, 0.04))]
+
+	# docs/01a: the BACK socket's own worked example — cook off a flanked
+	# ammo rack (docs/03), or carry a backpack/body there instead.
+	# cook_off_damage/radius are flagged placeholders, not tuned design —
+	# ask before changing.
+	var ammo_rack := Part.new()
+	ammo_rack.id = &"ammo_rack"
+	ammo_rack.hp = 4
+	ammo_rack.max_hp = 4
+	ammo_rack.mass = 3.0
+	ammo_rack.attaches_to = [&"BACK"]
+	ammo_rack.material = &"sheet_steel"
+	ammo_rack.tags = [&"VOLATILE"]
+	ammo_rack.cook_off_damage = 5.0
+	ammo_rack.cook_off_radius = 2.0
+	ammo_rack.volume = [Box.new(Vector3.ZERO, Vector3(0.20, 0.30, 0.10))]
 
 	var pistol := Part.new()
 	pistol.id = &"pistol"
@@ -96,6 +216,7 @@ static func default_part_pool() -> Array[Part]:
 	pistol.mass = 1.5
 	pistol.attaches_to = [&"GRIP"]
 	pistol.requires = {&"TRIGGER": 1}
+	pistol.material = &"steel"
 	pistol.damage = 4.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0), Ring.new(0.5, 2.0)]
@@ -108,6 +229,7 @@ static func default_part_pool() -> Array[Part]:
 	rifle.mass = 3.0
 	rifle.attaches_to = [&"GRIP"]
 	rifle.requires = {&"TRIGGER": 1, &"SUPPORT": 1}
+	rifle.material = &"steel"
 	rifle.damage = 6.0
 	rifle.ap_cost = 2
 	rifle.scatter = [Ring.new(0.05, 1.0), Ring.new(0.3, 1.5)]
@@ -120,12 +242,30 @@ static func default_part_pool() -> Array[Part]:
 	two_handed_sword.mass = 4.0
 	two_handed_sword.attaches_to = [&"GRIP"]
 	two_handed_sword.requires = {&"GRIP": 1, &"POWER": 1}
+	two_handed_sword.material = &"steel"
 	two_handed_sword.damage = 8.0
 	two_handed_sword.ap_cost = 2
 	two_handed_sword.scatter = [Ring.new(0.2, 1.0)]
 	two_handed_sword.volume = [Box.new(Vector3(0.0, 0.0, 0.35), Vector3(0.1, 0.1, 1.0))]
 
-	return [torso, arm, saw_arm, hand, leg, pistol, rifle, two_handed_sword]
+	return [
+		torso,
+		head,
+		arm,
+		forearm,
+		hand,
+		saw_hand,
+		leg,
+		torso_plate_front,
+		torso_plate_rear,
+		head_plate,
+		arm_plate,
+		leg_plate,
+		ammo_rack,
+		pistol,
+		rifle,
+		two_handed_sword,
+	]
 
 
 ## Fires `base_matrix` into a random frame drawn from `part_pool`: picks a
@@ -183,6 +323,61 @@ static func _fill_sockets(
 		_fill_sockets(chosen, pool, rng, depth + 1)
 
 
+## The complete, deterministic reference humanoid (docs/01 "The Reference
+## Humanoid") — every socket filled with its own correctly-matched
+## template (both arms, both legs, both plates, head, head plate, back-
+## mounted ammo rack, a pistol in each hand), no randomness anywhere.
+## Distinct from assemble_random's "scrap-heap landing," which is allowed
+## to be incomplete: body-shape-driven mechanics (cover masking, flanking,
+## armor-as-facings) can't be tested against a shapeless or partial body,
+## so this is the known-good one they're tested against.
+static func assemble_reference_humanoid(matrix: Matrix, cell: Vector2i, squad_id: int = 0) -> Unit:
+	var pool: Dictionary = {}
+	for template: Part in default_part_pool():
+		pool[template.id] = template
+
+	var torso: Part = (pool[&"torso"] as Part).duplicate(true)
+	torso.dock_matrix(matrix)
+
+	var head: Part = (pool[&"head"] as Part).duplicate(true)
+	_attach(head, torso, &"NECK")
+	_attach((pool[&"head_plate"] as Part).duplicate(true), head, &"ARMOR")
+
+	for i in range(2):
+		var arm: Part = (pool[&"arm"] as Part).duplicate(true)
+		_attach(arm, torso, &"SHOULDER")
+		_attach((pool[&"arm_plate"] as Part).duplicate(true), arm, &"ARMOR")
+
+		var forearm: Part = (pool[&"forearm"] as Part).duplicate(true)
+		_attach(forearm, arm, &"FOREARM")
+		_attach((pool[&"arm_plate"] as Part).duplicate(true), forearm, &"ARMOR")
+
+		var hand: Part = (pool[&"hand"] as Part).duplicate(true)
+		_attach(hand, forearm, &"WRIST")
+		_attach((pool[&"pistol"] as Part).duplicate(true), hand, &"GRIP")
+
+		var leg: Part = (pool[&"leg"] as Part).duplicate(true)
+		_attach(leg, torso, &"HIP")
+		_attach((pool[&"leg_plate"] as Part).duplicate(true), leg, &"ARMOR")
+
+	# torso's ARMOR sockets are declared front-then-rear (see
+	# default_part_pool) — find_free_socket always returns the first free
+	# one, so attaching in this order lands each plate correctly.
+	_attach((pool[&"torso_plate_front"] as Part).duplicate(true), torso, &"ARMOR")
+	_attach((pool[&"torso_plate_rear"] as Part).duplicate(true), torso, &"ARMOR")
+	_attach((pool[&"ammo_rack"] as Part).duplicate(true), torso, &"BACK")
+
+	var frame := Frame.new(torso)
+	frame.max_mass = DEFAULT_MAX_MASS
+	frame.max_ram = DEFAULT_MAX_RAM
+	return Unit.new(matrix, frame, cell, squad_id)
+
+
+static func _attach(part: Part, target: Part, socket_type: StringName) -> void:
+	var socket: Socket = PartGraph.find_free_socket(target, socket_type)
+	PartGraph.attach(part, target, socket)
+
+
 ## Socket/mass/RAM/bulk invariants (Phase 7 fuzz test): every violation
 ## found, or an empty array if the assembly is sound.
 static func validate_assembly(unit: Unit) -> Array[String]:
@@ -212,6 +407,10 @@ static func validate_assembly(unit: Unit) -> Array[String]:
 	for part: Part in unit.frame.living_parts():
 		if part.volume.is_empty():
 			violations.append("%s: hp > 0 with no volume, cannot appear in the shot plane" % part.id)
+		# docs/10: material color is data, and an empty material can't be
+		# looked up — the same class of violation as a missing volume.
+		if part.material == &"":
+			violations.append("%s: hp > 0 with no material, cannot be colored or armored" % part.id)
 
 	if not (unit.frame.root.hosts_matrix() and unit.frame.root.hosted_matrix != null):
 		violations.append("root part must host the deep-struck matrix")

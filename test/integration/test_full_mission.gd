@@ -10,7 +10,7 @@ extends GutTest
 ## anything that doesn't fire naturally is a finding for PLAN.md, not
 ## something to force.
 
-const SEED := 999
+const SEED := 20260715
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400
