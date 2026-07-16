@@ -18,6 +18,7 @@ var aim_view: AimView
 var resolution_player: ResolutionPlayer
 var stat_panel: StatPanel
 var inventory_panel: InventoryPanel
+var controls_overlay: ControlsOverlay
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
 ## streams." The on-screen log (`log_sink`) and this file are fed the same
@@ -105,6 +106,16 @@ func _ready() -> void:
 	layout.add_child(log_label)
 	log_sink = UISink.new(log_label)
 
+	# docs/10 taskblock03 J: "corner-anchored" — a sibling of `layout`, not
+	# inside it, so it sits in its own screen corner independent of the
+	# sidebar's own flow, toggleable with H.
+	var controls_label := Label.new()
+	controls_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	controls_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	controls_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	controls_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	theme_root.add_child(controls_label)
+
 	aim_view = AimView.new()
 	add_child(aim_view)
 	aim_view.setup(tactics, aim_readout)
@@ -122,6 +133,10 @@ func _ready() -> void:
 	inventory_panel = InventoryPanel.new()
 	add_child(inventory_panel)
 	inventory_panel.setup(tactics, inventory_tree, inventory_footer, combat_state.material_table)
+
+	controls_overlay = ControlsOverlay.new()
+	add_child(controls_overlay)
+	controls_overlay.setup(controls_label, file_sink.path)
 
 
 func _on_new_battle_pressed() -> void:
@@ -179,6 +194,11 @@ func new_battle(seed_value: int) -> void:
 	if file_sink != null:
 		file_sink.close()
 	file_sink = FileSink.new()
+	# docs/10 taskblock03 J / docs/09 B2: a fresh file per new_battle() call —
+	# the overlay's "log: <path>" line must follow it. Null on the very
+	# first call from _ready(), before controls_overlay exists yet.
+	if controls_overlay != null:
+		controls_overlay.set_log_path(file_sink.path)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
