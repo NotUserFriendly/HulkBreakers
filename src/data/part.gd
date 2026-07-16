@@ -48,6 +48,15 @@ extends Resource
 @export var max_bulk: float = 0.0
 @export var mass_multiplier: float = 1.0
 @export var contents: Array[Part] = []
+## docs/05 taskblock04 D2: whether this container's own external bulk (what
+## it costs a PARENT container to hold it — see Inventory.external_bulk())
+## is a fixed size regardless of contents (true — a barrel is 110L whether
+## empty or full) or swells with what's actually inside it (false — a soft
+## backpack packed light barely takes up room). Defaults true: every
+## container authored before this field existed already behaved as fixed
+## size (`bulk` read directly, nothing ever swelled it), so the default
+## preserves that with no behavior change.
+@export var rigid: bool = true
 
 ## `hosted_matrix` is the Matrix currently seated in this part's MATRIX
 ## socket, if any. Whether one exists at all is derived from `sockets` via

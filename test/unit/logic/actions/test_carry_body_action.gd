@@ -78,6 +78,26 @@ func test_carry_body_occupies_back_so_a_second_body_has_nowhere_to_go() -> void:
 	assert_false(CarryBodyAction.new(carrier, Vector2i(0, 0), &"body_b").is_legal(state))
 
 
+## docs/05 taskblock04 D3: "BACK holds a barrel or a crewmate, never both...
+## loot capacity and rescue are mutually exclusive. This is intended." No
+## new mechanic — the same free-socket check that already stops a second
+## body (test above) stops a body once a container already occupies BACK.
+func test_a_worn_trash_barrel_leaves_no_room_to_carry_a_body() -> void:
+	var carrier := _make_carrier(Vector2i(0, 0))
+	var barrel: Part = Containers.trash_barrel()
+	assert_true(PartGraph.attach(barrel, carrier.shell.root, carrier.shell.root.sockets[0]))
+
+	var grid := Grid.new(5, 5)
+	var body := _make_body()
+	grid.field_items[Vector2i(0, 0)] = [body]
+	var state := CombatState.new(grid, [carrier])
+
+	assert_false(
+		CarryBodyAction.new(carrier, Vector2i(0, 0), &"downed_ally").is_legal(state),
+		"a worn barrel already occupies the only BACK socket"
+	)
+
+
 func test_carry_body_illegal_for_something_not_shaped_for_a_back_socket() -> void:
 	var carrier := _make_carrier(Vector2i(0, 0))
 	var grid := Grid.new(5, 5)

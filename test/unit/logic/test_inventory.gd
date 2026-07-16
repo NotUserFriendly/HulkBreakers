@@ -44,6 +44,53 @@ func test_nested_container_occupies_parent_by_own_bulk_not_contents() -> void:
 	assert_true(backpack.contents.has(pouch))
 
 
+## docs/05 taskblock04 D2: "a soft container's own external bulk swells
+## with what's actually inside it" — a rigid one (the pre-existing default,
+## preserved for anything authored before this field existed) ignores its
+## contents entirely.
+func test_external_bulk_of_a_soft_container_grows_with_its_contents() -> void:
+	var soft := _make_container(2.0, 100.0)
+	soft.rigid = false
+	assert_almost_eq(Inventory.external_bulk(soft), 2.0, 0.0001, "empty: just its own bulk")
+
+	soft.contents = [_make_item(5.0), _make_item(3.0)]
+	assert_almost_eq(Inventory.external_bulk(soft), 10.0, 0.0001, "own bulk plus contents")
+
+
+func test_external_bulk_of_a_rigid_container_ignores_its_contents() -> void:
+	var rigid := _make_container(110.0, 110.0)
+	rigid.rigid = true
+	assert_almost_eq(Inventory.external_bulk(rigid), 110.0, 0.0001)
+
+	rigid.contents = [_make_item(90.0)]
+	assert_almost_eq(
+		Inventory.external_bulk(rigid), 110.0, 0.0001, "a barrel is 110L whether empty or full"
+	)
+
+
+## docs/05 taskblock04 D2: "an empty backpack stuffed in a barrel is nearly
+## free; a barrel in a barrel is not" — a soft container's own swelling is
+## what actually decides whether IT fits inside something else. A
+## made-up-sized "barrel" here, not `Containers.trash_barrel()` itself —
+## its real ~110L capacity comfortably swallows even a maxed-out ~40L
+## backpack (docs/05 D1's own table), so proving the MECHANIC needs a
+## parent sized to actually be affected by the swell, not just the two
+## starter datasets' own coincidental numbers.
+func test_an_empty_soft_backpack_nests_in_a_barrel_a_full_one_may_not() -> void:
+	var barrel := _make_container(0.0, 10.0)
+	var backpack: Part = Containers.backpack()
+
+	assert_true(
+		Inventory.can_attach(backpack, barrel), "an empty soft backpack is nearly free to nest"
+	)
+
+	backpack.contents = [_make_item(backpack.max_bulk - 1.0)]
+	assert_false(
+		Inventory.can_attach(backpack, barrel),
+		"a full backpack's own swollen external bulk may no longer fit"
+	)
+
+
 func test_attach_rejects_cycle_when_target_already_contains_source() -> void:
 	var outer := _make_container(1.0, 10.0)
 	var inner := _make_container(1.0, 10.0)
