@@ -22,9 +22,12 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the one blocker box")
 
 
-## docs/10 taskblock02 G3: a line per cell boundary on both axes, spanning
-## exactly the grid's own footprint (half a cell of margin on every edge,
-## same as the ground plane).
+## docs/10 taskblock02 G3 / taskblock03 I: a line per cell boundary on both
+## axes, spanning exactly the grid's own footprint (half a cell of margin on
+## every edge, same as the ground plane) plus half a line's own width at
+## each outer edge — taskblock03 I made these real GRID_LINE_WIDTH-wide
+## quads rather than 1px GPU lines, so the outermost lines' own geometry now
+## genuinely extends a little past the plain center-line footprint.
 func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 	var grid := Grid.new(4, 3)
 	var view := BoardView.new()
@@ -37,11 +40,22 @@ func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 
 	var cell_size: float = UnitGeometry.CELL_SIZE
 	var half: float = cell_size * 0.5
+	var half_width: float = BoardView.GRID_LINE_WIDTH * 0.5
 	var aabb: AABB = mesh.get_aabb()
-	assert_almost_eq(aabb.position.x, -half, 0.0001)
-	assert_almost_eq(aabb.position.z, -half, 0.0001)
-	assert_almost_eq(aabb.end.x, (grid.width - 1) * cell_size + half, 0.0001)
-	assert_almost_eq(aabb.end.z, (grid.height - 1) * cell_size + half, 0.0001)
+	assert_almost_eq(aabb.position.x, -half - half_width, 0.0001)
+	assert_almost_eq(aabb.position.z, -half - half_width, 0.0001)
+	assert_almost_eq(aabb.end.x, (grid.width - 1) * cell_size + half + half_width, 0.0001)
+	assert_almost_eq(aabb.end.z, (grid.height - 1) * cell_size + half + half_width, 0.0001)
+
+
+## docs/10 taskblock03 I: the original color was "nearly the same value" as
+## the ground — pushed far enough apart now that this margin is generous,
+## not a rounding-error-sized gap.
+func test_grid_line_color_is_pushed_well_away_from_the_ground_color() -> void:
+	var line: Color = BoardView.GRID_LINE_COLOR
+	var ground: Color = WorldPalette.GROUND
+	var delta: float = absf(line.r - ground.r) + absf(line.g - ground.g) + absf(line.b - ground.b)
+	assert_gt(delta, 0.3, "the two colors must read as clearly distinct values")
 
 
 func test_build_clears_previous_children_on_rebuild() -> void:
