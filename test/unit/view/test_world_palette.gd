@@ -6,12 +6,21 @@ extends GutTest
 ## unshaded.
 
 
-func test_world_environment_uses_the_void_background_and_ground_tinted_ambient() -> void:
+## docs/10 taskblock02 G1: ambient is a soft NEUTRAL fill, not a tint of
+## the ground — the original spec's "~0.25 of the ground hue" read as
+## nearly nothing (a quarter energy of an already-dark green), so any face
+## away from the key light was still pure black.
+func test_world_environment_uses_the_void_background_and_a_neutral_ambient_fill() -> void:
 	var world_environment: WorldEnvironment = WorldPalette.world_environment()
 	assert_eq(world_environment.environment.background_mode, Environment.BG_COLOR)
 	assert_eq(world_environment.environment.background_color, WorldPalette.VOID)
 	assert_eq(world_environment.environment.ambient_light_source, Environment.AMBIENT_SOURCE_COLOR)
-	assert_eq(world_environment.environment.ambient_light_color, WorldPalette.GROUND)
+	assert_eq(world_environment.environment.ambient_light_color, WorldPalette.AMBIENT_COLOR)
+	assert_ne(
+		world_environment.environment.ambient_light_color,
+		WorldPalette.GROUND,
+		"a fill, never a tint of the ground"
+	)
 	assert_almost_eq(
 		world_environment.environment.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001
 	)

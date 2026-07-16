@@ -18,7 +18,30 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 	add_child_autofree(view)
 	view.build(grid, MaterialTable.default_table())
 
-	assert_eq(view._static.get_child_count(), 2, "ground plane + the one blocker box")
+	# +1: the grid-line mesh (docs/10 taskblock02 G3), always present.
+	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the one blocker box")
+
+
+## docs/10 taskblock02 G3: a line per cell boundary on both axes, spanning
+## exactly the grid's own footprint (half a cell of margin on every edge,
+## same as the ground plane).
+func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
+	var grid := Grid.new(4, 3)
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, MaterialTable.default_table())
+
+	var mesh: ImmediateMesh = view._static.get_child(1).mesh
+	assert_not_null(mesh, "the grid-line mesh must be the second static child")
+	assert_eq(mesh.get_surface_count(), 1)
+
+	var cell_size: float = UnitGeometry.CELL_SIZE
+	var half: float = cell_size * 0.5
+	var aabb: AABB = mesh.get_aabb()
+	assert_almost_eq(aabb.position.x, -half, 0.0001)
+	assert_almost_eq(aabb.position.z, -half, 0.0001)
+	assert_almost_eq(aabb.end.x, (grid.width - 1) * cell_size + half, 0.0001)
+	assert_almost_eq(aabb.end.z, (grid.height - 1) * cell_size + half, 0.0001)
 
 
 func test_build_clears_previous_children_on_rebuild() -> void:
@@ -30,7 +53,9 @@ func test_build_clears_previous_children_on_rebuild() -> void:
 	var first_count: int = view._static.get_child_count()
 	view.build(grid, MaterialTable.default_table())
 
-	assert_eq(view._static.get_child_count(), first_count, "rebuilding must not accumulate children")
+	assert_eq(
+		view._static.get_child_count(), first_count, "rebuilding must not accumulate children"
+	)
 
 
 func test_a_destroyed_blocker_spawns_no_mesh() -> void:
@@ -47,7 +72,9 @@ func test_a_destroyed_blocker_spawns_no_mesh() -> void:
 	view.build(grid, MaterialTable.default_table())
 
 	assert_eq(
-		view._static.get_child_count(), 1, "only the ground plane; a dead blocker contributes nothing"
+		view._static.get_child_count(),
+		2,
+		"ground plane + grid lines; a dead blocker contributes nothing"
 	)
 
 
@@ -59,7 +86,9 @@ func test_show_reachable_spawns_one_marker_per_cell_and_replaces_the_last_call()
 	assert_eq(view._reachable_overlay.get_child_count(), 3)
 
 	view.show_reachable([Vector2i(0, 0)])
-	assert_eq(view._reachable_overlay.get_child_count(), 1, "a new call must replace the old overlay")
+	assert_eq(
+		view._reachable_overlay.get_child_count(), 1, "a new call must replace the old overlay"
+	)
 
 
 func test_show_ghost_paths_spawns_a_marker_per_cell_across_every_path() -> void:
@@ -101,4 +130,6 @@ func test_overlays_never_touch_the_static_board() -> void:
 
 	view.show_reachable([Vector2i(0, 0), Vector2i(1, 0)])
 
-	assert_eq(view._static.get_child_count(), static_count, "the overlay must not rebuild the board")
+	assert_eq(
+		view._static.get_child_count(), static_count, "the overlay must not rebuild the board"
+	)
