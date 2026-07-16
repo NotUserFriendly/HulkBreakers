@@ -160,6 +160,69 @@ func test_destroying_cover_removes_its_region_from_the_plane() -> void:
 	assert_null(ShotPlane.resolve_projectile(after, Vector2(0.0, 0.5)))
 
 
+## docs/10 taskblock04 C1/C2: a field object (a dropped assembly) can be a
+## whole part TREE — "a dropped arm renders as an actual arm — plate,
+## pistol and all," and it must be just as shootable. `project_part` alone
+## (the old cover path) only ever saw the root's own boxes.
+func test_a_multi_part_blocker_projects_every_box_not_just_the_root() -> void:
+	var grid := Grid.new(5, 5)
+	var state := CombatState.new(grid)
+	# Offset sideways off the arm's own lateral span, the same
+	# "shield with a hole" trick used above — a point that only lands on
+	# the pistol's own rect, never the arm's, is what actually proves the
+	# pistol is there to hit at all (nested inside it would always resolve
+	# to the nearer arm first).
+	var pistol := _part(&"pistol", Box.new(Vector3(0.5, 0.5, 0.0), Vector3(0.2, 0.2, 0.2)))
+	var arm := _part(&"arm", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.5, 1.0, 0.2)))
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	arm.sockets = [grip]
+	grid.blockers[Vector2i(2, 2)] = arm
+
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	print("\n=== dropped assembly: arm + pistol riding along ===")
+	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 2))
+
+	assert_not_null(
+		ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5)), "the arm's own box must be hit"
+	)
+	var pistol_hit: Region = ShotPlane.resolve_projectile(plane, Vector2(-0.5, 0.5))
+	assert_not_null(
+		pistol_hit,
+		(
+			"the pistol riding along the arm must also be hit — a shot into a dropped body is"
+			+ " absorbed by it, not passed through"
+		)
+	)
+	assert_eq(pistol_hit.part.id, &"pistol")
+
+
+## docs/10 taskblock04 C1: "blow a shoulder off and the entire subtree
+## drops as one item" — the dropped root can itself already be destroyed
+## (nothing of its own left to hit) while a living child is still there to
+## stop a round.
+func test_a_dead_root_blockers_living_child_still_projects() -> void:
+	var grid := Grid.new(5, 5)
+	var state := CombatState.new(grid)
+	var hand := _part(&"hand", Box.new(Vector3(0.5, 0.5, 0.0), Vector3(0.2, 0.2, 0.2)))
+	var shoulder := _part(&"shoulder", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.2, 0.2, 0.2)))
+	shoulder.hp = 0
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	shoulder.sockets = [wrist]
+	grid.blockers[Vector2i(2, 2)] = shoulder
+
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	assert_null(
+		ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5)),
+		"the destroyed shoulder itself has nothing left to hit"
+	)
+	var hit: Region = ShotPlane.resolve_projectile(plane, Vector2(-0.5, 0.5))
+	assert_not_null(hit)
+	assert_eq(hit.part.id, &"hand")
+
+
 ## docs/10 Phase 12.3: AimController groups the plane into layers by owning
 ## body — a unit's regions all point back to that Unit, cover's own regions
 ## point back to the cover Part itself.

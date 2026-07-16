@@ -16,6 +16,13 @@ const DEFAULT_DAMAGE_FLOOR := 1.0
 ## treating it as final.
 const DEFAULT_CRIT_BONUS_MULTIPLIER := 1.5
 
+## docs/10 taskblock04 C1/C2: marks a dropped assembly for the view layer
+## (BoardView: lay it on its side, the same trick UnitView already uses for
+## a downed unit — taskblock03 G) — distinct from ordinary terrain cover,
+## which stays upright. A plain tag, not a new Part field: the vocabulary
+## is already open (`Part.tags`).
+const DROPPED_TAG := &"DROPPED"
+
 
 ## Pure geometry, decided once for a single region: no roll. `incoming_dir`
 ## is the projectile's direction of travel; `region.surface_normal` comes
@@ -163,6 +170,16 @@ static func _hosts_matrix_somewhere(part: Part) -> bool:
 ## hosts one) — there's no parent within the same shell to drop it from,
 ## since the root destroyed IS the unit. Returns the dropped part (the
 ## subtree's own root), or null if nothing was actually dropped.
+##
+## docs/10 taskblock04 C1/C2: a dropped assembly is a field object now —
+## shootable and cover, the exact same category `grid.blockers` already
+## renders and projects into the shot plane (living children of the
+## destroyed root still project correctly; BodyProjector's own tree-walk
+## recurses into sockets regardless of the parent's hp). Skips registering
+## as a blocker if the cell already holds one (pre-existing terrain cover):
+## `grid.blockers` is one Part per cell today, so a genuine collision falls
+## back to field_items alone (still lootable, just not additionally
+## rendered/shootable) rather than silently discarding the existing cover.
 static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Part:
 	if part.hp > 0:
 		return null
@@ -175,6 +192,11 @@ static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Part:
 	if not state.grid.field_items.has(owner.cell):
 		state.grid.field_items[owner.cell] = []
 	state.grid.field_items[owner.cell].append(part)
+
+	if not state.grid.blockers.has(owner.cell):
+		if not DROPPED_TAG in part.tags:
+			part.tags.append(DROPPED_TAG)
+		state.grid.blockers[owner.cell] = part
 	return part
 
 

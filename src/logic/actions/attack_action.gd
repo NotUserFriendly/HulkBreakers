@@ -17,6 +17,13 @@ var aim_offset: Vector2
 ## (docs/08) — empty until those systems exist, but resolved through the same
 ## WeaponResolver call a tooltip would use, never a separate code path.
 var extra_sources: Array[ModSource]
+## docs/10 taskblock04 C3: "this is where docs/07's harvest loop finally
+## touches the board" — null for a standalone battle with no mission
+## context (BattleScene, most tests); when set, a destroyed field object's
+## own `salvage_yield` is credited to it the same way GatherAction credits
+## a resource node. Optional and last, like GatherAction's own `mission`
+## but not required here — attacking happens with or without a mission.
+var mission: MissionState
 
 
 func _init(
@@ -24,13 +31,15 @@ func _init(
 	p_weapon_id: StringName,
 	p_target_cell: Vector2i,
 	p_aim_offset: Vector2 = Vector2.ZERO,
-	p_extra_sources: Array[ModSource] = []
+	p_extra_sources: Array[ModSource] = [],
+	p_mission: MissionState = null
 ) -> void:
 	unit = p_unit
 	weapon_id = p_weapon_id
 	target_cell = p_target_cell
 	aim_offset = p_aim_offset
 	extra_sources = p_extra_sources
+	mission = p_mission
 
 
 func is_legal(state: CombatState) -> bool:
@@ -185,6 +194,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				"part_destroyed: %s" % result.region.part.id
 			)
 		)
+		_credit_salvage(state, attacker, result.region.part)
 	for cooked: Unit in result.cooked_off_units:
 		state.combat_log.emit(
 			LogEvent.new(
@@ -263,6 +273,30 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				&"subtree_dropped",
 				{"part": result.dropped_subtree.id},
 				"subtree_dropped: %s" % result.dropped_subtree.id
+			)
+		)
+
+
+## docs/10 taskblock04 C3: "cut it apart or destroy it, get the resources...
+## this is where docs/07's harvest loop finally touches the board." A
+## no-op with no mission context (a standalone battle) or on a part with
+## nothing to salvage (everything that isn't a field object) — the same
+## MissionState.gather_resource() a real GatherAction call already uses,
+## never a separate crediting path.
+func _credit_salvage(state: CombatState, attacker: Unit, destroyed: Part) -> void:
+	if mission == null or destroyed.salvage_yield.is_empty():
+		return
+	for resource_id: StringName in destroyed.salvage_yield:
+		var amount: int = int(destroyed.salvage_yield[resource_id])
+		mission.gather_resource(resource_id, amount)
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"salvage_credited",
+				{"part": destroyed.id, "resource": resource_id, "amount": amount},
+				"salvage_credited: %d %s from %s" % [amount, resource_id, destroyed.id]
 			)
 		)
 

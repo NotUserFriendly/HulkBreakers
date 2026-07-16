@@ -52,6 +52,20 @@ static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 	return regions
 
 
+## docs/10 taskblock04 C1/C2: projects every living part of a bare part
+## TREE — a field object (a dropped assembly, a scrap pile) sitting at a
+## cell, no owning Unit — the same tree-walk `project()` gives a real
+## Unit's shell, just rooted anywhere and always world-aligned
+## (orientation 0.0: a field object doesn't face anything). This is what
+## makes a dropped assembly "shootable... a pile of scrap stops rounds":
+## `project_part` alone (ShotPlane's old cover path) only ever saw the
+## root's own boxes, never an attached plate or weapon still riding along.
+static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
+	var regions: Array[Region] = []
+	_project_tree(root, Transform3D.IDENTITY, view_dir, 0.0, regions)
+	return regions
+
+
 ## Depth-first walk composing `world = parent ∘ socket.transform ∘ ...` as it
 ## descends. Deliberately walks the tree directly rather than building a
 ## Part -> Transform3D map first: a Dictionary keyed by Part identity would

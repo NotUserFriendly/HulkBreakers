@@ -337,3 +337,42 @@ func test_replays_identically_from_the_same_seed() -> void:
 		results.append([shooter.ap, target.shell.root.hp])
 
 	assert_eq(results[0], results[1])
+
+
+## docs/10 taskblock04 C3: "this is where docs/07's harvest loop finally
+## touches the board" — a field object destroyed along the shot's own path
+## (never the target itself; that's still center-mass, docs/02) credits
+## its salvage_yield to the mission, the exact same
+## MissionState.gather_resource() a real GatherAction call uses.
+func test_destroying_a_scrap_pile_along_the_shot_credits_its_salvage_to_the_mission() -> void:
+	var weapon := _make_weapon(&"pistol", 999.0)
+	var shooter := _make_shooter(Vector2i(2, 0), weapon)
+	var target := _make_target(Vector2i(2, 4))
+	var grid := Grid.new(10, 10)
+	var scrap: Part = FieldObjects.scrap_pile()
+	grid.blockers[Vector2i(2, 2)] = scrap
+	var state := CombatState.new(grid, [shooter, target])
+	var mission := MissionState.new(RunState.new(), state)
+
+	AttackAction.new(shooter, &"pistol", target.cell, Vector2.ZERO, [], mission).apply(state)
+
+	assert_eq(scrap.hp, 0, "the overwhelming shot must have actually destroyed the scrap pile")
+	assert_eq(mission.gathered_resources.get(&"metals"), 4)
+
+
+## No mission context (a standalone battle, most tests/BattleScene): the
+## same overwhelming shot must not crash for lack of anywhere to credit
+## salvage — `mission` defaults to null exactly so attacking works with or
+## without one.
+func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> void:
+	var weapon := _make_weapon(&"pistol", 999.0)
+	var shooter := _make_shooter(Vector2i(2, 0), weapon)
+	var target := _make_target(Vector2i(2, 4))
+	var grid := Grid.new(10, 10)
+	var scrap: Part = FieldObjects.scrap_pile()
+	grid.blockers[Vector2i(2, 2)] = scrap
+	var state := CombatState.new(grid, [shooter, target])
+
+	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
+
+	assert_eq(scrap.hp, 0)

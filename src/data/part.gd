@@ -92,6 +92,14 @@ extends Resource
 ## docs/02).
 @export var is_destructible: bool = true
 
+## docs/10 taskblock04 C3: StringName resource id (docs/05's seven — organics
+## / minerals / metals / ceramics / electronics / fuel / reactives) -> amount
+## awarded when this part is cut apart or destroyed. Empty for anything
+## that isn't meant to be harvested (most parts) — this is what a field
+## object (a scrap pile, a dropped assembly) has and an ordinary weapon or
+## armor plate doesn't.
+@export var salvage_yield: Dictionary = {}
+
 ## Weapon stats (docs/02, Phase 4) — a weapon is just a Part whose
 ## `requires` names the manipulator capabilities it needs to fire (already
 ## exercised by PartGraph.can_operate in Phase 1). Not `range`: that shadows

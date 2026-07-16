@@ -28,7 +28,11 @@ static func build(origin: Vector2, direction: Vector2, state: CombatState) -> Ar
 	for cell: Vector2i in state.grid.blockers:
 		var part: Part = state.grid.blockers[cell]
 		var offset := _offset(cell, origin, dir, perp)
-		for region: Region in BodyProjector.project_part(part, dir):
+		# docs/10 taskblock04 C2: a field object can be a whole part TREE (a
+		# dropped assembly — plate, weapon and all), not just one box, so
+		# every attached part has to project too, not only the root's own
+		# volume.
+		for region: Region in BodyProjector.project_assembly(part, dir):
 			_place(region, offset)
 			region.body = part
 			regions.append(region)

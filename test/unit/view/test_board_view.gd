@@ -22,6 +22,110 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the one blocker box")
 
 
+## docs/10 taskblock04 C1: "a dropped arm renders as an actual arm — plate,
+## pistol and all — lying on the ground." A field object can be a whole
+## part TREE, not just the root's own `volume` — the old
+## `for box in part.volume` path would have silently dropped this child.
+func test_build_renders_every_box_in_a_blockers_whole_part_tree() -> void:
+	var grid := Grid.new(4, 3)
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	pistol.volume = [Box.new(Vector3.ZERO, Vector3(0.1, 0.1, 0.3))]
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.3, 0.9, 0.3))]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	arm.sockets = [grip]
+	grid.blockers[Vector2i(1, 1)] = arm
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, MaterialTable.default_table())
+
+	assert_eq(view._static.get_child_count(), 4, "ground plane + grid lines + arm box + pistol box")
+
+
+## docs/10 taskblock04 C1: "blow a shoulder off and the entire subtree...
+## drops as one item" — the dropped root can itself be destroyed (hp 0,
+## nothing of its own to draw) while a living child still renders. The old
+## `if part.hp <= 0: return` guard would have skipped the whole tree.
+func test_a_destroyed_root_with_a_living_child_still_renders_the_child() -> void:
+	var grid := Grid.new(4, 3)
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 3
+	hand.max_hp = 3
+	hand.volume = [Box.new(Vector3.ZERO, Vector3(0.1, 0.1, 0.1))]
+	var shoulder := Part.new()
+	shoulder.id = &"shoulder"
+	shoulder.hp = 0
+	shoulder.max_hp = 4
+	shoulder.volume = [Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2))]
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	shoulder.sockets = [wrist]
+	grid.blockers[Vector2i(1, 1)] = shoulder
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, MaterialTable.default_table())
+
+	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the living hand only")
+
+
+## docs/10 taskblock04 C1: "lay it on its side" — a field object tagged
+## DROPPED (DamageResolver's own marker) must not stand upright the way
+## ordinary terrain cover does.
+func test_a_dropped_blocker_lies_on_its_side() -> void:
+	var grid := Grid.new(4, 3)
+	var upright := Part.new()
+	upright.id = &"cover"
+	upright.hp = 5
+	upright.max_hp = 5
+	upright.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
+	grid.blockers[Vector2i(0, 0)] = upright
+
+	var dropped := Part.new()
+	dropped.id = &"dropped_arm"
+	dropped.hp = 4
+	dropped.max_hp = 4
+	dropped.tags = [DamageResolver.DROPPED_TAG]
+	dropped.volume = [Box.new(Vector3.ZERO, Vector3(0.3, 0.9, 0.3))]
+	grid.blockers[Vector2i(2, 1)] = dropped
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, MaterialTable.default_table())
+
+	var upright_mesh: MeshInstance3D = view._static.get_child(2)
+	var dropped_mesh: MeshInstance3D = view._static.get_child(3)
+	assert_almost_eq(upright_mesh.transform.basis.get_euler().x, 0.0, 0.001)
+	assert_almost_eq(absf(dropped_mesh.transform.basis.get_euler().x), PI / 2.0, 0.001)
+
+
+## docs/10 taskblock04 C3: "cover renders from its own part geometry with
+## material colours" — a field object's albedo comes from its own
+## `material`, the same MaterialTable lookup every other lit mesh uses.
+func test_a_blockers_mesh_uses_its_own_material_color() -> void:
+	var grid := Grid.new(2, 2)
+	var table := MaterialTable.default_table()
+	var scrap := FieldObjects.scrap_pile()
+	grid.blockers[Vector2i(0, 0)] = scrap
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, MaterialTable.default_table())
+
+	var mesh: MeshInstance3D = view._static.get_child(2)
+	var material: StandardMaterial3D = mesh.mesh.material
+	assert_eq(material.albedo_color, table.color_for(scrap.material))
+
+
 ## docs/10 taskblock02 G3 / taskblock03 I: a line per cell boundary on both
 ## axes, spanning exactly the grid's own footprint (half a cell of margin on
 ## every edge, same as the ground plane) plus half a line's own width at

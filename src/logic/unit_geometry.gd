@@ -22,16 +22,28 @@ const CELL_SIZE := 1.0
 ## must render that preview, never the authoritative `unit.orientation`
 ## itself, without needing a whole cloned Unit just to change one float.
 static func placements(unit: Unit, orientation_override: Variant = null) -> Array[BoxPlacement]:
-	var result: Array[BoxPlacement] = []
 	if unit.shell.root == null:
-		return result
+		return []
 	var orientation: float = (
 		orientation_override if orientation_override != null else unit.orientation
 	)
+	return assembly_placements(unit.shell.root, unit.cell, orientation)
+
+
+## docs/10 taskblock04 C1: the same tree-walk `placements()` gives a real
+## Unit's shell, generalized to any bare part tree sitting at a cell — a
+## field object (a dropped assembly, a scrap pile) has no owning Unit and
+## no facing of its own (orientation 0.0 by default: it doesn't face
+## anything). `placements()` is just this with a Unit's own cell/orientation
+## unpacked for it.
+static func assembly_placements(
+	root: Part, cell: Vector2i, orientation: float = 0.0
+) -> Array[BoxPlacement]:
+	var result: Array[BoxPlacement] = []
 	var unit_transform := Transform3D(
-		Basis(Vector3.UP, orientation), Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+		Basis(Vector3.UP, orientation), Vector3(cell.x, 0.0, cell.y) * CELL_SIZE
 	)
-	_walk(unit.shell.root, Transform3D.IDENTITY, unit_transform, result)
+	_walk(root, Transform3D.IDENTITY, unit_transform, result)
 	return result
 
 

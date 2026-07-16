@@ -215,19 +215,40 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 	mesh.surface_add_vertex(d)
 
 
+## docs/10 taskblock04 C1/C2: a field object can be a whole part TREE (a
+## dropped assembly — plate, weapon and all), the same "render is hitbox"
+## contract UnitView already honours — never just the root's own `volume`,
+## which would silently drop a still-living child riding along a destroyed
+## parent. `assembly_placements` walks it exactly like a Unit's own shell.
+## A part tagged DROPPED (DamageResolver's own marker) lays on its side —
+## the same trick UnitView already uses for a downed unit (taskblock03 G) —
+## so it reads as a fallen assembly, not upright cover.
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
-	if part.hp <= 0:
-		return
-	var color: Color = material_table.color_for(part.material)
-	var cell_origin: Vector3 = Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
-	for box: Box in part.volume:
+	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
+	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
-		box_mesh.size = box.size
-		box_mesh.material = WorldPalette.lit_material(color)
+		box_mesh.size = placement.box.size
+		box_mesh.material = WorldPalette.lit_material(
+			material_table.color_for(placement.part.material)
+		)
 		instance.mesh = box_mesh
-		instance.position = cell_origin + box.center
+		var world_transform: Transform3D = placement.transform.translated_local(
+			placement.box.center
+		)
+		instance.transform = (
+			_dropped_transform(cell) * world_transform if dropped else world_transform
+		)
 		_static.add_child(instance)
+
+
+static func _dropped_transform(cell: Vector2i) -> Transform3D:
+	var pivot: Vector3 = Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
+	return (
+		Transform3D(Basis.IDENTITY, pivot)
+		* Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)
+		* Transform3D(Basis.IDENTITY, -pivot)
+	)
 
 
 ## The reachable-cell highlight (docs/10 Phase 12.2) — one flat marker per
