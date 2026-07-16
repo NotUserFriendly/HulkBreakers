@@ -17,7 +17,10 @@ const RESOLUTION_BANNER := "RESOLUTION"
 ## a real muzzle position) — roughly chest-height on the reference humanoid.
 const TRACER_MUZZLE_HEIGHT := 1.25
 const TRACER_THICKNESS := 0.03
-const TRACER_LIFETIME := 0.15
+## docs/10 taskblock02 G2: doubled from 0.15 — the damage-direction line is
+## the readable part of a resolution, and it was gone before you could
+## follow it.
+const TRACER_LIFETIME := 0.30
 const TRACER_COLOR := Color(1.0, 0.85, 0.3)
 
 var banner: Label

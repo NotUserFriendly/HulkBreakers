@@ -19,9 +19,14 @@ const TEAM_B := Color("#D53A3A")
 ## one unshaded blob.
 const LIGHT_ELEVATION_DEG := 45.0
 const LIGHT_AZIMUTH_DEG := 35.0
-## Modest ambient so shadow-side faces aren't pure black, not a second key
-## light.
-const AMBIENT_ENERGY := 0.25
+## docs/10 taskblock02 G1: a soft neutral fill, NOT a tint of the ground —
+## the original spec's "~0.25 of the ground hue" was the error (docs/04's
+## own dark green at a quarter energy is nearly nothing, so any face away
+## from the key light still reads as pure black). A light cool grey at
+## higher energy: no face reads as pure black, tuned against
+## cyborg_closeup.png (checkpoint 6) — that image is the actual test.
+const AMBIENT_COLOR := Color("#8A93A0")
+const AMBIENT_ENERGY := 0.35
 
 
 ## A flat dark backdrop plus soft ambient — otherwise Godot's default
@@ -33,7 +38,7 @@ static func world_environment() -> WorldEnvironment:
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = VOID
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = GROUND
+	environment.ambient_light_color = AMBIENT_COLOR
 	environment.ambient_light_energy = AMBIENT_ENERGY
 	node.environment = environment
 	return node

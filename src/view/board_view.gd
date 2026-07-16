@@ -20,6 +20,10 @@ const GHOST_HEIGHT := 0.03
 const OVERLAY_SIZE := 0.8
 const REACHABLE_COLOR := Color(0.55, 0.55, 0.52)
 const GHOST_COLOR := Color(0.95, 0.82, 0.25)
+## docs/10 taskblock02 G3: a subtle reference, not decoration — a value or
+## two off WorldPalette.GROUND (#2E4A32), never bright.
+const GRID_LINE_COLOR := Color("#253B29")
+const GRID_LINE_HEIGHT := 0.005
 
 var grid: Grid
 
@@ -43,9 +47,7 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(
-		grid.width * UnitGeometry.CELL_SIZE, grid.height * UnitGeometry.CELL_SIZE
-	)
+	plane.size = Vector2(grid.width * UnitGeometry.CELL_SIZE, grid.height * UnitGeometry.CELL_SIZE)
 	plane.material = WorldPalette.lit_material(WorldPalette.GROUND)
 	ground.mesh = plane
 	ground.position = Vector3(
@@ -54,9 +56,39 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 		(grid.height - 1) * UnitGeometry.CELL_SIZE * 0.5
 	)
 	_static.add_child(ground)
+	_static.add_child(_build_grid_lines(grid))
 
 	for cell: Vector2i in grid.blockers:
 		_spawn_blocker(grid.blockers[cell], cell, material_table)
+
+
+## docs/10 taskblock02 G3: "the ground is a flat green plane and you can't
+## tell where the tiles are." A line per cell boundary, just above the
+## ground to avoid z-fighting — a reference, not decoration, so it stays
+## unshaded and dim rather than lit and bright.
+func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var mesh := ImmediateMesh.new()
+	var cell_size: float = UnitGeometry.CELL_SIZE
+	var half: float = cell_size * 0.5
+	var min_x: float = -half
+	var max_x: float = (p_grid.width - 1) * cell_size + half
+	var min_z: float = -half
+	var max_z: float = (p_grid.height - 1) * cell_size + half
+
+	mesh.surface_begin(Mesh.PRIMITIVE_LINES, WorldPalette.overlay_material(GRID_LINE_COLOR))
+	for x in range(p_grid.width + 1):
+		var wx: float = x * cell_size - half
+		mesh.surface_add_vertex(Vector3(wx, GRID_LINE_HEIGHT, min_z))
+		mesh.surface_add_vertex(Vector3(wx, GRID_LINE_HEIGHT, max_z))
+	for z in range(p_grid.height + 1):
+		var wz: float = z * cell_size - half
+		mesh.surface_add_vertex(Vector3(min_x, GRID_LINE_HEIGHT, wz))
+		mesh.surface_add_vertex(Vector3(max_x, GRID_LINE_HEIGHT, wz))
+	mesh.surface_end()
+
+	instance.mesh = mesh
+	return instance
 
 
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
