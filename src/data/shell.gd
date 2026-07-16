@@ -31,6 +31,51 @@ func living_parts() -> Array[Part]:
 	return result
 
 
+## docs/04 taskblock02 Pass D4: true if any living part is tagged
+## `POWER_SOURCE` (the pool's `reactor`, e.g.) — the hook life support
+## checks before a docked surrogate can hold or regenerate instead of
+## decaying. Shooting out the one part that carries this tag stops regen
+## at the same instant it (if also `VOLATILE`) cooks off — one tag, two
+## consequences, not two separate systems to keep in sync.
+func is_powered() -> bool:
+	for part: Part in living_parts():
+		if &"POWER_SOURCE" in part.tags:
+			return true
+	return false
+
+
+## True if some `ORGANICS`-tagged item sits in any container this assembly
+## carries (docs/05 containers; docs/04 taskblock02 Pass D4 life support's
+## regen fuel) — not recursive into nested containers-within-containers,
+## matching `find_part`'s own "reasonable bound for one loadout" scope.
+func has_organics() -> bool:
+	return _find_organics_container() != null
+
+
+## Removes and returns the first `ORGANICS`-tagged item found, or null if
+## none — life support's regen consumes exactly one per tick (docs/04:
+## "hauling food is now a live trade against bulk and mass").
+func consume_organics() -> Part:
+	var container: Part = _find_organics_container()
+	if container == null:
+		return null
+	for item: Part in container.contents:
+		if &"ORGANICS" in item.tags:
+			container.contents.erase(item)
+			return item
+	return null
+
+
+func _find_organics_container() -> Part:
+	for part: Part in all_parts():
+		if not part.is_container:
+			continue
+		for item: Part in part.contents:
+			if &"ORGANICS" in item.tags:
+				return part
+	return null
+
+
 ## The first part in this assembly whose id matches — actions resolve a
 ## targeted part this way rather than holding a bare Part reference across
 ## states (docs/09): a preview's shell is an independent clone. Assumes a

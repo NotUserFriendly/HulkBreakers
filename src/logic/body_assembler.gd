@@ -15,10 +15,18 @@ extends RefCounted
 ## fills whatever's free with no fixed skeleton to speak of, which is a
 ## different algorithm, not a template/loadout pair.
 
+## docs/01 taskblock02 Pass B: the shell root's own surrogate cavity is a
+## fixed, well-known socket ID — same idea as `MATRIX` for a bot — so a
+## shell built around, say, a SPINAL-sized cavity always exposes it as
+## `&"SURROGATE"`, whatever `socket_type` (cavity SIZE) that particular
+## template happens to declare.
+const SURROGATE_SOCKET_ID := &"SURROGATE"
 
-## `occupant` docks into the assembled root part's own `MATRIX` socket
-## (docs/01) — a bare `Matrix` today; Pass D adds surrogate-hosted matrices
-## on top of the same call, not a second path.
+
+## `occupant` docks directly into the assembled root part's own `MATRIX`
+## socket — a bot (docs/00: matrix + shell, no surrogate). For a cyborg
+## (shell + surrogate + matrix), see `assemble_cyborg`, which docks the
+## matrix into a surrogate first and attaches THAT into the shell.
 static func assemble(
 	template: ShellTemplate,
 	loadout: Loadout,
@@ -27,14 +35,79 @@ static func assemble(
 	cell: Vector2i,
 	squad_id: int = 0
 ) -> Unit:
-	var root: Part = _duplicate_from_pool(pool, template.root_part_id)
+	var root: Part = _build_root(template, pool)
 	if root == null:
-		push_error("BodyAssembler: unknown pool part id %s (root)" % template.root_part_id)
 		return null
 	if not root.dock_matrix(occupant):
 		push_error("BodyAssembler: root part %s cannot host a matrix" % root.id)
 		return null
+	return _finish(root, template, loadout, pool, occupant, cell, squad_id)
 
+
+## docs/04 taskblock02 Pass D1: a cyborg — `matrix` docks inside a
+## freshly-built surrogate at `tier` (`SurrogateLadder.build_surrogate`),
+## and that whole surrogate (not the bare matrix) attaches into the shell
+## root's own `SURROGATE_SOCKET_ID` socket via the ordinary
+## `socket_type in attaches_to` legality check (docs/04 Pass D2: the
+## tier's `attaches_to` is derived from `ladder`, so this is legal exactly
+## when the tier actually fits the cavity's own size). Everything past
+## that point — mounts, loadout — is identical to `assemble`.
+static func assemble_cyborg(
+	template: ShellTemplate,
+	loadout: Loadout,
+	pool: Dictionary,
+	matrix: Matrix,
+	tier: SurrogateTier,
+	ladder: Array[SurrogateTier],
+	cell: Vector2i,
+	squad_id: int = 0
+) -> Unit:
+	var root: Part = _build_root(template, pool)
+	if root == null:
+		return null
+
+	var surrogate: Part = SurrogateLadder.build_surrogate(tier, ladder)
+	surrogate.dock_matrix(matrix)
+	var socket: Socket = PartGraph.find_socket(root, SURROGATE_SOCKET_ID)
+	if socket == null:
+		push_error("BodyAssembler: %s has no socket id %s" % [root.id, SURROGATE_SOCKET_ID])
+		return null
+	if not PartGraph.is_legal_attachment(surrogate, socket):
+		push_error(
+			(
+				"BodyAssembler: %s surrogate cannot attach to socket %s (cavity %s) on %s"
+				% [tier.id, SURROGATE_SOCKET_ID, socket.socket_type, root.id]
+			)
+		)
+		return null
+	if not PartGraph.attach(surrogate, root, socket):
+		push_error(
+			(
+				"BodyAssembler: attach failed for surrogate %s onto %s#%s"
+				% [surrogate.id, root.id, SURROGATE_SOCKET_ID]
+			)
+		)
+		return null
+
+	return _finish(root, template, loadout, pool, matrix, cell, squad_id)
+
+
+static func _build_root(template: ShellTemplate, pool: Dictionary) -> Part:
+	var root: Part = _duplicate_from_pool(pool, template.root_part_id)
+	if root == null:
+		push_error("BodyAssembler: unknown pool part id %s (root)" % template.root_part_id)
+	return root
+
+
+static func _finish(
+	root: Part,
+	template: ShellTemplate,
+	loadout: Loadout,
+	pool: Dictionary,
+	occupant: Matrix,
+	cell: Vector2i,
+	squad_id: int
+) -> Unit:
 	if not _mount_children(root, template.mounts, loadout, pool):
 		return null
 	if not _fill_loadout_only_sockets(root, loadout, pool):

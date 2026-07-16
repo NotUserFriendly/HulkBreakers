@@ -56,8 +56,28 @@ extends Resource
 ## host a matrix.
 @export var hosted_matrix: Matrix = null
 
+## docs/04 taskblock02 Pass D: set only on a surrogate Part itself — the
+## `SurrogateTier.id` (e.g. `&"SPINAL"`) this specific organic body IS.
+## Empty for every non-surrogate part. `attaches_to` for a surrogate is
+## DERIVED from this against the ladder (SurrogateLadder.derive_attaches_to)
+## — the author writes this one field, never a hand-picked socket list.
+@export var surrogate_tier: StringName = &""
+
+## docs/04 taskblock02 Pass D3: open capability tags this part needs FROM
+## THE DOCKED SURROGATE to actually function — distinct from `requires`
+## above, which is about manipulator PARTS (a hand's TRIGGER), not the
+## pilot's own body. A part whose `body_requires` isn't a subset of the
+## docked surrogate's own `SurrogateTier.capabilities` is inert: present,
+## carried, massed, shootable, but unusable — never an error. Empty means
+## "needs nothing from the body" (most parts). Vocabulary intentionally
+## thin (docs/04: "do not invent the capability vocabulary... ask") — only
+## `LOCOMOTION` is authored so far, for the one mechanic that needs it.
+@export var body_requires: Array[StringName] = []
+
 ## Open vocabulary: VOLATILE (cooks off, Phase 5), ORGANIC, SALVAGE, INERT
-## (a carried body, docs/05), ...
+## (a carried body, docs/05), POWER_SOURCE (Shell.is_powered(), docs/04
+## taskblock02 Pass D4), ORGANICS (a lootable ration Shell.consume_organics
+## looks for) ...
 @export var tags: Array[StringName] = []
 
 ## docs/07: empty for most items — the same design bought from a merchant

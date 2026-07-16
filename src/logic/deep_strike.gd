@@ -307,6 +307,23 @@ static func default_part_pool() -> Array[Part]:
 	ammo_rack.cook_off_radius = 2.0
 	ammo_rack.volume = [Box.new(Vector3.ZERO, Vector3(0.20, 0.30, 0.10))]
 
+	# docs/04 taskblock02 Pass D4: the power hook. POWER_SOURCE is what
+	# Shell.is_powered() looks for; VOLATILE means shooting it out also
+	# cooks off — killing a docked surrogate's life support and starting a
+	# fire in the same shot, from one tag each, not two systems to keep in
+	# sync. cook_off numbers are the same flagged placeholder as ammo_rack's.
+	var reactor := Part.new()
+	reactor.id = &"reactor"
+	reactor.hp = 5
+	reactor.max_hp = 5
+	reactor.mass = 4.0
+	reactor.attaches_to = [&"BACK"]
+	reactor.material = &"sheet_steel"
+	reactor.tags = [&"POWER_SOURCE", &"VOLATILE"]
+	reactor.cook_off_damage = 6.0
+	reactor.cook_off_radius = 2.0
+	reactor.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.26, 0.10))]
+
 	var pistol := Part.new()
 	pistol.id = &"pistol"
 	pistol.hp = 3
@@ -365,6 +382,7 @@ static func default_part_pool() -> Array[Part]:
 		forearm_cladding,
 		leg_cladding,
 		ammo_rack,
+		reactor,
 		pistol,
 		rifle,
 		two_handed_sword,

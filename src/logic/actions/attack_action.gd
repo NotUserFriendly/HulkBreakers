@@ -198,18 +198,41 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				"matrix_ejected: %s from %s" % [result.ejected_matrix.id, result.region.part.id]
 			)
 		)
+	# docs/04 taskblock02 Pass D1: the shell root destroyed while hosting an
+	# ATTACHED surrogate (not a bare matrix) drops the whole surrogate,
+	# matrix and all — distinct from matrix_ejected above, never both on
+	# the same impact (DamageResolver.eject_surrogate_if_needed only fires
+	# when eject_matrix_if_needed didn't).
+	if result.ejected_surrogate != null:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"surrogate_ejected",
+				{"host_part": result.region.part.id, "surrogate": result.ejected_surrogate.id},
+				(
+					"surrogate_ejected: %s from %s"
+					% [result.ejected_surrogate.id, result.region.part.id]
+				)
+			)
+		)
 	if result.demoted_unit != null:
+		var cause: String = (
+			"matrix_ejected" if result.ejected_matrix != null else "surrogate_ejected"
+		)
 		var demotion_data: Dictionary = {
 			"from": result.demoted_tier_before.id,
 			"to": result.demoted_unit.surrogate_tier.id,
-			"cause": "matrix_ejected",
+			"cause": cause,
 		}
 		var demotion_text: String = (
-			"surrogate_demoted: unit %d %s -> %s (matrix ejected)"
+			"surrogate_demoted: unit %d %s -> %s (%s)"
 			% [
 				result.demoted_unit.id,
 				result.demoted_tier_before.id,
 				result.demoted_unit.surrogate_tier.id,
+				cause,
 			]
 		)
 		state.combat_log.emit(

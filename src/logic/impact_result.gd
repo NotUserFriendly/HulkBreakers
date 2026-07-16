@@ -18,6 +18,11 @@ var bypassed_armor: bool = false
 var destroyed_part: bool = false
 var cooked_off_units: Array[Unit] = []
 var ejected_matrix: Matrix = null
+## docs/04 taskblock02 Pass D1: the shell root's attached surrogate,
+## matrix and all, when the root itself is destroyed while hosting one —
+## distinct from `ejected_matrix`, which fires when a part hosts a BARE
+## matrix directly (a bot). Mutually exclusive on any one impact.
+var ejected_surrogate: Part = null
 var dropped_subtree: Part = null
 ## Set alongside `ejected_matrix` (docs/04: ejection always demotes the
 ## surrogate one rung) — captured here rather than re-derived afterward,
