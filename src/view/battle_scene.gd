@@ -16,6 +16,8 @@ var camera_rig: CameraRig
 var tactics: TacticsController
 var aim_view: AimView
 var resolution_player: ResolutionPlayer
+var stat_panel: StatPanel
+var log_sink: UISink
 var unit_views: Array[UnitView] = []
 var combat_state: CombatState
 
@@ -35,8 +37,13 @@ func _ready() -> void:
 
 	var ui := CanvasLayer.new()
 	add_child(ui)
+	var theme_root := Control.new()
+	theme_root.theme = HulkTheme.build()
+	theme_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	theme_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(theme_root)
 	var layout := VBoxContainer.new()
-	ui.add_child(layout)
+	theme_root.add_child(layout)
 
 	var buttons := HBoxContainer.new()
 	layout.add_child(buttons)
@@ -59,6 +66,20 @@ func _ready() -> void:
 	aim_readout.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
 	layout.add_child(aim_readout)
 
+	var stat_label := RichTextLabel.new()
+	stat_label.custom_minimum_size = Vector2(320, 40)
+	layout.add_child(stat_label)
+	var stat_drill_down := RichTextLabel.new()
+	stat_drill_down.custom_minimum_size = Vector2(320, 60)
+	stat_drill_down.add_theme_color_override("default_color", HulkTheme.DIM)
+	layout.add_child(stat_drill_down)
+
+	var log_label := RichTextLabel.new()
+	log_label.custom_minimum_size = Vector2(320, 200)
+	log_label.scroll_following = true
+	layout.add_child(log_label)
+	log_sink = UISink.new(log_label)
+
 	aim_view = AimView.new()
 	add_child(aim_view)
 	aim_view.setup(tactics, aim_readout)
@@ -66,6 +87,10 @@ func _ready() -> void:
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
 	resolution_player.setup(banner, tactics)
+
+	stat_panel = StatPanel.new()
+	add_child(stat_panel)
+	stat_panel.setup(tactics, stat_label, stat_drill_down)
 
 	new_battle(DEFAULT_SEED)
 
@@ -100,6 +125,7 @@ func new_battle(seed_value: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	combat_state = _seed_battle(rng)
+	combat_state.combat_log.add_sink(log_sink)
 
 	board_view.build(combat_state.grid, combat_state.material_table)
 	camera_rig.center_on(

@@ -13,6 +13,9 @@ extends Node
 ## back the resolution (docs/10 Phase 12.4's LogPlayback) to consume.
 signal turn_ended(events: Array[LogEvent])
 signal aim_changed
+## Fires whenever `selection.selected_unit` might have changed — the stat
+## panel (docs/08/10 Phase 12.5) redraws from this rather than polling.
+signal selection_changed
 
 ## Reticle-follows-mouse sensitivity (docs/10 doesn't specify a plane-space
 ## mouse mapping — this is a flagged placeholder, not a design decision:
@@ -195,6 +198,7 @@ func end_turn() -> void:
 
 	selection.reset()
 	board_view.clear_overlays()
+	selection_changed.emit()
 	turn_ended.emit(sink.events)
 
 
@@ -205,6 +209,7 @@ func unlock_input() -> void:
 
 
 func _refresh_overlay() -> void:
+	selection_changed.emit()
 	if selection.selected_unit == null:
 		board_view.clear_overlays()
 		return

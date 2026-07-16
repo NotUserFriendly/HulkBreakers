@@ -26,6 +26,12 @@ func test_build_returns_a_real_theme_resource() -> void:
 	assert_eq(theme.get_color("default_color", "RichTextLabel"), HulkTheme.FOREGROUND)
 
 
+func test_build_sets_the_real_monospace_font() -> void:
+	var theme: Theme = HulkTheme.build()
+	assert_not_null(theme.default_font, "docs/08: menus are monospace, text-first")
+	assert_eq(theme.default_font_size, HulkTheme.FONT_SIZE)
+
+
 func test_color_for_material_uses_only_the_six_named_colors() -> void:
 	var table := MaterialTable.default_table()
 	var six: Array[Color] = [
