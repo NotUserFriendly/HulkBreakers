@@ -96,17 +96,14 @@ func _impact_point(unit: Unit, part_id: StringName) -> Vector3:
 
 
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
-	var direction: Vector3 = to - from
-	if direction.length() < 0.001:
+	if (to - from).length() < 0.001:
 		return
 	var instance := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(TRACER_THICKNESS, TRACER_THICKNESS, direction.length())
+	box.size = TracerGeometry.segment_size(from, to, TRACER_THICKNESS)
 	box.material = WorldPalette.overlay_material(TRACER_COLOR)
 	instance.mesh = box
-	instance.transform = Transform3D(
-		Basis.looking_at(-direction.normalized(), Vector3.UP), (from + to) * 0.5
-	)
+	instance.transform = TracerGeometry.segment_transform(from, to)
 	_tracers.add_child(instance)
 	_fade_out(instance)
 

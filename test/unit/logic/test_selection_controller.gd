@@ -176,6 +176,28 @@ func test_reset_turn_with_nothing_selected_is_a_no_op() -> void:
 	assert_null(selection.selected_unit)
 
 
+## docs/10 taskblock03 F1: previewed_unit()'s own cell/orientation ARE the
+## queued end state — the ghost's whole source of truth.
+func test_previewed_unit_reflects_the_queued_end_cell() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+
+	selection.queue_move(Vector2i(2, 0))
+
+	assert_eq(selection.previewed_unit().cell, Vector2i(2, 0))
+	assert_eq(a.cell, Vector2i(0, 0), "the real unit must still be untouched")
+
+
+func test_previewed_unit_with_nothing_selected_is_null() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+
+	assert_null(selection.previewed_unit())
+
+
 func test_reset_clears_selection_and_queues() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(10, 10), [a])

@@ -305,7 +305,7 @@ func move_reticle(delta: Vector2) -> void:
 ## docs/10 taskblock03 D5: "aim from where the unit WILL BE." Everything the
 ## aim UI needs, read from ONE speculative preview clone — the same one
 ## TACTICS already previews every queued action against
-## (SelectionController._previewed_unit()'s own source), never the
+## (SelectionController.previewed_unit()'s own source), never the
 ## authoritative `selection.state` — so a queued move behind cover changes
 ## what the reticle resolves to before the human commits anything.
 ## `{"shooter": Unit, "target": Unit, "plane": Array[Region]}`, or an empty
@@ -410,3 +410,21 @@ func _refresh_overlay() -> void:
 		return
 	board_view.show_reachable(selection.reachable_cells())
 	board_view.show_ghost_paths(selection.ghost_paths(), selection.leg_costs())
+	board_view.show_unit_ghost(_end_position_ghost())
+
+
+## docs/10 taskblock03 F1: only worth drawing once the queued end state
+## actually differs from where the unit already, visibly, is — with
+## nothing queued the ghost would just be an identical translucent copy
+## sitting on top of the real, opaque unit.
+func _end_position_ghost() -> Unit:
+	var previewed: Unit = selection.previewed_unit()
+	var current: Unit = selection.selected_unit
+	if previewed == null or current == null:
+		return null
+	if (
+		previewed.cell == current.cell
+		and is_equal_approx(previewed.orientation, current.orientation)
+	):
+		return null
+	return previewed

@@ -36,8 +36,11 @@ func current_queue() -> ActionQueue:
 
 
 ## The selected unit as it would stand after every already-queued action —
-## the position the next queued move actually starts from.
-func _previewed_unit() -> Unit:
+## the position the next queued move actually starts from. docs/10
+## taskblock03 F1: also the source for the end-position ghost — its `.cell`/
+## `.orientation` already ARE the queued end state, no separate override
+## needed.
+func previewed_unit() -> Unit:
 	var queue: ActionQueue = current_queue()
 	if queue == null:
 		return null
@@ -50,7 +53,7 @@ func _previewed_unit() -> Unit:
 ## is already queued — exactly `Pathfinder.reachable`, no highlight logic
 ## duplicated here.
 func reachable_cells() -> Array[Vector2i]:
-	var actual: Unit = _previewed_unit()
+	var actual: Unit = previewed_unit()
 	if actual == null:
 		return []
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
@@ -62,7 +65,7 @@ func reachable_cells() -> Array[Vector2i]:
 ## unit's already-queued path leaves it to `cell`. Returns whether the
 ## queue actually accepted it.
 func queue_move(cell: Vector2i) -> bool:
-	var actual: Unit = _previewed_unit()
+	var actual: Unit = previewed_unit()
 	if actual == null:
 		return false
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
@@ -110,7 +113,7 @@ func queue_end_turn() -> bool:
 ## turn_selected) turns relative to THIS, not the raw pre-queue value, so
 ## two queued turns in the same TACTICS pass compose instead of colliding.
 func previewed_orientation() -> float:
-	var actual: Unit = _previewed_unit()
+	var actual: Unit = previewed_unit()
 	return actual.orientation if actual != null else 0.0
 
 

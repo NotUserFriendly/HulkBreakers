@@ -31,6 +31,9 @@ const LEG_COLORS: Array[Color] = [
 ]
 const WAYPOINT_LABEL_HEIGHT := 0.6
 const WAYPOINT_FONT_SIZE := 24
+## docs/10 taskblock03 F1: "translucent... low alpha" — low enough to never
+## be mistaken for the real, opaque unit.
+const UNIT_GHOST_ALPHA := 0.35
 ## docs/10 taskblock02 G3: a subtle reference, not decoration — a value or
 ## two off WorldPalette.GROUND (#2E4A32), never bright.
 const GRID_LINE_COLOR := Color("#253B29")
@@ -41,6 +44,11 @@ var grid: Grid
 var _static: Node3D
 var _reachable_overlay: Node3D
 var _ghost_overlay: Node3D
+## docs/10 taskblock03 F1: the end-position unit ghost — its own container,
+## separate from `_ghost_overlay` (waypoint paths), since show_ghost_paths()
+## and show_unit_ghost() each clear only their own overlay and both can be
+## live at once.
+var _unit_ghost_overlay: Node3D
 
 
 func _init() -> void:
@@ -50,6 +58,8 @@ func _init() -> void:
 	add_child(_reachable_overlay)
 	_ghost_overlay = Node3D.new()
 	add_child(_ghost_overlay)
+	_unit_ghost_overlay = Node3D.new()
+	add_child(_unit_ghost_overlay)
 
 
 func build(p_grid: Grid, material_table: MaterialTable) -> void:
@@ -154,9 +164,32 @@ func show_ghost_paths(paths: Array, leg_costs: Array[float] = []) -> void:
 		)
 
 
+## docs/10 taskblock03 F1: "a translucent ghost of the unit where it will
+## end up after the queued path — at its final facing." `previewed_unit`'s
+## own `.cell`/`.orientation` already ARE that end state (Selection
+## Controller.previewed_unit()), so this just renders its boxes, translucent
+## and team-tinted, with none of UnitView's marker/wedge/rim — a null
+## `previewed_unit` (nothing queued, or nothing selected) just clears it.
+func show_unit_ghost(previewed_unit: Unit) -> void:
+	_clear(_unit_ghost_overlay)
+	if previewed_unit == null:
+		return
+	var base: Color = WorldPalette.team_color(previewed_unit.squad_id)
+	var color := Color(base.r, base.g, base.b, UNIT_GHOST_ALPHA)
+	for placement: BoxPlacement in UnitGeometry.placements(previewed_unit):
+		var instance := MeshInstance3D.new()
+		var box_mesh := BoxMesh.new()
+		box_mesh.size = placement.box.size
+		box_mesh.material = WorldPalette.translucent_material(color)
+		instance.mesh = box_mesh
+		instance.transform = placement.transform.translated_local(placement.box.center)
+		_unit_ghost_overlay.add_child(instance)
+
+
 func clear_overlays() -> void:
 	_clear(_reachable_overlay)
 	_clear(_ghost_overlay)
+	_clear(_unit_ghost_overlay)
 
 
 ## A distinct polyline through one leg's cells (docs/10 taskblock03 D2) — a
