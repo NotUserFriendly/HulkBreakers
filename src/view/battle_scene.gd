@@ -17,6 +17,7 @@ var tactics: TacticsController
 var aim_view: AimView
 var resolution_player: ResolutionPlayer
 var stat_panel: StatPanel
+var inventory_panel: InventoryPanel
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
 ## streams." The on-screen log (`log_sink`) and this file are fed the same
@@ -87,6 +88,17 @@ func _ready() -> void:
 	stat_drill_down.add_theme_color_override("default_color", HulkTheme.DIM)
 	layout.add_child(stat_drill_down)
 
+	# docs/10 taskblock03 H: the selected unit's inventory — nested tree +
+	# a footer for the mass/RAM constraints (docs/05).
+	var inventory_tree := Tree.new()
+	# Wider than the rest of this fixed-width sidebar (docs/10: "legibility
+	# is not optional") — six columns of numbers truncate badly at 320.
+	inventory_tree.custom_minimum_size = Vector2(480, 160)
+	layout.add_child(inventory_tree)
+	var inventory_footer := Label.new()
+	inventory_footer.add_theme_color_override("font_color", HulkTheme.DIM)
+	layout.add_child(inventory_footer)
+
 	var log_label := RichTextLabel.new()
 	log_label.custom_minimum_size = Vector2(320, 200)
 	log_label.scroll_following = true
@@ -106,6 +118,10 @@ func _ready() -> void:
 	stat_panel.setup(tactics, stat_label, stat_drill_down)
 
 	new_battle(DEFAULT_SEED)
+
+	inventory_panel = InventoryPanel.new()
+	add_child(inventory_panel)
+	inventory_panel.setup(tactics, inventory_tree, inventory_footer, combat_state.material_table)
 
 
 func _on_new_battle_pressed() -> void:

@@ -29,6 +29,13 @@ func test_build_returns_a_real_theme_resource() -> void:
 	assert_eq(theme.get_color("default_color", "RichTextLabel"), HulkTheme.FOREGROUND)
 
 
+## docs/10 taskblock03 H2: "Tree control, docs/08 terminal theme, monospace."
+func test_build_styles_the_inventory_panels_tree() -> void:
+	var theme: Theme = HulkTheme.build()
+	assert_eq(theme.get_color("font_color", "Tree"), HulkTheme.FOREGROUND)
+	assert_true(theme.has_stylebox("panel", "Tree"))
+
+
 func test_build_sets_the_real_monospace_font() -> void:
 	var theme: Theme = HulkTheme.build()
 	assert_not_null(theme.default_font, "docs/08: menus are monospace, text-first")
