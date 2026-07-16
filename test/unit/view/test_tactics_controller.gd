@@ -331,6 +331,32 @@ func test_reset_turn_with_nothing_selected_does_not_crash() -> void:
 
 	assert_null(controller.selection.selected_unit)
 
+
+## docs/10 taskblock03 F1: nothing queued -> no ghost (it would just sit on
+## top of the real, opaque unit); once something changes the end state, the
+## ghost overlay actually gets a mesh.
+func test_selecting_a_unit_with_nothing_queued_shows_no_end_position_ghost() -> void:
+	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var board_view: BoardView = built.board_view
+
+	controller.click_cell(Vector2i(0, 0))
+
+	assert_eq(board_view._unit_ghost_overlay.get_child_count(), 0)
+
+
+func test_queuing_a_move_shows_an_end_position_ghost() -> void:
+	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var board_view: BoardView = built.board_view
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+
+	assert_true(board_view._unit_ghost_overlay.get_child_count() > 0)
+
 ## Aim mode, the dartboard read/resolve pair, and RESOLUTION input-locking
 ## live in test_tactics_controller_aim.gd; mouse-drag facing (docs/10
 ## taskblock03 E1) lives in test_tactics_controller_facing.gd — both split

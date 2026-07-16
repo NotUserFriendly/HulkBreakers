@@ -141,9 +141,58 @@ func test_clear_overlays_removes_everything() -> void:
 
 	view.show_reachable([Vector2i(0, 0), Vector2i(1, 0)])
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)]])
+	view.show_unit_ghost(_torso_unit(Vector2i(0, 0)))
 	view.clear_overlays()
 	assert_eq(view._reachable_overlay.get_child_count(), 0)
 	assert_eq(view._ghost_overlay.get_child_count(), 0)
+	assert_eq(view._unit_ghost_overlay.get_child_count(), 0)
+
+
+func _torso_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 1.0, 0.6))]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
+## docs/10 taskblock03 F1: "a translucent ghost of the unit where it will
+## end up... at its final facing."
+func test_show_unit_ghost_spawns_one_translucent_mesh_per_living_box() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.show_unit_ghost(_torso_unit(Vector2i(3, 4)))
+
+	assert_eq(view._unit_ghost_overlay.get_child_count(), 1)
+	var instance: MeshInstance3D = view._unit_ghost_overlay.get_child(0)
+	var material: StandardMaterial3D = instance.mesh.material
+	assert_eq(material.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA)
+	assert_lt(material.albedo_color.a, 1.0, "must actually be translucent, not just alpha-capable")
+	assert_almost_eq(instance.transform.origin.x, 3.0, 0.0001)
+	assert_almost_eq(instance.transform.origin.z, 4.0, 0.0001)
+
+
+func test_show_unit_ghost_with_null_clears_it_and_does_not_crash() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.show_unit_ghost(_torso_unit(Vector2i(0, 0)))
+
+	view.show_unit_ghost(null)
+
+	assert_eq(view._unit_ghost_overlay.get_child_count(), 0)
+
+
+func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)]])
+
+	view.show_unit_ghost(_torso_unit(Vector2i(5, 5)))
+
+	assert_eq(view._ghost_overlay.get_child_count(), 4, "2 cell markers + 1 line + 1 label")
+	assert_eq(view._unit_ghost_overlay.get_child_count(), 1)
 
 
 func test_overlays_never_touch_the_static_board() -> void:

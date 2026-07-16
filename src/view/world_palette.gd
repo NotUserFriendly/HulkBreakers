@@ -81,6 +81,16 @@ static func overlay_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
+## docs/10 taskblock03 F1: the end-position ghost — same unshaded
+## convention as overlay_material, but alpha-blended, since a ghost has to
+## read as "not really there" at a glance, never as an opaque duplicate
+## unit sitting on the board.
+static func translucent_material(color: Color) -> StandardMaterial3D:
+	var material: StandardMaterial3D = overlay_material(color)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return material
+
+
 ## Team flagging, layer 2 of 2 (docs/10) — a hull outline via a single
 ## grown, back-face-only extra pass, no custom shader. Assign to a real
 ## part material's `next_pass`; never used standalone.
