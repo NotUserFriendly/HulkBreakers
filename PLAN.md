@@ -64,11 +64,11 @@ this.
 **Goal:** inverted, tag-matched attachment.
 **Build:** `Socket` (`socket_type`, `occupant`); `Part` (`attaches_to`, `sockets`,
 `capabilities`, `material`, `volume: Array[Box]`, `ram_cost`, `mass`, `bulk`, `tags`,
-container fields); `Frame` (`root: Part`, `max_mass`, `max_ram`, tree walks,
+container fields); `Shell` (`root: Part`, `max_mass`, `max_ram`, tree walks,
 `aggregate_stats()`).
 **Acceptance:**
 - A torso with 12 `SHOULDER` sockets hosts 12 arms.
-- A part tagged `attaches_to: [SHOULDER]` mounts on *any* shoulder, any frame, no
+- A part tagged `attaches_to: [SHOULDER]` mounts on *any* shoulder, any shell, no
   parent-specific code.
 - Deep tree: shoulder → upper arm → forearm → hand → pistol; a forearm sword blocks neither
   the upper-arm plate nor the shoulder pod.
@@ -169,8 +169,8 @@ turn replays identically from a seed.
 `perk_slots` from link tier, player-chosen. Surrogate tier as an **ordered data ladder** with
 damage-driven demotion and a turn clock decaying exposed organics. Ejection from the
 `MATRIX`-socket part. Recovery states: PILOTING, CARRIED, LEFT_BEHIND, LINK_KILLED.
-**Deep strike:** insert matrices with **no loadout**; assemble cyborgs from whatever frames the
-hulk has; force enemy matrices out of occupied frames.
+**Deep strike:** insert matrices with **no loadout**; assemble cyborgs from whatever shells the
+hulk has; force enemy matrices out of occupied shells.
 **Acceptance:** link destruction flags death feedback on the base; a low-tier link caps
 effective level but carries the base's top perks; a torso chewed to SPINAL still functions;
 exposed organics decay per turn; **matrices are never lost on any path**.
@@ -345,7 +345,7 @@ here except the grid's height component.
 - **Determinism:** never call `randi()`/`randf()` in logic. Pass a seeded
   `RandomNumberGenerator`. Mapgen, scatter, crits, ricochet, AI tie-breaks — all reproducible.
   Deflection angle is **geometry, not a roll**.
-- **Terminology:** matrix / surrogate / frame / cyborg / bot. **"Robot" is retired** (`docs/00`).
+- **Terminology:** matrix / surrogate / shell / cyborg / bot. **"Robot" is retired** (`docs/00`).
 - **Out of scope:** co-op/netcode (keep `CombatState` serializable and action-queue-driven,
   build nothing), and everything in `docs/99`.
 - **Ask, don't invent:** if a formula isn't specified (`mp_per_ap`, tier ratios, the

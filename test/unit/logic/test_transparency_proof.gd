@@ -43,7 +43,7 @@ func _shooter(cell: Vector2i, weapon: Part) -> Unit:
 	var hand_socket := Socket.new(&"HAND")
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 0)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
 
 
 ## Unarmored (no material -> dt 0): any positive damage always penetrates,
@@ -55,7 +55,7 @@ func _unarmored_target(cell: Vector2i) -> Unit:
 	torso.hp = 1000
 	torso.max_hp = 1000
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 1)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 1)
 
 
 func test_headline_property_tooltip_predicted_damage_equals_actual_damage() -> void:
@@ -81,7 +81,7 @@ func test_headline_property_tooltip_predicted_damage_equals_actual_damage() -> v
 				var predicted: float = WeaponResolver.resolve_damage(weapon).current
 
 				AttackAction.new(shooter, loadout.id, target_cell).apply(state)
-				var actual_damage: int = target.frame.root.max_hp - target.frame.root.hp
+				var actual_damage: int = target.shell.root.max_hp - target.shell.root.hp
 
 				assert_eq(
 					actual_damage,
@@ -107,7 +107,7 @@ func test_a_damage_modifier_changes_both_the_tooltip_and_the_actual_damage_toget
 	assert_eq(predicted, 9.0, "sanity: the tooltip must reflect the modifier")
 
 	AttackAction.new(shooter, &"rifle", Vector2i(2, 0)).apply(state)
-	var actual_damage: int = target.frame.root.max_hp - target.frame.root.hp
+	var actual_damage: int = target.shell.root.max_hp - target.shell.root.hp
 
 	assert_eq(actual_damage, 9, "the modifier must reach the actual attack, not just the tooltip")
 	assert_ne(actual_damage, 6, "the raw, unmodified weapon.damage must not be what actually fired")

@@ -17,18 +17,20 @@ const CELL_SIZE := 1.0
 ## full world transform (unit facing + board position + socket chain).
 static func placements(unit: Unit) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
-	if unit.frame.root == null:
+	if unit.shell.root == null:
 		return result
 	var unit_transform := Transform3D(
-		Basis(Vector3.UP, unit.orientation),
-		Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+		Basis(Vector3.UP, unit.orientation), Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
 	)
-	_walk(unit.frame.root, Transform3D.IDENTITY, unit_transform, result)
+	_walk(unit.shell.root, Transform3D.IDENTITY, unit_transform, result)
 	return result
 
 
 static func _walk(
-	part: Part, part_transform: Transform3D, unit_transform: Transform3D, result: Array[BoxPlacement]
+	part: Part,
+	part_transform: Transform3D,
+	unit_transform: Transform3D,
+	result: Array[BoxPlacement]
 ) -> void:
 	if part.hp > 0:
 		for box: Box in part.volume:

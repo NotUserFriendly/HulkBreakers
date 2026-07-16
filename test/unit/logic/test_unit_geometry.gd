@@ -5,7 +5,7 @@ extends GutTest
 
 
 func test_no_root_produces_no_placements() -> void:
-	var unit := Unit.new(Matrix.new(), Frame.new(null), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(null), Vector2i(0, 0))
 	assert_eq(UnitGeometry.placements(unit), [] as Array[BoxPlacement])
 
 
@@ -16,7 +16,7 @@ func test_a_single_box_root_places_at_the_units_cell() -> void:
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(3, 4))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(3, 4))
 	var placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
 
 	assert_eq(placements.size(), 1)
@@ -33,7 +33,7 @@ func test_dead_parts_produce_no_placements() -> void:
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3.ZERO, Vector3(1, 1, 1))]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	assert_eq(UnitGeometry.placements(unit), [] as Array[BoxPlacement])
 
 
@@ -61,7 +61,7 @@ func test_a_destroyed_child_part_disappears_but_its_living_siblings_remain() -> 
 	hip.occupant = leg
 	torso.sockets = [shoulder, hip]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	var placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
 
 	var placed_ids: Array[StringName] = []
@@ -89,7 +89,7 @@ func test_a_socket_transform_offsets_the_child_from_the_root() -> void:
 	shoulder.occupant = arm
 	torso.sockets = [shoulder]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	var placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
 
 	var arm_placement: BoxPlacement = null

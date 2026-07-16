@@ -40,7 +40,7 @@ tiers must not need a code edit.
 | `PERIPHERAL` | Arms + legs around a hollow core | |
 | `TORSIC` | Torso and head | |
 | `SPINAL` | Head and spine | still usable |
-| `BRAIN_ONLY` | Just the matrix and its casing | drives a frame fine — that's a bot |
+| `BRAIN_ONLY` | Just the matrix and its casing | drives a shell fine — that's a bot |
 
 **Degradation is a ladder, not a health bar.** Damage knocks a surrogate down tiers. A torso
 chewed down to `SPINAL` still works. Kill a player unit and it reduces to *some* amount of
@@ -52,7 +52,7 @@ have a bare matrix.
 
 | Body state | Best at |
 |---|---|
-| Raw matrix | Plugging into **frames** — it drives a bot |
+| Raw matrix | Plugging into **shells** — it drives a bot |
 | Surrogate | Specialized **cybernetic** parts |
 
 ## Why surrogates exist (design intent — do not optimize away)

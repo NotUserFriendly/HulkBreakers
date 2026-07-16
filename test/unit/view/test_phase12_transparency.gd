@@ -36,7 +36,7 @@ func _armed_unit(cell: Vector2i, squad: int, damage: float) -> Unit:
 	var hand_socket := Socket.new(&"HAND")
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
 func test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage() -> void:
@@ -71,7 +71,9 @@ func test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage() -> vo
 	controller.confirm_shot()
 
 	var captured: Array[LogEvent] = []
-	controller.turn_ended.connect(func(events: Array[LogEvent]) -> void: captured.append_array(events))
+	controller.turn_ended.connect(
+		func(events: Array[LogEvent]) -> void: captured.append_array(events)
+	)
 	controller.end_turn()
 
 	var impacts: Array[LogEvent] = []

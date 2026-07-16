@@ -63,19 +63,19 @@ func test_attach_rejects_non_container_target() -> void:
 	assert_false(Inventory.attach(item, not_a_container))
 
 
-func test_attach_respects_frame_max_mass() -> void:
+func test_attach_respects_shell_max_mass() -> void:
 	var root := Part.new()
 	root.sockets = [Socket.new(&"BACK")]
-	var frame := Frame.new(root)
-	frame.max_mass = 20.0
+	var shell := Shell.new(root)
+	shell.max_mass = 20.0
 	var bag := _make_container(1.0, 100.0, 2.0, 1.0)
-	root.sockets[0].occupant = bag  # bag must actually be in the frame's assembly
+	root.sockets[0].occupant = bag  # bag must actually be in the shell's assembly
 
 	var light := _make_item(1.0, 5.0)
-	assert_true(Inventory.attach(light, bag, frame))  # 2 (bag) + 5 = 7 <= 20
+	assert_true(Inventory.attach(light, bag, shell))  # 2 (bag) + 5 = 7 <= 20
 
 	var heavy := _make_item(1.0, 50.0)
-	assert_false(Inventory.attach(heavy, bag, frame))  # 2 + 5 + 50 = 57 > 20
+	assert_false(Inventory.attach(heavy, bag, shell))  # 2 + 5 + 50 = 57 > 20
 	assert_false(bag.contents.has(heavy))
 
 
@@ -85,9 +85,9 @@ func test_attach_respects_frame_max_mass() -> void:
 func test_a_weightless_drone_swarm_fails_on_ram_while_passing_mass() -> void:
 	var root := Part.new()
 	root.sockets = [Socket.new(&"BACK")]
-	var frame := Frame.new(root)
-	frame.max_mass = 1000.0
-	frame.max_ram = 20.0
+	var shell := Shell.new(root)
+	shell.max_mass = 1000.0
+	shell.max_ram = 20.0
 	var bag := _make_container(1.0, 100.0, 0.0, 1.0)
 	root.sockets[0].occupant = bag
 
@@ -97,11 +97,11 @@ func test_a_weightless_drone_swarm_fails_on_ram_while_passing_mass() -> void:
 	drone_swarm.ram_cost = 30.0  # squad of flamethrower drones (docs/05: 25-50 TB)
 
 	assert_false(
-		Inventory.attach(drone_swarm, bag, frame),
+		Inventory.attach(drone_swarm, bag, shell),
 		"must fail on RAM even though mass is nowhere near the limit"
 	)
 	assert_false(bag.contents.has(drone_swarm))
-	assert_true(frame.carried_mass() <= frame.max_mass, "mass alone would have passed")
+	assert_true(shell.carried_mass() <= shell.max_mass, "mass alone would have passed")
 
 
 func test_detach_removes_part_and_returns_true() -> void:
@@ -147,25 +147,25 @@ func test_flatten_excludes_root_but_includes_all_depths() -> void:
 
 
 func test_carried_mass_appendix_d_worked_example() -> void:
-	# Frame's carried_mass sums the whole assembly; a bare root plus a
+	# Shell's carried_mass sums the whole assembly; a bare root plus a
 	# directly-worn backpack (attached via PartGraph in real use, but here we
 	# only need Inventory's contents relationship) matches Appendix D.
 	var root := Part.new()
-	var frame := Frame.new(root)
-	frame.max_mass = 1000.0
+	var shell := Shell.new(root)
+	shell.max_mass = 1000.0
 	var backpack := _make_container(1.0, 100.0, 2.0, 0.5)
 	root.sockets = [Socket.new(&"BACK")]
 	root.sockets[0].occupant = backpack
 
 	var gear := _make_item(1.0, 50.0)
-	assert_true(Inventory.attach(gear, backpack, frame))
+	assert_true(Inventory.attach(gear, backpack, shell))
 	# 2 (bag, full) + 50 * 0.5 = 27
-	assert_almost_eq(frame.carried_mass(), 27.0, 0.0001)
+	assert_almost_eq(shell.carried_mass(), 27.0, 0.0001)
 
 	var pouch := _make_container(1.0, 100.0, 1.0, 0.8)
-	assert_true(Inventory.attach(pouch, backpack, frame))
+	assert_true(Inventory.attach(pouch, backpack, shell))
 	var pouch_item := _make_item(1.0, 10.0)
-	assert_true(Inventory.attach(pouch_item, pouch, frame))
+	assert_true(Inventory.attach(pouch_item, pouch, shell))
 	# pouch's 0.8 is ignored (not directly worn): pouch(1) + item(10) = 11, flat,
 	# discounted only by the backpack's 0.5 -> 5.5. Total: 2 + 25 + 5.5 = 32.5
-	assert_almost_eq(frame.carried_mass(), 32.5, 0.0001)
+	assert_almost_eq(shell.carried_mass(), 32.5, 0.0001)

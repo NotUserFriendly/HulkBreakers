@@ -13,7 +13,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(Matrix.new(), Frame.new(root), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, squad)
 
 
 func test_enqueue_validates_but_never_mutates_the_real_state() -> void:

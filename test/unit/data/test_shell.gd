@@ -17,8 +17,8 @@ func test_all_parts_walks_the_whole_assembly() -> void:
 	arm.attaches_to = [&"SHOULDER"]
 	torso.sockets[0].occupant = arm
 
-	var frame := Frame.new(torso)
-	assert_eq(frame.all_parts().size(), 2)
+	var shell := Shell.new(torso)
+	assert_eq(shell.all_parts().size(), 2)
 
 
 func test_living_parts_excludes_destroyed() -> void:
@@ -27,14 +27,14 @@ func test_living_parts_excludes_destroyed() -> void:
 	arm.hp = 0
 	torso.sockets[0].occupant = arm
 
-	var frame := Frame.new(torso)
-	var living: Array[Part] = frame.living_parts()
+	var shell := Shell.new(torso)
+	var living: Array[Part] = shell.living_parts()
 	assert_eq(living.size(), 1)
 	assert_eq(living[0], torso)
 
 
 func test_stat_resolver_sums_a_stat_across_the_whole_tree() -> void:
-	# Frame itself no longer sums stats directly (Phase 2: StatResolver is the
+	# Shell itself no longer sums stats directly (Phase 2: StatResolver is the
 	# only place a final stat is computed) — this proves all_parts() feeds it
 	# correctly across a real socket tree, not just a flat list.
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
@@ -43,9 +43,9 @@ func test_stat_resolver_sums_a_stat_across_the_whole_tree() -> void:
 	arm.stat_mods = {&"armor": 2, &"reach": 1}
 	torso.sockets[0].occupant = arm
 
-	var frame := Frame.new(torso)
+	var shell := Shell.new(torso)
 	var context := ResolverContext.new()
-	context.parts = frame.all_parts()
+	context.parts = shell.all_parts()
 
 	assert_eq(StatResolver.resolve(&"armor", context).current, 7.0)
 	assert_eq(StatResolver.resolve(&"reach", context).current, 1.0)
@@ -58,8 +58,8 @@ func test_total_ram_sums_ram_cost_across_the_whole_assembly() -> void:
 	arm.ram_cost = 0.5
 	torso.sockets[0].occupant = arm
 
-	var frame := Frame.new(torso)
-	assert_almost_eq(frame.total_ram(), 1.5, 0.0001)
+	var shell := Shell.new(torso)
+	assert_almost_eq(shell.total_ram(), 1.5, 0.0001)
 
 
 func test_total_ram_also_counts_items_carried_in_a_container() -> void:
@@ -76,25 +76,25 @@ func test_total_ram_also_counts_items_carried_in_a_container() -> void:
 	gadget.ram_cost = 2.0
 	bag.contents = [gadget]
 
-	var frame := Frame.new(torso)
+	var shell := Shell.new(torso)
 	assert_almost_eq(
-		frame.total_ram(), 2.0, 0.0001, "a bagged item's RAM must not be discounted away"
+		shell.total_ram(), 2.0, 0.0001, "a bagged item's RAM must not be discounted away"
 	)
 
 
-func test_save_load_round_trips_a_frame() -> void:
+func test_save_load_round_trips_a_shell() -> void:
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
 	var arm := _socketed_part(&"arm")
 	arm.attaches_to = [&"SHOULDER"]
 	torso.sockets[0].occupant = arm
 
-	var frame := Frame.new(torso)
-	frame.max_mass = 150.0
-	frame.max_ram = 10.0
+	var shell := Shell.new(torso)
+	shell.max_mass = 150.0
+	shell.max_ram = 10.0
 
-	var path := "user://tmp_test_frame.tres"
-	assert_eq(ResourceSaver.save(frame, path), OK)
-	var loaded: Frame = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	var path := "user://tmp_test_shell.tres"
+	assert_eq(ResourceSaver.save(shell, path), OK)
+	var loaded: Shell = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 	assert_eq(loaded.max_mass, 150.0)

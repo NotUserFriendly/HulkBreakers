@@ -15,7 +15,7 @@ func _part(id: StringName, box: Box) -> Part:
 
 func _standing_unit(id: StringName, half_width: float, cell: Vector2i) -> Unit:
 	var body := _part(id, Box.new(Vector3(0.0, 0.5, 0.0), Vector3(half_width * 2.0, 1.0, 0.6)))
-	return Unit.new(Matrix.new(), Frame.new(body), cell)
+	return Unit.new(Matrix.new(), Shell.new(body), cell)
 
 
 func _weapon(rings: Array[Ring]) -> Part:
@@ -95,7 +95,7 @@ func test_a_gap_in_the_near_body_lets_the_reticle_resolve_to_the_far_body() -> v
 		Box.new(Vector3(-1.5, 0.5, 0.0), Vector3(1.0, 1.0, 0.6)),  # left strip
 		Box.new(Vector3(1.5, 0.5, 0.0), Vector3(1.0, 1.0, 0.6)),  # right strip, gap at x==0
 	]
-	var near_unit := Unit.new(Matrix.new(), Frame.new(gappy), Vector2i(2, 2))
+	var near_unit := Unit.new(Matrix.new(), Shell.new(gappy), Vector2i(2, 2))
 	var far_unit := _standing_unit(&"far", 2.0, Vector2i(2, 6))
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid, [near_unit, far_unit])
@@ -108,7 +108,9 @@ func test_a_gap_in_the_near_body_lets_the_reticle_resolve_to_the_far_body() -> v
 	assert_eq(reading_near.reading, near_unit)
 	assert_eq(reading_far.reading, far_unit)
 	assert_eq(
-		reading_near.resolves.part.id, &"far", "reading the near layer must not change what resolves"
+		reading_near.resolves.part.id,
+		&"far",
+		"reading the near layer must not change what resolves"
 	)
 	assert_eq(reading_far.resolves.part.id, &"far")
 
@@ -139,13 +141,16 @@ func test_one_ring_and_five_ring_weapons_render_the_correct_ring_counts() -> voi
 
 func test_layer_count_matches_the_number_of_distinct_bodies() -> void:
 	var grid := Grid.new(10, 10)
-	var state := CombatState.new(
-		grid,
-		[
-			_standing_unit(&"a", 0.5, Vector2i(2, 2)),
-			_standing_unit(&"b", 0.5, Vector2i(2, 4)),
-			_standing_unit(&"c", 0.5, Vector2i(2, 6)),
-		]
+	var state := (
+		CombatState
+		. new(
+			grid,
+			[
+				_standing_unit(&"a", 0.5, Vector2i(2, 2)),
+				_standing_unit(&"b", 0.5, Vector2i(2, 4)),
+				_standing_unit(&"c", 0.5, Vector2i(2, 6)),
+			]
+		)
 	)
 	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
 	var weapon := _weapon([Ring.new(0.1, 1.0)])

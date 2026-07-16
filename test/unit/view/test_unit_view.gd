@@ -13,7 +13,7 @@ func _torso_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 1.0, 0.6))]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
 func _torso_with_arm_unit(cell: Vector2i) -> Dictionary:
@@ -32,7 +32,7 @@ func _torso_with_arm_unit(cell: Vector2i) -> Dictionary:
 	shoulder.occupant = arm
 	torso.sockets = [shoulder]
 
-	return {"unit": Unit.new(Matrix.new(), Frame.new(torso), cell), "arm": arm}
+	return {"unit": Unit.new(Matrix.new(), Shell.new(torso), cell), "arm": arm}
 
 
 func test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box() -> void:

@@ -77,7 +77,7 @@ func log_action(text: String) -> void:
 	action_log.append(text)
 
 
-## A fully independent copy — grid, every unit's whole frame tree, ground
+## A fully independent copy — grid, every unit's whole shell tree, ground
 ## items — for TACTICS-time speculative previews (docs/09): ActionQueue
 ## replays already-queued actions onto a dup() to preview the next one.
 ## Marked `is_preview` so a replayed AttackAction spends AP but skips real

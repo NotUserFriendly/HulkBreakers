@@ -30,7 +30,7 @@ func _torso_with_rear_ammo_rack() -> Unit:
 	socket.occupant = rack
 	torso.sockets = [socket]
 
-	return Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	return Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
 
 ## A part can show 1 or 2 visible faces now (docs/02/03) — the min x and

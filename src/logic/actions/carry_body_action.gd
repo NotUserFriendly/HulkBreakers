@@ -35,7 +35,7 @@ func is_legal(state: CombatState) -> bool:
 	if body == null or not (body is Part):
 		return false
 
-	var socket: Socket = _find_free_back_socket(actual.frame)
+	var socket: Socket = _find_free_back_socket(actual.shell)
 	return socket != null and PartGraph.is_legal_attachment(body, socket)
 
 
@@ -48,8 +48,8 @@ func apply(state: CombatState) -> void:
 	if items.is_empty():
 		state.grid.field_items.erase(body_cell)
 
-	var socket: Socket = _find_free_back_socket(actual.frame)
-	var owner: Part = _owner_of(actual.frame, socket)
+	var socket: Socket = _find_free_back_socket(actual.shell)
+	var owner: Part = _owner_of(actual.shell, socket)
 	PartGraph.attach(body, owner, socket)
 	if not (&"INERT" in body.tags):
 		body.tags.append(&"INERT")
@@ -70,18 +70,18 @@ func apply(state: CombatState) -> void:
 		)
 
 
-## The first free BACK socket anywhere in the frame, not just on the root —
+## The first free BACK socket anywhere in the shell, not just on the root —
 ## a specialized carrier part could host it instead of the torso.
-func _find_free_back_socket(frame: Frame) -> Socket:
-	for part: Part in frame.all_parts():
+func _find_free_back_socket(shell: Shell) -> Socket:
+	for part: Part in shell.all_parts():
 		var socket: Socket = PartGraph.find_free_socket(part, &"BACK")
 		if socket != null:
 			return socket
 	return null
 
 
-func _owner_of(frame: Frame, socket: Socket) -> Part:
-	for part: Part in frame.all_parts():
+func _owner_of(shell: Shell, socket: Socket) -> Part:
+	for part: Part in shell.all_parts():
 		if part.sockets.has(socket):
 			return part
 	return null

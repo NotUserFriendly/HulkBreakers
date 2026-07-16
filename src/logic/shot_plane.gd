@@ -53,7 +53,7 @@ static func resolve_projectile(plane: Array[Region], point: Vector2) -> Region:
 static func units_along(plane: Array[Region], state: CombatState) -> Array[Unit]:
 	var best_depth: Dictionary = {}  # Unit -> float
 	for unit: Unit in state.units:
-		var unit_parts: Array[Part] = unit.frame.all_parts()
+		var unit_parts: Array[Part] = unit.shell.all_parts()
 		for region: Region in plane:
 			if unit_parts.has(region.part):
 				if not best_depth.has(unit) or region.depth < best_depth[unit]:
@@ -72,7 +72,7 @@ static func units_along(plane: Array[Region], state: CombatState) -> Array[Unit]
 ## default (docs/10 Phase 12.3): both must agree on "center mass," never
 ## compute it twice.
 static func center_of(plane: Array[Region], target: Unit) -> Vector2:
-	var target_parts: Array[Part] = target.frame.all_parts()
+	var target_parts: Array[Part] = target.shell.all_parts()
 	var best: Region = null
 	for region: Region in plane:
 		if not target_parts.has(region.part):

@@ -39,16 +39,16 @@ const _FACE_CORNERS_B: Array[Vector2] = [
 ]
 
 
-## Projects every living part of `unit`'s frame into view-plane Regions,
-## composing each part's Socket.transform chain from the frame root first
+## Projects every living part of `unit`'s shell into view-plane Regions,
+## composing each part's Socket.transform chain from the shell root first
 ## (Phase 12.0) so a part attached deep in the tree — or twice, at mirrored
 ## sockets, even the exact same Part resource in both — projects at its own
 ## composed position, never the root's or a sibling occurrence's.
 static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 	var regions: Array[Region] = []
-	if unit.frame.root == null:
+	if unit.shell.root == null:
 		return regions
-	_project_tree(unit.frame.root, Transform3D.IDENTITY, view_dir, unit.orientation, regions)
+	_project_tree(unit.shell.root, Transform3D.IDENTITY, view_dir, unit.orientation, regions)
 	return regions
 
 
@@ -78,7 +78,7 @@ static func _project_tree(
 ## Projects a single part's own boxes, rotated by `orientation` (a unit's
 ## facing, or 0.0 for a static, world-aligned cover/obstacle part) relative
 ## to `view_dir`. `local_transform` is the part's composed position/rotation
-## within its own frame (identity for a standalone part, or when called
+## within its own shell (identity for a standalone part, or when called
 ## directly outside a socket tree — the common case in tests and for
 ## ShotPlane's cover placement, both of which go through identical math).
 static func project_part(

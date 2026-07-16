@@ -84,7 +84,7 @@ func _muzzle_point(unit: Unit) -> Vector3:
 ## subtree dropped later in the same resolution can remove it from the
 ## tree) — the unit's own cell as a cosmetic fallback otherwise.
 func _impact_point(unit: Unit, part_id: StringName) -> Vector3:
-	var part: Part = unit.frame.find_part(part_id)
+	var part: Part = unit.shell.find_part(part_id)
 	if part != null:
 		for placement: BoxPlacement in UnitGeometry.placements(unit):
 			if placement.part == part:

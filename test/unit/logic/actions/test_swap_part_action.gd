@@ -9,9 +9,9 @@ func _make_unit(cell: Vector2i, arm: Part) -> Unit:
 	var shoulder := Socket.new(&"SHOULDER")
 	shoulder.occupant = arm
 	torso.sockets = [shoulder]
-	var frame := Frame.new(torso)
-	frame.max_mass = 1000.0
-	return Unit.new(Matrix.new(), frame, cell, 0)
+	var shell := Shell.new(torso)
+	shell.max_mass = 1000.0
+	return Unit.new(Matrix.new(), shell, cell, 0)
 
 
 func _make_arm(id: StringName) -> Part:
@@ -35,8 +35,8 @@ func test_swap_part_detaches_old_and_attaches_replacement() -> void:
 	assert_true(action.is_legal(state))
 	action.apply(state)
 
-	assert_eq(unit.frame.find_part(&"gun_arm"), replacement)
-	assert_false(unit.frame.all_parts().has(old_arm), "the old arm must be off the assembly")
+	assert_eq(unit.shell.find_part(&"gun_arm"), replacement)
+	assert_false(unit.shell.all_parts().has(old_arm), "the old arm must be off the assembly")
 	assert_true(
 		grid.field_items[Vector2i(0, 0)].has(old_arm),
 		"the detached arm must drop as its own field item, not vanish"

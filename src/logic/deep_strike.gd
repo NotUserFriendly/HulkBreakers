@@ -12,7 +12,7 @@ const MAX_DEPTH := 6
 ## Not every free socket fills — a scrap-heap assembly is allowed to be
 ## incomplete. A flagged, tunable placeholder, not a design decision.
 const EMPTY_SOCKET_CHANCE := 0.15
-## Prototype-scope defaults for a randomly assembled frame (docs/07 owns
+## Prototype-scope defaults for a randomly assembled shell (docs/07 owns
 ## the real economy) — generous enough that a random pool of small parts
 ## essentially never blows the budget, so mass/RAM violations mean a real
 ## bug, not an expected fuzz outcome.
@@ -39,7 +39,7 @@ static func default_part_pool() -> Array[Part]:
 	# docs/01a's socket transforms are authored relative to the torso's own
 	# origin, and its own worked example ("legs 0.00-0.90, torso 0.90-1.60")
 	# only holds if that origin sits at world y=1.25 — but the torso is the
-	# frame ROOT, and UnitGeometry places a root at exactly the unit's cell
+	# shell ROOT, and UnitGeometry places a root at exactly the unit's cell
 	# height (y=0) with no separate "standing height" concept. ROOT_ELEVATION
 	# bridges that gap: leg height (0.90) + the HIP socket's own drop below
 	# torso's origin (0.35) = 1.25, derived from docs/01a's own numbers, not
@@ -51,12 +51,8 @@ static func default_part_pool() -> Array[Part]:
 	torso.sockets = [
 		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, 0.15))),  # front
 		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, -0.15))),  # rear
-		Socket.new(
-			&"SHOULDER", Transform3D(Basis(), Vector3(-0.31, ROOT_ELEVATION + 0.28, 0.0))
-		),  # left
-		Socket.new(
-			&"SHOULDER", Transform3D(Basis(), Vector3(0.31, ROOT_ELEVATION + 0.28, 0.0))
-		),  # right
+		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(-0.31, ROOT_ELEVATION + 0.28, 0.0))),  # left
+		Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(0.31, ROOT_ELEVATION + 0.28, 0.0))),  # right
 		Socket.new(&"HIP", Transform3D(Basis(), Vector3(-0.14, ROOT_ELEVATION - 0.35, 0.0))),  # left
 		Socket.new(&"HIP", Transform3D(Basis(), Vector3(0.14, ROOT_ELEVATION - 0.35, 0.0))),  # right
 		Socket.new(&"NECK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.40, 0.0))),
@@ -268,7 +264,7 @@ static func default_part_pool() -> Array[Part]:
 	]
 
 
-## Fires `base_matrix` into a random frame drawn from `part_pool`: picks a
+## Fires `base_matrix` into a random shell drawn from `part_pool`: picks a
 ## ROOT-tagged template to host it, then fills free sockets recursively
 ## with whatever templates fit, some left empty (a real scrap-heap landing
 ## doesn't guarantee a complete body). All randomness draws from `rng`.
@@ -296,10 +292,10 @@ static func assemble_random(
 
 	_fill_sockets(root, part_pool, rng, 0)
 
-	var frame := Frame.new(root)
-	frame.max_mass = DEFAULT_MAX_MASS
-	frame.max_ram = DEFAULT_MAX_RAM
-	return Unit.new(link, frame, cell, squad_id)
+	var shell := Shell.new(root)
+	shell.max_mass = DEFAULT_MAX_MASS
+	shell.max_ram = DEFAULT_MAX_RAM
+	return Unit.new(link, shell, cell, squad_id)
 
 
 static func _fill_sockets(
@@ -367,10 +363,10 @@ static func assemble_reference_humanoid(matrix: Matrix, cell: Vector2i, squad_id
 	_attach((pool[&"torso_plate_rear"] as Part).duplicate(true), torso, &"ARMOR")
 	_attach((pool[&"ammo_rack"] as Part).duplicate(true), torso, &"BACK")
 
-	var frame := Frame.new(torso)
-	frame.max_mass = DEFAULT_MAX_MASS
-	frame.max_ram = DEFAULT_MAX_RAM
-	return Unit.new(matrix, frame, cell, squad_id)
+	var shell := Shell.new(torso)
+	shell.max_mass = DEFAULT_MAX_MASS
+	shell.max_ram = DEFAULT_MAX_RAM
+	return Unit.new(matrix, shell, cell, squad_id)
 
 
 static func _attach(part: Part, target: Part, socket_type: StringName) -> void:
@@ -383,15 +379,15 @@ static func _attach(part: Part, target: Part, socket_type: StringName) -> void:
 static func validate_assembly(unit: Unit) -> Array[String]:
 	var violations: Array[String] = []
 
-	var mass: float = unit.frame.carried_mass()
-	if mass > unit.frame.max_mass:
-		violations.append("mass %.1f exceeds max_mass %.1f" % [mass, unit.frame.max_mass])
+	var mass: float = unit.shell.carried_mass()
+	if mass > unit.shell.max_mass:
+		violations.append("mass %.1f exceeds max_mass %.1f" % [mass, unit.shell.max_mass])
 
-	var ram: float = unit.frame.total_ram()
-	if ram > unit.frame.max_ram:
-		violations.append("ram %.1f exceeds max_ram %.1f" % [ram, unit.frame.max_ram])
+	var ram: float = unit.shell.total_ram()
+	if ram > unit.shell.max_ram:
+		violations.append("ram %.1f exceeds max_ram %.1f" % [ram, unit.shell.max_ram])
 
-	for part: Part in unit.frame.all_parts():
+	for part: Part in unit.shell.all_parts():
 		if not part.is_container:
 			continue
 		var direct_bulk: float = 0.0
@@ -404,15 +400,17 @@ static func validate_assembly(unit: Unit) -> Array[String]:
 
 	# A living part with no geometry can't be hit — it's invisible to the
 	# shot plane, not armored.
-	for part: Part in unit.frame.living_parts():
+	for part: Part in unit.shell.living_parts():
 		if part.volume.is_empty():
-			violations.append("%s: hp > 0 with no volume, cannot appear in the shot plane" % part.id)
+			violations.append(
+				"%s: hp > 0 with no volume, cannot appear in the shot plane" % part.id
+			)
 		# docs/10: material color is data, and an empty material can't be
 		# looked up — the same class of violation as a missing volume.
 		if part.material == &"":
 			violations.append("%s: hp > 0 with no material, cannot be colored or armored" % part.id)
 
-	if not (unit.frame.root.hosts_matrix() and unit.frame.root.hosted_matrix != null):
+	if not (unit.shell.root.hosts_matrix() and unit.shell.root.hosted_matrix != null):
 		violations.append("root part must host the deep-struck matrix")
 
 	return violations
@@ -423,7 +421,7 @@ static func validate_assembly(unit: Unit) -> Array[String]:
 ## null if none can — the same check the aim UI (docs/10 Phase 12.3) uses to
 ## pick what a confirmed shot actually fires.
 static func find_operable_weapon(unit: Unit) -> Part:
-	var living: Array[Part] = unit.frame.living_parts()
+	var living: Array[Part] = unit.shell.living_parts()
 	for weapon: Part in living:
 		if weapon.damage <= 0.0:
 			continue

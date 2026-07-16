@@ -212,7 +212,7 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 
 func test_destroying_a_plate_leaves_the_part_behind_bare_on_the_next_shot() -> void:
 	var unit := _reference_unit()
-	var plate: Part = unit.frame.find_part(&"torso_plate_front")
+	var plate: Part = unit.shell.find_part(&"torso_plate_front")
 
 	var before: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
 	var aim_point: Vector2 = _find(before, &"torso_plate_front").rect.get_center()
@@ -231,9 +231,7 @@ func test_destroying_a_plate_leaves_the_part_behind_bare_on_the_next_shot() -> v
 
 func test_no_pool_part_has_an_empty_material() -> void:
 	for template: Part in DeepStrike.default_part_pool():
-		assert_ne(
-			template.material, &"", "%s must carry a real material (docs/10)" % template.id
-		)
+		assert_ne(template.material, &"", "%s must carry a real material (docs/10)" % template.id)
 
 
 func test_the_pool_yields_at_least_three_distinct_colors() -> void:
@@ -248,7 +246,7 @@ func test_the_pool_yields_at_least_three_distinct_colors() -> void:
 
 func test_validate_assembly_flags_an_empty_material_same_as_a_missing_volume() -> void:
 	var unit := _reference_unit()
-	var torso: Part = unit.frame.root
+	var torso: Part = unit.shell.root
 	torso.material = &""
 
 	var violations: Array[String] = DeepStrike.validate_assembly(unit)

@@ -17,9 +17,9 @@ func test_assemble_random_hosts_the_matrix_on_the_root_part() -> void:
 	var unit := DeepStrike.assemble_random(
 		base, 0.5, DeepStrike.default_part_pool(), _rng(1), Vector2i(0, 0)
 	)
-	assert_true(unit.frame.root.hosts_matrix())
-	assert_eq(unit.frame.root.hosted_matrix.base, base)
-	assert_almost_eq(unit.frame.root.hosted_matrix.effective_level(), base.level * 0.5, 0.0001)
+	assert_true(unit.shell.root.hosts_matrix())
+	assert_eq(unit.shell.root.hosted_matrix.base, base)
+	assert_almost_eq(unit.shell.root.hosted_matrix.effective_level(), base.level * 0.5, 0.0001)
 
 
 func test_assemble_random_is_deterministic_from_the_same_seed() -> void:
@@ -28,10 +28,10 @@ func test_assemble_random_is_deterministic_from_the_same_seed() -> void:
 	var unit_b := DeepStrike.assemble_random(Matrix.new(), 1.0, pool, _rng(42), Vector2i(0, 0))
 
 	var ids_a: Array[StringName] = []
-	for part: Part in unit_a.frame.all_parts():
+	for part: Part in unit_a.shell.all_parts():
 		ids_a.append(part.id)
 	var ids_b: Array[StringName] = []
-	for part: Part in unit_b.frame.all_parts():
+	for part: Part in unit_b.shell.all_parts():
 		ids_b.append(part.id)
 	assert_eq(ids_a, ids_b)
 
@@ -47,7 +47,7 @@ func test_validate_assembly_catches_a_mass_violation() -> void:
 	var unit := DeepStrike.assemble_random(
 		Matrix.new(), 1.0, DeepStrike.default_part_pool(), _rng(7), Vector2i(0, 0)
 	)
-	unit.frame.max_mass = 0.0
+	unit.shell.max_mass = 0.0
 	var violations: Array[String] = DeepStrike.validate_assembly(unit)
 	assert_true(violations.size() > 0)
 	assert_true(violations[0].begins_with("mass"))
@@ -78,7 +78,7 @@ func test_is_armed_true_when_a_weapon_has_its_required_manipulators() -> void:
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	assert_true(DeepStrike.is_armed(unit))
 	assert_eq(DeepStrike.find_operable_weapon(unit), pistol)
 
@@ -88,7 +88,7 @@ func test_is_armed_false_with_no_weapon_at_all() -> void:
 	torso.id = &"torso"
 	torso.hp = 5
 	torso.max_hp = 5
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	assert_false(DeepStrike.is_armed(unit))
 	assert_null(DeepStrike.find_operable_weapon(unit))
 
@@ -108,7 +108,7 @@ func test_is_armed_false_when_the_weapon_has_no_capable_manipulator() -> void:
 	socket.occupant = pistol
 	torso.sockets = [socket]  # no TRIGGER-capable hand anywhere
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	assert_false(DeepStrike.is_armed(unit))
 
 
@@ -124,7 +124,7 @@ func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -
 		var candidate := DeepStrike.assemble_random(
 			Matrix.new(), 1.0, pool, _rng(seed_value), Vector2i(0, 0)
 		)
-		if candidate.frame.living_parts().size() > 1:
+		if candidate.shell.living_parts().size() > 1:
 			unit = candidate
 			break
 	assert_not_null(unit, "expected at least one of 50 seeds to attach a limb")
@@ -143,12 +143,11 @@ func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -
 
 	var hit_a_limb := false
 	for part_id: StringName in hit_parts:
-		if part_id != unit.frame.root.id:
+		if part_id != unit.shell.root.id:
 			hit_a_limb = true
 			break
 	assert_true(
-		hit_a_limb,
-		"a sweep across the silhouette only ever hit the root: %s" % [hit_parts]
+		hit_a_limb, "a sweep across the silhouette only ever hit the root: %s" % [hit_parts]
 	)
 
 

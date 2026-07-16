@@ -9,9 +9,9 @@ func _make_carrier(cell: Vector2i) -> Unit:
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	var back := Socket.new(&"BACK")
 	torso.sockets = [back]
-	var frame := Frame.new(torso)
-	frame.max_mass = 1000.0
-	return Unit.new(Matrix.new(), frame, cell, 0)
+	var shell := Shell.new(torso)
+	shell.max_mass = 1000.0
+	return Unit.new(Matrix.new(), shell, cell, 0)
 
 
 func _make_body() -> Part:
@@ -40,7 +40,7 @@ func test_carry_body_attaches_to_back_and_tags_inert() -> void:
 	action.apply(state)
 
 	assert_true(
-		carrier.frame.all_parts().has(body), "the body must now be part of the carrier's assembly"
+		carrier.shell.all_parts().has(body), "the body must now be part of the carrier's assembly"
 	)
 	assert_true(&"INERT" in body.tags)
 	assert_false(grid.field_items.has(Vector2i(0, 0)))
@@ -137,7 +137,7 @@ func _make_shooter(cell: Vector2i, weapon: Part) -> Unit:
 	var hand_socket := Socket.new(&"HAND")
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 0)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
 
 
 ## docs/05's core claim: a body carried on the BACK eats rounds aimed at the

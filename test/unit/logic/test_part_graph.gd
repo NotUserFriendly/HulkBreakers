@@ -31,8 +31,8 @@ func test_torso_with_12_shoulder_sockets_hosts_12_arms() -> void:
 	assert_eq(PartGraph.walk(torso).size(), 13)  # torso + 12 arms
 
 
-func test_part_mounts_on_any_shoulder_any_frame_no_parent_specific_code() -> void:
-	# A mech torso and an entirely unrelated hauler frame both expose a
+func test_part_mounts_on_any_shoulder_any_shell_no_parent_specific_code() -> void:
+	# A mech torso and an entirely unrelated hauler shell both expose a
 	# SHOULDER socket; the same Gravlance part attaches to either with zero
 	# knowledge of what it's mounting on.
 	var mech_torso := _make_part(&"mech_torso")

@@ -1,45 +1,45 @@
 extends GutTest
 
 
-func _make_frame(agility: float) -> Frame:
+func _make_frame(agility: float) -> Shell:
 	var root := Part.new()
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
 	root.stat_mods = {"agility": agility}
-	return Frame.new(root)
+	return Shell.new(root)
 
 
 func test_mp_per_ap_uses_base_plus_agility() -> void:
 	var matrix := Matrix.new()
-	var frame := _make_frame(3.0)
-	var unit := Unit.new(matrix, frame, Vector2i(0, 0))
+	var shell := _make_frame(3.0)
+	var unit := Unit.new(matrix, shell, Vector2i(0, 0))
 	assert_almost_eq(unit.mp_per_ap(), Unit.BASE_MP + 3.0, 0.0001)
 
 
 func test_mp_per_ap_defaults_to_base_with_no_agility_stat() -> void:
 	var matrix := Matrix.new()
-	var frame := Frame.new(Part.new())
-	var unit := Unit.new(matrix, frame, Vector2i(0, 0))
+	var shell := Shell.new(Part.new())
+	var unit := Unit.new(matrix, shell, Vector2i(0, 0))
 	assert_almost_eq(unit.mp_per_ap(), Unit.BASE_MP, 0.0001)
 
 
 func test_mp_per_ap_reflects_live_part_swaps() -> void:
 	var matrix := Matrix.new()
-	var frame := _make_frame(1.0)
-	var unit := Unit.new(matrix, frame, Vector2i(0, 0))
+	var shell := _make_frame(1.0)
+	var unit := Unit.new(matrix, shell, Vector2i(0, 0))
 	var before: float = unit.mp_per_ap()
 
 	# Simulate a swap by mutating the root's stats directly (SwapPartAction
 	# proper is rebuilt in Phase 6 against the socket model).
-	frame.root.stat_mods = {"agility": 5.0}
+	shell.root.stat_mods = {"agility": 5.0}
 
 	assert_almost_eq(unit.mp_per_ap(), Unit.BASE_MP + 5.0, 0.0001)
 	assert_true(unit.mp_per_ap() > before)
 
 
 func test_new_unit_starts_alive_with_no_held_matrix() -> void:
-	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(1, 1), 2)
+	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(1, 1), 2)
 	assert_true(unit.alive)
 	assert_null(unit.held_matrix)
 	assert_eq(unit.squad_id, 2)
@@ -47,13 +47,13 @@ func test_new_unit_starts_alive_with_no_held_matrix() -> void:
 
 
 func test_new_unit_starts_at_the_top_of_the_surrogate_ladder() -> void:
-	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0))
 	assert_eq(unit.surrogate_tier.id, &"FULL")
 	assert_eq(unit.exposed_turns, 0)
 
 
 func test_demote_surrogate_steps_one_rung_and_starts_the_exposure_clock() -> void:
-	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0))
 	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
 
 	unit.demote_surrogate(ladder)
@@ -63,7 +63,7 @@ func test_demote_surrogate_steps_one_rung_and_starts_the_exposure_clock() -> voi
 
 
 func test_tick_organics_decay_demotes_further_every_decay_turns() -> void:
-	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0))
 	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
 	unit.demote_surrogate(ladder)  # PERIPHERAL, exposed_turns 1
 
@@ -76,7 +76,7 @@ func test_tick_organics_decay_demotes_further_every_decay_turns() -> void:
 
 
 func test_tick_organics_decay_is_a_no_op_while_never_exposed() -> void:
-	var unit := Unit.new(Matrix.new(), Frame.new(Part.new()), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0))
 	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
 	for i in range(10):
 		unit.tick_organics_decay(ladder)

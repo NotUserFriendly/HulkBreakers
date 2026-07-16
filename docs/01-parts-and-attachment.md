@@ -153,7 +153,7 @@ All socket transforms are in the **host part's** local space; all volumes are **
 centred on the part's own origin (Phase 12.0).
 
 All of torso's own numbers below are relative to **torso's own origin** — but torso is the
-frame **ROOT**, and `UnitGeometry` places a root at exactly the unit's cell height (`y = 0`)
+shell **ROOT**, and `UnitGeometry` places a root at exactly the unit's cell height (`y = 0`)
 with no separate "standing height" concept. So torso's origin itself carries a
 `ROOT_ELEVATION = 1.25` baked into its volume and every socket it hosts directly (derived, not
 invented: leg height `0.90` + the `HIP` socket's own `0.35` drop below torso's origin) — that's
@@ -239,6 +239,6 @@ A bare limb (dt 2) dies to anything. A steel-plated front (dt 6) shrugs off a ch
 the "base parts are soft" tier gap, finally expressed.
 
 ### Non-bipedal later
-Nothing above is privileged in code. A six-legged frame declares six `HIP` sockets at its own
+Nothing above is privileged in code. A six-legged shell declares six `HIP` sockets at its own
 transforms; a turret declares no `HIP` at all. This is one row in a template table, and the
 projector, cover, flanking, and armour rules never learn it happened.

@@ -10,12 +10,12 @@ extends RefCounted
 
 ## True if `part` could be attached into `into` right now: `into` must be a
 ## container, attaching must not create a cycle, must not exceed `into`'s
-## max_bulk (by direct children's external bulk), and — when `frame` is
-## given — must not push the frame over max_mass (Frame.carried_mass()) or
-## max_ram (Frame.total_ram()). Three independent constraints (docs/05):
+## max_bulk (by direct children's external bulk), and — when `shell` is
+## given — must not push the shell over max_mass (Shell.carried_mass()) or
+## max_ram (Shell.total_ram()). Three independent constraints (docs/05):
 ## mass, bulk, and RAM fail differently, which is the point — a weightless
 ## drone swarm can pass mass and still fail on RAM alone.
-static func can_attach(part: Part, into: Part, frame: Frame = null) -> bool:
+static func can_attach(part: Part, into: Part, shell: Shell = null) -> bool:
 	if not into.is_container:
 		return false
 	if walk(part).has(into):
@@ -27,10 +27,10 @@ static func can_attach(part: Part, into: Part, frame: Frame = null) -> bool:
 	if direct_bulk + part.bulk > into.max_bulk:
 		return false
 
-	if frame != null:
+	if shell != null:
 		into.contents.append(part)
-		var mass_ok: bool = frame.carried_mass() <= frame.max_mass
-		var ram_ok: bool = frame.total_ram() <= frame.max_ram
+		var mass_ok: bool = shell.carried_mass() <= shell.max_mass
+		var ram_ok: bool = shell.total_ram() <= shell.max_ram
 		into.contents.erase(part)
 		if not mass_ok or not ram_ok:
 			return false
@@ -38,8 +38,8 @@ static func can_attach(part: Part, into: Part, frame: Frame = null) -> bool:
 	return true
 
 
-static func attach(part: Part, into: Part, frame: Frame = null) -> bool:
-	if not can_attach(part, into, frame):
+static func attach(part: Part, into: Part, shell: Shell = null) -> bool:
+	if not can_attach(part, into, shell):
 		return false
 	into.contents.append(part)
 	return true

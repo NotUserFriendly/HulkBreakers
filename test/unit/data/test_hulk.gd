@@ -49,9 +49,9 @@ func test_different_visit_counts_actually_repopulate_a_deep_strike_roster() -> v
 	var unit_b := DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng_b, Vector2i(0, 0))
 
 	var ids_a: Array[StringName] = []
-	for part: Part in unit_a.frame.all_parts():
+	for part: Part in unit_a.shell.all_parts():
 		ids_a.append(part.id)
 	var ids_b: Array[StringName] = []
-	for part: Part in unit_b.frame.all_parts():
+	for part: Part in unit_b.shell.all_parts():
 		ids_b.append(part.id)
 	assert_ne(ids_a, ids_b)

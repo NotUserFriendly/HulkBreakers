@@ -17,9 +17,9 @@ func _make_unit(cell: Vector2i) -> Unit:
 	socket.occupant = bag
 	torso.sockets = [socket]
 
-	var frame := Frame.new(torso)
-	frame.max_mass = 1000.0
-	return Unit.new(Matrix.new(), frame, cell, 0)
+	var shell := Shell.new(torso)
+	shell.max_mass = 1000.0
+	return Unit.new(Matrix.new(), shell, cell, 0)
 
 
 func test_pick_up_matrix_goes_to_held_matrix() -> void:
@@ -84,14 +84,14 @@ func test_pick_up_part_attaches_into_the_named_container() -> void:
 	assert_true(action.is_legal(state))
 	action.apply(state)
 
-	var bag: Part = unit.frame.find_part(&"bag")
+	var bag: Part = unit.shell.find_part(&"bag")
 	assert_true(bag.contents.has(pistol))
 	assert_false(grid.field_items.has(Vector2i(0, 0)))
 
 
 func test_pick_up_part_illegal_without_room_in_the_container() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
-	unit.frame.find_part(&"bag").max_bulk = 0.5
+	unit.shell.find_part(&"bag").max_bulk = 0.5
 	var grid := Grid.new(5, 5)
 	var pistol := Part.new()
 	pistol.id = &"pistol"

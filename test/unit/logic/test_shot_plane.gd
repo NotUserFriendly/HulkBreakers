@@ -80,7 +80,7 @@ func test_shield_authored_as_boxes_around_a_hole_lets_a_point_in_the_hole_hit_th
 
 func _standing_unit(id: StringName, half_width: float, cell: Vector2i) -> Unit:
 	var body := _part(id, Box.new(Vector3(0.0, 0.5, 0.0), Vector3(half_width * 2.0, 1.0, 0.6)))
-	return Unit.new(Matrix.new(), Frame.new(body), cell)
+	return Unit.new(Matrix.new(), Shell.new(body), cell)
 
 
 func test_layered_targets_a_gap_in_the_near_unit_falls_through_to_the_far_unit() -> void:
@@ -188,7 +188,9 @@ func test_center_of_returns_the_frontmost_regions_rect_center() -> void:
 
 	var center: Vector2 = ShotPlane.center_of(plane, near_unit)
 	var expected: Region = ShotPlane.resolve_projectile(plane, center)
-	assert_eq(expected.part.id, &"near", "the returned point must land inside the unit's own region")
+	assert_eq(
+		expected.part.id, &"near", "the returned point must land inside the unit's own region"
+	)
 
 
 func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
@@ -196,7 +198,7 @@ func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
 	no_volume.id = &"ghost"
 	no_volume.hp = 5
 	no_volume.max_hp = 5
-	var ghost_unit := Unit.new(Matrix.new(), Frame.new(no_volume), Vector2i(4, 4))
+	var ghost_unit := Unit.new(Matrix.new(), Shell.new(no_volume), Vector2i(4, 4))
 	var state := CombatState.new(Grid.new(10, 10), [ghost_unit])
 	var plane: Array[Region] = ShotPlane.build(Vector2(4, 0), Vector2(0, 1), state)
 

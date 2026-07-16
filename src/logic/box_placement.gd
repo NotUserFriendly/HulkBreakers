@@ -8,7 +8,7 @@ extends RefCounted
 var part: Part
 var box: Box
 ## The owning PART's own composed transform (unit facing + board position +
-## the socket chain down from the frame root) — box.center is still a local
+## the socket chain down from the shell root) — box.center is still a local
 ## offset within it, not yet applied.
 var transform: Transform3D
 

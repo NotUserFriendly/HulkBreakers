@@ -10,7 +10,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(Matrix.new(), Frame.new(root), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, squad)
 
 
 func _make_armed_unit(cell: Vector2i, squad: int, stat_mod: float = 0.0) -> Unit:
@@ -45,7 +45,7 @@ func _make_armed_unit(cell: Vector2i, squad: int, stat_mod: float = 0.0) -> Unit
 	var hand_socket := Socket.new(&"HAND")
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
 func _setup_tactics(units: Array[Unit]) -> Dictionary:
@@ -94,8 +94,7 @@ func test_an_unarmed_selected_unit_shows_unarmed() -> void:
 	assert_eq(label.text, "[UNARMED]")
 
 
-func test_selecting_an_armed_unit_shows_the_resolved_damage_matching_weapon_resolver(
-) -> void:
+func test_selecting_an_armed_unit_shows_the_resolved_damage_matching_weapon_resolver() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup_tactics([a])
 	var controller: TacticsController = built.controller

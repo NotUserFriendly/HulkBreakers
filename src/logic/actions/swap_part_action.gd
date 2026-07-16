@@ -35,7 +35,7 @@ func is_legal(state: CombatState) -> bool:
 	if actual.ap < ap_cost:
 		return false
 
-	var owner: Part = actual.frame.find_part(socket_owner_id)
+	var owner: Part = actual.shell.find_part(socket_owner_id)
 	if owner == null:
 		return false
 	var socket: Socket = _find_socket(owner, socket_type)
@@ -50,7 +50,7 @@ func is_legal(state: CombatState) -> bool:
 
 func apply(state: CombatState) -> void:
 	var actual: Unit = state.find_unit(unit.id)
-	var owner: Part = actual.frame.find_part(socket_owner_id)
+	var owner: Part = actual.shell.find_part(socket_owner_id)
 	var socket: Socket = _find_socket(owner, socket_type)
 	var replacement: Part = state.grid.find_field_item(actual.cell, replacement_id)
 

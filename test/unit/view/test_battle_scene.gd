@@ -22,13 +22,13 @@ func test_new_battle_is_deterministic_from_the_same_seed() -> void:
 	scene.new_battle(42)
 	var ids_a: Array[StringName] = []
 	for unit: Unit in scene.combat_state.units:
-		for part: Part in unit.frame.all_parts():
+		for part: Part in unit.shell.all_parts():
 			ids_a.append(part.id)
 
 	scene.new_battle(42)
 	var ids_b: Array[StringName] = []
 	for unit: Unit in scene.combat_state.units:
-		for part: Part in unit.frame.all_parts():
+		for part: Part in unit.shell.all_parts():
 			ids_b.append(part.id)
 
 	assert_eq(ids_a, ids_b)

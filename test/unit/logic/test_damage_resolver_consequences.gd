@@ -16,7 +16,7 @@ func _make_matrix_hosting_torso(cell: Vector2i) -> Dictionary:
 	var link := Matrix.new()
 	link.id = &"link"
 	torso.hosted_matrix = link
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), cell)
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), cell)
 	return {"unit": unit, "torso": torso, "link": link}
 
 
@@ -72,7 +72,7 @@ func test_destroying_a_head_that_hosts_the_matrix_ejects_it() -> void:
 	neck.occupant = head
 	torso.sockets = [neck]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(2, 2))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
 	DamageResolver.apply_damage_to_part(head, 10.0)
@@ -101,7 +101,7 @@ func test_destroying_an_arm_never_ejects_a_matrix() -> void:
 	shoulder.occupant = arm
 	torso.sockets = [shoulder]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(2, 2))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
 	assert_null(DamageResolver.eject_matrix_if_needed(arm, state))
@@ -155,7 +155,7 @@ func _make_armed_unit(cell: Vector2i) -> Dictionary:
 	shoulder.occupant = arm
 	torso.sockets = [shoulder]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), cell)
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), cell)
 	return {"unit": unit, "torso": torso, "arm": arm, "hand": hand, "pistol": pistol}
 
 
@@ -173,7 +173,7 @@ func test_destroying_a_limb_drops_its_whole_subtree_as_one_intact_assembly() -> 
 
 	assert_eq(dropped, arm)
 	assert_false(
-		unit.frame.all_parts().has(arm), "the arm is no longer part of the unit's own assembly"
+		unit.shell.all_parts().has(arm), "the arm is no longer part of the unit's own assembly"
 	)
 	assert_true(
 		state.grid.field_items[Vector2i(2, 2)].has(arm),
@@ -194,7 +194,7 @@ func test_drop_subtree_if_destroyed_is_a_no_op_for_a_part_still_alive() -> void:
 	assert_null(DamageResolver.drop_subtree_if_destroyed(arm, state))
 
 
-func test_drop_subtree_if_destroyed_is_a_no_op_for_the_frames_own_root() -> void:
+func test_drop_subtree_if_destroyed_is_a_no_op_for_the_shells_own_root() -> void:
 	var built: Dictionary = _make_armed_unit(Vector2i(2, 2))
 	var unit: Unit = built.unit
 	var torso: Part = built.torso
@@ -203,5 +203,5 @@ func test_drop_subtree_if_destroyed_is_a_no_op_for_the_frames_own_root() -> void
 	DamageResolver.apply_damage_to_part(torso, 10.0)
 	assert_null(
 		DamageResolver.drop_subtree_if_destroyed(torso, state),
-		"the root has no parent within its own frame to drop it from"
+		"the root has no parent within its own shell to drop it from"
 	)

@@ -34,9 +34,9 @@ func test_a_swap_part_action_can_be_priced_directly_from_a_tools_ap_cost() -> vo
 	var wrist := Socket.new(&"WRIST")
 	wrist.occupant = old_hand
 	torso.sockets = [wrist]
-	var frame := Frame.new(torso)
-	frame.max_mass = 1000.0
-	var unit := Unit.new(Matrix.new(), frame, Vector2i(0, 0))
+	var shell := Shell.new(torso)
+	shell.max_mass = 1000.0
+	var unit := Unit.new(Matrix.new(), shell, Vector2i(0, 0))
 
 	var grid := Grid.new(5, 5)
 	grid.field_items[Vector2i(0, 0)] = [tool]
