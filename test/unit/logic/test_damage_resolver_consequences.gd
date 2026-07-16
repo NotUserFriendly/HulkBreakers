@@ -38,7 +38,11 @@ func test_destroying_the_matrix_hosting_part_ejects_it_demotes_and_disables() ->
 		"the ejected matrix must land as a recoverable field item, never simply discarded"
 	)
 	assert_false(unit.alive, "unpiloted once its matrix ejects")
-	assert_eq(unit.surrogate_tier.id, &"PERIPHERAL", "one rung down from FULL")
+	# PERIPHERAL: demoting FULL is genuinely ambiguous on the DAG (docs/04
+	# taskblock03 A2) — this is SurrogateLadder.demote()'s flagged,
+	# deterministic placeholder tie-break, not asserting it's the "right"
+	# branch to fall to.
+	assert_eq(unit.surrogate_tier.id, &"PERIPHERAL", "one step down from FULL")
 	assert_eq(unit.exposed_turns, 1, "the exposure clock must start ticking")
 
 

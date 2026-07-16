@@ -1,14 +1,27 @@
 class_name SurrogateTier
 extends Resource
 
-## One rung of the surrogate degradation ladder (docs/04) — a Resource with
-## a rank, not a hardcoded enum, so new tiers between existing ones never
-## need a code edit. Lower rank is more intact; rank ascends as the ladder
-## degrades toward BRAIN_ONLY.
+## One node of the surrogate degradation DAG (docs/04) — a Resource with
+## edges, not a hardcoded enum or a rank scalar, so new tiers or branches
+## never need a code edit.
+##
+## docs/04 taskblock03 Pass A1 (correcting taskblock02 D2's "rank >= my
+## rank," which was WRONG — it let a PERIPHERAL surrogate fit a
+## SURROGATE_TORSIC socket, and they must be mutually exclusive):
+## PERIPHERAL and TORSIC are two branches off the SAME stage (SPINAL), not
+## neighbouring rungs of one line. `promotes_to` carries the graph;
+## `attaches_to` is derived by transitive reachability through it
+## (SurrogateLadder.derive_attaches_to), never a numeric comparison.
 
 @export var id: StringName
 @export var display_name: String = ""
-@export var rank: int = 0
+
+## Which tier(s) this one can be regrown INTO (docs/04 taskblock02 D5's
+## growth-item hook — still a seam, not built) — a DAG edge list.
+## BRAIN_ONLY -> SPINAL -> {PERIPHERAL, TORSIC} -> FULL. "Any surrogate
+## fits a larger box" survives Pass A1's correction: "larger" now means
+## *downstream in this graph* rather than *higher in a line*.
+@export var promotes_to: Array[StringName] = []
 
 ## docs/04 taskblock02 Pass D1: the socket type on a SHELL this tier's own
 ## surrogate Part attaches into — an explicit column on the ladder (not
@@ -27,12 +40,12 @@ extends Resource
 func _init(
 	p_id: StringName = &"",
 	p_display_name: String = "",
-	p_rank: int = 0,
+	p_promotes_to: Array[StringName] = [],
 	p_socket_type: StringName = &"",
 	p_capabilities: Array[StringName] = []
 ) -> void:
 	id = p_id
 	display_name = p_display_name
-	rank = p_rank
+	promotes_to = p_promotes_to
 	socket_type = p_socket_type
 	capabilities = p_capabilities

@@ -62,6 +62,10 @@ func test_demote_surrogate_steps_one_rung_and_starts_the_exposure_clock() -> voi
 	assert_eq(unit.exposed_turns, 1)
 
 
+## docs/04 taskblock03 Pass A1: PERIPHERAL demotes to SPINAL (its one real
+## upstream branch on the DAG) — never sideways to TORSIC, the mutually
+## exclusive sibling branch taskblock02 D2's line-shaped ladder wrongly
+## allowed.
 func test_tick_organics_decay_demotes_further_every_decay_turns() -> void:
 	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0))
 	var ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
@@ -72,7 +76,7 @@ func test_tick_organics_decay_demotes_further_every_decay_turns() -> void:
 	assert_eq(unit.surrogate_tier.id, &"PERIPHERAL", "must not demote before DECAY_TURNS elapse")
 
 	unit.tick_organics_decay(ladder)
-	assert_eq(unit.surrogate_tier.id, &"TORSIC", "one more rung down once DECAY_TURNS elapse")
+	assert_eq(unit.surrogate_tier.id, &"SPINAL", "PERIPHERAL's one real branch, not sideways")
 
 
 func test_tick_organics_decay_is_a_no_op_while_never_exposed() -> void:

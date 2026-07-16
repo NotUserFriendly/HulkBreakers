@@ -31,20 +31,29 @@ costs bodies, cargo, and perk progress — never a crew member.
 The matrix is not purely hardware. For advanced integration it is **half biological**: the
 matrix seeds a **surrogate vat**, growing a body around it.
 
-Tiers are an **ordered data ladder** (a Resource with a rank), not a hardcoded enum — new
-tiers must not need a code edit.
+Tiers are a **DAG** (a Resource with `promotes_to` edges to the tier(s) above it), not a
+hardcoded enum and — taskblock03 Pass A correction — **not a straight line either**:
+
+```
+BRAIN_ONLY -> SPINAL -+-> PERIPHERAL -+-> FULL
+                       +-> TORSIC ----+
+```
 
 | Tier | Body | Notes |
 |---|---|---|
 | `FULL` | Complete human body | |
-| `PERIPHERAL` | Arms + legs around a hollow core | |
-| `TORSIC` | Torso and head | |
-| `SPINAL` | Head and spine | still usable |
+| `PERIPHERAL` | Arms + legs around a hollow core | mutually exclusive with `TORSIC` |
+| `TORSIC` | Torso and head | mutually exclusive with `PERIPHERAL` |
+| `SPINAL` | Head and spine | still usable; the branch point both reconverge from |
 | `BRAIN_ONLY` | Just the matrix and its casing | drives a shell fine — that's a bot |
 
-**Degradation is a ladder, not a health bar.** Damage knocks a surrogate down tiers. A torso
-chewed down to `SPINAL` still works. Kill a player unit and it reduces to *some* amount of
-surrogate — salvageable.
+`PERIPHERAL` and `TORSIC` are **two branches of the same stage**, not neighbouring rungs — a
+`PERIPHERAL` surrogate must never fit a `SURROGATE_TORSIC` socket, or vice versa. Both branches
+reconverge at `SPINAL` going down and at `FULL` going up.
+
+**Degradation is a ladder, not a health bar** — a branching one. Damage knocks a surrogate down
+tiers. A torso chewed down to `SPINAL` still works. Kill a player unit and it reduces to *some*
+amount of surrogate — salvageable.
 
 **Organics have a clock.** Surrogate tissue is tougher than human tissue but still
 deoxygenates and dies. Once exposed or damaged, tier decays **over turns**. Eventually you
@@ -70,11 +79,21 @@ sits at a fixed, well-known socket **id** (`BodyAssembler.SURROGATE_SOCKET_ID`),
 fits), never which socket to look for.
 
 **Tier is a maximum, not an exact match — any surrogate fits a larger box.** `Part.surrogate_tier`
-is the one field an author writes (`&"SPINAL"`, say); `attaches_to` is **derived** from the
-ladder (`SurrogateLadder.derive_attaches_to`) — every socket type whose own tier ranks no worse
-than this one. A `BRAIN_ONLY` surrogate (worst rank) fits every cavity there is; a `FULL`
-surrogate (best rank) fits only a `SURROGATE_FULL` cavity. Add a rung to the ladder and every
-surrogate's legal cavities update with no hand-editing.
+is the one field an author writes (`&"SPINAL"`, say); `attaches_to` is **derived** from the DAG
+(`SurrogateLadder.derive_attaches_to`) — every socket type reachable from this tier by
+transitively following `promotes_to` (itself included), never a rank comparison. A `BRAIN_ONLY`
+surrogate reaches every cavity there is (it's the root of the whole graph); a `FULL` surrogate
+reaches only its own `SURROGATE_FULL` cavity (nothing promotes further); a `PERIPHERAL`
+surrogate reaches `SURROGATE_PERIPHERAL` and `SURROGATE_FULL` — **never** `SURROGATE_TORSIC`,
+even though both sit at the "same depth." Add a branch to the graph and every surrogate's legal
+cavities update with no hand-editing.
+
+**Demotion on a DAG is genuinely ambiguous wherever a tier has more than one upstream branch** —
+today, only `FULL` (both `PERIPHERAL` and `TORSIC` promote into it). "Which one you fall back to
+presumably depends on what was destroyed," and that rule is deliberately **not invented**
+(taskblock03 Pass A2 — flagged, not resolved). `SurrogateLadder.demote()` picks the first branch
+in the ladder's own declaration order as an explicit, `push_warning`'d placeholder when this
+fires; every tier with exactly one upstream branch demotes to it unambiguously.
 
 **Capability gating.** `SurrogateTier.capabilities` is what a docked surrogate at that tier
 lets the shell's body-gated parts (`Part.body_requires`) actually do — do **not** assume tiers
