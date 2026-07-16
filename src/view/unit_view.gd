@@ -23,6 +23,10 @@ const SELECTED_BRIGHTEN := 0.35
 ## optional") — taller than the ground marker so it never z-fights with it.
 const FACING_WEDGE_SIZE := Vector3(0.16, 0.10, 0.30)
 const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
+## docs/10 taskblock03 G: "a unit with no matrix docked... needs to read as
+## down at a glance." Darkens the team ring rather than a separate material —
+## cheap, and it still reads as "this squad's, but not right."
+const DOWNED_MARKER_DIM := 0.4
 
 var unit: Unit
 var material_table: MaterialTable
@@ -63,7 +67,11 @@ func refresh() -> void:
 
 	_team_marker = _build_team_marker()
 	add_child(_team_marker)
-	add_child(_build_facing_wedge())
+	var downed: bool = is_downed()
+	if not downed:
+		# docs/10 taskblock03 G: "kill its facing wedge" — a downed unit
+		# isn't facing anything.
+		add_child(_build_facing_wedge())
 
 	var rim: StandardMaterial3D = WorldPalette.rim_outline_material(
 		WorldPalette.team_color(unit.squad_id)
@@ -78,13 +86,47 @@ func refresh() -> void:
 		material.next_pass = rim
 		box_mesh.material = material
 		instance.mesh = box_mesh
-		instance.transform = placement.transform.translated_local(placement.box.center)
+		var world_transform: Transform3D = placement.transform.translated_local(
+			placement.box.center
+		)
+		# docs/10 taskblock03 G: "lay it on its back" — rotate 90 degrees
+		# about X, pivoted at the unit's own cell (ground level), so it
+		# reads as fallen in place rather than flying off or sinking
+		# through the floor. Cheap, unmistakable, and honest: "the boxes
+		# are still exactly where the shot plane says they are" — this only
+		# ever touches the view's own transform, never UnitGeometry itself.
+		instance.transform = (
+			_downed_transform(unit.cell) * world_transform if downed else world_transform
+		)
 		add_child(instance)
+
+
+## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs
+## to read as down." No other "otherwise unable to act" condition is
+## defined anywhere else in this codebase yet (docs/09/CombatState's own
+## turn order only ever checks `alive`) — flagged, not invented: only the
+## bare-shell case is implemented here.
+func is_downed() -> bool:
+	return unit != null and unit.resolve_matrix() == null
+
+
+static func _downed_transform(cell: Vector2i) -> Transform3D:
+	var pivot: Vector3 = Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
+	return (
+		Transform3D(Basis.IDENTITY, pivot)
+		* Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)
+		* Transform3D(Basis.IDENTITY, -pivot)
+	)
 
 
 func _marker_color() -> Color:
 	var base: Color = WorldPalette.team_color(unit.squad_id)
-	return base.lerp(Color.WHITE, SELECTED_BRIGHTEN) if _selected else base
+	var color: Color = base.lerp(Color.WHITE, SELECTED_BRIGHTEN) if _selected else base
+	if is_downed():
+		color = Color(
+			color.r * DOWNED_MARKER_DIM, color.g * DOWNED_MARKER_DIM, color.b * DOWNED_MARKER_DIM
+		)
+	return color
 
 
 func _build_team_marker() -> MeshInstance3D:

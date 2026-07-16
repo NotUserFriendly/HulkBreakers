@@ -8,13 +8,11 @@ extends GutTest
 ## never touching a part's own material.
 
 
+## A torso with a docked matrix (a normal, piloted unit — not the docs/10
+## taskblock03 G "bare shell" case, covered separately below).
 func _torso_unit(cell: Vector2i, squad: int = 0) -> Unit:
-	var torso := Part.new()
-	torso.id = &"torso"
-	torso.hp = 10
-	torso.max_hp = 10
-	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 1.0, 0.6))]
-	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+	var torso := _piloted_torso()
+	return Unit.new(torso.hosted_matrix, Shell.new(torso), cell, squad)
 
 
 func _torso_with_arm_unit(cell: Vector2i) -> Dictionary:
@@ -24,16 +22,33 @@ func _torso_with_arm_unit(cell: Vector2i) -> Dictionary:
 	arm.max_hp = 4
 	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.4, 0.9, 0.4))]
 
+	var torso := _piloted_torso()
+	var shoulder := Socket.new(&"SHOULDER")
+	shoulder.occupant = arm
+	torso.sockets.append(shoulder)
+
+	return {"unit": Unit.new(torso.hosted_matrix, Shell.new(torso), cell), "arm": arm}
+
+
+func _piloted_torso() -> Part:
 	var torso := Part.new()
 	torso.id = &"torso"
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 1.0, 0.6))]
-	var shoulder := Socket.new(&"SHOULDER")
-	shoulder.occupant = arm
-	torso.sockets = [shoulder]
+	torso.sockets = [Socket.new(&"MATRIX")]
+	torso.dock_matrix(Matrix.new())
+	return torso
 
-	return {"unit": Unit.new(Matrix.new(), Shell.new(torso), cell), "arm": arm}
+
+## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)."
+func _shell_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 1.0, 0.6))]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
 func test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box() -> void:
@@ -139,9 +154,7 @@ func test_preview_orientation_moves_both_the_wedge_and_the_part_meshes() -> void
 	var preview_wedge_x: float = (view.get_child(1) as MeshInstance3D).position.x
 	var preview_mesh_transform: Transform3D = (view.get_child(2) as MeshInstance3D).transform
 	assert_ne(preview_wedge_x, committed_wedge_x, "the wedge must move to the preview")
-	assert_ne(
-		preview_mesh_transform, committed_mesh_transform, "the body itself must also rotate"
-	)
+	assert_ne(preview_mesh_transform, committed_mesh_transform, "the body itself must also rotate")
 	assert_almost_eq(unit.orientation, 0.0, 0.0001, "the real unit is never mutated by a preview")
 
 
@@ -185,3 +198,63 @@ func test_set_selected_brightens_the_team_marker() -> void:
 
 	assert_ne(before, after, "selecting must visibly brighten the marker")
 	assert_eq(before, WorldPalette.TEAM_A, "sanity: unselected must be the plain team color")
+
+
+## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs
+## to read as down at a glance."
+func test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit() -> void:
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.unit = _shell_unit(Vector2i(0, 0))
+	assert_true(view.is_downed())
+
+	view.unit = _torso_unit(Vector2i(0, 0))
+	assert_false(view.is_downed())
+
+
+func test_a_downed_unit_kills_its_facing_wedge() -> void:
+	var unit := _shell_unit(Vector2i(0, 0))
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	assert_eq(view.get_child_count(), 2, "team marker + one part mesh, no wedge in between")
+
+
+func test_a_downed_units_body_is_rotated_ninety_degrees_about_x() -> void:
+	var unit := _shell_unit(Vector2i(2, 3))
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
+	var upright: Transform3D = expected.transform.translated_local(expected.box.center)
+	var actual: Transform3D = (view.get_child(1) as MeshInstance3D).transform
+
+	assert_ne(actual, upright, "a downed body must not render at its upright transform")
+	# Rotating the upright transform's own basis 90 degrees about world X
+	# must land exactly where the view actually put it.
+	var expected_basis: Basis = Basis(Vector3.RIGHT, PI / 2.0) * upright.basis
+	assert_true(actual.basis.is_equal_approx(expected_basis))
+
+
+func test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units() -> void:
+	var downed_view := UnitView.new()
+	add_child_autofree(downed_view)
+	downed_view.setup(_shell_unit(Vector2i(0, 0), 0), MaterialTable.default_table())
+
+	var piloted_view := UnitView.new()
+	add_child_autofree(piloted_view)
+	piloted_view.setup(_torso_unit(Vector2i(0, 0), 0), MaterialTable.default_table())
+
+	var downed_color: Color = (
+		((downed_view.get_child(0) as MeshInstance3D).material_override as StandardMaterial3D)
+		. albedo_color
+	)
+	var piloted_color: Color = (
+		((piloted_view.get_child(0) as MeshInstance3D).material_override as StandardMaterial3D)
+		. albedo_color
+	)
+
+	assert_almost_eq(downed_color.r, piloted_color.r * UnitView.DOWNED_MARKER_DIM, 0.0001)
+	assert_lt(downed_color.r, piloted_color.r, "the downed marker must actually read dimmer")
