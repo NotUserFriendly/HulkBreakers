@@ -415,6 +415,28 @@ func test_destroying_a_volatile_part_cooks_off_and_hits_units_in_radius_only() -
 	assert_eq(far_root.hp, 10)
 
 
+## docs/10 taskblock04 C3: "a goo_barrel cooks off" — the starter field
+## object's own data (VOLATILE + a real cook_off_damage), run through the
+## exact same pre-existing cook_off() mechanic every other volatile part
+## uses. No new code, just the data actually being correct.
+func test_the_goo_barrel_field_object_cooks_off() -> void:
+	var barrel: Part = FieldObjects.goo_barrel()
+	var grid := Grid.new(10, 10)
+	grid.blockers[Vector2i(5, 5)] = barrel
+
+	var near_root := Part.new()
+	near_root.hp = 20
+	near_root.max_hp = 20
+	var near_unit := Unit.new(Matrix.new(), Shell.new(near_root), Vector2i(6, 6))
+	var state := CombatState.new(grid, [near_unit])
+
+	assert_true(DamageResolver.apply_damage_to_part(barrel, 999.0))
+	var affected: Array[Unit] = DamageResolver.cook_off(barrel, state)
+
+	assert_eq(affected, [near_unit])
+	assert_lt(near_root.hp, 20, "the goo barrel's own cook_off_damage must actually have landed")
+
+
 func test_cook_off_is_a_no_op_without_the_volatile_tag_or_zero_damage() -> void:
 	var inert := Part.new()
 	inert.id = &"inert"
