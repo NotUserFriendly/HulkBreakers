@@ -64,6 +64,27 @@ func apply(state: CombatState) -> void:
 		actual.cell = path[i]
 		state.grid.set_occupant_id(actual.cell, actual.id)
 
+	# runNotes.md: "a character's facing after movement should update to
+	# face away from where they started" — free, same primitive
+	# AttackAction's own free-with-action facing uses, so a queued move
+	# updates the previewed wedge exactly like every other facing change.
+	# Known consequence, confirmed by direct A/B testing, not yet resolved
+	# (flagged rather than hacked around, CLAUDE.md's own rule): a unit
+	# that stops moving because it's already in weapon range now keeps
+	# whatever orientation its last step left it with, rather than a
+	# constant default — for at least one scripted integration scenario
+	# (test_full_mission.gd) this happens to freeze the last defender
+	# facing its best armor at the attackers, stalemating the mission past
+	# its turn cap. The mission AI has no facing awareness at all (it never
+	# queues a FaceAction); making combat AI account for its own defensive
+	# facing is a real follow-up, not something to invent unasked here.
+	FaceAction.face_for_free(
+		state,
+		actual,
+		FaceAction.orientation_toward(path[0], path[path.size() - 1]),
+		&"free_with_move"
+	)
+
 	var text: String = "MoveAction: unit %d moved to %s" % [actual.id, actual.cell]
 	state.log_action(text)
 	if not state.is_preview:

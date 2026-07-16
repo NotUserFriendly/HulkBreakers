@@ -76,18 +76,102 @@ func test_selecting_a_unit_fills_in_the_mass_and_ram_footer() -> void:
 	assert_true(footer.text.contains("ram"))
 
 
-func test_deselecting_clears_the_tree_and_footer_again() -> void:
+## runNotes.md: inspection is sticky — a human still looking at what they
+## clicked shouldn't lose that view just because they clicked away from
+## the board (docs/10 taskblock02 F2's own "click away -> deselect" is a
+## TACTICS-selection concept, not an inspection one).
+func test_deselecting_does_not_clear_the_last_inspected_unit() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
 	var tree: Tree = built.tree
-	var footer: Label = built.footer
 	controller.click_cell(Vector2i(0, 0))
 
 	controller.deselect()
 
-	assert_null(tree.get_root())
-	assert_eq(footer.text, "")
+	assert_not_null(tree.get_root(), "the last-inspected unit's inventory stays visible")
+
+
+## runNotes.md: "clicking on a red team unit should show their parts as
+## well, even during the blue team's turn."
+func test_clicking_a_unit_that_is_not_the_current_turn_still_shows_its_inventory() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var enemy_root := Part.new()
+	enemy_root.id = &"enemy_torso"
+	enemy_root.hp = 5
+	enemy_root.max_hp = 5
+	var b := Unit.new(Matrix.new(), Shell.new(enemy_root), Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var tree: Tree = built.tree
+
+	controller.click_cell(Vector2i(5, 5))
+
+	assert_null(controller.selection.selected_unit, "clicking the enemy must not select it")
+	assert_not_null(tree.get_root(), "but it must still populate the inspection panel")
+	assert_eq(tree.get_root().get_child(0).get_text(InventoryPanel.COL_PART), "enemy_torso")
+
+
+## runNotes.md: "pare the columns down to part name, condition, and mass."
+func test_exactly_three_columns_part_condition_mass() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var tree: Tree = built.tree
+
+	assert_eq(tree.columns, 3)
+	assert_eq(tree.get_column_title(InventoryPanel.COL_PART), "Part")
+	assert_eq(tree.get_column_title(InventoryPanel.COL_CONDITION), "Condition")
+	assert_eq(tree.get_column_title(InventoryPanel.COL_MASS), "Mass")
+
+
+## runNotes.md: "show all the stats of parts on hover, drawing a new small
+## window" — Godot's own per-item tooltip.
+func test_hovering_a_row_shows_the_full_stat_block_in_its_tooltip() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 8
+	torso.max_hp = 10
+	torso.material = &"steel"
+	torso.mass = 4.0
+	torso.bulk = 2.0
+	var a := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var tree: Tree = built.tree
+
+	controller.click_cell(Vector2i(0, 0))
+
+	var tooltip: String = tree.get_root().get_child(0).get_tooltip_text(InventoryPanel.COL_PART)
+	assert_true(tooltip.contains("8/10"))
+	assert_true(tooltip.contains("steel"))
+	assert_true(tooltip.contains("4.0"), "mass must be in the tooltip even though it's dropped")
+	assert_true(tooltip.contains("2.0"), "bulk must be in the tooltip since it's not a column")
+
+
+## runNotes.md: "Mass and Condition are both 5 or less characters, while
+## part names are long, adjust the columns to fit that behavior better." —
+## Part expands to take whatever's left; Condition/Mass are fixed-width
+## and don't expand (Tree exposes no getter for the minimum-width value
+## itself, only the setter this drives, so expand behavior is the
+## checkable contract here).
+func test_condition_and_mass_columns_are_narrow_and_fixed_part_expands() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var tree: Tree = built.tree
+
+	assert_true(tree.is_column_expanding(InventoryPanel.COL_PART))
+	assert_false(tree.is_column_expanding(InventoryPanel.COL_CONDITION))
+	assert_false(tree.is_column_expanding(InventoryPanel.COL_MASS))
+
+
+## runNotes.md: "there's a dead top level tree... that doesn't need to be
+## shown."
+func test_the_tree_hides_its_own_internal_root_row() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var tree: Tree = built.tree
+
+	assert_true(tree.hide_root)
 
 
 func test_the_socket_id_appears_in_the_part_column() -> void:

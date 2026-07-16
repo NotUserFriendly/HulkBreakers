@@ -56,12 +56,18 @@ func apply(state: CombatState) -> void:
 ## another action's own apply(), never queued on its own, so it never pays
 ## MP/AP — but the turn itself is still real and still logged (docs/09:
 ## "if it changed the world, it's in the log"). A no-op if `actual` was
-## already facing that way.
-static func face_for_free(state: CombatState, actual: Unit, direction: float) -> void:
+## already facing that way. `reason` defaults to the original attack case;
+## runNotes.md's "movement should face the direction of travel" reuses this
+## same free-facing primitive with its own `free_with_move` reason instead
+## of inventing a second mechanism for the same "actions with an implicit
+## direction face for free" rule.
+static func face_for_free(
+	state: CombatState, actual: Unit, direction: float, reason: StringName = &"free_with_action"
+) -> void:
 	if actual.orientation == direction:
 		return
 	actual.orientation = direction
-	_log(state, actual, &"free_with_action", 0.0)
+	_log(state, actual, reason, 0.0)
 
 
 ## The absolute orientation (docs/02 convention) that faces `from_cell`

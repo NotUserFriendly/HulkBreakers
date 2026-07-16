@@ -8,3 +8,13 @@ config_version=5
 config/name="HulkBreakers"
 config/features=PackedStringArray("4.7")
 run/main_scene="res://src/view/battle_scene.tscn"
+
+[display]
+
+; runNotes.md: "a 16:9 1080p minimum window should be what we work off
+; going forward" — this sets the actual launch size; BattleScene._ready()
+; additionally pins get_window().min_size so the window can't be resized
+; smaller (a project setting alone only controls the initial/default size,
+; not a resize floor).
+window/size/viewport_width=1920
+window/size/viewport_height=1080

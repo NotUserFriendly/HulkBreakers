@@ -83,8 +83,8 @@ func test_calling_new_battle_again_does_not_leak_the_previous_units_views() -> v
 	assert_eq(scene.unit_views.size(), scene.combat_state.units.size())
 	# world_environment + directional_light + camera_rig + board_view + tactics +
 	# ui CanvasLayer + aim_view + resolution_player + stat_panel + inventory_panel +
-	# controls_overlay + one UnitView per unit.
-	assert_eq(scene.get_child_count(), 11 + scene.combat_state.units.size())
+	# weapon_panel + controls_overlay + one UnitView per unit.
+	assert_eq(scene.get_child_count(), 12 + scene.combat_state.units.size())
 	assert_eq(scene.combat_state.units.size(), unit_count, "the seeded roster size is stable")
 
 
@@ -106,6 +106,38 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 				placements[j].box.center
 			)
 			assert_eq(mesh_instance.transform, expected)
+
+
+## runNotes.md: "the red unit may be spawning in a non-navigable space" —
+## `_seed_battle` used to hardcode Vector2i(2,2)/(9,7) regardless of what
+## MapGen actually carved; it must place both squads on the grid's own
+## real SPAWN_A/SPAWN_B cells instead, across many seeds, not just the
+## default one.
+func test_seeded_units_always_land_on_navigable_terrain_across_many_seeds() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	for seed_value in range(1, 30):
+		scene.new_battle(seed_value)
+		for unit: Unit in scene.combat_state.units:
+			assert_ne(
+				scene.combat_state.grid.get_terrain(unit.cell),
+				Enums.TerrainType.WALL,
+				"seed %d must not spawn a unit on a wall" % seed_value
+			)
+
+
+func test_seeded_units_spawn_on_the_grids_own_spawn_a_and_spawn_b_cells() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.new_battle(7)
+
+	var terrains: Array[int] = []
+	for unit: Unit in scene.combat_state.units:
+		terrains.append(scene.combat_state.grid.get_terrain(unit.cell))
+
+	assert_true(terrains.has(Enums.TerrainType.SPAWN_A))
+	assert_true(terrains.has(Enums.TerrainType.SPAWN_B))
 
 
 func test_tactics_is_wired_to_the_real_camera_and_board() -> void:

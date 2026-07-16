@@ -271,6 +271,20 @@ func test_clicking_a_units_overhanging_body_selects_it_via_click_cell() -> void:
 	assert_eq(controller.selection.selected_unit, a)
 
 
+## runNotes.md: "make undo last action only on click, while a drag doesn't
+## cancel the action" — a click is a press immediately followed by a
+## release, no motion event in between.
+func _rmb_click(controller: TacticsController) -> void:
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_RIGHT
+	down.pressed = true
+	controller._unhandled_input(down)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_RIGHT
+	up.pressed = false
+	controller._unhandled_input(up)
+
+
 ## docs/10 taskblock03 D3: "RMB pops the last queued action... RMB with an
 ## empty queue -> deselect."
 func test_rmb_undoes_the_last_queued_action_without_aiming() -> void:
@@ -281,10 +295,7 @@ func test_rmb_undoes_the_last_queued_action_without_aiming() -> void:
 	controller.click_cell(Vector2i(1, 0))
 	assert_eq(controller.selection.ghost_paths().size(), 1)
 
-	var rmb := InputEventMouseButton.new()
-	rmb.button_index = MOUSE_BUTTON_RIGHT
-	rmb.pressed = true
-	controller._unhandled_input(rmb)
+	_rmb_click(controller)
 
 	assert_eq(controller.selection.ghost_paths().size(), 0)
 	assert_eq(controller.selection.selected_unit, a, "still selected — only the action was undone")
@@ -296,10 +307,7 @@ func test_rmb_with_an_empty_queue_deselects() -> void:
 	var controller: TacticsController = built.controller
 	controller.click_cell(Vector2i(0, 0))
 
-	var rmb := InputEventMouseButton.new()
-	rmb.button_index = MOUSE_BUTTON_RIGHT
-	rmb.pressed = true
-	controller._unhandled_input(rmb)
+	_rmb_click(controller)
 
 	assert_null(controller.selection.selected_unit)
 

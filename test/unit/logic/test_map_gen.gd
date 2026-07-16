@@ -89,6 +89,24 @@ func test_walls_are_opaque_and_open_cells_are_not() -> void:
 	assert_true(saw_open)
 
 
+## `_split_and_carve` only splits a leaf once BOTH its dimensions clear
+## `MIN_LEAF_SIZE * 2` (16) — a grid as small as BattleScene's own (12x10)
+## never clears that bar, so it always carves exactly one room. Both spawn
+## zones must still land on distinct, real cells there too: this was a
+## reproduced bug (runNotes.md — "the red unit may be spawning in a
+## non-navigable space") where SPAWN_B silently overwrote every SPAWN_A
+## cell in the single-room case, so a caller scanning for SPAWN_A found
+## nothing and had to fall back to a coordinate no longer guaranteed to be
+## inside carved-open ground.
+func test_spawn_zones_are_distinct_even_in_a_single_room_grid() -> void:
+	for map_seed in range(SEED_COUNT):
+		var grid: Grid = MapGen.generate(map_seed, 12, 10)
+		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.TerrainType.SPAWN_A)
+		var spawn_b: Array[Vector2i] = _find_cells(grid, Enums.TerrainType.SPAWN_B)
+		assert_true(spawn_a.size() > 0, "seed %d: spawn zone A must exist" % map_seed)
+		assert_true(spawn_b.size() > 0, "seed %d: spawn zone B must exist" % map_seed)
+
+
 func test_spawn_zones_are_walkable() -> void:
 	var grid: Grid = MapGen.generate(3, WIDTH, HEIGHT)
 	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})

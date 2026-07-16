@@ -31,7 +31,9 @@ static func layers_for(plane: Array[Region]) -> Array[AimLayer]:
 		if not best_depth.has(body) or region.depth < best_depth[body]:
 			best_depth[body] = region.depth
 
-	body_order.sort_custom(func(a: Variant, b: Variant) -> bool: return best_depth[a] < best_depth[b])
+	body_order.sort_custom(
+		func(a: Variant, b: Variant) -> bool: return best_depth[a] < best_depth[b]
+	)
 
 	var layers: Array[AimLayer] = []
 	for body: Variant in body_order:

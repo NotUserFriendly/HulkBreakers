@@ -17,19 +17,14 @@ signal aim_changed
 ## panel (docs/08/10 Phase 12.5) redraws from this rather than polling.
 signal selection_changed
 
-## Reticle-follows-mouse sensitivity (docs/10 doesn't specify a plane-space
-## mouse mapping — this is a flagged placeholder, not a design decision:
-## raw screen-motion delta scaled into plane units).
-const RETICLE_SENSITIVITY := 0.01
-
 ## docs/10 taskblock02 F3: Q/E step size — docs/10 doesn't pin an exact
-## increment, a flagged placeholder like RETICLE_SENSITIVITY above, not a
-## design decision. 45 degrees: enough turns to face any of 8 directions.
+## increment, a flagged placeholder, not a design decision. 45 degrees:
+## enough turns to face any of 8 directions.
 const FACE_STEP := PI / 4.0
 
 ## docs/10 taskblock03 E1: mouse-drag facing sensitivity — same flagged-
-## placeholder status as RETICLE_SENSITIVITY, docs/10 asks for "continuous,
-## any angle," not an exact mapping.
+## placeholder status as FACE_STEP above, docs/10 asks for "continuous, any
+## angle," not an exact mapping.
 const FACE_DRAG_SENSITIVITY := 0.01
 
 var selection: SelectionController
@@ -41,6 +36,16 @@ var camera: Camera3D
 var aiming_at: Unit = null
 var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
+
+## runNotes.md: "clicking on a red team unit should show their parts as
+## well, even during the blue team's turn." Deliberately separate from
+## `selection.selected_unit`, which stays gated to "the unit whose turn it
+## is" (the only unit any action can legally queue against) — inspecting a
+## unit's inventory is a read, never a TACTICS decision, so it has no
+## business being restricted the same way. Sticky across deselection: a
+## human still looking at what they just clicked on shouldn't lose that
+## view just because they clicked away from the board.
+var inspected_unit: Unit = null
 
 ## True for the whole of RESOLUTION (docs/10): set the instant End Turn
 ## resolves, cleared once whoever is playing back the log calls
@@ -57,6 +62,14 @@ var _facing_drag_active: bool = false
 ## mouse movement — see drag_face().
 var _drag_face_action: FaceAction = null
 
+## runNotes.md: "keep both things on RMB, but make undo last action only on
+## click, while a drag doesn't cancel the action." RMB also drives camera
+## orbit (CameraRig, independently, via Input.is_mouse_button_pressed) — the
+## undo/cancel-aim side only fires on release, and only if no motion event
+## arrived while the button was down.
+var _rmb_pressed: bool = false
+var _rmb_dragged: bool = false
+
 
 func setup(state: CombatState, p_board_view: BoardView, p_camera_rig: CameraRig) -> void:
 	selection = SelectionController.new(state)
@@ -71,15 +84,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event as InputEventMouseButton)
-	elif event is InputEventMouseMotion and aiming_at != null:
-		var raw: Vector2 = (event as InputEventMouseMotion).relative * RETICLE_SENSITIVITY
-		# docs/10 taskblock03 C3: Godot's mouse Y is down-positive; the shot
-		# plane's Y is world-up-positive (BodyProjector's own Rect2 convention).
-		# Negate at this input boundary so dragging the mouse up moves the
-		# reticle up, not down.
-		move_reticle(Vector2(raw.x, -raw.y))
-	elif event is InputEventMouseMotion and _facing_drag_active:
-		drag_face((event as InputEventMouseMotion).relative.x)
+	elif event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		if _rmb_pressed:
+			# runNotes.md: any motion while RMB is held marks this a drag
+			# (an orbit gesture, CameraRig's own concern) rather than a
+			# click — checked unconditionally, alongside whichever branch
+			# below also fires for this same event, so dragging RMB while
+			# aiming (say) still registers as a drag even though the
+			# reticle branch handles the event too.
+			_rmb_dragged = true
+		if aiming_at != null:
+			# runNotes.md: "isn't following the cursor exactly instead being
+			# offset" — a raycast onto the dartboard's own plane through the
+			# literal cursor position, not an accumulated relative delta.
+			aim_reticle_at_screen(motion.position)
+		elif _facing_drag_active:
+			drag_face(motion.relative.x)
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
 		if not key_event.pressed:
@@ -108,6 +129,8 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			# one was active — a plain click never started one.
 			_facing_drag_active = false
 			_drag_face_action = null
+		elif button_event.button_index == MOUSE_BUTTON_RIGHT:
+			_handle_rmb_release()
 		return
 	if button_event.button_index == MOUSE_BUTTON_LEFT:
 		var from: Vector3 = camera.project_ray_origin(button_event.position)
@@ -132,20 +155,37 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			# reach is a different thing (the player is aiming for a cell
 			# they can't use yet, not backing out) and stays a no-op.
 			deselect()
-	elif button_event.button_index == MOUSE_BUTTON_RIGHT and aiming_at != null:
-		cancel_aim()
 	elif button_event.button_index == MOUSE_BUTTON_RIGHT:
-		# docs/10 taskblock03 D3: RMB pops the last queued action; with
-		# nothing left to pop, it's a plain deselect.
-		if not selection.undo_last():
-			deselect()
-		else:
-			_drag_face_action = null
-			_refresh_overlay()
+		# runNotes.md: RMB also orbits the camera (CameraRig, independently)
+		# — only start tracking here; the actual undo/cancel-aim decision
+		# waits for release, once we know whether it turned into a drag.
+		_rmb_pressed = true
+		_rmb_dragged = false
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and aiming_at != null:
 		scroll_layer(1)
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and aiming_at != null:
 		scroll_layer(-1)
+
+
+## runNotes.md: "make undo last action only on click, while a drag doesn't
+## cancel the action" — same rule covers cancel-aim, the other thing RMB
+## already does (docs/10 taskblock03 D3/C2).
+func _handle_rmb_release() -> void:
+	var was_drag: bool = _rmb_dragged
+	_rmb_pressed = false
+	_rmb_dragged = false
+	if was_drag:
+		return
+	if aiming_at != null:
+		cancel_aim()
+		return
+	# docs/10 taskblock03 D3: RMB pops the last queued action; with
+	# nothing left to pop, it's a plain deselect.
+	if not selection.undo_last():
+		deselect()
+	else:
+		_drag_face_action = null
+		_refresh_overlay()
 
 
 ## docs/10 taskblock03 D1: "click the body, not just the tile" — nearest hit
@@ -180,6 +220,10 @@ func click_cell(cell: Vector2i) -> void:
 		return
 
 	var unit_here: Unit = _unit_at(cell)
+	if unit_here != null:
+		# runNotes.md: inspecting a unit's inventory is independent of
+		# whether this click also selects it or enters aim mode below.
+		inspected_unit = unit_here
 	if unit_here != null and unit_here == selection.state.current_unit():
 		selection.select(unit_here)
 	elif unit_here != null and selection.selected_unit != null:
@@ -256,9 +300,12 @@ func _enter_aim_mode(target: Unit) -> void:
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	camera_rig.zoom_enabled = false
-	# docs/10 taskblock03 C1: ease to the over-the-shoulder attack framing —
-	# never a cut. C2: a default, not a lock; orbit/pan/zoom stay live and
-	# will interrupt this the instant the player touches them.
+	# runNotes.md: the camera locks for the whole of aim mode — orbiting
+	# away from the shot line broke the reticle's screen-to-shot-plane
+	# mapping (see CameraRig.locked's own comment). Locking first, then
+	# easing, is deliberate: `locked` only gates live input in
+	# _unhandled_input, never the tween itself, so the ease still plays.
+	camera_rig.locked = true
 	camera_rig.ease_to_attack_framing(
 		_world_pos(selection.selected_unit.cell), _world_pos(target.cell)
 	)
@@ -294,12 +341,45 @@ func scroll_layer(delta: int) -> void:
 		aim_changed.emit()
 
 
+## A relative nudge, still used by anything that isn't a live cursor
+## (keyboard/controller input, or a test driving the reticle directly with
+## no camera in play) — see aim_reticle_at_screen() for the real mouse path.
 func move_reticle(delta: Vector2) -> void:
 	if input_locked:
 		return
 	if aiming_at != null:
 		reticle_offset += delta
 		aim_changed.emit()
+
+
+## runNotes.md: "Dartboard isn't following the cursor exactly instead being
+## offset." The old mouse path accumulated `motion.relative` deltas scaled
+## by a fixed sensitivity, a screen-space stand-in for the shot plane that
+## silently stopped matching the screen the moment the camera wasn't at its
+## exact default orientation (see CameraRig.locked's own doc comment for
+## the same class of bug). This instead raycasts from the camera through
+## the cursor's actual screen position and intersects it with the
+## dartboard's real plane (AimPlaneGeometry, shared with AimView's own
+## rendering of that same plane) — wherever the cursor visibly points,
+## that's where the reticle actually is, at any camera angle.
+func aim_reticle_at_screen(screen_pos: Vector2) -> void:
+	if input_locked or aiming_at == null or camera == null:
+		return
+	var aim: Dictionary = aim_state()
+	if aim.is_empty():
+		return
+	var shooter: Unit = aim["shooter"]
+	var target: Unit = aim["target"]
+	var plane: Array[Region] = aim["plane"]
+	var ray_origin: Vector3 = camera.project_ray_origin(screen_pos)
+	var ray_dir: Vector3 = camera.project_ray_normal(screen_pos)
+	var hit: Variant = AimPlaneGeometry.aim_point_from_ray(
+		shooter.cell, target.cell, ray_origin, ray_dir
+	)
+	if hit == null:
+		return
+	reticle_offset = (hit as Vector2) - ShotPlane.center_of(plane, target)
+	aim_changed.emit()
 
 
 ## docs/10 taskblock03 D5: "aim from where the unit WILL BE." Everything the
@@ -349,6 +429,23 @@ func aim_plane() -> Array[Region]:
 	return aim["plane"]
 
 
+## runNotes.md: "the controlled unit ghost should face the aimed-at unit
+## while aiming is happening, and if aiming is cancelled, then they
+## 'unface'." A display-only override — never a queued FaceAction, so
+## cancelling requires no cleanup: aiming_at just goes null, this starts
+## returning null again, and both the previewed body/wedge (UnitView) and
+## the end-position ghost fall straight back to whatever WAS queued.
+## Reads from the same speculative preview aim_state() itself uses, so it
+## agrees with D5's "aim from where the unit WILL BE" for position too.
+func aim_facing() -> Variant:
+	var aim: Dictionary = aim_state()
+	if aim.is_empty():
+		return null
+	var shooter: Unit = aim["shooter"]
+	var target: Unit = aim["target"]
+	return FaceAction.orientation_toward(shooter.cell, target.cell)
+
+
 ## Queues an AttackAction carrying the reticle's current aim_offset, using
 ## whatever weapon the shooter can actually operate (docs/01 capability
 ## matching) — a no-op, silently, if the shooter has nothing operable.
@@ -369,6 +466,7 @@ func cancel_aim() -> void:
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	camera_rig.zoom_enabled = true
+	camera_rig.locked = false
 	aim_changed.emit()
 	_refresh_overlay()
 
@@ -413,18 +511,35 @@ func _refresh_overlay() -> void:
 	board_view.show_unit_ghost(_end_position_ghost())
 
 
-## docs/10 taskblock03 F1: only worth drawing once the queued end state
-## actually differs from where the unit already, visibly, is — with
-## nothing queued the ghost would just be an identical translucent copy
-## sitting on top of the real, opaque unit.
+## docs/10 taskblock03 F1: only worth drawing once a move is actually
+## queued (the previewed CELL differs from where the unit already,
+## visibly, is) — "ghost of the unit where it will end up after the
+## queued path." runNotes.md: a plain in-place rotation (no move queued)
+## used to ALSO spawn a ghost sitting right on top of the real unit,
+## showing the same turn twice — that case is now the live model's job
+## alone (see BattleScene._on_selection_changed()), so the ghost only ever
+## exists once there's an actual "where it will end up" to show. While
+## aiming, the ghost's own orientation is overridden to face the target —
+## `previewed` is a disposable clone fresh off SelectionController.
+## previewed_unit() each call, so mutating its orientation here can never
+## leak back onto anything real.
 func _end_position_ghost() -> Unit:
+	if not has_queued_move():
+		return null
 	var previewed: Unit = selection.previewed_unit()
-	var current: Unit = selection.selected_unit
-	if previewed == null or current == null:
-		return null
-	if (
-		previewed.cell == current.cell
-		and is_equal_approx(previewed.orientation, current.orientation)
-	):
-		return null
+	var facing: Variant = aim_facing()
+	if facing != null:
+		previewed.orientation = facing
 	return previewed
+
+
+## runNotes.md: true once the selected unit's queue has actually moved it
+## somewhere — the dividing line between "the live model previews its own
+## future" (nothing queued yet) and "the ghost previews it instead" (a
+## move is queued, so the live model stays put at its committed facing
+## until it actually gets there). Never both at once.
+func has_queued_move() -> bool:
+	if selection == null or selection.selected_unit == null:
+		return false
+	var previewed: Unit = selection.previewed_unit()
+	return previewed != null and previewed.cell != selection.selected_unit.cell

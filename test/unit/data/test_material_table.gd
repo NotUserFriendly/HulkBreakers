@@ -21,7 +21,9 @@ func test_default_table_yields_a_distinct_color_per_material() -> void:
 	var seen: Array[Color] = []
 	for material_id: StringName in table.entries.keys():
 		var color: Color = table.color_for(material_id)
-		assert_false(seen.has(color), "material %s must not share a color with another" % material_id)
+		assert_false(
+			seen.has(color), "material %s must not share a color with another" % material_id
+		)
 		seen.append(color)
 	assert_true(seen.size() >= 3, "the pool must yield at least 3 distinct colors (docs/10a)")
 
@@ -48,6 +50,8 @@ func test_no_default_entry_uses_the_unknown_material_fallback_color() -> void:
 		assert_ne(
 			table.color_for(material_id),
 			fallback,
-			"material %s must have a real authored color, not the unknown-material default"
-			% material_id
+			(
+				"material %s must have a real authored color, not the unknown-material default"
+				% material_id
+			)
 		)
