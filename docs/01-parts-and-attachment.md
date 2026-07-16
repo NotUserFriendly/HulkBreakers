@@ -124,3 +124,113 @@ Implementation: the dropped field item *is* the subtree root Part, sockets still
   head templates declare one; an arm can never host a matrix.
 - `sockets` (structural) and `contents` (inventory) are **different relationships**. A
   backpack is *attached* to a `BACK` socket and *contains* items.
+
+## The Reference Humanoid
+Authored data, not architecture — the socket graph above already expresses all of this. It
+exists because body-shape-driven behaviour can't be tested against a shapeless body.
+
+### Why this exists
+Humanoids are the simple case, and we start here precisely so the non-bipedal work later has
+a known-good reference to diverge from. But the shape has to be **real**, because a pile of
+mechanics are geometry-driven and silently do nothing without it:
+
+| Mechanic | Needs |
+|---|---|
+| Cover masking by height (`docs/02`) | legs low, torso mid, head high — at real heights |
+| Flanking (`docs/03`) | plates on the **front**, thin/nothing at the **back** |
+| Armor DT / stop-dead / deflect (`docs/03`) | **plates that exist at all** |
+| Cook-off by flanking an ammo rack (`docs/03`) | a `BACK` socket carrying a `VOLATILE` part |
+| Carried body as a bullet catcher (`docs/05`) | a `BACK` socket |
+| Sniping a small high-value target (`docs/02`) | a head that is small and separate |
+| Matrix ejection from torso **or head** (`docs/01`) | a head with a `MATRIX` socket |
+
+### Scale
+Unit origin sits **on the ground, between the feet**. `CELL_SIZE = 1.0`. A standard humanoid
+is **~1.85 tall** and fits inside its cell. Feet at `y = 0`. Nothing may extend below `y = 0`.
+
+### Skeleton
+All socket transforms are in the **host part's** local space; all volumes are **part-local**,
+centred on the part's own origin (Phase 12.0).
+
+```
+torso            volume  c(0, 0, 0)        s(0.50, 0.70, 0.28)      # attaches to nothing: ROOT
+  NECK           t(0,  0.40,  0)      -> head
+  SHOULDER       t(-0.31, 0.28, 0)    -> arm          # left
+  SHOULDER       t( 0.31, 0.28, 0)    -> arm          # right
+  HIP            t(-0.14,-0.35, 0)    -> leg          # left
+  HIP            t( 0.14,-0.35, 0)    -> leg          # right
+  BACK           t(0,  0.05,-0.17)    -> backpack / ammo rack / carried body
+  ARMOR          t(0,  0.00, 0.15)    -> torso_plate_front
+  ARMOR          t(0,  0.00,-0.15)    -> torso_plate_rear
+  MATRIX
+  (torso sits at unit y 0.90 .. 1.60 via the HIP/leg chain below)
+
+head             volume  c(0, 0.12, 0)     s(0.22, 0.24, 0.22)
+  MATRIX
+  ARMOR          t(0, 0.12, 0.12)     -> head_plate
+
+arm              volume  c(0,-0.17, 0)     s(0.14, 0.34, 0.14)      # upper arm
+  ARMOR          t(0,-0.17, 0.09)     -> arm_plate
+  FOREARM        t(0,-0.34, 0)        -> forearm
+
+forearm          volume  c(0,-0.17, 0)     s(0.12, 0.34, 0.12)
+  ARMOR          t(0,-0.17, 0.08)     -> arm_plate
+  FOREARM_TOOL   t(0,-0.17, 0.09)     -> folding_sword etc.
+  WRIST          t(0,-0.34, 0)        -> hand / saw / drill
+
+hand             volume  c(0,-0.05, 0)     s(0.10, 0.10, 0.10)
+  GRIP           t(0,-0.05, 0.08)     -> pistol / rifle / sword
+
+leg              volume  c(0,-0.45, 0)     s(0.16, 0.90, 0.16)
+  ARMOR          t(0,-0.45, 0.09)     -> leg_plate
+```
+
+Composed, that puts **feet at y≈0, legs 0.00–0.90, torso 0.90–1.60, head 1.60–1.85** — and a
+head that is a ~0.22 target sitting above everything, which is the sniper case.
+
+### Plates are FACINGS, not shells
+This is the load-bearing idea. **A plate is a thin box on one face of its parent**, never a
+shell around it.
+
+```
+torso_plate_front   volume  c(0,0,0)  s(0.54, 0.66, 0.05)   material steel     dt 6
+torso_plate_rear    volume  c(0,0,0)  s(0.54, 0.66, 0.03)   material sheet_steel dt 3
+head_plate          volume  c(0,0,0)  s(0.24, 0.20, 0.04)   material ceramic   dt 9
+arm_plate           volume  c(0,0,0)  s(0.16, 0.30, 0.04)   material steel     dt 6
+leg_plate           volume  c(0,0,0)  s(0.18, 0.70, 0.04)   material sheet_steel dt 3
+```
+
+Consequences, **none of them special-cased**:
+- From the front, `torso_plate_front` sits nearer the shooter than the torso → wins on depth →
+  eats the round. DT 6 shrugs off small arms.
+- **Flank it and the front plate isn't in the projection at all.** You hit `torso_plate_rear`
+  (DT 3, thin) or bare torso. `docs/03`'s "coverage is never total" becomes literally true in
+  geometry rather than a promise.
+- Plates are slightly wider/taller than the part but **do not enclose it** — the sides stay
+  exposed. Free flanking gradient, no rule.
+- A destroyed plate detaches; the part behind is bare on the next shot.
+
+**Sockets are the armour budget.** A part with one `ARMOR` socket can carry one plate. Want an
+over-armoured brick? Author a torso template with more `ARMOR` sockets, and pay for it in mass
+and RAM. No code change.
+
+### Materials
+No part may have `material == &""` (`docs/10`). Reference assignment:
+
+| Part | Material | Why |
+|---|---|---|
+| torso, arm, forearm, leg | `artificial_bone` (dt 2) | base structure is soft (above) |
+| hand | `artificial_muscle` (dt 1) | fragile |
+| head | `artificial_bone` (dt 2) | |
+| front plates | `steel` (dt 6) | combat plating |
+| rear/leg plates | `sheet_steel` (dt 3) | thin |
+| head_plate | `ceramic` (dt 9) | small, expensive, hard |
+| ammo_rack | `sheet_steel`, tag `VOLATILE` | cooks off |
+
+A bare limb (dt 2) dies to anything. A steel-plated front (dt 6) shrugs off a chaingun. That's
+the "base parts are soft" tier gap, finally expressed.
+
+### Non-bipedal later
+Nothing above is privileged in code. A six-legged frame declares six `HIP` sockets at its own
+transforms; a turret declares no `HIP` at all. This is one row in a template table, and the
+projector, cover, flanking, and armour rules never learn it happened.

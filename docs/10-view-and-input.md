@@ -28,8 +28,91 @@ A `Part.volume` is already `Array[Box]` of `Vector3` centre + size. **Render eac
   plane will hit.
 - Any visual/hitbox divergence is impossible, so a whole bug class never exists.
 - HL2-era budgets (`docs/08`) apply when real meshes arrive later. They are not this phase.
-- Colour by material via the `HulkTheme` palette; destroyed parts vanish (they already leave
-  `living_parts()`).
+- Colour by material via `WorldPalette` — see "World Palette, Materials & Lighting" below, not
+  `HulkTheme` (that palette governs the terminal UI only). Destroyed parts vanish (they
+  already leave `living_parts()`).
+
+## World Palette, Materials & Lighting
+
+### Two palettes, not one
+`docs/08`'s **six colours is a rule about the terminal UI**, and only that. It never governed
+the 3D world. Reading it as a world constraint is what produced a scene painted entirely in
+`DIM` on a `BACKGROUND` ground.
+
+| Palette | Scope | Rule |
+|---|---|---|
+| `HulkTheme` | Terminal UI — panels, log, stat blocks | 6 colours, one `Theme`, flat |
+| `WorldPalette` | The 3D board and everything on it | Its own colours. **Lit and shaded.** |
+
+### Two channels, never mixed
+| Channel | Carries | Where it lives |
+|---|---|---|
+| **Material** | what a part is *made of* → its DT | the mesh **albedo** |
+| **Allegiance** | whose side it's on | an **overlay** — never the albedo |
+
+Material colour is the truthful channel: a steel plate is the same colour on any unit, on any
+team, on the floor as loot. Team flagging sits **on top** so it can't corrupt that reading.
+
+### Material colours are DATA
+`color_for_material()`'s hardcoded DT thresholds (`if dt < 6 → DIM`) are **deleted**. Colour
+moves onto `MaterialEntry` alongside `dt`, so a new material means a new table row and **no
+code edit** — the standing open-endedness rule.
+
+```
+MaterialEntry: { dt, deflect_threshold_deg, retain_*, color: Color, ... }
+```
+
+Starter table (data — tune freely). Value broadly rises with DT, so armour reads at a glance
+as a secondary cue:
+
+| Material | DT | Colour | Hex |
+|---|---|---|---|
+| `flesh` | 0 | pale salmon | `#C98A7A` |
+| `artificial_muscle` | 1 | dark red-brown | `#7A3B33` |
+| `artificial_bone` | 2 | ivory | `#D8CFB4` |
+| `sheet_steel` | 3 | dull grey | `#6E7276` |
+| `steel` | 6 | blue-grey | `#8C949C` |
+| `ceramic` | 9 | off-white | `#C6C9C2` |
+| `reactive` | 12 | amber | `#C9A227` |
+
+Mostly neutral on purpose — it leaves the blue/red overlay maximum room to read.
+**No pool part may have `material == &""`.** That's a `validate_assembly()` violation, same as
+a missing volume.
+
+### World colours
+| Role | Colour | Hex |
+|---|---|---|
+| Background / void | black | `#050506` |
+| Ground | green | `#2E4A32` |
+| Cover / blockers | brown | `#6B4A2F` |
+| Team A flag | blue | `#3A7BD5` |
+| Team B flag | red | `#D53A3A` |
+
+Cover is brown **as a material** (`hull_plate` or similar in the table) — not a special case in
+the renderer. The ground is a distinct value from the void so the board is actually visible.
+
+### Team flagging — an overlay
+Two cheap layers, neither touching albedo:
+1. **Ground marker.** A flat ring/disc in team colour under each unit. Unmissable, standard,
+   costs nothing, survives any material.
+2. **Rim outline.** `StandardMaterial3D.next_pass` with `grow_amount` + `cull_mode = FRONT` +
+   unshaded team colour. A hull outline with **no custom shader**.
+
+The selected unit gets a brighter ring; queued-move ghosts inherit its team colour.
+
+### Lighting
+Unshaded same-colour boxes have no edges — adjacent parts merge into one blob. That's what
+made the render unreadable, and it isn't a palette problem.
+
+- One `DirectionalLight3D`, angled (~45° elevation, off-axis) so box faces separate.
+- Modest ambient (`AMBIENT_SOURCE_COLOR`, ~0.25 of the ground hue) so shadow faces aren't
+  black.
+- Part and blocker meshes: **`SHADING_MODE_PER_PIXEL`**, not unshaded.
+- `flat_material()` stays unshaded and is for **UI and overlays only** (rings, rims, ghosts) —
+  renamed `overlay_material()` so it can't be reached for by accident.
+- No shadow maps needed yet. Ambient + directional is enough to read geometry.
+
+CRT/scanline/glow remains a later VFX pass (`docs/08`). This is lighting, not fakery.
 
 ## PREREQUISITE — socket transforms (Phase 12.0, before any rendering)
 Today `Socket` is `{socket_type, occupant}` and `Part.volume` is authored in absolute

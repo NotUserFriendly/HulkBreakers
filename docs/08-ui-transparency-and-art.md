@@ -58,7 +58,9 @@ Transparency is the single most testable feature in the project. Make it Phase 2
 later system inherits the guarantee.
 
 ## Terminal UI
-Menus are a **terminal**. Monospace, text-first, limited palette.
+Menus are a **terminal**. Monospace, text-first, limited palette. **This section governs the
+terminal UI only** — panels, log, stat blocks. It never governed the 3D world; the board and
+everything on it has its own `WorldPalette`, lit and shaded (`docs/10`).
 
 - Godot `RichTextLabel` + BBCode does the highlighting and drill-down links natively.
 - Fonts (all OFL/free): **JetBrains Mono**, **IBM Plex Mono**, **Share Tech Mono**, **VT323**.
