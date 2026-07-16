@@ -12,14 +12,14 @@ SAVED frame_round2_exchange.png
 PLAYTHROUGH_DONE
 --------------------------------------------------------------------------------
 Done recording movie at path: /home/locad/workingdir/HulkBreakers/out/checkpoints/07/playthrough.avi
-1233 frames at 60 FPS (movie length: 00:00:20:33), recorded in 00:00:09 (222% of real-time speed).
-CPU render time: 0.21 seconds (average: 0.17 ms/frame)
+1233 frames at 60 FPS (movie length: 00:00:20:33), recorded in 00:00:11 (181% of real-time speed).
+CPU render time: 0.30 seconds (average: 0.24 ms/frame)
 GPU render time: 0.10 seconds (average: 0.08 ms/frame)
-Encoding time: 4.66 seconds (average: 3.78 ms/frame)
+Encoding time: 5.11 seconds (average: 4.14 ms/frame)
 --------------------------------------------------------------------------------
-WARNING: 5 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+WARNING: 6 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2535)
-ERROR: 4 resources still in use at exit (run with --verbose for details).
+ERROR: 5 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:822)
 ERROR: Pages in use exist at exit in PagedAllocator: N12VariantPools12BucketMediumE
    at: ~PagedAllocator (./core/templates/paged_allocator.h:170)

@@ -34,6 +34,14 @@ func _matrix_socket() -> Socket:
 	return Socket.new(&"MATRIX", Transform3D.IDENTITY, &"MATRIX")
 
 
+## BodyProjector.project() does not sort by depth (see test_reference_humanoid.gd's
+## own copy of this helper) — resolve_projectile() assumes a depth-sorted array.
+func _sorted(regions: Array[Region]) -> Array[Region]:
+	var copy: Array[Region] = regions.duplicate()
+	copy.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
+	return copy
+
+
 func test_assemble_docks_the_matrix_and_carries_the_templates_budget() -> void:
 	var root := _hosting_part(&"root", [_matrix_socket()])
 	var pool := {&"root": root}
@@ -208,3 +216,51 @@ func test_root_part_that_cannot_host_a_matrix_errors_and_fails_the_whole_assembl
 
 	assert_null(unit)
 	assert_push_error("cannot host a matrix")
+
+
+## docs/01 taskblock02 Pass C1: "the socket's transform is the plate's
+## facing" — a plate mounted on a socket rotated 90 degrees stands off the
+## OUTER (lateral) face, not the front, and a shot from that side hits it,
+## never falling through to the bare leg behind it. `ARMOR_FRONT` and
+## `ARMOR_LATERAL_L` share one plate template; two sockets, two plates.
+func test_a_lateral_armor_socket_puts_a_plate_on_the_outer_face_and_a_lateral_shot_hits_it(
+) -> void:
+	var leg := _hosting_part(
+		&"leg",
+		[
+			Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.45, 0.09)), &"ARMOR_FRONT"),
+			Socket.new(
+				&"ARMOR",
+				Transform3D(Basis(Vector3.UP, deg_to_rad(-90.0)), Vector3(-0.09, -0.45, 0.0)),
+				&"ARMOR_LATERAL_L"
+			),
+			_matrix_socket(),
+		]
+	)
+	leg.volume = [Box.new(Vector3(0.0, -0.45, 0.0), Vector3(0.16, 0.90, 0.16))]
+	var plate := _leaf_part(&"leg_plate", [&"ARMOR"])
+	plate.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.70, 0.04))]
+	var pool := {&"leg": leg, &"leg_plate": plate}
+	var template := ShellTemplate.new(
+		&"leg",
+		[Mount.new(&"ARMOR_FRONT", &"leg_plate"), Mount.new(&"ARMOR_LATERAL_L", &"leg_plate")],
+		10.0,
+		10.0
+	)
+
+	var unit: Unit = BodyAssembler.assemble(template, null, pool, Matrix.new(), Vector2i(0, 0))
+	var lateral_plate: Part = PartGraph.find_socket(unit.shell.root, &"ARMOR_LATERAL_L").occupant
+
+	# The lateral socket sits at local x=-0.09 (the leg's -X side) — nearest
+	# a shooter positioned at -X, i.e. a shot traveling in the +X direction
+	# (view_dir "always direction of travel," docs/02).
+	var lateral_view: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(1, 0)))
+	var lateral_region: Region = null
+	for region: Region in lateral_view:
+		if region.part == lateral_plate:
+			lateral_region = region
+			break
+	assert_not_null(lateral_region, "the lateral plate must project a visible face this way")
+
+	var hit: Region = ShotPlane.resolve_projectile(lateral_view, lateral_region.rect.get_center())
+	assert_eq(hit.part, lateral_plate, "a lateral shot must hit the lateral plate, not the leg")

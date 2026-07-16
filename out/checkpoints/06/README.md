@@ -1,6 +1,6 @@
 # Checkpoint 6
 
-Generated 2026-07-16T10:01:47Z, by launching the real project (`godot --path .`, a real GPU frame via `--display-driver x11`) and driving `BattleScene`/`TacticsController`/`CameraRig` exactly as a player would, then reading back the rendered frame — not a mockup.
+Generated 2026-07-16T11:42:03Z, by launching the real project (`godot --path .`, a real GPU frame via `--display-driver x11`) and driving `BattleScene`/`TacticsController`/`CameraRig` exactly as a player would, then reading back the rendered frame — not a mockup.
 
 Phase 12.1 (docs/10, PLAN.md): the battle renders. `BoardView` draws a ground plane sized to
 the grid plus a box per blocker; `UnitView` walks each unit's socket tree via
