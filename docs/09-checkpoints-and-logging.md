@@ -56,6 +56,12 @@ Rules:
 - Every projectile, deflection, ricochet, penetration, cook-off, abort-reason, and matrix
   ejection emits an event. If it changed the world, it's in the log.
 - Same seed → byte-identical log. That makes the log a **regression fixture**: diff two runs.
+- **One stream, many sinks — never two streams** (taskblock03 Pass B). `BattleScene` registers
+  both `UISink` and `FileSink` on the *same* `CombatLog`, so the on-screen panel and
+  `out/combat.log` are the identical event stream by construction — they cannot drift, because
+  neither one renders anything the other doesn't also get. A `session_start` event carries the
+  seed as the file's first line, so a human session is a regression fixture too, not just a
+  headless test run: it's replayable from the log file alone.
 
 ## Checkpoints
 Reviewable artifacts at points where a silent geometry or randomization bug would otherwise

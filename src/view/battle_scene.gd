@@ -18,6 +18,12 @@ var aim_view: AimView
 var resolution_player: ResolutionPlayer
 var stat_panel: StatPanel
 var log_sink: UISink
+## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
+## streams." The on-screen log (`log_sink`) and this file are fed the same
+## `CombatLog.emit()` calls, so they can never drift; neither one renders
+## anything the other doesn't also get. A fresh file per `new_battle()`
+## call — one session, one replayable log.
+var file_sink: FileSink
 var unit_views: Array[UnitView] = []
 var combat_state: CombatState
 
@@ -133,10 +139,20 @@ func new_battle(seed_value: int) -> void:
 		view.queue_free()
 	unit_views.clear()
 
+	if file_sink != null:
+		file_sink.close()
+	file_sink = FileSink.new()
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	combat_state = _seed_battle(rng)
 	combat_state.combat_log.add_sink(log_sink)
+	combat_state.combat_log.add_sink(file_sink)
+	# docs/09 taskblock03 Pass B2: the seed at session start, so a session
+	# is replayable from its own log file alone. This scene has no separate
+	# loadout selection to log (assemble_random draws everything — geometry,
+	# loadout, the works — from this one seed already).
+	combat_state.combat_log.emit(_session_start_event(seed_value))
 
 	board_view.build(combat_state.grid, combat_state.material_table)
 	camera_rig.center_on(
@@ -167,3 +183,23 @@ func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 		DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng, Vector2i(9, 7), 1),
 	]
 	return CombatState.new(grid, units, rng.randi())
+
+
+## docs/09 taskblock03 Pass B2: "log the seed... at session start, so a
+## session is replayable from its own log file." unit_id -1: no specific
+## unit caused this, same convention `_log_impact` already uses for
+## cover/terrain.
+func _session_start_event(seed_value: int) -> LogEvent:
+	return LogEvent.new(
+		0,
+		Enums.Phase.TACTICS,
+		-1,
+		&"session_start",
+		{"seed": seed_value},
+		"session_start: seed=%d" % seed_value
+	)
+
+
+func _exit_tree() -> void:
+	if file_sink != null:
+		file_sink.close()

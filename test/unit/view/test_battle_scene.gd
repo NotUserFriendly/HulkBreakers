@@ -15,6 +15,45 @@ func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
 		assert_true(view.get_child_count() > 0, "every seeded unit must render at least one box")
 
 
+## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
+## streams." battle_scene.gd used to register only a UISink; a human
+## session showed a log on screen and wrote nothing to disk.
+func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	assert_not_null(scene.log_sink)
+	assert_not_null(scene.file_sink)
+	assert_true(FileAccess.file_exists(scene.file_sink.path), "the log must actually hit disk")
+	scene.file_sink.close()
+
+
+## docs/09 taskblock03 Pass B2: a session must be replayable from its own
+## log file — the seed has to actually be in it, not just known to the
+## process that generated it.
+func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	assert_true(scene.log_sink.lines.size() > 0)
+	assert_true(
+		scene.log_sink.lines[0].contains("session_start"),
+		"the very first line must be the session header"
+	)
+	assert_true(scene.log_sink.lines[0].contains(str(BattleScene.DEFAULT_SEED)))
+
+	var file := FileAccess.open(scene.file_sink.path, FileAccess.READ)
+	var first_line: String = file.get_line()
+	file.close()
+	scene.file_sink.close()
+
+	assert_true(first_line.contains("session_start"))
+	assert_true(first_line.contains(str(BattleScene.DEFAULT_SEED)))
+	assert_eq(
+		first_line, scene.log_sink.lines[0], "the same event, not two independently-built ones"
+	)
+
+
 func test_new_battle_is_deterministic_from_the_same_seed() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
