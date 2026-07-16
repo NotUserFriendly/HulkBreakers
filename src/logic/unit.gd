@@ -29,6 +29,13 @@ var alive: bool = true
 ## FRONT/BACK/LEFT/RIGHT.
 var orientation: float = 0.0
 
+## docs/10 taskblock03 E2: "1 MP unlocks free refacing for the turn — not 1
+## MP per rotation." The first manual FaceAction each turn costs 1 MP and
+## sets this; every manual face after that, same turn, is free. Reset at
+## turn start (CombatState._start_turn()). Free-with-action facing
+## (FaceAction.face_for_free) never reads or sets this — it's always free.
+var facing_unlocked: bool = false
+
 var held_matrix: Matrix = null  # a Matrix carried after PickUpAction, awaiting ImplantAction
 
 ## docs/04: a ladder, not a health bar. Demoted on damage to the matrix-
@@ -126,6 +133,7 @@ func dup() -> Unit:
 	cloned.mp = mp
 	cloned.alive = alive
 	cloned.orientation = orientation
+	cloned.facing_unlocked = facing_unlocked
 	cloned.held_matrix = held_matrix.duplicate(true) as Matrix if held_matrix != null else null
 	cloned.surrogate_tier = surrogate_tier
 	cloned.exposed_turns = exposed_turns

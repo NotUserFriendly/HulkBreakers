@@ -21,21 +21,34 @@ func _init(p_unit: Unit, p_direction: float) -> void:
 	direction = p_direction
 
 
+## docs/10 taskblock03 E2: "1 MP unlocks free refacing for the turn — not 1
+## MP per rotation." Once `actual.facing_unlocked` is set, every further
+## manual face this turn is free and always legal; only the FIRST one needs
+## the MP-or-AP-burn check.
 func is_legal(state: CombatState) -> bool:
 	var actual: Unit = state.find_unit(unit.id)
 	if actual == null or not actual.alive or state.current_unit() != actual:
 		return false
+	if actual.facing_unlocked:
+		return true
 	return actual.mp >= COST or actual.ap > 0
 
 
 func apply(state: CombatState) -> void:
 	var actual: Unit = state.find_unit(unit.id)
-	if actual.mp < COST:
-		actual.ap -= 1
-		actual.mp += actual.mp_per_ap()
-	actual.mp -= COST
+	var reason: StringName = &"manual_first"
+	var cost: float = COST
+	if actual.facing_unlocked:
+		reason = &"manual_free"
+		cost = 0.0
+	else:
+		if actual.mp < COST:
+			actual.ap -= 1
+			actual.mp += actual.mp_per_ap()
+		actual.mp -= COST
+		actual.facing_unlocked = true
 	actual.orientation = direction
-	_log(state, actual, &"manual", COST)
+	_log(state, actual, reason, cost)
 
 
 ## docs/10 taskblock02 F3: "any action taken with a target faces for free —

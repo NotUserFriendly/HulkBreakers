@@ -26,6 +26,49 @@ func test_a_single_box_root_places_at_the_units_cell() -> void:
 	assert_almost_eq(world_center.y, 0.5, 0.0001)
 
 
+## docs/10 taskblock03 E3: `orientation_override` replaces `unit.orientation`
+## for this placement pass only, so a view can render TACTICS' speculative
+## preview without cloning the whole Unit.
+func test_orientation_override_replaces_the_units_own_orientation() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(1.0, 0.0, 0.0), Vector3(0.2, 0.2, 0.2))]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	unit.orientation = 0.0
+	var default_placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
+	var overridden: Array[BoxPlacement] = UnitGeometry.placements(unit, PI / 2.0)
+
+	var default_center: Vector3 = default_placements[0].transform * default_placements[0].box.center
+	var overridden_center: Vector3 = overridden[0].transform * overridden[0].box.center
+
+	assert_almost_eq(unit.orientation, 0.0, 0.0001, "the real unit must never be mutated")
+	assert_false(
+		default_center.is_equal_approx(overridden_center),
+		"a 90-degree override must actually move the box",
+	)
+
+
+func test_a_null_orientation_override_is_the_same_as_omitting_it() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(1.0, 0.0, 0.0), Vector3(0.2, 0.2, 0.2))]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	unit.orientation = 1.2
+	var explicit_null: Array[BoxPlacement] = UnitGeometry.placements(unit, null)
+	var omitted: Array[BoxPlacement] = UnitGeometry.placements(unit)
+
+	assert_eq(
+		explicit_null[0].transform * explicit_null[0].box.center,
+		omitted[0].transform * omitted[0].box.center
+	)
+
+
 func test_dead_parts_produce_no_placements() -> void:
 	var torso := Part.new()
 	torso.id = &"torso"

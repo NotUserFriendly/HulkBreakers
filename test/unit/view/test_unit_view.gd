@@ -120,6 +120,44 @@ func test_facing_wedge_sits_at_child_1_pointing_along_orientation() -> void:
 	assert_almost_eq(wedge.position.z, expected_xz.y, 0.0001)
 
 
+## docs/10 taskblock03 E3: "the wedge shows committed state — it must show
+## PREVIEW." Both the wedge and the part meshes must rotate to
+## preview_orientation, never the committed unit.orientation, whenever one
+## is set.
+func test_preview_orientation_moves_both_the_wedge_and_the_part_meshes() -> void:
+	var unit := _torso_unit(Vector2i(2, 3), 0)
+	unit.orientation = 0.0
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+	var committed_wedge_x: float = (view.get_child(1) as MeshInstance3D).position.x
+	var committed_mesh_transform: Transform3D = (view.get_child(2) as MeshInstance3D).transform
+
+	view.preview_orientation = PI / 2.0
+	view.refresh()
+
+	var preview_wedge_x: float = (view.get_child(1) as MeshInstance3D).position.x
+	var preview_mesh_transform: Transform3D = (view.get_child(2) as MeshInstance3D).transform
+	assert_ne(preview_wedge_x, committed_wedge_x, "the wedge must move to the preview")
+	assert_ne(
+		preview_mesh_transform, committed_mesh_transform, "the body itself must also rotate"
+	)
+	assert_almost_eq(unit.orientation, 0.0, 0.0001, "the real unit is never mutated by a preview")
+
+
+func test_null_preview_orientation_renders_the_committed_orientation() -> void:
+	var unit := _torso_unit(Vector2i(2, 3), 0)
+	unit.orientation = 0.5
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.preview_orientation = null
+	view.setup(unit, MaterialTable.default_table())
+
+	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
+	var mesh_instance: MeshInstance3D = view.get_child(2)
+	assert_eq(mesh_instance.transform, expected.transform.translated_local(expected.box.center))
+
+
 func test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color() -> void:
 	var unit := _torso_unit(Vector2i(2, 3), 1)
 	var view := UnitView.new()

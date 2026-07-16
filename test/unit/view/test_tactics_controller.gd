@@ -332,5 +332,6 @@ func test_reset_turn_with_nothing_selected_does_not_crash() -> void:
 	assert_null(controller.selection.selected_unit)
 
 ## Aim mode, the dartboard read/resolve pair, and RESOLUTION input-locking
-## live in test_tactics_controller_aim.gd — split out purely to stay under
-## gdlint's max-public-methods.
+## live in test_tactics_controller_aim.gd; mouse-drag facing (docs/10
+## taskblock03 E1) lives in test_tactics_controller_facing.gd — both split
+## out purely to stay under gdlint's max-public-methods.

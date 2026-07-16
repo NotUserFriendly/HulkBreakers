@@ -27,6 +27,13 @@ const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
 var unit: Unit
 var material_table: MaterialTable
 
+## docs/10 taskblock03 E3: "the wedge shows committed state — it must show
+## PREVIEW." Set by whoever drives selection (BattleScene) to
+## SelectionController.previewed_orientation() while this is the selected
+## unit during TACTICS; null renders the committed `unit.orientation`
+## instead (RESOLUTION, or any unit that isn't selected).
+var preview_orientation: Variant = null
+
 var _selected: bool = false
 var _team_marker: MeshInstance3D
 
@@ -61,7 +68,7 @@ func refresh() -> void:
 	var rim: StandardMaterial3D = WorldPalette.rim_outline_material(
 		WorldPalette.team_color(unit.squad_id)
 	)
-	for placement: BoxPlacement in UnitGeometry.placements(unit):
+	for placement: BoxPlacement in UnitGeometry.placements(unit, preview_orientation):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = placement.box.size
@@ -98,11 +105,16 @@ func _build_facing_wedge() -> MeshInstance3D:
 	box.size = FACING_WEDGE_SIZE
 	instance.mesh = box
 	instance.material_override = WorldPalette.overlay_material(_marker_color())
-	var forward: Vector2 = BodyProjector.WORLD_FORWARD.rotated(unit.orientation)
+	var orientation: float = _display_orientation()
+	var forward: Vector2 = BodyProjector.WORLD_FORWARD.rotated(orientation)
 	var base := (
 		Vector3(unit.cell.x, TEAM_MARKER_Y + TEAM_MARKER_HEIGHT, unit.cell.y)
 		* UnitGeometry.CELL_SIZE
 	)
 	instance.position = base + Vector3(forward.x, 0.0, forward.y) * FACING_WEDGE_OFFSET
-	instance.basis = Basis(Vector3.UP, unit.orientation)
+	instance.basis = Basis(Vector3.UP, orientation)
 	return instance
+
+
+func _display_orientation() -> float:
+	return preview_orientation if preview_orientation != null else unit.orientation

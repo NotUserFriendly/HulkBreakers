@@ -134,10 +134,22 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 
 ## docs/10 team flagging: the selected unit's ground marker brightens, and
 ## no other unit's does — a pure overlay, never touching a part's material.
+##
+## docs/10 taskblock03 E3: the selected unit's own view must also render
+## SelectionController.previewed_orientation() (queued-but-unresolved
+## facing), never the committed `unit.orientation` — every other view's
+## `preview_orientation` stays null. Only rebuilds a view when its preview
+## actually changes, since this fires on every drag_face() motion event.
 func _on_selection_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
 	for view: UnitView in unit_views:
 		view.set_selected(view.unit == selected)
+		var target_preview: Variant = (
+			tactics.selection.previewed_orientation() if view.unit == selected else null
+		)
+		if view.preview_orientation != target_preview:
+			view.preview_orientation = target_preview
+			view.refresh()
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a

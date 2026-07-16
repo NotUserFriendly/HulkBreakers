@@ -15,12 +15,21 @@ const CELL_SIZE := 1.0
 
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
 ## full world transform (unit facing + board position + socket chain).
-static func placements(unit: Unit) -> Array[BoxPlacement]:
+##
+## docs/10 taskblock03 E3: `orientation_override`, when not null, replaces
+## `unit.orientation` for this placement pass only — TACTICS previews a
+## queued-but-unresolved facing against the speculative clone, and the view
+## must render that preview, never the authoritative `unit.orientation`
+## itself, without needing a whole cloned Unit just to change one float.
+static func placements(unit: Unit, orientation_override: Variant = null) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
 	if unit.shell.root == null:
 		return result
+	var orientation: float = (
+		orientation_override if orientation_override != null else unit.orientation
+	)
 	var unit_transform := Transform3D(
-		Basis(Vector3.UP, unit.orientation), Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+		Basis(Vector3.UP, orientation), Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
 	)
 	_walk(unit.shell.root, Transform3D.IDENTITY, unit_transform, result)
 	return result
