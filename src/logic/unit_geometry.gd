@@ -48,3 +48,37 @@ static func _walk(
 		if socket.occupant == null:
 			continue
 		_walk(socket.occupant, part_transform * socket.transform, unit_transform, result)
+
+
+## docs/10 taskblock04 A2: "compute each unit's bounding sphere from its
+## ACTUAL geometry... do NOT hardcode humanoid dimensions: giant enemies are
+## coming, and that is the whole reason a solver exists." Built from every
+## living box's own world-space corners (`placements()` already composes
+## the full unit-facing + socket-chain transform) — never a fixed torso
+## height or body size. `{center, radius}`: center is the world-space AABB
+## center of every corner; radius is half that AABB's diagonal. Not the
+## tightest possible enclosing sphere, but simple, correct for arbitrarily
+## rotated boxes, and tight enough for a framing margin check.
+static func bounding_sphere(unit: Unit, orientation_override: Variant = null) -> Dictionary:
+	var box_placements: Array[BoxPlacement] = placements(unit, orientation_override)
+	var origin: Vector3 = Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+	if box_placements.is_empty():
+		return {"center": origin, "radius": 0.0}
+
+	var min_corner: Vector3 = Vector3.INF
+	var max_corner: Vector3 = -Vector3.INF
+	for placement: BoxPlacement in box_placements:
+		var half: Vector3 = placement.box.size * 0.5
+		for sx in [-1.0, 1.0]:
+			for sy in [-1.0, 1.0]:
+				for sz in [-1.0, 1.0]:
+					var local_corner: Vector3 = (
+						placement.box.center + Vector3(sx * half.x, sy * half.y, sz * half.z)
+					)
+					var world_corner: Vector3 = placement.transform * local_corner
+					min_corner = min_corner.min(world_corner)
+					max_corner = max_corner.max(world_corner)
+
+	var center: Vector3 = (min_corner + max_corner) * 0.5
+	var radius: float = (max_corner - min_corner).length() * 0.5
+	return {"center": center, "radius": radius}

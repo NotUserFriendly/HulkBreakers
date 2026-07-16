@@ -299,35 +299,26 @@ func _enter_aim_mode(target: Unit) -> void:
 	aiming_at = target
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
+	# docs/10 taskblock04 A3: wheel still steps the dartboard layer instead
+	# of zooming while aiming (unrelated, pre-existing) — but orbit/pan (and
+	# now the ease itself) stay live: the attack camera orbits the target's
+	# own bounding sphere as a stable pivot, so swinging around it mid-aim
+	# is just the inspection camera taskblock-03 C2 always wanted, not
+	# something that can break the reticle anymore (aim_reticle_at_screen
+	# raycasts against the live camera, whatever angle it's at).
 	camera_rig.zoom_enabled = false
-	# runNotes.md: the camera locks for the whole of aim mode — orbiting
-	# away from the shot line broke the reticle's screen-to-shot-plane
-	# mapping (see CameraRig.locked's own comment). Locking first, then
-	# easing, is deliberate: `locked` only gates live input in
-	# _unhandled_input, never the tween itself, so the ease still plays.
-	camera_rig.locked = true
-	camera_rig.ease_to_attack_framing(
-		_world_pos(selection.selected_unit.cell), _world_pos(target.cell)
-	)
+	camera_rig.ease_to_attack_framing(selection.selected_unit, target)
 	aim_changed.emit()
 
 
-## docs/10 taskblock03 C1: a unit's cell as a ground-level world position —
-## the same conversion BattleScene/BoardView already use elsewhere.
-func _world_pos(cell: Vector2i) -> Vector3:
-	return Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
-
-
 ## docs/10 taskblock03 C2: the F "reset framing" key — eases back to the
-## SAME over-the-shoulder default `_enter_aim_mode` eased to, after the
-## player has orbited/panned/zoomed away from it. A no-op outside Attack
-## mode (nothing to reset to).
+## SAME solved framing `_enter_aim_mode` eased to, after the player has
+## orbited/panned/zoomed away from it. A no-op outside Attack mode (nothing
+## to reset to).
 func reset_framing() -> void:
 	if input_locked or aiming_at == null or selection.selected_unit == null:
 		return
-	camera_rig.ease_to_attack_framing(
-		_world_pos(selection.selected_unit.cell), _world_pos(aiming_at.cell)
-	)
+	camera_rig.ease_to_attack_framing(selection.selected_unit, aiming_at)
 
 
 ## Steps the read layer without moving the reticle (docs/10's load-bearing
@@ -356,12 +347,13 @@ func move_reticle(delta: Vector2) -> void:
 ## offset." The old mouse path accumulated `motion.relative` deltas scaled
 ## by a fixed sensitivity, a screen-space stand-in for the shot plane that
 ## silently stopped matching the screen the moment the camera wasn't at its
-## exact default orientation (see CameraRig.locked's own doc comment for
-## the same class of bug). This instead raycasts from the camera through
+## exact default orientation. This instead raycasts from the camera through
 ## the cursor's actual screen position and intersects it with the
 ## dartboard's real plane (AimPlaneGeometry, shared with AimView's own
 ## rendering of that same plane) — wherever the cursor visibly points,
-## that's where the reticle actually is, at any camera angle.
+## that's where the reticle actually is, at any camera angle. (This is also
+## what makes docs/10 taskblock04 A3's "keep orbit live during aim" safe —
+## there's no fixed-angle assumption left to break.)
 func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 	if input_locked or aiming_at == null or camera == null:
 		return
@@ -466,7 +458,6 @@ func cancel_aim() -> void:
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	camera_rig.zoom_enabled = true
-	camera_rig.locked = false
 	aim_changed.emit()
 	_refresh_overlay()
 

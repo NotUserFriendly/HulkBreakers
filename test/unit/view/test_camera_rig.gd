@@ -5,6 +5,17 @@ extends GutTest
 ## test_camera_orbit_state.gd.
 
 
+func _make_unit(
+	cell: Vector2i, box_center: Vector3 = Vector3.ZERO, box_size: Vector3 = Vector3(0.5, 0.7, 0.28)
+) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(box_center, box_size)]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
+
+
 func test_ready_builds_a_two_pivot_rig_with_a_camera() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
@@ -76,7 +87,7 @@ func test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut() -> void:
 	add_child_autofree(rig)
 	var zoom_before: float = rig.state.zoom
 
-	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
+	rig.ease_to_attack_framing(_make_unit(Vector2i(0, 0)), _make_unit(Vector2i(5, 0)))
 
 	assert_not_null(rig._active_tween)
 	assert_eq(rig.state.zoom, zoom_before, "the state itself doesn't jump on the same frame")
@@ -91,7 +102,7 @@ func test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut() -> void:
 func test_kill_active_tween_clears_an_active_attack_framing_tween() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
-	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
+	rig.ease_to_attack_framing(_make_unit(Vector2i(0, 0)), _make_unit(Vector2i(5, 0)))
 	assert_not_null(rig._active_tween)
 
 	rig._kill_active_tween()
@@ -102,7 +113,7 @@ func test_kill_active_tween_clears_an_active_attack_framing_tween() -> void:
 func test_wheel_zoom_kills_an_active_attack_framing_tween() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
-	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
+	rig.ease_to_attack_framing(_make_unit(Vector2i(0, 0)), _make_unit(Vector2i(5, 0)))
 	assert_not_null(rig._active_tween)
 
 	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
@@ -110,11 +121,11 @@ func test_wheel_zoom_kills_an_active_attack_framing_tween() -> void:
 	assert_null(rig._active_tween, "the scroll-wheel path is fakeable headlessly, unlike drag")
 
 
-func test_ease_to_attack_framing_targets_the_attack_defaults() -> void:
+func test_ease_to_attack_framing_targets_the_solved_framing() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
-	var shooter := Vector3(2.0, 0.0, 2.0)
-	var target := Vector3(8.0, 0.0, 2.0)
+	var shooter := _make_unit(Vector2i(2, 2))
+	var target := _make_unit(Vector2i(8, 2))
 
 	rig.ease_to_attack_framing(shooter, target)
 	# Fast-forward past the tween's own duration so the eased values land.
@@ -123,7 +134,9 @@ func test_ease_to_attack_framing_targets_the_attack_defaults() -> void:
 	# The pure math is CameraOrbitState's own contract, covered exactly in
 	# test_camera_orbit_state.gd — this only needs to confirm the tween
 	# actually lands ON that computed target, not redo the geometry by hand.
-	var expected: Dictionary = CameraOrbitState.new().attack_framing(shooter, target)
+	var expected: Dictionary = CameraOrbitState.new().attack_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
+	)
 	assert_almost_eq(rig.state.pitch, expected.pitch, 0.0001)
 	assert_almost_eq(rig.state.zoom, expected.zoom, 0.0001)
 	assert_almost_eq(rig.state.pan_offset.x, (expected.pan_offset as Vector3).x, 0.01)
@@ -131,50 +144,54 @@ func test_ease_to_attack_framing_targets_the_attack_defaults() -> void:
 	assert_almost_eq(rig.state.pan_offset.z, (expected.pan_offset as Vector3).z, 0.01)
 
 
-## runNotes.md follow-up: "point the camera at the torso of the targeted
-## unit" — an end-to-end check against the REAL Camera3D transform, not
-## just CameraOrbitState's own math (which test_camera_orbit_state.gd
-## already verifies against a reconstructed direction — this is the same
-## claim, checked the other way, against a live rig).
-func test_ease_to_attack_framing_actually_points_the_real_camera_at_the_targets_torso() -> void:
+## docs/10 taskblock04 A3: "the rig looks at its pivot by construction" —
+## the target's screen-projected centre must land dead-center in the
+## viewport, an orbit-pivot property Design 2's explicit look-at solve
+## never guaranteed by itself.
+func test_ease_to_attack_framing_centers_the_target_on_screen() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
-	var shooter := Vector3(2.0, 0.0, 3.0)
-	var target := Vector3(9.0, 0.0, 8.0)  # diagonal, not sharing a row or column
+	var shooter := _make_unit(Vector2i(2, 3))
+	var target := _make_unit(Vector2i(9, 8))  # diagonal, not sharing a row or column
 
 	rig.ease_to_attack_framing(shooter, target)
 	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
 
 	var camera: Camera3D = rig.camera()
-	var target_torso: Vector3 = target + Vector3(0.0, CameraOrbitState.ATTACK_TORSO_HEIGHT, 0.0)
-	var expected_look: Vector3 = (target_torso - camera.global_transform.origin).normalized()
-	var actual_look: Vector3 = -camera.global_transform.basis.z
-	assert_almost_eq(actual_look.x, expected_look.x, 0.001)
-	assert_almost_eq(actual_look.y, expected_look.y, 0.001)
-	assert_almost_eq(actual_look.z, expected_look.z, 0.001)
+	var target_center: Vector3 = UnitGeometry.bounding_sphere(target).center
+	var screen_pos: Vector2 = camera.unproject_position(target_center)
+	var viewport_size: Vector2 = Vector2(rig.get_viewport().size)
+	assert_almost_eq(screen_pos.x, viewport_size.x * 0.5, 1.0)
+	assert_almost_eq(screen_pos.y, viewport_size.y * 0.5, 1.0)
 
 
-## runNotes.md: "third person camera needs to be locked" — while `locked`,
-## no live input may move the camera at all. Orbit/pan read live hardware
-## state via Input.is_mouse_button_pressed (unfakeable headlessly, per the
-## existing convention in this file); wheel-zoom is the one branch a
-## dispatched event alone can exercise.
-func test_locked_blocks_wheel_zoom() -> void:
-	var rig := CameraRig.new()
-	add_child_autofree(rig)
-	rig.locked = true
-	var zoom_before: float = rig.state.zoom
+## docs/10 taskblock04 A4: "mid-tween... the camera stays at least
+## MIN_CLEARANCE from the shooter's bounding sphere for the whole
+## transition" — orbiting a stable pivot (the target) can't sweep through
+## the shooter the way lerping toward a point glued to the shooter's own
+## position (Design 2) did.
+func test_mid_tween_the_camera_never_gets_close_to_the_shooter() -> void:
+	const MIN_CLEARANCE := 0.5
+	var shooter := _make_unit(Vector2i(3, 1))
+	var target := _make_unit(Vector2i(9, 5))
+	var shooter_sphere: Dictionary = UnitGeometry.bounding_sphere(shooter)
 
-	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
+	# A fresh rig per fraction (the tactical default is its own real
+	# starting point) — `custom_step` advances a tween cumulatively from
+	# wherever it already is, so a single rig stepped repeatedly would
+	# measure the SUM of the fractions, not each one on its own.
+	for fraction in [0.1, 0.25, 0.5, 0.75, 0.9]:
+		var rig := CameraRig.new()
+		add_child_autofree(rig)
+		rig.ease_to_attack_framing(shooter, target)
+		rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION * fraction)
 
-	assert_almost_eq(rig.state.zoom, zoom_before, 0.0001, "wheel must not zoom the locked camera")
-
-
-func test_locked_does_not_prevent_the_easing_tween_itself() -> void:
-	var rig := CameraRig.new()
-	add_child_autofree(rig)
-	rig.locked = true
-
-	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
-
-	assert_not_null(rig._active_tween, "locking input must not block the ease itself")
+		var camera_pos: Vector3 = rig.camera().global_transform.origin
+		var clearance: float = (
+			camera_pos.distance_to(shooter_sphere.center) - (shooter_sphere.radius as float)
+		)
+		assert_gt(
+			clearance,
+			MIN_CLEARANCE,
+			"clearance %.2f at t=%.2f must not sweep through the shooter" % [clearance, fraction]
+		)
