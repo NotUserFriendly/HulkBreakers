@@ -199,13 +199,48 @@ Ragdolls are **not** this phase. A destroyed part hides; that's it.
 | Click own unit | select; show reachable cells (`Pathfinder.reachable`, MP budget) |
 | Click reachable cell | **queue** a `MoveAction`; show it as a ghost path |
 | Click enemy | enter Attack camera + aim UI |
+| Q / E | **queue** a `FaceAction`, turning relative to whatever's already queued this pass |
 | Scroll (in aim UI) | step the dartboard layer |
 | Click / confirm | queue an `AttackAction` with the reticle's `aim_offset` |
-| Right-click / Esc | cancel back to Tactical |
+| Right-click / Esc (aiming) | cancel back to Tactical |
+| Esc (not aiming) / click off the board | deselect (`TacticsController.deselect`) |
 | End Turn | leave TACTICS, run resolution, play it back |
 
 Queued actions are **previews against a speculative clone** (`docs/09`) — the board shows
 intent, the authoritative state is untouched until End Turn.
+
+## Facing (taskblock02 F3)
+`FaceAction(unit, direction)` costs 1 MP, same AP-to-MP burn `MoveAction` already uses when MP
+runs short (Appendix E) — turning to cover a flank costs distance, the intended tension.
+`direction` is an absolute orientation in radians, not a delta, so two queued turns in one
+TACTICS pass compose off whatever the first one would already leave the unit facing
+(`SelectionController.previewed_orientation`), never both starting from the pre-queue value.
+
+**Any action taken with a target faces for free**, inside that action's own `apply()`
+(`FaceAction.face_for_free`) — never a separate charge. In practice that's `AttackAction` only:
+`GatherAction`/`PickUpAction` both require standing exactly on the target cell, so there's no
+direction to turn toward and neither calls it. Both paths log `faced`, with `reason: manual` or
+`free_with_action` and `cost` (1 or 0) either way (`docs/09`: "if it changed the world, it's in
+the log").
+
+UI: a small wedge on the unit's own team marker (`UnitView`), pointing along `Unit.orientation` —
+present on every unit, not gated to the selected one, since it's strictly more information for
+free. Q/E turn the selected unit by 45° (`TacticsController.FACE_STEP`, a flagged placeholder
+same as `RETICLE_SENSITIVITY` — docs/10 doesn't pin an exact increment).
+
+## Manual control of both sides (taskblock02 F1)
+`CombatState.squad_controllers` (squad_id -> `Enums.SquadController`) defaults every squad to
+`HUMAN` — "Control All Squads" is simply never overriding anything, not a separate toggle to
+flip. Nothing in `TacticsController`/`SelectionController` gates whose unit a click can select
+by squad already, so a `HUMAN`-controlled squad is exactly what today's input already does; a
+human queuing either side's turn emits the same `LogEvent` stream regardless, since both go
+through the identical `ActionQueue` -> `resolve_turn()` path.
+
+**Known gap, flagged not hidden:** no `AI` decision-maker actually exists in `src/` yet to
+consult `controller_for()` and drive a squad on its own. The heuristics that pick a move/target
+today live only inside `test_full_mission.gd`'s own test harness (`_take_turn`/`_queue_turn`),
+never rehomed into production code. `squad_controllers` is real, tested data — extracting a
+real `AIController` that reads it is the next step, not this one.
 
 ## Terminal shell
 `HulkTheme` already exists (6 colours, one `Theme`). Phase 12 adds:

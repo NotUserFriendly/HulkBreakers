@@ -1,6 +1,6 @@
 # Checkpoint 7
 
-Generated 2026-07-16T11:42:24Z, by launching the real project (`godot --path .`, a real GPU frame via `--display-driver x11`) and driving `BattleScene`/`TacticsController`/`CameraRig` exactly as a player would, then reading back the rendered frame — not a mockup. Recorded with `--write-movie`, converted from Godot's
+Generated 2026-07-16T12:25:50Z, by launching the real project (`godot --path .`, a real GPU frame via `--display-driver x11`) and driving `BattleScene`/`TacticsController`/`CameraRig` exactly as a player would, then reading back the rendered frame — not a mockup. Recorded with `--write-movie`, converted from Godot's
 native `.avi` output via `ffmpeg -c:v libx264` for a small file instead of the raw AVI.
 
 Phase 12 (docs/10, PLAN.md): "a human launches the game, selects a cyborg, queues a move and an

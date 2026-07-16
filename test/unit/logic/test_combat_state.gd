@@ -160,3 +160,30 @@ func test_try_apply_rejects_illegal_action_without_mutating() -> void:
 	assert_false(ok)
 	assert_eq(state.current_unit(), a)
 	assert_eq(state.action_log.size(), 0)
+
+
+## docs/10 taskblock02 F1: "Control All Squads," the default this build
+## ships with — every squad starts HUMAN with no override needed.
+func test_every_squad_defaults_to_human_control() -> void:
+	var state := CombatState.new(Grid.new(5, 5))
+
+	assert_eq(state.controller_for(0), Enums.SquadController.HUMAN)
+	assert_eq(state.controller_for(1), Enums.SquadController.HUMAN)
+
+
+func test_a_squad_can_be_set_to_ai_control() -> void:
+	var state := CombatState.new(Grid.new(5, 5))
+
+	state.set_squad_controller(1, Enums.SquadController.AI)
+
+	assert_eq(state.controller_for(0), Enums.SquadController.HUMAN, "only squad 1 was touched")
+	assert_eq(state.controller_for(1), Enums.SquadController.AI)
+
+
+func test_dup_carries_squad_controllers_into_the_preview() -> void:
+	var state := CombatState.new(Grid.new(5, 5))
+	state.set_squad_controller(1, Enums.SquadController.AI)
+
+	var preview: CombatState = state.dup()
+
+	assert_eq(preview.controller_for(1), Enums.SquadController.AI)

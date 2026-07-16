@@ -92,6 +92,24 @@ func queue_end_turn() -> bool:
 	return current_queue().enqueue(EndTurnAction.new(selected_unit), state)
 
 
+## docs/10 taskblock02 F3: the selected unit's orientation as it would
+## stand after every already-queued action — Q/E (TacticsController.
+## turn_selected) turns relative to THIS, not the raw pre-queue value, so
+## two queued turns in the same TACTICS pass compose instead of colliding.
+func previewed_orientation() -> float:
+	var actual: Unit = _previewed_unit()
+	return actual.orientation if actual != null else 0.0
+
+
+## Queues a FaceAction turning the selected unit toward `direction`
+## (docs/10 taskblock02 F3) — the same MP/AP-burn legality every other
+## queued action goes through, checked lazily at RESOLUTION time.
+func queue_face(direction: float) -> bool:
+	if selected_unit == null:
+		return false
+	return current_queue().enqueue(FaceAction.new(selected_unit, direction), state)
+
+
 ## Clears every queue and the current selection — called once whatever
 ## queue was active has actually been resolved (docs/09: RESOLUTION owns
 ## the mutation; TACTICS starts clean for whichever unit is current next).
