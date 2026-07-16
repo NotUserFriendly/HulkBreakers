@@ -59,7 +59,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event as InputEventMouseButton)
 	elif event is InputEventMouseMotion and aiming_at != null:
-		move_reticle((event as InputEventMouseMotion).relative * RETICLE_SENSITIVITY)
+		var raw: Vector2 = (event as InputEventMouseMotion).relative * RETICLE_SENSITIVITY
+		# docs/10 taskblock03 C3: Godot's mouse Y is down-positive; the shot
+		# plane's Y is world-up-positive (BodyProjector's own Rect2 convention).
+		# Negate at this input boundary so dragging the mouse up moves the
+		# reticle up, not down.
+		move_reticle(Vector2(raw.x, -raw.y))
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
 		if not key_event.pressed:
@@ -75,6 +80,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			turn_selected(-FACE_STEP)
 		elif key_event.keycode == KEY_E and aiming_at == null:
 			turn_selected(FACE_STEP)
+		elif key_event.keycode == KEY_F and aiming_at != null:
+			reset_framing()
 
 
 func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
@@ -157,7 +164,31 @@ func _enter_aim_mode(target: Unit) -> void:
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	camera_rig.zoom_enabled = false
+	# docs/10 taskblock03 C1: ease to the over-the-shoulder attack framing —
+	# never a cut. C2: a default, not a lock; orbit/pan/zoom stay live and
+	# will interrupt this the instant the player touches them.
+	camera_rig.ease_to_attack_framing(
+		_world_pos(selection.selected_unit.cell), _world_pos(target.cell)
+	)
 	aim_changed.emit()
+
+
+## docs/10 taskblock03 C1: a unit's cell as a ground-level world position —
+## the same conversion BattleScene/BoardView already use elsewhere.
+func _world_pos(cell: Vector2i) -> Vector3:
+	return Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
+
+
+## docs/10 taskblock03 C2: the F "reset framing" key — eases back to the
+## SAME over-the-shoulder default `_enter_aim_mode` eased to, after the
+## player has orbited/panned/zoomed away from it. A no-op outside Attack
+## mode (nothing to reset to).
+func reset_framing() -> void:
+	if input_locked or aiming_at == null or selection.selected_unit == null:
+		return
+	camera_rig.ease_to_attack_framing(
+		_world_pos(selection.selected_unit.cell), _world_pos(aiming_at.cell)
+	)
 
 
 ## Steps the read layer without moving the reticle (docs/10's load-bearing

@@ -68,3 +68,57 @@ func test_wheel_does_nothing_when_zoom_disabled() -> void:
 	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
 
 	assert_eq(rig.state.zoom, before, "docs/10: in the aim UI, scroll steps layers, not zoom")
+
+
+## docs/10 taskblock03 C1: "ease (don't cut)."
+func test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var zoom_before: float = rig.state.zoom
+
+	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
+
+	assert_not_null(rig._active_tween)
+	assert_eq(rig.state.zoom, zoom_before, "the state itself doesn't jump on the same frame")
+
+
+## docs/10 taskblock03 C2: "orbit/pan/zoom stay live... any of them kills
+## the tween outright so live input always wins immediately." The actual
+## orbit/pan/zoom handlers read live hardware state via
+## Input.is_mouse_button_pressed (pre-existing, not something this pass
+## changed), which a headless test can't fake — this covers the shared
+## primitive all three call, `_kill_active_tween` itself.
+func test_kill_active_tween_clears_an_active_attack_framing_tween() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
+	assert_not_null(rig._active_tween)
+
+	rig._kill_active_tween()
+
+	assert_null(rig._active_tween)
+
+
+func test_wheel_zoom_kills_an_active_attack_framing_tween() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	rig.ease_to_attack_framing(Vector3(0.0, 0.0, 0.0), Vector3(5.0, 0.0, 0.0))
+	assert_not_null(rig._active_tween)
+
+	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
+
+	assert_null(rig._active_tween, "the scroll-wheel path is fakeable headlessly, unlike drag")
+
+
+func test_ease_to_attack_framing_targets_the_attack_defaults() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+
+	rig.ease_to_attack_framing(Vector3(2.0, 0.0, 2.0), Vector3(8.0, 0.0, 2.0))
+	# Fast-forward past the tween's own duration so the eased values land.
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	assert_almost_eq(rig.state.pitch, CameraOrbitState.ATTACK_PITCH, 0.0001)
+	assert_almost_eq(rig.state.zoom, CameraOrbitState.ATTACK_ZOOM, 0.0001)
+	assert_almost_eq(rig.state.pan_offset.x, 2.0, 0.01)
+	assert_almost_eq(rig.state.pan_offset.z, 2.0, 0.01)

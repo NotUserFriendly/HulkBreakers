@@ -77,6 +77,51 @@ func test_clicking_an_enemy_while_selected_enters_aim_mode() -> void:
 	assert_eq(controller.reticle_offset, Vector2.ZERO)
 
 
+## docs/10 taskblock03 C1: entering aim eases (never cuts) to the
+## over-the-shoulder attack framing.
+func test_entering_aim_mode_starts_easing_the_camera_to_attack_framing() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(5, 5))
+
+	assert_not_null(camera_rig._active_tween)
+
+
+## docs/10 taskblock03 C2: F eases back to the same over-the-shoulder
+## default, after the player has orbited/panned/zoomed away from it.
+func test_f_key_resets_framing_while_aiming() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(5, 5))
+	camera_rig._kill_active_tween()  # as if the player had already orbited away
+	assert_null(camera_rig._active_tween)
+
+	controller.reset_framing()
+
+	assert_not_null(camera_rig._active_tween)
+
+
+func test_f_key_does_nothing_outside_aim_mode() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+	controller.click_cell(Vector2i(0, 0))  # selected, not aiming
+
+	controller.reset_framing()
+
+	assert_null(camera_rig._active_tween, "nothing to reset to outside Attack mode")
+
+
 func test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
