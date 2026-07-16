@@ -20,6 +20,15 @@ var state := CameraOrbitState.new()
 ## zooming (TacticsController clears this while aiming). Orbit/pan stay
 ## live either way — only wheel-zoom is gated.
 var zoom_enabled: bool = true
+## runNotes.md: "third person camera needs to be locked" while aiming — the
+## live-orbit default (docs/10 taskblock03 C2) let the player rotate the
+## camera away from the shot direction, at which point the reticle drag's
+## screen-space -> shot-plane mapping (a fixed assumption that screen-right
+## is shot-plane-lateral-right) silently stopped matching what was on
+## screen — the actual cause of "lost the dartboard, can't aim at
+## anything." Set by TacticsController on entering/leaving aim; while true,
+## every live input branch below is ignored outright.
+var locked: bool = false
 
 var _yaw_pivot: Node3D
 var _pitch_pivot: Node3D
@@ -41,6 +50,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if locked:
+		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
@@ -80,13 +91,15 @@ func center_on(world_position: Vector3) -> void:
 	_apply_state()
 
 
-## docs/10 taskblock03 C1/C2: eases (never cuts) to the attack camera's own
-## over-the-shoulder default — on entering aim, and again on the F "reset
-## framing" key, which is the identical target framing, just a different
-## trigger. Orbit/pan/zoom stay live once this starts (C2: "a default
-## framing, not a lock"): any of them kills the tween outright via
-## `_kill_active_tween`, so live input always wins immediately instead of
-## fighting the ease for its remaining duration.
+## docs/10 taskblock03 C1 (runNotes.md follow-up): eases (never cuts) to the
+## attack camera's own over-the-shoulder framing — on entering aim, and
+## again on the F "reset framing" key, which is the identical target
+## framing, just a different trigger. Live input can still interrupt the
+## EASE itself via `_kill_active_tween` (so a stray input mid-tween doesn't
+## fight it for the rest of its duration) — but once `locked` is set
+## (TacticsController does this for the whole of aim mode), `_unhandled_
+## input` never reads live input again in the first place, so there is
+## nothing left to interrupt with once the ease finishes.
 func ease_to_attack_framing(shooter_pos: Vector3, target_pos: Vector3) -> void:
 	var target: Dictionary = state.attack_framing(shooter_pos, target_pos)
 	var from_yaw: float = state.yaw

@@ -92,6 +92,35 @@ func test_a_destroyed_blocker_spawns_no_mesh() -> void:
 	)
 
 
+## runNotes.md: "If a tile isn't navigable, it needs something to show
+## that. Color it Dark Gray and draw a cross through it." WALL cells are
+## permanent map geometry, so they belong in `_static`, not an overlay.
+func test_build_adds_a_marker_and_a_cross_per_wall_cell() -> void:
+	var grid := Grid.new(3, 2)
+	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
+	grid.set_terrain(Vector2i(2, 1), Enums.TerrainType.WALL)
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, MaterialTable.default_table())
+
+	assert_eq(
+		view._static.get_child_count(),
+		6,
+		"ground plane + grid lines + (marker + cross) per wall cell, 2 wall cells"
+	)
+
+
+func test_a_grid_with_no_walls_adds_no_wall_indicators() -> void:
+	var grid := Grid.new(2, 2)
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.build(grid, MaterialTable.default_table())
+
+	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
+
+
 func test_show_reachable_spawns_one_marker_per_cell_and_replaces_the_last_call() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)

@@ -176,7 +176,10 @@ static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 				cover_object.is_destructible = false
 				cover_object.material = &"hull_plate"
 				cover_object.volume = [
-					Box.new(Vector3(0.0, height * 0.5, 0.0), Vector3(COVER_FOOTPRINT, height, COVER_FOOTPRINT))
+					Box.new(
+						Vector3(0.0, height * 0.5, 0.0),
+						Vector3(COVER_FOOTPRINT, height, COVER_FOOTPRINT)
+					)
 				]
 				grid.blockers[cell] = cover_object
 
@@ -184,6 +187,18 @@ static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 ## Picks the two carved rooms whose centers are farthest apart (Chebyshev) and
 ## tags a small zone in each with SPAWN_A / SPAWN_B. Returns [cell_a, cell_b],
 ## one representative cell per zone.
+##
+## `_split_and_carve` only splits a leaf when BOTH its dimensions clear
+## `MIN_LEAF_SIZE * 2` — a grid as small as BattleScene's (12x10) never
+## clears that bar, so it always carves exactly one room. When `best_a` and
+## `best_b` land on the very same room (single room, or every room tied at
+## distance 0), marking SPAWN_B into it the normal way would silently
+## overwrite every SPAWN_A cell just written — one squad would spawn
+## nowhere in the grid at all, and its caller would have to fall back to a
+## coordinate no longer guaranteed to be inside carved-open ground (this was
+## a real, reproduced bug: BattleScene's own hardcoded fallback landed a
+## unit on a WALL cell for several seeds before this fix). Split into two
+## non-overlapping corners of that one room instead.
 static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
 	var best_a: Rect2i = rooms[0]
 	var best_b: Rect2i = rooms[1] if rooms.size() > 1 else rooms[0]
@@ -200,9 +215,24 @@ static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
 				best_a = rooms[i]
 				best_b = rooms[j]
 
+	if best_a == best_b:
+		var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.TerrainType.SPAWN_A)
+		var cell_b: Vector2i = _mark_zone(grid, _far_corner(best_a), Enums.TerrainType.SPAWN_B)
+		return [cell_a, cell_b]
+
 	var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.TerrainType.SPAWN_A)
 	var cell_b: Vector2i = _mark_zone(grid, best_b, Enums.TerrainType.SPAWN_B)
 	return [cell_a, cell_b]
+
+
+## The room's own bottom-right SPAWN_ZONE_SIZE-ish corner, as a room-shaped
+## Rect2i `_mark_zone` can mark directly — guaranteed a different position
+## than `room.position` itself since MIN_ROOM_SIZE (3) is always bigger than
+## a 2x2 zone in at least one axis.
+static func _far_corner(room: Rect2i) -> Rect2i:
+	var w: int = mini(SPAWN_ZONE_SIZE, room.size.x)
+	var h: int = mini(SPAWN_ZONE_SIZE, room.size.y)
+	return Rect2i(room.position + room.size - Vector2i(w, h), Vector2i(w, h))
 
 
 static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:

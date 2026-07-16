@@ -107,6 +107,51 @@ func test_move_rejects_trivial_single_cell_path() -> void:
 	assert_false(action.is_legal(state))
 
 
+## runNotes.md: "a character's facing after movement should update to face
+## away from where they started" — free, via the same primitive
+## AttackAction's own free-with-action facing uses.
+func test_move_faces_the_unit_toward_the_overall_direction_of_travel() -> void:
+	var grid := Grid.new(10, 10)
+	var unit := _make_unit(Vector2i(0, 0))
+	unit.orientation = 0.0
+	var state := CombatState.new(grid, [unit])
+
+	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]
+	assert_true(state.try_apply(MoveAction.new(unit, path)))
+
+	var expected: float = FaceAction.orientation_toward(Vector2i(0, 0), Vector2i(2, 0))
+	assert_almost_eq(unit.orientation, expected, 0.0001)
+
+
+func test_move_facing_costs_no_mp_and_does_not_consume_the_facing_unlock() -> void:
+	var grid := Grid.new(10, 10)
+	var unit := _make_unit(Vector2i(0, 0))
+	unit.mp = 3.0
+	var state := CombatState.new(grid, [unit])
+
+	assert_true(state.try_apply(MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)])))
+
+	assert_almost_eq(unit.mp, 1.0, 0.0001, "only the move itself spent MP, never the facing")
+	assert_false(
+		unit.facing_unlocked, "movement's free facing must not grant the manual-face unlock"
+	)
+
+
+func test_move_facing_emits_a_faced_event_with_reason_free_with_move() -> void:
+	var grid := Grid.new(10, 10)
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_true(state.try_apply(MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)])))
+
+	var faced: Array[LogEvent] = sink.events_of_kind(&"faced")
+	assert_eq(faced.size(), 1)
+	assert_eq(faced[0].data.get("reason"), &"free_with_move")
+	assert_eq(faced[0].data.get("cost"), 0.0)
+
+
 func test_leftover_mp_is_discarded_at_end_of_turn() -> void:
 	var grid := Grid.new(10, 10)
 	var mover := _make_unit(Vector2i(0, 0))

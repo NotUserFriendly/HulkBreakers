@@ -226,6 +226,21 @@ cook-off + RAM + surrogate decay + tactics/resolution + extraction, zero errors.
 **This is the definition of done.**
 ### ▶ CHECKPOINT 5 — full mission combat log. **Stop for review.**
 
+**FINDING (post-taskblock03, runNotes.md):** `MoveAction` now faces a unit toward its
+direction of travel for free, on request ("a character's facing after movement should
+update to face away from where they started"). Confirmed by direct A/B test that this alone
+breaks `test_full_mission_seed_to_extraction` — it no longer terminates within `TURN_CAP`.
+Root cause: once a unit stops moving because it's already in weapon range, it now keeps
+whatever orientation its last step left it facing, instead of a constant default. For this
+scenario's exact seed, the last defender ends up facing its best-armored plate at the
+attackers and effectively can't be killed in the turn budget. The test's own AI
+(`_queue_turn`) has no facing awareness at all — it never queues a `FaceAction`, offensively
+or defensively. Not hacked around: the feature is real and requested, the test's AI is
+`git blame`-honest about being "a minimal, fully deterministic AI," and reconciling the two
+(give the test AI defensive facing, retune the scenario, or something else) is a decision for
+whoever owns this test, not something to invent unasked. `test_full_mission_seed_to_extraction`
+is currently failing as a direct, understood consequence of this — not a regression to chase.
+
 ---
 
 ## Phase 12 — 3D view (`docs/10`)

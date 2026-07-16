@@ -56,7 +56,9 @@ func test_replaying_the_same_stream_twice_produces_an_identical_cue_list() -> vo
 func test_total_duration_covers_lead_in_every_cue_and_the_tail() -> void:
 	var events: Array[LogEvent] = [_event(&"impact"), _event(&"impact"), _event(&"impact")]
 	var expected: float = (
-		LogPlayback.RESOLVE_LEAD_IN + LogPlayback.PROJECTILE_STAGGER * 2.0 + LogPlayback.RESOLVE_TAIL
+		LogPlayback.RESOLVE_LEAD_IN
+		+ LogPlayback.PROJECTILE_STAGGER * 2.0
+		+ LogPlayback.RESOLVE_TAIL
 	)
 	assert_almost_eq(LogPlayback.total_duration(events), expected, 0.0001)
 

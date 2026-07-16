@@ -36,6 +36,19 @@ func test_build_styles_the_inventory_panels_tree() -> void:
 	assert_true(theme.has_stylebox("panel", "Tree"))
 
 
+## runNotes.md: "the 'highlight' meant to show more details on a body part
+## isn't showing at all" — the tooltip needs its own solid, high-contrast
+## panel, not Godot's unstyled default sitting directly on top of this
+## panel's own near-identical dark background.
+func test_build_styles_the_tooltip_with_a_solid_high_contrast_panel() -> void:
+	var theme: Theme = HulkTheme.build()
+	assert_true(theme.has_stylebox("panel", "TooltipPanel"))
+	var style: StyleBoxFlat = theme.get_stylebox("panel", "TooltipPanel")
+	assert_almost_eq(style.bg_color.a, 0.97, 0.001, "must actually be opaque, not blend into a row")
+	assert_eq(style.border_color, HulkTheme.HIGHLIGHT)
+	assert_eq(theme.get_color("font_color", "TooltipLabel"), HulkTheme.FOREGROUND)
+
+
 func test_build_sets_the_real_monospace_font() -> void:
 	var theme: Theme = HulkTheme.build()
 	assert_not_null(theme.default_font, "docs/08: menus are monospace, text-first")

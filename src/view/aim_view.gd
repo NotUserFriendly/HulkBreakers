@@ -16,6 +16,10 @@ extends Node3D
 ## A targeting overlay, deliberately distinct from any WorldPalette material
 ## or team color so a ring never blends into armor or a unit's own team rim.
 const RING_COLOR := Color(0.95, 0.55, 0.15)
+## runNotes.md: "it also needs to be slightly transparent, so what is being
+## targeted is clearer" — opaque rings used to fully hide whatever body they
+## sat in front of.
+const RING_ALPHA := 0.55
 ## docs/10 taskblock03 F2: "same geometry the tracer will use, so what
 ## you're shown is what will fire" — same TracerGeometry as
 ## ResolutionPlayer's own tracer, same muzzle height, but translucent and
@@ -78,9 +82,11 @@ func refresh() -> void:
 	var world_point: Vector3 = _world_point(shooter, target, aim_point)
 
 	_draw_rings(world_point, result.rings)
-	# docs/10 taskblock03 F2: "a line from the shooter's muzzle to the
-	# reticle's world point."
-	_draw_targeting_line(_muzzle_point(shooter), world_point)
+	# docs/10 taskblock03 F2 / runNotes.md: "a line from the shooter's
+	# muzzle to the reticle's world point... if a pistol is what's shooting,
+	# the targeting line should come from the pistol," not a generic
+	# torso-height point.
+	_draw_targeting_line(_muzzle_point(shooter, weapon), world_point)
 	readout.text = _readout_text(result)
 
 
@@ -105,26 +111,26 @@ func _body_name(body: Variant) -> String:
 
 
 ## `aim_point` is in shot-plane coordinates (x lateral, y vertical) — the
-## world point it corresponds to, nudged off the target's cell along the
-## shooter->target line's own perpendicular (docs/10 doesn't pin down the
-## exact 3D placement — a flagged simplification, not a design decision).
-## Shared by the rings and the targeting line (F2) so both agree on exactly
-## where the reticle is, in world space.
+## world point it corresponds to. AimPlaneGeometry (logic/) owns the actual
+## plane math now, shared with TacticsController's own cursor->aim_point
+## raycast (runNotes.md: the two must agree exactly, or the reticle drawn
+## here would visibly disagree with where the cursor put it).
 func _world_point(shooter: Unit, target: Unit, aim_point: Vector2) -> Vector3:
-	var direction: Vector2 = Vector2(target.cell - shooter.cell).normalized()
-	var perp := Vector2(-direction.y, direction.x)
-	return (
-		Vector3(target.cell.x, 0.0, target.cell.y) * UnitGeometry.CELL_SIZE
-		+ Vector3(perp.x, 0.0, perp.y) * aim_point.x
-		+ Vector3(0.0, aim_point.y, 0.0)
-	)
+	return AimPlaneGeometry.world_point(shooter.cell, target.cell, aim_point)
 
 
-## docs/10 taskblock03 F2: same TRACER_MUZZLE_HEIGHT ResolutionPlayer's own
-## tracer uses, so the ghost line starts exactly where the real one will.
-func _muzzle_point(unit: Unit) -> Vector3:
+## runNotes.md: "if a pistol is what's shooting, then the targeting line
+## should come from the pistol" — the weapon's own living box center, in
+## the exact placement space UnitView renders from (unit facing + board
+## position + socket chain), not a generic torso-height point. Falls back
+## to the old torso-height point only if the weapon somehow has no
+## placement at all (defensive: an operable weapon always has one).
+func _muzzle_point(shooter: Unit, weapon: Part) -> Vector3:
+	for placement: BoxPlacement in UnitGeometry.placements(shooter):
+		if placement.part == weapon:
+			return placement.transform.translated_local(placement.box.center).origin
 	return (
-		Vector3(unit.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, unit.cell.y)
+		Vector3(shooter.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, shooter.cell.y)
 		* UnitGeometry.CELL_SIZE
 	)
 
@@ -136,7 +142,9 @@ func _draw_rings(world_center: Vector3, rings: Array[Ring]) -> void:
 		var torus := TorusMesh.new()
 		torus.inner_radius = maxf(inner, 0.001)
 		torus.outer_radius = maxf(ring.radius, inner + 0.01)
-		torus.material = WorldPalette.overlay_material(RING_COLOR)
+		torus.material = WorldPalette.translucent_material(
+			Color(RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, RING_ALPHA)
+		)
 		var instance := MeshInstance3D.new()
 		instance.mesh = torus
 		instance.position = world_center

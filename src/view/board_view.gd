@@ -45,6 +45,25 @@ const UNIT_GHOST_ALPHA := 0.35
 const GRID_LINE_COLOR := Color("#16241A")
 const GRID_LINE_HEIGHT := 0.005
 const GRID_LINE_WIDTH := 0.04
+## runNotes.md: "Not all of the drawn boards are navigable... If a tile
+## isn't navigable, it needs something to show that. Color it Dark Gray and
+## draw a cross through it." WALL cells are permanent map geometry, not a
+## TACTICS overlay, so these live in `_static` alongside the grid lines, not
+## one of the ephemeral overlay containers.
+const WALL_INDICATOR_COLOR := Color("#3A3A3A")
+## runNotes.md follow-up: "fade it to a gray that's just slightly darker
+## than the tile gray" — a quiet reference mark, not a bold warning X.
+const WALL_CROSS_COLOR := Color("#2A2A2A")
+const WALL_INDICATOR_HEIGHT := 0.015
+## runNotes.md follow-up: "gray overlay for tiles is drawing overtop the
+## cross indicator, put the cross on top." `_marker()` draws a real BoxMesh
+## with its own 0.02 Y-thickness, centered on `height` — the indicator
+## tile's top FACE therefore sits at WALL_INDICATOR_HEIGHT + 0.01 (0.025),
+## above a same-magnitude flat cross at the old 0.02, which is exactly why
+## the box was winning the depth test. Clearly above that top face, not
+## just above the marker's own center height.
+const WALL_CROSS_HEIGHT := 0.03
+const WALL_CROSS_WIDTH := 0.06
 
 var grid: Grid
 
@@ -85,6 +104,7 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 	)
 	_static.add_child(ground)
 	_static.add_child(_build_grid_lines(grid))
+	_build_wall_indicators(grid)
 
 	for cell: Vector2i in grid.blockers:
 		_spawn_blocker(grid.blockers[cell], cell, material_table)
@@ -131,6 +151,59 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 
 	instance.mesh = mesh
 	return instance
+
+
+## Every non-navigable (WALL) cell gets a flat dark-gray tile plus a cross
+## drawn through it, so "this tile can't be walked on" is legible from the
+## default tactical camera, not just discoverable by clicking a cell and
+## being denied a move.
+func _build_wall_indicators(p_grid: Grid) -> void:
+	for y in range(p_grid.height):
+		for x in range(p_grid.width):
+			var cell := Vector2i(x, y)
+			if p_grid.get_terrain(cell) == Enums.TerrainType.WALL:
+				_static.add_child(_marker(cell, WALL_INDICATOR_COLOR, WALL_INDICATOR_HEIGHT))
+				_static.add_child(_wall_cross(cell))
+
+
+func _wall_cross(cell: Vector2i) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var mesh := ImmediateMesh.new()
+	var cell_size: float = UnitGeometry.CELL_SIZE
+	var half: float = cell_size * 0.5 - GRID_LINE_WIDTH
+	var half_width: float = WALL_CROSS_WIDTH * 0.5
+	var origin: Vector3 = Vector3(cell.x, WALL_CROSS_HEIGHT, cell.y) * cell_size
+
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(WALL_CROSS_COLOR))
+	_add_cross_arm(mesh, origin, Vector3(-half, 0.0, -half), Vector3(half, 0.0, half), half_width)
+	_add_cross_arm(mesh, origin, Vector3(-half, 0.0, half), Vector3(half, 0.0, -half), half_width)
+	mesh.surface_end()
+
+	instance.mesh = mesh
+	return instance
+
+
+## A thick line segment from `origin + from` to `origin + to`, `half_width`
+## on either side along the segment's own horizontal perpendicular — the
+## same real-geometry-not-1px-line convention `_build_grid_lines` already
+## uses, just not axis-aligned.
+##
+## `overlay_material` culls back faces (StandardMaterial3D's own default),
+## so the quad's winding actually matters — `_build_grid_lines`'s own quads
+## go CCW in the X-Z plane; `Vector3(dir.z, 0.0, -dir.x)`, not the more
+## "obvious" `Vector3(-dir.z, 0.0, dir.x)`, is the perpendicular that keeps
+## this quad wound the same way for both diagonal arms (verified by hand:
+## the flipped sign reverses the a-b-c-d cycle exactly once, which is what
+## flips CW to CCW). Get this backwards and the cross renders — just never
+## toward the camera.
+static func _add_cross_arm(
+	mesh: ImmediateMesh, origin: Vector3, from: Vector3, to: Vector3, half_width: float
+) -> void:
+	var dir: Vector3 = (to - from).normalized()
+	var perp: Vector3 = Vector3(dir.z, 0.0, -dir.x) * half_width
+	_add_quad(
+		mesh, origin + from + perp, origin + to + perp, origin + to - perp, origin + from - perp
+	)
 
 
 static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
