@@ -104,6 +104,33 @@ func test_pick_up_part_illegal_without_room_in_the_container() -> void:
 	assert_false(PickUpAction.new(unit, Vector2i(0, 0), &"pistol", &"bag").is_legal(state))
 
 
+## docs/05 taskblock04 D3: "PickUpAction with no container is illegal...
+## no container, no looting." A unit with nothing worn to carry a Part in
+## (never a Matrix — that path doesn't need one) simply can't pick one up.
+func test_pick_up_part_illegal_with_no_container_worn_at_all() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shell := Shell.new(torso)
+	shell.max_mass = 1000.0
+	var unit := Unit.new(Matrix.new(), shell, Vector2i(0, 0), 0)
+
+	var grid := Grid.new(5, 5)
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 5
+	pistol.max_hp = 5
+	pistol.bulk = 1.0
+	grid.field_items[Vector2i(0, 0)] = [pistol]
+	var state := CombatState.new(grid, [unit])
+
+	assert_false(
+		PickUpAction.new(unit, Vector2i(0, 0), &"pistol", &"bag").is_legal(state),
+		"no container named 'bag' exists on this shell at all"
+	)
+
+
 func test_pick_up_illegal_off_the_units_own_cell() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
 	var grid := Grid.new(5, 5)

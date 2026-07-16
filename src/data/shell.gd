@@ -7,6 +7,16 @@ extends Resource
 ## different relationships — Shell only concerns the structural tree;
 ## Inventory still owns `contents`.
 
+## docs/05 taskblock04 D1: "anything body-attached is discounted to at
+## least 0.8. Wearing it beats dragging it, always." A ceiling on the
+## multiplier `carried_mass()` actually applies, not a floor on the
+## authored number: a container with a MORE generous own multiplier (a
+## backpack's 0.5) still uses its own, better, value — this only rescues a
+## body-attached container that forgot to author one at all (the default
+## mass_multiplier, 1.0, would otherwise mean literally no discount for
+## something worn, contradicting "wearing it beats dragging it, always").
+const WORN_DISCOUNT_CEILING := 0.8
+
 @export var root: Part
 @export var max_mass: float = 0.0
 @export var max_ram: float = 0.0
@@ -97,7 +107,8 @@ func carried_mass() -> float:
 	for part: Part in all_parts():
 		total += part.mass
 		if part.is_container:
-			total += _flat_contents(part) * part.mass_multiplier
+			var effective_multiplier: float = minf(part.mass_multiplier, WORN_DISCOUNT_CEILING)
+			total += _flat_contents(part) * effective_multiplier
 	return total
 
 

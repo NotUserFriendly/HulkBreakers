@@ -82,6 +82,58 @@ func test_total_ram_also_counts_items_carried_in_a_container() -> void:
 	)
 
 
+## docs/05 taskblock04 D1: "anything body-attached is discounted to at
+## least 0.8. Wearing it beats dragging it, always." A container that
+## forgot to author a real mass_multiplier (left at the default, 1.0 — no
+## discount at all) must still get AT LEAST an 0.8 ceiling once worn.
+func test_carried_mass_applies_the_worn_discount_ceiling_even_with_no_authored_discount() -> void:
+	var torso := _socketed_part(&"torso", [&"BACK"])
+	var bag := _socketed_part(&"bag")
+	bag.is_container = true
+	bag.max_bulk = 100.0
+	# mass_multiplier left at Part's own default: 1.0.
+	torso.sockets[0].occupant = bag
+
+	var gear := Part.new()
+	gear.id = &"gear"
+	gear.hp = 1
+	gear.max_hp = 1
+	gear.mass = 20.0
+	bag.contents = [gear]
+
+	var shell := Shell.new(torso)
+	assert_almost_eq(
+		shell.carried_mass(),
+		16.0,
+		0.0001,
+		"20 * 0.8 ceiling, not 20 * 1.0 — worn always beats a forgotten discount"
+	)
+
+
+## A container's OWN, more generous multiplier (a backpack's 0.5) must
+## still win — the ceiling only ever rescues a bad/missing number, it
+## never makes a genuinely better container worse.
+func test_carried_mass_never_worsens_a_containers_own_better_discount() -> void:
+	var torso := _socketed_part(&"torso", [&"BACK"])
+	var backpack: Part = Containers.backpack()
+	torso.sockets[0].occupant = backpack
+
+	var gear := Part.new()
+	gear.id = &"gear"
+	gear.hp = 1
+	gear.max_hp = 1
+	gear.mass = 20.0
+	backpack.contents = [gear]
+
+	var shell := Shell.new(torso)
+	assert_almost_eq(
+		shell.carried_mass(),
+		backpack.mass + 10.0,
+		0.0001,
+		"backpack's own 0.5 (better than the 0.8 ceiling) must still apply"
+	)
+
+
 func test_save_load_round_trips_a_shell() -> void:
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
 	var arm := _socketed_part(&"arm")
