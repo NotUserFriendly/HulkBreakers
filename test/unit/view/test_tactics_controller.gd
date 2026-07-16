@@ -224,6 +224,113 @@ func test_turn_selected_with_nothing_selected_is_a_no_op() -> void:
 
 	assert_null(controller.selection.selected_unit)
 
+
+## A unit with a wide torso box overhanging the neighboring cell — the case
+## docs/10 taskblock03 D1 calls out: a click on the mesh, not the tile.
+func _make_wide_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 5
+	torso.max_hp = 5
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(3.0, 1.0, 0.6))]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
+## docs/10 taskblock03 D1: "raycast against the unit's box meshes as well as
+## the board; nearest hit wins." A ray straight down through cell (1,0) hits
+## the empty ground there — but a's wide torso overhangs that far enough
+## that its box is nearer than the ground.
+func test_cell_at_prefers_a_units_overhanging_body_over_the_ground_tile() -> void:
+	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+
+	var cell: Variant = controller._cell_at(Vector3(1.0, 5.0, 0.0), Vector3(0.0, -1.0, 0.0))
+
+	assert_eq(cell, Vector2i(0, 0), "the overhanging body wins, not the ground tile beneath it")
+
+
+func test_cell_at_falls_back_to_the_ground_tile_when_no_body_is_hit() -> void:
+	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+
+	var cell: Variant = controller._cell_at(Vector3(5.0, 5.0, 5.0), Vector3(0.0, -1.0, 0.0))
+
+	assert_eq(cell, Vector2i(5, 5))
+
+
+func test_clicking_a_units_overhanging_body_selects_it_via_click_cell() -> void:
+	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+
+	var cell: Variant = controller._cell_at(Vector3(1.0, 5.0, 0.0), Vector3(0.0, -1.0, 0.0))
+	controller.click_cell(cell)
+
+	assert_eq(controller.selection.selected_unit, a)
+
+
+## docs/10 taskblock03 D3: "RMB pops the last queued action... RMB with an
+## empty queue -> deselect."
+func test_rmb_undoes_the_last_queued_action_without_aiming() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+	assert_eq(controller.selection.ghost_paths().size(), 1)
+
+	var rmb := InputEventMouseButton.new()
+	rmb.button_index = MOUSE_BUTTON_RIGHT
+	rmb.pressed = true
+	controller._unhandled_input(rmb)
+
+	assert_eq(controller.selection.ghost_paths().size(), 0)
+	assert_eq(controller.selection.selected_unit, a, "still selected — only the action was undone")
+
+
+func test_rmb_with_an_empty_queue_deselects() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	controller.click_cell(Vector2i(0, 0))
+
+	var rmb := InputEventMouseButton.new()
+	rmb.button_index = MOUSE_BUTTON_RIGHT
+	rmb.pressed = true
+	controller._unhandled_input(rmb)
+
+	assert_null(controller.selection.selected_unit)
+
+
+## docs/10 taskblock03 D4: Reset Turn — button + R.
+func test_r_key_resets_the_turn_but_keeps_the_unit_selected() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+	assert_eq(controller.selection.ghost_paths().size(), 1)
+
+	var r_key := InputEventKey.new()
+	r_key.pressed = true
+	r_key.keycode = KEY_R
+	controller._unhandled_input(r_key)
+
+	assert_eq(controller.selection.ghost_paths().size(), 0)
+	assert_eq(controller.selection.selected_unit, a)
+
+
+func test_reset_turn_with_nothing_selected_does_not_crash() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+
+	controller.reset_turn()  # nothing selected: must not crash
+
+	assert_null(controller.selection.selected_unit)
+
 ## Aim mode, the dartboard read/resolve pair, and RESOLUTION input-locking
 ## live in test_tactics_controller_aim.gd — split out purely to stay under
 ## gdlint's max-public-methods.

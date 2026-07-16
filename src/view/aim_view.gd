@@ -46,14 +46,22 @@ func refresh() -> void:
 		readout.text = ""
 		return
 
-	var shooter: Unit = tactics.selection.selected_unit
-	var target: Unit = tactics.aiming_at
+	# docs/10 taskblock03 D5: shooter/target/plane must all come from the
+	# SAME speculative preview (tactics.aim_state()) — reading them via
+	# separate calls would hand back unrelated clones whose Parts never
+	# object-match each other, breaking ShotPlane.center_of below.
+	var aim: Dictionary = tactics.aim_state()
+	if aim.is_empty():
+		readout.text = ""
+		return
+	var shooter: Unit = aim["shooter"]
+	var target: Unit = aim["target"]
+	var plane: Array[Region] = aim["plane"]
 	var weapon: Part = DeepStrike.find_operable_weapon(shooter)
 	if weapon == null:
 		readout.text = "[UNARMED]"
 		return
 
-	var plane: Array[Region] = tactics.aim_plane()
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + tactics.reticle_offset
 	var result: AimResult = AimController.resolve(plane, aim_point, tactics.layer_index, weapon)
 

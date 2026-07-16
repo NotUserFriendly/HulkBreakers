@@ -91,12 +91,37 @@ func test_show_reachable_spawns_one_marker_per_cell_and_replaces_the_last_call()
 	)
 
 
-func test_show_ghost_paths_spawns_a_marker_per_cell_across_every_path() -> void:
+## docs/10 taskblock03 D2: each leg is a marker per cell, plus its own
+## polyline, plus one numbered waypoint label at its destination.
+func test_show_ghost_paths_spawns_a_marker_line_and_label_per_leg() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)
 
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)], [Vector2i(1, 0), Vector2i(2, 0)]])
-	assert_eq(view._ghost_overlay.get_child_count(), 4, "2 cells per path, 2 paths")
+	assert_eq(
+		view._ghost_overlay.get_child_count(),
+		8,
+		"(2 cell markers + 1 line + 1 label) per leg, 2 legs",
+	)
+
+
+func test_show_ghost_paths_numbers_waypoints_and_shows_the_running_total() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.show_ghost_paths(
+		[[Vector2i(0, 0), Vector2i(1, 0)], [Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]],
+		[1.0, 2.0]
+	)
+
+	var labels: Array[Label3D] = []
+	for child: Node in view._ghost_overlay.get_children():
+		if child is Label3D:
+			labels.append(child)
+	assert_eq(labels.size(), 2)
+	assert_true(labels[0].text.begins_with("1:"), "the first leg is waypoint 1")
+	assert_true(labels[1].text.begins_with("2:"), "the second leg is waypoint 2")
+	assert_true(labels[1].text.contains("3.0"), "the running total across both legs is 1+2")
 
 
 func test_reachable_and_ghost_overlays_coexist() -> void:
@@ -107,7 +132,7 @@ func test_reachable_and_ghost_overlays_coexist() -> void:
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)]])
 
 	assert_eq(view._reachable_overlay.get_child_count(), 2, "ghosts must not clobber reachable")
-	assert_eq(view._ghost_overlay.get_child_count(), 2)
+	assert_eq(view._ghost_overlay.get_child_count(), 4, "2 cell markers + 1 line + 1 label")
 
 
 func test_clear_overlays_removes_everything() -> void:

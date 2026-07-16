@@ -233,6 +233,11 @@ func test_end_turn_cancels_an_active_aim() -> void:
 	assert_true(camera_rig.zoom_enabled)
 
 
+## docs/10 taskblock03 D5: aim_plane() now builds from a speculative preview
+## clone (so a queued move changes it before resolution — covered below),
+## which means every Region.body in it is a clone unit sharing the real
+## unit's `id`, never the same object. Comparisons here go through `.id`
+## rather than `==` for exactly that reason.
 func test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
@@ -248,14 +253,19 @@ func test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets() -> vo
 
 	assert_lt(plane.size(), raw.size(), "the raw plane includes the shooter's own body")
 	for region: Region in plane:
-		assert_ne(region.body, a, "the aim plane must never carry the shooter as a phantom layer")
+		var body: Unit = region.body as Unit
+		assert_ne(body.id, a.id, "the aim plane must never carry the shooter as a phantom layer")
 	var target_regions: Array[Region] = []
 	for region: Region in plane:
-		if region.body == b:
+		var body: Unit = region.body as Unit
+		if body != null and body.id == b.id:
 			target_regions.append(region)
 	assert_true(target_regions.size() > 0, "the actual target must still be in the aim plane")
 
 
+## docs/10 taskblock03 D5: shooter/target/plane must come from the SAME
+## preview (aim_state()) — pulling them from separate calls would hand back
+## unrelated clones whose Parts never object-match each other.
 func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
@@ -265,14 +275,79 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 	controller.click_cell(Vector2i(0, 0))
 	controller.click_cell(Vector2i(5, 5))
 
-	var weapon: Part = DeepStrike.find_operable_weapon(a)
-	var plane: Array[Region] = controller.aim_plane()
-	var target_point: Vector2 = ShotPlane.center_of(plane, b)
+	var aim: Dictionary = controller.aim_state()
+	var weapon: Part = DeepStrike.find_operable_weapon(aim["shooter"])
+	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], aim["target"])
 	var result: AimResult = AimController.resolve(
-		plane, target_point, controller.layer_index, weapon
+		aim["plane"], target_point, controller.layer_index, weapon
 	)
 
-	assert_eq(result.reading, b, "layer 0 of the aim plane must be the target, not the shooter")
+	assert_eq((result.reading as Unit).id, b.id, "layer 0 of the aim plane must be the target")
+
+
+## docs/10 taskblock03 D5: "the aim preview must build its shot plane from
+## the speculative state... the queued end cell and end facing."
+func test_aim_plane_originates_from_the_queued_end_cell_not_the_current_one() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(9, 0), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	a.mp = 10.0
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(5, 0))  # queue a move, still just queued
+	controller.click_cell(Vector2i(9, 0))  # aim at b from the queued end position
+
+	assert_eq(a.cell, Vector2i(0, 0), "still just queued — the real unit has not moved")
+	var aim: Dictionary = controller.aim_state()
+	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], aim["target"])
+	var target_region: Region = ShotPlane.resolve_projectile(aim["plane"], target_point)
+
+	assert_not_null(target_region, "the target must actually resolve")
+	# Origin at the queued end cell (5,0) puts the target's near face ~3
+	# away; origin at the current cell (0,0) — the bug this guards against —
+	# would put it ~8 away. A generous midpoint threshold distinguishes the
+	# two without pinning the exact face-offset geometry.
+	assert_lt(target_region.depth, 6.0, "must have originated from the queued end cell, not (0,0)")
+
+
+## docs/10 taskblock03 D5: "a queued move behind cover changes what the
+## reticle resolves to, before resolution." The wall sits on column x == 2,
+## between shooter and target. The shooter's ORIGINAL cell (0,0) shoots at
+## the target diagonally, clearing the wall; the QUEUED end cell (2,0) is
+## dead in line with it. Only the aim plane sourced from the queued end
+## position should resolve the center-mass shot as blocked.
+func test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(2, 6), 1)
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.hp = 10
+	wall.max_hp = 10
+	wall.volume = [Box.new(Vector3.ZERO, Vector3(1.0, 2.0, 1.0))]
+	var built: Dictionary = _setup([a, b])
+	var state: CombatState = built.state
+	state.grid.blockers[Vector2i(2, 3)] = wall
+	var controller: TacticsController = built.controller
+	a.mp = 10.0
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(2, 6))
+	var aim_before: Dictionary = controller.aim_state()
+	var point_before: Vector2 = ShotPlane.center_of(aim_before["plane"], aim_before["target"])
+	var hit_before: Region = ShotPlane.resolve_projectile(aim_before["plane"], point_before)
+	controller.cancel_aim()
+
+	controller.click_cell(Vector2i(2, 0))  # queue a move onto the wall's own column
+	controller.click_cell(Vector2i(2, 6))  # re-aim from the queued end position
+	var aim_after: Dictionary = controller.aim_state()
+	var point_after: Vector2 = ShotPlane.center_of(aim_after["plane"], aim_after["target"])
+	var hit_after: Region = ShotPlane.resolve_projectile(aim_after["plane"], point_after)
+
+	assert_not_null(hit_before)
+	assert_ne(hit_before.part.id, &"wall", "the original diagonal line of fire clears the wall")
+	assert_not_null(hit_after)
+	assert_eq(hit_after.part.id, &"wall", "the queued end position's line of fire is blocked")
 
 
 ## docs/10 Phase 12.4: End Turn locks input for the whole of RESOLUTION and

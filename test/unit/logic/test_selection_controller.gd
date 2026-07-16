@@ -91,6 +91,91 @@ func test_queuing_never_mutates_the_real_state() -> void:
 	)
 
 
+## docs/10 taskblock03 D2: "the running MP cost per leg and the total."
+func test_leg_costs_matches_pathfinders_own_cost_per_queued_leg() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+
+	selection.queue_move(Vector2i(2, 0))
+	selection.queue_move(Vector2i(2, 2))
+
+	var costs: Array[float] = selection.leg_costs()
+	assert_eq(costs.size(), 2)
+	assert_almost_eq(costs[0], 2.0, 0.0001, "two default-cost steps: (0,0)->(1,0)->(2,0)")
+	assert_almost_eq(costs[1], 2.0, 0.0001, "two more steps: (2,0)->(2,1)->(2,2)")
+
+
+## docs/10 taskblock03 D3: "RMB pops the last queued action."
+func test_undo_last_pops_the_most_recently_queued_action() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+	selection.queue_move(Vector2i(1, 0))
+	selection.queue_move(Vector2i(2, 0))
+
+	assert_true(selection.undo_last())
+
+	assert_eq(selection.ghost_paths().size(), 1, "only the first leg remains")
+	var remaining: Array = selection.ghost_paths()[0]
+	assert_eq(remaining[remaining.size() - 1], Vector2i(1, 0))
+
+
+func test_undo_last_with_an_empty_queue_returns_false() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+
+	assert_false(selection.undo_last())
+
+
+func test_undo_last_refunds_the_popped_actions_cost_against_the_speculative_state() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+	var full_budget: Array[Vector2i] = selection.reachable_cells()
+	selection.queue_move(Vector2i(1, 0))
+
+	selection.undo_last()
+
+	assert_eq(
+		selection.reachable_cells(),
+		full_budget,
+		"undoing the only queued move must restore the full original reach"
+	)
+
+
+## docs/10 taskblock03 D4: "Reset Turn" restores position, facing, MP, AP,
+## and empties the queue — but keeps the unit selected.
+func test_reset_turn_clears_the_queue_but_keeps_the_unit_selected() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+	selection.queue_move(Vector2i(1, 0))
+	selection.queue_face(1.0)
+
+	selection.reset_turn()
+
+	assert_eq(selection.selected_unit, a, "still mid-TACTICS for the same unit")
+	assert_eq(selection.ghost_paths(), [] as Array[Array])
+	assert_almost_eq(selection.previewed_orientation(), 0.0, 0.0001)
+
+
+func test_reset_turn_with_nothing_selected_is_a_no_op() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+
+	selection.reset_turn()  # must not crash with no selection
+
+	assert_null(selection.selected_unit)
+
+
 func test_reset_clears_selection_and_queues() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(10, 10), [a])

@@ -34,6 +34,16 @@ func is_walkable(cell: Vector2i) -> bool:
 	return move_cost(cell) >= 0.0
 
 
+## docs/10 taskblock03 D2: the total MP a full path (inclusive of its own
+## starting cell, same shape as astar()'s return) actually costs — the
+## starting cell itself is free, the mover already stands there.
+func path_cost(path: Array[Vector2i]) -> float:
+	var total: float = 0.0
+	for i in range(1, path.size()):
+		total += move_cost(path[i])
+	return total
+
+
 func _min_possible_cost() -> float:
 	var m: float = DEFAULT_COST
 	for cost: float in _terrain_costs.values():

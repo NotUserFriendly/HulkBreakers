@@ -63,6 +63,11 @@ func _ready() -> void:
 	end_turn_button.text = "End Turn"
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
 	buttons.add_child(end_turn_button)
+	# docs/10 taskblock03 D4: "a single Reset Turn control (button + R)."
+	var reset_turn_button := Button.new()
+	reset_turn_button.text = "Reset Turn"
+	reset_turn_button.pressed.connect(_on_reset_turn_pressed)
+	buttons.add_child(reset_turn_button)
 
 	var banner := Label.new()
 	banner.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
@@ -109,6 +114,10 @@ func _on_new_battle_pressed() -> void:
 
 func _on_end_turn_pressed() -> void:
 	tactics.end_turn()
+
+
+func _on_reset_turn_pressed() -> void:
+	tactics.reset_turn()
 
 
 ## Resolution has already mutated combat_state for real (docs/09) — every

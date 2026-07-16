@@ -85,6 +85,19 @@ func ghost_paths() -> Array[Array]:
 	return paths
 
 
+## docs/10 taskblock03 D2: "show the running MP cost per leg and the
+## total" — one entry per ghost_paths() leg, in the same order, so a view
+## can zip the two arrays together without re-deriving cost itself.
+func leg_costs() -> Array[float]:
+	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var costs: Array[float] = []
+	for path: Array in ghost_paths():
+		var typed_path: Array[Vector2i] = []
+		typed_path.assign(path)
+		costs.append(pf.path_cost(typed_path))
+	return costs
+
+
 ## Queues ending the selected unit's turn — the last action any queue needs.
 func queue_end_turn() -> bool:
 	if selected_unit == null:
@@ -108,6 +121,34 @@ func queue_face(direction: float) -> bool:
 	if selected_unit == null:
 		return false
 	return current_queue().enqueue(FaceAction.new(selected_unit, direction), state)
+
+
+## docs/10 taskblock03 D3: "RMB pops the last queued action and refunds its
+## cost against the speculative state." No refund bookkeeping needed —
+## preview() always rebuilds from a fresh state.dup() and replays whatever
+## remains in `actions`, so simply removing the last entry IS the refund.
+## Returns whether anything was actually popped, so the caller (RMB with an
+## empty queue -> deselect) knows which case it's in.
+func undo_last() -> bool:
+	var queue: ActionQueue = current_queue()
+	if queue == null or queue.actions.is_empty():
+		return false
+	queue.actions.pop_back()
+	return true
+
+
+## docs/10 taskblock03 D4: "Reset Turn" — discard everything queued this
+## TACTICS phase and restore the unit to exactly how it started. Unlike
+## reset() (called once a turn actually resolves), this keeps the unit
+## selected: the human is still mid-TACTICS, just starting over. Erasing the
+## queue is the whole fix — preview() always reclones from authoritative
+## `state` on demand, so there is no speculative position/facing/MP/AP left
+## to separately roll back (docs/09: TACTICS never mutates authoritative
+## state in the first place).
+func reset_turn() -> void:
+	if selected_unit == null:
+		return
+	_queues.erase(selected_unit.id)
 
 
 ## Clears every queue and the current selection — called once whatever
