@@ -38,6 +38,14 @@ static func build() -> Theme:
 	theme.set_color("font_color", "Label", FOREGROUND)
 	theme.set_color("font_color", "Button", FOREGROUND)
 
+	# docs/10 taskblock03 H2: the inventory panel's Tree — same monospace,
+	# same six colors, no separate styling of its own.
+	theme.set_color("font_color", "Tree", FOREGROUND)
+	theme.set_color("title_button_color", "Tree", FOREGROUND)
+	var tree_panel := StyleBoxFlat.new()
+	tree_panel.bg_color = BACKGROUND
+	theme.set_stylebox("panel", "Tree", tree_panel)
+
 	var font: FontFile = load(FONT_PATH)
 	if font != null:
 		theme.default_font = font
