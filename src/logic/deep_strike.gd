@@ -84,6 +84,15 @@ static func default_part_pool() -> Array[Part]:
 			&"BACK", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION + 0.05, -0.17)), &"BACK"
 		),
 		Socket.new(&"MATRIX", Transform3D.IDENTITY, &"MATRIX"),
+		# Cladding vs. plates (docs/01 taskblock02 Pass C): the skin layer a
+		# part is FOUND wearing, hugging every face at once. Same pattern as
+		# a plate's ARMOR socket: the socket carries the part's own local
+		# volume-center offset, and the cladding part's own box is authored
+		# at local zero — it wraps the part's own position rather than
+		# standing off one face.
+		Socket.new(
+			&"CLADDING", Transform3D(Basis(), Vector3(0.0, ROOT_ELEVATION, 0.0)), &"CLADDING"
+		),
 	]
 
 	var head := Part.new()
@@ -98,6 +107,7 @@ static func default_part_pool() -> Array[Part]:
 	head.sockets = [
 		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, 0.12, 0.12)), &"ARMOR"),
 		Socket.new(&"MATRIX", Transform3D.IDENTITY, &"MATRIX"),
+		Socket.new(&"CLADDING", Transform3D(Basis(), Vector3(0.0, 0.12, 0.0)), &"CLADDING"),
 	]
 
 	var arm := Part.new()
@@ -111,6 +121,7 @@ static func default_part_pool() -> Array[Part]:
 	arm.sockets = [
 		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09)), &"ARMOR"),
 		Socket.new(&"FOREARM", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0)), &"FOREARM"),
+		Socket.new(&"CLADDING", Transform3D(Basis(), Vector3(0.0, -0.17, 0.0)), &"CLADDING"),
 	]
 
 	var forearm := Part.new()
@@ -129,6 +140,7 @@ static func default_part_pool() -> Array[Part]:
 			&"FOREARM_TOOL", Transform3D(Basis(), Vector3(0.0, -0.17, 0.09)), &"FOREARM_TOOL"
 		),
 		Socket.new(&"WRIST", Transform3D(Basis(), Vector3(0.0, -0.34, 0.0)), &"WRIST"),
+		Socket.new(&"CLADDING", Transform3D(Basis(), Vector3(0.0, -0.17, 0.0)), &"CLADDING"),
 	]
 
 	var hand := Part.new()
@@ -165,7 +177,14 @@ static func default_part_pool() -> Array[Part]:
 	leg.attaches_to = [&"HIP"]
 	leg.material = &"artificial_bone"
 	leg.volume = [Box.new(Vector3(0.0, -0.45, 0.0), Vector3(0.16, 0.90, 0.16))]
-	leg.sockets = [Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.45, 0.09)), &"ARMOR")]
+	leg.sockets = [
+		Socket.new(&"ARMOR", Transform3D(Basis(), Vector3(0.0, -0.45, 0.09)), &"ARMOR"),
+		# Y-shifted up by half the cladding's own padding (0.015): the leg is
+		# the one floor-contact limb, so its cladding's extra 0.03 of height
+		# goes entirely upward — the sole stays flush with y=0 instead of
+		# clipping through the floor the way a symmetric pad would.
+		Socket.new(&"CLADDING", Transform3D(Basis(), Vector3(0.0, -0.435, 0.0)), &"CLADDING"),
+	]
 
 	# Plates are FACINGS, not shells (docs/01): a thin box on one face of
 	# their parent, authored part-local at the part's own origin — the
@@ -216,6 +235,61 @@ static func default_part_pool() -> Array[Part]:
 	leg_plate.attaches_to = [&"ARMOR"]
 	leg_plate.material = &"sheet_steel"
 	leg_plate.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.70, 0.04))]
+
+	# Cladding vs. plates (docs/01 taskblock02 Pass C): the skin layer a
+	# part is FOUND wearing, not bolted-on armor — a thin shell hugging
+	# EVERY face at once (docs/01: civilian sheet metal vs. combat ceramic),
+	# so it's the frontmost thing on an unplated face and sits directly
+	# behind a plate on a plated one. Each one's box is the same center as
+	# its bare part's own volume, padded +0.015 on every axis — attached via
+	# an identity-transform CLADDING socket (it wraps the part's own
+	# position; nothing pushes it out to one face the way a plate's ARMOR
+	# socket does). Pre-attached in the ShellTemplate, never a Loadout
+	# choice: "the arm you found is already plated" is structure.
+	var torso_cladding := Part.new()
+	torso_cladding.id = &"torso_cladding"
+	torso_cladding.hp = 6
+	torso_cladding.max_hp = 6
+	torso_cladding.mass = 3.0
+	torso_cladding.attaches_to = [&"CLADDING"]
+	torso_cladding.material = &"sheet_steel"
+	torso_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.53, 0.73, 0.31))]
+
+	var head_cladding := Part.new()
+	head_cladding.id = &"head_cladding"
+	head_cladding.hp = 3
+	head_cladding.max_hp = 3
+	head_cladding.mass = 0.5
+	head_cladding.attaches_to = [&"CLADDING"]
+	head_cladding.material = &"sheet_steel"
+	head_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.25, 0.27, 0.25))]
+
+	var arm_cladding := Part.new()
+	arm_cladding.id = &"arm_cladding"
+	arm_cladding.hp = 3
+	arm_cladding.max_hp = 3
+	arm_cladding.mass = 1.0
+	arm_cladding.attaches_to = [&"CLADDING"]
+	arm_cladding.material = &"sheet_steel"
+	arm_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.17, 0.37, 0.17))]
+
+	var forearm_cladding := Part.new()
+	forearm_cladding.id = &"forearm_cladding"
+	forearm_cladding.hp = 3
+	forearm_cladding.max_hp = 3
+	forearm_cladding.mass = 0.8
+	forearm_cladding.attaches_to = [&"CLADDING"]
+	forearm_cladding.material = &"sheet_steel"
+	forearm_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.15, 0.37, 0.15))]
+
+	var leg_cladding := Part.new()
+	leg_cladding.id = &"leg_cladding"
+	leg_cladding.hp = 4
+	leg_cladding.max_hp = 4
+	leg_cladding.mass = 1.5
+	leg_cladding.attaches_to = [&"CLADDING"]
+	leg_cladding.material = &"sheet_steel"
+	leg_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.19, 0.93, 0.19))]
 
 	# docs/01a: the BACK socket's own worked example — cook off a flanked
 	# ammo rack (docs/03), or carry a backpack/body there instead.
@@ -285,6 +359,11 @@ static func default_part_pool() -> Array[Part]:
 		head_plate,
 		arm_plate,
 		leg_plate,
+		torso_cladding,
+		head_cladding,
+		arm_cladding,
+		forearm_cladding,
+		leg_cladding,
 		ammo_rack,
 		pistol,
 		rifle,
@@ -364,29 +443,46 @@ static func reference_humanoid_template() -> ShellTemplate:
 				&"arm",
 				[
 					Mount.new(&"ARMOR", &"arm_plate"),
-					Mount.new(
-						&"FOREARM",
-						&"forearm",
-						[Mount.new(&"ARMOR", &"arm_plate"), Mount.new(&"WRIST", hand_part_id)]
+					Mount.new(&"CLADDING", &"arm_cladding"),
+					(
+						Mount
+						. new(
+							&"FOREARM",
+							&"forearm",
+							[
+								Mount.new(&"ARMOR", &"arm_plate"),
+								Mount.new(&"CLADDING", &"forearm_cladding"),
+								Mount.new(&"WRIST", hand_part_id),
+							]
+						)
 					),
 				]
 			)
 		)
 	var leg_mount := func(hip_id: StringName) -> Mount:
-		return Mount.new(hip_id, &"leg", [Mount.new(&"ARMOR", &"leg_plate")])
+		return Mount.new(
+			hip_id,
+			&"leg",
+			[Mount.new(&"ARMOR", &"leg_plate"), Mount.new(&"CLADDING", &"leg_cladding")]
+		)
 
 	return (
 		ShellTemplate
 		. new(
 			&"torso",
 			[
-				Mount.new(&"NECK", &"head", [Mount.new(&"ARMOR", &"head_plate")]),
+				Mount.new(
+					&"NECK",
+					&"head",
+					[Mount.new(&"ARMOR", &"head_plate"), Mount.new(&"CLADDING", &"head_cladding")]
+				),
 				arm_mount.call(&"SHOULDER_L", &"hand_l"),
 				arm_mount.call(&"SHOULDER_R", &"hand_r"),
 				leg_mount.call(&"HIP_L"),
 				leg_mount.call(&"HIP_R"),
 				Mount.new(&"ARMOR_FRONT", &"torso_plate_front"),
 				Mount.new(&"ARMOR_REAR", &"torso_plate_rear"),
+				Mount.new(&"CLADDING", &"torso_cladding"),
 				Mount.new(&"BACK", &"ammo_rack"),
 			],
 			DEFAULT_MAX_MASS,

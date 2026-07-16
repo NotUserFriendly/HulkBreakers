@@ -10,6 +10,14 @@ func _reference_unit(cell: Vector2i = Vector2i(0, 0)) -> Unit:
 	return DeepStrike.assemble_reference_humanoid(Matrix.new(), cell)
 
 
+func _pool_template(part_id: StringName) -> Part:
+	for template: Part in DeepStrike.default_part_pool():
+		if template.id == part_id:
+			return template
+	fail_test("no pool template %s" % part_id)
+	return null
+
+
 func _world_corners(placement: BoxPlacement) -> Array[Vector3]:
 	var half: Vector3 = placement.box.size * 0.5
 	var center: Vector3 = placement.box.center
@@ -64,7 +72,6 @@ func test_head_is_the_highest_part_a_leg_is_the_lowest() -> void:
 	var unit := _reference_unit()
 	var top_id: StringName = &""
 	var top_y := -INF
-	var bottom_id: StringName = &""
 	var bottom_y := INF
 	for placement: BoxPlacement in UnitGeometry.placements(unit):
 		for corner: Vector3 in _world_corners(placement):
@@ -73,9 +80,14 @@ func test_head_is_the_highest_part_a_leg_is_the_lowest() -> void:
 				top_id = placement.part.id
 			if corner.y < bottom_y:
 				bottom_y = corner.y
-				bottom_id = placement.part.id
-	assert_eq(top_id, &"head")
-	assert_eq(bottom_id, &"leg")
+	# head_cladding, not bare head: cladding hugs every face (docs/01
+	# taskblock02 Pass C), so it's strictly the topmost geometry once it
+	# exists. The lowest point is a legitimate tie between leg and
+	# leg_cladding (leg_cladding's socket is deliberately shifted so its
+	# sole stays flush with the floor rather than clipping through it) —
+	# assert the height itself, not which part id happens to report it.
+	assert_eq(top_id, &"head_cladding")
+	assert_almost_eq(bottom_y, 0.0, 0.0001, "feet (and their cladding) touch the floor")
 
 
 func test_arms_are_lateral_a_left_and_a_right_both_exist() -> void:
@@ -204,29 +216,90 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 	var leg_hit: Region = ShotPlane.resolve_projectile(plane, leg_point)
 	assert_eq(leg_hit.part.id, &"half_cover", "half cover must mask the legs")
 
-	var head_region: Region = _find(plane, &"head")
+	# head_cladding, not bare "head" — cladding wraps every face, so the
+	# bare head is never itself the frontmost thing anywhere in the plane
+	# (docs/01 taskblock02 Pass C). Whichever head layer this point
+	# actually resolves to (cladding or the front plate), it must not be
+	# the cover.
+	var head_region: Region = _find(plane, &"head_cladding")
 	var head_point: Vector2 = head_region.rect.get_center()
 	var head_hit: Region = ShotPlane.resolve_projectile(plane, head_point)
-	assert_eq(head_hit.part.id, &"head", "half cover must not reach high enough to mask the head")
+	assert_ne(
+		head_hit.part.id, &"half_cover", "half cover must not reach high enough to mask the head"
+	)
 
 
-func test_destroying_a_plate_leaves_the_part_behind_bare_on_the_next_shot() -> void:
+## docs/01 taskblock02 Pass C: the full plate -> cladding -> bare gradient.
+## A shot on the plated front face resolves plate first; destroying the
+## plate exposes the cladding underneath, never the bare part directly;
+## destroying the cladding too finally exposes the bare part.
+func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() -> void:
 	var unit := _reference_unit()
 	var plate: Part = unit.shell.find_part(&"torso_plate_front")
+	var cladding: Part = unit.shell.find_part(&"torso_cladding")
 
 	var before: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
 	var aim_point: Vector2 = _find(before, &"torso_plate_front").rect.get_center()
 	assert_eq(ShotPlane.resolve_projectile(before, aim_point).part.id, &"torso_plate_front")
 
 	plate.hp = 0
-	var after: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
-	for region: Region in after:
+	var after_plate: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	for region: Region in after_plate:
 		assert_ne(region.part.id, &"torso_plate_front", "a destroyed plate must leave the plane")
 	assert_eq(
-		ShotPlane.resolve_projectile(after, aim_point).part.id,
-		&"torso",
-		"the same point must now resolve to the bare torso behind it"
+		ShotPlane.resolve_projectile(after_plate, aim_point).part.id,
+		&"torso_cladding",
+		"a destroyed plate exposes cladding, never the bare part directly"
 	)
+
+	cladding.hp = 0
+	var after_cladding: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	for region: Region in after_cladding:
+		assert_ne(region.part.id, &"torso_cladding", "destroyed cladding must leave the plane too")
+	assert_eq(
+		ShotPlane.resolve_projectile(after_cladding, aim_point).part.id,
+		&"torso",
+		"destroying the cladding too finally exposes the bare part"
+	)
+
+
+## The reverse of the plated case: a lateral face has no ARMOR socket at
+## all (the reference humanoid's torso only declares FRONT/REAR), so a
+## shot there must resolve to cladding — never a plate, since none covers
+## that face; never straight to the bare part either, since cladding
+## always wraps every face a plate doesn't stand off from. Isolated from
+## the full reference humanoid (an arm hangs directly alongside the torso
+## and would occlude a lateral shot at the whole-unit level — a real,
+## correct consequence of body shape, just not what this test is about).
+func test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate() -> void:
+	var torso: Part = _pool_template(&"torso")
+	var plate: Part = _pool_template(&"torso_plate_front")
+	var cladding: Part = _pool_template(&"torso_cladding")
+	PartGraph.attach(plate, torso, PartGraph.find_socket(torso, &"ARMOR_FRONT"))
+	PartGraph.attach(cladding, torso, PartGraph.find_socket(torso, &"CLADDING"))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+
+	var side: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(1, 0)))
+	var resolved: Region = _find(side, &"torso_cladding")
+
+	assert_ne(resolved.part.id, &"torso_plate_front")
+	assert_ne(resolved.part.id, &"torso")
+
+
+## docs/01 taskblock02 Pass C: "plated face -> plate (dt 6) ... bare face
+## -> cladding (dt 3) ... strip cladding -> base part (dt 2)" — the
+## gradient itself, asserted explicitly against the material table rather
+## than assumed from the parts that happen to use it.
+func test_the_plate_cladding_bare_dt_gradient_is_6_3_2() -> void:
+	var table := MaterialTable.default_table()
+	assert_eq(table.get_entry(&"steel").dt, 6.0, "plated face: steel")
+	assert_eq(table.get_entry(&"sheet_steel").dt, 3.0, "cladding: sheet_steel")
+	assert_eq(table.get_entry(&"artificial_bone").dt, 2.0, "bare part: artificial_bone")
+
+	var unit := _reference_unit()
+	assert_eq(unit.shell.find_part(&"torso_plate_front").material, &"steel")
+	assert_eq(unit.shell.find_part(&"torso_cladding").material, &"sheet_steel")
+	assert_eq(unit.shell.root.material, &"artificial_bone")
 
 
 func test_no_pool_part_has_an_empty_material() -> void:

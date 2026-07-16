@@ -9,9 +9,9 @@ SAVED board_wide.png
 SAVED cyborg_closeup.png
 SAVED twelve_arm_rig.png
 CHECKPOINT_6_DONE
-WARNING: 5 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+WARNING: 6 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2535)
-ERROR: 4 resources still in use at exit (run with --verbose for details).
+ERROR: 5 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:822)
 ERROR: Pages in use exist at exit in PagedAllocator: N12VariantPools12BucketMediumE
    at: ~PagedAllocator (./core/templates/paged_allocator.h:170)
