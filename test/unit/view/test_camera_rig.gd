@@ -40,3 +40,31 @@ func test_applying_state_sets_yaw_and_pitch_on_their_own_pivots() -> void:
 	var pitch: Node3D = yaw.get_child(0)
 	assert_almost_eq(yaw.rotation.y, 1.2, 0.0001)
 	assert_almost_eq(pitch.rotation.x, -0.5, 0.0001)
+
+
+func _wheel_event(button_index: MouseButton) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = button_index
+	event.pressed = true
+	return event
+
+
+func test_wheel_zooms_when_zoom_enabled() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var before: float = rig.state.zoom
+
+	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
+
+	assert_lt(rig.state.zoom, before, "scrolling up must zoom in while zoom is enabled")
+
+
+func test_wheel_does_nothing_when_zoom_disabled() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	rig.zoom_enabled = false
+	var before: float = rig.state.zoom
+
+	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
+
+	assert_eq(rig.state.zoom, before, "docs/10: in the aim UI, scroll steps layers, not zoom")

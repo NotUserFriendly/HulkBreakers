@@ -80,7 +80,7 @@ func apply(state: CombatState) -> void:
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 
-	var aim_point: Vector2 = _center_mass(plane, target) + aim_offset
+	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
 	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon, extra_sources)
 	var points: Array[Vector2] = Dartboard.sample(
 		aim_point, resolved_scatter, state.rng, weapon.burst
@@ -132,23 +132,6 @@ func apply(state: CombatState) -> void:
 			% [actual.id, weapon_id, weapon.burst, target_cell]
 		)
 	)
-
-
-## The target's frontmost region's rect center — a point, never a chosen
-## body part. Regions are matched back to `target` by object identity,
-## which is safe here: both the plane and `target` were built from the same
-## `state`, never compared across two different states.
-func _center_mass(plane: Array[Region], target: Unit) -> Vector2:
-	var target_parts: Array[Part] = target.frame.all_parts()
-	var best: Region = null
-	for region: Region in plane:
-		if not target_parts.has(region.part):
-			continue
-		if best == null or region.depth < best.depth:
-			best = region
-	if best == null:
-		return Vector2(target.cell.x, target.cell.y)
-	return best.rect.get_center()
 
 
 func _unit_at(state: CombatState, cell: Vector2i) -> Unit:

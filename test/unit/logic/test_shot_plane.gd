@@ -158,3 +158,46 @@ func test_destroying_cover_removes_its_region_from_the_plane() -> void:
 	print("\n=== cover, destroyed ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(after, 2.0), 4, 2))
 	assert_null(ShotPlane.resolve_projectile(after, Vector2(0.0, 0.5)))
+
+
+## docs/10 Phase 12.3: AimController groups the plane into layers by owning
+## body — a unit's regions all point back to that Unit, cover's own regions
+## point back to the cover Part itself.
+func test_build_tags_every_region_with_its_owning_body() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
+	state.add_unit(near_unit)
+	var crate := _part(&"crate", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6)))
+	grid.blockers[Vector2i(2, 4)] = crate
+
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	for region: Region in plane:
+		if region.part == crate:
+			assert_eq(region.body, crate)
+		else:
+			assert_eq(region.body, near_unit)
+
+
+func test_center_of_returns_the_frontmost_regions_rect_center() -> void:
+	var grid := Grid.new(10, 10)
+	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
+	var state := CombatState.new(grid, [near_unit])
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	var center: Vector2 = ShotPlane.center_of(plane, near_unit)
+	var expected: Region = ShotPlane.resolve_projectile(plane, center)
+	assert_eq(expected.part.id, &"near", "the returned point must land inside the unit's own region")
+
+
+func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
+	var no_volume := Part.new()
+	no_volume.id = &"ghost"
+	no_volume.hp = 5
+	no_volume.max_hp = 5
+	var ghost_unit := Unit.new(Matrix.new(), Frame.new(no_volume), Vector2i(4, 4))
+	var state := CombatState.new(Grid.new(10, 10), [ghost_unit])
+	var plane: Array[Region] = ShotPlane.build(Vector2(4, 0), Vector2(0, 1), state)
+
+	assert_eq(ShotPlane.center_of(plane, ghost_unit), Vector2(4, 4))

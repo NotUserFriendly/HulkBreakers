@@ -80,6 +80,7 @@ func test_is_armed_true_when_a_weapon_has_its_required_manipulators() -> void:
 
 	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
 	assert_true(DeepStrike.is_armed(unit))
+	assert_eq(DeepStrike.find_operable_weapon(unit), pistol)
 
 
 func test_is_armed_false_with_no_weapon_at_all() -> void:
@@ -89,6 +90,7 @@ func test_is_armed_false_with_no_weapon_at_all() -> void:
 	torso.max_hp = 5
 	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
 	assert_false(DeepStrike.is_armed(unit))
+	assert_null(DeepStrike.find_operable_weapon(unit))
 
 
 func test_is_armed_false_when_the_weapon_has_no_capable_manipulator() -> void:

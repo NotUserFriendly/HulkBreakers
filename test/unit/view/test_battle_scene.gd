@@ -43,8 +43,8 @@ func test_calling_new_battle_again_does_not_leak_the_previous_units_views() -> v
 
 	assert_eq(scene.unit_views.size(), scene.combat_state.units.size())
 	# world_environment + camera_rig + board_view + tactics + ui CanvasLayer +
-	# one UnitView per unit.
-	assert_eq(scene.get_child_count(), 5 + scene.combat_state.units.size())
+	# aim_view + one UnitView per unit.
+	assert_eq(scene.get_child_count(), 6 + scene.combat_state.units.size())
 	assert_eq(scene.combat_state.units.size(), unit_count, "the seeded roster size is stable")
 
 

@@ -219,10 +219,11 @@ static func validate_assembly(unit: Unit) -> Array[String]:
 	return violations
 
 
-## True if some living, damage-dealing part can actually be fired given
-## the rest of the assembly's manipulators (docs/01 capability matching) —
-## never a crash, always a definite yes/no.
-static func is_armed(unit: Unit) -> bool:
+## The first living, damage-dealing part that can actually be fired given
+## the rest of the assembly's manipulators (docs/01 capability matching), or
+## null if none can — the same check the aim UI (docs/10 Phase 12.3) uses to
+## pick what a confirmed shot actually fires.
+static func find_operable_weapon(unit: Unit) -> Part:
 	var living: Array[Part] = unit.frame.living_parts()
 	for weapon: Part in living:
 		if weapon.damage <= 0.0:
@@ -232,5 +233,12 @@ static func is_armed(unit: Unit) -> bool:
 			if part != weapon:
 				manipulators.append(part)
 		if PartGraph.can_operate(weapon, manipulators):
-			return true
-	return false
+			return weapon
+	return null
+
+
+## True if some living, damage-dealing part can actually be fired given
+## the rest of the assembly's manipulators — never a crash, always a
+## definite yes/no.
+static func is_armed(unit: Unit) -> bool:
+	return find_operable_weapon(unit) != null

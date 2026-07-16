@@ -14,6 +14,7 @@ const GRID_HEIGHT := 10
 var board_view: BoardView
 var camera_rig: CameraRig
 var tactics: TacticsController
+var aim_view: AimView
 var unit_views: Array[UnitView] = []
 var combat_state: CombatState
 
@@ -33,8 +34,11 @@ func _ready() -> void:
 
 	var ui := CanvasLayer.new()
 	add_child(ui)
+	var layout := VBoxContainer.new()
+	ui.add_child(layout)
+
 	var buttons := HBoxContainer.new()
-	ui.add_child(buttons)
+	layout.add_child(buttons)
 	var new_battle_button := Button.new()
 	new_battle_button.text = "New Battle"
 	new_battle_button.pressed.connect(_on_new_battle_pressed)
@@ -43,6 +47,16 @@ func _ready() -> void:
 	end_turn_button.text = "End Turn"
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
 	buttons.add_child(end_turn_button)
+
+	var aim_readout := RichTextLabel.new()
+	aim_readout.bbcode_enabled = false
+	aim_readout.custom_minimum_size = Vector2(320, 60)
+	aim_readout.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
+	layout.add_child(aim_readout)
+
+	aim_view = AimView.new()
+	add_child(aim_view)
+	aim_view.setup(tactics, aim_readout)
 
 	new_battle(DEFAULT_SEED)
 
@@ -83,7 +97,7 @@ func new_battle(seed_value: int) -> void:
 			(combat_state.grid.height - 1) * UnitGeometry.CELL_SIZE * 0.5
 		)
 	)
-	tactics.setup(combat_state, board_view, camera_rig.camera())
+	tactics.setup(combat_state, board_view, camera_rig)
 
 	for unit: Unit in combat_state.units:
 		var view := UnitView.new()

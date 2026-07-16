@@ -22,6 +22,7 @@ static func build(origin: Vector2, direction: Vector2, state: CombatState) -> Ar
 		var offset := _offset(unit.cell, origin, dir, perp)
 		for region: Region in BodyProjector.project(unit, dir):
 			_place(region, offset)
+			region.body = unit
 			regions.append(region)
 
 	for cell: Vector2i in state.grid.blockers:
@@ -29,6 +30,7 @@ static func build(origin: Vector2, direction: Vector2, state: CombatState) -> Ar
 		var offset := _offset(cell, origin, dir, perp)
 		for region: Region in BodyProjector.project_part(part, dir):
 			_place(region, offset)
+			region.body = part
 			regions.append(region)
 
 	regions.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
@@ -62,6 +64,24 @@ static func units_along(plane: Array[Region], state: CombatState) -> Array[Unit]
 		units.append(unit)
 	units.sort_custom(func(a: Unit, b: Unit) -> bool: return best_depth[a] < best_depth[b])
 	return units
+
+
+## The frontmost region belonging to `target`'s rect center — a point, never
+## a chosen body part (docs/02: the dartboard picks a point, not a part).
+## Shared by AttackAction's default aim point and the aim UI's reticle
+## default (docs/10 Phase 12.3): both must agree on "center mass," never
+## compute it twice.
+static func center_of(plane: Array[Region], target: Unit) -> Vector2:
+	var target_parts: Array[Part] = target.frame.all_parts()
+	var best: Region = null
+	for region: Region in plane:
+		if not target_parts.has(region.part):
+			continue
+		if best == null or region.depth < best.depth:
+			best = region
+	if best == null:
+		return Vector2(target.cell.x, target.cell.y)
+	return best.rect.get_center()
 
 
 static func _offset(cell: Vector2i, origin: Vector2, dir: Vector2, perp: Vector2) -> Vector2:

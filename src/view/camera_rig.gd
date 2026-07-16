@@ -11,6 +11,10 @@ extends Node3D
 ## state changes and state into transforms.
 
 var state := CameraOrbitState.new()
+## docs/10: in the aim UI, scroll steps the dartboard layer instead of
+## zooming (TacticsController clears this while aiming). Orbit/pan stay
+## live either way — only wheel-zoom is gated.
+var zoom_enabled: bool = true
 
 var _yaw_pivot: Node3D
 var _pitch_pivot: Node3D
@@ -39,7 +43,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
 			state.pan(motion.relative, _yaw_pivot.transform.basis.x, _yaw_pivot.transform.basis.z)
 			_apply_state()
-	elif event is InputEventMouseButton:
+	elif event is InputEventMouseButton and zoom_enabled:
 		var button_event := event as InputEventMouseButton
 		if not button_event.pressed:
 			return
