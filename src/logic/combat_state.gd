@@ -4,6 +4,10 @@ extends RefCounted
 var grid: Grid
 var units: Array[Unit] = []  # turn order
 var squads: Dictionary = {}  # squad_id(int) -> Array[Unit]
+## docs/10 taskblock02 F1: squad_id(int) -> Enums.SquadController. Absent
+## entries default to HUMAN (controller_for) — "Control All Squads" is
+## every squad's starting state, an override never has to opt in for it.
+var squad_controllers: Dictionary = {}
 var turn_index: int = 0
 ## The actual round number (docs/09 LogEvent.turn), distinct from turn_index
 ## (a position in the turn-order array). Incremented in advance_turn() each
@@ -73,6 +77,17 @@ func find_unit(id: int) -> Unit:
 	return null
 
 
+## docs/10 taskblock02 F1: HUMAN unless a squad was explicitly set to AI —
+## "Control All Squads," the default this build ships with, is simply
+## never overriding anything.
+func controller_for(squad_id: int) -> Enums.SquadController:
+	return squad_controllers.get(squad_id, Enums.SquadController.HUMAN)
+
+
+func set_squad_controller(squad_id: int, controller: Enums.SquadController) -> void:
+	squad_controllers[squad_id] = controller
+
+
 func log_action(text: String) -> void:
 	action_log.append(text)
 
@@ -93,6 +108,7 @@ func dup() -> CombatState:
 	var cloned := CombatState.new(grid.dup(), [], rng.seed)
 	cloned.is_preview = true
 	cloned.terrain_costs = terrain_costs.duplicate()
+	cloned.squad_controllers = squad_controllers.duplicate()
 	cloned.material_table = material_table
 	for unit: Unit in cloned_units:
 		cloned.add_unit(unit)

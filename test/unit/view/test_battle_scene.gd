@@ -57,11 +57,11 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 		var view: UnitView = scene.unit_views[i]
 		var placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
 
-		# +1: UnitView's own team marker (docs/10) sits at child 0, ahead of
-		# the part meshes.
-		assert_eq(view.get_child_count(), placements.size() + 1)
+		# +2: UnitView's own team marker (docs/10) at child 0 and facing
+		# wedge (docs/10 taskblock02 F3) at child 1, ahead of the part meshes.
+		assert_eq(view.get_child_count(), placements.size() + 2)
 		for j in range(placements.size()):
-			var mesh_instance: MeshInstance3D = view.get_child(j + 1)
+			var mesh_instance: MeshInstance3D = view.get_child(j + 2)
 			var expected: Transform3D = placements[j].transform.translated_local(
 				placements[j].box.center
 			)
@@ -102,12 +102,12 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 
 	var view: UnitView = scene.unit_views[scene.combat_state.units.find(current)]
 	var expected: Array[BoxPlacement] = UnitGeometry.placements(current)
-	# +1: the team marker (docs/10) at child 0.
+	# +2: team marker (docs/10) at child 0, facing wedge (F3) at child 1.
 	assert_eq(
-		view.get_child_count(), expected.size() + 1, "the view must have redrawn at the new cell"
+		view.get_child_count(), expected.size() + 2, "the view must have redrawn at the new cell"
 	)
 	for i in range(expected.size()):
-		var mesh_instance: MeshInstance3D = view.get_child(i + 1)
+		var mesh_instance: MeshInstance3D = view.get_child(i + 2)
 		assert_eq(
 			mesh_instance.transform, expected[i].transform.translated_local(expected[i].box.center)
 		)

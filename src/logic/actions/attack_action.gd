@@ -68,6 +68,15 @@ func apply(state: CombatState) -> void:
 	var weapon: Part = actual.shell.find_part(weapon_id)
 	actual.ap -= weapon.ap_cost
 
+	# docs/10 taskblock02 F3: firing faces the shooter toward the target
+	# for free, inside apply() same as AP spend — never a separate charge,
+	# and never skipped just because this is a preview (a queued shot's
+	# preview should show the shooter's final rotation too).
+	if actual.cell != target_cell:
+		FaceAction.face_for_free(
+			state, actual, FaceAction.orientation_toward(actual.cell, target_cell)
+		)
+
 	if state.is_preview:
 		# The one thing a preview must never resolve (docs/09): whether this
 		# round actually hits and kills is exactly what RESOLUTION alone

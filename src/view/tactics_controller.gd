@@ -22,6 +22,11 @@ signal selection_changed
 ## raw screen-motion delta scaled into plane units).
 const RETICLE_SENSITIVITY := 0.01
 
+## docs/10 taskblock02 F3: Q/E step size — docs/10 doesn't pin an exact
+## increment, a flagged placeholder like RETICLE_SENSITIVITY above, not a
+## design decision. 45 degrees: enough turns to face any of 8 directions.
+const FACE_STEP := PI / 4.0
+
 var selection: SelectionController
 var board_view: BoardView
 var camera_rig: CameraRig
@@ -57,8 +62,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		move_reticle((event as InputEventMouseMotion).relative * RETICLE_SENSITIVITY)
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
-		if key_event.pressed and key_event.keycode == KEY_ESCAPE and aiming_at != null:
-			cancel_aim()
+		if not key_event.pressed:
+			return
+		if key_event.keycode == KEY_ESCAPE:
+			# docs/10 taskblock02 F2: Esc always backs out one level — out
+			# of Attack mode first if aiming, otherwise a plain deselect.
+			if aiming_at != null:
+				cancel_aim()
+			else:
+				deselect()
+		elif key_event.keycode == KEY_Q and aiming_at == null:
+			turn_selected(-FACE_STEP)
+		elif key_event.keycode == KEY_E and aiming_at == null:
+			turn_selected(FACE_STEP)
 
 
 func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
@@ -70,6 +86,12 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		var cell: Variant = BoardPicker.cell_at_ray(from, dir)
 		if cell != null:
 			click_cell(cell)
+		elif aiming_at == null:
+			# docs/10 taskblock02 F2: clicking off the board entirely is
+			# "away" — deselect. A click still on the board but out of
+			# reach is a different thing (the player is aiming for a cell
+			# they can't use yet, not backing out) and stays a no-op.
+			deselect()
 	elif button_event.button_index == MOUSE_BUTTON_RIGHT and aiming_at != null:
 		cancel_aim()
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and aiming_at != null:
@@ -82,8 +104,10 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 ## queue an AttackAction"), regardless of which cell was actually clicked.
 ## Otherwise: click your own (current-turn) unit to select it; with a unit
 ## selected, click a live enemy to enter Attack mode, or click a reachable
-## cell to queue a move there. Anything else is a no-op — a plain click
-## never cancels a selection (docs/10: right-click/Esc does that).
+## cell to queue a move there. A click on a valid, on-board cell never
+## cancels a selection by itself — that's `deselect()`'s job, reached via
+## Esc or an off-board click (docs/10 taskblock02 F2), never a plain
+## in-board click that just happens to be out of reach.
 func click_cell(cell: Vector2i) -> void:
 	if input_locked:
 		return
@@ -98,6 +122,26 @@ func click_cell(cell: Vector2i) -> void:
 		_enter_aim_mode(unit_here)
 	elif selection.selected_unit != null:
 		selection.queue_move(cell)
+	_refresh_overlay()
+
+
+## docs/10 taskblock02 F2: "click away / Esc → deselect." A no-op if
+## nothing's selected in the first place.
+func deselect() -> void:
+	if selection == null or selection.selected_unit == null:
+		return
+	selection.select(null)
+	_refresh_overlay()
+
+
+## docs/10 taskblock02 F3: Q/E — turns the selected unit by `delta` radians
+## relative to whatever it would already be facing after every action
+## queued so far this TACTICS pass, so repeated presses accumulate
+## correctly instead of each one starting back from the pre-queue value.
+func turn_selected(delta: float) -> void:
+	if input_locked or selection == null or selection.selected_unit == null:
+		return
+	selection.queue_face(selection.previewed_orientation() + delta)
 	_refresh_overlay()
 
 

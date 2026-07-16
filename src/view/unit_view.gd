@@ -14,6 +14,15 @@ const TEAM_MARKER_RADIUS := 0.4
 const TEAM_MARKER_HEIGHT := 0.02
 const TEAM_MARKER_Y := 0.01
 const SELECTED_BRIGHTEN := 0.35
+## docs/10 taskblock02 F3: a facing wedge on the ring, so the player can
+## actually see which way a unit is turned before spending MP to change
+## it — a tab riding the marker's own edge, pointing in
+## `Unit.orientation`'s direction (docs/02's continuous, never-snapped
+## angle, same one BodyProjector reads). Sized to actually read at the
+## default tactical camera distance (docs/10: "legibility is not
+## optional") — taller than the ground marker so it never z-fights with it.
+const FACING_WEDGE_SIZE := Vector3(0.16, 0.10, 0.30)
+const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
 
 var unit: Unit
 var material_table: MaterialTable
@@ -47,6 +56,7 @@ func refresh() -> void:
 
 	_team_marker = _build_team_marker()
 	add_child(_team_marker)
+	add_child(_build_facing_wedge())
 
 	var rim: StandardMaterial3D = WorldPalette.rim_outline_material(
 		WorldPalette.team_color(unit.squad_id)
@@ -79,4 +89,20 @@ func _build_team_marker() -> MeshInstance3D:
 	instance.mesh = disc
 	instance.material_override = WorldPalette.overlay_material(_marker_color())
 	instance.position = Vector3(unit.cell.x, TEAM_MARKER_Y, unit.cell.y) * UnitGeometry.CELL_SIZE
+	return instance
+
+
+func _build_facing_wedge() -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = FACING_WEDGE_SIZE
+	instance.mesh = box
+	instance.material_override = WorldPalette.overlay_material(_marker_color())
+	var forward: Vector2 = BodyProjector.WORLD_FORWARD.rotated(unit.orientation)
+	var base := (
+		Vector3(unit.cell.x, TEAM_MARKER_Y + TEAM_MARKER_HEIGHT, unit.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
+	instance.position = base + Vector3(forward.x, 0.0, forward.y) * FACING_WEDGE_OFFSET
+	instance.basis = Basis(Vector3.UP, unit.orientation)
 	return instance

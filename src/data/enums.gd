@@ -64,3 +64,17 @@ enum MissionOutcome {
 	TERMINATED,  # the player's own choice: cut losses, matrices blink back, loot lost
 	STRANDED,  # involuntary — no player matrix can act. NOT a loss; matrices persist regardless
 }
+
+## Who drives a squad's turns (docs/10 taskblock02 F1) — a closed engine
+## state, not open data (there is no third way to take a turn). HUMAN is
+## every squad's default (the "Control All Squads" build default): nothing
+## in TacticsController itself gates whose unit a click can select by
+## squad, so a HUMAN-controlled squad is already exactly what today's
+## input does. No AI decision-maker consults this yet — the heuristics
+## that exist today live only in test_full_mission.gd's own test harness,
+## never rehomed into production code. Flagged, not silently pretended
+## otherwise.
+enum SquadController {
+	HUMAN,
+	AI,
+}
