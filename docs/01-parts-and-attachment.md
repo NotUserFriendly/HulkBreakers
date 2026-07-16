@@ -125,6 +125,41 @@ Implementation: the dropped field item *is* the subtree root Part, sockets still
 - `sockets` (structural) and `contents` (inventory) are **different relationships**. A
   backpack is *attached* to a `BACK` socket and *contains* items.
 
+## Socket identity, and assembling a shell from data
+`socket_type` alone answers "can this attach here?" It doesn't answer "attach it to *this one*,
+not that one" — a torso with two `ARMOR` sockets (front, rear) has no way to say which is which.
+Historically that got resolved by declaration order (`find_free_socket` picking "whichever is
+free first"), which is a landmine: swap two lines in a pool and a plate silently mounts on the
+wrong face, with no test catching it unless that test happens to check the face that broke.
+
+**Fix: `Socket` also carries an `id: StringName`** — `&"ARMOR_FRONT"` vs. `&"ARMOR_REAR"`,
+`&"SHOULDER_L"` vs. `&"SHOULDER_R"`. Unique per host part, not globally; an open `StringName`,
+never an enum. `socket_type` still governs *legality* (the inversion above is untouched); `id`
+governs *which one*. `PartGraph.find_socket(part, id)` is the assembly path — order-independent
+by construction. `find_free_socket` survives only for genuinely "any will do" cases (deep-strike
+scavenging, or a carried body looking for any open `BACK` socket at runtime) and must never
+appear in a template.
+
+```
+ShellTemplate: { root_part_id, mounts: Array[Mount], max_mass, max_ram }   # the SKELETON
+Mount:         { socket_id, part_id, children: Array[Mount] }              # WHERE + WHAT, recursive
+Loadout:       { entries: Dictionary }                                     # socket_id -> part_id, discretionary fill
+
+BodyAssembler.assemble(template, loadout, pool, occupant, cell, squad_id) -> Unit
+```
+
+Template = structure (always assembled the same way — the skeleton), loadout = fill
+(discretionary — which weapon, if any, sits in an already-mounted hand's `GRIP`). Loadout wins
+on conflict with a Mount's own default `part_id`, so re-arming a template is a new `Loadout`,
+never a new template. Because `Loadout` is a **flat** `socket_id -> part_id` map, two sockets a
+loadout must be able to fill *independently* — the left hand's `GRIP` and the right hand's —
+need distinct ids (`GRIP_L`/`GRIP_R`) authored on distinct part templates (`hand_l`/`hand_r`),
+not one `hand` template mounted twice; two Mount nodes pointing at the same template both
+inherit the same socket id, so a flat loadout can't tell them apart.
+
+A missing pool id, an illegal `attaches_to` match, or an occupied socket is `push_error`'d with
+a named reason and fails the whole assembly — never a silent skip.
+
 ## The Reference Humanoid
 Authored data, not architecture — the socket graph above already expresses all of this. It
 exists because body-shape-driven behaviour can't be tested against a shapeless body.
