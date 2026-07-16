@@ -13,6 +13,7 @@ const GRID_HEIGHT := 10
 
 var board_view: BoardView
 var camera_rig: CameraRig
+var tactics: TacticsController
 var unit_views: Array[UnitView] = []
 var combat_state: CombatState
 
@@ -26,18 +27,40 @@ func _ready() -> void:
 	board_view = BoardView.new()
 	add_child(board_view)
 
+	tactics = TacticsController.new()
+	add_child(tactics)
+	tactics.turn_ended.connect(_on_turn_ended)
+
 	var ui := CanvasLayer.new()
 	add_child(ui)
-	var button := Button.new()
-	button.text = "New Battle"
-	button.pressed.connect(_on_new_battle_pressed)
-	ui.add_child(button)
+	var buttons := HBoxContainer.new()
+	ui.add_child(buttons)
+	var new_battle_button := Button.new()
+	new_battle_button.text = "New Battle"
+	new_battle_button.pressed.connect(_on_new_battle_pressed)
+	buttons.add_child(new_battle_button)
+	var end_turn_button := Button.new()
+	end_turn_button.text = "End Turn"
+	end_turn_button.pressed.connect(_on_end_turn_pressed)
+	buttons.add_child(end_turn_button)
 
 	new_battle(DEFAULT_SEED)
 
 
 func _on_new_battle_pressed() -> void:
 	new_battle(int(Time.get_ticks_usec()))
+
+
+func _on_end_turn_pressed() -> void:
+	tactics.end_turn()
+
+
+## Resolution has already mutated combat_state for real (docs/09) — every
+## UnitView rebuilds from the unit it already tracks, so a destroyed part
+## disappears and a moved unit redraws at its new cell.
+func _on_turn_ended() -> void:
+	for view: UnitView in unit_views:
+		view.refresh()
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a
@@ -60,6 +83,7 @@ func new_battle(seed_value: int) -> void:
 			(combat_state.grid.height - 1) * UnitGeometry.CELL_SIZE * 0.5
 		)
 	)
+	tactics.setup(combat_state, board_view, camera_rig.camera())
 
 	for unit: Unit in combat_state.units:
 		var view := UnitView.new()

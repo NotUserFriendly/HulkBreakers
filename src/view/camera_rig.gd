@@ -58,6 +58,13 @@ func center_on(world_position: Vector3) -> void:
 	_apply_state()
 
 
+## The actual Camera3D — for anything that needs to cast a ray through it
+## (docs/10 Phase 12.2's board picking), never for anything that would
+## bypass CameraOrbitState to move it directly.
+func camera() -> Camera3D:
+	return _camera
+
+
 func _apply_state() -> void:
 	_yaw_pivot.position = state.pan_offset
 	_yaw_pivot.rotation.y = state.yaw
