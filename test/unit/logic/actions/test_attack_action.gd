@@ -124,6 +124,26 @@ func test_apply_deals_damage_and_spends_ap() -> void:
 	assert_lt(target.frame.root.hp, 10, "an unarmored torso hit with damage 20 must penetrate")
 
 
+func test_impact_event_names_which_unit_actually_took_the_hit() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0, 2)
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(impacts.size() > 0)
+	assert_eq(
+		impacts[0].data.get("target_unit_id"),
+		target.id,
+		"docs/09: which unit was actually hit must be in the log, not just which part"
+	)
+
+
 func test_a_queued_attack_on_a_target_that_dies_earlier_aborts_and_the_queue_continues() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)

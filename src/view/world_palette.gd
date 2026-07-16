@@ -28,15 +28,15 @@ const AMBIENT_ENERGY := 0.25
 ## procedural sky paints the void a stock light grey with no relation to
 ## the theme, and unlit shadow faces read as pure black holes.
 static func world_environment() -> WorldEnvironment:
-	var world_environment := WorldEnvironment.new()
+	var node := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = VOID
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = GROUND
 	environment.ambient_light_energy = AMBIENT_ENERGY
-	world_environment.environment = environment
-	return world_environment
+	node.environment = environment
+	return node
 
 
 ## The one real light in the scene (docs/10: "why nothing was legible" —
