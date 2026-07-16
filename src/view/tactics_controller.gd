@@ -84,20 +84,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key_event := event as InputEventKey
 		if not key_event.pressed:
 			return
-		if key_event.keycode == KEY_ESCAPE:
+		if key_event.keycode == ControlBindings.DESELECT_KEY:
 			# docs/10 taskblock02 F2: Esc always backs out one level — out
 			# of Attack mode first if aiming, otherwise a plain deselect.
 			if aiming_at != null:
 				cancel_aim()
 			else:
 				deselect()
-		elif key_event.keycode == KEY_Q and aiming_at == null:
+		elif key_event.keycode == ControlBindings.FACE_NUDGE_CCW_KEY and aiming_at == null:
 			turn_selected(-FACE_STEP)
-		elif key_event.keycode == KEY_E and aiming_at == null:
+		elif key_event.keycode == ControlBindings.FACE_NUDGE_CW_KEY and aiming_at == null:
 			turn_selected(FACE_STEP)
-		elif key_event.keycode == KEY_F and aiming_at != null:
+		elif key_event.keycode == ControlBindings.RESET_FRAMING_KEY and aiming_at != null:
 			reset_framing()
-		elif key_event.keycode == KEY_R:
+		elif key_event.keycode == ControlBindings.RESET_TURN_KEY:
 			reset_turn()
 
 
