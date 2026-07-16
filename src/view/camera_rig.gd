@@ -20,15 +20,6 @@ var state := CameraOrbitState.new()
 ## zooming (TacticsController clears this while aiming). Orbit/pan stay
 ## live either way — only wheel-zoom is gated.
 var zoom_enabled: bool = true
-## runNotes.md: "third person camera needs to be locked" while aiming — the
-## live-orbit default (docs/10 taskblock03 C2) let the player rotate the
-## camera away from the shot direction, at which point the reticle drag's
-## screen-space -> shot-plane mapping (a fixed assumption that screen-right
-## is shot-plane-lateral-right) silently stopped matching what was on
-## screen — the actual cause of "lost the dartboard, can't aim at
-## anything." Set by TacticsController on entering/leaving aim; while true,
-## every live input branch below is ignored outright.
-var locked: bool = false
 
 var _yaw_pivot: Node3D
 var _pitch_pivot: Node3D
@@ -49,9 +40,15 @@ func _ready() -> void:
 	_apply_state()
 
 
+## docs/10 taskblock04 A3: "keep orbit/pan/zoom live during aim" — now that
+## the attack camera orbits a stable pivot (the target, `attack_framing()`)
+## instead of sitting at a literal computed point, live orbiting during aim
+## just swings the same inspection camera taskblock-03 C2 already wants,
+## rather than breaking anything. The old `locked` flag existed only
+## because the reticle's screen-to-shot-plane mapping used to assume a
+## fixed camera angle (docs/10 taskblock04's own aim-plane raycast fixed
+## that separately) — removed as dead weight once that reason was gone.
 func _unhandled_input(event: InputEvent) -> void:
-	if locked:
-		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
@@ -91,17 +88,22 @@ func center_on(world_position: Vector3) -> void:
 	_apply_state()
 
 
-## docs/10 taskblock03 C1 (runNotes.md follow-up): eases (never cuts) to the
-## attack camera's own over-the-shoulder framing — on entering aim, and
-## again on the F "reset framing" key, which is the identical target
-## framing, just a different trigger. Live input can still interrupt the
-## EASE itself via `_kill_active_tween` (so a stray input mid-tween doesn't
-## fight it for the rest of its duration) — but once `locked` is set
-## (TacticsController does this for the whole of aim mode), `_unhandled_
-## input` never reads live input again in the first place, so there is
-## nothing left to interrupt with once the ease finishes.
-func ease_to_attack_framing(shooter_pos: Vector3, target_pos: Vector3) -> void:
-	var target: Dictionary = state.attack_framing(shooter_pos, target_pos)
+## docs/10 taskblock04 A: eases (never cuts) to the attack camera's own
+## solved framing — on entering aim, and again on the F "reset framing"
+## key, which is the identical target framing, just a different trigger.
+## Live input can still interrupt the EASE itself via `_kill_active_tween`
+## (a stray orbit/pan mid-tween doesn't fight it for the rest of its
+## duration) — orbiting after it settles is expected now (A3: "keep
+## orbit/pan/zoom live during aim"), not something to block.
+##
+## `shooter`/`target` are `Unit`s, not raw positions — the solver needs
+## each unit's ACTUAL bounding sphere (UnitGeometry.bounding_sphere()),
+## never a hardcoded body size, so a giant enemy still gets a correct
+## framing with no special-casing here.
+func ease_to_attack_framing(shooter: Unit, target: Unit) -> void:
+	var framing: Dictionary = state.attack_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
+	)
 	var from_yaw: float = state.yaw
 	var from_pitch: float = state.pitch
 	var from_zoom: float = state.zoom
@@ -111,10 +113,10 @@ func ease_to_attack_framing(shooter_pos: Vector3, target_pos: Vector3) -> void:
 	_active_tween = create_tween()
 	_active_tween.tween_method(
 		func(t: float) -> void:
-			state.yaw = lerp_angle(from_yaw, target.yaw, t)
-			state.pitch = lerpf(from_pitch, target.pitch, t)
-			state.zoom = lerpf(from_zoom, target.zoom, t)
-			state.pan_offset = from_pan.lerp(target.pan_offset, t)
+			state.yaw = lerp_angle(from_yaw, framing.yaw, t)
+			state.pitch = lerpf(from_pitch, framing.pitch, t)
+			state.zoom = lerpf(from_zoom, framing.zoom, t)
+			state.pan_offset = from_pan.lerp(framing.pan_offset, t)
 			_apply_state(),
 		0.0,
 		1.0,

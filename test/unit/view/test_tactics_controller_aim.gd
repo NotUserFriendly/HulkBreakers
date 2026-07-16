@@ -138,22 +138,6 @@ func test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it() -> voi
 	assert_null(controller.aiming_at)
 
 
-## runNotes.md: "third person camera needs to be locked" while aiming.
-func test_entering_aim_mode_locks_the_camera_cancelling_unlocks_it() -> void:
-	var a := _make_armed_unit(Vector2i(0, 0), 0)
-	var b := _make_armed_unit(Vector2i(5, 5), 1)
-	var built: Dictionary = _setup([a, b])
-	var controller: TacticsController = built.controller
-	var camera_rig: CameraRig = built.camera_rig
-
-	controller.click_cell(Vector2i(0, 0))
-	controller.click_cell(Vector2i(5, 5))
-	assert_true(camera_rig.locked)
-
-	controller.cancel_aim()
-	assert_false(camera_rig.locked)
-
-
 func test_scroll_layer_only_changes_layer_index_while_aiming() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)

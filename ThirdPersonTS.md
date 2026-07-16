@@ -1,12 +1,19 @@
 # Third-person / over-the-shoulder attack camera — history and current state
 
 This tracks what's been tried on the Attack-mode camera (the shot that eases in when you
-click an enemy to aim), why each version changed, and where it stands. The camera has gone
-through three real designs and is still not considered "right" — this file exists so the next
-pass doesn't re-discover the same dead ends.
+click an enemy to aim), why each version changed, and where it stands.
 
 Relevant files: `src/logic/camera_orbit_state.gd` (`CameraOrbitState.attack_framing()`, pure
-math), `src/view/camera_rig.gd` (`CameraRig.ease_to_attack_framing()`, the tween shell).
+math), `src/view/camera_rig.gd` (`CameraRig.ease_to_attack_framing()`, the tween shell),
+`src/logic/unit_geometry.gd` (`UnitGeometry.bounding_sphere()`, the geometry the solver
+actually runs on).
+
+## Status: resolved (docs/10 taskblock04 Pass A)
+
+Design 3 (below) replaced offset-tuning with an actual solver, verified against the specific
+failure mode Design 2 had (both bodies fit in frame, shooter never behind the camera, no
+mid-tween sweep). Live-rendered and checked numerically. Considered done pending any further
+play-testing feedback.
 
 ## Architecture
 
@@ -15,12 +22,14 @@ math), `src/view/camera_rig.gd` (`CameraRig.ease_to_attack_framing()`, the tween
 - `CameraRig` is the thin `Node3D` shell: a yaw pivot holding a pitch pivot holding the
   `Camera3D` (`local (0,0,zoom)` from the pivot, zero rotation of its own). It only ever reads
   `CameraOrbitState` and writes `Transform3D`/`position` from it.
-- Entering Attack mode calls `CameraOrbitState.attack_framing(shooter_pos, target_pos)`, which
-  returns a target `{yaw, pitch, zoom, pan_offset}`. `CameraRig.ease_to_attack_framing()`
+- Entering Attack mode calls `CameraOrbitState.attack_framing(shooter_sphere, target_sphere)`,
+  which returns a target `{yaw, pitch, zoom, pan_offset}`. `CameraRig.ease_to_attack_framing()`
   tweens the *live* state from wherever it currently is to that target over
   `ATTACK_TWEEN_DURATION` (0.4s), via `Tween.tween_method` doing a plain per-field lerp
   (`lerp_angle` for yaw, `lerpf` for pitch/zoom, `Vector3.lerp` for `pan_offset`) each step.
-- While aiming, `CameraRig.locked = true` blocks all live orbit/pan/zoom input outright.
+- Orbit/pan/zoom stay live during aim (Design 3 removed the old `CameraRig.locked` flag
+  entirely — see below); wheel is still repurposed to step the dartboard layer instead of
+  zooming, unrelated and unchanged.
 
 ## Design 1 — orbit-pivot-plus-fixed-zoom (taskblock03 Pass C)
 
@@ -49,98 +58,138 @@ model outright:
 
 - `camera_pos = shooter_torso + ATTACK_UP_OFFSET (up) + ATTACK_RIGHT_OFFSET (perpendicular to
   the shooter→target line)`
-- Orientation: a direct look-at solve — `pitch = asin(look_dir.y)` (pitch is the *second*
-  Euler rotation, always applied around the already-yawed frame's own local X, so it depends
-  only on the look direction's Y component regardless of yaw); `yaw = atan2(-horiz.x,
-  -horiz.y)` where `horiz` is the look direction's horizontal (X, Z) component.
+- Orientation: a direct look-at solve — `pitch = asin(look_dir.y)`; `yaw = atan2(-horiz.x,
+  -horiz.y)`.
 - `zoom = 0` so `pan_offset` (the pivot) *is* the camera's exact world position — no leftover
   orbit-distance term.
 
-**Verified, not hand-derived:** wrote a headless diagnostic (`diag_lookat.gd`, scratchpad —
-not checked in) that builds a real `CameraRig`, applies computed `{yaw, pitch, pan_offset}`,
-and reads the actual `Camera3D.global_transform` back out, across several non-coplanar
-shooter/target pairs, confirming the formulas actually produce a camera that looks at the
-target — not just formulas that look plausible on paper.
+**Verified, not hand-derived:** a headless diagnostic (`diag_lookat.gd`, scratchpad — not
+checked in) built a real `CameraRig`, applied computed `{yaw, pitch, pan_offset}`, and read the
+actual `Camera3D.global_transform` back out, across several non-coplanar shooter/target pairs.
 
 **Bug caught in the process:** the first yaw formula (`Vector2(0,1).angle_to(horiz)`) only
 agreed with the verified-correct `atan2(-horiz.x, -horiz.y)` when the shooter and target
-shared a row or column — which was every case the original hand-written tests happened to
-cover. A diagonal (non-coplanar) test case exposed it. Fixed, and a diagonal case is now
-permanently in the test suite (`test_camera_orbit_state.gd`,
-`test_attack_framing_actually_looks_at_the_targets_torso`) so this can't quietly regress.
+shared a row or column. Fixed; a diagonal case stayed in the test suite.
 
-Initial constants: `ATTACK_RIGHT_OFFSET = 0.9`, `ATTACK_UP_OFFSET = 0.6`,
-`ATTACK_TORSO_HEIGHT = 1.25` (matches `ResolutionPlayer.TRACER_MUZZLE_HEIGHT`).
+Constants at the time: `ATTACK_RIGHT_OFFSET = 0.9`, `ATTACK_UP_OFFSET = 0.6`,
+`ATTACK_TORSO_HEIGHT = 1.25` (hardcoded humanoid chest height — see A2 below for why this had
+to go).
 
-## Investigation — "still very strange" (this pass)
+### Investigation — "still very strange"
 
-Reported after Design 2 had been live for a while. Investigated by stepping a live scene
-through the actual tween via scratchpad diagnostics (not checked in) and screenshotting at
-each stage: before aiming, tween start, tween mid-point (`Tween.custom_step()` to a known
-fraction), and fully eased.
+Stepped a live scene through the actual tween (before / tween-start / tween-mid / fully-eased)
+and screenshotted each stage.
 
-**Finding 1 — the final shot was showing the *target*, not the shooter, and no "shoulder" was
-visible at all.** At rest, `camera_pos` was only ~1.08 units from the shooter's own torso
-(box size `(0.5, 0.7, 0.28)`) — smaller than the shooter's own body. To confirm which unit was
-actually on screen, the shooter's `UnitView` was hidden (`view.visible = false`) and the scene
-re-rendered: the close-up humanoid figure **did not disappear**. It was the target the whole
-time, correctly centered (its screen-projected position landed exactly at the viewport
-center, confirming the look-at math itself is correct) with the aim reticle on its chest. The
-shooter — the thing the shot is supposed to be framed *over the shoulder of* — was never in
-frame. This reads less like an over-the-shoulder shot and more like a scope/sniper close-up on
-the target alone.
+**Finding 1 — the final shot showed the *target*, not the shooter, and no "shoulder" was
+visible at all.** At rest, `camera_pos` was only ~1.08 units from the shooter's own torso box —
+smaller than the shooter's own body. Hiding the shooter's `UnitView` and re-rendering proved
+the close-up figure on screen the whole time was the target, correctly centered (look-at math
+was fine) with the reticle on its chest — but the shooter, the thing the shot is meant to be
+framed *over the shoulder of*, was never in frame.
 
-**Finding 2 — the tween itself passes close enough to the shooter's body to glitch.** Because
+**Finding 2 — the tween itself passes close enough to the shooter's body to glitch.**
 `ease_to_attack_framing` interpolates `pan_offset` *linearly* from the current (distant,
-tactical) camera position to the tight final position, the straight-line path swept close
-enough to the shooter's own geometry partway through that the shooter's model visibly
-ballooned to fill roughly half the screen for part of the transition, before shrinking back
-down as the tween finished. Confirmed via a mid-tween screenshot (`_active_tween.custom_step(
-ATTACK_TWEEN_DURATION * 0.5)`).
+tactical) camera position to the tight final position; the straight-line path swept close
+enough to the shooter's geometry partway through to visibly balloon it across half the screen
+mid-transition.
 
-### Fix applied
+**First fix tried:** pulled `ATTACK_RIGHT_OFFSET`/`ATTACK_UP_OFFSET` back roughly 2.5x (0.9→2.5,
+0.6→1.5). Measurably better (mid-tween silhouette dropped from ~27% to ~11% of frame width),
+still reported as "funky." Root cause turned out to be structural, not a tuning problem — see
+Design 3.
 
-Given two candidate fixes — (a) pull the final resting offsets back so the shooter's body has
-real clearance, or (b) leave the final framing tight but change the tween's *path* (e.g. an
-intermediate waypoint or a curve) so it never sweeps through the shooter — the offset pull-back
-was chosen as the more contained change (one-line constant tune, no new interpolation
-machinery).
+## Design 3 — solved framing, orbit around the target (docs/10 taskblock04 Pass A)
 
-`ATTACK_RIGHT_OFFSET: 0.9 → 2.5`, `ATTACK_UP_OFFSET: 0.6 → 1.5` (roughly 2.5x each).
+**Why the pull-back could never actually work:** both `ATTACK_RIGHT_OFFSET` and
+`ATTACK_UP_OFFSET` are perpendicular to the shooter→target view axis. Growing them slides the
+camera sideways *past* the shooter — they can never pull it *into* the frustum along the one
+axis that matters. Measured against the usable half-FOV (≈31.9°, see below):
 
-**Verified improvement, not assumed:** re-ran the same before/mid/after screenshot sequence.
-The mid-tween shooter silhouette dropped from roughly 27% to roughly 11% of frame width. At
-rest, the camera-to-target sightline no longer passes anywhere near the shooter's torso
-(checked numerically: the closest point on the sightline to the shooter's torso moved from
-essentially coincident to several units away).
+| Config | Shooter's angle off frame centre | Visible? |
+|---|---|---|
+| Design 2 original (R=0.9, U=0.6) | 79.8° | no |
+| After the pull-back (R=2.5, U=1.5) | 64.1° | no |
 
-### Current status: still not right
+The pull-back bought 15° in an axis that can't reach. There was no "back" offset — nothing put
+the shooter *between* the camera and the target, which is what "over the shoulder" means.
 
-After the pull-back, the camera was reported as **still "funky"** — improved by the numbers
-above, but not resolved. The user is planning to investigate a deeper fix themselves; this
-pass is paused pending that. Current constants remain
-`ATTACK_RIGHT_OFFSET = 2.5, ATTACK_UP_OFFSET = 1.5, ATTACK_PITCH = -0.25` (fallback only, used
-when shooter and target share a cell), `ATTACK_TORSO_HEIGHT = 1.25`,
+### The fix: a solver, not an offset
+
+`attack_framing(shooter, target)` now takes each unit's own **bounding sphere**
+(`UnitGeometry.bounding_sphere()`, built from `UnitGeometry.placements()` — every living box's
+actual world-space corners, never a hardcoded body size, so a giant enemy solves its own
+correct distance with no special-casing):
+
+```
+1. bounds: {center, radius} for both units, from their real geometry.
+2. direction: to_target = normalize(target.center - shooter.center)   [horizontal]
+              right     = perpendicular to to_target
+   camera_pos = shooter.center - to_target*BACK + right*RIGHT + up*UP
+3. solve: binary search the smallest BACK such that both spheres' angular
+          footprint (angle to centre + asin(radius/distance)) fits inside
+          usable_half_fov = deg_to_rad(75/2) * 0.85  (Camera3D's default
+          vertical FOV, margin 0.85).
+4. express the result as an orbit around the TARGET: pan_offset =
+   target.center, zoom = |camera_pos - target.center|, {yaw, pitch}
+   derived from the offset direction.
+```
+
+`-to_target*BACK` is the missing axis Design 1/2 never had — it pulls the camera backward
+along the shot line, putting the shooter *between* the camera and the target.
+
+**Orbiting the target, not sitting at a literal point, is what actually kills the tween
+glitch.** Design 2's `zoom = 0` was a look-at camera shoehorned into an orbit parameterisation;
+lerping `{yaw, pitch, zoom, pan_offset}` between "far orbit round a pivot" and "camera at a
+literal point glued to the shooter" had no reason to produce a sane path. Making the pivot the
+*target's own bounding sphere center* means the tween is now pivot-lerp + zoom-lerp +
+yaw/pitch-lerp — an arc around a moving pivot, at sane distance throughout, that never goes
+near the shooter's body. Verified with a mid-tween clearance test
+(`test_mid_tween_the_camera_never_gets_close_to_the_shooter`, `test_camera_rig.gd`) stepping
+the tween to 10/25/50/75/90% and checking clearance from the shooter's sphere at each point —
+passes with real margin at every step, no special-casing required.
+
+As a consequence, orbiting live during aim is now safe (the pivot is stable and meaningful),
+so `CameraRig.locked` — which only ever existed because the old reticle screen-to-shot-plane
+mapping assumed a fixed camera angle (separately fixed by `AimPlaneGeometry`'s raycast
+approach) — was removed outright as dead weight, not just left unused.
+
+**Yaw/pitch formula:** unchanged from Design 2 (`asin`/`atan2`, already verified against a real
+Camera3D). For this rig's topology (camera at local `+Z*zoom` from a pivot, zero rotation of
+its own), the camera always faces its pivot by construction — the same `{yaw, pitch}` pair that
+made a `zoom=0` camera look *at* the target now places a `zoom=|offset|` orbit camera at the
+right point *around* the target pivot. Only what `zoom`/`pan_offset` represent changed.
+
+### Verification
+
+- `test_camera_orbit_state.gd`: both spheres fit across adjacent/mid/far/diagonal pairs; the
+  shooter is provably in front of the camera (`dot(shooter - cam, look) > 0`); a giant target
+  forces a larger BACK than a standard one; the solved BACK is the *smallest* qualifying one
+  (nudging the camera closer breaks the fit); deterministic; the pivot really is the target's
+  sphere, not a literal point.
+- `test_camera_rig.gd`: the target's screen-projected centre lands at the exact viewport
+  centre (the orbit-pivot property, checked against a live `Camera3D`); mid-tween clearance
+  from the shooter's sphere holds throughout the transition.
+- Live-rendered (seed 2, shooter cell (3,1), target cell (9,5)): both units visible in the same
+  frame at rest, and no ballooning glitch at any sampled mid-tween fraction — screenshots
+  compared directly against the Design 2 pull-back's equivalent renders.
+
+Current constants: `ATTACK_RIGHT_OFFSET = 0.9`, `ATTACK_UP_OFFSET = 0.6` (back to their
+original, small values — they're a lateral/vertical nudge now, not what fits anything;
+`CAMERA_FOV_DEG = 75.0` (must track the real `Camera3D`'s default — never set explicitly
+elsewhere), `ATTACK_MARGIN = 0.85`, `ATTACK_BACK_MAX = 200.0`,
+`ATTACK_BACK_ITERATIONS = 40`, `ATTACK_PITCH = -0.25` (degenerate-case fallback only),
 `ATTACK_TWEEN_DURATION = 0.4`.
 
-## Untried / candidate directions for the deeper fix
+## Open questions / untried directions
 
-Not implemented — recorded here so they don't need re-deriving:
-
-- **Tween path, not just the endpoint.** The pull-back reduced the mid-tween glitch but didn't
-  eliminate the underlying cause: a straight-line `pan_offset` lerp between two very different
-  camera regimes (far tactical orbit vs. close attack shot) has no guarantee of staying clear
-  of anything in between. A path that eases height/distance out first, or arcs around instead
-  of cutting through, would fix this at the source instead of relying on offset margin alone.
-- **Show the shooter on purpose.** An over-the-shoulder camera in most third-person games
-  keeps a visible sliver of the controlled character's own shoulder/weapon in the near
-  foreground for context. The current model only prevents *occlusion* of the target; it makes
-  no attempt to compose the shooter into the frame at all. Whether that's worth doing depends
-  on what "over the shoulder" is actually supposed to communicate here.
-- **Reconsider `ATTACK_TORSO_HEIGHT`/offset coupling.** Both offsets are currently flat
-  constants applied identically regardless of shooter/target distance or relative height
-  (e.g. shooting across an elevation change, once elevation exists). Not yet a problem on the
-  current flat single-elevation grid, but worth revisiting if/when that changes.
-- **Field of view.** Never touched this pass — `Camera3D` is using its default FOV throughout.
-  A narrower FOV at close range would reduce how much the shooter's proximity distorts the
-  frame in the first place, independent of position tuning.
+- **Show the shooter on purpose, not just avoid hiding it.** The solver guarantees both bodies
+  *fit*; it doesn't compose them (rule of thirds, shooter kept specifically in the near
+  foreground, etc.). Whether that's worth doing depends on what "over the shoulder" is supposed
+  to communicate beyond "both combatants are visible."
+- **Elevation.** Everything above assumes a flat single-elevation grid. Bounding spheres
+  already generalize correctly to any geometry, but the RIGHT/UP offset axes and the
+  degenerate same-point fallback haven't been thought through for a shot across a height
+  difference, once that exists.
+- **Field of view.** Untouched — `Camera3D` uses its engine default throughout. A narrower FOV
+  at close range was a candidate before the solver existed; may be moot now that BACK is solved
+  rather than fixed, but not re-examined.

@@ -39,67 +39,145 @@ func test_pan_offsets_along_the_given_axes() -> void:
 	assert_almost_eq(state.pan_offset.z, 0.0, 0.0001)
 
 
-## Reconstructs the rig's own look direction from {yaw, pitch} — the exact
-## relationship verified against a real Camera3D in scratchpad
-## diag_lookat.gd: pitch alone sets the vertical component (`sin(pitch)`,
-## independent of yaw, since pitch is the second rotation and always
-## applied around the already-yawed frame's own horizontal local X); yaw
-## alone sets the horizontal angle. Reused here so the pure-math tests can
-## check "does this framing actually look at the target" without a live
-## Camera3D (that end-to-end check lives in test_camera_rig.gd instead).
+## Reconstructs the rig's own look direction (the camera's OWN forward)
+## from {yaw, pitch} — the exact relationship verified against a real
+## Camera3D in scratchpad diag_lookat.gd (docs/10 taskblock03 C1):
+## pitch alone sets the vertical component (`sin(pitch)`, independent of
+## yaw, since pitch is the second rotation and always applied around the
+## already-yawed frame's own horizontal local X); yaw alone sets the
+## horizontal angle.
 func _look_dir(yaw: float, pitch: float) -> Vector3:
 	var horiz: float = cos(pitch)
 	return Vector3(-sin(yaw) * horiz, sin(pitch), -cos(yaw) * horiz)
 
 
-## runNotes.md follow-up: "tie the third person camera to the torso of the
-## aiming unit, offset right and up... point the camera at the torso of the
-## targeted unit." zoom=0 makes pan_offset the camera's exact world
-## position (no orbit-distance offset left); yaw/pitch must make it
-## actually look at the target's torso from there.
-func test_attack_framing_positions_the_camera_at_the_shooter_offset_right_and_up() -> void:
-	var state := CameraOrbitState.new()
-	var shooter := Vector3(2.0, 0.0, 3.0)
-	var target := Vector3(9.0, 0.0, 3.0)
+## docs/10 taskblock04 A3: the rig's camera sits at local (0,0,zoom) from
+## its pivot with no rotation of its own, so its world position is always
+## `pivot - zoom * (the camera's own forward)` — the offset direction is
+## exactly opposite the look direction. Reconstructs the actual camera
+## position from a framing Dictionary the same way CameraRig._apply_state()
+## would place it, without needing a live Node3D.
+func _camera_pos(framing: Dictionary) -> Vector3:
+	var look: Vector3 = _look_dir(framing.yaw, framing.pitch)
+	return (framing.pan_offset as Vector3) - look * (framing.zoom as float)
 
-	var framing: Dictionary = state.attack_framing(shooter, target)
-	var pos: Vector3 = framing.pan_offset
 
-	assert_eq(framing.zoom, 0.0, "no orbit-distance offset left — pan_offset IS the camera")
-	assert_almost_eq(
-		pos.y,
-		CameraOrbitState.ATTACK_TORSO_HEIGHT + CameraOrbitState.ATTACK_UP_OFFSET,
-		0.0001,
-		"torso height plus the up offset"
+func _sphere(center: Vector3, radius: float) -> Dictionary:
+	return {"center": center, "radius": radius}
+
+
+## Independent of CameraOrbitState's own private fit check — this is the
+## actual acceptance criterion (taskblock04 A4): does the sphere's whole
+## silhouette (its center's angle off the look direction, plus the
+## half-angle its own radius subtends) land inside the usable half-FOV.
+func _fits(camera_pos: Vector3, look: Vector3, sphere: Dictionary) -> bool:
+	var usable_half_fov: float = (
+		deg_to_rad(CameraOrbitState.CAMERA_FOV_DEG * 0.5) * CameraOrbitState.ATTACK_MARGIN
 	)
-	# Due +X shot line: "right" (forward x up, Godot's own right-handed Y-up
-	# convention — verified against a real Camera3D, see diag_lookat.gd) is
-	# due +Z.
-	assert_almost_eq(pos.x, shooter.x, 0.0001)
-	assert_almost_eq(pos.z, shooter.z + CameraOrbitState.ATTACK_RIGHT_OFFSET, 0.0001)
+	var offset: Vector3 = (sphere.center as Vector3) - camera_pos
+	var distance: float = offset.length()
+	if distance <= (sphere.radius as float):
+		return true
+	var angle_to_centre: float = look.angle_to(offset.normalized())
+	var half_angle: float = asin(clampf((sphere.radius as float) / distance, 0.0, 1.0))
+	return angle_to_centre + half_angle <= usable_half_fov
 
 
-func test_attack_framing_actually_looks_at_the_targets_torso() -> void:
+## docs/10 taskblock04 A2: "show the entire shooter (or a good portion),
+## while the entire target is also visible" — checked across adjacent,
+## mid-range, far, and diagonal (non-coplanar) pairs, not just the one
+## geometry the original hand-derived formula happened to be tested against.
+func test_attack_framing_fits_both_bodies_across_a_range_of_distances_and_angles() -> void:
 	var state := CameraOrbitState.new()
-	var shooter := Vector3(2.0, 0.0, 3.0)
-	var target := Vector3(9.0, 0.0, 8.0)  # diagonal, not sharing a row or column
+	var pairs := [
+		[Vector3(0.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0)],
+		[Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 6.0)],
+		[Vector3(0.0, 0.0, 0.0), Vector3(14.0, 0.0, 14.0)],
+		[Vector3(3.0, 0.0, 5.0), Vector3(-2.0, 0.0, -4.0)],
+	]
+	for pair: Array in pairs:
+		var shooter: Dictionary = _sphere(pair[0], 0.4)
+		var target: Dictionary = _sphere(pair[1], 0.4)
+
+		var framing: Dictionary = state.attack_framing(shooter, target)
+		var camera_pos: Vector3 = _camera_pos(framing)
+		var look: Vector3 = _look_dir(framing.yaw, framing.pitch)
+
+		assert_true(_fits(camera_pos, look, shooter), "shooter must fit: %s" % [pair])
+		assert_true(_fits(camera_pos, look, target), "target must fit: %s" % [pair])
+
+
+## The check that would have caught Design 2's missing "back" axis on day
+## one: the shooter has to actually sit in front of the camera, not
+## somewhere the lens is pointed away from.
+func test_attack_framing_keeps_the_shooter_in_front_of_the_camera() -> void:
+	var state := CameraOrbitState.new()
+	var shooter: Dictionary = _sphere(Vector3(2.0, 0.0, 3.0), 0.4)
+	var target: Dictionary = _sphere(Vector3(9.0, 0.0, 8.0), 0.4)
 
 	var framing: Dictionary = state.attack_framing(shooter, target)
-	var pos: Vector3 = framing.pan_offset
-	var target_torso: Vector3 = target + Vector3(0.0, CameraOrbitState.ATTACK_TORSO_HEIGHT, 0.0)
-	var expected_look: Vector3 = (target_torso - pos).normalized()
+	var camera_pos: Vector3 = _camera_pos(framing)
+	var look: Vector3 = _look_dir(framing.yaw, framing.pitch)
 
-	var actual_look: Vector3 = _look_dir(framing.yaw, framing.pitch)
-	assert_almost_eq(actual_look.x, expected_look.x, 0.001)
-	assert_almost_eq(actual_look.y, expected_look.y, 0.001)
-	assert_almost_eq(actual_look.z, expected_look.z, 0.001)
+	assert_gt(
+		look.dot((shooter.center as Vector3) - camera_pos),
+		0.0,
+		"the shooter must sit in front of the camera, not behind it"
+	)
+
+
+func test_attack_framing_solves_a_larger_back_for_a_giant_target() -> void:
+	var state := CameraOrbitState.new()
+	var shooter: Dictionary = _sphere(Vector3(0.0, 0.0, 0.0), 0.4)
+	var target_pos := Vector3(0.0, 0.0, 6.0)
+
+	var standard: Dictionary = state.attack_framing(shooter, _sphere(target_pos, 0.4))
+	# Large enough that the TARGET's own radius, not the shooter's fixed
+	# 0.4, is what ends up driving the solve — a modestly bigger radius
+	# can still fit "for free" under whatever BACK the shooter alone
+	# already forces, which would make this comparison a false pass.
+	var giant: Dictionary = state.attack_framing(shooter, _sphere(target_pos, 15.0))
+
+	assert_gt(
+		_camera_pos(giant).distance_to(shooter.center),
+		_camera_pos(standard).distance_to(shooter.center),
+		"a giant target must push the camera back further to still fit"
+	)
+
+
+## "The solver returns the smallest qualifying BACK" — nudging the solved
+## camera a little closer along the shot line must break the fit for at
+## least one sphere, or the solve wasn't actually minimal.
+func test_attack_framing_returns_the_smallest_qualifying_back() -> void:
+	var state := CameraOrbitState.new()
+	var shooter: Dictionary = _sphere(Vector3(0.0, 0.0, 0.0), 0.4)
+	var target: Dictionary = _sphere(Vector3(0.0, 0.0, 6.0), 0.4)
+
+	var framing: Dictionary = state.attack_framing(shooter, target)
+	var camera_pos: Vector3 = _camera_pos(framing)
+	assert_true(_fits(camera_pos, _look_dir(framing.yaw, framing.pitch), shooter))
+	assert_true(_fits(camera_pos, _look_dir(framing.yaw, framing.pitch), target))
+
+	var to_target := (
+		Vector2(
+			(target.center as Vector3).x - (shooter.center as Vector3).x,
+			(target.center as Vector3).z - (shooter.center as Vector3).z
+		)
+		. normalized()
+	)
+	var closer_pos: Vector3 = camera_pos + Vector3(to_target.x, 0.0, to_target.y) * 0.05
+	var closer_look: Vector3 = ((target.center as Vector3) - closer_pos).normalized()
+	assert_false(
+		_fits(closer_pos, closer_look, shooter) and _fits(closer_pos, closer_look, target),
+		"a camera nudged closer along the shot line must break the fit — BACK was already minimal"
+	)
 
 
 func test_attack_framing_falls_back_when_shooter_and_target_share_a_cell() -> void:
 	var state := CameraOrbitState.new()
 	state.yaw = 1.75
 	state.pitch = -0.4
-	var same_point := Vector3(4.0, 0.0, 4.0)
+	var same_point: Dictionary = _sphere(Vector3(4.0, 0.0, 4.0), 0.4)
 
 	var framing: Dictionary = state.attack_framing(same_point, same_point)
 
@@ -107,20 +185,30 @@ func test_attack_framing_falls_back_when_shooter_and_target_share_a_cell() -> vo
 	assert_almost_eq(framing.pitch, CameraOrbitState.ATTACK_PITCH, 0.0001)
 
 
-## The exact yaw computed isn't the point (that's an implementation detail
-## of which side of the pivot the rig orbits to) — what matters is that it
-## responds to the actual shooter->target direction, not a constant, and
-## is deterministic.
-func test_attack_framing_yaw_responds_to_the_shooter_to_target_direction() -> void:
+## docs/10 taskblock04 A3: "orbit around the TARGET — this kills the tween
+## glitch at the source." The pivot is the target's own bounding-sphere
+## center, and zoom is a real orbit distance — never Design 2's `zoom = 0`
+## "camera glued to a literal point" hack.
+func test_attack_framing_orbits_the_target_not_a_literal_point() -> void:
 	var state := CameraOrbitState.new()
-	var shooter := Vector3(0.0, 0.0, 0.0)
+	var shooter: Dictionary = _sphere(Vector3(2.0, 0.0, 3.0), 0.4)
+	var target: Dictionary = _sphere(Vector3(9.0, 0.0, 3.0), 0.4)
 
-	var east: Dictionary = state.attack_framing(shooter, Vector3(5.0, 0.0, 0.0))
-	var north: Dictionary = state.attack_framing(shooter, Vector3(0.0, 0.0, 5.0))
+	var framing: Dictionary = state.attack_framing(shooter, target)
 
-	assert_ne(east.yaw, north.yaw)
-	assert_eq(
-		state.attack_framing(shooter, Vector3(5.0, 0.0, 0.0)).yaw,
-		east.yaw,
-		"deterministic: same inputs, same framing"
-	)
+	assert_eq(framing.pan_offset, target.center, "the pivot is the target's own bounding sphere")
+	assert_gt(framing.zoom, 0.0, "a real orbit distance, not the zoom=0 look-at hack")
+
+
+func test_attack_framing_is_deterministic() -> void:
+	var state := CameraOrbitState.new()
+	var shooter: Dictionary = _sphere(Vector3(0.0, 0.0, 0.0), 0.4)
+	var target: Dictionary = _sphere(Vector3(5.0, 0.0, 0.0), 0.4)
+
+	var a: Dictionary = state.attack_framing(shooter, target)
+	var b: Dictionary = state.attack_framing(shooter, target)
+
+	assert_eq(a.yaw, b.yaw)
+	assert_eq(a.pitch, b.pitch)
+	assert_eq(a.zoom, b.zoom)
+	assert_eq(a.pan_offset, b.pan_offset)

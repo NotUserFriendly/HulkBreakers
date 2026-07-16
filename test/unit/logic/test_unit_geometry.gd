@@ -116,6 +116,89 @@ func test_a_destroyed_child_part_disappears_but_its_living_siblings_remain() -> 
 	assert_false(placed_ids.has(&"arm"), "a destroyed part must not be placed")
 
 
+## docs/10 taskblock04 A2: "compute each unit's bounding sphere from its
+## ACTUAL geometry... do NOT hardcode humanoid dimensions."
+func test_bounding_sphere_of_a_single_box_is_the_boxs_own_half_diagonal() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 2.0, 2.0))]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(5, 5))
+	var sphere: Dictionary = UnitGeometry.bounding_sphere(unit)
+
+	assert_almost_eq((sphere.center as Vector3).x, 5.0, 0.0001)
+	assert_almost_eq((sphere.center as Vector3).z, 5.0, 0.0001)
+	# A 2x2x2 cube's own half-diagonal: sqrt(3) * (2/2).
+	assert_almost_eq(sphere.radius, sqrt(3.0), 0.0001)
+
+
+## A unit with limbs must get a LARGER sphere than its torso alone — the
+## whole point of computing this from real geometry instead of a constant.
+func test_bounding_sphere_grows_to_cover_every_living_box() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.7, 0.3))]
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(3.0, 0.0, 0.0)))
+	shoulder.occupant = arm
+	torso.sockets = [shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var torso_only := Part.new()
+	torso_only.id = &"torso"
+	torso_only.hp = 10
+	torso_only.max_hp = 10
+	torso_only.volume = torso.volume
+	var torso_only_unit := Unit.new(Matrix.new(), Shell.new(torso_only), Vector2i(0, 0))
+
+	var full_sphere: Dictionary = UnitGeometry.bounding_sphere(unit)
+	var torso_sphere: Dictionary = UnitGeometry.bounding_sphere(torso_only_unit)
+
+	assert_gt(full_sphere.radius, torso_sphere.radius, "the far-out arm must widen the sphere")
+
+
+func test_bounding_sphere_ignores_destroyed_parts() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 0
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.7, 0.3))]
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(50.0, 0.0, 0.0)))
+	shoulder.occupant = arm
+	torso.sockets = [shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var sphere: Dictionary = UnitGeometry.bounding_sphere(unit)
+
+	# A living arm 50 units out would blow the radius up enormously — its
+	# absence proves the dead arm was excluded, not just under-weighted.
+	assert_lt(sphere.radius, 5.0)
+
+
+func test_bounding_sphere_with_no_root_falls_back_to_the_units_own_cell() -> void:
+	var unit := Unit.new(Matrix.new(), Shell.new(null), Vector2i(3, 4))
+	var sphere: Dictionary = UnitGeometry.bounding_sphere(unit)
+
+	assert_almost_eq((sphere.center as Vector3).x, 3.0, 0.0001)
+	assert_almost_eq((sphere.center as Vector3).z, 4.0, 0.0001)
+	assert_almost_eq(sphere.radius, 0.0, 0.0001)
+
+
 func test_a_socket_transform_offsets_the_child_from_the_root() -> void:
 	var arm := Part.new()
 	arm.id = &"arm"
