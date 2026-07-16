@@ -34,10 +34,17 @@ const WAYPOINT_FONT_SIZE := 24
 ## docs/10 taskblock03 F1: "translucent... low alpha" — low enough to never
 ## be mistaken for the real, opaque unit.
 const UNIT_GHOST_ALPHA := 0.35
-## docs/10 taskblock02 G3: a subtle reference, not decoration — a value or
-## two off WorldPalette.GROUND (#2E4A32), never bright.
-const GRID_LINE_COLOR := Color("#253B29")
+## docs/10 taskblock03 I: the original #253B29 was a value or two off
+## WorldPalette.GROUND (#2E4A32) — nearly the same value, so it mipped away
+## to nothing at the default tactical camera distance. Pushed much further
+## from the ground's own value (still dim, still a reference, never bright)
+## and drawn as real-width quads (below) rather than 1px GPU line
+## primitives, which is the actual fix for "thin": PRIMITIVE_LINES has no
+## adjustable width in this renderer, so no color change alone could have
+## fixed legibility.
+const GRID_LINE_COLOR := Color("#16241A")
 const GRID_LINE_HEIGHT := 0.005
+const GRID_LINE_WIDTH := 0.04
 
 var grid: Grid
 
@@ -83,33 +90,56 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 		_spawn_blocker(grid.blockers[cell], cell, material_table)
 
 
-## docs/10 taskblock02 G3: "the ground is a flat green plane and you can't
-## tell where the tiles are." A line per cell boundary, just above the
-## ground to avoid z-fighting — a reference, not decoration, so it stays
-## unshaded and dim rather than lit and bright.
+## docs/10 taskblock02 G3 / taskblock03 I: "the ground is a flat green plane
+## and you can't tell where the tiles are." A line per cell boundary, just
+## above the ground to avoid z-fighting — a reference, not decoration, so it
+## stays unshaded and dim rather than lit and bright. Real GRID_LINE_WIDTH-
+## wide quads, not 1px GPU line primitives (no shader/LOD trick — just
+## actual geometry with a real width, drawn with the same real-width
+## convention D2's leg lines / F2's targeting line already use).
 func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()
 	var cell_size: float = UnitGeometry.CELL_SIZE
 	var half: float = cell_size * 0.5
+	var half_width: float = GRID_LINE_WIDTH * 0.5
 	var min_x: float = -half
 	var max_x: float = (p_grid.width - 1) * cell_size + half
 	var min_z: float = -half
 	var max_z: float = (p_grid.height - 1) * cell_size + half
 
-	mesh.surface_begin(Mesh.PRIMITIVE_LINES, WorldPalette.overlay_material(GRID_LINE_COLOR))
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(GRID_LINE_COLOR))
 	for x in range(p_grid.width + 1):
 		var wx: float = x * cell_size - half
-		mesh.surface_add_vertex(Vector3(wx, GRID_LINE_HEIGHT, min_z))
-		mesh.surface_add_vertex(Vector3(wx, GRID_LINE_HEIGHT, max_z))
+		_add_quad(
+			mesh,
+			Vector3(wx - half_width, GRID_LINE_HEIGHT, min_z),
+			Vector3(wx + half_width, GRID_LINE_HEIGHT, min_z),
+			Vector3(wx + half_width, GRID_LINE_HEIGHT, max_z),
+			Vector3(wx - half_width, GRID_LINE_HEIGHT, max_z)
+		)
 	for z in range(p_grid.height + 1):
 		var wz: float = z * cell_size - half
-		mesh.surface_add_vertex(Vector3(min_x, GRID_LINE_HEIGHT, wz))
-		mesh.surface_add_vertex(Vector3(max_x, GRID_LINE_HEIGHT, wz))
+		_add_quad(
+			mesh,
+			Vector3(min_x, GRID_LINE_HEIGHT, wz - half_width),
+			Vector3(max_x, GRID_LINE_HEIGHT, wz - half_width),
+			Vector3(max_x, GRID_LINE_HEIGHT, wz + half_width),
+			Vector3(min_x, GRID_LINE_HEIGHT, wz + half_width)
+		)
 	mesh.surface_end()
 
 	instance.mesh = mesh
 	return instance
+
+
+static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	mesh.surface_add_vertex(a)
+	mesh.surface_add_vertex(b)
+	mesh.surface_add_vertex(c)
+	mesh.surface_add_vertex(a)
+	mesh.surface_add_vertex(c)
+	mesh.surface_add_vertex(d)
 
 
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
