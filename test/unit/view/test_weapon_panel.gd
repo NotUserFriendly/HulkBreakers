@@ -121,10 +121,12 @@ func test_an_inactive_weapon_is_dimmed_and_shows_its_reason() -> void:
 	assert_true(label.text.contains("TRIGGER"), "the reason must actually be shown")
 
 
-## runNotes.md: "clicking on a red team unit should show their parts as
-## well" — WeaponPanel reads the same sticky inspected_unit InventoryPanel
-## does, not the TACTICS-restricted selected_unit.
-func test_clicking_a_unit_that_is_not_the_current_turn_still_shows_its_weapons() -> void:
+## docs/10 taskblock04 E2: "the currently controlled shell — and nothing
+## else." An enemy is never that, so clicking one must never populate the
+## weapons panel (cut from the old runNotes.md "clicking a red team unit
+## should show their parts" behavior — the combat readout's hover covers
+## full enemy status instead, E1/E3).
+func test_clicking_an_enemy_never_populates_the_weapons_panel() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
 	var built: Dictionary = _setup([a, b])
@@ -134,4 +136,4 @@ func test_clicking_a_unit_that_is_not_the_current_turn_still_shows_its_weapons()
 	controller.click_cell(Vector2i(5, 5))
 
 	assert_null(controller.selection.selected_unit, "clicking the enemy must not select it")
-	assert_true(label.text.contains("pistol"))
+	assert_eq(label.text, "", "the weapons panel must never show an enemy's own loadout")

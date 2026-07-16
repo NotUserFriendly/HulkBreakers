@@ -16,6 +16,9 @@ signal aim_changed
 ## Fires whenever `selection.selected_unit` might have changed — the stat
 ## panel (docs/08/10 Phase 12.5) redraws from this rather than polling.
 signal selection_changed
+## docs/10 taskblock04 E3: fires whenever `hovered_cell` or `inspected_part`
+## changes — the combat readout redraws from this rather than polling.
+signal hover_changed
 
 ## docs/10 taskblock02 F3: Q/E step size — docs/10 doesn't pin an exact
 ## increment, a flagged placeholder, not a design decision. 45 degrees:
@@ -37,15 +40,21 @@ var aiming_at: Unit = null
 var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
 
-## runNotes.md: "clicking on a red team unit should show their parts as
-## well, even during the blue team's turn." Deliberately separate from
-## `selection.selected_unit`, which stays gated to "the unit whose turn it
-## is" (the only unit any action can legally queue against) — inspecting a
-## unit's inventory is a read, never a TACTICS decision, so it has no
-## business being restricted the same way. Sticky across deselection: a
-## human still looking at what they just clicked on shouldn't lose that
-## view just because they clicked away from the board.
-var inspected_unit: Unit = null
+## docs/10 taskblock04 E3: "hover, don't click" — the cell the combat
+## readout currently reads (terrain, any unit regardless of squad, any
+## field object — TileInspection.inspect()). null off the board entirely
+## (e.g. the cursor sitting over a UI panel, where board hover never
+## fires). Superseded the old click-based `inspected_unit` (runNotes.md)
+## once hover covered "any unit, full detail" more directly — cutting the
+## inventory panel back to the currently controlled shell only (E2) is
+## what made that click-based mechanism redundant here.
+var hovered_cell: Variant = null
+## Set by clicking a row in the inventory panel (E3: "clicking a part in
+## the inventory panel fills the same readout with that part's detail") —
+## one readout, three sources. Cleared the instant the board is hovered
+## again (`update_hover`): whatever the player is actually pointing at
+## wins over a stale click.
+var inspected_part: Part = null
 
 ## True for the whole of RESOLUTION (docs/10): set the instant End Turn
 ## resolves, cleared once whoever is playing back the log calls
@@ -101,6 +110,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			aim_reticle_at_screen(motion.position)
 		elif _facing_drag_active:
 			drag_face(motion.relative.x)
+		else:
+			# docs/10 taskblock04 E3: "hover, don't click" — plain idle
+			# movement over the board updates what the combat readout
+			# shows. Only reached here, never while aiming/dragging: the
+			# reticle and the facing drag are both a more specific, more
+			# urgent read of the same motion event.
+			update_hover(motion.position)
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
 		if not key_event.pressed:
@@ -204,6 +220,30 @@ func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 	return BoardPicker.cell_at_ray(from, dir)
 
 
+## docs/10 taskblock04 E3: "hover, don't click" — the combat readout's own
+## live cursor read. `screen_pos` off the board entirely (no ground/unit
+## hit at all — e.g. the cursor is over a UI panel) sets `hovered_cell` to
+## null rather than leaving a stale cell behind.
+func update_hover(screen_pos: Vector2) -> void:
+	if selection == null or camera == null:
+		return
+	var from: Vector3 = camera.project_ray_origin(screen_pos)
+	var dir: Vector3 = camera.project_ray_normal(screen_pos)
+	var cell: Variant = _cell_at(from, dir)
+	if cell == hovered_cell and inspected_part == null:
+		return
+	hovered_cell = cell
+	inspected_part = null
+	hover_changed.emit()
+
+
+## docs/10 taskblock04 E3: "clicking a part in the inventory panel fills
+## the same readout with that part's detail" — one readout, three sources.
+func inspect_part(part: Part) -> void:
+	inspected_part = part
+	hover_changed.emit()
+
+
 ## While aiming: any click confirms the shot (docs/10: "click / confirm ->
 ## queue an AttackAction"), regardless of which cell was actually clicked.
 ## Otherwise: click your own (current-turn) unit to select it; with a unit
@@ -220,10 +260,6 @@ func click_cell(cell: Vector2i) -> void:
 		return
 
 	var unit_here: Unit = _unit_at(cell)
-	if unit_here != null:
-		# runNotes.md: inspecting a unit's inventory is independent of
-		# whether this click also selects it or enters aim mode below.
-		inspected_unit = unit_here
 	if unit_here != null and unit_here == selection.state.current_unit():
 		selection.select(unit_here)
 	elif unit_here != null and selection.selected_unit != null:

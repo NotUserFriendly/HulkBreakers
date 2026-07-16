@@ -76,25 +76,30 @@ func test_selecting_a_unit_fills_in_the_mass_and_ram_footer() -> void:
 	assert_true(footer.text.contains("ram"))
 
 
-## runNotes.md: inspection is sticky — a human still looking at what they
-## clicked shouldn't lose that view just because they clicked away from
-## the board (docs/10 taskblock02 F2's own "click away -> deselect" is a
-## TACTICS-selection concept, not an inspection one).
-func test_deselecting_does_not_clear_the_last_inspected_unit() -> void:
+## docs/10 taskblock04 E2: "Inventory... shows the currently controlled
+## shell — and nothing else." Deselecting means there is no longer a
+## controlled shell to show; the panel goes empty, not sticky (cut from
+## the old runNotes.md "sticky inspection" behavior — that's the combat
+## readout's job now, via hover, not the inventory panel's).
+func test_deselecting_clears_the_panel() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
 	var tree: Tree = built.tree
 	controller.click_cell(Vector2i(0, 0))
+	assert_not_null(tree.get_root())
 
 	controller.deselect()
 
-	assert_not_null(tree.get_root(), "the last-inspected unit's inventory stays visible")
+	assert_null(tree.get_root(), "no controlled shell left to show")
 
 
-## runNotes.md: "clicking on a red team unit should show their parts as
-## well, even during the blue team's turn."
-func test_clicking_a_unit_that_is_not_the_current_turn_still_shows_its_inventory() -> void:
+## docs/10 taskblock04 E2: "Inventory... and nothing else" — an enemy is
+## never the currently controlled shell, so clicking one must never
+## populate the inventory panel (cut from the old runNotes.md "clicking a
+## red team unit should show their parts" behavior — the combat readout's
+## hover now covers full enemy status instead, E1/E3).
+func test_clicking_an_enemy_never_populates_the_inventory_panel() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var enemy_root := Part.new()
 	enemy_root.id = &"enemy_torso"
@@ -108,8 +113,7 @@ func test_clicking_a_unit_that_is_not_the_current_turn_still_shows_its_inventory
 	controller.click_cell(Vector2i(5, 5))
 
 	assert_null(controller.selection.selected_unit, "clicking the enemy must not select it")
-	assert_not_null(tree.get_root(), "but it must still populate the inspection panel")
-	assert_eq(tree.get_root().get_child(0).get_text(InventoryPanel.COL_PART), "enemy_torso")
+	assert_null(tree.get_root(), "the inventory panel must never show an enemy's parts")
 
 
 ## runNotes.md: "pare the columns down to part name, condition, and mass."
@@ -200,3 +204,19 @@ func test_the_socket_id_appears_in_the_part_column() -> void:
 	var pistol_item: TreeItem = tree.get_root().get_child(0).get_child(0)
 	assert_true(pistol_item.get_text(InventoryPanel.COL_PART).contains("GRIP"))
 	assert_true(pistol_item.get_text(InventoryPanel.COL_PART).contains("pistol"))
+
+
+## docs/10 taskblock04 E3: "clicking a part in the inventory panel fills
+## the same readout with that part's detail" — selecting a row calls
+## TacticsController.inspect_part() with that row's own Part.
+func test_selecting_a_row_inspects_its_own_part() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var tree: Tree = built.tree
+	controller.click_cell(Vector2i(0, 0))
+
+	var item: TreeItem = tree.get_root().get_child(0)
+	item.select(InventoryPanel.COL_PART)
+
+	assert_eq(controller.inspected_part, a.shell.root)

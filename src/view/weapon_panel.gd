@@ -5,10 +5,12 @@ extends Node
 ## displays a list of weapons the unit has attached. Gray out 'inactive'
 ## weapons, with a 'why' attached." Pure presentation, same split as
 ## InventoryPanel/InventoryRows: every row's active/why already comes from
-## WeaponRows.build() — this only turns them into bbcode text. Reads
-## `tactics.inspected_unit`, the same sticky, any-squad selection the
-## inventory panel reads, so clicking either team's units shows their
-## weapons too.
+## WeaponRows.build() — this only turns them into bbcode text.
+##
+## docs/10 taskblock04 E2: reads `tactics.selection.selected_unit`, the
+## same "currently controlled shell, and nothing else" scope the inventory
+## panel now reads — an enemy's weapons are the combat readout's job (via
+## hover), same as the rest of their status.
 
 var tactics: TacticsController
 var label: RichTextLabel
@@ -22,7 +24,9 @@ func setup(p_tactics: TacticsController, p_label: RichTextLabel) -> void:
 
 
 func refresh() -> void:
-	var unit: Unit = tactics.inspected_unit if tactics != null else null
+	var unit: Unit = (
+		tactics.selection.selected_unit if tactics != null and tactics.selection != null else null
+	)
 	if unit == null:
 		label.text = ""
 		return
