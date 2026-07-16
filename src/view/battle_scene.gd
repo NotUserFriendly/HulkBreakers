@@ -27,6 +27,7 @@ var resolution_player: ResolutionPlayer
 var stat_panel: StatPanel
 var inventory_panel: InventoryPanel
 var weapon_panel: WeaponPanel
+var combat_readout_panel: CombatReadoutPanel
 var controls_overlay: ControlsOverlay
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
@@ -215,6 +216,15 @@ func _ready() -> void:
 	stat_drill_down.add_theme_color_override("default_color", HulkTheme.DIM)
 	bottom_right.add_child(stat_drill_down)
 
+	# docs/10 taskblock04 E2/E3: "the combat readout — everything else:
+	# enemy status, tile contents, part detail." Lives under the same
+	# COMBAT READOUT header as the aim/stat cluster above — hover the board
+	# or click an inventory row and this is what fills in.
+	var combat_readout_label := RichTextLabel.new()
+	combat_readout_label.custom_minimum_size = Vector2(320, 140)
+	combat_readout_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
+	bottom_right.add_child(combat_readout_label)
+
 	var new_battle_button := Button.new()
 	new_battle_button.text = "New Battle"
 	new_battle_button.pressed.connect(_on_new_battle_pressed)
@@ -250,6 +260,10 @@ func _ready() -> void:
 	weapon_panel = WeaponPanel.new()
 	add_child(weapon_panel)
 	weapon_panel.setup(tactics, weapon_label)
+
+	combat_readout_panel = CombatReadoutPanel.new()
+	add_child(combat_readout_panel)
+	combat_readout_panel.setup(tactics, combat_readout_label)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)

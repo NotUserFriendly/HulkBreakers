@@ -1,7 +1,10 @@
 class_name InventoryPanel
 extends Node
 
-## docs/10 taskblock03 H: the inspected unit's inventory, nested exactly as
+## docs/10 taskblock04 E2: "Inventory... shows the currently controlled
+## shell — and nothing else." Reads `tactics.selection.selected_unit`
+## (never any other unit, friend or foe — that's the combat readout's job
+## now, via hover: CombatReadoutPanel). Nested exactly as
 ## InventoryRows.build() says — sockets (structural) and contents
 ## (inventory) render as visibly different relationships (H1), never
 ## flattened together. Pure presentation: every number already comes from
@@ -9,13 +12,15 @@ extends Node
 ## carried_mass()/total_ram() — this Node only builds TreeItems and sets
 ## column text/color from them, no arithmetic of its own.
 ##
-## runNotes.md: reads TacticsController.inspected_unit, not
-## `tactics.selection.selected_unit` — inspection is deliberately not
-## restricted to "whose turn it is" (see inspected_unit's own doc comment).
-## runNotes.md also asked to declutter: only Part/Condition/Mass show as
-## columns now, with the full stat block (Material, DT, Bulk, socket,
-## inert) in a hover tooltip — Godot's own built-in per-item tooltip IS
-## "a new small window," no custom popup control needed.
+## docs/10 taskblock04 E3: "clicking a part in the inventory panel fills
+## the same readout with that part's detail" — clicking a row calls
+## `tactics.inspect_part()` with that row's own Part (stashed on the
+## TreeItem via `set_metadata`), never a second copy of the stat text.
+##
+## runNotes.md: only Part/Condition/Mass show as columns, with the full
+## stat block (Material, DT, Bulk, socket, inert) in a hover tooltip —
+## Godot's own built-in per-item tooltip IS "a new small window," no
+## custom popup control needed.
 
 const COLUMN_TITLES: Array[String] = ["Part", "Condition", "Mass"]
 const COL_PART := 0
@@ -67,13 +72,25 @@ func setup(
 	tree.set_column_custom_minimum_width(COL_CONDITION, COL_CONDITION_WIDTH)
 	tree.set_column_expand(COL_MASS, false)
 	tree.set_column_custom_minimum_width(COL_MASS, COL_MASS_WIDTH)
+	tree.item_selected.connect(_on_item_selected)
 	tactics.selection_changed.connect(refresh)
 	refresh()
 
 
+func _on_item_selected() -> void:
+	var item: TreeItem = tree.get_selected()
+	if item == null:
+		return
+	var part: Variant = item.get_metadata(COL_PART)
+	if part is Part:
+		tactics.inspect_part(part)
+
+
 func refresh() -> void:
 	tree.clear()
-	var unit: Unit = tactics.inspected_unit if tactics != null else null
+	var unit: Unit = (
+		tactics.selection.selected_unit if tactics != null and tactics.selection != null else null
+	)
 	if unit == null:
 		footer.text = ""
 		return
@@ -96,6 +113,7 @@ func refresh() -> void:
 
 func _fill_row(item: TreeItem, row: InventoryRow) -> void:
 	var part: Part = row.part
+	item.set_metadata(COL_PART, part)
 	var name: String = part.display_name if part.display_name != "" else String(part.id)
 	var label: String
 	if row.kind == InventoryRow.Kind.CONTENTS:
