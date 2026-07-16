@@ -117,6 +117,45 @@ static func _owning_unit(part: Part, state: CombatState) -> Unit:
 	return null
 
 
+## docs/04 taskblock02 Pass D1: destroying the shell root that hosts an
+## ATTACHED surrogate (not a bare matrix — `eject_matrix_if_needed` already
+## covers that direct, bot-style case) drops the whole surrogate, matrix
+## and all, as one intact field item. The root has no parent within itself
+## to "drop from" the normal subtree way (the root destroyed IS the unit),
+## so this is `eject_matrix_if_needed`'s shape one level down: the shell
+## was what protected the surrogate, and losing it exposes what's left.
+## Returns the ejected surrogate Part, or null if `part` isn't a destroyed
+## root hosting one.
+static func eject_surrogate_if_needed(part: Part, state: CombatState) -> Part:
+	if part.hp > 0:
+		return null
+	var owner: Unit = _owning_unit(part, state)
+	if owner == null or owner.shell.root != part:
+		return null
+	if part.hosts_matrix() and part.hosted_matrix != null:
+		return null  # a bare matrix docked directly: eject_matrix_if_needed's job
+
+	for socket: Socket in part.sockets:
+		var occupant: Part = socket.occupant
+		if occupant == null or not _hosts_matrix_somewhere(occupant):
+			continue
+		socket.occupant = null
+		if not state.grid.field_items.has(owner.cell):
+			state.grid.field_items[owner.cell] = []
+		state.grid.field_items[owner.cell].append(occupant)
+		owner.demote_surrogate(SurrogateLadder.default_ladder())
+		owner.alive = false
+		return occupant
+	return null
+
+
+static func _hosts_matrix_somewhere(part: Part) -> bool:
+	for candidate: Part in PartGraph.walk(part):
+		if candidate.hosts_matrix() and candidate.hosted_matrix != null:
+			return true
+	return false
+
+
 ## Destroying any non-root part drops its whole subtree as one intact
 ## assembly (docs/01: "blow a shoulder off and the entire subtree below it
 ## drops as one item... not exploded into a pile of disparate bits"). The
@@ -151,7 +190,8 @@ static func _resolve_destruction_consequences(
 	var owner: Unit = _owning_unit(region.part, state)
 	var tier_before: SurrogateTier = owner.surrogate_tier if owner != null else null
 	impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
-	if impact.ejected_matrix != null:
+	impact.ejected_surrogate = eject_surrogate_if_needed(region.part, state)
+	if impact.ejected_matrix != null or impact.ejected_surrogate != null:
 		impact.demoted_unit = owner
 		impact.demoted_tier_before = tier_before
 	impact.dropped_subtree = drop_subtree_if_destroyed(region.part, state)

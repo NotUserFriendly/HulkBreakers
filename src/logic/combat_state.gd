@@ -138,7 +138,7 @@ func _start_turn(unit: Unit) -> void:
 	unit.ap = unit.max_ap
 	unit.mp = 0.0  # leftover MP from a prior turn is discarded here (Appendix E)
 	var tier_before: SurrogateTier = unit.surrogate_tier
-	unit.tick_organics_decay(SurrogateLadder.default_ladder())
+	LifeSupport.tick(unit, SurrogateLadder.default_ladder())
 
 	if not is_preview:
 		combat_log.emit(

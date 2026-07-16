@@ -78,6 +78,43 @@ func mp_per_ap() -> float:
 	return BASE_MP + agility
 
 
+## docs/04 taskblock02 Pass D1: "Unit resolves its matrix by walking the
+## tree" — works whether it docks directly in the shell root (a bot) or two
+## levels down, inside an attached surrogate (a cyborg). The same object as
+## `matrix` while piloted; the one place that still knows where it actually
+## lives once nesting is involved.
+func resolve_matrix() -> Matrix:
+	for part: Part in shell.all_parts():
+		if part.hosts_matrix() and part.hosted_matrix != null:
+			return part.hosted_matrix
+	return null
+
+
+## docs/04 taskblock02 Pass D3: the docked surrogate's own capabilities, or
+## empty for a bot (no surrogate at all) or an unoccupied shell.
+func docked_surrogate_capabilities(ladder: Array[SurrogateTier]) -> Array[StringName]:
+	for part: Part in shell.all_parts():
+		if part.surrogate_tier == &"":
+			continue
+		for tier: SurrogateTier in ladder:
+			if tier.id == part.surrogate_tier:
+				return tier.capabilities
+	return []
+
+
+## False only if `part.body_requires` names a capability the docked
+## surrogate doesn't have — a part failing this is INERT (present,
+## carried, massed, shootable) never removed or errored (docs/04).
+func can_use_part(part: Part, ladder: Array[SurrogateTier]) -> bool:
+	if part.body_requires.is_empty():
+		return true
+	var capabilities: Array[StringName] = docked_surrogate_capabilities(ladder)
+	for required: StringName in part.body_requires:
+		if not required in capabilities:
+			return false
+	return true
+
+
 ## A fully independent copy — matrix, whole shell tree, and every scalar
 ## field — for TACTICS-time speculative previews (docs/09). Mutating a dup
 ## must never be observable on the original.
