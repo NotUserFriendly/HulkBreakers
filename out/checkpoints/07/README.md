@@ -1,15 +1,17 @@
 # Checkpoint 7
 
-Generated 2026-07-16T10:01:48Z, by launching the real project (`godot --path .`, a real GPU frame via `--display-driver x11`) and driving `BattleScene`/`TacticsController`/`CameraRig` exactly as a player would, then reading back the rendered frame — not a mockup. Recorded with `--write-movie`, converted from Godot's
+Generated 2026-07-16T10:11:45Z, by launching the real project (`godot --path .`, a real GPU frame via `--display-driver x11`) and driving `BattleScene`/`TacticsController`/`CameraRig` exactly as a player would, then reading back the rendered frame — not a mockup. Recorded with `--write-movie`, converted from Godot's
 native `.avi` output via `ffmpeg -c:v libx264` for a small file instead of the raw AVI.
 
 Phase 12 (docs/10, PLAN.md): "a human launches the game, selects a cyborg, queues a move and an
 aimed shot... ends the turn, watches the burst fire and ricochet, and reads the log —
-repeatedly, until one side is down." This recording exercises that loop for real: two hand-armed
-cyborgs (`jerry`, `raider`) trade pistol fire across several rounds until one side is down or
-the script ends. Phase 12.5's terminal shell (real OFL monospace font, six-color palette,
-rolling combat log via `UISink`, selected-unit stat block via `StatBlockView`/
-`WeaponResolver`, one `Theme` resource) is visible and live throughout.
+repeatedly, until one side is down." This recording exercises that loop for real: two
+`DeepStrike.assemble_reference_humanoid()` cyborgs (docs/01 "The Reference Humanoid" — full
+skeleton, head/arms/legs/plates/ammo rack, a pistol in each hand, deterministic and guaranteed
+armed, unlike the default battle's `assemble_random` loadouts) trade pistol fire across several
+rounds until one side is down or the script ends. Phase 12.5's terminal shell (real OFL
+monospace font, six-color palette, rolling combat log via `UISink`, selected-unit stat block
+via `StatBlockView`/`WeaponResolver`, one `Theme` resource) is visible and live throughout.
 
 **`playthrough.mp4`** — the full recording. Watch for:
 - The `RESOLUTION` banner (docs/10 Phase 12.4) holding through each turn's playback window,

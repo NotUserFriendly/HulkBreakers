@@ -5,9 +5,11 @@ extends SceneTree
 ## turn, watches the burst fire and ricochet, and reads the log —
 ## repeatedly, until one side is down." Drives that loop for real through
 ## the same public TacticsController/CameraRig API a player's mouse would
-## use. Two hand-armed cyborgs (guaranteed a working weapon — the default
-## battle's DeepStrike.assemble_random loadouts are not guaranteed armed)
-## trade pistol fire across several rounds.
+## use. Two DeepStrike.assemble_reference_humanoid() cyborgs (docs/01 "The
+## Reference Humanoid" — full skeleton, every socket filled, a pistol in
+## each hand, guaranteed armed) trade pistol fire across several rounds.
+## Deliberately not the default battle's DeepStrike.assemble_random
+## loadouts, which are allowed to be incomplete/unarmed by design.
 ##
 ## Run with `--write-movie <path>.avi` for the recording; this script also
 ## grabs three PNG stills along the way so there's something to look at
@@ -27,40 +29,6 @@ var _shot_fired_at := -1.0
 var _captured_first_impact := false
 var _captured_round1 := false
 var _captured_round2 := false
-
-
-func _armed_unit(cell: Vector2i, squad: int, unit_id: StringName) -> Unit:
-	var pistol := Part.new()
-	pistol.id = StringName("%s_pistol" % unit_id)
-	pistol.hp = 2
-	pistol.max_hp = 2
-	pistol.attaches_to = [&"GRIP"]
-	pistol.requires = {&"TRIGGER": 1}
-	pistol.damage = 4.0
-	pistol.ap_cost = 1
-	pistol.scatter = [Ring.new(0.15, 1.0), Ring.new(0.5, 2.0)]
-
-	var hand := Part.new()
-	hand.id = StringName("%s_hand" % unit_id)
-	hand.hp = 5
-	hand.max_hp = 5
-	hand.attaches_to = [&"HAND"]
-	hand.capabilities = [&"TRIGGER"]
-	var grip := Socket.new(&"GRIP")
-	grip.occupant = pistol
-	hand.sockets = [grip]
-
-	var torso := Part.new()
-	torso.id = StringName("%s_torso" % unit_id)
-	torso.hp = 16
-	torso.max_hp = 16
-	torso.material = &"sheet_steel"
-	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	var hand_socket := Socket.new(&"HAND")
-	hand_socket.occupant = hand
-	torso.sockets = [hand_socket]
-
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, squad)
 
 
 func _initialize() -> void:
@@ -116,8 +84,8 @@ func _process(delta: float) -> bool:
 
 	match _step:
 		0:
-			var jerry := _armed_unit(Vector2i(3, 5), 0, &"jerry")
-			var raider := _armed_unit(Vector2i(8, 5), 1, &"raider")
+			var jerry := DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(3, 5), 0)
+			var raider := DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(8, 5), 1)
 			var grid := Grid.new(12, 10)  # open ground: guarantees LoS for the demo
 			_battle_scene.combat_state = CombatState.new(grid, [jerry, raider], 1)
 			_battle_scene.combat_state.combat_log.add_sink(_battle_scene.log_sink)
