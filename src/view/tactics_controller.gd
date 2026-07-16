@@ -9,7 +9,9 @@ extends Node
 ## `cancel_aim` are split out from the raw input handlers so a test can
 ## drive them directly, with no live camera required.
 
-signal turn_ended
+## Carries the events resolve_turn() actually emitted, for whoever plays
+## back the resolution (docs/10 Phase 12.4's LogPlayback) to consume.
+signal turn_ended(events: Array[LogEvent])
 signal aim_changed
 
 ## Reticle-follows-mouse sensitivity (docs/10 doesn't specify a plane-space
@@ -27,6 +29,13 @@ var aiming_at: Unit = null
 var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
 
+## True for the whole of RESOLUTION (docs/10): set the instant End Turn
+## resolves, cleared once whoever is playing back the log calls
+## unlock_input(). The real mutation already happened synchronously by
+## then — this only blocks further TACTICS input during the cosmetic
+## replay, never delays the sim itself.
+var input_locked: bool = false
+
 
 func setup(state: CombatState, p_board_view: BoardView, p_camera_rig: CameraRig) -> void:
 	selection = SelectionController.new(state)
@@ -37,7 +46,7 @@ func setup(state: CombatState, p_board_view: BoardView, p_camera_rig: CameraRig)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if selection == null:
+	if selection == null or input_locked:
 		return
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event as InputEventMouseButton)
@@ -73,6 +82,8 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 ## cell to queue a move there. Anything else is a no-op — a plain click
 ## never cancels a selection (docs/10: right-click/Esc does that).
 func click_cell(cell: Vector2i) -> void:
+	if input_locked:
+		return
 	if aiming_at != null:
 		confirm_shot()
 		return
@@ -106,12 +117,16 @@ func _enter_aim_mode(target: Unit) -> void:
 ## rule) — clamping to a valid layer is AimController's job, this just
 ## accumulates the raw step.
 func scroll_layer(delta: int) -> void:
+	if input_locked:
+		return
 	if aiming_at != null:
 		layer_index += delta
 		aim_changed.emit()
 
 
 func move_reticle(delta: Vector2) -> void:
+	if input_locked:
+		return
 	if aiming_at != null:
 		reticle_offset += delta
 		aim_changed.emit()
@@ -140,7 +155,7 @@ func aim_plane() -> Array[Region]:
 ## whatever weapon the shooter can actually operate (docs/01 capability
 ## matching) — a no-op, silently, if the shooter has nothing operable.
 func confirm_shot() -> void:
-	if aiming_at == null or selection.selected_unit == null:
+	if input_locked or aiming_at == null or selection.selected_unit == null:
 		return
 	var shooter: Unit = selection.selected_unit
 	var weapon: Part = DeepStrike.find_operable_weapon(shooter)
@@ -162,16 +177,31 @@ func cancel_aim() -> void:
 
 ## Queues ending the selected unit's turn and actually resolves it —
 ## RESOLUTION, not TACTICS, is what's allowed to mutate the real state.
+## Locks input for the caller to hold through however long it plays the
+## resulting events back (docs/10 Phase 12.4); call unlock_input() once
+## that's done.
 func end_turn() -> void:
-	if selection == null or selection.selected_unit == null:
+	if input_locked or selection == null or selection.selected_unit == null:
 		return
 	if aiming_at != null:
 		cancel_aim()
+
+	input_locked = true
+	var sink := MemorySink.new()
+	selection.state.combat_log.add_sink(sink)
 	selection.queue_end_turn()
 	selection.state.resolve_turn(selection.current_queue())
+	selection.state.combat_log.remove_sink(sink)
+
 	selection.reset()
 	board_view.clear_overlays()
-	turn_ended.emit()
+	turn_ended.emit(sink.events)
+
+
+## Called once the resolution playback finishes — returns control to
+## TACTICS input.
+func unlock_input() -> void:
+	input_locked = false
 
 
 func _refresh_overlay() -> void:

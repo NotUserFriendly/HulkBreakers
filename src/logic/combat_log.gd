@@ -14,6 +14,13 @@ func add_sink(sink: LogSink) -> void:
 	_sinks.append(sink)
 
 
+## docs/10 Phase 12.4: a temporary sink (e.g. a MemorySink capturing one
+## turn's events for playback) must not linger collecting every event for
+## the rest of the battle — a no-op if `sink` was never added.
+func remove_sink(sink: LogSink) -> void:
+	_sinks.erase(sink)
+
+
 func emit(event: LogEvent) -> void:
 	for sink: LogSink in _sinks:
 		sink.emit(event)

@@ -38,6 +38,25 @@ func test_log_dispatches_to_multiple_sinks() -> void:
 	assert_eq(sink_b.events.size(), 1)
 
 
+func test_remove_sink_stops_further_dispatch_to_it() -> void:
+	var log := CombatLog.new()
+	var temp := MemorySink.new()
+	log.add_sink(temp)
+	log.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_start"))
+
+	log.remove_sink(temp)
+	log.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_end"))
+
+	assert_eq(temp.events.size(), 1, "events emitted after removal must not reach it")
+
+
+func test_remove_sink_is_a_no_op_for_a_sink_never_added() -> void:
+	var log := CombatLog.new()
+	log.remove_sink(MemorySink.new())  # must not error
+	log.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_start"))
+	pass_test("remove_sink on an unknown sink did not error, and the log still dispatches")
+
+
 func test_log_event_to_string_is_readable() -> void:
 	var event := LogEvent.new(
 		2, Enums.Phase.RESOLUTION, 5, &"penetration", {}, "round penetrates plate"

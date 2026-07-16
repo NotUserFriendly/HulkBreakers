@@ -15,6 +15,7 @@ var board_view: BoardView
 var camera_rig: CameraRig
 var tactics: TacticsController
 var aim_view: AimView
+var resolution_player: ResolutionPlayer
 var unit_views: Array[UnitView] = []
 var combat_state: CombatState
 
@@ -48,6 +49,10 @@ func _ready() -> void:
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
 	buttons.add_child(end_turn_button)
 
+	var banner := Label.new()
+	banner.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
+	layout.add_child(banner)
+
 	var aim_readout := RichTextLabel.new()
 	aim_readout.bbcode_enabled = false
 	aim_readout.custom_minimum_size = Vector2(320, 60)
@@ -57,6 +62,10 @@ func _ready() -> void:
 	aim_view = AimView.new()
 	add_child(aim_view)
 	aim_view.setup(tactics, aim_readout)
+
+	resolution_player = ResolutionPlayer.new()
+	add_child(resolution_player)
+	resolution_player.setup(banner, tactics)
 
 	new_battle(DEFAULT_SEED)
 
@@ -71,10 +80,13 @@ func _on_end_turn_pressed() -> void:
 
 ## Resolution has already mutated combat_state for real (docs/09) — every
 ## UnitView rebuilds from the unit it already tracks, so a destroyed part
-## disappears and a moved unit redraws at its new cell.
-func _on_turn_ended() -> void:
+## disappears and a moved unit redraws at its new cell. `events` is then
+## handed to ResolutionPlayer purely as a cosmetic replay (docs/10 Phase
+## 12.4) — it never re-drives the sim, which has already finished.
+func _on_turn_ended(events: Array[LogEvent]) -> void:
 	for view: UnitView in unit_views:
 		view.refresh()
+	resolution_player.play(events)
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a

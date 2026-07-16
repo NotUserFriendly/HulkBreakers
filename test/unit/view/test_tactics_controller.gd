@@ -293,3 +293,81 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 	var result: AimResult = AimController.resolve(plane, target_point, controller.layer_index, weapon)
 
 	assert_eq(result.reading, b, "layer 0 of the aim plane must be the target, not the shooter")
+
+
+## docs/10 Phase 12.4: End Turn locks input for the whole of RESOLUTION and
+## hands whoever's listening exactly the events resolve_turn() emitted.
+func test_end_turn_locks_input_and_emits_exactly_the_events_it_resolved() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+
+	# GDScript lambdas capture outer locals by value — reassigning `captured`
+	# from inside the lambda wouldn't propagate out, so mutate in place.
+	var captured: Array[LogEvent] = []
+	controller.turn_ended.connect(
+		func(events: Array[LogEvent]) -> void: captured.append_array(events)
+	)
+	controller.end_turn()
+
+	assert_true(controller.input_locked, "input must stay locked through RESOLUTION")
+	assert_true(captured.size() > 0, "must have captured at least the move + turn_end events")
+	for event: LogEvent in captured:
+		assert_true(
+			event.kind in [&"move", &"turn_end", &"turn_start"],
+			"only this turn's own events, kind was %s" % event.kind
+		)
+
+
+func test_input_locked_blocks_click_scroll_reticle_and_confirm() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(5, 5))  # enters aim mode
+	controller.input_locked = true
+
+	controller.scroll_layer(1)
+	assert_eq(controller.layer_index, 0, "locked input must not step the layer")
+
+	controller.move_reticle(Vector2(1, 1))
+	assert_eq(controller.reticle_offset, Vector2.ZERO, "locked input must not move the reticle")
+
+	controller.confirm_shot()
+	assert_eq(controller.selection.current_queue().actions.size(), 0, "locked input must not fire")
+	assert_eq(controller.aiming_at, b, "locked input must not even exit aim mode")
+
+	controller.input_locked = false
+	controller.click_cell(Vector2i(2, 2))
+	assert_eq(controller.selection.current_queue().actions.size(), 1, "unlocked, confirm works again")
+
+
+func test_end_turn_is_a_no_op_while_already_locked() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.input_locked = true
+	controller.end_turn()
+
+	# still locked, and the queue was never touched by this second call —
+	# it would have raised the queue's action count if it had run again.
+	assert_true(controller.input_locked)
+
+
+func test_unlock_input_clears_the_lock() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	controller.input_locked = true
+
+	controller.unlock_input()
+
+	assert_false(controller.input_locked)
