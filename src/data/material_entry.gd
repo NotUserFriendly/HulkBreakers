@@ -15,8 +15,16 @@ extends Resource
 ## Storage only — do not derive ricochet behavior from it without asking.
 @export var ricochet_bias: float = 0.0
 @export var tags: Array[StringName] = []
+## docs/10 "material colours are DATA": the mesh albedo for anything made of
+## this material, world-rendered lit (never HulkTheme, which is UI-only).
+## A neutral mid-grey default reads as "unknown material" rather than
+## silently matching some other material's colour.
+@export var color: Color = Color(0.5, 0.5, 0.5)
 
 
-func _init(p_dt: float = 0.0, p_deflect_threshold_deg: float = 30.0) -> void:
+func _init(
+	p_dt: float = 0.0, p_deflect_threshold_deg: float = 30.0, p_color: Color = Color(0.5, 0.5, 0.5)
+) -> void:
 	dt = p_dt
 	deflect_threshold_deg = p_deflect_threshold_deg
+	color = p_color

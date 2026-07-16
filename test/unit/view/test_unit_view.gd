@@ -2,16 +2,18 @@ extends GutTest
 
 ## docs/10 "render is hitbox": UnitView must spawn exactly one mesh per
 ## living box UnitGeometry.placements() reports, at exactly that transform,
-## and rebuild on refresh() so destroyed parts vanish.
+## and rebuild on refresh() so destroyed parts vanish. Team flagging
+## (docs/10) adds one ground marker (child 0) ahead of the part meshes —
+## an overlay, never touching a part's own material.
 
 
-func _torso_unit(cell: Vector2i) -> Unit:
+func _torso_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	var torso := Part.new()
 	torso.id = &"torso"
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 1.0, 0.6))]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell)
+	return Unit.new(Matrix.new(), Frame.new(torso), cell, squad)
 
 
 func _torso_with_arm_unit(cell: Vector2i) -> Dictionary:
@@ -33,12 +35,12 @@ func _torso_with_arm_unit(cell: Vector2i) -> Dictionary:
 	return {"unit": Unit.new(Matrix.new(), Frame.new(torso), cell), "arm": arm}
 
 
-func test_setup_spawns_one_mesh_per_living_box() -> void:
+func test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
 	var view := UnitView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
-	assert_eq(view.get_child_count(), 1)
+	assert_eq(view.get_child_count(), 2, "team marker + one part mesh")
 
 
 func test_refresh_after_a_part_is_destroyed_removes_its_mesh() -> void:
@@ -49,11 +51,11 @@ func test_refresh_after_a_part_is_destroyed_removes_its_mesh() -> void:
 	var view := UnitView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
-	assert_eq(view.get_child_count(), 2, "torso + arm")
+	assert_eq(view.get_child_count(), 3, "team marker + torso + arm")
 
 	arm.hp = 0
 	view.refresh()
-	assert_eq(view.get_child_count(), 1, "the destroyed arm's mesh must disappear")
+	assert_eq(view.get_child_count(), 2, "the destroyed arm's mesh must disappear")
 
 
 func test_mesh_transform_matches_unit_geometry_exactly() -> void:
@@ -63,7 +65,7 @@ func test_mesh_transform_matches_unit_geometry_exactly() -> void:
 	view.setup(unit, MaterialTable.default_table())
 
 	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
-	var mesh_instance: MeshInstance3D = view.get_child(0)
+	var mesh_instance: MeshInstance3D = view.get_child(1)
 	assert_eq(mesh_instance.transform, expected.transform.translated_local(expected.box.center))
 
 
@@ -73,6 +75,59 @@ func test_mesh_size_matches_the_box_size_exactly() -> void:
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
-	var mesh_instance: MeshInstance3D = view.get_child(0)
+	var mesh_instance: MeshInstance3D = view.get_child(1)
 	var box_mesh: BoxMesh = mesh_instance.mesh
 	assert_eq(box_mesh.size, Vector3(2.0, 1.0, 0.6))
+
+
+func test_part_material_is_lit_not_unshaded() -> void:
+	var unit := _torso_unit(Vector2i(0, 0))
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	var mesh_instance: MeshInstance3D = view.get_child(1)
+	var box_mesh: BoxMesh = mesh_instance.mesh
+	var material: StandardMaterial3D = box_mesh.material
+	assert_eq(material.shading_mode, BaseMaterial3D.SHADING_MODE_PER_PIXEL)
+
+
+func test_part_material_carries_a_rim_outline_next_pass() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	var mesh_instance: MeshInstance3D = view.get_child(1)
+	var box_mesh: BoxMesh = mesh_instance.mesh
+	var material: StandardMaterial3D = box_mesh.material
+	assert_not_null(material.next_pass, "a rim outline pass must ride the part's own material")
+
+
+func test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color() -> void:
+	var unit := _torso_unit(Vector2i(2, 3), 1)
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	var marker: MeshInstance3D = view.get_child(0)
+	assert_almost_eq(marker.position.x, 2.0, 0.0001)
+	assert_almost_eq(marker.position.z, 3.0, 0.0001)
+	var material: StandardMaterial3D = marker.material_override
+	assert_eq(material.albedo_color, WorldPalette.TEAM_B)
+
+
+func test_set_selected_brightens_the_team_marker() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	var marker: MeshInstance3D = view.get_child(0)
+	var before: Color = (marker.material_override as StandardMaterial3D).albedo_color
+
+	view.set_selected(true)
+	var after: Color = (marker.material_override as StandardMaterial3D).albedo_color
+
+	assert_ne(before, after, "selecting must visibly brighten the marker")
+	assert_eq(before, WorldPalette.TEAM_A, "sanity: unselected must be the plain team color")

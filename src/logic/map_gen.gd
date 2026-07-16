@@ -14,6 +14,13 @@ const COVER_PROBABILITY: float = 0.18
 const FULL_COVER_CHANCE: float = 0.35
 const HALF_COVER_VALUE: float = 0.5
 const FULL_COVER_VALUE: float = 1.0
+## Cover heights borrow the reference humanoid's own band boundaries
+## (docs/01): half cover tops out where legs end and torso begins (0.90),
+## masking legs but leaving torso/head exposed; full cover tops out where
+## torso ends and head begins (1.60), masking everything but the head.
+const HALF_COVER_HEIGHT: float = 0.90
+const FULL_COVER_HEIGHT: float = 1.60
+const COVER_FOOTPRINT: float = 0.8
 
 const SPAWN_ZONE_SIZE: int = 2
 
@@ -157,10 +164,20 @@ static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 					FULL_COVER_VALUE if rng.randf() < FULL_COVER_CHANCE else HALF_COVER_VALUE
 				)
 				grid.set_cover_value(cell, value)
-				# Terrain-scattered cover is permanent (never destructible).
+				# Terrain-scattered cover is permanent (never destructible), and a
+				# real region in the shot plane (docs/02) — not a numeric-only
+				# effect. Height follows cover_value: full cover masks legs and
+				# torso, half cover masks only legs.
+				var height: float = (
+					FULL_COVER_HEIGHT if value == FULL_COVER_VALUE else HALF_COVER_HEIGHT
+				)
 				var cover_object := Part.new()
 				cover_object.id = &"terrain_cover"
 				cover_object.is_destructible = false
+				cover_object.material = &"hull_plate"
+				cover_object.volume = [
+					Box.new(Vector3(0.0, height * 0.5, 0.0), Vector3(COVER_FOOTPRINT, height, COVER_FOOTPRINT))
+				]
 				grid.blockers[cell] = cover_object
 
 

@@ -1,106 +1,173 @@
-[T0/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (13, 3)
+[T0/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (12, 2)
 [T0/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
 [T0/RESOLUTION] unit 1 turn_start: turn_start: unit 1
-[T0/RESOLUTION] unit 1 move: MoveAction: unit 1 moved to (14, 3)
+[T0/RESOLUTION] unit 1 move: MoveAction: unit 1 moved to (9, 3)
 [T0/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T0/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T0/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (12, 2)
+[T0/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (8, 3)
 [T0/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
 [T0/RESOLUTION] unit 3 turn_start: turn_start: unit 3
-[T0/RESOLUTION] unit 3 move: MoveAction: unit 3 moved to (14, 2)
+[T0/RESOLUTION] unit 3 impact: PENETRATE on enemy_c_torso
+[T0/RESOLUTION] unit 3 impact: PENETRATE on jerry_torso
+[T0/RESOLUTION] unit 3 impact: PENETRATE on enemy_c_head
+[T0/RESOLUTION] unit 3 part_destroyed: part_destroyed: enemy_c_head
+[T0/RESOLUTION] unit 3 matrix_ejected: matrix_ejected: enemy_c_link from enemy_c_head
+[T0/RESOLUTION] unit 5 surrogate_demoted: surrogate_demoted: unit 5 FULL -> PERIPHERAL (matrix ejected)
+[T0/RESOLUTION] unit 3 subtree_dropped: subtree_dropped: enemy_c_head
+[T0/RESOLUTION] unit 3 impact: PENETRATE on jerry_torso
+[T0/RESOLUTION] unit 3 impact: PENETRATE on jerry_torso
 [T0/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T0/RESOLUTION] unit 4 turn_start: turn_start: unit 4
-[T0/RESOLUTION] unit 4 move: MoveAction: unit 4 moved to (15, 3)
 [T0/RESOLUTION] unit 4 turn_end: EndTurnAction: unit 4 ended turn
-[T0/RESOLUTION] unit 5 turn_start: turn_start: unit 5
-[T0/RESOLUTION] unit 5 move: MoveAction: unit 5 moved to (13, 2)
-[T0/RESOLUTION] unit 5 turn_end: EndTurnAction: unit 5 ended turn
 [T1/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T1/RESOLUTION] unit 0 impact: PENETRATE on bob_torso
-[T1/RESOLUTION] unit 0 impact: PENETRATE on enemy_c_arm
-[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: enemy_c_arm
-[T1/RESOLUTION] unit 0 matrix_ejected: matrix_ejected: enemy_c_link from enemy_c_arm
-[T1/RESOLUTION] unit 5 surrogate_demoted: surrogate_demoted: unit 5 FULL -> PERIPHERAL (matrix ejected)
-[T1/RESOLUTION] unit 0 subtree_dropped: subtree_dropped: enemy_c_arm
-[T1/RESOLUTION] unit 0 impact: PENETRATE on enemy_c_torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on bob_torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on alice_torso
-[T1/RESOLUTION] unit 0 impact: PENETRATE on bob_torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on bob_torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on alice_torso
-[T1/RESOLUTION] unit 0 impact: PENETRATE on alice_torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on alice_torso
+[T1/RESOLUTION] unit 0 impact: PENETRATE on terrain_cover
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: terrain_cover
+[T1/RESOLUTION] unit 0 impact: PENETRATE on jerry_torso
 [T1/RESOLUTION] unit 0 impact: PENETRATE on salvaged_reactor_core
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: salvaged_reactor_core
+[T1/RESOLUTION] unit 0 cook_off: cook_off: salvaged_reactor_core hit unit 0
+[T1/RESOLUTION] unit 0 cook_off: cook_off: salvaged_reactor_core hit unit 3
+[T1/RESOLUTION] unit 0 cook_off: cook_off: salvaged_reactor_core hit unit 4
+[T1/RESOLUTION] unit 0 subtree_dropped: subtree_dropped: salvaged_reactor_core
 [T1/RESOLUTION] unit 0 impact: PENETRATE on torso
-[T1/RESOLUTION] unit 0 impact: DEFLECT on alice_torso
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: torso
+[T1/RESOLUTION] unit 0 matrix_ejected: matrix_ejected: link_167050208 from torso
+[T1/RESOLUTION] unit 4 surrogate_demoted: surrogate_demoted: unit 4 FULL -> PERIPHERAL (matrix ejected)
+[T1/RESOLUTION] unit 0 impact: PENETRATE on saw_arm
+[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 0 impact: DEFLECT on terrain_cover
+[T1/RESOLUTION] unit 0 impact: PENETRATE on saw_arm
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: saw_arm
+[T1/RESOLUTION] unit 0 subtree_dropped: subtree_dropped: saw_arm
+[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 0 impact: PENETRATE on terrain_cover
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: terrain_cover
+[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 0 impact: PENETRATE on terrain_cover
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: terrain_cover
+[T1/RESOLUTION] unit 0 impact: PENETRATE on terrain_cover
+[T1/RESOLUTION] unit 0 part_destroyed: part_destroyed: terrain_cover
+[T1/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T1/RESOLUTION] unit 0 impact: DEFLECT on terrain_cover
 [T1/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
 [T1/RESOLUTION] unit 1 turn_start: turn_start: unit 1
-[T1/RESOLUTION] unit 1 impact: PENETRATE on salvaged_reactor_core
-[T1/RESOLUTION] unit 1 part_destroyed: part_destroyed: salvaged_reactor_core
-[T1/RESOLUTION] unit 1 cook_off: cook_off: salvaged_reactor_core hit unit 0
-[T1/RESOLUTION] unit 1 cook_off: cook_off: salvaged_reactor_core hit unit 1
-[T1/RESOLUTION] unit 1 cook_off: cook_off: salvaged_reactor_core hit unit 3
-[T1/RESOLUTION] unit 1 cook_off: cook_off: salvaged_reactor_core hit unit 4
-[T1/RESOLUTION] unit 1 subtree_dropped: subtree_dropped: salvaged_reactor_core
-[T1/RESOLUTION] unit 1 impact: PENETRATE on alice_torso
-[T1/RESOLUTION] unit 1 impact: PENETRATE on torso
-[T1/RESOLUTION] unit 1 part_destroyed: part_destroyed: torso
-[T1/RESOLUTION] unit 1 matrix_ejected: matrix_ejected: link_3740658002 from torso
-[T1/RESOLUTION] unit 4 surrogate_demoted: surrogate_demoted: unit 4 FULL -> PERIPHERAL (matrix ejected)
-[T1/RESOLUTION] unit 1 impact: DEFLECT on torso
-[T1/RESOLUTION] unit 1 impact: PENETRATE on jerry_torso
-[T1/RESOLUTION] unit 1 impact: PENETRATE on alice_torso
-[T1/RESOLUTION] unit 1 part_destroyed: part_destroyed: alice_torso
-[T1/RESOLUTION] unit 1 matrix_ejected: matrix_ejected: alice_link from alice_torso
-[T1/RESOLUTION] unit 1 surrogate_demoted: surrogate_demoted: unit 1 FULL -> PERIPHERAL (matrix ejected)
-[T1/RESOLUTION] unit 1 impact: DEFLECT on torso
-[T1/RESOLUTION] unit 1 action_aborted: aborted at resolution (no longer legal): AttackAction(unit=1, weapon=rifle, target=(14, 2))
-[T1/RESOLUTION] unit 1 action_aborted: aborted at resolution (no longer legal): AttackAction(unit=1, weapon=rifle, target=(14, 2))
 [T1/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T1/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T1/RESOLUTION] unit 2 impact: STOP_DEAD on torso
-[T1/RESOLUTION] unit 2 part_destroyed: part_destroyed: torso
-[T1/RESOLUTION] unit 2 matrix_ejected: matrix_ejected: link_2477263986 from torso
-[T1/RESOLUTION] unit 3 surrogate_demoted: surrogate_demoted: unit 3 FULL -> PERIPHERAL (matrix ejected)
-[T1/RESOLUTION] unit 2 action_aborted: aborted at resolution (no longer legal): AttackAction(unit=2, weapon=shotgun, target=(14, 2))
 [T1/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T1/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T1/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T2/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T2/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (19, 5)
+[T2/RESOLUTION] unit 0 impact: PENETRATE on terrain_cover
+[T2/RESOLUTION] unit 0 part_destroyed: part_destroyed: terrain_cover
+[T2/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T2/RESOLUTION] unit 0 impact: DEFLECT on terrain_cover
+[T2/RESOLUTION] unit 0 impact: DEFLECT on terrain_cover
 [T2/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T2/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T2/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T2/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T2/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (19, 4)
 [T2/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T2/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T2/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T3/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T3/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (18, 13)
+[T3/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T3/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T3/RESOLUTION] unit 0 impact: PENETRATE on terrain_cover
+[T3/RESOLUTION] unit 0 part_destroyed: part_destroyed: terrain_cover
 [T3/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T3/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T3/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T3/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T3/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (19, 12)
 [T3/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T3/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T3/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T4/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T4/RESOLUTION] unit 0 gather: GatherAction: unit 0 gathered 20 minerals at (18, 13)
+[T4/RESOLUTION] unit 0 impact: DEFLECT on torso
 [T4/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T4/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T4/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T4/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T4/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (16, 2)
 [T4/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T4/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T4/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T5/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T5/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (17, 2)
+[T5/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T5/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T5/RESOLUTION] unit 0 impact: DEFLECT on torso
 [T5/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T5/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T5/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T5/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T5/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (4, 6)
 [T5/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T5/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T5/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T6/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T6/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (5, 5)
+[T6/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T6/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T6/RESOLUTION] unit 0 impact: DEFLECT on torso
 [T6/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T6/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T6/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T6/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T6/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (1, 3)
 [T6/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T6/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T6/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T7/RESOLUTION] unit 0 turn_start: turn_start: unit 0
-[T7/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (2, 4)
+[T7/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T7/RESOLUTION] unit 0 impact: DEFLECT on torso
+[T7/RESOLUTION] unit 0 impact: DEFLECT on torso
 [T7/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T7/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T7/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
 [T7/RESOLUTION] unit 2 turn_start: turn_start: unit 2
-[T7/RESOLUTION] unit 2 extract: ExtractAction: unit 2 extracted the team
 [T7/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T7/RESOLUTION] unit 3 turn_start: turn_start: unit 3
+[T7/RESOLUTION] unit 3 turn_end: EndTurnAction: unit 3 ended turn
 [T8/RESOLUTION] unit 0 turn_start: turn_start: unit 0
+[T8/RESOLUTION] unit 0 impact: STOP_DEAD on torso
+[T8/RESOLUTION] unit 0 part_destroyed: part_destroyed: torso
+[T8/RESOLUTION] unit 0 matrix_ejected: matrix_ejected: link_2471672497 from torso
+[T8/RESOLUTION] unit 3 surrogate_demoted: surrogate_demoted: unit 3 FULL -> PERIPHERAL (matrix ejected)
+[T8/RESOLUTION] unit 0 action_aborted: aborted at resolution (no longer legal): AttackAction(unit=0, weapon=pistol, target=(11, 1))
+[T8/RESOLUTION] unit 0 action_aborted: aborted at resolution (no longer legal): AttackAction(unit=0, weapon=pistol, target=(11, 1))
+[T8/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T8/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T8/RESOLUTION] unit 1 move: MoveAction: unit 1 moved to (17, 5)
+[T8/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
+[T8/RESOLUTION] unit 2 turn_start: turn_start: unit 2
+[T8/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (11, 4)
+[T8/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T9/RESOLUTION] unit 0 turn_start: turn_start: unit 0
+[T9/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (14, 4)
+[T9/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T9/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T9/RESOLUTION] unit 1 move: MoveAction: unit 1 moved to (12, 10)
+[T9/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
+[T9/RESOLUTION] unit 2 turn_start: turn_start: unit 2
+[T9/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (15, 11)
+[T9/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T10/RESOLUTION] unit 0 turn_start: turn_start: unit 0
+[T10/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (13, 11)
+[T10/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T10/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T10/RESOLUTION] unit 1 gather: GatherAction: unit 1 gathered 20 minerals at (12, 10)
+[T10/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
+[T10/RESOLUTION] unit 2 turn_start: turn_start: unit 2
+[T10/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (11, 4)
+[T10/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T11/RESOLUTION] unit 0 turn_start: turn_start: unit 0
+[T11/RESOLUTION] unit 0 move: MoveAction: unit 0 moved to (12, 12)
+[T11/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T11/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T11/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
+[T11/RESOLUTION] unit 2 turn_start: turn_start: unit 2
+[T11/RESOLUTION] unit 2 move: MoveAction: unit 2 moved to (1, 1)
+[T11/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T12/RESOLUTION] unit 0 turn_start: turn_start: unit 0
+[T12/RESOLUTION] unit 0 turn_end: EndTurnAction: unit 0 ended turn
+[T12/RESOLUTION] unit 1 turn_start: turn_start: unit 1
+[T12/RESOLUTION] unit 1 turn_end: EndTurnAction: unit 1 ended turn
+[T12/RESOLUTION] unit 2 turn_start: turn_start: unit 2
+[T12/RESOLUTION] unit 2 extract: ExtractAction: unit 2 extracted the team
+[T12/RESOLUTION] unit 2 turn_end: EndTurnAction: unit 2 ended turn
+[T13/RESOLUTION] unit 0 turn_start: turn_start: unit 0

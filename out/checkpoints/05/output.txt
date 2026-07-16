@@ -9,7 +9,7 @@ GUT version:  9.7.1
 res://test/integration/test_full_mission.gd
 * test_full_mission_seed_to_extraction
 
-full mission: 21 turns, 24 impacts, 11 deflections, 4 cook-offs, 2 subtree drops, 4 matrix ejections, 4 demotions, 3 aborts
+full mission: 48 turns, 38 impacts, 21 deflections, 3 cook-offs, 3 subtree drops, 3 matrix ejections, 3 demotions, 2 aborts
 1/1 passed.
 
 
@@ -25,7 +25,7 @@ Scripts               1
 Tests                 1
 Passing Tests         1
 Asserts              26
-Time              0.477s
+Time              0.619s
 
 
 ---- All tests passed! ----
@@ -34,3 +34,5 @@ WARNING: 5 ObjectDB instances were leaked at exit (run with `--verbose` for deta
    at: cleanup (core/object/object.cpp:2535)
 ERROR: 4 resources still in use at exit (run with --verbose for details).
    at: clear (core/io/resource.cpp:822)
+ERROR: Pages in use exist at exit in PagedAllocator: N12VariantPools12BucketMediumE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:170)

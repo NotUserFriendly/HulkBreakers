@@ -42,9 +42,9 @@ func test_calling_new_battle_again_does_not_leak_the_previous_units_views() -> v
 	scene.new_battle(999)
 
 	assert_eq(scene.unit_views.size(), scene.combat_state.units.size())
-	# world_environment + camera_rig + board_view + tactics + ui CanvasLayer +
-	# aim_view + resolution_player + stat_panel + one UnitView per unit.
-	assert_eq(scene.get_child_count(), 8 + scene.combat_state.units.size())
+	# world_environment + directional_light + camera_rig + board_view + tactics +
+	# ui CanvasLayer + aim_view + resolution_player + stat_panel + one UnitView per unit.
+	assert_eq(scene.get_child_count(), 9 + scene.combat_state.units.size())
 	assert_eq(scene.combat_state.units.size(), unit_count, "the seeded roster size is stable")
 
 
@@ -57,9 +57,11 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 		var view: UnitView = scene.unit_views[i]
 		var placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
 
-		assert_eq(view.get_child_count(), placements.size())
+		# +1: UnitView's own team marker (docs/10) sits at child 0, ahead of
+		# the part meshes.
+		assert_eq(view.get_child_count(), placements.size() + 1)
 		for j in range(placements.size()):
-			var mesh_instance: MeshInstance3D = view.get_child(j)
+			var mesh_instance: MeshInstance3D = view.get_child(j + 1)
 			var expected: Transform3D = placements[j].transform.translated_local(
 				placements[j].box.center
 			)
@@ -100,7 +102,12 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 
 	var view: UnitView = scene.unit_views[scene.combat_state.units.find(current)]
 	var expected: Array[BoxPlacement] = UnitGeometry.placements(current)
-	assert_eq(view.get_child_count(), expected.size(), "the view must have redrawn at the new cell")
+	# +1: the team marker (docs/10) at child 0.
+	assert_eq(
+		view.get_child_count(), expected.size() + 1, "the view must have redrawn at the new cell"
+	)
 	for i in range(expected.size()):
-		var mesh_instance: MeshInstance3D = view.get_child(i)
-		assert_eq(mesh_instance.transform, expected[i].transform.translated_local(expected[i].box.center))
+		var mesh_instance: MeshInstance3D = view.get_child(i + 1)
+		assert_eq(
+			mesh_instance.transform, expected[i].transform.translated_local(expected[i].box.center)
+		)

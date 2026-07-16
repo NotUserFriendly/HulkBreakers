@@ -23,7 +23,8 @@ var combat_state: CombatState
 
 
 func _ready() -> void:
-	add_child(HulkTheme.world_environment())
+	add_child(WorldPalette.world_environment())
+	add_child(WorldPalette.directional_light())
 
 	camera_rig = CameraRig.new()
 	add_child(camera_rig)
@@ -34,6 +35,7 @@ func _ready() -> void:
 	tactics = TacticsController.new()
 	add_child(tactics)
 	tactics.turn_ended.connect(_on_turn_ended)
+	tactics.selection_changed.connect(_on_selection_changed)
 
 	var ui := CanvasLayer.new()
 	add_child(ui)
@@ -111,7 +113,16 @@ func _on_end_turn_pressed() -> void:
 func _on_turn_ended(events: Array[LogEvent]) -> void:
 	for view: UnitView in unit_views:
 		view.refresh()
+	_on_selection_changed()
 	resolution_player.play(events)
+
+
+## docs/10 team flagging: the selected unit's ground marker brightens, and
+## no other unit's does — a pure overlay, never touching a part's material.
+func _on_selection_changed() -> void:
+	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+	for view: UnitView in unit_views:
+		view.set_selected(view.unit == selected)
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a

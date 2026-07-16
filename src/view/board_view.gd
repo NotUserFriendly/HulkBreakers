@@ -7,13 +7,19 @@ extends Node3D
 ## board) — and, separately, the TACTICS overlay (reachable highlight,
 ## queued-move ghost paths, each its own container so one never rebuilds
 ## the other, and both can be visible at once). Pure presentation: BoardView
-## never mutates Grid, only reads it.
+## never mutates Grid, only reads it. Real geometry (ground, blockers) is
+## lit (WorldPalette.lit_material); only the transient overlay is unshaded
+## (WorldPalette.overlay_material) — docs/10: unshaded same-colour boxes
+## have no edges and merge into a blob, which is why real geometry must be
+## lit.
 
 ## Overlay markers sit slightly above the ground to avoid z-fighting with it;
 ## ghosts sit a touch higher still so they never fight the reachable tint.
 const REACHABLE_HEIGHT := 0.02
 const GHOST_HEIGHT := 0.03
 const OVERLAY_SIZE := 0.8
+const REACHABLE_COLOR := Color(0.55, 0.55, 0.52)
+const GHOST_COLOR := Color(0.95, 0.82, 0.25)
 
 var grid: Grid
 
@@ -40,7 +46,7 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 	plane.size = Vector2(
 		grid.width * UnitGeometry.CELL_SIZE, grid.height * UnitGeometry.CELL_SIZE
 	)
-	plane.material = HulkTheme.flat_material(HulkTheme.BACKGROUND)
+	plane.material = WorldPalette.lit_material(WorldPalette.GROUND)
 	ground.mesh = plane
 	ground.position = Vector3(
 		(grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,
@@ -56,13 +62,13 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
 	if part.hp <= 0:
 		return
-	var color: Color = HulkTheme.color_for_material(part.material, material_table)
+	var color: Color = material_table.color_for(part.material)
 	var cell_origin: Vector3 = Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
 	for box: Box in part.volume:
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = box.size
-		box_mesh.material = HulkTheme.flat_material(color)
+		box_mesh.material = WorldPalette.lit_material(color)
 		instance.mesh = box_mesh
 		instance.position = cell_origin + box.center
 		_static.add_child(instance)
@@ -74,7 +80,7 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 func show_reachable(cells: Array[Vector2i]) -> void:
 	_clear(_reachable_overlay)
 	for cell: Vector2i in cells:
-		_reachable_overlay.add_child(_marker(cell, HulkTheme.DIM, REACHABLE_HEIGHT))
+		_reachable_overlay.add_child(_marker(cell, REACHABLE_COLOR, REACHABLE_HEIGHT))
 
 
 ## One queued MoveAction's path per entry — multiple queued moves must stack
@@ -84,7 +90,7 @@ func show_ghost_paths(paths: Array) -> void:
 	_clear(_ghost_overlay)
 	for path: Array in paths:
 		for cell: Vector2i in path:
-			_ghost_overlay.add_child(_marker(cell, HulkTheme.HIGHLIGHT, GHOST_HEIGHT))
+			_ghost_overlay.add_child(_marker(cell, GHOST_COLOR, GHOST_HEIGHT))
 
 
 func clear_overlays() -> void:
@@ -96,7 +102,7 @@ func _marker(cell: Vector2i, color: Color, height: float) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var box_mesh := BoxMesh.new()
 	box_mesh.size = Vector3(OVERLAY_SIZE, 0.02, OVERLAY_SIZE)
-	box_mesh.material = HulkTheme.flat_material(color)
+	box_mesh.material = WorldPalette.overlay_material(color)
 	instance.mesh = box_mesh
 	instance.position = Vector3(cell.x, height, cell.y) * UnitGeometry.CELL_SIZE
 	return instance

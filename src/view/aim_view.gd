@@ -13,6 +13,10 @@ extends Node3D
 ## which is headless, on AimController itself). The rings + READING/
 ## RESOLVES readout below are the load-bearing, functional core.
 
+## A targeting overlay, deliberately distinct from any WorldPalette material
+## or team color so a ring never blends into armor or a unit's own team rim.
+const RING_COLOR := Color(0.95, 0.55, 0.15)
+
 var tactics: TacticsController
 var readout: RichTextLabel
 
@@ -96,9 +100,7 @@ func _draw_rings(shooter: Unit, target: Unit, aim_point: Vector2, rings: Array[R
 		var torus := TorusMesh.new()
 		torus.inner_radius = maxf(inner, 0.001)
 		torus.outer_radius = maxf(ring.radius, inner + 0.01)
-		# WARN, not HIGHLIGHT: rings must read as a targeting overlay distinct
-		# from armor color bands, which already use HIGHLIGHT for steel-tier DT.
-		torus.material = HulkTheme.flat_material(HulkTheme.WARN)
+		torus.material = WorldPalette.overlay_material(RING_COLOR)
 		var instance := MeshInstance3D.new()
 		instance.mesh = torus
 		instance.position = world_center
