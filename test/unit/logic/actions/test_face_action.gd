@@ -91,7 +91,7 @@ func test_facing_with_zero_mp_and_zero_ap_is_illegal() -> void:
 	assert_false(action.is_legal(state))
 
 
-func test_manual_face_emits_faced_with_reason_manual() -> void:
+func test_manual_face_emits_faced_with_reason_manual_first() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(Grid.new(10, 10), [unit])
 	unit.mp = 3.0
@@ -102,9 +102,58 @@ func test_manual_face_emits_faced_with_reason_manual() -> void:
 
 	var events: Array[LogEvent] = sink.events_of_kind(&"faced")
 	assert_eq(events.size(), 1)
-	assert_eq(events[0].data.get("reason"), &"manual")
+	assert_eq(events[0].data.get("reason"), &"manual_first")
 	assert_eq(events[0].data.get("cost"), FaceAction.COST)
 	assert_almost_eq(events[0].data.get("direction"), 1.5, 0.0001)
+
+
+## docs/10 taskblock03 E2: "the first FaceAction... costs 1 MP and unlocks
+## unlimited refacing to any angle for the rest of that turn."
+func test_the_first_manual_face_unlocks_free_refacing_for_the_rest_of_the_turn() -> void:
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	unit.mp = 3.0
+	assert_false(unit.facing_unlocked)
+
+	state.try_apply(FaceAction.new(unit, 1.5))
+	assert_true(unit.facing_unlocked)
+	assert_eq(unit.mp, 2.0)
+
+	state.try_apply(FaceAction.new(unit, -0.5))
+
+	assert_almost_eq(unit.orientation, -0.5, 0.0001)
+	assert_eq(unit.mp, 2.0, "the second manual face this turn must be free")
+
+
+func test_a_second_manual_face_logs_reason_manual_free() -> void:
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	unit.mp = 3.0
+	var sink := MemorySink.new()
+	state.try_apply(FaceAction.new(unit, 1.5))
+	state.combat_log.add_sink(sink)
+
+	state.try_apply(FaceAction.new(unit, -0.5))
+
+	var events: Array[LogEvent] = sink.events_of_kind(&"faced")
+	assert_eq(events.size(), 1)
+	assert_eq(events[0].data.get("reason"), &"manual_free")
+	assert_eq(events[0].data.get("cost"), 0.0)
+
+
+## docs/10 taskblock03 E2: once unlocked, refacing is always legal — no MP
+## or AP check applies anymore.
+func test_a_face_is_always_legal_once_unlocked_even_with_no_mp_or_ap() -> void:
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	unit.mp = 1.0
+	state.try_apply(FaceAction.new(unit, 1.5))
+	unit.mp = 0.0
+	unit.ap = 0
+
+	var action := FaceAction.new(unit, 0.2)
+
+	assert_true(action.is_legal(state))
 
 
 func test_an_attack_faces_the_target_for_free() -> void:

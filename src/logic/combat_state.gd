@@ -153,6 +153,9 @@ func try_apply(action: CombatAction) -> bool:
 func _start_turn(unit: Unit) -> void:
 	unit.ap = unit.max_ap
 	unit.mp = 0.0  # leftover MP from a prior turn is discarded here (Appendix E)
+	# docs/10 taskblock03 E2: the free-refacing unlock is a per-turn toll,
+	# not a permanent one — a new turn always starts locked again.
+	unit.facing_unlocked = false
 	var tier_before: SurrogateTier = unit.surrogate_tier
 	LifeSupport.tick(unit, SurrogateLadder.default_ladder())
 

@@ -27,6 +27,11 @@ const RETICLE_SENSITIVITY := 0.01
 ## design decision. 45 degrees: enough turns to face any of 8 directions.
 const FACE_STEP := PI / 4.0
 
+## docs/10 taskblock03 E1: mouse-drag facing sensitivity — same flagged-
+## placeholder status as RETICLE_SENSITIVITY, docs/10 asks for "continuous,
+## any angle," not an exact mapping.
+const FACE_DRAG_SENSITIVITY := 0.01
+
 var selection: SelectionController
 var board_view: BoardView
 var camera_rig: CameraRig
@@ -43,6 +48,14 @@ var reticle_offset: Vector2 = Vector2.ZERO
 ## then — this only blocks further TACTICS input during the cosmetic
 ## replay, never delays the sim itself.
 var input_locked: bool = false
+
+## docs/10 taskblock03 E1: press-and-hold on the already-selected unit's own
+## body starts a facing drag; live for as long as LMB stays down.
+var _facing_drag_active: bool = false
+## The one FaceAction this drag gesture owns, so every subsequent motion
+## event mutates it in place instead of queuing a fresh one per pixel of
+## mouse movement — see drag_face().
+var _drag_face_action: FaceAction = null
 
 
 func setup(state: CombatState, p_board_view: BoardView, p_camera_rig: CameraRig) -> void:
@@ -65,6 +78,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Negate at this input boundary so dragging the mouse up moves the
 		# reticle up, not down.
 		move_reticle(Vector2(raw.x, -raw.y))
+	elif event is InputEventMouseMotion and _facing_drag_active:
+		drag_face((event as InputEventMouseMotion).relative.x)
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
 		if not key_event.pressed:
@@ -88,11 +103,27 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 	if not button_event.pressed:
+		if button_event.button_index == MOUSE_BUTTON_LEFT:
+			# docs/10 taskblock03 E1: releasing LMB ends a facing drag, if
+			# one was active — a plain click never started one.
+			_facing_drag_active = false
+			_drag_face_action = null
 		return
 	if button_event.button_index == MOUSE_BUTTON_LEFT:
 		var from: Vector3 = camera.project_ray_origin(button_event.position)
 		var dir: Vector3 = camera.project_ray_normal(button_event.position)
 		var cell: Variant = _cell_at(from, dir)
+		if (
+			cell != null
+			and aiming_at == null
+			and selection.selected_unit != null
+			and _unit_at(cell) == selection.selected_unit
+		):
+			# docs/10 taskblock03 E1: press-and-hold on the already-selected
+			# unit's own body starts a facing drag — a plain click_cell()
+			# here would just be a no-op reselect anyway.
+			_facing_drag_active = true
+			return
 		if cell != null:
 			click_cell(cell)
 		elif aiming_at == null:
@@ -109,6 +140,7 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		if not selection.undo_last():
 			deselect()
 		else:
+			_drag_face_action = null
 			_refresh_overlay()
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and aiming_at != null:
 		scroll_layer(1)
@@ -188,6 +220,27 @@ func reset_turn() -> void:
 	if aiming_at != null:
 		cancel_aim()
 	selection.reset_turn()
+	_drag_face_action = null
+	_refresh_overlay()
+
+
+## docs/10 taskblock03 E1: mouse-drag facing — continuous, any angle, no
+## steps. The FIRST motion event of a drag queues one real FaceAction,
+## through the same MP/AP legality gate a manual Q/E press goes through;
+## every motion event after that mutates that SAME action's `direction` in
+## place, so one drag gesture is always exactly one queued action — never a
+## pile of micro-turns RMB would have to undo one pixel at a time.
+func drag_face(delta_x: float) -> void:
+	if input_locked or selection == null or selection.selected_unit == null or aiming_at != null:
+		return
+	var target: float = selection.previewed_orientation() + delta_x * FACE_DRAG_SENSITIVITY
+	if _drag_face_action != null:
+		_drag_face_action.direction = target
+		_refresh_overlay()
+		return
+	if selection.queue_face(target):
+		var queue: ActionQueue = selection.current_queue()
+		_drag_face_action = queue.actions[queue.actions.size() - 1] as FaceAction
 	_refresh_overlay()
 
 
