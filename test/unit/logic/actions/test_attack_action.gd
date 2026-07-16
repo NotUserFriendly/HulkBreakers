@@ -42,7 +42,7 @@ func _make_shooter(cell: Vector2i, weapon: Part) -> Unit:
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
 
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 0)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
 
 
 func _make_target(cell: Vector2i, hp: int = 10) -> Unit:
@@ -51,7 +51,7 @@ func _make_target(cell: Vector2i, hp: int = 10) -> Unit:
 	torso.hp = hp
 	torso.max_hp = hp
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 1)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 1)
 
 
 func test_is_legal_true_in_the_baseline_case() -> void:
@@ -102,7 +102,7 @@ func test_is_legal_false_without_a_capable_manipulator() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	# Strip the hand's TRIGGER capability — a saw, say.
-	shooter.frame.find_part(&"hand").capabilities = []
+	shooter.shell.find_part(&"hand").capabilities = []
 	var target := _make_target(Vector2i(3, 0))
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
@@ -121,7 +121,7 @@ func test_apply_deals_damage_and_spends_ap() -> void:
 	AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).apply(state)
 
 	assert_eq(shooter.ap, before_ap - 2)
-	assert_lt(target.frame.root.hp, 10, "an unarmored torso hit with damage 20 must penetrate")
+	assert_lt(target.shell.root.hp, 10, "an unarmored torso hit with damage 20 must penetrate")
 
 
 func test_impact_event_names_which_unit_actually_took_the_hit() -> void:
@@ -182,7 +182,7 @@ func _make_armored_target(cell: Vector2i, rack: Part) -> Unit:
 	var back_socket := Socket.new(&"BACK")
 	back_socket.occupant = rack
 	torso.sockets = [back_socket]
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 1)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 1)
 
 
 func _make_rack() -> Part:
@@ -254,7 +254,7 @@ func _make_armed_matrix_hosting_target(cell: Vector2i) -> Dictionary:
 	neck.occupant = head
 	torso.sockets = [neck]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), cell, 1)
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), cell, 1)
 	return {"unit": unit, "torso": torso, "head": head, "link": link}
 
 
@@ -281,7 +281,7 @@ func _make_tough_shooter(cell: Vector2i, weapon: Part) -> Unit:
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
 
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, 0)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
 
 
 func test_destroying_the_head_logs_every_cascading_consequence() -> void:
@@ -334,6 +334,6 @@ func test_replays_identically_from_the_same_seed() -> void:
 
 		for i in range(5):
 			AttackAction.new(shooter, &"pistol", Vector2i(4, 0)).apply(state)
-		results.append([shooter.ap, target.frame.root.hp])
+		results.append([shooter.ap, target.shell.root.hp])
 
 	assert_eq(results[0], results[1])

@@ -6,9 +6,9 @@ func _make_unit(cell: Vector2i) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	var frame := Frame.new(root)
-	frame.max_mass = 1000.0
-	return Unit.new(Matrix.new(), frame, cell, 0)
+	var shell := Shell.new(root)
+	shell.max_mass = 1000.0
+	return Unit.new(Matrix.new(), shell, cell, 0)
 
 
 ## A severed arm (dropped intact, docs/01) still holding a pistol in its hand.

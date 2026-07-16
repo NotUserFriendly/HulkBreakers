@@ -10,7 +10,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(Matrix.new(), Frame.new(root), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, squad)
 
 
 func test_select_accepts_only_the_current_units_turn() -> void:

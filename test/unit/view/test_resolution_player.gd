@@ -15,7 +15,7 @@ func _make_unit(cell: Vector2i) -> Unit:
 	root.hp = 5
 	root.max_hp = 5
 	root.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
-	return Unit.new(Matrix.new(), Frame.new(root), cell)
+	return Unit.new(Matrix.new(), Shell.new(root), cell)
 
 
 func _setup_player() -> Dictionary:
@@ -52,21 +52,24 @@ func test_play_immediately_switches_to_the_resolution_banner() -> void:
 
 
 func _impact_event(attacker: Unit, target: Unit, part_id: StringName) -> LogEvent:
-	return LogEvent.new(
-		0,
-		Enums.Phase.RESOLUTION,
-		attacker.id,
-		&"impact",
-		{
-			"outcome": Enums.Outcome.PENETRATE,
-			"part": part_id,
-			"target_unit_id": target.id,
-			"damage": 5.0,
-			"bypassed_armor": false,
-			"is_crit": false,
-			"is_double_crit": false,
-		},
-		"PENETRATE on %s" % part_id
+	return (
+		LogEvent
+		. new(
+			0,
+			Enums.Phase.RESOLUTION,
+			attacker.id,
+			&"impact",
+			{
+				"outcome": Enums.Outcome.PENETRATE,
+				"part": part_id,
+				"target_unit_id": target.id,
+				"damage": 5.0,
+				"bypassed_armor": false,
+				"is_crit": false,
+				"is_double_crit": false,
+			},
+			"PENETRATE on %s" % part_id
+		)
 	)
 
 

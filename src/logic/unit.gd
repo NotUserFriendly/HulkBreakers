@@ -2,7 +2,7 @@ class_name Unit
 extends RefCounted
 
 ## Runtime combat pilot: a Matrix (persistent brain) currently seated in a
-## Frame (disposable body) on the grid.
+## Shell (disposable body) on the grid.
 
 const BASE_MP: float = 2.0
 ## Appendix E / docs/05: "a standard cyborg has 6 AP per turn, before perks
@@ -15,7 +15,7 @@ const DECAY_TURNS := 3
 
 var id: int = -1  # assigned by CombatState.add_unit; matches Grid.occupant_id
 var matrix: Matrix
-var frame: Frame
+var shell: Shell
 var cell: Vector2i
 var squad_id: int = 0
 
@@ -39,9 +39,9 @@ var surrogate_tier: SurrogateTier = SurrogateLadder.default_ladder()[0]
 var exposed_turns: int = 0
 
 
-func _init(p_matrix: Matrix, p_frame: Frame, p_cell: Vector2i, p_squad_id: int = 0) -> void:
+func _init(p_matrix: Matrix, p_shell: Shell, p_cell: Vector2i, p_squad_id: int = 0) -> void:
 	matrix = p_matrix
-	frame = p_frame
+	shell = p_shell
 	cell = p_cell
 	squad_id = p_squad_id
 
@@ -73,16 +73,16 @@ func tick_organics_decay(ladder: Array[SurrogateTier]) -> void:
 ## this stays the one true source of the number — not an ad-hoc sum.
 func mp_per_ap() -> float:
 	var context := ResolverContext.new()
-	context.parts = frame.all_parts()
+	context.parts = shell.all_parts()
 	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility
 
 
-## A fully independent copy — matrix, whole frame tree, and every scalar
+## A fully independent copy — matrix, whole shell tree, and every scalar
 ## field — for TACTICS-time speculative previews (docs/09). Mutating a dup
 ## must never be observable on the original.
 func dup() -> Unit:
-	var cloned := Unit.new(matrix.duplicate(true) as Matrix, frame.dup(), cell, squad_id)
+	var cloned := Unit.new(matrix.duplicate(true) as Matrix, shell.dup(), cell, squad_id)
 	cloned.id = id
 	cloned.ap = ap
 	cloned.max_ap = max_ap

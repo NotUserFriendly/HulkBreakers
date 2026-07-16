@@ -3,8 +3,8 @@ extends CombatAction
 
 ## Picks a loose Part or Matrix off the unit's own cell (docs/01/05). A
 ## Matrix goes straight to `held_matrix`; a Part needs a `container` already
-## worn on the frame with room for it. Resolved fresh from `state` every
-## time (docs/09): a preview's grid/frame are independent clones.
+## worn on the shell with room for it. Resolved fresh from `state` every
+## time (docs/09): a preview's grid/shell are independent clones.
 
 const DEFAULT_AP_COST := 1
 
@@ -43,10 +43,10 @@ func is_legal(state: CombatState) -> bool:
 	if item is Matrix:
 		return actual.held_matrix == null
 
-	var container: Part = actual.frame.find_part(container_id)
+	var container: Part = actual.shell.find_part(container_id)
 	if container == null:
 		return false
-	return Inventory.can_attach(item, container, actual.frame)
+	return Inventory.can_attach(item, container, actual.shell)
 
 
 func apply(state: CombatState) -> void:
@@ -61,8 +61,8 @@ func apply(state: CombatState) -> void:
 	if item is Matrix:
 		actual.held_matrix = item
 	else:
-		var container: Part = actual.frame.find_part(container_id)
-		Inventory.attach(item, container, actual.frame)
+		var container: Part = actual.shell.find_part(container_id)
+		Inventory.attach(item, container, actual.shell)
 
 	actual.ap -= ap_cost
 	var text: String = "PickUpAction: unit %d picked up %s" % [actual.id, item_id]

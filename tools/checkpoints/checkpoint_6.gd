@@ -50,7 +50,7 @@ func _build_twelve_arm_unit() -> Unit:
 		sockets.append(socket)
 	torso.sockets = sockets
 
-	return Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	return Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
 
 func _save(file_name: String) -> void:

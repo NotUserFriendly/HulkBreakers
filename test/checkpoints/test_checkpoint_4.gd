@@ -11,7 +11,7 @@ const CYBORG_COUNT := 20
 
 func _part_summary(unit: Unit) -> String:
 	var names: Array[String] = []
-	for part: Part in unit.frame.all_parts():
+	for part: Part in unit.shell.all_parts():
 		names.append(String(part.id))
 	return ", ".join(names)
 
@@ -40,10 +40,10 @@ func test_twenty_random_deep_strike_cyborgs() -> void:
 			(
 				"mass %.1f/%.1f   ram %.1f/%.1f   effective_level %.2f   armed: %s"
 				% [
-					unit.frame.carried_mass(),
-					unit.frame.max_mass,
-					unit.frame.total_ram(),
-					unit.frame.max_ram,
+					unit.shell.carried_mass(),
+					unit.shell.max_mass,
+					unit.shell.total_ram(),
+					unit.shell.max_ram,
 					unit.matrix.effective_level(),
 					armed
 				]
@@ -62,7 +62,7 @@ func test_twenty_random_deep_strike_cyborgs() -> void:
 		for region: Region in regions:
 			if not projected_parts.has(region.part):
 				projected_parts.append(region.part)
-		for part: Part in unit.frame.living_parts():
+		for part: Part in unit.shell.living_parts():
 			assert_true(
 				projected_parts.has(part),
 				"seed %d: living part %s must appear in the shot plane" % [seed_value, part.id]

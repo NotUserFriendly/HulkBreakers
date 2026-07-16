@@ -139,7 +139,7 @@ func _torso_with_rear_ammo_rack() -> Unit:
 	socket.occupant = rack
 	torso.sockets = [socket]
 
-	return Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	return Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
 
 func test_rear_part_is_occluded_from_the_front_but_frontmost_from_behind() -> void:
@@ -167,7 +167,7 @@ func test_surface_normal_is_the_actual_face_hit_not_always_toward_the_shooter() 
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
 	var front: Region = BodyProjector.project(unit, Vector2(0, -1))[0]
 	assert_eq(front.surface_normal, Vector3(0.0, 0.0, 1.0), "front hit: the front face was hit")
@@ -210,7 +210,7 @@ func test_the_same_arm_resource_at_two_mirrored_sockets_projects_in_two_places()
 	right.occupant = arm  # the exact same Part resource, not a duplicate
 	torso.sockets = [left, right]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
 
 	var arm_regions: Array[Region] = []
@@ -244,7 +244,7 @@ func test_twelve_shoulder_sockets_project_twelve_non_overlapping_arms() -> void:
 		sockets.append(socket)
 	torso.sockets = sockets
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
 
 	var arm_ids: Array[StringName] = []
@@ -284,7 +284,7 @@ func test_the_same_weapon_on_left_vs_right_shoulder_projects_at_different_x() ->
 	var right := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.0, 0.5, 0.0)))
 	left.occupant = weapon
 	torso.sockets = [left]
-	var unit_left := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(0, 0))
+	var unit_left := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	var left_x := _center_x(BodyProjector.project(unit_left, Vector2(0, -1)))
 
 	var torso_right := Part.new()
@@ -293,7 +293,7 @@ func test_the_same_weapon_on_left_vs_right_shoulder_projects_at_different_x() ->
 	torso_right.max_hp = 10
 	right.occupant = weapon
 	torso_right.sockets = [right]
-	var unit_right := Unit.new(Matrix.new(), Frame.new(torso_right), Vector2i(0, 0))
+	var unit_right := Unit.new(Matrix.new(), Shell.new(torso_right), Vector2i(0, 0))
 	var right_x := _center_x(BodyProjector.project(unit_right, Vector2(0, -1)))
 
 	assert_ne(left_x, right_x, "the same weapon Part must project differently per shoulder")
@@ -340,7 +340,7 @@ func _deep_chain_torso(shoulder_transform: Transform3D) -> Part:
 func test_rotating_the_shoulder_socket_moves_the_pistol_at_the_end_of_the_chain() -> void:
 	var straight := Transform3D(Basis(), Vector3(1.0, 0.5, 0.0))
 	var unit_straight := Unit.new(
-		Matrix.new(), Frame.new(_deep_chain_torso(straight)), Vector2i(0, 0)
+		Matrix.new(), Shell.new(_deep_chain_torso(straight)), Vector2i(0, 0)
 	)
 	var straight_x := _center_x(
 		_find_all(BodyProjector.project(unit_straight, Vector2(0, -1)), &"pistol")
@@ -348,7 +348,7 @@ func test_rotating_the_shoulder_socket_moves_the_pistol_at_the_end_of_the_chain(
 
 	var rotated := Transform3D(Basis(Vector3.UP, deg_to_rad(45.0)), Vector3(1.0, 0.5, 0.0))
 	var unit_rotated := Unit.new(
-		Matrix.new(), Frame.new(_deep_chain_torso(rotated)), Vector2i(0, 0)
+		Matrix.new(), Shell.new(_deep_chain_torso(rotated)), Vector2i(0, 0)
 	)
 	var rotated_x := _center_x(
 		_find_all(BodyProjector.project(unit_rotated, Vector2(0, -1)), &"pistol")

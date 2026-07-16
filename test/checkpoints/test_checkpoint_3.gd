@@ -29,7 +29,7 @@ func _armored_unit(cell: Vector2i) -> Unit:
 	socket.occupant = plate
 	torso.sockets = [socket]
 
-	return Unit.new(Matrix.new(), Frame.new(torso), cell)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell)
 
 
 func _outcome_name(outcome: int) -> String:
@@ -49,7 +49,7 @@ func _bystander_unit(cell: Vector2i) -> Unit:
 	root.hp = 10
 	root.max_hp = 10
 	root.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 1.0))]
-	return Unit.new(Matrix.new(), Frame.new(root), cell)
+	return Unit.new(Matrix.new(), Shell.new(root), cell)
 
 
 func test_seeded_burst_into_armor() -> void:
@@ -104,11 +104,11 @@ func test_seeded_burst_into_armor() -> void:
 				line += " (%.1f damage)" % result.part_damage
 			print(line)
 
-	var plate: Part = target.frame.root.sockets[0].occupant
+	var plate: Part = target.shell.root.sockets[0].occupant
 	print(
 		(
 			"\nplate hp: %d/20   torso hp: %d/20   bystander hp: %d/10"
-			% [plate.hp, target.frame.root.hp, bystander.frame.root.hp]
+			% [plate.hp, target.shell.root.hp, bystander.shell.root.hp]
 		)
 	)
 	assert_true(true, "artifact generated — see printed rounds above")

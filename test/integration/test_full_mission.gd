@@ -77,10 +77,10 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket, Socket.new(&"MATRIX")]
 
-	var frame := Frame.new(torso)
-	frame.max_mass = 200.0
-	frame.max_ram = 20.0
-	return Unit.new(link, frame, cell, 0)
+	var shell := Shell.new(torso)
+	shell.max_mass = 200.0
+	shell.max_ram = 20.0
+	return Unit.new(link, shell, cell, 0)
 
 
 ## A hand-built (not deep-struck) defender whose MATRIX hosts on its HEAD,
@@ -142,16 +142,16 @@ func _head_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	neck.occupant = head
 	torso.sockets = [shoulder, neck]
 
-	var frame := Frame.new(torso)
-	frame.max_mass = 200.0
-	frame.max_ram = 20.0
-	return Unit.new(link, frame, cell, 1)
+	var shell := Shell.new(torso)
+	shell.max_mass = 200.0
+	shell.max_ram = 20.0
+	return Unit.new(link, shell, cell, 1)
 
 
 ## The pistol/rifle/two_handed_sword templates carry damage > 0; this
 ## mirrors DeepStrike.is_armed's own definition of "a weapon."
 func _find_weapon_id(unit: Unit) -> StringName:
-	for part: Part in unit.frame.living_parts():
+	for part: Part in unit.shell.living_parts():
 		if part.damage > 0.0:
 			return part.id
 	return &""
@@ -310,7 +310,7 @@ func test_full_mission_seed_to_extraction() -> void:
 	var rng_a := RandomNumberGenerator.new()
 	rng_a.seed = hulk.population_seed()
 	var enemy_a := DeepStrike.assemble_random(enemy_matrix_a, 1.0, pool, rng_a, spawn_b[0], 1)
-	enemy_a.frame.root.material = &"steel"  # guarantees DT actually matters for this one
+	enemy_a.shell.root.material = &"steel"  # guarantees DT actually matters for this one
 
 	var enemy_matrix_b := Matrix.new()
 	enemy_matrix_b.id = &"logic_matrix_b"
@@ -335,8 +335,8 @@ func test_full_mission_seed_to_extraction() -> void:
 	reactor_core.hp = 4
 	reactor_core.volume = [Box.new(Vector3(0.0, 0.5, 0.35), Vector3(1.4, 0.8, 0.2))]
 	var internal_socket := Socket.new(&"INTERNAL")
-	enemy_b.frame.root.sockets.append(internal_socket)
-	PartGraph.attach(reactor_core, enemy_b.frame.root, internal_socket)
+	enemy_b.shell.root.sockets.append(internal_socket)
+	PartGraph.attach(reactor_core, enemy_b.shell.root, internal_socket)
 
 	var enemy_c := _head_hosted_defender(
 		&"enemy_c", spawn_b[2] if spawn_b.size() > 2 else spawn_b[0] + Vector2i(0, 1)

@@ -15,7 +15,7 @@ Part:   { volume: Array[Box], ... }
 ```
 
 `BodyProjector` composes a part's world-relevant transform by walking the socket tree down from
-the frame's root (`world = parent ∘ socket.transform ∘ local`) before projecting its boxes —
+the shell's root (`world = parent ∘ socket.transform ∘ local`) before projecting its boxes —
 that's what makes a torso with 12 mirrored `SHOULDER` sockets place 12 arms in 12 different
 places instead of one. A socket with the default identity transform places its occupant
 exactly where the host's own local origin is, so single-part fixtures and un-migrated sockets

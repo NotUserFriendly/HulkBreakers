@@ -13,7 +13,7 @@ A loadout must satisfy all three. They fail differently, which is the point.
 
 | Constraint | Scope | Failure |
 |---|---|---|
-| **Mass** | per frame (`max_mass`) | can't carry it |
+| **Mass** | per shell (`max_mass`) | can't carry it |
 | **Bulk** | per container (`max_bulk`) | won't fit in the bag |
 | **RAM** | per unit (`max_ram`) | can't *control* it |
 
@@ -85,8 +85,8 @@ a pistol off a severed arm is an AP action, not free.
 |---|---|---|
 | **Organics** | Surrogates | Meat, foliage — carbon-rich, non-fuel. |
 | **Minerals** | Surrogates / Armor | Bone, limestone, mined non-metals. |
-| **Metals** | Frames / Weapons | Steel, iron. *Not* titanium — that's discrete. |
-| **Ceramics** | Frames / Armor | High-tech: silicon wafers, ablative armor. |
-| **Electronics** | Frames / Weapons | Anything rich in gold/copper/silver. |
+| **Metals** | Shells / Weapons | Steel, iron. *Not* titanium — that's discrete. |
+| **Ceramics** | Shells / Armor | High-tech: silicon wafers, ablative armor. |
+| **Electronics** | Shells / Weapons | Anything rich in gold/copper/silver. |
 | **Fuel** | Weapons / Flying | Petrol, diesel, kerosene — flammable hydrocarbons. |
 | **Reactives** | High-end upgrades | Nuclear material: uranium, plutonium. |

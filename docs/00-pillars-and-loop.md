@@ -12,12 +12,12 @@ Not post-apocalyptic. The world has safe places; your crew just doesn't live in 
 |---|---|
 | **Matrix** | The mind. Intelligence (your crew) or Logic (everyone else). See `04`. |
 | **Surrogate** | Organic tissue grown from a matrix. A ladder of tiers, not a health bar. |
-| **Frame** | The mechanical body — sockets, plating, actuators. |
-| **Cyborg** | A unit combining surrogate + frame. Your crew, typically. |
-| **Bot** | A purely mechanical unit: matrix + frame, no surrogate. Most enemies; also a crew matrix flying a bare frame. |
+| **Shell** | The mechanical body — sockets, plating, actuators. A shell with no matrix docked is inert: intact, salvage, wearable. |
+| **Cyborg** | A unit combining surrogate + shell. Your crew, typically. |
+| **Bot** | A purely mechanical unit: matrix + shell, no surrogate. Most enemies; also a crew matrix flying a bare shell. |
 | **Unit** | Engine-level term for anything that takes a turn. Covers both. |
 
-The stack is **matrix → surrogate → frame**. "Robot" describes none of that layering and is
+The stack is **matrix → surrogate → shell**. "Robot" describes none of that layering and is
 not used anywhere in code, docs, or UI.
 
 ## Design pillars
@@ -52,10 +52,10 @@ Ship → pick a hulk → insert team → mission (gather resources / hit objecti
 | Mode | How | Consequence |
 |---|---|---|
 | **Landing** (prototype) | Ship docks, team walks in with the gear you chose. | You control the loadout. |
-| **Deep strike** (Phase 7 — in scope) | Matrices fired in as a missile. They use the ingress energy to force enemy matrices out of existing frames and wear whatever they land in. | Zero loadout control. Might land in a scrap heap and spend the first rounds getting to its feet, or in a frame store and get its pick — fighting with unfamiliar parts either way. Guarantees some profit since matrices can't be lost: even one cyborg walking out carrying the team's matrices is a win. |
+| **Deep strike** (Phase 7 — in scope) | Matrices fired in as a missile. They use the ingress energy to force enemy matrices out of existing shells and wear whatever they land in. | Zero loadout control. Might land in a scrap heap and spend the first rounds getting to its feet, or in a shell store and get its pick — fighting with unfamiliar parts either way. Guarantees some profit since matrices can't be lost: even one cyborg walking out carrying the team's matrices is a win. |
 
 **Deep strike is pulled forward deliberately.** It is the best stress test the project has:
-it forces randomized frame assembly and arbitrary body-part combinations through the whole
+it forces randomized shell assembly and arbitrary body-part combinations through the whole
 stack, and anything malformed surfaces immediately instead of in month three.
 
 ## Prototype scope

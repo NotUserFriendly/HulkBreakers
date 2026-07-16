@@ -22,6 +22,6 @@ var dropped_subtree: Part = null
 ## Set alongside `ejected_matrix` (docs/04: ejection always demotes the
 ## surrogate one rung) — captured here rather than re-derived afterward,
 ## since the demoted unit's owning part may already be detached from its
-## frame by the time a caller gets around to logging this impact.
+## shell by the time a caller gets around to logging this impact.
 var demoted_unit: Unit = null
 var demoted_tier_before: SurrogateTier = null

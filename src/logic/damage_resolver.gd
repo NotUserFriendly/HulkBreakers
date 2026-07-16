@@ -60,7 +60,7 @@ static func apply_damage_to_part(part: Part, amount: float) -> bool:
 
 ## A destroyed VOLATILE part with cook_off_damage > 0 explodes: every living
 ## unit within cook_off_radius (Chebyshev) of its cell takes that damage to
-## their frame's root part. Returns the units it hit.
+## their shell's root part. Returns the units it hit.
 static func cook_off(part: Part, state: CombatState) -> Array[Unit]:
 	var affected: Array[Unit] = []
 	if not (&"VOLATILE" in part.tags) or part.cook_off_damage <= 0.0:
@@ -70,14 +70,14 @@ static func cook_off(part: Part, state: CombatState) -> Array[Unit]:
 		return affected
 	for unit: Unit in state.units:
 		if unit.alive and Grid.distance_chebyshev(unit.cell, center) <= int(part.cook_off_radius):
-			apply_damage_to_part(unit.frame.root, part.cook_off_damage)
+			apply_damage_to_part(unit.shell.root, part.cook_off_damage)
 			affected.append(unit)
 	return affected
 
 
 static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
 	for unit: Unit in state.units:
-		if part in unit.frame.all_parts():
+		if part in unit.shell.all_parts():
 			return unit.cell
 	for cell: Vector2i in state.grid.blockers:
 		if state.grid.blockers[cell] == part:
@@ -90,7 +90,7 @@ static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
 ## surrogate one rung (docs/04: "a torso chewed to SPINAL still functions"
 ## — the body degrades, the matrix does not). The unit itself goes
 ## unpiloted (alive false) — matrices are never lost, but an ejected one
-## leaves its frame behind. Returns the ejected Matrix, or null if `part`
+## leaves its shell behind. Returns the ejected Matrix, or null if `part`
 ## wasn't hosting one belonging to a real unit.
 static func eject_matrix_if_needed(part: Part, state: CombatState) -> Matrix:
 	if part.hp > 0 or not part.hosts_matrix() or part.hosted_matrix == null:
@@ -112,7 +112,7 @@ static func eject_matrix_if_needed(part: Part, state: CombatState) -> Matrix:
 
 static func _owning_unit(part: Part, state: CombatState) -> Unit:
 	for unit: Unit in state.units:
-		if part in unit.frame.all_parts():
+		if part in unit.shell.all_parts():
 			return unit
 	return null
 
@@ -120,17 +120,17 @@ static func _owning_unit(part: Part, state: CombatState) -> Unit:
 ## Destroying any non-root part drops its whole subtree as one intact
 ## assembly (docs/01: "blow a shoulder off and the entire subtree below it
 ## drops as one item... not exploded into a pile of disparate bits"). The
-## frame's own root is handled separately (eject_matrix_if_needed, if it
-## hosts one) — there's no parent within the same frame to drop it from,
+## shell's own root is handled separately (eject_matrix_if_needed, if it
+## hosts one) — there's no parent within the same shell to drop it from,
 ## since the root destroyed IS the unit. Returns the dropped part (the
 ## subtree's own root), or null if nothing was actually dropped.
 static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Part:
 	if part.hp > 0:
 		return null
 	var owner: Unit = _owning_unit(part, state)
-	if owner == null or owner.frame.root == part:
+	if owner == null or owner.shell.root == part:
 		return null
-	if not PartGraph.drop(owner.frame.root, part):
+	if not PartGraph.drop(owner.shell.root, part):
 		return null
 
 	if not state.grid.field_items.has(owner.cell):
@@ -164,8 +164,8 @@ static func _resolve_destruction_consequences(
 ## the whole body for that first lookup is what "it bounced clear" means.
 static func _body_of(part: Part, state: CombatState) -> Array[Part]:
 	for unit: Unit in state.units:
-		if part in unit.frame.all_parts():
-			return unit.frame.all_parts()
+		if part in unit.shell.all_parts():
+			return unit.shell.all_parts()
 	return [part]
 
 

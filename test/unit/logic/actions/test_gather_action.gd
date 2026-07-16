@@ -10,7 +10,7 @@ func _make_unit(cell: Vector2i) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(Matrix.new(), Frame.new(root), cell, 0)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, 0)
 
 
 func _make_mission(state: CombatState) -> MissionState:

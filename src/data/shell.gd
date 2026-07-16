@@ -1,10 +1,10 @@
-class_name Frame
+class_name Shell
 extends Resource
 
-## Replaces v1's Chassis. Instead of a flat slots Dictionary, a Frame is a
+## Replaces v1's Chassis. Instead of a flat slots Dictionary, a Shell is a
 ## single `root` Part with the whole body assembled through its socket tree
 ## (docs/01/PartGraph). Sockets (structural) and contents (inventory) are
-## different relationships — Frame only concerns the structural tree;
+## different relationships — Shell only concerns the structural tree;
 ## Inventory still owns `contents`.
 
 @export var root: Part
@@ -33,8 +33,8 @@ func living_parts() -> Array[Part]:
 
 ## The first part in this assembly whose id matches — actions resolve a
 ## targeted part this way rather than holding a bare Part reference across
-## states (docs/09): a preview's frame is an independent clone. Assumes a
-## single frame doesn't carry two parts sharing the same id, a reasonable
+## states (docs/09): a preview's shell is an independent clone. Assumes a
+## single shell doesn't carry two parts sharing the same id, a reasonable
 ## bound for one loadout.
 func find_part(part_id: StringName) -> Part:
 	for part: Part in all_parts():
@@ -92,8 +92,8 @@ func _flat_ram(container: Part) -> float:
 ## speculative previews (docs/09) — Part.duplicate(true) recurses through
 ## sockets/contents/hosted_matrix, so no shared Part is ever mutated by a
 ## preview that turns out to fire a weapon or take damage.
-func dup() -> Frame:
-	var cloned := Frame.new(root.duplicate(true) as Part if root != null else null)
+func dup() -> Shell:
+	var cloned := Shell.new(root.duplicate(true) as Part if root != null else null)
 	cloned.max_mass = max_mass
 	cloned.max_ram = max_ram
 	return cloned

@@ -5,7 +5,7 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 	var root := Part.new()
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(Matrix.new(), Frame.new(root), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, squad)
 
 
 func test_add_unit_assigns_sequential_ids_and_occupies_cell() -> void:

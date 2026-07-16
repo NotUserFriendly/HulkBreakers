@@ -6,7 +6,7 @@ func _make_unit(cell: Vector2i, agility: float = 0.0) -> Unit:
 	root.hp = 5
 	root.max_hp = 5
 	root.stat_mods = {"agility": agility}
-	return Unit.new(Matrix.new(), Frame.new(root), cell, 0)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, 0)
 
 
 func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:

@@ -3,9 +3,9 @@ extends CombatAction
 
 ## Aim point -> dartboard -> shot plane -> impact (docs/02/03, Phase 6).
 ## `unit` and `weapon_id` are resolved fresh from whatever `state` is passed
-## (docs/09): a preview's frame is an independent clone, so a bare Part
+## (docs/09): a preview's shell is an independent clone, so a bare Part
 ## reference captured at construction would never match it (see
-## Frame.find_part). Aims at the target unit's own frontmost region by
+## Shell.find_part). Aims at the target unit's own frontmost region by
 ## default — center mass — offset by `aim_offset` if given; never picks a
 ## body part directly (docs/02: the dartboard picks a point, not a part).
 
@@ -38,7 +38,7 @@ func is_legal(state: CombatState) -> bool:
 	if actual == null or not actual.alive or state.current_unit() != actual:
 		return false
 
-	var weapon: Part = actual.frame.find_part(weapon_id)
+	var weapon: Part = actual.shell.find_part(weapon_id)
 	if weapon == null or weapon.hp <= 0:
 		return false
 	if actual.ap < weapon.ap_cost:
@@ -57,7 +57,7 @@ func is_legal(state: CombatState) -> bool:
 		return false
 
 	var manipulators: Array[Part] = []
-	for part: Part in actual.frame.living_parts():
+	for part: Part in actual.shell.living_parts():
 		if part != weapon:
 			manipulators.append(part)
 	return PartGraph.can_operate(weapon, manipulators)
@@ -65,7 +65,7 @@ func is_legal(state: CombatState) -> bool:
 
 func apply(state: CombatState) -> void:
 	var actual: Unit = state.find_unit(unit.id)
-	var weapon: Part = actual.frame.find_part(weapon_id)
+	var weapon: Part = actual.shell.find_part(weapon_id)
 	actual.ap -= weapon.ap_cost
 
 	if state.is_preview:
@@ -113,7 +113,7 @@ func apply(state: CombatState) -> void:
 			DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
 			DamageResolver.DEFAULT_DAMAGE_FLOOR,
 			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
-			actual.frame.all_parts()
+			actual.shell.all_parts()
 		)
 		for result: ImpactResult in results:
 			_log_impact(state, actual, result)
@@ -123,7 +123,7 @@ func apply(state: CombatState) -> void:
 	# part hosting the Matrix ejects it — which fires strictly earlier than
 	# "every part destroyed," so it supersedes rather than conflicts with
 	# this conservative stand-in.
-	if target.alive and target.frame.living_parts().is_empty():
+	if target.alive and target.shell.living_parts().is_empty():
 		target.alive = false
 
 	state.log_action(

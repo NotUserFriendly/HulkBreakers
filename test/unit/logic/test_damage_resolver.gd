@@ -58,7 +58,7 @@ func test_rifle_round_over_dt_damages_the_plate_and_the_part_behind() -> void:
 	socket.occupant = plate
 	torso.sockets = [socket]
 
-	var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(2, 2))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
 	var grid := Grid.new(6, 6)
 	var state := CombatState.new(grid, [unit])
 	var table := MaterialTable.default_table()
@@ -283,7 +283,7 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 		run_victim.hp = 10
 		run_victim.max_hp = 10
 		run_victim.volume = victim.volume
-		var run_unit := Unit.new(Matrix.new(), Frame.new(run_victim), third_party_cell)
+		var run_unit := Unit.new(Matrix.new(), Shell.new(run_victim), third_party_cell)
 		var run_state := CombatState.new(run_grid, [run_unit])
 
 		var results: Array[ImpactResult] = DamageResolver.resolve_shot(
@@ -363,7 +363,7 @@ func test_double_crit_end_to_end_bypasses_armor_and_applies_bonus_damage() -> vo
 	for attempt in range(200):
 		plate.hp = 10
 		torso.hp = 10
-		var unit := Unit.new(Matrix.new(), Frame.new(torso), Vector2i(2, 2))
+		var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
 		var grid := Grid.new(6, 6)
 		var state := CombatState.new(grid, [unit])
 
@@ -396,12 +396,12 @@ func test_destroying_a_volatile_part_cooks_off_and_hits_units_in_radius_only() -
 	var near_root := Part.new()
 	near_root.hp = 10
 	near_root.max_hp = 10
-	var near_unit := Unit.new(Matrix.new(), Frame.new(near_root), Vector2i(6, 6))
+	var near_unit := Unit.new(Matrix.new(), Shell.new(near_root), Vector2i(6, 6))
 
 	var far_root := Part.new()
 	far_root.hp = 10
 	far_root.max_hp = 10
-	var far_unit := Unit.new(Matrix.new(), Frame.new(far_root), Vector2i(9, 9))
+	var far_unit := Unit.new(Matrix.new(), Shell.new(far_root), Vector2i(9, 9))
 
 	var state := CombatState.new(grid, [near_unit, far_unit])
 

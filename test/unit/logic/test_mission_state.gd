@@ -9,7 +9,7 @@ func _make_unit(cell: Vector2i, matrix: Matrix) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(matrix, Frame.new(root), cell)
+	return Unit.new(matrix, Shell.new(root), cell)
 
 
 func test_extract_banks_gathered_resources_and_items() -> void:

@@ -10,7 +10,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	root.id = &"root"
 	root.hp = 5
 	root.max_hp = 5
-	return Unit.new(Matrix.new(), Frame.new(root), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(root), cell, squad)
 
 
 ## torso -[HAND]- hand(TRIGGER) -[GRIP]- pistol — the same shape
@@ -45,7 +45,7 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
 
-	return Unit.new(Matrix.new(), Frame.new(torso), cell, squad)
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
 func _setup(units: Array[Unit]) -> Dictionary:
@@ -290,7 +290,9 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 	var weapon: Part = DeepStrike.find_operable_weapon(a)
 	var plane: Array[Region] = controller.aim_plane()
 	var target_point: Vector2 = ShotPlane.center_of(plane, b)
-	var result: AimResult = AimController.resolve(plane, target_point, controller.layer_index, weapon)
+	var result: AimResult = AimController.resolve(
+		plane, target_point, controller.layer_index, weapon
+	)
 
 	assert_eq(result.reading, b, "layer 0 of the aim plane must be the target, not the shooter")
 
@@ -345,7 +347,9 @@ func test_input_locked_blocks_click_scroll_reticle_and_confirm() -> void:
 
 	controller.input_locked = false
 	controller.click_cell(Vector2i(2, 2))
-	assert_eq(controller.selection.current_queue().actions.size(), 1, "unlocked, confirm works again")
+	assert_eq(
+		controller.selection.current_queue().actions.size(), 1, "unlocked, confirm works again"
+	)
 
 
 func test_end_turn_is_a_no_op_while_already_locked() -> void:
