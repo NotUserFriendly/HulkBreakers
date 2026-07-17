@@ -214,6 +214,7 @@ static func default_part_pool() -> Array[Part]:
 	plate_large_steel.attaches_to = [&"ARMOR"]
 	plate_large_steel.material = &"steel"
 	plate_large_steel.volume = [Box.new(Vector3.ZERO, Vector3(0.54, 0.66, 0.05))]
+	plate_large_steel.mangles_into = &"metal_scraps"
 
 	var plate_large_sheet_steel := Part.new()
 	plate_large_sheet_steel.id = &"plate_large_sheet_steel"
@@ -223,6 +224,7 @@ static func default_part_pool() -> Array[Part]:
 	plate_large_sheet_steel.attaches_to = [&"ARMOR"]
 	plate_large_sheet_steel.material = &"sheet_steel"
 	plate_large_sheet_steel.volume = [Box.new(Vector3.ZERO, Vector3(0.54, 0.66, 0.03))]
+	plate_large_sheet_steel.mangles_into = &"metal_scraps"
 
 	var plate_small_ceramic := Part.new()
 	plate_small_ceramic.id = &"plate_small_ceramic"
@@ -232,6 +234,7 @@ static func default_part_pool() -> Array[Part]:
 	plate_small_ceramic.attaches_to = [&"ARMOR"]
 	plate_small_ceramic.material = &"ceramic"
 	plate_small_ceramic.volume = [Box.new(Vector3.ZERO, Vector3(0.24, 0.20, 0.04))]
+	plate_small_ceramic.mangles_into = &"metal_scraps"
 
 	# Shared by both the arm's own ARMOR socket and its forearm's (docs/01):
 	# one template, reused wherever an ARMOR socket wants arm-tier plating.
@@ -243,6 +246,7 @@ static func default_part_pool() -> Array[Part]:
 	plate_small_steel.attaches_to = [&"ARMOR"]
 	plate_small_steel.material = &"steel"
 	plate_small_steel.volume = [Box.new(Vector3.ZERO, Vector3(0.16, 0.30, 0.04))]
+	plate_small_steel.mangles_into = &"metal_scraps"
 
 	var plate_medium_sheet_steel := Part.new()
 	plate_medium_sheet_steel.id = &"plate_medium_sheet_steel"
@@ -252,6 +256,7 @@ static func default_part_pool() -> Array[Part]:
 	plate_medium_sheet_steel.attaches_to = [&"ARMOR"]
 	plate_medium_sheet_steel.material = &"sheet_steel"
 	plate_medium_sheet_steel.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.70, 0.04))]
+	plate_medium_sheet_steel.mangles_into = &"metal_scraps"
 
 	# Cladding vs. plates (docs/01 taskblock02 Pass C): the skin layer a
 	# part is FOUND wearing, not bolted-on armor — a thin shell hugging
@@ -271,6 +276,7 @@ static func default_part_pool() -> Array[Part]:
 	torso_cladding.attaches_to = [&"CLADDING_TORSO"]
 	torso_cladding.material = &"sheet_steel"
 	torso_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.53, 0.73, 0.31))]
+	torso_cladding.mangles_into = &"twisted_sheet_metal"
 
 	var head_cladding := Part.new()
 	head_cladding.id = &"head_cladding"
@@ -280,6 +286,7 @@ static func default_part_pool() -> Array[Part]:
 	head_cladding.attaches_to = [&"CLADDING_HEAD"]
 	head_cladding.material = &"sheet_steel"
 	head_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.25, 0.27, 0.25))]
+	head_cladding.mangles_into = &"twisted_sheet_metal"
 
 	var arm_cladding := Part.new()
 	arm_cladding.id = &"arm_cladding"
@@ -289,6 +296,7 @@ static func default_part_pool() -> Array[Part]:
 	arm_cladding.attaches_to = [&"CLADDING_ARM"]
 	arm_cladding.material = &"sheet_steel"
 	arm_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.17, 0.37, 0.17))]
+	arm_cladding.mangles_into = &"twisted_sheet_metal"
 
 	var forearm_cladding := Part.new()
 	forearm_cladding.id = &"forearm_cladding"
@@ -298,6 +306,7 @@ static func default_part_pool() -> Array[Part]:
 	forearm_cladding.attaches_to = [&"CLADDING_FOREARM"]
 	forearm_cladding.material = &"sheet_steel"
 	forearm_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.15, 0.37, 0.15))]
+	forearm_cladding.mangles_into = &"twisted_sheet_metal"
 
 	var leg_cladding := Part.new()
 	leg_cladding.id = &"leg_cladding"
@@ -307,6 +316,7 @@ static func default_part_pool() -> Array[Part]:
 	leg_cladding.attaches_to = [&"CLADDING_LEG"]
 	leg_cladding.material = &"sheet_steel"
 	leg_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.19, 0.93, 0.19))]
+	leg_cladding.mangles_into = &"twisted_sheet_metal"
 
 	# docs/01a: the BACK socket's own worked example — cook off a flanked
 	# ammo rack (docs/03), or carry a backpack/body there instead.

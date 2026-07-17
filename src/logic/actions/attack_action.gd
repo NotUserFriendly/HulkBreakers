@@ -195,6 +195,17 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 			)
 		)
 		_credit_salvage(state, attacker, result.region.part)
+		# docs/10 taskblock05 E1: a mangling destruction's real salvage
+		# lives on the wreckage it became, not the original (typically
+		# empty-salvage) part — _credit_salvage's own empty-yield guard
+		# already makes crediting an intact, still-living detached child
+		# (which never carries salvage_yield) a safe no-op, so every
+		# dropped item can go through the same call uniformly. Skipped for
+		# `region.part` itself (the ordinary non-mangling case) since
+		# that's already credited immediately above.
+		for dropped: Part in result.dropped_subtree:
+			if dropped != result.region.part:
+				_credit_salvage(state, attacker, dropped)
 	for cooked: Unit in result.cooked_off_units:
 		state.combat_log.emit(
 			LogEvent.new(
@@ -264,15 +275,19 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				demotion_text
 			)
 		)
-	if result.dropped_subtree != null:
+	# docs/10 taskblock05 E2: a mangling destruction can drop several
+	# separate items at once (each child assembly, plus the wreckage) —
+	# one event per item, never a summary, matching docs/09's "if it
+	# changed the world, it's in the log."
+	for dropped: Part in result.dropped_subtree:
 		state.combat_log.emit(
 			LogEvent.new(
 				state.round_number,
 				Enums.Phase.RESOLUTION,
 				attacker.id,
 				&"subtree_dropped",
-				{"part": result.dropped_subtree.id},
-				"subtree_dropped: %s" % result.dropped_subtree.id
+				{"part": dropped.id},
+				"subtree_dropped: %s" % dropped.id
 			)
 		)
 

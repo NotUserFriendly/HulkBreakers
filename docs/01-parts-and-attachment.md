@@ -99,6 +99,32 @@ plating, its sword, and the pistol in its hand, still assembled.
 
 Implementation: the dropped field item *is* the subtree root Part, sockets still populated.
 
+**This is the non-mangling case, not the universal one (mangling, see below).** A destroyed
+part whose own `mangles_into` is set becomes wreckage instead: the wreckage replaces it
+entirely, and whatever was still attached to *its* own sockets detaches, each dropping as its
+own separate intact assembly, rooted at itself. The thing that held them became scrap — it
+can't hold anything. Today only cladding and plates mangle, and neither ever has children of
+its own, so this reads identically to the rule above in practice; it becomes visible the moment
+a structural part (an arm, say) is given a `mangles_into` of its own.
+
+## Mangling: some destroyed parts lose their identity
+A **low-complexity** part (cladding, a plate) is scrap the instant it's destroyed — no amount
+of examining a twisted sheet of steel tells you it used to be `arm_cladding` specifically. A
+**complex** part (a pistol, a sensor, a reactor) stays recognisably itself, broken: a broken
+pistol drops as a broken pistol, not generic wreckage.
+
+```
+Part: { mangles_into: StringName = &"" }   # empty = does not mangle
+```
+- **Set** → on destruction the part is *replaced* by that item (`Part.mangles_into` names an id
+  in `FieldObjects.wreckage_pool()`). `cladding` → `twisted_sheet_metal`. A plate → `metal_scraps`.
+- **Unset** → the part stays itself, flagged broken — and `broken` is read straight off
+  `hp <= 0`, never a second field to keep in sync. Broken parts already leave `living_parts()`,
+  so `stat_mods` already stop applying.
+- Wreckage carries its own `salvage_yield` (see `05`/taskblock-04 C) — mangling is where
+  destroyed gear actually becomes harvestable resources; the part it replaced typically carries
+  none of its own.
+
 ## Part fields
 | Field | Purpose |
 |---|---|
@@ -118,7 +144,9 @@ Implementation: the dropped field item *is* the subtree root Part, sockets still
 
 ## Rules
 - Attachment is a **tree**. No cycles, one occupant per socket.
-- Destroying a part drops its subtree **intact, as one assembly**.
+- Destroying a **non-mangling** part drops its subtree **intact, as one assembly**, rooted at
+  it. A **mangling** part instead becomes wreckage, and each of its own children drops as its
+  own separate intact assembly (see "Mangling" above).
 - A matrix docks only into a part that declares a `MATRIX` socket — never a free-standing
   flag any part can claim. Destroy *that* part → eject (see `04`). Today only the torso and
   head templates declare one; an arm can never host a matrix.

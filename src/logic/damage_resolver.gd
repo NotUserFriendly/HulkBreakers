@@ -163,32 +163,75 @@ static func _hosts_matrix_somewhere(part: Part) -> bool:
 	return false
 
 
-## Destroying any non-root part drops its whole subtree as one intact
-## assembly (docs/01: "blow a shoulder off and the entire subtree below it
-## drops as one item... not exploded into a pile of disparate bits"). The
-## shell's own root is handled separately (eject_matrix_if_needed, if it
-## hosts one) — there's no parent within the same shell to drop it from,
-## since the root destroyed IS the unit. Returns the dropped part (the
-## subtree's own root), or null if nothing was actually dropped.
+## Destroying any non-root part drops something (docs/01/10 taskblock05
+## E2). **Not mangling** (pistol, sensor, reactor): the whole subtree drops
+## as one intact assembly, rooted at `part` itself, broken — "blow a
+## shoulder off and the entire subtree below it drops as one item," the
+## original docs/01 rule, unchanged. **Mangling** (cladding, plates,
+## structure — `part.mangles_into` set): `part` becomes wreckage, replaced
+## entirely by a fresh instance from `state.wreckage_pool`; its own
+## children detach and EACH drops as its own separate intact assembly,
+## rooted at itself — the thing that held them became scrap, it can't hold
+## anything, so "a destroyed arm with a working pistol on it" (a corpse
+## holding its own loot) can't happen anymore. The shell's own root is
+## handled separately (eject_matrix_if_needed/eject_surrogate_if_needed) —
+## there's no parent within the same shell to drop it from, since the root
+## destroyed IS the unit.
+##
+## Returns every Part actually dropped this call (empty if nothing was).
 ##
 ## docs/10 taskblock04 C1/C2: a dropped assembly is a field object now —
 ## shootable and cover, the exact same category `grid.blockers` already
-## renders and projects into the shot plane (living children of the
-## destroyed root still project correctly; BodyProjector's own tree-walk
-## recurses into sockets regardless of the parent's hp). Skips registering
-## as a blocker if the cell already holds one (pre-existing terrain cover):
+## renders and projects into the shot plane (living children of a dropped
+## root still project correctly; BodyProjector's own tree-walk recurses
+## into sockets regardless of the parent's hp). Skips registering as a
+## blocker if the cell already holds one (pre-existing terrain cover):
 ## `grid.blockers` is one Part per cell today, so a genuine collision falls
 ## back to field_items alone (still lootable, just not additionally
 ## rendered/shootable) rather than silently discarding the existing cover.
-static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Part:
+static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Array[Part]:
 	if part.hp > 0:
-		return null
+		return []
 	var owner: Unit = _owning_unit(part, state)
 	if owner == null or owner.shell.root == part:
-		return null
+		return []
 	if not PartGraph.drop(owner.shell.root, part):
-		return null
+		return []
 
+	if part.mangles_into == &"":
+		_register_dropped(part, owner, state)
+		return [part]
+	return _mangle_and_drop(part, owner, state)
+
+
+## `part` has already been detached from its shell by the time this runs
+## (drop_subtree_if_destroyed's job) — this only handles what happens to
+## `part` itself and whatever was still riding its own sockets.
+static func _mangle_and_drop(part: Part, owner: Unit, state: CombatState) -> Array[Part]:
+	var dropped: Array[Part] = []
+	for socket: Socket in part.sockets:
+		var occupant: Part = socket.occupant
+		if occupant == null:
+			continue
+		socket.occupant = null
+		_register_dropped(occupant, owner, state)
+		dropped.append(occupant)
+
+	var wreckage: Part = _wreckage_for(part.mangles_into, state.wreckage_pool)
+	if wreckage != null:
+		_register_dropped(wreckage, owner, state)
+		dropped.append(wreckage)
+	return dropped
+
+
+static func _wreckage_for(mangles_into: StringName, pool: Array[Part]) -> Part:
+	for template: Part in pool:
+		if template.id == mangles_into:
+			return (template as Part).duplicate(true)
+	return null
+
+
+static func _register_dropped(part: Part, owner: Unit, state: CombatState) -> void:
 	if not state.grid.field_items.has(owner.cell):
 		state.grid.field_items[owner.cell] = []
 	state.grid.field_items[owner.cell].append(part)
@@ -197,7 +240,6 @@ static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Part:
 		if not DROPPED_TAG in part.tags:
 			part.tags.append(DROPPED_TAG)
 		state.grid.blockers[owner.cell] = part
-	return part
 
 
 ## Every consequence of a part actually reaching 0 hp, gathered onto one

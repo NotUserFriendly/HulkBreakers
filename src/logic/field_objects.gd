@@ -57,3 +57,41 @@ static func crate() -> Part:
 	part.volume = [Box.new(Vector3(0.0, 0.35, 0.0), Vector3(0.7, 0.7, 0.7))]
 	part.salvage_yield = {&"organics": 3}
 	return part
+
+
+## docs/10 taskblock05 E1: what a mangling part (cladding, structure)
+## becomes on destruction — this is where the "wreckage carries
+## salvage_yield" half of the rule actually lives; the part it replaced
+## typically carries none of its own.
+static func twisted_sheet_metal() -> Part:
+	var part := Part.new()
+	part.id = &"twisted_sheet_metal"
+	part.display_name = "Twisted Sheet Metal"
+	part.material = &"sheet_steel"
+	part.hp = 1
+	part.max_hp = 1
+	part.volume = [Box.new(Vector3.ZERO, Vector3(0.3, 0.3, 0.1))]
+	part.salvage_yield = {&"metals": 2}
+	return part
+
+
+## What a mangling plate becomes on destruction.
+static func metal_scraps() -> Part:
+	var part := Part.new()
+	part.id = &"metal_scraps"
+	part.display_name = "Metal Scraps"
+	part.material = &"steel"
+	part.hp = 1
+	part.max_hp = 1
+	part.volume = [Box.new(Vector3.ZERO, Vector3(0.25, 0.25, 0.1))]
+	part.salvage_yield = {&"metals": 3}
+	return part
+
+
+## docs/10 taskblock05 E1: every wreckage kind a mangling Part.mangles_into
+## can name, as templates — the same "array of templates, duplicate the
+## one you want by id" pattern DeepStrike.default_part_pool() already
+## uses. Adding a new wreckage kind is one more row here, no other code
+## changes (open StringName vocabulary, not a closed engine state).
+static func wreckage_pool() -> Array[Part]:
+	return [twisted_sheet_metal(), metal_scraps()]

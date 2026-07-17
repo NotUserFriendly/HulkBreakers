@@ -109,6 +109,17 @@ extends Resource
 ## armor plate doesn't.
 @export var salvage_yield: Dictionary = {}
 
+## docs/10 taskblock05 E1: what this part becomes on destruction — a
+## StringName id into FieldObjects.wreckage_pool(). Empty (the default)
+## means it doesn't mangle: the part stays itself, broken (derived from
+## hp <= 0, never a second flag), and its own subtree drops intact, rooted
+## at it. Set (cladding, plates, structure) means it's low-complexity
+## enough to lose its identity entirely: on destruction it's REPLACED by
+## the named wreckage, and its own children detach to drop as their own
+## separate intact assemblies instead — the thing that held them became
+## scrap, it can't hold anything.
+@export var mangles_into: StringName = &""
+
 ## Weapon stats (docs/02, Phase 4) — a weapon is just a Part whose
 ## `requires` names the manipulator capabilities it needs to fire (already
 ## exercised by PartGraph.can_operate in Phase 1). Not `range`: that shadows

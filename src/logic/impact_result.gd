@@ -23,7 +23,11 @@ var ejected_matrix: Matrix = null
 ## distinct from `ejected_matrix`, which fires when a part hosts a BARE
 ## matrix directly (a bot). Mutually exclusive on any one impact.
 var ejected_surrogate: Part = null
-var dropped_subtree: Part = null
+## docs/10 taskblock05 E2: usually one entry (the non-mangling case: the
+## destroyed part's own subtree, rooted at it) but a mangling destruction
+## can drop several separate items at once — its own children, each its
+## own intact assembly, plus the wreckage `part` itself became.
+var dropped_subtree: Array[Part] = []
 ## Set alongside `ejected_matrix` (docs/04: ejection always demotes the
 ## surrogate one rung) — captured here rather than re-derived afterward,
 ## since the demoted unit's owning part may already be detached from its
