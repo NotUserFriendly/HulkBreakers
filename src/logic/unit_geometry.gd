@@ -5,8 +5,9 @@ extends RefCounted
 ## part's boxes for a unit, in world space — distinct from BodyProjector's
 ## 2D view-plane projection (which culls to visible faces for one line of
 ## fire). Both compose the same socket-chain transform the same way
-## (Phase 12.0: `parent ∘ socket.transform ∘ ...`), so what a UnitView
-## renders and what the shot plane can hit are always the same boxes.
+## (Phase 12.0: `parent ∘ socket.current_transform() ∘ ...`), so what a
+## UnitView renders and what the shot plane can hit are always the same
+## boxes.
 
 ## World units per grid cell — the ground plane's scale for both the board
 ## mesh and unit placement.
@@ -77,7 +78,9 @@ static func _walk(
 	for socket: Socket in part.sockets:
 		if socket.occupant == null:
 			continue
-		var socket_transform: Transform3D = socket.transform
+		# docs/09 taskblock06 Pass B: the seam a future rig posing system
+		# slots into (Socket.current_transform() — today just `transform`).
+		var socket_transform: Transform3D = socket.current_transform()
 		if pose != null and pose.overrides.has(socket.id):
 			socket_transform = socket_transform * (pose.overrides[socket.id] as Transform3D)
 		_walk(socket.occupant, part_transform * socket_transform, unit_transform, result, pose)
