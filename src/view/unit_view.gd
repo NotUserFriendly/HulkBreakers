@@ -75,14 +75,20 @@ func refresh() -> void:
 
 	_team_marker = _build_team_marker()
 	add_child(_team_marker)
-	var downed: bool = is_downed()
-	if not downed:
+	if not is_downed():
 		# docs/10 taskblock03 G: "kill its facing wedge" — a downed unit
 		# isn't facing anything.
 		add_child(_build_facing_wedge())
 
 	var team_color: Color = WorldPalette.team_color(unit.squad_id)
-	for placement: BoxPlacement in UnitGeometry.placements(unit, preview_orientation):
+	# docs/10 taskblock05 F3: DOWN is now a real Pose, passed in explicitly
+	# (taskblock03 G's old _downed_transform hack is gone) — no separate
+	# view-only transform left to apply after the fact; UnitGeometry
+	# composes it directly, so any headless caller that goes through the
+	# same explicit override (UnitPicker's hit-testing included, once
+	# something threads it through) agrees with what's drawn.
+	var pose: Variant = Poses.down() if is_downed() else null
+	for placement: BoxPlacement in UnitGeometry.placements(unit, preview_orientation, pose):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = placement.box.size
@@ -95,18 +101,7 @@ func refresh() -> void:
 		material.next_pass = WorldPalette.rim_outline_material(team_color)
 		box_mesh.material = material
 		instance.mesh = box_mesh
-		var world_transform: Transform3D = placement.transform.translated_local(
-			placement.box.center
-		)
-		# docs/10 taskblock03 G: "lay it on its back" — rotate 90 degrees
-		# about X, pivoted at the unit's own cell (ground level), so it
-		# reads as fallen in place rather than flying off or sinking
-		# through the floor. Cheap, unmistakable, and honest: "the boxes
-		# are still exactly where the shot plane says they are" — this only
-		# ever touches the view's own transform, never UnitGeometry itself.
-		instance.transform = (
-			_downed_transform(unit.cell) * world_transform if downed else world_transform
-		)
+		instance.transform = placement.transform.translated_local(placement.box.center)
 		add_child(instance)
 		if not _meshes_by_part.has(placement.part):
 			_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
@@ -138,21 +133,10 @@ func clear_highlight() -> void:
 
 
 ## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs
-## to read as down." No other "otherwise unable to act" condition is
-## defined anywhere else in this codebase yet (docs/09/CombatState's own
-## turn order only ever checks `alive`) — flagged, not invented: only the
-## bare-shell case is implemented here.
+## to read as down." Delegates to Unit.is_downed() (taskblock05 F3: moved
+## there now that being downed is a geometry fact, not just a view one).
 func is_downed() -> bool:
-	return unit != null and unit.resolve_matrix() == null
-
-
-static func _downed_transform(cell: Vector2i) -> Transform3D:
-	var pivot: Vector3 = Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
-	return (
-		Transform3D(Basis.IDENTITY, pivot)
-		* Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)
-		* Transform3D(Basis.IDENTITY, -pivot)
-	)
+	return unit != null and unit.is_downed()
 
 
 func _marker_color() -> Color:

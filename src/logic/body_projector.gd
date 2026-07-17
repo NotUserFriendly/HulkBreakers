@@ -44,11 +44,17 @@ const _FACE_CORNERS_B: Array[Vector2] = [
 ## (Phase 12.0) so a part attached deep in the tree — or twice, at mirrored
 ## sockets, even the exact same Part resource in both — projects at its own
 ## composed position, never the root's or a sibling occurrence's.
+## docs/10 taskblock05 F2: composes `unit.pose` by default — never a
+## computed override like DOWN automatically (see UnitGeometry.placements'
+## own doc comment for why: most headless fixtures never dock a matrix for
+## reasons unrelated to piloting status).
 static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 	var regions: Array[Region] = []
 	if unit.shell.root == null:
 		return regions
-	_project_tree(unit.shell.root, Transform3D.IDENTITY, view_dir, unit.orientation, regions)
+	_project_tree(
+		unit.shell.root, Transform3D.IDENTITY, view_dir, unit.orientation, regions, unit.pose
+	)
 	return regions
 
 
@@ -62,7 +68,7 @@ static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 ## root's own boxes, never an attached plate or weapon still riding along.
 static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
 	var regions: Array[Region] = []
-	_project_tree(root, Transform3D.IDENTITY, view_dir, 0.0, regions)
+	_project_tree(root, Transform3D.IDENTITY, view_dir, 0.0, regions, null)
 	return regions
 
 
@@ -73,19 +79,32 @@ static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
 ## write-wins) transform. Each occurrence gets its own transform, computed
 ## once here and reused across all of that occurrence's boxes in
 ## `project_part` — never recomputed per box.
+##
+## docs/10 taskblock05 F2: `pose`'s overrides compose onto each socket's
+## own transform (null for a field object/cover part — those aren't
+## posed) — the same mechanism UnitGeometry.assembly_placements uses, so
+## the shot plane and the hitbox a player sees always agree. The reserved
+## ROOT override (DOWN) has no analogue here: BodyProjector's 2D
+## flattening has no "whole assembly" transform to compose it onto, only
+## per-socket ones — a downed unit's shot plane is a later problem, not
+## this pass's.
 static func _project_tree(
 	part: Part,
 	part_transform: Transform3D,
 	view_dir: Vector2,
 	orientation: float,
-	regions: Array[Region]
+	regions: Array[Region],
+	pose: Pose
 ) -> void:
 	regions.append_array(project_part(part, view_dir, orientation, part_transform))
 	for socket: Socket in part.sockets:
 		if socket.occupant == null:
 			continue
+		var socket_transform: Transform3D = socket.transform
+		if pose != null and pose.overrides.has(socket.id):
+			socket_transform = socket_transform * (pose.overrides[socket.id] as Transform3D)
 		_project_tree(
-			socket.occupant, part_transform * socket.transform, view_dir, orientation, regions
+			socket.occupant, part_transform * socket_transform, view_dir, orientation, regions, pose
 		)
 
 

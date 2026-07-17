@@ -199,6 +199,99 @@ func test_bounding_sphere_with_no_root_falls_back_to_the_units_own_cell() -> voi
 	assert_almost_eq(sphere.radius, 0.0, 0.0001)
 
 
+## docs/10 taskblock05 F2: "a pose moves the boxes" — a socket override
+## composes onto the socket's own authored transform, so it must actually
+## move the child part it applies to.
+func test_a_pose_changes_a_parts_composed_world_transform() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	# Offset in X, off its own socket origin, since the override rotates
+	# around Y (UP) below — a box centered on the joint it rotates around,
+	# or offset along the rotation's own axis, would never visibly move.
+	arm.volume = [Box.new(Vector3(0.3, 0.0, 0.0), Vector3(0.2, 0.2, 0.2))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.7, 0.3))]
+	var shoulder := Socket.new(
+		&"SHOULDER", Transform3D(Basis(), Vector3(1.0, 0.0, 0.0)), &"ARM_JOINT"
+	)
+	shoulder.occupant = arm
+	torso.sockets = [shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var idle_arm: BoxPlacement = UnitGeometry.placements(unit)[1]
+
+	var pose := Pose.new()
+	pose.overrides = {&"ARM_JOINT": Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3.ZERO)}
+	unit.pose = pose
+	var posed_arm: BoxPlacement = UnitGeometry.placements(unit)[1]
+
+	assert_false(
+		(idle_arm.transform * idle_arm.box.center).is_equal_approx(
+			posed_arm.transform * posed_arm.box.center
+		),
+		"the posed arm must land somewhere different than the idle one"
+	)
+
+
+## docs/10 taskblock05 F3: "poses are data, adding one needs no code" — a
+## Pose built entirely ad hoc (never touching the Poses factory class at
+## all) must work exactly the same way as one of the three named ones.
+## Nothing anywhere special-cases Pose by identity or name.
+func test_an_arbitrary_pose_never_seen_in_poses_gd_still_works() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.7, 0.3))]
+	var elbow := Socket.new(&"ELBOW", Transform3D.IDENTITY, &"HOMEBREW_JOINT_ID")
+	elbow.occupant = arm
+	torso.sockets = [elbow]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var homebrew_pose := Pose.new()
+	homebrew_pose.overrides = {&"HOMEBREW_JOINT_ID": Transform3D(Basis(), Vector3(9.0, 0.0, 0.0))}
+	unit.pose = homebrew_pose
+
+	var arm_placement: BoxPlacement = UnitGeometry.placements(unit)[1]
+	var world: Vector3 = arm_placement.transform * arm_placement.box.center
+	assert_almost_eq(world.x, 9.0, 0.0001, "a plain, code-free Pose must still move the socket")
+
+
+## docs/10 taskblock05 F3: "DOWN puts every box below standing height."
+func test_down_puts_every_box_below_standing_height() -> void:
+	var unit := DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(0, 0))
+	const STANDING_HEIGHT := 1.85  # docs/01: head sits at ~1.60-1.85 upright
+
+	for placement: BoxPlacement in UnitGeometry.placements(unit, null, Poses.down()):
+		var half: Vector3 = placement.box.size * 0.5
+		var highest_corner := -INF
+		for sx in [-1.0, 1.0]:
+			for sy in [-1.0, 1.0]:
+				for sz in [-1.0, 1.0]:
+					var local: Vector3 = (
+						placement.box.center + Vector3(sx * half.x, sy * half.y, sz * half.z)
+					)
+					var world: Vector3 = placement.transform * local
+					highest_corner = maxf(highest_corner, world.y)
+		assert_lt(
+			highest_corner,
+			STANDING_HEIGHT,
+			"%s's own highest corner must read as lying down, not standing" % placement.part.id
+		)
+
+
 func test_a_socket_transform_offsets_the_child_from_the_root() -> void:
 	var arm := Part.new()
 	arm.id = &"arm"

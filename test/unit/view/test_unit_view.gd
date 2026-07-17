@@ -221,21 +221,28 @@ func test_a_downed_unit_kills_its_facing_wedge() -> void:
 	assert_eq(view.get_child_count(), 2, "team marker + one part mesh, no wedge in between")
 
 
-func test_a_downed_units_body_is_rotated_ninety_degrees_about_x() -> void:
+## docs/10 taskblock05 F3: DOWN is a real Pose now, passed to
+## UnitGeometry.placements() explicitly (Unit.is_downed() decides whether
+## to) — the view no longer applies any rotation of its own on top, so the
+## rendered mesh's transform must match placements(unit, ..., Poses.down())
+## exactly, and read as lying down relative to standing upright.
+func test_a_downed_units_body_matches_its_own_posed_geometry_exactly() -> void:
 	var unit := _shell_unit(Vector2i(2, 3))
 	var view := UnitView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
-	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
-	var upright: Transform3D = expected.transform.translated_local(expected.box.center)
+	var posed: BoxPlacement = UnitGeometry.placements(unit, null, Poses.down())[0]
+	var expected: Transform3D = posed.transform.translated_local(posed.box.center)
 	var actual: Transform3D = (view.get_child(1) as MeshInstance3D).transform
 
-	assert_ne(actual, upright, "a downed body must not render at its upright transform")
-	# Rotating the upright transform's own basis 90 degrees about world X
-	# must land exactly where the view actually put it.
-	var expected_basis: Basis = Basis(Vector3.RIGHT, PI / 2.0) * upright.basis
-	assert_true(actual.basis.is_equal_approx(expected_basis))
+	assert_eq(actual, expected, "the view must render exactly what the posed geometry says")
+
+	var upright: BoxPlacement = UnitGeometry.placements(unit)[0]
+	assert_false(
+		posed.transform.basis.is_equal_approx(upright.transform.basis),
+		"DOWN must actually rotate the geometry relative to standing upright"
+	)
 
 
 func test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units() -> void:
