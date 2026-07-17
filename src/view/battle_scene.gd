@@ -29,6 +29,7 @@ var inventory_panel: InventoryPanel
 var weapon_panel: WeaponPanel
 var combat_readout_panel: CombatReadoutPanel
 var queue_panel: QueuePanel
+var action_bar: ActionBar
 var controls_overlay: ControlsOverlay
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
@@ -266,6 +267,13 @@ func _ready() -> void:
 	resolve_to_here_button.disabled = true
 	bottom_right.add_child(resolve_to_here_button)
 
+	# taskblock-07 Pass E1: "a row of 10 boxes along the bottom, merged with
+	# the turn controls" — sits directly above New Battle/End Turn/Reset
+	# Turn, in the same bottom_right stack.
+	var action_row := HBoxContainer.new()
+	action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom_right.add_child(action_row)
+
 	var new_battle_button := Button.new()
 	new_battle_button.text = "New Battle"
 	new_battle_button.pressed.connect(_on_new_battle_pressed)
@@ -309,6 +317,10 @@ func _ready() -> void:
 	queue_panel = QueuePanel.new()
 	add_child(queue_panel)
 	queue_panel.setup(tactics, queue_tree, resolve_to_here_button)
+
+	action_bar = ActionBar.new()
+	add_child(action_bar)
+	action_bar.setup(tactics, action_row)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)

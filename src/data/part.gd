@@ -100,6 +100,16 @@ extends Resource
 ## looks for) ...
 @export var tags: Array[StringName] = []
 
+## taskblock-07 Pass E1: open StringName ids this part contributes to the
+## action bar (`&"shoot"`, `&"saw"`, ...) — declared per part, in data,
+## never derived from any closed `part_type` ("`if part_type == WEAPON`" is
+## code knowing about content; repetition in a data row is the cheap
+## kind). E3: guns temporarily also list `&"overwatch"` — a PLACEHOLDER;
+## its real provider is a matrix perk (`Matrix.provides_actions()`), not
+## the gun. Moving it off this array and onto a perk's own array later is a
+## data edit, not a code edit — see `ActionCatalog.actions_for`.
+@export var provides_actions: Array[StringName] = []
+
 ## docs/07: empty for most items — the same design bought from a merchant
 ## or found on a hulk is a plain, undifferentiated item. A handful of
 ## designs deliberately overlap between the two loot pools; on those,
