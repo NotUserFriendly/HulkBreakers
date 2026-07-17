@@ -22,6 +22,7 @@ const COL_MP_WIDTH := 60
 var tactics: TacticsController
 var tree: Tree
 var resolve_button: Button
+var tooltip_view: TooltipView
 var _marker_index: int = -1
 ## docs/09 taskblock07 Pass B3: the OTHER half of "derived, not
 ## event-driven" — how many entries the queue actually has right now, kept
@@ -29,12 +30,23 @@ var _marker_index: int = -1
 ## click to have just happened to know whether the current marker is
 ## still valid.
 var _entry_count: int = 0
+## taskblock-07 Pass F1: this queue's own rows, kept for hover lookup —
+## `item.get_metadata(COL_WHAT)` already stores each row's index into this
+## same array (see refresh()), so a hovered TreeItem resolves straight
+## back to its own entry.
+var _current_entries: Array[Dictionary] = []
 
 
-func setup(p_tactics: TacticsController, p_tree: Tree, p_resolve_button: Button) -> void:
+func setup(
+	p_tactics: TacticsController,
+	p_tree: Tree,
+	p_resolve_button: Button,
+	p_tooltip_view: TooltipView
+) -> void:
 	tactics = p_tactics
 	tree = p_tree
 	resolve_button = p_resolve_button
+	tooltip_view = p_tooltip_view
 	tree.columns = 3
 	tree.column_titles_visible = true
 	tree.hide_root = true
@@ -51,9 +63,31 @@ func setup(p_tactics: TacticsController, p_tree: Tree, p_resolve_button: Button)
 	tree.set_column_expand(COL_MP, false)
 	tree.set_column_custom_minimum_width(COL_MP, COL_MP_WIDTH)
 	tree.item_selected.connect(_on_item_selected)
+	tree.gui_input.connect(_on_tree_gui_input)
+	tree.mouse_exited.connect(
+		func() -> void:
+			if tooltip_view != null:
+				tooltip_view.hide_tooltip()
+	)
 	resolve_button.pressed.connect(_on_resolve_pressed)
 	tactics.selection_changed.connect(refresh)
 	refresh()
+
+
+## taskblock-07 Pass F1: "queue entries" are named as a hoverable surface —
+## same gui_input-based per-row hover InventoryPanel already uses (a Tree
+## has no native per-item hover signal).
+func _on_tree_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseMotion) or tooltip_view == null:
+		return
+	var motion := event as InputEventMouseMotion
+	var item: TreeItem = tree.get_item_at_position(motion.position)
+	var index: Variant = item.get_metadata(COL_WHAT) if item != null else null
+	if not (index is int) or index < 0 or index >= _current_entries.size():
+		tooltip_view.hide_tooltip()
+		return
+	var data: TooltipData = TooltipBuilder.for_queue_entry(_current_entries[index])
+	tooltip_view.show_data(data, tree.get_viewport().get_mouse_position())
 
 
 func _on_item_selected() -> void:
@@ -89,6 +123,7 @@ func refresh() -> void:
 	if unit != null:
 		entries = tactics.selection.queue_entries()
 	_entry_count = entries.size()
+	_current_entries = entries
 	if unit == null or _marker_index >= _entry_count:
 		_marker_index = -1
 
