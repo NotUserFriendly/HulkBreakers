@@ -27,7 +27,8 @@ var resolution_player: ResolutionPlayer
 var stat_panel: StatPanel
 var inventory_panel: InventoryPanel
 var weapon_panel: WeaponPanel
-var combat_readout_panel: CombatReadoutPanel
+var tooltip_view: TooltipView
+var tooltip_controller: TooltipController
 var queue_panel: QueuePanel
 var action_bar: ActionBar
 var controls_overlay: ControlsOverlay
@@ -246,16 +247,6 @@ func _ready() -> void:
 	stat_drill_down.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(stat_drill_down)
 
-	# docs/10 taskblock04 E2/E3: "the combat readout — everything else:
-	# enemy status, tile contents, part detail." Lives under the same
-	# COMBAT READOUT header as the aim/stat cluster above — hover the board
-	# or click an inventory row and this is what fills in.
-	var combat_readout_label := RichTextLabel.new()
-	combat_readout_label.custom_minimum_size = Vector2(320, 140)
-	combat_readout_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
-	combat_readout_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(combat_readout_label)
-
 	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
 	# unit's queued actions" — click a row to set the stop marker, then
 	# "Resolve to Here" resolves the queue's prefix through it for real.
@@ -302,29 +293,41 @@ func _ready() -> void:
 
 	new_battle(DEFAULT_SEED)
 
+	# taskblock-07 Pass F1/F2: THE one tooltip renderer — created before
+	# every panel below so each can be handed the same instance, but only
+	# added to the tree (theme_root's LAST child, so it draws above every
+	# other panel) once they're all wired.
+	tooltip_view = TooltipView.new()
+
 	inventory_panel = InventoryPanel.new()
 	add_child(inventory_panel)
-	inventory_panel.setup(tactics, inventory_tree, inventory_footer, combat_state.material_table)
+	inventory_panel.setup(
+		tactics, inventory_tree, inventory_footer, combat_state.material_table, tooltip_view
+	)
 
 	weapon_panel = WeaponPanel.new()
 	add_child(weapon_panel)
 	weapon_panel.setup(tactics, weapon_label)
 
-	combat_readout_panel = CombatReadoutPanel.new()
-	add_child(combat_readout_panel)
-	combat_readout_panel.setup(tactics, combat_readout_label)
+	# taskblock-07 Pass F2: replaces combat_readout_panel.gd — "hovering a
+	# tile or an enemy now produces a tooltip instead of filling a panel."
+	tooltip_controller = TooltipController.new()
+	add_child(tooltip_controller)
+	tooltip_controller.setup(tactics, tooltip_view, combat_state.material_table)
 
 	queue_panel = QueuePanel.new()
 	add_child(queue_panel)
-	queue_panel.setup(tactics, queue_tree, resolve_to_here_button)
+	queue_panel.setup(tactics, queue_tree, resolve_to_here_button, tooltip_view)
 
 	action_bar = ActionBar.new()
 	add_child(action_bar)
-	action_bar.setup(tactics, action_row)
+	action_bar.setup(tactics, action_row, tooltip_view)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
 	controls_overlay.setup(controls_label, file_sink.path)
+
+	theme_root.add_child(tooltip_view)
 
 	_update_readout_header()
 

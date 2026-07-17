@@ -27,12 +27,20 @@ func _setup(units: Array[Unit]) -> Dictionary:
 	var panel := QueuePanel.new()
 	var tree := Tree.new()
 	var button := Button.new()
+	var tooltip_view := TooltipView.new()
 	add_child_autofree(panel)
 	add_child_autofree(tree)
 	add_child_autofree(button)
-	panel.setup(controller, tree, button)
+	add_child_autofree(tooltip_view)
+	panel.setup(controller, tree, button, tooltip_view)
 
-	return {"controller": controller, "panel": panel, "tree": tree, "button": button}
+	return {
+		"controller": controller,
+		"panel": panel,
+		"tree": tree,
+		"button": button,
+		"tooltip_view": tooltip_view
+	}
 
 
 ## Selects the Tree row at `index` and drives the same path a real click

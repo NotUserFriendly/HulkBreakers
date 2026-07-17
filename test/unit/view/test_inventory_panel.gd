@@ -27,12 +27,20 @@ func _setup(units: Array[Unit]) -> Dictionary:
 	var panel := InventoryPanel.new()
 	var tree := Tree.new()
 	var footer := Label.new()
+	var tooltip_view := TooltipView.new()
 	add_child_autofree(panel)
 	add_child_autofree(tree)
 	add_child_autofree(footer)
-	panel.setup(controller, tree, footer, MaterialTable.default_table())
+	add_child_autofree(tooltip_view)
+	panel.setup(controller, tree, footer, MaterialTable.default_table(), tooltip_view)
 
-	return {"controller": controller, "panel": panel, "tree": tree, "footer": footer}
+	return {
+		"controller": controller,
+		"panel": panel,
+		"tree": tree,
+		"footer": footer,
+		"tooltip_view": tooltip_view
+	}
 
 
 func test_nothing_selected_shows_an_empty_tree_and_footer() -> void:
@@ -130,6 +138,9 @@ func test_exactly_three_columns_part_condition_mass() -> void:
 
 ## runNotes.md: "show all the stats of parts on hover, drawing a new small
 ## window" — Godot's own per-item tooltip.
+## taskblock-07 Pass F1: the tooltip is now the shared TooltipView, driven
+## by a real hover (gui_input mouse motion — a Tree has no per-item hover
+## signal), not Godot's own plain-text set_tooltip_text().
 func test_hovering_a_row_shows_the_full_stat_block_in_its_tooltip() -> void:
 	var torso := Part.new()
 	torso.id = &"torso"
@@ -142,10 +153,18 @@ func test_hovering_a_row_shows_the_full_stat_block_in_its_tooltip() -> void:
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
 	var tree: Tree = built.tree
+	var tooltip_view: TooltipView = built.tooltip_view
+	tree.size = Vector2(400, 300)
 
 	controller.click_cell(Vector2i(0, 0))
 
-	var tooltip: String = tree.get_root().get_child(0).get_tooltip_text(InventoryPanel.COL_PART)
+	var item: TreeItem = tree.get_root().get_child(0)
+	var row_rect: Rect2 = tree.get_item_area_rect(item)
+	var motion := InputEventMouseMotion.new()
+	motion.position = row_rect.position + Vector2(5, row_rect.size.y / 2.0)
+	tree.gui_input.emit(motion)
+
+	var tooltip: String = tooltip_view._label.text
 	assert_true(tooltip.contains("8/10"))
 	assert_true(tooltip.contains("steel"))
 	assert_true(tooltip.contains("4.0"), "mass must be in the tooltip even though it's dropped")

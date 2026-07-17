@@ -17,10 +17,13 @@ extends Node
 ## `tactics.inspect_part()` with that row's own Part (stashed on the
 ## TreeItem via `set_metadata`), never a second copy of the stat text.
 ##
-## runNotes.md: only Part/Condition/Mass show as columns, with the full
-## stat block (Material, DT, Bulk, socket, inert) in a hover tooltip —
-## Godot's own built-in per-item tooltip IS "a new small window," no
-## custom popup control needed.
+## taskblock-07 Pass F1/F2: "the tooltip you get hovering a part in the
+## inventory becomes THE detail mechanism." This is that tooltip's own
+## origin — full stat block (Material, DT, Bulk, socket, inert) on hover —
+## generalized into TooltipBuilder.for_part() and rendered through the one
+## shared TooltipView, in place of Godot's own built-in per-item
+## `set_tooltip_text()` (which existed here first, runNotes.md, but can
+## only ever show plain text — no BBCode, no `changed` highlighting).
 
 const COLUMN_TITLES: Array[String] = ["Part", "Condition", "Mass"]
 const COL_PART := 0
@@ -48,15 +51,27 @@ var tactics: TacticsController
 var tree: Tree
 var footer: Label
 var material_table: MaterialTable
+var tooltip_view: TooltipView
+## Keyed by the same InventoryRow.part every TreeItem already carries as
+## its own metadata — the row hovered right now, looked up fresh each
+## motion event rather than cached, since refresh() rebuilds the tree
+## wholesale (the same staleness concern _on_highlight_changed's own doc
+## comment already calls out for this file).
+var _rows_by_part: Dictionary = {}
 
 
 func setup(
-	p_tactics: TacticsController, p_tree: Tree, p_footer: Label, p_material_table: MaterialTable
+	p_tactics: TacticsController,
+	p_tree: Tree,
+	p_footer: Label,
+	p_material_table: MaterialTable,
+	p_tooltip_view: TooltipView
 ) -> void:
 	tactics = p_tactics
 	tree = p_tree
 	footer = p_footer
 	material_table = p_material_table
+	tooltip_view = p_tooltip_view
 	tree.columns = COLUMN_TITLES.size()
 	tree.column_titles_visible = true
 	# runNotes.md: "there's a dead top level tree... that doesn't need to be
@@ -78,7 +93,12 @@ func setup(
 	# read via gui_input (Tree has no dedicated per-item hover signal),
 	# cleared the instant the cursor leaves the tree entirely.
 	tree.gui_input.connect(_on_tree_gui_input)
-	tree.mouse_exited.connect(func() -> void: tactics.hover_part(null))
+	tree.mouse_exited.connect(
+		func() -> void:
+			tactics.hover_part(null)
+			if tooltip_view != null:
+				tooltip_view.hide_tooltip()
+	)
 	tactics.selection_changed.connect(refresh)
 	tactics.highlight_changed.connect(_on_highlight_changed)
 	refresh()
@@ -96,12 +116,20 @@ func _on_item_selected() -> void:
 func _on_tree_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseMotion):
 		return
-	var item: TreeItem = tree.get_item_at_position((event as InputEventMouseMotion).position)
+	var motion := event as InputEventMouseMotion
+	var item: TreeItem = tree.get_item_at_position(motion.position)
 	if item == null:
 		tactics.hover_part(null)
+		if tooltip_view != null:
+			tooltip_view.hide_tooltip()
 		return
 	var part: Variant = item.get_metadata(COL_PART)
 	tactics.hover_part(part if part is Part else null)
+	if tooltip_view == null or not (part is Part):
+		return
+	var row: InventoryRow = _rows_by_part.get(part)
+	var data: TooltipData = TooltipBuilder.for_part(part, material_table, row)
+	tooltip_view.show_data(data, tree.get_viewport().get_mouse_position())
 
 
 ## docs/10 taskblock05 C: bidirectional — a 3D hover highlights this row.
@@ -127,6 +155,7 @@ func _on_highlight_changed() -> void:
 
 func refresh() -> void:
 	tree.clear()
+	_rows_by_part.clear()
 	var unit: Unit = (
 		tactics.selection.selected_unit if tactics != null and tactics.selection != null else null
 	)
@@ -153,6 +182,7 @@ func refresh() -> void:
 func _fill_row(item: TreeItem, row: InventoryRow) -> void:
 	var part: Part = row.part
 	item.set_metadata(COL_PART, part)
+	_rows_by_part[part] = row
 	var name: String = part.display_name if part.display_name != "" else String(part.id)
 	var label: String
 	if row.kind == InventoryRow.Kind.CONTENTS:
@@ -169,32 +199,9 @@ func _fill_row(item: TreeItem, row: InventoryRow) -> void:
 	item.set_custom_color(COL_CONDITION, _condition_color(part))
 	item.set_text(COL_MASS, "%.1f" % part.mass)
 
-	var tooltip: String = _tooltip_text(row)
-	for col in range(COLUMN_TITLES.size()):
-		item.set_tooltip_text(col, tooltip)
-
 	if row.kind == InventoryRow.Kind.CONTENTS:
 		for col in [COL_PART, COL_MASS]:
 			item.set_custom_color(col, HulkTheme.DIM)
-
-
-## runNotes.md: "show all the stats of parts on hover, drawing a new small
-## window" — the columns this dropped (Material, DT, Bulk), plus the
-## relationship/attach details a column can't show at all.
-func _tooltip_text(row: InventoryRow) -> String:
-	var part: Part = row.part
-	var name: String = part.display_name if part.display_name != "" else String(part.id)
-	var lines: Array[String] = [name]
-	lines.append("condition: %d/%d" % [part.hp, part.max_hp])
-	lines.append("material: %s (DT %.1f)" % [String(part.material), row.dt])
-	lines.append("mass: %.1f   bulk: %.1f" % [part.mass, part.bulk])
-	if row.kind == InventoryRow.Kind.SOCKET and row.socket_label != &"":
-		lines.append("socket: %s" % row.socket_label)
-	elif row.kind == InventoryRow.Kind.CONTENTS:
-		lines.append("carried, not attached")
-	if row.inert:
-		lines.append("inert: requires unmet")
-	return "\n".join(lines)
 
 
 func _condition_color(part: Part) -> Color:

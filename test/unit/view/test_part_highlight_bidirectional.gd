@@ -80,10 +80,12 @@ func _setup(built: Dictionary) -> Dictionary:
 	# same real hit-testing without needing an async awaited frame.
 	tree.size = Vector2(400, 300)
 	var footer := Label.new()
+	var tooltip_view := TooltipView.new()
 	add_child_autofree(panel)
 	add_child_autofree(tree)
 	add_child_autofree(footer)
-	panel.setup(controller, tree, footer, MaterialTable.default_table())
+	add_child_autofree(tooltip_view)
+	panel.setup(controller, tree, footer, MaterialTable.default_table(), tooltip_view)
 
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
