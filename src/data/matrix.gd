@@ -40,6 +40,18 @@ func active_perks() -> Array[StringName]:
 	return chosen_perks
 
 
+## taskblock-07 Pass E3: the matrix's own contribution to `actions_for` —
+## "overwatch is on guns FOR NOW, later it'll be a matrix's perk... it's
+## something the matrix KNOWS HOW to do." Empty today: no `Perk` resource
+## exists yet to carry a `provides_actions` array of its own ("outline
+## only... do not invent perk ids, do not build a perk system" — E3).
+## `ActionCatalog.actions_for` already unions this alongside every part's
+## own `provides_actions`, so the day a perk can name an action, this
+## method is the only thing that changes — the collector needs no edit.
+func provides_actions() -> Array[StringName]:
+	return []
+
+
 ## Link destroyed (docs/04): "the feeling of dying mirrors back to the
 ## base." Recovery state moves to LINK_KILLED and one perk is docked from
 ## the base's pool — the concrete mechanic docs/04 offers as its own

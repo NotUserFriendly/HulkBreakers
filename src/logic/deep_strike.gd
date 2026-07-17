@@ -177,6 +177,7 @@ static func default_part_pool() -> Array[Part]:
 	saw_hand.capabilities = [&"SUPPORT"]
 	saw_hand.material = &"artificial_muscle"
 	saw_hand.volume = [Box.new(Vector3(0.0, -0.05, 0.0), Vector3(0.10, 0.10, 0.10))]
+	saw_hand.provides_actions = [&"saw"]
 
 	var leg := Part.new()
 	leg.id = &"leg"
@@ -363,6 +364,10 @@ static func default_part_pool() -> Array[Part]:
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0), Ring.new(0.5, 2.0)]
 	pistol.volume = [Box.new(Vector3(0.0, 0.0, 0.2), Vector3(0.1, 0.2, 0.4))]
+	# taskblock-07 E3: overwatch is on guns FOR NOW — a placeholder; its
+	# real provider is a matrix perk, not the gun. Moving this to a perk's
+	# own provides_actions is a data edit, not a code edit.
+	pistol.provides_actions = [&"shoot", &"overwatch"]
 
 	var rifle := Part.new()
 	rifle.id = &"rifle"
@@ -376,6 +381,8 @@ static func default_part_pool() -> Array[Part]:
 	rifle.ap_cost = 2
 	rifle.scatter = [Ring.new(0.05, 1.0), Ring.new(0.3, 1.5)]
 	rifle.volume = [Box.new(Vector3(0.0, 0.0, 0.3), Vector3(0.12, 0.15, 0.7))]
+	# taskblock-07 E3: same overwatch placeholder as the pistol's, above.
+	rifle.provides_actions = [&"shoot", &"overwatch"]
 
 	var two_handed_sword := Part.new()
 	two_handed_sword.id = &"two_handed_sword"
