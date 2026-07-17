@@ -62,7 +62,10 @@ func test_resolve_turn_applies_the_whole_queue_in_order() -> void:
 	assert_eq(state.current_unit(), b, "the trailing EndTurnAction must have advanced the turn")
 
 
-func test_resolve_turn_aborts_an_action_invalidated_by_an_earlier_one_and_keeps_going() -> void:
+## docs/09 taskblock06 D2: reverses taskblock02 F — an invalidated action
+## no longer aborts-and-continues; resolve_until STOPS there and returns
+## control, so nothing queued after it ever runs either.
+func test_resolve_until_stops_at_the_first_illegal_action_and_never_continues() -> void:
 	var grid := Grid.new(10, 10)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(grid, [a])
@@ -79,15 +82,17 @@ func test_resolve_turn_aborts_an_action_invalidated_by_an_earlier_one_and_keeps_
 	assert_true(queue.enqueue(move_b, state))
 	queue.actions = [move_b, move_a]  # move_b now runs first, before the unit ever reaches (1,0)
 
-	state.resolve_turn(queue)
+	var outcome: Dictionary = state.resolve_until(queue)
 
-	assert_eq(a.cell, Vector2i(1, 0), "move_b must have aborted; move_a ran instead and applied")
-	var aborts: Array = state.action_log.filter(
-		func(line: String) -> bool: return line.begins_with("aborted at resolution")
-	)
 	assert_eq(
-		aborts.size(), 1, "exactly move_b must have aborted, not crashed: %s" % [state.action_log]
+		a.cell,
+		Vector2i(0, 0),
+		"move_b's own illegality must stop the queue before move_a ever runs"
 	)
+	assert_eq(outcome.kind, Enums.ResolveOutcome.STOPPED)
+	assert_eq(outcome.unit, a)
+	assert_eq(outcome.reason, &"next_action_illegal")
+	assert_eq(outcome.refund.ap, 0, "AP already spent (there was none to spend here) stays spent")
 
 
 func test_resolve_turn_replays_identically_from_the_same_seed() -> void:

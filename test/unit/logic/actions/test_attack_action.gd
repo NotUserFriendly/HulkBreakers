@@ -144,13 +144,19 @@ func test_impact_event_names_which_unit_actually_took_the_hit() -> void:
 	)
 
 
-func test_a_queued_attack_on_a_target_that_dies_earlier_aborts_and_the_queue_continues() -> void:
+## docs/09 taskblock06 D2: reverses taskblock02 F — the second attack's
+## own illegality (its target is already dead) now STOPS resolve_until
+## entirely, so the trailing EndTurnAction queued after it never runs
+## either, not just the invalidated attack itself.
+func test_a_queued_attack_on_a_target_that_dies_earlier_stops_resolution() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0), 5)  # dies to a single 20-damage hit
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var queue := ActionQueue.new(shooter)
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
 
 	# Both attacks are legal when queued: the preview doesn't (and can't)
 	# predict that the first shot's real, RNG-resolved damage will kill the
@@ -161,11 +167,17 @@ func test_a_queued_attack_on_a_target_that_dies_earlier_aborts_and_the_queue_con
 	assert_true(queue.enqueue(second, state))
 	assert_true(queue.enqueue(EndTurnAction.new(shooter), state))
 
-	state.resolve_turn(queue)
+	var outcome: Dictionary = state.resolve_until(queue)
 
-	assert_true(
-		state.action_log.any(func(line: String) -> bool: return line.begins_with("aborted")),
-		"the second attack must have aborted with a logged reason: %s" % [state.action_log]
+	assert_eq(outcome.kind, Enums.ResolveOutcome.STOPPED)
+	assert_eq(outcome.reason, &"next_action_illegal")
+	assert_eq(
+		sink.events_of_kind(&"impact").size(), 1, "only the first attack must have actually fired"
+	)
+	assert_eq(
+		state.current_unit(),
+		shooter,
+		"the trailing EndTurnAction must never have run once resolution stopped"
 	)
 
 
