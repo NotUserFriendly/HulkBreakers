@@ -23,6 +23,12 @@ var tactics: TacticsController
 var tree: Tree
 var resolve_button: Button
 var _marker_index: int = -1
+## docs/09 taskblock07 Pass B3: the OTHER half of "derived, not
+## event-driven" — how many entries the queue actually has right now, kept
+## alongside `_marker_index` so `_update_resolve_button()` never needs a
+## click to have just happened to know whether the current marker is
+## still valid.
+var _entry_count: int = 0
 
 
 func setup(p_tactics: TacticsController, p_tree: Tree, p_resolve_button: Button) -> void:
@@ -32,6 +38,10 @@ func setup(p_tactics: TacticsController, p_tree: Tree, p_resolve_button: Button)
 	tree.columns = 3
 	tree.column_titles_visible = true
 	tree.hide_root = true
+	# docs/09 taskblock07 Pass B3: SELECT_ROW, not the SELECT_SINGLE
+	# default — a click anywhere on a queued entry's row selects it, not
+	# only a click precisely on the Queued column's own cell.
+	tree.select_mode = Tree.SELECT_ROW
 	tree.set_column_title(COL_WHAT, "Queued")
 	tree.set_column_title(COL_AP, "AP")
 	tree.set_column_title(COL_MP, "MP")
@@ -63,27 +73,53 @@ func _on_resolve_pressed() -> void:
 	tactics.resolve_to_marker(_marker_index)
 
 
+## docs/09 taskblock07 Pass B3: the marker survives a refresh that doesn't
+## invalidate it — only cleared when it's now out of range (the unit was
+## deselected, or the marked entry itself is gone). Previously this reset
+## _marker_index to -1 UNCONDITIONALLY on every single queue change,
+## which undid _on_item_selected()'s own enable the instant it happened —
+## refresh() runs on every selection_changed, and clicking a row itself
+## triggers one.
 func refresh() -> void:
 	tree.clear()
-	_marker_index = -1
-	_update_resolve_button()
 	var unit: Unit = (
 		tactics.selection.selected_unit if tactics != null and tactics.selection != null else null
 	)
-	if unit == null:
-		return
+	var entries: Array[Dictionary] = [] as Array[Dictionary]
+	if unit != null:
+		entries = tactics.selection.queue_entries()
+	_entry_count = entries.size()
+	if unit == null or _marker_index >= _entry_count:
+		_marker_index = -1
 
-	var entries: Array[Dictionary] = tactics.selection.queue_entries()
-	var root: TreeItem = tree.create_item()
-	for i in range(entries.size()):
-		var entry: Dictionary = entries[i]
-		var item: TreeItem = tree.create_item(root)
-		item.set_metadata(COL_WHAT, i)
-		item.set_text(COL_WHAT, entry["describe"])
-		item.set_text(COL_AP, str(entry["ap"]))
-		item.set_text(COL_MP, "%.1f" % (entry["mp"] as float))
+	if unit != null:
+		var root: TreeItem = tree.create_item()
+		for i in range(entries.size()):
+			var entry: Dictionary = entries[i]
+			var item: TreeItem = tree.create_item(root)
+			item.set_metadata(COL_WHAT, i)
+			item.set_text(COL_WHAT, entry["describe"])
+			item.set_text(COL_AP, str(entry["ap"]))
+			item.set_text(COL_MP, "%.1f" % (entry["mp"] as float))
+			if i == _marker_index:
+				# Keeps the Tree's own visual selection in sync with the
+				# marker that survived this refresh — without this, the
+				# rebuild above (tree.clear() wipes every TreeItem,
+				# selection included) would leave the marker enabled but
+				# invisible.
+				item.select(COL_WHAT)
+
+	_update_resolve_button()
 
 
+## docs/09 taskblock07 Pass B3: "the button's enabled state must be
+## derived, not event-driven — it is enabled iff the selected unit has at
+## least one queued action and a valid marker." A pure function of
+## (_entry_count, _marker_index), recomputed here every time either could
+## have changed — never left standing from whatever a past click set it
+## to.
 func _update_resolve_button() -> void:
 	if resolve_button != null:
-		resolve_button.disabled = _marker_index < 0
+		resolve_button.disabled = (
+			_entry_count == 0 or _marker_index < 0 or _marker_index >= _entry_count
+		)
