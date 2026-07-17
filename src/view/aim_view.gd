@@ -120,6 +120,25 @@ func refresh() -> void:
 		plane, aim_point, tactics.layer_index, weapon, shooter, target.cell, state
 	)
 
+	# docs/09 taskblock07 Pass D: "the shadow must use the same axis the ray
+	# uses" — literally the same (muzzle, dir) AimController._resolve_hit()
+	# itself builds for this exact aim_point, via the same
+	# AimPlaneGeometry.ray_from_muzzle() bridge, never a separately
+	# re-derived dead-ahead approximation (docs/02: dead-ahead and "the
+	# reticle's own aim direction" only coincide when the reticle sits
+	# exactly on the shooter->target line — any lateral aim offset makes
+	# them different rays). Recomputed independently here rather than
+	# threaded out of resolve() — the same primitives, so it can never
+	# drift, and view/logic stay cleanly separated.
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(shooter, weapon)
+	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
+		shooter.cell, target.cell, aim_point, muzzle
+	)
+	if ray.is_empty():
+		readout.text = _readout_text(result)
+		return
+	var dir: Vector3 = ray["dir"]
+
 	# docs/09 taskblock06 Pass H: the shadow (and the targeting line, the
 	# same "what will actually fire" concept) always sit at the target's
 	# own fixed distance — RESOLVES, never READING, exactly the invariant
@@ -142,13 +161,13 @@ func refresh() -> void:
 		shooter.cell, target.cell, aim_point, depth
 	)
 
-	_draw_window(window_point, shooter.cell, target.cell, result.rings)
-	_draw_decal(target_point, shooter.cell, target.cell, result.rings)
+	_draw_window(window_point, dir, result.rings)
+	_draw_decal(target_point, dir, result.rings)
 	# docs/10 taskblock03 F2 / runNotes.md: "a line from the shooter's
 	# muzzle to the reticle's world point... if a pistol is what's shooting,
 	# the targeting line should come from the pistol," not a generic
 	# torso-height point.
-	_draw_targeting_line(UnitGeometry.muzzle_point(shooter, weapon), target_point)
+	_draw_targeting_line(muzzle, target_point)
 	readout.text = _readout_text(result)
 
 
@@ -174,12 +193,10 @@ func _body_name(body: Variant) -> String:
 
 ## docs/09 taskblock06 Pass H: "the window" — a transparent quad carrying
 ## the ring image, face-on to the shooter (the quad's own front face, +Z,
-## ends up pointing back along -forward — see _window_basis). A no-op with
-## no scatter rings resolved (an unarmed preview never reaches here anyway,
+## ends up pointing back along -dir — see _window_basis). A no-op with no
+## scatter rings resolved (an unarmed preview never reaches here anyway,
 ## caught earlier in refresh()).
-func _draw_window(
-	world_point: Vector3, shooter_cell: Vector2i, target_cell: Vector2i, rings: Array[Ring]
-) -> void:
+func _draw_window(world_point: Vector3, dir: Vector3, rings: Array[Ring]) -> void:
 	var outer: float = rings[rings.size() - 1].radius if not rings.is_empty() else 0.0
 	if outer <= 0.0:
 		return
@@ -187,23 +204,25 @@ func _draw_window(
 	quad.size = Vector2(outer, outer) * 2.0
 	quad.material = WorldPalette.translucent_textured_material(_ring_texture(rings))
 	_window.mesh = quad
-	_window.transform = Transform3D(_window_basis(shooter_cell, target_cell), world_point)
+	_window.transform = Transform3D(_window_basis(dir), world_point)
 	_window.visible = true
 
 
-## docs/09 taskblock06 Pass H: "the shadow" — a Decal projecting the same
-## ring image along the identical shooter->target axis resolve_ray uses
-## (docs/09 taskblock06 Pass A), so the rings visibly wrap the real
-## geometry wherever it actually sits relative to the reticle's own plane.
-func _draw_decal(
-	world_point: Vector3, shooter_cell: Vector2i, target_cell: Vector2i, rings: Array[Ring]
-) -> void:
+## docs/09 taskblock06 Pass H / taskblock07 Pass D: "the shadow" — a Decal
+## projecting the same ring image (aiming dot included) along `dir` — the
+## literal same axis `resolve_ray` casts along for this exact aim_point
+## (refresh() builds `dir` via the identical AimPlaneGeometry.ray_from_
+## muzzle() bridge AimController._resolve_hit() itself uses) — so the
+## rings, and the dot most visibly of all, wrap the real geometry exactly
+## where a shot would actually go. That's what makes this proof rather
+## than decoration.
+func _draw_decal(world_point: Vector3, dir: Vector3, rings: Array[Ring]) -> void:
 	var outer: float = rings[rings.size() - 1].radius if not rings.is_empty() else 0.0
 	if outer <= 0.0:
 		return
 	_decal.texture_albedo = _ring_texture(rings)
 	_decal.size = Vector3(outer * 2.0, DECAL_PROJECTION_DEPTH, outer * 2.0)
-	_decal.transform = Transform3D(_decal_basis(shooter_cell, target_cell), world_point)
+	_decal.transform = Transform3D(_decal_basis(dir), world_point)
 	_decal.visible = true
 
 
@@ -214,38 +233,32 @@ func _ring_texture(rings: Array[Ring]) -> ImageTexture:
 	return ImageTexture.create_from_image(image)
 
 
-## The window's own visible face points back at the shooter (docs/09
+## The window's own visible face points back along `dir` (docs/09
 ## taskblock06 Pass H: "this is what you aim with" — legible face-on, never
 ## edge-on). QuadMesh's own front face is local +Z; Basis.looking_at(dir,
 ## up)'s own convention makes local -Z point along `dir`, so local +Z ends
-## up pointing the opposite way — exactly -forward, back toward the
-## shooter — with no extra rotation needed.
-static func _window_basis(shooter_cell: Vector2i, target_cell: Vector2i) -> Basis:
-	return Basis.looking_at(_forward(shooter_cell, target_cell), Vector3.UP)
+## up pointing the opposite way — exactly -dir, back toward the shooter —
+## with no extra rotation needed.
+static func _window_basis(dir: Vector3) -> Basis:
+	return Basis.looking_at(dir, Vector3.UP)
 
 
-## docs/09 taskblock06 Pass H: "the decal must use the same axis the ray
-## uses" — Godot's Decal always projects along its own local -Y, so this
-## maps -Y directly onto the shooter->target direction (the identical
-## direction ShotPlane.build/resolve_ray project along), never a
-## camera-facing or otherwise-derived orientation. perp_axis (the same
-## lateral axis the window/reticle already use) becomes local X; the
-## remaining axis (X cross Y) works out to plain world-up, since both X and
-## the projection direction are horizontal by construction (docs/02: shots
-## travel horizontally) — that's local Z, the ring image's own vertical
-## axis.
-static func _decal_basis(shooter_cell: Vector2i, target_cell: Vector2i) -> Basis:
-	var forward: Vector3 = _forward(shooter_cell, target_cell)
-	var perp: Vector2 = AimPlaneGeometry.perp_axis(shooter_cell, target_cell)
-	var x_axis := Vector3(perp.x, 0.0, perp.y)
-	var y_axis: Vector3 = -forward
+## docs/09 taskblock06 Pass H / taskblock07 Pass D: "the decal must use the
+## same axis the ray uses" — Godot's Decal always projects along its own
+## local -Y, so this maps -Y directly onto `dir`. The lateral axis (local
+## X) is derived FROM `dir` itself (perpendicular, in the horizontal
+## plane) rather than the shooter->target cell direction — `dir` can
+## deviate from that dead-ahead line (a laterally offset reticle), and a
+## lateral axis borrowed from the wrong line would no longer be
+## perpendicular to `dir`, breaking the basis. The remaining axis (X cross
+## Y) works out to plain world-up, since both X and `dir` are horizontal
+## by construction (docs/02: shots travel horizontally, dir.y == 0) —
+## that's local Z, the ring image's own vertical axis.
+static func _decal_basis(dir: Vector3) -> Basis:
+	var x_axis := Vector3(-dir.z, 0.0, dir.x)
+	var y_axis: Vector3 = -dir
 	var z_axis: Vector3 = x_axis.cross(y_axis)
 	return Basis(x_axis, y_axis, z_axis)
-
-
-static func _forward(shooter_cell: Vector2i, target_cell: Vector2i) -> Vector3:
-	var direction: Vector2 = Vector2(target_cell - shooter_cell).normalized()
-	return Vector3(direction.x, 0.0, direction.y)
 
 
 ## docs/10 taskblock03 F2: "draw a line from the shooter's muzzle to the
