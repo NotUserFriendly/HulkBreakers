@@ -78,3 +78,11 @@ enum SquadController {
 	HUMAN,
 	AI,
 }
+
+## What a board ray actually hit (docs/10 taskblock05 A1) — a closed engine
+## state: a click either lands on a unit's own body or bare ground, never a
+## third thing.
+enum HitKind {
+	UNIT,
+	CELL,
+}

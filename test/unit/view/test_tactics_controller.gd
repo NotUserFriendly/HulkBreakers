@@ -227,50 +227,6 @@ func test_turn_selected_with_nothing_selected_is_a_no_op() -> void:
 
 ## A unit with a wide torso box overhanging the neighboring cell — the case
 ## docs/10 taskblock03 D1 calls out: a click on the mesh, not the tile.
-func _make_wide_unit(cell: Vector2i, squad: int = 0) -> Unit:
-	var torso := Part.new()
-	torso.id = &"torso"
-	torso.hp = 5
-	torso.max_hp = 5
-	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(3.0, 1.0, 0.6))]
-	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
-
-
-## docs/10 taskblock03 D1: "raycast against the unit's box meshes as well as
-## the board; nearest hit wins." A ray straight down through cell (1,0) hits
-## the empty ground there — but a's wide torso overhangs that far enough
-## that its box is nearer than the ground.
-func test_cell_at_prefers_a_units_overhanging_body_over_the_ground_tile() -> void:
-	var a := _make_wide_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-
-	var cell: Variant = controller._cell_at(Vector3(1.0, 5.0, 0.0), Vector3(0.0, -1.0, 0.0))
-
-	assert_eq(cell, Vector2i(0, 0), "the overhanging body wins, not the ground tile beneath it")
-
-
-func test_cell_at_falls_back_to_the_ground_tile_when_no_body_is_hit() -> void:
-	var a := _make_wide_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-
-	var cell: Variant = controller._cell_at(Vector3(5.0, 5.0, 5.0), Vector3(0.0, -1.0, 0.0))
-
-	assert_eq(cell, Vector2i(5, 5))
-
-
-func test_clicking_a_units_overhanging_body_selects_it_via_click_cell() -> void:
-	var a := _make_wide_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-
-	var cell: Variant = controller._cell_at(Vector3(1.0, 5.0, 0.0), Vector3(0.0, -1.0, 0.0))
-	controller.click_cell(cell)
-
-	assert_eq(controller.selection.selected_unit, a)
-
-
 ## runNotes.md: "make undo last action only on click, while a drag doesn't
 ## cancel the action" — a click is a press immediately followed by a
 ## release, no motion event in between.

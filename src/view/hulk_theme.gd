@@ -76,6 +76,30 @@ static func build() -> Theme:
 	theme.set_stylebox("panel", "TooltipPanel", tooltip_style)
 	theme.set_color("font_color", "TooltipLabel", FOREGROUND)
 
+	# docs/10 taskblock05 A2: "the inspector's scrollbar is unreachable" —
+	# the engine default grabber is a near-transparent sliver until
+	# hovered, easy to miss entirely against this panel's own translucent
+	# background. A flat, always-visible grabber fixes that; InventoryPanel
+	# forcing the bar's own `visible` true is the other half (a Tree just
+	# short of overflowing can otherwise hide the bar altogether).
+	var scroll_track := StyleBoxFlat.new()
+	scroll_track.bg_color = Color(BACKGROUND.r, BACKGROUND.g, BACKGROUND.b, PANEL_ALPHA)
+	var scroll_grabber := StyleBoxFlat.new()
+	scroll_grabber.bg_color = DIM
+	var scroll_grabber_highlight := StyleBoxFlat.new()
+	scroll_grabber_highlight.bg_color = FOREGROUND
+	for corners in [scroll_grabber, scroll_grabber_highlight]:
+		corners.corner_radius_top_left = 3
+		corners.corner_radius_top_right = 3
+		corners.corner_radius_bottom_left = 3
+		corners.corner_radius_bottom_right = 3
+	for scrollbar_type in ["VScrollBar", "HScrollBar"]:
+		theme.set_stylebox("scroll", scrollbar_type, scroll_track)
+		theme.set_stylebox("scroll_focus", scrollbar_type, scroll_track)
+		theme.set_stylebox("grabber", scrollbar_type, scroll_grabber)
+		theme.set_stylebox("grabber_highlight", scrollbar_type, scroll_grabber_highlight)
+		theme.set_stylebox("grabber_pressed", scrollbar_type, scroll_grabber_highlight)
+
 	var font: FontFile = load(FONT_PATH)
 	if font != null:
 		theme.default_font = font

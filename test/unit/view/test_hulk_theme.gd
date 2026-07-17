@@ -49,6 +49,21 @@ func test_build_styles_the_tooltip_with_a_solid_high_contrast_panel() -> void:
 	assert_eq(theme.get_color("font_color", "TooltipLabel"), HulkTheme.FOREGROUND)
 
 
+## docs/10 taskblock05 A2: "the inspector's scrollbar is unreachable" — the
+## engine default grabber is a near-transparent sliver until hovered, easy
+## to miss against this panel's own translucent background. Tree draws its
+## scrollbar internally (no exposed node to toggle `.visible` on), so the
+## fix is a grabber style that's clearly visible on its own, not only once
+## Godot swaps in the hover variant.
+func test_build_styles_scrollbars_with_an_always_visible_grabber() -> void:
+	var theme: Theme = HulkTheme.build()
+	for scrollbar_type in ["VScrollBar", "HScrollBar"]:
+		assert_true(theme.has_stylebox("grabber", scrollbar_type))
+		var grabber: StyleBoxFlat = theme.get_stylebox("grabber", scrollbar_type)
+		assert_eq(grabber.bg_color, HulkTheme.DIM)
+		assert_true(grabber.bg_color.a > 0.5, "the resting grabber must not be near-transparent")
+
+
 func test_build_sets_the_real_monospace_font() -> void:
 	var theme: Theme = HulkTheme.build()
 	assert_not_null(theme.default_font, "docs/08: menus are monospace, text-first")
