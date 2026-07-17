@@ -64,6 +64,36 @@ func test_aim_point_from_ray_returns_null_when_parallel_to_the_plane() -> void:
 	assert_null(recovered)
 
 
+## docs/09 taskblock06 Pass H: world_point() must be exactly
+## world_point_at_depth() at depth = the shooter-target distance — the
+## no-drift invariant a scrolling window relies on.
+func test_world_point_at_depth_matches_world_point_at_the_target_distance() -> void:
+	var shooter := Vector2i(1, 4)
+	var target := Vector2i(6, 9)
+	var aim_point := Vector2(0.35, 0.8)
+	var distance: float = Vector2(target - shooter).length()
+
+	var at_depth: Vector3 = AimPlaneGeometry.world_point_at_depth(
+		shooter, target, aim_point, distance
+	)
+	var at_target: Vector3 = AimPlaneGeometry.world_point(shooter, target, aim_point)
+
+	assert_almost_eq(at_depth.x, at_target.x, 0.0001)
+	assert_almost_eq(at_depth.y, at_target.y, 0.0001)
+	assert_almost_eq(at_depth.z, at_target.z, 0.0001)
+
+
+## docs/09 taskblock06 Pass H: "scrolling moves the window backward through
+## the scene" — a shallower depth must sit closer to the shooter's own
+## cell, not the target's.
+func test_world_point_at_depth_zero_sits_at_the_shooters_own_cell() -> void:
+	var point: Vector3 = AimPlaneGeometry.world_point_at_depth(
+		Vector2i(2, 0), Vector2i(7, 0), Vector2.ZERO, 0.0
+	)
+	assert_almost_eq(point.x, 2.0, 0.0001)
+	assert_almost_eq(point.z, 0.0, 0.0001)
+
+
 func test_aim_point_from_ray_returns_null_when_the_plane_is_behind_the_ray() -> void:
 	var shooter := Vector2i(0, 0)
 	var target := Vector2i(5, 0)

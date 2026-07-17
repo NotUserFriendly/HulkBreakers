@@ -98,6 +98,20 @@ static func translucent_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
+## docs/09 taskblock06 Pass H: the aim window — same unshaded, alpha-blended
+## convention as translucent_material, but carrying a texture (the ring
+## image) instead of a flat color. cull_mode disabled: an orbit camera can
+## end up looking at the window from either side, and a one-sided quad
+## would just vanish rather than "read as a window," the whole point of it.
+static func translucent_textured_material(texture: Texture2D) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_texture = texture
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return material
+
+
 ## Team flagging, layer 2 of 2 (docs/10) — a hull outline via a single
 ## grown, back-face-only extra pass, no custom shader. Assign to a real
 ## part material's `next_pass`; never used standalone.
