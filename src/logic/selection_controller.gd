@@ -160,3 +160,34 @@ func reset_turn() -> void:
 func reset() -> void:
 	_queues.clear()
 	selected_unit = null
+
+
+## docs/10 taskblock06 G2: "each entry: what, its cost, the running AP/MP
+## total after it." One entry per queued action, in order — `describe()`
+## for "what," and the unit's own ap/mp immediately after that action
+## resolves against a speculative preview. Replays exactly the way
+## ActionQueue.preview() already does (a fresh state.dup(), stepping
+## through `actions` in order) rather than inventing a per-action-type
+## cost accessor: this can never show a number "Resolve to Here" wouldn't
+## actually produce, because it's the same replay.
+func queue_entries() -> Array[Dictionary]:
+	var queue: ActionQueue = current_queue()
+	if queue == null:
+		return []
+	var speculative: CombatState = state.dup()
+	var entries: Array[Dictionary] = []
+	for action: CombatAction in queue.actions:
+		if action.is_legal(speculative):
+			action.apply(speculative)
+		var actual: Unit = speculative.find_unit(selected_unit.id)
+		(
+			entries
+			. append(
+				{
+					"describe": action.describe(),
+					"ap": actual.ap if actual != null else 0,
+					"mp": actual.mp if actual != null else 0.0,
+				}
+			)
+		)
+	return entries

@@ -212,6 +212,60 @@ func test_reset_clears_selection_and_queues() -> void:
 	assert_eq(selection.ghost_paths(), [] as Array[Array], "a fresh queue must have no ghosts")
 
 
+## docs/10 taskblock06 G2: "each entry: what, its cost, the running AP/MP
+## total after it." Cross-checked against the SAME replay ActionQueue.
+## preview() does, one action at a time — queue_entries() must never
+## drift from what "Resolve to Here" would actually apply.
+func test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+
+	selection.queue_move(Vector2i(1, 0))
+	selection.queue_face(1.0)
+
+	var queue: ActionQueue = selection.current_queue()
+	var expected_after_move: CombatState = state.dup()
+	queue.actions[0].apply(expected_after_move)
+	var expected_after_face: CombatState = expected_after_move.dup()
+	queue.actions[1].apply(expected_after_face)
+
+	var entries: Array[Dictionary] = selection.queue_entries()
+	assert_eq(entries.size(), 2)
+	assert_true((entries[0]["describe"] as String).contains("MoveAction"))
+	assert_true((entries[1]["describe"] as String).contains("FaceAction"))
+	var after_move: Unit = expected_after_move.find_unit(a.id)
+	assert_eq(entries[0]["ap"], after_move.ap)
+	assert_almost_eq(entries[0]["mp"] as float, after_move.mp, 0.0001)
+	var after_face: Unit = expected_after_face.find_unit(a.id)
+	assert_eq(entries[1]["ap"], after_face.ap)
+	assert_almost_eq(entries[1]["mp"] as float, after_face.mp, 0.0001)
+
+
+func test_queue_entries_never_mutates_the_real_state() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+	selection.queue_move(Vector2i(1, 0))
+	var cell_before: Vector2i = a.cell
+	var ap_before: int = a.ap
+
+	selection.queue_entries()
+
+	assert_eq(a.cell, cell_before)
+	assert_eq(a.ap, ap_before)
+
+
+func test_queue_entries_with_nothing_selected_is_empty() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [a])
+	var selection := SelectionController.new(state)
+
+	assert_eq(selection.queue_entries(), [] as Array[Dictionary])
+
+
 func test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)

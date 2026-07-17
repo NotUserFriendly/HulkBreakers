@@ -335,5 +335,7 @@ func test_queuing_a_move_shows_an_end_position_ghost() -> void:
 
 ## Aim mode, the dartboard read/resolve pair, and RESOLUTION input-locking
 ## live in test_tactics_controller_aim.gd; mouse-drag facing (docs/10
-## taskblock03 E1) lives in test_tactics_controller_facing.gd — both split
-## out purely to stay under gdlint's max-public-methods.
+## taskblock03 E1) lives in test_tactics_controller_facing.gd; "Resolve to
+## Here" (docs/10 taskblock06 G) lives in
+## test_tactics_controller_resolve_to.gd — all split out purely to stay
+## under gdlint's max-public-methods.

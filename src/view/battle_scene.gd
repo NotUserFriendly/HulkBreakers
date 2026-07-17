@@ -28,6 +28,7 @@ var stat_panel: StatPanel
 var inventory_panel: InventoryPanel
 var weapon_panel: WeaponPanel
 var combat_readout_panel: CombatReadoutPanel
+var queue_panel: QueuePanel
 var controls_overlay: ControlsOverlay
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
@@ -60,6 +61,12 @@ func _ready() -> void:
 	tactics = TacticsController.new()
 	add_child(tactics)
 	tactics.turn_ended.connect(_on_turn_ended)
+	# docs/10 taskblock06 G1: "Resolve to Here" mutates authoritative state
+	# exactly like End Turn does (resolve_until against the real
+	# CombatState) — the same view resync (unit meshes + resolution replay)
+	# applies either way, and neither one deselects/clears overlays here
+	# (end_turn() and resolve_to_marker() each already own that decision).
+	tactics.queue_partially_resolved.connect(_on_turn_ended)
 	tactics.selection_changed.connect(_on_selection_changed)
 	# runNotes.md: entering/cancelling aim must refresh the previewed facing
 	# too (aim_facing() depends on `aiming_at`, not on anything
@@ -231,6 +238,17 @@ func _ready() -> void:
 	combat_readout_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
 	bottom_right.add_child(combat_readout_label)
 
+	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
+	# unit's queued actions" — click a row to set the stop marker, then
+	# "Resolve to Here" resolves the queue's prefix through it for real.
+	var queue_tree := Tree.new()
+	queue_tree.custom_minimum_size = Vector2(320, 100)
+	bottom_right.add_child(queue_tree)
+	var resolve_to_here_button := Button.new()
+	resolve_to_here_button.text = "Resolve to Here"
+	resolve_to_here_button.disabled = true
+	bottom_right.add_child(resolve_to_here_button)
+
 	var new_battle_button := Button.new()
 	new_battle_button.text = "New Battle"
 	new_battle_button.pressed.connect(_on_new_battle_pressed)
@@ -270,6 +288,10 @@ func _ready() -> void:
 	combat_readout_panel = CombatReadoutPanel.new()
 	add_child(combat_readout_panel)
 	combat_readout_panel.setup(tactics, combat_readout_label)
+
+	queue_panel = QueuePanel.new()
+	add_child(queue_panel)
+	queue_panel.setup(tactics, queue_tree, resolve_to_here_button)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
