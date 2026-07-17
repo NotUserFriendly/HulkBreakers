@@ -296,11 +296,23 @@ func test_reset_turn_with_nothing_selected_does_not_crash() -> void:
 	assert_null(controller.selection.selected_unit)
 
 
+## A unit with real box volume — the ghost overlay needs at least one
+## placement to actually spawn a mesh; `_make_unit` above has none (it
+## never needed one for click-cell dispatch).
+func _make_boxed_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var root := Part.new()
+	root.id = &"root"
+	root.hp = 5
+	root.max_hp = 5
+	root.volume = [Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0))]
+	return Unit.new(Matrix.new(), Shell.new(root), cell, squad)
+
+
 ## docs/10 taskblock03 F1: nothing queued -> no ghost (it would just sit on
 ## top of the real, opaque unit); once something changes the end state, the
 ## ghost overlay actually gets a mesh.
 func test_selecting_a_unit_with_nothing_queued_shows_no_end_position_ghost() -> void:
-	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var a := _make_boxed_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
 	var board_view: BoardView = built.board_view
@@ -311,7 +323,7 @@ func test_selecting_a_unit_with_nothing_queued_shows_no_end_position_ghost() -> 
 
 
 func test_queuing_a_move_shows_an_end_position_ghost() -> void:
-	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var a := _make_boxed_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
 	var board_view: BoardView = built.board_view
