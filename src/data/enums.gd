@@ -86,3 +86,12 @@ enum HitKind {
 	UNIT,
 	CELL,
 }
+
+## docs/09 taskblock06 D1: RESOLUTION is a loop with re-entry now (TACTICS
+## -> RESOLUTION -> (interrupt) -> TACTICS -> ...), not one atomic pass —
+## a closed engine state: a queue's resolution either ran to completion or
+## stopped partway, never a third thing.
+enum ResolveOutcome {
+	COMPLETED,
+	STOPPED,
+}

@@ -84,9 +84,17 @@ func tick_organics_decay(ladder: Array[SurrogateTier]) -> void:
 ## MP granted per AP burned for movement (Appendix E). Resolved live through
 ## StatResolver (docs/08) so part swaps immediately affect mobility, and so
 ## this stays the one true source of the number — not an ad-hoc sum.
+##
+## docs/10 taskblock05 E1's own rule ("broken parts already leave
+## living_parts(), so a destroyed part's own modifiers already stop
+## applying") was not actually true here — this read shell.all_parts()
+## (every part regardless of hp) until docs/09 taskblock06 Pass D's own
+## mid-move interrupt test needed a destroyed leg to genuinely lower
+## mobility and found it didn't. Fixed to match every other modifier-
+## bearing part in the game.
 func mp_per_ap() -> float:
 	var context := ResolverContext.new()
-	context.parts = shell.all_parts()
+	context.parts = shell.living_parts()
 	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility
 

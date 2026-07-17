@@ -50,11 +50,33 @@ func is_legal(state: CombatState) -> bool:
 
 
 func apply(state: CombatState) -> void:
+	apply_stepwise(state)
+
+
+## docs/09 taskblock06 Pass D: like apply(), but checks `mid_move_hook`
+## (Callable(state, unit) -> void, e.g. Pass F's Overwatch trigger check)
+## after EVERY cell actually stepped onto, then re-validates whether the
+## REST of the path is still completable given whatever that hook just
+## did to the world — MP dropping (a lost leg lowering mp_per_ap, say)
+## can turn a queued move illegal partway through even though nothing
+## about the path itself changed. Stops there if so: docs/09 taskblock06
+## D2's rule ("stop when the next [step] is no longer legal, not when
+## anything changes") applies at cell granularity, not just between
+## queued actions. `apply()` is just this with no hook, matching its old
+## unconditional behaviour exactly.
+##
+## Returns {stopped: bool} — `state.find_unit(unit.id)`'s own `.mp` at
+## the stopping point IS the refund (docs/09 taskblock06 D3: "they just
+## get their MP back as change" — nothing extra to credit, the AP-to-MP
+## conversion only ever buys as much MP as the step in front of it
+## needs, so whatever's left in the pool when resolution stops already
+## IS the untraversed remainder's own leftover).
+func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
 	var actual: Unit = state.find_unit(unit.id)
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	var per_ap: float = actual.mp_per_ap()
 
 	for i in range(1, path.size()):
+		var per_ap: float = actual.mp_per_ap()
 		var step_cost: float = pf.move_cost(path[i])
 		while actual.mp < step_cost:
 			actual.ap -= 1
@@ -64,6 +86,43 @@ func apply(state: CombatState) -> void:
 		actual.cell = path[i]
 		state.grid.set_occupant_id(actual.cell, actual.id)
 
+		if mid_move_hook.is_valid():
+			mid_move_hook.call(state, actual)
+
+		var is_final_step: bool = i == path.size() - 1
+		if not is_final_step and not _can_still_complete(state, actual, path.slice(i)):
+			_finish(state, actual, path.slice(0, i + 1))
+			return {"stopped": true}
+
+	_finish(state, actual, path)
+	return {"stopped": false}
+
+
+## Re-simulates `remaining` (the untraversed tail, inclusive of the cell
+## just stepped onto) exactly like is_legal() simulates the whole path —
+## against `actual`'s CURRENT mp/ap/mp_per_ap, which mid_move_hook may
+## have just changed.
+static func _can_still_complete(
+	state: CombatState, actual: Unit, remaining: Array[Vector2i]
+) -> bool:
+	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var sim_ap: int = actual.ap
+	var sim_mp: float = actual.mp
+	var per_ap: float = actual.mp_per_ap()
+	for i in range(1, remaining.size()):
+		var step_cost: float = pf.move_cost(remaining[i])
+		if step_cost < 0.0:
+			return false
+		while sim_mp < step_cost:
+			if sim_ap <= 0:
+				return false
+			sim_ap -= 1
+			sim_mp += per_ap
+		sim_mp -= step_cost
+	return true
+
+
+func _finish(state: CombatState, actual: Unit, traversed: Array[Vector2i]) -> void:
 	# runNotes.md: "a character's facing after movement should update to
 	# face away from where they started" — free, same primitive
 	# AttackAction's own free-with-action facing uses, so a queued move
@@ -81,7 +140,7 @@ func apply(state: CombatState) -> void:
 	FaceAction.face_for_free(
 		state,
 		actual,
-		FaceAction.orientation_toward(path[0], path[path.size() - 1]),
+		FaceAction.orientation_toward(traversed[0], traversed[traversed.size() - 1]),
 		&"free_with_move"
 	)
 
@@ -94,7 +153,7 @@ func apply(state: CombatState) -> void:
 				Enums.Phase.RESOLUTION,
 				actual.id,
 				&"move",
-				{"path": path, "destination": actual.cell},
+				{"path": traversed, "destination": actual.cell},
 				text
 			)
 		)

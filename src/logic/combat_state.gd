@@ -122,28 +122,72 @@ func dup() -> CombatState:
 	return cloned
 
 
-## Executes every action in `queue` in order against this (authoritative)
-## state, re-validating each one first (docs/09): the world may have moved
-## since it was queued against a mere preview. An action that's no longer
-## legal aborts — logged, never crashed, never silently skipped without a
-## trace — and the queue continues to the next one regardless.
+## docs/09 taskblock06 Pass D: kept for every existing caller that just
+## wants "run the queue" with no interest in the outcome — a thin wrapper
+## over resolve_until(), which owns the real logic now. Discards the
+## Outcome; the STOPPED case is already fully logged by resolve_until
+## itself, so nothing is silently lost by ignoring the return value here.
 func resolve_turn(queue: ActionQueue) -> void:
+	resolve_until(queue)
+
+
+## Executes `queue`'s actions in order against this (authoritative) state,
+## re-validating each one first (docs/09): the world may have moved since
+## it was queued against a mere preview.
+##
+## docs/09 taskblock06 D1/D2: RESOLUTION is a loop with re-entry now, not
+## one atomic pass — TACTICS -> RESOLUTION -> (interrupt) -> TACTICS ->
+## RESOLUTION -> .... Stops the instant the next thing to happen is no
+## longer legal (never "abort this one and keep going," taskblock02 F's
+## rule, reversed) and returns control to just this unit
+## (docs/10 taskblock06 D4 — other units' own queues are unaffected,
+## since each is resolved by its own separate call). A MoveAction is
+## re-checked at cell granularity too (MoveAction.apply_stepwise,
+## `mid_move_hook` — Pass F's Overwatch trigger plugs in there later),
+## since a queued move can turn illegal partway through even though the
+## path itself never changed (a lost leg lowering mp_per_ap, say).
+##
+## Returns `{"kind": Enums.ResolveOutcome.COMPLETED}` or
+## `{"kind": STOPPED, "unit": Unit, "reason": StringName, "refund": {"ap":
+## int, "mp": float}}` — docs/09 taskblock06 D3: AP always stays spent (it
+## already bought whatever MP got used), MP is whatever the interrupted
+## unit's own pool holds at the stopping point (there is nothing extra to
+## credit — the AP-to-MP conversion only ever buys as much as the very
+## next step needs).
+func resolve_until(queue: ActionQueue, mid_move_hook: Callable = Callable()) -> Dictionary:
 	for action: CombatAction in queue.actions:
-		if action.is_legal(self):
+		if not action.is_legal(self):
+			return _stopped(queue.unit, &"next_action_illegal")
+		if action is MoveAction:
+			var result: Dictionary = (action as MoveAction).apply_stepwise(self, mid_move_hook)
+			if result.stopped:
+				return _stopped(queue.unit, &"mid_move_interrupt")
+		else:
 			action.apply(self)
-			continue
-		var reason: String = "aborted at resolution (no longer legal): %s" % action.describe()
-		log_action(reason)
-		combat_log.emit(
-			LogEvent.new(
-				round_number,
-				Enums.Phase.RESOLUTION,
-				queue.unit.id,
-				&"action_aborted",
-				{"action": action.describe()},
-				reason
-			)
+	return {"kind": Enums.ResolveOutcome.COMPLETED}
+
+
+func _stopped(unit: Unit, reason: StringName) -> Dictionary:
+	var actual: Unit = find_unit(unit.id)
+	var outcome: Dictionary = {
+		"kind": Enums.ResolveOutcome.STOPPED,
+		"unit": actual,
+		"reason": reason,
+		"refund": {"ap": 0, "mp": actual.mp if actual != null else 0.0},
+	}
+	var text: String = "resolve_until: unit %d stopped (%s)" % [unit.id, reason]
+	log_action(text)
+	combat_log.emit(
+		LogEvent.new(
+			round_number,
+			Enums.Phase.RESOLUTION,
+			unit.id,
+			&"resolution_stopped",
+			{"reason": reason, "refund_mp": outcome.refund.mp},
+			text
 		)
+	)
+	return outcome
 
 
 ## Attempts an action: rejects (returns false, no mutation) if illegal,

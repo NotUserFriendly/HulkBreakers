@@ -9,7 +9,7 @@ TACTICS     player queues an ordered action list per unit
             "go here, fire here, go here, fire here, end turn"
             → previews only. The authoritative state is NOT mutated.
 
-RESOLUTION  on End Turn, the whole queue executes.
+RESOLUTION  on End Turn, the queue executes — until something interrupts it.
             → every mutation, every projectile, every explosion happens here.
 ```
 
@@ -22,9 +22,19 @@ Why it's built this way:
 ### Rules
 - `ActionQueue`: an ordered list per unit. Queuing validates *optimistically* against a
   **speculative** state copy for previews.
-- **Re-validate at resolution.** The world moved. If a queued action is now illegal — target
-  dead, path blocked, weapon destroyed — it **aborts, logs a reason, and the queue continues**
-  to the next action. It must not crash and must not silently no-op.
+- **RESOLUTION is a loop with re-entry (docs/10 taskblock06 Pass D), not one atomic pass:**
+  `TACTICS → RESOLUTION → (interrupt) → TACTICS → RESOLUTION → ...`. `resolve_until()` is the
+  real entry point (`resolve_turn()` is a thin void wrapper over it for callers that don't care
+  about the outcome) and returns `{kind: COMPLETED}` or `{kind: STOPPED, unit, reason, refund:
+  {ap, mp}}`.
+- **Re-validate at resolution.** The world moved. **Stop the instant the next thing to happen is
+  no longer legal — never "abort this one and keep going."** (This reverses the older rule this
+  section used to state; taskblock02 F's "abort, log, continue" is gone.) A queued move is
+  re-checked at cell granularity too, not just between actions — a lost leg can turn the rest of
+  an already-approved path illegal even though the path itself never changed. **AP already
+  spent stays spent** (it already bought whatever MP got used); **MP is refunded** as whatever
+  the interrupted unit's own pool holds at the stopping point. **Only the interrupted unit
+  returns to TACTICS** — every other unit's own queued resolution is unaffected.
 - Resolution order is deterministic and seeded.
 - No mutation ever escapes RESOLUTION. If a system mutates during TACTICS, that's a bug.
 
