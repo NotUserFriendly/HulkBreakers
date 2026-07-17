@@ -35,6 +35,13 @@ func _ready() -> void:
 	_yaw_pivot.add_child(_pitch_pivot)
 
 	_camera = Camera3D.new()
+	# docs/10 taskblock05 B1: CameraOrbitState.CAMERA_FOV_DEG is the attack
+	# solver's entire framing budget, but the real Camera3D never set `fov`
+	# itself — it just relied on Godot's default happening to match. The
+	# constant is authoritative now; whoever narrows the FOV for a tighter
+	# shot later changes this one value and the solver stays honest instead
+	# of silently drifting out of sync with a live camera nothing checked.
+	_camera.fov = CameraOrbitState.CAMERA_FOV_DEG
 	_pitch_pivot.add_child(_camera)
 
 	_apply_state()

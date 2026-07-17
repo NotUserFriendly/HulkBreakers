@@ -28,6 +28,16 @@ func test_ready_builds_a_two_pivot_rig_with_a_camera() -> void:
 	assert_true(pitch.get_child(0) is Camera3D)
 
 
+## docs/10 taskblock05 B1: "the real Camera3D never sets fov" — the solver's
+## whole framing budget (CameraOrbitState.CAMERA_FOV_DEG) is meaningless
+## unless the live camera actually uses it.
+func test_ready_sets_the_cameras_fov_from_the_solvers_constant() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+
+	assert_eq(rig.camera().fov, CameraOrbitState.CAMERA_FOV_DEG)
+
+
 func test_applying_state_moves_the_camera_to_the_current_zoom() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
