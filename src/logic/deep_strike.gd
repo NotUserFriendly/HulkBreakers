@@ -558,7 +558,7 @@ static func default_loadout() -> Loadout:
 ## `Loadout`-addressed assembly (`reference_humanoid_template`), so kept out
 ## of the shared pool `assemble_random` scavenges from (which is blind to
 ## socket ids and would only be diluted by two extra near-duplicates).
-static func _reference_humanoid_pool() -> Dictionary:
+static func reference_humanoid_pool() -> Dictionary:
 	var pool: Dictionary = {}
 	for template: Part in default_part_pool():
 		pool[template.id] = template
@@ -587,7 +587,7 @@ static func assemble_reference_humanoid(matrix: Matrix, cell: Vector2i, squad_id
 	return BodyAssembler.assemble(
 		reference_humanoid_template(),
 		default_loadout(),
-		_reference_humanoid_pool(),
+		reference_humanoid_pool(),
 		matrix,
 		cell,
 		squad_id
