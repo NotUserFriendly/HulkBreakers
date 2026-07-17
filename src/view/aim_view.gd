@@ -98,13 +98,16 @@ func refresh() -> void:
 	var shooter: Unit = aim["shooter"]
 	var target: Unit = aim["target"]
 	var plane: Array[Region] = aim["plane"]
+	var state: CombatState = aim["state"]
 	var weapon: Part = DeepStrike.find_operable_weapon(shooter)
 	if weapon == null:
 		readout.text = "[UNARMED]"
 		return
 
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + tactics.reticle_offset
-	var result: AimResult = AimController.resolve(plane, aim_point, tactics.layer_index, weapon)
+	var result: AimResult = AimController.resolve(
+		plane, aim_point, tactics.layer_index, weapon, shooter, target.cell, state
+	)
 
 	# docs/09 taskblock06 Pass H: the shadow (and the targeting line, the
 	# same "what will actually fire" concept) always sit at the target's
@@ -133,7 +136,7 @@ func refresh() -> void:
 	# muzzle to the reticle's world point... if a pistol is what's shooting,
 	# the targeting line should come from the pistol," not a generic
 	# torso-height point.
-	_draw_targeting_line(_muzzle_point(shooter, weapon), target_point)
+	_draw_targeting_line(UnitGeometry.muzzle_point(shooter, weapon), target_point)
 	readout.text = _readout_text(result)
 
 
@@ -155,22 +158,6 @@ func _body_name(body: Variant) -> String:
 	if body is Part:
 		return String((body as Part).id)
 	return "none"
-
-
-## runNotes.md: "if a pistol is what's shooting, then the targeting line
-## should come from the pistol" — the weapon's own living box center, in
-## the exact placement space HitVolumeView renders from (unit facing + board
-## position + socket chain), not a generic torso-height point. Falls back
-## to the old torso-height point only if the weapon somehow has no
-## placement at all (defensive: an operable weapon always has one).
-func _muzzle_point(shooter: Unit, weapon: Part) -> Vector3:
-	for placement: BoxPlacement in UnitGeometry.placements(shooter):
-		if placement.part == weapon:
-			return placement.transform.translated_local(placement.box.center).origin
-	return (
-		Vector3(shooter.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, shooter.cell.y)
-		* UnitGeometry.CELL_SIZE
-	)
 
 
 ## docs/09 taskblock06 Pass H: "the window" — a transparent quad carrying

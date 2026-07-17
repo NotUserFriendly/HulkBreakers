@@ -40,7 +40,7 @@ static func check_trigger(state: CombatState, mover: Unit) -> bool:
 			continue
 		if not LoS.has_los(state.grid, overwatcher.cell, mover.cell):
 			continue
-		if not _torso_visible(state, overwatcher, mover):
+		if not _torso_visible(state, overwatcher, mover, weapon):
 			continue
 		_fire(state, overwatcher, weapon, mover)
 		triggered = true
@@ -60,22 +60,42 @@ static func _in_arc(overwatcher: Unit, mover: Unit) -> bool:
 ## docs/09 taskblock06 F2: "something like torso visible... a dumb and
 ## easy way to check 'could overwatch theoretically kill this target.'"
 ## The torso's own region, at its own center, must be the FRONTMOST thing
-## the shot plane resolves there — cover (or the mover's own limbs)
-## sitting in front of it at that exact point means it doesn't qualify,
-## even though the torso still has a region in the plane somewhere.
-static func _torso_visible(state: CombatState, overwatcher: Unit, mover: Unit) -> bool:
+## a real ray hits there — cover (or the mover's own limbs) sitting in
+## front of it at that exact point means it doesn't qualify, even though
+## the torso still has a region in the plane somewhere.
+##
+## docs/09 taskblock07 Pass A: "it's a visibility query, not a hit test,
+## but it's still asking 'what does a shot from here hit first?' and must
+## give the same answer as the shot" — routed through `ShotPlane.resolve_ray`
+## now, cast from `overwatcher`'s own weapon muzzle, rather than a direct
+## `resolve_projectile` lookup that could silently drift from what a real
+## ray (or later, a real `intersect_ray`) would actually hit.
+static func _torso_visible(
+	state: CombatState, overwatcher: Unit, mover: Unit, weapon: Part
+) -> bool:
 	var torso: Part = mover.shell.root
 	if torso == null or torso.hp <= 0:
 		return false
-	var origin := Vector2(overwatcher.cell.x, overwatcher.cell.y)
 	var direction := Vector2(mover.cell - overwatcher.cell)
 	if direction.is_zero_approx():
 		return false
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	# Still built once, plane-space, purely to find the torso's own
+	# rect-center as an aim point — the SAME coordinate convention
+	# AimPlaneGeometry.ray_from_muzzle expects (anchored on this exact
+	# shooter->target dead-ahead axis), never resolved against directly.
+	var plane: Array[Region] = ShotPlane.build(
+		Vector2(overwatcher.cell.x, overwatcher.cell.y), direction.normalized(), state
+	)
 	var torso_region: Region = _torso_region(plane, torso, mover)
 	if torso_region == null:
 		return false
-	var resolved: Region = ShotPlane.resolve_projectile(plane, torso_region.rect.get_center())
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(overwatcher, weapon)
+	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
+		overwatcher.cell, mover.cell, torso_region.rect.get_center(), muzzle
+	)
+	if ray.is_empty():
+		return false
+	var resolved: HitResult = ShotPlane.resolve_ray(ray["origin"], ray["dir"], state)
 	return resolved != null and resolved.part == torso and resolved.body == mover
 
 

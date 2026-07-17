@@ -3,13 +3,14 @@ extends RefCounted
 
 ## The line-of-fire projection (docs/02): every unit and every piece of
 ## destructible cover along one direction, flattened into a single
-## depth-sorted Array[Region]. `resolve_ray` (docs/09 taskblock06 Pass A) is
-## the hit-resolution entry point now — a real ray in, a `HitResult` out.
-## `resolve_projectile`, the old "does this rect contain the point" 2D
-## lookup, hasn't moved; it's the math `resolve_ray` runs internally, and
-## the aim-preview UI (AimController) still calls it directly since it
-## already works in plane space. Both answer the exact same question the
-## exact same way — that's the no-drift invariant (test coverage).
+## depth-sorted Array[Region]. `resolve_ray` (docs/09 taskblock06 Pass A,
+## reshaped taskblock07 Pass A) is THE hit-resolution entry point — a real
+## ray in, a `HitResult` out, and (taskblock07 Pass A1) the only production
+## caller of `resolve_projectile` left anywhere in `src/` is this file
+## itself: `resolve_projectile` is the internal rect-lookup `resolve_ray`
+## runs, never a second, parallel resolution path a caller reaches for
+## directly. That's what makes the no-drift invariant real rather than
+## aspirational — there is no other door in.
 
 
 ## Projects every living unit and every standing cover part in `state` into
@@ -54,31 +55,40 @@ static func resolve_projectile(plane: Array[Region], point: Vector2) -> Region:
 	return null
 
 
-## docs/09 taskblock06 Pass A: the ray-cast hit-resolution entry point. A
-## straight, level shot (`docs/02`/BodyProjector: "shots travel
-## horizontally") from `origin` along `dir`, against everything in `world`.
+## docs/09 taskblock06 Pass A / taskblock07 Pass A2: the ray-cast
+## hit-resolution entry point. A straight, level shot (`docs/02`/
+## BodyProjector: "shots travel horizontally") from `muzzle` — the
+## shooter's own real muzzle position, an ordinary 3D world point, not a
+## synthetic one built by the caller — along `dir`, against everything in
+## `world`. `dir` must be horizontal (`dir.y` ~ 0): the aim offset lives
+## entirely in `dir`'s own lateral direction; any vertical aim is expressed
+## by `muzzle`'s own height instead (`AimPlaneGeometry.ray_from_muzzle` is
+## the intended bridge — it raises/lowers `muzzle` to the aim point's own
+## height so this precondition holds by construction, never by discarding
+## intent). A non-horizontal `dir` fails loudly rather than silently
+## dropping `dir.y`, since a silent drop is exactly the trap that let this
+## contract go uncalled for an entire pass (taskblock07 Pass A1).
 ##
-## Built entirely on the existing plane math — `origin`'s own lateral and
+## Built entirely on the existing plane math — `muzzle`'s own lateral and
 ## vertical offset from the ray's own line of travel is, by construction,
-## zero, so the plane is anchored at `origin` itself and tested against
-## `(0, origin.y)`. That's the whole seam: a caller that used to build a
-## plane at the shooter's cell and hand `resolve_projectile` a
-## center-plus-aim-offset point now instead hands `resolve_ray` a world
-## point already carrying that offset (`AimPlaneGeometry.world_point`
-## produces exactly this) — same math, same regions, same results, and
-## later a `PhysicsServer.intersect_ray` swap-in changes this function's
-## body and nothing that calls it.
-static func resolve_ray(origin: Vector3, dir: Vector3, world: CombatState) -> HitResult:
-	var flat_origin := Vector2(origin.x, origin.z) / UnitGeometry.CELL_SIZE
+## zero, so the plane is anchored at `muzzle` itself and tested against
+## `(0, muzzle.y)`. That's the whole seam: same math, same regions, same
+## results, and later a `PhysicsServer.intersect_ray` swap-in changes this
+## function's body and nothing that calls it.
+static func resolve_ray(muzzle: Vector3, dir: Vector3, world: CombatState) -> HitResult:
+	if not is_zero_approx(dir.y):
+		push_error("ShotPlane.resolve_ray: dir must be horizontal (dir.y ~= 0), got %f" % dir.y)
+		return null
+	var flat_origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
 	var flat_dir: Vector2 = Vector2(dir.x, dir.z).normalized()
 	if flat_dir.is_zero_approx():
 		return null
 	var plane: Array[Region] = build(flat_origin, flat_dir, world)
-	var region: Region = resolve_projectile(plane, Vector2(0.0, origin.y))
+	var region: Region = resolve_projectile(plane, Vector2(0.0, muzzle.y))
 	if region == null:
 		return null
 	var dir3d := Vector3(flat_dir.x, 0.0, flat_dir.y)
-	var hit_point: Vector3 = origin + dir3d * region.depth
+	var hit_point: Vector3 = muzzle + dir3d * region.depth
 	return HitResult.new(region.part, hit_point, region.surface_normal, region.depth, region.body)
 
 

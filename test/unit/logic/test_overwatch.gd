@@ -205,3 +205,39 @@ func test_the_exchange_is_deterministic_from_the_same_seed() -> void:
 		damages.append(10.0 - mover.shell.root.hp)
 
 	assert_almost_eq(damages[0], damages[1], 0.0001)
+
+
+## docs/09 taskblock07 Pass A/TESTS: "overwatch's torso check equals
+## resolve_ray" — _torso_visible()'s own true/false answer must agree with
+## an independently-built resolve_ray call at the torso's own rect center,
+## never a second, separately-drifting notion of "what's in front of it."
+func test_torso_visible_agrees_with_an_independently_built_resolve_ray_call() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var pistol: Part = built.pistol
+	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
+	var grid := Grid.new(10, 10)
+	grid.blockers[Vector2i(0, 2)] = _make_blocker(0.3)  # clears the torso — a real positive case
+	var state := CombatState.new(grid, [overwatcher, mover])
+
+	var visible: bool = Overwatch._torso_visible(state, overwatcher, mover, pistol)
+
+	var direction := Vector2(mover.cell - overwatcher.cell)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector2(overwatcher.cell.x, overwatcher.cell.y), direction.normalized(), state
+	)
+	var torso_region: Region = null
+	for region: Region in plane:
+		if region.part == mover.shell.root and region.body == mover:
+			torso_region = region
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(overwatcher, pistol)
+	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
+		overwatcher.cell, mover.cell, torso_region.rect.get_center(), muzzle
+	)
+	var expected: HitResult = ShotPlane.resolve_ray(ray["origin"], ray["dir"], state)
+	var expected_visible: bool = (
+		expected != null and expected.part == mover.shell.root and expected.body == mover
+	)
+
+	assert_true(visible, "sanity: this fixture must actually clear cover")
+	assert_eq(visible, expected_visible)

@@ -319,3 +319,58 @@ func test_a_socket_transform_offsets_the_child_from_the_root() -> void:
 	var arm_world: Vector3 = arm_placement.transform * arm_placement.box.center
 	assert_almost_eq(arm_world.x, 1.0, 0.0001)
 	assert_almost_eq(arm_world.y, 0.5, 0.0001)
+
+
+## docs/09 taskblock07 Pass A: muzzle_point() finds the weapon's own
+## composed box center, not an idealized cell-center point.
+func test_muzzle_point_returns_the_weapons_own_composed_box_center() -> void:
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	pistol.volume = [Box.new(Vector3.ZERO, Vector3(0.1, 0.1, 0.1))]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 3
+	hand.max_hp = 3
+	var grip := Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.3, 0.6, 0.0)))
+	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	torso.sockets = [wrist]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(5, 5))
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(unit, pistol)
+
+	# torso/hand carry no volume of their own here — the pistol is the only
+	# box in the whole placements() output.
+	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
+	assert_eq(expected.part, pistol)
+	var expected_point: Vector3 = expected.transform.translated_local(expected.box.center).origin
+	assert_true(muzzle.is_equal_approx(expected_point))
+
+
+## Defensive fallback: a weapon with no placement at all (never attached, or
+## no volume) still returns a usable point rather than crashing.
+func test_muzzle_point_falls_back_to_the_units_own_cell_when_the_weapon_has_no_placement() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(4, 7))
+	var unattached_weapon := Part.new()
+	unattached_weapon.id = &"ghost_weapon"
+
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(unit, unattached_weapon)
+
+	assert_almost_eq(muzzle.x, 4.0, 0.0001)
+	assert_almost_eq(muzzle.z, 7.0, 0.0001)
+	assert_almost_eq(muzzle.y, UnitGeometry.DEFAULT_MUZZLE_HEIGHT, 0.0001)

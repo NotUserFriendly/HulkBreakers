@@ -266,3 +266,44 @@ func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
 	var plane: Array[Region] = ShotPlane.build(Vector2(4, 0), Vector2(0, 1), state)
 
 	assert_eq(ShotPlane.center_of(plane, ghost_unit), Vector2(4, 4))
+
+
+## docs/09 taskblock07 Pass A1: "no file under src/ calls resolve_projectile
+## except shot_plane.gd itself" — resolve_projectile is the internal
+## rect-lookup resolve_ray runs, never a second, parallel resolution door a
+## caller reaches for directly (that's exactly the drift risk this pass
+## exists to close: a caller doing a rect lookup while resolve_ray casts a
+## real ray against real geometry would silently disagree the day
+## resolve_ray stops being resolve_projectile in disguise).
+func test_resolve_projectile_is_called_only_from_shot_plane_itself() -> void:
+	var allowed_files: Array[String] = ["shot_plane.gd"]
+	var offending: Array[String] = []
+	_scan_dir_for_resolve_projectile("res://src", allowed_files, offending)
+	assert_eq(
+		offending,
+		[] as Array[String],
+		"resolve_projectile called outside shot_plane.gd: %s" % [offending]
+	)
+
+
+func _scan_dir_for_resolve_projectile(
+	path: String, allowed_files: Array[String], offending: Array[String]
+) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if entry in [".", ".."]:
+			entry = dir.get_next()
+			continue
+		var full_path: String = path.path_join(entry)
+		if dir.current_is_dir():
+			_scan_dir_for_resolve_projectile(full_path, allowed_files, offending)
+		elif entry.ends_with(".gd") and not allowed_files.has(entry):
+			var text: String = FileAccess.get_file_as_string(full_path)
+			if text.contains("resolve_projectile("):
+				offending.append(full_path)
+		entry = dir.get_next()
+	dir.list_dir_end()

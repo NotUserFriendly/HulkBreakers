@@ -12,6 +12,12 @@ extends RefCounted
 ## World units per grid cell — the ground plane's scale for both the board
 ## mesh and unit placement.
 const CELL_SIZE := 1.0
+## docs/09 taskblock07 Pass A: muzzle_point()'s own fallback when a weapon
+## somehow has no placement at all (defensive: an operable weapon always
+## has one) — roughly chest-height on the reference humanoid, the same
+## value the view layer's own tracer/targeting-line fallback already used
+## before this became a logic-layer concern too.
+const DEFAULT_MUZZLE_HEIGHT := 1.25
 
 
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
@@ -118,3 +124,18 @@ static func bounding_sphere(unit: Unit, orientation_override: Variant = null) ->
 	var center: Vector3 = (min_corner + max_corner) * 0.5
 	var radius: float = (max_corner - min_corner).length() * 0.5
 	return {"center": center, "radius": radius}
+
+
+## docs/09 taskblock07 Pass A: `weapon`'s own composed world position — the
+## real ray origin `ShotPlane.resolve_ray` wants (docs/09 taskblock06 Pass
+## A's own docstring: "what a physics raycast will want verbatim"), not an
+## idealized cell-center point. Logic-layer (Overwatch needs this
+## headlessly; the view's own targeting-line cosmetic already duplicated
+## this exact lookup — that duplication is gone now, AimView delegates
+## here too). Falls back to DEFAULT_MUZZLE_HEIGHT above the unit's own cell
+## only if the weapon somehow has no placement at all.
+static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
+	for placement: BoxPlacement in placements(unit):
+		if placement.part == weapon:
+			return placement.transform.translated_local(placement.box.center).origin
+	return Vector3(unit.cell.x, DEFAULT_MUZZLE_HEIGHT, unit.cell.y) * CELL_SIZE
