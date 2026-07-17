@@ -26,6 +26,16 @@ const HIGHLIGHT := Color(0.95, 0.82, 0.25)
 const WARN := Color(0.95, 0.55, 0.15)
 const DAMAGE := Color(0.85, 0.2, 0.2)
 
+## taskblock-07 Pass G names two EXPLICIT pip colors: "MP: lime green...
+## AP: yellow." AP pips reuse HIGHLIGHT above (already this palette's
+## yellow — no reason to duplicate it under a second name). MP has no
+## existing match anywhere in the six; this is a genuine 7th color, not
+## an invented one — the taskblock states the hex-adjacent name directly,
+## same footing as every other named color here. Flagged for whoever
+## reconciles this against docs/08's own "six colors, no more" line
+## (written before Pass G existed).
+const MP_PIP := Color(0.4, 0.9, 0.2)
+
 ## runNotes.md: "make [the inventory panel] partially transparent" — the
 ## Tree's own panel background only; text stays fully opaque so it's still
 ## legible over the 3D board behind it.
