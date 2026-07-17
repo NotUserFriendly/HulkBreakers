@@ -40,3 +40,14 @@ func _init(
 	socket_type = p_socket_type
 	transform = p_transform
 	id = p_id
+
+
+## docs/09 taskblock06 Pass B: the seam a future rig posing system slots
+## into. Today just `transform`, the authored static frame — later this
+## returns the joint's actual POSED transform sampled from a rig, and the
+## four places composing a socket-chain transform (BodyProjector,
+## UnitGeometry, and anything reading a BoxPlacement built from either)
+## change nothing, because they already call this instead of reading
+## `transform` directly.
+func current_transform() -> Transform3D:
+	return transform

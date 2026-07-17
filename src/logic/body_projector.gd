@@ -72,13 +72,13 @@ static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
 	return regions
 
 
-## Depth-first walk composing `world = parent ∘ socket.transform ∘ ...` as it
-## descends. Deliberately walks the tree directly rather than building a
-## Part -> Transform3D map first: a Dictionary keyed by Part identity would
-## collapse two sockets sharing one Part resource down to a single (last-
-## write-wins) transform. Each occurrence gets its own transform, computed
-## once here and reused across all of that occurrence's boxes in
-## `project_part` — never recomputed per box.
+## Depth-first walk composing `world = parent ∘ socket.current_transform()
+## ∘ ...` as it descends. Deliberately walks the tree directly rather than
+## building a Part -> Transform3D map first: a Dictionary keyed by Part
+## identity would collapse two sockets sharing one Part resource down to a
+## single (last-write-wins) transform. Each occurrence gets its own
+## transform, computed once here and reused across all of that
+## occurrence's boxes in `project_part` — never recomputed per box.
 ##
 ## docs/10 taskblock05 F2: `pose`'s overrides compose onto each socket's
 ## own transform (null for a field object/cover part — those aren't
@@ -100,7 +100,9 @@ static func _project_tree(
 	for socket: Socket in part.sockets:
 		if socket.occupant == null:
 			continue
-		var socket_transform: Transform3D = socket.transform
+		# docs/09 taskblock06 Pass B: the seam a future rig posing system
+		# slots into (Socket.current_transform() — today just `transform`).
+		var socket_transform: Transform3D = socket.current_transform()
 		if pose != null and pose.overrides.has(socket.id):
 			socket_transform = socket_transform * (pose.overrides[socket.id] as Transform3D)
 		_project_tree(
