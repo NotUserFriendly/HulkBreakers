@@ -1,0 +1,176 @@
+class_name Overwatch
+extends RefCounted
+
+## docs/09 taskblock06 Pass F2: the actual trigger. Checked at every cell
+## step a queued MoveAction actually takes (via `check_trigger`, the
+## Callable MoveAction.apply_stepwise's `mid_move_hook` seam — taskblock06
+## Pass D — exists for): torso visible, in arc, in range. Not center-of-
+## mass, not any-part — the torso specifically, so hugging cover that
+## only lets your legs clear a crate does NOT trigger, for free, out of
+## geometry (no code needed to special-case it).
+
+## Flagged starting data (docs/09 taskblock06 F1), not a tuned design
+## number: the unit's own facing +/- this many degrees.
+const ARC_DEG := 45.0
+
+
+## Fires every still-armed overwatcher (docs/09 taskblock06 D4: several
+## can trigger off the same step) whose conditions are met against
+## `mover`'s current cell — called once per cell `mover` actually steps
+## onto, never re-checked against cells already passed (docs/09 taskblock06
+## F2: "the trigger fires at the FIRST qualifying cell"). Returns `true`
+## the instant any overwatcher fires — MoveAction.apply_stepwise's own
+## `mid_move_hook` contract (docs/09 taskblock06 F2: "the mover freezes")
+## reads a `true` result as an unconditional freeze at this cell, separate
+## from and prior to Pass D's own MP/AP legality check.
+static func check_trigger(state: CombatState, mover: Unit) -> bool:
+	var triggered: bool = false
+	for overwatcher: Unit in state.units.duplicate():
+		if overwatcher == mover or not overwatcher.alive:
+			continue
+		if overwatcher.overwatch_weapon_id == &"":
+			continue
+		var weapon: Part = overwatcher.shell.find_part(overwatcher.overwatch_weapon_id)
+		if weapon == null or weapon.hp <= 0:
+			continue
+		if not _in_arc(overwatcher, mover):
+			continue
+		var range_cells: int = Grid.distance_chebyshev(overwatcher.cell, mover.cell)
+		if weapon.weapon_max_range > 0.0 and range_cells > int(weapon.weapon_max_range):
+			continue
+		if not LoS.has_los(state.grid, overwatcher.cell, mover.cell):
+			continue
+		if not _torso_visible(state, overwatcher, mover):
+			continue
+		_fire(state, overwatcher, weapon, mover)
+		triggered = true
+	return triggered
+
+
+## docs/09 taskblock06 F1: "arc: the unit's facing +/- 45 degrees."
+static func _in_arc(overwatcher: Unit, mover: Unit) -> bool:
+	var to_mover := Vector2(mover.cell - overwatcher.cell)
+	if to_mover.is_zero_approx():
+		return false
+	var facing: Vector2 = BodyProjector.WORLD_FORWARD.rotated(overwatcher.orientation)
+	var angle_deg: float = rad_to_deg(absf(facing.angle_to(to_mover)))
+	return angle_deg <= ARC_DEG
+
+
+## docs/09 taskblock06 F2: "something like torso visible... a dumb and
+## easy way to check 'could overwatch theoretically kill this target.'"
+## The torso's own region, at its own center, must be the FRONTMOST thing
+## the shot plane resolves there — cover (or the mover's own limbs)
+## sitting in front of it at that exact point means it doesn't qualify,
+## even though the torso still has a region in the plane somewhere.
+static func _torso_visible(state: CombatState, overwatcher: Unit, mover: Unit) -> bool:
+	var torso: Part = mover.shell.root
+	if torso == null or torso.hp <= 0:
+		return false
+	var origin := Vector2(overwatcher.cell.x, overwatcher.cell.y)
+	var direction := Vector2(mover.cell - overwatcher.cell)
+	if direction.is_zero_approx():
+		return false
+	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var torso_region: Region = _torso_region(plane, torso, mover)
+	if torso_region == null:
+		return false
+	var resolved: Region = ShotPlane.resolve_projectile(plane, torso_region.rect.get_center())
+	return resolved != null and resolved.part == torso and resolved.body == mover
+
+
+static func _torso_region(plane: Array[Region], torso: Part, mover: Unit) -> Region:
+	for region: Region in plane:
+		if region.part == torso and region.body == mover:
+			return region
+	return null
+
+
+## docs/09 taskblock06 F1/F2: "fires once, then spent" — a default burst
+## at the torso, the same DamageResolver.resolve_shot cascade AttackAction
+## itself uses (docs/08: never a separate, ad-hoc resolution path).
+static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Unit) -> void:
+	overwatcher.overwatch_weapon_id = &""
+
+	var origin := Vector2(overwatcher.cell.x, overwatcher.cell.y)
+	var direction := Vector2(mover.cell - overwatcher.cell)
+	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var torso: Part = mover.shell.root
+	var torso_region: Region = _torso_region(plane, torso, mover)
+	var aim_point: Vector2 = (
+		torso_region.rect.get_center()
+		if torso_region != null
+		else ShotPlane.center_of(plane, mover)
+	)
+
+	var damage: float = WeaponResolver.resolve_damage(weapon, []).current
+	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, []).current
+	var points: Array[Vector2] = Dartboard.sample(
+		aim_point, Dartboard.resolve_scatter(weapon, []), state.rng, weapon.burst
+	)
+
+	var text: String = (
+		"Overwatch: unit %d fired %s at unit %d" % [overwatcher.id, weapon.id, mover.id]
+	)
+	state.log_action(text)
+	if not state.is_preview:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				overwatcher.id,
+				&"overwatch_triggered",
+				{"weapon": weapon.id, "target_unit_id": mover.id},
+				text
+			)
+		)
+
+	for point: Vector2 in points:
+		var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+			origin,
+			direction,
+			point,
+			damage,
+			crit_chance,
+			state,
+			state.material_table,
+			state.rng,
+			0,
+			DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
+			DamageResolver.DEFAULT_DAMAGE_FLOOR,
+			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
+			overwatcher.shell.all_parts()
+		)
+		if state.is_preview:
+			continue
+		for result: ImpactResult in results:
+			var outcome_name: String = (
+				"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
+			)
+			(
+				state
+				. combat_log
+				. emit(
+					(
+						LogEvent
+						. new(
+							state.round_number,
+							Enums.Phase.RESOLUTION,
+							overwatcher.id,
+							&"impact",
+							{
+								"outcome": result.outcome,
+								"part": result.region.part.id,
+								"target_unit_id": mover.id,
+								"damage": result.part_damage,
+								"bypassed_armor": result.bypassed_armor,
+								"is_crit": result.is_crit,
+							},
+							"%s on %s (overwatch)" % [outcome_name, result.region.part.id]
+						)
+					)
+				)
+			)
+
+	if mover.alive and mover.shell.living_parts().is_empty():
+		mover.alive = false

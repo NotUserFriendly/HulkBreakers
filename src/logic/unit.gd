@@ -31,8 +31,10 @@ var orientation: float = 0.0
 
 ## docs/10 taskblock05 F: socket transform overrides composing onto the
 ## body when UnitGeometry/BodyProjector walk it — snap, never animated.
-## DOWN is never set here directly; it's a computed override applied by
-## effective_pose() whenever the unit has no matrix docked.
+## DOWN is never stored here directly; callers that want it (UnitView,
+## based on is_downed()) pass Poses.down() in as an explicit override
+## (see UnitGeometry.placements()'s own pose_override parameter) rather
+## than this field silently switching underneath them.
 var pose: Pose = Poses.idle()
 
 ## docs/10 taskblock03 E2: "1 MP unlocks free refacing for the turn — not 1
@@ -41,6 +43,14 @@ var pose: Pose = Poses.idle()
 ## turn start (CombatState._start_turn()). Free-with-action facing
 ## (FaceAction.face_for_free) never reads or sets this — it's always free.
 var facing_unlocked: bool = false
+
+## docs/09 taskblock06 Pass F: which weapon (by pool part id) this unit is
+## holding overwatch with, or empty if not armed. Set by OverwatchAction's
+## own apply() (which also ends the unit's turn — you're holding, not
+## acting); cleared the instant it fires (fires once, then spent) or at
+## the start of this unit's own next turn (CombatState._start_turn()),
+## same reset convention as facing_unlocked above.
+var overwatch_weapon_id: StringName = &""
 
 var held_matrix: Matrix = null  # a Matrix carried after PickUpAction, awaiting ImplantAction
 
@@ -177,6 +187,7 @@ func dup() -> Unit:
 	cloned.orientation = orientation
 	cloned.pose = pose
 	cloned.facing_unlocked = facing_unlocked
+	cloned.overwatch_weapon_id = overwatch_weapon_id
 	cloned.held_matrix = held_matrix.duplicate(true) as Matrix if held_matrix != null else null
 	cloned.surrogate_tier = surrogate_tier
 	cloned.exposed_turns = exposed_turns

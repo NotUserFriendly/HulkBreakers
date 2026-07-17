@@ -54,7 +54,7 @@ func apply(state: CombatState) -> void:
 
 
 ## docs/09 taskblock06 Pass D: like apply(), but checks `mid_move_hook`
-## (Callable(state, unit) -> void, e.g. Pass F's Overwatch trigger check)
+## (Callable(state, unit) -> Variant, e.g. Pass F's Overwatch trigger check)
 ## after EVERY cell actually stepped onto, then re-validates whether the
 ## REST of the path is still completable given whatever that hook just
 ## did to the world — MP dropping (a lost leg lowering mp_per_ap, say)
@@ -62,8 +62,14 @@ func apply(state: CombatState) -> void:
 ## about the path itself changed. Stops there if so: docs/09 taskblock06
 ## D2's rule ("stop when the next [step] is no longer legal, not when
 ## anything changes") applies at cell granularity, not just between
-## queued actions. `apply()` is just this with no hook, matching its old
-## unconditional behaviour exactly.
+## queued actions. A hook may also force an immediate freeze by returning
+## `true` (docs/09 taskblock06 F2: "the mover freezes" the instant
+## overwatch triggers, unconditionally — Pass D's own legality rule only
+## governs the queue AFTER that freeze, not whether it happens); a void
+## hook's `null` return is simply not `true`, so every pre-Overwatch hook
+## keeps its old unconditional-continue behaviour untouched. `apply()` is
+## just this with no hook, matching its old unconditional behaviour
+## exactly.
 ##
 ## Returns {stopped: bool} — `state.find_unit(unit.id)`'s own `.mp` at
 ## the stopping point IS the refund (docs/09 taskblock06 D3: "they just
@@ -86,11 +92,16 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 		actual.cell = path[i]
 		state.grid.set_occupant_id(actual.cell, actual.id)
 
+		var hook_forces_stop: bool = false
 		if mid_move_hook.is_valid():
-			mid_move_hook.call(state, actual)
+			var hook_result: Variant = mid_move_hook.call(state, actual)
+			hook_forces_stop = hook_result is bool and hook_result
 
 		var is_final_step: bool = i == path.size() - 1
-		if not is_final_step and not _can_still_complete(state, actual, path.slice(i)):
+		if (
+			not is_final_step
+			and (hook_forces_stop or not _can_still_complete(state, actual, path.slice(i)))
+		):
 			_finish(state, actual, path.slice(0, i + 1))
 			return {"stopped": true}
 

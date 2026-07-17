@@ -205,6 +205,10 @@ func _start_turn(unit: Unit) -> void:
 	# docs/10 taskblock03 E2: the free-refacing unlock is a per-turn toll,
 	# not a permanent one — a new turn always starts locked again.
 	unit.facing_unlocked = false
+	# docs/09 taskblock06 Pass F: overwatch is spent the instant it fires,
+	# but an UNTRIGGERED watch also lapses once its own next turn comes
+	# around — it was holding against threats that turn, not forever.
+	unit.overwatch_weapon_id = &""
 	var tier_before: SurrogateTier = unit.surrogate_tier
 	LifeSupport.tick(unit, SurrogateLadder.default_ladder())
 
