@@ -557,7 +557,7 @@ func aim_state() -> Dictionary:
 ## while aiming is happening, and if aiming is cancelled, then they
 ## 'unface'." A display-only override — never a queued FaceAction, so
 ## cancelling requires no cleanup: aiming_at just goes null, this starts
-## returning null again, and both the previewed body/wedge (UnitView) and
+## returning null again, and both the previewed body/wedge (HitVolumeView) and
 ## the end-position ghost fall straight back to whatever WAS queued.
 ## Reads from the same speculative preview aim_state() itself uses, so it
 ## agrees with D5's "aim from where the unit WILL BE" for position too.

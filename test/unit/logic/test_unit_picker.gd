@@ -1,7 +1,7 @@
 extends GutTest
 
 ## docs/10 taskblock03 D1: ray-vs-body hit testing is pure math against
-## UnitGeometry.placements() — the same boxes a UnitView renders.
+## UnitGeometry.placements() — the same boxes a HitVolumeView renders.
 
 
 func _make_unit(cell: Vector2i, box_size: Vector3 = Vector3.ONE) -> Unit:

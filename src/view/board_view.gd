@@ -217,11 +217,11 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 
 ## docs/10 taskblock04 C1/C2: a field object can be a whole part TREE (a
 ## dropped assembly — plate, weapon and all), the same "render is hitbox"
-## contract UnitView already honours — never just the root's own `volume`,
+## contract HitVolumeView already honours — never just the root's own `volume`,
 ## which would silently drop a still-living child riding along a destroyed
 ## parent. `assembly_placements` walks it exactly like a Unit's own shell.
 ## A part tagged DROPPED (DamageResolver's own marker) lays on its side —
-## the same trick UnitView already uses for a downed unit (taskblock03 G) —
+## the same trick HitVolumeView already uses for a downed unit (taskblock03 G) —
 ## so it reads as a fallen assembly, not upright cover.
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
@@ -292,7 +292,7 @@ func show_ghost_paths(paths: Array, leg_costs: Array[float] = []) -> void:
 ## end up after the queued path — at its final facing." `previewed_unit`'s
 ## own `.cell`/`.orientation` already ARE that end state (Selection
 ## Controller.previewed_unit()), so this just renders its boxes, translucent
-## and team-tinted, with none of UnitView's marker/wedge/rim — a null
+## and team-tinted, with none of HitVolumeView's marker/wedge/rim — a null
 ## `previewed_unit` (nothing queued, or nothing selected) just clears it.
 func show_unit_ghost(previewed_unit: Unit) -> void:
 	_clear(_unit_ghost_overlay)

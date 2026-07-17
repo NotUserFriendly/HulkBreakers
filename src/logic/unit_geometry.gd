@@ -6,7 +6,7 @@ extends RefCounted
 ## 2D view-plane projection (which culls to visible faces for one line of
 ## fire). Both compose the same socket-chain transform the same way
 ## (Phase 12.0: `parent ∘ socket.current_transform() ∘ ...`), so what a
-## UnitView renders and what the shot plane can hit are always the same
+## HitVolumeView renders and what the shot plane can hit are always the same
 ## boxes.
 
 ## World units per grid cell — the ground plane's scale for both the board
@@ -29,7 +29,7 @@ const CELL_SIZE := 1.0
 ## `orientation_override` (taskblock03 E3). Composes `unit.pose` by
 ## default so a settable pose is meaningful at all, but never
 ## automatically substitutes a computed one (e.g. DOWN): a caller that
-## wants DOWN's geometry passes `Poses.down()` in explicitly (UnitView
+## wants DOWN's geometry passes `Poses.down()` in explicitly (HitVolumeView
 ## does, based on Unit.is_downed()) — plenty of headless fixtures never
 ## bother docking a matrix for reasons unrelated to piloting status, and
 ## must not silently start rendering sideways because of it.

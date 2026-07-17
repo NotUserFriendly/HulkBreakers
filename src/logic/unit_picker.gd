@@ -3,7 +3,7 @@ extends RefCounted
 
 ## docs/10 taskblock03 D1: "click the body, not just the tile" — ray-vs-box
 ## hit testing against every living unit's own boxes
-## (UnitGeometry.placements(), the exact boxes a UnitView renders and
+## (UnitGeometry.placements(), the exact boxes a HitVolumeView renders and
 ## docs/10 calls "render is hitbox"), not a per-unit bounding sphere or a
 ## click on its cell. Pure math, no SceneTree: the Node layer only supplies
 ## the ray (Camera3D.project_ray_origin/normal need a live viewport) and

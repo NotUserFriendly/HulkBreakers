@@ -1,6 +1,6 @@
 extends GutTest
 
-## docs/10 "render is hitbox": UnitView must spawn exactly one mesh per
+## docs/10 "render is hitbox": HitVolumeView must spawn exactly one mesh per
 ## living box UnitGeometry.placements() reports, at exactly that transform,
 ## and rebuild on refresh() so destroyed parts vanish. Team flagging
 ## (docs/10) adds a ground marker (child 0) and a facing wedge (docs/10
@@ -53,7 +53,7 @@ func _shell_unit(cell: Vector2i, squad: int = 0) -> Unit:
 
 func test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 	assert_eq(view.get_child_count(), 3, "team marker + facing wedge + one part mesh")
@@ -64,7 +64,7 @@ func test_refresh_after_a_part_is_destroyed_removes_its_mesh() -> void:
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
 
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 	assert_eq(view.get_child_count(), 4, "team marker + facing wedge + torso + arm")
@@ -76,7 +76,7 @@ func test_refresh_after_a_part_is_destroyed_removes_its_mesh() -> void:
 
 func test_mesh_transform_matches_unit_geometry_exactly() -> void:
 	var unit := _torso_unit(Vector2i(3, 4))
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -87,7 +87,7 @@ func test_mesh_transform_matches_unit_geometry_exactly() -> void:
 
 func test_mesh_size_matches_the_box_size_exactly() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -98,7 +98,7 @@ func test_mesh_size_matches_the_box_size_exactly() -> void:
 
 func test_part_material_is_lit_not_unshaded() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -110,7 +110,7 @@ func test_part_material_is_lit_not_unshaded() -> void:
 
 func test_part_material_carries_a_rim_outline_next_pass() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -124,13 +124,13 @@ func test_part_material_carries_a_rim_outline_next_pass() -> void:
 func test_facing_wedge_sits_at_child_1_pointing_along_orientation() -> void:
 	var unit := _torso_unit(Vector2i(2, 3), 0)
 	unit.orientation = PI / 2.0
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
 	var wedge: MeshInstance3D = view.get_child(1)
 	var forward: Vector2 = BodyProjector.WORLD_FORWARD.rotated(unit.orientation)
-	var expected_xz := Vector2(2.0, 3.0) + forward * UnitView.FACING_WEDGE_OFFSET
+	var expected_xz := Vector2(2.0, 3.0) + forward * HitVolumeView.FACING_WEDGE_OFFSET
 	assert_almost_eq(wedge.position.x, expected_xz.x, 0.0001)
 	assert_almost_eq(wedge.position.z, expected_xz.y, 0.0001)
 
@@ -142,7 +142,7 @@ func test_facing_wedge_sits_at_child_1_pointing_along_orientation() -> void:
 func test_preview_orientation_moves_both_the_wedge_and_the_part_meshes() -> void:
 	var unit := _torso_unit(Vector2i(2, 3), 0)
 	unit.orientation = 0.0
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 	var committed_wedge_x: float = (view.get_child(1) as MeshInstance3D).position.x
@@ -161,7 +161,7 @@ func test_preview_orientation_moves_both_the_wedge_and_the_part_meshes() -> void
 func test_null_preview_orientation_renders_the_committed_orientation() -> void:
 	var unit := _torso_unit(Vector2i(2, 3), 0)
 	unit.orientation = 0.5
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.preview_orientation = null
 	view.setup(unit, MaterialTable.default_table())
@@ -173,7 +173,7 @@ func test_null_preview_orientation_renders_the_committed_orientation() -> void:
 
 func test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color() -> void:
 	var unit := _torso_unit(Vector2i(2, 3), 1)
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -186,7 +186,7 @@ func test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color() -> vo
 
 func test_set_selected_brightens_the_team_marker() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -203,7 +203,7 @@ func test_set_selected_brightens_the_team_marker() -> void:
 ## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs
 ## to read as down at a glance."
 func test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit() -> void:
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.unit = _shell_unit(Vector2i(0, 0))
 	assert_true(view.is_downed())
@@ -214,7 +214,7 @@ func test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit() -> void:
 
 func test_a_downed_unit_kills_its_facing_wedge() -> void:
 	var unit := _shell_unit(Vector2i(0, 0))
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -228,7 +228,7 @@ func test_a_downed_unit_kills_its_facing_wedge() -> void:
 ## exactly, and read as lying down relative to standing upright.
 func test_a_downed_units_body_matches_its_own_posed_geometry_exactly() -> void:
 	var unit := _shell_unit(Vector2i(2, 3))
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -246,11 +246,11 @@ func test_a_downed_units_body_matches_its_own_posed_geometry_exactly() -> void:
 
 
 func test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units() -> void:
-	var downed_view := UnitView.new()
+	var downed_view := HitVolumeView.new()
 	add_child_autofree(downed_view)
 	downed_view.setup(_shell_unit(Vector2i(0, 0), 0), MaterialTable.default_table())
 
-	var piloted_view := UnitView.new()
+	var piloted_view := HitVolumeView.new()
 	add_child_autofree(piloted_view)
 	piloted_view.setup(_torso_unit(Vector2i(0, 0), 0), MaterialTable.default_table())
 
@@ -263,8 +263,13 @@ func test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units() -> void:
 		. albedo_color
 	)
 
-	assert_almost_eq(downed_color.r, piloted_color.r * UnitView.DOWNED_MARKER_DIM, 0.0001)
+	assert_almost_eq(downed_color.r, piloted_color.r * HitVolumeView.DOWNED_MARKER_DIM, 0.0001)
 	assert_lt(downed_color.r, piloted_color.r, "the downed marker must actually read dimmer")
+
+
+## docs/09 taskblock06 Pass I2: Part.mesh_scene / show_hit_volumes tests
+## live in test_hit_volume_view_mesh_scene.gd — split out purely to stay
+## under gdlint's max-public-methods.
 
 
 func _rim_of(instance: MeshInstance3D) -> StandardMaterial3D:
@@ -280,7 +285,7 @@ func test_highlight_part_chains_a_glow_onto_only_that_parts_own_mesh() -> void:
 	var built: Dictionary = _torso_with_arm_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 
@@ -300,7 +305,7 @@ func test_clear_highlight_removes_the_glow() -> void:
 	var built: Dictionary = _torso_with_arm_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 	view.highlight_part(arm)
@@ -317,7 +322,7 @@ func test_a_highlight_survives_a_refresh() -> void:
 	var built: Dictionary = _torso_with_arm_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
-	var view := UnitView.new()
+	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, MaterialTable.default_table())
 	view.highlight_part(arm)

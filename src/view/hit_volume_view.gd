@@ -1,10 +1,25 @@
-class_name UnitView
+class_name HitVolumeView
 extends Node3D
 
 ## docs/10 "render is hitbox": every box UnitGeometry.placements() produces
 ## becomes exactly one BoxMesh, nothing more. `refresh()` rebuilds from the
 ## unit's current state — call it after resolution so destroyed parts
 ## vanish; there is no per-part diffing, only rebuild-from-truth.
+##
+## docs/09 taskblock06 Pass I1: promoted from prototype scaffolding to a
+## permanent, toggleable feature (renamed from `UnitView`) — a dev tool,
+## the one checkpoint artifact for "does the hitbox match the mesh" that
+## can never be automated, and plausibly a player-facing option later.
+##
+## docs/09 taskblock06 Pass I2: a Part's optional `mesh_scene` (commissioned
+## art) is drawn in the box's place — decided per PART, never globally, so
+## mixed assemblies (a rigged torso above box arms) are legal with no
+## cutover. `show_hit_volumes` overlays the boxes back on TOP of a
+## commissioned mesh too, independent of whether that mesh exists at all —
+## the whole point of a hitbox visualiser is to check the two agree.
+## Nothing here ever touches what actually resolves a shot
+## (BodyProjector/ShotPlane/UnitGeometry all still read `volume` alone) —
+## the mesh is drawn, never hit-tested.
 ##
 ## Team flagging (docs/10) is an overlay on top, never touching a part's
 ## material albedo: a ground disc under the unit (brighter when selected)
@@ -31,6 +46,13 @@ const DOWNED_MARKER_DIM := 0.4
 var unit: Unit
 var material_table: MaterialTable
 
+## docs/09 taskblock06 Pass I1: "toggleable" — false is the Pass I2 default
+## ("the view draws the mesh if present, hit volumes otherwise"); true
+## overlays hit-volume boxes on every part regardless, commissioned mesh or
+## not. Set directly and call refresh() (matching preview_orientation's own
+## convention below — a plain field, not a setter method).
+var show_hit_volumes: bool = false
+
 ## docs/10 taskblock03 E3: "the wedge shows committed state — it must show
 ## PREVIEW." Set by whoever drives selection (BattleScene) to
 ## SelectionController.previewed_orientation() while this is the selected
@@ -56,7 +78,7 @@ func setup(p_unit: Unit, p_material_table: MaterialTable) -> void:
 
 
 ## Brightens the ground marker — TacticsController.selection_changed drives
-## this across every UnitView (docs/10: "the selected unit gets a brighter
+## this across every HitVolumeView (docs/10: "the selected unit gets a brighter
 ## ring").
 func set_selected(is_selected: bool) -> void:
 	_selected = is_selected
@@ -88,27 +110,62 @@ func refresh() -> void:
 	# same explicit override (UnitPicker's hit-testing included, once
 	# something threads it through) agrees with what's drawn.
 	var pose: Variant = Poses.down() if is_downed() else null
+	# docs/09 taskblock06 Pass I2: grouped by part first — a commissioned
+	# mesh draws ONCE per part (it models the whole part, not one box at a
+	# time), while hit-volume boxes still draw once per BoxPlacement.
+	var placements_by_part: Dictionary = {}  # Part -> Array[BoxPlacement]
+	var part_order: Array[Part] = []
 	for placement: BoxPlacement in UnitGeometry.placements(unit, preview_orientation, pose):
-		var instance := MeshInstance3D.new()
-		var box_mesh := BoxMesh.new()
-		box_mesh.size = placement.box.size
-		var material: StandardMaterial3D = WorldPalette.lit_material(
-			material_table.color_for(placement.part.material)
-		)
-		# docs/10 taskblock05 C: each box gets its OWN rim instance (never
-		# shared across boxes) so a part's own highlight next_pass can chain
-		# onto just its own materials, never every box on the unit.
-		material.next_pass = WorldPalette.rim_outline_material(team_color)
-		box_mesh.material = material
-		instance.mesh = box_mesh
-		instance.transform = placement.transform.translated_local(placement.box.center)
-		add_child(instance)
-		if not _meshes_by_part.has(placement.part):
-			_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
-		(_meshes_by_part[placement.part] as Array[MeshInstance3D]).append(instance)
+		if not placements_by_part.has(placement.part):
+			placements_by_part[placement.part] = [] as Array[BoxPlacement]
+			part_order.append(placement.part)
+		(placements_by_part[placement.part] as Array[BoxPlacement]).append(placement)
+
+	for part: Part in part_order:
+		var part_placements: Array[BoxPlacement] = placements_by_part[part]
+		if part.mesh_scene != null:
+			_add_mesh_instance(part, part_placements[0])
+		# docs/09 taskblock06 Pass I2: "the view draws the mesh if present,
+		# hit volumes otherwise" — the box is the ONLY representation a
+		# part without a commissioned mesh has, so it always draws one
+		# regardless of the toggle; a part WITH a mesh only also gets boxes
+		# when show_hit_volumes explicitly asks for the overlay.
+		if part.mesh_scene == null or show_hit_volumes:
+			for placement: BoxPlacement in part_placements:
+				_add_box_instance(placement, team_color)
 
 	if _highlighted_part != null:
 		highlight_part(_highlighted_part)
+
+
+## docs/09 taskblock06 Pass I2: one instance per part, positioned at that
+## part's own composed transform (the same one a box placement carries,
+## minus the box-local center offset a box needs and a whole-part mesh
+## doesn't) — never hit-tested, never read by BodyProjector/ShotPlane.
+func _add_mesh_instance(part: Part, placement: BoxPlacement) -> void:
+	var instance: Node3D = part.mesh_scene.instantiate() as Node3D
+	instance.transform = placement.transform
+	add_child(instance)
+
+
+func _add_box_instance(placement: BoxPlacement, team_color: Color) -> void:
+	var instance := MeshInstance3D.new()
+	var box_mesh := BoxMesh.new()
+	box_mesh.size = placement.box.size
+	var material: StandardMaterial3D = WorldPalette.lit_material(
+		material_table.color_for(placement.part.material)
+	)
+	# docs/10 taskblock05 C: each box gets its OWN rim instance (never
+	# shared across boxes) so a part's own highlight next_pass can chain
+	# onto just its own materials, never every box on the unit.
+	material.next_pass = WorldPalette.rim_outline_material(team_color)
+	box_mesh.material = material
+	instance.mesh = box_mesh
+	instance.transform = placement.transform.translated_local(placement.box.center)
+	add_child(instance)
+	if not _meshes_by_part.has(placement.part):
+		_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
+	(_meshes_by_part[placement.part] as Array[MeshInstance3D]).append(instance)
 
 
 ## docs/10 taskblock05 C: "hovering a part highlights it in the world" —
