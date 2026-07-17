@@ -115,7 +115,12 @@ func _ready() -> void:
 	left_layout.add_child(inventory_row)
 
 	var inventory_tree := Tree.new()
-	inventory_tree.custom_minimum_size = Vector2(460, 0)
+	# docs/10 taskblock05 A2: "give the panel a sane minimum width so the
+	# tree stops overflowing horizontally" — 460 wasn't enough room for a
+	# deep socket path ("[SHOULDER_L] forearm_cladding") plus the fixed
+	# Condition/Mass columns; a flagged tuning number, not a design
+	# decision, same status as those columns' own widths.
+	inventory_tree.custom_minimum_size = Vector2(560, 0)
 	inventory_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inventory_row.add_child(inventory_tree)
 

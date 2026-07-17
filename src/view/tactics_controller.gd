@@ -151,26 +151,36 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 	if button_event.button_index == MOUSE_BUTTON_LEFT:
 		var from: Vector3 = camera.project_ray_origin(button_event.position)
 		var dir: Vector3 = camera.project_ray_normal(button_event.position)
-		var cell: Variant = _cell_at(from, dir)
+		var hit: Variant = _cell_at(from, dir)
+		var hit_dict: Dictionary = hit as Dictionary if hit != null else {}
 		if (
-			cell != null
+			not hit_dict.is_empty()
 			and aiming_at == null
 			and selection.selected_unit != null
-			and _unit_at(cell) == selection.selected_unit
+			and hit_dict["kind"] == Enums.HitKind.UNIT
+			and hit_dict["unit"] == selection.selected_unit
 		):
 			# docs/10 taskblock03 E1: press-and-hold on the already-selected
-			# unit's own body starts a facing drag — a plain click_cell()
-			# here would just be a no-op reselect anyway.
+			# unit's own body starts a facing drag — a plain click here
+			# would just be a no-op reselect anyway.
 			_facing_drag_active = true
 			return
-		if cell != null:
-			click_cell(cell)
-		elif aiming_at == null:
+		# docs/10 taskblock05 A1: dispatch on the actual hit directly — a
+		# unit ray-hit is never collapsed into a cell and re-derived.
+		if aiming_at != null:
+			confirm_shot()
+		elif hit_dict.is_empty():
 			# docs/10 taskblock02 F2: clicking off the board entirely is
 			# "away" — deselect. A click still on the board but out of
 			# reach is a different thing (the player is aiming for a cell
 			# they can't use yet, not backing out) and stays a no-op.
 			deselect()
+		elif hit_dict["kind"] == Enums.HitKind.UNIT:
+			_click_unit(hit_dict["unit"])
+		else:
+			if selection.selected_unit != null:
+				selection.queue_move(hit_dict["cell"])
+			_refresh_overlay()
 	elif button_event.button_index == MOUSE_BUTTON_RIGHT:
 		# runNotes.md: RMB also orbits the camera (CameraRig, independently)
 		# — only start tracking here; the actual undo/cancel-aim decision
@@ -209,15 +219,23 @@ func _handle_rmb_release() -> void:
 ## on a unit's mesh selects it even when the ray would also cross the tile
 ## underneath at a farther distance (impossible here, but a mesh that
 ## overhangs a neighboring tile is exactly the case this guards).
+##
+## docs/10 taskblock05 A1: returns what was actually hit — `{kind, unit,
+## cell}` — never just a bare cell. A caller that collapsed a unit hit into
+## its cell and then re-derived the unit from that cell (`_unit_at(cell)`)
+## was a lossy round-trip: the identity of the specific Unit a ray struck
+## has to survive to the click handler unchanged, not be thrown away and
+## guessed back at from a coordinate. Null off the board entirely.
 func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 	var unit_hit: Dictionary = UnitPicker.hit(selection.state.units, from, dir)
 	var ground_t: Variant = BoardPicker.plane_hit_t(from, dir)
 	if not unit_hit.is_empty():
 		if ground_t == null or (unit_hit["t"] as float) <= (ground_t as float):
-			return (unit_hit["unit"] as Unit).cell
+			var unit: Unit = unit_hit["unit"]
+			return {"kind": Enums.HitKind.UNIT, "unit": unit, "cell": unit.cell}
 	if ground_t == null:
 		return null
-	return BoardPicker.cell_at_ray(from, dir)
+	return {"kind": Enums.HitKind.CELL, "unit": null, "cell": BoardPicker.cell_at_ray(from, dir)}
 
 
 ## docs/10 taskblock04 E3: "hover, don't click" — the combat readout's own
@@ -229,7 +247,8 @@ func update_hover(screen_pos: Vector2) -> void:
 		return
 	var from: Vector3 = camera.project_ray_origin(screen_pos)
 	var dir: Vector3 = camera.project_ray_normal(screen_pos)
-	var cell: Variant = _cell_at(from, dir)
+	var hit: Variant = _cell_at(from, dir)
+	var cell: Variant = (hit as Dictionary)["cell"] if hit != null else null
 	if cell == hovered_cell and inspected_part == null:
 		return
 	hovered_cell = cell
@@ -252,6 +271,12 @@ func inspect_part(part: Part) -> void:
 ## cancels a selection by itself — that's `deselect()`'s job, reached via
 ## Esc or an off-board click (docs/10 taskblock02 F2), never a plain
 ## in-board click that just happens to be out of reach.
+##
+## Cell-only API: for a real mouse click, `_handle_mouse_button` dispatches
+## on `_cell_at`'s own hit directly (docs/10 taskblock05 A1) rather than
+## routing through here, so a specific Unit a ray struck is never re-derived
+## by coordinate. This stays as the coarser, cell-driven entry point tests
+## and other callers already use.
 func click_cell(cell: Vector2i) -> void:
 	if input_locked:
 		return
@@ -260,12 +285,26 @@ func click_cell(cell: Vector2i) -> void:
 		return
 
 	var unit_here: Unit = _unit_at(cell)
-	if unit_here != null and unit_here == selection.state.current_unit():
-		selection.select(unit_here)
-	elif unit_here != null and selection.selected_unit != null:
-		_enter_aim_mode(unit_here)
-	elif selection.selected_unit != null:
+	if unit_here != null:
+		_click_unit(unit_here)
+		return
+	if selection.selected_unit != null:
 		selection.queue_move(cell)
+	_refresh_overlay()
+
+
+## docs/10 taskblock05 A1: the branch table for "a unit's own body was hit"
+## — every (unit x selection state) pair resolves here, explicitly, rather
+## than some combinations silently falling through to nothing. Only the
+## active unit can ever actually be selected (SelectionController.select);
+## a non-current unit hit with nothing selected has nowhere to go — full
+## detail on any unit already comes from hover (taskblock04 E1/E3), so a
+## bare click on one has no further job to do.
+func _click_unit(unit_here: Unit) -> void:
+	if unit_here == selection.state.current_unit():
+		selection.select(unit_here)
+	elif selection.selected_unit != null:
+		_enter_aim_mode(unit_here)
 	_refresh_overlay()
 
 
@@ -434,6 +473,21 @@ func aim_state() -> Dictionary:
 	var target: Unit = preview.find_unit(aiming_at.id)
 	if shooter == null or target == null:
 		return {}
+	# docs/10 taskblock05 A3: "aim from where the unit WILL BE" applies to
+	# facing too — the projected shot plane must be built from the facing
+	# the shooter will actually have (AttackAction's own free face at
+	# apply() time), or the preview lies about which side of the body
+	# faces the target. Free, and applied only to this scratch clone —
+	# never the real ActionQueue — so it costs nothing, never persists, and
+	# can never collide with AttackAction.apply()'s own free face on the
+	# real (entirely separate) resolution clone later.
+	if shooter.cell != target.cell:
+		FaceAction.face_for_free(
+			preview,
+			shooter,
+			FaceAction.orientation_toward(shooter.cell, target.cell),
+			&"free_with_aim"
+		)
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(target.cell - shooter.cell)
 	var raw: Array[Region] = ShotPlane.build(origin, direction.normalized(), preview)
