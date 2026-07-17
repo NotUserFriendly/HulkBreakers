@@ -73,6 +73,24 @@ static func for_action(action: ActionDef) -> TooltipData:
 	return data
 
 
+## taskblock-07 Pass G: "pips are hoverable and provide a tooltip
+## explaining the pool and the conversion" — every row is a raw field or
+## `Unit.mp_per_ap()`'s own already-resolved (StatResolver-backed) value,
+## never a locally recomputed one.
+static func for_ap_pips(unit: Unit) -> TooltipData:
+	var data := TooltipData.new("AP")
+	data.add_row("available", "%d/%d" % [unit.ap, unit.max_ap])
+	data.add_row("converts to", "%.1f MP per AP" % unit.mp_per_ap())
+	return data
+
+
+static func for_mp_pips(unit: Unit) -> TooltipData:
+	var data := TooltipData.new("MP")
+	data.add_row("available", str(ApMpPips.mp_pip_count(unit)))
+	data.add_row("discarded", "not banked at end of turn")
+	return data
+
+
 static func for_queue_entry(entry: Dictionary) -> TooltipData:
 	var data := TooltipData.new(String(entry.get("describe", "")))
 	data.add_row("AP", str(entry.get("ap", 0)))

@@ -31,6 +31,7 @@ var tooltip_view: TooltipView
 var tooltip_controller: TooltipController
 var queue_panel: QueuePanel
 var action_bar: ActionBar
+var ap_mp_pip_row: ApMpPipRow
 var controls_overlay: ControlsOverlay
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
@@ -258,6 +259,38 @@ func _ready() -> void:
 	resolve_to_here_button.disabled = true
 	bottom_right.add_child(resolve_to_here_button)
 
+	# taskblock-07 Pass G: "above the action bar: pips, not numbers." A
+	# label prefix on each row (docs/08: terminal UI is text-first) is what
+	# keeps a 0-pip row legible as "AP" / "MP" rather than reading as blank
+	# space — "a unit with 0 shows an empty row, not a missing one."
+	var pip_rows := VBoxContainer.new()
+	pip_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom_right.add_child(pip_rows)
+
+	var ap_row := HBoxContainer.new()
+	ap_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip_rows.add_child(ap_row)
+	var ap_label := Label.new()
+	ap_label.text = "AP"
+	ap_label.custom_minimum_size = Vector2(28, 0)
+	ap_label.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
+	ap_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ap_row.add_child(ap_label)
+	var ap_pip_container := HBoxContainer.new()
+	ap_row.add_child(ap_pip_container)
+
+	var mp_row := HBoxContainer.new()
+	mp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pip_rows.add_child(mp_row)
+	var mp_label := Label.new()
+	mp_label.text = "MP"
+	mp_label.custom_minimum_size = Vector2(28, 0)
+	mp_label.add_theme_color_override("font_color", HulkTheme.MP_PIP)
+	mp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mp_row.add_child(mp_label)
+	var mp_pip_container := HBoxContainer.new()
+	mp_row.add_child(mp_pip_container)
+
 	# taskblock-07 Pass E1: "a row of 10 boxes along the bottom, merged with
 	# the turn controls" — sits directly above New Battle/End Turn/Reset
 	# Turn, in the same bottom_right stack.
@@ -322,6 +355,10 @@ func _ready() -> void:
 	action_bar = ActionBar.new()
 	add_child(action_bar)
 	action_bar.setup(tactics, action_row, tooltip_view)
+
+	ap_mp_pip_row = ApMpPipRow.new()
+	add_child(ap_mp_pip_row)
+	ap_mp_pip_row.setup(tactics, ap_pip_container, mp_pip_container, tooltip_view)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
