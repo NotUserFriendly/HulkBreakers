@@ -550,7 +550,13 @@ func aim_state() -> Dictionary:
 	for region: Region in raw:
 		if region.body != shooter:
 			plane.append(region)
-	return {"shooter": shooter, "target": target, "plane": plane}
+	# docs/09 taskblock07 Pass A: AimController.resolve()'s own RESOLVES side
+	# now casts a real ray (ShotPlane.resolve_ray) against this same preview
+	# — the exact state `plane` was itself built from, never a second,
+	# separately-fetched clone (that would silently stop object-matching
+	# `plane`'s own Regions, the same trap this function's own shooter/
+	# target/plane triple already guards against).
+	return {"shooter": shooter, "target": target, "plane": plane, "state": preview}
 
 
 ## runNotes.md: "the controlled unit ghost should face the aimed-at unit

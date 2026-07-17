@@ -279,7 +279,13 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 	var weapon: Part = DeepStrike.find_operable_weapon(aim["shooter"])
 	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], aim["target"])
 	var result: AimResult = AimController.resolve(
-		aim["plane"], target_point, controller.layer_index, weapon
+		aim["plane"],
+		target_point,
+		controller.layer_index,
+		weapon,
+		aim["shooter"],
+		(aim["target"] as Unit).cell,
+		aim["state"]
 	)
 
 	assert_eq((result.reading as Unit).id, b.id, "layer 0 of the aim plane must be the target")

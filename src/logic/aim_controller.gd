@@ -7,9 +7,10 @@ extends RefCounted
 ##
 ## The load-bearing rule: scrolling changes what you're READING, never what
 ## the reticle RESOLVES to. `reading` comes from `layers[layer_index]`;
-## `resolves` is always a ray cast (docs/09 taskblock06 Pass A) against the
-## whole plane, computed independently of `layer_index` entirely. That's
-## what makes the sniper thread honest — the UI shows you a gap exists, it
+## `resolves` is always a real ray cast (docs/09 taskblock06 Pass A,
+## taskblock07 Pass A: `ShotPlane.resolve_ray`, not a plane-space lookup
+## anymore), computed independently of `layer_index` entirely. That's what
+## makes the sniper thread honest — the UI shows you a gap exists, it
 ## doesn't grant you the target through it.
 
 
@@ -41,14 +42,33 @@ static func layers_for(plane: Array[Region]) -> Array[AimLayer]:
 	return layers
 
 
-## (plane, reticle, layer_index) -> {layers, reading, resolves, rings}.
-## `layer_index` is clamped into range, never out of bounds and never
-## negative — scrolling past either end just holds at the last real layer.
+## (plane, reticle, layer_index, weapon, shooter, target_cell, world) ->
+## {layers, reading, resolves, rings}. `layer_index` is clamped into range,
+## never out of bounds and never negative — scrolling past either end just
+## holds at the last real layer. `target_cell` (not a whole target Unit) is
+## the ONLY thing about the target `_resolve_hit` needs — it just names the
+## shooter->target dead-ahead axis `reticle`'s own lateral/vertical
+## coordinates are expressed against (`AimPlaneGeometry`'s own convention).
+##
+## docs/09 taskblock07 Pass A: `reading` (the READING side) still groups
+## the CALLER's own `plane` — a preview clone TacticsController.aim_state()
+## already built, and the only source `layers_for` needs. `resolves` (the
+## RESOLVES side) goes through `ShotPlane.resolve_ray` now instead of a
+## direct `resolve_projectile` lookup against that same `plane` — a real
+## ray, cast from `shooter`'s own weapon muzzle, against `world` (the same
+## preview state `plane` was built from). READING and RESOLVES staying two
+## genuinely separate code paths (one groups a plane, one casts a ray) is
+## the whole point (docs/09 taskblock06's own load-bearing rule, still
+## true): scrolling can only ever change which layer `reading` names, never
+## what `resolves` hits.
 static func resolve(
 	plane: Array[Region],
 	reticle: Vector2,
 	layer_index: int,
 	weapon: Part,
+	shooter: Unit,
+	target_cell: Vector2i,
+	world: CombatState,
 	extra_sources: Array[ModSource] = []
 ) -> AimResult:
 	var layers: Array[AimLayer] = layers_for(plane)
@@ -60,18 +80,24 @@ static func resolve(
 	return AimResult.new(
 		layers,
 		reading,
-		_resolve_hit(plane, reticle),
+		_resolve_hit(reticle, weapon, shooter, target_cell, world),
 		Dartboard.resolve_scatter(weapon, extra_sources)
 	)
 
 
-## Wraps the frontmost Region under `reticle` into a HitResult — the same
-## rect-lookup `resolve_ray` runs internally, called directly here since the
-## aim UI already works in plane space (docs/09 taskblock06 Pass A: this is
-## the seam, not a new resolution mechanism).
-static func _resolve_hit(plane: Array[Region], reticle: Vector2) -> HitResult:
-	var region: Region = ShotPlane.resolve_projectile(plane, reticle)
-	if region == null:
+## docs/09 taskblock07 Pass A: a real ray cast from `weapon`'s own muzzle on
+## `shooter`, through the world point `reticle` (plane-space: x lateral, y
+## vertical) names — `AimPlaneGeometry.ray_from_muzzle` is the bridge
+## `resolve_ray`'s own docstring calls for. `null` if the muzzle sits
+## exactly on the shooter->target line already (no horizontal direction to
+## fire along — the degenerate "shooting yourself" case).
+static func _resolve_hit(
+	reticle: Vector2, weapon: Part, shooter: Unit, target_cell: Vector2i, world: CombatState
+) -> HitResult:
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(shooter, weapon)
+	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
+		shooter.cell, target_cell, reticle, muzzle
+	)
+	if ray.is_empty():
 		return null
-	var point := Vector3(reticle.x, reticle.y, region.depth)
-	return HitResult.new(region.part, point, region.surface_normal, region.depth, region.body)
+	return ShotPlane.resolve_ray(ray["origin"], ray["dir"], world)
