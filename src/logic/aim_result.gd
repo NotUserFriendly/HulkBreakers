@@ -8,10 +8,9 @@ extends RefCounted
 var layers: Array[AimLayer]
 ## The body `layer_index` currently reads — what the scroll selected.
 var reading: Variant
-## `ShotPlane.resolve_projectile(whole_plane, reticle)`, frontmost-first
-## against the ENTIRE plane — what the reticle actually hits. Scrolling
-## must never change this.
-var resolves: Region
+## docs/09 taskblock06 Pass A: the ray-cast hit against the ENTIRE plane —
+## what the reticle actually hits. Scrolling must never change this.
+var resolves: HitResult
 ## The weapon's resolved scatter rings, for drawing — N rings, never a
 ## fixed count assumed.
 var rings: Array[Ring]
@@ -20,7 +19,7 @@ var rings: Array[Ring]
 func _init(
 	p_layers: Array[AimLayer] = [],
 	p_reading: Variant = null,
-	p_resolves: Region = null,
+	p_resolves: HitResult = null,
 	p_rings: Array[Ring] = []
 ) -> void:
 	layers = p_layers

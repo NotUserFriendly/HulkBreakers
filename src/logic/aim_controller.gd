@@ -7,9 +7,9 @@ extends RefCounted
 ##
 ## The load-bearing rule: scrolling changes what you're READING, never what
 ## the reticle RESOLVES to. `reading` comes from `layers[layer_index]`;
-## `resolves` is always `ShotPlane.resolve_projectile` against the whole
-## plane, computed independently of `layer_index` entirely. That's what
-## makes the sniper thread honest — the UI shows you a gap exists, it
+## `resolves` is always a ray cast (docs/09 taskblock06 Pass A) against the
+## whole plane, computed independently of `layer_index` entirely. That's
+## what makes the sniper thread honest — the UI shows you a gap exists, it
 ## doesn't grant you the target through it.
 
 
@@ -60,6 +60,18 @@ static func resolve(
 	return AimResult.new(
 		layers,
 		reading,
-		ShotPlane.resolve_projectile(plane, reticle),
+		_resolve_hit(plane, reticle),
 		Dartboard.resolve_scatter(weapon, extra_sources)
 	)
+
+
+## Wraps the frontmost Region under `reticle` into a HitResult — the same
+## rect-lookup `resolve_ray` runs internally, called directly here since the
+## aim UI already works in plane space (docs/09 taskblock06 Pass A: this is
+## the seam, not a new resolution mechanism).
+static func _resolve_hit(plane: Array[Region], reticle: Vector2) -> HitResult:
+	var region: Region = ShotPlane.resolve_projectile(plane, reticle)
+	if region == null:
+		return null
+	var point := Vector3(reticle.x, reticle.y, region.depth)
+	return HitResult.new(region.part, point, region.surface_normal, region.depth, region.body)
