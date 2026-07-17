@@ -112,6 +112,11 @@ func _build_right_panel(root: Control) -> void:
 	validation_label = RichTextLabel.new()
 	validation_label.custom_minimum_size = Vector2(0, 200)
 	validation_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
+	# docs/09 taskblock07 Pass B4: RichTextLabel defaults to STOP, not
+	# IGNORE — a purely read-only label with no scroll/selection feature
+	# swallowing clicks over its own rect is the exact bug class that pass
+	# audits for.
+	validation_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(validation_label)
 
 	picker_label = Label.new()
