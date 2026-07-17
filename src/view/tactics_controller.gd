@@ -1,3 +1,9 @@
+# gdlint:disable=max-public-methods
+# docs/10 taskblock06 G2: this is the one class in the project that adds a
+# public method per interaction primitive by design (one per input/UI entry
+# point — see the class doc comment below) — gdlintrc's project-wide
+# max-public-methods stays a meaningful gate for every other class, so the
+# override is scoped to this file alone rather than raised globally.
 class_name TacticsController
 extends Node
 
@@ -12,6 +18,11 @@ extends Node
 ## Carries the events resolve_turn() actually emitted, for whoever plays
 ## back the resolution (docs/10 Phase 12.4's LogPlayback) to consume.
 signal turn_ended(events: Array[LogEvent])
+## docs/10 taskblock06 G1/G2: "Resolve to Here" — carries whatever events
+## the partial resolve emitted, same shape as turn_ended but the turn
+## itself has NOT ended (the unit stays selected, current_unit() is
+## unchanged unless the resolved prefix itself contained an EndTurnAction).
+signal queue_partially_resolved(events: Array[LogEvent])
 signal aim_changed
 ## Fires whenever `selection.selected_unit` might have changed — the stat
 ## panel (docs/08/10 Phase 12.5) redraws from this rather than polling.
@@ -608,6 +619,54 @@ func end_turn() -> void:
 	board_view.clear_overlays()
 	selection_changed.emit()
 	turn_ended.emit(sink.events)
+
+
+## docs/10 taskblock06 G1: "resolve_until with a player-placed stop marker
+## instead of an interrupt — one mechanism, two triggers." `marker_index`
+## is a caller-tracked index into the selected unit's own queue.actions
+## (docs/10 taskblock06 G2: the queue-display panel owns clicking an entry
+## to pick one — a UI-local read, not state this controller has to carry,
+## since it's only ever needed at the instant this is called). Resolves
+## only the queued prefix through `marker_index` (inclusive) for real
+## against the authoritative state, through the exact same resolve_until()
+## call end_turn() itself makes (Overwatch.check_trigger and all — an
+## overwatcher doesn't care whether this is a partial or a full resolve).
+## Unlike end_turn(), the unit STAYS selected and the turn does NOT end:
+## nothing here calls advance_turn() unless the resolved prefix itself
+## happened to contain one. Out-of-range `marker_index` (including "nothing
+## queued") is a no-op.
+func resolve_to_marker(marker_index: int) -> void:
+	if input_locked or selection == null or selection.selected_unit == null:
+		return
+	var queue: ActionQueue = selection.current_queue()
+	if marker_index < 0 or marker_index >= queue.actions.size():
+		return
+	if aiming_at != null:
+		cancel_aim()
+
+	input_locked = true
+	var prefix := ActionQueue.new(selection.selected_unit)
+	prefix.actions = queue.actions.slice(0, marker_index + 1)
+	var sink := MemorySink.new()
+	selection.state.combat_log.add_sink(sink)
+	selection.state.resolve_until(prefix, Overwatch.check_trigger)
+	selection.state.combat_log.remove_sink(sink)
+
+	# docs/10 taskblock06 G1: "then start queuing again" — reset_turn()
+	# (docs/10 taskblock03 D4) is exactly "erase the queue, keep the unit
+	# selected," the same bookkeeping a partial resolve needs; G3's own
+	# default (Reset Turn after a partial resolve returns to the resolve
+	# point, not turn start) falls out of this for free too, since
+	# reset_turn() only ever erases the queue — it never tracked "turn
+	# start" separately in the first place, so there's nothing left behind
+	# to roll further back to.
+	selection.reset_turn()
+	_drag_face_action = null
+	_refresh_overlay()
+	# input_locked stays true here — exactly like end_turn(), whoever plays
+	# the resulting events back (docs/10 Phase 12.4) owns calling
+	# unlock_input() once that cosmetic replay finishes.
+	queue_partially_resolved.emit(sink.events)
 
 
 ## Called once the resolution playback finishes — returns control to
