@@ -132,15 +132,25 @@ func _ready() -> void:
 	inventory_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inventory_row.add_child(inventory_tree)
 
+	# docs/09 taskblock07 Pass B4: RichTextLabel's own mouse_filter DEFAULTS
+	# to STOP (not IGNORE — that's plain Label's default, not this class's),
+	# since it natively supports scrolling/text selection. A purely
+	# read-only label with no such feature swallowing clicks over its own
+	# rect is exactly the "class of bug" this pass audits for — every
+	# RichTextLabel below that isn't the log (log_label keeps STOP: it has
+	# a real, wanted scrollbar) gets IGNORE explicitly, same as the
+	# containers around it already do.
 	var weapon_label := RichTextLabel.new()
 	weapon_label.bbcode_enabled = true
 	weapon_label.custom_minimum_size = Vector2(260, 0)
 	weapon_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	weapon_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
+	weapon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	inventory_row.add_child(weapon_label)
 
 	var inventory_footer := Label.new()
 	inventory_footer.add_theme_color_override("font_color", HulkTheme.DIM)
+	inventory_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_layout.add_child(inventory_footer)
 
 	# runNotes.md: "since we aren't truncating log entries, move the
@@ -189,6 +199,7 @@ func _ready() -> void:
 	controls_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	controls_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	controls_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	controls_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_half.add_child(controls_label)
 
 	# runNotes.md: "put the turn controls in the bottom right, stacked,
@@ -209,24 +220,29 @@ func _ready() -> void:
 	# _update_readout_header() below flips its color/text with whether the
 	# cluster underneath actually has anything live to show.
 	_readout_header = Label.new()
+	_readout_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(_readout_header)
 
 	var banner := Label.new()
 	banner.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(banner)
 
 	var aim_readout := RichTextLabel.new()
 	aim_readout.bbcode_enabled = false
 	aim_readout.custom_minimum_size = Vector2(320, 60)
 	aim_readout.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
+	aim_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(aim_readout)
 
 	var stat_label := RichTextLabel.new()
 	stat_label.custom_minimum_size = Vector2(320, 40)
+	stat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(stat_label)
 	var stat_drill_down := RichTextLabel.new()
 	stat_drill_down.custom_minimum_size = Vector2(320, 60)
 	stat_drill_down.add_theme_color_override("default_color", HulkTheme.DIM)
+	stat_drill_down.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(stat_drill_down)
 
 	# docs/10 taskblock04 E2/E3: "the combat readout — everything else:
@@ -236,6 +252,7 @@ func _ready() -> void:
 	var combat_readout_label := RichTextLabel.new()
 	combat_readout_label.custom_minimum_size = Vector2(320, 140)
 	combat_readout_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
+	combat_readout_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_right.add_child(combat_readout_label)
 
 	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
