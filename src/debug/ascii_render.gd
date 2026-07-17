@@ -54,7 +54,7 @@ static func _terrain_char(grid: Grid, cell: Vector2i) -> String:
 ## `rect: Rect2`, `depth: float`, `part` (duck-typed; works for the real
 ## Region class from Phase 3 or a test fixture) — as a text grid spanning
 ## `width` x `height` view-space cells. Frontmost (lowest depth) region wins
-## each cell, matching resolve_projectile's semantics.
+## each cell, matching ShotPlane.resolve_projectile/resolve_ray's semantics.
 static func plane_to_text(plane: Array, width: int, height: int) -> String:
 	var cells: Array[String] = []
 	cells.resize(width * height)

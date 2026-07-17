@@ -3,9 +3,13 @@ extends RefCounted
 
 ## The line-of-fire projection (docs/02): every unit and every piece of
 ## destructible cover along one direction, flattened into a single
-## depth-sorted Array[Region]. `resolve_projectile` is the entire
-## hit-resolution system — it does not know about units, cover, or gaps,
-## only rects.
+## depth-sorted Array[Region]. `resolve_ray` (docs/09 taskblock06 Pass A) is
+## the hit-resolution entry point now — a real ray in, a `HitResult` out.
+## `resolve_projectile`, the old "does this rect contain the point" 2D
+## lookup, hasn't moved; it's the math `resolve_ray` runs internally, and
+## the aim-preview UI (AimController) still calls it directly since it
+## already works in plane space. Both answer the exact same question the
+## exact same way — that's the no-drift invariant (test coverage).
 
 
 ## Projects every living unit and every standing cover part in `state` into
@@ -48,6 +52,34 @@ static func resolve_projectile(plane: Array[Region], point: Vector2) -> Region:
 		if region.rect.has_point(point):
 			return region
 	return null
+
+
+## docs/09 taskblock06 Pass A: the ray-cast hit-resolution entry point. A
+## straight, level shot (`docs/02`/BodyProjector: "shots travel
+## horizontally") from `origin` along `dir`, against everything in `world`.
+##
+## Built entirely on the existing plane math — `origin`'s own lateral and
+## vertical offset from the ray's own line of travel is, by construction,
+## zero, so the plane is anchored at `origin` itself and tested against
+## `(0, origin.y)`. That's the whole seam: a caller that used to build a
+## plane at the shooter's cell and hand `resolve_projectile` a
+## center-plus-aim-offset point now instead hands `resolve_ray` a world
+## point already carrying that offset (`AimPlaneGeometry.world_point`
+## produces exactly this) — same math, same regions, same results, and
+## later a `PhysicsServer.intersect_ray` swap-in changes this function's
+## body and nothing that calls it.
+static func resolve_ray(origin: Vector3, dir: Vector3, world: CombatState) -> HitResult:
+	var flat_origin := Vector2(origin.x, origin.z) / UnitGeometry.CELL_SIZE
+	var flat_dir: Vector2 = Vector2(dir.x, dir.z).normalized()
+	if flat_dir.is_zero_approx():
+		return null
+	var plane: Array[Region] = build(flat_origin, flat_dir, world)
+	var region: Region = resolve_projectile(plane, Vector2(0.0, origin.y))
+	if region == null:
+		return null
+	var dir3d := Vector3(flat_dir.x, 0.0, flat_dir.y)
+	var hit_point: Vector3 = origin + dir3d * region.depth
+	return HitResult.new(region.part, hit_point, region.surface_normal, region.depth, region.body)
 
 
 ## Every unit with at least one Region in `plane`, nearest-first by its

@@ -45,7 +45,11 @@ func test_scrolling_changes_reading_and_never_changes_resolves() -> void:
 
 	assert_eq(at_layer_0.reading, near_unit)
 	assert_eq(at_layer_1.reading, far_unit)
-	assert_eq(at_layer_0.resolves, at_layer_1.resolves, "scrolling must never change resolves")
+	# Each resolve() call builds its own HitResult (docs/09 taskblock06 Pass
+	# A), so this compares what it resolved to, not object identity.
+	assert_eq(
+		at_layer_0.resolves.part, at_layer_1.resolves.part, "scrolling must never change resolves"
+	)
 	assert_eq(at_layer_0.resolves.part.id, &"near")
 
 

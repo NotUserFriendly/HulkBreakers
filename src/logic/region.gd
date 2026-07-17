@@ -3,9 +3,11 @@ extends RefCounted
 
 ## One projected slice of the shot plane (docs/02): the on-screen rect a box
 ## occupies, how far along the line of fire it sits, and which part it came
-## from. `resolve_projectile` walks an Array[Region] depth-ascending and
-## returns the first rect containing the impact point — this is the entire
-## hit-resolution system.
+## from. `ShotPlane.resolve_projectile` walks an Array[Region] depth-
+## ascending and returns the first rect containing a point — that's the
+## internal math `ShotPlane.resolve_ray` (docs/09 taskblock06 Pass A) runs
+## to answer a real ray cast; Region itself never left the picture, it's
+## just plumbing now rather than the resolution entry point.
 
 var rect: Rect2
 var depth: float
