@@ -34,6 +34,17 @@ const RING_ALPHA := 0.55
 ## z-fights with the geometry it's reading, a flagged tuning number like
 ## every other visual-only constant here, not a design decision.
 const WINDOW_DEPTH_EPSILON := 0.05
+## docs/09 taskblock07 Pass B2: the window must never land behind the
+## shooter. A body positioned "behind" the shooter along the fire line
+## still gets a Region in the plane (ShotPlane.build projects every unit,
+## not just ones in front) and can still become a READ layer — its own
+## frontmost depth can be small or even negative, which WINDOW_DEPTH_EPSILON
+## alone doesn't guard against (subtracting a small epsilon from an
+## already-small-or-negative depth only makes it worse). Clamping to this
+## minimum forward distance is what actually guarantees it: the window can
+## recede as deep as the read layer says, but never comes back toward or
+## past the shooter/camera.
+const MIN_WINDOW_DEPTH := 0.3
 ## How deep (along the fire axis) the shadow Decal's own projection box
 ## extends — generous enough to guarantee it actually reaches the target's
 ## real surface regardless of exactly where that surface sits relative to
@@ -122,12 +133,13 @@ func refresh() -> void:
 	# window backward through the scene" — the window's own depth is
 	# whatever the CURRENTLY READ layer's frontmost surface sits at, not
 	# fixed at the target's own cell like the shadow/targeting line above.
-	var window_depth: float = target_depth
-	if not result.layers.is_empty():
-		var clamped: int = clampi(tactics.layer_index, 0, result.layers.size() - 1)
-		window_depth = result.layers[clamped].frontmost_depth() - WINDOW_DEPTH_EPSILON
+	# docs/09 taskblock07 Pass B2: clamped so it can never land behind the
+	# shooter — AimController.window_depth()'s own doc comment has the why.
+	var depth: float = AimController.window_depth(
+		result.layers, tactics.layer_index, target_depth, WINDOW_DEPTH_EPSILON, MIN_WINDOW_DEPTH
+	)
 	var window_point: Vector3 = AimPlaneGeometry.world_point_at_depth(
-		shooter.cell, target.cell, aim_point, window_depth
+		shooter.cell, target.cell, aim_point, depth
 	)
 
 	_draw_window(window_point, shooter.cell, target.cell, result.rings)
