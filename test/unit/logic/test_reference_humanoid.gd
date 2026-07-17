@@ -128,7 +128,7 @@ func test_a_plates_rect_overlaps_its_parents_and_sits_at_lower_depth_from_the_fr
 	var unit := _reference_unit()
 	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
 	var torso: Region = _find(regions, &"torso")
-	var plate: Region = _find(regions, &"torso_plate_front")
+	var plate: Region = _find(regions, &"plate_large_steel")
 
 	assert_true(plate.rect.intersects(torso.rect), "the plate must project over its parent")
 	assert_lt(plate.depth, torso.depth, "the front plate must sit nearer the shooter")
@@ -144,19 +144,19 @@ func test_the_flank_test() -> void:
 	var unit := _reference_unit()
 
 	var front: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
-	var plate_rect: Rect2 = _find(front, &"torso_plate_front").rect
+	var plate_rect: Rect2 = _find(front, &"plate_large_steel").rect
 	# Off-center (docs/01a's own BACK-socket ammo rack sits directly behind
 	# the spine, narrower than the plates either side of it) — aim through
 	# the plate's own body, not through whatever else happens to share its
 	# lateral center.
 	var aim_point: Vector2 = plate_rect.get_center() + Vector2(0.15, 0.0)
 	var front_hit: Region = ShotPlane.resolve_projectile(front, aim_point)
-	assert_eq(front_hit.part.id, &"torso_plate_front")
+	assert_eq(front_hit.part.id, &"plate_large_steel")
 
 	var back: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, 1)))
 	var back_hit: Region = ShotPlane.resolve_projectile(back, aim_point)
 	assert_true(
-		back_hit.part.id == &"torso_plate_rear" or back_hit.part.id == &"torso",
+		back_hit.part.id == &"plate_large_sheet_steel" or back_hit.part.id == &"torso",
 		"flanking must reach the thin rear plate or bare torso, got %s" % back_hit.part.id
 	)
 
@@ -235,17 +235,17 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 ## destroying the cladding too finally exposes the bare part.
 func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() -> void:
 	var unit := _reference_unit()
-	var plate: Part = unit.shell.find_part(&"torso_plate_front")
+	var plate: Part = unit.shell.find_part(&"plate_large_steel")
 	var cladding: Part = unit.shell.find_part(&"torso_cladding")
 
 	var before: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
-	var aim_point: Vector2 = _find(before, &"torso_plate_front").rect.get_center()
-	assert_eq(ShotPlane.resolve_projectile(before, aim_point).part.id, &"torso_plate_front")
+	var aim_point: Vector2 = _find(before, &"plate_large_steel").rect.get_center()
+	assert_eq(ShotPlane.resolve_projectile(before, aim_point).part.id, &"plate_large_steel")
 
 	plate.hp = 0
 	var after_plate: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
 	for region: Region in after_plate:
-		assert_ne(region.part.id, &"torso_plate_front", "a destroyed plate must leave the plane")
+		assert_ne(region.part.id, &"plate_large_steel", "a destroyed plate must leave the plane")
 	assert_eq(
 		ShotPlane.resolve_projectile(after_plate, aim_point).part.id,
 		&"torso_cladding",
@@ -273,7 +273,7 @@ func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() 
 ## correct consequence of body shape, just not what this test is about).
 func test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate() -> void:
 	var torso: Part = _pool_template(&"torso")
-	var plate: Part = _pool_template(&"torso_plate_front")
+	var plate: Part = _pool_template(&"plate_large_steel")
 	var cladding: Part = _pool_template(&"torso_cladding")
 	PartGraph.attach(plate, torso, PartGraph.find_socket(torso, &"ARMOR_FRONT"))
 	PartGraph.attach(cladding, torso, PartGraph.find_socket(torso, &"CLADDING"))
@@ -282,7 +282,7 @@ func test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate() -> voi
 	var side: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(1, 0)))
 	var resolved: Region = _find(side, &"torso_cladding")
 
-	assert_ne(resolved.part.id, &"torso_plate_front")
+	assert_ne(resolved.part.id, &"plate_large_steel")
 	assert_ne(resolved.part.id, &"torso")
 
 
@@ -297,7 +297,7 @@ func test_the_plate_cladding_bare_dt_gradient_is_6_3_2() -> void:
 	assert_eq(table.get_entry(&"artificial_bone").dt, 2.0, "bare part: artificial_bone")
 
 	var unit := _reference_unit()
-	assert_eq(unit.shell.find_part(&"torso_plate_front").material, &"steel")
+	assert_eq(unit.shell.find_part(&"plate_large_steel").material, &"steel")
 	assert_eq(unit.shell.find_part(&"torso_cladding").material, &"sheet_steel")
 	assert_eq(unit.shell.root.material, &"artificial_bone")
 
