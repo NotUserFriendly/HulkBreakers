@@ -45,3 +45,20 @@ static func down() -> Pose:
 	var pose := Pose.new()
 	pose.overrides = {ROOT_SOCKET_ID: Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)}
 	return pose
+
+
+## docs/10 taskblock05 G5: presets address a pose by name (StringName, not
+## a serialized Resource) — one more open row here covers a new pose for
+## both the game and the builder's own pose dropdown at once.
+static func by_id(id: StringName) -> Pose:
+	match id:
+		&"AIMING":
+			return aiming()
+		&"DOWN":
+			return down()
+		_:
+			return idle()
+
+
+static func all_ids() -> Array[StringName]:
+	return [&"IDLE", &"AIMING", &"DOWN"]
