@@ -85,3 +85,15 @@ func test_tick_organics_decay_is_a_no_op_while_never_exposed() -> void:
 	for i in range(10):
 		unit.tick_organics_decay(ladder)
 	assert_eq(unit.surrogate_tier.id, &"FULL")
+
+
+## docs/09 taskblock06 Pass C: "poses are sampled at instants — nothing is
+## ever integrated." pose_at() must never blend between poses; it always
+## returns the exact same pose for any progress value.
+func test_pose_at_returns_the_same_pose_regardless_of_progress() -> void:
+	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0))
+	unit.pose = Poses.aiming()
+
+	assert_eq(unit.pose_at(0.0), unit.pose)
+	assert_eq(unit.pose_at(0.5), unit.pose)
+	assert_eq(unit.pose_at(1.0), unit.pose)
