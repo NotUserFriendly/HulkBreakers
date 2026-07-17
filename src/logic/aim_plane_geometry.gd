@@ -25,13 +25,33 @@ static func target_origin(target_cell: Vector2i) -> Vector3:
 
 
 ## aim_point (shot-plane 2D: x lateral, y vertical) -> its world position,
-## nudged off the target's cell along perp_axis/world-up.
+## nudged off the target's cell along perp_axis/world-up. Exactly
+## world_point_at_depth() at depth = the shooter-target distance (proven by
+## test — the two must never drift apart).
 static func world_point(
 	shooter_cell: Vector2i, target_cell: Vector2i, aim_point: Vector2
 ) -> Vector3:
+	return world_point_at_depth(
+		shooter_cell, target_cell, aim_point, Vector2(target_cell - shooter_cell).length()
+	)
+
+
+## docs/09 taskblock06 Pass H: "scrolling the READ layer moves the window
+## backward through the scene" — the aim window's own depth has to be able
+## to float to wherever the currently-read layer's frontmost surface sits,
+## not just sit fixed at the target's own cell. Same plane, same aim_point
+## axes, but anchored `depth` cells along the shooter->target line from the
+## SHOOTER's own cell (ShotPlane's own depth convention: distance along the
+## fire direction from the ray's origin) rather than fixed at the target's.
+static func world_point_at_depth(
+	shooter_cell: Vector2i, target_cell: Vector2i, aim_point: Vector2, depth: float
+) -> Vector3:
+	var direction: Vector2 = Vector2(target_cell - shooter_cell).normalized()
 	var perp: Vector2 = perp_axis(shooter_cell, target_cell)
+	var shooter_origin := Vector3(shooter_cell.x, 0.0, shooter_cell.y) * CELL_SIZE
 	return (
-		target_origin(target_cell)
+		shooter_origin
+		+ Vector3(direction.x, 0.0, direction.y) * depth
 		+ Vector3(perp.x, 0.0, perp.y) * aim_point.x
 		+ Vector3(0.0, aim_point.y, 0.0)
 	)
