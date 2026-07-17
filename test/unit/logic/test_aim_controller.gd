@@ -269,3 +269,55 @@ func test_resolves_equals_resolve_ray_for_a_corpus_of_reticle_positions() -> voi
 			assert_eq(result.resolves.part, expected.part)
 			assert_eq(result.resolves.body, expected.body)
 			assert_eq(result.resolves.distance, expected.distance)
+
+
+## docs/09 taskblock07 Pass B2/TESTS: "the window's depth is strictly
+## greater than the muzzle's [i.e. > 0], and it belongs to the READ
+## layer's body" — the normal case, where the read layer's own frontmost
+## depth is comfortably positive, must pass through unclamped.
+func test_window_depth_uses_the_read_layers_own_frontmost_depth_when_safe() -> void:
+	var far := Region.new(Rect2(), 5.0)
+	var near := Region.new(Rect2(), 2.0)
+	var layers: Array[AimLayer] = [AimLayer.new(&"body", [far, near])]
+
+	var depth: float = AimController.window_depth(layers, 0, 6.0, 0.05, 0.3)
+
+	assert_almost_eq(depth, 2.0 - 0.05, 0.0001)
+
+
+## docs/09 taskblock07 Pass B2/TESTS: a corpus of read layers whose own
+## frontmost depth sits at or below zero (a body positioned behind the
+## shooter along the fire line — still gets a Region, still can become a
+## READ layer) must never produce a window depth at or behind the muzzle.
+func test_window_depth_never_lands_at_or_behind_the_muzzle() -> void:
+	var corpus: Array[float] = [0.0, -0.5, -3.0, 0.02]
+	for frontmost: float in corpus:
+		var layers: Array[AimLayer] = [AimLayer.new(&"body", [Region.new(Rect2(), frontmost)])]
+		var depth: float = AimController.window_depth(layers, 0, 6.0, 0.05, 0.3)
+		assert_true(
+			depth > 0.0,
+			"frontmost %f: window depth %f must be strictly forward" % [frontmost, depth]
+		)
+		assert_almost_eq(depth, 0.3, 0.0001, "frontmost %f: must clamp to the minimum" % frontmost)
+
+
+## Adjacent shooter/target pairs (docs/09 taskblock07 Pass B2's own named
+## case) — the corpus explicitly asked for.
+func test_window_depth_for_a_corpus_of_adjacent_shooter_target_pairs() -> void:
+	var pairs: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]
+	for delta: Vector2i in pairs:
+		var shooter_cell := Vector2i(5, 5)
+		var target_cell := shooter_cell + delta
+		if target_cell == shooter_cell:
+			continue
+		var target_depth: float = Vector2(target_cell - shooter_cell).length()
+		# A read layer whose own frontmost surface sits right at the
+		# shooter's own cell (depth 0) — the adjacent-cell worst case.
+		var layers: Array[AimLayer] = [AimLayer.new(&"body", [Region.new(Rect2(), 0.0)])]
+		var depth: float = AimController.window_depth(layers, 0, target_depth, 0.05, 0.3)
+		assert_true(depth > 0.0, "delta %s: window depth must be strictly forward" % delta)
+
+
+func test_window_depth_falls_back_to_target_depth_with_no_layers_to_read() -> void:
+	var depth: float = AimController.window_depth([], 0, 4.0, 0.05, 0.3)
+	assert_almost_eq(depth, 4.0, 0.0001)

@@ -85,6 +85,28 @@ static func resolve(
 	)
 
 
+## docs/09 taskblock07 Pass B2: the aim window's own depth (docs/09
+## taskblock06 Pass H) — just in front of the READ layer's own frontmost
+## surface, but never behind the shooter. Pure math (headless-testable);
+## the view only draws whatever this says. A body positioned "behind" the
+## shooter along the fire line still gets a Region in the plane
+## (ShotPlane.build projects every unit, not just ones in front) and can
+## still become a READ layer, so its own frontmost depth can be small or
+## even negative — `epsilon` alone can't guard against that (subtracting a
+## small amount from an already-small-or-negative depth only makes it
+## worse), so the result is always clamped to at least `min_depth`.
+## `target_depth` is the fallback when there's nothing to read at all (an
+## empty plane).
+static func window_depth(
+	layers: Array[AimLayer], layer_index: int, target_depth: float, epsilon: float, min_depth: float
+) -> float:
+	var depth: float = target_depth
+	if not layers.is_empty():
+		var clamped: int = clampi(layer_index, 0, layers.size() - 1)
+		depth = layers[clamped].frontmost_depth() - epsilon
+	return maxf(depth, min_depth)
+
+
 ## docs/09 taskblock07 Pass A: a real ray cast from `weapon`'s own muzzle on
 ## `shooter`, through the world point `reticle` (plane-space: x lateral, y
 ## vertical) names — `AimPlaneGeometry.ray_from_muzzle` is the bridge
