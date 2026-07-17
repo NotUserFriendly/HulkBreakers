@@ -31,7 +31,7 @@ var orientation: float = 0.0
 
 ## docs/10 taskblock05 F: socket transform overrides composing onto the
 ## body when UnitGeometry/BodyProjector walk it — snap, never animated.
-## DOWN is never stored here directly; callers that want it (UnitView,
+## DOWN is never stored here directly; callers that want it (HitVolumeView,
 ## based on is_downed()) pass Poses.down() in as an explicit override
 ## (see UnitGeometry.placements()'s own pose_override parameter) rather
 ## than this field silently switching underneath them.
@@ -122,10 +122,10 @@ func resolve_matrix() -> Matrix:
 
 
 ## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs
-## to read as down." Moved here (was UnitView's own copy) — a query, not a
+## to read as down." Moved here (was HitVolumeView's own copy) — a query, not a
 ## stored flag, same as always. Callers that want DOWN's geometry to
 ## actually apply (taskblock05 F3's Pose) pass `Poses.down()` in
-## explicitly where it matters (UnitView) rather than this being read
+## explicitly where it matters (HitVolumeView) rather than this being read
 ## automatically by every headless placements()/project() call — a bare
 ## test fixture that never bothers docking a matrix (most of them; matrix
 ## docking is irrelevant to what they're actually testing) must not

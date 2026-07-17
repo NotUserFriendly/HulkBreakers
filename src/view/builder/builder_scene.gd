@@ -14,7 +14,7 @@ var controller: BuilderController = BuilderController.new()
 var current_unit: Unit
 
 var camera_rig: CameraRig
-var preview: UnitView
+var preview: HitVolumeView
 var socket_tree: Tree
 var validation_label: RichTextLabel
 var picker_list: ItemList
@@ -35,7 +35,7 @@ func _ready() -> void:
 	camera_rig = CameraRig.new()
 	add_child(camera_rig)
 
-	preview = UnitView.new()
+	preview = HitVolumeView.new()
 	add_child(preview)
 
 	var theme_root := Control.new()

@@ -37,7 +37,7 @@ var log_sink: UISink
 ## anything the other doesn't also get. A fresh file per `new_battle()`
 ## call — one session, one replayable log.
 var file_sink: FileSink
-var unit_views: Array[UnitView] = []
+var unit_views: Array[HitVolumeView] = []
 var combat_state: CombatState
 ## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
@@ -300,6 +300,21 @@ func _ready() -> void:
 	_update_readout_header()
 
 
+## docs/09 taskblock06 Pass I1: "toggleable" — flips every HitVolumeView's
+## own overlay together, the same "one flag, every unit" scope
+## ControlsOverlay's own H-key toggle already uses for the help legend.
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.keycode != ControlBindings.TOGGLE_HIT_VOLUMES_KEY:
+		return
+	var show: bool = not (unit_views[0].show_hit_volumes if not unit_views.is_empty() else false)
+	for view: HitVolumeView in unit_views:
+		view.show_hit_volumes = show
+		view.refresh()
+
+
 func _on_new_battle_pressed() -> void:
 	new_battle(int(Time.get_ticks_usec()))
 
@@ -313,12 +328,12 @@ func _on_reset_turn_pressed() -> void:
 
 
 ## Resolution has already mutated combat_state for real (docs/09) — every
-## UnitView rebuilds from the unit it already tracks, so a destroyed part
+## HitVolumeView rebuilds from the unit it already tracks, so a destroyed part
 ## disappears and a moved unit redraws at its new cell. `events` is then
 ## handed to ResolutionPlayer purely as a cosmetic replay (docs/10 Phase
 ## 12.4) — it never re-drives the sim, which has already finished.
 func _on_turn_ended(events: Array[LogEvent]) -> void:
-	for view: UnitView in unit_views:
+	for view: HitVolumeView in unit_views:
 		view.refresh()
 	_on_selection_changed()
 	resolution_player.play(events)
@@ -351,7 +366,7 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 ## carries the preview.
 func _on_selection_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	for view: UnitView in unit_views:
+	for view: HitVolumeView in unit_views:
 		view.set_selected(view.unit == selected)
 		var target_preview: Variant = null
 		if view.unit == selected and not tactics.has_queued_move():
@@ -368,7 +383,7 @@ func _on_selection_changed() -> void:
 ## inventory tree, the other trigger for this signal, has rows for at all).
 func _on_highlight_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	for view: UnitView in unit_views:
+	for view: HitVolumeView in unit_views:
 		if view.unit == selected:
 			view.highlight_part(tactics.highlighted_part)
 		else:
@@ -395,7 +410,7 @@ func _update_readout_header() -> void:
 ## Public (not just _ready-internal) so a headless caller/test can seed a
 ## battle without going through button input.
 func new_battle(seed_value: int) -> void:
-	for view: UnitView in unit_views:
+	for view: HitVolumeView in unit_views:
 		remove_child(view)
 		view.queue_free()
 	unit_views.clear()
@@ -431,7 +446,7 @@ func new_battle(seed_value: int) -> void:
 	tactics.setup(combat_state, board_view, camera_rig)
 
 	for unit: Unit in combat_state.units:
-		var view := UnitView.new()
+		var view := HitVolumeView.new()
 		add_child(view)
 		view.setup(unit, combat_state.material_table)
 		unit_views.append(view)

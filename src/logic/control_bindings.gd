@@ -18,6 +18,10 @@ const RESET_FRAMING_KEY := KEY_F
 const RESET_TURN_KEY := KEY_R
 ## docs/10 taskblock03 J: "toggleable with H."
 const TOGGLE_KEY := KEY_H
+## docs/09 taskblock06 Pass I1: "toggleable" — a dev tool/player option, own
+## key distinct from TOGGLE_KEY (this overlay's help legend), so hiding one
+## never hides the other.
+const TOGGLE_HIT_VOLUMES_KEY := KEY_V
 
 
 ## `{"trigger": String, "action": String}`, in the order docs/10 taskblock03
@@ -44,6 +48,7 @@ static func all(log_path: String) -> Array[Dictionary]:
 		{"trigger": "MMB drag", "action": "pan"},
 		{"trigger": "Scroll", "action": "zoom (while not aiming)"},
 		{"trigger": _key(TOGGLE_KEY), "action": "toggle this help"},
+		{"trigger": _key(TOGGLE_HIT_VOLUMES_KEY), "action": "toggle hit volumes"},
 		{"trigger": "log", "action": log_path},
 	]
 

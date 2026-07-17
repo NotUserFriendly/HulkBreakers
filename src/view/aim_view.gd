@@ -159,7 +159,7 @@ func _body_name(body: Variant) -> String:
 
 ## runNotes.md: "if a pistol is what's shooting, then the targeting line
 ## should come from the pistol" — the weapon's own living box center, in
-## the exact placement space UnitView renders from (unit facing + board
+## the exact placement space HitVolumeView renders from (unit facing + board
 ## position + socket chain), not a generic torso-height point. Falls back
 ## to the old torso-height point only if the weapon somehow has no
 ## placement at all (defensive: an operable weapon always has one).

@@ -11,7 +11,7 @@ func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
 
 	assert_not_null(scene.combat_state)
 	assert_eq(scene.unit_views.size(), scene.combat_state.units.size())
-	for view: UnitView in scene.unit_views:
+	for view: HitVolumeView in scene.unit_views:
 		assert_true(view.get_child_count() > 0, "every seeded unit must render at least one box")
 
 
@@ -84,7 +84,7 @@ func test_calling_new_battle_again_does_not_leak_the_previous_units_views() -> v
 	# world_environment + directional_light + camera_rig + board_view + tactics +
 	# ui CanvasLayer + aim_view + resolution_player + stat_panel + inventory_panel +
 	# weapon_panel + combat_readout_panel + queue_panel + controls_overlay + one
-	# UnitView per unit.
+	# HitVolumeView per unit.
 	assert_eq(scene.get_child_count(), 14 + scene.combat_state.units.size())
 	assert_eq(scene.combat_state.units.size(), unit_count, "the seeded roster size is stable")
 
@@ -95,10 +95,10 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 
 	for i in range(scene.combat_state.units.size()):
 		var unit: Unit = scene.combat_state.units[i]
-		var view: UnitView = scene.unit_views[i]
+		var view: HitVolumeView = scene.unit_views[i]
 		var placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
 
-		# +2: UnitView's own team marker (docs/10) at child 0 and facing
+		# +2: HitVolumeView's own team marker (docs/10) at child 0 and facing
 		# wedge (docs/10 taskblock02 F3) at child 1, ahead of the part meshes.
 		assert_eq(view.get_child_count(), placements.size() + 2)
 		for j in range(placements.size()):
@@ -173,7 +173,7 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 
 	assert_eq(current.cell, target_cell, "resolution must have actually moved the real unit")
 
-	var view: UnitView = scene.unit_views[scene.combat_state.units.find(current)]
+	var view: HitVolumeView = scene.unit_views[scene.combat_state.units.find(current)]
 	var expected: Array[BoxPlacement] = UnitGeometry.placements(current)
 	# +2: team marker (docs/10) at child 0, facing wedge (F3) at child 1.
 	assert_eq(

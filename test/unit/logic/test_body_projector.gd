@@ -410,3 +410,28 @@ func _find_all(regions: Array[Region], part_id: StringName) -> Array[Region]:
 		if region.part.id == part_id:
 			found.append(region)
 	return found
+
+
+## docs/09 taskblock06 Pass I2 TESTS: "the shot plane is identical
+## regardless of what's rendered — the mesh must never affect resolution."
+## A part's own `mesh_scene` is purely HitVolumeView's concern
+## (src/view/); BodyProjector reads `volume` alone, so setting/clearing
+## mesh_scene must never change a single projected Region.
+func test_setting_mesh_scene_never_changes_the_projected_shot_plane() -> void:
+	var part := Part.new()
+	part.id = &"plate"
+	part.hp = 1
+	part.max_hp = 1
+	part.volume = [Box.new(Vector3(0.4, 0.5, 0.3), Vector3(0.6, 1.0, 0.6))]
+	var unit := Unit.new(Matrix.new(), Shell.new(part), Vector2i(0, 0))
+
+	var without_mesh: Array[Region] = BodyProjector.project(unit, Vector2(0.0, -1.0))
+
+	part.mesh_scene = PackedScene.new()
+	var with_mesh: Array[Region] = BodyProjector.project(unit, Vector2(0.0, -1.0))
+
+	assert_eq(without_mesh.size(), with_mesh.size())
+	for i in range(without_mesh.size()):
+		assert_eq(without_mesh[i].rect, with_mesh[i].rect)
+		assert_almost_eq(without_mesh[i].depth, with_mesh[i].depth, 0.0001)
+		assert_eq(without_mesh[i].part, with_mesh[i].part)

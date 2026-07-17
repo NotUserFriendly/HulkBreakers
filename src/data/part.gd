@@ -33,6 +33,17 @@ extends Resource
 ## BodyProjector down the tree. Not container capacity; see `bulk` for that
 ## (docs/05 naming note).
 @export var volume: Array[Box] = []
+## docs/09 taskblock06 Pass I2: "commissioned art" — an optional rigged
+## scene HitVolumeView renders IN PLACE of this part's own box meshes,
+## positioned at the same composed transform a box would use. Never read
+## by anything that resolves a shot: BodyProjector/ShotPlane/UnitGeometry
+## all still work from `volume` alone, so a part's own hit volume is
+## identical whether or not it has a commissioned mesh (docs/09: "the mesh
+## must never affect resolution"). Null (the default) means every part
+## authored before this field existed keeps rendering its boxes exactly as
+## before — no cutover, no big-bang migration (docs/09 Pass I2: "mixed
+## assemblies are legal").
+@export var mesh_scene: PackedScene = null
 
 @export var hp: int = 1
 @export var max_hp: int = 1

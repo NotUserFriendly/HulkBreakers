@@ -17,7 +17,7 @@ const DEFAULT_DAMAGE_FLOOR := 1.0
 const DEFAULT_CRIT_BONUS_MULTIPLIER := 1.5
 
 ## docs/10 taskblock04 C1/C2: marks a dropped assembly for the view layer
-## (BoardView: lay it on its side, the same trick UnitView already uses for
+## (BoardView: lay it on its side, the same trick HitVolumeView already uses for
 ## a downed unit — taskblock03 G) — distinct from ordinary terrain cover,
 ## which stays upright. A plain tag, not a new Part field: the vocabulary
 ## is already open (`Part.tags`).
