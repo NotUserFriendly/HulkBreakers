@@ -73,7 +73,14 @@ func setup(
 	tree.set_column_expand(COL_MASS, false)
 	tree.set_column_custom_minimum_width(COL_MASS, COL_MASS_WIDTH)
 	tree.item_selected.connect(_on_item_selected)
+	# docs/10 taskblock05 C: "hovering a part in the inventory panel
+	# highlights that part's actual boxes in 3D" — a plain mouse-motion
+	# read via gui_input (Tree has no dedicated per-item hover signal),
+	# cleared the instant the cursor leaves the tree entirely.
+	tree.gui_input.connect(_on_tree_gui_input)
+	tree.mouse_exited.connect(func() -> void: tactics.hover_part(null))
 	tactics.selection_changed.connect(refresh)
+	tactics.highlight_changed.connect(_on_highlight_changed)
 	refresh()
 
 
@@ -84,6 +91,38 @@ func _on_item_selected() -> void:
 	var part: Variant = item.get_metadata(COL_PART)
 	if part is Part:
 		tactics.inspect_part(part)
+
+
+func _on_tree_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseMotion):
+		return
+	var item: TreeItem = tree.get_item_at_position((event as InputEventMouseMotion).position)
+	if item == null:
+		tactics.hover_part(null)
+		return
+	var part: Variant = item.get_metadata(COL_PART)
+	tactics.hover_part(part if part is Part else null)
+
+
+## docs/10 taskblock05 C: bidirectional — a 3D hover highlights this row.
+## Walks every row rather than tracking one "currently highlighted" item,
+## since refresh() rebuilds the tree wholesale and any cached TreeItem
+## reference from a previous highlight would already be stale.
+func _on_highlight_changed() -> void:
+	var item: TreeItem = tree.get_root()
+	while item != null:
+		var is_highlighted: bool = (
+			tactics.highlighted_part != null
+			and item.get_metadata(COL_PART) == tactics.highlighted_part
+		)
+		if is_highlighted:
+			# docs/08 "two palettes": this is UI-layer, so HulkTheme's own
+			# HIGHLIGHT (never WorldPalette's) — darkened so row text stays
+			# legible over it.
+			item.set_custom_bg_color(COL_PART, HulkTheme.HIGHLIGHT.darkened(0.6))
+		else:
+			item.clear_custom_bg_color(COL_PART)
+		item = item.get_next_in_tree()
 
 
 func refresh() -> void:

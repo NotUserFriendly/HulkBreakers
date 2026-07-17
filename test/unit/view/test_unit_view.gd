@@ -258,3 +258,64 @@ func test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units() -> void:
 
 	assert_almost_eq(downed_color.r, piloted_color.r * UnitView.DOWNED_MARKER_DIM, 0.0001)
 	assert_lt(downed_color.r, piloted_color.r, "the downed marker must actually read dimmer")
+
+
+func _rim_of(instance: MeshInstance3D) -> StandardMaterial3D:
+	var box_mesh: BoxMesh = instance.mesh
+	var material: StandardMaterial3D = box_mesh.material
+	return material.next_pass
+
+
+## docs/10 taskblock05 C: "hovering a part highlights it in the world" —
+## chains one more grown-outline pass after the part's own team rim, and
+## only that part's own meshes, never a sibling's.
+func test_highlight_part_chains_a_glow_onto_only_that_parts_own_mesh() -> void:
+	var built: Dictionary = _torso_with_arm_unit(Vector2i(0, 0))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+
+	view.highlight_part(arm)
+
+	var torso_mesh := view.get_child(2) as MeshInstance3D
+	var arm_mesh := view.get_child(3) as MeshInstance3D
+	assert_null(_rim_of(torso_mesh).next_pass)
+	assert_not_null(_rim_of(arm_mesh).next_pass)
+	assert_eq(
+		(_rim_of(arm_mesh).next_pass as StandardMaterial3D).albedo_color,
+		WorldPalette.HOVER_HIGHLIGHT
+	)
+
+
+func test_clear_highlight_removes_the_glow() -> void:
+	var built: Dictionary = _torso_with_arm_unit(Vector2i(0, 0))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+	view.highlight_part(arm)
+
+	view.clear_highlight()
+
+	var arm_mesh := view.get_child(3) as MeshInstance3D
+	assert_null(_rim_of(arm_mesh).next_pass)
+
+
+## A highlight must survive the rebuild refresh() does after damage — the
+## hovered part hasn't changed just because something else on the unit did.
+func test_a_highlight_survives_a_refresh() -> void:
+	var built: Dictionary = _torso_with_arm_unit(Vector2i(0, 0))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var view := UnitView.new()
+	add_child_autofree(view)
+	view.setup(unit, MaterialTable.default_table())
+	view.highlight_part(arm)
+
+	view.refresh()
+
+	var arm_mesh := view.get_child(3) as MeshInstance3D
+	assert_not_null(_rim_of(arm_mesh).next_pass)

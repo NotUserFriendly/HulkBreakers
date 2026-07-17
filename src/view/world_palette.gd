@@ -13,6 +13,13 @@ const VOID := Color("#050506")
 const GROUND := Color("#2E4A32")
 const TEAM_A := Color("#3A7BD5")
 const TEAM_B := Color("#D53A3A")
+## docs/10 taskblock05 C: the hover-highlight rim (inventory row <-> 3D
+## part, bidirectional) — its own overlay colour, not a reach into
+## HulkTheme (docs/08's "two palettes" rule: this file is the 3D board's
+## own). Deliberately the same value as HulkTheme.HIGHLIGHT so both
+## palettes read "this is highlighted" the same way, without either file
+## depending on the other.
+const HOVER_HIGHLIGHT := Color(0.95, 0.82, 0.25)
 
 ## ~45 degrees elevation, off-axis — enough that adjacent box faces catch
 ## different light and read as distinct surfaces instead of merging into

@@ -100,6 +100,64 @@ func test_hovering_the_board_again_clears_a_previously_inspected_part() -> void:
 	assert_eq(controller.hovered_cell, Vector2i(1, 1))
 
 
+## docs/10 taskblock05 C: "hovering a part in 3D highlights its row in the
+## tree" — meaningful only for the currently selected unit's own parts, so
+## this drives update_hover() over the SELECTED unit's own box.
+func test_hovering_the_selected_units_own_body_highlights_its_part() -> void:
+	var a := _make_unit(Vector2i(2, 2))
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+	controller.click_cell(Vector2i(2, 2))
+
+	var world_point: Vector3 = Vector3(2.0, 0.0, 2.0) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = camera_rig.camera().unproject_position(world_point)
+	controller.update_hover(screen_pos)
+
+	assert_eq(controller.highlighted_part, a.shell.root)
+
+
+## Hovering a unit that ISN'T the currently controlled one can never
+## highlight a tree row — there's no row for it, the inventory panel only
+## ever shows the selected unit's own shell (taskblock04 E2).
+func test_hovering_a_different_units_body_never_highlights_a_part() -> void:
+	var a := _make_unit(Vector2i(2, 2), 0)
+	var b := _make_unit(Vector2i(6, 6), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+	controller.click_cell(Vector2i(2, 2))
+
+	var world_point: Vector3 = Vector3(6.0, 0.0, 6.0) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = camera_rig.camera().unproject_position(world_point)
+	controller.update_hover(screen_pos)
+
+	assert_null(controller.highlighted_part)
+
+
+## docs/10 taskblock05 C: hover_part() is the inventory panel's own trigger
+## for the same mechanism — a direct call, no camera/board involved.
+func test_hover_part_sets_the_field_and_emits_highlight_changed_only_on_change() -> void:
+	var built: Dictionary = _setup([])
+	var controller: TacticsController = built.controller
+	var part := Part.new()
+	part.id = &"pistol"
+
+	var fire_count: Array[int] = [0]
+	controller.highlight_changed.connect(func() -> void: fire_count[0] += 1)
+
+	controller.hover_part(part)
+	assert_eq(controller.highlighted_part, part)
+	assert_eq(fire_count[0], 1)
+
+	controller.hover_part(part)
+	assert_eq(fire_count[0], 1, "hovering the exact same part again must not re-fire")
+
+	controller.hover_part(null)
+	assert_null(controller.highlighted_part)
+	assert_eq(fire_count[0], 2)
+
+
 func test_update_hover_off_the_board_entirely_clears_hovered_cell() -> void:
 	var built: Dictionary = _setup([])
 	var controller: TacticsController = built.controller

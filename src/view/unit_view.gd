@@ -40,6 +40,13 @@ var preview_orientation: Variant = null
 
 var _selected: bool = false
 var _team_marker: MeshInstance3D
+## docs/10 taskblock05 C: "hovering a part highlights it in the world" —
+## which Part is currently glowing, and which of this unit's own mesh
+## instances belong to it (a part can own more than one box). Rebuilt every
+## refresh(); highlight_part() re-applies against the fresh set so a
+## highlight survives a rebuild (e.g. taking damage mid-hover).
+var _highlighted_part: Part = null
+var _meshes_by_part: Dictionary = {}  # Part -> Array[MeshInstance3D]
 
 
 func setup(p_unit: Unit, p_material_table: MaterialTable) -> void:
@@ -62,6 +69,7 @@ func refresh() -> void:
 		remove_child(child)
 		child.queue_free()
 	_team_marker = null
+	_meshes_by_part.clear()
 	if unit == null:
 		return
 
@@ -73,9 +81,7 @@ func refresh() -> void:
 		# isn't facing anything.
 		add_child(_build_facing_wedge())
 
-	var rim: StandardMaterial3D = WorldPalette.rim_outline_material(
-		WorldPalette.team_color(unit.squad_id)
-	)
+	var team_color: Color = WorldPalette.team_color(unit.squad_id)
 	for placement: BoxPlacement in UnitGeometry.placements(unit, preview_orientation):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
@@ -83,7 +89,10 @@ func refresh() -> void:
 		var material: StandardMaterial3D = WorldPalette.lit_material(
 			material_table.color_for(placement.part.material)
 		)
-		material.next_pass = rim
+		# docs/10 taskblock05 C: each box gets its OWN rim instance (never
+		# shared across boxes) so a part's own highlight next_pass can chain
+		# onto just its own materials, never every box on the unit.
+		material.next_pass = WorldPalette.rim_outline_material(team_color)
 		box_mesh.material = material
 		instance.mesh = box_mesh
 		var world_transform: Transform3D = placement.transform.translated_local(
@@ -99,6 +108,33 @@ func refresh() -> void:
 			_downed_transform(unit.cell) * world_transform if downed else world_transform
 		)
 		add_child(instance)
+		if not _meshes_by_part.has(placement.part):
+			_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
+		(_meshes_by_part[placement.part] as Array[MeshInstance3D]).append(instance)
+
+	if _highlighted_part != null:
+		highlight_part(_highlighted_part)
+
+
+## docs/10 taskblock05 C: "hovering a part highlights it in the world" —
+## the team-rim technique again, one more grown outline pass chained after
+## the existing team rim, HulkTheme.HIGHLIGHT-toned (WorldPalette's own
+## copy of it). A no-op if this unit doesn't own `part` at all (hovering a
+## different unit's row/box never bleeds a glow onto this one).
+func highlight_part(part: Part) -> void:
+	_highlighted_part = part
+	var glow: StandardMaterial3D = WorldPalette.rim_outline_material(WorldPalette.HOVER_HIGHLIGHT)
+	for candidate: Part in _meshes_by_part:
+		var meshes: Array[MeshInstance3D] = _meshes_by_part[candidate]
+		for instance: MeshInstance3D in meshes:
+			var box_mesh: BoxMesh = instance.mesh
+			var material: StandardMaterial3D = box_mesh.material
+			var team_rim: StandardMaterial3D = material.next_pass
+			team_rim.next_pass = glow if candidate == part else null
+
+
+func clear_highlight() -> void:
+	highlight_part(null)
 
 
 ## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs

@@ -10,13 +10,17 @@ extends RefCounted
 ## reads the result.
 
 
-## The nearest living unit whose body the ray actually passes through, and
-## the ray parameter `t` of that hit — or an empty Dictionary if none. A
-## caller with both this and BoardPicker.plane_hit_t compares the two `t`
-## values directly: both parametrize the same (from, dir) ray, so whichever
-## is smaller is nearer the camera and wins.
+## The nearest living unit whose body the ray actually passes through, the
+## specific Part whose own box was hit (docs/10 taskblock05 C: the same
+## nearest-box search already knows this — exposing it is what lets a 3D
+## hover highlight one exact part rather than a whole unit), and the ray
+## parameter `t` of that hit — or an empty Dictionary if none. A caller with
+## both this and BoardPicker.plane_hit_t compares the two `t` values
+## directly: both parametrize the same (from, dir) ray, so whichever is
+## smaller is nearer the camera and wins.
 static func hit(units: Array[Unit], from: Vector3, dir: Vector3) -> Dictionary:
 	var nearest_unit: Unit = null
+	var nearest_part: Part = null
 	var nearest_t: float = INF
 	for unit: Unit in units:
 		if not unit.alive:
@@ -26,9 +30,10 @@ static func hit(units: Array[Unit], from: Vector3, dir: Vector3) -> Dictionary:
 			if t != null and (t as float) < nearest_t:
 				nearest_t = t as float
 				nearest_unit = unit
+				nearest_part = placement.part
 	if nearest_unit == null:
 		return {}
-	return {"unit": nearest_unit, "t": nearest_t}
+	return {"unit": nearest_unit, "part": nearest_part, "t": nearest_t}
 
 
 ## Ray-vs-oriented-box via the standard slab test, done in the box's own

@@ -220,3 +220,55 @@ func test_selecting_a_row_inspects_its_own_part() -> void:
 	item.select(InventoryPanel.COL_PART)
 
 	assert_eq(controller.inspected_part, a.shell.root)
+
+
+## docs/10 taskblock05 C: bidirectional — the controller's own
+## highlighted_part drives this row's background, not a click.
+func test_a_highlighted_part_tints_its_own_row_and_no_other() -> void:
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	hand.sockets = [grip]
+	var a := Unit.new(Matrix.new(), Shell.new(hand), Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var tree: Tree = built.tree
+	controller.click_cell(Vector2i(0, 0))
+
+	controller.hover_part(pistol)
+
+	var hand_item: TreeItem = tree.get_root().get_child(0)
+	var pistol_item: TreeItem = hand_item.get_child(0)
+	var unset := Color(0.0, 0.0, 0.0, 1.0)
+	assert_eq(
+		pistol_item.get_custom_bg_color(InventoryPanel.COL_PART), HulkTheme.HIGHLIGHT.darkened(0.6)
+	)
+	assert_eq(
+		hand_item.get_custom_bg_color(InventoryPanel.COL_PART), unset, "only the hovered row tints"
+	)
+
+	controller.hover_part(null)
+	assert_eq(pistol_item.get_custom_bg_color(InventoryPanel.COL_PART), unset)
+
+
+## docs/10 taskblock05 C: mouse leaving the tree entirely clears the
+## highlight — a stale glow must never survive the cursor moving on.
+func test_the_mouse_leaving_the_tree_clears_the_highlight() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var tree: Tree = built.tree
+	controller.click_cell(Vector2i(0, 0))
+	controller.hover_part(a.shell.root)
+	assert_not_null(controller.highlighted_part)
+
+	tree.mouse_exited.emit()
+
+	assert_null(controller.highlighted_part)
