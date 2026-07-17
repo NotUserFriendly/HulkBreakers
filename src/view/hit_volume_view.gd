@@ -225,7 +225,11 @@ func _build_facing_wedge() -> MeshInstance3D:
 	instance.mesh = box
 	instance.material_override = WorldPalette.overlay_material(_marker_color())
 	var orientation: float = _display_orientation()
-	var forward: Vector2 = BodyProjector.WORLD_FORWARD.rotated(orientation)
+	# docs/09 taskblock07 Pass B1: forward_for(), not WORLD_FORWARD.rotated()
+	# directly — the wedge's own POSITION and its own ROTATION
+	# (Basis(Vector3.UP, orientation) just below) must agree, and only
+	# forward_for() is built from that same Basis.
+	var forward: Vector2 = BodyProjector.forward_for(orientation)
 	var base := (
 		Vector3(unit.cell.x, TEAM_MARKER_Y + TEAM_MARKER_HEIGHT, unit.cell.y)
 		* UnitGeometry.CELL_SIZE

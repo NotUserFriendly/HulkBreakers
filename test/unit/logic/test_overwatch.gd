@@ -107,9 +107,10 @@ func test_a_mover_whose_torso_clears_cover_does_trigger() -> void:
 ## (5,0) before firing; it must instead freeze at (7,0), the first cell
 ## actually stepped onto.
 func test_the_trigger_fires_at_the_first_qualifying_cell_not_the_nearest() -> void:
-	# orientation -PI/2: BodyProjector.WORLD_FORWARD (0,1) rotated -90 deg
-	# faces world +X, the axis the mover's whole path runs along.
-	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), -PI / 2.0, 0)
+	# orientation PI/2: BodyProjector.forward_for(0,1) (docs/09 taskblock07
+	# Pass B1's authoritative rotation) at +90 deg faces world +X, the axis
+	# the mover's whole path runs along.
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), PI / 2.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(8, 0), 1)
 	var grid := Grid.new(20, 20)
