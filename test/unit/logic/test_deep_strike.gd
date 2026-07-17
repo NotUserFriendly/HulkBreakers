@@ -151,6 +151,70 @@ func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -
 	)
 
 
+func _pool_part(part_id: StringName) -> Part:
+	for template: Part in DeepStrike.default_part_pool():
+		if template.id == part_id:
+			return template
+	fail_test("no pool template %s" % part_id)
+	return null
+
+
+## docs/10 taskblock05 D1: cladding is keyed to a kind of part — a leg's
+## skin does not fit a skull.
+func test_leg_cladding_cannot_attach_to_a_heads_cladding_socket() -> void:
+	var leg_cladding: Part = _pool_part(&"leg_cladding")
+	var head: Part = _pool_part(&"head")
+	var head_socket: Socket = PartGraph.find_socket(head, &"CLADDING")
+
+	assert_eq(head_socket.socket_type, &"CLADDING_HEAD")
+	assert_false(PartGraph.is_legal_attachment(leg_cladding, head_socket))
+
+
+## A keyed cladding part attaches only to its own kind — proven both ways:
+## it fits its own socket, and every OTHER kind's socket refuses it.
+func test_a_keyed_cladding_part_attaches_only_to_its_own_kind() -> void:
+	var leg_cladding: Part = _pool_part(&"leg_cladding")
+	var leg: Part = _pool_part(&"leg")
+	var leg_socket: Socket = PartGraph.find_socket(leg, &"CLADDING")
+	assert_true(PartGraph.is_legal_attachment(leg_cladding, leg_socket))
+
+	var other_hosts: Array[StringName] = [&"torso", &"head", &"arm", &"forearm"]
+	for host_id: StringName in other_hosts:
+		var host: Part = _pool_part(host_id)
+		var socket: Socket = PartGraph.find_socket(host, &"CLADDING")
+		assert_false(
+			PartGraph.is_legal_attachment(leg_cladding, socket),
+			"leg_cladding must not fit %s's own cladding socket" % host_id
+		)
+
+
+## docs/10 taskblock05 D2: plates keep the generic ARMOR socket — any
+## plate legally attaches to any ARMOR socket, however absurd the result
+## looks (a big plate on a head is legal by design, not a size gate).
+func test_any_plate_attaches_to_any_armor_socket() -> void:
+	var plates: Array[StringName] = [
+		&"plate_large_steel",
+		&"plate_large_sheet_steel",
+		&"plate_small_ceramic",
+		&"plate_small_steel",
+		&"plate_medium_sheet_steel",
+	]
+	var hosts: Array[StringName] = [&"torso", &"head", &"arm", &"forearm", &"leg"]
+	for plate_id: StringName in plates:
+		var plate: Part = _pool_part(plate_id)
+		for host_id: StringName in hosts:
+			var host: Part = _pool_part(host_id)
+			# find_free_socket matches by socket_type, not id — torso's own
+			# ARMOR sockets are id'd ARMOR_FRONT/ARMOR_REAR (docs/01
+			# taskblock02 Pass B), so this is the one that finds them too.
+			var socket: Socket = PartGraph.find_free_socket(host, &"ARMOR")
+			assert_not_null(socket, "%s has no free ARMOR socket to test against" % host_id)
+			assert_true(
+				PartGraph.is_legal_attachment(plate, socket),
+				"%s must attach to %s's ARMOR socket" % [plate_id, host_id]
+			)
+
+
 ## docs/07's "real point": no crashes, no malformed assemblies, across many
 ## seeds and arbitrary part combinations.
 func test_fuzz_many_random_cyborgs_never_crash_and_always_validate() -> void:
