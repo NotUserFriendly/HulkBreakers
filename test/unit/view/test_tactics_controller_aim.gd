@@ -233,11 +233,11 @@ func test_end_turn_cancels_an_active_aim() -> void:
 	assert_true(camera_rig.zoom_enabled)
 
 
-## docs/10 taskblock03 D5: aim_plane() now builds from a speculative preview
-## clone (so a queued move changes it before resolution — covered below),
-## which means every Region.body in it is a clone unit sharing the real
-## unit's `id`, never the same object. Comparisons here go through `.id`
-## rather than `==` for exactly that reason.
+## docs/10 taskblock03 D5: aim_state()'s "plane" now builds from a
+## speculative preview clone (so a queued move changes it before resolution
+## — covered below), which means every Region.body in it is a clone unit
+## sharing the real unit's `id`, never the same object. Comparisons here go
+## through `.id` rather than `==` for exactly that reason.
 func test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
@@ -249,7 +249,7 @@ func test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets() -> vo
 	controller.click_cell(Vector2i(5, 5))
 
 	var raw: Array[Region] = ShotPlane.build(Vector2(0, 0), Vector2(5, 5).normalized(), state)
-	var plane: Array[Region] = controller.aim_plane()
+	var plane: Array[Region] = controller.aim_state()["plane"]
 
 	assert_lt(plane.size(), raw.size(), "the raw plane includes the shooter's own body")
 	for region: Region in plane:

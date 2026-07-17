@@ -66,6 +66,7 @@ func _ready() -> void:
 	# selection_changed already covers) — aim_changed is what actually
 	# fires the instant that happens.
 	tactics.aim_changed.connect(_on_selection_changed)
+	tactics.highlight_changed.connect(_on_highlight_changed)
 
 	var ui := CanvasLayer.new()
 	add_child(ui)
@@ -338,6 +339,18 @@ func _on_selection_changed() -> void:
 			view.preview_orientation = target_preview
 			view.refresh()
 	_update_readout_header()
+
+
+## docs/10 taskblock05 C: bidirectional hover highlight — only the selected
+## unit's own view can ever have a matching part (that's the only body the
+## inventory tree, the other trigger for this signal, has rows for at all).
+func _on_highlight_changed() -> void:
+	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+	for view: UnitView in unit_views:
+		if view.unit == selected:
+			view.highlight_part(tactics.highlighted_part)
+		else:
+			view.clear_highlight()
 
 
 ## runNotes.md: "highlight what it's doing, and IF it's doing it." Active

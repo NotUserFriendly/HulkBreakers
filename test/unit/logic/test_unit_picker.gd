@@ -22,6 +22,32 @@ func test_a_straight_down_ray_through_a_units_box_hits_that_unit() -> void:
 	assert_eq(result.get("unit"), a)
 
 
+## docs/10 taskblock05 C: the same nearest-box search already knows which
+## Part it hit, not just which Unit — the same search Pass C's 3D-hover
+## highlight needs, exposed rather than re-derived.
+func test_hit_reports_the_specific_part_whose_box_was_struck() -> void:
+	var head := Part.new()
+	head.id = &"head"
+	head.hp = 5
+	head.max_hp = 5
+	head.volume = [Box.new(Vector3(0.0, 1.8, 0.0), Vector3(0.4, 0.4, 0.4))]
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 5
+	torso.max_hp = 5
+	torso.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.4, 0.4, 0.4))]
+	var neck := Socket.new(&"NECK")
+	neck.occupant = head
+	torso.sockets = [neck]
+	var a := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
+	var units: Array[Unit] = [a]
+
+	var result: Dictionary = UnitPicker.hit(units, Vector3(0.0, 1.8, 0.0), Vector3(0.0, -1.0, 0.0))
+
+	assert_eq(result.get("unit"), a)
+	assert_eq(result.get("part"), head)
+
+
 func test_a_ray_that_misses_every_box_returns_nothing() -> void:
 	var a := _make_unit(Vector2i(2, 3))
 	var units: Array[Unit] = [a]

@@ -19,6 +19,14 @@ signal selection_changed
 ## docs/10 taskblock04 E3: fires whenever `hovered_cell` or `inspected_part`
 ## changes — the combat readout redraws from this rather than polling.
 signal hover_changed
+## docs/10 taskblock05 C: "hovering a part highlights it in the world,
+## bidirectionally." Meaningful only for the currently selected unit's own
+## parts (the only body the inventory tree has rows for at all). Shared by
+## a real 3D hover (`update_hover`) and the inventory panel's own row
+## hover — one mechanism, two triggers, distinct from `inspected_part`
+## below (that one's click-driven and feeds the text readout; this one's
+## hover-driven and feeds the 3D glow + tree-row highlight).
+signal highlight_changed
 
 ## docs/10 taskblock02 F3: Q/E step size — docs/10 doesn't pin an exact
 ## increment, a flagged placeholder, not a design decision. 45 degrees:
@@ -55,6 +63,9 @@ var hovered_cell: Variant = null
 ## again (`update_hover`): whatever the player is actually pointing at
 ## wins over a stale click.
 var inspected_part: Part = null
+## Set by `highlight_changed`'s own two triggers — see the signal's own doc
+## comment above.
+var highlighted_part: Part = null
 
 ## True for the whole of RESOLUTION (docs/10): set the instant End Turn
 ## resolves, cleared once whoever is playing back the log calls
@@ -232,7 +243,15 @@ func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 	if not unit_hit.is_empty():
 		if ground_t == null or (unit_hit["t"] as float) <= (ground_t as float):
 			var unit: Unit = unit_hit["unit"]
-			return {"kind": Enums.HitKind.UNIT, "unit": unit, "cell": unit.cell}
+			# docs/10 taskblock05 C: UnitPicker's own nearest-box search
+			# already knows which Part it struck — carried through here so a
+			# 3D hover can highlight that exact part, not just its unit.
+			return {
+				"kind": Enums.HitKind.UNIT,
+				"unit": unit,
+				"part": unit_hit["part"],
+				"cell": unit.cell
+			}
 	if ground_t == null:
 		return null
 	return {"kind": Enums.HitKind.CELL, "unit": null, "cell": BoardPicker.cell_at_ray(from, dir)}
@@ -248,12 +267,22 @@ func update_hover(screen_pos: Vector2) -> void:
 	var from: Vector3 = camera.project_ray_origin(screen_pos)
 	var dir: Vector3 = camera.project_ray_normal(screen_pos)
 	var hit: Variant = _cell_at(from, dir)
-	var cell: Variant = (hit as Dictionary)["cell"] if hit != null else null
-	if cell == hovered_cell and inspected_part == null:
-		return
-	hovered_cell = cell
-	inspected_part = null
-	hover_changed.emit()
+	var hit_dict: Dictionary = hit as Dictionary if hit != null else {}
+	var cell: Variant = hit_dict.get("cell") if hit != null else null
+	if cell != hovered_cell or inspected_part != null:
+		hovered_cell = cell
+		inspected_part = null
+		hover_changed.emit()
+
+	# docs/10 taskblock05 C: "hovering a part in 3D highlights its row in
+	# the tree" — meaningful only for the currently selected unit's own
+	# parts, the only body the inventory tree has rows for at all
+	# (taskblock04 E2). Hovering anything else (empty ground, a different
+	# unit) clears it.
+	var hovered_part: Variant = null
+	if hit_dict.get("kind") == Enums.HitKind.UNIT and hit_dict["unit"] == selection.selected_unit:
+		hovered_part = hit_dict["part"]
+	hover_part(hovered_part)
 
 
 ## docs/10 taskblock04 E3: "clicking a part in the inventory panel fills
@@ -261,6 +290,17 @@ func update_hover(screen_pos: Vector2) -> void:
 func inspect_part(part: Part) -> void:
 	inspected_part = part
 	hover_changed.emit()
+
+
+## docs/10 taskblock05 C: sets the currently glowing part — called by a
+## real 3D hover (`update_hover`) and by the inventory panel's own row
+## hover. `part` may be null (nothing hovered, or hovering something this
+## mechanism has no row/box for).
+func hover_part(part: Variant) -> void:
+	if part == highlighted_part:
+		return
+	highlighted_part = part
+	highlight_changed.emit()
 
 
 ## While aiming: any click confirms the shot (docs/10: "click / confirm ->
@@ -500,15 +540,6 @@ func aim_state() -> Dictionary:
 		if region.body != shooter:
 			plane.append(region)
 	return {"shooter": shooter, "target": target, "plane": plane}
-
-
-## Convenience for a caller that only needs the plane itself — see
-## aim_state() when shooter/target identity matters too.
-func aim_plane() -> Array[Region]:
-	var aim: Dictionary = aim_state()
-	if aim.is_empty():
-		return []
-	return aim["plane"]
 
 
 ## runNotes.md: "the controlled unit ghost should face the aimed-at unit
