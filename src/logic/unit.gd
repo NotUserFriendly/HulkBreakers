@@ -116,6 +116,21 @@ func is_downed() -> bool:
 	return resolve_matrix() == null
 
 
+## docs/09 taskblock06 Pass C: "poses are sampled at instants — nothing is
+## ever integrated." `progress` (0.0-1.0, e.g. how far along a queued move
+## a freeze lands) exists for a future real rig to pick a genuinely
+## different pose partway through a walk cycle; today there is no such
+## thing — only the three snap poses (docs/10 taskblock05 F3) — so this
+## always returns the SAME pose regardless of `progress`. Sampling between
+## discrete states is not interpolating between them, and this seam is
+## deliberately incapable of the latter: resolution is always "set the
+## pose, cast the ray, read the hit" against one frozen instant, never a
+## blend two instants apart. Deterministic by construction — no
+## accumulated float drift, no tick-rate dependence.
+func pose_at(_progress: float) -> Pose:
+	return pose
+
+
 ## docs/04 taskblock02 Pass D3: the docked surrogate's own capabilities, or
 ## empty for a bot (no surrogate at all) or an unoccupied shell.
 func docked_surrogate_capabilities(ladder: Array[SurrogateTier]) -> Array[StringName]:
