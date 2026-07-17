@@ -598,7 +598,10 @@ func end_turn() -> void:
 	var sink := MemorySink.new()
 	selection.state.combat_log.add_sink(sink)
 	selection.queue_end_turn()
-	selection.state.resolve_turn(selection.current_queue())
+	# docs/09 taskblock06 Pass F: the real mid-move interrupt check
+	# (Overwatch.check_trigger) plugs into resolve_until's own seam here —
+	# taskblock06 Pass D built it, Pass F is the first real caller.
+	selection.state.resolve_until(selection.current_queue(), Overwatch.check_trigger)
 	selection.state.combat_log.remove_sink(sink)
 
 	selection.reset()
