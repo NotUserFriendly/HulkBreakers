@@ -137,6 +137,15 @@ extends Resource
 ## a fixed three — nothing may assume a count.
 @export var scatter: Array[Ring] = []
 
+## docs/09 taskblock06 Pass E: how fast an attack made with this weapon
+## resolves relative to other actions at the same instant (HIGHER first)
+## — AttackAction reads this off its own weapon at resolve time, so a
+## fast weapon can out-speed an overwatch trigger with no code change.
+## 40.0 (docs/09's own "attack / return fire" starting data) is a
+## harmless default for every part, weapon or not — only ever read on
+## whichever Part an AttackAction actually names as its weapon_id.
+@export var speed: float = 40.0
+
 ## Cook-off (docs/03): a VOLATILE part with a non-zero cook_off_damage
 ## explodes on destruction, dealing this much area damage within
 ## cook_off_radius cells. Both default to 0 (inert) — an ammo rack's actual

@@ -11,6 +11,9 @@ extends CombatAction
 ## never additive.
 
 const COST := 1.0
+## docs/09 taskblock06 Pass E: "facing is faster than overwatch triggering"
+## — starting data, a tunable, not a design decision.
+const SPEED := 100.0
 
 var unit: Unit
 var direction: float
@@ -102,3 +105,11 @@ static func _log(state: CombatState, actual: Unit, reason: StringName, cost: flo
 
 func describe() -> String:
 	return "FaceAction(unit=%d, direction=%.2f)" % [unit.id, direction]
+
+
+func speed(_state: CombatState) -> float:
+	return SPEED
+
+
+func unit_id() -> int:
+	return unit.id
