@@ -29,6 +29,12 @@ var alive: bool = true
 ## FRONT/BACK/LEFT/RIGHT.
 var orientation: float = 0.0
 
+## docs/10 taskblock05 F: socket transform overrides composing onto the
+## body when UnitGeometry/BodyProjector walk it — snap, never animated.
+## DOWN is never set here directly; it's a computed override applied by
+## effective_pose() whenever the unit has no matrix docked.
+var pose: Pose = Poses.idle()
+
 ## docs/10 taskblock03 E2: "1 MP unlocks free refacing for the turn — not 1
 ## MP per rotation." The first manual FaceAction each turn costs 1 MP and
 ## sets this; every manual face after that, same turn, is free. Reset at
@@ -97,6 +103,19 @@ func resolve_matrix() -> Matrix:
 	return null
 
 
+## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs
+## to read as down." Moved here (was UnitView's own copy) — a query, not a
+## stored flag, same as always. Callers that want DOWN's geometry to
+## actually apply (taskblock05 F3's Pose) pass `Poses.down()` in
+## explicitly where it matters (UnitView) rather than this being read
+## automatically by every headless placements()/project() call — a bare
+## test fixture that never bothers docking a matrix (most of them; matrix
+## docking is irrelevant to what they're actually testing) must not
+## silently start rendering sideways.
+func is_downed() -> bool:
+	return resolve_matrix() == null
+
+
 ## docs/04 taskblock02 Pass D3: the docked surrogate's own capabilities, or
 ## empty for a bot (no surrogate at all) or an unoccupied shell.
 func docked_surrogate_capabilities(ladder: Array[SurrogateTier]) -> Array[StringName]:
@@ -133,6 +152,7 @@ func dup() -> Unit:
 	cloned.mp = mp
 	cloned.alive = alive
 	cloned.orientation = orientation
+	cloned.pose = pose
 	cloned.facing_unlocked = facing_unlocked
 	cloned.held_matrix = held_matrix.duplicate(true) as Matrix if held_matrix != null else null
 	cloned.surrogate_tier = surrogate_tier

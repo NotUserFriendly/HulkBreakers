@@ -14,36 +14,53 @@ const CELL_SIZE := 1.0
 
 
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
-## full world transform (unit facing + board position + socket chain).
+## full world transform (unit facing + board position + socket chain +
+## pose).
 ##
 ## docs/10 taskblock03 E3: `orientation_override`, when not null, replaces
 ## `unit.orientation` for this placement pass only — TACTICS previews a
 ## queued-but-unresolved facing against the speculative clone, and the view
 ## must render that preview, never the authoritative `unit.orientation`
 ## itself, without needing a whole cloned Unit just to change one float.
-static func placements(unit: Unit, orientation_override: Variant = null) -> Array[BoxPlacement]:
+##
+## docs/10 taskblock05 F2: `pose_override`, when not null, replaces
+## `unit.pose` for this placement pass only — same convention as
+## `orientation_override` (taskblock03 E3). Composes `unit.pose` by
+## default so a settable pose is meaningful at all, but never
+## automatically substitutes a computed one (e.g. DOWN): a caller that
+## wants DOWN's geometry passes `Poses.down()` in explicitly (UnitView
+## does, based on Unit.is_downed()) — plenty of headless fixtures never
+## bother docking a matrix for reasons unrelated to piloting status, and
+## must not silently start rendering sideways because of it.
+static func placements(
+	unit: Unit, orientation_override: Variant = null, pose_override: Variant = null
+) -> Array[BoxPlacement]:
 	if unit.shell.root == null:
 		return []
 	var orientation: float = (
 		orientation_override if orientation_override != null else unit.orientation
 	)
-	return assembly_placements(unit.shell.root, unit.cell, orientation)
+	var pose: Pose = pose_override if pose_override != null else unit.pose
+	return assembly_placements(unit.shell.root, unit.cell, orientation, pose)
 
 
 ## docs/10 taskblock04 C1: the same tree-walk `placements()` gives a real
 ## Unit's shell, generalized to any bare part tree sitting at a cell — a
 ## field object (a dropped assembly, a scrap pile) has no owning Unit and
 ## no facing of its own (orientation 0.0 by default: it doesn't face
-## anything). `placements()` is just this with a Unit's own cell/orientation
+## anything) and no pose of its own (null: it isn't posed at all).
+## `placements()` is just this with a Unit's own cell/orientation/pose
 ## unpacked for it.
 static func assembly_placements(
-	root: Part, cell: Vector2i, orientation: float = 0.0
+	root: Part, cell: Vector2i, orientation: float = 0.0, pose: Pose = null
 ) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
 	var unit_transform := Transform3D(
 		Basis(Vector3.UP, orientation), Vector3(cell.x, 0.0, cell.y) * CELL_SIZE
 	)
-	_walk(root, Transform3D.IDENTITY, unit_transform, result)
+	if pose != null and pose.overrides.has(Poses.ROOT_SOCKET_ID):
+		unit_transform = unit_transform * (pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D)
+	_walk(root, Transform3D.IDENTITY, unit_transform, result, pose)
 	return result
 
 
@@ -51,7 +68,8 @@ static func _walk(
 	part: Part,
 	part_transform: Transform3D,
 	unit_transform: Transform3D,
-	result: Array[BoxPlacement]
+	result: Array[BoxPlacement],
+	pose: Pose
 ) -> void:
 	if part.hp > 0:
 		for box: Box in part.volume:
@@ -59,7 +77,10 @@ static func _walk(
 	for socket: Socket in part.sockets:
 		if socket.occupant == null:
 			continue
-		_walk(socket.occupant, part_transform * socket.transform, unit_transform, result)
+		var socket_transform: Transform3D = socket.transform
+		if pose != null and pose.overrides.has(socket.id):
+			socket_transform = socket_transform * (pose.overrides[socket.id] as Transform3D)
+		_walk(socket.occupant, part_transform * socket_transform, unit_transform, result, pose)
 
 
 ## docs/10 taskblock04 A2: "compute each unit's bounding sphere from its

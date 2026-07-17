@@ -359,6 +359,51 @@ func test_rotating_the_shoulder_socket_moves_the_pistol_at_the_end_of_the_chain(
 	)
 
 
+## docs/10 taskblock05 F2: "AIMING changes the projected shot plane vs
+## IDLE" — the mechanic itself, asserted: a pose is never cosmetic, it
+## moves real geometry BodyProjector.project() (and therefore the shot
+## plane) reads.
+func test_aiming_pose_changes_the_projected_shot_plane_vs_idle() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	# Offset off its own socket origin — a box centered exactly on the
+	# joint it rotates around would never visibly move, rotation or not.
+	arm.volume = [Box.new(Vector3(0.0, -0.3, 0.0), Vector3(0.4, 0.9, 0.4))]
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shoulder_r := Socket.new(
+		&"SHOULDER", Transform3D(Basis(), Vector3(0.31, 1.53, 0.0)), &"SHOULDER_R"
+	)
+	shoulder_r.occupant = arm
+	torso.sockets = [shoulder_r]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var idle_regions: Array[Region] = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")
+
+	unit.pose = Poses.aiming()
+	var aiming_regions: Array[Region] = _find_all(
+		BodyProjector.project(unit, Vector2(0, -1)), &"arm"
+	)
+
+	# AIMING rotates the shoulder about the horizontal (RIGHT) axis, which
+	# moves height/depth, not lateral spread (_center_x, this view's world
+	# X) — depth is what actually shifts here.
+	var idle_depth := INF
+	for region: Region in idle_regions:
+		idle_depth = minf(idle_depth, region.depth)
+	var aiming_depth := INF
+	for region: Region in aiming_regions:
+		aiming_depth = minf(aiming_depth, region.depth)
+
+	assert_ne(
+		idle_depth, aiming_depth, "AIMING must actually move the arm's projected region vs IDLE"
+	)
+
+
 func _find_all(regions: Array[Region], part_id: StringName) -> Array[Region]:
 	var found: Array[Region] = []
 	for region: Region in regions:
