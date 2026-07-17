@@ -318,3 +318,23 @@ func _credit_salvage(state: CombatState, attacker: Unit, destroyed: Part) -> voi
 
 func describe() -> String:
 	return "AttackAction(unit=%d, weapon=%s, target=%s)" % [unit.id, weapon_id, target_cell]
+
+
+## docs/09 taskblock06 Pass E: reads the WEAPON's own speed, not a fixed
+## per-action-type constant — "a fast weapon can out-speed an overwatch
+## trigger," which only works if the number lives on the weapon Part
+## itself. Falls back to the action's own neutral 0.0 (never a name
+## match/hardcoded ladder) if the actual unit or weapon can't be found —
+## the same "never crash, never silently invent" posture is_legal() uses.
+func speed(state: CombatState) -> float:
+	var actual: Unit = state.find_unit(unit.id)
+	if actual == null:
+		return super.speed(state)
+	var weapon: Part = actual.shell.find_part(weapon_id)
+	if weapon == null:
+		return super.speed(state)
+	return weapon.speed
+
+
+func unit_id() -> int:
+	return unit.id

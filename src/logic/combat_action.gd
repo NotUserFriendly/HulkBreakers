@@ -16,3 +16,39 @@ func apply(_state: CombatState) -> void:
 
 func describe() -> String:
 	return "CombatAction"
+
+
+## docs/09 taskblock06 Pass E: a SECOND ordering axis — docs/09 Appendix G
+## already orders UNITS by initiative; this orders ACTIONS at one instant
+## (a mover's queued shot vs. the overwatch it triggers, say). HIGHER
+## resolves FIRST. A method, not a stored field, because some actions'
+## speed is genuinely fixed (FaceAction) while others read it off their
+## own content at resolve time (AttackAction reads its weapon Part's own
+## `speed` — "a fast weapon can out-speed an overwatch trigger" needs the
+## number to live on data, never a hardcoded ladder in a match statement).
+func speed(_state: CombatState) -> float:
+	return 0.0
+
+
+## The unit this action belongs to — every concrete action overrides this
+## with its own `unit.id`. Only exists for order_by_speed's own
+## deterministic tie-break; -1 (never a real unit id) if left
+## unoverridden.
+func unit_id() -> int:
+	return -1
+
+
+## Stable ordering by speed(state), descending — ties broken by unit_id
+## ascending, so "simultaneous" always resolves the same way regardless
+## of the order `actions` happened to arrive in.
+static func order_by_speed(actions: Array[CombatAction], state: CombatState) -> Array[CombatAction]:
+	var sorted: Array[CombatAction] = actions.duplicate()
+	sorted.sort_custom(
+		func(a: CombatAction, b: CombatAction) -> bool:
+			var speed_a: float = a.speed(state)
+			var speed_b: float = b.speed(state)
+			if speed_a != speed_b:
+				return speed_a > speed_b
+			return a.unit_id() < b.unit_id()
+	)
+	return sorted
