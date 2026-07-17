@@ -23,6 +23,10 @@ var combat_log: CombatLog = CombatLog.new()
 ## Shared across the whole battle (docs/03) so every attack resolves DT and
 ## ricochet against the same tuning, not a fresh default per shot.
 var material_table: MaterialTable = MaterialTable.default_table()
+## docs/10 taskblock05 E1: what a mangling Part.mangles_into resolves
+## against — shared across the whole battle, same convention as
+## material_table above.
+var wreckage_pool: Array[Part] = FieldObjects.wreckage_pool()
 ## True only on a dup() built for a TACTICS-time preview (docs/09). An
 ## attack's hit/damage outcome is the one genuinely probabilistic effect a
 ## preview must never resolve — not because randomness is expensive, but
@@ -110,6 +114,7 @@ func dup() -> CombatState:
 	cloned.terrain_costs = terrain_costs.duplicate()
 	cloned.squad_controllers = squad_controllers.duplicate()
 	cloned.material_table = material_table
+	cloned.wreckage_pool = wreckage_pool
 	for unit: Unit in cloned_units:
 		cloned.add_unit(unit)
 	cloned.turn_index = turn_index

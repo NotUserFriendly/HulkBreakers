@@ -173,9 +173,9 @@ func test_destroying_a_limb_drops_its_whole_subtree_as_one_intact_assembly() -> 
 	var state := CombatState.new(grid, [unit])
 
 	DamageResolver.apply_damage_to_part(arm, 10.0)
-	var dropped: Part = DamageResolver.drop_subtree_if_destroyed(arm, state)
+	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(arm, state)
 
-	assert_eq(dropped, arm)
+	assert_eq(dropped, [arm])
 	assert_false(
 		unit.shell.all_parts().has(arm), "the arm is no longer part of the unit's own assembly"
 	)
@@ -195,7 +195,7 @@ func test_drop_subtree_if_destroyed_is_a_no_op_for_a_part_still_alive() -> void:
 	var arm: Part = built.arm
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
-	assert_null(DamageResolver.drop_subtree_if_destroyed(arm, state))
+	assert_eq(DamageResolver.drop_subtree_if_destroyed(arm, state), [] as Array[Part])
 
 
 func test_drop_subtree_if_destroyed_is_a_no_op_for_the_shells_own_root() -> void:
@@ -205,7 +205,98 @@ func test_drop_subtree_if_destroyed_is_a_no_op_for_the_shells_own_root() -> void
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
 	DamageResolver.apply_damage_to_part(torso, 10.0)
-	assert_null(
+	assert_eq(
 		DamageResolver.drop_subtree_if_destroyed(torso, state),
+		[] as Array[Part],
 		"the root has no parent within its own shell to drop it from"
 	)
+
+
+## Same shape as _make_armed_unit, but the arm mangles into wreckage —
+## docs/10 taskblock05 E1/E2: the arm is what becomes scrap, not the
+## forearm-hand-pistol assembly it was carrying.
+func _make_mangling_armed_unit(cell: Vector2i) -> Dictionary:
+	var built: Dictionary = _make_armed_unit(cell)
+	(built.arm as Part).mangles_into = &"twisted_sheet_metal"
+	return built
+
+
+func test_a_mangling_part_is_replaced_by_its_mangles_into_product() -> void:
+	var built: Dictionary = _make_mangling_armed_unit(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+
+	DamageResolver.apply_damage_to_part(arm, 10.0)
+	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(arm, state)
+
+	var wreckage: Part = null
+	for part: Part in dropped:
+		if part.id == &"twisted_sheet_metal":
+			wreckage = part
+	assert_not_null(wreckage, "the mangled arm must be replaced by its own mangles_into product")
+	assert_false(
+		dropped.has(arm), "the original arm never appears in the field itself once mangled"
+	)
+	assert_true(
+		state.grid.field_items[Vector2i(2, 2)].has(wreckage),
+		"the wreckage itself must land as a recoverable field item"
+	)
+
+
+func test_a_mangling_parts_children_drop_as_separate_intact_assemblies() -> void:
+	var built: Dictionary = _make_mangling_armed_unit(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var hand: Part = built.hand
+	var pistol: Part = built.pistol
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+
+	DamageResolver.apply_damage_to_part(arm, 10.0)
+	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(arm, state)
+
+	assert_true(dropped.has(hand), "the hand must drop as its own separate assembly")
+	assert_false(dropped.has(arm), "the scrapped arm itself is not among the dropped items")
+	assert_true(
+		PartGraph.walk(hand).has(pistol), "the hand's own subtree (the pistol) rides along with it"
+	)
+	assert_true(
+		state.grid.field_items[Vector2i(2, 2)].has(hand),
+		"the detached hand must land as its own recoverable field item"
+	)
+	# "A corpse holding its own loot" cannot happen anymore: the hand is
+	# its own root now, never still hanging off the mangled arm.
+	assert_false(PartGraph.walk(arm).has(hand))
+
+
+## A non-mangling destroyed part never loses its own identity — "a broken
+## pistol drops as a broken pistol." `broken` is derived from hp <= 0, not
+## a second field: this only ever asserts hp, never a `.broken` property.
+func test_a_broken_pistol_is_still_identifiably_a_pistol() -> void:
+	var built: Dictionary = _make_armed_unit(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var pistol: Part = built.pistol
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+
+	DamageResolver.apply_damage_to_part(pistol, 10.0)
+	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(pistol, state)
+
+	assert_eq(dropped, [pistol])
+	assert_eq(pistol.id, &"pistol", "identity survives destruction when the part doesn't mangle")
+	assert_true(pistol.hp <= 0, "broken is read straight off hp, never a separate flag")
+
+
+func test_wreckage_yields_its_own_salvage() -> void:
+	var wreckage: Part = FieldObjects.twisted_sheet_metal()
+	assert_false(wreckage.salvage_yield.is_empty(), "wreckage must actually carry salvage_yield")
+
+
+func test_a_mangling_parts_own_id_carries_no_salvage_the_wreckage_does() -> void:
+	# The original template as authored in the real pool (docs/10
+	# taskblock05 D2): a plate mangles into scrap, not the other way
+	# around, and the plate itself carries none of the salvage credit.
+	var plate := Part.new()
+	plate.id = &"plate_medium_sheet_steel"
+	plate.mangles_into = &"metal_scraps"
+	assert_true(plate.salvage_yield.is_empty())
+	assert_false(FieldObjects.metal_scraps().salvage_yield.is_empty())
