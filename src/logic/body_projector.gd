@@ -39,6 +39,34 @@ const _FACE_CORNERS_B: Array[Vector2] = [
 ]
 
 
+## docs/09 taskblock07 Pass B1: THE one rotation convention — turns a
+## body-local ground-plane point (x,z) into its world-relative-to-cell
+## position by a unit's own `orientation`, exactly matching
+## `Basis(Vector3.UP, orientation)` (UnitGeometry.assembly_placements'
+## own `unit_transform`, the actual rendered model every HitVolumeView box
+## obeys). Deliberately NOT `Vector2.rotated(orientation)`: that rotates
+## the opposite way (mirrored — the algebra is `(x cosθ - z sinθ, x sinθ +
+## z cosθ)` vs. the Basis's own `(x cosθ + z sinθ, -x sinθ + z cosθ)`),
+## and every call site that used it directly was silently computing the
+## shot plane, the facing arc, or the facing wedge on the WRONG side of an
+## asymmetric unit. `test_body_projector.gd`'s own mirror test
+## (`test_an_asymmetric_part_projects_on_the_same_side_it_renders`) is the
+## load-bearing proof.
+static func rotate_by_orientation(local: Vector2, orientation: float) -> Vector2:
+	var world: Vector3 = Basis(Vector3.UP, orientation) * Vector3(local.x, 0.0, local.y)
+	return Vector2(world.x, world.z)
+
+
+## World-space forward direction for a unit facing `orientation` —
+## `WORLD_FORWARD` rotated the one authoritative way above. The single
+## source every facing-direction call site reads now (HitVolumeView's own
+## facing wedge, Overwatch's own arc check) instead of each separately
+## calling `WORLD_FORWARD.rotated(orientation)` (the other, mirrored
+## convention this pass deletes).
+static func forward_for(orientation: float) -> Vector2:
+	return rotate_by_orientation(WORLD_FORWARD, orientation)
+
+
 ## Projects every living part of `unit`'s shell into view-plane Regions,
 ## composing each part's Socket.transform chain from the shell root first
 ## (Phase 12.0) so a part attached deep in the tree — or twice, at mirrored
@@ -148,8 +176,8 @@ static func _project_box(
 	for i in range(_FACE_NORMALS.size()):
 		var local_normal := Vector3(_FACE_NORMALS[i].x, 0.0, _FACE_NORMALS[i].y)
 		var normal_in_frame: Vector3 = local_transform.basis * local_normal
-		var world_normal: Vector2 = Vector2(normal_in_frame.x, normal_in_frame.z).rotated(
-			orientation
+		var world_normal: Vector2 = rotate_by_orientation(
+			Vector2(normal_in_frame.x, normal_in_frame.z), orientation
 		)
 		if world_normal.dot(toward_shooter) <= 0.0:
 			continue  # facing away from the shooter
@@ -169,15 +197,15 @@ static func _project_box(
 		var corner_a := Vector2(corner_a_in_frame.x, corner_a_in_frame.z)
 		var corner_b := Vector2(corner_b_in_frame.x, corner_b_in_frame.z)
 
-		var screen_a: float = corner_a.rotated(orientation).dot(perp)
-		var screen_b: float = corner_b.rotated(orientation).dot(perp)
+		var screen_a: float = rotate_by_orientation(corner_a, orientation).dot(perp)
+		var screen_b: float = rotate_by_orientation(corner_b, orientation).dot(perp)
 		var min_x: float = minf(screen_a, screen_b)
 		var max_x: float = maxf(screen_a, screen_b)
 		if max_x - min_x < _MIN_FACE_WIDTH:
 			continue  # edge-on: a vanishing sliver, not a real target
 
 		var face_center_local: Vector2 = (corner_a + corner_b) * 0.5
-		var depth: float = face_center_local.rotated(orientation).dot(dir)
+		var depth: float = rotate_by_orientation(face_center_local, orientation).dot(dir)
 		var rect := Rect2(min_x, center_in_frame.y - half.y, max_x - min_x, box.size.y)
 		var normal3 := Vector3(world_normal.x, 0.0, world_normal.y)
 		regions.append(Region.new(rect, depth, part, normal3))

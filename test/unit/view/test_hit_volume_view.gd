@@ -129,10 +129,42 @@ func test_facing_wedge_sits_at_child_1_pointing_along_orientation() -> void:
 	view.setup(unit, MaterialTable.default_table())
 
 	var wedge: MeshInstance3D = view.get_child(1)
-	var forward: Vector2 = BodyProjector.WORLD_FORWARD.rotated(unit.orientation)
+	var forward: Vector2 = BodyProjector.forward_for(unit.orientation)
 	var expected_xz := Vector2(2.0, 3.0) + forward * HitVolumeView.FACING_WEDGE_OFFSET
 	assert_almost_eq(wedge.position.x, expected_xz.x, 0.0001)
 	assert_almost_eq(wedge.position.z, expected_xz.y, 0.0001)
+
+
+## docs/09 taskblock07 Pass B1/TESTS: "the wedge's position and rotation
+## agree at every orientation across a full sweep" — the bug this pass
+## fixes was invisible at any orientation sharing an axis with 0/90/180/
+## 270 degrees (both the old and new conventions agree there); a full
+## sweep over non-axis angles is what actually proves it.
+func test_the_facing_wedges_position_and_rotation_agree_across_a_full_sweep() -> void:
+	var unit := _torso_unit(Vector2i(0, 0))
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+
+	const SAMPLES := 24
+	for i in range(SAMPLES):
+		unit.orientation = i * TAU / SAMPLES
+		view.setup(unit, MaterialTable.default_table())
+		var wedge: MeshInstance3D = view.get_child(1)
+		var position_dir := Vector2(wedge.position.x, wedge.position.z).normalized()
+		var rotation_dir_3d: Vector3 = wedge.basis * Vector3(0.0, 0.0, 1.0)
+		var rotation_dir := Vector2(rotation_dir_3d.x, rotation_dir_3d.z).normalized()
+		assert_almost_eq(
+			position_dir.x,
+			rotation_dir.x,
+			0.001,
+			"orientation %f: wedge position/rotation disagree on x" % unit.orientation
+		)
+		assert_almost_eq(
+			position_dir.y,
+			rotation_dir.y,
+			0.001,
+			"orientation %f: wedge position/rotation disagree on z" % unit.orientation
+		)
 
 
 ## docs/10 taskblock03 E3: "the wedge shows committed state — it must show

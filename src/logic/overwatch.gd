@@ -48,11 +48,15 @@ static func check_trigger(state: CombatState, mover: Unit) -> bool:
 
 
 ## docs/09 taskblock06 F1: "arc: the unit's facing +/- 45 degrees."
+## docs/09 taskblock07 Pass B1: BodyProjector.forward_for(), not
+## WORLD_FORWARD.rotated() directly — that was the OTHER, mirrored
+## rotation convention, silently checking the arc against the wrong side
+## of an asymmetric-facing overwatcher.
 static func _in_arc(overwatcher: Unit, mover: Unit) -> bool:
 	var to_mover := Vector2(mover.cell - overwatcher.cell)
 	if to_mover.is_zero_approx():
 		return false
-	var facing: Vector2 = BodyProjector.WORLD_FORWARD.rotated(overwatcher.orientation)
+	var facing: Vector2 = BodyProjector.forward_for(overwatcher.orientation)
 	var angle_deg: float = rad_to_deg(absf(facing.angle_to(to_mover)))
 	return angle_deg <= ARC_DEG
 

@@ -435,3 +435,97 @@ func test_setting_mesh_scene_never_changes_the_projected_shot_plane() -> void:
 		assert_eq(without_mesh[i].rect, with_mesh[i].rect)
 		assert_almost_eq(without_mesh[i].depth, with_mesh[i].depth, 0.0001)
 		assert_eq(without_mesh[i].part, with_mesh[i].part)
+
+
+## docs/09 taskblock07 Pass B1a: the load-bearing proof. An asymmetric unit
+## (a part on ONE side only) at a non-axis, non-symmetric orientation must
+## render and project on the exact SAME side — if BodyProjector and
+## UnitGeometry ever disagreed about which way "left" rotates, it would be
+## invisible in every symmetric fixture (front-vs-back is symmetric) but
+## is caught immediately here (left-vs-right is not).
+func test_an_asymmetric_part_projects_on_the_same_side_it_renders() -> void:
+	var pod := Part.new()
+	pod.id = &"pod"
+	pod.hp = 1
+	pod.max_hp = 1
+	pod.volume = [Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 1
+	torso.max_hp = 1
+	# One side only — a socket offset along local -Z, nothing on +Z.
+	var pod_socket := Socket.new(&"POD", Transform3D(Basis(), Vector3(0.0, 0.0, -0.5)))
+	pod_socket.occupant = pod
+	torso.sockets = [pod_socket]
+
+	var orientation := deg_to_rad(85.0)
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	unit.orientation = orientation
+
+	# What actually renders (UnitGeometry — the ground truth HitVolumeView
+	# draws exactly).
+	var placement: BoxPlacement = null
+	for candidate: BoxPlacement in UnitGeometry.placements(unit):
+		if candidate.part == pod:
+			placement = candidate
+	assert_not_null(placement)
+	var rendered_x: float = (placement.transform * placement.box.center).x
+
+	# What the shot plane puts there — view_dir (0,-1) makes `perp` exactly
+	# world +X, so a Region's own rect-center x IS the world x directly, no
+	# screen-space translation needed to compare the two.
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0.0, -1.0))
+	var pod_region: Region = _find(regions, &"pod")
+	var projected_x: float = pod_region.rect.get_center().x
+
+	assert_true(absf(rendered_x) > 0.1, "sanity: the pod must actually sit off-center")
+	assert_eq(
+		signf(projected_x),
+		signf(rendered_x),
+		"the shot plane must put the pod on the same side it actually renders"
+	)
+	assert_almost_eq(projected_x, rendered_x, 0.01)
+
+
+## docs/09 taskblock07 Pass B1/TESTS: "grep finds no `.rotated(orientation)`
+## outside the single helper" — rotate_by_orientation/forward_for are the
+## ONE place a body-local point or facing direction gets turned into world
+## space by a unit's own orientation; every other spot doing this via
+## Vector2.rotated() directly is the OTHER, mirrored convention this pass
+## deleted, and must never come back.
+func test_rotated_by_orientation_is_used_only_inside_body_projector_itself() -> void:
+	var allowed_files: Array[String] = ["body_projector.gd"]
+	var offending: Array[String] = []
+	_scan_dir_for_rotated_orientation("res://src", allowed_files, offending)
+	assert_eq(
+		offending,
+		[] as Array[String],
+		"Vector2.rotated(orientation) used outside body_projector.gd: %s" % [offending]
+	)
+
+
+func _scan_dir_for_rotated_orientation(
+	path: String, allowed_files: Array[String], offending: Array[String]
+) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if entry in [".", ".."]:
+			entry = dir.get_next()
+			continue
+		var full_path: String = path.path_join(entry)
+		if dir.current_is_dir():
+			_scan_dir_for_rotated_orientation(full_path, allowed_files, offending)
+		elif entry.ends_with(".gd") and not allowed_files.has(entry):
+			var text: String = FileAccess.get_file_as_string(full_path)
+			if (
+				text.contains(".rotated(orientation")
+				or text.contains(".rotated(overwatcher.orientation")
+			):
+				offending.append(full_path)
+		entry = dir.get_next()
+	dir.list_dir_end()
