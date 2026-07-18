@@ -28,7 +28,8 @@ func test_initial_units_get_first_turn_started() -> void:
 	var state := CombatState.new(grid, [a, b])
 	assert_eq(state.current_unit(), a)
 	assert_eq(a.ap, a.max_ap)
-	assert_eq(a.mp, 0.0)
+	# taskblock-08 Pass C: free starting MP — one AP's worth, already banked.
+	assert_eq(a.mp, a.mp_per_ap())
 
 
 func test_advance_turn_cycles_and_resets_ap() -> void:
@@ -45,6 +46,60 @@ func test_advance_turn_cycles_and_resets_ap() -> void:
 	state.advance_turn()
 	assert_eq(state.current_unit(), a)
 	assert_eq(a.ap, a.max_ap)
+
+
+## taskblock-08 Pass C: "applies at the start of each turn, not just the
+## first" — a unit that spent its whole starting MP grant last turn still
+## gets a fresh one when its next turn comes around, same as AP.
+func test_the_free_mp_grant_renews_every_turn_not_just_the_first() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(1, 0), 1)
+	var state := CombatState.new(grid, [a, b])
+	a.mp = 0.0  # spent it all this (first) turn
+
+	state.advance_turn()  # b's turn
+	state.advance_turn()  # back to a
+
+	assert_eq(state.current_unit(), a)
+	assert_eq(a.mp, a.mp_per_ap(), "a fresh grant, not the leftover 0 from last turn")
+
+
+## taskblock-08 Pass C/TESTS: "spending that MP doesn't touch AP."
+func test_spending_the_free_starting_mp_never_touches_ap() -> void:
+	var grid := Grid.new(10, 10)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(grid, [a])
+	var starting_ap: int = a.ap
+
+	# One step costs 1.0 MP; the free grant (mp_per_ap() == BASE_MP == 2.0
+	# for this bare, no-agility fixture) covers it with room to spare, no
+	# AP conversion needed at all.
+	assert_true(state.try_apply(MoveAction.new(a, [Vector2i(0, 0), Vector2i(1, 0)])))
+
+	assert_eq(a.ap, starting_ap, "the AP itself must never be spent by the free grant")
+	assert_almost_eq(a.mp, a.mp_per_ap() - 1.0, 0.0001)
+
+
+## taskblock-08 Pass C/TESTS: "burning an AP still adds another mp_per_ap
+## on top" — the free grant and a manual AP-to-MP burn stack, they don't
+## replace one another.
+func test_burning_an_ap_adds_another_mp_per_ap_on_top_of_the_free_grant() -> void:
+	var grid := Grid.new(10, 10)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	a.max_ap = 2
+	var state := CombatState.new(grid, [a])
+	var per_ap: float = a.mp_per_ap()
+	assert_almost_eq(a.mp, per_ap, 0.0001, "sanity: the free grant is already banked")
+
+	# 3 steps at cost 1 each: the free grant (2.0) covers the first two;
+	# the third burns 1 AP for +per_ap MP on top of whatever's left (0.0),
+	# never resetting to just per_ap alone.
+	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]
+	assert_true(state.try_apply(MoveAction.new(a, path)))
+
+	assert_eq(a.ap, 1, "exactly one AP burned to cover the third step")
+	assert_almost_eq(a.mp, per_ap - 1.0, 0.0001, "the burned mp_per_ap, minus the step it paid for")
 
 
 func test_advance_turn_skips_dead_units() -> void:

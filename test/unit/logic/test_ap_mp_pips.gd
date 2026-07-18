@@ -88,6 +88,10 @@ func test_a_real_move_actions_ap_burn_updates_both_pip_rows_together() -> void:
 	var unit := _make_unit()
 	unit.max_ap = 2
 	var state := CombatState.new(grid, [unit])
+	# taskblock-08 Pass C grants free starting MP (mp_per_ap()) at turn
+	# start — reset to a clean 0 so the AP-burn arithmetic below is
+	# exercised from scratch, independent of that grant.
+	unit.mp = 0.0
 
 	var before_ap: Array[bool] = ApMpPips.ap_pip_states(unit)
 	assert_eq(_count_lit(before_ap), 2)

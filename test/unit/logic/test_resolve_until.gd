@@ -74,9 +74,12 @@ func test_a_leg_lost_mid_move_stops_resolution_and_refunds_mp_but_not_ap() -> vo
 	var leg: Part = built.leg
 	var grid := Grid.new(20, 20)
 	var state := CombatState.new(grid, [unit])
-	# CombatState.new() -> _start_turn() resets ap to max_ap, so this must
-	# happen AFTER construction, not before.
+	# CombatState.new() -> _start_turn() resets ap to max_ap and grants
+	# free starting MP (taskblock-08 Pass C), so both must be pinned AFTER
+	# construction, not before, to keep this test's own hand-tuned budget
+	# arithmetic independent of that grant.
 	unit.ap = 3
+	unit.mp = 0.0
 	# 10-cell path (9 steps): at the boosted 3.0 mp_per_ap the leg gives,
 	# all 3 AP exactly covers all 9 steps (legal when queued). Losing the
 	# leg after step 1 drops the rate to the base 2.0 -- the 2 AP left
@@ -178,9 +181,12 @@ func test_only_the_interrupted_units_own_state_is_touched() -> void:
 	var bystander: Unit = _make_mobile_armed_unit(Vector2i(10, 10), 1).unit
 	var grid := Grid.new(20, 20)
 	var state := CombatState.new(grid, [unit, bystander])
-	# CombatState.new() -> _start_turn() resets ap to max_ap, so this must
-	# happen AFTER construction, not before.
+	# CombatState.new() -> _start_turn() resets ap to max_ap and grants
+	# free starting MP (taskblock-08 Pass C), so both must be pinned AFTER
+	# construction, not before, to keep this test's own hand-tuned budget
+	# arithmetic independent of that grant.
 	unit.ap = 3
+	unit.mp = 0.0
 	var bystander_ap: int = bystander.ap
 	var bystander_cell: Vector2i = bystander.cell
 	var path: Array[Vector2i] = _straight_path(Vector2i(0, 0), 10)
@@ -205,9 +211,12 @@ func test_the_outcome_and_refund_are_logged() -> void:
 	var leg: Part = built.leg
 	var grid := Grid.new(20, 20)
 	var state := CombatState.new(grid, [unit])
-	# CombatState.new() -> _start_turn() resets ap to max_ap, so this must
-	# happen AFTER construction, not before.
+	# CombatState.new() -> _start_turn() resets ap to max_ap and grants
+	# free starting MP (taskblock-08 Pass C), so both must be pinned AFTER
+	# construction, not before, to keep this test's own hand-tuned budget
+	# arithmetic independent of that grant.
 	unit.ap = 3
+	unit.mp = 0.0
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var path: Array[Vector2i] = _straight_path(Vector2i(0, 0), 10)
@@ -237,9 +246,12 @@ func test_the_same_seed_and_setup_stops_at_the_same_interrupt_point() -> void:
 		var leg: Part = built.leg
 		var grid := Grid.new(20, 20)
 		var state := CombatState.new(grid, [unit], 7)
-		# CombatState.new() -> _start_turn() resets ap to max_ap, so this
-		# must happen AFTER construction, not before.
+		# CombatState.new() -> _start_turn() resets ap to max_ap and grants
+		# free starting MP (taskblock-08 Pass C), so both must be pinned
+		# AFTER construction, to keep this test's own hand-tuned budget
+		# arithmetic independent of that grant.
 		unit.ap = 3
+		unit.mp = 0.0
 		var path: Array[Vector2i] = _straight_path(Vector2i(0, 0), 10)
 		var queue := ActionQueue.new(unit)
 		queue.enqueue(MoveAction.new(unit, path), state)
