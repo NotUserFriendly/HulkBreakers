@@ -10,6 +10,11 @@ extends Resource
 ## independent material). Once a curve is authored, `dt_at()` is the real
 ## read path; this field stops mattering for combat but stays as the
 ## no-curve fallback.
+## taskblock-10 Pass C: every material becomes its own `.tres`, so it needs
+## to name itself — this row no longer only exists as a Dictionary key on
+## `MaterialTable`. Empty for any entry built directly (tests, the unknown-
+## material fallback below) rather than through `DataLibrary`.
+@export var id: StringName = &""
 @export var dt: float = 0.0
 ## taskblock-09 E: [(thickness, dt), ...], ascending by thickness — DT as
 ## a lookup table, not a formula, because composite/ablative/reactive
