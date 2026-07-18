@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AmmoDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/ammo_def.gd" id="1_ammodef"]
+
+[resource]
+script = ExtResource("1_ammodef")
+id = &"12ga_flechette"
+display_name = "12 Gauge 70mm Flechette"
+damage = 3.0
+bonus_pen = 0.0
+projectile_num = 7
+stack_type = &"BLEED"
+stacks_inflicted = 1.0
+ideal_barrel_length = 0.0

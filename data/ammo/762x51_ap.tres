@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AmmoDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/ammo_def.gd" id="1_ammodef"]
+
+[resource]
+script = ExtResource("1_ammodef")
+id = &"762x51_ap"
+display_name = "7.62x51mm NATO AP"
+damage = 6.0
+bonus_pen = 6.0
+projectile_num = 1
+stack_type = &""
+stacks_inflicted = 0.0
+ideal_barrel_length = 0.0
