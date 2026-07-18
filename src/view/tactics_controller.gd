@@ -493,7 +493,7 @@ func _enter_aim_mode(target: Unit) -> void:
 	# something that can break the reticle anymore (aim_reticle_at_screen
 	# raycasts against the live camera, whatever angle it's at).
 	camera_rig.zoom_enabled = false
-	camera_rig.ease_to_attack_framing(selection.selected_unit, target)
+	camera_rig.ease_to_attack_framing(_framing_shooter(), target)
 	aim_changed.emit()
 
 
@@ -504,7 +504,20 @@ func _enter_aim_mode(target: Unit) -> void:
 func reset_framing() -> void:
 	if input_locked or aiming_at == null or selection.selected_unit == null:
 		return
-	camera_rig.ease_to_attack_framing(selection.selected_unit, aiming_at)
+	camera_rig.ease_to_attack_framing(_framing_shooter(), aiming_at)
+
+
+## taskblock-08 B1: "the camera frames the origin, not the ghost." The
+## attack camera must read the shooter's QUEUED end cell, same speculative
+## clone the ghost and the aim preview already read (taskblock-03 D5) —
+## never `selection.selected_unit`'s own committed cell, which is where the
+## unit still visibly stands until resolution actually moves it.
+## `UnitGeometry.bounding_sphere()` only reads `.cell` (and the boxes'
+## composed geometry) off whatever it's handed, so a disposable preview
+## clone works exactly like the real Unit would.
+func _framing_shooter() -> Unit:
+	var previewed: Unit = selection.previewed_unit()
+	return previewed if previewed != null else selection.selected_unit
 
 
 ## Steps the read layer without moving the reticle (docs/10's load-bearing
