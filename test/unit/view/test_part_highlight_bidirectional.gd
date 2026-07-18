@@ -85,11 +85,11 @@ func _setup(built: Dictionary) -> Dictionary:
 	add_child_autofree(tree)
 	add_child_autofree(footer)
 	add_child_autofree(tooltip_view)
-	panel.setup(controller, tree, footer, MaterialTable.default_table(), tooltip_view)
+	panel.setup(controller, tree, footer, DataLibrary.material_table(), tooltip_view)
 
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 	# BattleScene._on_highlight_changed()'s own one-line glue, reproduced
 	# here rather than standing up a whole BattleScene just to prove the
 	# signal is enough.

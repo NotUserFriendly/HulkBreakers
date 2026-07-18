@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_hdff4"]
+
+[resource]
+script = ExtResource("1_hdff4")
+id = &"ceramic"
+dt = 9.0
+color = Color(0.7764706, 0.7882353, 0.7607843, 1)

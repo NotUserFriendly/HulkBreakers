@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_ejbar"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_e0arp"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_35dnm"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_4qe7d"]
+
+[sub_resource type="Resource" id="Resource_sdi7d"]
+script = ExtResource("4_4qe7d")
+size = Vector3(0.15, 0.37, 0.15)
+
+[resource]
+script = ExtResource("1_ejbar")
+id = &"forearm_cladding"
+attaches_to = Array[StringName]([&"CLADDING_FOREARM"])
+material = &"sheet_steel"
+volume = Array[ExtResource("4_4qe7d")]([SubResource("Resource_sdi7d")])
+hp = 3
+max_hp = 3
+mass = 0.8
+mangles_into = &"twisted_sheet_metal"

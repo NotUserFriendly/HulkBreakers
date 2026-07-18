@@ -159,7 +159,7 @@ func _refresh_preset_option() -> void:
 ## BodyAssembler.assemble()) and everything else redraws from.
 func refresh() -> void:
 	current_unit = controller.assemble()
-	preview.setup(current_unit, MaterialTable.default_table())
+	preview.setup(current_unit, DataLibrary.material_table())
 	_populate_tree()
 	_refresh_validation()
 	_refresh_picker()

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_cb13s"]
+
+[resource]
+script = ExtResource("1_cb13s")
+id = &"flesh"
+color = Color(0.7882353, 0.5411765, 0.47843137, 1)

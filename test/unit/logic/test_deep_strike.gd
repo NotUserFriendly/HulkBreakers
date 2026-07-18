@@ -15,7 +15,7 @@ func test_assemble_random_hosts_the_matrix_on_the_root_part() -> void:
 	var base := Matrix.new()
 	base.id = &"jerry"
 	var unit := DeepStrike.assemble_random(
-		base, 0.5, DeepStrike.default_part_pool(), _rng(1), Vector2i(0, 0)
+		base, 0.5, DataLibrary.parts_pool(), _rng(1), Vector2i(0, 0)
 	)
 	assert_true(unit.shell.root.hosts_matrix())
 	assert_eq(unit.shell.root.hosted_matrix.base, base)
@@ -23,7 +23,7 @@ func test_assemble_random_hosts_the_matrix_on_the_root_part() -> void:
 
 
 func test_assemble_random_is_deterministic_from_the_same_seed() -> void:
-	var pool := DeepStrike.default_part_pool()
+	var pool := DataLibrary.parts_pool()
 	var unit_a := DeepStrike.assemble_random(Matrix.new(), 1.0, pool, _rng(42), Vector2i(0, 0))
 	var unit_b := DeepStrike.assemble_random(Matrix.new(), 1.0, pool, _rng(42), Vector2i(0, 0))
 
@@ -38,14 +38,14 @@ func test_assemble_random_is_deterministic_from_the_same_seed() -> void:
 
 func test_validate_assembly_passes_a_normal_random_cyborg() -> void:
 	var unit := DeepStrike.assemble_random(
-		Matrix.new(), 1.0, DeepStrike.default_part_pool(), _rng(7), Vector2i(0, 0)
+		Matrix.new(), 1.0, DataLibrary.parts_pool(), _rng(7), Vector2i(0, 0)
 	)
 	assert_eq(DeepStrike.validate_assembly(unit), [] as Array[String])
 
 
 func test_validate_assembly_catches_a_mass_violation() -> void:
 	var unit := DeepStrike.assemble_random(
-		Matrix.new(), 1.0, DeepStrike.default_part_pool(), _rng(7), Vector2i(0, 0)
+		Matrix.new(), 1.0, DataLibrary.parts_pool(), _rng(7), Vector2i(0, 0)
 	)
 	unit.shell.max_mass = 0.0
 	var violations: Array[String] = DeepStrike.validate_assembly(unit)
@@ -118,7 +118,7 @@ func test_is_armed_false_when_the_weapon_has_no_capable_manipulator() -> void:
 ## ever land on the torso. Find a seed that actually attaches a limb and
 ## sweep the projected silhouette to prove a non-root part is now reachable.
 func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -> void:
-	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var pool: Array[Part] = DataLibrary.parts_pool()
 	var unit: Unit = null
 	for seed_value in range(50):
 		var candidate := DeepStrike.assemble_random(
@@ -152,7 +152,7 @@ func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -
 
 
 func _pool_part(part_id: StringName) -> Part:
-	for template: Part in DeepStrike.default_part_pool():
+	for template: Part in DataLibrary.parts_pool():
 		if template.id == part_id:
 			return template
 	fail_test("no pool template %s" % part_id)
@@ -218,7 +218,7 @@ func test_any_plate_attaches_to_any_armor_socket() -> void:
 ## docs/07's "real point": no crashes, no malformed assemblies, across many
 ## seeds and arbitrary part combinations.
 func test_fuzz_many_random_cyborgs_never_crash_and_always_validate() -> void:
-	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var pool: Array[Part] = DataLibrary.parts_pool()
 	const SEED_COUNT := 200
 	for seed_value in range(SEED_COUNT):
 		var unit := DeepStrike.assemble_random(

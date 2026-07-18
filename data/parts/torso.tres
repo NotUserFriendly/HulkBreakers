@@ -1,0 +1,82 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_n22ad"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_3o1w8"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_88oug"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_oefof"]
+
+[sub_resource type="Resource" id="Resource_qflnl"]
+script = ExtResource("3_88oug")
+socket_type = &"ARMOR"
+id = &"ARMOR_FRONT"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0.15)
+
+[sub_resource type="Resource" id="Resource_ipn15"]
+script = ExtResource("3_88oug")
+socket_type = &"ARMOR"
+id = &"ARMOR_REAR"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -0.15)
+
+[sub_resource type="Resource" id="Resource_nmttm"]
+script = ExtResource("3_88oug")
+socket_type = &"SHOULDER"
+id = &"SHOULDER_L"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.31, 1.53, 0)
+
+[sub_resource type="Resource" id="Resource_wd51q"]
+script = ExtResource("3_88oug")
+socket_type = &"SHOULDER"
+id = &"SHOULDER_R"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.31, 1.53, 0)
+
+[sub_resource type="Resource" id="Resource_hdb7y"]
+script = ExtResource("3_88oug")
+socket_type = &"HIP"
+id = &"HIP_L"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14, 0.9, 0)
+
+[sub_resource type="Resource" id="Resource_bi6cg"]
+script = ExtResource("3_88oug")
+socket_type = &"HIP"
+id = &"HIP_R"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, 0.9, 0)
+
+[sub_resource type="Resource" id="Resource_vjodb"]
+script = ExtResource("3_88oug")
+socket_type = &"NECK"
+id = &"NECK"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.65, 0)
+
+[sub_resource type="Resource" id="Resource_n8k3b"]
+script = ExtResource("3_88oug")
+socket_type = &"BACK"
+id = &"BACK"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, -0.17)
+
+[sub_resource type="Resource" id="Resource_rtkuw"]
+script = ExtResource("3_88oug")
+socket_type = &"MATRIX"
+id = &"MATRIX"
+
+[sub_resource type="Resource" id="Resource_14hv5"]
+script = ExtResource("3_88oug")
+socket_type = &"CLADDING_TORSO"
+id = &"CLADDING"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+
+[sub_resource type="Resource" id="Resource_neieg"]
+script = ExtResource("4_oefof")
+center = Vector3(0, 1.25, 0)
+size = Vector3(0.5, 0.7, 0.28)
+
+[resource]
+script = ExtResource("1_n22ad")
+id = &"torso"
+sockets = Array[ExtResource("3_88oug")]([SubResource("Resource_qflnl"), SubResource("Resource_ipn15"), SubResource("Resource_nmttm"), SubResource("Resource_wd51q"), SubResource("Resource_hdb7y"), SubResource("Resource_bi6cg"), SubResource("Resource_vjodb"), SubResource("Resource_n8k3b"), SubResource("Resource_rtkuw"), SubResource("Resource_14hv5")])
+material = &"artificial_bone"
+volume = Array[ExtResource("4_oefof")]([SubResource("Resource_neieg")])
+hp = 12
+max_hp = 12
+mass = 20.0
+ram_cost = 5.0
+tags = Array[StringName]([&"ROOT"])

@@ -31,7 +31,7 @@ func _dir_at_incidence(incidence_deg: float) -> Vector2:
 
 
 func test_chaingun_burst_under_dt_fails_to_penetrate_steel() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var region := _region(&"steel")  # dt 6
 	var dir := _dir_at_incidence(0.0)  # dead-on: also exercises stop-dead
 	for i in range(5):
@@ -61,7 +61,7 @@ func test_rifle_round_over_dt_damages_the_plate_and_the_part_behind() -> void:
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
 	var grid := Grid.new(6, 6)
 	var state := CombatState.new(grid, [unit])
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 
 	# Front-on: the unit's front faces world +Y (orientation 0), so a shot
 	# fired from further along +Y traveling in -Y hits the plate (at local
@@ -164,7 +164,7 @@ func test_a_bare_margin_penetration_spills_zero_and_stops_at_the_plate() -> void
 
 
 func test_stop_dead_damages_the_plate_deflect_does_not() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 
 	var head_on := _region(&"steel")
 	var stop_result := DamageResolver.resolve_impact(_dir_at_incidence(0.0), 3.0, head_on, table)
@@ -180,7 +180,7 @@ func test_stop_dead_damages_the_plate_deflect_does_not() -> void:
 
 
 func test_a_graze_retains_about_90_percent_a_near_right_angle_bounce_about_25_percent() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var low_threshold := MaterialEntry.new(6.0, 1.0)  # anything past 1 degree deflects
 	table.set_entry(&"grazing_test", low_threshold)
 
@@ -213,7 +213,7 @@ func test_a_burst_across_a_wide_surface_retains_a_spread_not_one_repeated_value(
 	wall.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(4.0, 1.0, 0.6))]
 	grid.blockers[Vector2i(5, 2)] = wall
 
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	# Low threshold: everything but a near dead-center shot reads oblique
 	# enough to deflect, so the whole spread below is comparable.
 	table.set_entry(&"wide_test", MaterialEntry.new(6.0, 5.0))
@@ -256,7 +256,7 @@ func test_depth_cap_of_zero_stops_a_deflection_from_spawning_any_ricochet() -> v
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	grid.blockers[Vector2i(2, 2)] = cover
 
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
 	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
 	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
@@ -283,7 +283,7 @@ func test_damage_floor_stops_a_deflection_from_spawning_a_ricochet() -> void:
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	grid.blockers[Vector2i(2, 2)] = cover
 
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
 	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
 	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
@@ -316,7 +316,7 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	grid.blockers[Vector2i(10, 10)] = cover
 
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var origin := Vector2(10, 0)
 	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
 	var dir: Vector2 = direction.normalized()
@@ -433,7 +433,7 @@ func test_double_crit_end_to_end_bypasses_armor_and_applies_bonus_damage() -> vo
 	plate.attaches_to = [&"CHEST"]
 	torso.sockets = [socket]
 
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	# Front-on, as in the rifle-round test above: the plate (local z +0.4)
 	# must be resolved before the torso (z 0).
 	var origin := Vector2(2, 5)

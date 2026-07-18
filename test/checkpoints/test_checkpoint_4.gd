@@ -17,7 +17,7 @@ func _part_summary(unit: Unit) -> String:
 
 
 func test_twenty_random_deep_strike_cyborgs() -> void:
-	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var pool: Array[Part] = DataLibrary.parts_pool()
 	var base := Matrix.new()
 	base.id = &"jerry"
 	base.level = 8

@@ -37,7 +37,7 @@ func _setup(units: Array[Unit]) -> Dictionary:
 
 	var tooltip_controller := TooltipController.new()
 	add_child_autofree(tooltip_controller)
-	tooltip_controller.setup(controller, tooltip_view, MaterialTable.default_table())
+	tooltip_controller.setup(controller, tooltip_view, DataLibrary.material_table())
 
 	return {
 		"state": state,

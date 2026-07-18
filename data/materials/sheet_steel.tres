@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_kwput"]
+
+[resource]
+script = ExtResource("1_kwput")
+id = &"sheet_steel"
+dt = 3.0
+color = Color(0.43137255, 0.44705883, 0.4627451, 1)

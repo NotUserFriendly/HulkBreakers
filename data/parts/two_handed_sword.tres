@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_uvpig"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_r0p4v"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_hsr14"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_igrg3"]
+
+[sub_resource type="Resource" id="Resource_6usmi"]
+script = ExtResource("2_r0p4v")
+radius = 0.2
+
+[sub_resource type="Resource" id="Resource_tfpc0"]
+script = ExtResource("4_igrg3")
+center = Vector3(0, 0, 0.35)
+size = Vector3(0.1, 0.1, 1)
+
+[resource]
+script = ExtResource("1_uvpig")
+id = &"two_handed_sword"
+attaches_to = Array[StringName]([&"GRIP"])
+requires = {
+&"GRIP": 1,
+&"POWER": 1
+}
+material = &"steel"
+volume = Array[ExtResource("4_igrg3")]([SubResource("Resource_tfpc0")])
+hp = 5
+max_hp = 5
+mass = 4.0
+damage = 8.0
+ap_cost = 2
+scatter = Array[ExtResource("2_r0p4v")]([SubResource("Resource_6usmi")])

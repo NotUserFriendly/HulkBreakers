@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_xq5vo"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_mg0ir"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_q2cyp"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_m6kqf"]
+
+[sub_resource type="Resource" id="Resource_bo8gb"]
+script = ExtResource("4_m6kqf")
+size = Vector3(0.2, 0.3, 0.1)
+
+[resource]
+script = ExtResource("1_xq5vo")
+id = &"ammo_rack"
+attaches_to = Array[StringName]([&"BACK"])
+material = &"sheet_steel"
+volume = Array[ExtResource("4_m6kqf")]([SubResource("Resource_bo8gb")])
+hp = 4
+max_hp = 4
+mass = 3.0
+tags = Array[StringName]([&"VOLATILE"])
+failure_mode = &"DETONATE"
+detonate_damage = 5.0
+detonate_radius = 2.0

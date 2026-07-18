@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_qdwgm"]
+
+[resource]
+script = ExtResource("1_qdwgm")
+id = &"artificial_bone"
+dt = 2.0
+color = Color(0.84705883, 0.8117647, 0.7058824, 1)

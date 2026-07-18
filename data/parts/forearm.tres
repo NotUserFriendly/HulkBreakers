@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_hcweq"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_wfjjp"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_i2bof"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_7vhnw"]
+
+[sub_resource type="Resource" id="Resource_e2dbd"]
+script = ExtResource("3_i2bof")
+socket_type = &"ARMOR"
+id = &"ARMOR"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.17, 0.08)
+
+[sub_resource type="Resource" id="Resource_ufwth"]
+script = ExtResource("3_i2bof")
+socket_type = &"FOREARM_TOOL"
+id = &"FOREARM_TOOL"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.17, 0.09)
+
+[sub_resource type="Resource" id="Resource_iw27q"]
+script = ExtResource("3_i2bof")
+socket_type = &"WRIST"
+id = &"WRIST"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.34, 0)
+
+[sub_resource type="Resource" id="Resource_iedd6"]
+script = ExtResource("3_i2bof")
+socket_type = &"CLADDING_FOREARM"
+id = &"CLADDING"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.17, 0)
+
+[sub_resource type="Resource" id="Resource_ni3yj"]
+script = ExtResource("4_7vhnw")
+center = Vector3(0, -0.17, 0)
+size = Vector3(0.12, 0.34, 0.12)
+
+[resource]
+script = ExtResource("1_hcweq")
+id = &"forearm"
+attaches_to = Array[StringName]([&"FOREARM"])
+sockets = Array[ExtResource("3_i2bof")]([SubResource("Resource_e2dbd"), SubResource("Resource_ufwth"), SubResource("Resource_iw27q"), SubResource("Resource_iedd6")])
+material = &"artificial_bone"
+volume = Array[ExtResource("4_7vhnw")]([SubResource("Resource_ni3yj")])
+hp = 5
+max_hp = 5
+mass = 2.5

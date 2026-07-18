@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_emlox"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_3k3b3"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_qtjph"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_tqer2"]
+
+[sub_resource type="Resource" id="Resource_jwdcl"]
+script = ExtResource("4_tqer2")
+size = Vector3(0.19, 0.93, 0.19)
+
+[resource]
+script = ExtResource("1_emlox")
+id = &"leg_cladding"
+attaches_to = Array[StringName]([&"CLADDING_LEG"])
+material = &"sheet_steel"
+volume = Array[ExtResource("4_tqer2")]([SubResource("Resource_jwdcl")])
+hp = 4
+max_hp = 4
+mass = 1.5
+mangles_into = &"twisted_sheet_metal"

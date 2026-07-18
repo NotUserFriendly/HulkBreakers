@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_doq5b"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_3o11r"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_eacin"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_qux8m"]
+
+[sub_resource type="Resource" id="Resource_hdhjk"]
+script = ExtResource("3_eacin")
+socket_type = &"ARMOR"
+id = &"ARMOR"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.45, 0.09)
+
+[sub_resource type="Resource" id="Resource_17njy"]
+script = ExtResource("3_eacin")
+socket_type = &"CLADDING_LEG"
+id = &"CLADDING"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.435, 0)
+
+[sub_resource type="Resource" id="Resource_jnai1"]
+script = ExtResource("4_qux8m")
+center = Vector3(0, -0.45, 0)
+size = Vector3(0.16, 0.9, 0.16)
+
+[resource]
+script = ExtResource("1_doq5b")
+id = &"leg"
+attaches_to = Array[StringName]([&"HIP"])
+sockets = Array[ExtResource("3_eacin")]([SubResource("Resource_hdhjk"), SubResource("Resource_17njy")])
+material = &"artificial_bone"
+volume = Array[ExtResource("4_qux8m")]([SubResource("Resource_jnai1")])
+hp = 6
+max_hp = 6
+mass = 6.0

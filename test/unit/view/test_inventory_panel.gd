@@ -41,7 +41,7 @@ func _setup(units: Array[Unit]) -> Dictionary:
 	add_child_autofree(tree)
 	add_child_autofree(footer)
 	add_child_autofree(tooltip_view)
-	panel.setup(controller, tree, footer, MaterialTable.default_table(), tooltip_view)
+	panel.setup(controller, tree, footer, DataLibrary.material_table(), tooltip_view)
 
 	return {
 		"controller": controller,
@@ -70,7 +70,7 @@ func test_selecting_a_unit_populates_the_tree_with_one_item_per_row() -> void:
 
 	controller.click_cell(Vector2i(0, 0))
 
-	var expected: Array[InventoryRow] = InventoryRows.build(a, MaterialTable.default_table())
+	var expected: Array[InventoryRow] = InventoryRows.build(a, DataLibrary.material_table())
 	var count := 0
 	# tree.get_root() is the Tree control's own hidden container, not a row
 	# — the shell root's own row is its first (and, here, only) child.

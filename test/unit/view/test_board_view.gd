@@ -16,7 +16,7 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	# +1: the grid-line mesh (docs/10 taskblock02 G3), always present.
 	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the one blocker box")
@@ -45,7 +45,7 @@ func test_build_renders_every_box_in_a_blockers_whole_part_tree() -> void:
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	assert_eq(view._static.get_child_count(), 4, "ground plane + grid lines + arm box + pistol box")
 
@@ -73,7 +73,7 @@ func test_a_destroyed_root_with_a_living_child_still_renders_the_child() -> void
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the living hand only")
 
@@ -100,7 +100,7 @@ func test_a_dropped_blocker_lies_on_its_side() -> void:
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	var upright_mesh: MeshInstance3D = view._static.get_child(2)
 	var dropped_mesh: MeshInstance3D = view._static.get_child(3)
@@ -113,13 +113,13 @@ func test_a_dropped_blocker_lies_on_its_side() -> void:
 ## `material`, the same MaterialTable lookup every other lit mesh uses.
 func test_a_blockers_mesh_uses_its_own_material_color() -> void:
 	var grid := Grid.new(2, 2)
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var scrap := FieldObjects.scrap_pile()
 	grid.blockers[Vector2i(0, 0)] = scrap
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	var mesh: MeshInstance3D = view._static.get_child(2)
 	var material: StandardMaterial3D = mesh.mesh.material
@@ -136,7 +136,7 @@ func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 	var grid := Grid.new(4, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	var mesh: ImmediateMesh = view._static.get_child(1).mesh
 	assert_not_null(mesh, "the grid-line mesh must be the second static child")
@@ -167,9 +167,9 @@ func test_build_clears_previous_children_on_rebuild() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)
 
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 	var first_count: int = view._static.get_child_count()
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	assert_eq(
 		view._static.get_child_count(), first_count, "rebuilding must not accumulate children"
@@ -187,7 +187,7 @@ func test_a_destroyed_blocker_spawns_no_mesh() -> void:
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	assert_eq(
 		view._static.get_child_count(),
@@ -206,7 +206,7 @@ func test_build_adds_a_marker_and_a_cross_per_wall_cell() -> void:
 
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	assert_eq(
 		view._static.get_child_count(),
@@ -220,7 +220,7 @@ func test_a_grid_with_no_walls_adds_no_wall_indicators() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)
 
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 
 	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
 
@@ -346,7 +346,7 @@ func test_overlays_never_touch_the_static_board() -> void:
 	var grid := Grid.new(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(grid, MaterialTable.default_table())
+	view.build(grid, DataLibrary.material_table())
 	var static_count: int = view._static.get_child_count()
 
 	view.show_reachable([Vector2i(0, 0), Vector2i(1, 0)])

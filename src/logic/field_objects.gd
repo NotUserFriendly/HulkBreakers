@@ -99,8 +99,8 @@ static func metal_scraps() -> Part:
 
 ## docs/10 taskblock05 E1: every wreckage kind a mangling Part.mangles_into
 ## can name, as templates — the same "array of templates, duplicate the
-## one you want by id" pattern DeepStrike.default_part_pool() already
-## uses. Adding a new wreckage kind is one more row here, no other code
+## one you want by id" pattern DataLibrary.parts_pool() already uses.
+## Adding a new wreckage kind is one more row here, no other code
 ## changes (open StringName vocabulary, not a closed engine state).
 static func wreckage_pool() -> Array[Part]:
 	return [twisted_sheet_metal(), metal_scraps()]

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_6msxf"]
+
+[resource]
+script = ExtResource("1_6msxf")
+id = &"steel"
+dt = 6.0
+color = Color(0.54901963, 0.5803922, 0.6117647, 1)

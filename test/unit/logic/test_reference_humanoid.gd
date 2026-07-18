@@ -11,7 +11,7 @@ func _reference_unit(cell: Vector2i = Vector2i(0, 0)) -> Unit:
 
 
 func _pool_template(part_id: StringName) -> Part:
-	for template: Part in DeepStrike.default_part_pool():
+	for template: Part in DataLibrary.parts_pool():
 		if template.id == part_id:
 			return template
 	fail_test("no pool template %s" % part_id)
@@ -305,7 +305,7 @@ func test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate() -> voi
 ## gradient itself, asserted explicitly against the material table rather
 ## than assumed from the parts that happen to use it.
 func test_the_plate_cladding_bare_dt_gradient_is_6_3_2() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	assert_eq(table.get_entry(&"steel").dt, 6.0, "plated face: steel")
 	assert_eq(table.get_entry(&"sheet_steel").dt, 3.0, "cladding: sheet_steel")
 	assert_eq(table.get_entry(&"artificial_bone").dt, 2.0, "bare part: artificial_bone")
@@ -317,14 +317,14 @@ func test_the_plate_cladding_bare_dt_gradient_is_6_3_2() -> void:
 
 
 func test_no_pool_part_has_an_empty_material() -> void:
-	for template: Part in DeepStrike.default_part_pool():
+	for template: Part in DataLibrary.parts_pool():
 		assert_ne(template.material, &"", "%s must carry a real material (docs/10)" % template.id)
 
 
 func test_the_pool_yields_at_least_three_distinct_colors() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var colors: Array[Color] = []
-	for template: Part in DeepStrike.default_part_pool():
+	for template: Part in DataLibrary.parts_pool():
 		var color: Color = table.color_for(template.material)
 		if not colors.has(color):
 			colors.append(color)

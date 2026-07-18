@@ -39,7 +39,7 @@ func test_a_part_with_render_primitive_cylinder_renders_a_cylinder() -> void:
 	unit.shell.root.render_primitive = &"CYLINDER"
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var found_cylinder: bool = false
 	for child: Node in _non_overlay_children(view):
@@ -61,7 +61,7 @@ func test_mesh_scene_wins_over_render_primitive_when_both_are_set() -> void:
 	unit.shell.root.mesh_scene = packed
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var has_commissioned_mesh: bool = false
 	var has_cylinder: bool = false
@@ -96,7 +96,7 @@ func test_render_scale_scales_the_primitive_instance_only() -> void:
 	var original_box_size: Vector3 = unit.shell.root.volume[0].size
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var found: MeshInstance3D = null
 	for child: Node in _non_overlay_children(view):
@@ -113,7 +113,7 @@ func test_render_primitive_box_is_the_existing_box_render_unchanged() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var has_box: bool = false
 	for child: Node in _non_overlay_children(view):
@@ -130,7 +130,7 @@ func test_render_color_override_replaces_the_material_colour() -> void:
 	unit.shell.root.render_color_override = Color(1.0, 0.0, 0.0, 1.0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var found: MeshInstance3D = null
 	for child: Node in _non_overlay_children(view):
@@ -146,7 +146,7 @@ func test_render_color_override_replaces_the_material_colour() -> void:
 func test_default_render_color_override_falls_back_to_material_colour() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
 	unit.shell.root.render_primitive = &"CYLINDER"
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, table)
