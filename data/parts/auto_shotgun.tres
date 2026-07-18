@@ -23,7 +23,7 @@ effective_range = 4.0
 barrel_length = 0.55
 burst_size = 3
 accepts_family = &"12GA"
-max_case_length = 0.7
+max_case_length = 70.0
 
 [resource]
 script = ExtResource("1_ei8sk")

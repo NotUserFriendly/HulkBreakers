@@ -12,3 +12,5 @@ projectile_num = 1
 stack_type = &""
 stacks_inflicted = 0.0
 ideal_barrel_length = 0.0
+case_family = &"762x51"
+case_length = 51.0

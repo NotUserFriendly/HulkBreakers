@@ -22,7 +22,7 @@ mechanical_accuracy = 0.95
 effective_range = 20.0
 barrel_length = 1.1
 accepts_family = &"762x51"
-max_case_length = 0.71
+max_case_length = 51.0
 
 [resource]
 script = ExtResource("1_h73md")

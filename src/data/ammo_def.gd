@@ -27,3 +27,19 @@ extends Resource
 ## curve" — no per-ammo values were specified for this field yet; ask
 ## before tuning.
 @export var ideal_barrel_length: float = 0.0
+
+## taskblock-13 Pass B: the compatibility class — "these are meant to
+## share a chamber," the designer's own lever, not a real-world caliber
+## database. Chambers into a `WeaponDef` iff `case_family` matches its
+## `accepts_family` AND `case_length` fits under its `max_case_length`.
+## Diameter is deliberately NOT a field: in the shipping fiction, caliber
+## lives in `display_name`/`case_family` alone (e.g. two differently
+## "sized" fictional rounds can share one family on purpose — a mini-
+## grenade that drops into a regular gun just declares that gun's
+## family). Adding a width/shoulder field was considered and rejected as
+## gun-nerdery that doesn't survive the rename to fictional ammo.
+@export var case_family: StringName = &""
+## The one continuous fit dimension — same family, too long, won't
+## chamber. Abstract length units, consistent within a family only (no
+## real-world unit is implied).
+@export var case_length: float = 0.0

@@ -12,3 +12,5 @@ projectile_num = 1
 stack_type = &"BURN"
 stacks_inflicted = 1.0
 ideal_barrel_length = 0.0
+case_family = &"9mm"
+case_length = 19.0

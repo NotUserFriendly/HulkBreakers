@@ -14,6 +14,14 @@ extends SceneTree
 ## round damage/high volume, shotgun = short range, sniper = high single-
 ## shot damage/long range) — not tuned balance. Ask before treating any of
 ## these as final.
+##
+## taskblock-13 Pass B: `max_case_length`/`AmmoDef.case_length` share one
+## convention — millimeters, read straight off the reference ammo's own
+## caliber naming (5.56x45 -> 45, 7.62x51 -> 51, 12 Gauge 70mm -> 70), so
+## each real reference round chambers at EXACTLY its gun's own limit
+## (boundary-of-legal by construction, useful for Pass H's own "cartridge
+## exactly at max_case_length" hardening case) rather than an arbitrary
+## headroom number.
 
 
 func _initialize() -> void:
@@ -59,7 +67,7 @@ func _guns() -> Array[Part]:
 	chaingun.weapon_def.burst_size = 12
 	chaingun.weapon_def.effective_range = 8.0
 	chaingun.weapon_def.accepts_family = &"556x45"
-	chaingun.weapon_def.max_case_length = 0.56
+	chaingun.weapon_def.max_case_length = 45.0
 
 	var pump_shotgun: Part = _base_weapon(&"pump_shotgun", "Pump Shotgun")
 	pump_shotgun.hp = 4
@@ -77,7 +85,7 @@ func _guns() -> Array[Part]:
 	pump_shotgun.weapon_def.barrel_length = 0.5
 	pump_shotgun.weapon_def.effective_range = 4.0
 	pump_shotgun.weapon_def.accepts_family = &"12GA"
-	pump_shotgun.weapon_def.max_case_length = 0.7
+	pump_shotgun.weapon_def.max_case_length = 70.0
 
 	var auto_shotgun: Part = _base_weapon(&"auto_shotgun", "Auto Shotgun")
 	auto_shotgun.hp = 5
@@ -96,7 +104,7 @@ func _guns() -> Array[Part]:
 	auto_shotgun.weapon_def.burst_size = 3
 	auto_shotgun.weapon_def.effective_range = 4.0
 	auto_shotgun.weapon_def.accepts_family = &"12GA"
-	auto_shotgun.weapon_def.max_case_length = 0.7
+	auto_shotgun.weapon_def.max_case_length = 70.0
 
 	var sniper_rifle: Part = _base_weapon(&"sniper_rifle", "Sniper Rifle")
 	sniper_rifle.hp = 5
@@ -115,6 +123,6 @@ func _guns() -> Array[Part]:
 	sniper_rifle.weapon_def.barrel_length = 1.1
 	sniper_rifle.weapon_def.effective_range = 20.0
 	sniper_rifle.weapon_def.accepts_family = &"762x51"
-	sniper_rifle.weapon_def.max_case_length = 0.71
+	sniper_rifle.weapon_def.max_case_length = 51.0
 
 	return [chaingun, pump_shotgun, auto_shotgun, sniper_rifle]

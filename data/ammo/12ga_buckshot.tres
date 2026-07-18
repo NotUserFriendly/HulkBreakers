@@ -12,3 +12,5 @@ projectile_num = 9
 stack_type = &""
 stacks_inflicted = 0.0
 ideal_barrel_length = 0.0
+case_family = &"12GA"
+case_length = 70.0
