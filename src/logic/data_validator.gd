@@ -27,6 +27,8 @@ static func validate(resource: Resource) -> Array[ValidationError]:
 		return _validate_ammo(resource as AmmoDef)
 	if resource is MaterialEntry:
 		return _validate_material(resource as MaterialEntry)
+	if resource is BotPreset:
+		return _validate_preset(resource as BotPreset)
 	return []
 
 
@@ -109,4 +111,23 @@ static func _validate_material(material: MaterialEntry) -> Array[ValidationError
 				)
 			)
 		previous_thickness = point.x
+	return errors
+
+
+## taskblock-14 Pass A1: a reference profile must actually assemble —
+## `template_id` is the one referential check (`ShellTemplates.by_id`);
+## `loadout`'s own part ids are validated for free the moment something
+## tries to assemble through `BodyAssembler` (a missing/illegal part is
+## `BodyAssembler.assemble`'s own null-return, not re-checked here).
+static func _validate_preset(preset: BotPreset) -> Array[ValidationError]:
+	var errors: Array[ValidationError] = []
+	var row_id: StringName = StringName(preset.preset_name)
+	if preset.preset_name == "":
+		errors.append(ValidationError.new(row_id, &"preset_name", "preset_name must not be empty"))
+	if ShellTemplates.by_id(preset.template_id) == null:
+		errors.append(
+			ValidationError.new(
+				row_id, &"template_id", "references unknown template '%s'" % preset.template_id
+			)
+		)
 	return errors

@@ -205,6 +205,31 @@ static func assemble_reference_humanoid(matrix: Matrix, cell: Vector2i, squad_id
 	)
 
 
+## taskblock-14 Pass A2: spawns a NAMED `BotPreset` (a bot profile) at a
+## cell/squad, through the same `BodyAssembler` every other assembly path
+## uses — no parallel path. Distinct from `assemble_random`'s "scrap-heap
+## landing" (a different algorithm on purpose, not rehomed onto
+## BodyAssembler either — see that function's own header) and from
+## `assemble_reference_humanoid`'s one hardcoded template/loadout: this
+## reads BOTH off the preset. `null` if `preset.template_id` doesn't
+## resolve (DataValidator._validate_preset already catches this at
+## authoring time; this is the runtime mirror of that same check, same
+## "never crash, never silently invent" posture every assembly path
+## already has).
+static func assemble_from_preset(
+	preset: BotPreset, matrix: Matrix, cell: Vector2i, squad_id: int = 0
+) -> Unit:
+	var template: ShellTemplate = ShellTemplates.by_id(preset.template_id)
+	if template == null:
+		return null
+	var unit: Unit = BodyAssembler.assemble(
+		template, preset.loadout, reference_humanoid_pool(), matrix, cell, squad_id
+	)
+	if unit != null:
+		unit.pose = Poses.by_id(preset.pose_id)
+	return unit
+
+
 ## Socket/mass/RAM/bulk invariants (Phase 7 fuzz test): every violation
 ## found, or an empty array if the assembly is sound.
 static func validate_assembly(unit: Unit) -> Array[String]:
