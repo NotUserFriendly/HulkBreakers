@@ -36,13 +36,47 @@ static func resolve_crit_chance(weapon: Part, extra_sources: Array[ModSource] = 
 
 ## taskblock-09 F/taskblock-10 E: `Part.bonus_pen`'s own status is the
 ## same flagged weapon-level placeholder `damage` carries (Pass G) —
-## `AmmoDef.bonus_pen` exists now (taskblock-10 Pass D) but no weapon Part
-## references an AmmoDef yet, so nothing has moved. Until a weapon
-## actually names its ammo, this stays the one live source, read through
-## here like every other weapon-derived number, never `weapon.bonus_pen`
-## directly.
+## `AmmoDef.bonus_pen` exists (taskblock-10 Pass D) and a weapon Part CAN
+## now name a chambered round (taskblock-13 Pass B's own `ammo_id`), but
+## nothing here reads it yet — swapping this field's source to whatever's
+## chambered is a still-later, unbuilt wiring pass, not this one. Until
+## then this stays the live source, read through here like every other
+## weapon-derived number, never `weapon.bonus_pen` directly.
 static func resolve_bonus_pen(weapon: Part, extra_sources: Array[ModSource] = []) -> StatValue:
 	return StatResolver.resolve(&"bonus_pen", _context(weapon.bonus_pen, weapon, extra_sources))
+
+
+## taskblock-13 Pass B: "chambering is legal iff `ammo.case_family ==
+## gun.accepts_family` AND `ammo.case_length <= gun.max_case_length`."
+## Diameter is never consulted — see `AmmoDef.case_family`'s own header
+## for why. Returns "" (legal) or a human-readable, NAMED rejection
+## reason — an illegal cartridge is refused loudly, never silently
+## dropped/ignored.
+static func chamber_error(weapon: Part, ammo: AmmoDef) -> String:
+	if weapon.weapon_def == null:
+		return "%s has no chamber at all (not a weapon)" % weapon.id
+	if ammo.case_family != weapon.weapon_def.accepts_family:
+		return (
+			"%s (%s) does not fit %s's chamber (%s)"
+			% [ammo.id, ammo.case_family, weapon.id, weapon.weapon_def.accepts_family]
+		)
+	if ammo.case_length > weapon.weapon_def.max_case_length:
+		return (
+			"%s's case (%.2f) is too long for %s's chamber (max %.2f)"
+			% [ammo.id, ammo.case_length, weapon.id, weapon.weapon_def.max_case_length]
+		)
+	return ""
+
+
+## Chambers `ammo` into `weapon` (sets `weapon.ammo_id`) iff
+## `chamber_error` finds nothing wrong; a rejected round never mutates
+## the weapon. Returns the same "" (loaded) / named-reason string
+## `chamber_error` does, so a caller can show the rejection verbatim.
+static func try_chamber(weapon: Part, ammo: AmmoDef) -> String:
+	var error: String = chamber_error(weapon, ammo)
+	if error == "":
+		weapon.ammo_id = ammo.id
+	return error
 
 
 static func _context(base: float, weapon: Part, extra_sources: Array[ModSource]) -> ResolverContext:

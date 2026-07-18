@@ -12,3 +12,5 @@ projectile_num = 7
 stack_type = &"BLEED"
 stacks_inflicted = 1.0
 ideal_barrel_length = 0.0
+case_family = &"12GA"
+case_length = 70.0

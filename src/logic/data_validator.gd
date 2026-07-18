@@ -85,6 +85,8 @@ static func _validate_ammo(ammo: AmmoDef) -> Array[ValidationError]:
 		)
 	if ammo.projectile_num < 1:
 		errors.append(ValidationError.new(row_id, &"projectile_num", "must be at least 1"))
+	if ammo.case_length < 0.0:
+		errors.append(ValidationError.new(row_id, &"case_length", "must not be negative"))
 	return errors
 
 
