@@ -21,6 +21,10 @@ const TOGGLE_KEY := KEY_H
 ## key distinct from TOGGLE_KEY (this overlay's help legend), so hiding one
 ## never hides the other.
 const TOGGLE_HIT_VOLUMES_KEY := KEY_V
+## taskblock-14 Pass D: "reachable from a debug key now" — the Simulate Bout
+## menu, same dev-tool status as TOGGLE_HIT_VOLUMES_KEY, own key so it never
+## collides with a bound gameplay verb.
+const SIMULATE_BOUT_KEY := KEY_B
 
 
 ## `{"trigger": String, "action": String}`, in the order docs/10 taskblock03
@@ -47,6 +51,7 @@ static func all(log_path: String) -> Array[Dictionary]:
 		{"trigger": "Scroll", "action": "zoom (while not aiming)"},
 		{"trigger": _key(TOGGLE_KEY), "action": "toggle this help"},
 		{"trigger": _key(TOGGLE_HIT_VOLUMES_KEY), "action": "toggle hit volumes"},
+		{"trigger": _key(SIMULATE_BOUT_KEY), "action": "simulate bout"},
 		{"trigger": "log", "action": log_path},
 	]
 
