@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AmmoDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/ammo_def.gd" id="1_ammodef"]
+
+[resource]
+script = ExtResource("1_ammodef")
+id = &"9mm_fmj"
+display_name = "9mm FMJ"
+damage = 4.0
+bonus_pen = 1.0
+projectile_num = 1
+stack_type = &""
+stacks_inflicted = 0.0
+ideal_barrel_length = 0.0
