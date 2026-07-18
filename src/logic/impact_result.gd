@@ -16,17 +16,28 @@ var is_crit: bool = false
 var is_double_crit: bool = false
 var bypassed_armor: bool = false
 var destroyed_part: bool = false
-var cooked_off_units: Array[Unit] = []
+## taskblock-09 A3: renamed from cooked_off_units — DETONATE, not "cook-off."
+var detonated_units: Array[Unit] = []
+## taskblock-09 A4: the K fragment rays' own results, when this impact
+## destroyed a failure_mode == FRAGMENT part — each one a full nested
+## resolve_shot flight (penetration/deflect/ricochet, all of it), never
+## just a flat damage number.
+var fragment_hits: Array[ImpactResult] = []
+## taskblock-09 A4: true when this impact started a MELTDOWN countdown
+## (as opposed to detonating immediately, which shows up in
+## `detonated_units` instead, same as any other DETONATE).
+var meltdown_armed: bool = false
 var ejected_matrix: Matrix = null
 ## docs/04 taskblock02 Pass D1: the shell root's attached surrogate,
 ## matrix and all, when the root itself is destroyed while hosting one —
 ## distinct from `ejected_matrix`, which fires when a part hosts a BARE
 ## matrix directly (a bot). Mutually exclusive on any one impact.
 var ejected_surrogate: Part = null
-## docs/10 taskblock05 E2: usually one entry (the non-mangling case: the
-## destroyed part's own subtree, rooted at it) but a mangling destruction
-## can drop several separate items at once — its own children, each its
-## own intact assembly, plus the wreckage `part` itself became.
+## taskblock-09 C2: populated only by a SEVERED JOINT hit now, never by a
+## part reaching 0 hp (BREAK is gone) — the socket's own occupant subtree
+## dropping intact, rooted at the child the joint connected. A part
+## failing under MANGLE/DISABLE/DETONATE/FRAGMENT/MELTDOWN never touches
+## this field at all.
 var dropped_subtree: Array[Part] = []
 ## Set alongside `ejected_matrix` (docs/04: ejection always demotes the
 ## surrogate one rung) — captured here rather than re-derived afterward,

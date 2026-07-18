@@ -206,15 +206,58 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 		for dropped: Part in result.dropped_subtree:
 			if dropped != result.region.part:
 				_credit_salvage(state, attacker, dropped)
-	for cooked: Unit in result.cooked_off_units:
+		# taskblock-09 A1/A2: "if it changed the world, it's in the log" —
+		# is_mangled/is_disabled are real, visible state changes (a
+		# quartered DT, a dead weapon), not just bookkeeping alongside
+		# part_destroyed.
+		if result.region.part.is_mangled:
+			state.combat_log.emit(
+				LogEvent.new(
+					state.round_number,
+					Enums.Phase.RESOLUTION,
+					attacker.id,
+					&"part_mangled",
+					{"part": result.region.part.id},
+					"part_mangled: %s" % result.region.part.id
+				)
+			)
+		if result.region.part.is_disabled:
+			state.combat_log.emit(
+				LogEvent.new(
+					state.round_number,
+					Enums.Phase.RESOLUTION,
+					attacker.id,
+					&"part_disabled",
+					{"part": result.region.part.id},
+					"part_disabled: %s" % result.region.part.id
+				)
+			)
+	# taskblock-09 A3: renamed from "cook_off" — DETONATE, not cook-off.
+	for detonated: Unit in result.detonated_units:
 		state.combat_log.emit(
 			LogEvent.new(
 				state.round_number,
 				Enums.Phase.RESOLUTION,
 				attacker.id,
-				&"cook_off",
-				{"source_part": result.region.part.id, "unit": cooked.id},
-				"cook_off: %s hit unit %d" % [result.region.part.id, cooked.id]
+				&"detonate",
+				{"source_part": result.region.part.id, "unit": detonated.id},
+				"detonate: %s hit unit %d" % [result.region.part.id, detonated.id]
+			)
+		)
+	# taskblock-09 A4: each fragment ray is its own full impact — same
+	# logging path, recursively, so a fragment that itself penetrates/
+	# deflects/ricochets is logged exactly like any other projectile.
+	for fragment_result: ImpactResult in result.fragment_hits:
+		_log_impact(state, attacker, fragment_result)
+	if result.meltdown_armed:
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"meltdown_armed",
+				{"part": result.region.part.id},
+				"meltdown_armed: %s" % result.region.part.id
 			)
 		)
 	if result.ejected_matrix != null:

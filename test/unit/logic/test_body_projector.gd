@@ -529,3 +529,45 @@ func _scan_dir_for_rotated_orientation(
 				offending.append(full_path)
 		entry = dir.get_next()
 	dir.list_dir_end()
+
+
+## taskblock-09 A1/A2: a MANGLE/DISABLE-failed part stays fully attached
+## (docs/03) — the old blanket "hp<=0 vanishes" rule would have made it
+## silently untargetable, which contradicts "sockets stay live and
+## hittable." A DETONATE/FRAGMENT/MELTDOWN-consumed part still vanishes
+## exactly like before; only the two attached failure modes are exempt.
+func test_a_mangled_or_disabled_part_still_projects_at_zero_hp() -> void:
+	var mangled := Part.new()
+	mangled.id = &"mangled"
+	mangled.hp = 0
+	mangled.max_hp = 3
+	mangled.is_mangled = true
+	mangled.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
+	assert_false(
+		BodyProjector.project_part(mangled, Vector2(0, 1)).is_empty(),
+		"a mangled part must still occlude/be hittable"
+	)
+
+	var disabled := Part.new()
+	disabled.id = &"disabled"
+	disabled.hp = 0
+	disabled.max_hp = 3
+	disabled.is_disabled = true
+	disabled.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
+	assert_false(
+		BodyProjector.project_part(disabled, Vector2(0, 1)).is_empty(),
+		"a disabled part must still occlude/be hittable"
+	)
+
+
+func test_a_plain_destroyed_part_still_vanishes_at_zero_hp() -> void:
+	var consumed := Part.new()
+	consumed.id = &"consumed"
+	consumed.hp = 0
+	consumed.max_hp = 3
+	consumed.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
+	assert_eq(
+		BodyProjector.project_part(consumed, Vector2(0, 1)),
+		[] as Array[Region],
+		"a part destroyed with neither flag set (DETONATE/FRAGMENT/MELTDOWN) still vanishes"
+	)

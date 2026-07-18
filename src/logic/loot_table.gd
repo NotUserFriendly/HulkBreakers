@@ -45,8 +45,9 @@ static func hulk_only_pool() -> Array[Part]:
 	salvaged_reactor_core.attaches_to = [&"INTERNAL"]
 	salvaged_reactor_core.mass = 8.0
 	salvaged_reactor_core.tags = [&"VOLATILE", &"SALVAGE"]
-	salvaged_reactor_core.cook_off_damage = 10.0
-	salvaged_reactor_core.cook_off_radius = 2.0
+	salvaged_reactor_core.failure_mode = &"DETONATE"
+	salvaged_reactor_core.detonate_damage = 10.0
+	salvaged_reactor_core.detonate_radius = 2.0
 
 	var xeno_alloy_plate := Part.new()
 	xeno_alloy_plate.id = &"xeno_alloy_plate"

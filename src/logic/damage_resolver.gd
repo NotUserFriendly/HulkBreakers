@@ -65,21 +65,111 @@ static func apply_damage_to_part(part: Part, amount: float) -> bool:
 	return part.hp <= 0
 
 
-## A destroyed VOLATILE part with cook_off_damage > 0 explodes: every living
-## unit within cook_off_radius (Chebyshev) of its cell takes that damage to
-## their shell's root part. Returns the units it hit.
-static func cook_off(part: Part, state: CombatState) -> Array[Unit]:
+## taskblock-09 A3 (docs/03): renamed from "cook-off," same mechanic. A
+## failed DETONATE part with detonate_damage > 0 explodes: every living
+## unit within detonate_radius (Chebyshev) of its cell takes that damage
+## to their shell's root part. Returns the units it hit. No longer gated
+## by the VOLATILE tag — that's a descriptor now, open vocabulary; the
+## trigger is failure_mode == DETONATE, enforced by this file's own single
+## caller, `resolve_part_failure`.
+static func detonate(part: Part, state: CombatState) -> Array[Unit]:
 	var affected: Array[Unit] = []
-	if not (&"VOLATILE" in part.tags) or part.cook_off_damage <= 0.0:
+	if part.detonate_damage <= 0.0:
 		return affected
 	var center: Vector2i = _locate_cell(part, state)
 	if center.x < 0:
 		return affected
 	for unit: Unit in state.units:
-		if unit.alive and Grid.distance_chebyshev(unit.cell, center) <= int(part.cook_off_radius):
-			apply_damage_to_part(unit.shell.root, part.cook_off_damage)
+		if unit.alive and Grid.distance_chebyshev(unit.cell, center) <= int(part.detonate_radius):
+			apply_damage_to_part(unit.shell.root, part.detonate_damage)
 			affected.append(unit)
 	return affected
+
+
+## taskblock-09 A4: a failed FRAGMENT part sprays `fragment_count` rays in
+## even directions from its own cell, each one a full resolve_shot flight
+## (so a fragment can itself penetrate/deflect/ricochet, terminating the
+## same way every other projectile does — depth cap + damage floor still
+## apply on its own recursive calls). taskblock-10's real ammo/spread
+## machinery replaces the even-direction spread; until then this is the
+## taskblock's own literal words: "K rays in even directions."
+static func _fragment(part: Part, state: CombatState) -> Array[ImpactResult]:
+	var hits: Array[ImpactResult] = []
+	if part.fragment_count <= 0 or part.fragment_damage <= 0.0:
+		return hits
+	var center: Vector2i = _locate_cell(part, state)
+	if center.x < 0:
+		return hits
+	var origin := Vector2(center.x, center.y)
+	for i in range(part.fragment_count):
+		var angle: float = TAU * float(i) / float(part.fragment_count)
+		var direction := Vector2(cos(angle), sin(angle))
+		hits.append_array(
+			resolve_shot(
+				origin,
+				direction,
+				Vector2.ZERO,
+				part.fragment_damage,
+				0.0,
+				state,
+				state.material_table,
+				state.rng
+			)
+		)
+	return hits
+
+
+## taskblock-09 A0: dispatches to exactly what `part.failure_mode` says
+## happens at 0 HP — never stacked (a part has ONE failure_mode). Mutates
+## `part` (is_mangled/is_disabled/meltdown_countdown) and populates
+## `impact` with whatever that mode's own consequences were, for logging
+## (docs/09: "if it changed the world, it's in the log"). The one caller,
+## `_resolve_destruction_consequences`, only ever reaches this once per
+## actual destroying hit, so DETONATE/FRAGMENT firing exactly once is a
+## property of the call site, not a guard here.
+static func resolve_part_failure(part: Part, state: CombatState, impact: ImpactResult) -> void:
+	match part.failure_mode:
+		&"MANGLE":
+			part.is_mangled = true
+		&"DISABLE":
+			part.is_disabled = true
+		&"DETONATE":
+			impact.detonated_units = detonate(part, state)
+		&"FRAGMENT":
+			impact.fragment_hits = _fragment(part, state)
+		&"MELTDOWN":
+			if part.meltdown_countdown >= 0:
+				# Already counting down and destroyed again (taskblock-09
+				# A4): detonate now rather than waiting out the rest of the
+				# clock.
+				part.meltdown_countdown = -1
+				impact.detonated_units = detonate(part, state)
+			elif part.meltdown_turns <= 0:
+				# No countdown authored: behaves like an instant DETONATE.
+				impact.detonated_units = detonate(part, state)
+			else:
+				part.meltdown_countdown = part.meltdown_turns
+				impact.meltdown_armed = true
+
+
+## taskblock-09 A4: ticks every part's own live MELTDOWN countdown down by
+## one — called once per the owning unit's own turn start
+## (CombatState._start_turn, the same seam LifeSupport.tick already uses).
+## Walks `all_parts()`, not `living_parts()`: a counting-down part already
+## has hp <= 0 (it failed to get here) and would otherwise be invisible to
+## this tick. Returns one entry per part that actually detonated THIS
+## tick, `{"part": Part, "units": Array[Unit]}`, so the caller can log it
+## (this file stays a pure logic layer, no direct combat_log coupling).
+static func tick_meltdowns(unit: Unit, state: CombatState) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for part: Part in unit.shell.all_parts():
+		if part.meltdown_countdown < 0:
+			continue
+		part.meltdown_countdown -= 1
+		if part.meltdown_countdown <= 0:
+			part.meltdown_countdown = -1
+			events.append({"part": part, "units": detonate(part, state)})
+	return events
 
 
 static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
@@ -163,74 +253,20 @@ static func _hosts_matrix_somewhere(part: Part) -> bool:
 	return false
 
 
-## Destroying any non-root part drops something (docs/01/10 taskblock05
-## E2). **Not mangling** (pistol, sensor, reactor): the whole subtree drops
-## as one intact assembly, rooted at `part` itself, broken — "blow a
-## shoulder off and the entire subtree below it drops as one item," the
-## original docs/01 rule, unchanged. **Mangling** (cladding, plates,
-## structure — `part.mangles_into` set): `part` becomes wreckage, replaced
-## entirely by a fresh instance from `state.wreckage_pool`; its own
-## children detach and EACH drops as its own separate intact assembly,
-## rooted at itself — the thing that held them became scrap, it can't hold
-## anything, so "a destroyed arm with a working pistol on it" (a corpse
-## holding its own loot) can't happen anymore. The shell's own root is
-## handled separately (eject_matrix_if_needed/eject_surrogate_if_needed) —
-## there's no parent within the same shell to drop it from, since the root
-## destroyed IS the unit.
-##
-## Returns every Part actually dropped this call (empty if nothing was).
-##
-## docs/10 taskblock04 C1/C2: a dropped assembly is a field object now —
-## shootable and cover, the exact same category `grid.blockers` already
-## renders and projects into the shot plane (living children of a dropped
-## root still project correctly; BodyProjector's own tree-walk recurses
-## into sockets regardless of the parent's hp). Skips registering as a
-## blocker if the cell already holds one (pre-existing terrain cover):
-## `grid.blockers` is one Part per cell today, so a genuine collision falls
-## back to field_items alone (still lootable, just not additionally
-## rendered/shootable) rather than silently discarding the existing cover.
-static func drop_subtree_if_destroyed(part: Part, state: CombatState) -> Array[Part]:
-	if part.hp > 0:
-		return []
-	var owner: Unit = _owning_unit(part, state)
-	if owner == null or owner.shell.root == part:
-		return []
-	if not PartGraph.drop(owner.shell.root, part):
-		return []
-
-	if part.mangles_into == &"":
-		_register_dropped(part, owner, state)
-		return [part]
-	return _mangle_and_drop(part, owner, state)
-
-
-## `part` has already been detached from its shell by the time this runs
-## (drop_subtree_if_destroyed's job) — this only handles what happens to
-## `part` itself and whatever was still riding its own sockets.
-static func _mangle_and_drop(part: Part, owner: Unit, state: CombatState) -> Array[Part]:
-	var dropped: Array[Part] = []
-	for socket: Socket in part.sockets:
-		var occupant: Part = socket.occupant
-		if occupant == null:
-			continue
-		socket.occupant = null
-		_register_dropped(occupant, owner, state)
-		dropped.append(occupant)
-
-	var wreckage: Part = _wreckage_for(part.mangles_into, state.wreckage_pool)
-	if wreckage != null:
-		_register_dropped(wreckage, owner, state)
-		dropped.append(wreckage)
-	return dropped
-
-
-static func _wreckage_for(mangles_into: StringName, pool: Array[Part]) -> Part:
-	for template: Part in pool:
-		if template.id == mangles_into:
-			return (template as Part).duplicate(true)
-	return null
-
-
+## taskblock-09 C2: "BREAK is gone — severing is the only 'drops off.'"
+## Destroying a PART (this file's own hp<=0 path) never detaches anything
+## anymore — MANGLE/DISABLE stay attached, DETONATE/FRAGMENT/MELTDOWN are
+## consumed in place (`resolve_part_failure`). The only way a part
+## leaves the body now is a SEVERED JOINT (Pass C/D: shoot the socket
+## connecting it to its parent, not the part itself) — that mechanism
+## lives with the rest of the joint-hit resolution path, not here. This
+## used to be `drop_subtree_if_destroyed`, keyed on the destroyed part's
+## own hp; deleted rather than adapted, per the taskblock's own framing —
+## the docs/01 "blow a shoulder off, the subtree drops intact" rule still
+## holds, it's just read off the shoulder's own JOINT now, never the
+## part's hp. `_register_dropped` below is the one piece of the old
+## mechanism that survives unchanged: the joint-drop path reuses it
+## verbatim for field-item/blocker registration.
 static func _register_dropped(part: Part, owner: Unit, state: CombatState) -> void:
 	if not state.grid.field_items.has(owner.cell):
 		state.grid.field_items[owner.cell] = []
@@ -243,14 +279,17 @@ static func _register_dropped(part: Part, owner: Unit, state: CombatState) -> vo
 
 
 ## Every consequence of a part actually reaching 0 hp, gathered onto one
-## ImpactResult: cook-off, matrix ejection (plus the demotion it always
-## carries — docs/04), and the subtree drop. `demoted_tier_before` is
-## captured ahead of eject_matrix_if_needed() since that call is what
-## changes it.
+## ImpactResult: its own failure_mode (taskblock-09 A0), matrix ejection
+## (plus the demotion it always carries — docs/04). `demoted_tier_before`
+## is captured ahead of eject_matrix_if_needed() since that call is what
+## changes it. No subtree drop here anymore (taskblock-09 C2): a
+## destroyed PART never detaches on its own hp reaching 0 — only a
+## severed JOINT does, a wholly separate hit (Pass D), never reached from
+## this function.
 static func _resolve_destruction_consequences(
 	impact: ImpactResult, region: Region, state: CombatState
 ) -> void:
-	impact.cooked_off_units = cook_off(region.part, state)
+	resolve_part_failure(region.part, state, impact)
 	var owner: Unit = _owning_unit(region.part, state)
 	var tier_before: SurrogateTier = owner.surrogate_tier if owner != null else null
 	impact.ejected_matrix = eject_matrix_if_needed(region.part, state)
@@ -258,7 +297,6 @@ static func _resolve_destruction_consequences(
 	if impact.ejected_matrix != null or impact.ejected_surrogate != null:
 		impact.demoted_unit = owner
 		impact.demoted_tier_before = tier_before
-	impact.dropped_subtree = drop_subtree_if_destroyed(region.part, state)
 
 
 ## Every part sharing a body with `part` (its whole unit, if any — otherwise
