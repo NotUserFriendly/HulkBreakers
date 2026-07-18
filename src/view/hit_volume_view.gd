@@ -42,6 +42,13 @@ const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
 ## down at a glance." Darkens the team ring rather than a separate material —
 ## cheap, and it still reads as "this squad's, but not right."
 const DOWNED_MARKER_DIM := 0.4
+## taskblock-13 Pass F: "every placeholder gun box renders text on it
+## stating what it is... cosmetic, dev-legibility only." Small — these
+## are gun-sized boxes (a chaingun's own box is ~0.15m wide), not
+## person-sized, so `board_view.gd`'s own WAYPOINT_FONT_SIZE (24, sized
+## for a whole-cell waypoint marker) would dwarf one outright.
+const WEAPON_LABEL_FONT_SIZE := 10
+const WEAPON_LABEL_COLOR := Color(0.95, 0.95, 0.95)
 
 var unit: Unit
 var material_table: MaterialTable
@@ -244,6 +251,7 @@ func _add_primitive_instance(
 	if not _meshes_by_part.has(part):
 		_meshes_by_part[part] = [] as Array[MeshInstance3D]
 	(_meshes_by_part[part] as Array[MeshInstance3D]).append(instance)
+	_add_weapon_label(part, instance)
 
 
 ## Base unit-size primitives (1.0 diameter, 1.0 height) — `render_scale`
@@ -294,6 +302,33 @@ func _add_box_instance(placement: BoxPlacement, team_color: Color, apply_rim: bo
 	if not _meshes_by_part.has(placement.part):
 		_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
 	(_meshes_by_part[placement.part] as Array[MeshInstance3D]).append(instance)
+	_add_weapon_label(placement.part, instance)
+
+
+## taskblock-13 Pass F: "every placeholder gun box renders text on it
+## stating what it is... fitted to the box shape." A no-op for anything
+## that isn't a weapon (`weapon_def == null`) or has no `display_name`
+## authored — same "cosmetic only, never touches resolution" posture as
+## `mesh_scene`/`render_primitive` above: nothing here is hit-tested, and
+## it draws over whatever `instance` (a box OR a primitive) already is.
+## Billboarded and `no_depth_test` (board_view.gd's own waypoint-label
+## convention) so it always reads instead of clipping into its own box.
+func _add_weapon_label(part: Part, instance: MeshInstance3D) -> void:
+	if part.weapon_def == null or part.display_name == "":
+		return
+	var label := Label3D.new()
+	label.text = part.display_name
+	label.font_size = WEAPON_LABEL_FONT_SIZE
+	label.modulate = WEAPON_LABEL_COLOR
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	# Small, fixed onscreen scale (not a world-space fit to the box's own
+	# size) — same convention board_view.gd's waypoint labels already use;
+	# these boxes range from a chaingun's ~0.15m to a sniper's ~1.1m, and a
+	# literal box-width fit would make the chaingun's own label
+	# unreadably tiny.
+	label.pixel_size = 0.002
+	instance.add_child(label)
 
 
 ## docs/10 taskblock05 C: "hovering a part highlights it in the world" —
