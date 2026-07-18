@@ -19,10 +19,20 @@ const USER_ROOT := "user://data"
 const TYPE_PARTS := &"parts"
 const TYPE_AMMO := &"ammo"
 const TYPE_MATERIALS := &"materials"
+## taskblock-14 Pass A1: reference bot profiles as real, shipped content
+## — distinct from `BotPreset.save`/`load_preset` (`user://presets/`, the
+## player's own builder-authored saves, untouched by this). A `.tres`
+## under `res://data/presets/` (or a `user://data/presets/` override) is
+## a designer-authored profile a bout can spawn, addressed by
+## `BotPreset.preset_name` the same way every other type is addressed by
+## `id` — `resource.get("id")` below reads `preset_name` for this type
+## only (see `_load_file`'s own id lookup).
+const TYPE_PRESETS := &"presets"
 
 static var _parts: Dictionary = {}  # StringName -> Part
 static var _ammo: Dictionary = {}  # StringName -> AmmoDef
 static var _materials: Dictionary = {}  # StringName -> MaterialEntry
+static var _presets: Dictionary = {}  # StringName -> BotPreset
 ## "type:id" -> &"builtin" | &"user" (taskblock-11 B2: "source (res://
 ## built-in vs user:// override)"). Not derivable from `_parts`/`_ammo`/
 ## `_materials` alone once a `user://` row has overridden a built-in one
@@ -53,6 +63,7 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_parts.clear()
 	_ammo.clear()
 	_materials.clear()
+	_presets.clear()
 	_sources.clear()
 	_errors.clear()
 	# Materials first: Part validation cross-references material ids.
@@ -62,6 +73,8 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_load_dir(user_root + "/parts", _parts, TYPE_PARTS, &"user")
 	_load_dir(builtin_root + "/ammo", _ammo, TYPE_AMMO, &"builtin")
 	_load_dir(user_root + "/ammo", _ammo, TYPE_AMMO, &"user")
+	_load_dir(builtin_root + "/presets", _presets, TYPE_PRESETS, &"builtin")
+	_load_dir(user_root + "/presets", _presets, TYPE_PRESETS, &"user")
 
 
 ## docs/00 (determinism: "same seed = same battle, always"): a raw
@@ -106,7 +119,13 @@ static func _load_file(
 	if not row_errors.is_empty():
 		_errors.append_array(row_errors)
 		return
-	var id: StringName = resource.get("id")
+	# BotPreset predates this pipeline and keys itself by `preset_name`
+	# (String — it doubles as the `user://presets/` save filename), never
+	# `id` (StringName) like every other type here — the one exception to
+	# an otherwise-uniform id lookup.
+	var id: StringName = (
+		StringName(resource.preset_name) if resource is BotPreset else resource.get("id")
+	)
 	into[id] = resource
 	_sources["%s:%s" % [type_key, id]] = source
 
@@ -140,6 +159,22 @@ static func get_material(id: StringName) -> MaterialEntry:
 	_ensure_loaded()
 	var material: MaterialEntry = _materials.get(id)
 	return material.duplicate(true) if material != null else null
+
+
+static func get_preset(id: StringName) -> BotPreset:
+	_ensure_loaded()
+	var preset: BotPreset = _presets.get(id)
+	return preset.duplicate(true) if preset != null else null
+
+
+## Every loaded reference profile — for a bout-setup menu's own dropdown
+## (taskblock-14 Pass D), grouped by `profile_family` client-side.
+static func presets_pool() -> Array[BotPreset]:
+	_ensure_loaded()
+	var pool: Array[BotPreset] = []
+	for preset: BotPreset in _presets.values():
+		pool.append(preset.duplicate(true))
+	return pool
 
 
 ## Every loaded part template, for callers that used to read
@@ -204,12 +239,14 @@ static func save(type_key: StringName, resource: Resource) -> Array[ValidationEr
 	if not validation_errors.is_empty():
 		return validation_errors
 	var type_dir: String = _dir_name_for(type_key)
+	var id: StringName = (
+		StringName(resource.preset_name) if resource is BotPreset else resource.get("id")
+	)
 	if type_dir == "":
-		return [ValidationError.new(resource.get("id"), &"type", "unknown definition type")]
+		return [ValidationError.new(id, &"type", "unknown definition type")]
 	_ensure_loaded()
 	var dir: String = _active_user_root + "/" + type_dir
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-	var id: StringName = resource.get("id")
 	var path: String = "%s/%s.tres" % [dir, id]
 	var err: Error = ResourceSaver.save(resource, path)
 	if err != OK:
@@ -227,6 +264,8 @@ static func _dict_for(type_key: StringName) -> Dictionary:
 			return _ammo
 		TYPE_MATERIALS:
 			return _materials
+		TYPE_PRESETS:
+			return _presets
 		_:
 			return {}
 
@@ -239,6 +278,8 @@ static func _dir_name_for(type_key: StringName) -> String:
 			return "ammo"
 		TYPE_MATERIALS:
 			return "materials"
+		TYPE_PRESETS:
+			return "presets"
 		_:
 			return ""
 
@@ -253,5 +294,6 @@ static func reset() -> void:
 	_parts.clear()
 	_ammo.clear()
 	_materials.clear()
+	_presets.clear()
 	_sources.clear()
 	_errors.clear()

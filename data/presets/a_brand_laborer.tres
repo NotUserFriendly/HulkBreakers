@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BotPreset" format=3]
+
+[ext_resource type="Script" path="res://src/data/loadout.gd" id="1_4ly2s"]
+[ext_resource type="Script" path="res://src/data/bot_preset.gd" id="2_ajhrs"]
+
+[sub_resource type="Resource" id="Resource_n7c20"]
+script = ExtResource("1_4ly2s")
+entries = {
+&"GRIP_L": &"pistol",
+&"GRIP_R": &"pistol"
+}
+
+[resource]
+script = ExtResource("2_ajhrs")
+preset_name = "a_brand_laborer"
+loadout = SubResource("Resource_n7c20")
+profile_family = &"a_brand_laborer"
