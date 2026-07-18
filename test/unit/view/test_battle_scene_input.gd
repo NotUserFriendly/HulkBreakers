@@ -64,6 +64,31 @@ func test_a_real_click_over_the_board_selects_the_current_unit_through_every_pan
 	)
 
 
+## "Clicking the action bar also clicks things behind it" — the box was
+## sitting at MOUSE_FILTER_PASS: gui_input fired (arming the box's own
+## action) but the event was never marked handled, so it also reached
+## TacticsController._unhandled_input. A click landing off the board
+## (which the action bar's own bottom-right corner is) makes that handler
+## call deselect() — the sharpest, most visible symptom: a click meant to
+## arm an action bar slot would silently drop the player's own selection.
+func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	var current: Unit = scene.combat_state.current_unit()
+	scene.tactics.selection.select(current)
+
+	var box: PanelContainer = scene.action_bar._panels[0]
+	var screen_pos: Vector2 = box.get_global_rect().get_center()
+	_click_at(scene, screen_pos)
+
+	assert_eq(
+		scene.tactics.selection.selected_unit,
+		current,
+		"a click on the action bar must never also deselect/reselect through the board underneath"
+	)
+
+
 ## The negative-space check: a click over the readout cluster's own screen
 ## rect (bottom-right — aim/stat/combat-readout labels, the exact class of
 ## control this pass fixed) must be consumed there, never fall through to
@@ -87,11 +112,21 @@ func test_every_richtextlabel_panel_ignores_the_mouse_except_the_log() -> void:
 ## point) is expected to keep STOP; everything else (Label, RichTextLabel,
 ## plain layout Controls) must be IGNORE or the board loses clicks under
 ## it. The log is the one deliberate exception (a real, wanted scrollbar).
+## A plain Control wired to a real `gui_input` handler (the action bar's
+## own boxes, ActionBar.setup) is interactive by construction too — that's
+## a structural fact about the node, not something a type whitelist can
+## see, and checking it directly is what would have caught the action bar
+## sitting at PASS (arms an action via gui_input, but never consumed the
+## click, so it fell through to the board underneath) in the first place.
 func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 	if node is Control:
 		var control := node as Control
 		var interactive: bool = (
-			control is Tree or control is Button or control is ItemList or control is ScrollBar
+			control is Tree
+			or control is Button
+			or control is ItemList
+			or control is ScrollBar
+			or control.gui_input.get_connections().size() > 0
 		)
 		var is_log: bool = control is RichTextLabel and (control as RichTextLabel).scroll_following
 		if not interactive and not is_log and control.mouse_filter == Control.MOUSE_FILTER_STOP:

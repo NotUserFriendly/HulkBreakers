@@ -42,12 +42,15 @@ func setup(
 		var panel := PanelContainer.new()
 		panel.custom_minimum_size = BOX_SIZE
 		# docs/09 taskblock07 Pass B4's own rule ("non-interactive Controls
-		# must not default to STOP") still holds — but these boxes ARE
-		# interactive now (F1: hoverable, for a tooltip). PASS, not STOP:
-		# it still fires mouse_entered/mouse_exited, but — unlike STOP —
-		# never blocks a click from reaching whatever's behind it, so this
-		# stays outside Pass B4's own "eaten clicks" class of bug.
-		panel.mouse_filter = Control.MOUSE_FILTER_PASS
+		# must not default to STOP") is for controls nothing ever clicks.
+		# These boxes are genuinely click-interactive since taskblock-08 A1
+		# (a click arms an action): STOP, not PASS — PASS still fires
+		# gui_input/mouse_entered/mouse_exited but never marks the event
+		# handled, so the same click also reaches TacticsController's
+		# _unhandled_input and re-triggers whatever's on the board beneath
+		# the action bar (the exact "clicking the action bar also clicks
+		# things behind it" bug).
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		var label := Label.new()
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
