@@ -79,7 +79,12 @@ func apply(state: CombatState) -> void:
 			"removed": old.id if old != null else &"",
 		}
 		var event := LogEvent.new(
-			state.round_number, Enums.Phase.RESOLUTION, actual.id, &"swap_part", data, text
+			state.round_number,
+			Enums.Phase.RESOLUTION,
+			actual.id,
+			&"swap_part",
+			data,
+			"swapped in %s at %s" % [replacement_id, socket_type]
 		)
 		state.combat_log.emit(event)
 

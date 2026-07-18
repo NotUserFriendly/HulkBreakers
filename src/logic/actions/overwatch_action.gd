@@ -55,7 +55,7 @@ func apply(state: CombatState) -> void:
 				actual.id,
 				&"overwatch_declared",
 				{"weapon": weapon_id},
-				text
+				"holding with %s" % weapon_id
 			)
 		)
 

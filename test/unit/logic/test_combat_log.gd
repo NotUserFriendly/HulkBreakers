@@ -57,14 +57,19 @@ func test_remove_sink_is_a_no_op_for_a_sink_never_added() -> void:
 	pass_test("remove_sink on an unknown sink did not error, and the log still dispatches")
 
 
+## turn/phase/unit are deliberately NOT echoed per line anymore — a
+## scrolling repeat of "what turn/unit this is" on every single line is
+## exactly the noise this format change removes; each unit's own turn
+## already announces itself once via its own turn_start line
+## (CombatState._start_turn). `kind` is the one label still worth
+## repeating, since unlike turn/unit it actually varies line to line.
 func test_log_event_to_string_is_readable() -> void:
 	var event := LogEvent.new(
 		2, Enums.Phase.RESOLUTION, 5, &"penetration", {}, "round penetrates plate"
 	)
 	var text: String = event._to_string()
-	assert_true(text.contains("T2"))
-	assert_true(text.contains("RESOLUTION"))
-	assert_true(text.contains("unit 5"))
+	assert_false(text.contains("T2"), "the turn number must not be echoed per line")
+	assert_false(text.contains("unit 5"), "the acting unit must not be echoed per line")
 	assert_true(text.contains("penetration"))
 	assert_true(text.contains("round penetrates plate"))
 

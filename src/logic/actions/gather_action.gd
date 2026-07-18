@@ -63,7 +63,7 @@ func apply(state: CombatState) -> void:
 			actual.id,
 			&"gather",
 			{"resource": resource_id, "amount": amount, "cell": cell},
-			text
+			"gathered %d %s at %s" % [amount, resource_id, cell]
 		)
 	)
 

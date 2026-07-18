@@ -27,7 +27,7 @@ func apply(state: CombatState) -> void:
 	if not state.is_preview:
 		state.combat_log.emit(
 			LogEvent.new(
-				state.round_number, Enums.Phase.RESOLUTION, actual.id, &"turn_end", {}, text
+				state.round_number, Enums.Phase.RESOLUTION, actual.id, &"turn_end", {}, "ended turn"
 			)
 		)
 	state.advance_turn()

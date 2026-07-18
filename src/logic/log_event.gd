@@ -32,5 +32,11 @@ func _init(
 	text = p_text
 
 
+## Deliberately drops `turn`/`phase`/`unit_id` — a scrolling per-line echo
+## of "what turn/unit this is" is exactly the repetition the combat log
+## used to drown in, when every unit's own turn already announces itself
+## once via its own `turn_start` line (CombatState._start_turn). `kind` is
+## the one label worth repeating per line — unlike turn/unit it actually
+## varies line to line.
 func _to_string() -> String:
-	return "[T%d/%s] unit %d %s: %s" % [turn, Enums.Phase.keys()[phase], unit_id, kind, text]
+	return "%s: %s" % [kind, text]

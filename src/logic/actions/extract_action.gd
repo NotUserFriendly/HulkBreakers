@@ -38,7 +38,14 @@ func apply(state: CombatState) -> void:
 	var text: String = "ExtractAction: unit %d extracted the team" % unit.id
 	state.log_action(text)
 	state.combat_log.emit(
-		LogEvent.new(state.round_number, Enums.Phase.RESOLUTION, unit.id, &"extract", {}, text)
+		LogEvent.new(
+			state.round_number,
+			Enums.Phase.RESOLUTION,
+			unit.id,
+			&"extract",
+			{},
+			"extracted the team"
+		)
 	)
 
 
