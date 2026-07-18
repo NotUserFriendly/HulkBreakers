@@ -31,6 +31,12 @@ extends Resource
 ## From the reference table (12, n/a, 3, n/a) — n/a guns leave this at the
 ## default 1 and simply never provide BURST.
 @export var burst_size: int = 1
+## taskblock-13 Pass C: "AP cost: authored per action; a burst costs more
+## than a single shot." 0 (unset) means "no BURST authored" — every gun
+## that actually provides BURST authors a real, higher-than-`ap_cost`
+## value; flagged placeholder numbers (no balance figure was specified),
+## ask before tuning.
+@export var burst_ap_cost: int = 0
 ## Chamber (Pass B): legal iff `ammo.case_family == accepts_family` and
 ## `ammo.case_length <= max_case_length`.
 @export var accepts_family: StringName = &""

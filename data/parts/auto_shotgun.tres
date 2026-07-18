@@ -22,6 +22,7 @@ mechanical_accuracy = 0.9
 effective_range = 4.0
 barrel_length = 0.55
 burst_size = 3
+burst_ap_cost = 2
 accepts_family = &"12GA"
 max_case_length = 70.0
 
