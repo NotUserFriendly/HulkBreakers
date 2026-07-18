@@ -281,6 +281,11 @@ const EXPECTED_MATERIALS: Dictionary = {
 }
 
 
+## "Lossless" means every MIGRATED part survives, unchanged — not that
+## `res://data/parts/` may never grow. Real new content (taskblock-13's
+## own guns, e.g.) is expected to accumulate on top of the migrated set
+## over time; this only asserts the migrated subset is still intact, one
+## copy each, never that the pool's total size stays frozen at 22.
 func test_every_expected_part_id_is_present_exactly_once() -> void:
 	var pool: Array[Part] = DataLibrary.parts_pool()
 	var ids: Array = []
@@ -288,7 +293,6 @@ func test_every_expected_part_id_is_present_exactly_once() -> void:
 		ids.append(part.id)
 	for expected_id: StringName in EXPECTED_PARTS:
 		assert_eq(ids.count(expected_id), 1, "%s must appear exactly once" % expected_id)
-	assert_eq(ids.size(), EXPECTED_PARTS.size(), "no extra, unexpected part in the migrated pool")
 
 
 func test_every_part_matches_its_pre_migration_snapshot() -> void:

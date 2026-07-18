@@ -38,3 +38,35 @@ func test_resolve_damage_applies_an_extra_source_eg_a_perk() -> void:
 func test_resolve_crit_chance_matches_the_base_with_no_modifiers() -> void:
 	var weapon := _weapon(5.0, 0.25)
 	assert_almost_eq(WeaponResolver.resolve_crit_chance(weapon).current, 0.25, 0.0001)
+
+
+## taskblock-13 Pass A: "damage_multiplier feeds the shot through
+## StatResolver (a sniper's 1.1 hits harder than a chaingun's 0.8 with the
+## same ammo)" — same base damage, different WeaponDef.damage_multiplier,
+## different resolved output.
+func test_damage_multiplier_scales_the_resolved_damage() -> void:
+	var chaingun := _weapon(5.0)
+	chaingun.weapon_def = WeaponDef.new()
+	chaingun.weapon_def.damage_multiplier = 0.8
+	var sniper := _weapon(5.0)
+	sniper.weapon_def = WeaponDef.new()
+	sniper.weapon_def.damage_multiplier = 1.1
+
+	var chaingun_damage: float = WeaponResolver.resolve_damage(chaingun).current
+	var sniper_damage: float = WeaponResolver.resolve_damage(sniper).current
+
+	assert_almost_eq(chaingun_damage, 4.0, 0.0001)
+	assert_almost_eq(sniper_damage, 5.5, 0.0001)
+	assert_gt(
+		sniper_damage, chaingun_damage, "the same base round must hit harder from the 1.1x barrel"
+	)
+
+
+## A part with no WeaponDef at all (every weapon authored before this
+## field existed, and every non-weapon part) resolves exactly as before —
+## no phantom x1.0 multiplier source appears.
+func test_no_weapon_def_means_no_multiplier_source_at_all() -> void:
+	var weapon := _weapon(5.0)
+	var resolved := WeaponResolver.resolve_damage(weapon)
+	assert_eq(resolved.current, 5.0)
+	assert_eq(resolved.sources.size(), 0)
