@@ -202,7 +202,9 @@ func _squad_has_survivors(state: CombatState, squad_id: int) -> bool:
 ## A minimal, fully deterministic AI, purely a function of the (seeded)
 ## CombatState and MissionState — no randomness of its own:
 ##   1. an enemy is alive and reachable/visible -> fight it (closing the
-##      distance first if needed; fire repeatedly if already in range);
+##      distance first if needed; fire repeatedly if already in range;
+##      defensive facing — PLAN.md's own named fix — if neither is
+##      possible, see below);
 ##   2. otherwise, if this is a landing-squad unit with the gather
 ##      objective still open -> walk to the resource node and gather it;
 ##   3. otherwise (objective complete) -> walk to the extraction zone and
@@ -224,9 +226,25 @@ func _queue_turn(unit: Unit, state: CombatState, mission: MissionState) -> Actio
 			):
 				extra += 1
 		else:
+			var queued_before: int = queue.actions.size()
 			_path_toward(unit, enemy.cell, state, queue)
 			if weapon_id != &"":
 				queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+			# PLAN.md's own carried finding: an unarmed unit that's already
+			# as close as it can get to its enemy previously just froze at
+			# whatever orientation its last real action left it — which,
+			# for at least one seed, happened to be a defended plate's own
+			# best angle, deflecting forever (docs/03: DEFLECT never damages
+			# the plate, unlike STOP_DEAD). A unit with nothing else to do
+			# this turn instead turns to face its threat square-on — an
+			# ordinary defensive reaction, not new tactical sophistication —
+			# which drives the incidence angle toward 0, and STOP_DEAD is
+			# what geometry gives you at 0.
+			if queue.actions.size() == queued_before:
+				queue.enqueue(
+					FaceAction.new(unit, FaceAction.orientation_toward(unit.cell, enemy.cell)),
+					state
+				)
 		queue.enqueue(EndTurnAction.new(unit), state)
 		return queue
 
@@ -405,10 +423,16 @@ func test_full_mission_seed_to_extraction() -> void:
 			deflects += 1
 	assert_true(deflects > 0, "DT/ricochet: at least one deflection must appear in the log")
 
-	# --- Cook-off: the volatile reactor must have gone off on its own ---
+	# --- Cook-off: the volatile reactor must have gone off on its own. A
+	# random deep-struck loadout can carry its own volatile parts too, so
+	# this only asserts OUR wired reactor is somewhere among whatever
+	# cooked off naturally — never that it was first. ---
 	var cook_off_events: Array[LogEvent] = memory_sink.events_of_kind(&"cook_off")
 	assert_true(cook_off_events.size() > 0, "cook-off: the volatile reactor must fire naturally")
-	assert_eq(cook_off_events[0].data.get("source_part"), reactor_core.id)
+	var our_cook_offs: Array = cook_off_events.filter(
+		func(e: LogEvent) -> bool: return e.data.get("source_part") == reactor_core.id
+	)
+	assert_true(our_cook_offs.size() > 0, "the wired reactor_core must be among the cook-offs")
 
 	# --- Subtree drop: a non-root part's own assembly must fall intact ---
 	var drop_events: Array[LogEvent] = memory_sink.events_of_kind(&"subtree_dropped")
@@ -439,20 +463,28 @@ func test_full_mission_seed_to_extraction() -> void:
 	assert_eq(_structural_violations(enemy_b), [] as Array[String])
 
 	# --- Tactics/Resolution: a queued action really did abort at
-	# resolution, and the queue really did continue past it ---
-	var aborts: Array[LogEvent] = memory_sink.events_of_kind(&"action_aborted")
+	# resolution, and the queue really did continue past it. `resolution_
+	# stopped` is CombatState._stopped()'s own real event kind (docs/09
+	# taskblock06 Pass D) — `action_aborted` was never emitted by any
+	# production code and always found nothing here. ---
+	var aborts: Array[LogEvent] = memory_sink.events_of_kind(&"resolution_stopped")
 	assert_true(
 		aborts.size() > 0, "at least one queued action must abort at resolution (the world moved)"
 	)
 	var first_abort: LogEvent = aborts[0]
 	var abort_index: int = memory_sink.events.find(first_abort)
 	var continued := false
+	# The stopped unit stays current (docs/09 taskblock06 D4) and gets
+	# freshly re-queued next turn — several of its own events (facing,
+	# impacts, more aborts) can land before it finally ends its turn, so
+	# this must scan for turn_end, not just inspect the very next one.
 	for i in range(abort_index + 1, memory_sink.events.size()):
 		var event: LogEvent = memory_sink.events[i]
-		if event.unit_id != first_abort.unit_id or event.kind == &"action_aborted":
-			continue  # a later action in the same queue may also abort; keep scanning
-		continued = event.kind == &"turn_end"
-		break
+		if event.unit_id != first_abort.unit_id:
+			continue
+		if event.kind == &"turn_end":
+			continued = true
+			break
 	assert_true(continued, "the queue must reach this unit's own turn_end, not halt on the abort")
 
 	var summary_fmt := (

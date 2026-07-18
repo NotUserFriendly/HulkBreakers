@@ -226,20 +226,38 @@ cook-off + RAM + surrogate decay + tactics/resolution + extraction, zero errors.
 **This is the definition of done.**
 ### ▶ CHECKPOINT 5 — full mission combat log. **Stop for review.**
 
-**FINDING (post-taskblock03, runNotes.md):** `MoveAction` now faces a unit toward its
-direction of travel for free, on request ("a character's facing after movement should
-update to face away from where they started"). Confirmed by direct A/B test that this alone
-breaks `test_full_mission_seed_to_extraction` — it no longer terminates within `TURN_CAP`.
-Root cause: once a unit stops moving because it's already in weapon range, it now keeps
-whatever orientation its last step left it facing, instead of a constant default. For this
-scenario's exact seed, the last defender ends up facing its best-armored plate at the
-attackers and effectively can't be killed in the turn budget. The test's own AI
-(`_queue_turn`) has no facing awareness at all — it never queues a `FaceAction`, offensively
-or defensively. Not hacked around: the feature is real and requested, the test's AI is
-`git blame`-honest about being "a minimal, fully deterministic AI," and reconciling the two
-(give the test AI defensive facing, retune the scenario, or something else) is a decision for
-whoever owns this test, not something to invent unasked. `test_full_mission_seed_to_extraction`
-is currently failing as a direct, understood consequence of this — not a regression to chase.
+**RESOLVED (post-taskblock07):** the finding below was accurate as far as it went but turned
+out to be the second of two stacked bugs, and got fixed alongside the first:
+
+1. **Grid occupancy never cleared on death.** `Unit.alive` flipped to `false` at four call
+   sites (`DamageResolver` x2, `Overwatch`, `AttackAction`) but nothing ever cleared
+   `Grid.occupant_id` for that cell — a corpse blocked `Pathfinder` forever, same as a living
+   blocker. Worse, `CombatState.add_unit()` (used by every TACTICS-time `dup()` preview to
+   re-register units on the clone) re-occupied a dead unit's cell unconditionally, so even a
+   real fix to the authoritative grid was silently undone on every legality check against a
+   preview. For this seed, five corpses piling up in one small room after the landing squad
+   wiped the defenders sealed the only exit, stranding the last survivor from ever reaching
+   the resource node. Fixed: `CombatState.kill_unit()` is now the one place `alive` flips to
+   `false`, and it vacates the cell; `add_unit()` only occupies for units that are alive.
+2. **The facing deadlock this FINDING originally named**, confirmed by direct geometry
+   read: `DamageResolver.resolve_impact` gives `PENETRATE` unconditionally when
+   `damage >= material.dt` regardless of angle, `STOP_DEAD` (damages the plate) when
+   incidence ≤ `deflect_threshold_deg`, else `DEFLECT` (never damages the plate). A defender
+   that stops moving keeps whatever facing its last real action left it; if that facing
+   happens to put a plate at a fixed oblique angle against a weapon whose damage can't beat
+   the plate's DT outright, every shot deflects and the plate's hp never drops — a true,
+   angle-locked stalemate, not a slow one. Went with the FINDING's own first-listed option:
+   the test's minimal AI now queues a `FaceAction` toward its nearest enemy (defensive
+   facing) when it has nothing else to do this turn (no weapon, already as close as it can
+   get) — an ordinary "turn to face the threat" reaction, not new tactical sophistication.
+   Facing square-on drives incidence toward 0°, which geometry resolves to `STOP_DEAD`.
+
+Fixing both surfaced a stale, unrelated bug in the test's own assertions: `action_aborted`
+was never a real event kind (the production kind is `resolution_stopped`,
+`CombatState._stopped()`), and the "queue reaches turn_end after an abort" scan broke on the
+very first post-abort event for that unit instead of scanning for `turn_end` — both silently
+masked as long as the mission never got far enough to reach them. `test_full_mission_seed_to_extraction`
+is green again (61 turns, well under `TURN_CAP`).
 
 ---
 

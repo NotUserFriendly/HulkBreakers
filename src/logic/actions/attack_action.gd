@@ -142,7 +142,7 @@ func apply(state: CombatState) -> void:
 	# "every part destroyed," so it supersedes rather than conflicts with
 	# this conservative stand-in.
 	if target.alive and target.shell.living_parts().is_empty():
-		target.alive = false
+		state.kill_unit(target)
 
 	state.log_action(
 		(

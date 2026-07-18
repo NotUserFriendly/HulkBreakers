@@ -53,7 +53,11 @@ func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) 
 
 ## Registers a unit (assigning it an id if it doesn't have one), occupies its
 ## cell, and adds it to turn order and its squad. Used both for initial roster
-## setup and for units spawned mid-combat (ImplantAction).
+## setup and for units spawned mid-combat (ImplantAction) — and for dup()'s
+## own re-registration of every unit, dead ones included, onto a fresh
+## clone's grid. A dead unit never occupies a cell (kill_unit's own rule),
+## so this must not blindly re-mark one on a clone just because it's being
+## re-added to a fresh `units` array.
 func add_unit(unit: Unit) -> void:
 	if unit.id == -1:
 		unit.id = _next_id
@@ -62,7 +66,22 @@ func add_unit(unit: Unit) -> void:
 	if not squads.has(unit.squad_id):
 		squads[unit.squad_id] = []
 	squads[unit.squad_id].append(unit)
-	grid.set_occupant_id(unit.cell, unit.id)
+	if unit.alive:
+		grid.set_occupant_id(unit.cell, unit.id)
+
+
+## The one place a unit's alive flag flips to false (docs/09 "if it changed
+## the world, it's in the log" — the world-state half of that: a dead unit
+## stops occupying its cell, same as MoveAction vacates a cell it steps off
+## of, so its corpse never permanently blocks the grid for `Pathfinder`.
+## `grid.field_items`/`blockers` (loot, dropped subtrees, cover) are a
+## separate overlay untouched by this — a cell can be walkable and still
+## hold something to pick up.
+func kill_unit(unit: Unit) -> void:
+	if not unit.alive:
+		return
+	unit.alive = false
+	grid.set_occupant_id(unit.cell, -1)
 
 
 func current_unit() -> Unit:
