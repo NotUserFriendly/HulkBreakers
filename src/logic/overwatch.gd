@@ -129,6 +129,7 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 
 	var damage: float = WeaponResolver.resolve_damage(weapon, []).current
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, []).current
+	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, []).current
 	var points: Array[Vector2] = Dartboard.sample(
 		aim_point, Dartboard.resolve_scatter(weapon, []), state.rng, weapon.burst
 	)
@@ -163,7 +164,8 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 			DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
 			DamageResolver.DEFAULT_DAMAGE_FLOOR,
 			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
-			overwatcher.shell.all_parts()
+			overwatcher.shell.all_parts(),
+			bonus_pen
 		)
 		if state.is_preview:
 			continue

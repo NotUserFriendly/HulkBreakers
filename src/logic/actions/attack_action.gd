@@ -104,11 +104,12 @@ func apply(state: CombatState) -> void:
 		aim_point, resolved_scatter, state.rng, weapon.burst
 	)
 
-	# docs/08: the damage/crit numbers used here must be the exact same
-	# ones a tooltip built from WeaponResolver would show — never a raw
-	# Part field read directly.
+	# docs/08: the damage/crit/bonus_pen numbers used here must be the
+	# exact same ones a tooltip built from WeaponResolver would show —
+	# never a raw Part field read directly.
 	var damage: float = WeaponResolver.resolve_damage(weapon, extra_sources).current
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
+	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
 
 	for point: Vector2 in points:
 		# The shooter's own body sits at the ray's own origin (depth <= 0)
@@ -131,7 +132,8 @@ func apply(state: CombatState) -> void:
 			DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
 			DamageResolver.DEFAULT_DAMAGE_FLOOR,
 			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
-			actual.shell.all_parts()
+			actual.shell.all_parts(),
+			bonus_pen
 		)
 		for result: ImpactResult in results:
 			_log_impact(state, actual, result)
