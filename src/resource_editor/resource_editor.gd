@@ -81,6 +81,12 @@ const PREVIEW_CAMERA_DIRECTION := Vector3(0.0, 0.4, 0.8)
 const PREVIEW_CAMERA_DISTANCE_FACTOR := 2.0
 const PREVIEW_CAMERA_MIN_RADIUS := 0.15
 const PREVIEW_PIVOT_Y_OFFSET := 0.25
+## `show_assembly`'s own fixed marker color — a raw definition being
+## edited isn't on a squad, so it's never `WorldPalette.team_color`;
+## reuses TEAM_A's own blue since that's already this palette's
+## established "marker" hue, just as a flat, always-on depth reference
+## directly behind whatever's previewed.
+const PREVIEW_MARKER_COLOR := WorldPalette.TEAM_A
 ## C4: nested child-row column sets — a socket's own [socket_type, id,
 ## joint_hp] (the taskblock's own worked example) and a dt_curve point's
 ## own [thickness, dt] (its other one). Both fit inside whatever column
@@ -926,42 +932,21 @@ func _curve_summary(material: MaterialEntry) -> String:
 	return "\n".join(lines)
 
 
-## Renders the selected definition via `HitVolumeView`'s own mesh/
-## primitive dispatch (taskblock-10 A) — B1: "the preview is what the
-## game will render, not a mock." Only `Part`s have spatial geometry at
-## all (no `volume`/`sockets` on `AmmoDef`/`MaterialEntry`); an ammo or
-## material selection clears the preview rather than faking one.
+## Renders the selected definition via `HitVolumeView.show_assembly`
+## (taskblock-10 A's own mesh/primitive/box dispatch, taskblock-11's own
+## bare-part-tree entry point) — B1: "the preview is what the game will
+## render, not a mock." Only `Part`s have spatial geometry at all (no
+## `volume`/`sockets` on `AmmoDef`/`MaterialEntry`); an ammo or material
+## selection clears the preview rather than faking one.
 func _refresh_preview() -> void:
 	if current_type != DataLibrary.TYPE_PARTS or _selected_resource == null:
-		preview_view.unit = null
-		preview_view.refresh()
+		preview_view.show_assembly(null, null, PREVIEW_MARKER_COLOR)
 		return
 	# The LIVE (possibly unsaved-edited) instance, not a fresh
 	# DataLibrary duplicate — B1's "the preview is what the game will
 	# render" extends to a still-being-tuned value too.
 	var part: Part = _selected_resource as Part
-	# Unit.is_downed() (docs/10 taskblock03 G) is true whenever NOTHING in
-	# the shell hosts a docked matrix — true for nearly every previewed
-	# part (a plate, a weapon, even torso/head on their own, since
-	# nothing here ever docks one), and HitVolumeView then renders the
-	# whole thing through Poses.down(): a 90° rotation around the root
-	# socket that swaps the part's own "up" for "forward". A preview
-	# pane showing every part lying on its side is not "what the game
-	# will render" for a standing unit. Fixed by mounting `part` under a
-	# throwaway, invisible (empty volume, never drawn) carrier that DOES
-	# host a docked matrix — `is_downed()` reads false, the down-pose
-	# never applies, and the carrier itself contributes nothing to what's
-	# drawn. Direct socket assignment (not PartGraph.attach) deliberately
-	# skips attaches_to matching: this mount is cosmetic scaffolding, not
-	# a real attachment `part`'s own data should ever reflect.
-	var carrier := Part.new()
-	carrier.sockets = [Socket.new(&"MATRIX")]
-	carrier.dock_matrix(Matrix.new())
-	var mount := Socket.new(&"__preview_mount", Transform3D.IDENTITY)
-	mount.occupant = part
-	carrier.sockets.append(mount)
-	var unit := Unit.new(carrier.hosted_matrix, Shell.new(carrier), Vector2i.ZERO)
-	preview_view.setup(unit, DataLibrary.material_table())
+	preview_view.show_assembly(part, DataLibrary.material_table(), PREVIEW_MARKER_COLOR)
 	_frame_preview_camera()
 
 
@@ -972,13 +957,17 @@ func _refresh_preview() -> void:
 func _frame_preview_camera() -> void:
 	var combined: AABB
 	var has_any := false
-	# `preview_view.get_children()` also includes the team-marker disc
-	# and facing wedge — always at the unit's own cell origin, never
-	# where the part itself sits — which would pull the frame back down
-	# toward y≈0 for an elevated part like torso. `_meshes_by_part` is
-	# HitVolumeView's own record of exactly the geometry a PART actually
-	# owns (docs/10 taskblock05 C: built for hover-highlighting, but the
-	# exact same "which meshes are the part's own" answer this needs).
+	# `preview_view.get_children()` also includes the marker disc — always
+	# at the origin, never where the part itself sits (torso's own boxes
+	# sit up around y≈1.5) — which would pull the frame back down toward
+	# y≈0. `_meshes_by_part` is HitVolumeView's own record of exactly the
+	# geometry a PART actually owns (docs/10 taskblock05 C: built for
+	# hover-highlighting, but the exact same "which meshes are the part's
+	# own" answer this needs). `show_assembly` already re-centers every
+	# placement onto the origin's own x/z, so this AABB's center sits
+	# fixed on the preview_pivot's own rotation axis — reading it back via
+	# `global_transform` stays correct at ANY point mid-spin, not just
+	# whatever angle happened to be current when the frame was computed.
 	for meshes: Array in preview_view._meshes_by_part.values():
 		for mesh_instance: MeshInstance3D in meshes:
 			var world_aabb: AABB = mesh_instance.global_transform * mesh_instance.get_aabb()

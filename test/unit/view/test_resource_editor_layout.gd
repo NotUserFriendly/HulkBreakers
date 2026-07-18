@@ -85,7 +85,7 @@ func test_preview_and_metadata_share_the_lefts_own_fixed_width() -> void:
 
 ## B1: "the preview renders the selected definition via HitVolumeView" —
 ## the actual dispatch is taskblock-10 A's; this only proves the editor
-## wires the right unit in.
+## wires the right part in.
 func test_selecting_a_part_populates_the_preview() -> void:
 	var scene := ResourceEditorScene.new()
 	add_child_autofree(scene)
@@ -94,11 +94,8 @@ func test_selecting_a_part_populates_the_preview() -> void:
 	scene._selected_resource = DataLibrary.get_part(&"torso")
 	scene._refresh_preview()
 
-	assert_not_null(scene.preview_view.unit)
-	# The root is a throwaway matrix-hosting carrier (so Unit.is_downed()
-	# reads false and the preview never renders lying down) — the part
-	# itself is mounted a level below it, not the root.
-	assert_not_null(scene.preview_view.unit.shell.find_part(&"torso"))
+	assert_gt(scene.preview_view.get_child_count(), 0)
+	assert_true(scene.preview_view._meshes_by_part.has(scene._selected_resource))
 
 
 ## B1: only Parts have spatial geometry — an ammo/material selection
@@ -109,14 +106,14 @@ func test_selecting_ammo_or_material_clears_the_preview() -> void:
 	scene.selected_id = &"torso"
 	scene._selected_resource = DataLibrary.get_part(&"torso")
 	scene._refresh_preview()
-	assert_not_null(scene.preview_view.unit)
+	assert_gt(scene.preview_view.get_child_count(), 0)
 
 	scene.set_current_type(DataLibrary.TYPE_AMMO)
 	scene.selected_id = &"9mm_fmj"
 	scene._selected_resource = DataLibrary.get_ammo(&"9mm_fmj")
 	scene._refresh_preview()
 
-	assert_null(scene.preview_view.unit)
+	assert_eq(scene.preview_view.get_child_count(), 0)
 
 
 ## B1: "a toggle button to stop/start rotation."

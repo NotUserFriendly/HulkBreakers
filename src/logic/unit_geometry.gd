@@ -107,6 +107,16 @@ static func bounding_sphere(unit: Unit, orientation_override: Variant = null) ->
 	if box_placements.is_empty():
 		return {"center": origin, "radius": 0.0}
 
+	var box: AABB = placements_aabb(box_placements)
+	return {"center": box.get_center(), "radius": box.size.length() * 0.5}
+
+
+## The world-space AABB enclosing every placement's own box corners —
+## the corner-math `bounding_sphere` above needs, factored out so a bare
+## placement list with no owning Unit at all (a resource-editor preview,
+## docs/10 taskblock04 C1's "field object" case) can get the same honest
+## answer without fabricating one.
+static func placements_aabb(box_placements: Array[BoxPlacement]) -> AABB:
 	var min_corner: Vector3 = Vector3.INF
 	var max_corner: Vector3 = -Vector3.INF
 	for placement: BoxPlacement in box_placements:
@@ -120,10 +130,7 @@ static func bounding_sphere(unit: Unit, orientation_override: Variant = null) ->
 					var world_corner: Vector3 = placement.transform * local_corner
 					min_corner = min_corner.min(world_corner)
 					max_corner = max_corner.max(world_corner)
-
-	var center: Vector3 = (min_corner + max_corner) * 0.5
-	var radius: float = (max_corner - min_corner).length() * 0.5
-	return {"center": center, "radius": radius}
+	return AABB(min_corner, max_corner - min_corner)
 
 
 ## docs/09 taskblock07 Pass A: `weapon`'s own composed world position — the
