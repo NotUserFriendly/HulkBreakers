@@ -231,9 +231,9 @@ func _ready() -> void:
 
 	# runNotes.md: "put the turn controls in the bottom right, stacked,
 	# with... [the readout cluster] above the turn controls." One
-	# bottom-right-anchored stack: header, then the phase banner + aim/
-	# damage readout, then the buttons — in that order, growing upward from
-	# the corner.
+	# bottom-right-anchored stack: the readout+queue panel, then the
+	# action bar/turn buttons row, in that order, growing upward from the
+	# corner.
 	var bottom_right := VBoxContainer.new()
 	bottom_right.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	bottom_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -242,35 +242,49 @@ func _ready() -> void:
 	bottom_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_half.add_child(bottom_right)
 
+	# The combat readout (header/banner/aim/stat readouts) and the queued-
+	# actions list get their own boxed panel, sized to its own content —
+	# SHRINK_END keeps it from being stretched to the action bar's own
+	# (much wider) row below, which shared this same VBoxContainer used to
+	# force it to match, and right-aligns it within the column instead of
+	# spanning it.
+	var readout_panel := PanelContainer.new()
+	readout_panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	readout_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom_right.add_child(readout_panel)
+	var readout_column := VBoxContainer.new()
+	readout_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	readout_panel.add_child(readout_column)
+
 	# runNotes.md: "I'm not entirely sure what the info... is. Highlight
 	# what it's doing, and IF it's doing it." A plain, named header —
 	# _update_readout_header() below flips its color/text with whether the
 	# cluster underneath actually has anything live to show.
 	_readout_header = Label.new()
 	_readout_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(_readout_header)
+	readout_column.add_child(_readout_header)
 
 	var banner := Label.new()
 	banner.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(banner)
+	readout_column.add_child(banner)
 
 	var aim_readout := RichTextLabel.new()
 	aim_readout.bbcode_enabled = false
 	aim_readout.custom_minimum_size = Vector2(320, 60)
 	aim_readout.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
 	aim_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(aim_readout)
+	readout_column.add_child(aim_readout)
 
 	var stat_label := RichTextLabel.new()
 	stat_label.custom_minimum_size = Vector2(320, 40)
 	stat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(stat_label)
+	readout_column.add_child(stat_label)
 	var stat_drill_down := RichTextLabel.new()
 	stat_drill_down.custom_minimum_size = Vector2(320, 60)
 	stat_drill_down.add_theme_color_override("default_color", HulkTheme.DIM)
 	stat_drill_down.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(stat_drill_down)
+	readout_column.add_child(stat_drill_down)
 
 	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
 	# unit's queued actions" — click a row to set the stop marker, then
@@ -281,7 +295,7 @@ func _ready() -> void:
 	# readout cluster.
 	var queue_tree := Tree.new()
 	queue_tree.custom_minimum_size = Vector2(320, 100)
-	bottom_right.add_child(queue_tree)
+	readout_column.add_child(queue_tree)
 
 	# taskblock-08 E1: "action bar on the LEFT... the turn-control stack
 	# sits to its RIGHT" — one row, two columns, replacing the single
