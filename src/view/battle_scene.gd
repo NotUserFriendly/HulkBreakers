@@ -437,7 +437,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey):
 		return
 	var key_event := event as InputEventKey
-	if not key_event.pressed or key_event.keycode != ControlBindings.TOGGLE_HIT_VOLUMES_KEY:
+	if not key_event.pressed:
+		return
+	if key_event.keycode == ControlBindings.SIMULATE_BOUT_KEY:
+		get_tree().change_scene_to_file("res://src/view/simulate_bout_menu.tscn")
+		return
+	if key_event.keycode != ControlBindings.TOGGLE_HIT_VOLUMES_KEY:
 		return
 	var show: bool = not (unit_views[0].show_hit_volumes if not unit_views.is_empty() else false)
 	for view: HitVolumeView in unit_views:
