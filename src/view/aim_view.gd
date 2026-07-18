@@ -12,15 +12,17 @@ extends Node3D
 ## actual shell's shape" — two views of one thing (ShotPlane.build/
 ## resolve_ray, Pass A), never a second resolution mechanism:
 ## - the WINDOW (_window): a transparent quad carrying the ring image, on a
-##   fixed plane just in front of the currently-read layer's own frontmost
-##   part — flat, crisp, what you aim WITH.
+##   fixed plane just in front of the TARGET's own nearest region (taskblock-
+##   08 B2) — flat, crisp, what you aim WITH.
 ## - the SHADOW (_decal): a Godot Decal projecting that same ring image
 ##   along the identical shooter->target axis onto the real geometry — the
 ##   rings visibly wrapping the actual curved/boxy surface, proof the
 ##   window and the world agree.
-## Scrolling the READ layer moves the window's own depth; the shadow always
-## sits at the target's own fixed distance (RESOLVES, never READING) — see
-## refresh() below.
+## Both now sit at the target's own fixed position — "as close to the
+## aimed-at model as possible without touching it" — regardless of which
+## layer is currently READ; scrolling only ever changes the text readout
+## and the shadow's own occlusion reading, never where either visual
+## anchors (RESOLVES, never READING) — see refresh() below.
 
 ## A targeting overlay, deliberately distinct from any WorldPalette material
 ## or team color so a ring never blends into armor or a unit's own team rim.
@@ -29,21 +31,22 @@ const RING_COLOR := Color(0.95, 0.55, 0.15)
 ## targeted is clearer" — opaque rings used to fully hide whatever body they
 ## sat in front of.
 const RING_ALPHA := 0.55
-## docs/09 taskblock06 Pass H: how far in front of the READ layer's own
-## frontmost surface the window sits — just enough that it never
-## z-fights with the geometry it's reading, a flagged tuning number like
-## every other visual-only constant here, not a design decision.
+## taskblock-08 B2: how far in front of the TARGET's own nearest region
+## the window sits — just enough that it never z-fights with the geometry
+## it's painted on, a flagged tuning number like every other visual-only
+## constant here, not a design decision.
 const WINDOW_DEPTH_EPSILON := 0.05
-## docs/09 taskblock07 Pass B2: the window must never land behind the
-## shooter. A body positioned "behind" the shooter along the fire line
-## still gets a Region in the plane (ShotPlane.build projects every unit,
-## not just ones in front) and can still become a READ layer — its own
-## frontmost depth can be small or even negative, which WINDOW_DEPTH_EPSILON
-## alone doesn't guard against (subtracting a small epsilon from an
-## already-small-or-negative depth only makes it worse). Clamping to this
-## minimum forward distance is what actually guarantees it: the window can
-## recede as deep as the read layer says, but never comes back toward or
-## past the shooter/camera.
+## docs/09 taskblock07 Pass B2, still true under taskblock-08 B2's own
+## target-anchored fix: the window must never land behind the shooter. A
+## body positioned "behind" the shooter along the fire line still gets a
+## Region in the plane (ShotPlane.build projects every unit, not just ones
+## in front), so the target's own nearest depth can be small or even
+## negative, which WINDOW_DEPTH_EPSILON alone doesn't guard against
+## (subtracting a small epsilon from an already-small-or-negative depth
+## only makes it worse). Clamping to this minimum forward distance is what
+## actually guarantees it: the window can recede as deep as the target's
+## own nearest region says, but never comes back toward or past the
+## shooter/camera.
 const MIN_WINDOW_DEPTH := 0.3
 ## How deep (along the fire axis) the shadow Decal's own projection box
 ## extends — generous enough to guarantee it actually reaches the target's
@@ -148,14 +151,15 @@ func refresh() -> void:
 		shooter.cell, target.cell, aim_point, target_depth
 	)
 
-	# docs/09 taskblock06 Pass H: "scrolling the READ layer moves the
-	# window backward through the scene" — the window's own depth is
-	# whatever the CURRENTLY READ layer's frontmost surface sits at, not
-	# fixed at the target's own cell like the shadow/targeting line above.
-	# docs/09 taskblock07 Pass B2: clamped so it can never land behind the
-	# shooter — AimController.window_depth()'s own doc comment has the why.
+	# taskblock-08 B2: the window's own depth is pinned to the TARGET's own
+	# nearest region now — same fixed anchor as the shadow/targeting line
+	# above, never the currently-READ layer (taskblock-07 B2's own anchor,
+	# reversed: scrolling to inspect a body behind the target no longer
+	# drags the window back through the scene with it). Clamped so it can
+	# never land behind the shooter — AimController.window_depth()'s own
+	# doc comment has the why.
 	var depth: float = AimController.window_depth(
-		result.layers, tactics.layer_index, target_depth, WINDOW_DEPTH_EPSILON, MIN_WINDOW_DEPTH
+		result.layers, target, target_depth, WINDOW_DEPTH_EPSILON, MIN_WINDOW_DEPTH
 	)
 	var window_point: Vector3 = AimPlaneGeometry.world_point_at_depth(
 		shooter.cell, target.cell, aim_point, depth

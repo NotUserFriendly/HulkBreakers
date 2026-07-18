@@ -85,25 +85,40 @@ static func resolve(
 	)
 
 
-## docs/09 taskblock07 Pass B2: the aim window's own depth (docs/09
-## taskblock06 Pass H) — just in front of the READ layer's own frontmost
-## surface, but never behind the shooter. Pure math (headless-testable);
-## the view only draws whatever this says. A body positioned "behind" the
-## shooter along the fire line still gets a Region in the plane
-## (ShotPlane.build projects every unit, not just ones in front) and can
-## still become a READ layer, so its own frontmost depth can be small or
-## even negative — `epsilon` alone can't guard against that (subtracting a
-## small amount from an already-small-or-negative depth only makes it
-## worse), so the result is always clamped to at least `min_depth`.
-## `target_depth` is the fallback when there's nothing to read at all (an
-## empty plane).
+## taskblock-08 B2: the aim window's own depth (docs/09 taskblock06 Pass
+## H) — "as close to the aimed-at model as possible without touching it,"
+## just in front of the TARGET's own nearest (lowest-depth) region, never
+## behind the shooter. Reverses taskblock-07 B2's own fix, which anchored
+## to the currently-READ layer instead: scrolling to inspect a body behind
+## the target used to drag the physical window back through the scene with
+## it, when the shadow (aim_view.gd's own _decal) already stayed pinned at
+## the target throughout — two different anchors for what's meant to read
+## as one "painted on the target" surface. `target_body` identifies which
+## of `layers` IS the target (`Region.body` identity, same as AimLayer's
+## own grouping) — independent of `layer_index`/READING entirely now, the
+## same "scrolling changes what you read, never what you're shooting at"
+## rule this file's own header already applies to `resolves`.
+## Pure math (headless-testable); the view only draws whatever this says.
+## A body positioned "behind" the shooter along the fire line still gets a
+## Region in the plane (ShotPlane.build projects every unit, not just ones
+## in front), so its own frontmost depth can be small or even negative —
+## `epsilon` alone can't guard against that (subtracting a small amount
+## from an already-small-or-negative depth only makes it worse), so the
+## result is always clamped to at least `min_depth`. `target_depth` is the
+## fallback when the target has no region of its own in `layers` at all
+## (an empty plane, or a degenerate target with no volume).
 static func window_depth(
-	layers: Array[AimLayer], layer_index: int, target_depth: float, epsilon: float, min_depth: float
+	layers: Array[AimLayer],
+	target_body: Variant,
+	target_depth: float,
+	epsilon: float,
+	min_depth: float
 ) -> float:
 	var depth: float = target_depth
-	if not layers.is_empty():
-		var clamped: int = clampi(layer_index, 0, layers.size() - 1)
-		depth = layers[clamped].frontmost_depth() - epsilon
+	for layer: AimLayer in layers:
+		if layer.body == target_body:
+			depth = layer.frontmost_depth() - epsilon
+			break
 	return maxf(depth, min_depth)
 
 
