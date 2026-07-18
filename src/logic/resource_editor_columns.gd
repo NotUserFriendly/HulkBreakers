@@ -72,6 +72,23 @@ static func is_numeric(type_key: StringName, column: StringName) -> bool:
 	return typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT
 
 
+## taskblock-11 Pass C3: "offer a dropdown compiled from the other values
+## in that column." A `StringName` field is an identifier/closed-ish
+## value (`material`, `failure_mode`, `stack_type`, `render_primitive`)
+## — exactly C3's own worked examples — where a dropdown steers away from
+## typos; a plain `String` field (`display_name`) is freeform prose with
+## no meaningful "other values" to suggest, and stays a normal free-text
+## cell. `id` is excluded even though it's a StringName — never editable
+## at all (see `is_editable`), so it never gets a dropdown either.
+static func is_dropdown(type_key: StringName, column: StringName) -> bool:
+	if column == ID_COLUMN:
+		return false
+	var sample: Resource = _sample(type_key)
+	if sample == null:
+		return false
+	return typeof(sample.get(column)) == TYPE_STRING_NAME
+
+
 ## The closed vocabulary a column is backed by, if any (taskblock-11 C3:
 ## "for fields backed by a real vocabulary... pull from DataLibrary, not
 ## just the column"). Empty means "no closed vocabulary" — the caller
