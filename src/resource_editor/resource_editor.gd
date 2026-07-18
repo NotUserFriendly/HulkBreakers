@@ -30,6 +30,34 @@ const PREVIEW_SIZE := 220
 const METADATA_MIN_HEIGHT := 160
 ## radians/sec — B1: "slowly rotating."
 const ROTATE_SPEED := 0.5
+const COLUMN_MIN_WIDTH := 90
+## C1: the sort symbol's own placeholder — reserving the SAME width when
+## a column isn't sorted keeps every header's own width constant whether
+## or not it currently carries a real "#▲"-style symbol. Without this, a
+## header visibly grows/shrinks (and every column after it visibly
+## shifts) the moment a sort toggles on or off.
+const SORT_SYMBOL_PLACEHOLDER := "··"
+## B1: "the preview is what the game will render." Only `torso` (the
+## reference humanoid's actual ROOT) carries its own baked-in world
+## elevation (docs/01's ROOT_ELEVATION) — every other part's own volume
+## is authored relative to wherever ITS socket would normally place it,
+## so a bare pistol or plate previewed alone renders down near world
+## origin while torso renders up around y=1.5. No single fixed camera
+## frames both, so the camera re-centers on whatever actually rendered
+## (`_frame_preview_camera`) instead of a guessed constant target — this
+## is only the FALLBACK for the empty case (nothing selected yet).
+const PREVIEW_CAMERA_TARGET := Vector3.ZERO
+## Camera DIRECTION relative to whatever it's currently framing — the
+## distance along it scales with the framed geometry's own size
+## (`_frame_preview_camera`), so a small pistol and a big torso both
+## read as reasonably "zoomed in" instead of one dwarfing the frame and
+## the other vanishing into it.
+const PREVIEW_CAMERA_DIRECTION := Vector3(0.0, 0.4, 0.8)
+## Tuned against the reference torso's own bounding radius (~0.45m) to
+## match the framing already confirmed to look right there.
+const PREVIEW_CAMERA_DISTANCE_FACTOR := 2.0
+const PREVIEW_CAMERA_MIN_RADIUS := 0.15
+const PREVIEW_PIVOT_Y_OFFSET := 0.25
 ## C4: nested child-row column sets — a socket's own [socket_type, id,
 ## joint_hp] (the taskblock's own worked example) and a dt_curve point's
 ## own [thickness, dt] (its other one). Both fit inside whatever column
@@ -48,6 +76,7 @@ var preview_container: SubViewportContainer
 var preview_viewport: SubViewport
 var preview_pivot: Node3D
 var preview_view: HitVolumeView
+var preview_camera: Camera3D
 var rotate_button: Button
 var metadata_panel: RichTextLabel
 var filter_row: HBoxContainer
@@ -96,11 +125,22 @@ var _working_resources: Dictionary = {}
 func _ready() -> void:
 	theme_root = self
 	theme = HulkTheme.build()
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# NOT set_anchors_preset(): that call preserves the control's CURRENT
+	# screen rect by solving for new offsets around the new anchors — a
+	# no-op-looking fill only when called on a node that has no parent
+	# YET (BattleScene/BuilderScene's theme_root pattern: anchors set
+	# before add_child). Called here, in this scene's OWN _ready(), self
+	# is already parented at the real viewport size, so that formula
+	# computes a large NEGATIVE offset (offset_right = -viewport_width)
+	# to keep the control pinned at its pre-anchor (0,0) rect — the
+	# window resize this scene exists to prove never took effect at all.
+	# set_anchors_AND_offsets_preset() forces the offsets to zero
+	# unconditionally, actually filling the parent now.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var root_layout := HBoxContainer.new()
-	root_layout.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root_layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(root_layout)
 
 	left_column = VBoxContainer.new()
@@ -175,15 +215,22 @@ func _build_preview(parent: Control) -> void:
 	preview_viewport.add_child(WorldPalette.world_environment())
 	preview_viewport.add_child(WorldPalette.directional_light())
 
-	var camera := Camera3D.new()
+	preview_camera = Camera3D.new()
 	# `look_at()` needs a live tree to resolve a Node3D's global transform
 	# against — must run AFTER `add_child`, not before (a Camera3D not
 	# yet inside the SceneTree fails an internal engine check here).
-	preview_viewport.add_child(camera)
-	camera.position = Vector3(0.0, 1.0, 2.2)
-	camera.look_at(Vector3(0.0, 0.9, 0.0), Vector3.UP)
+	preview_viewport.add_child(preview_camera)
+	preview_camera.position = PREVIEW_CAMERA_TARGET + PREVIEW_CAMERA_DIRECTION
+	preview_camera.look_at(PREVIEW_CAMERA_TARGET, Vector3.UP)
 
 	preview_pivot = Node3D.new()
+	# HitVolumeView always draws its own ground team-marker disc at the
+	# unit's own cell origin (y≈0) alongside the part — raising the WHOLE
+	# pivot lifts both together, but also lifts the disc mostly out of
+	# frame (the camera target sits above it, per PREVIEW_CAMERA_TARGET)
+	# instead of sharing the same visual space as the part and z-fighting
+	# with whatever of its geometry sits low.
+	preview_pivot.position.y = PREVIEW_PIVOT_Y_OFFSET
 	preview_viewport.add_child(preview_pivot)
 
 	preview_view = HitVolumeView.new()
@@ -311,8 +358,14 @@ func _rebuild_columns_and_filters() -> void:
 	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
 	table.columns = columns.size()
 	for i in range(columns.size()):
-		table.set_column_expand(i, true)
-		table.set_column_custom_minimum_width(i, 90)
+		# Only the LAST column claims leftover width — every earlier one
+		# is a fixed, genuinely user-draggable width. Godot's Tree keeps
+		# recomputing an `expand=true` column's width from its stretch
+		# ratio on every layout pass, which fights (and silently
+		# reverts) a manual header-boundary drag; a non-expand column's
+		# width is exactly what the user last set it to.
+		table.set_column_expand(i, i == columns.size() - 1)
+		table.set_column_custom_minimum_width(i, COLUMN_MIN_WIDTH)
 
 	for child: Node in filter_row.get_children():
 		filter_row.remove_child(child)
@@ -338,14 +391,14 @@ func _refresh_column_titles() -> void:
 	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
 	for i in range(columns.size()):
 		var column: StringName = columns[i]
-		var title: String = String(column)
+		var symbol: String = SORT_SYMBOL_PLACEHOLDER
 		if column == sort_column:
 			var kind_symbol: String = (
 				"#" if ResourceEditorColumns.is_numeric(current_type, column) else "A"
 			)
 			var direction_symbol: String = "▲" if sort_ascending else "▼"
-			title = "%s %s%s" % [title, kind_symbol, direction_symbol]
-		table.set_column_title(i, title)
+			symbol = "%s%s" % [kind_symbol, direction_symbol]
+		table.set_column_title(i, "%s %s" % [column, symbol])
 
 
 ## C1: "click cycles sort modes: none -> ascending -> descending -> none."
@@ -400,6 +453,11 @@ func _refresh_table_rows() -> void:
 			_add_socket_rows(row as Part, item)
 		elif row is MaterialEntry:
 			_add_curve_rows(row as MaterialEntry, item)
+		# Sub-items start collapsed — expanding is an explicit ask, not
+		# the default state of a table with 20+ rows, most of which have
+		# children.
+		if item.get_child_count() > 0:
+			item.collapsed = true
 
 
 func _add_row_item(
@@ -411,8 +469,8 @@ func _add_row_item(
 	for i in range(columns.size()):
 		var column: StringName = columns[i]
 		var value: Variant = resource.get(column)
-		item.set_text(i, str(value))
 		if not ResourceEditorColumns.is_editable(column):
+			item.set_text(i, str(value))
 			continue
 		if ResourceEditorColumns.is_numeric(current_type, column):
 			item.set_cell_mode(i, TreeItem.CELL_MODE_RANGE)
@@ -423,10 +481,15 @@ func _add_row_item(
 			# C3: a StringName field (material/failure_mode/stack_type/
 			# render_primitive, ...) edits through a suggestion popup
 			# only, never free text — steering away from a typo the
-			# validator would just reject anyway.
+			# validator would just reject anyway. set_cell_mode() MUST
+			# run before set_text() — changing cell mode clears whatever
+			# text was already there, so a CUSTOM cell set up in the
+			# other order shows the popup arrow with no value at all.
 			item.set_cell_mode(i, TreeItem.CELL_MODE_CUSTOM)
+			item.set_text(i, str(value))
 		else:
 			item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
+			item.set_text(i, str(value))
 		item.set_editable(i, true)
 	return item
 
@@ -786,5 +849,55 @@ func _refresh_preview() -> void:
 	# DataLibrary duplicate — B1's "the preview is what the game will
 	# render" extends to a still-being-tuned value too.
 	var part: Part = _selected_resource as Part
-	var unit := Unit.new(Matrix.new(), Shell.new(part), Vector2i.ZERO)
+	# Unit.is_downed() (docs/10 taskblock03 G) is true whenever NOTHING in
+	# the shell hosts a docked matrix — true for nearly every previewed
+	# part (a plate, a weapon, even torso/head on their own, since
+	# nothing here ever docks one), and HitVolumeView then renders the
+	# whole thing through Poses.down(): a 90° rotation around the root
+	# socket that swaps the part's own "up" for "forward". A preview
+	# pane showing every part lying on its side is not "what the game
+	# will render" for a standing unit. Fixed by mounting `part` under a
+	# throwaway, invisible (empty volume, never drawn) carrier that DOES
+	# host a docked matrix — `is_downed()` reads false, the down-pose
+	# never applies, and the carrier itself contributes nothing to what's
+	# drawn. Direct socket assignment (not PartGraph.attach) deliberately
+	# skips attaches_to matching: this mount is cosmetic scaffolding, not
+	# a real attachment `part`'s own data should ever reflect.
+	var carrier := Part.new()
+	carrier.sockets = [Socket.new(&"MATRIX")]
+	carrier.dock_matrix(Matrix.new())
+	var mount := Socket.new(&"__preview_mount", Transform3D.IDENTITY)
+	mount.occupant = part
+	carrier.sockets.append(mount)
+	var unit := Unit.new(carrier.hosted_matrix, Shell.new(carrier), Vector2i.ZERO)
 	preview_view.setup(unit, DataLibrary.material_table())
+	_frame_preview_camera()
+
+
+## Re-centers the camera on whatever `preview_view` actually just drew,
+## at a distance scaled to its own bounding size — see
+## PREVIEW_CAMERA_TARGET's own comment for why a single fixed target
+## can't work across every part's own authored volume.
+func _frame_preview_camera() -> void:
+	var combined: AABB
+	var has_any := false
+	# `preview_view.get_children()` also includes the team-marker disc
+	# and facing wedge — always at the unit's own cell origin, never
+	# where the part itself sits — which would pull the frame back down
+	# toward y≈0 for an elevated part like torso. `_meshes_by_part` is
+	# HitVolumeView's own record of exactly the geometry a PART actually
+	# owns (docs/10 taskblock05 C: built for hover-highlighting, but the
+	# exact same "which meshes are the part's own" answer this needs).
+	for meshes: Array in preview_view._meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			var world_aabb: AABB = mesh_instance.global_transform * mesh_instance.get_aabb()
+			combined = world_aabb if not has_any else combined.merge(world_aabb)
+			has_any = true
+	var center: Vector3 = combined.get_center() if has_any else PREVIEW_CAMERA_TARGET
+	var radius: float = (
+		maxf(combined.size.length() / 2.0, PREVIEW_CAMERA_MIN_RADIUS) if has_any else 0.5
+	)
+	preview_camera.position = (
+		center + PREVIEW_CAMERA_DIRECTION * radius * PREVIEW_CAMERA_DISTANCE_FACTOR
+	)
+	preview_camera.look_at(center, Vector3.UP)

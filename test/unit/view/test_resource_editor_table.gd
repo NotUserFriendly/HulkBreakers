@@ -84,14 +84,22 @@ func test_sorted_column_title_carries_a_direction_symbol() -> void:
 	assert_true(scene.table.get_column_title(hp_column).contains("▼"))
 
 
-func test_unsorted_columns_carry_no_symbol() -> void:
+## The placeholder is ALWAYS present (reserving the same width whether or
+## not a column is sorted) — only the real "#▲"-style symbol is
+## conditional on being the active sort column.
+func test_unsorted_columns_carry_the_placeholder_not_a_real_symbol() -> void:
 	var scene := ResourceEditorScene.new()
 	add_child_autofree(scene)
 	var hp_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(&"hp")
 	var mass_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(&"mass")
 
 	scene._on_column_title_clicked(hp_column, MOUSE_BUTTON_LEFT)
-	assert_eq(scene.table.get_column_title(mass_column), "mass")
+	assert_eq(
+		scene.table.get_column_title(mass_column),
+		"mass %s" % ResourceEditorScene.SORT_SYMBOL_PLACEHOLDER
+	)
+	assert_false(scene.table.get_column_title(mass_column).contains("▲"))
+	assert_false(scene.table.get_column_title(mass_column).contains("▼"))
 
 
 ## C2: "a filter input under each column header... rows update live."

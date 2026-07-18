@@ -95,7 +95,10 @@ func test_selecting_a_part_populates_the_preview() -> void:
 	scene._refresh_preview()
 
 	assert_not_null(scene.preview_view.unit)
-	assert_eq(scene.preview_view.unit.shell.root.id, &"torso")
+	# The root is a throwaway matrix-hosting carrier (so Unit.is_downed()
+	# reads false and the preview never renders lying down) — the part
+	# itself is mounted a level below it, not the root.
+	assert_not_null(scene.preview_view.unit.shell.find_part(&"torso"))
 
 
 ## B1: only Parts have spatial geometry — an ammo/material selection
