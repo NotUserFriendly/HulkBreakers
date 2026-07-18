@@ -250,3 +250,38 @@ func test_a_mangling_parts_own_id_carries_no_salvage_the_wreckage_does() -> void
 	plate.mangles_into = &"metal_scraps"
 	assert_true(plate.salvage_yield.is_empty())
 	assert_false(FieldObjects.metal_scraps().salvage_yield.is_empty())
+
+
+## taskblock-09 E1: "compute the resolved number first, then quarter it" —
+## a mangled part's residual DT is exactly 1/4 of what dt_at() would
+## otherwise resolve to at that same thickness, not a separately-curved
+## number. thickness feeds DT ONLY (taskblock-09 E2) — hp/max_hp are
+## plain authored numbers, never derived from it; asserted here directly
+## rather than as a separate near-empty test.
+func test_mangle_residual_dt_is_exactly_a_quarter_of_the_resolved_value() -> void:
+	var table := MaterialTable.new()
+	var entry := MaterialEntry.new()
+	entry.dt_curve = [Vector2(2.0, 4.0), Vector2(8.0, 16.0)]
+	table.set_entry(&"composite", entry)
+
+	var plate := Part.new()
+	plate.id = &"plate"
+	plate.material = &"composite"
+	plate.hp = 12
+	plate.max_hp = 12
+
+	var region := Region.new(Rect2(), 0.0, plate, Vector3(1.0, 0.0, 0.0))
+	region.thickness = 8.0  # dt_at(8.0) == 16.0
+
+	var dir := -Vector2(1.0, 0.0)  # dead-on
+	var intact: ImpactResult = DamageResolver.resolve_impact(dir, 10.0, region, table)
+	assert_eq(intact.effective_dt, 16.0, "an intact part reads the full resolved DT")
+	assert_ne(intact.outcome, Enums.Outcome.PENETRATE, "10 damage must not beat the full 16 DT")
+
+	plate.is_mangled = true
+	var mangled: ImpactResult = DamageResolver.resolve_impact(dir, 10.0, region, table)
+	assert_eq(mangled.effective_dt, 4.0, "1/4 of 16 — the same resolved number, just quartered")
+	assert_eq(mangled.outcome, Enums.Outcome.PENETRATE, "10 damage easily beats the quartered 4 DT")
+
+	assert_eq(plate.hp, 12, "thickness/mangling only ever change DT, never hp")
+	assert_eq(plate.max_hp, 12)

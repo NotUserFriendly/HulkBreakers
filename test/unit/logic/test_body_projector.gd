@@ -665,3 +665,18 @@ func test_a_joint_occluded_by_a_plate_isnt_hittable_until_the_plate_is_gone() ->
 	var plane_after: Array[Region] = ShotPlane.build(origin, direction, state)
 	var hit_after: Region = ShotPlane.resolve_projectile(plane_after, aim_point)
 	assert_eq(hit_after.socket, shoulder, "plate gone: the joint is finally reachable")
+
+
+## taskblock-09 E: "the through axis a shot crosses" — a box's own
+## MINIMUM dimension becomes the region's thickness, regardless of which
+## dimension that is, so a plate authored thin along any axis is
+## correctly thin for DT purposes.
+func test_a_boxs_minimum_dimension_becomes_the_regions_thickness() -> void:
+	var part := Part.new()
+	part.id = &"plate"
+	part.hp = 5
+	part.max_hp = 5
+	part.volume = [Box.new(Vector3.ZERO, Vector3(1.2, 0.9, 0.05))]
+
+	var region: Region = BodyProjector.project_part(part, Vector2(0, -1))[0]
+	assert_almost_eq(region.thickness, 0.05, 0.0001, "0.05 is the smallest of (1.2, 0.9, 0.05)")

@@ -40,6 +40,15 @@ func color_for(material: StringName) -> Color:
 ## designer tunes otherwise). Colours are mostly neutral on purpose — they
 ## leave the blue/red team overlay maximum room to read — and broadly rise
 ## in value with DT, so armor tier is a secondary at-a-glance cue.
+##
+## taskblock-09 E: every entry here stays on its flat `dt` — none of these
+## carry a `dt_curve` yet. The taskblock's own steel/ceramic numbers are an
+## illustration of the FORMAT, not authored balance data; giving these
+## real curves means picking real thickness breakpoints per material, an
+## actual design pass this taskblock doesn't hand down. `dt_at()` and the
+## thickness pipeline are proven by test_material_entry.gd's own
+## dedicated fixtures instead — migrating this table is a later, explicit
+## ask.
 static func default_table() -> MaterialTable:
 	var table := MaterialTable.new()
 	table.set_entry(&"flesh", MaterialEntry.new(0.0, 30.0, Color("#C98A7A")))
