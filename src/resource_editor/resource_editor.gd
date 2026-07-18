@@ -31,6 +31,15 @@ const METADATA_MIN_HEIGHT := 160
 ## radians/sec — B1: "slowly rotating."
 const ROTATE_SPEED := 0.5
 const COLUMN_MIN_WIDTH := 90
+## `id` is an identifier, not something anyone reads for its own sake —
+## shrink it to exactly what its own content needs. `display_name` is
+## the opposite: the one column meant to be READ, so it gets sized to
+## its own longest value too, but never below this floor (an all-empty
+## column — nothing authors a display_name yet — would otherwise shrink
+## to just its header).
+const ID_COLUMN_PADDING := 16.0
+const DISPLAY_NAME_MIN_WIDTH := 120.0
+const DISPLAY_NAME_PADDING := 16.0
 ## C1: the sort symbol's own placeholder — reserving the SAME width when
 ## a column isn't sorted keeps every header's own width constant whether
 ## or not it currently carries a real "#▲"-style symbol. Without this, a
@@ -365,7 +374,7 @@ func _rebuild_columns_and_filters() -> void:
 		# reverts) a manual header-boundary drag; a non-expand column's
 		# width is exactly what the user last set it to.
 		table.set_column_expand(i, i == columns.size() - 1)
-		table.set_column_custom_minimum_width(i, COLUMN_MIN_WIDTH)
+		table.set_column_custom_minimum_width(i, _initial_column_width(columns[i]))
 
 	for child: Node in filter_row.get_children():
 		filter_row.remove_child(child)
@@ -381,6 +390,43 @@ func _rebuild_columns_and_filters() -> void:
 		filter_fields[column] = field
 
 	_refresh_column_titles()
+
+
+## `id` shrinks to exactly its own content (header included, at its
+## widest possible sort-symbol form — never the un-suffixed header
+## alone, or the column would visibly widen the moment it's sorted);
+## `display_name` sizes to ITS own content too, with a floor so an
+## empty column doesn't collapse to nothing; everything else keeps the
+## plain shared minimum.
+func _initial_column_width(column: StringName) -> float:
+	if column == &"id":
+		return _content_width(column) + ID_COLUMN_PADDING
+	if column == &"display_name":
+		return maxf(_content_width(column) + DISPLAY_NAME_PADDING, DISPLAY_NAME_MIN_WIDTH)
+	return COLUMN_MIN_WIDTH
+
+
+## Widest rendered width, in pixels, of `column`'s own header (at its
+## widest possible sort-symbol form) and every value currently in
+## `_working_resources` — the STABLE set (taskblock-11 C5's own working
+## set, not a live DataLibrary re-fetch), so this doesn't shift width
+## out from under an in-progress edit.
+func _content_width(column: StringName) -> float:
+	var font: Font = table.get_theme_default_font()
+	var font_size: int = table.get_theme_default_font_size()
+	var widest: float = (
+		font
+		. get_string_size(
+			"%s %s" % [column, SORT_SYMBOL_PLACEHOLDER], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+		)
+		. x
+	)
+	for id: StringName in _working_resources:
+		var text: String = str((_working_resources[id] as Resource).get(column))
+		widest = maxf(
+			widest, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		)
+	return widest
 
 
 ## C1: "a symbol showing current type (alpha/numeric) and direction" —
