@@ -267,6 +267,12 @@ static func _project_box(
 		var depth: float = rotate_by_orientation(face_center_local, orientation).dot(dir)
 		var rect := Rect2(min_x, center_in_frame.y - half.y, max_x - min_x, box.size.y)
 		var normal3 := Vector3(world_normal.x, 0.0, world_normal.y)
-		regions.append(Region.new(rect, depth, part, normal3))
+		var region := Region.new(rect, depth, part, normal3)
+		# taskblock-09 E: "the through axis a shot crosses" — the box's own
+		# minimum dimension, regardless of which face got hit (a plate
+		# authored thin along local Z stays thin no matter which of its
+		# faces is visible).
+		region.thickness = minf(box.size.x, minf(box.size.y, box.size.z))
+		regions.append(region)
 
 	return regions

@@ -27,6 +27,10 @@ const DROPPED_TAG := &"DROPPED"
 ## Pure geometry, decided once for a single region: no roll. `incoming_dir`
 ## is the projectile's direction of travel; `region.surface_normal` comes
 ## free from BodyProjector — the box face that was actually hit.
+## taskblock-09 E: reads `material.dt_at(region.thickness)` — a lookup
+## table, not the old flat `material.dt` — then, taskblock-09 E1, quarters
+## it for an already-mangled part: same material, structurally worse, not
+## a thinner one. Compute the resolved number first, then quarter it.
 static func resolve_impact(
 	incoming_dir: Vector2, damage: float, region: Region, table: MaterialTable
 ) -> ImpactResult:
@@ -37,9 +41,12 @@ static func resolve_impact(
 	var result := ImpactResult.new()
 	result.region = region
 	result.incoming_dir = dir
-	result.effective_dt = material.dt
+	var effective_dt: float = material.dt_at(region.thickness)
+	if region.part.is_mangled:
+		effective_dt *= 0.25
+	result.effective_dt = effective_dt
 
-	if damage >= material.dt:
+	if damage >= effective_dt:
 		result.outcome = Enums.Outcome.PENETRATE
 		result.part_damage = damage
 		return result
@@ -473,7 +480,7 @@ static func resolve_shot(
 
 		var material: MaterialEntry = table.get_entry(region.part.material)
 		var effects: Dictionary = _crit_effects(
-			crit.is_crit, crit.is_double_crit, material.dt > 0.0
+			crit.is_crit, crit.is_double_crit, material.dt_at(region.thickness) > 0.0
 		)
 
 		if effects.bypass:

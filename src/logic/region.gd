@@ -13,6 +13,14 @@ var rect: Rect2
 var depth: float
 var part: Part
 var surface_normal: Vector3
+## taskblock-09 E: the source box's own minimum dimension — "the through
+## axis a shot crosses." The single place geometry feeds the DT stat
+## (`MaterialEntry.dt_at`): a thicker plate is tougher for free, with no
+## extra authoring. Set by BodyProjector._project_box; 0.0 (the default)
+## only appears on a Region built by hand outside that path (test
+## fixtures), where `dt_at` correctly reads it as "thinnest possible" and
+## clamps to the curve's first point.
+var thickness: float = 0.0
 ## The Unit or cover Part this region's whole body belongs to (docs/10
 ## Phase 12.3's aim layers group by this) — distinct from `part`, which is
 ## the specific part within that body. Set by ShotPlane.build(); left null
