@@ -103,9 +103,18 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 		assert_eq(view.get_child_count(), placements.size() + 2)
 		for j in range(placements.size()):
 			var mesh_instance: MeshInstance3D = view.get_child(j + 2)
-			var expected: Transform3D = placements[j].transform.translated_local(
-				placements[j].box.center
-			)
+			var part: Part = placements[j].part
+			# taskblock-10 Pass A: a part rendered as a whole-part primitive
+			# (no mesh_scene, render_primitive != BOX — e.g. taskblock-13's
+			# own cylinder_plate_segment) draws at the part's own composed
+			# transform SCALED by render_scale, never the box-local center
+			# offset a literal hitbox box uses (docs/09: "the mesh must
+			# never affect resolution" — the two are allowed to diverge).
+			var expected: Transform3D
+			if part.mesh_scene == null and part.render_primitive != &"BOX":
+				expected = placements[j].transform.scaled_local(part.render_scale)
+			else:
+				expected = placements[j].transform.translated_local(placements[j].box.center)
 			assert_eq(mesh_instance.transform, expected)
 
 
@@ -181,9 +190,15 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 	)
 	for i in range(expected.size()):
 		var mesh_instance: MeshInstance3D = view.get_child(i + 2)
-		assert_eq(
-			mesh_instance.transform, expected[i].transform.translated_local(expected[i].box.center)
-		)
+		var part: Part = expected[i].part
+		# Same primitive-vs-box distinction as
+		# test_every_rendered_mesh_matches_a_living_boxs_placement_exactly.
+		var expected_transform: Transform3D
+		if part.mesh_scene == null and part.render_primitive != &"BOX":
+			expected_transform = expected[i].transform.scaled_local(part.render_scale)
+		else:
+			expected_transform = expected[i].transform.translated_local(expected[i].box.center)
+		assert_eq(mesh_instance.transform, expected_transform)
 
 
 ## taskblock-08 E1/TESTS: "New Battle is not among the turn controls" —
