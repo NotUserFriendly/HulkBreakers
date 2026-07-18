@@ -35,15 +35,16 @@ static func sample(
 	return points
 
 
-## `base_pattern(mechanical_accuracy)` — a steadier gun (higher
-## mechanical_accuracy) throws a tighter pattern. A WeaponDef-less weapon
-## (shouldn't happen — projectile_num > 1 implies a real gun) falls back
-## to the unscaled base radius rather than crashing. Pass E adds the
-## barrel-length half of this formula (`/ barrel_factor(barrel_length)`,
-## docs: "pattern_size = base_pattern(mechanical_accuracy) /
-## barrel_factor(barrel_length)") on top of this — not built here yet, in
-## order.
+## "pattern_size = base_pattern(mechanical_accuracy) /
+## barrel_factor(barrel_length)" (taskblock-13 Pass E, verbatim) — a
+## steadier gun throws a tighter pattern before barrel length even
+## enters it; a longer barrel then tightens it further, sharing
+## `BarrelFactor` with `RecoilResolver` (docs: "both are 'longer barrel =
+## better,' sharing the curve keeps them coherent"). A WeaponDef-less
+## weapon (shouldn't happen — projectile_num > 1 implies a real gun)
+## falls back to the unscaled base radius rather than crashing.
 static func _pattern_radius(weapon: Part) -> float:
 	if weapon.weapon_def == null:
 		return BASE_PATTERN_RADIUS
-	return BASE_PATTERN_RADIUS * (1.0 - weapon.weapon_def.mechanical_accuracy)
+	var base: float = BASE_PATTERN_RADIUS * (1.0 - weapon.weapon_def.mechanical_accuracy)
+	return base / BarrelFactor.value(weapon.weapon_def.barrel_length)
