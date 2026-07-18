@@ -179,6 +179,7 @@ func _build_table_column(parent: Control) -> void:
 	table.column_title_clicked.connect(_on_column_title_clicked)
 	table.item_edited.connect(_on_item_edited)
 	table.item_selected.connect(_on_item_selected)
+	table.custom_popup_edited.connect(_on_custom_popup_edited)
 	right_column.add_child(table)
 
 
@@ -314,10 +315,72 @@ func _add_row_item(
 			var is_int: bool = typeof(value) == TYPE_INT
 			item.set_range_config(i, -999999.0, 999999.0, 1.0 if is_int else 0.01)
 			item.set_range(i, float(value))
+		elif ResourceEditorColumns.is_dropdown(current_type, column):
+			# C3: a StringName field (material/failure_mode/stack_type/
+			# render_primitive, ...) edits through a suggestion popup
+			# only, never free text — steering away from a typo the
+			# validator would just reject anyway.
+			item.set_cell_mode(i, TreeItem.CELL_MODE_CUSTOM)
 		else:
 			item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
 		item.set_editable(i, true)
 	return item
+
+
+## C3: "a dropdown compiled from the other values in that column"
+## (the fallback) — "for fields backed by a real vocabulary... pull
+## from DataLibrary" (the enhancement, `ResourceEditorColumns.
+## vocabulary_for`). Returns whichever applies.
+func _dropdown_options_for(column: StringName) -> Array[String]:
+	var closed: Array[StringName] = ResourceEditorColumns.vocabulary_for(current_type, column)
+	if not closed.is_empty():
+		var options: Array[String] = []
+		for value: StringName in closed:
+			options.append(String(value))
+		return options
+	return ResourceEditorRows.distinct_values(_row_resources, column)
+
+
+## The popup's own arrow was clicked (`Tree.custom_popup_edited`) —
+## builds a fresh `PopupMenu` from `_dropdown_options_for` and shows it
+## at the cell's own custom-button rect.
+func _on_custom_popup_edited(_arrow_clicked: bool) -> void:
+	var item: TreeItem = table.get_edited()
+	var column: int = table.get_edited_column()
+	if item == null:
+		return
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	if column < 0 or column >= columns.size():
+		return
+	var field: StringName = columns[column]
+
+	var menu := PopupMenu.new()
+	add_child(menu)
+	for option: String in _dropdown_options_for(field):
+		menu.add_item(option)
+	menu.id_pressed.connect(
+		func(id: int) -> void: _apply_dropdown_choice(item, column, menu.get_item_text(id))
+	)
+	menu.close_requested.connect(menu.queue_free)
+	menu.id_pressed.connect(menu.queue_free, CONNECT_DEFERRED)
+	var rect: Rect2 = table.get_custom_popup_rect()
+	menu.popup(Rect2i(rect.position, rect.size))
+
+
+## Applies a chosen dropdown value straight to the resource — split out
+## from `_apply_edit` (Tree's `get_range`/`get_text` cell readback)
+## because a `CELL_MODE_CUSTOM` cell was never actually edited through
+## Tree's own inline editor; the value comes from the popup menu instead.
+func _apply_dropdown_choice(item: TreeItem, column: int, value: String) -> void:
+	var resource: Resource = item.get_metadata(0)
+	if resource == null:
+		return
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	if column < 0 or column >= columns.size():
+		return
+	var field: StringName = columns[column]
+	resource.set(field, StringName(value))
+	item.set_text(column, value)
 
 
 func _on_item_selected() -> void:
