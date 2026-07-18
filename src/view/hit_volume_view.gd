@@ -148,6 +148,66 @@ func refresh() -> void:
 		highlight_part(_highlighted_part)
 
 
+## docs/10 taskblock04 C1's own "field object" case: a bare part tree with
+## no owning Unit at all — no facing, no pose, no team allegiance (a raw
+## definition being edited isn't on anyone's squad). Used by the resource
+## editor's own preview instead of the taskblock-11 C's original approach
+## (wrapping the part under a throwaway matrix-hosting carrier purely to
+## keep `refresh()`'s Unit-based `is_downed()` from reading true) — that
+## carrier fought this function's own team/pose machinery instead of
+## sidestepping it, and its side effects (a facing wedge with nothing to
+## point at, a rim outline meant to read as "your unit" on a lone part)
+## were exactly the "extraneous... faces" and offsets reported against it.
+## `root == null` clears the view, same as `unit = null; refresh()`.
+## Still B1: "the preview is what the game will render" for the part's own
+## geometry — only the allegiance overlay is dropped, plus a single flat
+## marker disc in `marker_color` centered under whatever's drawn, geometry
+## re-centered on the origin so `rotate_y`ing the parent pivot spins it in
+## place instead of orbiting off-center.
+func show_assembly(root: Part, p_material_table: MaterialTable, marker_color: Color) -> void:
+	for child: Node in get_children():
+		remove_child(child)
+		child.queue_free()
+	unit = null
+	_team_marker = null
+	_meshes_by_part.clear()
+	if root == null:
+		return
+	material_table = p_material_table
+
+	_team_marker = _build_marker_disc(marker_color)
+	add_child(_team_marker)
+
+	var raw_placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(root, Vector2i.ZERO)
+	# Only x/z are zeroed — the part's own authored elevation (docs/01's
+	# ROOT_ELEVATION, torso's own volume boxes sitting up around y=1.5)
+	# stays exactly what the game would render; only the HORIZONTAL center
+	# is pulled onto the pivot's own rotation axis so a spin never drifts.
+	var center: Vector3 = UnitGeometry.placements_aabb(raw_placements).get_center()
+	var recenter := Transform3D(Basis.IDENTITY, Vector3(-center.x, 0.0, -center.z))
+
+	var placements_by_part: Dictionary = {}  # Part -> Array[BoxPlacement]
+	var part_order: Array[Part] = []
+	for placement: BoxPlacement in raw_placements:
+		placement.transform = recenter * placement.transform
+		if not placements_by_part.has(placement.part):
+			placements_by_part[placement.part] = [] as Array[BoxPlacement]
+			part_order.append(placement.part)
+		(placements_by_part[placement.part] as Array[BoxPlacement]).append(placement)
+
+	for part: Part in part_order:
+		var part_placements: Array[BoxPlacement] = placements_by_part[part]
+		var has_mesh: bool = part.mesh_scene != null
+		var has_primitive: bool = not has_mesh and part.render_primitive != &"BOX"
+		if has_mesh:
+			_add_mesh_instance(part, part_placements[0])
+		elif has_primitive:
+			_add_primitive_instance(part, part_placements[0], Color.WHITE, false)
+		if not has_mesh and not has_primitive:
+			for placement: BoxPlacement in part_placements:
+				_add_box_instance(placement, Color.WHITE, false)
+
+
 ## docs/09 taskblock06 Pass I2: one instance per part, positioned at that
 ## part's own composed transform (the same one a box placement carries,
 ## minus the box-local center offset a box needs and a whole-part mesh
@@ -163,7 +223,9 @@ func _add_mesh_instance(part: Part, placement: BoxPlacement) -> void:
 ## (ignores the box-local center offset; a whole-part stand-in doesn't
 ## have one). Registered into `_meshes_by_part`/rim-outlined exactly like
 ## a box instance so hover-highlight keeps working on a primitive part.
-func _add_primitive_instance(part: Part, placement: BoxPlacement, team_color: Color) -> void:
+func _add_primitive_instance(
+	part: Part, placement: BoxPlacement, team_color: Color, apply_rim: bool = true
+) -> void:
 	var instance := MeshInstance3D.new()
 	var mesh: PrimitiveMesh = _primitive_mesh(part.render_primitive)
 	var color: Color = (
@@ -172,7 +234,8 @@ func _add_primitive_instance(part: Part, placement: BoxPlacement, team_color: Co
 		else material_table.color_for(part.material)
 	)
 	var material: StandardMaterial3D = WorldPalette.lit_material(color)
-	material.next_pass = WorldPalette.rim_outline_material(team_color)
+	if apply_rim:
+		material.next_pass = WorldPalette.rim_outline_material(team_color)
 	mesh.material = material
 	instance.mesh = mesh
 	instance.transform = placement.transform
@@ -212,7 +275,7 @@ func _primitive_mesh(kind: StringName) -> PrimitiveMesh:
 			return mesh
 
 
-func _add_box_instance(placement: BoxPlacement, team_color: Color) -> void:
+func _add_box_instance(placement: BoxPlacement, team_color: Color, apply_rim: bool = true) -> void:
 	var instance := MeshInstance3D.new()
 	var box_mesh := BoxMesh.new()
 	box_mesh.size = placement.box.size
@@ -222,7 +285,8 @@ func _add_box_instance(placement: BoxPlacement, team_color: Color) -> void:
 	# docs/10 taskblock05 C: each box gets its OWN rim instance (never
 	# shared across boxes) so a part's own highlight next_pass can chain
 	# onto just its own materials, never every box on the unit.
-	material.next_pass = WorldPalette.rim_outline_material(team_color)
+	if apply_rim:
+		material.next_pass = WorldPalette.rim_outline_material(team_color)
 	box_mesh.material = material
 	instance.mesh = box_mesh
 	instance.transform = placement.transform.translated_local(placement.box.center)
@@ -279,6 +343,22 @@ func _build_team_marker() -> MeshInstance3D:
 	instance.mesh = disc
 	instance.material_override = WorldPalette.overlay_material(_marker_color())
 	instance.position = Vector3(unit.cell.x, TEAM_MARKER_Y, unit.cell.y) * UnitGeometry.CELL_SIZE
+	return instance
+
+
+## `show_assembly`'s own flat, fixed-color marker — no squad, no
+## selection-brighten, no downed-dim (none of those concepts apply to a
+## bare part with no owning Unit); always sits at the origin, same as
+## `raw_placements` is centered onto.
+func _build_marker_disc(color: Color) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = TEAM_MARKER_RADIUS
+	disc.bottom_radius = TEAM_MARKER_RADIUS
+	disc.height = TEAM_MARKER_HEIGHT
+	instance.mesh = disc
+	instance.material_override = WorldPalette.overlay_material(color)
+	instance.position = Vector3(0.0, TEAM_MARKER_Y, 0.0)
 	return instance
 
 
