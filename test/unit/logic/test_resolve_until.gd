@@ -107,13 +107,17 @@ func test_a_leg_lost_mid_move_stops_resolution_and_refunds_mp_but_not_ap() -> vo
 
 
 ## docs/09 taskblock06 D2: "an arm lost mid-move does NOT stop the move" —
-## losing the arm never touches agility/MP, so the queued move completes
-## in full; the queue then stops at the NEXT action once ITS own legality
-## fails (the weapon is gone).
-func test_an_arm_lost_mid_move_does_not_stop_the_move_but_stops_at_the_now_illegal_shot() -> void:
+## losing the manipulator never touches agility/MP, so the queued move
+## completes in full; the queue then stops at the NEXT action once ITS own
+## legality fails (the weapon is gone). taskblock-09 C2: a destroyed part
+## no longer detaches on its own (only a severed JOINT does, a separate
+## mechanic) — so this now destroys the HAND, the part that actually
+## carries the TRIGGER capability the pistol needs, rather than the arm
+## it hangs off of, which carries no capability of its own.
+func test_a_hand_lost_mid_move_does_not_stop_the_move_but_stops_at_the_now_illegal_shot() -> void:
 	var built: Dictionary = _make_mobile_armed_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
-	var arm: Part = built.arm
+	var hand: Part = built.hand
 	var enemy_root := Part.new()
 	enemy_root.id = &"enemy_torso"
 	enemy_root.hp = 5
@@ -129,20 +133,17 @@ func test_an_arm_lost_mid_move_does_not_stop_the_move_but_stops_at_the_now_illeg
 	assert_true(queue.enqueue(AttackAction.new(unit, &"pistol", Vector2i(5, 0)), state))
 
 	var destroyed_at := Vector2i(1, 0)
-	# Mirrors what a real impact's _resolve_destruction_consequences does:
-	# destroy the part AND drop its subtree, so the hand+pistol it was
-	# carrying actually detach from the tree — a bare apply_damage_to_part
-	# alone would leave them structurally reachable (PartGraph.walk never
-	# prunes on a PARENT's hp), understating what "blown off" means.
+	# living_parts()'s pre-existing hp>0 filter is all AttackAction.is_legal
+	# reads (attack_action.gd:69) — the hand no longer offering TRIGGER is
+	# what makes the shot illegal, nothing about detachment.
 	var hook := func(s: CombatState, u: Unit) -> void:
 		if u.cell == destroyed_at:
-			DamageResolver.apply_damage_to_part(arm, 10.0)
-			DamageResolver.drop_subtree_if_destroyed(arm, s)
+			DamageResolver.apply_damage_to_part(hand, 10.0)
 
 	var outcome: Dictionary = state.resolve_until(queue, hook)
 
 	assert_eq(
-		unit.cell, Vector2i(3, 0), "the move must have completed in full despite the arm loss"
+		unit.cell, Vector2i(3, 0), "the move must have completed in full despite the hand loss"
 	)
 	assert_eq(outcome.kind, Enums.ResolveOutcome.STOPPED)
 	assert_eq(outcome.reason, &"next_action_illegal", "it stops at the shot, not mid-move")

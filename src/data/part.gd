@@ -94,7 +94,8 @@ extends Resource
 ## `LOCOMOTION` is authored so far, for the one mechanic that needs it.
 @export var body_requires: Array[StringName] = []
 
-## Open vocabulary: VOLATILE (cooks off, Phase 5), ORGANIC, SALVAGE, INERT
+## Open vocabulary: VOLATILE (a descriptor now — taskblock-09 A3 moved the
+## actual trigger to `failure_mode == DETONATE`), ORGANIC, SALVAGE, INERT
 ## (a carried body, docs/05), POWER_SOURCE (Shell.is_powered(), docs/04
 ## taskblock02 Pass D4), ORGANICS (a lootable ration Shell.consume_organics
 ## looks for) ...
@@ -130,21 +131,108 @@ extends Resource
 ## armor plate doesn't.
 @export var salvage_yield: Dictionary = {}
 
-## docs/10 taskblock05 E1: what this part becomes on destruction — a
-## StringName id into FieldObjects.wreckage_pool(). Empty (the default)
-## means it doesn't mangle: the part stays itself, broken (derived from
-## hp <= 0, never a second flag), and its own subtree drops intact, rooted
-## at it. Set (cladding, plates, structure) means it's low-complexity
-## enough to lose its identity entirely: on destruction it's REPLACED by
-## the named wreckage, and its own children detach to drop as their own
-## separate intact assemblies instead — the thing that held them became
-## scrap, it can't hold anything.
+## taskblock-09 A0: what happens when this part reaches 0 HP is the
+## part's OWN business, declared in data — never inferred from a closed
+## `part_type`. Open StringName (CLAUDE.md: "open vocabularies for
+## content"), one of MANGLE / DISABLE / DETONATE / FRAGMENT / MELTDOWN
+## (docs/03). Never stacked — a part has exactly one failure_mode, not
+## "MANGLE and then DISABLE." MANGLE is the default: it's the case v1
+## already had (`mangles_into` below), the "dumb parts" case.
+@export var failure_mode: StringName = &"MANGLE"
+## Runtime — true once this part has actually failed under MANGLE
+## (taskblock-09 A1). A mangled part stays FULLY ATTACHED: its sockets
+## stay live/hittable, `stat_mods` stop applying (Shell.living_parts()'s
+## own hp>0 filter already handles that), and DamageResolver reads a
+## quarter of its resolved DT instead of the full value — an
+## already-damaged heavy shell still shrugs off small arms, it isn't
+## simply gone. Never a second "is destroyed" flag layered on hp<=0; this
+## is specifically "is it mangled" (the wreckage look/reduced-DT state),
+## nothing else reads it as a general destroyed check.
+@export var is_mangled: bool = false
+## Runtime — true once this part has actually failed under DISABLE
+## (taskblock-09 A2). A disabled part stays attached, contributes no
+## stat_mods and no actions (living_parts()'s hp>0 filter already excludes
+## it from both), a weapon on it can't fire, a container on it can't be
+## accessed — dead weight that still occupies its socket and still
+## occludes shots as geometry.
+@export var is_disabled: bool = false
+
+## taskblock-09 A4: MELTDOWN's own countdown length in turns before a
+## failed reactor DETONATEs on its own — 0 (the default) means a MELTDOWN
+## part behaves like an instant DETONATE (no countdown authored).
+@export var meltdown_turns: int = 0
+## Runtime: -1 = not counting down; >=0 = turns left before this part
+## DETONATEs on its own, ticked once per the OWNING UNIT's own turn start
+## (CombatState._start_turn, the same seam LifeSupport.tick already uses).
+## If the part is destroyed again while counting down, it detonates now
+## rather than waiting out the rest of the clock (taskblock-09 A4).
+@export var meltdown_countdown: int = -1
+
+## taskblock-09 A4: FRAGMENT's own K and per-fragment damage — how many
+## projectiles a failure_mode == FRAGMENT part spawns, in even directions,
+## when it fails, and how much damage each one carries. Both default to 0
+## (inert), same posture as detonate_damage/radius below — authored data,
+## never a code constant. taskblock-10 replaces the even-direction spread
+## with real ammo/spread machinery; until then, "K rays in even
+## directions" is the taskblock's own stated placeholder.
+@export var fragment_count: int = 0
+@export var fragment_damage: float = 0.0
+
+## taskblock-09 A3: DETONATE (docs/03) — renamed from "cook-off," same
+## mechanic, folded into the failure_mode dispatch instead of being gated
+## by the VOLATILE tag directly. A failure_mode == DETONATE part with a
+## non-zero detonate_damage explodes on failure: area damage within
+## detonate_radius cells. Both default to 0 (inert) — an ammo rack's own
+## numbers are authored data. VOLATILE may still DESCRIBE a part (tags
+## are open vocabulary) but no longer GATES this; failure_mode is the
+## trigger now.
+@export var detonate_damage: float = 0.0
+@export var detonate_radius: float = 0.0
+
+## taskblock-09 C0: the HP of THIS part's OWN attachment to its parent —
+## authored on the CHILD, never the parent/socket, the same inversion
+## `attaches_to` already uses (docs/01: "the arm carries the info"). A
+## battle-bot arm is hard to sever on ANY frame it plugs into; a worker
+## arm is easy even on a heavy frame. Copied onto the hosting `Socket`'s
+## own runtime `joint_hp`/`joint_hp_max` at attach time (PartGraph.attach)
+## — the socket holds the RUNTIME value, the child defines the MAX. 1 is a
+## flagged, deliberately fragile default (every un-migrated part severs in
+## one hit) rather than an invented "tough" number.
+@export var joint_hp: int = 1
+
+## taskblock-09 F: the DT discount this weapon's payload carries —
+## penetration only, never touches the deflect/stop-dead angle decision
+## (docs/03: deflection is geometry, not energy). Can be negative (a
+## shotgun's buckshot, say) — armor gets HARDER to beat, not easier. 0.0
+## (no discount) is the default. taskblock-10 moves this onto AmmoDef
+## (`bonus_pen`); until it lands, it's a weapon-level placeholder, the
+## same status `damage` already has (Pass G) — read through WeaponResolver
+## like every other weapon-derived number, never this field directly.
+@export var bonus_pen: float = 0.0
+
+## docs/10 taskblock05 E1: what this part becomes on destruction under
+## MANGLE — a StringName id into FieldObjects.wreckage_pool(), purely a
+## VISUAL/SALVAGE swap now (taskblock-09 A1), never a detachment: a
+## mangled part with this set still looks/salvages like its wreckage
+## identity, but stays exactly where it was, attached, sockets live. Empty
+## means no cosmetic swap — the part just stays itself, visually
+## unchanged, `is_mangled` alone marking that it failed.
 @export var mangles_into: StringName = &""
 
 ## Weapon stats (docs/02, Phase 4) — a weapon is just a Part whose
 ## `requires` names the manipulator capabilities it needs to fire (already
 ## exercised by PartGraph.can_operate in Phase 1). Not `range`: that shadows
 ## the builtin range() function.
+##
+## taskblock-09 Pass G: `damage` is a flagged, deliberate leftover, not a
+## silently-kept duplicate. Weapon damage belongs on AMMO (taskblock-10's
+## `AmmoDef.damage`) once that model lands — the gun itself only ever
+## multiplies it (`damage_multiplier`). Until taskblock-10 replaces this
+## field's role, it stays the one weapon-level damage source (read only
+## through WeaponResolver, docs/08 — never directly), same placeholder
+## status `bonus_pen` above already carries. Do not add a second damage
+## source alongside it; when taskblock-10 lands, this field's job moves,
+## it doesn't duplicate.
 @export var damage: float = 0.0
 @export var burst: int = 1
 @export var recoil: float = 0.0
@@ -166,14 +254,6 @@ extends Resource
 ## harmless default for every part, weapon or not — only ever read on
 ## whichever Part an AttackAction actually names as its weapon_id.
 @export var speed: float = 40.0
-
-## Cook-off (docs/03): a VOLATILE part with a non-zero cook_off_damage
-## explodes on destruction, dealing this much area damage within
-## cook_off_radius cells. Both default to 0 (inert) — an ammo rack's actual
-## numbers are authored data, not a code constant.
-@export var cook_off_damage: float = 0.0
-@export var cook_off_radius: float = 0.0
-
 
 ## True if this part declares a MATRIX socket — the only thing that makes a
 ## part pilotable (docs/01). Derived from `sockets`, never a settable flag.

@@ -235,6 +235,11 @@ func _start_turn(unit: Unit) -> void:
 	unit.overwatch_weapon_id = &""
 	var tier_before: SurrogateTier = unit.surrogate_tier
 	LifeSupport.tick(unit, SurrogateLadder.default_ladder())
+	# taskblock-09 A4: MELTDOWN countdowns tick on the same seam LifeSupport
+	# already uses — the mutation (a part's own countdown, and detonate()'s
+	# real damage if one expires) always runs, preview or not, exactly like
+	# LifeSupport.tick() above; only the LOGGING below is preview-gated.
+	var meltdowns: Array[Dictionary] = DamageResolver.tick_meltdowns(unit, self)
 
 	if not is_preview:
 		combat_log.emit(
@@ -263,6 +268,22 @@ func _start_turn(unit: Unit) -> void:
 						"surrogate_demoted: unit %d %s -> %s (organics decay)"
 						% [unit.id, tier_before.id, unit.surrogate_tier.id]
 					)
+				)
+			)
+		for entry: Dictionary in meltdowns:
+			var part: Part = entry.part
+			var affected: Array[Unit] = entry.units
+			var affected_ids: Array = []
+			for affected_unit: Unit in affected:
+				affected_ids.append(affected_unit.id)
+			combat_log.emit(
+				LogEvent.new(
+					round_number,
+					Enums.Phase.RESOLUTION,
+					unit.id,
+					&"detonate",
+					{"source_part": part.id, "units": affected_ids, "cause": "meltdown_expired"},
+					"detonate: %s meltdown expired" % part.id
 				)
 			)
 

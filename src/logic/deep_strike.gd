@@ -319,10 +319,10 @@ static func default_part_pool() -> Array[Part]:
 	leg_cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.19, 0.93, 0.19))]
 	leg_cladding.mangles_into = &"twisted_sheet_metal"
 
-	# docs/01a: the BACK socket's own worked example — cook off a flanked
-	# ammo rack (docs/03), or carry a backpack/body there instead.
-	# cook_off_damage/radius are flagged placeholders, not tuned design —
-	# ask before changing.
+	# docs/01a: the BACK socket's own worked example — detonate a flanked
+	# ammo rack (docs/03/taskblock-09 A3: DETONATE, renamed from cook-off),
+	# or carry a backpack/body there instead. detonate_damage/radius are
+	# flagged placeholders, not tuned design — ask before changing.
 	var ammo_rack := Part.new()
 	ammo_rack.id = &"ammo_rack"
 	ammo_rack.hp = 4
@@ -331,15 +331,18 @@ static func default_part_pool() -> Array[Part]:
 	ammo_rack.attaches_to = [&"BACK"]
 	ammo_rack.material = &"sheet_steel"
 	ammo_rack.tags = [&"VOLATILE"]
-	ammo_rack.cook_off_damage = 5.0
-	ammo_rack.cook_off_radius = 2.0
+	ammo_rack.failure_mode = &"DETONATE"
+	ammo_rack.detonate_damage = 5.0
+	ammo_rack.detonate_radius = 2.0
 	ammo_rack.volume = [Box.new(Vector3.ZERO, Vector3(0.20, 0.30, 0.10))]
 
 	# docs/04 taskblock02 Pass D4: the power hook. POWER_SOURCE is what
-	# Shell.is_powered() looks for; VOLATILE means shooting it out also
-	# cooks off — killing a docked surrogate's life support and starting a
-	# fire in the same shot, from one tag each, not two systems to keep in
-	# sync. cook_off numbers are the same flagged placeholder as ammo_rack's.
+	# Shell.is_powered() looks for; VOLATILE is a descriptor now
+	# (taskblock-09 A3) — MELTDOWN is the real trigger, the taskblock's own
+	# named case for "reactors" (a short countdown, then it detonates same
+	# as the ammo rack). meltdown_turns/detonate numbers are the same
+	# flagged placeholder status ammo_rack's already carry — ask before
+	# tuning.
 	var reactor := Part.new()
 	reactor.id = &"reactor"
 	reactor.hp = 5
@@ -348,8 +351,10 @@ static func default_part_pool() -> Array[Part]:
 	reactor.attaches_to = [&"BACK"]
 	reactor.material = &"sheet_steel"
 	reactor.tags = [&"POWER_SOURCE", &"VOLATILE"]
-	reactor.cook_off_damage = 6.0
-	reactor.cook_off_radius = 2.0
+	reactor.failure_mode = &"MELTDOWN"
+	reactor.meltdown_turns = 2
+	reactor.detonate_damage = 6.0
+	reactor.detonate_radius = 2.0
 	reactor.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.26, 0.10))]
 
 	var pistol := Part.new()

@@ -150,7 +150,13 @@ static func project_part(
 	orientation: float = 0.0,
 	local_transform: Transform3D = Transform3D.IDENTITY
 ) -> Array[Region]:
-	if part.hp <= 0:
+	# taskblock-09 A1/A2: a part at 0 hp still projects — still occludes,
+	# still hittable — if it failed under MANGLE or DISABLE (both stay
+	# fully attached, docs/03). A part that failed under
+	# DETONATE/FRAGMENT/MELTDOWN really is "consumed in place" (taskblock-
+	# 09 C2) and correctly vanishes here exactly like the old blanket
+	# hp<=0 check always meant.
+	if part.hp <= 0 and not (part.is_mangled or part.is_disabled):
 		return []
 	var dir: Vector2 = view_dir.normalized()
 	var perp := Vector2(-dir.y, dir.x)

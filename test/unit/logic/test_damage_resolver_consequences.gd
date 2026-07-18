@@ -1,9 +1,11 @@
 extends GutTest
 
-## docs/01/04: destruction's downstream consequences — matrix ejection (with
-## the surrogate demotion it always carries) and dropping a destroyed
-## non-root part's subtree as one intact assembly. Split out of
-## test_damage_resolver.gd (which covers armor/DT/ricochet/crit/cook-off)
+## docs/01/04/taskblock-09 A: destruction's downstream consequences — matrix
+## ejection (with the surrogate demotion it always carries) and each
+## failure_mode's own dispatch (MANGLE/DISABLE stay attached; the old
+## subtree-drop-on-destroy is gone, taskblock-09 C2 — a part leaves the body
+## only via a severed JOINT now, tested where joints are built). Split out
+## of test_damage_resolver.gd (which covers armor/DT/ricochet/crit/detonate)
 ## purely to stay under gdlint's max-public-methods.
 
 
@@ -163,115 +165,62 @@ func _make_armed_unit(cell: Vector2i) -> Dictionary:
 	return {"unit": unit, "torso": torso, "arm": arm, "hand": hand, "pistol": pistol}
 
 
-func test_destroying_a_limb_drops_its_whole_subtree_as_one_intact_assembly() -> void:
+## taskblock-09 A1: MANGLE is the default failure_mode — reaching 0 hp
+## flips `is_mangled`, but the part (and everything hanging off it) never
+## leaves the tree. Only a severed JOINT does that now (Pass C).
+func test_a_mangling_part_stays_attached_and_flips_is_mangled() -> void:
 	var built: Dictionary = _make_armed_unit(Vector2i(2, 2))
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
 	var hand: Part = built.hand
 	var pistol: Part = built.pistol
-	var grid := Grid.new(5, 5)
-	var state := CombatState.new(grid, [unit])
+	var state := CombatState.new(Grid.new(5, 5), [unit])
 
+	assert_eq(arm.failure_mode, &"MANGLE", "MANGLE is the default failure_mode")
 	DamageResolver.apply_damage_to_part(arm, 10.0)
-	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(arm, state)
+	var impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(arm, state, impact)
 
-	assert_eq(dropped, [arm])
-	assert_false(
-		unit.shell.all_parts().has(arm), "the arm is no longer part of the unit's own assembly"
-	)
+	assert_true(arm.is_mangled, "reaching 0 hp under MANGLE must flip is_mangled")
 	assert_true(
-		state.grid.field_items[Vector2i(2, 2)].has(arm),
-		"the dropped arm must land as a recoverable field item"
+		unit.shell.all_parts().has(arm), "a mangled part stays in the unit's own assembly"
 	)
 	assert_true(
 		PartGraph.walk(arm).has(hand) and PartGraph.walk(arm).has(pistol),
 		"the arm's own subtree (hand, pistol) must still hang off it, fully assembled"
 	)
+	assert_true(
+		state.grid.field_items.is_empty(), "MANGLE never drops anything as a field item"
+	)
 
 
-func test_drop_subtree_if_destroyed_is_a_no_op_for_a_part_still_alive() -> void:
+## docs/03/taskblock-09 A2: DISABLE stays attached too — dead weight, still
+## occupies its socket, contributes nothing (that half is Shell.living_
+## parts()'s pre-existing hp>0 filter, not new here).
+func test_a_disabled_part_stays_attached_and_flips_is_disabled() -> void:
 	var built: Dictionary = _make_armed_unit(Vector2i(2, 2))
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
-	var state := CombatState.new(Grid.new(5, 5), [unit])
-
-	assert_eq(DamageResolver.drop_subtree_if_destroyed(arm, state), [] as Array[Part])
-
-
-func test_drop_subtree_if_destroyed_is_a_no_op_for_the_shells_own_root() -> void:
-	var built: Dictionary = _make_armed_unit(Vector2i(2, 2))
-	var unit: Unit = built.unit
-	var torso: Part = built.torso
-	var state := CombatState.new(Grid.new(5, 5), [unit])
-
-	DamageResolver.apply_damage_to_part(torso, 10.0)
-	assert_eq(
-		DamageResolver.drop_subtree_if_destroyed(torso, state),
-		[] as Array[Part],
-		"the root has no parent within its own shell to drop it from"
-	)
-
-
-## Same shape as _make_armed_unit, but the arm mangles into wreckage —
-## docs/10 taskblock05 E1/E2: the arm is what becomes scrap, not the
-## forearm-hand-pistol assembly it was carrying.
-func _make_mangling_armed_unit(cell: Vector2i) -> Dictionary:
-	var built: Dictionary = _make_armed_unit(cell)
-	(built.arm as Part).mangles_into = &"twisted_sheet_metal"
-	return built
-
-
-func test_a_mangling_part_is_replaced_by_its_mangles_into_product() -> void:
-	var built: Dictionary = _make_mangling_armed_unit(Vector2i(2, 2))
-	var unit: Unit = built.unit
-	var arm: Part = built.arm
+	arm.failure_mode = &"DISABLE"
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
 	DamageResolver.apply_damage_to_part(arm, 10.0)
-	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(arm, state)
+	var impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(arm, state, impact)
 
-	var wreckage: Part = null
-	for part: Part in dropped:
-		if part.id == &"twisted_sheet_metal":
-			wreckage = part
-	assert_not_null(wreckage, "the mangled arm must be replaced by its own mangles_into product")
-	assert_false(
-		dropped.has(arm), "the original arm never appears in the field itself once mangled"
-	)
+	assert_true(arm.is_disabled, "reaching 0 hp under DISABLE must flip is_disabled")
+	assert_false(arm.is_mangled, "a part has exactly one failure_mode, never both flags")
 	assert_true(
-		state.grid.field_items[Vector2i(2, 2)].has(wreckage),
-		"the wreckage itself must land as a recoverable field item"
+		unit.shell.all_parts().has(arm), "a disabled part stays in the unit's own assembly"
 	)
-
-
-func test_a_mangling_parts_children_drop_as_separate_intact_assemblies() -> void:
-	var built: Dictionary = _make_mangling_armed_unit(Vector2i(2, 2))
-	var unit: Unit = built.unit
-	var arm: Part = built.arm
-	var hand: Part = built.hand
-	var pistol: Part = built.pistol
-	var state := CombatState.new(Grid.new(5, 5), [unit])
-
-	DamageResolver.apply_damage_to_part(arm, 10.0)
-	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(arm, state)
-
-	assert_true(dropped.has(hand), "the hand must drop as its own separate assembly")
-	assert_false(dropped.has(arm), "the scrapped arm itself is not among the dropped items")
-	assert_true(
-		PartGraph.walk(hand).has(pistol), "the hand's own subtree (the pistol) rides along with it"
-	)
-	assert_true(
-		state.grid.field_items[Vector2i(2, 2)].has(hand),
-		"the detached hand must land as its own recoverable field item"
-	)
-	# "A corpse holding its own loot" cannot happen anymore: the hand is
-	# its own root now, never still hanging off the mangled arm.
-	assert_false(PartGraph.walk(arm).has(hand))
 
 
 ## A non-mangling destroyed part never loses its own identity — "a broken
-## pistol drops as a broken pistol." `broken` is derived from hp <= 0, not
-## a second field: this only ever asserts hp, never a `.broken` property.
+## pistol is still a pistol." `broken` is derived from hp <= 0, not a
+## second field: this only ever asserts hp, never a `.broken` property.
+## taskblock-09 A1: MANGLE (the default) no longer detaches or swaps
+## anything on its own — `mangles_into` is a cosmetic/salvage hook, empty
+## here, so the pistol just stays exactly itself.
 func test_a_broken_pistol_is_still_identifiably_a_pistol() -> void:
 	var built: Dictionary = _make_armed_unit(Vector2i(2, 2))
 	var unit: Unit = built.unit
@@ -279,11 +228,12 @@ func test_a_broken_pistol_is_still_identifiably_a_pistol() -> void:
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
 	DamageResolver.apply_damage_to_part(pistol, 10.0)
-	var dropped: Array[Part] = DamageResolver.drop_subtree_if_destroyed(pistol, state)
+	var impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(pistol, state, impact)
 
-	assert_eq(dropped, [pistol])
 	assert_eq(pistol.id, &"pistol", "identity survives destruction when the part doesn't mangle")
 	assert_true(pistol.hp <= 0, "broken is read straight off hp, never a separate flag")
+	assert_true(unit.shell.all_parts().has(pistol), "still attached — nothing severed it")
 
 
 func test_wreckage_yields_its_own_salvage() -> void:

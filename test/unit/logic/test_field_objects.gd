@@ -16,11 +16,12 @@ func test_scrap_pile_has_real_geometry_material_and_salvage() -> void:
 	assert_eq(part.salvage_yield, {&"metals": 4})
 
 
-func test_goo_barrel_is_volatile_and_cooks_off() -> void:
+func test_goo_barrel_is_volatile_and_detonates() -> void:
 	var part: Part = FieldObjects.goo_barrel()
 	assert_true(&"VOLATILE" in part.tags)
-	assert_gt(part.cook_off_damage, 0.0)
-	assert_gt(part.cook_off_radius, 0.0)
+	assert_eq(part.failure_mode, &"DETONATE")
+	assert_gt(part.detonate_damage, 0.0)
+	assert_gt(part.detonate_radius, 0.0)
 	assert_eq(part.salvage_yield, {&"reactives": 2})
 
 

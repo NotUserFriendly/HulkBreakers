@@ -30,8 +30,10 @@ static func scrap_pile() -> Part:
 	return part
 
 
-## docs/03: VOLATILE + a real cook_off_damage is the entire "cooks off"
-## mechanic — already built, never reimplemented per field object.
+## docs/03/taskblock-09 A3: failure_mode == DETONATE (renamed from
+## "cook-off") is the entire "explodes on failure" mechanic — already
+## built, never reimplemented per field object. VOLATILE stays as a
+## descriptor tag, not the trigger.
 static func goo_barrel() -> Part:
 	var part := Part.new()
 	part.id = &"goo_barrel"
@@ -41,8 +43,9 @@ static func goo_barrel() -> Part:
 	part.max_hp = 3
 	part.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.5, 1.0, 0.5))]
 	part.tags = [&"VOLATILE"]
-	part.cook_off_damage = 12.0
-	part.cook_off_radius = 2.0
+	part.failure_mode = &"DETONATE"
+	part.detonate_damage = 12.0
+	part.detonate_radius = 2.0
 	part.salvage_yield = {&"reactives": 2}
 	return part
 

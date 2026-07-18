@@ -41,7 +41,7 @@ func test_a_known_event_stream_maps_to_the_expected_cue_list_with_expected_offse
 
 func test_replaying_the_same_stream_twice_produces_an_identical_cue_list() -> void:
 	var events: Array[LogEvent] = [
-		_event(&"impact"), _event(&"impact"), _event(&"cook_off"), _event(&"impact")
+		_event(&"impact"), _event(&"impact"), _event(&"detonate"), _event(&"impact")
 	]
 
 	var first: Array[PlaybackCue] = LogPlayback.build(events)

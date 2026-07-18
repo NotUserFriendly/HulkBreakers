@@ -381,12 +381,13 @@ func test_double_crit_end_to_end_bypasses_armor_and_applies_bonus_damage() -> vo
 	fail_test("no double crit observed in 200 seeded attempts")
 
 
-func test_destroying_a_volatile_part_cooks_off_and_hits_units_in_radius_only() -> void:
+func test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only() -> void:
 	var rack := Part.new()
 	rack.id = &"rack"
 	rack.tags = [&"VOLATILE"]
-	rack.cook_off_damage = 5.0
-	rack.cook_off_radius = 2.0
+	rack.failure_mode = &"DETONATE"
+	rack.detonate_damage = 5.0
+	rack.detonate_radius = 2.0
 	rack.hp = 1
 	rack.max_hp = 1
 
@@ -408,7 +409,7 @@ func test_destroying_a_volatile_part_cooks_off_and_hits_units_in_radius_only() -
 	var destroyed := DamageResolver.apply_damage_to_part(rack, 10.0)
 	assert_true(destroyed)
 
-	var affected: Array[Unit] = DamageResolver.cook_off(rack, state)
+	var affected: Array[Unit] = DamageResolver.detonate(rack, state)
 	assert_eq(affected.size(), 1)
 	assert_eq(affected[0], near_unit)
 	assert_eq(near_root.hp, 5)
@@ -416,10 +417,11 @@ func test_destroying_a_volatile_part_cooks_off_and_hits_units_in_radius_only() -
 
 
 ## docs/10 taskblock04 C3: "a goo_barrel cooks off" — the starter field
-## object's own data (VOLATILE + a real cook_off_damage), run through the
-## exact same pre-existing cook_off() mechanic every other volatile part
-## uses. No new code, just the data actually being correct.
-func test_the_goo_barrel_field_object_cooks_off() -> void:
+## object's own data (VOLATILE + failure_mode DETONATE + a real
+## detonate_damage), run through the exact same pre-existing detonate()
+## mechanic every other volatile part uses. No new code, just the data
+## actually being correct.
+func test_the_goo_barrel_field_object_detonates() -> void:
 	var barrel: Part = FieldObjects.goo_barrel()
 	var grid := Grid.new(10, 10)
 	grid.blockers[Vector2i(5, 5)] = barrel
@@ -431,13 +433,13 @@ func test_the_goo_barrel_field_object_cooks_off() -> void:
 	var state := CombatState.new(grid, [near_unit])
 
 	assert_true(DamageResolver.apply_damage_to_part(barrel, 999.0))
-	var affected: Array[Unit] = DamageResolver.cook_off(barrel, state)
+	var affected: Array[Unit] = DamageResolver.detonate(barrel, state)
 
 	assert_eq(affected, [near_unit])
-	assert_lt(near_root.hp, 20, "the goo barrel's own cook_off_damage must actually have landed")
+	assert_lt(near_root.hp, 20, "the goo barrel's own detonate_damage must actually have landed")
 
 
-func test_cook_off_is_a_no_op_without_the_volatile_tag_or_zero_damage() -> void:
+func test_detonate_is_a_no_op_without_real_detonate_damage() -> void:
 	var inert := Part.new()
 	inert.id = &"inert"
 	inert.hp = 0
@@ -445,11 +447,133 @@ func test_cook_off_is_a_no_op_without_the_volatile_tag_or_zero_damage() -> void:
 	var grid := Grid.new(5, 5)
 	grid.blockers[Vector2i(2, 2)] = inert
 	var state := CombatState.new(grid)
-	assert_eq(DamageResolver.cook_off(inert, state), [] as Array[Unit])
+	assert_eq(DamageResolver.detonate(inert, state), [] as Array[Unit])
 
 	inert.tags = [&"VOLATILE"]
+	inert.failure_mode = &"DETONATE"
 	assert_eq(
-		DamageResolver.cook_off(inert, state),
+		DamageResolver.detonate(inert, state),
 		[] as Array[Unit],
-		"VOLATILE with cook_off_damage 0 must still be inert"
+		"DETONATE with detonate_damage 0 must still be inert"
 	)
+
+
+## taskblock-09 A4: FRAGMENT sprays fragment_count rays in even directions
+## from its own cell — direction 0 is always due +x (angle = TAU * 0 / K),
+## so a target placed directly east of the shrapnel source is guaranteed to
+## be in the path of one of them, proving the spray both fires and
+## terminates (each ray is a real resolve_shot flight — `fragment_hits` is
+## every ImpactResult across all K rays, not one-per-ray: a ray into open
+## space contributes zero, one that penetrates can contribute several).
+func test_fragment_sprays_rays_that_hit_and_terminate() -> void:
+	var part := Part.new()
+	part.id = &"ammo_crate"
+	part.failure_mode = &"FRAGMENT"
+	part.fragment_count = 4
+	part.fragment_damage = 5.0
+	part.hp = 1
+	part.max_hp = 1
+
+	var grid := Grid.new(20, 20)
+	grid.blockers[Vector2i(5, 5)] = part
+
+	var victim_root := Part.new()
+	victim_root.hp = 10
+	victim_root.max_hp = 10
+	victim_root.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(3.0, 3.0, 3.0))]
+	var victim := Unit.new(Matrix.new(), Shell.new(victim_root), Vector2i(8, 5))
+
+	var state := CombatState.new(grid, [victim])
+	assert_true(DamageResolver.apply_damage_to_part(part, 10.0))
+
+	var impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(part, state, impact)
+
+	assert_false(impact.fragment_hits.is_empty(), "the spray must have terminated with real hits")
+	assert_lt(victim_root.hp, 10, "one of the four even-direction rays must have found the victim")
+
+
+## taskblock-09 A4: a MELTDOWN part doesn't detonate on the hit that kills
+## it — it arms a countdown, ticked by CombatState._start_turn via
+## tick_meltdowns(), and only actually detonates once that countdown
+## reaches 0. tick_meltdowns walks the OWNING unit's own shell (mirroring
+## CombatState._start_turn's real call), so the reactor must actually be
+## attached to that unit, not just sitting nearby as a field object.
+func test_meltdown_counts_down_then_detonates() -> void:
+	var reactor := Part.new()
+	reactor.id = &"reactor"
+	reactor.failure_mode = &"MELTDOWN"
+	reactor.meltdown_turns = 2
+	reactor.detonate_damage = 5.0
+	reactor.detonate_radius = 2.0
+	reactor.hp = 1
+	reactor.max_hp = 1
+
+	var owner_torso := Part.new()
+	owner_torso.id = &"owner_torso"
+	owner_torso.hp = 20
+	owner_torso.max_hp = 20
+	var internal := Socket.new(&"INTERNAL")
+	internal.occupant = reactor
+	owner_torso.sockets = [internal]
+	var owner := Unit.new(Matrix.new(), Shell.new(owner_torso), Vector2i(5, 5))
+
+	var near_root := Part.new()
+	near_root.hp = 10
+	near_root.max_hp = 10
+	var near_unit := Unit.new(Matrix.new(), Shell.new(near_root), Vector2i(5, 6))
+	var state := CombatState.new(Grid.new(10, 10), [owner, near_unit])
+
+	assert_true(DamageResolver.apply_damage_to_part(reactor, 10.0))
+	var impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(reactor, state, impact)
+
+	assert_true(impact.meltdown_armed, "the killing hit only arms the countdown, it doesn't fire")
+	assert_eq(near_root.hp, 10, "no damage yet — the countdown hasn't expired")
+	assert_eq(reactor.meltdown_countdown, 2)
+
+	var first_tick: Array[Dictionary] = DamageResolver.tick_meltdowns(owner, state)
+	assert_eq(first_tick.size(), 0, "one turn down, still counting")
+	assert_eq(reactor.meltdown_countdown, 1)
+	assert_eq(near_root.hp, 10)
+
+	var second_tick: Array[Dictionary] = DamageResolver.tick_meltdowns(owner, state)
+	assert_eq(second_tick.size(), 1, "the countdown expired: it must detonate exactly now")
+	assert_eq(second_tick[0].part, reactor)
+	assert_has(second_tick[0].units, near_unit)
+	assert_lt(near_root.hp, 10, "the expired countdown must actually deal its detonate_damage")
+
+
+## taskblock-09 A4: re-destroying a part already counting down detonates it
+## immediately rather than waiting out the rest of the clock.
+func test_meltdown_detonates_early_if_re_killed_mid_countdown() -> void:
+	var reactor := Part.new()
+	reactor.id = &"reactor"
+	reactor.failure_mode = &"MELTDOWN"
+	reactor.meltdown_turns = 5
+	reactor.detonate_damage = 5.0
+	reactor.detonate_radius = 2.0
+	reactor.hp = 1
+	reactor.max_hp = 1
+
+	var grid := Grid.new(10, 10)
+	grid.blockers[Vector2i(5, 5)] = reactor
+
+	var near_root := Part.new()
+	near_root.hp = 10
+	near_root.max_hp = 10
+	var near_unit := Unit.new(Matrix.new(), Shell.new(near_root), Vector2i(5, 6))
+	var state := CombatState.new(grid, [near_unit])
+
+	assert_true(DamageResolver.apply_damage_to_part(reactor, 10.0))
+	var first_impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(reactor, state, first_impact)
+	assert_true(first_impact.meltdown_armed)
+	assert_eq(reactor.meltdown_countdown, 5)
+
+	var second_impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(reactor, state, second_impact)
+
+	assert_eq(second_impact.detonated_units, [near_unit], "re-killed mid-countdown: fires now")
+	assert_eq(reactor.meltdown_countdown, -1, "the clock is cancelled, not left running")
+	assert_lt(near_root.hp, 10)

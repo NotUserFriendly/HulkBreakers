@@ -30,8 +30,8 @@ func _attach_reactor(unit: Unit) -> Part:
 	reactor.attaches_to = [&"BACK"]
 	reactor.material = &"sheet_steel"
 	reactor.tags = [&"POWER_SOURCE", &"VOLATILE"]
-	reactor.cook_off_damage = 6.0
-	reactor.cook_off_radius = 2.0
+	reactor.detonate_damage = 6.0
+	reactor.detonate_radius = 2.0
 	reactor.volume = [Box.new(Vector3.ZERO, Vector3(0.18, 0.26, 0.10))]
 	PartGraph.attach(reactor, unit.shell.root, PartGraph.find_socket(unit.shell.root, &"BACK_L"))
 	return reactor
@@ -100,7 +100,7 @@ func test_regen_floors_at_zero_and_never_fires_once_nothing_is_exposed() -> void
 	assert_false(backpack.contents.is_empty(), "nothing exposed: organics aren't touched at all")
 
 
-func test_killing_the_reactor_stops_power_and_cooks_off() -> void:
+func test_killing_the_reactor_stops_power_and_detonates() -> void:
 	var unit := _bare_unit()
 	var reactor := _attach_reactor(unit)
 	var state := CombatState.new(Grid.new(10, 10), [unit])
@@ -108,10 +108,10 @@ func test_killing_the_reactor_stops_power_and_cooks_off() -> void:
 	assert_true(unit.shell.is_powered())
 
 	reactor.hp = 0
-	var cooked: Array[Unit] = DamageResolver.cook_off(reactor, state)
+	var detonated: Array[Unit] = DamageResolver.detonate(reactor, state)
 
 	assert_false(unit.shell.is_powered(), "a destroyed reactor no longer counts as living")
-	assert_has(cooked, unit, "VOLATILE + destroyed: it cooks off")
+	assert_has(detonated, unit, "a real detonate_damage: it detonates")
 
 
 func test_killing_the_reactor_resumes_decay_on_the_next_tick() -> void:
