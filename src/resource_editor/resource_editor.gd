@@ -52,8 +52,12 @@ var rotate_button: Button
 var metadata_panel: RichTextLabel
 var filter_row: HBoxContainer
 var table: Tree
+var save_button: Button
+var save_status: Label
 
 var rotating: bool = true
+## C5: "an edit stack of cell changes."
+var edit_stack := ResourceEditStack.new()
 
 ## C1: the column currently sorted on (&"" = load order) and its
 ## direction.
@@ -64,12 +68,29 @@ var filters: Dictionary = {}
 ## column -> its own LineEdit, rebuilt only when `current_type` changes
 ## (never mid-keystroke — see `_rebuild_columns_and_filters`).
 var filter_fields: Dictionary = {}
+
+## The LIVE resource instance the table's own rows are editing — never
+## re-fetched from `DataLibrary` by id once selected (that would return
+## a FRESH, unedited duplicate; `DataLibrary.get_part`/`resources_of_type`
+## always hand back copies, taskblock-10 B). Preview/metadata/save all
+## read this directly so an in-progress, unsaved edit shows up
+## immediately everywhere, not just in the table cell itself.
+var _selected_resource: Resource = null
 ## The table's own current rows, in display order — index i's resource is
 ## whatever `table`'s i'th (post-root) TreeItem shows. Selection/edit
 ## handlers key off `TreeItem.get_metadata(0)` directly instead, but this
 ## stays for anything that wants the whole displayed set (C4's hover, a
 ## future "select all").
 var _row_resources: Array[Resource] = []
+## C5: "must survive across... sort/filter changes." A STABLE working
+## set, fetched from `DataLibrary` exactly once per type-switch — never
+## re-fetched by `_refresh_table_rows` itself, which would hand back
+## fresh, UNEDITED duplicates (taskblock-10 B: every `DataLibrary` getter
+## always duplicates) and silently discard every in-progress edit on the
+## very next sort click or filter keystroke. Reset only on
+## `set_current_type` or after a successful `save()` (which re-syncs this
+## one row from `DataLibrary`'s own now-updated cache).
+var _working_resources: Dictionary = {}
 
 
 func _ready() -> void:
@@ -99,6 +120,42 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if rotating and preview_pivot != null:
 		preview_pivot.rotate_y(ROTATE_SPEED * delta)
+
+
+## C5: "working undo on Ctrl+Z (and redo on Ctrl+Shift+Z)."
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not (event as InputEventKey).pressed:
+		return
+	var key_event: InputEventKey = event
+	if not key_event.ctrl_pressed or key_event.keycode != KEY_Z:
+		return
+	if key_event.shift_pressed:
+		redo()
+	else:
+		undo()
+	get_viewport().set_input_as_handled()
+
+
+## Reverts the last edit and rebuilds the table from the now-current
+## resource state — a full rebuild, not a hunt for the exact TreeItem
+## that made the edit, because C5 explicitly does NOT promise the undone
+## row is even still visible under the current sort/filter.
+func undo() -> void:
+	var edit: ResourceEdit = edit_stack.undo()
+	if edit == null:
+		return
+	_refresh_table_rows()
+	_refresh_preview()
+	_refresh_metadata()
+
+
+func redo() -> void:
+	var edit: ResourceEdit = edit_stack.redo()
+	if edit == null:
+		return
+	_refresh_table_rows()
+	_refresh_preview()
+	_refresh_metadata()
 
 
 func _build_preview(parent: Control) -> void:
@@ -174,6 +231,16 @@ func _build_table_column(parent: Control) -> void:
 		button.pressed.connect(set_current_type.bind(type_key))
 		type_bar.add_child(button)
 
+	var save_bar := HBoxContainer.new()
+	right_column.add_child(save_bar)
+	save_button = Button.new()
+	save_button.text = "Save"
+	save_button.pressed.connect(_on_save_pressed)
+	save_bar.add_child(save_button)
+
+	save_status = Label.new()
+	save_bar.add_child(save_status)
+
 	filter_row = HBoxContainer.new()
 	right_column.add_child(filter_row)
 
@@ -204,12 +271,32 @@ func save_resource(resource: Resource) -> Array[ValidationError]:
 	return DataLibrary.save(current_type, resource)
 
 
+## C6: "edits validate through DataValidator on save; an invalid row
+## flags with its named error rather than writing a broken file." Saves
+## the currently SELECTED definition — the one the preview/metadata
+## panel are already showing.
+func _on_save_pressed() -> void:
+	if _selected_resource == null:
+		save_status.text = "nothing selected"
+		return
+	var errors: Array[ValidationError] = save_resource(_selected_resource)
+	if errors.is_empty():
+		save_status.text = "saved %s" % selected_id
+	else:
+		# C6: "an invalid row flags with its NAMED error" — the field it
+		# came from, not just the free-text message.
+		save_status.text = "INVALID %s.%s: %s" % [selected_id, errors[0].field, errors[0].message]
+
+
 func set_current_type(type_key: StringName) -> void:
 	current_type = type_key
 	selected_id = &""
+	_selected_resource = null
 	sort_column = &""
 	sort_ascending = true
 	filters.clear()
+	edit_stack.clear()
+	_working_resources = load_data()
 	_rebuild_columns_and_filters()
 	_refresh_table_rows()
 	_refresh_preview()
@@ -297,8 +384,9 @@ func _on_filter_text_changed(new_text: String, column: StringName) -> void:
 ## position in whatever LineEdit the user is typing into.
 func _refresh_table_rows() -> void:
 	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
-	var resources: Dictionary = DataLibrary.resources_of_type(current_type)
-	_row_resources = ResourceEditorRows.build(resources, filters, sort_column, sort_ascending)
+	_row_resources = ResourceEditorRows.build(
+		_working_resources, filters, sort_column, sort_ascending
+	)
 
 	table.clear()
 	var root_item: TreeItem = table.create_item()
@@ -432,7 +520,12 @@ func _apply_dropdown_choice(item: TreeItem, column: int, value: String) -> void:
 	if column < 0 or column >= columns.size():
 		return
 	var field: StringName = columns[column]
-	resource.set(field, StringName(value))
+	var old_value: Variant = resource.get(field)
+	var new_value: StringName = StringName(value)
+	if new_value == old_value:
+		return
+	resource.set(field, new_value)
+	edit_stack.record(resource, field, old_value, new_value)
 	item.set_text(column, value)
 
 
@@ -440,9 +533,15 @@ func _on_item_selected() -> void:
 	var item: TreeItem = table.get_selected()
 	if item == null:
 		return
+	# A socket/dt_curve-point child row's own metadata(0) is a Socket or
+	# MaterialEntry, never the top-level definition — selecting one must
+	# not repoint the preview/metadata/save target at it.
+	if item.get_meta(&"row_kind", &"top_level") != &"top_level":
+		return
 	var resource: Resource = item.get_metadata(0)
 	if resource == null:
 		return
+	_selected_resource = resource
 	selected_id = resource.get(&"id")
 	_refresh_preview()
 	_refresh_metadata()
@@ -487,7 +586,10 @@ func _apply_edit(item: TreeItem, column: int) -> void:
 		return
 	var old_value: Variant = resource.get(field)
 	var new_value: Variant = _coerce(old_value, item, column)
+	if new_value == old_value:
+		return
 	resource.set(field, new_value)
+	edit_stack.record(resource, field, old_value, new_value)
 	item.set_text(column, str(new_value))
 
 
@@ -517,12 +619,20 @@ func _apply_socket_edit(item: TreeItem, column: int) -> void:
 		return
 	var field: StringName = SOCKET_COLUMNS[column]
 	if field == &"joint_hp":
-		socket.joint_hp = int(item.get_range(column))
-		item.set_text(column, str(socket.joint_hp))
+		var old_hp: int = socket.joint_hp
+		var new_hp: int = int(item.get_range(column))
+		if new_hp == old_hp:
+			return
+		socket.joint_hp = new_hp
+		edit_stack.record(socket, field, old_hp, new_hp)
+		item.set_text(column, str(new_hp))
 	else:
-		var new_text: String = item.get_text(column)
-		socket.set(field, StringName(new_text))
-		item.set_text(column, new_text)
+		var old_value: StringName = socket.get(field)
+		var new_value: StringName = StringName(item.get_text(column))
+		if new_value == old_value:
+			return
+		socket.set(field, new_value)
+		edit_stack.record(socket, field, old_value, new_value)
 
 
 ## C4: a dt_curve-point child row's own edit. `dt_curve` is
@@ -538,26 +648,40 @@ func _apply_curve_edit(item: TreeItem, column: int) -> void:
 	if column < 0 or column >= CURVE_COLUMNS.size():
 		return
 	var point: Vector2 = material.dt_curve[index]
+	var old_value: float = point.x if column == 0 else point.y
 	var new_value: float = item.get_range(column)
-	if column == 0:
-		point.x = new_value
-	else:
-		point.y = new_value
-	material.dt_curve[index] = point
+	if new_value == old_value:
+		return
+	var setter := func(value: float) -> void:
+		var current: Vector2 = material.dt_curve[index]
+		if column == 0:
+			current.x = value
+		else:
+			current.y = value
+		material.dt_curve[index] = current
+	setter.call(new_value)
+	edit_stack.record(
+		material,
+		StringName("dt_curve[%d].%s" % [index, "x" if column == 0 else "y"]),
+		old_value,
+		new_value,
+		setter
+	)
 	item.set_text(column, str(new_value))
 
 
 ## B2: "filename, resource type, file size, source (res:// built-in vs
 ## user:// override), validation status."
 func _refresh_metadata() -> void:
-	if selected_id == &"":
+	if selected_id == &"" or _selected_resource == null:
 		metadata_panel.text = ""
 		return
+	# Source is looked up by the id it was LOADED under — a save moves an
+	# id from builtin to user (DataLibrary.save's own contract), and an
+	# in-progress, unsaved `id` edit is deliberately not possible at all
+	# (id is never editable, ResourceEditorColumns.is_editable).
 	var source: StringName = DataLibrary.source_of(current_type, selected_id)
-	var resource: Resource = DataLibrary.resources_of_type(current_type).get(selected_id)
-	var errors: Array[ValidationError] = (
-		DataValidator.validate(resource) if resource != null else []
-	)
+	var errors: Array[ValidationError] = DataValidator.validate(_selected_resource)
 	var status: String = "valid" if errors.is_empty() else "INVALID: %s" % errors[0].message
 	metadata_panel.text = (
 		"[b]%s[/b]\ntype: %s\nsource: %s\nstatus: %s"
@@ -629,14 +753,13 @@ func _curve_summary(material: MaterialEntry) -> String:
 ## all (no `volume`/`sockets` on `AmmoDef`/`MaterialEntry`); an ammo or
 ## material selection clears the preview rather than faking one.
 func _refresh_preview() -> void:
-	if current_type != DataLibrary.TYPE_PARTS or selected_id == &"":
+	if current_type != DataLibrary.TYPE_PARTS or _selected_resource == null:
 		preview_view.unit = null
 		preview_view.refresh()
 		return
-	var part: Part = DataLibrary.get_part(selected_id)
-	if part == null:
-		preview_view.unit = null
-		preview_view.refresh()
-		return
+	# The LIVE (possibly unsaved-edited) instance, not a fresh
+	# DataLibrary duplicate — B1's "the preview is what the game will
+	# render" extends to a still-being-tuned value too.
+	var part: Part = _selected_resource as Part
 	var unit := Unit.new(Matrix.new(), Shell.new(part), Vector2i.ZERO)
 	preview_view.setup(unit, DataLibrary.material_table())
