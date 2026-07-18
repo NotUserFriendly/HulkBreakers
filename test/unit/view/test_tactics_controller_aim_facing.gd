@@ -25,6 +25,7 @@ func _make_lopsided_armed_unit(cell: Vector2i, orientation: float, squad: int = 
 	pistol.damage = 5.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -73,6 +74,7 @@ func test_entering_aim_orients_the_shooter_at_the_target_in_the_preview() -> voi
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(0, 5))
 	var aim: Dictionary = controller.aim_state()
 
@@ -100,6 +102,7 @@ func test_the_previewed_shooters_own_geometry_uses_the_corrected_facing() -> voi
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(0, 5))
 	var aim: Dictionary = controller.aim_state()
 	var shooter: Unit = aim["shooter"]
@@ -136,10 +139,12 @@ func test_the_free_face_costs_nothing_and_is_idempotent_across_enter_cancel_ente
 	var starting_mp: float = a.mp
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(0, 5))
 	var first: Dictionary = controller.aim_state()
 	controller.cancel_aim()
 
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(0, 5))
 	var second: Dictionary = controller.aim_state()
 

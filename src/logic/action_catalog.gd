@@ -26,7 +26,7 @@ static func defs() -> Array[ActionDef]:
 		# requires_action: only available if something else already
 		# provides shoot — the instrument overwatch still needs even once
 		# its provider moves off the gun and onto the matrix (E3).
-		ActionDef.new(&"overwatch", "Overwatch", "OW", {}, &"shoot"),
+		ActionDef.new(&"overwatch", "Overwatch", "OW", {}, &"shoot", false),
 	]
 
 
@@ -81,6 +81,27 @@ static func _provided_ids(unit: Unit, ladder: Array[SurrogateTier]) -> Array[Str
 			if not id in ids:
 				ids.append(id)
 	return ids
+
+
+## taskblock-08 A1: "the armed action decides what a click means" — the
+## specific living, operable part providing `action_id` right now, or null.
+## SHOOT armed picks the part that actually provides &"shoot", SAW armed
+## picks whichever part provides &"saw", never just "any weapon" — the
+## same per-part gates `_provided_ids` applies (surrogate ladder + `_is_
+## operable`), so this only ever returns a part the action bar would also
+## list the action as coming from.
+static func provider_for(
+	unit: Unit,
+	action_id: StringName,
+	ladder: Array[SurrogateTier] = SurrogateLadder.default_ladder()
+) -> Part:
+	var living: Array[Part] = unit.shell.living_parts()
+	for part: Part in living:
+		if not unit.can_use_part(part, ladder):
+			continue
+		if action_id in part.provides_actions and _is_operable(part, living):
+			return part
+	return null
 
 
 ## Plain Array.sort() on StringName does NOT compare lexicographically (it

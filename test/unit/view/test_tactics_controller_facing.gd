@@ -26,6 +26,7 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	pistol.damage = 5.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -215,6 +216,7 @@ func test_rmb_click_while_aiming_still_cancels() -> void:
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	assert_not_null(controller.aiming_at)
 
@@ -236,6 +238,7 @@ func test_rmb_drag_while_aiming_does_not_cancel() -> void:
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	assert_not_null(controller.aiming_at)
 
@@ -266,6 +269,7 @@ func test_aim_facing_points_the_shooter_at_the_target() -> void:
 	assert_null(controller.aim_facing(), "not aiming yet: nothing to face")
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 0))
 
 	var expected: float = FaceAction.orientation_toward(Vector2i(0, 0), Vector2i(5, 0))
@@ -278,6 +282,7 @@ func test_aim_facing_goes_null_again_once_aim_is_cancelled() -> void:
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 0))
 	assert_not_null(controller.aim_facing())
 
@@ -296,6 +301,7 @@ func test_no_end_position_ghost_while_aiming_with_no_move_queued() -> void:
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 
 	controller.click_cell(Vector2i(5, 0))  # enters aim mode, no move queued
 
@@ -311,6 +317,7 @@ func test_end_position_ghost_faces_the_target_when_a_move_is_also_queued() -> vo
 	a.mp = 5.0
 	controller.click_cell(Vector2i(0, 0))
 	controller.click_cell(Vector2i(2, 0))  # queue a move first
+	controller.arm_action(&"shoot")
 
 	controller.click_cell(Vector2i(5, 0))  # then enter aim mode
 
@@ -328,6 +335,7 @@ func test_end_position_ghost_stops_facing_the_target_once_aim_is_cancelled() -> 
 	a.mp = 5.0
 	controller.click_cell(Vector2i(0, 0))
 	controller.click_cell(Vector2i(2, 0))  # a queued move keeps the ghost alive post-cancel
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 0))
 	assert_not_null(controller._end_position_ghost())
 

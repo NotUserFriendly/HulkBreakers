@@ -17,6 +17,7 @@ func _armed_unit(cell: Vector2i, squad: int, damage: float) -> Unit:
 	pistol.damage = damage
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.02, 1.0)]  # tight: lands on the target's one part every time
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -67,6 +68,7 @@ func test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage() -> vo
 	assert_true(label.text.find("7") != -1, "sanity: the panel must show the predicted damage")
 
 	# Actually fire, through the same click/confirm path a player would use.
+	controller.arm_action(&"shoot")
 	controller.click_cell(target.cell)  # enters aim mode
 	controller.confirm_shot()
 
