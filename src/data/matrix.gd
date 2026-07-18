@@ -15,6 +15,14 @@ extends Resource
 @export var xp: int = 0
 @export var perks: Array[StringName] = []
 @export var recovery_state: Enums.RecoveryState = Enums.RecoveryState.PILOTING
+## taskblock-14 Pass B2: "baked-in personality" — travels with the matrix,
+## not the shell, so the same mind reads the same way across bodies.
+## Open StringName (`UnitAI.plan_turn`'s own vocabulary — AGGRESSIVE,
+## COVER_SEEKER today), never an enum: a third playstyle is new data, not
+## a code change. A player matrix carries one too, as a fallback only —
+## no selection UI beyond the bout menu (taskblock-14 Pass D) is built
+## for it.
+@export var playstyle: StringName = &"AGGRESSIVE"
 
 ## Link-only fields (docs/04). `perk_slots` is explicitly "not final" in the
 ## docs — a flagged, tunable default, not a design decision.

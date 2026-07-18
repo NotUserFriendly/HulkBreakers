@@ -14,11 +14,6 @@ const SEED := 20260715
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400
-## Up to this many shots fired at the same target in one turn once already
-## in range — enough AP-budget headroom that a target dying to the first
-## real (non-preview) shot leaves a second queued shot to abort for real at
-## resolution (docs/09: "the world moved").
-const MAX_SHOTS_PER_TURN := 3
 
 
 func _cells_of_terrain(grid: Grid, terrain: int) -> Array[Vector2i]:
@@ -148,50 +143,6 @@ func _head_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	return Unit.new(link, shell, cell, 1)
 
 
-## The pistol/rifle/two_handed_sword templates carry damage > 0; this
-## mirrors DeepStrike.is_armed's own definition of "a weapon."
-func _find_weapon_id(unit: Unit) -> StringName:
-	for part: Part in unit.shell.living_parts():
-		if part.damage > 0.0:
-			return part.id
-	return &""
-
-
-func _nearest_living_enemy(unit: Unit, state: CombatState) -> Unit:
-	var nearest: Unit = null
-	var best: int = 999999
-	for candidate: Unit in state.units:
-		if candidate.squad_id == unit.squad_id or not candidate.alive:
-			continue
-		var d: int = Grid.distance_chebyshev(unit.cell, candidate.cell)
-		if d < best:
-			best = d
-			nearest = candidate
-	return nearest
-
-
-## Greedily closes the distance to `target_cell` by one reachable-this-turn
-## step, queuing a MoveAction if that step actually goes anywhere.
-func _path_toward(
-	unit: Unit, target_cell: Vector2i, state: CombatState, queue: ActionQueue
-) -> void:
-	if unit.cell == target_cell:
-		return
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
-	var best_cell: Vector2i = unit.cell
-	var best_dist: int = Grid.distance_chebyshev(unit.cell, target_cell)
-	for cell: Vector2i in reachable:
-		var d: int = Grid.distance_chebyshev(cell, target_cell)
-		if d < best_dist:
-			best_dist = d
-			best_cell = cell
-	if best_cell != unit.cell:
-		var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
-		if path.size() >= 2:
-			queue.enqueue(MoveAction.new(unit, path), state)
-
-
 func _squad_has_survivors(state: CombatState, squad_id: int) -> bool:
 	for unit: Unit in state.units:
 		if unit.squad_id == squad_id and unit.alive:
@@ -199,77 +150,14 @@ func _squad_has_survivors(state: CombatState, squad_id: int) -> bool:
 	return false
 
 
-## A minimal, fully deterministic AI, purely a function of the (seeded)
-## CombatState and MissionState — no randomness of its own:
-##   1. an enemy is alive and reachable/visible -> fight it (closing the
-##      distance first if needed; fire repeatedly if already in range;
-##      defensive facing — PLAN.md's own named fix — if neither is
-##      possible, see below);
-##   2. otherwise, if this is a landing-squad unit with the gather
-##      objective still open -> walk to the resource node and gather it;
-##   3. otherwise (objective complete) -> walk to the extraction zone and
-##      call it.
+## taskblock-14 Pass B: this test used to OWN the ~60-line deterministic
+## AI inline (fight -> gather -> extract) — it's now UnitAI.plan_turn,
+## a real, driveable module (src/logic/ai/unit_ai.gd), and this call is
+## the proof the extraction was faithful: nothing else in this test
+## changed, and the mission below still resolves exactly the same way.
+## AGGRESSIVE (the default) reproduces the old inline behaviour exactly.
 func _queue_turn(unit: Unit, state: CombatState, mission: MissionState) -> ActionQueue:
-	var queue := ActionQueue.new(unit)
-	var enemy: Unit = _nearest_living_enemy(unit, state)
-
-	if enemy != null:
-		var weapon_id: StringName = _find_weapon_id(unit)
-		var already_in_range: bool = (
-			weapon_id != &"" and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-		)
-		if already_in_range:
-			var extra := 1
-			while (
-				extra < MAX_SHOTS_PER_TURN
-				and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-			):
-				extra += 1
-		else:
-			var queued_before: int = queue.actions.size()
-			_path_toward(unit, enemy.cell, state, queue)
-			if weapon_id != &"":
-				queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-			# PLAN.md's own carried finding: an unarmed unit that's already
-			# as close as it can get to its enemy previously just froze at
-			# whatever orientation its last real action left it — which,
-			# for at least one seed, happened to be a defended plate's own
-			# best angle, deflecting forever (docs/03: DEFLECT never damages
-			# the plate, unlike STOP_DEAD). A unit with nothing else to do
-			# this turn instead turns to face its threat square-on — an
-			# ordinary defensive reaction, not new tactical sophistication —
-			# which drives the incidence angle toward 0, and STOP_DEAD is
-			# what geometry gives you at 0.
-			if queue.actions.size() == queued_before:
-				queue.enqueue(
-					FaceAction.new(unit, FaceAction.orientation_toward(unit.cell, enemy.cell)),
-					state
-				)
-		queue.enqueue(EndTurnAction.new(unit), state)
-		return queue
-
-	if unit.squad_id != 0:
-		queue.enqueue(EndTurnAction.new(unit), state)
-		return queue
-
-	var incomplete: bool = mission.objectives.any(
-		func(o: StringName) -> bool: return o not in mission.completed_objectives
-	)
-	if incomplete:
-		var node_cell: Vector2i = mission.resource_nodes.keys()[0]
-		if unit.cell == node_cell:
-			queue.enqueue(GatherAction.new(mission, unit, node_cell), state)
-		else:
-			_path_toward(unit, node_cell, state, queue)
-	else:
-		var extraction_cell: Vector2i = mission.extraction_cells[0]
-		if unit.cell == extraction_cell:
-			queue.enqueue(ExtractAction.new(mission, unit), state)
-		else:
-			_path_toward(unit, extraction_cell, state, queue)
-
-	queue.enqueue(EndTurnAction.new(unit), state)
-	return queue
+	return UnitAI.plan_turn(unit, state, mission)
 
 
 ## The farthest OPEN cell reachable from `from` — guarantees the gather
