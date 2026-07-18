@@ -17,7 +17,10 @@ extends Node
 ## `aim_changed` (arm/disarm/enter-aim/cancel-aim all emit it).
 
 const SLOT_COUNT := 10
-const BOX_SIZE := Vector2(36, 28)
+## taskblock-08 E1: "3x its current size. Slots are square." The old box
+## was 36x28 (non-square); 3x the larger dimension gives a clean square,
+## not 3x each axis independently (which would have stayed non-square).
+const BOX_SIZE := Vector2(108, 108)
 
 var tactics: TacticsController
 var tooltip_view: TooltipView

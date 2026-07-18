@@ -184,3 +184,43 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 		assert_eq(
 			mesh_instance.transform, expected[i].transform.translated_local(expected[i].box.center)
 		)
+
+
+## taskblock-08 E1/TESTS: "New Battle is not among the turn controls" —
+## E3's whole point, checked directly against the real built scene rather
+## than just trusting the layout code reads that way.
+func test_new_battle_is_not_among_the_turn_controls() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	for child: Node in scene.turn_controls_column.get_children():
+		if child is Button:
+			assert_ne((child as Button).text, "New Battle")
+	assert_not_null(scene.new_battle_button, "it must still exist somewhere — just not there")
+
+
+## taskblock-08 E1: "action bar on the LEFT... AP and MP pips render on
+## TOP of the action bar" — the pip rows sit above the action bar's own
+## row, both inside the one left-hand column, never mixed into the
+## turn-control column.
+func test_the_action_bars_own_row_is_the_last_child_of_the_action_column() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	assert_eq(scene.action_column.get_child_count(), 2, "pips above, the action row below")
+	var last: Node = scene.action_column.get_child(scene.action_column.get_child_count() - 1)
+	assert_eq(
+		(last as Container).get_child_count(),
+		ActionBar.SLOT_COUNT,
+		"the LAST child must be the 10-box action row, the pips sit above it"
+	)
+
+
+func test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	for child: Node in scene.turn_controls_column.get_children():
+		var button := child as Button
+		assert_not_null(button)
+		assert_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_END)

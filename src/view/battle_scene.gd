@@ -33,6 +33,16 @@ var queue_panel: QueuePanel
 var action_bar: ActionBar
 var ap_mp_pip_row: ApMpPipRow
 var controls_overlay: ControlsOverlay
+## taskblock-08 E1: the left column pairing the AP/MP pip rows above the
+## action bar — exposed so a test can confirm that ordering structurally,
+## the same way `action_bar`/`ap_mp_pip_row` are already exposed for their
+## own logic-level tests.
+var action_column: VBoxContainer
+## taskblock-08 E1/E3: the Resolve to Here / End Turn / Reset Turn column,
+## to the action bar's right — exposed so a test can confirm New Battle
+## (E3: "not a turn control") is never among its children.
+var turn_controls_column: VBoxContainer
+var new_battle_button: Button
 var log_sink: UISink
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
 ## streams." The on-screen log (`log_sink`) and this file are fed the same
@@ -198,12 +208,26 @@ func _ready() -> void:
 
 	# docs/10 taskblock03 J: "corner-anchored," now specifically top-right
 	# (runNotes.md moved it off the turn-controls corner).
+	# taskblock-08 E3: "New Battle is a debug tool — split it out... place it
+	# above the controls list." One top-right-anchored column: the debug
+	# button first, the H-help legend directly under it.
+	var top_right := VBoxContainer.new()
+	top_right.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	top_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	top_right.alignment = BoxContainer.ALIGNMENT_BEGIN
+	top_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	right_half.add_child(top_right)
+
+	new_battle_button = Button.new()
+	new_battle_button.text = "New Battle"
+	new_battle_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	new_battle_button.pressed.connect(_on_new_battle_pressed)
+	top_right.add_child(new_battle_button)
+
 	var controls_label := Label.new()
-	controls_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	controls_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	controls_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	controls_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	right_half.add_child(controls_label)
+	top_right.add_child(controls_label)
 
 	# runNotes.md: "put the turn controls in the bottom right, stacked,
 	# with... [the readout cluster] above the turn controls." One
@@ -251,13 +275,24 @@ func _ready() -> void:
 	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
 	# unit's queued actions" — click a row to set the stop marker, then
 	# "Resolve to Here" resolves the queue's prefix through it for real.
+	# taskblock-08 E1: the button itself now lives in the turn-control
+	# column below, alongside End Turn/Reset Turn — only the tree (a
+	# readout, not a turn control) stays up here with the rest of the
+	# readout cluster.
 	var queue_tree := Tree.new()
 	queue_tree.custom_minimum_size = Vector2(320, 100)
 	bottom_right.add_child(queue_tree)
-	var resolve_to_here_button := Button.new()
-	resolve_to_here_button.text = "Resolve to Here"
-	resolve_to_here_button.disabled = true
-	bottom_right.add_child(resolve_to_here_button)
+
+	# taskblock-08 E1: "action bar on the LEFT... the turn-control stack
+	# sits to its RIGHT" — one row, two columns, replacing the single
+	# vertical stack pips/action-bar/buttons used to share.
+	var action_and_turn_row := HBoxContainer.new()
+	action_and_turn_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom_right.add_child(action_and_turn_row)
+
+	action_column = VBoxContainer.new()
+	action_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	action_and_turn_row.add_child(action_column)
 
 	# taskblock-07 Pass G: "above the action bar: pips, not numbers." A
 	# label prefix on each row (docs/08: terminal UI is text-first) is what
@@ -265,7 +300,7 @@ func _ready() -> void:
 	# space — "a unit with 0 shows an empty row, not a missing one."
 	var pip_rows := VBoxContainer.new()
 	pip_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(pip_rows)
+	action_column.add_child(pip_rows)
 
 	var ap_row := HBoxContainer.new()
 	ap_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -291,26 +326,38 @@ func _ready() -> void:
 	var mp_pip_container := HBoxContainer.new()
 	mp_row.add_child(mp_pip_container)
 
-	# taskblock-07 Pass E1: "a row of 10 boxes along the bottom, merged with
-	# the turn controls" — sits directly above New Battle/End Turn/Reset
-	# Turn, in the same bottom_right stack.
+	# taskblock-08 E1: "action bar 3x its current size" — ActionBar.BOX_SIZE
+	# itself carries the actual number; this row just sits directly under
+	# the pips, both inside `action_column`.
 	var action_row := HBoxContainer.new()
 	action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(action_row)
+	action_column.add_child(action_row)
 
-	var new_battle_button := Button.new()
-	new_battle_button.text = "New Battle"
-	new_battle_button.pressed.connect(_on_new_battle_pressed)
-	bottom_right.add_child(new_battle_button)
+	# taskblock-08 E1/E2: the turn-control stack proper — Resolve to Here /
+	# End Turn / Reset Turn, sized to their own text (E2), nothing else in
+	# this column to stretch them wider.
+	turn_controls_column = VBoxContainer.new()
+	turn_controls_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	turn_controls_column.alignment = BoxContainer.ALIGNMENT_END
+	turn_controls_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	action_and_turn_row.add_child(turn_controls_column)
+
+	var resolve_to_here_button := Button.new()
+	resolve_to_here_button.text = "Resolve to Here"
+	resolve_to_here_button.disabled = true
+	resolve_to_here_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	turn_controls_column.add_child(resolve_to_here_button)
 	var end_turn_button := Button.new()
 	end_turn_button.text = "End Turn"
+	end_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
-	bottom_right.add_child(end_turn_button)
+	turn_controls_column.add_child(end_turn_button)
 	# docs/10 taskblock03 D4: "a single Reset Turn control (button + R)."
 	var reset_turn_button := Button.new()
 	reset_turn_button.text = "Reset Turn"
+	reset_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	reset_turn_button.pressed.connect(_on_reset_turn_pressed)
-	bottom_right.add_child(reset_turn_button)
+	turn_controls_column.add_child(reset_turn_button)
 
 	aim_view = AimView.new()
 	add_child(aim_view)
