@@ -220,7 +220,12 @@ func try_apply(action: CombatAction) -> bool:
 
 func _start_turn(unit: Unit) -> void:
 	unit.ap = unit.max_ap
-	unit.mp = 0.0  # leftover MP from a prior turn is discarded here (Appendix E)
+	# taskblock-08 Pass C: leftover MP from a prior turn is discarded
+	# (Appendix E), but every turn starts with one AP's worth of MP
+	# already banked, free — a turn-start grant, not a permanent mp_per_ap
+	# change, so the AP itself is never spent and stays fully available.
+	# "The first bit of movement is free tempo."
+	unit.mp = unit.mp_per_ap()
 	# docs/10 taskblock03 E2: the free-refacing unlock is a per-turn toll,
 	# not a permanent one — a new turn always starts locked again.
 	unit.facing_unlocked = false

@@ -17,6 +17,10 @@ func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.max_ap = 2
 	var state := CombatState.new(grid, [unit])
+	# taskblock-08 Pass C grants free starting MP (mp_per_ap()) at turn
+	# start — reset to a clean 0 so the hand-tuned chunk-burning arithmetic
+	# below is exercised from scratch, independent of that grant.
+	unit.mp = 0.0
 
 	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]
 	var action := MoveAction.new(unit, path)
@@ -52,6 +56,10 @@ func test_move_fails_when_ap_runs_out_mid_path() -> void:
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.max_ap = 1
 	var state := CombatState.new(grid, [unit])
+	# taskblock-08 Pass C grants free starting MP (mp_per_ap()) at turn
+	# start — reset to a clean 0 so this stays the "not enough AP" case it
+	# was authored as, independent of that grant.
+	unit.mp = 0.0
 
 	# 3 steps at cost 1 each needs 2 AP-worth of MP conversions (2 AP -> 4 MP for 3 MP of movement);
 	# with only 1 AP available, the 3rd step can't be covered.
@@ -167,5 +175,7 @@ func test_leftover_mp_is_discarded_at_end_of_turn() -> void:
 	assert_true(state.try_apply(EndTurnAction.new(other)))  # cycle back to mover
 
 	assert_eq(state.current_unit(), mover)
-	assert_eq(mover.mp, 0.0, "leftover MP must not bank into the next turn")
+	# taskblock-08 Pass C: leftover MP is discarded, replaced by the fresh
+	# per-turn grant (mp_per_ap()) — never the sum of the two.
+	assert_eq(mover.mp, mover.mp_per_ap(), "leftover MP must not bank into the next turn")
 	assert_eq(mover.ap, mover.max_ap)
