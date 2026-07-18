@@ -17,10 +17,13 @@ static func resolve_crit_chance(weapon: Part, extra_sources: Array[ModSource] = 
 	return StatResolver.resolve(&"crit_chance", _context(weapon.crit_chance, weapon, extra_sources))
 
 
-## taskblock-09 F: `Part.bonus_pen`'s own status is the same flagged
-## weapon-level placeholder `damage` carries (Pass G) — taskblock-10 moves
-## it onto AmmoDef — but until then it's read through here like every
-## other weapon-derived number, never `weapon.bonus_pen` directly.
+## taskblock-09 F/taskblock-10 E: `Part.bonus_pen`'s own status is the
+## same flagged weapon-level placeholder `damage` carries (Pass G) —
+## `AmmoDef.bonus_pen` exists now (taskblock-10 Pass D) but no weapon Part
+## references an AmmoDef yet, so nothing has moved. Until a weapon
+## actually names its ammo, this stays the one live source, read through
+## here like every other weapon-derived number, never `weapon.bonus_pen`
+## directly.
 static func resolve_bonus_pen(weapon: Part, extra_sources: Array[ModSource] = []) -> StatValue:
 	return StatResolver.resolve(&"bonus_pen", _context(weapon.bonus_pen, weapon, extra_sources))
 
