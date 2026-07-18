@@ -28,11 +28,20 @@ const DROPPED_TAG := &"DROPPED"
 ## is the projectile's direction of travel; `region.surface_normal` comes
 ## free from BodyProjector — the box face that was actually hit.
 ## taskblock-09 E: reads `material.dt_at(region.thickness)` — a lookup
-## table, not the old flat `material.dt` — then, taskblock-09 E1, quarters
-## it for an already-mangled part: same material, structurally worse, not
-## a thinner one. Compute the resolved number first, then quarter it.
+## table, not the old flat `material.dt`. taskblock-09 F: `bonus_pen` is a
+## flat DT discount applied first (can be negative — buckshot raises the
+## bar instead of lowering it — `maxf(0.0, ...)` only floors a POSITIVE
+## pen from pushing DT negative); taskblock-09 E1 then quarters whatever
+## that combined number comes out to for an already-mangled part — same
+## material, structurally worse, not a thinner one or an easier target to
+## punch through. Penetration only: the incidence/deflect branch below
+## never reads `effective_dt` at all, so bonus_pen can never touch it.
 static func resolve_impact(
-	incoming_dir: Vector2, damage: float, region: Region, table: MaterialTable
+	incoming_dir: Vector2,
+	damage: float,
+	region: Region,
+	table: MaterialTable,
+	bonus_pen: float = 0.0
 ) -> ImpactResult:
 	var material: MaterialEntry = table.get_entry(region.part.material)
 	var dir: Vector2 = incoming_dir.normalized()
@@ -41,7 +50,7 @@ static func resolve_impact(
 	var result := ImpactResult.new()
 	result.region = region
 	result.incoming_dir = dir
-	var effective_dt: float = material.dt_at(region.thickness)
+	var effective_dt: float = maxf(0.0, material.dt_at(region.thickness) - bonus_pen)
 	if region.part.is_mangled:
 		effective_dt *= 0.25
 	result.effective_dt = effective_dt
@@ -418,6 +427,12 @@ static func _crit_effects(is_crit: bool, is_double_crit: bool, armored: bool) ->
 ## off of (see _body_of), since a ricochet's new origin sits right where it
 ## bounced and would otherwise immediately re-resolve to a sibling part of
 ## that same body at point-blank range.
+##
+## `bonus_pen` (taskblock-09 F) is this round's own DT discount — the same
+## value for every layer it penetrates and for whatever ricochet it spawns
+## (the same physical round, just traveling a new direction); a fragment's
+## own recursive flight (`_fragment`, above) doesn't carry one of its own
+## yet, so it stays at the 0.0 default there.
 static func resolve_shot(
 	origin: Vector2,
 	direction: Vector2,
@@ -431,7 +446,8 @@ static func resolve_shot(
 	max_ricochet_depth: int = DEFAULT_MAX_RICOCHET_DEPTH,
 	damage_floor: float = DEFAULT_DAMAGE_FLOOR,
 	crit_bonus_multiplier: float = DEFAULT_CRIT_BONUS_MULTIPLIER,
-	exclude_parts: Array[Part] = []
+	exclude_parts: Array[Part] = [],
+	bonus_pen: float = 0.0
 ) -> Array[ImpactResult]:
 	var results: Array[ImpactResult] = []
 	var dir: Vector2 = direction.normalized()
@@ -480,7 +496,9 @@ static func resolve_shot(
 
 		var material: MaterialEntry = table.get_entry(region.part.material)
 		var effects: Dictionary = _crit_effects(
-			crit.is_crit, crit.is_double_crit, material.dt_at(region.thickness) > 0.0
+			crit.is_crit,
+			crit.is_double_crit,
+			maxf(0.0, material.dt_at(region.thickness) - bonus_pen) > 0.0
 		)
 
 		if effects.bypass:
@@ -496,7 +514,9 @@ static func resolve_shot(
 		var applied_damage: float = current_damage * (
 			crit_bonus_multiplier if effects.bonus else 1.0
 		)
-		var impact: ImpactResult = resolve_impact(shot_dir, applied_damage, region, table)
+		var impact: ImpactResult = resolve_impact(
+			shot_dir, applied_damage, region, table, bonus_pen
+		)
 		impact.is_crit = crit.is_crit
 		impact.is_double_crit = crit.is_double_crit
 		results.append(impact)
@@ -538,7 +558,8 @@ static func resolve_shot(
 							max_ricochet_depth,
 							damage_floor,
 							crit_bonus_multiplier,
-							_body_of(region.part, state)
+							_body_of(region.part, state),
+							bonus_pen
 						)
 					)
 				return results
