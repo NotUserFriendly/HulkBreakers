@@ -10,6 +10,14 @@ var outcome: int = Enums.Outcome.STOP_DEAD
 var region: Region
 var incoming_dir: Vector2 = Vector2.ZERO
 var part_damage: float = 0.0
+## taskblock-09 B/F: the DT this impact's penetrate/stop-dead/deflect
+## decision was actually weighed against — Pass B's spill-through reads
+## this back rather than re-deriving material.dt a second time, so the
+## spill amount can never drift from the decision that produced it. Flat
+## `material.dt` today; Pass E swaps the source to `dt_at(thickness)` and
+## Pass F folds in `bonus_pen` — this field's meaning stays the same
+## across both, only how it's computed changes.
+var effective_dt: float = 0.0
 var reflected_dir: Vector2 = Vector2.ZERO
 var retained_fraction: float = 0.0
 var is_crit: bool = false

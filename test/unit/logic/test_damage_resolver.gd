@@ -83,6 +83,86 @@ func test_rifle_round_over_dt_damages_the_plate_and_the_part_behind() -> void:
 	assert_lt(torso.hp, 10)
 
 
+## taskblock-09 B: "a 10-damage shot on a DT-4 plate deals 10 to the plate
+## and spills 6" — the plate's own numbers, not the taskblock's exact
+## words, since `_region`'s helper materials don't happen to include a
+## DT-4 entry; the arithmetic is what's under test.
+func test_penetration_spill_is_reduced_by_effective_dt_not_reapplied_in_full() -> void:
+	var table := MaterialTable.new()
+	table.set_entry(&"dt4", MaterialEntry.new(4.0, 30.0))
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 20
+	torso.max_hp = 20
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+
+	var plate := Part.new()
+	plate.id = &"plate"
+	plate.material = &"dt4"
+	plate.hp = 20
+	plate.max_hp = 20
+	plate.attaches_to = [&"CHEST"]
+	plate.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(2.0, 1.0, 0.2))]
+
+	var socket := Socket.new(&"CHEST")
+	socket.occupant = plate
+	torso.sockets = [socket]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
+	var state := CombatState.new(Grid.new(6, 6), [unit])
+
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		Vector2(2, 5), Vector2(0, -1), Vector2(0.0, 0.5), 10.0, 0.0, state, table, _rng(1)
+	)
+
+	assert_eq(results.size(), 2)
+	assert_eq(results[0].region.part.id, &"plate")
+	assert_eq(results[0].part_damage, 10.0, "the plate eats the full damage, never a reduced share")
+	assert_eq(plate.hp, 10, "20 hp - ceil(10 damage)")
+	assert_eq(results[1].region.part.id, &"torso")
+	assert_eq(results[1].part_damage, 6.0, "spill = 10 damage - effective_dt 4")
+	assert_eq(torso.hp, 14, "20 hp - ceil(6 spill)")
+
+
+## taskblock-09 B: equal damage/DT still penetrates (the flagged `>=`
+## default) but leaves a spill of exactly 0 — the round stops at the
+## plate, the same as if nothing else were behind it.
+func test_a_bare_margin_penetration_spills_zero_and_stops_at_the_plate() -> void:
+	var table := MaterialTable.new()
+	table.set_entry(&"dt10", MaterialEntry.new(10.0, 30.0))
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 20
+	torso.max_hp = 20
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+
+	var plate := Part.new()
+	plate.id = &"plate"
+	plate.material = &"dt10"
+	plate.hp = 20
+	plate.max_hp = 20
+	plate.attaches_to = [&"CHEST"]
+	plate.volume = [Box.new(Vector3(0.0, 0.5, 0.4), Vector3(2.0, 1.0, 0.2))]
+
+	var socket := Socket.new(&"CHEST")
+	socket.occupant = plate
+	torso.sockets = [socket]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
+	var state := CombatState.new(Grid.new(6, 6), [unit])
+
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		Vector2(2, 5), Vector2(0, -1), Vector2(0.0, 0.5), 10.0, 0.0, state, table, _rng(1)
+	)
+
+	assert_eq(results.size(), 1, "a spill of exactly 0 must stop the cascade at the plate")
+	assert_eq(results[0].region.part.id, &"plate")
+	assert_eq(results[0].outcome, Enums.Outcome.PENETRATE, "equal damage/DT still penetrates (>=)")
+	assert_eq(torso.hp, 20, "nothing must reach the part behind")
+
+
 func test_stop_dead_damages_the_plate_deflect_does_not() -> void:
 	var table := MaterialTable.default_table()
 

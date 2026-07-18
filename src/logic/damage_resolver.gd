@@ -37,6 +37,7 @@ static func resolve_impact(
 	var result := ImpactResult.new()
 	result.region = region
 	result.incoming_dir = dir
+	result.effective_dt = material.dt
 
 	if damage >= material.dt:
 		result.outcome = Enums.Outcome.PENETRATE
@@ -377,6 +378,13 @@ static func resolve_shot(
 	# doesn't bend just because it punched through).
 	var shot_dir: Vector2 = dir
 	var shot_dir_ready := false
+	# taskblock-09 B: what's left of this round after however many layers
+	# it has already spilled through — the plate always eats the FULL
+	# current amount (armor is never spared), but what continues past it is
+	# `current_damage - effective_dt`, floored at 0. Distinct from the
+	# outer `damage` parameter, which stays this whole flight's nominal
+	# value for crit bookkeeping and is never itself reduced.
+	var current_damage: float = damage
 	while start < plane.size():
 		var found_index: int = _find_next(plane, start, point, skip_parts)
 		skip_parts = []  # the exclusion applies only to this call's first hit
@@ -405,7 +413,9 @@ static func resolve_shot(
 			results.append(bypass_result)
 			continue
 
-		var applied_damage: float = damage * (crit_bonus_multiplier if effects.bonus else 1.0)
+		var applied_damage: float = current_damage * (
+			crit_bonus_multiplier if effects.bonus else 1.0
+		)
 		var impact: ImpactResult = resolve_impact(shot_dir, applied_damage, region, table)
 		impact.is_crit = crit.is_crit
 		impact.is_double_crit = crit.is_double_crit
@@ -416,6 +426,14 @@ static func resolve_shot(
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
 					_resolve_destruction_consequences(impact, region, state)
+				# taskblock-09 B: the plate ate the full part_damage above
+				# regardless — what carries on to the next layer is only the
+				# spill, and a spill of exactly 0 means this round stops here,
+				# same as if nothing were left of the plane to check.
+				var spill: float = maxf(0.0, impact.part_damage - impact.effective_dt)
+				if spill <= 0.0:
+					return results
+				current_damage = spill
 				continue
 			Enums.Outcome.STOP_DEAD:
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
@@ -423,7 +441,7 @@ static func resolve_shot(
 					_resolve_destruction_consequences(impact, region, state)
 				return results
 			Enums.Outcome.DEFLECT:
-				var next_damage: float = damage * impact.retained_fraction
+				var next_damage: float = current_damage * impact.retained_fraction
 				if ricochet_depth < max_ricochet_depth and next_damage >= damage_floor:
 					var world_hit: Vector2 = origin + dir * region.depth + perp * point.x
 					results.append_array(
