@@ -718,7 +718,19 @@ func _refresh_hover_metadata(item: TreeItem) -> void:
 ## content directly without simulating real mouse motion.
 func _hover_summary_for(resource: Resource) -> String:
 	if resource is Part:
-		return _socket_summary(resource as Part)
+		var part: Part = resource
+		# volume boxes are GEOMETRY (table intro: "a box position...
+		# view-only, hover-preview in metadata") — never a child row like
+		# sockets/dt_curve, but still one of C4's own three named
+		# examples ("sockets, volume, dt_curve") for this summary.
+		var sections: Array[String] = []
+		var sockets: String = _socket_summary(part)
+		if sockets != "":
+			sections.append(sockets)
+		var volume: String = _volume_summary(part)
+		if volume != "":
+			sections.append(volume)
+		return "\n\n".join(sections)
 	if resource is MaterialEntry:
 		return _curve_summary(resource as MaterialEntry)
 	return ""
@@ -735,6 +747,19 @@ func _socket_summary(part: Part) -> String:
 				% [socket.socket_type, socket.id, socket.joint_hp, socket.joint_hp_max]
 			)
 		)
+	return "\n".join(lines)
+
+
+## C4's own third named example ("sockets, volume, dt_curve") — view-only
+## geometry (table intro: "a box position... hover-preview in metadata;
+## gizmo stays in the Inspector, out of scope"), never an editable child
+## row the way sockets/dt_curve points are.
+func _volume_summary(part: Part) -> String:
+	if part.volume.is_empty():
+		return ""
+	var lines: Array[String] = ["[b]%s volume[/b]" % part.id]
+	for box: Box in part.volume:
+		lines.append("· center %s size %s" % [box.center, box.size])
 	return "\n".join(lines)
 
 
