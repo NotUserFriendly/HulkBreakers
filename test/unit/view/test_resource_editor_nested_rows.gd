@@ -193,12 +193,28 @@ func test_hover_summary_for_a_material_with_a_curve_lists_its_points() -> void:
 
 ## A leaf/sockets-and-fields-only part (no sockets, no curve) has no
 ## hover expansion at all.
-func test_hover_summary_for_a_part_with_no_sockets_is_empty() -> void:
+func test_hover_summary_for_a_part_with_no_sockets_and_no_volume_is_empty() -> void:
+	var scene := ResourceEditorScene.new()
+	add_child_autofree(scene)
+	var bare := Part.new()
+	bare.id = &"bare_part"
+
+	assert_eq(scene._hover_summary_for(bare), "")
+
+
+## C4's own third named example: "sockets, volume, dt_curve" — a box
+## position is view-only geometry (never an editable child row the way
+## sockets/dt_curve points are), but still shows up in the hover
+## expansion.
+func test_hover_summary_for_a_part_lists_its_volume_boxes() -> void:
 	var scene := ResourceEditorScene.new()
 	add_child_autofree(scene)
 	var pistol: Part = DataLibrary.get_part(&"pistol")
 
-	assert_eq(scene._hover_summary_for(pistol), "")
+	var summary: String = scene._hover_summary_for(pistol)
+	assert_true(summary.contains("volume"))
+	assert_true(summary.contains(str(pistol.volume[0].center)))
+	assert_true(summary.contains(str(pistol.volume[0].size)))
 
 
 func test_refresh_hover_metadata_falls_back_to_selection_off_a_nested_row() -> void:
