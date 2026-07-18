@@ -229,10 +229,15 @@ extends Resource
 ## `AmmoDef.damage`) once that model lands — the gun itself only ever
 ## multiplies it (`damage_multiplier`). Until taskblock-10 replaces this
 ## field's role, it stays the one weapon-level damage source (read only
-## through WeaponResolver, docs/08 — never directly), same placeholder
-## status `bonus_pen` above already carries. Do not add a second damage
-## source alongside it; when taskblock-10 lands, this field's job moves,
-## it doesn't duplicate.
+## through WeaponResolver, docs/08 — never directly to compute an
+## outcome), same placeholder status `bonus_pen` above already carries. Do
+## not add a second damage source alongside it; when taskblock-10 lands,
+## this field's job moves, it doesn't duplicate.
+## Audited (taskblock-09 G): every direct `part.damage`/`weapon.damage`
+## read outside WeaponResolver itself is a plain `> 0.0` CLASSIFICATION
+## gate ("does this part qualify as a weapon at all" — WeaponRows.build,
+## DeepStrike.find_operable_weapon), never a damage computation. Nothing
+## else reads this field raw.
 @export var damage: float = 0.0
 @export var burst: int = 1
 @export var recoil: float = 0.0
