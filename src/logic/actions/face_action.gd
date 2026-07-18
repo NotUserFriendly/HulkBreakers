@@ -98,7 +98,7 @@ static func _log(state: CombatState, actual: Unit, reason: StringName, cost: flo
 			actual.id,
 			&"faced",
 			{"direction": actual.orientation, "cost": cost, "reason": reason},
-			text
+			"faced %.2f rad (%s)" % [actual.orientation, reason]
 		)
 	)
 

@@ -165,7 +165,7 @@ func _finish(state: CombatState, actual: Unit, traversed: Array[Vector2i]) -> vo
 				actual.id,
 				&"move",
 				{"path": traversed, "destination": actual.cell},
-				text
+				"moved to %s" % actual.cell
 			)
 		)
 

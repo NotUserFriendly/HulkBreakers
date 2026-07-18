@@ -619,12 +619,7 @@ func _first_cell_of_terrain(grid: Grid, terrain: int, fallback: Vector2i) -> Vec
 ## cover/terrain.
 func _session_start_event(seed_value: int) -> LogEvent:
 	return LogEvent.new(
-		0,
-		Enums.Phase.TACTICS,
-		-1,
-		&"session_start",
-		{"seed": seed_value},
-		"session_start: seed=%d" % seed_value
+		0, Enums.Phase.TACTICS, -1, &"session_start", {"seed": seed_value}, "seed=%d" % seed_value
 	)
 
 

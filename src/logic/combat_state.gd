@@ -203,7 +203,7 @@ func _stopped(unit: Unit, reason: StringName) -> Dictionary:
 			unit.id,
 			&"resolution_stopped",
 			{"reason": reason, "refund_mp": outcome.refund.mp},
-			text
+			"stopped (%s)" % reason
 		)
 	)
 	return outcome
@@ -242,6 +242,9 @@ func _start_turn(unit: Unit) -> void:
 	var meltdowns: Array[Dictionary] = DamageResolver.tick_meltdowns(unit, self)
 
 	if not is_preview:
+		# The one place turn/unit gets announced at all now (LogEvent._to_
+		# string() no longer echoes either per line) — everything else this
+		# unit does for the rest of its turn is understood to still be it.
 		combat_log.emit(
 			LogEvent.new(
 				round_number,
@@ -249,7 +252,7 @@ func _start_turn(unit: Unit) -> void:
 				unit.id,
 				&"turn_start",
 				{},
-				"turn_start: unit %d" % unit.id
+				"Turn %d — unit %d" % [round_number, unit.id]
 			)
 		)
 		if unit.surrogate_tier != tier_before:
@@ -265,8 +268,8 @@ func _start_turn(unit: Unit) -> void:
 						"cause": "organics_decay"
 					},
 					(
-						"surrogate_demoted: unit %d %s -> %s (organics decay)"
-						% [unit.id, tier_before.id, unit.surrogate_tier.id]
+						"%s -> %s (organics decay)"
+						% [tier_before.id, unit.surrogate_tier.id]
 					)
 				)
 			)
@@ -283,7 +286,7 @@ func _start_turn(unit: Unit) -> void:
 					unit.id,
 					&"detonate",
 					{"source_part": part.id, "units": affected_ids, "cause": "meltdown_expired"},
-					"detonate: %s meltdown expired" % part.id
+					"%s meltdown expired" % part.id
 				)
 			)
 

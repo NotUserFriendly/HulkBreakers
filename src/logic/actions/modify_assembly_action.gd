@@ -61,7 +61,7 @@ func apply(state: CombatState) -> void:
 				actual.id,
 				&"strip_part",
 				{"assembly": assembly_id, "stripped": target_id},
-				text
+				"stripped %s from %s" % [target_id, assembly_id]
 			)
 		)
 

@@ -193,7 +193,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				attacker.id,
 				&"part_destroyed",
 				{"part": result.region.part.id},
-				"part_destroyed: %s" % result.region.part.id
+				"%s" % result.region.part.id
 			)
 		)
 		_credit_salvage(state, attacker, result.region.part)
@@ -209,7 +209,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 					attacker.id,
 					&"part_mangled",
 					{"part": result.region.part.id},
-					"part_mangled: %s" % result.region.part.id
+					"%s" % result.region.part.id
 				)
 			)
 		if result.region.part.is_disabled:
@@ -220,7 +220,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 					attacker.id,
 					&"part_disabled",
 					{"part": result.region.part.id},
-					"part_disabled: %s" % result.region.part.id
+					"%s" % result.region.part.id
 				)
 			)
 	# taskblock-09 A3: renamed from "cook_off" — DETONATE, not cook-off.
@@ -232,7 +232,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				attacker.id,
 				&"detonate",
 				{"source_part": result.region.part.id, "unit": detonated.id},
-				"detonate: %s hit unit %d" % [result.region.part.id, detonated.id]
+				"%s hit unit %d" % [result.region.part.id, detonated.id]
 			)
 		)
 	# taskblock-09 A4: each fragment ray is its own full impact — same
@@ -248,7 +248,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				attacker.id,
 				&"meltdown_armed",
 				{"part": result.region.part.id},
-				"meltdown_armed: %s" % result.region.part.id
+				"%s" % result.region.part.id
 			)
 		)
 	if result.ejected_matrix != null:
@@ -259,7 +259,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				attacker.id,
 				&"matrix_ejected",
 				{"host_part": result.region.part.id, "matrix": result.ejected_matrix.id},
-				"matrix_ejected: %s from %s" % [result.ejected_matrix.id, result.region.part.id]
+				"%s from %s" % [result.ejected_matrix.id, result.region.part.id]
 			)
 		)
 	# docs/04 taskblock02 Pass D1: the shell root destroyed while hosting an
@@ -275,10 +275,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				attacker.id,
 				&"surrogate_ejected",
 				{"host_part": result.region.part.id, "surrogate": result.ejected_surrogate.id},
-				(
-					"surrogate_ejected: %s from %s"
-					% [result.ejected_surrogate.id, result.region.part.id]
-				)
+				"%s from %s" % [result.ejected_surrogate.id, result.region.part.id]
 			)
 		)
 	if result.demoted_unit != null:
@@ -291,7 +288,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 			"cause": cause,
 		}
 		var demotion_text: String = (
-			"surrogate_demoted: unit %d %s -> %s (%s)"
+			"unit %d %s -> %s (%s)"
 			% [
 				result.demoted_unit.id,
 				result.demoted_tier_before.id,
@@ -325,7 +322,7 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				attacker.id,
 				&"subtree_dropped",
 				{"part": dropped.id},
-				"subtree_dropped: %s" % dropped.id
+				"%s" % dropped.id
 			)
 		)
 
@@ -349,7 +346,7 @@ func _credit_salvage(state: CombatState, attacker: Unit, destroyed: Part) -> voi
 				attacker.id,
 				&"salvage_credited",
 				{"part": destroyed.id, "resource": resource_id, "amount": amount},
-				"salvage_credited: %d %s from %s" % [amount, resource_id, destroyed.id]
+				"%d %s from %s" % [amount, resource_id, destroyed.id]
 			)
 		)
 

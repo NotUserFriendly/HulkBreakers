@@ -65,7 +65,7 @@ func apply(state: CombatState) -> void:
 				actual.id,
 				&"carry_body",
 				{"body": body_id},
-				text
+				"slung %s across their back" % body_id
 			)
 		)
 

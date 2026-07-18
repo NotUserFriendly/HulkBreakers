@@ -146,7 +146,11 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 				overwatcher.id,
 				&"overwatch_triggered",
 				{"weapon": weapon.id, "target_unit_id": mover.id},
-				text
+				# Overwatch fires out of turn order — the reacting unit is
+				# never the one a `turn_start` header most recently named,
+				# so both units stay explicit here rather than being
+				# assumed from context the way an in-turn action can be.
+				"unit %d fired %s at unit %d" % [overwatcher.id, weapon.id, mover.id]
 			)
 		)
 

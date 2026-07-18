@@ -168,6 +168,9 @@ func test_round_number_wraps_correctly_around_a_dead_unit() -> void:
 	assert_eq(state.round_number, 1)
 
 
+## turn_start is the ONE place the turn/unit announcement fires now
+## (LogEvent._to_string() no longer echoes either per line) — its own
+## rendered text must actually carry both, since nothing else will.
 func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
 	var grid := Grid.new(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
@@ -181,6 +184,13 @@ func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
 	var starts: Array[LogEvent] = sink.events_of_kind(&"turn_start")
 	assert_eq(starts.size(), 1)
 	assert_eq(starts[0].unit_id, b.id)
+	var rendered: String = starts[0]._to_string()
+	assert_true(
+		rendered.contains(str(state.round_number)), "the turn header must name the round number"
+	)
+	assert_true(
+		rendered.contains("unit %d" % b.id), "the turn header must name the incoming unit"
+	)
 
 
 func test_organics_decay_demotion_emits_surrogate_demoted() -> void:

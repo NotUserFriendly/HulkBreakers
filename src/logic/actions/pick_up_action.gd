@@ -75,7 +75,7 @@ func apply(state: CombatState) -> void:
 				actual.id,
 				&"pick_up",
 				{"item": item_id, "is_matrix": item is Matrix},
-				text
+				"picked up %s" % item_id
 			)
 		)
 
