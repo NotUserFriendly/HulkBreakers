@@ -42,6 +42,12 @@ static func goo_barrel() -> Part:
 	part.hp = 3
 	part.max_hp = 3
 	part.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.5, 1.0, 0.5))]
+	# taskblock-10 Pass A: "a goo drum is a CYLINDER" — the worked example.
+	# render_scale matches its own volume box's size exactly (base
+	# primitive is unit diameter/height) so the cosmetic shape spans the
+	# same footprint it's hit-tested against.
+	part.render_primitive = &"CYLINDER"
+	part.render_scale = Vector3(0.5, 1.0, 0.5)
 	part.tags = [&"VOLATILE"]
 	part.failure_mode = &"DETONATE"
 	part.detonate_damage = 12.0

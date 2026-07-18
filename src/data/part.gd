@@ -45,6 +45,25 @@ extends Resource
 ## assemblies are legal").
 @export var mesh_scene: PackedScene = null
 
+## taskblock-10 Pass A: a placeholder look for a part with no `mesh_scene`
+## — cosmetic shape only, never hit-tested (same disclaimer as
+## `mesh_scene` itself: BodyProjector/ShotPlane/UnitGeometry read `volume`
+## alone regardless). BOX (the default) draws exactly the existing
+## hit-volume boxes, unchanged — every part authored before this field
+## existed keeps its current look with no cutover. CYLINDER/SPHERE/CAPSULE
+## draw one whole-part primitive instead, the same tier as a commissioned
+## mesh (`mesh_scene` still wins if both are set).
+@export var render_primitive: StringName = &"BOX"
+## Scales the primitive mesh only (base unit size: 1.0 diameter, 1.0
+## height) — never the hitbox. Set it to match this part's own `volume`
+## box size for a primitive that visually spans the same footprint it's
+## hit-tested against.
+@export var render_scale: Vector3 = Vector3.ONE
+## (0,0,0,0) — fully transparent, the sentinel for "use this part's
+## `material` colour instead" (the same lookup a hit-volume box already
+## uses). Any alpha > 0 overrides it outright.
+@export var render_color_override: Color = Color(0, 0, 0, 0)
+
 @export var hp: int = 1
 @export var max_hp: int = 1
 @export var mass: float = 0.0

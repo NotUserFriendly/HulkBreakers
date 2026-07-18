@@ -123,14 +123,24 @@ func refresh() -> void:
 
 	for part: Part in part_order:
 		var part_placements: Array[BoxPlacement] = placements_by_part[part]
-		if part.mesh_scene != null:
+		var has_mesh: bool = part.mesh_scene != null
+		# taskblock-10 Pass A: the primitive is the same tier as a
+		# commissioned mesh — a whole-part cosmetic stand-in, drawn once,
+		# never per-box. BOX (the default) isn't a stand-in at all; it IS
+		# the existing box-per-placement render, so it stays on that path
+		# below rather than going through this branch.
+		var has_primitive: bool = not has_mesh and part.render_primitive != &"BOX"
+		if has_mesh:
 			_add_mesh_instance(part, part_placements[0])
+		elif has_primitive:
+			_add_primitive_instance(part, part_placements[0], team_color)
 		# docs/09 taskblock06 Pass I2: "the view draws the mesh if present,
 		# hit volumes otherwise" — the box is the ONLY representation a
-		# part without a commissioned mesh has, so it always draws one
-		# regardless of the toggle; a part WITH a mesh only also gets boxes
-		# when show_hit_volumes explicitly asks for the overlay.
-		if part.mesh_scene == null or show_hit_volumes:
+		# part with neither a commissioned mesh nor a non-BOX primitive
+		# has, so it always draws one regardless of the toggle; a part
+		# with either only also gets boxes when show_hit_volumes
+		# explicitly asks for the overlay.
+		if (not has_mesh and not has_primitive) or show_hit_volumes:
 			for placement: BoxPlacement in part_placements:
 				_add_box_instance(placement, team_color)
 
@@ -146,6 +156,60 @@ func _add_mesh_instance(part: Part, placement: BoxPlacement) -> void:
 	var instance: Node3D = part.mesh_scene.instantiate() as Node3D
 	instance.transform = placement.transform
 	add_child(instance)
+
+
+## taskblock-10 Pass A: one primitive per part, positioned at that part's
+## own composed transform — same convention as `_add_mesh_instance`
+## (ignores the box-local center offset; a whole-part stand-in doesn't
+## have one). Registered into `_meshes_by_part`/rim-outlined exactly like
+## a box instance so hover-highlight keeps working on a primitive part.
+func _add_primitive_instance(part: Part, placement: BoxPlacement, team_color: Color) -> void:
+	var instance := MeshInstance3D.new()
+	var mesh: PrimitiveMesh = _primitive_mesh(part.render_primitive)
+	var color: Color = (
+		part.render_color_override
+		if part.render_color_override.a > 0.0
+		else material_table.color_for(part.material)
+	)
+	var material: StandardMaterial3D = WorldPalette.lit_material(color)
+	material.next_pass = WorldPalette.rim_outline_material(team_color)
+	mesh.material = material
+	instance.mesh = mesh
+	instance.transform = placement.transform
+	instance.scale = part.render_scale
+	add_child(instance)
+	if not _meshes_by_part.has(part):
+		_meshes_by_part[part] = [] as Array[MeshInstance3D]
+	(_meshes_by_part[part] as Array[MeshInstance3D]).append(instance)
+
+
+## Base unit-size primitives (1.0 diameter, 1.0 height) — `render_scale`
+## does the rest. Falls back to a unit BoxMesh for any StringName outside
+## the authored vocabulary rather than erroring; authoring a real shape is
+## opt-in, same posture as `MaterialTable.get_entry`'s unknown-material
+## fallback.
+func _primitive_mesh(kind: StringName) -> PrimitiveMesh:
+	match kind:
+		&"CYLINDER":
+			var mesh := CylinderMesh.new()
+			mesh.top_radius = 0.5
+			mesh.bottom_radius = 0.5
+			mesh.height = 1.0
+			return mesh
+		&"SPHERE":
+			var mesh := SphereMesh.new()
+			mesh.radius = 0.5
+			mesh.height = 1.0
+			return mesh
+		&"CAPSULE":
+			var mesh := CapsuleMesh.new()
+			mesh.radius = 0.3
+			mesh.height = 1.0
+			return mesh
+		_:
+			var mesh := BoxMesh.new()
+			mesh.size = Vector3.ONE
+			return mesh
 
 
 func _add_box_instance(placement: BoxPlacement, team_color: Color) -> void:
