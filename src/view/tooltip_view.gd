@@ -18,12 +18,34 @@ extends PanelContainer
 ## `TooltipPanel`/`TooltipLabel` (hulk_theme.gd) are the exact stylebox/
 ## color keys Godot's OWN stock tooltip already used; reusing them here
 ## keeps one visual language rather than inventing a second.
+##
+## taskblock-08 D: "one controller, one delay, one follow behaviour" —
+## every caller (InventoryPanel, ActionBar, TooltipController) already
+## funnels through this one instance, so the delay+cursor-tracking lives
+## here ONCE rather than being copied into each caller. `show_data()`
+## calls repeated with the SAME content (the inventory tooltip's own
+## per-motion-event pattern) just track the cursor (D1) — either updating
+## the pending hover's own target position while its delay is still
+## running, or repositioning the already-revealed tooltip directly; a
+## GENUINELY new hover target resets the delay clock. `_process()` is the
+## clock — driven by the real per-frame delta in the live game, and
+## directly callable with an explicit delta in tests (same pattern
+## CameraRig's tween tests use via `custom_step`), so the delay stays
+## headless-testable with no real wall-clock wait.
 
 const OFFSET := Vector2(16, 16)
 const EDGE_MARGIN := 4.0
 const MIN_WIDTH := 220.0
+## taskblock-08 D2: "wait a beat before appearing" — the ONE hover-delay
+## value, shared by every caller because there is only one tooltip
+## mechanism now. A flagged tuning number, not a design decision.
+const HOVER_DELAY_SEC := 0.4
 
 var _label: RichTextLabel
+var _has_pending: bool = false
+var _pending_text: String = ""
+var _pending_position: Vector2 = Vector2.ZERO
+var _pending_elapsed: float = 0.0
 
 
 func _init() -> void:
@@ -42,19 +64,46 @@ func _init() -> void:
 
 
 ## Hides itself for an empty TooltipData (nothing to say — e.g. hovering
-## open space) rather than showing an empty box.
+## open space) rather than showing an empty box. Otherwise never shows
+## instantly (D2): a genuinely new hover target starts the delay clock;
+## a repeated call with the SAME content — the inventory tooltip's own
+## per-motion-event pattern, and every other caller now matching it — just
+## tracks the cursor (D1), never restarting the wait.
 func show_data(data: TooltipData, at_position: Vector2) -> void:
 	if data == null or (data.title == "" and data.rows.is_empty() and data.footer == ""):
 		hide_tooltip()
 		return
-	_label.text = _to_bbcode(data)
-	visible = true
-	reset_size()
-	_reposition(at_position)
+	var text: String = _to_bbcode(data)
+	if visible and text == _label.text:
+		_reposition(at_position)
+		return
+	if _has_pending and text == _pending_text:
+		_pending_position = at_position
+		return
+	visible = false
+	_has_pending = true
+	_pending_text = text
+	_pending_position = at_position
+	_pending_elapsed = 0.0
 
 
 func hide_tooltip() -> void:
 	visible = false
+	_has_pending = false
+	_pending_elapsed = 0.0
+
+
+func _process(delta: float) -> void:
+	if not _has_pending:
+		return
+	_pending_elapsed += delta
+	if _pending_elapsed < HOVER_DELAY_SEC:
+		return
+	_label.text = _pending_text
+	visible = true
+	reset_size()
+	_reposition(_pending_position)
+	_has_pending = false
 
 
 func _to_bbcode(data: TooltipData) -> String:

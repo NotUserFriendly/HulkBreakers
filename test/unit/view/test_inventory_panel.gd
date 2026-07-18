@@ -4,6 +4,15 @@ extends GutTest
 ## InventoryRows.build() — the row content itself is covered headlessly in
 ## test_inventory_rows.gd; this only checks the Tree/footer actually get
 ## built from those rows.
+##
+## taskblock-08 Pass D2: TooltipView no longer reveals instantly — advance
+## past its own hover delay the same way CameraRig's tween tests advance a
+## tween (`custom_step`), a direct `_process(delta)` call, never a real
+## wall-clock wait.
+
+
+func _reveal(view: TooltipView) -> void:
+	view._process(TooltipView.HOVER_DELAY_SEC + 0.001)
 
 
 func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
@@ -163,6 +172,7 @@ func test_hovering_a_row_shows_the_full_stat_block_in_its_tooltip() -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.position = row_rect.position + Vector2(5, row_rect.size.y / 2.0)
 	tree.gui_input.emit(motion)
+	_reveal(tooltip_view)
 
 	var tooltip: String = tooltip_view._label.text
 	assert_true(tooltip.contains("8/10"))

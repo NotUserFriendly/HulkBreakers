@@ -30,6 +30,16 @@ signal selection_changed
 ## docs/10 taskblock04 E3: fires whenever `hovered_cell` or `inspected_part`
 ## changes — the combat readout redraws from this rather than polling.
 signal hover_changed
+## taskblock-08 D1: fires on EVERY board mouse-motion `update_hover()`
+## handles, unconditionally — unlike `hover_changed` (change-gated on
+## purpose, test_tactics_controller_hover.gd's own invariant), this is
+## purely "the cursor moved," for the one caller that needs to track it
+## continuously even while the hovered cell/part stays the same: the
+## tooltip (TooltipController), so it can keep pinning itself to the
+## cursor (D1) rather than the item, without re-triggering a full readout
+## rebuild on every pixel of motion the way listening on `hover_changed`
+## alone would require.
+signal mouse_moved
 ## docs/10 taskblock05 C: "hovering a part highlights it in the world,
 ## bidirectionally." Meaningful only for the currently selected unit's own
 ## parts (the only body the inventory tree has rows for at all). Shared by
@@ -289,6 +299,7 @@ func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 func update_hover(screen_pos: Vector2) -> void:
 	if selection == null or camera == null:
 		return
+	mouse_moved.emit()
 	var from: Vector3 = camera.project_ray_origin(screen_pos)
 	var dir: Vector3 = camera.project_ray_normal(screen_pos)
 	var hit: Variant = _cell_at(from, dir)

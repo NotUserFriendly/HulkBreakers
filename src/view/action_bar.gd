@@ -82,11 +82,18 @@ func refresh() -> void:
 			_boxes[i].modulate = HulkTheme.DIM
 
 
-## taskblock-08 A1: "a click arms" — one path, every box, no per-action
-## branching (`arm_action` itself is the only place an action id turns
-## into behaviour).
+## taskblock-08 A1/D1: click arms (one path, every box, no per-action
+## branching — `arm_action` itself is the only place an action id turns
+## into behaviour); motion re-enters (`_on_box_entered`) so the tooltip
+## keeps tracking the cursor while hovering the same box (D1), matching
+## the inventory tooltip's own per-motion-event pattern — TooltipView's
+## own show_data() just repositions on a repeat call, it never restarts
+## the hover delay.
 func _on_box_gui_input(event: InputEvent, index: int) -> void:
 	if index >= _current_actions.size():
+		return
+	if event is InputEventMouseMotion:
+		_on_box_entered(index)
 		return
 	var button_event := event as InputEventMouseButton
 	if button_event == null or not button_event.pressed:

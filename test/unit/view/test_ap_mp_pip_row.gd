@@ -4,6 +4,15 @@ extends GutTest
 ## pip-count math itself is covered headlessly in test_ap_mp_pips.gd;
 ## this only checks the row actually gets built from those states and
 ## responds to selection/hover.
+##
+## taskblock-08 Pass D2: TooltipView no longer reveals instantly — advance
+## past its own hover delay the same way CameraRig's tween tests advance a
+## tween (`custom_step`), a direct `_process(delta)` call, never a real
+## wall-clock wait.
+
+
+func _reveal(view: TooltipView) -> void:
+	view._process(TooltipView.HOVER_DELAY_SEC + 0.001)
 
 
 func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
@@ -81,6 +90,7 @@ func test_hovering_the_ap_row_shows_its_tooltip() -> void:
 
 	controller.click_cell(Vector2i(0, 0))
 	ap_container.mouse_entered.emit()
+	_reveal(tooltip_view)
 
 	assert_true(tooltip_view.visible)
 	assert_true(tooltip_view._label.text.contains("AP"))
@@ -96,6 +106,7 @@ func test_hovering_the_mp_row_shows_its_tooltip() -> void:
 
 	controller.click_cell(Vector2i(0, 0))
 	mp_container.mouse_entered.emit()
+	_reveal(tooltip_view)
 
 	assert_true(tooltip_view.visible)
 	assert_true(tooltip_view._label.text.contains("MP"))
