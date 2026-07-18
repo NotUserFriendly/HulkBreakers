@@ -494,6 +494,17 @@ func _enter_aim_mode(target: Unit) -> void:
 	aiming_at = target
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
+	# Aiming routes every subsequent mouse motion to aim_reticle_at_screen()
+	# instead of update_hover() (below) — the only two call sites that ever
+	# emit hover_changed/mouse_moved go quiet for the whole aim/confirm-shot
+	# sequence. A tooltip already on screen from hovering before this click
+	# would otherwise sit there, stale, until the player moves the mouse
+	# over the board again post-resolution. Clearing it here mirrors
+	# update_hover()'s own "nothing hit" reset exactly.
+	if hovered_cell != null or inspected_part != null:
+		hovered_cell = null
+		inspected_part = null
+		hover_changed.emit()
 	# taskblock-08 B3a: orbit/pan/zoom lock the instant aim mode is
 	# entered — aim is a committed framing now, inspection happens by
 	# backing out (Esc). Reverses taskblock-04 A3's "keep orbit/pan/zoom

@@ -79,6 +79,33 @@ func test_clicking_an_enemy_while_selected_enters_aim_mode() -> void:
 	assert_eq(controller.reticle_offset, Vector2.ZERO)
 
 
+## Aiming routes every subsequent mouse motion to aim_reticle_at_screen()
+## instead of update_hover() — the only two call sites that ever emit
+## hover_changed/mouse_moved go quiet for the whole aim/confirm-shot
+## sequence. A tooltip already on screen from hovering before this click
+## must not sit there stale — entering aim mode clears the hover state
+## that drives it (TooltipController.refresh()) exactly like a real board
+## hover finding nothing would.
+func test_entering_aim_mode_clears_stale_hover_and_inspection_state() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.hovered_cell = Vector2i(2, 2)
+	controller.inspected_part = a.shell.root
+	var fired: Array[bool] = [false]
+	controller.hover_changed.connect(func() -> void: fired[0] = true)
+
+	controller.click_cell(Vector2i(5, 5))
+
+	assert_null(controller.hovered_cell, "the stale hovered cell must be cleared entering aim")
+	assert_null(controller.inspected_part, "the stale inspected part must be cleared entering aim")
+	assert_true(fired[0], "hover_changed must fire so TooltipController actually hides the tooltip")
+
+
 ## docs/10 taskblock03 C1: entering aim eases (never cuts) to the
 ## over-the-shoulder attack framing.
 func test_entering_aim_mode_starts_easing_the_camera_to_attack_framing() -> void:
