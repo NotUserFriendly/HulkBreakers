@@ -37,7 +37,7 @@ func test_different_visit_counts_actually_repopulate_a_deep_strike_roster() -> v
 	# map underneath stays byte-identical.
 	var hulk := Hulk.new()
 	hulk.map_seed = 7
-	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var pool: Array[Part] = DataLibrary.parts_pool()
 
 	var rng_a := RandomNumberGenerator.new()
 	rng_a.seed = hulk.population_seed()

@@ -55,7 +55,7 @@ func test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 	assert_eq(view.get_child_count(), 3, "team marker + facing wedge + one part mesh")
 
 
@@ -66,7 +66,7 @@ func test_refresh_after_a_part_is_destroyed_removes_its_mesh() -> void:
 
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 	assert_eq(view.get_child_count(), 4, "team marker + facing wedge + torso + arm")
 
 	arm.hp = 0
@@ -78,7 +78,7 @@ func test_mesh_transform_matches_unit_geometry_exactly() -> void:
 	var unit := _torso_unit(Vector2i(3, 4))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
 	var mesh_instance: MeshInstance3D = view.get_child(2)
@@ -89,7 +89,7 @@ func test_mesh_size_matches_the_box_size_exactly() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var mesh_instance: MeshInstance3D = view.get_child(2)
 	var box_mesh: BoxMesh = mesh_instance.mesh
@@ -100,7 +100,7 @@ func test_part_material_is_lit_not_unshaded() -> void:
 	var unit := _torso_unit(Vector2i(0, 0))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var mesh_instance: MeshInstance3D = view.get_child(2)
 	var box_mesh: BoxMesh = mesh_instance.mesh
@@ -112,7 +112,7 @@ func test_part_material_carries_a_rim_outline_next_pass() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var mesh_instance: MeshInstance3D = view.get_child(2)
 	var box_mesh: BoxMesh = mesh_instance.mesh
@@ -126,7 +126,7 @@ func test_facing_wedge_sits_at_child_1_pointing_along_orientation() -> void:
 	unit.orientation = PI / 2.0
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var wedge: MeshInstance3D = view.get_child(1)
 	var forward: Vector2 = BodyProjector.forward_for(unit.orientation)
@@ -148,7 +148,7 @@ func test_the_facing_wedges_position_and_rotation_agree_across_a_full_sweep() ->
 	const SAMPLES := 24
 	for i in range(SAMPLES):
 		unit.orientation = i * TAU / SAMPLES
-		view.setup(unit, MaterialTable.default_table())
+		view.setup(unit, DataLibrary.material_table())
 		var wedge: MeshInstance3D = view.get_child(1)
 		var position_dir := Vector2(wedge.position.x, wedge.position.z).normalized()
 		var rotation_dir_3d: Vector3 = wedge.basis * Vector3(0.0, 0.0, 1.0)
@@ -176,7 +176,7 @@ func test_preview_orientation_moves_both_the_wedge_and_the_part_meshes() -> void
 	unit.orientation = 0.0
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 	var committed_wedge_x: float = (view.get_child(1) as MeshInstance3D).position.x
 	var committed_mesh_transform: Transform3D = (view.get_child(2) as MeshInstance3D).transform
 
@@ -196,7 +196,7 @@ func test_null_preview_orientation_renders_the_committed_orientation() -> void:
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.preview_orientation = null
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
 	var mesh_instance: MeshInstance3D = view.get_child(2)
@@ -207,7 +207,7 @@ func test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color() -> vo
 	var unit := _torso_unit(Vector2i(2, 3), 1)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var marker: MeshInstance3D = view.get_child(0)
 	assert_almost_eq(marker.position.x, 2.0, 0.0001)
@@ -220,7 +220,7 @@ func test_set_selected_brightens_the_team_marker() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var marker: MeshInstance3D = view.get_child(0)
 	var before: Color = (marker.material_override as StandardMaterial3D).albedo_color
@@ -248,7 +248,7 @@ func test_a_downed_unit_kills_its_facing_wedge() -> void:
 	var unit := _shell_unit(Vector2i(0, 0))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	assert_eq(view.get_child_count(), 2, "team marker + one part mesh, no wedge in between")
 
@@ -262,7 +262,7 @@ func test_a_downed_units_body_matches_its_own_posed_geometry_exactly() -> void:
 	var unit := _shell_unit(Vector2i(2, 3))
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var posed: BoxPlacement = UnitGeometry.placements(unit, null, Poses.down())[0]
 	var expected: Transform3D = posed.transform.translated_local(posed.box.center)
@@ -280,11 +280,11 @@ func test_a_downed_units_body_matches_its_own_posed_geometry_exactly() -> void:
 func test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units() -> void:
 	var downed_view := HitVolumeView.new()
 	add_child_autofree(downed_view)
-	downed_view.setup(_shell_unit(Vector2i(0, 0), 0), MaterialTable.default_table())
+	downed_view.setup(_shell_unit(Vector2i(0, 0), 0), DataLibrary.material_table())
 
 	var piloted_view := HitVolumeView.new()
 	add_child_autofree(piloted_view)
-	piloted_view.setup(_torso_unit(Vector2i(0, 0), 0), MaterialTable.default_table())
+	piloted_view.setup(_torso_unit(Vector2i(0, 0), 0), DataLibrary.material_table())
 
 	var downed_color: Color = (
 		((downed_view.get_child(0) as MeshInstance3D).material_override as StandardMaterial3D)
@@ -319,7 +319,7 @@ func test_highlight_part_chains_a_glow_onto_only_that_parts_own_mesh() -> void:
 	var arm: Part = built.arm
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	view.highlight_part(arm)
 
@@ -339,7 +339,7 @@ func test_clear_highlight_removes_the_glow() -> void:
 	var arm: Part = built.arm
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 	view.highlight_part(arm)
 
 	view.clear_highlight()
@@ -356,7 +356,7 @@ func test_a_highlight_survives_a_refresh() -> void:
 	var arm: Part = built.arm
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 	view.highlight_part(arm)
 
 	view.refresh()

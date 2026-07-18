@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_s30ue"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_5laej"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_3bfki"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_1jgx1"]
+
+[sub_resource type="Resource" id="Resource_xw76t"]
+script = ExtResource("4_1jgx1")
+size = Vector3(0.18, 0.26, 0.1)
+
+[resource]
+script = ExtResource("1_s30ue")
+id = &"reactor"
+attaches_to = Array[StringName]([&"BACK"])
+material = &"sheet_steel"
+volume = Array[ExtResource("4_1jgx1")]([SubResource("Resource_xw76t")])
+hp = 5
+max_hp = 5
+mass = 4.0
+tags = Array[StringName]([&"POWER_SOURCE", &"VOLATILE"])
+failure_mode = &"MELTDOWN"
+meltdown_turns = 2
+detonate_damage = 6.0
+detonate_radius = 2.0

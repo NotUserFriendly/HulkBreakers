@@ -322,7 +322,7 @@ func test_full_mission_seed_to_extraction() -> void:
 	)
 
 	# --- Insert, deep strike: a 3-unit defense wearing whatever the hulk had ---
-	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var pool: Array[Part] = DataLibrary.parts_pool()
 	var enemy_matrix_a := Matrix.new()
 	enemy_matrix_a.id = &"logic_matrix_a"
 	var rng_a := RandomNumberGenerator.new()

@@ -588,7 +588,7 @@ func new_battle(seed_value: int) -> void:
 ## Phase 12 (one battle, no mission).
 func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)
-	var pool: Array[Part] = DeepStrike.default_part_pool()
+	var pool: Array[Part] = DataLibrary.parts_pool()
 	var spawn_a: Vector2i = _first_cell_of_terrain(grid, Enums.TerrainType.SPAWN_A, Vector2i(2, 2))
 	var spawn_b: Vector2i = _first_cell_of_terrain(grid, Enums.TerrainType.SPAWN_B, Vector2i(9, 7))
 	var units: Array[Unit] = [

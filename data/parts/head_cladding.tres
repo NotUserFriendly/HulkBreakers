@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_5fv0k"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_fs8aq"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_us30g"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_4njg8"]
+
+[sub_resource type="Resource" id="Resource_uotv4"]
+script = ExtResource("4_4njg8")
+size = Vector3(0.25, 0.27, 0.25)
+
+[resource]
+script = ExtResource("1_5fv0k")
+id = &"head_cladding"
+attaches_to = Array[StringName]([&"CLADDING_HEAD"])
+material = &"sheet_steel"
+volume = Array[ExtResource("4_4njg8")]([SubResource("Resource_uotv4")])
+hp = 3
+max_hp = 3
+mass = 0.5
+mangles_into = &"twisted_sheet_metal"

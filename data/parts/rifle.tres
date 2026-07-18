@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_wi4oh"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_onxrq"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_nyfg3"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_3ewdq"]
+
+[sub_resource type="Resource" id="Resource_uq464"]
+script = ExtResource("2_onxrq")
+radius = 0.05
+
+[sub_resource type="Resource" id="Resource_3bigq"]
+script = ExtResource("2_onxrq")
+radius = 0.3
+weight = 1.5
+
+[sub_resource type="Resource" id="Resource_qmuog"]
+script = ExtResource("4_3ewdq")
+center = Vector3(0, 0, 0.3)
+size = Vector3(0.12, 0.15, 0.7)
+
+[resource]
+script = ExtResource("1_wi4oh")
+id = &"rifle"
+attaches_to = Array[StringName]([&"GRIP"])
+requires = {
+&"SUPPORT": 1,
+&"TRIGGER": 1
+}
+material = &"steel"
+volume = Array[ExtResource("4_3ewdq")]([SubResource("Resource_qmuog")])
+hp = 4
+max_hp = 4
+mass = 3.0
+provides_actions = Array[StringName]([&"shoot", &"overwatch"])
+damage = 6.0
+ap_cost = 2
+scatter = Array[ExtResource("2_onxrq")]([SubResource("Resource_uq464"), SubResource("Resource_3bigq")])

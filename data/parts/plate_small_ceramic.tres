@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_p6wch"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_n8l1y"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_nmxdw"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_1a10p"]
+
+[sub_resource type="Resource" id="Resource_3bl6e"]
+script = ExtResource("4_1a10p")
+size = Vector3(0.24, 0.2, 0.04)
+
+[resource]
+script = ExtResource("1_p6wch")
+id = &"plate_small_ceramic"
+attaches_to = Array[StringName]([&"ARMOR"])
+material = &"ceramic"
+volume = Array[ExtResource("4_1a10p")]([SubResource("Resource_3bl6e")])
+hp = 4
+max_hp = 4
+mass = 1.0
+mangles_into = &"metal_scraps"

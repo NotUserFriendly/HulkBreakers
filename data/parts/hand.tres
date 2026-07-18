@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_yd5wc"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_fgnqm"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_g622y"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_hob2g"]
+
+[sub_resource type="Resource" id="Resource_qprgj"]
+script = ExtResource("3_g622y")
+socket_type = &"GRIP"
+id = &"GRIP"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0.08)
+
+[sub_resource type="Resource" id="Resource_n85di"]
+script = ExtResource("4_hob2g")
+center = Vector3(0, -0.05, 0)
+size = Vector3(0.1, 0.1, 0.1)
+
+[resource]
+script = ExtResource("1_yd5wc")
+id = &"hand"
+attaches_to = Array[StringName]([&"WRIST"])
+sockets = Array[ExtResource("3_g622y")]([SubResource("Resource_qprgj")])
+capabilities = Array[StringName]([&"TRIGGER", &"GRIP", &"POWER"])
+material = &"artificial_muscle"
+volume = Array[ExtResource("4_hob2g")]([SubResource("Resource_n85di")])
+hp = 3
+max_hp = 3
+mass = 1.0
+ram_cost = 1.0

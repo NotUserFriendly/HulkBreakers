@@ -203,7 +203,7 @@ func test_resolve_shot_on_a_joint_hit_depletes_joint_hp_never_part_hp() -> void:
 	var arm: Part = built.arm
 	var shoulder: Socket = built.shoulder
 	var state := CombatState.new(Grid.new(10, 10), [unit])
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)
@@ -228,7 +228,7 @@ func test_resolve_shot_severs_the_joint_and_drops_the_subtree_when_depleted() ->
 	var arm: Part = built.arm
 	var shoulder: Socket = built.shoulder
 	var state := CombatState.new(Grid.new(10, 10), [unit])
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)

@@ -17,7 +17,7 @@ func test_color_for_an_unknown_material_falls_back_to_the_default_entrys_color()
 
 
 func test_default_table_yields_a_distinct_color_per_material() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var seen: Array[Color] = []
 	for material_id: StringName in table.entries.keys():
 		var color: Color = table.color_for(material_id)
@@ -29,7 +29,7 @@ func test_default_table_yields_a_distinct_color_per_material() -> void:
 
 
 func test_default_table_covers_the_reference_humanoids_materials_and_cover() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	for material_id: StringName in [
 		&"flesh",
 		&"artificial_muscle",
@@ -44,7 +44,7 @@ func test_default_table_covers_the_reference_humanoids_materials_and_cover() -> 
 
 
 func test_no_default_entry_uses_the_unknown_material_fallback_color() -> void:
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 	var fallback: Color = MaterialEntry.new().color
 	for material_id: StringName in table.entries.keys():
 		assert_ne(

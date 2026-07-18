@@ -22,7 +22,7 @@ var rng: RandomNumberGenerator
 var combat_log: CombatLog = CombatLog.new()
 ## Shared across the whole battle (docs/03) so every attack resolves DT and
 ## ricochet against the same tuning, not a fresh default per shot.
-var material_table: MaterialTable = MaterialTable.default_table()
+var material_table: MaterialTable = DataLibrary.material_table()
 ## docs/10 taskblock05 E1: what a mangling Part.mangles_into resolves
 ## against — shared across the whole battle, same convention as
 ## material_table above.

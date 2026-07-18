@@ -59,7 +59,7 @@ func test_seeded_burst_into_armor() -> void:
 	var bystander := _bystander_unit(Vector2i(14, 13))
 	var grid := Grid.new(30, 30)
 	var state := CombatState.new(grid, [target, bystander])
-	var table := MaterialTable.default_table()
+	var table := DataLibrary.material_table()
 
 	# `origin` is placed exactly along `direction` back from the target's
 	# cell, so aiming dead-center genuinely reproduces this nominal ~53

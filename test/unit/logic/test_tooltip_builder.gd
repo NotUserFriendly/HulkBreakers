@@ -37,7 +37,7 @@ func test_for_part_shows_raw_fields_with_no_local_arithmetic() -> void:
 	part.mass = 3.5
 	part.bulk = 1.5
 
-	var data: TooltipData = TooltipBuilder.for_part(part, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_part(part, DataLibrary.material_table())
 
 	assert_eq(_row_value(data, "condition"), "%d/%d" % [part.hp, part.max_hp])
 	assert_eq(_row_value(data, "mass"), "%.1f" % part.mass)
@@ -53,10 +53,10 @@ func test_for_part_flags_condition_as_changed_only_when_damaged() -> void:
 	damaged.max_hp = 5
 
 	assert_false(
-		_row_changed(TooltipBuilder.for_part(whole, MaterialTable.default_table()), "condition")
+		_row_changed(TooltipBuilder.for_part(whole, DataLibrary.material_table()), "condition")
 	)
 	assert_true(
-		_row_changed(TooltipBuilder.for_part(damaged, MaterialTable.default_table()), "condition")
+		_row_changed(TooltipBuilder.for_part(damaged, DataLibrary.material_table()), "condition")
 	)
 
 
@@ -67,7 +67,7 @@ func test_for_part_includes_salvage_yield_when_present() -> void:
 	part.max_hp = 1
 	part.salvage_yield = {&"metals": 4}
 
-	var data: TooltipData = TooltipBuilder.for_part(part, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_part(part, DataLibrary.material_table())
 
 	assert_ne(_row_value(data, "salvage"), null)
 
@@ -79,7 +79,7 @@ func test_for_part_with_a_row_shows_socket_and_inert_state() -> void:
 	part.max_hp = 1
 	var row := InventoryRow.new(part, 1, InventoryRow.Kind.SOCKET, &"ARM", 5.0, true)
 
-	var data: TooltipData = TooltipBuilder.for_part(part, MaterialTable.default_table(), row)
+	var data: TooltipData = TooltipBuilder.for_part(part, DataLibrary.material_table(), row)
 
 	assert_eq(_row_value(data, "socket"), "ARM")
 	assert_true(_row_changed(data, "inert"))
@@ -102,7 +102,7 @@ func test_for_unit_shows_full_status_regardless_of_squad() -> void:
 	torso.sockets = [socket]
 	var enemy := _make_unit(torso, 1)  # squad 1 — not the viewer's squad
 
-	var data: TooltipData = TooltipBuilder.for_unit(enemy, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_unit(enemy, DataLibrary.material_table())
 
 	assert_eq(data.title, "unit %d — squad %d" % [enemy.id, enemy.squad_id])
 	assert_eq(_row_value(data, "torso"), "%d/%d" % [10, 10])
@@ -124,7 +124,7 @@ func test_for_unit_omits_destroyed_parts() -> void:
 	torso.sockets = [socket]
 	var unit := _make_unit(torso)
 
-	var data: TooltipData = TooltipBuilder.for_unit(unit, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_unit(unit, DataLibrary.material_table())
 
 	assert_eq(_row_value(data, "arm"), null, "a destroyed part has already left the tree (docs/09)")
 
@@ -158,7 +158,7 @@ func test_for_tile_shows_terrain_when_nothing_else_is_present() -> void:
 		"visible_from_selected": null,
 	}
 
-	var data: TooltipData = TooltipBuilder.for_tile(info, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
 
 	assert_eq(data.title, "cell (3, 4)")
 	assert_eq(_row_value(data, "terrain"), Enums.TerrainType.keys()[Enums.TerrainType.OPEN])
@@ -182,7 +182,7 @@ func test_for_tile_with_a_unit_delegates_to_the_units_own_status() -> void:
 		"visible_from_selected": true,
 	}
 
-	var data: TooltipData = TooltipBuilder.for_tile(info, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
 
 	assert_eq(data.title, "unit %d — squad %d" % [enemy.id, enemy.squad_id])
 
@@ -198,14 +198,14 @@ func test_for_tile_with_a_field_object_shows_its_own_detail() -> void:
 		"visible_from_selected": null,
 	}
 
-	var data: TooltipData = TooltipBuilder.for_tile(info, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
 
 	assert_eq(data.title, crate.display_name if crate.display_name != "" else String(crate.id))
 	assert_ne(_row_value(data, "condition"), null)
 
 
 func test_for_tile_on_an_empty_cell_returns_an_empty_tooltip_data() -> void:
-	var data: TooltipData = TooltipBuilder.for_tile({}, MaterialTable.default_table())
+	var data: TooltipData = TooltipBuilder.for_tile({}, DataLibrary.material_table())
 
 	assert_eq(data.title, "")
 	assert_true(data.rows.is_empty())

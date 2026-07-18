@@ -43,19 +43,30 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_load_dir(user_root + "/ammo", _ammo)
 
 
+## docs/00 (determinism: "same seed = same battle, always"): a raw
+## `dir.get_next()` walk order is filesystem-dependent, not
+## content-derived — the same `.tres` set could load in a different
+## order on a different machine and shift every downstream RNG draw that
+## consumes `parts_pool()` (`DeepStrike.assemble_random`'s candidate
+## lists included). Sorted alphabetically by filename so load order is a
+## pure function of the data itself.
 static func _load_dir(path: String, into: Dictionary) -> void:
 	if not DirAccess.dir_exists_absolute(path):
 		return
 	var dir: DirAccess = DirAccess.open(path)
 	if dir == null:
 		return
+	var file_names: Array[String] = []
 	dir.list_dir_begin()
 	var file_name: String = dir.get_next()
 	while file_name != "":
 		if file_name.ends_with(".tres"):
-			_load_file(path + "/" + file_name, file_name, into)
+			file_names.append(file_name)
 		file_name = dir.get_next()
 	dir.list_dir_end()
+	file_names.sort()
+	for sorted_name: String in file_names:
+		_load_file(path + "/" + sorted_name, sorted_name, into)
 
 
 static func _load_file(full_path: String, file_name: String, into: Dictionary) -> void:
@@ -78,40 +89,53 @@ static func _ensure_loaded() -> void:
 		load_all()
 
 
+## A fresh duplicate every call — `_parts` holds the one canonical
+## instance per id (loaded once), but every existing pool convention
+## (`assemble_random`, `reference_humanoid_pool`, ...) already assumes a
+## pool draw is safe to mutate independently, the same guarantee
+## `DeepStrike.default_part_pool()` gave by building brand-new instances
+## on every call. Returning the cached instance directly would let one
+## caller's mutation bleed into every other caller/test sharing the same
+## process.
 static func get_part(id: StringName) -> Part:
 	_ensure_loaded()
-	return _parts.get(id)
+	var part: Part = _parts.get(id)
+	return part.duplicate(true) if part != null else null
 
 
 static func get_ammo(id: StringName) -> AmmoDef:
 	_ensure_loaded()
-	return _ammo.get(id)
+	var ammo: AmmoDef = _ammo.get(id)
+	return ammo.duplicate(true) if ammo != null else null
 
 
 static func get_material(id: StringName) -> MaterialEntry:
 	_ensure_loaded()
-	return _materials.get(id)
+	var material: MaterialEntry = _materials.get(id)
+	return material.duplicate(true) if material != null else null
 
 
 ## Every loaded part template, for callers that used to read
-## `DeepStrike.default_part_pool()`'s full array.
+## `DeepStrike.default_part_pool()`'s full array — fresh duplicates, same
+## reasoning as `get_part`.
 static func parts_pool() -> Array[Part]:
 	_ensure_loaded()
 	var pool: Array[Part] = []
 	for part: Part in _parts.values():
-		pool.append(part)
+		pool.append(part.duplicate(true))
 	return pool
 
 
 ## Every loaded material, aggregated into the shape callers that used to
 ## read `MaterialTable.default_table()` expect. The table-level curve
 ## endpoints (`retain_at_zero_bend` etc.) stay `MaterialTable`'s own
-## defaults — pipeline tunables, not per-material rows.
+## defaults — pipeline tunables, not per-material rows. Fresh duplicates,
+## same reasoning as `get_part`.
 static func material_table() -> MaterialTable:
 	_ensure_loaded()
 	var table := MaterialTable.new()
 	for id: StringName in _materials:
-		table.set_entry(id, _materials[id])
+		table.set_entry(id, (_materials[id] as MaterialEntry).duplicate(true))
 	return table
 
 

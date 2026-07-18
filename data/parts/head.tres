@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_6jbii"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_l4wra"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_66jiq"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_lukc0"]
+
+[sub_resource type="Resource" id="Resource_4si0j"]
+script = ExtResource("3_66jiq")
+socket_type = &"ARMOR"
+id = &"ARMOR"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0.12)
+
+[sub_resource type="Resource" id="Resource_3vjct"]
+script = ExtResource("3_66jiq")
+socket_type = &"MATRIX"
+id = &"MATRIX"
+
+[sub_resource type="Resource" id="Resource_h3tob"]
+script = ExtResource("3_66jiq")
+socket_type = &"CLADDING_HEAD"
+id = &"CLADDING"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
+
+[sub_resource type="Resource" id="Resource_f8kxd"]
+script = ExtResource("4_lukc0")
+center = Vector3(0, 0.12, 0)
+size = Vector3(0.22, 0.24, 0.22)
+
+[resource]
+script = ExtResource("1_6jbii")
+id = &"head"
+attaches_to = Array[StringName]([&"NECK"])
+sockets = Array[ExtResource("3_66jiq")]([SubResource("Resource_4si0j"), SubResource("Resource_3vjct"), SubResource("Resource_h3tob")])
+material = &"artificial_bone"
+volume = Array[ExtResource("4_lukc0")]([SubResource("Resource_f8kxd")])
+hp = 6
+max_hp = 6
+mass = 3.0
+ram_cost = 1.0

@@ -56,7 +56,7 @@ func test_a_part_with_mesh_scene_renders_the_commissioned_mesh() -> void:
 	unit.shell.root.mesh_scene = _make_mesh_scene()
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var found: Node = null
 	for child: Node in view.get_children():
@@ -73,7 +73,7 @@ func test_a_part_with_mesh_scene_does_not_also_draw_its_box_by_default() -> void
 	unit.shell.root.mesh_scene = _make_mesh_scene()
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	# child 0/1 are the team marker/facing wedge overlays (also BoxMesh-
 	# shaped, docs/10) — unrelated to per-part hit volumes, excluded here.
@@ -95,7 +95,7 @@ func test_a_mixed_assembly_renders_the_mesh_and_the_box_together() -> void:
 	# arm: left without a mesh_scene, still a plain hit-volume box.
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	var has_commissioned_mesh: bool = false
 	var has_box_for_arm: bool = false
@@ -118,7 +118,7 @@ func test_show_hit_volumes_overlays_the_box_on_a_meshed_part_without_removing_th
 	unit.shell.root.mesh_scene = _make_mesh_scene()
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
-	view.setup(unit, MaterialTable.default_table())
+	view.setup(unit, DataLibrary.material_table())
 
 	view.show_hit_volumes = true
 	view.refresh()

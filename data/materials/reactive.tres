@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_5n6o4"]
+
+[resource]
+script = ExtResource("1_5n6o4")
+id = &"reactive"
+dt = 12.0
+color = Color(0.7882353, 0.63529414, 0.15294118, 1)

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_c8mjn"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_0mcqp"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_o2iwm"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_6dscj"]
+
+[sub_resource type="Resource" id="Resource_vs3nv"]
+script = ExtResource("4_6dscj")
+size = Vector3(0.18, 0.7, 0.04)
+
+[resource]
+script = ExtResource("1_c8mjn")
+id = &"plate_medium_sheet_steel"
+attaches_to = Array[StringName]([&"ARMOR"])
+material = &"sheet_steel"
+volume = Array[ExtResource("4_6dscj")]([SubResource("Resource_vs3nv")])
+hp = 5
+max_hp = 5
+mass = 2.0
+mangles_into = &"metal_scraps"

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialEntry" format=3]
+
+[ext_resource type="Script" path="res://src/data/material_entry.gd" id="1_sfmfq"]
+
+[resource]
+script = ExtResource("1_sfmfq")
+id = &"artificial_muscle"
+dt = 1.0
+color = Color(0.47843137, 0.23137255, 0.2, 1)
