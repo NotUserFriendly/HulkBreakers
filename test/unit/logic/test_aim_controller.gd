@@ -271,29 +271,43 @@ func test_resolves_equals_resolve_ray_for_a_corpus_of_reticle_positions() -> voi
 			assert_eq(result.resolves.distance, expected.distance)
 
 
-## docs/09 taskblock07 Pass B2/TESTS: "the window's depth is strictly
-## greater than the muzzle's [i.e. > 0], and it belongs to the READ
-## layer's body" — the normal case, where the read layer's own frontmost
-## depth is comfortably positive, must pass through unclamped.
-func test_window_depth_uses_the_read_layers_own_frontmost_depth_when_safe() -> void:
+## taskblock-08 B2/TESTS: "the window's depth is within epsilon of the
+## target's nearest region and strictly less than it" — the normal case,
+## where the target's own nearest depth is comfortably positive, must pass
+## through unclamped.
+func test_window_depth_uses_the_targets_own_nearest_depth_when_safe() -> void:
 	var far := Region.new(Rect2(), 5.0)
 	var near := Region.new(Rect2(), 2.0)
 	var layers: Array[AimLayer] = [AimLayer.new(&"body", [far, near])]
 
-	var depth: float = AimController.window_depth(layers, 0, 6.0, 0.05, 0.3)
+	var depth: float = AimController.window_depth(layers, &"body", 6.0, 0.05, 0.3)
 
 	assert_almost_eq(depth, 2.0 - 0.05, 0.0001)
 
 
-## docs/09 taskblock07 Pass B2/TESTS: a corpus of read layers whose own
-## frontmost depth sits at or below zero (a body positioned behind the
-## shooter along the fire line — still gets a Region, still can become a
-## READ layer) must never produce a window depth at or behind the muzzle.
+## taskblock-08 B2: scrolling to READ a different layer (docs/09
+## taskblock06 Pass H) must not drag the window off the target — the whole
+## point of pinning it to `target_body` instead of `layer_index`. A far
+## layer sitting well behind the target must never move the window.
+func test_window_depth_ignores_other_layers_even_when_nearer_or_farther() -> void:
+	var target_layer := AimLayer.new(&"target", [Region.new(Rect2(), 2.0)])
+	var nearer_layer := AimLayer.new(&"other_near", [Region.new(Rect2(), 0.5)])
+	var farther_layer := AimLayer.new(&"other_far", [Region.new(Rect2(), 8.0)])
+	var layers: Array[AimLayer] = [nearer_layer, target_layer, farther_layer]
+
+	var depth: float = AimController.window_depth(layers, &"target", 6.0, 0.05, 0.3)
+
+	assert_almost_eq(depth, 2.0 - 0.05, 0.0001, "must anchor to the target's own layer, not any other")
+
+
+## taskblock-08 B2/TESTS: a target whose own nearest depth sits at or below
+## zero (positioned behind the shooter along the fire line — still gets a
+## Region) must never produce a window depth at or behind the muzzle.
 func test_window_depth_never_lands_at_or_behind_the_muzzle() -> void:
 	var corpus: Array[float] = [0.0, -0.5, -3.0, 0.02]
 	for frontmost: float in corpus:
 		var layers: Array[AimLayer] = [AimLayer.new(&"body", [Region.new(Rect2(), frontmost)])]
-		var depth: float = AimController.window_depth(layers, 0, 6.0, 0.05, 0.3)
+		var depth: float = AimController.window_depth(layers, &"body", 6.0, 0.05, 0.3)
 		assert_true(
 			depth > 0.0,
 			"frontmost %f: window depth %f must be strictly forward" % [frontmost, depth]
@@ -311,13 +325,21 @@ func test_window_depth_for_a_corpus_of_adjacent_shooter_target_pairs() -> void:
 		if target_cell == shooter_cell:
 			continue
 		var target_depth: float = Vector2(target_cell - shooter_cell).length()
-		# A read layer whose own frontmost surface sits right at the
-		# shooter's own cell (depth 0) — the adjacent-cell worst case.
+		# A target whose own nearest surface sits right at the shooter's
+		# own cell (depth 0) — the adjacent-cell worst case.
 		var layers: Array[AimLayer] = [AimLayer.new(&"body", [Region.new(Rect2(), 0.0)])]
-		var depth: float = AimController.window_depth(layers, 0, target_depth, 0.05, 0.3)
+		var depth: float = AimController.window_depth(layers, &"body", target_depth, 0.05, 0.3)
 		assert_true(depth > 0.0, "delta %s: window depth must be strictly forward" % delta)
 
 
 func test_window_depth_falls_back_to_target_depth_with_no_layers_to_read() -> void:
-	var depth: float = AimController.window_depth([], 0, 4.0, 0.05, 0.3)
+	var depth: float = AimController.window_depth([], &"body", 4.0, 0.05, 0.3)
 	assert_almost_eq(depth, 4.0, 0.0001)
+
+
+func test_window_depth_falls_back_to_target_depth_when_target_has_no_layer() -> void:
+	var layers: Array[AimLayer] = [AimLayer.new(&"someone_else", [Region.new(Rect2(), 1.0)])]
+
+	var depth: float = AimController.window_depth(layers, &"body", 4.0, 0.05, 0.3)
+
+	assert_almost_eq(depth, 4.0, 0.0001, "the target has no region of its own in this plane")
