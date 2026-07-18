@@ -67,19 +67,19 @@ func test_distance_manhattan() -> void:
 	assert_eq(Grid.distance_manhattan(Vector2i(2, 2), Vector2i(2, 2)), 0)
 
 
-func test_line_same_cell() -> void:
-	var l: Array[Vector2i] = Grid.line(Vector2i(2, 2), Vector2i(2, 2))
-	assert_eq(l, [Vector2i(2, 2)])
+func test_line_handles_the_same_cell_horizontal_and_vertical_cases() -> void:
+	var same_cell: Array[Vector2i] = Grid.line(Vector2i(2, 2), Vector2i(2, 2))
+	assert_eq(same_cell, [Vector2i(2, 2)], "same cell")
 
+	var horizontal: Array[Vector2i] = Grid.line(Vector2i(0, 0), Vector2i(3, 0))
+	assert_eq(
+		horizontal, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)], "horizontal"
+	)
 
-func test_line_horizontal() -> void:
-	var l: Array[Vector2i] = Grid.line(Vector2i(0, 0), Vector2i(3, 0))
-	assert_eq(l, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)])
-
-
-func test_line_vertical() -> void:
-	var l: Array[Vector2i] = Grid.line(Vector2i(0, 0), Vector2i(0, 3))
-	assert_eq(l, [Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 3)])
+	var vertical: Array[Vector2i] = Grid.line(Vector2i(0, 0), Vector2i(0, 3))
+	assert_eq(
+		vertical, [Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 3)], "vertical"
+	)
 
 
 func test_line_exact_diagonal_includes_both_bordering_cells() -> void:

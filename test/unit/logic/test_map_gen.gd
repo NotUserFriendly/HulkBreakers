@@ -26,16 +26,14 @@ func _grids_equal(a: Grid, b: Grid) -> bool:
 	)
 
 
-func test_same_seed_is_byte_identical() -> void:
-	var grid_a: Grid = MapGen.generate(12345, WIDTH, HEIGHT)
-	var grid_b: Grid = MapGen.generate(12345, WIDTH, HEIGHT)
-	assert_true(_grids_equal(grid_a, grid_b), "same seed must produce an identical grid")
+func test_generate_is_seed_deterministic() -> void:
+	var same_seed_a: Grid = MapGen.generate(12345, WIDTH, HEIGHT)
+	var same_seed_b: Grid = MapGen.generate(12345, WIDTH, HEIGHT)
+	assert_true(_grids_equal(same_seed_a, same_seed_b), "same seed must produce an identical grid")
 
-
-func test_different_seed_is_not_identical() -> void:
-	var grid_a: Grid = MapGen.generate(1, WIDTH, HEIGHT)
-	var grid_b: Grid = MapGen.generate(2, WIDTH, HEIGHT)
-	assert_false(_grids_equal(grid_a, grid_b), "different seeds should (almost always) diverge")
+	var seed_one: Grid = MapGen.generate(1, WIDTH, HEIGHT)
+	var seed_two: Grid = MapGen.generate(2, WIDTH, HEIGHT)
+	assert_false(_grids_equal(seed_one, seed_two), "different seeds should (almost always) diverge")
 
 
 func test_spawn_zones_reachable_across_many_seeds() -> void:
