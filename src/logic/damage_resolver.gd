@@ -80,14 +80,58 @@ static func apply_damage_to_joint(socket: Socket, amount: float) -> bool:
 ## "borrow it as-is" rule) — never split at an inner mangled part the way
 ## the deleted BREAK mode once did. This is now the ONLY path from body to
 ## ground: part failure (Pass A) never detaches, only a severed joint does.
+## `cell` — not a `Unit` — since a socket's own connection can belong to a
+## bare field-object tree just as easily as a piloted unit (docs/10: a
+## dropped assembly is still a real socket graph, joints and all).
 ## Returns the dropped root part, or null if the socket was already empty.
-static func sever_joint(socket: Socket, owner: Unit, state: CombatState) -> Part:
+static func sever_joint(socket: Socket, cell: Vector2i, state: CombatState) -> Part:
 	var dropped: Part = socket.occupant
 	if dropped == null:
 		return null
 	socket.occupant = null
-	_register_dropped(dropped, owner, state)
+	_register_dropped(dropped, cell, state)
 	return dropped
+
+
+## taskblock-09 D: `region.body`, not `_locate_cell` — the joint's own
+## body is already known exactly (ShotPlane.build sets it), and unlike
+## `_locate_cell` (which only matches a blocker dict's own root value
+## directly), this must resolve correctly even when the joint belongs to a
+## non-root part several levels deep in a field-object's own tree.
+static func _cell_of_body(body: Variant, state: CombatState) -> Vector2i:
+	if body is Unit:
+		return (body as Unit).cell
+	for cell: Vector2i in state.grid.blockers:
+		if state.grid.blockers[cell] == body:
+			return cell
+	return Vector2i(-1, -1)
+
+
+## taskblock-09 D: a JOINT region never goes through the material/DT
+## decision a part region does — a connection has no material. The shot's
+## whole current damage lands on the socket's own joint_hp
+## (`apply_damage_to_joint`); if that severs it, the intact subtree drops
+## via `sever_joint`, reusing Pass C's own mechanism verbatim. A joint hit
+## always consumes the round — there's no concept of "penetrating" a
+## connection, so the cascade stops here regardless of outcome (the
+## default `Enums.Outcome.STOP_DEAD` ImpactResult already carries — the
+## shot stopped here, whether or not the joint gave way).
+static func _resolve_joint_hit(
+	region: Region, damage: float, shot_dir: Vector2, crit: Dictionary, state: CombatState
+) -> ImpactResult:
+	var impact := ImpactResult.new()
+	impact.region = region
+	impact.incoming_dir = shot_dir
+	impact.is_crit = crit.is_crit
+	impact.is_double_crit = crit.is_double_crit
+	impact.part_damage = damage
+	if apply_damage_to_joint(region.socket, damage):
+		var cell: Vector2i = _cell_of_body(region.body, state)
+		if cell.x >= 0:
+			var dropped: Part = sever_joint(region.socket, cell, state)
+			if dropped != null:
+				impact.dropped_subtree = PartGraph.walk(dropped)
+	return impact
 
 
 ## taskblock-09 A3 (docs/03): renamed from "cook-off," same mechanic. A
@@ -282,24 +326,26 @@ static func _hosts_matrix_somewhere(part: Part) -> bool:
 ## Destroying a PART (this file's own hp<=0 path) never detaches anything
 ## anymore — MANGLE/DISABLE stay attached, DETONATE/FRAGMENT/MELTDOWN are
 ## consumed in place (`resolve_part_failure`). The only way a part leaves
-## the body now is a SEVERED JOINT (`sever_joint`, above — Pass D wires an
-## actual shot at the socket into it, `resolve_ray` isn't built yet). This
-## used to be `drop_subtree_if_destroyed`, keyed on the destroyed part's
-## own hp; deleted rather than adapted, per the taskblock's own framing —
-## the docs/01 "blow a shoulder off, the subtree drops intact" rule still
-## holds, it's just read off the shoulder's own JOINT now, never the
-## part's hp. This helper is the one piece of the old mechanism that
-## survives unchanged: `sever_joint` reuses it verbatim for field-item/
-## blocker registration.
-static func _register_dropped(part: Part, owner: Unit, state: CombatState) -> void:
-	if not state.grid.field_items.has(owner.cell):
-		state.grid.field_items[owner.cell] = []
-	state.grid.field_items[owner.cell].append(part)
+## the body now is a SEVERED JOINT (`sever_joint`, above; Pass D wires an
+## actual shot at the socket into it, in `resolve_shot`'s own JOINT
+## branch). This used to be `drop_subtree_if_destroyed`, keyed on the
+## destroyed part's own hp; deleted rather than adapted, per the
+## taskblock's own framing — the docs/01 "blow a shoulder off, the subtree
+## drops intact" rule still holds, it's just read off the shoulder's own
+## JOINT now, never the part's hp. This helper is the one piece of the old
+## mechanism that survives unchanged: `sever_joint` reuses it verbatim for
+## field-item/blocker registration, keyed by cell rather than a Unit's own
+## — the connection being severed may belong to a bare field-object tree,
+## never piloted at all.
+static func _register_dropped(part: Part, cell: Vector2i, state: CombatState) -> void:
+	if not state.grid.field_items.has(cell):
+		state.grid.field_items[cell] = []
+	state.grid.field_items[cell].append(part)
 
-	if not state.grid.blockers.has(owner.cell):
+	if not state.grid.blockers.has(cell):
 		if not DROPPED_TAG in part.tags:
 			part.tags.append(DROPPED_TAG)
-		state.grid.blockers[owner.cell] = part
+		state.grid.blockers[cell] = part
 
 
 ## Every consequence of a part actually reaching 0 hp, gathered onto one
@@ -420,6 +466,10 @@ static func resolve_shot(
 			var muzzle_to_impact: Vector2 = dir * region.depth + perp * point.x
 			shot_dir = muzzle_to_impact.normalized()
 			shot_dir_ready = true
+
+		if region.socket != null:
+			results.append(_resolve_joint_hit(region, current_damage, shot_dir, crit, state))
+			return results
 
 		var material: MaterialEntry = table.get_entry(region.part.material)
 		var effects: Dictionary = _crit_effects(

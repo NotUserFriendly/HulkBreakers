@@ -15,6 +15,12 @@ var distance: float
 ## (Region.body) — kept because AimResult/aim_view still need "who did the
 ## reticle land on," never used to affect resolution.
 var body: Variant = null
+## taskblock-09 D: non-null only for a JOINT hit (Region.socket) — the
+## same PART | JOINT distinction Region carries, mirrored here so a
+## consumer of a real ray cast (the aim UI, eventually a real
+## PhysicsServer result) can tell the two apart without reaching back into
+## the shot plane.
+var socket: Socket = null
 
 
 func _init(
@@ -22,10 +28,12 @@ func _init(
 	p_point: Vector3 = Vector3.ZERO,
 	p_normal: Vector3 = Vector3.ZERO,
 	p_distance: float = 0.0,
-	p_body: Variant = null
+	p_body: Variant = null,
+	p_socket: Socket = null
 ) -> void:
 	part = p_part
 	point = p_point
 	normal = p_normal
 	distance = p_distance
 	body = p_body
+	socket = p_socket

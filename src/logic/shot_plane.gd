@@ -89,7 +89,9 @@ static func resolve_ray(muzzle: Vector3, dir: Vector3, world: CombatState) -> Hi
 		return null
 	var dir3d := Vector3(flat_dir.x, 0.0, flat_dir.y)
 	var hit_point: Vector3 = muzzle + dir3d * region.depth
-	return HitResult.new(region.part, hit_point, region.surface_normal, region.depth, region.body)
+	return HitResult.new(
+		region.part, hit_point, region.surface_normal, region.depth, region.body, region.socket
+	)
 
 
 ## Every unit with at least one Region in `plane`, nearest-first by its

@@ -195,17 +195,6 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 			)
 		)
 		_credit_salvage(state, attacker, result.region.part)
-		# docs/10 taskblock05 E1: a mangling destruction's real salvage
-		# lives on the wreckage it became, not the original (typically
-		# empty-salvage) part — _credit_salvage's own empty-yield guard
-		# already makes crediting an intact, still-living detached child
-		# (which never carries salvage_yield) a safe no-op, so every
-		# dropped item can go through the same call uniformly. Skipped for
-		# `region.part` itself (the ordinary non-mangling case) since
-		# that's already credited immediately above.
-		for dropped: Part in result.dropped_subtree:
-			if dropped != result.region.part:
-				_credit_salvage(state, attacker, dropped)
 		# taskblock-09 A1/A2: "if it changed the world, it's in the log" —
 		# is_mangled/is_disabled are real, visible state changes (a
 		# quartered DT, a dead weapon), not just bookkeeping alongside
@@ -318,11 +307,15 @@ func _log_impact(state: CombatState, attacker: Unit, result: ImpactResult) -> vo
 				demotion_text
 			)
 		)
-	# docs/10 taskblock05 E2: a mangling destruction can drop several
-	# separate items at once (each child assembly, plus the wreckage) —
-	# one event per item, never a summary, matching docs/09's "if it
-	# changed the world, it's in the log."
+	# taskblock-09 C/D: a severed joint drops its whole intact subtree at
+	# once — one event per part in it, never a summary, matching docs/09's
+	# "if it changed the world, it's in the log." This is the ONLY producer
+	# of `dropped_subtree` now (destroyed_part above is a wholly separate,
+	# mutually exclusive path — MANGLE/DISABLE/DETONATE/FRAGMENT/MELTDOWN
+	# never detach), so nothing here was credited/logged earlier the way a
+	# destroyed part's own salvage already was above.
 	for dropped: Part in result.dropped_subtree:
+		_credit_salvage(state, attacker, dropped)
 		state.combat_log.emit(
 			LogEvent.new(
 				state.round_number,

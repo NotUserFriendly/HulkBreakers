@@ -100,7 +100,7 @@ func test_depleting_joint_hp_severs_and_drops_the_intact_subtree_sockets_still_p
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
 	assert_true(DamageResolver.apply_damage_to_joint(shoulder, 10.0))
-	var dropped: Part = DamageResolver.sever_joint(shoulder, unit, state)
+	var dropped: Part = DamageResolver.sever_joint(shoulder, unit.cell, state)
 
 	assert_eq(dropped, arm)
 	assert_null(shoulder.occupant, "the socket itself is empty once severed")
@@ -156,5 +156,92 @@ func test_sever_joint_is_a_no_op_for_an_empty_socket() -> void:
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(1, 1))
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 
-	assert_null(DamageResolver.sever_joint(socket, unit, state))
+	assert_null(DamageResolver.sever_joint(socket, unit.cell, state))
 	assert_true(state.grid.field_items.is_empty())
+
+
+## taskblock-09 D: a torso with one shoulder, offset far enough laterally
+## (x=1.3) to sit clear of the torso's own box (half-width 1.0), and an
+## arm whose own volume is offset OUTWARD from the shoulder's attach point
+## (not centered on it, the way a real limb extends from its joint) —
+## torso, joint, and arm all land in disjoint screen-space lateral ranges,
+## so each is independently, unambiguously aimable.
+func _make_joint_reachable_fixture(cell: Vector2i) -> Dictionary:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 5
+	arm.max_hp = 5
+	arm.joint_hp = 4
+	arm.attaches_to = [&"SHOULDER"]
+	arm.volume = [Box.new(Vector3(0.4, 0.5, 0.0), Vector3(0.6, 0.3, 0.3))]
+
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.3, 0.5, 0.0)))
+	torso.sockets = [shoulder]
+	PartGraph.attach(arm, torso, shoulder)
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), cell)
+	return {"unit": unit, "torso": torso, "arm": arm, "shoulder": shoulder}
+
+
+func _joint_region(plane: Array[Region], socket: Socket) -> Region:
+	for region: Region in plane:
+		if region.socket == socket:
+			return region
+	fail_test("no joint region for socket")
+	return null
+
+
+func test_resolve_shot_on_a_joint_hit_depletes_joint_hp_never_part_hp() -> void:
+	var built: Dictionary = _make_joint_reachable_fixture(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var shoulder: Socket = built.shoulder
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var table := MaterialTable.default_table()
+
+	var origin := Vector2(2, 8)
+	var direction := Vector2(0, -1)
+	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, aim_point, 2.0, 0.0, state, table, rng
+	)
+
+	assert_eq(results.size(), 1)
+	assert_eq(results[0].region.socket, shoulder)
+	assert_eq(shoulder.joint_hp, 2, "4 joint hp - ceil(2.0 damage)")
+	assert_eq(arm.hp, 5, "a joint hit must never touch the part's own hp")
+
+
+func test_resolve_shot_severs_the_joint_and_drops_the_subtree_when_depleted() -> void:
+	var built: Dictionary = _make_joint_reachable_fixture(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var shoulder: Socket = built.shoulder
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var table := MaterialTable.default_table()
+
+	var origin := Vector2(2, 8)
+	var direction := Vector2(0, -1)
+	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, aim_point, 10.0, 0.0, state, table, rng
+	)
+
+	assert_eq(results.size(), 1)
+	assert_eq(results[0].dropped_subtree, [arm])
+	assert_null(shoulder.occupant, "the joint's own occupant is gone once severed")
+	assert_true(state.grid.field_items[Vector2i(2, 2)].has(arm))

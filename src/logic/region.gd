@@ -19,6 +19,15 @@ var surface_normal: Vector3
 ## by direct BodyProjector calls (single-part test fixtures, cover
 ## placement math) that never needed body identity before.
 var body: Variant = null
+## taskblock-09 D: non-null only for a JOINT region — one small aimable
+## box BodyProjector emits per occupied socket, at that socket's own
+## composed transform. `part` still points at the socket's OCCUPANT (the
+## child hanging off this joint) so depth-sort/occlusion/ricochet-
+## exclusion all keep working unchanged; `socket` is what tells
+## resolve_shot to divert into joint damage (`DamageResolver.
+## apply_damage_to_joint`/`sever_joint`) instead of the normal part/DT
+## path. Null (the default) is an ordinary part region.
+var socket: Socket = null
 
 
 func _init(

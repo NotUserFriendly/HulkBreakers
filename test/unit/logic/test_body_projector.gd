@@ -571,3 +571,97 @@ func test_a_plain_destroyed_part_still_vanishes_at_zero_hp() -> void:
 		[] as Array[Region],
 		"a part destroyed with neither flag set (DETONATE/FRAGMENT/MELTDOWN) still vanishes"
 	)
+
+
+## taskblock-09 D: an occupied socket must produce at least one aimable
+## region tagged with that exact socket — the actual discriminator
+## resolve_shot reads to divert into joint damage.
+func test_an_occupied_socket_produces_an_aimable_joint_region_at_its_transform() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+
+	var arm := _small_box_part(&"arm")
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.3, 0.5, 0.0)))
+	shoulder.occupant = arm
+	torso.sockets = [shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+
+	var joint_regions: Array[Region] = []
+	for region: Region in regions:
+		if region.socket == shoulder:
+			joint_regions.append(region)
+	assert_false(joint_regions.is_empty(), "an occupied socket must produce an aimable joint region")
+	for region: Region in joint_regions:
+		assert_eq(region.part, shoulder.joint_handle())
+
+
+func test_an_empty_socket_has_no_region() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	torso.sockets = [Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.3, 0.5, 0.0)))]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+
+	for region: Region in regions:
+		assert_null(region.socket, "an empty socket must never produce a joint region")
+
+
+## taskblock-09 D: an extra box directly on the torso's OWN volume (a
+## bolted-on plate, not a separately socketed part — sidesteps that
+## destroying a socketed occupant leaves ITS OWN joint region behind,
+## taskblock-09 D's own second-order case, not what this test is about),
+## nearer the shooter and wide enough to cover the shoulder joint's own
+## small footprint. The joint only becomes reachable once that extra box
+## is gone.
+func test_a_joint_occluded_by_a_plate_isnt_hittable_until_the_plate_is_gone() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var body_box := Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))
+	var plate_box := Box.new(Vector3(1.3, 0.5, 0.2), Vector3(0.6, 0.6, 0.1))
+	torso.volume = [body_box, plate_box]
+
+	# Offset outward from the shoulder's own attach point (like a real
+	# limb extending from its joint), so the arm's own body never
+	# occludes its own joint the way a zero-centered box would.
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3(0.7, 0.5, 0.0), Vector3(0.6, 0.3, 0.3))]
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.3, 0.5, 0.0)))
+	shoulder.occupant = arm
+	torso.sockets = [shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+
+	var origin := Vector2(2, 8)
+	var direction := Vector2(0, -1)
+	var plane_before: Array[Region] = ShotPlane.build(origin, direction, state)
+
+	var joint_region: Region = null
+	for region: Region in plane_before:
+		if region.socket == shoulder:
+			joint_region = region
+			break
+	assert_not_null(joint_region, "the joint must still produce a region even while occluded")
+	var aim_point: Vector2 = joint_region.rect.get_center()
+
+	var hit_before: Region = ShotPlane.resolve_projectile(plane_before, aim_point)
+	assert_ne(hit_before.socket, shoulder, "occluded: the plate in front must win, not the joint")
+
+	torso.volume = [body_box]
+	var plane_after: Array[Region] = ShotPlane.build(origin, direction, state)
+	var hit_after: Region = ShotPlane.resolve_projectile(plane_after, aim_point)
+	assert_eq(hit_after.socket, shoulder, "plate gone: the joint is finally reachable")
