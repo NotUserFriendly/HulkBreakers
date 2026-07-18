@@ -223,10 +223,13 @@ extends Resource
 ## penetration only, never touches the deflect/stop-dead angle decision
 ## (docs/03: deflection is geometry, not energy). Can be negative (a
 ## shotgun's buckshot, say) — armor gets HARDER to beat, not easier. 0.0
-## (no discount) is the default. taskblock-10 moves this onto AmmoDef
-## (`bonus_pen`); until it lands, it's a weapon-level placeholder, the
-## same status `damage` already has (Pass G) — read through WeaponResolver
-## like every other weapon-derived number, never this field directly.
+## (no discount) is the default. `AmmoDef.bonus_pen` exists now
+## (taskblock-10 Pass D), but no weapon Part references an AmmoDef yet —
+## the gun/ammo wiring itself is a later, unbuilt block. Until a weapon
+## actually names its ammo, this stays the one weapon-level placeholder,
+## the same status `damage` already has (Pass G) — read through
+## WeaponResolver like every other weapon-derived number, never this
+## field directly.
 @export var bonus_pen: float = 0.0
 
 ## docs/10 taskblock05 E1: what this part becomes on destruction under
@@ -244,19 +247,21 @@ extends Resource
 ## the builtin range() function.
 ##
 ## taskblock-09 Pass G: `damage` is a flagged, deliberate leftover, not a
-## silently-kept duplicate. Weapon damage belongs on AMMO (taskblock-10's
-## `AmmoDef.damage`) once that model lands — the gun itself only ever
-## multiplies it (`damage_multiplier`). Until taskblock-10 replaces this
-## field's role, it stays the one weapon-level damage source (read only
-## through WeaponResolver, docs/08 — never directly to compute an
-## outcome), same placeholder status `bonus_pen` above already carries. Do
-## not add a second damage source alongside it; when taskblock-10 lands,
-## this field's job moves, it doesn't duplicate.
-## Audited (taskblock-09 G): every direct `part.damage`/`weapon.damage`
-## read outside WeaponResolver itself is a plain `> 0.0` CLASSIFICATION
-## gate ("does this part qualify as a weapon at all" — WeaponRows.build,
-## DeepStrike.find_operable_weapon), never a damage computation. Nothing
-## else reads this field raw.
+## silently-kept duplicate. Weapon damage belongs on AMMO (`AmmoDef.damage`,
+## authored as data since taskblock-10 Pass D) once a weapon actually names
+## which ammo it fires and the gun itself only multiplies it
+## (`damage_multiplier`) — that wiring is a later, unbuilt block, not this
+## one. `AmmoDef.damage` sits unread by anything today (taskblock-10 Pass
+## E audit); until the wiring lands, THIS field stays the one weapon-level
+## damage source (read only through WeaponResolver, docs/08 — never
+## directly to compute an outcome), same placeholder status `bonus_pen`
+## above already carries. Do not add a second damage source alongside it;
+## when the wiring lands, this field's job moves, it doesn't duplicate.
+## Audited (taskblock-09 G, reconfirmed taskblock-10 E): every direct
+## `part.damage`/`weapon.damage` read outside WeaponResolver itself is a
+## plain `> 0.0` CLASSIFICATION gate ("does this part qualify as a weapon
+## at all" — WeaponRows.build, DeepStrike.find_operable_weapon), never a
+## damage computation. Nothing else reads this field raw.
 @export var damage: float = 0.0
 @export var burst: int = 1
 @export var recoil: float = 0.0
@@ -278,6 +283,7 @@ extends Resource
 ## harmless default for every part, weapon or not — only ever read on
 ## whichever Part an AttackAction actually names as its weapon_id.
 @export var speed: float = 40.0
+
 
 ## True if this part declares a MATRIX socket — the only thing that makes a
 ## part pilotable (docs/01). Derived from `sockets`, never a settable flag.
