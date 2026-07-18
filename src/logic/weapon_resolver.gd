@@ -34,6 +34,23 @@ static func resolve_crit_chance(weapon: Part, extra_sources: Array[ModSource] = 
 	return StatResolver.resolve(&"crit_chance", _context(weapon.crit_chance, weapon, extra_sources))
 
 
+## taskblock-13 Pass D: recoil's own per-step dartboard-widening amount —
+## `RecoilResolver.step_amount`'s pure formula (base_recoil(ammo_damage) /
+## barrel_factor(barrel_length)) supplies the BASE, resolved through the
+## same StatResolver pipeline every other weapon-derived number here
+## uses (docs/08: "nothing may compute a final number outside this
+## pipeline"), so a future perk/ammo modifier ("Spin Up... slightly less
+## recoil," docs/08's own worked example) can adjust it with full
+## provenance exactly like damage/crit_chance/bonus_pen already do.
+static func resolve_recoil_step(
+	weapon: Part, ammo_damage: float, extra_sources: Array[ModSource] = []
+) -> StatValue:
+	return StatResolver.resolve(
+		&"recoil_step",
+		_context(RecoilResolver.step_amount(weapon, ammo_damage), weapon, extra_sources)
+	)
+
+
 ## taskblock-09 F/taskblock-10 E: `Part.bonus_pen`'s own status is the
 ## same flagged weapon-level placeholder `damage` carries (Pass G) —
 ## `AmmoDef.bonus_pen` exists (taskblock-10 Pass D) and a weapon Part CAN

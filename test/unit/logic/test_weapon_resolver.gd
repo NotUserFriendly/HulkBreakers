@@ -70,3 +70,29 @@ func test_no_weapon_def_means_no_multiplier_source_at_all() -> void:
 	var resolved := WeaponResolver.resolve_damage(weapon)
 	assert_eq(resolved.current, 5.0)
 	assert_eq(resolved.sources.size(), 0)
+
+
+## taskblock-13 Pass D: recoil_step is resolved through the same
+## StatResolver pipeline as damage/crit_chance/bonus_pen — a stat_mods
+## entry on the weapon must be able to adjust it with real provenance,
+## same as everything else here.
+func test_resolve_recoil_step_matches_the_pure_formula_with_no_modifiers() -> void:
+	var weapon := _weapon(5.0)
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.barrel_length = 2.0
+
+	var resolved := WeaponResolver.resolve_recoil_step(weapon, 4.0)
+
+	assert_almost_eq(resolved.current, RecoilResolver.step_amount(weapon, 4.0), 0.0001)
+
+
+func test_resolve_recoil_step_applies_a_part_stat_mod() -> void:
+	var weapon := _weapon(5.0)
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.barrel_length = 1.0
+	weapon.stat_mods = {&"recoil_step": -0.01}
+
+	var base: float = RecoilResolver.step_amount(weapon, 4.0)
+	var resolved := WeaponResolver.resolve_recoil_step(weapon, 4.0)
+
+	assert_almost_eq(resolved.current, base - 0.01, 0.0001)

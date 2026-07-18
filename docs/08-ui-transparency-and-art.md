@@ -38,6 +38,12 @@ with changed numbers **highlighted**. Load incendiary ammo and it appends:
 Shots inflict 0.5 stacks of burn.
 ```
 
+*(taskblock-13 Pass D: recoil is no longer a flat authored number — its own BASE is computed
+per shot from the ammo's damage and the gun's barrel length (`RecoilResolver`), then resolved
+through this same pipeline (`WeaponResolver.resolve_recoil_step`) so a perk like Spin Up can
+still apply a real, provenance-tracked modifier on top. The "10 -> 8" illustration above is
+unchanged in spirit; only where the un-modified 10 itself comes from changed.)*
+
 ### Drill-down
 Highlighting a number reveals its `sources` — what changed it and by how much.
 

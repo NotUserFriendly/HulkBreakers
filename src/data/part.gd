@@ -264,14 +264,17 @@ extends Resource
 ## damage computation. Nothing else reads this field raw.
 @export var damage: float = 0.0
 @export var burst: int = 1
-@export var recoil: float = 0.0
 @export var weapon_max_range: float = 0.0
 @export var ap_cost: int = 1
 ## taskblock-13 Pass A: gun-model stats with nowhere else to live —
 ## damage_multiplier/mechanical_accuracy/barrel_length/burst_size/chamber.
 ## Null for every non-weapon part (and for weapon parts authored before
 ## this field existed) — see `WeaponDef`'s own header for why this is an
-## embedded sub-resource, not a DataLibrary-looked-up type.
+## embedded sub-resource, not a DataLibrary-looked-up type. Recoil (Pass
+## D) reads `barrel_length` off this instead of a stored field — a dead
+## `Part.recoil` used to live here, authored but never computed from
+## anything; it's gone, replaced by `RecoilResolver` computing a real
+## number from the ammo's own damage and this gun's own barrel.
 @export var weapon_def: WeaponDef = null
 ## taskblock-13 Pass B: which `AmmoDef` (by id) this weapon currently has
 ## chambered — empty means unloaded. Same open-StringName-lookup posture
