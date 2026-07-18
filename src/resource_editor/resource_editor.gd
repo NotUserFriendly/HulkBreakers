@@ -30,6 +30,12 @@ const PREVIEW_SIZE := 220
 const METADATA_MIN_HEIGHT := 160
 ## radians/sec — B1: "slowly rotating."
 const ROTATE_SPEED := 0.5
+## C4: nested child-row column sets — a socket's own [socket_type, id,
+## joint_hp] (the taskblock's own worked example) and a dt_curve point's
+## own [thickness, dt] (its other one). Both fit inside whatever column
+## count the parent definition type happens to have.
+const SOCKET_COLUMNS: Array[StringName] = [&"socket_type", &"id", &"joint_hp"]
+const CURVE_COLUMNS: Array[StringName] = [&"thickness", &"dt"]
 
 var current_type: StringName = DataLibrary.TYPE_PARTS
 var selected_id: StringName = &""
@@ -180,6 +186,7 @@ func _build_table_column(parent: Control) -> void:
 	table.item_edited.connect(_on_item_edited)
 	table.item_selected.connect(_on_item_selected)
 	table.custom_popup_edited.connect(_on_custom_popup_edited)
+	table.gui_input.connect(_on_table_gui_input)
 	right_column.add_child(table)
 
 
@@ -296,7 +303,15 @@ func _refresh_table_rows() -> void:
 	table.clear()
 	var root_item: TreeItem = table.create_item()
 	for row: Resource in _row_resources:
-		_add_row_item(row, root_item, columns)
+		var item: TreeItem = _add_row_item(row, root_item, columns)
+		# C4/table intro: "expand the row, edit the scalar" — sockets and
+		# dt_curve are the two concrete nested cases this taskblock names
+		# (a socket's joint_hp, a curve point's dt), not a generic walk
+		# over every Array field every Resource type happens to export.
+		if row is Part:
+			_add_socket_rows(row as Part, item)
+		elif row is MaterialEntry:
+			_add_curve_rows(row as MaterialEntry, item)
 
 
 func _add_row_item(
@@ -304,6 +319,7 @@ func _add_row_item(
 ) -> TreeItem:
 	var item: TreeItem = table.create_item(parent_item)
 	item.set_metadata(0, resource)
+	item.set_meta(&"row_kind", &"top_level")
 	for i in range(columns.size()):
 		var column: StringName = columns[i]
 		var value: Variant = resource.get(column)
@@ -325,6 +341,43 @@ func _add_row_item(
 			item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
 		item.set_editable(i, true)
 	return item
+
+
+func _add_socket_rows(part: Part, parent_item: TreeItem) -> void:
+	for socket: Socket in part.sockets:
+		var item: TreeItem = table.create_item(parent_item)
+		item.set_meta(&"row_kind", &"socket")
+		item.set_metadata(0, socket)
+		item.set_text(0, str(socket.socket_type))
+		item.set_cell_mode(0, TreeItem.CELL_MODE_STRING)
+		item.set_editable(0, true)
+		item.set_text(1, str(socket.id))
+		item.set_cell_mode(1, TreeItem.CELL_MODE_STRING)
+		item.set_editable(1, true)
+		item.set_text(2, str(socket.joint_hp))
+		item.set_cell_mode(2, TreeItem.CELL_MODE_RANGE)
+		item.set_range_config(2, 0.0, 999.0, 1.0)
+		item.set_range(2, float(socket.joint_hp))
+		item.set_editable(2, true)
+
+
+func _add_curve_rows(material: MaterialEntry, parent_item: TreeItem) -> void:
+	for i in range(material.dt_curve.size()):
+		var point: Vector2 = material.dt_curve[i]
+		var item: TreeItem = table.create_item(parent_item)
+		item.set_meta(&"row_kind", &"dt_curve_point")
+		item.set_metadata(0, material)
+		item.set_meta(&"curve_index", i)
+		_set_curve_cell(item, 0, point.x)
+		_set_curve_cell(item, 1, point.y)
+
+
+func _set_curve_cell(item: TreeItem, column: int, value: float) -> void:
+	item.set_text(column, str(value))
+	item.set_cell_mode(column, TreeItem.CELL_MODE_RANGE)
+	item.set_range_config(column, -999999.0, 999999.0, 0.01)
+	item.set_range(column, value)
+	item.set_editable(column, true)
 
 
 ## C3: "a dropdown compiled from the other values in that column"
@@ -396,12 +449,25 @@ func _on_item_selected() -> void:
 
 
 ## A cell just committed a new value (Tree's own inline STRING/RANGE
-## editor) — split from `_apply_edit` only so a test can drive the
-## latter directly without going through Tree's own internal
+## editor) — dispatches on `row_kind` (set once, per row, at build time)
+## since a socket row and a dt_curve-point row don't write back to a
+## top-level Resource field the same way `_apply_edit` does. Split from
+## `_apply_edit`/`_apply_socket_edit`/`_apply_curve_edit` only so a test
+## can drive those directly without going through Tree's own internal
 ## get_edited()/get_edited_column() tracking, which only reflects reality
 ## after Tree's own real (non-headless) inline editor UI has run.
 func _on_item_edited() -> void:
-	_apply_edit(table.get_edited(), table.get_edited_column())
+	var item: TreeItem = table.get_edited()
+	var column: int = table.get_edited_column()
+	if item == null:
+		return
+	match item.get_meta(&"row_kind", &"top_level"):
+		&"socket":
+			_apply_socket_edit(item, column)
+		&"dt_curve_point":
+			_apply_curve_edit(item, column)
+		_:
+			_apply_edit(item, column)
 
 
 ## Reads the new value back off `item`'s `column` cell, coerces it to the
@@ -441,6 +507,46 @@ func _coerce(old_value: Variant, item: TreeItem, column: int) -> Variant:
 			return item.get_text(column)
 
 
+## C4: a socket child row's own edit — `Socket` is itself a `Resource`
+## (exported `socket_type`/`id`/`joint_hp`), so this is `_apply_edit`'s
+## same shape, just keyed off `SOCKET_COLUMNS` instead of a top-level
+## definition type's own column list.
+func _apply_socket_edit(item: TreeItem, column: int) -> void:
+	var socket: Socket = item.get_metadata(0)
+	if socket == null or column < 0 or column >= SOCKET_COLUMNS.size():
+		return
+	var field: StringName = SOCKET_COLUMNS[column]
+	if field == &"joint_hp":
+		socket.joint_hp = int(item.get_range(column))
+		item.set_text(column, str(socket.joint_hp))
+	else:
+		var new_text: String = item.get_text(column)
+		socket.set(field, StringName(new_text))
+		item.set_text(column, new_text)
+
+
+## C4: a dt_curve-point child row's own edit. `dt_curve` is
+## `Array[Vector2]` — a point isn't a `Resource` with settable fields, so
+## this reads the whole `Vector2`, replaces the edited axis, and writes
+## the WHOLE point back into the array (Vector2 is a value type; there's
+## no in-place `.x =` on an array element).
+func _apply_curve_edit(item: TreeItem, column: int) -> void:
+	var material: MaterialEntry = item.get_metadata(0)
+	var index: int = item.get_meta(&"curve_index", -1)
+	if material == null or index < 0 or index >= material.dt_curve.size():
+		return
+	if column < 0 or column >= CURVE_COLUMNS.size():
+		return
+	var point: Vector2 = material.dt_curve[index]
+	var new_value: float = item.get_range(column)
+	if column == 0:
+		point.x = new_value
+	else:
+		point.y = new_value
+	material.dt_curve[index] = point
+	item.set_text(column, str(new_value))
+
+
 ## B2: "filename, resource type, file size, source (res:// built-in vs
 ## user:// override), validation status."
 func _refresh_metadata() -> void:
@@ -457,6 +563,64 @@ func _refresh_metadata() -> void:
 		"[b]%s[/b]\ntype: %s\nsource: %s\nstatus: %s"
 		% [selected_id, current_type, source if source != &"" else &"unknown", status]
 	)
+
+
+## C4: "hovering a sockets or volume cell in the table renders its
+## expansion into this metadata panel" — "the socket list with their
+## joint_hp, the curve's points... so you can read structure without
+## leaving the table." Reuses the gui_input + get_item_at_position hover
+## convention `InventoryPanel`/`QueuePanel` already establish (Tree has
+## no native per-item hover signal).
+func _on_table_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseMotion):
+		return
+	var item: TreeItem = table.get_item_at_position((event as InputEventMouseMotion).position)
+	_refresh_hover_metadata(item)
+
+
+func _refresh_hover_metadata(item: TreeItem) -> void:
+	if item == null or item.get_meta(&"row_kind", &"top_level") != &"top_level":
+		_refresh_metadata()
+		return
+	var resource: Resource = item.get_metadata(0)
+	var summary: String = _hover_summary_for(resource) if resource != null else ""
+	if summary == "":
+		_refresh_metadata()
+		return
+	metadata_panel.text = summary
+
+
+## The actual expansion text — split out so a test can assert its
+## content directly without simulating real mouse motion.
+func _hover_summary_for(resource: Resource) -> String:
+	if resource is Part:
+		return _socket_summary(resource as Part)
+	if resource is MaterialEntry:
+		return _curve_summary(resource as MaterialEntry)
+	return ""
+
+
+func _socket_summary(part: Part) -> String:
+	if part.sockets.is_empty():
+		return ""
+	var lines: Array[String] = ["[b]%s sockets[/b]" % part.id]
+	for socket: Socket in part.sockets:
+		lines.append(
+			(
+				"· %s [%s] joint_hp %d/%d"
+				% [socket.socket_type, socket.id, socket.joint_hp, socket.joint_hp_max]
+			)
+		)
+	return "\n".join(lines)
+
+
+func _curve_summary(material: MaterialEntry) -> String:
+	if material.dt_curve.is_empty():
+		return ""
+	var lines: Array[String] = ["[b]%s dt_curve[/b]" % material.id]
+	for point: Vector2 in material.dt_curve:
+		lines.append("· thickness %.2f -> dt %.2f" % [point.x, point.y])
+	return "\n".join(lines)
 
 
 ## Renders the selected definition via `HitVolumeView`'s own mesh/
