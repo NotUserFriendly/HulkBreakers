@@ -43,6 +43,7 @@ static func hulk_only_pool() -> Array[Part]:
 	salvaged_reactor_core.hp = 4
 	salvaged_reactor_core.max_hp = 4
 	salvaged_reactor_core.attaches_to = [&"INTERNAL"]
+	salvaged_reactor_core.material = &"sheet_steel"
 	salvaged_reactor_core.mass = 8.0
 	salvaged_reactor_core.tags = [&"VOLATILE", &"SALVAGE"]
 	salvaged_reactor_core.failure_mode = &"DETONATE"
