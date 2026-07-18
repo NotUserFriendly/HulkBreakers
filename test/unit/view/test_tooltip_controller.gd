@@ -3,6 +3,15 @@ extends GutTest
 ## taskblock-07 Pass F2: replaces test_combat_readout_panel.gd — same 5
 ## cases that file covered, now asserted against the shared TooltipView
 ## instead of a RichTextLabel.
+##
+## taskblock-08 Pass D2: TooltipView no longer reveals instantly — advance
+## past its own hover delay the same way CameraRig's tween tests advance a
+## tween (`custom_step`), a direct `_process(delta)` call, never a real
+## wall-clock wait.
+
+
+func _reveal(view: TooltipView) -> void:
+	view._process(TooltipView.HOVER_DELAY_SEC + 0.001)
 
 
 func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
@@ -52,6 +61,7 @@ func test_hovering_a_cell_shows_its_terrain() -> void:
 
 	controller.hovered_cell = Vector2i(3, 3)
 	controller.hover_changed.emit()
+	_reveal(tooltip_view)
 
 	assert_true(tooltip_view.visible)
 	assert_true(tooltip_view._label.text.contains("cell (3, 3)"))
@@ -68,6 +78,7 @@ func test_hovering_an_enemy_shows_its_full_status() -> void:
 
 	controller.hovered_cell = Vector2i(4, 4)
 	controller.hover_changed.emit()
+	_reveal(tooltip_view)
 
 	assert_true(tooltip_view._label.text.contains("unit %d — squad 1" % enemy.id))
 	assert_true(tooltip_view._label.text.contains("5/5"))
@@ -83,6 +94,7 @@ func test_hovering_a_field_object_shows_its_own_detail() -> void:
 
 	controller.hovered_cell = Vector2i(5, 5)
 	controller.hover_changed.emit()
+	_reveal(tooltip_view)
 
 	var expected_title: String = (
 		crate.display_name if crate.display_name != "" else String(crate.id)
@@ -102,6 +114,7 @@ func test_an_inspected_part_wins_over_a_hovered_cell() -> void:
 	controller.hovered_cell = Vector2i(1, 1)
 	controller.hover_changed.emit()
 	controller.inspect_part(part)
+	_reveal(tooltip_view)
 
 	assert_true(tooltip_view._label.text.contains("pistol"))
 	assert_false(tooltip_view._label.text.contains("cell (1, 1)"))

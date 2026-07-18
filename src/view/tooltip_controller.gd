@@ -23,6 +23,13 @@ func setup(
 	tooltip_view = p_tooltip_view
 	material_table = p_material_table
 	tactics.hover_changed.connect(refresh)
+	# taskblock-08 D1: "the general tooltip must... track [the cursor] while
+	# hovering, not latch to the widget" — hover_changed alone only fires
+	# when the hovered cell/part actually changes; mouse_moved fires on
+	# every motion, so refresh() keeps re-supplying a fresh cursor position
+	# to TooltipView even while hovering the same target (TooltipView's own
+	# show_data() then just repositions, it doesn't restart the delay).
+	tactics.mouse_moved.connect(refresh)
 	refresh()
 
 
