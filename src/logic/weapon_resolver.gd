@@ -9,8 +9,25 @@ extends RefCounted
 ## place that's allowed to.
 
 
+## taskblock-13 Pass A: `WeaponDef.damage_multiplier` ("barrel mult," the
+## reference table's 0.8/1.0/0.9/1.1) rides in as one more MULTIPLY
+## ModSource — same provenance pipeline as everything else here, never a
+## raw `weapon.damage * weapon.weapon_def.damage_multiplier` off to the
+## side. Always appended when a WeaponDef is present (even at 1.0 — a
+## drill-down should show "barrel: x1.0" for a neutral gun the same way it
+## shows a real multiplier), never for a part with no WeaponDef at all.
 static func resolve_damage(weapon: Part, extra_sources: Array[ModSource] = []) -> StatValue:
-	return StatResolver.resolve(&"damage", _context(weapon.damage, weapon, extra_sources))
+	var sources: Array[ModSource] = extra_sources.duplicate()
+	if weapon.weapon_def != null:
+		sources.append(
+			ModSource.new(
+				"Barrel",
+				Enums.ModSourceKind.PART,
+				Enums.ModOp.MULTIPLY,
+				weapon.weapon_def.damage_multiplier
+			)
+		)
+	return StatResolver.resolve(&"damage", _context(weapon.damage, weapon, sources))
 
 
 static func resolve_crit_chance(weapon: Part, extra_sources: Array[ModSource] = []) -> StatValue:

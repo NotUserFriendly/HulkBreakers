@@ -61,6 +61,14 @@ static func _validate_part(part: Part) -> Array[ValidationError]:
 				row_id, &"material", "references unknown material '%s'" % part.material
 			)
 		)
+	# taskblock-13 Pass B: same referential posture as `material` above —
+	# empty (unloaded) is legal, only a non-empty id must resolve. Whether
+	# it actually CHAMBERS (family/length match) is a separate, load-time
+	# check — WeaponResolver.chamber_error — not an authoring-time one.
+	if part.ammo_id != &"" and DataLibrary.get_ammo(part.ammo_id) == null:
+		errors.append(
+			ValidationError.new(row_id, &"ammo_id", "references unknown ammo '%s'" % part.ammo_id)
+		)
 	return errors
 
 

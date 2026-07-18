@@ -267,6 +267,18 @@ extends Resource
 @export var recoil: float = 0.0
 @export var weapon_max_range: float = 0.0
 @export var ap_cost: int = 1
+## taskblock-13 Pass A: gun-model stats with nowhere else to live —
+## damage_multiplier/mechanical_accuracy/barrel_length/burst_size/chamber.
+## Null for every non-weapon part (and for weapon parts authored before
+## this field existed) — see `WeaponDef`'s own header for why this is an
+## embedded sub-resource, not a DataLibrary-looked-up type.
+@export var weapon_def: WeaponDef = null
+## taskblock-13 Pass B: which `AmmoDef` (by id) this weapon currently has
+## chambered — empty means unloaded. Same open-StringName-lookup posture
+## as `material` (`DataLibrary.get_ammo`), not an embedded sub-resource:
+## ammo is already its own independently authored/shared DataLibrary type
+## (taskblock-10 Pass D), swappable independent of the gun itself.
+@export var ammo_id: StringName = &""
 ## Float, not a bool (docs/03): >1.0 always crits, and the excess is the
 ## double-crit chance. 0.0 (never crits) is the inert default.
 @export var crit_chance: float = 0.0
