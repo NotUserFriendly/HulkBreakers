@@ -37,7 +37,10 @@ static func find_socket(target: Part, socket_id: StringName) -> Socket:
 ## Attaches `part` into `socket`, which must belong to `target`. Rejects if
 ## the socket isn't target's, the type doesn't match, the socket is occupied,
 ## or attaching would create a cycle (target already sits inside part's own
-## subtree).
+## subtree). taskblock-09 C0: also copies `part.joint_hp` onto the socket's
+## own runtime `joint_hp`/`joint_hp_max` — the child defines the max, the
+## socket holds the current value, same inversion `attaches_to` already
+## uses.
 static func attach(part: Part, target: Part, socket: Socket) -> bool:
 	if not target.sockets.has(socket):
 		return false
@@ -46,6 +49,8 @@ static func attach(part: Part, target: Part, socket: Socket) -> bool:
 	if walk(part).has(target):
 		return false
 	socket.occupant = part
+	socket.joint_hp = part.joint_hp
+	socket.joint_hp_max = part.joint_hp
 	return true
 
 

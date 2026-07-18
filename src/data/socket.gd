@@ -31,6 +31,17 @@ extends Resource
 ## composes correctly — the occupant simply sits at the host's own origin.
 @export var transform: Transform3D = Transform3D.IDENTITY
 
+## taskblock-09 C0: runtime HP of THIS socket's own connection to whatever
+## it holds — copied from the occupant's `Part.joint_hp` at attach time
+## (`PartGraph.attach`), never authored here directly (docs/01's
+## inversion: the CHILD declares how hard it is to sever, not the parent
+## socket). 1/1 by default, matching `Part.joint_hp`'s own deliberately
+## fragile default, so a socket whose occupant was set directly
+## (`socket.occupant = x`, bypassing `PartGraph.attach` — most existing
+## fixtures) still severs in one hit rather than reading 0/0.
+@export var joint_hp: int = 1
+@export var joint_hp_max: int = 1
+
 
 func _init(
 	p_socket_type: StringName = &"",

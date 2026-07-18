@@ -66,6 +66,30 @@ static func apply_damage_to_part(part: Part, amount: float) -> bool:
 	return part.hp <= 0
 
 
+## taskblock-09 C1: a joint has HP only, no failure modes — subtracts from
+## the SOCKET's own runtime joint_hp, never a part's hp (a completely
+## separate pool from `apply_damage_to_part`, docs/03's "two independent
+## HP pools per limb"). Returns true if this severed it.
+static func apply_damage_to_joint(socket: Socket, amount: float) -> bool:
+	socket.joint_hp = maxi(0, socket.joint_hp - int(ceil(amount)))
+	return socket.joint_hp <= 0
+
+
+## taskblock-09 C1/C2: severing a joint drops whatever it held as ONE
+## intact assembly, rooted at the child, sockets still populated (docs/01's
+## "borrow it as-is" rule) — never split at an inner mangled part the way
+## the deleted BREAK mode once did. This is now the ONLY path from body to
+## ground: part failure (Pass A) never detaches, only a severed joint does.
+## Returns the dropped root part, or null if the socket was already empty.
+static func sever_joint(socket: Socket, owner: Unit, state: CombatState) -> Part:
+	var dropped: Part = socket.occupant
+	if dropped == null:
+		return null
+	socket.occupant = null
+	_register_dropped(dropped, owner, state)
+	return dropped
+
+
 ## taskblock-09 A3 (docs/03): renamed from "cook-off," same mechanic. A
 ## failed DETONATE part with detonate_damage > 0 explodes: every living
 ## unit within detonate_radius (Chebyshev) of its cell takes that damage
@@ -257,17 +281,16 @@ static func _hosts_matrix_somewhere(part: Part) -> bool:
 ## taskblock-09 C2: "BREAK is gone — severing is the only 'drops off.'"
 ## Destroying a PART (this file's own hp<=0 path) never detaches anything
 ## anymore — MANGLE/DISABLE stay attached, DETONATE/FRAGMENT/MELTDOWN are
-## consumed in place (`resolve_part_failure`). The only way a part
-## leaves the body now is a SEVERED JOINT (Pass C/D: shoot the socket
-## connecting it to its parent, not the part itself) — that mechanism
-## lives with the rest of the joint-hit resolution path, not here. This
+## consumed in place (`resolve_part_failure`). The only way a part leaves
+## the body now is a SEVERED JOINT (`sever_joint`, above — Pass D wires an
+## actual shot at the socket into it, `resolve_ray` isn't built yet). This
 ## used to be `drop_subtree_if_destroyed`, keyed on the destroyed part's
 ## own hp; deleted rather than adapted, per the taskblock's own framing —
 ## the docs/01 "blow a shoulder off, the subtree drops intact" rule still
 ## holds, it's just read off the shoulder's own JOINT now, never the
-## part's hp. `_register_dropped` below is the one piece of the old
-## mechanism that survives unchanged: the joint-drop path reuses it
-## verbatim for field-item/blocker registration.
+## part's hp. This helper is the one piece of the old mechanism that
+## survives unchanged: `sever_joint` reuses it verbatim for field-item/
+## blocker registration.
 static func _register_dropped(part: Part, owner: Unit, state: CombatState) -> void:
 	if not state.grid.field_items.has(owner.cell):
 		state.grid.field_items[owner.cell] = []
