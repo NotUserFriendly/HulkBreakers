@@ -27,6 +27,7 @@ mechanical_accuracy = 0.8
 effective_range = 8.0
 barrel_length = 0.6
 burst_size = 12
+burst_ap_cost = 3
 accepts_family = &"556x45"
 max_case_length = 45.0
 

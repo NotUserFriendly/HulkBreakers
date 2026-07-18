@@ -27,6 +27,12 @@ static func defs() -> Array[ActionDef]:
 		# provides shoot — the instrument overwatch still needs even once
 		# its provider moves off the gun and onto the matrix (E3).
 		ActionDef.new(&"overwatch", "Overwatch", "OW", {}, &"shoot", false),
+		# taskblock-13 Pass C: same shape as shoot — an aimed, target-armed
+		# action, backed by whichever weapon Part lists &"burst" in its own
+		# provides_actions (a data-authoring convention: only a Part whose
+		# WeaponDef.burst_size > 1 should ever list it — BurstAction.is_legal
+		# itself is the real runtime gate).
+		ActionDef.new(&"burst", "Burst", "BR"),
 	]
 
 

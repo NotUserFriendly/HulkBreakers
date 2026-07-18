@@ -65,6 +65,7 @@ func _guns() -> Array[Part]:
 	chaingun.weapon_def.mechanical_accuracy = 0.8
 	chaingun.weapon_def.barrel_length = 0.6
 	chaingun.weapon_def.burst_size = 12
+	chaingun.weapon_def.burst_ap_cost = 3
 	chaingun.weapon_def.effective_range = 8.0
 	chaingun.weapon_def.accepts_family = &"556x45"
 	chaingun.weapon_def.max_case_length = 45.0
@@ -102,6 +103,7 @@ func _guns() -> Array[Part]:
 	auto_shotgun.weapon_def.mechanical_accuracy = 0.9
 	auto_shotgun.weapon_def.barrel_length = 0.55
 	auto_shotgun.weapon_def.burst_size = 3
+	auto_shotgun.weapon_def.burst_ap_cost = 2
 	auto_shotgun.weapon_def.effective_range = 4.0
 	auto_shotgun.weapon_def.accepts_family = &"12GA"
 	auto_shotgun.weapon_def.max_case_length = 70.0
