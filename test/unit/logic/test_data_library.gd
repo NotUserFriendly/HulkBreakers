@@ -130,3 +130,80 @@ func test_material_table_aggregates_every_loaded_material() -> void:
 
 	var table: MaterialTable = DataLibrary.material_table()
 	assert_eq(table.get_entry(&"steel").dt, 6.0)
+
+
+## taskblock-11 Pass A: the type-agnostic entry point the editor's table
+## switches over.
+func test_resources_of_type_returns_every_loaded_definition_of_that_type() -> void:
+	_save_part(BUILTIN_ROOT, &"torso", 12)
+	_save_part(BUILTIN_ROOT, &"head", 6)
+	DataLibrary.load_all(BUILTIN_ROOT, USER_ROOT)
+
+	var parts: Dictionary = DataLibrary.resources_of_type(DataLibrary.TYPE_PARTS)
+	assert_eq(parts.size(), 2)
+	assert_true(parts.has(&"torso"))
+	assert_eq((parts[&"torso"] as Part).hp, 12)
+
+
+func test_resources_of_type_returns_fresh_duplicates() -> void:
+	_save_part(BUILTIN_ROOT, &"torso", 12)
+	DataLibrary.load_all(BUILTIN_ROOT, USER_ROOT)
+
+	var first: Dictionary = DataLibrary.resources_of_type(DataLibrary.TYPE_PARTS)
+	(first[&"torso"] as Part).hp = 999
+	var second: Dictionary = DataLibrary.resources_of_type(DataLibrary.TYPE_PARTS)
+	assert_eq((second[&"torso"] as Part).hp, 12, "mutating one caller's copy must not leak")
+
+
+## taskblock-11 B2: "source (res:// built-in vs user:// override)."
+func test_source_of_reports_builtin_and_user_and_override_correctly() -> void:
+	_save_part(BUILTIN_ROOT, &"torso", 12)
+	_save_part(USER_ROOT, &"scrap_pistol", 3)
+	DataLibrary.load_all(BUILTIN_ROOT, USER_ROOT)
+
+	assert_eq(DataLibrary.source_of(DataLibrary.TYPE_PARTS, &"torso"), &"builtin")
+	assert_eq(DataLibrary.source_of(DataLibrary.TYPE_PARTS, &"scrap_pistol"), &"user")
+	assert_eq(DataLibrary.source_of(DataLibrary.TYPE_PARTS, &"does_not_exist"), &"")
+
+
+func test_source_of_an_overridden_id_reports_user() -> void:
+	_save_part(BUILTIN_ROOT, &"torso", 12)
+	_save_part(USER_ROOT, &"torso", 999)
+	DataLibrary.load_all(BUILTIN_ROOT, USER_ROOT)
+
+	assert_eq(DataLibrary.source_of(DataLibrary.TYPE_PARTS, &"torso"), &"user")
+
+
+## TEST: "saving writes a valid .tres to user://data/; a saved file
+## reloads identically."
+func test_save_writes_a_valid_tres_to_the_user_root() -> void:
+	DataLibrary.load_all(BUILTIN_ROOT, USER_ROOT)
+	var part := Part.new()
+	part.id = &"custom_plate"
+	part.hp = 7
+	part.max_hp = 7
+
+	var errors: Array[ValidationError] = DataLibrary.save(DataLibrary.TYPE_PARTS, part)
+	assert_eq(errors, [] as Array[ValidationError])
+
+	var path: String = USER_ROOT + "/parts/custom_plate.tres"
+	assert_true(ResourceLoader.exists(path))
+	var reloaded: Part = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	assert_eq(reloaded.id, &"custom_plate")
+	assert_eq(reloaded.hp, 7)
+
+	assert_eq(DataLibrary.get_part(&"custom_plate").hp, 7, "the in-memory registry must see it too")
+	assert_eq(DataLibrary.source_of(DataLibrary.TYPE_PARTS, &"custom_plate"), &"user")
+
+
+func test_save_rejects_an_invalid_resource_without_writing_a_file() -> void:
+	DataLibrary.load_all(BUILTIN_ROOT, USER_ROOT)
+	var part := Part.new()
+	part.id = &"bad_plate"
+	part.failure_mode = &"NOT_A_REAL_MODE"
+
+	var errors: Array[ValidationError] = DataLibrary.save(DataLibrary.TYPE_PARTS, part)
+	assert_eq(errors.size(), 1)
+	assert_eq(errors[0].field, &"failure_mode")
+	assert_false(ResourceLoader.exists(USER_ROOT + "/parts/bad_plate.tres"))
+	assert_null(DataLibrary.get_part(&"bad_plate"))

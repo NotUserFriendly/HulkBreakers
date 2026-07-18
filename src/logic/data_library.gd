@@ -12,13 +12,32 @@ extends RefCounted
 const BUILTIN_ROOT := "res://data"
 const USER_ROOT := "user://data"
 
+## taskblock-11 Pass A: the generic type-key vocabulary the Resource
+## Editor switches over — open StringNames, not an enum (CLAUDE.md: a new
+## definition TYPE is still a code change, same as today, but nothing
+## about the editor's own table/save code needs one).
+const TYPE_PARTS := &"parts"
+const TYPE_AMMO := &"ammo"
+const TYPE_MATERIALS := &"materials"
+
 static var _parts: Dictionary = {}  # StringName -> Part
 static var _ammo: Dictionary = {}  # StringName -> AmmoDef
 static var _materials: Dictionary = {}  # StringName -> MaterialEntry
+## "type:id" -> &"builtin" | &"user" (taskblock-11 B2: "source (res://
+## built-in vs user:// override)"). Not derivable from `_parts`/`_ammo`/
+## `_materials` alone once a `user://` row has overridden a built-in one
+## — both share the same in-memory slot by then.
+static var _sources: Dictionary = {}
 ## Every row rejected by `DataValidator`, named (`ValidationError`) — a
 ## bad file is dropped from the registry, never left to vanish silently.
 static var _errors: Array[ValidationError] = []
 static var _loaded: bool = false
+## The `user_root` the last `load_all()` was actually called with —
+## `save()` must write into THIS root, never the bare `USER_ROOT`
+## constant, or a test (or any future non-default caller) pointed at a
+## fixture root would have its saves silently escape to the real
+## `user://data/`.
+static var _active_user_root: String = USER_ROOT
 
 
 ## Loads `res://data/` then `user://data/` (a matching id overrides the
@@ -30,17 +49,19 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	# (a part's `material`) call back into DataLibrary.get_material()
 	# mid-load, and ensure_loaded() must not re-enter load_all().
 	_loaded = true
+	_active_user_root = user_root
 	_parts.clear()
 	_ammo.clear()
 	_materials.clear()
+	_sources.clear()
 	_errors.clear()
 	# Materials first: Part validation cross-references material ids.
-	_load_dir(builtin_root + "/materials", _materials)
-	_load_dir(user_root + "/materials", _materials)
-	_load_dir(builtin_root + "/parts", _parts)
-	_load_dir(user_root + "/parts", _parts)
-	_load_dir(builtin_root + "/ammo", _ammo)
-	_load_dir(user_root + "/ammo", _ammo)
+	_load_dir(builtin_root + "/materials", _materials, TYPE_MATERIALS, &"builtin")
+	_load_dir(user_root + "/materials", _materials, TYPE_MATERIALS, &"user")
+	_load_dir(builtin_root + "/parts", _parts, TYPE_PARTS, &"builtin")
+	_load_dir(user_root + "/parts", _parts, TYPE_PARTS, &"user")
+	_load_dir(builtin_root + "/ammo", _ammo, TYPE_AMMO, &"builtin")
+	_load_dir(user_root + "/ammo", _ammo, TYPE_AMMO, &"user")
 
 
 ## docs/00 (determinism: "same seed = same battle, always"): a raw
@@ -50,7 +71,9 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 ## consumes `parts_pool()` (`DeepStrike.assemble_random`'s candidate
 ## lists included). Sorted alphabetically by filename so load order is a
 ## pure function of the data itself.
-static func _load_dir(path: String, into: Dictionary) -> void:
+static func _load_dir(
+	path: String, into: Dictionary, type_key: StringName, source: StringName
+) -> void:
 	if not DirAccess.dir_exists_absolute(path):
 		return
 	var dir: DirAccess = DirAccess.open(path)
@@ -66,10 +89,12 @@ static func _load_dir(path: String, into: Dictionary) -> void:
 	dir.list_dir_end()
 	file_names.sort()
 	for sorted_name: String in file_names:
-		_load_file(path + "/" + sorted_name, sorted_name, into)
+		_load_file(path + "/" + sorted_name, sorted_name, into, type_key, source)
 
 
-static func _load_file(full_path: String, file_name: String, into: Dictionary) -> void:
+static func _load_file(
+	full_path: String, file_name: String, into: Dictionary, type_key: StringName, source: StringName
+) -> void:
 	if not ResourceLoader.exists(full_path):
 		_errors.append(ValidationError.new(StringName(file_name), &"resource", "failed to load"))
 		return
@@ -81,7 +106,9 @@ static func _load_file(full_path: String, file_name: String, into: Dictionary) -
 	if not row_errors.is_empty():
 		_errors.append_array(row_errors)
 		return
-	into[resource.get("id")] = resource
+	var id: StringName = resource.get("id")
+	into[id] = resource
+	_sources["%s:%s" % [type_key, id]] = source
 
 
 static func _ensure_loaded() -> void:
@@ -144,13 +171,87 @@ static func errors() -> Array[ValidationError]:
 	return _errors
 
 
+## taskblock-11 Pass A: the Resource Editor's own generic entry point —
+## every loaded definition of one type, fresh duplicates, id -> resource.
+## `get_part`/`get_ammo`/`get_material`/`parts_pool`/`material_table`
+## stay as the typed convenience callers already use; this is the
+## type-agnostic one a table that switches between parts/ammo/materials
+## needs.
+static func resources_of_type(type_key: StringName) -> Dictionary:
+	_ensure_loaded()
+	var source: Dictionary = _dict_for(type_key)
+	var result: Dictionary = {}
+	for id: StringName in source:
+		result[id] = (source[id] as Resource).duplicate(true)
+	return result
+
+
+## &"builtin" | &"user" | &"" (unknown id). taskblock-11 B2: "source
+## (res:// built-in vs user:// override)."
+static func source_of(type_key: StringName, id: StringName) -> StringName:
+	_ensure_loaded()
+	return _sources.get("%s:%s" % [type_key, id], &"")
+
+
+## taskblock-11 Pass A: "saving writes a valid .tres to user://data/."
+## Validated through the SAME `DataValidator` `load_all()` uses — an
+## invalid resource is rejected with its named errors and nothing is
+## written, never a broken file on disk. A successful save updates the
+## in-memory registry too (so the editor's own next read sees it — the
+## GAME picking it up is still next-boot-only, `_loaded` isn't reset).
+static func save(type_key: StringName, resource: Resource) -> Array[ValidationError]:
+	var errors: Array[ValidationError] = DataValidator.validate(resource)
+	if not errors.is_empty():
+		return errors
+	var type_dir: String = _dir_name_for(type_key)
+	if type_dir == "":
+		return [ValidationError.new(resource.get("id"), &"type", "unknown definition type")]
+	_ensure_loaded()
+	var dir: String = _active_user_root + "/" + type_dir
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	var id: StringName = resource.get("id")
+	var path: String = "%s/%s.tres" % [dir, id]
+	var err: Error = ResourceSaver.save(resource, path)
+	if err != OK:
+		return [ValidationError.new(id, &"resource", "failed to save: error %d" % err)]
+	_dict_for(type_key)[id] = resource
+	_sources["%s:%s" % [type_key, id]] = &"user"
+	return []
+
+
+static func _dict_for(type_key: StringName) -> Dictionary:
+	match type_key:
+		TYPE_PARTS:
+			return _parts
+		TYPE_AMMO:
+			return _ammo
+		TYPE_MATERIALS:
+			return _materials
+		_:
+			return {}
+
+
+static func _dir_name_for(type_key: StringName) -> String:
+	match type_key:
+		TYPE_PARTS:
+			return "parts"
+		TYPE_AMMO:
+			return "ammo"
+		TYPE_MATERIALS:
+			return "materials"
+		_:
+			return ""
+
+
 ## Test-only: forces the next `get_part`/`get_ammo`/`get_material`/
 ## `parts_pool`/`material_table` call to reload from scratch, and drops
 ## whatever's currently cached. Production code never calls this — the
 ## registry is loaded once and stays put for the process's lifetime.
 static func reset() -> void:
 	_loaded = false
+	_active_user_root = USER_ROOT
 	_parts.clear()
 	_ammo.clear()
 	_materials.clear()
+	_sources.clear()
 	_errors.clear()
