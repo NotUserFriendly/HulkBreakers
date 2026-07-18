@@ -44,9 +44,26 @@ var preview_pivot: Node3D
 var preview_view: HitVolumeView
 var rotate_button: Button
 var metadata_panel: RichTextLabel
+var filter_row: HBoxContainer
 var table: Tree
 
 var rotating: bool = true
+
+## C1: the column currently sorted on (&"" = load order) and its
+## direction.
+var sort_column: StringName = &""
+var sort_ascending: bool = true
+## C2: column -> substring, only non-empty entries filter.
+var filters: Dictionary = {}
+## column -> its own LineEdit, rebuilt only when `current_type` changes
+## (never mid-keystroke — see `_rebuild_columns_and_filters`).
+var filter_fields: Dictionary = {}
+## The table's own current rows, in display order — index i's resource is
+## whatever `table`'s i'th (post-root) TreeItem shows. Selection/edit
+## handlers key off `TreeItem.get_metadata(0)` directly instead, but this
+## stays for anything that wants the whole displayed set (C4's hover, a
+## future "select all").
+var _row_resources: Array[Resource] = []
 
 
 func _ready() -> void:
@@ -151,10 +168,17 @@ func _build_table_column(parent: Control) -> void:
 		button.pressed.connect(set_current_type.bind(type_key))
 		type_bar.add_child(button)
 
+	filter_row = HBoxContainer.new()
+	right_column.add_child(filter_row)
+
 	table = Tree.new()
 	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	table.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	table.hide_root = true
+	table.column_titles_visible = true
+	table.column_title_clicked.connect(_on_column_title_clicked)
+	table.item_edited.connect(_on_item_edited)
+	table.item_selected.connect(_on_item_selected)
 	right_column.add_child(table)
 
 
@@ -175,8 +199,201 @@ func save_resource(resource: Resource) -> Array[ValidationError]:
 func set_current_type(type_key: StringName) -> void:
 	current_type = type_key
 	selected_id = &""
-	load_data()
+	sort_column = &""
+	sort_ascending = true
+	filters.clear()
+	_rebuild_columns_and_filters()
+	_refresh_table_rows()
 	_refresh_preview()
+	_refresh_metadata()
+
+
+## C1: headers, column count/widths, and the filter row's own LineEdits
+## — rebuilt only when the column SET changes (a type switch), never on
+## every filter keystroke or sort click (that would destroy the LineEdit
+## the user is actively typing into).
+func _rebuild_columns_and_filters() -> void:
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	table.columns = columns.size()
+	for i in range(columns.size()):
+		table.set_column_expand(i, true)
+		table.set_column_custom_minimum_width(i, 90)
+
+	for child: Node in filter_row.get_children():
+		filter_row.remove_child(child)
+		child.queue_free()
+	filter_fields.clear()
+	for column: StringName in columns:
+		var field := LineEdit.new()
+		field.placeholder_text = "filter %s" % column
+		field.custom_minimum_size = Vector2(90, 0)
+		field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		field.text_changed.connect(_on_filter_text_changed.bind(column))
+		filter_row.add_child(field)
+		filter_fields[column] = field
+
+	_refresh_column_titles()
+
+
+## C1: "a symbol showing current type (alpha/numeric) and direction" —
+## only the active sort column carries one. Split from
+## `_rebuild_columns_and_filters` because a sort click needs to update
+## titles WITHOUT touching the filter LineEdits.
+func _refresh_column_titles() -> void:
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	for i in range(columns.size()):
+		var column: StringName = columns[i]
+		var title: String = String(column)
+		if column == sort_column:
+			var kind_symbol: String = (
+				"#" if ResourceEditorColumns.is_numeric(current_type, column) else "A"
+			)
+			var direction_symbol: String = "▲" if sort_ascending else "▼"
+			title = "%s %s%s" % [title, kind_symbol, direction_symbol]
+		table.set_column_title(i, title)
+
+
+## C1: "click cycles sort modes: none -> ascending -> descending -> none."
+func _on_column_title_clicked(column: int, mouse_button_index: int) -> void:
+	if mouse_button_index != MOUSE_BUTTON_LEFT:
+		return
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	if column < 0 or column >= columns.size():
+		return
+	var clicked: StringName = columns[column]
+	if sort_column != clicked:
+		sort_column = clicked
+		sort_ascending = true
+	elif sort_ascending:
+		sort_ascending = false
+	else:
+		sort_column = &""
+		sort_ascending = true
+	_refresh_column_titles()
+	_refresh_table_rows()
+
+
+## C2: "a filter input under each column header... rows update live."
+func _on_filter_text_changed(new_text: String, column: StringName) -> void:
+	if new_text.strip_edges() == "":
+		filters.erase(column)
+	else:
+		filters[column] = new_text
+	_refresh_table_rows()
+
+
+## Rebuilds the Tree's actual rows from `DataLibrary`, sorted/filtered
+## through `ResourceEditorRows` — never touches `filter_row`'s own
+## widgets (`_rebuild_columns_and_filters`'s job), so this is safe to
+## call on every sort/filter/data change without losing focus or cursor
+## position in whatever LineEdit the user is typing into.
+func _refresh_table_rows() -> void:
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	var resources: Dictionary = DataLibrary.resources_of_type(current_type)
+	_row_resources = ResourceEditorRows.build(resources, filters, sort_column, sort_ascending)
+
+	table.clear()
+	var root_item: TreeItem = table.create_item()
+	for row: Resource in _row_resources:
+		_add_row_item(row, root_item, columns)
+
+
+func _add_row_item(
+	resource: Resource, parent_item: TreeItem, columns: Array[StringName]
+) -> TreeItem:
+	var item: TreeItem = table.create_item(parent_item)
+	item.set_metadata(0, resource)
+	for i in range(columns.size()):
+		var column: StringName = columns[i]
+		var value: Variant = resource.get(column)
+		item.set_text(i, str(value))
+		if not ResourceEditorColumns.is_editable(column):
+			continue
+		if ResourceEditorColumns.is_numeric(current_type, column):
+			item.set_cell_mode(i, TreeItem.CELL_MODE_RANGE)
+			var is_int: bool = typeof(value) == TYPE_INT
+			item.set_range_config(i, -999999.0, 999999.0, 1.0 if is_int else 0.01)
+			item.set_range(i, float(value))
+		else:
+			item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
+		item.set_editable(i, true)
+	return item
+
+
+func _on_item_selected() -> void:
+	var item: TreeItem = table.get_selected()
+	if item == null:
+		return
+	var resource: Resource = item.get_metadata(0)
+	if resource == null:
+		return
+	selected_id = resource.get(&"id")
+	_refresh_preview()
+	_refresh_metadata()
+
+
+## A cell just committed a new value (Tree's own inline STRING/RANGE
+## editor) — split from `_apply_edit` only so a test can drive the
+## latter directly without going through Tree's own internal
+## get_edited()/get_edited_column() tracking, which only reflects reality
+## after Tree's own real (non-headless) inline editor UI has run.
+func _on_item_edited() -> void:
+	_apply_edit(table.get_edited(), table.get_edited_column())
+
+
+## Reads the new value back off `item`'s `column` cell, coerces it to the
+## field's real type, and applies it to the resource the row's own
+## metadata names.
+func _apply_edit(item: TreeItem, column: int) -> void:
+	if item == null:
+		return
+	var resource: Resource = item.get_metadata(0)
+	if resource == null:
+		return
+	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
+	if column < 0 or column >= columns.size():
+		return
+	var field: StringName = columns[column]
+	if not ResourceEditorColumns.is_editable(field):
+		return
+	var old_value: Variant = resource.get(field)
+	var new_value: Variant = _coerce(old_value, item, column)
+	resource.set(field, new_value)
+	item.set_text(column, str(new_value))
+
+
+## Matches the edited cell's new text/range back to `old_value`'s own
+## Variant type — Tree's inline editors are string- or float-typed only,
+## never StringName/int, so every cell commit needs this on the way back
+## in.
+func _coerce(old_value: Variant, item: TreeItem, column: int) -> Variant:
+	match typeof(old_value):
+		TYPE_INT:
+			return int(item.get_range(column))
+		TYPE_FLOAT:
+			return item.get_range(column)
+		TYPE_STRING_NAME:
+			return StringName(item.get_text(column))
+		_:
+			return item.get_text(column)
+
+
+## B2: "filename, resource type, file size, source (res:// built-in vs
+## user:// override), validation status."
+func _refresh_metadata() -> void:
+	if selected_id == &"":
+		metadata_panel.text = ""
+		return
+	var source: StringName = DataLibrary.source_of(current_type, selected_id)
+	var resource: Resource = DataLibrary.resources_of_type(current_type).get(selected_id)
+	var errors: Array[ValidationError] = (
+		DataValidator.validate(resource) if resource != null else []
+	)
+	var status: String = "valid" if errors.is_empty() else "INVALID: %s" % errors[0].message
+	metadata_panel.text = (
+		"[b]%s[/b]\ntype: %s\nsource: %s\nstatus: %s"
+		% [selected_id, current_type, source if source != &"" else &"unknown", status]
+	)
 
 
 ## Renders the selected definition via `HitVolumeView`'s own mesh/

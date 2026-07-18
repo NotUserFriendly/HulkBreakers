@@ -42,10 +42,10 @@ static func _filtered(rows: Array[Resource], filters: Dictionary) -> Array[Resou
 
 static func _matches(row: Resource, filters: Dictionary) -> bool:
 	for column: StringName in filters:
-		var needle: String = String(filters[column]).to_lower().strip_edges()
+		var needle: String = str(filters[column]).to_lower().strip_edges()
 		if needle == "":
 			continue
-		var haystack: String = String(row.get(column)).to_lower()
+		var haystack: String = str(row.get(column)).to_lower()
 		if not haystack.contains(needle):
 			return false
 	return true
@@ -77,7 +77,7 @@ static func _sorted(rows: Array[Resource], column: StringName, ascending: bool) 
 static func distinct_values(rows: Array[Resource], column: StringName) -> Array[String]:
 	var seen: Dictionary = {}
 	for row: Resource in rows:
-		var text: String = String(row.get(column))
+		var text: String = str(row.get(column))
 		if text != "":
 			seen[text] = true
 	var values: Array[String] = []
