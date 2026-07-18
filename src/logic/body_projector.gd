@@ -38,6 +38,20 @@ const _FACE_CORNERS_B: Array[Vector2] = [
 	Vector2(1.0, 1.0), Vector2(-1.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, -1.0)
 ]
 
+## taskblock-09 D: a joint's own aimable footprint — small enough that
+## hitting it takes a placed shot, not a stray one (docs/03: "a stray shot
+## hits the big arm, a placed shot hits the elbow"), big enough to project
+## a real, non-degenerate rect at ordinary combat ranges.
+const _JOINT_BOX_SIZE := Vector3(0.12, 0.12, 0.12)
+
+## taskblock-09 D: pushes a joint's own depth a hair behind its
+## attachment point, so a part whose own box sits at that exact same
+## point (a flush-mounted plate, zero local offset — common in this
+## codebase's own fixtures) always wins a depth-sort tie. "Occluded by a
+## plate isn't hittable until the plate is gone" applies to a joint's own
+## flush occupant, not only to something else standing in front of it.
+const _JOINT_DEPTH_BIAS := 0.001
+
 
 ## docs/09 taskblock07 Pass B1: THE one rotation convention — turns a
 ## body-local ground-plane point (x,z) into its world-relative-to-cell
@@ -133,9 +147,48 @@ static func _project_tree(
 		var socket_transform: Transform3D = socket.current_transform()
 		if pose != null and pose.overrides.has(socket.id):
 			socket_transform = socket_transform * (pose.overrides[socket.id] as Transform3D)
-		_project_tree(
-			socket.occupant, part_transform * socket_transform, view_dir, orientation, regions, pose
-		)
+		var child_transform: Transform3D = part_transform * socket_transform
+		# taskblock-09 D: the joint sits exactly where the child's own
+		# local origin composes to — the same transform the child's own
+		# regions use below, just with a small synthetic box instead of
+		# real volume. Depth-sorts and occludes like any other region, so
+		# a plate in front of the joint protects it the same way it
+		# protects anything else at that depth.
+		regions.append_array(_project_joint(socket, child_transform, view_dir, orientation))
+		_project_tree(socket.occupant, child_transform, view_dir, orientation, regions, pose)
+
+
+## taskblock-09 D: one small aimable region for `socket`'s own connection,
+## at its composed world transform — reuses `_project_box` verbatim (same
+## face-visibility/edge-on pruning every real box gets) against a tiny
+## synthetic box, so a joint depth-sorts and occludes exactly like any
+## other region. `region.part` is the socket's own `joint_handle()` — a
+## placeholder identity, deliberately NOT the occupant part itself, so
+## code that filters "every region belonging to part X" (existing tests,
+## `_body_of`) never silently picks up a joint alongside that part's real
+## geometry. `region.socket` is the actual discriminator resolve_shot
+## reads to know this is a joint at all.
+static func _project_joint(
+	socket: Socket, world_transform: Transform3D, view_dir: Vector2, orientation: float
+) -> Array[Region]:
+	var dir: Vector2 = view_dir.normalized()
+	var perp := Vector2(-dir.y, dir.x)
+	var box := Box.new(Vector3.ZERO, _JOINT_BOX_SIZE)
+	var regions: Array[Region] = _project_box(
+		box, dir, perp, orientation, socket.joint_handle(), world_transform
+	)
+	# Pin every joint region to the socket's own true attachment-point
+	# depth, not whatever depth its own synthetic box's face happens to
+	# compute — the box exists for a screen-space footprint only. Without
+	# this, a joint box thicker than a thin flush-mounted plate would
+	# protrude in FRONT of that plate's own face and wrongly win the
+	# depth-sort.
+	var point_2d := Vector2(world_transform.origin.x, world_transform.origin.z)
+	var anchor_depth: float = rotate_by_orientation(point_2d, orientation).dot(dir)
+	for region: Region in regions:
+		region.socket = socket
+		region.depth = anchor_depth + _JOINT_DEPTH_BIAS
+	return regions
 
 
 ## Projects a single part's own boxes, rotated by `orientation` (a unit's

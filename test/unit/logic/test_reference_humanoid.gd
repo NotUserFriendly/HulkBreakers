@@ -256,10 +256,24 @@ func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() 
 	var after_cladding: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
 	for region: Region in after_cladding:
 		assert_ne(region.part.id, &"torso_cladding", "destroyed cladding must leave the plane too")
+	# taskblock-09 D: the plate's own socket still holds it (a destroyed,
+	# invisible part is still attached — Pass A never detaches on hp
+	# alone), so its JOINT — not the bare torso — is what the plate/
+	# cladding used to occlude and now don't. The gradient grew a real
+	# fourth layer: plate -> cladding -> the plate's own joint -> torso.
+	var armor_socket: Socket = PartGraph.find_owning_socket(unit.shell.root, plate)
 	assert_eq(
 		ShotPlane.resolve_projectile(after_cladding, aim_point).part.id,
+		&"plate_large_steel_joint",
+		"destroying the plate and its cladding exposes the plate's own joint, not the bare torso yet"
+	)
+
+	PartGraph.detach(armor_socket)
+	var after_joint: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	assert_eq(
+		ShotPlane.resolve_projectile(after_joint, aim_point).part.id,
 		&"torso",
-		"destroying the cladding too finally exposes the bare part"
+		"only once the joint's own occupant is gone does the bare torso finally show through"
 	)
 
 

@@ -42,6 +42,24 @@ extends Resource
 @export var joint_hp: int = 1
 @export var joint_hp_max: int = 1
 
+## taskblock-09 D: a joint isn't a Part, but Region/HitResult are typed to
+## carry one (`region.part`) — this is that placeholder identity, lazily
+## created and cached so the SAME joint keeps the SAME object identity
+## across every projection, never a real part in anyone's socket tree: no
+## material, no hp, no volume of its own (BodyProjector supplies its own
+## small synthetic box). `region.socket`, not `region.part`, is what tells
+## resolve_shot this is a joint at all — this exists purely so existing
+## Part-typed fields (logging text, HitResult.part) have something sane to
+## show, never as a second way to detect a joint hit.
+var _joint_handle: Part = null
+
+
+func joint_handle() -> Part:
+	if _joint_handle == null:
+		_joint_handle = Part.new()
+	_joint_handle.id = &"%s_joint" % occupant.id if occupant != null else &"empty_joint"
+	return _joint_handle
+
 
 func _init(
 	p_socket_type: StringName = &"",
