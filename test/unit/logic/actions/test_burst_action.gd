@@ -223,6 +223,54 @@ func test_replays_identically_from_the_same_seed() -> void:
 	assert_eq(results[0], results[1])
 
 
+## "recoil resets between activations" — every activation's `pull` loop
+## counter starts fresh at 0 (BurstAction.apply()'s own local `for pull
+## in range(burst_size)`, never state stored on the weapon/unit between
+## calls), so two back-to-back activations must both complete cleanly,
+## each spending its own full ap cost, neither drifting off some
+## carried-over widened state.
+func test_recoil_resets_between_separate_burst_activations() -> void:
+	var weapon := _make_chaingun()
+	weapon.weapon_def.barrel_length = 0.3  # short barrel: recoil actually moves the needle
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0), 5000)
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target], 42)
+	shooter.ap = 100
+
+	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
+	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
+
+	assert_eq(shooter.ap, 100 - 3 - 3, "each activation spends the same fixed ap cost, unaffected")
+
+
+## "recoil never touches the spread pattern" — a shotgun burst's own
+## per-pull PELLET count and their tight clustering around each pull's
+## own center must be identical regardless of how many recoil steps that
+## pull has accumulated; only the dartboard (which pull center gets
+## picked) should ever widen.
+func test_recoil_never_changes_the_pellet_count_per_pull() -> void:
+	var weapon := _make_auto_shotgun()
+	weapon.ammo_id = &"12ga_buckshot"
+	DataLibrary.reset()
+	DataLibrary.load_all()
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	BurstAction.new(shooter, &"auto_shotgun", Vector2i(3, 0)).apply(state)
+
+	var ammo: AmmoDef = DataLibrary.get_ammo(&"12ga_buckshot")
+	# Still exactly 3 pulls x 9 pellets even with real (non-zero) recoil
+	# now wired in — recoil widening the LATER pulls' dartboard never
+	# changes how many pellets any one pull throws.
+	assert_eq(
+		sink.events_of_kind(&"impact").size(), weapon.weapon_def.burst_size * ammo.projectile_num
+	)
+	DataLibrary.reset()
+
+
 func test_apply_faces_the_shooter_toward_the_target() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)

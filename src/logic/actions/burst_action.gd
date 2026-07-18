@@ -97,6 +97,13 @@ func apply(state: CombatState) -> void:
 	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
 	var ammo: AmmoDef = DataLibrary.get_ammo(weapon.ammo_id) if weapon.ammo_id != &"" else null
 	var burst_size: int = weapon.weapon_def.burst_size
+	# taskblock-13 Pass D: recoil's own per-step amount, resolved ONCE per
+	# activation (it depends only on the resolved damage/barrel_length,
+	# neither of which changes pull to pull) — RecoilResolver.widen then
+	# scales it by however many steps a given pull has accumulated.
+	var recoil_step: float = (
+		WeaponResolver.resolve_recoil_step(weapon, damage, extra_sources).current
+	)
 
 	# "make sure the log doesn't drown — one summary event per burst,
 	# detail per impact" (taskblock-13 Pass C, explicit) — the one
@@ -120,12 +127,14 @@ func apply(state: CombatState) -> void:
 	)
 
 	for pull in range(burst_size):
-		# Pass D: this is where each successive pull's own dartboard widens
-		# by accumulated recoil — today every pull resolves the identical
-		# base distribution (still N independent RNG draws, just not yet
-		# progressively wider).
+		# taskblock-13 Pass D: pull 0 is on-target; every pull after it
+		# widens the DARTBOARD (never the mechanical spread pattern below)
+		# by one more cumulative recoil step — resets to 0 automatically
+		# next activation, since `pull` is this loop's own local counter,
+		# never carried on the weapon/unit between calls.
 		var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon, extra_sources)
-		var pull_point: Vector2 = Dartboard.sample(aim_point, resolved_scatter, state.rng, 1)[0]
+		var widened_scatter: Array[Ring] = RecoilResolver.widen(resolved_scatter, recoil_step, pull)
+		var pull_point: Vector2 = Dartboard.sample(aim_point, widened_scatter, state.rng, 1)[0]
 		var pellet_points: Array[Vector2] = SpreadPattern.sample(
 			pull_point, weapon, ammo, state.rng
 		)
