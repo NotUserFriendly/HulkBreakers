@@ -113,7 +113,7 @@ static func eject_matrix_if_needed(part: Part, state: CombatState) -> Matrix:
 	state.grid.field_items[owner.cell].append(ejected)
 
 	owner.demote_surrogate(SurrogateLadder.default_ladder())
-	owner.alive = false
+	state.kill_unit(owner)
 	return ejected
 
 
@@ -151,7 +151,7 @@ static func eject_surrogate_if_needed(part: Part, state: CombatState) -> Part:
 			state.grid.field_items[owner.cell] = []
 		state.grid.field_items[owner.cell].append(occupant)
 		owner.demote_surrogate(SurrogateLadder.default_ladder())
-		owner.alive = false
+		state.kill_unit(owner)
 		return occupant
 	return null
 

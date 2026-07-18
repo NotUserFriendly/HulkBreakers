@@ -197,4 +197,4 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 			)
 
 	if mover.alive and mover.shell.living_parts().is_empty():
-		mover.alive = false
+		state.kill_unit(mover)
