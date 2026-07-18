@@ -85,3 +85,27 @@ func test_undo_is_independent_of_any_row_or_column_position() -> void:
 	assert_eq(part.mass, 2.0)
 	stack.undo()
 	assert_eq(part.mass, 1.0)
+
+
+## taskblock-11 C4/C5: a `dt_curve` point isn't a plain `resource.field`
+## — it's one `Vector2` inside an `Array`, so applying it needs a custom
+## setter instead of the default `resource.set(field, value)`.
+func test_undo_redo_via_a_custom_setter_for_non_field_edits() -> void:
+	var material := MaterialEntry.new()
+	material.dt_curve = [Vector2(0.0, 3.0)]
+	var stack := ResourceEditStack.new()
+
+	var set_dt := func(value: float) -> void:
+		var point: Vector2 = material.dt_curve[0]
+		point.y = value
+		material.dt_curve[0] = point
+
+	set_dt.call(9.0)
+	stack.record(material, &"dt_curve[0].y", 3.0, 9.0, set_dt)
+	assert_eq(material.dt_curve[0], Vector2(0.0, 9.0))
+
+	stack.undo()
+	assert_eq(material.dt_curve[0], Vector2(0.0, 3.0))
+
+	stack.redo()
+	assert_eq(material.dt_curve[0], Vector2(0.0, 9.0))

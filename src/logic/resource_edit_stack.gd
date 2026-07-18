@@ -14,25 +14,31 @@ var _undo_stack: Array[ResourceEdit] = []
 var _redo_stack: Array[ResourceEdit] = []
 
 
-## Records an already-applied edit (the caller sets `resource.field =
-## new_value` itself — this stack only remembers how to reverse it) and
-## clears any redo history, the standard "a new edit forks off the undo
-## branch" rule.
-func record(resource: Resource, field: StringName, old_value: Variant, new_value: Variant) -> void:
-	_undo_stack.append(ResourceEdit.new(resource, field, old_value, new_value))
+## Records an already-applied edit (the caller applies `new_value`
+## itself — this stack only remembers how to reverse it) and clears any
+## redo history, the standard "a new edit forks off the undo branch"
+## rule. `setter`, when given, is how `undo`/`redo` re-apply a value that
+## isn't a plain `resource.set(field, value)` — see `ResourceEdit`.
+func record(
+	resource: Resource,
+	field: StringName,
+	old_value: Variant,
+	new_value: Variant,
+	setter: Callable = Callable()
+) -> void:
+	_undo_stack.append(ResourceEdit.new(resource, field, old_value, new_value, setter))
 	_redo_stack.clear()
 
 
 ## Reverts the last edit and returns it (so a caller can refresh whatever
 ## UI shows `edit.resource`/`edit.field`), or null if there's nothing to
-## undo. Mutates `resource.field` back to `old_value` directly — the one
-## place this class touches a resource itself, everything else is
-## bookkeeping.
+## undo. Re-applies `old_value` via `ResourceEdit.apply` — the one place
+## this class touches a resource itself, everything else is bookkeeping.
 func undo() -> ResourceEdit:
 	if _undo_stack.is_empty():
 		return null
 	var edit: ResourceEdit = _undo_stack.pop_back()
-	edit.resource.set(edit.field, edit.old_value)
+	edit.apply(edit.old_value)
 	_redo_stack.append(edit)
 	return edit
 
@@ -41,7 +47,7 @@ func redo() -> ResourceEdit:
 	if _redo_stack.is_empty():
 		return null
 	var edit: ResourceEdit = _redo_stack.pop_back()
-	edit.resource.set(edit.field, edit.new_value)
+	edit.apply(edit.new_value)
 	_undo_stack.append(edit)
 	return edit
 

@@ -91,6 +91,7 @@ func test_selecting_a_part_populates_the_preview() -> void:
 	add_child_autofree(scene)
 
 	scene.selected_id = &"torso"
+	scene._selected_resource = DataLibrary.get_part(&"torso")
 	scene._refresh_preview()
 
 	assert_not_null(scene.preview_view.unit)
@@ -103,11 +104,13 @@ func test_selecting_ammo_or_material_clears_the_preview() -> void:
 	var scene := ResourceEditorScene.new()
 	add_child_autofree(scene)
 	scene.selected_id = &"torso"
+	scene._selected_resource = DataLibrary.get_part(&"torso")
 	scene._refresh_preview()
 	assert_not_null(scene.preview_view.unit)
 
 	scene.set_current_type(DataLibrary.TYPE_AMMO)
 	scene.selected_id = &"9mm_fmj"
+	scene._selected_resource = DataLibrary.get_ammo(&"9mm_fmj")
 	scene._refresh_preview()
 
 	assert_null(scene.preview_view.unit)
