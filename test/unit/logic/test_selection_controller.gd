@@ -190,12 +190,13 @@ func test_previewed_unit_reflects_the_queued_end_cell() -> void:
 	assert_eq(a.cell, Vector2i(0, 0), "the real unit must still be untouched")
 
 
-func test_previewed_unit_with_nothing_selected_is_null() -> void:
+func test_nothing_selected_yields_no_preview_and_no_queue_entries() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(10, 10), [a])
 	var selection := SelectionController.new(state)
 
-	assert_null(selection.previewed_unit())
+	assert_null(selection.previewed_unit(), "previewed_unit")
+	assert_eq(selection.queue_entries(), [] as Array[Dictionary], "queue_entries")
 
 
 func test_reset_clears_selection_and_queues() -> void:
@@ -256,14 +257,6 @@ func test_queue_entries_never_mutates_the_real_state() -> void:
 
 	assert_eq(a.cell, cell_before)
 	assert_eq(a.ap, ap_before)
-
-
-func test_queue_entries_with_nothing_selected_is_empty() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
-	var selection := SelectionController.new(state)
-
-	assert_eq(selection.queue_entries(), [] as Array[Dictionary])
 
 
 func test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly() -> void:

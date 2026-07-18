@@ -9,6 +9,17 @@ extends GutTest
 ## fixture"). Both hardcoded generators are gone; this is what guards
 ## against silent drift in the checked-in `.tres` files from here on,
 ## independent of them ever existing again.
+##
+## taskblock-12 Pass C: a fixture checked only against itself (the .tres
+## data compared to a second hand-typed copy of the same values) can't
+## catch a value mis-transcribed into both — it proves internal
+## consistency, not a faithful port. Closed by actually re-running the
+## real deleted generators — restored verbatim from git commit
+## eb939471637d79b868b73fe93cd12c58ad4b0a69 (the parent of 5ed60b8, which
+## deleted them) — and diffing their live output against every dict below,
+## field by field, socket by socket, box by box: zero mismatches. This
+## fixture is confirmed to BE that generators' real output, not a
+## plausible-looking re-typing of it.
 
 ## id -> {hp, mass, ram_cost, material, attaches_to, tags, sockets:
 ## [[type, id], ...], volume_sizes: [Vector3, ...], failure_mode,
