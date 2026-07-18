@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_knowa"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_pxl14"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_rrod1"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_hw7ru"]
+
+[sub_resource type="Resource" id="Resource_xa2a6"]
+script = ExtResource("4_hw7ru")
+size = Vector3(0.22, 0.32, 0.05)
+
+[resource]
+script = ExtResource("1_knowa")
+id = &"wedge_plate_steep"
+display_name = "Wedge Plate (Steep)"
+attaches_to = Array[StringName]([&"ARMOR"])
+material = &"steel"
+volume = Array[ExtResource("4_hw7ru")]([SubResource("Resource_xa2a6")])
+hp = 5
+max_hp = 5
+mass = 1.6
+mangles_into = &"metal_scraps"

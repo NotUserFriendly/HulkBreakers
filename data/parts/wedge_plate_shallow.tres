@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_obc6p"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_kybpr"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_shpfp"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_73v36"]
+
+[sub_resource type="Resource" id="Resource_usot8"]
+script = ExtResource("4_73v36")
+size = Vector3(0.2, 0.3, 0.04)
+
+[resource]
+script = ExtResource("1_obc6p")
+id = &"wedge_plate_shallow"
+display_name = "Wedge Plate (Shallow)"
+attaches_to = Array[StringName]([&"ARMOR"])
+material = &"steel"
+volume = Array[ExtResource("4_73v36")]([SubResource("Resource_usot8")])
+hp = 4
+max_hp = 4
+mass = 1.2
+mangles_into = &"metal_scraps"
