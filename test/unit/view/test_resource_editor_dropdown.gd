@@ -22,8 +22,10 @@ func _item_for(scene: ResourceEditorScene, id: StringName) -> TreeItem:
 
 
 ## material/failure_mode/stack_type/render_primitive are StringName
-## fields — dropdown-only cells, never plain free text.
-func test_vocabulary_columns_use_custom_cell_mode() -> void:
+## fields — plain free text, same as every other column, PLUS a
+## dropdown-arrow button as an aid alongside typing (never a replacement
+## for it — a cell that only accepted a menu choice couldn't be "dumb").
+func test_vocabulary_columns_stay_plain_string_mode_with_a_dropdown_button() -> void:
 	var scene := ResourceEditorScene.new()
 	add_child_autofree(scene)
 	var item: TreeItem = _item_for(scene, &"torso")
@@ -31,7 +33,24 @@ func test_vocabulary_columns_use_custom_cell_mode() -> void:
 		&"material"
 	)
 
-	assert_eq(item.get_cell_mode(material_column), TreeItem.CELL_MODE_CUSTOM)
+	assert_eq(item.get_cell_mode(material_column), TreeItem.CELL_MODE_STRING)
+	assert_eq(item.get_button_count(material_column), 1)
+
+
+## A column with no closed/derived vocabulary at all never gets the
+## dropdown button — display_name is prose, hp is numeric, neither is a
+## StringName.
+func test_non_dropdown_columns_have_no_button() -> void:
+	var scene := ResourceEditorScene.new()
+	add_child_autofree(scene)
+	var item: TreeItem = _item_for(scene, &"torso")
+	var hp_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(&"hp")
+	var name_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(
+		&"display_name"
+	)
+
+	assert_eq(item.get_button_count(hp_column), 0)
+	assert_eq(item.get_button_count(name_column), 0)
 
 
 ## display_name is a plain String — freeform prose, stays free-text.

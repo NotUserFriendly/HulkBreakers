@@ -59,9 +59,7 @@ func test_socket_child_row_shows_type_id_and_joint_hp() -> void:
 
 	assert_eq(row.get_text(0), str(first_socket.socket_type))
 	assert_eq(row.get_text(1), str(first_socket.id))
-	# joint_hp is a CELL_MODE_RANGE column — Tree shows the range VALUE,
-	# not its own `.text` (which RANGE mode never populates).
-	assert_eq(row.get_range(2), float(first_socket.joint_hp))
+	assert_eq(row.get_text(2), str(first_socket.joint_hp))
 
 
 ## C4: "a socket's joint_hp" is editable.
@@ -72,7 +70,7 @@ func test_editing_a_sockets_joint_hp_applies_to_the_socket() -> void:
 	var row: TreeItem = torso.get_children()[0]
 	var socket: Socket = row.get_metadata(0)
 
-	row.set_range(2, 5.0)
+	row.set_text(2, "5")
 	scene._apply_socket_edit(row, 2)
 
 	assert_eq(socket.joint_hp, 5)
@@ -117,11 +115,10 @@ func test_a_materials_row_has_one_child_per_curve_point() -> void:
 
 	var item: TreeItem = _material_item(scene, &"layered_test_material")
 	assert_eq(item.get_children().size(), 2)
-	# Both columns are CELL_MODE_RANGE — check the range VALUE, not text.
-	assert_eq(item.get_children()[0].get_range(0), 0.0)
-	assert_eq(item.get_children()[0].get_range(1), 3.0)
-	assert_eq(item.get_children()[1].get_range(0), 1.0)
-	assert_eq(item.get_children()[1].get_range(1), 6.0)
+	assert_eq(item.get_children()[0].get_text(0), "0.0")
+	assert_eq(item.get_children()[0].get_text(1), "3.0")
+	assert_eq(item.get_children()[1].get_text(0), "1.0")
+	assert_eq(item.get_children()[1].get_text(1), "6.0")
 
 
 func test_editing_a_curve_points_dt_applies_to_the_array() -> void:
@@ -136,7 +133,7 @@ func test_editing_a_curve_points_dt_applies_to_the_array() -> void:
 	var row: TreeItem = item.get_children()[0]
 	var material: MaterialEntry = row.get_metadata(0)
 
-	row.set_range(1, 4.5)
+	row.set_text(1, "4.5")
 	scene._apply_curve_edit(row, 1)
 
 	assert_eq(material.dt_curve[0], Vector2(0.0, 4.5))
@@ -154,7 +151,7 @@ func test_editing_a_curve_points_thickness_applies_to_the_array() -> void:
 	var row: TreeItem = item.get_children()[1]
 	var material: MaterialEntry = row.get_metadata(0)
 
-	row.set_range(0, 2.0)
+	row.set_text(0, "2")
 	scene._apply_curve_edit(row, 0)
 
 	assert_eq(material.dt_curve[1], Vector2(2.0, 6.0))

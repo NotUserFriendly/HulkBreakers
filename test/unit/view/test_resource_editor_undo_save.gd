@@ -48,7 +48,7 @@ func test_undo_reverts_a_committed_cell_edit() -> void:
 	var part: Part = torso.get_metadata(0)
 	var original_hp: int = part.hp
 
-	torso.set_range(hp_column, 999.0)
+	torso.set_text(hp_column, "999")
 	scene._apply_edit(torso, hp_column)
 	assert_eq(part.hp, 999)
 
@@ -63,7 +63,7 @@ func test_redo_reapplies_after_undo() -> void:
 	var torso: TreeItem = _torso_item(scene)
 	var part: Part = torso.get_metadata(0)
 
-	torso.set_range(hp_column, 999.0)
+	torso.set_text(hp_column, "999")
 	scene._apply_edit(torso, hp_column)
 	scene.undo()
 	scene.redo()
@@ -81,7 +81,7 @@ func test_edits_survive_a_sort_and_undo_still_works_afterward() -> void:
 	var part: Part = torso.get_metadata(0)
 	var original_hp: int = part.hp
 
-	torso.set_range(hp_column, 999.0)
+	torso.set_text(hp_column, "999")
 	scene._apply_edit(torso, hp_column)
 
 	# A sort/filter change must not discard the in-progress edit — it
@@ -102,7 +102,7 @@ func test_editing_a_socket_can_be_undone() -> void:
 	var socket: Socket = socket_row.get_metadata(0)
 	var original_hp: int = socket.joint_hp
 
-	socket_row.set_range(2, 7.0)
+	socket_row.set_text(2, "7")
 	scene._apply_socket_edit(socket_row, 2)
 	assert_eq(socket.joint_hp, 7)
 
@@ -117,7 +117,7 @@ func test_ctrl_z_triggers_undo() -> void:
 	var torso: TreeItem = _torso_item(scene)
 	var part: Part = torso.get_metadata(0)
 	var original_hp: int = part.hp
-	torso.set_range(hp_column, 999.0)
+	torso.set_text(hp_column, "999")
 	scene._apply_edit(torso, hp_column)
 
 	var event := InputEventKey.new()
@@ -135,7 +135,7 @@ func test_ctrl_shift_z_triggers_redo() -> void:
 	var hp_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(&"hp")
 	var torso: TreeItem = _torso_item(scene)
 	var part: Part = torso.get_metadata(0)
-	torso.set_range(hp_column, 999.0)
+	torso.set_text(hp_column, "999")
 	scene._apply_edit(torso, hp_column)
 	scene.undo()
 
@@ -171,7 +171,7 @@ func test_save_button_writes_a_valid_edit_and_it_round_trips() -> void:
 	var hp_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(&"hp")
 	var torso: TreeItem = _torso_item(scene)
 	_select(scene, torso)
-	torso.set_range(hp_column, 42.0)
+	torso.set_text(hp_column, "42")
 	scene._apply_edit(torso, hp_column)
 
 	scene._on_save_pressed()

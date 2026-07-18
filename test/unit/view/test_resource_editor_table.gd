@@ -78,14 +78,14 @@ func test_sorted_column_title_carries_a_direction_symbol() -> void:
 	var hp_column: int = ResourceEditorColumns.columns_for(DataLibrary.TYPE_PARTS).find(&"hp")
 
 	scene._on_column_title_clicked(hp_column, MOUSE_BUTTON_LEFT)
-	assert_true(scene.table.get_column_title(hp_column).contains("▲"))
+	assert_true(scene.table.get_column_title(hp_column).contains("^"))
 
 	scene._on_column_title_clicked(hp_column, MOUSE_BUTTON_LEFT)
-	assert_true(scene.table.get_column_title(hp_column).contains("▼"))
+	assert_true(scene.table.get_column_title(hp_column).contains("v"))
 
 
 ## The placeholder is ALWAYS present (reserving the same width whether or
-## not a column is sorted) — only the real "#▲"-style symbol is
+## not a column is sorted) — only the real "#^"-style symbol is
 ## conditional on being the active sort column.
 func test_unsorted_columns_carry_the_placeholder_not_a_real_symbol() -> void:
 	var scene := ResourceEditorScene.new()
@@ -98,8 +98,8 @@ func test_unsorted_columns_carry_the_placeholder_not_a_real_symbol() -> void:
 		scene.table.get_column_title(mass_column),
 		"mass %s" % ResourceEditorScene.SORT_SYMBOL_PLACEHOLDER
 	)
-	assert_false(scene.table.get_column_title(mass_column).contains("▲"))
-	assert_false(scene.table.get_column_title(mass_column).contains("▼"))
+	assert_false(scene.table.get_column_title(mass_column).contains("^"))
+	assert_false(scene.table.get_column_title(mass_column).contains("v"))
 
 
 ## C2: "a filter input under each column header... rows update live."
@@ -191,7 +191,7 @@ func test_editing_an_int_cell_applies_to_the_resource() -> void:
 	var resource: Part = torso_item.get_metadata(0)
 	var original_hp: int = resource.hp
 
-	torso_item.set_range(hp_column, 999.0)
+	torso_item.set_text(hp_column, "999")
 	scene._apply_edit(torso_item, hp_column)
 
 	assert_ne(resource.hp, original_hp)

@@ -31,6 +31,7 @@ const METADATA_MIN_HEIGHT := 160
 ## radians/sec — B1: "slowly rotating."
 const ROTATE_SPEED := 0.5
 const COLUMN_MIN_WIDTH := 90
+const COLUMN_PADDING := 16.0
 ## `id` is an identifier, not something anyone reads for its own sake —
 ## shrink it to exactly what its own content needs. `display_name` is
 ## the opposite: the one column meant to be READ, so it gets sized to
@@ -40,12 +41,25 @@ const COLUMN_MIN_WIDTH := 90
 const ID_COLUMN_PADDING := 16.0
 const DISPLAY_NAME_MIN_WIDTH := 120.0
 const DISPLAY_NAME_PADDING := 16.0
+## A dropdown-button column (`add_button`) renders its icon INSIDE the
+## same cell, after the text — content-width alone (text only) leaves no
+## room for it, so the button visually overlaps the next column instead
+## of sitting inside its own.
+const DROPDOWN_BUTTON_WIDTH := 24.0
 ## C1: the sort symbol's own placeholder — reserving the SAME width when
 ## a column isn't sorted keeps every header's own width constant whether
-## or not it currently carries a real "#▲"-style symbol. Without this, a
+## or not it currently carries a real "#^"-style symbol. Without this, a
 ## header visibly grows/shrinks (and every column after it visibly
-## shifts) the moment a sort toggles on or off.
-const SORT_SYMBOL_PLACEHOLDER := "··"
+## shifts) the moment a sort toggles on or off. Plain ASCII, deliberately
+## — "▲"/"▼" aren't in every font's own glyph set, and a fallback-font
+## substitution renders at a DIFFERENT width than the primary monospace
+## font promises, which was silently invalidating this column's own
+## measured width and forcing Tree's native hover tooltip (real content
+## wider than the column it's clipped into) — read from the OUTSIDE as
+## "the header gets taller while hovered," and only ever on an unsorted
+## column, because the un-sorted placeholder happened to be the glyph
+## that measured narrow and rendered wide.
+const SORT_SYMBOL_PLACEHOLDER := ".."
 ## B1: "the preview is what the game will render." Only `torso` (the
 ## reference humanoid's actual ROOT) carries its own baked-in world
 ## elevation (docs/01's ROOT_ELEVATION) — every other part's own volume
@@ -129,11 +143,17 @@ var _row_resources: Array[Resource] = []
 ## `set_current_type` or after a successful `save()` (which re-syncs this
 ## one row from `DataLibrary`'s own now-updated cache).
 var _working_resources: Dictionary = {}
+## C3's own dropdown-arrow affordance, drawn once (`_build_dropdown_icon`)
+## rather than per cell — no icon assets exist in this project yet
+## (CLAUDE.md: "Art: none until Phase 12"), and this isn't art, just a
+## tiny generic UI glyph, so it's generated in code instead of needing one.
+var _dropdown_icon: ImageTexture
 
 
 func _ready() -> void:
 	theme_root = self
 	theme = HulkTheme.build()
+	_dropdown_icon = _build_dropdown_icon()
 	# NOT set_anchors_preset(): that call preserves the control's CURRENT
 	# screen rect by solving for new offsets around the new anchors — a
 	# no-op-looking fill only when called on a node that has no parent
@@ -205,6 +225,21 @@ func redo() -> void:
 	_refresh_table_rows()
 	_refresh_preview()
 	_refresh_metadata()
+
+
+## A small solid downward-pointing triangle — the dropdown-button icon
+## every StringName column cell shows next to its own free-text value
+## (C3). Generated once, in code: no icon assets exist in this project
+## yet, and this is generic UI chrome, not art.
+func _build_dropdown_icon() -> ImageTexture:
+	const SIZE := 10
+	var image := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for row in range(SIZE):
+		var half_width: int = (SIZE - row) / 2
+		for x in range(SIZE / 2 - half_width, SIZE / 2 + half_width):
+			image.set_pixel(x, row, HulkTheme.FOREGROUND)
+	return ImageTexture.create_from_image(image)
 
 
 func _build_preview(parent: Control) -> void:
@@ -308,7 +343,7 @@ func _build_table_column(parent: Control) -> void:
 	table.column_title_clicked.connect(_on_column_title_clicked)
 	table.item_edited.connect(_on_item_edited)
 	table.item_selected.connect(_on_item_selected)
-	table.custom_popup_edited.connect(_on_custom_popup_edited)
+	table.button_clicked.connect(_on_table_button_clicked)
 	table.gui_input.connect(_on_table_gui_input)
 	right_column.add_child(table)
 
@@ -375,6 +410,14 @@ func _rebuild_columns_and_filters() -> void:
 		# width is exactly what the user last set it to.
 		table.set_column_expand(i, i == columns.size() - 1)
 		table.set_column_custom_minimum_width(i, _initial_column_width(columns[i]))
+		# Godot's Tree shows its own native tooltip (the full title text)
+		# for any header whose rendered content doesn't fit its column —
+		# reads, from the outside, as "the header grows taller while
+		# hovered." Every column is now sized to its own content
+		# (`_initial_column_width`/`_content_width`) specifically so this
+		# never triggers, but forcing it off explicitly costs nothing and
+		# doesn't depend on that measurement staying exactly right.
+		table.set_column_title_tooltip_text(i, "")
 
 	for child: Node in filter_row.get_children():
 		filter_row.remove_child(child)
@@ -396,14 +439,22 @@ func _rebuild_columns_and_filters() -> void:
 ## widest possible sort-symbol form — never the un-suffixed header
 ## alone, or the column would visibly widen the moment it's sorted);
 ## `display_name` sizes to ITS own content too, with a floor so an
-## empty column doesn't collapse to nothing; everything else keeps the
-## plain shared minimum.
+## empty column doesn't collapse to nothing; every other column ALSO
+## sizes to its own content now (never below the shared minimum) — a
+## header whose title doesn't fit its own column is exactly what
+## triggers Tree's native tooltip-on-hover in the first place.
 func _initial_column_width(column: StringName) -> float:
+	var button_width: float = (
+		DROPDOWN_BUTTON_WIDTH if ResourceEditorColumns.is_dropdown(current_type, column) else 0.0
+	)
 	if column == &"id":
-		return _content_width(column) + ID_COLUMN_PADDING
+		return _content_width(column) + ID_COLUMN_PADDING + button_width
 	if column == &"display_name":
-		return maxf(_content_width(column) + DISPLAY_NAME_PADDING, DISPLAY_NAME_MIN_WIDTH)
-	return COLUMN_MIN_WIDTH
+		return (
+			maxf(_content_width(column) + DISPLAY_NAME_PADDING, DISPLAY_NAME_MIN_WIDTH)
+			+ button_width
+		)
+	return maxf(_content_width(column) + COLUMN_PADDING, COLUMN_MIN_WIDTH) + button_width
 
 
 ## Widest rendered width, in pixels, of `column`'s own header (at its
@@ -442,7 +493,7 @@ func _refresh_column_titles() -> void:
 			var kind_symbol: String = (
 				"#" if ResourceEditorColumns.is_numeric(current_type, column) else "A"
 			)
-			var direction_symbol: String = "▲" if sort_ascending else "▼"
+			var direction_symbol: String = "^" if sort_ascending else "v"
 			symbol = "%s%s" % [kind_symbol, direction_symbol]
 		table.set_column_title(i, "%s %s" % [column, symbol])
 
@@ -506,6 +557,15 @@ func _refresh_table_rows() -> void:
 			item.collapsed = true
 
 
+## Every editable cell is a plain, "dumb" free-text field — CELL_MODE_RANGE's
+## own slider/spin popup (Godot's own UI for it, not something built here)
+## silently discarded whatever was actually typed the moment the field
+## wasn't a clean single number, and CELL_MODE_CUSTOM replaced free typing
+## entirely with a popup-only chooser. Neither is what was asked for: type
+## anything, DataValidator (on save) is what actually rejects a bad value —
+## this layer never validates or clamps. A StringName column additionally
+## gets a small button (`_dropdown_icon`) for picking an existing value,
+## but that's an AID alongside free typing, never a replacement for it.
 func _add_row_item(
 	resource: Resource, parent_item: TreeItem, columns: Array[StringName]
 ) -> TreeItem:
@@ -515,28 +575,13 @@ func _add_row_item(
 	for i in range(columns.size()):
 		var column: StringName = columns[i]
 		var value: Variant = resource.get(column)
+		item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
+		item.set_text(i, str(value))
 		if not ResourceEditorColumns.is_editable(column):
-			item.set_text(i, str(value))
 			continue
-		if ResourceEditorColumns.is_numeric(current_type, column):
-			item.set_cell_mode(i, TreeItem.CELL_MODE_RANGE)
-			var is_int: bool = typeof(value) == TYPE_INT
-			item.set_range_config(i, -999999.0, 999999.0, 1.0 if is_int else 0.01)
-			item.set_range(i, float(value))
-		elif ResourceEditorColumns.is_dropdown(current_type, column):
-			# C3: a StringName field (material/failure_mode/stack_type/
-			# render_primitive, ...) edits through a suggestion popup
-			# only, never free text — steering away from a typo the
-			# validator would just reject anyway. set_cell_mode() MUST
-			# run before set_text() — changing cell mode clears whatever
-			# text was already there, so a CUSTOM cell set up in the
-			# other order shows the popup arrow with no value at all.
-			item.set_cell_mode(i, TreeItem.CELL_MODE_CUSTOM)
-			item.set_text(i, str(value))
-		else:
-			item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
-			item.set_text(i, str(value))
 		item.set_editable(i, true)
+		if ResourceEditorColumns.is_dropdown(current_type, column):
+			item.add_button(i, _dropdown_icon, 0, false, "pick an existing %s value" % column)
 	return item
 
 
@@ -545,17 +590,10 @@ func _add_socket_rows(part: Part, parent_item: TreeItem) -> void:
 		var item: TreeItem = table.create_item(parent_item)
 		item.set_meta(&"row_kind", &"socket")
 		item.set_metadata(0, socket)
-		item.set_text(0, str(socket.socket_type))
-		item.set_cell_mode(0, TreeItem.CELL_MODE_STRING)
-		item.set_editable(0, true)
-		item.set_text(1, str(socket.id))
-		item.set_cell_mode(1, TreeItem.CELL_MODE_STRING)
-		item.set_editable(1, true)
-		item.set_text(2, str(socket.joint_hp))
-		item.set_cell_mode(2, TreeItem.CELL_MODE_RANGE)
-		item.set_range_config(2, 0.0, 999.0, 1.0)
-		item.set_range(2, float(socket.joint_hp))
-		item.set_editable(2, true)
+		for i in range(SOCKET_COLUMNS.size()):
+			item.set_cell_mode(i, TreeItem.CELL_MODE_STRING)
+			item.set_text(i, str(socket.get(SOCKET_COLUMNS[i])))
+			item.set_editable(i, true)
 
 
 func _add_curve_rows(material: MaterialEntry, parent_item: TreeItem) -> void:
@@ -570,10 +608,8 @@ func _add_curve_rows(material: MaterialEntry, parent_item: TreeItem) -> void:
 
 
 func _set_curve_cell(item: TreeItem, column: int, value: float) -> void:
+	item.set_cell_mode(column, TreeItem.CELL_MODE_STRING)
 	item.set_text(column, str(value))
-	item.set_cell_mode(column, TreeItem.CELL_MODE_RANGE)
-	item.set_range_config(column, -999999.0, 999999.0, 0.01)
-	item.set_range(column, value)
 	item.set_editable(column, true)
 
 
@@ -591,13 +627,16 @@ func _dropdown_options_for(column: StringName) -> Array[String]:
 	return ResourceEditorRows.distinct_values(_row_resources, column)
 
 
-## The popup's own arrow was clicked (`Tree.custom_popup_edited`) —
+## The cell's own dropdown button was clicked (`Tree.button_clicked`) —
 ## builds a fresh `PopupMenu` from `_dropdown_options_for` and shows it
-## at the cell's own custom-button rect.
-func _on_custom_popup_edited(_arrow_clicked: bool) -> void:
-	var item: TreeItem = table.get_edited()
-	var column: int = table.get_edited_column()
-	if item == null:
+## near the button itself. An AID alongside the cell's own free-text
+## editing (`_add_row_item`'s own doc comment), never a replacement for
+## it — picking an option here just writes the same text a manual edit
+## would.
+func _on_table_button_clicked(
+	item: TreeItem, column: int, _id: int, mouse_button_index: int
+) -> void:
+	if mouse_button_index != MOUSE_BUTTON_LEFT:
 		return
 	var columns: Array[StringName] = ResourceEditorColumns.columns_for(current_type)
 	if column < 0 or column >= columns.size():
@@ -609,18 +648,22 @@ func _on_custom_popup_edited(_arrow_clicked: bool) -> void:
 	for option: String in _dropdown_options_for(field):
 		menu.add_item(option)
 	menu.id_pressed.connect(
-		func(id: int) -> void: _apply_dropdown_choice(item, column, menu.get_item_text(id))
+		func(option_id: int) -> void:
+			_apply_dropdown_choice(item, column, menu.get_item_text(option_id))
 	)
 	menu.close_requested.connect(menu.queue_free)
 	menu.id_pressed.connect(menu.queue_free, CONNECT_DEFERRED)
-	var rect: Rect2 = table.get_custom_popup_rect()
-	menu.popup(Rect2i(rect.position, rect.size))
+	var button_rect: Rect2 = table.get_item_area_rect(item, column, 0)
+	menu.popup(Rect2i(Vector2i(table.get_screen_position() + button_rect.position), Vector2i.ZERO))
 
 
 ## Applies a chosen dropdown value straight to the resource — split out
-## from `_apply_edit` (Tree's `get_range`/`get_text` cell readback)
-## because a `CELL_MODE_CUSTOM` cell was never actually edited through
-## Tree's own inline editor; the value comes from the popup menu instead.
+## from `_apply_edit` (Tree's own `get_text` cell readback) because a
+## menu selection was never actually typed into the cell at all; the
+## value comes from the popup menu instead. Still just a normal text
+## commit as far as the cell itself is concerned (`item.set_text` below),
+## since the dropdown is an aid alongside free typing, not a separate
+## edit mode.
 func _apply_dropdown_choice(item: TreeItem, column: int, value: String) -> void:
 	var resource: Resource = item.get_metadata(0)
 	if resource == null:
@@ -702,20 +745,22 @@ func _apply_edit(item: TreeItem, column: int) -> void:
 	item.set_text(column, str(new_value))
 
 
-## Matches the edited cell's new text/range back to `old_value`'s own
-## Variant type — Tree's inline editors are string- or float-typed only,
-## never StringName/int, so every cell commit needs this on the way back
-## in.
+## Matches the edited cell's new text back to `old_value`'s own Variant
+## type. Every cell is plain free text (`_add_row_item`'s own doc
+## comment) — `int()`/`float()` on unparseable text return 0/0.0 rather
+## than erroring, which is fine: this layer never validates, DataValidator
+## does, on save.
 func _coerce(old_value: Variant, item: TreeItem, column: int) -> Variant:
+	var text: String = item.get_text(column)
 	match typeof(old_value):
 		TYPE_INT:
-			return int(item.get_range(column))
+			return int(text)
 		TYPE_FLOAT:
-			return item.get_range(column)
+			return float(text)
 		TYPE_STRING_NAME:
-			return StringName(item.get_text(column))
+			return StringName(text)
 		_:
-			return item.get_text(column)
+			return text
 
 
 ## C4: a socket child row's own edit — `Socket` is itself a `Resource`
@@ -729,7 +774,7 @@ func _apply_socket_edit(item: TreeItem, column: int) -> void:
 	var field: StringName = SOCKET_COLUMNS[column]
 	if field == &"joint_hp":
 		var old_hp: int = socket.joint_hp
-		var new_hp: int = int(item.get_range(column))
+		var new_hp: int = int(item.get_text(column))
 		if new_hp == old_hp:
 			return
 		socket.joint_hp = new_hp
@@ -758,7 +803,7 @@ func _apply_curve_edit(item: TreeItem, column: int) -> void:
 		return
 	var point: Vector2 = material.dt_curve[index]
 	var old_value: float = point.x if column == 0 else point.y
-	var new_value: float = item.get_range(column)
+	var new_value: float = float(item.get_text(column))
 	if new_value == old_value:
 		return
 	var setter := func(value: float) -> void:
