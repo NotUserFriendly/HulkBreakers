@@ -15,6 +15,7 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	pistol.damage = 5.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -64,6 +65,7 @@ func test_aim_reticle_at_screen_points_the_reticle_at_the_cursors_own_target() -
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	var aim: Dictionary = controller.aim_state()
 	var wanted_aim_point := Vector2(0.15, 0.2)
@@ -98,6 +100,7 @@ func test_aim_reticle_at_screen_does_nothing_while_input_locked() -> void:
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.input_locked = true
 

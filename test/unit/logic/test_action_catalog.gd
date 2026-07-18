@@ -204,3 +204,52 @@ func test_overwatch_disappears_when_no_part_provides_shoot() -> void:
 
 	var ids: Array[StringName] = _ids(ActionCatalog.actions_for(unit))
 	assert_eq(ids, [&"saw"], "the matrix knows overwatch, but has no instrument to do it with")
+
+
+## taskblock-08 A1: "the armed action decides what a click means" —
+## provider_for() is what makes that concrete. A unit with both a gun and a
+## saw must resolve each action id to its OWN part, never just whichever
+## weapon a blind "any operable part" search would return first.
+func test_provider_for_returns_the_part_that_actually_provides_the_id() -> void:
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = _hand_with_pistol()
+	var saw_socket := Socket.new(&"HAND")
+	saw_socket.occupant = _saw_hand()
+	var unit := _make_unit(_torso([hand_socket, saw_socket]))
+
+	var shoot_provider: Part = ActionCatalog.provider_for(unit, &"shoot")
+	var saw_provider: Part = ActionCatalog.provider_for(unit, &"saw")
+
+	assert_eq(shoot_provider.id, &"pistol")
+	assert_eq(saw_provider.id, &"saw_hand")
+
+
+func test_provider_for_returns_null_when_nothing_provides_the_id() -> void:
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = _hand_with_pistol()
+	var unit := _make_unit(_torso([hand_socket]))
+
+	assert_null(ActionCatalog.provider_for(unit, &"saw"))
+
+
+## Same per-part gates actions_for() itself applies (docs/01 capability
+## matching) — a rifle two saw hands can't operate must not be handed back
+## as a provider just because it's the only part listing &"shoot".
+func test_provider_for_respects_the_same_operability_gate_as_actions_for() -> void:
+	var rifle := _pistol()
+	rifle.id = &"rifle"
+	rifle.requires = {&"TRIGGER": 1, &"SUPPORT": 1}
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]  # no SUPPORT — the rifle can't actually fire
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = rifle
+	hand.sockets = [grip]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	var unit := _make_unit(_torso([hand_socket]))
+
+	assert_null(ActionCatalog.provider_for(unit, &"shoot"))

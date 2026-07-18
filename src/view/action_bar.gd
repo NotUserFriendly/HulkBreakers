@@ -9,15 +9,12 @@ extends Node
 ## now also hoverable — TooltipBuilder.for_action() is this class's own
 ## `tooltip_content()`.
 ##
-## Click-to-queue is deliberately not built here: neither Pass E's own
-## text nor its TESTS specify what a click does (they're scoped entirely
-## to the catalog — availability, ordering, source-agnostic collection —
-## plus this display), and there is no existing "pick a weapon, then act"
-## UI convention in the codebase to extend (TacticsController has no
-## select_weapon/select_action of any kind; confirm_shot() auto-picks a
-## weapon via DeepStrike.find_operable_weapon, and OverwatchAction has no
-## UI call site at all yet). A flagged hook, not a silent gap (CLAUDE.md
-## "ask, don't invent" / "leave a flagged hook").
+## taskblock-08 A1: a click arms `TacticsController.arm_action()` — the ONE
+## entry point regardless of which box, no per-action special-casing here
+## either. The armed slot highlights so the player can see what a
+## subsequent enemy click will do; `TacticsController.armed_action` stays
+## the single source of truth, this just reads it back on every
+## `aim_changed` (arm/disarm/enter-aim/cancel-aim all emit it).
 
 const SLOT_COUNT := 10
 const BOX_SIZE := Vector2(36, 28)
@@ -59,7 +56,9 @@ func setup(
 		_panels.append(panel)
 		panel.mouse_entered.connect(_on_box_entered.bind(i))
 		panel.mouse_exited.connect(_on_box_exited)
+		panel.gui_input.connect(_on_box_gui_input.bind(i))
 	tactics.selection_changed.connect(refresh)
+	tactics.aim_changed.connect(refresh)
 	refresh()
 
 
@@ -70,13 +69,30 @@ func refresh() -> void:
 	_current_actions = []
 	if unit != null:
 		_current_actions = ActionCatalog.actions_for(unit)
+	var armed_id: StringName = tactics.armed_action.id if tactics.armed_action != null else &""
 	for i in range(SLOT_COUNT):
 		if i < _current_actions.size():
 			_boxes[i].text = _current_actions[i].initials
-			_boxes[i].modulate = HulkTheme.FOREGROUND
+			if _current_actions[i].id == armed_id:
+				_boxes[i].modulate = HulkTheme.HIGHLIGHT
+			else:
+				_boxes[i].modulate = HulkTheme.FOREGROUND
 		else:
 			_boxes[i].text = ""
 			_boxes[i].modulate = HulkTheme.DIM
+
+
+## taskblock-08 A1: "a click arms" — one path, every box, no per-action
+## branching (`arm_action` itself is the only place an action id turns
+## into behaviour).
+func _on_box_gui_input(event: InputEvent, index: int) -> void:
+	if index >= _current_actions.size():
+		return
+	var button_event := event as InputEventMouseButton
+	if button_event == null or not button_event.pressed:
+		return
+	if button_event.button_index == MOUSE_BUTTON_LEFT:
+		tactics.arm_action(_current_actions[index].id)
 
 
 func _on_box_entered(index: int) -> void:

@@ -26,6 +26,7 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	pistol.damage = 5.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -70,6 +71,7 @@ func test_clicking_an_enemy_while_selected_enters_aim_mode() -> void:
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
 	assert_eq(controller.aiming_at, b)
@@ -87,6 +89,7 @@ func test_entering_aim_mode_starts_easing_the_camera_to_attack_framing() -> void
 	var camera_rig: CameraRig = built.camera_rig
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
 	assert_not_null(camera_rig._active_tween)
@@ -101,6 +104,7 @@ func test_f_key_resets_framing_while_aiming() -> void:
 	var controller: TacticsController = built.controller
 	var camera_rig: CameraRig = built.camera_rig
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	camera_rig._kill_active_tween()  # as if the player had already orbited away
 	assert_null(camera_rig._active_tween)
@@ -130,6 +134,7 @@ func test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it() -> voi
 	var camera_rig: CameraRig = built.camera_rig
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	assert_false(camera_rig.zoom_enabled, "docs/10: scroll steps layers while aiming, not zoom")
 
@@ -148,6 +153,7 @@ func test_scroll_layer_only_changes_layer_index_while_aiming() -> void:
 	assert_eq(controller.layer_index, 0, "not aiming yet — nothing to scroll")
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.scroll_layer(1)
 
@@ -164,6 +170,7 @@ func test_move_reticle_only_changes_offset_while_aiming() -> void:
 	assert_eq(controller.reticle_offset, Vector2.ZERO, "not aiming yet")
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.move_reticle(Vector2(0.3, -0.1))
 
@@ -177,6 +184,7 @@ func test_confirm_shot_queues_an_attack_action_with_the_reticle_offset() -> void
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.move_reticle(Vector2(0.2, 0.0))
 	controller.confirm_shot()
@@ -197,6 +205,7 @@ func test_clicking_anywhere_while_aiming_confirms_the_shot() -> void:
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.click_cell(Vector2i(2, 2))  # anywhere at all — this is "confirm"
 
@@ -204,16 +213,22 @@ func test_clicking_anywhere_while_aiming_confirms_the_shot() -> void:
 	assert_null(controller.aiming_at)
 
 
-func test_confirm_shot_with_no_operable_weapon_still_exits_aim_mode() -> void:
+## taskblock-08 A1: with the arm-then-click flow, "no operable weapon"
+## stops mattering one step earlier — nothing provides &"shoot" at all, so
+## there's nothing to arm, and a bare enemy click (Pass A: "does nothing")
+## never enters aim mode in the first place.
+func test_arming_with_no_provider_is_a_no_op_and_enemy_click_stays_inert() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)  # no weapon at all
 	var b := _make_unit(Vector2i(5, 5), 1)
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.confirm_shot()
 
+	assert_null(controller.armed_action, "nothing provides shoot — arming must be a no-op")
 	assert_eq(controller.selection.current_queue().actions.size(), 0)
 	assert_null(controller.aiming_at)
 
@@ -226,6 +241,7 @@ func test_end_turn_cancels_an_active_aim() -> void:
 	var camera_rig: CameraRig = built.camera_rig
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	controller.end_turn()
 
@@ -246,6 +262,7 @@ func test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets() -> vo
 	var state: CombatState = built.state
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
 	var raw: Array[Region] = ShotPlane.build(Vector2(0, 0), Vector2(5, 5).normalized(), state)
@@ -273,6 +290,7 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
 	var aim: Dictionary = controller.aim_state()
@@ -302,6 +320,7 @@ func test_aim_plane_originates_from_the_queued_end_cell_not_the_current_one() ->
 
 	controller.click_cell(Vector2i(0, 0))
 	controller.click_cell(Vector2i(5, 0))  # queue a move, still just queued
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(9, 0))  # aim at b from the queued end position
 
 	assert_eq(a.cell, Vector2i(0, 0), "still just queued — the real unit has not moved")
@@ -338,6 +357,7 @@ func test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution() -
 	a.mp = 10.0
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(2, 6))
 	var aim_before: Dictionary = controller.aim_state()
 	var point_before: Vector2 = ShotPlane.center_of(aim_before["plane"], aim_before["target"])
@@ -345,6 +365,7 @@ func test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution() -
 	controller.cancel_aim()
 
 	controller.click_cell(Vector2i(2, 0))  # queue a move onto the wall's own column
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(2, 6))  # re-aim from the queued end position
 	var aim_after: Dictionary = controller.aim_state()
 	var point_after: Vector2 = ShotPlane.center_of(aim_after["plane"], aim_after["target"])
@@ -393,6 +414,7 @@ func test_input_locked_blocks_click_scroll_reticle_and_confirm() -> void:
 	var controller: TacticsController = built.controller
 
 	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))  # enters aim mode
 	controller.input_locked = true
 

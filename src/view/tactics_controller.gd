@@ -56,6 +56,12 @@ var camera: Camera3D
 
 ## Non-null while in Attack mode (docs/10): the enemy being aimed at.
 var aiming_at: Unit = null
+## taskblock-08 A: non-null while an action-bar action is armed and
+## waiting for its target click — "SHOOT armed -> the next enemy click is
+## the target." Always non-null whenever `aiming_at` is (arming is the
+## only way to enter aim mode now); can be non-null on its own, between
+## arming and the target click.
+var armed_action: ActionDef = null
 var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
 
@@ -144,10 +150,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not key_event.pressed:
 			return
 		if key_event.keycode == ControlBindings.DESELECT_KEY:
-			# docs/10 taskblock02 F2: Esc always backs out one level — out
-			# of Attack mode first if aiming, otherwise a plain deselect.
+			# docs/10 taskblock02 F2: Esc always backs out one level — out of
+			# Attack mode first if aiming, then out of an armed action if one
+			# is armed but not yet aimed (taskblock-08 A1), otherwise a plain
+			# deselect.
 			if aiming_at != null:
 				cancel_aim()
+			elif armed_action != null:
+				disarm_action()
 			else:
 				deselect()
 		elif key_event.keycode == ControlBindings.FACE_NUDGE_CCW_KEY and aiming_at == null:
@@ -226,6 +236,12 @@ func _handle_rmb_release() -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+		return
+	# taskblock-08 A1: "Esc / RMB disarms the action and returns to normal
+	# selection" — same early-out shape as the aiming_at case above, one
+	# step earlier in the arm-then-click sequence.
+	if armed_action != null:
+		disarm_action()
 		return
 	# docs/10 taskblock03 D3: RMB pops the last queued action; with
 	# nothing left to pop, it's a plain deselect.
@@ -317,11 +333,15 @@ func hover_part(part: Variant) -> void:
 ## While aiming: any click confirms the shot (docs/10: "click / confirm ->
 ## queue an AttackAction"), regardless of which cell was actually clicked.
 ## Otherwise: click your own (current-turn) unit to select it; with a unit
-## selected, click a live enemy to enter Attack mode, or click a reachable
-## cell to queue a move there. A click on a valid, on-board cell never
-## cancels a selection by itself — that's `deselect()`'s job, reached via
-## Esc or an off-board click (docs/10 taskblock02 F2), never a plain
-## in-board click that just happens to be out of reach.
+## selected AND an action armed (taskblock-08 A1 — `arm_action()`, from the
+## action bar), click a live enemy to enter Attack mode with that action's
+## own weapon; with nothing armed, a bare enemy click does nothing (hover
+## already inspects it — taskblock04 E3). A click on a reachable cell
+## always queues a move there regardless of arming. A click on a valid,
+## on-board cell never cancels a selection by itself — that's
+## `deselect()`'s job, reached via Esc or an off-board click (docs/10
+## taskblock02 F2), never a plain in-board click that just happens to be
+## out of reach.
 ##
 ## Cell-only API: for a real mouse click, `_handle_mouse_button` dispatches
 ## on `_cell_at`'s own hit directly (docs/10 taskblock05 A1) rather than
@@ -351,10 +371,16 @@ func click_cell(cell: Vector2i) -> void:
 ## a non-current unit hit with nothing selected has nowhere to go — full
 ## detail on any unit already comes from hover (taskblock04 E1/E3), so a
 ## bare click on one has no further job to do.
+##
+## taskblock-08 A1: "clicking an enemy no longer starts an attack" — a
+## non-current unit only ever enters Attack mode while an action is armed
+## (`armed_action != null`); a bare enemy click with nothing armed is
+## explicitly a no-op (Pass A: "since hover already inspects").
 func _click_unit(unit_here: Unit) -> void:
 	if unit_here == selection.state.current_unit():
 		selection.select(unit_here)
-	elif selection.selected_unit != null:
+		armed_action = null
+	elif armed_action != null and selection.selected_unit != null:
 		_enter_aim_mode(unit_here)
 	_refresh_overlay()
 
@@ -365,7 +391,40 @@ func deselect() -> void:
 	if selection == null or selection.selected_unit == null:
 		return
 	selection.select(null)
+	armed_action = null
 	_refresh_overlay()
+
+
+## taskblock-08 A1: "selecting an action arms a targeting mode... the
+## armed action decides what a click means." `action_id` must be one
+## ActionCatalog.actions_for(selected_unit) actually lists right now — the
+## same source the action bar itself renders from — and must need a target
+## at all (ActionDef.requires_target); anything else is a no-op, silently,
+## same posture as confirm_shot()'s own "nothing operable" case. This is
+## the ONE arming entry point regardless of which box called it — no
+## per-action special-casing here or in the click handler.
+func arm_action(action_id: StringName) -> void:
+	if input_locked or selection == null or selection.selected_unit == null:
+		return
+	if aiming_at != null:
+		return
+	var def: ActionDef = null
+	for candidate: ActionDef in ActionCatalog.actions_for(selection.selected_unit):
+		if candidate.id == action_id:
+			def = candidate
+			break
+	if def == null or not def.requires_target:
+		return
+	armed_action = def
+	aim_changed.emit()
+
+
+## taskblock-08 A1: "Esc / RMB disarms the action and returns to normal
+## selection" — armed-but-not-yet-aimed only; `cancel_aim()` is the aiming
+## case (and clears `armed_action` itself, so this is never needed there).
+func disarm_action() -> void:
+	armed_action = null
+	aim_changed.emit()
 
 
 ## docs/10 taskblock02 F3: Q/E — turns the selected unit by `delta` radians
@@ -389,6 +448,7 @@ func reset_turn() -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+	armed_action = null
 	selection.reset_turn()
 	_drag_face_action = null
 	_refresh_overlay()
@@ -577,22 +637,27 @@ func aim_facing() -> Variant:
 
 
 ## Queues an AttackAction carrying the reticle's current aim_offset, using
-## whatever weapon the shooter can actually operate (docs/01 capability
-## matching) — a no-op, silently, if the shooter has nothing operable.
+## whatever part actually provides `armed_action` (taskblock-08 A1: "the
+## armed action decides what a click means" — SHOOT picks the shoot
+## provider, SAW picks the saw provider, never just any weapon) — a no-op,
+## silently, if the shooter has nothing operable for it right now.
 func confirm_shot() -> void:
 	if input_locked or aiming_at == null or selection.selected_unit == null:
 		return
 	var shooter: Unit = selection.selected_unit
-	var weapon: Part = DeepStrike.find_operable_weapon(shooter)
-	if weapon != null:
-		selection.current_queue().enqueue(
-			AttackAction.new(shooter, weapon.id, aiming_at.cell, reticle_offset), selection.state
-		)
+	if armed_action != null:
+		var weapon: Part = ActionCatalog.provider_for(shooter, armed_action.id)
+		if weapon != null:
+			selection.current_queue().enqueue(
+				AttackAction.new(shooter, weapon.id, aiming_at.cell, reticle_offset),
+				selection.state
+			)
 	cancel_aim()
 
 
 func cancel_aim() -> void:
 	aiming_at = null
+	armed_action = null
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	camera_rig.zoom_enabled = true
@@ -610,6 +675,7 @@ func end_turn() -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+	armed_action = null
 
 	input_locked = true
 	var sink := MemorySink.new()
@@ -649,6 +715,7 @@ func resolve_to_marker(marker_index: int) -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+	armed_action = null
 
 	input_locked = true
 	var prefix := ActionQueue.new(selection.selected_unit)
