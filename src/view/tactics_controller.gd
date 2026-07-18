@@ -164,8 +164,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			turn_selected(-FACE_STEP)
 		elif key_event.keycode == ControlBindings.FACE_NUDGE_CW_KEY and aiming_at == null:
 			turn_selected(FACE_STEP)
-		elif key_event.keycode == ControlBindings.RESET_FRAMING_KEY and aiming_at != null:
-			reset_framing()
 		elif key_event.keycode == ControlBindings.RESET_TURN_KEY:
 			reset_turn()
 
@@ -485,26 +483,14 @@ func _enter_aim_mode(target: Unit) -> void:
 	aiming_at = target
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
-	# docs/10 taskblock04 A3: wheel still steps the dartboard layer instead
-	# of zooming while aiming (unrelated, pre-existing) — but orbit/pan (and
-	# now the ease itself) stay live: the attack camera orbits the target's
-	# own bounding sphere as a stable pivot, so swinging around it mid-aim
-	# is just the inspection camera taskblock-03 C2 always wanted, not
-	# something that can break the reticle anymore (aim_reticle_at_screen
-	# raycasts against the live camera, whatever angle it's at).
-	camera_rig.zoom_enabled = false
+	# taskblock-08 B3a: orbit/pan/zoom lock the instant aim mode is
+	# entered — aim is a committed framing now, inspection happens by
+	# backing out (Esc). Reverses taskblock-04 A3's "keep orbit/pan/zoom
+	# live during aim": the attack camera also LOOKS at the dartboard now
+	# (B3b/B3c), which a live orbit would fight every frame.
+	camera_rig.start_aiming()
 	camera_rig.ease_to_attack_framing(_framing_shooter(), target)
 	aim_changed.emit()
-
-
-## docs/10 taskblock03 C2: the F "reset framing" key — eases back to the
-## SAME solved framing `_enter_aim_mode` eased to, after the player has
-## orbited/panned/zoomed away from it. A no-op outside Attack mode (nothing
-## to reset to).
-func reset_framing() -> void:
-	if input_locked or aiming_at == null or selection.selected_unit == null:
-		return
-	camera_rig.ease_to_attack_framing(_framing_shooter(), aiming_at)
 
 
 ## taskblock-08 B1: "the camera frames the origin, not the ghost." The
@@ -673,7 +659,7 @@ func cancel_aim() -> void:
 	armed_action = null
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
-	camera_rig.zoom_enabled = true
+	camera_rig.stop_aiming()
 	aim_changed.emit()
 	_refresh_overlay()
 

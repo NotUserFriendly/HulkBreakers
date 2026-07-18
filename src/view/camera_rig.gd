@@ -14,12 +14,24 @@ extends Node3D
 ## framing takes — "ease (don't cut)," one constant, a flagged placeholder
 ## like every other un-pinned timing number in this view layer.
 const ATTACK_TWEEN_DURATION := 0.4
+## taskblock-08 B3c: the reticle lean's own cap, in degrees — capped in
+## angle, not world distance, so the same cursor travel reads as the same
+## lean regardless of how far away the target actually is. A flagged
+## tuning number like every other visual-only constant here.
+const MAX_LEAN_DEG := 5.0
 
 var state := CameraOrbitState.new()
 ## docs/10: in the aim UI, scroll steps the dartboard layer instead of
-## zooming (TacticsController clears this while aiming). Orbit/pan stay
-## live either way — only wheel-zoom is gated.
+## zooming (TacticsController clears this while aiming). Gated separately
+## from `orbit_locked` below — this is about wheel meaning something else
+## while aiming, not about the committed framing.
 var zoom_enabled: bool = true
+## taskblock-08 B3a: true while an action is armed/aiming — orbit and pan
+## input are ignored outright. Reverses taskblock-04 A3's "keep orbit/pan/
+## zoom live during aim": now that the camera also LOOKS at the dartboard
+## (B3b/B3c), a live orbit would fight that every frame — aim is a
+## committed framing now, inspection happens by backing out (Esc).
+var orbit_locked: bool = false
 
 var _yaw_pivot: Node3D
 var _pitch_pivot: Node3D
@@ -47,16 +59,13 @@ func _ready() -> void:
 	_apply_state()
 
 
-## docs/10 taskblock04 A3: "keep orbit/pan/zoom live during aim" — now that
-## the attack camera orbits a stable pivot (the target, `attack_framing()`)
-## instead of sitting at a literal computed point, live orbiting during aim
-## just swings the same inspection camera taskblock-03 C2 already wants,
-## rather than breaking anything. The old `locked` flag existed only
-## because the reticle's screen-to-shot-plane mapping used to assume a
-## fixed camera angle (docs/10 taskblock04's own aim-plane raycast fixed
-## that separately) — removed as dead weight once that reason was gone.
+## taskblock-08 B3a: orbit and pan are ignored outright while
+## `orbit_locked` (aiming). Reverses taskblock-04 A3's "keep orbit/pan/
+## zoom live during aim" — now that the camera also LOOKS at the dartboard
+## (B3b/B3c), live orbiting during aim would fight that every frame; aim
+## is a committed framing now, inspection happens by backing out (Esc).
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
+	if event is InputEventMouseMotion and not orbit_locked:
 		var motion := event as InputEventMouseMotion
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 			_kill_active_tween()
@@ -96,12 +105,11 @@ func center_on(world_position: Vector3) -> void:
 
 
 ## docs/10 taskblock04 A: eases (never cuts) to the attack camera's own
-## solved framing — on entering aim, and again on the F "reset framing"
-## key, which is the identical target framing, just a different trigger.
-## Live input can still interrupt the EASE itself via `_kill_active_tween`
-## (a stray orbit/pan mid-tween doesn't fight it for the rest of its
-## duration) — orbiting after it settles is expected now (A3: "keep
-## orbit/pan/zoom live during aim"), not something to block.
+## solved framing, on entering aim. Live input can still interrupt the
+## EASE itself via `_kill_active_tween` (a stray orbit/pan mid-tween
+## doesn't fight it for the rest of its duration) — moot once
+## `orbit_locked` is set (B3a), since nothing reaches `state.orbit`/
+## `state.pan` anymore, but harmless: an already-queued ease still lands.
 ##
 ## `shooter`/`target` are `Unit`s, not raw positions — the solver needs
 ## each unit's ACTUAL bounding sphere (UnitGeometry.bounding_sphere()),
@@ -129,6 +137,62 @@ func ease_to_attack_framing(shooter: Unit, target: Unit) -> void:
 		1.0,
 		ATTACK_TWEEN_DURATION
 	)
+
+
+## taskblock-08 B3a: locks orbit/pan/zoom the instant an action is armed —
+## called once, from TacticsController.arm_action(), before the shooter's
+## own attack framing starts easing in, so there's never a frame where the
+## old live-orbit framing was still interactive.
+func start_aiming() -> void:
+	orbit_locked = true
+	zoom_enabled = false
+
+
+## Restores full camera control and clears whatever look-at lean B3b/B3c
+## left on the `_camera` node's own rotation — outside aim mode the camera
+## always looks straight down the pivot chain (`_apply_state`'s own
+## implicit contract: `_camera`'s rotation is never touched there), never
+## a stale lean surviving from the last aimed shot.
+func stop_aiming() -> void:
+	orbit_locked = false
+	zoom_enabled = true
+	_camera.rotation = Vector3.ZERO
+
+
+## taskblock-08 B3b/B3c: "position camera with orbit, then camera's own
+## rotation to point it at the center of the dartboard on the window."
+## Position and look-direction live on different nodes so they can never
+## fight: the pivot chain (`_yaw_pivot`/`_pitch_pivot`, `state.*`) owns
+## WHERE the camera is — untouched here, still the solved attack framing —
+## this owns WHERE it points, on `_camera`'s own local rotation alone.
+##
+## `centre` anchors the look (the window's own centre, `AimPlaneGeometry.
+## world_point(shooter, target, Vector2.ZERO)` — the honest version, a
+## real world point the same geometry already produces, not a fake).
+## `reticle_point` then tugs it by up to `MAX_LEAN_DEG`, capped in ANGLE
+## (never world distance, which would swing wildly for a near target and
+## barely move for a far one for the same cursor travel) — driven by the
+## reticle's own resolved position, never raw mouse motion, so `orbit_
+## locked` never has a backdoor. Recomputed fresh from `centre` every
+## call (never accumulated), so the lean is a pure function of where the
+## reticle currently is — same reticle, same lean, regardless of how the
+## cursor got there.
+func aim_at(centre: Vector3, reticle_point: Vector3) -> void:
+	_camera.look_at(centre, Vector3.UP)
+	var to_reticle: Vector3 = reticle_point - _camera.global_position
+	if to_reticle.is_zero_approx():
+		return
+	var forward: Vector3 = -_camera.global_transform.basis.z
+	var desired: Vector3 = to_reticle.normalized()
+	var angle: float = forward.angle_to(desired)
+	if angle < 0.0001:
+		return
+	var axis: Vector3 = forward.cross(desired)
+	if axis.is_zero_approx():
+		return
+	var lean: float = minf(angle, deg_to_rad(MAX_LEAN_DEG))
+	var leaned_forward: Vector3 = forward.rotated(axis.normalized(), lean)
+	_camera.look_at(_camera.global_position + leaned_forward, Vector3.UP)
 
 
 func _kill_active_tween() -> void:

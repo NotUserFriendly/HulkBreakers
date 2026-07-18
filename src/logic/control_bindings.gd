@@ -14,7 +14,6 @@ extends RefCounted
 const DESELECT_KEY := KEY_ESCAPE
 const FACE_NUDGE_CCW_KEY := KEY_Q
 const FACE_NUDGE_CW_KEY := KEY_E
-const RESET_FRAMING_KEY := KEY_F
 const RESET_TURN_KEY := KEY_R
 ## docs/10 taskblock03 J: "toggleable with H."
 const TOGGLE_KEY := KEY_H
@@ -40,12 +39,11 @@ static func all(log_path: String) -> Array[Dictionary]:
 			"trigger": "drag / %s, %s" % [_key(FACE_NUDGE_CCW_KEY), _key(FACE_NUDGE_CW_KEY)],
 			"action": "face"
 		},
-		{"trigger": "Click enemy", "action": "aim"},
+		{"trigger": "Click action, then enemy", "action": "aim"},
 		{"trigger": "Scroll", "action": "dartboard layer"},
-		{"trigger": _key(RESET_FRAMING_KEY), "action": "reset framing (while aiming)"},
 		{"trigger": "button", "action": "end turn"},
-		{"trigger": "RMB drag", "action": "orbit"},
-		{"trigger": "MMB drag", "action": "pan"},
+		{"trigger": "RMB drag", "action": "orbit (locked while aiming)"},
+		{"trigger": "MMB drag", "action": "pan (locked while aiming)"},
 		{"trigger": "Scroll", "action": "zoom (while not aiming)"},
 		{"trigger": _key(TOGGLE_KEY), "action": "toggle this help"},
 		{"trigger": _key(TOGGLE_HIT_VOLUMES_KEY), "action": "toggle hit volumes"},

@@ -113,7 +113,15 @@ func refresh() -> void:
 	var target: Unit = aim["target"]
 	var plane: Array[Region] = aim["plane"]
 	var state: CombatState = aim["state"]
-	var weapon: Part = DeepStrike.find_operable_weapon(shooter)
+	# taskblock-08 A1: "the armed action decides what a click means" applies
+	# to the PREVIEW too — SAW armed must preview firing with the saw, not
+	# whichever weapon DeepStrike.find_operable_weapon happened to find
+	# first, or the dartboard/muzzle shown here could disagree with what
+	# confirm_shot() actually queues (docs/08: tooltip and damage from the
+	# same call).
+	var weapon: Part = null
+	if tactics.armed_action != null:
+		weapon = ActionCatalog.provider_for(shooter, tactics.armed_action.id)
 	if weapon == null:
 		readout.text = "[UNARMED]"
 		return
@@ -164,6 +172,18 @@ func refresh() -> void:
 	var window_point: Vector3 = AimPlaneGeometry.world_point_at_depth(
 		shooter.cell, target.cell, aim_point, depth
 	)
+
+	# taskblock-08 B3b/B3c: "camera's own rotation to point it at the center
+	# of the dartboard on the window," then a capped lean toward the
+	# reticle. `centre` is the honest window centre — the same real world
+	# point AimPlaneGeometry already produces at aim_point (0, 0) — never a
+	# fake look-at target; `reticle_point` is that identical geometry at
+	# the reticle's own current aim_point, so the lean is driven by where
+	# the reticle actually is, never by raw mouse motion (orbit stays
+	# locked — B3a).
+	var centre: Vector3 = AimPlaneGeometry.world_point(shooter.cell, target.cell, Vector2.ZERO)
+	var reticle_point: Vector3 = AimPlaneGeometry.world_point(shooter.cell, target.cell, aim_point)
+	tactics.camera_rig.aim_at(centre, reticle_point)
 
 	_draw_window(window_point, dir, result.rings)
 	_draw_decal(target_point, dir, result.rings)

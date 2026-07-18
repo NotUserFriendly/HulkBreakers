@@ -95,9 +95,26 @@ func test_entering_aim_mode_starts_easing_the_camera_to_attack_framing() -> void
 	assert_not_null(camera_rig._active_tween)
 
 
-## docs/10 taskblock03 C2: F eases back to the same over-the-shoulder
-## default, after the player has orbited/panned/zoomed away from it.
-func test_f_key_resets_framing_while_aiming() -> void:
+## taskblock-08 B3a: "the F 'reset framing' key... is redundant under a
+## locked view — drop it from aim mode." Orbit/pan/zoom lock the instant
+## aim mode is entered (start_aiming()), so there's no longer anything to
+## orbit away from in the first place — reset_framing()/the F keybinding
+## are gone, not adapted.
+func test_entering_aim_mode_locks_orbit() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+
+	assert_true(camera_rig.orbit_locked)
+
+
+func test_cancelling_aim_restores_orbit() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
 	var built: Dictionary = _setup([a, b])
@@ -106,24 +123,10 @@ func test_f_key_resets_framing_while_aiming() -> void:
 	controller.click_cell(Vector2i(0, 0))
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
-	camera_rig._kill_active_tween()  # as if the player had already orbited away
-	assert_null(camera_rig._active_tween)
 
-	controller.reset_framing()
+	controller.cancel_aim()
 
-	assert_not_null(camera_rig._active_tween)
-
-
-func test_f_key_does_nothing_outside_aim_mode() -> void:
-	var a := _make_armed_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-	var camera_rig: CameraRig = built.camera_rig
-	controller.click_cell(Vector2i(0, 0))  # selected, not aiming
-
-	controller.reset_framing()
-
-	assert_null(camera_rig._active_tween, "nothing to reset to outside Attack mode")
+	assert_false(camera_rig.orbit_locked)
 
 
 func test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it() -> void:
