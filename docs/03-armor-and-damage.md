@@ -76,6 +76,23 @@ crit** → bypass armor *and* bonus damage.
    rear plate or bare parts — automatic from the projection (`02`), not a bonus.
 3. **Crits beat armor.**
 
+**Open gap, found via `b68a1db` (taskblock-08 note): these three rules all assume the angle
+keeps moving.** DEFLECT never damages the plate it hits (rule 1's own "so angle matters both
+ways" — the flip side is that a rifle round with `damage < DT`, hitting a plate at a fixed
+oblique angle, deflects it **every single time**, forever). Rule 1 only actually bites once
+`bend_angle` drops to `deflect_threshold` or below; rule 2 only bites once someone actually
+flanks. If a unit is frozen at a fixed facing (nothing forces re-facing) against a shooter with
+no reason to reposition either, the angle between them never changes, and neither rule ever
+fires — DEFLECT forever, angle-locked, functionally invincible from that one facing, with no
+crit floor to fall back on if `crit_chance` is 0. Confirmed live: `test_full_mission.gd`'s
+own scripted AI hit exactly this with a real seed before its own defensive-facing fix landed.
+That fix (queue a `FaceAction` toward the threat when idle) addressed the *test's* AI, not the
+underlying mechanic — the design question is still open and belongs to whoever owns this file:
+**should sustained deflection chip the plate at all** (a minimum floor per hit, even at the
+worst bend angle), **or does closing this gap belong entirely to tactics** (the player/AI must
+be the one to vary the angle — flank, reposition, force a re-face)? Don't invent an answer here
+— flagged so it isn't rediscovered blind in a year.
+
 ## Cook-off
 Parts tagged `VOLATILE` (ammo racks, fuel cells) explode when destroyed: area damage centred
 on the part's holder. This is what makes flanking a back-mounted ammo rack a *tactic* rather
