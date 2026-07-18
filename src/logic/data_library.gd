@@ -200,9 +200,9 @@ static func source_of(type_key: StringName, id: StringName) -> StringName:
 ## in-memory registry too (so the editor's own next read sees it — the
 ## GAME picking it up is still next-boot-only, `_loaded` isn't reset).
 static func save(type_key: StringName, resource: Resource) -> Array[ValidationError]:
-	var errors: Array[ValidationError] = DataValidator.validate(resource)
-	if not errors.is_empty():
-		return errors
+	var validation_errors: Array[ValidationError] = DataValidator.validate(resource)
+	if not validation_errors.is_empty():
+		return validation_errors
 	var type_dir: String = _dir_name_for(type_key)
 	if type_dir == "":
 		return [ValidationError.new(resource.get("id"), &"type", "unknown definition type")]
