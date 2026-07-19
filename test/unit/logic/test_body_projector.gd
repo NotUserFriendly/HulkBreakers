@@ -401,6 +401,36 @@ func test_aiming_pose_changes_the_projected_shot_plane_vs_idle() -> void:
 	)
 
 
+## taskblock-20 Pass H: "dive prone... alters the shot plane to a worse-
+## but-different silhouette" only holds if the ROOT pose override
+## (PRONE, and DOWN before it) actually reaches `BodyProjector.project()`
+## — docs/10 taskblock05 F2 had explicitly deferred this ("no analogue
+## here... a downed unit's shot plane is a later problem, not this
+## pass's"), so this is the regression test for closing that gap, not
+## just confirming a pre-existing behavior like AIMING's own equivalent
+## above.
+func test_prone_pose_changes_the_projected_shot_plane_vs_idle() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.5, 1.0, 0.5))]
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+
+	var idle_regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+
+	unit.pose = Poses.prone()
+	var prone_regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+
+	assert_eq(idle_regions.size(), 1)
+	assert_eq(prone_regions.size(), 1)
+	assert_ne(
+		idle_regions[0].rect.position.y,
+		prone_regions[0].rect.position.y,
+		"PRONE must actually move the torso's own projected height vs IDLE"
+	)
+
+
 func _find_all(regions: Array[Region], part_id: StringName) -> Array[Region]:
 	var found: Array[Region] = []
 	for region: Region in regions:

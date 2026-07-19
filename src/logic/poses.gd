@@ -47,6 +47,20 @@ static func down() -> Pose:
 	return pose
 
 
+## taskblock-20 Pass H: "dive prone... alters the shot plane to a worse-
+## but-different silhouette" — the DIVE_PRONE reaction (ReactionResolver).
+## Reuses `down()`'s own "flat, near-ground" geometry verbatim (a diving
+## unit and a downed one present the same physical silhouette) as its own
+## named pose, never composed FROM `down()` at the call site — a still-
+## piloted, prone unit must never be confused with `is_downed()`'s
+## matrix-ejected corpse case just because they happen to share a
+## transform.
+static func prone() -> Pose:
+	var pose := Pose.new()
+	pose.overrides = {ROOT_SOCKET_ID: Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)}
+	return pose
+
+
 ## docs/10 taskblock05 G5: presets address a pose by name (StringName, not
 ## a serialized Resource) — one more open row here covers a new pose for
 ## both the game and the builder's own pose dropdown at once.
@@ -56,9 +70,11 @@ static func by_id(id: StringName) -> Pose:
 			return aiming()
 		&"DOWN":
 			return down()
+		&"PRONE":
+			return prone()
 		_:
 			return idle()
 
 
 static func all_ids() -> Array[StringName]:
-	return [&"IDLE", &"AIMING", &"DOWN"]
+	return [&"IDLE", &"AIMING", &"DOWN", &"PRONE"]
