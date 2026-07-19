@@ -54,13 +54,22 @@ func test_a_real_click_over_the_board_selects_the_current_unit_through_every_pan
 	scene.combat_state.grid.set_occupant_id(current.cell, current.id)
 	scene.unit_views[scene.combat_state.units.find(current)].refresh()
 
-	# The unit's own actual bounding-sphere center, not a guessed height —
-	# a random deep-struck loadout's real geometry doesn't necessarily
-	# occupy any fixed height, and UnitPicker needs the ray to actually
-	# cross a box, not just the unit's own cell column.
-	var sphere: Dictionary = UnitGeometry.bounding_sphere(current)
+	# The unit's own actual TORSO box center, not the bounding-sphere
+	# center — a real, reported bug: a random deep-struck loadout carrying
+	# a long weapon (a sniper rifle, say) elongates the bounding sphere far
+	# enough along one axis that its geometric CENTER lands in empty space
+	# behind the torso, never inside any actual hitbox at all — UnitPicker
+	# then legitimately finds nothing there, no matter how many times the
+	# click is retried. The torso is always real, solid geometry every
+	# reference-humanoid assembly has; its own box center is guaranteed to
+	# be inside it by construction.
+	var torso_center: Vector3 = Vector3.ZERO
+	for placement: BoxPlacement in UnitGeometry.placements(current):
+		if placement.part.id == &"torso":
+			torso_center = placement.transform * placement.box.center
+			break
 	var camera: Camera3D = scene.camera_rig.camera()
-	var screen_pos: Vector2 = camera.unproject_position(sphere.center)
+	var screen_pos: Vector2 = camera.unproject_position(torso_center)
 
 	_click_at(scene, screen_pos)
 
