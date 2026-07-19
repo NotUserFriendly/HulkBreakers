@@ -60,7 +60,15 @@ static func resolve_impact(
 		result.part_damage = damage
 		return result
 
-	var incidence_deg: float = rad_to_deg(acos(clampf((-dir).dot(normal_2d), -1.0, 1.0)))
+	# taskblock-20 Pass C3: `abs(...)`, not `(-dir).dot(...)` — incidence
+	# against a flat surface is direction-agnostic (a plate hit square-on
+	# reads 0 whichever side it's struck from). Every region used to face
+	# the shooter by construction (BodyProjector dropped away-facing faces
+	# outright), so `-dir` and the surface normal always pointed the same
+	# way and this was equivalent; a `hollow` part's own EXIT face — hit
+	# from the inside, its normal pointing the same way as `dir` — is the
+	# first region that actually needs the general form.
+	var incidence_deg: float = rad_to_deg(acos(clampf(absf(dir.dot(normal_2d)), -1.0, 1.0)))
 	if incidence_deg <= material.deflect_threshold_deg:
 		result.outcome = Enums.Outcome.STOP_DEAD
 		result.part_damage = damage
@@ -477,6 +485,12 @@ static func resolve_shot(
 	# outer `damage` parameter, which stays this whole flight's nominal
 	# value for crit bookkeeping and is never itself reduced.
 	var current_damage: float = damage
+	# taskblock-20 Pass C4: the `hollow` part currently "open" — penetrated at
+	# its near face, its far face not yet reached/cleared. Null whenever the
+	# round is in open air or inside only solid parts. Set on a hollow part's
+	# FIRST penetrate (entering), cleared on that SAME part's second
+	# (exiting) — an intervening solid part's own hit never touches this.
+	var inside_hollow_part: Part = null
 	while start < plane.size():
 		var found_index: int = _find_next(plane, start, point, skip_parts)
 		skip_parts = []  # the exclusion applies only to this call's first hit
@@ -509,10 +523,15 @@ static func resolve_shot(
 			bypass_result.is_double_crit = crit.is_double_crit
 			bypass_result.bypassed_armor = true
 			results.append(bypass_result)
+			if region.part.hollow:
+				if inside_hollow_part == region.part:
+					inside_hollow_part = null
+				else:
+					inside_hollow_part = region.part
 			continue
 
-		var applied_damage: float = current_damage * (
-			crit_bonus_multiplier if effects.bonus else 1.0
+		var applied_damage: float = (
+			current_damage * (crit_bonus_multiplier if effects.bonus else 1.0)
 		)
 		var impact: ImpactResult = resolve_impact(
 			shot_dir, applied_damage, region, table, bonus_pen
@@ -526,12 +545,18 @@ static func resolve_shot(
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
 					_resolve_destruction_consequences(impact, region, state)
+				if region.part.hollow:
+					if inside_hollow_part == region.part:
+						inside_hollow_part = null  # cleared the far face: exited
+					else:
+						inside_hollow_part = region.part  # cleared the near face: entered
 				# taskblock-09 B: the plate ate the full part_damage above
 				# regardless — what carries on to the next layer is only the
 				# spill, and a spill of exactly 0 means this round stops here,
 				# same as if nothing were left of the plane to check.
 				var spill: float = maxf(0.0, impact.part_damage - impact.effective_dt)
 				if spill <= 0.0:
+					_inflict_lodged_wound_if_inside(inside_hollow_part, impact)
 					return results
 				current_damage = spill
 				continue
@@ -539,6 +564,7 @@ static func resolve_shot(
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
 					_resolve_destruction_consequences(impact, region, state)
+				_inflict_lodged_wound_if_inside(inside_hollow_part, impact)
 				return results
 			Enums.Outcome.DEFLECT:
 				var next_damage: float = current_damage * impact.retained_fraction
@@ -563,7 +589,27 @@ static func resolve_shot(
 						)
 					)
 				return results
+	# taskblock-20 Pass C4: ran out of plane (no more regions at this exact
+	# point) while still inside a hollow part's own shell — as good as
+	# flooring there; the round has nowhere left to go either way.
+	if inside_hollow_part != null and not results.is_empty():
+		_inflict_lodged_wound_if_inside(inside_hollow_part, results[-1])
 	return results
+
+
+## taskblock-20 Pass C4: "a round strong enough to punch in but not out
+## stops inside the cavity" — `&"lodged_bullet"` on whatever part the round
+## was actually resolving against when it ran out of steam, a no-op when
+## the round was never inside a hollow shell to begin with (the ordinary
+## "just stopped" case) or already carries this exact wound.
+static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: ImpactResult) -> void:
+	if inside_hollow_part == null:
+		return
+	var part: Part = impact.region.part
+	if &"lodged_bullet" in part.wounds:
+		return
+	part.wounds.append(&"lodged_bullet")
+	impact.wound_inflicted = &"lodged_bullet"
 
 
 static func _find_next(

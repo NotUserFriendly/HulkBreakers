@@ -53,3 +53,9 @@ var dropped_subtree: Array[Part] = []
 ## shell by the time a caller gets around to logging this impact.
 var demoted_unit: Unit = null
 var demoted_tier_before: SurrogateTier = null
+## taskblock-20 Pass C4: non-empty (e.g. `&"lodged_bullet"`) when this
+## impact is the one where the round finally floored while still inside a
+## `hollow` part's own shell — entered, never cleared the far face. Empty
+## for every ordinary impact, including a round that floors on a SOLID
+## part outside any hollow envelope (that's just "stopped," not "lodged").
+var wound_inflicted: StringName = &""
