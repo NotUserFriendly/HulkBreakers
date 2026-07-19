@@ -15,25 +15,27 @@ const GRID_WIDTH := 20
 const GRID_HEIGHT := 14
 
 
-## `profile_a`/`profile_b` null, or either count `<= 0`, is refused with
-## a named `error` — never a crash, matching every other assembly path's
-## "never crash, never silently invent" posture. Returns
-## `{"state": CombatState, "mission": MissionState, "error": ""}` on
-## success, or `{"error": "<reason>"}` (no state/mission keys at all) on
-## refusal.
+## taskblock-16 Pass E: each team is a LIST of per-unit profiles now, not
+## one profile repeated `count` times — "the list length IS the count."
+## An empty list, or any null entry within one (a slot the menu never
+## actually produces — an [+ Add] row only appends once a profile is
+## picked — but `build_bout` itself never trusts its caller to enforce
+## that), is refused with a named `error` — never a crash, matching every
+## other assembly path's "never crash, never silently invent" posture.
+## Returns `{"state": CombatState, "mission": MissionState, "error": ""}`
+## on success, or `{"error": "<reason>"}` (no state/mission keys at all)
+## on refusal.
 static func build_bout(
-	profile_a: BotPreset,
-	count_a: int,
+	profiles_a: Array[BotPreset],
 	playstyle_a: StringName,
-	profile_b: BotPreset,
-	count_b: int,
+	profiles_b: Array[BotPreset],
 	playstyle_b: StringName,
 	map_seed: int
 ) -> Dictionary:
-	if profile_a == null or profile_b == null:
-		return {"error": "both squads need a chosen profile"}
-	if count_a <= 0 or count_b <= 0:
+	if profiles_a.is_empty() or profiles_b.is_empty():
 		return {"error": "both squads need at least one unit"}
+	if profiles_a.any(_is_null) or profiles_b.any(_is_null):
+		return {"error": "every roster entry needs a chosen profile"}
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
@@ -42,10 +44,10 @@ static func build_bout(
 	var spawn_b_cells: Array[Vector2i] = _cells_of_terrain(grid, Enums.TerrainType.SPAWN_B)
 
 	var units: Array[Unit] = []
-	units.append_array(_spawn_squad(profile_a, count_a, playstyle_a, 0, spawn_a_cells))
-	units.append_array(_spawn_squad(profile_b, count_b, playstyle_b, 1, spawn_b_cells))
+	units.append_array(_spawn_squad(profiles_a, playstyle_a, 0, spawn_a_cells))
+	units.append_array(_spawn_squad(profiles_b, playstyle_b, 1, spawn_b_cells))
 	if units.is_empty():
-		return {"error": "neither profile could actually assemble (bad template_id?)"}
+		return {"error": "neither roster could actually assemble (bad template_id?)"}
 
 	var state := CombatState.new(grid, units, rng.randi())
 	state.set_squad_controller(0, Enums.SquadController.AI)
@@ -58,15 +60,16 @@ static func build_bout(
 	return {"state": state, "mission": mission, "error": ""}
 
 
+static func _is_null(profile: BotPreset) -> bool:
+	return profile == null
+
+
 static func _spawn_squad(
-	profile: BotPreset,
-	count: int,
-	playstyle: StringName,
-	squad_id: int,
-	spawn_cells: Array[Vector2i]
+	profiles: Array[BotPreset], playstyle: StringName, squad_id: int, spawn_cells: Array[Vector2i]
 ) -> Array[Unit]:
 	var units: Array[Unit] = []
-	for i in range(count):
+	for i in range(profiles.size()):
+		var profile: BotPreset = profiles[i]
 		var matrix := Matrix.new()
 		matrix.id = StringName("%s_%d" % [profile.preset_name, i])
 		matrix.playstyle = playstyle

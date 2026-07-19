@@ -13,18 +13,38 @@ extends ControlOverlay
 ## headless logic, no parallel spawn path), installs it into the shared
 ## world via `battle.load_battle()`, and REPLACES this overlay with a
 ## `SpectatorOverlay` — a transition, not a persistent mode.
+##
+## taskblock-16 Pass E: each team used to be one profile dropdown plus a
+## count SpinBox (one profile repeated N times). Now each team is an
+## arbitrarily expanding LIST of per-unit entries — no count field at
+## all, "add/remove IS the count." Each entry is its own OptionButton
+## (clicking it reopens the same dropdown to REPLACE that slot); a
+## trailing "+ Add" OptionButton appends a new entry when something other
+## than its own placeholder item is picked; a "[-]" button next to each
+## entry removes exactly that one.
 
-const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER"]
-const DEFAULT_COUNT := 2
+const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER", &"SKIRMISHER", &"MARKSMAN"]
+## Flagged UX default, not a spec literal: a completely empty menu would
+## still work (Start Bout is rejected-not-crashed on an empty roster,
+## same as always), but starting both teams pre-populated keeps "open the
+## menu, hit Start Bout" a one-click smoke test the way the old
+## profile+count default was — add/remove is still the ONLY way to change
+## the roster afterward, this only seeds its starting contents.
+const DEFAULT_STARTING_COUNT := 2
+## "min 5 rows shown for readability" — real entries plus the trailing
+## Add row plus blank spacer rows, never fewer than this many rows tall.
+const MIN_VISIBLE_ROWS := 5
+const ADD_LABEL := "+ Add"
+const ROW_MIN_HEIGHT := 32.0
 
 var battle: BattleScene
 var _profiles_by_family: Dictionary = {}
 var _ordered_presets: Array[BotPreset] = []
 
-var _squad_a_dropdown: OptionButton
-var _squad_b_dropdown: OptionButton
-var _count_a_field: SpinBox
-var _count_b_field: SpinBox
+var _roster_a: Array[BotPreset] = []
+var _roster_b: Array[BotPreset] = []
+var _rows_a: VBoxContainer
+var _rows_b: VBoxContainer
 var _playstyle_a_dropdown: OptionButton
 var _playstyle_b_dropdown: OptionButton
 var _seed_field: LineEdit
@@ -34,7 +54,20 @@ var _error_label: Label
 func setup(p_battle: BattleScene) -> void:
 	battle = p_battle
 	_profiles_by_family = BoutSetup.group_by_family(DataLibrary.presets_pool())
+	_build_ordered_presets()
+	for i in range(DEFAULT_STARTING_COUNT):
+		if not _ordered_presets.is_empty():
+			_roster_a.append(_ordered_presets[0])
+			_roster_b.append(_ordered_presets[0])
 	_build_ui()
+
+
+func _build_ordered_presets() -> void:
+	var families: Array = _profiles_by_family.keys()
+	families.sort()
+	for family: StringName in families:
+		for preset: BotPreset in _profiles_by_family[family]:
+			_ordered_presets.append(preset)
 
 
 func _build_ui() -> void:
@@ -61,10 +94,8 @@ func _build_ui() -> void:
 	var squad_a_label := Label.new()
 	squad_a_label.text = "Squad A"
 	squad_a.add_child(squad_a_label)
-	_squad_a_dropdown = _profile_dropdown()
-	squad_a.add_child(_squad_a_dropdown)
-	_count_a_field = _count_field()
-	squad_a.add_child(_count_a_field)
+	_rows_a = VBoxContainer.new()
+	squad_a.add_child(_rows_a)
 	_playstyle_a_dropdown = _playstyle_dropdown()
 	squad_a.add_child(_playstyle_a_dropdown)
 
@@ -73,10 +104,8 @@ func _build_ui() -> void:
 	var squad_b_label := Label.new()
 	squad_b_label.text = "Squad B"
 	squad_b.add_child(squad_b_label)
-	_squad_b_dropdown = _profile_dropdown()
-	squad_b.add_child(_squad_b_dropdown)
-	_count_b_field = _count_field()
-	squad_b.add_child(_count_b_field)
+	_rows_b = VBoxContainer.new()
+	squad_b.add_child(_rows_b)
 	_playstyle_b_dropdown = _playstyle_dropdown()
 	squad_b.add_child(_playstyle_b_dropdown)
 	# "COVER_SEEKER" — the second entry — as squad B's own default, so a
@@ -101,38 +130,103 @@ func _build_ui() -> void:
 	_error_label.modulate = HulkTheme.WARN
 	layout.add_child(_error_label)
 
+	_rebuild_team(0)
+	_rebuild_team(1)
 
-## "Profile dropdowns list the .tres profiles (grouped by profile_family,
-## variants shown under their base label)." A plain `OptionButton` has no
-## native group-heading support — each entry's own text carries the
-## grouping instead ("Family — Variant"), keeping `_ordered_presets`'s
-## index aligned with the dropdown's `selected` index one-to-one.
-func _profile_dropdown() -> OptionButton:
+
+func _roster(squad_id: int) -> Array[BotPreset]:
+	return _roster_a if squad_id == 0 else _roster_b
+
+
+func _rows(squad_id: int) -> VBoxContainer:
+	return _rows_a if squad_id == 0 else _rows_b
+
+
+## "Adding appends a unit" — always to the end of that team's own list.
+func _add_to_squad(squad_id: int, preset: BotPreset) -> void:
+	_roster(squad_id).append(preset)
+	_rebuild_team(squad_id)
+
+
+## "Removing drops exactly that entry" — every other entry keeps its own
+## position; nothing shifts identity, only index.
+func _remove_from_squad(squad_id: int, index: int) -> void:
+	_roster(squad_id).remove_at(index)
+	_rebuild_team(squad_id)
+
+
+## "Clicking a name replaces it" — same slot, new profile.
+func _replace_in_squad(squad_id: int, index: int, preset: BotPreset) -> void:
+	_roster(squad_id)[index] = preset
+	_rebuild_team(squad_id)
+
+
+func _preset_label(preset: BotPreset) -> String:
+	return (
+		"%s — %s" % [preset.profile_family, preset.variant_label]
+		if preset.variant_label != ""
+		else String(preset.profile_family if preset.profile_family != &"" else preset.preset_name)
+	)
+
+
+## One OptionButton per already-added roster entry (pre-selected to that
+## entry's own current profile — picking a different item REPLACES it),
+## plus a "[-]" to remove it outright.
+func _entry_row(squad_id: int, index: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+
 	var dropdown := OptionButton.new()
-	if _ordered_presets.is_empty():
-		var families: Array = _profiles_by_family.keys()
-		families.sort()
-		for family: StringName in families:
-			for preset: BotPreset in _profiles_by_family[family]:
-				_ordered_presets.append(preset)
 	for preset: BotPreset in _ordered_presets:
-		var label: String = (
-			"%s — %s" % [preset.profile_family, preset.variant_label]
-			if preset.variant_label != ""
-			else String(
-				preset.profile_family if preset.profile_family != &"" else preset.preset_name
-			)
-		)
-		dropdown.add_item(label)
+		dropdown.add_item(_preset_label(preset))
+	dropdown.selected = _ordered_presets.find(_roster(squad_id)[index])
+	dropdown.item_selected.connect(
+		func(item_index: int) -> void:
+			_replace_in_squad(squad_id, index, _ordered_presets[item_index])
+	)
+	row.add_child(dropdown)
+
+	var remove_button := Button.new()
+	remove_button.text = "-"
+	remove_button.pressed.connect(_remove_from_squad.bind(squad_id, index))
+	row.add_child(remove_button)
+
+	return row
+
+
+## Item 0 is a disabled placeholder carrying the "+ Add" label itself —
+## picking any REAL item (index > 0) appends that preset and the row
+## rebuilds fresh (a new, once-again-unselected Add row at the bottom).
+func _add_row(squad_id: int) -> OptionButton:
+	var dropdown := OptionButton.new()
+	dropdown.add_item(ADD_LABEL)
+	dropdown.set_item_disabled(0, true)
+	for preset: BotPreset in _ordered_presets:
+		dropdown.add_item(_preset_label(preset))
+	dropdown.selected = 0
+	dropdown.item_selected.connect(
+		func(item_index: int) -> void:
+			if item_index > 0:
+				_add_to_squad(squad_id, _ordered_presets[item_index - 1])
+	)
 	return dropdown
 
 
-func _count_field() -> SpinBox:
-	var field := SpinBox.new()
-	field.min_value = 1
-	field.max_value = 8
-	field.value = DEFAULT_COUNT
-	return field
+func _rebuild_team(squad_id: int) -> void:
+	var rows: VBoxContainer = _rows(squad_id)
+	for child: Node in rows.get_children():
+		rows.remove_child(child)
+		child.queue_free()
+
+	var roster: Array[BotPreset] = _roster(squad_id)
+	for index in range(roster.size()):
+		rows.add_child(_entry_row(squad_id, index))
+	rows.add_child(_add_row(squad_id))
+
+	var padding: int = maxi(0, MIN_VISIBLE_ROWS - (roster.size() + 1))
+	for i in range(padding):
+		var spacer := Control.new()
+		spacer.custom_minimum_size.y = ROW_MIN_HEIGHT
+		rows.add_child(spacer)
 
 
 func _playstyle_dropdown() -> OptionButton:
@@ -142,20 +236,12 @@ func _playstyle_dropdown() -> OptionButton:
 	return dropdown
 
 
-func _selected_preset(dropdown: OptionButton) -> BotPreset:
-	if dropdown.selected < 0 or dropdown.selected >= _ordered_presets.size():
-		return null
-	return _ordered_presets[dropdown.selected]
-
-
 func _on_start_bout_pressed() -> void:
 	var map_seed: int = int(_seed_field.text) if _seed_field.text.is_valid_int() else 0
 	var result: Dictionary = BoutSetup.build_bout(
-		_selected_preset(_squad_a_dropdown),
-		int(_count_a_field.value),
+		_roster_a,
 		PLAYSTYLES[_playstyle_a_dropdown.selected],
-		_selected_preset(_squad_b_dropdown),
-		int(_count_b_field.value),
+		_roster_b,
 		PLAYSTYLES[_playstyle_b_dropdown.selected],
 		map_seed
 	)

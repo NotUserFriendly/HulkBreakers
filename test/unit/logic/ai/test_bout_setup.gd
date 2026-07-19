@@ -19,11 +19,21 @@ func _reference_profiles() -> Array:
 	return [base, variant]
 
 
+## taskblock-16 Pass E: a squad is now a LIST of per-unit profiles — this
+## helper stands in for "add the same profile twice," the common case a
+## list-of-2 covers for tests that don't care about mixed rosters.
+func _roster(profile: BotPreset, count: int) -> Array[BotPreset]:
+	var roster: Array[BotPreset] = []
+	for i in range(count):
+		roster.append(profile)
+	return roster
+
+
 func test_a_valid_bout_builds_a_real_state_and_mission() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		profiles[0], 2, &"AGGRESSIVE", profiles[1], 2, &"COVER_SEEKER", 555
+		_roster(profiles[0], 2), &"AGGRESSIVE", _roster(profiles[1], 2), &"COVER_SEEKER", 555
 	)
 
 	assert_eq(result.error, "")
@@ -36,11 +46,39 @@ func test_a_valid_bout_builds_a_real_state_and_mission() -> void:
 	assert_eq(state.controller_for(1), Enums.SquadController.AI)
 
 
+## taskblock-16 Pass E: "the built bout's roster equals the list" — a
+## squad built from a MIXED roster (two distinct profiles at two
+## distinct index positions, not one profile repeated) must thread each
+## index's own profile through to that index's own unit, not silently
+## reuse `profiles[0]` for the whole squad.
+func test_the_built_roster_equals_a_mixed_list_of_distinct_profiles() -> void:
+	var profiles: Array = _reference_profiles()
+	var mixed: Array[BotPreset] = [profiles[0], profiles[1]]
+
+	var result: Dictionary = BoutSetup.build_bout(
+		mixed, &"AGGRESSIVE", _roster(profiles[0], 1), &"AGGRESSIVE", 321
+	)
+
+	assert_eq(result.error, "")
+	var squad_a: Array[Unit] = result.state.units.filter(
+		func(u: Unit) -> bool: return u.squad_id == 0
+	)
+	assert_eq(squad_a.size(), 2)
+	for i in range(squad_a.size()):
+		assert_true(
+			String(squad_a[i].matrix.id).begins_with(String(mixed[i].preset_name)),
+			(
+				"unit %d must be assembled from its own list index's profile (%s), not always index 0"
+				% [i, mixed[i].preset_name]
+			)
+		)
+
+
 func test_squad_units_carry_their_own_assigned_playstyle() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		profiles[0], 2, &"AGGRESSIVE", profiles[1], 1, &"COVER_SEEKER", 9
+		_roster(profiles[0], 2), &"AGGRESSIVE", _roster(profiles[1], 1), &"COVER_SEEKER", 9
 	)
 
 	var state: CombatState = result.state
@@ -49,12 +87,13 @@ func test_squad_units_carry_their_own_assigned_playstyle() -> void:
 		assert_eq(unit.matrix.playstyle, expected, "unit %s carries the wrong playstyle" % unit.id)
 
 
-## "An invalid setup (empty squad) is rejected, not crashed."
-func test_a_zero_count_squad_is_rejected_not_crashed() -> void:
+## "An invalid setup (empty team) is rejected, not crashed" — no count
+## field left to be zero; the roster list itself is just empty.
+func test_an_empty_roster_is_rejected_not_crashed() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		profiles[0], 0, &"AGGRESSIVE", profiles[1], 2, &"AGGRESSIVE", 1
+		[] as Array[BotPreset], &"AGGRESSIVE", _roster(profiles[1], 2), &"AGGRESSIVE", 1
 	)
 
 	assert_ne(result.error, "")
@@ -65,7 +104,7 @@ func test_a_missing_profile_is_rejected_not_crashed() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		null, 2, &"AGGRESSIVE", profiles[1], 2, &"AGGRESSIVE", 1
+		[null] as Array[BotPreset], &"AGGRESSIVE", _roster(profiles[1], 2), &"AGGRESSIVE", 1
 	)
 
 	assert_ne(result.error, "")
@@ -78,10 +117,10 @@ func test_the_same_profiles_counts_and_seed_produce_an_equivalent_bout() -> void
 	var profiles: Array = _reference_profiles()
 
 	var first: Dictionary = BoutSetup.build_bout(
-		profiles[0], 2, &"AGGRESSIVE", profiles[1], 2, &"AGGRESSIVE", 777
+		_roster(profiles[0], 2), &"AGGRESSIVE", _roster(profiles[1], 2), &"AGGRESSIVE", 777
 	)
 	var second: Dictionary = BoutSetup.build_bout(
-		profiles[0], 2, &"AGGRESSIVE", profiles[1], 2, &"AGGRESSIVE", 777
+		_roster(profiles[0], 2), &"AGGRESSIVE", _roster(profiles[1], 2), &"AGGRESSIVE", 777
 	)
 
 	var first_state: CombatState = first.state
