@@ -76,11 +76,28 @@ func setup(p_battle: BattleScene) -> void:
 ## Missing presets (a data set without the Combat Tester bots) are
 ## skipped, never crashed on — same "never crash, never silently invent"
 ## posture every other assembly path in this codebase already has.
+##
+## Looks the preset up in `_ordered_presets`, never a fresh
+## `DataLibrary.get_preset()` call: every DataLibrary accessor hands back
+## a brand-new `.duplicate(true)` each time, so a separately-fetched
+## instance is never `==` (reference equality) to the one `_entry_row`'s
+## own `_ordered_presets.find(entry.profile)` is searching for — that
+## mismatch left the dropdown's `.selected` at -1 (nothing found, nothing
+## shown) even though the roster entry's DATA was completely correct.
+## Reusing the SAME instance already in `_ordered_presets` is what makes
+## the dropdown able to find itself.
 func _seed_default_roster(roster: Array[BoutRosterEntry]) -> void:
 	for pair: Array in DEFAULT_ROSTER:
-		var preset: BotPreset = DataLibrary.get_preset(pair[0])
+		var preset: BotPreset = _find_ordered_preset(pair[0])
 		if preset != null:
 			roster.append(BoutRosterEntry.new(preset, pair[1]))
+
+
+func _find_ordered_preset(preset_name: StringName) -> BotPreset:
+	for preset: BotPreset in _ordered_presets:
+		if preset.preset_name == String(preset_name):
+			return preset
+	return null
 
 
 func _build_ordered_presets() -> void:
