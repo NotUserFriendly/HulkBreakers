@@ -126,9 +126,12 @@ func test_a_live_tracer_is_drawn_at_the_live_render_priority() -> void:
 	assert_eq(material.render_priority, ResolutionPlayer.TRACER_LIVE_RENDER_PRIORITY)
 
 
-## "Tracers half opacity, and red" — the color/alpha a live shot actually
-## fades TO and persists at, not the live flash's own bright color, and
-## it must drop out of the live render-priority tier once retired.
+## "A dark, faint red" — the color/alpha a live shot actually fades TO and
+## persists at, not the live flash's own bright color, and it must drop
+## out of the live render-priority tier once retired. Checks the shape of
+## `TRACER_DULL_COLOR` (a red hue, and translucent — never the live
+## flash's own bright, opaque color) rather than hand-duplicating its
+## exact numbers, which already live in the one constant this reads.
 func test_a_retired_tracer_is_translucent_red_and_drops_to_the_retired_priority() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
@@ -140,11 +143,15 @@ func test_a_retired_tracer_is_translucent_red_and_drops_to_the_retired_priority(
 
 	var tracer: MeshInstance3D = player._tracer_ring[0]
 	var material: StandardMaterial3D = (tracer.mesh as BoxMesh).material
-	assert_eq(material.albedo_color, ResolutionPlayer.TRACER_DULL_COLOR)
-	assert_almost_eq(material.albedo_color.a, 0.5, 0.0001, "half opacity")
-	assert_almost_eq(material.albedo_color.r, 1.0, 0.0001, "red")
-	assert_almost_eq(material.albedo_color.g, 0.0, 0.0001, "red")
-	assert_almost_eq(material.albedo_color.b, 0.0, 0.0001, "red")
+	var color: Color = material.albedo_color
+	assert_eq(color, ResolutionPlayer.TRACER_DULL_COLOR)
+	assert_lt(color.a, 1.0, "must be translucent, not opaque")
+	assert_gt(color.r, 0.0, "a red hue")
+	assert_almost_eq(color.g, 0.0, 0.0001, "a red hue, not a mix with green")
+	assert_almost_eq(color.b, 0.0, 0.0001, "a red hue, not a mix with blue")
+	assert_lt(
+		color.r, ResolutionPlayer.TRACER_COLOR.r, "darker than the live flash's own bright color"
+	)
 	assert_eq(material.render_priority, ResolutionPlayer.TRACER_RETIRED_RENDER_PRIORITY)
 
 
