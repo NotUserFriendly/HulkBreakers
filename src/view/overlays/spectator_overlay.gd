@@ -15,25 +15,40 @@ extends ControlOverlay
 ## in outcome to today's BoutRunner bout for the same seed" true BY
 ## CONSTRUCTION: this overlay IS a `BoutRunner`, paced by a view instead of
 ## a tight loop.
+##
+## taskblock-15 Pass B1: "during spectated playback, the next cue waits
+## for the current animation to finish." A fixed-interval Timer can't give
+## that guarantee (a real animated ResolutionPlayer.play() can legitimately
+## outlast one tick, and a Timer keeps ticking underneath regardless,
+## risking an overlapping/reentrant step) — play() now drives a
+## self-chaining async loop instead: step, AWAIT that step's own full
+## animated playback, then wait the inter-turn gap, repeat. Pause/Step/
+## Speed still read exactly as before; only the internal driving mechanism
+## changed.
 
-## Seconds between steps at 1x speed — watching is the whole point (docs:
-## "it must be watchable, not a blur"), so this is deliberately paced, not
-## a tight loop. Flagged, not tuned.
+## Seconds between turns at 1x speed, on TOP of whatever that turn's own
+## ResolutionPlayer.play() call already took (its animation is real time,
+## not instant) — watching is the whole point (docs: "it must be
+## watchable, not a blur"), so this is deliberately paced. Flagged, not
+## tuned.
 const BASE_STEP_INTERVAL := 1.2
 
 var battle: BattleScene
 var runner: BoutRunner
+var resolution_player: ResolutionPlayer
 var log_label: RichTextLabel
 var log_sink: UISink
 
 var playing: bool = false
 var speed: float = 1.0
 
-var _timer: Timer
 var _play_button: Button
 var _step_button: Button
 var _speed_button: Button
 var _status_label: Label
+var _slide_ms_field: SpinBox
+var _bullet_ms_field: SpinBox
+var _tracer_count_field: SpinBox
 
 
 ## `battle.combat_state`/`battle.mission` are already the freshly-built
@@ -45,6 +60,9 @@ var _status_label: Label
 func setup(p_battle: BattleScene) -> void:
 	battle = p_battle
 	runner = BoutRunner.new(battle.combat_state, battle.mission)
+	resolution_player = ResolutionPlayer.new()
+	add_child(resolution_player)
+	resolution_player.setup(battle)
 	_build_ui()
 	battle.combat_state.combat_log.add_sink(log_sink)
 	_refresh_status()
@@ -58,39 +76,46 @@ func teardown() -> void:
 
 ## docs: "play / pause / step-one-action / speed (1x, 2x, 4x)."
 func play() -> void:
-	if runner == null or runner.finished:
+	if runner == null or runner.finished or playing:
 		return
 	playing = true
-	_timer.wait_time = BASE_STEP_INTERVAL / speed
-	_timer.start()
 	_refresh_status()
+	_run_while_playing()
 
 
 func pause() -> void:
 	playing = false
-	if _timer != null:
-		_timer.stop()
 	_refresh_status()
 
 
 ## "step-one-action" — this bout's own step granularity is one unit's
 ## whole turn (BoutRunner's own header explains why finer isn't built
 ## here); pausing first mirrors a real pacing control ("step" implies not
-## simultaneously auto-playing).
+## simultaneously auto-playing). Awaited, per B1: a caller (a test, or the
+## Step button's own handler) that cares when the animation has actually
+## finished can wait on it; one that doesn't (a plain button press) just
+## lets it run.
 func step_once() -> void:
 	pause()
-	_advance()
+	await _advance()
 
 
 func set_speed(multiplier: float) -> void:
 	speed = multiplier
-	if playing:
-		_timer.wait_time = BASE_STEP_INTERVAL / speed
+	resolution_player.speed = multiplier
 	_refresh_status()
 
 
-func _on_timer_timeout() -> void:
-	_advance()
+## B1's own gating loop: step, await that step's FULL animated playback,
+## wait the inter-turn gap (scaled by speed, same as every other duration
+## here), repeat — until paused, the bout finishes, or this overlay is
+## torn down (`runner`/`battle` freed out from under it).
+func _run_while_playing() -> void:
+	while playing and runner != null and not runner.finished:
+		await _advance()
+		if not playing or runner == null or runner.finished:
+			break
+		await get_tree().create_timer(BASE_STEP_INTERVAL / speed).timeout
 
 
 func _advance() -> void:
@@ -103,10 +128,13 @@ func _advance() -> void:
 		# "the camera follows the acting unit" (docs) — a plain center_on is
 		# intentionally simpler than ease_to_attack_framing (which needs a
 		# live shooter+target pair TacticsController's own aim flow already
-		# tracks; a bout has no such pairing to reuse).
+		# tracks; a bout has no such pairing to reuse). Not itself animated
+		# (Pass B's own four animations are slide/facing/shot/inter-shot
+		# break — camera easing isn't one of them).
 		battle.camera_rig.center_on(
 			Vector3(runner.last_unit.cell.x, 0.0, runner.last_unit.cell.y) * UnitGeometry.CELL_SIZE
 		)
+	await resolution_player.play(runner.last_events)
 	_refresh_status()
 	if runner.finished:
 		pause()
@@ -126,11 +154,6 @@ func _refresh_status() -> void:
 
 
 func _build_ui() -> void:
-	_timer = Timer.new()
-	_timer.wait_time = BASE_STEP_INTERVAL
-	_timer.timeout.connect(_on_timer_timeout)
-	add_child(_timer)
-
 	var ui := CanvasLayer.new()
 	add_child(ui)
 	var theme_root := Control.new()
@@ -163,6 +186,25 @@ func _build_ui() -> void:
 	_status_label = Label.new()
 	controls.add_child(_status_label)
 
+	# taskblock-15 Pass B4: "editable fields at the top of the spectator
+	# overlay... temporary debug knobs" — write straight into
+	# resolution_player's own public fields, no intermediate state here.
+	var tunables := HBoxContainer.new()
+	tunables.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	tunables.position = Vector2(16, 48)
+	tunables.mouse_filter = Control.MOUSE_FILTER_STOP
+	theme_root.add_child(tunables)
+
+	_slide_ms_field = _tunable_field(
+		tunables, "Slide Speed (ms/cell):", resolution_player.slide_ms, _on_slide_ms_changed
+	)
+	_bullet_ms_field = _tunable_field(
+		tunables, "Bullet Timing (ms):", resolution_player.bullet_ms, _on_bullet_ms_changed
+	)
+	_tracer_count_field = _tunable_field(
+		tunables, "Tracers:", float(resolution_player.tracer_count), _on_tracer_count_changed
+	)
+
 	log_label = RichTextLabel.new()
 	log_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	log_label.position = Vector2(16, -216)
@@ -172,6 +214,33 @@ func _build_ui() -> void:
 	log_sink = UISink.new(log_label)
 
 	_refresh_status()
+
+
+func _tunable_field(
+	parent: HBoxContainer, label_text: String, initial: float, on_changed: Callable
+) -> SpinBox:
+	var label := Label.new()
+	label.text = label_text
+	parent.add_child(label)
+	var field := SpinBox.new()
+	field.min_value = 0
+	field.max_value = 10000
+	field.value = initial
+	field.value_changed.connect(on_changed)
+	parent.add_child(field)
+	return field
+
+
+func _on_slide_ms_changed(value: float) -> void:
+	resolution_player.slide_ms = value
+
+
+func _on_bullet_ms_changed(value: float) -> void:
+	resolution_player.bullet_ms = value
+
+
+func _on_tracer_count_changed(value: float) -> void:
+	resolution_player.tracer_count = int(value)
 
 
 func _on_play_button_pressed() -> void:

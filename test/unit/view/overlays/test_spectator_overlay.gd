@@ -1,18 +1,24 @@
 extends GutTest
 
-## taskblock-14 Pass C / taskblock-15 Pass A: SpectatorOverlay — the
+## taskblock-14 Pass C / taskblock-15 Pass A/B: SpectatorOverlay — the
 ## structural/state-machine half of the watch loop that can actually be
 ## asserted headlessly (play/pause/step/speed transitions). The
-## moment-to-moment visual result (camera framing, board mesh) is not
-## something a headless test can read back meaningfully; those were
-## confirmed by a single live check, per this project's own "you cannot
-## see the game — read the real node back" discipline applied at the
-## structural level instead.
+## moment-to-moment visual result (camera framing, board mesh, real
+## animated playback) is not something a headless test can read back
+## meaningfully; those were confirmed by a single live check, per this
+## project's own "you cannot see the game — read the real node back"
+## discipline applied at the structural level instead.
 ##
 ## taskblock-15 Pass A: this overlay no longer builds its own world
 ## (BoutView used to) — every test below builds a real BattleScene,
 ## loads a bout into it, then swaps to SpectatorOverlay, exactly the path
 ## GenerateBoutOverlay itself uses.
+##
+## taskblock-15 Pass B: step_once()/play() now await a real (if brief)
+## ResolutionPlayer.play() call per turn — `_spectate()` zeroes every
+## animation duration by default so the loops below (some running up to
+## 500 steps) stay fast; ResolutionPlayer's own animation timing is
+## covered directly in test_resolution_player.gd, not re-tested here.
 
 
 func _armed_unit(
@@ -75,14 +81,20 @@ func _bout(map_seed: int = 11) -> Dictionary:
 ## trigger ITS OWN battle_loaded reactivity and auto-resolve the whole
 ## bout via advance_ai_turns() before this function ever got to install
 ## SpectatorOverlay, exactly the hazard GenerateBoutOverlay itself avoids
-## by never being the SquadControlOverlay in the first place.
+## by never being the SquadControlOverlay in the first place. Every
+## animation duration is zeroed (taskblock-15 Pass B) so step_once()/play()
+## await near-instantly — this file tests PACING, not playback timing.
 func _spectate(built: Dictionary) -> SpectatorOverlay:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(built.state, built.mission)
 	battle.set_overlay(SpectatorOverlay.new())
-	return battle.overlay as SpectatorOverlay
+	var overlay: SpectatorOverlay = battle.overlay as SpectatorOverlay
+	overlay.resolution_player.slide_ms = 0.0
+	overlay.resolution_player.bullet_ms = 0.0
+	overlay.resolution_player.tracer_count = 0
+	return overlay
 
 
 func test_setup_wires_a_bout_runner_against_the_loaded_battle() -> void:
@@ -92,16 +104,14 @@ func test_setup_wires_a_bout_runner_against_the_loaded_battle() -> void:
 	assert_eq(overlay.runner.state, overlay.battle.combat_state)
 
 
-func test_play_starts_the_timer_and_pause_stops_it() -> void:
+func test_play_sets_playing_and_pause_clears_it() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 
 	overlay.play()
 	assert_true(overlay.playing)
-	assert_false(overlay._timer.is_stopped())
 
 	overlay.pause()
 	assert_false(overlay.playing)
-	assert_true(overlay._timer.is_stopped())
 
 
 ## "Step-one-action" (this bout's own granularity: one unit's whole
@@ -110,20 +120,22 @@ func test_play_starts_the_timer_and_pause_stops_it() -> void:
 func test_step_once_advances_exactly_one_turn_and_stays_paused() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 
-	overlay.step_once()
+	await overlay.step_once()
 
 	assert_eq(overlay.runner.turns_taken, 1)
 	assert_false(overlay.playing)
-	assert_true(overlay._timer.is_stopped())
 
 
-## "Speed (1x, 2x, 4x)" — three fixed steps, cycling back to 1x.
+## "Speed (1x, 2x, 4x)" — three fixed steps, cycling back to 1x. Also
+## keeps ResolutionPlayer's own `speed` field in sync (B2: "pacing speed
+## multiplies all durations").
 func test_speed_cycles_through_the_three_fixed_steps() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 
 	assert_almost_eq(overlay.speed, 1.0, 0.0001)
 	overlay._on_speed_button_pressed()
 	assert_almost_eq(overlay.speed, 2.0, 0.0001)
+	assert_almost_eq(overlay.resolution_player.speed, 2.0, 0.0001)
 	overlay._on_speed_button_pressed()
 	assert_almost_eq(overlay.speed, 4.0, 0.0001)
 	overlay._on_speed_button_pressed()
@@ -133,10 +145,10 @@ func test_speed_cycles_through_the_three_fixed_steps() -> void:
 ## "Pause/step/speed don't alter the outcome, only its pacing" —
 ## verified at the BoutRunner level already (test_bout_runner.gd); this
 ## confirms the overlay's own pacing controls don't touch runner state
-## beyond what step()/timer cadence already do: each step_once() call
-## advances turns_taken by exactly one, never zero or more than one,
-## regardless of speed (this fixture's own combat can finish before 3
-## calls — set_speed must not change THAT either).
+## beyond what step() itself already does: each step_once() call advances
+## turns_taken by exactly one, never zero or more than one, regardless of
+## speed (this fixture's own combat can finish before 3 calls — set_speed
+## must not change THAT either).
 func test_a_faster_speed_never_skips_or_repeats_a_single_step() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 	overlay.set_speed(4.0)
@@ -145,7 +157,7 @@ func test_a_faster_speed_never_skips_or_repeats_a_single_step() -> void:
 		if overlay.runner.finished:
 			break
 		var before: int = overlay.runner.turns_taken
-		overlay.step_once()
+		await overlay.step_once()
 		assert_eq(
 			overlay.runner.turns_taken, before + 1, "step %d must advance by exactly one turn" % i
 		)
@@ -156,12 +168,26 @@ func test_the_bout_finishing_stops_playback() -> void:
 
 	var guard := 0
 	while not overlay.runner.finished and guard < 500:
-		overlay.step_once()
+		await overlay.step_once()
 		guard += 1
 
 	assert_true(overlay.runner.finished)
 	assert_false(overlay.playing)
-	assert_true(overlay._timer.is_stopped())
+
+
+## taskblock-15 Pass B4: "editable fields at the top of the spectator
+## overlay" — writing into the SpinBox fields must reach
+## resolution_player's own real fields, not a local copy.
+func test_the_dev_tunable_fields_write_directly_into_resolution_player() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	overlay._slide_ms_field.value = 50.0
+	overlay._bullet_ms_field.value = 400.0
+	overlay._tracer_count_field.value = 5.0
+
+	assert_almost_eq(overlay.resolution_player.slide_ms, 50.0, 0.0001)
+	assert_almost_eq(overlay.resolution_player.bullet_ms, 400.0, 0.0001)
+	assert_eq(overlay.resolution_player.tracer_count, 5)
 
 
 ## taskblock-15 Pass A's own TESTS list: "a spectator battle is identical
@@ -181,7 +207,7 @@ func test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed() -> voi
 	var overlay: SpectatorOverlay = _spectate(spectated)
 	var guard := 0
 	while not overlay.runner.finished and guard < 500:
-		overlay.step_once()
+		await overlay.step_once()
 		guard += 1
 
 	assert_eq(spectated.mission.outcome, bare.mission.outcome)

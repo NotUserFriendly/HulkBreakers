@@ -55,6 +55,16 @@ var finished: bool = false
 ## narrate after each step. Null/empty before the first `step()` call.
 var last_unit: Unit = null
 var last_outcome: Dictionary = {}
+## taskblock-15 Pass B: exactly the events THIS step's own resolve_until
+## call emitted — a temporary MemorySink wired and torn down around it,
+## the same pattern TacticsController.end_turn() already uses to hand a
+## view layer "what just happened" for cosmetic playback. A pure data
+## capture, symmetrical with last_unit/last_outcome above — this changes
+## nothing about what step() computes or how fast it runs (B0: "never wire
+## animation TIMING into BoutRunner or any headless path"); it only
+## remembers the same events every other sink on `state.combat_log`
+## already saw.
+var last_events: Array[LogEvent] = []
 
 ## `Callable(unit: Unit) -> bool` — "does someone other than the AI drive
 ## this unit." An invalid Callable (the default) falls back to today's
@@ -104,7 +114,11 @@ func step() -> bool:
 	var playstyle: StringName = unit.matrix.playstyle if unit.matrix != null else &"AGGRESSIVE"
 	var queue: ActionQueue = UnitAI.plan_turn(unit, state, mission, playstyle)
 	last_unit = unit
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
 	last_outcome = state.resolve_until(queue)
+	state.combat_log.remove_sink(sink)
+	last_events = sink.events
 	turns_taken += 1
 
 	if mission.outcome != Enums.MissionOutcome.UNDECIDED:
