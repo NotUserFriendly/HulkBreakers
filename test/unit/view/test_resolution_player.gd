@@ -230,6 +230,37 @@ func test_a_zero_duration_facing_change_snaps_and_remembers_the_new_orientation(
 	assert_almost_eq(player._display_orientation[attacker.id], 1.5, 0.0001)
 
 
+## A real, reported bug — a deeper root cause of "jump to target then
+## back, then slide": a unit whose own turn was `[faced(X), move,
+## faced(Y final)]` (turn to face X, walk, turn to face Y) used to have
+## its FIRST faced(X) event read `_display_orientation.get(id, X)` — X
+## itself, the fallback, since nothing had ever WRITTEN the dict yet —
+## and silently, instantly "snap" with no visible transition at all (its
+## own "from" trivially equalled its own target). The SLIDE that followed
+## then read that same now-stale dict value and rendered the WHOLE walk
+## turned to X, producing a sudden, simultaneous position-and-rotation
+## pop the instant the slide started. _prime() must never let a facing
+## event's own fallback default become the value everything downstream
+## reads — it must seed the unit's own current (final) orientation up
+## front, regardless of what any individual event's own target happens to
+## be.
+func test_prime_never_uses_a_facing_events_own_target_as_its_fallback_default() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	attacker.orientation = 2.5
+	var events: Array[LogEvent] = [_faced_event(attacker, 1.0)]
+
+	player._prime(events)
+
+	assert_almost_eq(
+		player._display_orientation[attacker.id],
+		2.5,
+		0.0001,
+		"priming must default to the unit's own current orientation, never the event's own target"
+	)
+
+
 ## A real, reported bug: a plain rotation around the VIEW's own local
 ## origin (world origin) swings a unit that isn't standing on cell (0,0)
 ## through a huge, wrong arc instead of turning in place ("fly off" /
