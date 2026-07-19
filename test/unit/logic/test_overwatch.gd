@@ -316,3 +316,123 @@ func test_would_trigger_at_ignores_the_dead() -> void:
 	overwatcher.overwatch_weapon_id = &"pistol"
 
 	assert_eq(Overwatch.would_trigger_at(state, mover, mover.cell), [] as Array[Unit])
+
+
+## taskblock-19 Pass D: "reconcile to one value; use 30" — the visible-
+## overwatch pie slice's own fixed arc IS the trigger arc now, not a
+## lookalike drawn to a different number.
+func test_arc_deg_is_reconciled_to_30() -> void:
+	assert_almost_eq(Overwatch.ARC_DEG, 30.0, 0.0001)
+
+
+## The actual mechanical effect of the reconciliation, not just the
+## constant: facing 0.0 (world +Y) at (0,0), a mover at (3,4) sits ~36.87
+## degrees off dead-ahead — inside the OLD 45-degree arc, outside the NEW
+## 30-degree one. Proves the trigger itself narrowed, not just the number.
+func test_a_cell_between_30_and_45_degrees_no_longer_triggers() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(3, 4), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	assert_eq(Overwatch.would_trigger_at(state, mover, mover.cell), [] as Array[Unit])
+
+
+## A cell well inside the narrowed 30-degree arc must still trigger —
+## bounds the change so it isn't silently blocking everything.
+func test_a_cell_well_inside_30_degrees_still_triggers() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(1, 5), 1)  # ~11.3 degrees off
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	assert_eq(Overwatch.would_trigger_at(state, mover, mover.cell), [overwatcher])
+
+
+## taskblock-19 Pass D: `arc_cells` is the pie slice's own data source —
+## every cell it returns must actually pass `would_trigger_at`, and every
+## in-range cell that passes `would_trigger_at` must appear in its output.
+## Checked exhaustively over the whole grid, not spot-checked, since a
+## lookalike wedge silently disagreeing with the mechanic is exactly the
+## bug this pass exists to prevent.
+func test_arc_cells_matches_would_trigger_at_exhaustively() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(5, 5), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(0, 0), 1)
+	var grid := Grid.new(11, 11)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	var arc: Array[Vector2i] = Overwatch.arc_cells(state, overwatcher, mover)
+	var expected: Array[Vector2i] = []
+	for x in range(11):
+		for y in range(11):
+			var cell := Vector2i(x, y)
+			if cell == overwatcher.cell:
+				continue
+			if Overwatch.would_trigger_at(state, mover, cell).has(overwatcher):
+				expected.append(cell)
+
+	assert_gt(expected.size(), 0, "sanity: the fixture must threaten at least one cell")
+	assert_eq(arc.size(), expected.size())
+	for cell: Vector2i in expected:
+		assert_true(cell in arc, "arc_cells must include every cell would_trigger_at agrees on")
+
+
+func test_arc_cells_is_empty_when_the_overwatcher_is_unarmed() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(5, 5), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(0, 0), 1)
+	var grid := Grid.new(11, 11)
+	var state := CombatState.new(grid, [overwatcher, mover])
+
+	assert_eq(Overwatch.arc_cells(state, overwatcher, mover), [] as Array[Vector2i])
+
+
+## taskblock-19 Pass D: `all_threatened_cells` unions across every armed
+## overwatcher on the board — two overwatchers threatening non-overlapping
+## cells must both contribute, and a unit never threatens itself.
+func test_all_threatened_cells_unions_across_every_armed_overwatcher() -> void:
+	var mover: Unit = _make_mover(Vector2i(5, 5), 1)
+	var built_a: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher_a: Unit = built_a.unit
+	overwatcher_a.orientation = BodyProjector.orientation_for(
+		Vector2(mover.cell - overwatcher_a.cell)
+	)
+	var built_b: Dictionary = _make_overwatcher(Vector2i(10, 0), 0.0, 2)
+	var overwatcher_b: Unit = built_b.unit
+	overwatcher_b.orientation = BodyProjector.orientation_for(
+		Vector2(mover.cell - overwatcher_b.cell)
+	)
+	var grid := Grid.new(11, 11)
+	var state := CombatState.new(grid, [overwatcher_a, overwatcher_b, mover])
+	overwatcher_a.overwatch_weapon_id = &"pistol"
+	overwatcher_b.overwatch_weapon_id = &"pistol"
+
+	var arc_a: Array[Vector2i] = Overwatch.arc_cells(state, overwatcher_a, mover)
+	var arc_b: Array[Vector2i] = Overwatch.arc_cells(state, overwatcher_b, mover)
+	assert_gt(arc_a.size(), 0, "sanity: overwatcher_a must threaten something")
+	assert_gt(arc_b.size(), 0, "sanity: overwatcher_b must threaten something")
+
+	var union: Array[Vector2i] = Overwatch.all_threatened_cells(state, mover)
+
+	for cell: Vector2i in arc_a:
+		assert_true(cell in union, "overwatcher_a's own cells must appear in the union")
+	for cell: Vector2i in arc_b:
+		assert_true(cell in union, "overwatcher_b's own cells must appear in the union")
+	assert_false(overwatcher_a.cell in union)
+	assert_false(overwatcher_b.cell in union)
+
+
+func test_all_threatened_cells_never_includes_the_mover_threatening_itself() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(5, 5), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var grid := Grid.new(11, 11)
+	var state := CombatState.new(grid, [overwatcher])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	assert_eq(Overwatch.all_threatened_cells(state, overwatcher), [] as Array[Vector2i])

@@ -34,6 +34,12 @@ const WAYPOINT_FONT_SIZE := 24
 ## docs/10 taskblock03 F1: "translucent... low alpha" — low enough to never
 ## be mistaken for the real, opaque unit.
 const UNIT_GHOST_ALPHA := 0.35
+## taskblock-19 Pass D: the visible-overwatch pie slice — amber, distinct
+## from every other overlay's own colour, translucent (WorldPalette:
+## "a transparent overlay, not the UI palette"). Sits above the ghost
+## overlays so it never fights them for z-order when both are live.
+const OVERWATCH_ARC_COLOR := Color(0.95, 0.55, 0.15, 0.30)
+const OVERWATCH_ARC_HEIGHT := 0.04
 ## docs/10 taskblock03 I: the original #253B29 was a value or two off
 ## WorldPalette.GROUND (#2E4A32) — nearly the same value, so it mipped away
 ## to nothing at the default tactical camera distance. Pushed much further
@@ -75,6 +81,9 @@ var _ghost_overlay: Node3D
 ## and show_unit_ghost() each clear only their own overlay and both can be
 ## live at once.
 var _unit_ghost_overlay: Node3D
+## taskblock-19 Pass D: the visible-overwatch pie slice — its own
+## container, same reasoning as `_unit_ghost_overlay`.
+var _overwatch_overlay: Node3D
 
 
 func _init() -> void:
@@ -86,6 +95,8 @@ func _init() -> void:
 	add_child(_ghost_overlay)
 	_unit_ghost_overlay = Node3D.new()
 	add_child(_unit_ghost_overlay)
+	_overwatch_overlay = Node3D.new()
+	add_child(_overwatch_overlay)
 
 
 func build(p_grid: Grid, material_table: MaterialTable) -> void:
@@ -310,9 +321,29 @@ func show_unit_ghost(previewed_unit: Unit) -> void:
 		_unit_ghost_overlay.add_child(instance)
 
 
+## taskblock-19 Pass D: "a transparent pie slice... the slice shows
+## exactly the cells that would trigger." `cells` is `Overwatch.arc_cells`'
+## own output, never re-derived here — a lookalike apex/radius/angle wedge
+## can't see LoS/cover the way the real query does, so rendering the
+## actual cell set (the same convention `show_reachable` already uses) is
+## the only way this can't visually lie about the mechanic. Flagged: once
+## heights exist this becomes a cone; this is its flat, 2D projection.
+func show_overwatch_arc(cells: Array[Vector2i]) -> void:
+	_clear(_overwatch_overlay)
+	for cell: Vector2i in cells:
+		var instance := MeshInstance3D.new()
+		var box_mesh := BoxMesh.new()
+		box_mesh.size = Vector3(OVERLAY_SIZE, 0.02, OVERLAY_SIZE)
+		box_mesh.material = WorldPalette.translucent_material(OVERWATCH_ARC_COLOR)
+		instance.mesh = box_mesh
+		instance.position = Vector3(cell.x, OVERWATCH_ARC_HEIGHT, cell.y) * UnitGeometry.CELL_SIZE
+		_overwatch_overlay.add_child(instance)
+
+
 func clear_overlays() -> void:
 	_clear(_reachable_overlay)
 	_clear(_ghost_overlay)
+	_clear(_overwatch_overlay)
 	_clear(_unit_ghost_overlay)
 
 

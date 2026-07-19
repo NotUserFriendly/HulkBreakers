@@ -289,10 +289,34 @@ func test_clear_overlays_removes_everything() -> void:
 	view.show_reachable([Vector2i(0, 0), Vector2i(1, 0)])
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)]])
 	view.show_unit_ghost(_torso_unit(Vector2i(0, 0)))
+	view.show_overwatch_arc([Vector2i(2, 2)])
 	view.clear_overlays()
 	assert_eq(view._reachable_overlay.get_child_count(), 0)
 	assert_eq(view._ghost_overlay.get_child_count(), 0)
 	assert_eq(view._unit_ghost_overlay.get_child_count(), 0)
+	assert_eq(view._overwatch_overlay.get_child_count(), 0)
+
+
+## taskblock-19 Pass D: "a transparent pie slice... the slice shows
+## exactly the cells that would trigger" — one translucent marker per
+## cell in `Overwatch.arc_cells`' own output, the same per-cell-marker
+## convention `show_reachable` already uses.
+func test_show_overwatch_arc_spawns_one_translucent_marker_per_cell_and_replaces_the_last_call(
+) -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.show_overwatch_arc([Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
+	assert_eq(view._overwatch_overlay.get_child_count(), 3)
+	var instance: MeshInstance3D = view._overwatch_overlay.get_child(0)
+	var material: StandardMaterial3D = instance.mesh.material
+	assert_eq(material.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA)
+	assert_lt(material.albedo_color.a, 1.0, "must actually be translucent, not just alpha-capable")
+
+	view.show_overwatch_arc([Vector2i(0, 0)])
+	assert_eq(
+		view._overwatch_overlay.get_child_count(), 1, "a new call must replace the old overlay"
+	)
 
 
 func _torso_unit(cell: Vector2i, squad: int = 0) -> Unit:
