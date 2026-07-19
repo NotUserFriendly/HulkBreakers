@@ -167,9 +167,18 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 ## destroyed part disappears, a moved unit redraws at its new cell. Shared
 ## by every overlay that resolves a turn for real (docs/09: resolution
 ## already mutated combat_state synchronously by the time this is called).
-func refresh_unit_views() -> void:
+##
+## taskblock-19 Pass I2: `affected_unit_ids` (default null: every view,
+## the safe fallback for a caller with no more precise signal) narrows
+## this to just the units a turn's own events actually named
+## (`LogPlayback.affected_unit_ids`) — `refresh()` tears down and
+## rebuilds a unit's entire mesh subtree from its own socket tree, real
+## work that a normal turn has no reason to repeat for every OTHER unit
+## on the board that this turn never touched.
+func refresh_unit_views(affected_unit_ids: Variant = null) -> void:
 	for view: HitVolumeView in unit_views:
-		view.refresh()
+		if affected_unit_ids == null or (view.unit != null and view.unit.id in affected_unit_ids):
+			view.refresh()
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a

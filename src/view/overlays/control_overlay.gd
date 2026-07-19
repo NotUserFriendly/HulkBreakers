@@ -69,7 +69,15 @@ func advance_ai_turns(battle: BattleScene) -> void:
 	var runner := BoutRunner.new(
 		battle.combat_state, battle.mission, BoutRunner.DEFAULT_TURN_CAP, wants_turn_for
 	)
+	# taskblock-19 Pass I2: accumulated across every step this batch takes
+	# (each `step()` call overwrites `last_events` with just that one
+	# unit's own turn) — see BattleScene.refresh_unit_views()'s own doc
+	# comment for why a full-board refresh per batch was real, wasted work.
+	var touched_ids: Dictionary = {}
 	while not runner.finished and not wants_turn_for(battle.combat_state.current_unit()):
-		if runner.step():
+		var run_finished: bool = runner.step()
+		for id: int in LogPlayback.affected_unit_ids(runner.last_events):
+			touched_ids[id] = true
+		if run_finished:
 			break
-	battle.refresh_unit_views()
+	battle.refresh_unit_views(touched_ids.keys())

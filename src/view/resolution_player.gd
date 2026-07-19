@@ -272,9 +272,20 @@ func _world_anchor(cell: Vector2i) -> Vector3:
 ## correctly throughout — this never independently tweens a bare
 ## position/rotation Node property, only ever the combined, pivot-correct
 ## transform above.
+## taskblock-19 Pass I1: the view/unit lookup used to happen INSIDE
+## `_set_slide_anchor`, re-run on every single `tween_method` callback —
+## a full `_view_for()` linear scan over `battle.unit_views` (and a
+## matching `find_unit()` scan) every frame of every slide, for the
+## entire animation's duration. Neither can actually change mid-slide
+## (ResolutionPlayer only ever replays a turn's events AFTER
+## resolve_turn() already finished mutating the real state — see this
+## class's own header), so resolving both ONCE here and threading them
+## through the tween's bound args removes real, unnecessary per-frame
+## work instead of just moving it around.
 func _play_slide(event: LogEvent) -> void:
 	var unit: Unit = battle.combat_state.find_unit(event.unit_id)
-	if unit == null:
+	var view: HitVolumeView = _view_for(event.unit_id)
+	if unit == null or view == null:
 		return
 	var path: Array = event.data.get("path", [])
 	if path.size() < 2:
@@ -284,21 +295,19 @@ func _play_slide(event: LogEvent) -> void:
 		var from_anchor: Vector3 = _world_anchor(path[i - 1])
 		var to_anchor: Vector3 = _world_anchor(path[i])
 		if per_cell <= 0.0:
-			_set_slide_anchor(to_anchor, event.unit_id)
+			_set_slide_anchor(to_anchor, view, unit)
 			continue
 		var tween := create_tween()
-		tween.tween_method(_set_slide_anchor.bind(event.unit_id), from_anchor, to_anchor, per_cell)
+		tween.tween_method(_set_slide_anchor.bind(view, unit), from_anchor, to_anchor, per_cell)
 		await tween.finished
 	_display_cell[event.unit_id] = path[path.size() - 1]
 	_redraw(event.unit_id)
 
 
-func _set_slide_anchor(anchor: Vector3, unit_id: int) -> void:
-	var view: HitVolumeView = _view_for(unit_id)
-	var unit: Unit = battle.combat_state.find_unit(unit_id)
-	if view == null or unit == null:
+func _set_slide_anchor(anchor: Vector3, view: HitVolumeView, unit: Unit) -> void:
+	if not is_instance_valid(view):
 		return
-	var display_orientation: float = _display_orientation.get(unit_id, unit.orientation)
+	var display_orientation: float = _display_orientation.get(unit.id, unit.orientation)
 	_apply_display_transform(view, unit.cell, unit.orientation, anchor, display_orientation)
 
 
@@ -319,6 +328,12 @@ func slide_segment_duration() -> float:
 ## `_display_cell` (already primed) stays wherever it currently is for the
 ## whole turn — position and facing never animate concurrently (B2 lists
 ## them as sequential steps), so this only ever moves `display_orientation`.
+## taskblock-19 Pass I1: "the direction-change slowdown... probably the
+## VIEW re-resolving something per direction-change" — exactly this:
+## `_set_facing_angle` used to re-run a full `_view_for()`/`find_unit()`
+## linear scan on every single frame of every facing tween. Resolved
+## once here instead (see `_play_slide`'s own matching fix and doc
+## comment — neither can change mid-turn-replay).
 func _play_facing(event: LogEvent) -> void:
 	var unit: Unit = battle.combat_state.find_unit(event.unit_id)
 	if unit == null:
@@ -333,21 +348,22 @@ func _play_facing(event: LogEvent) -> void:
 		_display_orientation[event.unit_id] = target_orientation
 		_redraw(event.unit_id)
 		return
+	var view: HitVolumeView = _view_for(event.unit_id)
+	if view == null:
+		return
 	var tween := create_tween()
 	tween.tween_method(
-		_set_facing_angle.bind(event.unit_id), from_orientation, target_orientation, duration
+		_set_facing_angle.bind(view, unit), from_orientation, target_orientation, duration
 	)
 	await tween.finished
 	_display_orientation[event.unit_id] = target_orientation
 	_redraw(event.unit_id)
 
 
-func _set_facing_angle(angle: float, unit_id: int) -> void:
-	var view: HitVolumeView = _view_for(unit_id)
-	var unit: Unit = battle.combat_state.find_unit(unit_id)
-	if view == null or unit == null:
+func _set_facing_angle(angle: float, view: HitVolumeView, unit: Unit) -> void:
+	if not is_instance_valid(view):
 		return
-	var display_cell: Vector2i = _display_cell.get(unit_id, unit.cell)
+	var display_cell: Vector2i = _display_cell.get(unit.id, unit.cell)
 	_apply_display_transform(view, unit.cell, unit.orientation, _world_anchor(display_cell), angle)
 
 

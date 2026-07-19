@@ -49,6 +49,15 @@ const DOWNED_MARKER_DIM := 0.4
 ## for a whole-cell waypoint marker) would dwarf one outright.
 const WEAPON_LABEL_FONT_SIZE := 10
 const WEAPON_LABEL_COLOR := Color(0.95, 0.95, 0.95)
+## taskblock-19 Pass I3: "printed on the side of the weapon, scaled to
+## fit the weapon's box face" — how much of the face's own SHORT edge
+## the text's cap-height fills. Flagged, not a tuned design number; only
+## "actually fitted, not a fixed size regardless of the box" is asked.
+const WEAPON_LABEL_FIT_FRACTION := 0.6
+## Clears the face's own surface without visibly floating off it —
+## same order of magnitude as board_view.gd's own overlay-above-ground
+## offsets (0.02-0.04).
+const WEAPON_LABEL_SURFACE_OFFSET := 0.005
 
 var unit: Unit
 var material_table: MaterialTable
@@ -302,7 +311,7 @@ func _add_box_instance(placement: BoxPlacement, team_color: Color, apply_rim: bo
 	if not _meshes_by_part.has(placement.part):
 		_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
 	(_meshes_by_part[placement.part] as Array[MeshInstance3D]).append(instance)
-	_add_weapon_label(placement.part, instance)
+	_add_weapon_label(placement.part, instance, placement.box.size)
 
 
 ## taskblock-13 Pass F: "every placeholder gun box renders text on it
@@ -311,23 +320,68 @@ func _add_box_instance(placement: BoxPlacement, team_color: Color, apply_rim: bo
 ## authored — same "cosmetic only, never touches resolution" posture as
 ## `mesh_scene`/`render_primitive` above: nothing here is hit-tested, and
 ## it draws over whatever `instance` (a box OR a primitive) already is.
-## Billboarded and `no_depth_test` (board_view.gd's own waypoint-label
-## convention) so it always reads instead of clipping into its own box.
-func _add_weapon_label(part: Part, instance: MeshInstance3D) -> void:
+##
+## taskblock-19 Pass I3: "printed on the side of the weapon, scaled to
+## fit... not a floating billboard." `box_size` (real, real-only for
+## `_add_box_instance` — every authored weapon today renders as a box)
+## drives a real surface decal: projected onto the box's own LARGEST
+## face (for a typical long, thin gun that's the side — height x length
+## — literally "printed on the side"), scaled to that face's own short
+## edge, offset just clear of the surface instead of floating in front
+## of it. `box_size == null` (a mesh/primitive weapon render — none
+## exist in authored data today, but the render path itself allows one)
+## keeps the OLD floating-billboard behavior as a graceful fallback —
+## never worse than before this pass, just not upgraded either, since
+## there's no box face to print it on.
+func _add_weapon_label(part: Part, instance: MeshInstance3D, box_size: Variant = null) -> void:
 	if part.weapon_def == null or part.display_name == "":
 		return
 	var label := Label3D.new()
 	label.text = part.display_name
 	label.font_size = WEAPON_LABEL_FONT_SIZE
 	label.modulate = WEAPON_LABEL_COLOR
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.no_depth_test = true
-	# Small, fixed onscreen scale (not a world-space fit to the box's own
-	# size) — same convention board_view.gd's waypoint labels already use;
-	# these boxes range from a chaingun's ~0.15m to a sniper's ~1.1m, and a
-	# literal box-width fit would make the chaingun's own label
-	# unreadably tiny.
-	label.pixel_size = 0.002
+
+	if box_size == null:
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.no_depth_test = true
+		label.pixel_size = 0.002
+		instance.add_child(label)
+		return
+
+	var size: Vector3 = box_size
+	var xy: float = size.x * size.y
+	var xz: float = size.x * size.z
+	var yz: float = size.y * size.z
+	var short_edge: float
+	var half_depth: float
+	var outward: Vector3
+	if yz >= xy and yz >= xz:
+		short_edge = minf(size.y, size.z)
+		half_depth = size.x * 0.5
+		outward = Vector3.RIGHT
+	elif xz >= xy:
+		short_edge = minf(size.x, size.z)
+		half_depth = size.y * 0.5
+		outward = Vector3.UP
+	else:
+		short_edge = minf(size.x, size.y)
+		half_depth = size.z * 0.5
+		outward = Vector3.BACK
+
+	label.pixel_size = (short_edge * WEAPON_LABEL_FIT_FRACTION) / float(WEAPON_LABEL_FONT_SIZE)
+	label.position = outward * (half_depth + WEAPON_LABEL_SURFACE_OFFSET)
+	# Flat against the face: local +Z (a Label3D's own readable-face
+	# normal, unbillboarded) points straight out along `outward`, local
+	# +Y stays world-up so the text reads right-side up — except on the
+	# top/bottom face itself (outward == UP/DOWN), where UP can't serve
+	# as its own cross-product reference (a zero vector); BACK stands in
+	# there instead, same "any reference not parallel to outward" need.
+	var reference: Vector3 = Vector3.BACK if absf(outward.y) > 0.5 else Vector3.UP
+	var basis := Basis()
+	basis.z = outward
+	basis.x = reference.cross(outward).normalized()
+	basis.y = outward.cross(basis.x).normalized()
+	label.basis = basis
 	instance.add_child(label)
 
 

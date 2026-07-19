@@ -160,7 +160,9 @@ func _advance() -> void:
 		pause()
 		return
 	runner.step()
-	battle.refresh_unit_views()
+	# taskblock-19 Pass I2: only the units this step's own events named —
+	# see BattleScene.refresh_unit_views()'s own doc comment.
+	battle.refresh_unit_views(LogPlayback.affected_unit_ids(runner.last_events))
 	await resolution_player.play(runner.last_events)
 	_refresh_status()
 	if runner.finished:
