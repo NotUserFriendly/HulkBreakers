@@ -243,3 +243,76 @@ func test_torso_visible_agrees_with_an_independently_built_resolve_ray_call() ->
 
 	assert_true(visible, "sanity: this fixture must actually clear cover")
 	assert_eq(visible, expected_visible)
+
+
+## taskblock-18 D1/D4: would_trigger_at asks the SAME question check_trigger
+## answers for real, without moving or firing anything — a cell that
+## check_trigger would fire on must show up in would_trigger_at's result.
+func test_would_trigger_at_reports_the_same_overwatcher_check_trigger_would_actually_fire() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	var triggering: Array[Unit] = Overwatch.would_trigger_at(state, mover, mover.cell)
+
+	assert_eq(triggering, [overwatcher])
+	assert_eq(overwatcher.overwatch_weapon_id, &"pistol", "asking must never actually fire")
+
+
+func test_would_trigger_at_is_empty_when_out_of_arc() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	assert_eq(Overwatch.would_trigger_at(state, mover, mover.cell), [] as Array[Unit])
+
+
+## The whole point: asking about a CELL THE MOVER ISN'T AT YET (a
+## candidate lean cell) must give the true answer for that hypothetical
+## cell, not the mover's own real, current, out-of-arc one.
+func test_would_trigger_at_evaluates_a_hypothetical_cell_not_the_movers_real_one() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	# Real cell (5, 0) is out of arc (0 deg facing = world +Y); the
+	# candidate cell (0, 5) is dead ahead, in arc.
+	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	assert_eq(Overwatch.would_trigger_at(state, mover, mover.cell), [] as Array[Unit])
+	assert_eq(Overwatch.would_trigger_at(state, mover, Vector2i(0, 5)), [overwatcher])
+	assert_eq(mover.cell, Vector2i(5, 0), "the real unit's own cell must be untouched afterward")
+
+
+func test_would_trigger_at_never_mutates_the_real_state() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	Overwatch.would_trigger_at(state, mover, Vector2i(0, 5))
+
+	assert_eq(mover.cell, Vector2i(5, 0))
+	assert_eq(state.grid.get_occupant_id(Vector2i(5, 0)), mover.id)
+	assert_eq(state.grid.get_occupant_id(Vector2i(0, 5)), -1)
+
+
+func test_would_trigger_at_ignores_the_dead() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	overwatcher.alive = false
+	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	assert_eq(Overwatch.would_trigger_at(state, mover, mover.cell), [] as Array[Unit])
