@@ -100,6 +100,138 @@ func test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one() -> vo
 	)
 
 
+func _last_move(queue: ActionQueue) -> MoveAction:
+	var move: MoveAction = null
+	for action: CombatAction in queue.actions:
+		if action is MoveAction:
+			move = action
+	return move
+
+
+## taskblock-16 D1: "advance if farther" — out of weapon range AND
+## farther than SKIRMISHER's own preferred standoff, so repositioning is
+## forced regardless of the "stay and fire" gate (there's nothing to
+## fire at from here).
+func test_skirmisher_advances_when_out_of_weapon_range_and_farther_than_preferred() -> void:
+	var grid := Grid.new(20, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(
+		move, "a SKIRMISHER out of weapon range and farther than preferred must advance"
+	)
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_eq(
+		Grid.distance_chebyshev(destination, enemy.cell),
+		UnitAI.SKIRMISHER_PREFERRED_RANGE,
+		"reachable this turn: must converge exactly onto its own preferred standoff"
+	)
+
+
+## taskblock-16 D1: "back off if closer... willing to move away from the
+## enemy to open distance." Already well within weapon range — the only
+## reason to move at all is the preferred-range gate itself.
+func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() -> void:
+	var grid := Grid.new(20, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(10, 1), 0, &"rifle")
+	self_unit.shell.find_part(&"rifle").weapon_max_range = 15.0
+	var enemy := _armed_unit(&"enemy", Vector2i(11, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+	var starting_distance: int = Grid.distance_chebyshev(self_unit.cell, enemy.cell)
+	assert_lt(
+		starting_distance,
+		UnitAI.SKIRMISHER_PREFERRED_RANGE,
+		"sanity: must start closer than preferred"
+	)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "a SKIRMISHER standing too close must reposition, not just fire")
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_gt(
+		Grid.distance_chebyshev(destination, enemy.cell),
+		starting_distance,
+		"the SKIRMISHER must move AWAY from the enemy to open distance"
+	)
+
+
+## taskblock-16 D1: "a MARKSMAN holds greater standoff" than a
+## SKIRMISHER, from an identical starting position/range — the only
+## difference between the two calls is `preferred_range`, proving the
+## planner really is parameterised, not three copies with different
+## constants baked in.
+func test_marksman_holds_greater_standoff_than_skirmisher() -> void:
+	var skirmisher := _armed_unit(&"skirmisher", Vector2i(0, 1), 0, &"rifle")
+	skirmisher.shell.find_part(&"rifle").weapon_max_range = 6.0
+	var enemy_a := _armed_unit(&"enemy_a", Vector2i(15, 1), 1, &"")
+	var state_a := CombatState.new(Grid.new(20, 3), [skirmisher, enemy_a])
+
+	var marksman := _armed_unit(&"marksman", Vector2i(0, 1), 0, &"rifle")
+	marksman.shell.find_part(&"rifle").weapon_max_range = 6.0
+	var enemy_b := _armed_unit(&"enemy_b", Vector2i(15, 1), 1, &"")
+	var state_b := CombatState.new(Grid.new(20, 3), [marksman, enemy_b])
+
+	var skirmisher_move: MoveAction = _last_move(
+		UnitAI.plan_turn(skirmisher, state_a, null, &"SKIRMISHER")
+	)
+	var marksman_move: MoveAction = _last_move(
+		UnitAI.plan_turn(marksman, state_b, null, &"MARKSMAN")
+	)
+	assert_not_null(skirmisher_move)
+	assert_not_null(marksman_move)
+
+	var skirmisher_distance: int = Grid.distance_chebyshev(
+		skirmisher_move.path[skirmisher_move.path.size() - 1], enemy_a.cell
+	)
+	var marksman_distance: int = Grid.distance_chebyshev(
+		marksman_move.path[marksman_move.path.size() - 1], enemy_b.cell
+	)
+
+	assert_eq(skirmisher_distance, UnitAI.SKIRMISHER_PREFERRED_RANGE)
+	assert_eq(marksman_distance, UnitAI.MARKSMAN_PREFERRED_RANGE)
+	assert_gt(
+		marksman_distance,
+		skirmisher_distance,
+		"MARKSMAN must hold a greater standoff than SKIRMISHER"
+	)
+
+
+## taskblock-16 D2: "with cover objects present (Pass B), COVER_SEEKER
+## moves to a covered cell rather than standing still" — proven here with
+## a REAL Pass B field object loaded through DataLibrary (not an ad-hoc
+## fixture Part), the actual thing `is_covered_from` reads once cover
+## objects are real, placed, blocking geometry rather than a cell scalar.
+func test_cover_seeker_relocates_to_a_real_pass_b_cover_object() -> void:
+	var grid := Grid.new(10, 5)
+	var crate: Part = DataLibrary.get_part(&"crate")
+	grid.blockers[Vector2i(5, 2)] = crate
+
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	var enemy := _armed_unit(&"enemy", Vector2i(9, 2), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+	assert_false(
+		UnitAI.is_covered_from(self_unit.cell, enemy.cell, state, self_unit),
+		"sanity: the starting cell itself must not already read as covered"
+	)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"COVER_SEEKER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "COVER_SEEKER must actually relocate, not stand still")
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_true(
+		UnitAI.is_covered_from(destination, enemy.cell, state, self_unit),
+		"the destination must read as covered by the real cover object"
+	)
+
+
 ## "a unit with no valid action ends its turn cleanly" — no enemy, no
 ## mission, nothing to gather/extract, not this unit's landing squad.
 func test_a_unit_with_no_valid_action_ends_its_turn_cleanly() -> void:

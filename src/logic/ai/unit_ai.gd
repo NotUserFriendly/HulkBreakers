@@ -21,10 +21,16 @@ extends RefCounted
 ## the first real shot leaves a second queued shot to abort for real at
 ## resolution).
 const MAX_SHOTS_PER_TURN := 3
-## taskblock-14 Pass B1: COVER_SEEKER's own preferred standoff — flagged,
-## not tuned; the behaviour (retreat closer than this, approach no
-## further than this) is what's specified, not the exact cell count.
-const PREFERRED_DISTANCE := 4
+## taskblock-16 Pass D1: preferred standoff per playstyle — flagged, not
+## tuned; the behaviour (hold ~this distance: advance if farther while
+## out of range, retreat if closer, never invented beyond the "~"
+## approximate the taskblock itself specified) is what's specified, not
+## the exact cell counts. AGGRESSIVE's own 0 is what makes `_plan_ranged`
+## below collapse to exactly its old pre-Pass-D behaviour — see that
+## function's own doc comment.
+const AGGRESSIVE_PREFERRED_RANGE := 0
+const SKIRMISHER_PREFERRED_RANGE := 5
+const MARKSMAN_PREFERRED_RANGE := 7
 ## Dominant over any plausible distance-penalty difference on a normal
 ## map, so a covered cell always outscores an uncovered one closer to
 ## the preferred distance — cover is the primary signal, distance a
@@ -34,48 +40,56 @@ const COVER_SCORE_BONUS := 10.0
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
 ## AGGRESSIVE (today's own only behaviour) rather than erroring — an
-## open StringName vocabulary (CLAUDE.md), not an enum, so a third
+## open StringName vocabulary (CLAUDE.md), not an enum, so a fifth
 ## playstyle is one more `match` arm and new data, never a rewrite.
 static func plan_turn(
 	unit: Unit, state: CombatState, mission: MissionState, playstyle: StringName = &"AGGRESSIVE"
 ) -> ActionQueue:
 	match playstyle:
+		&"SKIRMISHER":
+			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, false)
+		&"MARKSMAN":
+			return _plan_ranged(unit, state, mission, MARKSMAN_PREFERRED_RANGE, false)
 		&"COVER_SEEKER":
-			return _plan_cover_seeker(unit, state, mission)
+			# taskblock-16 D2: "a cover-seeker is a skirmisher that also
+			# weights cover" — its own preferred standoff is SKIRMISHER's,
+			# not a fourth, independently-tuned number.
+			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true)
 		_:
-			return _plan_aggressive(unit, state, mission)
+			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false)
 
 
-## "Minimise distance to nearest enemy; shoot when in range; never seek
-## cover." This IS test_full_mission.gd's own former `_queue_turn`,
-## unchanged.
-static func _plan_aggressive(unit: Unit, state: CombatState, mission: MissionState) -> ActionQueue:
-	var queue := ActionQueue.new(unit)
-	var enemy: Unit = _nearest_living_enemy(unit, state)
-
-	if enemy != null:
-		var weapon_id: StringName = _find_weapon_id(unit)
-		var already_in_range: bool = (
-			weapon_id != &"" and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-		)
-		if already_in_range:
-			_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
-		else:
-			var queued_before: int = queue.actions.size()
-			_path_toward(unit, enemy.cell, state, queue)
-			if weapon_id != &"":
-				queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-			_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
-		queue.enqueue(EndTurnAction.new(unit), state)
-		return queue
-
-	return _plan_non_combat_turn(unit, state, mission, queue)
-
-
-## "Keep a preferred distance; prefer cells with cover... between self
-## and the nearest threat; shoot from cover; retreat rather than close."
-static func _plan_cover_seeker(
-	unit: Unit, state: CombatState, mission: MissionState
+## taskblock-16 Pass D: the one ranged planner every playstyle above
+## drives, parameterised by `preferred_range` (a target standoff to
+## converge on) and `weight_cover` (COVER_SEEKER's own extra signal on
+## the same distance logic).
+##
+## `far_enough`/`covered_enough` gate whether the unit is already good
+## enough to fire from right where it stands, without moving first — for
+## AGGRESSIVE (`preferred_range` 0, `weight_cover` false) both are always
+## true (`distance >= 0` always holds; `not false` is always true), which
+## collapses this gate to exactly `queue.enqueue(the attack)` — the same
+## single check the old, since-retired `_plan_aggressive` used as its own
+## "already_in_range" fast path. That's not a coincidence: it's what
+## makes AGGRESSIVE's own behaviour genuinely unchanged rather than just
+## similar, still verified end to end by test_full_mission.gd's own fixed
+## seed. For a positive `preferred_range`, `far_enough` false means "too
+## close" — skip straight to repositioning (retreat) without ever
+## attempting to fire from here, satisfying "back off if closer." The
+## repositioning branch below scores every reachable cell toward
+## `preferred_range` regardless of why it's reached (out of range, too
+## close, or just uncovered) — the same mechanism handles "advance"
+## and "retreat" as opposite pulls on one scorer, not two behaviours.
+##
+## Flagged design choice, not a spec literal: a unit already inside
+## weapon range but standing FARTHER than `preferred_range` does not
+## walk closer purely to hit the exact preferred number — it stays and
+## fires. Chasing an arbitrary preferred distance while already able to
+## hit the target would make MARKSMAN behave less like a marksman, and
+## "advance if farther" is fully satisfied by the far-more-common case of
+## actually being out of weapon range (below).
+static func _plan_ranged(
+	unit: Unit, state: CombatState, mission: MissionState, preferred_range: int, weight_cover: bool
 ) -> ActionQueue:
 	var queue := ActionQueue.new(unit)
 	var enemy: Unit = _nearest_living_enemy(unit, state)
@@ -84,19 +98,24 @@ static func _plan_cover_seeker(
 		return _plan_non_combat_turn(unit, state, mission, queue)
 
 	var weapon_id: StringName = _find_weapon_id(unit)
-	var already_good_position: bool = (
+	var far_enough: bool = Grid.distance_chebyshev(unit.cell, enemy.cell) >= preferred_range
+	var covered_enough: bool = (
+		not weight_cover or is_covered_from(unit.cell, enemy.cell, state, unit)
+	)
+	var fired_without_moving: bool = (
 		weapon_id != &""
-		and _in_weapon_range(unit, weapon_id, enemy)
-		and is_covered_from(unit.cell, enemy.cell, state, unit)
+		and far_enough
+		and covered_enough
+		and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
 	)
 
-	if already_good_position:
-		var fired: bool = queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-		if fired:
-			_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
+	if fired_without_moving:
+		_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
 	else:
 		var queued_before: int = queue.actions.size()
-		var best_cell: Vector2i = _pick_cover_position(unit, enemy, state)
+		var best_cell: Vector2i = _pick_engagement_position(
+			unit, enemy, state, preferred_range, weight_cover
+		)
 		if best_cell != unit.cell:
 			var pf := Pathfinder.new(state.grid, state.terrain_costs)
 			var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
@@ -212,34 +231,49 @@ static func is_covered_from(
 	return false
 
 
-## The best reachable-this-turn cell to fight from: covered cells always
-## beat uncovered ones; among cells tied on cover, the one closest to
-## `PREFERRED_DISTANCE` from `enemy` wins. Staying put is always a
-## candidate (`Pathfinder.reachable` already includes the origin cell at
-## zero cost).
-static func _pick_cover_position(unit: Unit, enemy: Unit, state: CombatState) -> Vector2i:
+## The best reachable-this-turn cell to fight from: if `weight_cover`,
+## covered cells always beat uncovered ones; among cells tied on cover
+## (or always, when `weight_cover` is false), the one closest to
+## `preferred_range` from `enemy` wins — pulls toward that distance from
+## EITHER side, so the same scorer drives advancing when farther and
+## retreating when closer. Staying put is always a candidate
+## (`Pathfinder.reachable` already includes the origin cell at zero cost).
+static func _pick_engagement_position(
+	unit: Unit, enemy: Unit, state: CombatState, preferred_range: int, weight_cover: bool
+) -> Vector2i:
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
 	if not reachable.has(unit.cell):
 		reachable.append(unit.cell)
 
 	var best_cell: Vector2i = unit.cell
-	var best_score: float = _cover_score(unit.cell, enemy.cell, state, unit)
+	var best_score: float = _engagement_score(
+		unit.cell, enemy.cell, state, unit, preferred_range, weight_cover
+	)
 	for cell: Vector2i in reachable:
-		var score: float = _cover_score(cell, enemy.cell, state, unit)
+		var score: float = _engagement_score(
+			cell, enemy.cell, state, unit, preferred_range, weight_cover
+		)
 		if score > best_score:
 			best_score = score
 			best_cell = cell
 	return best_cell
 
 
-static func _cover_score(
-	cell: Vector2i, enemy_cell: Vector2i, state: CombatState, self_unit: Unit
+static func _engagement_score(
+	cell: Vector2i,
+	enemy_cell: Vector2i,
+	state: CombatState,
+	self_unit: Unit,
+	preferred_range: int,
+	weight_cover: bool
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy_cell)
-	var distance_penalty: float = absf(float(distance - PREFERRED_DISTANCE))
+	var distance_penalty: float = absf(float(distance - preferred_range))
 	var cover_bonus: float = (
-		COVER_SCORE_BONUS if is_covered_from(cell, enemy_cell, state, self_unit) else 0.0
+		COVER_SCORE_BONUS
+		if weight_cover and is_covered_from(cell, enemy_cell, state, self_unit)
+		else 0.0
 	)
 	return cover_bonus - distance_penalty
 
