@@ -109,6 +109,45 @@ func test_play_impact_spawns_a_tracer_for_an_impact_event() -> void:
 	assert_eq(player._tracers.get_child_count(), 1)
 
 
+## "Draw new raycasts over top tracers" — the live/still-fading shot must
+## outrank every already-retired one via render_priority (not left to
+## camera-distance sort order, which can't be trusted when two tracers
+## share a similar line of fire).
+func test_a_live_tracer_is_drawn_at_the_live_render_priority() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.bullet_ms = 10000.0
+	player.tracer_count = 3
+
+	player._play_impact(_impact_event(built.attacker, built.target, &"root"))
+
+	var tracer: MeshInstance3D = player._tracers.get_child(0)
+	var material: StandardMaterial3D = (tracer.mesh as BoxMesh).material
+	assert_eq(material.render_priority, ResolutionPlayer.TRACER_LIVE_RENDER_PRIORITY)
+
+
+## "Tracers half opacity, and red" — the color/alpha a live shot actually
+## fades TO and persists at, not the live flash's own bright color, and
+## it must drop out of the live render-priority tier once retired.
+func test_a_retired_tracer_is_translucent_red_and_drops_to_the_retired_priority() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.bullet_ms = 10.0
+	player.speed = 1000.0
+	player.tracer_count = 3
+
+	await player._play_impact(_impact_event(built.attacker, built.target, &"root"))
+
+	var tracer: MeshInstance3D = player._tracer_ring[0]
+	var material: StandardMaterial3D = (tracer.mesh as BoxMesh).material
+	assert_eq(material.albedo_color, ResolutionPlayer.TRACER_DULL_COLOR)
+	assert_almost_eq(material.albedo_color.a, 0.5, 0.0001, "half opacity")
+	assert_almost_eq(material.albedo_color.r, 1.0, 0.0001, "red")
+	assert_almost_eq(material.albedo_color.g, 0.0, 0.0001, "red")
+	assert_almost_eq(material.albedo_color.b, 0.0, 0.0001, "red")
+	assert_eq(material.render_priority, ResolutionPlayer.TRACER_RETIRED_RENDER_PRIORITY)
+
+
 func test_play_event_ignores_non_impact_events() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player

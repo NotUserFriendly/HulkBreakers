@@ -190,6 +190,30 @@ func test_the_dev_tunable_fields_write_directly_into_resolution_player() -> void
 	assert_eq(overlay.resolution_player.tracer_count, 5)
 
 
+## "Timing arrows can go by 10ms, not 1ms — clicking into it lets you get
+## more specific." `custom_arrow_step` governs ONLY the arrow-button
+## increment; `Range.step` itself is what a typed/assigned value actually
+## quantizes to (`SpinBox.rounded` is a display-formatting flag, unrelated
+## to this — Range.step snaps unconditionally otherwise), so it's left at
+## its default fine granularity — typing an exact value is never snapped
+## to a multiple of the arrow step. `tracer_count` is a plain count, not a
+## timing field, and never sets a custom arrow step at all.
+func test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	assert_almost_eq(overlay._slide_ms_field.custom_arrow_step, 10.0, 0.0001)
+	assert_almost_eq(overlay._bullet_ms_field.custom_arrow_step, 10.0, 0.0001)
+	assert_almost_eq(overlay._tracer_count_field.custom_arrow_step, 0.0, 0.0001)
+
+	overlay._slide_ms_field.value = 137.0
+	assert_almost_eq(
+		overlay.resolution_player.slide_ms,
+		137.0,
+		0.0001,
+		"a typed/assigned value must not snap to the arrow step"
+	)
+
+
 ## taskblock-15 Pass A's own TESTS list: "a spectator battle is identical
 ## in outcome to today's BoutRunner bout for the same seed (the overlay
 ## is cosmetic — prove it)." Two independently-built CombatStates from
