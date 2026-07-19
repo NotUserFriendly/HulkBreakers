@@ -30,13 +30,22 @@ const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER", &"SKIRMIS
 ## Flagged UX default, not a spec literal: a completely empty menu would
 ## still work (Start Bout is rejected-not-crashed on an empty roster,
 ## same as always), but starting both teams pre-populated keeps "open the
-## menu, hit Start Bout" a one-click smoke test the way the old
-## profile+count default was — add/remove is still the ONLY way to change
-## the roster afterward, this only seeds its starting contents. Squad B
-## starts on COVER_SEEKER (PLAYSTYLES[1]), squad A on the default
-## AGGRESSIVE, so a fresh Start Bout already shows two playstyles facing
-## off, the same as the old per-team default did.
-const DEFAULT_STARTING_COUNT := 2
+## menu, hit Start Bout" a one-click smoke test — add/remove is still the
+## ONLY way to change the roster afterward, this only seeds its starting
+## contents. One of each armed "Combat Tester" variant, each paired with
+## whichever AI its own weapon's range best fits: MARKSMAN's own long
+## standoff matches the sniper rifle's 20-tile range; SKIRMISHER's
+## mid standoff (~5) sits comfortably inside the chaingun's own 8-tile
+## envelope — sustained fire without walking into melee; AGGRESSIVE suits
+## the pump shotgun (range 4) best — it has to close all the way to be
+## useful at all. Both teams start identical — a full weapon spread on
+## each side is the point here, not "two playstyles facing off" the way
+## the old default was.
+const DEFAULT_ROSTER: Array[Array] = [
+	[&"combat_tester_chaingun", &"SKIRMISHER"],
+	[&"combat_tester_sniper_rifle", &"MARKSMAN"],
+	[&"combat_tester_pump_shotgun", &"AGGRESSIVE"],
+]
 ## "min 5 rows shown for readability" — real entries plus the trailing
 ## Add row plus blank spacer rows, never fewer than this many rows tall.
 const MIN_VISIBLE_ROWS := 5
@@ -59,11 +68,19 @@ func setup(p_battle: BattleScene) -> void:
 	battle = p_battle
 	_profiles_by_family = BoutSetup.group_by_family(DataLibrary.presets_pool())
 	_build_ordered_presets()
-	for i in range(DEFAULT_STARTING_COUNT):
-		if not _ordered_presets.is_empty():
-			_roster_a.append(BoutRosterEntry.new(_ordered_presets[0], PLAYSTYLES[0]))
-			_roster_b.append(BoutRosterEntry.new(_ordered_presets[0], PLAYSTYLES[1]))
+	_seed_default_roster(_roster_a)
+	_seed_default_roster(_roster_b)
 	_build_ui()
+
+
+## Missing presets (a data set without the Combat Tester bots) are
+## skipped, never crashed on — same "never crash, never silently invent"
+## posture every other assembly path in this codebase already has.
+func _seed_default_roster(roster: Array[BoutRosterEntry]) -> void:
+	for pair: Array in DEFAULT_ROSTER:
+		var preset: BotPreset = DataLibrary.get_preset(pair[0])
+		if preset != null:
+			roster.append(BoutRosterEntry.new(preset, pair[1]))
 
 
 func _build_ordered_presets() -> void:
