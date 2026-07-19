@@ -1,9 +1,15 @@
 extends GutTest
 
-## taskblock-09 F: bonus penetration is a DT discount, penetration only —
-## `effective_dt = max(0, dt_at(material, thickness) - bonus_pen)`, and it
-## never touches the incidence/deflect decision (deflection is geometry,
-## not energy).
+## taskblock-09 F: bonus penetration is a DT discount —
+## `effective_dt = max(0, dt_at(material, thickness) - bonus_pen)`.
+## taskblock-20 Pass E gives it a second, deliberate job: widening (or
+## narrowing) the stop-dead-eligible incidence window too, so "never
+## touches the incidence/deflect decision" is no longer literally true —
+## see test_deflect_resistance_scales_with_penetration.gd for that. What
+## still holds, and what this file's own deflect-adjacent test now checks,
+## is that bonus_pen never touches the REFLECTION physics of a deflect that
+## still happens (retained_fraction/reflected_dir) — only whether one
+## happens at all.
 
 
 func test_positive_bonus_pen_lets_a_sub_dt_shot_penetrate_for_its_full_damage() -> void:
@@ -73,9 +79,17 @@ func test_effective_dt_floors_at_zero_for_large_positive_pen() -> void:
 ## `resolve_impact` never reads `bonus_pen` anywhere near. This only holds
 ## while the shot doesn't ALSO penetrate outright because of the pen (kept
 ## well under DT here on purpose, with or without a modest bonus_pen).
-func test_bonus_pen_never_alters_the_deflect_decision() -> void:
+## taskblock-20 Pass E deliberately overturns this test's original name and
+## claim ("bonus pen must never turn a deflect into a hit") — that's now
+## the whole point of Pass E, tested in
+## test_deflect_resistance_scales_with_penetration.gd. The table's own Pass
+## E scale is zeroed here so THIS test can isolate the narrower, still-true
+## claim: once a deflect still happens, bonus_pen never touches its own
+## reflection physics.
+func test_bonus_pen_never_alters_deflect_reflection_math_when_a_deflect_still_happens() -> void:
 	var table := MaterialTable.new()
 	table.set_entry(&"steel", MaterialEntry.new(50.0))
+	table.deflect_threshold_bonus_pen_scale = 0.0
 	var part := Part.new()
 	part.id = &"plate"
 	part.material = &"steel"
@@ -90,8 +104,6 @@ func test_bonus_pen_never_alters_the_deflect_decision() -> void:
 	var with_pen: ImpactResult = DamageResolver.resolve_impact(dir, 3.0, region, table, 5.0)
 
 	assert_eq(without_pen.outcome, Enums.Outcome.DEFLECT)
-	assert_eq(
-		with_pen.outcome, Enums.Outcome.DEFLECT, "bonus pen must never turn a deflect into a hit"
-	)
+	assert_eq(with_pen.outcome, Enums.Outcome.DEFLECT, "scale zeroed: bonus pen buys no conversion")
 	assert_eq(without_pen.retained_fraction, with_pen.retained_fraction)
 	assert_eq(without_pen.reflected_dir, with_pen.reflected_dir)

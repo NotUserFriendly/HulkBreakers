@@ -34,8 +34,10 @@ const DROPPED_TAG := &"DROPPED"
 ## pen from pushing DT negative); taskblock-09 E1 then quarters whatever
 ## that combined number comes out to for an already-mangled part — same
 ## material, structurally worse, not a thinner one or an easier target to
-## punch through. Penetration only: the incidence/deflect branch below
-## never reads `effective_dt` at all, so bonus_pen can never touch it.
+## punch through. The incidence/deflect branch below never reads
+## `effective_dt` itself — but taskblock-20 Pass E gives `bonus_pen` a
+## second job there too, widening (or narrowing) the stop-dead-eligible
+## incidence window instead.
 static func resolve_impact(
 	incoming_dir: Vector2,
 	damage: float,
@@ -69,7 +71,19 @@ static func resolve_impact(
 	# from the inside, its normal pointing the same way as `dir` — is the
 	# first region that actually needs the general form.
 	var incidence_deg: float = rad_to_deg(acos(clampf(absf(dir.dot(normal_2d)), -1.0, 1.0)))
-	if incidence_deg <= material.deflect_threshold_deg:
+	# taskblock-20 Pass E: a high-pen round bites in and stop-deads at angles
+	# that would otherwise skip off — the deflect/stop-dead boundary widens
+	# with `bonus_pen` (can narrow it too: a negative bonus_pen, e.g.
+	# buckshot, makes armor HARDER to bite into, same as it already does for
+	# penetration above). Clamped to [0, 90]: incidence itself never leaves
+	# that range (docs/02), and "no universal safe angle" means there's no
+	# reason to cap the widening short of it either.
+	var effective_deflect_threshold_deg: float = clampf(
+		material.deflect_threshold_deg + bonus_pen * table.deflect_threshold_bonus_pen_scale,
+		0.0,
+		90.0
+	)
+	if incidence_deg <= effective_deflect_threshold_deg:
 		result.outcome = Enums.Outcome.STOP_DEAD
 		result.part_damage = damage
 		return result
