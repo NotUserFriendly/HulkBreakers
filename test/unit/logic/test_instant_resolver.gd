@@ -5,7 +5,7 @@ extends GutTest
 ## ones (AttackAction/MoveAction/FaceAction all gate is_legal() on "must
 ## be the CombatState's own current_unit," a single-actor-per-turn
 ## assumption; threading real, out-of-turn overwatch contenders through
-## this resolver is Pass D's own job — leans are explicitly "through the
+## this resolver is Pass D's own job — step outs are explicitly "through the
 ## B resolver, not a special case" there, not here). These fixtures
 ## isolate exactly what THIS pass owns: fastest-first popping,
 ## re-validation after every pop, the tie-break chain, and determinism.
@@ -73,7 +73,7 @@ func test_contenders_resolve_fastest_first() -> void:
 	assert_eq(result.dropped, [] as Array[CombatAction])
 
 
-## The taskblock's own worked case: "Andy leans into a cell Zeke and
+## The taskblock's own worked case: "Andy steps out into a cell Zeke and
 ## Xavier both overwatch... Zeke fires first; if Zeke kills Andy, Andy's
 ## queued shot is now illegal and is dropped — no ghost bullet. Xavier
 ## then resolves against whatever's left." Zeke (speed 5) kills Andy

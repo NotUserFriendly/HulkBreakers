@@ -499,17 +499,17 @@ func test_an_unknown_playstyle_falls_back_to_aggressive() -> void:
 ## only — no opacity, so it never blocks vision) everywhere within reach
 ## except by stepping fully around via row 0: without this, a diagonal
 ## hop into row 1 (e.g. (4,1)) would cut chebyshev distance to the
-## far-away enemy MORE than any lean cell does, and AGGRESSIVE's own
-## engagement scorer would reposition there instead of leaning — a real
+## far-away enemy MORE than any step-out cell does, and AGGRESSIVE's own
+## engagement scorer would reposition there instead of stepping out — a real
 ## trap this test fell into on the first attempt. With that escape
-## closed, every reachable row-0 cell (including both lean cells) ties
+## closed, every reachable row-0 cell (including both step-out cells) ties
 ## on chebyshev distance (a lateral move never gets closer to a target
 ## almost directly ahead), so the scorer converges on staying at the
 ## blind origin — exactly the "nothing else found anything to do" case
-## the lean fallback exists for. A tight MP budget (just enough for the
-## lean's own two single-cell moves) keeps this from being confused with
+## the step-out fallback exists for. A tight MP budget (just enough for
+## the step out's own two single-cell moves) keeps this from being confused with
 ## a longer, ordinary reposition trek.
-func test_a_covered_aggressive_unit_leans_instead_of_just_standing_and_facing() -> void:
+func test_a_covered_aggressive_unit_steps_out_instead_of_just_standing_and_facing() -> void:
 	var grid := Grid.new(10, 10)
 	for x in range(8):
 		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
@@ -531,7 +531,7 @@ func test_a_covered_aggressive_unit_leans_instead_of_just_standing_and_facing() 
 	assert_eq(
 		queue.actions.size(),
 		4,
-		"must lean (out, shoot, back, end turn) rather than just facing uselessly"
+		"must step out (out, shoot, back, end turn) rather than just facing uselessly"
 	)
 	assert_true(queue.actions[0] is MoveAction)
 	assert_true(queue.actions[1] is AttackAction)
@@ -539,7 +539,9 @@ func test_a_covered_aggressive_unit_leans_instead_of_just_standing_and_facing() 
 	assert_true(queue.actions[3] is EndTurnAction)
 	var out_move: MoveAction = queue.actions[0]
 	var firing_cell: Vector2i = out_move.path[out_move.path.size() - 1]
-	assert_eq(Grid.distance_manhattan(self_unit.cell, firing_cell), 1, "an orthogonal lean cell")
+	assert_eq(
+		Grid.distance_manhattan(self_unit.cell, firing_cell), 1, "an orthogonal step-out cell"
+	)
 	var back_move: MoveAction = queue.actions[2]
 	assert_eq(
 		back_move.path[back_move.path.size() - 1], self_unit.cell, "the return leg lands on origin"

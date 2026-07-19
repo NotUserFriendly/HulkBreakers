@@ -274,7 +274,7 @@ func test_would_trigger_at_is_empty_when_out_of_arc() -> void:
 
 
 ## The whole point: asking about a CELL THE MOVER ISN'T AT YET (a
-## candidate lean cell) must give the true answer for that hypothetical
+## candidate step-out cell) must give the true answer for that hypothetical
 ## cell, not the mover's own real, current, out-of-arc one.
 func test_would_trigger_at_evaluates_a_hypothetical_cell_not_the_movers_real_one() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)

@@ -2,9 +2,10 @@ class_name InstantResolver
 extends RefCounted
 
 ## taskblock-18 Pass B: the re-validating ordered resolver every "multiple
-## contenders resolving at once" case (overwatch racing a lean, two
+## contenders resolving at once" case (overwatch racing a step out, two
 ## overwatchers firing on the same mover, later: initiative/simultaneity
-## C, leans D) funnels through. Generalises docs/09 taskblock06 D's own
+## C, step outs D — taskblock-19 Pass B: Lean -> Step Out rename) funnels
+## through. Generalises docs/09 taskblock06 D's own
 ## re-validation rule ("stop when the next step is no longer legal, not
 ## when anything changes") from ONE unit's own queue to several
 ## independent contenders racing each other.

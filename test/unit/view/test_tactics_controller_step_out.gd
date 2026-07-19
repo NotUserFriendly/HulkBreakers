@@ -1,7 +1,8 @@
 extends GutTest
 
-## taskblock-18 Pass D2/D4: leans — a click on a covered-but-leanable
-## enemy enters lean-choice mode instead of ordinary aim mode; wheel
+## taskblock-18 Pass D2/D4 (taskblock-19 Pass B: Lean -> Step Out
+## rename): step outs — a click on a covered-but-steppable-out-to
+## enemy enters step-out-choice mode instead of ordinary aim mode; wheel
 ## cycles candidates; a further click/confirm_shot() commits the triple.
 ## Same conventions as the rest of this file's siblings (click_cell()
 ## driven directly, no live camera/viewport needed).
@@ -41,11 +42,11 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
-## Verified geometry (matches test_unit_ai.gd's own AI-lean-fallback
+## Verified geometry (matches test_unit_ai.gd's own AI-step-out-fallback
 ## fixture): a real WALL (opacity) at (3,2) blinds a shooter at (3,0)
 ## from an enemy at (3,9), while both orthogonal neighbors keep clear
 ## LoS around it. Row y=1 is ALSO walled (pathing only, no opacity) so
-## no diagonal shortcut competes with the lean cells for the reachable-
+## no diagonal shortcut competes with the step-out cells for the reachable-
 ## cell scorer elsewhere in the codebase — irrelevant to TacticsController
 ## itself (it never repositions), kept only so this fixture matches its
 ## AI-side counterpart byte for byte.
@@ -76,7 +77,7 @@ func _setup_covered_scene() -> Dictionary:
 	}
 
 
-func test_clicking_a_covered_enemy_enters_lean_mode_not_aim_mode() -> void:
+func test_clicking_a_covered_enemy_enters_step_out_mode_not_aim_mode() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 
@@ -84,8 +85,8 @@ func test_clicking_a_covered_enemy_enters_lean_mode_not_aim_mode() -> void:
 	controller.arm_action(&"shoot")
 	controller.click_cell(built.enemy.cell)
 
-	assert_eq(controller.leaning_at, built.enemy)
-	assert_null(controller.aiming_at, "a lean never also enters ordinary aim mode")
+	assert_eq(controller.stepping_out_at, built.enemy)
+	assert_null(controller.aiming_at, "a step out never also enters ordinary aim mode")
 
 
 func test_a_directly_visible_enemy_still_enters_ordinary_aim_mode() -> void:
@@ -105,10 +106,10 @@ func test_a_directly_visible_enemy_still_enters_ordinary_aim_mode() -> void:
 	controller.click_cell(Vector2i(5, 5))
 
 	assert_eq(controller.aiming_at, b)
-	assert_null(controller.leaning_at, "a clear shot must never enter lean mode")
+	assert_null(controller.stepping_out_at, "a clear shot must never enter step-out mode")
 
 
-func test_lean_candidates_are_populated_safest_first() -> void:
+func test_step_out_candidates_are_populated_safest_first() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
@@ -116,40 +117,42 @@ func test_lean_candidates_are_populated_safest_first() -> void:
 
 	controller.click_cell(built.enemy.cell)
 
-	assert_gt(controller._lean_candidates.size(), 0)
-	assert_eq(controller._lean_cell_index, 0, "starts on the safest (first) candidate")
-	for cell: Vector2i in controller._lean_candidates:
+	assert_gt(controller._step_out_candidates.size(), 0)
+	assert_eq(controller._step_out_cell_index, 0, "starts on the safest (first) candidate")
+	for cell: Vector2i in controller._step_out_candidates:
 		assert_eq(
 			Grid.distance_manhattan(built.shooter.cell, cell), 1, "every candidate is orthogonal"
 		)
 
 
-func test_wheel_cycles_the_lean_cell_and_wraps() -> void:
+func test_wheel_cycles_the_step_out_cell_and_wraps() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
 	controller.arm_action(&"shoot")
 	controller.click_cell(built.enemy.cell)
-	var count: int = controller._lean_candidates.size()
+	var count: int = controller._step_out_candidates.size()
 	assert_gt(count, 1, "sanity: this fixture must offer more than one candidate to prove cycling")
 
-	controller.cycle_lean_cell(1)
-	assert_eq(controller._lean_cell_index, 1)
+	controller.cycle_step_out_cell(1)
+	assert_eq(controller._step_out_cell_index, 1)
 
-	controller.cycle_lean_cell(1 * (count - 1))  # wrap all the way back around
-	assert_eq(controller._lean_cell_index, 0)
+	controller.cycle_step_out_cell(1 * (count - 1))  # wrap all the way back around
+	assert_eq(controller._step_out_cell_index, 0)
 
-	controller.cycle_lean_cell(-1)
-	assert_eq(controller._lean_cell_index, count - 1, "cycling backward from 0 wraps to the end")
+	controller.cycle_step_out_cell(-1)
+	assert_eq(
+		controller._step_out_cell_index, count - 1, "cycling backward from 0 wraps to the end"
+	)
 
 
-func test_confirming_a_lean_queues_the_move_attack_move_triple() -> void:
+func test_confirming_a_step_out_queues_the_move_attack_move_triple() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
 	controller.arm_action(&"shoot")
 	controller.click_cell(built.enemy.cell)
-	var firing_cell: Vector2i = controller._lean_candidates[0]
+	var firing_cell: Vector2i = controller._step_out_candidates[0]
 
 	controller.confirm_shot()
 
@@ -162,12 +165,12 @@ func test_confirming_a_lean_queues_the_move_attack_move_triple() -> void:
 	assert_eq(out_move.path[out_move.path.size() - 1], firing_cell)
 	var back_move: MoveAction = actions[2]
 	assert_eq(back_move.path[back_move.path.size() - 1], built.shooter.cell)
-	assert_null(controller.leaning_at, "confirming must leave lean mode")
+	assert_null(controller.stepping_out_at, "confirming must leave step-out mode")
 
 
-## Clicking on ANY cell while leaning confirms it — mirrors confirm_shot's
+## Clicking on ANY cell while stepping out confirms it — mirrors confirm_shot's
 ## own "any click confirms" contract for ordinary aim mode.
-func test_any_click_while_leaning_confirms_it() -> void:
+func test_any_click_while_stepping_out_confirms_it() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
@@ -176,31 +179,31 @@ func test_any_click_while_leaning_confirms_it() -> void:
 
 	controller.click_cell(Vector2i(9, 9))  # an unrelated, empty cell
 
-	assert_null(controller.leaning_at)
+	assert_null(controller.stepping_out_at)
 	assert_eq(controller.selection.current_queue().actions.size(), 3)
 
 
-func test_esc_cancels_a_pending_lean_without_queuing_anything() -> void:
+func test_esc_cancels_a_pending_step_out_without_queuing_anything() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
 	controller.arm_action(&"shoot")
 	controller.click_cell(built.enemy.cell)
-	assert_not_null(controller.leaning_at)
+	assert_not_null(controller.stepping_out_at)
 
 	var esc := InputEventKey.new()
 	esc.pressed = true
 	esc.keycode = KEY_ESCAPE
 	controller._unhandled_input(esc)
 
-	assert_null(controller.leaning_at)
+	assert_null(controller.stepping_out_at)
 	assert_eq(controller.selection.current_queue().actions.size(), 0)
 	assert_not_null(
 		controller.selection.selected_unit, "Esc backs out one level, not a full deselect"
 	)
 
 
-func test_rmb_also_cancels_a_pending_lean() -> void:
+func test_rmb_also_cancels_a_pending_step_out() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
@@ -216,12 +219,12 @@ func test_rmb_also_cancels_a_pending_lean() -> void:
 	up.pressed = false
 	controller._unhandled_input(up)
 
-	assert_null(controller.leaning_at)
+	assert_null(controller.stepping_out_at)
 	assert_eq(controller.selection.current_queue().actions.size(), 0)
 
 
 ## taskblock-18 D4: "the ghost must disclose exposure."
-func test_lean_exposure_reports_a_real_overwatcher_at_the_selected_cell() -> void:
+func test_step_out_exposure_reports_a_real_overwatcher_at_the_selected_cell() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	var state: CombatState = built.state
@@ -260,13 +263,13 @@ func test_lean_exposure_reports_a_real_overwatcher_at_the_selected_cell() -> voi
 	# Find the candidate the overwatcher actually threatens and select it,
 	# regardless of which one sorted first.
 	var threatened_index := -1
-	for i in range(controller._lean_candidates.size()):
-		if Overwatch.would_trigger_at(state, built.shooter, controller._lean_candidates[i]).has(
+	for i in range(controller._step_out_candidates.size()):
+		if Overwatch.would_trigger_at(state, built.shooter, controller._step_out_candidates[i]).has(
 			overwatcher
 		):
 			threatened_index = i
 	assert_true(threatened_index >= 0, "sanity: the fixture must actually threaten one candidate")
-	while controller._lean_cell_index != threatened_index:
-		controller.cycle_lean_cell(1)
+	while controller._step_out_cell_index != threatened_index:
+		controller.cycle_step_out_cell(1)
 
-	assert_eq(controller.lean_exposure(), [overwatcher])
+	assert_eq(controller.step_out_exposure(), [overwatcher])

@@ -45,10 +45,11 @@ static func all(log_path: String) -> Array[Dictionary]:
 		},
 		{"trigger": "Click action, then enemy", "action": "aim"},
 		{"trigger": "Scroll", "action": "dartboard layer"},
-		# taskblock-18 D2: "mouse-wheel cycles other valid cells" — the SAME
-		# physical wheel gesture as the row above, active while choosing a
-		# lean's own firing cell instead of aiming.
-		{"trigger": "Scroll", "action": "cycle lean cell (while leaning)"},
+		# taskblock-18 D2 (taskblock-19 Pass B: Lean -> Step Out rename):
+		# "mouse-wheel cycles other valid cells" — the SAME physical wheel
+		# gesture as the row above, active while choosing a step out's own
+		# firing cell instead of aiming.
+		{"trigger": "Scroll", "action": "cycle step-out cell (while stepping out)"},
 		{"trigger": "button", "action": "end turn"},
 		{"trigger": "RMB drag", "action": "orbit (locked while aiming)"},
 		{"trigger": "MMB drag", "action": "pan (locked while aiming)"},
