@@ -28,23 +28,76 @@ static func check_trigger(state: CombatState, mover: Unit) -> bool:
 	for overwatcher: Unit in state.units.duplicate():
 		if overwatcher == mover or not overwatcher.alive:
 			continue
-		if overwatcher.overwatch_weapon_id == &"":
-			continue
-		var weapon: Part = overwatcher.shell.find_part(overwatcher.overwatch_weapon_id)
-		if weapon == null or weapon.hp <= 0:
-			continue
-		if not _in_arc(overwatcher, mover):
-			continue
-		var range_cells: int = Grid.distance_chebyshev(overwatcher.cell, mover.cell)
-		if weapon.weapon_max_range > 0.0 and range_cells > int(weapon.weapon_max_range):
-			continue
-		if not LoS.has_los(state.grid, overwatcher.cell, mover.cell):
-			continue
-		if not _torso_visible(state, overwatcher, mover, weapon):
+		var weapon: Part = _qualifying_weapon(state, overwatcher, mover)
+		if weapon == null:
 			continue
 		_fire(state, overwatcher, weapon, mover)
 		triggered = true
 	return triggered
+
+
+## taskblock-18 D1/D4: "the firing cell is NOT covered... discloses
+## exposure — is it in a known overwatch arc, what can see it." Every
+## still-armed, currently-alive overwatcher that WOULD trigger if `mover`
+## stood at `candidate_cell` right now — asked in advance, nothing fired,
+## nothing mutated. Real units (never clones) so a caller can safely hold
+## onto the result. `candidate_cell == mover.cell` skips the speculative
+## clone entirely (nothing hypothetical to ask).
+static func would_trigger_at(
+	state: CombatState, mover: Unit, candidate_cell: Vector2i
+) -> Array[Unit]:
+	if candidate_cell == mover.cell:
+		var same_cell: Array[Unit] = []
+		for overwatcher: Unit in _qualifying_overwatchers(state, mover):
+			same_cell.append(state.find_unit(overwatcher.id))
+		return same_cell
+	var preview: CombatState = state.dup()
+	var mover_clone: Unit = preview.find_unit(mover.id)
+	if mover_clone == null:
+		return []
+	# Same "ask a speculative clone" pattern ActionQueue.preview() already
+	# uses — never mutate the real state just to answer a hypothetical.
+	preview.grid.set_occupant_id(mover_clone.cell, -1)
+	mover_clone.cell = candidate_cell
+	if preview.grid.in_bounds(candidate_cell):
+		preview.grid.set_occupant_id(candidate_cell, mover_clone.id)
+	var qualifying: Array[Unit] = _qualifying_overwatchers(preview, mover_clone)
+	var real: Array[Unit] = []
+	for overwatcher: Unit in qualifying:
+		real.append(state.find_unit(overwatcher.id))
+	return real
+
+
+static func _qualifying_overwatchers(state: CombatState, mover: Unit) -> Array[Unit]:
+	var result: Array[Unit] = []
+	for overwatcher: Unit in state.units:
+		if overwatcher == mover or not overwatcher.alive:
+			continue
+		if _qualifying_weapon(state, overwatcher, mover) != null:
+			result.append(overwatcher)
+	return result
+
+
+## The one qualifying predicate (docs/09 taskblock06 F1/F2: torso visible,
+## in arc, in range) `check_trigger` (real, firing) and `would_trigger_at`
+## (speculative, non-firing) both share, so they can never silently drift
+## apart — returns the overwatcher's own qualifying weapon, or null.
+static func _qualifying_weapon(state: CombatState, overwatcher: Unit, mover: Unit) -> Part:
+	if overwatcher.overwatch_weapon_id == &"":
+		return null
+	var weapon: Part = overwatcher.shell.find_part(overwatcher.overwatch_weapon_id)
+	if weapon == null or weapon.hp <= 0:
+		return null
+	if not _in_arc(overwatcher, mover):
+		return null
+	var range_cells: int = Grid.distance_chebyshev(overwatcher.cell, mover.cell)
+	if weapon.weapon_max_range > 0.0 and range_cells > int(weapon.weapon_max_range):
+		return null
+	if not LoS.has_los(state.grid, overwatcher.cell, mover.cell):
+		return null
+	if not _torso_visible(state, overwatcher, mover, weapon):
+		return null
+	return weapon
 
 
 ## docs/09 taskblock06 F1: "arc: the unit's facing +/- 45 degrees."
@@ -139,18 +192,25 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 	)
 	state.log_action(text)
 	if not state.is_preview:
-		state.combat_log.emit(
-			LogEvent.new(
-				state.round_number,
-				Enums.Phase.RESOLUTION,
-				overwatcher.id,
-				&"overwatch_triggered",
-				{"weapon": weapon.id, "target_unit_id": mover.id},
-				# Overwatch fires out of turn order — the reacting unit is
-				# never the one a `turn_start` header most recently named,
-				# so both units stay explicit here rather than being
-				# assumed from context the way an in-turn action can be.
-				"unit %d fired %s at unit %d" % [overwatcher.id, weapon.id, mover.id]
+		(
+			state
+			. combat_log
+			. emit(
+				(
+					LogEvent
+					. new(
+						state.round_number,
+						Enums.Phase.RESOLUTION,
+						overwatcher.id,
+						&"overwatch_triggered",
+						{"weapon": weapon.id, "target_unit_id": mover.id},
+						# Overwatch fires out of turn order — the reacting unit is
+						# never the one a `turn_start` header most recently named,
+						# so both units stay explicit here rather than being
+						# assumed from context the way an in-turn action can be.
+						"unit %d fired %s at unit %d" % [overwatcher.id, weapon.id, mover.id]
+					)
+				)
 			)
 		)
 
