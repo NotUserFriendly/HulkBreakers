@@ -118,8 +118,11 @@ static func for_tile(info: Dictionary, material_table: MaterialTable) -> Tooltip
 	var cell: Vector2i = info.cell
 	var data := TooltipData.new("cell (%d, %d)" % [cell.x, cell.y])
 	data.add_row("terrain", Enums.TerrainType.keys()[info.terrain])
-	if info.cover_value > 0.0:
-		data.add_row("cover", "%.1f" % info.cover_value)
+	# taskblock-16 Pass B2: no separate "cover" row here — a cell WITH
+	# cover always has a `field_object`, and the branch above already
+	# returns that object's own full tooltip (for_part) before this
+	# terrain-only branch is ever reached. Object geometry is the one
+	# source of truth now, never a parallel scalar shown alongside it.
 	if info.get("visible_from_selected") != null:
 		data.add_row("visible from selected", str(info.visible_from_selected))
 	return data

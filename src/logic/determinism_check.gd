@@ -10,7 +10,7 @@ extends RefCounted
 ## `generator_fn(seed: int) -> Variant` — anything comparable.
 ## `compare_fn(a, b) -> bool` — optional; defaults to `==`. Supply one for
 ## types whose `==` means reference identity (RefCounted/Resource), e.g. a
-## Grid compared by its terrain/opacity/cover_value/occupant_id arrays.
+## Grid compared by its terrain/opacity/occupant_id arrays and blockers dict.
 static func check(
 	generator_fn: Callable, seeds: Array[int], compare_fn: Callable = Callable()
 ) -> Dictionary:

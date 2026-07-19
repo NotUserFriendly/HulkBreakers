@@ -182,16 +182,12 @@ func test_a_mangling_part_stays_attached_and_flips_is_mangled() -> void:
 	DamageResolver.resolve_part_failure(arm, state, impact)
 
 	assert_true(arm.is_mangled, "reaching 0 hp under MANGLE must flip is_mangled")
-	assert_true(
-		unit.shell.all_parts().has(arm), "a mangled part stays in the unit's own assembly"
-	)
+	assert_true(unit.shell.all_parts().has(arm), "a mangled part stays in the unit's own assembly")
 	assert_true(
 		PartGraph.walk(arm).has(hand) and PartGraph.walk(arm).has(pistol),
 		"the arm's own subtree (hand, pistol) must still hang off it, fully assembled"
 	)
-	assert_true(
-		state.grid.field_items.is_empty(), "MANGLE never drops anything as a field item"
-	)
+	assert_true(state.grid.field_items.is_empty(), "MANGLE never drops anything as a field item")
 
 
 ## docs/03/taskblock-09 A2: DISABLE stays attached too — dead weight, still
@@ -210,9 +206,7 @@ func test_a_disabled_part_stays_attached_and_flips_is_disabled() -> void:
 
 	assert_true(arm.is_disabled, "reaching 0 hp under DISABLE must flip is_disabled")
 	assert_false(arm.is_mangled, "a part has exactly one failure_mode, never both flags")
-	assert_true(
-		unit.shell.all_parts().has(arm), "a disabled part stays in the unit's own assembly"
-	)
+	assert_true(unit.shell.all_parts().has(arm), "a disabled part stays in the unit's own assembly")
 
 
 ## A non-mangling destroyed part never loses its own identity — "a broken
@@ -237,7 +231,7 @@ func test_a_broken_pistol_is_still_identifiably_a_pistol() -> void:
 
 
 func test_wreckage_yields_its_own_salvage() -> void:
-	var wreckage: Part = FieldObjects.twisted_sheet_metal()
+	var wreckage: Part = DataLibrary.get_part(&"twisted_sheet_metal")
 	assert_false(wreckage.salvage_yield.is_empty(), "wreckage must actually carry salvage_yield")
 
 
@@ -249,7 +243,7 @@ func test_a_mangling_parts_own_id_carries_no_salvage_the_wreckage_does() -> void
 	plate.id = &"plate_medium_sheet_steel"
 	plate.mangles_into = &"metal_scraps"
 	assert_true(plate.salvage_yield.is_empty())
-	assert_false(FieldObjects.metal_scraps().salvage_yield.is_empty())
+	assert_false(DataLibrary.get_part(&"metal_scraps").salvage_yield.is_empty())
 
 
 ## taskblock-09 E1: "compute the resolved number first, then quarter it" —

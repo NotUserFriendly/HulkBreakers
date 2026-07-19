@@ -11,16 +11,21 @@ const MIN_ROOM_SIZE: int = 3
 const MIN_CHILD_SIZE: int = MIN_ROOM_SIZE + 2
 
 const COVER_PROBABILITY: float = 0.18
-const FULL_COVER_CHANCE: float = 0.35
-const HALF_COVER_VALUE: float = 0.5
-const FULL_COVER_VALUE: float = 1.0
-## Cover heights borrow the reference humanoid's own band boundaries
-## (docs/01): half cover tops out where legs end and torso begins (0.90),
-## masking legs but leaving torso/head exposed; full cover tops out where
-## torso ends and head begins (1.60), masking everything but the head.
-const HALF_COVER_HEIGHT: float = 0.90
+## taskblock-16 Pass B2: the reference humanoid's own torso/head boundary
+## (docs/01) — no longer a placement height (the object's own real volume
+## IS its height now), kept only as the debug ASCII dump's own full/half
+## glyph threshold (`AsciiRender._blocker_height`).
 const FULL_COVER_HEIGHT: float = 1.60
-const COVER_FOOTPRINT: float = 0.8
+## taskblock-16 Pass B1: "all cover objects (old three + new three) are
+## field-object part-trees at a cell" — a flagged, uniformly-weighted
+## pick among every real cover part this codebase has (never a design
+## decision). `barrel_pallet` gets its own extra generation step
+## (`_roll_barrels`) once picked — every other id is placed as-is.
+const COVER_IDS: Array[StringName] = [
+	&"scrap_pile", &"goo_barrel", &"crate", &"pillar", &"forklift", &"barrel_pallet"
+]
+## "generates with 0-4 goo_barrels on it (seeded)."
+const BARREL_PALLET_MAX_BARRELS: int = 4
 
 const SPAWN_ZONE_SIZE: int = 2
 
@@ -42,7 +47,7 @@ static func generate(map_seed: int, width: int, height: int) -> Grid:
 	_scatter_cover(grid, rng)
 
 	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
-	_ensure_spawns_connected(grid, spawn_cells[0], spawn_cells[1])
+	_ensure_spawns_connected(grid, spawn_cells[0], spawn_cells[1], rng)
 
 	return grid
 
@@ -146,13 +151,29 @@ static func _carve_straight(grid: Grid, a: Vector2i, b: Vector2i) -> void:
 			_set_open(grid, Vector2i(x, a.y))
 
 
+## taskblock-16 Pass B: also clears any blocker already sitting at `cell`
+## — harmless during the main carve (nothing's in `blockers` yet at that
+## point), but load-bearing for `_ensure_spawns_connected`'s own forced-
+## corridor fallback, which runs AFTER `_scatter_cover`: forcing a cell
+## open but leaving a blocker sitting in it would still leave that "fix"
+## corridor impassable (`Pathfinder.move_cost` now checks `blockers`
+## too), defeating the whole safety net.
 static func _set_open(grid: Grid, cell: Vector2i) -> void:
 	if not grid.in_bounds(cell):
 		return
 	grid.set_terrain(cell, Enums.TerrainType.OPEN)
 	grid.set_opacity(cell, 0.0)
+	grid.blockers.erase(cell)
 
 
+## taskblock-16 Pass B: cover used to be a single synthetic, permanent,
+## non-destructible box driving a numeric `cover_value` alongside it —
+## the "two-parallel-systems" B2 retired. Every scattered cell now gets a
+## REAL field object (`_make_cover`, below): destructible, salvageable,
+## lootable exactly like any other Part, already blocking movement
+## (`Pathfinder.move_cost`) and projecting into the shot plane
+## (`ShotPlane.build` already reads every `grid.blockers` entry) the
+## instant it's placed here — no further wiring needed.
 static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 	for y in range(grid.height):
 		for x in range(grid.width):
@@ -160,28 +181,28 @@ static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
 			if grid.get_terrain(cell) != Enums.TerrainType.OPEN:
 				continue
 			if rng.randf() < COVER_PROBABILITY:
-				var value: float = (
-					FULL_COVER_VALUE if rng.randf() < FULL_COVER_CHANCE else HALF_COVER_VALUE
-				)
-				grid.set_cover_value(cell, value)
-				# Terrain-scattered cover is permanent (never destructible), and a
-				# real region in the shot plane (docs/02) — not a numeric-only
-				# effect. Height follows cover_value: full cover masks legs and
-				# torso, half cover masks only legs.
-				var height: float = (
-					FULL_COVER_HEIGHT if value == FULL_COVER_VALUE else HALF_COVER_HEIGHT
-				)
-				var cover_object := Part.new()
-				cover_object.id = &"terrain_cover"
-				cover_object.is_destructible = false
-				cover_object.material = &"hull_plate"
-				cover_object.volume = [
-					Box.new(
-						Vector3(0.0, height * 0.5, 0.0),
-						Vector3(COVER_FOOTPRINT, height, COVER_FOOTPRINT)
-					)
-				]
-				grid.blockers[cell] = cover_object
+				grid.blockers[cell] = _make_cover(rng)
+
+
+static func _make_cover(rng: RandomNumberGenerator) -> Part:
+	var id: StringName = COVER_IDS[rng.randi() % COVER_IDS.size()]
+	var part: Part = DataLibrary.get_part(id)
+	if id == &"barrel_pallet":
+		_roll_barrels(part, rng)
+	return part
+
+
+## "A barrel_pallet generates with 0-4 goo_barrels on it (seeded)" — each
+## real `goo_barrel` attached through `PartGraph.attach` (never
+## `Part.contents` — only `sockets` project into the shot plane, so only
+## an attached barrel can ever actually be shot and cooked off).
+static func _roll_barrels(pallet: Part, rng: RandomNumberGenerator) -> void:
+	var count: int = rng.randi_range(0, BARREL_PALLET_MAX_BARRELS)
+	for i in range(count):
+		var socket: Socket = PartGraph.find_free_socket(pallet, &"BARREL_SLOT")
+		if socket == null:
+			break
+		PartGraph.attach(DataLibrary.get_part(&"goo_barrel"), pallet, socket)
 
 
 ## Picks the two carved rooms whose centers are farthest apart (Chebyshev) and
@@ -235,20 +256,39 @@ static func _far_corner(room: Rect2i) -> Rect2i:
 	return Rect2i(room.position + room.size - Vector2i(w, h), Vector2i(w, h))
 
 
+## taskblock-16 Pass B: `_scatter_cover` runs BEFORE spawn zones are
+## marked (it only ever sees plain OPEN cells) — a scattered blocker can
+## land on a cell that becomes a spawn zone a moment later. Harmless
+## while blockers were purely cosmetic, but now that they actually block
+## movement (`Pathfinder.move_cost`), a leftover blocker on a spawn cell
+## would make it unwalkable, or worse, plant a unit inside real,
+## occupied geometry at turn 0. Clearing any blocker here — the one
+## place every spawn cell is already visited — keeps spawn zones
+## guaranteed clear without a second full-grid pass.
 static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
 	var w: int = mini(SPAWN_ZONE_SIZE, room.size.x)
 	var h: int = mini(SPAWN_ZONE_SIZE, room.size.y)
 	for y in range(room.position.y, room.position.y + h):
 		for x in range(room.position.x, room.position.x + w):
-			grid.set_terrain(Vector2i(x, y), terrain_code)
+			var cell := Vector2i(x, y)
+			grid.set_terrain(cell, terrain_code)
+			grid.blockers.erase(cell)
 	return room.position
 
 
 ## Safety net: BSP corridor-carving already guarantees connectivity, but if a
 ## future change ever breaks that invariant, force a direct corridor rather
 ## than silently shipping an unwinnable map.
-static func _ensure_spawns_connected(grid: Grid, a: Vector2i, b: Vector2i) -> void:
+##
+## taskblock-16 Pass B: this used to spin up its own unseeded
+## `RandomNumberGenerator` — harmless while the fallback almost never
+## triggered, but movement-blocking cover (`Pathfinder.move_cost` now
+## checks `blockers`) trips it far more often, which turned that unseeded
+## generator into real, visible non-determinism (`same seed, two calls,
+## two different maps`). Reuses the caller's already-seeded `rng` instead.
+static func _ensure_spawns_connected(
+	grid: Grid, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
+) -> void:
 	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
 	if pf.astar(a, b).is_empty():
-		var rng := RandomNumberGenerator.new()
 		_carve_corridor(grid, a, b, rng)

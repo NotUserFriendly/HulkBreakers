@@ -25,8 +25,12 @@ var combat_log: CombatLog = CombatLog.new()
 var material_table: MaterialTable = DataLibrary.material_table()
 ## docs/10 taskblock05 E1: what a mangling Part.mangles_into resolves
 ## against — shared across the whole battle, same convention as
-## material_table above.
-var wreckage_pool: Array[Part] = FieldObjects.wreckage_pool()
+## material_table above. taskblock-16 Pass B: FieldObjects (hardcoded
+## factories) is retired — every wreckage kind is a real `.tres` loaded
+## through DataLibrary now, same as any other part.
+var wreckage_pool: Array[Part] = [
+	DataLibrary.get_part(&"twisted_sheet_metal"), DataLibrary.get_part(&"metal_scraps")
+]
 ## True only on a dup() built for a TACTICS-time preview (docs/09). An
 ## attack's hit/damage outcome is the one genuinely probabilistic effect a
 ## preview must never resolve — not because randomness is expensive, but
@@ -267,10 +271,7 @@ func _start_turn(unit: Unit) -> void:
 						"to": unit.surrogate_tier.id,
 						"cause": "organics_decay"
 					},
-					(
-						"%s -> %s (organics decay)"
-						% [tier_before.id, unit.surrogate_tier.id]
-					)
+					"%s -> %s (organics decay)" % [tier_before.id, unit.surrogate_tier.id]
 				)
 			)
 		for entry: Dictionary in meltdowns:

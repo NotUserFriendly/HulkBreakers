@@ -502,7 +502,7 @@ func test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only() -
 ## mechanic every other volatile part uses. No new code, just the data
 ## actually being correct.
 func test_the_goo_barrel_field_object_detonates() -> void:
-	var barrel: Part = FieldObjects.goo_barrel()
+	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
 	var grid := Grid.new(10, 10)
 	grid.blockers[Vector2i(5, 5)] = barrel
 

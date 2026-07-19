@@ -361,7 +361,7 @@ func test_destroying_a_scrap_pile_along_the_shot_credits_its_salvage_to_the_miss
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
 	var target := _make_target(Vector2i(2, 4))
 	var grid := Grid.new(10, 10)
-	var scrap: Part = FieldObjects.scrap_pile()
+	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(2, 2)] = scrap
 	var state := CombatState.new(grid, [shooter, target])
 	var mission := MissionState.new(RunState.new(), state)
@@ -381,7 +381,7 @@ func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> 
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
 	var target := _make_target(Vector2i(2, 4))
 	var grid := Grid.new(10, 10)
-	var scrap: Part = FieldObjects.scrap_pile()
+	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(2, 2)] = scrap
 	var state := CombatState.new(grid, [shooter, target])
 

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_kxgay"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_my1gd"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_ugt7m"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_5ub2h"]
+
+[sub_resource type="Resource" id="Resource_5ewta"]
+script = ExtResource("4_5ub2h")
+center = Vector3(0, 0.4, 0)
+size = Vector3(0.9, 0.8, 0.9)
+
+[resource]
+script = ExtResource("1_kxgay")
+id = &"scrap_pile"
+display_name = "Scrap Pile"
+material = &"steel"
+volume = Array[ExtResource("4_5ub2h")]([SubResource("Resource_5ewta")])
+hp = 6
+max_hp = 6
+salvage_yield = {
+&"metals": 4
+}

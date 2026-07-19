@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_mwl6l"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_o56kp"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_sgod4"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_wn0g6"]
+
+[sub_resource type="Resource" id="Resource_1jys2"]
+script = ExtResource("4_wn0g6")
+center = Vector3(0, 0.5, 0)
+size = Vector3(0.5, 1, 0.5)
+
+[resource]
+script = ExtResource("1_mwl6l")
+id = &"goo_barrel"
+display_name = "Goo Barrel"
+attaches_to = Array[StringName]([&"BARREL_SLOT"])
+material = &"reactive"
+volume = Array[ExtResource("4_wn0g6")]([SubResource("Resource_1jys2")])
+render_primitive = &"CYLINDER"
+render_scale = Vector3(0.5, 1, 0.5)
+hp = 3
+max_hp = 3
+tags = Array[StringName]([&"VOLATILE"])
+salvage_yield = {
+&"reactives": 2
+}
+failure_mode = &"DETONATE"
+detonate_damage = 12.0
+detonate_radius = 2.0

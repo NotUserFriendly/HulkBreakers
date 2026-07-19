@@ -114,7 +114,7 @@ func test_a_dropped_blocker_lies_on_its_side() -> void:
 func test_a_blockers_mesh_uses_its_own_material_color() -> void:
 	var grid := Grid.new(2, 2)
 	var table := DataLibrary.material_table()
-	var scrap := FieldObjects.scrap_pile()
+	var scrap := DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(0, 0)] = scrap
 
 	var view := BoardView.new()

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_dg3bk"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_t2dm2"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_lrux6"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_foqye"]
+
+[sub_resource type="Resource" id="Resource_v7v2w"]
+script = ExtResource("4_foqye")
+center = Vector3(0, 0.9, 0)
+size = Vector3(0.6, 1.8, 0.6)
+
+[resource]
+script = ExtResource("1_dg3bk")
+id = &"pillar"
+display_name = "Steel Pillar"
+material = &"steel"
+volume = Array[ExtResource("4_foqye")]([SubResource("Resource_v7v2w")])
+hp = 10
+max_hp = 10
+salvage_yield = {
+&"metals": 5
+}

@@ -188,14 +188,20 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 	var cover_cell := Vector2i(5, 3)
 	var target_cell := Vector2i(5, 6)
 
+	# A generic waist-high blocker — its own fixture, not MapGen's own
+	# placement constants (taskblock-16 Pass B2 retired the scalar those
+	# used to back; this test is about ShotPlane projection, not about
+	# what MapGen itself scatters, so it owns its own reasonable numbers).
+	const HALF_COVER_HEIGHT: float = 0.90
+	const HALF_COVER_FOOTPRINT: float = 0.8
 	var cover := Part.new()
 	cover.id = &"half_cover"
 	cover.is_destructible = false
 	cover.material = &"hull_plate"
 	cover.volume = [
 		Box.new(
-			Vector3(0.0, MapGen.HALF_COVER_HEIGHT * 0.5, 0.0),
-			Vector3(MapGen.COVER_FOOTPRINT, MapGen.HALF_COVER_HEIGHT, MapGen.COVER_FOOTPRINT)
+			Vector3(0.0, HALF_COVER_HEIGHT * 0.5, 0.0),
+			Vector3(HALF_COVER_FOOTPRINT, HALF_COVER_HEIGHT, HALF_COVER_FOOTPRINT)
 		)
 	]
 
@@ -226,6 +232,63 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 	var head_hit: Region = ShotPlane.resolve_projectile(plane, head_point)
 	assert_ne(
 		head_hit.part.id, &"half_cover", "half cover must not reach high enough to mask the head"
+	)
+
+
+## taskblock-16 B1: tall cover ("steel pillar... masks torso") must reach
+## up through the torso while still leaving the head exposed — the other
+## half of the "low vs tall masks legs vs torso" claim from
+## test_half_cover_masks_the_legs_but_not_the_head, above. Falls out of
+## the same projection math the low case does; this just proves it at
+## the height a real `pillar` actually ships with
+## (`MapGen.FULL_COVER_HEIGHT`, the reference humanoid's own torso/head
+## boundary).
+func test_full_cover_masks_the_torso_but_not_the_head() -> void:
+	var shooter_cell := Vector2i(5, 0)
+	var cover_cell := Vector2i(5, 3)
+	var target_cell := Vector2i(5, 6)
+
+	const FULL_COVER_FOOTPRINT: float = 0.8
+	var cover := Part.new()
+	cover.id = &"full_cover"
+	cover.is_destructible = false
+	cover.material = &"steel"
+	cover.volume = [
+		Box.new(
+			Vector3(0.0, MapGen.FULL_COVER_HEIGHT * 0.5, 0.0),
+			Vector3(FULL_COVER_FOOTPRINT, MapGen.FULL_COVER_HEIGHT, FULL_COVER_FOOTPRINT)
+		)
+	]
+
+	var grid := Grid.new(12, 12)
+	grid.blockers[cover_cell] = cover
+	var unit := _reference_unit(target_cell)
+	var state := CombatState.new(grid, [unit])
+
+	var origin := Vector2(shooter_cell.x, shooter_cell.y)
+	var direction := Vector2(target_cell - shooter_cell).normalized()
+	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+
+	print("\n=== full cover: masks the torso, not the head ===")
+	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 4))
+
+	var torso_region: Region = _find(plane, &"torso")
+	var torso_point: Vector2 = torso_region.rect.get_center()
+	var torso_hit: Region = ShotPlane.resolve_projectile(plane, torso_point)
+	assert_eq(torso_hit.part.id, &"full_cover", "full cover must mask the torso")
+
+	var leg_region: Region = _find(plane, &"leg")
+	var leg_point: Vector2 = leg_region.rect.get_center()
+	var leg_hit: Region = ShotPlane.resolve_projectile(plane, leg_point)
+	assert_eq(
+		leg_hit.part.id, &"full_cover", "full cover taller than half cover must mask legs too"
+	)
+
+	var head_region: Region = _find(plane, &"head_cladding")
+	var head_point: Vector2 = head_region.rect.get_center()
+	var head_hit: Region = ShotPlane.resolve_projectile(plane, head_point)
+	assert_ne(
+		head_hit.part.id, &"full_cover", "full cover must not reach high enough to mask the head"
 	)
 
 

@@ -18,10 +18,20 @@ func _find_cells(grid: Grid, terrain_code: int) -> Array[Vector2i]:
 func _grids_equal(a: Grid, b: Grid) -> bool:
 	if a.width != b.width or a.height != b.height:
 		return false
+	# taskblock-16 Pass B2: `blockers` holds real Part objects — Dictionary
+	# `==` on Object values is reference equality, so this compares each
+	# cell's own blocker id instead (see test_determinism_check.gd's own
+	# identical fix).
+	var a_blocker_ids: Dictionary = {}
+	for cell: Vector2i in a.blockers:
+		a_blocker_ids[cell] = (a.blockers[cell] as Part).id
+	var b_blocker_ids: Dictionary = {}
+	for cell: Vector2i in b.blockers:
+		b_blocker_ids[cell] = (b.blockers[cell] as Part).id
 	return (
 		a.terrain == b.terrain
 		and a.opacity == b.opacity
-		and a.cover_value == b.cover_value
+		and a_blocker_ids == b_blocker_ids
 		and a.occupant_id == b.occupant_id
 	)
 
@@ -62,12 +72,46 @@ func test_cover_density_within_target_band() -> void:
 				if grid.get_terrain(cell) == Enums.TerrainType.WALL:
 					continue
 				open_count += 1
-				if grid.get_cover_value(cell) > 0.0:
+				if grid.blockers.has(cell):
 					cover_count += 1
 		var density: float = float(cover_count) / float(open_count)
 		assert_between(
 			density, 0.08, 0.30, "seed %d: cover density %.3f out of band" % [map_seed, density]
 		)
+
+
+func _attached_barrel_count(pallet: Part) -> int:
+	var count := 0
+	for socket: Socket in pallet.sockets:
+		if socket.socket_type == &"BARREL_SLOT" and socket.occupant != null:
+			count += 1
+	return count
+
+
+## taskblock-16 B1: "a barrel_pallet generates with 0-4 goo_barrels on it
+## (seeded)" — same seed must roll the same barrel counts, and every
+## rolled count must land in the documented 0-4 range.
+func test_barrel_pallet_barrel_count_is_deterministic_and_in_range() -> void:
+	var counts_a: Array[int] = []
+	var counts_b: Array[int] = []
+	for map_seed in range(SEED_COUNT):
+		var grid_a: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid_b: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		for cell: Vector2i in grid_a.blockers:
+			var part: Part = grid_a.blockers[cell]
+			if part.id == &"barrel_pallet":
+				counts_a.append(_attached_barrel_count(part))
+		for cell: Vector2i in grid_b.blockers:
+			var part: Part = grid_b.blockers[cell]
+			if part.id == &"barrel_pallet":
+				counts_b.append(_attached_barrel_count(part))
+
+	assert_true(
+		counts_a.size() > 0, "at least one barrel_pallet must appear across %d seeds" % SEED_COUNT
+	)
+	assert_eq(counts_a, counts_b, "the same seed must roll the same barrel counts")
+	for count: int in counts_a:
+		assert_between(count, 0, 4, "a barrel_pallet must carry 0-4 barrels")
 
 
 func test_walls_are_opaque_and_open_cells_are_not() -> void:

@@ -13,7 +13,8 @@ extends RefCounted
 
 ## `{}` for an out-of-bounds cell. Otherwise:
 ## `cell`, `terrain` (Enums.TerrainType), `unit` (Unit or null),
-## `field_object` (Part or null), `cover_value` (float, this cell's own),
+## `field_object` (Part or null — taskblock-16 Pass B2: the one source of
+## truth for "is this cell covered," no separate scalar alongside it),
 ## `visible_from_selected` (bool or null — null when nothing is selected).
 static func inspect(state: CombatState, cell: Vector2i, selected: Unit = null) -> Dictionary:
 	if not state.grid.in_bounds(cell):
@@ -26,7 +27,6 @@ static func inspect(state: CombatState, cell: Vector2i, selected: Unit = null) -
 		"terrain": state.grid.get_terrain(cell),
 		"unit": _unit_at(state, cell),
 		"field_object": state.grid.blockers.get(cell),
-		"cover_value": state.grid.get_cover_value(cell),
 		"visible_from_selected": visible,
 	}
 

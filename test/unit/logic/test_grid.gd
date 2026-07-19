@@ -19,20 +19,24 @@ func test_default_cell_values() -> void:
 	var cell := Vector2i(2, 2)
 	assert_eq(_grid.get_terrain(cell), 0)
 	assert_eq(_grid.get_opacity(cell), 0.0)
-	assert_eq(_grid.get_cover_value(cell), 0.0)
 	assert_eq(_grid.get_occupant_id(cell), -1)
+	assert_false(_grid.blockers.has(cell))
 
 
 func test_set_get_cell_data_roundtrip() -> void:
 	var cell := Vector2i(1, 3)
 	_grid.set_terrain(cell, 2)
 	_grid.set_opacity(cell, 1.0)
-	_grid.set_cover_value(cell, 0.5)
 	_grid.set_occupant_id(cell, 7)
+	# taskblock-16 Pass B2: `blockers` (real Part objects) is the one
+	# source of truth for cover now — no separate scalar to round-trip.
+	var cover := Part.new()
+	cover.id = &"test_cover"
+	_grid.blockers[cell] = cover
 	assert_eq(_grid.get_terrain(cell), 2)
 	assert_eq(_grid.get_opacity(cell), 1.0)
-	assert_eq(_grid.get_cover_value(cell), 0.5)
 	assert_eq(_grid.get_occupant_id(cell), 7)
+	assert_eq(_grid.blockers[cell], cover)
 	# Unrelated cell stays default.
 	assert_eq(_grid.get_terrain(Vector2i(0, 0)), 0)
 

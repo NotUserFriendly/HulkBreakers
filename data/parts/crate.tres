@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_7bpiu"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_crqpj"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_isifa"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_crefk"]
+
+[sub_resource type="Resource" id="Resource_3uqa1"]
+script = ExtResource("4_crefk")
+center = Vector3(0, 0.35, 0)
+size = Vector3(0.7, 0.7, 0.7)
+
+[resource]
+script = ExtResource("1_7bpiu")
+id = &"crate"
+display_name = "Crate"
+material = &"hull_plate"
+volume = Array[ExtResource("4_crefk")]([SubResource("Resource_3uqa1")])
+hp = 3
+max_hp = 3
+salvage_yield = {
+&"organics": 3
+}
