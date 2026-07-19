@@ -270,6 +270,168 @@ func test_cover_seeker_relocates_to_a_real_pass_b_cover_object() -> void:
 	)
 
 
+## taskblock17-1 Pass B: "the AI has no line-of-fire safety" — a queued
+## shot must never fire straight through a living ally standing between
+## muzzle and target. Ample open room and MP: the AI must find SOME clear
+## firing position rather than shooting blind from where it started.
+func test_an_ai_repositions_rather_than_firing_through_an_ally_in_the_line() -> void:
+	var grid := Grid.new(20, 20)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
+	var ally := _armed_unit(&"ally", Vector2i(5, 10), 0, &"")
+	var enemy := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
+	var state := CombatState.new(grid, [self_unit, ally, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	var shot: AttackAction = null
+	for action: CombatAction in queue.actions:
+		if action is AttackAction:
+			shot = action
+	assert_not_null(shot, "plenty of room to find a clear shot — must not just hold fire here")
+
+	var fired_from: Vector2i = self_unit.cell
+	var move: MoveAction = _last_move(queue)
+	if move != null:
+		fired_from = move.path[move.path.size() - 1]
+
+	var plane: Array[Region] = ShotPlane.build(
+		Vector2(fired_from.x, fired_from.y), Vector2(enemy.cell - fired_from).normalized(), state
+	)
+	var hit: Region = ShotPlane.resolve_projectile(plane, ShotPlane.center_of(plane, enemy))
+	assert_not_null(hit)
+	assert_ne(hit.body, ally, "the chosen firing position must not still have the ally in the way")
+
+
+## taskblock17-1 Pass B: "if none is reachable this turn, hold fire." A
+## 1-wide walled corridor leaves every reachable cell exactly collinear
+## with the ally (blocked by its own occupied cell before it can even
+## pass), so there is genuinely no clear cell to reposition to.
+func test_an_ai_holds_fire_when_no_reachable_cell_clears_the_ally() -> void:
+	var grid := Grid.new(20, 3)
+	for x in range(20):
+		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
+		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	var ally := _armed_unit(&"ally", Vector2i(5, 1), 0, &"")
+	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, ally, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	for action: CombatAction in queue.actions:
+		assert_false(
+			action is AttackAction, "walled into the ally's own line — must hold fire, not shoot"
+		)
+
+
+## taskblock17-1 Pass B: "friendly fire still mechanically possible — the
+## check is AI choice, not a resolution block." The shot-plane geometry
+## AttackAction/DamageResolver actually resolve against never special-
+## cases squad membership: the only exclusion resolution itself ever
+## applies is the shooter's own body (the same one `AttackAction.apply()`
+## and `_ally_in_firing_line` both need), never anything squad-based.
+func test_the_shot_plane_itself_does_not_special_case_squad_membership() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
+	var ally := _armed_unit(&"ally", Vector2i(2, 10), 0, &"")
+	var enemy := _armed_unit(&"enemy", Vector2i(4, 10), 1, &"")
+	var state := CombatState.new(Grid.new(10, 20), [self_unit, ally, enemy])
+
+	var origin := Vector2(self_unit.cell.x, self_unit.cell.y)
+	var direction := Vector2(enemy.cell - self_unit.cell).normalized()
+	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var downrange: Array[Region] = plane.filter(
+		func(region: Region) -> bool: return region.body != self_unit
+	)
+	var hit: Region = ShotPlane.resolve_projectile(downrange, ShotPlane.center_of(plane, enemy))
+
+	assert_not_null(hit)
+	assert_eq(
+		hit.body, ally, "resolution itself still hits whatever's in the way — friendly or not"
+	)
+
+
+## taskblock17-1 Pass C: walls all 8 neighbours of `cell` — nothing can
+## ever path adjacent to it, sealing it off entirely regardless of
+## movement budget.
+func _seal_off(grid: Grid, cell: Vector2i) -> void:
+	for offset: Vector2i in [
+		Vector2i(-1, -1),
+		Vector2i(0, -1),
+		Vector2i(1, -1),
+		Vector2i(-1, 0),
+		Vector2i(1, 0),
+		Vector2i(-1, 1),
+		Vector2i(0, 1),
+		Vector2i(1, 1)
+	]:
+		grid.set_terrain(cell + offset, Enums.TerrainType.WALL)
+
+
+## taskblock17-1 Pass C: "chebyshev nearest ignores walls" — a bot fixated
+## on the closer-as-the-crow-flies but fully sealed-off enemy would fail
+## to path there every turn and freeze facing the wall forever. Must
+## target and actually move toward the farther but reachable enemy
+## instead — "moves toward the nearest reachable, doesn't freeze facing
+## a wall."
+func test_targets_and_moves_toward_a_reachable_enemy_over_a_closer_sealed_off_one() -> void:
+	var grid := Grid.new(20, 20)
+	_seal_off(grid, Vector2i(2, 2))
+
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	# Short range: `reachable_enemy` starts well out of weapon range, so
+	# the AI is forced to actually reposition rather than firing from
+	# where it stands — the thing this test needs to see happen.
+	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	var unreachable_enemy := _armed_unit(&"unreachable", Vector2i(2, 2), 1, &"")
+	var reachable_enemy := _armed_unit(&"reachable", Vector2i(15, 15), 1, &"")
+	var state := CombatState.new(grid, [self_unit, unreachable_enemy, reachable_enemy])
+	assert_lt(
+		Grid.distance_chebyshev(self_unit.cell, unreachable_enemy.cell),
+		Grid.distance_chebyshev(self_unit.cell, reachable_enemy.cell),
+		"sanity: the sealed-off enemy really is the closer one as the crow flies"
+	)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(
+		move, "must reposition toward the reachable enemy, never freeze facing the wall"
+	)
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_lt(
+		Grid.distance_chebyshev(destination, reachable_enemy.cell),
+		Grid.distance_chebyshev(self_unit.cell, reachable_enemy.cell),
+		"must actually move toward the reachable enemy"
+	)
+
+
+## taskblock17-1 Pass C: same seed, same walled layout, same outcome —
+## the reachability fallback is deterministic, not incidentally stable.
+func test_reachable_enemy_targeting_is_deterministic() -> void:
+	var results: Array = []
+	for run in range(2):
+		var grid := Grid.new(20, 20)
+		_seal_off(grid, Vector2i(2, 2))
+		var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+		self_unit.shell.find_part(&"rifle").weapon_max_range = 30.0
+		var state := CombatState.new(
+			grid,
+			[
+				self_unit,
+				_armed_unit(&"unreachable", Vector2i(2, 2), 1, &""),
+				_armed_unit(&"reachable", Vector2i(15, 15), 1, &"")
+			],
+			11
+		)
+		var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+		var kinds: Array[String] = []
+		for action: CombatAction in queue.actions:
+			kinds.append(action.describe())
+		results.append(kinds)
+
+	assert_eq(results[0], results[1])
+
+
 ## "a unit with no valid action ends its turn cleanly" — no enemy, no
 ## mission, nothing to gather/extract, not this unit's landing squad.
 func test_a_unit_with_no_valid_action_ends_its_turn_cleanly() -> void:
