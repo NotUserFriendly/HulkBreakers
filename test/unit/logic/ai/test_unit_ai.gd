@@ -485,3 +485,62 @@ func test_an_unknown_playstyle_falls_back_to_aggressive() -> void:
 	)
 
 	assert_eq(default_queue.actions.size(), unknown_queue.actions.size())
+
+
+## taskblock-18 D2: "shared AI and player path — one implementation."
+## Geometry verified live: a real WALL (opacity, not just a blocker —
+## AttackAction.is_legal() only ever checks LoS, never Grid.blockers, so
+## a plain blocker in the path is still a "legal" shot to attempt today
+## and the AI's own existing fast path happily fires it uselessly into
+## the blocker; only a genuine LoS break stops is_legal() from ever
+## queuing the shot at all) at (3,2) blinds the origin (3,0) from an
+## enemy far down the same column at (3,9), while both orthogonal
+## neighbors keep clear LoS around it. Row y=1 is ALSO walled (pathing
+## only — no opacity, so it never blocks vision) everywhere within reach
+## except by stepping fully around via row 0: without this, a diagonal
+## hop into row 1 (e.g. (4,1)) would cut chebyshev distance to the
+## far-away enemy MORE than any lean cell does, and AGGRESSIVE's own
+## engagement scorer would reposition there instead of leaning — a real
+## trap this test fell into on the first attempt. With that escape
+## closed, every reachable row-0 cell (including both lean cells) ties
+## on chebyshev distance (a lateral move never gets closer to a target
+## almost directly ahead), so the scorer converges on staying at the
+## blind origin — exactly the "nothing else found anything to do" case
+## the lean fallback exists for. A tight MP budget (just enough for the
+## lean's own two single-cell moves) keeps this from being confused with
+## a longer, ordinary reposition trek.
+func test_a_covered_aggressive_unit_leans_instead_of_just_standing_and_facing() -> void:
+	var grid := Grid.new(10, 10)
+	for x in range(8):
+		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
+	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
+	grid.set_opacity(Vector2i(3, 2), 1.0)
+
+	var self_unit := _armed_unit(&"self_unit", Vector2i(3, 0), 0, &"rifle")
+	self_unit.max_ap = 1
+	var enemy := _armed_unit(&"enemy", Vector2i(3, 9), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	assert_true(
+		UnitAI.is_covered_from(self_unit.cell, enemy.cell, state, self_unit),
+		"sanity: the origin must actually be covered"
+	)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	assert_eq(
+		queue.actions.size(),
+		4,
+		"must lean (out, shoot, back, end turn) rather than just facing uselessly"
+	)
+	assert_true(queue.actions[0] is MoveAction)
+	assert_true(queue.actions[1] is AttackAction)
+	assert_true(queue.actions[2] is MoveAction)
+	assert_true(queue.actions[3] is EndTurnAction)
+	var out_move: MoveAction = queue.actions[0]
+	var firing_cell: Vector2i = out_move.path[out_move.path.size() - 1]
+	assert_eq(Grid.distance_manhattan(self_unit.cell, firing_cell), 1, "an orthogonal lean cell")
+	var back_move: MoveAction = queue.actions[2]
+	assert_eq(
+		back_move.path[back_move.path.size() - 1], self_unit.cell, "the return leg lands on origin"
+	)
