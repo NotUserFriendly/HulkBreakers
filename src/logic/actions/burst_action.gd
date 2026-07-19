@@ -47,7 +47,7 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if weapon.weapon_def.burst_size <= 1:
 		return false
-	if actual.ap < _ap_cost(weapon):
+	if actual.ap < _ap_cost(weapon) or Suppression.blocks_weapon(state, actual, weapon):
 		return false
 
 	if not state.grid.in_bounds(target_cell):

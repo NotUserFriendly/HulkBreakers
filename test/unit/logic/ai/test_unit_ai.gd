@@ -179,7 +179,11 @@ func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() ->
 	var grid := Grid.new(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(10, 1), 0, &"rifle")
 	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 15.0
-	var enemy := _armed_unit(&"enemy", Vector2i(11, 1), 1, &"")
+	# taskblock-19 Pass E: distance 3, not adjacent (1) — this test is
+	# about the preferred-range retreat pull in general, not about
+	# suppression/opportunity-attack behavior at literal melee range,
+	# which now has its own real cost that would otherwise fight this one.
+	var enemy := _armed_unit(&"enemy", Vector2i(13, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 	var starting_distance: int = Grid.distance_chebyshev(self_unit.cell, enemy.cell)
 	assert_lt(
@@ -383,6 +387,67 @@ func test_ai_fires_from_inside_min_range_when_forced_and_the_weapon_duds_instead
 		if action is AttackAction:
 			shot = action
 	assert_not_null(shot, "forced inside min_range on a dud-capable weapon, it must still fire")
+
+
+## taskblock-19 Pass E: "treats adjacent to an enemy with a long gun as
+## bad (won't close if it disarms itself)." effective_range=1.0 pulls the
+## AI to want to touch the enemy — SUPPRESSION_PENALTY must stop it one
+## cell short instead, at distance 2, where the two-handed weapon still
+## fires.
+func test_ai_avoids_closing_to_adjacency_with_a_two_handed_weapon_equipped() -> void:
+	var grid := Grid.new(20, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	var rifle: Part = self_unit.shell.find_part(&"rifle")
+	rifle.weapon_def.max_range = 15.0
+	rifle.weapon_def.effective_range = 1.0
+	rifle.weapon_def.two_handed = true
+	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move)
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_eq(
+		Grid.distance_chebyshev(destination, enemy.cell),
+		2,
+		"stops one cell short of adjacency rather than disarming itself"
+	)
+	var shot: AttackAction = null
+	for action: CombatAction in queue.actions:
+		if action is AttackAction:
+			shot = action
+	assert_not_null(shot, "distance 2 is not suppressed, so the two-handed weapon can still fire")
+
+
+## taskblock-19 Pass E: "treats leaving an adjacent tile as costly (expects
+## the free hit)." Starting adjacent (distance 1) to its only enemy, with
+## a SHORT weapon (never suppressed, so staying and firing is always
+## legal) whose effective_range (2.0) would otherwise pull the AI one
+## cell farther out — OPPORTUNITY_ATTACK_PENALTY must outweigh that
+## marginal 1-point distance gain and keep it from moving at all.
+func test_ai_weights_leaving_adjacency_as_costly() -> void:
+	var grid := Grid.new(10, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(5, 1), 0, &"pistol")
+	var pistol: Part = self_unit.shell.find_part(&"pistol")
+	pistol.weapon_def.max_range = 15.0
+	pistol.weapon_def.effective_range = 2.0
+	var enemy := _armed_unit(&"enemy", Vector2i(6, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+	assert_eq(Grid.distance_chebyshev(self_unit.cell, enemy.cell), 1, "sanity: starts adjacent")
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	assert_null(
+		_last_move(queue),
+		"the marginal distance gain from moving is not worth the opportunity attack"
+	)
+	var shot: AttackAction = null
+	for action: CombatAction in queue.actions:
+		if action is AttackAction:
+			shot = action
+	assert_not_null(shot, "it still engages from where it started")
 
 
 ## taskblock-16 D2: "with cover objects present (Pass B), COVER_SEEKER

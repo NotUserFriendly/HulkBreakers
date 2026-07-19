@@ -52,6 +52,8 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if actual.ap < weapon.ap_cost:
 		return false
+	if Suppression.blocks_weapon(state, actual, weapon):
+		return false
 
 	if not state.grid.in_bounds(target_cell):
 		return false

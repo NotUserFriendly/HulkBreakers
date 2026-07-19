@@ -116,6 +116,19 @@ func test_is_legal_false_without_enough_ap_for_the_burst_ap_cost() -> void:
 	assert_false(BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state))
 
 
+## taskblock-19 Pass E: "a unit adjacent to an enemy can't fire a long
+## gun." A burst weapon can carry the same two_handed flag.
+func test_is_legal_false_for_a_two_handed_burst_weapon_adjacent_to_an_enemy() -> void:
+	var weapon := _make_chaingun()
+	weapon.weapon_def.two_handed = true
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var adjacent_enemy := _make_target(Vector2i(1, 0))
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, adjacent_enemy, target])
+
+	assert_false(BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state))
+
+
 ## A weapon with no WeaponDef, or a burst_size of 1, has no burst mode at
 ## all — never a crash, just illegal.
 func test_is_legal_false_for_a_weapon_with_no_burst_mode() -> void:

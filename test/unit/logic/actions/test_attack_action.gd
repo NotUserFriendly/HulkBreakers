@@ -86,6 +86,32 @@ func test_is_legal_false_beyond_weapon_range() -> void:
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(9, 0)).is_legal(state))
 
 
+## taskblock-19 Pass E: "a unit adjacent to an enemy can't fire a long
+## gun (can fire a short one)."
+func test_is_legal_false_for_a_two_handed_weapon_adjacent_to_an_enemy() -> void:
+	var weapon := _make_weapon(&"rifle", 20.0)
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.two_handed = true
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var adjacent_enemy := _make_target(Vector2i(1, 0))
+	var target := _make_target(Vector2i(3, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, adjacent_enemy, target])
+
+	assert_false(AttackAction.new(shooter, &"rifle", Vector2i(3, 0)).is_legal(state))
+
+
+func test_is_legal_true_for_a_short_weapon_adjacent_to_an_enemy() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0)
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var adjacent_enemy := _make_target(Vector2i(1, 0))
+	var target := _make_target(Vector2i(3, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, adjacent_enemy, target])
+
+	assert_true(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
+
+
 ## taskblock-19 Pass C2: "a unit under min range with a non-explosive
 ## weapon can't fire" — the default min_range_failure (&"none") blocks.
 func test_is_legal_false_under_min_range_for_a_non_dud_weapon() -> void:

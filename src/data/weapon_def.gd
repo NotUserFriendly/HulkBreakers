@@ -63,3 +63,9 @@ extends Resource
 ## `ammo.case_length <= max_case_length`.
 @export var accepts_family: StringName = &""
 @export var max_case_length: float = 0.0
+## taskblock-19 Pass E: a long/two-handed weapon can't fire while its own
+## wielder is adjacent to a living enemy (`Suppression.blocks_weapon`) —
+## closing to melee range disarms a rifle. False (a short/pistol weapon,
+## unaffected) is the default so every existing weapon keeps firing at
+## adjacency exactly as before this pass.
+@export var two_handed: bool = false
