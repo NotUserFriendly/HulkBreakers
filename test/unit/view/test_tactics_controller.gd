@@ -247,6 +247,49 @@ func test_end_turn_emits_turn_ended() -> void:
 	assert_signal_emitted(controller, "turn_ended")
 
 
+## taskblock-19 Pass F: "available to AI and player" — the same
+## queue-and-resolve-for-real shape end_turn() has, proven end to end
+## through the real controller/state rather than just HoldAction/
+## CombatState in isolation.
+func test_hold_defers_the_selected_unit_to_after_the_next_ally() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var state: CombatState = built.state
+	controller.click_cell(Vector2i(0, 0))
+
+	controller.hold()
+
+	assert_eq(state.current_unit(), b, "the next unit acts as normal")
+	assert_null(controller.selection.selected_unit, "the holding unit's own selection clears")
+	state.advance_turn()  # b ends its turn
+	assert_eq(state.current_unit(), a, "a resumes right after b")
+
+
+func test_hold_emits_turn_ended() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	controller.click_cell(Vector2i(0, 0))
+
+	watch_signals(controller)
+	controller.hold()
+
+	assert_signal_emitted(controller, "turn_ended")
+
+
+func test_hold_is_a_no_op_with_nothing_selected() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+
+	controller.hold()  # must not crash with no selection to hold
+
+	assert_null(controller.selection.selected_unit)
+
+
 ## docs/10 taskblock02 F3: Q/E queues a FaceAction; ending the turn
 ## actually turns the real unit and costs the MP FaceAction always does.
 func test_turn_selected_queues_a_face_action_and_resolves_it_on_end_turn() -> void:
