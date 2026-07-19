@@ -58,20 +58,29 @@ func test_a_variant_is_listed_under_its_own_family_label() -> void:
 	assert_true(found_variant, "the a_brand_laborer_battery_mods variant must appear in the list")
 
 
-## Both teams start pre-populated (a flagged UX default, `DEFAULT_STARTING_COUNT`
+## Both teams start pre-populated (a flagged UX default, `DEFAULT_ROSTER`
 ## — see the overlay's own doc comment) rather than empty, so a fresh
-## Start Bout is still a one-click smoke test. Squad B starts on
-## COVER_SEEKER, squad A on AGGRESSIVE — "two playstyles facing off" —
-## same intent the old per-team default carried, now expressed per-bot.
-func test_setup_seeds_both_rosters_with_a_starting_default() -> void:
+## Start Bout is still a one-click smoke test: one of each armed "Combat
+## Tester" variant, identical on both sides — a full weapon spread on
+## each team, each bot paired with the AI its own weapon range fits
+## (MARKSMAN for the long-range sniper rifle, SKIRMISHER for the
+## mid-range chaingun, AGGRESSIVE for the point-blank pump shotgun).
+func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 
-	assert_eq(overlay._roster_a.size(), GenerateBoutOverlay.DEFAULT_STARTING_COUNT)
-	assert_eq(overlay._roster_b.size(), GenerateBoutOverlay.DEFAULT_STARTING_COUNT)
-	for entry: BoutRosterEntry in overlay._roster_a:
-		assert_eq(entry.playstyle, &"AGGRESSIVE")
-	for entry: BoutRosterEntry in overlay._roster_b:
-		assert_eq(entry.playstyle, &"COVER_SEEKER")
+	var expected: Dictionary = {
+		&"combat_tester_chaingun": &"SKIRMISHER",
+		&"combat_tester_sniper_rifle": &"MARKSMAN",
+		&"combat_tester_pump_shotgun": &"AGGRESSIVE",
+	}
+	for roster: Array[BoutRosterEntry] in [overlay._roster_a, overlay._roster_b]:
+		assert_eq(roster.size(), expected.size())
+		for entry: BoutRosterEntry in roster:
+			assert_true(
+				expected.has(entry.profile.preset_name),
+				"unexpected default roster entry: %s" % entry.profile.preset_name
+			)
+			assert_eq(entry.playstyle, expected[entry.profile.preset_name])
 
 
 ## "Adding appends a unit."
