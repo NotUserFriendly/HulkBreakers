@@ -232,6 +232,23 @@ static func _torso_region(plane: Array[Region], torso: Part, mover: Unit) -> Reg
 	return null
 
 
+## taskblock-20 Pass H: "reaction unit: run -> trigger overwatch -> PROMPT
+## {ignore | dive prone | turn shield} -> resolve." `check_trigger` itself
+## still fires unconditionally (`ReactionResolver.available_reactions`
+## returns `[]` for every unit today — no perk system exists to ever make
+## this reachable from the real trigger path), but this is the seam a
+## perk-aware caller uses once it can: apply `reaction` to `mover` FIRST
+## (a pose/facing change genuinely alters the shot plane `_fire` then
+## reads — "a worse-but-different silhouette" only matters if it lands
+## before the shot, not after), then fire exactly as `check_trigger`
+## always has. Never a second, independently-tuned firing path.
+static func resolve_reaction_window(
+	state: CombatState, overwatcher: Unit, weapon: Part, mover: Unit, reaction: StringName
+) -> void:
+	ReactionResolver.apply_reaction(state, mover, overwatcher, reaction)
+	_fire(state, overwatcher, weapon, mover)
+
+
 ## docs/09 taskblock06 F1/F2: "fires once, then spent" — a default burst
 ## at the torso, the same DamageResolver.resolve_shot cascade AttackAction
 ## itself uses (docs/08: never a separate, ad-hoc resolution path).

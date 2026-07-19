@@ -116,9 +116,21 @@ static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 	var regions: Array[Region] = []
 	if unit.shell.root == null:
 		return regions
-	_project_tree(
-		unit.shell.root, Transform3D.IDENTITY, view_dir, unit.orientation, regions, unit.pose
-	)
+	# taskblock-20 Pass H: the ROOT override (DOWN, PRONE) finally has a
+	# live consumer here — the same "no analogue here... a later problem"
+	# gap docs/10 taskblock05 F2 flagged and deferred, closed now that a
+	# LIVE, still-acting unit's own reaction (dive prone) needs its altered
+	# silhouette to actually change what a shot resolves against, not just
+	# what the view renders. Composed BEFORE `orientation` applies (the
+	# same order UnitGeometry.assembly_placements already uses: pose tips
+	# the body in its own local space, orientation then turns the tipped
+	# body to face wherever the unit is currently facing) — orientation
+	# itself still applies separately, per-region, in 2D below; it was
+	# never baked into a Transform3D here and doesn't start now.
+	var root_transform := Transform3D.IDENTITY
+	if unit.pose != null and unit.pose.overrides.has(Poses.ROOT_SOCKET_ID):
+		root_transform = unit.pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D
+	_project_tree(unit.shell.root, root_transform, view_dir, unit.orientation, regions, unit.pose)
 	return regions
 
 
@@ -148,10 +160,10 @@ static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
 ## own transform (null for a field object/cover part — those aren't
 ## posed) — the same mechanism UnitGeometry.assembly_placements uses, so
 ## the shot plane and the hitbox a player sees always agree. The reserved
-## ROOT override (DOWN) has no analogue here: BodyProjector's 2D
-## flattening has no "whole assembly" transform to compose it onto, only
-## per-socket ones — a downed unit's shot plane is a later problem, not
-## this pass's.
+## ROOT override (DOWN, taskblock-20 Pass H's PRONE) is handled by
+## `project()`'s own caller seeding `part_transform` with it before this
+## first runs — this function itself only ever composes PER-SOCKET
+## overrides, same as always.
 static func _project_tree(
 	part: Part,
 	part_transform: Transform3D,
