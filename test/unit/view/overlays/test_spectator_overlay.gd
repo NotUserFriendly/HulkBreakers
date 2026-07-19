@@ -214,6 +214,47 @@ func test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value() -
 	)
 
 
+## taskblock-17 Pass C1: "hovering a tile/unit/field-object shows the
+## tooltip, same mechanism as the squad overlay." Drives
+## `overlay.tactics.update_hover()` directly with a real projected screen
+## position — the same pattern `test_tactics_controller_hover.gd` itself
+## uses (`camera_rig.camera().unproject_position(world_point)`) — rather
+## than simulating an `InputEventMouseMotion`, since `_unhandled_input`
+## just forwards to this same call.
+func test_hovering_a_unit_shows_a_tooltip() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.units[1]
+
+	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
+	overlay.tactics.update_hover(screen_pos)
+	overlay.tooltip_view._process(TooltipView.HOVER_DELAY_SEC + 0.001)
+
+	assert_true(overlay.tooltip_view.visible, "hovering a real unit must reveal a tooltip")
+
+
+## taskblock-17 Pass C2: "stop auto-snapping — let the spectator drive
+## their own camera." The camera's own transform must be byte-identical
+## before and after stepping through several turns — CameraRig is never
+## told to move by anything in this overlay anymore.
+func test_the_camera_never_moves_on_its_own_while_stepping() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	var camera: Camera3D = overlay.battle.camera_rig.camera()
+	var transform_before: Transform3D = camera.global_transform
+
+	var guard := 0
+	while not overlay.runner.finished and guard < 10:
+		await overlay.step_once()
+		guard += 1
+
+	assert_eq(
+		camera.global_transform,
+		transform_before,
+		"the camera must never move on its own during spectated playback"
+	)
+
+
 ## taskblock-15 Pass A's own TESTS list: "a spectator battle is identical
 ## in outcome to today's BoutRunner bout for the same seed (the overlay
 ## is cosmetic — prove it)." Two independently-built CombatStates from
