@@ -39,6 +39,18 @@ var resolution_player: ResolutionPlayer
 var log_label: RichTextLabel
 var log_sink: UISink
 
+## taskblock-17 Pass C1: "hovering a tile/unit/field-object shows the
+## tooltip, same mechanism as the squad overlay" — a real `TacticsController`
+## instance, its own `_unhandled_input` explicitly disabled (this overlay
+## drives ONLY `update_hover()`, never click-select/queue/facing-drag/
+## keyboard shortcuts — those would silently build dead `ActionQueue`
+## previews for a bout no human is playing) so `TooltipController` can read
+## `hovered_cell`/`inspected_part`/`selection` off it exactly like
+## `SquadControlOverlay` does, with no second tooltip mechanism built.
+var tactics: TacticsController
+var tooltip_view: TooltipView
+var tooltip_controller: TooltipController
+
 var playing: bool = false
 var speed: float = 1.0
 
@@ -63,9 +75,26 @@ func setup(p_battle: BattleScene) -> void:
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
 	resolution_player.setup(battle)
+
+	tactics = TacticsController.new()
+	add_child(tactics)
+	tactics.set_process_unhandled_input(false)
+	tactics.setup(battle.combat_state, battle.board_view, battle.camera_rig)
+
 	_build_ui()
 	battle.combat_state.combat_log.add_sink(log_sink)
 	_refresh_status()
+
+
+## Forwards ONLY mouse motion into `tactics.update_hover()` — `tactics`'s
+## own `_unhandled_input` is disabled (see `tactics`'s own doc comment
+## above), so clicks/keys never reach `SelectionController`/facing-drag/
+## aim mode; CameraRig's own independent `_unhandled_input` (orbit/pan/
+## zoom) is untouched by any of this, exactly like every other overlay.
+func _unhandled_input(event: InputEvent) -> void:
+	if tactics == null or event is not InputEventMouseMotion:
+		return
+	tactics.update_hover((event as InputEventMouseMotion).position)
 
 
 func teardown() -> void:
@@ -118,22 +147,20 @@ func _run_while_playing() -> void:
 		await get_tree().create_timer(BASE_STEP_INTERVAL / speed).timeout
 
 
+## taskblock-17 Pass C2: "stop auto-snapping — let the spectator drive
+## their own camera." Used to hard-cut CameraRig to the newly-acting unit
+## every step here (`center_on`) — removed outright, not eased: the note
+## is "let spectator control their own camera," and the default for that
+## is simply no automatic camera movement at all, never a gentler version
+## of the same jump. CameraRig's own independent `_unhandled_input`
+## (orbit/pan/zoom) was never routed through this method and needs no
+## change to keep working.
 func _advance() -> void:
 	if runner == null or runner.finished:
 		pause()
 		return
 	runner.step()
 	battle.refresh_unit_views()
-	if runner.last_unit != null:
-		# "the camera follows the acting unit" (docs) — a plain center_on is
-		# intentionally simpler than ease_to_attack_framing (which needs a
-		# live shooter+target pair TacticsController's own aim flow already
-		# tracks; a bout has no such pairing to reuse). Not itself animated
-		# (Pass B's own four animations are slide/facing/shot/inter-shot
-		# break — camera easing isn't one of them).
-		battle.camera_rig.center_on(
-			Vector3(runner.last_unit.cell.x, 0.0, runner.last_unit.cell.y) * UnitGeometry.CELL_SIZE
-		)
 	await resolution_player.play(runner.last_events)
 	_refresh_status()
 	if runner.finished:
@@ -212,6 +239,15 @@ func _build_ui() -> void:
 	log_label.scroll_following = true
 	theme_root.add_child(log_label)
 	log_sink = UISink.new(log_label)
+
+	# taskblock-17 Pass C1: THE one tooltip renderer, same as
+	# SquadControlOverlay's own — created last so it draws above every
+	# other panel here too.
+	tooltip_view = TooltipView.new()
+	tooltip_controller = TooltipController.new()
+	add_child(tooltip_controller)
+	tooltip_controller.setup(tactics, tooltip_view, DataLibrary.material_table())
+	theme_root.add_child(tooltip_view)
 
 	_refresh_status()
 
