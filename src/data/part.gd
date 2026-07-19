@@ -27,6 +27,14 @@ extends Resource
 
 ## Key into the material table -> DT (Phase 5). Open StringName, not an enum.
 @export var material: StringName = &""
+## taskblock-20 Pass C3: a clad shell with empty space inside (a torso's own
+## cladding, not a solid slab) — BodyProjector projects BOTH the near face a
+## shot enters through AND the far face it would have to clear to exit, as
+## two separate Regions of this same part, instead of the usual single
+## near-face-only silhouette a solid box gets. False (the default) keeps
+## every part authored before this field existed exactly as it already
+## behaved.
+@export var hollow: bool = false
 ## Body-space geometry — one or more boxes in this PART's own local space,
 ## not the unit's (docs/02/10, Phase 12.0). Where it actually sits on the
 ## body comes from whatever socket hosts this part, composed by
@@ -175,6 +183,17 @@ extends Resource
 ## accessed — dead weight that still occupies its socket and still
 ## occludes shots as geometry.
 @export var is_disabled: bool = false
+
+## taskblock-20 Pass C4/D: non-terminal, repairable consequences distinct
+## from `is_mangled`/`is_disabled` (a whole-part failure state) — a part
+## can carry several at once (a lodged bullet AND a severed control run).
+## Open StringName vocabulary, authored/rolled as content, same posture as
+## `tags`. Runtime only; nothing pre-populates this at authoring time.
+## `&"lodged_bullet"` (Pass C4: a round that floors inside a `hollow` part,
+## after entering but before clearing the far face) is the only inflicter
+## built so far — Pass D adds the rest (severed_controls, burnt_electronics,
+## the status-threshold hook, repair).
+@export var wounds: Array[StringName] = []
 
 ## taskblock-09 A4: MELTDOWN's own countdown length in turns before a
 ## failed reactor DETONATEs on its own — 0 (the default) means a MELTDOWN

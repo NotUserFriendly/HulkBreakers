@@ -89,6 +89,22 @@ static func _log_impact(
 	)
 	state.combat_log.emit(event)
 
+	# taskblock-20 Pass C4: "if it changed the world, it's in the log" — a
+	# lodged wound doesn't require the part to be destroyed (the round can
+	# floor well short of that), so this is checked independent of
+	# `destroyed_part` below, not nested inside it.
+	if result.wound_inflicted != &"":
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				attacker.id,
+				&"wound_inflicted",
+				{"part": result.region.part.id, "wound": result.wound_inflicted},
+				"%s on %s" % [result.wound_inflicted, result.region.part.id]
+			)
+		)
+
 	if result.destroyed_part:
 		state.combat_log.emit(
 			LogEvent.new(

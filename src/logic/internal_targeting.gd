@@ -15,7 +15,6 @@ extends RefCounted
 ## work; this class only ever computes WHERE to aim, never how a shot
 ## resolves once fired.
 
-
 ## Rect-local sample fractions, center first — the honest "aim dead center"
 ## point whenever nothing blocks it, only drifting off-center as a fallback.
 const _SAMPLE_FRACTIONS: Array[Vector2] = [

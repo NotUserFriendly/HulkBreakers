@@ -260,7 +260,12 @@ static func _project_box(
 		var world_normal: Vector2 = rotate_by_orientation(
 			Vector2(normal_in_frame.x, normal_in_frame.z), orientation
 		)
-		if world_normal.dot(toward_shooter) <= 0.0:
+		# taskblock-20 Pass C3: a `hollow` part (an empty-inside shell, not a
+		# solid slab) is struck entering AND exiting — its own far face, which
+		# a solid part's single near-face silhouette would normally never
+		# need, projects too, at that face's own (deeper) depth. A solid
+		# part still shows only whichever face(s) actually face the shooter.
+		if world_normal.dot(toward_shooter) <= 0.0 and not part.hollow:
 			continue  # facing away from the shooter
 
 		var corner_a_local := Vector3(
