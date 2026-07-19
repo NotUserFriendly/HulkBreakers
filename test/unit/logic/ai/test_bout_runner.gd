@@ -3,6 +3,11 @@ extends GutTest
 ## taskblock-14 Pass C: BoutRunner — an all-AI CombatState driven turn by
 ## turn through the same UnitAI.plan_turn + CombatState.resolve_until a
 ## human's own UI uses.
+##
+## taskblock-15 Pass A: generalized into every ControlOverlay's shared
+## turn driver via an injectable `wants_turn_for` Callable — every test
+## above constructs BoutRunner with no such Callable, proving the default
+## (today's exact controller_for check) is completely unchanged.
 
 
 func _armed_unit(
@@ -180,4 +185,28 @@ func test_step_does_nothing_for_a_human_controlled_squad() -> void:
 
 	assert_false(finished)
 	assert_eq(jerry.ap, ap_before, "a human squad's turn must never be auto-resolved")
+	assert_eq(runner.turns_taken, 0)
+
+
+## taskblock-15 Pass A: a caller-supplied `wants_turn_for` overrides the
+## default squad-controller check entirely — even a squad flagged AI here
+## stays inert once the injected predicate claims its current unit,
+## proving `ControlOverlay.wants_turn_for`-style per-UNIT (not just
+## per-squad) control is real, not just documented.
+func test_an_injected_wants_turn_for_overrides_the_default_squad_check() -> void:
+	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
+	var enemy := _armed_unit(&"enemy", Vector2i(5, 0), 1, &"rifle", 30)
+	var state := CombatState.new(Grid.new(10, 5), [jerry, enemy], 1)
+	state.set_squad_controller(0, Enums.SquadController.AI)
+	state.set_squad_controller(1, Enums.SquadController.AI)
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(0, 0)]
+	var claims_jerry := func(unit: Unit) -> bool: return unit == jerry
+	var runner := BoutRunner.new(state, mission, 50, claims_jerry)
+	var ap_before: int = jerry.ap
+
+	var finished: bool = runner.step()
+
+	assert_false(finished)
+	assert_eq(jerry.ap, ap_before, "the injected predicate must claim jerry even though AI owns it")
 	assert_eq(runner.turns_taken, 0)
