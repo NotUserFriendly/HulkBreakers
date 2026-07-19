@@ -1,0 +1,58 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_yxepv"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_4odh8"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_0ebm3"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_ec17q"]
+
+[sub_resource type="Resource" id="Resource_4bvdp"]
+script = ExtResource("4_ec17q")
+size = Vector3(0.4, 0.6, 0.06)
+
+[sub_resource type="Resource" id="Resource_160hx"]
+script = ExtResource("1_yxepv")
+id = &"wedge_plate_torso_face_l"
+material = &"steel"
+volume = Array[ExtResource("4_ec17q")]([SubResource("Resource_4bvdp")])
+hp = 5
+max_hp = 5
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_36yku"]
+script = ExtResource("3_0ebm3")
+socket_type = &"WEDGE_FACE"
+occupant = SubResource("Resource_160hx")
+id = &"left"
+transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, -0.2, 0, 0)
+
+[sub_resource type="Resource" id="Resource_ntgl2"]
+script = ExtResource("4_ec17q")
+size = Vector3(0.4, 0.6, 0.06)
+
+[sub_resource type="Resource" id="Resource_0xx8p"]
+script = ExtResource("1_yxepv")
+id = &"wedge_plate_torso_face_r"
+material = &"steel"
+volume = Array[ExtResource("4_ec17q")]([SubResource("Resource_ntgl2")])
+hp = 5
+max_hp = 5
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_52331"]
+script = ExtResource("3_0ebm3")
+socket_type = &"WEDGE_FACE"
+occupant = SubResource("Resource_0xx8p")
+id = &"right"
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 0.2, 0, 0)
+
+[resource]
+script = ExtResource("1_yxepv")
+id = &"wedge_plate_torso"
+display_name = "Wedge Plate (Torso)"
+attaches_to = Array[StringName]([&"ARMOR"])
+sockets = Array[ExtResource("3_0ebm3")]([SubResource("Resource_36yku"), SubResource("Resource_52331")])
+material = &"steel"
+hp = 0
+max_hp = 0
+mass = 3.0
+mangles_into = &"metal_scraps"

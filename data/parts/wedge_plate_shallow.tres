@@ -9,14 +9,50 @@
 script = ExtResource("4_73v36")
 size = Vector3(0.2, 0.3, 0.04)
 
+[sub_resource type="Resource" id="Resource_id4dl"]
+script = ExtResource("1_obc6p")
+id = &"wedge_plate_shallow_face_l"
+material = &"steel"
+volume = Array[ExtResource("4_73v36")]([SubResource("Resource_usot8")])
+hp = 2
+max_hp = 2
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_8pfxc"]
+script = ExtResource("3_shpfp")
+socket_type = &"WEDGE_FACE"
+occupant = SubResource("Resource_id4dl")
+id = &"left"
+transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, -0.1, 0, 0)
+
+[sub_resource type="Resource" id="Resource_pdj67"]
+script = ExtResource("4_73v36")
+size = Vector3(0.2, 0.3, 0.04)
+
+[sub_resource type="Resource" id="Resource_8glqh"]
+script = ExtResource("1_obc6p")
+id = &"wedge_plate_shallow_face_r"
+material = &"steel"
+volume = Array[ExtResource("4_73v36")]([SubResource("Resource_pdj67")])
+hp = 2
+max_hp = 2
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_f6uy7"]
+script = ExtResource("3_shpfp")
+socket_type = &"WEDGE_FACE"
+occupant = SubResource("Resource_8glqh")
+id = &"right"
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 0.1, 0, 0)
+
 [resource]
 script = ExtResource("1_obc6p")
 id = &"wedge_plate_shallow"
 display_name = "Wedge Plate (Shallow)"
 attaches_to = Array[StringName]([&"ARMOR"])
+sockets = Array[ExtResource("3_shpfp")]([SubResource("Resource_8pfxc"), SubResource("Resource_f6uy7")])
 material = &"steel"
-volume = Array[ExtResource("4_73v36")]([SubResource("Resource_usot8")])
-hp = 4
-max_hp = 4
+hp = 0
+max_hp = 0
 mass = 1.2
 mangles_into = &"metal_scraps"

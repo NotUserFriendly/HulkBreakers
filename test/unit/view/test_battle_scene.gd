@@ -133,11 +133,14 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 			var mesh_instance: MeshInstance3D = view.get_child(j + 2)
 			var part: Part = placements[j].part
 			# taskblock-10 Pass A: a part rendered as a whole-part primitive
-			# (no mesh_scene, render_primitive != BOX — e.g. taskblock-13's
-			# own cylinder_plate_segment) draws at the part's own composed
-			# transform SCALED by render_scale, never the box-local center
-			# offset a literal hitbox box uses (docs/09: "the mesh must
-			# never affect resolution" — the two are allowed to diverge).
+			# (no mesh_scene, render_primitive != BOX — e.g. `goo_barrel`'s
+			# own CYLINDER; taskblock-17 Pass E retired the plate that used
+			# to be this file's own example, `cylinder_plate_segment`, in
+			# favor of real multi-box geometry) draws at the part's own
+			# composed transform SCALED by render_scale, never the box-local
+			# center offset a literal hitbox box uses (docs/09: "the mesh
+			# must never affect resolution" — the two are allowed to
+			# diverge).
 			var expected: Transform3D
 			if part.mesh_scene == null and part.render_primitive != &"BOX":
 				expected = placements[j].transform.scaled_local(part.render_scale)

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_jkidm"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_bcvkn"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_ukf5k"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_dsm8j"]
+
+[sub_resource type="Resource" id="Resource_p2bw4"]
+script = ExtResource("3_ukf5k")
+socket_type = &"ARMOR"
+id = &"ARMOR"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.22, 0.13)
+
+[sub_resource type="Resource" id="Resource_foaox"]
+script = ExtResource("4_dsm8j")
+center = Vector3(0, -0.22, 0)
+size = Vector3(0.24, 0.44, 0.24)
+
+[resource]
+script = ExtResource("1_jkidm")
+id = &"thigh"
+display_name = "Thigh"
+attaches_to = Array[StringName]([&"HIP"])
+sockets = Array[ExtResource("3_ukf5k")]([SubResource("Resource_p2bw4")])
+material = &"artificial_bone"
+volume = Array[ExtResource("4_dsm8j")]([SubResource("Resource_foaox")])
+hp = 8
+max_hp = 8
+mass = 9.0
