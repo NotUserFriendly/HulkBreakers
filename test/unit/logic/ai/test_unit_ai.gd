@@ -60,6 +60,44 @@ func test_plan_turn_is_pure_and_deterministic() -> void:
 	assert_eq(results[0], results[1])
 
 
+## taskblock-17 Pass B: "an AI unit that ends its turn aiming at an enemy
+## faces that enemy" — checked against the REAL composed geometry
+## (`BodyProjector.forward_for` on the unit's own resolved
+## `Unit.orientation`, compared to the actual cell-to-cell direction),
+## never against `FaceAction.orientation_toward` itself: that was the bug
+## (`WORLD_FORWARD.angle_to(delta)`, the mirrored rotation convention
+## this codebase's own `rotate_by_orientation` deliberately departs
+## from) — a test re-deriving its own expected value from the same
+## buggy formula would have agreed with it and caught nothing, exactly
+## what let this ship. Enemy cells are deliberately off-axis (never due
+## north/east/south/west) since the bug's error was 0 degrees dead ahead
+## and grew from there.
+func test_an_ai_unit_ends_its_turn_facing_the_enemy_it_fired_at() -> void:
+	var offsets: Array[Vector2i] = [
+		Vector2i(5, 3), Vector2i(-4, 6), Vector2i(-3, -5), Vector2i(6, -2)
+	]
+	for offset: Vector2i in offsets:
+		var self_unit := _armed_unit(&"self_unit", Vector2i(20, 20), 0, &"rifle")
+		var enemy := _armed_unit(&"enemy", Vector2i(20, 20) + offset, 1, &"")
+		var state := CombatState.new(Grid.new(40, 40), [self_unit, enemy], 3)
+
+		var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+		state.resolve_until(queue)
+
+		var real_self: Unit = state.find_unit(self_unit.id)
+		var forward: Vector2 = BodyProjector.forward_for(real_self.orientation)
+		var expected_direction: Vector2 = Vector2(offset).normalized()
+		var error_deg: float = rad_to_deg(absf(forward.angle_to(expected_direction)))
+		assert_lt(
+			error_deg,
+			5.0,
+			(
+				"offset %s: forward %s should point at %s, off by %.1f degrees"
+				% [offset, forward, expected_direction, error_deg]
+			)
+		)
+
+
 ## "COVER_SEEKER prefers a covered cell over an exposed closer one."
 func test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one() -> void:
 	var grid := Grid.new(10, 5)

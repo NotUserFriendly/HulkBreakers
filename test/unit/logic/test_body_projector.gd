@@ -485,6 +485,40 @@ func test_an_asymmetric_part_projects_on_the_same_side_it_renders() -> void:
 	assert_almost_eq(projected_x, rendered_x, 0.01)
 
 
+## taskblock-17 Pass B: `orientation_for` is the formal inverse of
+## `forward_for` — for a spread of directions across every quadrant
+## (never just the axis-aligned ones an earlier, buggy formula happened
+## to get right), round-tripping through both must land back on the
+## original direction. This is the general form of the bug
+## `FaceAction.orientation_toward` shipped with: `WORLD_FORWARD.angle_to
+## (delta)` (Vector2.rotated()'s own STANDARD convention) instead of this
+## file's own established, mirrored one — correct only when the target
+## sat dead ahead, up to 180 degrees off everywhere else.
+func test_orientation_for_round_trips_through_forward_for_across_every_quadrant() -> void:
+	var directions: Array[Vector2] = [
+		Vector2(1.0, 0.0),
+		Vector2(0.0, 1.0),
+		Vector2(-1.0, 0.0),
+		Vector2(0.0, -1.0),
+		Vector2(1.0, 1.0),
+		Vector2(-1.0, 1.0),
+		Vector2(-1.0, -1.0),
+		Vector2(1.0, -1.0),
+		Vector2(1.0, 3.0),
+		Vector2(-2.0, 1.0),
+	]
+	for direction: Vector2 in directions:
+		var normalized: Vector2 = direction.normalized()
+		var orientation: float = BodyProjector.orientation_for(normalized)
+		var round_tripped: Vector2 = BodyProjector.forward_for(orientation)
+		assert_almost_eq(
+			round_tripped.x, normalized.x, 0.0001, "direction %s round-trip x" % direction
+		)
+		assert_almost_eq(
+			round_tripped.y, normalized.y, 0.0001, "direction %s round-trip y" % direction
+		)
+
+
 ## docs/09 taskblock07 Pass B1/TESTS: "grep finds no `.rotated(orientation)`
 ## outside the single helper" — rotate_by_orientation/forward_for are the
 ## ONE place a body-local point or facing direction gets turned into world
