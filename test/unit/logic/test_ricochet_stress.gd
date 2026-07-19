@@ -2,15 +2,21 @@ extends GutTest
 
 ## taskblock-13 Pass G: wedge and cylinder armor plates — the deflection
 ## model (docs/03) had only ever been exercised against flat/box plates
-## mounted square-on. `Box` has no orientation field of its own (docs/02:
-## always axis-aligned in PART-local space) — a genuinely angled/curved
-## face can only come from the SOCKET that mounts a plate, so the "wedge"/
-## "cylinder" stress rig here is a hosting part with several ARMOR sockets
-## at a spread of Y-axis rotations, each holding one of the real
-## wedge_plate_shallow/wedge_plate_steep/cylinder_plate_segment .tres
-## parts (tools/author_taskblock13_plates.gd) — the rig itself is a
-## fixture (no existing precedent ships a purpose-built test rig as real
-## game data), the plates it wears are real, shipped content.
+## mounted square-on.
+##
+## taskblock-17 Pass E: `Box` still has no orientation field of its own
+## (docs/02), but a genuinely angled/curved face no longer needs an
+## EXTERNAL rig to get one — `wedge_plate_shallow`/`wedge_plate_steep`/
+## `half_cylinder_plate` (`tools/author_taskblock17_plates.gd`) each own
+## their real angled/curved shape internally now, as a small part tree
+## (a root plus 2-5 child faces, each mounted through its own rotated
+## Socket). The first two tests below now mount just ONE of these plates
+## directly and read its own already-varied normals/deflections straight
+## off — no rig needed for that anymore. `_rig()` (a spread of copies at
+## further ARMOR rotations on TOP of each plate's own internal geometry)
+## survives only for the third test, which genuinely wants MANY
+## simultaneous deflecting surfaces to stress the resolver, not to
+## manufacture the angle variation itself.
 
 
 func before_each() -> void:
@@ -47,19 +53,21 @@ func _rig(plate_id: StringName, angles: Array) -> Part:
 ## clustered)." Surface normal alone determines a deflection's direction
 ## (DamageResolver.resolve_impact), so proving the normals themselves
 ## span a wide range is the direct, root-cause proof.
-func test_a_ring_of_cylinder_segments_produces_a_wide_spread_of_surface_normals() -> void:
-	var angles: Array = [-80.0, -40.0, 0.0, 40.0, 80.0]
-	var rig: Part = _rig(&"cylinder_plate_segment", angles)
+##
+## taskblock-17 Pass E: ONE `half_cylinder_plate` now IS the ring — its
+## own 5 facets, each mounted through its own rotated socket, already
+## span the arc. No external rig needed to manufacture the spread
+## anymore; this reads it straight off the plate's own real geometry.
+func test_a_half_cylinder_plates_own_facets_produce_a_wide_spread_of_surface_normals() -> void:
+	var plate: Part = DataLibrary.get_part(&"half_cylinder_plate")
 
-	var regions: Array[Region] = BodyProjector.project_assembly(rig, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project_assembly(plate, Vector2(0, -1))
 	var normals_2d: Array[Vector2] = []
 	for region: Region in regions:
-		if region.part.id == &"cylinder_plate_segment":
+		if String(region.part.id).begins_with("half_cylinder_plate_facet_"):
 			normals_2d.append(Vector2(region.surface_normal.x, region.surface_normal.z))
 
-	assert_true(
-		normals_2d.size() >= angles.size(), "every segment must contribute at least one face"
-	)
+	assert_true(normals_2d.size() >= 3, "at least the interior facets must each contribute a face")
 
 	# "Wide, not clustered": the widest pairwise angle between any two
 	# normals must span a real fraction of a full circle, not a few
@@ -74,38 +82,44 @@ func test_a_ring_of_cylinder_segments_produces_a_wide_spread_of_surface_normals(
 
 ## "a wedge plate deflects a sub-DT oblique shot at an angle determined by
 ## its face normal, not a fixed value."
-func test_wedge_plates_at_different_angles_deflect_in_different_directions() -> void:
+##
+## taskblock-17 Pass E: ONE `wedge_plate_shallow` now carries both angled
+## faces itself (`_face_l`/`_face_r`, each its own rotated child) — no
+## rig of several copies needed; the SAME straight-on shot striking each
+## of a single plate's own two faces already has to deflect differently.
+func test_a_wedge_plates_own_two_faces_deflect_the_same_shot_in_different_directions() -> void:
 	var table: MaterialTable = DataLibrary.material_table()
-	var rig: Part = _rig(&"wedge_plate_shallow", [-35.0, 35.0])
-	var regions: Array[Region] = BodyProjector.project_assembly(rig, Vector2(0, -1))
+	var plate: Part = DataLibrary.get_part(&"wedge_plate_shallow")
 
-	# A thin plate rotated at all shows a sliver of its own edge alongside
-	# its main face (docs/03: incidence spans the full 0-90 range) — group
-	# by PART OBJECT IDENTITY (each socket holds its own distinct Part
-	# instance, `DataLibrary.get_part` never shares one) and take each
-	# plate's own largest-area region as its dominant, representative face.
-	var by_plate: Dictionary = {}  # Part -> Array[Region]
+	var regions: Array[Region] = BodyProjector.project_assembly(plate, Vector2(0, -1))
+
+	# A thin plate mounted at an angle shows a sliver of its own edge
+	# alongside its main face (docs/03: incidence spans the full 0-90
+	# range) — take each face's own largest-area region as its dominant,
+	# representative surface.
+	var by_face_id: Dictionary = {}  # StringName -> Array[Region]
 	for region: Region in regions:
-		if region.part.id != &"wedge_plate_shallow":
+		var id: StringName = region.part.id
+		if id != &"wedge_plate_shallow_face_l" and id != &"wedge_plate_shallow_face_r":
 			continue
-		if not by_plate.has(region.part):
-			by_plate[region.part] = [] as Array[Region]
-		(by_plate[region.part] as Array[Region]).append(region)
-	assert_eq(by_plate.size(), 2, "both sockets' own plate instances must each appear")
+		if not by_face_id.has(id):
+			by_face_id[id] = [] as Array[Region]
+		(by_face_id[id] as Array[Region]).append(region)
+	assert_eq(by_face_id.size(), 2, "both of the wedge's own faces must appear")
 
-	var plate_regions: Array[Region] = []
-	for plate: Part in by_plate:
-		var faces: Array[Region] = by_plate[plate]
+	var face_regions: Array[Region] = []
+	for id: StringName in by_face_id:
+		var faces: Array[Region] = by_face_id[id]
 		faces.sort_custom(func(a: Region, b: Region) -> bool: return a.rect.size.x > b.rect.size.x)
-		plate_regions.append(faces[0])
+		face_regions.append(faces[0])
 
 	# Sub-DT damage (steel dt=6): both hits deflect rather than penetrate.
 	var incoming := Vector2(0, 1)
 	var result_a: ImpactResult = DamageResolver.resolve_impact(
-		incoming, 3.0, plate_regions[0], table
+		incoming, 3.0, face_regions[0], table
 	)
 	var result_b: ImpactResult = DamageResolver.resolve_impact(
-		incoming, 3.0, plate_regions[1], table
+		incoming, 3.0, face_regions[1], table
 	)
 
 	assert_eq(
@@ -114,7 +128,7 @@ func test_wedge_plates_at_different_angles_deflect_in_different_directions() -> 
 	assert_eq(result_b.outcome, Enums.Outcome.DEFLECT)
 	assert_false(
 		result_a.reflected_dir.is_equal_approx(result_b.reflected_dir),
-		"two plates mounted at different angles must reflect the same incoming shot differently"
+		"the wedge's own two faces must reflect the same incoming shot differently"
 	)
 
 

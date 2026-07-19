@@ -1,0 +1,108 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_3owli"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_6xee8"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_oferd"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_3pq4i"]
+
+[sub_resource type="Resource" id="Resource_3g81a"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.14, 0.3, 0.05)
+
+[sub_resource type="Resource" id="Resource_qkntc"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_0"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_3g81a")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_oompp"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_qkntc")
+id = &"facet_0"
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -0.16, 0, 9.797174e-18)
+
+[sub_resource type="Resource" id="Resource_jlxji"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.14, 0.3, 0.05)
+
+[sub_resource type="Resource" id="Resource_bklwm"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_1"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_jlxji")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_3j0uc"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_bklwm")
+id = &"facet_1"
+transform = Transform3D(0.70710677, 0, -0.70710677, 0, 1, 0, 0.70710677, 0, 0.70710677, -0.11313708, 0, 0.11313708)
+
+[sub_resource type="Resource" id="Resource_8u886"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.14, 0.3, 0.05)
+
+[sub_resource type="Resource" id="Resource_emfi5"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_2"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_8u886")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_3f6lt"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_emfi5")
+id = &"facet_2"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.16)
+
+[sub_resource type="Resource" id="Resource_xpcen"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.14, 0.3, 0.05)
+
+[sub_resource type="Resource" id="Resource_hwrkl"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_3"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_xpcen")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_8drxs"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_hwrkl")
+id = &"facet_3"
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 0.11313708, 0, 0.11313708)
+
+[sub_resource type="Resource" id="Resource_1abr5"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.14, 0.3, 0.05)
+
+[sub_resource type="Resource" id="Resource_70pvt"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_4"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_1abr5")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_u7x51"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_70pvt")
+id = &"facet_4"
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0.16, 0, 9.797174e-18)
+
+[resource]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate"
+display_name = "Half-Cylinder Plate"
+attaches_to = Array[StringName]([&"ARMOR"])
+sockets = Array[ExtResource("3_oferd")]([SubResource("Resource_oompp"), SubResource("Resource_3j0uc"), SubResource("Resource_3f6lt"), SubResource("Resource_8drxs"), SubResource("Resource_u7x51")])
+material = &"steel"
+hp = 0
+max_hp = 0
+mass = 1.0
+mangles_into = &"metal_scraps"
