@@ -193,6 +193,64 @@ func test_a_curved_move_faces_each_tile_before_entering_it() -> void:
 	)
 
 
+## Reported bug: "bots visibly spin through every facing, then move" —
+## a real playback (ResolutionPlayer) plays `combat_log` events strictly
+## in order, so if every `faced` event for a curved path fired ahead of
+## a single aggregate `move` event at the very end, the unit visibly
+## rotates through every turn it's ever going to take, standing still,
+## and only slides afterward. The fix: `move` is logged per straight
+## LEG, interleaved with its own `faced` event, never batched behind
+## every facing change in the whole path.
+func test_a_curved_move_interleaves_faced_and_move_events_leg_by_leg() -> void:
+	var grid := Grid.new(10, 10)
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(2, 1)]
+	assert_true(state.try_apply(MoveAction.new(unit, path)))
+
+	var kinds: Array[StringName] = []
+	for event: LogEvent in sink.events:
+		if event.kind == &"faced" or event.kind == &"move":
+			kinds.append(event.kind)
+	assert_eq(
+		kinds,
+		[&"faced", &"move", &"faced", &"move"] as Array[StringName],
+		(
+			"each leg's own facing change must be immediately followed by that leg's own move, "
+			+ "never every facing change bunched ahead of one aggregate move"
+		)
+	)
+
+	var moves: Array[LogEvent] = sink.events_of_kind(&"move")
+	assert_eq(moves.size(), 2, "one move event per straight leg, not one for the whole path")
+	assert_eq(moves[0].data.get("path"), [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)])
+	assert_eq(moves[0].data.get("destination"), Vector2i(2, 0))
+	assert_eq(moves[1].data.get("path"), [Vector2i(2, 0), Vector2i(2, 1)])
+	assert_eq(moves[1].data.get("destination"), Vector2i(2, 1))
+
+
+## A straight, single-direction path never re-faces mid-flight, so it
+## must still collapse to exactly one `move` event — the common case
+## must stay byte-for-byte unchanged by the leg-splitting fix above.
+func test_a_straight_move_still_emits_exactly_one_move_event() -> void:
+	var grid := Grid.new(10, 10)
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(grid, [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]
+	assert_true(state.try_apply(MoveAction.new(unit, path)))
+
+	var moves: Array[LogEvent] = sink.events_of_kind(&"move")
+	assert_eq(moves.size(), 1)
+	assert_eq(moves[0].data.get("path"), path)
+	assert_eq(moves[0].data.get("destination"), Vector2i(3, 0))
+
+
 ## taskblock-16 Pass A: "an interrupted move leaves the unit facing its
 ## direction of travel at the interrupt point, not its original facing."
 ## Falls out of per-tile facing for free: the step that triggers the
