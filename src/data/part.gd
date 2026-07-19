@@ -227,6 +227,37 @@ extends Resource
 @export var detonate_damage: float = 0.0
 @export var detonate_radius: float = 0.0
 
+## taskblock-20 Pass F: "AP stops being a flat baseline and becomes a
+## function of the shell's power system." A reactor's own steady output —
+## `PowerResolver` sums this across every operable part that authors it
+## (0.0, the default, contributes nothing — most parts aren't reactors).
+## Flagged: no real calibration exists, defaulted so a shell whose only
+## power part is one reactor authoring the same number as
+## `Unit.DEFAULT_MAX_AP` sees no AP change from before this pass.
+@export var power_produced: float = 0.0
+## Storage only — "no charging stations / fuel logistics (meta layer)" is
+## explicitly out of this pass's scope, so nothing reads this yet. A real
+## fuel-logistics system is the intended future consumer, same posture
+## `MaterialEntry.ricochet_bias` already carries.
+@export var fuel_consumed: float = 0.0
+## Battery fields (taskblock-20 Pass F) — 0.0 on every non-battery part,
+## the same "absence isn't a penalty" posture every other flat-field
+## power/failure stat on this class already uses. `battery_charge` is the
+## RUNTIME store; unlike `hp`/`max_hp` there's no separate "current vs max"
+## pair to keep in sync automatically, so a battery's own `.tres` authors
+## `battery_charge` equal to `battery_capacity` directly (starts full),
+## the same way `hp` is authored equal to `max_hp`.
+@export var battery_capacity: float = 0.0
+## Max discharge PowerResolver can actually draw from this battery in one
+## turn, even if more charge is sitting in it — a battery with lots of
+## capacity but a weak discharge rate can't dump it all at once.
+@export var battery_power_out: float = 0.0
+## Max recharge PowerResolver tops this battery up by per turn, from
+## reactor power (taskblock-20 Pass F: "weak-reactor + batteries, rest to
+## recharge") — never more than what's actually missing from capacity.
+@export var battery_power_in: float = 0.0
+@export var battery_charge: float = 0.0
+
 ## taskblock-09 C0: the HP of THIS part's OWN attachment to its parent —
 ## authored on the CHILD, never the parent/socket, the same inversion
 ## `attaches_to` already uses (docs/01: "the arm carries the info"). A

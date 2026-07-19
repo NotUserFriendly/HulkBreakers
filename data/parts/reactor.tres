@@ -23,3 +23,4 @@ failure_mode = &"MELTDOWN"
 meltdown_turns = 2
 detonate_damage = 6.0
 detonate_radius = 2.0
+power_produced = 6.0

@@ -254,7 +254,22 @@ func try_apply(action: CombatAction) -> bool:
 
 
 func _start_turn(unit: Unit) -> void:
+	# taskblock-20 Pass F: batteries recharge from the shell's own reactor
+	# output BEFORE max_ap is recomputed from the now-topped-up state — "the
+	# first bit of movement is free tempo," this is the power-side
+	# equivalent, the same turn-start seam. A shell with no power system at
+	# all (no reactor/battery ever attached — every shell built before this
+	# pass) leaves `max_ap` completely untouched, so nothing not opted into
+	# the power system changes behavior.
+	PowerResolver.recharge_batteries(unit.shell)
+	if PowerResolver.has_power_system(unit.shell):
+		unit.max_ap = PowerResolver.max_ap_for(unit)
 	unit.ap = unit.max_ap
+	# taskblock-20 Pass F: batteries give up whatever they just contributed
+	# to THIS turn's max_ap — a shell drawing on battery power has less
+	# available next turn unless recharge offsets it (recharge already ran
+	# above, using last turn's own charge, before this drains it).
+	PowerResolver.discharge_batteries(unit.shell)
 	# taskblock-08 Pass C: leftover MP from a prior turn is discarded
 	# (Appendix E), but every turn starts with one AP's worth of MP
 	# already banked, free — a turn-start grant, not a permanent mp_per_ap
