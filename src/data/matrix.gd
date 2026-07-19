@@ -23,6 +23,15 @@ extends Resource
 ## no selection UI beyond the bout menu (taskblock-14 Pass D) is built
 ## for it.
 @export var playstyle: StringName = &"AGGRESSIVE"
+## taskblock-18 Pass A1: "reflexes are the pilot's, not the chassis's" — on
+## the matrix, not the shell, same reasoning as `playstyle` above; a fast
+## matrix in a slow body is still quick, and swapping bodies carries your
+## speed. A flat bonus `ResolutionSpeed.resolve()` subtracts from every
+## action's own resolution speed everywhere that axis is read (taskblock-18
+## A2) — it reads as a pure player-facing bonus. Flagged placeholder
+## default: same for every matrix until tuned, so the ORDERING works
+## immediately without the resolver waiting on balance numbers.
+@export var personal_speed: float = 0.0
 
 ## Link-only fields (docs/04). `perk_slots` is explicitly "not final" in the
 ## docs — a flagged, tunable default, not a design decision.

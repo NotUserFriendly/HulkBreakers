@@ -2,8 +2,8 @@ extends GutTest
 
 ## docs/09 taskblock06 Pass E: action speed — a SECOND ordering axis (docs/09
 ## Appendix G already orders UNITS by initiative; this orders ACTIONS at
-## one instant). HIGHER speed resolves first, ties broken deterministically
-## by unit id.
+## one instant). taskblock-18 A2 reframed this as "time to resolve": LOWER
+## speed now resolves first, ties broken deterministically by unit id.
 
 
 func _make_armed_unit(cell: Vector2i, weapon_speed: float, id: int) -> Dictionary:
@@ -26,26 +26,28 @@ func _make_armed_unit(cell: Vector2i, weapon_speed: float, id: int) -> Dictionar
 	return {"unit": unit, "pistol": pistol}
 
 
-func test_higher_speed_resolves_first_regardless_of_queue_order() -> void:
+func test_lower_speed_resolves_first_regardless_of_queue_order() -> void:
 	var built_a: Dictionary = _make_armed_unit(Vector2i(0, 0), 40.0, 0)
 	var built_b: Dictionary = _make_armed_unit(Vector2i(1, 0), 100.0, 1)
 	var state := CombatState.new(Grid.new(10, 10), [built_a.unit, built_b.unit])
 
-	var slow_attack := AttackAction.new(built_a.unit, &"pistol", Vector2i(1, 0))
+	var fast_attack := AttackAction.new(built_a.unit, &"pistol", Vector2i(1, 0))
 	var face := FaceAction.new(built_b.unit, 0.0)
 	# Deliberately queued slowest-first — order_by_speed must reorder it.
-	var ordered: Array[CombatAction] = CombatAction.order_by_speed([slow_attack, face], state)
+	var ordered: Array[CombatAction] = CombatAction.order_by_speed([face, fast_attack], state)
 
-	assert_eq(ordered[0], face, "FaceAction (speed 100) must resolve before the pistol (speed 40)")
-	assert_eq(ordered[1], slow_attack)
+	assert_eq(
+		ordered[0], fast_attack, "the pistol (speed 40) must resolve before FaceAction (speed 100)"
+	)
+	assert_eq(ordered[1], face)
 
 
 ## docs/09 taskblock06 Pass E: "a part carrying a speed modifier reorders
 ## resolution without a code change" — the mechanic itself, proven by
-## setting ONE weapon's own `speed` field higher than FaceAction's fixed
+## setting ONE weapon's own `speed` field LOWER than FaceAction's fixed
 ## 100 and watching it move to the front, no code touched.
-func test_a_weapon_with_a_higher_speed_out_paces_a_face_action() -> void:
-	var built_a: Dictionary = _make_armed_unit(Vector2i(0, 0), 150.0, 0)  # faster than FaceAction
+func test_a_weapon_with_a_lower_speed_out_paces_a_face_action() -> void:
+	var built_a: Dictionary = _make_armed_unit(Vector2i(0, 0), 10.0, 0)  # faster than FaceAction
 	var built_b: Dictionary = _make_armed_unit(Vector2i(1, 0), 40.0, 1)
 	var state := CombatState.new(Grid.new(10, 10), [built_a.unit, built_b.unit])
 
@@ -53,7 +55,7 @@ func test_a_weapon_with_a_higher_speed_out_paces_a_face_action() -> void:
 	var face := FaceAction.new(built_b.unit, 0.0)
 	var ordered: Array[CombatAction] = CombatAction.order_by_speed([face, fast_attack], state)
 
-	assert_eq(ordered[0], fast_attack, "a 150-speed weapon must out-pace FaceAction's fixed 100")
+	assert_eq(ordered[0], fast_attack, "a 10-speed weapon must out-pace FaceAction's fixed 100")
 	assert_eq(ordered[1], face)
 
 
