@@ -131,6 +131,21 @@ func apply(state: CombatState) -> void:
 		)
 	)
 
+	# taskblock-19 Pass H: "diagnose against a real burst" found no actual
+	# pull-dropping bug — is_legal()/apply() have always read the same
+	# weapon.weapon_def.burst_size (verified against the original
+	# taskblock-13 commit). The loop below genuinely runs `burst_size`
+	# times, every time; what varies pull to pull is whether that pull's
+	# own dartboard roll actually LANDS on anything — a real, expected
+	# miss when a wide/outer-weighted scatter (the real chaingun's own
+	# authored rings, say) rolls outside every hittable region, same as
+	# any single AttackAction shot can miss. `&"burst_pull"` makes this
+	# directly observable instead of inferred from `impact` event counts
+	# alone: one event per pull, unconditionally (proves execution —
+	# exactly `burst_size` of these must exist), each carrying
+	# `landed_so_far` (proves how many of the pulls SO FAR actually hit,
+	# not just fired).
+	var landed_so_far := 0
 	for pull in range(burst_size):
 		# taskblock-13 Pass D: pull 0 is on-target; every pull after it
 		# widens the DARTBOARD (never the mechanical spread pattern below)
@@ -145,8 +160,9 @@ func apply(state: CombatState) -> void:
 		var pellet_points: Array[Vector2] = SpreadPattern.sample(
 			pull_point, weapon, ammo, state.rng
 		)
+		var pull_hit := false
 		for point: Vector2 in pellet_points:
-			ShotResolution.resolve_and_log_point(
+			var landed: bool = ShotResolution.resolve_and_log_point(
 				state,
 				actual,
 				origin,
@@ -158,6 +174,30 @@ func apply(state: CombatState) -> void:
 				mission,
 				is_dud
 			)
+			pull_hit = pull_hit or landed
+		if pull_hit:
+			landed_so_far += 1
+		# `apply()` returns early on a preview (above) before this loop is
+		# ever reached — every event here is real, never gated on
+		# `is_preview` the way `_log_impact`'s own calls are.
+		state.combat_log.emit(
+			LogEvent.new(
+				state.round_number,
+				Enums.Phase.RESOLUTION,
+				actual.id,
+				&"burst_pull",
+				{
+					"pull_index": pull,
+					"burst_size": burst_size,
+					"hit": pull_hit,
+					"landed_so_far": landed_so_far
+				},
+				(
+					"pull %d/%d: %s (%d/%d landed so far)"
+					% [pull + 1, burst_size, "hit" if pull_hit else "miss", landed_so_far, pull + 1]
+				)
+			)
+		)
 
 	# Phase 6 placeholder, same as AttackAction: no living parts left
 	# disables the unit — Phase 7's real matrix-ejection rule supersedes.

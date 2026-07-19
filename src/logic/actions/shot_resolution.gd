@@ -13,7 +13,12 @@ extends RefCounted
 
 ## Resolves one shot landing at `point` and logs every consequence to
 ## `state.combat_log` — side effects only, exactly what AttackAction's
-## own per-point loop body used to do inline.
+## own per-point loop body used to do inline. Returns true iff this point
+## actually landed at least one impact (taskblock-19 Pass H: BurstAction
+## uses this to report each pull's own real outcome — a dartboard roll
+## that lands in empty space, hitting nothing, is a genuine miss, not a
+## dropped pull, and callers that want to tell the two apart need this
+## back rather than re-deriving it).
 ##
 ## `is_dud` (taskblock-19 Pass C2): true when this shot fired under a
 ## dud-capable weapon's own `min_range` — the damage cascade runs
@@ -31,7 +36,7 @@ static func resolve_and_log_point(
 	bonus_pen: float,
 	mission: MissionState,
 	is_dud: bool = false
-) -> void:
+) -> bool:
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 		origin,
 		direction,
@@ -50,6 +55,7 @@ static func resolve_and_log_point(
 	)
 	for result: ImpactResult in results:
 		_log_impact(state, attacker, result, mission, is_dud)
+	return not results.is_empty()
 
 
 static func _log_impact(
