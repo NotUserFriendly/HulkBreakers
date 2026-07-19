@@ -215,24 +215,77 @@ func test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value() -
 	)
 
 
-## taskblock-17 Pass C1: "hovering a tile/unit/field-object shows the
-## tooltip, same mechanism as the squad overlay." Drives
-## `overlay.tactics.update_hover()` directly with a real projected screen
-## position — the same pattern `test_tactics_controller_hover.gd` itself
-## uses (`camera_rig.camera().unproject_position(world_point)`) — rather
-## than simulating an `InputEventMouseMotion`, since `_unhandled_input`
-## just forwards to this same call.
-func test_hovering_a_unit_shows_a_tooltip() -> void:
+## taskblock-21 Pass B: supersedes tb17 C's hover-tooltip — "clicking a bot
+## during a bout pauses the bout and opens the inspect panel on that bot."
+## Drives a real `InputEventMouseButton` through `_unhandled_input` (not a
+## direct method call, since the click path itself — UnitPicker.hit() off
+## a real camera ray — is the thing this test means to prove) with a real
+## projected screen position, the same pattern the old hover test used
+## (`camera_rig.camera().unproject_position(world_point)`). Sets `playing`
+## directly rather than calling the real, async `play()` — `play()` runs
+## synchronously up to its own first `await` (inside `_advance()`, AFTER
+## `runner.step()` already ran), so calling it here would silently advance
+## the bout at least one real turn before the click, leaving `enemy` at a
+## stale cell or dead — an unrelated confound this test has no interest in.
+func test_clicking_a_unit_pauses_the_bout_and_opens_the_inspect_panel() -> void:
 	var built: Dictionary = _bout()
 	var overlay: SpectatorOverlay = _spectate(built)
 	var enemy: Unit = built.state.units[1]
+	overlay.playing = true
 
 	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
 	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
-	overlay.tactics.update_hover(screen_pos)
-	overlay.tooltip_view._process(TooltipView.HOVER_DELAY_SEC + 0.001)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	overlay._unhandled_input(click)
 
-	assert_true(overlay.tooltip_view.visible, "hovering a real unit must reveal a tooltip")
+	assert_false(overlay.playing, "the click must pause the bout")
+	assert_true(overlay.inspect_panel.visible)
+
+
+## "Closing it resumes" — but only if the bout was actually auto-playing
+## before the click; a spectator who had already paused by hand must not
+## have the panel silently restart auto-play for them. Same `playing = true`
+## reasoning as the test above — only the SECOND half needs `play()` for
+## real, since resuming through the real function (not just the flag) is
+## exactly what "closing it resumes" needs to prove.
+func test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.units[1]
+	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+
+	# Already paused before clicking: closing must NOT start auto-play.
+	overlay._unhandled_input(click)
+	overlay.inspect_panel.close()
+	assert_false(overlay.playing, "was already paused — closing must not start auto-play")
+
+	# Was auto-playing before clicking: closing must resume it.
+	overlay.playing = true
+	overlay._unhandled_input(click)
+	overlay.inspect_panel.close()
+	assert_true(overlay.playing, "was auto-playing — closing must resume it")
+
+
+func test_clicking_empty_space_does_nothing() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	overlay.playing = true
+
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = Vector2(-9999, -9999)  # off the board entirely
+	overlay._unhandled_input(click)
+
+	assert_true(overlay.playing, "a click that hits nothing must not pause the bout")
+	assert_false(overlay.inspect_panel.visible)
 
 
 ## taskblock-17 Pass C2: "stop auto-snapping — let the spectator drive

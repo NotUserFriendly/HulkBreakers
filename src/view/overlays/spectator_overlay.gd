@@ -39,17 +39,13 @@ var resolution_player: ResolutionPlayer
 var log_label: RichTextLabel
 var log_sink: UISink
 
-## taskblock-17 Pass C1: "hovering a tile/unit/field-object shows the
-## tooltip, same mechanism as the squad overlay" — a real `TacticsController`
-## instance, its own `_unhandled_input` explicitly disabled (this overlay
-## drives ONLY `update_hover()`, never click-select/queue/facing-drag/
-## keyboard shortcuts — those would silently build dead `ActionQueue`
-## previews for a bout no human is playing) so `TooltipController` can read
-## `hovered_cell`/`inspected_part`/`selection` off it exactly like
-## `SquadControlOverlay` does, with no second tooltip mechanism built.
-var tactics: TacticsController
-var tooltip_view: TooltipView
-var tooltip_controller: TooltipController
+## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
+## opens the inspect panel on that bot. Closing it resumes." Supersedes
+## tb17 C's hover-tooltip entirely — `UnitPicker.hit()` (a plain static
+## ray-pick, the same one `TacticsController.update_hover()` used
+## internally) is all a click handler needs; no `TacticsController`/
+## `TooltipController`/`TooltipView` instance is wired here anymore.
+var inspect_panel: InspectPanel
 
 var playing: bool = false
 var speed: float = 1.0
@@ -61,6 +57,10 @@ var _status_label: Label
 var _slide_ms_field: SpinBox
 var _bullet_ms_field: SpinBox
 var _tracer_count_field: SpinBox
+## Whether the bout was actually auto-playing at the moment a click opened
+## the inspect panel — "closing it resumes" must never START auto-play for
+## someone who had already paused by hand before clicking a unit.
+var _was_playing_before_inspect: bool = false
 
 
 ## `battle.combat_state`/`battle.mission` are already the freshly-built
@@ -76,25 +76,40 @@ func setup(p_battle: BattleScene) -> void:
 	add_child(resolution_player)
 	resolution_player.setup(battle)
 
-	tactics = TacticsController.new()
-	add_child(tactics)
-	tactics.set_process_unhandled_input(false)
-	tactics.setup(battle.combat_state, battle.board_view, battle.camera_rig)
-
 	_build_ui()
 	battle.combat_state.combat_log.add_sink(log_sink)
 	_refresh_status()
 
 
-## Forwards ONLY mouse motion into `tactics.update_hover()` — `tactics`'s
-## own `_unhandled_input` is disabled (see `tactics`'s own doc comment
-## above), so clicks/keys never reach `SelectionController`/facing-drag/
-## aim mode; CameraRig's own independent `_unhandled_input` (orbit/pan/
-## zoom) is untouched by any of this, exactly like every other overlay.
+## taskblock-21 Pass B: a left click picks a real unit under the cursor
+## (`UnitPicker.hit()`, the same ray-pick `TacticsController.update_hover()`
+## used internally — no full TacticsController needed for a plain pick) and
+## opens the inspect panel on it, pausing the bout the same way the Pause
+## button already does. CameraRig's own independent `_unhandled_input`
+## (orbit/pan/zoom) is untouched by any of this, exactly like every other
+## overlay.
 func _unhandled_input(event: InputEvent) -> void:
-	if tactics == null or event is not InputEventMouseMotion:
+	if event is not InputEventMouseButton:
 		return
-	tactics.update_hover((event as InputEventMouseMotion).position)
+	var mb := event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+		return
+	var camera: Camera3D = battle.camera_rig.camera() if battle != null else null
+	if camera == null:
+		return
+	var from: Vector3 = camera.project_ray_origin(mb.position)
+	var dir: Vector3 = camera.project_ray_normal(mb.position)
+	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
+	if hit.is_empty():
+		return
+	_was_playing_before_inspect = playing
+	pause()
+	inspect_panel.open(hit.unit as Unit)
+
+
+func _on_inspect_panel_closed() -> void:
+	if _was_playing_before_inspect:
+		play()
 
 
 func teardown() -> void:
@@ -242,14 +257,18 @@ func _build_ui() -> void:
 	theme_root.add_child(log_label)
 	log_sink = UISink.new(log_label)
 
-	# taskblock-17 Pass C1: THE one tooltip renderer, same as
-	# SquadControlOverlay's own — created last so it draws above every
-	# other panel here too.
-	tooltip_view = TooltipView.new()
-	tooltip_controller = TooltipController.new()
-	add_child(tooltip_controller)
-	tooltip_controller.setup(tactics, tooltip_view, DataLibrary.material_table())
-	theme_root.add_child(tooltip_view)
+	# taskblock-21 Pass B: THE inspect surface now, superseding tb17 C's
+	# hover-tooltip — created last so it draws above every other panel
+	# here too. Added to the tree BEFORE setup() (docs/02: setup()'s own
+	# bot-viewer build needs a live tree for Camera3D.look_at()).
+	inspect_panel = InspectPanel.new()
+	inspect_panel.custom_minimum_size = Vector2(900, 600)
+	inspect_panel.set_anchors_and_offsets_preset(
+		Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE
+	)
+	theme_root.add_child(inspect_panel)
+	inspect_panel.setup(DataLibrary.material_table())
+	inspect_panel.closed.connect(_on_inspect_panel_closed)
 
 	_refresh_status()
 
