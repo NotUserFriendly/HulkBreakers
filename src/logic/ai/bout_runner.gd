@@ -9,6 +9,19 @@ extends RefCounted
 ## play/pause/step/speed controls); a test can call it in a tight while
 ## loop instead, same as test_full_mission.gd already does by hand.
 ##
+## taskblock-19 Pass J: "headless vs. viewed, reconciled — one sim,
+## optionally observed, never two sims that could disagree." Audited:
+## this was already true by construction (taskblock-14/15's own work,
+## above) — `GenerateBoutOverlay` builds a bout through the same headless
+## `BoutSetup.build_bout()` a test would, `SpectatorOverlay` steps this
+## SAME class, and `ResolutionPlayer`/`refresh_unit_views()` only ever
+## READ `combat_state` afterward to animate/redraw (never call anything
+## that mutates it — `test_playback_never_mutates_the_real_combat_
+## states_own_unit_fields` locks that half in directly). No second,
+## divergent simulation path was found to merge.
+## `test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed`
+## (test_spectator_overlay.gd) is the end-to-end regression proving it.
+##
 ## taskblock-15 Pass A: generalized into the ONE turn driver every
 ## `ControlOverlay` shares ("the turn loop never branches on scene type").
 ## `wants_turn_for`, if supplied, answers "should THIS caller drive this
