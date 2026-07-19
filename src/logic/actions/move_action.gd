@@ -122,10 +122,23 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 			var hook_result: Variant = mid_move_hook.call(state, actual)
 			hook_forces_stop = hook_result is bool and hook_result
 
+		# taskblock-18 D3: a triggered hook forces a freeze UNCONDITIONALLY
+		# (this function's own doc comment already says so) — but until
+		# this fix, that promise silently broke for a move's own LAST step:
+		# `is_final_step` used to gate BOTH halves of this check, so a
+		# single-step move (exactly what a lean's own outbound/return leg
+		# always is) could trigger overwatch, spend the watch, and still
+		# sail on to complete the ENTIRE rest of the queue — the "ghost
+		# bullet" case D3 exists to prevent, undetected until now because
+		# every prior Overwatch test happened to trigger on an EARLIER,
+		# non-final step. `_can_still_complete`'s own check stays exempt on
+		# the final step (nothing left to "complete" beyond what already
+		# happened — and its own loop is a no-op on a 1-cell remainder
+		# anyway); only `hook_forces_stop` needed to escape the gate.
 		var is_final_step: bool = i == path.size() - 1
 		if (
-			not is_final_step
-			and (hook_forces_stop or not _can_still_complete(state, actual, path.slice(i)))
+			hook_forces_stop
+			or (not is_final_step and not _can_still_complete(state, actual, path.slice(i)))
 		):
 			_finish(state, actual, path.slice(run_start, i + 1))
 			return {"stopped": true}
