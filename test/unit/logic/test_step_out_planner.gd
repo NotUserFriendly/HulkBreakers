@@ -1,6 +1,7 @@
 extends GutTest
 
-## taskblock-18 Pass D: LeanPlanner — verified geometry throughout: a
+## taskblock-18 Pass D: StepOutPlanner (taskblock-19 Pass B: renamed from
+## LeanPlanner) — verified geometry throughout: a
 ## blocker sits directly in front of the unit's own origin cell (so the
 ## origin itself reads as covered from the target dead ahead), while
 ## both orthogonal side-step neighbors read as exposed (clear of the
@@ -104,30 +105,30 @@ func _covered_scene() -> Dictionary:
 	return {"state": state, "unit": unit, "target": target}
 
 
-func test_a_lean_is_legal_when_origin_covered_firing_cell_exposed_and_orthogonal() -> void:
+func test_a_step_out_is_legal_when_origin_covered_firing_cell_exposed_and_orthogonal() -> void:
 	var scene: Dictionary = _covered_scene()
 
 	assert_true(
-		LeanPlanner.is_legal_lean(
+		StepOutPlanner.is_legal_step_out(
 			scene.state, scene.unit, Vector2i(3, 0), Vector2i(4, 0), scene.target
 		)
 	)
 	assert_true(
-		LeanPlanner.is_legal_lean(
+		StepOutPlanner.is_legal_step_out(
 			scene.state, scene.unit, Vector2i(3, 0), Vector2i(2, 0), scene.target
 		)
 	)
 
 
-func test_an_uncovered_origin_makes_the_lean_illegal() -> void:
+func test_an_uncovered_origin_makes_the_step_out_illegal() -> void:
 	var grid := Grid.new(10, 10)  # no blocker at all
 	var unit := _armed_unit(Vector2i(3, 0), 0, &"rifle")
 	var target := _armed_unit(Vector2i(3, 9), 1)
 	var state := CombatState.new(grid, [unit, target])
 
 	assert_false(
-		LeanPlanner.is_legal_lean(state, unit, Vector2i(3, 0), Vector2i(4, 0), target),
-		"nothing to lean back into — no free movement out of an already-open position"
+		StepOutPlanner.is_legal_step_out(state, unit, Vector2i(3, 0), Vector2i(4, 0), target),
+		"nothing to step back into — no free movement out of an already-open position"
 	)
 
 
@@ -137,13 +138,13 @@ func test_a_firing_cell_that_is_itself_covered_is_illegal() -> void:
 	# The origin cell itself, offered as its own "firing cell" — still
 	# covered (nothing changed), so exposing nothing: illegal.
 	assert_false(
-		LeanPlanner.is_legal_lean(
+		StepOutPlanner.is_legal_step_out(
 			scene.state, scene.unit, Vector2i(3, 0), Vector2i(3, 0), scene.target
 		)
 	)
 
 
-func test_a_diagonal_neighbor_is_never_a_legal_lean_cell() -> void:
+func test_a_diagonal_neighbor_is_never_a_legal_step_out_cell() -> void:
 	var scene: Dictionary = _covered_scene()
 
 	# (4, 1) is diagonally adjacent to origin (3, 0) and — verified by the
@@ -153,16 +154,16 @@ func test_a_diagonal_neighbor_is_never_a_legal_lean_cell() -> void:
 		Grid.distance_manhattan(Vector2i(3, 0), Vector2i(4, 1)), 2, "sanity: a true diagonal step"
 	)
 	assert_false(
-		LeanPlanner.is_legal_lean(
+		StepOutPlanner.is_legal_step_out(
 			scene.state, scene.unit, Vector2i(3, 0), Vector2i(4, 1), scene.target
 		)
 	)
 
 
-func test_candidate_lean_cells_lists_every_legal_orthogonal_neighbor() -> void:
+func test_candidate_step_out_cells_lists_every_legal_orthogonal_neighbor() -> void:
 	var scene: Dictionary = _covered_scene()
 
-	var candidates: Array[Vector2i] = LeanPlanner.candidate_lean_cells(
+	var candidates: Array[Vector2i] = StepOutPlanner.candidate_step_out_cells(
 		scene.state, scene.unit, scene.unit.cell, scene.target
 	)
 
@@ -191,7 +192,7 @@ func test_sort_by_safety_prefers_the_cell_with_no_known_overwatch() -> void:
 		exposed_hits.size() > safe_hits.size(), "sanity: the fixture's own exposure must differ"
 	)
 
-	var sorted: Array[Vector2i] = LeanPlanner.sort_by_safety(
+	var sorted: Array[Vector2i] = StepOutPlanner.sort_by_safety(
 		scene.state, scene.unit, [Vector2i(4, 0), Vector2i(2, 0)]
 	)
 
@@ -202,7 +203,7 @@ func test_build_triple_assembles_a_real_move_attack_move_queue() -> void:
 	var scene: Dictionary = _covered_scene()
 	var queue := ActionQueue.new(scene.unit)
 
-	var ok: bool = LeanPlanner.build_triple(
+	var ok: bool = StepOutPlanner.build_triple(
 		queue, scene.state, scene.unit, &"rifle", scene.target, Vector2i(3, 0), Vector2i(4, 0)
 	)
 
@@ -229,7 +230,7 @@ func test_the_triple_costs_real_mp_for_both_legs_no_discount() -> void:
 	var queue := ActionQueue.new(unit)
 
 	assert_true(
-		LeanPlanner.build_triple(
+		StepOutPlanner.build_triple(
 			queue, scene.state, unit, &"rifle", scene.target, Vector2i(3, 0), Vector2i(4, 0)
 		)
 	)
@@ -247,26 +248,26 @@ func test_assemble_for_shoot_returns_null_when_already_directly_attackable() -> 
 	var target := _armed_unit(Vector2i(5, 0), 1)
 	var state := CombatState.new(grid, [unit, target])
 
-	assert_null(LeanPlanner.assemble_for_shoot(state, unit, &"rifle", target))
+	assert_null(StepOutPlanner.assemble_for_shoot(state, unit, &"rifle", target))
 
 
-func test_assemble_for_shoot_returns_null_when_no_legal_lean_exists() -> void:
+func test_assemble_for_shoot_returns_null_when_no_legal_step_out_exists() -> void:
 	var grid := Grid.new(10, 10)  # covered origin, but NO cover blocker at all
 	var unit := _armed_unit(Vector2i(0, 0), 0, &"rifle")
 	# Wall the whole board off from the target so nothing (origin or any
-	# neighbor) ever gets LoS to it — no legal lean is even possible.
+	# neighbor) ever gets LoS to it — no legal step out is even possible.
 	for y in range(10):
 		grid.set_terrain(Vector2i(5, y), Enums.TerrainType.WALL)
 	var target := _armed_unit(Vector2i(9, 0), 1)
 	var state := CombatState.new(grid, [unit, target])
 
-	assert_null(LeanPlanner.assemble_for_shoot(state, unit, &"rifle", target))
+	assert_null(StepOutPlanner.assemble_for_shoot(state, unit, &"rifle", target))
 
 
 func test_assemble_for_shoot_builds_the_triple_via_the_safest_candidate() -> void:
 	var scene: Dictionary = _covered_scene()
 
-	var queue: ActionQueue = LeanPlanner.assemble_for_shoot(
+	var queue: ActionQueue = StepOutPlanner.assemble_for_shoot(
 		scene.state, scene.unit, &"rifle", scene.target
 	)
 

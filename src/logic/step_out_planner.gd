@@ -1,13 +1,15 @@
-class_name LeanPlanner
+class_name StepOutPlanner
 extends RefCounted
 
-## taskblock-18 Pass D: leans — "a covered unit pops out, fires, and
-## returns as one automated motion... three normal actions in the ordered
-## resolver, never a special-cased triple." `assemble_for_shoot()` is the
-## ONE shared entry point (D2: "shared AI and player path... one
+## taskblock-18 Pass D (taskblock-19 Pass B: renamed Lean -> Step Out, pure
+## rename, no behavior change — "lean" implied a specific motion and
+## collided with a future literal-lean ability): "a covered unit pops out,
+## fires, and returns as one automated motion... three normal actions in
+## the ordered resolver, never a special-cased triple." `assemble_for_shoot()`
+## is the ONE shared entry point (D2: "shared AI and player path... one
 ## implementation") — a human's SHOOT click and UnitAI's own ranged
-## planner both call this, never two separate notions of "how do I lean
-## to hit this."
+## planner both call this, never two separate notions of "how do I step
+## out to hit this."
 
 const _ORTHOGONAL_OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
@@ -22,7 +24,7 @@ const _ORTHOGONAL_OFFSETS: Array[Vector2i] = [
 ## shot from here" either way, so this is never a second, narrower cover
 ## check silently drifting from the one the AI's own cover-seeking
 ## already reads.
-static func is_legal_lean(
+static func is_legal_step_out(
 	state: CombatState, unit: Unit, origin_cell: Vector2i, firing_cell: Vector2i, target: Unit
 ) -> bool:
 	if Grid.distance_manhattan(origin_cell, firing_cell) != 1:
@@ -35,9 +37,9 @@ static func is_legal_lean(
 
 
 ## Every orthogonal, walkable neighbor of `origin_cell` that's a legal
-## lean firing cell toward `target` — unsorted; see `sort_by_safety` for
+## step-out firing cell toward `target` — unsorted; see `sort_by_safety` for
 ## "safest first."
-static func candidate_lean_cells(
+static func candidate_step_out_cells(
 	state: CombatState, unit: Unit, origin_cell: Vector2i, target: Unit
 ) -> Array[Vector2i]:
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
@@ -46,7 +48,7 @@ static func candidate_lean_cells(
 		var cell: Vector2i = origin_cell + offset
 		if not state.grid.in_bounds(cell) or not pf.is_walkable(cell):
 			continue
-		if is_legal_lean(state, unit, origin_cell, cell, target):
+		if is_legal_step_out(state, unit, origin_cell, cell, target):
 			candidates.append(cell)
 	return candidates
 
@@ -121,11 +123,11 @@ static func build_triple(
 
 
 ## D2's own one-call entry point: "clicking SHOOT on an enemy the unit
-## can't see but could from a legal lean cell builds the triple
+## can't see but could from a legal step-out cell builds the triple
 ## automatically." Returns null when `unit.cell` is already NOT covered
 ## from `target` (D1's own trigger condition — a clear origin needs no
-## lean, the caller should just queue a normal AttackAction) or when no
-## legal lean exists at all (nothing this can help with — never crash,
+## step out, the caller should just queue a normal AttackAction) or when no
+## legal step-out exists at all (nothing this can help with — never crash,
 ## never silently invent). Otherwise assembles the triple against the
 ## SAFEST candidate cell.
 ##
@@ -133,12 +135,12 @@ static func build_triple(
 ## blocker sitting in the shot's own path doesn't make firing from here
 ## ILLEGAL (`is_legal()` only checks LoS, not what a real ray would
 ## actually hit first) — it just means the shot would likely hit the
-## blocker instead of the target, exactly the case a lean exists to
-## avoid. Using `is_legal()` here would silently skip leaning in
+## blocker instead of the target, exactly the case a step out exists to
+## avoid. Using `is_legal()` here would silently skip stepping out in
 ## precisely the situation D1/D2 describe.
 ##
 ## A caller that wants a DIFFERENT candidate (D2's own mouse-wheel
-## cycle) doesn't call this — it calls `candidate_lean_cells()`/
+## cycle) doesn't call this — it calls `candidate_step_out_cells()`/
 ## `sort_by_safety()` directly and hands its own chosen cell to
 ## `build_triple()` instead.
 static func assemble_for_shoot(
@@ -146,7 +148,7 @@ static func assemble_for_shoot(
 ) -> ActionQueue:
 	if not UnitAI.is_covered_from(unit.cell, target.cell, state, unit):
 		return null
-	var candidates: Array[Vector2i] = candidate_lean_cells(state, unit, unit.cell, target)
+	var candidates: Array[Vector2i] = candidate_step_out_cells(state, unit, unit.cell, target)
 	if candidates.is_empty():
 		return null
 	var firing_cell: Vector2i = sort_by_safety(state, unit, candidates)[0]

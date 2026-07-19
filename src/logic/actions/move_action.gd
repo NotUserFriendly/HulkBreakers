@@ -126,8 +126,9 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 		# (this function's own doc comment already says so) — but until
 		# this fix, that promise silently broke for a move's own LAST step:
 		# `is_final_step` used to gate BOTH halves of this check, so a
-		# single-step move (exactly what a lean's own outbound/return leg
-		# always is) could trigger overwatch, spend the watch, and still
+		# single-step move (exactly what a step out's own outbound/return
+		# leg always is — taskblock-19 Pass B: Lean -> Step Out rename)
+		# could trigger overwatch, spend the watch, and still
 		# sail on to complete the ENTIRE rest of the queue — the "ghost
 		# bullet" case D3 exists to prevent, undetected until now because
 		# every prior Overwatch test happened to trigger on an EARLIER,
