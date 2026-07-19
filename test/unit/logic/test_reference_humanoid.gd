@@ -405,3 +405,64 @@ func test_validate_assembly_flags_an_empty_material_same_as_a_missing_volume() -
 		if violation.contains("material"):
 			found = true
 	assert_true(found, "an empty material must be a validate_assembly violation: %s" % violations)
+
+
+## Combat Tester content: legs' own ARMOR socket used to share the bare
+## "ARMOR" id with arm/forearm's — a flat Loadout couldn't otherwise
+## address "both legs' armor" independently of the arms'.
+## `DeepStrike.reference_humanoid_pool()` carves out a `LEG_ARMOR` id for
+## exactly this, the same fix already established for `hand_l`/`hand_r`'s
+## own `GRIP_L`/`GRIP_R`. This is a geometry-of-the-skeleton fact, not a
+## loadout choice: true even for the plain default assembly.
+func test_both_legs_own_armor_socket_is_independently_addressable_from_arms() -> void:
+	var unit := _reference_unit()
+	var arm: Part = unit.shell.find_part(&"arm")
+	var forearm: Part = unit.shell.find_part(&"forearm")
+	var legs: Array[Part] = []
+	for part: Part in PartGraph.walk(unit.shell.root):
+		if part.id == &"leg":
+			legs.append(part)
+
+	assert_eq(legs.size(), 2, "sanity: both legs must be present")
+	for leg: Part in legs:
+		var socket: Socket = PartGraph.find_socket(leg, &"LEG_ARMOR")
+		assert_not_null(socket, "each leg's own armor socket must carry the LEG_ARMOR id")
+
+	assert_not_null(
+		PartGraph.find_socket(arm, &"ARMOR"), "the arm must keep the bare ARMOR id, unaffected"
+	)
+	assert_not_null(
+		PartGraph.find_socket(forearm, &"ARMOR"),
+		"the forearm must keep the bare ARMOR id, unaffected"
+	)
+
+
+## A Loadout keyed to LEG_ARMOR must reach BOTH legs (they share one
+## renamed pool copy — no L/R distinction needed between two legs that
+## always get the same plate) while leaving the arms on their own
+## default armor entirely untouched.
+func test_a_loadout_can_arm_both_legs_without_touching_the_arms() -> void:
+	var loadout := Loadout.new({&"LEG_ARMOR": &"plate_large_steel"})
+	var unit: Unit = BodyAssembler.assemble(
+		DeepStrike.reference_humanoid_template(),
+		loadout,
+		DeepStrike.reference_humanoid_pool(),
+		Matrix.new(),
+		Vector2i(0, 0)
+	)
+	assert_not_null(unit)
+
+	var leg_plate_count := 0
+	var arm_plate_count := 0
+	for part: Part in PartGraph.walk(unit.shell.root):
+		if part.id == &"leg":
+			var socket: Socket = PartGraph.find_socket(part, &"LEG_ARMOR")
+			if socket.occupant != null and socket.occupant.id == &"plate_large_steel":
+				leg_plate_count += 1
+		elif part.id == &"arm":
+			var socket: Socket = PartGraph.find_socket(part, &"ARMOR")
+			if socket.occupant != null and socket.occupant.id == &"plate_small_steel":
+				arm_plate_count += 1
+
+	assert_eq(leg_plate_count, 2, "the loadout override must land on both legs")
+	assert_eq(arm_plate_count, 2, "the arms must keep their own default plate, untouched")

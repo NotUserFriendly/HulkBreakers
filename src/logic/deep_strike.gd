@@ -119,7 +119,7 @@ static func reference_humanoid_template() -> ShellTemplate:
 			hip_id,
 			&"leg",
 			[
-				Mount.new(&"ARMOR", &"plate_medium_sheet_steel"),
+				Mount.new(&"LEG_ARMOR", &"plate_medium_sheet_steel"),
 				Mount.new(&"CLADDING", &"leg_cladding")
 			]
 		)
@@ -183,6 +183,20 @@ static func reference_humanoid_pool() -> Dictionary:
 	hand_r.id = &"hand_r"
 	hand_r.sockets[0].id = &"GRIP_R"
 	pool[&"hand_r"] = hand_r
+
+	# taskblock-17 bot content: leg's own ARMOR socket used to share the
+	# bare "ARMOR" id with arm/forearm's — a flat Loadout can't otherwise
+	# address "both legs' armor" independently of the arms'. Same fix as
+	# hand_l/hand_r above: rename just this pool copy's socket id, never
+	# leg.tres itself on disk (nothing outside reference_humanoid
+	# assembly reads "leg" through this pool, and both HIP_L/HIP_R mounts
+	# share this one renamed copy — legs don't need L/R distinction from
+	# each other, only from arms).
+	var leg_armored: Part = (pool[&"leg"] as Part).duplicate(true)
+	for socket: Socket in leg_armored.sockets:
+		if socket.socket_type == &"ARMOR":
+			socket.id = &"LEG_ARMOR"
+	pool[&"leg"] = leg_armored
 
 	return pool
 
