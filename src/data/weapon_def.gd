@@ -24,7 +24,29 @@ extends Resource
 ## 0..1 — the gun's own steadiness (0.8, 0.85, 0.9, 0.95). Pass E: the
 ## spread pattern's own base size scales off this, never the dartboard.
 @export var mechanical_accuracy: float = 1.0
+## taskblock-19 Pass C: full accuracy (dartboard at its authored size) out
+## to here. Was a dead field before this pass — nothing read it; the
+## legality cutoff lived on the separate, now-removed `Part.weapon_max_range`
+## instead, authored to the SAME number on every real gun (an unintentional
+## duplicate, not a design choice). 0.0 = no accuracy band authored (a
+## legacy/undecorated weapon fires at full accuracy out to `max_range`,
+## same as before this pass).
 @export var effective_range: float = 0.0
+## taskblock-19 Pass C: beyond `effective_range`, degraded accuracy
+## (`RangeModel.accuracy_multiplier`); beyond THIS, no shot at all — the
+## sole legality cutoff, replacing `Part.weapon_max_range`. 0.0 = uncapped
+## (fires at any range), the same convention the old field used.
+@export var max_range: float = 0.0
+## taskblock-19 Pass C2: below here, a discrete failure rather than a
+## clean "can't fire" — see `min_range_failure`. 0.0 = no minimum.
+@export var min_range: float = 0.0
+## Open vocabulary (CLAUDE.md: content stays data, not an enum). `&"none"`
+## (default): below `min_range` the weapon simply can't fire, same as
+## being beyond `max_range`. `&"dud"`: the weapon fires anyway — no
+## special payload effect (nothing to arm below min range), a plain
+## kinetic hit — the first authored case; the vocabulary stays open for
+## whatever a later payload type needs.
+@export var min_range_failure: StringName = &"none"
 ## Drives recoil (Pass D, dartboard widening) and spread (Pass E, pattern
 ## tightening) — both "longer barrel = better," sharing one curve shape.
 @export var barrel_length: float = 1.0

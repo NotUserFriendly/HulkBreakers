@@ -103,7 +103,9 @@ static func _qualifying_weapon(state: CombatState, overwatcher: Unit, mover: Uni
 	if not _in_arc(overwatcher, mover):
 		return null
 	var range_cells: int = Grid.distance_chebyshev(overwatcher.cell, mover.cell)
-	if weapon.weapon_max_range > 0.0 and range_cells > int(weapon.weapon_max_range):
+	if not RangeModel.is_in_max_range(weapon, range_cells):
+		return null
+	if RangeModel.blocks_min_range(weapon, range_cells):
 		return null
 	if not LoS.has_los(state.grid, overwatcher.cell, mover.cell):
 		return null
@@ -192,11 +194,22 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 		else ShotPlane.center_of(plane, mover)
 	)
 
+	var range_cells: int = Grid.distance_chebyshev(overwatcher.cell, mover.cell)
 	var damage: float = WeaponResolver.resolve_damage(weapon, []).current
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, []).current
 	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, []).current
+	# taskblock-19 Pass C: same range-accuracy/dud posture AttackAction's
+	# own apply() uses — an overwatch trigger fires the same weapon, so it
+	# earns the same degraded-accuracy-at-distance and dud-under-min-range
+	# treatment, never a second, independently-tuned notion of either.
+	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 	var points: Array[Vector2] = Dartboard.sample(
-		aim_point, Dartboard.resolve_scatter(weapon, []), state.rng, weapon.burst
+		aim_point,
+		Dartboard.resolve_scatter(
+			weapon, [], RangeModel.dartboard_radius_scale(weapon, range_cells)
+		),
+		state.rng,
+		weapon.burst
 	)
 
 	var text: String = (
@@ -267,6 +280,7 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 								"damage": result.part_damage,
 								"bypassed_armor": result.bypassed_armor,
 								"is_crit": result.is_crit,
+								"is_dud": is_dud,
 							},
 							"%s on %s (overwatch)" % [outcome_name, result.region.part.id]
 						)

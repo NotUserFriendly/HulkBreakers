@@ -60,7 +60,9 @@ func is_legal(state: CombatState) -> bool:
 		return false
 
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
-	if weapon.weapon_max_range > 0.0 and range_cells > int(weapon.weapon_max_range):
+	if not RangeModel.is_in_max_range(weapon, range_cells):
+		return false
+	if RangeModel.blocks_min_range(weapon, range_cells):
 		return false
 	if not LoS.has_los(state.grid, actual.cell, target_cell):
 		return false
@@ -97,9 +99,12 @@ func apply(state: CombatState) -> void:
 	var origin := Vector2(actual.cell.x, actual.cell.y)
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
-	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon, extra_sources)
+	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(
+		weapon, extra_sources, RangeModel.dartboard_radius_scale(weapon, range_cells)
+	)
 	var points: Array[Vector2] = Dartboard.sample(
 		aim_point, resolved_scatter, state.rng, weapon.burst
 	)
@@ -110,6 +115,11 @@ func apply(state: CombatState) -> void:
 	var damage: float = WeaponResolver.resolve_damage(weapon, extra_sources).current
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
 	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
+	# taskblock-19 Pass C2: fired anyway (is_legal() only lets a dud-
+	# capable weapon reach here at all under min range) — same kinetic
+	# cascade, just tagged so the log (and a future payload system) knows
+	# nothing special armed.
+	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 
 	for point: Vector2 in points:
 		# The shooter's own body sits at the ray's own origin (depth <= 0)
@@ -120,7 +130,7 @@ func apply(state: CombatState) -> void:
 		# fired at a collinear target never reaches back into the shooter's
 		# own chest.
 		ShotResolution.resolve_and_log_point(
-			state, actual, origin, direction, point, damage, crit_chance, bonus_pen, mission
+			state, actual, origin, direction, point, damage, crit_chance, bonus_pen, mission, is_dud
 		)
 
 	# Phase 6 placeholder: no living parts left disables the unit. Phase 7

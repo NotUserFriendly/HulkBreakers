@@ -43,6 +43,14 @@ const COVER_SCORE_BONUS := 10.0
 ## still "wins" the comparison, and `_plan_ranged` catches that case
 ## afterward and holds fire rather than firing through an ally anyway.
 const ALLY_BLOCKED_PENALTY := 1000.0
+## taskblock-19 Pass C3: "only closes inside min_range if forced" —
+## dominant over COVER_SCORE_BONUS (so cover alone never lures a unit
+## inside its own weapon's min_range), but far below ALLY_BLOCKED_PENALTY
+## (a forced close, when every reachable cell is under min_range or
+## nothing else is even in range, must still be pickable as the least-bad
+## option, the same posture ALLY_BLOCKED_PENALTY's own doc comment
+## describes). Flagged, not a tuned design number.
+const MIN_RANGE_PENALTY := 20.0
 
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
@@ -105,7 +113,24 @@ static func _plan_ranged(
 		return _plan_non_combat_turn(unit, state, mission, queue)
 
 	var weapon_id: StringName = _find_weapon_id(unit)
-	var far_enough: bool = Grid.distance_chebyshev(unit.cell, enemy.cell) >= preferred_range
+	var weapon: Part = unit.shell.find_part(weapon_id) if weapon_id != &"" else null
+	# taskblock-19 Pass C3: beyond the weapon's own effective_range (when
+	# authored), firing without moving is never the fast path's call to
+	# make — the repositioning branch's own range-aware, cover-dominant
+	# scorer below is what decides "close in" vs "hold and take the
+	# degraded shot," not a flat "already legal, so good enough" check.
+	# `within_effective` degrades gracefully to always-true for an
+	# unauthored weapon, matching this planner's pre-existing behaviour
+	# exactly.
+	var within_effective: bool = (
+		weapon == null
+		or weapon.weapon_def == null
+		or weapon.weapon_def.effective_range <= 0.0
+		or Grid.distance_chebyshev(unit.cell, enemy.cell) <= weapon.weapon_def.effective_range
+	)
+	var far_enough: bool = (
+		Grid.distance_chebyshev(unit.cell, enemy.cell) >= preferred_range and within_effective
+	)
 	var covered_enough: bool = (
 		not weight_cover or is_covered_from(unit.cell, enemy.cell, state, unit)
 	)
@@ -126,7 +151,7 @@ static func _plan_ranged(
 	else:
 		var queued_before: int = queue.actions.size()
 		var best_cell: Vector2i = _pick_engagement_position(
-			unit, enemy, state, preferred_range, weight_cover
+			unit, enemy, state, preferred_range, weight_cover, weapon
 		)
 		if best_cell != unit.cell:
 			var pf := Pathfinder.new(state.grid, state.terrain_costs)
@@ -237,7 +262,13 @@ static func _in_weapon_range(
 		return false
 	var origin: Vector2i = from_cell if from_cell != null else unit.cell
 	var range_cells: int = Grid.distance_chebyshev(origin, enemy.cell)
-	return weapon.weapon_max_range <= 0.0 or range_cells <= int(weapon.weapon_max_range)
+	# taskblock-19 Pass C: the same predicate AttackAction.is_legal() uses
+	# for range — never a second, independently-maintained range check the
+	# planner's own picks could legally-fail against at resolve time.
+	return (
+		RangeModel.is_in_max_range(weapon, range_cells)
+		and not RangeModel.blocks_min_range(weapon, range_cells)
+	)
 
 
 ## taskblock-14 Pass B1: "is a field object / ally / wall between it and
@@ -320,8 +351,23 @@ static func _first_hit_excluding(
 ## EITHER side, so the same scorer drives advancing when farther and
 ## retreating when closer. Staying put is always a candidate
 ## (`Pathfinder.reachable` already includes the origin cell at zero cost).
+##
+## taskblock-19 Pass C3: `weapon`'s own authored `effective_range`
+## (`_target_distance`) supersedes the flat `preferred_range` pull when
+## present — "moves closer to reach effective." This alone reproduces
+## "...unless there's no cover available, in which case it holds and
+## takes the degraded shot": COVER_SCORE_BONUS already dominates the
+## distance penalty (its own doc comment), so a covered-but-degraded cell
+## still outscores an uncovered cell that's merely closer to effective —
+## no separate "hold" branch needed, the existing cover-first scorer
+## already produces it once the pull target is the real weapon range.
 static func _pick_engagement_position(
-	unit: Unit, enemy: Unit, state: CombatState, preferred_range: int, weight_cover: bool
+	unit: Unit,
+	enemy: Unit,
+	state: CombatState,
+	preferred_range: int,
+	weight_cover: bool,
+	weapon: Part = null
 ) -> Vector2i:
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
@@ -330,16 +376,27 @@ static func _pick_engagement_position(
 
 	var best_cell: Vector2i = unit.cell
 	var best_score: float = _engagement_score(
-		unit.cell, enemy, state, unit, preferred_range, weight_cover
+		unit.cell, enemy, state, unit, preferred_range, weight_cover, weapon
 	)
 	for cell: Vector2i in reachable:
 		var score: float = _engagement_score(
-			cell, enemy, state, unit, preferred_range, weight_cover
+			cell, enemy, state, unit, preferred_range, weight_cover, weapon
 		)
 		if score > best_score:
 			best_score = score
 			best_cell = cell
 	return best_cell
+
+
+## taskblock-19 Pass C3: the distance the scorer pulls toward — the
+## weapon's own `effective_range` when authored (a real, concrete number
+## beats the flagged flat `preferred_range` guess), else `preferred_range`
+## unchanged (an un-migrated/undecorated weapon keeps the old behaviour
+## exactly).
+static func _target_distance(weapon: Part, preferred_range: int) -> float:
+	if weapon != null and weapon.weapon_def != null and weapon.weapon_def.effective_range > 0.0:
+		return weapon.weapon_def.effective_range
+	return float(preferred_range)
 
 
 static func _engagement_score(
@@ -348,10 +405,11 @@ static func _engagement_score(
 	state: CombatState,
 	self_unit: Unit,
 	preferred_range: int,
-	weight_cover: bool
+	weight_cover: bool,
+	weapon: Part = null
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
-	var distance_penalty: float = absf(float(distance - preferred_range))
+	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
 	var cover_bonus: float = (
 		COVER_SCORE_BONUS
 		if weight_cover and is_covered_from(cell, enemy.cell, state, self_unit)
@@ -362,7 +420,13 @@ static func _engagement_score(
 	var blocked_penalty: float = (
 		ALLY_BLOCKED_PENALTY if _ally_in_firing_line(self_unit, enemy, cell, state) else 0.0
 	)
-	return cover_bonus - distance_penalty - blocked_penalty
+	# taskblock-19 Pass C3: "only closes inside min_range if forced" —
+	# penalized, not excluded, so a genuinely forced close (nothing else
+	# reachable clears min_range either) still wins as the least-bad cell.
+	var min_range_penalty: float = (
+		MIN_RANGE_PENALTY if RangeModel.blocks_min_range(weapon, distance) else 0.0
+	)
+	return cover_bonus - distance_penalty - blocked_penalty - min_range_penalty
 
 
 static func _find_weapon_id(unit: Unit) -> StringName:

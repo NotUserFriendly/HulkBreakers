@@ -265,7 +265,6 @@ extends Resource
 ## damage computation. Nothing else reads this field raw.
 @export var damage: float = 0.0
 @export var burst: int = 1
-@export var weapon_max_range: float = 0.0
 @export var ap_cost: int = 1
 ## taskblock-13 Pass A: gun-model stats with nowhere else to live —
 ## damage_multiplier/mechanical_accuracy/barrel_length/burst_size/chamber.

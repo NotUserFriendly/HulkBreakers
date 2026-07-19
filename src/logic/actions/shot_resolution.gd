@@ -14,6 +14,12 @@ extends RefCounted
 ## Resolves one shot landing at `point` and logs every consequence to
 ## `state.combat_log` — side effects only, exactly what AttackAction's
 ## own per-point loop body used to do inline.
+##
+## `is_dud` (taskblock-19 Pass C2): true when this shot fired under a
+## dud-capable weapon's own `min_range` — the damage cascade runs
+## identically (see `RangeModel.is_dud`'s own doc comment: no separate
+## payload system exists to suppress), only the log entry differs, so a
+## future payload/AoE system has a real flag to check.
 static func resolve_and_log_point(
 	state: CombatState,
 	attacker: Unit,
@@ -23,7 +29,8 @@ static func resolve_and_log_point(
 	damage: float,
 	crit_chance: float,
 	bonus_pen: float,
-	mission: MissionState
+	mission: MissionState,
+	is_dud: bool = false
 ) -> void:
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 		origin,
@@ -42,11 +49,15 @@ static func resolve_and_log_point(
 		bonus_pen
 	)
 	for result: ImpactResult in results:
-		_log_impact(state, attacker, result, mission)
+		_log_impact(state, attacker, result, mission, is_dud)
 
 
 static func _log_impact(
-	state: CombatState, attacker: Unit, result: ImpactResult, mission: MissionState
+	state: CombatState,
+	attacker: Unit,
+	result: ImpactResult,
+	mission: MissionState,
+	is_dud: bool = false
 ) -> void:
 	var outcome_name: String = (
 		"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
@@ -65,6 +76,7 @@ static func _log_impact(
 		"bypassed_armor": result.bypassed_armor,
 		"is_crit": result.is_crit,
 		"is_double_crit": result.is_double_crit,
+		"is_dud": is_dud,
 	}
 	var event := LogEvent.new(
 		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text

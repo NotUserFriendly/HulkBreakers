@@ -4,9 +4,7 @@ extends GutTest
 ## queued and resolved through the two-phase turn.
 
 
-func _make_weapon(
-	id: StringName, damage: float, ap_cost: int = 1, weapon_max_range: float = 0.0
-) -> Part:
+func _make_weapon(id: StringName, damage: float, ap_cost: int = 1, max_range: float = 0.0) -> Part:
 	var weapon := Part.new()
 	weapon.id = id
 	weapon.hp = 1
@@ -16,7 +14,9 @@ func _make_weapon(
 	weapon.damage = damage
 	weapon.ap_cost = ap_cost
 	weapon.burst = 1
-	weapon.weapon_max_range = weapon_max_range
+	if max_range > 0.0:
+		weapon.weapon_def = WeaponDef.new()
+		weapon.weapon_def.max_range = max_range
 	weapon.scatter = [Ring.new(0.05, 1.0)]
 	return weapon
 
@@ -84,6 +84,79 @@ func test_is_legal_false_beyond_weapon_range() -> void:
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(9, 0)).is_legal(state))
+
+
+## taskblock-19 Pass C2: "a unit under min range with a non-explosive
+## weapon can't fire" — the default min_range_failure (&"none") blocks.
+func test_is_legal_false_under_min_range_for_a_non_dud_weapon() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0, 1, 10.0)
+	weapon.weapon_def.min_range = 3.0
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(2, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, target])
+
+	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(2, 0)).is_legal(state))
+
+
+## taskblock-19 Pass C2: a dud-capable weapon is never blocked by min
+## range — it fires anyway, tagged as a dud.
+func test_a_dud_capable_weapon_still_fires_under_min_range_and_is_flagged() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0, 1, 10.0)
+	weapon.weapon_def.min_range = 3.0
+	weapon.weapon_def.min_range_failure = &"dud"
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(2, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_true(AttackAction.new(shooter, &"pistol", Vector2i(2, 0)).is_legal(state))
+	AttackAction.new(shooter, &"pistol", Vector2i(2, 0)).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(impacts.size() > 0)
+	assert_true(impacts[0].data.get("is_dud"))
+
+
+func test_a_normal_shot_within_min_range_is_not_flagged_as_a_dud() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0, 1, 10.0)
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(impacts.size() > 0)
+	assert_false(impacts[0].data.get("is_dud"))
+
+
+## taskblock-19 Pass C1: beyond effective_range, the dartboard widens —
+## a degraded shot's resolved ring radius must be strictly larger than
+## the same weapon's radius at full accuracy.
+func test_a_shot_beyond_effective_range_scales_up_the_dartboard() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0, 1, 8.0)
+	weapon.scatter = [Ring.new(0.1, 1.0)]
+	weapon.weapon_def.effective_range = 2.0
+
+	var close_radius: float = (
+		Dartboard
+		. resolve_scatter(weapon, [], RangeModel.dartboard_radius_scale(weapon, 2))[0]
+		. radius
+	)
+	var far_radius: float = (
+		Dartboard
+		. resolve_scatter(weapon, [], RangeModel.dartboard_radius_scale(weapon, 8))[0]
+		. radius
+	)
+
+	assert_almost_eq(close_radius, 0.1, 0.0001, "full accuracy at effective range")
+	assert_gt(far_radius, close_radius, "degraded accuracy widens the ring")
 
 
 func test_is_legal_false_without_line_of_sight() -> void:

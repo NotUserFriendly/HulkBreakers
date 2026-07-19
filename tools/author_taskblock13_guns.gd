@@ -9,11 +9,10 @@ extends SceneTree
 ## why, same posture as `migrate_data.gd` itself.
 ##
 ## Every field NOT named in the taskblock's own table (hp/mass/ap_cost/
-## damage/crit_chance/weapon_max_range/scatter rings) is a flagged
-## placeholder, loosely modeled on the archetype (chaingun = light per-
-## round damage/high volume, shotgun = short range, sniper = high single-
-## shot damage/long range) — not tuned balance. Ask before treating any of
-## these as final.
+## damage/crit_chance/scatter rings) is a flagged placeholder, loosely
+## modeled on the archetype (chaingun = light per-round damage/high
+## volume, shotgun = short range, sniper = high single-shot damage/long
+## range) — not tuned balance. Ask before treating any of these as final.
 ##
 ## taskblock-13 Pass B: `max_case_length`/`AmmoDef.case_length` share one
 ## convention — millimeters, read straight off the reference ammo's own
@@ -57,7 +56,6 @@ func _guns() -> Array[Part]:
 	chaingun.volume = [Box.new(Vector3(0.0, 0.0, 0.4), Vector3(0.15, 0.15, 0.9))]
 	chaingun.damage = 2.0
 	chaingun.ap_cost = 2
-	chaingun.weapon_max_range = 8.0
 	chaingun.scatter = [Ring.new(0.15, 1.0), Ring.new(0.6, 2.0)]
 	chaingun.provides_actions = [&"burst"]
 	chaingun.weapon_def = WeaponDef.new()
@@ -77,7 +75,6 @@ func _guns() -> Array[Part]:
 	pump_shotgun.volume = [Box.new(Vector3(0.0, 0.0, 0.3), Vector3(0.12, 0.15, 0.7))]
 	pump_shotgun.damage = 3.0
 	pump_shotgun.ap_cost = 1
-	pump_shotgun.weapon_max_range = 4.0
 	pump_shotgun.scatter = [Ring.new(0.1, 1.0)]
 	pump_shotgun.provides_actions = [&"shoot"]
 	pump_shotgun.weapon_def = WeaponDef.new()
@@ -95,7 +92,6 @@ func _guns() -> Array[Part]:
 	auto_shotgun.volume = [Box.new(Vector3(0.0, 0.0, 0.3), Vector3(0.14, 0.16, 0.65))]
 	auto_shotgun.damage = 3.0
 	auto_shotgun.ap_cost = 1
-	auto_shotgun.weapon_max_range = 4.0
 	auto_shotgun.scatter = [Ring.new(0.1, 1.0)]
 	auto_shotgun.provides_actions = [&"shoot", &"burst"]
 	auto_shotgun.weapon_def = WeaponDef.new()
@@ -115,7 +111,6 @@ func _guns() -> Array[Part]:
 	sniper_rifle.volume = [Box.new(Vector3(0.0, 0.0, 0.5), Vector3(0.1, 0.12, 1.1))]
 	sniper_rifle.damage = 10.0
 	sniper_rifle.ap_cost = 2
-	sniper_rifle.weapon_max_range = 20.0
 	sniper_rifle.crit_chance = 0.2
 	sniper_rifle.scatter = [Ring.new(0.03, 1.0)]
 	sniper_rifle.provides_actions = [&"shoot"]

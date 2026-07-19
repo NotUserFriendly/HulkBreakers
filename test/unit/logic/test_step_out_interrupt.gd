@@ -23,7 +23,8 @@ func _overwatcher(cell: Vector2i, orientation: float, squad_id: int, damage: flo
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.0, 0.01)]  # effectively dead-center, for a reliable kill in tests
 	pistol.requires = {&"TRIGGER": 1}
-	pistol.weapon_max_range = 15.0
+	pistol.weapon_def = WeaponDef.new()
+	pistol.weapon_def.max_range = 15.0
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -62,7 +63,8 @@ func _stepper(cell: Vector2i, squad_id: int, torso_hp: int) -> Unit:
 	weapon.requires = {&"TRIGGER": 1}
 	weapon.damage = 5.0
 	weapon.ap_cost = 1
-	weapon.weapon_max_range = 15.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.max_range = 15.0
 	weapon.scatter = [Ring.new(0.1, 1.0)]
 
 	var hand := Part.new()
@@ -105,7 +107,7 @@ func test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_ret
 	var overwatcher := _overwatcher(
 		Vector2i(8, 0), BodyProjector.orientation_for(Vector2(-1, 0)), 1, 20.0
 	)
-	overwatcher.shell.find_part(&"pistol").weapon_max_range = 5.0
+	overwatcher.shell.find_part(&"pistol").weapon_def.max_range = 5.0
 	var state := CombatState.new(grid, [stepper, target, overwatcher], 7)
 	overwatcher.overwatch_weapon_id = &"pistol"
 	stepper.ap = 6
@@ -170,7 +172,7 @@ func test_a_stepper_who_survives_the_trigger_still_freezes_and_never_returns() -
 	var overwatcher := _overwatcher(
 		Vector2i(8, 0), BodyProjector.orientation_for(Vector2(-1, 0)), 1, 1.0
 	)
-	overwatcher.shell.find_part(&"pistol").weapon_max_range = 5.0
+	overwatcher.shell.find_part(&"pistol").weapon_def.max_range = 5.0
 	var state := CombatState.new(grid, [stepper, target, overwatcher], 7)
 	overwatcher.overwatch_weapon_id = &"pistol"
 	stepper.ap = 6

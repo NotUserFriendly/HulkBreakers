@@ -12,7 +12,16 @@ extends RefCounted
 ## ring i's radius/weight are read as stats `scatter_radius_i`/
 ## `scatter_weight_i`, so a modifier like "Spin Up" shrinking one ring is
 ## provenance-tracked the same way any other stat is, never a raw tweak.
-static func resolve_scatter(weapon: Part, extra_sources: Array[ModSource] = []) -> Array[Ring]:
+##
+## taskblock-19 Pass C1: `radius_multiplier` folds the range-accuracy band
+## (`RangeModel.accuracy_multiplier`) in as a uniform post-resolve scale on
+## every ring's RADIUS only — deliberately NOT threaded through
+## `extra_sources` (which `_context` hands to BOTH the radius and weight
+## resolves below): a range penalty widens how far a shot can land, it
+## must never also reweight which ring gets picked in the first place.
+static func resolve_scatter(
+	weapon: Part, extra_sources: Array[ModSource] = [], radius_multiplier: float = 1.0
+) -> Array[Ring]:
 	var resolved: Array[Ring] = []
 	for i in range(weapon.scatter.size()):
 		var ring: Ring = weapon.scatter[i]
@@ -24,7 +33,7 @@ static func resolve_scatter(weapon: Part, extra_sources: Array[ModSource] = []) 
 		var weight: float = (
 			StatResolver.resolve(weight_id, _context(ring.weight, weapon, extra_sources)).current
 		)
-		resolved.append(Ring.new(radius, weight))
+		resolved.append(Ring.new(radius * radius_multiplier, weight))
 	return resolved
 
 
