@@ -19,6 +19,25 @@ extends Node
 ## eases it back — never touches UnitGeometry/resolution-critical geometry
 ## at all). Decoupled from TacticsController entirely (SpectatorOverlay has
 ## none) — reads `battle.combat_state`/`battle.unit_views` directly.
+##
+## Two real visual bugs, fixed here:
+## 1. `refresh_unit_views()` already bakes every mesh at the FINAL state,
+##    synchronously, before `play()`'s own RESOLVE_LEAD_IN wait even
+##    starts — a unit would flash at its destination for that whole real-
+##    time wait, then jump BACK the instant its own event actually began
+##    animating. `play()` now calls `_prime()` first, synchronously, in
+##    the same frame `refresh_unit_views()` already ran in and before the
+##    engine ever presents it — the "as if still at the old state" offset
+##    is applied before any frame is ever drawn, so there is no flash and
+##    no jump.
+## 2. A plain `view.rotation.y` rotates around the VIEW's own local origin
+##    — which is world origin (0,0,0), since every child bakes an
+##    ABSOLUTE world position, and `view.position` is otherwise identity.
+##    Turning a unit that isn't standing on cell (0,0) that way visibly
+##    swings its whole body through a wide arc around the map origin
+##    instead of turning in place. Every rotation here now goes through
+##    `_apply_display_transform()`, which pivots on the unit's own body
+##    center instead.
 
 const TACTICS_BANNER := "TACTICS"
 const RESOLUTION_BANNER := "RESOLUTION"
@@ -55,15 +74,16 @@ var _tracers: Node3D
 ## skips this stage entirely (B3: "the fade completes to nothing, no
 ## history kept — demo mode").
 var _tracer_ring: Array[MeshInstance3D] = []
-## unit_id -> the orientation this player last actually SHOWED that unit
-## facing — a `faced` LogEvent only ever carries its own target, never
-## where it turned FROM, so this is the one piece of state this class
-## carries across playback calls (persists turn to turn, same object,
-## same overlay's whole lifetime). A unit's very first-ever facing change
-## has nothing to animate from and simply snaps — a harmless, one-time
-## edge case, not worth inventing a fake "always faced 0 initially" origin
-## for.
-var _displayed_orientation: Dictionary = {}
+## unit_id -> the cell/orientation this player last actually SHOWED that
+## unit at — a `move`/`faced` LogEvent only ever carries its own target,
+## never where it started FROM, so this is the one piece of state this
+## class carries across playback calls (persists turn to turn, same
+## object, same overlay's whole lifetime). A unit's very first-ever
+## animated move/turn has nothing to animate from and simply snaps — a
+## harmless, one-time edge case, not worth inventing a fake "always at
+## cell zero initially" origin for.
+var _display_cell: Dictionary = {}
+var _display_orientation: Dictionary = {}
 var _on_finished: Callable
 
 
@@ -99,6 +119,7 @@ func setup(
 func play(events: Array[LogEvent]) -> void:
 	if banner != null:
 		banner.text = RESOLUTION_BANNER
+	_prime(events)
 
 	await get_tree().create_timer(LogPlayback.RESOLVE_LEAD_IN / speed).timeout
 
@@ -128,32 +149,103 @@ func _play_event(event: LogEvent) -> void:
 			pass
 
 
+## Synchronously (no `await` — runs to completion in the same frame
+## `battle.refresh_unit_views()` already did, before the engine ever
+## presents that frame) shows every unit with a move or facing change
+## this turn back at wherever it was LAST shown, so the already-final
+## `refresh()` never actually becomes visible before `_play_slide`/
+## `_play_facing` below "catch it up." Deduplicated: a unit with several
+## move/faced events this turn only needs its ONE current display state
+## redrawn once, not once per event.
+func _prime(events: Array[LogEvent]) -> void:
+	var seen: Dictionary = {}
+	for event: LogEvent in events:
+		if (event.kind == &"move" or event.kind == &"faced") and not seen.has(event.unit_id):
+			seen[event.unit_id] = true
+			_redraw(event.unit_id)
+
+
+## Recomputes and applies `unit_id`'s own view transform from whatever its
+## `_display_cell`/`_display_orientation` currently say (defaulting to the
+## unit's own TRUE, already-final state the first time it's ever seen —
+## nothing to animate from yet) against its TRUE final state. A safe no-op
+## if the unit or its view no longer exists (a kill/subtree-drop can
+## remove either mid-resolution).
+func _redraw(unit_id: int) -> void:
+	var view: HitVolumeView = _view_for(unit_id)
+	var unit: Unit = battle.combat_state.find_unit(unit_id)
+	if view == null or unit == null:
+		return
+	var display_cell: Vector2i = _display_cell.get(unit_id, unit.cell)
+	var display_orientation: float = _display_orientation.get(unit_id, unit.orientation)
+	_apply_display_transform(
+		view, unit.cell, unit.orientation, _world_anchor(display_cell), display_orientation
+	)
+
+
+## The one place a compensating view transform is actually computed.
+## `final_cell`/`final_orientation` are the TRUE state already baked into
+## every child by `refresh()`; `display_anchor`/`display_orientation` are
+## what should appear on screen right now instead. Rotation pivots on the
+## unit's own FINAL body center — never the view's own local origin
+## (world origin) — or a facing change swings the whole assembly through
+## a wide, wrong arc around cell (0,0) instead of turning in place (the
+## reported "fly off" bug).
+func _apply_display_transform(
+	view: HitVolumeView,
+	final_cell: Vector2i,
+	final_orientation: float,
+	display_anchor: Vector3,
+	display_orientation: float
+) -> void:
+	var delta_angle: float = display_orientation - final_orientation
+	var pivot: Vector3 = _world_anchor(final_cell)
+	var basis := Basis(Vector3.UP, delta_angle)
+	view.basis = basis
+	view.position = display_anchor - basis * pivot
+
+
+func _world_anchor(cell: Vector2i) -> Vector3:
+	return Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
+
+
 ## B2: "slide — a MoveAction's start->end, PER CELL — slide_ms per cell."
-## Children are already rebuilt at the path's own FINAL cell
-## (HitVolumeView.refresh() already ran, synchronously, before this).
-## `view.position` is otherwise always identity (every child bakes its own
-## absolute world position — see HitVolumeView's own header) — free to use
-## here as a temporary, self-cancelling offset: set to "as if still at the
-## previous cell," tweened cell by cell back to zero.
+## `_display_cell` (already primed to the path's own start cell, or the
+## unit's own true cell if this is its first-ever animated move) walks
+## forward one cell at a time; `tween_method` re-applies the full
+## compensating transform every frame of each segment, so a facing offset
+## still pending from an earlier event in this same turn keeps rendering
+## correctly throughout — this never independently tweens a bare
+## position/rotation Node property, only ever the combined, pivot-correct
+## transform above.
 func _play_slide(event: LogEvent) -> void:
-	var view: HitVolumeView = _view_for(event.unit_id)
-	if view == null:
+	var unit: Unit = battle.combat_state.find_unit(event.unit_id)
+	if unit == null:
 		return
 	var path: Array = event.data.get("path", [])
 	if path.size() < 2:
 		return
-	var final_cell: Vector2i = path[path.size() - 1]
 	var per_cell: float = slide_segment_duration()
-	view.position = _cell_offset(path[0], final_cell)
 	for i in range(1, path.size()):
-		var target_offset: Vector3 = _cell_offset(path[i], final_cell)
+		var from_anchor: Vector3 = _world_anchor(path[i - 1])
+		var to_anchor: Vector3 = _world_anchor(path[i])
 		if per_cell <= 0.0:
-			view.position = target_offset
+			_set_slide_anchor(to_anchor, event.unit_id)
 			continue
 		var tween := create_tween()
-		tween.tween_property(view, "position", target_offset, per_cell)
+		tween.tween_method(_set_slide_anchor.bind(event.unit_id), from_anchor, to_anchor, per_cell)
 		await tween.finished
-	view.position = Vector3.ZERO
+	_display_cell[event.unit_id] = path[path.size() - 1]
+	_redraw(event.unit_id)
+
+
+func _set_slide_anchor(anchor: Vector3, unit_id: int) -> void:
+	var view: HitVolumeView = _view_for(unit_id)
+	var unit: Unit = battle.combat_state.find_unit(unit_id)
+	if view == null or unit == null:
+		return
+	var display_orientation: float = _display_orientation.get(unit_id, unit.orientation)
+	_apply_display_transform(view, unit.cell, unit.orientation, anchor, display_orientation)
 
 
 ## B2: "slide_ms per cell, scaled by pacing speed" — one cell-slide
@@ -165,34 +257,44 @@ func slide_segment_duration() -> float:
 	return (slide_ms / 1000.0) / speed
 
 
-func _cell_offset(cell: Vector2i, relative_to: Vector2i) -> Vector3:
-	return Vector3(cell.x - relative_to.x, 0.0, cell.y - relative_to.y) * UnitGeometry.CELL_SIZE
-
-
 ## B2: "facing — a FaceAction's start->end orientation — derived from
 ## slide_ms." Simplest faithful reading of "derived from," same status as
 ## every other unspecified formula shape in this codebase (CLAUDE.md: use
 ## the simplest faithful version, flag it, ask before tuning) — one
-## cell-slide's own duration, not a second independent knob. Same
-## compensating-offset technique as _play_slide, on `view.rotation.y`
-## instead of `view.position`.
+## cell-slide's own duration, not a second independent knob.
+## `_display_cell` (already primed) stays wherever it currently is for the
+## whole turn — position and facing never animate concurrently (B2 lists
+## them as sequential steps), so this only ever moves `display_orientation`.
 func _play_facing(event: LogEvent) -> void:
-	var view: HitVolumeView = _view_for(event.unit_id)
-	if view == null:
+	var unit: Unit = battle.combat_state.find_unit(event.unit_id)
+	if unit == null:
 		return
 	var target_orientation: float = float(event.data.get("direction", 0.0))
-	var from_orientation: float = _displayed_orientation.get(event.unit_id, target_orientation)
-	_displayed_orientation[event.unit_id] = target_orientation
+	var from_orientation: float = _display_orientation.get(event.unit_id, target_orientation)
 	if is_equal_approx(from_orientation, target_orientation):
+		_display_orientation[event.unit_id] = target_orientation
 		return
 	var duration: float = facing_duration()
 	if duration <= 0.0:
+		_display_orientation[event.unit_id] = target_orientation
+		_redraw(event.unit_id)
 		return
-	view.rotation.y = from_orientation - target_orientation
 	var tween := create_tween()
-	tween.tween_property(view, "rotation:y", 0.0, duration)
+	tween.tween_method(
+		_set_facing_angle.bind(event.unit_id), from_orientation, target_orientation, duration
+	)
 	await tween.finished
-	view.rotation.y = 0.0
+	_display_orientation[event.unit_id] = target_orientation
+	_redraw(event.unit_id)
+
+
+func _set_facing_angle(angle: float, unit_id: int) -> void:
+	var view: HitVolumeView = _view_for(unit_id)
+	var unit: Unit = battle.combat_state.find_unit(unit_id)
+	if view == null or unit == null:
+		return
+	var display_cell: Vector2i = _display_cell.get(unit_id, unit.cell)
+	_apply_display_transform(view, unit.cell, unit.orientation, _world_anchor(display_cell), angle)
 
 
 ## TESTS: "facing duration is a function of slide_ms" — "turn built off
