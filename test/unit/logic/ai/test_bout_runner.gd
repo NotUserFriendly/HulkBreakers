@@ -188,6 +188,27 @@ func test_step_does_nothing_for_a_human_controlled_squad() -> void:
 	assert_eq(runner.turns_taken, 0)
 
 
+## taskblock-15 Pass B: `last_events` is exactly this step's own events —
+## a fresh MemorySink wired around just this resolve_until call, not
+## every event ever emitted (log_sink/file_sink-style accumulation would
+## defeat the point: a view needs to know what THIS turn did).
+func test_last_events_carries_exactly_this_steps_own_events_not_everyones() -> void:
+	var built: Dictionary = _winning_bout()
+	var runner: BoutRunner = built.runner
+
+	runner.step()
+	var first_step_events: Array[LogEvent] = runner.last_events
+	assert_false(first_step_events.is_empty(), "a real turn must emit at least turn_start")
+
+	runner.step()
+	var second_step_events: Array[LogEvent] = runner.last_events
+	assert_ne(
+		second_step_events,
+		first_step_events,
+		"the second step's own events must not still be the first step's"
+	)
+
+
 ## taskblock-15 Pass A: a caller-supplied `wants_turn_for` overrides the
 ## default squad-controller check entirely — even a squad flagged AI here
 ## stays inert once the injected predicate claims its current unit,

@@ -401,7 +401,7 @@ func _build_ui() -> void:
 
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
-	resolution_player.setup(banner, tactics)
+	resolution_player.setup(battle, tactics.unlock_input, banner)
 
 	stat_panel = StatPanel.new()
 	add_child(stat_panel)
