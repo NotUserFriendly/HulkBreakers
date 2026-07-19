@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_nnusn"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_jhx3f"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_mh82d"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_n05sx"]
+
+[sub_resource type="Resource" id="Resource_c4le1"]
+script = ExtResource("3_mh82d")
+socket_type = &"BARREL_SLOT"
+id = &"slot_0"
+
+[sub_resource type="Resource" id="Resource_d4rdo"]
+script = ExtResource("3_mh82d")
+socket_type = &"BARREL_SLOT"
+id = &"slot_1"
+
+[sub_resource type="Resource" id="Resource_81raf"]
+script = ExtResource("3_mh82d")
+socket_type = &"BARREL_SLOT"
+id = &"slot_2"
+
+[sub_resource type="Resource" id="Resource_v38dt"]
+script = ExtResource("3_mh82d")
+socket_type = &"BARREL_SLOT"
+id = &"slot_3"
+
+[sub_resource type="Resource" id="Resource_ydv14"]
+script = ExtResource("4_n05sx")
+center = Vector3(0, 0.15, 0)
+size = Vector3(1, 0.3, 1)
+
+[resource]
+script = ExtResource("1_nnusn")
+id = &"barrel_pallet"
+display_name = "Barrel Pallet"
+sockets = Array[ExtResource("3_mh82d")]([SubResource("Resource_c4le1"), SubResource("Resource_d4rdo"), SubResource("Resource_81raf"), SubResource("Resource_v38dt")])
+material = &"hull_plate"
+volume = Array[ExtResource("4_n05sx")]([SubResource("Resource_ydv14")])
+hp = 5
+max_hp = 5
+salvage_yield = {
+&"organics": 2
+}

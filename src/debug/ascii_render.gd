@@ -42,12 +42,25 @@ static func _terrain_char(grid: Grid, cell: Vector2i) -> String:
 		Enums.TerrainType.SPAWN_B:
 			return CHAR_SPAWN_B
 		_:
-			var cover: float = grid.get_cover_value(cell)
-			if cover >= 1.0:
+			var blocker: Variant = grid.blockers.get(cell)
+			if blocker == null:
+				return CHAR_OPEN
+			if _blocker_height(blocker as Part) >= MapGen.FULL_COVER_HEIGHT:
 				return CHAR_FULL_COVER
-			if cover > 0.0:
-				return CHAR_HALF_COVER
-			return CHAR_OPEN
+			return CHAR_HALF_COVER
+
+
+## taskblock-16 Pass B2: cover height is now a property of the object
+## itself (its own `volume` boxes), never a stored scalar — the tallest
+## box's own top edge, matching what BodyProjector/ShotPlane would
+## actually project. Reuses MapGen's own FULL_COVER_HEIGHT threshold
+## (the reference humanoid's torso/head boundary, docs/01) purely for
+## this debug dump's half/full glyph choice — never read by resolution.
+static func _blocker_height(part: Part) -> float:
+	var top: float = 0.0
+	for box: Box in part.volume:
+		top = maxf(top, box.center.y + box.size.y * 0.5)
+	return top
 
 
 ## Renders a depth-sorted "shot plane" — any Array of objects exposing

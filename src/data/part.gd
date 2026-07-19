@@ -233,7 +233,8 @@ extends Resource
 @export var bonus_pen: float = 0.0
 
 ## docs/10 taskblock05 E1: what this part becomes on destruction under
-## MANGLE — a StringName id into FieldObjects.wreckage_pool(), purely a
+## MANGLE — a StringName id into CombatState.wreckage_pool (taskblock-16
+## Pass B: DataLibrary-loaded `.tres` parts, not FieldObjects), purely a
 ## VISUAL/SALVAGE swap now (taskblock-09 A1), never a detachment: a
 ## mangled part with this set still looks/salvages like its wreckage
 ## identity, but stays exactly where it was, attached, sockets live. Empty

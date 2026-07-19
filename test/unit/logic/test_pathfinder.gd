@@ -193,3 +193,28 @@ func test_move_cost_treats_occupied_cell_as_blocked() -> void:
 	var pf := Pathfinder.new(grid)
 	assert_eq(pf.move_cost(Vector2i(1, 1)), -1.0)
 	assert_false(pf.is_walkable(Vector2i(1, 1)))
+
+
+## taskblock-16 Pass B1: "they occupy their cell -> block movement" — a
+## cover object in `Grid.blockers` must block a cell exactly like an
+## occupant does, not just render there.
+func test_move_cost_treats_a_field_object_cell_as_blocked() -> void:
+	var grid := Grid.new(3, 3)
+	var crate := Part.new()
+	crate.id = &"crate"
+	grid.blockers[Vector2i(1, 1)] = crate
+	var pf := Pathfinder.new(grid)
+	assert_eq(pf.move_cost(Vector2i(1, 1)), -1.0)
+	assert_false(pf.is_walkable(Vector2i(1, 1)))
+
+
+func test_astar_routes_around_a_field_object() -> void:
+	var grid := Grid.new(3, 3)
+	var crate := Part.new()
+	crate.id = &"crate"
+	grid.blockers[Vector2i(1, 1)] = crate
+	var pf := Pathfinder.new(grid)
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 1), Vector2i(2, 1))
+	assert_does_not_have(path, Vector2i(1, 1), "the path must detour around the blocked cell")
+	assert_eq(path[0], Vector2i(0, 1))
+	assert_eq(path[-1], Vector2i(2, 1))

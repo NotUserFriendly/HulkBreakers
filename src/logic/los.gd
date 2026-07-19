@@ -1,7 +1,7 @@
 class_name LoS
 extends RefCounted
 
-## Line of sight over a Grid's opacity field. Cover (Grid.cover_value) never
+## Line of sight over a Grid's opacity field. Cover (Grid.blockers) never
 ## blocks vision — only opacity does; cover is a hit-resolution concern (Phase 6).
 
 const OPAQUE_THRESHOLD: float = 1.0

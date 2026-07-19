@@ -18,17 +18,21 @@ func test_inspect_out_of_bounds_returns_empty() -> void:
 	assert_eq(TileInspection.inspect(state, Vector2i(-1, 0)), {})
 
 
-func test_inspect_reports_terrain_and_cover_value() -> void:
+## taskblock-16 Pass B2: `field_object` (a real Part), not a separate
+## `cover_value` scalar, is the one source of truth for "is this cell
+## covered" now.
+func test_inspect_reports_terrain_and_the_real_field_object() -> void:
 	var grid := Grid.new(5, 5)
 	grid.set_terrain(Vector2i(2, 2), Enums.TerrainType.WALL)
-	grid.set_cover_value(Vector2i(2, 2), 0.5)
+	var cover := Part.new()
+	cover.id = &"crate"
+	grid.blockers[Vector2i(2, 2)] = cover
 	var state := CombatState.new(grid)
 
 	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
 	assert_eq(info.terrain, Enums.TerrainType.WALL)
-	assert_almost_eq(info.cover_value, 0.5, 0.0001)
+	assert_eq(info.field_object, cover)
 	assert_null(info.unit)
-	assert_null(info.field_object)
 
 
 ## docs/10 taskblock04 E1: "enemy parts, HP, materials and DT are fully
@@ -55,7 +59,7 @@ func test_inspect_ignores_a_dead_unit_at_the_cell() -> void:
 
 func test_inspect_reports_a_field_object_at_the_cell() -> void:
 	var grid := Grid.new(5, 5)
-	var scrap: Part = FieldObjects.scrap_pile()
+	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(1, 1)] = scrap
 	var state := CombatState.new(grid)
 

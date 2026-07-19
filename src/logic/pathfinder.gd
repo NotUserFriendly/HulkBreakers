@@ -17,11 +17,22 @@ func _init(grid: Grid, terrain_costs: Dictionary = {}) -> void:
 
 
 ## MP cost to step onto `cell`, or -1.0 if the cell is not walkable (out of
-## bounds, occupied, or mapped to a negative terrain cost).
+## bounds, occupied, blocked by a field object, or mapped to a negative
+## terrain cost).
+##
+## taskblock-16 Pass B: `grid.blockers` (cover objects: scrap piles, goo
+## barrels, pillars, ...) now blocks movement too, same as a unit does —
+## the fix for "a unit can sit inside a piece of cover." Kept as its own
+## check, never folded into `occupant_id`: that field is a Unit id
+## everywhere else in this codebase (matched 1:1 against `Unit.id`, `-1`
+## sentinel), and a field object is never a unit — a real cell can now be
+## blocked by EITHER without the two concepts needing to share one field.
 func move_cost(cell: Vector2i) -> float:
 	if not _grid.in_bounds(cell):
 		return -1.0
 	if _grid.get_occupant_id(cell) != -1:
+		return -1.0
+	if _grid.blockers.has(cell):
 		return -1.0
 	var terrain: int = _grid.get_terrain(cell)
 	if _terrain_costs.has(terrain):

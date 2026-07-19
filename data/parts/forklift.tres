@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_6jbyt"]
+[ext_resource type="Script" path="res://src/data/ring.gd" id="2_lauvs"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_ml0n4"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="4_qiq6f"]
+
+[sub_resource type="Resource" id="Resource_2ii7w"]
+script = ExtResource("3_ml0n4")
+socket_type = &"POWER"
+id = &"battery"
+
+[sub_resource type="Resource" id="Resource_1gtf8"]
+script = ExtResource("4_qiq6f")
+center = Vector3(0, 0.55, 0)
+size = Vector3(0.9, 1.1, 1.4)
+
+[resource]
+script = ExtResource("1_6jbyt")
+id = &"forklift"
+display_name = "Forklift"
+sockets = Array[ExtResource("3_ml0n4")]([SubResource("Resource_2ii7w")])
+material = &"steel"
+volume = Array[ExtResource("4_qiq6f")]([SubResource("Resource_1gtf8")])
+hp = 8
+max_hp = 8
+salvage_yield = {
+&"metals": 6
+}

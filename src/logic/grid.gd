@@ -17,9 +17,16 @@ var height: int
 
 var terrain: Array[int] = []
 var opacity: Array[float] = []
-var cover_value: Array[float] = []
 var occupant_id: Array[int] = []
-var blockers: Dictionary = {}  # Vector2i -> Part; the object backing a cover_value > 0 cell, if any
+## Vector2i -> Part; a field object (cover, scrap, a barrel, ...) sitting
+## at this cell. taskblock-16 Pass B2: the ONE source of truth for "is
+## this cell covered" — the old `cover_value` scalar is retired (it never
+## fed hit resolution, LoS, or AI decisions to begin with; only a tooltip
+## line and a debug dump read it). Object geometry — height, via
+## `BodyProjector`/`ShotPlane` projection — is what "half vs full cover"
+## falls out of now, not a stored number. Also blocks movement
+## (`Pathfinder.move_cost`) — a unit can no longer stand inside cover.
+var blockers: Dictionary = {}
 var field_items: Dictionary = {}  # Vector2i -> Array[Part|Matrix]; loose items lying on the ground
 
 
@@ -29,11 +36,9 @@ func _init(p_width: int, p_height: int) -> void:
 	var count := width * height
 	terrain.resize(count)
 	opacity.resize(count)
-	cover_value.resize(count)
 	occupant_id.resize(count)
 	terrain.fill(0)
 	opacity.fill(0.0)
-	cover_value.fill(0.0)
 	occupant_id.fill(-1)
 
 
@@ -61,14 +66,6 @@ func set_opacity(cell: Vector2i, value: float) -> void:
 	opacity[_index(cell)] = value
 
 
-func get_cover_value(cell: Vector2i) -> float:
-	return cover_value[_index(cell)]
-
-
-func set_cover_value(cell: Vector2i, value: float) -> void:
-	cover_value[_index(cell)] = value
-
-
 func get_occupant_id(cell: Vector2i) -> int:
 	return occupant_id[_index(cell)]
 
@@ -86,7 +83,6 @@ func dup() -> Grid:
 	var cloned := Grid.new(width, height)
 	cloned.terrain = terrain.duplicate()
 	cloned.opacity = opacity.duplicate()
-	cloned.cover_value = cover_value.duplicate()
 	cloned.occupant_id = occupant_id.duplicate()
 	for cell: Vector2i in blockers:
 		cloned.blockers[cell] = (blockers[cell] as Part).duplicate(true)

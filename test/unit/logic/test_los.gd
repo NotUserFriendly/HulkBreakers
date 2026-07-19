@@ -73,9 +73,15 @@ func test_corner_blocking_rule_other_bordering_cell() -> void:
 
 func test_cover_does_not_block_los() -> void:
 	var grid := _open_grid(7)
-	grid.set_cover_value(Vector2i(3, 3), 1.0)  # full cover, but not opaque
+	# taskblock-16 Pass B2: cover is a real Part in `blockers` now — this
+	# cell's own opacity stays 0.0 (an open floor tile with a crate on
+	# it), the same "cover, but not opaque" case the old cover_value
+	# scalar used to set up directly.
+	var cover := Part.new()
+	cover.id = &"crate"
+	grid.blockers[Vector2i(3, 3)] = cover
 	assert_true(
-		LoS.has_los(grid, Vector2i(0, 3), Vector2i(6, 3)), "cover_value must not affect vision"
+		LoS.has_los(grid, Vector2i(0, 3), Vector2i(6, 3)), "a blocker must not affect vision"
 	)
 
 

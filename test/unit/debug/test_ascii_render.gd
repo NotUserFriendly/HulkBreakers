@@ -12,13 +12,23 @@ class FakeRegion:
 		part = p_part
 
 
+func _blocker(height: float) -> Part:
+	var part := Part.new()
+	part.id = &"test_cover"
+	part.volume = [Box.new(Vector3(0.0, height * 0.5, 0.0), Vector3(0.8, height, 0.8))]
+	return part
+
+
+## taskblock-16 Pass B2: cover is a real Part in `blockers` now — the
+## half/full glyph choice comes from the object's own volume height
+## (`AsciiRender._blocker_height`), never a stored scalar.
 func test_grid_to_text_renders_terrain_and_cover() -> void:
 	var grid := Grid.new(4, 2)
 	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
 	grid.set_terrain(Vector2i(2, 0), Enums.TerrainType.SPAWN_A)
 	grid.set_terrain(Vector2i(3, 0), Enums.TerrainType.SPAWN_B)
-	grid.set_cover_value(Vector2i(0, 1), 0.5)
-	grid.set_cover_value(Vector2i(1, 1), 1.0)
+	grid.blockers[Vector2i(0, 1)] = _blocker(0.90)  # below FULL_COVER_HEIGHT -> half
+	grid.blockers[Vector2i(1, 1)] = _blocker(1.60)  # at/above FULL_COVER_HEIGHT -> full
 
 	var text: String = AsciiRender.grid_to_text(grid)
 	var lines: Array = text.split("\n")

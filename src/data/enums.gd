@@ -1,8 +1,9 @@
 class_name Enums
 extends RefCounted
 
-## Values for Grid.terrain. Cover (Grid.cover_value) is a separate overlay —
-## terrain only governs walkability and vision blocking.
+## Values for Grid.terrain. Cover (Grid.blockers — real field-object
+## geometry, taskblock-16 Pass B) is a separate overlay — terrain only
+## governs walkability and vision blocking.
 enum TerrainType {
 	OPEN,
 	WALL,

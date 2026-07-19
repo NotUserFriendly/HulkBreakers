@@ -30,12 +30,24 @@ func test_check_fails_when_generator_is_not_actually_seeded() -> void:
 func test_check_supports_a_custom_compare_fn_for_reference_types() -> void:
 	var generator := func(seed: int) -> Grid: return MapGen.generate(seed, 12, 10)
 	var compare := func(a: Grid, b: Grid) -> bool:
+		# taskblock-16 Pass B2: `blockers` holds real Part objects now (never
+		# a plain `cover_value` scalar) — Dictionary `==` on Object values is
+		# reference equality, always false between two independently
+		# generated grids, so this compares each cell's own blocker id
+		# instead (a Dictionary of value types, which DOES compare by
+		# content).
+		var a_blocker_ids: Dictionary = {}
+		for cell: Vector2i in a.blockers:
+			a_blocker_ids[cell] = (a.blockers[cell] as Part).id
+		var b_blocker_ids: Dictionary = {}
+		for cell: Vector2i in b.blockers:
+			b_blocker_ids[cell] = (b.blockers[cell] as Part).id
 		return (
 			a.width == b.width
 			and a.height == b.height
 			and a.terrain == b.terrain
 			and a.opacity == b.opacity
-			and a.cover_value == b.cover_value
+			and a_blocker_ids == b_blocker_ids
 			and a.occupant_id == b.occupant_id
 		)
 

@@ -154,7 +154,6 @@ func test_for_tile_shows_terrain_when_nothing_else_is_present() -> void:
 		"terrain": Enums.TerrainType.OPEN,
 		"unit": null,
 		"field_object": null,
-		"cover_value": 0.0,
 		"visible_from_selected": null,
 	}
 
@@ -178,7 +177,6 @@ func test_for_tile_with_a_unit_delegates_to_the_units_own_status() -> void:
 		"terrain": Enums.TerrainType.OPEN,
 		"unit": enemy,
 		"field_object": null,
-		"cover_value": 0.0,
 		"visible_from_selected": true,
 	}
 
@@ -188,13 +186,12 @@ func test_for_tile_with_a_unit_delegates_to_the_units_own_status() -> void:
 
 
 func test_for_tile_with_a_field_object_shows_its_own_detail() -> void:
-	var crate := FieldObjects.crate()
+	var crate := DataLibrary.get_part(&"crate")
 	var info: Dictionary = {
 		"cell": Vector2i(2, 2),
 		"terrain": Enums.TerrainType.OPEN,
 		"unit": null,
 		"field_object": crate,
-		"cover_value": 0.0,
 		"visible_from_selected": null,
 	}
 
