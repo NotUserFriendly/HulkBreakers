@@ -169,6 +169,51 @@ func test_carved_corridors_are_three_to_five_wide() -> void:
 		)
 
 
+## taskblock-17 Pass A: "the check that would have caught this" — a
+## default-size map must actually split into multiple rooms with real
+## hallway between them, not silently collapse to one leaf that never
+## cleared `MIN_LEAF_SIZE * 2` (taskblock-16 raised `MIN_ROOM_SIZE`,
+## which raised the split threshold past what `WIDTH`x`HEIGHT` could
+## clear more than once — every "default-size" map in this file was
+## quietly one room for the whole taskblock). `_split_and_carve` called
+## directly (same pattern as the room-size/corridor-width tests above) so
+## the real room rects are available to sum — rooms and corridors share
+## one terrain code once carved, so "hallway cells" can only be measured
+## as "open cells the room rects don't already account for."
+func test_default_size_map_splits_into_multiple_rooms_with_hallways() -> void:
+	for map_seed in range(SEED_COUNT):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = map_seed
+		var grid := Grid.new(WIDTH, HEIGHT)
+		for y in range(HEIGHT):
+			for x in range(WIDTH):
+				grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
+
+		var rooms: Array[Rect2i] = []
+		MapGen._split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(WIDTH, HEIGHT)), rng, rooms)
+
+		assert_true(
+			rooms.size() >= 3, "seed %d: expected >= 3 rooms, got %d" % [map_seed, rooms.size()]
+		)
+
+		var room_cell_count := 0
+		for room: Rect2i in rooms:
+			room_cell_count += room.size.x * room.size.y
+		var open_cell_count := 0
+		for y in range(HEIGHT):
+			for x in range(WIDTH):
+				if grid.get_terrain(Vector2i(x, y)) == Enums.TerrainType.OPEN:
+					open_cell_count += 1
+		var hallway_cell_count: int = open_cell_count - room_cell_count
+		assert_true(
+			hallway_cell_count > 0,
+			(
+				"seed %d: expected hallway cells beyond room interiors, got %d"
+				% [map_seed, hallway_cell_count]
+			)
+		)
+
+
 func test_walls_are_opaque_and_open_cells_are_not() -> void:
 	var grid: Grid = MapGen.generate(7, WIDTH, HEIGHT)
 	var saw_wall := false
@@ -187,9 +232,10 @@ func test_walls_are_opaque_and_open_cells_are_not() -> void:
 
 
 ## `_split_and_carve` only splits a leaf once BOTH its dimensions clear
-## `MIN_LEAF_SIZE * 2` (24, taskblock-16 Pass C) — a grid as small as
-## BattleScene's own (12x10) never clears that bar, so it always carves
-## exactly one room. Both spawn
+## `MIN_LEAF_SIZE * 2` (24, taskblock-16 Pass C) — a grid this small
+## (12x10, taskblock-17 Pass A: `BattleScene`'s own default before it was
+## fixed to 40x30) never clears that bar, so it always carves exactly one
+## room. Both spawn
 ## zones must still land on distinct, real cells there too: this was a
 ## reproduced bug (runNotes.md — "the red unit may be spawning in a
 ## non-navigable space") where SPAWN_B silently overwrote every SPAWN_A

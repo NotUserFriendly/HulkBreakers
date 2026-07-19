@@ -27,8 +27,15 @@ signal battle_loaded
 ## wield it (unarmed in practice). Seed 2 gives both squads a working
 ## pistol. Revert to 20260715 once verification is done.
 const DEFAULT_SEED := 2
-const GRID_WIDTH := 12
-const GRID_HEIGHT := 10
+## taskblock-17 Pass A: the old 12x10 was well under
+## `MapGen.MIN_LEAF_SIZE * 2` (24, taskblock-16's own room-size raise) on
+## BOTH axes, so `_split_and_carve` could never split it at all — every
+## real battle was silently one room, no hallways, ever since taskblock-16
+## landed. 40x30 (~`MIN_LEAF_SIZE * 3` / `MIN_LEAF_SIZE * 2` with room to
+## spare) reliably splits 2-3 times per axis instead of just clearing the
+## bar once.
+const GRID_WIDTH := 40
+const GRID_HEIGHT := 30
 ## runNotes.md: "a 16:9 1080p minimum window should be what we work off
 ## going forward." project.godot's viewport_width/height sets the launch
 ## size; this is the actual resize floor.

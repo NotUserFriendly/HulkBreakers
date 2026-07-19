@@ -16,6 +16,25 @@ func _overlay(scene: BattleScene) -> SquadControlOverlay:
 	return scene.overlay as SquadControlOverlay
 
 
+## taskblock-17 Pass A: the exact regression, pinned directly against the
+## constant that caused it — `GRID_WIDTH`/`GRID_HEIGHT` used to be 12x10,
+## well under `MapGen.MIN_LEAF_SIZE * 2` (24) on both axes, so
+## `_split_and_carve` could never split it: every real battle was
+## silently one room, no hallways, from the moment taskblock-16 raised
+## `MIN_ROOM_SIZE` without this file's own size ever being revisited. If
+## a future `MIN_ROOM_SIZE` change raises the threshold again, this fails
+## immediately instead of silently shipping a one-room board.
+func test_grid_size_clears_the_map_gen_split_threshold() -> void:
+	assert_true(
+		BattleScene.GRID_WIDTH >= MapGen.MIN_LEAF_SIZE * 2,
+		"GRID_WIDTH must clear MapGen.MIN_LEAF_SIZE * 2 or the board never splits into rooms"
+	)
+	assert_true(
+		BattleScene.GRID_HEIGHT >= MapGen.MIN_LEAF_SIZE * 2,
+		"GRID_HEIGHT must clear MapGen.MIN_LEAF_SIZE * 2 or the board never splits into rooms"
+	)
+
+
 func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)

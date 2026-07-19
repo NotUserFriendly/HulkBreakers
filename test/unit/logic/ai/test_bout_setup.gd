@@ -29,6 +29,22 @@ func _roster(profile: BotPreset, count: int) -> Array[BotPreset]:
 	return roster
 
 
+## taskblock-17 Pass A: same regression as `BattleScene`'s own default —
+## `GRID_WIDTH`/`GRID_HEIGHT` used to be 20x14, under
+## `MapGen.MIN_LEAF_SIZE * 2` (24) on both axes, so a bout's own map was
+## also silently one room forever. Pinned directly against the constant
+## so a future `MIN_ROOM_SIZE` raise can't regress this again unnoticed.
+func test_grid_size_clears_the_map_gen_split_threshold() -> void:
+	assert_true(
+		BoutSetup.GRID_WIDTH >= MapGen.MIN_LEAF_SIZE * 2,
+		"GRID_WIDTH must clear MapGen.MIN_LEAF_SIZE * 2 or a bout's own map never splits"
+	)
+	assert_true(
+		BoutSetup.GRID_HEIGHT >= MapGen.MIN_LEAF_SIZE * 2,
+		"GRID_HEIGHT must clear MapGen.MIN_LEAF_SIZE * 2 or a bout's own map never splits"
+	)
+
+
 func test_a_valid_bout_builds_a_real_state_and_mission() -> void:
 	var profiles: Array = _reference_profiles()
 
