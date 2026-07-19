@@ -8,7 +8,18 @@
 
 [sub_resource type="Resource" id="Resource_ie7av"]
 script = ExtResource("2_i5jg8")
+radius = 0.0075
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_ie7av_mid"]
+script = ExtResource("2_i5jg8")
+radius = 0.0195
+weight = 5.0
+
+[sub_resource type="Resource" id="Resource_ie7av_outer"]
+script = ExtResource("2_i5jg8")
 radius = 0.03
+weight = 1.0
 
 [sub_resource type="Resource" id="Resource_05c3n"]
 script = ExtResource("4_2tp46")
@@ -41,7 +52,7 @@ max_hp = 5
 mass = 5.0
 provides_actions = Array[StringName]([&"shoot"])
 damage = 10.0
-ap_cost = 2
+ap_cost = 3
 weapon_def = SubResource("Resource_6me61")
 crit_chance = 0.2
-scatter = Array[ExtResource("2_i5jg8")]([SubResource("Resource_ie7av")])
+scatter = Array[ExtResource("2_i5jg8")]([SubResource("Resource_ie7av"), SubResource("Resource_ie7av_mid"), SubResource("Resource_ie7av_outer")])
