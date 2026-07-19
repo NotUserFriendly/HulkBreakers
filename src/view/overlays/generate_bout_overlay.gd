@@ -1,21 +1,23 @@
-class_name SimulateBoutMenu
-extends Control
+class_name GenerateBoutOverlay
+extends ControlOverlay
 
-## taskblock-14 Pass D: the minimal "Simulate Bout" setup screen — not a
-## full main menu, just the one entry point (per the taskblock's own
-## call: "the seed of a real main menu later without being one").
-## Reachable via ControlBindings.SIMULATE_BOUT_KEY from BattleScene.
-## "Start Bout" spawns the matchup through BoutSetup (Pass D's own
-## headless logic, no parallel spawn path) and hands the result to a
-## BoutView (Pass C) — this is the in-engine version of "build me a 2v2
-## demo": a player sets it up here instead of asking CC, and CC can
-## drive the exact same entry point for its own combat verification
-## (taskblock-13's own weapon work is the whole reason this block
-## exists now).
+## taskblock-14 Pass D / taskblock-15 Pass A: "setup — the Simulate Bout
+## menu, then hands off to spectator." Everything `SimulateBoutMenu` used
+## to own as its own scene folds in here — reachable via
+## `ControlBindings.SIMULATE_BOUT_KEY` from `BattleScene`
+## (`battle.set_overlay(GenerateBoutOverlay.new())`, no scene swap left to
+## do it). This is pre-battle SETUP, not a peer control scheme (A2): it
+## never drives a unit's turn (`wants_turn_for` stays the base class's own
+## always-false default, and nothing here calls `advance_ai_turns`) — Start
+## Bout builds the matchup through `BoutSetup` (taskblock-14 Pass D's own
+## headless logic, no parallel spawn path), installs it into the shared
+## world via `battle.load_battle()`, and REPLACES this overlay with a
+## `SpectatorOverlay` — a transition, not a persistent mode.
 
 const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER"]
 const DEFAULT_COUNT := 2
 
+var battle: BattleScene
 var _profiles_by_family: Dictionary = {}
 var _ordered_presets: Array[BotPreset] = []
 
@@ -29,17 +31,23 @@ var _seed_field: LineEdit
 var _error_label: Label
 
 
-func _ready() -> void:
-	theme = HulkTheme.build()
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+func setup(p_battle: BattleScene) -> void:
+	battle = p_battle
 	_profiles_by_family = BoutSetup.group_by_family(DataLibrary.presets_pool())
 	_build_ui()
 
 
 func _build_ui() -> void:
+	var ui := CanvasLayer.new()
+	add_child(ui)
+	var theme_root := Control.new()
+	theme_root.theme = HulkTheme.build()
+	theme_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ui.add_child(theme_root)
+
 	var layout := VBoxContainer.new()
 	layout.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	add_child(layout)
+	theme_root.add_child(layout)
 
 	var title := Label.new()
 	title.text = "Simulate Bout"
@@ -94,12 +102,11 @@ func _build_ui() -> void:
 	layout.add_child(_error_label)
 
 
-## "Profile dropdowns list the .tres profiles (grouped by
-## profile_family, variants shown under their base label)." A plain
-## `OptionButton` has no native group-heading support — each entry's own
-## text carries the grouping instead ("Family — Variant"), keeping
-## `_ordered_presets`'s index aligned with the dropdown's `selected`
-## index one-to-one.
+## "Profile dropdowns list the .tres profiles (grouped by profile_family,
+## variants shown under their base label)." A plain `OptionButton` has no
+## native group-heading support — each entry's own text carries the
+## grouping instead ("Family — Variant"), keeping `_ordered_presets`'s
+## index aligned with the dropdown's `selected` index one-to-one.
 func _profile_dropdown() -> OptionButton:
 	var dropdown := OptionButton.new()
 	if _ordered_presets.is_empty():
@@ -156,19 +163,10 @@ func _on_start_bout_pressed() -> void:
 		_error_label.text = result.error
 		return
 	_error_label.text = ""
-	_launch_bout(result.state, result.mission)
-
-
-## Swaps in a freshly built `BoutView` as the tree's own current scene —
-## `BoutView` is built entirely in code (no `.tscn` of its own, same
-## "no hand-authored scene for logic" convention every other scene here
-## follows), so this is a manual scene swap rather than
-## `change_scene_to_file` (which needs a packed `.tscn` resource to load
-## from).
-func _launch_bout(state: CombatState, mission: MissionState) -> void:
-	var bout_view := BoutView.new()
-	get_tree().root.add_child(bout_view)
-	if get_tree().current_scene != null:
-		get_tree().current_scene.queue_free()
-	get_tree().current_scene = bout_view
-	bout_view.setup(state, mission)
+	# A2: "hands off to spectator" — battle.load_battle() FIRST (this
+	# overlay is still the active one and does not react to battle_loaded,
+	# so no premature auto-advance happens), THEN swap the overlay itself —
+	# SpectatorOverlay.setup() reads battle.combat_state/mission fresh, no
+	# stale reference possible.
+	battle.load_battle(result.state, result.mission)
+	battle.set_overlay(SpectatorOverlay.new())
