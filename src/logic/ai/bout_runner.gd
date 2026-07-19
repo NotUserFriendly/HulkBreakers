@@ -1,13 +1,25 @@
 class_name BoutRunner
 extends RefCounted
 
-## taskblock-14 Pass C: drives an all-AI CombatState turn by turn — the
-## SAME UnitAI.plan_turn + CombatState.resolve_until a human's own UI
-## already uses for one squad, just called for every squad's own turn
-## instead. Headless, no timer/view dependency of its own: a watch
-## loop's own timer calls `step()` on a cadence for pacing (Pass C's own
+## taskblock-14 Pass C: drives a CombatState turn by turn — the SAME
+## UnitAI.plan_turn + CombatState.resolve_until a human's own UI already
+## uses for one squad, just called for every AI-driven unit's own turn
+## instead. Headless, no timer/view dependency of its own: a watch loop's
+## own timer calls `step()` on a cadence for pacing (Pass C's own
 ## play/pause/step/speed controls); a test can call it in a tight while
 ## loop instead, same as test_full_mission.gd already does by hand.
+##
+## taskblock-15 Pass A: generalized into the ONE turn driver every
+## `ControlOverlay` shares ("the turn loop never branches on scene type").
+## `wants_turn_for`, if supplied, answers "should THIS caller drive this
+## unit instead of the AI" per unit — a `SpectatorOverlay` never supplies
+## one (an all-AI bout is exactly this class's original, still-default
+## behaviour: `CombatState.controller_for(unit.squad_id) != AI`); a
+## `SquadControlOverlay`/`SingleUnitOverlay` supplies one so `step()` stops
+## and returns control the instant a human-driven unit comes up, instead
+## of only ever recognizing squad-level AI/HUMAN. A bare `Callable` (not a
+## `ControlOverlay` reference) keeps this file's own zero-SceneTree-
+## dependency intact (CLAUDE.md) — logic never imports a view-layer type.
 ##
 ## `step()` resolves exactly one unit's WHOLE turn (the natural
 ## indivisible unit CombatState.resolve_until already works in) — finer,
@@ -44,21 +56,29 @@ var finished: bool = false
 var last_unit: Unit = null
 var last_outcome: Dictionary = {}
 
+## `Callable(unit: Unit) -> bool` — "does someone other than the AI drive
+## this unit." An invalid Callable (the default) falls back to today's
+## exact squad-controller check, so every existing caller (a bout, this
+## class's own tests) is byte-for-byte unaffected.
+var _wants_turn_for: Callable
+
 
 func _init(
-	p_state: CombatState, p_mission: MissionState, p_turn_cap: int = DEFAULT_TURN_CAP
+	p_state: CombatState,
+	p_mission: MissionState,
+	p_turn_cap: int = DEFAULT_TURN_CAP,
+	p_wants_turn_for: Callable = Callable()
 ) -> void:
 	state = p_state
 	mission = p_mission
 	turn_cap = p_turn_cap
+	_wants_turn_for = p_wants_turn_for
 
 
-## Resolves one unit's turn if the bout isn't already finished and it's
-## an AI-controlled squad's turn (`CombatState.controller_for` — a bout
-## sets every squad to AI, per this block's own scope, but this stays
-## correct/inert if ever pointed at a mixed human/AI CombatState
-## instead). Returns `finished` either way, so a driver knows whether to
-## keep calling.
+## Resolves one unit's turn if the bout isn't already finished and the
+## caller's own `wants_turn_for` (or, absent one, `CombatState.
+## controller_for`) says this unit isn't someone else's to drive. Returns
+## `finished` either way, so a driver knows whether to keep calling.
 func step() -> bool:
 	if finished:
 		return true
@@ -73,7 +93,12 @@ func step() -> bool:
 		return true
 
 	var unit: Unit = state.current_unit()
-	if state.controller_for(unit.squad_id) != Enums.SquadController.AI:
+	var someone_else_wants_it: bool = (
+		_wants_turn_for.call(unit)
+		if _wants_turn_for.is_valid()
+		else state.controller_for(unit.squad_id) != Enums.SquadController.AI
+	)
+	if someone_else_wants_it:
 		return false
 
 	var playstyle: StringName = unit.matrix.playstyle if unit.matrix != null else &"AGGRESSIVE"

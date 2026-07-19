@@ -14,6 +14,13 @@ extends GutTest
 ## it still reaches the board.
 
 
+## taskblock-15 Pass A: TacticsController/ActionBar moved from BattleScene
+## itself into SquadControlOverlay (its default overlay) — every test
+## below reaches through this instead.
+func _overlay(scene: BattleScene) -> SquadControlOverlay:
+	return scene.overlay as SquadControlOverlay
+
+
 func _click_at(scene: BattleScene, screen_pos: Vector2) -> void:
 	var down := InputEventMouseButton.new()
 	down.button_index = MOUSE_BUTTON_LEFT
@@ -58,7 +65,7 @@ func test_a_real_click_over_the_board_selects_the_current_unit_through_every_pan
 	_click_at(scene, screen_pos)
 
 	assert_eq(
-		scene.tactics.selection.selected_unit,
+		_overlay(scene).tactics.selection.selected_unit,
 		current,
 		"a real click at the current unit's own screen position must select it, not be swallowed"
 	)
@@ -75,15 +82,16 @@ func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> v
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 
+	var overlay: SquadControlOverlay = _overlay(scene)
 	var current: Unit = scene.combat_state.current_unit()
-	scene.tactics.selection.select(current)
+	overlay.tactics.selection.select(current)
 
-	var box: PanelContainer = scene.action_bar._panels[0]
+	var box: PanelContainer = overlay.action_bar._panels[0]
 	var screen_pos: Vector2 = box.get_global_rect().get_center()
 	_click_at(scene, screen_pos)
 
 	assert_eq(
-		scene.tactics.selection.selected_unit,
+		overlay.tactics.selection.selected_unit,
 		current,
 		"a click on the action bar must never also deselect/reselect through the board underneath"
 	)

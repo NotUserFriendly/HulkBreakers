@@ -3,6 +3,17 @@ extends GutTest
 ## Phase 12.1 acceptance (PLAN.md): a seeded battle draws, and every unit's
 ## visible geometry matches its `volume` boxes exactly. Phase 12.2:
 ## TacticsController is wired against the real camera/board, end to end.
+##
+## taskblock-15 Pass A: BattleScene now only builds the world (board,
+## camera, unit_views, file_sink) and hosts a swappable overlay —
+## everything TacticsController-shaped (`tactics`, `action_bar`,
+## `turn_controls_column`, `new_battle_button`, `log_sink`, ...) moved into
+## `SquadControlOverlay`, `_ready()`'s own default overlay. `_overlay()`
+## below is the one place every test below reaches through it.
+
+
+func _overlay(scene: BattleScene) -> SquadControlOverlay:
+	return scene.overlay as SquadControlOverlay
 
 
 func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
@@ -22,7 +33,7 @@ func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 
-	assert_not_null(scene.log_sink)
+	assert_not_null(_overlay(scene).log_sink)
 	assert_not_null(scene.file_sink)
 	assert_true(FileAccess.file_exists(scene.file_sink.path), "the log must actually hit disk")
 	scene.file_sink.close()
@@ -34,13 +45,14 @@ func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
 func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
+	var log_sink: UISink = _overlay(scene).log_sink
 
-	assert_true(scene.log_sink.lines.size() > 0)
+	assert_true(log_sink.lines.size() > 0)
 	assert_true(
-		scene.log_sink.lines[0].contains("session_start"),
+		log_sink.lines[0].contains("session_start"),
 		"the very first line must be the session header"
 	)
-	assert_true(scene.log_sink.lines[0].contains(str(BattleScene.DEFAULT_SEED)))
+	assert_true(log_sink.lines[0].contains(str(BattleScene.DEFAULT_SEED)))
 
 	var file := FileAccess.open(scene.file_sink.path, FileAccess.READ)
 	var first_line: String = file.get_line()
@@ -49,9 +61,7 @@ func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
 
 	assert_true(first_line.contains("session_start"))
 	assert_true(first_line.contains(str(BattleScene.DEFAULT_SEED)))
-	assert_eq(
-		first_line, scene.log_sink.lines[0], "the same event, not two independently-built ones"
-	)
+	assert_eq(first_line, log_sink.lines[0], "the same event, not two independently-built ones")
 
 
 func test_new_battle_is_deterministic_from_the_same_seed() -> void:
@@ -81,11 +91,10 @@ func test_calling_new_battle_again_does_not_leak_the_previous_units_views() -> v
 	scene.new_battle(999)
 
 	assert_eq(scene.unit_views.size(), scene.combat_state.units.size())
-	# world_environment + directional_light + camera_rig + board_view + tactics +
-	# ui CanvasLayer + aim_view + resolution_player + stat_panel + inventory_panel +
-	# weapon_panel + tooltip_controller + queue_panel + action_bar +
-	# ap_mp_pip_row + controls_overlay + one HitVolumeView per unit.
-	assert_eq(scene.get_child_count(), 16 + scene.combat_state.units.size())
+	# world_environment + directional_light + camera_rig + board_view +
+	# the overlay Node (SquadControlOverlay itself, everything ELSE it
+	# owns lives under that one child) + one HitVolumeView per unit.
+	assert_eq(scene.get_child_count(), 5 + scene.combat_state.units.size())
 	assert_eq(scene.combat_state.units.size(), unit_count, "the seeded roster size is stable")
 
 
@@ -153,23 +162,25 @@ func test_seeded_units_spawn_on_the_grids_own_spawn_a_and_spawn_b_cells() -> voi
 func test_tactics_is_wired_to_the_real_camera_and_board() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
+	var tactics: TacticsController = _overlay(scene).tactics
 
-	assert_eq(scene.tactics.selection.state, scene.combat_state)
-	assert_eq(scene.tactics.board_view, scene.board_view)
-	assert_eq(scene.tactics.camera, scene.camera_rig.camera())
-	assert_not_null(scene.tactics.camera, "camera_rig must have already built its Camera3D")
+	assert_eq(tactics.selection.state, scene.combat_state)
+	assert_eq(tactics.board_view, scene.board_view)
+	assert_eq(tactics.camera, scene.camera_rig.camera())
+	assert_not_null(tactics.camera, "camera_rig must have already built its Camera3D")
 
 
 func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_redraws_it() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
+	var tactics: TacticsController = _overlay(scene).tactics
 
 	var current: Unit = scene.combat_state.current_unit()
 	var start_cell: Vector2i = current.cell
-	scene.tactics.click_cell(start_cell)
-	assert_eq(scene.tactics.selection.selected_unit, current)
+	tactics.click_cell(start_cell)
+	assert_eq(tactics.selection.selected_unit, current)
 
-	var reachable: Array[Vector2i] = scene.tactics.selection.reachable_cells()
+	var reachable: Array[Vector2i] = tactics.selection.reachable_cells()
 	var target_cell: Vector2i = start_cell
 	for cell: Vector2i in reachable:
 		if cell != start_cell:
@@ -177,8 +188,8 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 			break
 	assert_ne(target_cell, start_cell, "the seeded unit must have somewhere to move")
 
-	scene.tactics.click_cell(target_cell)
-	scene.tactics.end_turn()
+	tactics.click_cell(target_cell)
+	tactics.end_turn()
 
 	assert_eq(current.cell, target_cell, "resolution must have actually moved the real unit")
 
@@ -207,11 +218,12 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 func test_new_battle_is_not_among_the_turn_controls() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
+	var overlay: SquadControlOverlay = _overlay(scene)
 
-	for child: Node in scene.turn_controls_column.get_children():
+	for child: Node in overlay.turn_controls_column.get_children():
 		if child is Button:
 			assert_ne((child as Button).text, "New Battle")
-	assert_not_null(scene.new_battle_button, "it must still exist somewhere — just not there")
+	assert_not_null(overlay.new_battle_button, "it must still exist somewhere — just not there")
 
 
 ## taskblock-08 E1: "action bar on the LEFT... AP and MP pips render on
@@ -221,9 +233,10 @@ func test_new_battle_is_not_among_the_turn_controls() -> void:
 func test_the_action_bars_own_row_is_the_last_child_of_the_action_column() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
+	var action_column: VBoxContainer = _overlay(scene).action_column
 
-	assert_eq(scene.action_column.get_child_count(), 2, "pips above, the action row below")
-	var last: Node = scene.action_column.get_child(scene.action_column.get_child_count() - 1)
+	assert_eq(action_column.get_child_count(), 2, "pips above, the action row below")
+	var last: Node = action_column.get_child(action_column.get_child_count() - 1)
 	assert_eq(
 		(last as Container).get_child_count(),
 		ActionBar.SLOT_COUNT,
@@ -234,8 +247,9 @@ func test_the_action_bars_own_row_is_the_last_child_of_the_action_column() -> vo
 func test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
+	var turn_controls_column: VBoxContainer = _overlay(scene).turn_controls_column
 
-	for child: Node in scene.turn_controls_column.get_children():
+	for child: Node in turn_controls_column.get_children():
 		var button := child as Button
 		assert_not_null(button)
 		assert_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_END)
