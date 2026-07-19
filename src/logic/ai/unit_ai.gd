@@ -140,6 +140,22 @@ static func _plan_ranged(
 			and not final_blocked
 		):
 			queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+		# taskblock-18 D2: "shared AI and player path — one implementation."
+		# A last resort, tried only when nothing above found anything to do
+		# this turn at all (no reposition move queued — best_cell ==
+		# unit.cell, since re-enqueuing a lean's own outbound Move against a
+		# queue that already moved the unit elsewhere would path from the
+		# wrong cell — and no attack either): a genuinely free upgrade from
+		# "stand and face uselessly" to "pop out, shoot, come back," through
+		# the exact same LeanPlanner.assemble_for_shoot() a human's own
+		# SHOOT click uses, never a second AI-only notion of leaning.
+		if queue.actions.size() == queued_before and weapon_id != &"" and best_cell == unit.cell:
+			var lean_queue: ActionQueue = LeanPlanner.assemble_for_shoot(
+				state, unit, weapon_id, enemy
+			)
+			if lean_queue != null:
+				for action: CombatAction in lean_queue.actions:
+					queue.enqueue(action, state)
 		_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
 
 	queue.enqueue(EndTurnAction.new(unit), state)
