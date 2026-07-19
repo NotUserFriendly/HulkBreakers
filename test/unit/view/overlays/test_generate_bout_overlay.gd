@@ -6,6 +6,13 @@ extends GutTest
 ## dropdowns list the loaded profiles), Start Bout is rejected-not-crashed
 ## on a bad setup, and — A2's own requirement — a valid Start Bout hands
 ## off to a live SpectatorOverlay, never leaving this one installed.
+##
+## taskblock-16 Pass E: teams are expanding lists now, no count field —
+## these tests drive the same `_add_to_squad`/`_remove_from_squad`/
+## `_replace_in_squad` handlers the row widgets themselves call, the same
+## "call the handler directly" convention `_on_start_bout_pressed` already
+## used above (this menu is data-driven, not spatial input — real click
+## simulation is for gameplay tests like test_battle_scene_input.gd).
 
 
 func before_each() -> void:
@@ -29,33 +36,87 @@ func _menu() -> Dictionary:
 
 
 ## "The menu lists loaded profiles" — both reference profiles from
-## taskblock-14 Pass A show up as dropdown entries.
-func test_setup_populates_the_profile_dropdowns_from_loaded_presets() -> void:
+## taskblock-14 Pass A are available to add to a roster.
+func test_setup_populates_ordered_presets_from_loaded_presets() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 
-	assert_gt(overlay._squad_a_dropdown.item_count, 0)
-	assert_eq(overlay._squad_a_dropdown.item_count, overlay._squad_b_dropdown.item_count)
-	assert_eq(overlay._squad_a_dropdown.item_count, overlay._ordered_presets.size())
+	assert_gt(overlay._ordered_presets.size(), 0)
 
 
 func test_a_variant_is_listed_under_its_own_family_label() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 
 	var found_variant := false
-	for i in range(overlay._squad_a_dropdown.item_count):
-		if overlay._squad_a_dropdown.get_item_text(i).contains("Battery Mods"):
+	for preset: BotPreset in overlay._ordered_presets:
+		if overlay._preset_label(preset).contains("Battery Mods"):
 			found_variant = true
 	assert_true(found_variant, "the a_brand_laborer_battery_mods variant must appear in the list")
 
 
-## "An invalid setup (empty squad) is rejected, not crashed" — no profile
-## selected (SpinBox itself refuses to go below its own min_value of 1, so
-## an empty selection is the reachable way to make BoutSetup refuse).
-func test_start_bout_with_no_profile_selected_is_rejected_not_crashed() -> void:
+## Both teams start pre-populated (a flagged UX default, `DEFAULT_STARTING_COUNT`
+## — see the overlay's own doc comment) rather than empty, so a fresh
+## Start Bout is still a one-click smoke test.
+func test_setup_seeds_both_rosters_with_a_starting_default() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+
+	assert_eq(overlay._roster_a.size(), GenerateBoutOverlay.DEFAULT_STARTING_COUNT)
+	assert_eq(overlay._roster_b.size(), GenerateBoutOverlay.DEFAULT_STARTING_COUNT)
+
+
+## "Adding appends a unit."
+func test_add_to_squad_appends_to_the_end_of_the_roster() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	var starting_size: int = overlay._roster_a.size()
+	var preset: BotPreset = overlay._ordered_presets[0]
+
+	overlay._add_to_squad(0, preset)
+
+	assert_eq(overlay._roster_a.size(), starting_size + 1)
+	assert_eq(overlay._roster_a[overlay._roster_a.size() - 1], preset)
+
+
+## "Removing drops exactly that entry" — every other entry keeps its own
+## profile, only the removed one's gone.
+func test_remove_from_squad_drops_exactly_that_entry() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	overlay._roster_a = [
+		overlay._ordered_presets[0], overlay._ordered_presets[1], overlay._ordered_presets[0]
+	]
+	var kept_middle: BotPreset = overlay._roster_a[1]
+
+	overlay._remove_from_squad(0, 0)
+
+	assert_eq(overlay._roster_a.size(), 2)
+	assert_eq(overlay._roster_a[0], kept_middle, "the surviving entries must not shift identity")
+
+
+## "Clicking a name replaces it" — same slot, new profile, roster size
+## unchanged.
+func test_replace_in_squad_swaps_the_profile_at_that_index() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	overlay._roster_a = [overlay._ordered_presets[0]]
+	var replacement: BotPreset = overlay._ordered_presets[1]
+
+	overlay._replace_in_squad(0, 0, replacement)
+
+	assert_eq(overlay._roster_a.size(), 1)
+	assert_eq(overlay._roster_a[0], replacement)
+
+
+## "No count field remains" — SpinBox is gone outright, not just unused.
+func test_no_count_field_exists_on_the_overlay() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+
+	assert_false("_count_a_field" in overlay, "the old count SpinBox must be fully retired")
+	assert_false("_count_b_field" in overlay, "the old count SpinBox must be fully retired")
+
+
+## "An empty team is refused, not crashed."
+func test_start_bout_with_an_empty_roster_is_rejected_not_crashed() -> void:
 	var wired: Dictionary = _menu()
 	var overlay: GenerateBoutOverlay = wired.overlay
 	var battle: BattleScene = wired.battle
-	overlay._squad_a_dropdown.selected = -1
+	overlay._roster_a = []
 
 	overlay._on_start_bout_pressed()
 
