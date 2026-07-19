@@ -52,9 +52,9 @@ const TRACER_COLOR := Color(1.0, 0.85, 0.3)
 ## The color a live shot fades TO and persists at in the ring buffer —
 ## deliberately a different hue from the live flash (not `.darkened()`
 ## anymore), so "still resolving" and "already-fired history" read as two
-## distinct things at a glance: red, and half-opacity so a dense ring of
-## retired tracers never reads as solid as the live shot drawn over them.
-const TRACER_DULL_COLOR := Color(1.0, 0.0, 0.0, 0.5)
+## distinct things at a glance: a dark red, faint enough that a dense ring
+## of retired tracers never reads as solid as the live shot drawn over them.
+const TRACER_DULL_COLOR := Color(0.5, 0.0, 0.0, 0.3)
 ## Render priority split (docs/10: transparent geometry sorts by camera
 ## distance by default, which can't be trusted to keep the CURRENT shot
 ## drawn over older, possibly-overlapping retired tracers along a similar
