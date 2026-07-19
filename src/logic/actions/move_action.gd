@@ -80,17 +80,33 @@ func apply(state: CombatState) -> void:
 func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
 	var actual: Unit = state.find_unit(unit.id)
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	# taskblock: "bots visibly spin through every facing, then move" — the
+	# STATE was already correct per-tile (taskblock-16 Pass A), but every
+	# `faced` LogEvent below fired DURING this loop while the single `move`
+	# event only ever fired once, at the very end, via `_finish()` — so a
+	# curved path's whole combat_log stream read as N `faced` events back
+	# to back, THEN one `move` covering the entire path, and any playback
+	# that plays events in log order (ResolutionPlayer) has no choice but
+	# to show every turn up front before any sliding starts. `run_start`
+	# is the path index the next not-yet-logged `move` run begins at —
+	# flushed (via `_finish`) right before a direction change actually
+	# re-faces, so the log interleaves faced/move/faced/move per straight
+	# leg instead of batching every faced event ahead of one aggregate
+	# move. A straight, single-direction path never re-faces mid-flight,
+	# so it still produces exactly one `move` event, unchanged.
+	var run_start: int = 0
 
 	for i in range(1, path.size()):
-		# taskblock-16 Pass A: "a unit must face each tile before stepping
-		# onto it" — free, the same primitive _finish() used to call ONCE,
-		# on the aggregate start->end direction, after the whole move
-		# completed. A no-op (via face_for_free's own early-out) whenever
-		# consecutive steps share a direction, so a straight move still
-		# only logs one facing change, not one per tile.
-		FaceAction.face_for_free(
-			state, actual, FaceAction.orientation_toward(actual.cell, path[i]), &"free_with_move"
-		)
+		var target_orientation: float = FaceAction.orientation_toward(actual.cell, path[i])
+		if not is_equal_approx(actual.orientation, target_orientation):
+			if i - 1 > run_start:
+				_finish(state, actual, path.slice(run_start, i))
+				run_start = i - 1
+			# free, the same primitive _finish() used to call ONCE, on the
+			# aggregate start->end direction, before this pass — now called
+			# once per direction actually taken, right where that leg
+			# begins.
+			FaceAction.face_for_free(state, actual, target_orientation, &"free_with_move")
 		var per_ap: float = actual.mp_per_ap()
 		var step_cost: float = pf.move_cost(path[i])
 		while actual.mp < step_cost:
@@ -111,10 +127,10 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 			not is_final_step
 			and (hook_forces_stop or not _can_still_complete(state, actual, path.slice(i)))
 		):
-			_finish(state, actual, path.slice(0, i + 1))
+			_finish(state, actual, path.slice(run_start, i + 1))
 			return {"stopped": true}
 
-	_finish(state, actual, path)
+	_finish(state, actual, path.slice(run_start, path.size()))
 	return {"stopped": false}
 
 
