@@ -41,6 +41,8 @@ var action_column: VBoxContainer
 ## (E3: "not a turn control") is never among its children.
 var turn_controls_column: VBoxContainer
 var new_battle_button: Button
+## taskblock-21 Pass C: mid-bout toggle back to spectating.
+var watch_button: Button
 var log_sink: UISink
 ## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
@@ -260,6 +262,16 @@ func _build_ui() -> void:
 	new_battle_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	new_battle_button.pressed.connect(_on_new_battle_pressed)
 	top_right.add_child(new_battle_button)
+
+	# taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
+	# mid-bout toggle is allowed." battle.toggle_blue_control() tears this
+	# whole overlay down as part of the swap — nothing further to do here
+	# after calling it.
+	watch_button = Button.new()
+	watch_button.text = "Watch"
+	watch_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	watch_button.pressed.connect(battle.toggle_blue_control)
+	top_right.add_child(watch_button)
 
 	var controls_label := Label.new()
 	controls_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

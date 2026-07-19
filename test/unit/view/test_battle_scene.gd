@@ -320,3 +320,54 @@ func test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched() -
 		var button := child as Button
 		assert_not_null(button)
 		assert_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_END)
+
+
+## taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
+## no new control system — the overlay swap tb15 built, exposed as a
+## toggle." Squad 0 is "blue"; squad 1 ("red") must never be touched by
+## either direction of the toggle.
+func test_toggle_blue_control_flips_squad_zero_and_swaps_the_overlay() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.combat_state.set_squad_controller(1, Enums.SquadController.AI)
+	var before: Enums.SquadController = scene.combat_state.controller_for(0)
+
+	scene.toggle_blue_control()
+
+	var after: Enums.SquadController = scene.combat_state.controller_for(0)
+	assert_ne(after, before, "squad 0's own controller must flip")
+	assert_eq(
+		scene.combat_state.controller_for(1), Enums.SquadController.AI, "red is never touched"
+	)
+	if after == Enums.SquadController.HUMAN:
+		assert_true(scene.overlay is SquadControlOverlay)
+	else:
+		assert_true(scene.overlay is SpectatorOverlay)
+
+
+func test_toggle_blue_control_round_trips() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var original: Enums.SquadController = scene.combat_state.controller_for(0)
+
+	scene.toggle_blue_control()
+	scene.toggle_blue_control()
+
+	assert_eq(scene.combat_state.controller_for(0), original)
+
+
+## The bout menu's own checkbox: unchecked keeps today's behavior
+## (SpectatorOverlay, both squads AI); checked lands directly on
+## SquadControlOverlay with squad 0 flipped to HUMAN, squad 1 left AI.
+func test_generate_bout_overlay_assume_control_checkbox_lands_on_squad_control() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.set_overlay(GenerateBoutOverlay.new())
+	var menu: GenerateBoutOverlay = scene.overlay as GenerateBoutOverlay
+	menu._assume_control_checkbox.button_pressed = true
+
+	menu._on_start_bout_pressed()
+
+	assert_true(scene.overlay is SquadControlOverlay)
+	assert_eq(scene.combat_state.controller_for(0), Enums.SquadController.HUMAN)
+	assert_eq(scene.combat_state.controller_for(1), Enums.SquadController.AI)

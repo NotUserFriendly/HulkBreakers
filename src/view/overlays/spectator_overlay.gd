@@ -227,6 +227,15 @@ func _build_ui() -> void:
 	_speed_button.pressed.connect(_on_speed_button_pressed)
 	controls.add_child(_speed_button)
 
+	# taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
+	# mid-bout toggle is allowed." battle.toggle_blue_control() tears this
+	# whole overlay down as part of the swap — nothing further to do here
+	# after calling it.
+	var assume_control_button := Button.new()
+	assume_control_button.text = "Assume Control"
+	assume_control_button.pressed.connect(battle.toggle_blue_control)
+	controls.add_child(assume_control_button)
+
 	_status_label = Label.new()
 	controls.add_child(_status_label)
 
