@@ -47,10 +47,22 @@ const RESOLUTION_BANNER := "RESOLUTION"
 ## a real muzzle position) — roughly chest-height on the reference humanoid.
 const TRACER_MUZZLE_HEIGHT := 1.25
 const TRACER_THICKNESS := 0.03
+## The live raycast flash a shot draws with, bright and momentary.
 const TRACER_COLOR := Color(1.0, 0.85, 0.3)
-## taskblock-15 Pass B3: "bright draw -> fade -> dull tracer" — the color a
-## live shot fades TO, not away to nothing. `.darkened()`, not a
-## hand-picked second color, so it stays visibly the same hue.
+## The color a live shot fades TO and persists at in the ring buffer —
+## deliberately a different hue from the live flash (not `.darkened()`
+## anymore), so "still resolving" and "already-fired history" read as two
+## distinct things at a glance: red, and half-opacity so a dense ring of
+## retired tracers never reads as solid as the live shot drawn over them.
+const TRACER_DULL_COLOR := Color(1.0, 0.0, 0.0, 0.5)
+## Render priority split (docs/10: transparent geometry sorts by camera
+## distance by default, which can't be trusted to keep the CURRENT shot
+## drawn over older, possibly-overlapping retired tracers along a similar
+## line of fire) — the one live/fading tracer always outranks every
+## already-retired one, then drops to the shared base tier the instant it
+## joins the ring buffer.
+const TRACER_LIVE_RENDER_PRIORITY := 1
+const TRACER_RETIRED_RENDER_PRIORITY := 0
 const INTER_SHOT_BREAK_MS := 100.0
 
 ## taskblock-15 Pass B4: "editable fields at the top of the spectator
@@ -67,7 +79,6 @@ var speed: float = 1.0
 var banner: Label
 var battle: BattleScene
 
-var _tracer_dull_color: Color = TRACER_COLOR.darkened(0.7)
 var _tracers: Node3D
 ## Ring buffer of persisted dull tracers, capped at `tracer_count` — the
 ## oldest is evicted the instant an (N+1)th arrives. `tracer_count <= 0`
@@ -377,16 +388,22 @@ func _impact_point(unit: Unit, part_id: StringName) -> Vector3:
 
 
 ## B3: "bright draw -> fade -> dull tracer (two lifetimes, one word)" —
-## drawn at full TRACER_COLOR, tweened to `_tracer_dull_color` over
-## `bullet_ms`, then handed to the ring buffer (or freed outright if
-## `tracer_count <= 0` — B3's own "demo mode").
+## drawn at full TRACER_COLOR (the live raycast), tweened to
+## `TRACER_DULL_COLOR` (red, half-opacity) over `bullet_ms`, then handed to
+## the ring buffer (or freed outright if `tracer_count <= 0` — B3's own
+## "demo mode"). `translucent_material`, not `overlay_material`: the fade
+## target's own alpha (0.5) has to actually blend, not just tint. Render
+## priority starts at the LIVE tier so this shot draws over every already-
+## retired tracer on the board, then drops to the shared retired tier the
+## moment the fade finishes and it joins the ring.
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	if (to - from).length() < 0.001:
 		return
 	var instance := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = TracerGeometry.segment_size(from, to, TRACER_THICKNESS)
-	var material: StandardMaterial3D = WorldPalette.overlay_material(TRACER_COLOR)
+	var material: StandardMaterial3D = WorldPalette.translucent_material(TRACER_COLOR)
+	material.render_priority = TRACER_LIVE_RENDER_PRIORITY
 	box.material = material
 	instance.mesh = box
 	instance.transform = TracerGeometry.segment_transform(from, to)
@@ -395,8 +412,9 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	var duration: float = bullet_fade_duration()
 	if duration > 0.0:
 		var tween := create_tween()
-		tween.tween_property(material, "albedo_color", _tracer_dull_color, duration)
+		tween.tween_property(material, "albedo_color", TRACER_DULL_COLOR, duration)
 		await tween.finished
+	material.render_priority = TRACER_RETIRED_RENDER_PRIORITY
 	_retire_tracer(instance)
 
 

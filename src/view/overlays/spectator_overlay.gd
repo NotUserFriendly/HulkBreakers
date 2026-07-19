@@ -196,10 +196,10 @@ func _build_ui() -> void:
 	theme_root.add_child(tunables)
 
 	_slide_ms_field = _tunable_field(
-		tunables, "Slide Speed (ms/cell):", resolution_player.slide_ms, _on_slide_ms_changed
+		tunables, "Slide Speed (ms/cell):", resolution_player.slide_ms, _on_slide_ms_changed, 10.0
 	)
 	_bullet_ms_field = _tunable_field(
-		tunables, "Bullet Timing (ms):", resolution_player.bullet_ms, _on_bullet_ms_changed
+		tunables, "Bullet Timing (ms):", resolution_player.bullet_ms, _on_bullet_ms_changed, 10.0
 	)
 	_tracer_count_field = _tunable_field(
 		tunables, "Tracers:", float(resolution_player.tracer_count), _on_tracer_count_changed
@@ -216,8 +216,21 @@ func _build_ui() -> void:
 	_refresh_status()
 
 
+## `arrow_step`, if given, sets `custom_arrow_step` — the up/down ARROW
+## button increment ONLY. `step` itself (which Godot's `Range` quantizes
+## every value assignment to, typed or not — `SpinBox.rounded` is a
+## display-formatting flag, not what governs this) stays at its default
+## fine granularity, so clicking into the field's own LineEdit and typing
+## an exact value is never snapped to a multiple of the arrow step. Timing
+## fields (slide/bullet ms) pass 10.0 so the arrows move at a pace that
+## actually matters at millisecond scale; `tracer_count` (a plain count,
+## not a duration) leaves the arrows at the default step of 1.
 func _tunable_field(
-	parent: HBoxContainer, label_text: String, initial: float, on_changed: Callable
+	parent: HBoxContainer,
+	label_text: String,
+	initial: float,
+	on_changed: Callable,
+	arrow_step: float = 0.0
 ) -> SpinBox:
 	var label := Label.new()
 	label.text = label_text
@@ -225,6 +238,8 @@ func _tunable_field(
 	var field := SpinBox.new()
 	field.min_value = 0
 	field.max_value = 10000
+	if arrow_step > 0.0:
+		field.custom_arrow_step = arrow_step
 	field.value = initial
 	field.value_changed.connect(on_changed)
 	parent.add_child(field)
