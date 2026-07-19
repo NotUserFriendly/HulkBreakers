@@ -295,3 +295,76 @@ func test_apply_faces_the_shooter_toward_the_target() -> void:
 	assert_almost_eq(
 		shooter.orientation, FaceAction.orientation_toward(Vector2i(0, 0), Vector2i(3, 0)), 0.0001
 	)
+
+
+## taskblock-19 Pass H: "diagnose against a real burst" — is_legal()/
+## apply() have always read the same weapon.weapon_def.burst_size
+## (verified against the original taskblock-13 commit; no source
+## mismatch ever existed). The REAL symptom, reproduced against the real
+## authored chaingun.tres (not the tight, always-hits test fixture other
+## tests here use): its own scatter (inner ring radius 0.15/weight 1,
+## outer 0.6/weight 2 — roughly 2/3 of rolls land in the wide outer ring)
+## genuinely misses the torso often, even on pull 0 before any recoil.
+## `&"burst_pull"` proves the LOOP itself never drops a pull regardless:
+## exactly `burst_size` of these must exist, hit or miss.
+func test_a_real_bursts_pull_events_always_total_burst_size_even_with_misses() -> void:
+	DataLibrary.reset()
+	DataLibrary.load_all()
+	var weapon: Part = DataLibrary.get_part(&"chaingun")
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0), 1000)
+	# Seed 0: a real, verified mix of hits and misses for this exact
+	# fixture (confirmed via a live probe before writing this test) —
+	# never all-hit, never all-miss, so this can't pass by accident.
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target], 0)
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
+
+	var pulls: Array[LogEvent] = sink.events_of_kind(&"burst_pull")
+	assert_eq(pulls.size(), weapon.weapon_def.burst_size, "every pull fires, hit or miss")
+	var hits: Array[LogEvent] = pulls.filter(func(e: LogEvent) -> bool: return e.data.get("hit"))
+	var misses: Array[LogEvent] = pulls.filter(
+		func(e: LogEvent) -> bool: return not e.data.get("hit")
+	)
+	assert_gt(hits.size(), 0, "sanity: this seed must produce at least one real hit")
+	assert_gt(misses.size(), 0, "sanity: this seed must produce at least one real miss")
+	DataLibrary.reset()
+
+
+func test_burst_pull_events_are_indexed_0_to_burst_size_minus_1() -> void:
+	var weapon := _make_chaingun()
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
+
+	var pulls: Array[LogEvent] = sink.events_of_kind(&"burst_pull")
+	var indices: Array[int] = []
+	for pull: LogEvent in pulls:
+		indices.append(pull.data.get("pull_index"))
+	assert_eq(indices, range(weapon.weapon_def.burst_size))
+
+
+## "how many out of the total landed" — `landed_so_far` is a running
+## count, so the LAST pull's own value is the burst's final landed total,
+## directly cross-checked against the real impact-event count (the tight,
+## always-hits fixture other tests here already use, so the final tally
+## is known and unambiguous: all 12 land).
+func test_landed_so_far_matches_the_actual_impact_count_at_the_end() -> void:
+	var weapon := _make_chaingun()
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
+
+	var pulls: Array[LogEvent] = sink.events_of_kind(&"burst_pull")
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_eq(pulls[pulls.size() - 1].data.get("landed_so_far"), impacts.size())
