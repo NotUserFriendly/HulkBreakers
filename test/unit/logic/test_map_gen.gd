@@ -114,6 +114,61 @@ func test_barrel_pallet_barrel_count_is_deterministic_and_in_range() -> void:
 		assert_between(count, 0, 4, "a barrel_pallet must carry 0-4 barrels")
 
 
+## taskblock-16 Pass C: "rooms >= 7 on their min dimension." Rooms and
+## corridors share one terrain code once carved, so the only way to
+## measure a room's OWN dimensions (not the connected blob it ends up
+## part of) is at the point `_carve_room` produces one — same pattern
+## other logic tests use to check a "private" static helper directly
+## (e.g. `AimView._decal_basis`, `ResolutionPlayer._play_slide`).
+func test_carved_rooms_are_at_least_seven_on_their_min_dimension() -> void:
+	var rng := RandomNumberGenerator.new()
+	for room_seed in range(SEED_COUNT):
+		rng.seed = room_seed
+		var rooms: Array[Rect2i] = []
+		# A leaf exactly at the split threshold's boundary — the smallest a
+		# leaf can ever be handed to `_carve_room` in practice.
+		MapGen._carve_room(Grid.new(20, 20), Rect2i(Vector2i.ZERO, Vector2i(9, 9)), rng, rooms)
+		var room: Rect2i = rooms[0]
+		assert_true(
+			mini(room.size.x, room.size.y) >= 7,
+			"room_seed %d: room %s must be >= 7 on its min dimension" % [room_seed, room.size]
+		)
+
+
+## taskblock-16 Pass C: "hallway width... target 3-5." Same direct-call
+## pattern as the room-size test above — width is a property of the
+## carve itself, not something separable from the merged terrain output.
+func test_carved_corridors_are_three_to_five_wide() -> void:
+	var rng := RandomNumberGenerator.new()
+	for corridor_seed in range(SEED_COUNT):
+		rng.seed = corridor_seed
+		var grid := Grid.new(30, 30)
+		# `generate()` starts every cell as WALL before carving anything —
+		# Grid.new's own default (OPEN) would make the whole column read
+		# as "open" regardless of what the corridor actually carved.
+		for y in range(grid.height):
+			for x in range(grid.width):
+				grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
+		MapGen._carve_corridor(grid, Vector2i(2, 2), Vector2i(20, 2), rng)
+
+		# The corridor runs along y=2; measure the open band's thickness at
+		# a cross-section clear of the L-turn (x=10, still on the first,
+		# horizontal leg).
+		var thickness := 0
+		for y in range(grid.height):
+			if grid.get_terrain(Vector2i(10, y)) == Enums.TerrainType.OPEN:
+				thickness += 1
+		assert_between(
+			thickness,
+			MapGen.CORRIDOR_WIDTH_MIN,
+			MapGen.CORRIDOR_WIDTH_MAX,
+			(
+				"corridor_seed %d: corridor thickness %d out of [%d, %d]"
+				% [corridor_seed, thickness, MapGen.CORRIDOR_WIDTH_MIN, MapGen.CORRIDOR_WIDTH_MAX]
+			)
+		)
+
+
 func test_walls_are_opaque_and_open_cells_are_not() -> void:
 	var grid: Grid = MapGen.generate(7, WIDTH, HEIGHT)
 	var saw_wall := false
@@ -132,8 +187,9 @@ func test_walls_are_opaque_and_open_cells_are_not() -> void:
 
 
 ## `_split_and_carve` only splits a leaf once BOTH its dimensions clear
-## `MIN_LEAF_SIZE * 2` (16) — a grid as small as BattleScene's own (12x10)
-## never clears that bar, so it always carves exactly one room. Both spawn
+## `MIN_LEAF_SIZE * 2` (24, taskblock-16 Pass C) — a grid as small as
+## BattleScene's own (12x10) never clears that bar, so it always carves
+## exactly one room. Both spawn
 ## zones must still land on distinct, real cells there too: this was a
 ## reproduced bug (runNotes.md — "the red unit may be spawning in a
 ## non-navigable space") where SPAWN_B silently overwrote every SPAWN_A

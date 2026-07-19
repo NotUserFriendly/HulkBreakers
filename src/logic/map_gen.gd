@@ -6,9 +6,23 @@ extends RefCounted
 ## L-shaped corridors as the recursion unwinds — this guarantees every room
 ## (and therefore both spawn zones) sits in one connected component.
 
-const MIN_LEAF_SIZE: int = 8
-const MIN_ROOM_SIZE: int = 3
+## taskblock-16 Pass C: "too cramped — no room to maneuver or use cover."
+## Rooms >= 7 on their min dimension; MIN_CHILD_SIZE keeps a split child
+## room-sized (its own `+ 2` for the 1-cell border `_carve_room` always
+## leaves); MIN_LEAF_SIZE keeps the same buffer over MIN_CHILD_SIZE the
+## old 8-vs-5 pair had (a margin, not a hard requirement — only
+## MIN_LEAF_SIZE >= MIN_CHILD_SIZE is load-bearing, for `_split_and_carve`
+## to hand both children a valid size).
+const MIN_ROOM_SIZE: int = 7
 const MIN_CHILD_SIZE: int = MIN_ROOM_SIZE + 2
+const MIN_LEAF_SIZE: int = MIN_CHILD_SIZE + 3
+
+## taskblock-16 Pass C: corridors were a single carved cell wide — too
+## cramped for movement or cover once rooms are actually spacious. Each
+## corridor rolls its own width in this range (seeded), same "obvious
+## knob" convention as room sizing.
+const CORRIDOR_WIDTH_MIN: int = 3
+const CORRIDOR_WIDTH_MAX: int = 5
 
 const COVER_PROBABILITY: float = 0.18
 ## taskblock-16 Pass B2: the reference humanoid's own torso/head boundary
@@ -134,21 +148,31 @@ static func _carve_corridor(
 	grid: Grid, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
 ) -> void:
 	var mid: Vector2i = Vector2i(b.x, a.y) if rng.randf() < 0.5 else Vector2i(a.x, b.y)
-	_carve_straight(grid, a, mid)
-	_carve_straight(grid, mid, b)
+	var width: int = rng.randi_range(CORRIDOR_WIDTH_MIN, CORRIDOR_WIDTH_MAX)
+	_carve_straight(grid, a, mid, width)
+	_carve_straight(grid, mid, b, width)
 
 
-static func _carve_straight(grid: Grid, a: Vector2i, b: Vector2i) -> void:
+## taskblock-16 Pass C: carves a band `width` cells thick, centered on the
+## a->b line, instead of the single-cell line the name still describes —
+## widened perpendicular to the direction of travel so a straight run
+## reads as one corridor, not `width` parallel ones.
+static func _carve_straight(grid: Grid, a: Vector2i, b: Vector2i, width: int) -> void:
+	@warning_ignore("integer_division")
+	var behind: int = width / 2
+	var ahead: int = width - 1 - behind
 	if a.x == b.x:
 		var y_start: int = mini(a.y, b.y)
 		var y_end: int = maxi(a.y, b.y)
 		for y in range(y_start, y_end + 1):
-			_set_open(grid, Vector2i(a.x, y))
+			for x in range(a.x - behind, a.x + ahead + 1):
+				_set_open(grid, Vector2i(x, y))
 	else:
 		var x_start: int = mini(a.x, b.x)
 		var x_end: int = maxi(a.x, b.x)
 		for x in range(x_start, x_end + 1):
-			_set_open(grid, Vector2i(x, a.y))
+			for y in range(a.y - behind, a.y + ahead + 1):
+				_set_open(grid, Vector2i(x, y))
 
 
 ## taskblock-16 Pass B: also clears any blocker already sitting at `cell`
@@ -248,7 +272,7 @@ static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
 
 ## The room's own bottom-right SPAWN_ZONE_SIZE-ish corner, as a room-shaped
 ## Rect2i `_mark_zone` can mark directly — guaranteed a different position
-## than `room.position` itself since MIN_ROOM_SIZE (3) is always bigger than
+## than `room.position` itself since MIN_ROOM_SIZE is always bigger than
 ## a 2x2 zone in at least one axis.
 static func _far_corner(room: Rect2i) -> Rect2i:
 	var w: int = mini(SPAWN_ZONE_SIZE, room.size.x)
@@ -286,9 +310,39 @@ static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
 ## checks `blockers`) trips it far more often, which turned that unseeded
 ## generator into real, visible non-determinism (`same seed, two calls,
 ## two different maps`). Reuses the caller's already-seeded `rng` instead.
+##
+## taskblock-16 Pass C: `_carve_corridor` runs straight through `a` and
+## `b` themselves — the spawn cells, not just their surroundings — and
+## `_set_open` stamps every cell it touches back to plain OPEN. Wider
+## (3-5 cell) corridors make the forced fallback trigger far more often
+## (bigger rooms leave less slack for the BSP's own corridors to land
+## cleanly) than it used to, which turned "the fallback occasionally
+## reruns over a spawn cell" from a one-cell coincidence into "the
+## fallback reliably erases the SPAWN_A/SPAWN_B tag it was supposed to
+## reconnect a path *to*" (test failure: "spawn zone A must exist" with
+## zero SPAWN_A cells left anywhere in the grid). Snapshot every
+## SPAWN_A/SPAWN_B cell first and re-stamp them after carving — the
+## fallback's whole job is reconnecting those zones, never relabeling
+## them.
 static func _ensure_spawns_connected(
 	grid: Grid, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
 ) -> void:
 	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
 	if pf.astar(a, b).is_empty():
+		var spawn_a_cells: Array[Vector2i] = _find_terrain_cells(grid, Enums.TerrainType.SPAWN_A)
+		var spawn_b_cells: Array[Vector2i] = _find_terrain_cells(grid, Enums.TerrainType.SPAWN_B)
 		_carve_corridor(grid, a, b, rng)
+		for cell: Vector2i in spawn_a_cells:
+			grid.set_terrain(cell, Enums.TerrainType.SPAWN_A)
+		for cell: Vector2i in spawn_b_cells:
+			grid.set_terrain(cell, Enums.TerrainType.SPAWN_B)
+
+
+static func _find_terrain_cells(grid: Grid, terrain_code: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	for y in range(grid.height):
+		for x in range(grid.width):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) == terrain_code:
+				result.append(cell)
+	return result
