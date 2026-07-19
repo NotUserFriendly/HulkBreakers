@@ -11,8 +11,14 @@ extends RefCounted
 ## model, unchanged) — this is the "in-engine 2v2 demo" the block exists
 ## for, wired to real content instead of hand-typed test fixtures.
 
-const GRID_WIDTH := 20
-const GRID_HEIGHT := 14
+## taskblock-17 Pass A: the old 20x14 was under `MapGen.MIN_LEAF_SIZE * 2`
+## (24) on both axes — the same single-room-forever regression
+## `BattleScene`'s own default had, just with a smaller bout map. A bout
+## can afford to stay smaller than a full battle's board (`BattleScene`'s
+## own 40x30), but still needs real room to split — 32x24 matches the
+## size `test_map_gen.gd`'s own 50-seed sweep already exercises.
+const GRID_WIDTH := 32
+const GRID_HEIGHT := 24
 
 
 ## taskblock-16 Pass E: each team is a LIST of per-unit profiles now, not

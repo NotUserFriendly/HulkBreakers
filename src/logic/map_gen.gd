@@ -234,8 +234,10 @@ static func _roll_barrels(pallet: Part, rng: RandomNumberGenerator) -> void:
 ## one representative cell per zone.
 ##
 ## `_split_and_carve` only splits a leaf when BOTH its dimensions clear
-## `MIN_LEAF_SIZE * 2` — a grid as small as BattleScene's (12x10) never
-## clears that bar, so it always carves exactly one room. When `best_a` and
+## `MIN_LEAF_SIZE * 2` — a grid smaller than that (e.g. a 12x10 fixture,
+## taskblock-16/17's own single-room regression before both real callers'
+## default sizes were fixed) never clears that bar, so it always carves
+## exactly one room. When `best_a` and
 ## `best_b` land on the very same room (single room, or every room tied at
 ## distance 0), marking SPAWN_B into it the normal way would silently
 ## overwrite every SPAWN_A cell just written — one squad would spawn
