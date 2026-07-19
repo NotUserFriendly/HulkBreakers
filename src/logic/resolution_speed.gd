@@ -37,6 +37,17 @@ static func initiative(unit: Unit) -> StatValue:
 	return _resolve(0.0, null, unit)
 
 
+## taskblock-19 Pass A: the overwatcher's own trigger, given a comparable
+## resolution speed so "overwatch resolves before a fresh attack" is a real
+## relationship on the same axis, not just a conceptual claim — overwatch
+## never itself becomes a queued CombatAction (it fires out of turn order,
+## from `MoveAction.apply_stepwise`'s mid_move_hook seam), so it needs this
+## same parallel entry point `initiative()` above already uses for "a unit
+## with no chosen action yet."
+static func overwatch_speed(unit: Unit) -> StatValue:
+	return _resolve(Overwatch.SPEED, null, unit)
+
+
 static func _resolve(base_action_speed: float, action: CombatAction, unit: Unit) -> StatValue:
 	var context := ResolverContext.new()
 	context.base = base_action_speed

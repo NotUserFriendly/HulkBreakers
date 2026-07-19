@@ -11,8 +11,15 @@ extends CombatAction
 ## never additive.
 
 const COST := 1.0
-## docs/09 taskblock06 Pass E: "facing is faster than overwatch triggering"
-## — starting data, a tunable, not a design decision.
+## taskblock-19 Pass A: facing is the SLOWEST base action, by design — a
+## unit reorienting its whole body mid-turn takes longer than a trigger
+## pull. Deliberately above `AttackAction`'s default weapon speed (40.0)
+## and `Overwatch.SPEED` (20.0) so, at equal personal_speed, a bare unit's
+## face resolves last (`ResolutionSpeed`, lower resolves first). Flagged
+## placeholder — only the ORDER matters, not this exact number. (Supersedes
+## taskblock-06 Pass E's old "facing is faster than overwatch triggering"
+## intent, written under the pre-taskblock-18 higher-resolves-first
+## convention.)
 const SPEED := 100.0
 
 var unit: Unit

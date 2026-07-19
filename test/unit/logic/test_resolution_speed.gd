@@ -18,6 +18,42 @@ func _unit_with_personal_speed(personal_speed: float, id: int = 0) -> Unit:
 	return unit
 
 
+## An armed unit whose weapon actually resolves through Shell.find_part —
+## AttackAction.speed() reads the weapon off the unit's own shell, not a
+## bare Part reference, so it must be socketed for real.
+func _armed_unit_with_personal_speed(personal_speed: float, id: int = 0) -> Unit:
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	pistol.attaches_to = [&"GRIP"]
+	pistol.requires = {&"TRIGGER": 1}
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	var matrix := Matrix.new()
+	matrix.personal_speed = personal_speed
+	var unit := Unit.new(matrix, Shell.new(torso), Vector2i(0, 0))
+	unit.id = id
+	return unit
+
+
 func test_personal_speed_subtracts_from_the_actions_own_base_speed() -> void:
 	var unit: Unit = _unit_with_personal_speed(15.0)
 	var state := CombatState.new(Grid.new(5, 5), [unit])
@@ -99,3 +135,64 @@ func test_an_action_with_no_resolvable_unit_still_resolves_the_base_speed() -> v
 
 	assert_almost_eq(result.current, 0.0, 0.0001)
 	assert_false(result.changed())
+
+
+## taskblock-19 Pass A: "a bare unit's face resolves after an overwatcher's
+## shot" — asserted by relationship (overwatch_speed < face's resolved
+## speed), never against raw constants, so retuning the numbers can't
+## silently break this test.
+func test_a_bare_units_face_resolves_after_an_overwatchers_shot() -> void:
+	var overwatcher: Unit = _unit_with_personal_speed(0.0, 0)
+	var mover: Unit = _unit_with_personal_speed(0.0, 1)
+	var state := CombatState.new(Grid.new(5, 5), [overwatcher, mover])
+	var face := FaceAction.new(mover, 0.0)
+
+	var overwatch_val: float = ResolutionSpeed.overwatch_speed(overwatcher).current
+	var face_val: float = ResolutionSpeed.resolve(face, state).current
+
+	assert_lt(overwatch_val, face_val, "overwatch resolves before a bare unit finishes facing")
+
+
+## taskblock-19 Pass A: "a high-personal-speed unit's face resolves before
+## it [the overwatcher's shot]" — enough personal_speed pulls a face across
+## the overwatch boundary.
+func test_a_high_personal_speed_units_face_resolves_before_an_overwatchers_shot() -> void:
+	var overwatcher: Unit = _unit_with_personal_speed(0.0, 0)
+	var fast_mover: Unit = _unit_with_personal_speed(90.0, 1)
+	var state := CombatState.new(Grid.new(5, 5), [overwatcher, fast_mover])
+	var face := FaceAction.new(fast_mover, 0.0)
+
+	var overwatch_val: float = ResolutionSpeed.overwatch_speed(overwatcher).current
+	var face_val: float = ResolutionSpeed.resolve(face, state).current
+
+	assert_lt(face_val, overwatch_val, "enough personal_speed out-draws the overwatch trigger")
+
+
+## taskblock-19 Pass A: "overwatch resolves before a fresh attack at equal
+## personal_speed."
+func test_overwatch_resolves_before_a_fresh_attack_at_equal_personal_speed() -> void:
+	var overwatcher: Unit = _unit_with_personal_speed(0.0, 0)
+	var attacker: Unit = _armed_unit_with_personal_speed(0.0, 1)
+	var state := CombatState.new(Grid.new(5, 5), [overwatcher, attacker])
+	var attack := AttackAction.new(attacker, &"pistol", Vector2i(0, 0))
+
+	var overwatch_val: float = ResolutionSpeed.overwatch_speed(overwatcher).current
+	var attack_val: float = ResolutionSpeed.resolve(attack, state).current
+
+	assert_lt(overwatch_val, attack_val, "overwatch resolves before a fresh attack at equal speed")
+
+
+## taskblock-19 Pass A: the full default ordering, overwatch < attack <
+## face — asserted by relationship, not raw constants.
+func test_default_ordering_is_overwatch_then_attack_then_face() -> void:
+	var unit: Unit = _armed_unit_with_personal_speed(0.0, 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var attack := AttackAction.new(unit, &"pistol", Vector2i(0, 0))
+	var face := FaceAction.new(unit, 0.0)
+
+	var overwatch_val: float = ResolutionSpeed.overwatch_speed(unit).current
+	var attack_val: float = ResolutionSpeed.resolve(attack, state).current
+	var face_val: float = ResolutionSpeed.resolve(face, state).current
+
+	assert_lt(overwatch_val, attack_val)
+	assert_lt(attack_val, face_val)

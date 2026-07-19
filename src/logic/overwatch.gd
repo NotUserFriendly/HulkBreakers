@@ -13,6 +13,18 @@ extends RefCounted
 ## number: the unit's own facing +/- this many degrees.
 const ARC_DEG := 45.0
 
+## taskblock-19 Pass A: the trigger's own base resolution speed — "an
+## overwatcher has already aimed and is waiting on a trigger, it should
+## resolve fast." Deliberately below a weapon's default `speed` (40.0,
+## `Part.speed`), which is itself below `FaceAction.SPEED` (100.0): the
+## intended default order is overwatch < attack < facing, lower resolves
+## first (`ResolutionSpeed`). Flagged placeholder, not a tuned number —
+## only the ORDER relative to the other two base speeds is the design
+## intent. Read through `ResolutionSpeed.overwatch_speed()`, never compared
+## directly, so personal_speed/family bonuses apply the same way they do
+## to any other contender.
+const SPEED := 20.0
+
 
 ## Fires every still-armed overwatcher (docs/09 taskblock06 D4: several
 ## can trigger off the same step) whose conditions are met against
