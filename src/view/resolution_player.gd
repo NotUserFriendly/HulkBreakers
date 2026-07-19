@@ -206,24 +206,44 @@ func _prime(events: Array[LogEvent]) -> void:
 ## `unit_id` if either is still missing (a genuinely first-ever animated
 ## unit has neither — nothing to animate from, a harmless one-time snap),
 ## then applies it. `move_event`, if this unit has one this turn, supplies
-## the real starting cell (`path[0]`) — nothing analogous exists for
-## orientation in the log data, so a truly first-ever facing change still
-## has no choice but to snap; what changed is that this is now written
-## ONCE, up front, rather than left for whichever event happens to run
-## first to (mis)infer on its own.
+## the real starting cell (`path[0]`) — what changed is that this is now
+## written ONCE, up front, rather than left for whichever event happens to
+## run first to (mis)infer on its own.
+##
+## taskblock-21 Pass G: orientation gets the SAME `move_event`-derived
+## treatment now, for the same reason `_display_cell` already does — a
+## real, reported bug: a unit whose first move this turn needed no
+## preceding `faced` event at all (it already happened to be facing that
+## way — a fresh spawn orientation lined up with its first move, say) used
+## to prime here from `unit.orientation`, which by THIS call's own time
+## (after resolution has already fully finished) is the turn's FINAL
+## orientation — wrong if this same turn re-faces again later (an attack,
+## a step-out's own return leg). `_play_slide` then read that same
+## too-late value for its whole traversal: the unit visibly slid toward
+## its real destination while facing wherever it turned to LATER instead.
+## `orientation_toward(path[0], path[1])` is exactly what the move itself
+## required to already be true — the same fact `apply_stepwise` itself
+## used to decide no re-face was needed — so it's a strictly more correct
+## fallback than the final state ever was. A turn with no move event at
+## all (pure in-place turning) still has nothing analogous to derive from
+## and keeps falling back to `unit.orientation`, unchanged.
 func _ensure_primed(unit_id: int, move_event: Variant) -> void:
 	var unit: Unit = battle.combat_state.find_unit(unit_id)
 	if unit == null:
 		return
+	var move_path: Array = (
+		(move_event as LogEvent).data.get("path", []) if move_event != null else []
+	)
 	if not _display_cell.has(unit_id):
 		var start_cell: Vector2i = unit.cell
-		if move_event != null:
-			var path: Array = (move_event as LogEvent).data.get("path", [])
-			if not path.is_empty():
-				start_cell = path[0]
+		if not move_path.is_empty():
+			start_cell = move_path[0]
 		_display_cell[unit_id] = start_cell
 	if not _display_orientation.has(unit_id):
-		_display_orientation[unit_id] = unit.orientation
+		var start_orientation: float = unit.orientation
+		if move_path.size() >= 2:
+			start_orientation = FaceAction.orientation_toward(move_path[0], move_path[1])
+		_display_orientation[unit_id] = start_orientation
 	_redraw(unit_id)
 
 

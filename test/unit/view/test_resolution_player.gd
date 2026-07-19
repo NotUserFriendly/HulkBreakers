@@ -415,6 +415,57 @@ func test_prime_never_uses_a_facing_events_own_target_as_its_fallback_default() 
 	)
 
 
+## taskblock-21 Pass G: a second, narrower priming bug in the same family
+## as the one above — a unit's FIRST-EVER animated turn whose FIRST move
+## needed no preceding faced event at all (it already happened to be
+## facing that way, e.g. straight off a fresh spawn orientation) BUT whose
+## SAME turn re-faces again LATER (an attack, a step-out's own return leg)
+## used to prime `_display_orientation` from `unit.orientation` — by
+## `_prime()`'s own call time, resolution has already fully finished, so
+## that's the turn's FINAL orientation, not what the unit was actually
+## facing during the move nobody logged a `faced` event for. `_play_slide`
+## then read that same wrong, too-late value for its whole traversal,
+## visibly sliding the unit toward its move's real destination while
+## facing wherever it ended up turning to LATER instead — "leaving the
+## unit facing its prior direction while it slides." A move event exists
+## here, so priming must derive the move's own actual direction
+## (`orientation_toward(path[0], path[1])`) instead of falling through to
+## the too-late `unit.orientation` — mirrors `_display_cell`'s own
+## existing `path[0]` fix one function up, just for orientation.
+func test_prime_derives_a_moves_own_direction_when_no_facing_event_preceded_it() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	assert_almost_eq(
+		attacker.orientation, 0.0, 0.0001, "sanity: a fresh unit's own default orientation"
+	)
+	var start_cell: Vector2i = attacker.cell
+	var moved_to := Vector2i(start_cell.x, start_cell.y + 1)
+	var move_direction: float = FaceAction.orientation_toward(start_cell, moved_to)
+	assert_almost_eq(
+		move_direction,
+		0.0,
+		0.0001,
+		"sanity: this move needs no re-face at all from the default orientation"
+	)
+	# Simulates the real post-resolution state: the SAME turn moved south
+	# with no re-face, then fired east, re-facing again — attacker.orientation
+	# is already the FINAL value by the time _prime() ever runs.
+	attacker.orientation = PI / 2.0
+	var events: Array[LogEvent] = [
+		_move_event(attacker, [start_cell, moved_to]), _faced_event(attacker, PI / 2.0)
+	]
+
+	player._prime(events)
+
+	assert_almost_eq(
+		player._display_orientation[attacker.id],
+		move_direction,
+		0.0001,
+		"must prime from the move's own direction, not the turn's later, unrelated final facing"
+	)
+
+
 ## A real, reported bug: a plain rotation around the VIEW's own local
 ## origin (world origin) swings a unit that isn't standing on cell (0,0)
 ## through a huge, wrong arc instead of turning in place ("fly off" /
