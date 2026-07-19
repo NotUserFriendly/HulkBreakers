@@ -232,6 +232,34 @@ func test_a_zero_duration_slide_visits_every_path_cell_and_ends_at_zero_offset()
 	assert_eq(view.position, Vector3.ZERO)
 
 
+## taskblock-19 Pass J: "no logic lives only in the viewed path" — the
+## real, load-bearing half of that claim is that playback never mutates
+## `CombatState` at all, it only reads it and nudges VIEW nodes
+## (`view.basis`/`view.position`). Proven directly: a unit's own
+## already-resolved real fields (cell/orientation/ap/hp — exactly what
+## resolve_until() would have set for real before play() ever runs) must
+## be byte-identical after replaying a move+face turn back as animation.
+func test_playback_never_mutates_the_real_combat_states_own_unit_fields() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	attacker.cell = Vector2i(2, 0)
+	attacker.orientation = PI / 2.0
+	attacker.ap = 3
+	var before_cell: Vector2i = attacker.cell
+	var before_orientation: float = attacker.orientation
+	var before_ap: int = attacker.ap
+	var before_hp: int = attacker.shell.root.hp
+
+	player._play_slide(_move_event(attacker, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]))
+	player._play_facing(_faced_event(attacker, PI / 2.0))
+
+	assert_eq(attacker.cell, before_cell)
+	assert_almost_eq(attacker.orientation, before_orientation, 0.0001)
+	assert_eq(attacker.ap, before_ap)
+	assert_eq(attacker.shell.root.hp, before_hp)
+
+
 func test_slide_segment_duration_derives_from_slide_ms_and_pacing_speed() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
