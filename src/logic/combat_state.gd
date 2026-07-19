@@ -1,17 +1,23 @@
 class_name CombatState
 extends RefCounted
 
+## taskblock-18 C2: "units within the same speed band resolve
+## simultaneously for playback... a band tolerance (units within epsilon
+## speed) groups them; tunable, flagged default." See simultaneous_group()
+## below.
+const SIMULTANEOUS_BAND_TOLERANCE := 1.0
+
 var grid: Grid
-var units: Array[Unit] = []  # turn order
+var units: Array[Unit] = []  # the roster — no longer literally turn order, see below
 var squads: Dictionary = {}  # squad_id(int) -> Array[Unit]
 ## docs/10 taskblock02 F1: squad_id(int) -> Enums.SquadController. Absent
 ## entries default to HUMAN (controller_for) — "Control All Squads" is
 ## every squad's starting state, an override never has to opt in for it.
 var squad_controllers: Dictionary = {}
-var turn_index: int = 0
-## The actual round number (docs/09 LogEvent.turn), distinct from turn_index
-## (a position in the turn-order array). Incremented in advance_turn() each
-## time turn order wraps back to the front, not once per unit's turn.
+## The actual round number (docs/09 LogEvent.turn) — a round is "every
+## living unit has acted once," not "one more unit acted"; incremented in
+## advance_turn() only when the acted-this-round set exhausts, never on
+## every single turn.
 var round_number: int = 0
 var action_log: Array[String] = []
 var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0}
@@ -41,6 +47,19 @@ var wreckage_pool: Array[Part] = [
 var is_preview: bool = false
 
 var _next_id: int = 0
+## taskblock-18 C1: "turn order within a round is by resolution speed —
+## fastest unit acts first... the SAME speed the resolver uses, not a
+## second stat," replacing the old squad-sequential array-index walk.
+## The id of whichever unit currently has AP/MP live; -1 before the very
+## first turn of a round ever starts (an empty roster). Never trust a
+## stored Unit reference across states (docs/09) — `current_unit()` always
+## re-resolves through `find_unit()`.
+var _current_unit_id: int = -1
+## Unit ids that have already had `_start_turn()` called on them THIS
+## round (the current unit included, from the moment its turn began) —
+## cleared the instant `advance_turn()` finds no living, not-yet-acted
+## candidate left and starts a fresh round.
+var _acted_this_round: Array[int] = []
 
 
 ## `combat_seed` seeds all rolls made during this fight (Appendix A: hit
@@ -51,8 +70,9 @@ func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) 
 	rng.seed = combat_seed
 	for unit: Unit in initial_units:
 		add_unit(unit)
-	if not units.is_empty():
-		_start_turn(units[0])
+	var living: Array[Unit] = units.filter(func(u: Unit) -> bool: return u.alive)
+	if not living.is_empty():
+		_begin_turn(_fastest_by_initiative(living))
 
 
 ## Registers a unit (assigning it an id if it doesn't have one), occupies its
@@ -89,7 +109,7 @@ func kill_unit(unit: Unit) -> void:
 
 
 func current_unit() -> Unit:
-	return units[turn_index]
+	return find_unit(_current_unit_id)
 
 
 ## The unit with this id, or null. Actions resolve their target through
@@ -140,7 +160,8 @@ func dup() -> CombatState:
 	cloned.wreckage_pool = wreckage_pool
 	for unit: Unit in cloned_units:
 		cloned.add_unit(unit)
-	cloned.turn_index = turn_index
+	cloned._current_unit_id = _current_unit_id
+	cloned._acted_this_round = _acted_this_round.duplicate()
 	cloned.round_number = round_number
 	return cloned
 
@@ -292,19 +313,79 @@ func _start_turn(unit: Unit) -> void:
 			)
 
 
-## Advances to the next living unit in turn order, resetting its AP/MP.
-## Bumps round_number whenever this wraps back to the front of turn order —
-## a round is "everyone's had a turn," not "one more unit acted."
+## Advances to the next living unit by INITIATIVE (taskblock-18 C1:
+## fastest resolution speed first, not the old squad-sequential array
+## walk), resetting its AP/MP. Bumps round_number and clears the
+## acted-this-round set the instant every living unit has gone once —
+## "everyone's had a turn," not "one more unit acted."
 func advance_turn() -> void:
-	var n: int = units.size()
-	if n == 0:
+	var living: Array[Unit] = units.filter(func(u: Unit) -> bool: return u.alive)
+	if living.is_empty():
 		return
-	var previous_index: int = turn_index
-	for i in range(1, n + 1):
-		var idx: int = (previous_index + i) % n
-		if units[idx].alive:
-			if idx <= previous_index:
-				round_number += 1
-			turn_index = idx
-			_start_turn(units[idx])
-			return
+	var candidates: Array[Unit] = living.filter(
+		func(u: Unit) -> bool: return not _acted_this_round.has(u.id)
+	)
+	if candidates.is_empty():
+		round_number += 1
+		_acted_this_round.clear()
+		candidates = living
+	_begin_turn(_fastest_by_initiative(candidates))
+
+
+func _begin_turn(unit: Unit) -> void:
+	_current_unit_id = unit.id
+	_acted_this_round.append(unit.id)
+	_start_turn(unit)
+
+
+## taskblock-18 C1: fastest-first — lower ResolutionSpeed.initiative()
+## acts sooner (A2's own "lower resolves first" direction), tie-broken by
+## unit.id ascending for deterministic replay. personal_speed is already
+## the entirety of initiative() (no action is chosen yet at turn-start),
+## so a tie on speed here is a tie on both of Pass B's own first two
+## tie-break terms at once — id is the only thing left to break it with.
+static func _fastest_by_initiative(candidates: Array[Unit]) -> Unit:
+	var best: Unit = candidates[0]
+	var best_speed: float = ResolutionSpeed.initiative(best).current
+	for candidate: Unit in candidates.slice(1):
+		var speed: float = ResolutionSpeed.initiative(candidate).current
+		var better: bool = speed < best_speed
+		if not better and is_equal_approx(speed, best_speed):
+			better = candidate.id < best.id
+		if better:
+			best = candidate
+			best_speed = speed
+	return best
+
+
+## taskblock-18 C2: "units within the same speed band resolve
+## simultaneously for playback... a band tolerance (units within epsilon
+## speed) groups them; tunable, flagged default." "Equal speed =
+## simultaneous is not a separate feature — it's the ordering already
+## expressing a tie," so this is a pure grouping query, not a second
+## mechanism: LOGIC-level only (this pass's own scope) — actually
+## skipping the inter-turn pause for a group during playback is a
+## BoutRunner/ResolutionPlayer change flagged for later, untouched here.
+##
+## Every LIVING unit (this one included) whose own initiative value falls
+## within SIMULTANEOUS_BAND_TOLERANCE of `unit`'s — ordered fastest-first,
+## then by id, the same order `_fastest_by_initiative` would resolve them
+## in one at a time, so a caller can present the group without changing
+## what "next" means.
+func simultaneous_group(unit: Unit) -> Array[Unit]:
+	var living: Array[Unit] = units.filter(func(u: Unit) -> bool: return u.alive)
+	var target_speed: float = ResolutionSpeed.initiative(unit).current
+	var group: Array[Unit] = living.filter(
+		func(u: Unit) -> bool:
+			var speed: float = ResolutionSpeed.initiative(u).current
+			return absf(speed - target_speed) <= SIMULTANEOUS_BAND_TOLERANCE
+	)
+	group.sort_custom(
+		func(a: Unit, b: Unit) -> bool:
+			var speed_a: float = ResolutionSpeed.initiative(a).current
+			var speed_b: float = ResolutionSpeed.initiative(b).current
+			if not is_equal_approx(speed_a, speed_b):
+				return speed_a < speed_b
+			return a.id < b.id
+	)
+	return group

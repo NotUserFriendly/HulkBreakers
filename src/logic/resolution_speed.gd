@@ -24,10 +24,23 @@ const STAT_ID: StringName = &"resolution_speed"
 ## no personal_speed/family_bonus term; `base_action_speed` alone still
 ## resolves.
 static func resolve(action: CombatAction, state: CombatState) -> StatValue:
-	var context := ResolverContext.new()
-	context.base = action.speed(state)
+	return _resolve(action.speed(state), action, state.find_unit(action.unit_id()))
 
-	var unit: Unit = state.find_unit(action.unit_id())
+
+## taskblock-18 C1: a unit's own INITIATIVE, for turn order — the exact
+## same formula, just with no action chosen yet (TACTICS hasn't happened
+## for this unit's turn) so `base_action_speed` is 0 and
+## `action_family_bonus` is queried with a null action (today's hook
+## ignores its action argument regardless, A3). "The same speed the
+## resolver uses, not a second stat."
+static func initiative(unit: Unit) -> StatValue:
+	return _resolve(0.0, null, unit)
+
+
+static func _resolve(base_action_speed: float, action: CombatAction, unit: Unit) -> StatValue:
+	var context := ResolverContext.new()
+	context.base = base_action_speed
+
 	if unit != null:
 		var sources: Array[ModSource] = []
 		var family_bonus: float = action_family_bonus(action, unit)

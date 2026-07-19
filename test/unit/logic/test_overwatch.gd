@@ -110,13 +110,14 @@ func test_the_trigger_fires_at_the_first_qualifying_cell_not_the_nearest() -> vo
 	# orientation PI/2: BodyProjector.forward_for(0,1) (docs/09 taskblock07
 	# Pass B1's authoritative rotation) at +90 deg faces world +X, the axis
 	# the mover's whole path runs along.
-	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), PI / 2.0, 0)
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), PI / 2.0, 1)
 	var overwatcher: Unit = built.unit
-	var mover: Unit = _make_mover(Vector2i(8, 0), 1)
+	var mover: Unit = _make_mover(Vector2i(8, 0), 0)
 	var grid := Grid.new(20, 20)
-	# mover goes FIRST so it (not the overwatcher) is _start_turn()'s
-	# units[0] target — the queued MoveAction requires state.current_unit()
-	# == mover to be legal.
+	# taskblock-18 C1: turn order is by initiative now, not array position
+	# — both units tie on speed (default personal_speed), so mover's own
+	# LOWER id (0 vs the overwatcher's 1) is what makes it go first. The
+	# queued MoveAction requires state.current_unit() == mover to be legal.
 	var state := CombatState.new(grid, [mover, overwatcher])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	mover.ap = 6
