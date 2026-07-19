@@ -21,9 +21,11 @@ const GRID_WIDTH := 32
 const GRID_HEIGHT := 24
 
 
-## taskblock-16 Pass E: each team is a LIST of per-unit profiles now, not
-## one profile repeated `count` times — "the list length IS the count."
-## An empty list, or any null entry within one (a slot the menu never
+## taskblock-17 Pass D: playstyle moved from per-team to per-bot — each
+## team is now a LIST of `BoutRosterEntry` (profile + that bot's own
+## playstyle), not a list of profiles plus one shared playstyle. "The
+## list length IS the count" (taskblock-16 E) still holds. An empty list,
+## or any entry within one carrying no profile (a slot the menu never
 ## actually produces — an [+ Add] row only appends once a profile is
 ## picked — but `build_bout` itself never trusts its caller to enforce
 ## that), is refused with a named `error` — never a crash, matching every
@@ -32,15 +34,11 @@ const GRID_HEIGHT := 24
 ## on success, or `{"error": "<reason>"}` (no state/mission keys at all)
 ## on refusal.
 static func build_bout(
-	profiles_a: Array[BotPreset],
-	playstyle_a: StringName,
-	profiles_b: Array[BotPreset],
-	playstyle_b: StringName,
-	map_seed: int
+	roster_a: Array[BoutRosterEntry], roster_b: Array[BoutRosterEntry], map_seed: int
 ) -> Dictionary:
-	if profiles_a.is_empty() or profiles_b.is_empty():
+	if roster_a.is_empty() or roster_b.is_empty():
 		return {"error": "both squads need at least one unit"}
-	if profiles_a.any(_is_null) or profiles_b.any(_is_null):
+	if roster_a.any(_entry_missing_profile) or roster_b.any(_entry_missing_profile):
 		return {"error": "every roster entry needs a chosen profile"}
 
 	var rng := RandomNumberGenerator.new()
@@ -50,8 +48,8 @@ static func build_bout(
 	var spawn_b_cells: Array[Vector2i] = _cells_of_terrain(grid, Enums.TerrainType.SPAWN_B)
 
 	var units: Array[Unit] = []
-	units.append_array(_spawn_squad(profiles_a, playstyle_a, 0, spawn_a_cells))
-	units.append_array(_spawn_squad(profiles_b, playstyle_b, 1, spawn_b_cells))
+	units.append_array(_spawn_squad(roster_a, 0, spawn_a_cells))
+	units.append_array(_spawn_squad(roster_b, 1, spawn_b_cells))
 	if units.is_empty():
 		return {"error": "neither roster could actually assemble (bad template_id?)"}
 
@@ -66,25 +64,25 @@ static func build_bout(
 	return {"state": state, "mission": mission, "error": ""}
 
 
-static func _is_null(profile: BotPreset) -> bool:
-	return profile == null
+static func _entry_missing_profile(entry: BoutRosterEntry) -> bool:
+	return entry.profile == null
 
 
 static func _spawn_squad(
-	profiles: Array[BotPreset], playstyle: StringName, squad_id: int, spawn_cells: Array[Vector2i]
+	roster: Array[BoutRosterEntry], squad_id: int, spawn_cells: Array[Vector2i]
 ) -> Array[Unit]:
 	var units: Array[Unit] = []
-	for i in range(profiles.size()):
-		var profile: BotPreset = profiles[i]
+	for i in range(roster.size()):
+		var entry: BoutRosterEntry = roster[i]
 		var matrix := Matrix.new()
-		matrix.id = StringName("%s_%d" % [profile.preset_name, i])
-		matrix.playstyle = playstyle
+		matrix.id = StringName("%s_%d" % [entry.profile.preset_name, i])
+		matrix.playstyle = entry.playstyle
 		var cell: Vector2i = (
 			spawn_cells[i % spawn_cells.size()]
 			if not spawn_cells.is_empty()
 			else Vector2i(i, squad_id)
 		)
-		var unit: Unit = DeepStrike.assemble_from_preset(profile, matrix, cell, squad_id)
+		var unit: Unit = DeepStrike.assemble_from_preset(entry.profile, matrix, cell, squad_id)
 		if unit != null:
 			units.append(unit)
 	return units

@@ -17,11 +17,14 @@ extends ControlOverlay
 ## taskblock-16 Pass E: each team used to be one profile dropdown plus a
 ## count SpinBox (one profile repeated N times). Now each team is an
 ## arbitrarily expanding LIST of per-unit entries — no count field at
-## all, "add/remove IS the count." Each entry is its own OptionButton
-## (clicking it reopens the same dropdown to REPLACE that slot); a
-## trailing "+ Add" OptionButton appends a new entry when something other
-## than its own placeholder item is picked; a "[-]" button next to each
-## entry removes exactly that one.
+## all, "add/remove IS the count."
+##
+## taskblock-17 Pass D: each entry row widened from `[Bot ▾][-]` to
+## `[Bot ▾][AI ▾][D][-]` — playstyle moved from one shared per-team
+## dropdown to a per-bot one on each row (`BoutSetup.build_bout` already
+## takes a `BoutRosterEntry` per bot, profile + that bot's own
+## playstyle), and `[D]` duplicates the row (same profile + playstyle)
+## right below itself, the fast way to build "4 of these, 1 of those."
 
 const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER", &"SKIRMISHER", &"MARKSMAN"]
 ## Flagged UX default, not a spec literal: a completely empty menu would
@@ -29,7 +32,10 @@ const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER", &"SKIRMIS
 ## same as always), but starting both teams pre-populated keeps "open the
 ## menu, hit Start Bout" a one-click smoke test the way the old
 ## profile+count default was — add/remove is still the ONLY way to change
-## the roster afterward, this only seeds its starting contents.
+## the roster afterward, this only seeds its starting contents. Squad B
+## starts on COVER_SEEKER (PLAYSTYLES[1]), squad A on the default
+## AGGRESSIVE, so a fresh Start Bout already shows two playstyles facing
+## off, the same as the old per-team default did.
 const DEFAULT_STARTING_COUNT := 2
 ## "min 5 rows shown for readability" — real entries plus the trailing
 ## Add row plus blank spacer rows, never fewer than this many rows tall.
@@ -41,12 +47,10 @@ var battle: BattleScene
 var _profiles_by_family: Dictionary = {}
 var _ordered_presets: Array[BotPreset] = []
 
-var _roster_a: Array[BotPreset] = []
-var _roster_b: Array[BotPreset] = []
+var _roster_a: Array[BoutRosterEntry] = []
+var _roster_b: Array[BoutRosterEntry] = []
 var _rows_a: VBoxContainer
 var _rows_b: VBoxContainer
-var _playstyle_a_dropdown: OptionButton
-var _playstyle_b_dropdown: OptionButton
 var _seed_field: LineEdit
 var _error_label: Label
 
@@ -57,8 +61,8 @@ func setup(p_battle: BattleScene) -> void:
 	_build_ordered_presets()
 	for i in range(DEFAULT_STARTING_COUNT):
 		if not _ordered_presets.is_empty():
-			_roster_a.append(_ordered_presets[0])
-			_roster_b.append(_ordered_presets[0])
+			_roster_a.append(BoutRosterEntry.new(_ordered_presets[0], PLAYSTYLES[0]))
+			_roster_b.append(BoutRosterEntry.new(_ordered_presets[0], PLAYSTYLES[1]))
 	_build_ui()
 
 
@@ -96,8 +100,6 @@ func _build_ui() -> void:
 	squad_a.add_child(squad_a_label)
 	_rows_a = VBoxContainer.new()
 	squad_a.add_child(_rows_a)
-	_playstyle_a_dropdown = _playstyle_dropdown()
-	squad_a.add_child(_playstyle_a_dropdown)
 
 	var squad_b := VBoxContainer.new()
 	squads.add_child(squad_b)
@@ -106,11 +108,6 @@ func _build_ui() -> void:
 	squad_b.add_child(squad_b_label)
 	_rows_b = VBoxContainer.new()
 	squad_b.add_child(_rows_b)
-	_playstyle_b_dropdown = _playstyle_dropdown()
-	squad_b.add_child(_playstyle_b_dropdown)
-	# "COVER_SEEKER" — the second entry — as squad B's own default, so a
-	# fresh Start Bout already shows the two playstyles facing off.
-	_playstyle_b_dropdown.selected = 1
 
 	var seed_row := HBoxContainer.new()
 	layout.add_child(seed_row)
@@ -134,7 +131,7 @@ func _build_ui() -> void:
 	_rebuild_team(1)
 
 
-func _roster(squad_id: int) -> Array[BotPreset]:
+func _roster(squad_id: int) -> Array[BoutRosterEntry]:
 	return _roster_a if squad_id == 0 else _roster_b
 
 
@@ -142,9 +139,11 @@ func _rows(squad_id: int) -> VBoxContainer:
 	return _rows_a if squad_id == 0 else _rows_b
 
 
-## "Adding appends a unit" — always to the end of that team's own list.
+## "Adding appends a unit" — always to the end of that team's own list,
+## starting on the default playstyle (its own row's [AI ▾] can change it
+## afterward, same as any other entry's).
 func _add_to_squad(squad_id: int, preset: BotPreset) -> void:
-	_roster(squad_id).append(preset)
+	_roster(squad_id).append(BoutRosterEntry.new(preset, PLAYSTYLES[0]))
 	_rebuild_team(squad_id)
 
 
@@ -155,9 +154,26 @@ func _remove_from_squad(squad_id: int, index: int) -> void:
 	_rebuild_team(squad_id)
 
 
-## "Clicking a name replaces it" — same slot, new profile.
-func _replace_in_squad(squad_id: int, index: int, preset: BotPreset) -> void:
-	_roster(squad_id)[index] = preset
+## "Clicking a name replaces it" — same slot, new profile; that entry's
+## own already-chosen playstyle is untouched.
+func _replace_profile_in_squad(squad_id: int, index: int, preset: BotPreset) -> void:
+	_roster(squad_id)[index].profile = preset
+	_rebuild_team(squad_id)
+
+
+## The `[AI ▾]` half of a row: same slot, new playstyle, profile untouched.
+func _replace_playstyle_in_squad(squad_id: int, index: int, playstyle: StringName) -> void:
+	_roster(squad_id)[index].playstyle = playstyle
+	_rebuild_team(squad_id)
+
+
+## "`[D]` — duplicate. Appends a copy of that entry (same profile + same
+## playstyle) below it." — inserted right after its own index, not just
+## tacked onto the end of the list, so "duplicate" reads as literally
+## "one more row like this one, right here."
+func _duplicate_in_squad(squad_id: int, index: int) -> void:
+	var source: BoutRosterEntry = _roster(squad_id)[index]
+	_roster(squad_id).insert(index + 1, BoutRosterEntry.new(source.profile, source.playstyle))
 	_rebuild_team(squad_id)
 
 
@@ -169,21 +185,37 @@ func _preset_label(preset: BotPreset) -> String:
 	)
 
 
-## One OptionButton per already-added roster entry (pre-selected to that
+## One row per already-added roster entry: `[Bot ▾]` (pre-selected to the
 ## entry's own current profile — picking a different item REPLACES it),
-## plus a "[-]" to remove it outright.
+## `[AI ▾]` (same, for playstyle), `[D]` to duplicate, `[-]` to remove.
 func _entry_row(squad_id: int, index: int) -> HBoxContainer:
+	var entry: BoutRosterEntry = _roster(squad_id)[index]
 	var row := HBoxContainer.new()
 
-	var dropdown := OptionButton.new()
+	var profile_dropdown := OptionButton.new()
 	for preset: BotPreset in _ordered_presets:
-		dropdown.add_item(_preset_label(preset))
-	dropdown.selected = _ordered_presets.find(_roster(squad_id)[index])
-	dropdown.item_selected.connect(
+		profile_dropdown.add_item(_preset_label(preset))
+	profile_dropdown.selected = _ordered_presets.find(entry.profile)
+	profile_dropdown.item_selected.connect(
 		func(item_index: int) -> void:
-			_replace_in_squad(squad_id, index, _ordered_presets[item_index])
+			_replace_profile_in_squad(squad_id, index, _ordered_presets[item_index])
 	)
-	row.add_child(dropdown)
+	row.add_child(profile_dropdown)
+
+	var playstyle_dropdown := OptionButton.new()
+	for playstyle: StringName in PLAYSTYLES:
+		playstyle_dropdown.add_item(String(playstyle))
+	playstyle_dropdown.selected = PLAYSTYLES.find(entry.playstyle)
+	playstyle_dropdown.item_selected.connect(
+		func(item_index: int) -> void:
+			_replace_playstyle_in_squad(squad_id, index, PLAYSTYLES[item_index])
+	)
+	row.add_child(playstyle_dropdown)
+
+	var duplicate_button := Button.new()
+	duplicate_button.text = "D"
+	duplicate_button.pressed.connect(_duplicate_in_squad.bind(squad_id, index))
+	row.add_child(duplicate_button)
 
 	var remove_button := Button.new()
 	remove_button.text = "-"
@@ -217,7 +249,7 @@ func _rebuild_team(squad_id: int) -> void:
 		rows.remove_child(child)
 		child.queue_free()
 
-	var roster: Array[BotPreset] = _roster(squad_id)
+	var roster: Array[BoutRosterEntry] = _roster(squad_id)
 	for index in range(roster.size()):
 		rows.add_child(_entry_row(squad_id, index))
 	rows.add_child(_add_row(squad_id))
@@ -229,22 +261,9 @@ func _rebuild_team(squad_id: int) -> void:
 		rows.add_child(spacer)
 
 
-func _playstyle_dropdown() -> OptionButton:
-	var dropdown := OptionButton.new()
-	for playstyle: StringName in PLAYSTYLES:
-		dropdown.add_item(String(playstyle))
-	return dropdown
-
-
 func _on_start_bout_pressed() -> void:
 	var map_seed: int = int(_seed_field.text) if _seed_field.text.is_valid_int() else 0
-	var result: Dictionary = BoutSetup.build_bout(
-		_roster_a,
-		PLAYSTYLES[_playstyle_a_dropdown.selected],
-		_roster_b,
-		PLAYSTYLES[_playstyle_b_dropdown.selected],
-		map_seed
-	)
+	var result: Dictionary = BoutSetup.build_bout(_roster_a, _roster_b, map_seed)
 	if result.error != "":
 		_error_label.text = result.error
 		return

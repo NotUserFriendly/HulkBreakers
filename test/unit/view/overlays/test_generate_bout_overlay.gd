@@ -9,10 +9,15 @@ extends GutTest
 ##
 ## taskblock-16 Pass E: teams are expanding lists now, no count field —
 ## these tests drive the same `_add_to_squad`/`_remove_from_squad`/
-## `_replace_in_squad` handlers the row widgets themselves call, the same
-## "call the handler directly" convention `_on_start_bout_pressed` already
-## used above (this menu is data-driven, not spatial input — real click
-## simulation is for gameplay tests like test_battle_scene_input.gd).
+## `_replace_profile_in_squad` handlers the row widgets themselves call,
+## the same "call the handler directly" convention `_on_start_bout_pressed`
+## already used above (this menu is data-driven, not spatial input — real
+## click simulation is for gameplay tests like test_battle_scene_input.gd).
+##
+## taskblock-17 Pass D: playstyle moved from one per-team dropdown to a
+## per-bot one on each row (`_replace_playstyle_in_squad`), and each row
+## gained a duplicate handler (`_duplicate_in_squad`) — rosters are
+## `Array[BoutRosterEntry]` now, not `Array[BotPreset]`.
 
 
 func before_each() -> void:
@@ -55,12 +60,18 @@ func test_a_variant_is_listed_under_its_own_family_label() -> void:
 
 ## Both teams start pre-populated (a flagged UX default, `DEFAULT_STARTING_COUNT`
 ## — see the overlay's own doc comment) rather than empty, so a fresh
-## Start Bout is still a one-click smoke test.
+## Start Bout is still a one-click smoke test. Squad B starts on
+## COVER_SEEKER, squad A on AGGRESSIVE — "two playstyles facing off" —
+## same intent the old per-team default carried, now expressed per-bot.
 func test_setup_seeds_both_rosters_with_a_starting_default() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 
 	assert_eq(overlay._roster_a.size(), GenerateBoutOverlay.DEFAULT_STARTING_COUNT)
 	assert_eq(overlay._roster_b.size(), GenerateBoutOverlay.DEFAULT_STARTING_COUNT)
+	for entry: BoutRosterEntry in overlay._roster_a:
+		assert_eq(entry.playstyle, &"AGGRESSIVE")
+	for entry: BoutRosterEntry in overlay._roster_b:
+		assert_eq(entry.playstyle, &"COVER_SEEKER")
 
 
 ## "Adding appends a unit."
@@ -72,7 +83,7 @@ func test_add_to_squad_appends_to_the_end_of_the_roster() -> void:
 	overlay._add_to_squad(0, preset)
 
 	assert_eq(overlay._roster_a.size(), starting_size + 1)
-	assert_eq(overlay._roster_a[overlay._roster_a.size() - 1], preset)
+	assert_eq(overlay._roster_a[overlay._roster_a.size() - 1].profile, preset)
 
 
 ## "Removing drops exactly that entry" — every other entry keeps its own
@@ -80,9 +91,11 @@ func test_add_to_squad_appends_to_the_end_of_the_roster() -> void:
 func test_remove_from_squad_drops_exactly_that_entry() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 	overlay._roster_a = [
-		overlay._ordered_presets[0], overlay._ordered_presets[1], overlay._ordered_presets[0]
+		BoutRosterEntry.new(overlay._ordered_presets[0], &"AGGRESSIVE"),
+		BoutRosterEntry.new(overlay._ordered_presets[1], &"AGGRESSIVE"),
+		BoutRosterEntry.new(overlay._ordered_presets[0], &"AGGRESSIVE"),
 	]
-	var kept_middle: BotPreset = overlay._roster_a[1]
+	var kept_middle: BoutRosterEntry = overlay._roster_a[1]
 
 	overlay._remove_from_squad(0, 0)
 
@@ -90,17 +103,56 @@ func test_remove_from_squad_drops_exactly_that_entry() -> void:
 	assert_eq(overlay._roster_a[0], kept_middle, "the surviving entries must not shift identity")
 
 
-## "Clicking a name replaces it" — same slot, new profile, roster size
-## unchanged.
-func test_replace_in_squad_swaps_the_profile_at_that_index() -> void:
+## "Clicking a name replaces it" — same slot, new profile, its own
+## playstyle untouched, roster size unchanged.
+func test_replace_profile_in_squad_swaps_the_profile_at_that_index() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
-	overlay._roster_a = [overlay._ordered_presets[0]]
+	overlay._roster_a = [BoutRosterEntry.new(overlay._ordered_presets[0], &"MARKSMAN")]
 	var replacement: BotPreset = overlay._ordered_presets[1]
 
-	overlay._replace_in_squad(0, 0, replacement)
+	overlay._replace_profile_in_squad(0, 0, replacement)
 
 	assert_eq(overlay._roster_a.size(), 1)
-	assert_eq(overlay._roster_a[0], replacement)
+	assert_eq(overlay._roster_a[0].profile, replacement)
+	assert_eq(
+		overlay._roster_a[0].playstyle, &"MARKSMAN", "replacing the profile must not touch AI"
+	)
+
+
+## taskblock-17 Pass D: "`[AI ▾]` — per-bot playstyle" — same slot, new
+## playstyle, profile untouched.
+func test_replace_playstyle_in_squad_swaps_the_playstyle_at_that_index() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	var preset: BotPreset = overlay._ordered_presets[0]
+	overlay._roster_a = [BoutRosterEntry.new(preset, &"AGGRESSIVE")]
+
+	overlay._replace_playstyle_in_squad(0, 0, &"SKIRMISHER")
+
+	assert_eq(overlay._roster_a.size(), 1)
+	assert_eq(overlay._roster_a[0].playstyle, &"SKIRMISHER")
+	assert_eq(overlay._roster_a[0].profile, preset, "changing AI must not touch the profile")
+
+
+## taskblock-17 Pass D: "`[D]` — duplicate. Appends a copy of that entry
+## (same profile + same playstyle) below it."
+func test_duplicate_in_squad_inserts_an_identical_entry_right_below() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	var preset: BotPreset = overlay._ordered_presets[0]
+	var other: BotPreset = overlay._ordered_presets[1]
+	overlay._roster_a = [
+		BoutRosterEntry.new(preset, &"MARKSMAN"), BoutRosterEntry.new(other, &"AGGRESSIVE")
+	]
+
+	overlay._duplicate_in_squad(0, 0)
+
+	assert_eq(overlay._roster_a.size(), 3)
+	assert_eq(overlay._roster_a[0].profile, preset)
+	assert_eq(overlay._roster_a[0].playstyle, &"MARKSMAN")
+	assert_eq(
+		overlay._roster_a[1].profile, preset, "the duplicate must land directly below its source"
+	)
+	assert_eq(overlay._roster_a[1].playstyle, &"MARKSMAN")
+	assert_eq(overlay._roster_a[2].profile, other, "every later entry keeps its own position")
 
 
 ## "No count field remains" — SpinBox is gone outright, not just unused.
@@ -109,6 +161,19 @@ func test_no_count_field_exists_on_the_overlay() -> void:
 
 	assert_false("_count_a_field" in overlay, "the old count SpinBox must be fully retired")
 	assert_false("_count_b_field" in overlay, "the old count SpinBox must be fully retired")
+
+
+## taskblock-17 Pass D: the old per-team playstyle dropdowns are fully
+## retired, not just unused — playstyle lives per-row now.
+func test_no_per_team_playstyle_dropdown_exists_on_the_overlay() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+
+	assert_false(
+		"_playstyle_a_dropdown" in overlay, "the old per-team playstyle dropdown must be retired"
+	)
+	assert_false(
+		"_playstyle_b_dropdown" in overlay, "the old per-team playstyle dropdown must be retired"
+	)
 
 
 ## "An empty team is refused, not crashed."
@@ -138,3 +203,24 @@ func test_a_valid_start_bout_hands_off_to_a_live_spectator_overlay() -> void:
 	var spectator: SpectatorOverlay = battle.overlay as SpectatorOverlay
 	assert_not_null(spectator.runner)
 	assert_eq(spectator.runner.state, battle.combat_state, "the same bout, not a stale reference")
+
+
+## taskblock-17 Pass D: "each bot entry carries its own playstyle into
+## the built bout" — end to end, through the real Start Bout path.
+func test_start_bout_threads_each_entrys_own_playstyle_into_the_built_units() -> void:
+	var wired: Dictionary = _menu()
+	var overlay: GenerateBoutOverlay = wired.overlay
+	var preset: BotPreset = overlay._ordered_presets[0]
+	overlay._roster_a = [
+		BoutRosterEntry.new(preset, &"MARKSMAN"), BoutRosterEntry.new(preset, &"SKIRMISHER")
+	]
+	overlay._roster_b = [BoutRosterEntry.new(preset, &"COVER_SEEKER")]
+
+	overlay._on_start_bout_pressed()
+
+	var state: CombatState = wired.battle.combat_state
+	var squad_a: Array[Unit] = state.units.filter(func(u: Unit) -> bool: return u.squad_id == 0)
+	assert_eq(squad_a[0].matrix.playstyle, &"MARKSMAN")
+	assert_eq(squad_a[1].matrix.playstyle, &"SKIRMISHER")
+	var squad_b: Array[Unit] = state.units.filter(func(u: Unit) -> bool: return u.squad_id == 1)
+	assert_eq(squad_b[0].matrix.playstyle, &"COVER_SEEKER")
