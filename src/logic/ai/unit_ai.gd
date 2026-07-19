@@ -194,7 +194,23 @@ static func _plan_ranged(
 			if step_out_queue != null:
 				for action: CombatAction in step_out_queue.actions:
 					queue.enqueue(action, state)
-		_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
+		# taskblock-19 Pass F: "the AI holds when its best option is wait
+		# for an ally to move first." Triggers whenever the turn ends with
+		# NO shot fired specifically because its own ally was in the way —
+		# independent of whether it also repositioned (moving to a better
+		# defensive spot and deferring the shot are not in conflict). A
+		# real HoldAction (not a heuristic-only weight): `queue.enqueue`
+		# re-validates it can legally hold before committing.
+		var attack_fired: bool = queue.actions.slice(queued_before).any(
+			func(action: CombatAction) -> bool: return action is AttackAction
+		)
+		var held: bool = false
+		if not attack_fired and final_blocked:
+			held = queue.enqueue(HoldAction.new(unit), state)
+		if not held:
+			_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
+			queue.enqueue(EndTurnAction.new(unit), state)
+		return queue
 
 	queue.enqueue(EndTurnAction.new(unit), state)
 	return queue

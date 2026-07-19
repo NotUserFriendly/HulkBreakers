@@ -51,6 +51,7 @@ static func all(log_path: String) -> Array[Dictionary]:
 		# firing cell instead of aiming.
 		{"trigger": "Scroll", "action": "cycle step-out cell (while stepping out)"},
 		{"trigger": "button", "action": "end turn"},
+		{"trigger": "button", "action": "hold (act after the next ally)"},
 		{"trigger": "RMB drag", "action": "orbit (locked while aiming)"},
 		{"trigger": "MMB drag", "action": "pan (locked while aiming)"},
 		{"trigger": "Scroll", "action": "zoom (while not aiming)"},

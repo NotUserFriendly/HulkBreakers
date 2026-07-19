@@ -1,9 +1,14 @@
-# gdlint:disable=max-public-methods
+# gdlint:disable=max-public-methods,max-file-lines
 # docs/10 taskblock06 G2: this is the one class in the project that adds a
 # public method per interaction primitive by design (one per input/UI entry
 # point — see the class doc comment below) — gdlintrc's project-wide
 # max-public-methods stays a meaningful gate for every other class, so the
-# override is scoped to this file alone rather than raised globally.
+# override is scoped to this file alone rather than raised globally. Same
+# reasoning extends the override to max-file-lines (taskblock-19 Pass F):
+# one more primitive is one more method, and this file's own line count
+# grows with the interaction surface it's the single thin shell for, not
+# with sloppiness — splitting it is a real refactor to consider, not
+# something to force through a line-count gate one taskblock at a time.
 class_name TacticsController
 extends Node
 
@@ -830,6 +835,23 @@ func cancel_aim() -> void:
 ## resulting events back (docs/10 Phase 12.4); call unlock_input() once
 ## that's done.
 func end_turn() -> void:
+	_queue_final_action_and_resolve(selection.queue_end_turn)
+
+
+## taskblock-19 Pass F: "available to AI and player." Same shape as
+## end_turn() — a no-op if holding isn't legal (HoldAction.is_legal()
+## decides that, never duplicated here).
+func hold() -> void:
+	_queue_final_action_and_resolve(selection.queue_hold)
+
+
+## Shared by end_turn()/hold(): queue the one action that ends this
+## unit's say in TACTICS, then resolve the whole queue for real —
+## MoveHooks wires both Overwatch's real trigger and Suppression's
+## attack-of-opportunity onto resolve_until's mid_move_hook seam (kept in
+## a local; see MoveHooks' own doc comment on why the Callable can't
+## stand alone).
+func _queue_final_action_and_resolve(queue_final_action: Callable) -> void:
 	if input_locked or selection == null or selection.selected_unit == null:
 		return
 	if aiming_at != null:
@@ -841,13 +863,7 @@ func end_turn() -> void:
 	input_locked = true
 	var sink := MemorySink.new()
 	selection.state.combat_log.add_sink(sink)
-	selection.queue_end_turn()
-	# docs/09 taskblock06 Pass F: the real mid-move interrupt check
-	# (Overwatch.check_trigger) plugs into resolve_until's own seam here —
-	# taskblock06 Pass D built it, Pass F is the first real caller.
-	# taskblock-19 Pass E: MoveHooks also wires Suppression's own attack-
-	# of-opportunity check onto the same seam (kept in a local — see
-	# MoveHooks' own doc comment on why the Callable can't stand alone).
+	queue_final_action.call()
 	var move_hooks := MoveHooks.new(selection.selected_unit.cell)
 	selection.state.resolve_until(selection.current_queue(), move_hooks.check)
 	selection.state.combat_log.remove_sink(sink)

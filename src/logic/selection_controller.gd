@@ -108,6 +108,15 @@ func queue_end_turn() -> bool:
 	return current_queue().enqueue(EndTurnAction.new(selected_unit), state)
 
 
+## taskblock-19 Pass F: "available to AI and player (same-queue
+## discipline)" — Hold's own player-facing entry point, the same shape
+## queue_end_turn() already has (an alternative last action, never both).
+func queue_hold() -> bool:
+	if selected_unit == null:
+		return false
+	return current_queue().enqueue(HoldAction.new(selected_unit), state)
+
+
 ## docs/10 taskblock02 F3: the selected unit's orientation as it would
 ## stand after every already-queued action — Q/E (TacticsController.
 ## turn_selected) turns relative to THIS, not the raw pre-queue value, so

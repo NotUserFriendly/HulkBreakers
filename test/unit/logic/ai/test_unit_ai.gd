@@ -534,6 +534,30 @@ func test_an_ai_holds_fire_when_no_reachable_cell_clears_the_ally() -> void:
 		)
 
 
+## taskblock-19 Pass F: "the AI holds when its best option is wait for an
+## ally to move first" — the exact scenario above (walled into the ally's
+## own firing line, nothing else to do) is precisely that case: the spot
+## might clear up once the ally has actually moved.
+func test_an_ai_holds_rather_than_just_facing_when_walled_into_the_allys_line() -> void:
+	var grid := Grid.new(20, 3)
+	for x in range(20):
+		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
+		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	var ally := _armed_unit(&"ally", Vector2i(5, 1), 0, &"")
+	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, ally, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	var held: bool = false
+	for action: CombatAction in queue.actions:
+		if action is HoldAction:
+			held = true
+	assert_true(held, "must hold rather than just face uselessly")
+	assert_true(HoldAction.new(self_unit).is_legal(state), "sanity: holding really was legal here")
+
+
 ## taskblock17-1 Pass B: "friendly fire still mechanically possible — the
 ## check is AI choice, not a resolution block." The shot-plane geometry
 ## AttackAction/DamageResolver actually resolve against never special-

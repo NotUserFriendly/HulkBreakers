@@ -60,6 +60,14 @@ var _current_unit_id: int = -1
 ## cleared the instant `advance_turn()` finds no living, not-yet-acted
 ## candidate left and starts a fresh round.
 var _acted_this_round: Array[int] = []
+## taskblock-19 Pass F: "take its turn after the next ally instead" — the
+## id of a unit that declared Hold and is waiting to resume, or -1. Set by
+## `begin_hold()`; `_hold_ready` flips true the instant ONE more unit's
+## turn has been handed out after that, so the FOLLOWING `advance_turn()`
+## call (that next unit ending ITS turn) resumes the held unit directly
+## instead of picking by initiative again.
+var _held_unit_id: int = -1
+var _hold_ready: bool = false
 
 
 ## `combat_seed` seeds all rolls made during this fight (Appendix A: hit
@@ -163,6 +171,8 @@ func dup() -> CombatState:
 	cloned._current_unit_id = _current_unit_id
 	cloned._acted_this_round = _acted_this_round.duplicate()
 	cloned.round_number = round_number
+	cloned._held_unit_id = _held_unit_id
+	cloned._hold_ready = _hold_ready
 	return cloned
 
 
@@ -318,7 +328,22 @@ func _start_turn(unit: Unit) -> void:
 ## walk), resetting its AP/MP. Bumps round_number and clears the
 ## acted-this-round set the instant every living unit has gone once —
 ## "everyone's had a turn," not "one more unit acted."
+##
+## taskblock-19 Pass F: a pending Hold takes priority the instant it's
+## ready (`_hold_ready`, set once one more unit's turn has been handed
+## out since the hold was declared) — resumed via `_resume_held_turn`,
+## which skips `_start_turn` entirely so the held unit's own AP/MP carry
+## forward untouched rather than regenerating. A held unit that died in
+## the meantime is simply dropped; normal selection falls through.
 func advance_turn() -> void:
+	if _held_unit_id != -1 and _hold_ready:
+		var held: Unit = find_unit(_held_unit_id)
+		_held_unit_id = -1
+		_hold_ready = false
+		if held != null and held.alive:
+			_resume_held_turn(held)
+			return
+
 	var living: Array[Unit] = units.filter(func(u: Unit) -> bool: return u.alive)
 	if living.is_empty():
 		return
@@ -330,6 +355,35 @@ func advance_turn() -> void:
 		_acted_this_round.clear()
 		candidates = living
 	_begin_turn(_fastest_by_initiative(candidates))
+	# A hold is still pending (this was the "next ally" it's waiting on) —
+	# due on the very next advance_turn() call, whenever this unit's own
+	# turn ends.
+	if _held_unit_id != -1:
+		_hold_ready = true
+
+
+## taskblock-19 Pass F: "carries all held AP and MP forward... regenerates
+## none." The one real difference from `_begin_turn`: no `_start_turn`
+## call, so nothing about the held unit's own resources, facing lock, or
+## overwatch state resets — it resumes in exactly the state it left off
+## in. Still marks `_current_unit_id` for real, same as any other turn.
+func _resume_held_turn(unit: Unit) -> void:
+	_current_unit_id = unit.id
+	var text: String = "Hold: unit %d resumes" % unit.id
+	log_action(text)
+	if not is_preview:
+		combat_log.emit(
+			LogEvent.new(round_number, Enums.Phase.RESOLUTION, unit.id, &"hold_resumed", {}, text)
+		)
+
+
+## taskblock-19 Pass F: `HoldAction`'s own entry point — defers the
+## CURRENT unit (already mid-turn, already holding whatever AP/MP it has
+## right now) to resume right after the next unit to act finishes THEIRS.
+func begin_hold(unit: Unit) -> void:
+	_held_unit_id = unit.id
+	_hold_ready = false
+	advance_turn()
 
 
 func _begin_turn(unit: Unit) -> void:
