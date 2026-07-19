@@ -9,9 +9,12 @@ extends RefCounted
 ## only lets your legs clear a crate does NOT trigger, for free, out of
 ## geometry (no code needed to special-case it).
 
-## Flagged starting data (docs/09 taskblock06 F1), not a tuned design
-## number: the unit's own facing +/- this many degrees.
-const ARC_DEG := 45.0
+## taskblock-19 Pass D: reconciled with the visible-overwatch pie slice's
+## own fixed 30-degree arc — was 45.0 (docs/09 taskblock06 F1's own
+## flagged starting data), which would have made the drawn slice lie
+## about what actually triggers. One number, read by both the mechanic
+## and the render, so they can never drift apart again.
+const ARC_DEG := 30.0
 
 ## taskblock-19 Pass A: the trigger's own base resolution speed — "an
 ## overwatcher has already aimed and is waiting on a trigger, it should
@@ -78,6 +81,58 @@ static func would_trigger_at(
 	for overwatcher: Unit in qualifying:
 		real.append(state.find_unit(overwatcher.id))
 	return real
+
+
+## taskblock-19 Pass D: every cell that would actually trigger
+## `overwatcher` against `mover` — the visible-overwatch pie slice's own
+## data source. Deliberately built by asking `would_trigger_at` per cell
+## (the exact same predicate the mechanic itself fires on), never a
+## hand-derived arc/range polygon of its own: a raw apex/radius/angle
+## wedge can't see LoS or cover, so it would show cells as threatened
+## that a real blocker actually shields — "the visual would lie about the
+## trigger," precisely what this taskblock exists to avoid. Bounded to
+## the weapon's own `max_range` (an unauthored/uncapped weapon scans the
+## whole grid — still correct, just not a tight bound).
+static func arc_cells(state: CombatState, overwatcher: Unit, mover: Unit) -> Array[Vector2i]:
+	if overwatcher.overwatch_weapon_id == &"":
+		return []
+	var weapon: Part = overwatcher.shell.find_part(overwatcher.overwatch_weapon_id)
+	if weapon == null:
+		return []
+	var cap: float = RangeModel.max_range(weapon)
+	var search_radius: int = int(cap) if cap > 0.0 else maxi(state.grid.width, state.grid.height)
+	var cells: Array[Vector2i] = []
+	for dx in range(-search_radius, search_radius + 1):
+		for dy in range(-search_radius, search_radius + 1):
+			var cell := Vector2i(overwatcher.cell.x + dx, overwatcher.cell.y + dy)
+			if not state.grid.in_bounds(cell) or cell == overwatcher.cell:
+				continue
+			if Grid.distance_chebyshev(overwatcher.cell, cell) > search_radius:
+				continue
+			if would_trigger_at(state, mover, cell).has(overwatcher):
+				cells.append(cell)
+	return cells
+
+
+## taskblock-19 Pass D: every cell that would trigger SOME still-armed
+## overwatcher against `mover` — unioned across the whole board, each
+## queried through `arc_cells` (never a second, view-only notion of the
+## arc). The view's own "which cells threaten the selected unit" query,
+## kept here rather than in TacticsController: pure state-reading logic,
+## not view-specific.
+static func all_threatened_cells(state: CombatState, mover: Unit) -> Array[Vector2i]:
+	var seen: Dictionary = {}
+	var cells: Array[Vector2i] = []
+	for overwatcher: Unit in state.units:
+		if overwatcher == mover or not overwatcher.alive:
+			continue
+		if overwatcher.overwatch_weapon_id == &"":
+			continue
+		for cell: Vector2i in arc_cells(state, overwatcher, mover):
+			if not seen.has(cell):
+				seen[cell] = true
+				cells.append(cell)
+	return cells
 
 
 static func _qualifying_overwatchers(state: CombatState, mover: Unit) -> Array[Unit]:

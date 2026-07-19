@@ -919,6 +919,9 @@ func _refresh_overlay() -> void:
 	board_view.show_reachable(selection.reachable_cells())
 	board_view.show_ghost_paths(selection.ghost_paths(), selection.leg_costs())
 	board_view.show_unit_ghost(_end_position_ghost())
+	board_view.show_overwatch_arc(
+		Overwatch.all_threatened_cells(selection.state, selection.selected_unit)
+	)
 
 
 ## docs/10 taskblock03 F1: only worth drawing once a move is actually

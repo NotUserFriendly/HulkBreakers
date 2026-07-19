@@ -74,6 +74,77 @@ func test_clicking_the_current_unit_selects_it_and_shows_its_reachable_cells() -
 	assert_true(board_view._reachable_overlay.get_child_count() > 0)
 
 
+## Mirrors test_overwatch.gd's own _make_overwatcher (WRIST socket, not
+## HAND) — UnitGeometry.muzzle_point's own placement math depends on that
+## specific socket type.
+func _make_overwatcher(cell: Vector2i, orientation: float, squad: int) -> Unit:
+	var pistol := Part.new()
+	pistol.id = &"owpistol"
+	pistol.hp = 3
+	pistol.max_hp = 3
+	pistol.damage = 5.0
+	pistol.ap_cost = 1
+	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.requires = {&"TRIGGER": 1}
+
+	var hand := Part.new()
+	hand.id = &"owhand"
+	hand.hp = 3
+	hand.max_hp = 3
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"owtorso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	torso.sockets = [wrist]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+	unit.orientation = orientation
+	return unit
+
+
+## taskblock-19 Pass D: "a transparent pie slice... exactly the cells that
+## would trigger" — selecting a unit sitting inside an armed enemy
+## overwatcher's own arc must populate the overlay, driven through
+## TacticsController._refresh_overlay() -> Overwatch.arc_cells, never a
+## second, view-only notion of the arc.
+func test_selecting_a_unit_inside_an_armed_overwatchers_arc_shows_the_threat_overlay() -> void:
+	var overwatcher := _make_overwatcher(
+		Vector2i(5, 0), BodyProjector.orientation_for(Vector2(0, 1)), 1
+	)
+	var target := _make_armed_unit(Vector2i(5, 3), 0)
+	var built: Dictionary = _setup([target, overwatcher])
+	var board_view: BoardView = built.board_view
+	var controller: TacticsController = built.controller
+	overwatcher.overwatch_weapon_id = &"owpistol"
+
+	controller.click_cell(target.cell)
+
+	assert_true(board_view._overwatch_overlay.get_child_count() > 0)
+
+
+## An overwatcher's own arc never threatens itself — selecting it (with
+## no OTHER armed overwatcher on the board) must show nothing.
+func test_selecting_the_overwatcher_itself_shows_no_threat_overlay() -> void:
+	var overwatcher := _make_overwatcher(
+		Vector2i(5, 0), BodyProjector.orientation_for(Vector2(0, 1)), 0
+	)
+	var built: Dictionary = _setup([overwatcher])
+	var board_view: BoardView = built.board_view
+	var controller: TacticsController = built.controller
+	overwatcher.overwatch_weapon_id = &"owpistol"
+
+	controller.click_cell(overwatcher.cell)
+
+	assert_eq(board_view._overwatch_overlay.get_child_count(), 0)
+
+
 func test_clicking_a_non_current_unit_does_not_select_it() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
