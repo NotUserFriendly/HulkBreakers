@@ -47,7 +47,14 @@ const EXPECTED_PARTS: Dictionary = {
 			[&"MATRIX", &"MATRIX"],
 			[&"CLADDING_TORSO", &"CLADDING"],
 		],
-		"volume_sizes": [Vector3(0.50, 0.70, 0.28)],
+		# taskblock-20 Pass A: "the torso is a skeleton, not a solid box" —
+		# a deliberate, documented rebuild
+		# (tools/author_taskblock20_skeleton.gd), not drift. The single
+		# solid box (0.50 x 0.70 x 0.28) that used to hide the reactor/
+		# matrix behind geometry is now three thin struts (spine, shoulder
+		# brace, hip brace).
+		"volume_sizes":
+		[Vector3(0.1, 0.6, 0.1), Vector3(0.4, 0.08, 0.08), Vector3(0.3, 0.08, 0.08)],
 	},
 	&"head":
 	{

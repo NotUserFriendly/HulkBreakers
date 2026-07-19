@@ -64,17 +64,27 @@ socket_type = &"CLADDING_TORSO"
 id = &"CLADDING"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 
-[sub_resource type="Resource" id="Resource_neieg"]
+[sub_resource type="Resource" id="Resource_n22ad"]
 script = ExtResource("4_oefof")
 center = Vector3(0, 1.25, 0)
-size = Vector3(0.5, 0.7, 0.28)
+size = Vector3(0.1, 0.6, 0.1)
+
+[sub_resource type="Resource" id="Resource_3o1w8"]
+script = ExtResource("4_oefof")
+center = Vector3(0, 1.5, 0)
+size = Vector3(0.4, 0.08, 0.08)
+
+[sub_resource type="Resource" id="Resource_88oug"]
+script = ExtResource("4_oefof")
+center = Vector3(0, 0.95, 0)
+size = Vector3(0.3, 0.08, 0.08)
 
 [resource]
 script = ExtResource("1_n22ad")
 id = &"torso"
 sockets = Array[ExtResource("3_88oug")]([SubResource("Resource_qflnl"), SubResource("Resource_ipn15"), SubResource("Resource_nmttm"), SubResource("Resource_wd51q"), SubResource("Resource_hdb7y"), SubResource("Resource_bi6cg"), SubResource("Resource_vjodb"), SubResource("Resource_n8k3b"), SubResource("Resource_rtkuw"), SubResource("Resource_14hv5")])
 material = &"artificial_bone"
-volume = Array[ExtResource("4_oefof")]([SubResource("Resource_neieg")])
+volume = Array[ExtResource("4_oefof")]([SubResource("Resource_n22ad"), SubResource("Resource_3o1w8"), SubResource("Resource_88oug")])
 hp = 12
 max_hp = 12
 mass = 20.0

@@ -83,7 +83,6 @@ func _dominant_normal(regions: Array[Region], part_id: StringName) -> Vector3:
 func test_thigh_exists_between_torso_and_limb_size_and_assembles_a_plate() -> void:
 	var thigh: Part = DataLibrary.get_part(&"thigh")
 	var leg: Part = DataLibrary.get_part(&"leg")
-	var torso: Part = DataLibrary.get_part(&"torso")
 	assert_not_null(thigh)
 	assert_true(&"HIP" in thigh.attaches_to, "a thigh must mount the same way a leg does")
 
@@ -91,8 +90,16 @@ func test_thigh_exists_between_torso_and_limb_size_and_assembles_a_plate() -> vo
 		thigh.volume[0].size.x * thigh.volume[0].size.y * thigh.volume[0].size.z
 	)
 	var leg_volume: float = leg.volume[0].size.x * leg.volume[0].size.y * leg.volume[0].size.z
+	# taskblock-20 Pass A: "torso scale" now means the SILHOUETTE
+	# (torso_cladding — "cladding becomes load-bearing for silhouette"),
+	# not the torso's own structural volume: that's a thin strut skeleton
+	# now, deliberately smaller than a solid thigh, not a stand-in for
+	# overall body scale anymore.
+	var torso_cladding: Part = DataLibrary.get_part(&"torso_cladding")
 	var torso_volume: float = (
-		torso.volume[0].size.x * torso.volume[0].size.y * torso.volume[0].size.z
+		torso_cladding.volume[0].size.x
+		* torso_cladding.volume[0].size.y
+		* torso_cladding.volume[0].size.z
 	)
 	assert_gt(thigh_volume, leg_volume, "a thigh must be chunkier than a full leg segment")
 	assert_lt(thigh_volume, torso_volume, "a thigh must stay well short of torso scale")
