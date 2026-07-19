@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WoundDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/wound_def.gd" id="1_brnel"]
+
+[resource]
+script = ExtResource("1_brnel")
+id = &"burnt_electronics"
+disables = false
+repair_difficulty = 3.0
+description = "Scorched wiring — the part still works, but it's a much harder field repair than ordinary damage. Flagged, tunable number, not a tuned design value."

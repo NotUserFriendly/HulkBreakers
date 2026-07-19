@@ -41,6 +41,25 @@ func living_parts() -> Array[Part]:
 	return result
 
 
+## taskblock-20 Pass D: `living_parts()` further filtered by
+## `WoundEffects.is_disabled_by_wounds` — a wound-disabled part (
+## `severed_controls`' "limb inert but pristine") stays hp > 0 and stays in
+## `living_parts()` (it isn't destroyed — a unit whose every part is
+## wound-disabled is NOT dead, unlike a unit whose every part is destroyed),
+## but must stop counting as a usable manipulator/weapon or a resolver-side
+## modifier source. Every capability gate (AttackAction/BurstAction/
+## OverwatchAction manipulator lists, WeaponRows, StatResolver's own
+## context.parts) reads this instead of `living_parts()` directly; anything
+## that only cares "is this unit still structurally alive" (a kill check)
+## keeps reading `living_parts()`.
+func operable_parts() -> Array[Part]:
+	var result: Array[Part] = []
+	for part: Part in living_parts():
+		if not WoundEffects.is_disabled_by_wounds(part):
+			result.append(part)
+	return result
+
+
 ## docs/04 taskblock02 Pass D4: true if any living part is tagged
 ## `POWER_SOURCE` (the pool's `reactor`, e.g.) — the hook life support
 ## checks before a docked surrogate can hold or regenerate instead of

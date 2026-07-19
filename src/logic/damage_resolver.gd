@@ -608,7 +608,7 @@ static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: Im
 	var part: Part = impact.region.part
 	if &"lodged_bullet" in part.wounds:
 		return
-	part.wounds.append(&"lodged_bullet")
+	WoundEffects.inflict(part, &"lodged_bullet")
 	impact.wound_inflicted = &"lodged_bullet"
 
 

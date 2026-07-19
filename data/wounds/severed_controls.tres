@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WoundDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/wound_def.gd" id="1_svctl"]
+
+[resource]
+script = ExtResource("1_svctl")
+id = &"severed_controls"
+disables = true
+repair_difficulty = 1.0
+description = "The control run to this part is severed — it's inert but otherwise pristine. Field-repairable; removing the part clears it outright."
