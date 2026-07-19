@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_btry1"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_btry2"]
+
+[sub_resource type="Resource" id="Resource_btry3"]
+script = ExtResource("2_btry2")
+size = Vector3(0.16, 0.22, 0.08)
+
+[resource]
+script = ExtResource("1_btry1")
+id = &"battery"
+attaches_to = Array[StringName]([&"BACK"])
+material = &"sheet_steel"
+volume = Array[ExtResource("2_btry2")]([SubResource("Resource_btry3")])
+hp = 4
+max_hp = 4
+mass = 2.0
+tags = Array[StringName]([&"POWER_SOURCE", &"BATTERY"])
+failure_mode = &"MANGLE"
+battery_capacity = 6.0
+battery_power_out = 3.0
+battery_power_in = 2.0
+battery_charge = 6.0
