@@ -83,6 +83,28 @@ func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> v
 			assert_eq(entry.playstyle, expected[entry.profile.preset_name])
 
 
+## Every DataLibrary accessor hands back a fresh `.duplicate(true)` on
+## every call — a default roster entry built from a SEPARATE lookup than
+## `_ordered_presets` used is a different object, `_entry_row`'s own
+## `_ordered_presets.find(entry.profile)` finds nothing, and the row's
+## dropdown shows blank instead of the preset name even though the
+## roster's own DATA is completely correct. A data-only assertion (the
+## test above) can't see this — it has to read the real built
+## `OptionButton` node back (CLAUDE.md: verify against the real node,
+## never a re-derived formula that would just agree with the same bug).
+func test_default_roster_rows_actually_render_a_selected_bot_name() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+
+	for rows: VBoxContainer in [overlay._rows_a, overlay._rows_b]:
+		for i in range(overlay._roster(0 if rows == overlay._rows_a else 1).size()):
+			var row: HBoxContainer = rows.get_child(i) as HBoxContainer
+			var profile_dropdown: OptionButton = row.get_child(0) as OptionButton
+			assert_ne(
+				profile_dropdown.selected, -1, "row %d must have a real selection, not blank" % i
+			)
+			assert_ne(profile_dropdown.text, "", "row %d's dropdown must show a real bot name" % i)
+
+
 ## "Adding appends a unit."
 func test_add_to_squad_appends_to_the_end_of_the_roster() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
