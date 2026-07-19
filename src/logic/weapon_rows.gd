@@ -13,19 +13,21 @@ static func build(unit: Unit) -> Array[WeaponRow]:
 	var rows: Array[WeaponRow] = []
 	if unit.shell.root == null:
 		return rows
-	var living: Array[Part] = unit.shell.living_parts()
+	var operable: Array[Part] = unit.shell.operable_parts()
 	for part: Part in unit.shell.all_parts():
 		if part.damage <= 0.0:
 			continue
-		rows.append(_row(part, living))
+		rows.append(_row(part, operable))
 	return rows
 
 
-static func _row(weapon: Part, living: Array[Part]) -> WeaponRow:
+static func _row(weapon: Part, operable: Array[Part]) -> WeaponRow:
 	if weapon.hp <= 0:
 		return WeaponRow.new(weapon, false, "destroyed")
+	if WoundEffects.is_disabled_by_wounds(weapon):
+		return WeaponRow.new(weapon, false, _wound_reason(weapon))
 	var manipulators: Array[Part] = []
-	for part: Part in living:
+	for part: Part in operable:
 		if part != weapon:
 			manipulators.append(part)
 	if PartGraph.can_operate(weapon, manipulators):
@@ -39,3 +41,14 @@ static func _unmet_requirements(weapon: Part) -> String:
 		var count: int = int(weapon.requires[capability])
 		needs.append("%dx %s" % [count, capability])
 	return "needs %s, no free manipulator to operate it" % ", ".join(needs)
+
+
+## taskblock-20 Pass D: the first disabling wound `weapon` carries, named —
+## same "shows its reason" contract `_unmet_requirements` already gives the
+## panel, just for a wound instead of a missing manipulator.
+static func _wound_reason(weapon: Part) -> String:
+	for wound_id: StringName in weapon.wounds:
+		var def: WoundDef = DataLibrary.get_wound_def(wound_id)
+		if def != null and def.disables:
+			return "wound: %s" % wound_id
+	return "wounded"

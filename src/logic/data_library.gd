@@ -28,11 +28,15 @@ const TYPE_MATERIALS := &"materials"
 ## `id` — `resource.get("id")` below reads `preset_name` for this type
 ## only (see `_load_file`'s own id lookup).
 const TYPE_PRESETS := &"presets"
+## taskblock-20 Pass D: wounds — same open-StringName-content posture as
+## materials (id-keyed, DataLibrary-loaded, authored as data).
+const TYPE_WOUNDS := &"wounds"
 
 static var _parts: Dictionary = {}  # StringName -> Part
 static var _ammo: Dictionary = {}  # StringName -> AmmoDef
 static var _materials: Dictionary = {}  # StringName -> MaterialEntry
 static var _presets: Dictionary = {}  # StringName -> BotPreset
+static var _wounds: Dictionary = {}  # StringName -> WoundDef
 ## "type:id" -> &"builtin" | &"user" (taskblock-11 B2: "source (res://
 ## built-in vs user:// override)"). Not derivable from `_parts`/`_ammo`/
 ## `_materials` alone once a `user://` row has overridden a built-in one
@@ -64,11 +68,14 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_ammo.clear()
 	_materials.clear()
 	_presets.clear()
+	_wounds.clear()
 	_sources.clear()
 	_errors.clear()
 	# Materials first: Part validation cross-references material ids.
 	_load_dir(builtin_root + "/materials", _materials, TYPE_MATERIALS, &"builtin")
 	_load_dir(user_root + "/materials", _materials, TYPE_MATERIALS, &"user")
+	_load_dir(builtin_root + "/wounds", _wounds, TYPE_WOUNDS, &"builtin")
+	_load_dir(user_root + "/wounds", _wounds, TYPE_WOUNDS, &"user")
 	_load_dir(builtin_root + "/parts", _parts, TYPE_PARTS, &"builtin")
 	_load_dir(user_root + "/parts", _parts, TYPE_PARTS, &"user")
 	_load_dir(builtin_root + "/ammo", _ammo, TYPE_AMMO, &"builtin")
@@ -165,6 +172,14 @@ static func get_preset(id: StringName) -> BotPreset:
 	_ensure_loaded()
 	var preset: BotPreset = _presets.get(id)
 	return preset.duplicate(true) if preset != null else null
+
+
+## Null for an unauthored/unknown wound id — `WoundEffects` treats that the
+## same as "no disabling/repair data exists," never a load error.
+static func get_wound_def(id: StringName) -> WoundDef:
+	_ensure_loaded()
+	var wound: WoundDef = _wounds.get(id)
+	return wound.duplicate(true) if wound != null else null
 
 
 ## Every loaded reference profile — for a bout-setup menu's own dropdown
@@ -266,6 +281,8 @@ static func _dict_for(type_key: StringName) -> Dictionary:
 			return _materials
 		TYPE_PRESETS:
 			return _presets
+		TYPE_WOUNDS:
+			return _wounds
 		_:
 			return {}
 
@@ -280,6 +297,8 @@ static func _dir_name_for(type_key: StringName) -> String:
 			return "materials"
 		TYPE_PRESETS:
 			return "presets"
+		TYPE_WOUNDS:
+			return "wounds"
 		_:
 			return ""
 
@@ -295,5 +314,6 @@ static func reset() -> void:
 	_ammo.clear()
 	_materials.clear()
 	_presets.clear()
+	_wounds.clear()
 	_sources.clear()
 	_errors.clear()

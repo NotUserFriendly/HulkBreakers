@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WoundDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/wound_def.gd" id="1_ldgbl"]
+
+[resource]
+script = ExtResource("1_ldgbl")
+id = &"lodged_bullet"
+disables = false
+repair_difficulty = 1.0
+description = "A round that punched in but couldn't punch out, embedded inside. Cosmetic/narrative — no combat penalty on its own (taskblock-20 Pass C4)."

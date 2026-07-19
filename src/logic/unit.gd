@@ -101,10 +101,13 @@ func tick_organics_decay(ladder: Array[SurrogateTier]) -> void:
 ## (every part regardless of hp) until docs/09 taskblock06 Pass D's own
 ## mid-move interrupt test needed a destroyed leg to genuinely lower
 ## mobility and found it didn't. Fixed to match every other modifier-
-## bearing part in the game.
+## bearing part in the game. taskblock-20 Pass D: reads `operable_parts()`
+## now, not `living_parts()` directly — a `severed_controls`-wounded leg
+## (hp intact, but inert) must stop contributing agility the same way a
+## destroyed one already does.
 func mp_per_ap() -> float:
 	var context := ResolverContext.new()
-	context.parts = shell.living_parts()
+	context.parts = shell.operable_parts()
 	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility
 

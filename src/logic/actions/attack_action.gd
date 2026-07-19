@@ -48,7 +48,7 @@ func is_legal(state: CombatState) -> bool:
 		return false
 
 	var weapon: Part = actual.shell.find_part(weapon_id)
-	if weapon == null or weapon.hp <= 0:
+	if weapon == null or weapon.hp <= 0 or WoundEffects.is_disabled_by_wounds(weapon):
 		return false
 	if actual.ap < weapon.ap_cost:
 		return false
@@ -70,7 +70,7 @@ func is_legal(state: CombatState) -> bool:
 		return false
 
 	var manipulators: Array[Part] = []
-	for part: Part in actual.shell.living_parts():
+	for part: Part in actual.shell.operable_parts():
 		if part != weapon:
 			manipulators.append(part)
 	return PartGraph.can_operate(weapon, manipulators)

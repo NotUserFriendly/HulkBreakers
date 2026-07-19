@@ -29,6 +29,8 @@ static func validate(resource: Resource) -> Array[ValidationError]:
 		return _validate_material(resource as MaterialEntry)
 	if resource is BotPreset:
 		return _validate_preset(resource as BotPreset)
+	if resource is WoundDef:
+		return _validate_wound(resource as WoundDef)
 	return []
 
 
@@ -111,6 +113,16 @@ static func _validate_material(material: MaterialEntry) -> Array[ValidationError
 				)
 			)
 		previous_thickness = point.x
+	return errors
+
+
+static func _validate_wound(wound: WoundDef) -> Array[ValidationError]:
+	var errors: Array[ValidationError] = []
+	var row_id: StringName = wound.id
+	if wound.id == &"":
+		errors.append(ValidationError.new(row_id, &"id", "id must not be empty"))
+	if wound.repair_difficulty < 0.0:
+		errors.append(ValidationError.new(row_id, &"repair_difficulty", "must not be negative"))
 	return errors
 
 
