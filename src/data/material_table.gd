@@ -12,6 +12,16 @@ extends Resource
 @export var retain_at_zero_bend: float = 0.90
 @export var retain_at_max_bend: float = 0.25
 @export var max_bend_deg: float = 180.0
+## taskblock-20 Pass E: "closes the angle-lock stalemate by design — higher
+## penetration converts deflects into stop-deads." Extra degrees of
+## stop-dead-eligible incidence PER POINT of a round's own `bonus_pen`,
+## widening `MaterialEntry.deflect_threshold_deg` rather than replacing it —
+## a round with `bonus_pen <= 0` (every weapon authored so far; no gun
+## names an AmmoDef yet, taskblock-09/10) widens it by zero, so small arms
+## get no gap closed, unchanged. Flagged, tunable — no real calibration
+## exists yet since bonus_pen itself isn't wired to anything live; ask
+## before treating 10.0 as a design decision.
+@export var deflect_threshold_bonus_pen_scale: float = 10.0
 
 
 ## Unknown materials default to DT 0 / 30-degree deflect threshold — bare,
