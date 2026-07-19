@@ -60,6 +60,14 @@ static func build_bout(
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []
 	mission.extraction_cells = (spawn_a_cells if not spawn_a_cells.is_empty() else [Vector2i.ZERO])
+	# taskblock-21 Pass D: "team-coded extraction tiles... placed at bout
+	# setup, near each team's own spawn is fine for now — tunable." Each
+	# squad's own spawn cells double as its own extraction tiles; a flagged
+	# placement choice, not a design decision.
+	mission.team_extraction_cells = {
+		0: spawn_a_cells if not spawn_a_cells.is_empty() else [Vector2i.ZERO],
+		1: spawn_b_cells if not spawn_b_cells.is_empty() else [Vector2i.ZERO],
+	}
 
 	return {"state": state, "mission": mission, "error": ""}
 

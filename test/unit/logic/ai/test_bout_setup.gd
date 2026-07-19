@@ -168,6 +168,34 @@ func test_the_same_profiles_counts_and_seed_produce_an_equivalent_bout() -> void
 		assert_eq(first_state.units[i].squad_id, second_state.units[i].squad_id)
 
 
+## taskblock-21 Pass D2: "team-coded extraction tiles, placed at bout
+## setup — near each team's own spawn is fine for now." Both squads get
+## their OWN entry, each equal to that squad's own spawn cells — never a
+## shared zone, and never left unpopulated the way a plain single-player
+## mission's `team_extraction_cells` stays.
+func test_build_bout_populates_team_extraction_cells_for_both_squads() -> void:
+	var profiles: Array = _reference_profiles()
+
+	var result: Dictionary = BoutSetup.build_bout(
+		_roster(profiles[0], &"AGGRESSIVE", 1), _roster(profiles[1], &"AGGRESSIVE", 1), 555
+	)
+
+	var mission: MissionState = result.mission
+	assert_true(mission.team_extraction_cells.has(0))
+	assert_true(mission.team_extraction_cells.has(1))
+	assert_false(
+		(mission.team_extraction_cells[0] as Array).is_empty(), "squad 0 must get at least one tile"
+	)
+	assert_false(
+		(mission.team_extraction_cells[1] as Array).is_empty(), "squad 1 must get at least one tile"
+	)
+	assert_ne(
+		mission.team_extraction_cells[0],
+		mission.team_extraction_cells[1],
+		"each squad gets its own zone, not a shared one"
+	)
+
+
 ## "The menu lists loaded profiles" — grouped by family, base first.
 func test_group_by_family_groups_the_base_and_its_variant_together() -> void:
 	var profiles: Array[BotPreset] = []

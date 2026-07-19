@@ -21,6 +21,16 @@ var resource_nodes: Dictionary = {}
 ## Cells ExtractAction requires a unit stand on to call the mission (docs/07:
 ## "EXTRACT with loot").
 var extraction_cells: Array[Vector2i] = []
+## taskblock-21 Pass D: "team-coded extraction tiles — blue extracts at
+## blue's tiles, red at red's." squad_id -> Array[Vector2i], a NEW, purely
+## additive field — `extraction_cells` above stays exactly what it always
+## was (the single-player, squad-0-only mission path; nothing here changes
+## its own meaning). Empty ({}) for every mission that isn't a two-team
+## bout; `BoutSetup.build_bout` is the one thing that populates it, for
+## BOTH squads at once. `ExtractAction.is_legal` reads this first, falling
+## back to `extraction_cells` only when a unit's own squad has no entry
+## here at all.
+var team_extraction_cells: Dictionary = {}  # int squad_id -> Array[Vector2i]
 ## docs/00 taskblock02 Pass E: how this mission actually ended. Never set
 ## by "the enemy squad is dead" — that was never an ending. UNDECIDED
 ## (still in progress) until extract()/terminate()/strand() sets it.

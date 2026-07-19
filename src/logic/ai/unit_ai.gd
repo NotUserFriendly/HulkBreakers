@@ -69,9 +69,19 @@ const OPPORTUNITY_ATTACK_PENALTY := 15.0
 ## AGGRESSIVE (today's own only behaviour) rather than erroring — an
 ## open StringName vocabulary (CLAUDE.md), not an enum, so a fifth
 ## playstyle is one more `match` arm and new data, never a rewrite.
+##
+## taskblock-21 Pass D2: "no functional weapon -> flee — a new top-priority
+## branch, above the ranged/cover planners." Checked before the playstyle
+## dispatch, not folded into `_plan_ranged`'s own `enemy == null` fallback
+## — a disarmed unit STILL facing a live enemy must flee too, not just one
+## that's run out of targets. `mission == null` (most headless unit tests,
+## and any non-bout combat) has nowhere defined to flee TO — falls through
+## to normal planning unchanged, same as today.
 static func plan_turn(
 	unit: Unit, state: CombatState, mission: MissionState, playstyle: StringName = &"AGGRESSIVE"
 ) -> ActionQueue:
+	if mission != null and not _has_functional_weapon(unit):
+		return _plan_flee(unit, state, mission)
 	match playstyle:
 		&"SKIRMISHER":
 			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, false)
@@ -245,6 +255,75 @@ static func _plan_non_combat_turn(
 
 	queue.enqueue(EndTurnAction.new(unit), state)
 	return queue
+
+
+## taskblock-21 Pass D2: true only if some attached weapon part can ACTUALLY
+## fire right now — reuses `WeaponRows.build`'s own `active` computation
+## (hp, wounds, and a real operable manipulator, taskblock-20 D) verbatim,
+## never a re-derived "does a weapon-ish part merely exist" check. This is
+## deliberately a different, stricter question than `_find_weapon_id`'s own
+## "first living part with damage > 0" (used elsewhere by the combat
+## planners to pick WHICH weapon to fire) — a destroyed manipulator or a
+## disabling wound leaves a weapon part alive but genuinely unusable, and
+## "no functional weapon" must catch that too.
+static func _has_functional_weapon(unit: Unit) -> bool:
+	for row: WeaponRow in WeaponRows.build(unit):
+		if row.active:
+			return true
+	return false
+
+
+## "Paths to its nearest team extraction tile and escapes... the escape
+## uses the existing EXTRACTED path, not a new outcome." Reuses
+## `ExtractAction` verbatim — a deliberate choice, not an oversight: this
+## ends the WHOLE mission the instant any one disarmed unit reaches its own
+## team's tile, exactly like any other extraction already does, rather than
+## inventing a new "this one unit left, the fight continues" mechanic. No
+## reachable extraction cells at all (a mission this pass's own team-coded
+## field was never populated for) simply ends the turn — the same
+## degenerate "nowhere to go" case `_plan_non_combat_turn` already accepts.
+##
+## `mission.extraction_cells` is only a valid fallback for the player's own
+## squad — it's the pre-Pass-D, squad-agnostic-in-name-only field every
+## single-player mission already populates with the LANDING squad's zone.
+## An enemy squad with no team-coded entry has no defined extraction tile
+## of its own at all; falling back to the player's own zone would send a
+## disarmed enemy walking toward (and, in principle, calling ExtractAction
+## from) the player's landing point — never correct, and exactly the
+## degenerate "nowhere to go" case above already covers correctly.
+static func _plan_flee(unit: Unit, state: CombatState, mission: MissionState) -> ActionQueue:
+	var queue := ActionQueue.new(unit)
+	var cells: Array = mission.team_extraction_cells.get(unit.squad_id, [])
+	if cells.is_empty() and unit.squad_id == mission.player_squad_id:
+		cells = mission.extraction_cells
+	if cells.is_empty():
+		queue.enqueue(EndTurnAction.new(unit), state)
+		return queue
+
+	var target_cell: Vector2i = _nearest_cell(unit.cell, cells)
+	if unit.cell == target_cell:
+		queue.enqueue(ExtractAction.new(mission, unit), state)
+	else:
+		_path_toward(unit, target_cell, state, queue)
+
+	queue.enqueue(EndTurnAction.new(unit), state)
+	return queue
+
+
+## Plain chebyshev distance, no reachability weighting (mirrors
+## `_path_toward`'s own internal distance metric) — extraction tiles sit at
+## a team's own spawn, typically open ground, so this stays a simple
+## nearest-by-distance pick rather than a full pathfind-every-candidate
+## search.
+static func _nearest_cell(from: Vector2i, cells: Array) -> Vector2i:
+	var best: Vector2i = cells[0]
+	var best_dist: int = Grid.distance_chebyshev(from, best)
+	for cell: Vector2i in cells:
+		var d: int = Grid.distance_chebyshev(from, cell)
+		if d < best_dist:
+			best_dist = d
+			best = cell
+	return best
 
 
 ## Continues firing `weapon_id` at `enemy` up to `MAX_SHOTS_PER_TURN`
