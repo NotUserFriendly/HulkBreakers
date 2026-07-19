@@ -24,3 +24,13 @@ extends Resource
 ## higher, per the taskblock's own "carries higher repair difficulty."
 @export var repair_difficulty: float = 1.0
 @export var description: String = ""
+
+
+## taskblock-21 Pass A2: "each entry is a <5-char short blurb now (a square
+## icon later — leave room for that)." A mechanical truncation of `id`, not
+## an authored abbreviation — no icon/short-name system exists yet, this is
+## the placeholder until one does. Same posture as `render_primitive`'s own
+## "BOX default, no cutover needed" — every wound authored before this
+## field existed still gets a usable (if blunt) blurb for free.
+func short_label() -> String:
+	return String(id).left(5).to_upper()

@@ -73,7 +73,7 @@ func show_data(data: TooltipData, at_position: Vector2) -> void:
 	if data == null or (data.title == "" and data.rows.is_empty() and data.footer == ""):
 		hide_tooltip()
 		return
-	var text: String = _to_bbcode(data)
+	var text: String = to_bbcode(data)
 	if visible and text == _label.text:
 		_reposition(at_position)
 		return
@@ -106,7 +106,12 @@ func _process(delta: float) -> void:
 	_has_pending = false
 
 
-func _to_bbcode(data: TooltipData) -> String:
+## taskblock-21 Pass A5: static (no instance state used) so the inspect
+## panel's own fixed, always-docked info region can render the exact same
+## TooltipData -> BBCode shape this floating tooltip uses, without needing
+## a TooltipView instance of its own — one rendering rule, two hosts (a
+## floating follow-cursor box here, a fixed dead-zone-holding panel there).
+static func to_bbcode(data: TooltipData) -> String:
 	var lines: Array[String] = []
 	if data.title != "":
 		lines.append("[b]%s[/b]" % data.title)

@@ -206,3 +206,19 @@ func test_for_tile_on_an_empty_cell_returns_an_empty_tooltip_data() -> void:
 
 	assert_eq(data.title, "")
 	assert_true(data.rows.is_empty())
+
+
+## taskblock-21 Pass A2/A5: the status/wound column's own info-panel hover.
+func test_for_wound_shows_description_disables_and_repair_difficulty() -> void:
+	var data: TooltipData = TooltipBuilder.for_wound(&"severed_controls")
+
+	assert_eq(data.title, "severed_controls")
+	assert_eq(_row_value(data, "disables"), "yes")
+	assert_ne(_row_value(data, "repair difficulty"), null)
+
+
+func test_for_wound_on_an_unauthored_id_still_returns_a_titled_tooltip() -> void:
+	var data: TooltipData = TooltipBuilder.for_wound(&"nonexistent_wound")
+
+	assert_eq(data.title, "nonexistent_wound")
+	assert_true(data.rows.is_empty())
