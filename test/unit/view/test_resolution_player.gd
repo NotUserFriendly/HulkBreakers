@@ -199,6 +199,86 @@ func test_play_impact_with_an_unknown_target_does_not_crash_or_spawn_a_tracer() 
 	assert_eq(player._tracers.get_child_count(), 0)
 
 
+## taskblock-21 Pass F: mirrors `ShotResolution._log_miss`'s own data shape
+## (`end_x`/`end_y`, cell-space coordinates) — never a fixture the view
+## side invents independently of what the logic side actually logs.
+func _miss_event(attacker: Unit, end_x: float, end_y: float) -> LogEvent:
+	return LogEvent.new(
+		0,
+		Enums.Phase.RESOLUTION,
+		attacker.id,
+		&"miss",
+		{"end_x": end_x, "end_y": end_y},
+		"missed — ray continues to (%.1f, %.1f)" % [end_x, end_y]
+	)
+
+
+## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
+## same tracer path an impact uses, just terminating at the miss's own
+## logged void endpoint instead of a struck part.
+func test_play_miss_spawns_a_tracer_along_its_own_logged_endpoint() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	assert_eq(player._tracers.get_child_count(), 0)
+
+	player._play_miss(_miss_event(attacker, 7.0, 2.0))
+
+	assert_eq(player._tracers.get_child_count(), 1)
+	var tracer: MeshInstance3D = player._tracers.get_child(0)
+	var expected_from: Vector3 = player._muzzle_point(attacker)
+	var expected_to := (
+		Vector3(7.0, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, 2.0) * UnitGeometry.CELL_SIZE
+	)
+	assert_almost_eq(tracer.position.x, (expected_from.x + expected_to.x) * 0.5, 0.0001)
+	assert_almost_eq(tracer.position.z, (expected_from.z + expected_to.z) * 0.5, 0.0001)
+
+
+## `_play_event`'s own dispatch, not a second, parallel switch — proves
+## `&"miss"` is really wired into the same `match` `&"impact"` already is.
+func test_play_event_dispatches_a_miss_event_to_play_miss() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+
+	player._play_event(_miss_event(attacker, 7.0, 2.0))
+
+	assert_eq(player._tracers.get_child_count(), 1)
+
+
+func test_play_miss_with_an_unknown_attacker_does_not_crash_or_spawn_a_tracer() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+
+	var event := LogEvent.new(
+		0, Enums.Phase.RESOLUTION, 999, &"miss", {"end_x": 7.0, "end_y": 2.0}, "unknown shooter"
+	)
+	player._play_miss(event)
+
+	assert_eq(player._tracers.get_child_count(), 0)
+
+
+## taskblock-21 Pass F: the inter-shot break must separate ANY run of
+## impact/miss, not just back-to-back impacts — a burst that lands a hit
+## then a miss (or the reverse) must still pace evenly.
+func test_inter_shot_break_separates_a_miss_from_a_following_impact() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	var target: Unit = built.target
+	player.slide_ms = 0.0
+	player.bullet_ms = 0.0
+	player.tracer_count = 0
+	player.speed = 1000.0
+
+	var events: Array[LogEvent] = [
+		_miss_event(attacker, 7.0, 2.0), _impact_event(attacker, target, &"root")
+	]
+	await player.play(events)
+
+	assert_eq(player._tracers.get_child_count(), 0, "both shots must have fully retired (count 0)")
+
+
 func _move_event(unit: Unit, path: Array[Vector2i]) -> LogEvent:
 	return LogEvent.new(
 		0,

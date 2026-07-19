@@ -172,7 +172,8 @@ func apply(state: CombatState) -> void:
 				crit_chance,
 				bonus_pen,
 				mission,
-				is_dud
+				is_dud,
+				RangeModel.max_range(weapon)
 			)
 			pull_hit = pull_hit or landed
 		if pull_hit:

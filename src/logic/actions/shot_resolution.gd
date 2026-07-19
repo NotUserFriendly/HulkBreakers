@@ -25,6 +25,11 @@ extends RefCounted
 ## identically (see `RangeModel.is_dud`'s own doc comment: no separate
 ## payload system exists to suppress), only the log entry differs, so a
 ## future payload/AoE system has a real flag to check.
+## taskblock-21 Pass F: `max_range` — the weapon's own authored
+## `RangeModel.max_range` if the caller has one, 0.0 (unauthored) otherwise
+## — is ONLY consulted on a genuine miss, to know how far the void tracer
+## below should draw. It plays no part in whether anything was actually
+## hit; that's still `DamageResolver.resolve_shot` alone, unchanged.
 static func resolve_and_log_point(
 	state: CombatState,
 	attacker: Unit,
@@ -35,7 +40,8 @@ static func resolve_and_log_point(
 	crit_chance: float,
 	bonus_pen: float,
 	mission: MissionState,
-	is_dud: bool = false
+	is_dud: bool = false,
+	max_range: float = 0.0
 ) -> bool:
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 		origin,
@@ -55,7 +61,47 @@ static func resolve_and_log_point(
 	)
 	for result: ImpactResult in results:
 		_log_impact(state, attacker, result, mission, is_dud)
+	if results.is_empty():
+		_log_miss(state, attacker, origin, direction, point, max_range)
 	return not results.is_empty()
+
+
+## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss — the
+## ray still travels to somewhere." A genuinely EMPTY `results` here can
+## only mean the round's own dartboard point landed nowhere ANY region in
+## the whole shot plane covers — every wall/cover object is already its
+## own `Region` (`ShotPlane.build`'s own blockers loop), so a real "hit a
+## wall" always comes back as a normal `ImpactResult` above, never an
+## empty list. An empty list is always the void: nothing physical was
+## there to stop it. Mirrors `resolve_shot`'s own `muzzle_to_impact` math
+## (`dir * depth + perp * point.x`) with `depth` set to the weapon's own
+## `max_range` when authored, or the map's own longest side otherwise (a
+## flagged "far enough to draw off-board" fallback, not a tuned number —
+## an unauthored weapon has no real range cap to draw to at all).
+static func _log_miss(
+	state: CombatState,
+	attacker: Unit,
+	origin: Vector2,
+	direction: Vector2,
+	point: Vector2,
+	max_range: float
+) -> void:
+	var dir: Vector2 = direction.normalized()
+	var perp := Vector2(-dir.y, dir.x)
+	var void_range: float = (
+		max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.height)
+	)
+	var end: Vector2 = origin + dir * void_range + perp * point.x
+	state.combat_log.emit(
+		LogEvent.new(
+			state.round_number,
+			Enums.Phase.RESOLUTION,
+			attacker.id,
+			&"miss",
+			{"end_x": end.x, "end_y": end.y},
+			"missed — ray continues to (%.1f, %.1f)" % [end.x, end.y]
+		)
+	)
 
 
 static func _log_impact(

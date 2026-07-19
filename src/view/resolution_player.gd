@@ -134,12 +134,18 @@ func play(events: Array[LogEvent]) -> void:
 
 	await get_tree().create_timer(LogPlayback.RESOLVE_LEAD_IN / speed).timeout
 
-	var previous_was_impact := false
+	# taskblock-21 Pass F: a miss draws a real, timed tracer too now — the
+	# same "space consecutive shots out" pacing impacts already got must
+	# cover any run of impact/miss in either order, not just back-to-back
+	# impacts, or a miss right after a hit (or another miss) would play
+	# with no break at all.
+	var previous_was_shot := false
 	for event: LogEvent in events:
-		if previous_was_impact and event.kind == &"impact":
+		var is_shot: bool = event.kind == &"impact" or event.kind == &"miss"
+		if previous_was_shot and is_shot:
 			await get_tree().create_timer((INTER_SHOT_BREAK_MS / 1000.0) / speed).timeout
 		await _play_event(event)
-		previous_was_impact = event.kind == &"impact"
+		previous_was_shot = is_shot
 
 	await get_tree().create_timer(LogPlayback.RESOLVE_TAIL / speed).timeout
 	if banner != null:
@@ -156,6 +162,8 @@ func _play_event(event: LogEvent) -> void:
 			await _play_facing(event)
 		&"impact":
 			await _play_impact(event)
+		&"miss":
+			await _play_miss(event)
 		_:
 			pass
 
@@ -385,6 +393,21 @@ func _play_impact(event: LogEvent) -> void:
 
 	var impact_point: Vector3 = _impact_point(target, event.data.get("part", &""))
 	await _spawn_tracer(_muzzle_point(attacker), impact_point)
+
+
+## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
+## same `_spawn_tracer` bright-fade-dull path `_play_impact` above uses,
+## just terminating at the miss's own logged void endpoint
+## (`ShotResolution._log_miss`) instead of a struck part's world position.
+func _play_miss(event: LogEvent) -> void:
+	var state: CombatState = battle.combat_state
+	var attacker: Unit = state.find_unit(event.unit_id)
+	if attacker == null:
+		return
+	var end_x: float = float(event.data.get("end_x", 0.0))
+	var end_y: float = float(event.data.get("end_y", 0.0))
+	var end_point := Vector3(end_x, TRACER_MUZZLE_HEIGHT, end_y) * UnitGeometry.CELL_SIZE
+	await _spawn_tracer(_muzzle_point(attacker), end_point)
 
 
 func _muzzle_point(unit: Unit) -> Vector3:
