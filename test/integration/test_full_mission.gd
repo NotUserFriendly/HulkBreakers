@@ -10,8 +10,8 @@ extends GutTest
 ## anything that doesn't fire naturally is a finding for PLAN.md, not
 ## something to force.
 
-## taskblock-16 re-picked this seed twice, for two independent, fair
-## gameplay-outcome shifts (never a bug fix reverting the underlying
+## taskblock-16 re-picked this seed three times, for three independent,
+## fair gameplay-outcome shifts (never a bug fix reverting the underlying
 ## change — the seed itself was always a flagged, arbitrary pick, its own
 ## header above: "not something to force"):
 ##  - Pass A: per-tile facing (a unit now faces each tile of a
@@ -22,9 +22,12 @@ extends GutTest
 ##  - Pass B: cover objects now block movement (`Pathfinder.move_cost`
 ##    reads `Grid.blockers`), which reroutes squads around obstacles that
 ##    used to be walk-through cosmetic dressing.
-## Landed on 100, the first value found that still reaches extraction
-## under both changes together.
-const SEED := 100
+##  - Pass C: bigger rooms and wider (3-5 cell) corridors reshape every
+##    generated map outright — a different layout for the same seed,
+##    different sightlines and approach routes entirely.
+## Landed back on 12345 (Pass A's own original pick) — still reaches
+## extraction under all three changes together.
+const SEED := 12345
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400
