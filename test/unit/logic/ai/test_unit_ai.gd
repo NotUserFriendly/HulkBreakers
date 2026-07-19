@@ -721,6 +721,122 @@ func test_an_unknown_playstyle_falls_back_to_aggressive() -> void:
 	assert_eq(default_queue.actions.size(), unknown_queue.actions.size())
 
 
+## taskblock-21 Pass D2: "no functional weapon -> flee — a new top-priority
+## branch, above the ranged/cover planners." A disarmed unit (no weapon
+## part at all) with its own squad's tile defined must path toward it
+## rather than dispatch to any ranged planner, even with a live enemy
+## still on the board.
+func test_a_disarmed_unit_flees_toward_its_own_team_extraction_tile() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"")
+	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"rifle")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "a disarmed unit with somewhere to flee must move toward it")
+	assert_eq(
+		move.path[move.path.size() - 1],
+		Vector2i(9, 4),
+		"must path toward its own squad's tile, not just anywhere"
+	)
+	for action: CombatAction in queue.actions:
+		assert_false(
+			action is AttackAction, "disarmed — there is no weapon to fire even if it wanted to"
+		)
+
+
+## "escapes via the existing EXTRACTED path" — once already standing on its
+## own tile, a disarmed unit queues the real ExtractAction, not a bespoke
+## despawn.
+func test_a_disarmed_unit_already_on_its_tile_queues_extraction() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 0, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	var extract: ExtractAction = null
+	for action: CombatAction in queue.actions:
+		if action is ExtractAction:
+			extract = action
+	assert_not_null(extract, "already on its own tile — must queue the real ExtractAction")
+
+
+## A disarmed unit whose own squad has no team-coded tile at all (every
+## non-bout mission, and any bout squad the caller never populated) has
+## nowhere defined to flee to — it must simply end its turn, the same
+## degenerate fallback `_plan_non_combat_turn` already uses for a non-
+## player squad with nothing to do, never freeze on an illegal move or
+## wander toward a DIFFERENT squad's own tile.
+func test_a_disarmed_unit_with_no_flee_destination_just_ends_its_turn() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 1, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(9, 4)]  # squad 0's own zone, not squad 1's
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	assert_eq(queue.actions.size(), 1)
+	assert_true(queue.actions[0] is EndTurnAction)
+
+
+## The player's own squad is the one case `mission.extraction_cells` (the
+## pre-Pass-D, squad-agnostic-in-name-only field) remains a valid fallback
+## for — every single-player mission already populates it with the landing
+## squad's own zone, and never touches `team_extraction_cells` at all.
+func test_a_disarmed_player_squad_unit_falls_back_to_the_plain_extraction_cells() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(9, 4)]
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "the player squad must still fall back to mission.extraction_cells")
+	assert_eq(move.path[move.path.size() - 1], Vector2i(9, 4))
+
+
+## An armed unit never dispatches to the flee branch at all, even with a
+## mission and team-coded tiles present — the branch is gated on
+## disarmament, not merely on a mission existing.
+func test_an_armed_unit_does_not_flee_even_with_a_mission_present() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	var shot: AttackAction = null
+	for action: CombatAction in queue.actions:
+		if action is AttackAction:
+			shot = action
+	assert_not_null(shot, "still armed — must fight, not flee")
+
+
+## `_has_functional_weapon` reuses `WeaponRows.build`'s own operability
+## check (hp, wounds, a real operable manipulator), never the looser
+## "a part with damage > 0 exists" `_find_weapon_id` uses elsewhere — a
+## weapon part that's still physically attached but at 0 hp must still
+## read as disarmed.
+func test_has_functional_weapon_is_false_once_the_weapon_part_itself_is_destroyed() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	assert_true(UnitAI._has_functional_weapon(self_unit), "sanity: starts armed")
+
+	self_unit.shell.find_part(&"rifle").hp = 0
+
+	assert_false(
+		UnitAI._has_functional_weapon(self_unit),
+		"a destroyed weapon part must no longer count as functional"
+	)
+
+
 ## taskblock-18 D2: "shared AI and player path — one implementation."
 ## Geometry verified live: a real WALL (opacity, not just a blocker —
 ## AttackAction.is_legal() only ever checks LoS, never Grid.blockers, so

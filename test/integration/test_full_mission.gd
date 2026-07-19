@@ -37,7 +37,20 @@ extends GutTest
 ## (docs/09: one seed, one deterministic timeline) — 12345 no longer
 ## reaches extraction under the corrected AI. Re-picked by brute-force
 ## search over nearby seeds for one that still does: 12354.
-const SEED := 12354
+##
+## taskblock-21 Pass D2: re-picked once more, same reason again — a
+## disarmed enemy now goes straight to `_plan_flee`, which (correctly)
+## does nothing but EndTurn when its own squad has no team-coded
+## extraction tile (a non-bout mission, this one included, never
+## populates `team_extraction_cells`), instead of the old behaviour of
+## still attempting to reposition/fire with a non-functional weapon.
+## Under 12354 that left a disarmed defender standing still at point-blank
+## range, and the landing squad ground it down over 18 turns of
+## concentrated fire — enough ricochet splash bouncing off it to wipe the
+## landing squad out before extraction. A real, deliberate AI change, not
+## a bug: brute-force search over nearby seeds for one where the corrected
+## AI still reaches extraction with survivors: 12355.
+const SEED := 12355
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400

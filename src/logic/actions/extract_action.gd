@@ -20,7 +20,14 @@ func is_legal(state: CombatState) -> bool:
 	var actual: Unit = state.find_unit(unit.id)
 	if actual == null or not actual.alive or state.current_unit() != actual:
 		return false
-	if not mission.extraction_cells.has(actual.cell):
+	# taskblock-21 Pass D: team-coded cells win when this unit's own squad
+	# has any authored (a real two-team bout always does, for both squads);
+	# `extraction_cells` is the fallback, exactly as before this pass, for
+	# every mission that never populates the team-coded set at all.
+	var valid_cells: Array = mission.team_extraction_cells.get(
+		actual.squad_id, mission.extraction_cells
+	)
+	if not valid_cells.has(actual.cell):
 		return false
 	for objective: StringName in mission.objectives:
 		if objective not in mission.completed_objectives:

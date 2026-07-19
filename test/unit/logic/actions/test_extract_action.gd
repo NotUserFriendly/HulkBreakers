@@ -69,6 +69,35 @@ func test_extract_emits_an_extract_event() -> void:
 	assert_eq(sink.events_of_kind(&"extract").size(), 1)
 
 
+## taskblock-21 Pass D2: "team-coded cells win when this unit's own squad
+## has any authored." A tile in `team_extraction_cells` legal, the SAME
+## cell absent from the old flat `extraction_cells` field entirely —
+## proves the team-coded lookup is really consulted first, not just
+## merged in.
+func test_extract_uses_team_coded_cells_when_present_for_this_squad() -> void:
+	var unit := _make_unit(Vector2i(1, 1))
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(4, 4)]
+	mission.team_extraction_cells = {0: [Vector2i(1, 1)]}
+
+	assert_true(ExtractAction.new(mission, unit).is_legal(state))
+
+
+## The flat `extraction_cells` field stays the fallback for a squad with no
+## team-coded entry of its own — a bout mission whose caller only populated
+## the OTHER squad's tiles must never fall through to a stray leftover
+## squad-0 zone for this one.
+func test_extract_falls_back_to_extraction_cells_when_this_squads_own_entry_is_absent() -> void:
+	var unit := _make_unit(Vector2i(4, 4))
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(4, 4)]
+	mission.team_extraction_cells = {1: [Vector2i(0, 0)]}  # squad 1 only, this unit is squad 0
+
+	assert_true(ExtractAction.new(mission, unit).is_legal(state))
+
+
 func test_extract_on_a_preview_never_ends_the_real_mission() -> void:
 	var unit := _make_unit(Vector2i(4, 4))
 	var state := CombatState.new(Grid.new(5, 5), [unit])
