@@ -75,6 +75,14 @@ var armed_action: ActionDef = null
 var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
 
+## taskblock-18 D2/D4: non-null while choosing a lean firing cell — the
+## enemy that's not directly attackable from here but IS from a legal
+## lean cell. Mirrors `aiming_at`'s own two-step "arm, then click to
+## confirm" shape, just choosing a firing cell instead of a reticle
+## offset; never both non-null at once. A lean's own shot is always
+## center-mass/automated — there is no reticle/dartboard step for it.
+var leaning_at: Unit = null
+
 ## docs/10 taskblock04 E3: "hover, don't click" — the cell the combat
 ## readout currently reads (terrain, any unit regardless of squad, any
 ## field object — TileInspection.inspect()). null off the board entirely
@@ -116,6 +124,12 @@ var _drag_face_action: FaceAction = null
 ## arrived while the button was down.
 var _rmb_pressed: bool = false
 var _rmb_dragged: bool = false
+
+## Every legal lean cell for `leaning_at`, safest-first (D2: "default to
+## the safest legal firing cell... mouse-wheel cycles other valid
+## cells") — computed once on entering lean mode, never while cycling.
+var _lean_candidates: Array[Vector2i] = []
+var _lean_cell_index: int = 0
 
 
 func setup(state: CombatState, p_board_view: BoardView, p_camera_rig: CameraRig) -> void:
@@ -166,13 +180,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			# deselect.
 			if aiming_at != null:
 				cancel_aim()
+			elif leaning_at != null:
+				cancel_lean()
 			elif armed_action != null:
 				disarm_action()
 			else:
 				deselect()
-		elif key_event.keycode == ControlBindings.FACE_NUDGE_CCW_KEY and aiming_at == null:
+		elif (
+			key_event.keycode == ControlBindings.FACE_NUDGE_CCW_KEY
+			and aiming_at == null
+			and leaning_at == null
+		):
 			turn_selected(-FACE_STEP)
-		elif key_event.keycode == ControlBindings.FACE_NUDGE_CW_KEY and aiming_at == null:
+		elif (
+			key_event.keycode == ControlBindings.FACE_NUDGE_CW_KEY
+			and aiming_at == null
+			and leaning_at == null
+		):
 			turn_selected(FACE_STEP)
 		elif key_event.keycode == ControlBindings.RESET_TURN_KEY:
 			reset_turn()
@@ -196,6 +220,7 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		if (
 			not hit_dict.is_empty()
 			and aiming_at == null
+			and leaning_at == null
 			and selection.selected_unit != null
 			and hit_dict["kind"] == Enums.HitKind.UNIT
 			and hit_dict["unit"] == selection.selected_unit
@@ -207,7 +232,7 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			return
 		# docs/10 taskblock05 A1: dispatch on the actual hit directly — a
 		# unit ray-hit is never collapsed into a cell and re-derived.
-		if aiming_at != null:
+		if aiming_at != null or leaning_at != null:
 			confirm_shot()
 		elif hit_dict.is_empty():
 			# docs/10 taskblock02 F2: clicking off the board entirely is
@@ -231,6 +256,10 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		scroll_layer(1)
 	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and aiming_at != null:
 		scroll_layer(-1)
+	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and leaning_at != null:
+		cycle_lean_cell(1)
+	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and leaning_at != null:
+		cycle_lean_cell(-1)
 
 
 ## runNotes.md: "make undo last action only on click, while a drag doesn't
@@ -244,6 +273,9 @@ func _handle_rmb_release() -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+		return
+	if leaning_at != null:
+		cancel_lean()
 		return
 	# taskblock-08 A1: "Esc / RMB disarms the action and returns to normal
 	# selection" — same early-out shape as the aiming_at case above, one
@@ -360,7 +392,7 @@ func hover_part(part: Variant) -> void:
 func click_cell(cell: Vector2i) -> void:
 	if input_locked:
 		return
-	if aiming_at != null:
+	if aiming_at != null or leaning_at != null:
 		confirm_shot()
 		return
 
@@ -390,7 +422,7 @@ func _click_unit(unit_here: Unit) -> void:
 		selection.select(unit_here)
 		armed_action = null
 	elif armed_action != null and selection.selected_unit != null:
-		_enter_aim_mode(unit_here)
+		_enter_aim_or_lean_mode(unit_here)
 	_refresh_overlay()
 
 
@@ -415,7 +447,7 @@ func deselect() -> void:
 func arm_action(action_id: StringName) -> void:
 	if input_locked or selection == null or selection.selected_unit == null:
 		return
-	if aiming_at != null:
+	if aiming_at != null or leaning_at != null:
 		return
 	var def: ActionDef = null
 	for candidate: ActionDef in ActionCatalog.actions_for(selection.selected_unit):
@@ -457,6 +489,8 @@ func reset_turn() -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+	if leaning_at != null:
+		cancel_lean()
 	armed_action = null
 	selection.reset_turn()
 	_drag_face_action = null
@@ -470,7 +504,13 @@ func reset_turn() -> void:
 ## place, so one drag gesture is always exactly one queued action — never a
 ## pile of micro-turns RMB would have to undo one pixel at a time.
 func drag_face(delta_x: float) -> void:
-	if input_locked or selection == null or selection.selected_unit == null or aiming_at != null:
+	if (
+		input_locked
+		or selection == null
+		or selection.selected_unit == null
+		or aiming_at != null
+		or leaning_at != null
+	):
 		return
 	var target: float = selection.previewed_orientation() + delta_x * FACE_DRAG_SENSITIVITY
 	if _drag_face_action != null:
@@ -488,6 +528,37 @@ func _unit_at(cell: Vector2i) -> Unit:
 		if unit.alive and unit.cell == cell:
 			return unit
 	return null
+
+
+## taskblock-18 D2: "clicking SHOOT on an enemy the unit can't see but
+## could from a legal lean cell builds the triple automatically." A
+## direct shot (the origin is NOT covered from this target — D1's own
+## trigger condition) enters ordinary aim mode, unchanged; a target only
+## reachable via a lean enters lean-choice mode instead, and never falls
+## through to aim mode's own reticle/dartboard UI, which a lean's own
+## automated, center-mass shot has no use for. Falls back to plain aim
+## mode when neither applies (no operable weapon, or no legal lean
+## exists) — confirm_shot()'s own existing "nothing operable" no-op is
+## what actually catches that case, same as it always has.
+func _enter_aim_or_lean_mode(target: Unit) -> void:
+	var shooter: Unit = selection.selected_unit
+	var weapon: Part = (
+		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
+	)
+	if weapon != null:
+		var origin_covered: bool = UnitAI.is_covered_from(
+			shooter.cell, target.cell, selection.state, shooter
+		)
+		if origin_covered:
+			var candidates: Array[Vector2i] = LeanPlanner.candidate_lean_cells(
+				selection.state, shooter, shooter.cell, target
+			)
+			if not candidates.is_empty():
+				_enter_lean_mode(
+					target, LeanPlanner.sort_by_safety(selection.state, shooter, candidates)
+				)
+				return
+	_enter_aim_mode(target)
 
 
 func _enter_aim_mode(target: Unit) -> void:
@@ -513,6 +584,42 @@ func _enter_aim_mode(target: Unit) -> void:
 	camera_rig.start_aiming()
 	camera_rig.ease_to_attack_framing(_framing_shooter(), target)
 	aim_changed.emit()
+
+
+## taskblock-18 D2/D4: enters lean-choice mode — safest candidate
+## selected by default, mouse-wheel cycles the rest (cycle_lean_cell).
+## No camera framing/dartboard of its own: a lean's shot is always
+## automated center-mass, there is nothing here for the player to aim.
+func _enter_lean_mode(target: Unit, candidates_by_safety: Array[Vector2i]) -> void:
+	leaning_at = target
+	_lean_candidates = candidates_by_safety
+	_lean_cell_index = 0
+	if hovered_cell != null or inspected_part != null:
+		hovered_cell = null
+		inspected_part = null
+		hover_changed.emit()
+	aim_changed.emit()
+	_refresh_overlay()
+
+
+func cancel_lean() -> void:
+	leaning_at = null
+	_lean_candidates = []
+	_lean_cell_index = 0
+	armed_action = null
+	aim_changed.emit()
+	_refresh_overlay()
+
+
+## D2: "mouse-wheel cycles other valid cells" — wraps both directions,
+## a no-op with zero or one candidate.
+func cycle_lean_cell(delta: int) -> void:
+	if input_locked or leaning_at == null or _lean_candidates.is_empty():
+		return
+	var count: int = _lean_candidates.size()
+	_lean_cell_index = ((_lean_cell_index + delta) % count + count) % count
+	aim_changed.emit()
+	_refresh_overlay()
 
 
 ## taskblock-08 B1: "the camera frames the origin, not the ghost." The
@@ -663,7 +770,12 @@ func aim_facing() -> Variant:
 ## provider, SAW picks the saw provider, never just any weapon) — a no-op,
 ## silently, if the shooter has nothing operable for it right now.
 func confirm_shot() -> void:
-	if input_locked or aiming_at == null or selection.selected_unit == null:
+	if input_locked or selection == null or selection.selected_unit == null:
+		return
+	if leaning_at != null:
+		_confirm_lean()
+		return
+	if aiming_at == null:
 		return
 	var shooter: Unit = selection.selected_unit
 	if armed_action != null:
@@ -674,6 +786,32 @@ func confirm_shot() -> void:
 				selection.state
 			)
 	cancel_aim()
+
+
+## taskblock-18 D2: commits the lean triple at whichever candidate cell
+## is CURRENTLY selected (default: safest; the player may have cycled
+## with the wheel first) — through LeanPlanner.build_triple(), the same
+## shared assembly AI leans use, queued onto this unit's own real
+## TACTICS queue exactly like any other action (real MP/AP cost for both
+## legs, no discount). A silent no-op if the shooter has nothing
+## operable, same posture confirm_shot() itself already has.
+func _confirm_lean() -> void:
+	var shooter: Unit = selection.selected_unit
+	var weapon: Part = (
+		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
+	)
+	if weapon != null and not _lean_candidates.is_empty():
+		var firing_cell: Vector2i = _lean_candidates[_lean_cell_index]
+		LeanPlanner.build_triple(
+			selection.current_queue(),
+			selection.state,
+			shooter,
+			weapon.id,
+			leaning_at,
+			shooter.cell,
+			firing_cell
+		)
+	cancel_lean()
 
 
 func cancel_aim() -> void:
@@ -696,6 +834,8 @@ func end_turn() -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+	if leaning_at != null:
+		cancel_lean()
 	armed_action = null
 
 	input_locked = true
@@ -736,6 +876,8 @@ func resolve_to_marker(marker_index: int) -> void:
 		return
 	if aiming_at != null:
 		cancel_aim()
+	if leaning_at != null:
+		cancel_lean()
 	armed_action = null
 
 	input_locked = true
@@ -792,6 +934,8 @@ func _refresh_overlay() -> void:
 ## previewed_unit() each call, so mutating its orientation here can never
 ## leak back onto anything real.
 func _end_position_ghost() -> Unit:
+	if leaning_at != null:
+		return _lean_position_ghost()
 	if not has_queued_move():
 		return null
 	var previewed: Unit = selection.previewed_unit()
@@ -799,6 +943,38 @@ func _end_position_ghost() -> Unit:
 	if facing != null:
 		previewed.orientation = facing
 	return previewed
+
+
+## taskblock-18 D4: "the ghost must disclose exposure" starts with
+## actually previewing the right POSITION first — a disposable clone
+## of the shooter (display-only, same convention _end_position_ghost
+## itself already uses for orientation overrides) relocated to
+## whichever candidate cell is currently selected, facing the target.
+## Never a queued MoveAction; cycling with the wheel must be free to
+## look at every candidate without committing to any of them.
+func _lean_position_ghost() -> Unit:
+	if _lean_candidates.is_empty():
+		return null
+	var previewed: Unit = selection.previewed_unit()
+	if previewed == null:
+		return null
+	previewed.cell = _lean_candidates[_lean_cell_index]
+	previewed.orientation = FaceAction.orientation_toward(previewed.cell, leaning_at.cell)
+	return previewed
+
+
+## taskblock-18 D4: "is it in a known overwatch arc, what can see it" —
+## every overwatcher that would trigger at the CURRENTLY selected lean
+## candidate, the exact same Overwatch.would_trigger_at() query the
+## safest-cell pick itself used to rank candidates in the first place
+## (never a second, re-derived notion of exposure). Empty while not
+## leaning, or with nothing yet threatening this specific cell.
+func lean_exposure() -> Array[Unit]:
+	if leaning_at == null or _lean_candidates.is_empty():
+		return []
+	var shooter: Unit = selection.selected_unit
+	var firing_cell: Vector2i = _lean_candidates[_lean_cell_index]
+	return Overwatch.would_trigger_at(selection.state, shooter, firing_cell)
 
 
 ## runNotes.md: true once the selected unit's queue has actually moved it
