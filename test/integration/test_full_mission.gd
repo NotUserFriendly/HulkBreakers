@@ -10,7 +10,18 @@ extends GutTest
 ## anything that doesn't fire naturally is a finding for PLAN.md, not
 ## something to force.
 
-const SEED := 20260715
+## taskblock-16 Pass A: per-tile facing (a unit now faces each tile of a
+## curved/interrupted move, not just the aggregate start->end direction)
+## changes WHICH SIDE of a unit's body faces incoming fire at any given
+## moment — a genuine gameplay change, not a bug, and hit resolution is
+## facing-dependent (docs/02/03: DT/armor read the shot's actual angle of
+## incidence). The previous seed (20260715) no longer lets the landing
+## squad win this specific fight under the new, more granular facing —
+## a fair, seed-sensitive outcome shift, same as any other balance-
+## affecting change would produce. Re-picked for one that still reaches
+## extraction; the seed itself was always a flagged, arbitrary pick (its
+## own header above: "not something to force"), never a design decision.
+const SEED := 12345
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400

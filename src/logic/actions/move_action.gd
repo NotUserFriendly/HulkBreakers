@@ -82,6 +82,15 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 
 	for i in range(1, path.size()):
+		# taskblock-16 Pass A: "a unit must face each tile before stepping
+		# onto it" — free, the same primitive _finish() used to call ONCE,
+		# on the aggregate start->end direction, after the whole move
+		# completed. A no-op (via face_for_free's own early-out) whenever
+		# consecutive steps share a direction, so a straight move still
+		# only logs one facing change, not one per tile.
+		FaceAction.face_for_free(
+			state, actual, FaceAction.orientation_toward(actual.cell, path[i]), &"free_with_move"
+		)
 		var per_ap: float = actual.mp_per_ap()
 		var step_cost: float = pf.move_cost(path[i])
 		while actual.mp < step_cost:
@@ -133,28 +142,23 @@ static func _can_still_complete(
 	return true
 
 
+## taskblock-16 Pass A: "the end-of-move facing is now just the last step's
+## facing — no separate final face needed." The loop above already faced
+## toward every tile, `path[-1]` included, before ever stepping onto it —
+## an interrupted move (traversed stops short of the full path) is left
+## facing whichever tile its OWN last completed step faced, i.e. its real
+## direction of travel at the interrupt point, never re-derived here.
+## Known consequence, confirmed by direct A/B testing, not yet resolved
+## (flagged rather than hacked around, CLAUDE.md's own rule): a unit that
+## stops moving because it's already in weapon range keeps whatever
+## orientation its last step left it with, rather than a constant
+## default — for at least one scripted integration scenario
+## (test_full_mission.gd) this happens to freeze the last defender facing
+## its best armor at the attackers, stalemating the mission past its turn
+## cap. The mission AI has no facing awareness at all (it never queues a
+## FaceAction); making combat AI account for its own defensive facing is
+## a real follow-up, not something to invent unasked here.
 func _finish(state: CombatState, actual: Unit, traversed: Array[Vector2i]) -> void:
-	# runNotes.md: "a character's facing after movement should update to
-	# face away from where they started" — free, same primitive
-	# AttackAction's own free-with-action facing uses, so a queued move
-	# updates the previewed wedge exactly like every other facing change.
-	# Known consequence, confirmed by direct A/B testing, not yet resolved
-	# (flagged rather than hacked around, CLAUDE.md's own rule): a unit
-	# that stops moving because it's already in weapon range now keeps
-	# whatever orientation its last step left it with, rather than a
-	# constant default — for at least one scripted integration scenario
-	# (test_full_mission.gd) this happens to freeze the last defender
-	# facing its best armor at the attackers, stalemating the mission past
-	# its turn cap. The mission AI has no facing awareness at all (it never
-	# queues a FaceAction); making combat AI account for its own defensive
-	# facing is a real follow-up, not something to invent unasked here.
-	FaceAction.face_for_free(
-		state,
-		actual,
-		FaceAction.orientation_toward(traversed[0], traversed[traversed.size() - 1]),
-		&"free_with_move"
-	)
-
 	var text: String = "MoveAction: unit %d moved to %s" % [actual.id, actual.cell]
 	state.log_action(text)
 	if not state.is_preview:
