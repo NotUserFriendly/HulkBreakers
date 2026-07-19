@@ -81,6 +81,28 @@ static func forward_for(orientation: float) -> Vector2:
 	return rotate_by_orientation(WORLD_FORWARD, orientation)
 
 
+## taskblock-17 Pass B: the exact inverse of `forward_for` — the
+## `orientation` a unit needs so its forward points at `direction`.
+## Solving `forward_for(orientation) == direction` (i.e.
+## `(sin(orientation), cos(orientation)) == (direction.x, direction.y)`,
+## `forward_for`'s own algebra with `WORLD_FORWARD == (0, 1)` substituted
+## in) gives `atan2(direction.x, direction.y)` directly — never
+## `WORLD_FORWARD.angle_to(direction)`, which is `Vector2.rotated()`'s own
+## STANDARD rotation convention, the one `rotate_by_orientation`'s own doc
+## comment deliberately departs from. `FaceAction.orientation_toward`
+## used exactly that mirrored-convention shortcut and was consequently up
+## to 180 degrees off depending on the target's own direction (0 degrees
+## error dead ahead, 90-180 degrees off the further the target sat from
+## world-forward) — confirmed live: build a real AI unit, fire at a real
+## target, read the resolved `Unit.orientation` back, and compare
+## `forward_for` against the real geometric direction, not against
+## `orientation_toward`'s own formula (the class of bug CLAUDE.md itself
+## flags: "a test that re-derives it agrees with itself and nothing
+## else"). This is the one place that inverse gets computed now.
+static func orientation_for(direction: Vector2) -> float:
+	return atan2(direction.x, direction.y)
+
+
 ## Projects every living part of `unit`'s shell into view-plane Regions,
 ## composing each part's Socket.transform chain from the shell root first
 ## (Phase 12.0) so a part attached deep in the tree — or twice, at mirrored

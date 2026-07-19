@@ -74,14 +74,18 @@ static func face_for_free(
 
 
 ## The absolute orientation (docs/02 convention) that faces `from_cell`
-## toward `to_cell` — `BodyProjector.WORLD_FORWARD` rotated by this exact
-## angle lands on the direction between them. Callers own the "is there
-## even a direction to face" question (e.g. GatherAction/PickUpAction
-## always interact with the actor's own cell — zero delta, nothing to
-## turn toward, so neither calls this at all).
+## toward `to_cell` — `BodyProjector.forward_for()` of this exact angle
+## lands on the direction between them (`BodyProjector.orientation_for`,
+## its own formal inverse — never `WORLD_FORWARD.angle_to(delta)`, the
+## mirrored-rotation-convention bug taskblock-17 Pass B fixed: this used
+## to compute an orientation up to 180 degrees off, only ever correct
+## dead ahead). Callers own the "is there even a direction to face"
+## question (e.g. GatherAction/PickUpAction always interact with the
+## actor's own cell — zero delta, nothing to turn toward, so neither
+## calls this at all).
 static func orientation_toward(from_cell: Vector2i, to_cell: Vector2i) -> float:
 	var delta := Vector2(to_cell - from_cell)
-	return BodyProjector.WORLD_FORWARD.angle_to(delta.normalized())
+	return BodyProjector.orientation_for(delta.normalized())
 
 
 static func _log(state: CombatState, actual: Unit, reason: StringName, cost: float) -> void:
