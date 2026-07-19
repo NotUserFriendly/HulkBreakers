@@ -1,0 +1,107 @@
+extends GutTest
+
+## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" — a
+## genuine miss (the dartboard point landed nowhere any region in the whole
+## shot plane covers) must still log something the view can draw a tracer
+## from, not silently emit zero events the way it did before this pass.
+
+
+## A point far outside any region's own rect in a mostly-empty shot plane —
+## the shooter's own body is excluded at depth <= 0 (`resolve_and_log_point`
+## always excludes the attacker), so nothing else is left to hit at all.
+const MISS_POINT := Vector2(1000.0, 0.0)
+
+
+func _make_unit(cell: Vector2i, squad_id: int = 0) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad_id)
+
+
+func test_a_genuine_miss_emits_a_miss_event() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var bystander := _make_unit(Vector2i(10, 0), 1)
+	var state := CombatState.new(Grid.new(20, 20), [shooter, bystander])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	var landed: bool = ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), MISS_POINT, 5.0, 0.0, 0.0, null
+	)
+
+	assert_false(landed, "sanity: this point really does miss everything")
+	assert_eq(sink.events_of_kind(&"impact").size(), 0, "nothing was actually hit")
+	assert_eq(sink.events_of_kind(&"miss").size(), 1, "a miss must still be logged")
+
+
+func test_a_hit_never_also_emits_a_miss_event() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var target := _make_unit(Vector2i(3, 0), 1)
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	var landed: bool = ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), Vector2(0, 0), 5.0, 0.0, 0.0, null
+	)
+
+	assert_true(landed, "sanity: dead center on the target's own torso must land")
+	assert_gt(sink.events_of_kind(&"impact").size(), 0)
+	assert_eq(sink.events_of_kind(&"miss").size(), 0, "a real hit is never ALSO logged as a miss")
+
+
+## The miss event must carry an endpoint genuinely downrange along the
+## fired direction — not the origin, not some fixed placeholder.
+func test_a_miss_events_endpoint_continues_along_the_fired_direction() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var bystander := _make_unit(Vector2i(10, 0), 1)
+	var state := CombatState.new(Grid.new(20, 20), [shooter, bystander])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), MISS_POINT, 5.0, 0.0, 0.0, null
+	)
+
+	var miss: LogEvent = sink.events_of_kind(&"miss")[0]
+	var end_x: float = miss.data.get("end_x")
+	assert_gt(end_x, 0.0, "the ray must continue forward along +x, not sit at the origin")
+
+
+## When the firing weapon authored a real `max_range`, the void endpoint
+## must respect it — never draw a "miss" tracer past where the round could
+## ever have actually reached.
+func test_a_miss_respects_the_weapons_own_authored_max_range() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var bystander := _make_unit(Vector2i(20, 0), 1)
+	var state := CombatState.new(Grid.new(40, 40), [shooter, bystander])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), MISS_POINT, 5.0, 0.0, 0.0, null, false, 5.0
+	)
+
+	var miss: LogEvent = sink.events_of_kind(&"miss")[0]
+	assert_almost_eq(miss.data.get("end_x") as float, 5.0, 0.01)
+
+
+## An unauthored weapon (`max_range` 0.0, the default) has no real cap to
+## draw to — falls back to the map's own longest side so the void tracer
+## still terminates somewhere on-board-ish, never grows unbounded.
+func test_a_miss_with_no_authored_max_range_falls_back_to_the_map_size() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var bystander := _make_unit(Vector2i(10, 0), 1)
+	var state := CombatState.new(Grid.new(15, 9), [shooter, bystander])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), MISS_POINT, 5.0, 0.0, 0.0, null
+	)
+
+	var miss: LogEvent = sink.events_of_kind(&"miss")[0]
+	assert_almost_eq(miss.data.get("end_x") as float, 15.0, 0.01)

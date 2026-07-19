@@ -132,7 +132,17 @@ func apply(state: CombatState) -> void:
 		# fired at a collinear target never reaches back into the shooter's
 		# own chest.
 		ShotResolution.resolve_and_log_point(
-			state, actual, origin, direction, point, damage, crit_chance, bonus_pen, mission, is_dud
+			state,
+			actual,
+			origin,
+			direction,
+			point,
+			damage,
+			crit_chance,
+			bonus_pen,
+			mission,
+			is_dud,
+			RangeModel.max_range(weapon)
 		)
 
 	# Phase 6 placeholder: no living parts left disables the unit. Phase 7
