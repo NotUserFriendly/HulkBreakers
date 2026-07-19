@@ -71,7 +71,8 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 	weapon.requires = {&"TRIGGER": 1}
 	weapon.damage = 5.0
 	weapon.ap_cost = 1
-	weapon.weapon_max_range = 8.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.max_range = 8.0
 	weapon.scatter = [Ring.new(0.15, 1.0), Ring.new(0.6, 2.0)]
 
 	var hand := Part.new()

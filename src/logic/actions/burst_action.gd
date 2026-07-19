@@ -57,7 +57,9 @@ func is_legal(state: CombatState) -> bool:
 		return false
 
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
-	if weapon.weapon_max_range > 0.0 and range_cells > int(weapon.weapon_max_range):
+	if not RangeModel.is_in_max_range(weapon, range_cells):
+		return false
+	if RangeModel.blocks_min_range(weapon, range_cells):
 		return false
 	if not LoS.has_los(state.grid, actual.cell, target_cell):
 		return false
@@ -89,6 +91,9 @@ func apply(state: CombatState) -> void:
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
+	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
+	var radius_multiplier: float = RangeModel.dartboard_radius_scale(weapon, range_cells)
+	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 
 	# docs/08: the same resolved numbers a tooltip would show, never a raw
 	# Part field read directly — identical convention to AttackAction.
@@ -132,7 +137,9 @@ func apply(state: CombatState) -> void:
 		# by one more cumulative recoil step — resets to 0 automatically
 		# next activation, since `pull` is this loop's own local counter,
 		# never carried on the weapon/unit between calls.
-		var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon, extra_sources)
+		var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(
+			weapon, extra_sources, radius_multiplier
+		)
 		var widened_scatter: Array[Ring] = RecoilResolver.widen(resolved_scatter, recoil_step, pull)
 		var pull_point: Vector2 = Dartboard.sample(aim_point, widened_scatter, state.rng, 1)[0]
 		var pellet_points: Array[Vector2] = SpreadPattern.sample(
@@ -140,7 +147,16 @@ func apply(state: CombatState) -> void:
 		)
 		for point: Vector2 in pellet_points:
 			ShotResolution.resolve_and_log_point(
-				state, actual, origin, direction, point, damage, crit_chance, bonus_pen, mission
+				state,
+				actual,
+				origin,
+				direction,
+				point,
+				damage,
+				crit_chance,
+				bonus_pen,
+				mission,
+				is_dud
 			)
 
 	# Phase 6 placeholder, same as AttackAction: no living parts left

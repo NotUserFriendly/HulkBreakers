@@ -38,7 +38,8 @@ func _armed_unit(
 	weapon.requires = {&"TRIGGER": 1}
 	weapon.damage = 6.0
 	weapon.ap_cost = 1
-	weapon.weapon_max_range = 15.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.max_range = 15.0
 	weapon.scatter = [Ring.new(0.1, 1.0)]
 
 	var hand := Part.new()

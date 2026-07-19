@@ -25,7 +25,8 @@ func _armed_unit(
 		weapon.requires = {&"TRIGGER": 1}
 		weapon.damage = 5.0
 		weapon.ap_cost = 1
-		weapon.weapon_max_range = 15.0
+		weapon.weapon_def = WeaponDef.new()
+		weapon.weapon_def.max_range = 15.0
 		weapon.scatter = [Ring.new(0.1, 1.0)]
 
 		var hand := Part.new()
@@ -116,7 +117,7 @@ func test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one() -> vo
 	# genuinely out of range — COVER_SEEKER must actually reposition,
 	# never just fire from an already-good spot.
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
-	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 2), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 	assert_false(
@@ -153,7 +154,7 @@ func _last_move(queue: ActionQueue) -> MoveAction:
 func test_skirmisher_advances_when_out_of_weapon_range_and_farther_than_preferred() -> void:
 	var grid := Grid.new(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
-	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
@@ -177,7 +178,7 @@ func test_skirmisher_advances_when_out_of_weapon_range_and_farther_than_preferre
 func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() -> void:
 	var grid := Grid.new(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(10, 1), 0, &"rifle")
-	self_unit.shell.find_part(&"rifle").weapon_max_range = 15.0
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 15.0
 	var enemy := _armed_unit(&"enemy", Vector2i(11, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 	var starting_distance: int = Grid.distance_chebyshev(self_unit.cell, enemy.cell)
@@ -206,12 +207,12 @@ func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() ->
 ## constants baked in.
 func test_marksman_holds_greater_standoff_than_skirmisher() -> void:
 	var skirmisher := _armed_unit(&"skirmisher", Vector2i(0, 1), 0, &"rifle")
-	skirmisher.shell.find_part(&"rifle").weapon_max_range = 6.0
+	skirmisher.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy_a := _armed_unit(&"enemy_a", Vector2i(15, 1), 1, &"")
 	var state_a := CombatState.new(Grid.new(20, 3), [skirmisher, enemy_a])
 
 	var marksman := _armed_unit(&"marksman", Vector2i(0, 1), 0, &"rifle")
-	marksman.shell.find_part(&"rifle").weapon_max_range = 6.0
+	marksman.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy_b := _armed_unit(&"enemy_b", Vector2i(15, 1), 1, &"")
 	var state_b := CombatState.new(Grid.new(20, 3), [marksman, enemy_b])
 
@@ -240,6 +241,150 @@ func test_marksman_holds_greater_standoff_than_skirmisher() -> void:
 	)
 
 
+## taskblock-19 Pass C3: "a unit in max-but-not-effective range moves
+## closer to reach effective" — the weapon's own authored effective_range
+## supersedes the flat, playstyle-level preferred_range once it's real
+## data, not a flagged guess. No cover in this scene at all: proves the
+## DISTANCE TARGET changed, independent of the cover-vs-distance tradeoff
+## (covered separately below).
+func test_effective_range_supersedes_the_flat_preferred_range_standoff() -> void:
+	var grid := Grid.new(20, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 15.0
+	self_unit.shell.find_part(&"rifle").weapon_def.effective_range = 3.0
+	assert_ne(
+		3, UnitAI.SKIRMISHER_PREFERRED_RANGE, "sanity: distinct from the flat playstyle standoff"
+	)
+	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "must reposition toward its own weapon's effective range")
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_eq(
+		Grid.distance_chebyshev(destination, enemy.cell),
+		3,
+		"converges on effective_range, not SKIRMISHER_PREFERRED_RANGE"
+	)
+
+
+## taskblock-19 Pass C3: "...unless there's no cover available, in which
+## case it holds and takes the degraded shot rather than exposing itself."
+## Cover only exists FARTHER than effective_range here — COVER_SEEKER must
+## still prefer the covered-but-degraded cell over an uncovered one right
+## at effective_range, the same cover-dominance
+## `test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one`
+## already proves, now confirmed to survive the new distance target too.
+func test_ai_holds_a_covered_degraded_position_over_an_exposed_effective_range_one() -> void:
+	var grid := Grid.new(10, 5)
+	var crate := Part.new()
+	crate.id = &"crate"
+	crate.hp = 10
+	crate.max_hp = 10
+	crate.is_destructible = false
+	crate.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
+	# Same geometry as the existing cover test: covered cells sit at
+	# (x<5, y=2), distance 5-9 from the enemy — all farther than the
+	# effective_range=2 set below.
+	grid.blockers[Vector2i(5, 2)] = crate
+
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 15.0
+	self_unit.shell.find_part(&"rifle").weapon_def.effective_range = 2.0
+	var enemy := _armed_unit(&"enemy", Vector2i(9, 2), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"COVER_SEEKER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "must still reposition toward cover, not freeze")
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_true(
+		UnitAI.is_covered_from(destination, enemy.cell, state, self_unit),
+		"holds a covered-but-degraded position rather than exposing itself for a better shot"
+	)
+
+
+## taskblock-19 Pass C3: "a unit with a min_range only closes inside it if
+## forced; it prefers to fire from >= min." The weapon's own
+## effective_range (1.0) would otherwise pull the unit inside its own
+## min_range (3.0) — the penalty must override that pull when a >= min
+## cell is reachable too.
+func test_ai_avoids_closing_inside_its_own_min_range() -> void:
+	var grid := Grid.new(20, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	var rifle: Part = self_unit.shell.find_part(&"rifle")
+	rifle.weapon_def.max_range = 15.0
+	rifle.weapon_def.effective_range = 1.0
+	rifle.weapon_def.min_range = 3.0
+	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move)
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_gte(
+		Grid.distance_chebyshev(destination, enemy.cell),
+		3,
+		"the min_range penalty must beat the pull toward effective_range=1"
+	)
+	var shot: AttackAction = null
+	for action: CombatAction in queue.actions:
+		if action is AttackAction:
+			shot = action
+	assert_not_null(shot, "staying at/beyond min_range is what makes the shot legal at all")
+
+
+## taskblock-19 Pass C3: "...unless forced" — when every reachable cell
+## sits inside min_range, a dud-capable weapon (legal under min_range,
+## see RangeModel.is_dud) must still fire from the least-bad reachable
+## cell rather than doing nothing, the same posture ALLY_BLOCKED_PENALTY's
+## own "least-bad cell still wins" already has for a blocked firing line.
+## (A non-dud weapon has no such move: firing under its own min_range is
+## flatly illegal, so "forced" there just means it correctly holds fire —
+## a positioning preference can never make an illegal shot legal.)
+func test_ai_fires_from_inside_min_range_when_forced_and_the_weapon_duds_instead_of_blocking(
+) -> void:
+	var grid := Grid.new(10, 3)
+	# Wall off every neighbor of (1,1) but the enemy's own (occupied,
+	# already-unwalkable) cell — Pathfinder.reachable always includes the
+	# origin itself, so this boxes the unit into exactly one candidate.
+	for cell: Vector2i in [
+		Vector2i(0, 0),
+		Vector2i(1, 0),
+		Vector2i(2, 0),
+		Vector2i(0, 1),
+		Vector2i(0, 2),
+		Vector2i(1, 2),
+		Vector2i(2, 2)
+	]:
+		grid.set_terrain(cell, Enums.TerrainType.WALL)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(1, 1), 0, &"rifle")
+	var rifle: Part = self_unit.shell.find_part(&"rifle")
+	rifle.weapon_def.max_range = 15.0
+	rifle.weapon_def.min_range = 5.0
+	rifle.weapon_def.min_range_failure = &"dud"
+	var enemy := _armed_unit(&"enemy", Vector2i(2, 1), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+	assert_lt(
+		Grid.distance_chebyshev(self_unit.cell, enemy.cell),
+		5,
+		"sanity: the only reachable cell is already inside min_range"
+	)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var shot: AttackAction = null
+	for action: CombatAction in queue.actions:
+		if action is AttackAction:
+			shot = action
+	assert_not_null(shot, "forced inside min_range on a dud-capable weapon, it must still fire")
+
+
 ## taskblock-16 D2: "with cover objects present (Pass B), COVER_SEEKER
 ## moves to a covered cell rather than standing still" — proven here with
 ## a REAL Pass B field object loaded through DataLibrary (not an ad-hoc
@@ -251,7 +396,7 @@ func test_cover_seeker_relocates_to_a_real_pass_b_cover_object() -> void:
 	grid.blockers[Vector2i(5, 2)] = crate
 
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
-	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 2), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 	assert_false(
@@ -381,7 +526,7 @@ func test_targets_and_moves_toward_a_reachable_enemy_over_a_closer_sealed_off_on
 	# Short range: `reachable_enemy` starts well out of weapon range, so
 	# the AI is forced to actually reposition rather than firing from
 	# where it stands — the thing this test needs to see happen.
-	self_unit.shell.find_part(&"rifle").weapon_max_range = 6.0
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var unreachable_enemy := _armed_unit(&"unreachable", Vector2i(2, 2), 1, &"")
 	var reachable_enemy := _armed_unit(&"reachable", Vector2i(15, 15), 1, &"")
 	var state := CombatState.new(grid, [self_unit, unreachable_enemy, reachable_enemy])
@@ -413,7 +558,7 @@ func test_reachable_enemy_targeting_is_deterministic() -> void:
 		var grid := Grid.new(20, 20)
 		_seal_off(grid, Vector2i(2, 2))
 		var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
-		self_unit.shell.find_part(&"rifle").weapon_max_range = 30.0
+		self_unit.shell.find_part(&"rifle").weapon_def.max_range = 30.0
 		var state := CombatState.new(
 			grid,
 			[

@@ -33,7 +33,8 @@ func _overwatcher(cell: Vector2i, orientation: float, squad_id: int) -> Unit:
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
 	pistol.requires = {&"TRIGGER": 1}
-	pistol.weapon_max_range = 15.0
+	pistol.weapon_def = WeaponDef.new()
+	pistol.weapon_def.max_range = 15.0
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -73,7 +74,8 @@ func _armed_unit(cell: Vector2i, squad_id: int, weapon_id: StringName = &"") -> 
 		weapon.requires = {&"TRIGGER": 1}
 		weapon.damage = 5.0
 		weapon.ap_cost = 1
-		weapon.weapon_max_range = 15.0
+		weapon.weapon_def = WeaponDef.new()
+		weapon.weapon_def.max_range = 15.0
 		weapon.scatter = [Ring.new(0.1, 1.0)]
 
 		var hand := Part.new()
