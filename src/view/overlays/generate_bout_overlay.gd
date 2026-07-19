@@ -62,6 +62,7 @@ var _rows_a: VBoxContainer
 var _rows_b: VBoxContainer
 var _seed_field: LineEdit
 var _error_label: Label
+var _assume_control_checkbox: CheckBox
 
 
 func setup(p_battle: BattleScene) -> void:
@@ -151,6 +152,13 @@ func _build_ui() -> void:
 	_seed_field = LineEdit.new()
 	_seed_field.text = str(Time.get_ticks_usec())
 	seed_row.add_child(_seed_field)
+
+	# taskblock-21 Pass C: "assume control of blue team <-> watch, in the
+	# bout menu (and/or mid-bout)." Squad A is "blue" — see
+	# BattleScene.toggle_blue_control's own doc comment for the convention.
+	_assume_control_checkbox = CheckBox.new()
+	_assume_control_checkbox.text = "Assume Control of Squad A"
+	layout.add_child(_assume_control_checkbox)
 
 	var start_button := Button.new()
 	start_button.text = "Start Bout"
@@ -308,4 +316,11 @@ func _on_start_bout_pressed() -> void:
 	# SpectatorOverlay.setup() reads battle.combat_state/mission fresh, no
 	# stale reference possible.
 	battle.load_battle(result.state, result.mission)
-	battle.set_overlay(SpectatorOverlay.new())
+	if _assume_control_checkbox.button_pressed:
+		# taskblock-21 Pass C: BoutSetup.build_bout always starts both
+		# squads AI — toggle_blue_control() flips squad 0 to HUMAN and
+		# swaps straight to SquadControlOverlay, never SpectatorOverlay at
+		# all in this branch.
+		battle.toggle_blue_control()
+	else:
+		battle.set_overlay(SpectatorOverlay.new())

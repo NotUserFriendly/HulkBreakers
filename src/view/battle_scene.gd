@@ -124,6 +124,27 @@ func set_overlay(new_overlay: ControlOverlay) -> void:
 	overlay.setup(self)
 
 
+## taskblock-21 Pass C: "assume control of blue team <-> watch." No new
+## control system — the overlay swap directly above, exposed as a toggle.
+## Squad 0 is "blue" (the same convention `WorldPalette.team_color`/
+## `MissionState.player_squad_id` already use); squad 1 ("red") is never
+## touched here, so it stays AI regardless of which way this flips.
+## `set_overlay`'s own teardown (which SpectatorOverlay's `teardown()`
+## already routes through `pause()`) is what makes toggling safe mid
+## auto-play — nothing new to guard here either.
+func toggle_blue_control() -> void:
+	var next_controller: Enums.SquadController = (
+		Enums.SquadController.AI
+		if combat_state.controller_for(0) == Enums.SquadController.HUMAN
+		else Enums.SquadController.HUMAN
+	)
+	combat_state.set_squad_controller(0, next_controller)
+	if next_controller == Enums.SquadController.HUMAN:
+		set_overlay(SquadControlOverlay.new())
+	else:
+		set_overlay(SpectatorOverlay.new())
+
+
 ## Rebuilds the world (board, camera framing, one HitVolumeView per unit)
 ## from an already-built `CombatState`/`MissionState` — `new_battle()`
 ## below is the hand-seeded default path through this; `GenerateBoutOverlay`
