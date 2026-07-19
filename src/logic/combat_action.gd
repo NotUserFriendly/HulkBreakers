@@ -33,11 +33,12 @@ func describe() -> String:
 ## -06 convention. This is `base_action_speed` in `ResolutionSpeed.resolve()`
 ## (taskblock-18 A2), the one axis every real contender is actually sorted
 ## by; `order_by_speed` below stays this class's own narrower, self-
-## contained ordering (no personal_speed/perk bonus, no re-validation) —
-## flagged: real weapon `speed` data (and `FaceAction.SPEED`) was authored
-## under the OLD higher-wins convention and its relative values haven't
-## been retuned for the new one yet; only the ORDER DIRECTION changed here,
-## not the numbers.
+## contained ordering (no personal_speed/perk bonus, no re-validation).
+## taskblock-19 Pass A re-ranked the constants deliberately for the new
+## direction: `Overwatch.SPEED` (20.0) < default weapon `speed` (40.0,
+## `Part.speed`) < `FaceAction.SPEED` (100.0) — overwatch resolves fastest,
+## facing slowest. Flagged placeholders; only the relative ORDER is design
+## intent, not the exact numbers.
 func speed(_state: CombatState) -> float:
 	return 0.0
 
