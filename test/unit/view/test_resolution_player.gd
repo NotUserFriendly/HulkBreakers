@@ -175,6 +175,11 @@ func test_a_zero_duration_slide_visits_every_path_cell_and_ends_at_zero_offset()
 	var attacker: Unit = built.attacker
 	player.slide_ms = 0.0
 	var view: HitVolumeView = player._view_for(attacker.id)
+	# _play_slide reads the unit's own TRUE final cell live (the pivot
+	# every display offset is computed against) — matching reality, where
+	# resolve_until() has already moved it there by the time any
+	# animation runs; the event's own path must agree with it.
+	attacker.cell = Vector2i(1, 1)
 
 	player._play_slide(_move_event(attacker, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1)]))
 
@@ -212,7 +217,7 @@ func _faced_event(unit: Unit, direction: float) -> LogEvent:
 
 
 ## Zero duration snaps instantly (no tween) — the real behavior under
-## test is that _displayed_orientation is now tracking the new value, so
+## test is that _display_orientation is now tracking the new value, so
 ## the NEXT facing change animates from THIS one, not from a stale value.
 func test_a_zero_duration_facing_change_snaps_and_remembers_the_new_orientation() -> void:
 	var built: Dictionary = _setup_player()
@@ -222,7 +227,64 @@ func test_a_zero_duration_facing_change_snaps_and_remembers_the_new_orientation(
 
 	player._play_facing(_faced_event(attacker, 1.5))
 
-	assert_almost_eq(player._displayed_orientation[attacker.id], 1.5, 0.0001)
+	assert_almost_eq(player._display_orientation[attacker.id], 1.5, 0.0001)
+
+
+## A real, reported bug: a plain rotation around the VIEW's own local
+## origin (world origin) swings a unit that isn't standing on cell (0,0)
+## through a huge, wrong arc instead of turning in place ("fly off" /
+## "orbitted something unexpectedly"). The fix's own defining property —
+## true regardless of internal implementation — is that applying the
+## resulting transform to the unit's own TRUE final anchor point must
+## always map back to exactly its intended display position, for any
+## delta_angle: rotation must never displace the unit's own body.
+func test_a_facing_change_pivots_on_the_units_own_cell_not_the_map_origin() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var target: Unit = built.target
+	var view: HitVolumeView = player._view_for(target.id)
+
+	player._apply_display_transform(
+		view, target.cell, 0.0, player._world_anchor(target.cell), PI / 2.0
+	)
+
+	var final_anchor: Vector3 = player._world_anchor(target.cell)
+	var mapped: Vector3 = view.basis * final_anchor + view.position
+	assert_almost_eq(
+		mapped.x, final_anchor.x, 0.001, "rotating must not displace the unit's own body"
+	)
+	assert_almost_eq(
+		mapped.z, final_anchor.z, 0.001, "rotating must not displace the unit's own body"
+	)
+
+
+## A real, reported bug: refresh_unit_views() already bakes every mesh at
+## the FINAL state, synchronously, before play() even starts its own real-
+## time lead-in wait — a unit used to flash at its destination for that
+## whole wait, then visibly jump BACK the instant its own event actually
+## began animating. _prime() must show the OLD state immediately
+## (synchronously, no `await` reached yet), so nothing ever flashes at
+## the destination first.
+func test_prime_shows_the_old_state_immediately_so_nothing_flashes_at_the_destination() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	var previous_cell := Vector2i(attacker.cell.x - 1, attacker.cell.y)
+	# Seeds the display record exactly like a real previous _play_slide
+	# call would have left it — attacker.cell itself is untouched (this
+	# is purely what was last SHOWN, not a real move).
+	player._display_cell[attacker.id] = previous_cell
+	var view: HitVolumeView = player._view_for(attacker.id)
+
+	player._prime([_move_event(attacker, [previous_cell, attacker.cell])])
+
+	var final_anchor: Vector3 = player._world_anchor(attacker.cell)
+	assert_ne(
+		view.position,
+		Vector3.ZERO,
+		"priming must show the OLD position, not the already-baked final one"
+	)
+	assert_almost_eq((view.position - final_anchor).length(), UnitGeometry.CELL_SIZE, 0.01)
 
 
 func test_bullet_fade_duration_derives_from_bullet_ms_and_pacing_speed() -> void:
