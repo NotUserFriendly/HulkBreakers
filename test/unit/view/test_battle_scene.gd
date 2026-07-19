@@ -45,6 +45,51 @@ func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
 		assert_true(view.get_child_count() > 0, "every seeded unit must render at least one box")
 
 
+## taskblock-19 Pass I2: "something on turn advance is blocking the main
+## thread" — a full HitVolumeView.refresh() (tear down + rebuild every
+## child mesh) for EVERY unit on EVERY turn, even the ones a turn never
+## touched, was real, unnecessary work. Passing a specific id set must
+## rebuild ONLY those views — proven by reading the real child nodes
+## back: an untouched view's own children must be the SAME instances
+## before and after, never freed and recreated.
+func test_refresh_unit_views_with_ids_only_rebuilds_those_views() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var touched_id: int = scene.combat_state.units[0].id
+	var untouched_view: HitVolumeView = scene.unit_views[1]
+	var touched_view: HitVolumeView = scene.unit_views[0]
+	var untouched_children_before: Array[Node] = untouched_view.get_children()
+	var touched_children_before: Array[Node] = touched_view.get_children()
+
+	scene.refresh_unit_views([touched_id])
+
+	assert_eq(
+		untouched_view.get_children(),
+		untouched_children_before,
+		"an untouched view's own children must not be rebuilt"
+	)
+	assert_ne(
+		touched_view.get_children(), touched_children_before, "the named view must actually rebuild"
+	)
+
+
+func test_refresh_unit_views_with_null_still_rebuilds_every_view() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var children_before: Array = []
+	for view: HitVolumeView in scene.unit_views:
+		children_before.append(view.get_children())
+
+	scene.refresh_unit_views()
+
+	for i in range(scene.unit_views.size()):
+		assert_ne(
+			scene.unit_views[i].get_children(),
+			children_before[i],
+			"the default (null) must still rebuild everyone, unchanged from before this pass"
+		)
+
+
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
 ## streams." battle_scene.gd used to register only a UISink; a human
 ## session showed a log on screen and wrote nothing to disk.

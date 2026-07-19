@@ -44,3 +44,24 @@ static func total_duration(events: Array[LogEvent]) -> float:
 	var cues: Array[PlaybackCue] = build(events)
 	var last_cue_time: float = cues[-1].time if not cues.is_empty() else 0.0
 	return RESOLVE_LEAD_IN + last_cue_time + RESOLVE_TAIL
+
+
+## taskblock-19 Pass I2: "something on turn advance is blocking the main
+## thread." `BattleScene.refresh_unit_views()` used to unconditionally
+## rebuild EVERY unit's entire view every turn, even the units a normal
+## turn never touches — this is the real, precise signal that lets a
+## caller refresh only the ones a turn's own events actually named,
+## instead. Every unit_id an event mentions, whether as the actor
+## (`unit_id`) or a hit's own separate target (`data.target_unit_id` —
+## docs/09: "a ricochet can tag a third party, never assumed to be the
+## shooter's own original target").
+static func affected_unit_ids(events: Array[LogEvent]) -> Array[int]:
+	var ids: Dictionary = {}
+	for event: LogEvent in events:
+		ids[event.unit_id] = true
+		var target_id: int = int(event.data.get("target_unit_id", -1))
+		if target_id >= 0:
+			ids[target_id] = true
+	var result: Array[int] = []
+	result.assign(ids.keys())
+	return result

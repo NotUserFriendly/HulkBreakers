@@ -69,3 +69,45 @@ func test_total_duration_of_an_empty_stream_is_still_lead_in_plus_tail() -> void
 		LogPlayback.RESOLVE_LEAD_IN + LogPlayback.RESOLVE_TAIL,
 		0.0001
 	)
+
+
+## taskblock-19 Pass I2: "which units did this turn's events actually
+## name" — every event's own actor (unit_id), plus a hit's own separate
+## target (data.target_unit_id — a ricochet can tag a third party, never
+## assumed to be the actor's own target).
+func test_affected_unit_ids_collects_actors_and_impact_targets() -> void:
+	var events: Array[LogEvent] = [
+		LogEvent.new(0, Enums.Phase.RESOLUTION, 5, &"move", {}, ""),
+		LogEvent.new(0, Enums.Phase.RESOLUTION, 5, &"impact", {"target_unit_id": 9}, ""),
+		LogEvent.new(0, Enums.Phase.RESOLUTION, 5, &"impact", {"target_unit_id": 12}, ""),
+	]
+
+	var ids: Array[int] = LogPlayback.affected_unit_ids(events)
+
+	assert_eq(ids.size(), 3)
+	assert_true(5 in ids)
+	assert_true(9 in ids)
+	assert_true(12 in ids)
+
+
+func test_affected_unit_ids_never_includes_the_no_unit_sentinel() -> void:
+	var events: Array[LogEvent] = [
+		LogEvent.new(0, Enums.Phase.RESOLUTION, 5, &"impact", {"target_unit_id": -1}, ""),
+	]
+
+	var ids: Array[int] = LogPlayback.affected_unit_ids(events)
+
+	assert_eq(ids, [5], "-1 (cover/terrain, no real unit) must never appear")
+
+
+func test_affected_unit_ids_deduplicates() -> void:
+	var events: Array[LogEvent] = [
+		LogEvent.new(0, Enums.Phase.RESOLUTION, 5, &"move", {}, ""),
+		LogEvent.new(0, Enums.Phase.RESOLUTION, 5, &"faced", {}, ""),
+	]
+
+	assert_eq(LogPlayback.affected_unit_ids(events), [5])
+
+
+func test_affected_unit_ids_of_an_empty_stream_is_empty() -> void:
+	assert_eq(LogPlayback.affected_unit_ids([]), [] as Array[int])

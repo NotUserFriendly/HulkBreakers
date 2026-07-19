@@ -484,10 +484,14 @@ func _on_reset_turn_pressed() -> void:
 ## before this taskblock), inert (a single no-op check) for every existing
 ## battle, which never sets a squad to AI.
 func _on_turn_ended(events: Array[LogEvent]) -> void:
-	battle.refresh_unit_views()
+	# taskblock-19 Pass I2: only the units THIS turn's own events actually
+	# named, not the whole board — advance_ai_turns() already does its
+	# own refresh at ITS OWN end (covering whatever it resolves), so a
+	# third, unconditional full-board refresh right after it used to be
+	# pure duplicate work, not a second, more-correct pass.
+	battle.refresh_unit_views(LogPlayback.affected_unit_ids(events))
 	_on_selection_changed()
 	advance_ai_turns(battle)
-	battle.refresh_unit_views()
 	resolution_player.play(events)
 
 
