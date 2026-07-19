@@ -33,6 +33,50 @@ func test_a_torso_sized_wedge_exists_and_assembles() -> void:
 	assert_gt(face.volume[0].size.y, 0.3)
 
 
+## taskblock-19 Pass G1: "the wedge deflects with its point toward fire,
+## no compensating rotation in its transform." Read the real projected
+## geometry back (CLAUDE.md: never re-derive a second copy of the same
+## rotation math) — the left face's own DOMINANT surface (its largest-
+## area region; a thin angled plate also throws a thin edge sliver, see
+## test_ricochet_stress.gd's own note) must point left-and-forward, the
+## right face's right-and-forward: both normals converging toward a real
+## forward-facing apex, never toward each other (a concave scoop that
+## collects fire instead of deflecting it — the original bug).
+func test_wedge_plates_point_their_apex_toward_incoming_fire() -> void:
+	for wedge_id: StringName in [
+		&"wedge_plate_shallow", &"wedge_plate_steep", &"wedge_plate_torso"
+	]:
+		var wedge: Part = DataLibrary.get_part(wedge_id)
+		var regions: Array[Region] = BodyProjector.project_assembly(wedge, Vector2(0, -1))
+
+		var left_id: StringName = StringName("%s_face_l" % wedge_id)
+		var right_id: StringName = StringName("%s_face_r" % wedge_id)
+		var left_normal: Vector3 = _dominant_normal(regions, left_id)
+		var right_normal: Vector3 = _dominant_normal(regions, right_id)
+
+		assert_lt(left_normal.x, 0.0, "%s: left face must point outward (left)" % wedge_id)
+		assert_gt(right_normal.x, 0.0, "%s: right face must point outward (right)" % wedge_id)
+		assert_gt(left_normal.z, 0.0, "%s: left face must still face forward" % wedge_id)
+		assert_gt(right_normal.z, 0.0, "%s: right face must still face forward" % wedge_id)
+
+
+## The largest-area region for `part_id` — the dominant, representative
+## face surface, same convention test_ricochet_stress.gd's own wedge test
+## uses (a thin angled plate always throws a smaller edge sliver too).
+func _dominant_normal(regions: Array[Region], part_id: StringName) -> Vector3:
+	var best: Region = null
+	var best_area: float = -1.0
+	for region: Region in regions:
+		if region.part.id != part_id:
+			continue
+		var area: float = region.rect.size.x * region.rect.size.y
+		if area > best_area:
+			best_area = area
+			best = region
+	assert_not_null(best, "no region found for %s" % part_id)
+	return best.surface_normal
+
+
 ## "thigh parts exist and assemble" — sized between torso and the small
 ## limb parts (leg/arm), HIP-attachable like leg, with a real ARMOR
 ## socket a plate can actually mount into.
@@ -91,4 +135,37 @@ func test_half_cylinder_plate_sits_flush_with_its_host_never_inside_it() -> void
 				% [placement.part.id, world_z, mount_world_z]
 			)
 		)
-	assert_eq(facet_count, 5, "every facet must actually be present in the assembled tree")
+	assert_eq(facet_count, 9, "every facet must actually be present in the assembled tree")
+
+
+## taskblock-19 Pass G2: "~half its current width and depth, taller
+## (thigh height)." The overall silhouette's width (2*radius) and depth
+## (radius) are both governed by the socket offsets themselves — read
+## back from the real composed geometry, not the authoring tool's own
+## radius constant, so this can't silently drift from what actually gets
+## mounted. tb17's own original radius was 0.16 (width 0.32, depth 0.16).
+func test_half_cylinder_plate_is_half_the_old_width_and_depth_and_thigh_tall() -> void:
+	var plate: Part = DataLibrary.get_part(&"half_cylinder_plate")
+	var thigh: Part = DataLibrary.get_part(&"thigh")
+
+	var min_x: float = INF
+	var max_x: float = -INF
+	var max_z: float = -INF
+	for socket: Socket in plate.sockets:
+		var origin: Vector3 = socket.transform.origin
+		min_x = minf(min_x, origin.x)
+		max_x = maxf(max_x, origin.x)
+		max_z = maxf(max_z, origin.z)
+	var width: float = max_x - min_x
+	var depth: float = max_z
+
+	assert_lt(width, 0.32, "width (2*radius) must be well under tb17's own original 0.32")
+	assert_lt(depth, 0.16, "depth (radius) must be well under tb17's own original 0.16")
+
+	var facet: Part = plate.sockets[0].occupant
+	assert_almost_eq(
+		facet.volume[0].size.y,
+		thigh.volume[0].size.y,
+		0.001,
+		"taller — matches the real thigh part's own height"
+	)

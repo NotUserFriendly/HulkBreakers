@@ -23,7 +23,7 @@ script = ExtResource("3_rrod1")
 socket_type = &"WEDGE_FACE"
 occupant = SubResource("Resource_dfyd2")
 id = &"left"
-transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, -0.11, 0, 0)
+transform = Transform3D(0.70710677, 0, -0.70710677, 0, 1, 0, 0.70710677, 0, 0.70710677, -0.11, 0, 0)
 
 [sub_resource type="Resource" id="Resource_scv1m"]
 script = ExtResource("4_hw7ru")
@@ -43,7 +43,7 @@ script = ExtResource("3_rrod1")
 socket_type = &"WEDGE_FACE"
 occupant = SubResource("Resource_vmucp")
 id = &"right"
-transform = Transform3D(0.70710677, 0, -0.70710677, 0, 1, 0, 0.70710677, 0, 0.70710677, 0.11, 0, 0)
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 0.11, 0, 0)
 
 [resource]
 script = ExtResource("1_knowa")
