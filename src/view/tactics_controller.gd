@@ -845,7 +845,11 @@ func end_turn() -> void:
 	# docs/09 taskblock06 Pass F: the real mid-move interrupt check
 	# (Overwatch.check_trigger) plugs into resolve_until's own seam here —
 	# taskblock06 Pass D built it, Pass F is the first real caller.
-	selection.state.resolve_until(selection.current_queue(), Overwatch.check_trigger)
+	# taskblock-19 Pass E: MoveHooks also wires Suppression's own attack-
+	# of-opportunity check onto the same seam (kept in a local — see
+	# MoveHooks' own doc comment on why the Callable can't stand alone).
+	var move_hooks := MoveHooks.new(selection.selected_unit.cell)
+	selection.state.resolve_until(selection.current_queue(), move_hooks.check)
 	selection.state.combat_log.remove_sink(sink)
 
 	selection.reset()
@@ -885,7 +889,8 @@ func resolve_to_marker(marker_index: int) -> void:
 	prefix.actions = queue.actions.slice(0, marker_index + 1)
 	var sink := MemorySink.new()
 	selection.state.combat_log.add_sink(sink)
-	selection.state.resolve_until(prefix, Overwatch.check_trigger)
+	var move_hooks := MoveHooks.new(selection.selected_unit.cell)
+	selection.state.resolve_until(prefix, move_hooks.check)
 	selection.state.combat_log.remove_sink(sink)
 
 	# docs/10 taskblock06 G1: "then start queuing again" — reset_turn()

@@ -51,6 +51,18 @@ const ALLY_BLOCKED_PENALTY := 1000.0
 ## option, the same posture ALLY_BLOCKED_PENALTY's own doc comment
 ## describes). Flagged, not a tuned design number.
 const MIN_RANGE_PENALTY := 20.0
+## taskblock-19 Pass E: "treats adjacent to an enemy with a long gun as
+## bad (won't close if it disarms itself)." Dominant over MIN_RANGE_PENALTY
+## and COVER_SCORE_BONUS — being unable to fire at all is worse than a
+## merely degraded shot — but still a penalty, not an exclusion, for the
+## same "forced" reason every other penalty here stays soft. Flagged, not
+## a tuned design number.
+const SUPPRESSION_PENALTY := 25.0
+## taskblock-19 Pass E: "treats leaving an adjacent tile as costly (expects
+## the free hit)." Real but slightly below SUPPRESSION_PENALTY — a one-time
+## stub hit is a lesser cost than standing somewhere that disarms the
+## weapon outright for the whole turn. Flagged, not a tuned design number.
+const OPPORTUNITY_ATTACK_PENALTY := 15.0
 
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
@@ -426,7 +438,39 @@ static func _engagement_score(
 	var min_range_penalty: float = (
 		MIN_RANGE_PENALTY if RangeModel.blocks_min_range(weapon, distance) else 0.0
 	)
-	return cover_bonus - distance_penalty - blocked_penalty - min_range_penalty
+	# taskblock-19 Pass E: landing adjacent to a living enemy with a
+	# two-handed weapon disarms it for the whole turn (Suppression.
+	# blocks_weapon) — the AI avoids CHOOSING that, same "penalty, not
+	# exclusion" posture as every other term here.
+	var suppression_penalty: float = (
+		SUPPRESSION_PENALTY
+		if (
+			Suppression.is_long_gun(weapon)
+			and not Suppression.adjacent_living_enemies(state, self_unit, cell).is_empty()
+		)
+		else 0.0
+	)
+	# taskblock-19 Pass E: leaving the unit's OWN current adjacency to
+	# reach `cell` draws a stub attack of opportunity — weighted here
+	# through the exact same speculative query the real mid-move hook
+	# resolves against, never a second notion of "who's leaving whom."
+	var opportunity_penalty: float = (
+		OPPORTUNITY_ATTACK_PENALTY
+		if not (
+			Suppression
+			. would_trigger_opportunity_attack(state, self_unit, self_unit.cell, cell)
+			. is_empty()
+		)
+		else 0.0
+	)
+	return (
+		cover_bonus
+		- distance_penalty
+		- blocked_penalty
+		- min_range_penalty
+		- suppression_penalty
+		- opportunity_penalty
+	)
 
 
 static func _find_weapon_id(unit: Unit) -> StringName:
