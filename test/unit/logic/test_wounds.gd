@@ -73,6 +73,15 @@ func test_burnt_electronics_carries_higher_repair_difficulty() -> void:
 	assert_gt(burnt.repair_difficulty, lodged.repair_difficulty)
 
 
+## taskblock-21 Pass A2: "each entry is a <5-char short blurb now."
+func test_short_label_is_at_most_five_characters() -> void:
+	var wound := WoundDef.new()
+	wound.id = &"severed_controls"
+
+	assert_eq(wound.short_label(), "SEVER")
+	assert_lt(wound.short_label().length(), 6)
+
+
 ## "a wound disables/degrades without 0 HP" — a `severed_controls`-wounded
 ## manipulator can no longer operate a weapon that needs it, even though the
 ## arm's own hp is fully intact (never touched, never mangled/disabled).

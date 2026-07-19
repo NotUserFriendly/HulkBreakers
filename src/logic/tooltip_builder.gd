@@ -59,6 +59,26 @@ static func for_unit(unit: Unit, material_table: MaterialTable) -> TooltipData:
 	return data
 
 
+## taskblock-21 Pass A2/A5: the inspect panel's status/wound column hovers
+## a wound entry into the same info-panel surface every other hoverable
+## thing uses — `wound_id` alone (no owning Part) since a wound's own
+## description doesn't depend on which part carries it. `null` for an
+## unauthored/unknown id (the same "absence isn't a penalty" DataLibrary
+## already returns) — the empty TooltipData that gets built either way is
+## what `TooltipView.show_data`/the info panel already treat as "nothing
+## to say."
+static func for_wound(wound_id: StringName) -> TooltipData:
+	var def: WoundDef = DataLibrary.get_wound_def(wound_id)
+	if def == null:
+		return TooltipData.new(String(wound_id))
+	var data := TooltipData.new(String(def.id))
+	if def.description != "":
+		data.add_row("effect", def.description)
+	data.add_row("disables", "yes" if def.disables else "no")
+	data.add_row("repair difficulty", "%.1f" % def.repair_difficulty)
+	return data
+
+
 static func for_action(action: ActionDef) -> TooltipData:
 	var data := TooltipData.new(
 		action.display_name if action.display_name != "" else String(action.id)

@@ -26,6 +26,11 @@ var queue_panel: QueuePanel
 var action_bar: ActionBar
 var ap_mp_pip_row: ApMpPipRow
 var controls_overlay: ControlsOverlay
+## taskblock-21 Pass A: the new inspect/status panel — a modal opened
+## on-demand for whatever's currently selected, additive alongside
+## `inventory_panel` (see `_build_ui`'s own comment for why both coexist).
+var inspect_panel: InspectPanel
+var inspect_button: Button
 ## taskblock-08 E1: the left column pairing the AP/MP pip rows above the
 ## action bar — exposed so a test can confirm that ordering structurally,
 ## the same way `action_bar`/`ap_mp_pip_row` are already exposed for their
@@ -187,6 +192,16 @@ func _build_ui() -> void:
 	inventory_footer.add_theme_color_override("font_color", HulkTheme.DIM)
 	inventory_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_layout.add_child(inventory_footer)
+
+	# taskblock-21 Pass A: the new inspect panel, additive alongside the
+	# existing inventory tree above (A8's "don't run two inspect systems"
+	# is about hover-tooltip duplication, not this — the inventory tree
+	# stays the always-visible quick glance; the inspect panel is an
+	# on-demand, richer modal, opened for whatever's currently selected).
+	inspect_button = Button.new()
+	inspect_button.text = "Inspect"
+	inspect_button.pressed.connect(_on_inspect_pressed)
+	left_layout.add_child(inspect_button)
 
 	# runNotes.md: "since we aren't truncating log entries, move the
 	# scrollbar to the left side so it doesn't overlay." Un-wrapped lines
@@ -447,6 +462,19 @@ func _build_ui() -> void:
 	add_child(ap_mp_pip_row)
 	ap_mp_pip_row.setup(tactics, ap_pip_container, mp_pip_container, tooltip_view)
 
+	inspect_panel = InspectPanel.new()
+	inspect_panel.custom_minimum_size = Vector2(900, 600)
+	inspect_panel.set_anchors_and_offsets_preset(
+		Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE
+	)
+	# docs/02: `Camera3D.look_at()` (inside `setup()`'s own bot-viewer build)
+	# needs a live tree to resolve a Node3D's global transform against — add
+	# to the tree FIRST, setup() second, the same order the Resource
+	# Editor's own preview relies on (there, `_ready()` firing at all is
+	# what already guarantees it; here it has to be explicit).
+	theme_root.add_child(inspect_panel)
+	inspect_panel.setup(material_table)
+
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
 	# "" placeholder: _build_ui() must not depend on a battle already being
@@ -520,6 +548,15 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 ## aim-facing with no move queued. The instant a move IS queued, the live
 ## model falls back to its plain committed orientation and the ghost alone
 ## carries the preview.
+## taskblock-21 Pass A: opens the inspect panel on whatever's currently
+## selected — a no-op with nothing selected, the same guard every other
+## selection-dependent action here already uses.
+func _on_inspect_pressed() -> void:
+	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+	if selected != null:
+		inspect_panel.open(selected)
+
+
 func _on_selection_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
 	for view: HitVolumeView in battle.unit_views:
