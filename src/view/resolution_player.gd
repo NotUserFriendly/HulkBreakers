@@ -151,18 +151,61 @@ func _play_event(event: LogEvent) -> void:
 
 ## Synchronously (no `await` — runs to completion in the same frame
 ## `battle.refresh_unit_views()` already did, before the engine ever
-## presents that frame) shows every unit with a move or facing change
-## this turn back at wherever it was LAST shown, so the already-final
-## `refresh()` never actually becomes visible before `_play_slide`/
-## `_play_facing` below "catch it up." Deduplicated: a unit with several
-## move/faced events this turn only needs its ONE current display state
-## redrawn once, not once per event.
+## presents that frame) ensures every unit with a move or facing change
+## this turn has a REAL, WRITTEN `_display_cell`/`_display_orientation`
+## entry before anything else touches either dict, then shows it — so the
+## already-final `refresh()` never actually becomes visible first.
+##
+## Both dicts, not just whichever dimension the unit's OWN first event
+## this turn happens to touch: a unit whose turn is
+## `[faced(X), move(...), faced(Y final)]` — turn to face X, walk, turn to
+## face Y — used to have its FIRST `faced(X)` event read `_display_
+## orientation.get(id, X)` (X itself, the fallback, since nothing had
+## ever written the dict yet) and silently, instantly snap with no visible
+## transition at all (its own "from" trivially equalled its own target);
+## the SLIDE that followed then read that same now-STALE dict value and
+## rendered the whole walk at orientation X — a real, reported bug: a
+## sudden, simultaneous position-and-rotation pop the instant the slide
+## started, mid-turn, well past the point any earlier fix (priming a
+## first-ever MOVE's own start cell alone) could catch. Seeding both
+## dicts up front, once, fixes every ordering — not just move-first.
 func _prime(events: Array[LogEvent]) -> void:
-	var seen: Dictionary = {}
+	var first_move: Dictionary = {}  # unit_id -> LogEvent
+	var relevant: Dictionary = {}  # unit_id -> true
 	for event: LogEvent in events:
-		if (event.kind == &"move" or event.kind == &"faced") and not seen.has(event.unit_id):
-			seen[event.unit_id] = true
-			_redraw(event.unit_id)
+		if event.kind == &"move":
+			relevant[event.unit_id] = true
+			if not first_move.has(event.unit_id):
+				first_move[event.unit_id] = event
+		elif event.kind == &"faced":
+			relevant[event.unit_id] = true
+	for unit_id: int in relevant:
+		_ensure_primed(unit_id, first_move.get(unit_id))
+
+
+## Writes a real starting `_display_cell`/`_display_orientation` entry for
+## `unit_id` if either is still missing (a genuinely first-ever animated
+## unit has neither — nothing to animate from, a harmless one-time snap),
+## then applies it. `move_event`, if this unit has one this turn, supplies
+## the real starting cell (`path[0]`) — nothing analogous exists for
+## orientation in the log data, so a truly first-ever facing change still
+## has no choice but to snap; what changed is that this is now written
+## ONCE, up front, rather than left for whichever event happens to run
+## first to (mis)infer on its own.
+func _ensure_primed(unit_id: int, move_event: Variant) -> void:
+	var unit: Unit = battle.combat_state.find_unit(unit_id)
+	if unit == null:
+		return
+	if not _display_cell.has(unit_id):
+		var start_cell: Vector2i = unit.cell
+		if move_event != null:
+			var path: Array = (move_event as LogEvent).data.get("path", [])
+			if not path.is_empty():
+				start_cell = path[0]
+		_display_cell[unit_id] = start_cell
+	if not _display_orientation.has(unit_id):
+		_display_orientation[unit_id] = unit.orientation
+	_redraw(unit_id)
 
 
 ## Recomputes and applies `unit_id`'s own view transform from whatever its
