@@ -9,11 +9,17 @@
 [sub_resource type="Resource" id="Resource_yhbxd"]
 script = ExtResource("2_o0h47")
 radius = 0.15
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_yhbxd_mid"]
+script = ExtResource("2_o0h47")
+radius = 0.39
+weight = 5.0
 
 [sub_resource type="Resource" id="Resource_aaso1"]
 script = ExtResource("2_o0h47")
 radius = 0.6
-weight = 2.0
+weight = 1.0
 
 [sub_resource type="Resource" id="Resource_i68cj"]
 script = ExtResource("4_xh802")
@@ -28,7 +34,7 @@ effective_range = 8.0
 max_range = 12.0
 barrel_length = 0.6
 burst_size = 12
-burst_ap_cost = 3
+burst_ap_cost = 4
 accepts_family = &"556x45"
 max_case_length = 45.0
 
@@ -49,4 +55,4 @@ provides_actions = Array[StringName]([&"burst"])
 damage = 2.0
 ap_cost = 2
 weapon_def = SubResource("Resource_h35sc")
-scatter = Array[ExtResource("2_o0h47")]([SubResource("Resource_yhbxd"), SubResource("Resource_aaso1")])
+scatter = Array[ExtResource("2_o0h47")]([SubResource("Resource_yhbxd"), SubResource("Resource_yhbxd_mid"), SubResource("Resource_aaso1")])

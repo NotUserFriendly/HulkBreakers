@@ -257,7 +257,10 @@ const EXPECTED_PARTS: Dictionary = {
 		"requires": {&"TRIGGER": 1, &"SUPPORT": 1},
 		"damage": 6.0,
 		"ap_cost": 2,
-		"scatter_count": 2,
+		# taskblock-21 Pass H1: "the dartboard reads N rings... re-author each
+		# gun's scatter as three: outer/middle/inner" — was 2, deliberately
+		# rebuilt to 3, not drift.
+		"scatter_count": 3,
 		"provides_actions": [&"shoot", &"overwatch"],
 		"volume_sizes": [Vector3(0.12, 0.15, 0.7)],
 	},

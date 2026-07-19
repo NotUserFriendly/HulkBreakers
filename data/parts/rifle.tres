@@ -7,12 +7,18 @@
 
 [sub_resource type="Resource" id="Resource_uq464"]
 script = ExtResource("2_onxrq")
-radius = 0.05
+radius = 0.075
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_uq464_mid"]
+script = ExtResource("2_onxrq")
+radius = 0.195
+weight = 5.0
 
 [sub_resource type="Resource" id="Resource_3bigq"]
 script = ExtResource("2_onxrq")
 radius = 0.3
-weight = 1.5
+weight = 1.0
 
 [sub_resource type="Resource" id="Resource_qmuog"]
 script = ExtResource("4_3ewdq")
@@ -35,4 +41,4 @@ mass = 3.0
 provides_actions = Array[StringName]([&"shoot", &"overwatch"])
 damage = 6.0
 ap_cost = 2
-scatter = Array[ExtResource("2_onxrq")]([SubResource("Resource_uq464"), SubResource("Resource_3bigq")])
+scatter = Array[ExtResource("2_onxrq")]([SubResource("Resource_uq464"), SubResource("Resource_uq464_mid"), SubResource("Resource_3bigq")])
