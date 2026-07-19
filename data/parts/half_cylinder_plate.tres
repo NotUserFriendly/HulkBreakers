@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="Resource_3g81a"]
 script = ExtResource("4_3pq4i")
-size = Vector3(0.14, 0.3, 0.05)
+size = Vector3(0.05, 0.44, 0.05)
 
 [sub_resource type="Resource" id="Resource_qkntc"]
 script = ExtResource("1_3owli")
@@ -21,11 +21,11 @@ script = ExtResource("3_oferd")
 socket_type = &"HALF_CYLINDER_FACET"
 occupant = SubResource("Resource_qkntc")
 id = &"facet_0"
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -0.16, 0, 9.797174e-18)
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -0.08, 0, 4.898587e-18)
 
 [sub_resource type="Resource" id="Resource_jlxji"]
 script = ExtResource("4_3pq4i")
-size = Vector3(0.14, 0.3, 0.05)
+size = Vector3(0.05, 0.44, 0.05)
 
 [sub_resource type="Resource" id="Resource_bklwm"]
 script = ExtResource("1_3owli")
@@ -39,11 +39,11 @@ script = ExtResource("3_oferd")
 socket_type = &"HALF_CYLINDER_FACET"
 occupant = SubResource("Resource_bklwm")
 id = &"facet_1"
-transform = Transform3D(0.70710677, 0, -0.70710677, 0, 1, 0, 0.70710677, 0, 0.70710677, -0.11313708, 0, 0.11313708)
+transform = Transform3D(0.38268343, 0, -0.9238795, 0, 1, 0, 0.9238795, 0, 0.38268343, -0.07391036, 0, 0.030614674)
 
 [sub_resource type="Resource" id="Resource_8u886"]
 script = ExtResource("4_3pq4i")
-size = Vector3(0.14, 0.3, 0.05)
+size = Vector3(0.05, 0.44, 0.05)
 
 [sub_resource type="Resource" id="Resource_emfi5"]
 script = ExtResource("1_3owli")
@@ -57,11 +57,11 @@ script = ExtResource("3_oferd")
 socket_type = &"HALF_CYLINDER_FACET"
 occupant = SubResource("Resource_emfi5")
 id = &"facet_2"
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.16)
+transform = Transform3D(0.70710677, 0, -0.70710677, 0, 1, 0, 0.70710677, 0, 0.70710677, -0.05656854, 0, 0.05656854)
 
 [sub_resource type="Resource" id="Resource_xpcen"]
 script = ExtResource("4_3pq4i")
-size = Vector3(0.14, 0.3, 0.05)
+size = Vector3(0.05, 0.44, 0.05)
 
 [sub_resource type="Resource" id="Resource_hwrkl"]
 script = ExtResource("1_3owli")
@@ -75,11 +75,11 @@ script = ExtResource("3_oferd")
 socket_type = &"HALF_CYLINDER_FACET"
 occupant = SubResource("Resource_hwrkl")
 id = &"facet_3"
-transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 0.11313708, 0, 0.11313708)
+transform = Transform3D(0.9238795, 0, -0.38268346, 0, 1, 0, 0.38268346, 0, 0.9238795, -0.030614674, 0, 0.07391036)
 
 [sub_resource type="Resource" id="Resource_1abr5"]
 script = ExtResource("4_3pq4i")
-size = Vector3(0.14, 0.3, 0.05)
+size = Vector3(0.05, 0.44, 0.05)
 
 [sub_resource type="Resource" id="Resource_70pvt"]
 script = ExtResource("1_3owli")
@@ -93,14 +93,86 @@ script = ExtResource("3_oferd")
 socket_type = &"HALF_CYLINDER_FACET"
 occupant = SubResource("Resource_70pvt")
 id = &"facet_4"
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0.16, 0, 9.797174e-18)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.08)
+
+[sub_resource type="Resource" id="Resource_n16v3"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.05, 0.44, 0.05)
+
+[sub_resource type="Resource" id="Resource_e668v"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_5"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_n16v3")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_tn2xb"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_e668v")
+id = &"facet_5"
+transform = Transform3D(0.9238795, 0, 0.38268346, 0, 1, 0, -0.38268346, 0, 0.9238795, 0.030614674, 0, 0.07391036)
+
+[sub_resource type="Resource" id="Resource_2okym"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.05, 0.44, 0.05)
+
+[sub_resource type="Resource" id="Resource_todg8"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_6"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_2okym")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_w2k5d"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_todg8")
+id = &"facet_6"
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 0.05656854, 0, 0.05656854)
+
+[sub_resource type="Resource" id="Resource_7hdmf"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.05, 0.44, 0.05)
+
+[sub_resource type="Resource" id="Resource_u2q1p"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_7"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_7hdmf")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_lbvqe"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_u2q1p")
+id = &"facet_7"
+transform = Transform3D(0.38268343, 0, 0.9238795, 0, 1, 0, -0.9238795, 0, 0.38268343, 0.07391036, 0, 0.030614674)
+
+[sub_resource type="Resource" id="Resource_v0a6y"]
+script = ExtResource("4_3pq4i")
+size = Vector3(0.05, 0.44, 0.05)
+
+[sub_resource type="Resource" id="Resource_d4gla"]
+script = ExtResource("1_3owli")
+id = &"half_cylinder_plate_facet_8"
+material = &"steel"
+volume = Array[ExtResource("4_3pq4i")]([SubResource("Resource_v0a6y")])
+mangles_into = &"metal_scraps"
+
+[sub_resource type="Resource" id="Resource_1spka"]
+script = ExtResource("3_oferd")
+socket_type = &"HALF_CYLINDER_FACET"
+occupant = SubResource("Resource_d4gla")
+id = &"facet_8"
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0.08, 0, 4.898587e-18)
 
 [resource]
 script = ExtResource("1_3owli")
 id = &"half_cylinder_plate"
 display_name = "Half-Cylinder Plate"
 attaches_to = Array[StringName]([&"ARMOR"])
-sockets = Array[ExtResource("3_oferd")]([SubResource("Resource_oompp"), SubResource("Resource_3j0uc"), SubResource("Resource_3f6lt"), SubResource("Resource_8drxs"), SubResource("Resource_u7x51")])
+sockets = Array[ExtResource("3_oferd")]([SubResource("Resource_oompp"), SubResource("Resource_3j0uc"), SubResource("Resource_3f6lt"), SubResource("Resource_8drxs"), SubResource("Resource_u7x51"), SubResource("Resource_tn2xb"), SubResource("Resource_w2k5d"), SubResource("Resource_lbvqe"), SubResource("Resource_1spka")])
 material = &"steel"
 hp = 0
 max_hp = 0
