@@ -117,6 +117,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	var cell: Variant = BoardPicker.cell_at_ray(from, dir)
 	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
 		return
+	# taskblock-27 Pass D5: "wall tiles should not be inspectable" — a wall
+	# isn't a part assembly (`Grid.blockers` is never populated for one,
+	# `map_gen.gd`'s own `_scatter_cover` only ever writes cover onto OPEN
+	# terrain), so this is a real, deliberate exclusion, not a stand-in for
+	# the null-root "empty state" `open_tile` already handles gracefully.
+	if battle.combat_state.grid.get_terrain(cell) == Enums.TerrainType.WALL:
+		return
 	_was_playing_before_inspect = playing
 	pause()
 	inspect_panel.open_tile(cell as Vector2i, battle.combat_state.grid.blockers.get(cell))

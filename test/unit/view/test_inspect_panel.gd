@@ -644,6 +644,39 @@ func test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy()
 			assert_true(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
 
 
+## taskblock-27 Pass D5: "wall tiles inspectable -> garbage inspector."
+## Root-caused to `open()`'s own null-root branch never resetting
+## `own_world_3d`/clearing the preview after a LIVE-unit isolate-focus —
+## the viewport was left sharing the real battle World3D with an
+## unrestricted cull mask and a stale camera position, rendering an
+## arbitrary slice of the actual board instead of nothing. Opening a bare
+## tile right after a real unit must leave the preview genuinely empty.
+func test_opening_a_bare_tile_after_a_live_unit_leaves_the_preview_genuinely_empty() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var live_view := HitVolumeView.new()
+	add_child_autofree(live_view)
+	live_view.setup(unit, DataLibrary.material_table())
+
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
+	)
+	panel.open(unit)
+	assert_false(panel._preview_viewport.own_world_3d, "sanity: isolating the live view first")
+
+	panel.open_tile(Vector2i(5, 5), null)
+
+	assert_true(
+		panel._preview_viewport.own_world_3d,
+		"a bare tile must never keep sharing the live battle World3D"
+	)
+	assert_true(
+		panel._preview_view._meshes_by_part.is_empty(),
+		"a bare tile must show no leftover assembly from the previous subject"
+	)
+
+
 ## taskblock-23 Pass E2: "the model floats in a void" — the isolate
 ## camera's own cull_mask must ALSO include the real board's floor
 ## layer, not just the subject's own isolate layer.

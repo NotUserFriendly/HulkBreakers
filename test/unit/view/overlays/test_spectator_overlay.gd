@@ -316,6 +316,29 @@ func test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel() 
 	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the tile's own object shows")
 
 
+## taskblock-27 Pass D5: "wall tiles inspectable -> garbage inspector."
+## A wall isn't a part assembly (`Grid.blockers` is never populated for
+## one) — clicking one must not open the inspector at all, same "real
+## no-op" posture as clicking empty space off the board entirely.
+func test_clicking_a_wall_tile_does_nothing() -> void:
+	var built: Dictionary = _bout()
+	built.state.grid.set_terrain(Vector2i(4, 0), Enums.TerrainType.WALL)
+	var overlay: SpectatorOverlay = _spectate(built)
+	overlay.playing = true
+
+	var world_point := Vector3(4, 0.0, 0) * UnitGeometry.CELL_SIZE
+	var camera: Camera3D = overlay.battle.camera_rig.camera()
+	var screen_pos: Vector2 = camera.unproject_position(world_point)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	overlay._unhandled_input(click)
+
+	assert_true(overlay.playing, "a wall click must not pause the bout")
+	assert_false(overlay.inspect_panel.visible)
+
+
 func test_clicking_empty_space_does_nothing() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 	overlay.playing = true
