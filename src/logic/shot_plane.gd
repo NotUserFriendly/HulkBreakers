@@ -46,19 +46,38 @@ static func build(origin: Vector2, direction: Vector2, state: CombatState) -> Ar
 	return regions
 
 
+## taskblock-25 Pass D (docs/PLAN.md "Phase M — Melee"): "a stab hits if a
+## disc of the weapon's width intersects a region... can't thread a gap
+## narrower than its width." `radius <= 0.0` is exactly `rect.has_point` —
+## every existing (ranged, point) caller is unchanged. A stepping stone to
+## a real shapecast (docs/PLAN.md Pass D: "parameterize by a SHAPE, sphere
+## as the first/simplest, not sphere-specific math") — this is the one
+## place that math lives, so a later convex-shape swap-in touches only
+## here.
+static func disc_overlaps_rect(rect: Rect2, point: Vector2, radius: float) -> bool:
+	if radius <= 0.0:
+		return rect.has_point(point)
+	var closest := Vector2(
+		clampf(point.x, rect.position.x, rect.position.x + rect.size.x),
+		clampf(point.y, rect.position.y, rect.position.y + rect.size.y)
+	)
+	return point.distance_to(closest) <= radius
+
+
 ## Walks a depth-sorted plane and returns the frontmost Region containing
-## `point`, or null if the shot passes clean through every one of them.
-## `exclude_parts` skips any region belonging to those parts entirely —
-## taskblock-22 Pass H2's own `self_obstruction` below uses this to keep
-## a shooter's own body (at its own near-zero depth) from ever
-## registering as its own obstruction.
+## `point` (or, taskblock-25 Pass D, overlapped by a disc of `radius`
+## centered on `point`), or null if the shot passes clean through every
+## one of them. `exclude_parts` skips any region belonging to those parts
+## entirely — taskblock-22 Pass H2's own `self_obstruction` below uses
+## this to keep a shooter's own body (at its own near-zero depth) from
+## ever registering as its own obstruction.
 static func resolve_projectile(
-	plane: Array[Region], point: Vector2, exclude_parts: Array[Part] = []
+	plane: Array[Region], point: Vector2, exclude_parts: Array[Part] = [], radius: float = 0.0
 ) -> Region:
 	for region: Region in plane:
 		if exclude_parts.has(region.part):
 			continue
-		if region.rect.has_point(point):
+		if disc_overlaps_rect(region.rect, point, radius):
 			return region
 	return null
 

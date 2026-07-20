@@ -142,7 +142,9 @@ func test_dartboard_scatter_is_tighter_at_melee_range_than_at_range() -> void:
 	var ranged_scale: float = RangeModel.dartboard_radius_scale(weapon, 15)
 
 	assert_lt(
-		melee_scale, ranged_scale, "the existing accuracy curve alone must already be tighter close up"
+		melee_scale,
+		ranged_scale,
+		"the existing accuracy curve alone must already be tighter close up"
 	)
 
 
@@ -170,3 +172,21 @@ func test_a_stab_can_aim_at_an_internal_part_via_the_existing_aimed_targeting() 
 	action.apply(state)
 
 	assert_lt(target.shell.root.hp, 10, "an aimed stab must still resolve real damage")
+
+
+## taskblock-25 Pass D: `weapon_def.stab_width` is read and threaded
+## through as the strike's own spherecast radius — the deeper "can't
+## thread a gap narrower than its width" claim is proven at the
+## DamageResolver level (test_damage_resolver_spherecast.gd); this is the
+## wiring sanity check, an ordinary single-target hit unaffected by a real
+## authored width.
+func test_a_wide_stab_still_hits_its_target_normally() -> void:
+	var weapon := _make_weapon(&"spear", 20.0, 1.0, 2)
+	weapon.weapon_def.stab_width = 0.3
+	var striker := _make_striker(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(1, 0))
+	var state := CombatState.new(Grid.new(10, 10), [striker, target])
+
+	StabAction.new(striker, &"spear", Vector2i(1, 0)).apply(state)
+
+	assert_lt(target.shell.root.hp, 10, "a wide stab must still hit an ordinary, ungapped target")

@@ -162,10 +162,11 @@ static func _resolve_slide(
 	perp: Vector2,
 	origin_height: float,
 	state: CombatState,
-	results: Array[ImpactResult]
+	results: Array[ImpactResult],
+	radius: float = 0.0
 ) -> void:
 	var nudged_point := Vector2(point.x + _SLIDE_NUDGE, region_height)
-	var slid_index: int = _find_next(plane, 0, nudged_point, [], vertical_slope)
+	var slid_index: int = _find_next(plane, 0, nudged_point, [], vertical_slope, radius)
 	if slid_index == -1:
 		return
 	var slid_region: Region = plane[slid_index]
@@ -597,7 +598,8 @@ static func resolve_shot(
 	bonus_pen: float = 0.0,
 	vertical_slope: float = 0.0,
 	origin_height: float = 0.0,
-	deflect_mode: StringName = DEFLECT_MODE_RICOCHET
+	deflect_mode: StringName = DEFLECT_MODE_RICOCHET,
+	radius: float = 0.0
 ) -> Array[ImpactResult]:
 	var results: Array[ImpactResult] = []
 	var dir: Vector2 = direction.normalized()
@@ -634,7 +636,7 @@ static func resolve_shot(
 	# (exiting) — an intervening solid part's own hit never touches this.
 	var inside_hollow_part: Part = null
 	while start < plane.size():
-		var found_index: int = _find_next(plane, start, point, skip_parts, vertical_slope)
+		var found_index: int = _find_next(plane, start, point, skip_parts, vertical_slope, radius)
 		skip_parts = []  # the exclusion applies only to this call's first hit
 		if found_index == -1:
 			break
@@ -755,7 +757,8 @@ static func resolve_shot(
 						perp,
 						origin_height,
 						state,
-						results
+						results,
+						radius
 					)
 					return results
 				var next_damage: float = current_damage * impact.retained_fraction
@@ -778,7 +781,9 @@ static func resolve_shot(
 							_body_of(region.part, state),
 							bonus_pen,
 							impact.reflected_vertical,
-							region_height
+							region_height,
+							deflect_mode,
+							radius
 						)
 					)
 				return results
@@ -812,17 +817,24 @@ static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: Im
 ## pass — the exact height-per-depth relationship `ShotPlane.resolve_ray`
 ## gives a tilted ray, applied here to the plane-walking primitive instead
 ## of a single ray cast.
+## taskblock-25 Pass D: `radius` — 0.0 (default) is exactly the point-only
+## behavior every existing (ranged) caller already gets; a stab's own
+## positive `stab_width` (`ShotPlane.disc_overlaps_rect`) instead tests
+## whether a disc that wide overlaps the region at all, so a gap narrower
+## than it can't be threaded (the disc catches on whichever region flanks
+## the gap, same scan, no special-cased gap detection).
 static func _find_next(
 	plane: Array[Region],
 	start: int,
 	point: Vector2,
 	exclude_parts: Array[Part] = [],
-	vertical_slope: float = 0.0
+	vertical_slope: float = 0.0,
+	radius: float = 0.0
 ) -> int:
 	for i in range(start, plane.size()):
 		if exclude_parts.has(plane[i].part):
 			continue
 		var height_here: float = point.y + vertical_slope * plane[i].depth
-		if plane[i].rect.has_point(Vector2(point.x, height_here)):
+		if ShotPlane.disc_overlaps_rect(plane[i].rect, Vector2(point.x, height_here), radius):
 			return i
 	return -1

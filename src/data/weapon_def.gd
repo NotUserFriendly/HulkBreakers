@@ -83,3 +83,11 @@ extends Resource
 ## collide: a spear's long `weapon_length` doesn't imply a long slash.
 ## 0.0 (default) means a weapon that has never authored a slash.
 @export var slash_length: float = 0.0
+## taskblock-25 Pass D: a stab's own spherecast radius — "a pointed weapon
+## is fat compared to a bullet." A gap between two regions narrower than
+## this can't be threaded the way a point-shot's own gap-fall-through
+## works; "stab effectiveness scales inversely with weapon width" (a
+## stiletto threads better than a spear). 0.0 (default) is exactly a
+## point — every existing ranged weapon and every unauthored melee weapon
+## resolves stabs the same as a shot, unchanged.
+@export var stab_width: float = 0.0
