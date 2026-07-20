@@ -76,6 +76,12 @@ const TRACER_DEFLECT_DULL_COLOR := Color(0.0, 0.15, 0.4, 0.3)
 const TRACER_LIVE_RENDER_PRIORITY := 1
 const TRACER_RETIRED_RENDER_PRIORITY := 0
 const INTER_SHOT_BREAK_MS := 100.0
+## taskblock-27 Pass A2: "shot -> (pause) -> its deflect -> (delay) -> next
+## pair," not a shot and its deflect firing simultaneously. A beat inside
+## one impact's own primary->deflect pair, distinct from
+## `INTER_SHOT_BREAK_MS` (the gap BETWEEN separate impact/miss events) —
+## same flagged-placeholder posture, only "a visible gap" is specified.
+const DEFLECT_BEAT_MS := 100.0
 
 ## taskblock-15 Pass B4: "editable fields at the top of the spectator
 ## overlay... temporary debug knobs." Public, mutable — SpectatorOverlay's
@@ -459,6 +465,10 @@ func _play_impact(event: LogEvent) -> void:
 		int(event.data.get("outcome", -1)) == Enums.Outcome.DEFLECT
 		and event.data.has("deflect_end_x")
 	):
+		# taskblock-27 Pass A2: a beat between the primary impact and its own
+		# deflect — "hit, then bounce," not both at once — distinct from
+		# `INTER_SHOT_BREAK_MS`'s own gap between separate impact/miss pairs.
+		await get_tree().create_timer((DEFLECT_BEAT_MS / 1000.0) / speed).timeout
 		var deflect_end_x: float = float(event.data.get("deflect_end_x", hit_x))
 		var deflect_end_y: float = float(event.data.get("deflect_end_y", hit_y))
 		var deflect_end_height: float = float(event.data.get("deflect_end_height", hit_height))
