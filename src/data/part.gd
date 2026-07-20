@@ -257,6 +257,12 @@ extends Resource
 ## recharge") — never more than what's actually missing from capacity.
 @export var battery_power_in: float = 0.0
 @export var battery_charge: float = 0.0
+## taskblock-22 Pass B: "consumers subtract from output first — the
+## SURPLUS converts to AP." 0.0 (the default) on every part that draws no
+## power at all, the same "absence isn't a penalty" posture every other
+## flat power field above already has. Read against `operable_parts()`
+## by `PowerResolver.consumer_power()`, same as every other power field.
+@export var power_consumed: float = 0.0
 
 ## taskblock-09 C0: the HP of THIS part's OWN attachment to its parent —
 ## authored on the CHILD, never the parent/socket, the same inversion
