@@ -636,13 +636,33 @@ static func _pick_engagement_position(
 	if not reachable.has(unit.cell):
 		reachable.append(unit.cell)
 
+	# taskblock-26 (CC, re-diagnosing B2): on a map where the enemy sits
+	# around a bend no single turn's own movement budget can clear (a real,
+	# common shape on generated maps — confirmed on live bouts, not just a
+	# hand-built fixture), NOT ONE reachable cell has real LOS this turn.
+	# `NO_LOS_PENALTY`'s own self-cell exemption then makes "stay exactly
+	# where I am" categorically beat every other candidate regardless of
+	# real progress, because only the self cell escapes the penalty — the
+	# unit freezes forever, never taking the first step around the bend,
+	# which is precisely the frozen-at-a-wall behavior B2 was reported
+	# against. `any_reachable_has_los` gates the whole penalty on there
+	# being an actual LOS cell to prefer AT ALL — with none reachable, every
+	# cell (including the self cell) scores on plain progress toward
+	# `preferred_range` instead, so advancing around the bend genuinely
+	# outscores standing still.
+	var any_reachable_has_los := false
+	for cell: Vector2i in reachable:
+		if LoS.has_los(state.grid, cell, enemy.cell):
+			any_reachable_has_los = true
+			break
+
 	var best_cell: Vector2i = unit.cell
 	var best_score: float = _engagement_score(
-		unit.cell, enemy, state, unit, preferred_range, weight_cover, weapon
+		unit.cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_los
 	)
 	for cell: Vector2i in reachable:
 		var score: float = _engagement_score(
-			cell, enemy, state, unit, preferred_range, weight_cover, weapon
+			cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_los
 		)
 		if score > best_score:
 			best_score = score
@@ -668,7 +688,8 @@ static func _engagement_score(
 	self_unit: Unit,
 	preferred_range: int,
 	weight_cover: bool,
-	weapon: Part = null
+	weapon: Part = null,
+	any_reachable_has_los: bool = true
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
 	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
@@ -723,18 +744,37 @@ static func _engagement_score(
 	# primitive `is_covered_from`/`AttackAction.is_legal` already read,
 	# never a second, parallel visibility test.
 	#
-	# `cell == self_unit.cell` is exempt: staying put is free, and a
-	# covered ORIGIN specifically is what `StepOutPlanner`'s own
-	# move/fire/return triple exists to handle (tb18) — that mechanism
-	# only engages at all when `best_cell == unit.cell` (`_plan_ranged`'s
-	# own fallback branch). Penalizing the origin here would make this
-	# generic scorer grab the first LOS-having cell it can merely REACH
-	# instead, even when it can't actually afford to fire from there once
-	# it's spent its move — starving the smarter, budget-validated
-	# fallback of the "didn't reposition" signal it's gated on.
+	# `cell == self_unit.cell` is exempt ONLY when some OTHER reachable
+	# cell actually has real LOS this turn (`any_reachable_has_los`):
+	# staying put is free, and a covered ORIGIN specifically is what
+	# `StepOutPlanner`'s own move/fire/return triple exists to handle
+	# (tb18) — that mechanism only engages at all when `best_cell ==
+	# unit.cell` (`_plan_ranged`'s own fallback branch). Penalizing the
+	# origin in THAT case would make this generic scorer grab the first
+	# LOS-having cell it can merely REACH instead, even when it can't
+	# actually afford to fire from there once it's spent its move —
+	# starving the smarter, budget-validated fallback of the "didn't
+	# reposition" signal it's gated on.
+	#
+	# taskblock-26 (CC, re-diagnosing B2): re-fought on a real generated
+	# map — a wall/corridor bend a single turn's own movement can't clear
+	# has NO reachable cell with LOS at all. Exempting the self cell
+	# there too made "stand still" categorically beat every other
+	# candidate (only the self cell escaped the penalty), freezing the
+	# unit at its own spawn turn after turn — never taking the first step
+	# around the bend, the exact "squares off... never takes space"
+	# symptom the bug was reported against, just on a map big enough that
+	# one turn can't reach LOS at all. With NO real LOS cell reachable
+	# this turn, the penalty doesn't fire for ANY cell (self included),
+	# so plain progress toward `preferred_range` — moving around the bend
+	# — genuinely outscores freezing in place.
 	var no_los_penalty: float = (
 		0.0
-		if cell == self_unit.cell or LoS.has_los(state.grid, cell, enemy.cell)
+		if (
+			not any_reachable_has_los
+			or cell == self_unit.cell
+			or LoS.has_los(state.grid, cell, enemy.cell)
+		)
 		else NO_LOS_PENALTY
 	)
 	return (

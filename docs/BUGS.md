@@ -136,12 +136,24 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
   line of sight — a skirmisher faces off at range through a wall and never advances to gain a real
   line.
-- **Fix:** `_engagement_score` gained a dominant (but non-exclusionary) `NO_LOS_PENALTY`, exempting
-  only the unit's own origin cell (a covered origin is what `StepOutPlanner`'s own move/fire/return
-  fallback already exists to handle — penalizing it here would starve that mechanism of the
-  "didn't reposition" signal it's gated on). Reuses the existing `LoS.has_los` primitive, no parallel
-  visibility test.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B2.
+- **First fix (taskblock-26 Pass B2, commit `dac1d1b`):** `_engagement_score` gained a dominant
+  `NO_LOS_PENALTY`, exempting the unit's own origin cell so `StepOutPlanner`'s move/fire/return
+  fallback wasn't starved of its own "didn't reposition" signal.
+- **Re-diagnosis (CC, asked to verify by running real bouts headless):** ran 60 real `MapGen`-
+  generated maps whose spawn points had no direct LOS. On EVERY one, the SKIRMISHER unit never
+  moved a single cell across the whole bout (`moved=false` for 60/60) — worse than the original
+  report, an outright freeze. Root cause: on a map where the enemy sits around a bend no single
+  turn's own movement budget can clear, NOT ONE reachable cell has real LOS that turn — the self-
+  cell exemption then made "stand still" categorically beat every other candidate (only the self
+  cell escaped `NO_LOS_PENALTY`), freezing the unit at spawn turn after turn, since the same
+  calculus repeats identically every turn.
+- **Second fix:** `_pick_engagement_position` now precomputes whether ANY reachable cell has real
+  LOS this turn (`any_reachable_has_los`); the self-cell exemption in `_engagement_score` only
+  applies when it's true. With no LOS cell reachable at all, the penalty doesn't fire for any cell
+  (self included), so plain progress toward `preferred_range` — advancing around the bend — outscores
+  freezing in place. Re-ran the same 60 seeds: 0/60 still frozen.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven both via
+  `test_unit_ai_engagement_los.gd` (fails without the fix, passes with it) and the 60-real-map sweep.
 
 ### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
