@@ -130,30 +130,8 @@ the supervisor promotes confirmed ones up to Resolved.)*
   before `advance_ai_turns` runs at all.
 - **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B1.
 - **2026-07-20:** supervisor could not verify — blocked by a separate, new issue encountered during
-  the attempt. Still pending; the new issue itself needs to be filed once its own shape is known.
-
-### Skirmisher squares off through walls, never takes space  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
-  line of sight — a skirmisher faces off at range through a wall and never advances to gain a real
-  line.
-- **First fix (taskblock-26 Pass B2, commit `dac1d1b`):** `_engagement_score` gained a dominant
-  `NO_LOS_PENALTY`, exempting the unit's own origin cell so `StepOutPlanner`'s move/fire/return
-  fallback wasn't starved of its own "didn't reposition" signal.
-- **Re-diagnosis (CC, asked to verify by running real bouts headless):** ran 60 real `MapGen`-
-  generated maps whose spawn points had no direct LOS. On EVERY one, the SKIRMISHER unit never
-  moved a single cell across the whole bout (`moved=false` for 60/60) — worse than the original
-  report, an outright freeze. Root cause: on a map where the enemy sits around a bend no single
-  turn's own movement budget can clear, NOT ONE reachable cell has real LOS that turn — the self-
-  cell exemption then made "stand still" categorically beat every other candidate (only the self
-  cell escaped `NO_LOS_PENALTY`), freezing the unit at spawn turn after turn, since the same
-  calculus repeats identically every turn.
-- **Second fix:** `_pick_engagement_position` now precomputes whether ANY reachable cell has real
-  LOS this turn (`any_reachable_has_los`); the self-cell exemption in `_engagement_score` only
-  applies when it's true. With no LOS cell reachable at all, the penalty doesn't fire for any cell
-  (self included), so plain progress toward `preferred_range` — advancing around the bend — outscores
-  freezing in place. Re-ran the same 60 seeds: 0/60 still frozen.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven both via
-  `test_unit_ai_engagement_los.gd` (fails without the fix, passes with it) and the 60-real-map sweep.
+  the attempt. **Verification deferred to the next taskblock** (supervisor's own call) rather than
+  chased now; still pending either way.
 
 ### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
@@ -175,24 +153,68 @@ the supervisor promotes confirmed ones up to Resolved.)*
   `shouldered_muzzle_point` before the plane is built, not after.
 - **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven via
   `test_attack_action.gd::test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center`.
+- **2026-07-20:** supervisor reports it looks better, but other currently-active issues (the
+  backward-looking bursts, below) obscure a clean read on this one — left pending rather than
+  promoted, verification revisited once those are out of the way.
+
+---
+
+## 🔧 Active / Open
+
+### Skirmisher (and every other playstyle) squares off through walls, never takes space  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
+  line of sight — a skirmisher faces off at range through a wall and never advances to gain a real
+  line.
+- **First fix (taskblock-26 Pass B2, commit `dac1d1b`):** `_engagement_score` gained a dominant
+  `NO_LOS_PENALTY`, exempting the unit's own origin cell so `StepOutPlanner`'s move/fire/return
+  fallback wasn't starved of its own "didn't reposition" signal.
+- **Second fix (CC, re-diagnosed after a 60-real-map sweep found the first fix froze the unit
+  outright):** `_pick_engagement_position` now precomputes whether ANY reachable cell has real LOS
+  this turn; the self-cell exemption only applies when that's true — with no LOS cell reachable at
+  all, plain progress toward `preferred_range` outscores freezing in place.
+- **2026-07-20: supervisor reports still unresolved**, and pointed at `out/combat.log` from a live
+  bout (6 units, mtime AFTER the second fix landed) as evidence. That log shows every one of the 6
+  units, EVERY turn from Turn 2 through at least Turn 17, doing nothing but
+  `_face_if_nothing_else_queued`'s bare defensive re-face ("faced ... (manual_first)") followed
+  immediately by `turn_end` — the exact same cell, same facing, forever. This is broader than the
+  original report (every playstyle routes through `_plan_ranged`, not just SKIRMISHER) and confirms
+  the second fix does not cover every case.
+- **Root cause (read from the log, not yet fixed):** the second fix only rewards a reachable cell
+  for reducing raw Chebyshev distance toward `preferred_range`. Once a unit is already AT (or very
+  near) its own preferred standoff distance — the common steady state, reached quickly from most
+  spawn layouts — every reachable cell scores no better on that axis, REGARDLESS of whether moving
+  perpendicular/around a wall would eventually gain real LOS. The fix only helps the narrower "still
+  clearly farther than preferred range" case (monotonic distance improvement); it does nothing once
+  the unit has already closed to its own preferred band but still lacks a line, which is exactly
+  where these 6 units appear to have settled by Turn 2.
+- **Potential solution, not yet implemented:** replace (or supplement, once no reachable cell has
+  real LOS) the raw distance-to-`preferred_range` scoring term with something that actually
+  correlates with "getting closer to a real shot" rather than "matching a number" — e.g. minimizing
+  the count of opaque cells along `Grid.line(cell, enemy.cell)` (an obstruction count, cheap to
+  compute with the existing `LoS`/`Grid` primitives, strictly decreasing as a unit works its way
+  around a corner even while its raw Chebyshev distance briefly plateaus or worsens), or a genuine
+  shortest-path-to-nearest-LOS-cell search or a wider "any LOS within radius N of the enemy" check
+  instead of the enemy's exact cell alone. Any of these needs its own test proving it doesn't
+  regress the cases the existing `test_unit_ai.gd`/`test_unit_ai_engagement_los.gd` suites already
+  lock down (a covered origin still preferring `StepOutPlanner`'s fallback; a skirmisher with a
+  clear line still holding preferred range).
+- **Status:** not fixed. Two fix attempts down, both incomplete — logged per instruction, not
+  chased further this pass.
 
 ### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
 - **First attempt (taskblock-26 Pass A3, commit `7c07445`):** raised the unit facing wedge's own base
   height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears the team marker disc and the extraction
   tile marker. **2026-07-20: supervisor reported still present.**
-- **Re-diagnosis:** the fix checked clearance against only the two markers named in the original
-  report — it never checked `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` (top face 0.05, the amber
-  overwatch-arc tile — a very ordinary thing to have visible under a standing unit), which the 0.09
-  center's own bottom face (0.04) genuinely interpenetrated.
-- **Second fix:** `FACING_WEDGE_Y` raised again, to 0.12 — clears the TALLEST known ground-tier
-  marker (`OVERWATCH_ARC_HEIGHT`) with real headroom, not just the two originally named.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven via
-  `test_hit_volume_view.gd::test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc`.
-
----
-
-## 🔧 Active / Open
+- **Second attempt:** the first fix checked clearance against only the two markers named in the
+  original report — it never checked `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` (top face 0.05,
+  the amber overwatch-arc tile), which the 0.09 center's own bottom face (0.04) genuinely
+  interpenetrated. `FACING_WEDGE_Y` raised again, to 0.12, clearing the tallest known ground-tier
+  marker with real headroom.
+- **2026-07-20: supervisor confirms still happening.** Marked unresolved — the second attempt's own
+  diagnosis (a different marker than the one originally checked) evidently still isn't the whole
+  picture, or something else entirely is z-fighting. Not re-investigated further this pass.
+- **Status:** not fixed. Two fix attempts down, both incomplete.
 
 ### Chaingun bursts: half the burst looks like it's going backward  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
