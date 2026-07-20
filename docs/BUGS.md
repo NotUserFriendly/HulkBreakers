@@ -194,6 +194,36 @@ the supervisor promotes confirmed ones up to Resolved.)*
   `test_resolution_player.gd::test_deflect_tracer_waits_a_beat_after_the_primary_impact` (fails
   without the fix, passes with it).
 
+### Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
+  ways — (1) doesn't open the dartboard, always resolves a center-mass shot; (2) charges MP for the
+  automated legs; (3) the ghost snaps back to the base cell instead of holding the step-out
+  waypoint; (4) the intended sequence (pick step-out → ghost holds the cell → dartboard opens there
+  → fire resolves the whole move/fire/return) wasn't followed.
+- **Root cause:** `TacticsController._confirm_step_out()` called `StepOutPlanner.build_triple()`
+  wholesale the instant the player confirmed a candidate cell — queuing the WHOLE move+attack+move
+  triple (an automated center-mass shot) in one click, never entering ordinary aim mode at all. The
+  ghost "snapping back" was a direct symptom of this: the entire triple (ending back at origin)
+  was queued and previewed in the same instant the step-out cell was chosen, so there was never a
+  sustained moment where the ghost held the stepped-out position for the player to see. `MoveAction`
+  had no discount mechanism at all — `StepOutPlanner`'s own doc comment stated "real MP/AP cost for
+  both legs, no discount" as a deliberate original design choice.
+- **Fix:** split the flow. Confirming a step-out cell now queues ONLY the free outbound leg
+  (`MoveAction.free`, new — no MP/AP either direction, docs/SUPERSEDED.md), then hands off into
+  ORDINARY aim mode from the stepped-out position (`_framing_shooter()`/`aim_state()` already read
+  the previewed unit, so the camera and dartboard follow the queued move for free). Firing
+  (confirm_shot() again, now in aim mode) appends the free return leg once a real shot actually
+  queues. Canceling aim mid-step-out (before firing) undoes the queued outbound leg. The ghost
+  "snapping back" is now correct, not a bug — it only happens once the return leg is genuinely
+  queued (after firing), the truthful final resting position; during the aim phase it holds the
+  stepped-out cell via the same queued-move preview machinery every other action already uses.
+  `free` applies to the AI's own `StepOutPlanner` usage too, not just the player's — the same shared
+  maneuver, same cost either way.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass B, proven via
+  `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the free
+  out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg) and
+  `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
+
 ---
 
 ## 🔧 Active / Open
