@@ -393,8 +393,13 @@ instead of reading log text and guessing. A chain of four dependent pieces:*
    their kit** — so a bout is self-arming, not hand-set. (Ties to storage: a kit is items in a
    container, drawn on demand.)
 3. **Presets** — save a team of bots (with kits) as a named preset, reloadable into the bout menu.
-4. **Tester mode** — CC authors bots, kits, and presets, loads them into the bout menu, and **runs a
-   bout in the game window with the supervisor in spectator** — watch, pause, inspect. This *is* the
+4. **Tester mode** — CC authors bots, kits, and presets (via data/tools, *not* an in-game builder —
+   throwaway authoring UI earns nothing), loads them into the bout menu, and **runs a bout in the
+   game window with the supervisor in spectator** — watch, pause, inspect. **The authoring loop's
+   intended shape is injection, not clicks:** CC affects the *running* bout directly — build a
+   condition (spawn/position/arm/trigger a state) and inject it into the live bout — rather than
+   clicking through a UI. More powerful (force any state, not just what a UI exposes) and cheaper
+   (no builder UI to make). This *is* the
    headless successor: enough visual granularity that watching contributes what log-reading can't
    (the backward-burst bug is the case in point — invisible in the log, obvious in playback).
 

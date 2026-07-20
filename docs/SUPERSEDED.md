@@ -47,3 +47,18 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 table, exposure-table deletion, the `los.gd` `range`-shadow bug fix). All shipped. The v2.1 plan is
 fully retired; only its two standing rules (enums-vs-open-data, checkpoint discipline) survive into
 v3.
+
+## Overwatch resolves its own shot (observed tb28 — not yet changed)
+**Was:** overwatch's `_fire` is a self-contained shot resolver — it builds its own shot plane, samples
+the dartboard, and resolves damage/crit/pen directly, independent of the normal firing path. This was
+the original intent when overwatch was built.
+**Now (intended, not yet implemented):** overwatch should be a **trigger** that fires the unit's
+*provided* firing action — burst preferentially, a shot as fallback — through the shared resolver, the
+same way tb24 made the AI derive actions from `ActionCatalog`. The self-contained resolver is a
+parallel system (violates the no-parallel-systems rule as it now stands) and it has inherited the
+pre-tb27 cell-anchored origin/direction bug (the backward-shot class, cf. BR27.02).
+**Status:** logged as a superseded design, **NOT changed yet** (supervisor's call). The eventual fix
+replaces `_fire`'s bespoke resolution with "construct and resolve the weapon's provided firing
+action." Until then, overwatch works but off the shared path. *(The inherited backward-shot symptom,
+if/when it surfaces visually, is a BUG — file it separately; the parallel-path design itself is this
+reversal, not a bug.)*
