@@ -101,6 +101,18 @@ confirm" roll-up — so pending items surface at a natural review point without 
   (Squad M) — <variant>" once a unit is open.
 - **RESOLVED** — confirmed by the supervisor.
 
+### Stab's slide-deflect could land back on the shooter's own body  ·  source: `CC`
+- **Found:** while re-diagnosing A2 below (see that entry) — `DamageResolver._resolve_slide` (stab's
+  own DEFLECT_MODE_SLIDE response) re-searches the WHOLE plane from index 0 with a lateral nudge, but
+  hardcoded an EMPTY exclude list on that re-search, unlike every other plane lookup in `resolve_shot`.
+  A stab that deflects and slides at point-blank range could therefore land back on the shooter's own
+  body (which sits at the ray's own near-zero depth), the one lookup `resolve_shot`'s own first-hop
+  exclusion never covered.
+- **Fix:** `_resolve_slide` now takes `exclude_parts` and passes it through to its own `_find_next`
+  call, the same shooter-parts list `resolve_shot` itself was given.
+- **RESOLVED** — proven both ways (fails without the fix, passes with it) by
+  `test_damage_resolver_deflect_modes.gd::test_slide_deflect_never_lands_back_on_the_shooters_own_excluded_body`.
+
 ---
 
 ## ⏳ Resolved — pending supervisor confirmation
@@ -131,28 +143,44 @@ the supervisor promotes confirmed ones up to Resolved.)*
   visibility test.
 - **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B2.
 
----
-
-## 🔧 Active / Open
-
 ### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
   ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
   geometry and can hit its own armor."
 - **First attempt (taskblock-26 Pass A2, commit `7c07445`):** `UnitGeometry.muzzle_point` returned
   the weapon's own box CENTER, not its forward emission point — changed to return the box's forward
-  tip. **2026-07-20: supervisor reports still present** — the tip fix alone didn't resolve it; needs
-  re-diagnosis, not a re-application of the same fix.
-- **Status:** reopened, not yet re-investigated.
+  tip. **2026-07-20: supervisor reported still present.**
+- **Re-diagnosis:** that fix touched a function no real firing action actually consumed for its
+  horizontal origin. Every real attack (`AttackAction`/`BurstAction`/`GrindAction`/`SlashAction`/
+  `StabAction`) built the shot plane — and therefore the logged/drawn `impact.origin` — from the
+  shooter's own bare CELL center (`Vector2(actual.cell.x, actual.cell.y)`), never from
+  `shouldered_muzzle_point`'s own (already-correct) result. Real self-hits were already impossible
+  either way (every shooter part is excluded by identity on the plane's first lookup), so this was
+  purely the visible/logged origin sitting dead center in the shooter's own torso.
+- **Second fix:** all five action files now anchor the shot plane on
+  `Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE` (the same continuous muzzle position
+  `ShotPlane.resolve_ray` already anchors the reticle/overwatch path on), computed from
+  `shouldered_muzzle_point` before the plane is built, not after.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven via
+  `test_attack_action.gd::test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center`.
 
 ### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
 - **First attempt (taskblock-26 Pass A3, commit `7c07445`):** raised the unit facing wedge's own base
-  height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears the team marker disc and ground-tier
-  board markers. **2026-07-20: supervisor reports still present** — either a different z-fighting
-  pair than the one diagnosed, or the fix didn't reach the actual rendered geometry; needs
-  re-diagnosis.
-- **Status:** reopened, not yet re-investigated.
+  height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears the team marker disc and the extraction
+  tile marker. **2026-07-20: supervisor reported still present.**
+- **Re-diagnosis:** the fix checked clearance against only the two markers named in the original
+  report — it never checked `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` (top face 0.05, the amber
+  overwatch-arc tile — a very ordinary thing to have visible under a standing unit), which the 0.09
+  center's own bottom face (0.04) genuinely interpenetrated.
+- **Second fix:** `FACING_WEDGE_Y` raised again, to 0.12 — clears the TALLEST known ground-tier
+  marker (`OVERWATCH_ARC_HEIGHT`) with real headroom, not just the two originally named.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven via
+  `test_hit_volume_view.gd::test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc`.
+
+---
+
+## 🔧 Active / Open
 
 ### Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly

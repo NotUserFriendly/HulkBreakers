@@ -116,7 +116,19 @@ func apply(state: CombatState) -> void:
 		return
 
 	var target: Unit = _unit_at(state, target_cell)
-	var origin := Vector2(actual.cell.x, actual.cell.y)
+	# taskblock-26 Pass A2 (re-fix): the plane's own anchor — and therefore
+	# every logged/drawn `impact.origin` downstream — used to be the
+	# shooter's bare CELL center, landing the visible tracer dead in the
+	# middle of the shooter's own torso regardless of where its weapon
+	# actually sits. `shouldered_muzzle_point`'s flat (x, z), the same
+	# continuous muzzle position `ShotPlane.resolve_ray` already anchors
+	# the reticle/overwatch path on, fixes both at once: real self-hits
+	# were already impossible either way (every shooter part is excluded
+	# by identity on the first plane lookup below, not by geometry), so
+	# this only ever changes where the shot visibly/logically ORIGINATES,
+	# never what it can hit.
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
+	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
@@ -135,7 +147,6 @@ func apply(state: CombatState) -> void:
 	# the dartboard aims at the obstruction instead, so every downstream
 	# mechanic (penetration, destruction, salvage) still runs through the
 	# one real resolution path, just against a different point.
-	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset

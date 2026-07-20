@@ -96,7 +96,13 @@ func apply(state: CombatState) -> void:
 		return
 
 	var target: Unit = _unit_at(state, target_cell)
-	var origin := Vector2(actual.cell.x, actual.cell.y)
+	# taskblock-26 Pass A2 (re-fix): anchor the plane on the real muzzle
+	# position, not the shooter's bare cell center — see AttackAction's own
+	# doc comment for why (the visible/logged origin used to sit dead
+	# center in the shooter's own torso; real self-hits were never
+	# possible either way, since shooter parts are excluded by identity).
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
+	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
@@ -104,7 +110,6 @@ func apply(state: CombatState) -> void:
 	# own (see its doc comment) — computed once here too, since every
 	# pull in the burst reuses this same aim_point, a burst fired from
 	# behind low cover hits that cover on every pull, not just the first.
-	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
