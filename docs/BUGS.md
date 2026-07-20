@@ -224,9 +224,24 @@ the supervisor promotes confirmed ones up to Resolved.)*
   out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg) and
   `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
 
----
-
-## 🔧 Active / Open
+### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
+- **First two attempts (taskblock-26 Pass A3, twice):** bumped `FACING_WEDGE_Y` in isolation each
+  time — first cleared the two markers named in the report, then (after that failed) cleared
+  `OVERWATCH_ARC_HEIGHT` too. Both **reported still present.**
+- **Third attempt (taskblock-27 Pass C2):** stopped bumping one marker in isolation and enumerated
+  the whole ground-overlay height ladder instead. Found a real, previously unreported co-planar
+  pair no prior test had ever checked: `TEAM_MARKER_Y` (0.01) was IDENTICAL to
+  `EXTRACTION_TILE_HEIGHT` (0.010) — every unit standing on its own extraction tile (an ordinary
+  end-of-turn occurrence) z-fought, independent of the facing wedge entirely. Re-spaced all four
+  named overlays as one ordered ladder with real clearance: extraction tile (0.010, unchanged) →
+  team marker (0.06) → overwatch arc (0.09) → facing wedge (0.17), documented so a future ground
+  overlay takes the next rung rather than picking a value independently.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass C2, proven via
+  `test_hit_volume_view.gd::test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker`
+  (fails without the fix, passes with it) and the updated
+  `test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc` (now also
+  checks the team marker, which it never had before).
 
 ### Skirmisher (and every other playstyle) squares off through walls, never takes space  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
@@ -246,43 +261,34 @@ the supervisor promotes confirmed ones up to Resolved.)*
   immediately by `turn_end` — the exact same cell, same facing, forever. This is broader than the
   original report (every playstyle routes through `_plan_ranged`, not just SKIRMISHER) and confirms
   the second fix does not cover every case.
-- **Root cause (read from the log, not yet fixed):** the second fix only rewards a reachable cell
-  for reducing raw Chebyshev distance toward `preferred_range`. Once a unit is already AT (or very
-  near) its own preferred standoff distance — the common steady state, reached quickly from most
-  spawn layouts — every reachable cell scores no better on that axis, REGARDLESS of whether moving
+- **Root cause of the second failure:** the second fix only rewards a reachable cell for reducing
+  raw Chebyshev distance toward `preferred_range`. Once a unit is already AT (or very near) its own
+  preferred standoff distance — the common steady state, reached quickly from most spawn layouts —
+  every reachable cell scores no better on that axis, REGARDLESS of whether moving
   perpendicular/around a wall would eventually gain real LOS. The fix only helps the narrower "still
   clearly farther than preferred range" case (monotonic distance improvement); it does nothing once
   the unit has already closed to its own preferred band but still lacks a line, which is exactly
   where these 6 units appear to have settled by Turn 2.
-- **Potential solution, not yet implemented:** replace (or supplement, once no reachable cell has
-  real LOS) the raw distance-to-`preferred_range` scoring term with something that actually
-  correlates with "getting closer to a real shot" rather than "matching a number" — e.g. minimizing
-  the count of opaque cells along `Grid.line(cell, enemy.cell)` (an obstruction count, cheap to
-  compute with the existing `LoS`/`Grid` primitives, strictly decreasing as a unit works its way
-  around a corner even while its raw Chebyshev distance briefly plateaus or worsens), or a genuine
-  shortest-path-to-nearest-LOS-cell search or a wider "any LOS within radius N of the enemy" check
-  instead of the enemy's exact cell alone. Any of these needs its own test proving it doesn't
-  regress the cases the existing `test_unit_ai.gd`/`test_unit_ai_engagement_los.gd` suites already
-  lock down (a covered origin still preferring `StepOutPlanner`'s fallback; a skirmisher with a
-  clear line still holding preferred range).
-- **Status:** not fixed. Two fix attempts down, both incomplete — logged per instruction, not
-  chased further this pass.
+- **Third fix (taskblock-27 Pass C1):** when no reachable cell has real LOS, `_engagement_score` now
+  scores primarily on `LoS.obstruction_count` (new — opaque cells between a cell and the enemy, the
+  same `Grid.line` walk `has_los` already does, just counting instead of early-exiting), weighted to
+  dominate `distance_penalty`. This strictly decreases as a unit works around a corner even while
+  raw distance plateaus or worsens, unlike the second fix's own "match a number" metric.
+- **Honest result, re-measured on the same 60-real-map sweep:** seeds that never reach real LOS by
+  the end of the bout dropped from 16/60 to 8/60 (0/60 fully frozen either way, both before and
+  after). A genuine, measured improvement — **not a complete fix.** A long corridor requiring a
+  unit to temporarily move AWAY from the enemy before a gap appears can still trap this per-turn
+  greedy scorer (it only ever compares reachable cells THIS turn, never plans a multi-turn route) —
+  closing that would need a real shortest-path-to-nearest-LOS-cell search, out of scope for one
+  attempt.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass C1, third attempt, measurably
+  better but not guaranteed complete; proven via
+  `test_unit_ai_engagement_los.gd::test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_los`
+  (fails without the fix, passes with it) and the 60-real-map re-sweep above.
 
-### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
-- **First attempt (taskblock-26 Pass A3, commit `7c07445`):** raised the unit facing wedge's own base
-  height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears the team marker disc and the extraction
-  tile marker. **2026-07-20: supervisor reported still present.**
-- **Second attempt:** the first fix checked clearance against only the two markers named in the
-  original report — it never checked `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` (top face 0.05,
-  the amber overwatch-arc tile), which the 0.09 center's own bottom face (0.04) genuinely
-  interpenetrated. `FACING_WEDGE_Y` raised again, to 0.12, clearing the tallest known ground-tier
-  marker with real headroom.
-- **2026-07-20: supervisor confirms still happening.** Marked unresolved — the second attempt's own
-  diagnosis (a different marker than the one originally checked) evidently still isn't the whole
-  picture, or something else entirely is z-fighting. Not re-investigated further this pass.
-- **Status:** not fixed. Two fix attempts down, both incomplete.
+---
 
+## 🔧 Active / Open
 
 ### Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
