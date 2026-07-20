@@ -255,3 +255,56 @@ func test_start_bout_threads_each_entrys_own_playstyle_into_the_built_units() ->
 	assert_eq(squad_a[1].matrix.playstyle, &"SKIRMISHER")
 	var squad_b: Array[Unit] = state.units.filter(func(u: Unit) -> bool: return u.squad_id == 1)
 	assert_eq(squad_b[0].matrix.playstyle, &"COVER_SEEKER")
+
+
+## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
+## actual playstyle set... so new playstyles appear automatically, not a
+## hardcoded menu list." A direct reference to `UnitAI.PLAYSTYLES`, not a
+## hand-copied list — a playstyle added there (PSYCHOTIC/TURTLE, tb25 F)
+## is already present here with no menu edit of its own, and any FUTURE
+## addition is too, by construction.
+func test_the_menus_own_playstyle_list_is_the_real_planners_list() -> void:
+	assert_eq(GenerateBoutOverlay.PLAYSTYLES, UnitAI.PLAYSTYLES)
+	assert_true(&"PSYCHOTIC" in GenerateBoutOverlay.PLAYSTYLES)
+	assert_true(&"TURTLE" in GenerateBoutOverlay.PLAYSTYLES)
+
+
+## taskblock-26 Pass C2: "adding/duplicating an entry shouldn't reflow
+## jarringly — stabilize the layout (fixed row heights)." A real entry
+## row, the trailing add-row, and a padding spacer must all reserve the
+## SAME minimum height — the mismatch (spacers pinned to ROW_MIN_HEIGHT,
+## real rows left at their own natural theme height) is what made the
+## total layout height jump unpredictably as the roster crossed the
+## MIN_VISIBLE_ROWS threshold.
+func test_every_row_shape_reserves_the_same_minimum_height() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	overlay._add_to_squad(0, overlay._ordered_presets[0])
+
+	var rows: VBoxContainer = overlay._rows(0)
+	assert_gt(rows.get_child_count(), 0, "sanity: at least the real entry + the add row exist")
+	for row: Control in rows.get_children():
+		assert_almost_eq(
+			row.custom_minimum_size.y,
+			GenerateBoutOverlay.ROW_MIN_HEIGHT,
+			0.01,
+			"every row shape (entry, add, spacer) must reserve the same height"
+		)
+
+
+## taskblock-26 Pass C2: "center the menu (review notes it reads as
+## intended-centered but isn't)." The old `set_anchors_and_offsets_preset`
+## baked a one-time pixel offset from the layout's size AT CONSTRUCTION —
+## before a single child existed — so it was centered for an empty
+## control, not the real, populated menu. Anchors pinned to 0.5 with
+## GROW_BOTH and no baked offset keeps the control's own center pinned to
+## the parent's midpoint regardless of how its size changes afterward.
+func test_the_menu_layout_stays_centered_regardless_of_its_own_size() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	var layout: VBoxContainer = overlay._layout
+
+	assert_almost_eq(layout.anchor_left, 0.5, 0.001)
+	assert_almost_eq(layout.anchor_right, 0.5, 0.001)
+	assert_almost_eq(layout.anchor_top, 0.5, 0.001)
+	assert_almost_eq(layout.anchor_bottom, 0.5, 0.001)
+	assert_eq(layout.grow_horizontal, Control.GROW_DIRECTION_BOTH)
+	assert_eq(layout.grow_vertical, Control.GROW_DIRECTION_BOTH)

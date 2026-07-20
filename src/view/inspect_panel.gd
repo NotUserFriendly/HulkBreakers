@@ -56,6 +56,12 @@ const BURN_THRESHOLD := 1.0
 
 var _material_table: MaterialTable
 var _unit: Unit = null
+## taskblock-26 Pass C3: "the panel shows the bot's variant (good) but the
+## name mismatches — needs the unit's id and squad shown alongside it."
+## Kept as a real reference so `_refresh_title()` can update it per
+## selection, same convention `_matrix_label`/`_inventory_footer` already
+## use.
+var _title_bar: Label
 ## taskblock-22 Pass G2: optional — a host with a live board
 ## (SquadControlOverlay/SpectatorOverlay, both backed by a real
 ## BattleScene) passes `battle.find_unit_view` (Callable(int) ->
@@ -148,17 +154,17 @@ func setup(
 	_tactics = tactics
 	if _tactics != null:
 		_tactics.highlight_changed.connect(_on_highlight_changed)
-	var title_bar := Label.new()
-	title_bar.text = "INSPECT"
-	title_bar.add_theme_color_override("font_color", HulkTheme.FOREGROUND)
+	_title_bar = Label.new()
+	_title_bar.text = "INSPECT"
+	_title_bar.add_theme_color_override("font_color", HulkTheme.FOREGROUND)
 
 	var close_button := Button.new()
 	close_button.text = "x"
 	close_button.pressed.connect(close)
 
 	var title_row := HBoxContainer.new()
-	title_row.add_child(title_bar)
-	title_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(_title_bar)
+	_title_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(close_button)
 
 	var root := VBoxContainer.new()
@@ -337,6 +343,7 @@ func open(unit: Unit) -> void:
 				unit.shell.root, _material_table, WorldPalette.team_color(unit.squad_id)
 			)
 			_frame_camera()
+	_refresh_title()
 	_refresh_status_wound_column()
 	_refresh_matrix_area()
 	_refresh_inventory_tree()
@@ -350,8 +357,30 @@ func open(unit: Unit) -> void:
 func close() -> void:
 	visible = false
 	_unit = null
+	_title_bar.text = "INSPECT"
 	_isolate_clear()
 	closed.emit()
+
+
+## taskblock-26 Pass C3: "unit id + squad, not just variant" — the
+## matrix's own display_name/id (`_refresh_matrix_area`'s own bold header
+## line) never carried the unit's actual combat identity at all, so two
+## units built from the same variant were indistinguishable at a glance.
+## Same fallback convention `_refresh_matrix_area` already uses (a real
+## `display_name` wins, `matrix.id` otherwise) for the variant half.
+func _refresh_title() -> void:
+	if _unit == null:
+		_title_bar.text = "INSPECT"
+		return
+	var matrix: Matrix = _unit.matrix
+	var variant: String = ""
+	if matrix != null:
+		variant = matrix.display_name if matrix.display_name != "" else String(matrix.id)
+	_title_bar.text = (
+		"INSPECT — Unit %d (Squad %d) — %s" % [_unit.id, _unit.squad_id, variant]
+		if variant != ""
+		else "INSPECT — Unit %d (Squad %d)" % [_unit.id, _unit.squad_id]
+	)
 
 
 func _process(delta: float) -> void:

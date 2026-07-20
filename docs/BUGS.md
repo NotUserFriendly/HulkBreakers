@@ -78,6 +78,33 @@ confirm" roll-up — so pending items surface at a natural review point without 
 *(CC-fixed `SUPERVISOR` bugs awaiting verification. CC writes here, never straight to Resolved;
 the supervisor promotes confirmed ones up to Resolved.)*
 
+### Bout maker AI dropdown missing new playstyles  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: tb24/tb25 added playstyles (overwatch-capable set, PSYCHOTIC, TURTLE)
+  but the bout setup menu's own AI dropdown was a hardcoded, independently-maintained list.
+- **Fix:** `UnitAI.PLAYSTYLES` is now the one maintained list every `_plan_turn_before_shutdown_check`
+  match arm corresponds to; `GenerateBoutOverlay.PLAYSTYLES` is a direct reference to it, not a copy.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass C1.
+
+### Bout menu jumpy add/duplicate, not truly centered  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: adding/duplicating a roster entry reflows jarringly; the menu reads as
+  intended-centered but isn't.
+- **Root cause:** `set_anchors_and_offsets_preset(PRESET_CENTER)` baked a one-time pixel offset from
+  the layout's own size at construction — before a single child existed — so centering was computed
+  for an empty control, not the real populated menu. Real entry rows had no `custom_minimum_size.y`
+  of their own while the trailing padding spacers were pinned to `ROW_MIN_HEIGHT`, so the roster
+  crossing `MIN_VISIBLE_ROWS` changed the total layout height by an inconsistent amount.
+- **Fix:** anchors pinned to 0.5 with `GROW_DIRECTION_BOTH` (no baked offset) keeps the layout's own
+  center pinned to the parent's midpoint regardless of size changes; every row (entry, add, spacer)
+  now reserves the same `ROW_MIN_HEIGHT`.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass C2.
+
+### Inspect header shows only the variant, not unit id/squad  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: the inspect panel showed the bot's variant but not which unit/squad
+  this actually was in the current bout — two units built from the same variant read identically.
+- **Fix:** the panel's own title bar (`_title_bar`, previously a static "INSPECT" string) now reads
+  "INSPECT — Unit N (Squad M) — <variant>" once a unit is open, resetting to plain "INSPECT" on close.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass C3.
+
 ### Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
   appeared to jump to new positions before that unit's attack animation resolved."
