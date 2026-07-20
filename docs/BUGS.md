@@ -166,7 +166,13 @@ the supervisor promotes confirmed ones up to Resolved.)*
 ---
 
 ## 🔧 Active / Open
-*(none currently tracked — add here with `source`, timecode + taskblock as they're reported)*
+
+### Low framerate while aiming  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
+  deferred: "B-tier; investigate separately — likely the inspect field updating every frame; not a
+  correctness bug, don't rush a fix into this block."
+- **Status:** not investigated. Flagged for the post-tb26 testing/tooling review (pairs with a "what
+  does CC do repeatedly" audit) rather than fixed under taskblock-26's own scope.
 
 ---
 

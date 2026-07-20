@@ -3,7 +3,7 @@
 **The current-state snapshot**, by system, with the taskblock that landed each. Grows as work ships.
 For what changed shape along the way see `SUPERSEDED.md`; for what's next see `PLAN.md`.
 
-*Current as of taskblock-25 landed.*
+*Current as of taskblock-26 landed.*
 
 ---
 
@@ -22,10 +22,16 @@ thread); dartboard scatters isotropically in both the lateral and vertical axes 
 part into a taller one behind it, and a ricochet branches vertically as well as horizontally
 (tb23 C); `READING`/`RESOLVES` never conflated.
 
-**Failure model & joints** (tb09) — five failure modes: `MANGLE` (¼ residual DT, stays attached),
-`DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`, `MELTDOWN`. Child-owned
-joint HP, no modes; depleting one drops the intact subtree. Joints aimable (the precise-elbow shot).
-Spill-through: penetration damages the plate fully, spills `damage − effective_dt` onward.
+**Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
+DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
+`MELTDOWN`. Child-owned joint HP, no modes; depleting one drops the intact subtree. Joints aimable
+(the precise-elbow shot). Spill-through: penetration damages the plate fully, spills
+`damage − effective_dt` onward. **Joint HP default raised 1→3** (tb26 D) — a weaken-then-sever
+gradient instead of any hit reaching a joint severing it outright; per-part overrides still win.
+**Joint cladding** (`Socket.joint_cladding`, tb26 D) — an optional Part authored directly on the
+socket owning the joint it protects; `BodyProjector` projects it as an ordinary Region in front of
+the joint's own region, so it absorbs/deflects through the existing part/DT/spill machinery (tb20's
+layered-body cladding model, reused verbatim) rather than a new damage mechanism.
 
 **Armor, damage & weapons** (tb09/10/13/23) — DT from a `dt_curve` table; penetrate/stop-dead/
 deflect by real geometry, incidence/reflection read a region's real 3D surface normal (tb23 C, not
@@ -145,12 +151,16 @@ segment pinned to a constant height (tb22 D, real height tb23 D).
 **Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu (expanding-list
 teams). The verification rig.
 
-**Inspect panel** (tb21/22/23) — the current inspect surface: rotating bot viewer, matrix area,
+**Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
 dead-zone hold, right-click debug menu (debug-only items `[*]`-prefixed; inflict-status/create-part
 submenus, tb22 G). The one inventory surface in player view too — `InventoryPanel` retired (tb22 I).
-Click-to-pause-inspect in spectator. The isolate camera (single-unit preview) shows the model
-standing on real ground, correctly lit, not floating in a void (tb23 E2).
+Click-to-pause-inspect in spectator, id+squad+variant in the header (tb26 C3). The isolate camera
+(single-unit preview) shows the model standing on real ground, correctly lit, not floating in a
+void (tb23 E2). **Tile/object inspector** (tb26 E) — `InspectPanel.open_tile(cell, root)` wraps a
+tile's blocker Part (or null, a bare tile) in a matrixless, shell-only synthetic Unit and drives it
+through the same display path a real unit uses, no parallel inspector; spectator's click-to-inspect
+falls through to `BoardPicker.cell_at_ray` when a click misses every unit's own body.
 
 **Transparency** (docs/08) — one `StatResolver`, provenance on every value, tooltip == damage from
 one call.
