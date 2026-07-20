@@ -9,6 +9,9 @@ extends RefCounted
 ## to answer a real ray cast; Region itself never left the picture, it's
 ## just plumbing now rather than the resolution entry point.
 
+## taskblock-23 Pass A: `rect`'s two axes are `(lateral offset, real world
+## height)` — NOT `(lateral, depth)`. `depth` (below) is the fully separate
+## along-the-ray scalar. A part's real vertical extent already lives here.
 var rect: Rect2
 var depth: float
 var part: Part

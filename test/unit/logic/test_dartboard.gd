@@ -100,3 +100,74 @@ func test_spin_up_shrinks_a_ring_through_the_resolver_and_names_itself_in_source
 
 	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(weapon, [spin_up])
 	assert_eq(resolved_scatter[0].radius, 0.5)
+
+
+## taskblock-23 Pass B: "the dartboard scatters in 3D." Confirmed by reading
+## Region's own rect convention (docs/02, region.gd): `aim_point`'s two axes
+## are `(lateral, real world height)`, not `(lateral, depth)` — so `sample`
+## was ALREADY an isotropic disc in both, and a burst already spreads
+## vertically same as laterally. These tests pin that down explicitly
+## rather than leaving it an implicit, easily-regressed coincidence.
+func test_a_spread_burst_varies_in_height_not_just_lateral_position() -> void:
+	var scatter: Array[Ring] = [Ring.new(1.0, 1.0)]
+	var aim_point := Vector2(0.0, 1.65)  # a torso, real world height
+	var points: Array[Vector2] = Dartboard.sample(aim_point, scatter, _rng(11), 200)
+
+	var min_height: float = points[0].y
+	var max_height: float = points[0].y
+	for point: Vector2 in points:
+		min_height = minf(min_height, point.y)
+		max_height = maxf(max_height, point.y)
+	assert_gt(
+		max_height - min_height,
+		0.5,
+		"a wide burst must actually spread vertically, not stitch one height"
+	)
+
+
+func test_vertical_spread_reaches_the_same_ring_radius_as_lateral_spread() -> void:
+	var aim_point := Vector2(0.0, 1.65)
+	const SAMPLES := 4000
+	for radius: float in [0.3, 1.5]:
+		var scatter: Array[Ring] = [Ring.new(radius, 1.0)]
+		var points: Array[Vector2] = Dartboard.sample(aim_point, scatter, _rng(21), SAMPLES)
+		var max_lateral := 0.0
+		var max_vertical := 0.0
+		for point: Vector2 in points:
+			max_lateral = maxf(max_lateral, absf(point.x))
+			max_vertical = maxf(max_vertical, absf(point.y - aim_point.y))
+		assert_true(
+			max_lateral <= radius + 0.0001, "radius %f: lateral must stay inside the ring" % radius
+		)
+		assert_true(
+			max_vertical <= radius + 0.0001,
+			"radius %f: vertical must stay inside the ring" % radius
+		)
+		assert_true(
+			max_lateral > radius * 0.8,
+			"radius %f: lateral spread must actually reach toward the ring's edge" % radius
+		)
+		assert_true(
+			max_vertical > radius * 0.8,
+			(
+				"radius %f: vertical spread must reach the SAME ring radius as lateral, not a smaller one"
+				% radius
+			)
+		)
+
+
+func test_a_single_projectile_still_lands_within_the_ring_in_both_axes() -> void:
+	var scatter: Array[Ring] = [Ring.new(0.4, 1.0)]
+	var aim_point := Vector2(2.0, 1.2)
+
+	var point: Vector2 = Dartboard.sample(aim_point, scatter, _rng(5), 1)[0]
+
+	assert_true((point - aim_point).length() <= 0.4 + 0.0001)
+
+
+func test_same_seed_produces_identical_3d_scatter() -> void:
+	var scatter: Array[Ring] = [Ring.new(0.2, 1.0), Ring.new(1.0, 3.0)]
+	var aim_point := Vector2(0.0, 1.65)
+	var a: Array[Vector2] = Dartboard.sample(aim_point, scatter, _rng(99), 50)
+	var b: Array[Vector2] = Dartboard.sample(aim_point, scatter, _rng(99), 50)
+	assert_eq(a, b)

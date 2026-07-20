@@ -47,6 +47,10 @@ static func _context(base: float, weapon: Part, extra_sources: Array[ModSource])
 
 ## Samples `count` impact points offset from `aim_point`. `scatter` must
 ## already be resolved (see resolve_scatter) and ordered inner -> outer.
+## taskblock-23 Pass B: `aim_point`'s two axes are `(lateral, real world
+## height)` (Region.rect's own convention) — this was ALREADY an isotropic
+## disc in both, so a burst already spreads vertically as well as
+## laterally; no change needed here, only the tests that pin it down.
 static func sample(
 	aim_point: Vector2, scatter: Array[Ring], rng: RandomNumberGenerator, count: int
 ) -> Array[Vector2]:
