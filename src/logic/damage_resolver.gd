@@ -537,8 +537,19 @@ static func resolve_shot(
 			shot_dir = muzzle_to_impact.normalized()
 			shot_dir_ready = true
 
+		# taskblock-22 Pass D: this hop's own real muzzle (this call's own
+		# `origin` — the true shooter for the first hop, the previous hop's
+		# own deflection point for a ricochet) and where it actually landed —
+		# same flat coords every ImpactResult below stamps itself with.
+		var hop_hit_point: Vector2 = origin + dir * region.depth + perp * point.x
+
 		if region.socket != null:
-			results.append(_resolve_joint_hit(region, current_damage, shot_dir, crit, state))
+			var joint_hit: ImpactResult = _resolve_joint_hit(
+				region, current_damage, shot_dir, crit, state
+			)
+			joint_hit.origin = origin
+			joint_hit.hit_point = hop_hit_point
+			results.append(joint_hit)
 			return results
 
 		var material: MaterialEntry = table.get_entry(region.part.material)
@@ -555,6 +566,8 @@ static func resolve_shot(
 			bypass_result.is_crit = crit.is_crit
 			bypass_result.is_double_crit = crit.is_double_crit
 			bypass_result.bypassed_armor = true
+			bypass_result.origin = origin
+			bypass_result.hit_point = hop_hit_point
 			results.append(bypass_result)
 			if region.part.hollow:
 				if inside_hollow_part == region.part:
@@ -571,6 +584,8 @@ static func resolve_shot(
 		)
 		impact.is_crit = crit.is_crit
 		impact.is_double_crit = crit.is_double_crit
+		impact.origin = origin
+		impact.hit_point = hop_hit_point
 		results.append(impact)
 
 		match impact.outcome:

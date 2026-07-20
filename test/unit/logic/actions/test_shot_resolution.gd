@@ -5,7 +5,6 @@ extends GutTest
 ## shot plane covers) must still log something the view can draw a tracer
 ## from, not silently emit zero events the way it did before this pass.
 
-
 ## A point far outside any region's own rect in a mostly-empty shot plane —
 ## the shooter's own body is excluded at depth <= 0 (`resolve_and_log_point`
 ## always excludes the attacker), so nothing else is left to hit at all.
@@ -105,3 +104,28 @@ func test_a_miss_with_no_authored_max_range_falls_back_to_the_map_size() -> void
 
 	var miss: LogEvent = sink.events_of_kind(&"miss")[0]
 	assert_almost_eq(miss.data.get("end_x") as float, 15.0, 0.01)
+
+
+## taskblock-22 Pass D: "the player reads the path" — a logged impact
+## event must carry its own real muzzle/landing point, the same flat
+## cell-space coords the miss event above already established, so the
+## view can draw every tracer segment from the log directly.
+func test_a_hit_logs_its_own_origin_and_hit_point() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var target := _make_unit(Vector2i(3, 0), 1)
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), Vector2(0, 0), 5.0, 0.0, 0.0, null
+	)
+
+	var impact: LogEvent = sink.events_of_kind(&"impact")[0]
+	assert_almost_eq(impact.data.get("origin_x") as float, 0.0, 0.01, "the shooter's own muzzle")
+	assert_almost_eq(impact.data.get("origin_y") as float, 0.0, 0.01)
+	# The struck box's own real front surface, short of the target's cell
+	# center at x=3 — never re-derived from the target's own cell directly.
+	assert_gt(impact.data.get("hit_x") as float, 0.0, "landed somewhere downrange of the shooter")
+	assert_lt(impact.data.get("hit_x") as float, 3.0, "short of the target's own cell center")
+	assert_almost_eq(impact.data.get("hit_y") as float, 0.0, 0.01)

@@ -384,6 +384,79 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 	assert_eq(summaries[0], summaries[1], "same seed must replay an identical impact sequence")
 
 
+## taskblock-22 Pass D: "every shot is visible... muzzle -> hit 1 ->
+## (deflect) -> hit 2." Each ImpactResult now stamps its own real hop
+## origin/landing point — the whole point being that a ricochet's SECOND
+## hop must carry a DIFFERENT origin (the bounce point, open air) than the
+## first (the true shooter's own muzzle), so the view can draw each
+## segment from where it actually started instead of always from the
+## shooter's own body.
+func test_each_ricochet_hop_stamps_its_own_real_origin_and_hit_point() -> void:
+	var grid := Grid.new(20, 20)
+	var cover := Part.new()
+	cover.id = &"cover"
+	cover.material = &"steel"
+	cover.hp = 20
+	cover.max_hp = 20
+	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	grid.blockers[Vector2i(10, 10)] = cover
+
+	var table := DataLibrary.material_table()
+	var origin := Vector2(10, 0)
+	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
+	var dir: Vector2 = direction.normalized()
+	var perp := Vector2(-dir.y, dir.x)
+
+	var state_for_probe := CombatState.new(grid)
+	var plane: Array[Region] = ShotPlane.build(origin, dir, state_for_probe)
+	var cover_region := _find_region(plane, cover)
+	var aim_point: Vector2 = cover_region.rect.get_center()
+
+	var victim := Part.new()
+	victim.id = &"victim"
+	victim.hp = 10
+	victim.max_hp = 10
+	victim.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(3.0, 3.0, 3.0))]
+	var shot_dir: Vector2 = (dir * cover_region.depth + perp * aim_point.x).normalized()
+	var probe := DamageResolver.resolve_impact(shot_dir, 3.0, cover_region, table)
+	assert_eq(probe.outcome, Enums.Outcome.DEFLECT, "fixture must actually deflect")
+	var world_hit: Vector2 = origin + dir * cover_region.depth + perp * aim_point.x
+	var third_party_cell := Vector2i(
+		roundi(world_hit.x + probe.reflected_dir.x * 3.0),
+		roundi(world_hit.y + probe.reflected_dir.y * 3.0)
+	)
+	var victim_unit := Unit.new(Matrix.new(), Shell.new(victim), third_party_cell)
+	var state := CombatState.new(grid, [victim_unit])
+
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, aim_point, 3.0, 0.0, state, table, _rng(99)
+	)
+
+	assert_true(results.size() >= 2, "sanity: the ricochet must have hit something further")
+	var first_hop: ImpactResult = results[0]
+	var second_hop: ImpactResult = results[1]
+	assert_almost_eq(
+		first_hop.origin.x, origin.x, 0.01, "the first hop's own muzzle is the shooter"
+	)
+	assert_almost_eq(first_hop.origin.y, origin.y, 0.01)
+	assert_almost_eq(
+		first_hop.hit_point.x, world_hit.x, 0.01, "the first hop must land where it deflected"
+	)
+	assert_almost_eq(first_hop.hit_point.y, world_hit.y, 0.01)
+	assert_ne(
+		second_hop.origin,
+		first_hop.origin,
+		"the ricochet's own second hop must NOT originate from the shooter's own muzzle"
+	)
+	assert_almost_eq(
+		second_hop.origin.x,
+		first_hop.hit_point.x,
+		0.01,
+		"the second hop's own muzzle is exactly where the first hop bounced"
+	)
+	assert_almost_eq(second_hop.origin.y, first_hop.hit_point.y, 0.01)
+
+
 func test_crit_chance_over_100_percent_always_crits_and_the_excess_is_the_double_crit_chance(
 ) -> void:
 	var rng := _rng(5)

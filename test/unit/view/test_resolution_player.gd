@@ -77,7 +77,17 @@ func test_play_immediately_switches_to_the_resolution_banner() -> void:
 	assert_eq((built.banner as Label).text, ResolutionPlayer.RESOLUTION_BANNER)
 
 
-func _impact_event(attacker: Unit, target: Unit, part_id: StringName) -> LogEvent:
+## taskblock-22 Pass D: `origin_x/y` default to the attacker's OWN cell —
+## a shot's first (and, in most of these tests, only) hop, matching
+## `_muzzle_point(attacker)` exactly, so every existing single-hop
+## assertion stays valid unchanged. A ricochet hop passes its own real
+## origin explicitly instead (see `_ricochet_impact_event` below).
+func _impact_event(
+	attacker: Unit, target: Unit, part_id: StringName, origin: Vector2 = Vector2.INF
+) -> LogEvent:
+	var real_origin: Vector2 = (
+		Vector2(attacker.cell.x, attacker.cell.y) if origin == Vector2.INF else origin
+	)
 	return (
 		LogEvent
 		. new(
@@ -93,8 +103,42 @@ func _impact_event(attacker: Unit, target: Unit, part_id: StringName) -> LogEven
 				"bypassed_armor": false,
 				"is_crit": false,
 				"is_double_crit": false,
+				"origin_x": real_origin.x,
+				"origin_y": real_origin.y,
 			},
 			"PENETRATE on %s" % part_id
+		)
+	)
+
+
+## A no-target hit (clutter, a wall, the void) — target_unit_id stays -1,
+## and this is the one case `hit_x/y` (not a target's own composed mesh
+## position) actually gets read.
+func _clutter_impact_event(attacker: Unit, hit: Vector2, origin: Vector2 = Vector2.INF) -> LogEvent:
+	var real_origin: Vector2 = (
+		Vector2(attacker.cell.x, attacker.cell.y) if origin == Vector2.INF else origin
+	)
+	return (
+		LogEvent
+		. new(
+			0,
+			Enums.Phase.RESOLUTION,
+			attacker.id,
+			&"impact",
+			{
+				"outcome": Enums.Outcome.STOP_DEAD,
+				"part": &"crate",
+				"target_unit_id": -1,
+				"damage": 5.0,
+				"bypassed_armor": false,
+				"is_crit": false,
+				"is_double_crit": false,
+				"origin_x": real_origin.x,
+				"origin_y": real_origin.y,
+				"hit_x": hit.x,
+				"hit_y": hit.y,
+			},
+			"STOP_DEAD on crate"
 		)
 	)
 
@@ -181,22 +225,55 @@ func test_the_tracer_spans_from_the_attackers_cell_to_the_targets_cell() -> void
 	assert_almost_eq(box.size.z, expected_from.distance_to(expected_to), 0.0001)
 
 
-func test_play_impact_with_an_unknown_target_does_not_crash_or_spawn_a_tracer() -> void:
+## taskblock-22 Pass D: "never skip a shot for lack of a target unit — a
+## shot into clutter, cover, a wall, or a teammate draws its ray." A hit
+## with no target Unit (target_unit_id == -1) now draws its tracer to the
+## hop's own logged hit_x/y instead of being silently dropped.
+func test_play_impact_with_no_target_unit_still_draws_a_tracer_to_the_hit_point() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
 	var attacker: Unit = built.attacker
 
-	var event := LogEvent.new(
-		0,
-		Enums.Phase.RESOLUTION,
-		attacker.id,
-		&"impact",
-		{"part": &"root", "target_unit_id": -1},
-		"impact with no known target"
-	)
-	player._play_impact(event)
+	player._play_impact(_clutter_impact_event(attacker, Vector2(5.0, 3.0)))
 
-	assert_eq(player._tracers.get_child_count(), 0)
+	assert_eq(player._tracers.get_child_count(), 1)
+	var tracer: MeshInstance3D = player._tracers.get_child(0)
+	var expected_from: Vector3 = player._muzzle_point(attacker)
+	var expected_to := (
+		Vector3(5.0, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, 3.0) * UnitGeometry.CELL_SIZE
+	)
+	assert_almost_eq(tracer.position.x, (expected_from.x + expected_to.x) * 0.5, 0.0001)
+	assert_almost_eq(tracer.position.z, (expected_from.z + expected_to.z) * 0.5, 0.0001)
+
+
+## taskblock-22 Pass D: the actual bug this pass fixes — a ricochet hop's
+## own tracer must originate from where THAT bounce actually started
+## (open air, wherever the previous hop deflected from), never from the
+## shooter's own body regardless of how many times the round already
+## bounced.
+func test_play_impact_draws_a_ricochet_hop_from_its_own_real_origin_not_the_shooter() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	var target: Unit = built.target
+	var bounce_point := Vector2(6.0, 1.0)
+
+	player._play_impact(_impact_event(attacker, target, &"root", bounce_point))
+
+	var tracer: MeshInstance3D = player._tracers.get_child(0)
+	var expected_from := (
+		Vector3(bounce_point.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, bounce_point.y)
+		* UnitGeometry.CELL_SIZE
+	)
+	var expected_to: Vector3 = player._impact_point(target, &"root")
+	assert_almost_eq(tracer.position.x, (expected_from.x + expected_to.x) * 0.5, 0.0001)
+	assert_almost_eq(tracer.position.z, (expected_from.z + expected_to.z) * 0.5, 0.0001)
+	var shooter_from: Vector3 = player._muzzle_point(attacker)
+	assert_ne(
+		expected_from,
+		shooter_from,
+		"sanity: the bounce point must actually differ from the shooter's own muzzle"
+	)
 
 
 ## taskblock-21 Pass F: mirrors `ShotResolution._log_miss`'s own data shape
