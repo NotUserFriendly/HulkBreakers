@@ -97,7 +97,14 @@ func setup(p_battle: BattleScene) -> void:
 ## tile-shaped entry point; null for a bare tile is already its documented
 ## "empty state" case, not a special case here). A miss against the board
 ## plane too (looking off into the void) is still a real no-op.
+##
+## taskblock-27 Pass D1c: mouse motion drives `_update_hover()` (below) so
+## this view gets the same inspect-on-hover feedback `SquadControlOverlay`
+## already has, instead of only reacting to clicks.
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_update_hover((event as InputEventMouseMotion).position)
+		return
 	if event is not InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton
@@ -127,6 +134,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	_was_playing_before_inspect = playing
 	pause()
 	inspect_panel.open_tile(cell as Vector2i, battle.combat_state.grid.blockers.get(cell))
+
+
+## taskblock-27 Pass D1c: the same `UnitPicker.hit()` ray-pick the click
+## handler above already uses, run on every mouse-motion event instead of a
+## button press. Unlike `TacticsController.update_hover()` (which only
+## highlights the currently-selected unit's own parts — meaningful in
+## player view, where "selected" is a real concept), spectator view has no
+## selection at all, so whichever unit the cursor is actually over gets
+## highlighted; every other view's highlight clears the same way
+## `SquadControlOverlay._on_highlight_changed()` clears every
+## not-currently-selected view.
+func _update_hover(screen_pos: Vector2) -> void:
+	var camera: Camera3D = battle.camera_rig.camera() if battle != null else null
+	if camera == null:
+		return
+	var from: Vector3 = camera.project_ray_origin(screen_pos)
+	var dir: Vector3 = camera.project_ray_normal(screen_pos)
+	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
+	var hovered_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
+	var hovered_part: Part = hit.part as Part if not hit.is_empty() else null
+	for view: HitVolumeView in battle.unit_views:
+		if view.unit == hovered_unit:
+			view.highlight_part(hovered_part)
+		else:
+			view.clear_highlight()
 
 
 func _on_inspect_panel_closed() -> void:

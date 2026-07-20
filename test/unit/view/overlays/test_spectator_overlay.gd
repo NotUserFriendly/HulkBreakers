@@ -362,6 +362,51 @@ func test_clicking_empty_space_does_nothing() -> void:
 	assert_false(overlay.inspect_panel.visible)
 
 
+## taskblock-27 Pass D1c: "inspect-on-hover... ensure it's on the shared
+## layer so both views have it." Prior to this fix, spectator view had NO
+## mouse-motion handling at all — this drives a real
+## `InputEventMouseMotion` through `_unhandled_input` (the same real-ray
+## path the click tests above already exercise) and confirms the hovered
+## unit's own view highlights while the other unit's view stays clear.
+func test_hovering_a_unit_highlights_its_view_and_clears_the_other() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.units[1]
+	var jerry: Unit = built.state.units[0]
+
+	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
+	var motion := InputEventMouseMotion.new()
+	motion.position = screen_pos
+	overlay._unhandled_input(motion)
+
+	var enemy_view: HitVolumeView = overlay.battle.find_unit_view(enemy.id)
+	var jerry_view: HitVolumeView = overlay.battle.find_unit_view(jerry.id)
+	assert_not_null(enemy_view._highlighted_part, "the hovered unit's own view must highlight")
+	assert_null(jerry_view._highlighted_part, "an unhovered unit's view must stay clear")
+
+
+## Moving off every unit's own body (into empty space) must clear whatever
+## was previously highlighted, not leave a stale highlight behind.
+func test_hovering_off_every_unit_clears_the_previous_highlight() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.units[1]
+
+	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
+	var hover_motion := InputEventMouseMotion.new()
+	hover_motion.position = screen_pos
+	overlay._unhandled_input(hover_motion)
+
+	var miss_motion := InputEventMouseMotion.new()
+	miss_motion.position = Vector2(-9999, -9999)
+	overlay._unhandled_input(miss_motion)
+
+	var enemy_view: HitVolumeView = overlay.battle.find_unit_view(enemy.id)
+	assert_null(enemy_view._highlighted_part, "moving off the unit must clear its highlight")
+
+
 ## taskblock-17 Pass C2: "stop auto-snapping — let the spectator drive
 ## their own camera." The camera's own transform must be byte-identical
 ## before and after stepping through several turns — CameraRig is never
