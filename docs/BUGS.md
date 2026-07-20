@@ -329,6 +329,22 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D4, proven via
   `test_camera_rig.gd`'s new pre-aim-restore test (fails without the fix, passes with it).
 
+### Inspect-on-hover missing in spectator view  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D1c (tb17-era note): inspect-on-hover should be on the shared control
+  layer so both spectator and player view have it. Spectator view had none at all — hovering a
+  unit never highlighted anything, unlike player view's `TacticsController.update_hover()`.
+- **Fix:** `SpectatorOverlay._unhandled_input()` now routes `InputEventMouseMotion` to a new
+  `_update_hover()`, reusing the same `UnitPicker.hit()` ray-pick the click handler already calls.
+  Unlike player view (which only highlights the currently-selected unit's own parts — a concept
+  spectator view has none of), whichever unit the cursor is actually over highlights, mirroring
+  `SquadControlOverlay._on_highlight_changed()`'s own clear-every-other-view behavior. No shared
+  base-layer class was introduced (`ControlOverlay` stays a turn-driver-only base, per research
+  done this pass) — each overlay still owns its own input handling, just with matching behavior.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D1c, proven via
+  `test_spectator_overlay.gd`'s new `test_hovering_a_unit_highlights_its_view_and_clears_the_other`
+  (fails without the fix, passes with it) and
+  `test_hovering_off_every_unit_clears_the_previous_highlight`.
+
 ### Wall tiles inspectable → garbage inspector  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D5: clicking a wall tile opens the tile inspector showing a
   seemingly-random tile in the viewport.
