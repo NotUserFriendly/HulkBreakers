@@ -205,7 +205,24 @@ path; chambers ammo through `WeaponResolver.try_chamber` like any other load. `K
 an `Enums.EquipMode` defaulting to `INSTANT` — `VISIBLE` is declared as the seam a future "watch them
 arm up" mode slots into, no behavior behind it yet. `BoutSetup._spawn_squad` runs it for any kitted
 roster entry right after assembly — a bout of kitted units starts fully armed at turn 1, proven against
-shipped content (`kitted_chaingun.tres`).
+shipped content (`kitted_chaingun.tres`). **Bout injection** (tb29, `src/debug/bout_injector.gd`) — the
+debug scalpel: `BoutInjector` mutates a LIVE `CombatState` from outside the turn loop so a specific
+scenario can be forced and watched. Every verb goes through one gate — reject outright while
+`CombatState.is_resolving` (true only for the synchronous span of an active `resolve_until()` call, a
+mid-resolution mutation is forbidden, docs/09's own two-phase-turn discipline applied to the debug
+channel); otherwise mark `CombatState.was_injected` (set for good, never cleared — an injected bout is a
+deliberate determinism break) and log a distinct `&"inject"` event before anything else runs. Verbs:
+`spawn_unit`/`set_position`/`hand_weapon`/`equip_from_kit` (the tb28 self-arming path, forced mid-bout)/
+`set_part_hp`/`inflict_wound` (reuses the inspect panel's own `WoundEffects.apply_if_status_crosses_
+threshold`)/`set_ap`/`set_mp`/`set_facing`/`set_pose`/`force_current_unit`/`force_overwatch_arm`/
+`force_action` (`CombatState.try_apply` — reuses the real legality check, never bypasses it);
+`set_therms` is a flagged stub (therms aren't built). RNG needs (a spawned unit's matrix id) draw from
+the bout's own `rng`, so the same injections in the same order on the same seed stay reproducible-given-
+the-injections. `SpectatorOverlay.bout_injector` is the one legitimate debug/spectator context this ever
+gets constructed in — neither player-facing view (`SquadControlOverlay`/`TacticsController`) references
+it at all (a source-level routing test proves it); an "Inject..." button offers a handful of
+representative verbs against whichever unit is hovered, calling the exact same API programmatic use
+does.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
