@@ -181,6 +181,10 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 		view.setup(unit, combat_state.material_table)
 		unit_views.append(view)
 
+	# taskblock-27 Pass D2: correct from the very first turn too, not just
+	# once `refresh_unit_views()` first runs post-turn.
+	_apply_active_turn_highlight()
+
 	battle_loaded.emit()
 
 
@@ -213,6 +217,20 @@ func refresh_unit_views(affected_unit_ids: Variant = null) -> void:
 	for view: HitVolumeView in unit_views:
 		if affected_unit_ids == null or (view.unit != null and view.unit.id in affected_unit_ids):
 			view.refresh()
+	# taskblock-27 Pass D2: stays in sync with `combat_state.current_unit()`
+	# on every call, regardless of `affected_unit_ids`' own mesh-rebuild
+	# narrowing — the active unit can change turn to turn even for a view
+	# this call didn't otherwise touch. Shared by both overlays (Squad's
+	# own `_on_turn_ended`/`advance_ai_turns` and Spectator's own
+	# `_advance()` both already call this), so a turn indicator works
+	# identically whichever is driving.
+	_apply_active_turn_highlight()
+
+
+func _apply_active_turn_highlight() -> void:
+	var current: Unit = combat_state.current_unit() if combat_state != null else null
+	for view: HitVolumeView in unit_views:
+		view.set_active_turn(view.unit != null and view.unit == current)
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a
