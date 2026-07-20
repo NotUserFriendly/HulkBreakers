@@ -101,9 +101,9 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Fix:** the null-root branch now resets `_preview_viewport.own_world_3d = true` and calls
   `show_assembly(null, ...)`, so a "nothing to show" case can never leak the live-board state
   regardless of which caller reaches it.
-- **RESOLVED** — taskblock-27 Pass D5, proven both ways (fails without the fix, passes with it) by
-  `test_inspect_panel.gd`'s new null-root-resets-viewport-state test. CC-sourced: found, fixed, and
-  tested entirely by CC in one pass, no supervisor confirmation gate applies.
+- **RESOLVED** [CC 83fb8082] — taskblock-27 Pass D5, proven both ways (fails without the fix, passes
+  with it) by `test_inspect_panel.gd`'s new null-root-resets-viewport-state test. CC-sourced: found,
+  fixed, and tested entirely by CC in one pass, no supervisor confirmation gate applies.
 
 ### Resource Editor — four layout bugs (stale-report source)  ·  source: `SUPERVISOR`
 - **Reported:** recurring through 2026-07-20 (arrived repeatedly as a `## User Request` to launch
@@ -177,7 +177,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   exclusion never covered.
 - **Fix:** `_resolve_slide` now takes `exclude_parts` and passes it through to its own `_find_next`
   call, the same shooter-parts list `resolve_shot` itself was given.
-- **RESOLVED** — proven both ways (fails without the fix, passes with it) by
+- **RESOLVED** [CC 83fb8082] — proven both ways (fails without the fix, passes with it) by
   `test_damage_resolver_deflect_modes.gd::test_slide_deflect_never_lands_back_on_the_shooters_own_excluded_body`.
 
 ---
