@@ -69,3 +69,10 @@ extends Resource
 ## unaffected) is the default so every existing weapon keeps firing at
 ## adjacency exactly as before this pass.
 @export var two_handed: bool = false
+## taskblock-25 Pass A: free melee reach this weapon covers with no lean and
+## no exposure — consumed before any of the wielder's own `Shell.shell_reach`
+## (docs/PLAN.md "Phase M — Melee"). 0.0 (default) means a ranged weapon or
+## an unauthored melee weapon contributes no free reach at all — every
+## existing gun keeps behaving exactly as it does today. Named distinctly
+## from `slash_length` (Pass C) so the two never collide.
+@export var weapon_length: float = 0.0

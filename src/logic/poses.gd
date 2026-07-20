@@ -61,6 +61,22 @@ static func prone() -> Pose:
 	return pose
 
 
+## taskblock-25 Pass A: the torso extended forward by `amount` (world
+## units) along the unit's own current facing — a sub-tile position
+## change, no cell move. Composes onto `ROOT_SOCKET_ID` exactly like
+## `down()`/`prone()`, so `BodyProjector.project()`'s existing pose-
+## override seam moves the WHOLE assembly, and the ordinary depth-sort
+## exposure the overwatch torso check already runs falls out for free —
+## no melee-specific exposure system (docs/PLAN.md "Phase M — Melee").
+## `amount <= 0.0` returns `idle()` (nothing to lean).
+static func lean(amount: float) -> Pose:
+	if amount <= 0.0:
+		return idle()
+	var pose := Pose.new()
+	pose.overrides = {ROOT_SOCKET_ID: Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, amount))}
+	return pose
+
+
 ## docs/10 taskblock05 G5: presets address a pose by name (StringName, not
 ## a serialized Resource) — one more open row here covers a new pose for
 ## both the game and the builder's own pose dropdown at once.

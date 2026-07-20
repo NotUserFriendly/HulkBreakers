@@ -20,6 +20,12 @@ const WORN_DISCOUNT_CEILING := 0.8
 @export var root: Part
 @export var max_mass: float = 0.0
 @export var max_ram: float = 0.0
+## taskblock-25 Pass A: how far this shell's torso can lean to close melee
+## distance beyond a weapon's own free `weapon_length` — the exposure
+## budget (docs/PLAN.md "Phase M — Melee"). 0.0 (default) means this shell
+## can't lean at all; every existing shell keeps its current (no melee)
+## behavior unchanged until authored otherwise. See `MeleeReach`.
+@export var shell_reach: float = 0.0
 
 
 func _init(p_root: Part = null) -> void:
@@ -171,4 +177,5 @@ func dup() -> Shell:
 	var cloned := Shell.new(root.duplicate(true) as Part if root != null else null)
 	cloned.max_mass = max_mass
 	cloned.max_ram = max_ram
+	cloned.shell_reach = shell_reach
 	return cloned
