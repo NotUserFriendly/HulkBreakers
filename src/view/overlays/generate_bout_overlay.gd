@@ -26,7 +26,11 @@ extends ControlOverlay
 ## playstyle), and `[D]` duplicates the row (same profile + playstyle)
 ## right below itself, the fast way to build "4 of these, 1 of those."
 
-const PLAYSTYLES: Array[StringName] = [&"AGGRESSIVE", &"COVER_SEEKER", &"SKIRMISHER", &"MARKSMAN"]
+## taskblock-26 Pass C1: reads `UnitAI.PLAYSTYLES` — the same list the real
+## planner dispatches on — instead of its own, independently-maintained
+## copy; a new playstyle added there now appears here automatically, no
+## second edit required.
+const PLAYSTYLES: Array[StringName] = UnitAI.PLAYSTYLES
 ## Flagged UX default, not a spec literal: a completely empty menu would
 ## still work (Start Bout is rejected-not-crashed on an empty roster,
 ## same as always), but starting both teams pre-populated keeps "open the
@@ -60,6 +64,10 @@ var _roster_a: Array[BoutRosterEntry] = []
 var _roster_b: Array[BoutRosterEntry] = []
 var _rows_a: VBoxContainer
 var _rows_b: VBoxContainer
+## taskblock-26 Pass C2: kept as a real reference (not re-found by node
+## path) so both production centering logic and tests can read it back
+## directly.
+var _layout: VBoxContainer
 var _seed_field: LineEdit
 var _error_label: Label
 var _assume_control_checkbox: CheckBox
@@ -117,8 +125,20 @@ func _build_ui() -> void:
 	theme_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ui.add_child(theme_root)
 
-	var layout := VBoxContainer.new()
-	layout.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_layout = VBoxContainer.new()
+	# taskblock-26 Pass C2: "reads as intended-centered but isn't."
+	# `set_anchors_and_offsets_preset(PRESET_CENTER)` bakes a ONE-TIME
+	# pixel offset from `_layout`'s own size AT THE MOMENT it's called —
+	# here, before a single child exists, so the offset was computed for
+	# an empty (near-zero-size) control, not the real populated menu.
+	# Anchors alone (no offset) plus GROW_BOTH keeps the control's own
+	# center pinned to the parent's 50% point regardless of how its
+	# minimum size changes afterward — as content is added/removed, not
+	# just once at construction.
+	_layout.set_anchors_preset(Control.PRESET_CENTER)
+	_layout.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_layout.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var layout := _layout
 	theme_root.add_child(layout)
 
 	var title := Label.new()
@@ -233,6 +253,14 @@ func _preset_label(preset: BotPreset) -> String:
 func _entry_row(squad_id: int, index: int) -> HBoxContainer:
 	var entry: BoutRosterEntry = _roster(squad_id)[index]
 	var row := HBoxContainer.new()
+	# taskblock-26 Pass C2: "adding/duplicating an entry shouldn't reflow
+	# jarringly." The trailing padding spacers below already reserve
+	# `ROW_MIN_HEIGHT` each — a real row left at its own natural (theme-
+	# dependent, possibly different) height meant the total layout height
+	# didn't change by a consistent amount as the roster crossed the
+	# MIN_VISIBLE_ROWS threshold. Every row — real, add, or spacer — now
+	# reserves the same minimum height.
+	row.custom_minimum_size.y = ROW_MIN_HEIGHT
 
 	var profile_dropdown := OptionButton.new()
 	for preset: BotPreset in _ordered_presets:
@@ -272,6 +300,7 @@ func _entry_row(squad_id: int, index: int) -> HBoxContainer:
 ## rebuilds fresh (a new, once-again-unselected Add row at the bottom).
 func _add_row(squad_id: int) -> OptionButton:
 	var dropdown := OptionButton.new()
+	dropdown.custom_minimum_size.y = ROW_MIN_HEIGHT
 	dropdown.add_item(ADD_LABEL)
 	dropdown.set_item_disabled(0, true)
 	for preset: BotPreset in _ordered_presets:

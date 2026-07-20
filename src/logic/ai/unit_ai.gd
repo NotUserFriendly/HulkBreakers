@@ -72,6 +72,25 @@ const OPPORTUNITY_ATTACK_PENALTY := 15.0
 ## planner freezing in place facing a wall.
 const NO_LOS_PENALTY := 2000.0
 
+## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
+## actual playstyle set... so new playstyles appear automatically, not a
+## hardcoded menu list." The one maintained list of every id
+## `_plan_turn_before_shutdown_check`'s own `match` recognizes by name
+## (PSYCHOTIC/TURTLE fall through its default arm too, but still route to
+## real, distinct behavior — see `_plan_ranged`'s own PSYCHOTIC branch and
+## the TURTLE dispatch arm) — GDScript has no reflection over a `match`
+## statement's own arms, so this is the seam every OTHER caller (a UI
+## dropdown, a test) reads instead of hand-copying its own list that could
+## silently drift from what the planner actually dispatches on.
+const PLAYSTYLES: Array[StringName] = [
+	&"AGGRESSIVE",
+	&"COVER_SEEKER",
+	&"SKIRMISHER",
+	&"MARKSMAN",
+	&"PSYCHOTIC",
+	&"TURTLE",
+]
+
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
 ## AGGRESSIVE (today's own only behaviour) rather than erroring — an

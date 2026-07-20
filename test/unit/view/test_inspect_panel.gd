@@ -336,6 +336,37 @@ func test_matrix_area_shows_personal_speed_and_playstyle() -> void:
 	assert_true(panel._matrix_label.text.contains("MARKSMAN"))
 
 
+## taskblock-26 Pass C3: "show unit id + squad, not just variant" — the
+## matrix's own display_name/id (already shown in the matrix area) never
+## carried the unit's actual combat identity, so two units built from the
+## same variant read identically at a glance.
+func test_the_inspect_header_shows_unit_id_squad_and_variant() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit(2)
+	unit.id = 7
+	unit.matrix.display_name = "Combat Tester Chaingun"
+
+	panel.open(unit)
+
+	assert_true(panel._title_bar.text.contains("7"), "must show the unit's own id")
+	assert_true(panel._title_bar.text.contains("2"), "must show the unit's own squad")
+	assert_true(
+		panel._title_bar.text.contains("Combat Tester Chaingun"), "must still show the variant"
+	)
+
+
+func test_the_inspect_header_resets_on_close() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	unit.id = 4
+	panel.open(unit)
+	assert_true(panel._title_bar.text.contains("4"))
+
+	panel.close()
+
+	assert_eq(panel._title_bar.text, "INSPECT")
+
+
 ## taskblock-22 Pass G1: "the panel stays within the viewport" — an
 ## artificially oversized/off-screen rect must come back inside real
 ## bounds, re-centered, not just smaller.
