@@ -8,8 +8,9 @@ GODOT="${GODOT:-godot}"
 #    gdlint/gdformat. Project style overrides live in ./gdlintrc (max-returns
 #    raised from the default 6 — this codebase's is_legal() validation gates
 #    are deliberate early-return chains, not something to collapse for a
-#    linter default; max-public-methods raised from 20 to 30 — a GUT test
-#    file's own `test_*` functions are deliberately many small, focused
+#    linter default; max-public-methods raised from 20, currently 36 (taskblock-
+#    26 Pass E's own bundled test pushed test_inspect_panel.gd past 35) — a GUT
+#    test file's own `test_*` functions are deliberately many small, focused
 #    cases, not something to split apart just to satisfy a linter default).
 gdlint src test
 

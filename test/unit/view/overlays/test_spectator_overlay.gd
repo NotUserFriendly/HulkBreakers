@@ -279,6 +279,43 @@ func test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before() -> v
 	assert_true(overlay.playing, "was auto-playing — closing must resume it")
 
 
+## taskblock-26 Pass E: "objects and tiles don't [have a click inspector]."
+## A click that misses every unit's own body now falls through to
+## `BoardPicker.cell_at_ray` and opens the SAME `inspect_panel` on whatever
+## `Grid.blockers` holds at that cell — `open_tile()`, not a second
+## inspector. `crate` sits at a cell with no unit on it, so this proves the
+## fallback, not `UnitPicker.hit()`, is what found it.
+func test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel() -> void:
+	var built: Dictionary = _bout()
+	var crate := Part.new()
+	crate.id = &"crate"
+	crate.hp = 4
+	crate.max_hp = 4
+	built.state.grid.blockers[Vector2i(4, 0)] = crate
+	var overlay: SpectatorOverlay = _spectate(built)
+	overlay.playing = true
+
+	# taskblock-26 Pass E: unlike the unit-click tests above (which project a
+	# point at body HEIGHT, since `UnitPicker.hit` tests a real 3D box, not
+	# a ground plane), `BoardPicker.cell_at_ray` intersects the ray with the
+	# y == 0 GROUND plane specifically — projecting from any other height
+	# and re-casting lands on a DIFFERENT ground point (the ray continues
+	# past that height to a shifted x/z), not the point directly below it.
+	# The click must originate from a ground-plane (y == 0) world point.
+	var world_point := Vector3(4, 0.0, 0) * UnitGeometry.CELL_SIZE
+	var camera: Camera3D = overlay.battle.camera_rig.camera()
+	var screen_pos: Vector2 = camera.unproject_position(world_point)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	overlay._unhandled_input(click)
+
+	assert_false(overlay.playing, "the click must pause the bout, same as clicking a unit")
+	assert_true(overlay.inspect_panel.visible)
+	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the tile's own object shows")
+
+
 func test_clicking_empty_space_does_nothing() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 	overlay.playing = true

@@ -88,6 +88,15 @@ func setup(p_battle: BattleScene) -> void:
 ## button already does. CameraRig's own independent `_unhandled_input`
 ## (orbit/pan/zoom) is untouched by any of this, exactly like every other
 ## overlay.
+##
+## taskblock-26 Pass E: "objects and tiles don't [have a click inspector]."
+## A miss against every unit's own body now falls through to
+## `BoardPicker.cell_at_ray` (the same ground-plane pick move-target
+## selection already uses) — a hit there opens the SAME `inspect_panel`
+## against `Grid.blockers.get(cell)` (`open_tile()`, InspectPanel's own
+## tile-shaped entry point; null for a bare tile is already its documented
+## "empty state" case, not a special case here). A miss against the board
+## plane too (looking off into the void) is still a real no-op.
 func _unhandled_input(event: InputEvent) -> void:
 	if event is not InputEventMouseButton:
 		return
@@ -100,11 +109,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	var from: Vector3 = camera.project_ray_origin(mb.position)
 	var dir: Vector3 = camera.project_ray_normal(mb.position)
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
-	if hit.is_empty():
+	if not hit.is_empty():
+		_was_playing_before_inspect = playing
+		pause()
+		inspect_panel.open(hit.unit as Unit)
+		return
+	var cell: Variant = BoardPicker.cell_at_ray(from, dir)
+	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
 		return
 	_was_playing_before_inspect = playing
 	pause()
-	inspect_panel.open(hit.unit as Unit)
+	inspect_panel.open_tile(cell as Vector2i, battle.combat_state.grid.blockers.get(cell))
 
 
 func _on_inspect_panel_closed() -> void:
