@@ -12,7 +12,11 @@ Everything here is free. Nothing in this project requires a paid tool.
 `gdlint` gates `run_tests.sh`. It catches parse errors and smells in ~1s without launching
 the engine — a much faster failure signal than a headless GUT run.
 
-## Art pipeline (Phase 12+)
+**Reviewing without the engine:** the toolkit runs standalone — `gdparse` (syntax) and
+`gdlint` (smells) validate a checkout with no Godot binary present, which is how a reviewer
+on a clean clone confirms a push parses and lints before the author runs the full GUT suite.
+
+## Art pipeline (later — when the part vocabulary stops moving; see CLAUDE.md)
 | Need | Tool | License | Where |
 |---|---|---|---|
 | Modeling | Blender | GPL | https://blender.org |

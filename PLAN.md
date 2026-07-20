@@ -104,18 +104,69 @@ scariest piece proven in isolation before any map complexity.
 
 ## Phase M — Melee (keystone 1)
 *First: the only keystone that's a combat mode; self-contained; un-stubs suppression; unblocks the
-deferred AI playstyles.*
+deferred AI playstyles. **Melee reuses the shot plane** — a swing is a very short, very accurate shot
+— so armor, deflection, aimed parts, penetration, and the layered body all apply for free. What
+changes is the *payload shape* and the *deflect response* per attack type.*
 
-- **Melee resolution** — decide: shot-plane projection at reach-1 (reuse the geometry) vs direct
-  adjacent-part selection. Reach as a weapon property.
-- **The punch** — the baseline melee every unit has (patches "no weapon → nothing" with tb21 flee).
+**Design identity: melee is precision that spares the goods.** CQC aboard a hulk often has valuables
+around the fight; melee disables an enemy without spraying the room. Only sniper-tier weapons rival
+its precision, but *every* melee weapon has it baked in — the tradeoff is you must **close** (risk) to
+get it (reward). Later enemies may be melee-only (a demon bear can't hold a gun without breaking
+suspension of disbelief).
+
+**Delivery = Step Out, pointed at melee** — the implied action is *step into range, strike, step back*
+as one motion, which is exactly tb18's auto-assembled move/strike/return through the re-validating
+resolver, with the same interrupt-exposure risk. The movement half is already built; melee adds the
+strike payload.
+
+**Dartboard: same system, tiny radius.** A punch from a meter can't miss by a mile — melee sits at the
+low end of the range-accuracy band (tb19), so scatter is minimal. Not a special "always hits" rule,
+just point-blank range.
+
+**Reach = a 3D character-to-character distance** (in tiles, but measured true-3D on the height axis,
+tb23). A sword (reach 1) can't hit someone 1 *up*; a polearm (reach 2) hits at √2. Verticality is
+melee spacing — high ground is melee *safety*, not just sightline.
+
+**Aimed parts — melee's core advantage.** Point-blank means melee targets a specific joint/internal
+*more* reliably than a shot (tb09/tb20 aimed parts). "Disable without damaging goods" made mechanical.
+
+**The three payload types** (a weapon usually provides several — via `provides_actions`, so AI action-
+choice comes free from tb24):
+
+| type | payload | on deflect | role |
+|---|---|---|---|
+| **Stab** (incl. punch) | a **point** — but a **spherecast** (see below), not a ray | **slides sideways** along the surface to an adjacent point, not an angular bounce | pierce armor |
+| **Slash** (sword/polearm swing) | a **line** (horizontal / 45° / vertical) — hits everything along it; length = weapon's `slash_length` | **moves the line** the appropriate direction, then triggers the next damage instances along it | more damage |
+| **Hold** (grab + grind a saw into a joint) | **many tiny hits in sequence**, continuing if it gets through cladding | **no deflect — binary**: chew through or nothing | grind through armor |
+
+- **Weapons carry both stab and slash** with distinct effects — stab pierces (point + lateral slide),
+  slash does more damage across a line. A spear *can* slash (suboptimal, but there if needed). Pierce
+  the armored target, slash the soft one — situational, chosen per strike.
+- **`slash_length`** is a weapon property (dagger short, greatsword long) — named distinctly from
+  `reach` so they don't collide. A vertical slash uses the 3D plane (tb23) to spread up/down a body.
+- **Hold = stacked bonus-pen, raw/linear, uncapped.** Each tiny hit adds bonus-pen (3 hits × 2 pen =
+  6 effective) — a "grind through armor" attack. No cap: a long enough hold gets through *anything*
+  (an angle grinder beats a meter of steel given time), but the **time is the cost** — grinding a tank
+  is many turns of doing nothing else, exposed. Self-balancing via commitment, not a curve.
+
+**The one genuinely-new piece: stabs are spherecasts, not raycasts.** A pointed weapon is *fat*
+compared to a bullet, so a stab resolves as a ray-with-radius. Consequence: **a stab can't thread a
+gap a bullet slips through** — the sniper's gap-fall-through (shot plane resolves a *point*) works
+*because* bullets are tiny; a spear tip is too wide. So melee is high-precision-on-surface but
+low-precision-on-gaps: you can aim a stab at a joint, but can't slip it through a hairline crack a
+sniper threads. Stab effectiveness scales inversely with weapon width (a stiletto threads better than
+a spear). **Requires a radius parameter on shot-plane resolution** (currently point-only,
+`rect.has_point`) — the sole new resolution code in melee; everything else reuses existing systems.
+
+**Also in the phase:**
+- **The punch** — the baseline stab every unit has (patches "no weapon → nothing" with tb21 flee).
 - **Un-stub suppression** — tb19's opportunity attacks resolve as real melee.
 - **Melee AI playstyles** — psychotic (prefer melee, never flee) / turtle (flee over melee).
-- **Protector playstyle** — positions between enemies and allies, preferring covered spots. A
-  COVER_SEEKER variant that scores on *ally* protection (guard the ally's line) rather than self.
-  Support behavior the enemy factions want (bodyguard bots). No new machinery — same cover-scoring,
-  different subject. (Not melee-gated; can land whenever, listed here with the other playstyles.)
-- **Weapon distinctions** — saw vs sword vs fist (the `POWER`/`TRIGGER` capability split).
+- **Protector playstyle** — positions between enemies and allies, preferring covered spots (a
+  COVER_SEEKER variant scoring on *ally* protection). Support behavior for bodyguard bots. Not melee-
+  gated; can land whenever, listed here with the other playstyles.
+- **Weapon distinctions** — saw vs sword vs fist (the `POWER`/`TRIGGER` capability split): a saw-hand
+  can't add power to a sword swing.
 
 ## Phase S — Status effects & boosts (keystone 2)
 *Second: hooks already fire into the void; tb20's wounds need the status→wound threshold; status and
