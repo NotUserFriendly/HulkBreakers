@@ -102,7 +102,21 @@ static func self_obstruction(
 ## same math, same regions, same results for every existing horizontal
 ## caller, and later a `PhysicsServer.intersect_ray` swap-in still changes
 ## this function's body and nothing that calls it.
-static func resolve_ray(muzzle: Vector3, dir: Vector3, world: CombatState) -> HitResult:
+## taskblock-24 Pass C: `exclude_parts` skips those parts entirely — the
+## same exclusion `resolve_projectile` itself already accepts, needed
+## here for the same reason `AttackAction.apply()` excludes the shooter's
+## own body from its own shot plane lookup: the ray's own origin sits
+## AT/NEAR the caster's own position (near-zero depth), so a caster with
+## a real, volumed torso would otherwise hit ITSELF first, every time,
+## before ever reaching a real target downrange. Found live: `Overwatch.
+## _torso_visible` called this with no exclusion at all — every overwatch
+## fixture in this codebase's own test suite worked around it by building
+## an overwatcher with NO torso volume, masking a real production bug
+## that made overwatch structurally unable to trigger for any unit with
+## an ordinary body.
+static func resolve_ray(
+	muzzle: Vector3, dir: Vector3, world: CombatState, exclude_parts: Array[Part] = []
+) -> HitResult:
 	var dir_n: Vector3 = dir.normalized()
 	var flat_dir := Vector2(dir_n.x, dir_n.z)
 	if flat_dir.is_zero_approx():
@@ -122,6 +136,8 @@ static func resolve_ray(muzzle: Vector3, dir: Vector3, world: CombatState) -> Hi
 	var vertical_slope: float = dir_n.y / flat_dir.length()
 	var region: Region = null
 	for candidate: Region in plane:
+		if exclude_parts.has(candidate.part):
+			continue
 		var height_here: float = muzzle.y + vertical_slope * candidate.depth
 		if candidate.rect.has_point(Vector2(0.0, height_here)):
 			region = candidate
