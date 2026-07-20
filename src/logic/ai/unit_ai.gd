@@ -145,6 +145,26 @@ static func _plan_turn_before_shutdown_check(
 			# weights cover" — its own preferred standoff is SKIRMISHER's,
 			# not a fourth, independently-tuned number.
 			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
+		&"PSYCHOTIC":
+			# taskblock-25 Pass F (docs/PLAN.md "Phase M — Melee"): "prefers
+			# melee, closes to minimize distance, never flees." Reuses
+			# `_plan_ranged` with AGGRESSIVE's own preferred_range 0 (the
+			# distance-closing logic is unchanged — only WHICH weapon it
+			# fires with differs, see `_plan_ranged`'s own PSYCHOTIC branch)
+			# — never a second, independently-tuned closing behavior.
+			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
+		&"TURTLE":
+			# taskblock-25 Pass F: "keeps distance, would rather flee than
+			# melee, uses cover." Melee weighted as a last resort — reached
+			# only by being adjacent to a living enemy at all
+			# (`Suppression.is_suppressed`, the same adjacency predicate
+			# suppression's own melee-opportunity trigger already reads),
+			# not a hardcoded distance number of its own. Otherwise an
+			# ordinary cover-weighting planner, same standoff COVER_SEEKER
+			# already uses.
+			if mission != null and Suppression.is_suppressed(state, unit):
+				return _plan_flee(unit, state, mission)
+			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
 		_:
 			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
 
@@ -193,6 +213,15 @@ static func _plan_ranged(
 		return _plan_non_combat_turn(unit, state, mission, queue)
 
 	var weapon_id: StringName = _find_weapon_id(unit)
+	# taskblock-25 Pass F: "prefers the melee action... uses ranged only if
+	# it can't reach melee" — PSYCHOTIC only, and only when it actually has
+	# one (`ActionCatalog.provider_for`, the same seam every other weapon
+	# pick in this file already reads, never a hardcoded id). Every other
+	# playstyle's own `_find_weapon_id` pick is completely untouched.
+	if playstyle == &"PSYCHOTIC":
+		var melee_weapon: Part = ActionCatalog.provider_for(unit, &"stab")
+		if melee_weapon != null:
+			weapon_id = melee_weapon.id
 	var weapon: Part = unit.shell.find_part(weapon_id) if weapon_id != &"" else null
 	# taskblock-19 Pass C3: beyond the weapon's own effective_range (when
 	# authored), firing without moving is never the fast path's call to
@@ -701,6 +730,16 @@ static func _preferred_firing_action_id(
 		)
 		if shot != null and shot.is_legal(state):
 			return &"shoot"
+	# taskblock-25 Pass F: a weapon that provides neither shoot nor burst
+	# (a melee-only stab provider, e.g. PSYCHOTIC's own preferred weapon
+	# or the baseline punch) falls through to here — the same
+	# ActionCatalog seam, never a second, hardcoded "this is melee" branch.
+	if ActionCatalog.provider_for(unit, &"stab") == weapon:
+		var stab: CombatAction = ActionCatalog.build_firing_action(
+			&"stab", unit, weapon_id, target_cell
+		)
+		if stab != null and stab.is_legal(state):
+			return &"stab"
 	return &""
 
 
