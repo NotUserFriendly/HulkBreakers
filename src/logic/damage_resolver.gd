@@ -11,6 +11,20 @@ extends RefCounted
 const DEFAULT_MAX_RICOCHET_DEPTH := 2
 const DEFAULT_DAMAGE_FLOOR := 1.0
 
+## taskblock-25 Pass C (docs/PLAN.md "Phase M — Melee"): the three deflect
+## RESPONSES `resolve_shot`'s own DEFLECT branch can take — same detection
+## (`resolve_impact`, unchanged), different consequence per attack type.
+## `&"ricochet"` (default) is every existing caller's behavior, byte-for-
+## byte unchanged. `&"slide"` (stab): a point payload slides sideways to
+## an adjacent point on the same surface instead of bouncing away at an
+## angle. `&"none"` (hold/slash, per point): no deflect at all — chews
+## through or does nothing, the round just stops right there. A flagged
+## placeholder, not a tuned number: how far "adjacent" actually is.
+const DEFLECT_MODE_RICOCHET := &"ricochet"
+const DEFLECT_MODE_SLIDE := &"slide"
+const DEFLECT_MODE_NONE := &"none"
+const _SLIDE_NUDGE := 0.1
+
 ## docs/03 specifies "bonus damage" on a crit but gives no multiplier. This
 ## is a flagged, tunable placeholder, not a design decision — ask before
 ## treating it as final.
@@ -119,6 +133,61 @@ static func resolve_impact(
 	var t: float = clampf(deflection_deg / table.max_bend_deg, 0.0, 1.0)
 	result.retained_fraction = lerp(table.retain_at_zero_bend, table.retain_at_max_bend, t)
 	return result
+
+
+## taskblock-25 Pass C: stab's own DEFLECT response — "slides sideways
+## along the surface to an adjacent point, not an angular bounce." Retries
+## ONCE (never chains into a second slide, even if the nudged point itself
+## also deflects) against a point nudged laterally by `_SLIDE_NUDGE`,
+## re-searched from the front of the SAME already-built plane (a lateral
+## nudge can reveal something nearer OR farther, never assumed to be
+## "behind" in the original depth order). Appends whatever that adjacent
+## point resolves to (PENETRATE/STOP_DEAD apply damage and destruction
+## consequences the same way the main loop does; a second DEFLECT or
+## nothing found at all just ends the strike here) directly onto `results`
+## — this is the terminal step for a slide, the caller always returns
+## right after.
+static func _resolve_slide(
+	plane: Array[Region],
+	point: Vector2,
+	region_height: float,
+	vertical_slope: float,
+	shot_dir: Vector2,
+	current_damage: float,
+	table: MaterialTable,
+	bonus_pen: float,
+	crit: Dictionary,
+	origin: Vector2,
+	dir: Vector2,
+	perp: Vector2,
+	origin_height: float,
+	state: CombatState,
+	results: Array[ImpactResult]
+) -> void:
+	var nudged_point := Vector2(point.x + _SLIDE_NUDGE, region_height)
+	var slid_index: int = _find_next(plane, 0, nudged_point, [], vertical_slope)
+	if slid_index == -1:
+		return
+	var slid_region: Region = plane[slid_index]
+	var slid_impact: ImpactResult = resolve_impact(
+		shot_dir, current_damage, slid_region, table, bonus_pen, vertical_slope
+	)
+	slid_impact.is_crit = crit.is_crit
+	slid_impact.is_double_crit = crit.is_double_crit
+	slid_impact.origin = origin
+	slid_impact.hit_point = origin + dir * slid_region.depth + perp * nudged_point.x
+	slid_impact.origin_height = origin_height
+	slid_impact.hit_height = region_height + vertical_slope * slid_region.depth
+	results.append(slid_impact)
+	match slid_impact.outcome:
+		Enums.Outcome.PENETRATE, Enums.Outcome.STOP_DEAD:
+			slid_impact.destroyed_part = apply_damage_to_part(
+				slid_region.part, slid_impact.part_damage
+			)
+			if slid_impact.destroyed_part:
+				_resolve_destruction_consequences(slid_impact, slid_region, state)
+		_:
+			pass  # a second DEFLECT (or anything else) — one slide only, ends here.
 
 
 ## Subtracts `amount` (rounded up, so any positive damage always registers)
@@ -527,7 +596,8 @@ static func resolve_shot(
 	exclude_parts: Array[Part] = [],
 	bonus_pen: float = 0.0,
 	vertical_slope: float = 0.0,
-	origin_height: float = 0.0
+	origin_height: float = 0.0,
+	deflect_mode: StringName = DEFLECT_MODE_RICOCHET
 ) -> Array[ImpactResult]:
 	var results: Array[ImpactResult] = []
 	var dir: Vector2 = direction.normalized()
@@ -665,6 +735,29 @@ static func resolve_shot(
 				_inflict_lodged_wound_if_inside(inside_hollow_part, impact)
 				return results
 			Enums.Outcome.DEFLECT:
+				if deflect_mode == DEFLECT_MODE_NONE:
+					# Hold/slash, per point: no deflect at all — chews through
+					# or does nothing, never bounces or slides.
+					return results
+				if deflect_mode == DEFLECT_MODE_SLIDE:
+					_resolve_slide(
+						plane,
+						point,
+						region_height,
+						vertical_slope,
+						shot_dir,
+						current_damage,
+						table,
+						bonus_pen,
+						crit,
+						origin,
+						dir,
+						perp,
+						origin_height,
+						state,
+						results
+					)
+					return results
 				var next_damage: float = current_damage * impact.retained_fraction
 				if ricochet_depth < max_ricochet_depth and next_damage >= damage_floor:
 					var world_hit: Vector2 = origin + dir * region.depth + perp * point.x

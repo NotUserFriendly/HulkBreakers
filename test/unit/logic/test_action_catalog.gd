@@ -345,3 +345,45 @@ func test_build_firing_action_returns_null_for_an_unrecognized_id() -> void:
 		ActionCatalog.build_firing_action(&"overwatch", unit, &"pistol", Vector2i(3, 0)),
 		"overwatch has no aimed-target CombatAction of its own to build here"
 	)
+
+
+## taskblock-25 Pass C: "a weapon usually provides both stab and slash" —
+## a single weapon Part authoring both ids lists BOTH actions and each
+## dispatches to its own distinct payload class, never collapsing to one.
+func test_a_weapon_can_provide_both_stab_and_slash_with_different_payloads() -> void:
+	var knife := Part.new()
+	knife.id = &"knife"
+	knife.hp = 3
+	knife.max_hp = 3
+	knife.attaches_to = [&"GRIP"]
+	knife.requires = {&"TRIGGER": 1}
+	knife.provides_actions = [&"stab", &"slash"]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = knife
+	hand.sockets = [grip]
+
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	var unit := _make_unit(_torso([hand_socket]))
+
+	var ids: Array[StringName] = []
+	for def: ActionDef in ActionCatalog.actions_for(unit):
+		ids.append(def.id)
+	assert_true(&"stab" in ids)
+	assert_true(&"slash" in ids)
+
+	var stab: CombatAction = ActionCatalog.build_firing_action(
+		&"stab", unit, &"knife", Vector2i(1, 0)
+	)
+	var slash: CombatAction = ActionCatalog.build_firing_action(
+		&"slash", unit, &"knife", Vector2i(1, 0)
+	)
+	assert_true(stab is StabAction)
+	assert_true(slash is SlashAction)

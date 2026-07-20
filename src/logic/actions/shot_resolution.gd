@@ -47,7 +47,8 @@ static func resolve_and_log_point(
 	mission: MissionState,
 	is_dud: bool = false,
 	max_range: float = 0.0,
-	origin_height: float = 0.0
+	origin_height: float = 0.0,
+	deflect_mode: StringName = DamageResolver.DEFLECT_MODE_RICOCHET
 ) -> bool:
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 		origin,
@@ -65,7 +66,8 @@ static func resolve_and_log_point(
 		attacker.shell.all_parts(),
 		bonus_pen,
 		0.0,
-		origin_height
+		origin_height,
+		deflect_mode
 	)
 	for result: ImpactResult in results:
 		_log_impact(state, attacker, result, mission, is_dud)
