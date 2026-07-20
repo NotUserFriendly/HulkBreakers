@@ -161,6 +161,38 @@ func test_refresh_unit_views_with_ids_only_rebuilds_those_views() -> void:
 	)
 
 
+## taskblock-27 Pass D2: "no clear indication of whose turn it is." Must be
+## correct from `load_battle()` itself, not just after the first
+## `refresh_unit_views()` call post-turn.
+func test_load_battle_marks_the_current_units_own_view_as_active() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var current: Unit = scene.combat_state.current_unit()
+
+	for view: HitVolumeView in scene.unit_views:
+		assert_eq(
+			view._is_active_turn,
+			view.unit == current,
+			"exactly the current unit's own view must read active"
+		)
+
+
+## `refresh_unit_views()` must move the highlight as the turn advances,
+## even for a view `affected_unit_ids` didn't otherwise touch.
+func test_refresh_unit_views_moves_the_active_turn_highlight_as_the_turn_advances() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var first: Unit = scene.combat_state.current_unit()
+	scene.combat_state.advance_turn()
+	var second: Unit = scene.combat_state.current_unit()
+	assert_ne(first, second, "sanity: advancing the turn actually changed who's current")
+
+	scene.refresh_unit_views([])  # an empty touched-list -- no view's mesh needs rebuilding
+
+	for view: HitVolumeView in scene.unit_views:
+		assert_eq(view._is_active_turn, view.unit == second)
+
+
 func test_refresh_unit_views_with_null_still_rebuilds_every_view() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
