@@ -129,7 +129,12 @@ static func _duplicate_from_pool(pool: Dictionary, part_id: StringName) -> Part:
 
 ## Attaches every Mount under `host`, recursively. A Mount's own `part_id`
 ## is the default; a `Loadout` entry keyed to that exact `socket_id`
-## overrides it (loadout wins on conflict).
+## overrides it (loadout wins on conflict). taskblock-28 Pass A: an
+## override of `&""` (never a template's own `part_id`, which is always a
+## real id) is a deliberate "leave this socket bare" instruction — the
+## seam seeded variant generation uses to omit armor/cladding in random
+## spots — so it's skipped cleanly (socket stays unoccupied, its own
+## children are never mounted) rather than erroring as an unknown pool id.
 static func _mount_children(
 	host: Part, mounts: Array[Mount], loadout: Loadout, pool: Dictionary
 ) -> bool:
@@ -142,6 +147,8 @@ static func _mount_children(
 		var part_id: StringName = mount.part_id
 		if loadout != null and loadout.entries.has(mount.socket_id):
 			part_id = loadout.entries[mount.socket_id]
+		if part_id == &"":
+			continue
 
 		var child: Part = _duplicate_from_pool(pool, part_id)
 		if child == null:
@@ -172,7 +179,9 @@ static func _mount_children(
 ## Fills every still-empty socket, anywhere in the already-mounted tree,
 ## whose own `id` a `Loadout` entry names — the discretionary sockets a
 ## Mount never touched (a hand's GRIP: which weapon, if any, is not part of
-## the fixed skeleton).
+## the fixed skeleton). taskblock-28 Pass A: same `&""` "leave bare" sentinel
+## `_mount_children` honors — a discretionary socket a loadout explicitly
+## empties stays empty rather than erroring as an unknown pool id.
 static func _fill_loadout_only_sockets(root: Part, loadout: Loadout, pool: Dictionary) -> bool:
 	if loadout == null:
 		return true
@@ -181,6 +190,8 @@ static func _fill_loadout_only_sockets(root: Part, loadout: Loadout, pool: Dicti
 			if socket.occupant != null or socket.id == &"" or not loadout.entries.has(socket.id):
 				continue
 			var part_id: StringName = loadout.entries[socket.id]
+			if part_id == &"":
+				continue
 			var child: Part = _duplicate_from_pool(pool, part_id)
 			if child == null:
 				push_error("BodyAssembler: unknown pool part id %s" % part_id)

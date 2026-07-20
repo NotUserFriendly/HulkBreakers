@@ -31,6 +31,8 @@ static func validate(resource: Resource) -> Array[ValidationError]:
 		return _validate_preset(resource as BotPreset)
 	if resource is WoundDef:
 		return _validate_wound(resource as WoundDef)
+	if resource is VariantFamily:
+		return _validate_variant_family(resource as VariantFamily)
 	return []
 
 
@@ -140,6 +142,27 @@ static func _validate_preset(preset: BotPreset) -> Array[ValidationError]:
 		errors.append(
 			ValidationError.new(
 				row_id, &"template_id", "references unknown template '%s'" % preset.template_id
+			)
+		)
+	return errors
+
+
+## taskblock-28 Pass A: `variation_amount` is a probability, never a raw
+## unbounded number — outside [0, 1] it isn't a "more/less variation" dial
+## anymore, it's nonsense (a >1 draw always fires, matching 1.0's own
+## already-maximal behavior, but authoring it that way is a content bug,
+## not a valid extreme).
+static func _validate_variant_family(family_def: VariantFamily) -> Array[ValidationError]:
+	var errors: Array[ValidationError] = []
+	var row_id: StringName = family_def.id
+	if family_def.id == &"":
+		errors.append(ValidationError.new(row_id, &"id", "id must not be empty"))
+	if family_def.variation_amount < 0.0 or family_def.variation_amount > 1.0:
+		errors.append(
+			ValidationError.new(
+				row_id,
+				&"variation_amount",
+				"%.2f must be within [0, 1]" % family_def.variation_amount
 			)
 		)
 	return errors

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="VariantFamily" format=3]
+
+[ext_resource type="Script" path="res://src/data/variant_family.gd" id="1_vf28a"]
+
+[resource]
+script = ExtResource("1_vf28a")
+id = &"junk_bot"
+variation_amount = 0.4
+omittable_sockets = Array[StringName]([&"ARMOR_ARM_L", &"ARMOR_ARM_R", &"ARMOR_LEG_L", &"ARMOR_LEG_R", &"CLADDING_ARM_L", &"CLADDING_ARM_R", &"CLADDING_LEG_L", &"CLADDING_LEG_R"])
+swap_pool = {
+&"ARMOR_ARM_L": Array[StringName]([&"plate_small_ceramic", &"plate_large_steel"]),
+&"ARMOR_ARM_R": Array[StringName]([&"plate_small_ceramic", &"plate_large_steel"]),
+&"ARMOR_LEG_L": Array[StringName]([&"plate_small_ceramic", &"half_cylinder_plate"]),
+&"ARMOR_LEG_R": Array[StringName]([&"plate_small_ceramic", &"half_cylinder_plate"])
+}
