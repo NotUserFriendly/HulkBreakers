@@ -73,7 +73,7 @@ const INTER_SHOT_BREAK_MS := 100.0
 ## own UI writes into these directly; not baked constants.
 var slide_ms: float = 100.0
 var bullet_ms: float = 250.0
-var tracer_count: int = 3
+var tracer_count: int = 100
 ## Pacing speed (1x/2x/4x, taskblock-14 Pass C) — every duration below
 ## divides by this, so a faster watch speed animates faster too, not just
 ## steps more often.
