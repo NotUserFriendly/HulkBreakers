@@ -131,7 +131,9 @@ pseudo-persistent hulks; loot overlap; deep strike.
 **Data layer** (tb10/11) — all definitions in `.tres`; `DataLibrary` (res:// builtin + user://
 override, user wins); `DataValidator` (named errors, shared editor-save + game-load). Resource
 Editor: standalone-scene tuning tool, survives reboots, writes user://, tree-table with
-sort/filter/dropdowns/undo/rotating preview.
+sort/filter/dropdowns/undo/rotating preview. (Layout/resize/column/preview bugs fixed
+2026-07-18 in 713f411/1bff29b/944d019 — see BUGS.md; landed outside the taskblock cadence, logged
+here retroactively.)
 
 **View** (tb15/22, docs/10/10a) — 3D HL2-era; render is hitbox; two palettes; attack camera solves
 framing (orbits target); poses = socket overrides; `HitVolumeView` permanent; per-part `mesh_scene`
