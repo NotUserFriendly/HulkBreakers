@@ -321,9 +321,13 @@ func test_a_socket_transform_offsets_the_child_from_the_root() -> void:
 	assert_almost_eq(arm_world.y, 0.5, 0.0001)
 
 
-## docs/09 taskblock07 Pass A: muzzle_point() finds the weapon's own
-## composed box center, not an idealized cell-center point.
-func test_muzzle_point_returns_the_weapons_own_composed_box_center() -> void:
+## taskblock-26 Pass A2: muzzle_point() finds the weapon's own composed
+## FORWARD TIP (box.center offset by half its own +Z extent — box.gd's
+## own documented "+Z forward" convention), not the box's raw center,
+## which for anything but a zero-length weapon sits back inside the gun's
+## own body — closer to the shooter's own torso than a real muzzle is
+## ("the literal shoulder, not from the shoulder").
+func test_muzzle_point_returns_the_weapons_own_composed_forward_tip() -> void:
 	var pistol := Part.new()
 	pistol.id = &"pistol"
 	pistol.hp = 1
@@ -353,8 +357,13 @@ func test_muzzle_point_returns_the_weapons_own_composed_box_center() -> void:
 	# box in the whole placements() output.
 	var expected: BoxPlacement = UnitGeometry.placements(unit)[0]
 	assert_eq(expected.part, pistol)
-	var expected_point: Vector3 = expected.transform.translated_local(expected.box.center).origin
+	var tip: Vector3 = expected.box.center + Vector3(0.0, 0.0, expected.box.size.z * 0.5)
+	var expected_point: Vector3 = expected.transform.translated_local(tip).origin
 	assert_true(muzzle.is_equal_approx(expected_point))
+	# Sanity: the tip must genuinely differ from the box's raw center —
+	# proving this isn't accidentally passing on a zero-length box.
+	var center_point: Vector3 = expected.transform.translated_local(expected.box.center).origin
+	assert_false(muzzle.is_equal_approx(center_point))
 
 
 ## Defensive fallback: a weapon with no placement at all (never attached, or

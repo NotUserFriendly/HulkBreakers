@@ -72,7 +72,7 @@ static func resolve_and_log_point(
 		radius
 	)
 	for result: ImpactResult in results:
-		_log_impact(state, attacker, result, mission, is_dud)
+		_log_impact(state, attacker, result, mission, is_dud, max_range)
 	if results.is_empty():
 		_log_miss(state, attacker, origin, direction, point, max_range, origin_height)
 	return not results.is_empty()
@@ -144,7 +144,8 @@ static func _log_impact(
 	attacker: Unit,
 	result: ImpactResult,
 	mission: MissionState,
-	is_dud: bool = false
+	is_dud: bool = false,
+	max_range: float = 0.0
 ) -> void:
 	var outcome_name: String = (
 		"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
@@ -179,6 +180,24 @@ static func _log_impact(
 		"hit_y": result.hit_point.y,
 		"hit_height": result.hit_height,
 	}
+	# taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
+	# never drawn." `ImpactResult.reflected_dir`/`reflected_vertical` were
+	# always computed by `resolve_impact` for a DEFLECT, but never made it
+	# into the log data — a ricochet that then finds nothing to hit (an
+	# empty `resolve_shot` recursion) produces NO further event at all, so
+	# the view had nothing to draw even when it wanted to. Stamped here,
+	# unconditionally on every DEFLECT, the same "void" convention
+	# `_log_miss` already uses for a shot that never hits anything — so the
+	# reflected direction is always drawable regardless of whether a real
+	# ricochet hop follows it.
+	if result.outcome == Enums.Outcome.DEFLECT:
+		var void_range: float = (
+			max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.height)
+		)
+		var deflect_end: Vector2 = result.hit_point + result.reflected_dir * void_range
+		data["deflect_end_x"] = deflect_end.x
+		data["deflect_end_y"] = deflect_end.y
+		data["deflect_end_height"] = result.hit_height + result.reflected_vertical * void_range
 	var event := LogEvent.new(
 		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text
 	)
@@ -254,7 +273,7 @@ static func _log_impact(
 	# logging path, recursively, so a fragment that itself penetrates/
 	# deflects/ricochets is logged exactly like any other projectile.
 	for fragment_result: ImpactResult in result.fragment_hits:
-		_log_impact(state, attacker, fragment_result, mission)
+		_log_impact(state, attacker, fragment_result, mission, false, max_range)
 	if result.meltdown_armed:
 		state.combat_log.emit(
 			LogEvent.new(

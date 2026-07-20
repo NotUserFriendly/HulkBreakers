@@ -129,3 +129,44 @@ func test_a_hit_logs_its_own_origin_and_hit_point() -> void:
 	assert_gt(impact.data.get("hit_x") as float, 0.0, "landed somewhere downrange of the shooter")
 	assert_lt(impact.data.get("hit_x") as float, 3.0, "short of the target's own cell center")
 	assert_almost_eq(impact.data.get("hit_y") as float, 0.0, 0.01)
+	assert_false(
+		impact.data.has("deflect_end_x"), "a real penetrate never carries a deflect endpoint"
+	)
+
+
+## taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
+## never drawn." A DEFLECT must always carry its own reflected void
+## endpoint (the same convention a total miss's own endpoint already
+## uses) — regardless of whether a real ricochet continuation happens to
+## follow it, since a ricochet that finds nothing to hit produces no
+## further event of its own.
+func test_a_deflect_logs_its_own_reflected_void_endpoint() -> void:
+	var shooter := _make_unit(Vector2i(2, 0))
+	var cover := Part.new()
+	cover.id = &"cover"
+	cover.material = &"steel"
+	cover.hp = 20
+	cover.max_hp = 20
+	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var grid := Grid.new(6, 6)
+	grid.blockers[Vector2i(2, 2)] = cover
+	var state := CombatState.new(grid, [shooter])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	# incidence ~37 deg: clears steel's default 30-degree deflect
+	# threshold — the exact fixture test_damage_resolver.gd's own DEFLECT
+	# tests already use and prove.
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(2, 0), Vector2(3, 4), Vector2(2.0, 0.5), 3.0, 0.0, 0.0, null
+	)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_gt(impacts.size(), 0, "sanity: the fixture must actually hit something")
+	var deflect: LogEvent = impacts[0]
+	assert_eq(
+		deflect.data.get("outcome"), Enums.Outcome.DEFLECT, "sanity: the fixture must deflect"
+	)
+	assert_true(deflect.data.has("deflect_end_x"))
+	assert_true(deflect.data.has("deflect_end_y"))
+	assert_true(deflect.data.has("deflect_end_height"))

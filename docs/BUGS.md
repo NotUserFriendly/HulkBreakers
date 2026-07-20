@@ -76,7 +76,43 @@ confirm" roll-up — so pending items surface at a natural review point without 
 
 ## ⏳ Resolved — pending supervisor confirmation
 *(CC-fixed `SUPERVISOR` bugs awaiting verification. CC writes here, never straight to Resolved;
-the supervisor promotes confirmed ones up to Resolved. None currently.)*
+the supervisor promotes confirmed ones up to Resolved.)*
+
+### Deflect tracers never drawn  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
+  logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
+  computed, logged, never drawn."
+- **Root cause:** `ImpactResult.reflected_dir`/`reflected_vertical` were always computed by
+  `resolve_impact` for a DEFLECT, but `ShotResolution._log_impact` never stamped them onto the log
+  event's own data — and a ricochet that then finds nothing to hit produces no further event at all,
+  so the view had nothing to draw even when it wanted to.
+- **Fix:** every DEFLECT-outcome impact event now carries its own `deflect_end_x/y/height` (the same
+  void-ray convention `_log_miss` already used for a total miss), unconditionally — so it's drawable
+  whether or not a real ricochet continuation follows. `resolution_player.gd` draws it as a second,
+  visually distinct (cool blue vs. warm yellow/red) tracer segment.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass A1.
+
+### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
+  ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
+  geometry and can hit its own armor."
+- **Root cause:** `UnitGeometry.muzzle_point` returned the weapon's own box CENTER, not its forward
+  emission point — for any weapon shorter than its own full authored length, that center sits back
+  inside the gun's own body, close to the shooter's torso.
+- **Fix:** `muzzle_point` now returns the box's forward tip (`center + (0, 0, size.z / 2)`, per
+  `box.gd`'s own documented "+Z forward" convention), composed through the same placement transform.
+  Every reader (Overwatch, AimView, `shouldered_muzzle_point`) gets the corrected point for free.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass A2.
+
+### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
+- **Root cause:** the unit facing wedge (`HitVolumeView._build_facing_wedge`) centered its own
+  0.10-tall box on `TEAM_MARKER_Y + TEAM_MARKER_HEIGHT` (0.03) — its bottom face reached down to
+  -0.02, below the ground plane (Y=0) and into the same height band as a ground-tier board marker
+  (e.g. `board_view.gd`'s `EXTRACTION_TILE_HEIGHT`, 0.010).
+- **Fix:** raised the wedge's own base height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears
+  both the team marker disc's own top surface and every ground-tier board marker with real headroom.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass A3.
 
 ---
 
