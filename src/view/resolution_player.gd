@@ -43,8 +43,11 @@ const TACTICS_BANNER := "TACTICS"
 const RESOLUTION_BANNER := "RESOLUTION"
 
 ## "Tracers may be raycast fakes — a line from muzzle to impact is enough"
-## (docs/10). Muzzle height is a flagged placeholder (the log doesn't carry
-## a real muzzle position) — roughly chest-height on the reference humanoid.
+## (docs/10). taskblock-23 Pass D: no longer the universal height — every
+## real hop now logs its own real `origin_height`/`hit_height`/`end_height`
+## (Pass A/C). Kept only as the `.get()` default for a log entry that
+## somehow doesn't carry one — roughly chest-height on the reference
+## humanoid, same flagged placeholder it always was for that one case.
 const TRACER_MUZZLE_HEIGHT := 1.25
 const TRACER_THICKNESS := 0.03
 ## The live raycast flash a shot draws with, bright and momentary.
@@ -404,14 +407,21 @@ func facing_duration() -> float:
 ## taskblock-22 Pass D: "every shot is visible... draw a tracer for every
 ## hop of a shot's path, not just muzzle -> first impact." `from` is THIS
 ## hop's own real muzzle (`origin_x/y` — the true shooter for a shot's
-## first hop, the PREVIOUS hop's own deflection point for a ricochet),
-## never `_muzzle_point(attacker)` unconditionally: that was the actual
-## bug — every ricochet segment used to draw from the shooter's own body
-## regardless of how many times the round had already bounced.
-## `target == null` (clutter, a wall, the void — anything that isn't a
-## Unit) no longer skips the tracer; it falls back to the hop's own
-## logged `hit_x/y` instead of a target's composed mesh position, the
-## same void-endpoint convention `_play_miss` already established.
+## first hop, the PREVIOUS hop's own deflection point for a ricochet) —
+## never re-derived from the shooter's own current position, since a
+## ricochet's real muzzle (a bounce point in open air) has no other way to
+## reach at all.
+##
+## taskblock-23 Pass D: `origin_height`/`hit_height` (Pass A/C: every
+## region and hop now has a real one) replace the old universal
+## `TRACER_MUZZLE_HEIGHT`, and `to` now ALWAYS uses the hop's own logged
+## `hit_x/hit_height/hit_y` — never a target unit's own composed box
+## center (the old `_impact_point`, deleted): that center was ONE FIXED
+## point per part, shared by every pellet that ever landed on it, which is
+## the actual mechanism behind "a spread burst stitches one line across
+## the body" the taskblock names — the pellet's own real per-shot
+## resolved position (already logged, just unused for a Unit target)
+## replaces it outright, `target == null` or not.
 func _play_impact(event: LogEvent) -> void:
 	var state: CombatState = battle.combat_state
 	var attacker: Unit = state.find_unit(event.unit_id)
@@ -419,17 +429,13 @@ func _play_impact(event: LogEvent) -> void:
 		return
 	var origin_x: float = float(event.data.get("origin_x", 0.0))
 	var origin_y: float = float(event.data.get("origin_y", 0.0))
-	var from := Vector3(origin_x, TRACER_MUZZLE_HEIGHT, origin_y) * UnitGeometry.CELL_SIZE
+	var origin_height: float = float(event.data.get("origin_height", TRACER_MUZZLE_HEIGHT))
+	var from := Vector3(origin_x, origin_height, origin_y) * UnitGeometry.CELL_SIZE
 
-	var target_id: int = int(event.data.get("target_unit_id", -1))
-	var target: Unit = state.find_unit(target_id) if target_id >= 0 else null
-	var to: Vector3
-	if target != null:
-		to = _impact_point(target, event.data.get("part", &""))
-	else:
-		var hit_x: float = float(event.data.get("hit_x", 0.0))
-		var hit_y: float = float(event.data.get("hit_y", 0.0))
-		to = Vector3(hit_x, TRACER_MUZZLE_HEIGHT, hit_y) * UnitGeometry.CELL_SIZE
+	var hit_x: float = float(event.data.get("hit_x", 0.0))
+	var hit_y: float = float(event.data.get("hit_y", 0.0))
+	var hit_height: float = float(event.data.get("hit_height", TRACER_MUZZLE_HEIGHT))
+	var to := Vector3(hit_x, hit_height, hit_y) * UnitGeometry.CELL_SIZE
 
 	await _spawn_tracer(from, to)
 
@@ -438,31 +444,23 @@ func _play_impact(event: LogEvent) -> void:
 ## same `_spawn_tracer` bright-fade-dull path `_play_impact` above uses,
 ## just terminating at the miss's own logged void endpoint
 ## (`ShotResolution._log_miss`) instead of a struck part's world position.
+## taskblock-23 Pass D: `origin_height`/`end_height` (real muzzle height,
+## and the flat aim height a miss travels at — a miss can't ricochet, so
+## there's no tilt to account for) replace `TRACER_MUZZLE_HEIGHT`.
 func _play_miss(event: LogEvent) -> void:
 	var state: CombatState = battle.combat_state
 	var attacker: Unit = state.find_unit(event.unit_id)
 	if attacker == null:
 		return
+	var origin_x: float = float(event.data.get("origin_x", attacker.cell.x))
+	var origin_y: float = float(event.data.get("origin_y", attacker.cell.y))
+	var origin_height: float = float(event.data.get("origin_height", TRACER_MUZZLE_HEIGHT))
+	var from := Vector3(origin_x, origin_height, origin_y) * UnitGeometry.CELL_SIZE
 	var end_x: float = float(event.data.get("end_x", 0.0))
 	var end_y: float = float(event.data.get("end_y", 0.0))
-	var end_point := Vector3(end_x, TRACER_MUZZLE_HEIGHT, end_y) * UnitGeometry.CELL_SIZE
-	await _spawn_tracer(_muzzle_point(attacker), end_point)
-
-
-func _muzzle_point(unit: Unit) -> Vector3:
-	return Vector3(unit.cell.x, TRACER_MUZZLE_HEIGHT, unit.cell.y) * UnitGeometry.CELL_SIZE
-
-
-## The hit part's own composed world position if it's still findable (a
-## subtree dropped later in the same resolution can remove it from the
-## tree) — the unit's own cell as a cosmetic fallback otherwise.
-func _impact_point(unit: Unit, part_id: StringName) -> Vector3:
-	var part: Part = unit.shell.find_part(part_id)
-	if part != null:
-		for placement: BoxPlacement in UnitGeometry.placements(unit):
-			if placement.part == part:
-				return placement.transform * placement.box.center
-	return _muzzle_point(unit)
+	var end_height: float = float(event.data.get("end_height", TRACER_MUZZLE_HEIGHT))
+	var end_point := Vector3(end_x, end_height, end_y) * UnitGeometry.CELL_SIZE
+	await _spawn_tracer(from, end_point)
 
 
 ## B3: "bright draw -> fade -> dull tracer (two lifetimes, one word)" —
