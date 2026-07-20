@@ -50,7 +50,17 @@ extends GutTest
 ## landing squad out before extraction. A real, deliberate AI change, not
 ## a bug: brute-force search over nearby seeds for one where the corrected
 ## AI still reaches extraction with survivors: 12355.
-const SEED := 12355
+##
+## taskblock-22 Pass E1: re-picked once more, same reason again — E1's own
+## 6 new authored parts (5 batteries + the Arc Welder) changed
+## `DataLibrary.parts_pool()`'s own composition, which shifts every RNG
+## draw `DeepStrike.assemble_random()` makes from it regardless of
+## whether either deep-struck defender's own random assembly actually
+## rolls one of the new parts — the same "adding real content reshuffles
+## a fixed seed's whole draw sequence" pattern this file's own header
+## already documents three times over. Re-picked by the same brute-force
+## search over nearby seeds: 12357.
+const SEED := 12357
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400

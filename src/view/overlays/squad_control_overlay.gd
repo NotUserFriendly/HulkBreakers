@@ -31,6 +31,13 @@ var controls_overlay: ControlsOverlay
 ## `inventory_panel` (see `_build_ui`'s own comment for why both coexist).
 var inspect_panel: InspectPanel
 var inspect_button: Button
+## taskblock-22 Pass E3: "an action-bar task: on click, prompts with all
+## repairable damaged parts, each with its own scrap cost." A plain
+## button + PopupMenu, the same shape `inspect_button`/InspectPanel's own
+## debug menu already establish — never routed through `arm_action`
+## (`&"repair"`'s own `requires_target=false`, matching overwatch's own
+## still-flagged gap, means arming it is a documented no-op).
+var repair_button: Button
 ## taskblock-08 E1: the left column pairing the AP/MP pip rows above the
 ## action bar — exposed so a test can confirm that ordering structurally,
 ## the same way `action_bar`/`ap_mp_pip_row` are already exposed for their
@@ -48,6 +55,10 @@ var log_sink: UISink
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
 ## HIGHLIGHT the instant either half of it actually has something to show.
 var _readout_header: Label
+## taskblock-22 Pass E3: the repair picker's own PopupMenu instance —
+## rebuilt fresh on every `_on_repair_pressed` call, same "queue_free the
+## old one first" convention InspectPanel's own debug menu already has.
+var _repair_menu: PopupMenu = null
 
 
 ## `battle.combat_state` may still be null here — `BattleScene._ready()`
@@ -204,6 +215,14 @@ func _build_ui() -> void:
 	inspect_button.text = "Inspect"
 	inspect_button.pressed.connect(_on_inspect_pressed)
 	left_layout.add_child(inspect_button)
+
+	# taskblock-22 Pass E3: the action-bar task's own entry point — a
+	# button rather than a catalog-armed action (see the field's own doc
+	# comment above for why).
+	repair_button = Button.new()
+	repair_button.text = "Repair"
+	repair_button.pressed.connect(_on_repair_pressed)
+	left_layout.add_child(repair_button)
 
 	# runNotes.md: "since we aren't truncating log entries, move the
 	# scrollbar to the left side so it doesn't overlay." Un-wrapped lines
@@ -485,7 +504,7 @@ func _build_ui() -> void:
 	# Editor's own preview relies on (there, `_ready()` firing at all is
 	# what already guarantees it; here it has to be explicit).
 	theme_root.add_child(inspect_panel)
-	inspect_panel.setup(material_table)
+	inspect_panel.setup(material_table, tactics.selection)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
@@ -567,6 +586,46 @@ func _on_inspect_pressed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
 	if selected != null:
 		inspect_panel.open(selected)
+
+
+## taskblock-22 Pass E3: "prompts with all repairable damaged parts, each
+## with its own scrap cost." A no-op with nothing selected or nothing
+## damaged — same degenerate-case posture `_on_inspect_pressed` above
+## already has, never an empty popup.
+func _on_repair_pressed() -> void:
+	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+	if selected == null:
+		return
+	var damaged: Array[Part] = RepairResolver.repairable_parts(selected)
+	if damaged.is_empty():
+		return
+
+	if _repair_menu != null:
+		_repair_menu.queue_free()
+	_repair_menu = PopupMenu.new()
+	add_child(_repair_menu)
+	var welder: Part = RepairResolver.find_operable_welder(selected)
+	var mission: MissionState = tactics.selection.mission
+	for i in range(damaged.size()):
+		var part: Part = damaged[i]
+		var cost: int = RepairResolver.scrap_cost_for(part)
+		var scrap_id: StringName = RepairResolver.scrap_resource_id_for(part)
+		var available: int = (
+			int(mission.gathered_resources.get(scrap_id, 0)) if mission != null else 0
+		)
+		_repair_menu.add_item("%s (%d %s)" % [part.id, cost, scrap_id], i)
+		if welder == null or available < cost:
+			_repair_menu.set_item_disabled(_repair_menu.get_item_index(i), true)
+	_repair_menu.id_pressed.connect(_on_repair_menu_id_pressed.bind(damaged, welder))
+	_repair_menu.close_requested.connect(_repair_menu.queue_free)
+	_repair_menu.id_pressed.connect(_repair_menu.queue_free, CONNECT_DEFERRED)
+	_repair_menu.popup(Rect2i(Vector2i(repair_button.get_screen_position()), Vector2i.ZERO))
+
+
+func _on_repair_menu_id_pressed(id: int, damaged: Array[Part], welder: Part) -> void:
+	if welder == null or id < 0 or id >= damaged.size():
+		return
+	tactics.selection.queue_repair(welder.id, damaged[id].id)
 
 
 func _on_selection_changed() -> void:

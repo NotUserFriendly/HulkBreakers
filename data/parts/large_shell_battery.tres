@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_lslb1"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_lslb2"]
+
+[sub_resource type="Resource" id="Resource_lslb3"]
+script = ExtResource("2_lslb2")
+size = Vector3(0.2, 0.28, 0.1)
+
+[resource]
+script = ExtResource("1_lslb1")
+id = &"large_shell_battery"
+display_name = "Large Shell Battery"
+attaches_to = Array[StringName]([&"BACK"])
+material = &"sheet_steel"
+volume = Array[ExtResource("2_lslb2")]([SubResource("Resource_lslb3")])
+hp = 6
+max_hp = 6
+mass = 3.0
+tags = Array[StringName]([&"POWER_SOURCE", &"BATTERY"])
+failure_mode = &"MANGLE"
+battery_capacity = 10.0
+battery_power_out = 5.0
+battery_power_in = 3.0
+battery_charge = 10.0

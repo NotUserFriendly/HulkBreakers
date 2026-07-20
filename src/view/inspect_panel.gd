@@ -34,6 +34,11 @@ const CAMERA_DISTANCE_FACTOR := 2.2
 const CAMERA_MIN_RADIUS := 0.4
 const PIVOT_Y_OFFSET := 0.0
 const COL_PART := 0
+## taskblock-22 Pass E3/G: "Repair with Scrap" is the first NON-debug
+## option in the right-click menu, added before Reset/Zero/Ammo — a real,
+## AP-costing, legality-gated RepairAction, queued through `_selection`,
+## never a debug-style direct mutation.
+const REPAIR_ITEM_ID := 200
 
 var _material_table: MaterialTable
 var _unit: Unit = null
@@ -53,6 +58,11 @@ var _info_panel: RichTextLabel
 
 var _rows_by_part: Dictionary = {}  # Part -> InventoryRow, for the info panel's own hover
 var _debug_menu: PopupMenu = null
+## taskblock-22 Pass E3/G: optional — only a player-driven host
+## (SquadControlOverlay) has a real queue to repair against; SpectatorOverlay's
+## own read-only usage passes none, same "null skips it" posture every other
+## optional mission/selection thread-through in this codebase already has.
+var _selection: SelectionController = null
 
 
 func _init() -> void:
@@ -66,8 +76,9 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func setup(material_table: MaterialTable) -> void:
+func setup(material_table: MaterialTable, selection: SelectionController = null) -> void:
 	_material_table = material_table
+	_selection = selection
 	var title_bar := Label.new()
 	title_bar.text = "INSPECT"
 	title_bar.add_theme_color_override("font_color", HulkTheme.FOREGROUND)
@@ -368,11 +379,17 @@ func _open_debug_menu_for_unit(at_position: Vector2) -> void:
 	_open_debug_menu(_unit.shell.all_parts(), at_position)
 
 
+## Only meaningful for a SINGLE damaged part (repairing "the whole unit at
+## once" isn't a thing); shown greyed (disabled, never hidden) whenever no
+## welder/charge/matching scrap is available, so its own presence is never
+## a spoiler about what's missing. `[*]`-marking/sort-after-non-debug for
+## the REST of this menu is Pass G's own follow-up, not invented here.
 func _open_debug_menu(parts: Array[Part], at_position: Vector2) -> void:
 	if _debug_menu != null:
 		_debug_menu.queue_free()
 	_debug_menu = PopupMenu.new()
 	add_child(_debug_menu)
+	var repairing: Part = _add_repair_menu_item(parts)
 	_debug_menu.add_item("Reset Health", 0)
 	_debug_menu.add_item("Set Health to 0", 1)
 	var ammo_ids: Array[StringName] = []
@@ -380,14 +397,47 @@ func _open_debug_menu(parts: Array[Part], at_position: Vector2) -> void:
 		for ammo_id: StringName in DataLibrary.resources_of_type(DataLibrary.TYPE_AMMO):
 			ammo_ids.append(ammo_id)
 			_debug_menu.add_item("Set Ammo: %s" % ammo_id, 100 + ammo_ids.size() - 1)
-	_debug_menu.id_pressed.connect(_on_debug_menu_id_pressed.bind(parts, ammo_ids))
+	_debug_menu.id_pressed.connect(_on_debug_menu_id_pressed.bind(parts, ammo_ids, repairing))
 	_debug_menu.close_requested.connect(_debug_menu.queue_free)
 	_debug_menu.id_pressed.connect(_debug_menu.queue_free, CONNECT_DEFERRED)
 	_debug_menu.popup(Rect2i(Vector2i(get_screen_position() + at_position), Vector2i.ZERO))
 
 
-func _on_debug_menu_id_pressed(id: int, parts: Array[Part], ammo_ids: Array[StringName]) -> void:
-	if id == 0:
+## Adds the "Repair with Scrap" item when relevant, greyed if unavailable
+## — returns the part it would repair (for `_on_debug_menu_id_pressed`),
+## or null if the item wasn't added at all (more than one part selected,
+## no selection controller to queue against, or nothing to repair here).
+func _add_repair_menu_item(parts: Array[Part]) -> Part:
+	if parts.size() != 1 or _selection == null or _unit == null:
+		return null
+	# Repairing queues against `_selection.selected_unit` (whichever unit is
+	# actually armed in TACTICS) — inspecting some OTHER unit (an ally not
+	# currently acting, an enemy) must never let a right-click here queue an
+	# action against a unit that isn't even the one being inspected.
+	if _selection.selected_unit != _unit:
+		return null
+	var target: Part = parts[0]
+	if target.hp <= 0 or target.hp >= target.max_hp:
+		return null
+	var cost: int = RepairResolver.scrap_cost_for(target)
+	var scrap_id: StringName = RepairResolver.scrap_resource_id_for(target)
+	var mission: MissionState = _selection.mission
+	var available: int = int(mission.gathered_resources.get(scrap_id, 0)) if mission != null else 0
+	_debug_menu.add_item("Repair with Scrap (%d %s)" % [cost, scrap_id], REPAIR_ITEM_ID)
+	var can_repair: bool = RepairResolver.can_repair_with(_unit) and available >= cost
+	if not can_repair:
+		_debug_menu.set_item_disabled(_debug_menu.get_item_index(REPAIR_ITEM_ID), true)
+	return target
+
+
+func _on_debug_menu_id_pressed(
+	id: int, parts: Array[Part], ammo_ids: Array[StringName], repairing: Part
+) -> void:
+	if id == REPAIR_ITEM_ID and repairing != null:
+		var welder: Part = RepairResolver.find_operable_welder(_unit)
+		if welder != null:
+			_selection.queue_repair(welder.id, repairing.id)
+	elif id == 0:
 		for part: Part in parts:
 			part.hp = part.max_hp
 	elif id == 1:

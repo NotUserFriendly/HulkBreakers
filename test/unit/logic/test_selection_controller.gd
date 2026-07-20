@@ -295,3 +295,67 @@ func test_queue_end_turn_threads_mission_through_for_the_extraction_hold() -> vo
 		0,
 		"standing on its own tile at end of turn must start the hold"
 	)
+
+
+## taskblock-22 Pass E: repair's own player-facing entry point — a real
+## RepairAction, resolved through the normal queue, never a debug-style
+## direct mutation.
+func test_queue_repair_appends_a_repair_action_that_resolves_cleanly() -> void:
+	var target := Part.new()
+	target.id = &"leg"
+	target.material = &"steel"
+	target.hp = 5
+	target.max_hp = 10
+
+	var battery := Part.new()
+	battery.id = &"tool_battery"
+	battery.hp = 3
+	battery.max_hp = 3
+	battery.battery_capacity = 6.0
+	battery.battery_power_out = 3.0
+	battery.battery_charge = 6.0
+	battery.tags = [&"POWER_SOURCE", &"BATTERY", &"TOOL_BATTERY"]
+
+	var welder := Part.new()
+	welder.id = &"welder"
+	welder.hp = 4
+	welder.max_hp = 4
+	welder.attaches_to = [&"GRIP"]
+	welder.requires = {&"TRIGGER": 1}
+	welder.tags = [&"WELDER"]
+	var battery_socket := Socket.new(&"TOOL_BATTERY")
+	battery_socket.occupant = battery
+	welder.sockets = [battery_socket]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 4
+	hand.max_hp = 4
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = welder
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	var leg_socket := Socket.new(&"LEG")
+	leg_socket.occupant = target
+	torso.sockets = [hand_socket, leg_socket]
+
+	var a := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(5, 5), 1)
+	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.gather_resource(&"steel", 5)
+	var selection := SelectionController.new(state, mission)
+	selection.select(a)
+
+	assert_true(selection.queue_repair(&"welder", &"leg"))
+	state.resolve_turn(selection.current_queue())
+
+	assert_eq(target.hp, 8, "5 hp + 3 (capped heal), resolved for real")

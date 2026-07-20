@@ -33,6 +33,13 @@ static func defs() -> Array[ActionDef]:
 		# WeaponDef.burst_size > 1 should ever list it — BurstAction.is_legal
 		# itself is the real runtime gate).
 		ActionDef.new(&"burst", "Burst", "BR"),
+		# taskblock-22 Pass E: requires_target=false, same posture as
+		# overwatch — repair needs a PART picked from a list, never a board
+		# click, so `arm_action`'s own click-driven flow doesn't apply. The
+		# real UI call site (a popup listing repairable parts) lives in
+		# SquadControlOverlay, mirroring overwatch's own still-flagged gap
+		# rather than inventing a second armed-action shape here.
+		ActionDef.new(&"repair", "Repair", "RP", {}, &"", false),
 	]
 
 
