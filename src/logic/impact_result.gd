@@ -9,6 +9,14 @@ extends RefCounted
 var outcome: int = Enums.Outcome.STOP_DEAD
 var region: Region
 var incoming_dir: Vector2 = Vector2.ZERO
+## taskblock-23 Pass C: `incoming_dir`/`reflected_dir` (below) stay the
+## ground-plane heading they always were; these are the real vertical
+## slope (rise per unit of ground distance) each one travels at --
+## 0.0 for an ordinary flat shot, same as `incoming_dir`/`reflected_dir`
+## were always implicitly flat before this pass. Kept as separate scalars
+## rather than upgrading `incoming_dir`/`reflected_dir` to Vector3, so
+## every existing ground-plane-only reader keeps working unchanged.
+var incoming_vertical: float = 0.0
 var part_damage: float = 0.0
 ## taskblock-22 Pass D: "every shot is visible" — the muzzle THIS specific
 ## hop actually fired from (the true shooter's own position for a shot's
@@ -23,6 +31,14 @@ var part_damage: float = 0.0
 ## shot flight set them.
 var origin: Vector2 = Vector2.ZERO
 var hit_point: Vector2 = Vector2.ZERO
+## taskblock-23 Pass C: `origin`/`hit_point` above are still ground-plane
+## only (x, z) -- these carry the real world height each one landed at
+## (a Region's own rect, since Pass A, already IS real height on its own
+## y-axis), the missing third coordinate a real 3D tracer (Pass D) needs.
+## Additive, not a replacement: origin/hit_point's own meaning and every
+## existing reader of them is unchanged.
+var origin_height: float = 0.0
+var hit_height: float = 0.0
 ## taskblock-09 B/F: the DT this impact's penetrate/stop-dead/deflect
 ## decision was actually weighed against — Pass B's spill-through reads
 ## this back rather than re-deriving material.dt a second time, so the
@@ -32,6 +48,11 @@ var hit_point: Vector2 = Vector2.ZERO
 ## across both, only how it's computed changes.
 var effective_dt: float = 0.0
 var reflected_dir: Vector2 = Vector2.ZERO
+## taskblock-23 Pass C: `reflected_dir`'s own real vertical slope — see
+## `incoming_vertical` above for why this stays a separate scalar instead
+## of upgrading `reflected_dir` to Vector3. Only meaningful when
+## `outcome == DEFLECT`; 0.0 (the harmless default) otherwise.
+var reflected_vertical: float = 0.0
 var retained_fraction: float = 0.0
 var is_crit: bool = false
 var is_double_crit: bool = false

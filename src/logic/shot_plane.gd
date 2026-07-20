@@ -85,41 +85,53 @@ static func self_obstruction(
 
 
 ## docs/09 taskblock06 Pass A / taskblock07 Pass A2: the ray-cast
-## hit-resolution entry point. A straight, level shot (`docs/02`/
-## BodyProjector: "shots travel horizontally") from `muzzle` — the
-## shooter's own real muzzle position, an ordinary 3D world point, not a
-## synthetic one built by the caller — along `dir`, against everything in
-## `world`. `dir` must be horizontal (`dir.y` ~ 0): the aim offset lives
-## entirely in `dir`'s own lateral direction; any vertical aim is expressed
-## by `muzzle`'s own height instead (`AimPlaneGeometry.ray_from_muzzle` is
-## the intended bridge — it raises/lowers `muzzle` to the aim point's own
-## height so this precondition holds by construction, never by discarding
-## intent). A non-horizontal `dir` fails loudly rather than silently
-## dropping `dir.y`, since a silent drop is exactly the trap that let this
-## contract go uncalled for an entire pass (taskblock07 Pass A1).
+## hit-resolution entry point, from `muzzle` — the shooter's own real
+## muzzle position, an ordinary 3D world point, not a synthetic one built
+## by the caller — along `dir`, against everything in `world`.
 ##
-## Built entirely on the existing plane math — `muzzle`'s own lateral and
-## vertical offset from the ray's own line of travel is, by construction,
-## zero, so the plane is anchored at `muzzle` itself and tested against
-## `(0, muzzle.y)`. That's the whole seam: same math, same regions, same
-## results, and later a `PhysicsServer.intersect_ray` swap-in changes this
-## function's body and nothing that calls it.
+## taskblock-23 Pass C: `dir` may now travel with a real vertical
+## component — the old `dir.y ~= 0` guard (docs/02's pre-multi-level "shots
+## travel horizontally") is gone. Built on the same plane math as always:
+## the plane is anchored at `muzzle`'s own flat (x, z) using `dir`'s own
+## flattened heading, but a region is no longer tested at one fixed
+## `muzzle.y` for the whole flight — a tilted ray's real height at a given
+## region's own depth is `muzzle.y` plus however much of `dir`'s own rise
+## went into covering that much ground distance (`vertical_slope`, below).
+## A perfectly level `dir` (every caller before this pass) makes
+## `vertical_slope` exactly 0.0, reducing this to the exact old formula —
+## same math, same regions, same results for every existing horizontal
+## caller, and later a `PhysicsServer.intersect_ray` swap-in still changes
+## this function's body and nothing that calls it.
 static func resolve_ray(muzzle: Vector3, dir: Vector3, world: CombatState) -> HitResult:
-	if not is_zero_approx(dir.y):
-		push_error("ShotPlane.resolve_ray: dir must be horizontal (dir.y ~= 0), got %f" % dir.y)
-		return null
-	var flat_origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
-	var flat_dir: Vector2 = Vector2(dir.x, dir.z).normalized()
+	var dir_n: Vector3 = dir.normalized()
+	var flat_dir := Vector2(dir_n.x, dir_n.z)
 	if flat_dir.is_zero_approx():
+		# No horizontal heading at all (a dead-vertical shot) — this plane
+		# model has no azimuth to build along; a real PhysicsServer ray
+		# would still resolve this, but that's the documented swap-in this
+		# function is a seam for, not something the flat-plane math can
+		# answer today.
 		return null
-	var plane: Array[Region] = build(flat_origin, flat_dir, world)
-	var region: Region = resolve_projectile(plane, Vector2(0.0, muzzle.y))
+	var flat_dir_n: Vector2 = flat_dir.normalized()
+	var flat_origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
+	var plane: Array[Region] = build(flat_origin, flat_dir_n, world)
+	# `flat_dir.length()` is dir_n's own horizontal fraction (1.0 when dir_n
+	# is itself horizontal) — the ratio of true 3D distance to ground
+	# distance travelled, so dividing by it converts dir_n.y (rise per unit
+	# of true distance) into rise per unit of ground depth.
+	var vertical_slope: float = dir_n.y / flat_dir.length()
+	var region: Region = null
+	for candidate: Region in plane:
+		var height_here: float = muzzle.y + vertical_slope * candidate.depth
+		if candidate.rect.has_point(Vector2(0.0, height_here)):
+			region = candidate
+			break
 	if region == null:
 		return null
-	var dir3d := Vector3(flat_dir.x, 0.0, flat_dir.y)
-	var hit_point: Vector3 = muzzle + dir3d * region.depth
+	var t: float = region.depth / flat_dir.length()
+	var hit_point: Vector3 = muzzle + dir_n * t
 	return HitResult.new(
-		region.part, hit_point, region.surface_normal, region.depth, region.body, region.socket
+		region.part, hit_point, region.surface_normal, t, region.body, region.socket
 	)
 
 

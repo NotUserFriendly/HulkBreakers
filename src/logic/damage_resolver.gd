@@ -38,20 +38,33 @@ const DROPPED_TAG := &"DROPPED"
 ## `effective_dt` itself — but taskblock-20 Pass E gives `bonus_pen` a
 ## second job there too, widening (or narrowing) the stop-dead-eligible
 ## incidence window instead.
+## taskblock-23 Pass C: `incoming_vertical` is this shot's own real vertical
+## slope (rise per unit of ground distance travelled) -- 0.0 for an
+## ordinary flat shot (every first hop today), nonzero only after a
+## previous DEFLECT gave it one. Together with `incoming_dir` (still the
+## ground-plane heading) this reconstructs the real 3D incoming direction,
+## tested against the region's own real 3D `surface_normal` (Pass A: no
+## longer forced flat) -- the old `normal_2d := Vector2(surface_normal.x,
+## surface_normal.z)` silently discarded a tilted part's real vertical
+## tilt the moment Pass A started retaining it, even for an ordinary flat
+## shot against a tilted face.
 static func resolve_impact(
 	incoming_dir: Vector2,
 	damage: float,
 	region: Region,
 	table: MaterialTable,
-	bonus_pen: float = 0.0
+	bonus_pen: float = 0.0,
+	incoming_vertical: float = 0.0
 ) -> ImpactResult:
 	var material: MaterialEntry = table.get_entry(region.part.material)
 	var dir: Vector2 = incoming_dir.normalized()
-	var normal_2d := Vector2(region.surface_normal.x, region.surface_normal.z)
+	var dir3d: Vector3 = Vector3(dir.x, incoming_vertical, dir.y).normalized()
+	var normal3d: Vector3 = region.surface_normal
 
 	var result := ImpactResult.new()
 	result.region = region
 	result.incoming_dir = dir
+	result.incoming_vertical = incoming_vertical
 	var effective_dt: float = maxf(0.0, material.dt_at(region.thickness) - bonus_pen)
 	if region.part.is_mangled:
 		effective_dt *= 0.25
@@ -70,7 +83,7 @@ static func resolve_impact(
 	# way and this was equivalent; a `hollow` part's own EXIT face — hit
 	# from the inside, its normal pointing the same way as `dir` — is the
 	# first region that actually needs the general form.
-	var incidence_deg: float = rad_to_deg(acos(clampf(absf(dir.dot(normal_2d)), -1.0, 1.0)))
+	var incidence_deg: float = rad_to_deg(acos(clampf(absf(dir3d.dot(normal3d)), -1.0, 1.0)))
 	# taskblock-20 Pass E: a high-pen round bites in and stop-deads at angles
 	# that would otherwise skip off — the deflect/stop-dead boundary widens
 	# with `bonus_pen` (can narrow it too: a negative bonus_pen, e.g.
@@ -89,9 +102,20 @@ static func resolve_impact(
 		return result
 
 	result.outcome = Enums.Outcome.DEFLECT
-	var reflected: Vector2 = (dir - 2.0 * dir.dot(normal_2d) * normal_2d).normalized()
-	result.reflected_dir = reflected
-	var deflection_deg: float = rad_to_deg(acos(clampf(dir.dot(reflected), -1.0, 1.0)))
+	var reflected3d: Vector3 = (dir3d - 2.0 * dir3d.dot(normal3d) * normal3d).normalized()
+	var reflected_ground := Vector2(reflected3d.x, reflected3d.z)
+	if reflected_ground.is_zero_approx():
+		# A reflection with no horizontal component left at all (bounced
+		# dead straight up/down): keep the flight's own ground heading so a
+		# recursive ShotPlane.build still has a real direction to build
+		# from, flat (vertical_slope 0.0) the same way a first hop always
+		# is -- max_ricochet_depth still bounds this either way.
+		result.reflected_dir = dir
+		result.reflected_vertical = 0.0
+	else:
+		result.reflected_dir = reflected_ground.normalized()
+		result.reflected_vertical = reflected3d.y / reflected_ground.length()
+	var deflection_deg: float = rad_to_deg(acos(clampf(dir3d.dot(reflected3d), -1.0, 1.0)))
 	var t: float = clampf(deflection_deg / table.max_bend_deg, 0.0, 1.0)
 	result.retained_fraction = lerp(table.retain_at_zero_bend, table.retain_at_max_bend, t)
 	return result
@@ -474,6 +498,19 @@ static func _crit_effects(is_crit: bool, is_double_crit: bool, armored: bool) ->
 ## (the same physical round, just traveling a new direction); a fragment's
 ## own recursive flight (`_fragment`, above) doesn't carry one of its own
 ## yet, so it stays at the 0.0 default there.
+##
+## taskblock-23 Pass C: `vertical_slope` is this flight's own real rise per
+## unit of ground distance — 0.0 for an ordinary flat shot (every first
+## hop today: `direction`/`point` stay ground-plane-heading and
+## lateral/height-in-plane respectively, unchanged), nonzero only on a
+## ricochet's own recursive call, carrying the PREVIOUS hop's real 3D
+## reflection instead of silently flattening it back to one height.
+## `origin_height` is this flight's own real starting height — the true
+## muzzle's for a first hop (a caller with a real one, e.g. a shouldered
+## weapon, passes it; 0.0 otherwise, same harmless default every other
+## unset height on this codebase's ImpactResult already has), the previous
+## hop's own real landing height for a ricochet (computed below, never a
+## caller concern).
 static func resolve_shot(
 	origin: Vector2,
 	direction: Vector2,
@@ -488,7 +525,9 @@ static func resolve_shot(
 	damage_floor: float = DEFAULT_DAMAGE_FLOOR,
 	crit_bonus_multiplier: float = DEFAULT_CRIT_BONUS_MULTIPLIER,
 	exclude_parts: Array[Part] = [],
-	bonus_pen: float = 0.0
+	bonus_pen: float = 0.0,
+	vertical_slope: float = 0.0,
+	origin_height: float = 0.0
 ) -> Array[ImpactResult]:
 	var results: Array[ImpactResult] = []
 	var dir: Vector2 = direction.normalized()
@@ -525,7 +564,7 @@ static func resolve_shot(
 	# (exiting) — an intervening solid part's own hit never touches this.
 	var inside_hollow_part: Part = null
 	while start < plane.size():
-		var found_index: int = _find_next(plane, start, point, skip_parts)
+		var found_index: int = _find_next(plane, start, point, skip_parts, vertical_slope)
 		skip_parts = []  # the exclusion applies only to this call's first hit
 		if found_index == -1:
 			break
@@ -542,6 +581,11 @@ static func resolve_shot(
 		# own deflection point for a ricochet) and where it actually landed —
 		# same flat coords every ImpactResult below stamps itself with.
 		var hop_hit_point: Vector2 = origin + dir * region.depth + perp * point.x
+		# taskblock-23 Pass C: the real world height of THIS hit — constant
+		# (== point.y) for a flat flight (vertical_slope 0.0, the same value
+		# every hop already used before this pass), rising/falling with
+		# depth for a tilted post-ricochet flight.
+		var region_height: float = point.y + vertical_slope * region.depth
 
 		if region.socket != null:
 			var joint_hit: ImpactResult = _resolve_joint_hit(
@@ -549,6 +593,8 @@ static func resolve_shot(
 			)
 			joint_hit.origin = origin
 			joint_hit.hit_point = hop_hit_point
+			joint_hit.origin_height = origin_height
+			joint_hit.hit_height = region_height
 			results.append(joint_hit)
 			return results
 
@@ -568,6 +614,8 @@ static func resolve_shot(
 			bypass_result.bypassed_armor = true
 			bypass_result.origin = origin
 			bypass_result.hit_point = hop_hit_point
+			bypass_result.origin_height = origin_height
+			bypass_result.hit_height = region_height
 			results.append(bypass_result)
 			if region.part.hollow:
 				if inside_hollow_part == region.part:
@@ -580,12 +628,14 @@ static func resolve_shot(
 			current_damage * (crit_bonus_multiplier if effects.bonus else 1.0)
 		)
 		var impact: ImpactResult = resolve_impact(
-			shot_dir, applied_damage, region, table, bonus_pen
+			shot_dir, applied_damage, region, table, bonus_pen, vertical_slope
 		)
 		impact.is_crit = crit.is_crit
 		impact.is_double_crit = crit.is_double_crit
 		impact.origin = origin
 		impact.hit_point = hop_hit_point
+		impact.origin_height = origin_height
+		impact.hit_height = region_height
 		results.append(impact)
 
 		match impact.outcome:
@@ -622,7 +672,7 @@ static func resolve_shot(
 						resolve_shot(
 							world_hit,
 							impact.reflected_dir,
-							Vector2(0.0, point.y),
+							Vector2(0.0, region_height),
 							next_damage,
 							crit_chance,
 							state,
@@ -633,7 +683,9 @@ static func resolve_shot(
 							damage_floor,
 							crit_bonus_multiplier,
 							_body_of(region.part, state),
-							bonus_pen
+							bonus_pen,
+							impact.reflected_vertical,
+							region_height
 						)
 					)
 				return results
@@ -660,12 +712,24 @@ static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: Im
 	impact.wound_inflicted = &"lodged_bullet"
 
 
+## taskblock-23 Pass C: `vertical_slope` lets a tilted post-ricochet flight
+## test each region at ITS OWN real height (`point.y` rising/falling with
+## that region's own depth), instead of the one fixed height a flat shot
+## (vertical_slope 0.0, every first hop) always correctly used before this
+## pass — the exact height-per-depth relationship `ShotPlane.resolve_ray`
+## gives a tilted ray, applied here to the plane-walking primitive instead
+## of a single ray cast.
 static func _find_next(
-	plane: Array[Region], start: int, point: Vector2, exclude_parts: Array[Part] = []
+	plane: Array[Region],
+	start: int,
+	point: Vector2,
+	exclude_parts: Array[Part] = [],
+	vertical_slope: float = 0.0
 ) -> int:
 	for i in range(start, plane.size()):
 		if exclude_parts.has(plane[i].part):
 			continue
-		if plane[i].rect.has_point(point):
+		var height_here: float = point.y + vertical_slope * plane[i].depth
+		if plane[i].rect.has_point(Vector2(point.x, height_here)):
 			return i
 	return -1
