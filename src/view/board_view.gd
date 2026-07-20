@@ -49,7 +49,11 @@ const UNIT_GHOST_ALPHA := 0.35
 ## "a transparent overlay, not the UI palette"). Sits above the ghost
 ## overlays so it never fights them for z-order when both are live.
 const OVERWATCH_ARC_COLOR := Color(0.95, 0.55, 0.15, 0.30)
-const OVERWATCH_ARC_HEIGHT := 0.04
+## taskblock-27 Pass C2: part of the one ordered ground-overlay height
+## ladder — see `EXTRACTION_TILE_HEIGHT`'s own comment below for the full
+## enumeration. Raised from 0.04 to clear `HitVolumeView.TEAM_MARKER_Y`'s
+## own new top face (0.07) with margin.
+const OVERWATCH_ARC_HEIGHT := 0.09
 ## docs/10 taskblock03 I: the original #253B29 was a value or two off
 ## WorldPalette.GROUND (#2E4A32) — nearly the same value, so it mipped away
 ## to nothing at the default tactical camera distance. Pushed much further
@@ -70,6 +74,22 @@ const GRID_LINE_WIDTH := 0.04
 ## height tier, between the grid lines and the wall indicators, so it never
 ## z-fights with either (extraction tiles sit on open ground in practice,
 ## but nothing here assumes that).
+##
+## taskblock-27 Pass C2: the anchor of ONE ordered ground-overlay height
+## ladder, enumerated here after tb26 A3's own facing-wedge fix twice
+## missed a DIFFERENT co-planar element in turn (bumping one marker in
+## isolation, with no shared ordering, was the actual bug). Center
+## heights, not top faces (`_marker()`'s own doc comment) — most rungs are
+## 0.02-thick boxes/discs:
+##   `EXTRACTION_TILE_HEIGHT` (0.010, this constant)
+##   -> `HitVolumeView.TEAM_MARKER_Y` (0.06 — was IDENTICAL to this
+##      constant, 0.01, a real unreported co-planar pair found while
+##      enumerating this set for the first time)
+##   -> `OVERWATCH_ARC_HEIGHT` (0.09, below)
+##   -> `HitVolumeView.FACING_WEDGE_Y` (0.17 — 5x taller than every other
+##      rung, needs real headroom, not just the next small step)
+## A future ground overlay takes the next rung in THIS ladder, not a
+## value picked independently.
 const EXTRACTION_TILE_HEIGHT := 0.010
 const WALL_INDICATOR_COLOR := Color("#3A3A3A")
 ## runNotes.md follow-up: "fade it to a gray that's just slightly darker
