@@ -184,9 +184,13 @@ func _head_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	return Unit.new(link, shell, cell, 1)
 
 
+## taskblock-22 Pass A1: a successfully extracted unit is DELIBERATELY
+## `alive == false` too (it left the board) — `unit.extracted` is what
+## actually distinguishes "made it out" from "died," now that both share
+## `alive == false`.
 func _squad_has_survivors(state: CombatState, squad_id: int) -> bool:
 	for unit: Unit in state.units:
-		if unit.squad_id == squad_id and unit.alive:
+		if unit.squad_id == squad_id and (unit.alive or unit.extracted):
 			return true
 	return false
 
@@ -319,8 +323,13 @@ func test_full_mission_seed_to_extraction() -> void:
 		var queue: ActionQueue = _queue_turn(acting_unit, combat_state, mission)
 		combat_state.resolve_turn(queue)
 		turn_count += 1
-		if memory_sink.events_of_kind(&"extract").size() > 0:
-			extracted = true
+		# taskblock-22 Pass A1: the mission's own outcome, not "did any unit's
+		# individual extract event fire" — a real extraction can now emit
+		# several per-unit `extract` events (one per squad-0 unit, as each
+		# finishes its own hold) before the WHOLE squad is actually out and
+		# `mission.extract()` itself banks the haul.
+		if mission.outcome != Enums.MissionOutcome.UNDECIDED:
+			extracted = mission.outcome == Enums.MissionOutcome.EXTRACTED
 			break
 	assert_true(turn_count < TURN_CAP, "the mission must resolve within the turn cap")
 	assert_true(
@@ -348,7 +357,16 @@ func test_full_mission_seed_to_extraction() -> void:
 	var gather_events: Array[LogEvent] = memory_sink.events_of_kind(&"gather")
 	assert_eq(gather_events.size(), 1, "the objective must be gathered exactly once")
 	assert_eq(gather_events[0].data.get("resource"), &"minerals")
-	assert_eq(memory_sink.events_of_kind(&"extract").size(), 1)
+	# taskblock-22 Pass A1: one extract event per squad-0 unit that actually
+	# made it out — no longer always exactly 1 now that extraction is
+	# per-unit (each unit's own hold matures independently) rather than one
+	# single mission-ending call.
+	var extracted_unit_count := 0
+	for unit: Unit in combat_state.units:
+		if unit.squad_id == 0 and unit.extracted:
+			extracted_unit_count += 1
+	assert_eq(memory_sink.events_of_kind(&"extract").size(), extracted_unit_count)
+	assert_gt(extracted_unit_count, 0, "at least one squad-0 unit must have actually extracted")
 
 	# --- Shot plane + dartboard: real gunfire actually landed ---
 	var impacts: Array[LogEvent] = memory_sink.events_of_kind(&"impact")

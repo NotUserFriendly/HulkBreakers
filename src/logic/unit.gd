@@ -23,6 +23,21 @@ var ap: int = 0
 var max_ap: int = DEFAULT_MAX_AP
 var mp: float = 0.0  # movement pool; discarded (not banked) at end of turn
 var alive: bool = true
+## taskblock-22 Pass A: true once this unit has actually left the board via
+## either extraction path (docs/07's "EXIT with loot") — distinct from
+## `alive == false`, which also covers death. An extracted unit is a real
+## success, never reported/rendered like a kill; `alive` still gates turn
+## order/shot-plane membership/targeting exactly as it always has (an
+## extracted unit sets both), so nothing downstream needs a second check.
+var extracted: bool = false
+## taskblock-22 Pass A2: "sit in extract until the end of the next round."
+## The round this unit was first found standing on its own team's
+## extraction tile, or -1 while not currently holding — reset the instant
+## it steps off (EndTurnAction's own hold-check, the only writer). A
+## flagged, simple approximation of "held through the end of the next
+## round" (checked at this unit's own next turn, not a true round-boundary
+## event — see EndTurnAction's own doc comment).
+var extraction_hold_start_round: int = -1
 
 ## Radians, ground-plane facing (docs/02). 0.0 faces
 ## BodyProjector.WORLD_FORWARD; continuous, never snapped to
@@ -187,6 +202,8 @@ func dup() -> Unit:
 	cloned.max_ap = max_ap
 	cloned.mp = mp
 	cloned.alive = alive
+	cloned.extracted = extracted
+	cloned.extraction_hold_start_round = extraction_hold_start_round
 	cloned.orientation = orientation
 	cloned.pose = pose
 	cloned.facing_unlocked = facing_unlocked

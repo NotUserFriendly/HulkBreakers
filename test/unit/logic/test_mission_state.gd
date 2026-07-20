@@ -158,6 +158,133 @@ func test_is_stranded_true_once_no_player_unit_remains_alive() -> void:
 	assert_true(enemy_unit.alive, "the enemy still standing changes nothing about this")
 
 
+## taskblock-22 Pass A1: "the ENTIRE squad must be off the board before
+## EXTRACTED fires."
+func test_squad_ready_to_extract_false_while_any_unit_is_still_active() -> void:
+	var alice := _make_unit(Vector2i(0, 0), Matrix.new())
+	alice.extracted = true
+	alice.alive = false
+	var bob := _make_unit(Vector2i(1, 0), Matrix.new())  # still alive, not extracted
+	var combat_state := CombatState.new(Grid.new(5, 5), [alice, bob])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	assert_false(mission.squad_ready_to_extract(0))
+
+
+func test_squad_ready_to_extract_true_once_every_unit_has_extracted() -> void:
+	var alice := _make_unit(Vector2i(0, 0), Matrix.new())
+	alice.extracted = true
+	alice.alive = false
+	var bob := _make_unit(Vector2i(1, 0), Matrix.new())
+	bob.extracted = true
+	bob.alive = false
+	var combat_state := CombatState.new(Grid.new(5, 5), [alice, bob])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	assert_true(mission.squad_ready_to_extract(0))
+
+
+## A total wipe (everyone dead, nobody extracted) must never read as
+## "ready to extract" — that's `is_stranded()`'s own, separate, involuntary
+## ending, not a clean extraction.
+func test_squad_ready_to_extract_false_when_everyone_simply_died() -> void:
+	var alice := _make_unit(Vector2i(0, 0), Matrix.new())
+	alice.alive = false  # dead, never extracted
+	var combat_state := CombatState.new(Grid.new(5, 5), [alice])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	assert_false(mission.squad_ready_to_extract(0))
+
+
+## A real casualty along the way doesn't block the survivors' own
+## extraction — only a unit that's STILL ACTIVE (alive and not yet
+## extracted) blocks it.
+func test_squad_ready_to_extract_true_with_a_mix_of_extracted_and_dead() -> void:
+	var alice := _make_unit(Vector2i(0, 0), Matrix.new())
+	alice.extracted = true
+	alice.alive = false
+	var bob := _make_unit(Vector2i(1, 0), Matrix.new())
+	bob.alive = false  # died in combat, never extracted
+	var combat_state := CombatState.new(Grid.new(5, 5), [alice, bob])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	assert_true(mission.squad_ready_to_extract(0), "the survivor's own extraction still counts")
+
+
+func test_extract_unit_marks_the_unit_and_clears_its_grid_occupancy() -> void:
+	var grid := Grid.new(5, 5)
+	var alice := _make_unit(Vector2i(2, 2), Matrix.new())
+	var combat_state := CombatState.new(grid, [alice])
+	var mission := MissionState.new(RunState.new(), combat_state)
+
+	mission.extract_unit(alice)
+
+	assert_false(alice.alive)
+	assert_true(alice.extracted)
+	assert_eq(grid.get_occupant_id(alice.cell), -1)
+
+
+func test_extract_unit_emits_a_per_unit_extract_event() -> void:
+	var combat_state := CombatState.new(Grid.new(5, 5), [_make_unit(Vector2i(0, 0), Matrix.new())])
+	var sink := MemorySink.new()
+	combat_state.combat_log.add_sink(sink)
+	var mission := MissionState.new(RunState.new(), combat_state)
+	var alice: Unit = combat_state.units[0]
+
+	mission.extract_unit(alice)
+
+	assert_eq(sink.events_of_kind(&"extract").size(), 1)
+	assert_eq(sink.events_of_kind(&"extract")[0].unit_id, alice.id)
+
+
+## The lone unit here IS the whole squad — its own extraction is
+## automatically "the whole squad off the board," so this alone must
+## bank the haul and set the mission outcome, same observable result as
+## the pre-Pass-A single-call `extract()` had for a solo squad.
+func test_extract_unit_triggers_the_full_mission_extract_once_the_squad_is_out() -> void:
+	var run_state := RunState.new()
+	var alice := _make_unit(Vector2i(0, 0), Matrix.new())
+	var combat_state := CombatState.new(Grid.new(5, 5), [alice])
+	var mission := MissionState.new(run_state, combat_state)
+	mission.gather_resource(&"minerals", 15)
+
+	mission.extract_unit(alice)
+
+	assert_eq(mission.outcome, Enums.MissionOutcome.EXTRACTED)
+	assert_eq(run_state.resource_count(&"minerals"), 15)
+
+
+## A non-player squad's own unit extracting must never bank the mission's
+## haul or end it — "all enemies off the board != bout end."
+func test_extract_unit_never_triggers_the_mission_for_a_non_player_squad() -> void:
+	var run_state := RunState.new()
+	var enemy := _make_unit(Vector2i(0, 0), Matrix.new())
+	enemy.squad_id = 1
+	var combat_state := CombatState.new(Grid.new(5, 5), [enemy])
+	var mission := MissionState.new(run_state, combat_state)
+	mission.gather_resource(&"minerals", 15)
+
+	mission.extract_unit(enemy)
+
+	assert_eq(mission.outcome, Enums.MissionOutcome.UNDECIDED)
+	assert_eq(run_state.resource_count(&"minerals"), 0, "the haul stays unbanked")
+
+
+func test_extract_unit_does_not_trigger_the_mission_while_a_squadmate_is_still_active() -> void:
+	var run_state := RunState.new()
+	var alice := _make_unit(Vector2i(0, 0), Matrix.new())
+	var bob := _make_unit(Vector2i(1, 0), Matrix.new())  # still active, not extracted
+	var combat_state := CombatState.new(Grid.new(5, 5), [alice, bob])
+	var mission := MissionState.new(run_state, combat_state)
+
+	mission.extract_unit(alice)
+
+	assert_eq(mission.outcome, Enums.MissionOutcome.UNDECIDED)
+	assert_true(
+		alice.extracted, "alice herself is still marked out, even though the bout continues"
+	)
+
+
 func test_complete_objective_only_tracks_known_ids_once() -> void:
 	var run_state := RunState.new()
 	var combat_state := CombatState.new(Grid.new(5, 5))

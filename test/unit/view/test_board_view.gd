@@ -225,6 +225,51 @@ func test_a_grid_with_no_walls_adds_no_wall_indicators() -> void:
 	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
 
 
+## taskblock-22 Pass A3: "team-coded extraction tiles, drawn in their
+## team's color." `team_extraction_cells` is optional (defaults to `{}`)
+## — every existing caller/test above this one draws none, unchanged.
+func test_build_adds_one_marker_per_extraction_tile() -> void:
+	var grid := Grid.new(3, 3)
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.build(
+		grid,
+		DataLibrary.material_table(),
+		{0: [Vector2i(0, 0), Vector2i(1, 1)], 1: [Vector2i(2, 2)]}
+	)
+
+	assert_eq(
+		view._static.get_child_count(), 5, "ground plane + grid lines + 3 extraction tile markers"
+	)
+
+
+func test_extraction_tiles_render_in_their_own_teams_color() -> void:
+	var grid := Grid.new(3, 3)
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.build(grid, DataLibrary.material_table(), {0: [Vector2i(0, 0)], 1: [Vector2i(2, 2)]})
+
+	# ground plane (0) + grid lines (1) precede the two tile markers.
+	var blue_mesh: MeshInstance3D = view._static.get_child(2)
+	var red_mesh: MeshInstance3D = view._static.get_child(3)
+	var blue_material: StandardMaterial3D = blue_mesh.mesh.material
+	var red_material: StandardMaterial3D = red_mesh.mesh.material
+	assert_eq(blue_material.albedo_color, WorldPalette.team_color(0))
+	assert_eq(red_material.albedo_color, WorldPalette.team_color(1))
+
+
+func test_no_team_extraction_cells_adds_no_tile_markers() -> void:
+	var grid := Grid.new(2, 2)
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
+
+
 func test_show_reachable_spawns_one_marker_per_cell_and_replaces_the_last_call() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)

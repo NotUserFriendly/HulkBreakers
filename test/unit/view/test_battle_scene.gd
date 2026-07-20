@@ -45,6 +45,23 @@ func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
 		assert_true(view.get_child_count() > 0, "every seeded unit must render at least one box")
 
 
+## taskblock-22 Pass A3: "team-coded extraction tiles, drawn in their
+## team's color" — load_battle must actually thread mission.
+## team_extraction_cells through to board_view.build(), not just build
+## the ground/blockers/grid-lines it already did before this pass.
+func test_load_battle_draws_the_missions_own_extraction_tiles() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var before_count: int = scene.board_view._static.get_child_count()
+	var mission := MissionState.new(RunState.new(), scene.combat_state)
+	mission.objectives = []
+	mission.team_extraction_cells = {0: [Vector2i(0, 0)], 1: [Vector2i(1, 1)]}
+
+	scene.load_battle(scene.combat_state, mission)
+
+	assert_eq(scene.board_view._static.get_child_count(), before_count + 2)
+
+
 ## taskblock-19 Pass I2: "something on turn advance is blocking the main
 ## thread" — a full HitVolumeView.refresh() (tear down + rebuild every
 ## child mesh) for EVERY unit on EVERY turn, even the ones a turn never

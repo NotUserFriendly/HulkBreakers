@@ -85,7 +85,7 @@ func wants_turn_for(unit: Unit) -> bool:
 ## reruns under an ALREADY-active SquadControlOverlay (the New Battle
 ## button, which never swaps overlays, only rebuilds the world).
 func _on_battle_loaded() -> void:
-	tactics.setup(battle.combat_state, battle.board_view, battle.camera_rig)
+	tactics.setup(battle.combat_state, battle.board_view, battle.camera_rig, battle.mission)
 	# The PREVIOUS combat_state (if any) has already been replaced on
 	# `battle.combat_state` by the time this fires (load_battle() swaps it
 	# before emitting) — its own now-orphaned CombatLog simply stops being

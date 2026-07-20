@@ -56,6 +56,11 @@ const GRID_LINE_WIDTH := 0.04
 ## draw a cross through it." WALL cells are permanent map geometry, not a
 ## TACTICS overlay, so these live in `_static` alongside the grid lines, not
 ## one of the ephemeral overlay containers.
+## taskblock-22 Pass A3: "simple colored floor markers now" — its own
+## height tier, between the grid lines and the wall indicators, so it never
+## z-fights with either (extraction tiles sit on open ground in practice,
+## but nothing here assumes that).
+const EXTRACTION_TILE_HEIGHT := 0.010
 const WALL_INDICATOR_COLOR := Color("#3A3A3A")
 ## runNotes.md follow-up: "fade it to a gray that's just slightly darker
 ## than the tile gray" — a quiet reference mark, not a bold warning X.
@@ -99,7 +104,13 @@ func _init() -> void:
 	add_child(_overwatch_overlay)
 
 
-func build(p_grid: Grid, material_table: MaterialTable) -> void:
+## taskblock-22 Pass A3: `team_extraction_cells` (squad_id -> Array[Vector2i],
+## the same shape `MissionState` already carries) is optional — an empty
+## Dictionary (every existing caller/test) simply draws no tiles at all,
+## unchanged.
+func build(
+	p_grid: Grid, material_table: MaterialTable, team_extraction_cells: Dictionary = {}
+) -> void:
 	grid = p_grid
 	_clear(_static)
 
@@ -116,9 +127,21 @@ func build(p_grid: Grid, material_table: MaterialTable) -> void:
 	_static.add_child(ground)
 	_static.add_child(_build_grid_lines(grid))
 	_build_wall_indicators(grid)
+	_build_extraction_tiles(team_extraction_cells)
 
 	for cell: Vector2i in grid.blockers:
 		_spawn_blocker(grid.blockers[cell], cell, material_table)
+
+
+## "Team-coded extraction tiles, drawn in their team's color" — one flat
+## marker per tile, `WorldPalette.team_color(squad_id)` same as every other
+## team-coded visual already reads (docs/10).
+func _build_extraction_tiles(team_extraction_cells: Dictionary) -> void:
+	for squad_id: int in team_extraction_cells:
+		var color: Color = WorldPalette.team_color(squad_id)
+		var cells: Array = team_extraction_cells[squad_id]
+		for cell: Vector2i in cells:
+			_static.add_child(_marker(cell, color, EXTRACTION_TILE_HEIGHT))
 
 
 ## docs/10 taskblock02 G3 / taskblock03 I: "the ground is a flat green plane

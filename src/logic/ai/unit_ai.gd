@@ -219,10 +219,10 @@ static func _plan_ranged(
 			held = queue.enqueue(HoldAction.new(unit), state)
 		if not held:
 			_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
-			queue.enqueue(EndTurnAction.new(unit), state)
+			queue.enqueue(EndTurnAction.new(unit, mission), state)
 		return queue
 
-	queue.enqueue(EndTurnAction.new(unit), state)
+	queue.enqueue(EndTurnAction.new(unit, mission), state)
 	return queue
 
 
@@ -234,7 +234,7 @@ static func _plan_non_combat_turn(
 	unit: Unit, state: CombatState, mission: MissionState, queue: ActionQueue
 ) -> ActionQueue:
 	if unit.squad_id != 0:
-		queue.enqueue(EndTurnAction.new(unit), state)
+		queue.enqueue(EndTurnAction.new(unit, mission), state)
 		return queue
 
 	var incomplete: bool = mission.objectives.any(
@@ -247,13 +247,15 @@ static func _plan_non_combat_turn(
 		else:
 			_path_toward(unit, node_cell, state, queue)
 	else:
+		# taskblock-22 Pass A2: the player squad has no fast extract button —
+		# it walks to its own tile and simply ends its turn there, same as
+		# any other turn; EndTurnAction's own hold-check picks up "still on
+		# the tile" from here and starts/advances the passive hold.
 		var extraction_cell: Vector2i = mission.extraction_cells[0]
-		if unit.cell == extraction_cell:
-			queue.enqueue(ExtractAction.new(mission, unit), state)
-		else:
+		if unit.cell != extraction_cell:
 			_path_toward(unit, extraction_cell, state, queue)
 
-	queue.enqueue(EndTurnAction.new(unit), state)
+	queue.enqueue(EndTurnAction.new(unit, mission), state)
 	return queue
 
 
@@ -274,39 +276,44 @@ static func _has_functional_weapon(unit: Unit) -> bool:
 
 
 ## "Paths to its nearest team extraction tile and escapes... the escape
-## uses the existing EXTRACTED path, not a new outcome." Reuses
-## `ExtractAction` verbatim — a deliberate choice, not an oversight: this
-## ends the WHOLE mission the instant any one disarmed unit reaches its own
-## team's tile, exactly like any other extraction already does, rather than
-## inventing a new "this one unit left, the fight continues" mechanic. No
-## reachable extraction cells at all (a mission this pass's own team-coded
-## field was never populated for) simply ends the turn — the same
-## degenerate "nowhere to go" case `_plan_non_combat_turn` already accepts.
+## uses the existing EXTRACTED path, not a new outcome." No reachable
+## extraction cells at all (a mission this pass's own team-coded field was
+## never populated for) simply ends the turn — the same degenerate
+## "nowhere to go" case `_plan_non_combat_turn` already accepts.
 ##
 ## `mission.extraction_cells` is only a valid fallback for the player's own
 ## squad — it's the pre-Pass-D, squad-agnostic-in-name-only field every
 ## single-player mission already populates with the LANDING squad's zone.
 ## An enemy squad with no team-coded entry has no defined extraction tile
 ## of its own at all; falling back to the player's own zone would send a
-## disarmed enemy walking toward (and, in principle, calling ExtractAction
-## from) the player's landing point — never correct, and exactly the
-## degenerate "nowhere to go" case above already covers correctly.
+## disarmed enemy walking toward the player's landing point — never
+## correct, and exactly the degenerate "nowhere to go" case above already
+## covers correctly.
+##
+## taskblock-22 Pass A2: the asymmetry means what happens once ON the tile
+## now differs by squad. A non-player squad still queues `ExtractAction`
+## verbatim (its own fast, 1-AP, immediate path — unchanged from tb21).
+## The player's own squad gets no such button at all: it just stands there
+## and ends its turn like any other — `EndTurnAction`'s own hold-check
+## picks up "still on the tile" from here and starts/advances the hold
+## automatically, no separate action to queue.
 static func _plan_flee(unit: Unit, state: CombatState, mission: MissionState) -> ActionQueue:
 	var queue := ActionQueue.new(unit)
 	var cells: Array = mission.team_extraction_cells.get(unit.squad_id, [])
 	if cells.is_empty() and unit.squad_id == mission.player_squad_id:
 		cells = mission.extraction_cells
 	if cells.is_empty():
-		queue.enqueue(EndTurnAction.new(unit), state)
+		queue.enqueue(EndTurnAction.new(unit, mission), state)
 		return queue
 
 	var target_cell: Vector2i = _nearest_cell(unit.cell, cells)
 	if unit.cell == target_cell:
-		queue.enqueue(ExtractAction.new(mission, unit), state)
+		if unit.squad_id != mission.player_squad_id:
+			queue.enqueue(ExtractAction.new(mission, unit), state)
 	else:
 		_path_toward(unit, target_cell, state, queue)
 
-	queue.enqueue(EndTurnAction.new(unit), state)
+	queue.enqueue(EndTurnAction.new(unit, mission), state)
 	return queue
 
 

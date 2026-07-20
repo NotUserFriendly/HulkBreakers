@@ -137,8 +137,18 @@ var _step_out_candidates: Array[Vector2i] = []
 var _step_out_cell_index: int = 0
 
 
-func setup(state: CombatState, p_board_view: BoardView, p_camera_rig: CameraRig) -> void:
-	selection = SelectionController.new(state)
+## taskblock-22 Pass A2: `mission`, optional (default null, every existing
+## caller/test unaffected) — threaded straight through to
+## `SelectionController`, the one thing that actually needs it (the player
+## squad's own passive extraction hold, checked when `queue_end_turn()`
+## resolves).
+func setup(
+	state: CombatState,
+	p_board_view: BoardView,
+	p_camera_rig: CameraRig,
+	p_mission: MissionState = null
+) -> void:
+	selection = SelectionController.new(state, p_mission)
 	board_view = p_board_view
 	camera_rig = p_camera_rig
 	camera = p_camera_rig.camera()
