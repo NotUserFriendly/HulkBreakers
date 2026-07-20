@@ -194,6 +194,33 @@ the supervisor promotes confirmed ones up to Resolved.)*
 
 ## 🔧 Active / Open
 
+### Chaingun bursts: half the burst looks like it's going backward  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
+  bursts look odd, both look like half the burst is going backward."
+- **Looked at `out/combat.log`** (the two most recent `burst_fired: chaingun` entries, unit 3 firing
+  at (13, 8) around line 184 and unit 0 firing at (9, 12) around line 231): both bursts log 12/12
+  pulls landing, hitting a mix of the target's own body/joints (`wedge_plate_torso_face_r/l`,
+  `torso_cladding`, `leg_cladding[_joint]`, `forearm_cladding_joint`, the target's own held
+  `chaingun`) and nearby field objects (`crate`, `goo_barrel`, `forklift`, `scrap_pile`,
+  `plate_small_steel`). Nothing in the TEXT itself screams "backward" — `LogEvent._to_string()`
+  only ever renders `"%s: %s" % [kind, text]`, a human-readable summary; the richer per-impact data
+  a tracer actually draws from (`origin_x/y/height`, `hit_point`, `deflect_end_x/y/height`) is on
+  `LogEvent.data` but never rendered into this file, so "which way did it actually travel" can't be
+  read back from `out/combat.log` alone — only from the live 3D playback, which is presumably what
+  was actually watched.
+- **Timing note, not yet confirmed as the cause:** `out/combat.log`'s own mtime (14:00) is AFTER
+  this session's `9ea4d38`/A2 re-fix (13:56), which changed `BurstAction` (and every other attack
+  action) to anchor the shot plane's own `origin` on the shooter's real muzzle position
+  (`Vector2(muzzle.x, muzzle.z) / CELL_SIZE`) instead of the shooter's bare cell center — the one
+  change in this session that touches burst fire's own origin/direction geometry at all. Plausible,
+  unconfirmed mechanism: `direction` is still computed cell-to-cell
+  (`Vector2(target_cell - actual.cell)`) while `origin` is now offset to the muzzle's own (possibly
+  non-trivial, chaingun-width) lateral position — if that offset and the unchanged direction ever
+  disagree enough, some of a burst's 12 pulls could resolve against regions that land at a negative
+  depth relative to the new origin, which could read as "going backward" in the tracer draw. Not
+  investigated further — logged per instruction, not chased.
+- **Status:** not fixed. Waiting.
+
 ### Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
   deferred: "B-tier; investigate separately — likely the inspect field updating every frame; not a
