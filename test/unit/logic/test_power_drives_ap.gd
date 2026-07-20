@@ -61,6 +61,52 @@ func _powered_unit(
 	return {"unit": unit, "reactor": reactor, "battery": battery, "state": state}
 
 
+## taskblock-22 Pass B1: `_powered_unit`'s own fixture, plus one consumer
+## part (`power_consumed`) on the root — set BEFORE the unit/CombatState
+## are ever constructed, since construction already runs one real
+## turn-start (`_start_turn`) that computes `max_ap` from whatever the
+## parts say at that instant.
+func _powered_unit_with_consumer(
+	power_produced: float,
+	battery_capacity: float,
+	battery_power_out: float,
+	battery_power_in: float,
+	battery_charge: float,
+	consumer_power: float
+) -> Dictionary:
+	var root := Part.new()
+	root.id = &"test_root"
+	root.hp = 10
+	root.max_hp = 10
+	root.power_consumed = consumer_power
+	var reactor_socket := Socket.new(&"BACK")
+	var battery_socket := Socket.new(&"MOUNT", Transform3D.IDENTITY, &"battery_mount")
+	root.sockets = [reactor_socket, battery_socket]
+
+	var reactor := Part.new()
+	reactor.id = &"test_reactor"
+	reactor.hp = 5
+	reactor.max_hp = 5
+	reactor.tags = [&"POWER_SOURCE"]
+	reactor.power_produced = power_produced
+	reactor_socket.occupant = reactor
+
+	var battery := Part.new()
+	battery.id = &"test_battery"
+	battery.hp = 4
+	battery.max_hp = 4
+	battery.tags = [&"POWER_SOURCE", &"BATTERY"]
+	battery.battery_capacity = battery_capacity
+	battery.battery_power_out = battery_power_out
+	battery.battery_power_in = battery_power_in
+	battery.battery_charge = battery_charge
+	battery_socket.occupant = battery
+
+	var unit := Unit.new(Matrix.new(), Shell.new(root), Vector2i(0, 0))
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	return {"unit": unit, "reactor": reactor, "battery": battery, "consumer": root, "state": state}
+
+
 func test_ap_derives_from_reactor_power_alone() -> void:
 	var built: Dictionary = _powered_unit(4.0, 0.0, 0.0, 0.0, 0.0)
 	assert_eq(built.unit.max_ap, 4)
@@ -107,6 +153,73 @@ func test_a_battery_only_shells_ap_falls_as_the_battery_drains() -> void:
 		ap_by_turn.append(built.unit.max_ap)
 
 	assert_eq(ap_by_turn, [3, 3, 0, 0], "drains to nothing with no reactor to recharge it")
+
+
+## taskblock-22 Pass B1: "consumers subtract from output first" — a
+## power-hungry part lowers AP even though the reactor's own output never
+## changed. Surplus = 6 (reactor) - 2 (consumer) = 4, still inside the
+## curve's own 1:1 run, so this reads as a plain subtraction.
+func test_a_consumer_lowers_ap_below_what_the_reactor_alone_would_give() -> void:
+	var built: Dictionary = _powered_unit_with_consumer(6.0, 0.0, 0.0, 0.0, 0.0, 2.0)
+
+	assert_eq(built.unit.max_ap, 4, "6 power - 2 consumed = 4 surplus, still 1:1 under the curve")
+
+
+## "a bot with many power-hungry parts has less AP — load a shell down and
+## it slows." Consumers eating the WHOLE output leave a real, working
+## power system at exactly 0 surplus, never a negative one.
+func test_a_consumer_that_eats_the_whole_output_floors_ap_at_zero_not_negative() -> void:
+	var built: Dictionary = _powered_unit_with_consumer(4.0, 0.0, 0.0, 0.0, 0.0, 10.0)
+
+	assert_eq(built.unit.max_ap, 0)
+	assert_eq(PowerResolver.surplus(built.unit), 0.0)
+
+
+## A wound-disabled/destroyed consumer draws nothing — same
+## `operable_parts()` gate every other power field already reads.
+func test_a_destroyed_consumer_stops_drawing_power() -> void:
+	var built: Dictionary = _powered_unit_with_consumer(6.0, 0.0, 0.0, 0.0, 0.0, 2.0)
+	assert_eq(built.unit.max_ap, 4, "sanity: the consumer is drawing before it's destroyed")
+
+	built.consumer.hp = 0
+	built.unit.ap = 0
+	built.state.advance_turn()
+
+	assert_eq(built.unit.max_ap, 6, "a destroyed consumer draws nothing — back to the full surplus")
+
+
+## taskblock-22 Pass B1: "the curve bends down at the top" — the
+## taskblock's own two example points, authored exactly:
+## 8 surplus -> 6 AP, 12 surplus -> 8 AP.
+func test_the_curve_bends_down_past_the_flat_baseline() -> void:
+	assert_eq(PowerResolver.ap_for_surplus(8.0), 6)
+	assert_eq(PowerResolver.ap_for_surplus(12.0), 8)
+
+
+## "existing shells land near ~6 AP by default" — a bare reactor.tres
+## alone (6.0 power_produced, no consumers) lands at EXACTLY today's
+## baseline, not just "near" it.
+func test_the_curve_is_one_to_one_up_to_the_flat_baseline() -> void:
+	assert_eq(PowerResolver.ap_for_surplus(0.0), 0)
+	assert_eq(PowerResolver.ap_for_surplus(3.0), 3)
+	assert_eq(PowerResolver.ap_for_surplus(6.0), 6)
+
+
+## Clamped, never extrapolated past either end — same posture
+## `MaterialEntry.dt_at()` already established for its own curve.
+func test_the_curve_clamps_at_its_own_outer_ends() -> void:
+	assert_eq(PowerResolver.ap_for_surplus(-5.0), 0)
+	assert_eq(PowerResolver.ap_for_surplus(1000.0), 10)
+
+
+## 12->8 and 20->10 both authored: a genuinely diminishing rate (0.25
+## AP/surplus) below what the 0->6 run (1.0 AP/surplus) already
+## established — the curve really does keep bending down, not just
+## plateau once.
+func test_the_curve_keeps_diminishing_past_its_second_bend() -> void:
+	var mid: int = PowerResolver.ap_for_surplus(16.0)
+	assert_gt(mid, 8)
+	assert_lt(mid, 10)
 
 
 ## A bare Shell, no CombatState — `_powered_unit`'s own CombatState.new()
