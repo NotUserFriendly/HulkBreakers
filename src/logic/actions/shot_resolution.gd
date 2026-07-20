@@ -70,7 +70,7 @@ static func resolve_and_log_point(
 	for result: ImpactResult in results:
 		_log_impact(state, attacker, result, mission, is_dud)
 	if results.is_empty():
-		_log_miss(state, attacker, origin, direction, point, max_range)
+		_log_miss(state, attacker, origin, direction, point, max_range, origin_height)
 	return not results.is_empty()
 
 
@@ -86,13 +86,22 @@ static func resolve_and_log_point(
 ## `max_range` when authored, or the map's own longest side otherwise (a
 ## flagged "far enough to draw off-board" fallback, not a tuned number —
 ## an unauthored weapon has no real range cap to draw to at all).
+## taskblock-23 Pass C/D: `origin_height` is this shot's own real muzzle
+## height (same convention `resolve_and_log_point`'s own doc comment
+## already established) — logged alongside `origin_x/y` so the view can
+## draw a miss's own tracer from its real 3D muzzle, not a re-derived
+## approximation. `end_height` is the void ray's own height — a miss
+## can't ricochet or penetrate, so it travels dead level at the shot's own
+## aimed height (`point.y`) the whole way, same flat assumption
+## `resolve_shot`'s own first hop always makes.
 static func _log_miss(
 	state: CombatState,
 	attacker: Unit,
 	origin: Vector2,
 	direction: Vector2,
 	point: Vector2,
-	max_range: float
+	max_range: float,
+	origin_height: float = 0.0
 ) -> void:
 	var dir: Vector2 = direction.normalized()
 	var perp := Vector2(-dir.y, dir.x)
@@ -100,14 +109,28 @@ static func _log_miss(
 		max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.height)
 	)
 	var end: Vector2 = origin + dir * void_range + perp * point.x
-	state.combat_log.emit(
-		LogEvent.new(
-			state.round_number,
-			Enums.Phase.RESOLUTION,
-			attacker.id,
-			&"miss",
-			{"end_x": end.x, "end_y": end.y},
-			"missed — ray continues to (%.1f, %.1f)" % [end.x, end.y]
+	(
+		state
+		. combat_log
+		. emit(
+			(
+				LogEvent
+				. new(
+					state.round_number,
+					Enums.Phase.RESOLUTION,
+					attacker.id,
+					&"miss",
+					{
+						"origin_x": origin.x,
+						"origin_y": origin.y,
+						"origin_height": origin_height,
+						"end_x": end.x,
+						"end_y": end.y,
+						"end_height": point.y,
+					},
+					"missed — ray continues to (%.1f, %.1f)" % [end.x, end.y]
+				)
+			)
 		)
 	)
 
@@ -133,6 +156,9 @@ static func _log_impact(
 	# cell-space coords the &"miss" event already carries), so the view can
 	# draw every ricochet segment from the logged hop sequence directly,
 	# never re-derived from a target's own current position.
+	# taskblock-23 Pass C/D: origin_height/hit_height are the missing third
+	# coordinate — real world height, not ground-plane — so a real 3D
+	# tracer no longer has to guess or pin every hop to one height.
 	var data: Dictionary = {
 		"outcome": result.outcome,
 		"part": result.region.part.id,
@@ -144,8 +170,10 @@ static func _log_impact(
 		"is_dud": is_dud,
 		"origin_x": result.origin.x,
 		"origin_y": result.origin.y,
+		"origin_height": result.origin_height,
 		"hit_x": result.hit_point.x,
 		"hit_y": result.hit_point.y,
+		"hit_height": result.hit_height,
 	}
 	var event := LogEvent.new(
 		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text

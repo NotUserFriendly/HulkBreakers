@@ -78,16 +78,29 @@ func test_play_immediately_switches_to_the_resolution_banner() -> void:
 
 
 ## taskblock-22 Pass D: `origin_x/y` default to the attacker's OWN cell —
-## a shot's first (and, in most of these tests, only) hop, matching
-## `_muzzle_point(attacker)` exactly, so every existing single-hop
-## assertion stays valid unchanged. A ricochet hop passes its own real
-## origin explicitly instead (see `_ricochet_impact_event` below).
+## a shot's first (and, in most of these tests, only) hop. A ricochet hop
+## passes its own real origin explicitly instead (see the bounce_point
+## test below).
+## taskblock-23 Pass D: `hit` defaults to the target's own cell —
+## `_play_impact` now ALWAYS draws to the hop's own logged `hit_x/y`
+## rather than a target's composed box center, so this fixture (like
+## production) always carries one; a test that only checks tracer COUNT/
+## color/priority never needs to pass a real one. `origin_height`/
+## `hit_height` default to `TRACER_MUZZLE_HEIGHT`, matching what every
+## pre-Pass-D test here already implicitly assumed.
 func _impact_event(
-	attacker: Unit, target: Unit, part_id: StringName, origin: Vector2 = Vector2.INF
+	attacker: Unit,
+	target: Unit,
+	part_id: StringName,
+	origin: Vector2 = Vector2.INF,
+	hit: Vector2 = Vector2.INF,
+	origin_height: float = ResolutionPlayer.TRACER_MUZZLE_HEIGHT,
+	hit_height: float = ResolutionPlayer.TRACER_MUZZLE_HEIGHT
 ) -> LogEvent:
 	var real_origin: Vector2 = (
 		Vector2(attacker.cell.x, attacker.cell.y) if origin == Vector2.INF else origin
 	)
+	var real_hit: Vector2 = Vector2(target.cell.x, target.cell.y) if hit == Vector2.INF else hit
 	return (
 		LogEvent
 		. new(
@@ -105,15 +118,17 @@ func _impact_event(
 				"is_double_crit": false,
 				"origin_x": real_origin.x,
 				"origin_y": real_origin.y,
+				"origin_height": origin_height,
+				"hit_x": real_hit.x,
+				"hit_y": real_hit.y,
+				"hit_height": hit_height,
 			},
 			"PENETRATE on %s" % part_id
 		)
 	)
 
 
-## A no-target hit (clutter, a wall, the void) — target_unit_id stays -1,
-## and this is the one case `hit_x/y` (not a target's own composed mesh
-## position) actually gets read.
+## A no-target hit (clutter, a wall, the void) — target_unit_id stays -1.
 func _clutter_impact_event(attacker: Unit, hit: Vector2, origin: Vector2 = Vector2.INF) -> LogEvent:
 	var real_origin: Vector2 = (
 		Vector2(attacker.cell.x, attacker.cell.y) if origin == Vector2.INF else origin
@@ -208,6 +223,12 @@ func test_play_event_ignores_non_impact_events() -> void:
 	assert_eq(player._tracers.get_child_count(), 0)
 
 
+## taskblock-23 Pass D: with no explicit `hit` passed, `_impact_event`
+## defaults it to the target's own cell (see that fixture's own doc
+## comment) — this test's own name is still accurate, just for a
+## different reason than before: it's the fixture's logged default now,
+## never a re-derivation of the target's own composed body geometry
+## (`_play_impact` no longer looks at the target's geometry at all).
 func test_the_tracer_spans_from_the_attackers_cell_to_the_targets_cell() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
@@ -217,10 +238,38 @@ func test_the_tracer_spans_from_the_attackers_cell_to_the_targets_cell() -> void
 	player._play_impact(_impact_event(attacker, target, &"root"))
 
 	var tracer: MeshInstance3D = player._tracers.get_child(0)
-	var expected_from: Vector3 = player._muzzle_point(attacker)
-	var expected_to: Vector3 = player._impact_point(target, &"root")
+	var expected_from := (
+		Vector3(attacker.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, attacker.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
+	var expected_to := (
+		Vector3(target.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, target.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
 	assert_almost_eq(tracer.position.x, (expected_from.x + expected_to.x) * 0.5, 0.0001)
 	assert_almost_eq(tracer.position.z, (expected_from.z + expected_to.z) * 0.5, 0.0001)
+	var box: BoxMesh = tracer.mesh
+	assert_almost_eq(box.size.z, expected_from.distance_to(expected_to), 0.0001)
+
+
+## taskblock-23 Pass D: "no tracer is pinned to a single constant height
+## when real positions exist" — a muzzle/impact height that genuinely
+## differs from `TRACER_MUZZLE_HEIGHT` (and from each other) must actually
+## show up in the drawn tracer.
+func test_play_impact_draws_at_the_shots_own_real_logged_heights() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+	var target: Unit = built.target
+
+	player._play_impact(
+		_impact_event(attacker, target, &"root", Vector2.INF, Vector2.INF, 0.4, 1.9)
+	)
+
+	var tracer: MeshInstance3D = player._tracers.get_child(0)
+	var expected_from := Vector3(attacker.cell.x, 0.4, attacker.cell.y) * UnitGeometry.CELL_SIZE
+	var expected_to := Vector3(target.cell.x, 1.9, target.cell.y) * UnitGeometry.CELL_SIZE
+	assert_almost_eq(tracer.position.y, (expected_from.y + expected_to.y) * 0.5, 0.0001)
 	var box: BoxMesh = tracer.mesh
 	assert_almost_eq(box.size.z, expected_from.distance_to(expected_to), 0.0001)
 
@@ -238,7 +287,10 @@ func test_play_impact_with_no_target_unit_still_draws_a_tracer_to_the_hit_point(
 
 	assert_eq(player._tracers.get_child_count(), 1)
 	var tracer: MeshInstance3D = player._tracers.get_child(0)
-	var expected_from: Vector3 = player._muzzle_point(attacker)
+	var expected_from := (
+		Vector3(attacker.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, attacker.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
 	var expected_to := (
 		Vector3(5.0, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, 3.0) * UnitGeometry.CELL_SIZE
 	)
@@ -265,10 +317,16 @@ func test_play_impact_draws_a_ricochet_hop_from_its_own_real_origin_not_the_shoo
 		Vector3(bounce_point.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, bounce_point.y)
 		* UnitGeometry.CELL_SIZE
 	)
-	var expected_to: Vector3 = player._impact_point(target, &"root")
+	var expected_to := (
+		Vector3(target.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, target.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
 	assert_almost_eq(tracer.position.x, (expected_from.x + expected_to.x) * 0.5, 0.0001)
 	assert_almost_eq(tracer.position.z, (expected_from.z + expected_to.z) * 0.5, 0.0001)
-	var shooter_from: Vector3 = player._muzzle_point(attacker)
+	var shooter_from := (
+		Vector3(attacker.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, attacker.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
 	assert_ne(
 		expected_from,
 		shooter_from,
@@ -303,12 +361,51 @@ func test_play_miss_spawns_a_tracer_along_its_own_logged_endpoint() -> void:
 
 	assert_eq(player._tracers.get_child_count(), 1)
 	var tracer: MeshInstance3D = player._tracers.get_child(0)
-	var expected_from: Vector3 = player._muzzle_point(attacker)
+	var expected_from := (
+		Vector3(attacker.cell.x, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, attacker.cell.y)
+		* UnitGeometry.CELL_SIZE
+	)
 	var expected_to := (
 		Vector3(7.0, ResolutionPlayer.TRACER_MUZZLE_HEIGHT, 2.0) * UnitGeometry.CELL_SIZE
 	)
 	assert_almost_eq(tracer.position.x, (expected_from.x + expected_to.x) * 0.5, 0.0001)
 	assert_almost_eq(tracer.position.z, (expected_from.z + expected_to.z) * 0.5, 0.0001)
+
+
+## taskblock-23 Pass D: same "no tracer is pinned to a single constant
+## height" property, for a miss's own void tracer.
+func test_play_miss_draws_at_its_own_real_logged_heights() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	var attacker: Unit = built.attacker
+
+	var event := (
+		LogEvent
+		. new(
+			0,
+			Enums.Phase.RESOLUTION,
+			attacker.id,
+			&"miss",
+			{
+				"origin_x": float(attacker.cell.x),
+				"origin_y": float(attacker.cell.y),
+				"origin_height": 0.6,
+				"end_x": 7.0,
+				"end_y": 2.0,
+				"end_height": 2.3,
+			},
+			"missed"
+		)
+	)
+
+	player._play_miss(event)
+
+	var tracer: MeshInstance3D = player._tracers.get_child(0)
+	var expected_from := Vector3(attacker.cell.x, 0.6, attacker.cell.y) * UnitGeometry.CELL_SIZE
+	var expected_to := Vector3(7.0, 2.3, 2.0) * UnitGeometry.CELL_SIZE
+	assert_almost_eq(tracer.position.y, (expected_from.y + expected_to.y) * 0.5, 0.0001)
+	var box: BoxMesh = tracer.mesh
+	assert_almost_eq(box.size.z, expected_from.distance_to(expected_to), 0.0001)
 
 
 ## `_play_event`'s own dispatch, not a second, parallel switch — proves
