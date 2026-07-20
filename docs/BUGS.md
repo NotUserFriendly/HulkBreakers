@@ -243,8 +243,8 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **First fix (taskblock-27 Pass A1):** every attack action's shot-plane `direction` was cell-anchored
   while `origin` was muzzle-anchored — two different anchors for the same ray, which could resolve a
   target at negative depth and animate as the round travelling backward. Both now share the muzzle
-  anchor. **RESOLVED-PENDING-CONFIRMATION** at the time, proven via a constructed overshoot-geometry
-  test.
+  anchor. **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] at the time, proven via a constructed
+  overshoot-geometry test.
 - **2026-07-20: supervisor reports still visually backward** — but with a key new detail: "those
   backwards shots do seem to be hitting the things they're drawn as hitting." The actual hit
   resolution (which part takes the damage) is correct; only the drawn tracer/animation direction
