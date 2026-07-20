@@ -91,6 +91,14 @@ func apply(state: CombatState) -> void:
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
+	# taskblock-22 Pass H2: same self-obstruction check as AttackAction's
+	# own (see its doc comment) — computed once here too, since every
+	# pull in the burst reuses this same aim_point, a burst fired from
+	# behind low cover hits that cover on every pull, not just the first.
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
+	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
+	if muzzle_hit != null and not (muzzle_hit.body is Unit):
+		aim_point = Vector2(0.0, muzzle.y) + aim_offset
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 	var radius_multiplier: float = RangeModel.dartboard_radius_scale(weapon, range_cells)
 	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)

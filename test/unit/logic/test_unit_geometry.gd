@@ -374,3 +374,85 @@ func test_muzzle_point_falls_back_to_the_units_own_cell_when_the_weapon_has_no_p
 	assert_almost_eq(muzzle.x, 4.0, 0.0001)
 	assert_almost_eq(muzzle.z, 7.0, 0.0001)
 	assert_almost_eq(muzzle.y, UnitGeometry.DEFAULT_MUZZLE_HEIGHT, 0.0001)
+
+
+## taskblock-22 Pass H1: the real authored SHOULDER socket world height —
+## same convention data/parts/torso.tres uses (SHOULDER_L/R at world Y
+## 1.53), never a guessed constant.
+func test_shoulder_height_returns_the_real_shoulder_socket_world_height() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(0.31, 1.53, 0.0)))
+	torso.sockets = [shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+
+	assert_almost_eq(UnitGeometry.shoulder_height(unit), 1.53, 0.0001)
+
+
+func test_shoulder_height_is_negative_one_with_no_shoulder_socket_anywhere() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var hip := Socket.new(&"HIP", Transform3D(Basis(), Vector3(0.0, 0.9, 0.0)))
+	torso.sockets = [hip]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+
+	assert_eq(UnitGeometry.shoulder_height(unit), -1.0)
+
+
+## H1: "the weapon's own real composed lateral/depth position stays
+## exactly what muzzle_point already gives — only the firing height is
+## overridden."
+func test_shouldered_muzzle_point_keeps_lateral_depth_but_overrides_height() -> void:
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	pistol.volume = [Box.new(Vector3.ZERO, Vector3(0.1, 0.1, 0.1))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	# A LOW grip — hip height, the exact case H1 exists to fix.
+	var grip := Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.2, 0.3, 0.0)))
+	grip.occupant = pistol
+	var shoulder := Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(0.31, 1.53, 0.0)))
+	torso.sockets = [grip, shoulder]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
+	var natural: Vector3 = UnitGeometry.muzzle_point(unit, pistol)
+	var shouldered: Vector3 = UnitGeometry.shouldered_muzzle_point(unit, pistol)
+
+	assert_almost_eq(natural.y, 0.3, 0.0001, "sanity: the natural grip is low")
+	assert_almost_eq(shouldered.x, natural.x, 0.0001)
+	assert_almost_eq(shouldered.z, natural.z, 0.0001)
+	assert_almost_eq(shouldered.y, 1.53, 0.0001, "overridden to the real shoulder height")
+
+
+func test_shouldered_muzzle_point_falls_back_to_natural_with_no_shoulder_socket() -> void:
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	pistol.volume = [Box.new(Vector3.ZERO, Vector3(0.1, 0.1, 0.1))]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var grip := Socket.new(&"GRIP", Transform3D(Basis(), Vector3(0.2, 0.3, 0.0)))
+	grip.occupant = pistol
+	torso.sockets = [grip]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 2))
+
+	var natural: Vector3 = UnitGeometry.muzzle_point(unit, pistol)
+	var shouldered: Vector3 = UnitGeometry.shouldered_muzzle_point(unit, pistol)
+
+	assert_true(shouldered.is_equal_approx(natural))

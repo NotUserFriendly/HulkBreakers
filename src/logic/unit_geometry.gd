@@ -146,3 +146,60 @@ static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
 		if placement.part == weapon:
 			return placement.transform.translated_local(placement.box.center).origin
 	return Vector3(unit.cell.x, DEFAULT_MUZZLE_HEIGHT, unit.cell.y) * CELL_SIZE
+
+
+## taskblock-22 Pass H1: `unit`'s own real SHOULDER socket world height —
+## walked the same composed-transform way `placements()` builds every
+## other world position, just stopping at the first `&"SHOULDER"`-typed
+## socket found instead of descending into its occupant's own boxes (a
+## socket has no box of its own to place). The real authored value (e.g.
+## `data/parts/torso.tres`'s own SHOULDER_L/R, world Y 1.53 for the
+## reference humanoid), never a guessed universal constant — a shell
+## built with a taller/shorter torso gets its own real number for free.
+## -1.0 (no SHOULDER socket anywhere in this shell) lets a caller fall
+## back to something else rather than trusting a fabricated height.
+static func shoulder_height(unit: Unit) -> float:
+	if unit.shell.root == null:
+		return -1.0
+	var unit_transform := Transform3D(
+		Basis(Vector3.UP, unit.orientation), Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+	)
+	return _find_shoulder(unit.shell.root, Transform3D.IDENTITY, unit_transform)
+
+
+static func _find_shoulder(
+	part: Part, part_transform: Transform3D, unit_transform: Transform3D
+) -> float:
+	if part.hp <= 0:
+		return -1.0
+	for socket: Socket in part.sockets:
+		if socket.socket_type == &"SHOULDER":
+			return (unit_transform * part_transform * socket.current_transform()).origin.y
+	for socket: Socket in part.sockets:
+		if socket.occupant == null:
+			continue
+		var found: float = _find_shoulder(
+			socket.occupant, part_transform * socket.current_transform(), unit_transform
+		)
+		if found >= 0.0:
+			return found
+	return -1.0
+
+
+## taskblock-22 Pass H1: "weapons should fire from shoulder level, not
+## wherever the grip sits... for now, hover the weapon at shoulder
+## height when firing." The weapon's own real composed lateral/depth
+## position (X/Z) stays exactly what `muzzle_point` already gives — only
+## the firing HEIGHT (Y) is overridden to the shell's own real shoulder
+## height. A shell with no SHOULDER socket at all keeps its natural
+## muzzle_point unchanged (there's no "shoulder" to hover to). This is
+## the one place the override applies — the weapon's own rendered/
+## composed placement (the actual mesh position) is untouched, per the
+## taskblock's own "for now" framing; a real animated shouldering pose is
+## a further-out change, not this pass's.
+static func shouldered_muzzle_point(unit: Unit, weapon: Part) -> Vector3:
+	var natural: Vector3 = muzzle_point(unit, weapon)
+	var shoulder_y: float = shoulder_height(unit)
+	if shoulder_y < 0.0:
+		return natural
+	return Vector3(natural.x, shoulder_y, natural.z)

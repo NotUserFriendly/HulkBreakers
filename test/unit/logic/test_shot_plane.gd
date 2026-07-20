@@ -268,6 +268,38 @@ func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
 	assert_eq(ShotPlane.center_of(plane, ghost_unit), Vector2(4, 4))
 
 
+## taskblock-22 Pass H2: self_obstruction excludes the shooter's own body
+## — without this, a shooter's own torso (at the ray's own near-zero
+## depth) would register as its own obstruction before ever reaching any
+## real cover further along the line of fire.
+func test_self_obstruction_excludes_the_shooters_own_body() -> void:
+	var shooter_torso := _part(
+		&"shooter_torso", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))
+	)
+	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(2, 0))
+	var cover := _part(&"cover", Box.new(Vector3(0.0, 0.15, 0.0), Vector3(1.0, 0.3, 0.6)))
+	var grid := Grid.new(10, 10)
+	grid.blockers[Vector2i(2, 2)] = cover
+	var state := CombatState.new(grid, [shooter])
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	var hit: Region = ShotPlane.self_obstruction(plane, 0.15, shooter.shell.all_parts())
+
+	assert_not_null(hit, "must find the cover, not stop at the shooter's own body")
+	assert_eq(hit.part.id, &"cover")
+
+
+func test_self_obstruction_returns_null_with_nothing_in_the_way() -> void:
+	var shooter_torso := _part(
+		&"shooter_torso", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))
+	)
+	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(2, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter])
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	assert_null(ShotPlane.self_obstruction(plane, 0.15, shooter.shell.all_parts()))
+
+
 ## docs/09 taskblock07 Pass A1: "no file under src/ calls resolve_projectile
 ## except shot_plane.gd itself" — resolve_projectile is the internal
 ## rect-lookup resolve_ray runs, never a second, parallel resolution door a

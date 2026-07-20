@@ -487,3 +487,128 @@ func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> 
 	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
 
 	assert_eq(scrap.hp, 0)
+
+
+## taskblock-22 Pass H: a shooter fixture with a REAL, non-identity GRIP
+## height (unlike `_make_shooter`'s own identity-transform HAND socket,
+## which fires from world Y=0) — `shoulder_y` optional, a real SHOULDER
+## socket for `shouldered_muzzle_point` to find, same authored convention
+## `data/parts/torso.tres` uses.
+func _make_shooter_with_grip_height(
+	cell: Vector2i, weapon: Part, grip_y: float, shoulder_y: Variant = null
+) -> Unit:
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = weapon
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND", Transform3D(Basis(), Vector3(0.0, grip_y, 0.0)))
+	hand_socket.occupant = hand
+	var sockets: Array[Socket] = [hand_socket]
+	if shoulder_y != null:
+		sockets.append(Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(0.0, shoulder_y, 0.0))))
+	torso.sockets = sockets
+
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
+
+
+func _make_low_cover(top_height: float) -> Part:
+	var cover := Part.new()
+	cover.id = &"low_cover"
+	cover.hp = 10
+	cover.max_hp = 10
+	cover.material = &"steel"
+	cover.volume = [Box.new(Vector3(0.0, top_height / 2.0, 0.0), Vector3(1.0, top_height, 0.6))]
+	return cover
+
+
+## taskblock-22 Pass H2: "the shot's ray originates and immediately hits
+## the cover if the muzzle is below the cover's height" — a hip-height
+## (0.3), un-shouldered muzzle firing through low cover (top 0.6, taller
+## than the muzzle) directly ahead hits the cover instead of the target.
+func test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target() -> void:
+	# Below steel's own dt=6.0 (data/materials/steel.tres) — a penetrating
+	# round would punch through the cover into the target too, which is
+	# correct behavior for a strong enough round, just not what THIS test
+	# is isolating (the obstruction itself, not the material fight after).
+	var weapon := _make_weapon(&"pistol", 3.0)
+	var shooter := _make_shooter_with_grip_height(Vector2i(2, 0), weapon, 0.3)
+	var target := _make_target(Vector2i(2, 4))
+	var grid := Grid.new(10, 10)
+	var cover := _make_low_cover(0.6)
+	grid.blockers[Vector2i(2, 2)] = cover
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_eq(impacts.size(), 1, "one impact — the cover, never reaching the target beyond it")
+	assert_eq(impacts[0].data.get("part"), cover.id)
+	assert_eq(target.shell.root.hp, 10, "the target must be completely untouched")
+
+
+## H1: "shouldering clears cover the unshouldered position wouldn't" —
+## same low cover, same grip height, but a real SHOULDER socket now
+## exists (1.53, above the cover's own 0.4 top) for the firing height to
+## raise to. Cover top is kept BELOW the target's own aim height (0.5,
+## `_make_target`'s torso center) on purpose — a taller cover would also
+## block the aimed-at-target-height shot on its own (the existing,
+## unrelated "cover blocks anything passing through its own height range"
+## mechanic), which would pass this test for the wrong reason.
+func test_shouldering_clears_cover_the_unshouldered_position_would_not() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0)
+	var shooter := _make_shooter_with_grip_height(Vector2i(2, 0), weapon, 0.3, 1.53)
+	var target := _make_target(Vector2i(2, 4))
+	var grid := Grid.new(10, 10)
+	var cover := _make_low_cover(0.4)
+	grid.blockers[Vector2i(2, 2)] = cover
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_eq(impacts.size(), 1)
+	assert_eq(
+		impacts[0].data.get("target_unit_id"),
+		target.id,
+		"shouldering must clear the same cover the earlier test hit"
+	)
+	assert_eq(cover.hp, 10, "the cover itself must be untouched once cleared")
+	assert_lt(target.shell.root.hp, 10, "the target must actually have been hit")
+
+
+## The obstruction check must key off the shooter's REAL geometry
+## (`ShotPlane.self_obstruction`, the same plane the real shot resolves
+## against) — cover just short of the muzzle height must NOT obstruct.
+## Same 0.4 cover (below the target's own 0.5 aim height) as the test
+## above, for the same reason.
+func test_cover_shorter_than_the_muzzle_does_not_obstruct_the_shot() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0)
+	var shooter := _make_shooter_with_grip_height(Vector2i(2, 0), weapon, 0.9)
+	var target := _make_target(Vector2i(2, 4))
+	var grid := Grid.new(10, 10)
+	var cover := _make_low_cover(0.4)  # shorter than the 0.9 muzzle
+	grid.blockers[Vector2i(2, 2)] = cover
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_eq(impacts.size(), 1)
+	assert_eq(impacts[0].data.get("target_unit_id"), target.id)
