@@ -532,6 +532,15 @@ func _on_reset_turn_pressed() -> void:
 ## (no `CombatState.controller_for` value outside a bout was ever consumed
 ## before this taskblock), inert (a single no-op check) for every existing
 ## battle, which never sets a squad to AI.
+## taskblock-26 Pass B1: "the opposing team appeared to jump to new
+## positions before that unit's attack animation resolved." `advance_ai_
+## turns` fast-forwards every AI turn with NO animation at all (a single
+## instant `refresh_unit_views` at its own end, by design — see its own
+## doc comment) — calling it BEFORE this turn's own `resolution_player.
+## play()` had even started meant the AI squad visibly snapped to its new
+## positions while the human's own attack tracer hadn't fired yet. Now
+## AWAITED first, so the human's own turn finishes its full animated
+## playback before the AI batch is even resolved, let alone shown.
 func _on_turn_ended(events: Array[LogEvent]) -> void:
 	# taskblock-19 Pass I2: only the units THIS turn's own events actually
 	# named, not the whole board — advance_ai_turns() already does its
@@ -540,8 +549,8 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 	# pure duplicate work, not a second, more-correct pass.
 	battle.refresh_unit_views(LogPlayback.affected_unit_ids(events))
 	_on_selection_changed()
+	await resolution_player.play(events)
 	advance_ai_turns(battle)
-	resolution_player.play(events)
 
 
 ## docs/10 team flagging: the selected unit's ground marker brightens, and

@@ -78,6 +78,28 @@ confirm" roll-up — so pending items surface at a natural review point without 
 *(CC-fixed `SUPERVISOR` bugs awaiting verification. CC writes here, never straight to Resolved;
 the supervisor promotes confirmed ones up to Resolved.)*
 
+### Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
+  appeared to jump to new positions before that unit's attack animation resolved."
+- **Root cause:** `SquadControlOverlay._on_turn_ended` called `advance_ai_turns(battle)` — which
+  fast-forwards every AI turn with NO animation at all, a single instant `refresh_unit_views` at its
+  own end — BEFORE the human's own turn had even started its own animated `resolution_player.play()`,
+  and that `play()` call wasn't even awaited.
+- **Fix:** reordered so the human's own turn is fully awaited through its complete animated playback
+  before `advance_ai_turns` runs at all.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B1.
+
+### Skirmisher squares off through walls, never takes space  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
+  line of sight — a skirmisher faces off at range through a wall and never advances to gain a real
+  line.
+- **Fix:** `_engagement_score` gained a dominant (but non-exclusionary) `NO_LOS_PENALTY`, exempting
+  only the unit's own origin cell (a covered origin is what `StepOutPlanner`'s own move/fire/return
+  fallback already exists to handle — penalizing it here would starve that mechanism of the
+  "didn't reposition" signal it's gated on). Reuses the existing `LoS.has_los` primitive, no parallel
+  visibility test.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B2.
+
 ### Deflect tracers never drawn  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
   logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
