@@ -203,6 +203,18 @@ func _build_bot_viewer(parent: Control) -> void:
 
 	_preview_camera = Camera3D.new()
 	_preview_viewport.add_child(_preview_camera)
+	# taskblock-23 Pass E2: "reads unlit... a directional light alone with
+	# no ambient leaves the shadowed side black." This viewport's own
+	# WorldEnvironment above (real ambient, WorldPalette.AMBIENT_COLOR/
+	# ENERGY) is correct for the fallback path (its own isolated World3D,
+	# see open()) — but the isolate-camera path (G2) shares the REAL
+	# battle's own World3D, where a second WorldEnvironment node isn't a
+	# well-defined "also applies" situation. A per-camera `environment`
+	# override is unconditional regardless of which WorldEnvironment (if
+	# any) actually governs whatever World3D this camera ends up in —
+	# same ambient/background either way, no guessing about Godot's own
+	# multi-WorldEnvironment resolution.
+	_preview_camera.environment = WorldPalette.environment()
 	# G2: captured BEFORE _isolate_focus ever narrows it — _isolate_clear()
 	# restores exactly this, never a re-derived/guessed "everything" mask.
 	_default_cull_mask = _preview_camera.cull_mask
@@ -413,6 +425,12 @@ func _isolate_focus(view: HitVolumeView) -> void:
 	view.set_isolated(true)
 	_preview_camera.cull_mask = 0
 	_preview_camera.set_cull_mask_value(HitVolumeView.ISOLATE_LAYER, true)
+	# taskblock-23 Pass E2: "the model floats in a void" — cull_mask=0 plus
+	# only the subject's own layer excluded the real board tile beneath it
+	# too. BoardView.FLOOR_LAYER is deliberately a SEPARATE layer from
+	# ISOLATE_LAYER (not the same bit) — other units/blockers never carry
+	# either, so they stay excluded exactly as G2 already fixed.
+	_preview_camera.set_cull_mask_value(BoardView.FLOOR_LAYER, true)
 	_frame_isolated_camera(view)
 
 

@@ -22,6 +22,24 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the one blocker box")
 
 
+## taskblock-23 Pass E2: the inspect panel's isolate camera needs a real
+## board tile under the model instead of it floating in a void — the
+## ground plane and grid lines both carry BoardView.FLOOR_LAYER, on top
+## of (never instead of) whatever layer they already render on for the
+## real board's own main camera.
+func test_ground_and_grid_lines_carry_the_floor_layer() -> void:
+	var grid := Grid.new(4, 3)
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var ground: MeshInstance3D = view._static.get_child(0)
+	var grid_lines: MeshInstance3D = view._static.get_child(1)
+	assert_true(ground.get_layer_mask_value(BoardView.FLOOR_LAYER))
+	assert_true(grid_lines.get_layer_mask_value(BoardView.FLOOR_LAYER))
+	assert_true(ground.get_layer_mask_value(1), "still renders on the default layer too")
+
+
 ## docs/10 taskblock04 C1: "a dropped arm renders as an actual arm — plate,
 ## pistol and all — lying on the ground." A field object can be a whole
 ## part TREE, not just the root's own `volume` — the old
