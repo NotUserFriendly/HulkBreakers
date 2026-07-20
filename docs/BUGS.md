@@ -156,6 +156,43 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **2026-07-20:** supervisor reports it looks better, but other currently-active issues (the
   backward-looking bursts, below) obscure a clean read on this one — left pending rather than
   promoted, verification revisited once those are out of the way.
+- **taskblock-27 Pass A1 root-caused the obscuring issue** (see the next entry) as sharing this
+  exact anchor-mismatch class — `direction` was still cell-anchored while `origin` (this bug's own
+  fix) was muzzle-anchored. With both now sharing one anchor, the obscuring issue should be gone,
+  clearing the way for this one to get a real read.
+
+### Chaingun bursts fire half-backward  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
+  bursts look odd, both look like half the burst is going backward." Logged without a diagnosis at
+  the time (`out/combat.log`'s own text doesn't carry per-impact origin/direction data).
+- **Root-caused (taskblock-27):** the taskblock-26 A2 fix (above) moved the shot plane's own
+  `origin` to the real muzzle position but left `direction` computed cell-to-cell
+  (`Vector2(target_cell - actual.cell)`) — origin and direction anchored on DIFFERENT points for the
+  same ray. For a target beside the shooter, that mismatch can put the target's own resolved depth
+  at a NEGATIVE value relative to the (wrongly-anchored) direction — exactly what reads as the round
+  travelling backward when a tracer animates from the muzzle along that direction for `depth` units.
+- **Fix:** `direction := Vector2(target_cell) - origin` in all five action files — direction now
+  shares `origin`'s own muzzle anchor, so the target's own depth is always the true, non-negative
+  distance from the muzzle to it, by construction.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass A1, proven via
+  `test_attack_action.gd::test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_behind_the_ray`
+  (constructs the exact overshoot geometry: fails under the old cell-anchored direction, passes under
+  the fix).
+
+### Shot/deflect pair has no pause between the primary impact and its own deflect  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27: expected shot → (pause) → its deflect → (delay) → next shot/deflect
+  pair; actual — a shot and its own deflect fired with zero gap between them, reading as
+  simultaneous rather than "hit, then bounce."
+- **Root cause:** `ResolutionPlayer._play_impact` (taskblock-26 Pass A1's own deflect-tracer
+  addition) called `await _spawn_tracer(from, to)` for the primary segment, then immediately
+  `await _spawn_tracer(to, deflect_to, ...)` for the deflect — no wait between them at all.
+  `INTER_SHOT_BREAK_MS` only ever separates DISTINCT top-level impact/miss events, never the two
+  segments of one DEFLECT event's own pair.
+- **Fix:** new `DEFLECT_BEAT_MS` (100ms, same flagged-placeholder posture as `INTER_SHOT_BREAK_MS`)
+  — a real timer awaited between the primary segment and its own deflect segment.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass A2, proven via
+  `test_resolution_player.gd::test_deflect_tracer_waits_a_beat_after_the_primary_impact` (fails
+  without the fix, passes with it).
 
 ---
 
@@ -216,32 +253,6 @@ the supervisor promotes confirmed ones up to Resolved.)*
   picture, or something else entirely is z-fighting. Not re-investigated further this pass.
 - **Status:** not fixed. Two fix attempts down, both incomplete.
 
-### Chaingun bursts: half the burst looks like it's going backward  ·  source: `SUPERVISOR`
-- **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
-  bursts look odd, both look like half the burst is going backward."
-- **Looked at `out/combat.log`** (the two most recent `burst_fired: chaingun` entries, unit 3 firing
-  at (13, 8) around line 184 and unit 0 firing at (9, 12) around line 231): both bursts log 12/12
-  pulls landing, hitting a mix of the target's own body/joints (`wedge_plate_torso_face_r/l`,
-  `torso_cladding`, `leg_cladding[_joint]`, `forearm_cladding_joint`, the target's own held
-  `chaingun`) and nearby field objects (`crate`, `goo_barrel`, `forklift`, `scrap_pile`,
-  `plate_small_steel`). Nothing in the TEXT itself screams "backward" — `LogEvent._to_string()`
-  only ever renders `"%s: %s" % [kind, text]`, a human-readable summary; the richer per-impact data
-  a tracer actually draws from (`origin_x/y/height`, `hit_point`, `deflect_end_x/y/height`) is on
-  `LogEvent.data` but never rendered into this file, so "which way did it actually travel" can't be
-  read back from `out/combat.log` alone — only from the live 3D playback, which is presumably what
-  was actually watched.
-- **Timing note, not yet confirmed as the cause:** `out/combat.log`'s own mtime (14:00) is AFTER
-  this session's `9ea4d38`/A2 re-fix (13:56), which changed `BurstAction` (and every other attack
-  action) to anchor the shot plane's own `origin` on the shooter's real muzzle position
-  (`Vector2(muzzle.x, muzzle.z) / CELL_SIZE`) instead of the shooter's bare cell center — the one
-  change in this session that touches burst fire's own origin/direction geometry at all. Plausible,
-  unconfirmed mechanism: `direction` is still computed cell-to-cell
-  (`Vector2(target_cell - actual.cell)`) while `origin` is now offset to the muzzle's own (possibly
-  non-trivial, chaingun-width) lateral position — if that offset and the unchanged direction ever
-  disagree enough, some of a burst's 12 pulls could resolve against regions that land at a negative
-  depth relative to the new origin, which could read as "going backward" in the tracer draw. Not
-  investigated further — logged per instruction, not chased.
-- **Status:** not fixed. Waiting.
 
 ### Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
