@@ -56,6 +56,19 @@ func test_assemble_docks_the_matrix_and_carries_the_templates_budget() -> void:
 	assert_eq(unit.shell.max_ram, 20.0)
 
 
+## taskblock-25 Pass F: shell_reach carries from the template the same way
+## max_mass/max_ram already do.
+func test_assemble_carries_the_templates_shell_reach() -> void:
+	var root := _hosting_part(&"root", [_matrix_socket()])
+	var pool := {&"root": root}
+	var template := ShellTemplate.new(&"root", [], 10.0, 20.0, 0.7)
+	var matrix := Matrix.new()
+
+	var unit: Unit = BodyAssembler.assemble(template, null, pool, matrix, Vector2i(0, 0))
+
+	assert_almost_eq(unit.shell.shell_reach, 0.7, 0.0001)
+
+
 func test_mount_attachment_is_order_independent() -> void:
 	# Rear declared FIRST, front SECOND — the exact landmine B0 exists to
 	# kill: a Mount targets a socket by id, never "whichever is free first".

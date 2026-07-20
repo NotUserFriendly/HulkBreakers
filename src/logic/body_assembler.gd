@@ -116,6 +116,7 @@ static func _finish(
 	var shell := Shell.new(root)
 	shell.max_mass = template.max_mass
 	shell.max_ram = template.max_ram
+	shell.shell_reach = template.shell_reach
 	return Unit.new(occupant, shell, cell, squad_id)
 
 
