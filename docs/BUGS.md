@@ -11,6 +11,11 @@ recur.
 migrated ones get a rough date. `RESOLVED` entries name the fixing commit(s)/taskblock so the closure
 is verifiable.
 
+**Every bug carries an ID:** `BR<taskblock>.<seq>` — e.g. `BR27.01` (Bug Report, reported during
+taskblock 27, first of that block). **The ID is assigned at report time and never changes** — a bug
+reported in tb27 stays `BR27.xx` even if fixed in tb30, so the handle is stable across its whole life
+between supervisor, CC, and the reviewer. Put the ID in the entry heading.
+
 **Every bug carries a `source`:**
 - **`CC`** — found by CC during its own work (usually a pure-code bug). CC owns the whole loop
   (sees it, fixes it, tests it), so **CC may mark a `CC`-sourced bug `RESOLVED` directly.**
@@ -190,7 +195,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 *(CC-fixed `SUPERVISOR` bugs awaiting verification. CC writes here, never straight to Resolved;
 the supervisor promotes confirmed ones up to Resolved.)*
 
-### Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
+### BR26.01 — Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
   appeared to jump to new positions before that unit's attack animation resolved."
 - **Root cause:** `SquadControlOverlay._on_turn_ended` called `advance_ai_turns(battle)` — which
@@ -204,7 +209,7 @@ the supervisor promotes confirmed ones up to Resolved.)*
   the attempt. **Verification deferred to the next taskblock** (supervisor's own call) rather than
   chased now; still pending either way.
 
-### Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
+### BR27.01 — Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
   ways — (1) doesn't open the dartboard, always resolves a center-mass shot; (2) charges MP for the
   automated legs; (3) the ghost snaps back to the base cell instead of holding the step-out
@@ -233,15 +238,55 @@ the supervisor promotes confirmed ones up to Resolved.)*
   proven via `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the
   free out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg)
   and `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
-- **2026-07-20:** supervisor could not verify — blocked by a new, separate bug encountered during
-  the attempt (not yet detailed/logged; awaiting a report on what it is). **Verification deferred**
-  the same way B1's own confirmation was, above; still pending either way.
+- **2026-07-20:** supervisor could not verify — blocked by a new, separate bug (now logged as
+  **BR27.06 — Step Out no longer occurs at all**, a regression from this very restructure). Until
+  BR27.06 is fixed, BR27.01 can't be confirmed. **Verification deferred**; still pending, and now
+  gated behind BR27.06.
 
 ---
 
 ## 🔧 Active / Open
 
-### Chaingun bursts fire half-backward — visual only, hits are correct  ·  source: `SUPERVISOR`
+### BR27.05 — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20 (tb27 review). The tb27 Pass D3 fix (dim/disable unaffordable action-bar
+  slots) **did not hold** — slots are still clickable/armable when the unit can't afford them.
+- **Status:** reopened. The `ActionBar._can_afford()` gate either isn't wired to the slot's actual
+  interactivity, or the AP compared isn't the unit's live AP. Not yet re-investigated.
+
+### BR27.06 — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20 (tb27 review). After the tb27 Pass B flow restructure (BR27.01), Step Out
+  now **doesn't happen at all** for the player — a regression past the original four symptoms.
+- **Status:** reopened, and likely *the* blocker that stopped the supervisor verifying BR27.01/BR26.01
+  ("blocked by a new, separate bug encountered during the attempt"). The split-flow restructure
+  (confirm-cell → free out-leg → aim mode → fire → free return) probably breaks such that no step-out
+  path completes. High priority — it gates confirmation of two other pending bugs.
+
+### BR27.07 — Active-turn highlight lands on the wrong unit; change to facing-marker-only  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20 (tb27 review). Two parts: (a) **design change** — instead of recoloring the
+  active unit's facing wedge + team marker (tb27 D2), the supervisor wants *only the current unit to
+  show a facing marker at all* (the marker's presence indicates whose turn it is, not a color). (b)
+  **bug** — the current-unit highlight sometimes lands on the *next* or *prior* unit, not the active
+  one.
+- **Status:** open. Note the design change supersedes part of D2 (which shipped as a feature in
+  CHANGELOG) — the "recolor" approach is being replaced by "only the active unit has a facing marker."
+  The wrong-unit bug may be independent (an off-by-one in whichever index drives the highlight) and
+  should be checked even after the design change, in case the change is built on the buggy selector.
+
+### BR27.08 — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20 (logged now; long-standing — backburnered since the button's introduction).
+  The "Resolve to here" turn-control (resolve queued actions up to a chosen point) has never
+  functioned. Logged here now that the ledger exists so it stops being an untracked known-broken.
+- **Status:** open, not yet investigated.
+
+### BR27.09 — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or
+  end-turn transition — supervisor can't yet tell which of the two triggers it.
+- **Status:** open. First step is isolating which transition (instrument both, or bisect). Possibly
+  related to per-turn work done synchronously (a full `refresh_unit_views` / re-resolve on the turn
+  boundary).
+
+
+### BR27.02 — Chaingun bursts fire half-backward (visual only, hits are correct)  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
   bursts look odd, both look like half the burst is going backward."
 - **First fix (taskblock-27 Pass A1):** every attack action's shot-plane `direction` was cell-anchored
@@ -258,7 +303,7 @@ the supervisor promotes confirmed ones up to Resolved.)*
   yet audited against this same origin/direction-anchor class of bug). **Reopened — not
   investigated further this pass**, per instruction to just log and wait.
 
-### Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
+### BR27.03 — Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
   `taskblock_done/Report-Taskblock27.md`): a shot and its own deflect are SUPPOSED to resolve
   simultaneously (not paused apart, as taskblock-27 Pass A2 assumed) — the real defect is that a
@@ -270,7 +315,7 @@ the supervisor promotes confirmed ones up to Resolved.)*
   address this bug at all. Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between
   separate impact events, not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
 
-### Lighting differs between spectator and player view  ·  source: `SUPERVISOR`
+### BR27.04 — Lighting differs between spectator and player view  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D1b: spectator and player view are said to light the board
   differently.
 - **Investigated, no code fix applied:** `BattleScene._ready()` already builds
@@ -282,7 +327,7 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
   comparison) rather than a code claim, since no divergent lighting path was found to remove.
 
-### Low framerate while aiming  ·  source: `SUPERVISOR`
+### BR26.02 — Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
   deferred: "B-tier; investigate separately — likely the inspect field updating every frame; not a
   correctness bug, don't rush a fix into this block."

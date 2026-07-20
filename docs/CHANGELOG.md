@@ -169,8 +169,11 @@ isolation per report; found and fixed a real, previously unreported co-planar pa
 extraction tile) no prior fix or test had ever checked. **Turn indicator** (tb27 D2) — the active
 unit's own facing wedge and team marker recolor to a distinct `ACTIVE_TURN_COLOR`, driven off
 `combat_state.current_unit()` from both `load_battle()` and `refresh_unit_views()`, shared by
-either overlay. **AP-gated action bar** (tb27 D3) — a slot the unit can't afford dims and refuses
-to arm, reusing `ActionCatalog.provider_for`'s own `ap_cost`. **Camera reset after aiming** (tb27
+either overlay. *(Regressed — see BUGS.md BR27.07: highlight can land on the wrong unit, and the
+design is being changed to facing-marker-only. This entry describes what shipped, not the current
+intended behavior.)* **AP-gated action bar** (tb27 D3) — a slot the unit can't afford dims and refuses
+to arm, reusing `ActionCatalog.provider_for`'s own `ap_cost`. *(Regressed — see BUGS.md BR27.05:
+slots are still selectable without enough AP; the gate isn't holding.)* **Camera reset after aiming** (tb27
 D4) — `CameraRig` snapshots the pre-aim orbit state and eases back to it once aiming ends, via a
 shared `_ease_to()` helper. **Wall tiles non-inspectable** (tb27 D5) — a wall click is a real
 no-op, same posture as a miss; `InspectPanel`'s own null-root branch also resets stale isolate-view
