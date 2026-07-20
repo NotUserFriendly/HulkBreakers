@@ -500,17 +500,22 @@ func _build_ui() -> void:
 	ap_mp_pip_row.setup(tactics, ap_pip_container, mp_pip_container, tooltip_view)
 
 	inspect_panel = InspectPanel.new()
+	# taskblock-22 Pass G1: 900x600 is the PREFERRED size — InspectPanel's
+	# own _clamp_to_viewport shrinks/re-centers it against the real
+	# viewport (no anchors preset needed/wanted here anymore; a one-shot
+	# PRESET_CENTER never revisited was the "falls off the bottom" bug).
 	inspect_panel.custom_minimum_size = Vector2(900, 600)
-	inspect_panel.set_anchors_and_offsets_preset(
-		Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE
-	)
 	# docs/02: `Camera3D.look_at()` (inside `setup()`'s own bot-viewer build)
 	# needs a live tree to resolve a Node3D's global transform against — add
 	# to the tree FIRST, setup() second, the same order the Resource
 	# Editor's own preview relies on (there, `_ready()` firing at all is
 	# what already guarantees it; here it has to be explicit).
 	theme_root.add_child(inspect_panel)
-	inspect_panel.setup(material_table, tactics.selection)
+	# taskblock-22 Pass G2: the isolate camera's own live-view lookup —
+	# battle is a real BattleScene by this point (its own unit_views may
+	# still be empty pre-battle-load; find_unit_view degrades to null
+	# gracefully, same as every other optional thread-through here).
+	inspect_panel.setup(material_table, tactics.selection, battle.find_unit_view)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
