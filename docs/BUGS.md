@@ -302,6 +302,12 @@ the supervisor promotes confirmed ones up to Resolved.)*
   mismatch specifically in the rendering path (`resolution_player.gd`'s own tracer-drawing code, not
   yet audited against this same origin/direction-anchor class of bug). **Reopened — not
   investigated further this pass**, per instruction to just log and wait.
+- **2026-07-20 (taskblock-28 Pass C):** not investigated or fixed this pass either — but
+  `out/combat.log` now prints every impact/miss event's own real origin/hit geometry (was already in
+  `data` since tb22/23; `LogEvent._to_string()` just never rendered it, and `Overwatch._fire`'s own
+  separate impact path had no geometry at all until this pass routed it through the shared logger).
+  A future session chasing this bug can read the geometry straight from the log text instead of
+  re-deriving it or relying on live playback. Still open; still unconfirmed.
 
 ### BR27.03 — Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
