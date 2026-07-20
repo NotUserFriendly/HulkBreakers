@@ -28,6 +28,17 @@ func test_bout_injector_is_never_referenced_by_a_player_controlled_view() -> voi
 		)
 
 
+## taskblock-29 Pass D: the sibling of the guard test above — the ONE
+## legitimate debug/spectator context this ever gets constructed in.
+func test_bout_injector_is_referenced_by_the_spectator_overlay() -> void:
+	var file := FileAccess.open("res://src/view/overlays/spectator_overlay.gd", FileAccess.READ)
+	assert_not_null(file)
+	assert_true(
+		file.get_as_text().contains("BoutInjector"),
+		"the spectator overlay is the one legitimate debug/spectator context for this"
+	)
+
+
 func _make_unit(id_hint: String, cell: Vector2i, squad: int) -> Unit:
 	var torso := Part.new()
 	torso.id = StringName("%s_torso" % id_hint)
