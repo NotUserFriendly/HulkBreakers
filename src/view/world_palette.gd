@@ -38,16 +38,23 @@ const AMBIENT_ENERGY := 0.35
 
 ## A flat dark backdrop plus soft ambient — otherwise Godot's default
 ## procedural sky paints the void a stock light grey with no relation to
-## the theme, and unlit shadow faces read as pure black holes.
+## the theme, and unlit shadow faces read as pure black holes. Just the
+## resource, no node — `Camera3D.environment` (taskblock-23 Pass E2's own
+## per-camera override) and anything else that only needs the settings,
+## not a whole throwaway `WorldEnvironment` node to steal them from.
+static func environment() -> Environment:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = VOID
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = AMBIENT_COLOR
+	env.ambient_light_energy = AMBIENT_ENERGY
+	return env
+
+
 static func world_environment() -> WorldEnvironment:
 	var node := WorldEnvironment.new()
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = VOID
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = AMBIENT_COLOR
-	environment.ambient_light_energy = AMBIENT_ENERGY
-	node.environment = environment
+	node.environment = environment()
 	return node
 
 

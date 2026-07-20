@@ -27,6 +27,20 @@ func test_world_environment_uses_the_void_background_and_a_neutral_ambient_fill(
 	world_environment.queue_free()
 
 
+## taskblock-23 Pass E2: `environment()` is the resource-only builder
+## `world_environment()` now delegates to — a caller that only wants the
+## settings (e.g. `Camera3D.environment`, a per-camera override) never
+## needs to allocate and then free a throwaway `WorldEnvironment` node
+## just to read its `.environment` back out.
+func test_environment_matches_world_environments_own_settings_with_no_node() -> void:
+	var env: Environment = WorldPalette.environment()
+	assert_eq(env.background_mode, Environment.BG_COLOR)
+	assert_eq(env.background_color, WorldPalette.VOID)
+	assert_eq(env.ambient_light_source, Environment.AMBIENT_SOURCE_COLOR)
+	assert_eq(env.ambient_light_color, WorldPalette.AMBIENT_COLOR)
+	assert_almost_eq(env.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001)
+
+
 func test_void_and_ground_are_distinct_so_the_board_is_actually_visible() -> void:
 	assert_ne(WorldPalette.VOID, WorldPalette.GROUND)
 

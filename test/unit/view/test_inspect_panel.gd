@@ -613,6 +613,40 @@ func test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy()
 			assert_true(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
 
 
+## taskblock-23 Pass E2: "the model floats in a void" — the isolate
+## camera's own cull_mask must ALSO include the real board's floor
+## layer, not just the subject's own isolate layer.
+func test_isolate_focus_also_includes_the_floor_layer() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var live_view := HitVolumeView.new()
+	add_child_autofree(live_view)
+	live_view.setup(unit, DataLibrary.material_table())
+
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
+	)
+
+	panel.open(unit)
+
+	assert_true(panel._preview_camera.get_cull_mask_value(BoardView.FLOOR_LAYER))
+
+
+## taskblock-23 Pass E2: "reads unlit... a directional light alone with no
+## ambient leaves the shadowed side black" — the preview camera gets a
+## real per-camera environment override (WorldPalette's own settings),
+## unconditionally, not just for one path or the other.
+func test_preview_camera_has_a_real_ambient_environment_override() -> void:
+	var panel: InspectPanel = _panel()
+
+	assert_not_null(panel._preview_camera.environment)
+	assert_almost_eq(
+		panel._preview_camera.environment.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001
+	)
+	assert_eq(panel._preview_camera.environment.ambient_light_color, WorldPalette.AMBIENT_COLOR)
+
+
 func test_closing_clears_isolation_on_the_previously_focused_view() -> void:
 	var unit: Unit = _unit_with_geometry()
 	var live_view := HitVolumeView.new()

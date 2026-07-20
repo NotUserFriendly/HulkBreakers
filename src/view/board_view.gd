@@ -13,6 +13,16 @@ extends Node3D
 ## have no edges and merge into a blob, which is why real geometry must be
 ## lit.
 
+## taskblock-23 Pass E2: a render layer the inspect panel's isolate camera
+## (taskblock-22 G2, `HitVolumeView.ISOLATE_LAYER`) can ALSO include
+## alongside the subject unit's own layer, so a real board tile renders
+## under the model instead of it floating in a void — never other units
+## or blockers, which stay excluded exactly as G2 already fixed. Tagged
+## onto the ground plane and grid lines in `build()` below, on top of
+## their existing default layer, so the main camera's own view is
+## completely unaffected.
+const FLOOR_LAYER := 3
+
 ## Overlay markers sit slightly above the ground to avoid z-fighting with it;
 ## ghosts sit a touch higher still so they never fight the reachable tint.
 const REACHABLE_HEIGHT := 0.02
@@ -124,8 +134,11 @@ func build(
 		0.0,
 		(grid.height - 1) * UnitGeometry.CELL_SIZE * 0.5
 	)
+	ground.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(ground)
-	_static.add_child(_build_grid_lines(grid))
+	var grid_lines: MeshInstance3D = _build_grid_lines(grid)
+	grid_lines.set_layer_mask_value(FLOOR_LAYER, true)
+	_static.add_child(grid_lines)
 	_build_wall_indicators(grid)
 	_build_extraction_tiles(team_extraction_cells)
 
