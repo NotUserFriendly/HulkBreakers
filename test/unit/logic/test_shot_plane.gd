@@ -48,6 +48,61 @@ func test_point_with_nothing_in_the_plane_returns_null() -> void:
 	assert_null(ShotPlane.resolve_projectile(plane, Vector2(5.0, 0.5)))
 
 
+## taskblock-25 Pass D: "a stab hits if a disc of the weapon's width
+## intersects a region." `radius <= 0.0` is exactly `rect.has_point`.
+func test_disc_overlaps_rect_zero_radius_is_exactly_has_point() -> void:
+	var rect := Rect2(0.0, 0.0, 1.0, 1.0)
+	assert_true(ShotPlane.disc_overlaps_rect(rect, Vector2(0.5, 0.5), 0.0))
+	assert_false(ShotPlane.disc_overlaps_rect(rect, Vector2(2.0, 2.0), 0.0))
+
+
+func test_disc_overlaps_rect_reaches_a_point_outside_the_rect_within_its_radius() -> void:
+	var rect := Rect2(0.0, 0.0, 1.0, 1.0)
+	assert_true(ShotPlane.disc_overlaps_rect(rect, Vector2(1.3, 0.5), 0.5))
+	assert_false(ShotPlane.disc_overlaps_rect(rect, Vector2(1.3, 0.5), 0.1))
+
+
+## docs/PLAN.md Pass D: "the sniper's gap-fall-through works because
+## bullets are tiny; a spear tip is too wide to slip through a hairline
+## gap." Two walls with a real 0.2-wide gap between them (x -0.1 to 0.1):
+## a point-radius shot passes clean through to nothing behind it; a wide
+## enough disc can't fit and catches on a wall instead.
+func _walls_with_a_gap() -> Array[Region]:
+	var left := _part(&"left_wall", Box.new(Vector3(-0.55, 0.5, 0.0), Vector3(0.9, 1.0, 0.6)))
+	var right := _part(&"right_wall", Box.new(Vector3(0.55, 0.5, 0.0), Vector3(0.9, 1.0, 0.6)))
+	var dir := Vector2(0, -1)
+	var plane: Array[Region] = []
+	plane.append_array(BodyProjector.project_part(left, dir))
+	plane.append_array(BodyProjector.project_part(right, dir))
+	plane.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
+	return plane
+
+
+func test_a_point_shot_falls_through_a_narrow_gap() -> void:
+	var plane: Array[Region] = _walls_with_a_gap()
+	assert_null(ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5)))
+
+
+func test_a_wide_disc_cannot_thread_the_same_gap_a_point_shot_passes_through() -> void:
+	var plane: Array[Region] = _walls_with_a_gap()
+	var hit: Region = ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5), [], 0.15)
+	assert_not_null(hit, "a disc wider than the gap must catch on a wall")
+
+
+func test_a_narrow_disc_still_threads_a_gap_a_wide_one_cannot() -> void:
+	var plane: Array[Region] = _walls_with_a_gap()
+	assert_null(
+		ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5), [], 0.05),
+		"a narrow enough disc (a stiletto) still fits where a wide one (a spear) can't"
+	)
+
+
+func test_a_disc_still_hits_a_region_it_overlaps_even_off_center() -> void:
+	var plane: Array[Region] = _walls_with_a_gap()
+	var hit: Region = ShotPlane.resolve_projectile(plane, Vector2(-0.05, 0.5), [], 0.1)
+	assert_eq(hit.part.id, &"left_wall")
+
+
 func test_shield_authored_as_boxes_around_a_hole_lets_a_point_in_the_hole_hit_the_part_behind(
 ) -> void:
 	var shield := Part.new()

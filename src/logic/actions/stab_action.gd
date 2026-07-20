@@ -116,6 +116,10 @@ func apply(state: CombatState) -> void:
 	var damage: float = WeaponResolver.resolve_damage(weapon, extra_sources).current
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
 	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
+	# taskblock-25 Pass D: the spherecast radius — "a pointed weapon is fat
+	# compared to a bullet." 0.0 for an unauthored weapon_def, same as
+	# every other melee number this action reads.
+	var stab_width: float = weapon.weapon_def.stab_width if weapon.weapon_def != null else 0.0
 
 	for point: Vector2 in points:
 		ShotResolution.resolve_and_log_point(
@@ -131,7 +135,8 @@ func apply(state: CombatState) -> void:
 			false,
 			RangeModel.max_range(weapon),
 			muzzle.y,
-			DamageResolver.DEFLECT_MODE_SLIDE
+			DamageResolver.DEFLECT_MODE_SLIDE,
+			stab_width
 		)
 
 	if target.alive and target.shell.living_parts().is_empty():
