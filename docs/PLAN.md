@@ -462,6 +462,15 @@ systems. The unifications:
 Mulebot / follower drones; hacking (Int-based, has a RAM cost already); weak points (poses + failure
 modes + aimable joints exist — cheap); voidhulk stability (environmental hazard).
 
+**AI multi-turn approach pathing (was tracked as a bug, reclassified tb27).** `UnitAI._engagement_score`
+picks the best REACHABLE cell this turn only — it can't plan a route that requires temporarily
+moving away from the enemy (or off the direct line) before a real gap in cover appears. tb27's own
+`LoS.obstruction_count` scoring measurably reduced how often a unit gets stuck at a local minimum
+(16/60 → 8/60 stuck seeds on a 60-map sweep) but doesn't close it: a long corridor with the only
+opening behind the unit's own start position still traps the per-turn greedy scorer. Closing this
+for real needs a genuine shortest-path-to-nearest-LOS-cell search (multi-turn, not single-turn
+reachability) — a real design/scope item, not a bugfix.
+
 ---
 
 # META — the ship & between-missions layer
