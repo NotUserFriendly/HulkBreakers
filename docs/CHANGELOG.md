@@ -114,7 +114,14 @@ invented here.
 COMPLETED|STOPPED(reason,refund)`, interrupt when the next action is illegal; overwatch (torso gate,
 visible as a 30° slice, tb19) — the AI can now genuinely weigh and hold it, not just react to it
 (tb24 C); one-stream combat log, folded into hierarchical action-level summaries at render time
-(tb22 F).
+(tb22 F). **Combat-log shot geometry in text, not just data** (tb28 C) — `ShotResolution`'s own
+impact/miss logging (made public: `log_impact_result`/`log_miss_result`, were `_log_impact`/
+`_log_miss`) folds the real origin/hit geometry `data` already carried (tb22/23) into `text` too, so
+`out/combat.log` shows it directly — `LogEvent._to_string()` only ever rendered `text`, so the
+geometry was invisible outside a live playback or a `data` inspection until this. `Overwatch._fire`'s
+own separate, hand-rolled `&"impact"` event (no geometry, no crit/wound/destroy/salvage cascade at
+all) now routes through the same shared path every other firing action uses — no parallel logging
+system, and overwatch misses are logged for the first time.
 
 **Resolution speed** (tb18) — `Matrix.personal_speed` (flat bonus to everything); unified
 resolution-speed formula (lower resolves first); re-validating ordered resolver; initiative;
@@ -184,7 +191,21 @@ mouse motion, mirroring `SquadControlOverlay`'s own highlight wiring but with no
 gate, since spectator has no selection concept) — previously it had no hover feedback at all.
 
 **Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu (expanding-list
-teams). The verification rig.
+teams). The verification rig. **Seeded variant generation** (tb28 A) — `VariantFamily`
+(DataLibrary-loaded: `variation_amount`, `omittable_sockets`, `swap_pool`, open StringName data, no
+per-family code) + `VariantGenerator` produce structurally different bots from one base `BotPreset`,
+deterministic per seed; `BodyAssembler` gained a `&""` Loadout-override sentinel ("leave this socket
+bare") variant generation uses to omit armor/cladding without erroring. `JunkBot` ships as real
+content — a small template with independently addressable per-limb ARMOR/CLADDING sockets (the
+reference humanoid's own arm/leg sockets share generic ids across L/R by design, so per-limb variation
+needed new content, not a retrofit). **Kits & instant equip** (tb28 B) — `BotPreset.kit` (null =
+unchanged pre-existing behavior) names a container socket, what's stocked into it, and the weapon that
+equips out of it into a grip socket via the existing `Inventory`/`PartGraph` ops, no parallel attach
+path; chambers ammo through `WeaponResolver.try_chamber` like any other load. `KitEquipper.equip` reads
+an `Enums.EquipMode` defaulting to `INSTANT` — `VISIBLE` is declared as the seam a future "watch them
+arm up" mode slots into, no behavior behind it yet. `BoutSetup._spawn_squad` runs it for any kitted
+roster entry right after assembly — a bout of kitted units starts fully armed at turn 1, proven against
+shipped content (`kitted_chaingun.tres`).
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
