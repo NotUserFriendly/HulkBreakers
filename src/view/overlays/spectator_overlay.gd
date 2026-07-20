@@ -37,7 +37,7 @@ var battle: BattleScene
 var runner: BoutRunner
 var resolution_player: ResolutionPlayer
 var log_label: RichTextLabel
-var log_sink: UISink
+var log_sink: HierarchicalUiSink
 
 ## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
 ## opens the inspect panel on that bot. Closing it resumes." Supersedes
@@ -264,7 +264,7 @@ func _build_ui() -> void:
 	log_label.size = Vector2(520, 200)
 	log_label.scroll_following = true
 	theme_root.add_child(log_label)
-	log_sink = UISink.new(log_label)
+	log_sink = HierarchicalUiSink.new(log_label, battle.combat_state)
 
 	# taskblock-21 Pass B: THE inspect surface now, superseding tb17 C's
 	# hover-tooltip — created last so it draws above every other panel
