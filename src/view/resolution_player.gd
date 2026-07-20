@@ -58,6 +58,15 @@ const TRACER_COLOR := Color(1.0, 0.85, 0.3)
 ## distinct things at a glance: a dark red, faint enough that a dense ring
 ## of retired tracers never reads as solid as the live shot drawn over them.
 const TRACER_DULL_COLOR := Color(0.5, 0.0, 0.0, 0.3)
+## taskblock-26 Pass A1: a DEFLECT's own bounced continuation, drawn as a
+## second segment from the impact point — "insane amounts of deflects is
+## the intended combat texture," so a bounce needs to read as visually
+## distinct from a clean penetrating/stopping hit at a glance, not just a
+## second identical-looking tracer. A flagged first pass at the exact
+## hue (a cool blue against the warm yellow/red of an ordinary shot), not
+## a final art decision — only "visually distinguishable" is specified.
+const TRACER_DEFLECT_COLOR := Color(0.3, 0.75, 1.0)
+const TRACER_DEFLECT_DULL_COLOR := Color(0.0, 0.15, 0.4, 0.3)
 ## Render priority split (docs/10: transparent geometry sorts by camera
 ## distance by default, which can't be trusted to keep the CURRENT shot
 ## drawn over older, possibly-overlapping retired tracers along a similar
@@ -439,6 +448,25 @@ func _play_impact(event: LogEvent) -> void:
 
 	await _spawn_tracer(from, to)
 
+	# taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
+	# never drawn." A DEFLECT outcome carries its own reflected endpoint
+	# (ShotResolution._log_impact's void-ray convention, same shape
+	# `_log_miss` already uses) — drawn as a second, visually distinct
+	# segment regardless of whether a real ricochet hop happens to follow
+	# it (a ricochet that finds nothing to hit produces no further event
+	# at all, so this is the only place that bounce is ever drawable).
+	if (
+		int(event.data.get("outcome", -1)) == Enums.Outcome.DEFLECT
+		and event.data.has("deflect_end_x")
+	):
+		var deflect_end_x: float = float(event.data.get("deflect_end_x", hit_x))
+		var deflect_end_y: float = float(event.data.get("deflect_end_y", hit_y))
+		var deflect_end_height: float = float(event.data.get("deflect_end_height", hit_height))
+		var deflect_to: Vector3 = (
+			Vector3(deflect_end_x, deflect_end_height, deflect_end_y) * UnitGeometry.CELL_SIZE
+		)
+		await _spawn_tracer(to, deflect_to, TRACER_DEFLECT_COLOR, TRACER_DEFLECT_DULL_COLOR)
+
 
 ## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
 ## same `_spawn_tracer` bright-fade-dull path `_play_impact` above uses,
@@ -472,13 +500,22 @@ func _play_miss(event: LogEvent) -> void:
 ## priority starts at the LIVE tier so this shot draws over every already-
 ## retired tracer on the board, then drops to the shared retired tier the
 ## moment the fade finishes and it joins the ring.
-func _spawn_tracer(from: Vector3, to: Vector3) -> void:
+## taskblock-26 Pass A1: `live_color`/`dull_color` default to the ordinary
+## shot pair — a DEFLECT's own bounced continuation passes the distinct
+## `TRACER_DEFLECT_COLOR`/`TRACER_DEFLECT_DULL_COLOR` pair instead, same
+## draw/fade/retire mechanics either way.
+func _spawn_tracer(
+	from: Vector3,
+	to: Vector3,
+	live_color: Color = TRACER_COLOR,
+	dull_color: Color = TRACER_DULL_COLOR
+) -> void:
 	if (to - from).length() < 0.001:
 		return
 	var instance := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = TracerGeometry.segment_size(from, to, TRACER_THICKNESS)
-	var material: StandardMaterial3D = WorldPalette.translucent_material(TRACER_COLOR)
+	var material: StandardMaterial3D = WorldPalette.translucent_material(live_color)
 	material.render_priority = TRACER_LIVE_RENDER_PRIORITY
 	box.material = material
 	instance.mesh = box
@@ -488,7 +525,7 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	var duration: float = bullet_fade_duration()
 	if duration > 0.0:
 		var tween := create_tween()
-		tween.tween_property(material, "albedo_color", TRACER_DULL_COLOR, duration)
+		tween.tween_property(material, "albedo_color", dull_color, duration)
 		await tween.finished
 	material.render_priority = TRACER_RETIRED_RENDER_PRIORITY
 	_retire_tracer(instance)

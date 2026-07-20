@@ -334,6 +334,99 @@ func test_play_impact_draws_a_ricochet_hop_from_its_own_real_origin_not_the_shoo
 	)
 
 
+## taskblock-26 Pass A1: mirrors `ShotResolution._log_impact`'s own DEFLECT
+## data shape (`deflect_end_x/y/height`) — never a fixture the view side
+## invents independently of what the logic side actually logs.
+func _deflect_impact_event(
+	attacker: Unit, target: Unit, part_id: StringName, deflect_end: Vector2
+) -> LogEvent:
+	return (
+		LogEvent
+		. new(
+			0,
+			Enums.Phase.RESOLUTION,
+			attacker.id,
+			&"impact",
+			{
+				"outcome": Enums.Outcome.DEFLECT,
+				"part": part_id,
+				"target_unit_id": target.id,
+				"damage": 0.0,
+				"bypassed_armor": false,
+				"is_crit": false,
+				"is_double_crit": false,
+				"origin_x": attacker.cell.x,
+				"origin_y": attacker.cell.y,
+				"hit_x": target.cell.x,
+				"hit_y": target.cell.y,
+				"deflect_end_x": deflect_end.x,
+				"deflect_end_y": deflect_end.y,
+				"deflect_end_height": ResolutionPlayer.TRACER_MUZZLE_HEIGHT,
+			},
+			"DEFLECT on %s" % part_id
+		)
+	)
+
+
+## docs/PLAN.md / taskblock-26 Pass A1: "a bounced tracer per DEFLECT
+## outcome" — a DEFLECT event draws its ordinary incoming segment PLUS a
+## second, distinct segment along the reflected direction.
+func test_play_impact_draws_a_second_tracer_for_a_deflect_outcome() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.bullet_ms = 10.0
+	player.speed = 1000.0
+
+	await player._play_impact(
+		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
+	)
+
+	assert_eq(player._tracers.get_child_count(), 2, "the clean segment plus the bounced one")
+
+
+## "Deflect count drawn == deflect count logged" — N deflect-outcome
+## events must draw exactly N extra bounced segments, on top of the
+## ordinary one each impact always gets.
+func test_deflect_tracer_count_matches_deflect_count_logged() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.bullet_ms = 10.0
+	player.speed = 1000.0
+
+	await player._play_impact(
+		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
+	)
+	await player._play_impact(
+		_deflect_impact_event(built.attacker, built.target, &"pillar", Vector2(7.0, 1.0))
+	)
+	await player._play_impact(_impact_event(built.attacker, built.target, &"root"))
+
+	assert_eq(
+		player._tracers.get_child_count(),
+		5,
+		"2 deflects x 2 segments each + 1 ordinary hit x 1 segment"
+	)
+
+
+## A DEFLECT's own bounced segment must actually be visually distinct
+## from an ordinary clean-hit tracer, not just a second copy of it.
+func test_the_deflect_tracer_uses_a_visually_distinct_color() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.bullet_ms = 0.0
+
+	player._play_impact(
+		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
+	)
+
+	var clean_tracer: MeshInstance3D = player._tracers.get_child(0)
+	var deflect_tracer: MeshInstance3D = player._tracers.get_child(1)
+	var clean_material: StandardMaterial3D = (clean_tracer.mesh as BoxMesh).material
+	var deflect_material: StandardMaterial3D = (deflect_tracer.mesh as BoxMesh).material
+	assert_eq(deflect_material.albedo_color, ResolutionPlayer.TRACER_DEFLECT_COLOR)
+	assert_ne(deflect_material.albedo_color, clean_material.albedo_color)
+
+
 ## taskblock-21 Pass F: mirrors `ShotResolution._log_miss`'s own data shape
 ## (`end_x`/`end_y`, cell-space coordinates) — never a fixture the view
 ## side invents independently of what the logic side actually logs.

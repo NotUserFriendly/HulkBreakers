@@ -35,9 +35,19 @@ const SELECTED_BRIGHTEN := 0.35
 ## `Unit.orientation`'s direction (docs/02's continuous, never-snapped
 ## angle, same one BodyProjector reads). Sized to actually read at the
 ## default tactical camera distance (docs/10: "legibility is not
-## optional") — taller than the ground marker so it never z-fights with it.
+## optional").
 const FACING_WEDGE_SIZE := Vector3(0.16, 0.10, 0.30)
 const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
+## taskblock-26 Pass A3: the wedge USED to center on `TEAM_MARKER_Y +
+## TEAM_MARKER_HEIGHT` (0.03) — with its own 0.10-tall box, that put its
+## bottom face at -0.02, below the ground plane (Y=0) and co-planar with
+## any ground-tier marker sitting near it (board_view.gd's own
+## EXTRACTION_TILE_HEIGHT, 0.010 — the reported extract-tile/facing-
+## indicator z-fight). Raised so the wedge's own bottom face (this minus
+## half of FACING_WEDGE_SIZE.y) clears both the team marker disc's own
+## top surface and every ground-tier board marker with real headroom, not
+## just nominally "taller."
+const FACING_WEDGE_Y := 0.09
 ## docs/10 taskblock03 G: "a unit with no matrix docked... needs to read as
 ## down at a glance." Darkens the team ring rather than a separate material —
 ## cheap, and it still reads as "this squad's, but not right."
@@ -482,10 +492,7 @@ func _build_facing_wedge() -> MeshInstance3D:
 	# (Basis(Vector3.UP, orientation) just below) must agree, and only
 	# forward_for() is built from that same Basis.
 	var forward: Vector2 = BodyProjector.forward_for(orientation)
-	var base := (
-		Vector3(unit.cell.x, TEAM_MARKER_Y + TEAM_MARKER_HEIGHT, unit.cell.y)
-		* UnitGeometry.CELL_SIZE
-	)
+	var base := Vector3(unit.cell.x, FACING_WEDGE_Y, unit.cell.y) * UnitGeometry.CELL_SIZE
 	instance.position = base + Vector3(forward.x, 0.0, forward.y) * FACING_WEDGE_OFFSET
 	instance.basis = Basis(Vector3.UP, orientation)
 	return instance

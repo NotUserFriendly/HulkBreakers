@@ -141,10 +141,23 @@ static func placements_aabb(box_placements: Array[BoxPlacement]) -> AABB:
 ## this exact lookup — that duplication is gone now, AimView delegates
 ## here too). Falls back to DEFAULT_MUZZLE_HEIGHT above the unit's own cell
 ## only if the weapon somehow has no placement at all.
+##
+## taskblock-26 Pass A2: "the literal shoulder, not from the shoulder" —
+## the weapon's own box CENTER sits inside the gun's body, still close to
+## the shooter's own torso for a short weapon (a pistol's box, e.g.,
+## center Z 0.2 of a 0.4-long box); a real muzzle is the FORWARD emission
+## point, not the gun's own middle. `Box`'s own documented convention
+## (`box.gd`: "+Z forward, relative to the part's own origin") makes the
+## tip unambiguous: `center + (0, 0, size.z / 2)`, the box's own far face
+## along local +Z, composed through the SAME placement transform as
+## before — every other reader of this function (Overwatch, AimView,
+## shouldered_muzzle_point) gets the corrected point for free, no change
+## needed at any call site.
 static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
 	for placement: BoxPlacement in placements(unit):
 		if placement.part == weapon:
-			return placement.transform.translated_local(placement.box.center).origin
+			var tip: Vector3 = placement.box.center + Vector3(0.0, 0.0, placement.box.size.z * 0.5)
+			return placement.transform.translated_local(tip).origin
 	return Vector3(unit.cell.x, DEFAULT_MUZZLE_HEIGHT, unit.cell.y) * CELL_SIZE
 
 
