@@ -668,14 +668,18 @@ func test_reachable_enemy_targeting_is_deterministic() -> void:
 
 ## "a unit with no valid action ends its turn cleanly" — no enemy, no
 ## mission, nothing to gather/extract, not this unit's landing squad.
-func test_a_unit_with_no_valid_action_ends_its_turn_cleanly() -> void:
+## taskblock-22 Pass C: this genuinely stalled shape ("can't move and
+## can't act") is now exactly what triggers ShutdownAction instead of a
+## bare EndTurnAction — still ends the turn cleanly, just via the new
+## mechanic this pass adds for precisely this case.
+func test_a_unit_with_no_valid_action_shuts_down_cleanly() -> void:
 	var lone_unit := _armed_unit(&"lone_unit", Vector2i(0, 0), 1, &"")
 	var state := CombatState.new(Grid.new(5, 5), [lone_unit])
 
 	var queue: ActionQueue = UnitAI.plan_turn(lone_unit, state, null)
 
 	assert_eq(queue.actions.size(), 1)
-	assert_true(queue.actions[0] is EndTurnAction)
+	assert_true(queue.actions[0] is ShutdownAction)
 
 
 ## "human and AI queues both resolve through the same resolve_until" —
@@ -786,11 +790,13 @@ func test_a_disarmed_player_squad_unit_already_on_its_tile_never_queues_extract_
 
 ## A disarmed unit whose own squad has no team-coded tile at all (every
 ## non-bout mission, and any bout squad the caller never populated) has
-## nowhere defined to flee to — it must simply end its turn, the same
-## degenerate fallback `_plan_non_combat_turn` already uses for a non-
-## player squad with nothing to do, never freeze on an illegal move or
-## wander toward a DIFFERENT squad's own tile.
-func test_a_disarmed_unit_with_no_flee_destination_just_ends_its_turn() -> void:
+## nowhere defined to flee to — it must simply end its turn (via
+## ShutdownAction, taskblock-22 Pass C's own mechanic for exactly this
+## "can't move and can't act" shape), the same degenerate fallback
+## `_plan_non_combat_turn` already uses for a non-player squad with
+## nothing to do, never freeze on an illegal move or wander toward a
+## DIFFERENT squad's own tile.
+func test_a_disarmed_unit_with_no_flee_destination_shuts_down() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 1, &"")
 	var state := CombatState.new(Grid.new(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
@@ -799,7 +805,7 @@ func test_a_disarmed_unit_with_no_flee_destination_just_ends_its_turn() -> void:
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
 
 	assert_eq(queue.actions.size(), 1)
-	assert_true(queue.actions[0] is EndTurnAction)
+	assert_true(queue.actions[0] is ShutdownAction)
 
 
 ## The player's own squad is the one case `mission.extraction_cells` (the
@@ -817,6 +823,32 @@ func test_a_disarmed_player_squad_unit_falls_back_to_the_plain_extraction_cells(
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "the player squad must still fall back to mission.extraction_cells")
 	assert_eq(move.path[move.path.size() - 1], Vector2i(9, 4))
+
+
+## taskblock-22 Pass C: a REAL regression, caught live via a stuck test
+## suite run — a disarmed unit already standing on its own extraction
+## tile, objectives complete, produces the exact same bare-EndTurnAction
+## queue shape the shutdown-swap otherwise treats as "stalled." Shutting
+## it down here would permanently pull it out of consideration BEFORE its
+## own passive hold (EndTurnAction.is_holding_position) ever got to start
+## or mature — for a bout's own lone survivor, that leaves NO unit able
+## to ever take another turn again (CombatState.advance_turn() can't
+## select a shut-down unit), stalling the whole board until whatever
+## turn-cap safety net a caller has eventually fires. Must still be a
+## bare EndTurnAction — the hold-check that actually matures the
+## extraction runs when THIS resolves, not before.
+func test_a_disarmed_unit_holding_its_own_extraction_tile_does_not_shut_down() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 0, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(9, 4)]
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	assert_eq(queue.actions.size(), 1)
+	assert_true(
+		queue.actions[0] is EndTurnAction, "must keep holding, never shut down mid-extraction"
+	)
 
 
 ## An armed unit never dispatches to the flee branch at all, even with a

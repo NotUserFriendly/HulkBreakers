@@ -78,7 +78,7 @@ func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) 
 	rng.seed = combat_seed
 	for unit: Unit in initial_units:
 		add_unit(unit)
-	var living: Array[Unit] = units.filter(func(u: Unit) -> bool: return u.alive)
+	var living: Array[Unit] = units.filter(_can_take_a_turn)
 	if not living.is_empty():
 		_begin_turn(_fastest_by_initiative(living))
 
@@ -359,7 +359,7 @@ func advance_turn() -> void:
 			_resume_held_turn(held)
 			return
 
-	var living: Array[Unit] = units.filter(func(u: Unit) -> bool: return u.alive)
+	var living: Array[Unit] = units.filter(_can_take_a_turn)
 	if living.is_empty():
 		return
 	var candidates: Array[Unit] = living.filter(
@@ -405,6 +405,13 @@ func _begin_turn(unit: Unit) -> void:
 	_current_unit_id = unit.id
 	_acted_this_round.append(unit.id)
 	_start_turn(unit)
+
+
+## taskblock-22 Pass C: a shut-down unit stays `alive` (it still occludes/
+## blocks as geometry — ShotPlane.build's own gate is untouched), but must
+## never be handed another turn. The one place that actually excludes it.
+static func _can_take_a_turn(unit: Unit) -> bool:
+	return unit.alive and not unit.shutdown
 
 
 ## taskblock-18 C1: fastest-first — lower ResolutionSpeed.initiative()

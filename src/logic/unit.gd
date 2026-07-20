@@ -38,6 +38,15 @@ var extracted: bool = false
 ## round" (checked at this unit's own next turn, not a true round-boundary
 ## event — see EndTurnAction's own doc comment).
 var extraction_hold_start_round: int = -1
+## taskblock-22 Pass C: "the unit powers down — out of the fight, inert
+## on the board (a shell with no active pilot). It still occludes/blocks
+## as geometry." Deliberately NOT `alive == false` — a shut-down unit
+## must stay in the shot plane (ShotPlane.build only ever gates on
+## `alive`) and keep its own grid cell occupied, unlike death or
+## extraction. `CombatState.advance_turn()`'s own turn-order candidates
+## are the one thing this actually excludes it from — one-way for now, no
+## "wake up" mechanic exists yet (flagged, not invented).
+var shutdown: bool = false
 
 ## Radians, ground-plane facing (docs/02). 0.0 faces
 ## BodyProjector.WORLD_FORWARD; continuous, never snapped to
@@ -204,6 +213,7 @@ func dup() -> Unit:
 	cloned.alive = alive
 	cloned.extracted = extracted
 	cloned.extraction_hold_start_round = extraction_hold_start_round
+	cloned.shutdown = shutdown
 	cloned.orientation = orientation
 	cloned.pose = pose
 	cloned.facing_unlocked = facing_unlocked
