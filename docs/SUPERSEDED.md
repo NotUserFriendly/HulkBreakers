@@ -29,6 +29,15 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 | "Lean" (the step-out mechanic) | renamed **Step Out** — "lean" reserved for a future literal-lean ability | tb19 B |
 | `PowerResolver.max_ap_for` (simple power read) | surplus (output − consumers) → AP via a **diminishing `power_to_ap_curve`** | tb20 F → revised tb22 B |
 | Extract ends the bout on the first unit out | **squad 0 must get its whole team off**; asymmetric extraction (red: 1-AP action; blue: hold the tile to end-of-next-round); empty enemy squad is not terminal | tb22 A |
+| One guessed muzzle-to-impact tracer segment, pinned to a constant height | every shot/ricochet hop draws its own tracer at its real, logged point (tb22 D), fully 3D — no longer pinned to a constant height at all (tb23 D) | tb22 D → revised tb23 D |
+| Flat `UISink` combat log (one line per event) | hierarchical fold at **render time only** (`LogFold`/`LogFoldGroup`/`HierarchicalUiSink`) into action-level, expandable summaries — the event stream itself untouched | tb22 F |
+| `InventoryPanel` (always-visible left-column tree) as player view's inventory surface | deleted; **`InspectPanel`** is the one inventory surface in player view too, same as spectator | tb22 I |
+| `BodyProjector` flattens every part's projection to one height plane (Y forced to 0) | real vertical extent retained — a head projects higher than a waist, a foot lower | tb23 A |
+| `ShotPlane.resolve_ray` rejects any non-horizontal shot (`push_error` if `dir.y != 0`) | accepts a true 3D ray; a ricochet's reflected direction branches vertically too | tb23 C |
+| Each squad's own spawn cells double as its own extraction tiles (teams never cross) | bout-setup places each side's extraction on the **opposing** side, forcing engagement | tb23 E1 |
+| AI and the player's own UI hardcoded `AttackAction` regardless of what a weapon actually provides | firing action derived from the weapon's own `provides_actions` via `ActionCatalog.build_firing_action`, for both | tb24 A |
+| Burst-only weapons enforced only as a UI convention (the action bar just never showed the button) | `is_legal` enforces `provides_actions` as a real engine rule | tb24 B |
+| Overwatch was assignable but the AI never actually considered/chose it — a stranded mechanic | the AI weighs and can hold overwatch through the same catalog seam the player's own action bar reads | tb24 C |
 
 ---
 
