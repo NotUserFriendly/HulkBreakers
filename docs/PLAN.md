@@ -102,19 +102,71 @@ scariest piece proven in isolation before any map complexity.
 
 # KEYSTONES
 
-## Phase M — Melee (keystone 1): BUILT (tb25) — see CHANGELOG
-Delivery, shot-plane resolution reuse, the three payloads (stab/slash/hold) with distinct deflect
-responses, the spherecast, un-stubbed suppression, and PSYCHOTIC/TURTLE AI playstyles all landed —
-full detail in `docs/CHANGELOG.md`'s own Melee section. Explicitly deferred, still unbuilt:
+## Phase M — Melee (keystone 1)
+*First: the only keystone that's a combat mode; self-contained; un-stubs suppression; unblocks the
+deferred AI playstyles. **Melee reuses the shot plane** — a swing is a very short, very accurate shot
+— so armor, deflection, aimed parts, penetration, and the layered body all apply for free. What
+changes is the *payload shape* and the *deflect response* per attack type.*
+
+**Design identity: melee is precision that spares the goods.** CQC aboard a hulk often has valuables
+around the fight; melee disables an enemy without spraying the room. Only sniper-tier weapons rival
+its precision, but *every* melee weapon has it baked in — the tradeoff is you must **close** (risk) to
+get it (reward). Later enemies may be melee-only (a demon bear can't hold a gun without breaking
+suspension of disbelief).
+
+**Delivery = Step Out, pointed at melee** — the implied action is *step into range, strike, step back*
+as one motion, which is exactly tb18's auto-assembled move/strike/return through the re-validating
+resolver, with the same interrupt-exposure risk. The movement half is already built; melee adds the
+strike payload.
+
+**Dartboard: same system, tiny radius.** A punch from a meter can't miss by a mile — melee sits at the
+low end of the range-accuracy band (tb19), so scatter is minimal. Not a special "always hits" rule,
+just point-blank range.
+
+**Reach = a 3D character-to-character distance** (in tiles, but measured true-3D on the height axis,
+tb23). A sword (reach 1) can't hit someone 1 *up*; a polearm (reach 2) hits at √2. Verticality is
+melee spacing — high ground is melee *safety*, not just sightline.
+
+**Aimed parts — melee's core advantage.** Point-blank means melee targets a specific joint/internal
+*more* reliably than a shot (tb09/tb20 aimed parts). "Disable without damaging goods" made mechanical.
+
+**The three payload types** (a weapon usually provides several — via `provides_actions`, so AI action-
+choice comes free from tb24):
+
+| type | payload | on deflect | role |
+|---|---|---|---|
+| **Stab** (incl. punch) | a **point** — but a **spherecast** (see below), not a ray | **slides sideways** along the surface to an adjacent point, not an angular bounce | pierce armor |
+| **Slash** (sword/polearm swing) | a **line** (horizontal / 45° / vertical) — hits everything along it; length = weapon's `slash_length` | **moves the line** the appropriate direction, then triggers the next damage instances along it | more damage |
+| **Hold** (grab + grind a saw into a joint) | **many tiny hits in sequence**, continuing if it gets through cladding | **no deflect — binary**: chew through or nothing | grind through armor |
+
+- **Weapons carry both stab and slash** with distinct effects — stab pierces (point + lateral slide),
+  slash does more damage across a line. A spear *can* slash (suboptimal, but there if needed). Pierce
+  the armored target, slash the soft one — situational, chosen per strike.
+- **`slash_length`** is a weapon property (dagger short, greatsword long) — named distinctly from
+  `reach` so they don't collide. A vertical slash uses the 3D plane (tb23) to spread up/down a body.
+- **Hold = stacked bonus-pen, raw/linear, uncapped.** Each tiny hit adds bonus-pen (3 hits × 2 pen =
+  6 effective) — a "grind through armor" attack. No cap: a long enough hold gets through *anything*
+  (an angle grinder beats a meter of steel given time), but the **time is the cost** — grinding a tank
+  is many turns of doing nothing else, exposed. Self-balancing via commitment, not a curve.
+
+**The one genuinely-new piece: stabs are spherecasts, not raycasts.** A pointed weapon is *fat*
+compared to a bullet, so a stab resolves as a ray-with-radius. Consequence: **a stab can't thread a
+gap a bullet slips through** — the sniper's gap-fall-through (shot plane resolves a *point*) works
+*because* bullets are tiny; a spear tip is too wide. So melee is high-precision-on-surface but
+low-precision-on-gaps: you can aim a stab at a joint, but can't slip it through a hairline crack a
+sniper threads. Stab effectiveness scales inversely with weapon width (a stiletto threads better than
+a spear). **Requires a radius parameter on shot-plane resolution** (currently point-only,
+`rect.has_point`) — the sole new resolution code in melee; everything else reuses existing systems.
+
+**Also in the phase:**
+- **The punch** — the baseline stab every unit has (patches "no weapon → nothing" with tb21 flee).
+- **Un-stub suppression** — tb19's opportunity attacks resolve as real melee.
+- **Melee AI playstyles** — psychotic (prefer melee, never flee) / turtle (flee over melee).
 - **Protector playstyle** — positions between enemies and allies, preferring covered spots (a
-  COVER_SEEKER variant scoring on *ally* protection). Support behavior for bodyguard bots. Not
-  melee-gated; can land whenever.
-- **Weapon distinctions** — saw vs sword vs fist (the `POWER`/`TRIGGER` capability split): a
-  saw-hand can't add power to a sword swing. tb25 only gated the punch on POWER; the fuller
-  capability-math distinction was flagged, not built.
-- **Real content for the punch/reach** — a POWER-capable part providing `&"stab"` and a nonzero
-  `shell_reach` per shell template are proven at the engine level (tb25 F) but not yet authored
-  onto any shipped part/template; a real balance pass, not invented unprompted.
+  COVER_SEEKER variant scoring on *ally* protection). Support behavior for bodyguard bots. Not melee-
+  gated; can land whenever, listed here with the other playstyles.
+- **Weapon distinctions** — saw vs sword vs fist (the `POWER`/`TRIGGER` capability split): a saw-hand
+  can't add power to a sword swing.
 
 ## Phase S — Status effects & boosts (keystone 2)
 *Second: hooks already fire into the void; tb20's wounds need the status→wound threshold; status and
@@ -358,6 +410,17 @@ Block 2). Vehicles are a later solution layered on top; this is the base.*
   flatbeds, gantries — the vehicle layer).
 
 ## Vehicles (backlog — designed, built after multi-tile units + matrix-mobility)
+
+**Open structural question — tiles as anchor-sockets (resolve when multi-tile objects/vehicles are
+concrete; don't build until then).** Unify object-placement with part-attachment: a tile *offers an
+anchor-socket*; a placeable object has "goes on a tile" joints (a 2×2 object has 4). Placement
+requires **all** joints simultaneously neighbor a compatible anchor-socket — so a 2×2 can't attach to
+a 1×2 truckbed (fails the 4-neighbor check), which is how arbitrarily large objects are kept off small
+vehicles. **Direction is fixed to prevent accidental-anchor:** the world/tiles are pure *anchors*
+(receive, never attach); objects attach *downward* only; a vehicle bed is both (attaches down to its
+own tiles, offers anchor-sockets upward for cargo) — each socket's role is fixed, so it's never
+ambiguous which side anchors. New machinery: multi-socket *simultaneous-match* placement (the socket
+system is one-to-one today).
 **A vehicle is a shell** — parts, sockets, power, a possible matrix slot — shaped for hauling/driving
 instead of fighting. Not a new pillar; content + a few capabilities over the shell/matrix/power
 systems. The unifications:
@@ -508,6 +571,27 @@ sub-parts; multiplayer; rampancy-as-active-pressure tuning; mental-hazard / psyc
   move-in-ready). Skin + hazard modifiers over a generated layout.
 - **Hazard set** (already in the hazard backlog, itemized for reference): radiation, decompression,
   defense grids, psychic incursion, evolved inhabitants, infestation, pirates, settlement.
+
+## Content ideas (from reviews — author as data when the parent system lands)
+Evocative one-offs captured so they don't scatter. Each waits on a system:
+- **MK II Brutalizer** (enemy unit) — *"They never made a mark three, this one kept killing the
+  prototypes."* Big, fast, heavily armored, giant blades for forearms; slightly larger torso + longer
+  legs but **stays single-tile**. **Dual high-power reactors** — hit a heatsink at the right time and
+  an overheat pops it. *Waits on:* the reactor/therms phase (for the heatsink-pop), melee (blades —
+  now landed, tb25).
+- **"Hot Headed"** (perk, psychotic logic matrix) — every unit of therms on the shell boosts Dexterity
+  by 1%. *Waits on:* attributes (Dex) + therms + perks.
+- **Suppression Fuse** (part) — breaks itself on reactor-assembly damage; on break the unit loses
+  friend-or-foe ID and gains the **Reckless Strike** action. **Reckless Strike:** strike at double
+  damage, but every hit deals 25% of damage dealt back to *the part above the used weapon in the tree*
+  (the Brutalizer punches until its own arms fall off). *Waits on:* status/damage-feedback + perks;
+  the "damage the parent part" reuses the existing joint/tree traversal.
+- **Spear cluster** — a **spear** that throws cleanly *and* works in melee (tb25); a craftable backslot
+  **Spear Quiver** (holds only spears, limited by **bulk not weight** — a count without new machinery;
+  *"Darius, you have a problem. —One NufTek executive to another"*); a **spear launcher** weapon type;
+  and a perk **"Pinning Shot"** — pins an enemy to a surface behind them, pin-distance strength-
+  affected. *Waits on:* thrown-weapon support (small ranged addition, doesn't exist yet) + perks
+  (Pinning Shot). The throwable-melee spear is the closest-to-buildable once thrown weapons exist.
 
 ## Small mechanical notes (mentioned once, not yet in any system)
 - **Double crit** — the crit system's endgame: crit >100% chance rolls a second crit tier (e.g. 125%
