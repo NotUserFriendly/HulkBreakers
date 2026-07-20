@@ -25,7 +25,7 @@ extends RefCounted
 ##   own hit/miss counts stay accurate; only the grouping is coarser.
 ## - A fragmenting round's own child impacts (ImpactResult.fragment_hits)
 ##   log recursively BETWEEN their parent's own cascade events (see
-##   ShotResolution._log_impact) — this folder attaches every cascade
+##   ShotResolution.log_impact_result) — this folder attaches every cascade
 ##   event to whichever impact/miss most recently opened, so a parent
 ##   impact's post-fragment cascade (meltdown_armed, matrix_ejected, ...)
 ##   can attach to its last fragment's Hit line instead of its own. Rare
@@ -41,7 +41,7 @@ extends RefCounted
 const MAX_GROUPS := 200
 
 ## Cascade-kind events that belong to whichever impact/miss most recently
-## opened — see ShotResolution._log_impact's own emission order.
+## opened — see ShotResolution.log_impact_result's own emission order.
 const CASCADE_KINDS: Array[StringName] = [
 	&"wound_inflicted",
 	&"part_destroyed",

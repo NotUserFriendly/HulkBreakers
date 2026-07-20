@@ -336,35 +336,19 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 		)
 		if state.is_preview:
 			continue
+		# taskblock-28 Pass C: routed through `ShotResolution`'s own shared
+		# logging (was a hand-rolled `&"impact"` event here, missing the
+		# origin/hit geometry, is_double_crit, wound/mangle/disable/
+		# detonate/matrix-eject cascade, and salvage crediting every OTHER
+		# firing path already gets through this same call) — the exact
+		# "no parallel systems" gap this pass exists to close. A genuine
+		# miss (no results at all) is now logged too, the same "every fired
+		# shot draws its ray" posture AttackAction/BurstAction already
+		# hold; overwatch previously logged nothing at all on a miss.
 		for result: ImpactResult in results:
-			var outcome_name: String = (
-				"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
-			)
-			(
-				state
-				. combat_log
-				. emit(
-					(
-						LogEvent
-						. new(
-							state.round_number,
-							Enums.Phase.RESOLUTION,
-							overwatcher.id,
-							&"impact",
-							{
-								"outcome": result.outcome,
-								"part": result.region.part.id,
-								"target_unit_id": mover.id,
-								"damage": result.part_damage,
-								"bypassed_armor": result.bypassed_armor,
-								"is_crit": result.is_crit,
-								"is_dud": is_dud,
-							},
-							"%s on %s (overwatch)" % [outcome_name, result.region.part.id]
-						)
-					)
-				)
-			)
+			ShotResolution.log_impact_result(state, overwatcher, result, null, is_dud)
+		if results.is_empty():
+			ShotResolution.log_miss_result(state, overwatcher, origin, direction, point, 0.0)
 
 	if mover.alive and mover.shell.living_parts().is_empty():
 		state.kill_unit(mover)

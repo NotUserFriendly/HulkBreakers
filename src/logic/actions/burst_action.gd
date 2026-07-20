@@ -207,7 +207,7 @@ func apply(state: CombatState) -> void:
 			landed_so_far += 1
 		# `apply()` returns early on a preview (above) before this loop is
 		# ever reached — every event here is real, never gated on
-		# `is_preview` the way `_log_impact`'s own calls are.
+		# `is_preview` the way `log_impact_result`'s own calls are.
 		state.combat_log.emit(
 			LogEvent.new(
 				state.round_number,

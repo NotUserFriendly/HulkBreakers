@@ -72,9 +72,9 @@ static func resolve_and_log_point(
 		radius
 	)
 	for result: ImpactResult in results:
-		_log_impact(state, attacker, result, mission, is_dud, max_range)
+		log_impact_result(state, attacker, result, mission, is_dud, max_range)
 	if results.is_empty():
-		_log_miss(state, attacker, origin, direction, point, max_range, origin_height)
+		log_miss_result(state, attacker, origin, direction, point, max_range, origin_height)
 	return not results.is_empty()
 
 
@@ -98,7 +98,17 @@ static func resolve_and_log_point(
 ## can't ricochet or penetrate, so it travels dead level at the shot's own
 ## aimed height (`point.y`) the whole way, same flat assumption
 ## `resolve_shot`'s own first hop always makes.
-static func _log_miss(
+##
+## taskblock-28 Pass C: made public (was `_log_miss`) — the companion fix
+## to BR27.02's own visibility gap. `data` already carried this shot's
+## real geometry (taskblock-22/23); what was actually missing was a way
+## to SEE it without inspecting `data` by hand, since `LogEvent._to_string()`
+## renders only `text` — so `text` itself now carries the same numbers, and
+## this is exposed so a caller other than `resolve_and_log_point` (namely
+## `Overwatch._fire`, which used to hand-roll its own, geometry-less
+## `&"impact"` event) can log through the one real path instead of a
+## second, parallel one.
+static func log_miss_result(
 	state: CombatState,
 	attacker: Unit,
 	origin: Vector2,
@@ -132,14 +142,19 @@ static func _log_miss(
 						"end_y": end.y,
 						"end_height": point.y,
 					},
-					"missed — ray continues to (%.1f, %.1f)" % [end.x, end.y]
+					(
+						"missed — origin (%.2f, %.2f)@%.2f -> ray ends (%.2f, %.2f)@%.2f"
+						% [origin.x, origin.y, origin_height, end.x, end.y, point.y]
+					)
 				)
 			)
 		)
 	)
 
 
-static func _log_impact(
+## taskblock-28 Pass C: made public (was `_log_impact`) — see
+## `log_miss_result`'s own doc comment for why.
+static func log_impact_result(
 	state: CombatState,
 	attacker: Unit,
 	result: ImpactResult,
@@ -150,7 +165,24 @@ static func _log_impact(
 	var outcome_name: String = (
 		"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
 	)
-	var text: String = "%s on %s" % [outcome_name, result.region.part.id]
+	# taskblock-28 Pass C: the geometry suffix is the whole point of this
+	# pass — a backward-travelling shot (BR27.02's own class of bug) is
+	# now readable in `out/combat.log` text directly, not only in `data`
+	# (which already carried origin_x/y/height + hit_x/y/height since
+	# taskblock-22/23 — `LogEvent._to_string()` just never rendered it).
+	var text: String = (
+		"%s on %s [origin (%.2f, %.2f)@%.2f -> hit (%.2f, %.2f)@%.2f]"
+		% [
+			outcome_name,
+			result.region.part.id,
+			result.origin.x,
+			result.origin.y,
+			result.origin_height,
+			result.hit_point.x,
+			result.hit_point.y,
+			result.hit_height,
+		]
+	)
 	# docs/09 "if it changed the world, it's in the log": which UNIT actually
 	# took the hit (not just which part) — a ricochet can tag a third party,
 	# so this is never assumed to be the shooter's own original target.
@@ -187,7 +219,7 @@ static func _log_impact(
 	# empty `resolve_shot` recursion) produces NO further event at all, so
 	# the view had nothing to draw even when it wanted to. Stamped here,
 	# unconditionally on every DEFLECT, the same "void" convention
-	# `_log_miss` already uses for a shot that never hits anything — so the
+	# `log_miss_result` already uses for a shot that never hits anything — so the
 	# reflected direction is always drawable regardless of whether a real
 	# ricochet hop follows it.
 	if result.outcome == Enums.Outcome.DEFLECT:
@@ -273,7 +305,7 @@ static func _log_impact(
 	# logging path, recursively, so a fragment that itself penetrates/
 	# deflects/ricochets is logged exactly like any other projectile.
 	for fragment_result: ImpactResult in result.fragment_hits:
-		_log_impact(state, attacker, fragment_result, mission, false, max_range)
+		log_impact_result(state, attacker, fragment_result, mission, false, max_range)
 	if result.meltdown_armed:
 		state.combat_log.emit(
 			LogEvent.new(

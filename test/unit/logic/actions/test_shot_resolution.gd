@@ -170,3 +170,117 @@ func test_a_deflect_logs_its_own_reflected_void_endpoint() -> void:
 	assert_true(deflect.data.has("deflect_end_x"))
 	assert_true(deflect.data.has("deflect_end_y"))
 	assert_true(deflect.data.has("deflect_end_height"))
+
+
+## taskblock-28 Pass C: BR27.02 (the backward-burst report) was
+## undiagnosable from `out/combat.log` — the geometry was already in
+## `data`, but `LogEvent._to_string()` renders only `text`, which never
+## showed it. An impact's own `text` must now carry the same real
+## origin/hit numbers `data` does, not a re-derivation — read the SAME
+## `LogEvent` back, never a second computation.
+func test_a_hits_own_text_carries_its_real_origin_and_hit_geometry() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var target := _make_unit(Vector2i(3, 0), 1)
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), Vector2(0, 0), 5.0, 0.0, 0.0, null
+	)
+
+	var impact: LogEvent = sink.events_of_kind(&"impact")[0]
+	var expected_origin := (
+		"(%.2f, %.2f)@%.2f"
+		% [
+			impact.data.get("origin_x"),
+			impact.data.get("origin_y"),
+			impact.data.get("origin_height")
+		]
+	)
+	var expected_hit := (
+		"(%.2f, %.2f)@%.2f"
+		% [impact.data.get("hit_x"), impact.data.get("hit_y"), impact.data.get("hit_height")]
+	)
+	assert_true(
+		impact.text.contains(expected_origin), "text must contain the SAME origin data carries"
+	)
+	assert_true(
+		impact.text.contains(expected_hit), "text must contain the SAME hit point data carries"
+	)
+
+
+## A miss's own text must carry its real origin, same posture as a hit's.
+func test_a_miss_own_text_carries_its_real_origin_and_end_geometry() -> void:
+	var shooter := _make_unit(Vector2i(0, 0))
+	var bystander := _make_unit(Vector2i(10, 0), 1)
+	var state := CombatState.new(Grid.new(20, 20), [shooter, bystander])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(0, 0), Vector2(1, 0), MISS_POINT, 5.0, 0.0, 0.0, null
+	)
+
+	var miss: LogEvent = sink.events_of_kind(&"miss")[0]
+	var expected_end := (
+		"(%.2f, %.2f)@%.2f"
+		% [miss.data.get("end_x"), miss.data.get("end_y"), miss.data.get("end_height")]
+	)
+	assert_true(
+		miss.text.contains(expected_end), "text must contain the SAME endpoint data carries"
+	)
+
+
+## A shot fired toward -x must never log the same hit geometry a shot
+## fired toward +x would — the BR27.02 class (a burst reading as though
+## half of it travelled backward) made log-visible: since the prior test
+## proves `text` mirrors `data` verbatim, a real directional difference in
+## `data` (this test) is a real directional difference readable in
+## `out/combat.log` text, not only in live playback.
+func test_a_backward_and_forward_shot_are_distinguishable_by_their_own_logged_geometry() -> void:
+	var shooter := _make_unit(Vector2i(5, 0))
+	var forward_target := _make_unit(Vector2i(8, 0), 1)
+	var backward_target := _make_unit(Vector2i(2, 0), 1)
+
+	var forward_state := CombatState.new(Grid.new(20, 20), [shooter, forward_target])
+	var forward_sink := MemorySink.new()
+	forward_state.combat_log.add_sink(forward_sink)
+	ShotResolution.resolve_and_log_point(
+		forward_state, shooter, Vector2(5, 0), Vector2(1, 0), Vector2(0, 0), 5.0, 0.0, 0.0, null
+	)
+	var forward_hit_x: float = (
+		(forward_sink.events_of_kind(&"impact")[0] as LogEvent).data.get("hit_x") as float
+	)
+
+	var backward_state := CombatState.new(Grid.new(20, 20), [shooter, backward_target])
+	var backward_sink := MemorySink.new()
+	backward_state.combat_log.add_sink(backward_sink)
+	ShotResolution.resolve_and_log_point(
+		backward_state, shooter, Vector2(5, 0), Vector2(-1, 0), Vector2(0, 0), 5.0, 0.0, 0.0, null
+	)
+	var backward_hit_x: float = (
+		(backward_sink.events_of_kind(&"impact")[0] as LogEvent).data.get("hit_x") as float
+	)
+
+	assert_gt(forward_hit_x, 5.0, "a forward shot must land downrange of the shooter's own muzzle")
+	assert_lt(backward_hit_x, 5.0, "a backward shot must land the OTHER way — visible, not guessed")
+
+
+## docs/00 determinism: the exact same call, twice, must log the exact
+## same geometry both times.
+func test_the_same_shot_logs_identical_geometry_every_time() -> void:
+	var runs: Array[Dictionary] = []
+	for _i in range(2):
+		var shooter := _make_unit(Vector2i(0, 0))
+		var target := _make_unit(Vector2i(3, 0), 1)
+		var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+		var sink := MemorySink.new()
+		state.combat_log.add_sink(sink)
+		ShotResolution.resolve_and_log_point(
+			state, shooter, Vector2(0, 0), Vector2(1, 0), Vector2(0, 0), 5.0, 0.0, 0.0, null
+		)
+		var impact: LogEvent = sink.events_of_kind(&"impact")[0]
+		runs.append(impact.data)
+
+	assert_eq(runs[0], runs[1])

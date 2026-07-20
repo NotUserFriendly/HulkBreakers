@@ -280,7 +280,7 @@ func _first_cell_of_terrain(grid: Grid, terrain: int, fallback: Vector2i) -> Vec
 
 ## docs/09 taskblock03 Pass B2: "log the seed... at session start, so a
 ## session is replayable from its own log file." unit_id -1: no specific
-## unit caused this, same convention `_log_impact` already uses for
+## unit caused this, same convention `log_impact_result` already uses for
 ## cover/terrain.
 func _session_start_event(seed_value: int) -> LogEvent:
 	return LogEvent.new(
