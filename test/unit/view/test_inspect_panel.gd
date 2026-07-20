@@ -653,3 +653,49 @@ func test_the_fallback_path_still_works_and_is_its_own_isolated_world() -> void:
 	assert_true(
 		panel._preview_viewport.own_world_3d, "the fresh copy must be its OWN isolated world"
 	)
+
+
+## taskblock-22 Pass I: "the new inspect panel is the inventory surface in
+## player view" — InventoryPanel's own mass/RAM footer (docs/05's three
+## constraints), ported verbatim, never re-summed here.
+func test_open_fills_in_the_mass_and_ram_footer() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+
+	panel.open(unit)
+
+	assert_true(panel._inventory_footer.text.contains("mass"))
+	assert_true(panel._inventory_footer.text.contains("ram"))
+
+
+func test_closing_clears_the_footer_when_reopened_with_no_shell() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	panel.open(unit)
+	assert_true(panel._inventory_footer.text.contains("mass"), "sanity: the footer is populated")
+
+	var no_shell_unit := Unit.new(Matrix.new(), Shell.new(null), Vector2i(1, 1))
+	panel.open(no_shell_unit)
+
+	assert_eq(panel._inventory_footer.text, "")
+
+
+## taskblock-22 Pass I: bidirectional hover-highlight parity with the now-
+## retired InventoryPanel (full end-to-end coverage lives in
+## test_part_highlight_bidirectional.gd) — this just confirms a null
+## `tactics` (SpectatorOverlay's own posture, no player TacticsController)
+## never crashes either direction.
+func test_tree_hover_and_close_never_crash_with_no_tactics_wired() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	panel.open(unit)
+	var weapon: Part = unit.shell.find_part(&"weapon")
+	var weapon_item: TreeItem = _find_item(panel._inventory_tree, weapon)
+	panel._inventory_tree.size = Vector2(400, 300)
+	var rect: Rect2 = panel._inventory_tree.get_item_area_rect(weapon_item)
+
+	var motion := InputEventMouseMotion.new()
+	motion.position = rect.position + Vector2(5, rect.size.y / 2.0)
+	panel._on_tree_gui_input(motion)
+
+	pass_test("no _tactics reference never crashes on hover")

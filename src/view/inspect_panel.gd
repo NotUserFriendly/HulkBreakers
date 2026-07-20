@@ -66,6 +66,14 @@ var _unit: Unit = null
 ## viewer) leaves this unset and gets the old isolated-fresh-copy
 ## behavior unchanged.
 var _live_view_lookup: Callable = Callable()
+## taskblock-22 Pass I: optional — a host with a real TacticsController
+## (SquadControlOverlay's own player view; SpectatorOverlay has none and
+## leaves this null) gets the same bidirectional part-highlight
+## InventoryPanel used to (docs/10 taskblock05 C/taskblock07 Pass C):
+## hovering a row highlights that part in the world, hovering a part in
+## the world highlights its row. `null` just skips both directions —
+## same "optional, degrades gracefully" posture as `_selection`.
+var _tactics: TacticsController = null
 
 var _preview_container: SubViewportContainer
 var _preview_viewport: SubViewport
@@ -91,6 +99,10 @@ var _default_cull_mask: int = 0
 var _status_wound_column: VBoxContainer
 var _matrix_label: RichTextLabel
 var _inventory_tree: Tree
+## taskblock-22 Pass I: "mass/RAM constraints" — InventoryPanel's own
+## feature (docs/05's three constraints), ported here since InspectPanel
+## now supersedes it everywhere.
+var _inventory_footer: Label
 var _info_panel: RichTextLabel
 
 var _rows_by_part: Dictionary = {}  # Part -> InventoryRow, for the info panel's own hover
@@ -127,11 +139,15 @@ func _ready() -> void:
 func setup(
 	material_table: MaterialTable,
 	selection: SelectionController = null,
-	live_view_lookup: Callable = Callable()
+	live_view_lookup: Callable = Callable(),
+	tactics: TacticsController = null
 ) -> void:
 	_material_table = material_table
 	_selection = selection
 	_live_view_lookup = live_view_lookup
+	_tactics = tactics
+	if _tactics != null:
+		_tactics.highlight_changed.connect(_on_highlight_changed)
 	var title_bar := Label.new()
 	title_bar.text = "INSPECT"
 	title_bar.add_theme_color_override("font_color", HulkTheme.FOREGROUND)
@@ -163,6 +179,7 @@ func setup(
 
 	_build_matrix_area(right_column)
 	_build_inventory_tree(right_column)
+	_build_inventory_footer(right_column)
 	_build_info_panel(right_column)
 
 
@@ -256,7 +273,22 @@ func _build_inventory_tree(parent: Control) -> void:
 	_inventory_tree.hide_root = true
 	_inventory_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_inventory_tree.gui_input.connect(_on_tree_gui_input)
+	# taskblock-22 Pass I: same convention InventoryPanel's own mouse_exited
+	# handler used — leaving the tree entirely must clear the 3D highlight,
+	# not just stop updating it.
+	_inventory_tree.mouse_exited.connect(
+		func() -> void:
+			if _tactics != null:
+				_tactics.hover_part(null)
+	)
 	parent.add_child(_inventory_tree)
+
+
+func _build_inventory_footer(parent: Control) -> void:
+	_inventory_footer = Label.new()
+	_inventory_footer.add_theme_color_override("font_color", HulkTheme.DIM)
+	_inventory_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(_inventory_footer)
 
 
 func _build_info_panel(parent: Control) -> void:
@@ -496,7 +528,9 @@ func _refresh_inventory_tree() -> void:
 	_inventory_tree.clear()
 	_rows_by_part.clear()
 	if _unit == null or _unit.shell.root == null:
+		_inventory_footer.text = ""
 		return
+	_inventory_footer.text = _footer_text(_unit.shell)
 	var root: TreeItem = _inventory_tree.create_item()
 	for group: InspectRow.Group in [
 		InspectRow.Group.WEAPONS, InspectRow.Group.CONTAINERS, InspectRow.Group.BODY
@@ -525,6 +559,35 @@ func _refresh_inventory_tree() -> void:
 			depth_items[row.depth + 1] = item
 
 
+## taskblock-22 Pass I: "the three constraints" (docs/05) — mass and RAM,
+## straight from Shell's own resolvers, never re-summed here. Ported
+## verbatim from InventoryPanel's own _footer_text.
+func _footer_text(shell: Shell) -> String:
+	return (
+		"mass %.1f/%.1f   ram %.1f/%.1f"
+		% [shell.carried_mass(), shell.max_mass, shell.total_ram(), shell.max_ram]
+	)
+
+
+## taskblock-22 Pass I: bidirectional — a 3D hover highlights this row.
+## Same convention InventoryPanel's own version used: walks every row
+## rather than tracking one "currently highlighted" item, since
+## _refresh_inventory_tree rebuilds the tree wholesale and any cached
+## TreeItem reference from a previous highlight would already be stale.
+func _on_highlight_changed() -> void:
+	var item: TreeItem = _inventory_tree.get_root()
+	while item != null:
+		var is_highlighted: bool = (
+			_tactics.highlighted_part != null
+			and item.get_metadata(COL_PART) == _tactics.highlighted_part
+		)
+		if is_highlighted:
+			item.set_custom_bg_color(COL_PART, HulkTheme.HIGHLIGHT.darkened(0.6))
+		else:
+			item.clear_custom_bg_color(COL_PART)
+		item = item.get_next_in_tree()
+
+
 ## A6: "hovering an entry fills the info panel... mousing into a dead zone
 ## leaves the info put." No branch here ever CLEARS the info panel — only
 ## a genuine hoverable target (a real Part under the cursor) repopulates
@@ -536,8 +599,15 @@ func _on_tree_gui_input(event: InputEvent) -> void:
 		var motion := event as InputEventMouseMotion
 		var item: TreeItem = _inventory_tree.get_item_at_position(motion.position)
 		if item == null:
+			# G's own A6 rule (info panel: a dead zone is a no-op) is about
+			# the INFO TEXT specifically — the 3D highlight still clears
+			# here, same as InventoryPanel's own dead-zone handling did.
+			if _tactics != null:
+				_tactics.hover_part(null)
 			return
 		var part: Variant = item.get_metadata(COL_PART)
+		if _tactics != null:
+			_tactics.hover_part(part if part is Part else null)
 		if not (part is Part):
 			return
 		var row: InventoryRow = _rows_by_part.get(part)

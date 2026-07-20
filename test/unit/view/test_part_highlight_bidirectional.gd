@@ -5,26 +5,15 @@ extends GutTest
 ## row highlights. What was actually wanted, and is missing: hover an
 ## inventory row -> highlight that part in the world."
 ##
-## Investigation before writing any new code (docs/09 "ask, don't
-## invent"): both directions already exist and share one path —
-## InventoryPanel._on_tree_gui_input() already calls tactics.hover_part()
-## on tree mouse-motion (docs/10 taskblock05 C's own comment says so), and
-## BattleScene._on_highlight_changed() already applies
-## tactics.highlighted_part to whichever HitVolumeView owns the selected
-## unit. Traced and verified live with a real BattleScene (a real Tree
-## needs at least one settled layout pass — custom_minimum_size/
-## size_flags_vertical alone don't give it real dimensions synchronously
-## at construction — Tree.get_item_at_position() returns null against an
-## unlaid-out, zero-height Tree, which is a real GUT-test-fixture
-## consideration but not a bug in the actual running game, where many
-## frames pass before a human's first mouse hover): the full chain (row
-## hover -> tactics.hover_part() -> highlight_changed ->
-## HitVolumeView.highlight_part()) already works correctly end to end.
-## What was actually missing was test coverage proving it, across BOTH
-## panels at once (each is only ever tested in isolation elsewhere) — this
-## file is that coverage. No production code changed for this pass: per
-## the taskblock's own instruction, don't build a second highlight path
-## when the one that exists already does the job.
+## taskblock-22 Pass I: InspectPanel (taskblock-21 Pass A) supersedes
+## InventoryPanel everywhere, including this bidirectional wiring — same
+## investigation-before-code posture this file's own history already
+## established (docs/09 "ask, don't invent"): both directions live in
+## InspectPanel now (`_on_tree_gui_input` calls `tactics.hover_part()`,
+## `_on_highlight_changed` colors the row back), reusing the exact same
+## `BattleScene._on_highlight_changed()` glue reproduced below rather than
+## a second path. No new production mechanism — InventoryPanel's own is
+## ported, not reinvented.
 
 
 func _make_unit(cell: Vector2i, squad: int = 0) -> Dictionary:
@@ -55,11 +44,9 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Dictionary:
 	return {"unit": unit, "arm": arm, "leg": leg}
 
 
-## Builds InventoryPanel + HitVolumeView against the SAME TacticsController
-## — each is only ever tested in isolation elsewhere, so this is the one
-## place the actual cross-panel wiring (BattleScene's own
-## _on_highlight_changed glue, reproduced here the same one-line way) gets
-## exercised at all.
+## Builds InspectPanel + HitVolumeView against the SAME TacticsController —
+## each is only ever tested in isolation elsewhere, so this is the one
+## place the actual cross-panel wiring gets exercised at all.
 func _setup(built: Dictionary) -> Dictionary:
 	var unit: Unit = built.unit
 	var state := CombatState.new(Grid.new(10, 10), [unit])
@@ -72,20 +59,15 @@ func _setup(built: Dictionary) -> Dictionary:
 	controller.setup(state, board_view, camera_rig)
 	controller.click_cell(unit.cell)
 
-	var panel := InventoryPanel.new()
-	var tree := Tree.new()
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(DataLibrary.material_table(), null, Callable(), controller)
+	panel.open(unit)
 	# A real, laid-out Tree has real dimensions by the time a human could
 	# ever hover it; a freshly constructed one in a synchronous test does
 	# not (no layout pass has run). Setting a real size directly gets the
 	# same real hit-testing without needing an async awaited frame.
-	tree.size = Vector2(400, 300)
-	var footer := Label.new()
-	var tooltip_view := TooltipView.new()
-	add_child_autofree(panel)
-	add_child_autofree(tree)
-	add_child_autofree(footer)
-	add_child_autofree(tooltip_view)
-	panel.setup(controller, tree, footer, DataLibrary.material_table(), tooltip_view)
+	panel._inventory_tree.size = Vector2(400, 300)
 
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
@@ -97,7 +79,7 @@ func _setup(built: Dictionary) -> Dictionary:
 		func() -> void: view.highlight_part(controller.highlighted_part)
 	)
 
-	return {"controller": controller, "tree": tree, "view": view}
+	return {"controller": controller, "tree": panel._inventory_tree, "view": view, "panel": panel}
 
 
 func _row_for(tree: Tree, part: Part) -> TreeItem:

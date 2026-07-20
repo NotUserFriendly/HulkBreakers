@@ -18,7 +18,6 @@ var tactics: TacticsController
 var aim_view: AimView
 var resolution_player: ResolutionPlayer
 var stat_panel: StatPanel
-var inventory_panel: InventoryPanel
 var weapon_panel: WeaponPanel
 var tooltip_view: TooltipView
 var tooltip_controller: TooltipController
@@ -26,9 +25,10 @@ var queue_panel: QueuePanel
 var action_bar: ActionBar
 var ap_mp_pip_row: ApMpPipRow
 var controls_overlay: ControlsOverlay
-## taskblock-21 Pass A: the new inspect/status panel — a modal opened
-## on-demand for whatever's currently selected, additive alongside
-## `inventory_panel` (see `_build_ui`'s own comment for why both coexist).
+## taskblock-21 Pass A: the inspect/status panel — a modal opened
+## on-demand for whatever's currently selected. taskblock-22 Pass I: now
+## THE inventory surface in player view — the old always-visible
+## `InventoryPanel`/`inventory_tree` it used to sit alongside is retired.
 var inspect_panel: InspectPanel
 var inspect_button: Button
 ## taskblock-22 Pass E3: "an action-bar task: on click, prompts with all
@@ -151,8 +151,10 @@ func _build_ui() -> void:
 	#
 	# runNotes.md follow-up: "only be as big as it needs to be" — anchored
 	# full-height on the left edge, but with NO right anchor stretch, so its
-	# actual width comes from inventory_tree's own custom_minimum_size
-	# below, not half the screen. mouse_filter = IGNORE is load-bearing:
+	# actual width comes from its own content's combined minimum size
+	# below (taskblock-22 Pass I: the weapon_label row, now that the
+	# inventory tree that used to sit beside it is gone), not half the
+	# screen. mouse_filter = IGNORE is load-bearing:
 	# a bare Control defaults to MOUSE_FILTER_STOP, and this one used to
 	# span half the screen — swallowing every RMB/MMB drag that started
 	# over it before CameraRig's own _unhandled_input ever saw the event.
@@ -165,31 +167,19 @@ func _build_ui() -> void:
 	left_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_half.add_child(left_layout)
 
-	# docs/10 taskblock03 H: the inspected unit's inventory — nested tree +
-	# a footer for the mass/RAM constraints (docs/05). EXPAND_FILL
-	# (vertical only) so it absorbs the left column's height, not the fixed
-	# ~4-row box it used to be. Width is a fixed, content-sized minimum
-	# (runNotes.md: "only as big as it needs to be") — three narrow columns
-	# (Part/Condition/Mass, since H2's decluttering) don't need anywhere
-	# near half the screen.
-	# runNotes.md follow-up: "add a UI element to the right of the
-	# inventory... a list of weapons the unit has attached." A row, not
-	# another vertical block — the weapons list sits beside the inventory
-	# tree, not below it.
+	# taskblock-22 Pass I: the old always-visible inventory tree (nested
+	# tree + mass/RAM footer, docs/10 taskblock03 H) lived here, right next
+	# to the weapons list. InspectPanel (taskblock-21 Pass A) now supersedes
+	# it everywhere, including a docs/05 mass/RAM footer of its own — see
+	# InspectPanel._build_inventory_footer/_footer_text — so it's gone,
+	# not just superseded-but-left-running-alongside. The weapons list
+	# (weapon_label/WeaponPanel) is a separate feature the taskblock never
+	# named for retirement; it keeps its own row, on its own now that the
+	# tree it used to sit beside is gone.
 	var inventory_row := HBoxContainer.new()
 	inventory_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inventory_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_layout.add_child(inventory_row)
-
-	var inventory_tree := Tree.new()
-	# docs/10 taskblock05 A2: "give the panel a sane minimum width so the
-	# tree stops overflowing horizontally" — 460 wasn't enough room for a
-	# deep socket path ("[SHOULDER_L] forearm_cladding") plus the fixed
-	# Condition/Mass columns; a flagged tuning number, not a design
-	# decision, same status as those columns' own widths.
-	inventory_tree.custom_minimum_size = Vector2(560, 0)
-	inventory_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	inventory_row.add_child(inventory_tree)
 
 	# docs/09 taskblock07 Pass B4: RichTextLabel's own mouse_filter DEFAULTS
 	# to STOP (not IGNORE — that's plain Label's default, not this class's),
@@ -207,16 +197,9 @@ func _build_ui() -> void:
 	weapon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	inventory_row.add_child(weapon_label)
 
-	var inventory_footer := Label.new()
-	inventory_footer.add_theme_color_override("font_color", HulkTheme.DIM)
-	inventory_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	left_layout.add_child(inventory_footer)
-
-	# taskblock-21 Pass A: the new inspect panel, additive alongside the
-	# existing inventory tree above (A8's "don't run two inspect systems"
-	# is about hover-tooltip duplication, not this — the inventory tree
-	# stays the always-visible quick glance; the inspect panel is an
-	# on-demand, richer modal, opened for whatever's currently selected).
+	# taskblock-22 Pass I: the ONE inventory surface in player view now —
+	# no more "additive alongside the always-visible tree" (A8's own old
+	# framing); opened on demand for whatever's currently selected.
 	inspect_button = Button.new()
 	inspect_button.text = "Inspect"
 	inspect_button.pressed.connect(_on_inspect_pressed)
@@ -473,10 +456,6 @@ func _build_ui() -> void:
 	# _ready(), never refreshing it on a later New Battle either).
 	var material_table: MaterialTable = DataLibrary.material_table()
 
-	inventory_panel = InventoryPanel.new()
-	add_child(inventory_panel)
-	inventory_panel.setup(tactics, inventory_tree, inventory_footer, material_table, tooltip_view)
-
 	weapon_panel = WeaponPanel.new()
 	add_child(weapon_panel)
 	weapon_panel.setup(tactics, weapon_label)
@@ -515,7 +494,7 @@ func _build_ui() -> void:
 	# battle is a real BattleScene by this point (its own unit_views may
 	# still be empty pre-battle-load; find_unit_view degrades to null
 	# gracefully, same as every other optional thread-through here).
-	inspect_panel.setup(material_table, tactics.selection, battle.find_unit_view)
+	inspect_panel.setup(material_table, tactics.selection, battle.find_unit_view, tactics)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
