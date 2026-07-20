@@ -30,6 +30,11 @@ extends RefCounted
 ## — is ONLY consulted on a genuine miss, to know how far the void tracer
 ## below should draw. It plays no part in whether anything was actually
 ## hit; that's still `DamageResolver.resolve_shot` alone, unchanged.
+## taskblock-23 Pass C: `origin_height` is this shot's own real muzzle
+## height (e.g. `UnitGeometry.shouldered_muzzle_point(...).y`) — stamped
+## onto the first hop's own `ImpactResult.origin_height` so a real 3D
+## tracer (Pass D) has it, same real-height convention `resolve_shot`'s
+## own ricochet hops already carry for free.
 static func resolve_and_log_point(
 	state: CombatState,
 	attacker: Unit,
@@ -41,7 +46,8 @@ static func resolve_and_log_point(
 	bonus_pen: float,
 	mission: MissionState,
 	is_dud: bool = false,
-	max_range: float = 0.0
+	max_range: float = 0.0,
+	origin_height: float = 0.0
 ) -> bool:
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 		origin,
@@ -57,7 +63,9 @@ static func resolve_and_log_point(
 		DamageResolver.DEFAULT_DAMAGE_FLOOR,
 		DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
 		attacker.shell.all_parts(),
-		bonus_pen
+		bonus_pen,
+		0.0,
+		origin_height
 	)
 	for result: ImpactResult in results:
 		_log_impact(state, attacker, result, mission, is_dud)

@@ -159,7 +159,8 @@ func apply(state: CombatState) -> void:
 			bonus_pen,
 			mission,
 			is_dud,
-			RangeModel.max_range(weapon)
+			RangeModel.max_range(weapon),
+			muzzle.y
 		)
 
 	# Phase 6 placeholder: no living parts left disables the unit. Phase 7

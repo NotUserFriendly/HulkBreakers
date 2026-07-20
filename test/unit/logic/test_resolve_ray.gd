@@ -130,23 +130,124 @@ func test_resolve_ray_reports_a_hit_point_that_lies_on_the_ray() -> void:
 	assert_true(hit.point.is_equal_approx(expected_point))
 
 
-## docs/09 taskblock07 Pass A3: "assert is_zero_approx(dir.y)... a silent
-## drop is a trap." A non-horizontal dir must fail loudly, not silently
-## flatten and carry on.
-func test_a_non_zero_dir_y_fails_loudly() -> void:
+## taskblock-23 Pass C: "resolve_ray accepts vertical shots" — the old
+## docs/09 taskblock07 Pass A3 `dir.y ~= 0` guard (docs/02's pre-multi-
+## level "shots travel horizontally") is gone. A non-horizontal `dir` must
+## resolve like any other ray, never push_error, even one that lands on
+## nothing.
+func test_a_non_zero_dir_y_no_longer_errors() -> void:
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid)
 
 	var hit: Variant = ShotPlane.resolve_ray(Vector3(2.0, 0.5, 0.0), Vector3(0.0, 0.5, 1.0), state)
 
-	assert_null(hit)
-	assert_push_error("dir.y")
+	assert_null(hit, "nothing stands in this empty grid's path")
+	assert_push_error_count(0, "a real vertical dir must never push_error anymore")
+
+
+## "a shot passes over a part shorter than the muzzle line and hits a
+## taller one behind it" — an ordinary LEVEL ray (Pass A/B already gave
+## every region its own real vertical extent; this proves resolve_ray
+## actually honors it end to end, not just the plane-build primitives it
+## wraps).
+func test_a_level_shot_passes_over_a_short_part_and_hits_a_taller_one_behind_it() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var short_crate := _part(&"short", Box.new(Vector3(0.0, 0.25, 0.0), Vector3(2.0, 0.5, 0.6)))
+	var tall_wall := _part(&"tall", Box.new(Vector3(0.0, 1.5, 0.0), Vector3(2.0, 2.0, 0.6)))
+	grid.blockers[Vector2i(2, 2)] = short_crate
+	grid.blockers[Vector2i(2, 6)] = tall_wall
+
+	# Above the short crate's own rect ([0.0, 0.5]) but within the tall
+	# wall's ([0.5, 2.5]).
+	var muzzle := Vector3(2.0, 1.5, 0.0)
+	var dir := Vector3(0.0, 0.0, 1.0)
+
+	var hit: HitResult = ShotPlane.resolve_ray(muzzle, dir, state)
+
+	assert_not_null(hit)
+	assert_eq(
+		hit.part,
+		tall_wall,
+		"the muzzle's real height clears the short crate and reaches the tall wall behind it"
+	)
+
+
+## A genuinely tilted ray must reach a region a level ray from the exact
+## same muzzle cannot — proof the vertical component actually participates
+## in region selection now, not just carried along unused.
+func test_a_tilted_ray_hits_a_part_a_level_ray_from_the_same_muzzle_would_miss() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var torso := _part(&"torso", Box.new(Vector3(0.0, 1.5, 0.0), Vector3(0.6, 1.0, 0.6)))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 5))
+	state.add_unit(unit)
+
+	var muzzle := Vector3(2.0, 0.5, 0.0)
+	assert_null(
+		ShotPlane.resolve_ray(muzzle, Vector3(0.0, 0.0, 1.0), state),
+		"sanity: a level ray at this muzzle height misses the torso entirely"
+	)
+
+	var hit: HitResult = ShotPlane.resolve_ray(muzzle, Vector3(0.0, 0.25, 1.0), state)
+
+	assert_not_null(hit, "climbing along a real vertical dir must reach what a level ray missed")
+	assert_eq(hit.part, torso)
+
+
+## The world hit point a tilted ray reports must still lie on the real 3D
+## ray — the same property `test_resolve_ray_reports_a_hit_point_that_lies_
+## on_the_ray` proves for a level one, now proven for a climbing one too.
+func test_a_tilted_rays_hit_point_lies_on_the_real_3d_ray() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var torso := _part(&"torso", Box.new(Vector3(0.0, 1.5, 0.0), Vector3(0.6, 1.0, 0.6)))
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(2, 5))
+	state.add_unit(unit)
+
+	var muzzle := Vector3(2.0, 0.5, 0.0)
+	var dir := Vector3(0.0, 0.25, 1.0)
+
+	var hit: HitResult = ShotPlane.resolve_ray(muzzle, dir, state)
+
+	assert_not_null(hit)
+	var expected_point: Vector3 = muzzle + dir.normalized() * hit.distance
+	assert_true(hit.point.is_equal_approx(expected_point))
+
+
+## "Muzzle height is real... not a hardcoded constant" — two boxes on the
+## SAME part at different real heights, same everything else: only the
+## caller's own real muzzle height decides which one (if either) gets hit.
+func test_muzzle_height_is_real_not_a_hardcoded_constant() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var stacked := Part.new()
+	stacked.id = &"stacked"
+	stacked.hp = 5
+	stacked.max_hp = 5
+	stacked.volume = [
+		Box.new(Vector3(0.0, 0.25, 0.0), Vector3(0.6, 0.5, 0.6)),  # spans y [0.0, 0.5]
+		Box.new(Vector3(0.0, 1.75, 0.0), Vector3(0.6, 0.5, 0.6)),  # spans y [1.5, 2.0]
+	]
+	var unit := Unit.new(Matrix.new(), Shell.new(stacked), Vector2i(2, 5))
+	state.add_unit(unit)
+	var dir := Vector3(0.0, 0.0, 1.0)
+
+	var low_hit: HitResult = ShotPlane.resolve_ray(Vector3(2.0, 0.25, 0.0), dir, state)
+	var high_hit: HitResult = ShotPlane.resolve_ray(Vector3(2.0, 1.75, 0.0), dir, state)
+	var between_miss: Variant = ShotPlane.resolve_ray(Vector3(2.0, 1.0, 0.0), dir, state)
+
+	assert_not_null(low_hit, "the muzzle's own real low height must land on the low box")
+	assert_not_null(high_hit, "the muzzle's own real high height must land on the high box")
+	assert_null(between_miss, "a real muzzle height between the two boxes must hit neither")
+	assert_almost_eq(low_hit.point.y, 0.25, 0.01)
+	assert_almost_eq(high_hit.point.y, 1.75, 0.01)
 
 
 func test_a_zero_horizontal_direction_returns_null_without_erroring() -> void:
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid)
 
-	# dir.y == 0 (satisfies the precondition) but the whole vector is zero —
-	# no horizontal direction to fire along at all.
+	# The whole vector is zero — no horizontal heading to build a plane
+	# along at all, whatever dir.y is.
 	assert_null(ShotPlane.resolve_ray(Vector3(2.0, 0.5, 0.0), Vector3.ZERO, state))

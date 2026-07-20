@@ -793,3 +793,155 @@ func test_meltdown_detonates_early_if_re_killed_mid_countdown() -> void:
 	assert_eq(second_impact.detonated_units, [near_unit], "re-killed mid-countdown: fires now")
 	assert_eq(reactor.meltdown_countdown, -1, "the clock is cancelled, not left running")
 	assert_lt(near_root.hp, 10)
+
+
+## taskblock-23 Pass C: the real bug Pass A's own height-retaining fix
+## exposed — the old `normal_2d := Vector2(surface_normal.x,
+## surface_normal.z)` truncation silently discarded surface_normal's own Y
+## (Pass A: no longer forced to 0). A face pointing straight up is the
+## clearest case: its ground-plane projection is the ZERO vector, so the
+## old incidence math saw a degenerate (0,0) normal and always read 90
+## degrees (maximal, glancing) no matter how steep the real shot — even a
+## near-vertical dive straight onto it, which is actually nearly dead-on.
+func test_resolve_impact_incidence_uses_the_regions_real_3d_normal_not_a_flattened_one() -> void:
+	var table := DataLibrary.material_table()
+	var part := Part.new()
+	part.id = &"plate"
+	part.material = &"steel"
+	part.hp = 20
+	part.max_hp = 20
+	var region := Region.new(Rect2(), 1.0, part, Vector3(0.0, 1.0, 0.0))
+
+	var level_shot: ImpactResult = DamageResolver.resolve_impact(
+		Vector2(1.0, 0.0), 1.0, region, table
+	)
+	var steep_dive: ImpactResult = DamageResolver.resolve_impact(
+		Vector2(1.0, 0.0), 1.0, region, table, 0.0, 100.0
+	)
+
+	assert_eq(
+		level_shot.outcome,
+		Enums.Outcome.DEFLECT,
+		"a dead-level shot grazing a face pointing straight up is maximal incidence -- glancing"
+	)
+	assert_eq(
+		steep_dive.outcome,
+		Enums.Outcome.STOP_DEAD,
+		"a near-vertical dive onto the SAME face is nearly dead-on -- the real 3D normal must see it"
+	)
+
+
+## taskblock-23 Pass C: `resolve_shot` now tests each region at ITS OWN
+## real height (`point.y` rising/falling with that region's own depth via
+## `vertical_slope`), not one fixed height for the whole flight. Same two
+## boxes, same everything else — only the flight's own tilt decides which
+## one (if either) it actually reaches, proven at the full resolve_shot
+## level (not just the `_find_next`/`resolve_ray` primitives it shares the
+## mechanism with).
+func test_a_tilted_flight_vertical_slope_changes_which_region_resolve_shot_hits() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var table := DataLibrary.material_table()
+	var near_low := Part.new()
+	near_low.id = &"near_low"
+	near_low.material = &"steel"
+	near_low.hp = 20
+	near_low.max_hp = 20
+	near_low.volume = [Box.new(Vector3(0.0, 0.25, 0.0), Vector3(2.0, 0.5, 0.6))]  # y [0.0, 0.5]
+	var far_high := Part.new()
+	far_high.id = &"far_high"
+	far_high.material = &"steel"
+	far_high.hp = 20
+	far_high.max_hp = 20
+	far_high.volume = [Box.new(Vector3(0.0, 1.5, 0.0), Vector3(2.0, 1.0, 0.6))]  # y [1.0, 2.0]
+	grid.blockers[Vector2i(2, 2)] = near_low
+	grid.blockers[Vector2i(2, 6)] = far_high
+
+	var origin := Vector2(2, 0)
+	var direction := Vector2(0, 1)
+
+	var flat_results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, Vector2(0.0, 0.25), 1.0, 0.0, state, table, _rng(1)
+	)
+	assert_eq(
+		flat_results[0].region.part, near_low, "a flat flight at 0.25 lands on the near, low cover"
+	)
+
+	# Same flight, same aim height, but climbing (vertical_slope 0.3) —
+	# clears the near cover's own rect ([0.0, 0.5]) by the time it gets
+	# there and instead reaches the far, tall one ([1.0, 2.0]).
+	var tilted_results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin,
+		direction,
+		Vector2(0.0, 0.25),
+		1.0,
+		0.0,
+		state,
+		table,
+		_rng(1),
+		0,
+		DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
+		DamageResolver.DEFAULT_DAMAGE_FLOOR,
+		DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
+		[],
+		0.0,
+		0.3
+	)
+	assert_eq(
+		tilted_results[0].region.part,
+		far_high,
+		"the SAME flight, climbing, clears the near cover and reaches the far, tall one instead"
+	)
+
+
+## taskblock-23 Pass C: "a ricochet hop travels a 3D reflected direction
+## (can gain/lose height)" — a real shot, through the real BodyProjector
+## pipeline (not a hand-built Region), deflecting off a genuinely tilted
+## body part (`Poses.aiming()`'s own shoulder tilt, the exact fixture
+## `test_body_projector.gd` already proves produces surface_normal.y ~=
+## 0.707107) must come back with a real, nonzero reflected_vertical — a
+## DEAD-LEVEL incoming shot (incoming_vertical 0.0) reflecting off
+## anything but a purely vertical face is only possible to have a nonzero
+## reflected_vertical at all because the fix respects the face's own real
+## tilt; the old code had no such concept and every ricochet flattened to
+## one height by construction.
+func test_a_deflection_off_a_real_tilted_body_part_gains_a_genuine_vertical_component() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.material = &"steel"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3(0.0, -0.3, 0.0), Vector3(0.4, 0.9, 0.4))]
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shoulder_r := Socket.new(
+		&"SHOULDER", Transform3D(Basis(), Vector3(0.31, 1.53, 0.0)), &"SHOULDER_R"
+	)
+	shoulder_r.occupant = arm
+	torso.sockets = [shoulder_r]
+	var target := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+	target.pose = Poses.aiming()
+	var grid := Grid.new(20, 20)
+	var state := CombatState.new(grid, [target])
+	var table := DataLibrary.material_table()
+
+	var origin := Vector2(0, 10)
+	var direction := Vector2(0, -1)
+	var aim_point := Vector2(0.3, 1.4)  # inside the tilted arm's own real rect
+
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, aim_point, 5.0, 0.0, state, table, _rng(1)
+	)
+
+	assert_eq(results[0].region.part, arm)
+	assert_eq(results[0].outcome, Enums.Outcome.DEFLECT, "fixture must actually deflect")
+	assert_almost_eq(
+		results[0].hit_height, aim_point.y, 0.01, "the first hop's own real height is stamped"
+	)
+	assert_gt(
+		results[0].reflected_vertical,
+		1.0,
+		"a dead-level shot off a 45-degree-tilted face must reflect with a real, steep vertical rise"
+	)
