@@ -20,7 +20,12 @@ longer flattened to one height plane); depth-sorted shot plane with gap fall-thr
 thread); dartboard scatters isotropically in both the lateral and vertical axes (tb23 B);
 `resolve_ray(muzzle, dir)` the resolution seam, now a true 3D ray — a shot can pass over a short
 part into a taller one behind it, and a ricochet branches vertically as well as horizontally
-(tb23 C); `READING`/`RESOLVES` never conflated.
+(tb23 C); `READING`/`RESOLVES` never conflated. **Muzzle-anchor fix** (tb27 A1) — every attack
+action now builds its shot-plane `origin` from the SAME shouldered-muzzle point as its `direction`
+(previously `direction` used the shooter's cell, `origin` its own muzzle — the mismatch could
+resolve a target at negative depth relative to the ray, animating as the burst firing backward).
+Shot/deflect impacts also now hold a deliberate beat (`DEFLECT_BEAT_MS`) between the primary hit
+and its own deflect tracer (tb27 A2), instead of both resolving in the same instant.
 
 **Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
 DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
@@ -114,7 +119,13 @@ visible as a 30° slice, tb19) — the AI can now genuinely weigh and hold it, n
 **Resolution speed** (tb18) — `Matrix.personal_speed` (flat bonus to everything); unified
 resolution-speed formula (lower resolves first); re-validating ordered resolver; initiative;
 equal-speed simultaneity; **Step Out** (auto-assembled orthogonal move/fire/return through the
-resolver, dies-exposed on interrupt).
+resolver, dies-exposed on interrupt). Both legs are free — `MoveAction.free` costs no MP/AP either
+direction, for the AI's own `StepOutPlanner` usage and the player alike (tb27 B2, docs/SUPERSEDED.md
+— previously a deliberate "real cost, no discount" choice). The player's own Step Out flow now
+matches the intended sequence: confirming a cell queues only the free out-leg and opens ordinary
+aim mode from the stepped-out position (camera/dartboard follow the queued move for free via the
+existing preview machinery); firing appends the free return leg; canceling aim mid-step-out undoes
+the queued out-leg (tb27 B).
 
 **AI** (tb14/16/17-1/24) — `UnitAI.plan_turn`, deterministic, human & AI emit the same queue,
 firing derived from the same `ActionCatalog.build_firing_action` seam a weapon's own
@@ -124,7 +135,12 @@ consumer (tb24 C). Playstyles: AGGRESSIVE (never holds overwatch), COVER_SEEKER 
 SKIRMISHER (~5), MARKSMAN (~7+, prefers it), PSYCHOTIC (prefers melee, closes to minimize
 distance, never flees), TURTLE (flees rather than melee — tb25 F). Line-of-fire safety (won't
 shoot through allies); reachability-aware targeting. Suppression + real melee opportunity attacks
-(tb25 E, was stubbed).
+(tb25 E, was stubbed). **Engagement positioning** (tb27 C1) — when no reachable cell has real line
+of sight this turn, `_engagement_score` now scores primarily on `LoS.obstruction_count` (opaque
+cells between a candidate cell and the enemy), which strictly decreases as a unit works around a
+corner even while raw distance plateaus — a real, measured improvement (a 60-real-map sweep's
+never-reaches-LOS seed count dropped 16/60 → 8/60), not a complete fix: a corridor requiring
+temporary backward movement before a gap appears can still trap this per-turn greedy scorer.
 
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
@@ -146,7 +162,23 @@ framing (orbits target); poses = socket overrides; `HitVolumeView` permanent; pe
 (mixed assemblies). One `BattleScene` + swappable control overlays. Playback animation
 (slide/facing/shot-fade-to-tracer), animation-gated in the view only, tunable timings; every shot
 and ricochet hop draws its own tracer at its real, fully 3D logged position, not one guessed
-segment pinned to a constant height (tb22 D, real height tb23 D).
+segment pinned to a constant height (tb22 D, real height tb23 D). **Ground-overlay height ladder**
+(tb27 C2) — team marker / extraction tile / overwatch arc / facing wedge each hold a distinct,
+deliberately-ordered depth band (`0.010 → 0.06 → 0.09 → 0.17`) instead of one marker bumped in
+isolation per report; found and fixed a real, previously unreported co-planar pair (team marker vs.
+extraction tile) no prior fix or test had ever checked. **Turn indicator** (tb27 D2) — the active
+unit's own facing wedge and team marker recolor to a distinct `ACTIVE_TURN_COLOR`, driven off
+`combat_state.current_unit()` from both `load_battle()` and `refresh_unit_views()`, shared by
+either overlay. **AP-gated action bar** (tb27 D3) — a slot the unit can't afford dims and refuses
+to arm, reusing `ActionCatalog.provider_for`'s own `ap_cost`. **Camera reset after aiming** (tb27
+D4) — `CameraRig` snapshots the pre-aim orbit state and eases back to it once aiming ends, via a
+shared `_ease_to()` helper. **Wall tiles non-inspectable** (tb27 D5) — a wall click is a real
+no-op, same posture as a miss; `InspectPanel`'s own null-root branch also resets stale isolate-view
+state so it can never leak a live-board render slice into a "nothing to show" case regardless of
+caller. **Spectator/player parity** (tb27 D1a/D1c) — the spectator log no longer word-wraps
+(matching the player log); spectator view gained inspect-on-hover (`UnitPicker.hit()` driven off
+mouse motion, mirroring `SquadControlOverlay`'s own highlight wiring but with no "selected unit"
+gate, since spectator has no selection concept) — previously it had no hover feedback at all.
 
 **Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu (expanding-list
 teams). The verification rig.
