@@ -136,6 +136,17 @@ var _rmb_dragged: bool = false
 var _step_out_candidates: Array[Vector2i] = []
 var _step_out_cell_index: int = 0
 
+## taskblock-27 Pass B: non-null from the moment a step-out's own free
+## outbound leg is queued (`_confirm_step_out`) until the whole triple
+## either finishes (a real shot fired, the free return leg appended) or
+## the player cancels aim mid-step-out — the cell to path the free return
+## leg back to. `stepping_out_at`/`_step_out_candidates` are already gone
+## by then (the player is in ordinary `aiming_at` mode, dartboard open,
+## same as any other shot), so this is the one thing carried across that
+## transition.
+var _step_out_origin_cell: Vector2i = Vector2i.ZERO
+var _returning_from_step_out: bool = false
+
 
 ## taskblock-22 Pass A2: `mission`, optional (default null, every existing
 ## caller/test unaffected) — threaded straight through to
@@ -545,13 +556,15 @@ func _unit_at(cell: Vector2i) -> Unit:
 	return null
 
 
-## taskblock-18 D2: "clicking SHOOT on an enemy the unit can't see but
-## could from a legal step-out cell builds the triple automatically." A
-## direct shot (the origin is NOT covered from this target — D1's own
-## trigger condition) enters ordinary aim mode, unchanged; a target only
-## reachable via a step out enters step-out-choice mode instead, and never falls
-## through to aim mode's own reticle/dartboard UI, which a step out's own
-## automated, center-mass shot has no use for. Falls back to plain aim
+## taskblock-18 D2 (taskblock-27 Pass B: dartboard added): "clicking SHOOT
+## on an enemy the unit can't see but could from a legal step-out cell
+## builds the triple automatically." A direct shot (the origin is NOT
+## covered from this target — D1's own trigger condition) enters ordinary
+## aim mode, unchanged; a target only reachable via a step out enters
+## step-out-CELL-choice mode instead (picking which candidate cell to
+## step out to) — confirming that choice then hands off into this SAME
+## ordinary aim mode from the stepped-out position (`_confirm_step_out`),
+## rather than auto-resolving a center-mass shot. Falls back to plain aim
 ## mode when neither applies (no operable weapon, or no legal step out
 ## exists) — confirm_shot()'s own existing "nothing operable" no-op is
 ## what actually catches that case, same as it always has.
@@ -601,10 +614,12 @@ func _enter_aim_mode(target: Unit) -> void:
 	aim_changed.emit()
 
 
-## taskblock-18 D2/D4: enters step-out-choice mode — safest candidate
+## taskblock-18 D2/D4: enters step-out-CELL-choice mode — safest candidate
 ## selected by default, mouse-wheel cycles the rest (cycle_step_out_cell).
-## No camera framing/dartboard of its own: a step out's shot is always
-## automated center-mass, there is nothing here for the player to aim.
+## No camera framing/dartboard of its own yet: this phase is only for
+## picking WHICH cell to step out to, before any move is queued — the
+## real aim/dartboard step happens after confirming (`_confirm_step_out`),
+## once the free outbound leg is actually queued (taskblock-27 Pass B).
 func _enter_step_out_mode(target: Unit, candidates_by_safety: Array[Vector2i]) -> void:
 	stepping_out_at = target
 	_step_out_candidates = candidates_by_safety
@@ -804,39 +819,90 @@ func confirm_shot() -> void:
 			var action: CombatAction = ActionCatalog.build_firing_action(
 				armed_action.id, shooter, weapon.id, aiming_at.cell, reticle_offset
 			)
-			if action != null:
-				selection.current_queue().enqueue(action, selection.state)
+			if action != null and selection.current_queue().enqueue(action, selection.state):
+				# taskblock-27 Pass B: a real shot just queued from a
+				# step-out's own firing cell — the free return leg (the
+				# triple's own third leg) only ever gets appended here, on
+				# an ACTUAL fired shot, never on a bare cancel.
+				if _returning_from_step_out:
+					_append_step_out_return_leg()
+	_returning_from_step_out = false
 	cancel_aim()
 
 
-## taskblock-18 D2: commits the step-out triple at whichever candidate cell
-## is CURRENTLY selected (default: safest; the player may have cycled
-## with the wheel first) — through StepOutPlanner.build_triple(), the same
-## shared assembly AI step-outs use, queued onto this unit's own real
-## TACTICS queue exactly like any other action (real MP/AP cost for both
-## legs, no discount). A silent no-op if the shooter has nothing
-## operable, same posture confirm_shot() itself already has.
+## taskblock-27 Pass B: the step-out triple's own third leg — pathed from
+## wherever the queue's own preview says the shooter now stands (the
+## firing cell, unless the firing action itself somehow also moved it)
+## back to `_step_out_origin_cell`, against the preview's OWN grid
+## (`StepOutPlanner.build_triple`'s exact same "origin reads occupied on
+## the raw grid until the out-leg's preview vacates it" reasoning) —
+## free, the same `MoveAction` flag the outbound leg used.
+func _append_step_out_return_leg() -> void:
+	var shooter: Unit = selection.selected_unit
+	var preview: CombatState = selection.current_queue().preview(selection.state)
+	var previewed_shooter: Unit = preview.find_unit(shooter.id)
+	if previewed_shooter == null:
+		return
+	var back_pf := Pathfinder.new(preview.grid, preview.terrain_costs)
+	var back_path: Array[Vector2i] = back_pf.astar(previewed_shooter.cell, _step_out_origin_cell)
+	if back_path.size() < 2:
+		return
+	selection.current_queue().enqueue(MoveAction.new(shooter, back_path, true), selection.state)
+
+
+## taskblock-27 Pass B: commits to whichever candidate cell is CURRENTLY
+## selected (default: safest; the player may have cycled with the wheel
+## first) — but only the free OUTBOUND leg, queued the same way
+## StepOutPlanner.build_triple's own out-leg is (MoveAction's own `free`
+## flag, tb27 Pass B2 — no MP/AP either way now). Rather than
+## auto-resolving a center-mass shot immediately (the old behavior), this
+## then hands off into ORDINARY aim mode from the stepped-out position —
+## `_framing_shooter()`/`aim_state()` both already read
+## `selection.previewed_unit()`, so the camera and dartboard naturally
+## follow the just-queued move with no extra plumbing. `confirm_shot()`'s
+## own ordinary firing branch appends the free return leg once a real shot
+## is actually queued (`_append_step_out_return_leg`); `cancel_aim()`
+## unwinds the free out-leg if the player backs out before firing. A
+## silent no-op if the shooter has nothing operable or the outbound leg
+## itself doesn't queue legally, same posture confirm_shot() itself
+## already has.
 func _confirm_step_out() -> void:
 	var shooter: Unit = selection.selected_unit
 	var weapon: Part = (
 		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
 	)
-	if weapon != null and not _step_out_candidates.is_empty():
-		var firing_cell: Vector2i = _step_out_candidates[_step_out_cell_index]
-		StepOutPlanner.build_triple(
-			selection.current_queue(),
-			selection.state,
-			shooter,
-			armed_action.id,
-			weapon.id,
-			stepping_out_at,
-			shooter.cell,
-			firing_cell
+	var target: Unit = stepping_out_at
+	if weapon == null or _step_out_candidates.is_empty():
+		cancel_step_out()
+		return
+	var firing_cell: Vector2i = _step_out_candidates[_step_out_cell_index]
+	var pf := Pathfinder.new(selection.state.grid, selection.state.terrain_costs)
+	var out_path: Array[Vector2i] = pf.astar(shooter.cell, firing_cell)
+	if (
+		out_path.size() < 2
+		or not selection.current_queue().enqueue(
+			MoveAction.new(shooter, out_path, true), selection.state
 		)
-	cancel_step_out()
+	):
+		cancel_step_out()
+		return
+	_step_out_origin_cell = shooter.cell
+	_returning_from_step_out = true
+	stepping_out_at = null
+	_step_out_candidates = []
+	_step_out_cell_index = 0
+	_enter_aim_mode(target)
 
 
 func cancel_aim() -> void:
+	# taskblock-27 Pass B: backing out of aim mid-step-out (before a real
+	# shot ever queued, i.e. before confirm_shot's own firing branch
+	# reached `_append_step_out_return_leg` and cleared this) must undo
+	# the free outbound leg too — otherwise the unit is left standing at
+	# the firing cell with no shot fired and no return leg ever coming.
+	if _returning_from_step_out:
+		selection.current_queue().actions.pop_back()
+		_returning_from_step_out = false
 	aiming_at = null
 	armed_action = null
 	layer_index = 0

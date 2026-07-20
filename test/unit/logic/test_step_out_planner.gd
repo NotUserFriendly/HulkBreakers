@@ -230,10 +230,11 @@ func test_build_triple_assembles_a_real_move_attack_move_queue() -> void:
 	)
 
 
-## D1: "the return is only free when the origin is a better defensive
-## position — never a discount." Both moves must spend real MP/AP, same
-## as any other queued move.
-func test_the_triple_costs_real_mp_for_both_legs_no_discount() -> void:
+## taskblock-27 Pass B2 (docs/SUPERSEDED.md): reverses this suite's own
+## original "no discount" design — both automated legs are now
+## `MoveAction.free`, so a step-out's own two moves cost nothing, unlike
+## an ordinary queued move.
+func test_the_triple_costs_no_mp_for_either_leg() -> void:
 	var scene: Dictionary = _covered_scene()
 	var unit: Unit = scene.unit
 	var starting_mp: float = unit.mp
@@ -254,9 +255,9 @@ func test_the_triple_costs_real_mp_for_both_legs_no_discount() -> void:
 	var preview: CombatState = queue.preview(scene.state)
 	var previewed: Unit = preview.find_unit(unit.id)
 
-	# 2 real steps (out + back), 1 MP each, at the same cost any ordinary
-	# MoveAction would pay — never refunded or waived.
-	assert_almost_eq(previewed.mp, starting_mp - 2.0, 0.0001)
+	# 2 free steps (out + back) — neither leg spends MP, unlike an
+	# ordinary MoveAction.
+	assert_almost_eq(previewed.mp, starting_mp, 0.0001)
 
 
 func test_assemble_for_shoot_returns_null_when_already_directly_attackable() -> void:

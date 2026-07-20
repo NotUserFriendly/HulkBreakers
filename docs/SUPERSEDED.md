@@ -38,6 +38,7 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 | AI and the player's own UI hardcoded `AttackAction` regardless of what a weapon actually provides | firing action derived from the weapon's own `provides_actions` via `ActionCatalog.build_firing_action`, for both | tb24 A |
 | Burst-only weapons enforced only as a UI convention (the action bar just never showed the button) | `is_legal` enforces `provides_actions` as a real engine rule | tb24 B |
 | Overwatch was assignable but the AI never actually considered/chose it — a stranded mechanic | the AI weighs and can hold overwatch through the same catalog seam the player's own action bar reads | tb24 C |
+| Step Out's own two automated legs cost real MP/AP, no discount ("the automation is in ASSEMBLY, not in cost") | both legs are free (`MoveAction.free`) — no MP/AP either direction, for the AI and the player alike | tb27 B2 |
 
 ---
 
