@@ -271,12 +271,12 @@ func _build_ui() -> void:
 	# here too. Added to the tree BEFORE setup() (docs/02: setup()'s own
 	# bot-viewer build needs a live tree for Camera3D.look_at()).
 	inspect_panel = InspectPanel.new()
+	# taskblock-22 Pass G1: InspectPanel's own _clamp_to_viewport now owns
+	# fitting this to the real viewport — no anchors preset needed.
 	inspect_panel.custom_minimum_size = Vector2(900, 600)
-	inspect_panel.set_anchors_and_offsets_preset(
-		Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE
-	)
 	theme_root.add_child(inspect_panel)
-	inspect_panel.setup(DataLibrary.material_table())
+	# taskblock-22 Pass G2: same live-view lookup SquadControlOverlay wires.
+	inspect_panel.setup(DataLibrary.material_table(), null, battle.find_unit_view)
 	inspect_panel.closed.connect(_on_inspect_panel_closed)
 
 	_refresh_status()

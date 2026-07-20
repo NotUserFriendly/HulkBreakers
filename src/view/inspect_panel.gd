@@ -39,9 +39,33 @@ const COL_PART := 0
 ## AP-costing, legality-gated RepairAction, queued through `_selection`,
 ## never a debug-style direct mutation.
 const REPAIR_ITEM_ID := 200
+## taskblock-22 Pass G4: "Inflict Status: Burn" stack choices. No status-
+## magnitude storage exists on Part/Unit yet (taskblock21 scope fence) —
+## each choice is a one-shot "as if this much Burn had just accumulated"
+## through WoundEffects.apply_if_status_crosses_threshold (tb10's own
+## status hook), not a persistent stack. BURN_WOUND_ID/BURN_THRESHOLD are
+## flagged placeholders (CLAUDE.md: never invent balance numbers) —
+## `burnt_electronics` is the one already-authored wound with burn-like
+## semantics (data/wounds/burnt_electronics.tres); the threshold (1.0) is
+## picked only so 0.5 Stacks visibly does NOT cross it while every other
+## choice does, exercising the hook's own gate rather than always firing.
+const BURN_STACK_VALUES: Array[float] = [0.5, 1.0, 5.0, 10.0]
+const BURN_STACK_LABELS: Array[String] = ["0.5 Stacks", "1 Stack", "5 Stacks", "10 Stacks"]
+const BURN_WOUND_ID := &"burnt_electronics"
+const BURN_THRESHOLD := 1.0
 
 var _material_table: MaterialTable
 var _unit: Unit = null
+## taskblock-22 Pass G2: optional — a host with a live board
+## (SquadControlOverlay/SpectatorOverlay, both backed by a real
+## BattleScene) passes `battle.find_unit_view` (Callable(int) ->
+## HitVolumeView, the unit's own id — see open()'s call site), letting the
+## isolate camera (see `_isolate_focus`) render the ACTUAL unit already
+## on the field instead of rebuilding a disconnected copy. A caller with
+## no live board at all (every existing test, a hypothetical standalone
+## viewer) leaves this unset and gets the old isolated-fresh-copy
+## behavior unchanged.
+var _live_view_lookup: Callable = Callable()
 
 var _preview_container: SubViewportContainer
 var _preview_viewport: SubViewport
@@ -50,6 +74,19 @@ var _preview_pivot: Node3D
 var _preview_view: HitVolumeView
 var _rotating: bool = true
 var _dragging: bool = false
+## taskblock-22 Pass G2: the live HitVolumeView currently isolated (see
+## `_isolate_focus`/`_isolate_clear`), or null when the panel is showing
+## its own fallback fresh-copy assembly instead. `_isolate_center`/
+## `_isolate_radius`/`_isolate_yaw` are the isolate camera's own orbit
+## state — set once per `_isolate_focus` call, advanced by `_process`/
+## drag exactly like `_preview_pivot.rotate_y` already does for the
+## fallback path, just orbiting the CAMERA instead of spinning the mesh
+## (the live unit's own transform isn't this panel's to rotate).
+var _isolated_view: HitVolumeView = null
+var _isolate_center: Vector3 = Vector3.ZERO
+var _isolate_radius: float = 0.5
+var _isolate_yaw: float = 0.0
+var _default_cull_mask: int = 0
 
 var _status_wound_column: VBoxContainer
 var _matrix_label: RichTextLabel
@@ -58,6 +95,10 @@ var _info_panel: RichTextLabel
 
 var _rows_by_part: Dictionary = {}  # Part -> InventoryRow, for the info panel's own hover
 var _debug_menu: PopupMenu = null
+## taskblock-22 Pass G1: the exact absolute position the last `popup()`
+## call actually requested, BEFORE Godot's own "keep the window on
+## screen" clamp can move it — see `_open_debug_menu`'s own doc comment.
+var _last_requested_menu_position: Vector2 = Vector2.ZERO
 ## taskblock-22 Pass E3/G: optional — only a player-driven host
 ## (SquadControlOverlay) has a real queue to repair against; SpectatorOverlay's
 ## own read-only usage passes none, same "null skips it" posture every other
@@ -76,9 +117,21 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func setup(material_table: MaterialTable, selection: SelectionController = null) -> void:
+## taskblock-22 Pass G1: re-clamps on every viewport resize, not just at
+## open() — a window resized WHILE the panel is open must never leave it
+## sitting outside the new bounds.
+func _ready() -> void:
+	get_viewport().size_changed.connect(_clamp_to_viewport)
+
+
+func setup(
+	material_table: MaterialTable,
+	selection: SelectionController = null,
+	live_view_lookup: Callable = Callable()
+) -> void:
 	_material_table = material_table
 	_selection = selection
+	_live_view_lookup = live_view_lookup
 	var title_bar := Label.new()
 	title_bar.text = "INSPECT"
 	title_bar.add_theme_color_override("font_color", HulkTheme.FOREGROUND)
@@ -133,6 +186,9 @@ func _build_bot_viewer(parent: Control) -> void:
 
 	_preview_camera = Camera3D.new()
 	_preview_viewport.add_child(_preview_camera)
+	# G2: captured BEFORE _isolate_focus ever narrows it — _isolate_clear()
+	# restores exactly this, never a re-derived/guessed "everything" mask.
+	_default_cull_mask = _preview_camera.cull_mask
 	_preview_camera.position = CAMERA_TARGET + CAMERA_DIRECTION
 	_preview_camera.look_at(CAMERA_TARGET, Vector3.UP)
 
@@ -144,18 +200,48 @@ func _build_bot_viewer(parent: Control) -> void:
 	_preview_pivot.add_child(_preview_view)
 
 
+## taskblock-22 Pass G1: "falls off the bottom of the screen" traced back
+## to this column specifically — one Label per unique wound id, no cap,
+## no scroll, so enough wounds push the WHOLE panel's own required
+## minimum height past whatever the outer viewport-clamp (see
+## `_clamp_to_viewport`) can still fit AFTER the fact. A ScrollContainer
+## caps the DEMANDED height here at the source, at the column's own
+## custom_minimum_size — the clamp is the general-case backstop, this is
+## the actual reproducible cause.
 func _build_status_wound_column(parent: Control) -> void:
+	var scroll := ScrollContainer.new()
+	# A ScrollContainer only actually caps what it demands from ITS OWN
+	# parent when given a real, nonzero custom_minimum_size for the
+	# scrolling axis — a bare 0 (this constant's own prior value) falls
+	# through to sizing off the child's full content instead, discovered
+	# empirically (200 synthetic wounds still demanded ~5400px tall
+	# before this fix). VIEWER_HEIGHT-scaled, not a design number.
+	scroll.custom_minimum_size = Vector2(48, 120)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	parent.add_child(scroll)
+
 	_status_wound_column = VBoxContainer.new()
-	_status_wound_column.custom_minimum_size = Vector2(48, 0)
-	_status_wound_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(_status_wound_column)
+	_status_wound_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_status_wound_column)
 
 
+## taskblock-22 Pass G1: THE actual, reproducible "falls off the bottom of
+## the screen" cause — found empirically (CLAUDE.md: "read the real node
+## back"), not the wound column (that one's real too, see
+## _build_status_wound_column, but this is the dominant one). A
+## RichTextLabel with `fit_content = true` and a ZERO-width
+## `custom_minimum_size.x` computes its own wrapped height against a
+## near-zero width — six short lines of plain matrix info were reporting
+## a combined minimum height of ~2000px (confirmed: the same text against
+## a real width computes ~140px). A real minimum width fixes the wrap
+## computation at the source; VIEWER_WIDTH-matched (this column sits
+## beside the bot viewer), not a tuned design number.
 func _build_matrix_area(parent: Control) -> void:
 	_matrix_label = RichTextLabel.new()
 	_matrix_label.bbcode_enabled = true
 	_matrix_label.fit_content = true
-	_matrix_label.custom_minimum_size = Vector2(0, 90)
+	_matrix_label.custom_minimum_size = Vector2(VIEWER_WIDTH, 90)
 	_matrix_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
 	_matrix_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(_matrix_label)
@@ -188,25 +274,49 @@ func open(unit: Unit) -> void:
 	visible = true
 	_rotating = true
 	_dragging = false
+	_isolate_clear()
 	if unit.shell.root != null:
-		_preview_view.show_assembly(
-			unit.shell.root, _material_table, WorldPalette.team_color(unit.squad_id)
+		var live_view: HitVolumeView = (
+			_live_view_lookup.call(unit.id) if _live_view_lookup.is_valid() else null
 		)
-		_frame_camera()
+		if live_view != null:
+			_isolate_focus(live_view)
+		else:
+			# No live board to isolate against (a bare/standalone panel) —
+			# the old fresh-copy path, now in its OWN isolated World3D (G2:
+			# this is what actually fixes "renders at ~0,0 on the actual
+			# field" — a shared, never-overridden World3D is what let a
+			# fresh copy built at Vector2i.ZERO leak into the real board's
+			# own camera in the first place).
+			_preview_viewport.own_world_3d = true
+			_preview_view.show_assembly(
+				unit.shell.root, _material_table, WorldPalette.team_color(unit.squad_id)
+			)
+			_frame_camera()
 	_refresh_status_wound_column()
 	_refresh_matrix_area()
 	_refresh_inventory_tree()
 	_show_info_placeholder()
+	# G1: layout (wound count, matrix text length) only settles after this
+	# frame's own deferred calls run — clamp against the REAL post-layout
+	# size, not a guess at what it's about to become.
+	call_deferred(&"_clamp_to_viewport")
 
 
 func close() -> void:
 	visible = false
 	_unit = null
+	_isolate_clear()
 	closed.emit()
 
 
 func _process(delta: float) -> void:
-	if visible and _rotating and not _dragging and _preview_pivot != null:
+	if not visible or not _rotating or _dragging:
+		return
+	if _isolated_view != null:
+		_isolate_yaw += ROTATE_SPEED * delta
+		_update_isolate_camera_position()
+	elif _preview_pivot != null:
 		_preview_pivot.rotate_y(ROTATE_SPEED * delta)
 
 
@@ -220,16 +330,26 @@ func _on_preview_gui_input(event: InputEvent) -> void:
 			_dragging = mb.pressed
 			_rotating = not mb.pressed
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _unit != null:
-			_open_debug_menu_for_unit(mb.position)
+			# G1: `mb.position` is local to `_preview_container`, not to this
+			# panel — the popup needs an absolute screen position (see
+			# `_open_debug_menu`'s own doc comment for why the old
+			# `get_screen_position() + at_position` math was wrong).
+			_open_debug_menu_for_unit(_preview_container.get_screen_position() + mb.position)
 	elif event is InputEventMouseMotion and _dragging:
 		var mm := event as InputEventMouseMotion
-		_preview_pivot.rotate_y(mm.relative.x * DRAG_SENSITIVITY)
+		if _isolated_view != null:
+			_isolate_yaw += mm.relative.x * DRAG_SENSITIVITY
+			_update_isolate_camera_position()
+		else:
+			_preview_pivot.rotate_y(mm.relative.x * DRAG_SENSITIVITY)
 
 
 ## docs/02 "read the real node back": the same AABB-readback framing the
 ## Resource Editor's own `_frame_preview_camera` uses (not shared code —
 ## see file header), reading `HitVolumeView`'s own composed mesh geometry
 ## instead of re-deriving a bounding box from Part volumes by hand.
+## Fallback-path only (the isolated-fresh-copy case) — see
+## `_frame_isolated_camera` for G2's real-unit equivalent.
 func _frame_camera() -> void:
 	var combined: AABB
 	var has_any := false
@@ -242,6 +362,79 @@ func _frame_camera() -> void:
 	var radius: float = maxf(combined.size.length() / 2.0, CAMERA_MIN_RADIUS) if has_any else 0.5
 	_preview_camera.position = center + CAMERA_DIRECTION * radius * CAMERA_DISTANCE_FACTOR
 	_preview_camera.look_at(center, Vector3.UP)
+
+
+## taskblock-22 Pass G2: the real isolate-camera path — `_preview_viewport`
+## stays world-SHARED (own_world_3d left false, Godot's default) so
+## `_preview_camera` can see the SAME live `view` CameraRig does, at its
+## real board position; `HitVolumeView.ISOLATE_LAYER` + a matching
+## cull_mask are what keep everything ELSE sharing that world (terrain,
+## cover, other units) from drawing through it — "culling anything
+## between the camera and the subject," the strongest form: not rendered
+## at all, rather than occluding normally the way the main camera would.
+## Simplification, flagged: "fading other models" is implemented as fully
+## culling them, not a true alpha-fade — that needs a second
+## render/compositing pass this doesn't build. Reversible follow-up.
+func _isolate_focus(view: HitVolumeView) -> void:
+	_preview_viewport.own_world_3d = false
+	_isolated_view = view
+	view.set_isolated(true)
+	_preview_camera.cull_mask = 0
+	_preview_camera.set_cull_mask_value(HitVolumeView.ISOLATE_LAYER, true)
+	_frame_isolated_camera(view)
+
+
+## Always safe to call even when nothing is focused (open()/close() both
+## call it unconditionally) — clearing BEFORE a new focus is what stops a
+## previous unit's own isolate-layer tag from bleeding into whatever's
+## framed next.
+func _isolate_clear() -> void:
+	if _isolated_view != null:
+		_isolated_view.set_isolated(false)
+	_isolated_view = null
+	_preview_camera.cull_mask = _default_cull_mask
+
+
+## Same AABB-readback convention as `_frame_camera`, against the LIVE
+## view's own real mesh instances (real board position) instead of the
+## isolated fallback copy's recentered-to-origin ones.
+func _frame_isolated_camera(view: HitVolumeView) -> void:
+	var combined: AABB
+	var has_any := false
+	for meshes: Array in view._meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			var world_aabb: AABB = mesh_instance.global_transform * mesh_instance.get_aabb()
+			combined = world_aabb if not has_any else combined.merge(world_aabb)
+			has_any = true
+	_isolate_center = combined.get_center() if has_any else view.global_transform.origin
+	_isolate_radius = maxf(combined.size.length() / 2.0, CAMERA_MIN_RADIUS) if has_any else 0.5
+	_isolate_yaw = 0.0
+	_update_isolate_camera_position()
+
+
+## The isolate camera orbits `_isolate_center` (the mesh itself, a LIVE
+## node this panel doesn't own, never rotates) — `_preview_pivot.rotate_y`
+## is the fallback path's own equivalent, spinning the mesh instead since
+## that copy genuinely is this panel's to spin.
+func _update_isolate_camera_position() -> void:
+	var direction: Vector3 = CAMERA_DIRECTION.rotated(Vector3.UP, _isolate_yaw)
+	_preview_camera.position = (
+		_isolate_center + direction * _isolate_radius * CAMERA_DISTANCE_FACTOR
+	)
+	_preview_camera.look_at(_isolate_center, Vector3.UP)
+
+
+## taskblock-22 Pass G1: "constrain it to the viewport (anchor/clamp so it
+## fits regardless of resolution)." No anchors preset is used for this
+## panel at all (see the two hosts' own `setup()` call sites) — position/
+## size are plain absolute values this function alone owns, re-centered
+## and shrunk to fit whenever they'd otherwise exceed the real viewport.
+func _clamp_to_viewport() -> void:
+	if not is_inside_tree():
+		return
+	var viewport_size: Vector2 = get_viewport_rect().size
+	size = Vector2(minf(size.x, viewport_size.x), minf(size.y, viewport_size.y))
+	position = ((viewport_size - size) / 2.0).max(Vector2.ZERO)
 
 
 ## A2: "a vertical column that fills with statuses above, wounds below...
@@ -358,7 +551,9 @@ func _on_tree_gui_input(event: InputEvent) -> void:
 			return
 		var part: Variant = item.get_metadata(COL_PART)
 		if part is Part:
-			_open_debug_menu([part as Part], mb.position)
+			# G1: same fix as the bot viewer — `mb.position` is local to
+			# `_inventory_tree`, not this panel.
+			_open_debug_menu([part as Part], _inventory_tree.get_screen_position() + mb.position)
 
 
 func _show_info(data: TooltipData) -> void:
@@ -379,28 +574,96 @@ func _open_debug_menu_for_unit(at_position: Vector2) -> void:
 	_open_debug_menu(_unit.shell.all_parts(), at_position)
 
 
-## Only meaningful for a SINGLE damaged part (repairing "the whole unit at
-## once" isn't a thing); shown greyed (disabled, never hidden) whenever no
-## welder/charge/matching scrap is available, so its own presence is never
-## a spoiler about what's missing. `[*]`-marking/sort-after-non-debug for
-## the REST of this menu is Pass G's own follow-up, not invented here.
+## G1: `at_position` is now an ABSOLUTE screen position (both call sites
+## already add their own control's real `get_screen_position()` to the
+## click-local coordinate before calling this) — the old
+## `get_screen_position() + at_position` here mixed THIS panel's own
+## screen origin with a coordinate local to a CHILD control
+## (`_preview_container`/`_inventory_tree`, never this panel directly),
+## landing the menu wherever the panel's own corner plus a small local
+## offset happened to fall instead of the actual cursor. G3: non-debug
+## items (Repair with Scrap) are added first, `[*]`-marked debug items
+## (Reset/Zero/Ammo/Burn/Create Part) after — real developer tools, per
+## A7's own doc comment below, never a combat move.
 func _open_debug_menu(parts: Array[Part], at_position: Vector2) -> void:
 	if _debug_menu != null:
 		_debug_menu.queue_free()
 	_debug_menu = PopupMenu.new()
 	add_child(_debug_menu)
+
 	var repairing: Part = _add_repair_menu_item(parts)
-	_debug_menu.add_item("Reset Health", 0)
-	_debug_menu.add_item("Set Health to 0", 1)
+
+	_debug_menu.add_item("[*] Reset Health", 0)
+	_debug_menu.add_item("[*] Set Health to 0", 1)
 	var ammo_ids: Array[StringName] = []
 	if parts.size() == 1 and parts[0].damage > 0.0:
 		for ammo_id: StringName in DataLibrary.resources_of_type(DataLibrary.TYPE_AMMO):
 			ammo_ids.append(ammo_id)
-			_debug_menu.add_item("Set Ammo: %s" % ammo_id, 100 + ammo_ids.size() - 1)
+			_debug_menu.add_item("[*] Set Ammo: %s" % ammo_id, 100 + ammo_ids.size() - 1)
+	if parts.size() == 1:
+		_add_burn_submenu(parts[0])
+		_add_create_part_submenu(parts[0])
+
 	_debug_menu.id_pressed.connect(_on_debug_menu_id_pressed.bind(parts, ammo_ids, repairing))
 	_debug_menu.close_requested.connect(_debug_menu.queue_free)
 	_debug_menu.id_pressed.connect(_debug_menu.queue_free, CONNECT_DEFERRED)
-	_debug_menu.popup(Rect2i(Vector2i(get_screen_position() + at_position), Vector2i.ZERO))
+	# `Window.popup()` clamps its own final on-screen position to stay
+	# within the real screen (harmless/expected — a tiny headless test
+	# screen clamps far more aggressively than a real 1920x1080+ one ever
+	# would) — `_last_requested_menu_position` is the exact, unclamped
+	# value this call actually asked for, so a test can verify the MATH
+	# independent of that runtime repositioning.
+	_last_requested_menu_position = at_position
+	_debug_menu.popup(Rect2i(Vector2i(at_position), Vector2i.ZERO))
+
+
+## G4: "[*] Inflict Status: Burn" -> a submenu of stack counts. A
+## submenu's own item clicks fire ITS OWN `id_pressed`, never the parent
+## menu's — connected here, independent of `_on_debug_menu_id_pressed`.
+func _add_burn_submenu(target: Part) -> void:
+	# add_submenu_node_item takes ownership/parents this itself — it
+	# errors ("already has a different parent") if we add_child it first.
+	var submenu := PopupMenu.new()
+	for i in range(BURN_STACK_LABELS.size()):
+		submenu.add_item(BURN_STACK_LABELS[i], i)
+	submenu.id_pressed.connect(_on_burn_submenu_id_pressed.bind(target))
+	submenu.id_pressed.connect(submenu.queue_free, CONNECT_DEFERRED)
+	_debug_menu.add_submenu_node_item("[*] Inflict Status: Burn", submenu)
+
+
+## G4: "[*] Create Part" -> a submenu of parts valid to attach at the
+## selected socket. Scope simplification, flagged: uses `target`'s own
+## FIRST empty socket — there is no "currently selected socket" concept
+## anywhere in this panel yet, and a part rarely exposes more than one
+## meaningfully-open socket at once. Refine into a real socket-picker if
+## that stops holding. Silently adds nothing if `target` has no empty
+## socket, or no authored part is legal to attach at the one found.
+func _add_create_part_submenu(target: Part) -> void:
+	var socket: Socket = null
+	for candidate: Socket in target.sockets:
+		if candidate.occupant == null:
+			socket = candidate
+			break
+	if socket == null:
+		return
+	var candidates: Array[Part] = []
+	for part_id: StringName in DataLibrary.resources_of_type(DataLibrary.TYPE_PARTS):
+		var candidate_part: Part = DataLibrary.get_part(part_id)
+		if PartGraph.is_legal_attachment(candidate_part, socket):
+			candidates.append(candidate_part)
+	if candidates.is_empty():
+		return
+	var submenu := PopupMenu.new()
+	for i in range(candidates.size()):
+		var label: String = (
+			candidates[i].display_name
+			if candidates[i].display_name != ""
+			else String(candidates[i].id)
+		)
+		submenu.add_item(label, i)
+	submenu.id_pressed.connect(_on_create_part_submenu_id_pressed.bind(target, socket, candidates))
+	submenu.id_pressed.connect(submenu.queue_free, CONNECT_DEFERRED)
+	_debug_menu.add_submenu_node_item("[*] Create Part", submenu)
 
 
 ## Adds the "Repair with Scrap" item when relevant, greyed if unavailable
@@ -447,7 +710,45 @@ func _on_debug_menu_id_pressed(
 		parts[0].ammo_id = ammo_ids[id - 100]
 	_refresh_inventory_tree()
 	_refresh_status_wound_column()
-	if _preview_view != null and _unit != null and _unit.shell.root != null:
+	_refresh_bot_viewer()
+
+
+## G4: `target` is whichever single part the Burn submenu was opened
+## against — see `_add_burn_submenu`.
+func _on_burn_submenu_id_pressed(id: int, target: Part) -> void:
+	if id < 0 or id >= BURN_STACK_VALUES.size():
+		return
+	WoundEffects.apply_if_status_crosses_threshold(
+		target, BURN_STACK_VALUES[id], BURN_THRESHOLD, BURN_WOUND_ID
+	)
+	_refresh_inventory_tree()
+	_refresh_status_wound_column()
+
+
+## G4: attaches the chosen candidate at the socket `_add_create_part_submenu`
+## already found empty on `target` — a real PartGraph.attach, never a
+## bespoke direct-assignment shortcut.
+func _on_create_part_submenu_id_pressed(
+	id: int, target: Part, socket: Socket, candidates: Array[Part]
+) -> void:
+	if id < 0 or id >= candidates.size():
+		return
+	PartGraph.attach(candidates[id], target, socket)
+	_refresh_inventory_tree()
+	_refresh_status_wound_column()
+	_refresh_bot_viewer()
+
+
+## Shared by every debug/G4 handler above — re-renders whichever bot-
+## viewer path is actually active (the live isolate view if focused, the
+## fallback fresh copy otherwise) so a debug mutation is visible without
+## re-opening the panel.
+func _refresh_bot_viewer() -> void:
+	if _unit == null or _unit.shell.root == null:
+		return
+	if _isolated_view != null:
+		_isolated_view.refresh()
+	else:
 		_preview_view.show_assembly(
 			_unit.shell.root, _material_table, WorldPalette.team_color(_unit.squad_id)
 		)

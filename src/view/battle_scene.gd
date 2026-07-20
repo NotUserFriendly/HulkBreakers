@@ -184,6 +184,19 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	battle_loaded.emit()
 
 
+## taskblock-22 Pass G2: the isolate camera's own lookup — InspectPanel
+## asks for the LIVE HitVolumeView already rendering `unit_id` on the real
+## board (not a fresh duplicate) so it can view the genuine article from
+## a second camera. Null for an id with no live view (there never should
+## be one mid-battle, but a caller with no live board at all — a bare
+## unit test — has nothing to look up either).
+func find_unit_view(unit_id: int) -> HitVolumeView:
+	for view: HitVolumeView in unit_views:
+		if view.unit != null and view.unit.id == unit_id:
+			return view
+	return null
+
+
 ## Every HitVolumeView rebuilt from the unit it already tracks — a
 ## destroyed part disappears, a moved unit redraws at its new cell. Shared
 ## by every overlay that resolves a turn for real (docs/09: resolution

@@ -58,6 +58,17 @@ const WEAPON_LABEL_FIT_FRACTION := 0.6
 ## same order of magnitude as board_view.gd's own overlay-above-ground
 ## offsets (0.02-0.04).
 const WEAPON_LABEL_SURFACE_OFFSET := 0.005
+## taskblock-22 Pass G2: the isolate-camera primitive — a SECOND, real
+## Camera3D (InspectPanel's own bot viewer) shares this SAME live World3D
+## (never a disconnected duplicate) so it can render the actual unit at
+## its actual board position, rather than rebuilding fresh geometry at
+## the origin. A render layer no other node in the world is ever placed
+## on — tagging JUST this unit's own visuals with it and restricting the
+## isolate camera's own `cull_mask` to that one layer means nothing else
+## sharing the world (terrain, cover, other units) draws through it,
+## without touching any other node's `layers` or this unit's own normal
+## (layer-1) visibility to the real CameraRig.
+const ISOLATE_LAYER := 2
 
 var unit: Unit
 var material_table: MaterialTable
@@ -404,6 +415,14 @@ func highlight_part(part: Part) -> void:
 
 func clear_highlight() -> void:
 	highlight_part(null)
+
+
+func set_isolated(enabled: bool) -> void:
+	for meshes: Array in _meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			mesh_instance.set_layer_mask_value(ISOLATE_LAYER, enabled)
+	if _team_marker != null:
+		_team_marker.set_layer_mask_value(ISOLATE_LAYER, enabled)
 
 
 ## docs/10 taskblock03 G: "a unit with no matrix docked (a shell)... needs

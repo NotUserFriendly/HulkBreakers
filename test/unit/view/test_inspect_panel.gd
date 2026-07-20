@@ -334,3 +334,322 @@ func test_matrix_area_shows_personal_speed_and_playstyle() -> void:
 
 	assert_true(panel._matrix_label.text.contains("3.5"))
 	assert_true(panel._matrix_label.text.contains("MARKSMAN"))
+
+
+## taskblock-22 Pass G1: "the panel stays within the viewport" — an
+## artificially oversized/off-screen rect must come back inside real
+## bounds, re-centered, not just smaller.
+func test_clamp_to_viewport_shrinks_and_recenters_an_oversized_panel() -> void:
+	var panel: InspectPanel = _panel()
+	var real_viewport_size: Vector2 = panel.get_viewport_rect().size
+	panel.size = real_viewport_size + Vector2(500, 500)
+	panel.position = Vector2(-200, -200)
+
+	panel._clamp_to_viewport()
+
+	# Godot itself never allows a Control's size below its own combined
+	# minimum (a real floor this panel's own content sets, e.g. the bot
+	# viewer's fixed VIEWER_WIDTH/HEIGHT) — the achievable target is
+	# whichever is LARGER, the real viewport or that floor. A real game
+	# window (project.godot's own 1920x1080 MIN_WINDOW_SIZE) comfortably
+	# clears this panel's own minimum, so in practice this is simply
+	# "fits the viewport"; this test's own headless viewport can be
+	# smaller than that floor, which is an environment quirk, not a
+	# regression in the clamp itself.
+	var achievable: Vector2 = real_viewport_size.max(panel.get_combined_minimum_size())
+	assert_true(panel.position.x >= 0.0)
+	assert_true(panel.position.y >= 0.0)
+	assert_true(panel.size.x <= achievable.x + 0.01)
+	assert_true(panel.size.y <= achievable.y + 0.01)
+
+
+## Content that legitimately grows past 600px (enough wounds) must not
+## push the panel taller than the real viewport either — this is the
+## actual reproducible cause behind "falls off the bottom," not just a
+## small monitor (project.godot's own MIN_WINDOW_SIZE floor already rules
+## that out at runtime).
+func test_open_with_many_wounds_still_fits_the_viewport_after_clamping() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	var weapon: Part = unit.shell.find_part(&"weapon")
+	for i in range(200):
+		WoundEffects.inflict(weapon, StringName("synthetic_wound_%d" % i))
+
+	panel.open(unit)
+
+	# 200 wound rows, unscrolled, would each need real height — hundreds
+	# to thousands of pixels between them. The ScrollContainer wrapping
+	# _status_wound_column (_build_status_wound_column) caps what it
+	# actually DEMANDS from the panel's own layout regardless of row
+	# count; this fixed, generous bound sits well above the panel's
+	# normal non-wound content but far below what 200 unscrolled rows
+	# would force if the wrap weren't there.
+	assert_true(panel.get_combined_minimum_size().y < 1000.0)
+
+
+## taskblock-22 Pass G1: "the right-click menu appears at the cursor" —
+## both real click paths (the bot viewer, an inventory row) resolve to
+## the ACTUAL screen position clicked, not the panel's own corner plus a
+## coordinate local to some other control.
+func test_right_click_on_the_bot_viewer_opens_the_menu_at_the_cursor() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	panel.open(unit)
+
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_RIGHT
+	mb.pressed = true
+	mb.position = Vector2(40, 60)
+	panel._on_preview_gui_input(mb)
+
+	# Godot's own Popup clamps its FINAL on-screen position to stay inside
+	# the real screen — a tiny headless test screen clamps far more
+	# aggressively than any real game window would, so this checks the
+	# exact value `popup()` was actually asked for (see
+	# `_last_requested_menu_position`'s own doc comment), not wherever it
+	# visually landed.
+	var expected: Vector2 = panel._preview_container.get_screen_position() + mb.position
+	assert_eq(panel._last_requested_menu_position, expected)
+
+
+func test_right_click_on_a_tree_row_opens_the_menu_at_the_cursor() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	panel.open(unit)
+	panel._inventory_tree.size = Vector2(400, 300)
+	var weapon: Part = unit.shell.find_part(&"weapon")
+	var weapon_item: TreeItem = _find_item(panel._inventory_tree, weapon)
+	var rect: Rect2 = panel._inventory_tree.get_item_area_rect(weapon_item)
+
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_RIGHT
+	mb.pressed = true
+	mb.position = rect.position + Vector2(5, rect.size.y / 2.0)
+	panel._on_tree_gui_input(mb)
+
+	var expected: Vector2 = panel._inventory_tree.get_screen_position() + mb.position
+	assert_eq(panel._last_requested_menu_position, expected)
+
+
+## taskblock-22 Pass G3: non-debug (Repair with Scrap) sorts first and
+## stays unmarked; every debug tool sorts after, `[*]`-prefixed.
+func test_debug_items_are_marked_and_sorted_after_non_debug() -> void:
+	var built: Dictionary = _welder_unit()
+	var wired: Dictionary = _panel_with_selection(built.unit)
+	var panel: InspectPanel = wired.panel
+
+	panel._open_debug_menu([built.target], Vector2.ZERO)
+
+	assert_eq(panel._debug_menu.get_item_id(0), InspectPanel.REPAIR_ITEM_ID)
+	assert_false(panel._debug_menu.get_item_text(0).begins_with("[*]"))
+	for i in range(1, panel._debug_menu.item_count):
+		assert_true(
+			panel._debug_menu.get_item_text(i).begins_with("[*]"),
+			"item %d (%s) must be marked debug" % [i, panel._debug_menu.get_item_text(i)]
+		)
+
+
+## taskblock-22 Pass G4: "fires the status hook with the chosen stack
+## count" — 1/5/10 Stacks cross BURN_THRESHOLD and inflict the wound; 0.5
+## Stacks deliberately does not, exercising the hook's own gate rather
+## than always firing.
+func test_burn_submenu_at_or_above_threshold_inflicts_the_wound() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	panel.open(unit)
+	var weapon: Part = unit.shell.find_part(&"weapon")
+
+	panel._on_burn_submenu_id_pressed(1, weapon)  # index 1 -> 1.0 stacks
+
+	assert_true(weapon.wounds.has(InspectPanel.BURN_WOUND_ID))
+
+
+func test_burn_submenu_below_threshold_does_not_inflict_the_wound() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+	panel.open(unit)
+	var weapon: Part = unit.shell.find_part(&"weapon")
+
+	panel._on_burn_submenu_id_pressed(0, weapon)  # index 0 -> 0.5 stacks
+
+	assert_false(weapon.wounds.has(InspectPanel.BURN_WOUND_ID))
+
+
+## taskblock-22 Pass G4: "create-part lists only valid attachments" —
+## checked against PartGraph.is_legal_attachment directly, not re-derived.
+func test_create_part_submenu_lists_only_legal_attachments() -> void:
+	var panel: InspectPanel = _panel()
+	var host := Part.new()
+	host.id = &"host"
+	host.hp = 5
+	host.max_hp = 5
+	var empty_grip := Socket.new(&"GRIP")
+	host.sockets = [empty_grip]
+	var unit := Unit.new(Matrix.new(), Shell.new(host), Vector2i(0, 0), 0)
+	panel.open(unit)
+
+	panel._open_debug_menu([host], Vector2.ZERO)
+
+	var submenu: PopupMenu = null
+	for i in range(panel._debug_menu.item_count):
+		if panel._debug_menu.get_item_text(i) == "[*] Create Part":
+			submenu = panel._debug_menu.get_item_submenu_node(i)
+	assert_not_null(submenu, "a part with an empty GRIP socket must offer Create Part")
+
+	var expected_ids: Array[StringName] = []
+	for part_id: StringName in DataLibrary.resources_of_type(DataLibrary.TYPE_PARTS):
+		if PartGraph.is_legal_attachment(DataLibrary.get_part(part_id), empty_grip):
+			expected_ids.append(part_id)
+	assert_gt(expected_ids.size(), 0, "sanity: at least one real part must attach to GRIP")
+	assert_eq(submenu.item_count, expected_ids.size())
+
+
+func test_choosing_create_part_attaches_a_real_part_at_the_socket() -> void:
+	var panel: InspectPanel = _panel()
+	var host := Part.new()
+	host.id = &"host"
+	host.hp = 5
+	host.max_hp = 5
+	var empty_grip := Socket.new(&"GRIP")
+	host.sockets = [empty_grip]
+	var unit := Unit.new(Matrix.new(), Shell.new(host), Vector2i(0, 0), 0)
+	panel.open(unit)
+
+	var candidates: Array[Part] = []
+	for part_id: StringName in DataLibrary.resources_of_type(DataLibrary.TYPE_PARTS):
+		var candidate: Part = DataLibrary.get_part(part_id)
+		if PartGraph.is_legal_attachment(candidate, empty_grip):
+			candidates.append(candidate)
+	assert_gt(candidates.size(), 0, "sanity: at least one real part must attach to GRIP")
+
+	panel._on_create_part_submenu_id_pressed(0, host, empty_grip, candidates)
+
+	assert_eq(empty_grip.occupant, candidates[0])
+
+
+## _armed_unit's own torso/weapon carry no `volume` boxes (fine for the
+## tree/menu tests above — no geometry, no mesh instances) — the isolate-
+## camera tests below need at least one real MeshInstance3D to tag.
+func _unit_with_geometry() -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	return Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
+
+
+## taskblock-22 Pass G2: "the bot viewer renders via the isolate camera
+## without showing the model on the field" — set_isolated tags/clears the
+## real render layer on every mesh instance the live view actually owns.
+func test_set_isolated_toggles_the_render_layer_on_every_mesh_instance() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+	assert_false(view._meshes_by_part.is_empty(), "sanity: the torso must have produced a mesh")
+
+	view.set_isolated(true)
+	for meshes: Array in view._meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			assert_true(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
+
+	view.set_isolated(false)
+	for meshes: Array in view._meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			assert_false(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
+
+
+## `_live_view_lookup`'s real contract is `Callable(int) -> HitVolumeView`
+## (BattleScene.find_unit_view's own signature) — open() must call it with
+## `unit.id`, never the `Unit` object itself. A lambda that ignores its
+## argument (every OTHER test below) can't catch a caller passing the
+## wrong type; this one actually asserts what was received.
+func test_open_calls_the_live_view_lookup_with_the_units_own_id() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var received: Array = []
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(),
+		null,
+		func(id: int) -> HitVolumeView:
+			received.append(id)
+			return null
+	)
+
+	panel.open(unit)
+
+	assert_eq(received, [unit.id])
+
+
+## A live-view lookup (real hosts, SquadControlOverlay/SpectatorOverlay)
+## must isolate the ACTUAL live view — never build a disconnected copy —
+## restricting the preview camera's own cull_mask to just that layer.
+func test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var live_view := HitVolumeView.new()
+	add_child_autofree(live_view)
+	live_view.setup(unit, DataLibrary.material_table())
+
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
+	)
+
+	panel.open(unit)
+
+	assert_eq(panel._isolated_view, live_view)
+	assert_false(
+		panel._preview_viewport.own_world_3d, "must share the live World3D, not isolate it"
+	)
+	assert_true(panel._preview_camera.get_cull_mask_value(HitVolumeView.ISOLATE_LAYER))
+	assert_false(
+		live_view._meshes_by_part.is_empty(), "sanity: the torso must have produced a mesh"
+	)
+	for meshes: Array in live_view._meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			assert_true(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
+
+
+func test_closing_clears_isolation_on_the_previously_focused_view() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var live_view := HitVolumeView.new()
+	add_child_autofree(live_view)
+	live_view.setup(unit, DataLibrary.material_table())
+
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
+	)
+	panel.open(unit)
+
+	panel.close()
+
+	assert_null(panel._isolated_view)
+	assert_false(
+		live_view._meshes_by_part.is_empty(), "sanity: the torso must have produced a mesh"
+	)
+	for meshes: Array in live_view._meshes_by_part.values():
+		for mesh_instance: MeshInstance3D in meshes:
+			assert_false(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
+
+
+## No live board to isolate against (every caller before this pass, and
+## still every bare/standalone test) — the panel must fall back to its
+## own fresh-copy assembly, now in its OWN isolated World3D (G2's actual
+## fix for "renders at ~0,0 on the actual field": that leak was the
+## fallback's own preview viewport silently SHARING the main World3D by
+## never overriding own_world_3d at all).
+func test_the_fallback_path_still_works_and_is_its_own_isolated_world() -> void:
+	var panel: InspectPanel = _panel()
+	var unit: Unit = _armed_unit()
+
+	panel.open(unit)
+
+	assert_null(panel._isolated_view, "no lookup wired -> falls back to the fresh-copy path")
+	assert_true(
+		panel._preview_viewport.own_world_3d, "the fresh copy must be its OWN isolated world"
+	)
