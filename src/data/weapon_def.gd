@@ -76,3 +76,10 @@ extends Resource
 ## existing gun keeps behaving exactly as it does today. Named distinctly
 ## from `slash_length` (Pass C) so the two never collide.
 @export var weapon_length: float = 0.0
+## taskblock-25 Pass C: how far along its own swing line a slash payload
+## reaches (dagger short, greatsword long) — the length `SlashAction`
+## samples N adjacent points across, centered on the aim point. Named
+## distinctly from `weapon_length`/`reach` (Pass A) so the two never
+## collide: a spear's long `weapon_length` doesn't imply a long slash.
+## 0.0 (default) means a weapon that has never authored a slash.
+@export var slash_length: float = 0.0

@@ -28,9 +28,17 @@ const ATTACK_ACTION_IDS: Array[StringName] = [&"shoot", &"saw"]
 ## taskblock-25 Pass B: the melee counterpart of `ATTACK_ACTION_IDS` —
 ## `StabAction.is_legal`'s own `provides_actions` re-check reads this same
 ## list, so it can't quietly drift from what `build_firing_action` actually
-## recognizes as a stab. `&"slash"`/`&"hold"` (Pass C) join this list when
-## their own action classes exist.
+## recognizes as a stab.
 const MELEE_ACTION_IDS: Array[StringName] = [&"stab"]
+## taskblock-25 Pass C: `SlashAction.is_legal`'s own re-check list —
+## same posture as `MELEE_ACTION_IDS` above, its own list because a slash
+## is a distinct action class, never folded into the stab check.
+const SLASH_ACTION_IDS: Array[StringName] = [&"slash"]
+## taskblock-25 Pass C: `GrindAction.is_legal`'s own re-check list — armed
+## as `&"hold"`, the taskblock's own payload name (the CLASS is
+## `GrindAction`; `HoldAction` already names taskblock-19's "defer to the
+## next ally" turn action).
+const GRIND_ACTION_IDS: Array[StringName] = [&"hold"]
 
 
 ## The full registry of authored actions. Not per-unit; `actions_for`
@@ -43,6 +51,12 @@ static func defs() -> Array[ActionDef]:
 		# whichever weapon Part lists &"stab" in its own `provides_actions`
 		# — same authoring convention as &"burst" above.
 		ActionDef.new(&"stab", "Stab", "ST"),
+		# taskblock-25 Pass C: a line-payload melee swing, backed by
+		# whichever weapon Part lists &"slash"; a many-hit grind, backed by
+		# whichever weapon Part lists &"hold" (class `GrindAction` — see
+		# `GRIND_ACTION_IDS`'s own doc comment for the naming collision).
+		ActionDef.new(&"slash", "Slash", "SL"),
+		ActionDef.new(&"hold", "Hold", "HL"),
 		# requires_action: only available if something else already
 		# provides shoot — the instrument overwatch still needs even once
 		# its provider moves off the gun and onto the matrix (E3).
@@ -154,7 +168,8 @@ static func build_firing_action(
 	target_cell: Vector2i,
 	aim_offset: Vector2 = Vector2.ZERO,
 	extra_sources: Array[ModSource] = [],
-	mission: MissionState = null
+	mission: MissionState = null,
+	orientation: StringName = &"horizontal"
 ) -> CombatAction:
 	if action_id == &"burst":
 		return BurstAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
@@ -162,6 +177,12 @@ static func build_firing_action(
 		return AttackAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
 	if action_id in MELEE_ACTION_IDS:
 		return StabAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
+	if action_id in SLASH_ACTION_IDS:
+		return SlashAction.new(
+			unit, weapon_id, target_cell, orientation, aim_offset, extra_sources, mission
+		)
+	if action_id in GRIND_ACTION_IDS:
+		return GrindAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
 	return null
 
 
