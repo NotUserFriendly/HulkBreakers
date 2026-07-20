@@ -379,6 +379,27 @@ matter — you can move the mess around, never make it truly gone except by clea
   adjacency, no overlaps, arbitrarily convoluted layouts. Proc-gen matches doors to doors.
 - Proc-gen is strong for "just make maps"; handmade tiles give quality where it matters.
 
+## In-game tester mode — the headless successor (variant → kit → preset → spectate)
+*Raised repeatedly ("retire headless"); pulled forward because chasing combat bugs blind is the exact
+pain it removes — CC authors and runs bouts in-window with the supervisor spectating and inspecting,
+instead of reading log text and guessing. A chain of four dependent pieces:*
+
+1. **Variant generation** — bot prefabs get *generated* variation, not just fixed variants. A junk bot
+   spawns with armor in random spots and inconsistent cladding; a combat_tester is uniform. Slight,
+   seeded per-bot variation over a base prefab (deterministic — same seed, same bot).
+2. **Kit / generate-inventory** — a bot spawns with a **kit**: the loadout it needs to actually fight,
+   stored in an appropriate container. A "chaingun kit" = chaingun + correct-type bullets + magazines
+   + two grenades, all in the bot's back barrel. **A bout starts by units equipping themselves from
+   their kit** — so a bout is self-arming, not hand-set. (Ties to storage: a kit is items in a
+   container, drawn on demand.)
+3. **Presets** — save a team of bots (with kits) as a named preset, reloadable into the bout menu.
+4. **Tester mode** — CC authors bots, kits, and presets, loads them into the bout menu, and **runs a
+   bout in the game window with the supervisor in spectator** — watch, pause, inspect. This *is* the
+   headless successor: enough visual granularity that watching contributes what log-reading can't
+   (the backward-burst bug is the case in point — invisible in the log, obvious in playback).
+
+Each piece depends on the last; build in order. Its own taskblock (likely two).
+
 ## Authoring tools (gate mission-gen quality)
 - **Tile editor** — author a map tile (height-aware), save it for proc-gen assembly.
 - **Map editor** — author/save a full map, run a **test bout** on it. Built on the tile format.
