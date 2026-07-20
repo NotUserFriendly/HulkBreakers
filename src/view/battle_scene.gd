@@ -166,7 +166,7 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	mission = p_mission
 	combat_state.combat_log.add_sink(file_sink)
 
-	board_view.build(combat_state.grid, combat_state.material_table)
+	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	camera_rig.center_on(
 		Vector3(
 			(combat_state.grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,

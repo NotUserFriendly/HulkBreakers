@@ -8,12 +8,19 @@ extends RefCounted
 ## "queuing mutates nothing").
 
 var state: CombatState
+## taskblock-22 Pass A2: optional, same reason `EndTurnAction`'s own
+## constructor takes one — the player squad's own passive extraction hold
+## (checked there) only ever fires for a HUMAN-driven unit through this
+## controller's own `queue_end_turn()`. `null` (every existing caller/test)
+## simply skips it, unchanged.
+var mission: MissionState = null
 var selected_unit: Unit = null
 var _queues: Dictionary = {}  # unit id (int) -> ActionQueue
 
 
-func _init(p_state: CombatState) -> void:
+func _init(p_state: CombatState, p_mission: MissionState = null) -> void:
 	state = p_state
+	mission = p_mission
 
 
 ## Click your own unit: selects it only if it's actually the unit whose turn
@@ -105,7 +112,7 @@ func leg_costs() -> Array[float]:
 func queue_end_turn() -> bool:
 	if selected_unit == null:
 		return false
-	return current_queue().enqueue(EndTurnAction.new(selected_unit), state)
+	return current_queue().enqueue(EndTurnAction.new(selected_unit, mission), state)
 
 
 ## taskblock-19 Pass F: "available to AI and player (same-queue

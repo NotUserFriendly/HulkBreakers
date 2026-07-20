@@ -55,6 +55,54 @@ func gather_resource(id: StringName, amount: int) -> void:
 	gathered_resources[id] = gathered_resources.get(id, 0) + amount
 
 
+## taskblock-22 Pass A1: "the ENTIRE squad must be off the board before
+## EXTRACTED fires." A squad is ready once every one of its own units is
+## no longer an active participant (`alive == false`) AND at least one of
+## them actually got there via `extracted == true` — the second half is
+## what tells a clean extraction apart from a total wipe (every unit dead,
+## none extracted), which is `is_stranded()`'s own, separate, involuntary
+## ending. A unit that died along the way is a real casualty, not a block:
+## it simply can't ALSO be the reason this returns false, since dead units
+## are already excluded from "still active."
+func squad_ready_to_extract(squad_id: int) -> bool:
+	var any_extracted := false
+	for unit: Unit in combat_state.units:
+		if unit.squad_id != squad_id:
+			continue
+		if unit.alive and not unit.extracted:
+			return false
+		if unit.extracted:
+			any_extracted = true
+	return any_extracted
+
+
+## taskblock-22 Pass A: one unit actually leaving the board via either
+## extraction path (`ExtractAction`'s own fast, AP-costed action for a
+## non-player squad; `EndTurnAction`'s own hold-check for the player
+## squad) — shared so neither path re-derives "how a unit leaves" on its
+## own. Marks the unit itself (never touches the mission's own haul or
+## roster on its own — that's still a whole-mission event, `extract()`
+## below) and only calls `extract()` once `squad_ready_to_extract` agrees
+## the unit's own squad is the player's AND every one of its own squadmates
+## is accounted for.
+func extract_unit(unit: Unit) -> void:
+	unit.alive = false
+	unit.extracted = true
+	combat_state.grid.set_occupant_id(unit.cell, -1)
+	combat_state.combat_log.emit(
+		LogEvent.new(
+			combat_state.round_number,
+			Enums.Phase.RESOLUTION,
+			unit.id,
+			&"extract",
+			{},
+			"unit %d extracted" % unit.id
+		)
+	)
+	if unit.squad_id == player_squad_id and squad_ready_to_extract(player_squad_id):
+		extract()
+
+
 ## Banks this mission's whole haul into the persistent run and returns
 ## every matrix to the roster. "Clean" (docs/04): nothing was lost, and
 ## nothing here needed to be.

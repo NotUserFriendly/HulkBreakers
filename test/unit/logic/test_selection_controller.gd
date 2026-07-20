@@ -273,3 +273,25 @@ func test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly() -> v
 
 	assert_eq(a.cell, Vector2i(1, 0), "resolution must actually move the real unit")
 	assert_eq(state.current_unit(), b, "ending the turn must advance turn order")
+
+
+## taskblock-22 Pass A2: mission, when the controller was given one, must
+## actually reach EndTurnAction — the human end-turn path is the only way
+## a player-driven squad's own extraction hold ever starts.
+func test_queue_end_turn_threads_mission_through_for_the_extraction_hold() -> void:
+	var a := _make_unit(Vector2i(4, 4), 0)
+	var b := _make_unit(Vector2i(5, 5), 1)
+	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(4, 4)]
+	var selection := SelectionController.new(state, mission)
+	selection.select(a)
+
+	selection.queue_end_turn()
+	state.resolve_turn(selection.current_queue())
+
+	assert_eq(
+		a.extraction_hold_start_round,
+		0,
+		"standing on its own tile at end of turn must start the hold"
+	)

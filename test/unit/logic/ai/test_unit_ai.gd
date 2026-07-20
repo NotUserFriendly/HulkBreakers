@@ -749,13 +749,14 @@ func test_a_disarmed_unit_flees_toward_its_own_team_extraction_tile() -> void:
 
 
 ## "escapes via the existing EXTRACTED path" — once already standing on its
-## own tile, a disarmed unit queues the real ExtractAction, not a bespoke
-## despawn.
-func test_a_disarmed_unit_already_on_its_tile_queues_extraction() -> void:
-	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 0, &"")
+## own tile, a disarmed NON-PLAYER unit queues the real ExtractAction, not
+## a bespoke despawn. taskblock-22 Pass A2: this is squad 1 specifically —
+## the fast path is asymmetric, red-only.
+func test_a_disarmed_non_player_unit_already_on_its_tile_queues_extraction() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 1, &"")
 	var state := CombatState.new(Grid.new(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
-	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
+	mission.team_extraction_cells = {1: [Vector2i(9, 4)]}
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
 
@@ -764,6 +765,23 @@ func test_a_disarmed_unit_already_on_its_tile_queues_extraction() -> void:
 		if action is ExtractAction:
 			extract = action
 	assert_not_null(extract, "already on its own tile — must queue the real ExtractAction")
+
+
+## taskblock-22 Pass A2: the player squad has no fast action at all — a
+## disarmed player-squad unit already on its own tile just ends its turn
+## there (EndTurnAction's own hold-check picks it up from there), never
+## queues ExtractAction (illegal for the player squad now).
+func test_a_disarmed_player_squad_unit_already_on_its_tile_never_queues_extract_action() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 0, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, mission)
+
+	for action: CombatAction in queue.actions:
+		assert_false(action is ExtractAction, "the player squad never gets the fast action")
+	assert_true(queue.actions[queue.actions.size() - 1] is EndTurnAction)
 
 
 ## A disarmed unit whose own squad has no team-coded tile at all (every
