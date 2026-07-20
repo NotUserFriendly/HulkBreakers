@@ -3,7 +3,7 @@
 **The current-state snapshot**, by system, with the taskblock that landed each. Grows as work ships.
 For what changed shape along the way see `SUPERSEDED.md`; for what's next see `PLAN.md`.
 
-*Current as of taskblock-24 landed.*
+*Current as of taskblock-25 landed.*
 
 ---
 
@@ -50,6 +50,53 @@ repair-with-scrap (1:1, up to 3 HP per use, 4 AP; scrap's own resource id is the
 `material` field). Reachable via a right-click "Repair with Scrap" item and an action-bar Repair
 button.
 
+## Melee (tb25, keystone 1)
+
+**Delivery** (tb25 A) — reach = `weapon_def.weapon_length` (free, no exposure) +
+`Shell.shell_reach` (leanable exposure budget). A strike needing shell lean poses the torso
+forward (`Poses.lean`, the same `ROOT_SOCKET_ID` seam `Poses.down()`/`prone()` already use) — no
+melee-specific exposure system, the existing overwatch torso check fires against the leaned
+geometry unchanged. Beyond `shell_reach + weapon_length`, a reach-gated step-in
+(`MeleeDelivery.find_step_in_cell`) reuses `StepOutPlanner`'s own move-assembly structure.
+
+**Resolution reuse** (tb25 B) — `StabAction`, a point-payload strike sharing
+`ShotResolution.resolve_and_log_point`/`DamageResolver`/`ShotPlane`/`RangeModel`/`Dartboard`
+verbatim with `AttackAction` (structurally a sibling, never a parallel resolver). Legality is
+reach-gated (`MeleeReach.in_reach`, a real 3D distance via `UnitGeometry.bounding_sphere` — a
+sword can't hit someone 1 up, a polearm hits at √2) instead of range/LoS-gated. The ranged
+accuracy pipeline is reused unchanged — melee's own tight dartboard is point-blank range through
+the existing curve, not a special rule.
+
+**Three payloads, one deflect seam** (tb25 C) — `DamageResolver.resolve_shot` gained an additive
+`deflect_mode` (default `&"ricochet"`, every prior caller unchanged): `&"slide"` (stab) retries
+once against a laterally-nudged point on the same plane instead of ricocheting; `&"none"`
+(slash/hold, per point) stops outright, no bounce. `SlashAction` — a line payload
+(`MeleeLine.sample`, horizontal/vertical/45°, `slash_length` long) hitting everything along it; a
+vertical line spreads along `Region.rect`'s own real-height axis (tb23) for free. `GrindAction`
+(armed as action id `&"hold"`; the class name avoids colliding with tb19's own "defer to next
+ally" `HoldAction`) — `weapon.burst` doubles as hit count, each hit's `bonus_pen` stacks raw and
+uncapped (`base * i`), `DamageResolver`'s own existing PENETRATE spill cascade already gives
+"continues through cladding" for free.
+
+**Spherecast** (tb25 D) — `ShotPlane.disc_overlaps_rect` (radius ≤ 0.0 is exactly
+`rect.has_point`, every point-only caller unchanged): a stab's own `weapon_def.stab_width` disc
+can't thread a gap narrower than it, the same sniper gap-fall-through inverted. A stepping stone
+to a real shapecast — the shape math lives in exactly one place.
+
+**Suppression un-stubbed** (tb25 E) — `Suppression.resolve_opportunity_attacks` fires the
+attacker's own real melee weapon (`ActionCatalog.provider_for(attacker, &"stab")`) through the
+identical `ShotResolution` pipeline `StabAction` itself uses, replacing the flat unarmored stub
+hit; gated on `state.is_preview` now that the outcome is RNG-driven, matching `AttackAction`.
+
+**AI** (tb25 F) — PSYCHOTIC (prefers melee, closes to minimize distance, never flees) and TURTLE
+(flees rather than melee — `Suppression.is_suppressed`-gated, otherwise an ordinary
+cover-weighting planner) fold into `UnitAI`'s existing dispatch; `_preferred_firing_action_id` now
+also recognizes `&"stab"` (purely additive), so playstyle weapon choice reads the same
+`ActionCatalog` seam every other firing pick already does. The baseline "punch" (a POWER-capable
+part providing its own `&"stab"`, no weapon needed) is proven at the engine level; authoring it
+onto shipped content (and a real `shell_reach` per shell template) is unauthored balance work, not
+invented here.
+
 ## Combat structure & AI
 
 **Turn structure** (tb06, docs/09) — TACTICS/RESOLUTION re-entrant loop; `resolve_until →
@@ -68,8 +115,10 @@ firing derived from the same `ActionCatalog.build_firing_action` seam a weapon's
 `provides_actions` governs for both (tb24 A/B — `is_legal` enforces it as an engine rule, not a UI
 convention); the AI can weigh other provided, non-firing actions the same way, overwatch the first
 consumer (tb24 C). Playstyles: AGGRESSIVE (never holds overwatch), COVER_SEEKER (only from cover),
-SKIRMISHER (~5), MARKSMAN (~7+, prefers it). Line-of-fire safety (won't shoot through allies);
-reachability-aware targeting. Suppression + stubbed opportunity attacks (await melee).
+SKIRMISHER (~5), MARKSMAN (~7+, prefers it), PSYCHOTIC (prefers melee, closes to minimize
+distance, never flees), TURTLE (flees rather than melee — tb25 F). Line-of-fire safety (won't
+shoot through allies); reachability-aware targeting. Suppression + real melee opportunity attacks
+(tb25 E, was stubbed).
 
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
