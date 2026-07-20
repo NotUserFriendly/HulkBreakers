@@ -154,6 +154,58 @@ func test_ease_to_attack_framing_targets_the_solved_framing() -> void:
 	assert_almost_eq(rig.state.pan_offset.z, (expected.pan_offset as Vector3).z, 0.01)
 
 
+## taskblock-27 Pass D4: "the camera doesn't reset after aiming." Nothing
+## snapshotted the pre-aim framing at all before this fix — `stop_aiming`
+## only ever cleared the look-at lean, leaving yaw/pitch/zoom/pan at
+## wherever the attack framing eased them to. `start_aiming` must
+## snapshot the REAL pre-aim state, and `stop_aiming` must ease back to
+## it, not merely restore control flags.
+func test_stop_aiming_eases_the_camera_back_to_its_pre_aim_framing() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	rig.state.yaw = 0.4
+	rig.state.pitch = -0.2
+	rig.state.zoom = 15.0
+	rig.state.pan_offset = Vector3(3.0, 0.0, 7.0)
+	var pre_aim_yaw: float = rig.state.yaw
+	var pre_aim_pitch: float = rig.state.pitch
+	var pre_aim_zoom: float = rig.state.zoom
+	var pre_aim_pan: Vector3 = rig.state.pan_offset
+
+	rig.start_aiming()
+	rig.ease_to_attack_framing(_make_unit(Vector2i(2, 2)), _make_unit(Vector2i(8, 2)))
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+	assert_ne(rig.state.pan_offset, pre_aim_pan, "sanity: the attack framing actually moved it")
+
+	rig.stop_aiming()
+	assert_not_null(
+		rig._active_tween, "stop_aiming must start a real ease back, not an instant cut"
+	)
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	assert_almost_eq(rig.state.yaw, pre_aim_yaw, 0.0001)
+	assert_almost_eq(rig.state.pitch, pre_aim_pitch, 0.0001)
+	assert_almost_eq(rig.state.zoom, pre_aim_zoom, 0.0001)
+	assert_almost_eq(rig.state.pan_offset.x, pre_aim_pan.x, 0.0001)
+	assert_almost_eq(rig.state.pan_offset.y, pre_aim_pan.y, 0.0001)
+	assert_almost_eq(rig.state.pan_offset.z, pre_aim_pan.z, 0.0001)
+
+
+## A `stop_aiming` with no matching `start_aiming` must never crash or
+## snap to a stale zero-value snapshot — the defensive guard.
+func test_stop_aiming_without_start_aiming_never_crashes_or_eases_anywhere() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	rig.state.yaw = 0.4
+	rig.state.zoom = 15.0
+
+	rig.stop_aiming()
+
+	assert_null(rig._active_tween, "no snapshot to restore -- must not start a bogus ease")
+	assert_almost_eq(rig.state.yaw, 0.4, 0.0001)
+	assert_almost_eq(rig.state.zoom, 15.0, 0.0001)
+
+
 ## docs/10 taskblock04 A3: "the rig looks at its pivot by construction" —
 ## the target's screen-projected centre must land dead-center in the
 ## viewport, an orbit-pivot property Design 2's explicit look-at solve

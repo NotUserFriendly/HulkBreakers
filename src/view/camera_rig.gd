@@ -38,6 +38,20 @@ var _pitch_pivot: Node3D
 var _camera: Camera3D
 var _active_tween: Tween
 
+## taskblock-27 Pass D4: "the camera doesn't reset after aiming." Nothing
+## snapshotted the pre-aim framing at all — `stop_aiming()` only ever
+## cleared `_camera`'s own look-at lean, leaving `state.yaw/pitch/zoom/
+## pan_offset` wherever `ease_to_attack_framing`'s own tween last eased
+## them to. Taken the instant `start_aiming()` runs (before any framing
+## change happens), so it's the real "where the player was looking right
+## before this aim started," and eased back to (never a hard cut,
+## matching every other camera transition in this rig) once aiming ends.
+var _pre_aim_yaw: float = 0.0
+var _pre_aim_pitch: float = 0.0
+var _pre_aim_zoom: float = 0.0
+var _pre_aim_pan_offset: Vector3 = Vector3.ZERO
+var _has_pre_aim_snapshot: bool = false
+
 
 func _ready() -> void:
 	_yaw_pivot = Node3D.new()
@@ -119,6 +133,16 @@ func ease_to_attack_framing(shooter: Unit, target: Unit) -> void:
 	var framing: Dictionary = state.attack_framing(
 		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
 	)
+	_ease_to(framing.yaw, framing.pitch, framing.zoom, framing.pan_offset)
+
+
+## taskblock-27 Pass D4: the shared tween both `ease_to_attack_framing`
+## and `stop_aiming`'s own restore now drive — factored out so "ease to
+## some target framing" is one real implementation, not two copies that
+## could quietly drift apart.
+func _ease_to(
+	target_yaw: float, target_pitch: float, target_zoom: float, target_pan: Vector3
+) -> void:
 	var from_yaw: float = state.yaw
 	var from_pitch: float = state.pitch
 	var from_zoom: float = state.zoom
@@ -128,10 +152,10 @@ func ease_to_attack_framing(shooter: Unit, target: Unit) -> void:
 	_active_tween = create_tween()
 	_active_tween.tween_method(
 		func(t: float) -> void:
-			state.yaw = lerp_angle(from_yaw, framing.yaw, t)
-			state.pitch = lerpf(from_pitch, framing.pitch, t)
-			state.zoom = lerpf(from_zoom, framing.zoom, t)
-			state.pan_offset = from_pan.lerp(framing.pan_offset, t)
+			state.yaw = lerp_angle(from_yaw, target_yaw, t)
+			state.pitch = lerpf(from_pitch, target_pitch, t)
+			state.zoom = lerpf(from_zoom, target_zoom, t)
+			state.pan_offset = from_pan.lerp(target_pan, t)
 			_apply_state(),
 		0.0,
 		1.0,
@@ -144,6 +168,14 @@ func ease_to_attack_framing(shooter: Unit, target: Unit) -> void:
 ## own attack framing starts easing in, so there's never a frame where the
 ## old live-orbit framing was still interactive.
 func start_aiming() -> void:
+	# taskblock-27 Pass D4: snapshot BEFORE anything about the framing
+	# changes — the real pre-aim camera state `stop_aiming()` eases back
+	# to once aiming ends.
+	_pre_aim_yaw = state.yaw
+	_pre_aim_pitch = state.pitch
+	_pre_aim_zoom = state.zoom
+	_pre_aim_pan_offset = state.pan_offset
+	_has_pre_aim_snapshot = true
 	orbit_locked = true
 	zoom_enabled = false
 
@@ -153,10 +185,21 @@ func start_aiming() -> void:
 ## always looks straight down the pivot chain (`_apply_state`'s own
 ## implicit contract: `_camera`'s rotation is never touched there), never
 ## a stale lean surviving from the last aimed shot.
+##
+## taskblock-27 Pass D4: "the camera doesn't reset after aiming" — eases
+## the pivot chain itself (yaw/pitch/zoom/pan) back to whatever
+## `start_aiming()` snapshotted, never leaving it at the attack framing's
+## own eased-to position. `_has_pre_aim_snapshot` guards a `stop_aiming()`
+## called with no matching `start_aiming()` (defensive; every real caller
+## pairs them, but this is cheap insurance against reverting to a stale
+## zero-value snapshot).
 func stop_aiming() -> void:
 	orbit_locked = false
 	zoom_enabled = true
 	_camera.rotation = Vector3.ZERO
+	if _has_pre_aim_snapshot:
+		_has_pre_aim_snapshot = false
+		_ease_to(_pre_aim_yaw, _pre_aim_pitch, _pre_aim_zoom, _pre_aim_pan_offset)
 
 
 ## taskblock-08 B3b/B3c: "position camera with orbit, then camera's own
