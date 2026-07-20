@@ -197,7 +197,7 @@ func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
 func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var log_sink: UISink = _overlay(scene).log_sink
+	var log_sink: HierarchicalUiSink = _overlay(scene).log_sink
 
 	assert_true(log_sink.lines.size() > 0)
 	assert_true(

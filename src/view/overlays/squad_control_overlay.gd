@@ -50,7 +50,7 @@ var turn_controls_column: VBoxContainer
 var new_battle_button: Button
 ## taskblock-21 Pass C: mid-bout toggle back to spectating.
 var watch_button: Button
-var log_sink: UISink
+var log_sink: HierarchicalUiSink
 ## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
 ## HIGHLIGHT the instant either half of it actually has something to show.
@@ -104,6 +104,12 @@ func _on_battle_loaded() -> void:
 	# documented no-op on a sink that was never added, so this is safe on
 	# the very first call too (right after _build_ui() just created it).
 	battle.combat_state.combat_log.remove_sink(log_sink)
+	# taskblock-22 Pass F: "unit N down" in a folded attack summary is
+	# derived from the live CombatState (LogFold.state), never a new
+	# LogEvent kind — re-pointed here alongside every other panel's own
+	# re-wire, same reason: the PREVIOUS CombatState this sink's fold was
+	# reading is about to go stale.
+	log_sink.fold.state = battle.combat_state
 	battle.combat_state.combat_log.add_sink(log_sink)
 	if controls_overlay != null:
 		controls_overlay.set_log_path(battle.file_sink.path)
@@ -252,7 +258,7 @@ func _build_ui() -> void:
 	log_style.bg_color = Color.TRANSPARENT
 	log_style.content_margin_left = log_label.get_v_scroll_bar().get_combined_minimum_size().x
 	log_label.add_theme_stylebox_override("normal", log_style)
-	log_sink = UISink.new(log_label)
+	log_sink = HierarchicalUiSink.new(log_label)
 
 	# runNotes.md follow-up: same MOUSE_FILTER_IGNORE fix as left_half — this
 	# still spans the right half (controls_label and bottom_right anchor to
