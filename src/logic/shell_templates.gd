@@ -14,10 +14,12 @@ static func by_id(id: StringName) -> ShellTemplate:
 	match id:
 		&"reference_humanoid":
 			return DeepStrike.reference_humanoid_template()
+		JunkBot.TEMPLATE_ID:
+			return JunkBot.template()
 		_:
 			return null
 
 
 ## Every known template id, for a UI dropdown to list.
 static func all_ids() -> Array[StringName]:
-	return [&"reference_humanoid"]
+	return [&"reference_humanoid", JunkBot.TEMPLATE_ID]

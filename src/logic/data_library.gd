@@ -31,12 +31,18 @@ const TYPE_PRESETS := &"presets"
 ## taskblock-20 Pass D: wounds — same open-StringName-content posture as
 ## materials (id-keyed, DataLibrary-loaded, authored as data).
 const TYPE_WOUNDS := &"wounds"
+## taskblock-28 Pass A: a `profile_family`'s own seeded-generation rules
+## (`VariantGenerator`'s data source) — same id-keyed, DataLibrary-loaded
+## posture as every other content type, so "a designer adds a new variant
+## family without code" is literal, not aspirational.
+const TYPE_VARIANT_FAMILIES := &"variant_families"
 
 static var _parts: Dictionary = {}  # StringName -> Part
 static var _ammo: Dictionary = {}  # StringName -> AmmoDef
 static var _materials: Dictionary = {}  # StringName -> MaterialEntry
 static var _presets: Dictionary = {}  # StringName -> BotPreset
 static var _wounds: Dictionary = {}  # StringName -> WoundDef
+static var _variant_families: Dictionary = {}  # StringName -> VariantFamily
 ## "type:id" -> &"builtin" | &"user" (taskblock-11 B2: "source (res://
 ## built-in vs user:// override)"). Not derivable from `_parts`/`_ammo`/
 ## `_materials` alone once a `user://` row has overridden a built-in one
@@ -69,6 +75,7 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_materials.clear()
 	_presets.clear()
 	_wounds.clear()
+	_variant_families.clear()
 	_sources.clear()
 	_errors.clear()
 	# Materials first: Part validation cross-references material ids.
@@ -82,6 +89,10 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_load_dir(user_root + "/ammo", _ammo, TYPE_AMMO, &"user")
 	_load_dir(builtin_root + "/presets", _presets, TYPE_PRESETS, &"builtin")
 	_load_dir(user_root + "/presets", _presets, TYPE_PRESETS, &"user")
+	_load_dir(
+		builtin_root + "/variant_families", _variant_families, TYPE_VARIANT_FAMILIES, &"builtin"
+	)
+	_load_dir(user_root + "/variant_families", _variant_families, TYPE_VARIANT_FAMILIES, &"user")
 
 
 ## docs/00 (determinism: "same seed = same battle, always"): a raw
@@ -180,6 +191,16 @@ static func get_wound_def(id: StringName) -> WoundDef:
 	_ensure_loaded()
 	var wound: WoundDef = _wounds.get(id)
 	return wound.duplicate(true) if wound != null else null
+
+
+## Null for an unauthored/unknown family id — `VariantGenerator` treats
+## that as "no variation rules exist," never a load error (a family with no
+## `VariantFamily` row generates uniform bots, docs/00 "never silently
+## invent").
+static func get_variant_family(id: StringName) -> VariantFamily:
+	_ensure_loaded()
+	var family_def: VariantFamily = _variant_families.get(id)
+	return family_def.duplicate(true) if family_def != null else null
 
 
 ## Every loaded reference profile — for a bout-setup menu's own dropdown
@@ -283,6 +304,8 @@ static func _dict_for(type_key: StringName) -> Dictionary:
 			return _presets
 		TYPE_WOUNDS:
 			return _wounds
+		TYPE_VARIANT_FAMILIES:
+			return _variant_families
 		_:
 			return {}
 
@@ -299,6 +322,8 @@ static func _dir_name_for(type_key: StringName) -> String:
 			return "presets"
 		TYPE_WOUNDS:
 			return "wounds"
+		TYPE_VARIANT_FAMILIES:
+			return "variant_families"
 		_:
 			return ""
 
@@ -315,5 +340,6 @@ static func reset() -> void:
 	_materials.clear()
 	_presets.clear()
 	_wounds.clear()
+	_variant_families.clear()
 	_sources.clear()
 	_errors.clear()

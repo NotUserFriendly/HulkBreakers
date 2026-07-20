@@ -231,6 +231,67 @@ func test_root_part_that_cannot_host_a_matrix_errors_and_fails_the_whole_assembl
 	assert_push_error("cannot host a matrix")
 
 
+## taskblock-28 Pass A: a Loadout override of `&""` is the seam seeded
+## variant generation uses to leave a socket bare on purpose — the socket
+## stays unoccupied and the assembly still succeeds, never the "unknown
+## pool part id" error an ordinary bad id would raise.
+func test_a_loadout_override_of_empty_string_leaves_a_structural_mount_bare() -> void:
+	var torso := _hosting_part(
+		&"torso", [Socket.new(&"ARMOR", Transform3D.IDENTITY, &"ARMOR_FRONT"), _matrix_socket()]
+	)
+	var plate := _leaf_part(&"plate", [&"ARMOR"])
+	var pool := {&"torso": torso, &"plate": plate}
+	var template := ShellTemplate.new(&"torso", [Mount.new(&"ARMOR_FRONT", &"plate")], 10.0, 10.0)
+
+	var unit: Unit = BodyAssembler.assemble(
+		template, Loadout.new({&"ARMOR_FRONT": &""}), pool, Matrix.new(), Vector2i(0, 0)
+	)
+
+	assert_not_null(unit, "an omitted mount must not fail the whole assembly")
+	assert_null(PartGraph.find_socket(unit.shell.root, &"ARMOR_FRONT").occupant)
+
+
+## Same sentinel, for a Mount's own CHILDREN — omitting the parent mount
+## must never try to attach whatever it would have carried underneath it.
+func test_omitting_a_mount_also_skips_its_own_children() -> void:
+	var torso := _hosting_part(
+		&"torso", [Socket.new(&"SHOULDER", Transform3D.IDENTITY, &"SHOULDER"), _matrix_socket()]
+	)
+	var arm := _hosting_part(
+		&"arm", [Socket.new(&"ARMOR", Transform3D.IDENTITY, &"ARMOR")], [&"SHOULDER"]
+	)
+	var plate := _leaf_part(&"plate", [&"ARMOR"])
+	var pool := {&"torso": torso, &"arm": arm, &"plate": plate}
+	var template := ShellTemplate.new(
+		&"torso", [Mount.new(&"SHOULDER", &"arm", [Mount.new(&"ARMOR", &"plate")])], 10.0, 10.0
+	)
+
+	var unit: Unit = BodyAssembler.assemble(
+		template, Loadout.new({&"SHOULDER": &""}), pool, Matrix.new(), Vector2i(0, 0)
+	)
+
+	assert_not_null(unit)
+	assert_null(PartGraph.find_socket(unit.shell.root, &"SHOULDER").occupant)
+
+
+## Same sentinel, for the discretionary (loadout-only) path — a hand's own
+## GRIP left explicitly empty stays empty, not an assembly failure.
+func test_a_loadout_override_of_empty_string_leaves_a_discretionary_socket_bare() -> void:
+	var torso := _hosting_part(
+		&"torso", [Socket.new(&"GRIP", Transform3D.IDENTITY, &"GRIP"), _matrix_socket()]
+	)
+	var pistol := _leaf_part(&"pistol", [&"GRIP"])
+	var pool := {&"torso": torso, &"pistol": pistol}
+	var template := ShellTemplate.new(&"torso", [], 10.0, 10.0)
+
+	var unit: Unit = BodyAssembler.assemble(
+		template, Loadout.new({&"GRIP": &""}), pool, Matrix.new(), Vector2i(0, 0)
+	)
+
+	assert_not_null(unit)
+	assert_null(PartGraph.find_socket(unit.shell.root, &"GRIP").occupant)
+
+
 ## docs/01 taskblock02 Pass C1: "the socket's transform is the plate's
 ## facing" — a plate mounted on a socket rotated 90 degrees stands off the
 ## OUTER (lateral) face, not the front, and a shot from that side hits it,

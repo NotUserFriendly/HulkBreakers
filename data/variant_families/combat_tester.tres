@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="VariantFamily" format=3]
+
+[ext_resource type="Script" path="res://src/data/variant_family.gd" id="1_ct28a"]
+
+[resource]
+script = ExtResource("1_ct28a")
+id = &"combat_tester"
+variation_amount = 0.0
