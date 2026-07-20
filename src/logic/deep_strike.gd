@@ -198,6 +198,15 @@ static func reference_humanoid_pool() -> Dictionary:
 			socket.id = &"LEG_ARMOR"
 	pool[&"leg"] = leg_armored
 
+	# taskblock-28 Pass B: neither container (docs/05 D1's own two) was ever
+	# loadout-addressable on the reference humanoid before this — both are
+	# real, already-tested `Part`s (`test_inventory.gd`/`test_shell.gd`),
+	# just never reachable through this pool. A kit needs a real container
+	# to stock into (BACK's own default Mount occupant, `ammo_rack`, isn't
+	# one — it's a `failure_mode == DETONATE` payload, not `is_container`).
+	pool[&"backpack"] = Containers.backpack()
+	pool[&"trash_barrel"] = Containers.trash_barrel()
+
 	return pool
 
 

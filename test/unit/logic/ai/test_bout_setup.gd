@@ -46,6 +46,37 @@ func test_grid_size_clears_the_map_gen_split_threshold() -> void:
 	)
 
 
+## taskblock-28 Pass B: "a bout of kitted units starts fully armed at turn
+## 1" — `kitted_chaingun`'s own GRIP_R starts deliberately bare (its
+## loadout); only `KitEquipper`, run by `BoutSetup._spawn_squad` itself
+## (never a separate, hand-called step this test has to trigger), fills
+## it — proving the real bout-setup path self-arms, not just the
+## mechanism in isolation.
+func test_a_kitted_preset_spawns_armed_through_the_real_bout_setup_path() -> void:
+	var kitted: BotPreset = DataLibrary.get_preset(&"kitted_chaingun")
+	assert_not_null(kitted, "sanity: the shipped kitted preset must load")
+	var unarmed_reference: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
+
+	var result: Dictionary = BoutSetup.build_bout(
+		_roster(kitted, &"AGGRESSIVE", 1), _roster(unarmed_reference, &"COVER_SEEKER", 1), 42
+	)
+
+	assert_eq(result.error, "")
+	var state: CombatState = result.state
+	var kitted_unit: Unit = state.units[0]
+	var weapon: Part = DeepStrike.find_operable_weapon(kitted_unit)
+	assert_not_null(weapon, "the kitted unit must already be armed before turn 1")
+	assert_eq(weapon.id, &"chaingun")
+	assert_eq(weapon.ammo_id, &"556x45_fmj", "ready ammo — chambered, not just carried")
+
+	var socket: Socket = PartGraph.find_socket(kitted_unit.shell.root, &"BACK")
+	assert_eq(
+		socket.occupant.contents.size(),
+		0,
+		"the weapon must have left the kit's own container once equipped"
+	)
+
+
 func test_a_valid_bout_builds_a_real_state_and_mission() -> void:
 	var profiles: Array = _reference_profiles()
 

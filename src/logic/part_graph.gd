@@ -71,6 +71,22 @@ static func walk(root: Part) -> Array[Part]:
 	return result
 
 
+## The part ANYWHERE in root's own assembly (root included) whose own
+## `sockets` include one with this `id` — the recursive counterpart to
+## `find_socket` (which only ever looks at `target`'s own sockets, never
+## the whole tree). taskblock-28 Pass B: how `KitEquipper` locates a kit's
+## own named container/grip socket without the caller having to know
+## which part actually hosts it. Distinct from `find_owning_socket` below
+## (that finds who holds a given PART; this finds who holds a given
+## SOCKET id) — order-independent, same posture as `find_socket` itself.
+static func find_host_of_socket(root: Part, socket_id: StringName) -> Part:
+	for part: Part in walk(root):
+		for socket: Socket in part.sockets:
+			if socket.id == socket_id:
+				return part
+	return null
+
+
 ## The socket (anywhere in root's assembly) whose occupant is `target`, or
 ## null.
 static func find_owning_socket(root: Part, target: Part) -> Socket:

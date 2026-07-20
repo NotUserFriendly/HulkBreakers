@@ -27,6 +27,14 @@ const PRESET_DIR := "user://presets"
 ## "" for the base profile of a family; "Battery Mods" etc. for a variant
 ## — display-only, never consulted by assembly.
 @export var variant_label: String = ""
+## taskblock-28 Pass B: what this preset's own units carry and how they
+## self-arm at bout setup (`KitEquipper`) — null (the default) means "no
+## kit," the unchanged pre-existing behavior every preset authored before
+## this field existed keeps: already armed via `loadout` alone, nothing
+## equips itself. Resolved as a step AFTER assembly, never inside
+## `BodyAssembler` itself — `loadout` is structural fill, `kit` is what
+## gets carried and then moved into place.
+@export var kit: Kit = null
 
 
 func _init(
@@ -35,7 +43,8 @@ func _init(
 	p_loadout: Loadout = null,
 	p_pose_id: StringName = &"IDLE",
 	p_profile_family: StringName = &"",
-	p_variant_label: String = ""
+	p_variant_label: String = "",
+	p_kit: Kit = null
 ) -> void:
 	preset_name = p_preset_name
 	template_id = p_template_id
@@ -43,6 +52,7 @@ func _init(
 	pose_id = p_pose_id
 	profile_family = p_profile_family
 	variant_label = p_variant_label
+	kit = p_kit
 
 
 static func _path_for(preset_name: String) -> String:

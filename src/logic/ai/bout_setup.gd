@@ -100,6 +100,13 @@ static func _spawn_squad(
 		)
 		var unit: Unit = DeepStrike.assemble_from_preset(entry.profile, matrix, cell, squad_id)
 		if unit != null:
+			# taskblock-28 Pass B: "a bout starts by units equipping
+			# themselves from their kit" — a no-op for the overwhelming
+			# majority of presets (kit == null, already armed via
+			# `loadout` the old way); only a kitted preset resolves this.
+			if entry.profile.kit != null:
+				KitEquipper.stock(unit, entry.profile.kit, DeepStrike.reference_humanoid_pool())
+				KitEquipper.equip(unit, entry.profile.kit)
 			units.append(unit)
 	return units
 

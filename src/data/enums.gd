@@ -96,3 +96,15 @@ enum ResolveOutcome {
 	COMPLETED,
 	STOPPED,
 }
+
+## taskblock-28 Pass B: how `KitEquipper.equip` resolves a unit's own kit
+## into its hands — a closed engine state (a resolution STRATEGY, not
+## content): INSTANT (the only implemented path) resolves before turn 1
+## with no visible turns spent. VISIBLE is the seam laid for a future
+## "watch them arm up" mode (units physically execute equip actions as
+## real turns) — declared now, unimplemented, so `equip`'s own `match`
+## already has somewhere for it to land without a later signature change.
+enum EquipMode {
+	INSTANT,
+	VISIBLE,
+}
