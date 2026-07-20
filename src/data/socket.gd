@@ -35,12 +35,25 @@ extends Resource
 ## it holds — copied from the occupant's `Part.joint_hp` at attach time
 ## (`PartGraph.attach`), never authored here directly (docs/01's
 ## inversion: the CHILD declares how hard it is to sever, not the parent
-## socket). 1/1 by default, matching `Part.joint_hp`'s own deliberately
-## fragile default, so a socket whose occupant was set directly
+## socket). taskblock-26 Pass D: 3/3 by default, matching `Part.joint_hp`'s
+## own raised default, so a socket whose occupant was set directly
 ## (`socket.occupant = x`, bypassing `PartGraph.attach` — most existing
-## fixtures) still severs in one hit rather than reading 0/0.
-@export var joint_hp: int = 1
-@export var joint_hp_max: int = 1
+## fixtures) still gets the same gradient rather than reading 0/0.
+@export var joint_hp: int = 3
+@export var joint_hp_max: int = 3
+
+## taskblock-26 Pass D: an optional Part that protects THIS socket's own
+## joint specifically — armor authored the same way ordinary body cladding
+## is (tb20: a Part with its own `volume`/`hp`/`material`), but keyed to one
+## joint rather than a part's whole body. Deliberately NOT gated by
+## `attaches_to` legality — it's authored directly onto the socket that owns
+## the joint it protects, same as `occupant` can be set directly bypassing
+## `PartGraph.attach` (see above). `BodyProjector._project_joint` projects
+## it as an ordinary Region sitting in front of the joint's own region, so
+## it absorbs/deflects through the EXISTING resolve_impact/apply_damage_to_
+## part path — no new damage mechanism, just new geometry in front of the
+## joint. Null (the default): an uncladded joint, unchanged from before.
+@export var joint_cladding: Part = null
 
 ## taskblock-09 D: a joint isn't a Part, but Region/HitResult are typed to
 ## carry one (`region.part`) — this is that placeholder identity, lazily
