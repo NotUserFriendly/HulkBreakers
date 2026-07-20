@@ -112,6 +112,15 @@ var _inventory_footer: Label
 var _info_panel: RichTextLabel
 
 var _rows_by_part: Dictionary = {}  # Part -> InventoryRow, for the info panel's own hover
+## taskblock-26 Pass E: true while the current subject is a tile/object
+## rather than a real piloted Unit — set by `open_tile()`, cleared by
+## `open()`/`close()`. `_unit` still carries a real (synthetic, matrixless)
+## Unit either way (see `open_tile()`'s own doc comment) so every other
+## `_refresh_*`/`_open_debug_menu_for_unit` path below needs no separate
+## tile-shaped branch; this flag only gates the two things that are
+## genuinely unit-specific: the header text and the debug menu.
+var _is_tile: bool = false
+var _tile_cell: Vector2i = Vector2i.ZERO
 var _debug_menu: PopupMenu = null
 ## taskblock-22 Pass G1: the exact absolute position the last `popup()`
 ## call actually requested, BEFORE Godot's own "keep the window on
@@ -320,6 +329,7 @@ func _build_info_panel(parent: Control) -> void:
 
 ## Populates every region for `unit` and shows the panel.
 func open(unit: Unit) -> void:
+	_is_tile = false
 	_unit = unit
 	visible = true
 	_rotating = true
@@ -357,9 +367,27 @@ func open(unit: Unit) -> void:
 func close() -> void:
 	visible = false
 	_unit = null
+	_is_tile = false
 	_title_bar.text = "INSPECT"
 	_isolate_clear()
 	closed.emit()
+
+
+## taskblock-26 Pass E: "objects and tiles don't [have a click inspector].
+## Since tiles are assemblies of parts... the existing part-tree inspector
+## can display them directly." A tile/object has no Matrix and no combat
+## identity — rather than build a second display path, this wraps `root`
+## (a cell's cover/clutter Part, `Grid.blockers.get(cell)` — null for a
+## bare tile) in the same matrixless-Unit shape `open()` already renders
+## unchanged (every `_refresh_*` below already no-ops gracefully on a null
+## `matrix`/`shell.root`, same as a docked-nothing shell today), then only
+## overrides the header, since "INSPECT — Unit -1 (Squad 0)" would lie
+## about what's actually being shown.
+func open_tile(cell: Vector2i, root: Part) -> void:
+	open(Unit.new(null, Shell.new(root), cell))
+	_is_tile = true
+	_tile_cell = cell
+	_refresh_title()
 
 
 ## taskblock-26 Pass C3: "unit id + squad, not just variant" — the
@@ -369,6 +397,9 @@ func close() -> void:
 ## Same fallback convention `_refresh_matrix_area` already uses (a real
 ## `display_name` wins, `matrix.id` otherwise) for the variant half.
 func _refresh_title() -> void:
+	if _is_tile:
+		_title_bar.text = "INSPECT — Tile (%d, %d)" % [_tile_cell.x, _tile_cell.y]
+		return
 	if _unit == null:
 		_title_bar.text = "INSPECT"
 		return
@@ -402,7 +433,9 @@ func _on_preview_gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			_dragging = mb.pressed
 			_rotating = not mb.pressed
-		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _unit != null:
+		elif (
+			mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _unit != null and not _is_tile
+		):
 			# G1: `mb.position` is local to `_preview_container`, not to this
 			# panel — the popup needs an absolute screen position (see
 			# `_open_debug_menu`'s own doc comment for why the old

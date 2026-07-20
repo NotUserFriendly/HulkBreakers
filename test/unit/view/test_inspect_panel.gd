@@ -764,3 +764,55 @@ func test_tree_hover_and_close_never_crash_with_no_tactics_wired() -> void:
 	panel._on_tree_gui_input(motion)
 
 	pass_test("no _tactics reference never crashes on hover")
+
+
+## taskblock-26 Pass E: "a tile with a goo_barrel... shows those as its
+## part tree." A cover/clutter root Part with one attached child, the same
+## socket-tree shape `_armed_unit`'s torso/weapon fixture already uses.
+func _tile_object() -> Part:
+	var valve := Part.new()
+	valve.id = &"valve"
+	valve.hp = 2
+	valve.max_hp = 2
+	valve.attaches_to = [&"VALVE"]
+
+	var barrel := Part.new()
+	barrel.id = &"goo_barrel"
+	barrel.hp = 6
+	barrel.max_hp = 6
+	var socket := Socket.new(&"VALVE")
+	socket.occupant = valve
+	barrel.sockets = [socket]
+	return barrel
+
+
+## Bundled per this taskblock's own testing note ("one test pass per
+## section, not per change"): a tile WITH objects shows them in the
+## existing part-tree inspector, the SAME shared `_rows_by_part` lookup a
+## real unit's `open()` fills (proof this isn't a second, parallel
+## display path — Pass E's own scope fence), and a bare tile (`root ==
+## null`, `Grid.blockers.get(cell)`'s own miss value) shows a sane empty
+## state rather than crashing — `root == null` reaches every `_refresh_*`
+## exactly like a matrixless, shell-less Unit already does today.
+func test_open_tile_reuses_the_existing_part_tree_inspector_for_objects_and_bare_floor() -> void:
+	var panel: InspectPanel = _panel()
+	var barrel: Part = _tile_object()
+	var valve: Part = barrel.sockets[0].occupant
+
+	panel.open_tile(Vector2i(3, 4), barrel)
+
+	assert_true(panel.visible)
+	assert_not_null(_find_item(panel._inventory_tree, barrel), "the tile's own root part shows")
+	assert_not_null(_find_item(panel._inventory_tree, valve), "an attached part shows too")
+	assert_true(
+		panel._rows_by_part.has(barrel), "same shared row lookup a real unit's open() fills"
+	)
+	assert_true(panel._title_bar.text.contains("3"), "the header names the inspected cell")
+	assert_true(panel._title_bar.text.contains("4"))
+
+	panel.open_tile(Vector2i(1, 1), null)
+
+	assert_true(panel.visible, "a bare tile still opens the panel, never a crash")
+	assert_null(panel._inventory_tree.get_root(), "no parts to show")
+	assert_eq(panel._inventory_footer.text, "")
+	assert_true(panel._title_bar.text.contains("Tile"), "still names what's being inspected")
