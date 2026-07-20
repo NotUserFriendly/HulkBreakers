@@ -38,6 +38,73 @@ confirm" roll-up — so pending items surface at a natural review point without 
 
 ## ✅ Resolved
 
+### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
+  ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
+  geometry and can hit its own armor."
+- **First attempt (taskblock-26 Pass A2):** `UnitGeometry.muzzle_point` returned the weapon's own box
+  CENTER, not its forward emission point. **Reported still present.**
+- **Second attempt (taskblock-27):** re-diagnosed — the first fix touched a function no real firing
+  action actually consumed for its horizontal origin; every real attack built the shot plane from the
+  shooter's own bare cell center instead. All five action files now anchor the shot plane on
+  `Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE`, the shouldered muzzle position, computed
+  before the plane is built.
+- **RESOLVED** 2026-07-20 — supervisor confirms shots now consistently originate from outside the
+  unit's own armor. taskblock-27 Pass A1 (fixing the chaingun-backward report, below) also removed a
+  remaining anchor mismatch between `origin` and `direction` that had been obscuring a clean read on
+  this one.
+
+### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
+- **First two attempts (taskblock-26 Pass A3, twice):** bumped `FACING_WEDGE_Y` in isolation each
+  time. Both **reported still present.**
+- **Third attempt (taskblock-27 Pass C2):** stopped bumping one marker in isolation and enumerated
+  the whole ground-overlay height ladder instead. Found a real, previously unreported co-planar pair
+  no prior test had ever checked: `TEAM_MARKER_Y` (0.01) was IDENTICAL to `EXTRACTION_TILE_HEIGHT`
+  (0.010) — every unit standing on its own extraction tile z-fought, independent of the facing wedge
+  entirely. Re-spaced all four named overlays as one ordered ladder with real clearance: extraction
+  tile (0.010, unchanged) → team marker (0.06) → overwatch arc (0.09) → facing wedge (0.17).
+- **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass C2.
+
+### Spectator combat log word-wraps  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D1a: the spectator's own log label wraps lines; the player view's log
+  already doesn't.
+- **Fix:** `log_label.autowrap_mode = TextServer.AUTOWRAP_OFF`, the same setting the player-view log
+  already carried — a direct port, not a new mechanism.
+- **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D1a.
+
+### Inspect-on-hover missing in spectator view  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D1c (tb17-era note): inspect-on-hover should be on the shared control
+  layer so both spectator and player view have it. Spectator view had none at all.
+- **Fix:** `SpectatorOverlay._unhandled_input()` now routes `InputEventMouseMotion` to a new
+  `_update_hover()`, reusing the same `UnitPicker.hit()` ray-pick the click handler already calls —
+  whichever unit the cursor is actually over highlights (no "selected unit" gate; spectator view has
+  no selection concept), mirroring `SquadControlOverlay._on_highlight_changed()`'s own
+  clear-every-other-view behavior.
+- **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D1c.
+
+### Wall tiles inspectable → opens the tile inspector  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D5: clicking a wall tile opens the tile inspector.
+- **Fix:** `SpectatorOverlay`'s tile-click path now guards on `TerrainType.WALL` before ever calling
+  `open_tile()` — a wall click is a real no-op, the same posture a miss off the board already had.
+- **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D5. (The garbage-viewport
+  symptom this report also showed was a distinct, deeper bug — see the next entry, found and closed
+  by CC in the same pass.)
+
+### InspectPanel's null-root branch leaked stale isolate-viewport state ("garbage inspector")  ·  source: `CC`
+- **Found:** while root-causing the wall-tile report above. `Grid.blockers` returns null identically
+  for a wall cell and bare floor, so the tile lookup itself was never the bug. The real defect:
+  `InspectPanel.open()`'s null-root branch (reached whenever `unit.shell.root == null`, which
+  includes "no unit/object at this tile") never reset the preview viewport's own
+  `own_world_3d`/isolate-focus state — so a "nothing to show" case could render an uncontrolled slice
+  of the live board, carried over from whatever a PRIOR inspect had left the viewport in.
+- **Fix:** the null-root branch now resets `_preview_viewport.own_world_3d = true` and calls
+  `show_assembly(null, ...)`, so a "nothing to show" case can never leak the live-board state
+  regardless of which caller reaches it.
+- **RESOLVED** — taskblock-27 Pass D5, proven both ways (fails without the fix, passes with it) by
+  `test_inspect_panel.gd`'s new null-root-resets-viewport-state test. CC-sourced: found, fixed, and
+  tested entirely by CC in one pass, no supervisor confirmation gate applies.
+
 ### Resource Editor — four layout bugs (stale-report source)  ·  source: `SUPERVISOR`
 - **Reported:** recurring through 2026-07-20 (arrived repeatedly as a `## User Request` to launch
   `run_resource_editor.sh` and screenshot the bugs). Era: taskblock 11 was the active block when
@@ -133,67 +200,6 @@ the supervisor promotes confirmed ones up to Resolved.)*
   the attempt. **Verification deferred to the next taskblock** (supervisor's own call) rather than
   chased now; still pending either way.
 
-### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
-  ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
-  geometry and can hit its own armor."
-- **First attempt (taskblock-26 Pass A2, commit `7c07445`):** `UnitGeometry.muzzle_point` returned
-  the weapon's own box CENTER, not its forward emission point — changed to return the box's forward
-  tip. **2026-07-20: supervisor reported still present.**
-- **Re-diagnosis:** that fix touched a function no real firing action actually consumed for its
-  horizontal origin. Every real attack (`AttackAction`/`BurstAction`/`GrindAction`/`SlashAction`/
-  `StabAction`) built the shot plane — and therefore the logged/drawn `impact.origin` — from the
-  shooter's own bare CELL center (`Vector2(actual.cell.x, actual.cell.y)`), never from
-  `shouldered_muzzle_point`'s own (already-correct) result. Real self-hits were already impossible
-  either way (every shooter part is excluded by identity on the plane's first lookup), so this was
-  purely the visible/logged origin sitting dead center in the shooter's own torso.
-- **Second fix:** all five action files now anchor the shot plane on
-  `Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE` (the same continuous muzzle position
-  `ShotPlane.resolve_ray` already anchors the reticle/overwatch path on), computed from
-  `shouldered_muzzle_point` before the plane is built, not after.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — second attempt, proven via
-  `test_attack_action.gd::test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center`.
-- **2026-07-20:** supervisor reports it looks better, but other currently-active issues (the
-  backward-looking bursts, below) obscure a clean read on this one — left pending rather than
-  promoted, verification revisited once those are out of the way.
-- **taskblock-27 Pass A1 root-caused the obscuring issue** (see the next entry) as sharing this
-  exact anchor-mismatch class — `direction` was still cell-anchored while `origin` (this bug's own
-  fix) was muzzle-anchored. With both now sharing one anchor, the obscuring issue should be gone,
-  clearing the way for this one to get a real read.
-
-### Chaingun bursts fire half-backward  ·  source: `SUPERVISOR`
-- **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
-  bursts look odd, both look like half the burst is going backward." Logged without a diagnosis at
-  the time (`out/combat.log`'s own text doesn't carry per-impact origin/direction data).
-- **Root-caused (taskblock-27):** the taskblock-26 A2 fix (above) moved the shot plane's own
-  `origin` to the real muzzle position but left `direction` computed cell-to-cell
-  (`Vector2(target_cell - actual.cell)`) — origin and direction anchored on DIFFERENT points for the
-  same ray. For a target beside the shooter, that mismatch can put the target's own resolved depth
-  at a NEGATIVE value relative to the (wrongly-anchored) direction — exactly what reads as the round
-  travelling backward when a tracer animates from the muzzle along that direction for `depth` units.
-- **Fix:** `direction := Vector2(target_cell) - origin` in all five action files — direction now
-  shares `origin`'s own muzzle anchor, so the target's own depth is always the true, non-negative
-  distance from the muzzle to it, by construction.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass A1, proven via
-  `test_attack_action.gd::test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_behind_the_ray`
-  (constructs the exact overshoot geometry: fails under the old cell-anchored direction, passes under
-  the fix).
-
-### Shot/deflect pair has no pause between the primary impact and its own deflect  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27: expected shot → (pause) → its deflect → (delay) → next shot/deflect
-  pair; actual — a shot and its own deflect fired with zero gap between them, reading as
-  simultaneous rather than "hit, then bounce."
-- **Root cause:** `ResolutionPlayer._play_impact` (taskblock-26 Pass A1's own deflect-tracer
-  addition) called `await _spawn_tracer(from, to)` for the primary segment, then immediately
-  `await _spawn_tracer(to, deflect_to, ...)` for the deflect — no wait between them at all.
-  `INTER_SHOT_BREAK_MS` only ever separates DISTINCT top-level impact/miss events, never the two
-  segments of one DEFLECT event's own pair.
-- **Fix:** new `DEFLECT_BEAT_MS` (100ms, same flagged-placeholder posture as `INTER_SHOT_BREAK_MS`)
-  — a real timer awaited between the primary segment and its own deflect segment.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass A2, proven via
-  `test_resolution_player.gd::test_deflect_tracer_waits_a_beat_after_the_primary_impact` (fails
-  without the fix, passes with it).
-
 ### Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
   ways — (1) doesn't open the dartboard, always resolves a center-mass shot; (2) charges MP for the
@@ -223,148 +229,42 @@ the supervisor promotes confirmed ones up to Resolved.)*
   `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the free
   out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg) and
   `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
-
-### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
-- **First two attempts (taskblock-26 Pass A3, twice):** bumped `FACING_WEDGE_Y` in isolation each
-  time — first cleared the two markers named in the report, then (after that failed) cleared
-  `OVERWATCH_ARC_HEIGHT` too. Both **reported still present.**
-- **Third attempt (taskblock-27 Pass C2):** stopped bumping one marker in isolation and enumerated
-  the whole ground-overlay height ladder instead. Found a real, previously unreported co-planar
-  pair no prior test had ever checked: `TEAM_MARKER_Y` (0.01) was IDENTICAL to
-  `EXTRACTION_TILE_HEIGHT` (0.010) — every unit standing on its own extraction tile (an ordinary
-  end-of-turn occurrence) z-fought, independent of the facing wedge entirely. Re-spaced all four
-  named overlays as one ordered ladder with real clearance: extraction tile (0.010, unchanged) →
-  team marker (0.06) → overwatch arc (0.09) → facing wedge (0.17), documented so a future ground
-  overlay takes the next rung rather than picking a value independently.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass C2, proven via
-  `test_hit_volume_view.gd::test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker`
-  (fails without the fix, passes with it) and the updated
-  `test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc` (now also
-  checks the team marker, which it never had before).
-
-### Skirmisher (and every other playstyle) squares off through walls, never takes space  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
-  line of sight — a skirmisher faces off at range through a wall and never advances to gain a real
-  line.
-- **First fix (taskblock-26 Pass B2, commit `dac1d1b`):** `_engagement_score` gained a dominant
-  `NO_LOS_PENALTY`, exempting the unit's own origin cell so `StepOutPlanner`'s move/fire/return
-  fallback wasn't starved of its own "didn't reposition" signal.
-- **Second fix (CC, re-diagnosed after a 60-real-map sweep found the first fix froze the unit
-  outright):** `_pick_engagement_position` now precomputes whether ANY reachable cell has real LOS
-  this turn; the self-cell exemption only applies when that's true — with no LOS cell reachable at
-  all, plain progress toward `preferred_range` outscores freezing in place.
-- **2026-07-20: supervisor reports still unresolved**, and pointed at `out/combat.log` from a live
-  bout (6 units, mtime AFTER the second fix landed) as evidence. That log shows every one of the 6
-  units, EVERY turn from Turn 2 through at least Turn 17, doing nothing but
-  `_face_if_nothing_else_queued`'s bare defensive re-face ("faced ... (manual_first)") followed
-  immediately by `turn_end` — the exact same cell, same facing, forever. This is broader than the
-  original report (every playstyle routes through `_plan_ranged`, not just SKIRMISHER) and confirms
-  the second fix does not cover every case.
-- **Root cause of the second failure:** the second fix only rewards a reachable cell for reducing
-  raw Chebyshev distance toward `preferred_range`. Once a unit is already AT (or very near) its own
-  preferred standoff distance — the common steady state, reached quickly from most spawn layouts —
-  every reachable cell scores no better on that axis, REGARDLESS of whether moving
-  perpendicular/around a wall would eventually gain real LOS. The fix only helps the narrower "still
-  clearly farther than preferred range" case (monotonic distance improvement); it does nothing once
-  the unit has already closed to its own preferred band but still lacks a line, which is exactly
-  where these 6 units appear to have settled by Turn 2.
-- **Third fix (taskblock-27 Pass C1):** when no reachable cell has real LOS, `_engagement_score` now
-  scores primarily on `LoS.obstruction_count` (new — opaque cells between a cell and the enemy, the
-  same `Grid.line` walk `has_los` already does, just counting instead of early-exiting), weighted to
-  dominate `distance_penalty`. This strictly decreases as a unit works around a corner even while
-  raw distance plateaus or worsens, unlike the second fix's own "match a number" metric.
-- **Honest result, re-measured on the same 60-real-map sweep:** seeds that never reach real LOS by
-  the end of the bout dropped from 16/60 to 8/60 (0/60 fully frozen either way, both before and
-  after). A genuine, measured improvement — **not a complete fix.** A long corridor requiring a
-  unit to temporarily move AWAY from the enemy before a gap appears can still trap this per-turn
-  greedy scorer (it only ever compares reachable cells THIS turn, never plans a multi-turn route) —
-  closing that would need a real shortest-path-to-nearest-LOS-cell search, out of scope for one
-  attempt.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass C1, third attempt, measurably
-  better but not guaranteed complete; proven via
-  `test_unit_ai_engagement_los.gd::test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_los`
-  (fails without the fix, passes with it) and the 60-real-map re-sweep above.
-
-### Spectator combat log word-wraps  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27 D1a: the spectator's own log label wraps lines; the player view's
-  log already doesn't.
-- **Fix:** `log_label.autowrap_mode = TextServer.AUTOWRAP_OFF`, the same setting the player-view
-  log already carried — a direct port, not a new mechanism.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D1a.
-
-### Turn indicator for the player-controlled unit  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27 D2: "no clear indication of whose turn it is" in player view.
-- **Fix:** the active unit's own facing wedge AND team marker now recolor to a distinct
-  `ACTIVE_TURN_COLOR` (`HitVolumeView.set_active_turn()`), driven by
-  `BattleScene._apply_active_turn_highlight()` off `combat_state.current_unit()`. Wired from both
-  `load_battle()` (correct from turn one) and `refresh_unit_views()` (stays correct as the turn
-  advances, for either overlay — both already call it after every turn). Along the way, found and
-  fixed a previously-unnoticed gap: `set_selected()` never actually recolored the facing wedge at
-  all, only the team marker — both now go through one shared `_recolor_markers()`.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D2, proven via
-  `test_hit_volume_view.gd`'s new `test_set_active_turn_recolors_both_the_marker_and_the_facing_wedge`/
-  `test_set_active_turn_false_reverts_to_the_ordinary_team_color`, and
-  `test_battle_scene.gd`'s new `test_load_battle_marks_the_current_units_own_view_as_active`/
-  `test_refresh_unit_views_moves_the_active_turn_highlight_as_the_turn_advances` (both fail without
-  the `_apply_active_turn_highlight()` wiring, pass with it).
-
-### Actions clickable without enough AP  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27 D3: the action bar lets a player arm an action the unit can't afford.
-- **Fix:** `ActionBar._can_afford()` compares `ActionCatalog.provider_for(unit, def.id).ap_cost`
-  against the unit's current AP (the same provider lookup firing itself already resolves through —
-  no new legality path). An unaffordable slot dims to the same tier an empty slot uses but keeps
-  its initials text (so "can't afford" reads distinctly from "nothing here"), and
-  `_on_box_gui_input()` refuses to arm it.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D3, proven via
-  `test_action_bar.gd`'s new affordability tests (fail without the fix, pass with it).
-
-### Camera doesn't reset after aiming  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27 D4: after aiming, the camera stays in third-person attack framing
-  instead of returning to the pre-aim view.
-- **Fix:** `CameraRig.start_aiming()` snapshots the current orbit state
-  (`_pre_aim_yaw/pitch/zoom/pan_offset`); `stop_aiming()` eases back to it via a newly-shared
-  `_ease_to()` helper (factored out of `ease_to_attack_framing()`, so both directions tween through
-  the same code).
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D4, proven via
-  `test_camera_rig.gd`'s new pre-aim-restore test (fails without the fix, passes with it).
-
-### Inspect-on-hover missing in spectator view  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27 D1c (tb17-era note): inspect-on-hover should be on the shared control
-  layer so both spectator and player view have it. Spectator view had none at all — hovering a
-  unit never highlighted anything, unlike player view's `TacticsController.update_hover()`.
-- **Fix:** `SpectatorOverlay._unhandled_input()` now routes `InputEventMouseMotion` to a new
-  `_update_hover()`, reusing the same `UnitPicker.hit()` ray-pick the click handler already calls.
-  Unlike player view (which only highlights the currently-selected unit's own parts — a concept
-  spectator view has none of), whichever unit the cursor is actually over highlights, mirroring
-  `SquadControlOverlay._on_highlight_changed()`'s own clear-every-other-view behavior. No shared
-  base-layer class was introduced (`ControlOverlay` stays a turn-driver-only base, per research
-  done this pass) — each overlay still owns its own input handling, just with matching behavior.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D1c, proven via
-  `test_spectator_overlay.gd`'s new `test_hovering_a_unit_highlights_its_view_and_clears_the_other`
-  (fails without the fix, passes with it) and
-  `test_hovering_off_every_unit_clears_the_previous_highlight`.
-
-### Wall tiles inspectable → garbage inspector  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-27 D5: clicking a wall tile opens the tile inspector showing a
-  seemingly-random tile in the viewport.
-- **Root cause:** not the tile lookup — `Grid.blockers` returns null identically for a wall cell
-  and bare floor, so that hypothesis didn't hold up under research. The real bug was
-  `InspectPanel.open()`'s null-root branch (reached whenever `unit.shell.root == null`, which
-  includes "no unit at this tile") leaking whatever `own_world_3d`/isolate-focus state the
-  viewport was already in from a PRIOR inspect — a wall click reused a stale live-board render
-  slice instead of clearing it.
-- **Fix:** the tile-click path in `SpectatorOverlay` now guards on `TerrainType.WALL` before ever
-  calling `open_tile()`; `InspectPanel.open()`'s null-root branch additionally resets
-  `_preview_viewport.own_world_3d = true` and calls `show_assembly(null, ...)` so a "nothing to
-  show" case can never leak the live-board state, regardless of which caller reaches it.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D5, proven via
-  `test_spectator_overlay.gd`'s new wall-tile-guard test and `test_inspect_panel.gd`'s new
-  null-root-resets-viewport-state test (both fail without the fix, pass with it).
+- **2026-07-20:** supervisor could not verify — blocked by a new, separate bug encountered during
+  the attempt (not yet detailed/logged; awaiting a report on what it is). **Verification deferred**
+  the same way B1's own confirmation was, above; still pending either way.
 
 ---
 
 ## 🔧 Active / Open
+
+### Chaingun bursts fire half-backward — visual only, hits are correct  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
+  bursts look odd, both look like half the burst is going backward."
+- **First fix (taskblock-27 Pass A1):** every attack action's shot-plane `direction` was cell-anchored
+  while `origin` was muzzle-anchored — two different anchors for the same ray, which could resolve a
+  target at negative depth and animate as the round travelling backward. Both now share the muzzle
+  anchor. **RESOLVED-PENDING-CONFIRMATION** at the time, proven via a constructed overshoot-geometry
+  test.
+- **2026-07-20: supervisor reports still visually backward** — but with a key new detail: "those
+  backwards shots do seem to be hitting the things they're drawn as hitting." The actual hit
+  resolution (which part takes the damage) is correct; only the drawn tracer/animation direction
+  still reads as backward. This means the Pass A1 fix (a `ShotPlane`/`AttackAction` geometry fix)
+  either isn't the code path driving the visible tracer, or there's a second, separate anchor
+  mismatch specifically in the rendering path (`resolution_player.gd`'s own tracer-drawing code, not
+  yet audited against this same origin/direction-anchor class of bug). **Reopened — not
+  investigated further this pass**, per instruction to just log and wait.
+
+### Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
+  `taskblock_done/Report-Taskblock27.md`): a shot and its own deflect are SUPPOSED to resolve
+  simultaneously (not paused apart, as taskblock-27 Pass A2 assumed) — the real defect is that a
+  DIFFERENT, later shot can appear to resolve/animate before an earlier shot's own deflect segment
+  has finished.
+- **Status:** not yet investigated. taskblock-27 Pass A2's own `DEFLECT_BEAT_MS` fix inserted a
+  deliberate pause between a primary hit and its own deflect — per this correction, that pause is
+  itself a wrong implementation of the actual intent (simultaneous primary+deflect) and does not
+  address this bug at all. Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between
+  separate impact events, not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
 
 ### Lighting differs between spectator and player view  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D1b: spectator and player view are said to light the board
