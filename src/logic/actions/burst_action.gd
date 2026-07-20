@@ -103,7 +103,11 @@ func apply(state: CombatState) -> void:
 	# possible either way, since shooter parts are excluded by identity).
 	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
 	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
-	var direction := Vector2(target_cell - actual.cell)
+	# taskblock-27 Pass A1: `direction` must share `origin`'s own muzzle
+	# anchor — see AttackAction's own doc comment. Anchoring direction on
+	# the bare cell center while origin sits at the muzzle is exactly what
+	# made half a burst read as firing backward.
+	var direction := Vector2(target_cell) - origin
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
 	# taskblock-22 Pass H2: same self-obstruction check as AttackAction's

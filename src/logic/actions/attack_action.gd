@@ -129,7 +129,13 @@ func apply(state: CombatState) -> void:
 	# never what it can hit.
 	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
 	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
-	var direction := Vector2(target_cell - actual.cell)
+	# taskblock-27 Pass A1: `direction` used to anchor on the shooter's own
+	# CELL center (`target_cell - actual.cell`) while `origin` (above)
+	# anchors on the real muzzle — two different anchor points for the
+	# same ray. For a target beside the shooter, that mismatch can flip
+	# the ray's apparent heading enough that a burst's own pulls read as
+	# firing backward. Both must share the muzzle anchor.
+	var direction := Vector2(target_cell) - origin
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 

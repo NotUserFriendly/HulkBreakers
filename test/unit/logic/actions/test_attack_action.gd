@@ -313,6 +313,55 @@ func test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center() ->
 	)
 
 
+## taskblock-27 Pass A1: "chaingun bursts fire half-backward" — `direction`
+## used to anchor on the shooter's own bare cell while `origin` (above)
+## anchored on the real muzzle. When the muzzle's own forward offset
+## overshoots a close target along the facing axis, that mismatch made the
+## target's own resolved depth go NEGATIVE relative to the (wrong)
+## direction — exactly what animates as the round travelling BACKWARD to
+## reach it. With direction sharing the muzzle anchor, the target's own
+## depth is always the true (non-negative) distance from the muzzle to it,
+## by construction.
+func test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_behind_the_ray(
+) -> void:
+	var weapon := _make_weapon(&"rifle", 10.0)
+	# Tip 3 cells forward of the grip — an exaggerated barrel length, only
+	# to make the muzzle overshoot a target that's merely 1 cell away, the
+	# condition that exposes the anchor mismatch.
+	weapon.volume = [Box.new(Vector3(0.0, 0.0, 1.5), Vector3(0.1, 0.2, 3.0))]
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(1, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, target])
+	FaceAction.face_for_free(
+		state, shooter, FaceAction.orientation_toward(shooter.cell, target.cell)
+	)
+
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(shooter, weapon)
+	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
+	assert_gt(origin.x, 1.0, "sanity: the muzzle really does overshoot the target's own cell")
+
+	var old_direction := Vector2(target.cell) - Vector2(shooter.cell)
+	var new_direction := Vector2(target.cell) - origin
+	var plane: Array[Region] = ShotPlane.build(origin, new_direction.normalized(), state)
+	var target_region: Region = null
+	for region: Region in plane:
+		if region.body == target:
+			target_region = region
+			break
+	assert_not_null(target_region)
+	assert_gte(
+		target_region.depth,
+		0.0,
+		"the target must never resolve BEHIND the muzzle once direction shares its anchor"
+	)
+	assert_lt(
+		(Vector2(target.cell) - origin).dot(old_direction.normalized()),
+		0.0,
+		"sanity: the OLD cell-anchored direction really did put this target at negative depth"
+	)
+
+
 ## docs/09 taskblock06 D2: reverses taskblock02 F — the second attack's
 ## own illegality (its target is already dead) now STOPS resolve_until
 ## entirely, so the trailing EndTurnAction queued after it never runs

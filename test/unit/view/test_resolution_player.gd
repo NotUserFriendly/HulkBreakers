@@ -414,8 +414,12 @@ func test_the_deflect_tracer_uses_a_visually_distinct_color() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
 	player.bullet_ms = 0.0
+	# taskblock-27 Pass A2: the primary->deflect pair now has a real beat
+	# between them (`DEFLECT_BEAT_MS`) — the deflect tracer no longer
+	# exists synchronously in the same call, so this must actually await.
+	player.speed = 1000.0
 
-	player._play_impact(
+	await player._play_impact(
 		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
 	)
 
@@ -425,6 +429,29 @@ func test_the_deflect_tracer_uses_a_visually_distinct_color() -> void:
 	var deflect_material: StandardMaterial3D = (deflect_tracer.mesh as BoxMesh).material
 	assert_eq(deflect_material.albedo_color, ResolutionPlayer.TRACER_DEFLECT_COLOR)
 	assert_ne(deflect_material.albedo_color, clean_material.albedo_color)
+
+
+## taskblock-27 Pass A2: "shot -> (pause) -> its deflect -> (delay) -> next
+## pair" — a shot and its own deflect used to draw with no pause between
+## them at all. The deflect tracer must not exist yet in the SAME call as
+## the primary one — a real beat (`DEFLECT_BEAT_MS`) has to elapse first,
+## regardless of `bullet_ms` (which only controls the tween EACH tracer
+## fades over, not the gap between the pair).
+func test_deflect_tracer_waits_a_beat_after_the_primary_impact() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.bullet_ms = 0.0
+
+	# fire-and-forget: only the pre-beat part runs synchronously
+	player._play_impact(
+		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
+	)
+
+	assert_eq(
+		player._tracers.get_child_count(),
+		1,
+		"only the primary impact's own tracer exists until the beat elapses"
+	)
 
 
 ## taskblock-21 Pass F: mirrors `ShotResolution._log_miss`'s own data shape
