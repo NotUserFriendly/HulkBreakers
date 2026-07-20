@@ -40,3 +40,18 @@ static func lean_needed(weapon: Part, distance: float) -> float:
 ## real step-in is required.
 static func in_reach(shell: Shell, weapon: Part, distance: float) -> bool:
 	return distance <= total_reach(shell, weapon)
+
+
+## taskblock-25 Pass B: reach is a real 3D character-to-character distance
+## (docs/PLAN.md "Phase M — Melee"), not the flat grid distance ranged
+## combat's own legality already uses — "a sword (reach 1) can't hit
+## someone 1 up; a polearm (reach 2) hits at √2." Built on the SAME real
+## composed geometry `UnitGeometry.bounding_sphere` already gives every
+## other 3D-aware system (docs/10 taskblock04 A2), never a second,
+## hand-derived notion of "where a unit actually is" — in tiles
+## (`UnitGeometry.CELL_SIZE`), so it compares directly against
+## `total_reach()`'s own tile-scaled numbers.
+static func distance_3d(a: Unit, b: Unit) -> float:
+	var center_a: Vector3 = UnitGeometry.bounding_sphere(a).center
+	var center_b: Vector3 = UnitGeometry.bounding_sphere(b).center
+	return center_a.distance_to(center_b) / UnitGeometry.CELL_SIZE

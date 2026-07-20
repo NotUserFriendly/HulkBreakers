@@ -25,6 +25,13 @@ extends RefCounted
 ## resolution mechanic — it belongs on this list, not a second one.
 const ATTACK_ACTION_IDS: Array[StringName] = [&"shoot", &"saw"]
 
+## taskblock-25 Pass B: the melee counterpart of `ATTACK_ACTION_IDS` —
+## `StabAction.is_legal`'s own `provides_actions` re-check reads this same
+## list, so it can't quietly drift from what `build_firing_action` actually
+## recognizes as a stab. `&"slash"`/`&"hold"` (Pass C) join this list when
+## their own action classes exist.
+const MELEE_ACTION_IDS: Array[StringName] = [&"stab"]
+
 
 ## The full registry of authored actions. Not per-unit; `actions_for`
 ## filters this down to what a specific unit can actually use right now.
@@ -32,6 +39,10 @@ static func defs() -> Array[ActionDef]:
 	return [
 		ActionDef.new(&"shoot", "Shoot", "SH"),
 		ActionDef.new(&"saw", "Saw", "SW"),
+		# taskblock-25 Pass B: a point-payload melee strike, backed by
+		# whichever weapon Part lists &"stab" in its own `provides_actions`
+		# — same authoring convention as &"burst" above.
+		ActionDef.new(&"stab", "Stab", "ST"),
 		# requires_action: only available if something else already
 		# provides shoot — the instrument overwatch still needs even once
 		# its provider moves off the gun and onto the matrix (E3).
@@ -149,6 +160,8 @@ static func build_firing_action(
 		return BurstAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
 	if action_id in ATTACK_ACTION_IDS:
 		return AttackAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
+	if action_id in MELEE_ACTION_IDS:
+		return StabAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
 	return null
 
 
