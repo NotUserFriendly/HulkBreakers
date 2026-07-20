@@ -221,7 +221,13 @@ static func _torso_visible(
 	)
 	if ray.is_empty():
 		return false
-	var resolved: HitResult = ShotPlane.resolve_ray(ray["origin"], ray["dir"], state)
+	# taskblock-24 Pass C: exclude the overwatcher's OWN body — the ray's
+	# own origin sits at/near the overwatcher's own position (near-zero
+	# depth), so a real, volumed torso would otherwise be the FIRST thing
+	# its own ray hits, every time, never reaching the real mover at all.
+	var resolved: HitResult = ShotPlane.resolve_ray(
+		ray["origin"], ray["dir"], state, overwatcher.shell.all_parts()
+	)
 	return resolved != null and resolved.part == torso and resolved.body == mover
 
 

@@ -100,6 +100,31 @@ func test_a_mover_whose_torso_clears_cover_does_trigger() -> void:
 	assert_true(sink.events_of_kind(&"overwatch_triggered").size() == 1)
 
 
+## taskblock-24 Pass C: real bug found and fixed — `_torso_visible`'s own
+## ray (`ShotPlane.resolve_ray`) never excluded the overwatcher's own
+## body, so a real, volumed torso sitting at the ray's own near-zero-depth
+## origin was the FIRST thing it ever hit, always, before reaching any
+## real mover downrange. Every fixture in this file (and every other
+## overwatch-adjacent test in this codebase) worked around this by giving
+## the overwatcher's own torso NO volume at all — masking a production bug
+## that made overwatch structurally unable to trigger for a unit with an
+## ordinary body. `_make_overwatcher`'s own unit gets a real torso box
+## here, proving the exclusion fix actually closes the gap rather than
+## merely being untested.
+func test_a_real_bodied_overwatcher_still_triggers_against_its_own_body() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	overwatcher.shell.root.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.5, 1.0, 0.5))]
+	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
+	var state := CombatState.new(Grid.new(10, 10), [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+
+	var triggered: bool = Overwatch.check_trigger(state, mover)
+
+	assert_true(triggered, "a real, volumed overwatcher torso must not self-block its own ray")
+	assert_eq(overwatcher.overwatch_weapon_id, &"", "the watch fired and spent")
+
+
 ## docs/09 taskblock06 F2: "the trigger fires at the FIRST qualifying
 ## cell, not the nearest." The path moves TOWARD the overwatcher the
 ## whole way (each step strictly nearer than the last), so if the trigger

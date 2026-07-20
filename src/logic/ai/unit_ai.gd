@@ -137,16 +137,16 @@ static func _plan_turn_before_shutdown_check(
 		return _plan_flee(unit, state, mission)
 	match playstyle:
 		&"SKIRMISHER":
-			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, false)
+			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, false, playstyle)
 		&"MARKSMAN":
-			return _plan_ranged(unit, state, mission, MARKSMAN_PREFERRED_RANGE, false)
+			return _plan_ranged(unit, state, mission, MARKSMAN_PREFERRED_RANGE, false, playstyle)
 		&"COVER_SEEKER":
 			# taskblock-16 D2: "a cover-seeker is a skirmisher that also
 			# weights cover" — its own preferred standoff is SKIRMISHER's,
 			# not a fourth, independently-tuned number.
-			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true)
+			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
 		_:
-			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false)
+			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
 
 
 ## taskblock-16 Pass D: the one ranged planner every playstyle above
@@ -179,7 +179,12 @@ static func _plan_turn_before_shutdown_check(
 ## "advance if farther" is fully satisfied by the far-more-common case of
 ## actually being out of weapon range (below).
 static func _plan_ranged(
-	unit: Unit, state: CombatState, mission: MissionState, preferred_range: int, weight_cover: bool
+	unit: Unit,
+	state: CombatState,
+	mission: MissionState,
+	preferred_range: int,
+	weight_cover: bool,
+	playstyle: StringName = &"AGGRESSIVE"
 ) -> ActionQueue:
 	var queue := ActionQueue.new(unit)
 	var enemy: Unit = _nearest_living_enemy(unit, state)
@@ -288,6 +293,19 @@ static func _plan_ranged(
 			func(action: CombatAction) -> bool:
 				return action is AttackAction or action is BurstAction
 		)
+		# taskblock-24 Pass C: "if I can't improve my shot by moving/
+		# firing this turn, and an enemy is likely to enter my arc, hold
+		# overwatch instead of wasting the turn." `not attack_fired`, not
+		# "nothing queued at all" — a repositioning move that still can't
+		# fire is exactly the "moving didn't help either" case this covers,
+		# and holding overwatch from wherever it ended up is strictly
+		# better than a move that goes nowhere useful.
+		if not attack_fired:
+			var overwatch_action: OverwatchAction = _consider_overwatch(
+				unit, enemy, state, playstyle, weight_cover
+			)
+			if overwatch_action != null and queue.enqueue(overwatch_action, state):
+				return queue
 		var held: bool = false
 		if not attack_fired and final_blocked:
 			held = queue.enqueue(HoldAction.new(unit), state)
@@ -713,6 +731,85 @@ static func _firing_action_for(
 	if action_id == &"":
 		return null
 	return ActionCatalog.build_firing_action(action_id, unit, weapon_id, target_cell)
+
+
+## taskblock-24 Pass C: "AGGRESSIVE never — closes and fires, doesn't
+## wait." Every other playstyle at least SITUATIONALLY considers holding
+## overwatch instead of wasting a turn with nothing better to do — this is
+## the one hard exclusion; `_consider_overwatch`'s own remaining checks
+## (catalog-gated, cover for COVER_SEEKER, a real threatened enemy) decide
+## the rest.
+static func _playstyle_considers_overwatch(playstyle: StringName) -> bool:
+	return playstyle != &"AGGRESSIVE"
+
+
+## Whether declaring overwatch with `weapon_id` right now would ALREADY
+## threaten some living enemy at its own current cell — reuses
+## `Overwatch.would_trigger_at` (the exact predicate the mechanic itself
+## fires on) rather than re-deriving arc/range/LoS geometry a second time,
+## the same "no second, drifted answer" posture this codebase applies
+## everywhere else. A real, concrete proxy for "an enemy is likely to
+## advance into my arc": if one is already within it, or close enough that
+## a single further step keeps it there, this is as good a signal as this
+## codebase has without inventing a movement-prediction system outright.
+## Temporarily arms `unit`'s own `overwatch_weapon_id` to ask, then
+## restores whatever it was — never mutates state a caller didn't already
+## choose to commit to.
+static func _overwatch_would_threaten_a_living_enemy(
+	unit: Unit, weapon_id: StringName, state: CombatState
+) -> bool:
+	var previous_weapon_id: StringName = unit.overwatch_weapon_id
+	unit.overwatch_weapon_id = weapon_id
+	var threatens := false
+	for candidate: Unit in state.units:
+		if candidate.squad_id == unit.squad_id or not candidate.alive:
+			continue
+		if Overwatch.would_trigger_at(state, candidate, candidate.cell).has(unit):
+			threatens = true
+			break
+	unit.overwatch_weapon_id = previous_weapon_id
+	return threatens
+
+
+## taskblock-24 Pass C: the AI's own consideration of a PROVIDED,
+## non-firing tactical action — overwatch is the first real consumer of
+## this scaffold, not a bot-type hardcode. Gated by the SAME
+## `ActionCatalog.provider_for` seam the player's own action bar reads
+## (`&"overwatch"`, requires_action `&"shoot"` — a weaponless unit, or one
+## whose weapon doesn't provide it, can't, for free); COVER_SEEKER
+## (`weight_cover`) additionally requires actually holding from cover,
+## matching its own "overwatches from cover when holding position" — the
+## same `weight_cover` flag that already distinguishes it from
+## SKIRMISHER/MARKSMAN elsewhere in this planner. Returns null (never
+## invents an action) unless every check, including a final real
+## `is_legal`, passes.
+static func _consider_overwatch(
+	unit: Unit, enemy: Unit, state: CombatState, playstyle: StringName, weight_cover: bool
+) -> OverwatchAction:
+	if not _playstyle_considers_overwatch(playstyle):
+		return null
+	# taskblock-24 Pass C: `ActionCatalog.actions_for` itself, not a bare
+	# `provider_for` lookup — `provider_for` alone doesn't honor overwatch's
+	# own `requires_action == &"shoot"` (docs/07 E3: "the instrument still
+	# needs it even once its provider moves off the gun"), and this must
+	# see EXACTLY what the player's own action bar would offer, never a
+	# looser AI-only reading of "catalog-gated."
+	var offered := false
+	for def: ActionDef in ActionCatalog.actions_for(unit):
+		if def.id == &"overwatch":
+			offered = true
+			break
+	if not offered:
+		return null
+	var weapon: Part = ActionCatalog.provider_for(unit, &"overwatch")
+	if weapon == null:
+		return null
+	if weight_cover and not is_covered_from(unit.cell, enemy.cell, state, unit):
+		return null
+	if not _overwatch_would_threaten_a_living_enemy(unit, weapon.id, state):
+		return null
+	var action := OverwatchAction.new(unit, weapon.id)
+	return action if action.is_legal(state) else null
 
 
 ## taskblock17-1 Pass C: raw chebyshev distance ignores walls — a bot

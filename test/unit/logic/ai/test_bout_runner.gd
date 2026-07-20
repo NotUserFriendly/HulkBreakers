@@ -237,3 +237,97 @@ func test_an_injected_wants_turn_for_overrides_the_default_squad_check() -> void
 	assert_false(finished)
 	assert_eq(jerry.ap, ap_before, "the injected predicate must claim jerry even though AI owns it")
 	assert_eq(runner.turns_taken, 0)
+
+
+## Mirrors test_step_out_planner.gd's own `_overwatcher` (torso -[WRIST]-
+## hand(TRIGGER) -[GRIP]- weapon) — `UnitGeometry.muzzle_point`'s own
+## placement math specifically depends on a WRIST socket, unlike this
+## file's own plain `_armed_unit` (HAND socket).
+func _overwatch_capable_unit(id: StringName, cell: Vector2i, squad_id: int) -> Unit:
+	var weapon := Part.new()
+	weapon.id = &"rifle"
+	weapon.hp = 3
+	weapon.max_hp = 3
+	weapon.attaches_to = [&"GRIP"]
+	weapon.requires = {&"TRIGGER": 1}
+	weapon.damage = 5.0
+	# Genuinely unaffordable as a plain shot (vs. this fixture's own 3
+	# max_ap below) — OverwatchAction's own flat 1-AP declare cost stays
+	# affordable regardless, so this weapon's only real option each turn
+	# is holding overwatch, not firing or improving its own position.
+	weapon.ap_cost = 5
+	weapon.provides_actions = [&"shoot", &"overwatch"]
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.max_range = 15.0
+	weapon.scatter = [Ring.new(0.1, 1.0)]
+
+	var hand := Part.new()
+	hand.id = StringName("%s_hand" % id)
+	hand.hp = 3
+	hand.max_hp = 3
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = weapon
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = StringName("%s_torso" % id)
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	torso.sockets = [wrist]
+
+	var matrix := Matrix.new()
+	matrix.playstyle = &"MARKSMAN"
+	return Unit.new(matrix, Shell.new(torso), cell, squad_id)
+
+
+## taskblock-24 Pass C: "a bout now contains held overwatch that triggers
+## on an advancing enemy (the dormant layer is live)" — a real, entirely
+## AI-vs-AI bout, driven only through `BoutRunner.step()` (never a hand-
+## built resolve_until/Overwatch.check_trigger call): a MARKSMAN holds
+## overwatch (nothing better to do — its own shot is genuinely
+## unaffordable), then the enemy's own ordinary AGGRESSIVE advance (a
+## straight, 1-wide corridor leaves no other route) walks it into the
+## held arc and the trigger actually fires — proof `BoutRunner.step()`
+## itself now wires `Overwatch.check_trigger` as its own resolve_until
+## mid_move_hook; before this pass, overwatch could be validly declared
+## by the AI and still never once trigger in any real bout.
+func test_a_bout_contains_held_overwatch_that_triggers_on_an_advancing_enemy() -> void:
+	var grid := Grid.new(20, 3)
+	for x in range(20):
+		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
+		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+	var self_unit := _overwatch_capable_unit(&"self_unit", Vector2i(0, 1), 0)
+	self_unit.max_ap = 3
+	self_unit.orientation = FaceAction.orientation_toward(Vector2i(0, 1), Vector2i(7, 1))
+	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"pistol")
+	# A short-range weapon (vs. self_unit's own 15.0) forces the enemy to
+	# actually close most of the corridor's own distance before it can
+	# fire back at all, instead of sniping from just outside the arc.
+	enemy.shell.find_part(&"pistol").weapon_def.max_range = 3.0
+	var state := CombatState.new(grid, [self_unit, enemy])
+	state.set_squad_controller(0, Enums.SquadController.AI)
+	state.set_squad_controller(1, Enums.SquadController.AI)
+	var mission := MissionState.new(RunState.new(), state)
+	mission.objectives = []
+
+	var runner := BoutRunner.new(state, mission, 60)
+	var declared := false
+	var triggered := false
+	while not runner.finished:
+		runner.step()
+		for event: LogEvent in runner.last_events:
+			if event.kind == &"overwatch_declared":
+				declared = true
+			if event.kind == &"overwatch_triggered":
+				triggered = true
+		if triggered:
+			break
+
+	assert_true(declared, "sanity: the MARKSMAN must actually hold overwatch first")
+	assert_true(
+		triggered, "an advancing enemy must actually trigger the held overwatch in a real bout"
+	)

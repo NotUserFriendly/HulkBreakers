@@ -129,7 +129,15 @@ func step() -> bool:
 	last_unit = unit
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
-	last_outcome = state.resolve_until(queue)
+	# taskblock-24 Pass C: the mid_move_hook was never wired here at all —
+	# `Overwatch.check_trigger` (the same Callable test_reaction_window.gd
+	# and every other real trigger test already threads through
+	# `resolve_until` by hand) is what makes a HELD overwatch (Pass C: the
+	# AI can now genuinely hold one) actually able to fire against a real,
+	# moving unit in an ordinary bout — without this, declaring overwatch
+	# was a real action with no way to ever actually trigger in AI-vs-AI
+	# play, "the dormant layer" in the most literal sense.
+	last_outcome = state.resolve_until(queue, Overwatch.check_trigger)
 	state.combat_log.remove_sink(sink)
 	last_events = sink.events
 	turns_taken += 1
