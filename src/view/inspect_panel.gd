@@ -353,6 +353,20 @@ func open(unit: Unit) -> void:
 				unit.shell.root, _material_table, WorldPalette.team_color(unit.squad_id)
 			)
 			_frame_camera()
+	else:
+		# taskblock-27 Pass D5: a bare subject (nothing on this tile) must
+		# show a genuinely EMPTY preview, not whatever the previous open()
+		# call happened to leave behind. `_isolate_clear()` above only
+		# resets the camera's own cull mask/isolate tag — it never touches
+		# `own_world_3d` or the preview's own child meshes, so without this
+		# branch, inspecting a bare tile right after a live unit left the
+		# viewport still sharing the real battle World3D (`own_world_3d ==
+		# false`) with a now-unrestricted cull mask, rendering an arbitrary
+		# slice of the actual board ("a garbage/random tile") instead of
+		# nothing. `show_assembly(null, ...)` already clears its own
+		# children and returns early — reused here, not re-derived.
+		_preview_viewport.own_world_3d = true
+		_preview_view.show_assembly(null, _material_table, Color.WHITE)
 	_refresh_title()
 	_refresh_status_wound_column()
 	_refresh_matrix_area()
