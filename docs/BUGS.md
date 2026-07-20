@@ -286,9 +286,81 @@ the supervisor promotes confirmed ones up to Resolved.)*
   `test_unit_ai_engagement_los.gd::test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_los`
   (fails without the fix, passes with it) and the 60-real-map re-sweep above.
 
+### Spectator combat log word-wraps  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D1a: the spectator's own log label wraps lines; the player view's
+  log already doesn't.
+- **Fix:** `log_label.autowrap_mode = TextServer.AUTOWRAP_OFF`, the same setting the player-view
+  log already carried — a direct port, not a new mechanism.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D1a.
+
+### Turn indicator for the player-controlled unit  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D2: "no clear indication of whose turn it is" in player view.
+- **Fix:** the active unit's own facing wedge AND team marker now recolor to a distinct
+  `ACTIVE_TURN_COLOR` (`HitVolumeView.set_active_turn()`), driven by
+  `BattleScene._apply_active_turn_highlight()` off `combat_state.current_unit()`. Wired from both
+  `load_battle()` (correct from turn one) and `refresh_unit_views()` (stays correct as the turn
+  advances, for either overlay — both already call it after every turn). Along the way, found and
+  fixed a previously-unnoticed gap: `set_selected()` never actually recolored the facing wedge at
+  all, only the team marker — both now go through one shared `_recolor_markers()`.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D2, proven via
+  `test_hit_volume_view.gd`'s new `test_set_active_turn_recolors_both_the_marker_and_the_facing_wedge`/
+  `test_set_active_turn_false_reverts_to_the_ordinary_team_color`, and
+  `test_battle_scene.gd`'s new `test_load_battle_marks_the_current_units_own_view_as_active`/
+  `test_refresh_unit_views_moves_the_active_turn_highlight_as_the_turn_advances` (both fail without
+  the `_apply_active_turn_highlight()` wiring, pass with it).
+
+### Actions clickable without enough AP  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D3: the action bar lets a player arm an action the unit can't afford.
+- **Fix:** `ActionBar._can_afford()` compares `ActionCatalog.provider_for(unit, def.id).ap_cost`
+  against the unit's current AP (the same provider lookup firing itself already resolves through —
+  no new legality path). An unaffordable slot dims to the same tier an empty slot uses but keeps
+  its initials text (so "can't afford" reads distinctly from "nothing here"), and
+  `_on_box_gui_input()` refuses to arm it.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D3, proven via
+  `test_action_bar.gd`'s new affordability tests (fail without the fix, pass with it).
+
+### Camera doesn't reset after aiming  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D4: after aiming, the camera stays in third-person attack framing
+  instead of returning to the pre-aim view.
+- **Fix:** `CameraRig.start_aiming()` snapshots the current orbit state
+  (`_pre_aim_yaw/pitch/zoom/pan_offset`); `stop_aiming()` eases back to it via a newly-shared
+  `_ease_to()` helper (factored out of `ease_to_attack_framing()`, so both directions tween through
+  the same code).
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D4, proven via
+  `test_camera_rig.gd`'s new pre-aim-restore test (fails without the fix, passes with it).
+
+### Wall tiles inspectable → garbage inspector  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D5: clicking a wall tile opens the tile inspector showing a
+  seemingly-random tile in the viewport.
+- **Root cause:** not the tile lookup — `Grid.blockers` returns null identically for a wall cell
+  and bare floor, so that hypothesis didn't hold up under research. The real bug was
+  `InspectPanel.open()`'s null-root branch (reached whenever `unit.shell.root == null`, which
+  includes "no unit at this tile") leaking whatever `own_world_3d`/isolate-focus state the
+  viewport was already in from a PRIOR inspect — a wall click reused a stale live-board render
+  slice instead of clearing it.
+- **Fix:** the tile-click path in `SpectatorOverlay` now guards on `TerrainType.WALL` before ever
+  calling `open_tile()`; `InspectPanel.open()`'s null-root branch additionally resets
+  `_preview_viewport.own_world_3d = true` and calls `show_assembly(null, ...)` so a "nothing to
+  show" case can never leak the live-board state, regardless of which caller reaches it.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass D5, proven via
+  `test_spectator_overlay.gd`'s new wall-tile-guard test and `test_inspect_panel.gd`'s new
+  null-root-resets-viewport-state test (both fail without the fix, pass with it).
+
 ---
 
 ## 🔧 Active / Open
+
+### Lighting differs between spectator and player view  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-27 D1b: spectator and player view are said to light the board
+  differently.
+- **Investigated, no code fix applied:** `BattleScene._ready()` already builds
+  `WorldPalette.world_environment()` and `WorldPalette.directional_light()` exactly once, as
+  children of the shared `BattleScene` itself — strictly before either overlay
+  (`SquadControlOverlay`/`SpectatorOverlay`) is installed via `set_overlay()`. Neither overlay
+  constructs its own lighting anywhere; both render the same lights on the same world. The code
+  does not support the premise of a divergence as currently written.
+- **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
+  comparison) rather than a code claim, since no divergent lighting path was found to remove.
 
 ### Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
