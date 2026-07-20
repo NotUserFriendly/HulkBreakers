@@ -269,7 +269,15 @@ static func _project_box(
 	for i in range(_FACE_NORMALS.size()):
 		var local_normal := Vector3(_FACE_NORMALS[i].x, 0.0, _FACE_NORMALS[i].y)
 		var normal_in_frame: Vector3 = local_transform.basis * local_normal
-		var world_normal: Vector2 = rotate_by_orientation(
+		# taskblock-23 Pass A: "parts must project with their real vertical
+		# position retained." `normal_in_frame` already CAN have a real
+		# vertical component whenever `local_transform` tilts off pure yaw
+		# (a pose/socket rotation about a horizontal axis — Poses.aiming()
+		# rotates a shoulder -45° about local RIGHT) — only the horizontal
+		# half needs the unit's own yaw applied (rotate_by_orientation is
+		# 2D by construction, and yaw never touches height anyway); the
+		# vertical half passes straight through unrotated.
+		var world_lateral: Vector2 = rotate_by_orientation(
 			Vector2(normal_in_frame.x, normal_in_frame.z), orientation
 		)
 		# taskblock-20 Pass C3: a `hollow` part (an empty-inside shell, not a
@@ -277,7 +285,11 @@ static func _project_box(
 		# a solid part's single near-face silhouette would normally never
 		# need, projects too, at that face's own (deeper) depth. A solid
 		# part still shows only whichever face(s) actually face the shooter.
-		if world_normal.dot(toward_shooter) <= 0.0 and not part.hollow:
+		# The facing test itself stays purely horizontal — shots are still
+		# level in this pass (Pass C is where a ray itself gains a vertical
+		# component) — a tilted face's own horizontal-facing component is
+		# still the right question for "does this face the shooter."
+		if world_lateral.dot(toward_shooter) <= 0.0 and not part.hollow:
 			continue  # facing away from the shooter
 
 		var corner_a_local := Vector3(
@@ -297,15 +309,56 @@ static func _project_box(
 
 		var screen_a: float = rotate_by_orientation(corner_a, orientation).dot(perp)
 		var screen_b: float = rotate_by_orientation(corner_b, orientation).dot(perp)
+
+		# taskblock-23 Pass A: a face's real world footprint under a TILTED
+		# `local_transform` isn't just "this lateral span at one shared
+		# height" any more — the SAME lateral corners at the box's OTHER
+		# vertical extreme can project to a different lateral position too,
+		# once a rotation mixes height into it (and vice versa: the real
+		# vertical extent can differ from a flat `box.size.y` once tilted).
+		# Widen both axes across all 4 real corners (both lateral corners,
+		# both vertical extremes) rather than assuming an untilted box's
+		# shortcuts still hold. For any Y-axis-only rotation (every existing
+		# socket in this codebase — mirrored SHOULDER_L/R, identity), height
+		# is provably unaffected by the rotation and this reduces to exactly
+		# the old `center_in_frame.y +/- half.y` / unchanged screen_a/screen_b
+		# — this is a strict generalization, not a behavior change, for
+		# every fixture that existed before this pass.
+		var corner_a_low: Vector3 = (
+			local_transform * Vector3(corner_a_local.x, box.center.y - half.y, corner_a_local.z)
+		)
+		var corner_a_high: Vector3 = (
+			local_transform * Vector3(corner_a_local.x, box.center.y + half.y, corner_a_local.z)
+		)
+		var corner_b_low: Vector3 = (
+			local_transform * Vector3(corner_b_local.x, box.center.y - half.y, corner_b_local.z)
+		)
+		var corner_b_high: Vector3 = (
+			local_transform * Vector3(corner_b_local.x, box.center.y + half.y, corner_b_local.z)
+		)
 		var min_x: float = minf(screen_a, screen_b)
 		var max_x: float = maxf(screen_a, screen_b)
+		var min_y: float = INF
+		var max_y: float = -INF
+		for corner: Vector3 in [corner_a_low, corner_a_high, corner_b_low, corner_b_high]:
+			var lateral: float = (
+				rotate_by_orientation(Vector2(corner.x, corner.z), orientation).dot(perp)
+			)
+			min_x = minf(min_x, lateral)
+			max_x = maxf(max_x, lateral)
+			min_y = minf(min_y, corner.y)
+			max_y = maxf(max_y, corner.y)
 		if max_x - min_x < _MIN_FACE_WIDTH:
 			continue  # edge-on: a vanishing sliver, not a real target
 
+		# Every one of the 4 vertical corners above shares this SAME local
+		# x/z (only y differs) — so this face's own depth-axis center is
+		# already exactly right regardless of tilt; nothing about widening
+		# the rect above changes it.
 		var face_center_local: Vector2 = (corner_a + corner_b) * 0.5
 		var depth: float = rotate_by_orientation(face_center_local, orientation).dot(dir)
-		var rect := Rect2(min_x, center_in_frame.y - half.y, max_x - min_x, box.size.y)
-		var normal3 := Vector3(world_normal.x, 0.0, world_normal.y)
+		var rect := Rect2(min_x, min_y, max_x - min_x, max_y - min_y)
+		var normal3 := Vector3(world_lateral.x, normal_in_frame.y, world_lateral.y)
 		var region := Region.new(rect, depth, part, normal3)
 		# taskblock-09 E: "the through axis a shot crosses" — the box's own
 		# minimum dimension, regardless of which face got hit (a plate

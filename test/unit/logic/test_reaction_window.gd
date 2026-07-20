@@ -129,7 +129,18 @@ func test_every_reaction_is_logged_including_ignore() -> void:
 ## isn't.
 func test_resolve_reaction_window_applies_the_reaction_before_firing() -> void:
 	var overwatcher: Unit = _overwatcher_with_pistol(Vector2i(0, 0), 0)
-	var mover: Unit = _mover(Vector2i(0, 5), 1)
+	# taskblock-23 Pass A: NOT (0, 5) — dead ahead, exactly along the
+	# torso's own local depth axis, is a genuinely degenerate projection
+	# angle once PRONE's real 90-degree tilt is retained (the bug Pass A
+	# fixes: a region's real vertical extent is no longer unconditionally
+	# `box.size.y` regardless of tilt). PRONE rotates the torso's own
+	# front/back faces to point straight up/down; this codebase still
+	# only models the four side faces (never top/bottom — a real,
+	# flagged, out-of-scope-for-this-pass gap), so a shot from EXACTLY
+	# that angle can land on a near-zero-extent sliver and miss — not
+	# what this test is about. A lateral offset keeps the shot a real,
+	# ordinary hit, same as this fixture always intended.
+	var mover: Unit = _mover(Vector2i(3, 5), 1)
 	var state := CombatState.new(Grid.new(10, 10), [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	var sink := MemorySink.new()
