@@ -779,11 +779,16 @@ func aim_facing() -> Variant:
 	return FaceAction.orientation_toward(shooter.cell, target.cell)
 
 
-## Queues an AttackAction carrying the reticle's current aim_offset, using
-## whatever part actually provides `armed_action` (taskblock-08 A1: "the
-## armed action decides what a click means" — SHOOT picks the shoot
-## provider, SAW picks the saw provider, never just any weapon) — a no-op,
-## silently, if the shooter has nothing operable for it right now.
+## Queues the firing action `armed_action` actually is, carrying the
+## reticle's current aim_offset, using whatever part actually provides it
+## (taskblock-08 A1: "the armed action decides what a click means" —
+## SHOOT picks the shoot provider, SAW picks the saw provider, never just
+## any weapon) — a no-op, silently, if the shooter has nothing operable
+## for it right now.
+## taskblock-24 Pass A: `ActionCatalog.build_firing_action` — never a
+## hardcoded `AttackAction` regardless of `armed_action.id` (arming and
+## clicking BURST used to queue a plain single shot; the button never
+## actually reached `BurstAction` at all).
 func confirm_shot() -> void:
 	if input_locked or selection == null or selection.selected_unit == null:
 		return
@@ -796,10 +801,11 @@ func confirm_shot() -> void:
 	if armed_action != null:
 		var weapon: Part = ActionCatalog.provider_for(shooter, armed_action.id)
 		if weapon != null:
-			selection.current_queue().enqueue(
-				AttackAction.new(shooter, weapon.id, aiming_at.cell, reticle_offset),
-				selection.state
+			var action: CombatAction = ActionCatalog.build_firing_action(
+				armed_action.id, shooter, weapon.id, aiming_at.cell, reticle_offset
 			)
+			if action != null:
+				selection.current_queue().enqueue(action, selection.state)
 	cancel_aim()
 
 
@@ -821,6 +827,7 @@ func _confirm_step_out() -> void:
 			selection.current_queue(),
 			selection.state,
 			shooter,
+			armed_action.id,
 			weapon.id,
 			stepping_out_at,
 			shooter.cell,

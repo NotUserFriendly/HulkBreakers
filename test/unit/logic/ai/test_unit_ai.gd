@@ -25,6 +25,12 @@ func _armed_unit(
 		weapon.requires = {&"TRIGGER": 1}
 		weapon.damage = 5.0
 		weapon.ap_cost = 1
+		# taskblock-24 Pass A: the AI now asks ActionCatalog what this
+		# weapon actually provides (`_firing_action_for`) before firing —
+		# every fixture built through this helper is a plain single-shot
+		# weapon unless a test says otherwise. Also load-bearing for Pass
+		# B's own `AttackAction.is_legal` provides_actions check.
+		weapon.provides_actions = [&"shoot"]
 		weapon.weapon_def = WeaponDef.new()
 		weapon.weapon_def.max_range = 15.0
 		weapon.scatter = [Ring.new(0.1, 1.0)]

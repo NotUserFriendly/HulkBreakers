@@ -60,7 +60,21 @@ extends GutTest
 ## a fixed seed's whole draw sequence" pattern this file's own header
 ## already documents three times over. Re-picked by the same brute-force
 ## search over nearby seeds: 12357.
-const SEED := 12357
+##
+## taskblock-24 Pass A: re-picked once more, same reason again — the AI
+## now asks ActionCatalog what a weapon actually provides before firing
+## (`UnitAI._firing_action_for`) instead of unconditionally constructing
+## `AttackAction`, a real, deliberate AI change (not a bug: every weapon
+## in this mission still only ever provides `&"shoot"`, so no unit's own
+## firing MECHANIC changed) that nonetheless reshuffles exactly which
+## legality checks run and when, the same "changes exactly which shots
+## land and in what order" pattern this file's own header already
+## documents for every prior AI-behavior pass. Under 12357 this
+## specifically closed off the "at least one queued action must abort at
+## resolution (the world moved)" scenario entirely — never a stale
+## queued action to abort against. Re-picked by the same brute-force
+## search over nearby seeds: 12369.
+const SEED := 12369
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400
@@ -94,6 +108,9 @@ func _landing_unit(unit_id: StringName, cell: Vector2i, weapon_id: StringName) -
 	weapon.requires = {&"TRIGGER": 1}
 	weapon.damage = 5.0
 	weapon.ap_cost = 1
+	# taskblock-24 Pass A: the AI now asks ActionCatalog what this weapon
+	# actually provides before firing.
+	weapon.provides_actions = [&"shoot"]
 	weapon.weapon_def = WeaponDef.new()
 	weapon.weapon_def.max_range = 8.0
 	weapon.scatter = [Ring.new(0.15, 1.0), Ring.new(0.6, 2.0)]
@@ -147,6 +164,9 @@ func _head_hosted_defender(unit_id: StringName, cell: Vector2i) -> Unit:
 	pistol.requires = {&"TRIGGER": 1}
 	pistol.damage = 4.0
 	pistol.ap_cost = 1
+	# taskblock-24 Pass A: the AI now asks ActionCatalog what this weapon
+	# actually provides before firing.
+	pistol.provides_actions = [&"shoot"]
 	pistol.scatter = [Ring.new(0.15, 1.0)]
 
 	var hand := Part.new()

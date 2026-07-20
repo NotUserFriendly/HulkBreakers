@@ -96,10 +96,17 @@ static func sort_by_safety(
 ## Returns true only if the WHOLE triple enqueued legally. False leaves
 ## `queue` however far it got — the same "no further action, no silent
 ## rollback" contract `ActionQueue.enqueue` itself already has.
+## taskblock-24 Pass A: `action_id` is which firing action to build for
+## the middle leg — `ActionCatalog.build_firing_action` (the same seam
+## the player's own action bar and the AI's own firing helper both read),
+## never a hardcoded `AttackAction` regardless of what `weapon_id` actually
+## provides (a chaingun's own step-out-and-burst used to silently
+## downgrade to a single shot here).
 static func build_triple(
 	queue: ActionQueue,
 	state: CombatState,
 	unit: Unit,
+	action_id: StringName,
 	weapon_id: StringName,
 	target: Unit,
 	origin_cell: Vector2i,
@@ -111,7 +118,10 @@ static func build_triple(
 		return false
 	if not queue.enqueue(MoveAction.new(unit, out_path), state):
 		return false
-	if not queue.enqueue(AttackAction.new(unit, weapon_id, target.cell), state):
+	var firing_action: CombatAction = ActionCatalog.build_firing_action(
+		action_id, unit, weapon_id, target.cell
+	)
+	if firing_action == null or not queue.enqueue(firing_action, state):
 		return false
 
 	var preview: CombatState = queue.preview(state)
@@ -144,7 +154,7 @@ static func build_triple(
 ## `sort_by_safety()` directly and hands its own chosen cell to
 ## `build_triple()` instead.
 static func assemble_for_shoot(
-	state: CombatState, unit: Unit, weapon_id: StringName, target: Unit
+	state: CombatState, unit: Unit, action_id: StringName, weapon_id: StringName, target: Unit
 ) -> ActionQueue:
 	if not UnitAI.is_covered_from(unit.cell, target.cell, state, unit):
 		return null
@@ -153,6 +163,6 @@ static func assemble_for_shoot(
 		return null
 	var firing_cell: Vector2i = sort_by_safety(state, unit, candidates)[0]
 	var queue := ActionQueue.new(unit)
-	if not build_triple(queue, state, unit, weapon_id, target, unit.cell, firing_cell):
+	if not build_triple(queue, state, unit, action_id, weapon_id, target, unit.cell, firing_cell):
 		return null
 	return queue

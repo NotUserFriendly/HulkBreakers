@@ -117,6 +117,38 @@ static func provider_for(
 	return null
 
 
+## taskblock-24 Pass A: the ONE place an action id becomes a real
+## `CombatAction` instance — used by both the player's own click-to-fire
+## confirm (`TacticsController.confirm_shot`/`_confirm_step_out`) and the
+## AI's own firing helper (`UnitAI._firing_action_for`), so neither can
+## silently drift from what a weapon actually provides. `&"shoot"`/
+## `&"saw"` are both single-pull actions backed by the same `AttackAction`
+## (a saw is a different PROVIDING weapon, not a different resolution
+## mechanic); `&"burst"` is the one id backed by a distinct class. Returns
+## null for any other id (never invents an action for one this file
+## doesn't recognize) — a caller that gets null simply has nothing to
+## enqueue, the same "no further action, no silent rollback" contract
+## `ActionQueue.enqueue` itself already has.
+static func build_firing_action(
+	action_id: StringName,
+	unit: Unit,
+	weapon_id: StringName,
+	target_cell: Vector2i,
+	aim_offset: Vector2 = Vector2.ZERO,
+	extra_sources: Array[ModSource] = [],
+	mission: MissionState = null
+) -> CombatAction:
+	match action_id:
+		&"burst":
+			return BurstAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
+		&"shoot", &"saw":
+			return AttackAction.new(
+				unit, weapon_id, target_cell, aim_offset, extra_sources, mission
+			)
+		_:
+			return null
+
+
 ## Plain Array.sort() on StringName does NOT compare lexicographically (it
 ## orders by StringName's own interning, not the string it names) — a
 ## String-cast custom comparator is what actually gives "then by action

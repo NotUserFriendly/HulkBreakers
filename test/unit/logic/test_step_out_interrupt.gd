@@ -124,7 +124,7 @@ func test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_ret
 
 	var queue := ActionQueue.new(stepper)
 	var assembled: bool = StepOutPlanner.build_triple(
-		queue, state, stepper, &"rifle", target, Vector2i(3, 0), Vector2i(4, 0)
+		queue, state, stepper, &"shoot", &"rifle", target, Vector2i(3, 0), Vector2i(4, 0)
 	)
 	assert_true(
 		assembled, "sanity: the triple must assemble legally before the interrupt is tested"
@@ -180,7 +180,7 @@ func test_a_stepper_who_survives_the_trigger_still_freezes_and_never_returns() -
 	var queue := ActionQueue.new(stepper)
 	assert_true(
 		StepOutPlanner.build_triple(
-			queue, state, stepper, &"rifle", target, Vector2i(3, 0), Vector2i(4, 0)
+			queue, state, stepper, &"shoot", &"rifle", target, Vector2i(3, 0), Vector2i(4, 0)
 		)
 	)
 
