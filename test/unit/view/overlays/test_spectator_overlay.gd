@@ -110,6 +110,15 @@ func test_setup_wires_a_bout_runner_against_the_loaded_battle() -> void:
 	assert_eq(overlay.runner.state, overlay.battle.combat_state)
 
 
+## taskblock-27 Pass D1a: "spectator combat log word-wraps — it shouldn't."
+## `SquadControlOverlay`'s own log label already had this fix; this
+## overlay's own log label never got it.
+func test_log_label_never_word_wraps() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	assert_eq(overlay.log_label.autowrap_mode, TextServer.AUTOWRAP_OFF)
+
+
 func test_play_sets_playing_and_pause_clears_it() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 

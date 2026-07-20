@@ -285,6 +285,12 @@ func _build_ui() -> void:
 	log_label.position = Vector2(16, -216)
 	log_label.size = Vector2(520, 200)
 	log_label.scroll_following = true
+	# taskblock-27 Pass D1a: `SquadControlOverlay`'s own log label already
+	# fixed this (runNotes.md: "log needs to both be scrollable and not
+	# word wrapping") — autowrap defaults to wrapping at the word
+	# boundary, cutting long lines across multiple visual rows. This
+	# overlay's own log label never got the same one-line fix.
+	log_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	theme_root.add_child(log_label)
 	log_sink = HierarchicalUiSink.new(log_label, battle.combat_state)
 
