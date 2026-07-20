@@ -71,6 +71,15 @@ const OPPORTUNITY_ATTACK_PENALTY := 15.0
 ## reachable has real LOS, the least-bad cell still wins rather than the
 ## planner freezing in place facing a wall.
 const NO_LOS_PENALTY := 2000.0
+## taskblock-27 (CC, re-diagnosing B2 a second time): per-unit-of-
+## `LoS.obstruction_count` weight, applied only when no reachable cell
+## has real LOS at all — see `_engagement_score`'s own doc comment.
+## Flagged, not a tuned design number; only "large enough to dominate any
+## plausible `distance_penalty` spread on a real map" is specified —
+## `distance_penalty` is itself unweighted (a plain Chebyshev delta), so
+## even a big map's worst-case spread stays two orders of magnitude
+## below this.
+const OBSTRUCTION_PENALTY_WEIGHT := 1000.0
 
 ## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
 ## actual playstyle set... so new playstyles appear automatically, not a
@@ -777,9 +786,34 @@ static func _engagement_score(
 		)
 		else NO_LOS_PENALTY
 	)
+	# taskblock-27 (CC, re-diagnosing B2 a SECOND time — confirmed still
+	# frozen on a real 6-unit bout's own combat.log, every playstyle, from
+	# Turn 2 onward): the previous fix's own "plain progress toward
+	# preferred_range" fallback plateaus the instant a unit reaches its
+	# own preferred numeric distance band — even fully walled off, since
+	# moving further doesn't reduce |distance-preferred| once it's
+	# already at its minimum. That's precisely the common steady state:
+	# most spawns close to roughly the right distance within a turn or
+	# two, then freeze there forever, still blind. When nothing reachable
+	# has real LOS, this replaces `distance_penalty` as the PRIMARY signal
+	# with `LoS.obstruction_count` — how many opaque cells stand between
+	# `cell` and the enemy — which strictly decreases as a unit works its
+	# way around a corner even while raw distance briefly plateaus or
+	# worsens (the one thing a "match this number" metric can't express).
+	# Weighted to dominate any plausible `distance_penalty` spread on a
+	# real map, so this always wins the tiebreak when a genuinely
+	# less-obstructed cell is reachable; `distance_penalty` itself still
+	# applies underneath (unweighted here) to rank equally-obstructed
+	# candidates by the ordinary standoff preference.
+	var obstruction_penalty: float = (
+		0.0
+		if any_reachable_has_los
+		else float(LoS.obstruction_count(state.grid, cell, enemy.cell)) * OBSTRUCTION_PENALTY_WEIGHT
+	)
 	return (
 		cover_bonus
 		- distance_penalty
+		- obstruction_penalty
 		- blocked_penalty
 		- min_range_penalty
 		- suppression_penalty

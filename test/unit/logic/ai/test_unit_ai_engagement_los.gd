@@ -175,3 +175,65 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 		progress_score_when_something_has_los,
 		"unchanged from Pass B2: the self cell keeps its exemption once some cell truly has LOS"
 	)
+
+
+## taskblock-27 (CC, re-diagnosing B2 a SECOND time — confirmed still
+## frozen on a real 6-unit bout's own combat.log, every playstyle, from
+## Turn 2 onward): the first re-diagnosis's own "plain progress toward
+## preferred_range" fallback plateaus the instant a unit reaches its own
+## preferred numeric distance band, even fully walled off — moving
+## further doesn't reduce |distance-preferred| once it's already at its
+## minimum, so the unit freezes there forever, still blind. A cell
+## further from `preferred_range` but with FEWER opaque cells between it
+## and the enemy (`LoS.obstruction_count`) must now outscore a cell
+## exactly at the preferred distance but more obstructed — genuine
+## progress toward a real line beats matching a number.
+func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_los() -> void:
+	var grid := Grid.new(25, 5)
+	# A short, thick wall segment directly on the near cell's own line to
+	# the enemy; the far cell's own line clears it by going around instead.
+	for x in range(16, 20):
+		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
+		grid.set_opacity(Vector2i(x, 0), 1.0)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	var enemy := _armed_unit(&"enemy", Vector2i(20, 0), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+	var weapon: Part = self_unit.shell.find_part(&"rifle")
+	# Exactly at SKIRMISHER_PREFERRED_RANGE (5) from the enemy, but its own
+	# line back to the enemy crosses the whole 4-wide wall segment head-on
+	# (obstruction_count 4).
+	var near_but_obstructed := Vector2i(15, 0)
+	# One further from the preferred range, but its own line to the enemy
+	# (a different row) crosses far less of the wall (obstruction_count 1)
+	# — genuinely closer to a real line, even though farther by the number.
+	var far_but_clear := Vector2i(14, 4)
+	assert_false(LoS.has_los(grid, near_but_obstructed, enemy.cell), "sanity")
+	var near_obstruction: int = LoS.obstruction_count(grid, near_but_obstructed, enemy.cell)
+	var far_obstruction: int = LoS.obstruction_count(grid, far_but_clear, enemy.cell)
+	assert_lt(far_obstruction, near_obstruction, "sanity: the far cell really is less obstructed")
+
+	var near_score: float = UnitAI._engagement_score(
+		near_but_obstructed,
+		enemy,
+		state,
+		self_unit,
+		UnitAI.SKIRMISHER_PREFERRED_RANGE,
+		false,
+		weapon,
+		false
+	)
+	var far_score: float = UnitAI._engagement_score(
+		far_but_clear,
+		enemy,
+		state,
+		self_unit,
+		UnitAI.SKIRMISHER_PREFERRED_RANGE,
+		false,
+		weapon,
+		false
+	)
+	assert_gt(
+		far_score,
+		near_score,
+		"a less-obstructed cell must outscore one merely closer to the numeric preferred range"
+	)

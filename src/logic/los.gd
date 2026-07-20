@@ -20,6 +20,26 @@ static func has_los(grid: Grid, a: Vector2i, b: Vector2i) -> bool:
 	return true
 
 
+## taskblock-27 (CC, re-diagnosing tb26 B2 a second time — confirmed still
+## broken on a real bout's own combat log, every playstyle frozen from
+## Turn 2 onward): how many opaque cells sit between `a` and `b` — 0 means
+## `has_los` would return true. Unlike a boolean, this is a MONOTONIC
+## signal a scorer can climb even while no candidate cell has full LOS
+## yet: working around a corner reduces the obstruction count one wall at
+## a time, where raw Chebyshev distance-to-preferred-range can plateau or
+## even worsen mid-detour (the exact freeze this exists to fix — see
+## `UnitAI._engagement_score`'s own use of it). Same `Grid.line` walk
+## `has_los` already does, just counting instead of early-exiting on the
+## first hit — never a second, differently-shaped visibility test.
+static func obstruction_count(grid: Grid, a: Vector2i, b: Vector2i) -> int:
+	var cells: Array[Vector2i] = Grid.line(a, b)
+	var count := 0
+	for i in range(1, cells.size() - 1):
+		if grid.get_opacity(cells[i]) >= OPAQUE_THRESHOLD:
+			count += 1
+	return count
+
+
 ## All cells within Chebyshev `radius` of origin (inclusive) that have LoS
 ## from origin. Includes origin itself.
 static func visible_cells(grid: Grid, origin: Vector2i, radius: int) -> Array[Vector2i]:
