@@ -72,38 +72,40 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **RESOLVED** in the v1 foundation work (noted historically in `docs/SUPERSEDED.md`). `gdlint` now
   catches this class faster than the engine does (see `docs/TOOLING.md` gotchas).
 
+### Deflect tracers never drawn  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
+  logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
+  computed, logged, never drawn."
+- **Fix:** `taskblock-26 Pass A1` (commit `7c07445`) — every DEFLECT-outcome impact event now
+  carries its own `deflect_end_x/y/height`, drawn as a second, visually distinct tracer segment.
+- **RESOLVED** — confirmed by the supervisor.
+
+### Bout maker AI dropdown missing new playstyles  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: tb24/tb25 added playstyles (overwatch-capable set, PSYCHOTIC, TURTLE)
+  but the bout setup menu's own AI dropdown was a hardcoded, independently-maintained list.
+- **Fix:** `taskblock-26 Pass C1` (commit `67c7ca8`) — `GenerateBoutOverlay.PLAYSTYLES` is now a
+  direct reference to `UnitAI.PLAYSTYLES`, not a hardcoded copy.
+- **RESOLVED** — confirmed by the supervisor.
+
+### Bout menu jumpy add/duplicate, not truly centered  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: adding/duplicating a roster entry reflows jarringly; the menu reads as
+  intended-centered but isn't.
+- **Fix:** `taskblock-26 Pass C2` (commit `67c7ca8`) — anchors pinned to 0.5 with
+  `GROW_DIRECTION_BOTH` (no baked offset); every row reserves the same `ROW_MIN_HEIGHT`.
+- **RESOLVED** — confirmed by the supervisor.
+
+### Inspect header shows only the variant, not unit id/squad  ·  source: `SUPERVISOR`
+- **Reported:** taskblock-26: the inspect panel showed the bot's variant but not which unit/squad
+  this actually was in the current bout — two units built from the same variant read identically.
+- **Fix:** `taskblock-26 Pass C3` (commit `67c7ca8`) — the title bar now reads "INSPECT — Unit N
+  (Squad M) — <variant>" once a unit is open.
+- **RESOLVED** — confirmed by the supervisor.
+
 ---
 
 ## ⏳ Resolved — pending supervisor confirmation
 *(CC-fixed `SUPERVISOR` bugs awaiting verification. CC writes here, never straight to Resolved;
 the supervisor promotes confirmed ones up to Resolved.)*
-
-### Bout maker AI dropdown missing new playstyles  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26: tb24/tb25 added playstyles (overwatch-capable set, PSYCHOTIC, TURTLE)
-  but the bout setup menu's own AI dropdown was a hardcoded, independently-maintained list.
-- **Fix:** `UnitAI.PLAYSTYLES` is now the one maintained list every `_plan_turn_before_shutdown_check`
-  match arm corresponds to; `GenerateBoutOverlay.PLAYSTYLES` is a direct reference to it, not a copy.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass C1.
-
-### Bout menu jumpy add/duplicate, not truly centered  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26: adding/duplicating a roster entry reflows jarringly; the menu reads as
-  intended-centered but isn't.
-- **Root cause:** `set_anchors_and_offsets_preset(PRESET_CENTER)` baked a one-time pixel offset from
-  the layout's own size at construction — before a single child existed — so centering was computed
-  for an empty control, not the real populated menu. Real entry rows had no `custom_minimum_size.y`
-  of their own while the trailing padding spacers were pinned to `ROW_MIN_HEIGHT`, so the roster
-  crossing `MIN_VISIBLE_ROWS` changed the total layout height by an inconsistent amount.
-- **Fix:** anchors pinned to 0.5 with `GROW_DIRECTION_BOTH` (no baked offset) keeps the layout's own
-  center pinned to the parent's midpoint regardless of size changes; every row (entry, add, spacer)
-  now reserves the same `ROW_MIN_HEIGHT`.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass C2.
-
-### Inspect header shows only the variant, not unit id/squad  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26: the inspect panel showed the bot's variant but not which unit/squad
-  this actually was in the current bout — two units built from the same variant read identically.
-- **Fix:** the panel's own title bar (`_title_bar`, previously a static "INSPECT" string) now reads
-  "INSPECT — Unit N (Squad M) — <variant>" once a unit is open, resetting to plain "INSPECT" on close.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass C3.
 
 ### Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
@@ -115,6 +117,8 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **Fix:** reordered so the human's own turn is fully awaited through its complete animated playback
   before `advance_ai_turns` runs at all.
 - **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B1.
+- **2026-07-20:** supervisor could not verify — blocked by a separate, new issue encountered during
+  the attempt. Still pending; the new issue itself needs to be filed once its own shape is known.
 
 ### Skirmisher squares off through walls, never takes space  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26: `_plan_ranged` seeks the preferred standoff distance but never checks
@@ -127,45 +131,28 @@ the supervisor promotes confirmed ones up to Resolved.)*
   visibility test.
 - **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B2.
 
-### Deflect tracers never drawn  ·  source: `SUPERVISOR`
-- **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
-  logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
-  computed, logged, never drawn."
-- **Root cause:** `ImpactResult.reflected_dir`/`reflected_vertical` were always computed by
-  `resolve_impact` for a DEFLECT, but `ShotResolution._log_impact` never stamped them onto the log
-  event's own data — and a ricochet that then finds nothing to hit produces no further event at all,
-  so the view had nothing to draw even when it wanted to.
-- **Fix:** every DEFLECT-outcome impact event now carries its own `deflect_end_x/y/height` (the same
-  void-ray convention `_log_miss` already used for a total miss), unconditionally — so it's drawable
-  whether or not a real ricochet continuation follows. `resolution_player.gd` draws it as a second,
-  visually distinct (cool blue vs. warm yellow/red) tracer segment.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass A1.
+---
+
+## 🔧 Active / Open
 
 ### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
   ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
   geometry and can hit its own armor."
-- **Root cause:** `UnitGeometry.muzzle_point` returned the weapon's own box CENTER, not its forward
-  emission point — for any weapon shorter than its own full authored length, that center sits back
-  inside the gun's own body, close to the shooter's torso.
-- **Fix:** `muzzle_point` now returns the box's forward tip (`center + (0, 0, size.z / 2)`, per
-  `box.gd`'s own documented "+Z forward" convention), composed through the same placement transform.
-  Every reader (Overwatch, AimView, `shouldered_muzzle_point`) gets the corrected point for free.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass A2.
+- **First attempt (taskblock-26 Pass A2, commit `7c07445`):** `UnitGeometry.muzzle_point` returned
+  the weapon's own box CENTER, not its forward emission point — changed to return the box's forward
+  tip. **2026-07-20: supervisor reports still present** — the tip fix alone didn't resolve it; needs
+  re-diagnosis, not a re-application of the same fix.
+- **Status:** reopened, not yet re-investigated.
 
 ### Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
-- **Root cause:** the unit facing wedge (`HitVolumeView._build_facing_wedge`) centered its own
-  0.10-tall box on `TEAM_MARKER_Y + TEAM_MARKER_HEIGHT` (0.03) — its bottom face reached down to
-  -0.02, below the ground plane (Y=0) and into the same height band as a ground-tier board marker
-  (e.g. `board_view.gd`'s `EXTRACTION_TILE_HEIGHT`, 0.010).
-- **Fix:** raised the wedge's own base height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears
-  both the team marker disc's own top surface and every ground-tier board marker with real headroom.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass A3.
-
----
-
-## 🔧 Active / Open
+- **First attempt (taskblock-26 Pass A3, commit `7c07445`):** raised the unit facing wedge's own base
+  height (`FACING_WEDGE_Y := 0.09`) so its bottom face clears the team marker disc and ground-tier
+  board markers. **2026-07-20: supervisor reports still present** — either a different z-fighting
+  pair than the one diagnosed, or the fix didn't reach the actual rendered geometry; needs
+  re-diagnosis.
+- **Status:** reopened, not yet re-investigated.
 
 ### Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
