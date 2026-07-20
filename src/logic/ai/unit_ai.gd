@@ -63,6 +63,14 @@ const SUPPRESSION_PENALTY := 25.0
 ## stub hit is a lesser cost than standing somewhere that disarms the
 ## weapon outright for the whole turn. Flagged, not a tuned design number.
 const OPPORTUNITY_ATTACK_PENALTY := 15.0
+## taskblock-26 Pass B2: "a standoff cell with no line is not a valid
+## standoff." Dominant over EVERY other term here, including
+## ALLY_BLOCKED_PENALTY — without LOS there's no shot to weigh an ally
+## being in the way OF at all, so lacking one has to outrank every softer
+## consideration. Still just a penalty, not a hard exclusion: if nothing
+## reachable has real LOS, the least-bad cell still wins rather than the
+## planner freezing in place facing a wall.
+const NO_LOS_PENALTY := 2000.0
 
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
@@ -687,6 +695,29 @@ static func _engagement_score(
 		)
 		else 0.0
 	)
+	# taskblock-26 Pass B2: "a standoff cell with no line is not a valid
+	# standoff." Dominant over every other term here, even
+	# ALLY_BLOCKED_PENALTY (without LOS there's no shot to weigh an ally
+	# being in the way OF at all) — but still a PENALTY, not an exclusion:
+	# if truly nothing reachable has LOS, the least-bad cell still wins
+	# rather than the planner freezing in place. The same `LoS.has_los`
+	# primitive `is_covered_from`/`AttackAction.is_legal` already read,
+	# never a second, parallel visibility test.
+	#
+	# `cell == self_unit.cell` is exempt: staying put is free, and a
+	# covered ORIGIN specifically is what `StepOutPlanner`'s own
+	# move/fire/return triple exists to handle (tb18) — that mechanism
+	# only engages at all when `best_cell == unit.cell` (`_plan_ranged`'s
+	# own fallback branch). Penalizing the origin here would make this
+	# generic scorer grab the first LOS-having cell it can merely REACH
+	# instead, even when it can't actually afford to fire from there once
+	# it's spent its move — starving the smarter, budget-validated
+	# fallback of the "didn't reposition" signal it's gated on.
+	var no_los_penalty: float = (
+		0.0
+		if cell == self_unit.cell or LoS.has_los(state.grid, cell, enemy.cell)
+		else NO_LOS_PENALTY
+	)
 	return (
 		cover_bonus
 		- distance_penalty
@@ -694,6 +725,7 @@ static func _engagement_score(
 		- min_range_penalty
 		- suppression_penalty
 		- opportunity_penalty
+		- no_los_penalty
 	)
 
 

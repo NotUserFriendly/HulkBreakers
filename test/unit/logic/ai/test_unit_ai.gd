@@ -210,6 +210,36 @@ func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() ->
 	)
 
 
+## taskblock-26 Pass B2: "a skirmisher squares off through walls, never
+## takes space." A wall spans the units' own shared row only — a
+## STRAIGHT lateral standoff at the preferred distance has no real line
+## at all, but rows above/below the wall are wide open. The planner must
+## move to one of THOSE (real LOS), never settle for the line-less
+## straight-row standoff distance alone would otherwise prefer.
+func test_skirmisher_moves_to_gain_los_instead_of_holding_a_line_less_standoff() -> void:
+	var grid := Grid.new(20, 5)
+	for x in range(5, 10):
+		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+		grid.set_opacity(Vector2i(x, 2), 1.0)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 2), 0, &"rifle")
+	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 20.0
+	var enemy := _armed_unit(&"enemy", Vector2i(15, 2), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+	assert_false(
+		LoS.has_los(grid, self_unit.cell, enemy.cell), "sanity: the wall blocks the straight row"
+	)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+
+	var move: MoveAction = _last_move(queue)
+	assert_not_null(move, "a line-less standoff is not good enough — the unit must move")
+	var destination: Vector2i = move.path[move.path.size() - 1]
+	assert_true(
+		LoS.has_los(grid, destination, enemy.cell),
+		"must land somewhere with a REAL line to the target, not just at the preferred distance"
+	)
+
+
 ## taskblock-16 D1: "a MARKSMAN holds greater standoff" than a
 ## SKIRMISHER, from an identical starting position/range — the only
 ## difference between the two calls is `preferred_range`, proving the
