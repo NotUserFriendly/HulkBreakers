@@ -46,6 +46,20 @@ var wreckage_pool: Array[Part] = [
 ## agree. AttackAction checks this to skip real damage resolution here.
 var is_preview: bool = false
 
+## taskblock-29 Pass A: true only for the synchronous span of an active
+## `resolve_until()` call — `BoutInjector`'s own guard against a
+## mid-resolution mutation, the same "mutate only at a two-phase turn
+## boundary" discipline docs/09 already states for TACTICS/RESOLUTION,
+## applied to the debug injection channel too. Never set anywhere else.
+var is_resolving: bool = false
+## taskblock-29 Pass C: true the instant ANY `BoutInjector` verb has ever
+## mutated this bout — injection is a deliberate determinism break
+## (docs/00: "same seed = same battle, always" no longer holds once
+## something outside the seed touched it), so this flags it for good,
+## never cleared. False (the default, unchanged) for every ordinary,
+## un-injected bout.
+var was_injected: bool = false
+
 var _next_id: int = 0
 ## taskblock-18 C1: "turn order within a round is by resolution speed —
 ## fastest unit acts first... the SAME speed the resolver uses, not a
@@ -120,6 +134,18 @@ func current_unit() -> Unit:
 	return find_unit(_current_unit_id)
 
 
+## taskblock-29 Pass B: `BoutInjector`'s own "make a unit the current
+## unit" trigger verb — deliberately distinct from `_begin_turn` (which
+## also runs `_start_turn`'s own AP/MP/facing/overwatch reset): forcing
+## whose turn it is must never silently ALSO refill the unit's resources,
+## since a scenario may want to force a specific low-AP/mid-turn state
+## and just needs the engine to agree who's acting. No other caller may
+## use this — normal turn advancement always goes through `_begin_turn`/
+## `advance_turn`.
+func force_current_unit(unit_id: int) -> void:
+	_current_unit_id = unit_id
+
+
 ## The unit with this id, or null. Actions resolve their target through
 ## this rather than holding a bare Unit reference across states — a
 ## preview's units are independent clones (docs/09) sharing the same id,
@@ -173,6 +199,14 @@ func dup() -> CombatState:
 	cloned.round_number = round_number
 	cloned._held_unit_id = _held_unit_id
 	cloned._hold_ready = _hold_ready
+	# taskblock-29 Pass C: a preview built FROM an injected bout is still,
+	# transitively, not a clean seed-replay — carried through for
+	# consistency. `is_resolving` is deliberately NOT copied: a fresh dup()
+	# is never itself mid-resolution, whatever the source state's own
+	# instantaneous flag happened to read (dup() is only ever called
+	# between resolve_until() calls in practice, but this makes it true by
+	# construction rather than by calling convention).
+	cloned.was_injected = was_injected
 	return cloned
 
 
@@ -209,6 +243,17 @@ func resolve_turn(queue: ActionQueue) -> void:
 ## credit — the AP-to-MP conversion only ever buys as much as the very
 ## next step needs).
 func resolve_until(queue: ActionQueue, mid_move_hook: Callable = Callable()) -> Dictionary:
+	# taskblock-29 Pass A: `is_resolving` wraps the WHOLE body regardless of
+	# which of the three return paths below actually fires — GDScript has
+	# no try/finally, so the body is split out into its own function and
+	# the flag set/cleared once, here, around the single call to it.
+	is_resolving = true
+	var outcome: Dictionary = _resolve_until_body(queue, mid_move_hook)
+	is_resolving = false
+	return outcome
+
+
+func _resolve_until_body(queue: ActionQueue, mid_move_hook: Callable) -> Dictionary:
 	for action: CombatAction in queue.actions:
 		if not action.is_legal(self):
 			return _stopped(queue.unit, &"next_action_illegal")

@@ -267,3 +267,72 @@ func test_dup_carries_squad_controllers_into_the_preview() -> void:
 	var preview: CombatState = state.dup()
 
 	assert_eq(preview.controller_for(1), Enums.SquadController.AI)
+
+
+## taskblock-29 Pass A: `is_resolving` is `BoutInjector`'s own boundary
+## guard — records what a real action's own `apply()` observed, since a
+## test can't otherwise see the flag "during" a synchronous call.
+class _SpyAction:
+	extends CombatAction
+	var observed_is_resolving: bool = false
+	var _unit: Unit
+
+	func _init(u: Unit) -> void:
+		_unit = u
+
+	func is_legal(_state: CombatState) -> bool:
+		return true
+
+	func apply(state: CombatState) -> void:
+		observed_is_resolving = state.is_resolving
+
+	func unit_id() -> int:
+		return _unit.id
+
+
+func test_is_resolving_is_true_only_during_an_active_resolve_until_call() -> void:
+	var unit := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	assert_false(state.is_resolving, "must be false before any resolution ever runs")
+
+	var spy := _SpyAction.new(unit)
+	var queue := ActionQueue.new(unit)
+	queue.actions = [spy]
+	state.resolve_until(queue)
+
+	assert_true(spy.observed_is_resolving, "must read true from INSIDE the action's own apply()")
+	assert_false(state.is_resolving, "must be false again once resolve_until has returned")
+
+
+func test_dup_never_copies_is_resolving() -> void:
+	var unit := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	state.is_resolving = true
+
+	var preview: CombatState = state.dup()
+
+	assert_false(preview.is_resolving, "a fresh preview is never itself mid-resolution")
+
+
+func test_dup_carries_was_injected_into_the_preview() -> void:
+	var state := CombatState.new(Grid.new(5, 5))
+	state.was_injected = true
+
+	var preview: CombatState = state.dup()
+
+	assert_true(preview.was_injected)
+
+
+func test_force_current_unit_sets_current_unit_without_resetting_resources() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(1, 0), 1)
+	var state := CombatState.new(Grid.new(5, 5), [a, b])
+	# a is already current (fastest_by_initiative on an empty tie goes to
+	# the lowest id) — force b instead, and starve its own AP first so a
+	# real _begin_turn's own resource reset would be obviously detectable.
+	b.ap = 0
+
+	state.force_current_unit(b.id)
+
+	assert_eq(state.current_unit(), b)
+	assert_eq(b.ap, 0, "force_current_unit must never refill AP the way _begin_turn would")
