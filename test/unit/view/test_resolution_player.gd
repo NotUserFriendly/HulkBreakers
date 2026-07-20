@@ -334,7 +334,7 @@ func test_play_impact_draws_a_ricochet_hop_from_its_own_real_origin_not_the_shoo
 	)
 
 
-## taskblock-26 Pass A1: mirrors `ShotResolution._log_impact`'s own DEFLECT
+## taskblock-26 Pass A1: mirrors `ShotResolution.log_impact_result`'s own DEFLECT
 ## data shape (`deflect_end_x/y/height`) — never a fixture the view side
 ## invents independently of what the logic side actually logs.
 func _deflect_impact_event(
@@ -454,7 +454,7 @@ func test_deflect_tracer_waits_a_beat_after_the_primary_impact() -> void:
 	)
 
 
-## taskblock-21 Pass F: mirrors `ShotResolution._log_miss`'s own data shape
+## taskblock-21 Pass F: mirrors `ShotResolution.log_miss_result`'s own data shape
 ## (`end_x`/`end_y`, cell-space coordinates) — never a fixture the view
 ## side invents independently of what the logic side actually logs.
 func _miss_event(attacker: Unit, end_x: float, end_y: float) -> LogEvent:

@@ -456,8 +456,8 @@ func _play_impact(event: LogEvent) -> void:
 
 	# taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
 	# never drawn." A DEFLECT outcome carries its own reflected endpoint
-	# (ShotResolution._log_impact's void-ray convention, same shape
-	# `_log_miss` already uses) — drawn as a second, visually distinct
+	# (ShotResolution.log_impact_result's void-ray convention, same shape
+	# `log_miss_result` already uses) — drawn as a second, visually distinct
 	# segment regardless of whether a real ricochet hop happens to follow
 	# it (a ricochet that finds nothing to hit produces no further event
 	# at all, so this is the only place that bounce is ever drawable).
@@ -481,7 +481,7 @@ func _play_impact(event: LogEvent) -> void:
 ## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
 ## same `_spawn_tracer` bright-fade-dull path `_play_impact` above uses,
 ## just terminating at the miss's own logged void endpoint
-## (`ShotResolution._log_miss`) instead of a struck part's world position.
+## (`ShotResolution.log_miss_result`) instead of a struck part's world position.
 ## taskblock-23 Pass D: `origin_height`/`end_height` (real muzzle height,
 ## and the flat aim height a miss travels at — a miss can't ricochet, so
 ## there's no tilt to account for) replace `TRACER_MUZZLE_HEIGHT`.

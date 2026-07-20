@@ -216,6 +216,29 @@ func test_the_exchange_is_logged() -> void:
 	assert_true(sink.events_of_kind(&"impact").size() > 0)
 
 
+## taskblock-28 Pass C: overwatch used to hand-roll its own `&"impact"`
+## event with no origin/hit geometry at all (the exact gap this pass
+## exists to close) — it must now log through the same shared path every
+## other firing action does, carrying the same fields.
+func test_the_exchanges_own_impact_carries_real_origin_and_hit_geometry() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	Overwatch.check_trigger(state, mover)
+
+	var impact: LogEvent = sink.events_of_kind(&"impact")[0]
+	assert_true(impact.data.has("origin_x"))
+	assert_true(impact.data.has("hit_x"))
+	assert_true(impact.data.has("is_double_crit"), "must share the FULL data shape, not a subset")
+	assert_true(impact.text.contains("origin"), "the geometry must be readable in text too")
+
+
 ## docs/09/CLAUDE.md: determinism — the same seed always produces the
 ## same exchange.
 func test_the_exchange_is_deterministic_from_the_same_seed() -> void:
