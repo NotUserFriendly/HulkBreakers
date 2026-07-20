@@ -67,6 +67,19 @@ var readout: RichTextLabel
 var _window: MeshInstance3D
 var _decal: Decal
 var _targeting_line: MeshInstance3D
+## taskblock-22 Pass I: "the dartboard is very laggy" — traced to
+## `_ring_texture`: `DartboardTexture.build` walks every pixel of a
+## 128x128 image via `Image.set_pixel` (16,384 calls) then uploads a
+## fresh GPU texture via `ImageTexture.create_from_image`, and `refresh()`
+## called it TWICE per frame (once for `_window`, once for `_decal`) —
+## every single frame while aiming, even though `rings` only changes when
+## the weapon/target-layer/range actually does; "only the aim point
+## moves" per-frame, and the aim point plays no part in which rings a
+## weapon has. Cached here, keyed by content (Ring is a Resource — `==`
+## on two separately-built instances is reference identity, always
+## false, never a real cache hit) rather than object identity.
+var _cached_rings: Array[Ring] = []
+var _cached_texture: ImageTexture = null
 
 
 func _init() -> void:
@@ -251,10 +264,25 @@ func _draw_decal(world_point: Vector3, dir: Vector3, rings: Array[Ring]) -> void
 
 
 func _ring_texture(rings: Array[Ring]) -> ImageTexture:
-	var image: Image = DartboardTexture.build(
-		rings, Color(RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, RING_ALPHA)
-	)
-	return ImageTexture.create_from_image(image)
+	if _cached_texture == null or not _rings_match(rings, _cached_rings):
+		var image: Image = DartboardTexture.build(
+			rings, Color(RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, RING_ALPHA)
+		)
+		_cached_texture = ImageTexture.create_from_image(image)
+		_cached_rings = rings
+	return _cached_texture
+
+
+static func _rings_match(a: Array[Ring], b: Array[Ring]) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in range(a.size()):
+		if (
+			not is_equal_approx(a[i].radius, b[i].radius)
+			or not is_equal_approx(a[i].weight, b[i].weight)
+		):
+			return false
+	return true
 
 
 ## The window's own visible face points back along `dir` (docs/09
