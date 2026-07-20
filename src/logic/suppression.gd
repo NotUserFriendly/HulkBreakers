@@ -1,20 +1,16 @@
 class_name Suppression
 extends RefCounted
 
-## taskblock-19 Pass E: "real tactics games gate face-to-face crowding
-## with suppression." Melee itself isn't built — the AI PRETENDS it is:
-## adjacency to a living enemy disarms a two-handed weapon (real, enforced
-## legality, stops the crowding outright), and leaving an adjacent tile
-## draws a free "attack of opportunity" whose resolution is a flagged
-## stub (no real melee weapon/geometry exists to resolve it properly).
-## Both halves share `adjacent_living_enemies` as their one predicate, the
-## same "never two independently-drifting notions of adjacency" principle
+## taskblock-19 Pass E / taskblock-25 Pass E: "real tactics games gate
+## face-to-face crowding with suppression." Adjacency to a living enemy
+## disarms a two-handed weapon (real, enforced legality, stops the
+## crowding outright), and leaving an adjacent tile draws a free "attack
+## of opportunity" — now (docs/PLAN.md "Phase M — Melee") a real melee
+## strike with the enemy's own default melee weapon, resolved through the
+## same shot plane a queued stab uses, not the taskblock-19 stub. Both
+## halves share `adjacent_living_enemies` as their one predicate, the same
+## "never two independently-drifting notions of adjacency" principle
 ## `Overwatch._qualifying_weapon` already established for its own trigger.
-
-## Flagged placeholder — no balance number was specified for the stub
-## hit, only that it must be a REAL, felt cost (not a no-op) so avoiding
-## it is worth an AI's own decision weight. Ask before tuning.
-const STUB_OPPORTUNITY_DAMAGE := 3.0
 
 
 ## Every living unit of a different squad standing orthogonally or
@@ -64,37 +60,60 @@ static func would_trigger_opportunity_attack(
 	return leaving
 
 
-## taskblock-19 Pass E: "the free melee attack resolves as a stub (a
-## flagged placeholder hit) until melee exists." A flat, un-armored,
-## un-resolved hit straight to the mover's root part — deliberately NOT
-## routed through DamageResolver's real penetration/armor cascade (there
-## is no melee weapon/ray geometry to resolve against), so the log entry
-## is unmistakably a placeholder, never mistaken for a real shot.
+## taskblock-25 Pass E: "an opportunity attack — moving out of a tile
+## adjacent to an enemy — resolves as a real melee strike (the enemy's
+## default melee, a stab/punch) instead of the stubbed penalty." Each
+## `attacker`'s own melee weapon (`ActionCatalog.provider_for(attacker,
+## &"stab")` — the SAME provider lookup a queued StabAction's own action
+## bar reads, never a second notion of "what's this unit's melee") fires
+## through `ShotResolution.resolve_and_log_point`, the identical
+## resolve-and-log primitive `StabAction.apply()` itself calls — real
+## armor DT/deflection/penetration, `DEFLECT_MODE_SLIDE` and the weapon's
+## own `stab_width` spherecast, same as a queued stab. An attacker with no
+## melee weapon at all (before taskblock-25 Pass F's baseline punch
+## exists) simply has nothing to swing — a no-op, not a fallback stub.
+##
+## `AttackAction`'s own posture, not the old stub's: a real strike rolls
+## dartboard scatter and a crit chance, so — unlike the old deterministic
+## stub, safe to preview — RESOLUTION alone decides whether it actually
+## lands (docs/09).
 static func resolve_opportunity_attacks(
 	state: CombatState, mover: Unit, attackers: Array[Unit]
 ) -> void:
 	for attacker: Unit in attackers:
-		var root: Part = mover.shell.root
-		if root == null or root.hp <= 0:
+		var weapon: Part = ActionCatalog.provider_for(attacker, &"stab")
+		if weapon == null:
 			continue
-		root.hp = maxi(0, root.hp - int(STUB_OPPORTUNITY_DAMAGE))
+		var direction := Vector2(mover.cell - attacker.cell)
+		if direction.is_zero_approx():
+			continue
 		state.log_action(
-			"Suppression: unit %d opportunity-attacks unit %d (stub)" % [attacker.id, mover.id]
+			"Suppression: unit %d opportunity-attacks unit %d" % [attacker.id, mover.id]
 		)
-		if not state.is_preview:
-			state.combat_log.emit(
-				LogEvent.new(
-					state.round_number,
-					Enums.Phase.RESOLUTION,
-					attacker.id,
-					&"opportunity_attack",
-					{
-						"target_unit_id": mover.id,
-						"damage": STUB_OPPORTUNITY_DAMAGE,
-						"is_stub": true
-					},
-					"unit %d attacks unit %d as it leaves (stub)" % [attacker.id, mover.id]
-				)
-			)
+		if state.is_preview:
+			continue
+		var origin := Vector2(attacker.cell.x, attacker.cell.y)
+		var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+		var aim_point: Vector2 = ShotPlane.center_of(plane, mover)
+		var damage: float = WeaponResolver.resolve_damage(weapon, []).current
+		var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, []).current
+		var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, []).current
+		var stab_width: float = weapon.weapon_def.stab_width if weapon.weapon_def != null else 0.0
+		ShotResolution.resolve_and_log_point(
+			state,
+			attacker,
+			origin,
+			direction,
+			aim_point,
+			damage,
+			crit_chance,
+			bonus_pen,
+			null,
+			false,
+			RangeModel.max_range(weapon),
+			0.0,
+			DamageResolver.DEFLECT_MODE_SLIDE,
+			stab_width
+		)
 		if mover.alive and mover.shell.living_parts().is_empty():
 			state.kill_unit(mover)

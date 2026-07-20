@@ -20,6 +20,56 @@ func _weapon(two_handed: bool) -> Part:
 	return weapon
 
 
+## taskblock-25 Pass E: a real, volumed torso (so it has a Region for a
+## real melee strike to actually resolve against) with an armed melee
+## weapon — the enemy's own "default melee" the opportunity attack now
+## uses. Mirrors test_stab_action.gd's own `_make_striker`.
+func _melee_unit(cell: Vector2i, squad: int, hp: int = 10) -> Unit:
+	var knife := Part.new()
+	knife.id = &"knife"
+	knife.hp = 3
+	knife.max_hp = 3
+	knife.attaches_to = [&"GRIP"]
+	knife.requires = {&"TRIGGER": 1}
+	knife.damage = 5.0
+	knife.provides_actions = [&"stab"]
+	knife.weapon_def = WeaponDef.new()
+	knife.weapon_def.weapon_length = 1.0
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	knife.scatter = [Ring.new(0.05, 1.0)]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = knife
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = hp
+	torso.max_hp = hp
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
+## A real, volumed torso with no weapon — a legal melee TARGET (needs a
+## Region for the shot plane to resolve against), unarmed itself.
+func _target_unit(cell: Vector2i, squad: int, hp: int = 10) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = hp
+	torso.max_hp = hp
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
 func test_adjacent_living_enemies_includes_orthogonal_and_diagonal() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var north := _torso_unit(Vector2i(1, 0), 1)
@@ -140,46 +190,60 @@ func test_would_trigger_opportunity_attack_is_empty_for_a_zero_length_step() -> 
 	)
 
 
-## taskblock-19 Pass E: "the melee resolution is a flagged stub, not real
-## damage" — a flat, un-armored hit, logged as is_stub, never routed
-## through DamageResolver's real penetration cascade.
-func test_resolve_opportunity_attacks_applies_a_flat_stub_hit_and_logs_it() -> void:
-	var mover := _torso_unit(Vector2i(1, 1), 0, 10)
-	var attacker := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [mover, attacker])
+## taskblock-25 Pass E: "resolves as a real melee strike... resolves
+## through the shot plane, deals real damage" — the same `impact` event
+## kind a queued StabAction produces, not the old `opportunity_attack`
+## stub event.
+func test_resolve_opportunity_attacks_resolves_a_real_melee_strike() -> void:
+	var mover := _target_unit(Vector2i(1, 1), 0, 10)
+	var attacker := _melee_unit(Vector2i(1, 0), 1)
+	var state := CombatState.new(Grid.new(10, 10), [mover, attacker], 42)
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var before_hp: int = mover.shell.root.hp
 
 	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
 
-	assert_eq(mover.shell.root.hp, before_hp - int(Suppression.STUB_OPPORTUNITY_DAMAGE))
-	var events: Array[LogEvent] = sink.events_of_kind(&"opportunity_attack")
-	assert_eq(events.size(), 1)
-	assert_true(events[0].data.get("is_stub"))
-	assert_eq(events[0].data.get("target_unit_id"), mover.id)
+	assert_lt(mover.shell.root.hp, before_hp, "a real melee strike must deal real damage")
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_eq(impacts.size(), 1)
+	assert_eq(impacts[0].data.get("target_unit_id"), mover.id)
+
+
+## "The attack uses the enemy's default melee" — an attacker with NO
+## melee weapon at all (before Pass F's baseline punch exists) has
+## nothing to swing, a no-op, never a fallback stub.
+func test_resolve_opportunity_attacks_is_a_no_op_without_a_melee_weapon() -> void:
+	var mover := _target_unit(Vector2i(1, 1), 0, 10)
+	var attacker := _target_unit(Vector2i(1, 0), 1)  # unarmed
+	var state := CombatState.new(Grid.new(10, 10), [mover, attacker])
+	var before_hp: int = mover.shell.root.hp
+
+	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
+
+	assert_eq(mover.shell.root.hp, before_hp)
 
 
 func test_resolve_opportunity_attacks_can_kill_a_unit_with_no_other_parts() -> void:
-	var mover := _torso_unit(Vector2i(1, 1), 0, 1)
-	var attacker := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [mover, attacker])
+	var mover := _target_unit(Vector2i(1, 1), 0, 1)
+	var attacker := _melee_unit(Vector2i(1, 0), 1)
+	var state := CombatState.new(Grid.new(10, 10), [mover, attacker], 42)
 
 	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
 
 	assert_false(mover.alive)
 
 
-## taskblock-19 Pass E: MoveHooks composes Suppression's opportunity check
-## with Overwatch's real trigger onto one mid_move_hook — leaving an
-## adjacent enemy behind while resolving a real queued move must apply
-## the stub hit, with no overwatch on the board at all to confuse the
-## result.
+## taskblock-19 Pass E / taskblock-25 Pass E: MoveHooks composes
+## Suppression's opportunity check with Overwatch's real trigger onto one
+## mid_move_hook — leaving an adjacent enemy behind while resolving a
+## real queued move must apply a real melee strike, with no overwatch on
+## the board at all to confuse the result.
 func test_move_hooks_combined_applies_an_opportunity_attack_on_a_real_move() -> void:
-	var mover := _torso_unit(Vector2i(0, 0), 0, 10)
-	var attacker := _torso_unit(Vector2i(1, 0), 1)
+	var mover := _target_unit(Vector2i(0, 0), 0, 10)
+	var attacker := _melee_unit(Vector2i(1, 0), 1)
 	var grid := Grid.new(10, 10)
-	var state := CombatState.new(grid, [mover, attacker])
+	var state := CombatState.new(grid, [mover, attacker], 42)
 	var path: Array[Vector2i] = [
 		Vector2i(0, 0),
 		Vector2i(0, 1),
@@ -196,4 +260,4 @@ func test_move_hooks_combined_applies_an_opportunity_attack_on_a_real_move() -> 
 	var outcome: Dictionary = state.resolve_until(queue, hooks.check)
 
 	assert_eq(outcome.kind, Enums.ResolveOutcome.COMPLETED)
-	assert_eq(mover.shell.root.hp, before_hp - int(Suppression.STUB_OPPORTUNITY_DAMAGE))
+	assert_lt(mover.shell.root.hp, before_hp, "a real melee strike must deal real damage")
