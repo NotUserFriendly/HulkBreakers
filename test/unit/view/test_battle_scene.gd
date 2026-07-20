@@ -62,6 +62,77 @@ func test_load_battle_draws_the_missions_own_extraction_tiles() -> void:
 	assert_eq(scene.board_view._static.get_child_count(), before_count + 2)
 
 
+## taskblock-22 Pass E3: the action-bar task's own real, end-to-end path —
+## a welder-equipped unit, real scrap gathered, the button pressed and a
+## part chosen through the real popup handler, resolved through the
+## normal queue (never a debug-style direct mutation).
+func test_repair_button_queues_and_resolves_a_real_repair() -> void:
+	var target := Part.new()
+	target.id = &"leg"
+	target.material = &"steel"
+	target.hp = 5
+	target.max_hp = 10
+
+	var repair_battery := Part.new()
+	repair_battery.id = &"tool_battery"
+	repair_battery.hp = 3
+	repair_battery.max_hp = 3
+	repair_battery.battery_capacity = 6.0
+	repair_battery.battery_power_out = 3.0
+	repair_battery.battery_charge = 6.0
+	repair_battery.tags = [&"POWER_SOURCE", &"BATTERY", &"TOOL_BATTERY"]
+
+	var welder := Part.new()
+	welder.id = &"welder"
+	welder.hp = 4
+	welder.max_hp = 4
+	welder.attaches_to = [&"GRIP"]
+	welder.requires = {&"TRIGGER": 1}
+	welder.tags = [&"WELDER"]
+	var battery_socket := Socket.new(&"TOOL_BATTERY")
+	battery_socket.occupant = repair_battery
+	welder.sockets = [battery_socket]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 4
+	hand.max_hp = 4
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = welder
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	var leg_socket := Socket.new(&"LEG")
+	leg_socket.occupant = target
+	torso.sockets = [hand_socket, leg_socket]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.objectives = []
+	mission.gather_resource(&"steel", 5)
+
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.load_battle(state, mission)
+	var overlay: SquadControlOverlay = _overlay(scene)
+	overlay.tactics.selection.select(unit)
+
+	overlay._on_repair_pressed()
+	overlay._on_repair_menu_id_pressed(0, [target], RepairResolver.find_operable_welder(unit))
+	state.resolve_turn(overlay.tactics.selection.current_queue())
+
+	assert_eq(target.hp, 8, "5 hp + 3 (capped heal), resolved for real")
+	assert_eq(mission.gathered_resources.get(&"steel", 0), 2, "5 scrap - 3 spent")
+
+
 ## taskblock-19 Pass I2: "something on turn advance is blocking the main
 ## thread" — a full HitVolumeView.refresh() (tear down + rebuild every
 ## child mesh) for EVERY unit on EVERY turn, even the ones a turn never

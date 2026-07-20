@@ -45,19 +45,30 @@ const POWER_TO_AP_CURVE: Array[Vector2] = [
 	Vector2(20.0, 10.0),
 ]
 
+## taskblock-22 Pass E1: a Tool Battery (an Arc Welder's own dedicated
+## reserve, docked in a TOOL_BATTERY socket) is a SEPARATE, local power
+## store for RepairAction to draw from directly — never a contributor to
+## the whole-shell AP surplus above, unlike an ordinary Shell Battery
+## (`&"BACK"`-socketed) doing the exact same job for the unit at large.
+## Every function below that scans for batteries excludes this tag.
+const TOOL_BATTERY_TAG := &"TOOL_BATTERY"
+
 
 ## False for a shell that never opted into the power system at all (no
-## part anywhere in it authors `power_produced` or `battery_capacity`) —
-## every shell built before this pass, and most test fixtures — so
-## `max_ap_for` falls back to the flat baseline rather than reading a
-## missing power system as "zero power" (taskblock-20 Pass F's own "so
-## nothing breaks"). Checked against `all_parts()`, not `operable_parts()`:
-## a shell that HAD a reactor, now destroyed, still "has a power system" —
-## its own power output correctly reads as reduced (maybe to 0), never
-## silently substituted back to the flat baseline as if it never had one.
+## part anywhere in it authors `power_produced` or a non-tool
+## `battery_capacity`) — every shell built before this pass, and most test
+## fixtures — so `max_ap_for` falls back to the flat baseline rather than
+## reading a missing power system as "zero power" (taskblock-20 Pass F's
+## own "so nothing breaks"). Checked against `all_parts()`, not
+## `operable_parts()`: a shell that HAD a reactor, now destroyed, still
+## "has a power system" — its own power output correctly reads as reduced
+## (maybe to 0), never silently substituted back to the flat baseline as
+## if it never had one.
 static func has_power_system(shell: Shell) -> bool:
 	for part: Part in shell.all_parts():
-		if part.power_produced > 0.0 or part.battery_capacity > 0.0:
+		if part.power_produced > 0.0:
+			return true
+		if part.battery_capacity > 0.0 and not part.tags.has(TOOL_BATTERY_TAG):
 			return true
 	return false
 
@@ -71,13 +82,13 @@ static func reactor_power(shell: Shell) -> float:
 	return total
 
 
-## Every operable battery's own AVAILABLE discharge this turn — capped by
-## its own `battery_power_out`, never by more charge than it actually
-## holds.
+## Every operable, non-tool battery's own AVAILABLE discharge this turn —
+## capped by its own `battery_power_out`, never by more charge than it
+## actually holds.
 static func battery_power(shell: Shell) -> float:
 	var total := 0.0
 	for part: Part in shell.operable_parts():
-		if part.battery_capacity > 0.0:
+		if part.battery_capacity > 0.0 and not part.tags.has(TOOL_BATTERY_TAG):
 			total += minf(part.battery_charge, part.battery_power_out)
 	return total
 
@@ -136,7 +147,7 @@ static func recharge_batteries(shell: Shell) -> void:
 	if available <= 0.0:
 		return
 	for part: Part in shell.operable_parts():
-		if part.battery_capacity <= 0.0:
+		if part.battery_capacity <= 0.0 or part.tags.has(TOOL_BATTERY_TAG):
 			continue
 		var room: float = part.battery_capacity - part.battery_charge
 		part.battery_charge += clampf(minf(part.battery_power_in, room), 0.0, available)
@@ -150,7 +161,7 @@ static func recharge_batteries(shell: Shell) -> void:
 ## a reactor that never touches battery_charge at all.
 static func discharge_batteries(shell: Shell) -> void:
 	for part: Part in shell.operable_parts():
-		if part.battery_capacity <= 0.0:
+		if part.battery_capacity <= 0.0 or part.tags.has(TOOL_BATTERY_TAG):
 			continue
 		part.battery_charge -= minf(part.battery_charge, part.battery_power_out)
 

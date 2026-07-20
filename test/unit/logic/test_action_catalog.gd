@@ -79,6 +79,46 @@ func test_a_shell_with_a_pistol_shows_shoot_and_overwatch() -> void:
 	assert_eq(ids, [&"overwatch", &"shoot"])
 
 
+## taskblock-22 Pass E: a welder-shaped part (WELDER tag not required by
+## the catalog itself — RepairAction/RepairResolver own that gate; the
+## catalog only cares what `provides_actions` says) shows &"repair".
+func test_a_shell_with_a_welder_shows_repair() -> void:
+	var welder := Part.new()
+	welder.id = &"arc_welder"
+	welder.hp = 4
+	welder.max_hp = 4
+	welder.attaches_to = [&"GRIP"]
+	welder.requires = {&"TRIGGER": 1}
+	welder.provides_actions = [&"repair"]
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 4
+	hand.max_hp = 4
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = welder
+	hand.sockets = [grip]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	var unit := _make_unit(_torso([hand_socket]))
+
+	var ids: Array[StringName] = _ids(ActionCatalog.actions_for(unit))
+
+	assert_has(ids, &"repair")
+
+
+## taskblock-22 Pass E: "needs a PART picked from a list, never a board
+## click" — repair.requires_target must be false, same posture overwatch
+## already has, so arm_action's own click-driven flow leaves it alone.
+func test_repair_def_never_requires_a_target() -> void:
+	var by_id: Dictionary = {}
+	for def: ActionDef in ActionCatalog.defs():
+		by_id[def.id] = def
+
+	assert_false(by_id[&"repair"].requires_target)
+
+
 ## taskblock-07 E1/TESTS: "removing the pistol removes both."
 func test_removing_the_pistol_removes_shoot_and_overwatch() -> void:
 	var hand: Part = _hand_with_pistol()

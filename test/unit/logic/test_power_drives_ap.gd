@@ -321,3 +321,44 @@ func test_a_shell_with_no_power_system_is_unaffected_by_a_turn_cycle() -> void:
 	state.advance_turn()
 
 	assert_eq(unit.max_ap, 2, "still untouched after a real turn cycle")
+
+
+## taskblock-22 Pass E1: a Tool Battery (an Arc Welder's own dedicated
+## reserve) must never contribute to the whole-shell AP economy — it's a
+## separate, local store RepairAction draws from directly, not a second
+## power source for the unit at large.
+func test_a_tool_battery_never_contributes_to_the_whole_shell_ap_economy() -> void:
+	var root := Part.new()
+	root.id = &"root"
+	root.hp = 10
+	root.max_hp = 10
+	var socket := Socket.new(&"TOOL_BATTERY")
+	root.sockets = [socket]
+
+	var tool_battery := Part.new()
+	tool_battery.id = &"tool_battery"
+	tool_battery.hp = 3
+	tool_battery.max_hp = 3
+	tool_battery.battery_capacity = 6.0
+	tool_battery.battery_power_out = 3.0
+	tool_battery.battery_charge = 6.0
+	tool_battery.tags = [&"POWER_SOURCE", &"BATTERY", &"TOOL_BATTERY"]
+	socket.occupant = tool_battery
+
+	var shell := Shell.new(root)
+
+	assert_false(
+		PowerResolver.has_power_system(shell),
+		"a tool battery alone must never register as a real power system"
+	)
+	assert_eq(PowerResolver.battery_power(shell), 0.0)
+
+	var unit := Unit.new(Matrix.new(), Shell.new(root), Vector2i(0, 0))
+	unit.max_ap = 2
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	assert_eq(unit.max_ap, 2, "unaffected — same as any shell with no real power system")
+
+	unit.ap = 0
+	state.advance_turn()
+	assert_eq(unit.max_ap, 2, "still unaffected after a real turn cycle")
+	assert_eq(tool_battery.battery_charge, 6.0, "a normal turn-start discharge must never drain it")

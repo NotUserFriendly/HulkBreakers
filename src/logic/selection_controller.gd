@@ -124,6 +124,20 @@ func queue_hold() -> bool:
 	return current_queue().enqueue(HoldAction.new(selected_unit), state)
 
 
+## taskblock-22 Pass E: repair's own player-facing entry point — a mid-turn
+## action, not a turn-ender (unlike queue_end_turn/queue_hold above),
+## queued the same way a move or attack is: MORE actions can follow it in
+## the same TACTICS pass. `mission` is this controller's own (required for
+## a real repair to ever be legal — RepairAction.is_legal always fails
+## against a null one).
+func queue_repair(welder_id: StringName, target_part_id: StringName) -> bool:
+	if selected_unit == null:
+		return false
+	return current_queue().enqueue(
+		RepairAction.new(selected_unit, welder_id, target_part_id, mission), state
+	)
+
+
 ## docs/10 taskblock02 F3: the selected unit's orientation as it would
 ## stand after every already-queued action — Q/E (TacticsController.
 ## turn_selected) turns relative to THIS, not the raw pre-queue value, so
