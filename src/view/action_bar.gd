@@ -78,14 +78,35 @@ func refresh() -> void:
 	var armed_id: StringName = tactics.armed_action.id if tactics.armed_action != null else &""
 	for i in range(SLOT_COUNT):
 		if i < _current_actions.size():
-			_boxes[i].text = _current_actions[i].initials
-			if _current_actions[i].id == armed_id:
+			var def: ActionDef = _current_actions[i]
+			_boxes[i].text = def.initials
+			if def.id == armed_id:
 				_boxes[i].modulate = HulkTheme.HIGHLIGHT
+			elif not _can_afford(unit, def):
+				# taskblock-27 Pass D3: "disable an action the unit lacks AP
+				# for" — same DIM tier an empty slot already uses, so an
+				# unaffordable action reads as "can't act on this" at a
+				# glance; its own initials still show (unlike an empty
+				# slot), so the two remain visually distinct.
+				_boxes[i].modulate = HulkTheme.DIM
 			else:
 				_boxes[i].modulate = HulkTheme.FOREGROUND
 		else:
 			_boxes[i].text = ""
 			_boxes[i].modulate = HulkTheme.DIM
+
+
+## taskblock-27 Pass D3: the providing part's own `ap_cost`
+## (`ActionCatalog.provider_for` — the exact same part arming this action
+## will eventually spend AP from) compared against the unit's own current
+## AP, right now. Deliberately narrow: only affordability, never a
+## re-derived range/LOS/legality check — those stay confirm-time concerns
+## (`AttackAction.is_legal` and friends), unchanged.
+func _can_afford(unit: Unit, def: ActionDef) -> bool:
+	if unit == null:
+		return false
+	var provider: Part = ActionCatalog.provider_for(unit, def.id)
+	return provider != null and unit.ap >= provider.ap_cost
 
 
 ## taskblock-08 A1/D1: click arms (one path, every box, no per-action
@@ -105,6 +126,9 @@ func _on_box_gui_input(event: InputEvent, index: int) -> void:
 	if button_event == null or not button_event.pressed:
 		return
 	if button_event.button_index == MOUSE_BUTTON_LEFT:
+		var unit: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+		if not _can_afford(unit, _current_actions[index]):
+			return
 		tactics.arm_action(_current_actions[index].id)
 
 
