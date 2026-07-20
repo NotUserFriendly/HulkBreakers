@@ -401,6 +401,119 @@ func test_aiming_pose_changes_the_projected_shot_plane_vs_idle() -> void:
 	)
 
 
+## taskblock-23 Pass A: "a head projects at a higher Y than a waist on
+## the same body" — the literal named test. Read the real projected Y
+## back (CLAUDE.md: never re-derive), not a hand-computed expectation.
+func test_a_head_projects_higher_than_a_waist() -> void:
+	var waist := Part.new()
+	waist.id = &"waist"
+	waist.hp = 10
+	waist.max_hp = 10
+	waist.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.5, 1.0, 0.3))]
+	var head := Part.new()
+	head.id = &"head"
+	head.hp = 3
+	head.max_hp = 3
+	head.volume = [Box.new(Vector3.ZERO, Vector3(0.3, 0.3, 0.3))]
+	var neck := Socket.new(&"NECK", Transform3D(Basis(), Vector3(0.0, 1.65, 0.0)))
+	neck.occupant = head
+	waist.sockets = [neck]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(waist), Vector2i(0, 0))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var waist_region: Region = _find_all(regions, &"waist")[0]
+	var head_region: Region = _find_all(regions, &"head")[0]
+
+	assert_true(
+		head_region.rect.position.y > waist_region.rect.position.y,
+		"the head's own projected rect must sit higher than the waist's"
+	)
+
+
+## taskblock-23 Pass A: the real bug found during investigation —
+## `_project_box` used to assume an untilted box's real vertical extent
+## was always exactly `box.size.y`, discarding the box's own real corner
+## heights under a TILTED `local_transform` (a pose/socket rotation off
+## pure yaw — Poses.aiming() rotates a shoulder -45 degrees about the
+## horizontal RIGHT axis). At 45 degrees, both the box's own Y-half
+## (0.45) and Z-half (0.2) contribute to its real projected vertical
+## span — 0.636396 (confirmed by direct computation against these exact
+## fixture numbers), never the flat, untilted 0.9 `box.size.y` alone.
+func test_a_tilted_parts_projected_height_reflects_its_real_corners_not_box_size_y() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3(0.0, -0.3, 0.0), Vector3(0.4, 0.9, 0.4))]
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shoulder_r := Socket.new(
+		&"SHOULDER", Transform3D(Basis(), Vector3(0.31, 1.53, 0.0)), &"SHOULDER_R"
+	)
+	shoulder_r.occupant = arm
+	torso.sockets = [shoulder_r]
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+
+	var idle_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	assert_almost_eq(
+		idle_region.rect.size.y, 0.9, 0.0001, "sanity: untilted, this is still exactly box.size.y"
+	)
+
+	unit.pose = Poses.aiming()
+	var aiming_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	assert_almost_eq(
+		aiming_region.rect.size.y,
+		0.636396,
+		0.001,
+		"a tilted box's real vertical span, not the flat untilted box.size.y"
+	)
+
+
+## taskblock-23 Pass A: the second half of the same bug — `surface_normal`
+## was forced flat (Y always 0.0) even when `local_transform` genuinely
+## tilts a face's own real normal — the exact prerequisite Pass C's own
+## "a ricochet hop travels a real reflected 3D direction" needs
+## downstream (`DamageResolver.resolve_impact`'s reflection math already
+## works off whatever normal it's handed; there was simply never a real
+## one to hand it). At AIMING's own -45 degree tilt, the arm's front face
+## normal gains an exact cos(45)=sin(45)=0.707107 vertical component.
+func test_a_tilted_parts_surface_normal_gains_a_real_vertical_component() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.hp = 4
+	arm.max_hp = 4
+	arm.volume = [Box.new(Vector3(0.0, -0.3, 0.0), Vector3(0.4, 0.9, 0.4))]
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var shoulder_r := Socket.new(
+		&"SHOULDER", Transform3D(Basis(), Vector3(0.31, 1.53, 0.0)), &"SHOULDER_R"
+	)
+	shoulder_r.occupant = arm
+	torso.sockets = [shoulder_r]
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
+
+	var idle_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	assert_almost_eq(
+		idle_region.surface_normal.y, 0.0, 0.0001, "sanity: untilted, still purely horizontal"
+	)
+
+	unit.pose = Poses.aiming()
+	var aiming_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	assert_almost_eq(
+		aiming_region.surface_normal.y,
+		0.707107,
+		0.001,
+		"the tilted face's own real vertical normal component, never forced to 0"
+	)
+	assert_almost_eq(
+		aiming_region.surface_normal.length(), 1.0, 0.0001, "still a unit normal after tilting"
+	)
+
+
 ## taskblock-20 Pass H: "dive prone... alters the shot plane to a worse-
 ## but-different silhouette" only holds if the ROOT pose override
 ## (PRONE, and DOWN before it) actually reaches `BodyProjector.project()`
