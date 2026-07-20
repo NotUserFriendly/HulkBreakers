@@ -53,27 +53,35 @@ func apply(state: CombatState) -> void:
 ## one round held," close enough to "~1.something rounds" per the
 ## taskblock's own explicitly tunable framing, without CombatState needing
 ## to depend on MissionState just to watch for true round boundaries.
-## Player squad only — a non-player squad uses `ExtractAction`'s own fast,
-## AP-costed path instead, never this passive one. Requires every mission
-## objective complete first, same gate `ExtractAction` itself used to
-## apply before this pass split the two mechanics apart.
 func _update_extraction_hold(state: CombatState, actual: Unit) -> void:
-	if actual.squad_id != mission.player_squad_id:
-		return
-	var tiles: Array = mission.team_extraction_cells.get(actual.squad_id, mission.extraction_cells)
-	if not tiles.has(actual.cell):
+	if not is_holding_position(actual, mission):
 		actual.extraction_hold_start_round = -1
-		return
-	var incomplete: bool = mission.objectives.any(
-		func(o: StringName) -> bool: return o not in mission.completed_objectives
-	)
-	if incomplete:
 		return
 	if actual.extraction_hold_start_round == -1:
 		actual.extraction_hold_start_round = state.round_number
 		return
 	if state.round_number > actual.extraction_hold_start_round:
 		mission.extract_unit(actual)
+
+
+## taskblock-22 Pass C: shared with UnitAI's own shutdown-swap. A unit
+## standing on its own team's extraction tile with every objective
+## complete is ACTIVELY holding for extraction (this exact function is
+## what matures that hold, one call at a time) — never "stalled" just
+## because a turn ends up with nothing else queued. Player squad only —
+## a non-player squad uses ExtractAction's own fast, AP-costed path
+## instead, never this passive one. Factored out so a caller deciding
+## whether to shut a unit down instead can ask the identical question
+## first, rather than silently hijacking a productive hold.
+static func is_holding_position(unit: Unit, mission: MissionState) -> bool:
+	if mission == null or unit.squad_id != mission.player_squad_id:
+		return false
+	var tiles: Array = mission.team_extraction_cells.get(unit.squad_id, mission.extraction_cells)
+	if not tiles.has(unit.cell):
+		return false
+	return not mission.objectives.any(
+		func(o: StringName) -> bool: return o not in mission.completed_objectives
+	)
 
 
 func describe() -> String:

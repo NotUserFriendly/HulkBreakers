@@ -194,3 +194,48 @@ func test_end_turn_with_no_mission_skips_the_hold_check_entirely() -> void:
 
 	assert_eq(a.extraction_hold_start_round, -1)
 	assert_true(a.alive)
+
+
+## taskblock-22 Pass C: shared with UnitAI's own shutdown-swap — used
+## there specifically to avoid hijacking a productive hold as "stalled."
+func test_is_holding_position_true_on_the_tile_with_objectives_complete() -> void:
+	var unit := _make_unit(Vector2i(4, 4), 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(4, 4)]
+
+	assert_true(EndTurnAction.is_holding_position(unit, mission))
+
+
+func test_is_holding_position_false_off_the_tile() -> void:
+	var unit := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(4, 4)]
+
+	assert_false(EndTurnAction.is_holding_position(unit, mission))
+
+
+func test_is_holding_position_false_with_an_incomplete_objective() -> void:
+	var unit := _make_unit(Vector2i(4, 4), 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(4, 4)]
+	mission.objectives = [&"gather_minerals"]
+
+	assert_false(EndTurnAction.is_holding_position(unit, mission))
+
+
+func test_is_holding_position_false_for_a_non_player_squad() -> void:
+	var unit := _make_unit(Vector2i(4, 4), 1)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.team_extraction_cells = {1: [Vector2i(4, 4)]}
+
+	assert_false(EndTurnAction.is_holding_position(unit, mission))
+
+
+func test_is_holding_position_false_with_no_mission() -> void:
+	var unit := _make_unit(Vector2i(4, 4), 0)
+
+	assert_false(EndTurnAction.is_holding_position(unit, null))

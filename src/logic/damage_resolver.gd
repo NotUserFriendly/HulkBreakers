@@ -279,6 +279,25 @@ static func tick_meltdowns(unit: Unit, state: CombatState) -> Array[Dictionary]:
 	return events
 
 
+## taskblock-22 Pass C: "a wounded unit that shuts down may trigger its
+## reactor's MELTDOWN if the reactor is in that state" — a shut-down unit
+## never gets another turn (`CombatState._can_take_a_turn`), so a primed
+## meltdown could otherwise never actually finish its own countdown
+## (`tick_meltdowns` only ever runs at THIS unit's own turn start). Same
+## shape/return as `tick_meltdowns` (one entry per part that detonated),
+## reused by `ShutdownAction` for its own logging — every part with a
+## LIVE countdown detonates immediately rather than waiting one it will
+## never get.
+static func trigger_primed_meltdowns(unit: Unit, state: CombatState) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for part: Part in unit.shell.all_parts():
+		if part.meltdown_countdown < 0:
+			continue
+		part.meltdown_countdown = -1
+		events.append({"part": part, "units": detonate(part, state)})
+	return events
+
+
 static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
 	for unit: Unit in state.units:
 		if part in unit.shell.all_parts():

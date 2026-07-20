@@ -624,6 +624,69 @@ func test_meltdown_counts_down_then_detonates() -> void:
 	assert_lt(near_root.hp, 10, "the expired countdown must actually deal its detonate_damage")
 
 
+## taskblock-22 Pass C: "a wounded unit that shuts down may trigger its
+## reactor's MELTDOWN if the reactor is in that state." A shut-down unit
+## never gets another turn, so `tick_meltdowns` (only ever called at THIS
+## unit's own turn start) could otherwise never actually finish a primed
+## countdown — `trigger_primed_meltdowns` detonates it immediately instead
+## of waiting for a tick that will never come.
+func test_trigger_primed_meltdowns_detonates_a_live_countdown_immediately() -> void:
+	var reactor := Part.new()
+	reactor.id = &"reactor"
+	reactor.failure_mode = &"MELTDOWN"
+	reactor.meltdown_turns = 5
+	reactor.detonate_damage = 5.0
+	reactor.detonate_radius = 2.0
+	reactor.hp = 1
+	reactor.max_hp = 1
+
+	var owner_torso := Part.new()
+	owner_torso.id = &"owner_torso"
+	owner_torso.hp = 20
+	owner_torso.max_hp = 20
+	var internal := Socket.new(&"INTERNAL")
+	internal.occupant = reactor
+	owner_torso.sockets = [internal]
+	var owner := Unit.new(Matrix.new(), Shell.new(owner_torso), Vector2i(5, 5))
+
+	var near_root := Part.new()
+	near_root.hp = 10
+	near_root.max_hp = 10
+	var near_unit := Unit.new(Matrix.new(), Shell.new(near_root), Vector2i(5, 6))
+	var state := CombatState.new(Grid.new(10, 10), [owner, near_unit])
+
+	assert_true(DamageResolver.apply_damage_to_part(reactor, 10.0))
+	var impact := ImpactResult.new()
+	DamageResolver.resolve_part_failure(reactor, state, impact)
+	assert_eq(reactor.meltdown_countdown, 5, "sanity: armed, nowhere near naturally expiring yet")
+
+	var events: Array[Dictionary] = DamageResolver.trigger_primed_meltdowns(owner, state)
+
+	assert_eq(events.size(), 1, "the live countdown must detonate now, not wait out its own clock")
+	assert_eq(events[0].part, reactor)
+	assert_has(events[0].units, near_unit)
+	assert_eq(reactor.meltdown_countdown, -1, "the clock is cancelled, not left running")
+	assert_lt(near_root.hp, 10)
+
+
+## A healthy unit (no part ever armed a countdown) triggers nothing —
+## shutdown is a complete no-op for the meltdown hook here.
+func test_trigger_primed_meltdowns_is_a_no_op_with_nothing_armed() -> void:
+	var reactor := Part.new()
+	reactor.id = &"reactor"
+	reactor.failure_mode = &"MELTDOWN"
+	reactor.meltdown_turns = 5
+	reactor.hp = 5
+	reactor.max_hp = 5
+
+	var owner := Unit.new(Matrix.new(), Shell.new(reactor), Vector2i(5, 5))
+	var state := CombatState.new(Grid.new(10, 10), [owner])
+
+	var events: Array[Dictionary] = DamageResolver.trigger_primed_meltdowns(owner, state)
+
+	assert_eq(events, [] as Array[Dictionary])
+
+
 ## taskblock-09 A4: re-destroying a part already counting down detonates it
 ## immediately rather than waiting out the rest of the clock.
 func test_meltdown_detonates_early_if_re_killed_mid_countdown() -> void:

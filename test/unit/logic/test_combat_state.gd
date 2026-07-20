@@ -114,6 +114,23 @@ func test_advance_turn_skips_dead_units() -> void:
 	assert_eq(state.current_unit(), c)
 
 
+## taskblock-22 Pass C: "it still occludes/blocks as geometry" — a
+## shut-down unit stays `alive`, unlike death, so this is a SEPARATE
+## exclusion from the dead-units test above, not the same one reused.
+func test_advance_turn_skips_shut_down_units() -> void:
+	var grid := Grid.new(5, 5)
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(1, 0), 1)
+	var c := _make_unit(Vector2i(2, 0), 0)
+	var state := CombatState.new(grid, [a, b, c])
+
+	b.shutdown = true
+	state.advance_turn()
+
+	assert_eq(state.current_unit(), c)
+	assert_true(b.alive, "shutdown is not death — it stays alive, just excluded from turn order")
+
+
 func test_round_number_increments_once_per_full_cycle_not_per_unit_turn() -> void:
 	var grid := Grid.new(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
@@ -188,9 +205,7 @@ func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
 	assert_true(
 		rendered.contains(str(state.round_number)), "the turn header must name the round number"
 	)
-	assert_true(
-		rendered.contains("unit %d" % b.id), "the turn header must name the incoming unit"
-	)
+	assert_true(rendered.contains("unit %d" % b.id), "the turn header must name the incoming unit")
 
 
 func test_organics_decay_demotion_emits_surrogate_demoted() -> void:

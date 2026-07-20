@@ -77,8 +77,61 @@ const OPPORTUNITY_ATTACK_PENALTY := 15.0
 ## that's run out of targets. `mission == null` (most headless unit tests,
 ## and any non-bout combat) has nowhere defined to flee TO — falls through
 ## to normal planning unchanged, same as today.
+## taskblock-22 Pass C: "NPCs use shutdown when they can't move or act
+## (stalled)." Checked LAST, against whatever queue every planner above
+## already built — a queue that ended up with literally nothing but
+## EndTurnAction (no move, no attack, no hold, no flee — every planner's
+## own "nothing else found anything to do" fallback) IS "can't move and
+## can't act," the same proxy every one of those planners already uses
+## internally to reach that exact fallback. Swaps the trailing
+## EndTurnAction for ShutdownAction rather than appending — Shutdown ends
+## the turn itself, the same "this IS the last action" shape
+## HoldAction/EndTurnAction already have.
+##
+## `not unit.shutdown` guards a REAL bug this pass introduced and then
+## caught live: once every unit on the board is dead-or-shutdown,
+## `CombatState.advance_turn()`'s own candidates list goes empty and it
+## no-ops, leaving `current_unit()` stuck replaying the SAME already-
+## shutdown unit forever. `EndTurnAction.is_legal()` is deliberately
+## ALWAYS legal for the current unit (its own doc comment: "or every
+## subsequent turn would stall on a corpse") specifically so a stuck
+## board still spins forward one no-op turn at a time toward whatever
+## safety net eventually fires (BoutRunner's own turn_cap, a caller's own
+## guard). `ShutdownAction.is_legal()` is NOT always-legal (it rejects an
+## already-shut-down unit) — swapping in a second one here would silently
+## fail to enqueue, leaving an EMPTY queue that never calls
+## advance_turn() again at all, breaking that guarantee outright. An
+## already-shutdown unit keeps producing its own plain, always-legal
+## EndTurnAction instead, preserving it.
+##
+## `not EndTurnAction.is_holding_position(...)` guards a SECOND real bug
+## caught the same way: a unit standing on its own extraction tile with
+## nothing else queued is not "stalled" — it's actively holding
+## (Pass A2's own passive hold, matured by EndTurnAction itself the
+## instant it actually resolves). Swapping it for Shutdown here would
+## fire BEFORE the hold ever got a chance to start or mature, permanently
+## taking a unit that was about to extract cleanly out of consideration
+## instead — reproduced live (a lone landing-squad survivor already on its
+## own tile got shut down on arrival instead of holding, then never
+## resolved again since it was now the board's only remaining unit).
 static func plan_turn(
 	unit: Unit, state: CombatState, mission: MissionState, playstyle: StringName = &"AGGRESSIVE"
+) -> ActionQueue:
+	var queue: ActionQueue = _plan_turn_before_shutdown_check(unit, state, mission, playstyle)
+	var should_shut_down: bool = (
+		not unit.shutdown
+		and not EndTurnAction.is_holding_position(unit, mission)
+		and queue.actions.size() == 1
+		and queue.actions[0] is EndTurnAction
+	)
+	if should_shut_down:
+		queue.actions.clear()
+		queue.enqueue(ShutdownAction.new(unit), state)
+	return queue
+
+
+static func _plan_turn_before_shutdown_check(
+	unit: Unit, state: CombatState, mission: MissionState, playstyle: StringName
 ) -> ActionQueue:
 	if mission != null and not _has_functional_weapon(unit):
 		return _plan_flee(unit, state, mission)
