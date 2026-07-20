@@ -23,12 +23,14 @@ is verifiable.
 
 **Session stamps.** CC has no sequential session counter — what it *does* have is a **session
 UUID** embedded in its scratchpad directory path (e.g. `.../83fb8082-732a-4a4f-a726-04186087ef69/
-scratchpad`). CC stamps its closure marks with that UUID — the short prefix is enough to read at a
-glance (e.g. `RESOLVED-PENDING-CONFIRMATION [CC 83fb8082]`). If CC is refreshed it gets a *new* UUID,
-so a later session reading an earlier session's `PENDING-CONFIRMATION` sees a **different** stamp than
-its own — that's the signal it's *another instance's* unverified claim. It must NOT promote it to
-`RESOLVED` on the strength of a prior CC's word, only on the supervisor's. A pending mark whose UUID
-isn't your current one is a claim to re-check, not a closure to trust.
+scratchpad`). CC stamps its closure marks with the **full UUID**, not a shortened prefix — a prefix
+is one collision away from misattributing a stamp to the wrong session on a long-lived machine, and
+the full string costs nothing to write (e.g.
+`RESOLVED-PENDING-CONFIRMATION [CC 83fb8082-732a-4a4f-a726-04186087ef69]`). If CC is refreshed it
+gets a *new* UUID, so a later session reading an earlier session's `PENDING-CONFIRMATION` sees a
+**different** stamp than its own — that's the signal it's *another instance's* unverified claim. It
+must NOT promote it to `RESOLVED` on the strength of a prior CC's word, only on the supervisor's. A
+pending mark whose UUID isn't your current one is a claim to re-check, not a closure to trust.
 
 **End-of-taskblock digest.** At the end of each taskblock, CC lists every `SUPERVISOR`-sourced bug
 it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I think I fixed, please
@@ -101,9 +103,10 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Fix:** the null-root branch now resets `_preview_viewport.own_world_3d = true` and calls
   `show_assembly(null, ...)`, so a "nothing to show" case can never leak the live-board state
   regardless of which caller reaches it.
-- **RESOLVED** [CC 83fb8082] — taskblock-27 Pass D5, proven both ways (fails without the fix, passes
-  with it) by `test_inspect_panel.gd`'s new null-root-resets-viewport-state test. CC-sourced: found,
-  fixed, and tested entirely by CC in one pass, no supervisor confirmation gate applies.
+- **RESOLVED** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — taskblock-27 Pass D5, proven both ways
+  (fails without the fix, passes with it) by `test_inspect_panel.gd`'s new
+  null-root-resets-viewport-state test. CC-sourced: found, fixed, and tested entirely by CC in one
+  pass, no supervisor confirmation gate applies.
 
 ### Resource Editor — four layout bugs (stale-report source)  ·  source: `SUPERVISOR`
 - **Reported:** recurring through 2026-07-20 (arrived repeatedly as a `## User Request` to launch
@@ -177,7 +180,8 @@ confirm" roll-up — so pending items surface at a natural review point without 
   exclusion never covered.
 - **Fix:** `_resolve_slide` now takes `exclude_parts` and passes it through to its own `_find_next`
   call, the same shooter-parts list `resolve_shot` itself was given.
-- **RESOLVED** [CC 83fb8082] — proven both ways (fails without the fix, passes with it) by
+- **RESOLVED** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — proven both ways (fails without the fix,
+  passes with it) by
   `test_damage_resolver_deflect_modes.gd::test_slide_deflect_never_lands_back_on_the_shooters_own_excluded_body`.
 
 ---
@@ -195,7 +199,7 @@ the supervisor promotes confirmed ones up to Resolved.)*
   and that `play()` call wasn't even awaited.
 - **Fix:** reordered so the human's own turn is fully awaited through its complete animated playback
   before `advance_ai_turns` runs at all.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-26 Pass B1.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — taskblock-26 Pass B1.
 - **2026-07-20:** supervisor could not verify — blocked by a separate, new issue encountered during
   the attempt. **Verification deferred to the next taskblock** (supervisor's own call) rather than
   chased now; still pending either way.
@@ -225,10 +229,10 @@ the supervisor promotes confirmed ones up to Resolved.)*
   stepped-out cell via the same queued-move preview machinery every other action already uses.
   `free` applies to the AI's own `StepOutPlanner` usage too, not just the player's — the same shared
   maneuver, same cost either way.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] — taskblock-27 Pass B, proven via
-  `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the free
-  out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg) and
-  `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — taskblock-27 Pass B,
+  proven via `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the
+  free out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg)
+  and `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
 - **2026-07-20:** supervisor could not verify — blocked by a new, separate bug encountered during
   the attempt (not yet detailed/logged; awaiting a report on what it is). **Verification deferred**
   the same way B1's own confirmation was, above; still pending either way.
@@ -243,8 +247,8 @@ the supervisor promotes confirmed ones up to Resolved.)*
 - **First fix (taskblock-27 Pass A1):** every attack action's shot-plane `direction` was cell-anchored
   while `origin` was muzzle-anchored — two different anchors for the same ray, which could resolve a
   target at negative depth and animate as the round travelling backward. Both now share the muzzle
-  anchor. **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082] at the time, proven via a constructed
-  overshoot-geometry test.
+  anchor. **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] at the time,
+  proven via a constructed overshoot-geometry test.
 - **2026-07-20: supervisor reports still visually backward** — but with a key new detail: "those
   backwards shots do seem to be hitting the things they're drawn as hitting." The actual hit
   resolution (which part takes the damage) is correct; only the drawn tracer/animation direction
