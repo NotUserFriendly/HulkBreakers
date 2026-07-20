@@ -10,6 +10,19 @@ var outcome: int = Enums.Outcome.STOP_DEAD
 var region: Region
 var incoming_dir: Vector2 = Vector2.ZERO
 var part_damage: float = 0.0
+## taskblock-22 Pass D: "every shot is visible" — the muzzle THIS specific
+## hop actually fired from (the true shooter's own position for a shot's
+## first hop; the previous hop's own deflection point for a ricochet) and
+## where it actually landed, both in the same flat cell-space coords
+## `origin`/`point` already use throughout `resolve_shot` — never
+## re-derived by the view from a target's own current position, which a
+## ricochet's real muzzle (a bounce point in open air) has no other way
+## to reach at all. Zero-vector defaults on every ImpactResult a caller
+## builds by hand without ever calling through `resolve_shot` (most
+## existing tests) — harmless, since nothing reads these unless a real
+## shot flight set them.
+var origin: Vector2 = Vector2.ZERO
+var hit_point: Vector2 = Vector2.ZERO
 ## taskblock-09 B/F: the DT this impact's penetrate/stop-dead/deflect
 ## decision was actually weighed against — Pass B's spill-through reads
 ## this back rather than re-deriving material.dt a second time, so the

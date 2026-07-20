@@ -120,6 +120,11 @@ static func _log_impact(
 	# so this is never assumed to be the shooter's own original target.
 	# -1 for cover/terrain, which has no unit id.
 	var target_unit_id: int = result.region.body.id if result.region.body is Unit else -1
+	# taskblock-22 Pass D: "the player reads the path" — origin_x/y and
+	# hit_x/y are THIS hop's own real muzzle and landing point (same flat
+	# cell-space coords the &"miss" event already carries), so the view can
+	# draw every ricochet segment from the logged hop sequence directly,
+	# never re-derived from a target's own current position.
 	var data: Dictionary = {
 		"outcome": result.outcome,
 		"part": result.region.part.id,
@@ -129,6 +134,10 @@ static func _log_impact(
 		"is_crit": result.is_crit,
 		"is_double_crit": result.is_double_crit,
 		"is_dud": is_dud,
+		"origin_x": result.origin.x,
+		"origin_y": result.origin.y,
+		"hit_x": result.hit_point.x,
+		"hit_y": result.hit_point.y,
 	}
 	var event := LogEvent.new(
 		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text

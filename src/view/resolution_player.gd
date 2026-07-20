@@ -401,18 +401,37 @@ func facing_duration() -> float:
 	return (slide_ms / 1000.0) / speed
 
 
+## taskblock-22 Pass D: "every shot is visible... draw a tracer for every
+## hop of a shot's path, not just muzzle -> first impact." `from` is THIS
+## hop's own real muzzle (`origin_x/y` — the true shooter for a shot's
+## first hop, the PREVIOUS hop's own deflection point for a ricochet),
+## never `_muzzle_point(attacker)` unconditionally: that was the actual
+## bug — every ricochet segment used to draw from the shooter's own body
+## regardless of how many times the round had already bounced.
+## `target == null` (clutter, a wall, the void — anything that isn't a
+## Unit) no longer skips the tracer; it falls back to the hop's own
+## logged `hit_x/y` instead of a target's composed mesh position, the
+## same void-endpoint convention `_play_miss` already established.
 func _play_impact(event: LogEvent) -> void:
 	var state: CombatState = battle.combat_state
 	var attacker: Unit = state.find_unit(event.unit_id)
 	if attacker == null:
 		return
+	var origin_x: float = float(event.data.get("origin_x", 0.0))
+	var origin_y: float = float(event.data.get("origin_y", 0.0))
+	var from := Vector3(origin_x, TRACER_MUZZLE_HEIGHT, origin_y) * UnitGeometry.CELL_SIZE
+
 	var target_id: int = int(event.data.get("target_unit_id", -1))
 	var target: Unit = state.find_unit(target_id) if target_id >= 0 else null
-	if target == null:
-		return
+	var to: Vector3
+	if target != null:
+		to = _impact_point(target, event.data.get("part", &""))
+	else:
+		var hit_x: float = float(event.data.get("hit_x", 0.0))
+		var hit_y: float = float(event.data.get("hit_y", 0.0))
+		to = Vector3(hit_x, TRACER_MUZZLE_HEIGHT, hit_y) * UnitGeometry.CELL_SIZE
 
-	var impact_point: Vector3 = _impact_point(target, event.data.get("part", &""))
-	await _spawn_tracer(_muzzle_point(attacker), impact_point)
+	await _spawn_tracer(from, to)
 
 
 ## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
