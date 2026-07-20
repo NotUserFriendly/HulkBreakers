@@ -202,13 +202,30 @@ static func _project_tree(
 ## `_body_of`) never silently picks up a joint alongside that part's real
 ## geometry. `region.socket` is the actual discriminator resolve_shot
 ## reads to know this is a joint at all.
+##
+## taskblock-26 Pass D: if `socket.joint_cladding` is set, its own boxes
+## project too, at this SAME world transform, via the ordinary
+## `project_part` path — an ordinary Region (`region.socket` left null),
+## so it resolves through the existing part/DT/spill machinery exactly
+## like body cladding (tb20), not a new damage mechanism. It comes back
+## from `project_part` BEFORE the joint's own region below, and a live
+## part's own face depth naturally lands at-or-in-front-of the joint's
+## `_JOINT_DEPTH_BIAS`-pushed depth (the cladding sits AT the joint's
+## attach point; the joint is pushed a hair behind it) — so the
+## depth-sort's nearest-first walk reaches the cladding first, same as
+## a plate protecting whatever sits directly behind it.
 static func _project_joint(
 	socket: Socket, world_transform: Transform3D, view_dir: Vector2, orientation: float
 ) -> Array[Region]:
 	var dir: Vector2 = view_dir.normalized()
 	var perp := Vector2(-dir.y, dir.x)
+	var regions: Array[Region] = []
+	if socket.joint_cladding != null:
+		regions.append_array(
+			project_part(socket.joint_cladding, view_dir, orientation, world_transform)
+		)
 	var box := Box.new(Vector3.ZERO, _JOINT_BOX_SIZE)
-	var regions: Array[Region] = _project_box(
+	var joint_regions: Array[Region] = _project_box(
 		box, dir, perp, orientation, socket.joint_handle(), world_transform
 	)
 	# Pin every joint region to the socket's own true attachment-point
@@ -219,9 +236,10 @@ static func _project_joint(
 	# depth-sort.
 	var point_2d := Vector2(world_transform.origin.x, world_transform.origin.z)
 	var anchor_depth: float = rotate_by_orientation(point_2d, orientation).dot(dir)
-	for region: Region in regions:
+	for region: Region in joint_regions:
 		region.socket = socket
 		region.depth = anchor_depth + _JOINT_DEPTH_BIAS
+	regions.append_array(joint_regions)
 	return regions
 
 

@@ -270,10 +270,17 @@ extends Resource
 ## battle-bot arm is hard to sever on ANY frame it plugs into; a worker
 ## arm is easy even on a heavy frame. Copied onto the hosting `Socket`'s
 ## own runtime `joint_hp`/`joint_hp_max` at attach time (PartGraph.attach)
-## — the socket holds the RUNTIME value, the child defines the MAX. 1 is a
-## flagged, deliberately fragile default (every un-migrated part severs in
-## one hit) rather than an invented "tough" number.
-@export var joint_hp: int = 1
+## — the socket holds the RUNTIME value, the child defines the MAX.
+## taskblock-26 Pass D: raised 1 -> 3 — a joint has no DT/armor concept at
+## all (docs/03: "HP only, no failure modes"), so at 1 HP any hit that so
+## much as GRAZES a joint region severs it outright, making the aimed-
+## joint shot (tb09) a one-shot disable with no counterplay. 3 is a
+## gradient (weaken, then sever) — still a flagged, deliberately soft
+## default relative to a real part's own hp, not an invented "tough"
+## number. Any part that already authors its own value keeps it
+## unchanged — this only moves the CLASS default un-migrated parts fall
+## back to.
+@export var joint_hp: int = 3
 
 ## taskblock-09 F: the DT discount this weapon's payload carries —
 ## penetration only, never touches the deflect/stop-dead angle decision

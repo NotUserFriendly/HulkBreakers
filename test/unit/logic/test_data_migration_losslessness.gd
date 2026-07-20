@@ -347,7 +347,9 @@ func test_every_part_matches_its_pre_migration_snapshot() -> void:
 		assert_eq(part.meltdown_turns, expected.get("meltdown_turns", 0), "%s.meltdown_turns" % id)
 		assert_eq(part.damage, expected.get("damage", 0.0), "%s.damage" % id)
 		assert_eq(part.ap_cost, expected.get("ap_cost", 1), "%s.ap_cost" % id)
-		assert_eq(part.joint_hp, 1, "%s.joint_hp (no pool part migrates a non-default)" % id)
+		# taskblock-26 Pass D: default raised 1 -> 3; still the CLASS
+		# default every real part here falls back to, unauthored.
+		assert_eq(part.joint_hp, 3, "%s.joint_hp (no pool part migrates a non-default)" % id)
 
 		var expected_sockets: Array = expected.get("sockets", [])
 		assert_eq(part.sockets.size(), expected_sockets.size(), "%s socket count" % id)

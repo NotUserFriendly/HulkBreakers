@@ -142,9 +142,13 @@ func test_apply_damage_to_joint_floors_at_zero_and_severs_exactly_there() -> voi
 
 	assert_false(DamageResolver.apply_damage_to_joint(socket, 3.0), "3 of 4: not severed yet")
 	assert_eq(socket.joint_hp, 1)
-	assert_true(DamageResolver.apply_damage_to_joint(socket, 1.0), "the last hp: severed exactly now")
+	assert_true(
+		DamageResolver.apply_damage_to_joint(socket, 1.0), "the last hp: severed exactly now"
+	)
 	assert_eq(socket.joint_hp, 0)
-	assert_true(DamageResolver.apply_damage_to_joint(socket, 5.0), "still severed once already at 0")
+	assert_true(
+		DamageResolver.apply_damage_to_joint(socket, 5.0), "still severed once already at 0"
+	)
 	assert_eq(socket.joint_hp, 0, "floors at 0, never goes negative")
 
 
@@ -245,3 +249,111 @@ func test_resolve_shot_severs_the_joint_and_drops_the_subtree_when_depleted() ->
 	assert_eq(results[0].dropped_subtree, [arm])
 	assert_null(shoulder.occupant, "the joint's own occupant is gone once severed")
 	assert_true(state.grid.field_items[Vector2i(2, 2)].has(arm))
+
+
+## taskblock-26 Pass D: joints default to 3 HP (a weaken-then-sever
+## gradient) instead of tb09's original 1 (an instant sever on any hit
+## reaching a joint at all). Per-part overrides (`arm.joint_hp = N`, tested
+## above and in `test_attach_copies_joint_hp_from_the_child_not_the_parent`)
+## still win — this only covers the un-authored CLASS default.
+func test_a_fresh_joint_defaults_to_3_hp() -> void:
+	var arm := Part.new()
+	arm.id = &"arm"
+	arm.attaches_to = [&"SHOULDER"]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	var shoulder := Socket.new(&"SHOULDER")
+	torso.sockets = [shoulder]
+	PartGraph.attach(arm, torso, shoulder)
+
+	assert_eq(arm.joint_hp, 3, "Part.joint_hp's own class default")
+	assert_eq(shoulder.joint_hp, 3)
+	assert_eq(shoulder.joint_hp_max, 3)
+
+
+func test_a_default_joint_takes_3_points_across_hits_before_severing() -> void:
+	var built: Dictionary = _make_armed_unit(Vector2i(0, 0), 3)  # the new default, spelled out
+	var shoulder: Socket = built.shoulder
+
+	assert_false(DamageResolver.apply_damage_to_joint(shoulder, 1.0), "1 of 3: still attached")
+	assert_eq(shoulder.joint_hp, 2)
+	assert_false(DamageResolver.apply_damage_to_joint(shoulder, 1.0), "2 of 3: still attached")
+	assert_eq(shoulder.joint_hp, 1)
+	assert_true(DamageResolver.apply_damage_to_joint(shoulder, 1.0), "the 3rd point severs it")
+	assert_eq(shoulder.joint_hp, 0)
+
+
+## taskblock-26 Pass D: a torso whose shoulder joint is additionally
+## protected by a small cladding Part (`Socket.joint_cladding`) sitting at
+## the joint's own attach point — the "the new piece is cladding that
+## attaches to/covers a socket's joint" half of Pass D. Reuses
+## `_make_joint_reachable_fixture`'s geometry verbatim; only the cladding
+## is new.
+func _make_cladded_joint_fixture(cell: Vector2i) -> Dictionary:
+	var built: Dictionary = _make_joint_reachable_fixture(cell)
+	var shoulder: Socket = built.shoulder
+
+	var cladding := Part.new()
+	cladding.id = &"shoulder_cladding"
+	cladding.material = &"steel"  # dt 6 (test_damage_resolver.gd's own reference)
+	cladding.hp = 4
+	cladding.max_hp = 4
+	cladding.volume = [Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2))]
+	shoulder.joint_cladding = cladding
+
+	built.cladding = cladding
+	return built
+
+
+func test_joint_cladding_absorbs_a_hit_before_the_joint_takes_any_damage() -> void:
+	var built: Dictionary = _make_cladded_joint_fixture(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var shoulder: Socket = built.shoulder
+	var cladding: Part = built.cladding
+	var joint_hp_before: int = shoulder.joint_hp
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var table := DataLibrary.material_table()
+
+	var origin := Vector2(2, 8)
+	var direction := Vector2(0, -1)
+	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, aim_point, 2.0, 0.0, state, table, rng
+	)
+
+	assert_eq(results.size(), 1)
+	assert_eq(results[0].region.part, cladding, "aiming at the joint hits its cladding first")
+	assert_null(results[0].region.socket, "the cladding's own region is an ordinary part region")
+	assert_lt(cladding.hp, 4, "the cladding itself absorbs the hit")
+	assert_eq(shoulder.joint_hp, joint_hp_before, "the joint underneath never took damage")
+
+
+func test_an_uncladded_joint_behaves_as_before_just_with_the_new_hp_default() -> void:
+	var built: Dictionary = _make_joint_reachable_fixture(Vector2i(2, 2))
+	var unit: Unit = built.unit
+	var arm: Part = built.arm
+	var shoulder: Socket = built.shoulder
+	assert_null(shoulder.joint_cladding, "this fixture's joint is deliberately bare")
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var table := DataLibrary.material_table()
+
+	var origin := Vector2(2, 8)
+	var direction := Vector2(0, -1)
+	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		origin, direction, aim_point, 2.0, 0.0, state, table, rng
+	)
+
+	assert_eq(results.size(), 1)
+	assert_eq(results[0].region.socket, shoulder, "a bare joint hits directly, same as before")
+	assert_eq(shoulder.joint_hp, 2, "4 joint hp - ceil(2.0 damage), same mechanism as before")
+	assert_eq(arm.hp, 5, "still never touches the part's own hp")
