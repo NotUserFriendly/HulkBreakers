@@ -38,6 +38,11 @@ func _armed_unit(
 	weapon.requires = {&"TRIGGER": 1}
 	weapon.damage = 6.0
 	weapon.ap_cost = 1
+	# taskblock-24 Pass A: the AI now asks ActionCatalog what this weapon
+	# actually provides before firing — without this, no bout unit here
+	# ever fires at all, and a bout that can never resolve by combat runs
+	# to its own turn cap instead of a normal few-turn finish.
+	weapon.provides_actions = [&"shoot"]
 	weapon.weapon_def = WeaponDef.new()
 	weapon.weapon_def.max_range = 15.0
 	weapon.scatter = [Ring.new(0.1, 1.0)]

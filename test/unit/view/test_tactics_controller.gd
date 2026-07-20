@@ -25,6 +25,7 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	pistol.damage = 5.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -34,6 +35,45 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	hand.capabilities = [&"TRIGGER"]
 	var grip := Socket.new(&"GRIP")
 	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
+## Same shape as `_make_armed_unit`, but a burst-only weapon (matching
+## chaingun.tres's own provides_actions/burst_size data shape) — for
+## taskblock-24 Pass A's own confirm_shot dispatch test below.
+func _make_chaingun_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var chaingun := Part.new()
+	chaingun.id = &"chaingun"
+	chaingun.hp = 1
+	chaingun.max_hp = 1
+	chaingun.attaches_to = [&"GRIP"]
+	chaingun.requires = {&"TRIGGER": 1}
+	chaingun.damage = 5.0
+	chaingun.ap_cost = 2
+	chaingun.scatter = [Ring.new(0.1, 1.0)]
+	chaingun.provides_actions = [&"burst"]
+	chaingun.weapon_def = WeaponDef.new()
+	chaingun.weapon_def.burst_size = 12
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = chaingun
 	hand.sockets = [grip]
 
 	var torso := Part.new()
@@ -447,9 +487,29 @@ func test_queuing_a_move_shows_an_end_position_ghost() -> void:
 
 	assert_true(board_view._unit_ghost_overlay.get_child_count() > 0)
 
+
 ## Aim mode, the dartboard read/resolve pair, and RESOLUTION input-locking
 ## live in test_tactics_controller_aim.gd; mouse-drag facing (docs/10
 ## taskblock03 E1) lives in test_tactics_controller_facing.gd; "Resolve to
 ## Here" (docs/10 taskblock06 G) lives in
 ## test_tactics_controller_resolve_to.gd — all split out purely to stay
 ## under gdlint's max-public-methods.
+
+
+## taskblock-24 Pass A: confirm_shot() used to unconditionally build an
+## AttackAction regardless of `armed_action.id` — arming and clicking
+## BURST never actually reached BurstAction at all. Proof it now does.
+func test_confirm_shot_with_burst_armed_queues_a_burst_action_not_an_attack_action() -> void:
+	var a := _make_chaingun_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"burst")
+	controller.click_cell(Vector2i(5, 5))
+	controller.confirm_shot()
+
+	var actions: Array[CombatAction] = controller.selection.current_queue().actions
+	assert_eq(actions.size(), 1)
+	assert_true(actions[0] is BurstAction, "arming BURST must actually queue a real BurstAction")

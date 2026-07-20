@@ -213,12 +213,15 @@ static func _plan_ranged(
 	# ally — friendly fire is still mechanically possible (a player can
 	# still line one up), this only stops the AI from picking it.
 	var clear_from_here: bool = not _ally_in_firing_line(unit, enemy, unit.cell, state)
+	var firing_action: CombatAction = (
+		_firing_action_for(unit, weapon_id, enemy.cell, state) if weapon_id != &"" else null
+	)
 	var fired_without_moving: bool = (
-		weapon_id != &""
+		firing_action != null
 		and far_enough
 		and covered_enough
 		and clear_from_here
-		and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+		and queue.enqueue(firing_action, state)
 	)
 
 	if fired_without_moving:
@@ -239,7 +242,11 @@ static func _plan_ranged(
 			and _in_weapon_range(unit, weapon_id, enemy, best_cell)
 			and not final_blocked
 		):
-			queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
+			var repositioned_firing_action: CombatAction = _firing_action_for(
+				unit, weapon_id, enemy.cell, state
+			)
+			if repositioned_firing_action != null:
+				queue.enqueue(repositioned_firing_action, state)
 		# taskblock-18 D2 (taskblock-19 Pass B: Lean -> Step Out rename):
 		# "shared AI and player path — one implementation." A last resort,
 		# tried only when nothing above found anything to do this turn at
@@ -251,12 +258,22 @@ static func _plan_ranged(
 		# exact same StepOutPlanner.assemble_for_shoot() a human's own
 		# SHOOT click uses, never a second AI-only notion of stepping out.
 		if queue.actions.size() == queued_before and weapon_id != &"" and best_cell == unit.cell:
-			var step_out_queue: ActionQueue = StepOutPlanner.assemble_for_shoot(
-				state, unit, weapon_id, enemy
-			)
-			if step_out_queue != null:
-				for action: CombatAction in step_out_queue.actions:
-					queue.enqueue(action, state)
+			# taskblock-24 Pass A: which action id to step out and fire WITH
+			# — `_provided_firing_action_id`, NOT `_preferred_firing_action_id`:
+			# this branch is only ever reached when firing from HERE is
+			# already illegal (that's why nothing above queued a shot), so
+			# gating on is_legal at the pre-move cell would always fail and
+			# this fallback could never trigger at all. Real legality
+			# (AP/LoS/range from the stepped-out cell) is still validated
+			# for real inside `build_triple`'s own `queue.enqueue`.
+			var step_out_action_id: StringName = _provided_firing_action_id(unit, weapon_id)
+			if step_out_action_id != &"":
+				var step_out_queue: ActionQueue = StepOutPlanner.assemble_for_shoot(
+					state, unit, step_out_action_id, weapon_id, enemy
+				)
+				if step_out_queue != null:
+					for action: CombatAction in step_out_queue.actions:
+						queue.enqueue(action, state)
 		# taskblock-19 Pass F: "the AI holds when its best option is wait
 		# for an ally to move first." Triggers whenever the turn ends with
 		# NO shot fired specifically because its own ally was in the way —
@@ -264,8 +281,12 @@ static func _plan_ranged(
 		# defensive spot and deferring the shot are not in conflict). A
 		# real HoldAction (not a heuristic-only weight): `queue.enqueue`
 		# re-validates it can legally hold before committing.
+		# taskblock-24 Pass A: "did the AI fire" broadens from `is
+		# AttackAction` to `is AttackAction or is BurstAction` — a bursting
+		# AI must count as having fired, not read as having done nothing.
 		var attack_fired: bool = queue.actions.slice(queued_before).any(
-			func(action: CombatAction) -> bool: return action is AttackAction
+			func(action: CombatAction) -> bool:
+				return action is AttackAction or action is BurstAction
 		)
 		var held: bool = false
 		if not attack_fired and final_blocked:
@@ -398,10 +419,10 @@ static func _fire_remaining_shots(
 	already_fired: int
 ) -> void:
 	var fired := already_fired
-	while (
-		fired < MAX_SHOTS_PER_TURN
-		and queue.enqueue(AttackAction.new(unit, weapon_id, enemy.cell), state)
-	):
+	while fired < MAX_SHOTS_PER_TURN:
+		var firing_action: CombatAction = _firing_action_for(unit, weapon_id, enemy.cell, state)
+		if firing_action == null or not queue.enqueue(firing_action, state):
+			break
 		fired += 1
 
 
@@ -633,6 +654,65 @@ static func _find_weapon_id(unit: Unit) -> StringName:
 		if part.damage > 0.0:
 			return part.id
 	return &""
+
+
+## taskblock-24 Pass A/B1: which firing action id `weapon_id`'s own part
+## should fire WITH right now — the same `ActionCatalog.provider_for`
+## seam the player's own action bar reads (never a re-derived notion of
+## what this weapon provides), preferring `&"burst"` when the weapon
+## provides it AND it's actually legal right now (`is_legal` is the one
+## true afford/range/LoS check, never a re-derived guess that could drift
+## from it) — falling back to `&"shoot"` only when burst itself isn't.
+## `&""` if the weapon provides no legal firing action at all.
+static func _preferred_firing_action_id(
+	unit: Unit, weapon_id: StringName, target_cell: Vector2i, state: CombatState
+) -> StringName:
+	var weapon: Part = unit.shell.find_part(weapon_id)
+	if weapon == null:
+		return &""
+	if ActionCatalog.provider_for(unit, &"burst") == weapon:
+		var burst: CombatAction = ActionCatalog.build_firing_action(
+			&"burst", unit, weapon_id, target_cell
+		)
+		if burst != null and burst.is_legal(state):
+			return &"burst"
+	if ActionCatalog.provider_for(unit, &"shoot") == weapon:
+		var shot: CombatAction = ActionCatalog.build_firing_action(
+			&"shoot", unit, weapon_id, target_cell
+		)
+		if shot != null and shot.is_legal(state):
+			return &"shoot"
+	return &""
+
+
+## The same burst-over-shoot preference as `_preferred_firing_action_id`,
+## but WITHOUT requiring it to already be legal from here — for a caller
+## (the step-out fallback) that's reached PRECISELY because firing from
+## here is currently illegal; gating on is_legal at the pre-move cell
+## would make this always return `&""` and the fallback could never
+## trigger. `&""` only when the weapon provides no firing action at all.
+static func _provided_firing_action_id(unit: Unit, weapon_id: StringName) -> StringName:
+	var weapon: Part = unit.shell.find_part(weapon_id)
+	if weapon == null:
+		return &""
+	if ActionCatalog.provider_for(unit, &"burst") == weapon:
+		return &"burst"
+	if ActionCatalog.provider_for(unit, &"shoot") == weapon:
+		return &"shoot"
+	return &""
+
+
+## The real `CombatAction` instance for `_preferred_firing_action_id`'s own
+## pick — null if the weapon provides no legal firing action at all,
+## same "nothing to enqueue" contract every other speculative pick in
+## this planner already has.
+static func _firing_action_for(
+	unit: Unit, weapon_id: StringName, target_cell: Vector2i, state: CombatState
+) -> CombatAction:
+	var action_id: StringName = _preferred_firing_action_id(unit, weapon_id, target_cell, state)
+	if action_id == &"":
+		return null
+	return ActionCatalog.build_firing_action(action_id, unit, weapon_id, target_cell)
 
 
 ## taskblock17-1 Pass C: raw chebyshev distance ignores walls — a bot

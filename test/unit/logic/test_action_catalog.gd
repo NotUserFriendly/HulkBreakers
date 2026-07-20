@@ -293,3 +293,55 @@ func test_provider_for_respects_the_same_operability_gate_as_actions_for() -> vo
 	var unit := _make_unit(_torso([hand_socket]))
 
 	assert_null(ActionCatalog.provider_for(unit, &"shoot"))
+
+
+## taskblock-24 Pass A: the ONE place an action id becomes a real
+## CombatAction — the player's confirm_shot and the AI's own firing
+## helper both read this instead of hardcoding a class.
+func test_build_firing_action_shoot_returns_an_attack_action() -> void:
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = _hand_with_pistol()
+	var unit := _make_unit(_torso([hand_socket]))
+
+	var action: CombatAction = ActionCatalog.build_firing_action(
+		&"shoot", unit, &"pistol", Vector2i(3, 0)
+	)
+
+	assert_true(action is AttackAction)
+
+
+func test_build_firing_action_burst_returns_a_burst_action() -> void:
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = _hand_with_pistol()
+	var unit := _make_unit(_torso([hand_socket]))
+
+	var action: CombatAction = ActionCatalog.build_firing_action(
+		&"burst", unit, &"pistol", Vector2i(3, 0)
+	)
+
+	assert_true(action is BurstAction)
+
+
+## `&"saw"` is a different providing weapon, never a different resolution
+## mechanic — it's still backed by AttackAction, same as shoot.
+func test_build_firing_action_saw_also_returns_an_attack_action() -> void:
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = _saw_hand()
+	var unit := _make_unit(_torso([hand_socket]))
+
+	var action: CombatAction = ActionCatalog.build_firing_action(
+		&"saw", unit, &"saw_hand", Vector2i(3, 0)
+	)
+
+	assert_true(action is AttackAction)
+
+
+func test_build_firing_action_returns_null_for_an_unrecognized_id() -> void:
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = _hand_with_pistol()
+	var unit := _make_unit(_torso([hand_socket]))
+
+	assert_null(
+		ActionCatalog.build_firing_action(&"overwatch", unit, &"pistol", Vector2i(3, 0)),
+		"overwatch has no aimed-target CombatAction of its own to build here"
+	)

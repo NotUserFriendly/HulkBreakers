@@ -206,7 +206,14 @@ func test_build_triple_assembles_a_real_move_attack_move_queue() -> void:
 	var queue := ActionQueue.new(scene.unit)
 
 	var ok: bool = StepOutPlanner.build_triple(
-		queue, scene.state, scene.unit, &"rifle", scene.target, Vector2i(3, 0), Vector2i(4, 0)
+		queue,
+		scene.state,
+		scene.unit,
+		&"shoot",
+		&"rifle",
+		scene.target,
+		Vector2i(3, 0),
+		Vector2i(4, 0)
 	)
 
 	assert_true(ok)
@@ -233,7 +240,14 @@ func test_the_triple_costs_real_mp_for_both_legs_no_discount() -> void:
 
 	assert_true(
 		StepOutPlanner.build_triple(
-			queue, scene.state, unit, &"rifle", scene.target, Vector2i(3, 0), Vector2i(4, 0)
+			queue,
+			scene.state,
+			unit,
+			&"shoot",
+			&"rifle",
+			scene.target,
+			Vector2i(3, 0),
+			Vector2i(4, 0)
 		)
 	)
 	var preview: CombatState = queue.preview(scene.state)
@@ -250,7 +264,7 @@ func test_assemble_for_shoot_returns_null_when_already_directly_attackable() -> 
 	var target := _armed_unit(Vector2i(5, 0), 1)
 	var state := CombatState.new(grid, [unit, target])
 
-	assert_null(StepOutPlanner.assemble_for_shoot(state, unit, &"rifle", target))
+	assert_null(StepOutPlanner.assemble_for_shoot(state, unit, &"shoot", &"rifle", target))
 
 
 func test_assemble_for_shoot_returns_null_when_no_legal_step_out_exists() -> void:
@@ -263,14 +277,14 @@ func test_assemble_for_shoot_returns_null_when_no_legal_step_out_exists() -> voi
 	var target := _armed_unit(Vector2i(9, 0), 1)
 	var state := CombatState.new(grid, [unit, target])
 
-	assert_null(StepOutPlanner.assemble_for_shoot(state, unit, &"rifle", target))
+	assert_null(StepOutPlanner.assemble_for_shoot(state, unit, &"shoot", &"rifle", target))
 
 
 func test_assemble_for_shoot_builds_the_triple_via_the_safest_candidate() -> void:
 	var scene: Dictionary = _covered_scene()
 
 	var queue: ActionQueue = StepOutPlanner.assemble_for_shoot(
-		scene.state, scene.unit, &"rifle", scene.target
+		scene.state, scene.unit, &"shoot", &"rifle", scene.target
 	)
 
 	assert_not_null(queue)
