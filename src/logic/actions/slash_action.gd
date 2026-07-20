@@ -91,7 +91,11 @@ func apply(state: CombatState) -> void:
 		return
 
 	var target: Unit = _unit_at(state, target_cell)
-	var origin := Vector2(actual.cell.x, actual.cell.y)
+	# taskblock-26 Pass A2 (re-fix): anchor the plane on the real muzzle
+	# position, not the shooter's bare cell center — see AttackAction's own
+	# doc comment for why.
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
+	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 
@@ -102,7 +106,6 @@ func apply(state: CombatState) -> void:
 	var damage: float = WeaponResolver.resolve_damage(weapon, extra_sources).current
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
 	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
-	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
 
 	for point: Vector2 in points:
 		ShotResolution.resolve_and_log_point(

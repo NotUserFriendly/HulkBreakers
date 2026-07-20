@@ -114,3 +114,54 @@ func test_none_deflect_mode_never_bounces_or_slides() -> void:
 		results.size(), 1, "no deflect at all: chew through or nothing, never a follow-up hit"
 	)
 	assert_eq(results[0].outcome, Enums.Outcome.DEFLECT)
+
+
+## taskblock-26 (CC, re-diagnosing A2 "muzzle origin inside the shooter's
+## own armor"): `_resolve_slide` re-searches the WHOLE plane from index 0
+## (the lateral nudge can reveal something NEARER than the original hit) —
+## without the shooter's own parts excluded on that re-search, a stab that
+## deflects and slides at point-blank range can land back on the
+## shooter's own body, which sits at the ray's own (near-zero-depth)
+## origin. A shooter unit occupying the exact origin cell, wide enough to
+## cover the nudged lateral point, proves the exclusion actually reaches
+## this second lookup.
+func test_slide_deflect_never_lands_back_on_the_shooters_own_excluded_body() -> void:
+	var f: Dictionary = _deflecting_fixture()
+	var shooter_torso := Part.new()
+	shooter_torso.id = &"shooter_torso"
+	shooter_torso.hp = 10
+	shooter_torso.max_hp = 10
+	# Wide enough that its own projected rect actually spans the slide's
+	# nudged lateral point below — a narrower box (matching the cover's own
+	# size) wouldn't reach far enough to reproduce the regression at all.
+	shooter_torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(6.0, 1.0, 0.6))]
+	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(2, 0))
+	f.state.add_unit(shooter)
+
+	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+		f.origin,
+		f.direction,
+		f.point,
+		3.0,
+		0.0,
+		f.state,
+		f.table,
+		_rng(1),
+		0,
+		DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
+		DamageResolver.DEFAULT_DAMAGE_FLOOR,
+		DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
+		[shooter_torso],
+		0.0,
+		0.0,
+		0.0,
+		DamageResolver.DEFLECT_MODE_SLIDE
+	)
+
+	assert_eq(results.size(), 2, "the original deflect plus exactly one adjacent-point resolution")
+	for result: ImpactResult in results:
+		assert_ne(
+			result.region.part,
+			shooter_torso,
+			"the slide must never land back on the shooter's own excluded body"
+		)

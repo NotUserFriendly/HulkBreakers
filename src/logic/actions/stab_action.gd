@@ -96,13 +96,16 @@ func apply(state: CombatState) -> void:
 		return
 
 	var target: Unit = _unit_at(state, target_cell)
-	var origin := Vector2(actual.cell.x, actual.cell.y)
+	# taskblock-26 Pass A2 (re-fix): anchor the plane on the real muzzle
+	# position, not the shooter's bare cell center — see AttackAction's own
+	# doc comment for why.
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
+	var origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
 	var direction := Vector2(target_cell - actual.cell)
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
-	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(actual, weapon)
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset

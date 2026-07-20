@@ -276,6 +276,43 @@ func test_impact_event_names_which_unit_actually_took_the_hit() -> void:
 	)
 
 
+## taskblock-26 (CC, re-diagnosing A2 "muzzle origin inside the shooter's
+## own armor"): the taskblock-26 Pass A2 fix touched `UnitGeometry.
+## muzzle_point()`, but no real firing action ever consumed its X/Z —
+## every one of them built the shot plane (and therefore the logged/drawn
+## `impact.origin`) from the shooter's own bare CELL center regardless.
+## A real weapon (like the shipped `pistol.tres`) authors a `volume` box
+## offset forward of its own grip — with that offset present, the logged
+## origin must now sit forward of the shooter's own cell center, along the
+## firing direction, not dead center in its own chest.
+func test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0)
+	weapon.volume = [Box.new(Vector3(0.0, 0.0, 0.2), Vector3(0.1, 0.2, 0.4))]
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(impacts.size() > 0)
+	var origin_x: float = impacts[0].data.get("origin_x")
+	var origin_y: float = impacts[0].data.get("origin_y")
+	assert_ne(
+		Vector2(origin_x, origin_y),
+		Vector2(shooter.cell.x, shooter.cell.y),
+		"the logged origin must move to the weapon's own muzzle, not stay at the bare cell center"
+	)
+	assert_gt(
+		origin_x,
+		float(shooter.cell.x),
+		"the pistol's own forward tip sits ahead of the shooter, toward the target at (3, 0)"
+	)
+
+
 ## docs/09 taskblock06 D2: reverses taskblock02 F — the second attack's
 ## own illegality (its target is already dead) now STOPS resolve_until
 ## entirely, so the trailing EndTurnAction queued after it never runs

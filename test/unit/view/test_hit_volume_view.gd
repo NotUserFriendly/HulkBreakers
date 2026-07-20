@@ -244,6 +244,38 @@ func test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit() -> void:
 	assert_false(view.is_downed())
 
 
+## taskblock-26 Pass A3 (re-fix): the first fix only checked the wedge
+## against `EXTRACTION_TILE_HEIGHT`/`TEAM_MARKER_Y` — it genuinely
+## interpenetrated `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` box (top
+## face 0.05), which the first fix never checked against. Read the real
+## node back (CLAUDE.md's own rule): the wedge's bottom face must clear
+## every ground-tier marker's own top face, not just the two named in the
+## original report.
+func test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc() -> void:
+	var unit := _torso_unit(Vector2i(2, 3), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+
+	var wedge: MeshInstance3D = view.get_child(1)
+	var wedge_box: BoxMesh = wedge.mesh
+	var wedge_bottom: float = wedge.position.y - wedge_box.size.y / 2.0
+	# board_view.gd's own ground-tier markers, each a 0.02-thick box
+	# centered on its own HEIGHT constant (_marker()) — top face is
+	# height + 0.01. OVERWATCH_ARC_HEIGHT (0.04) is the tallest.
+	var marker_tops: Array[float] = [
+		BoardView.REACHABLE_HEIGHT + 0.01,
+		BoardView.GHOST_HEIGHT + 0.01,
+		BoardView.OVERWATCH_ARC_HEIGHT + 0.01,
+		BoardView.EXTRACTION_TILE_HEIGHT + 0.01,
+		BoardView.WALL_INDICATOR_HEIGHT + 0.01,
+	]
+	for top: float in marker_tops:
+		assert_true(
+			wedge_bottom > top, "wedge bottom %f must clear marker top %f" % [wedge_bottom, top]
+		)
+
+
 func test_a_downed_unit_kills_its_facing_wedge() -> void:
 	var unit := _shell_unit(Vector2i(0, 0))
 	var view := HitVolumeView.new()

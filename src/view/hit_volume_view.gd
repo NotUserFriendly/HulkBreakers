@@ -38,16 +38,21 @@ const SELECTED_BRIGHTEN := 0.35
 ## optional").
 const FACING_WEDGE_SIZE := Vector3(0.16, 0.10, 0.30)
 const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
-## taskblock-26 Pass A3: the wedge USED to center on `TEAM_MARKER_Y +
-## TEAM_MARKER_HEIGHT` (0.03) — with its own 0.10-tall box, that put its
-## bottom face at -0.02, below the ground plane (Y=0) and co-planar with
-## any ground-tier marker sitting near it (board_view.gd's own
-## EXTRACTION_TILE_HEIGHT, 0.010 — the reported extract-tile/facing-
-## indicator z-fight). Raised so the wedge's own bottom face (this minus
-## half of FACING_WEDGE_SIZE.y) clears both the team marker disc's own
-## top surface and every ground-tier board marker with real headroom, not
-## just nominally "taller."
-const FACING_WEDGE_Y := 0.09
+## taskblock-26 Pass A3 (re-fix): the wedge USED to center on
+## `TEAM_MARKER_Y + TEAM_MARKER_HEIGHT` (0.03) — with its own 0.10-tall
+## box, that put its bottom face at -0.02, below the ground plane (Y=0)
+## and co-planar with any ground-tier marker near it. The FIRST fix
+## (0.09) only checked clearance against `board_view.gd`'s
+## `EXTRACTION_TILE_HEIGHT` (top face 0.02) and `TEAM_MARKER_Y +
+## TEAM_MARKER_HEIGHT` (top face 0.02) — it never checked the TALLEST
+## ground-tier overlay, `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` (top
+## face 0.05, the amber overwatch-arc tile, a very ordinary thing to have
+## visible under a unit standing in it), which the 0.09 center's own
+## bottom face (0.04) genuinely interpenetrated. Raised again so the
+## wedge's own bottom face (this minus half of `FACING_WEDGE_SIZE.y`)
+## clears the TALLEST known ground-tier marker with real headroom, not
+## just the one named in the original report.
+const FACING_WEDGE_Y := 0.12
 ## docs/10 taskblock03 G: "a unit with no matrix docked... needs to read as
 ## down at a glance." Darkens the team ring rather than a separate material —
 ## cheap, and it still reads as "this squad's, but not right."

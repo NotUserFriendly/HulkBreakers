@@ -147,6 +147,15 @@ static func resolve_impact(
 ## nothing found at all just ends the strike here) directly onto `results`
 ## — this is the terminal step for a slide, the caller always returns
 ## right after.
+##
+## taskblock-26 (CC, re-diagnosing A2): `exclude_parts` — this re-search
+## starts back at plane index 0 (the nudge can reveal something NEARER
+## than the original hit), which without an exclusion re-lands on the
+## shooter's own body at point-blank melee range, the one narrow path
+## `resolve_shot`'s own first-lookup exclusion doesn't cover (that
+## exclusion only ever applied to the FIRST `_find_next` of the whole
+## shot). The caller passes the same shooter-parts list `resolve_shot`
+## itself was given.
 static func _resolve_slide(
 	plane: Array[Region],
 	point: Vector2,
@@ -163,10 +172,11 @@ static func _resolve_slide(
 	origin_height: float,
 	state: CombatState,
 	results: Array[ImpactResult],
+	exclude_parts: Array[Part],
 	radius: float = 0.0
 ) -> void:
 	var nudged_point := Vector2(point.x + _SLIDE_NUDGE, region_height)
-	var slid_index: int = _find_next(plane, 0, nudged_point, [], vertical_slope, radius)
+	var slid_index: int = _find_next(plane, 0, nudged_point, exclude_parts, vertical_slope, radius)
 	if slid_index == -1:
 		return
 	var slid_region: Region = plane[slid_index]
@@ -758,6 +768,7 @@ static func resolve_shot(
 						origin_height,
 						state,
 						results,
+						exclude_parts,
 						radius
 					)
 					return results
