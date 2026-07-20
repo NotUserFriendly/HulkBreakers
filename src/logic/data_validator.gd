@@ -144,6 +144,25 @@ static func _validate_preset(preset: BotPreset) -> Array[ValidationError]:
 				row_id, &"template_id", "references unknown template '%s'" % preset.template_id
 			)
 		)
+	# taskblock-28 Pass B: a purely self-consistency check on the kit's OWN
+	# data (never a cross-reference to another DataLibrary type — same
+	# posture `loadout`'s own part ids already have: those are validated
+	# for free the moment something tries to assemble through
+	# BodyAssembler, not re-checked here). A kit whose own weapon isn't
+	# among what it stores can never equip anything; that's an authoring
+	# bug, not a runtime maybe.
+	if preset.kit != null and preset.kit.weapon_part_id != &"":
+		if not preset.kit.weapon_part_id in preset.kit.stored_item_ids:
+			errors.append(
+				ValidationError.new(
+					row_id,
+					&"kit",
+					(
+						"weapon_part_id '%s' does not appear in the kit's own stored_item_ids"
+						% preset.kit.weapon_part_id
+					)
+				)
+			)
 	return errors
 
 

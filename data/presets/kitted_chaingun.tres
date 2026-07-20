@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="BotPreset" format=3]
+
+[ext_resource type="Script" path="res://src/data/loadout.gd" id="1_kc28a"]
+[ext_resource type="Script" path="res://src/data/kit.gd" id="2_kc28b"]
+[ext_resource type="Script" path="res://src/data/bot_preset.gd" id="3_kc28c"]
+
+[sub_resource type="Resource" id="Resource_kc28d"]
+script = ExtResource("1_kc28a")
+entries = {
+&"GRIP_R": &"",
+&"BACK": &"backpack"
+}
+
+[sub_resource type="Resource" id="Resource_kc28e"]
+script = ExtResource("2_kc28b")
+container_socket_id = &"BACK"
+stored_item_ids = Array[StringName]([&"chaingun"])
+weapon_part_id = &"chaingun"
+weapon_socket_id = &"GRIP_R"
+chambered_ammo_id = &"556x45_fmj"
+
+[resource]
+script = ExtResource("3_kc28c")
+preset_name = "kitted_chaingun"
+loadout = SubResource("Resource_kc28d")
+profile_family = &""
+variant_label = ""
+kit = SubResource("Resource_kc28e")

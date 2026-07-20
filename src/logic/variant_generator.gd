@@ -28,7 +28,8 @@ static func generate(
 		Loadout.new(varied_entries),
 		base.pose_id,
 		base.profile_family,
-		base.variant_label
+		base.variant_label,
+		base.kit
 	)
 
 
