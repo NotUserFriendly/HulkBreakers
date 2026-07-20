@@ -8,11 +8,21 @@ extends CombatAction
 
 var unit: Unit
 var path: Array[Vector2i]
+## taskblock-27 Pass B2: true for a Step Out's own two automated legs
+## (StepOutPlanner.build_triple, TacticsController's own player-path
+## equivalent) — no MP/AP cost either direction, for both the AI and the
+## player (the one shared entry point). Reverses tb18/tb19's original
+## "real MP/AP cost for both legs, no discount" design (docs/SUPERSEDED.md).
+## An ordinary player- or AI-queued move is never free — this defaults to
+## false, and nothing about path/legality validity (an impassable step is
+## still illegal) is affected, only the MP/AP deduction itself.
+var free: bool = false
 
 
-func _init(p_unit: Unit, p_path: Array[Vector2i]) -> void:
+func _init(p_unit: Unit, p_path: Array[Vector2i], p_free: bool = false) -> void:
 	unit = p_unit
 	path = p_path
+	free = p_free
 
 
 ## Actions never trust a bare Unit reference across states (docs/09): a
@@ -39,6 +49,8 @@ func is_legal(state: CombatState) -> bool:
 		var step_cost: float = pf.move_cost(path[i])
 		if step_cost < 0.0:
 			return false
+		if free:
+			continue
 		while sim_mp < step_cost:
 			if sim_ap <= 0:
 				return false
@@ -109,10 +121,11 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 			FaceAction.face_for_free(state, actual, target_orientation, &"free_with_move")
 		var per_ap: float = actual.mp_per_ap()
 		var step_cost: float = pf.move_cost(path[i])
-		while actual.mp < step_cost:
-			actual.ap -= 1
-			actual.mp += per_ap
-		actual.mp -= step_cost
+		if not free:
+			while actual.mp < step_cost:
+				actual.ap -= 1
+				actual.mp += per_ap
+			actual.mp -= step_cost
 		state.grid.set_occupant_id(actual.cell, -1)
 		actual.cell = path[i]
 		state.grid.set_occupant_id(actual.cell, actual.id)
@@ -139,7 +152,7 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 		var is_final_step: bool = i == path.size() - 1
 		if (
 			hook_forces_stop
-			or (not is_final_step and not _can_still_complete(state, actual, path.slice(i)))
+			or (not is_final_step and not _can_still_complete(state, actual, path.slice(i), free))
 		):
 			_finish(state, actual, path.slice(run_start, i + 1))
 			return {"stopped": true}
@@ -151,9 +164,11 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 ## Re-simulates `remaining` (the untraversed tail, inclusive of the cell
 ## just stepped onto) exactly like is_legal() simulates the whole path —
 ## against `actual`'s CURRENT mp/ap/mp_per_ap, which mid_move_hook may
-## have just changed.
+## have just changed. `free` mirrors `is_legal()`'s own skip: a step-out
+## leg's own remaining tail can never run out of MP/AP to stop it, since
+## none of it was ever going to be charged.
 static func _can_still_complete(
-	state: CombatState, actual: Unit, remaining: Array[Vector2i]
+	state: CombatState, actual: Unit, remaining: Array[Vector2i], free: bool = false
 ) -> bool:
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 	var sim_ap: int = actual.ap
@@ -163,6 +178,8 @@ static func _can_still_complete(
 		var step_cost: float = pf.move_cost(remaining[i])
 		if step_cost < 0.0:
 			return false
+		if free:
+			continue
 		while sim_mp < step_cost:
 			if sim_ap <= 0:
 				return false

@@ -78,11 +78,12 @@ static func sort_by_safety(
 ## `queue`, through the exact same `enqueue()`/`preview()` legality gate
 ## every other queued action goes through (`UnitAI._plan_ranged` is the
 ## established precedent for composing a Move+Attack this way; a third
-## leg follows identically) — real MP/AP cost for both moves, no
-## discount. "The return is only free when the origin is a better
-## defensive position" (D1) is about NET POSITION, not price: nothing in
-## the action-cost model has a discounted/refunded move, and this never
-## invents one — the automation is in ASSEMBLY, not in cost.
+## leg follows identically). taskblock-27 Pass B2 (docs/SUPERSEDED.md):
+## reverses this pass's own original "real MP/AP cost for both moves, no
+## discount" — both automated legs are now `MoveAction.free` (no MP/AP
+## either direction), for the AI and the player alike (the one shared
+## entry point). The automation was always in ASSEMBLY, not cost; now
+## the cost is waived too, not just the manual pathing.
 ##
 ## The return leg is pathed against `queue.preview(state)` (docs/09:
 ## never trust the raw grid mid-assembly) — `origin_cell` still shows as
@@ -116,7 +117,7 @@ static func build_triple(
 	var out_path: Array[Vector2i] = out_pf.astar(origin_cell, firing_cell)
 	if out_path.size() < 2:
 		return false
-	if not queue.enqueue(MoveAction.new(unit, out_path), state):
+	if not queue.enqueue(MoveAction.new(unit, out_path, true), state):
 		return false
 	var firing_action: CombatAction = ActionCatalog.build_firing_action(
 		action_id, unit, weapon_id, target.cell
@@ -129,7 +130,7 @@ static func build_triple(
 	var back_path: Array[Vector2i] = back_pf.astar(firing_cell, origin_cell)
 	if back_path.size() < 2:
 		return false
-	return queue.enqueue(MoveAction.new(unit, back_path), state)
+	return queue.enqueue(MoveAction.new(unit, back_path, true), state)
 
 
 ## D2's own one-call entry point: "clicking SHOOT on an enemy the unit

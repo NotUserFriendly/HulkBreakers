@@ -146,7 +146,13 @@ func test_wheel_cycles_the_step_out_cell_and_wraps() -> void:
 	)
 
 
-func test_confirming_a_step_out_queues_the_move_attack_move_triple() -> void:
+## taskblock-27 Pass B: confirming a step-out's own CELL choice no longer
+## auto-resolves the whole triple — it queues only the free outbound leg,
+## then hands off into ORDINARY aim mode (dartboard open) from the
+## stepped-out position. The attack + free return leg only get queued
+## once the player actually fires (confirm_shot() again, now in aim
+## mode) — see the fixture below for the full sequence.
+func test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
@@ -157,20 +163,73 @@ func test_confirming_a_step_out_queues_the_move_attack_move_triple() -> void:
 	controller.confirm_shot()
 
 	var actions: Array[CombatAction] = controller.selection.current_queue().actions
+	assert_eq(actions.size(), 1, "only the free outbound leg — no shot, no return leg yet")
+	assert_true(actions[0] is MoveAction)
+	var out_move: MoveAction = actions[0]
+	assert_eq(out_move.path[out_move.path.size() - 1], firing_cell)
+	assert_true(out_move.free, "the outbound leg must cost no MP/AP")
+	assert_null(
+		controller.stepping_out_at, "confirming the cell must leave step-out CELL-choice mode"
+	)
+	assert_eq(controller.aiming_at, built.enemy, "must hand off into ordinary aim mode")
+
+
+## The full sequence: confirm the step-out cell (queues the free out-leg,
+## opens aim), then fire (confirm_shot() again, now in ordinary aim mode)
+## — this is what actually assembles the whole move/fire/return triple,
+## with both moves free.
+func test_firing_after_a_step_out_completes_the_free_move_attack_move_triple() -> void:
+	var built: Dictionary = _setup_covered_scene()
+	var controller: TacticsController = built.controller
+	controller.click_cell(built.shooter.cell)
+	controller.arm_action(&"shoot")
+	controller.click_cell(built.enemy.cell)
+	var firing_cell: Vector2i = controller._step_out_candidates[0]
+	controller.confirm_shot()  # locks in the step-out cell, opens aim
+
+	controller.confirm_shot()  # fires from the stepped-out position
+
+	var actions: Array[CombatAction] = controller.selection.current_queue().actions
 	assert_eq(actions.size(), 3)
 	assert_true(actions[0] is MoveAction)
 	assert_true(actions[1] is AttackAction)
 	assert_true(actions[2] is MoveAction)
 	var out_move: MoveAction = actions[0]
 	assert_eq(out_move.path[out_move.path.size() - 1], firing_cell)
+	assert_true(out_move.free)
 	var back_move: MoveAction = actions[2]
 	assert_eq(back_move.path[back_move.path.size() - 1], built.shooter.cell)
-	assert_null(controller.stepping_out_at, "confirming must leave step-out mode")
+	assert_true(back_move.free, "the return leg must cost no MP/AP too")
+	assert_null(controller.aiming_at, "firing must leave aim mode")
 
 
-## Clicking on ANY cell while stepping out confirms it — mirrors confirm_shot's
-## own "any click confirms" contract for ordinary aim mode.
-func test_any_click_while_stepping_out_confirms_it() -> void:
+## taskblock-27 Pass B: backing out of aim mid-step-out (before ever
+## firing) must undo the free outbound leg too, not leave the unit
+## standing at the firing cell with nothing queued to show for it.
+func test_cancelling_aim_mid_step_out_undoes_the_free_outbound_leg() -> void:
+	var built: Dictionary = _setup_covered_scene()
+	var controller: TacticsController = built.controller
+	controller.click_cell(built.shooter.cell)
+	controller.arm_action(&"shoot")
+	controller.click_cell(built.enemy.cell)
+	controller.confirm_shot()  # locks in the step-out cell, opens aim
+	assert_eq(controller.selection.current_queue().actions.size(), 1, "sanity: out-leg queued")
+
+	controller.cancel_aim()
+
+	assert_eq(
+		controller.selection.current_queue().actions.size(),
+		0,
+		"the free outbound leg must be undone, not left dangling with no shot fired"
+	)
+	assert_null(controller.aiming_at)
+
+
+## Clicking on ANY cell while stepping out confirms the CELL choice —
+## mirrors confirm_shot's own "any click confirms" contract for ordinary
+## aim mode. Only the free out-leg is queued at this point; see the
+## "firing after a step out" test above for the rest of the sequence.
+func test_any_click_while_stepping_out_confirms_the_cell_choice() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller
 	controller.click_cell(built.shooter.cell)
@@ -180,7 +239,8 @@ func test_any_click_while_stepping_out_confirms_it() -> void:
 	controller.click_cell(Vector2i(9, 9))  # an unrelated, empty cell
 
 	assert_null(controller.stepping_out_at)
-	assert_eq(controller.selection.current_queue().actions.size(), 3)
+	assert_eq(controller.selection.current_queue().actions.size(), 1)
+	assert_eq(controller.aiming_at, built.enemy)
 
 
 func test_esc_cancels_a_pending_step_out_without_queuing_anything() -> void:
