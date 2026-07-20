@@ -14,6 +14,11 @@ func _make_weapon(id: StringName, damage: float, ap_cost: int = 1, max_range: fl
 	weapon.damage = damage
 	weapon.ap_cost = ap_cost
 	weapon.burst = 1
+	# taskblock-24 Pass B: AttackAction.is_legal now requires the weapon
+	# actually provide &"shoot" (the same gate ActionCatalog's own action
+	# bar already applied) — every weapon built through this helper fires
+	# as an ordinary single shot unless a test says otherwise.
+	weapon.provides_actions = [&"shoot"]
 	if max_range > 0.0:
 		weapon.weapon_def = WeaponDef.new()
 		weapon.weapon_def.max_range = max_range
@@ -207,6 +212,34 @@ func test_is_legal_false_without_a_capable_manipulator() -> void:
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
+
+
+## taskblock-24 Pass B: "the engine, not just the UI, enforces a burst-only
+## weapon can't single-shot" — a weapon that only ever lists &"burst" in
+## its own provides_actions must fail is_legal, not just be absent from
+## the player's action bar.
+func test_is_legal_false_for_a_weapon_that_only_provides_burst() -> void:
+	var weapon := _make_weapon(&"chaingun", 20.0)
+	weapon.provides_actions = [&"burst"]
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+
+	assert_false(
+		AttackAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state),
+		"a burst-only weapon must never single-shot, engine-side"
+	)
+
+
+## The mirror: a weapon providing BOTH must still allow the plain shot.
+func test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst() -> void:
+	var weapon := _make_weapon(&"auto_shotgun", 20.0)
+	weapon.provides_actions = [&"shoot", &"burst"]
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+
+	assert_true(AttackAction.new(shooter, &"auto_shotgun", Vector2i(3, 0)).is_legal(state))
 
 
 func test_apply_deals_damage_and_spends_ap() -> void:

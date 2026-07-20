@@ -146,6 +146,34 @@ func test_is_legal_false_for_a_weapon_with_no_burst_mode() -> void:
 	assert_false(BurstAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
 
 
+## taskblock-24 Pass B: distinct from the no-burst-mode case above — this
+## weapon technically CAN burst (burst_size > 1) but was never opted into
+## actually providing it (provides_actions still just [&"shoot"]). The
+## engine, not just the missing button on the action bar, must refuse it.
+func test_is_legal_false_for_a_weapon_that_can_burst_but_never_opted_in() -> void:
+	var weapon := _make_chaingun()
+	weapon.provides_actions = [&"shoot"]
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+
+	assert_false(
+		BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state),
+		"burst_size > 1 alone must not be enough -- provides_actions decides"
+	)
+
+
+## The mirror of test_is_legal_true_in_the_baseline_case above, using the
+## auto-shotgun (provides BOTH) — a both-providing weapon allows burst too.
+func test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst() -> void:
+	var weapon := _make_auto_shotgun()
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(3, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+
+	assert_true(BurstAction.new(shooter, &"auto_shotgun", Vector2i(3, 0)).is_legal(state))
+
+
 ## "a burst fires exactly burst_size times... each burst shot rolls the
 ## dartboard independently."
 func test_a_burst_fires_exactly_burst_size_independent_pulls() -> void:

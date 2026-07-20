@@ -18,6 +18,7 @@ func _make_mobile_armed_unit(cell: Vector2i, squad: int = 0) -> Dictionary:
 	pistol.damage = 5.0
 	pistol.ap_cost = 1
 	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
 
 	var hand := Part.new()
 	hand.id = &"hand"

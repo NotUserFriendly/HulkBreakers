@@ -48,7 +48,25 @@ func is_legal(state: CombatState) -> bool:
 		return false
 
 	var weapon: Part = actual.shell.find_part(weapon_id)
-	if weapon == null or weapon.hp <= 0 or WoundEffects.is_disabled_by_wounds(weapon):
+	# taskblock-24 Pass B: the weapon must provide one of ActionCatalog's
+	# own ATTACK_ACTION_IDS (&"shoot" or &"saw" — never a bare &"shoot"
+	# literal here, which would wrongly reject a saw) — the same gate
+	# ActionCatalog already applies when building the player's own action
+	# bar, enforced here too, so a burst-only weapon (e.g. the chaingun)
+	# genuinely can't single-shot at the engine level, not just because
+	# the UI never offers the button.
+	var provides_a_single_pull: bool = (
+		weapon != null
+		and weapon.provides_actions.any(
+			func(id: StringName) -> bool: return id in ActionCatalog.ATTACK_ACTION_IDS
+		)
+	)
+	if (
+		weapon == null
+		or weapon.hp <= 0
+		or WoundEffects.is_disabled_by_wounds(weapon)
+		or not provides_a_single_pull
+	):
 		return false
 	if actual.ap < weapon.ap_cost:
 		return false
