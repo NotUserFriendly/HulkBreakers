@@ -16,6 +16,15 @@ extends RefCounted
 ## `Matrix.provides_actions()` returns exactly the same way it unions a
 ## part's own array, today or later.
 
+## taskblock-24 Pass B: the ids `build_firing_action` backs with a plain
+## `AttackAction` — shared here (not just duplicated as match-arm
+## literals) so `AttackAction.is_legal`'s own provides_actions check can't
+## quietly drift from what this file actually recognizes as "a single-pull
+## shot," the same "one seam" invariant the rest of this pass exists to
+## enforce. `&"saw"` is a different PROVIDING weapon, never a different
+## resolution mechanic — it belongs on this list, not a second one.
+const ATTACK_ACTION_IDS: Array[StringName] = [&"shoot", &"saw"]
+
 
 ## The full registry of authored actions. Not per-unit; `actions_for`
 ## filters this down to what a specific unit can actually use right now.
@@ -121,14 +130,12 @@ static func provider_for(
 ## `CombatAction` instance — used by both the player's own click-to-fire
 ## confirm (`TacticsController.confirm_shot`/`_confirm_step_out`) and the
 ## AI's own firing helper (`UnitAI._firing_action_for`), so neither can
-## silently drift from what a weapon actually provides. `&"shoot"`/
-## `&"saw"` are both single-pull actions backed by the same `AttackAction`
-## (a saw is a different PROVIDING weapon, not a different resolution
-## mechanic); `&"burst"` is the one id backed by a distinct class. Returns
-## null for any other id (never invents an action for one this file
-## doesn't recognize) — a caller that gets null simply has nothing to
-## enqueue, the same "no further action, no silent rollback" contract
-## `ActionQueue.enqueue` itself already has.
+## silently drift from what a weapon actually provides. `&"burst"` is the
+## one id backed by a distinct class. Returns null for any other id
+## (never invents an action for one this file doesn't recognize) — a
+## caller that gets null simply has nothing to enqueue, the same "no
+## further action, no silent rollback" contract `ActionQueue.enqueue`
+## itself already has.
 static func build_firing_action(
 	action_id: StringName,
 	unit: Unit,
@@ -138,15 +145,11 @@ static func build_firing_action(
 	extra_sources: Array[ModSource] = [],
 	mission: MissionState = null
 ) -> CombatAction:
-	match action_id:
-		&"burst":
-			return BurstAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
-		&"shoot", &"saw":
-			return AttackAction.new(
-				unit, weapon_id, target_cell, aim_offset, extra_sources, mission
-			)
-		_:
-			return null
+	if action_id == &"burst":
+		return BurstAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
+	if action_id in ATTACK_ACTION_IDS:
+		return AttackAction.new(unit, weapon_id, target_cell, aim_offset, extra_sources, mission)
+	return null
 
 
 ## Plain Array.sort() on StringName does NOT compare lexicographically (it

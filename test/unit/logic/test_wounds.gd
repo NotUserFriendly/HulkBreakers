@@ -38,6 +38,7 @@ func _armed_unit() -> Dictionary:
 	weapon.ap_cost = 1
 	weapon.requires = {&"TRIGGER": 1}
 	weapon.attaches_to = [&"GRIP"]
+	weapon.provides_actions = [&"shoot"]
 
 	var arm := Part.new()
 	arm.id = &"test_arm"

@@ -74,6 +74,7 @@ func _armed_unit(cell: Vector2i, squad_id: int, weapon_id: StringName = &"") -> 
 		weapon.requires = {&"TRIGGER": 1}
 		weapon.damage = 5.0
 		weapon.ap_cost = 1
+		weapon.provides_actions = [&"shoot"]
 		weapon.weapon_def = WeaponDef.new()
 		weapon.weapon_def.max_range = 15.0
 		weapon.scatter = [Ring.new(0.1, 1.0)]

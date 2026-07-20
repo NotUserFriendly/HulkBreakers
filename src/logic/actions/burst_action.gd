@@ -45,7 +45,16 @@ func is_legal(state: CombatState) -> bool:
 	var weapon: Part = actual.shell.find_part(weapon_id)
 	if weapon == null or weapon.hp <= 0 or weapon.weapon_def == null:
 		return false
-	if WoundEffects.is_disabled_by_wounds(weapon) or weapon.weapon_def.burst_size <= 1:
+	# taskblock-24 Pass A: `not &"burst" in weapon.provides_actions` is the
+	# mirror of AttackAction's own &"shoot" check — `burst_size <= 1` alone
+	# already excludes a weapon that CAN'T burst; this additionally
+	# excludes one that authors simply never opted into burst for, same
+	# "provides_actions is the one seam" invariant.
+	if (
+		WoundEffects.is_disabled_by_wounds(weapon)
+		or weapon.weapon_def.burst_size <= 1
+		or not &"burst" in weapon.provides_actions
+	):
 		return false
 	if actual.ap < _ap_cost(weapon) or Suppression.blocks_weapon(state, actual, weapon):
 		return false
