@@ -644,10 +644,11 @@ static func _engagement_score(
 		)
 		else 0.0
 	)
-	# taskblock-19 Pass E: leaving the unit's OWN current adjacency to
-	# reach `cell` draws a stub attack of opportunity — weighted here
-	# through the exact same speculative query the real mid-move hook
-	# resolves against, never a second notion of "who's leaving whom."
+	# taskblock-19 Pass E / taskblock-25 Pass E: leaving the unit's OWN
+	# current adjacency to reach `cell` draws a real melee attack of
+	# opportunity — weighted here through the exact same speculative query
+	# the real mid-move hook resolves against, never a second notion of
+	# "who's leaving whom."
 	var opportunity_penalty: float = (
 		OPPORTUNITY_ATTACK_PENALTY
 		if not (
