@@ -168,11 +168,12 @@ func test_the_same_profiles_counts_and_seed_produce_an_equivalent_bout() -> void
 		assert_eq(first_state.units[i].squad_id, second_state.units[i].squad_id)
 
 
-## taskblock-21 Pass D2: "team-coded extraction tiles, placed at bout
-## setup — near each team's own spawn is fine for now." Both squads get
-## their OWN entry, each equal to that squad's own spawn cells — never a
-## shared zone, and never left unpopulated the way a plain single-player
-## mission's `team_extraction_cells` stays.
+## taskblock-21 Pass D2 / taskblock-23 Pass E1: "team-coded extraction
+## tiles, placed at bout setup" — both squads get their OWN entry (now
+## the OPPOSING squad's own spawn, tb23 E1 — see the dedicated test
+## below for that specific placement), never a shared zone, and never
+## left unpopulated the way a plain single-player mission's
+## `team_extraction_cells` stays.
 func test_build_bout_populates_team_extraction_cells_for_both_squads() -> void:
 	var profiles: Array = _reference_profiles()
 
@@ -193,6 +194,36 @@ func test_build_bout_populates_team_extraction_cells_for_both_squads() -> void:
 		mission.team_extraction_cells[0],
 		mission.team_extraction_cells[1],
 		"each squad gets its own zone, not a shared one"
+	)
+
+
+## taskblock-23 Pass E1: "place each team's extraction near the OPPOSING
+## team's spawn — this pulls the teams through each other and forces
+## engagement." Squad 0 (spawns at SPAWN_A) extracts at SPAWN_B and vice
+## versa — the exact opposite of tb21 D2's own original "each squad's
+## own spawn doubles as its own extraction" placement, which let both
+## teams sit still on their own side with no reason to cross at all.
+func test_build_bout_places_each_squads_extraction_on_the_opposing_side() -> void:
+	var profiles: Array = _reference_profiles()
+
+	var result: Dictionary = BoutSetup.build_bout(
+		_roster(profiles[0], &"AGGRESSIVE", 1), _roster(profiles[1], &"AGGRESSIVE", 1), 555
+	)
+
+	var mission: MissionState = result.mission
+	var state: CombatState = result.state
+	var spawn_a: Array[Vector2i] = BoutSetup._cells_of_terrain(
+		state.grid, Enums.TerrainType.SPAWN_A
+	)
+	var spawn_b: Array[Vector2i] = BoutSetup._cells_of_terrain(
+		state.grid, Enums.TerrainType.SPAWN_B
+	)
+
+	assert_eq(
+		mission.team_extraction_cells[0], spawn_b, "squad 0 (spawns at SPAWN_A) extracts at SPAWN_B"
+	)
+	assert_eq(
+		mission.team_extraction_cells[1], spawn_a, "squad 1 (spawns at SPAWN_B) extracts at SPAWN_A"
 	)
 
 

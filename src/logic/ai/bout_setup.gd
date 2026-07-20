@@ -59,15 +59,23 @@ static func build_bout(
 
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []
-	mission.extraction_cells = (spawn_a_cells if not spawn_a_cells.is_empty() else [Vector2i.ZERO])
-	# taskblock-21 Pass D: "team-coded extraction tiles... placed at bout
-	# setup, near each team's own spawn is fine for now — tunable." Each
-	# squad's own spawn cells double as its own extraction tiles; a flagged
-	# placement choice, not a design decision.
+	# taskblock-23 Pass E1: "in bout setup, place each team's extraction
+	# near the OPPOSING team's spawn — this pulls the teams through each
+	# other and forces engagement." Superseded from tb21 D's own original
+	# placement (each squad's own spawn doubling as its own extraction,
+	# so both teams could sit still on their own side with no reason to
+	# cross at all) — a BOUT-SETUP-ONLY choice, never real mission-gen
+	# (later, map-design-driven) extraction placement, which this file
+	# has no bearing on at all.
 	mission.team_extraction_cells = {
-		0: spawn_a_cells if not spawn_a_cells.is_empty() else [Vector2i.ZERO],
-		1: spawn_b_cells if not spawn_b_cells.is_empty() else [Vector2i.ZERO],
+		0: spawn_b_cells if not spawn_b_cells.is_empty() else [Vector2i.ZERO],
+		1: spawn_a_cells if not spawn_a_cells.is_empty() else [Vector2i.ZERO],
 	}
+	# The flat, legacy fallback field (tb22 A: only ever consulted for the
+	# mission's OWN player squad, squad 0 here) kept consistent with squad
+	# 0's real extraction above, rather than left pointing at its own
+	# spawn — a stale value `team_extraction_cells` no longer agrees with.
+	mission.extraction_cells = (spawn_b_cells if not spawn_b_cells.is_empty() else [Vector2i.ZERO])
 
 	return {"state": state, "mission": mission, "error": ""}
 
