@@ -39,6 +39,14 @@ var resolution_player: ResolutionPlayer
 var log_label: RichTextLabel
 var log_sink: HierarchicalUiSink
 
+## taskblock-29 Pass D: the ONE debug/spectator context this ever gets
+## constructed in — CLAUDE.md "no parallel systems": every button below
+## calls straight into this, never a bespoke direct mutation of its own.
+## `SquadControlOverlay`/`TacticsController` (the real player path) never
+## reference `BoutInjector` at all (test_bout_injector_determinism.gd's
+## own routing/guard test proves it from source).
+var bout_injector: BoutInjector
+
 ## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
 ## opens the inspect panel on that bot. Closing it resumes." Supersedes
 ## tb17 C's hover-tooltip entirely — `UnitPicker.hit()` (a plain static
@@ -61,6 +69,13 @@ var _tracer_count_field: SpinBox
 ## the inspect panel — "closing it resumes" must never START auto-play for
 ## someone who had already paused by hand before clicking a unit.
 var _was_playing_before_inspect: bool = false
+## Whichever unit `_update_hover` last found under the cursor — the
+## injection menu's own implicit "target," the same "whichever unit the
+## cursor is actually over" concept `_update_hover` already tracks
+## visually (highlight), just also remembered here since the debug menu
+## needs to know WHO by the time it's actually clicked open.
+var _hovered_unit: Unit = null
+var _inject_menu: PopupMenu = null
 
 
 ## `battle.combat_state`/`battle.mission` are already the freshly-built
@@ -75,6 +90,7 @@ func setup(p_battle: BattleScene) -> void:
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
 	resolution_player.setup(battle)
+	bout_injector = BoutInjector.new(battle.combat_state)
 
 	_build_ui()
 	battle.combat_state.combat_log.add_sink(log_sink)
@@ -154,6 +170,7 @@ func _update_hover(screen_pos: Vector2) -> void:
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
 	var hovered_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
 	var hovered_part: Part = hit.part as Part if not hit.is_empty() else null
+	_hovered_unit = hovered_unit
 	for view: HitVolumeView in battle.unit_views:
 		if view.unit == hovered_unit:
 			view.highlight_part(hovered_part)
@@ -290,6 +307,16 @@ func _build_ui() -> void:
 	assume_control_button.pressed.connect(battle.toggle_blue_control)
 	controls.add_child(assume_control_button)
 
+	# taskblock-29 Pass D: "programmatic injection is the primary path...
+	# the spectator UI is a convenience wrapper over the same BoutInjector
+	# calls, not a separate path" — every item below calls straight into
+	# `bout_injector`, targeting whichever unit `_update_hover` last found
+	# under the cursor.
+	var inject_button := Button.new()
+	inject_button.text = "Inject..."
+	inject_button.pressed.connect(_open_inject_menu)
+	controls.add_child(inject_button)
+
 	_status_label = Label.new()
 	controls.add_child(_status_label)
 
@@ -400,3 +427,44 @@ func _on_speed_button_pressed() -> void:
 		next_speed = 4.0
 	set_speed(next_speed)
 	_speed_button.text = "%.0fx" % next_speed
+
+
+## taskblock-29 Pass D: a real, deliberately small debug menu — a handful
+## of representative verbs (the taskblock's own worked examples: force
+## current, force a state, force overwatch), not a full form-builder for
+## every `BoutInjector` verb. A silent no-op with nothing hovered: there's
+## no target to open the menu against, same posture InspectPanel's own
+## debug menu takes when nothing is selected.
+func _open_inject_menu() -> void:
+	if _hovered_unit == null:
+		return
+	if _inject_menu != null:
+		_inject_menu.queue_free()
+	_inject_menu = PopupMenu.new()
+	add_child(_inject_menu)
+	_inject_menu.add_item("[*] Force Current Unit", 0)
+	_inject_menu.add_item("[*] Set HP to 0 (root part)", 1)
+	_inject_menu.add_item("[*] Force Overwatch Arm (first weapon)", 2)
+	_inject_menu.id_pressed.connect(_on_inject_menu_id_pressed.bind(_hovered_unit))
+	_inject_menu.close_requested.connect(_inject_menu.queue_free)
+	_inject_menu.id_pressed.connect(_inject_menu.queue_free, CONNECT_DEFERRED)
+	var mouse_pos: Vector2 = get_viewport().get_mouse_position()
+	_inject_menu.popup(Rect2i(Vector2i(mouse_pos), Vector2i.ZERO))
+
+
+## Every branch here calls straight into `bout_injector` — the exact
+## `BoutInjector` API programmatic/scripted use already calls, never a
+## bespoke UI-only mutation of its own (taskblock-29 Pass D: "the
+## spectator UI is a convenience wrapper over the same BoutInjector
+## calls, not a separate path").
+func _on_inject_menu_id_pressed(id: int, target: Unit) -> void:
+	match id:
+		0:
+			bout_injector.force_current_unit(target)
+		1:
+			bout_injector.set_part_hp(target, target.shell.root.id, 0)
+		2:
+			var weapon: Part = DeepStrike.find_operable_weapon(target)
+			if weapon != null:
+				bout_injector.force_overwatch_arm(target, weapon.id)
+	_refresh_status()

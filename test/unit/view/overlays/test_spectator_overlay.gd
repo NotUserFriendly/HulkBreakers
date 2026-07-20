@@ -450,3 +450,98 @@ func test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed() -> voi
 
 	assert_eq(spectated.mission.outcome, bare.mission.outcome)
 	assert_eq(overlay.runner.turns_taken, bare_runner.turns_taken)
+
+
+## taskblock-29 Pass D: the spectator injection hook. "Programmatic
+## injection is the primary path... the spectator UI is a convenience
+## wrapper over the same BoutInjector calls, not a separate path."
+
+
+func test_setup_wires_a_bout_injector_against_the_same_live_state() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	assert_not_null(overlay.bout_injector)
+	assert_eq(overlay.bout_injector.state, overlay.battle.combat_state)
+
+
+## The menu handler must call the exact same `BoutInjector` method a
+## programmatic caller would — proven two ways: the state mutates exactly
+## like a direct call would, AND the real `&"inject"` log event (the one
+## `_guard`/`_log_injection` gate every verb goes through) actually fires,
+## so this can never be a UI-only bypass of the real channel.
+func test_inject_menu_force_current_unit_calls_the_real_bout_injector_api() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.find_unit(1)
+	var sink := MemorySink.new()
+	built.state.combat_log.add_sink(sink)
+
+	overlay._on_inject_menu_id_pressed(0, enemy)
+
+	assert_eq(built.state.current_unit(), enemy)
+	var events: Array[LogEvent] = sink.events_of_kind(&"inject")
+	assert_eq(events.size(), 1)
+	assert_eq(events[0].data.get("verb"), &"force_current_unit")
+
+
+func test_inject_menu_set_hp_to_zero_calls_the_real_bout_injector_api() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.find_unit(1)
+	assert_gt(enemy.shell.root.hp, 0, "sanity: the target starts alive")
+
+	overlay._on_inject_menu_id_pressed(1, enemy)
+
+	assert_eq(enemy.shell.root.hp, 0)
+	assert_true(built.state.was_injected)
+
+
+func test_inject_menu_force_overwatch_arm_calls_the_real_bout_injector_api() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var jerry: Unit = built.state.find_unit(0)
+	assert_eq(jerry.overwatch_weapon_id, &"")
+
+	overlay._on_inject_menu_id_pressed(2, jerry)
+
+	assert_ne(jerry.overwatch_weapon_id, &"", "must have found and armed jerry's own weapon")
+
+
+## "The injection channel is unreachable from a normal player-controlled
+## overlay" — this overlay is the one legitimate place it IS reachable.
+func test_open_inject_menu_is_a_noop_with_nothing_hovered() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	assert_null(overlay._hovered_unit, "sanity: nothing hovered yet")
+
+	overlay._open_inject_menu()
+
+	assert_null(overlay._inject_menu, "no target to open the menu against — a silent no-op")
+
+
+## taskblock-29 Pass D's own TESTS bar: "an injection applied while the
+## spectator is paused is visible on the next step."
+func test_an_injection_applied_while_paused_is_visible_on_the_next_step() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.find_unit(1)
+	assert_false(overlay.playing, "sanity: a fresh overlay starts paused")
+
+	overlay.bout_injector.force_current_unit(enemy)
+	await overlay.step_once()
+
+	assert_eq(overlay.runner.last_unit, enemy, "the forced current unit must be who acted")
+
+
+## "Playback after injection proceeds normally" — the bout keeps running
+## turn after turn, same as an un-injected one, once the forced state is
+## applied.
+func test_playback_proceeds_normally_after_an_injection() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+
+	overlay.bout_injector.set_ap(built.state.find_unit(0), 0)
+	await overlay.step_once()
+	assert_eq(overlay.runner.turns_taken, 1)
+
+	await overlay.step_once()
+	assert_eq(overlay.runner.turns_taken, 2)
