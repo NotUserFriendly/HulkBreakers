@@ -262,7 +262,9 @@ func test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwat
 	var wedge_bottom: float = wedge.position.y - wedge_box.size.y / 2.0
 	# board_view.gd's own ground-tier markers, each a 0.02-thick box
 	# centered on its own HEIGHT constant (_marker()) — top face is
-	# height + 0.01. OVERWATCH_ARC_HEIGHT (0.04) is the tallest.
+	# height + 0.01. OVERWATCH_ARC_HEIGHT is the tallest of these (the
+	# team marker disc is checked separately below — it's owned by
+	# HitVolumeView itself, not board_view.gd).
 	var marker_tops: Array[float] = [
 		BoardView.REACHABLE_HEIGHT + 0.01,
 		BoardView.GHOST_HEIGHT + 0.01,
@@ -274,6 +276,35 @@ func test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwat
 		assert_true(
 			wedge_bottom > top, "wedge bottom %f must clear marker top %f" % [wedge_bottom, top]
 		)
+	var team_marker_top: float = (
+		HitVolumeView.TEAM_MARKER_Y + HitVolumeView.TEAM_MARKER_HEIGHT / 2.0
+	)
+	assert_true(
+		wedge_bottom > team_marker_top,
+		(
+			"wedge bottom %f must clear the team marker's own top %f too"
+			% [wedge_bottom, team_marker_top]
+		)
+	)
+
+
+## taskblock-27 Pass C2: the tb26 A3 fix (and its own first re-fix) never
+## checked the team marker at all — `TEAM_MARKER_Y` (0.01) was IDENTICAL
+## to `BoardView.EXTRACTION_TILE_HEIGHT` (0.010), a real co-planar pair
+## every unit standing on its own extraction tile hit, unreported until
+## this pass enumerated the whole ground-overlay height ladder. Both are
+## 0.02-thick (disc/box), so this checks the two spans don't overlap at
+## all, not just that the centers differ.
+func test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker() -> void:
+	var team_marker_bottom: float = (
+		HitVolumeView.TEAM_MARKER_Y - HitVolumeView.TEAM_MARKER_HEIGHT / 2.0
+	)
+	var extraction_top: float = BoardView.EXTRACTION_TILE_HEIGHT + 0.01
+	assert_gt(
+		team_marker_bottom,
+		extraction_top,
+		"the team marker's own bottom face must clear the extraction tile's own top face"
+	)
 
 
 func test_a_downed_unit_kills_its_facing_wedge() -> void:

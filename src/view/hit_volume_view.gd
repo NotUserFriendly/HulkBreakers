@@ -27,7 +27,15 @@ extends Node3D
 
 const TEAM_MARKER_RADIUS := 0.4
 const TEAM_MARKER_HEIGHT := 0.02
-const TEAM_MARKER_Y := 0.01
+## taskblock-27 Pass C2: part of the one ordered ground-overlay height
+## ladder (see `board_view.gd`'s own matching comment on
+## `EXTRACTION_TILE_HEIGHT` for the full enumeration) — was 0.01,
+## IDENTICAL to `EXTRACTION_TILE_HEIGHT` (0.010), a real, previously
+## unreported co-planar pair found while enumerating this set for the
+## first time (a unit standing on its own extraction tile, an ordinary
+## end-of-turn occurrence, always z-fought). Raised to clear
+## `board_view.gd`'s own `GHOST_HEIGHT` (top face 0.04) with margin.
+const TEAM_MARKER_Y := 0.06
 const SELECTED_BRIGHTEN := 0.35
 ## docs/10 taskblock02 F3: a facing wedge on the ring, so the player can
 ## actually see which way a unit is turned before spending MP to change
@@ -38,21 +46,22 @@ const SELECTED_BRIGHTEN := 0.35
 ## optional").
 const FACING_WEDGE_SIZE := Vector3(0.16, 0.10, 0.30)
 const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
-## taskblock-26 Pass A3 (re-fix): the wedge USED to center on
-## `TEAM_MARKER_Y + TEAM_MARKER_HEIGHT` (0.03) — with its own 0.10-tall
-## box, that put its bottom face at -0.02, below the ground plane (Y=0)
-## and co-planar with any ground-tier marker near it. The FIRST fix
-## (0.09) only checked clearance against `board_view.gd`'s
-## `EXTRACTION_TILE_HEIGHT` (top face 0.02) and `TEAM_MARKER_Y +
-## TEAM_MARKER_HEIGHT` (top face 0.02) — it never checked the TALLEST
-## ground-tier overlay, `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` (top
-## face 0.05, the amber overwatch-arc tile, a very ordinary thing to have
-## visible under a unit standing in it), which the 0.09 center's own
-## bottom face (0.04) genuinely interpenetrated. Raised again so the
-## wedge's own bottom face (this minus half of `FACING_WEDGE_SIZE.y`)
-## clears the TALLEST known ground-tier marker with real headroom, not
-## just the one named in the original report.
-const FACING_WEDGE_Y := 0.12
+## taskblock-27 Pass C2 (tb26 Pass A3's second re-fix — two prior single-
+## marker bumps each missed a DIFFERENT co-planar element in turn: first
+## the extraction tile, then `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT`.
+## Bumping one marker in isolation, over and over, was the actual bug —
+## every ground overlay's own height was authored independently, in
+## whichever file happened to need one, with no shared ordering at all.
+## This is the last rung of ONE deliberately-ordered ladder now (see
+## `board_view.gd`'s own matching comment on `EXTRACTION_TILE_HEIGHT` for
+## the full enumeration: extraction tile -> team marker -> overwatch arc
+## -> facing wedge, each with real clearance over the last). `
+## FACING_WEDGE_SIZE.y` (0.10) is five times taller than every other rung
+## in the ladder, so it needs real headroom above `OVERWATCH_ARC_HEIGHT`
+## (top face 0.10), not just the next small step — this constant is the
+## wedge's own CENTER, so its bottom face is this minus half of
+## `FACING_WEDGE_SIZE.y`.
+const FACING_WEDGE_Y := 0.17
 ## docs/10 taskblock03 G: "a unit with no matrix docked... needs to read as
 ## down at a glance." Darkens the team ring rather than a separate material —
 ## cheap, and it still reads as "this squad's, but not right."
