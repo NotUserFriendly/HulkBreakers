@@ -240,10 +240,11 @@ func apply(state: CombatState) -> void:
 	)
 
 
+## BR30.xx: moved to `ActionCatalog.ap_cost_for` — the one seam this and
+## `ActionBar._can_afford` both read, so the action bar can't quietly
+## price a burst using the plain single-shot `ap_cost` again.
 func _ap_cost(weapon: Part) -> int:
-	if weapon.weapon_def != null and weapon.weapon_def.burst_ap_cost > 0:
-		return weapon.weapon_def.burst_ap_cost
-	return weapon.ap_cost
+	return ActionCatalog.ap_cost_for(&"burst", weapon)
 
 
 func _unit_at(state: CombatState, cell: Vector2i) -> Unit:

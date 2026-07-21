@@ -186,6 +186,27 @@ static func build_firing_action(
 	return null
 
 
+## BR30.xx: the AP `action_id` actually charges from `provider` — almost
+## always `provider.ap_cost` itself, except `&"burst"`, which authors its
+## own distinct, usually-higher `weapon_def.burst_ap_cost` (many more
+## trigger-pulls than a single shot) and only falls back to `ap_cost` when
+## a weapon never authored one (`BurstAction._ap_cost`'s own original
+## logic, moved here). The ONE seam both `ActionBar._can_afford`'s
+## affordability check and `BurstAction`'s real AP deduction read, so
+## neither can silently drift from what the other actually charges — the
+## action bar previously read `provider.ap_cost` directly and showed BURST
+## as affordable using the single-shot cost, letting a player arm (and
+## then have silently rejected) a burst they couldn't actually pay for.
+static func ap_cost_for(action_id: StringName, provider: Part) -> int:
+	if (
+		action_id == &"burst"
+		and provider.weapon_def != null
+		and provider.weapon_def.burst_ap_cost > 0
+	):
+		return provider.weapon_def.burst_ap_cost
+	return provider.ap_cost
+
+
 ## Plain Array.sort() on StringName does NOT compare lexicographically (it
 ## orders by StringName's own interning, not the string it names) — a
 ## String-cast custom comparator is what actually gives "then by action

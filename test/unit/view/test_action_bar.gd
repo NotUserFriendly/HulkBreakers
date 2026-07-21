@@ -51,6 +51,51 @@ func _make_armed_unit(cell: Vector2i, ap_cost: int, squad: int = 0) -> Unit:
 	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
+## BR30.xx: same shape as `_make_armed_unit`, but the weapon only provides
+## `&"burst"` and authors a `weapon_def.burst_ap_cost` HIGHER than its own
+## plain `ap_cost` — matching `data/parts/chaingun.tres`
+## (`ap_cost = 2`, `weapon_def.burst_ap_cost = 4`). Real burst weapons
+## charge the burst cost, not the plain one.
+func _make_burst_armed_unit(
+	cell: Vector2i, ap_cost: int, burst_ap_cost: int, squad: int = 0
+) -> Unit:
+	var chaingun := Part.new()
+	chaingun.id = &"chaingun"
+	chaingun.hp = 3
+	chaingun.max_hp = 3
+	chaingun.attaches_to = [&"GRIP"]
+	chaingun.requires = {&"TRIGGER": 1}
+	chaingun.damage = 5.0
+	chaingun.ap_cost = ap_cost
+	chaingun.scatter = [Ring.new(0.1, 1.0)]
+	chaingun.provides_actions = [&"burst"]
+	chaingun.weapon_def = WeaponDef.new()
+	chaingun.weapon_def.max_range = 12.0
+	chaingun.weapon_def.burst_size = 12
+	chaingun.weapon_def.burst_ap_cost = burst_ap_cost
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = chaingun
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
 func _setup_bar(unit: Unit) -> Dictionary:
 	var state := CombatState.new(Grid.new(10, 10), [unit])
 	var controller := TacticsController.new()
@@ -193,6 +238,30 @@ func test_an_action_already_queued_this_turn_counts_against_a_later_affordabilit
 
 	assert_null(
 		controller.armed_action, "must not arm once the queued move used up the remaining ap"
+	)
+
+
+## BR30.xx: "actions selectable when not enough AP available still" —
+## `_can_afford` compared the unit's AP against the weapon's plain
+## `ap_cost` (2) regardless of action id, but a `&"burst"`-providing
+## weapon actually charges its own, higher `weapon_def.burst_ap_cost` (4,
+## `BurstAction._ap_cost`). 3 AP covers the plain cost but not the real
+## one — before the fix this showed (and let you arm) BURST as
+## affordable anyway, only to have it silently rejected at enqueue time.
+func test_burst_dims_using_its_own_higher_ap_cost_not_the_weapons_plain_one() -> void:
+	var unit: Unit = _make_burst_armed_unit(Vector2i(0, 0), 2, 4)
+	var built: Dictionary = _setup_bar(unit)  # CombatState resets ap to max_ap on add
+	var bar: ActionBar = built.bar
+	var container: HBoxContainer = built.container
+	unit.ap = 3  # covers the plain ap_cost (2) but not burst_ap_cost (4)
+	bar.refresh()
+
+	var label: Label = (container.get_child(0) as PanelContainer).get_child(0)
+	assert_eq(label.text, "BR", "sanity: burst's own initials still show")
+	assert_eq(
+		label.modulate,
+		HulkTheme.DIM,
+		"burst must dim against its own real (higher) AP cost, not the weapon's plain ap_cost"
 	)
 
 
