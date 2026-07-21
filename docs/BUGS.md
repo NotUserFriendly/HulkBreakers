@@ -103,6 +103,8 @@ confirm" roll-up — so pending items surface at a natural review point without 
   **BR27.06 — Step Out no longer occurs at all**, a regression from this very restructure). Until
   BR27.06 is fixed, BR27.01 can't be confirmed. **Verification deferred**; still pending, and now
   gated behind BR27.06.
+- **2026-07-21:** BR27.06 now has a fix pending its own confirmation (commit `d42f744`). Worth
+  re-attempting BR27.01's own verification alongside BR27.06's — same play session either way.
 
 ### BR27.02 — Active — Chaingun bursts fire half-backward (visual only, hits are correct)  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
@@ -168,7 +170,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   with it (`test_action_bar.gd::test_an_action_already_queued_this_turn_counts_against_a_later_
   affordability_check`). 1861/1861 green.
 
-### BR27.06 — Active — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
+### BR27.06 — Pending Confirmation — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). After the tb27 Pass B flow restructure (BR27.01), Step Out
   now **doesn't happen at all** for the player — a regression past the original four symptoms.
 - **Status:** reopened, and likely *the* blocker that stopped the supervisor verifying BR27.01/BR26.01
@@ -197,6 +199,25 @@ confirm" roll-up — so pending items surface at a natural review point without 
     than this fixture reproduces. **Needs either a more specific repro (which map/weapon/exact
     clicks) or a real-map rarity sweep before further guessing is worth the cost** — not chased
     further this cycle, per tb30's "don't loop within a block" instruction. Still open.
+- **2026-07-21 (taskblock-30, same-day follow-up): hypothesis (a) disproved, root cause found.** A
+  60-seed sweep of real `MapGen` maps driven through full AI-vs-AI bouts (`BoutSetup.build_bout` +
+  `BoutRunner`) found ~1850 genuine covered-with-a-legal-candidate encounters across those 60 seeds —
+  not rare at all. `MapGen._scatter_cover` never sets `grid.opacity` (only `blockers`), so the
+  overwhelming majority of those are also plainly LOS-visible and clickable, not "no LOS at all" edge
+  cases. That ruled out (a) and pointed back at the code path itself — same bug class as BR27.05:
+  `TacticsController._enter_aim_or_step_out_mode` read `selection.selected_unit` directly. Per
+  docs/09's own "queuing mutates nothing," that stays at wherever the shooter started the turn until
+  the queue resolves — so a player who moves toward/into cover and THEN arms a shot had cover
+  evaluated from the STALE pre-move cell, silently falling through to ordinary aim mode instead of the
+  step-out the shooter's real, about-to-be-true position warranted. Every existing test in
+  `test_tactics_controller_step_out.gd` armed+clicked from the shooter's own turn-start cell, never
+  after a queued move — the exact gap that let this ship unnoticed.
+- **Fix:** swapped to `selection.previewed_unit()` — the same source `reachable_cells()` already
+  reads for the identical reason.
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `d42f744`. New
+  regression test queues a move from an uncovered cell into the same covered cell every other test in
+  the file starts at, then arms+clicks: confirmed it fails without the fix (falls into ordinary aim
+  mode) and passes with it. 1862/1862 green.
 
 ### BR27.07 — Active — Active-turn highlight lands on the wrong unit; change to facing-marker-only  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). Two parts: (a) **design change** — instead of recoloring the
