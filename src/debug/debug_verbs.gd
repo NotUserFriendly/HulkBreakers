@@ -18,6 +18,12 @@ extends RefCounted
 ## params — `hand_weapon`/`attach_part` already cover the single-item
 ## case a form CAN express); `set_therms` (a stub with nothing real to
 ## configure yet — docs/PLAN.md, therms aren't built).
+##
+## `set_position` (unit-only move) is ALSO not its own row anymore
+## (taskblock-30 follow-up) — `move_object` below generalizes it (unit,
+## cover, or dropped field items) and calls `set_position` itself for the
+## unit case, so the underlying verb still exists and is still exercised,
+## just never surfaced as a second, narrower panel entry next to it.
 
 const P := DebugVerbSpec.ParamType
 
@@ -25,20 +31,23 @@ const P := DebugVerbSpec.ParamType
 static func all() -> Array[DebugVerbSpec]:
 	return [
 		DebugVerbSpec.new(
-			&"set_position",
-			"Move Unit",
-			[DebugVerbSpec.param(&"unit", P.UNIT), DebugVerbSpec.param(&"cell", P.CELL)],
-			Callable(DebugVerbs, &"_apply_set_position")
+			&"move_object",
+			"Move Object",
+			[DebugVerbSpec.param(&"object", P.OBJECT), DebugVerbSpec.param(&"to_cell", P.CELL)],
+			Callable(DebugVerbs, &"_apply_move_object")
 		),
-		DebugVerbSpec.new(
-			&"spawn_unit",
-			"Spawn Unit",
-			[
-				DebugVerbSpec.param(&"preset", P.PRESET),
-				DebugVerbSpec.param(&"cell", P.CELL),
-				DebugVerbSpec.param(&"squad_id", P.INT),
-			],
-			Callable(DebugVerbs, &"_apply_spawn_unit")
+		(
+			DebugVerbSpec
+			. new(
+				&"spawn_unit",
+				"Spawn Unit",
+				[
+					DebugVerbSpec.param(&"preset", P.PRESET),
+					DebugVerbSpec.param(&"cell", P.CELL),
+					DebugVerbSpec.param(&"squad_id", P.INT),
+				],
+				Callable(DebugVerbs, &"_apply_spawn_unit")
+			)
 		),
 		DebugVerbSpec.new(
 			&"remove_unit",
@@ -76,47 +85,59 @@ static func all() -> Array[DebugVerbSpec]:
 			[DebugVerbSpec.param(&"unit", P.UNIT), DebugVerbSpec.param(&"pose_id", P.POSE)],
 			Callable(DebugVerbs, &"_apply_set_pose")
 		),
-		DebugVerbSpec.new(
-			&"attach_part",
-			"Attach Part",
-			[
-				DebugVerbSpec.param(&"unit", P.UNIT),
-				DebugVerbSpec.param(&"part_id", P.STRING_NAME),
-				DebugVerbSpec.param(&"socket_id", P.STRING_NAME),
-			],
-			Callable(DebugVerbs, &"_apply_attach_part")
+		(
+			DebugVerbSpec
+			. new(
+				&"attach_part",
+				"Attach Part",
+				[
+					DebugVerbSpec.param(&"unit", P.UNIT),
+					DebugVerbSpec.param(&"part_id", P.STRING_NAME),
+					DebugVerbSpec.param(&"socket_id", P.STRING_NAME),
+				],
+				Callable(DebugVerbs, &"_apply_attach_part")
+			)
 		),
-		DebugVerbSpec.new(
-			&"hand_weapon",
-			"Hand Weapon",
-			[
-				DebugVerbSpec.param(&"unit", P.UNIT),
-				DebugVerbSpec.param(&"weapon_id", P.STRING_NAME),
-				DebugVerbSpec.param(&"socket_id", P.STRING_NAME),
-			],
-			Callable(DebugVerbs, &"_apply_hand_weapon")
+		(
+			DebugVerbSpec
+			. new(
+				&"hand_weapon",
+				"Hand Weapon",
+				[
+					DebugVerbSpec.param(&"unit", P.UNIT),
+					DebugVerbSpec.param(&"weapon_id", P.STRING_NAME),
+					DebugVerbSpec.param(&"socket_id", P.STRING_NAME),
+				],
+				Callable(DebugVerbs, &"_apply_hand_weapon")
+			)
 		),
-		DebugVerbSpec.new(
-			&"set_part_hp",
-			"Set Part HP",
-			[
-				DebugVerbSpec.param(&"unit", P.UNIT),
-				DebugVerbSpec.param(&"part_id", P.STRING_NAME),
-				DebugVerbSpec.param(&"hp", P.INT),
-			],
-			Callable(DebugVerbs, &"_apply_set_part_hp")
+		(
+			DebugVerbSpec
+			. new(
+				&"set_part_hp",
+				"Set Part HP",
+				[
+					DebugVerbSpec.param(&"unit", P.UNIT),
+					DebugVerbSpec.param(&"part_id", P.STRING_NAME),
+					DebugVerbSpec.param(&"hp", P.INT),
+				],
+				Callable(DebugVerbs, &"_apply_set_part_hp")
+			)
 		),
-		DebugVerbSpec.new(
-			&"inflict_wound",
-			"Inflict Wound",
-			[
-				DebugVerbSpec.param(&"unit", P.UNIT),
-				DebugVerbSpec.param(&"part_id", P.STRING_NAME),
-				DebugVerbSpec.param(&"stack", P.FLOAT),
-				DebugVerbSpec.param(&"threshold", P.FLOAT),
-				DebugVerbSpec.param(&"wound_id", P.STRING_NAME),
-			],
-			Callable(DebugVerbs, &"_apply_inflict_wound")
+		(
+			DebugVerbSpec
+			. new(
+				&"inflict_wound",
+				"Inflict Wound",
+				[
+					DebugVerbSpec.param(&"unit", P.UNIT),
+					DebugVerbSpec.param(&"part_id", P.STRING_NAME),
+					DebugVerbSpec.param(&"stack", P.FLOAT),
+					DebugVerbSpec.param(&"threshold", P.FLOAT),
+					DebugVerbSpec.param(&"wound_id", P.STRING_NAME),
+				],
+				Callable(DebugVerbs, &"_apply_inflict_wound")
+			)
 		),
 		DebugVerbSpec.new(
 			&"place_cover",
@@ -136,20 +157,23 @@ static func all() -> Array[DebugVerbSpec]:
 			[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"passable", P.BOOL)],
 			Callable(DebugVerbs, &"_apply_set_passable")
 		),
-		DebugVerbSpec.new(
-			&"force_overwatch_arm",
-			"Force Overwatch Arm",
-			[
-				DebugVerbSpec.param(&"unit", P.UNIT),
-				DebugVerbSpec.param(&"weapon_id", P.STRING_NAME),
-			],
-			Callable(DebugVerbs, &"_apply_force_overwatch_arm")
+		(
+			DebugVerbSpec
+			. new(
+				&"force_overwatch_arm",
+				"Force Overwatch Arm",
+				[
+					DebugVerbSpec.param(&"unit", P.UNIT),
+					DebugVerbSpec.param(&"weapon_id", P.STRING_NAME),
+				],
+				Callable(DebugVerbs, &"_apply_force_overwatch_arm")
+			)
 		),
 	]
 
 
-static func _apply_set_position(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
-	return inj.set_position(a.unit, a.cell)
+static func _apply_move_object(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.move_object(a.object, a.to_cell)
 
 
 static func _apply_spawn_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

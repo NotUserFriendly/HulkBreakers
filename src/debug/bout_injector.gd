@@ -125,6 +125,22 @@ func remove_unit(unit: Unit) -> bool:
 	return true
 
 
+## Shared by `set_position`/`move_object` (taskblock-30 follow-up) — the
+## grid-occupancy mutation itself, no guard, no log: each public verb logs
+## under its OWN name (the same split `_attach` already uses for
+## `hand_weapon`/`attach_part`). Refuses (no mutation) onto an
+## out-of-bounds or already-occupied cell.
+func _move_unit(unit: Unit, cell: Vector2i) -> bool:
+	if not state.grid.in_bounds(cell) or state.grid.get_occupant_id(cell) != -1:
+		return false
+	if unit.alive:
+		state.grid.set_occupant_id(unit.cell, -1)
+	unit.cell = cell
+	if unit.alive:
+		state.grid.set_occupant_id(cell, unit.id)
+	return true
+
+
 ## Moves `unit` to `cell` directly — no pathing, no AP/MP cost — updating
 ## `Grid`'s own occupancy the same way `MoveAction`/`CombatState.add_unit`
 ## already do, never a bare field write that leaves the grid stale.
@@ -133,18 +149,72 @@ func set_position(unit: Unit, cell: Vector2i) -> bool:
 	if not can_inject():
 		_reject(&"set_position")
 		return false
-	if not state.grid.in_bounds(cell) or state.grid.get_occupant_id(cell) != -1:
-		return false
-	if unit.alive:
-		state.grid.set_occupant_id(unit.cell, -1)
 	var from_cell: Vector2i = unit.cell
-	unit.cell = cell
-	if unit.alive:
-		state.grid.set_occupant_id(cell, unit.id)
+	if not _move_unit(unit, cell):
+		return false
 	_log_injection(
 		&"set_position",
 		{"unit": unit.id, "from": from_cell, "to": cell},
 		"unit %d: %s -> %s" % [unit.id, from_cell, cell]
+	)
+	return true
+
+
+## taskblock-30 follow-up (supervisor): "generalize move unit to move
+## object, so I can move cover, units, or dropped objects." `target` is
+## the SAME hit-shaped `{kind, unit, cell}` dict `board_clicked` already
+## emits — the debug panel's own "active target" IS this verb's object
+## param, no separate identity model. A UNIT hit moves the unit (through
+## the SAME `_move_unit` helper `set_position` fronts, logged under this
+## verb's own name instead — the `_attach` split, applied here). A CELL
+## hit moves whatever `Grid.blockers` (authored cover, or a dropped
+## subtree `DamageResolver._register_dropped` wrote there) and/or
+## `Grid.field_items` (loose dropped weapons/matrices — `Grid`'s own
+## "loose items lying on the ground") actually hold at that cell — a real
+## dictionary re-key, preserving the Part's own state, never
+## `place_cover`'s fresh-template duplicate. Refuses (no mutation) if the
+## source cell holds neither, if a blocker would collide with one already
+## at the destination, or if source and destination are the same cell.
+func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
+	if not can_inject():
+		_reject(&"move_object")
+		return false
+	if target.get("kind") == Enums.HitKind.UNIT:
+		var unit: Variant = target.get("unit")
+		if unit == null:
+			return false
+		var from_cell: Vector2i = (unit as Unit).cell
+		if not _move_unit(unit, to_cell):
+			return false
+		_log_injection(
+			&"move_object",
+			{"unit": (unit as Unit).id, "from": from_cell, "to": to_cell},
+			"unit %d: %s -> %s" % [(unit as Unit).id, from_cell, to_cell]
+		)
+		return true
+	var from_cell: Variant = target.get("cell")
+	if from_cell == null or from_cell == to_cell:
+		return false
+	if not state.grid.in_bounds(from_cell) or not state.grid.in_bounds(to_cell):
+		return false
+	var has_blocker: bool = state.grid.blockers.has(from_cell)
+	var has_items: bool = state.grid.field_items.has(from_cell)
+	if not has_blocker and not has_items:
+		return false
+	if has_blocker and state.grid.blockers.has(to_cell):
+		return false
+	if has_blocker:
+		state.grid.blockers[to_cell] = state.grid.blockers[from_cell]
+		state.grid.blockers.erase(from_cell)
+	if has_items:
+		var moving: Array = state.grid.field_items[from_cell]
+		var existing: Array = state.grid.field_items.get(to_cell, [])
+		state.grid.field_items[to_cell] = existing + moving
+		state.grid.field_items.erase(from_cell)
+	_log_injection(
+		&"move_object",
+		{"from": from_cell, "to": to_cell},
+		"cell contents %s -> %s" % [from_cell, to_cell]
 	)
 	return true
 
@@ -260,9 +330,7 @@ func hand_weapon(
 ## `hand_weapon`/`equip_from_kit` — attach ANY part (an arm, a cladding
 ## plate, a backpack), not just a weapon. Same `_attach` mechanism, own
 ## verb name/log text.
-func attach_part(
-	unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary
-) -> bool:
+func attach_part(unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary) -> bool:
 	if not can_inject():
 		_reject(&"attach_part")
 		return false

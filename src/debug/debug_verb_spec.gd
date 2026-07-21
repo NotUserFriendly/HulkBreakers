@@ -7,7 +7,13 @@ extends RefCounted
 ## the table instead of one hand-written form per verb, so a new verb is
 ## a new table row, not new UI code.
 
-enum ParamType { UNIT, CELL, INT, FLOAT, STRING_NAME, BOOL, POSE, PRESET }
+## OBJECT (taskblock-30 follow-up): never a manual-entry widget — resolves
+## from the debug panel's own "active target" memory (the last thing a
+## board click hit while the panel was open), the same hit-shaped
+## `{kind, unit, cell}` dict `board_clicked` emits. A verb like
+## `move_object` uses this instead of a UNIT param because its "object"
+## can be a unit OR a cell's contents — one param type either way.
+enum ParamType { UNIT, CELL, INT, FLOAT, STRING_NAME, BOOL, POSE, PRESET, OBJECT }
 
 var id: StringName
 var label: String
