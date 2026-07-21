@@ -151,7 +151,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
   comparison) rather than a code claim, since no divergent lighting path was found to remove.
 
-### BR27.05 — Pending Confirmation — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
+### BR27.05 — Resolved — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). The tb27 Pass D3 fix (dim/disable unaffordable action-bar
   slots) **did not hold** — slots are still clickable/armable when the unit can't afford them.
 - **Root cause (2026-07-21, tb30):** `ActionBar.refresh()`/`_on_box_gui_input()` both compared against
@@ -163,7 +163,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Fix:** both call sites now read `tactics.selection.previewed_unit()` instead — the same source
   `SelectionController.reachable_cells()` already uses for the identical reason (it replays the
   current queue and returns what's actually left).
-- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `1c13ae5`. New
+- **RESOLVED** 2026-07-21 — supervisor confirms: "I just cleared it visually." Commit `1c13ae5`. New
   regression test queues a move that burns AP via 0 MP, confirmed it fails without the fix and passes
   with it (`test_action_bar.gd::test_an_action_already_queued_this_turn_counts_against_a_later_
   affordability_check`). 1861/1861 green.
@@ -275,6 +275,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `BoutInjector.kill` — `remove_object` (new) is debug-only cleanup with no matrix ejection at all.
 - **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `c930930`
   (original fix), renamed in `6f42a4f`, 1860/1860 green.
+
+### BR30.04 — Active — Waypoint colors shuffle when arming an attack and targeting a cover item  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21, found while confirming BR27.05: "selecting an attack, then trying to shoot
+  a cover item causes your waypoint colors to shuffle."
+- **Status:** open, not yet investigated. Likely candidate given the symptom: `BoardView.
+  show_ghost_paths()` cycles `LEG_COLORS` by queue index (`LEG_COLORS[i % LEG_COLORS.size()]`) — if
+  arming an attack against a cover item (rather than a unit) somehow re-queues/re-indexes the existing
+  move legs, or a targeting-mode preview call feeds it a different leg count/order than what's actually
+  queued, the per-leg color assignment would visibly shift without the underlying queued path changing.
+  Not yet confirmed — needs a real repro (which action, what leg count was already queued, which cover
+  item) before touching the code.
 
 ---
 
