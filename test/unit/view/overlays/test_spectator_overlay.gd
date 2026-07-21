@@ -546,7 +546,9 @@ func test_inject_panel_set_part_hp_calls_the_real_bout_injector_api() -> void:
 	overlay._on_inject_pressed()
 
 	_apply_via_panel(
-		overlay.debug_panel, &"set_part_hp", {"unit": enemy.id, "part_id": enemy.shell.root.id, "hp": 0}
+		overlay.debug_panel,
+		&"set_part_hp",
+		{"unit": enemy.id, "part_id": enemy.shell.root.id, "hp": 0}
 	)
 
 	assert_eq(enemy.shell.root.hp, 0)
@@ -565,6 +567,34 @@ func test_inject_panel_force_overwatch_arm_calls_the_real_bout_injector_api() ->
 	)
 
 	assert_eq(jerry.overwatch_weapon_id, &"rifle")
+
+
+## taskblock-30 follow-up (supervisor report): "spawn unit doesn't create a
+## visual model, even though inspect shows it" — `battle.sync_unit_views()`
+## (`test_battle_scene.gd` covers its own mechanics against `CombatState.
+## add_unit` directly) has to actually be WIRED into the panel's own
+## `applied` handler, not just exist. Adds a unit to `combat_state.units`
+## the exact way `BoutInjector.spawn_unit` itself does (`state.add_unit`,
+## `spawn_unit`'s own PRESET-dropdown/DataLibrary resolution is a separate
+## concern already covered by every other verb's own param-by-name test),
+## then fires `applied` exactly the way a real Apply press would, to prove
+## the HANDLER ITSELF calls `sync_unit_views()` before `refresh_unit_views()`.
+func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	overlay._on_inject_pressed()
+	var root := Part.new()
+	root.hp = 5
+	root.max_hp = 5
+	var spawned := Unit.new(Matrix.new(), Shell.new(root), Vector2i(3, 3), 0)
+	built.state.add_unit(spawned)
+	assert_null(overlay.battle.find_unit_view(spawned.id), "sanity: no view yet")
+
+	overlay.debug_panel.applied.emit(&"spawn_unit", {})
+
+	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
+	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")
+	assert_true(view.get_child_count() > 0)
 
 
 ## taskblock-29 Pass D's own TESTS bar: "an injection applied while the
