@@ -230,6 +230,21 @@ actual gameplay-input classes, a source-level routing test proves neither refere
 all), not at "which overlay happens to be installed"; `SquadControlOverlay`'s own Inject button is
 additionally gated behind a real `OS.is_debug_build()` check (never even constructed in a release
 export), not just the `[*]` naming convention every other debug menu in this codebase still only has.
+**Debug control panel (tb30, rolled in from a planned tb31)** — three more `BoutInjector` verbs
+(`attach_part`, general case behind `hand_weapon`'s existing `_attach` helper; `remove_unit`, wraps
+`CombatState.kill_unit`; and tile edits `place_cover`/`clear_cover`/`set_passable`, real
+`Grid.blockers`/`set_terrain`/`set_opacity` writes, no parallel spatial model). `InjectMenu` (one
+shared item list/dispatch) is retired, replaced by **`DebugControlPanel`** — a generic,
+data-driven click-to-force UI: `DebugVerbSpec` (id/label/typed params/apply `Callable`) rows,
+`DebugVerbs.all()` the full table, `DebugControlPanel` builds its form from that table alone, so a
+new verb is a new row, never new panel code (deliberately excludes `force_action`/`equip_from_kit`/
+`set_therms` — no generic widget can build an arbitrary `CombatAction` or authored `Kit`, and therms
+aren't built). A "Pick" button next to a Unit/Cell field arms a one-shot board-click capture via a
+new duck-typed `board_clicked` signal / `input_capture_mode` flag on both `TacticsController` and
+`SpectatorOverlay` — same shape on both, so "Pick on Board" works identically in a player bout and
+spectator, and neither gameplay-input class needs to import the panel or `BoutInjector` to expose
+it (the source-routing test from the tb29 paragraph above still holds against both). Both overlays'
+Inject button now opens/closes this one shared panel instead of a per-target popup menu.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
