@@ -38,13 +38,14 @@ var inspect_button: Button
 ## (`&"repair"`'s own `requires_target=false`, matching overwatch's own
 ## still-flagged gap, means arming it is a documented no-op).
 var repair_button: Button
-## taskblock-30: `SquadControlOverlay`'s own debug-gated Inject
-## affordance — the same `BoutInjector` API/menu `SpectatorOverlay`
-## already exposes (`InjectMenu`, shared, never a parallel copy), targeting
-## `tactics.selection.selected_unit` instead of a hover (player view has a
-## real selection concept; spectator doesn't). Null in a release export —
-## `OS.is_debug_build()` gates whether `_build_ui()` ever constructs it at
-## all, not just a `[*]`-style label.
+## taskblock-30/31 Pass C: `SquadControlOverlay`'s own debug-gated Inject
+## affordance — opens the full `DebugControlPanel` (`DebugVerbs.all()`),
+## targeting a unit id typed/picked directly in the panel rather than
+## `tactics.selection.selected_unit` implicitly (the panel's own "Pick"
+## buttons cover the common "target whatever's selected" case just as
+## well, and stay uniform with every other UNIT param). Null in a release
+## export — `OS.is_debug_build()` gates whether `_build_ui()` ever
+## constructs it at all, not just a `[*]`-style label.
 var inject_button: Button
 ## taskblock-08 E1: the left column pairing the AP/MP pip rows above the
 ## action bar — exposed so a test can confirm that ordering structurally,
@@ -59,6 +60,10 @@ var new_battle_button: Button
 ## taskblock-21 Pass C: mid-bout toggle back to spectating.
 var watch_button: Button
 var log_sink: HierarchicalUiSink
+## taskblock-30/31 Pass C: the full click-to-force panel, superseding the
+## old flat 3-item `InjectMenu` popup — built once (inside `_build_ui()`,
+## only when `OS.is_debug_build()`), toggled by `inject_button`.
+var debug_panel: DebugControlPanel = null
 ## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
 ## HIGHLIGHT the instant either half of it actually has something to show.
@@ -67,9 +72,6 @@ var _readout_header: Label
 ## rebuilt fresh on every `_on_repair_pressed` call, same "queue_free the
 ## old one first" convention InspectPanel's own debug menu already has.
 var _repair_menu: PopupMenu = null
-## taskblock-30: same "rebuilt fresh, queue_free the old one first"
-## convention as `_repair_menu`, for the Inject affordance.
-var _inject_menu: PopupMenu = null
 
 
 ## `battle.combat_state` may still be null here — `BattleScene._ready()`
@@ -224,16 +226,21 @@ func _build_ui() -> void:
 	repair_button.pressed.connect(_on_repair_pressed)
 	left_layout.add_child(repair_button)
 
-	# taskblock-30: `SquadControlOverlay`'s own Inject affordance — same
-	# `BoutInjector`/`InjectMenu` API `SpectatorOverlay` already exposes,
-	# targeting the current selection instead of a hover. `OS.is_debug_
-	# build()` is a REAL gate (see `inject_button`'s own doc comment) —
-	# the button is never even added to the tree in a release export.
+	# taskblock-30/31 Pass C: `SquadControlOverlay`'s own Inject affordance
+	# — the full `DebugControlPanel`, same as `SpectatorOverlay` now
+	# exposes. `OS.is_debug_build()` is a REAL gate (see `inject_button`'s
+	# own doc comment) — neither the button nor the panel is ever added to
+	# the tree in a release export.
 	if OS.is_debug_build():
 		inject_button = Button.new()
 		inject_button.text = "Inject..."
 		inject_button.pressed.connect(_on_inject_pressed)
 		left_layout.add_child(inject_button)
+
+		debug_panel = DebugControlPanel.new()
+		debug_panel.visible = false
+		debug_panel.applied.connect(_on_debug_panel_applied)
+		theme_root.add_child(debug_panel)
 
 	# runNotes.md: "since we aren't truncating log entries, move the
 	# scrollbar to the left side so it doesn't overlay." Un-wrapped lines
@@ -649,33 +656,27 @@ func _on_repair_menu_id_pressed(id: int, damaged: Array[Part], welder: Part) -> 
 	tactics.selection.queue_repair(welder.id, damaged[id].id)
 
 
-## taskblock-30: a silent no-op with nothing selected — same posture
-## `_on_repair_pressed` and InspectPanel's own debug menu already take.
-## `battle.bout_injector` is read lazily, here, never cached at
-## `_build_ui()` time (which runs before any battle is loaded).
+## taskblock-30/31 Pass C: toggles the full debug control panel — `debug_
+## panel` is null whenever this isn't a debug build (never constructed at
+## all in `_build_ui()`), so this is a silent no-op there too, same
+## posture the button's own absence already gives it. `battle.bout_
+## injector` is read lazily, here, never cached at `_build_ui()` time
+## (which runs before any battle is loaded).
 func _on_inject_pressed() -> void:
-	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	if selected == null:
+	if debug_panel == null:
 		return
-	if _inject_menu != null:
-		_inject_menu.queue_free()
-	_inject_menu = PopupMenu.new()
-	add_child(_inject_menu)
-	InjectMenu.populate(_inject_menu)
-	_inject_menu.id_pressed.connect(_on_inject_menu_id_pressed.bind(selected))
-	_inject_menu.close_requested.connect(_inject_menu.queue_free)
-	_inject_menu.id_pressed.connect(_inject_menu.queue_free, CONNECT_DEFERRED)
-	_inject_menu.popup(Rect2i(Vector2i(inject_button.get_screen_position()), Vector2i.ZERO))
+	if debug_panel.visible:
+		debug_panel.visible = false
+		return
+	debug_panel.setup(battle.bout_injector, DeepStrike.reference_humanoid_pool(), tactics)
+	debug_panel.visible = true
 
 
-## Dispatch itself lives in `InjectMenu.handle_id` — shared with
-## `SpectatorOverlay`, one definition of "what does Inject do." Refreshes
-## the same way a debug HP/state mutation elsewhere in this codebase
-## already does (InspectPanel's own debug menu calls its own view
-## refresh) — a forced HP-to-0 can kill a part the header/views need to
-## know about.
-func _on_inject_menu_id_pressed(id: int, target: Unit) -> void:
-	InjectMenu.handle_id(id, battle.bout_injector, target)
+## Refreshes the same way a debug HP/state mutation elsewhere in this
+## codebase already does (InspectPanel's own debug menu calls its own
+## view refresh) — a forced HP-to-0 can kill a part the header/views need
+## to know about.
+func _on_debug_panel_applied(_verb_id: StringName, _args: Dictionary) -> void:
 	battle.refresh_unit_views()
 	_update_readout_header()
 
