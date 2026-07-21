@@ -138,6 +138,41 @@ func test_a_directly_visible_enemy_still_enters_ordinary_aim_mode() -> void:
 	assert_null(controller.stepping_out_at, "a clear shot must never enter step-out mode")
 
 
+## BR27.06 investigation: every OTHER test in this file arms+clicks from
+## the shooter's OWN TURN-START cell, never after a queued (not yet
+## resolved) move. A real player very often moves toward/into cover
+## FIRST, then arms and shoots — the realistic pattern this file had no
+## coverage for at all. `(5, 0)` has clear, uncovered LOS to the enemy at
+## `(3, 9)` (the only opaque cell, `(3, 2)`, isn't on that line); queuing
+## a move to `(3, 0)` — the SAME covered cell every other test in this
+## file starts the shooter at directly — must make the queued (not yet
+## resolved) destination the one `_enter_aim_or_step_out_mode` evaluates
+## cover from, not the stale pre-move cell.
+func test_moving_into_cover_then_shooting_still_enters_step_out_mode() -> void:
+	var built: Dictionary = _setup_covered_scene()
+	var controller: TacticsController = built.controller
+	var shooter: Unit = built.shooter
+	shooter.cell = Vector2i(5, 0)
+	built.state.grid.set_occupant_id(Vector2i(3, 0), -1)
+	built.state.grid.set_occupant_id(Vector2i(5, 0), shooter.id)
+	shooter.mp = 100.0
+
+	controller.click_cell(shooter.cell)
+	assert_true(
+		controller.selection.queue_move(Vector2i(3, 0)), "sanity: the move into cover must queue"
+	)
+	controller.arm_action(&"shoot")
+
+	controller.click_cell(built.enemy.cell)
+
+	assert_eq(
+		controller.stepping_out_at,
+		built.enemy,
+		"the queued (not yet resolved) destination is covered — step out must trigger from there"
+	)
+	assert_null(controller.aiming_at, "a step out never also enters ordinary aim mode")
+
+
 func test_step_out_candidates_are_populated_safest_first() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller

@@ -442,12 +442,15 @@ func click_cell(cell: Vector2i) -> void:
 		return
 	if input_capture_mode:
 		var captured: Unit = _unit_at(cell)
-		board_clicked.emit(
-			{
-				"kind": Enums.HitKind.UNIT if captured != null else Enums.HitKind.CELL,
-				"unit": captured,
-				"cell": cell,
-			}
+		(
+			board_clicked
+			. emit(
+				{
+					"kind": Enums.HitKind.UNIT if captured != null else Enums.HitKind.CELL,
+					"unit": captured,
+					"cell": cell,
+				}
+			)
 		)
 		return
 	if aiming_at != null or stepping_out_at != null:
@@ -601,7 +604,20 @@ func _unit_at(cell: Vector2i) -> Unit:
 ## exists) — confirm_shot()'s own existing "nothing operable" no-op is
 ## what actually catches that case, same as it always has.
 func _enter_aim_or_step_out_mode(target: Unit) -> void:
-	var shooter: Unit = selection.selected_unit
+	# BR27.06: must read the PREVIEWED shooter, not the raw selected one —
+	# same reasoning as BR27.05's own ActionBar fix. docs/09's "queuing
+	# mutates nothing" means selected_unit.cell stays at wherever the
+	# shooter started THIS turn until the queue actually resolves; a
+	# player who moves toward/into cover and then arms a shot had that
+	# move still only queued, so evaluating cover from the stale
+	# turn-start cell silently fell through to ordinary aim mode instead
+	# of the step-out the shooter's real, about-to-be-true position
+	# warrants. `previewed_unit()` is the same source `reachable_cells()`
+	# already reads for the identical reason.
+	var shooter: Unit = selection.previewed_unit()
+	if shooter == null:
+		_enter_aim_mode(target)
+		return
 	var weapon: Part = (
 		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
 	)
