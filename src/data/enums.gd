@@ -96,6 +96,20 @@ enum SquadController {
 	AI,
 }
 
+## tb31 Pass D: how arming an action from the bar actually behaves —
+## `ActionDef.requires_target: bool` only ever expressed two shapes when
+## there are three (shoot/burst/saw need a board click; overwatch needs
+## none at all; repair needs a PART picked from a list, never a board
+## click) — the missing third shape is what pushed BOTH overwatch and
+## repair off the action bar entirely and onto bespoke, bolted-on overlay
+## buttons instead. A closed, structural classification of INPUT SHAPE
+## (never content — CLAUDE.md), so it lives here, not as open data.
+enum TargetingMode {
+	BOARD,  ## arm, then click a board target (shoot, burst, saw, stab, slash, hold)
+	NONE,  ## queues immediately on click, no target at all (overwatch)
+	PART_PICKER,  ## opens a picker (a list of parts, e.g.); queues once one is chosen (repair)
+}
+
 ## What a board ray actually hit (docs/10 taskblock05 A1) — a closed engine
 ## state: a click either lands on a unit's own body or bare ground, never a
 ## third thing.

@@ -268,10 +268,13 @@ func test_arming_while_already_aiming_is_a_no_op() -> void:
 	assert_eq(controller.aiming_at, b, "still aiming — arming mid-aim must not disturb it")
 
 
-## ActionDef.requires_target = false (overwatch) keeps arming a documented
-## no-op instead of misfiring an AttackAction through whichever part also
-## lists &"shoot" — action_bar.gd/action_catalog.gd's own flagged gap:
-## overwatch has no UI call site at all yet.
+## ActionDef.targeting_mode != BOARD (overwatch is NONE) keeps arm_action
+## itself a documented no-op instead of misfiring an AttackAction through
+## whichever part also lists &"shoot" — tb31 Pass D: overwatch DOES have a
+## real UI call site now (ActionBar's own NONE-mode dispatch calls
+## `queue_untargeted_action` instead of `arm_action` for it), this just
+## proves `arm_action` itself stays safe if ever called on a non-BOARD id
+## directly (a caller bug, not the normal path).
 func test_arming_an_untargeted_action_is_a_no_op() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var pistol: Part = a.shell.find_part(&"pistol")

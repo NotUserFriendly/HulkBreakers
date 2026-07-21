@@ -348,6 +348,85 @@ func test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does() 
 	assert_false(overlay.controls_overlay.label.visible)
 
 
+## tb31 Pass D: "a PART_PICKER action opens the picker... one path, no
+## parallel logic." Same welder/battery/damaged-leg shape
+## `test_battle_scene.gd::test_repair_button_queues_and_resolves_a_real_
+## repair` already proves resolves correctly end to end — this proves the
+## OTHER half: a real click on the action bar's own repair slot actually
+## reaches that same `_on_repair_pressed()`, not a standalone button.
+func _repair_capable_bout() -> Dictionary:
+	var target := Part.new()
+	target.id = &"leg"
+	target.material = &"steel"
+	target.hp = 5
+	target.max_hp = 10
+
+	var repair_battery := Part.new()
+	repair_battery.id = &"tool_battery"
+	repair_battery.hp = 3
+	repair_battery.max_hp = 3
+	repair_battery.battery_capacity = 6.0
+	repair_battery.battery_power_out = 3.0
+	repair_battery.battery_charge = 6.0
+	repair_battery.tags = [&"POWER_SOURCE", &"BATTERY", &"TOOL_BATTERY"]
+
+	var welder := Part.new()
+	welder.id = &"welder"
+	welder.hp = 4
+	welder.max_hp = 4
+	welder.attaches_to = [&"GRIP"]
+	welder.requires = {&"TRIGGER": 1}
+	welder.tags = [&"WELDER"]
+	welder.provides_actions = [&"repair"]
+	var battery_socket := Socket.new(&"TOOL_BATTERY")
+	battery_socket.occupant = repair_battery
+	welder.sockets = [battery_socket]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 4
+	hand.max_hp = 4
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = welder
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	var leg_socket := Socket.new(&"LEG")
+	leg_socket.occupant = target
+	torso.sockets = [hand_socket, leg_socket]
+
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(10, 10), [unit])
+	state.assign_all_to_human()
+	var mission := MissionState.new(RunState.new(), state)
+	mission.objectives = []
+	mission.gather_resource(&"steel", 5)
+	return {"state": state, "mission": mission}
+
+
+func test_clicking_the_repair_slot_on_the_action_bar_opens_the_same_picker() -> void:
+	var overlay: SquadControlOverlay = _squad_control_fresh(_repair_capable_bout())
+	overlay.tactics.selection.select(overlay.battle.combat_state.units[0])
+	overlay.action_bar.refresh()
+	assert_null(overlay._repair_menu, "sanity: no picker open yet")
+
+	var panel: PanelContainer = overlay.action_bar._panels[0]
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	panel.gui_input.emit(click)
+
+	assert_not_null(overlay._repair_menu, "the action bar's own repair slot must open the picker")
+	assert_eq(overlay._repair_menu.item_count, 1, "the one damaged part must be listed")
+
+
 ## Finds `verb_id`'s own row in the panel's live verb table by index —
 ## `DebugVerbs.all()` is the one authority for ordering; a test must
 ## never hardcode an index.

@@ -79,6 +79,17 @@ func test_a_shell_with_a_pistol_shows_shoot_and_overwatch() -> void:
 	assert_eq(ids, [&"overwatch", &"shoot"])
 
 
+## tb31 Pass D: "needs no target at all" — overwatch's own `targeting_mode`
+## must be NONE, so the action bar queues it immediately on click instead
+## of routing it through `arm_action`'s board-target flow.
+func test_overwatch_def_queues_with_no_target() -> void:
+	var by_id: Dictionary = {}
+	for def: ActionDef in ActionCatalog.defs():
+		by_id[def.id] = def
+
+	assert_eq(by_id[&"overwatch"].targeting_mode, Enums.TargetingMode.NONE)
+
+
 ## taskblock-22 Pass E: a welder-shaped part (WELDER tag not required by
 ## the catalog itself — RepairAction/RepairResolver own that gate; the
 ## catalog only cares what `provides_actions` says) shows &"repair".
@@ -108,15 +119,16 @@ func test_a_shell_with_a_welder_shows_repair() -> void:
 	assert_has(ids, &"repair")
 
 
-## taskblock-22 Pass E: "needs a PART picked from a list, never a board
-## click" — repair.requires_target must be false, same posture overwatch
-## already has, so arm_action's own click-driven flow leaves it alone.
-func test_repair_def_never_requires_a_target() -> void:
+## taskblock-22 Pass E (tb31 Pass D): "needs a PART picked from a list,
+## never a board click" — repair's own `targeting_mode` must be
+## PART_PICKER, so the action bar routes its click through
+## `picker_action_requested` instead of `arm_action`.
+func test_repair_def_is_a_part_picker() -> void:
 	var by_id: Dictionary = {}
 	for def: ActionDef in ActionCatalog.defs():
 		by_id[def.id] = def
 
-	assert_false(by_id[&"repair"].requires_target)
+	assert_eq(by_id[&"repair"].targeting_mode, Enums.TargetingMode.PART_PICKER)
 
 
 ## taskblock-07 E1/TESTS: "removing the pistol removes both."

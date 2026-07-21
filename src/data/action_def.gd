@@ -22,14 +22,15 @@ extends Resource
 ## e.g. overwatch's &"shoot" — "only available if something else already
 ## provides shoot" (taskblock-07 E3). Empty (&"") means no such dependency.
 @export var requires_action: StringName = &""
-## taskblock-08 A: true if arming this action then needs the player to
-## click a target (docs/10 "arm then click") — every AttackAction-backed
-## action so far (shoot, saw). false for an action that acts on the
-## shooter alone: overwatch is declared, not aimed, and still has no UI
-## call site at all (action_bar.gd's own pre-existing, flagged gap) — this
-## just keeps arming it a documented no-op instead of misfiring an
-## AttackAction through whichever part happens to also list &"shoot".
-@export var requires_target: bool = true
+## taskblock-08 A (tb31 Pass D): how arming this action from the bar
+## actually behaves (`Enums.TargetingMode` — BOARD/NONE/PART_PICKER).
+## Replaces the old `requires_target: bool`, which only ever expressed two
+## shapes (board-targeted or not) when there are three — the missing
+## third shape (a picker, never a board click) is what pushed both
+## overwatch (NONE) and repair (PART_PICKER) off the action bar entirely
+## and onto bespoke, bolted-on overlay buttons instead of arming here like
+## every other action.
+@export var targeting_mode: Enums.TargetingMode = Enums.TargetingMode.BOARD
 
 
 func _init(
@@ -38,11 +39,11 @@ func _init(
 	p_initials: String = "",
 	p_requires: Dictionary = {},
 	p_requires_action: StringName = &"",
-	p_requires_target: bool = true
+	p_targeting_mode: Enums.TargetingMode = Enums.TargetingMode.BOARD
 ) -> void:
 	id = p_id
 	display_name = p_display_name
 	initials = p_initials
 	requires = p_requires
 	requires_action = p_requires_action
-	requires_target = p_requires_target
+	targeting_mode = p_targeting_mode

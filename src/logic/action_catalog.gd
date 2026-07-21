@@ -60,20 +60,20 @@ static func defs() -> Array[ActionDef]:
 		# requires_action: only available if something else already
 		# provides shoot — the instrument overwatch still needs even once
 		# its provider moves off the gun and onto the matrix (E3).
-		ActionDef.new(&"overwatch", "Overwatch", "OW", {}, &"shoot", false),
+		# tb31 Pass D: NONE — queues immediately on click, no board target
+		# (build_untargeted_action below), its first real UI call site.
+		ActionDef.new(&"overwatch", "Overwatch", "OW", {}, &"shoot", Enums.TargetingMode.NONE),
 		# taskblock-13 Pass C: same shape as shoot — an aimed, target-armed
 		# action, backed by whichever weapon Part lists &"burst" in its own
 		# provides_actions (a data-authoring convention: only a Part whose
 		# WeaponDef.burst_size > 1 should ever list it — BurstAction.is_legal
 		# itself is the real runtime gate).
 		ActionDef.new(&"burst", "Burst", "BR"),
-		# taskblock-22 Pass E: requires_target=false, same posture as
-		# overwatch — repair needs a PART picked from a list, never a board
-		# click, so `arm_action`'s own click-driven flow doesn't apply. The
-		# real UI call site (a popup listing repairable parts) lives in
-		# SquadControlOverlay, mirroring overwatch's own still-flagged gap
-		# rather than inventing a second armed-action shape here.
-		ActionDef.new(&"repair", "Repair", "RP", {}, &"", false),
+		# taskblock-22 Pass E (tb31 Pass D): PART_PICKER — repair needs a
+		# PART chosen from a list, never a board click; the bar itself now
+		# emits TacticsController.picker_action_requested for this instead
+		# of a bespoke overlay button.
+		ActionDef.new(&"repair", "Repair", "RP", {}, &"", Enums.TargetingMode.PART_PICKER),
 	]
 
 
@@ -186,6 +186,19 @@ static func build_firing_action(
 	return null
 
 
+## tb31 Pass D: the `Enums.TargetingMode.NONE` counterpart to
+## `build_firing_action` above — an action that queues immediately, no
+## board target at all. `&"overwatch"` is the one id today; the seam
+## exists so a future NONE-mode action doesn't need its own bespoke
+## construction path either.
+static func build_untargeted_action(
+	action_id: StringName, unit: Unit, weapon_id: StringName
+) -> CombatAction:
+	if action_id == &"overwatch":
+		return OverwatchAction.new(unit, weapon_id)
+	return null
+
+
 ## BR30.xx: the AP `action_id` actually charges from `provider` — almost
 ## always `provider.ap_cost` itself, except `&"burst"`, which authors its
 ## own distinct, usually-higher `weapon_def.burst_ap_cost` (many more
@@ -197,6 +210,16 @@ static func build_firing_action(
 ## action bar previously read `provider.ap_cost` directly and showed BURST
 ## as affordable using the single-shot cost, letting a player arm (and
 ## then have silently rejected) a burst they couldn't actually pay for.
+## tb31 Pass D: `&"overwatch"` and `&"repair"` get the same treatment,
+## found while giving each its first real action-bar UI call site —
+## `OverwatchAction` always charges its own fixed `AP_COST` (1) and
+## `RepairAction` always charges `RepairResolver.REPAIR_AP_COST` (4),
+## neither ever the providing part's own `ap_cost` field (a welder
+## authors none at all, silently falling back to `Part.gd`'s bare default
+## of 1 — four times too cheap by the bar's own old reckoning). Without
+## this the bar would show either affordability against the wrong number,
+## same bug class as burst, just never player-visible before (neither had
+## a button at all).
 static func ap_cost_for(action_id: StringName, provider: Part) -> int:
 	if (
 		action_id == &"burst"
@@ -204,6 +227,10 @@ static func ap_cost_for(action_id: StringName, provider: Part) -> int:
 		and provider.weapon_def.burst_ap_cost > 0
 	):
 		return provider.weapon_def.burst_ap_cost
+	if action_id == &"overwatch":
+		return OverwatchAction.AP_COST
+	if action_id == &"repair":
+		return RepairResolver.REPAIR_AP_COST
 	return provider.ap_cost
 
 
