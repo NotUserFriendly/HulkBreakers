@@ -116,9 +116,16 @@ const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
 ## tb31 Pass C: "walls must not block the player's read of the action
 ## behind them" — flagged, tunable (CLAUDE.md: never invent a "final"
-## balance number), how close to the camera-focal sightline a wall has to
-## sit before it's considered "in the way," in cells.
-const WALL_FADE_RADIUS := 1.0
+## balance number), how close on SCREEN a wall's own projected position
+## has to sit to the focal unit's before it's considered "in the way," in
+## pixels. Screen-space, not a world-distance-along-the-ray radius: the
+## tactical camera sits well above and back from the board
+## (`CameraOrbitState.DEFAULT_PITCH`/`DEFAULT_ZOOM`), so a straight 3D
+## line to a ground-level unit spends almost its whole length far above
+## wall height — a world-space radius almost never fired in practice
+## (found live: walls never visibly faded at all). Screen-space asks the
+## question a player would actually answer by eye instead.
+const WALL_FADE_SCREEN_RADIUS := 60.0
 ## `GeometryInstance3D.transparency` — 0 opaque, 1 fully invisible. Faded,
 ## not hidden outright: the wall's own presence (still real geometry you
 ## could shoot down) shouldn't vanish, only stop hiding what's behind it.
@@ -396,10 +403,27 @@ func update_wall_legibility(camera: Camera3D) -> void:
 			instance.transparency = 0.0
 		return
 	var focal_position: Vector3 = UnitGeometry.bounding_sphere(focal_unit).center
+	# Behind the camera: unproject_position() gives nonsense screen
+	# coordinates for a point the camera isn't actually looking at —
+	# nothing can occlude something that isn't even on screen.
+	if camera.is_position_behind(focal_position):
+		for instance: MeshInstance3D in _wall_mesh_instances:
+			instance.transparency = 0.0
+		return
 	var camera_position: Vector3 = camera.global_position
+	var focal_screen: Vector2 = camera.unproject_position(focal_position)
+	var focal_depth: float = camera_position.distance_to(focal_position)
 	for instance: MeshInstance3D in _wall_mesh_instances:
-		var occludes: bool = WallLegibility.occludes(
-			camera_position, focal_position, instance.global_position, WALL_FADE_RADIUS
+		var wall_position: Vector3 = instance.global_position
+		if camera.is_position_behind(wall_position):
+			instance.transparency = 0.0
+			continue
+		var occludes: bool = WallLegibility.occludes_on_screen(
+			camera.unproject_position(wall_position),
+			camera_position.distance_to(wall_position),
+			focal_screen,
+			focal_depth,
+			WALL_FADE_SCREEN_RADIUS
 		)
 		instance.transparency = WALL_FADE_TRANSPARENCY if occludes else 0.0
 
