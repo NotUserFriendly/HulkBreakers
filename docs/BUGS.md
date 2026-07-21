@@ -464,6 +464,87 @@ confirm" roll-up — so pending items surface at a natural review point without 
   — pre-existing correct pattern); `weapon_panel.gd` (purely structural shell/part reads — hp, wounds,
   manipulators — no position or queue dependency).
 
+### BR30.10 — Pending Confirmation — Shots resolve straight through walls  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21, live play testing BR27.01: an attack against an enemy on the opposite side
+  of a wall tile connects as if the wall isn't there. Confirmed by the supervisor as their very first
+  test case, deliberately, not an accidental cross-cover shot.
+- **Root cause, confirmed by code:** `LoS.has_los()` (`src/logic/los.gd`) and `ShotPlane.build()`
+  (`src/logic/shot_plane.gd:19-46`) read entirely disjoint data. `LoS` reads only `grid.opacity` (set
+  to `1.0` for wall cells by `MapGen.generate()`, `map_gen.gd:52-56`) — correctly treats walls as
+  opaque for TACTICAL gating (aim-mode/step-out decisions). `ShotPlane.build()` only ever projects
+  `state.units` and `state.grid.blockers` (`shot_plane.gd:24,33`) into the depth-sorted hit plane —
+  never `grid.opacity`. `MapGen` never writes a `blockers` entry for WALL cells — only
+  `_scatter_cover()` (`map_gen.gd:201-208`) populates `blockers`, and only for scattered cover props on
+  `OPEN` cells. So a real wall has an opacity flag but no Part, no mesh, nothing in `grid.blockers` —
+  it is entirely invisible to the actual damage-resolution path, which only ever sees shooter, target,
+  and scattered-cover Parts. `docs/02` (`docs/02-projection-and-targeting.md:82-84`) already documents
+  the intended fix: terrain should be "a Part flagged indestructible" living in the same plane as
+  everything else — never implemented for walls, only for scattered cover.
+- **View-layer confirmation:** walls have no 3D volume either — `BoardView._build_wall_indicators()`
+  (`src/view/board_view.gd:239-245`) only draws a flat floor decal (`WALL_INDICATOR_HEIGHT = 0.015`)
+  plus a thin decorative cross; no `CollisionShape`/`StaticBody` exists for walls anywhere in
+  `src/view/`. This matches the supervisor's own observation that walls are "visually nothing" beyond
+  the debug 'x' marker.
+- **Fix:** `MapGen._stamp_wall_geometry()` (new, runs last in `generate()`, after
+  `_ensure_spawns_connected` so it sees the grid's final layout) gives every WALL cell that borders at
+  least one non-WALL cell a real, indestructible `Part` in `grid.blockers` — `data/parts/wall.tres`
+  (new: a full-cell box, `is_destructible = false`, matching docs/02's own "terrain is a Part flagged
+  indestructible"). A WALL cell buried in solid, unreachable rock (no non-WALL neighbor) deliberately
+  gets no blocker — it can never be the nearest hit along any real ray, so skipping it is a pure perf
+  win (`ShotPlane.build`'s own per-shot scan is unculled), not a behavior change.
+  `LoS.has_los()` is unchanged (opacity-only) — it already correctly treated walls as opaque; only the
+  hit-resolution side was blind to them.
+- **Side effect, expected and not chased further this pass:** as a direct consequence of walls now
+  really blocking, this landed a follow-on discovery — a live seed-search on `test/integration/
+  test_full_mission.gd` (whose own hardcoded `SEED` now fails, same "a real mechanics fix reshuffles
+  the deterministic timeline" pattern that test's own header already documents five times over) showed
+  **81% of all impacts in one full mission (368/457) landing on a wall instead of the intended
+  target** — the AI appears to fire without ever verifying a genuinely clear line of fire, trusting
+  `ShotPlane` alone to arbitrate (harmless before this fix, since nothing ever blocked a shot). Likely
+  why missions now grind through more turns under the fix. Not filed as its own bug yet — flagged here
+  as the reason `test_full_mission.gd`'s current failure may need more than a seed re-pick, and as a
+  candidate follow-up investigation into AI engagement/target selection (`UnitAI._pick_engagement_
+  position`/`_engagement_score`).
+- **Verified:** `test_shot_plane.gd::test_a_wall_part_between_shooter_and_target_blocks_the_shot` (a
+  wall Part between shooter and target intercepts the shot; the target is still there once the wall is
+  excluded) and `test_map_gen.gd::test_exposed_wall_cells_carry_a_blocking_part_interior_walls_do_not`
+  (every exposed wall cell across 50 seeds carries the blocker; every fully-interior one doesn't).
+  1868/1869 green — the one remaining failure is `test_full_mission.gd` itself, above, a known,
+  expected consequence, not chased this pass (supervisor's own call: "consider the full test failed
+  for the moment, we have a couple other things to check").
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
+
+### BR30.11 — Pending Confirmation — Burst: shown as affordable without enough AP; step-out silently drops the shot  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21, two symptoms the supervisor flagged separately, turned out to be one root
+  cause: (1) "actions selectable when not enough AP available still," and (2) "step out seems to be
+  working with shoot, but not with burst."
+- **Root cause:** `ActionBar._can_afford()` (`src/view/action_bar.gd`) compared the unit's AP against
+  the providing weapon's plain `provider.ap_cost` for EVERY action id, but `BurstAction` has always
+  charged its own, usually-higher `weapon.weapon_def.burst_ap_cost` when authored
+  (`BurstAction._ap_cost`, e.g. `data/parts/chaingun.tres`: `ap_cost = 2`, `weapon_def.burst_ap_cost =
+  4`). A unit with enough AP for the plain cost but not the real burst cost saw (and could arm) BURST
+  as affordable — only to have the actual shot silently rejected at `enqueue()` time
+  (`BurstAction.is_legal()` correctly checks the real cost), with no visible error either way.
+- **Step-out's own part in this:** proved, not assumed — `_enter_aim_or_step_out_mode`'s entry into
+  step-out mode is genuinely action-id-agnostic (a direct test arming `&"burst"` against the same
+  covered-corridor fixture `test_tactics_controller_step_out.gd` already used for `&"shoot"` entered
+  step-out mode correctly, no fix needed there). What actually "doesn't work" with burst: a shooter
+  steps out for free (the outbound leg never costs AP), then the SAME `confirm_shot()` -> `enqueue()`
+  gate silently drops the real attack for the reason above — the unit holds the stepped-out position
+  with nothing ever firing, reading as "step out doesn't work" when the move itself queued fine.
+- **Fix:** `ActionCatalog.ap_cost_for(action_id, provider)` (new) — the one seam: `&"burst"` returns
+  `weapon_def.burst_ap_cost` when authored, else falls back to `provider.ap_cost`, same as every other
+  action. `ActionBar._can_afford()` and `BurstAction._ap_cost()` (now a one-line delegate) both read
+  this instead of duplicating the branch — the "two parallel systems" trap this project's own
+  convention warns against.
+- **Verified:** `test_action_bar.gd::test_burst_dims_using_its_own_higher_ap_cost_not_the_weapons_
+  plain_one` (fails without the fix, passes with it — confirmed via `git stash`) and
+  `test_tactics_controller_step_out.gd::test_firing_burst_after_step_out_is_silently_rejected_with_
+  insufficient_real_ap` (documents the exact silent-rejection mechanism: queue stays at 1 action, the
+  free out-leg, burst never gets added). 1868/1869 green (the one failure is the unrelated,
+  already-flagged `test_full_mission.gd`, BR30.10 above).
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
+
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
