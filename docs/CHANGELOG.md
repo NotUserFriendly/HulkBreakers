@@ -301,6 +301,15 @@ already closed for units, unnoticed for cover. New `BattleScene.sync_board_view(
 `build()` (already a correct full clear-and-rebuild) after any debug verb touching blockers/
 field_items, called from both overlays' `_on_debug_panel_applied` alongside `sync_unit_views()`.
 
+**Fix: action-bar affordability read the raw unit, not the queue preview (BR27.05)** —
+`ActionBar.refresh()`/`_on_box_gui_input()` both compared against `tactics.selection.selected_unit.ap`
+directly. Per docs/09's own "queuing mutates nothing," `unit.ap` never drops for an action that's
+merely queued this turn, only once it resolves — so an action already committed to the queue (e.g. a
+move that burned AP once MP ran out) was invisible to a LATER slot's own affordability check, which
+kept reading the unit's full starting AP and stayed clickable regardless. Both call sites now read
+`tactics.selection.previewed_unit()` instead — the same source `reachable_cells()` already uses for
+the identical reason.
+
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
 dead-zone hold, right-click debug menu (debug-only items `[*]`-prefixed; inflict-status/create-part

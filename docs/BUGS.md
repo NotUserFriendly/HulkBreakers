@@ -151,11 +151,22 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
   comparison) rather than a code claim, since no divergent lighting path was found to remove.
 
-### BR27.05 — Active — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
+### BR27.05 — Pending Confirmation — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). The tb27 Pass D3 fix (dim/disable unaffordable action-bar
   slots) **did not hold** — slots are still clickable/armable when the unit can't afford them.
-- **Status:** reopened. The `ActionBar._can_afford()` gate either isn't wired to the slot's actual
-  interactivity, or the AP compared isn't the unit's live AP. Not yet re-investigated.
+- **Root cause (2026-07-21, tb30):** `ActionBar.refresh()`/`_on_box_gui_input()` both compared against
+  `tactics.selection.selected_unit.ap` — the raw, un-queued unit. Per docs/09's own "queuing mutates
+  nothing," `unit.ap` never drops for an action that's merely queued this turn, only once it resolves
+  — so any AP already committed to an earlier queued action (e.g. a move that burned AP once MP ran
+  out) was invisible to a LATER slot's own affordability check, which kept comparing against the
+  unit's full starting AP.
+- **Fix:** both call sites now read `tactics.selection.previewed_unit()` instead — the same source
+  `SelectionController.reachable_cells()` already uses for the identical reason (it replays the
+  current queue and returns what's actually left).
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `1c13ae5`. New
+  regression test queues a move that burns AP via 0 MP, confirmed it fails without the fix and passes
+  with it (`test_action_bar.gd::test_an_action_already_queued_this_turn_counts_against_a_later_
+  affordability_check`). 1861/1861 green.
 
 ### BR27.06 — Active — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). After the tb27 Pass B flow restructure (BR27.01), Step Out
