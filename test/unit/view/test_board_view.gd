@@ -320,6 +320,36 @@ func test_a_grid_with_no_walls_adds_no_wall_indicators() -> void:
 	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
 
 
+## tb31 Pass C: "make void tiles black with a dark gray border so they
+## read as void" — same "marker per non-navigable cell" convention the
+## wall indicator test above already locks in, just border+fill (2
+## markers) instead of marker+cross.
+func test_build_adds_a_border_and_fill_marker_per_void_cell() -> void:
+	var grid := Grid.new(3, 2)
+	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.VOID)
+	grid.set_terrain(Vector2i(2, 1), Enums.TerrainType.VOID)
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(
+		view._static.get_child_count(),
+		6,
+		"ground plane + grid lines + (border + fill) per void cell, 2 void cells"
+	)
+
+
+func test_a_grid_with_no_void_adds_no_void_indicators() -> void:
+	var grid := Grid.new(2, 2)
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
+
+
 ## taskblock-22 Pass A3: "team-coded extraction tiles, drawn in their
 ## team's color." `team_extraction_cells` is optional (defaults to `{}`)
 ## — every existing caller/test above this one draws none, unchanged.
