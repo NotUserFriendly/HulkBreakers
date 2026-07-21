@@ -63,7 +63,7 @@ static func generate(map_seed: int, width: int, height: int) -> Grid:
 	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
 	_ensure_spawns_connected(grid, spawn_cells[0], spawn_cells[1], rng)
 
-	_stamp_wall_geometry(grid)
+	_finalize_walls_and_void(grid)
 
 	return grid
 
@@ -304,31 +304,44 @@ static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
 	return room.position
 
 
-## BR30.10: a WALL cell only ever got `opacity = 1.0` — the abstract signal
-## `LoS.has_los` reads to gate the TACTICAL aim-mode/step-out check. It never
-## got a `grid.blockers` entry, and `ShotPlane.build` (the actual hit-
-## resolution plane) only ever reads `state.units` and `state.grid.blockers`,
-## never `opacity` — so a wall had no representation at all in the system
-## that decides whether a shot connects. docs/02 already names the fix:
-## "terrain is a Part flagged indestructible," the same shape `_scatter_cover`
-## already gives destructible cover. Run LAST (after `_ensure_spawns_connected`,
-## which can still carve WALL cells to OPEN) so this sees the grid's final
-## layout.
+## tb31 Pass C: the settled wall/void model, replacing BR30.10's
+## indestructible-wall-terrain approach. `WALL` is only ever a SCRATCH
+## marker while `_split_and_carve` is still carving ("not yet carved") —
+## this is the ONE place it gets resolved into its final, real form. Run
+## LAST (after `_ensure_spawns_connected`, which can still carve WALL
+## cells to OPEN) so this sees the grid's final layout.
 ##
-## Only a WALL cell with at least one non-WALL neighbor gets a blocker. A
-## cell buried inside solid, unreachable rock can never be the nearest hit
-## along any real ray — whatever wall cell sits between it and the open area
-## resolves first — so giving it geometry too would only cost `ShotPlane.
-## build` cycles on every shot (an unculled linear scan over every entry in
-## `blockers`) for zero behavior change.
-static func _stamp_wall_geometry(grid: Grid) -> void:
+## A WALL cell with at least one non-WALL neighbor (reachable from the
+## playable area) becomes ordinary OPEN ground carrying a destructible
+## wall `Part` blocker — the exact `_scatter_cover` shape (a real,
+## high-DT field object in `grid.blockers`), just authored on `wall.tres`
+## instead of rolled from `COVER_IDS`. Opacity is left at the `1.0` the
+## initial full-grid fill already gave it: an INTACT wall must still block
+## LoS/tactical-cover checks exactly as it always has — only its
+## terrain/blocker REPRESENTATION changes here, not what "wall opacity"
+## means. (`LoS` doesn't yet react to a wall's later destruction — same
+## known, deliberately out-of-scope gap BR30.10 already had; flagged in
+## the taskblock report, not solved this pass.)
+##
+## A WALL cell buried in solid, unreachable rock (no non-WALL neighbor)
+## becomes VOID instead: non-navigable, opacity 0 (nothing to hit — a shot
+## passes into it), no Part. It can never be the nearest hit along any
+## real ray anyway (whatever wall cell sits between it and the open area
+## resolves first) — giving it geometry too would only cost `ShotPlane.
+## build`'s own unculled per-shot scan for zero behavior change, the same
+## perf reasoning BR30.10 already established for skipping it.
+static func _finalize_walls_and_void(grid: Grid) -> void:
 	for y in range(grid.height):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) != Enums.TerrainType.WALL:
 				continue
 			if _is_exposed_wall(grid, cell):
+				grid.set_terrain(cell, Enums.TerrainType.OPEN)
 				grid.blockers[cell] = DataLibrary.get_part(&"wall")
+			else:
+				grid.set_terrain(cell, Enums.TerrainType.VOID)
+				grid.set_opacity(cell, 0.0)
 
 
 static func _is_exposed_wall(grid: Grid, cell: Vector2i) -> bool:

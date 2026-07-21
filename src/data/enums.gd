@@ -4,11 +4,22 @@ extends RefCounted
 ## Values for Grid.terrain. Cover (Grid.blockers — real field-object
 ## geometry, taskblock-16 Pass B) is a separate overlay — terrain only
 ## governs walkability and vision blocking.
+##
+## tb31 Pass C: `WALL` is vestigial as of `MapGen.generate()` — a wall is
+## now a destructible cover `Part` sitting on an `OPEN` tile (the exact
+## `_scatter_cover` shape, just high-DT), never its own terrain type in a
+## freshly generated map. Kept in the enum (not removed) since hand-built
+## fixtures/tests still legitimately construct WALL cells directly. `VOID`
+## is the new negative-space fill: non-navigable (`Pathfinder` treats it
+## like WALL always has), opacity 0 (a shot passes into it — there's
+## nothing there to hit), no blocker Part. `MapGen` rings the playable
+## area with wall-Part cells and fills everything past them with VOID.
 enum TerrainType {
 	OPEN,
 	WALL,
 	SPAWN_A,
 	SPAWN_B,
+	VOID,
 }
 
 ## A matrix's fate at battle end (docs/04). PILOTING is the default — still

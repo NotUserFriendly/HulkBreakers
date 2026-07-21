@@ -59,6 +59,12 @@ func test_spawn_zones_reachable_across_many_seeds() -> void:
 		assert_true(path.size() > 0, "seed %d: spawn zones must be path-connected" % map_seed)
 
 
+## tb31 Pass C: a wall is now OPEN ground carrying a blocker Part too —
+## structural, not `_scatter_cover`'s own roll, and VOID (unreachable
+## rock, not floor at all) didn't exist when this band was tuned. Both
+## excluded from the density measurement so it keeps meaning what it
+## always meant: how much of the REAL walkable floor got a scattered
+## cover roll, not "how much of the map is solid."
 func test_cover_density_within_target_band() -> void:
 	# Target band: 8%-30% of open floor cells carry cover. Documented tunable
 	# (Appendix C notes exposure/cover weights are tune-later values).
@@ -69,10 +75,13 @@ func test_cover_density_within_target_band() -> void:
 		for y in range(grid.height):
 			for x in range(grid.width):
 				var cell := Vector2i(x, y)
-				if grid.get_terrain(cell) == Enums.TerrainType.WALL:
+				if grid.get_terrain(cell) == Enums.TerrainType.VOID:
+					continue
+				var blocker: Variant = grid.blockers.get(cell)
+				if blocker != null and (blocker as Part).id == &"wall":
 					continue
 				open_count += 1
-				if grid.blockers.has(cell):
+				if blocker != null:
 					cover_count += 1
 		var density: float = float(cover_count) / float(open_count)
 		assert_between(
@@ -91,43 +100,52 @@ func test_cover_density_within_target_band() -> void:
 ## rather than letting a future change silently regress to "stamp every
 ## wall cell" (which would multiply `ShotPlane.build`'s own unculled
 ## per-shot scan by however much solid rock a map has).
-func test_exposed_wall_cells_carry_a_blocking_part_interior_walls_do_not() -> void:
-	var saw_exposed := false
-	var saw_interior := false
+## tb31 Pass C: WALL is only ever a scratch marker now — `_finalize_walls_
+## and_void` resolves every remaining WALL cell into either a real,
+## destructible wall Part on OPEN ground (exposed — reachable from the
+## playable area) or VOID (buried in unreachable rock, no Part at all,
+## the same perf reasoning BR30.10 originally established for skipping
+## it). No WALL cell survives `generate()` — this checks the settled
+## OPEN+wall-Part / VOID split its output actually produces instead.
+func test_generate_resolves_every_wall_cell_into_a_destructible_part_or_void() -> void:
+	var saw_wall_part := false
+	var saw_void := false
 	for map_seed in range(SEED_COUNT):
 		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
 		for y in range(grid.height):
 			for x in range(grid.width):
 				var cell := Vector2i(x, y)
-				if grid.get_terrain(cell) != Enums.TerrainType.WALL:
+				assert_ne(
+					grid.get_terrain(cell),
+					Enums.TerrainType.WALL,
+					"seed %d: %s — no raw WALL cell may survive generate()" % [map_seed, cell]
+				)
+				if grid.get_terrain(cell) == Enums.TerrainType.VOID:
+					saw_void = true
+					assert_false(
+						grid.blockers.has(cell),
+						"seed %d: VOID %s must carry no Part" % [map_seed, cell]
+					)
+					assert_eq(
+						grid.get_opacity(cell),
+						0.0,
+						"seed %d: VOID %s must not block LoS" % [map_seed, cell]
+					)
 					continue
-				var exposed := false
-				for n: Vector2i in grid.neighbors(cell):
-					if grid.get_terrain(n) != Enums.TerrainType.WALL:
-						exposed = true
-						break
-				if exposed:
-					saw_exposed = true
+				var blocker: Variant = grid.blockers.get(cell)
+				if blocker != null and (blocker as Part).id == &"wall":
+					saw_wall_part = true
+					assert_eq(
+						grid.get_terrain(cell),
+						Enums.TerrainType.OPEN,
+						"seed %d: wall %s sits on OPEN ground" % [map_seed, cell]
+					)
 					assert_true(
-						grid.blockers.has(cell),
-						"seed %d: exposed wall %s must carry a blocking Part" % [map_seed, cell]
+						(blocker as Part).is_destructible,
+						"seed %d: wall %s must be destructible (tb31 Pass C)" % [map_seed, cell]
 					)
-					var part: Part = grid.blockers[cell]
-					assert_eq(part.id, &"wall", "seed %d: wall %s blocker id" % [map_seed, cell])
-					assert_false(
-						part.is_destructible, "seed %d: wall %s must be indestructible" % [map_seed, cell]
-					)
-				else:
-					saw_interior = true
-					assert_false(
-						grid.blockers.has(cell),
-						(
-							"seed %d: fully interior wall %s must carry no blocker (perf: never the"
-							+ " nearest hit along any real ray)"
-						) % [map_seed, cell]
-					)
-	assert_true(saw_exposed, "expected at least one exposed wall cell across %d seeds" % SEED_COUNT)
-	assert_true(saw_interior, "expected at least one interior wall cell across %d seeds" % SEED_COUNT)
+	assert_true(saw_wall_part, "expected at least one wall Part across %d seeds" % SEED_COUNT)
+	assert_true(saw_void, "expected at least one VOID cell across %d seeds" % SEED_COUNT)
 
 
 func _attached_barrel_count(pallet: Part) -> int:
@@ -264,14 +282,21 @@ func test_default_size_map_splits_into_multiple_rooms_with_hallways() -> void:
 		)
 
 
-func test_walls_are_opaque_and_open_cells_are_not() -> void:
+## tb31 Pass C: opacity no longer lines up with a WALL/OPEN terrain split
+## at all — a wall is OPEN ground carrying a Part, and it's the Part's
+## PRESENCE (not the terrain label) that keeps opacity at the 1.0 the
+## initial full-grid fill gave it. The real invariant now: opaque exactly
+## where a wall Part sits, transparent everywhere else (VOID, plain open
+## ground, scattered cover — cover has never set opacity).
+func test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else() -> void:
 	var grid: Grid = MapGen.generate(7, WIDTH, HEIGHT)
 	var saw_wall := false
 	var saw_open := false
 	for y in range(grid.height):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
-			if grid.get_terrain(cell) == Enums.TerrainType.WALL:
+			var blocker: Variant = grid.blockers.get(cell)
+			if blocker != null and (blocker as Part).id == &"wall":
 				assert_eq(grid.get_opacity(cell), 1.0)
 				saw_wall = true
 			else:

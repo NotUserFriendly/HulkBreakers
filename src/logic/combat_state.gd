@@ -24,7 +24,10 @@ var squad_controllers: Dictionary = {}
 ## every single turn.
 var round_number: int = 0
 var action_log: Array[String] = []
-var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0}
+## tb31 Pass C: VOID is the negative-space fill past a wall's own ring —
+## non-navigable exactly like WALL always has been (VOID never appears in
+## a freshly generated map's own carved/wall-Part cells, only past them).
+var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0, Enums.TerrainType.VOID: -1.0}
 var rng: RandomNumberGenerator
 ## Structured log (docs/09) — no sinks by default; the caller wires whichever
 ## it wants (Memory/Stdout/File/UI). Every impact and abort in resolve_turn()

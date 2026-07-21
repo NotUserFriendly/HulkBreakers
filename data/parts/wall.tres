@@ -14,6 +14,8 @@ id = &"wall"
 display_name = "Wall"
 material = &"steel"
 volume = Array[ExtResource("2_wallbx")]([SubResource("Resource_wallvol")])
-hp = 999
-max_hp = 999
-is_destructible = false
+hp = 60
+max_hp = 60
+salvage_yield = {
+&"metals": 4
+}

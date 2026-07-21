@@ -208,6 +208,49 @@ func test_move_cost_treats_a_field_object_cell_as_blocked() -> void:
 	assert_false(pf.is_walkable(Vector2i(1, 1)))
 
 
+## tb31 Pass C: a DESTROYED blocker must clear to fully passable — before
+## this, a dead crate (or a destroyed wall, once walls became destructible
+## cover) still walled off its own tile forever, since `move_cost` only
+## ever checked whether `blockers` HAD an entry, never its `hp`.
+## `ShotPlane`/`BodyProjector` already skip a 0-hp Part; this is the other
+## half of the same fix.
+func test_move_cost_treats_a_destroyed_field_object_as_passable() -> void:
+	var grid := Grid.new(3, 3)
+	var crate := Part.new()
+	crate.id = &"crate"
+	crate.hp = 0
+	grid.blockers[Vector2i(1, 1)] = crate
+	var pf := Pathfinder.new(grid)
+	assert_true(pf.is_walkable(Vector2i(1, 1)), "a destroyed blocker must no longer block movement")
+	assert_eq(pf.move_cost(Vector2i(1, 1)), Pathfinder.DEFAULT_COST)
+
+
+## tb31 Pass C: VOID is non-navigable exactly like WALL always has been —
+## `CombatState.terrain_costs`'s own default maps both to -1.0; this pins
+## the terrain type itself against a Pathfinder built with that mapping,
+## independent of whichever CombatState happens to own it.
+func test_void_terrain_is_impassable() -> void:
+	var grid := Grid.new(3, 3)
+	grid.set_terrain(Vector2i(1, 1), Enums.TerrainType.VOID)
+	var pf := Pathfinder.new(grid, {Enums.TerrainType.VOID: -1.0})
+	assert_false(pf.is_walkable(Vector2i(1, 1)))
+
+
+## tb31 Pass C: a wall (real data, `DataLibrary.get_part(&"wall")`) blocks
+## movement exactly like any other living blocker while intact, and clears
+## once destroyed — the shared fix applies to it the same as scatter cover.
+func test_an_intact_wall_blocks_movement_a_destroyed_one_does_not() -> void:
+	var grid := Grid.new(3, 3)
+	var wall: Part = DataLibrary.get_part(&"wall")
+	grid.blockers[Vector2i(1, 1)] = wall
+	var pf := Pathfinder.new(grid)
+	assert_false(pf.is_walkable(Vector2i(1, 1)), "an intact wall must block movement")
+
+	wall.hp = 0
+
+	assert_true(pf.is_walkable(Vector2i(1, 1)), "a destroyed wall must clear to passable")
+
+
 func test_astar_routes_around_a_field_object() -> void:
 	var grid := Grid.new(3, 3)
 	var crate := Part.new()

@@ -17,8 +17,8 @@ func _init(grid: Grid, terrain_costs: Dictionary = {}) -> void:
 
 
 ## MP cost to step onto `cell`, or -1.0 if the cell is not walkable (out of
-## bounds, occupied, blocked by a field object, or mapped to a negative
-## terrain cost).
+## bounds, occupied, blocked by a LIVING field object, or mapped to a
+## negative terrain cost).
 ##
 ## taskblock-16 Pass B: `grid.blockers` (cover objects: scrap piles, goo
 ## barrels, pillars, ...) now blocks movement too, same as a unit does —
@@ -27,12 +27,25 @@ func _init(grid: Grid, terrain_costs: Dictionary = {}) -> void:
 ## everywhere else in this codebase (matched 1:1 against `Unit.id`, `-1`
 ## sentinel), and a field object is never a unit — a real cell can now be
 ## blocked by EITHER without the two concepts needing to share one field.
+##
+## tb31 Pass C: reads the blocker's own `hp` now, not just its presence —
+## a DESTROYED blocker (wall or cover) is passable. Before this, a dead
+## crate (or, with BR30.10's wall geometry, a destroyed wall) still walled
+## off its own tile forever: `ShotPlane`/`BodyProjector` already skip a
+## 0-hp Part when resolving a shot (`body_projector.gd`'s own hp<=0 check),
+## but nothing ever told `Pathfinder` the blocker was gone. This is the
+## shared fix both walls (Pass C's own destructibility) and every existing
+## piece of scatter-cover benefit from — one mechanism, not two. Mangle/
+## wreck states (a destroyed blocker clearing to passable-but-difficult
+## rubble instead of fully clear ground) are explicitly deferred to a
+## later authoring pass (PLAN.md) — this pass's own contract is exactly
+## "destroyed clears to fully passable," nothing partial.
 func move_cost(cell: Vector2i) -> float:
 	if not _grid.in_bounds(cell):
 		return -1.0
 	if _grid.get_occupant_id(cell) != -1:
 		return -1.0
-	if _grid.blockers.has(cell):
+	if _grid.blockers.has(cell) and (_grid.blockers[cell] as Part).hp > 0:
 		return -1.0
 	var terrain: int = _grid.get_terrain(cell)
 	if _terrain_costs.has(terrain):

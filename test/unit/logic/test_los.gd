@@ -85,6 +85,19 @@ func test_cover_does_not_block_los() -> void:
 	)
 
 
+## tb31 Pass C: VOID is the OPPOSITE of a wall — non-navigable
+## (`Pathfinder`, tested separately) but never opaque, "a shot passes into
+## it, there's nothing there." `Grid.new()` defaults every cell to OPEN
+## (opacity 0) already, so this pins the terrain-TYPE change is what
+## actually matters here, not just a bare default.
+func test_void_does_not_block_los() -> void:
+	var grid := _open_grid(7)
+	grid.set_terrain(Vector2i(3, 3), Enums.TerrainType.VOID)
+	assert_true(
+		LoS.has_los(grid, Vector2i(0, 3), Vector2i(6, 3)), "VOID must not affect vision either"
+	)
+
+
 func test_visible_cells_open_ground_matches_chebyshev_disc() -> void:
 	var grid := _open_grid(11)
 	var origin := Vector2i(5, 5)
