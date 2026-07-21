@@ -157,12 +157,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		var picked_cell: Variant = (
 			hit.unit.cell if picked_unit != null else BoardPicker.cell_at_ray(from, dir)
 		)
-		board_clicked.emit(
-			{
-				"kind": Enums.HitKind.UNIT if picked_unit != null else Enums.HitKind.CELL,
-				"unit": picked_unit,
-				"cell": picked_cell,
-			}
+		(
+			board_clicked
+			. emit(
+				{
+					"kind": Enums.HitKind.UNIT if picked_unit != null else Enums.HitKind.CELL,
+					"unit": picked_unit,
+					"cell": picked_cell,
+				}
+			)
 		)
 		return
 	if not hit.is_empty():
@@ -486,5 +489,6 @@ func _on_inject_pressed() -> void:
 
 
 func _on_debug_panel_applied(_verb_id: StringName, _args: Dictionary) -> void:
+	battle.sync_unit_views()
 	battle.refresh_unit_views()
 	_refresh_status()

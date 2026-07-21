@@ -215,6 +215,26 @@ func find_unit_view(unit_id: int) -> HitVolumeView:
 	return null
 
 
+## taskblock-30 follow-up (supervisor report): "spawn unit doesn't create
+## a visual model, even though the inspect panel shows it." `BoutInjector.
+## spawn_unit` adds a real unit straight into `combat_state.units` — every
+## OTHER path that grows the roster runs through this scene's own
+## `load_battle()` build loop above, once, at load time; nothing kept
+## `unit_views` in sync with `combat_state.units` after that. Diffs the
+## two and builds a fresh `HitVolumeView` (the exact same construction
+## `load_battle()` already runs) for any unit that doesn't have one yet —
+## a no-op once every unit already does, so safe to call after every debug
+## verb, not just `spawn_unit`.
+func sync_unit_views() -> void:
+	for unit: Unit in combat_state.units:
+		if find_unit_view(unit.id) != null:
+			continue
+		var view := HitVolumeView.new()
+		add_child(view)
+		view.setup(unit, combat_state.material_table)
+		unit_views.append(view)
+
+
 ## Every HitVolumeView rebuilt from the unit it already tracks — a
 ## destroyed part disappears, a moved unit redraws at its new cell. Shared
 ## by every overlay that resolves a turn for real (docs/09: resolution

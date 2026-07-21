@@ -359,3 +359,26 @@ func test_inject_panel_sets_was_injected_through_the_player_view_path() -> void:
 	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": built.player_unit.id})
 
 	assert_true(built.state.was_injected)
+
+
+## taskblock-30 follow-up (supervisor report): "spawn unit doesn't create a
+## visual model, even though inspect shows it" — same wiring gap as
+## SpectatorOverlay's own version of this test; `_on_debug_panel_applied`
+## must call `battle.sync_unit_views()`, not just `refresh_unit_views()`,
+## in the player-controlled view too.
+func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	overlay._on_inject_pressed()
+	var root := Part.new()
+	root.hp = 5
+	root.max_hp = 5
+	var spawned := Unit.new(Matrix.new(), Shell.new(root), Vector2i(3, 3), 0)
+	built.state.add_unit(spawned)
+	assert_null(overlay.battle.find_unit_view(spawned.id), "sanity: no view yet")
+
+	overlay.debug_panel.applied.emit(&"spawn_unit", {})
+
+	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
+	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")
+	assert_true(view.get_child_count() > 0)

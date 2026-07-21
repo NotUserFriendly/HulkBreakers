@@ -65,7 +65,9 @@ func test_reloading_the_battle_rebuilds_the_bout_injector_against_the_new_state(
 
 	scene.new_battle(999)
 
-	assert_ne(scene.bout_injector, first_injector, "must rebuild, not keep pointing at a stale state")
+	assert_ne(
+		scene.bout_injector, first_injector, "must rebuild, not keep pointing at a stale state"
+	)
 	assert_eq(scene.bout_injector.state, scene.combat_state)
 
 
@@ -232,6 +234,40 @@ func test_refresh_unit_views_with_null_still_rebuilds_every_view() -> void:
 			children_before[i],
 			"the default (null) must still rebuild everyone, unchanged from before this pass"
 		)
+
+
+## taskblock-30 follow-up (supervisor report): "spawn unit doesn't create a
+## visual model, even though inspect shows it." Root cause — `unit_views`
+## is only ever built once, in `load_battle()`'s own loop; a unit added
+## afterward (`BoutInjector.spawn_unit`, straight into `combat_state.
+## units`) never gets a view at all. `sync_unit_views()` closes that gap.
+func test_sync_unit_views_builds_a_view_for_a_unit_added_after_load_battle() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var before_count: int = scene.unit_views.size()
+	var root := Part.new()
+	root.hp = 5
+	root.max_hp = 5
+	var spawned := Unit.new(Matrix.new(), Shell.new(root), Vector2i(2, 2), 0)
+	scene.combat_state.add_unit(spawned)
+	assert_null(scene.find_unit_view(spawned.id), "sanity: no view exists yet for the new unit")
+
+	scene.sync_unit_views()
+
+	assert_eq(scene.unit_views.size(), before_count + 1)
+	var view: HitVolumeView = scene.find_unit_view(spawned.id)
+	assert_not_null(view)
+	assert_true(view.get_child_count() > 0, "the new unit must actually render something")
+
+
+func test_sync_unit_views_is_a_noop_when_every_unit_already_has_a_view() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var views_before: Array[HitVolumeView] = scene.unit_views.duplicate()
+
+	scene.sync_unit_views()
+
+	assert_eq(scene.unit_views, views_before, "must never rebuild or duplicate an existing view")
 
 
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two

@@ -677,6 +677,7 @@ func _on_inject_pressed() -> void:
 ## view refresh) — a forced HP-to-0 can kill a part the header/views need
 ## to know about.
 func _on_debug_panel_applied(_verb_id: StringName, _args: Dictionary) -> void:
+	battle.sync_unit_views()
 	battle.refresh_unit_views()
 	_update_readout_header()
 
