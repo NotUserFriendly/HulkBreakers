@@ -424,20 +424,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   scroll further, so the same wheel event continues on to `CameraRig`'s own zoom handler. Both are
   UI-event-consumption gaps in the SAME panel, not two unrelated bugs.
 
-### BR30.06 — Active — Step Out: multiple queued attacks into the same step-out square should batch  ·  source: `SUPERVISOR`
-- **Reported:** 2026-07-21. A design refinement to Step Out's own shape, not a defect against current
-  spec: "if a unit queues multiple attacks, but they all require him to step out into the same square,
-  then they should resolve together, as in step out, resolve all actions, step in" — instead of the
-  current one-attack-at-a-time step-out/resolve/step-in cycle repeating per queued attack that shares
-  the same firing cell.
-- **Status:** not yet investigated/designed. `StepOutPlanner.build_triple()`/the free-outbound-leg
-  flow (BR27.01's own Pass B fix) currently assembles one move-attack-move triple per confirmed
-  step-out; batching multiple attacks against the same candidate cell into a single
-  step-out/[attack, attack, ...]/step-in sequence is new shape for that assembly, not a bugfix to the
-  existing one. Flagging per CLAUDE.md's "reclassify honestly" — this belongs in `docs/PLAN.md` once
-  scoped, but kept here for now alongside the rest of the Step Out work already tracked under BR27.01
-  so it isn't lost.
-
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
