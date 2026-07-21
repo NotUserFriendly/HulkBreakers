@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_wallpt"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_wallbx"]
+
+[sub_resource type="Resource" id="Resource_wallvol"]
+script = ExtResource("2_wallbx")
+center = Vector3(0, 1.2, 0)
+size = Vector3(1.0, 2.4, 1.0)
+
+[resource]
+script = ExtResource("1_wallpt")
+id = &"wall"
+display_name = "Wall"
+material = &"steel"
+volume = Array[ExtResource("2_wallbx")]([SubResource("Resource_wallvol")])
+hp = 999
+max_hp = 999
+is_destructible = false

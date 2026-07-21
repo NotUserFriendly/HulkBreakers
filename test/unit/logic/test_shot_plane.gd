@@ -355,6 +355,36 @@ func test_self_obstruction_returns_null_with_nothing_in_the_way() -> void:
 	assert_null(ShotPlane.self_obstruction(plane, 0.15, shooter.shell.all_parts()))
 
 
+## BR30.10: a wall cell between shooter and target must actually stop a
+## shot. MapGen only ever gave a WALL cell `opacity = 1.0` (the abstract
+## LoS/tactical-gating check) — never a `grid.blockers` entry — so
+## ShotPlane.build (which only ever reads `state.units`/`state.grid.
+## blockers`, never `opacity`) had nothing standing in for it; a shot
+## resolved as if the wall wasn't there. Fixed by giving MapGen-generated
+## walls a real, indestructible Part in `blockers`
+## (`MapGen._stamp_wall_geometry`, `data/parts/wall.tres`). This exercises
+## that same shipped data the way a real wall cell now carries it.
+func test_a_wall_part_between_shooter_and_target_blocks_the_shot() -> void:
+	var grid := Grid.new(5, 6)
+	var state := CombatState.new(grid)
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
+	state.add_unit(target)
+	var wall_part: Part = DataLibrary.get_part(&"wall")
+	grid.blockers[Vector2i(2, 2)] = wall_part
+
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	print("\n=== a wall cell standing between shooter and target ===")
+	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 6))
+
+	var hit: Region = ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5))
+	assert_eq(hit.part.id, &"wall", "the wall must be the nearest region at this point")
+
+	var past_the_wall: Region = ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5), [wall_part])
+	assert_eq(
+		past_the_wall.part.id, &"target", "the target is still there once the wall is excluded"
+	)
+
+
 ## docs/09 taskblock07 Pass A1: "no file under src/ calls resolve_projectile
 ## except shot_plane.gd itself" — resolve_projectile is the internal
 ## rect-lookup resolve_ray runs, never a second, parallel resolution door a
