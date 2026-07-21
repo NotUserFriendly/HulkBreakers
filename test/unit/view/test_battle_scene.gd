@@ -271,21 +271,92 @@ func test_sync_unit_views_is_a_noop_when_every_unit_already_has_a_view() -> void
 
 
 ## taskblock-30 follow-up (supervisor report): "removing a unit doesn't
-## visually do anything." Closes the loop end to end: `bout_injector.
-## remove_unit` (now ejecting the matrix too, see test_bout_injector_
-## remove_unit.gd) must actually flip what `HitVolumeView.is_downed()`
-## reads, the one thing `refresh()` checks to pick the DOWN pose.
-func test_removing_a_unit_through_the_debug_injector_flips_its_view_to_downed() -> void:
+## visually do anything" — this was the ORIGINAL bug pinned against
+## `kill` (renamed from `remove_unit` in a later follow-up; see
+## test_bout_injector_kill.gd for its own matrix-ejection coverage).
+## Closes the loop end to end: ejecting the matrix must actually flip what
+## `HitVolumeView.is_downed()` reads, the one thing `refresh()` checks to
+## pick the DOWN pose.
+func test_killing_a_unit_through_the_debug_injector_flips_its_view_to_downed() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var target: Unit = scene.combat_state.units[0]
 	var view: HitVolumeView = scene.find_unit_view(target.id)
 	assert_false(view.is_downed(), "sanity: a fresh seeded unit is not downed")
 
-	scene.bout_injector.remove_unit(target)
+	scene.bout_injector.kill(target)
 	scene.refresh_unit_views()
 
 	assert_true(view.is_downed())
+
+
+## taskblock-30 follow-up (supervisor): "remove can be generalized to
+## objects, covers, and things on tiles. Fully vanishing it." Distinct
+## from `kill` above — this destroys the unit's own view ENTIRELY, no
+## downed corpse left behind.
+func test_remove_unit_view_destroys_the_view_and_drops_it_from_unit_views() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var target: Unit = scene.combat_state.units[0]
+	var view: HitVolumeView = scene.find_unit_view(target.id)
+	var before_count: int = scene.unit_views.size()
+
+	scene.remove_unit_view(target)
+
+	assert_eq(scene.unit_views.size(), before_count - 1)
+	assert_false(view in scene.unit_views)
+	assert_null(scene.find_unit_view(target.id))
+
+
+## The whole point: a unit deliberately removed must never come back just
+## because some LATER, unrelated debug verb's own `sync_unit_views()` pass
+## runs — `CombatState.kill_unit` never deletes from `state.units` (by
+## design), so without tracking, the very next sync would resurrect it.
+func test_sync_unit_views_never_resurrects_a_deliberately_removed_unit() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var target: Unit = scene.combat_state.units[0]
+	scene.remove_unit_view(target)
+	assert_null(scene.find_unit_view(target.id), "sanity: removed")
+
+	scene.sync_unit_views()
+
+	assert_null(scene.find_unit_view(target.id), "sync must not bring it back")
+
+
+## A fresh bout must never inherit a previous bout's own removed-unit ids
+## (unit ids can repeat across separately-seeded CombatStates) — read the
+## private tracking dict directly, the same convention this file's own
+## `_is_active_turn` checks already use for private view/scene state.
+func test_load_battle_resets_the_removed_unit_tracking() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.remove_unit_view(scene.combat_state.units[0])
+	assert_false(scene._removed_unit_ids.is_empty(), "sanity: something is tracked as removed")
+
+	scene.new_battle(999)
+
+	assert_true(scene._removed_unit_ids.is_empty(), "a fresh bout must not inherit stale removals")
+
+
+## taskblock-30 follow-up (supervisor report): `board_view.build()` was
+## only ever called once, at `load_battle()` — the exact same
+## data-changed-but-nothing-redraws gap `sync_unit_views()` closed for
+## units, unnoticed for `Grid.blockers`/`field_items`.
+func test_sync_board_view_picks_up_a_blocker_placed_after_load_battle() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var before_count: int = scene.board_view._static.get_child_count()
+	var scrap := Part.new()
+	scrap.id = &"scrap_pile"
+	scrap.hp = 4
+	scrap.max_hp = 4
+	scrap.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
+	scene.combat_state.grid.blockers[Vector2i(3, 3)] = scrap
+
+	scene.sync_board_view()
+
+	assert_gt(scene.board_view._static.get_child_count(), before_count)
 
 
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two

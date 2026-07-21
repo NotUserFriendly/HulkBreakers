@@ -382,3 +382,45 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
 	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")
 	assert_true(view.get_child_count() > 0)
+
+
+## taskblock-30 follow-up (supervisor): "spawn object (discrete from spawn
+## unit)... currently cover items, and loose parts" — same wiring proof as
+## SpectatorOverlay's own version, in the player-controlled view too.
+func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	overlay._on_inject_pressed()
+
+	_apply_via_panel(
+		overlay.debug_panel,
+		&"spawn_object",
+		{"cell": Vector2i(3, 3), "part_id": "scrap_pile", "as_cover": true}
+	)
+
+	assert_true(built.state.grid.blockers.has(Vector2i(3, 3)))
+
+
+## taskblock-30 follow-up (supervisor): "remove can be generalized to
+## objects, covers, and things on tiles. Fully vanishing it." Same
+## real-chain proof as SpectatorOverlay's own version, in the
+## player-controlled view too.
+func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	var player_unit: Unit = built.player_unit
+	overlay._on_inject_pressed()
+	overlay.debug_panel._active = {
+		"kind": Enums.HitKind.UNIT, "unit": player_unit, "cell": player_unit.cell
+	}
+
+	_apply_via_panel(overlay.debug_panel, &"remove_object", {})
+
+	assert_false(player_unit.alive)
+	assert_null(overlay.battle.find_unit_view(player_unit.id), "the view must be gone entirely")
+
+	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": built.ai_unit.id})
+
+	assert_null(
+		overlay.battle.find_unit_view(player_unit.id), "still gone after an unrelated Apply"
+	)

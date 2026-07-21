@@ -19,11 +19,22 @@ extends RefCounted
 ## case a form CAN express); `set_therms` (a stub with nothing real to
 ## configure yet — docs/PLAN.md, therms aren't built).
 ##
-## `set_position` (unit-only move) is ALSO not its own row anymore
-## (taskblock-30 follow-up) — `move_object` below generalizes it (unit,
-## cover, or dropped field items) and calls `set_position` itself for the
-## unit case, so the underlying verb still exists and is still exercised,
-## just never surfaced as a second, narrower panel entry next to it.
+## `set_position` (unit-only move), `place_cover`/`clear_cover` (blocker-
+## only spawn/erase), and the old matrix-ejecting `remove_unit` (renamed
+## `kill`, still its own row below — see next paragraph) are ALSO not
+## their own rows anymore (taskblock-30 follow-up) — `move_object`,
+## `spawn_object`, and `remove_object` generalize each across units,
+## cover, and loose `Grid.field_items` alike, calling the narrower verbs
+## internally where that's the real mechanism, so each underlying verb
+## still exists and is still exercised, just never surfaced as a second,
+## narrower panel entry next to its own generalization.
+##
+## `kill` vs `remove_object` (taskblock-30 follow-up, supervisor): two
+## deliberately distinct debug verbs, not one. `kill` is a REAL,
+## narratively true death (matrix ejected, a visible downed corpse — the
+## exact thing a real in-bout kill leaves behind). `remove_object` is
+## debug-only cleanup: whatever the active target is (a unit, cover, or a
+## loose item) vanishes ENTIRELY — no corpse, nothing left to look at.
 
 const P := DebugVerbSpec.ParamType
 
@@ -50,10 +61,16 @@ static func all() -> Array[DebugVerbSpec]:
 			)
 		),
 		DebugVerbSpec.new(
-			&"remove_unit",
-			"Remove Unit",
+			&"remove_object",
+			"Remove Object",
+			[DebugVerbSpec.param(&"object", P.OBJECT)],
+			Callable(DebugVerbs, &"_apply_remove_object")
+		),
+		DebugVerbSpec.new(
+			&"kill",
+			"Kill",
 			[DebugVerbSpec.param(&"unit", P.UNIT)],
-			Callable(DebugVerbs, &"_apply_remove_unit")
+			Callable(DebugVerbs, &"_apply_kill")
 		),
 		DebugVerbSpec.new(
 			&"force_current_unit",
@@ -139,17 +156,18 @@ static func all() -> Array[DebugVerbSpec]:
 				Callable(DebugVerbs, &"_apply_inflict_wound")
 			)
 		),
-		DebugVerbSpec.new(
-			&"place_cover",
-			"Place Cover",
-			[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"part_id", P.STRING_NAME)],
-			Callable(DebugVerbs, &"_apply_place_cover")
-		),
-		DebugVerbSpec.new(
-			&"clear_cover",
-			"Clear Cover",
-			[DebugVerbSpec.param(&"cell", P.CELL)],
-			Callable(DebugVerbs, &"_apply_clear_cover")
+		(
+			DebugVerbSpec
+			. new(
+				&"spawn_object",
+				"Spawn Object",
+				[
+					DebugVerbSpec.param(&"cell", P.CELL),
+					DebugVerbSpec.param(&"part_id", P.STRING_NAME),
+					DebugVerbSpec.param(&"as_cover", P.BOOL),
+				],
+				Callable(DebugVerbs, &"_apply_spawn_object")
+			)
 		),
 		DebugVerbSpec.new(
 			&"set_passable",
@@ -180,8 +198,12 @@ static func _apply_spawn_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionar
 	return inj.spawn_unit(a.preset, a.cell, a.squad_id) != null
 
 
-static func _apply_remove_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
-	return inj.remove_unit(a.unit)
+static func _apply_remove_object(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.remove_object(a.object)
+
+
+static func _apply_kill(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.kill(a.unit)
 
 
 static func _apply_force_current_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
@@ -220,12 +242,8 @@ static func _apply_inflict_wound(inj: BoutInjector, _pool: Dictionary, a: Dictio
 	return inj.inflict_wound(a.unit, a.part_id, a.stack, a.threshold, a.wound_id)
 
 
-static func _apply_place_cover(inj: BoutInjector, pool: Dictionary, a: Dictionary) -> bool:
-	return inj.place_cover(a.cell, a.part_id, pool)
-
-
-static func _apply_clear_cover(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
-	return inj.clear_cover(a.cell)
+static func _apply_spawn_object(inj: BoutInjector, pool: Dictionary, a: Dictionary) -> bool:
+	return inj.spawn_object(a.cell, a.part_id, pool, a.as_cover)
 
 
 static func _apply_set_passable(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

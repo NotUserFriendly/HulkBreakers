@@ -74,6 +74,15 @@ var overlay: ControlOverlay
 ## affordance (see `spectator_overlay.gd`/`squad_control_overlay.gd`) just
 ## reads this, never constructs its own.
 var bout_injector: BoutInjector
+## taskblock-30 follow-up (supervisor): unit id -> true, for every unit
+## `remove_unit_view()` has deliberately made vanish (debug `remove_object`
+## on a unit). `CombatState.kill_unit` never deletes from `state.units`
+## (by design — never break a held reference), so the unit is still there
+## for `sync_unit_views()` to find on the NEXT debug verb's own sync pass;
+## without this it would silently resurrect a view for a unit the operator
+## just removed. Reset on every `load_battle()` — a fresh bout starts with
+## nothing removed, regardless of what a previous bout's ids meant.
+var _removed_unit_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -170,6 +179,7 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 		remove_child(view)
 		view.queue_free()
 	unit_views.clear()
+	_removed_unit_ids.clear()
 
 	if file_sink != null:
 		file_sink.close()
@@ -227,12 +237,47 @@ func find_unit_view(unit_id: int) -> HitVolumeView:
 ## verb, not just `spawn_unit`.
 func sync_unit_views() -> void:
 	for unit: Unit in combat_state.units:
-		if find_unit_view(unit.id) != null:
+		if _removed_unit_ids.has(unit.id) or find_unit_view(unit.id) != null:
 			continue
 		var view := HitVolumeView.new()
 		add_child(view)
 		view.setup(unit, combat_state.material_table)
 		unit_views.append(view)
+
+
+## taskblock-30 follow-up (supervisor): "remove... fully vanishing it" —
+## the debug-only counterpart to `sync_unit_views()`'s creation side.
+## Destroys `unit`'s own `HitVolumeView` entirely (not just re-rendered
+## downed — that's `kill`'s own, narratively real, distinct debug verb)
+## and remembers its id so a LATER debug verb's own `sync_unit_views()`
+## pass never resurrects it. `CombatState.kill_unit`/`BoutInjector.
+## remove_object` already handle the DATA side (mark dead, vacate the
+## cell) — this is purely the view-layer half, since `BoutInjector` itself
+## is view-agnostic and can't touch the SceneTree at all. No real gameplay
+## path ever deletes a view this way — a debug-only visual operation, not
+## a front for something real.
+func remove_unit_view(unit: Unit) -> void:
+	_removed_unit_ids[unit.id] = true
+	for i in range(unit_views.size()):
+		if unit_views[i].unit == unit:
+			var view: HitVolumeView = unit_views[i]
+			unit_views.remove_at(i)
+			remove_child(view)
+			view.queue_free()
+			return
+
+
+## taskblock-30 follow-up (supervisor report): `board_view.build()` was
+## only ever called once, in `load_battle()` — the exact same "data
+## changed, nothing rebuilds the view" gap `sync_unit_views()` already
+## closed for units, just never noticed for `Grid.blockers`/`field_items`
+## (a debug `place_cover`/`clear_cover`/`spawn_object`/`remove_object`/
+## `move_object`-on-a-cell call mutates them correctly, but nothing ever
+## redrew the board). `build()` already does a full clear-and-rebuild of
+## its own static geometry from whatever `grid` currently holds — calling
+## it again is the correct resync, not a parallel mechanism.
+func sync_board_view() -> void:
+	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 
 
 ## Every HitVolumeView rebuilt from the unit it already tracks — a
