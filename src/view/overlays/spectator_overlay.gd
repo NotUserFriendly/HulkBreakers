@@ -26,6 +26,14 @@ extends ControlOverlay
 ## Speed still read exactly as before; only the internal driving mechanism
 ## changed.
 
+## taskblock-30/31: the same generic capture concept `TacticsController`
+## gained — no `BoutInjector` reference here either, just a "borrow the
+## next real click" mechanism a debug panel's own board-picking mode can
+## use. Emits the same normalized `{"kind", "unit", "cell"}` shape
+## `TacticsController.board_clicked` does, so a panel can listen against
+## either overlay identically.
+signal board_clicked(hit: Dictionary)
+
 ## Seconds between turns at 1x speed, on TOP of whatever that turn's own
 ## ResolutionPlayer.play() call already took (its animation is real time,
 ## not instant) — watching is the whole point (docs: "it must be
@@ -50,6 +58,10 @@ var log_sink: HierarchicalUiSink
 ## from source) — that's the real safety property, and it's unchanged by
 ## `SquadControlOverlay` gaining its own debug-gated Inject affordance.
 var bout_injector: BoutInjector
+## taskblock-30/31: paired with `board_clicked` (declared with this
+## file's other signals, above) — while true, the next real click is
+## captured instead of doing this overlay's own normal thing.
+var input_capture_mode: bool = false
 
 ## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
 ## opens the inspect panel on that bot. Closing it resumes." Supersedes
@@ -136,6 +148,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	var from: Vector3 = camera.project_ray_origin(mb.position)
 	var dir: Vector3 = camera.project_ray_normal(mb.position)
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
+	if input_capture_mode:
+		var picked_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
+		var picked_cell: Variant = (
+			hit.unit.cell if picked_unit != null else BoardPicker.cell_at_ray(from, dir)
+		)
+		board_clicked.emit(
+			{
+				"kind": Enums.HitKind.UNIT if picked_unit != null else Enums.HitKind.CELL,
+				"unit": picked_unit,
+				"cell": picked_cell,
+			}
+		)
+		return
 	if not hit.is_empty():
 		_was_playing_before_inspect = playing
 		pause()
