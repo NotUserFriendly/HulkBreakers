@@ -173,6 +173,50 @@ func test_moving_into_cover_then_shooting_still_enters_step_out_mode() -> void:
 	assert_null(controller.aiming_at, "a step out never also enters ordinary aim mode")
 
 
+## Pass D audit (BR27.05/BR27.06 parent pattern): `_confirm_step_out()`
+## computed its outbound path from `selection.selected_unit.cell` — the
+## same stale, pre-queued-move cell BR27.06 already fixed one function
+## over. `MoveAction.is_legal()` requires `path[0] == actual.cell` against
+## whatever the unit's ACTUAL (previewed) position is by the time the
+## queue validates it — so continuing directly from
+## `test_moving_into_cover_then_shooting_still_enters_step_out_mode`
+## (a move already queued into cover before arming/clicking), confirming
+## the step-out cell must still succeed, not silently cancel because the
+## computed path starts from the wrong (pre-move) cell.
+func test_confirming_a_step_out_cell_after_a_prior_queued_move_still_queues_the_out_leg() -> void:
+	var built: Dictionary = _setup_covered_scene()
+	var controller: TacticsController = built.controller
+	var shooter: Unit = built.shooter
+	shooter.cell = Vector2i(5, 0)
+	built.state.grid.set_occupant_id(Vector2i(3, 0), -1)
+	built.state.grid.set_occupant_id(Vector2i(5, 0), shooter.id)
+	shooter.mp = 100.0
+	controller.click_cell(shooter.cell)
+	controller.selection.queue_move(Vector2i(3, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(built.enemy.cell)
+	assert_eq(controller.stepping_out_at, built.enemy, "sanity: step-out mode entered")
+
+	controller.confirm_shot()
+
+	assert_null(
+		controller.stepping_out_at, "step-out choice must resolve, not silently cancel back to null"
+	)
+	assert_eq(
+		controller.aiming_at,
+		built.enemy,
+		"confirming must reach ordinary aim mode — a silent cancel leaves this null instead"
+	)
+	var queued: Array[CombatAction] = controller.selection.current_queue().actions
+	assert_eq(queued.size(), 2, "the prior move leg plus the step-out's own free outbound leg")
+	var out_leg := queued[1] as MoveAction
+	assert_eq(
+		out_leg.path[0],
+		Vector2i(3, 0),
+		"the outbound leg must path from where the prior move actually leaves the shooter, not (5, 0)"
+	)
+
+
 func test_step_out_candidates_are_populated_safest_first() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller

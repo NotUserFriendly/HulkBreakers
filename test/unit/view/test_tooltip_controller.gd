@@ -102,6 +102,46 @@ func test_hovering_a_field_object_shows_its_own_detail() -> void:
 	assert_true(tooltip_view._label.text.contains(expected_title))
 
 
+## Pass D audit (BR27.05/BR27.06 parent pattern): `refresh()` passed
+## `tactics.selection.selected_unit` (raw, stale) into `TileInspection.
+## inspect`, whose `visible_from_selected` field reads `selected.cell`
+## directly for a LOS check. A move already queued (not yet resolved)
+## left the tooltip showing visibility from the unit's TURN-START cell
+## instead of where it will actually be. Opaque cell (5, 3) blocks LOS
+## from (5, 0) to the hovered cell (5, 5) but not from (5, 4) — walkable
+## either way (opacity blocks sight, not movement, same distinction
+## `set_passable`'s own doc comment draws).
+func test_visible_from_selected_reflects_a_queued_not_yet_resolved_move() -> void:
+	var mover: Unit = _make_unit(Vector2i(5, 0), 0)
+	var built: Dictionary = _setup([mover])
+	var state: CombatState = built.state
+	var controller: TacticsController = built.controller
+	var tooltip_view: TooltipView = built.tooltip_view
+	state.grid.set_opacity(Vector2i(5, 3), 1.0)
+	mover.mp = 100.0
+
+	controller.click_cell(mover.cell)
+	controller.hovered_cell = Vector2i(5, 5)
+	controller.hover_changed.emit()
+	_reveal(tooltip_view)
+	assert_true(
+		tooltip_view._label.text.contains("visible from selected: false"),
+		"sanity: (5, 0) is genuinely blocked from (5, 5) by the opaque cell"
+	)
+
+	controller.selection.queue_move(Vector2i(5, 4))
+	controller.hover_changed.emit()
+	_reveal(tooltip_view)
+
+	assert_true(
+		tooltip_view._label.text.contains("visible from selected: true"),
+		(
+			"the queued (not yet resolved) destination (5, 4) has clear LOS to (5, 5) -- the tooltip "
+			+ "must reflect where the unit will actually be, not its stale turn-start cell"
+		)
+	)
+
+
 func test_an_inspected_part_wins_over_a_hovered_cell() -> void:
 	var built: Dictionary = _setup([])
 	var controller: TacticsController = built.controller

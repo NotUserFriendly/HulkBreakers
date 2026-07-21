@@ -915,6 +915,16 @@ func _append_step_out_return_leg() -> void:
 ## itself doesn't queue legally, same posture confirm_shot() itself
 ## already has.
 func _confirm_step_out() -> void:
+	# Pass D audit (BR27.05/BR27.06 parent pattern): the outbound path must
+	# be pathed from the PREVIEWED cell, not `shooter.cell` directly — a
+	# prior queued (not yet resolved) move leaves `shooter.cell` stale, and
+	# `MoveAction.is_legal()` requires `path[0] == actual.cell` against
+	# wherever the unit ACTUALLY previews to by the time the queue
+	# validates it. Pathing from the stale cell silently failed `enqueue()`
+	# and fell through to `cancel_step_out()` — the same "no visible
+	# step-out" symptom BR27.06 chased one function over, in a spot that
+	# function's own fix never reached. `_append_step_out_return_leg()`
+	# already gets this right; matched here.
 	var shooter: Unit = selection.selected_unit
 	var weapon: Part = (
 		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
@@ -924,8 +934,13 @@ func _confirm_step_out() -> void:
 		cancel_step_out()
 		return
 	var firing_cell: Vector2i = _step_out_candidates[_step_out_cell_index]
-	var pf := Pathfinder.new(selection.state.grid, selection.state.terrain_costs)
-	var out_path: Array[Vector2i] = pf.astar(shooter.cell, firing_cell)
+	var preview: CombatState = selection.current_queue().preview(selection.state)
+	var previewed_shooter: Unit = preview.find_unit(shooter.id)
+	if previewed_shooter == null:
+		cancel_step_out()
+		return
+	var pf := Pathfinder.new(preview.grid, preview.terrain_costs)
+	var out_path: Array[Vector2i] = pf.astar(previewed_shooter.cell, firing_cell)
 	if (
 		out_path.size() < 2
 		or not selection.current_queue().enqueue(
@@ -934,7 +949,7 @@ func _confirm_step_out() -> void:
 	):
 		cancel_step_out()
 		return
-	_step_out_origin_cell = shooter.cell
+	_step_out_origin_cell = previewed_shooter.cell
 	_returning_from_step_out = true
 	stepping_out_at = null
 	_step_out_candidates = []

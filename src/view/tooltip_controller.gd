@@ -46,8 +46,14 @@ func refresh() -> void:
 		tooltip_view.hide_tooltip()
 		return
 
+	# Pass D audit (BR27.05/BR27.06 parent pattern): `visible_from_selected`
+	# is a real LOS check FROM the selected unit's own cell
+	# (`TileInspection.inspect`) — reading the raw `selected_unit` left it
+	# stuck showing visibility from wherever the unit started the turn,
+	# never updating once a move was queued (not yet resolved) toward
+	# somewhere with a different sightline.
 	var info: Dictionary = TileInspection.inspect(
-		tactics.selection.state, tactics.hovered_cell, tactics.selection.selected_unit
+		tactics.selection.state, tactics.hovered_cell, tactics.selection.previewed_unit()
 	)
 	if info.is_empty():
 		tooltip_view.hide_tooltip()
