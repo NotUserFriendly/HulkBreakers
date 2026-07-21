@@ -72,3 +72,9 @@ Randomized affixes and small stat rolls on hulk-found gear, reinforcing the "ori
 - **Surrogate vat** simulation: growth time, appearance from the matrix's preferences.
 - **Dialogue / yapping.** The humanizing face is in scope (`04`); the voice is not, yet.
 - Claims, faction reputation, local space encounters.
+
+## Presentation & branding
+- **Startup logo animation.** A stylized/simplified voidhulk fades in, growing until it's logo-sized.
+  The instant it's fully visible, a shell drops from above; a weld-splatter sound plays as a molten-
+  metal "V" appears over the voidhulk with the shell seated in the V — reading as the shell cutting the
+  voidhulk in half. Pure branding/title flavor; no system depends on it.
