@@ -260,6 +260,15 @@ board click lands, no separate Apply press. The verb picker itself is now a scro
 the panel's left side; selecting a verb populates a "control panel" column on the right with that
 verb's own param rows, Apply, and status — the panel's whole layout, not just its verb table, stays
 data-driven off `DebugVerbs.all()`.
+**Fix: a debug-spawned unit rendered nothing (tb30 follow-up)** — `BattleScene.unit_views` was only
+ever populated once, in `load_battle()`'s own build loop; `BoutInjector.spawn_unit` adds straight into
+`combat_state.units` with no view ever constructed for it. New `BattleScene.sync_unit_views()` diffs
+the two and builds the missing `HitVolumeView`(s), mirroring `load_battle()`'s own construction; both
+overlays' `_on_debug_panel_applied` call it before `refresh_unit_views()`. Root-caused by building a
+real `BattleScene`+overlay headlessly and reading `HitVolumeView` transforms back rather than
+guessing — `move_object`'s own position math checked out correctly in every scenario tried (a fresh
+bout, after a real resolved turn, through both overlays), so a reported "move also doesn't visually
+work" was most likely the same missing-view bug, tested against an already-invisible just-spawned unit.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
