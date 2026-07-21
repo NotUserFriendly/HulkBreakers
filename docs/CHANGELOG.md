@@ -245,6 +245,21 @@ new duck-typed `board_clicked` signal / `input_capture_mode` flag on both `Tacti
 spectator, and neither gameplay-input class needs to import the panel or `BoutInjector` to expose
 it (the source-routing test from the tb29 paragraph above still holds against both). Both overlays'
 Inject button now opens/closes this one shared panel instead of a per-target popup menu.
+**Active-target memory + move-object (tb30 follow-up)** — the panel now keeps an "active target":
+every board click while it's open (not just a field's own "Pick") updates it and a label above the
+panel's own control column shows it, via the same `board_clicked`/`input_capture_mode` hook, now
+armed/disarmed against the panel's own visibility instead of per-pick. `BoutInjector.move_object
+(target, to_cell)` generalizes `set_position` (unit-only) to move whatever a hit-shaped `{kind, unit,
+cell}` dict points at — a unit (delegates to a shared `_move_unit` helper `set_position` also fronts,
+the same split `_attach` already uses, logged under its own verb name), or a cell's `Grid.blockers`/
+`Grid.field_items` contents (a real dictionary re-key, preserving the Part's own state, never a fresh
+duplicate). A new `DebugVerbSpec.ParamType.OBJECT` always resolves from the active target, never a
+manual-entry widget. Move Object keeps its `to_cell` param's ordinary manual X/Y entry and adds a
+"Move On Next Click" button — snapshots the active target, then applies the move the instant the next
+board click lands, no separate Apply press. The verb picker itself is now a scrolling `ItemList` on
+the panel's left side; selecting a verb populates a "control panel" column on the right with that
+verb's own param rows, Apply, and status — the panel's whole layout, not just its verb table, stays
+data-driven off `DebugVerbs.all()`.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
