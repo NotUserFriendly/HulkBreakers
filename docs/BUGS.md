@@ -424,6 +424,46 @@ confirm" roll-up — so pending items surface at a natural review point without 
   scroll further, so the same wheel event continues on to `CameraRig`'s own zoom handler. Both are
   UI-event-consumption gaps in the SAME panel, not two unrelated bugs.
 
+### BR30.07 / BR30.08 — Resolved — Pass D audit: `selected_unit` staleness, same class as BR27.05/BR27.06  ·  source: `CC`
+- **Found:** 2026-07-21, taskblock-30 Pass D (a supervisor-authored audit task): "BR27.05 and BR27.06
+  were the same bug in two places: view code read `selection.selected_unit` (raw, turn-start state)
+  during the TACTICS phase, where — per docs/09's 'queuing mutates nothing' — `.cell`/`.ap` don't
+  reflect queued-but-unresolved actions. ... Two instances days apart means this is a pattern, not two
+  isolated bugs. Audit the rest." Every suspect read from the addendum's own list was checked (state vs
+  identity), and none blind-fixed — each confirmed with a failing-then-passing test first.
+- **BR30.07 — `TacticsController._confirm_step_out()` computed the outbound path from the stale
+  cell:** `Pathfinder.astar(shooter.cell, firing_cell)` used `selection.selected_unit.cell` directly.
+  `MoveAction.is_legal()` requires `path[0] == actual.cell` against wherever the unit's real
+  (previewed) position is by validation time — so a move queued before triggering step-out silently
+  failed `enqueue()` and fell through to `cancel_step_out()`, with no visible step-out at all. Every
+  existing test armed+clicked from the shooter's own turn-start cell — the exact gap that also hid
+  BR27.06 itself, in a spot BR27.06's own fix never reached (a different function). **State read,
+  confirmed.** Fix: path from the queue's own preview instead, matching
+  `_append_step_out_return_leg()`'s already-correct sibling pattern. Verified failing without the fix
+  (silent cancel; queue only ever got 1 of the expected 2 entries) and passing with it.
+  **RESOLVED** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `8457ff0`, 1864/1864 green.
+- **BR30.08 — `TooltipController.refresh()` showed LOS from the stale cell:** passed the raw
+  `selected_unit` into `TileInspection.inspect()`, whose `visible_from_selected` field runs a real LOS
+  check from `selected.cell` directly. A move queued toward a cell with different sightlines left the
+  tooltip stuck showing visibility from the turn-start position. **State read, confirmed.** Fix:
+  `previewed_unit()` instead. Verified failing without the fix and passing with it (an opaque cell
+  blocks LOS from the start cell but not the queued destination). **RESOLVED**
+  [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `8457ff0`, 1864/1864 green.
+- **Checked, not a bug:** `TacticsController.step_out_exposure()`/`_refresh_overlay()`'s
+  `Overwatch.would_trigger_at()`/`all_threatened_cells()` calls also read `selected_unit` directly, but
+  tracing `would_trigger_at()`'s own general-case branch shows it always re-resolves the mover by `id`
+  and explicitly relocates the CLONE to the candidate cell before checking arc/range/LOS, regardless of
+  what the passed reference's own `.cell` says — the stale reference only changes which internal branch
+  runs, never the final answer. A direct empirical probe (temporary diagnostic, not committed) confirmed
+  no output difference. No entry filed.
+- **Confirmed correct as-is, no change needed:** `MoveHooks.new(selected_unit.cell)` (both call sites)
+  — these run during REAL `resolve_until()`, where `selected_unit.cell` genuinely IS the live starting
+  cell, not a preview concern; `confirm_shot()`'s own `shooter` reference and `_append_step_out_
+  return_leg()` (both already use raw `selected_unit` ONLY for `.id`/identity, deferring all real
+  geometry to previewed state — the correct split); `ap_mp_pip_row.gd` (already reads `previewed_unit()`
+  — pre-existing correct pattern); `weapon_panel.gd` (purely structural shell/part reads — hp, wounds,
+  manipulators — no position or queue dependency).
+
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
