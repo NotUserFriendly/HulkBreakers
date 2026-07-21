@@ -338,6 +338,28 @@ empirical probe), turned out not to matter — `would_trigger_at()`'s general-ca
 re-resolves the mover by id and relocates to the candidate cell regardless of the passed reference's
 own stale `.cell`, so no fix was needed there.
 
+**Fix: shots resolved straight through walls (BR30.10)** — `LoS.has_los()` and `ShotPlane.build()` read
+entirely disjoint data: `LoS` reads only `grid.opacity` (correctly opaque for wall cells, gating
+tactical aim/step-out decisions), while `ShotPlane.build()` only ever projects `state.units` and
+`state.grid.blockers` — never `opacity`. `MapGen` never wrote a `blockers` entry for WALL cells (only
+scattered cover got one), so a real wall had an opacity flag but no Part, no mesh, nothing in the shot
+plane — invisible to actual hit resolution even though it correctly gated the UI. `MapGen._stamp_wall_
+geometry()` (new, runs last in `generate()`) now gives every WALL cell bordering at least one non-WALL
+cell a real, indestructible `Part` (`data/parts/wall.tres`) in `grid.blockers`, matching docs/02's own
+"terrain is a Part flagged indestructible." Fully interior wall cells (no non-WALL neighbor) get no
+blocker — they can never be the nearest hit along any real ray, so skipping them is a pure perf win
+against `ShotPlane.build()`'s own unculled per-shot scan, not a behavior change.
+
+**Fix: burst shown as affordable without enough AP; step-out silently dropped the shot (BR30.11)** —
+`ActionBar._can_afford()` compared AP against the providing weapon's plain `ap_cost` for every action
+id, but `BurstAction` has always charged its own, usually-higher `weapon_def.burst_ap_cost` when
+authored. A unit with enough AP for the plain cost but not the real burst cost saw (and could arm)
+BURST as affordable, only to have the shot silently rejected at `enqueue()` time — including after a
+free step-out move, which read as "step out doesn't work with burst" even though step-out's own entry
+logic is genuinely action-id-agnostic (verified directly, no fix needed there). New
+`ActionCatalog.ap_cost_for(action_id, provider)` is the one seam both `ActionBar._can_afford()` and
+`BurstAction._ap_cost()` (now a one-line delegate) read, closing the drift.
+
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
 dead-zone hold, right-click debug menu (debug-only items `[*]`-prefixed; inflict-status/create-part
