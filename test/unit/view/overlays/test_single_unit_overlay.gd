@@ -25,6 +25,11 @@ func _plain_unit(id: StringName, cell: Vector2i, squad_id: int) -> Unit:
 ## overlay's own documented "configure, then hand off" contract.
 func _wire(units: Array[Unit], controlled: Unit) -> Dictionary:
 	var state := CombatState.new(Grid.new(10, 5), units, 7)
+	# tb31 Pass B: every squad needs a real (non-UNASSIGNED) controller
+	# before a bout can run at all — SingleUnitOverlay's own wants_turn_for
+	# never consults it (pure unit-identity), but BoutRunner._init() still
+	# validates it regardless of which control paradigm is actually driving.
+	state.assign_all_to_human()
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []
 	mission.extraction_cells = [Vector2i(0, 0)]
@@ -71,6 +76,7 @@ func test_an_unconfigured_overlay_never_auto_drives_anything() -> void:
 	var unit_a := _plain_unit(&"a", Vector2i(0, 0), 0)
 	var unit_b := _plain_unit(&"b", Vector2i(5, 0), 1)
 	var state := CombatState.new(Grid.new(10, 5), [unit_b, unit_a], 7)
+	state.assign_all_to_human()  # tb31 Pass B: a real controller either way
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []
 	mission.extraction_cells = [Vector2i(0, 0)]

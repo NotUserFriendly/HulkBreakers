@@ -242,13 +242,14 @@ func test_try_apply_rejects_illegal_action_without_mutating() -> void:
 	assert_eq(state.action_log.size(), 0)
 
 
-## docs/10 taskblock02 F1: "Control All Squads," the default this build
-## ships with — every squad starts HUMAN with no override needed.
-func test_every_squad_defaults_to_human_control() -> void:
+## tb31 Pass B: UNASSIGNED is the real zero-default now — a setup-time
+## state, never a silent side picked (the old HUMAN default's whole
+## failure mode: BR30.09).
+func test_every_squad_defaults_to_unassigned_control() -> void:
 	var state := CombatState.new(Grid.new(5, 5))
 
-	assert_eq(state.controller_for(0), Enums.SquadController.HUMAN)
-	assert_eq(state.controller_for(1), Enums.SquadController.HUMAN)
+	assert_eq(state.controller_for(0), Enums.SquadController.UNASSIGNED)
+	assert_eq(state.controller_for(1), Enums.SquadController.UNASSIGNED)
 
 
 func test_a_squad_can_be_set_to_ai_control() -> void:
@@ -256,8 +257,48 @@ func test_a_squad_can_be_set_to_ai_control() -> void:
 
 	state.set_squad_controller(1, Enums.SquadController.AI)
 
-	assert_eq(state.controller_for(0), Enums.SquadController.HUMAN, "only squad 1 was touched")
+	assert_eq(state.controller_for(0), Enums.SquadController.UNASSIGNED, "only squad 1 was touched")
 	assert_eq(state.controller_for(1), Enums.SquadController.AI)
+
+
+func _two_squad_state() -> CombatState:
+	var root := Part.new()
+	root.id = &"root"
+	root.hp = 1
+	root.max_hp = 1
+	var state := CombatState.new(Grid.new(5, 5))
+	state.add_unit(Unit.new(Matrix.new(), Shell.new(root), Vector2i(0, 0), 0))
+	state.add_unit(Unit.new(Matrix.new(), Shell.new(root), Vector2i(1, 0), 1))
+	return state
+
+
+func test_assign_all_to_human_sets_every_present_squad_human() -> void:
+	var state := _two_squad_state()
+
+	state.assign_all_to_human()
+
+	assert_eq(state.controller_for(0), Enums.SquadController.HUMAN)
+	assert_eq(state.controller_for(1), Enums.SquadController.HUMAN)
+
+
+func test_assign_rest_to_ai_sets_named_squads_human_and_the_rest_ai() -> void:
+	var state := _two_squad_state()
+
+	state.assign_rest_to_ai([0])
+
+	assert_eq(state.controller_for(0), Enums.SquadController.HUMAN)
+	assert_eq(state.controller_for(1), Enums.SquadController.AI)
+
+
+func test_all_squads_assigned_is_false_until_every_present_squad_has_a_real_controller() -> void:
+	var state := _two_squad_state()
+	assert_false(state.all_squads_assigned(), "sanity: fresh state has two unassigned squads")
+
+	state.set_squad_controller(0, Enums.SquadController.HUMAN)
+	assert_false(state.all_squads_assigned(), "squad 1 is still unassigned")
+
+	state.set_squad_controller(1, Enums.SquadController.AI)
+	assert_true(state.all_squads_assigned())
 
 
 func test_dup_carries_squad_controllers_into_the_preview() -> void:

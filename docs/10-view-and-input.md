@@ -228,13 +228,18 @@ present on every unit, not gated to the selected one, since it's strictly more i
 free. Q/E turn the selected unit by 45° (`TacticsController.FACE_STEP`, a flagged placeholder
 same as `RETICLE_SENSITIVITY` — docs/10 doesn't pin an exact increment).
 
-## Manual control of both sides (taskblock02 F1)
+## Manual control of both sides (taskblock02 F1; tb31 Pass B)
 `CombatState.squad_controllers` (squad_id -> `Enums.SquadController`) defaults every squad to
-`HUMAN` — "Control All Squads" is simply never overriding anything, not a separate toggle to
-flip. Nothing in `TacticsController`/`SelectionController` gates whose unit a click can select
-by squad already, so a `HUMAN`-controlled squad is exactly what today's input already does; a
-human queuing either side's turn emits the same `LogEvent` stream regardless, since both go
-through the identical `ActionQueue` -> `resolve_turn()` path.
+`UNASSIGNED` — a setup-time-only state, never a real answer to "who drives this squad's turns."
+Running a bout with any squad still `UNASSIGNED` is a hard construction error
+(`BoutRunner._init()`) — the exact silent-default inheritance that caused BR30.09 (a bout path
+that assigned nothing read as a genuine hang, not a setup bug). Every real entry point assigns
+explicitly before a bout can run: `CombatState.assign_all_to_human()` ("Control All Squads," a
+visible call now, not a hidden getter default) or `assign_rest_to_ai(human_squads)` (the "mostly
+AI" shortcut `_seed_battle()`/authoring flows actually want). Nothing in `TacticsController`/
+`SelectionController` gates whose unit a click can select by squad; a human queuing either side's
+turn emits the same `LogEvent` stream regardless, since both go through the identical
+`ActionQueue` -> `resolve_turn()` path.
 
 **Known gap, flagged not hidden:** no `AI` decision-maker actually exists in `src/` yet to
 consult `controller_for()` and drive a squad on its own. The heuristics that pick a move/target

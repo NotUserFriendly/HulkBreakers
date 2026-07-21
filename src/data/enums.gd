@@ -66,16 +66,21 @@ enum MissionOutcome {
 	STRANDED,  # involuntary — no player matrix can act. NOT a loss; matrices persist regardless
 }
 
-## Who drives a squad's turns (docs/10 taskblock02 F1) — a closed engine
-## state, not open data (there is no third way to take a turn). HUMAN is
-## every squad's default (the "Control All Squads" build default): nothing
-## in TacticsController itself gates whose unit a click can select by
-## squad, so a HUMAN-controlled squad is already exactly what today's
-## input does. No AI decision-maker consults this yet — the heuristics
-## that exist today live only in test_full_mission.gd's own test harness,
-## never rehomed into production code. Flagged, not silently pretended
-## otherwise.
+## Who drives a squad's turns (docs/10 taskblock02 F1; tb31 Pass B) — a
+## closed engine state, not open data. `UNASSIGNED` is NOT a third way to
+## take a turn (that statement stays true) — it's "no decision made yet," a
+## setup-time-only state. A bout must never actually RUN with an
+## `UNASSIGNED` squad still on it: `BoutRunner._init()` treats that as a
+## hard construction error (BR30.09's root cause was exactly this — a path
+## that assigned nothing silently inherited a default instead of failing).
+## `UNASSIGNED` is the zero-default so an unset squad reads that way rather
+## than silently picking a side; every real entry point (`_seed_battle()`,
+## `BoutSetup.build_bout()`) must assign explicitly before a bout can run —
+## see `CombatState.assign_all_to_human()`/`assign_rest_to_ai()` for the
+## authoring-layer shortcuts "mostly AI"/"Control All Squads" now go
+## through, in the open, instead of as a hidden getter default.
 enum SquadController {
+	UNASSIGNED,
 	HUMAN,
 	AI,
 }
