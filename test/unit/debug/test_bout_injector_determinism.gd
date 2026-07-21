@@ -9,34 +9,79 @@ extends GutTest
 
 ## "Compile/route it so a shipping player path cannot invoke it." Since
 ## GDScript has no real access-control keyword, the actual guarantee is
-## structural: neither of the two PLAYER-facing view files (the ones a
-## normal, human-controlled bout actually runs through) may reference
-## `BoutInjector` at all — read straight from source, the literal claim
-## the taskblock makes ("a routing/guard test"), not a re-derivation of it.
-func test_bout_injector_is_never_referenced_by_a_player_controlled_view() -> void:
-	var player_facing_paths: Array[String] = [
-		"res://src/view/overlays/squad_control_overlay.gd",
+## structural — but taskblock-30 moves the real seam: it's not "no overlay
+## installed under player control may reference BoutInjector" anymore
+## (SquadControlOverlay legitimately does, behind its own OS.is_debug_
+## build() gate), it's "no gameplay-INPUT class may" — TacticsController
+## (the click/arm/confirm state machine) and ActionBar (what turns an
+## action-bar click into an armed action) are the two files that translate
+## raw player input into game state; neither may reference BoutInjector at
+## all, read straight from source.
+func test_bout_injector_is_never_referenced_by_a_gameplay_input_class() -> void:
+	var input_paths: Array[String] = [
 		"res://src/view/tactics_controller.gd",
+		"res://src/view/action_bar.gd",
 	]
-	for path: String in player_facing_paths:
+	for path: String in input_paths:
 		var file := FileAccess.open(path, FileAccess.READ)
 		assert_not_null(file, "sanity: %s must exist to check at all" % path)
 		var source: String = file.get_as_text()
 		assert_false(
 			source.contains("BoutInjector"),
-			"%s must never reference BoutInjector — a real player bout can't reach it" % path
+			"%s must never reference BoutInjector — no ordinary click/action may reach it" % path
 		)
 
 
-## taskblock-29 Pass D: the sibling of the guard test above — the ONE
-## legitimate debug/spectator context this ever gets constructed in.
-func test_bout_injector_is_referenced_by_the_spectator_overlay() -> void:
-	var file := FileAccess.open("res://src/view/overlays/spectator_overlay.gd", FileAccess.READ)
-	assert_not_null(file)
-	assert_true(
-		file.get_as_text().contains("BoutInjector"),
-		"the spectator overlay is the one legitimate debug/spectator context for this"
-	)
+## taskblock-29 Pass D / taskblock-30: the two legitimate debug contexts
+## this ever gets constructed in — spectator (unconditionally, its own
+## whole purpose) and the player-controlled overlay (behind its own real
+## `OS.is_debug_build()` gate, taskblock-30's own extension) — never
+## `TacticsController`/`ActionBar` themselves (see the guard test above).
+func test_bout_injector_is_referenced_by_both_overlays() -> void:
+	var overlay_paths: Array[String] = [
+		"res://src/view/overlays/spectator_overlay.gd",
+		"res://src/view/overlays/squad_control_overlay.gd",
+	]
+	for path: String in overlay_paths:
+		var file := FileAccess.open(path, FileAccess.READ)
+		assert_not_null(file, "sanity: %s must exist to check at all" % path)
+		assert_true(
+			file.get_as_text().contains("BoutInjector"),
+			"%s is a legitimate debug context for this, gated its own way" % path
+		)
+
+
+## taskblock-30 (tempnotes review): "the [*] affordance needs real
+## debug-gating, not just the prefix." Both overlays must gate their own
+## Inject button behind the SAME real check (`OS.is_debug_build()`), not
+## merely label it `[*]` — the false branch (a release export) can't be
+## exercised in this harness (there's no separate release build to run
+## against), so this pins the STRUCTURAL claim instead: the literal gate
+## call actually guards the button construction in both files' own
+## source, not just documented intent in a comment.
+func test_both_overlays_gate_their_inject_button_behind_a_real_debug_check() -> void:
+	var overlay_paths: Array[String] = [
+		"res://src/view/overlays/spectator_overlay.gd",
+		"res://src/view/overlays/squad_control_overlay.gd",
+	]
+	for path: String in overlay_paths:
+		var file := FileAccess.open(path, FileAccess.READ)
+		assert_not_null(file, "sanity: %s must exist to check at all" % path)
+		var lines: PackedStringArray = file.get_as_text().split("\n")
+		var gate_line := -1
+		for i in range(lines.size()):
+			if lines[i].strip_edges() == "if OS.is_debug_build():":
+				gate_line = i
+				break
+		assert_true(gate_line >= 0, "%s must gate on OS.is_debug_build() somewhere" % path)
+		var found_inject_nearby := false
+		for i in range(gate_line, mini(gate_line + 4, lines.size())):
+			if "inject_button" in lines[i] and "Button.new()" in lines[i]:
+				found_inject_nearby = true
+		assert_true(
+			found_inject_nearby,
+			"%s must construct inject_button INSIDE the debug-build check, not just near it" % path
+		)
 
 
 func _make_unit(id_hint: String, cell: Vector2i, squad: int) -> Unit:

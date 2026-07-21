@@ -218,11 +218,18 @@ threshold`)/`set_ap`/`set_mp`/`set_facing`/`set_pose`/`force_current_unit`/`forc
 `force_action` (`CombatState.try_apply` — reuses the real legality check, never bypasses it);
 `set_therms` is a flagged stub (therms aren't built). RNG needs (a spawned unit's matrix id) draw from
 the bout's own `rng`, so the same injections in the same order on the same seed stay reproducible-given-
-the-injections. `SpectatorOverlay.bout_injector` is the one legitimate debug/spectator context this ever
-gets constructed in — neither player-facing view (`SquadControlOverlay`/`TacticsController`) references
-it at all (a source-level routing test proves it); an "Inject..." button offers a handful of
-representative verbs against whichever unit is hovered, calling the exact same API programmatic use
-does.
+the-injections. **Injection reaches a player-controlled bout too (tb30)** — `bout_injector` moved up to
+`BattleScene` itself (built once per `load_battle()`, survives a spectator ↔ player overlay swap via
+`toggle_blue_control()`, since `CombatState` was always the one shared source of truth regardless of
+which overlay is installed). Both `SpectatorOverlay` (hover-targeted — spectator has no selection
+concept) and `SquadControlOverlay` (selection-targeted — a player bout has a real one) offer the same
+`[*]` Inject menu (`InjectMenu`, one shared item list/dispatch — no parallel copies of "what does
+Inject do"), calling the exact same API programmatic use does. The real safety property — no
+*ordinary* click/action can ever trigger injection — now lives at `TacticsController`/`ActionBar` (the
+actual gameplay-input classes, a source-level routing test proves neither references `BoutInjector` at
+all), not at "which overlay happens to be installed"; `SquadControlOverlay`'s own Inject button is
+additionally gated behind a real `OS.is_debug_build()` check (never even constructed in a release
+export), not just the `[*]` naming convention every other debug menu in this codebase still only has.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,

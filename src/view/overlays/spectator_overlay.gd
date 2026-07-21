@@ -39,12 +39,16 @@ var resolution_player: ResolutionPlayer
 var log_label: RichTextLabel
 var log_sink: HierarchicalUiSink
 
-## taskblock-29 Pass D: the ONE debug/spectator context this ever gets
-## constructed in — CLAUDE.md "no parallel systems": every button below
-## calls straight into this, never a bespoke direct mutation of its own.
-## `SquadControlOverlay`/`TacticsController` (the real player path) never
-## reference `BoutInjector` at all (test_bout_injector_determinism.gd's
-## own routing/guard test proves it from source).
+## taskblock-29 Pass D / taskblock-30: every button below calls straight
+## into this, never a bespoke direct mutation of its own (CLAUDE.md "no
+## parallel systems"). taskblock-30: no longer constructed here —
+## `BattleScene` owns the one instance (rebuilt per `load_battle()`, so it
+## survives a spectator <-> player overlay swap); this just reads it.
+## `TacticsController`/`ActionBar` (the actual gameplay-INPUT classes,
+## never an overlay shell) still never reference `BoutInjector` at all
+## (test_bout_injector_determinism.gd's own routing/guard test proves it
+## from source) — that's the real safety property, and it's unchanged by
+## `SquadControlOverlay` gaining its own debug-gated Inject affordance.
 var bout_injector: BoutInjector
 
 ## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
@@ -90,7 +94,7 @@ func setup(p_battle: BattleScene) -> void:
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
 	resolution_player.setup(battle)
-	bout_injector = BoutInjector.new(battle.combat_state)
+	bout_injector = battle.bout_injector
 
 	_build_ui()
 	battle.combat_state.combat_log.add_sink(log_sink)
@@ -312,10 +316,17 @@ func _build_ui() -> void:
 	# calls, not a separate path" — every item below calls straight into
 	# `bout_injector`, targeting whichever unit `_update_hover` last found
 	# under the cursor.
-	var inject_button := Button.new()
-	inject_button.text = "Inject..."
-	inject_button.pressed.connect(_open_inject_menu)
-	controls.add_child(inject_button)
+	# taskblock-30: `OS.is_debug_build()` is a REAL gate, not just the
+	# `[*]` naming convention — the button is never even added to the tree
+	# in a release export, so there's nothing to click regardless of
+	# what's drawn. (The `[*]` prefix on the menu items themselves stays
+	# purely a label, same as every other debug menu in this codebase —
+	# this is the enforcement layer those never had.)
+	if OS.is_debug_build():
+		var inject_button := Button.new()
+		inject_button.text = "Inject..."
+		inject_button.pressed.connect(_open_inject_menu)
+		controls.add_child(inject_button)
 
 	_status_label = Label.new()
 	controls.add_child(_status_label)
@@ -442,9 +453,7 @@ func _open_inject_menu() -> void:
 		_inject_menu.queue_free()
 	_inject_menu = PopupMenu.new()
 	add_child(_inject_menu)
-	_inject_menu.add_item("[*] Force Current Unit", 0)
-	_inject_menu.add_item("[*] Set HP to 0 (root part)", 1)
-	_inject_menu.add_item("[*] Force Overwatch Arm (first weapon)", 2)
+	InjectMenu.populate(_inject_menu)
 	_inject_menu.id_pressed.connect(_on_inject_menu_id_pressed.bind(_hovered_unit))
 	_inject_menu.close_requested.connect(_inject_menu.queue_free)
 	_inject_menu.id_pressed.connect(_inject_menu.queue_free, CONNECT_DEFERRED)
@@ -452,19 +461,9 @@ func _open_inject_menu() -> void:
 	_inject_menu.popup(Rect2i(Vector2i(mouse_pos), Vector2i.ZERO))
 
 
-## Every branch here calls straight into `bout_injector` — the exact
-## `BoutInjector` API programmatic/scripted use already calls, never a
-## bespoke UI-only mutation of its own (taskblock-29 Pass D: "the
-## spectator UI is a convenience wrapper over the same BoutInjector
-## calls, not a separate path").
+## taskblock-30: dispatch itself now lives in `InjectMenu.handle_id` —
+## shared with `SquadControlOverlay`, so "what does Inject do" has one
+## definition, not two independently-maintained copies.
 func _on_inject_menu_id_pressed(id: int, target: Unit) -> void:
-	match id:
-		0:
-			bout_injector.force_current_unit(target)
-		1:
-			bout_injector.set_part_hp(target, target.shell.root.id, 0)
-		2:
-			var weapon: Part = DeepStrike.find_operable_weapon(target)
-			if weapon != null:
-				bout_injector.force_overwatch_arm(target, weapon.id)
+	InjectMenu.handle_id(id, bout_injector, target)
 	_refresh_status()

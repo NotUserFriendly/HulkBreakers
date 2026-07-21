@@ -248,3 +248,79 @@ func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> voi
 
 	assert_eq(overlay.tactics.stepping_out_at, built.enemy, "the full real wiring must step out")
 	assert_null(overlay.tactics.aiming_at, "a step out never also enters ordinary aim mode")
+
+
+## taskblock-30: SquadControlOverlay's own debug-gated Inject affordance
+## — the "surface a potential method for injection to also work on a
+## player-controlled bout" follow-up. Same neutralize-then-swap sequence
+## `_squad_control` uses, but WITHOUT its own `advance_turn()` call (that
+## belongs only to the ordering tests above — this needs the player's own
+## unit reachable as the live current/selectable unit).
+func _squad_control_fresh(built: Dictionary) -> SquadControlOverlay:
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.load_battle(built.state, built.mission)
+	battle.set_overlay(SquadControlOverlay.new())
+	return battle.overlay as SquadControlOverlay
+
+
+## This harness only ever runs as a debug build (Godot's own editor/CLI
+## binary, never a release export) — `OS.is_debug_build()` reads true
+## here, so the button must exist. The FALSE branch (a real release
+## export) can't be exercised in this harness at all; it's proven
+## structurally instead, by test_bout_injector_determinism.gd's own
+## source-level gate check.
+func test_inject_button_exists_exactly_when_this_is_a_debug_build() -> void:
+	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+
+	assert_eq(overlay.inject_button != null, OS.is_debug_build())
+
+
+func test_inject_with_nothing_selected_is_a_noop() -> void:
+	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+
+	overlay._on_inject_pressed()
+
+	assert_null(overlay._inject_menu, "nothing selected — no target to open the menu against")
+
+
+func test_inject_with_a_unit_selected_opens_the_menu() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	var current: Unit = built.state.current_unit()
+	overlay.tactics.click_cell(current.cell)
+
+	overlay._on_inject_pressed()
+
+	assert_not_null(overlay._inject_menu)
+	assert_eq(overlay._inject_menu.item_count, InjectMenu.ITEMS.size())
+
+
+## The actual claim: SquadControlOverlay's own menu handler calls the
+## exact same BoutInjector API programmatic use (and SpectatorOverlay)
+## already calls — never a bespoke, player-view-only mutation.
+func test_inject_force_current_unit_calls_the_real_bout_injector_api() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	var initially_current: Unit = built.state.current_unit()
+	overlay.tactics.click_cell(initially_current.cell)
+	assert_eq(overlay.tactics.selection.selected_unit, initially_current, "sanity: selection took")
+	var other: Unit = built.ai_unit if initially_current == built.player_unit else built.player_unit
+
+	overlay._on_inject_menu_id_pressed(0, other)
+
+	assert_eq(built.state.current_unit(), other)
+
+
+## tempnotes review, note 1: "keep was_injected firing in player view... an
+## injected player bout is no more a clean seed-replay than an AI one —
+## easy to drop when the injection moves overlays." Pinned directly.
+func test_inject_sets_was_injected_through_the_player_view_path() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	assert_false(built.state.was_injected, "sanity: a fresh bout is never pre-marked")
+
+	overlay._on_inject_menu_id_pressed(0, built.player_unit)
+
+	assert_true(built.state.was_injected)
