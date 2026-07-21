@@ -49,11 +49,16 @@ would be.
 - **`BoutInjector`** — the debug channel that mutates a *live* `CombatState` at a step boundary
   (never mid-resolution). Every injection is logged with an `inject` marker, so an injected scenario
   is self-documenting.
-- **Verbs:** spawn/remove a unit, set a position, arm/equip/attach any part, set state
+- **Verbs:** spawn/remove a unit, move an object (see below), arm/equip/attach any part, set state
   (HP/wounds/status/AP/facing/pose), tile edits (place/clear cover, force a cell passable or not),
   trigger (make current, force an overwatch arm, queue an action). Each fronts the *real* system —
   an injected spawn is a real spawn, an injected attach is a real `PartGraph.attach`, placed cover
   is a real `Grid.blockers` entry.
+- **`move_object(target, to_cell)`** generalizes "move a unit" to "move whatever's there" — `target`
+  is the same hit-shaped `{kind, unit, cell}` dict a board click resolves to. A unit hit moves the
+  unit; a cell hit moves whatever `Grid.blockers` (cover, or a dropped subtree) and/or
+  `Grid.field_items` (loose dropped weapons/matrices) actually hold there — a real dictionary re-key
+  preserving the Part's own state, not a fresh duplicate.
 - **Programmatic first** — CC's real use is scripting a scenario in code and injecting it; the
   spectator/player-view injection UIs are convenience wrappers over the same API.
 - **Owned by the bout, not the overlay (tb30)** — `BattleScene.bout_injector` is built once per
@@ -63,14 +68,25 @@ would be.
   same `[*]` Inject button opening a shared **`DebugControlPanel`** — a generic, data-driven
   click-to-force UI built from `DebugVerbs.all()` (a table of `DebugVerbSpec` rows, each one real
   `BoutInjector` verb + its typed params); adding a verb is a new table row, never new panel code.
-  A "Pick" button next to any Unit/Cell field arms a one-shot click-capture on whichever input
-  owner is live (`TacticsController` for a player bout, `SpectatorOverlay` itself for spectator) via
-  a duck-typed `board_clicked`/`input_capture_mode` hook — neither gameplay-input class references
-  the panel or `BoutInjector` itself. `SquadControlOverlay`'s own Inject button is real-gated behind
-  `OS.is_debug_build()`, not just the `[*]` label, so it structurally can't ship in a release export.
-  The actual safety property this always protected — no *ordinary* click/action can ever trigger
-  injection — is drawn at `TacticsController`/`ActionBar` (the real gameplay-input classes), not at
-  "which overlay is installed."
+  The verb picker is a scrolling `ItemList` on the left; selecting one populates a "control panel"
+  column on the right with that verb's own param rows, Apply, and a status line.
+- **Active target memory** — while the panel is open, every board click (not just a field's own
+  "Pick" press) updates an "active target" shown in a label above the control panel column, via a
+  duck-typed `board_clicked`/`input_capture_mode` hook (`TacticsController` for a player bout,
+  `SpectatorOverlay` itself for spectator) — neither gameplay-input class references the panel or
+  `BoutInjector` itself. A verb's OBJECT-typed param (only `move_object` uses one so far) always
+  resolves from this active target, never a manual-entry widget. `input_capture_mode` is
+  armed/disarmed against the panel's own visibility, not per-pick, so a field's own one-shot "Pick"
+  and the always-on active-target tracker fire off the same click without conflicting.
+- **Move Object's own accelerated path** — its `to_cell` param keeps the ordinary manual X/Y entry
+  every CELL param has, plus a "Move On Next Click" button: snapshots the current active target,
+  then applies the real `move_object` call the instant the next board click lands, no separate Apply
+  press.
+- `SquadControlOverlay`'s own Inject button is real-gated behind `OS.is_debug_build()`, not just the
+  `[*]` label, so it structurally can't ship in a release export. The actual safety property this
+  always protected — no *ordinary* click/action can ever trigger injection — is drawn at
+  `TacticsController`/`ActionBar` (the real gameplay-input classes), not at "which overlay is
+  installed."
 
 Use this half to *force the exact condition* you want to study, instead of waiting for it.
 
