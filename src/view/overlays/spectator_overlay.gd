@@ -62,6 +62,11 @@ var bout_injector: BoutInjector
 ## file's other signals, above) — while true, the next real click is
 ## captured instead of doing this overlay's own normal thing.
 var input_capture_mode: bool = false
+## taskblock-30/31 Pass C: the full click-to-force panel (`DebugVerbs.
+## all()`), superseding the old flat 3-item `InjectMenu` popup — reachable
+## via the same "Inject..." button, only inside `if OS.is_debug_build():`
+## (never even constructed in a release export).
+var debug_panel: DebugControlPanel = null
 
 ## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
 ## opens the inspect panel on that bot. Closing it resumes." Supersedes
@@ -91,7 +96,6 @@ var _was_playing_before_inspect: bool = false
 ## visually (highlight), just also remembered here since the debug menu
 ## needs to know WHO by the time it's actually clicked open.
 var _hovered_unit: Unit = null
-var _inject_menu: PopupMenu = null
 
 
 ## `battle.combat_state`/`battle.mission` are already the freshly-built
@@ -336,22 +340,24 @@ func _build_ui() -> void:
 	assume_control_button.pressed.connect(battle.toggle_blue_control)
 	controls.add_child(assume_control_button)
 
-	# taskblock-29 Pass D: "programmatic injection is the primary path...
-	# the spectator UI is a convenience wrapper over the same BoutInjector
-	# calls, not a separate path" — every item below calls straight into
-	# `bout_injector`, targeting whichever unit `_update_hover` last found
-	# under the cursor.
-	# taskblock-30: `OS.is_debug_build()` is a REAL gate, not just the
-	# `[*]` naming convention — the button is never even added to the tree
-	# in a release export, so there's nothing to click regardless of
-	# what's drawn. (The `[*]` prefix on the menu items themselves stays
-	# purely a label, same as every other debug menu in this codebase —
-	# this is the enforcement layer those never had.)
+	# taskblock-29 Pass D / taskblock-30/31 Pass C: "programmatic injection
+	# is the primary path... the spectator UI is a convenience wrapper over
+	# the same BoutInjector calls, not a separate path" — the panel below
+	# is exactly that wrapper, full verb table instead of a flat 3-item
+	# menu now. `OS.is_debug_build()` is a REAL gate, not just the `[*]`
+	# naming convention — neither the button nor the panel is ever added to
+	# the tree in a release export, so there's nothing to click regardless
+	# of what's drawn.
 	if OS.is_debug_build():
 		var inject_button := Button.new()
 		inject_button.text = "Inject..."
-		inject_button.pressed.connect(_open_inject_menu)
+		inject_button.pressed.connect(_on_inject_pressed)
 		controls.add_child(inject_button)
+
+		debug_panel = DebugControlPanel.new()
+		debug_panel.visible = false
+		debug_panel.applied.connect(_on_debug_panel_applied)
+		theme_root.add_child(debug_panel)
 
 	_status_label = Label.new()
 	controls.add_child(_status_label)
@@ -465,30 +471,20 @@ func _on_speed_button_pressed() -> void:
 	_speed_button.text = "%.0fx" % next_speed
 
 
-## taskblock-29 Pass D: a real, deliberately small debug menu — a handful
-## of representative verbs (the taskblock's own worked examples: force
-## current, force a state, force overwatch), not a full form-builder for
-## every `BoutInjector` verb. A silent no-op with nothing hovered: there's
-## no target to open the menu against, same posture InspectPanel's own
-## debug menu takes when nothing is selected.
-func _open_inject_menu() -> void:
-	if _hovered_unit == null:
+## taskblock-30/31 Pass C: toggles the full debug control panel —
+## `debug_panel` is null whenever this isn't a debug build (never
+## constructed at all in `_build_ui()`), so this is a silent no-op there
+## too, same posture the button's own absence already gives it.
+func _on_inject_pressed() -> void:
+	if debug_panel == null:
 		return
-	if _inject_menu != null:
-		_inject_menu.queue_free()
-	_inject_menu = PopupMenu.new()
-	add_child(_inject_menu)
-	InjectMenu.populate(_inject_menu)
-	_inject_menu.id_pressed.connect(_on_inject_menu_id_pressed.bind(_hovered_unit))
-	_inject_menu.close_requested.connect(_inject_menu.queue_free)
-	_inject_menu.id_pressed.connect(_inject_menu.queue_free, CONNECT_DEFERRED)
-	var mouse_pos: Vector2 = get_viewport().get_mouse_position()
-	_inject_menu.popup(Rect2i(Vector2i(mouse_pos), Vector2i.ZERO))
+	if debug_panel.visible:
+		debug_panel.visible = false
+		return
+	debug_panel.setup(bout_injector, DeepStrike.reference_humanoid_pool(), self)
+	debug_panel.visible = true
 
 
-## taskblock-30: dispatch itself now lives in `InjectMenu.handle_id` —
-## shared with `SquadControlOverlay`, so "what does Inject do" has one
-## definition, not two independently-maintained copies.
-func _on_inject_menu_id_pressed(id: int, target: Unit) -> void:
-	InjectMenu.handle_id(id, bout_injector, target)
+func _on_debug_panel_applied(_verb_id: StringName, _args: Dictionary) -> void:
+	battle.refresh_unit_views()
 	_refresh_status()

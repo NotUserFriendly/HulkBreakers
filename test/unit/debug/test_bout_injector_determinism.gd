@@ -37,6 +37,12 @@ func test_bout_injector_is_never_referenced_by_a_gameplay_input_class() -> void:
 ## whole purpose) and the player-controlled overlay (behind its own real
 ## `OS.is_debug_build()` gate, taskblock-30's own extension) — never
 ## `TacticsController`/`ActionBar` themselves (see the guard test above).
+## Case-insensitive: taskblock-30/31 Pass C's own doc comments moved to
+## naming the lowercase `bout_injector` FIELD rather than the class name
+## directly in places (both still legitimately touch the real channel,
+## via `battle.bout_injector`/`DebugControlPanel`) — the claim under test
+## is "this file has something to do with injection," not "the literal
+## class name string appears."
 func test_bout_injector_is_referenced_by_both_overlays() -> void:
 	var overlay_paths: Array[String] = [
 		"res://src/view/overlays/spectator_overlay.gd",
@@ -46,7 +52,7 @@ func test_bout_injector_is_referenced_by_both_overlays() -> void:
 		var file := FileAccess.open(path, FileAccess.READ)
 		assert_not_null(file, "sanity: %s must exist to check at all" % path)
 		assert_true(
-			file.get_as_text().contains("BoutInjector"),
+			file.get_as_text().to_lower().contains("bout_injector"),
 			"%s is a legitimate debug context for this, gated its own way" % path
 		)
 

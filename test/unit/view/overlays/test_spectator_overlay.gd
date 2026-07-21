@@ -464,19 +464,73 @@ func test_setup_wires_a_bout_injector_against_the_same_live_state() -> void:
 	assert_eq(overlay.bout_injector.state, overlay.battle.combat_state)
 
 
-## The menu handler must call the exact same `BoutInjector` method a
-## programmatic caller would — proven two ways: the state mutates exactly
-## like a direct call would, AND the real `&"inject"` log event (the one
+func test_inject_toggles_the_debug_panels_own_visibility() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	assert_false(overlay.debug_panel.visible, "sanity: starts hidden")
+
+	overlay._on_inject_pressed()
+	assert_true(overlay.debug_panel.visible)
+
+	overlay._on_inject_pressed()
+	assert_false(overlay.debug_panel.visible)
+
+
+func test_inject_wires_the_panel_against_the_real_bout_injector_and_self() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	overlay._on_inject_pressed()
+
+	assert_eq(overlay.debug_panel.bout_injector, overlay.bout_injector)
+	assert_eq(overlay.debug_panel.input_owner, overlay)
+
+
+## Finds `verb_id`'s own row in the panel's live verb table by index —
+## `DebugVerbs.all()` is the one authority for ordering; a test must
+## never hardcode an index.
+func _verb_index(verb_id: StringName) -> int:
+	var verbs: Array[DebugVerbSpec] = DebugVerbs.all()
+	for i in range(verbs.size()):
+		if verbs[i].id == verb_id:
+			return i
+	fail_test("no verb %s in DebugVerbs.all()" % verb_id)
+	return -1
+
+
+## Drives the panel exactly the way a real Apply press would — select the
+## verb, fill in its own param controls by NAME (never by hardcoded
+## widget layout), press Apply. The one thing every "the panel is a pure
+## wrapper" claim rests on: this never touches BoutInjector directly.
+func _apply_via_panel(panel: DebugControlPanel, verb_id: StringName, args: Dictionary) -> void:
+	panel._select_verb(_verb_index(verb_id))
+	for param_name: String in args:
+		var control: Variant = panel._param_controls[param_name]
+		var value: Variant = args[param_name]
+		if control is Array:
+			(control[0] as SpinBox).value = (value as Vector2i).x
+			(control[1] as SpinBox).value = (value as Vector2i).y
+		elif control is SpinBox:
+			(control as SpinBox).value = value
+		elif control is LineEdit:
+			(control as LineEdit).text = String(value)
+		elif control is CheckBox:
+			(control as CheckBox).button_pressed = value
+	panel._on_apply_pressed()
+
+
+## The panel must call the exact same `BoutInjector` method a programmatic
+## caller would — proven two ways: the state mutates exactly like a
+## direct call would, AND the real `&"inject"` log event (the one
 ## `_guard`/`_log_injection` gate every verb goes through) actually fires,
 ## so this can never be a UI-only bypass of the real channel.
-func test_inject_menu_force_current_unit_calls_the_real_bout_injector_api() -> void:
+func test_inject_panel_force_current_unit_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = _bout()
 	var overlay: SpectatorOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
 	var sink := MemorySink.new()
 	built.state.combat_log.add_sink(sink)
+	overlay._on_inject_pressed()
 
-	overlay._on_inject_menu_id_pressed(0, enemy)
+	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": enemy.id})
 
 	assert_eq(built.state.current_unit(), enemy)
 	var events: Array[LogEvent] = sink.events_of_kind(&"inject")
@@ -484,38 +538,33 @@ func test_inject_menu_force_current_unit_calls_the_real_bout_injector_api() -> v
 	assert_eq(events[0].data.get("verb"), &"force_current_unit")
 
 
-func test_inject_menu_set_hp_to_zero_calls_the_real_bout_injector_api() -> void:
+func test_inject_panel_set_part_hp_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = _bout()
 	var overlay: SpectatorOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
 	assert_gt(enemy.shell.root.hp, 0, "sanity: the target starts alive")
+	overlay._on_inject_pressed()
 
-	overlay._on_inject_menu_id_pressed(1, enemy)
+	_apply_via_panel(
+		overlay.debug_panel, &"set_part_hp", {"unit": enemy.id, "part_id": enemy.shell.root.id, "hp": 0}
+	)
 
 	assert_eq(enemy.shell.root.hp, 0)
 	assert_true(built.state.was_injected)
 
 
-func test_inject_menu_force_overwatch_arm_calls_the_real_bout_injector_api() -> void:
+func test_inject_panel_force_overwatch_arm_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = _bout()
 	var overlay: SpectatorOverlay = _spectate(built)
 	var jerry: Unit = built.state.find_unit(0)
 	assert_eq(jerry.overwatch_weapon_id, &"")
+	overlay._on_inject_pressed()
 
-	overlay._on_inject_menu_id_pressed(2, jerry)
+	_apply_via_panel(
+		overlay.debug_panel, &"force_overwatch_arm", {"unit": jerry.id, "weapon_id": "rifle"}
+	)
 
-	assert_ne(jerry.overwatch_weapon_id, &"", "must have found and armed jerry's own weapon")
-
-
-## "The injection channel is unreachable from a normal player-controlled
-## overlay" — this overlay is the one legitimate place it IS reachable.
-func test_open_inject_menu_is_a_noop_with_nothing_hovered() -> void:
-	var overlay: SpectatorOverlay = _spectate(_bout())
-	assert_null(overlay._hovered_unit, "sanity: nothing hovered yet")
-
-	overlay._open_inject_menu()
-
-	assert_null(overlay._inject_menu, "no target to open the menu against — a silent no-op")
+	assert_eq(jerry.overwatch_weapon_id, &"rifle")
 
 
 ## taskblock-29 Pass D's own TESTS bar: "an injection applied while the
