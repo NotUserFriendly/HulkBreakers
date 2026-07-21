@@ -36,13 +36,6 @@ var keybindings_button: Button
 ## `InventoryPanel`/`inventory_tree` it used to sit alongside is retired.
 var inspect_panel: InspectPanel
 var inspect_button: Button
-## taskblock-22 Pass E3: "an action-bar task: on click, prompts with all
-## repairable damaged parts, each with its own scrap cost." A plain
-## button + PopupMenu, the same shape `inspect_button`/InspectPanel's own
-## debug menu already establish — never routed through `arm_action`
-## (`&"repair"`'s own `requires_target=false`, matching overwatch's own
-## still-flagged gap, means arming it is a documented no-op).
-var repair_button: Button
 ## taskblock-30/31 Pass C: `SquadControlOverlay`'s own debug-gated Inject
 ## affordance — opens the full `DebugControlPanel` (`DebugVerbs.all()`),
 ## targeting a unit id typed/picked directly in the panel rather than
@@ -160,6 +153,10 @@ func _build_ui() -> void:
 	# fires the instant that happens.
 	tactics.aim_changed.connect(_on_selection_changed)
 	tactics.highlight_changed.connect(_on_highlight_changed)
+	# tb31 Pass D: the action bar's own PART_PICKER dispatch — repair is the
+	# one picker action today; the bar emits by action id, never a direct
+	# call, so a future PART_PICKER action routes through here too.
+	tactics.picker_action_requested.connect(_on_picker_action_requested)
 
 	var ui := CanvasLayer.new()
 	add_child(ui)
@@ -231,14 +228,6 @@ func _build_ui() -> void:
 	inspect_button.text = "Inspect"
 	inspect_button.pressed.connect(_on_inspect_pressed)
 	left_layout.add_child(inspect_button)
-
-	# taskblock-22 Pass E3: the action-bar task's own entry point — a
-	# button rather than a catalog-armed action (see the field's own doc
-	# comment above for why).
-	repair_button = Button.new()
-	repair_button.text = "Repair"
-	repair_button.pressed.connect(_on_repair_pressed)
-	left_layout.add_child(repair_button)
 
 	# taskblock-30/31 Pass C: `SquadControlOverlay`'s own debug-gated
 	# DebugControlPanel — the button that toggles it moved into the shared
@@ -636,10 +625,23 @@ func _on_inspect_pressed() -> void:
 		inspect_panel.open(selected)
 
 
-## taskblock-22 Pass E3: "prompts with all repairable damaged parts, each
-## with its own scrap cost." A no-op with nothing selected or nothing
-## damaged — same degenerate-case posture `_on_inspect_pressed` above
-## already has, never an empty popup.
+## tb31 Pass D: the action bar's own PART_PICKER dispatch — `action_id`
+## is whichever slot the player actually clicked; repair is the one
+## PART_PICKER action today, so this is a one-arm match, not overbuilt for
+## ids that don't exist yet.
+func _on_picker_action_requested(action_id: StringName) -> void:
+	if action_id == &"repair":
+		_on_repair_pressed()
+
+
+## taskblock-22 Pass E3 (tb31 Pass D): "prompts with all repairable damaged
+## parts, each with its own scrap cost." A no-op with nothing selected or
+## nothing damaged — same degenerate-case posture `_on_inspect_pressed`
+## above already has, never an empty popup. Reached from the action bar's
+## own `&"repair"` slot now (`picker_action_requested`), not a standalone
+## button — the popup anchors on the current mouse position instead of a
+## button's own screen rect, the same "at_position" convention
+## `InspectPanel`'s own debug menu already uses for a context popup.
 func _on_repair_pressed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
 	if selected == null:
@@ -667,7 +669,7 @@ func _on_repair_pressed() -> void:
 	_repair_menu.id_pressed.connect(_on_repair_menu_id_pressed.bind(damaged, welder))
 	_repair_menu.close_requested.connect(_repair_menu.queue_free)
 	_repair_menu.id_pressed.connect(_repair_menu.queue_free, CONNECT_DEFERRED)
-	_repair_menu.popup(Rect2i(Vector2i(repair_button.get_screen_position()), Vector2i.ZERO))
+	_repair_menu.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()), Vector2i.ZERO))
 
 
 func _on_repair_menu_id_pressed(id: int, damaged: Array[Part], welder: Part) -> void:

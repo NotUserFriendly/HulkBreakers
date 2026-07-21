@@ -129,13 +129,16 @@ func _can_afford(unit: Unit, def: ActionDef) -> bool:
 	return provider != null and unit.ap >= ActionCatalog.ap_cost_for(def.id, provider)
 
 
-## taskblock-08 A1/D1: click arms (one path, every box, no per-action
-## branching — `arm_action` itself is the only place an action id turns
-## into behaviour); motion re-enters (`_on_box_entered`) so the tooltip
-## keeps tracking the cursor while hovering the same box (D1), matching
-## the inventory tooltip's own per-motion-event pattern — TooltipView's
-## own show_data() just repositions on a repeat call, it never restarts
-## the hover delay.
+## taskblock-08 A1/D1 (tb31 Pass D): click dispatches by the box's own
+## `targeting_mode` — one closed branch, no per-action-id special-casing
+## (the same invariant `arm_action` itself always stated): `BOARD` arms
+## exactly as before; `NONE` queues immediately (overwatch — "declared,
+## not aimed"); `PART_PICKER` emits `picker_action_requested` for whichever
+## overlay owns the actual picker UI to catch (repair). Motion re-enters
+## (`_on_box_entered`) so the tooltip keeps tracking the cursor while
+## hovering the same box (D1), matching the inventory tooltip's own
+## per-motion-event pattern — TooltipView's own show_data() just
+## repositions on a repeat call, it never restarts the hover delay.
 func _on_box_gui_input(event: InputEvent, index: int) -> void:
 	if index >= _current_actions.size():
 		return
@@ -149,9 +152,16 @@ func _on_box_gui_input(event: InputEvent, index: int) -> void:
 		# BR27.05: same reasoning as refresh()'s own afford_unit — the click
 		# guard must agree with what the box is actually showing.
 		var unit: Unit = tactics.selection.previewed_unit() if tactics.selection != null else null
-		if not _can_afford(unit, _current_actions[index]):
+		var def: ActionDef = _current_actions[index]
+		if not _can_afford(unit, def):
 			return
-		tactics.arm_action(_current_actions[index].id)
+		match def.targeting_mode:
+			Enums.TargetingMode.BOARD:
+				tactics.arm_action(def.id)
+			Enums.TargetingMode.NONE:
+				tactics.queue_untargeted_action(def.id)
+			Enums.TargetingMode.PART_PICKER:
+				tactics.picker_action_requested.emit(def.id)
 
 
 func _on_box_entered(index: int) -> void:

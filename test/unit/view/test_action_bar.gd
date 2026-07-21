@@ -96,6 +96,42 @@ func _make_burst_armed_unit(
 	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
+## tb31 Pass D: a welder-shaped part providing `&"repair"` — no `ap_cost`
+## authored (matching the real `arc_welder.tres`, which authors none
+## either, silently falling back to `Part.gd`'s own bare default of 1).
+## `RepairAction` always charges the real, fixed `RepairResolver.
+## REPAIR_AP_COST` (4) regardless.
+func _make_repair_capable_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var welder := Part.new()
+	welder.id = &"welder"
+	welder.hp = 4
+	welder.max_hp = 4
+	welder.attaches_to = [&"GRIP"]
+	welder.requires = {&"TRIGGER": 1}
+	welder.provides_actions = [&"repair"]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = welder
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
 func _setup_bar(unit: Unit) -> Dictionary:
 	var state := CombatState.new(Grid.new(10, 10), [unit])
 	var controller := TacticsController.new()
@@ -265,6 +301,27 @@ func test_burst_dims_using_its_own_higher_ap_cost_not_the_weapons_plain_one() ->
 	)
 
 
+## tb31 Pass D: same bug class, found giving repair its first real action-
+## bar UI call site — a welder's own `ap_cost` (unauthored, falls back to
+## `Part.gd`'s bare default of 1) is NOT what `RepairAction` actually
+## charges (`RepairResolver.REPAIR_AP_COST`, 4). 2 AP covers the plain
+## default but not the real cost.
+func test_repair_dims_using_its_own_real_ap_cost_not_the_weapons_plain_one() -> void:
+	var unit: Unit = _make_repair_capable_unit(Vector2i(0, 0))
+	var built: Dictionary = _setup_bar(unit)
+	var container: HBoxContainer = built.container
+	unit.ap = 2  # covers the welder's own unauthored default (1) but not REPAIR_AP_COST (4)
+	built.bar.refresh()
+
+	var label: Label = (container.get_child(0) as PanelContainer).get_child(0)
+	assert_eq(label.text, "RP", "sanity: repair's own initials still show")
+	assert_eq(
+		label.modulate,
+		HulkTheme.DIM,
+		"repair must dim against its own real AP cost, not the welder's unauthored plain ap_cost"
+	)
+
+
 func test_clicking_an_affordable_action_still_arms_it() -> void:
 	var unit: Unit = _make_armed_unit(Vector2i(0, 0), 1)
 	var built: Dictionary = _setup_bar(unit)
@@ -279,3 +336,29 @@ func test_clicking_an_affordable_action_still_arms_it() -> void:
 
 	assert_not_null(controller.armed_action)
 	assert_eq(controller.armed_action.id, &"shoot")
+
+
+## tb31 Pass D: a `TargetingMode.NONE` action (overwatch) queues
+## immediately on click — never arms (there's nothing to click a board
+## target for). `provides_actions = [&"shoot", &"overwatch"]` on the same
+## pistol part puts overwatch at slot 0 (`_sort_by_id`'s own alphabetical
+## order within one part), same fixture shape
+## `test_a_shell_with_a_pistol_shows_shoot_and_overwatch` already proves.
+func test_clicking_a_none_mode_action_queues_immediately_never_arms() -> void:
+	var unit: Unit = _make_armed_unit(Vector2i(0, 0), 1)
+	var pistol: Part = unit.shell.find_part(&"pistol")
+	pistol.provides_actions = [&"shoot", &"overwatch"]
+	var built: Dictionary = _setup_bar(unit)
+	var container: HBoxContainer = built.container
+	var controller: TacticsController = built.controller
+
+	var panel: PanelContainer = container.get_child(0)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	panel.gui_input.emit(click)
+
+	assert_null(controller.armed_action, "a NONE-mode action never arms")
+	var queued: Array[CombatAction] = controller.selection.current_queue().actions
+	assert_eq(queued.size(), 1, "it queues immediately instead")
+	assert_true(queued[0] is OverwatchAction)

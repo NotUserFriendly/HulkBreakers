@@ -65,6 +65,14 @@ signal highlight_changed
 ## real click without this file knowing debug tooling exists.
 signal board_clicked(hit: Dictionary)
 
+## tb31 Pass D: the `Enums.TargetingMode.PART_PICKER` counterpart to
+## `arm_action`/`queue_untargeted_action` — `ActionBar`'s own click handler
+## emits this instead of arming/queuing directly; whichever overlay owns
+## the actual picker UI (`SquadControlOverlay`'s repair popup today)
+## connects to it. Never armed/queued from here — a picker needs the
+## player to choose something first.
+signal picker_action_requested(action_id: StringName)
+
 ## docs/10 taskblock02 F3: Q/E step size — docs/10 doesn't pin an exact
 ## increment, a flagged placeholder, not a design decision. 45 degrees:
 ## enough turns to face any of 8 directions.
@@ -497,13 +505,17 @@ func deselect() -> void:
 	_refresh_overlay()
 
 
-## taskblock-08 A1: "selecting an action arms a targeting mode... the
-## armed action decides what a click means." `action_id` must be one
-## ActionCatalog.actions_for(selected_unit) actually lists right now — the
-## same source the action bar itself renders from — and must need a target
-## at all (ActionDef.requires_target); anything else is a no-op, silently,
-## same posture as confirm_shot()'s own "nothing operable" case. This is
-## the ONE arming entry point regardless of which box called it — no
+## taskblock-08 A1 (tb31 Pass D): "selecting an action arms a targeting
+## mode... the armed action decides what a click means." `action_id` must
+## be one `ActionCatalog.actions_for(selected_unit)` actually lists right
+## now — the same source the action bar itself renders from — and must be
+## `Enums.TargetingMode.BOARD` (`ActionBar`'s own click handler is what
+## routes NONE/PART_PICKER actions elsewhere now — see
+## `queue_untargeted_action`/`picker_action_requested` below — so a
+## non-BOARD id reaching here at all would already be a caller bug);
+## anything else is a no-op, silently, same posture as confirm_shot()'s
+## own "nothing operable" case. This is the ONE arming entry point for
+## board-targeted actions regardless of which box called it — no
 ## per-action special-casing here or in the click handler.
 func arm_action(action_id: StringName) -> void:
 	if input_locked or selection == null or selection.selected_unit == null:
@@ -515,10 +527,26 @@ func arm_action(action_id: StringName) -> void:
 		if candidate.id == action_id:
 			def = candidate
 			break
-	if def == null or not def.requires_target:
+	if def == null or def.targeting_mode != Enums.TargetingMode.BOARD:
 		return
 	armed_action = def
 	aim_changed.emit()
+
+
+## tb31 Pass D: the `Enums.TargetingMode.NONE` counterpart to `arm_action`
+## — queues the action immediately, no board target at all (overwatch:
+## "declared, not aimed"). Silent no-op with nothing operable, same
+## posture every other queuing entry point here already has.
+func queue_untargeted_action(action_id: StringName) -> void:
+	if input_locked or selection == null or selection.selected_unit == null:
+		return
+	var shooter: Unit = selection.selected_unit
+	var weapon: Part = ActionCatalog.provider_for(shooter, action_id)
+	if weapon == null:
+		return
+	var action: CombatAction = ActionCatalog.build_untargeted_action(action_id, shooter, weapon.id)
+	if action != null:
+		selection.current_queue().enqueue(action, selection.state)
 
 
 ## taskblock-08 A1: "Esc / RMB disarms the action and returns to normal
