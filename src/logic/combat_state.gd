@@ -10,9 +10,13 @@ const SIMULTANEOUS_BAND_TOLERANCE := 1.0
 var grid: Grid
 var units: Array[Unit] = []  # the roster — no longer literally turn order, see below
 var squads: Dictionary = {}  # squad_id(int) -> Array[Unit]
-## docs/10 taskblock02 F1: squad_id(int) -> Enums.SquadController. Absent
-## entries default to HUMAN (controller_for) — "Control All Squads" is
-## every squad's starting state, an override never has to opt in for it.
+## docs/10 taskblock02 F1 (tb31 Pass B): squad_id(int) -> Enums.
+## SquadController. Absent entries default to UNASSIGNED (controller_for)
+## — a bout must never actually run with one still unset
+## (`BoutRunner._init()`'s own hard error). `assign_all_to_human()`/
+## `assign_rest_to_ai()` below are the explicit authoring shortcuts for
+## "Control All Squads"/"mostly AI," replacing the old silent HUMAN
+## default.
 var squad_controllers: Dictionary = {}
 ## The actual round number (docs/09 LogEvent.turn) — a round is "every
 ## living unit has acted once," not "one more unit acted"; incremented in
@@ -158,15 +162,58 @@ func find_unit(id: int) -> Unit:
 	return null
 
 
-## docs/10 taskblock02 F1: HUMAN unless a squad was explicitly set to AI —
-## "Control All Squads," the default this build ships with, is simply
-## never overriding anything.
+## docs/10 taskblock02 F1 (tb31 Pass B): UNASSIGNED unless a squad was
+## explicitly set — no silent side picked. `BoutRunner._init()` is where
+## this actually gets enforced: running a bout with any squad still
+## reading UNASSIGNED is a hard construction error, never a guess.
 func controller_for(squad_id: int) -> Enums.SquadController:
-	return squad_controllers.get(squad_id, Enums.SquadController.HUMAN)
+	return squad_controllers.get(squad_id, Enums.SquadController.UNASSIGNED)
 
 
 func set_squad_controller(squad_id: int, controller: Enums.SquadController) -> void:
 	squad_controllers[squad_id] = controller
+
+
+## Every distinct squad_id actually present on the board right now — the
+## set `controller_for` assignment is checked against (a squad with no
+## units doesn't need one).
+func present_squad_ids() -> Array[int]:
+	var seen: Dictionary = {}
+	for unit: Unit in units:
+		seen[unit.squad_id] = true
+	var ids: Array[int] = []
+	for squad_id: int in seen.keys():
+		ids.append(squad_id)
+	return ids
+
+
+## True if every squad actually present has a real (non-UNASSIGNED)
+## controller — what `BoutRunner._init()` requires before a bout may run.
+func all_squads_assigned() -> bool:
+	for squad_id: int in present_squad_ids():
+		if controller_for(squad_id) == Enums.SquadController.UNASSIGNED:
+			return false
+	return true
+
+
+## Authoring convenience (tb31 Pass B): "Control All Squads," explicit —
+## every squad actually present becomes HUMAN. Replaces the old silent
+## HUMAN default; a caller that wants that behavior now says so.
+func assign_all_to_human() -> void:
+	for squad_id: int in present_squad_ids():
+		set_squad_controller(squad_id, Enums.SquadController.HUMAN)
+
+
+## Authoring convenience (tb31 Pass B): the "mostly AI" shortcut —
+## `human_squads` become HUMAN, every other squad actually present becomes
+## AI. Where "far more AI than HUMAN units" belongs: a visible shortcut a
+## caller opts into, not a hidden getter default.
+func assign_rest_to_ai(human_squads: Array[int]) -> void:
+	for squad_id: int in present_squad_ids():
+		var controller: Enums.SquadController = (
+			Enums.SquadController.HUMAN if squad_id in human_squads else Enums.SquadController.AI
+		)
+		set_squad_controller(squad_id, controller)
 
 
 func log_action(text: String) -> void:

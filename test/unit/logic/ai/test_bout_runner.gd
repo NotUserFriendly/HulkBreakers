@@ -176,11 +176,32 @@ func test_stepping_one_call_at_a_time_reaches_the_same_outcome_as_a_tight_loop()
 ## stays inert (returns false, does nothing) rather than acting for a
 ## squad this bout doesn't own, even though this block's own bouts
 ## always set every squad to AI.
+## tb31 Pass B: BR30.09's root cause was a bout path assigning nothing and
+## silently inheriting a default controller, which then read as a genuine
+## hang. `UNASSIGNED` (the real zero-default now) makes this structurally
+## impossible: constructing a runner over a squad still unset is a hard,
+## loud construction error, never a guess.
+func test_constructing_a_runner_over_an_unassigned_squad_is_a_hard_error() -> void:
+	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
+	var enemy := _armed_unit(&"enemy", Vector2i(5, 0), 1, &"rifle", 30)
+	var state := CombatState.new(Grid.new(10, 5), [jerry, enemy], 1)
+	state.set_squad_controller(0, Enums.SquadController.AI)
+	# Squad 1 deliberately left UNASSIGNED.
+	var mission := MissionState.new(RunState.new(), state)
+	mission.extraction_cells = [Vector2i(0, 0)]
+
+	var runner := BoutRunner.new(state, mission, 50)
+
+	assert_push_error("squad controller", "must fail loudly, not silently run")
+	assert_true(runner.finished, "an ill-defined bout must never actually drive a turn")
+
+
 func test_step_does_nothing_for_a_human_controlled_squad() -> void:
 	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
 	var enemy := _armed_unit(&"enemy", Vector2i(5, 0), 1, &"rifle", 30)
 	var state := CombatState.new(Grid.new(10, 5), [jerry, enemy], 1)
-	# Squad 0 left HUMAN (the default) on purpose.
+	# tb31 Pass B: HUMAN is no longer a silent default — assigned explicitly.
+	state.set_squad_controller(0, Enums.SquadController.HUMAN)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(0, 0)]

@@ -339,7 +339,13 @@ func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 		DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng, spawn_a, 0),
 		DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng, spawn_b, 1),
 	]
-	return CombatState.new(grid, units, rng.randi())
+	var state := CombatState.new(grid, units, rng.randi())
+	# tb31 Pass B: every squad must be assigned explicitly now — squad 0
+	# (the player's own squad, the same seam `toggle_blue_control()` already
+	# flips) HUMAN, squad 1 AI. BR30.09's own root cause was this path
+	# assigning nothing at all and silently inheriting a default.
+	state.assign_rest_to_ai([0])
+	return state
 
 
 ## runNotes.md: "the red unit may be spawning in a non-navigable space" —

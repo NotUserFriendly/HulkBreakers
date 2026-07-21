@@ -96,10 +96,13 @@ func teardown() -> void:
 		battle.combat_state.combat_log.remove_sink(log_sink)
 
 
-## docs/10 taskblock02 F1: HUMAN unless a squad was explicitly set to AI —
-## reading the exact same default `CombatState.controller_for` already
-## gives, so today's "Control All Squads" behavior (every squad HUMAN
-## unless overridden) is completely unchanged by this overlay existing.
+## docs/10 taskblock02 F1 (tb31 Pass B): true only for an explicitly
+## HUMAN squad — `controller_for` no longer has a silent HUMAN default to
+## fall back on (UNASSIGNED is the zero-default now, and a bout can't
+## actually be running with one of those left on the board at all,
+## `BoutRunner._init()`'s own hard error). Every real entry point assigns
+## explicitly (`CombatState.assign_all_to_human()`/`assign_rest_to_ai()`),
+## so this reads exactly what was assigned, nothing implied.
 func wants_turn_for(unit: Unit) -> bool:
 	return battle.combat_state.controller_for(unit.squad_id) == Enums.SquadController.HUMAN
 

@@ -86,6 +86,15 @@ var last_events: Array[LogEvent] = []
 var _wants_turn_for: Callable
 
 
+## tb31 Pass B: the ONE place a bout's squad assignments get validated —
+## BR30.09's root cause was a bout path that assigned nothing, silently
+## inheriting a default controller instead of failing. `UNASSIGNED` (the
+## real zero-default now, `CombatState.controller_for()`) makes that
+## structurally impossible: a squad still unset when a runner is actually
+## constructed is a setup bug, not a guess, and `push_error()`s loudly
+## (`assert_push_error`-testable) rather than silently running. Marks
+## itself `finished` immediately so a caller that presses on regardless
+## never drives an ill-defined bout.
 func _init(
 	p_state: CombatState,
 	p_mission: MissionState,
@@ -96,6 +105,14 @@ func _init(
 	mission = p_mission
 	turn_cap = p_turn_cap
 	_wants_turn_for = p_wants_turn_for
+	if not state.all_squads_assigned():
+		push_error(
+			(
+				"BoutRunner: squad controller(s) never assigned — every squad must be explicitly HUMAN"
+				+ " or AI before a bout can run (CombatState.assign_all_to_human()/assign_rest_to_ai())"
+			)
+		)
+		finished = true
 
 
 ## Resolves one unit's turn if the bout isn't already finished and the
@@ -116,10 +133,15 @@ func step() -> bool:
 		return true
 
 	var unit: Unit = state.current_unit()
+	# tb31 Pass B: an explicit HUMAN check, not "!= AI" — the old negative
+	# form used to also (silently) catch an unassigned squad and treat it
+	# as "someone else wants it." UNASSIGNED can no longer reach this line
+	# at all (this._init()'s own validation refuses to construct a runner
+	# over one), so the only two real values left are named directly.
 	var someone_else_wants_it: bool = (
 		_wants_turn_for.call(unit)
 		if _wants_turn_for.is_valid()
-		else state.controller_for(unit.squad_id) != Enums.SquadController.AI
+		else state.controller_for(unit.squad_id) == Enums.SquadController.HUMAN
 	)
 	if someone_else_wants_it:
 		return false

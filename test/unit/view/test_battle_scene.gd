@@ -141,6 +141,7 @@ func test_repair_button_queues_and_resolves_a_real_repair() -> void:
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(10, 10), [unit])
+	state.assign_all_to_human()  # tb31 Pass B: no silent default to rely on
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []
 	mission.gather_resource(&"steel", 5)
