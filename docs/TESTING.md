@@ -49,20 +49,28 @@ would be.
 - **`BoutInjector`** — the debug channel that mutates a *live* `CombatState` at a step boundary
   (never mid-resolution). Every injection is logged with an `inject` marker, so an injected scenario
   is self-documenting.
-- **Verbs:** spawn a unit, set a position, arm/equip, set state (HP/wounds/status/AP/facing/pose),
+- **Verbs:** spawn/remove a unit, set a position, arm/equip/attach any part, set state
+  (HP/wounds/status/AP/facing/pose), tile edits (place/clear cover, force a cell passable or not),
   trigger (make current, force an overwatch arm, queue an action). Each fronts the *real* system —
-  an injected spawn is a real spawn, an injected equip is a real kit-equip.
+  an injected spawn is a real spawn, an injected attach is a real `PartGraph.attach`, placed cover
+  is a real `Grid.blockers` entry.
 - **Programmatic first** — CC's real use is scripting a scenario in code and injecting it; the
   spectator/player-view injection UIs are convenience wrappers over the same API.
 - **Owned by the bout, not the overlay (tb30)** — `BattleScene.bout_injector` is built once per
   `load_battle()`, so it survives a spectator ↔ player-controlled overlay swap
   (`toggle_blue_control()`) instead of being torn down with whichever view first reached for it.
   Both `SpectatorOverlay` (hover-targeted) and `SquadControlOverlay` (selection-targeted) expose the
-  same `[*]` Inject menu (`InjectMenu`, one shared item list/dispatch) — `SquadControlOverlay`'s own
-  is real-gated behind `OS.is_debug_build()`, not just the `[*]` label, so it structurally can't ship
-  in a release export. The actual safety property this always protected — no *ordinary* click/action
-  can ever trigger injection — is now drawn at `TacticsController`/`ActionBar` (the real gameplay-
-  input classes), not at "which overlay is installed."
+  same `[*]` Inject button opening a shared **`DebugControlPanel`** — a generic, data-driven
+  click-to-force UI built from `DebugVerbs.all()` (a table of `DebugVerbSpec` rows, each one real
+  `BoutInjector` verb + its typed params); adding a verb is a new table row, never new panel code.
+  A "Pick" button next to any Unit/Cell field arms a one-shot click-capture on whichever input
+  owner is live (`TacticsController` for a player bout, `SpectatorOverlay` itself for spectator) via
+  a duck-typed `board_clicked`/`input_capture_mode` hook — neither gameplay-input class references
+  the panel or `BoutInjector` itself. `SquadControlOverlay`'s own Inject button is real-gated behind
+  `OS.is_debug_build()`, not just the `[*]` label, so it structurally can't ship in a release export.
+  The actual safety property this always protected — no *ordinary* click/action can ever trigger
+  injection — is drawn at `TacticsController`/`ActionBar` (the real gameplay-input classes), not at
+  "which overlay is installed."
 
 Use this half to *force the exact condition* you want to study, instead of waiting for it.
 
