@@ -405,6 +405,30 @@ instead of reading log text and guessing. A chain of four dependent pieces:*
 
 Each piece depends on the last; build in order. Its own taskblock (likely two).
 
+## Diagnostics — combat log grows into a crash log
+*Extends `docs/09`, doesn't replace it.* The combat log is already structured `LogEvent`s over one
+stream with pluggable sinks and a `session_start` seed line — most of a crash log already. Grow it to
+capture engine/script errors too (a new `kind`, or an error sink on the same stream), so combat events
+and diagnostics share one filterable channel — **conflated on purpose, but only mixed when we want**
+(the filtering is the whole point: source-tag events so a view can show combat-only, errors-only, or
+both). One real limit to design around, not paper over: a *hard* engine crash (the tb30 SIGSEGV kind)
+may die before any GDScript sink flushes — a crash log written from inside the game can't catch what
+kills the process before it runs. Scope what's actually reachable (caught script errors, assertion
+failures, abort reasons) vs. what needs an external wrapper (process-death capture) up front. Its own
+small block; pairs with tester mode.
+
+## Retire the hand-built full-mission test (DECIDED — retire; CC-doable standalone now)
+`test_full_mission.gd` uses a hardcoded seed and its own in-test turn heuristics (`_take_turn`/
+`_queue_turn`) that **were never rehomed into production AI** (`docs/10`). Every real mechanics fix
+reshuffles its RNG timeline and it's re-seeded by brute force — five times per its own header, a sixth
+pending under BR30.10. Worse, the seed churn was masking the real AI line-of-fire bug above.
+**Decided (tb30 review): retire the hand-built harness** — it's paleozoic and bouts do almost
+everything it did. Replace with a thin `BoutSetup`/`DeepStrike`-based mission smoke test (a bout runs
+start-to-extraction without erroring, asserted on outcomes, not a frozen seed) — the same "starter
+battle folds into the bouts system" consolidation the supervisor flagged (the bout builder is the live
+path; the hand-built starter battle and hand-built mission test are the obsolete ones). Not gated on
+tb31; a standalone cleanup CC can do anytime (currently the one known red test).
+
 ## Authoring tools (gate mission-gen quality)
 - **Tile editor** — author a map tile (height-aware), save it for proc-gen assembly.
 - **Map editor** — author/save a full map, run a **test bout** on it. Built on the tile format.
@@ -475,6 +499,30 @@ moving away from the enemy (or off the direct line) before a real gap in cover a
 opening behind the unit's own start position still traps the per-turn greedy scorer. Closing this
 for real needs a genuine shortest-path-to-nearest-LOS-cell search (multi-turn, not single-turn
 reachability) — a real design/scope item, not a bugfix.
+
+**AI fires without verifying a clear line of fire (surfaced BR30.10).** Once walls actually blocked
+shots (BR30.10 wired wall geometry into `ShotPlane`), a live mission log showed **81% of impacts
+(368/457) landing on a wall instead of the intended target** — the AI commits to a shot trusting
+`ShotPlane` to arbitrate, without first confirming the target is genuinely reachable by the round.
+Invisible before the wall fix (nothing ever blocked a shot). The AI's target-selection / engagement
+step needs a real clear-LOF check before committing. Likely the reason correct wall-blocking makes
+missions grind through many more turns. Pairs with the multi-turn approach-pathing gap above (both are
+"the AI doesn't reason about geometry between itself and the target").
+
+**AI for damaged units — head for the nearest weapon.** A disarmed/damaged unit currently has little
+to do on its turn. Since the sim always knows where everything is, handing a damaged unit the location
+of the nearest weapon on the field (a `Grid.field_items` weapon, or a downed unit's dropped one — not
+necessarily *functioning*) gives it a purposeful action: go pick something up. Cheap given the data's
+already there; a behavior addition, not new machinery.
+
+**Step-out batching — coalesce same-square out-legs (was BR30.06, reclassified feature).** Today a unit
+queuing several attacks that each require stepping out into the *same* square steps out and back in per
+attack. Intended shape: if multiple queued attacks share one step-out square, resolve them as one
+**step out → resolve all → step in**, not N separate out/in cycles. A resolution-semantics change, not
+UI: it interacts with the docs/09 re-validation rule (a batched out-leg must re-validate coherently —
+if the batch's first shot invalidates a later one, the unit is already stepped out, so the "stop the
+instant the next thing is illegal" rule needs to define what happens to the shared return leg). Design
+the batch boundary before coding. Touches `docs/10`'s step-out description on land.
 
 ---
 
@@ -638,3 +686,18 @@ Evocative one-offs captured so they don't scatter. Each waits on a system:
 - **Disposable back items / back-armor as flanking counter** — the "armor your back or wear a
   disposable item on it" counter to flanking. Parts already mount on a BACK socket; this is authoring
   a disposable/sacrificial back item type + the flanking-counter framing (a Phase-P perk or a part).
+- **"Control system hacked" presentation (ties to hacking, LONG BACKLOG + `docs/10` control overlay).**
+  When a player's shell is hacked and the hacker takes a turn with it, don't render it as a stat
+  change — render it as *the player losing control of their own interface*: actions highlight right
+  before they're cast, clicks do nothing, even a simulated cursor moving on its own. The framing isn't
+  "your shell was hacked," it's "your entire control system was hacked" — a meta layer over the control
+  overlay. A presentation treatment for the hacking / mind-overwrite system (Int hack, Cha+Wis mind
+  overwrite) when it lands, not new mechanics: it reads the existing action queue and drives the
+  existing overlay in a scripted, locked-out mode.
+- **Mangle/wreck states for cover and walls (deferred from tb31 Pass C).** Walls are now destructible
+  cover parts and a destroyed one clears to fully passable. The mangle machinery already exists
+  (`Part.failure_mode = MANGLE`, `is_mangled`, `mangles_into` → wreckage pool) but is never authored
+  onto cover/walls. Authoring it turns a destroyed wall/crate into rubble: passable-but-higher-move-cost
+  and still low cover (`Pathfinder.move_cost` reading the mangled part's state for a rubble cost rather
+  than a binary pass). Data authoring + a small `move_cost` branch, no new machinery — its own authoring
+  pass when appetite allows.
