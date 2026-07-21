@@ -25,6 +25,11 @@ var queue_panel: QueuePanel
 var action_bar: ActionBar
 var ap_mp_pip_row: ApMpPipRow
 var controls_overlay: ControlsOverlay
+## tb31 Pass A: toggles `controls_overlay.label.visible` — the display
+## itself defaults OFF now (reference, not chrome); this is the second of
+## its two surfaces, the H-key (`ControlsOverlay._unhandled_input`) being
+## the first. Both flip the SAME state, never two mechanisms.
+var keybindings_button: Button
 ## taskblock-21 Pass A: the inspect/status panel — a modal opened
 ## on-demand for whatever's currently selected. taskblock-22 Pass I: now
 ## THE inventory surface in player view — the old always-visible
@@ -56,6 +61,12 @@ var action_column: VBoxContainer
 ## to the action bar's right — exposed so a test can confirm New Battle
 ## (E3: "not a turn control") is never among its children.
 var turn_controls_column: VBoxContainer
+## tb31 Pass A: the shared top-left cluster (`TopLeftControls`) — these
+## three fields alias straight into it (`new_battle_button`/`watch_button`/
+## `inject_button` below), so every existing reference to "this overlay's
+## own New Battle/Watch/Inject button" keeps working unchanged; the actual
+## construction/wiring lives in the ONE shared class now, not here.
+var top_left_controls: TopLeftControls
 var new_battle_button: Button
 ## taskblock-21 Pass C: mid-bout toggle back to spectating.
 var watch_button: Button
@@ -229,21 +240,33 @@ func _build_ui() -> void:
 	repair_button.pressed.connect(_on_repair_pressed)
 	left_layout.add_child(repair_button)
 
-	# taskblock-30/31 Pass C: `SquadControlOverlay`'s own Inject affordance
-	# — the full `DebugControlPanel`, same as `SpectatorOverlay` now
-	# exposes. `OS.is_debug_build()` is a REAL gate (see `inject_button`'s
-	# own doc comment) — neither the button nor the panel is ever added to
-	# the tree in a release export.
+	# taskblock-30/31 Pass C: `SquadControlOverlay`'s own debug-gated
+	# DebugControlPanel — the button that toggles it moved into the shared
+	# `TopLeftControls` cluster (tb31 Pass A); the panel itself stays a
+	# direct `theme_root` child (a floating, self-centering modal, never
+	# nested inside the top-left row it's opened from).
 	if OS.is_debug_build():
-		inject_button = Button.new()
-		inject_button.text = "Inject..."
-		inject_button.pressed.connect(_on_inject_pressed)
-		left_layout.add_child(inject_button)
-
 		debug_panel = DebugControlPanel.new()
 		debug_panel.visible = false
 		debug_panel.applied.connect(_on_debug_panel_applied)
 		theme_root.add_child(debug_panel)
+
+	# tb31 Pass A: the shared Inject/New Battle/Watch cluster — one
+	# construction path (`TopLeftControls`), not a per-overlay copy. Added
+	# directly to `theme_root` (not nested under `left_layout`) so it sits
+	# at the fixed top-left corner regardless of the inventory column's own
+	# height.
+	top_left_controls = TopLeftControls.new()
+	# No pre-existing top-left row here (unlike SpectatorOverlay's own
+	# `controls`) — anchor it directly, the same top-left corner
+	# `DebugControlPanel`'s own `_center_top` fix already steers clear of.
+	top_left_controls.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	top_left_controls.position = Vector2(16, 16)
+	theme_root.add_child(top_left_controls)
+	top_left_controls.setup(battle, _on_inject_pressed, true, "Watch")
+	new_battle_button = top_left_controls.new_battle_button
+	watch_button = top_left_controls.watch_button
+	inject_button = top_left_controls.inject_button
 
 	# runNotes.md: "since we aren't truncating log entries, move the
 	# scrollbar to the left side so it doesn't overlay." Un-wrapped lines
@@ -297,21 +320,15 @@ func _build_ui() -> void:
 	top_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_half.add_child(top_right)
 
-	new_battle_button = Button.new()
-	new_battle_button.text = "New Battle"
-	new_battle_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	new_battle_button.pressed.connect(_on_new_battle_pressed)
-	top_right.add_child(new_battle_button)
-
-	# taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
-	# mid-bout toggle is allowed." battle.toggle_blue_control() tears this
-	# whole overlay down as part of the swap — nothing further to do here
-	# after calling it.
-	watch_button = Button.new()
-	watch_button.text = "Watch"
-	watch_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	watch_button.pressed.connect(battle.toggle_blue_control)
-	top_right.add_child(watch_button)
+	# tb31 Pass A: the keybindings display defaults off now (reference, not
+	# chrome) — this button is its second surface, alongside the existing
+	# H-key toggle (`ControlsOverlay._unhandled_input`), both flipping the
+	# same `label.visible`.
+	keybindings_button = Button.new()
+	keybindings_button.text = "Keybindings"
+	keybindings_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	keybindings_button.pressed.connect(_on_keybindings_pressed)
+	top_right.add_child(keybindings_button)
 
 	var controls_label := Label.new()
 	controls_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -540,16 +557,16 @@ func _build_ui() -> void:
 	_update_readout_header()
 
 
-func _on_new_battle_pressed() -> void:
-	battle.new_battle(int(Time.get_ticks_usec()))
-
-
 func _on_end_turn_pressed() -> void:
 	tactics.end_turn()
 
 
 func _on_reset_turn_pressed() -> void:
 	tactics.reset_turn()
+
+
+func _on_keybindings_pressed() -> void:
+	controls_overlay.label.visible = not controls_overlay.label.visible
 
 
 ## Resolution has already mutated combat_state for real (docs/09) — every

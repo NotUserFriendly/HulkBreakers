@@ -300,6 +300,54 @@ func test_inject_wires_the_panel_against_the_real_bout_injector_and_tactics() ->
 	assert_eq(overlay.debug_panel.input_owner, overlay.tactics)
 
 
+## tb31 Pass A: New Battle/Watch/Inject share ONE construction path
+## (`TopLeftControls`) now — this overlay's own field aliases must point
+## straight into the SAME instance it built, not a second copy.
+func test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster() -> void:
+	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+
+	assert_not_null(overlay.top_left_controls)
+	assert_eq(overlay.new_battle_button, overlay.top_left_controls.new_battle_button)
+	assert_eq(overlay.watch_button, overlay.top_left_controls.watch_button)
+	assert_eq(overlay.inject_button, overlay.top_left_controls.inject_button)
+	assert_eq(overlay.watch_button.text, "Watch")
+	assert_not_null(overlay.new_battle_button, "SquadControlOverlay opts INTO New Battle")
+
+
+## tb31 Pass A: the top-left cluster's real rect must never overlap the
+## debug panel's own real, centered rect — `DebugControlPanel`'s own
+## `_center_top` fix exists specifically because a panel with no anchor at
+## all used to spawn right on top of this exact corner. Read both real
+## nodes back (docs/10 standing rule 2), never re-derive either position.
+func test_top_left_cluster_never_overlaps_the_centered_debug_panel() -> void:
+	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+	overlay.debug_panel.visible = true
+	overlay.debug_panel.size = Vector2(600.0, 200.0)
+	overlay.debug_panel._center_top()
+	await get_tree().process_frame
+
+	var cluster_rect := Rect2(overlay.top_left_controls.position, overlay.top_left_controls.size)
+	var panel_rect := Rect2(overlay.debug_panel.position, overlay.debug_panel.size)
+	assert_false(
+		cluster_rect.intersects(panel_rect),
+		"cluster %s must not overlap the centered debug panel %s" % [cluster_rect, panel_rect]
+	)
+
+
+## tb31 Pass A: "reference, not chrome" — hidden by default, and the
+## button is the SAME toggle the H-key already drives (ControlsOverlay's
+## own `label.visible`), never a second mechanism.
+func test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does() -> void:
+	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+	assert_false(overlay.controls_overlay.label.visible, "sanity: hidden by default")
+
+	overlay._on_keybindings_pressed()
+	assert_true(overlay.controls_overlay.label.visible)
+
+	overlay._on_keybindings_pressed()
+	assert_false(overlay.controls_overlay.label.visible)
+
+
 ## Finds `verb_id`'s own row in the panel's live verb table by index —
 ## `DebugVerbs.all()` is the one authority for ordering; a test must
 ## never hardcode an index.

@@ -6,6 +6,12 @@ extends Node
 ## ControlBindings.all(), never a hand-typed block that could drift the
 ## first time a key changes. Pure presentation: this Node only formats
 ## ControlBindings' rows into text and flips the label's visibility.
+##
+## tb31 Pass A: default OFF now — reference, not chrome, so it shouldn't
+## eat screen space by default. The H-key toggle above and the new
+## `Keybindings` button (`SquadControlOverlay`) both just flip this SAME
+## `label.visible` — one state, two surfaces to reach it, never two
+## mechanisms.
 
 var label: Label
 var log_path: String = ""
@@ -15,6 +21,7 @@ func setup(p_label: Label, p_log_path: String) -> void:
 	label = p_label
 	log_path = p_log_path
 	label.add_theme_color_override("font_color", HulkTheme.DIM)
+	label.visible = false
 	refresh()
 
 

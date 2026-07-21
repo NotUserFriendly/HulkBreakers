@@ -67,6 +67,9 @@ var input_capture_mode: bool = false
 ## via the same "Inject..." button, only inside `if OS.is_debug_build():`
 ## (never even constructed in a release export).
 var debug_panel: DebugControlPanel = null
+## tb31 Pass A: the shared top-left Inject/Assume-Control cluster —
+## `inject_button`/`assume_control_button` below alias straight into it.
+var top_left_controls: TopLeftControls
 
 ## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
 ## opens the inspect panel on that bot. Closing it resumes." Supersedes
@@ -334,33 +337,25 @@ func _build_ui() -> void:
 	_speed_button.pressed.connect(_on_speed_button_pressed)
 	controls.add_child(_speed_button)
 
-	# taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
-	# mid-bout toggle is allowed." battle.toggle_blue_control() tears this
-	# whole overlay down as part of the swap — nothing further to do here
-	# after calling it.
-	var assume_control_button := Button.new()
-	assume_control_button.text = "Assume Control"
-	assume_control_button.pressed.connect(battle.toggle_blue_control)
-	controls.add_child(assume_control_button)
-
-	# taskblock-29 Pass D / taskblock-30/31 Pass C: "programmatic injection
-	# is the primary path... the spectator UI is a convenience wrapper over
-	# the same BoutInjector calls, not a separate path" — the panel below
-	# is exactly that wrapper, full verb table instead of a flat 3-item
-	# menu now. `OS.is_debug_build()` is a REAL gate, not just the `[*]`
-	# naming convention — neither the button nor the panel is ever added to
-	# the tree in a release export, so there's nothing to click regardless
-	# of what's drawn.
+	# taskblock-30/31 Pass C: `DebugControlPanel` stays a direct `theme_root`
+	# child (a floating, self-centering modal) — only the button that opens
+	# it moves into the shared cluster below.
 	if OS.is_debug_build():
-		var inject_button := Button.new()
-		inject_button.text = "Inject..."
-		inject_button.pressed.connect(_on_inject_pressed)
-		controls.add_child(inject_button)
-
 		debug_panel = DebugControlPanel.new()
 		debug_panel.visible = false
 		debug_panel.applied.connect(_on_debug_panel_applied)
 		theme_root.add_child(debug_panel)
+
+	# tb31 Pass A: the shared Inject/Assume-Control cluster — one
+	# construction path (`TopLeftControls`), not a per-overlay copy.
+	# taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
+	# mid-bout toggle is allowed." battle.toggle_blue_control() tears this
+	# whole overlay down as part of the swap — nothing further to do here
+	# after calling it. No New Battle here — a spectated bout has no
+	# "New Battle" concept of its own.
+	top_left_controls = TopLeftControls.new()
+	controls.add_child(top_left_controls)
+	top_left_controls.setup(battle, _on_inject_pressed, false, "Assume Control")
 
 	_status_label = Label.new()
 	controls.add_child(_status_label)

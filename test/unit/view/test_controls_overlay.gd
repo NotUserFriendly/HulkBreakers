@@ -36,19 +36,20 @@ func test_setup_dims_the_label() -> void:
 	assert_eq(label.get_theme_color("font_color"), HulkTheme.DIM)
 
 
+## tb31 Pass A: default OFF now — reference, not chrome.
 func test_h_toggles_the_labels_visibility() -> void:
 	var label := Label.new()
 	var overlay := ControlsOverlay.new()
 	add_child_autofree(label)
 	add_child_autofree(overlay)
 	overlay.setup(label, "")
-	assert_true(label.visible, "persistent overlay: visible by default")
-
-	overlay._unhandled_input(_key_event(KEY_H))
-	assert_false(label.visible)
+	assert_false(label.visible, "reference, not chrome: hidden by default")
 
 	overlay._unhandled_input(_key_event(KEY_H))
 	assert_true(label.visible)
+
+	overlay._unhandled_input(_key_event(KEY_H))
+	assert_false(label.visible)
 
 
 func test_other_keys_do_not_toggle_visibility() -> void:
@@ -60,7 +61,7 @@ func test_other_keys_do_not_toggle_visibility() -> void:
 
 	overlay._unhandled_input(_key_event(KEY_R))
 
-	assert_true(label.visible)
+	assert_false(label.visible)
 
 
 func test_set_log_path_rebuilds_the_text_with_the_new_path() -> void:

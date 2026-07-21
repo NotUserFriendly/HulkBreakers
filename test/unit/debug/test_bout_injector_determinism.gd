@@ -65,29 +65,31 @@ func test_bout_injector_is_referenced_by_both_overlays() -> void:
 ## against), so this pins the STRUCTURAL claim instead: the literal gate
 ## call actually guards the button construction in both files' own
 ## source, not just documented intent in a comment.
-func test_both_overlays_gate_their_inject_button_behind_a_real_debug_check() -> void:
-	var overlay_paths: Array[String] = [
-		"res://src/view/overlays/spectator_overlay.gd",
-		"res://src/view/overlays/squad_control_overlay.gd",
-	]
-	for path: String in overlay_paths:
-		var file := FileAccess.open(path, FileAccess.READ)
-		assert_not_null(file, "sanity: %s must exist to check at all" % path)
-		var lines: PackedStringArray = file.get_as_text().split("\n")
-		var gate_line := -1
-		for i in range(lines.size()):
-			if lines[i].strip_edges() == "if OS.is_debug_build():":
-				gate_line = i
-				break
-		assert_true(gate_line >= 0, "%s must gate on OS.is_debug_build() somewhere" % path)
-		var found_inject_nearby := false
-		for i in range(gate_line, mini(gate_line + 4, lines.size())):
-			if "inject_button" in lines[i] and "Button.new()" in lines[i]:
-				found_inject_nearby = true
-		assert_true(
-			found_inject_nearby,
-			"%s must construct inject_button INSIDE the debug-build check, not just near it" % path
-		)
+## tb31 Pass A: `inject_button` construction moved into the ONE shared
+## `TopLeftControls.setup()` — both overlays call into it now instead of
+## each independently gating their own copy, so the real check lives
+## there, not per-overlay. A single source of truth is a STRONGER
+## guarantee than the old duplicated-per-overlay check (nothing to drift
+## between two copies), not a weaker one.
+func test_inject_button_is_gated_behind_a_real_debug_check() -> void:
+	var path := "res://src/view/top_left_controls.gd"
+	var file := FileAccess.open(path, FileAccess.READ)
+	assert_not_null(file, "sanity: %s must exist to check at all" % path)
+	var lines: PackedStringArray = file.get_as_text().split("\n")
+	var gate_line := -1
+	for i in range(lines.size()):
+		if lines[i].strip_edges() == "if OS.is_debug_build():":
+			gate_line = i
+			break
+	assert_true(gate_line >= 0, "%s must gate on OS.is_debug_build() somewhere" % path)
+	var found_inject_nearby := false
+	for i in range(gate_line, mini(gate_line + 4, lines.size())):
+		if "inject_button" in lines[i] and "Button.new()" in lines[i]:
+			found_inject_nearby = true
+	assert_true(
+		found_inject_nearby,
+		"%s must construct inject_button INSIDE the debug-build check, not just near it" % path
+	)
 
 
 func _make_unit(id_hint: String, cell: Vector2i, squad: int) -> Unit:
@@ -101,14 +103,17 @@ func _make_unit(id_hint: String, cell: Vector2i, squad: int) -> Unit:
 func _snapshot(state: CombatState) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	for unit: Unit in state.units:
-		rows.append(
-			{
-				"id": unit.id,
-				"cell": unit.cell,
-				"squad_id": unit.squad_id,
-				"hp": unit.shell.root.hp,
-				"alive": unit.alive,
-			}
+		(
+			rows
+			. append(
+				{
+					"id": unit.id,
+					"cell": unit.cell,
+					"squad_id": unit.squad_id,
+					"hp": unit.shell.root.hp,
+					"alive": unit.alive,
+				}
+			)
 		)
 	return rows
 

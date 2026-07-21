@@ -464,6 +464,20 @@ func test_setup_wires_a_bout_injector_against_the_same_live_state() -> void:
 	assert_eq(overlay.bout_injector.state, overlay.battle.combat_state)
 
 
+## tb31 Pass A: same shared `TopLeftControls` class SquadControlOverlay
+## uses, but this overlay opts OUT of New Battle (a spectated bout has no
+## "New Battle" concept of its own) and labels the shared toggle "Assume
+## Control" — the exact same `toggle_blue_control()` call, just the
+## opposite direction's own wording.
+func test_top_left_cluster_has_no_new_battle_and_labels_the_toggle_assume_control() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	assert_not_null(overlay.top_left_controls)
+	assert_null(overlay.top_left_controls.new_battle_button, "a spectated bout has no New Battle")
+	assert_eq(overlay.top_left_controls.watch_button.text, "Assume Control")
+	assert_eq(overlay.top_left_controls.inject_button != null, OS.is_debug_build())
+
+
 func test_inject_toggles_the_debug_panels_own_visibility() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
 	assert_false(overlay.debug_panel.visible, "sanity: starts hidden")
