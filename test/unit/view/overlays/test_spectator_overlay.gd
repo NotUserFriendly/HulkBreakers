@@ -545,3 +545,48 @@ func test_playback_proceeds_normally_after_an_injection() -> void:
 
 	await overlay.step_once()
 	assert_eq(overlay.runner.turns_taken, 2)
+
+
+## taskblock-30/31: the same generic `input_capture_mode`/`board_clicked`
+## hook `TacticsController` gained — mirrored here since spectator has no
+## `TacticsController` of its own to lean on.
+func test_capture_mode_intercepts_a_real_click_and_never_opens_the_inspect_panel() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.find_unit(1)
+	var captured := [{}]
+	overlay.board_clicked.connect(func(hit: Dictionary) -> void: captured[0] = hit)
+	overlay.input_capture_mode = true
+
+	var world_point: Vector3 = Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	overlay._unhandled_input(click)
+
+	assert_eq(captured[0].get("kind"), Enums.HitKind.UNIT)
+	assert_eq(captured[0].get("unit"), enemy)
+	assert_false(
+		overlay.inspect_panel.visible, "capture must never fall through to open the inspector"
+	)
+
+
+func test_capture_mode_off_behaves_exactly_as_before() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var enemy: Unit = built.state.find_unit(1)
+	var captured := [false]
+	overlay.board_clicked.connect(func(_hit: Dictionary) -> void: captured[0] = true)
+
+	var world_point: Vector3 = Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
+	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	overlay._unhandled_input(click)
+
+	assert_false(captured[0], "board_clicked must never fire outside capture mode")
+	assert_true(overlay.inspect_panel.visible, "the ordinary click behavior must be untouched")

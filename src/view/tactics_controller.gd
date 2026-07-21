@@ -53,6 +53,17 @@ signal mouse_moved
 ## below (that one's click-driven and feeds the text readout; this one's
 ## hover-driven and feeds the 3D glow + tree-row highlight).
 signal highlight_changed
+## taskblock-30/31: fires on every real LEFT click `_handle_mouse_button`/
+## `click_cell` resolves, carrying the same `{"kind", "unit", "cell"}`
+## shape `_cell_at` already produces — a generic "something was clicked"
+## signal, deliberately knowing nothing about WHY a listener wants it (a
+## debug panel's own board-picking mode, say). This class must never
+## reference the debug injection channel at all
+## (test_bout_injector_determinism.gd's own routing/guard test proves it
+## from source, checking for the literal class name this comment is
+## deliberately avoiding) — this signal is how a debug tool borrows a
+## real click without this file knowing debug tooling exists.
+signal board_clicked(hit: Dictionary)
 
 ## docs/10 taskblock02 F3: Q/E step size — docs/10 doesn't pin an exact
 ## increment, a flagged placeholder, not a design decision. 45 degrees:
@@ -113,6 +124,14 @@ var highlighted_part: Part = null
 ## then — this only blocks further TACTICS input during the cosmetic
 ## replay, never delays the sim itself.
 var input_locked: bool = false
+
+## taskblock-30/31: while true, the NEXT real left click is captured —
+## `_handle_mouse_button`'s own LEFT branch and `click_cell()` do nothing
+## but emit `board_clicked` and return (no select, no move, no aim, no
+## step-out). A generic capture mode, not a debug-specific one (see
+## `board_clicked`'s own doc comment) — a caller sets this true, listens
+## for one `board_clicked`, then sets it false again.
+var input_capture_mode: bool = false
 
 ## docs/10 taskblock03 E1: press-and-hold on the already-selected unit's own
 ## body starts a facing drag; live for as long as LMB stays down.
@@ -243,6 +262,9 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		var dir: Vector3 = camera.project_ray_normal(button_event.position)
 		var hit: Variant = _cell_at(from, dir)
 		var hit_dict: Dictionary = hit as Dictionary if hit != null else {}
+		if input_capture_mode:
+			board_clicked.emit(hit_dict)
+			return
 		if (
 			not hit_dict.is_empty()
 			and aiming_at == null
@@ -417,6 +439,16 @@ func hover_part(part: Variant) -> void:
 ## and other callers already use.
 func click_cell(cell: Vector2i) -> void:
 	if input_locked:
+		return
+	if input_capture_mode:
+		var captured: Unit = _unit_at(cell)
+		board_clicked.emit(
+			{
+				"kind": Enums.HitKind.UNIT if captured != null else Enums.HitKind.CELL,
+				"unit": captured,
+				"cell": cell,
+			}
+		)
 		return
 	if aiming_at != null or stepping_out_at != null:
 		confirm_shot()
