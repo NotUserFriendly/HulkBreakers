@@ -264,11 +264,18 @@ data-driven off `DebugVerbs.all()`.
 ever populated once, in `load_battle()`'s own build loop; `BoutInjector.spawn_unit` adds straight into
 `combat_state.units` with no view ever constructed for it. New `BattleScene.sync_unit_views()` diffs
 the two and builds the missing `HitVolumeView`(s), mirroring `load_battle()`'s own construction; both
-overlays' `_on_debug_panel_applied` call it before `refresh_unit_views()`. Root-caused by building a
-real `BattleScene`+overlay headlessly and reading `HitVolumeView` transforms back rather than
-guessing — `move_object`'s own position math checked out correctly in every scenario tried (a fresh
-bout, after a real resolved turn, through both overlays), so a reported "move also doesn't visually
-work" was most likely the same missing-view bug, tested against an already-invisible just-spawned unit.
+overlays' `_on_debug_panel_applied` call it before `refresh_unit_views()`. Confirmed fixed by the
+supervisor. (An initial theory that a reported "move also doesn't visually work" was the same bug,
+tested against an already-invisible just-spawned unit, was WRONG — the supervisor had tested move
+first, separately; still open, see docs/BUGS.md/the taskblock report.)
+
+**Fix: debug `remove_unit` never actually looked dead (tb30 follow-up)** — `HitVolumeView.is_downed()`
+(the one thing `refresh()` checks to pick the DOWN pose) reads `Unit.resolve_matrix() == null`, never
+`alive` directly — the same thing a REAL kill leaves behind (`DamageResolver.eject_matrix_if_needed`
+nulls the hosting part's own `hosted_matrix`, drops it as a loose `Grid.field_items` entry, THEN calls
+`kill_unit`). `remove_unit` only ever did the `kill_unit` half, so `resolve_matrix()` kept finding the
+still-docked matrix and the view never changed. Now ejects the matrix the same way first — a debug
+removal reads exactly like a real kill instead of a flag flip nothing checks.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,

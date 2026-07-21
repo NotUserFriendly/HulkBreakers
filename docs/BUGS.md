@@ -45,6 +45,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
 
 ## ✅ Resolved
 
+### BR30.01 — Debug-spawned unit renders no visual model  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21 (tb30 follow-up, live bout review). "Spawn unit does not create a visual
+  model, but the inspect shows it, indicating something all the debug options use is the issue."
+- **Root cause:** `BattleScene.unit_views` was only ever populated once, in `load_battle()`'s own build
+  loop. `BoutInjector.spawn_unit` adds a unit straight into `combat_state.units` — real data, inspect
+  panel reads it fine — but nothing ever constructed a `HitVolumeView` for it.
+- **Fix:** new `BattleScene.sync_unit_views()` diffs `combat_state.units` against `unit_views` and
+  builds the missing view(s), the exact same construction `load_battle()` runs. Both overlays'
+  `_on_debug_panel_applied` call it before `refresh_unit_views()`.
+- **RESOLVED** 2026-07-21 — supervisor confirms: "Fixed for spawning units."
+
 ### Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
   ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
@@ -195,6 +206,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
 *(CC-fixed `SUPERVISOR` bugs awaiting verification. CC writes here, never straight to Resolved;
 the supervisor promotes confirmed ones up to Resolved.)*
 
+### BR30.03 — Debug-removed unit never visually looks dead  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21 (tb30 follow-up, same review as BR30.01/BR30.02): "clicking remove on a
+  unit is removing it data side, but not visually."
+- **Root cause:** `HitVolumeView.is_downed()` (the one check `refresh()` makes to pick the DOWN pose)
+  reads `Unit.resolve_matrix() == null`, never `alive` directly — the same thing a REAL kill leaves
+  behind (`DamageResolver.eject_matrix_if_needed` nulls the hosting part's own `hosted_matrix`, drops
+  it as a loose `Grid.field_items` entry, THEN calls `kill_unit`). `BoutInjector.remove_unit` only ever
+  did the `kill_unit` half — `resolve_matrix()` kept finding the still-docked matrix, so the view never
+  changed.
+- **Fix:** `remove_unit` now ejects the hosted matrix the same way first (drops it as a real field item
+  at the unit's own cell), then kills as before — a debug removal now reads exactly like a real kill.
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `c930930`,
+  1835/1835 green.
+
 ### BR26.01 — Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
   appeared to jump to new positions before that unit's attack animation resolved."
@@ -246,6 +271,30 @@ the supervisor promotes confirmed ones up to Resolved.)*
 ---
 
 ## 🔧 Active / Open
+
+### BR30.02 — Debug move_object mutates state but the model never visually moves  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21 (tb30 follow-up, live bout review), tested BEFORE BR30.01 (spawn) in the
+  same session — so NOT explained by testing move against an already-invisible just-spawned unit (an
+  earlier CC theory here, now known wrong; see BR30.01's own history). Both "Move On Next Click" and
+  manual cell-entry Apply are reported affected. `unit.cell` genuinely changes (confirmed via inspect);
+  the rendered model does not.
+- **Status:** could not reproduce through any headless path tried so far — logged as a real negative
+  result, not a fix. Built a REAL `BattleScene` + `SpectatorOverlay`/`SquadControlOverlay`, drove the
+  debug panel's actual `_on_apply_pressed()`/`applied` signal for real, and read `HitVolumeView`
+  transforms (both the root and a child marker) back per CLAUDE.md's own view-math rule, across three
+  scenarios: a fresh bout, a bout after driving several real AI turns through the normal animated
+  `ResolutionPlayer` path first (in case a stale cosmetic offset from a real animation was leaking into
+  a later debug move), and through both overlays. In all three, `battle.refresh_unit_views()` (already
+  wired to the panel's own `applied` signal) correctly rebuilt the moved unit's mesh at the new cell —
+  no bug found in `move_object`, `HitVolumeView.refresh()`, `UnitGeometry`, or the `applied` signal
+  wiring itself.
+- **Needs a more specific repro before further guessing is worth the cost** (per tb30's own "don't loop
+  within a block" instruction): does the status label read "Move Object: applied"? Is the camera
+  actually framing the destination cell (a correct-but-off-screen move would look identical to "nothing
+  happened" without a wrong transform)? Does re-selecting/re-inspecting the same unit afterward show it
+  at the new cell in the 3D view specifically (not just the inspect panel's own text)? Exact steps
+  (verb used, source/destination cells, which overlay) would let this become a matching headless
+  fixture instead of a fourth guess.
 
 ### BR27.05 — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). The tb27 Pass D3 fix (dim/disable unaffordable action-bar
