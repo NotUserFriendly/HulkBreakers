@@ -1,6 +1,8 @@
 # BUGS.md — Bug Ledger
 
 **The single place a bug's status lives.** New and resolved, with a rough report time and (for recent
+
+**Status legend:** `Active` = open · `Pending Confirmation` = fix complete, supervisor verification pending · `Resolved` = confirmed fixed.
 ones) the taskblock in play. Its job: **a resolved bug must have a closure marker here**, so an old
 report — still readable in `taskblock_done/`, still describing acceptance criteria — is never
 re-derived as open. If you fixed something, mark it RESOLVED here, even if the fix landed as a plain
@@ -269,7 +271,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 *(No ID to sort by — listed here, oldest work first, same relative order this ledger has always kept
 them in. All `Resolved`.)*
 
-### Resolved — Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
+### BR26.03 — Resolved — Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
   ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
   geometry and can hit its own armor."
@@ -285,7 +287,7 @@ them in. All `Resolved`.)*
   remaining anchor mismatch between `origin` and `direction` that had been obscuring a clean read on
   this one.
 
-### Resolved — Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
+### BR26.04 — Resolved — Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
 - **First two attempts (taskblock-26 Pass A3, twice):** bumped `FACING_WEDGE_Y` in isolation each
   time. Both **reported still present.**
@@ -297,14 +299,14 @@ them in. All `Resolved`.)*
   tile (0.010, unchanged) → team marker (0.06) → overwatch arc (0.09) → facing wedge (0.17).
 - **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass C2.
 
-### Resolved — Spectator combat log word-wraps  ·  source: `SUPERVISOR`
+### BR27.10 — Resolved — Spectator combat log word-wraps  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D1a: the spectator's own log label wraps lines; the player view's log
   already doesn't.
 - **Fix:** `log_label.autowrap_mode = TextServer.AUTOWRAP_OFF`, the same setting the player-view log
   already carried — a direct port, not a new mechanism.
 - **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D1a.
 
-### Resolved — Inspect-on-hover missing in spectator view  ·  source: `SUPERVISOR`
+### BR27.11 — Resolved — Inspect-on-hover missing in spectator view  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D1c (tb17-era note): inspect-on-hover should be on the shared control
   layer so both spectator and player view have it. Spectator view had none at all.
 - **Fix:** `SpectatorOverlay._unhandled_input()` now routes `InputEventMouseMotion` to a new
@@ -314,7 +316,7 @@ them in. All `Resolved`.)*
   clear-every-other-view behavior.
 - **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D1c.
 
-### Resolved — Wall tiles inspectable → opens the tile inspector  ·  source: `SUPERVISOR`
+### BR27.12 — Resolved — Wall tiles inspectable → opens the tile inspector  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D5: clicking a wall tile opens the tile inspector.
 - **Fix:** `SpectatorOverlay`'s tile-click path now guards on `TerrainType.WALL` before ever calling
   `open_tile()` — a wall click is a real no-op, the same posture a miss off the board already had.
@@ -322,7 +324,7 @@ them in. All `Resolved`.)*
   symptom this report also showed was a distinct, deeper bug — see the next entry, found and closed
   by CC in the same pass.)
 
-### Resolved — InspectPanel's null-root branch leaked stale isolate-viewport state ("garbage inspector")  ·  source: `CC`
+### BR27.13 — Resolved — InspectPanel's null-root branch leaked stale isolate-viewport state ("garbage inspector")  ·  source: `CC`
 - **Found:** while root-causing the wall-tile report above. `Grid.blockers` returns null identically
   for a wall cell and bare floor, so the tile lookup itself was never the bug. The real defect:
   `InspectPanel.open()`'s null-root branch (reached whenever `unit.shell.root == null`, which
@@ -337,7 +339,7 @@ them in. All `Resolved`.)*
   null-root-resets-viewport-state test. CC-sourced: found, fixed, and tested entirely by CC in one
   pass, no supervisor confirmation gate applies.
 
-### Resolved — Resource Editor — four layout bugs (stale-report source)  ·  source: `SUPERVISOR`
+### BR11.01 — Resolved — Resource Editor — four layout bugs (stale-report source)  ·  source: `SUPERVISOR`
 - **Reported:** recurring through 2026-07-20 (arrived repeatedly as a `## User Request` to launch
   `run_resource_editor.sh` and screenshot the bugs). Era: taskblock 11 was the active block when
   first reported.
@@ -357,7 +359,7 @@ them in. All `Resolved`.)*
   convention), the taskblock-generating instance treated the living docs as authority, found nothing,
   and re-derived "go verify the Resource Editor" as open. **This ledger is the fix for that class.**
 
-### Resolved — Waist-line of impacts — the shot-plane Z-discard  ·  source: `SUPERVISOR`
+### BR22.01 — Resolved — Waist-line of impacts — the shot-plane Z-discard  ·  source: `SUPERVISOR`
 - **Reported:** through mid-2026-07 review passes ("a line of impacts across the waist"; "only seeing
   ~20% of shots"; "no ricochets").
 - **Symptom:** projection collapsed `Vector3 → Vector2(x, z)`, dropping the height axis — so vertical
@@ -366,12 +368,12 @@ them in. All `Resolved`.)*
   scatters in 3D, `resolve_ray` accepts vertical shots, tracers draw the real 3D path. Tagged in
   `docs/CHANGELOG.md`.
 
-### Resolved — `los.gd` `range`-shadow (v1)  ·  source: `CC`
+### BR00.01 — Resolved — `los.gd` `range`-shadow (v1)  ·  source: `CC`
 - **Symptom:** a param named `range` shadowed the builtin, failing at load/call time.
 - **RESOLVED** in the v1 foundation work (noted historically in `docs/SUPERSEDED.md`). `gdlint` now
   catches this class faster than the engine does (see `docs/TOOLING.md` gotchas).
 
-### Resolved — Deflect tracers never drawn  ·  source: `SUPERVISOR`
+### BR26.05 — Resolved — Deflect tracers never drawn  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
   logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
   computed, logged, never drawn."
@@ -379,28 +381,28 @@ them in. All `Resolved`.)*
   carries its own `deflect_end_x/y/height`, drawn as a second, visually distinct tracer segment.
 - **RESOLVED** — confirmed by the supervisor.
 
-### Resolved — Bout maker AI dropdown missing new playstyles  ·  source: `SUPERVISOR`
+### BR26.06 — Resolved — Bout maker AI dropdown missing new playstyles  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26: tb24/tb25 added playstyles (overwatch-capable set, PSYCHOTIC, TURTLE)
   but the bout setup menu's own AI dropdown was a hardcoded, independently-maintained list.
 - **Fix:** `taskblock-26 Pass C1` (commit `67c7ca8`) — `GenerateBoutOverlay.PLAYSTYLES` is now a
   direct reference to `UnitAI.PLAYSTYLES`, not a hardcoded copy.
 - **RESOLVED** — confirmed by the supervisor.
 
-### Resolved — Bout menu jumpy add/duplicate, not truly centered  ·  source: `SUPERVISOR`
+### BR26.07 — Resolved — Bout menu jumpy add/duplicate, not truly centered  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26: adding/duplicating a roster entry reflows jarringly; the menu reads as
   intended-centered but isn't.
 - **Fix:** `taskblock-26 Pass C2` (commit `67c7ca8`) — anchors pinned to 0.5 with
   `GROW_DIRECTION_BOTH` (no baked offset); every row reserves the same `ROW_MIN_HEIGHT`.
 - **RESOLVED** — confirmed by the supervisor.
 
-### Resolved — Inspect header shows only the variant, not unit id/squad  ·  source: `SUPERVISOR`
+### BR26.08 — Resolved — Inspect header shows only the variant, not unit id/squad  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26: the inspect panel showed the bot's variant but not which unit/squad
   this actually was in the current bout — two units built from the same variant read identically.
 - **Fix:** `taskblock-26 Pass C3` (commit `67c7ca8`) — the title bar now reads "INSPECT — Unit N
   (Squad M) — <variant>" once a unit is open.
 - **RESOLVED** — confirmed by the supervisor.
 
-### Resolved — Stab's slide-deflect could land back on the shooter's own body  ·  source: `CC`
+### BR27.14 — Resolved — Stab's slide-deflect could land back on the shooter's own body  ·  source: `CC`
 - **Found:** while re-diagnosing A2 above (see that entry) — `DamageResolver._resolve_slide` (stab's
   own DEFLECT_MODE_SLIDE response) re-searches the WHOLE plane from index 0 with a lateral nudge, but
   hardcoded an EMPTY exclude list on that re-search, unlike every other plane lookup in `resolve_shot`.
