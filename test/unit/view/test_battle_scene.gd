@@ -270,6 +270,24 @@ func test_sync_unit_views_is_a_noop_when_every_unit_already_has_a_view() -> void
 	assert_eq(scene.unit_views, views_before, "must never rebuild or duplicate an existing view")
 
 
+## taskblock-30 follow-up (supervisor report): "removing a unit doesn't
+## visually do anything." Closes the loop end to end: `bout_injector.
+## remove_unit` (now ejecting the matrix too, see test_bout_injector_
+## remove_unit.gd) must actually flip what `HitVolumeView.is_downed()`
+## reads, the one thing `refresh()` checks to pick the DOWN pose.
+func test_removing_a_unit_through_the_debug_injector_flips_its_view_to_downed() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var target: Unit = scene.combat_state.units[0]
+	var view: HitVolumeView = scene.find_unit_view(target.id)
+	assert_false(view.is_downed(), "sanity: a fresh seeded unit is not downed")
+
+	scene.bout_injector.remove_unit(target)
+	scene.refresh_unit_views()
+
+	assert_true(view.is_downed())
+
+
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
 ## streams." battle_scene.gd used to register only a UISink; a human
 ## session showed a log on screen and wrote nothing to disk.

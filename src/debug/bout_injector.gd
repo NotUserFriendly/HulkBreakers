@@ -114,12 +114,34 @@ func spawn_unit(
 ## a real kill leaves behind) — never an actual array deletion, which
 ## would break any code still holding a reference to it. Refuses (no
 ## mutation) on an already-dead unit.
+##
+## taskblock-30 follow-up (supervisor report): "removing a unit doesn't
+## visually do anything." `HitVolumeView.is_downed()`/the view's own DOWN
+## pose read `Unit.resolve_matrix() == null` — never `alive` directly —
+## because that's also exactly what a REAL kill leaves behind
+## (`DamageResolver.eject_matrix_if_needed`/`eject_surrogate_if_needed`:
+## null the hosting part's `hosted_matrix`, drop it as a loose field item,
+## THEN `kill_unit`). `kill_unit` alone was only ever half of that in this
+## verb — flipping `alive` with the matrix still docked left `resolve_
+## matrix()` still finding it, so the view kept rendering the unit exactly
+## as before. Ejecting the matrix here too — the same field-item drop, not
+## a parallel mechanism — makes a debug removal read exactly like a real
+## kill, not a half-measure invisible to the one thing that actually
+## checks it.
 func remove_unit(unit: Unit) -> bool:
 	if not can_inject():
 		_reject(&"remove_unit")
 		return false
 	if not unit.alive:
 		return false
+	for part: Part in unit.shell.all_parts():
+		if part.hosts_matrix() and part.hosted_matrix != null:
+			var ejected: Matrix = part.hosted_matrix
+			part.hosted_matrix = null
+			if not state.grid.field_items.has(unit.cell):
+				state.grid.field_items[unit.cell] = []
+			state.grid.field_items[unit.cell].append(ejected)
+			break
 	state.kill_unit(unit)
 	_log_injection(&"remove_unit", {"unit": unit.id}, "unit %d removed" % unit.id)
 	return true
@@ -183,13 +205,13 @@ func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
 		var unit: Variant = target.get("unit")
 		if unit == null:
 			return false
-		var from_cell: Vector2i = (unit as Unit).cell
+		var unit_from_cell: Vector2i = (unit as Unit).cell
 		if not _move_unit(unit, to_cell):
 			return false
 		_log_injection(
 			&"move_object",
-			{"unit": (unit as Unit).id, "from": from_cell, "to": to_cell},
-			"unit %d: %s -> %s" % [(unit as Unit).id, from_cell, to_cell]
+			{"unit": (unit as Unit).id, "from": unit_from_cell, "to": to_cell},
+			"unit %d: %s -> %s" % [(unit as Unit).id, unit_from_cell, to_cell]
 		)
 		return true
 	var from_cell: Variant = target.get("cell")
