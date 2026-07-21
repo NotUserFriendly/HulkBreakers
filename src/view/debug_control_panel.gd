@@ -22,6 +22,15 @@ signal closed
 ## needing to know anything about view-refresh itself.
 signal applied(verb_id: StringName, args: Dictionary)
 
+## Supervisor report: with no anchor at all the panel defaulted to the
+## top-left corner and sat directly on top of the existing top-left HUD
+## (`controls`/`tunables` in both overlays). Horizontally centered,
+## pinned to a fixed top margin instead — same reasoning as InspectPanel's
+## own `_clamp_to_viewport`: it stays out of the way of everything else,
+## and a fixed screen anchor (not "wherever the mouse happened to be")
+## means it's always found in the same place.
+const TOP_MARGIN := 16.0
+
 var bout_injector: BoutInjector
 var pool: Dictionary
 var input_owner: Object
@@ -48,6 +57,19 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+## Re-centers on every viewport resize too, not just at setup() — a
+## window resized while the panel is open must never leave it off-center.
+func _ready() -> void:
+	get_viewport().size_changed.connect(_center_top)
+
+
+func _center_top() -> void:
+	if not is_inside_tree():
+		return
+	var viewport_size: Vector2 = get_viewport_rect().size
+	position = Vector2((viewport_size.x - size.x) / 2.0, TOP_MARGIN)
+
+
 func setup(p_bout_injector: BoutInjector, p_pool: Dictionary, p_input_owner: Object) -> void:
 	bout_injector = p_bout_injector
 	pool = p_pool
@@ -57,6 +79,10 @@ func setup(p_bout_injector: BoutInjector, p_pool: Dictionary, p_input_owner: Obj
 		_verbs = DebugVerbs.all()
 		_build_ui()
 	_select_verb(0)
+	# Layout (which verb's params are showing) only settles after this
+	# frame's own deferred calls run — center against the REAL post-layout
+	# width, not a guess at what it's about to become.
+	call_deferred(&"_center_top")
 
 
 func _build_ui() -> void:
