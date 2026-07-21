@@ -114,7 +114,29 @@ const WALL_CROSS_WIDTH := 0.06
 const FIELD_ITEM_MARKER_HEIGHT := 0.045
 const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
+## tb31 Pass C: "walls must not block the player's read of the action
+## behind them" — flagged, tunable (CLAUDE.md: never invent a "final"
+## balance number), how close to the camera-focal sightline a wall has to
+## sit before it's considered "in the way," in cells.
+const WALL_FADE_RADIUS := 1.0
+## `GeometryInstance3D.transparency` — 0 opaque, 1 fully invisible. Faded,
+## not hidden outright: the wall's own presence (still real geometry you
+## could shoot down) shouldn't vanish, only stop hiding what's behind it.
+const WALL_FADE_TRANSPARENCY := 0.75
+
 var grid: Grid
+## tb31 Pass C: "walls must not block the player's read of the action
+## behind them." Whichever unit the player is currently trying to read
+## through a wall — null means "nothing to protect," so every wall mesh
+## sits at full opacity (the ordinary case: no selection, or a fully open
+## board). Set directly by whichever overlay owns "what's selected right
+## now" (`SquadControlOverlay`/`SingleUnitOverlay`) on `selection_changed`;
+## `SpectatorOverlay`/`GenerateBoutOverlay` never set it, so legibility
+## fading simply never runs there — this is READ EVERY FRAME (`_process`,
+## below), never re-derived from a stale cached position, since the
+## camera itself can move continuously (drag-to-orbit) with no signal of
+## its own to react to.
+var focal_unit: Unit = null
 
 var _static: Node3D
 var _reachable_overlay: Node3D
@@ -127,6 +149,12 @@ var _unit_ghost_overlay: Node3D
 ## taskblock-19 Pass D: the visible-overwatch pie slice — its own
 ## container, same reasoning as `_unit_ghost_overlay`.
 var _overwatch_overlay: Node3D
+## tb31 Pass C: every wall's own `MeshInstance3D`(s), tracked separately
+## from ordinary scatter-cover meshes (`_spawn_blocker` below) so
+## `_process()` only ever re-evaluates the (usually much smaller) set of
+## meshes that can actually be tall/opaque enough to be a legibility
+## problem in the first place.
+var _wall_mesh_instances: Array[MeshInstance3D] = []
 
 
 func _init() -> void:
@@ -151,6 +179,7 @@ func build(
 ) -> void:
 	grid = p_grid
 	_clear(_static)
+	_wall_mesh_instances.clear()
 
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
@@ -319,6 +348,11 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 			_dropped_transform(cell) * world_transform if dropped else world_transform
 		)
 		_static.add_child(instance)
+		# tb31 Pass C: tracked separately so `_process()` only re-evaluates
+		# legibility fading against walls specifically, not every box on
+		# the board.
+		if part.id == &"wall":
+			_wall_mesh_instances.append(instance)
 
 
 static func _dropped_transform(cell: Vector2i) -> Transform3D:
@@ -347,6 +381,33 @@ func _spawn_field_item(item: Variant, cell: Vector2i, material_table: MaterialTa
 		_spawn_blocker(item, cell, material_table)
 	elif item is Matrix:
 		_static.add_child(_marker(cell, FIELD_ITEM_MARKER_COLOR, FIELD_ITEM_MARKER_HEIGHT))
+
+
+## tb31 Pass C: re-evaluated every frame (`_process`, below), not just on
+## selection change — the camera itself can move continuously
+## (drag-to-orbit) with no signal of its own to react to, so a wall that
+## reads as "in the way" this frame may not the next, purely from camera
+## motion alone. Split from `_process` so a test can drive it against a
+## real, deliberately positioned `Camera3D` directly (docs/10 standing
+## rule 2: read the real node back, don't just trust `_process` fired).
+func update_wall_legibility(camera: Camera3D) -> void:
+	if camera == null or focal_unit == null or not is_instance_valid(focal_unit):
+		for instance: MeshInstance3D in _wall_mesh_instances:
+			instance.transparency = 0.0
+		return
+	var focal_position: Vector3 = UnitGeometry.bounding_sphere(focal_unit).center
+	var camera_position: Vector3 = camera.global_position
+	for instance: MeshInstance3D in _wall_mesh_instances:
+		var occludes: bool = WallLegibility.occludes(
+			camera_position, focal_position, instance.global_position, WALL_FADE_RADIUS
+		)
+		instance.transparency = WALL_FADE_TRANSPARENCY if occludes else 0.0
+
+
+func _process(_delta: float) -> void:
+	if _wall_mesh_instances.is_empty():
+		return
+	update_wall_legibility(get_viewport().get_camera_3d() if is_inside_tree() else null)
 
 
 ## The reachable-cell highlight (docs/10 Phase 12.2) — one flat marker per
