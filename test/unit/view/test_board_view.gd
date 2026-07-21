@@ -506,6 +506,76 @@ func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
 	assert_eq(view._unit_ghost_overlay.get_child_count(), 1)
 
 
+## tb31 Pass C: "walls must not block the player's read of the action
+## behind them." Real `Camera3D`/`Unit` nodes, read back per docs/10
+## standing rule 2 — never re-derive the occlusion math a second time
+## here, that's `test_wall_legibility.gd`'s own job.
+func test_update_wall_legibility_fades_a_wall_between_camera_and_the_focal_unit() -> void:
+	var grid := Grid.new(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+	assert_eq(view._wall_mesh_instances.size(), 1, "sanity: exactly one wall mesh spawned")
+
+	view.focal_unit = _torso_unit(Vector2i(2, 6))
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 0.5, 0)
+
+	view.update_wall_legibility(camera)
+
+	assert_almost_eq(
+		view._wall_mesh_instances[0].transparency,
+		BoardView.WALL_FADE_TRANSPARENCY,
+		0.001,
+		"the wall standing between the camera and the focal unit must fade"
+	)
+
+
+func test_update_wall_legibility_leaves_walls_opaque_with_no_focal_unit() -> void:
+	var grid := Grid.new(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 0.5, 0)
+
+	view.update_wall_legibility(camera)
+
+	assert_eq(
+		view._wall_mesh_instances[0].transparency,
+		0.0,
+		"nothing to protect (no focal unit) — a wall must never fade"
+	)
+
+
+## A wall off the sightline entirely (behind the camera, relative to
+## where the focal unit actually is) must stay opaque, not fade just
+## because SOME wall exists somewhere on the board.
+func test_update_wall_legibility_leaves_an_unrelated_wall_opaque() -> void:
+	var grid := Grid.new(8, 8)
+	grid.blockers[Vector2i(6, 6)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	view.focal_unit = _torso_unit(Vector2i(2, 6))
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 0.5, 0)
+
+	view.update_wall_legibility(camera)
+
+	assert_eq(
+		view._wall_mesh_instances[0].transparency,
+		0.0,
+		"a wall well off the camera-to-focal sightline must not fade"
+	)
+
+
 func test_overlays_never_touch_the_static_board() -> void:
 	var grid := Grid.new(2, 2)
 	var view := BoardView.new()
