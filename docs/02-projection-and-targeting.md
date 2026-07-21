@@ -80,8 +80,13 @@ target behind is *just a gap hit that continued* — same code path. The UI must
 able to show stats for **partially obscured** targets deeper in the plane, not only the
 nearest one. That's a requirement on the view, not a new mechanic.
 
-Cover is a region in the plane like anything else — destructible cover is a Part with hp,
-terrain is a Part flagged indestructible. Destroy it and its regions leave the plane.
+Cover is a region in the plane like anything else — a Part with hp, destroyed leaves the plane.
+**A wall is just high-DT destructible cover on an otherwise-passable tile** (tb31 Pass C,
+superseding this doc's own earlier "terrain flagged indestructible" line — walls are meant to be
+breached, not permanent): destroy one and its cell clears to fully passable ground, the same as
+any other dead cover, via the shared Pathfinder fix every blocker benefits from (a destroyed
+blocker no longer blocks movement). What's actually indestructible is the **void** past a wall's
+own ring — non-navigable, no Part, nothing for a shot to hit either.
 
 ## The dartboard
 Aiming picks an **aim point** on the shot plane, never a body part. There is no "aiming for

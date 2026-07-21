@@ -385,6 +385,32 @@ func test_a_wall_part_between_shooter_and_target_blocks_the_shot() -> void:
 	)
 
 
+## tb31 Pass C: "a wall is just high-DT destructible cover" — once
+## destroyed it must leave the shot plane exactly like any other dead
+## cover (`test_destroying_cover_removes_its_region_from_the_plane`'s own
+## pattern, applied to the real `wall.tres` data instead of a fixture
+## part).
+func test_destroying_a_wall_removes_its_region_from_the_plane() -> void:
+	var grid := Grid.new(5, 6)
+	var state := CombatState.new(grid)
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
+	state.add_unit(target)
+	var wall_part: Part = DataLibrary.get_part(&"wall")
+	grid.blockers[Vector2i(2, 2)] = wall_part
+
+	var before: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	assert_eq(ShotPlane.resolve_projectile(before, Vector2(0.0, 0.5)).part.id, &"wall")
+
+	wall_part.hp = 0
+	var after: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	assert_eq(
+		ShotPlane.resolve_projectile(after, Vector2(0.0, 0.5)).part.id,
+		&"target",
+		"a destroyed wall must stop blocking the shot, same as any other dead cover"
+	)
+
+
 ## docs/09 taskblock07 Pass A1: "no file under src/ calls resolve_projectile
 ## except shot_plane.gd itself" — resolve_projectile is the internal
 ## rect-lookup resolve_ray runs, never a second, parallel resolution door a

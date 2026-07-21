@@ -13,6 +13,12 @@ const CHAR_FULL_COVER := "O"
 const CHAR_IMPACT := "*"
 const CHAR_GAP := "."
 const CHAR_UNKNOWN := "?"
+## tb31 Pass C: negative-space fill past a wall's own ring — a real,
+## generated map never uses CHAR_WALL for its own OUTPUT anymore (a
+## MapGen-produced wall is OPEN + a blocker, already caught by the
+## fallthrough branch below), but hand-built fixtures can still construct
+## a raw WALL cell directly, so that glyph stays live too.
+const CHAR_VOID := " "
 
 
 ## Renders a Grid as a text block, one row per line, one char per cell.
@@ -37,6 +43,8 @@ static func _terrain_char(grid: Grid, cell: Vector2i) -> String:
 	match terrain:
 		Enums.TerrainType.WALL:
 			return CHAR_WALL
+		Enums.TerrainType.VOID:
+			return CHAR_VOID
 		Enums.TerrainType.SPAWN_A:
 			return CHAR_SPAWN_A
 		Enums.TerrainType.SPAWN_B:
