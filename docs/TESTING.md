@@ -49,16 +49,32 @@ would be.
 - **`BoutInjector`** — the debug channel that mutates a *live* `CombatState` at a step boundary
   (never mid-resolution). Every injection is logged with an `inject` marker, so an injected scenario
   is self-documenting.
-- **Verbs:** spawn/remove a unit, move an object (see below), arm/equip/attach any part, set state
-  (HP/wounds/status/AP/facing/pose), tile edits (place/clear cover, force a cell passable or not),
-  trigger (make current, force an overwatch arm, queue an action). Each fronts the *real* system —
-  an injected spawn is a real spawn, an injected attach is a real `PartGraph.attach`, placed cover
-  is a real `Grid.blockers` entry.
-- **`move_object(target, to_cell)`** generalizes "move a unit" to "move whatever's there" — `target`
-  is the same hit-shaped `{kind, unit, cell}` dict a board click resolves to. A unit hit moves the
-  unit; a cell hit moves whatever `Grid.blockers` (cover, or a dropped subtree) and/or
-  `Grid.field_items` (loose dropped weapons/matrices) actually hold there — a real dictionary re-key
-  preserving the Part's own state, not a fresh duplicate.
+- **Verbs:** spawn a unit or an object (cover or a loose item, see below), move/remove/kill (see
+  below), arm/equip/attach any part, set state (HP/wounds/status/AP/facing/pose), force a cell
+  passable or not, trigger (make current, force an overwatch arm, queue an action). Each fronts the
+  *real* system — an injected spawn is a real spawn, an injected attach is a real `PartGraph.attach`.
+- **`move_object(target, to_cell)` / `spawn_object(cell, part_id, pool, as_cover)` /
+  `remove_object(target)`** — the "whatever's there" trio, all keyed off the same hit-shaped `{kind,
+  unit, cell}` `target` dict a board click resolves to:
+  - `move_object`: a unit hit moves the unit; a cell hit moves whatever `Grid.blockers` (cover, or a
+    dropped subtree) and/or `Grid.field_items` (loose dropped weapons/matrices) actually hold there —
+    a real dictionary re-key preserving the Part's own state, not a fresh duplicate.
+  - `spawn_object`: `as_cover` picks a real physical blocker (`Grid.blockers`, blocks movement/LoS) or
+    a loose item lying on the ground (`Grid.field_items`, pickable, never blocking) — one verb either
+    way, drawn from the same part pool `attach_part`/`hand_weapon` already use.
+  - `remove_object`: a unit hit is debug-only cleanup — the unit vanishes ENTIRELY (its own
+    `HitVolumeView` destroyed, tracked so a later verb's own view-sync never resurrects it), no
+    corpse left behind; a cell hit erases both a blocker and field items there, whatever's present.
+    Distinct from **`kill(unit)`** — a REAL, narratively true death: ejects the unit's own hosted
+    matrix (the same thing `DamageResolver.eject_matrix_if_needed` does on a real kill, dropped as a
+    loose field item) before marking it dead, so it renders as a visible downed corpse
+    (`HitVolumeView.is_downed()` reads exactly this — matrix presence, never `alive` directly).
+- **`Grid.field_items`** (loose dropped Parts/Matrices) is rendered on the real board now too
+  (`BoardView.build()`) — previously invisible everywhere, in debug tooling AND real gameplay alike. A
+  loose Part reuses the same box geometry a blocker gets; a loose Matrix (no `volume`) gets a flat
+  placeholder marker. `BattleScene.sync_board_view()` re-triggers `board_view.build()` (a full,
+  correct rebuild) after any debug verb touching blockers/field_items — the same "data changed,
+  nothing redrew it" gap `sync_unit_views()` already closed for units.
 - **Programmatic first** — CC's real use is scripting a scenario in code and injecting it; the
   spectator/player-view injection UIs are convenience wrappers over the same API.
 - **Owned by the bout, not the overlay (tb30)** — `BattleScene.bout_injector` is built once per
