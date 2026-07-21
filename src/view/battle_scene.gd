@@ -61,6 +61,19 @@ var mission: MissionState
 ## place and size it differently).
 var file_sink: FileSink
 var overlay: ControlOverlay
+## taskblock-30: owned here, not by whichever overlay happens to be
+## installed — `ControlOverlay`'s own header already establishes that
+## swapping overlays "never rebuilds the world," and `CombatState` is the
+## one shared source of truth regardless of who's watching it.
+## `BoutInjector` itself only ever held a bare `CombatState` reference
+## (never anything overlay-specific), so owning it at the world level
+## (rebuilt alongside `file_sink` on every `load_battle()`) is what lets
+## it survive a `SpectatorOverlay` <-> `SquadControlOverlay` swap
+## (`toggle_blue_control()`) instead of being torn down with whichever
+## overlay first constructed it. Each overlay's own debug-gated UI
+## affordance (see `spectator_overlay.gd`/`squad_control_overlay.gd`) just
+## reads this, never constructs its own.
+var bout_injector: BoutInjector
 
 
 func _ready() -> void:
@@ -165,6 +178,7 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	combat_state = state
 	mission = p_mission
 	combat_state.combat_log.add_sink(file_sink)
+	bout_injector = BoutInjector.new(combat_state)
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	camera_rig.center_on(

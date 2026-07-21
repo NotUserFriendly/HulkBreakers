@@ -45,6 +45,30 @@ func test_new_battle_spawns_a_board_and_one_unit_view_per_unit() -> void:
 		assert_true(view.get_child_count() > 0, "every seeded unit must render at least one box")
 
 
+## taskblock-30: `bout_injector` is owned by `BattleScene` itself now (not
+## whichever overlay happens to be installed), so it survives a spectator
+## <-> player overlay swap — rebuilt against whatever `combat_state`
+## `load_battle()` most recently installed, same lifecycle `file_sink`
+## already has.
+func test_load_battle_constructs_a_bout_injector_against_the_live_state() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	assert_not_null(scene.bout_injector)
+	assert_eq(scene.bout_injector.state, scene.combat_state)
+
+
+func test_reloading_the_battle_rebuilds_the_bout_injector_against_the_new_state() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var first_injector: BoutInjector = scene.bout_injector
+
+	scene.new_battle(999)
+
+	assert_ne(scene.bout_injector, first_injector, "must rebuild, not keep pointing at a stale state")
+	assert_eq(scene.bout_injector.state, scene.combat_state)
+
+
 ## taskblock-22 Pass A3: "team-coded extraction tiles, drawn in their
 ## team's color" — load_battle must actually thread mission.
 ## team_extraction_cells through to board_view.build(), not just build

@@ -45,7 +45,7 @@ The whole point: a bug no longer has to *randomly occur* in a bout to be studied
 Use this half to make a bout *representative* — the units are armed and varied the way a real fight
 would be.
 
-### Forceable bouts (tb29) — injection
+### Forceable bouts (tb29 + tb30) — injection
 - **`BoutInjector`** — the debug channel that mutates a *live* `CombatState` at a step boundary
   (never mid-resolution). Every injection is logged with an `inject` marker, so an injected scenario
   is self-documenting.
@@ -53,7 +53,16 @@ would be.
   trigger (make current, force an overwatch arm, queue an action). Each fronts the *real* system —
   an injected spawn is a real spawn, an injected equip is a real kit-equip.
 - **Programmatic first** — CC's real use is scripting a scenario in code and injecting it; the
-  spectator injection UI is a convenience wrapper over the same API.
+  spectator/player-view injection UIs are convenience wrappers over the same API.
+- **Owned by the bout, not the overlay (tb30)** — `BattleScene.bout_injector` is built once per
+  `load_battle()`, so it survives a spectator ↔ player-controlled overlay swap
+  (`toggle_blue_control()`) instead of being torn down with whichever view first reached for it.
+  Both `SpectatorOverlay` (hover-targeted) and `SquadControlOverlay` (selection-targeted) expose the
+  same `[*]` Inject menu (`InjectMenu`, one shared item list/dispatch) — `SquadControlOverlay`'s own
+  is real-gated behind `OS.is_debug_build()`, not just the `[*]` label, so it structurally can't ship
+  in a release export. The actual safety property this always protected — no *ordinary* click/action
+  can ever trigger injection — is now drawn at `TacticsController`/`ActionBar` (the real gameplay-
+  input classes), not at "which overlay is installed."
 
 Use this half to *force the exact condition* you want to study, instead of waiting for it.
 
@@ -87,7 +96,9 @@ rendering-path bug like a backward-drawing tracer is finally diagnosable from bo
 - **Not an in-game bot builder** — authoring is data/code + injection, deliberately. No throwaway UI.
 - **Not a replay system** — injected bouts aren't clean reproducible artifacts; don't treat them as
   save-and-share replays.
-- **Not a shipping feature** — injection is hard-gated out of any normal player bout. It's a dev
-  scalpel.
+- **Not a shipping feature** — reachable during a normal player-controlled bout now (tb30), but only
+  behind a real `OS.is_debug_build()` gate: the affordance is never even constructed in a release
+  export, so there's nothing to click regardless of what a screen-reader of the code might imply
+  from the `[*]` label alone. It's a dev scalpel, not a game feature, in either overlay.
 - **Doesn't retire the headless harness on its own** — that happens once this workflow is proven in
   practice. Until then both exist.
