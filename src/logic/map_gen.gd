@@ -330,18 +330,36 @@ static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
 ## resolves first) — giving it geometry too would only cost `ShotPlane.
 ## build`'s own unculled per-shot scan for zero behavior change, the same
 ## perf reasoning BR30.10 already established for skipping it.
+## Two passes, deliberately: classify every WALL cell's exposure FIRST,
+## against the grid's own untouched layout, THEN apply every mutation in
+## a second pass. A single combined pass (classify-and-mutate per cell in
+## one scan order) has a real bug: converting an exposed cell to OPEN
+## makes it read as a non-WALL neighbor for whatever WALL cell is
+## scanned next, so exposure cascades outward from every real opening
+## through however much solid rock the scan order happens to reach —
+## walls many tiles thick instead of the intended single ring, VOID
+## reduced to whatever pocket a run of stale WALL neighbors on every side
+## never got swept into. Classifying against a frozen snapshot first
+## (nothing mutated yet) is what actually keeps this to one tile.
 static func _finalize_walls_and_void(grid: Grid) -> void:
+	var wall_cells: Array[Vector2i] = []
 	for y in range(grid.height):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
-			if grid.get_terrain(cell) != Enums.TerrainType.WALL:
-				continue
-			if _is_exposed_wall(grid, cell):
-				grid.set_terrain(cell, Enums.TerrainType.OPEN)
-				grid.blockers[cell] = DataLibrary.get_part(&"wall")
-			else:
-				grid.set_terrain(cell, Enums.TerrainType.VOID)
-				grid.set_opacity(cell, 0.0)
+			if grid.get_terrain(cell) == Enums.TerrainType.WALL:
+				wall_cells.append(cell)
+
+	var exposed_by_cell: Dictionary = {}
+	for cell: Vector2i in wall_cells:
+		exposed_by_cell[cell] = _is_exposed_wall(grid, cell)
+
+	for cell: Vector2i in wall_cells:
+		if exposed_by_cell[cell]:
+			grid.set_terrain(cell, Enums.TerrainType.OPEN)
+			grid.blockers[cell] = DataLibrary.get_part(&"wall")
+		else:
+			grid.set_terrain(cell, Enums.TerrainType.VOID)
+			grid.set_opacity(cell, 0.0)
 
 
 static func _is_exposed_wall(grid: Grid, cell: Vector2i) -> bool:
