@@ -49,7 +49,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 
 ---
 
-### BR26.01 — Pending Confirmation — Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
+### BR26.01 — Resolved — Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
   appeared to jump to new positions before that unit's attack animation resolved."
 - **Root cause:** `SquadControlOverlay._on_turn_ended` called `advance_ai_turns(battle)` — which
@@ -58,10 +58,10 @@ confirm" roll-up — so pending items surface at a natural review point without 
   and that `play()` call wasn't even awaited.
 - **Fix:** reordered so the human's own turn is fully awaited through its complete animated playback
   before `advance_ai_turns` runs at all.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — taskblock-26 Pass B1.
 - **2026-07-20:** supervisor could not verify — blocked by a separate, new issue encountered during
   the attempt. **Verification deferred to the next taskblock** (supervisor's own call) rather than
   chased now; still pending either way.
+- **RESOLVED** 2026-07-21 — supervisor could not reproduce on retry. taskblock-26 Pass B1.
 
 ### BR26.02 — Active — Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
@@ -257,7 +257,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   (verb used, source/destination cells, which overlay) would let this become a matching headless
   fixture instead of a fourth guess.
 
-### BR30.03 — Pending Confirmation — Debug-removed unit never visually looks dead  ·  source: `SUPERVISOR`
+### BR30.03 — Resolved — Debug-removed unit never visually looks dead  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-21 (tb30 follow-up, same review as BR30.01/BR30.02): "clicking remove on a
   unit is removing it data side, but not visually."
 - **Root cause:** `HitVolumeView.is_downed()` (the one check `refresh()` makes to pick the DOWN pose)
@@ -273,8 +273,8 @@ confirm" roll-up — so pending items surface at a natural review point without 
   designed," separate from a generalized `remove_object` ("fully vanishing it," BR30.02's own report
   covers the move/spawn/remove-object round). This fix's own behavior is unchanged, just renamed
   `BoutInjector.kill` — `remove_object` (new) is debug-only cleanup with no matrix ejection at all.
-- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `c930930`
-  (original fix), renamed in `6f42a4f`, 1860/1860 green.
+- **RESOLVED** 2026-07-21 — supervisor confirms: "looks fixed." Commit `c930930` (original fix),
+  renamed in `6f42a4f`, 1860/1860 green.
 
 ### BR30.04 — Active — Waypoint colors shuffle when arming an attack and targeting a cover item  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-21, found while confirming BR27.05: "selecting an attack, then trying to shoot
