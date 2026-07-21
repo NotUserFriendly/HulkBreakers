@@ -373,3 +373,174 @@ func test_force_action_applies_a_legal_action_for_real() -> void:
 	assert_true(ok)
 	assert_eq(a.cell, Vector2i(1, 0))
 	assert_true(state.was_injected)
+
+
+## taskblock-31 (rolled into tb30): tile verbs — cover and passability.
+
+
+func _cover_part(id: StringName) -> Part:
+	var p := Part.new()
+	p.id = id
+	p.material = &"steel"
+	p.hp = 4
+	p.max_hp = 4
+	p.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
+	return p
+
+
+func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
+	var injector := BoutInjector.new(state)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	assert_gt(pf.move_cost(Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
+
+	var ok: bool = injector.place_cover(Vector2i(2, 2), &"scrap_pile", pool)
+
+	assert_true(ok)
+	assert_not_null(state.grid.blockers.get(Vector2i(2, 2)))
+	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"scrap_pile")
+	assert_lt(
+		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)),
+		0.0,
+		"a placed blocker must actually block movement"
+	)
+
+
+func test_place_cover_refuses_an_already_blocked_cell() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"existing")
+	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.place_cover(Vector2i(2, 2), &"scrap_pile", pool)
+
+	assert_false(ok)
+	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"existing")
+
+
+func test_clear_cover_removes_the_blocker_and_restores_passage() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"scrap_pile")
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.clear_cover(Vector2i(2, 2))
+
+	assert_true(ok)
+	assert_false(state.grid.blockers.has(Vector2i(2, 2)))
+	assert_gt(Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)), 0.0)
+
+
+func test_clear_cover_refuses_a_cell_with_nothing_to_clear() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	var injector := BoutInjector.new(state)
+
+	assert_false(injector.clear_cover(Vector2i(2, 2)))
+
+
+func test_set_passable_false_makes_a_cell_impassable() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.set_passable(Vector2i(2, 2), false)
+
+	assert_true(ok)
+	assert_eq(state.grid.get_terrain(Vector2i(2, 2)), Enums.TerrainType.WALL)
+	assert_lt(Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)), 0.0)
+
+
+func test_set_passable_true_restores_passage() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	state.grid.set_terrain(Vector2i(2, 2), Enums.TerrainType.WALL)
+	state.grid.set_opacity(Vector2i(2, 2), 1.0)
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.set_passable(Vector2i(2, 2), true)
+
+	assert_true(ok)
+	assert_eq(state.grid.get_terrain(Vector2i(2, 2)), Enums.TerrainType.OPEN)
+	assert_almost_eq(state.grid.get_opacity(Vector2i(2, 2)), 0.0, 0.0001)
+	assert_gt(Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)), 0.0)
+
+
+## taskblock-31 (rolled into tb30): the general attach_part verb.
+
+
+func test_attach_part_attaches_a_non_weapon_part_to_a_valid_socket() -> void:
+	var built: Dictionary = _armable_unit()
+	var unit: Unit = built.unit
+	var plate := Part.new()
+	plate.id = &"backpack"
+	plate.attaches_to = [&"GRIP"]
+	plate.hp = 2
+	plate.max_hp = 2
+	var pool := {&"backpack": plate}
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.attach_part(unit, &"backpack", &"GRIP", pool)
+
+	assert_true(ok)
+	assert_eq(PartGraph.find_socket(unit.shell.root, &"GRIP").occupant.id, &"backpack")
+
+
+func test_attach_part_refuses_an_illegal_attachment() -> void:
+	var built: Dictionary = _armable_unit()
+	var unit: Unit = built.unit
+	var wrong_socket_part := Part.new()
+	wrong_socket_part.id = &"wrong"
+	wrong_socket_part.attaches_to = [&"SOMETHING_ELSE"]
+	var pool := {&"wrong": wrong_socket_part}
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.attach_part(unit, &"wrong", &"GRIP", pool)
+
+	assert_false(ok)
+	assert_null(PartGraph.find_socket(unit.shell.root, &"GRIP").occupant)
+
+
+func test_hand_weapon_and_attach_part_share_the_same_mechanism_but_log_distinctly() -> void:
+	var built: Dictionary = _armable_unit()
+	var unit: Unit = built.unit
+	var pool := {&"pistol": _weapon_part(&"pistol")}
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+	var injector := BoutInjector.new(state)
+
+	injector.hand_weapon(unit, &"pistol", &"GRIP", pool)
+
+	var events: Array[LogEvent] = sink.events_of_kind(&"inject")
+	assert_eq(events.size(), 1)
+	assert_eq(events[0].data.get("verb"), &"hand_weapon", "hand_weapon must log its own verb name")
+
+
+## taskblock-31 (rolled into tb30): remove_unit.
+
+
+func test_remove_unit_kills_it_through_the_real_combat_state_path() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.remove_unit(a)
+
+	assert_true(ok)
+	assert_false(a.alive)
+	assert_eq(state.grid.get_occupant_id(Vector2i(0, 0)), -1)
+
+
+func test_remove_unit_refuses_an_already_dead_unit() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [a])
+	state.kill_unit(a)
+	var injector := BoutInjector.new(state)
+
+	assert_false(injector.remove_unit(a))
