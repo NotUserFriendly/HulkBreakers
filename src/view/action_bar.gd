@@ -72,6 +72,19 @@ func refresh() -> void:
 	var unit: Unit = (
 		tactics.selection.selected_unit if tactics != null and tactics.selection != null else null
 	)
+	# BR27.05: affordability must read the PREVIEWED unit, not the raw
+	# selected one — docs/09's own "queuing mutates nothing" means
+	# `unit.ap` never drops for an action that's merely queued, only once
+	# it resolves. `previewed_unit()` (already `reachable_cells()`'s own
+	# source for the identical reason) replays the current queue and
+	# returns what AP is ACTUALLY left; comparing against the raw unit let
+	# a second queued action always read as affordable regardless of what
+	# the first one already committed.
+	var afford_unit: Unit = (
+		tactics.selection.previewed_unit()
+		if tactics != null and tactics.selection != null
+		else null
+	)
 	_current_actions = []
 	if unit != null:
 		_current_actions = ActionCatalog.actions_for(unit)
@@ -82,7 +95,7 @@ func refresh() -> void:
 			_boxes[i].text = def.initials
 			if def.id == armed_id:
 				_boxes[i].modulate = HulkTheme.HIGHLIGHT
-			elif not _can_afford(unit, def):
+			elif not _can_afford(afford_unit, def):
 				# taskblock-27 Pass D3: "disable an action the unit lacks AP
 				# for" — same DIM tier an empty slot already uses, so an
 				# unaffordable action reads as "can't act on this" at a
@@ -126,7 +139,9 @@ func _on_box_gui_input(event: InputEvent, index: int) -> void:
 	if button_event == null or not button_event.pressed:
 		return
 	if button_event.button_index == MOUSE_BUTTON_LEFT:
-		var unit: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+		# BR27.05: same reasoning as refresh()'s own afford_unit — the click
+		# guard must agree with what the box is actually showing.
+		var unit: Unit = tactics.selection.previewed_unit() if tactics.selection != null else null
 		if not _can_afford(unit, _current_actions[index]):
 			return
 		tactics.arm_action(_current_actions[index].id)
