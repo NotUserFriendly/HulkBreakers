@@ -215,10 +215,15 @@ the supervisor promotes confirmed ones up to Resolved.)*
   it as a loose `Grid.field_items` entry, THEN calls `kill_unit`). `BoutInjector.remove_unit` only ever
   did the `kill_unit` half — `resolve_matrix()` kept finding the still-docked matrix, so the view never
   changed.
-- **Fix:** `remove_unit` now ejects the hosted matrix the same way first (drops it as a real field item
-  at the unit's own cell), then kills as before — a debug removal now reads exactly like a real kill.
-- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `c930930`,
-  1835/1835 green.
+- **Fix (first pass):** `remove_unit` now ejects the hosted matrix the same way first (drops it as a
+  real field item at the unit's own cell), then kills as before.
+- **Renamed to `kill` (2026-07-21, same-day follow-up):** the supervisor's own next request split debug
+  removal into two distinct verbs — "Kill is a new feature, that forces matrix ejection the way you
+  designed," separate from a generalized `remove_object` ("fully vanishing it," BR30.02's own report
+  covers the move/spawn/remove-object round). This fix's own behavior is unchanged, just renamed
+  `BoutInjector.kill` — `remove_object` (new) is debug-only cleanup with no matrix ejection at all.
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `c930930`
+  (original fix), renamed in `6f42a4f`, 1860/1860 green.
 
 ### BR26.01 — Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team

@@ -276,6 +276,30 @@ nulls the hosting part's own `hosted_matrix`, drops it as a loose `Grid.field_it
 `kill_unit`). `remove_unit` only ever did the `kill_unit` half, so `resolve_matrix()` kept finding the
 still-docked matrix and the view never changed. Now ejects the matrix the same way first — a debug
 removal reads exactly like a real kill instead of a flag flip nothing checks.
+**Renamed `kill`; `spawn_object`/`remove_object` generalize the rest (tb30, same-day follow-up)** —
+the supervisor split debug removal into two distinct verbs: `kill` (this fix above, unchanged
+behavior, renamed) is a REAL narratively true death; new `remove_object(target)` is debug-only
+cleanup that makes whatever the active target is — a unit, cover, or a loose item — vanish ENTIRELY,
+no corpse, via the same hit-shaped `{kind, unit, cell}` dict `move_object` already consumes. A unit
+hit calls `CombatState.kill_unit` (bare, no matrix ejection); a cell hit erases both `Grid.blockers`
+and `Grid.field_items` there at once. `BattleScene.remove_unit_view()` is the view-layer half
+(`BoutInjector` itself can't touch the SceneTree) — destroys the unit's `HitVolumeView` and tracks its
+id in `_removed_unit_ids` so a LATER debug verb's own `sync_unit_views()` pass never resurrects it
+(reset on every `load_battle()`). New `spawn_object(cell, part_id, pool, as_cover)` generalizes
+`place_cover` to also cover the loose-item half of `Grid` (`field_items`) — `place_cover`/`clear_cover`
+refactored into shared raw `_place_cover`/`_clear_cover`/`_spawn_field_item` helpers (no parallel
+logic), still directly callable, just no longer separate panel rows next to their own generalization.
+
+**Fix: `Grid.field_items` had zero visual representation anywhere (tb30 follow-up)** — a real,
+pre-existing `Grid` concept (loose dropped Parts/Matrices — a real kill's own matrix ejection, a
+severed limb, or now a debug `spawn_object` loose-item drop) that nothing ever drew, in debug tooling
+OR real gameplay. `BoardView.build()` now also iterates `grid.field_items`: a loose Part reuses
+`_spawn_blocker`'s own box geometry (same "render is hitbox" contract, just never registered as a
+movement/LoS obstruction); a loose Matrix (no `volume`) gets a flat placeholder marker. `board_view.
+build()` was also only ever called once, at `load_battle()` — the exact same gap `sync_unit_views()`
+already closed for units, unnoticed for cover. New `BattleScene.sync_board_view()` re-triggers
+`build()` (already a correct full clear-and-rebuild) after any debug verb touching blockers/
+field_items, called from both overlays' `_on_debug_panel_applied` alongside `sync_unit_views()`.
 
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
