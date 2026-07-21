@@ -108,6 +108,23 @@ func spawn_unit(
 	return unit
 
 
+## taskblock-31 (rolled into tb30) Pass C: `spawn_unit`'s own opposite —
+## `CombatState.kill_unit`, the ONE place a unit's alive flag ever flips
+## (vacates its cell, stays in `state.units` as a dead entry, same posture
+## a real kill leaves behind) — never an actual array deletion, which
+## would break any code still holding a reference to it. Refuses (no
+## mutation) on an already-dead unit.
+func remove_unit(unit: Unit) -> bool:
+	if not can_inject():
+		_reject(&"remove_unit")
+		return false
+	if not unit.alive:
+		return false
+	state.kill_unit(unit)
+	_log_injection(&"remove_unit", {"unit": unit.id}, "unit %d removed" % unit.id)
+	return true
+
+
 ## Moves `unit` to `cell` directly — no pathing, no AP/MP cost — updating
 ## `Grid`'s own occupancy the same way `MoveAction`/`CombatState.add_unit`
 ## already do, never a bare field write that leaves the grid stale.
@@ -132,30 +149,129 @@ func set_position(unit: Unit, cell: Vector2i) -> bool:
 	return true
 
 
-## Directly attaches a fresh `weapon_id` duplicate (drawn from `pool`)
-## into `socket_id` on `unit` — the blunt one-part version of
-## `equip_from_kit`, for when a scenario just needs SOME weapon in hand
-## rather than a whole authored kit. Reuses `PartGraph.find_host_of_socket`
-## (tb28)/`PartGraph.attach`, the same ops any ordinary assembly uses.
+## taskblock-31 (rolled into tb30) Pass A: places a real field-object
+## blocker at `cell` — the SAME mechanism `MapGen._scatter_cover` already
+## uses (`grid.blockers[cell] = <a Part>`), never a parallel cover system.
+## `Pathfinder.move_cost` already treats any `blockers` entry as
+## impassable regardless of terrain, and `ShotPlane.build` already
+## projects every `blockers` entry into the plane — so a placed cover
+## part is real cover for free, nothing extra to wire. Refuses (no
+## mutation) onto an out-of-bounds or already-blocked cell.
+func place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
+	if not can_inject():
+		_reject(&"place_cover")
+		return false
+	if not state.grid.in_bounds(cell) or state.grid.blockers.has(cell):
+		return false
+	var template: Part = pool.get(part_id)
+	if template == null:
+		return false
+	state.grid.blockers[cell] = template.duplicate(true)
+	_log_injection(
+		&"place_cover", {"cell": cell, "part": part_id}, "cover %s at %s" % [part_id, cell]
+	)
+	return true
+
+
+## The opposite of `place_cover` — `blockers.erase`, the same call
+## `MapGen._set_open` already makes when it needs a cell genuinely clear.
+## Refuses (no mutation) on a cell with no blocker to clear.
+func clear_cover(cell: Vector2i) -> bool:
+	if not can_inject():
+		_reject(&"clear_cover")
+		return false
+	if not state.grid.blockers.has(cell):
+		return false
+	state.grid.blockers.erase(cell)
+	_log_injection(&"clear_cover", {"cell": cell}, "cover cleared at %s" % cell)
+	return true
+
+
+## Flips `cell` between navigable (`OPEN`) and non-navigable (`WALL`) —
+## the real passability primitive every existing wall/cover fixture in
+## this codebase already builds by hand (`Pathfinder.move_cost` reads
+## `terrain_costs[WALL]` as impassable by default), not a parallel
+## mechanism layered over `place_cover`'s own `blockers` dictionary
+## (those answer "is a physical, shootable thing here," this answers "can
+## anything path through here at all"). Also sets opacity to match — a
+## wall blocks sightlines too, the same "impassable and opaque together"
+## pairing every real wall already carries (`passable=true` mirrors
+## `MapGen._set_open`'s own reset: `OPEN` + zero opacity).
+func set_passable(cell: Vector2i, passable: bool) -> bool:
+	if not can_inject():
+		_reject(&"set_passable")
+		return false
+	if not state.grid.in_bounds(cell):
+		return false
+	state.grid.set_terrain(cell, Enums.TerrainType.OPEN if passable else Enums.TerrainType.WALL)
+	state.grid.set_opacity(cell, 0.0 if passable else 1.0)
+	_log_injection(
+		&"set_passable",
+		{"cell": cell, "passable": passable},
+		"cell %s passable=%s" % [cell, passable]
+	)
+	return true
+
+
+## Shared by `hand_weapon`/`attach_part` (taskblock-30/31) — attaches a
+## fresh `part_id` duplicate (drawn from `pool`) into `socket_id` on
+## `unit`, via `PartGraph.find_host_of_socket` (tb28)/`PartGraph.attach`,
+## the same ops any ordinary assembly uses. Returns the attached Part, or
+## null on any failure (unknown pool id, unknown socket, illegal
+## attachment) — never logs itself; each caller logs under its OWN verb
+## name, since "hand a weapon" and "attach a part" are readably distinct
+## verbs in the combat log even though they share one mechanism.
+func _attach(unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary) -> Part:
+	var template: Part = pool.get(part_id)
+	if template == null:
+		return null
+	var host: Part = PartGraph.find_host_of_socket(unit.shell.root, socket_id)
+	if host == null:
+		return null
+	var socket: Socket = PartGraph.find_socket(host, socket_id)
+	var attached: Part = template.duplicate(true)
+	if not PartGraph.attach(attached, host, socket):
+		return null
+	return attached
+
+
+## Directly attaches a fresh `weapon_id` duplicate into `socket_id` on
+## `unit` — the blunt one-part version of `equip_from_kit`, for when a
+## scenario just needs SOME weapon in hand rather than a whole authored
+## kit. A named convenience over `attach_part` (below) — same mechanism,
+## a clearer verb at the call site for the common case.
 func hand_weapon(
 	unit: Unit, weapon_id: StringName, socket_id: StringName, pool: Dictionary
 ) -> bool:
 	if not can_inject():
 		_reject(&"hand_weapon")
 		return false
-	var template: Part = pool.get(weapon_id)
-	if template == null:
-		return false
-	var host: Part = PartGraph.find_host_of_socket(unit.shell.root, socket_id)
-	if host == null:
-		return false
-	var socket: Socket = PartGraph.find_socket(host, socket_id)
-	if not PartGraph.attach(template.duplicate(true), host, socket):
+	if _attach(unit, weapon_id, socket_id, pool) == null:
 		return false
 	_log_injection(
 		&"hand_weapon",
 		{"unit": unit.id, "weapon": weapon_id, "socket": socket_id},
 		"unit %d hands %s at %s" % [unit.id, weapon_id, socket_id]
+	)
+	return true
+
+
+## taskblock-31 (rolled into tb30) Pass B: the general case beneath
+## `hand_weapon`/`equip_from_kit` — attach ANY part (an arm, a cladding
+## plate, a backpack), not just a weapon. Same `_attach` mechanism, own
+## verb name/log text.
+func attach_part(
+	unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary
+) -> bool:
+	if not can_inject():
+		_reject(&"attach_part")
+		return false
+	if _attach(unit, part_id, socket_id, pool) == null:
+		return false
+	_log_injection(
+		&"attach_part",
+		{"unit": unit.id, "part": part_id, "socket": socket_id},
+		"unit %d: %s -> %s" % [unit.id, part_id, socket_id]
 	)
 	return true
 
