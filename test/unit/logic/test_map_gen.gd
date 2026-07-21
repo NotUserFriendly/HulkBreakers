@@ -80,6 +80,56 @@ func test_cover_density_within_target_band() -> void:
 		)
 
 
+## BR30.10: every WALL cell that borders at least one non-WALL cell must
+## carry a real, indestructible blocker Part — otherwise `ShotPlane.build`
+## (which reads only `state.units`/`state.grid.blockers`, never
+## `grid.opacity`) has nothing standing in for that wall, and a shot
+## resolves as if it wasn't there. A WALL cell with no non-WALL neighbor
+## (buried in solid, unreachable rock) deliberately gets no blocker — it
+## can never be the nearest hit along any real ray, so skipping it is a
+## pure perf win, not a behavior change; this test locks that split in
+## rather than letting a future change silently regress to "stamp every
+## wall cell" (which would multiply `ShotPlane.build`'s own unculled
+## per-shot scan by however much solid rock a map has).
+func test_exposed_wall_cells_carry_a_blocking_part_interior_walls_do_not() -> void:
+	var saw_exposed := false
+	var saw_interior := false
+	for map_seed in range(SEED_COUNT):
+		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		for y in range(grid.height):
+			for x in range(grid.width):
+				var cell := Vector2i(x, y)
+				if grid.get_terrain(cell) != Enums.TerrainType.WALL:
+					continue
+				var exposed := false
+				for n: Vector2i in grid.neighbors(cell):
+					if grid.get_terrain(n) != Enums.TerrainType.WALL:
+						exposed = true
+						break
+				if exposed:
+					saw_exposed = true
+					assert_true(
+						grid.blockers.has(cell),
+						"seed %d: exposed wall %s must carry a blocking Part" % [map_seed, cell]
+					)
+					var part: Part = grid.blockers[cell]
+					assert_eq(part.id, &"wall", "seed %d: wall %s blocker id" % [map_seed, cell])
+					assert_false(
+						part.is_destructible, "seed %d: wall %s must be indestructible" % [map_seed, cell]
+					)
+				else:
+					saw_interior = true
+					assert_false(
+						grid.blockers.has(cell),
+						(
+							"seed %d: fully interior wall %s must carry no blocker (perf: never the"
+							+ " nearest hit along any real ray)"
+						) % [map_seed, cell]
+					)
+	assert_true(saw_exposed, "expected at least one exposed wall cell across %d seeds" % SEED_COUNT)
+	assert_true(saw_interior, "expected at least one interior wall cell across %d seeds" % SEED_COUNT)
+
+
 func _attached_barrel_count(pallet: Part) -> int:
 	var count := 0
 	for socket: Socket in pallet.sockets:

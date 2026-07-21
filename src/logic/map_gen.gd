@@ -63,6 +63,8 @@ static func generate(map_seed: int, width: int, height: int) -> Grid:
 	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
 	_ensure_spawns_connected(grid, spawn_cells[0], spawn_cells[1], rng)
 
+	_stamp_wall_geometry(grid)
+
 	return grid
 
 
@@ -300,6 +302,40 @@ static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
 			grid.set_terrain(cell, terrain_code)
 			grid.blockers.erase(cell)
 	return room.position
+
+
+## BR30.10: a WALL cell only ever got `opacity = 1.0` — the abstract signal
+## `LoS.has_los` reads to gate the TACTICAL aim-mode/step-out check. It never
+## got a `grid.blockers` entry, and `ShotPlane.build` (the actual hit-
+## resolution plane) only ever reads `state.units` and `state.grid.blockers`,
+## never `opacity` — so a wall had no representation at all in the system
+## that decides whether a shot connects. docs/02 already names the fix:
+## "terrain is a Part flagged indestructible," the same shape `_scatter_cover`
+## already gives destructible cover. Run LAST (after `_ensure_spawns_connected`,
+## which can still carve WALL cells to OPEN) so this sees the grid's final
+## layout.
+##
+## Only a WALL cell with at least one non-WALL neighbor gets a blocker. A
+## cell buried inside solid, unreachable rock can never be the nearest hit
+## along any real ray — whatever wall cell sits between it and the open area
+## resolves first — so giving it geometry too would only cost `ShotPlane.
+## build` cycles on every shot (an unculled linear scan over every entry in
+## `blockers`) for zero behavior change.
+static func _stamp_wall_geometry(grid: Grid) -> void:
+	for y in range(grid.height):
+		for x in range(grid.width):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) != Enums.TerrainType.WALL:
+				continue
+			if _is_exposed_wall(grid, cell):
+				grid.blockers[cell] = DataLibrary.get_part(&"wall")
+
+
+static func _is_exposed_wall(grid: Grid, cell: Vector2i) -> bool:
+	for n: Vector2i in grid.neighbors(cell):
+		if grid.get_terrain(n) != Enums.TerrainType.WALL:
+			return true
+	return false
 
 
 ## Safety net: BSP corridor-carving already guarantees connectivity, but if a
