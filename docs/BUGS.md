@@ -62,6 +62,9 @@ confirm" roll-up — so pending items surface at a natural review point without 
   the attempt. **Verification deferred to the next taskblock** (supervisor's own call) rather than
   chased now; still pending either way.
 - **RESOLVED** 2026-07-21 — supervisor could not reproduce on retry. taskblock-26 Pass B1.
+- **2026-07-21, follow-up:** the underlying "AI batch is one synchronous, unanimated block" mechanism
+  this bug's own fix left in place resurfaced as a heavy hitch instead of a teleport — see **BR27.09**,
+  which now carries the live investigation.
 
 ### BR26.02 — Active — Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
@@ -69,8 +72,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   correctness bug, don't rush a fix into this block."
 - **Status:** not investigated. Flagged for the post-tb26 testing/tooling review (pairs with a "what
   does CC do repeatedly" audit) rather than fixed under taskblock-26's own scope.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** root cause is NOT the
+  inspect field (the original guess) — it's `aim_view.gd:104-106`, a `_process()` override that
+  unconditionally calls `refresh()` every single frame while aiming, even though `refresh()` is
+  already correctly wired to the `aim_changed` signal (fired only on real state changes — reticle
+  move, layer scroll, target change — from ~9 call sites in `tactics_controller.gd`). Each redundant
+  frame call clones the preview `CombatState` and rebuilds the full-board `ShotPlane` twice (once in
+  `aim_state()`, again inside `AimController.resolve()`), plus reallocates dartboard resolver/mesh
+  objects. **Candidate fix (not yet applied):** delete or gate the `_process` override behind the
+  same change-detection the signal path already provides.
 
-### BR27.01 — Pending Confirmation — Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
+### BR27.01 — Active — Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
   ways — (1) doesn't open the dartboard, always resolves a center-mass shot; (2) charges MP for the
   automated legs; (3) the ghost snaps back to the base cell instead of holding the step-out
@@ -105,6 +117,16 @@ confirm" roll-up — so pending items surface at a natural review point without 
   gated behind BR27.06.
 - **2026-07-21:** BR27.06 now has a fix pending its own confirmation (commit `d42f744`). Worth
   re-attempting BR27.01's own verification alongside BR27.06's — same play session either way.
+- **2026-07-21 (broken down by the supervisor, same session as BR27.06's confirmation):** parts (2)
+  and (3) confirmed **RESOLVED** — no more MP charged for the automated legs, ghost no longer snaps
+  back. Part (4) ("the intended sequence wasn't followed") was the supervisor's own original
+  rephrasing of (1)-(3) together, not a distinct fourth symptom — folded in, not tracked separately.
+  Part (1) has **mutated, not resolved** — reopened with a precise new repro: "clicking shoot, then
+  clicking an enemy, doesn't bring up the dartboard if the unit had to step out; clicking again brings
+  up the dartboard." Likely the two-step step-out flow itself (first click enters step-out-cell-choice
+  mode, a second click/`confirm_shot()` is what actually opens ordinary aim mode per the Pass B fix
+  above) reading as "doesn't work" without a clear in-between visual cue — not yet investigated
+  code-side. **BR27.01 stays open for this one remaining piece.**
 
 ### BR27.02 — Active — Chaingun bursts fire half-backward (visual only, hits are correct)  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
@@ -128,6 +150,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   separate impact path had no geometry at all until this pass routed it through the shared logger).
   A future session chasing this bug can read the geometry straight from the log text instead of
   re-deriving it or relying on live playback. Still open; still unconfirmed.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** primary tracer
+  read/write anchors now match (post first-fix) — no mismatch there. Suspect is the DEFLECT
+  bounce-continuation segment: `resolution_player.gd:464-478` draws from the hit point to
+  `deflect_end_*`, computed in `shot_resolution.gd:225-232` as `hit_point + reflected_dir *
+  void_range`. `reflected_dir`'s sign/normal convention (`damage_resolver.gd:118-131`) has not been
+  audited against this bug class — a flipped convention there would draw a visibly backward secondary
+  ray for DEFLECT-outcome shots while leaving the real hit correct, matching "half the burst backward,
+  hits correct" exactly. **Bonus find (separate, same bug class):** `overwatch.gd:264-265` still
+  computes `origin` as a raw cell-center — never migrated to the muzzle-anchor fix `AttackAction`
+  received in Pass A1. A second live instance of the exact same anchor-mismatch class, in a different
+  code path. Neither finding implemented or tested yet.
 
 ### BR27.03 — Active — Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
@@ -140,6 +173,15 @@ confirm" roll-up — so pending items surface at a natural review point without 
   itself a wrong implementation of the actual intent (simultaneous primary+deflect) and does not
   address this bug at all. Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between
   separate impact events, not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** confirmed not an
+  intra-event bug — each `ResolutionPlayer.play()` call is fully await-serialized internally,
+  primary+deflect included. The gap is a missing reentrancy guard: `play()` has no busy-flag, and
+  `SpectatorOverlay.step_once()` (`spectator_overlay.gd:249-251`) calls `pause()` (only flips a bool,
+  doesn't cancel anything in flight) then immediately awaits `_advance()` — so a Step/Play issued
+  right after Pause can start a SECOND concurrent `play()` while an earlier turn's own deflect tracer
+  is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
+  `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
+  returning.
 
 ### BR27.04 — Active — Lighting differs between spectator and player view  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27 D1b: spectator and player view are said to light the board
@@ -152,6 +194,9 @@ confirm" roll-up — so pending items surface at a natural review point without 
   does not support the premise of a divergence as currently written.
 - **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
   comparison) rather than a code claim, since no divergent lighting path was found to remove.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** re-confirms the prior
+  pass's conclusion — no new code path found. Genuinely needs the supervisor's own visual/screenshot
+  re-check, not further code digging.
 
 ### BR27.05 — Resolved — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). The tb27 Pass D3 fix (dim/disable unaffordable action-bar
@@ -170,7 +215,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   with it (`test_action_bar.gd::test_an_action_already_queued_this_turn_counts_against_a_later_
   affordability_check`). 1861/1861 green.
 
-### BR27.06 — Pending Confirmation — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
+### BR27.06 — Resolved — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). After the tb27 Pass B flow restructure (BR27.01), Step Out
   now **doesn't happen at all** for the player — a regression past the original four symptoms.
 - **Status:** reopened, and likely *the* blocker that stopped the supervisor verifying BR27.01/BR26.01
@@ -214,7 +259,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   after a queued move — the exact gap that let this ship unnoticed.
 - **Fix:** swapped to `selection.previewed_unit()` — the same source `reachable_cells()` already
   reads for the identical reason.
-- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `d42f744`. New
+- **RESOLVED** 2026-07-21 — supervisor confirms: "step-out is occurring." Commit `d42f744`. New
   regression test queues a move from an uncovered cell into the same covered cell every other test in
   the file starts at, then arms+clicks: confirmed it fails without the fix (falls into ordinary aim
   mode) and passes with it. 1862/1862 green.
@@ -229,12 +274,31 @@ confirm" roll-up — so pending items surface at a natural review point without 
   CHANGELOG) — the "recolor" approach is being replaced by "only the active unit has a facing marker."
   The wrong-unit bug may be independent (an off-by-one in whichever index drives the highlight) and
   should be checked even after the design change, in case the change is built on the buggy selector.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here) — concrete ordering bug,
+  confirmed:** `SquadControlOverlay._on_turn_ended()` (`squad_control_overlay.gd:573-582`) calls
+  `refresh_unit_views()` — which flips the highlight to the new current unit — at line 574, BEFORE
+  `await resolution_player.play(events)` at line 577 animates the unit whose turn just ended. The
+  marker visually jumps to the next unit while the previous unit is still animating its own queued
+  action. **Compounding bug:** `SingleUnitOverlay._on_turn_ended()` (`single_unit_overlay.gd:40-42`)
+  calls `super._on_turn_ended(events)` WITHOUT `await` — since the parent implementation contains an
+  internal `await`, this lets `_auto_select_if_current()` run immediately, racing ahead of the
+  parent's own animation/AI-batch completion. **Candidate fix (not yet applied):** reorder so
+  `refresh_unit_views()`'s highlight flip runs after the animation await completes; add the missing
+  `await` in `SingleUnitOverlay`.
 
 ### BR27.08 — Active — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (logged now; long-standing — backburnered since the button's introduction).
   The "Resolve to here" turn-control (resolve queued actions up to a chosen point) has never
   functioned. Logged here now that the ledger exists so it stops being an untracked known-broken.
 - **Status:** open, not yet investigated.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** traces clean
+  end-to-end now — button (`squad_control_overlay.gd:445-449`) → `QueuePanel._on_resolve_pressed`
+  (`queue_panel.gd:104-107`) → `tactics.resolve_to_marker(_marker_index)`
+  (`tactics_controller.gd:1006-1041`), which does slice the queue to a checkpoint index and resolve
+  through it. Git history shows commit `888a25f` ("Resolve to Here now actually enables") already
+  fixed the historical "button never enables" defect, with passing coverage in `test_queue_panel.gd`.
+  **This ledger entry looks stale, not live — worth a quick supervisor re-check before spending
+  further investigation on it.**
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or
@@ -242,6 +306,22 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Status:** open. First step is isolating which transition (instrument both, or bisect). Possibly
   related to per-turn work done synchronously (a full `refresh_unit_views` / re-resolve on the turn
   boundary).
+- **2026-07-21 — pinned down, likely the same underlying mechanism as the now-retired BR26.01
+  ("opposing team teleports"):** supervisor reports the transition precisely now — "at the end of
+  player unit turns, there's a heavy lag spike, then all the opposing units move and act in one go."
+  BR26.01's own fix only reordered so the human's own turn finishes animating BEFORE the AI batch
+  starts; it never gave the AI batch itself any animation. A read-only investigation pass
+  (`docs/Bugs-add.md`, rolled in here) confirms the mechanism: `advance_ai_turns`
+  (`control_overlay.gd:68-83`) calls `BoutRunner.step()` once per consecutive AI unit with **no yield
+  between iterations**, and each `step()` runs full per-candidate pathfinding/LOS/cover scoring via
+  `UnitAI.plan_turn` — the entire AI batch executes synchronously in one frame, which is both the
+  hitch (all that planning work landing in one frame) and the "one go" (no animation between AI units,
+  just a single `refresh_unit_views` once the whole batch is done).
+- **Candidate fix (not yet applied):** yield between AI units in the loop (e.g.
+  `await get_tree().process_frame`) to spread the planning cost across frames instead of one
+  synchronous batch — would likely also restore *some* per-unit animation pacing, though the AI batch
+  is deliberately unanimated by design (only the human's own turn animates), so a fix here is about
+  the hitch specifically, not necessarily adding animation.
 
 ### BR30.01 — Resolved — Debug-spawned unit renders no visual model  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-21 (tb30 follow-up, live bout review). "Spawn unit does not create a visual
@@ -277,6 +357,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
   at the new cell in the 3D view specifically (not just the inspect panel's own text)? Exact steps
   (verb used, source/destination cells, which overlay) would let this become a matching headless
   fixture instead of a fourth guess.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here) — concrete asymmetry,
+  confirmed:** in `debug_control_panel.gd`, the "Move On Next Click" path's own
+  `_begin_move_on_next_click` (:349-363) explicitly snapshots the active object BEFORE arming the
+  destination-cell picker, specifically to dodge a signal race (a comment at :344-348 explains why).
+  But `_on_apply_pressed`'s OBJECT-param resolution (`_resolve_param`, :414-415) has NO equivalent
+  snapshot — it reads whatever `_active` is live at Apply time. Since `_start_picking`'s one-shot
+  listener (:371-379) shares the same `board_clicked` signal as the panel's always-on tracker
+  (`_arm_active_tracking`, :185-192), clicking "Pick" on the destination CELL field can silently
+  overwrite `_active` and swap out the intended unit object before Apply resolves it — explaining
+  "data mutates, model doesn't move" without any bug in `move_object`/`HitVolumeView`/the `applied`
+  signal itself. This would specifically explain the manual cell-entry Apply path IF the supervisor's
+  own workflow used that field's "Pick" button rather than typing coordinates by hand. **Candidate fix
+  (not yet applied):** give `_on_apply_pressed`'s OBJECT resolution the same snapshot-before-arming
+  treatment `_begin_move_on_next_click` already uses.
 
 ### BR30.03 — Resolved — Debug-removed unit never visually looks dead  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-21 (tb30 follow-up, same review as BR30.01/BR30.02): "clicking remove on a
@@ -307,12 +401,48 @@ confirm" roll-up — so pending items surface at a natural review point without 
   queued, the per-leg color assignment would visibly shift without the underlying queued path changing.
   Not yet confirmed — needs a real repro (which action, what leg count was already queued, which cover
   item) before touching the code.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here) — confirms the ledger's
+  own hypothesis above:** `LEG_COLORS` has only 4 entries (`board_view.gd:36-41`), cycled via `i % 4`
+  (:376). Targeting a COVERED target routes through the step-out triple
+  (`tactics_controller.gd:603-621`, `872-926`), which appends 1-2 extra "free" `MoveAction` legs
+  indistinguishable from real ones in `show_ghost_paths`'s own input list — pushing the total leg
+  count past 4 and wrapping colors. Targeting an uncovered unit adds zero extra legs, so it never
+  wraps, which is why the bug only shows on cover-item targeting. **Candidate fix (not yet applied):**
+  either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
+  only "real" queued legs consume a color slot.
+
+### BR30.05 — Active — Debug panel: clicks and scroll bleed through to the world board/camera  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21, live debug-panel use. Two related symptoms: (1) clicking within the debug
+  menu itself can also select a world cell (the click reaches the board underneath, not just the
+  panel widget); (2) once the verb list's own `ItemList` is scrolled to the bottom, further scroll
+  input bleeds through and zooms the world camera instead of stopping at the list's own end.
+- **Status:** not yet investigated. Likely candidates: (1) some region within `DebugControlPanel`'s
+  own layout still has a plain `Control.MOUSE_FILTER_IGNORE` container gap that isn't actually
+  covered by an interactive child, letting a click over that gap fall through to the 3D
+  viewport/`_unhandled_input` underneath (the same class of bug `docs/09` taskblock07 Pass B4 already
+  fixed once elsewhere); (2) `ItemList`'s own scroll wheel input isn't marked handled once it can't
+  scroll further, so the same wheel event continues on to `CameraRig`'s own zoom handler. Both are
+  UI-event-consumption gaps in the SAME panel, not two unrelated bugs.
+
+### BR30.06 — Active — Step Out: multiple queued attacks into the same step-out square should batch  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-21. A design refinement to Step Out's own shape, not a defect against current
+  spec: "if a unit queues multiple attacks, but they all require him to step out into the same square,
+  then they should resolve together, as in step out, resolve all actions, step in" — instead of the
+  current one-attack-at-a-time step-out/resolve/step-in cycle repeating per queued attack that shares
+  the same firing cell.
+- **Status:** not yet investigated/designed. `StepOutPlanner.build_triple()`/the free-outbound-leg
+  flow (BR27.01's own Pass B fix) currently assembles one move-attack-move triple per confirmed
+  step-out; batching multiple attacks against the same candidate cell into a single
+  step-out/[attack, attack, ...]/step-in sequence is new shape for that assembly, not a bugfix to the
+  existing one. Flagging per CLAUDE.md's "reclassify honestly" — this belongs in `docs/PLAN.md` once
+  scoped, but kept here for now alongside the rest of the Step Out work already tracked under BR27.01
+  so it isn't lost.
 
 ---
 
-## Legacy (pre-dates the `BR<taskblock>.<seq>` ID convention)
-*(No ID to sort by — listed here, oldest work first, same relative order this ledger has always kept
-them in. All `Resolved`.)*
+## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
+*(Kept in their own trailing block rather than resorted into the main ascending sequence above —
+same relative order this ledger has always kept them in, oldest work first. All `Resolved`.)*
 
 ### BR26.03 — Resolved — Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
