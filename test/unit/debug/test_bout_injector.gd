@@ -521,26 +521,7 @@ func test_hand_weapon_and_attach_part_share_the_same_mechanism_but_log_distinctl
 	assert_eq(events.size(), 1)
 	assert_eq(events[0].data.get("verb"), &"hand_weapon", "hand_weapon must log its own verb name")
 
-
-## taskblock-31 (rolled into tb30): remove_unit.
-
-
-func test_remove_unit_kills_it_through_the_real_combat_state_path() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
-	var injector := BoutInjector.new(state)
-
-	var ok: bool = injector.remove_unit(a)
-
-	assert_true(ok)
-	assert_false(a.alive)
-	assert_eq(state.grid.get_occupant_id(Vector2i(0, 0)), -1)
-
-
-func test_remove_unit_refuses_an_already_dead_unit() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
-	state.kill_unit(a)
-	var injector := BoutInjector.new(state)
-
-	assert_false(injector.remove_unit(a))
+## `kill` (taskblock-30 follow-up: renamed from this file's own earlier
+## `remove_unit`, and now also ejects the matrix) has its own dedicated
+## test_bout_injector_kill.gd — this file was already at gdlint's own
+## public-method cap.

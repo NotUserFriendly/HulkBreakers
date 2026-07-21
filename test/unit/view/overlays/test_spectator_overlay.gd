@@ -597,6 +597,51 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 	assert_true(view.get_child_count() > 0)
 
 
+## taskblock-30 follow-up (supervisor): "spawn object (discrete from spawn
+## unit)... currently cover items, and loose parts." Drives the actual
+## panel form (cell/part_id/as_cover), proving the PRESET-free path (no
+## DataLibrary dependency, unlike spawn_unit) works end to end through the
+## real UI resolution.
+func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	overlay._on_inject_pressed()
+
+	_apply_via_panel(
+		overlay.debug_panel,
+		&"spawn_object",
+		{"cell": Vector2i(3, 3), "part_id": "scrap_pile", "as_cover": true}
+	)
+
+	assert_true(built.state.grid.blockers.has(Vector2i(3, 3)))
+
+
+## taskblock-30 follow-up (supervisor): "remove can be generalized to
+## objects, covers, and things on tiles. Fully vanishing it." Proves the
+## FULL real chain through the panel: pick the unit as the active target
+## (a real click, not a shortcut), select Remove Object, Apply — the view
+## must actually vanish, AND a later unrelated verb's own sync must never
+## bring it back.
+func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it() -> void:
+	var built: Dictionary = _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	var jerry: Unit = built.state.find_unit(0)
+	overlay._on_inject_pressed()
+	overlay.debug_panel._active = {"kind": Enums.HitKind.UNIT, "unit": jerry, "cell": jerry.cell}
+
+	_apply_via_panel(overlay.debug_panel, &"remove_object", {})
+
+	assert_false(jerry.alive)
+	assert_null(overlay.battle.find_unit_view(jerry.id), "the view must be gone entirely")
+
+	# A later, unrelated verb's own applied handler must not resurrect it.
+	_apply_via_panel(
+		overlay.debug_panel, &"force_current_unit", {"unit": built.state.find_unit(1).id}
+	)
+
+	assert_null(overlay.battle.find_unit_view(jerry.id), "still gone after an unrelated Apply")
+
+
 ## taskblock-29 Pass D's own TESTS bar: "an injection applied while the
 ## spectator is paused is visible on the next step."
 func test_an_injection_applied_while_paused_is_visible_on_the_next_step() -> void:

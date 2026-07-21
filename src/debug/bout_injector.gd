@@ -108,29 +108,31 @@ func spawn_unit(
 	return unit
 
 
-## taskblock-31 (rolled into tb30) Pass C: `spawn_unit`'s own opposite —
-## `CombatState.kill_unit`, the ONE place a unit's alive flag ever flips
-## (vacates its cell, stays in `state.units` as a dead entry, same posture
-## a real kill leaves behind) — never an actual array deletion, which
-## would break any code still holding a reference to it. Refuses (no
-## mutation) on an already-dead unit.
+## taskblock-30 follow-up (supervisor): "Kill is a new feature, that forces
+## matrix ejection." Renamed from this session's own earlier `remove_unit`
+## fix — the supervisor's own later request splits removal into two
+## distinct debug verbs: this one (a REAL, narratively true death, visible
+## as a downed corpse) and `remove_object` below (a debug-only "make it
+## vanish entirely," no corpse). `CombatState.kill_unit` is the ONE place
+## a unit's alive flag ever flips (vacates its cell, stays in `state.units`
+## as a dead entry, same posture a real kill leaves behind) — never an
+## actual array deletion, which would break any code still holding a
+## reference to it. Refuses (no mutation) on an already-dead unit.
 ##
-## taskblock-30 follow-up (supervisor report): "removing a unit doesn't
-## visually do anything." `HitVolumeView.is_downed()`/the view's own DOWN
-## pose read `Unit.resolve_matrix() == null` — never `alive` directly —
-## because that's also exactly what a REAL kill leaves behind
-## (`DamageResolver.eject_matrix_if_needed`/`eject_surrogate_if_needed`:
-## null the hosting part's `hosted_matrix`, drop it as a loose field item,
-## THEN `kill_unit`). `kill_unit` alone was only ever half of that in this
-## verb — flipping `alive` with the matrix still docked left `resolve_
-## matrix()` still finding it, so the view kept rendering the unit exactly
-## as before. Ejecting the matrix here too — the same field-item drop, not
-## a parallel mechanism — makes a debug removal read exactly like a real
-## kill, not a half-measure invisible to the one thing that actually
-## checks it.
-func remove_unit(unit: Unit) -> bool:
+## `HitVolumeView.is_downed()`/the view's own DOWN pose read `Unit.
+## resolve_matrix() == null` — never `alive` directly — because that's
+## also exactly what a REAL kill leaves behind (`DamageResolver.
+## eject_matrix_if_needed`/`eject_surrogate_if_needed`: null the hosting
+## part's `hosted_matrix`, drop it as a loose field item, THEN
+## `kill_unit`). `kill_unit` alone is only ever half of that — flipping
+## `alive` with the matrix still docked leaves `resolve_matrix()` still
+## finding it, so the view never changes. Ejecting the matrix here too —
+## the same field-item drop, not a parallel mechanism — makes a debug
+## kill read exactly like a real one, not a half-measure invisible to the
+## one thing that actually checks it.
+func kill(unit: Unit) -> bool:
 	if not can_inject():
-		_reject(&"remove_unit")
+		_reject(&"kill")
 		return false
 	if not unit.alive:
 		return false
@@ -143,7 +145,7 @@ func remove_unit(unit: Unit) -> bool:
 			state.grid.field_items[unit.cell].append(ejected)
 			break
 	state.kill_unit(unit)
-	_log_injection(&"remove_unit", {"unit": unit.id}, "unit %d removed" % unit.id)
+	_log_injection(&"kill", {"unit": unit.id}, "unit %d killed" % unit.id)
 	return true
 
 
@@ -241,6 +243,46 @@ func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
 	return true
 
 
+## Shared by `place_cover`/`spawn_object` (taskblock-30 follow-up) — the
+## raw blocker write, no guard, no log (the `_move_unit`/`_attach` split
+## applied here too). Refuses (no mutation) onto an out-of-bounds or
+## already-blocked cell, or an unknown pool id.
+func _place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
+	if not state.grid.in_bounds(cell) or state.grid.blockers.has(cell):
+		return false
+	var template: Part = pool.get(part_id)
+	if template == null:
+		return false
+	state.grid.blockers[cell] = template.duplicate(true)
+	return true
+
+
+## Shared by `clear_cover`/`remove_object` — the raw blocker erase, no
+## guard, no log. Refuses (no mutation) on a cell with no blocker.
+func _clear_cover(cell: Vector2i) -> bool:
+	if not state.grid.blockers.has(cell):
+		return false
+	state.grid.blockers.erase(cell)
+	return true
+
+
+## Shared by `spawn_object` — the raw `Grid.field_items` write, no guard,
+## no log. A cell can hold several loose items at once (`Grid`'s own
+## `Vector2i -> Array[Part|Matrix]` shape), so this appends, never
+## overwrites. Refuses (no mutation) on an out-of-bounds cell or an
+## unknown pool id.
+func _spawn_field_item(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
+	if not state.grid.in_bounds(cell):
+		return false
+	var template: Part = pool.get(part_id)
+	if template == null:
+		return false
+	if not state.grid.field_items.has(cell):
+		state.grid.field_items[cell] = []
+	state.grid.field_items[cell].append(template.duplicate(true))
+	return true
+
+
 ## taskblock-31 (rolled into tb30) Pass A: places a real field-object
 ## blocker at `cell` — the SAME mechanism `MapGen._scatter_cover` already
 ## uses (`grid.blockers[cell] = <a Part>`), never a parallel cover system.
@@ -253,12 +295,8 @@ func place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
 	if not can_inject():
 		_reject(&"place_cover")
 		return false
-	if not state.grid.in_bounds(cell) or state.grid.blockers.has(cell):
+	if not _place_cover(cell, part_id, pool):
 		return false
-	var template: Part = pool.get(part_id)
-	if template == null:
-		return false
-	state.grid.blockers[cell] = template.duplicate(true)
 	_log_injection(
 		&"place_cover", {"cell": cell, "part": part_id}, "cover %s at %s" % [part_id, cell]
 	)
@@ -272,10 +310,74 @@ func clear_cover(cell: Vector2i) -> bool:
 	if not can_inject():
 		_reject(&"clear_cover")
 		return false
-	if not state.grid.blockers.has(cell):
+	if not _clear_cover(cell):
 		return false
-	state.grid.blockers.erase(cell)
 	_log_injection(&"clear_cover", {"cell": cell}, "cover cleared at %s" % cell)
+	return true
+
+
+## taskblock-30 follow-up (supervisor): "spawn object (discrete from spawn
+## unit)... currently cover items, and loose parts" — generalizes
+## `place_cover` to also cover the OTHER half `Grid` itself already models
+## (`field_items`, loose dropped Parts), one verb either way instead of
+## two narrower ones. `as_cover` picks which real mechanism fronts it —
+## `_place_cover` (a physical, shootable blocker) or `_spawn_field_item`
+## (a loose item lying on the ground, pickable, never blocking). Refuses
+## (no mutation) on whatever the chosen mechanism itself refuses on.
+func spawn_object(cell: Vector2i, part_id: StringName, pool: Dictionary, as_cover: bool) -> bool:
+	if not can_inject():
+		_reject(&"spawn_object")
+		return false
+	var ok: bool = (
+		_place_cover(cell, part_id, pool) if as_cover else _spawn_field_item(cell, part_id, pool)
+	)
+	if not ok:
+		return false
+	_log_injection(
+		&"spawn_object",
+		{"cell": cell, "part": part_id, "as_cover": as_cover},
+		"spawned %s at %s (%s)" % [part_id, cell, "cover" if as_cover else "loose item"]
+	)
+	return true
+
+
+## taskblock-30 follow-up (supervisor): "remove can be generalized to
+## objects, covers, and things on tiles — fully vanishing it." `target` is
+## the SAME hit-shaped `{kind, unit, cell}` dict `move_object` already
+## consumes — one active-target-driven verb covers all three: a UNIT hit
+## kills the unit through the real `CombatState.kill_unit` path (bare, no
+## matrix ejection — that's `kill`'s own, narratively distinct verb; the
+## VIEW-layer counterpart, `BattleScene.remove_unit_view`, is what makes
+## it actually vanish from the board rather than linger as a downed
+## corpse). Always "succeeds" for a real unit reference, alive or already
+## dead — the debug intent ("make this go away") is achievable either way,
+## unlike a narrative kill which can't happen twice. A CELL hit erases
+## BOTH `Grid.blockers` and `Grid.field_items` at that cell if present —
+## whatever's there, gone, not just one or the other. Refuses (no
+## mutation) if the cell held neither.
+func remove_object(target: Dictionary) -> bool:
+	if not can_inject():
+		_reject(&"remove_object")
+		return false
+	if target.get("kind") == Enums.HitKind.UNIT:
+		var unit: Variant = target.get("unit")
+		if unit == null:
+			return false
+		state.kill_unit(unit)
+		_log_injection(
+			&"remove_object", {"unit": (unit as Unit).id}, "unit %d removed" % (unit as Unit).id
+		)
+		return true
+	var cell: Variant = target.get("cell")
+	if cell == null:
+		return false
+	var removed_blocker: bool = _clear_cover(cell)
+	var removed_items: bool = state.grid.field_items.has(cell)
+	if removed_items:
+		state.grid.field_items.erase(cell)
+	if not removed_blocker and not removed_items:
+		return false
+	_log_injection(&"remove_object", {"cell": cell}, "cell %s cleared" % cell)
 	return true
 
 

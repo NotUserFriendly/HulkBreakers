@@ -214,6 +214,83 @@ func test_a_destroyed_blocker_spawns_no_mesh() -> void:
 	)
 
 
+## taskblock-30 follow-up (supervisor report): `Grid.field_items` (loose
+## dropped Parts/Matrices) had zero visual representation anywhere — a
+## real, pre-existing `Grid` concept nothing ever drew, in debug tooling
+## OR real gameplay. A loose Part reuses `_spawn_blocker`'s own geometry —
+## proven by an EXACT box count, not just "something got added" — the
+## same "render is hitbox" contract a blocker already gets, just never
+## registered as a movement/LoS obstruction (nothing about `Grid.
+## field_items` feeds `Pathfinder`/`ShotPlane` — this test only proves the
+## VISUAL side, `test_bout_injector_spawn_object.gd` already proves the
+## mechanical side separately).
+func test_build_renders_a_loose_part_field_item_the_same_as_a_blocker() -> void:
+	var grid := Grid.new(4, 3)
+	var dropped_arm := Part.new()
+	dropped_arm.id = &"dropped_arm"
+	dropped_arm.hp = 5
+	dropped_arm.max_hp = 5
+	dropped_arm.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
+	grid.field_items[Vector2i(1, 1)] = [dropped_arm]
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(
+		view._static.get_child_count(), 3, "ground plane + grid lines + the one loose item's box"
+	)
+
+
+## A `Matrix` field item has no `volume` to draw real geometry from — a
+## flat placeholder marker instead, still a real child of `_static`.
+func test_build_renders_a_loose_matrix_field_item_as_a_flat_marker() -> void:
+	var grid := Grid.new(4, 3)
+	var link := Matrix.new()
+	link.id = &"ejected_link"
+	grid.field_items[Vector2i(1, 1)] = [link]
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(view._static.get_child_count(), 3, "ground plane + grid lines + the marker")
+
+
+func test_build_renders_every_item_in_a_multi_item_pile() -> void:
+	var grid := Grid.new(4, 3)
+	var dropped_arm := Part.new()
+	dropped_arm.id = &"dropped_arm"
+	dropped_arm.hp = 5
+	dropped_arm.max_hp = 5
+	dropped_arm.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
+	var link := Matrix.new()
+	link.id = &"ejected_link"
+	grid.field_items[Vector2i(1, 1)] = [dropped_arm, link]
+
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(view._static.get_child_count(), 4, "ground plane + grid lines + box + marker")
+
+
+func test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call() -> void:
+	var grid := Grid.new(2, 2)
+	var link := Matrix.new()
+	link.id = &"ejected_link"
+	grid.field_items[Vector2i(0, 0)] = [link]
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+	var with_item_count: int = view._static.get_child_count()
+
+	grid.field_items.erase(Vector2i(0, 0))
+	view.build(grid, DataLibrary.material_table())
+
+	assert_eq(view._static.get_child_count(), with_item_count - 1)
+
+
 ## runNotes.md: "If a tile isn't navigable, it needs something to show
 ## that. Color it Dark Gray and draw a cross through it." WALL cells are
 ## permanent map geometry, so they belong in `_static`, not an overlay.

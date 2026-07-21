@@ -105,6 +105,14 @@ const WALL_INDICATOR_HEIGHT := 0.015
 ## just above the marker's own center height.
 const WALL_CROSS_HEIGHT := 0.03
 const WALL_CROSS_WIDTH := 0.06
+## taskblock-30 follow-up: a loose `Matrix` field item has no `volume` to
+## draw real geometry from (unlike a loose Part, rendered via the SAME
+## `_spawn_blocker` boxes a cover item uses) — a flat marker, same "ground
+## overlay" tier as the rest of this file's height ladder above, between
+## `WALL_CROSS_HEIGHT` (0.03) and `HitVolumeView.TEAM_MARKER_Y` (0.06).
+## Placeholder color, flagged/tunable like every other marker color here.
+const FIELD_ITEM_MARKER_HEIGHT := 0.045
+const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
 var grid: Grid
 
@@ -164,6 +172,10 @@ func build(
 
 	for cell: Vector2i in grid.blockers:
 		_spawn_blocker(grid.blockers[cell], cell, material_table)
+
+	for cell: Vector2i in grid.field_items:
+		for item: Variant in grid.field_items[cell]:
+			_spawn_field_item(item, cell, material_table)
 
 
 ## "Team-coded extraction tiles, drawn in their team's color" — one flat
@@ -316,6 +328,25 @@ static func _dropped_transform(cell: Vector2i) -> Transform3D:
 		* Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)
 		* Transform3D(Basis.IDENTITY, -pivot)
 	)
+
+
+## taskblock-30 follow-up (supervisor report): `Grid.field_items` (loose
+## dropped Parts/Matrices lying on the ground — a real, pre-existing
+## `Grid` concept, `Grid.dup()`'s own doc comment already calls it out)
+## had ZERO visual representation anywhere, in debug tooling AND real
+## gameplay alike (a shot ejecting a matrix, or dropping a severed limb,
+## mutated this dict correctly but nothing ever drew it). A loose Part
+## reuses `_spawn_blocker`'s own geometry unchanged — the exact same
+## "render is hitbox" contract, just not blocking movement/LoS (nothing
+## about `Pathfinder`/`ShotPlane` reads `field_items` at all, so drawing
+## it here changes nothing mechanical). A loose Matrix has no `volume` to
+## draw real geometry from — a flat placeholder marker instead, same tier
+## as every other ground overlay in this file.
+func _spawn_field_item(item: Variant, cell: Vector2i, material_table: MaterialTable) -> void:
+	if item is Part:
+		_spawn_blocker(item, cell, material_table)
+	elif item is Matrix:
+		_static.add_child(_marker(cell, FIELD_ITEM_MARKER_COLOR, FIELD_ITEM_MARKER_HEIGHT))
 
 
 ## The reachable-cell highlight (docs/10 Phase 12.2) — one flat marker per

@@ -488,7 +488,17 @@ func _on_inject_pressed() -> void:
 	debug_panel.visible = true
 
 
-func _on_debug_panel_applied(_verb_id: StringName, _args: Dictionary) -> void:
+## taskblock-30 follow-up (supervisor): `remove_object` on a unit is the
+## one verb that needs to REMOVE a view rather than add/refresh one — done
+## here, before `sync_unit_views()` runs, so the same call never
+## resurrects what it was just told to vanish (`sync_unit_views()`'s own
+## `_removed_unit_ids` check is what makes that permanent afterward too).
+func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
+	if verb_id == &"remove_object":
+		var object: Dictionary = args.get("object", {})
+		if object.get("kind") == Enums.HitKind.UNIT and object.get("unit") != null:
+			battle.remove_unit_view(object.unit)
 	battle.sync_unit_views()
+	battle.sync_board_view()
 	battle.refresh_unit_views()
 	_refresh_status()
