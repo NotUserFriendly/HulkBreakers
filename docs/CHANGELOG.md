@@ -310,6 +310,18 @@ kept reading the unit's full starting AP and stayed clickable regardless. Both c
 `tactics.selection.previewed_unit()` instead — the same source `reachable_cells()` already uses for
 the identical reason.
 
+**Fix: Step Out evaluated cover from the shooter's stale pre-move cell (BR27.06)** — same bug class as
+BR27.05, one file over. `TacticsController._enter_aim_or_step_out_mode` read `selection.selected_unit`
+directly; per docs/09's "queuing mutates nothing," that stays at the shooter's turn-start cell until
+the queue resolves, so a player who moved toward/into cover and THEN armed a shot had cover evaluated
+from the stale pre-move position — silently falling through to ordinary aim mode instead of the
+step-out the shooter's real, about-to-be-true position warranted. Root-caused by first disproving a
+standing hypothesis from this taskblock's own earlier BR27.06 investigation ("the trigger condition
+may just be too rare on real maps"): a 60-seed sweep of real `MapGen` maps driven through full
+AI-vs-AI bouts found ~1850 genuine covered-with-a-candidate encounters, and `MapGen._scatter_cover`
+never sets `grid.opacity`, so most of those are plainly visible/clickable too — not rare, and not an
+LOS edge case. Swapped to `selection.previewed_unit()`, the same fix shape as BR27.05.
+
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
 dead-zone hold, right-click debug menu (debug-only items `[*]`-prefixed; inflict-status/create-part
