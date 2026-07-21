@@ -109,17 +109,24 @@ func refresh() -> void:
 			_boxes[i].modulate = HulkTheme.DIM
 
 
-## taskblock-27 Pass D3: the providing part's own `ap_cost`
+## taskblock-27 Pass D3: the providing part's own AP cost
 ## (`ActionCatalog.provider_for` — the exact same part arming this action
 ## will eventually spend AP from) compared against the unit's own current
 ## AP, right now. Deliberately narrow: only affordability, never a
 ## re-derived range/LOS/legality check — those stay confirm-time concerns
 ## (`AttackAction.is_legal` and friends), unchanged.
+## BR30.xx: reads `ActionCatalog.ap_cost_for(def.id, provider)`, not
+## `provider.ap_cost` directly — a `&"burst"`-providing weapon almost
+## always charges its own, higher `weapon_def.burst_ap_cost`
+## (`BurstAction._ap_cost`), so comparing against the plain `ap_cost`
+## showed BURST as affordable whenever the cheaper single-shot cost fit,
+## even when the unit's real AP couldn't cover what firing it would
+## actually charge — armed, then silently rejected at enqueue time.
 func _can_afford(unit: Unit, def: ActionDef) -> bool:
 	if unit == null:
 		return false
 	var provider: Part = ActionCatalog.provider_for(unit, def.id)
-	return provider != null and unit.ap >= provider.ap_cost
+	return provider != null and unit.ap >= ActionCatalog.ap_cost_for(def.id, provider)
 
 
 ## taskblock-08 A1/D1: click arms (one path, every box, no per-action

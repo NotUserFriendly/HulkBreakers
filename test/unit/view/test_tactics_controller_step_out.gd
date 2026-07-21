@@ -42,6 +42,129 @@ func _make_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
 
 
+## Supervisor report (taskblock-30): "step out seems to be working with
+## shoot, but not with burst." Same fixture/geometry as `_make_armed_unit`,
+## a `&"burst"`-only weapon (a chaingun-shaped stand-in, matching
+## `data/parts/chaingun.tres`'s own `provides_actions = [&"burst"]` +
+## `weapon_def.burst_size/burst_ap_cost`) instead of a `&"shoot"`-providing
+## pistol — proves (or disproves) whether `_enter_aim_or_step_out_mode`
+## really is action-id-agnostic the way its own code reads.
+func _make_burst_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
+	var chaingun := Part.new()
+	chaingun.id = &"chaingun"
+	chaingun.hp = 3
+	chaingun.max_hp = 3
+	chaingun.attaches_to = [&"GRIP"]
+	chaingun.requires = {&"TRIGGER": 1}
+	chaingun.damage = 5.0
+	chaingun.ap_cost = 2
+	chaingun.scatter = [Ring.new(0.1, 1.0)]
+	chaingun.provides_actions = [&"burst"]
+	chaingun.weapon_def = WeaponDef.new()
+	chaingun.weapon_def.max_range = 12.0
+	chaingun.weapon_def.burst_size = 12
+	chaingun.weapon_def.burst_ap_cost = 4
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = chaingun
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad)
+
+
+func _setup_covered_scene_burst() -> Dictionary:
+	var grid := Grid.new(10, 10)
+	for x in range(8):
+		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
+	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
+	grid.set_opacity(Vector2i(3, 2), 1.0)
+
+	var shooter := _make_burst_armed_unit(Vector2i(3, 0), 0)
+	var enemy := _make_burst_armed_unit(Vector2i(3, 9), 1)
+	var state := CombatState.new(grid, [shooter, enemy])
+	var controller := TacticsController.new()
+	var board_view := BoardView.new()
+	var camera_rig := CameraRig.new()
+	add_child_autofree(board_view)
+	add_child_autofree(camera_rig)
+	add_child_autofree(controller)
+	controller.setup(state, board_view, camera_rig)
+	return {
+		"state": state,
+		"controller": controller,
+		"shooter": shooter,
+		"enemy": enemy,
+		"board_view": board_view,
+		"camera_rig": camera_rig
+	}
+
+
+func test_clicking_a_covered_enemy_with_burst_armed_enters_step_out_mode_too() -> void:
+	var built: Dictionary = _setup_covered_scene_burst()
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(built.shooter.cell)
+	controller.arm_action(&"burst")
+	controller.click_cell(built.enemy.cell)
+
+	assert_eq(
+		controller.stepping_out_at,
+		built.enemy,
+		"burst must enter step-out mode the same way shoot does"
+	)
+	assert_null(controller.aiming_at, "a step out never also enters ordinary aim mode")
+
+
+## BR30.xx: the actual "not working" the supervisor saw — step-out MODE
+## entry itself never cared about AP (the test above proves that part was
+## always fine), but firing the burst from the stepped-out cell goes
+## through the SAME `confirm_shot()` -> `enqueue()` -> `BurstAction.
+## is_legal()` gate as ordinary aim mode, which correctly checks the
+## REAL `burst_ap_cost` (4) — a shooter with 3 AP (enough for the action
+## bar's old, wrong `ap_cost`-only check, BR30.xx's other half) steps out
+## for free, then has its actual shot silently rejected: the stepped-out
+## position holds with nothing ever firing, reading as "step out doesn't
+## work" even though the move itself queued fine.
+func test_firing_burst_after_step_out_is_silently_rejected_with_insufficient_real_ap() -> void:
+	var built: Dictionary = _setup_covered_scene_burst()
+	var controller: TacticsController = built.controller
+	var shooter: Unit = built.shooter
+	shooter.ap = 3  # covers the plain ap_cost (2) but not burst_ap_cost (4)
+
+	controller.click_cell(shooter.cell)
+	controller.arm_action(&"burst")
+	controller.click_cell(built.enemy.cell)
+	controller.confirm_shot()  # locks in the step-out cell, opens aim (free move only)
+	assert_eq(
+		controller.selection.current_queue().actions.size(),
+		1,
+		"sanity: only the free out-leg so far"
+	)
+
+	controller.confirm_shot()  # attempts to fire from the stepped-out position
+
+	assert_eq(
+		controller.selection.current_queue().actions.size(),
+		1,
+		"insufficient real AP must leave the burst un-queued, not silently add it anyway"
+	)
+
+
 ## Verified geometry (matches test_unit_ai.gd's own AI-step-out-fallback
 ## fixture): a real WALL (opacity) at (3,2) blinds a shooter at (3,0)
 ## from an enemy at (3,9), while both orthogonal neighbors keep clear
