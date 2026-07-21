@@ -464,48 +464,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   — pre-existing correct pattern); `weapon_panel.gd` (purely structural shell/part reads — hp, wounds,
   manipulators — no position or queue dependency).
 
-### BR30.09 — Active — Game appears fully stuck at an AI unit's turn-start, no hitch, no recovery  ·  source: `SUPERVISOR`
-- **Reported:** 2026-07-21, live play while re-testing BR27.01. Debug-spawned a unit (`combat_tester_
-  chaingun`, unit 2, squad 0) at a far cell, moved it around through the REAL player-input UI (NOT
-  `force_current_unit` — confirmed by the supervisor directly, ruling out that theory), ended its
-  turn normally. Real turn order then correctly advanced: `turn_start: Turn 0 — unit 1` (unit 1 is
-  RED team, AI-controlled). After that line, `out/combat.log` recorded NOTHING further — no move, no
-  attack, no pass, no second `turn_end` — for 4+ minutes of real wall-clock time (`FileSink.emit()`
-  flushes every event immediately, so this is a genuine gap, not a display lag). The game read as
-  fully frozen, not just paced slowly.
-- **Context specific to this repro:** by the time unit 1's turn started, squad 0 had 2 units (the
-  original roster unit plus the debug-spawned one) and squad 1 (unit 1's own squad) had only 1 — an
-  asymmetric, debug-only roster shape a normal bout never produces. The supervisor also noted unit 1
-  sits between the two squad-0 units in `CombatState.units`' own array order (id 0, 1, 2 — squads 0,
-  1, 0) and/or spatially between them on the board.
-- **Investigated (read-only, no fix attempted — this needs a live reproduction to pin down further,
-  not more code-reading):**
-  - **Array-order theory, ruled out.** `CombatState.advance_turn()`/`_fastest_by_initiative()`/
-    `_can_take_a_turn()` select the next unit purely by initiative value then id tie-break, never by
-    position in the `units` array — squad interleaving from a mid-round debug spawn has no code path
-    that could confuse turn SELECTION itself.
-  - **AI-planning-cost theory, ruled out.** Traced `UnitAI.plan_turn`'s full call graph
-    (`_pick_engagement_position`, `_engagement_score`, `is_covered_from`, `Suppression.*`, `LoS.*`,
-    `Pathfinder.reachable`/`astar`). Every loop is bounded either by the ACTING unit's own (small) MP
-    budget or by `state.units.size()` (3, in this bout) — none scale with the 40x30 board itself. A
-    unit sitting at a far cell like (28, 23) adds a few cheap extra distance checks, not a
-    combinatorial blowup. No genuine infinite loop found anywhere in the reviewed call graph either
-    (every `while` either has a hard cap or a monotonically-shrinking frontier).
-  - Already-documented **BR27.09** (`advance_ai_turns`'s own unyielded, synchronous per-unit
-    `BoutRunner.step()` loop) is a real, related mechanism, but explains a brief per-frame HITCH, not
-    a multi-minute freeze with zero recovery — insufficient as the sole explanation here.
-- **Remaining live leads, none confirmed:** a stuck `await`/signal wait somewhere in the resolution or
-  animation pipeline that never completes (the same general shape as BR27.03's own missing-
-  reentrancy-guard finding, and BR27.07's missing `await` in `SingleUnitOverlay`, both already on this
-  ledger); an exception thrown and silently swallowed mid-`resolve_until`/AI planning, killing the turn
-  machinery without a visible crash; or something the debug-spawn path itself leaves inconsistent for a
-  SECOND enemy to reason about (mission state, squad bookkeeping) that a normal single-enemy bout never
-  exercises. **Needs a live repro to actually pin down** — if this recurs, the most useful things to
-  capture before resetting: is anything visibly mid-animation on screen (dartboard, a slide, camera
-  easing) or is it genuinely idle; does the SAME symptom reproduce without any debug injection at all
-  (a normal 1v1 AI turn); does it reproduce with a debug-spawned unit placed NEAR the action instead of
-  far away.
-
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
