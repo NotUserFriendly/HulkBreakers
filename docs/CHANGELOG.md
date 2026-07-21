@@ -322,6 +322,22 @@ AI-vs-AI bouts found ~1850 genuine covered-with-a-candidate encounters, and `Map
 never sets `grid.opacity`, so most of those are plainly visible/clickable too — not rare, and not an
 LOS edge case. Swapped to `selection.previewed_unit()`, the same fix shape as BR27.05.
 
+**Pass D: audit of `selected_unit` staleness across the rest of tactics-phase view code (BR30.07/
+BR30.08)** — BR27.05 and BR27.06 turned out to be the same bug in two places, so tb30 audited every
+other `selection.selected_unit` read that feeds position/AP-dependent state (not identity) per a
+supervisor-authored suspect list. `TacticsController._confirm_step_out()` computed its outbound path
+via `Pathfinder.astar(shooter.cell, firing_cell)` off the raw cell — `MoveAction.is_legal()` requires
+`path[0] == actual.cell` against the unit's real (previewed) position, so a move queued before
+triggering step-out silently failed to enqueue and fell through to `cancel_step_out()`, invisibly.
+`TooltipController.refresh()` passed the raw unit into `TileInspection.inspect()`, whose
+`visible_from_selected` field runs a real LOS check from the selected cell directly — stuck showing
+visibility from the turn-start position after a move was queued. Both swapped to `previewed_unit()`,
+each verified failing without the fix and passing with it first. `step_out_exposure()`/
+`_refresh_overlay()`'s own `Overwatch` calls were ALSO flagged as suspects but, after tracing (and an
+empirical probe), turned out not to matter — `would_trigger_at()`'s general-case branch always
+re-resolves the mover by id and relocates to the candidate cell regardless of the passed reference's
+own stale `.cell`, so no fix was needed there.
+
 **Inspect panel** (tb21/22/23/26) — the current inspect surface: rotating bot viewer, matrix area,
 sorted inventory tree (weapons→containers→parts), info panel + item viewer, status/wound column,
 dead-zone hold, right-click debug menu (debug-only items `[*]`-prefixed; inflict-status/create-part
