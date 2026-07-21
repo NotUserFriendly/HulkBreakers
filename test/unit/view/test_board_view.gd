@@ -506,6 +506,13 @@ func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
 	assert_eq(view._unit_ghost_overlay.get_child_count(), 1)
 
 
+## The wall's own real alpha, read back from its actual material — never
+## re-derive `_set_wall_alpha`'s own logic here, just read what it did.
+func _wall_alpha(instance: MeshInstance3D) -> float:
+	var material: StandardMaterial3D = instance.mesh.material
+	return material.albedo_color.a
+
+
 ## tb31 Pass C: "walls must not block the player's read of the action
 ## behind them." Real `Camera3D`/`Unit` nodes, read back per docs/10
 ## standing rule 2 — never re-derive the occlusion math a second time
@@ -513,7 +520,9 @@ func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
 ## (camera.unproject_position()), not world-distance-from-a-ray: the
 ## tactical camera sits well above/back from the board, so the wall is
 ## placed roughly along the real camera-to-focal line of sight, not
-## merely "somewhere between them in world Z."
+## merely "somewhere between them in world Z." Real alpha blending
+## (`_wall_alpha`), not `GeometryInstance3D.transparency` — see
+## `BoardView.WALL_FADE_ALPHA`'s own doc comment for why.
 func test_update_wall_legibility_fades_a_wall_between_camera_and_the_focal_unit() -> void:
 	var grid := Grid.new(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
@@ -533,11 +542,17 @@ func test_update_wall_legibility_fades_a_wall_between_camera_and_the_focal_unit(
 
 	view.update_wall_legibility(camera)
 
+	var instance: MeshInstance3D = view._wall_mesh_instances[0]
 	assert_almost_eq(
-		view._wall_mesh_instances[0].transparency,
-		BoardView.WALL_FADE_TRANSPARENCY,
+		_wall_alpha(instance),
+		BoardView.WALL_FADE_ALPHA,
 		0.001,
 		"the wall standing on the camera's own line of sight to the focal unit must fade"
+	)
+	assert_eq(
+		(instance.mesh.material as StandardMaterial3D).transparency,
+		BaseMaterial3D.TRANSPARENCY_ALPHA,
+		"must actually alpha-blend, not just carry a low alpha with blending off"
 	)
 
 
@@ -555,8 +570,8 @@ func test_update_wall_legibility_leaves_walls_opaque_with_no_focal_unit() -> voi
 	view.update_wall_legibility(camera)
 
 	assert_eq(
-		view._wall_mesh_instances[0].transparency,
-		0.0,
+		_wall_alpha(view._wall_mesh_instances[0]),
+		1.0,
 		"nothing to protect (no focal unit) — a wall must never fade"
 	)
 
@@ -583,8 +598,8 @@ func test_update_wall_legibility_leaves_an_unrelated_wall_opaque() -> void:
 	view.update_wall_legibility(camera)
 
 	assert_eq(
-		view._wall_mesh_instances[0].transparency,
-		0.0,
+		_wall_alpha(view._wall_mesh_instances[0]),
+		1.0,
 		"a wall nowhere near the focal unit's own screen position must not fade"
 	)
 

@@ -126,10 +126,22 @@ const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 ## (found live: walls never visibly faded at all). Screen-space asks the
 ## question a player would actually answer by eye instead.
 const WALL_FADE_SCREEN_RADIUS := 60.0
-## `GeometryInstance3D.transparency` — 0 opaque, 1 fully invisible. Faded,
-## not hidden outright: the wall's own presence (still real geometry you
-## could shoot down) shouldn't vanish, only stop hiding what's behind it.
-const WALL_FADE_TRANSPARENCY := 0.75
+## The albedo alpha a wall drops to while fading (1.0 = fully opaque).
+## Reported live as still not visibly doing anything even after the
+## screen-space occlusion fix above (confirmed correct end to end, down
+## to `transparency` actually flipping to 0.75) — the one link never
+## directly verified was whether `GeometryInstance3D.transparency` alone
+## renders a visible effect against an otherwise-opaque, `SHADING_MODE_
+## PER_PIXEL` material (real geometry must stay lit, docs/10 — the
+## unshaded `WorldPalette.translucent_material()` this file's OWN ghost/
+## overwatch overlays use isn't an option for a wall). Switched to real
+## alpha blending instead (`BaseMaterial3D.TRANSPARENCY_ALPHA` + this
+## alpha value) — the exact mechanism `show_unit_ghost()` already proves
+## renders correctly in this project, just kept lit instead of unshaded.
+## Faded, not hidden outright: the wall's own presence (still real
+## geometry you could shoot down) shouldn't vanish, only stop hiding
+## what's behind it.
+const WALL_FADE_ALPHA := 0.25
 
 var grid: Grid
 ## tb31 Pass C: "walls must not block the player's read of the action
@@ -400,7 +412,7 @@ func _spawn_field_item(item: Variant, cell: Vector2i, material_table: MaterialTa
 func update_wall_legibility(camera: Camera3D) -> void:
 	if camera == null or focal_unit == null or not is_instance_valid(focal_unit):
 		for instance: MeshInstance3D in _wall_mesh_instances:
-			instance.transparency = 0.0
+			_set_wall_alpha(instance, 1.0)
 		return
 	var focal_position: Vector3 = UnitGeometry.bounding_sphere(focal_unit).center
 	# Behind the camera: unproject_position() gives nonsense screen
@@ -408,7 +420,7 @@ func update_wall_legibility(camera: Camera3D) -> void:
 	# nothing can occlude something that isn't even on screen.
 	if camera.is_position_behind(focal_position):
 		for instance: MeshInstance3D in _wall_mesh_instances:
-			instance.transparency = 0.0
+			_set_wall_alpha(instance, 1.0)
 		return
 	var camera_position: Vector3 = camera.global_position
 	var focal_screen: Vector2 = camera.unproject_position(focal_position)
@@ -416,7 +428,7 @@ func update_wall_legibility(camera: Camera3D) -> void:
 	for instance: MeshInstance3D in _wall_mesh_instances:
 		var wall_position: Vector3 = instance.global_position
 		if camera.is_position_behind(wall_position):
-			instance.transparency = 0.0
+			_set_wall_alpha(instance, 1.0)
 			continue
 		var occludes: bool = WallLegibility.occludes_on_screen(
 			camera.unproject_position(wall_position),
@@ -425,7 +437,23 @@ func update_wall_legibility(camera: Camera3D) -> void:
 			focal_depth,
 			WALL_FADE_SCREEN_RADIUS
 		)
-		instance.transparency = WALL_FADE_TRANSPARENCY if occludes else 0.0
+		_set_wall_alpha(instance, WALL_FADE_ALPHA if occludes else 1.0)
+
+
+## Real alpha blending (`BaseMaterial3D.TRANSPARENCY_ALPHA` + the mesh's
+## own `albedo_color.a`) — see `WALL_FADE_ALPHA`'s own doc comment for why
+## this replaced `GeometryInstance3D.transparency`. Each wall mesh already
+## has its own unique `StandardMaterial3D` instance (`_spawn_blocker`
+## builds one fresh per placement), so mutating it here never bleeds into
+## any other wall or piece of cover.
+static func _set_wall_alpha(instance: MeshInstance3D, alpha: float) -> void:
+	var material: StandardMaterial3D = instance.mesh.material
+	material.transparency = (
+		BaseMaterial3D.TRANSPARENCY_ALPHA if alpha < 1.0 else BaseMaterial3D.TRANSPARENCY_DISABLED
+	)
+	var color: Color = material.albedo_color
+	color.a = alpha
+	material.albedo_color = color
 
 
 func _process(_delta: float) -> void:
