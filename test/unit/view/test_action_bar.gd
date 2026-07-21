@@ -153,6 +153,49 @@ func test_clicking_an_unaffordable_action_does_not_arm_it() -> void:
 	assert_null(controller.armed_action, "an unaffordable action must never arm")
 
 
+## BR27.05: "action bar items still selectable without enough AP." An
+## action already QUEUED this turn (never resolved — docs/09: "queuing
+## mutates nothing") must still count against a LATER slot's own
+## affordability check. Before the fix, refresh()/the click guard read
+## the raw un-queued `unit.ap`, so a queued move that burned AP into
+## movement (0 MP: every step converts 1 AP) left the shoot slot reading
+## "still affordable" against the unit's full starting AP, even though
+## the honestly-previewed unit has less left.
+func test_an_action_already_queued_this_turn_counts_against_a_later_affordability_check() -> void:
+	var unit: Unit = _make_armed_unit(Vector2i(0, 0), 3)
+	var built: Dictionary = _setup_bar(unit)
+	var bar: ActionBar = built.bar
+	var controller: TacticsController = built.controller
+	var container: HBoxContainer = built.container
+	unit.ap = 3
+	unit.mp = 0.0
+
+	var moved: bool = controller.selection.queue_move(Vector2i(1, 0))
+	assert_true(moved, "sanity: a one-cell move with 0 mp must still queue by burning ap")
+	var preview_ap: int = controller.selection.previewed_unit().ap
+	assert_lt(preview_ap, unit.ap, "sanity: the queued move actually spent ap in preview")
+	assert_lt(preview_ap, 3, "sanity: not enough ap left for the pistol's own 3-ap cost")
+
+	bar.refresh()
+
+	var label: Label = (container.get_child(0) as PanelContainer).get_child(0)
+	assert_eq(
+		label.modulate,
+		HulkTheme.DIM,
+		"must dim once the queued (not yet resolved) move used up the remaining ap"
+	)
+
+	var panel: PanelContainer = container.get_child(0)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	panel.gui_input.emit(click)
+
+	assert_null(
+		controller.armed_action, "must not arm once the queued move used up the remaining ap"
+	)
+
+
 func test_clicking_an_affordable_action_still_arms_it() -> void:
 	var unit: Unit = _make_armed_unit(Vector2i(0, 0), 1)
 	var built: Dictionary = _setup_bar(unit)
