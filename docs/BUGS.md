@@ -260,6 +260,28 @@ the supervisor promotes confirmed ones up to Resolved.)*
   ("blocked by a new, separate bug encountered during the attempt"). The split-flow restructure
   (confirm-cell → free out-leg → aim mode → fire → free return) probably breaks such that no step-out
   path completes. High priority — it gates confirmation of two other pending bugs.
+- **2026-07-21 (taskblock-30): could not reproduce through any headless path — logged as a real
+  negative result, not a fix.** Three new regression tests, each a strictly more realistic
+  reproduction of the reported click sequence than the last, all pass on the SAME covered-corridor
+  geometry `test_tactics_controller_step_out.gd` already used:
+  1. `test_a_real_mouse_click_on_a_covered_enemy_also_enters_step_out_mode` — a real
+     `InputEventMouseButton` through a real camera raycast into `TacticsController._handle_mouse_
+     button` (every pre-existing test in the file drove `click_cell()` directly instead — a real,
+     previously-uncovered code path, just not the bug).
+  2. `test_action_bar.gd::test_clicking_an_affordable_action_still_arms_it` (already existed, already
+     green) — a real ActionBar slot click arms `&"shoot"` correctly.
+  3. `test_squad_control_overlay.gd::test_the_real_production_wiring_enters_step_out_on_a_covered_
+     enemy` — the full real `SquadControlOverlay`/`TacticsController`/`ActionBar`/`CameraRig` wiring
+     (`_build_ui`'s own construction, not a bare `TacticsController.new()`), driven by a real
+     action-bar click THEN a real raycast-driven board click, end to end.
+  - **Every layer of the reported click sequence checks out correctly in isolation and combined.**
+    Two live hypotheses left, neither confirmable headlessly: (a) the trigger condition
+    (`UnitAI.is_covered_from` + at least one legal `StepOutPlanner` candidate) may simply be too rare
+    on REAL `MapGen`-generated maps to ever fire in practice — reading as "never occurs" without being
+    a code regression; (b) the supervisor's own repro used a different weapon/geometry/click sequence
+    than this fixture reproduces. **Needs either a more specific repro (which map/weapon/exact
+    clicks) or a real-map rarity sweep before further guessing is worth the cost** — not chased
+    further this cycle, per tb30's "don't loop within a block" instruction. Still open.
 
 ### BR27.07 — Active-turn highlight lands on the wrong unit; change to facing-marker-only  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). Two parts: (a) **design change** — instead of recoloring the

@@ -77,6 +77,35 @@ func _setup_covered_scene() -> Dictionary:
 	}
 
 
+## BR27.06 investigation: every OTHER test in this file drives the click
+## through `click_cell()` directly. The real game drives a LEFT click
+## through `_handle_mouse_button` (camera ray -> `_cell_at` -> dispatch),
+## a genuinely separate code path `click_cell` documents itself as never
+## using. Proving whether THAT path also enters step-out mode is the
+## actual reproduction this investigation needs — same pattern
+## test_spectator_overlay.gd's own real-click tests already use
+## (`camera.unproject_position` -> a real `InputEventMouseButton`).
+func test_a_real_mouse_click_on_a_covered_enemy_also_enters_step_out_mode() -> void:
+	var built: Dictionary = _setup_covered_scene()
+	var controller: TacticsController = built.controller
+	var camera_rig: CameraRig = built.camera_rig
+	controller.click_cell(built.shooter.cell)
+	controller.arm_action(&"shoot")
+
+	var world_point: Vector3 = (
+		Vector3(built.enemy.cell.x, 0.5, built.enemy.cell.y) * UnitGeometry.CELL_SIZE
+	)
+	var screen_pos: Vector2 = camera_rig.camera().unproject_position(world_point)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	controller._unhandled_input(click)
+
+	assert_eq(controller.stepping_out_at, built.enemy)
+	assert_null(controller.aiming_at, "a step out never also enters ordinary aim mode")
+
+
 func test_clicking_a_covered_enemy_enters_step_out_mode_not_aim_mode() -> void:
 	var built: Dictionary = _setup_covered_scene()
 	var controller: TacticsController = built.controller

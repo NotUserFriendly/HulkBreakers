@@ -130,3 +130,121 @@ func test_ai_turns_advance_once_the_players_own_animation_finishes() -> void:
 		built.ai_unit,
 		"a fully-finished human turn must let the AI batch actually run"
 	)
+
+
+## BR27.06 investigation: every piece of the step-out pipeline already
+## checks out in isolation (TacticsController's own state machine via both
+## `click_cell` and a real raycast-driven click; ActionBar's own real
+## click-to-arm, correct affordability either way). This is the one thing
+## none of those narrower tests cover — the FULL production wiring
+## (`SquadControlOverlay._build_ui`'s real `TacticsController`/`ActionBar`/
+## `CameraRig` construction and signal wiring), driven the way a real
+## player actually would: click the action-bar slot for real
+## (`gui_input`), then a real raycast-driven board click on the covered
+## enemy — never `tactics.arm_action()`/`tactics.click_cell()` called by
+## hand. Same covered-corridor geometry as
+## test_tactics_controller_step_out.gd's own `_setup_covered_scene()`.
+func _covered_step_out_bout() -> Dictionary:
+	var pistol := Part.new()
+	pistol.id = &"pistol"
+	pistol.hp = 1
+	pistol.max_hp = 1
+	pistol.attaches_to = [&"GRIP"]
+	pistol.requires = {&"TRIGGER": 1}
+	pistol.damage = 5.0
+	pistol.ap_cost = 1
+	pistol.scatter = [Ring.new(0.1, 1.0)]
+	pistol.provides_actions = [&"shoot"]
+
+	var hand := Part.new()
+	hand.id = &"hand"
+	hand.hp = 5
+	hand.max_hp = 5
+	hand.attaches_to = [&"HAND"]
+	hand.capabilities = [&"TRIGGER"]
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = pistol
+	hand.sockets = [grip]
+
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var hand_socket := Socket.new(&"HAND")
+	hand_socket.occupant = hand
+	torso.sockets = [hand_socket]
+
+	var grid := Grid.new(10, 10)
+	for x in range(8):
+		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
+	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
+	grid.set_opacity(Vector2i(3, 2), 1.0)
+
+	var shooter := Unit.new(Matrix.new(), Shell.new(torso.duplicate(true)), Vector2i(3, 0), 0)
+	var enemy_torso: Part = torso.duplicate(true)
+	var enemy_hand: Part = hand.duplicate(true)
+	enemy_hand.sockets[0].occupant = pistol.duplicate(true)
+	enemy_torso.sockets[0].occupant = enemy_hand
+	var enemy := Unit.new(Matrix.new(), Shell.new(enemy_torso), Vector2i(3, 9), 1)
+
+	var state := CombatState.new(grid, [shooter, enemy])
+	state.set_squad_controller(0, Enums.SquadController.HUMAN)
+	state.set_squad_controller(1, Enums.SquadController.AI)
+	var mission := MissionState.new(RunState.new(), state)
+	mission.objectives = []
+	mission.extraction_cells = [Vector2i(0, 0)]
+	return {"state": state, "mission": mission, "shooter": shooter, "enemy": enemy}
+
+
+func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> void:
+	var built: Dictionary = _covered_step_out_bout()
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.load_battle(built.state, built.mission)
+	battle.set_overlay(SquadControlOverlay.new())
+	var overlay: SquadControlOverlay = battle.overlay as SquadControlOverlay
+	assert_eq(
+		built.state.current_unit(), built.shooter, "sanity: the shooter's own turn is current"
+	)
+
+	# 1) select the shooter — a real board click, same raycast path as step 3.
+	var camera: Camera3D = overlay.tactics.camera
+	var shooter_screen: Vector2 = camera.unproject_position(
+		Vector3(built.shooter.cell.x, 0.5, built.shooter.cell.y) * UnitGeometry.CELL_SIZE
+	)
+	var select_click := InputEventMouseButton.new()
+	select_click.button_index = MOUSE_BUTTON_LEFT
+	select_click.pressed = true
+	select_click.position = shooter_screen
+	overlay.tactics._unhandled_input(select_click)
+	assert_eq(overlay.tactics.selection.selected_unit, built.shooter, "sanity: selection took")
+
+	# 2) arm SHOOT via a real ActionBar slot click — never tactics.arm_action().
+	var shoot_index := -1
+	for i in range(ActionCatalog.actions_for(built.shooter).size()):
+		if ActionCatalog.actions_for(built.shooter)[i].id == &"shoot":
+			shoot_index = i
+	assert_true(shoot_index >= 0, "sanity: shoot must be a real slot on this unit")
+	var panel: PanelContainer = overlay.action_bar._panels[shoot_index]
+	var arm_click := InputEventMouseButton.new()
+	arm_click.button_index = MOUSE_BUTTON_LEFT
+	arm_click.pressed = true
+	panel.gui_input.emit(arm_click)
+	assert_not_null(overlay.tactics.armed_action, "sanity: the real action-bar click armed it")
+	assert_eq(overlay.tactics.armed_action.id, &"shoot")
+
+	# 3) click the covered enemy — a real raycast-driven click, same as
+	# production. This is the actual claim under test.
+	var enemy_screen: Vector2 = camera.unproject_position(
+		Vector3(built.enemy.cell.x, 0.5, built.enemy.cell.y) * UnitGeometry.CELL_SIZE
+	)
+	var enemy_click := InputEventMouseButton.new()
+	enemy_click.button_index = MOUSE_BUTTON_LEFT
+	enemy_click.pressed = true
+	enemy_click.position = enemy_screen
+	overlay.tactics._unhandled_input(enemy_click)
+
+	assert_eq(overlay.tactics.stepping_out_at, built.enemy, "the full real wiring must step out")
+	assert_null(overlay.tactics.aiming_at, "a step out never also enters ordinary aim mode")
