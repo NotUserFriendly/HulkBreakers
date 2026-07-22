@@ -203,3 +203,66 @@ func reachable(origin: Vector2i, mp: float) -> Array[Vector2i]:
 					result.append(neighbor)
 
 	return result
+
+
+## tb33 Pass B (BR32.10): the same Dijkstra flood as `reachable()`, but
+## "give me the first cell matching X" instead of "give me everything" —
+## `stop_at` (`Callable(Vector2i) -> bool`) is evaluated once per cell, in
+## ascending path-cost order, the instant it's POPPED (Dijkstra's own
+## invariant: a popped cell's distance is already final, given no
+## negative edges — `move_cost()` only ever returns `>= 0.0` or a skipped
+## `-1.0`), so this returns the genuinely NEAREST match, not just the
+## first one merely discovered. Evaluated lazily, cell by cell, so an
+## expensive `stop_at` (a real `ShotPlane` build, say) never runs on more
+## cells than it has to. `radius_cap` bounds the flood — a target with no
+## match anywhere reachable doesn't scan the whole map. Returns the
+## matching cell, or `null` if the flood exhausts `radius_cap` without one.
+func nearest_matching(origin: Vector2i, radius_cap: float, stop_at: Callable) -> Variant:
+	var dist: Dictionary = {origin: 0.0}
+	var frontier: Array[Vector2i] = [origin]
+
+	while not frontier.is_empty():
+		var current: Vector2i = frontier[0]
+		var current_index: int = 0
+		for i in range(1, frontier.size()):
+			var cand: Vector2i = frontier[i]
+			if dist[cand] < dist[current]:
+				current = cand
+				current_index = i
+		frontier.remove_at(current_index)
+
+		if stop_at.call(current):
+			return current
+
+		for neighbor: Vector2i in _grid.neighbors(current):
+			var cost: float = move_cost(neighbor)
+			if cost < 0.0:
+				continue
+			var total: float = dist[current] + cost
+			if total <= radius_cap and total < dist.get(neighbor, INF):
+				dist[neighbor] = total
+				frontier.append(neighbor)
+
+	return null
+
+
+## tb33 Pass B: the longest PREFIX of `path` (inclusive of its own start)
+## affordable within `mp` — for a queued move that must fit THIS turn's
+## own budget, as opposed to `path_cost()`'s "what does the WHOLE path
+## cost" question (`MoveAction.is_legal()`'s own concern, which rejects
+## the entire action if the full path is unaffordable rather than
+## partially completing it at the queueing stage). Same walk `path_cost()`
+## already does, just stopping the instant the running total would
+## exceed budget instead of summing to the end.
+func truncate_to_budget(path: Array[Vector2i], mp: float) -> Array[Vector2i]:
+	if path.is_empty():
+		return []
+	var truncated: Array[Vector2i] = [path[0]]
+	var total: float = 0.0
+	for i in range(1, path.size()):
+		var cost: float = move_cost(path[i])
+		if cost < 0.0 or total + cost > mp:
+			break
+		total += cost
+		truncated.append(path[i])
+	return truncated

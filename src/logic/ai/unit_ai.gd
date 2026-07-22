@@ -65,20 +65,19 @@ const SUPPRESSION_PENALTY := 25.0
 const OPPORTUNITY_ATTACK_PENALTY := 15.0
 ## taskblock-26 Pass B2: "a standoff cell with no line is not a valid
 ## standoff." Dominant over EVERY other term here, including
-## ALLY_BLOCKED_PENALTY — without LOS there's no shot to weigh an ally
+## ALLY_BLOCKED_PENALTY — without a line there's no shot to weigh an ally
 ## being in the way OF at all, so lacking one has to outrank every softer
 ## consideration. Still just a penalty, not a hard exclusion: if nothing
-## reachable has real LOS, the least-bad cell still wins rather than the
+## reachable has one, the least-bad cell still wins rather than the
 ## planner freezing in place facing a wall.
-const NO_LOS_PENALTY := 2000.0
+## tb33 Pass A: was `NO_LOS_PENALTY` — same value/posture, only the
+## predicate changed (`_engagement_score`'s own doc comment has why).
+const NO_LOF_PENALTY := 2000.0
 ## taskblock-27 (CC, re-diagnosing B2 a second time): per-unit-of-
-## `LoS.obstruction_count` weight, applied only when no reachable cell
-## has real LOS at all — see `_engagement_score`'s own doc comment.
-## Flagged, not a tuned design number; only "large enough to dominate any
-## plausible `distance_penalty` spread on a real map" is specified —
-## `distance_penalty` is itself unweighted (a plain Chebyshev delta), so
-## even a big map's worst-case spread stays two orders of magnitude
-## below this.
+## `LoS.obstruction_count` weight — see `_engagement_score`'s own doc
+## comment. Flagged, not a tuned design number; only "large enough to
+## dominate any plausible `distance_penalty` spread on a real map" is
+## specified.
 const OBSTRUCTION_PENALTY_WEIGHT := 1000.0
 
 ## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
@@ -282,7 +281,11 @@ static func _plan_ranged(
 	# taskblock17-1 Pass B: an AI never CHOOSES to shoot through its own
 	# ally — friendly fire is still mechanically possible (a player can
 	# still line one up), this only stops the AI from picking it.
-	var clear_from_here: bool = not _ally_in_firing_line(unit, enemy, unit.cell, state)
+	# tb33 Pass A: "no ally" alone was never sufficient (BR30.10's 81%).
+	var clear_from_here: bool = (
+		not _ally_in_firing_line(unit, enemy, unit.cell, state)
+		and LineOfFire.has_clear_line_of_fire(unit, enemy, unit.cell, state)
+	)
 	var firing_action: CombatAction = (
 		_firing_action_for(unit, weapon_id, enemy.cell, state) if weapon_id != &"" else null
 	)
@@ -298,15 +301,39 @@ static func _plan_ranged(
 		_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
 	else:
 		var queued_before: int = queue.actions.size()
-		var best_cell: Vector2i = _pick_engagement_position(
-			unit, enemy, state, preferred_range, weight_cover, weapon
+		var pf := Pathfinder.new(state.grid, state.terrain_costs)
+		var budget: float = unit.mp_per_ap() * unit.ap  # same flattened budget `_path_toward` uses
+		var reachable: Array[Vector2i] = pf.reachable(unit.cell, budget)
+		if not reachable.has(unit.cell):
+			reachable.append(unit.cell)
+		var any_reachable_has_lof: bool = _any_reachable_has_lof(
+			unit, enemy, state, reachable, weapon
 		)
-		if best_cell != unit.cell:
-			var pf := Pathfinder.new(state.grid, state.terrain_costs)
-			var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
-			if path.size() >= 2:
-				queue.enqueue(MoveAction.new(unit, path), state)
-		var final_blocked: bool = _ally_in_firing_line(unit, enemy, best_cell, state)
+
+		var best_cell: Vector2i = unit.cell
+		if not any_reachable_has_lof:
+			# tb33 Pass B (BR32.10): walk toward the nearest cell that
+			# WOULD have a shot instead of the greedy least-bad reachable
+			# cell (the concave/U-shaped-map freeze this replaces).
+			var approach: Array[Vector2i] = LineOfFire.approach_path(
+				unit, enemy, state, pf, weapon, budget
+			)
+			if approach.size() >= 2:
+				queue.enqueue(MoveAction.new(unit, approach), state)
+				best_cell = approach[approach.size() - 1]
+		else:
+			best_cell = _pick_engagement_position(
+				unit, enemy, state, preferred_range, weight_cover, weapon, reachable, true
+			)
+			if best_cell != unit.cell:
+				var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
+				if path.size() >= 2:
+					queue.enqueue(MoveAction.new(unit, path), state)
+		# tb33 Pass A: same LOF addition as `clear_from_here` above.
+		var final_blocked: bool = (
+			_ally_in_firing_line(unit, enemy, best_cell, state)
+			or not LineOfFire.has_clear_line_of_fire(unit, enemy, best_cell, state)
+		)
 		if (
 			weapon_id != &""
 			and _in_weapon_range(unit, weapon_id, enemy, best_cell)
@@ -533,13 +560,33 @@ static func _in_weapon_range(
 		return false
 	var origin: Vector2i = from_cell if from_cell != null else unit.cell
 	var range_cells: int = Grid.distance_chebyshev(origin, enemy.cell)
-	# taskblock-19 Pass C: the same predicate AttackAction.is_legal() uses
-	# for range — never a second, independently-maintained range check the
-	# planner's own picks could legally-fail against at resolve time.
+	return _weapon_reaches(weapon, range_cells)
+
+
+## taskblock-19 Pass C: the same predicate AttackAction.is_legal() uses
+## for range. Pulled out of `_in_weapon_range` (tb33 Pass A) so the LOF
+## prefilter below can share it without re-finding the weapon part.
+static func _weapon_reaches(weapon: Part, range_cells: int) -> bool:
 	return (
 		RangeModel.is_in_max_range(weapon, range_cells)
 		and not RangeModel.blocks_min_range(weapon, range_cells)
 	)
+
+
+## tb33 Pass A perf prefilter (BR26.02): a cell out of weapon range can't
+## fire regardless of what a real `ShotPlane.build` would say.
+static func _any_reachable_has_lof(
+	unit: Unit, enemy: Unit, state: CombatState, reachable: Array[Vector2i], weapon: Part
+) -> bool:
+	for cell: Vector2i in reachable:
+		if (
+			weapon != null
+			and not _weapon_reaches(weapon, Grid.distance_chebyshev(cell, enemy.cell))
+		):
+			continue
+		if LineOfFire.has_clear_line_of_fire(unit, enemy, cell, state):
+			return true
+	return false
 
 
 ## taskblock-14 Pass B1: "is a field object / ally / wall between it and
@@ -569,50 +616,20 @@ static func is_covered_from(
 
 ## taskblock17-1 Pass B: "test whether a friendly unit sits on the firing
 ## line between muzzle and target — reuse the shot-plane path, the same
-## geometry that would hit them, asked in advance." Builds the exact same
-## plane/aim-point `AttackAction.apply()` itself resolves against
-## (`ShotPlane.build` + `center_of`, the shot's own nominal center-mass
-## point before scatter) and asks what it would actually hit first — never
-## a re-derived approximation of that geometry, so this can't disagree
-## with what firing for real would do. `from_cell` is a candidate
-## (possibly not yet occupied) cell, so `unit`'s own real body — still
-## registered in `state.units` at its true `unit.cell` — is explicitly
-## excluded from counting as a blocker of itself.
+## geometry that would hit them, asked in advance." `from_cell` is a
+## candidate (possibly not yet occupied) cell, so `unit`'s own real body —
+## still registered in `state.units` at its true `unit.cell` — is
+## explicitly excluded from counting as a blocker of itself.
+## tb33 Pass A: built on `LineOfFire.first_hit()` — shared with
+## `has_clear_line_of_fire`, not two `ShotPlane` builds for the same shot.
 static func _ally_in_firing_line(
 	unit: Unit, target: Unit, from_cell: Vector2i, state: CombatState
 ) -> bool:
-	var direction := Vector2(target.cell - from_cell)
-	if direction.is_zero_approx():
-		return false
-	var origin := Vector2(from_cell.x, from_cell.y)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
-	var aim_point: Vector2 = ShotPlane.center_of(plane, target)
-	var region: Region = _first_hit_excluding(plane, aim_point, unit)
+	var region: Region = LineOfFire.first_hit(unit, target, from_cell, state)
 	if region == null or not (region.body is Unit):
 		return false
 	var hit_unit: Unit = region.body as Unit
 	return hit_unit != target and hit_unit.alive and hit_unit.squad_id == unit.squad_id
-
-
-## docs/09 taskblock07 Pass A1: `ShotPlane.resolve_projectile` is
-## shot_plane.gd's own internal lookup — every other caller in `src/` is
-## forbidden from reaching it directly (`test_resolve_projectile_is_
-## called_only_from_shot_plane_itself`), the same rule `DamageResolver`'s
-## own `_find_next` already exists to honor rather than break. Same
-## rect-lookup, just excluding one body by identity instead of a part
-## list — needed here because the shooter's own body sits at the ray's
-## own origin (depth <= 0) and would otherwise satisfy the point-
-## containment check before anything actually downrange of it (the same
-## reason `AttackAction.apply()` excludes its own shell's parts).
-static func _first_hit_excluding(
-	plane: Array[Region], point: Vector2, exclude_body: Unit
-) -> Region:
-	for region: Region in plane:
-		if region.body == exclude_body:
-			continue
-		if region.rect.has_point(point):
-			return region
-	return null
 
 
 ## The best reachable-this-turn cell to fight from: if `weight_cover`,
@@ -632,46 +649,25 @@ static func _first_hit_excluding(
 ## still outscores an uncovered cell that's merely closer to effective —
 ## no separate "hold" branch needed, the existing cover-first scorer
 ## already produces it once the pull target is the real weapon range.
+## tb33 Pass A: `reachable`/`any_reachable_has_lof` are the caller's own
+## now — `_plan_ranged` already computes both beforehand, once per turn.
 static func _pick_engagement_position(
 	unit: Unit,
 	enemy: Unit,
 	state: CombatState,
 	preferred_range: int,
 	weight_cover: bool,
-	weapon: Part = null
+	weapon: Part,
+	reachable: Array[Vector2i],
+	any_reachable_has_lof: bool
 ) -> Vector2i:
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
-	if not reachable.has(unit.cell):
-		reachable.append(unit.cell)
-
-	# taskblock-26 (CC, re-diagnosing B2): on a map where the enemy sits
-	# around a bend no single turn's own movement budget can clear (a real,
-	# common shape on generated maps — confirmed on live bouts, not just a
-	# hand-built fixture), NOT ONE reachable cell has real LOS this turn.
-	# `NO_LOS_PENALTY`'s own self-cell exemption then makes "stay exactly
-	# where I am" categorically beat every other candidate regardless of
-	# real progress, because only the self cell escapes the penalty — the
-	# unit freezes forever, never taking the first step around the bend,
-	# which is precisely the frozen-at-a-wall behavior B2 was reported
-	# against. `any_reachable_has_los` gates the whole penalty on there
-	# being an actual LOS cell to prefer AT ALL — with none reachable, every
-	# cell (including the self cell) scores on plain progress toward
-	# `preferred_range` instead, so advancing around the bend genuinely
-	# outscores standing still.
-	var any_reachable_has_los := false
-	for cell: Vector2i in reachable:
-		if LoS.has_los(state.grid, cell, enemy.cell):
-			any_reachable_has_los = true
-			break
-
 	var best_cell: Vector2i = unit.cell
 	var best_score: float = _engagement_score(
-		unit.cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_los
+		unit.cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_lof
 	)
 	for cell: Vector2i in reachable:
 		var score: float = _engagement_score(
-			cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_los
+			cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_lof
 		)
 		if score > best_score:
 			best_score = score
@@ -698,7 +694,7 @@ static func _engagement_score(
 	preferred_range: int,
 	weight_cover: bool,
 	weapon: Part = null,
-	any_reachable_has_los: bool = true
+	any_reachable_has_lof: bool = true
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
 	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
@@ -746,45 +742,48 @@ static func _engagement_score(
 	)
 	# taskblock-26 Pass B2: "a standoff cell with no line is not a valid
 	# standoff." Dominant over every other term here, even
-	# ALLY_BLOCKED_PENALTY (without LOS there's no shot to weigh an ally
-	# being in the way OF at all) — but still a PENALTY, not an exclusion:
-	# if truly nothing reachable has LOS, the least-bad cell still wins
-	# rather than the planner freezing in place. The same `LoS.has_los`
-	# primitive `is_covered_from`/`AttackAction.is_legal` already read,
-	# never a second, parallel visibility test.
+	# ALLY_BLOCKED_PENALTY (without a shot there's no ally to weigh being
+	# in the way OF at all) — but still a PENALTY, not an exclusion: if
+	# truly nothing reachable has one, the least-bad cell still wins
+	# rather than the planner freezing in place.
+	# tb33 Pass A: reads `LineOfFire.has_clear_line_of_fire`, not
+	# `LoS.has_los` (BR30.10's 81%-into-walls finding).
 	#
 	# `cell == self_unit.cell` is exempt ONLY when some OTHER reachable
-	# cell actually has real LOS this turn (`any_reachable_has_los`):
+	# cell actually has clear LOF this turn (`any_reachable_has_lof`):
 	# staying put is free, and a covered ORIGIN specifically is what
 	# `StepOutPlanner`'s own move/fire/return triple exists to handle
 	# (tb18) — that mechanism only engages at all when `best_cell ==
 	# unit.cell` (`_plan_ranged`'s own fallback branch). Penalizing the
 	# origin in THAT case would make this generic scorer grab the first
-	# LOS-having cell it can merely REACH instead, even when it can't
+	# LOF-having cell it can merely REACH instead, even when it can't
 	# actually afford to fire from there once it's spent its move —
 	# starving the smarter, budget-validated fallback of the "didn't
 	# reposition" signal it's gated on.
 	#
 	# taskblock-26 (CC, re-diagnosing B2): re-fought on a real generated
 	# map — a wall/corridor bend a single turn's own movement can't clear
-	# has NO reachable cell with LOS at all. Exempting the self cell
-	# there too made "stand still" categorically beat every other
+	# has NO reachable cell with a real line at all. Exempting the self
+	# cell there too made "stand still" categorically beat every other
 	# candidate (only the self cell escaped the penalty), freezing the
 	# unit at its own spawn turn after turn — never taking the first step
 	# around the bend, the exact "squares off... never takes space"
 	# symptom the bug was reported against, just on a map big enough that
-	# one turn can't reach LOS at all. With NO real LOS cell reachable
-	# this turn, the penalty doesn't fire for ANY cell (self included),
-	# so plain progress toward `preferred_range` — moving around the bend
-	# — genuinely outscores freezing in place.
-	var no_los_penalty: float = (
+	# one turn can't reach a line at all. With NONE reachable this turn,
+	# the penalty doesn't fire for ANY cell (self included), so plain
+	# progress toward `preferred_range` — moving around the bend —
+	# genuinely outscores freezing in place. (tb33 Pass B's approach-
+	# fallback now intercepts this case in `_plan_ranged` itself before
+	# ever reaching here; this exemption stays for direct callers, tests
+	# included.)
+	var no_lof_penalty: float = (
 		0.0
 		if (
-			not any_reachable_has_los
+			not any_reachable_has_lof
 			or cell == self_unit.cell
-			or LoS.has_los(state.grid, cell, enemy.cell)
+			or LineOfFire.has_clear_line_of_fire(self_unit, enemy, cell, state)
 		)
-		else NO_LOS_PENALTY
+		else NO_LOF_PENALTY
 	)
 	# taskblock-27 (CC, re-diagnosing B2 a SECOND time — confirmed still
 	# frozen on a real 6-unit bout's own combat.log, every playstyle, from
@@ -795,19 +794,20 @@ static func _engagement_score(
 	# already at its minimum. That's precisely the common steady state:
 	# most spawns close to roughly the right distance within a turn or
 	# two, then freeze there forever, still blind. When nothing reachable
-	# has real LOS, this replaces `distance_penalty` as the PRIMARY signal
-	# with `LoS.obstruction_count` — how many opaque cells stand between
-	# `cell` and the enemy — which strictly decreases as a unit works its
-	# way around a corner even while raw distance briefly plateaus or
-	# worsens (the one thing a "match this number" metric can't express).
-	# Weighted to dominate any plausible `distance_penalty` spread on a
-	# real map, so this always wins the tiebreak when a genuinely
-	# less-obstructed cell is reachable; `distance_penalty` itself still
-	# applies underneath (unweighted here) to rank equally-obstructed
-	# candidates by the ordinary standoff preference.
+	# has clear LOF, this replaces `distance_penalty` as the PRIMARY
+	# signal with `LoS.obstruction_count` — how many opaque cells stand
+	# between `cell` and the enemy — which strictly decreases as a unit
+	# works its way around a corner even while raw distance briefly
+	# plateaus or worsens (the one thing a "match this number" metric
+	# can't express). Weighted to dominate any plausible `distance_penalty`
+	# spread on a real map, so this always wins the tiebreak when a
+	# genuinely less-obstructed cell is reachable; `distance_penalty`
+	# itself still applies underneath (unweighted here) to rank
+	# equally-obstructed candidates
+	# by the ordinary standoff preference.
 	var obstruction_penalty: float = (
 		0.0
-		if any_reachable_has_los
+		if any_reachable_has_lof
 		else float(LoS.obstruction_count(state.grid, cell, enemy.cell)) * OBSTRUCTION_PENALTY_WEIGHT
 	)
 	return (
@@ -818,7 +818,7 @@ static func _engagement_score(
 		- min_range_penalty
 		- suppression_penalty
 		- opportunity_penalty
-		- no_los_penalty
+		- no_lof_penalty
 	)
 
 
