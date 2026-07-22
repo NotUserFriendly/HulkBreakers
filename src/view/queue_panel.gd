@@ -67,11 +67,20 @@ func refresh() -> void:
 ## single click resolves the queue through exactly this point, no separate
 ## select-then-press step. Hover shows the same `TooltipBuilder.
 ## for_queue_entry()` data the old Tree's per-row hover did, now driven by
-## plain `mouse_entered`/`mouse_exited` (the same convention `ApMpPipRow`'s
-## containers already use) instead of manual `Tree` hit-testing.
+## plain `mouse_entered`/`mouse_exited` instead of manual `Tree`
+## hit-testing. STOP, not PASS (`ApMpPipRow`'s own containers use PASS for
+## the identical purpose, an existing latent instance of this same bug,
+## not fixed here) — matches `action_bar.gd`'s own established rule for a
+## genuinely interactive Control: PASS still fires `mouse_entered`/
+## `mouse_exited` here, but never marks the event handled, so the same
+## motion ALSO reaches `TacticsController._unhandled_input`'s
+## `update_hover()` and re-raycasts the 3D board at that same screen
+## position — confirmed live: hovering anywhere on a queue row showed
+## whatever unit/tile sat behind the (deliberately translucent) readout
+## panel instead of just this row's own tooltip.
 func _entry_row(entry: Dictionary, index: int) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var what_label := Label.new()
 	what_label.text = String(entry.get("describe", ""))

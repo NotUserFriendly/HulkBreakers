@@ -225,11 +225,13 @@ func describe() -> String:
 	return "MoveAction(unit=%d, path=%s)" % [unit.id, path]
 
 
-## BR27.08 (supervisor follow-up): the full path (`describe()` above)
-## grows without bound — a long queued move stretched the queue panel's
-## own readout across the whole display. The coordinates themselves still
-## reach the tooltip via `describe()`'s own full text (`SelectionController
-## .queue_entries()` surfaces it as hover detail whenever it differs from
-## this); the row itself just says what kind of action this is.
+## BR27.08 (supervisor follow-up): only the `path=%s` term above is the
+## problem — it grows without bound, and was what stretched the queue
+## panel's own readout across the whole display. Everything else about
+## `describe()`'s own format (the class name, `unit=%d`, matching every
+## sibling action's own style) is fine and stays; the coordinates
+## themselves still reach the tooltip via `describe()`'s own full text
+## (`SelectionController.queue_entries()` surfaces it as hover detail
+## whenever it differs from this).
 func short_describe() -> String:
-	return "Move"
+	return "MoveAction(unit=%d)" % unit.id

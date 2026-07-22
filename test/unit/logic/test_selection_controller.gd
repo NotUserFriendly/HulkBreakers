@@ -235,11 +235,11 @@ func test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action() ->
 	var entries: Array[Dictionary] = selection.queue_entries()
 	assert_eq(entries.size(), 2)
 	# BR27.08 (supervisor follow-up): "describe" is now the queue-row-safe
-	# SHORT label (MoveAction.short_describe() == "Move", never the full
-	# path) — the full text rides along as "detail" instead, only because
-	# it actually says more than "Move" does.
-	assert_eq(entries[0]["describe"], "Move")
-	assert_true((entries[0]["detail"] as String).contains("MoveAction"))
+	# SHORT label -- MoveAction.short_describe() keeps everything describe()
+	# says EXCEPT the unbounded path, which rides along as "detail" instead,
+	# only because it actually says more.
+	assert_eq(entries[0]["describe"], "MoveAction(unit=%d)" % a.id)
+	assert_true((entries[0]["detail"] as String).contains("path="))
 	assert_true((entries[1]["describe"] as String).contains("FaceAction"))
 	assert_false(entries[1].has("detail"), "FaceAction's short and full descriptions are identical")
 	var after_move: Unit = expected_after_move.find_unit(a.id)

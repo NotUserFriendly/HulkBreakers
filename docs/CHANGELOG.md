@@ -146,10 +146,12 @@ with the same primitives every other reliable click surface in this codebase alr
 along with the prefix that actually resolved. The same queued `CombatAction` objects replay unmodified
 against the just-updated real state — safe because every action already re-validates itself against
 whatever `state` it's actually handed (docs/09), not a captured reference. **A `MoveAction`'s own row
-text is now just "Move"**, not its full path — `CombatAction.short_describe()` (new, defaults to
-`describe()`) is what a queue row actually shows; the full path only reaches the hover tooltip as an
-extra "Detail" row (`TooltipBuilder.for_queue_entry()`), since an unbounded path length was stretching
-the readout across the whole display.
+text drops its unbounded path** — `CombatAction.short_describe()` (new, defaults to `describe()`
+unchanged for every other action) is what a queue row actually shows; `MoveAction` overrides it to keep
+everything `describe()` already says except the `path=...` term (`"MoveAction(unit=%d)"`, matching every
+sibling action's own `ClassName(unit=%d, ...)` style), since that term alone — not the row's format in
+general — was what stretched the readout across the whole display. The full path still reaches the
+hover tooltip, as an extra "Detail" row (`TooltipBuilder.for_queue_entry()`).
 
 **AI** (tb14/16/17-1/24) — `UnitAI.plan_turn`, deterministic, human & AI emit the same queue,
 firing derived from the same `ActionCatalog.build_firing_action` seam a weapon's own
