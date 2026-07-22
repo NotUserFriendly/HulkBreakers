@@ -74,9 +74,59 @@ func test_clicking_an_enemy_while_selected_enters_aim_mode() -> void:
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
-	assert_eq(controller.aiming_at, b)
+	assert_eq(controller.aiming_at.unit, b)
 	assert_eq(controller.layer_index, 0)
 	assert_eq(controller.reticle_offset, Vector2.ZERO)
+
+
+## tb32 Pass C: PartPicker/HitKind.PART — clicking a wall/cover/downed
+## object/field item while armed enters aim mode against that Part
+## directly, the "target anything" counterpart to the Unit case above
+## (unchanged).
+func test_clicking_a_wall_while_armed_enters_aim_mode_with_a_part_target() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.hp = 10
+	wall.max_hp = 10
+	built.state.grid.blockers[Vector2i(5, 5)] = wall
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+
+	assert_null(controller.aiming_at.unit, "a wall is never mistaken for a unit")
+	assert_eq(controller.aiming_at.part, wall)
+	assert_eq(controller.aiming_at.cell, Vector2i(5, 5))
+
+
+## Confirming a shot aimed at a Part must queue it exactly like a Unit
+## target — same action, same target_cell — nothing downstream branches
+## on which kind was clicked (docs/09: TACTICS queues intents; RESOLUTION
+## alone re-derives what's actually there, AttackAction.apply()'s own job).
+func test_confirming_a_shot_aimed_at_a_part_queues_an_attack_action_at_that_cell() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.hp = 10
+	wall.max_hp = 10
+	built.state.grid.blockers[Vector2i(5, 5)] = wall
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	controller.confirm_shot()
+
+	var actions: Array[CombatAction] = controller.selection.current_queue().actions
+	assert_eq(actions.size(), 1)
+	var attack := actions[0] as AttackAction
+	assert_not_null(attack)
+	assert_eq(attack.target_cell, Vector2i(5, 5))
+	assert_null(controller.aiming_at, "confirming a shot must return to Tactical")
 
 
 ## Aiming routes every subsequent mouse motion to aim_reticle_at_screen()
@@ -325,14 +375,15 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 
 	var aim: Dictionary = controller.aim_state()
 	var weapon: Part = DeepStrike.find_operable_weapon(aim["shooter"])
-	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], aim["target"])
+	var target: AimTarget = aim["target"]
+	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], target.unit)
 	var result: AimResult = AimController.resolve(
 		aim["plane"],
 		target_point,
 		controller.layer_index,
 		weapon,
 		aim["shooter"],
-		(aim["target"] as Unit).cell,
+		target.cell,
 		aim["state"]
 	)
 
@@ -355,7 +406,8 @@ func test_aim_plane_originates_from_the_queued_end_cell_not_the_current_one() ->
 
 	assert_eq(a.cell, Vector2i(0, 0), "still just queued — the real unit has not moved")
 	var aim: Dictionary = controller.aim_state()
-	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], aim["target"])
+	var target: AimTarget = aim["target"]
+	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], target.unit)
 	var target_region: Region = ShotPlane.resolve_projectile(aim["plane"], target_point)
 
 	assert_not_null(target_region, "the target must actually resolve")
@@ -390,7 +442,8 @@ func test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution() -
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(2, 6))
 	var aim_before: Dictionary = controller.aim_state()
-	var point_before: Vector2 = ShotPlane.center_of(aim_before["plane"], aim_before["target"])
+	var target_before: AimTarget = aim_before["target"]
+	var point_before: Vector2 = ShotPlane.center_of(aim_before["plane"], target_before.unit)
 	var hit_before: Region = ShotPlane.resolve_projectile(aim_before["plane"], point_before)
 	controller.cancel_aim()
 
@@ -398,7 +451,8 @@ func test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution() -
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(2, 6))  # re-aim from the queued end position
 	var aim_after: Dictionary = controller.aim_state()
-	var point_after: Vector2 = ShotPlane.center_of(aim_after["plane"], aim_after["target"])
+	var target_after: AimTarget = aim_after["target"]
+	var point_after: Vector2 = ShotPlane.center_of(aim_after["plane"], target_after.unit)
 	var hit_after: Region = ShotPlane.resolve_projectile(aim_after["plane"], point_after)
 
 	assert_not_null(hit_before)
@@ -456,7 +510,7 @@ func test_input_locked_blocks_click_scroll_reticle_and_confirm() -> void:
 
 	controller.confirm_shot()
 	assert_eq(controller.selection.current_queue().actions.size(), 0, "locked input must not fire")
-	assert_eq(controller.aiming_at, b, "locked input must not even exit aim mode")
+	assert_eq(controller.aiming_at.unit, b, "locked input must not even exit aim mode")
 
 	controller.input_locked = false
 	controller.click_cell(Vector2i(2, 2))

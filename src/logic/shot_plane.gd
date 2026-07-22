@@ -208,6 +208,26 @@ static func center_of(plane: Array[Region], target: Unit) -> Vector2:
 	return best.rect.get_center()
 
 
+## tb32 Pass C: the `center_of` counterpart for a non-unit target (wall/
+## cover/downed object/field item, `PartPicker`'s new HitKind.PART) —
+## matched by `region.body` rather than a Unit's `shell.all_parts()`:
+## `ShotPlane.build` above tags every region in one blocker/field-item's
+## own assembly with the SAME root-Part identity (`region.body = part`),
+## so this finds the frontmost region belonging to that whole object the
+## same way `center_of` finds the frontmost region belonging to a whole
+## unit's body.
+static func center_of_part(plane: Array[Region], part: Part, fallback_cell: Vector2i) -> Vector2:
+	var best: Region = null
+	for region: Region in plane:
+		if region.body != part:
+			continue
+		if best == null or region.depth < best.depth:
+			best = region
+	if best == null:
+		return Vector2(fallback_cell.x, fallback_cell.y)
+	return best.rect.get_center()
+
+
 static func _offset(cell: Vector2i, origin: Vector2, dir: Vector2, perp: Vector2) -> Vector2:
 	var world := Vector2(cell.x, cell.y) - origin
 	return Vector2(world.dot(perp), world.dot(dir))

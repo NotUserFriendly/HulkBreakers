@@ -155,6 +155,48 @@ must get everyone to a team-coded tile, can't self-extract early (tb22 A); bout-
 side's extraction tiles on the *opposing* side, forcing the teams through each other (tb23 E1);
 pseudo-persistent hulks; loot overlap; deep strike.
 
+**Squad control gets an `UNASSIGNED` state** (tb31 B) — `SquadController` was a hard `{HUMAN, AI}`
+binary, so `CombatState.controller_for()`'s fallback had to silently pick a side (BR30.09's root
+cause). `UNASSIGNED` is now the zero-default; `BoutRunner._init()` hard-errors if any squad on the
+board is still unassigned when a runner is built, so an ill-defined bout can't run at all.
+`assign_all_to_human()` / `assign_rest_to_ai(human_squads)` are the visible authoring shortcuts that
+replaced the old hidden HUMAN default; `_seed_battle` assigns explicitly.
+
+**Every action arms from the bar the same way** (tb31 D) — `ActionDef.requires_target: bool` (two
+shapes) became `Enums.TargetingMode` (`BOARD`/`NONE`/`PART_PICKER`); `ActionBar` dispatches by mode, so
+overwatch (`NONE`, its first real UI call site) and repair (`PART_PICKER`) reach the bar directly
+instead of bolted-on `SquadControlOverlay` buttons. `ActionCatalog.ap_cost_for` extended to
+overwatch/repair — each had the same fixed-cost-vs-part-cost drift BR30.11 fixed for burst, caught on
+first wiring.
+
+**Wall occlusion cutout shader** (tb32 A) — replaces tb31 C's one-wall-at-a-time GDScript alpha-blend
+(`BoardView.WALL_FADE_ALPHA`/`_set_wall_alpha`) with a lit, per-fragment dithered `discard`
+(`wall_cutout.gdshader`, one shared `ShaderMaterial` for every wall). `BoardView.update_wall_cutout()`
+projects every unit in `wall_cutout_units` to a screen position/depth/tile-derived pixel radius
+(`WallLegibility.pixel_radius_for_tiles`, new pure helper) and feeds them as uniforms each frame; the
+shader decides per-fragment whether to discard. Cuts around every unit at once now, not one focal unit;
+spectator never feeds any units, so the cutout simply never fires there (unchanged, flagged as trivial
+to wire later). **Friendly-ghost fade in aiming view** (tb32 B) — a friendly standing between the
+camera and the active (shooter) unit gray-ghosts (heavier than the team-colored end-of-move ghost, its
+own `_friendly_fade_overlay` container so the two never clobber), reusing Pass A's
+`occludes_on_screen`/`pixel_radius_for_tiles` unchanged against `BoardView.aim_active_unit`; friendly-
+only, never the active unit, only while `tactics.aiming_at != null`.
+
+**`PartPicker`: target anything, not just enemies** (tb32 C) — a click can now resolve to a non-unit
+Part (`Enums.HitKind.PART`, new): scatter cover, a wall, a downed bot's shell, a loose field item, not
+just a live unit's own body (`Enums.HitKind.UNIT`, unchanged) or bare ground (`CELL`). `PartPicker.hit()`
+generalizes `UnitPicker` (still the unit-ray-test path underneath) to also ray-test every
+`Grid.blockers`/`field_items` Part via the same boxes `BoardView` renders
+(`UnitGeometry.assembly_placements`); `TacticsController.aiming_at` is now an `AimTarget` (unit-or-part
++ cell, `ShotPlane.center_of_part`/`UnitGeometry.bounding_sphere_for_part`/`CameraRig.
+ease_to_attack_framing`'s new sphere-Dictionary signature all branch on it) so the dartboard/camera
+frame a Part exactly like a Unit. This reaches all the way into RESOLUTION, not just the click: `Attack
+Action`/`BurstAction.is_legal()` no longer hard-require a live unit at `target_cell` — a blocker/field-
+item Part (`Grid.shootable_part_at`) is enough — `apply()` re-derives whichever is actually there and
+computes the aim point via `center_of_part` when there's no unit. Ranged weapons only this pass;
+`Stab`/`Slash`/`GrindAction` still require a real target Unit (`MeleeReach.distance_3d` needs one) — see
+PLAN.md's own follow-up note.
+
 ## Tooling, data & view
 
 **Data layer** (tb10/11) — all definitions in `.tres`; `DataLibrary` (res:// builtin + user://
@@ -343,12 +385,19 @@ entirely disjoint data: `LoS` reads only `grid.opacity` (correctly opaque for wa
 tactical aim/step-out decisions), while `ShotPlane.build()` only ever projects `state.units` and
 `state.grid.blockers` — never `opacity`. `MapGen` never wrote a `blockers` entry for WALL cells (only
 scattered cover got one), so a real wall had an opacity flag but no Part, no mesh, nothing in the shot
-plane — invisible to actual hit resolution even though it correctly gated the UI. `MapGen._stamp_wall_
-geometry()` (new, runs last in `generate()`) now gives every WALL cell bordering at least one non-WALL
-cell a real, indestructible `Part` (`data/parts/wall.tres`) in `grid.blockers`, matching docs/02's own
-"terrain is a Part flagged indestructible." Fully interior wall cells (no non-WALL neighbor) get no
-blocker — they can never be the nearest hit along any real ray, so skipping them is a pure perf win
-against `ShotPlane.build()`'s own unculled per-shot scan, not a behavior change.
+plane — invisible to actual hit resolution even though it correctly gated the UI. `MapGen` first gave
+every exposed WALL cell a `blockers` Part so a wall registered in the shot plane at all (BR30.10).
+**tb31 C then reworked the model** (`docs/SUPERSEDED.md`): a wall is now a **destructible** high-DT
+cover `Part` (`data/parts/wall.tres`) on an otherwise-passable `OPEN` tile — not an indestructible
+terrain flag — and the negative space past a wall's ring is a new `Enums.TerrainType.VOID`
+(non-navigable, opacity 0, no Part: a shot passes into it, nothing to hit). `Pathfinder.move_cost()`
+now clears a **destroyed** blocker (`hp <= 0`), so a blown wall — or any dead scatter cover — opens its
+tile to movement, one mechanism for both (mangle/rubble states deferred, `docs/PLAN.md`).
+`MapGen._finalize_walls_and_void()` resolves this in two passes (classify every cell's exposure
+against the untouched grid, then mutate) so exposure can't cascade through solid rock. **Wall
+legibility** (`WallLegibility`, `BoardView`) fades a wall occluding the player's selected unit —
+screen-space projection (`unproject_position` + depth), real alpha blend kept lit — so walls stop
+hiding the action without vanishing; VOID cells render black with a dark-gray border.
 
 **Fix: burst shown as affordable without enough AP; step-out silently dropped the shot (BR30.11)** —
 `ActionBar._can_afford()` compared AP against the providing weapon's plain `ap_cost` for every action
@@ -373,6 +422,13 @@ falls through to `BoardPicker.cell_at_ray` when a click misses every unit's own 
 
 **Transparency** (docs/08) — one `StatResolver`, provenance on every value, tooltip == damage from
 one call.
+
+**Control-surface consolidation** (tb31 A) — `TopLeftControls` (a shared `HBoxContainer`) is the one
+construction path for Inject / New Battle / Watch across `SpectatorOverlay` and `SquadControlOverlay`,
+where each overlay previously built its own copy; grouped top-left, clear of the debug panel's anchor.
+The keybindings display now defaults off, toggled by a `Keybindings` button alongside the existing
+H-key. Fixed a latent click-passthrough bug found while wiring it (the shared container's
+`mouse_filter` defaulted STOP, swallowing clicks in the gaps between buttons).
 
 ## Economy
 

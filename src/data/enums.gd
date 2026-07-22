@@ -116,6 +116,11 @@ enum TargetingMode {
 enum HitKind {
 	UNIT,
 	CELL,
+	## tb32 Pass C: a click resolved to a specific non-unit Part — scatter
+	## cover, a wall, a downed (matrixless) bot's own shell, or a loose
+	## field item — rather than a live unit's own body. Appended, not
+	## inserted, so no existing HitKind value renumbers.
+	PART,
 }
 
 ## docs/09 taskblock06 D1: RESOLUTION is a loop with re-entry now (TACTICS

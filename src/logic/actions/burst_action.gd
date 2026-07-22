@@ -61,8 +61,12 @@ func is_legal(state: CombatState) -> bool:
 
 	if not state.grid.in_bounds(target_cell):
 		return false
-	var target: Unit = _unit_at(state, target_cell)
-	if target == null:
+	# tb32 Pass C: a shot no longer requires a live unit at the target
+	# cell — a blocker/field-item Part (a wall, cover, a downed bot) is a
+	# legal target too, `PartPicker`'s new HitKind.PART. `apply()` below
+	# re-derives whichever one is actually there the same way it already
+	# re-derives `target`.
+	if _unit_at(state, target_cell) == null and state.grid.shootable_part_at(target_cell) == null:
 		return false
 
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
@@ -96,6 +100,11 @@ func apply(state: CombatState) -> void:
 		return
 
 	var target: Unit = _unit_at(state, target_cell)
+	# tb32 Pass C: no unit at the target cell — a blocker/field-item Part
+	# (already legal per is_legal() above) is what's actually being fired
+	# at, re-derived fresh from `state` the same "never a bare cached
+	# reference" way `target` itself always has been (docs/09).
+	var target_part: Part = null if target != null else state.grid.shootable_part_at(target_cell)
 	# taskblock-26 Pass A2 (re-fix): anchor the plane on the real muzzle
 	# position, not the shooter's bare cell center — see AttackAction's own
 	# doc comment for why (the visible/logged origin used to sit dead
@@ -109,7 +118,11 @@ func apply(state: CombatState) -> void:
 	# made half a burst read as firing backward.
 	var direction := Vector2(target_cell) - origin
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
-	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
+	var aim_point: Vector2 = (
+		ShotPlane.center_of(plane, target)
+		if target != null
+		else ShotPlane.center_of_part(plane, target_part, target_cell)
+	) + aim_offset
 	# taskblock-22 Pass H2: same self-obstruction check as AttackAction's
 	# own (see its doc comment) — computed once here too, since every
 	# pull in the burst reuses this same aim_point, a burst fired from
@@ -229,7 +242,7 @@ func apply(state: CombatState) -> void:
 
 	# Phase 6 placeholder, same as AttackAction: no living parts left
 	# disables the unit — Phase 7's real matrix-ejection rule supersedes.
-	if target.alive and target.shell.living_parts().is_empty():
+	if target != null and target.alive and target.shell.living_parts().is_empty():
 		state.kill_unit(target)
 
 	state.log_action(

@@ -257,7 +257,7 @@ func test_a_directly_visible_enemy_still_enters_ordinary_aim_mode() -> void:
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
-	assert_eq(controller.aiming_at, b)
+	assert_eq(controller.aiming_at.unit, b)
 	assert_null(controller.stepping_out_at, "a clear shot must never enter step-out mode")
 
 
@@ -326,7 +326,7 @@ func test_confirming_a_step_out_cell_after_a_prior_queued_move_still_queues_the_
 		controller.stepping_out_at, "step-out choice must resolve, not silently cancel back to null"
 	)
 	assert_eq(
-		controller.aiming_at,
+		controller.aiming_at.unit,
 		built.enemy,
 		"confirming must reach ordinary aim mode — a silent cancel leaves this null instead"
 	)
@@ -402,7 +402,7 @@ func test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_open
 	assert_null(
 		controller.stepping_out_at, "confirming the cell must leave step-out CELL-choice mode"
 	)
-	assert_eq(controller.aiming_at, built.enemy, "must hand off into ordinary aim mode")
+	assert_eq(controller.aiming_at.unit, built.enemy, "must hand off into ordinary aim mode")
 
 
 ## The full sequence: confirm the step-out cell (queues the free out-leg,
@@ -471,7 +471,7 @@ func test_any_click_while_stepping_out_confirms_the_cell_choice() -> void:
 
 	assert_null(controller.stepping_out_at)
 	assert_eq(controller.selection.current_queue().actions.size(), 1)
-	assert_eq(controller.aiming_at, built.enemy)
+	assert_eq(controller.aiming_at.unit, built.enemy)
 
 
 func test_esc_cancels_a_pending_step_out_without_queuing_anything() -> void:

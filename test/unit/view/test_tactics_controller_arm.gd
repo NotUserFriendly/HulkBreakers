@@ -144,7 +144,7 @@ func test_arming_shoot_then_clicking_an_enemy_enters_aim_at_that_enemy() -> void
 
 	controller.click_cell(Vector2i(5, 5))
 
-	assert_eq(controller.aiming_at, b)
+	assert_eq(controller.aiming_at.unit, b)
 
 
 ## Arming an id the selected unit has no provider for must not arm
@@ -265,7 +265,7 @@ func test_arming_while_already_aiming_is_a_no_op() -> void:
 	controller.arm_action(&"shoot")
 
 	assert_eq(controller.armed_action, armed_before)
-	assert_eq(controller.aiming_at, b, "still aiming — arming mid-aim must not disturb it")
+	assert_eq(controller.aiming_at.unit, b, "still aiming — arming mid-aim must not disturb it")
 
 
 ## ActionDef.targeting_mode != BOARD (overwatch is NONE) keeps arm_action

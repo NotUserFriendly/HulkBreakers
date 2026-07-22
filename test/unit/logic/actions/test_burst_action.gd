@@ -396,3 +396,22 @@ func test_landed_so_far_matches_the_actual_impact_count_at_the_end() -> void:
 	var pulls: Array[LogEvent] = sink.events_of_kind(&"burst_pull")
 	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
 	assert_eq(pulls[pulls.size() - 1].data.get("landed_so_far"), impacts.size())
+
+
+## tb32 Pass C: same fix as AttackAction — a burst can be declared against
+## a cell with no live unit, just a blocker, and must resolve against it
+## via ShotPlane.center_of_part rather than requiring a target Unit.
+func test_apply_resolves_a_declared_burst_against_a_blocker_with_no_unit_there() -> void:
+	var weapon := _make_chaingun()
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var grid := Grid.new(10, 10)
+	var wall: Part = DataLibrary.get_part(&"wall")
+	grid.blockers[Vector2i(3, 0)] = wall
+	var state := CombatState.new(grid, [shooter])
+
+	var action := BurstAction.new(shooter, &"chaingun", Vector2i(3, 0))
+	assert_true(action.is_legal(state), "a blocker Part at the target cell must be a legal target")
+
+	action.apply(state)
+
+	assert_lt(wall.hp, wall.max_hp, "a burst declared straight at the wall must actually damage it")

@@ -68,17 +68,16 @@ func test_aim_reticle_at_screen_points_the_reticle_at_the_cursors_own_target() -
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 	var aim: Dictionary = controller.aim_state()
+	var target: AimTarget = aim["target"]
 	var wanted_aim_point := Vector2(0.15, 0.2)
 	var world: Vector3 = AimPlaneGeometry.world_point(
-		(aim["shooter"] as Unit).cell, (aim["target"] as Unit).cell, wanted_aim_point
+		(aim["shooter"] as Unit).cell, target.cell, wanted_aim_point
 	)
 	var screen_pos: Vector2 = controller.camera.unproject_position(world)
 
 	controller.aim_reticle_at_screen(screen_pos)
 
-	var expected_offset: Vector2 = (
-		wanted_aim_point - ShotPlane.center_of(aim["plane"], aim["target"])
-	)
+	var expected_offset: Vector2 = wanted_aim_point - ShotPlane.center_of(aim["plane"], target.unit)
 	assert_almost_eq(controller.reticle_offset.x, expected_offset.x, 0.01)
 	assert_almost_eq(controller.reticle_offset.y, expected_offset.y, 0.01)
 

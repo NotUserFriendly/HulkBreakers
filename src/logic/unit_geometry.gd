@@ -104,9 +104,30 @@ static func _walk(
 static func bounding_sphere(unit: Unit, orientation_override: Variant = null) -> Dictionary:
 	var box_placements: Array[BoxPlacement] = placements(unit, orientation_override)
 	var origin: Vector3 = Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+	return _sphere_from_placements(box_placements, origin)
+
+
+## tb32 Pass C: the `bounding_sphere` counterpart for a bare blocker/
+## field-item Part (no owning Unit at all) — camera framing (`CameraRig.
+## ease_to_attack_framing`) needs the same `{center, radius}` shape to aim
+## at a wall/cover/downed object the way it already does a live unit.
+## Same "actual geometry, never a hardcoded size" reasoning as
+## `bounding_sphere` above, just from `assembly_placements` (the whole
+## part tree at `cell`) instead of a Unit's own oriented shell.
+static func bounding_sphere_for_part(part: Part, cell: Vector2i) -> Dictionary:
+	var box_placements: Array[BoxPlacement] = assembly_placements(part, cell)
+	var origin: Vector3 = Vector3(cell.x, 0.0, cell.y) * CELL_SIZE
+	return _sphere_from_placements(box_placements, origin)
+
+
+## Shared tail of `bounding_sphere`/`bounding_sphere_for_part` — `{center,
+## radius}` from a placement list's own world-space AABB, or a zero-radius
+## sphere at `origin` when there's no geometry at all to measure.
+static func _sphere_from_placements(
+	box_placements: Array[BoxPlacement], origin: Vector3
+) -> Dictionary:
 	if box_placements.is_empty():
 		return {"center": origin, "radius": 0.0}
-
 	var box: AABB = placements_aabb(box_placements)
 	return {"center": box.get_center(), "radius": box.size.length() * 0.5}
 

@@ -124,3 +124,35 @@ func test_line_symmetric_on_exact_diagonal() -> void:
 	var backward: Array[Vector2i] = Grid.line(b, a)
 	backward.reverse()
 	assert_eq(forward, backward)
+
+
+## tb32 Pass C: "something physical, but not a unit" — a PART hit-kind
+## target resolves fresh from Grid at RESOLUTION time.
+func test_shootable_part_at_returns_the_blocker_when_present() -> void:
+	var part := Part.new()
+	part.id = &"wall"
+	part.hp = 10
+	part.max_hp = 10
+	_grid.blockers[Vector2i(2, 2)] = part
+
+	assert_eq(_grid.shootable_part_at(Vector2i(2, 2)), part)
+
+
+func test_shootable_part_at_falls_back_to_the_first_loose_part_field_item() -> void:
+	var part := Part.new()
+	part.id = &"dropped_arm"
+	part.hp = 4
+	part.max_hp = 4
+	_grid.field_items[Vector2i(3, 3)] = [Matrix.new(), part]
+
+	assert_eq(_grid.shootable_part_at(Vector2i(3, 3)), part)
+
+
+func test_shootable_part_at_returns_null_for_a_loose_matrix_only() -> void:
+	_grid.field_items[Vector2i(1, 1)] = [Matrix.new()]
+
+	assert_null(_grid.shootable_part_at(Vector2i(1, 1)))
+
+
+func test_shootable_part_at_returns_null_with_nothing_at_the_cell() -> void:
+	assert_null(_grid.shootable_part_at(Vector2i(0, 0)))
