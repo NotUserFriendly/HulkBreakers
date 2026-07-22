@@ -26,6 +26,15 @@ func _setup(units: Array[Unit]) -> Dictionary:
 
 	var panel := QueuePanel.new()
 	var tree := Tree.new()
+	# BR27.08: matches the real production sizing (`squad_control_overlay.
+	# gd`'s own `queue_tree.custom_minimum_size`) -- an unsized bare Tree
+	# lays out too small, and `get_item_area_rect()` can report a row
+	# extending past the Tree's own visible rect, which a real click then
+	# legitimately misses (`Control.has_point()` says no) for a reason
+	# that has nothing to do with any real bug. Confirmed by hand before
+	# this was added: the exact same click test failed against a
+	# same-shaped but UNSIZED Tree, and passed once sized like this.
+	tree.custom_minimum_size = Vector2(320, 100)
 	var button := Button.new()
 	var tooltip_view := TooltipView.new()
 	add_child_autofree(panel)
@@ -43,9 +52,19 @@ func _setup(units: Array[Unit]) -> Dictionary:
 	}
 
 
-## Selects the Tree row at `index` and drives the same path a real click
-## does (Tree's own selection state, then the panel's own handler) without
-## needing a live viewport to deliver the click.
+## BR27.08: this does NOT drive "the same path a real click does" despite
+## what this comment used to claim -- it sets the Tree's own selection
+## state directly and then manually calls the panel's handler, skipping
+## the Tree's own hit-testing and its `item_selected` signal entirely. A
+## real click could, in principle, fail to reach the Tree at all (wrong
+## screen position, something else eating the input) while this helper
+## would still happily proceed -- it was never actually proof that the
+## click-to-select path itself works. Convenient for every test below that
+## only cares about marker/refresh behavior once a row IS selected, one
+## way or another. `test_a_real_click_on_a_queue_row_enables_resolve_to_
+## here` below is the one test that drives an actual synthetic click
+## through the real Viewport instead, and is what actually proves the path
+## this comment used to just assert.
 func _select_row(panel: QueuePanel, tree: Tree, index: int) -> void:
 	tree.get_root().get_child(index).select(QueuePanel.COL_WHAT)
 	panel._on_item_selected()
@@ -124,6 +143,61 @@ func test_the_enabled_state_is_a_pure_function_of_queue_and_marker() -> void:
 	panel._marker_index = 5  # out of range for a 1-entry queue
 	panel.refresh()
 	assert_true(button.disabled, "an out-of-range marker must never leave the button enabled")
+
+
+## BR27.08 ("Resolve to Here" reported grayed out and unclickable in real
+## play): every test above drives the marker through `_select_row()`,
+## documented as driving "the same path a real click does... without
+## needing a live viewport" -- an assumption never actually proven. A real
+## click has to go through the Tree's OWN hit-testing and emit
+## `item_selected` on its own; `.select()` + a manual `_on_item_selected()`
+## call skips that entirely. This pushes a genuine InputEventMouseButton at
+## the row's own real screen rect through the real Viewport -- the same
+## technique test_battle_scene_input.gd already uses for BR31.01 -- to
+## prove or disprove that the signal fires from an actual click.
+func test_a_real_click_on_a_queue_row_enables_resolve_to_here() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var tree: Tree = built.tree
+	var button: Button = built.button
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+	assert_true(button.disabled, "sanity: nothing selected yet")
+
+	# Anchored/laid-out Controls only resolve a real global_rect after a
+	# live frame runs (tb32 Pass D's own diagnostic note) -- read too early
+	# and this returns a garbage pre-layout rect.
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var item: TreeItem = tree.get_root().get_child(0)
+	var row_rect: Rect2 = tree.get_item_area_rect(item)
+	var screen_pos: Vector2 = (
+		tree.get_global_rect().position
+		+ row_rect.position
+		+ Vector2(row_rect.size.x / 2.0, row_rect.size.y / 2.0)
+	)
+
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = screen_pos
+	tree.get_viewport().push_input(down)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = screen_pos
+	tree.get_viewport().push_input(up)
+
+	assert_false(
+		button.disabled,
+		(
+			"a real click on a queue row must enable Resolve to Here -- "
+			+ "not just a manual .select() + _on_item_selected() call"
+		)
+	)
 
 
 func test_a_valid_marker_selects_the_matching_row_after_refresh() -> void:
