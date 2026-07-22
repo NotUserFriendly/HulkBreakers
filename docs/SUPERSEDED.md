@@ -39,6 +39,9 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 | Burst-only weapons enforced only as a UI convention (the action bar just never showed the button) | `is_legal` enforces `provides_actions` as a real engine rule | tb24 B |
 | Overwatch was assignable but the AI never actually considered/chose it — a stranded mechanic | the AI weighs and can hold overwatch through the same catalog seam the player's own action bar reads | tb24 C |
 | Step Out's own two automated legs cost real MP/AP, no discount ("the automation is in ASSEMBLY, not in cost") | both legs are free (`MoveAction.free`) — no MP/AP either direction, for the AI and the player alike | tb27 B2 |
+| Every squad defaults to `HUMAN` ("Control All Squads"); `CombatState.controller_for()` falls back to HUMAN for any unset squad | `SquadController.UNASSIGNED` is the zero-default; a bout **hard-errors at construction** if any squad on the board is unassigned; control is set explicitly (`assign_all_to_human`/`assign_rest_to_ai`) — no silent gameplay default | tb31 B |
+| Walls as **indestructible** terrain — "terrain is a Part flagged indestructible" (`docs/02`), the BR30.10 wall model (a `WALL`-terrain cell with an indestructible blocker) | a wall is **high-DT destructible cover** — a blocker `Part` on an otherwise-passable `OPEN` tile; negative space is a new `VOID` terrain fill; only the void past a wall is indestructible. (`Pathfinder` now also clears a destroyed blocker, walls and scatter cover alike) | BR30.10 → reversed tb31 C |
+| `ActionDef.requires_target: bool` — two targeting shapes (board-target, or not) | `Enums.TargetingMode` (`BOARD`/`NONE`/`PART_PICKER`); the action bar dispatches by mode and overwatch/repair reach the bar directly instead of bolted-on overlay buttons | tb31 D |
 
 ---
 
@@ -62,3 +65,7 @@ replaces `_fire`'s bespoke resolution with "construct and resolve the weapon's p
 action." Until then, overwatch works but off the shared path. *(The inherited backward-shot symptom,
 if/when it surfaces visually, is a BUG — file it separately; the parallel-path design itself is this
 reversal, not a bug.)*
+**tb31 D update:** overwatch got its first real UI call site (armable from the action bar via
+`TargetingMode.NONE` → `ActionCatalog.build_untargeted_action` → `OverwatchAction`), so it's no longer
+a stranded, UI-less mechanic — but `_fire`'s self-contained resolver is **still unchanged**. The
+parallel-resolver reversal above remains pending; only reachability changed, not resolution.
