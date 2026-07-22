@@ -2,7 +2,7 @@
 
 **The single place a bug's status lives.** New and resolved, with a rough report time and (for recent
 
-**Status legend:** `Active` = open · `Pending Confirmation` = fix complete, supervisor verification pending · `Resolved` = confirmed fixed.
+**Status legend:** `Active` = open · `Suspected` = a possible lead, not yet a confirmed/described bug (the reporter refines it into a real status at their review pass) · `Pending Confirmation` = fix complete, supervisor verification pending · `Resolved` = confirmed fixed.
 ones) the taskblock in play. Its job: **a resolved bug must have a closure marker here**, so an old
 report — still readable in `taskblock_done/`, still describing acceptance criteria — is never
 re-derived as open. If you fixed something, mark it RESOLVED here, even if the fix landed as a plain
@@ -127,6 +127,9 @@ confirm" roll-up — so pending items surface at a natural review point without 
   mode, a second click/`confirm_shot()` is what actually opens ordinary aim mode per the Pass B fix
   above) reading as "doesn't work" without a clear in-between visual cue — not yet investigated
   code-side. **BR27.01 stays open for this one remaining piece.**
+- **2026-07-22 (tb32 review — still reproduces):** unchanged — step-out after shooting still does not
+  open the dartboard immediately on the step-out; a second click is required. tb32 didn't touch this.
+  The one open piece (part 1) persists exactly as the 2026-07-21 repro describes.
 
 ### BR27.02 — Active — Chaingun bursts fire half-backward (visual only, hits are correct)  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
@@ -894,10 +897,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   shader at all (dummy/headless rendering never executes one), so every claim here was confirmed
   against a real, rendered build, not GUT.
 
-### BR32.03 — SUSPECTED (temporary tag — not one of the usual Active/Pending Confirmation/Resolved
-statuses; a placeholder for "logged as a possible lead, not yet a confirmed/described bug report."
-The supervisor will replace this with a real name/status at their own review pass) — Stray occlusion
-artifact possibly carries over across a bout transition  ·  source: `SUPERVISOR`
+### BR32.03 — Active — Wall cutout carries over across a bout transition; new units get none  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-22. The supervisor noticed BR32.01's own "stray culling, no unit there"
   symptom immediately on loading into the current bout — if extraction/debug-removal was the actual
   cause (BR32.01's own fix), it would have happened on a PRIOR bout, meaning something about that
@@ -910,6 +910,16 @@ artifact possibly carries over across a bout transition  ·  source: `SUPERVISOR
   paper, neither of BR32.01's two mechanisms should be able to survive a bout transition at all. If
   this reproduces again, that gap between "should be impossible" and "was observed" is the actual
   bug.
+- **2026-07-22 (supervisor review — confirmed, promoted Suspected→Active):** reproduces. The cutout
+  from the *prior* match persists into a new bout — old culling never cleared, and the new bout's own
+  units get no cutout at all (the only hole visible is the stale one). So it's not just a leftover: what
+  survives the transition also prevents the fresh feed from taking effect.
+- **Key diagnostic — clicking "Assume Control" snaps the culls to their proper location.** So the feed
+  isn't permanently broken, it's *stale until an event forces a re-read*: whatever Assume-Control does
+  (re-selects/re-projects the live units) is exactly the refresh the bout-load path is missing. Same
+  feed-timing family as **BR32.04** (cutout jumps to the resolved cell ahead of the move animation) —
+  both are "`update_wall_cutout()` reads/refreshes at the wrong moment." The bout-load path (and unit
+  spawn) needs to trigger the same re-feed Assume-Control already does.
 
 ### BR32.04 — Active — Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-22 (BR27.08 rebuild review). "On clicking resolve, cull position moves to the
@@ -930,6 +940,74 @@ artifact possibly carries over across a bout transition  ·  source: `SUPERVISOR
   animated/rendered position (or hold the old one) until the slide finishes, not the authoritative
   logical cell the instant it changes.
 - **Not yet reproduced or fixed.** Needs a live look, not guessed at further here.
+
+### BR32.05 — Active — Wall cutout cuts walls that aren't between camera and unit (coarse heuristic)  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb32 review). The cutout shape mostly works, but the *shape* is wrong at
+  the edges: looking at a unit with a wall **behind** them, a chunk is cut out of the top of that wall
+  even though it's ordered behind the unit; and the cut exposes the interior (wall-to-wall) textures
+  of each wall.
+- **This is BR32.02's explicitly-deferred facet, now the supervisor's review item.** BR32.02 fixed the
+  depth *source* so the cutout appears at all; this is the separate, deferred precision problem its
+  report flagged: the shader's occlusion test is a coarse single-scalar heuristic — "fragment nearer
+  the camera than the unit's reference depth AND within its screen-space radius" — with **no real 3D
+  ray / line-of-sight check** against the camera-to-unit line. A wall merely *near* a unit (adjacent,
+  or behind but close) satisfies both conditions by geometric coincidence, so walls that aren't
+  actually occluding get cut. Same root as the same-side over-cutting BR32.02 deferred (multiple
+  adjacent walls cut at once in a corridor).
+- **Candidate fixes (from BR32.02's own analysis, not yet chosen):** a real per-fragment ray/line-
+  segment test against the camera-to-unit line, or gate on the *angle* between camera→wall and
+  camera→unit rather than screen-space pixel distance + a bare depth compare.
+- **Interior-texture exposure** is a sub-symptom (the cut reveals unlit/placeholder wall interiors);
+  it may largely resolve once the shape is corrected, and is otherwise shader-pass polish, not worth
+  chasing separately before then.
+
+### BR32.06 — Resolved — Performance drop when orbiting the camera *and* a unit is selected  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb32 review). Framerate took a hit specifically when **both** were true:
+  camera orbiting **and** a unit selected. Either alone was fine.
+- **Resolved (supervisor-confirmed, 2026-07-22):** on re-check the hit is gone — it was incidentally
+  knocked out during the BR32.02 cutout/shader troubleshooting (the depth-source rewrite changed the
+  per-frame cutout work). Filed for the record; already fixed by the time it was written up. If aiming
+  FPS regresses again, it belongs with the standing BR26.02 (low fps while aiming), same path.
+
+### BR32.07 — Active — Burst at/through a wall aims, then silently fails (no AP, no queued action)  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb32 review). A shot **directed at a wall or through a wall** (both cases)
+  lets you aim the dartboard, then silently fails out — no AP spent, no action queued. Appears
+  **burst-specific**.
+- **Where to look:** tb32 Pass C made non-unit Parts targetable (`HitKind.PART`,
+  `Grid.shootable_part_at`) and Pass D routed burst through `TargetingMode`. `BurstAction` legality
+  now accepts a PART target, but the confirm/queue path silently no-ops for burst against a wall — the
+  aim succeeds (dartboard opens) but nothing commits. Likely `BurstAction.is_legal()`/`apply()`'s PART
+  branch (vs `AttackAction`'s) or the burst confirm path dropping the action. Contrast with single
+  shoot to isolate. Related in spirit to BR30.11 (burst step-out silently dropping the shot) — check
+  whether it's the same silent-drop seam, and whether the intent/outcome logging idea in PLAN would
+  have surfaced it.
+
+### BR32.08 — Suspected — Dead or knocked-out shells may have strange cutout behavior  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb32 review). Not observed directly — flagged as a likely edge case: a
+  dead or knocked-out shell may feed or interact with the wall-cutout oddly (still in
+  `CombatState.units`? still fed to the cutout? faded as a friendly? left with a stale cell like
+  BR32.01?).
+- **Suspected, not confirmed** — logged so it isn't lost; confirm/describe at a review pass. Shares
+  the unit-feed edge-case family with BR32.01 (extracted/removed) and BR32.03 (carryover).
+
+### BR32.09 — Active — Spectator: current-unit indicator jumps to the next unit before the active turn resolves  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb32 review, direct note). In spectator, the current-unit indicator
+  advances to the next unit before the active unit has finished resolving its entire turn.
+- **Likely the spectator-side sibling of BR27.07's ordering bug.** tb32 Pass D fixed the *player*-view
+  early-flip by deferring `apply_active_turn_highlight()` until after the resolution animation
+  (`SquadControlOverlay._on_turn_ended()`), but the spectator path wasn't touched — its indicator
+  still flips ahead of resolution. Apply the same defer-until-animation-finishes fix on the spectator
+  overlay's turn-end handler.
+
+### BR32.10 — Active — AI gets stuck on opposite sides of U-shaped / concave maps  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb32 review; long-standing — logged now, wasn't in the ledger). On
+  U-shaped / concave map geometry, opposing units end up stuck on opposite sides, unable to path
+  around to engage.
+- **Root is the known AI pathing gap, not a new defect.** `docs/PLAN.md` (Support & combat gaps): the
+  AI does single-turn reachability, not a genuine multi-turn shortest-path-to-nearest-LOS search — so
+  a concave wall between two units, where no single turn's reachable set reaches the other side, leaves
+  the AI with nothing to move toward. Same family as the AI line-of-fire gap. The real fix is the
+  multi-turn approach-pathing design in PLAN; this entry tracks the observable symptom against it.
 
 ---
 
