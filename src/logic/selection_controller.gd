@@ -170,6 +170,26 @@ func undo_last() -> bool:
 	return true
 
 
+## BR27.08 (supervisor follow-up): a partial resolve must not discard
+## everything still planned after the resolve point — only the prefix
+## that actually just resolved is gone; a player who only meant to lock
+## in the first few legs of a longer plan shouldn't lose the rest. Safe to
+## replay the SAME `CombatAction` objects unmodified: every action already
+## re-validates itself against whatever real `state` it's actually handed
+## at apply time (docs/09), and a queued `MoveAction`'s own `path[0]` was
+## always wherever the PRECEDING leg's own preview left the unit — exactly
+## where the real resolve just moved it to.
+func keep_queue_suffix(from_index: int) -> void:
+	if selected_unit == null:
+		return
+	var queue: ActionQueue = current_queue()
+	if queue == null:
+		return
+	var remaining := ActionQueue.new(selected_unit)
+	remaining.actions = queue.actions.slice(from_index)
+	_queues[selected_unit.id] = remaining
+
+
 ## docs/10 taskblock03 D4: "Reset Turn" — discard everything queued this
 ## TACTICS phase and restore the unit to exactly how it started. Unlike
 ## reset() (called once a turn actually resolves), this keeps the unit
@@ -193,13 +213,16 @@ func reset() -> void:
 
 
 ## docs/10 taskblock06 G2: "each entry: what, its cost, the running AP/MP
-## total after it." One entry per queued action, in order — `describe()`
-## for "what," and the unit's own ap/mp immediately after that action
-## resolves against a speculative preview. Replays exactly the way
-## ActionQueue.preview() already does (a fresh state.dup(), stepping
-## through `actions` in order) rather than inventing a per-action-type
-## cost accessor: this can never show a number "Resolve to Here" wouldn't
-## actually produce, because it's the same replay.
+## total after it." One entry per queued action, in order — `short_
+## describe()` for "what" (BR27.08 follow-up: the queue-row-safe label;
+## `describe()`'s own full text only rides along as "detail," and only
+## when it actually says more, so a hover tooltip can still show it
+## without every row paying for it), and the unit's own ap/mp immediately
+## after that action resolves against a speculative preview. Replays
+## exactly the way ActionQueue.preview() already does (a fresh state.dup(),
+## stepping through `actions` in order) rather than inventing a
+## per-action-type cost accessor: this can never show a number "Resolve to
+## Here" wouldn't actually produce, because it's the same replay.
 func queue_entries() -> Array[Dictionary]:
 	var queue: ActionQueue = current_queue()
 	if queue == null:
@@ -210,14 +233,14 @@ func queue_entries() -> Array[Dictionary]:
 		if action.is_legal(speculative):
 			action.apply(speculative)
 		var actual: Unit = speculative.find_unit(selected_unit.id)
-		(
-			entries
-			. append(
-				{
-					"describe": action.describe(),
-					"ap": actual.ap if actual != null else 0,
-					"mp": actual.mp if actual != null else 0.0,
-				}
-			)
-		)
+		var short: String = action.short_describe()
+		var full: String = action.describe()
+		var entry: Dictionary = {
+			"describe": short,
+			"ap": actual.ap if actual != null else 0,
+			"mp": actual.mp if actual != null else 0.0,
+		}
+		if full != short:
+			entry["detail"] = full
+		entries.append(entry)
 	return entries

@@ -223,3 +223,13 @@ func _finish(state: CombatState, actual: Unit, traversed: Array[Vector2i]) -> vo
 
 func describe() -> String:
 	return "MoveAction(unit=%d, path=%s)" % [unit.id, path]
+
+
+## BR27.08 (supervisor follow-up): the full path (`describe()` above)
+## grows without bound — a long queued move stretched the queue panel's
+## own readout across the whole display. The coordinates themselves still
+## reach the tooltip via `describe()`'s own full text (`SelectionController
+## .queue_entries()` surfaces it as hover detail whenever it differs from
+## this); the row itself just says what kind of action this is.
+func short_describe() -> String:
+	return "Move"

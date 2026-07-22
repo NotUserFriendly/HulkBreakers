@@ -1153,15 +1153,14 @@ func resolve_to_marker(marker_index: int) -> void:
 	selection.state.resolve_until(prefix, move_hooks.check)
 	selection.state.combat_log.remove_sink(sink)
 
-	# docs/10 taskblock06 G1: "then start queuing again" — reset_turn()
-	# (docs/10 taskblock03 D4) is exactly "erase the queue, keep the unit
-	# selected," the same bookkeeping a partial resolve needs; G3's own
-	# default (Reset Turn after a partial resolve returns to the resolve
-	# point, not turn start) falls out of this for free too, since
-	# reset_turn() only ever erases the queue — it never tracked "turn
-	# start" separately in the first place, so there's nothing left behind
-	# to roll further back to.
-	selection.reset_turn()
+	# BR27.08 (supervisor follow-up): "then start queuing again" used to
+	# mean reset_turn() — erase the WHOLE queue, prefix and suffix alike.
+	# Now only the resolved prefix is dropped; whatever was still queued
+	# past the marker survives, replayed against the just-updated real
+	# state. Reset Turn's own G3 default (returns to the resolve point,
+	# not turn start) is untouched — Reset Turn still erases the queue
+	# outright, kept-suffix included, same as it always has.
+	selection.keep_queue_suffix(marker_index + 1)
 	_drag_face_action = null
 	_refresh_overlay()
 	# input_locked stays true here — exactly like end_turn(), whoever plays

@@ -111,8 +111,15 @@ static func for_mp_pips(unit: Unit) -> TooltipData:
 	return data
 
 
+## BR27.08 (supervisor follow-up): `entry["detail"]` only rides along when
+## `SelectionController.queue_entries()` found something MORE to say than
+## the row's own short label already does (a `MoveAction`'s full path,
+## today) — surfaced here as a hover-only row rather than the row's own
+## always-visible text.
 static func for_queue_entry(entry: Dictionary) -> TooltipData:
 	var data := TooltipData.new(String(entry.get("describe", "")))
+	if entry.has("detail"):
+		data.add_row("Detail", String(entry.detail))
 	data.add_row("AP", str(entry.get("ap", 0)))
 	data.add_row("MP", str(entry.get("mp", 0.0)))
 	return data

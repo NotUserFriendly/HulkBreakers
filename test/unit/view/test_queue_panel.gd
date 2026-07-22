@@ -124,7 +124,12 @@ func test_a_real_click_on_a_rows_resolve_button_resolves_through_it() -> void:
 	_click_at(button.get_viewport(), button.get_global_rect().get_center())
 
 	assert_eq(a.cell, Vector2i(1, 0), "a real click on row 0's own button resolves only that leg")
-	assert_eq(rows_container.get_child_count(), 0, "the resolved queue is empty, no rows left")
+	# BR27.08 (supervisor follow-up): resolving an earlier point must keep
+	# whatever was queued after it -- only row 0 itself (the resolved
+	# prefix) is gone, the second leg survives as its own fresh row.
+	assert_eq(
+		rows_container.get_child_count(), 1, "the later-queued leg stays queued, not discarded"
+	)
 
 
 func test_a_real_click_on_the_second_rows_resolve_button_resolves_through_both() -> void:
@@ -144,6 +149,9 @@ func test_a_real_click_on_the_second_rows_resolve_button_resolves_through_both()
 	_click_at(button.get_viewport(), button.get_global_rect().get_center())
 
 	assert_eq(a.cell, Vector2i(2, 0), "row 1's own button resolves the whole prefix through it")
+	assert_eq(
+		rows_container.get_child_count(), 0, "nothing was queued past the last row to survive"
+	)
 
 
 ## Every row (button included) is destroyed and rebuilt fresh on every
