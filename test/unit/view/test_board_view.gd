@@ -460,11 +460,24 @@ func test_clear_overlays_removes_everything() -> void:
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)]])
 	view.show_unit_ghost(_torso_unit(Vector2i(0, 0)))
 	view.show_overwatch_arc([Vector2i(2, 2)])
+	var active := _torso_unit(Vector2i(2, 6), 0)
+	var blocker := _torso_unit(Vector2i(2, 3), 0)
+	view.wall_cutout_units = [active, blocker]
+	view.aim_active_unit = active
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(active).center, Vector3.UP)
+	view.update_friendly_fade(camera)
+	assert_eq(
+		view._friendly_fade_overlay.get_child_count(), 1, "sanity: fade populated before clearing"
+	)
 	view.clear_overlays()
 	assert_eq(view._reachable_overlay.get_child_count(), 0)
 	assert_eq(view._ghost_overlay.get_child_count(), 0)
 	assert_eq(view._unit_ghost_overlay.get_child_count(), 0)
 	assert_eq(view._overwatch_overlay.get_child_count(), 0)
+	assert_eq(view._friendly_fade_overlay.get_child_count(), 0)
 
 
 ## taskblock-19 Pass D: "a transparent pie slice... the slice shows
@@ -534,130 +547,6 @@ func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
 
 	assert_eq(view._ghost_overlay.get_child_count(), 4, "2 cell markers + 1 line + 1 label")
 	assert_eq(view._unit_ghost_overlay.get_child_count(), 1)
-
-
-## The wall's own real alpha, read back from its actual material — never
-## tb32 Pass A: replaces tb31 Pass C's per-wall alpha loop — the wall
-## mesh now shares ONE `ShaderMaterial` (`wall_cutout.gdshader`), fed a
-## per-unit screen position/depth/radius array every frame instead of
-## having its own alpha set directly. GUT can't read GPU discard output
-## back, so these tests read the UNIFORM VALUES `update_wall_cutout` fed
-## the material — the shader's own per-fragment logic is exercised by the
-## shader file itself, and its pure radius/depth math by
-## `test_wall_legibility.gd`.
-func _cutout_material(view: BoardView) -> ShaderMaterial:
-	var instance: MeshInstance3D = view._wall_mesh_instances[0]
-	return instance.mesh.material as ShaderMaterial
-
-
-func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void:
-	var grid := Grid.new(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
-	var view := BoardView.new()
-	add_child_autofree(view)
-	view.build(grid, DataLibrary.material_table())
-	assert_eq(view._wall_mesh_instances.size(), 1, "sanity: exactly one wall mesh spawned")
-
-	var unit := _torso_unit(Vector2i(2, 6))
-	view.wall_cutout_units = [unit]
-	var unit_position: Vector3 = UnitGeometry.bounding_sphere(unit).center
-
-	var camera := Camera3D.new()
-	add_child_autofree(camera)
-	camera.global_position = Vector3(2, 5, -5)
-	camera.look_at(unit_position, Vector3.UP)
-
-	view.update_wall_cutout(camera)
-
-	var material: ShaderMaterial = _cutout_material(view)
-	assert_eq(material.get_shader_parameter("unit_count"), 1)
-	var screen_positions: PackedVector2Array = material.get_shader_parameter(
-		"unit_screen_positions"
-	)
-	assert_almost_eq(
-		screen_positions[0].distance_to(camera.unproject_position(unit_position)),
-		0.0,
-		0.01,
-		"the fed screen position must be the unit's own real projection"
-	)
-	var depths: PackedFloat32Array = material.get_shader_parameter("unit_depths")
-	assert_almost_eq(
-		depths[0],
-		camera.global_position.distance_to(unit_position),
-		0.01,
-		"the fed depth must be the real camera-to-unit distance"
-	)
-	var radii: PackedFloat32Array = material.get_shader_parameter("unit_radii_px")
-	assert_gt(radii[0], 0.0, "a unit on screen must get a positive cutout radius")
-
-
-func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
-	var grid := Grid.new(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
-	var view := BoardView.new()
-	add_child_autofree(view)
-	view.build(grid, DataLibrary.material_table())
-	var camera := Camera3D.new()
-	add_child_autofree(camera)
-	camera.global_position = Vector3(2, 5, -5)
-	camera.look_at(Vector3(2, 0, 6), Vector3.UP)
-
-	view.update_wall_cutout(camera)
-
-	assert_eq(
-		_cutout_material(view).get_shader_parameter("unit_count"),
-		0,
-		"nothing to protect (no units fed, e.g. spectator view) — the shader must never cut"
-	)
-
-
-## "the hole scales with zoom" — a unit farther from the camera (same
-## tile-radius, greater depth) must project to a SMALLER pixel radius,
-## read back against a real `Camera3D`, not re-derived by hand.
-func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
-	var grid := Grid.new(5, 20)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
-	var view := BoardView.new()
-	add_child_autofree(view)
-	view.build(grid, DataLibrary.material_table())
-
-	var unit := _torso_unit(Vector2i(2, 6))
-	view.wall_cutout_units = [unit]
-	var unit_position: Vector3 = UnitGeometry.bounding_sphere(unit).center
-
-	var near_camera := Camera3D.new()
-	add_child_autofree(near_camera)
-	near_camera.global_position = Vector3(2, 5, -5)
-	near_camera.look_at(unit_position, Vector3.UP)
-	view.update_wall_cutout(near_camera)
-	var near_radius: float = (
-		_cutout_material(view).get_shader_parameter("unit_radii_px") as PackedFloat32Array
-	)[0]
-
-	var far_camera := Camera3D.new()
-	add_child_autofree(far_camera)
-	far_camera.global_position = Vector3(2, 15, -15)
-	far_camera.look_at(unit_position, Vector3.UP)
-	view.update_wall_cutout(far_camera)
-	var far_radius: float = (
-		_cutout_material(view).get_shader_parameter("unit_radii_px") as PackedFloat32Array
-	)[0]
-
-	assert_lt(far_radius, near_radius, "zoomed/panned further out must shrink the porthole")
-
-
-func test_wall_material_shading_path_is_unchanged_lit() -> void:
-	var grid := Grid.new(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
-	var view := BoardView.new()
-	add_child_autofree(view)
-	view.build(grid, DataLibrary.material_table())
-
-	var shader: Shader = _cutout_material(view).shader
-	assert_false(
-		"render_mode unshaded" in shader.code,
-		"docs/10: real geometry (walls) must stay lit, not switch to the unshaded overlay path"
-	)
 
 
 func test_overlays_never_touch_the_static_board() -> void:
