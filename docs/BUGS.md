@@ -648,7 +648,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   load, so neither of the mechanisms fixed here should be ABLE to survive a bout transition as
   currently understood — worth a real look, just not yet.
 
-### BR32.02 — Active (reopened) — Wall cutout never visibly appears near real units  ·  source: `SUPERVISOR`
+### BR32.02 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Wall cutout never visibly appears near real units  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-22 (same live-bout review as BR32.01). "I rotated the camera around the
   units, they were still in their original spawn locations, next to walls. No culling observed at
   all."
@@ -666,16 +666,36 @@ confirm" roll-up — so pending items surface at a natural review point without 
   rendering never executes a fragment shader) — only live, real rendering could have caught it, and
   did, twice. **The flip has been reverted** (`update_wall_cutout()` feeds `unproject_position()`'s
   own output unchanged).
-- **Still open, cause unknown:** with the (always-correct) unflipped coordinates now confirmed
-  restored, the ORIGINAL complaint — no cutout ever visibly appears near a real unit standing next to
-  a real wall — is still unexplained. Candidates not yet tested live: the per-fragment depth-compare
-  (`frag_depth >= unit_depths[i]`, using `length(VERTEX)`) may not behave as documented, the same way
-  `FRAGCOORD`'s own convention didn't; the shared `_wall_cutout_material` might not actually be
-  reaching real MapGen-generated walls; the uniform arrays might not be reaching the GPU at all for
-  some Godot-version-specific reason. Next planned diagnostic (not yet tried): hardcode the shader to
-  discard unconditionally whenever `unit_count > 0`, ignoring all per-fragment math — if a real wall
-  near a real unit doesn't even go fully invisible under that crude test, the uniform isn't reaching
-  the shader at all; if it does, the bug is narrowed to the depth/radius/distance math specifically.
+- **Second theory, tried and confirmed via a sequence of live diagnostic builds (all uncommitted,
+  shader-file-only, removed once each landed):**
+  1. Unconditional discard whenever `unit_count > 0` (ignoring all per-fragment math) made ALL walls
+     vanish, not just ones near units — expected, since every wall shares ONE material/uniform set;
+     confirmed the uniform data genuinely reaches the shader (not a wiring bug).
+  2. Disabling the depth-compare entirely produced a correctly-positioned, correctly-sized porthole
+     at every unit — confirmed the distance/radius/dither math is correct, and narrowed the bug to
+     depth-compare specifically.
+  3. Flipping the depth-compare direction (`<=` instead of `>=`) was wrong in BOTH directions — ruled
+     out a simple sign flip; the depth VALUE itself (`frag_depth = length(VERTEX)`) had to be wrong,
+     not just its comparison.
+  4. `VERTEX` is documented to already arrive in view space by the time `fragment()` reads it — that
+     documentation already failed once this investigation (`FRAGCOORD`'s own origin), and evidently
+     doesn't hold here either. Replaced with true view-space depth reconstructed directly from the
+     hardware depth buffer (`FRAGCOORD.z` + `INV_PROJECTION_MATRIX`, Godot's own standard recipe) —
+     confirmed live: culling from the correct side (wall genuinely between camera and unit) now works
+     as expected.
+- **Fix:** `wall_cutout.gdshader`'s `fragment()` now computes `frag_depth` via the depth-buffer
+  reconstruction above instead of `length(VERTEX)`. No GDScript changes needed — this was entirely a
+  shader-side depth source bug.
+- **Deferred, not a regression from this fix — logged, not chased further per instruction:** with the
+  camera and unit on the SAME side of a wall (nothing should occlude at all), the cutout still fires
+  and over-cuts neighboring wall segments, confirmed live via screenshot. See
+  `taskblock_done/Report-Taskblock32.md` for the fuller writeup and a candidate cause — likely
+  inherent to this shader's own 2D screen-space heuristic (nearer-than-unit + within-screen-radius),
+  not a new bug introduced by this fix.
+- **Both halves of this investigation (BR32.02's flip revert and this fix) were only possible because
+  the supervisor tested live and reported back precisely** — no headless test can exercise a fragment
+  shader at all (dummy/headless rendering never executes one), so every claim here was confirmed
+  against a real, rendered build, not GUT.
 
 ### BR32.03 — SUSPECTED (temporary tag — not one of the usual Active/Pending Confirmation/Resolved
 statuses; a placeholder for "logged as a possible lead, not yet a confirmed/described bug report."
