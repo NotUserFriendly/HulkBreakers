@@ -295,8 +295,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
   turn_ended()` now `await`s its `super` call, closing the compounding race. Every other existing
   caller (`advance_ai_turns`, `SpectatorOverlay`) keeps the old default (`apply_highlight` true, no
   deferral) unchanged.
+- **2026-07-22 (supervisor tweak):** "facing marker" means the WHOLE disk/facing-pip assembly (the
+  ground marker AND the wedge together), not the wedge alone — the first pass only toggled the
+  wedge's own visibility, leaving every unit's ground disk always showing regardless of whose turn
+  it is. `set_active_turn()` now toggles both `_team_marker.visible` and `_facing_wedge.visible`
+  together.
 
-### BR27.08 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
+### BR27.08 — Active — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (logged now; long-standing — backburnered since the button's introduction).
   The "Resolve to here" turn-control (resolve queued actions up to a chosen point) has never
   functioned. Logged here now that the ledger exists so it stops being an untracked known-broken.
@@ -317,6 +322,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
   no-ops. Nothing changed; this looks like it was already fixed by `888a25f` and the ledger simply
   never caught up. Marked pending, not `RESOLVED` outright, per the provenance gate (SUPERVISOR-sourced) —
   needs the supervisor to actually click the button and confirm.
+- **2026-07-22 (supervisor correction): still active — the prior "already fixed" call was wrong.**
+  `resolve_to_marker()` working correctly when called directly proves the RESOLUTION logic is fine,
+  but says nothing about whether a real player can ever get a `_marker_index` set in the first place
+  through the actual `QueuePanel` UI — that path was never exercised, in this session or (per
+  `test_queue_panel.gd`) apparently ever with a real queue-then-resolve assertion. Re-opening for a
+  real investigation of the click-to-select-a-row → `_marker_index` → resolve-button-enabled chain,
+  not just the logic `resolve_to_marker()` itself already had coverage for.
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or
@@ -565,7 +577,8 @@ confirm" roll-up — so pending items surface at a natural review point without 
 
 ---
 
-### BR31.01 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Bottom-right turn controls and tooltip popups fight over clicks  ·  source: `SUPERVISOR`
+### BR31.01 — RESOLVED — Bottom-right turn controls and tooltip popups fight over clicks  ·  source: `SUPERVISOR`
+- **Confirmed fixed by the supervisor (2026-07-22).**
 - **Reported:** 2026-07-22 (tb31 review), long-standing: "the controls on the bottom right of the
   player view don't block the tooltip popups, making them difficult to click."
 - **Symptom (supervisor's words, exact interaction TBC before fixing):** the bottom-right controls

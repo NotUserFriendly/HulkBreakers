@@ -108,6 +108,63 @@ func _ready() -> void:
 	new_battle(DEFAULT_SEED)
 
 
+## tb32 Pass B: "a friendly unit standing between the camera and your
+## active unit... fade it." Lives here, not `BoardView`, because the
+## actual fade applies to a friendly's own `HitVolumeView` (its real
+## rendered body, `HitVolumeView.set_occlusion_faded` — see that doc
+## comment for why a separate ghost overlay wasn't enough) and only
+## `BattleScene` holds both the live camera (via `board_view`) and
+## `unit_views`. Re-evaluated every frame — the camera can move
+## continuously (drag-to-orbit) with no signal of its own to react to,
+## same reasoning `BoardView.update_wall_cutout` already established.
+func _process(_delta: float) -> void:
+	var camera: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	var occluding: Array[Unit] = _occluding_friendlies(camera)
+	for view: HitVolumeView in unit_views:
+		view.set_occlusion_faded(view.unit != null and view.unit in occluding)
+
+
+## Every OTHER unit sharing `board_view.aim_active_unit`'s own squad that
+## currently sits within `BoardView.OCCLUSION_RADIUS_TILES` of, and
+## nearer the camera than, the active unit — reuses `WallLegibility.
+## occludes_on_screen`/`pixel_radius_for_tiles` unchanged, the same
+## screen-space-and-nearer test the wall cutout shader's own per-unit
+## radius uses, just against `aim_active_unit` instead of a wall.
+func _occluding_friendlies(camera: Camera3D) -> Array[Unit]:
+	var result: Array[Unit] = []
+	var active: Unit = board_view.aim_active_unit if board_view != null else null
+	if camera == null or active == null or not is_instance_valid(active):
+		return result
+	var active_position: Vector3 = UnitGeometry.bounding_sphere(active).center
+	if camera.is_position_behind(active_position):
+		return result
+	var camera_position: Vector3 = camera.global_position
+	var active_screen: Vector2 = camera.unproject_position(active_position)
+	var active_depth: float = camera_position.distance_to(active_position)
+	var viewport_height: float = float(get_viewport().size.y)
+	var radius: float = WallLegibility.pixel_radius_for_tiles(
+		BoardView.OCCLUSION_RADIUS_TILES, active_depth, camera.fov, viewport_height
+	)
+	for unit: Unit in board_view.wall_cutout_units:
+		if unit == null or not is_instance_valid(unit) or unit == active:
+			continue
+		if unit.squad_id != active.squad_id:
+			continue
+		var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
+		if camera.is_position_behind(position):
+			continue
+		var occludes: bool = WallLegibility.occludes_on_screen(
+			camera.unproject_position(position),
+			camera_position.distance_to(position),
+			active_screen,
+			active_depth,
+			radius
+		)
+		if occludes:
+			result.append(unit)
+	return result
+
+
 ## docs/09 taskblock06 Pass I1: "toggleable" — flips every HitVolumeView's
 ## own overlay together, the same "one flag, every unit" scope
 ## ControlsOverlay's own H-key toggle already uses for the help legend.

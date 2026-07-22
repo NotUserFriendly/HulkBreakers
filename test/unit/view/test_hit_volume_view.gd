@@ -309,23 +309,27 @@ func test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker() -> vo
 
 ## tb32 Pass D (BR27.07): "only the current unit shows a facing marker at
 ## all — the marker's presence indicates whose turn it is, not a color."
-## Supersedes tb27 D2's own recolor — set_active_turn now toggles the
-## wedge's own visibility instead; the ground marker is never tinted for
-## this at all anymore (plain team/selected color only).
-func test_set_active_turn_true_shows_the_facing_wedge() -> void:
+## Supervisor clarification: "facing marker" means the WHOLE disk/facing-
+## pip assembly (ground disk + wedge together), not the wedge alone —
+## set_active_turn toggles both's visibility; neither is tinted for this
+## anymore (plain team/selected color only).
+func test_set_active_turn_true_shows_the_whole_disk_and_wedge_assembly() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, DataLibrary.material_table())
+	var marker: MeshInstance3D = view.get_child(0)
 	var wedge: MeshInstance3D = view.get_child(1)
+	marker.visible = false
 	wedge.visible = false
 
 	view.set_active_turn(true)
 
+	assert_true(marker.visible)
 	assert_true(wedge.visible)
 
 
-func test_set_active_turn_false_hides_the_facing_wedge() -> void:
+func test_set_active_turn_false_hides_the_whole_disk_and_wedge_assembly() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
@@ -334,7 +338,9 @@ func test_set_active_turn_false_hides_the_facing_wedge() -> void:
 	view.set_active_turn(true)
 	view.set_active_turn(false)
 
+	var marker: MeshInstance3D = view.get_child(0)
 	var wedge: MeshInstance3D = view.get_child(1)
+	assert_false(marker.visible, "only the current unit shows a facing marker at all")
 	assert_false(wedge.visible, "only the current unit shows a facing marker at all")
 
 
@@ -360,8 +366,93 @@ func test_refresh_reapplies_the_last_active_turn_visibility() -> void:
 
 	view.refresh()
 
+	var marker: MeshInstance3D = view.get_child(0)
 	var wedge: MeshInstance3D = view.get_child(1)
+	assert_true(marker.visible, "a mid-turn refresh must not flash a non-active marker visible")
 	assert_true(wedge.visible, "a mid-turn refresh must not flash a non-active wedge visible")
+
+
+## tb32 Pass B (corrected design): the fade applies to this unit's own
+## REAL body mesh — not a separate ghost drawn elsewhere, which left the
+## real body fully opaque underneath a barely-visible decoy (confirmed
+## live to read as "something faint happening," not an actual fade).
+func test_set_occlusion_faded_true_applies_a_translucent_gray_override() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+	var torso_mesh: MeshInstance3D = view.get_child(2)
+	assert_null(torso_mesh.material_override, "sanity: nothing overridden yet")
+
+	view.set_occlusion_faded(true)
+
+	var material: StandardMaterial3D = torso_mesh.material_override
+	assert_not_null(material, "the real body mesh must get a material_override")
+	assert_eq(material.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA)
+	assert_almost_eq(material.albedo_color.a, HitVolumeView.OCCLUSION_FADE_ALPHA, 0.001)
+	var team_color: Color = WorldPalette.team_color(0)
+	assert_ne(
+		Vector3(material.albedo_color.r, material.albedo_color.g, material.albedo_color.b),
+		Vector3(team_color.r, team_color.g, team_color.b),
+		"must be gray-tinted, not the team color"
+	)
+
+
+func test_set_occlusion_faded_false_clears_the_override() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+	view.set_occlusion_faded(true)
+
+	view.set_occlusion_faded(false)
+
+	var torso_mesh: MeshInstance3D = view.get_child(2)
+	assert_null(torso_mesh.material_override, "clearing the fade must restore the real material")
+
+
+## `highlight_part()`'s own next_pass chain lives on `mesh.material`, not
+## `material_override` — the two must never fight.
+func test_occlusion_fade_never_touches_the_ground_marker_or_wedge() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+	var marker: MeshInstance3D = view.get_child(0)
+	var wedge: MeshInstance3D = view.get_child(1)
+	# Both already carry their OWN material_override from construction
+	# (`_build_team_marker`/`_build_facing_wedge`) — the fade must leave
+	# those exact resources alone, not merely "some material or other."
+	var marker_material_before: Material = marker.material_override
+	var wedge_material_before: Material = wedge.material_override
+
+	view.set_occlusion_faded(true)
+
+	assert_eq(
+		marker.material_override,
+		marker_material_before,
+		"the marker keeps its own team/active-turn material untouched"
+	)
+	assert_eq(
+		wedge.material_override,
+		wedge_material_before,
+		"the wedge is never touched by the occlusion fade"
+	)
+
+
+func test_refresh_reapplies_a_live_occlusion_fade() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+	view.set_occlusion_faded(true)
+
+	view.refresh()
+
+	var torso_mesh: MeshInstance3D = view.get_child(2)
+	assert_not_null(
+		torso_mesh.material_override, "a mid-fade refresh must not flash the real material back"
+	)
 
 
 func test_a_downed_unit_kills_its_facing_wedge() -> void:

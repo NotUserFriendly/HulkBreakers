@@ -148,18 +148,6 @@ const OCCLUSION_RADIUS_TILES := 2.5
 ## this simply stops feeding the excess to the cutout (they'd still be
 ## visible, just not cut through a wall for).
 const WALL_CUTOUT_MAX_UNITS := 32
-## tb32 Pass B: gray = "faded so you can see past it" — deliberately
-## distinct from `UNIT_GHOST_ALPHA`'s own team-colored "this is where the
-## queued move ends" ghost, so a see-through friendly never reads as a
-## preview of intent (the taskblock's own convention: team-color ghost =
-## current unit, gray ghost = faded-for-visibility).
-const FRIENDLY_FADE_COLOR := Color(0.5, 0.5, 0.5)
-## Heavier than `UNIT_GHOST_ALPHA` (0.35) — this only ever fires for a
-## friendly you're not controlling, facing away from, so there's nothing
-## about it worth assessing; pure occlusion removal, unlike the wall
-## cutout (still real geometry you might want to read). Flagged, tunable
-## (CLAUDE.md: never invent a "final" balance number).
-const FRIENDLY_FADE_ALPHA := 0.12
 
 var grid: Grid
 ## tb32 Pass A: "cut around every unit, not one focal unit." Whichever
@@ -179,8 +167,13 @@ var wall_cutout_units: Array[Unit] = []
 ## read of its shot is worth protecting RIGHT NOW (`selection.
 ## selected_unit`, not `aiming_at` — the target). Null whenever the
 ## player isn't both aiming AND has a unit selected, so the friendly-fade
-## check below simply never fires outside that view (`SquadControlOverlay
-## ._on_selection_changed()` owns exactly when this is set/cleared).
+## check simply never fires outside that view (`SquadControlOverlay
+## ._on_selection_changed()` owns exactly when this is set/cleared). Read
+## by `BattleScene._process()` — the actual per-unit occlusion decision
+## and fade live on `HitVolumeView` itself now (a real body fade, not a
+## ghost overlay drawn elsewhere; see `HitVolumeView.set_occlusion_faded`'s
+## own doc comment for why), and BoardView has no reference to any
+## HitVolumeView to call that on directly.
 var aim_active_unit: Unit = null
 
 var _static: Node3D
@@ -194,12 +187,6 @@ var _unit_ghost_overlay: Node3D
 ## taskblock-19 Pass D: the visible-overwatch pie slice — its own
 ## container, same reasoning as `_unit_ghost_overlay`.
 var _overwatch_overlay: Node3D
-## tb32 Pass B: the gray friendly-fade ghost(s) — its OWN container, not
-## `_unit_ghost_overlay` (the team-colored end-of-queued-move ghost can be
-## live for the ACTIVE unit at the exact same time a DIFFERENT friendly is
-## faded for occlusion; sharing one container would have either clobber
-## the other every frame).
-var _friendly_fade_overlay: Node3D
 ## tb31 Pass C: every wall's own `MeshInstance3D`(s), tracked separately
 ## from ordinary scatter-cover meshes (`_spawn_blocker` below) so
 ## `_process()` only ever re-evaluates the (usually much smaller) set of
@@ -227,8 +214,6 @@ func _init() -> void:
 	add_child(_unit_ghost_overlay)
 	_overwatch_overlay = Node3D.new()
 	add_child(_overwatch_overlay)
-	_friendly_fade_overlay = Node3D.new()
-	add_child(_friendly_fade_overlay)
 
 
 ## taskblock-22 Pass A3: `team_extraction_cells` (squad_id -> Array[Vector2i],
@@ -522,13 +507,9 @@ func update_wall_cutout(camera: Camera3D) -> void:
 
 
 func _process(_delta: float) -> void:
-	var camera: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
-	if not _wall_mesh_instances.is_empty():
-		update_wall_cutout(camera)
-	# tb32 Pass B: unconditional — `update_friendly_fade` itself is a
-	# no-op fast-path whenever `aim_active_unit` is null (not aiming),
-	# same as `update_wall_cutout`'s own null-camera/no-target early exit.
-	update_friendly_fade(camera)
+	if _wall_mesh_instances.is_empty():
+		return
+	update_wall_cutout(get_viewport().get_camera_3d() if is_inside_tree() else null)
 
 
 ## The reachable-cell highlight (docs/10 Phase 12.2) — one flat marker per
@@ -584,10 +565,8 @@ func show_unit_ghost(previewed_unit: Unit) -> void:
 		_unit_ghost_overlay.add_child(box)
 
 
-## tb32 Pass B: "reuse the existing translucent path" — the same
-## per-placement translucent-box construction `show_unit_ghost` already
-## uses, factored out so `update_friendly_fade` (gray, its own container)
-## can share it without either clobbering the other's overlay.
+## The per-placement translucent-box construction `show_unit_ghost` uses
+## for its own team-colored end-of-move ghost.
 static func _ghost_boxes(unit: Unit, color: Color) -> Array[MeshInstance3D]:
 	var boxes: Array[MeshInstance3D] = []
 	for placement: BoxPlacement in UnitGeometry.placements(unit):
@@ -620,60 +599,11 @@ func show_overwatch_arc(cells: Array[Vector2i]) -> void:
 		_overwatch_overlay.add_child(instance)
 
 
-## tb32 Pass B: "a friendly unit standing between the camera and your
-## active unit... fade it." Reuses `WallLegibility.occludes_on_screen`
-## unchanged — same screen-space-and-nearer test the wall cutout's own
-## per-unit radius uses (`OCCLUSION_RADIUS_TILES`), just against
-## `aim_active_unit` instead of a wall. Gated to FRIENDLY units only
-## (matching squad_id) and never the active unit itself; heavier/grayer
-## than `show_unit_ghost`'s own team-colored ghost, and its own container
-## (`_friendly_fade_overlay`) so the two can coexist. Re-evaluated every
-## frame (`_process`, below) — same "camera can move with no signal of
-## its own" reasoning `update_wall_cutout` already established, and a
-## real-camera test can drive this directly (docs/10 standing rule 2).
-func update_friendly_fade(camera: Camera3D) -> void:
-	_clear(_friendly_fade_overlay)
-	if camera == null or aim_active_unit == null or not is_instance_valid(aim_active_unit):
-		return
-	var active_position: Vector3 = UnitGeometry.bounding_sphere(aim_active_unit).center
-	if camera.is_position_behind(active_position):
-		return
-	var camera_position: Vector3 = camera.global_position
-	var active_screen: Vector2 = camera.unproject_position(active_position)
-	var active_depth: float = camera_position.distance_to(active_position)
-	var viewport_height: float = float(get_viewport().size.y) if is_inside_tree() else 0.0
-	var radius: float = WallLegibility.pixel_radius_for_tiles(
-		OCCLUSION_RADIUS_TILES, active_depth, camera.fov, viewport_height
-	)
-	var color := Color(
-		FRIENDLY_FADE_COLOR.r, FRIENDLY_FADE_COLOR.g, FRIENDLY_FADE_COLOR.b, FRIENDLY_FADE_ALPHA
-	)
-	for unit: Unit in wall_cutout_units:
-		if unit == null or not is_instance_valid(unit) or unit == aim_active_unit:
-			continue
-		if unit.squad_id != aim_active_unit.squad_id:
-			continue
-		var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
-		if camera.is_position_behind(position):
-			continue
-		var occludes: bool = WallLegibility.occludes_on_screen(
-			camera.unproject_position(position),
-			camera_position.distance_to(position),
-			active_screen,
-			active_depth,
-			radius
-		)
-		if occludes:
-			for box: MeshInstance3D in _ghost_boxes(unit, color):
-				_friendly_fade_overlay.add_child(box)
-
-
 func clear_overlays() -> void:
 	_clear(_reachable_overlay)
 	_clear(_ghost_overlay)
 	_clear(_overwatch_overlay)
 	_clear(_unit_ghost_overlay)
-	_clear(_friendly_fade_overlay)
 
 
 ## A distinct polyline through one leg's cells (docs/10 taskblock03 D2) — a
