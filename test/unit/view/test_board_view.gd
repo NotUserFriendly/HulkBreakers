@@ -537,23 +537,20 @@ func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
 
 
 ## The wall's own real alpha, read back from its actual material — never
-## re-derive `_set_wall_alpha`'s own logic here, just read what it did.
-func _wall_alpha(instance: MeshInstance3D) -> float:
-	var material: StandardMaterial3D = instance.mesh.material
-	return material.albedo_color.a
+## tb32 Pass A: replaces tb31 Pass C's per-wall alpha loop — the wall
+## mesh now shares ONE `ShaderMaterial` (`wall_cutout.gdshader`), fed a
+## per-unit screen position/depth/radius array every frame instead of
+## having its own alpha set directly. GUT can't read GPU discard output
+## back, so these tests read the UNIFORM VALUES `update_wall_cutout` fed
+## the material — the shader's own per-fragment logic is exercised by the
+## shader file itself, and its pure radius/depth math by
+## `test_wall_legibility.gd`.
+func _cutout_material(view: BoardView) -> ShaderMaterial:
+	var instance: MeshInstance3D = view._wall_mesh_instances[0]
+	return instance.mesh.material as ShaderMaterial
 
 
-## tb31 Pass C: "walls must not block the player's read of the action
-## behind them." Real `Camera3D`/`Unit` nodes, read back per docs/10
-## standing rule 2 — never re-derive the occlusion math a second time
-## here, that's `test_wall_legibility.gd`'s own job. SCREEN-space
-## (camera.unproject_position()), not world-distance-from-a-ray: the
-## tactical camera sits well above/back from the board, so the wall is
-## placed roughly along the real camera-to-focal line of sight, not
-## merely "somewhere between them in world Z." Real alpha blending
-## (`_wall_alpha`), not `GeometryInstance3D.transparency` — see
-## `BoardView.WALL_FADE_ALPHA`'s own doc comment for why.
-func test_update_wall_legibility_fades_a_wall_between_camera_and_the_focal_unit() -> void:
+func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void:
 	var grid := Grid.new(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
@@ -561,32 +558,40 @@ func test_update_wall_legibility_fades_a_wall_between_camera_and_the_focal_unit(
 	view.build(grid, DataLibrary.material_table())
 	assert_eq(view._wall_mesh_instances.size(), 1, "sanity: exactly one wall mesh spawned")
 
-	var focal := _torso_unit(Vector2i(2, 6))
-	view.focal_unit = focal
-	var focal_position: Vector3 = UnitGeometry.bounding_sphere(focal).center
+	var unit := _torso_unit(Vector2i(2, 6))
+	view.wall_cutout_units = [unit]
+	var unit_position: Vector3 = UnitGeometry.bounding_sphere(unit).center
 
 	var camera := Camera3D.new()
 	add_child_autofree(camera)
 	camera.global_position = Vector3(2, 5, -5)
-	camera.look_at(focal_position, Vector3.UP)
+	camera.look_at(unit_position, Vector3.UP)
 
-	view.update_wall_legibility(camera)
+	view.update_wall_cutout(camera)
 
-	var instance: MeshInstance3D = view._wall_mesh_instances[0]
+	var material: ShaderMaterial = _cutout_material(view)
+	assert_eq(material.get_shader_parameter("unit_count"), 1)
+	var screen_positions: PackedVector2Array = material.get_shader_parameter(
+		"unit_screen_positions"
+	)
 	assert_almost_eq(
-		_wall_alpha(instance),
-		BoardView.WALL_FADE_ALPHA,
-		0.001,
-		"the wall standing on the camera's own line of sight to the focal unit must fade"
+		screen_positions[0].distance_to(camera.unproject_position(unit_position)),
+		0.0,
+		0.01,
+		"the fed screen position must be the unit's own real projection"
 	)
-	assert_eq(
-		(instance.mesh.material as StandardMaterial3D).transparency,
-		BaseMaterial3D.TRANSPARENCY_ALPHA,
-		"must actually alpha-blend, not just carry a low alpha with blending off"
+	var depths: PackedFloat32Array = material.get_shader_parameter("unit_depths")
+	assert_almost_eq(
+		depths[0],
+		camera.global_position.distance_to(unit_position),
+		0.01,
+		"the fed depth must be the real camera-to-unit distance"
 	)
+	var radii: PackedFloat32Array = material.get_shader_parameter("unit_radii_px")
+	assert_gt(radii[0], 0.0, "a unit on screen must get a positive cutout radius")
 
 
-func test_update_wall_legibility_leaves_walls_opaque_with_no_focal_unit() -> void:
+func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
 	var grid := Grid.new(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
@@ -597,40 +602,61 @@ func test_update_wall_legibility_leaves_walls_opaque_with_no_focal_unit() -> voi
 	camera.global_position = Vector3(2, 5, -5)
 	camera.look_at(Vector3(2, 0, 6), Vector3.UP)
 
-	view.update_wall_legibility(camera)
+	view.update_wall_cutout(camera)
 
 	assert_eq(
-		_wall_alpha(view._wall_mesh_instances[0]),
-		1.0,
-		"nothing to protect (no focal unit) — a wall must never fade"
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		0,
+		"nothing to protect (no units fed, e.g. spectator view) — the shader must never cut"
 	)
 
 
-## A wall well off the focal unit's own screen position (a totally
-## different part of the board) must stay opaque, not fade just because
-## SOME wall exists somewhere.
-func test_update_wall_legibility_leaves_an_unrelated_wall_opaque() -> void:
-	var grid := Grid.new(30, 8)
-	grid.blockers[Vector2i(25, 0)] = DataLibrary.get_part(&"wall")
+## "the hole scales with zoom" — a unit farther from the camera (same
+## tile-radius, greater depth) must project to a SMALLER pixel radius,
+## read back against a real `Camera3D`, not re-derived by hand.
+func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
+	var grid := Grid.new(5, 20)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
 
-	var focal := _torso_unit(Vector2i(2, 6))
-	view.focal_unit = focal
-	var focal_position: Vector3 = UnitGeometry.bounding_sphere(focal).center
+	var unit := _torso_unit(Vector2i(2, 6))
+	view.wall_cutout_units = [unit]
+	var unit_position: Vector3 = UnitGeometry.bounding_sphere(unit).center
 
-	var camera := Camera3D.new()
-	add_child_autofree(camera)
-	camera.global_position = Vector3(2, 5, -5)
-	camera.look_at(focal_position, Vector3.UP)
+	var near_camera := Camera3D.new()
+	add_child_autofree(near_camera)
+	near_camera.global_position = Vector3(2, 5, -5)
+	near_camera.look_at(unit_position, Vector3.UP)
+	view.update_wall_cutout(near_camera)
+	var near_radius: float = (
+		_cutout_material(view).get_shader_parameter("unit_radii_px") as PackedFloat32Array
+	)[0]
 
-	view.update_wall_legibility(camera)
+	var far_camera := Camera3D.new()
+	add_child_autofree(far_camera)
+	far_camera.global_position = Vector3(2, 15, -15)
+	far_camera.look_at(unit_position, Vector3.UP)
+	view.update_wall_cutout(far_camera)
+	var far_radius: float = (
+		_cutout_material(view).get_shader_parameter("unit_radii_px") as PackedFloat32Array
+	)[0]
 
-	assert_eq(
-		_wall_alpha(view._wall_mesh_instances[0]),
-		1.0,
-		"a wall nowhere near the focal unit's own screen position must not fade"
+	assert_lt(far_radius, near_radius, "zoomed/panned further out must shrink the porthole")
+
+
+func test_wall_material_shading_path_is_unchanged_lit() -> void:
+	var grid := Grid.new(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var shader: Shader = _cutout_material(view).shader
+	assert_false(
+		"render_mode unshaded" in shader.code,
+		"docs/10: real geometry (walls) must stay lit, not switch to the unshaded overlay path"
 	)
 
 

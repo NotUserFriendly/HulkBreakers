@@ -49,3 +49,28 @@ func test_a_wall_just_outside_the_screen_radius_does_not_occlude() -> void:
 	var focal_screen := Vector2(100, 100)
 	var wall_screen := Vector2(100, 121)  # 21px away
 	assert_false(WallLegibility.occludes_on_screen(wall_screen, 5.0, focal_screen, 10.0, 20.0))
+
+
+## tb32 Pass A: `pixel_radius_for_tiles` — pure trig, no Camera3D node
+## involved; `test_board_view.gd` proves the real node/shader-uniform
+## wiring reads the same values back.
+
+
+func test_pixel_radius_for_tiles_is_positive_for_a_unit_on_screen() -> void:
+	assert_gt(WallLegibility.pixel_radius_for_tiles(2.5, 10.0, 75.0, 1080.0), 0.0)
+
+
+func test_pixel_radius_for_tiles_shrinks_as_depth_increases() -> void:
+	var near_radius: float = WallLegibility.pixel_radius_for_tiles(2.5, 10.0, 75.0, 1080.0)
+	var far_radius: float = WallLegibility.pixel_radius_for_tiles(2.5, 20.0, 75.0, 1080.0)
+	assert_lt(far_radius, near_radius, "the same tile radius at twice the depth must be smaller")
+
+
+func test_pixel_radius_for_tiles_grows_with_more_tiles() -> void:
+	var small: float = WallLegibility.pixel_radius_for_tiles(1.0, 10.0, 75.0, 1080.0)
+	var large: float = WallLegibility.pixel_radius_for_tiles(2.5, 10.0, 75.0, 1080.0)
+	assert_gt(large, small)
+
+
+func test_pixel_radius_for_tiles_is_zero_at_zero_depth() -> void:
+	assert_eq(WallLegibility.pixel_radius_for_tiles(2.5, 0.0, 75.0, 1080.0), 0.0)
