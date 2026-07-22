@@ -1,9 +1,17 @@
 extends GutTest
 
-## docs/09 taskblock07 Pass B3: "Resolve to Here" never enabled — the fix
-## makes the button's enabled state a pure function of (queue, marker),
-## recomputed in refresh() alongside everything else, never left standing
-## from whatever a past click set it to.
+## BR27.08: this whole panel used to be a `Tree` -- click a row to set a
+## stop marker, then press a separate global "Resolve to Here" button. A
+## real click's `item_selected` signal never fired reliably in the live
+## game despite checking out in every headless reproduction tried
+## (including a real `InputEventMouseButton` pushed through a real
+## `Viewport` against the real, correctly-sized production `Tree`) -- the
+## root cause was never conclusively identified. Rebuilt on plain
+## `Button`/`Label`/`Container` instead -- no marker state, no `Tree`, each
+## row resolves through itself directly on press. Every test below drives
+## a REAL synthetic click through a real Viewport at the row's own real
+## Button rect, not a shortcut -- there is no reason to trust this
+## mechanism any more than the one it replaced without the same proof.
 
 
 func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
@@ -25,195 +33,146 @@ func _setup(units: Array[Unit]) -> Dictionary:
 	controller.setup(state, board_view, camera_rig)
 
 	var panel := QueuePanel.new()
-	var tree := Tree.new()
-	# BR27.08: matches the real production sizing (`squad_control_overlay.
-	# gd`'s own `queue_tree.custom_minimum_size`) -- an unsized bare Tree
-	# lays out too small, and `get_item_area_rect()` can report a row
-	# extending past the Tree's own visible rect, which a real click then
-	# legitimately misses (`Control.has_point()` says no) for a reason
-	# that has nothing to do with any real bug. Confirmed by hand before
-	# this was added: the exact same click test failed against a
-	# same-shaped but UNSIZED Tree, and passed once sized like this.
-	tree.custom_minimum_size = Vector2(320, 100)
-	var button := Button.new()
+	var rows_container := VBoxContainer.new()
 	var tooltip_view := TooltipView.new()
 	add_child_autofree(panel)
-	add_child_autofree(tree)
-	add_child_autofree(button)
+	add_child_autofree(rows_container)
 	add_child_autofree(tooltip_view)
-	panel.setup(controller, tree, button, tooltip_view)
+	panel.setup(controller, rows_container, tooltip_view)
+	# BR27.08: the default headless test viewport is tiny (64x64) -- a
+	# row built to the right of an unconstrained VBoxContainer lands well
+	# outside that, and a real click there is legitimately outside the
+	# viewport's own bounds, not a real bug. Matches the existing
+	# `test_tooltip_view.gd` convention for the same reason.
+	rows_container.get_viewport().size = Vector2i(1920, 1080)
 
 	return {
 		"controller": controller,
 		"panel": panel,
-		"tree": tree,
-		"button": button,
-		"tooltip_view": tooltip_view
+		"rows_container": rows_container,
+		"tooltip_view": tooltip_view,
 	}
 
 
-## BR27.08: this does NOT drive "the same path a real click does" despite
-## what this comment used to claim -- it sets the Tree's own selection
-## state directly and then manually calls the panel's handler, skipping
-## the Tree's own hit-testing and its `item_selected` signal entirely. A
-## real click could, in principle, fail to reach the Tree at all (wrong
-## screen position, something else eating the input) while this helper
-## would still happily proceed -- it was never actually proof that the
-## click-to-select path itself works. Convenient for every test below that
-## only cares about marker/refresh behavior once a row IS selected, one
-## way or another. `test_a_real_click_on_a_queue_row_enables_resolve_to_
-## here` below is the one test that drives an actual synthetic click
-## through the real Viewport instead, and is what actually proves the path
-## this comment used to just assert.
-func _select_row(panel: QueuePanel, tree: Tree, index: int) -> void:
-	tree.get_root().get_child(index).select(QueuePanel.COL_WHAT)
-	panel._on_item_selected()
+## The resolve button is always a row's LAST child (`QueuePanel._entry_row`:
+## What/AP/MP labels, then the button) -- reading it back by position
+## rather than re-deriving the row's own layout.
+func _resolve_button(rows_container: VBoxContainer, index: int) -> Button:
+	var row: HBoxContainer = rows_container.get_child(index)
+	return row.get_child(row.get_child_count() - 1) as Button
 
 
-func test_button_starts_disabled_with_nothing_queued() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var button: Button = built.button
-
-	assert_true(button.disabled)
-
-
-## docs/09 taskblock07 Pass B3/TESTS: "queuing an action with a row
-## selected leaves the button enabled after refresh()."
-func test_queuing_an_action_with_a_row_selected_leaves_the_button_enabled_after_refresh() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-	var tree: Tree = built.tree
-	var button: Button = built.button
-	var panel: QueuePanel = built.panel
-
-	controller.click_cell(Vector2i(0, 0))
-	controller.click_cell(Vector2i(1, 0))
-	_select_row(panel, tree, 0)
-	assert_false(button.disabled, "sanity: selecting a valid row must enable the button")
-
-	# Queuing a SECOND action fires selection_changed -> refresh() again —
-	# the marker (still pointing at the first, still-present entry) must
-	# survive this, not get silently wiped the instant anything else
-	# changes about the queue.
-	controller.click_cell(Vector2i(2, 0))
-
-	assert_false(button.disabled, "the marker must survive a refresh that doesn't invalidate it")
-
-
-## docs/09 taskblock07 Pass B3/TESTS: "clearing the queue disables it."
-func test_clearing_the_queue_disables_the_button() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-	var tree: Tree = built.tree
-	var button: Button = built.button
-	var panel: QueuePanel = built.panel
-
-	controller.click_cell(Vector2i(0, 0))
-	controller.click_cell(Vector2i(1, 0))
-	_select_row(panel, tree, 0)
-	assert_false(button.disabled)
-
-	controller.reset_turn()
-
-	assert_true(button.disabled, "an empty queue must never leave the button enabled")
-
-
-## docs/09 taskblock07 Pass B3/TESTS: "the enabled state is a pure function
-## of (queue, marker), not of event ordering" — setting the marker BEFORE
-## the queue exists (an ordering a real click could never actually
-## produce) must still resolve correctly once refresh() runs, proving the
-## state isn't tracking "did a click happen after the last change."
-func test_the_enabled_state_is_a_pure_function_of_queue_and_marker() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-	var button: Button = built.button
-	var panel: QueuePanel = built.panel
-
-	controller.click_cell(Vector2i(0, 0))
-	controller.click_cell(Vector2i(1, 0))
-
-	panel._marker_index = 0
-	panel.refresh()
-	assert_false(button.disabled, "marker 0 with 1 queued entry: must be enabled")
-
-	panel._marker_index = 5  # out of range for a 1-entry queue
-	panel.refresh()
-	assert_true(button.disabled, "an out-of-range marker must never leave the button enabled")
-
-
-## BR27.08 ("Resolve to Here" reported grayed out and unclickable in real
-## play): every test above drives the marker through `_select_row()`,
-## documented as driving "the same path a real click does... without
-## needing a live viewport" -- an assumption never actually proven. A real
-## click has to go through the Tree's OWN hit-testing and emit
-## `item_selected` on its own; `.select()` + a manual `_on_item_selected()`
-## call skips that entirely. This pushes a genuine InputEventMouseButton at
-## the row's own real screen rect through the real Viewport -- the same
-## technique test_battle_scene_input.gd already uses for BR31.01 -- to
-## prove or disprove that the signal fires from an actual click.
-func test_a_real_click_on_a_queue_row_enables_resolve_to_here() -> void:
-	var a := _make_unit(Vector2i(0, 0), 0)
-	var built: Dictionary = _setup([a])
-	var controller: TacticsController = built.controller
-	var tree: Tree = built.tree
-	var button: Button = built.button
-
-	controller.click_cell(Vector2i(0, 0))
-	controller.click_cell(Vector2i(1, 0))
-	assert_true(button.disabled, "sanity: nothing selected yet")
-
-	# Anchored/laid-out Controls only resolve a real global_rect after a
-	# live frame runs (tb32 Pass D's own diagnostic note) -- read too early
-	# and this returns a garbage pre-layout rect.
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	var item: TreeItem = tree.get_root().get_child(0)
-	var row_rect: Rect2 = tree.get_item_area_rect(item)
-	var screen_pos: Vector2 = (
-		tree.get_global_rect().position
-		+ row_rect.position
-		+ Vector2(row_rect.size.x / 2.0, row_rect.size.y / 2.0)
-	)
-
+func _click_at(viewport: Viewport, screen_pos: Vector2) -> void:
 	var down := InputEventMouseButton.new()
 	down.button_index = MOUSE_BUTTON_LEFT
 	down.pressed = true
 	down.position = screen_pos
-	tree.get_viewport().push_input(down)
+	viewport.push_input(down)
 	var up := InputEventMouseButton.new()
 	up.button_index = MOUSE_BUTTON_LEFT
 	up.pressed = false
 	up.position = screen_pos
-	tree.get_viewport().push_input(up)
-
-	assert_false(
-		button.disabled,
-		(
-			"a real click on a queue row must enable Resolve to Here -- "
-			+ "not just a manual .select() + _on_item_selected() call"
-		)
-	)
+	viewport.push_input(up)
 
 
-func test_a_valid_marker_selects_the_matching_row_after_refresh() -> void:
+func test_empty_queue_has_no_rows() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
-	var tree: Tree = built.tree
-	var panel: QueuePanel = built.panel
+	var rows_container: VBoxContainer = built.rows_container
+
+	controller.click_cell(Vector2i(0, 0))  # selects the unit, nothing queued yet
+
+	assert_eq(rows_container.get_child_count(), 0, "nothing queued, nothing to show")
+
+
+func test_queuing_actions_creates_one_row_per_entry() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var rows_container: VBoxContainer = built.rows_container
 
 	controller.click_cell(Vector2i(0, 0))
 	controller.click_cell(Vector2i(1, 0))
 	controller.click_cell(Vector2i(2, 0))
-	_select_row(panel, tree, 0)
 
-	controller.click_cell(Vector2i(2, 1))  # a third action — triggers another refresh()
+	assert_eq(rows_container.get_child_count(), 2, "two queued move legs, two rows")
 
-	var selected: TreeItem = tree.get_selected()
-	assert_not_null(selected, "the marked row must stay visibly selected across a refresh")
-	assert_eq(selected.get_metadata(QueuePanel.COL_WHAT), 0)
+
+## BR27.08: a real InputEventMouseButton at the row's own real Button rect
+## through the real Viewport -- the same simple technique already proven
+## for End Turn in test_battle_scene_input.gd. No `get_item_area_rect()`
+## gymnastics needed anymore -- a real Button's own screen rect is
+## directly reliable.
+func test_a_real_click_on_a_rows_resolve_button_resolves_through_it() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var rows_container: VBoxContainer = built.rows_container
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+	controller.click_cell(Vector2i(2, 0))
+	assert_eq(a.cell, Vector2i(0, 0), "sanity: nothing has resolved yet")
+
+	# Anchored/laid-out Controls only resolve a real global_rect after a
+	# live frame runs (tb32 Pass D's own diagnostic note).
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var button: Button = _resolve_button(rows_container, 0)
+	_click_at(button.get_viewport(), button.get_global_rect().get_center())
+
+	assert_eq(a.cell, Vector2i(1, 0), "a real click on row 0's own button resolves only that leg")
+	assert_eq(rows_container.get_child_count(), 0, "the resolved queue is empty, no rows left")
+
+
+func test_a_real_click_on_the_second_rows_resolve_button_resolves_through_both() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var rows_container: VBoxContainer = built.rows_container
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+	controller.click_cell(Vector2i(2, 0))
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var button: Button = _resolve_button(rows_container, 1)
+	_click_at(button.get_viewport(), button.get_global_rect().get_center())
+
+	assert_eq(a.cell, Vector2i(2, 0), "row 1's own button resolves the whole prefix through it")
+
+
+## Every row (button included) is destroyed and rebuilt fresh on every
+## `refresh()` -- proves a later click targets the NEW queue's own index,
+## not a stale one left over from before the resolve.
+func test_refresh_rebuilds_rows_so_a_later_click_targets_the_fresh_queue() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var rows_container: VBoxContainer = built.rows_container
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 0))
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var first_button: Button = _resolve_button(rows_container, 0)
+	_click_at(first_button.get_viewport(), first_button.get_global_rect().get_center())
+	assert_eq(a.cell, Vector2i(1, 0))
+
+	controller.unlock_input()  # stands in for a real ResolutionPlayer's own unlock
+	controller.click_cell(Vector2i(2, 0))  # queue a fresh move after the resolve
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_eq(rows_container.get_child_count(), 1, "one fresh row, not a stale leftover")
+	var second_button: Button = _resolve_button(rows_container, 0)
+	_click_at(second_button.get_viewport(), second_button.get_global_rect().get_center())
+
+	assert_eq(a.cell, Vector2i(2, 0), "the fresh row's own button resolves the fresh queue")

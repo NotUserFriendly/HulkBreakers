@@ -301,7 +301,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   it is. `set_active_turn()` now toggles both `_team_marker.visible` and `_facing_wedge.visible`
   together.
 
-### BR27.08 — Active — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
+### BR27.08 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (logged now; long-standing — backburnered since the button's introduction).
   The "Resolve to here" turn-control (resolve queued actions up to a chosen point) has never
   functioned. Logged here now that the ledger exists so it stops being an untracked known-broken.
@@ -407,11 +407,41 @@ confirm" roll-up — so pending items surface at a natural review point without 
   - **Genuinely exhausted what headless GUT can check here.** Every code-level variable tried
     (queue/overlay/turn-state/tooltip-overlap/theme-override-absence) either doesn't reproduce it or
     can't be tested without a real window. This now reads like the same class of bug as BR32.02's own
-    shader saga — something only visible in a real, rendered, real-input build — and the same
-    methodology likely applies: a small, temporary, live diagnostic (e.g., a debug print in
-    `_on_item_selected()`/`_on_tree_gui_input()` that the supervisor can watch in the game's own
-    console/stdout while clicking) to determine, with certainty, whether the click reaches the Tree at
-    all in the live game before guessing at anything further.
+    shader saga — something only visible in a real, rendered, real-input build.
+- **2026-07-22, decision: remove and rebuild rather than keep chasing an unreproducible root cause.**
+  The `Tree`+marker+global-button mechanism was never conclusively root-caused despite an extensive
+  investigation across several taskblocks, and the supervisor's own repeated live reproduction ruled
+  out every code-level variable this session could construct — the strongest remaining signal was
+  simply that nothing else in this codebase drives something this important through a `Tree`'s own
+  click/selection signal, and every plain `Button`-based control in the same general screen region
+  (End Turn, Reset Turn, action bar boxes) has never shown this class of problem. Rather than keep
+  guessing at a live-only cause with no further lead, removed the whole `Tree`/marker mechanism and
+  rebuilt the same capability on primitives with no such history: each queued action is now its own
+  row with its own real "Resolve" button (`QueuePanel._entry_row()`), wired directly to
+  `tactics.resolve_to_marker(index)` — no marker state, no `Tree`, no separate global button. Follows
+  the same "clear every child, rebuild fresh from an array" convention
+  `GenerateBoutOverlay._rebuild_team()`/`_entry_row()` already established, rather than inventing a new
+  shape. Full design/rationale in `docs/SUPERSEDED.md`.
+  - Verified with a real synthetic click (matching this session's own established rigor) against the
+    FULL real `BattleScene`/`SquadControlOverlay` construction — `test_battle_scene_input.gd::
+    test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it` — and against a bare
+    `QueuePanel` fixture — `test_queue_panel.gd`'s own suite, five tests covering empty-queue/N-rows/
+    real-click-resolves-the-right-prefix/refresh-rebuilds-with-fresh-indices.
+  - **Caught a real, separate layout bug while building this**, exactly the kind of thing only a real
+    click test surfaces: the row's own expanding "what" label had no width bound inside its
+    `ScrollContainer` (nothing forced a maximum, since `SIZE_EXPAND_FILL` is only well-defined once
+    something bounds the available width), so the whole row — button included — landed hundreds of
+    pixels past the right edge of a 1920-wide viewport. Fixed by disabling the `ScrollContainer`'s own
+    horizontal scrolling, which makes it clamp its child to its own real width instead.
+  - **A second, unrelated gotcha found and fixed in the test fixture itself, not the game:** the
+    default headless GUT test viewport is tiny (64×64) — a row built wide enough to hold real text
+    lands well outside that by construction, and a real click there is legitimately outside the
+    viewport's own bounds, not a bug. Fixed by resizing the test viewport to `1920×1080`, matching the
+    existing convention `test_tooltip_view.gd` already established for the identical reason.
+  - **Not fixed in place — this is a replacement, not a patch**, precisely because the original bug's
+    root cause was never conclusively identified. Marked `RESOLVED-PENDING-CONFIRMATION`, not plain
+    `RESOLVED`, per the provenance gate — this still needs the supervisor's own live click to actually
+    close it, since headless tests said the OLD mechanism should have worked too.
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or

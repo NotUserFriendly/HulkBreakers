@@ -132,7 +132,14 @@ direction, for the AI's own `StepOutPlanner` usage and the player alike (tb27 B2
 matches the intended sequence: confirming a cell queues only the free out-leg and opens ordinary
 aim mode from the stepped-out position (camera/dartboard follow the queued move for free via the
 existing preview machinery); firing appends the free return leg; canceling aim mid-step-out undoes
-the queued out-leg (tb27 B).
+the queued out-leg (tb27 B). **Queue panel** (`QueuePanel`, rebuilt BR27.08 — `docs/SUPERSEDED.md`)
+— the in-turn readout of a unit's own queued actions; each entry is a real row (What/AP/MP labels)
+carrying its own "Resolve" button, wired directly to `TacticsController.resolve_to_marker(index)` —
+resolves the queue's prefix through exactly that entry on press, no separate select-a-row-then-press-
+a-global-button step and no persisted marker state. Rebuilt this way after the prior `Tree`-based
+mechanism (click a row to set a marker, a separate global button to fire) could never be made to
+reproduce a real, supervisor-confirmed "nothing happens at all" failure in this environment — replaced
+with the same primitives every other reliable click surface in this codebase already uses.
 
 **AI** (tb14/16/17-1/24) — `UnitAI.plan_turn`, deterministic, human & AI emit the same queue,
 firing derived from the same `ActionCatalog.build_firing_action` seam a weapon's own

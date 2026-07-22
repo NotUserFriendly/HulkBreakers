@@ -50,10 +50,17 @@ var inject_button: Button
 ## the same way `action_bar`/`ap_mp_pip_row` are already exposed for their
 ## own logic-level tests.
 var action_column: VBoxContainer
-## taskblock-08 E1/E3: the Resolve to Here / End Turn / Reset Turn column,
+## taskblock-08 E1/E3 (BR27.08: no longer includes Resolve to Here — that
+## moved to a per-queue-row button, `QueuePanel`) — End Turn / Reset Turn,
 ## to the action bar's right — exposed so a test can confirm New Battle
 ## (E3: "not a turn control") is never among its children.
 var turn_controls_column: VBoxContainer
+## BR27.08: named the same way `new_battle_button`/`watch_button`/
+## `inject_button` already are, so a test reaches these by name instead of
+## a `turn_controls_column.get_child(N)` index that shifted once Resolve
+## to Here (formerly child 0) was removed from this column.
+var end_turn_button: Button
+var reset_turn_button: Button
 ## tb31 Pass A: the shared top-left cluster (`TopLeftControls`) — these
 ## three fields alias straight into it (`new_battle_button`/`watch_button`/
 ## `inject_button` below), so every existing reference to "this overlay's
@@ -387,15 +394,27 @@ func _build_ui() -> void:
 	readout_column.add_child(stat_drill_down)
 
 	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
-	# unit's queued actions" — click a row to set the stop marker, then
-	# "Resolve to Here" resolves the queue's prefix through it for real.
-	# taskblock-08 E1: the button itself now lives in the turn-control
-	# column below, alongside End Turn/Reset Turn — only the tree (a
-	# readout, not a turn control) stays up here with the rest of the
-	# readout cluster.
-	var queue_tree := Tree.new()
-	queue_tree.custom_minimum_size = Vector2(320, 100)
-	readout_column.add_child(queue_tree)
+	# unit's queued actions." BR27.08: each row now carries its own
+	# "Resolve" button directly (`QueuePanel`) rather than a Tree row
+	# setting a marker for a separate button in the turn-control column —
+	# a `ScrollContainer` keeps the same bounded footprint the old Tree's
+	# own `custom_minimum_size` gave for free, so a long queue scrolls
+	# instead of pushing the rest of the readout cluster down.
+	var queue_scroll := ScrollContainer.new()
+	queue_scroll.custom_minimum_size = Vector2(320, 100)
+	# Vertical-only: a row's own "what" label uses SIZE_EXPAND_FILL to eat
+	# the row's slack width, which is only well-defined once something
+	# actually bounds that width. Disabling horizontal scroll is what
+	# makes a ScrollContainer clamp its child to its own real width
+	# instead of letting an unbounded EXPAND_FILL child claim an oversized
+	# natural size (found live: without this, the row landed hundreds of
+	# pixels past the right edge of a 1920-wide viewport, taking every
+	# button in it along with it).
+	queue_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	readout_column.add_child(queue_scroll)
+	var queue_rows_container := VBoxContainer.new()
+	queue_rows_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	queue_scroll.add_child(queue_rows_container)
 
 	# taskblock-08 E1: "action bar on the LEFT... the turn-control stack
 	# sits to its RIGHT" — one row, two columns, replacing the single
@@ -447,29 +466,24 @@ func _build_ui() -> void:
 	action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	action_column.add_child(action_row)
 
-	# taskblock-08 E1/E2: the turn-control stack proper — Resolve to Here /
-	# End Turn / Reset Turn, sized to their own text (E2), nothing else in
-	# this column to stretch them wider.
+	# taskblock-08 E1/E2 (BR27.08: Resolve to Here moved to a per-queue-row
+	# button — see `queue_rows_container` below — so this column is just
+	# End Turn / Reset Turn now), sized to their own text (E2), nothing
+	# else in this column to stretch them wider.
 	turn_controls_column = VBoxContainer.new()
 	turn_controls_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	turn_controls_column.alignment = BoxContainer.ALIGNMENT_END
 	turn_controls_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	action_and_turn_row.add_child(turn_controls_column)
 
-	var resolve_to_here_button := Button.new()
-	resolve_to_here_button.text = "Resolve to Here"
-	resolve_to_here_button.disabled = true
-	resolve_to_here_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	resolve_to_here_button.mouse_entered.connect(_hide_stale_tooltip)
-	turn_controls_column.add_child(resolve_to_here_button)
-	var end_turn_button := Button.new()
+	end_turn_button = Button.new()
 	end_turn_button.text = "End Turn"
 	end_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
 	end_turn_button.mouse_entered.connect(_hide_stale_tooltip)
 	turn_controls_column.add_child(end_turn_button)
 	# docs/10 taskblock03 D4: "a single Reset Turn control (button + R)."
-	var reset_turn_button := Button.new()
+	reset_turn_button = Button.new()
 	reset_turn_button.text = "Reset Turn"
 	reset_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	reset_turn_button.pressed.connect(_on_reset_turn_pressed)
@@ -514,7 +528,7 @@ func _build_ui() -> void:
 
 	queue_panel = QueuePanel.new()
 	add_child(queue_panel)
-	queue_panel.setup(tactics, queue_tree, resolve_to_here_button, tooltip_view)
+	queue_panel.setup(tactics, queue_rows_container, tooltip_view)
 
 	action_bar = ActionBar.new()
 	add_child(action_bar)
@@ -562,9 +576,9 @@ func _build_ui() -> void:
 ## hover tracking lives in `_unhandled_input`, which never fires while the
 ## cursor sits over a Control with the default STOP filter (every
 ## Button), so nothing ever told the tooltip to go away. Same fix
-## QueuePanel's tree (`mouse_exited`) and ApMpPipRow's containers already
-## needed for the identical reason — these three buttons just never got
-## it.
+## QueuePanel's own rows (`mouse_exited`) and ApMpPipRow's containers
+## already needed for the identical reason — these three buttons just
+## never got it.
 func _hide_stale_tooltip() -> void:
 	if tooltip_view != null:
 		tooltip_view.hide_tooltip()
