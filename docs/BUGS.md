@@ -999,7 +999,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   still flips ahead of resolution. Apply the same defer-until-animation-finishes fix on the spectator
   overlay's turn-end handler.
 
-### BR32.10 — Active — AI gets stuck on opposite sides of U-shaped / concave maps  ·  source: `SUPERVISOR`
+### BR32.10 — RESOLVED-PENDING-CONFIRMATION [CC 16507d21-1035-4b1c-a0fe-72a911df7403] — AI gets stuck on opposite sides of U-shaped / concave maps  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-22 (tb32 review; long-standing — logged now, wasn't in the ledger). On
   U-shaped / concave map geometry, opposing units end up stuck on opposite sides, unable to path
   around to engage.
@@ -1008,6 +1008,27 @@ confirm" roll-up — so pending items surface at a natural review point without 
   a concave wall between two units, where no single turn's reachable set reaches the other side, leaves
   the AI with nothing to move toward. Same family as the AI line-of-fire gap. The real fix is the
   multi-turn approach-pathing design in PLAN; this entry tracks the observable symptom against it.
+- **Fix (tb33 Pass B):** when no cell reachable this turn has a real shot (`_any_reachable_has_lof`
+  false), `_plan_ranged` no longer hands off to the greedy least-bad-reachable-cell scorer at all —
+  `LineOfFire.approach_path` Dijkstra-floods (`Pathfinder.nearest_matching`, lazy — the real
+  `ShotPlane`-based LOF check only runs on cells as they're popped) to the nearest cell that WOULD
+  have a clear shot, capped at weapon range + margin, and queues a move truncated to this turn's own
+  MP budget (`Pathfinder.truncate_to_budget`). The same fallback re-fires next turn, walking the rest
+  of the path, until a reachable cell genuinely has LOF and the normal engagement scorer takes back
+  over. This is what a concave map needs that the tb27 C1 `obstruction_count` fix (above) couldn't
+  give it: a real multi-turn path to a target cell, including the step that moves farther from the
+  enemy before it curves back in — the move a per-turn distance/obstruction scorer can't make no
+  matter how it's weighted.
+- **Verified (headless):** `test_unit_ai_lof_fallback.gd` — a concave-pocket fixture where the AI's
+  queued move includes a genuine Chebyshev-distance increase before it decreases
+  (`test_ai_takes_a_step_that_increases_chebyshev_distance_before_it_decreases`); the fallback reaches
+  a real shot and fires within a bounded number of simulated turns
+  (`test_the_approach_fallback_eventually_reaches_a_lof_cell_and_fires`); a fully walled-off enemy
+  falls through to hold/end-turn instead of freezing or erroring; an open-field engagement never
+  enters the fallback at all; same seed/fixture produces the same path (determinism).
+- **Not live-verified** — headless-only per the taskblock's own design (no rendering needed: grid +
+  `ShotPlane`). Needs the supervisor's own hands-on confirmation on a real U-shaped/concave bout
+  before promotion to `RESOLVED`.
 
 ---
 
