@@ -12,6 +12,21 @@ shader_type spatial;
 // screen position/depth/radius via `WallLegibility.pixel_radius_for_tiles`
 // and feeding them here — this fragment function is the only place that
 // decides whether a given pixel is inside the hole.
+//
+// BR32.02: `FRAGCOORD` here matches GLSL's own `gl_FragCoord` — BOTTOM-
+// left origin, Y increasing UPWARD (confirmed against Godot's own docs:
+// "FRAGCOORD... use[s] the same coordinate system" as gl_FragCoord).
+// `Camera3D.unproject_position()`, what `BoardView` projects every unit
+// with, returns the opposite: TOP-left origin, Y-DOWN (the same
+// convention mouse/UI positions use). `unit_screen_positions` therefore
+// arrives here ALREADY Y-flipped by `update_wall_cutout` to match this
+// fragment coordinate system — comparing the two unflipped mirrors the
+// cutout vertically, so it never lands where the wall/unit actually
+// overlap on screen (confirmed live: no cutout ever visibly appeared
+// near a real unit standing next to a wall). No headless test can catch
+// this class of bug at all — dummy/headless rendering never executes a
+// fragment shader; every fragment-side claim here is a live-rendering
+// fact, not something GUT verified.
 
 uniform vec4 albedo : source_color = vec4(0.5, 0.5, 0.5, 1.0);
 

@@ -527,7 +527,19 @@ func update_wall_cutout(camera: Camera3D) -> void:
 			if camera.is_position_behind(position):
 				continue
 			var depth: float = camera_position.distance_to(position)
-			screen_positions[count] = camera.unproject_position(position)
+			# `unproject_position()` returns top-left-origin, Y-DOWN screen
+			# coordinates (the same convention mouse/UI positions use) —
+			# but the shader's own FRAGCOORD matches GLSL's gl_FragCoord:
+			# BOTTOM-left origin, Y-UP. Comparing them unflipped mirrors
+			# the cutout vertically, so it essentially never lands where
+			# the wall/unit actually overlap on screen — confirmed live
+			# ("no culling observed" near real units next to walls).
+			# Flipped here, once, so every other GDScript-side convention
+			# (WallLegibility, occludes_on_screen, Pass B) keeps using
+			# unproject_position()'s own native orientation unchanged —
+			# only this one shader-bound uniform needs converting.
+			var unprojected: Vector2 = camera.unproject_position(position)
+			screen_positions[count] = Vector2(unprojected.x, viewport_height - unprojected.y)
 			depths[count] = depth
 			radii[count] = WallLegibility.pixel_radius_for_tiles(
 				OCCLUSION_RADIUS_TILES, depth, camera.fov, viewport_height
