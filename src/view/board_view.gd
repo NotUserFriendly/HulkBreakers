@@ -176,6 +176,19 @@ var wall_cutout_units: Array[Unit] = []
 ## HitVolumeView to call that on directly.
 var aim_active_unit: Unit = null
 
+## A unit whose own `HitVolumeView` was explicitly destroyed
+## (`BattleScene.remove_unit_view()`, the debug-only "make it fully
+## vanish" verb) never clears its stale `.cell` from `combat_state.units`
+## — an unfiltered feed here cuts/occludes a permanent, unit-less hole at
+## wherever it last stood. Populated by `BattleScene.remove_unit_view()`
+## via `exclude_unit_from_occlusion()`; cleared on every `build()` (a
+## fresh "New Battle" must not inherit a previous bout's own exclusions —
+## same reasoning `BattleScene._removed_unit_ids` already follows).
+## Deliberately NOT applied to an ordinary in-combat kill (`alive ==
+## false` alone) — that unit's downed body is still really there; only an
+## explicitly vanished view has nothing left to protect visibility of.
+var _excluded_from_occlusion: Dictionary = {}
+
 var _static: Node3D
 var _reachable_overlay: Node3D
 var _ghost_overlay: Node3D
@@ -227,6 +240,7 @@ func build(
 	_clear(_static)
 	_wall_mesh_instances.clear()
 	_wall_cutout_material = null
+	_excluded_from_occlusion.clear()
 
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
@@ -458,6 +472,18 @@ func _spawn_field_item(item: Variant, cell: Vector2i, material_table: MaterialTa
 		_static.add_child(_marker(cell, FIELD_ITEM_MARKER_COLOR, FIELD_ITEM_MARKER_HEIGHT))
 
 
+## `BattleScene.remove_unit_view()` calls this the instant a unit's own
+## real presence on the board vanishes (the debug-only "make it fully
+## vanish" verb) — see `_excluded_from_occlusion`'s own doc comment for
+## why this is a real, distinct case from an ordinary in-combat kill.
+func exclude_unit_from_occlusion(unit_id: int) -> void:
+	_excluded_from_occlusion[unit_id] = true
+
+
+func is_excluded_from_occlusion(unit_id: int) -> bool:
+	return _excluded_from_occlusion.has(unit_id)
+
+
 ## tb32 Pass A: supersedes `update_wall_legibility` — GDScript's only job
 ## now is projecting every unit in `wall_cutout_units` to a screen
 ## position/depth/radius and feeding them to the ONE shared
@@ -485,6 +511,13 @@ func update_wall_cutout(camera: Camera3D) -> void:
 			if count >= WALL_CUTOUT_MAX_UNITS:
 				break
 			if unit == null or not is_instance_valid(unit):
+				continue
+			# A unit that's actually left the board (docs/07 extraction —
+			# distinct from ordinary death/shutdown, both of which leave a
+			# real body in place) has no cell worth cutting a hole for —
+			# `extracted` never clears `.cell`, so an unfiltered feed here
+			# cuts a permanent, unit-less hole at wherever it left from.
+			if unit.extracted or is_excluded_from_occlusion(unit.id):
 				continue
 			var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
 			# Behind the camera: unproject_position() gives nonsense

@@ -150,6 +150,13 @@ func _occluding_friendlies(camera: Camera3D) -> Array[Unit]:
 			continue
 		if unit.squad_id != active.squad_id:
 			continue
+		# A unit that's actually left the board (extraction) keeps its
+		# stale `.cell` forever and its own HitVolumeView stays live (no
+		# remove_unit_view() call on that path) — without this, an
+		# extracted friendly would visibly fade as if it were still
+		# standing there blocking the shot.
+		if unit.extracted:
+			continue
 		var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
 		if camera.is_position_behind(position):
 			continue
@@ -315,6 +322,8 @@ func sync_unit_views() -> void:
 ## a front for something real.
 func remove_unit_view(unit: Unit) -> void:
 	_removed_unit_ids[unit.id] = true
+	if board_view != null:
+		board_view.exclude_unit_from_occlusion(unit.id)
 	for i in range(unit_views.size()):
 		if unit_views[i].unit == unit:
 			var view: HitVolumeView = unit_views[i]

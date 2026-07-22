@@ -119,3 +119,32 @@ func test_leaving_aim_clears_the_fade() -> void:
 	scene._process(0.016)
 
 	assert_false(friendly_view._occlusion_faded, "leaving aim must restore full opacity")
+
+
+## A real, reported bug: an extracted friendly (docs/07) never clears its
+## own stale `.cell`, and its HitVolumeView stays live (extraction never
+## calls remove_unit_view) — without this, an extracted friendly would
+## visibly fade as if it were still standing there blocking the shot.
+func test_an_extracted_friendly_is_never_faded() -> void:
+	var built: Dictionary = _occlusion_scene()
+	var scene: BattleScene = built.scene
+	built.friendly.extracted = true
+
+	scene._process(0.016)
+
+	var friendly_view: HitVolumeView = scene.find_unit_view(built.friendly.id)
+	assert_false(friendly_view._occlusion_faded, "an extracted unit must never fade")
+
+
+## `BattleScene.remove_unit_view()` (the debug-only "make it fully
+## vanish" verb) must also stop feeding that unit's own stale cell into
+## the wall-cutout shader — otherwise a debug-removed unit leaves a
+## permanent, unit-less hole exactly where it was removed.
+func test_removing_a_unit_view_excludes_it_from_occlusion() -> void:
+	var built: Dictionary = _occlusion_scene()
+	var scene: BattleScene = built.scene
+	assert_false(scene.board_view.is_excluded_from_occlusion(built.friendly.id))
+
+	scene.remove_unit_view(built.friendly)
+
+	assert_true(scene.board_view.is_excluded_from_occlusion(built.friendly.id))

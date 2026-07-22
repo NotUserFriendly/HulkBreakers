@@ -607,6 +607,40 @@ confirm" roll-up — so pending items surface at a natural review point without 
   click reaches End Turn regardless (confirms mouse_filter was never the problem), and a real
   `mouse_entered` on End Turn now hides a tooltip that was previously left stuck open.
 
+### BR32.01 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Stray wall-cutout hole at a cell with no unit  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (live bout, tb32 review). "A stray culling around cell 2,18, with no unit
+  to produce that effect... that is the ONLY culling step I see, it's not showing on the units."
+- **Root cause, confirmed by reading the code (no live repro available to me — this session has no
+  Xvfb/GPU, so I can't run the actual bout myself):** `BoardView.wall_cutout_units` is a live
+  reference to `CombatState.units`, fed unfiltered into the wall-cutout shader
+  (`BoardView.update_wall_cutout`) every frame. Two ways a unit can leave the board while STAYING in
+  that array at its own stale `.cell` forever: (a) **extraction** (`MissionState.extract_unit()` sets
+  `alive = false`/`extracted = true` but never clears `.cell`, and nothing in the view layer ever
+  read `.extracted` before this fix — the unit's own `HitVolumeView` doesn't even get hidden,
+  a separate, more visible latent issue flagged below); (b) the **debug panel's "remove object" verb**
+  on a unit (`BoutInjector.remove_object` → `CombatState.kill_unit` — same `alive = false`, cell
+  untouched — plus `BattleScene.remove_unit_view()`, which DOES destroy the `HitVolumeView`,
+  tracked in `_removed_unit_ids`). Either way, the cutout shader keeps cutting a hole at that unit's
+  last position indefinitely, with nothing visibly there to explain it — exactly the reported
+  symptom. ("Not showing on the units" is very likely just describing that no *currently on-board*
+  unit happens to be behind a wall from the camera's current angle right now — not itself a bug,
+  though unconfirmed without seeing the bout.)
+- **Fix:** `update_wall_cutout()` now skips any unit with `.extracted == true`. A new
+  `BoardView.exclude_unit_from_occlusion(unit_id)` (cleared on every `build()`, so a fresh battle
+  never inherits a stale exclusion) is called from `BattleScene.remove_unit_view()` — the same
+  `_removed_unit_ids` moment — and checked alongside `.extracted` in the cutout feed. Pass B's own
+  `BattleScene._occluding_friendlies()` (same `wall_cutout_units` list, same class of bug for the
+  friendly-fade effect) got the matching `.extracted` filter too, since an extracted friendly's own
+  `HitVolumeView` stays live (extraction never calls `remove_unit_view`) and would otherwise visibly
+  fade as if still standing there.
+- **Separate, more visible latent issue flagged, not yet fixed:** nothing in the view layer reads
+  `Unit.extracted` at all outside this fix — an extracted unit's own `HitVolumeView` never gets
+  hidden or specially posed, so its body may just keep standing there, fully rendered, indefinitely.
+  Worth a supervisor look independent of this ticket.
+- **Not yet confirmed which of the two mechanisms (a)/(b) actually produced the (2,18) hole** — both
+  are now fixed regardless, but knowing which would confirm the diagnosis. Did a unit get extracted
+  or debug-removed near that cell?
+
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
