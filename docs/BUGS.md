@@ -648,31 +648,34 @@ confirm" roll-up — so pending items surface at a natural review point without 
   load, so neither of the mechanisms fixed here should be ABLE to survive a bout transition as
   currently understood — worth a real look, just not yet.
 
-### BR32.02 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Wall cutout never visibly appears near real units  ·  source: `SUPERVISOR`
+### BR32.02 — Active (reopened) — Wall cutout never visibly appears near real units  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-22 (same live-bout review as BR32.01). "I rotated the camera around the
   units, they were still in their original spawn locations, next to walls. No culling observed at
   all."
-- **Root cause, confirmed against Godot's own docs (two independent sources — no headless test could
-  ever catch this class of bug; dummy/headless rendering never executes a fragment shader at all):**
-  `wall_cutout.gdshader`'s `fragment()` compares `FRAGCOORD.xy` directly against
-  `unit_screen_positions[i]`, fed from `BoardView.update_wall_cutout()` via
-  `Camera3D.unproject_position()`. The two use OPPOSITE Y conventions: `FRAGCOORD` matches GLSL's own
-  `gl_FragCoord` — bottom-left origin, Y increasing UPWARD (confirmed via Godot's own shader-porting
-  docs: "FRAGCOORD... use[s] the same coordinate system" as `gl_FragCoord`) — while
-  `unproject_position()` returns top-left-origin, Y-DOWN screen coordinates (the same convention
-  mouse/UI positions use). Comparing them unflipped mirrors the cutout vertically around the
-  viewport's own horizontal center line, so the hole essentially never lands where a wall and a unit
-  actually overlap on screen — exactly "no culling observed at all," even with real units
-  demonstrably standing next to real walls.
-- **Fix:** `update_wall_cutout()` now flips the fed Y coordinate (`viewport_height - unprojected.y`)
-  before handing it to the shader, so both sides agree on FRAGCOORD's own bottom-left convention.
-  `VERTEX`'s own use in the same shader (view-space depth via `length(VERTEX)`) was separately
-  double-checked against Godot's own docs and is NOT affected — `VERTEX` is documented to already
-  arrive in view space by the time `fragment()` reads it, no flip needed there.
-- **Not visually re-confirmed by me** — this environment has no Xvfb/GPU, so I can't run the actual
-  renderer; the fix is backed by reading Godot's own documented FRAGCOORD/gl_FragCoord equivalence,
-  not a screenshot. Needs the supervisor to actually see a cutout appear near a real unit next to a
-  real wall.
+- **First theory, tried and EMPIRICALLY DISPROVEN:** hypothesized (from Godot's own documentation —
+  "FRAGCOORD... use[s] the same coordinate system" as `gl_FragCoord`, bottom-left origin) that
+  `FRAGCOORD` and `Camera3D.unproject_position()` (top-left origin) disagreed on Y and needed a flip.
+  Added the flip; the supervisor tested live and reported the cutout became visible but **detached
+  from any unit, drifting/spiraling independently as the camera orbited** — worse, not fixed. A real
+  orbiting-camera test proved the GDScript-side feed (position/depth/radius) tracks the unit
+  correctly and stably at every angle, ruling that layer out. Two live, hardcoded-position diagnostic
+  builds (a fixed hole at viewport center, then at a corner) settled it empirically: **`FRAGCOORD` is
+  actually top-left-origin, Y-down — the SAME convention `unproject_position()` already uses.** No
+  flip was ever needed; documentation for a different rendering context/shader type doesn't
+  necessarily transfer, and this class of bug is entirely invisible to headless testing (dummy
+  rendering never executes a fragment shader) — only live, real rendering could have caught it, and
+  did, twice. **The flip has been reverted** (`update_wall_cutout()` feeds `unproject_position()`'s
+  own output unchanged).
+- **Still open, cause unknown:** with the (always-correct) unflipped coordinates now confirmed
+  restored, the ORIGINAL complaint — no cutout ever visibly appears near a real unit standing next to
+  a real wall — is still unexplained. Candidates not yet tested live: the per-fragment depth-compare
+  (`frag_depth >= unit_depths[i]`, using `length(VERTEX)`) may not behave as documented, the same way
+  `FRAGCOORD`'s own convention didn't; the shared `_wall_cutout_material` might not actually be
+  reaching real MapGen-generated walls; the uniform arrays might not be reaching the GPU at all for
+  some Godot-version-specific reason. Next planned diagnostic (not yet tried): hardcode the shader to
+  discard unconditionally whenever `unit_count > 0`, ignoring all per-fragment math — if a real wall
+  near a real unit doesn't even go fully invisible under that crude test, the uniform isn't reaching
+  the shader at all; if it does, the bug is narrowed to the depth/radius/distance math specifically.
 
 ### BR32.03 — SUSPECTED (temporary tag — not one of the usual Active/Pending Confirmation/Resolved
 statuses; a placeholder for "logged as a possible lead, not yet a confirmed/described bug report."

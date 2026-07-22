@@ -13,20 +13,23 @@ shader_type spatial;
 // and feeding them here — this fragment function is the only place that
 // decides whether a given pixel is inside the hole.
 //
-// BR32.02: `FRAGCOORD` here matches GLSL's own `gl_FragCoord` — BOTTOM-
-// left origin, Y increasing UPWARD (confirmed against Godot's own docs:
-// "FRAGCOORD... use[s] the same coordinate system" as gl_FragCoord).
-// `Camera3D.unproject_position()`, what `BoardView` projects every unit
-// with, returns the opposite: TOP-left origin, Y-DOWN (the same
-// convention mouse/UI positions use). `unit_screen_positions` therefore
-// arrives here ALREADY Y-flipped by `update_wall_cutout` to match this
-// fragment coordinate system — comparing the two unflipped mirrors the
-// cutout vertically, so it never lands where the wall/unit actually
-// overlap on screen (confirmed live: no cutout ever visibly appeared
-// near a real unit standing next to a wall). No headless test can catch
-// this class of bug at all — dummy/headless rendering never executes a
-// fragment shader; every fragment-side claim here is a live-rendering
-// fact, not something GUT verified.
+// BR32.02: `FRAGCOORD` here is TOP-left origin, Y-DOWN — confirmed live,
+// empirically, via a hardcoded-corner diagnostic (a hole fixed at (200,
+// 200) landed near the window's own top-left corner) — matching
+// `Camera3D.unproject_position()` NATIVELY, the same convention mouse/UI
+// positions already use. Earlier documentation research claimed
+// `FRAGCOORD` matches GLSL's own bottom-left-origin `gl_FragCoord`
+// default and a Y-flip was added on that basis — that flip was
+// EMPIRICALLY WRONG (confirmed live: it turned "no cutout ever appears"
+// into "a cutout appears, but detached from any unit, drifting/spiraling
+// as the camera orbits" — a vertical mirror of the correct position,
+// exactly as a wrong flip would produce) and has been removed. No
+// headless test can catch this class of bug at all — dummy/headless
+// rendering never executes a fragment shader; every fragment-side claim
+// here was, and remains, a live-rendering fact, not something GUT
+// verified. The real, still-open half of BR32.02 (the cutout not
+// visibly appearing even with the correct, unflipped coordinates) is
+// unresolved — see docs/BUGS.md.
 
 uniform vec4 albedo : source_color = vec4(0.5, 0.5, 0.5, 1.0);
 

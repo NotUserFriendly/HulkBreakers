@@ -52,19 +52,16 @@ func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void
 	var screen_positions: PackedVector2Array = material.get_shader_parameter(
 		"unit_screen_positions"
 	)
-	# BR32.02: FRAGCOORD (bottom-left origin, Y-up — GLSL's gl_FragCoord
-	# convention) is what the shader actually compares against, NOT
-	# unproject_position()'s own native top-left/Y-down convention — the
-	# fed position must be Y-flipped to match, or the cutout mirrors
-	# vertically and never lands where the wall/unit actually overlap.
-	var viewport_height: float = float(view.get_viewport().size.y)
-	var expected: Vector2 = camera.unproject_position(unit_position)
-	expected.y = viewport_height - expected.y
+	# BR32.02: FRAGCOORD and unproject_position() are BOTH top-left-
+	# origin, Y-down — confirmed live, empirically (a hardcoded-corner
+	# diagnostic build landed in the window's own top-left corner). No
+	# flip needed; the fed position is unproject_position()'s own output,
+	# unchanged.
 	assert_almost_eq(
-		screen_positions[0].distance_to(expected),
+		screen_positions[0].distance_to(camera.unproject_position(unit_position)),
 		0.0,
 		0.01,
-		"the fed screen position must be Y-flipped to match FRAGCOORD's own bottom-left origin"
+		"the fed screen position must be the unit's own real projection, unconverted"
 	)
 	var depths: PackedFloat32Array = material.get_shader_parameter("unit_depths")
 	assert_almost_eq(
