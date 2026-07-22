@@ -721,6 +721,12 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 
 func _on_selection_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+	# tb32 Pass B: "in dartboard/aiming view only" — `aiming_at` (the
+	# TARGET) is what marks "the player is actually aiming right now,"
+	# not just having a unit selected; `aim_active_unit` is the shooter
+	# whose own read is worth protecting, so this is null the instant
+	# aiming ends even if a unit is still selected.
+	battle.board_view.aim_active_unit = selected if tactics.aiming_at != null else null
 	for view: HitVolumeView in battle.unit_views:
 		view.set_selected(view.unit == selected)
 		var target_preview: Variant = null
