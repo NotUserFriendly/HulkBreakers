@@ -106,6 +106,49 @@ func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> v
 	)
 
 
+## BR27.08 (supervisor follow-up): "hovering anywhere in the combat
+## readout gives me the details of things behind it." The same class of
+## bug as the action-bar click case above, one signal over — a queue
+## row's own `mouse_entered`/`mouse_exited` fired correctly (its
+## `MOUSE_FILTER_PASS` was never the problem for ITS OWN tooltip), but PASS
+## never marks the motion event handled, so it ALSO reached
+## `TacticsController._unhandled_input`'s `update_hover()`, which re-
+## raycasts the 3D board at that exact screen position regardless of what
+## UI is drawn there — showing whatever unit/tile sat behind the
+## deliberately translucent readout panel instead of just the row's own
+## tooltip. Fixed the same way the action bar was: STOP, not PASS.
+func test_hovering_a_queue_row_never_updates_the_boards_own_hover_state() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var overlay: SquadControlOverlay = _overlay(scene)
+	var current: Unit = scene.combat_state.current_unit()
+	overlay.tactics.selection.select(current)
+	var reachable: Array[Vector2i] = overlay.tactics.selection.reachable_cells()
+	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
+	overlay.tactics.click_cell(reachable[0])
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var row: HBoxContainer = overlay.queue_panel.rows_container.get_child(0)
+	var screen_pos: Vector2 = row.get_global_rect().get_center()
+
+	var fired: Array[bool] = [false]
+	overlay.tactics.mouse_moved.connect(func() -> void: fired[0] = true)
+	var entered: Array[bool] = [false]
+	row.mouse_entered.connect(func() -> void: entered[0] = true)
+
+	var motion := InputEventMouseMotion.new()
+	motion.position = screen_pos
+	scene.get_viewport().push_input(motion)
+	await get_tree().process_frame
+
+	assert_true(entered[0], "sanity: the row still gets its own hover, for its own tooltip")
+	assert_false(
+		fired[0], "hovering a queue row must never also re-raycast the board underneath it"
+	)
+
+
 ## The negative-space check: a click over the readout cluster's own screen
 ## rect (bottom-right — aim/stat/combat-readout labels, the exact class of
 ## control this pass fixed) must be consumed there, never fall through to
@@ -135,6 +178,16 @@ func test_every_richtextlabel_panel_ignores_the_mouse_except_the_log() -> void:
 ## see, and checking it directly is what would have caught the action bar
 ## sitting at PASS (arms an action via gui_input, but never consumed the
 ## click, so it fell through to the board underneath) in the first place.
+## BR27.08 (supervisor follow-up): the same check now also recognizes a
+## real `mouse_entered`/`mouse_exited` connection — `QueuePanel`'s own
+## rows have no `gui_input` handler at all (nothing to click, only to
+## hover), but PASS let a hover motion event ALSO reach `TacticsController.
+## _unhandled_input`'s `update_hover()`, re-raycasting the board at that
+## screen position and showing whatever sat behind the readout panel
+## instead of the row's own tooltip — confirmed live. A Control
+## deliberately wired for hover is exactly as "genuinely interactive" as
+## one wired for clicks; only an UNWIRED Control defaulting to STOP by
+## accident is the bug this test exists to catch.
 func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 	if node is Control:
 		var control := node as Control
@@ -144,6 +197,7 @@ func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 			or control is ItemList
 			or control is ScrollBar
 			or control.gui_input.get_connections().size() > 0
+			or control.mouse_entered.get_connections().size() > 0
 		)
 		var is_log: bool = control is RichTextLabel and (control as RichTextLabel).scroll_following
 		if not interactive and not is_log and control.mouse_filter == Control.MOUSE_FILTER_STOP:

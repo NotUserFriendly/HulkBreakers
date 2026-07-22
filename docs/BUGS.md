@@ -454,11 +454,31 @@ confirm" roll-up — so pending items surface at a natural review point without 
      logged in `docs/SUPERSEDED.md`.
   2. **"The coord info can be an on hover event for the MoveAction term... long paths make the readout
      stretch across the display."** New `CombatAction.short_describe()` (defaults to `describe()`
-     unchanged for every action type) — `MoveAction` overrides it to a fixed `"Move"`, never its own
-     path. `SelectionController.queue_entries()` uses `short_describe()` for a row's own visible text,
-     surfacing the full `describe()` as an extra "Detail" tooltip row only when it actually differs
+     unchanged for every action type) — `MoveAction` overrides it to drop only the unbounded `path=...`
+     term (`"MoveAction(unit=%d)"`, matching every sibling action's own `ClassName(unit=%d, ...)` style
+     — supervisor's own follow-up: "I'm okay with it saying MoveAction, it's just a stream of coords
+     that look messy," so only the coordinate stream itself was cut, not the class-name format). The
+     full `describe()` still surfaces as an extra "Detail" tooltip row whenever it actually differs
      (`TooltipBuilder.for_queue_entry()`) — the coordinate detail is still reachable, just on hover, not
      stretching every row by construction.
+- **2026-07-22, supervisor report: "Hovering anywhere in the combat readout gives me the details of
+  things behind it."** A real, confirmed bug in the rebuild, same class as the already-fixed action-bar
+  case (`test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath`) — a queue row's own
+  `MOUSE_FILTER_PASS` correctly fired its own `mouse_entered`/`mouse_exited` (its own tooltip was never
+  the problem), but PASS never marks a motion event handled, so it ALSO reached `TacticsController.
+  _unhandled_input`'s `update_hover()` — a pure 3D ray-cast against the board at that screen position
+  with no awareness of what UI is drawn there — showing whatever unit/tile sat behind the deliberately
+  translucent readout panel instead of just the row's own tooltip. Confirmed live via a direct
+  `mouse_moved` signal check (fires with PASS, silent with STOP) before touching anything. Fixed the
+  same way the action bar was: `QueuePanel._entry_row()`'s own row is now `MOUSE_FILTER_STOP`, not
+  PASS — still gets its own `mouse_entered`/`mouse_exited` (confirmed), never lets the same motion reach
+  the board. `test_battle_scene_input.gd`'s own structural test (every non-interactive Control must not
+  default to STOP) widened to also recognize a real `mouse_entered` connection as genuine interactivity,
+  the same way it already recognized a real `gui_input` connection — a Control deliberately wired for
+  hover is exactly as intentional as one wired for clicks. **Not fixed here, flagged as a related, not-
+  yet-reported instance of the identical bug:** `ApMpPipRow`'s own AP/MP pip containers use the same
+  `PASS` + `mouse_entered`/`mouse_exited` shape with no `gui_input` — likely has the same latent leak,
+  just not yet reported, possibly because that row rarely sits over visible board content in practice.
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or
