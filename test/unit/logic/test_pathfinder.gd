@@ -261,3 +261,76 @@ func test_astar_routes_around_a_field_object() -> void:
 	assert_does_not_have(path, Vector2i(1, 1), "the path must detour around the blocked cell")
 	assert_eq(path[0], Vector2i(0, 1))
 	assert_eq(path[-1], Vector2i(2, 1))
+
+
+## tb33 Pass B (BR32.10): `nearest_matching` must return the genuinely
+## NEAREST cell satisfying `stop_at`, by path cost — not merely the first one
+## discovered by insertion order. A straight corridor with a costly detour
+## cell in between (matching, but farther by path cost) versus a plain cell
+## past it (also matching, cheaper to reach) proves the Dijkstra-pop-order
+## claim, not just "found something."
+func test_nearest_matching_returns_the_nearest_match_by_path_cost_not_discovery_order() -> void:
+	var grid := Grid.new(6, 1)
+	var pf := Pathfinder.new(grid)
+	var matches: Array[Vector2i] = [Vector2i(4, 0), Vector2i(1, 0)]
+	var found: Variant = pf.nearest_matching(
+		Vector2i(0, 0), 10.0, func(cell: Vector2i) -> bool: return matches.has(cell)
+	)
+	assert_eq(found, Vector2i(1, 0), "the nearer match must win even if discovered later")
+
+
+func test_nearest_matching_respects_the_radius_cap() -> void:
+	var grid := Grid.new(10, 1)
+	var pf := Pathfinder.new(grid)
+	var found: Variant = pf.nearest_matching(
+		Vector2i(0, 0), 3.0, func(cell: Vector2i) -> bool: return cell == Vector2i(9, 0)
+	)
+	assert_null(found, "a match outside the radius cap must not be found")
+
+
+func test_nearest_matching_returns_null_when_nothing_matches() -> void:
+	var grid := Grid.new(5, 1)
+	var pf := Pathfinder.new(grid)
+	var found: Variant = pf.nearest_matching(
+		Vector2i(0, 0), 10.0, func(cell: Vector2i) -> bool: return false
+	)
+	assert_null(found)
+
+
+func test_nearest_matching_never_crosses_a_blocked_cell() -> void:
+	var grid := Grid.new(5, 1)
+	grid.set_terrain(Vector2i(2, 0), TERRAIN_WALL)
+	var pf := Pathfinder.new(grid, {TERRAIN_WALL: -1.0})
+	var found: Variant = pf.nearest_matching(
+		Vector2i(0, 0), 10.0, func(cell: Vector2i) -> bool: return cell == Vector2i(4, 0)
+	)
+	assert_null(found, "a 1-row corridor with no way around a wall must never reach past it")
+
+
+func test_truncate_to_budget_stops_at_the_affordable_prefix() -> void:
+	var grid := Grid.new(5, 1)
+	var pf := Pathfinder.new(grid)
+	var path: Array[Vector2i] = [
+		Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0)
+	]
+	var truncated: Array[Vector2i] = pf.truncate_to_budget(path, 2.0)
+	assert_eq(truncated, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)])
+
+
+func test_truncate_to_budget_stops_before_a_cell_it_cannot_afford_even_partially() -> void:
+	var grid := Grid.new(5, 1)
+	grid.set_terrain(Vector2i(2, 0), TERRAIN_DIFFICULT)
+	var pf := Pathfinder.new(grid, {TERRAIN_DIFFICULT: 5.0})
+	var path: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]
+	var truncated: Array[Vector2i] = pf.truncate_to_budget(path, 4.0)
+	assert_eq(
+		truncated,
+		[Vector2i(0, 0), Vector2i(1, 0)],
+		"the expensive cell can't be afforded, even though 4.0 MP remains"
+	)
+
+
+func test_truncate_to_budget_on_an_empty_path_returns_empty() -> void:
+	var grid := Grid.new(3, 1)
+	var pf := Pathfinder.new(grid)
+	assert_eq(pf.truncate_to_budget([], 5.0), [] as Array[Vector2i])

@@ -3,9 +3,16 @@ extends GutTest
 ## taskblock-26 (CC, re-diagnosing B2 "skirmisher squares off through
 ## walls"): split out of test_unit_ai.gd (which was already at the
 ## file-length cap — the same reason test_damage_resolver_deflect_modes.gd
-## split out of test_damage_resolver.gd) — the LOS-engagement-scoring
+## split out of test_damage_resolver.gd) — the engagement-scoring
 ## regression coverage for `_pick_engagement_position`/`_engagement_score`'s
-## `any_reachable_has_los` gate.
+## own line gate.
+## tb33 Pass A: renamed from `test_unit_ai_engagement_los.gd` — that gate
+## reads `LineOfFire.has_clear_line_of_fire` now, not `LoS.has_los`
+## (BR30.10: a "clear" line of SIGHT isn't the same claim as a clear shot).
+## Every fixture below now places a REAL wall blocker `Part` alongside its
+## opacity, not opacity alone — `ShotPlane` (what LOF actually resolves
+## against) never reads opacity at all, so a hand-built wall needs both to
+## faithfully stand in for a real `MapGen`-generated one.
 
 
 func _armed_unit(
@@ -55,46 +62,69 @@ func _last_move(queue: ActionQueue) -> MoveAction:
 	return move
 
 
+## tb33 Pass A: a real wall — terrain, opacity, AND a real blocker `Part`
+## (`ShotPlane` only ever reads `state.grid.blockers`/`state.units`, never
+## opacity) — one cell at a time, since `DataLibrary.get_part` hands back
+## a fresh `.duplicate()` every call and sharing one instance across
+## multiple cells would make "destroying" one destroy all of them.
+func _wall_at(grid: Grid, cell: Vector2i) -> void:
+	grid.set_terrain(cell, Enums.TerrainType.WALL)
+	grid.set_opacity(cell, 1.0)
+	grid.blockers[cell] = DataLibrary.get_part(&"wall")
+
+
 ## taskblock-26 (CC, re-diagnosing B2): confirmed on 60 REAL generated
 ## maps (MapGen), not just this hand-built fixture — a wall/corridor bend
 ## no single turn's own movement budget can clear left NOT ONE reachable
-## cell with real LOS. `NO_LOS_PENALTY`'s own self-cell exemption then
+## cell with a real line. `NO_LOF_PENALTY`'s own self-cell exemption then
 ## made "stand still" categorically beat every other candidate (only the
 ## self cell escaped the penalty), freezing the unit at its own spawn
 ## turn after turn — the exact "squares off... never takes space" symptom
-## B2 was reported against, on a map big enough that one turn can't reach
-## LOS at all. A wall tall enough that going around exceeds one turn's
-## own movement budget, with the units sharing a row squarely blocked by
-## it, reproduces this without needing a whole generated map.
-func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_los_yet() -> void:
+## B2 was reported against, on a map big enough that one turn can't clear
+## it at all. A wall tall enough that going around exceeds one turn's own
+## movement budget, with the units sharing a row squarely blocked by it,
+## reproduces this without needing a whole generated map. tb33: a single
+## gap at the far bottom edge (y=19), not a fully sealed column — Pass
+## B's own approach-fallback genuinely walks toward a real opening
+## (matching what a real generated map always has SOMEWHERE), unlike the
+## old greedy obstruction_count scorer, which made "progress" toward an
+## obstruction regardless of whether the far side was ever reachable at
+## all.
+func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_lof_yet() -> void:
 	var grid := Grid.new(20, 20)
-	for y in range(20):  # a FULLY sealed column -- no reachable cell ever has LOS across it
-		grid.set_terrain(Vector2i(8, y), Enums.TerrainType.WALL)
-		grid.set_opacity(Vector2i(8, y), 1.0)
+	for y in range(19):  # sealed except one gap at y=19, far from the shared row (y=10)
+		_wall_at(grid, Vector2i(8, y))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
 	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 30.0
 	var enemy := _armed_unit(&"enemy", Vector2i(19, 10), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
+	# tb33: the default budget (mp_per_ap * ap, ~12 cells) can already reach
+	# close enough to the single-cell gap to find LOF -- shrunk here (AFTER
+	# construction -- CombatState.new()'s own _begin_turn() refreshes AP to
+	# full for whichever unit goes first, so setting it any earlier gets
+	# silently overwritten) so "too tall for ONE TURN" is genuinely true
+	# regardless of exactly how far away the gap is.
+	self_unit.ap = 1
 	assert_false(
-		LoS.has_los(grid, self_unit.cell, enemy.cell), "sanity: the wall blocks the shared row"
+		LineOfFire.has_clear_line_of_fire(self_unit, enemy, self_unit.cell, state),
+		"sanity: the wall blocks the shared row"
 	)
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 	var reachable: Array[Vector2i] = pf.reachable(
 		self_unit.cell, self_unit.mp_per_ap() * self_unit.ap
 	)
-	var any_reachable_has_los := false
-	for cell: Vector2i in reachable:
-		if LoS.has_los(grid, cell, enemy.cell):
-			any_reachable_has_los = true
 	assert_false(
-		any_reachable_has_los, "sanity: the wall band really is too tall for one turn to clear"
+		UnitAI._any_reachable_has_lof(
+			self_unit, enemy, state, reachable, self_unit.shell.find_part(&"rifle")
+		),
+		"sanity: the wall band really is too tall for one turn to clear"
 	)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(
-		move, "must advance toward the wall even without LOS this turn, never freeze at spawn"
+		move, "must advance toward the wall even without a line this turn, never freeze at spawn"
 	)
 	var destination: Vector2i = move.path[move.path.size() - 1]
 	assert_lt(
@@ -106,25 +136,29 @@ func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_los_
 
 ## taskblock-26 (CC, re-diagnosing B2): the narrower, direct proof —
 ## `_engagement_score`'s own self-cell exemption must NOT apply when
-## `any_reachable_has_los` is false, so a cell making genuine progress
-## outscores standing still even though neither has real LOS. With
-## `any_reachable_has_los` true (the ordinary case — some OTHER reachable
-## cell really does have LOS), the self cell keeps its exemption exactly
+## `any_reachable_has_lof` is false, so a cell making genuine progress
+## outscores standing still even though neither has a real line. With
+## `any_reachable_has_lof` true (the ordinary case — some OTHER reachable
+## cell really does have one), the self cell keeps its exemption exactly
 ## as before, unchanged from taskblock-26 Pass B2's own original fix.
-func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_has_los() -> void:
+func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_has_lof() -> void:
 	var grid := Grid.new(20, 3)
 	for x in range(5, 15):
-		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
-		grid.set_opacity(Vector2i(x, 1), 1.0)
+		_wall_at(grid, Vector2i(x, 1))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(19, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 	var weapon: Part = self_unit.shell.find_part(&"rifle")
 	var progress_cell := Vector2i(4, 1)  # closer to preferred range, still behind the same wall
-	assert_false(LoS.has_los(grid, self_unit.cell, enemy.cell), "sanity")
-	assert_false(LoS.has_los(grid, progress_cell, enemy.cell), "sanity: still behind the wall")
+	assert_false(
+		LineOfFire.has_clear_line_of_fire(self_unit, enemy, self_unit.cell, state), "sanity"
+	)
+	assert_false(
+		LineOfFire.has_clear_line_of_fire(self_unit, enemy, progress_cell, state),
+		"sanity: still behind the wall"
+	)
 
-	var self_score_when_nothing_has_los: float = UnitAI._engagement_score(
+	var self_score_when_nothing_has_lof: float = UnitAI._engagement_score(
 		self_unit.cell,
 		enemy,
 		state,
@@ -134,7 +168,7 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 		weapon,
 		false
 	)
-	var progress_score_when_nothing_has_los: float = UnitAI._engagement_score(
+	var progress_score_when_nothing_has_lof: float = UnitAI._engagement_score(
 		progress_cell,
 		enemy,
 		state,
@@ -145,12 +179,12 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 		false
 	)
 	assert_gt(
-		progress_score_when_nothing_has_los,
-		self_score_when_nothing_has_los,
-		"with no LOS cell reachable at all, real progress must outscore the exempted self cell"
+		progress_score_when_nothing_has_lof,
+		self_score_when_nothing_has_lof,
+		"with no LOF cell reachable at all, real progress must outscore the exempted self cell"
 	)
 
-	var self_score_when_something_has_los: float = UnitAI._engagement_score(
+	var self_score_when_something_has_lof: float = UnitAI._engagement_score(
 		self_unit.cell,
 		enemy,
 		state,
@@ -160,7 +194,7 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 		weapon,
 		true
 	)
-	var progress_score_when_something_has_los: float = UnitAI._engagement_score(
+	var progress_score_when_something_has_lof: float = UnitAI._engagement_score(
 		progress_cell,
 		enemy,
 		state,
@@ -171,9 +205,9 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 		true
 	)
 	assert_gt(
-		self_score_when_something_has_los,
-		progress_score_when_something_has_los,
-		"unchanged from Pass B2: the self cell keeps its exemption once some cell truly has LOS"
+		self_score_when_something_has_lof,
+		progress_score_when_something_has_lof,
+		"unchanged from Pass B2: the self cell keeps its exemption once some cell truly has LOF"
 	)
 
 
@@ -187,8 +221,11 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 ## further from `preferred_range` but with FEWER opaque cells between it
 ## and the enemy (`LoS.obstruction_count`) must now outscore a cell
 ## exactly at the preferred distance but more obstructed — genuine
-## progress toward a real line beats matching a number.
-func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_los() -> void:
+## progress toward a real line beats matching a number. tb33: this signal
+## stays genuinely opacity-based (`LoS.obstruction_count`, unchanged) —
+## only the GATE deciding whether to lean on it moved from LOS to LOF, so
+## this fixture stays opacity-only, no real blocker needed.
+func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_lof() -> void:
 	var grid := Grid.new(25, 5)
 	# A short, thick wall segment directly on the near cell's own line to
 	# the enemy; the far cell's own line clears it by going around instead.
@@ -236,4 +273,48 @@ func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_los() 
 		far_score,
 		near_score,
 		"a less-obstructed cell must outscore one merely closer to the numeric preferred range"
+	)
+
+
+## tb33 Pass A: the direct proof the LOS->LOF swap exists for — a cell can
+## SEE the enemy (no opaque cell on the line: `LoS.has_los` true) while a
+## real wall blocker `Part` still stops the actual shot (`LineOfFire.
+## has_clear_line_of_fire` false). Scoring on `has_los` would have called
+## this cell just as good as a genuinely clear one; scoring on LOF must not.
+func test_scorer_ranks_a_clear_lof_cell_above_a_los_but_wall_blocked_cell() -> void:
+	var grid := Grid.new(10, 3)
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
+	var enemy := _armed_unit(&"enemy", Vector2i(9, 1), 1, &"")
+	var blocked_cell := Vector2i(5, 1)
+	# A wall Part with no opacity change: ShotPlane (LOF) blocks it, LoS
+	# (opacity-only) does not -- the exact tb31-C gap this pass closes.
+	grid.blockers[blocked_cell] = DataLibrary.get_part(&"wall")
+	var clear_cell := Vector2i(5, 0)
+	var state := CombatState.new(grid, [self_unit, enemy])
+	var weapon: Part = self_unit.shell.find_part(&"rifle")
+
+	assert_true(LoS.has_los(grid, blocked_cell, enemy.cell), "sanity: nothing opaque blocks sight")
+	assert_false(
+		LineOfFire.has_clear_line_of_fire(self_unit, enemy, blocked_cell, state),
+		"sanity: the real wall Part still stops the shot"
+	)
+	assert_true(LineOfFire.has_clear_line_of_fire(self_unit, enemy, clear_cell, state), "sanity")
+
+	var blocked_score: float = UnitAI._engagement_score(
+		blocked_cell,
+		enemy,
+		state,
+		self_unit,
+		UnitAI.SKIRMISHER_PREFERRED_RANGE,
+		false,
+		weapon,
+		true
+	)
+	var clear_score: float = UnitAI._engagement_score(
+		clear_cell, enemy, state, self_unit, UnitAI.SKIRMISHER_PREFERRED_RANGE, false, weapon, true
+	)
+	assert_gt(
+		clear_score,
+		blocked_score,
+		"a genuinely clear shot must outscore one that only LOOKS clear over opacity alone"
 	)

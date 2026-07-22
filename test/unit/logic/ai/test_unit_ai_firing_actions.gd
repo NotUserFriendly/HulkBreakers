@@ -173,3 +173,47 @@ func test_an_ai_never_constructs_a_firing_action_the_weapon_doesnt_provide() -> 
 		),
 		"a weapon that provides no firing action must never be fired"
 	)
+
+
+## tb33 Pass A (BR30.10): a wall Part sealing the only row in a 1-cell-wide
+## corridor -- no reachable cell this turn or any turn ever has a clear
+## shot -- must never commit an AttackAction into it. Before this pass,
+## `clear_from_here`/`final_blocked` only checked for an ally, so a unit in
+## exactly this spot would have fired straight into the wall every turn.
+func test_plan_ranged_never_fires_through_a_wall_it_cannot_get_around() -> void:
+	var grid := Grid.new(10, 1)
+	grid.set_terrain(Vector2i(5, 0), Enums.TerrainType.WALL)
+	grid.set_opacity(Vector2i(5, 0), 1.0)
+	grid.blockers[Vector2i(5, 0)] = DataLibrary.get_part(&"wall")
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	var enemy := _armed_unit(&"enemy", Vector2i(9, 0), 1, &"")
+	var state := CombatState.new(grid, [self_unit, enemy])
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	assert_false(
+		queue.actions.any(
+			func(a: CombatAction) -> bool: return a is AttackAction or a is BurstAction
+		),
+		"a wall with no way around it must never be fired through, this turn or any other"
+	)
+
+
+## Regression: an ordinary open-field engagement (no blockers at all) must
+## behave exactly as it did before this pass -- LOF and LOS agree with
+## nothing in the way, so the fire gate's added LOF check changes nothing.
+func test_plan_ranged_open_field_still_fires_without_moving() -> void:
+	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
+	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
+	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+
+	assert_true(
+		queue.actions.any(func(a: CombatAction) -> bool: return a is AttackAction),
+		"a clear open-field shot must still fire exactly as before the LOS->LOF swap"
+	)
+	assert_false(
+		queue.actions.any(func(a: CombatAction) -> bool: return a is MoveAction),
+		"already in range and clear -- no reason to move at all"
+	)
