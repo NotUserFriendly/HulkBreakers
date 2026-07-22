@@ -83,6 +83,21 @@ static func lit_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
+## tb32 Pass A: the wall occlusion cutout — real geometry, so it MUST
+## stay lit (docs/10) unlike every unshaded overlay material below; a
+## `discard`-based dithered porthole punched by `wall_cutout.gdshader`
+## itself, driven by per-frame uniforms (`BoardView.update_wall_cutout`),
+## not a GDScript-computed alpha (supersedes tb31 Pass C's alpha-blend
+## stopgap, `WALL_FADE_ALPHA`). One shared instance covers every wall in
+## a `BoardView.build()` — walls this pass; cover doesn't opt in yet
+## (scope).
+static func wall_cutout_material(color: Color) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = load("res://src/view/shaders/wall_cutout.gdshader")
+	material.set_shader_parameter("albedo", color)
+	return material
+
+
 ## Unshaded flat material for UI-adjacent 3D overlays ONLY — reachable
 ## highlight, ghost paths, aim rings, team rings/rims. Never for real part
 ## or blocker geometry (docs/10: "Part and blocker meshes: SHADING_MODE_

@@ -133,48 +133,32 @@ const VOID_FILL_SIZE := 0.8
 const FIELD_ITEM_MARKER_HEIGHT := 0.045
 const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
-## tb31 Pass C: "walls must not block the player's read of the action
-## behind them" — flagged, tunable (CLAUDE.md: never invent a "final"
-## balance number), how close on SCREEN a wall's own projected position
-## has to sit to the focal unit's before it's considered "in the way," in
-## pixels. Screen-space, not a world-distance-along-the-ray radius: the
-## tactical camera sits well above and back from the board
-## (`CameraOrbitState.DEFAULT_PITCH`/`DEFAULT_ZOOM`), so a straight 3D
-## line to a ground-level unit spends almost its whole length far above
-## wall height — a world-space radius almost never fired in practice
-## (found live: walls never visibly faded at all). Screen-space asks the
-## question a player would actually answer by eye instead.
-const WALL_FADE_SCREEN_RADIUS := 60.0
-## The albedo alpha a wall drops to while fading (1.0 = fully opaque).
-## Reported live as still not visibly doing anything even after the
-## screen-space occlusion fix above (confirmed correct end to end, down
-## to `transparency` actually flipping to 0.75) — the one link never
-## directly verified was whether `GeometryInstance3D.transparency` alone
-## renders a visible effect against an otherwise-opaque, `SHADING_MODE_
-## PER_PIXEL` material (real geometry must stay lit, docs/10 — the
-## unshaded `WorldPalette.translucent_material()` this file's OWN ghost/
-## overwatch overlays use isn't an option for a wall). Switched to real
-## alpha blending instead (`BaseMaterial3D.TRANSPARENCY_ALPHA` + this
-## alpha value) — the exact mechanism `show_unit_ghost()` already proves
-## renders correctly in this project, just kept lit instead of unshaded.
-## Faded, not hidden outright: the wall's own presence (still real
-## geometry you could shoot down) shouldn't vanish, only stop hiding
-## what's behind it.
-const WALL_FADE_ALPHA := 0.25
+## tb32 Pass A: how many tiles wide the wall-cutout porthole is, before
+## being projected to screen pixels at each unit's own depth
+## (`WallLegibility.pixel_radius_for_tiles`) — "~2.5 tiles, comfortably
+## clears ~three walls" per the taskblock's own starting point. Flagged,
+## tunable (CLAUDE.md: never invent a "final" balance number). Because
+## it's tiles-at-that-unit's-own-depth, camera zoom scales the resulting
+## pixel radius automatically — no separate distance logic.
+const WALL_CUTOUT_RADIUS_TILES := 2.5
+## The shader's own fixed-size uniform arrays (`wall_cutout.gdshader`'s
+## `MAX_UNITS`) — must match exactly; a battle fielding more units than
+## this simply stops feeding the excess to the cutout (they'd still be
+## visible, just not cut through a wall for).
+const WALL_CUTOUT_MAX_UNITS := 32
 
 var grid: Grid
-## tb31 Pass C: "walls must not block the player's read of the action
-## behind them." Whichever unit the player is currently trying to read
-## through a wall — null means "nothing to protect," so every wall mesh
-## sits at full opacity (the ordinary case: no selection, or a fully open
-## board). Set directly by whichever overlay owns "what's selected right
-## now" (`SquadControlOverlay`/`SingleUnitOverlay`) on `selection_changed`;
-## `SpectatorOverlay`/`GenerateBoutOverlay` never set it, so legibility
-## fading simply never runs there — this is READ EVERY FRAME (`_process`,
-## below), never re-derived from a stale cached position, since the
-## camera itself can move continuously (drag-to-orbit) with no signal of
-## its own to react to.
-var focal_unit: Unit = null
+## tb32 Pass A: "cut around every unit, not one focal unit." Whichever
+## units are worth reading through a wall right now — set directly by
+## whichever overlay owns "what's on the board right now"
+## (`SquadControlOverlay._on_battle_loaded()` points this at the live
+## `CombatState.units` array; `SpectatorOverlay`/`GenerateBoutOverlay`
+## never set it, so the cutout simply never fires there, per the
+## taskblock's own "spectator keeps its current no-fade behavior for
+## now"). Re-projected every frame (`_process`, below), never cached,
+## since the camera itself can move continuously (drag-to-orbit) with no
+## signal of its own to react to.
+var wall_cutout_units: Array[Unit] = []
 
 var _static: Node3D
 var _reachable_overlay: Node3D
@@ -193,6 +177,14 @@ var _overwatch_overlay: Node3D
 ## meshes that can actually be tall/opaque enough to be a legibility
 ## problem in the first place.
 var _wall_mesh_instances: Array[MeshInstance3D] = []
+## tb32 Pass A: ONE shared `wall_cutout_material()` instance for every
+## wall spawned by this `build()` — walls all draw from the same `steel`
+## material today, and the cutout is a per-fragment shader effect, not a
+## per-object property, so there's nothing an individual wall needs its
+## own copy for. Lazily created on the first wall placement encountered
+## (`_spawn_blocker`), reset to null at the top of `build()` so a rebuilt
+## map never keeps a stale instance around.
+var _wall_cutout_material: ShaderMaterial = null
 
 
 func _init() -> void:
@@ -218,6 +210,7 @@ func build(
 	grid = p_grid
 	_clear(_static)
 	_wall_mesh_instances.clear()
+	_wall_cutout_material = null
 
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
@@ -388,13 +381,24 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 ## so it reads as a fallen assembly, not upright cover.
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
+	var is_wall: bool = part.id == &"wall"
 	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = placement.box.size
-		box_mesh.material = WorldPalette.lit_material(
-			material_table.color_for(placement.part.material)
-		)
+		if is_wall:
+			# tb32 Pass A: one shared cutout material for every wall,
+			# not `WorldPalette.lit_material()` per-placement — see
+			# `_wall_cutout_material`'s own doc comment.
+			if _wall_cutout_material == null:
+				_wall_cutout_material = WorldPalette.wall_cutout_material(
+					material_table.color_for(placement.part.material)
+				)
+			box_mesh.material = _wall_cutout_material
+		else:
+			box_mesh.material = WorldPalette.lit_material(
+				material_table.color_for(placement.part.material)
+			)
 		instance.mesh = box_mesh
 		var world_transform: Transform3D = placement.transform.translated_local(
 			placement.box.center
@@ -406,7 +410,7 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 		# tb31 Pass C: tracked separately so `_process()` only re-evaluates
 		# legibility fading against walls specifically, not every box on
 		# the board.
-		if part.id == &"wall":
+		if is_wall:
 			_wall_mesh_instances.append(instance)
 
 
@@ -438,64 +442,58 @@ func _spawn_field_item(item: Variant, cell: Vector2i, material_table: MaterialTa
 		_static.add_child(_marker(cell, FIELD_ITEM_MARKER_COLOR, FIELD_ITEM_MARKER_HEIGHT))
 
 
-## tb31 Pass C: re-evaluated every frame (`_process`, below), not just on
-## selection change — the camera itself can move continuously
-## (drag-to-orbit) with no signal of its own to react to, so a wall that
-## reads as "in the way" this frame may not the next, purely from camera
-## motion alone. Split from `_process` so a test can drive it against a
-## real, deliberately positioned `Camera3D` directly (docs/10 standing
-## rule 2: read the real node back, don't just trust `_process` fired).
-func update_wall_legibility(camera: Camera3D) -> void:
-	if camera == null or focal_unit == null or not is_instance_valid(focal_unit):
-		for instance: MeshInstance3D in _wall_mesh_instances:
-			_set_wall_alpha(instance, 1.0)
+## tb32 Pass A: supersedes `update_wall_legibility` — GDScript's only job
+## now is projecting every unit in `wall_cutout_units` to a screen
+## position/depth/radius and feeding them to the ONE shared
+## `_wall_cutout_material` as uniform arrays; `wall_cutout.gdshader`
+## itself decides, per fragment, whether a wall discards. Re-evaluated
+## every frame (`_process`, below), not just on a selection/unit-list
+## change — the camera itself can move continuously (drag-to-orbit) with
+## no signal of its own to react to. Split from `_process` so a test can
+## drive it against a real, deliberately positioned `Camera3D` directly
+## (docs/10 standing rule 2: read the real node back).
+func update_wall_cutout(camera: Camera3D) -> void:
+	if _wall_cutout_material == null:
 		return
-	var focal_position: Vector3 = UnitGeometry.bounding_sphere(focal_unit).center
-	# Behind the camera: unproject_position() gives nonsense screen
-	# coordinates for a point the camera isn't actually looking at —
-	# nothing can occlude something that isn't even on screen.
-	if camera.is_position_behind(focal_position):
-		for instance: MeshInstance3D in _wall_mesh_instances:
-			_set_wall_alpha(instance, 1.0)
-		return
-	var camera_position: Vector3 = camera.global_position
-	var focal_screen: Vector2 = camera.unproject_position(focal_position)
-	var focal_depth: float = camera_position.distance_to(focal_position)
-	for instance: MeshInstance3D in _wall_mesh_instances:
-		var wall_position: Vector3 = instance.global_position
-		if camera.is_position_behind(wall_position):
-			_set_wall_alpha(instance, 1.0)
-			continue
-		var occludes: bool = WallLegibility.occludes_on_screen(
-			camera.unproject_position(wall_position),
-			camera_position.distance_to(wall_position),
-			focal_screen,
-			focal_depth,
-			WALL_FADE_SCREEN_RADIUS
-		)
-		_set_wall_alpha(instance, WALL_FADE_ALPHA if occludes else 1.0)
-
-
-## Real alpha blending (`BaseMaterial3D.TRANSPARENCY_ALPHA` + the mesh's
-## own `albedo_color.a`) — see `WALL_FADE_ALPHA`'s own doc comment for why
-## this replaced `GeometryInstance3D.transparency`. Each wall mesh already
-## has its own unique `StandardMaterial3D` instance (`_spawn_blocker`
-## builds one fresh per placement), so mutating it here never bleeds into
-## any other wall or piece of cover.
-static func _set_wall_alpha(instance: MeshInstance3D, alpha: float) -> void:
-	var material: StandardMaterial3D = instance.mesh.material
-	material.transparency = (
-		BaseMaterial3D.TRANSPARENCY_ALPHA if alpha < 1.0 else BaseMaterial3D.TRANSPARENCY_DISABLED
-	)
-	var color: Color = material.albedo_color
-	color.a = alpha
-	material.albedo_color = color
+	var screen_positions := PackedVector2Array()
+	var depths := PackedFloat32Array()
+	var radii := PackedFloat32Array()
+	screen_positions.resize(WALL_CUTOUT_MAX_UNITS)
+	depths.resize(WALL_CUTOUT_MAX_UNITS)
+	radii.resize(WALL_CUTOUT_MAX_UNITS)
+	var count := 0
+	if camera != null and is_inside_tree():
+		var camera_position: Vector3 = camera.global_position
+		var viewport_height: float = float(get_viewport().size.y)
+		for unit: Unit in wall_cutout_units:
+			if count >= WALL_CUTOUT_MAX_UNITS:
+				break
+			if unit == null or not is_instance_valid(unit):
+				continue
+			var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
+			# Behind the camera: unproject_position() gives nonsense
+			# screen coordinates for a point the camera isn't actually
+			# looking at — nothing can be occluded for a unit that isn't
+			# even on screen.
+			if camera.is_position_behind(position):
+				continue
+			var depth: float = camera_position.distance_to(position)
+			screen_positions[count] = camera.unproject_position(position)
+			depths[count] = depth
+			radii[count] = WallLegibility.pixel_radius_for_tiles(
+				WALL_CUTOUT_RADIUS_TILES, depth, camera.fov, viewport_height
+			)
+			count += 1
+	_wall_cutout_material.set_shader_parameter("unit_screen_positions", screen_positions)
+	_wall_cutout_material.set_shader_parameter("unit_depths", depths)
+	_wall_cutout_material.set_shader_parameter("unit_radii_px", radii)
+	_wall_cutout_material.set_shader_parameter("unit_count", count)
 
 
 func _process(_delta: float) -> void:
 	if _wall_mesh_instances.is_empty():
 		return
-	update_wall_legibility(get_viewport().get_camera_3d() if is_inside_tree() else null)
+	update_wall_cutout(get_viewport().get_camera_3d() if is_inside_tree() else null)
 
 
 ## The reachable-cell highlight (docs/10 Phase 12.2) — one flat marker per

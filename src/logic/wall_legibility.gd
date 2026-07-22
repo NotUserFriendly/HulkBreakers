@@ -24,6 +24,13 @@ extends RefCounted
 ## True if a wall projecting to `wall_screen_position` (at `wall_depth`
 ## from the camera) should fade so a player can still read a focal point
 ## projecting to `focal_screen_position` (at `focal_depth`).
+##
+## tb32 Pass A retires the GDScript loop that called this against one
+## `focal_unit` at a time (`BoardView.update_wall_legibility`, superseded
+## by the per-fragment cutout shader) but Pass B's own friendly-ghost fade
+## reuses this exact function unchanged (same screen-space-and-nearer
+## test, just "is this friendly within R of, and nearer than, the active
+## unit" instead of "is this wall...") — kept here rather than deleted.
 static func occludes_on_screen(
 	wall_screen_position: Vector2,
 	wall_depth: float,
@@ -34,3 +41,25 @@ static func occludes_on_screen(
 	if wall_depth >= focal_depth:
 		return false
 	return wall_screen_position.distance_to(focal_screen_position) <= screen_radius
+
+
+## tb32 Pass A: how many screen pixels a `tiles`-wide circle spans at
+## `depth` from the camera — pure trig mirroring `Camera3D`'s own
+## perspective projection, so the wall-cutout shader's per-unit radius
+## (fed as a uniform every frame, `BoardView.update_wall_cutout`) can be
+## computed and unit-tested without a real camera node; the shader itself
+## only does the per-fragment discard.
+##
+## `fov_deg` is `Camera3D.fov`, which this project's own camera treats as
+## VERTICAL fov (`CameraOrbitState.CAMERA_FOV_DEG`'s own doc comment) — so
+## `viewport_height_px` is the matching dimension, not width. Because the
+## radius is tiles-at-THAT-unit's-own-depth, zoom falls out for free: zoom
+## out (greater depth for the same tile count) shrinks the pixel radius
+## automatically, no separate distance logic needed.
+static func pixel_radius_for_tiles(
+	tiles: float, depth: float, fov_deg: float, viewport_height_px: float
+) -> float:
+	if depth <= 0.0:
+		return 0.0
+	var world_radius: float = tiles * UnitGeometry.CELL_SIZE
+	return world_radius / (2.0 * depth * tan(deg_to_rad(fov_deg) * 0.5)) * viewport_height_px
