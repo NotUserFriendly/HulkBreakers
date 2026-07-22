@@ -329,6 +329,89 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `test_queue_panel.gd`) apparently ever with a real queue-then-resolve assertion. Re-opening for a
   real investigation of the click-to-select-a-row → `_marker_index` → resolve-button-enabled chain,
   not just the logic `resolve_to_marker()` itself already had coverage for.
+- **2026-07-22, later: reproduced live by the supervisor** — "grayed out and unclickable," matching
+  the original report exactly.
+- **2026-07-22, follow-up investigation — a real, confirmed test-coverage gap found and closed, but
+  the reported symptom itself still not reproduced:** every existing test in `test_queue_panel.gd`
+  drove the marker via a helper explicitly documented as "the same path a real click does... without
+  needing a live viewport" — `tree.get_root().get_child(index).select(...)` followed by manually
+  calling `panel._on_item_selected()` directly. That is NOT the same path: it bypasses the `Tree`
+  widget's own hit-testing and its `item_selected` signal entirely. **Nothing, ever, had verified that
+  a real click on a real row in the real running game actually fires that signal at all** — exactly
+  the class of gap that let BR27.06/BR30.02 hide before (a test that re-derives the behavior instead
+  of reading the real thing back).
+  - First built the naive version of this test against `test_queue_panel.gd`'s own bare fixture
+    (`Tree.new()` with no size, added directly with no parent container) — it FAILED. Looked like a
+    smoking gun, but turned out to be a fixture artifact, not the real bug: a bare `Tree` with no
+    `custom_minimum_size` lays out at a tiny size, and `get_item_area_rect()` reported a row extending
+    below the Tree's own visible rect — a click there falls outside `Control.has_point()`'s test and
+    never reaches the Tree at all, regardless of any real production bug. Confirmed via a throwaway
+    diagnostic (not committed): giving the same bare Tree the real production `custom_minimum_size =
+    Vector2(320, 100)` (`squad_control_overlay.gd:397`) made the identical click resolve correctly.
+  - Rebuilt the test against the FULL real `BattleScene`/`SquadControlOverlay` construction instead —
+    real Tree sizing, real container hierarchy, a real `InputEventMouseButton` pushed through the real
+    `Viewport` at the row's own real, laid-out screen rect (`test_battle_scene_input.gd::
+    test_a_real_click_on_a_queue_row_enables_resolve_to_here`). **This passes** — a real click on the
+    first row of a freshly-queued single move correctly fires `item_selected` and enables the button.
+    Also tried clicking the SECOND row of a 2-entry queue (a throwaway diagnostic, not committed,
+    since "resolve to here" is presumably most useful mid-queue, not on the first entry) — also
+    correctly selects/enables.
+  - **So the click-to-enable mechanism itself checks out in every configuration tried so far, and the
+    resolve-when-clicked logic already checked out in tb32 Pass D. Both halves work; the reported
+    symptom still hasn't been reproduced by CC.** New regression coverage added either way (a real
+    gap closes regardless of whether it's THIS bug): `test_battle_scene_input.gd::
+    test_a_real_click_on_a_queue_row_enables_resolve_to_here` (real click, full production wiring) and
+    `test_queue_panel.gd::test_a_real_click_on_a_queue_row_enables_resolve_to_here` (same real-click
+    proof against the bare fixture, given its own proper size this time — documents the fixture
+    sizing gotcha inline so it isn't rediscovered blind next time).
+  - **Not chased further blind — needs a few specific details to build a matching failing fixture:**
+    (a) which overlay — ordinary `SquadControlOverlay`, or `SingleUnitOverlay`? (b) how many actions
+    were queued, and which row (first / a later one) was clicked? (c) fresh turn, or after cycling
+    through End Turn/Reset Turn at least once first? (d) does the ROW itself visibly highlight/select
+    when clicked (proving the click reaches the Tree) while the button alone stays gray — or does
+    NOTHING happen at all, row included? That last one matters most: if the row selects but the button
+    doesn't, the bug is almost certainly cosmetic/redraw-timing in `_update_resolve_button()`'s effect
+    on the real `Button` node — something no headless test can see (the FRAGCOORD/BR32.02 class of
+    bug). If the row itself never highlights, the click isn't reaching the Tree at all in the live
+    game, which every test above says shouldn't be possible — meaning something about the live render/
+    input path differs from headless in a way not yet identified.
+- **2026-07-22, supervisor's answers — every remaining code-level hypothesis ruled out:** (1) both
+  `SquadControlOverlay` and `SingleUnitOverlay` show the identical symptom. (2) 1, 2, or 3 actions
+  queued, moves interspersed with other action types or not — no difference. (3) fresh turn AND after
+  cycling End Turn/Reset Turn — both. (4) **"I don't see any color, or opacity change" — nothing
+  happens at all, including the row.** ("Grayed out" was also corrected to "alpha'd out" — the
+  button's own look, not necessarily relevant to the row question, but the row-highlight answer is the
+  load-bearing one.) This rules out queue length, action type, overlay variant, and turn-state as
+  variables, and confirms it's the FIRST half (click never reaches Tree selection) rather than the
+  second (selection works, only the button's own redraw is stuck) — narrowing but not yet solving it.
+  - Tried two more hypotheses this round, both also ruled out by direct test:
+    1. **A real mouse hover immediately before the click** (what an actual player does — move onto the
+       row, which triggers `_on_tree_gui_input`'s own tooltip-on-hover, THEN click) rather than a cold
+       click with no preceding motion event. Building this properly surfaced a real headless-testing
+       limitation, not a game bug: `Viewport.get_mouse_position()` — which `_on_tree_gui_input` itself
+       reads to position the tooltip (`tooltip_view.show_data(data, tree.get_viewport().
+       get_mouse_position())`) — does **not** update from a synthetic `push_input()`-delivered
+       `InputEventMouseMotion` the way a real OS cursor would; it read back `(0, 0)` regardless of the
+       motion event's own `.position`. Worked around it by calling `tooltip_view.show_data()` directly
+       with the row's real screen position instead, forcing the tooltip genuinely visible at (as close
+       as achievable to) the real click point, THEN performing the real click. Still enables the
+       button correctly — the (already `MOUSE_FILTER_IGNORE`) tooltip doesn't block the click, matching
+       BR31.01's own finding for the turn-control buttons.
+    2. Confirmed `HulkTheme` has **no override at all** for a `Tree` row's selection style
+       (`selected`/`selected_focus`), nor for `Button`'s `disabled` state — both rely entirely on
+       Godot's own default theme. Not a confirmed cause (the default selection highlight is normally a
+       distinctly-colored fill, not something that should blend into this theme), but flagged as a
+       secondary, unverified possibility: if the default highlight ever reads as visually identical to
+       unselected in this specific dark theme, that alone could produce "I see no color change" even if
+       the click IS registering underneath. Can't be ruled in or out without eyes on the real render.
+  - **Genuinely exhausted what headless GUT can check here.** Every code-level variable tried
+    (queue/overlay/turn-state/tooltip-overlap/theme-override-absence) either doesn't reproduce it or
+    can't be tested without a real window. This now reads like the same class of bug as BR32.02's own
+    shader saga — something only visible in a real, rendered, real-input build — and the same
+    methodology likely applies: a small, temporary, live diagnostic (e.g., a debug print in
+    `_on_item_selected()`/`_on_tree_gui_input()` that the supervisor can watch in the game's own
+    console/stdout while clicking) to determine, with certainty, whether the click reaches the Tree at
+    all in the live game before guessing at anything further.
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or

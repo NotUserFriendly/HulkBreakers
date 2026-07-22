@@ -189,6 +189,64 @@ func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_cov
 	assert_true(fired[0], "a click on End Turn must reach it, tooltip visually overlapping or not")
 
 
+## BR27.08 ("Resolve to Here" reported grayed out and unclickable in real
+## play, reopened after a prior investigation only verified
+## `resolve_to_marker()`'s own RESOLUTION logic, never the click-to-select-
+## a-row path a real player actually has to go through first). Every test
+## in test_queue_panel.gd drives the marker via a helper documented as
+## "the same path a real click does... without needing a live viewport" —
+## an assumption never actually proven there, since it calls `.select()`
+## then manually invokes `_on_item_selected()`, bypassing the Tree's own
+## hit-testing and its `item_selected` signal entirely. This pushes a
+## genuine InputEventMouseButton at the row's own real, laid-out screen
+## rect through the real Viewport, inside the FULL real `BattleScene`/
+## `SquadControlOverlay` construction (the queue tree's real
+## `custom_minimum_size`, real container hierarchy — not the bare
+## `Tree.new()` test_queue_panel.gd's own fixture builds with no size at
+## all, which would fail this exact check for an unrelated, fixture-only
+## reason).
+func test_a_real_click_on_a_queue_row_enables_resolve_to_here() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var overlay: SquadControlOverlay = _overlay(scene)
+	var current: Unit = scene.combat_state.current_unit()
+	overlay.tactics.selection.select(current)
+
+	var reachable: Array[Vector2i] = overlay.tactics.selection.reachable_cells()
+	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
+	assert_gt(reachable.size(), 0, "sanity: the current unit must have somewhere to move")
+	overlay.tactics.click_cell(reachable[0])
+
+	assert_true(
+		overlay.queue_panel.resolve_button.disabled, "sanity: nothing selected in the queue yet"
+	)
+
+	# Anchored/laid-out Controls only resolve a real global_rect after a
+	# live frame runs (tb32 Pass D's own diagnostic note) — read too early
+	# and this returns a garbage pre-layout rect.
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var tree: Tree = overlay.queue_panel.tree
+	var item: TreeItem = tree.get_root().get_child(0)
+	var row_rect: Rect2 = tree.get_item_area_rect(item)
+	var screen_pos: Vector2 = (
+		tree.get_global_rect().position
+		+ row_rect.position
+		+ Vector2(row_rect.size.x / 2.0, row_rect.size.y / 2.0)
+	)
+
+	_click_at(scene, screen_pos)
+
+	assert_false(
+		overlay.queue_panel.resolve_button.disabled,
+		(
+			"a real click on a queue row must enable Resolve to Here — "
+			+ "not just a manual .select() + _on_item_selected() call"
+		)
+	)
+
+
 ## The actual fix: entering ANY turn-control button must hide a stale
 ## tooltip left over from hovering the board right before crossing onto
 ## it — not wait for the click, which (proven above) already worked.
