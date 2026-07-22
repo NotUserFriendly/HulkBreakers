@@ -137,6 +137,79 @@ func test_wall_material_shading_path_is_unchanged_lit() -> void:
 		"docs/10: real geometry (walls) must stay lit, not switch to the unshaded overlay path"
 	)
 
+
+## A real, reported bug: an extracted unit (docs/07) never clears its own
+## stale `.cell` and stays in `combat_state.units` forever — an
+## unfiltered feed here cut a permanent, unit-less hole at wherever it
+## left the board from.
+func test_update_wall_cutout_skips_an_extracted_unit() -> void:
+	var grid := Grid.new(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	unit.extracted = true
+	view.wall_cutout_units = [unit]
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		0,
+		"an extracted unit's stale cell must never cut a hole"
+	)
+
+
+## The other real case: a unit whose own HitVolumeView was explicitly
+## destroyed (`BattleScene.remove_unit_view()`, the debug-only "make it
+## fully vanish" verb) but which stays in `combat_state.units` — same
+## stray-hole symptom, different cause (not `.extracted`, just a
+## view-level removal `BattleScene` tracks and reports here).
+func test_update_wall_cutout_skips_a_unit_excluded_via_remove_unit_view() -> void:
+	var grid := Grid.new(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	view.wall_cutout_units = [unit]
+	view.exclude_unit_from_occlusion(unit.id)
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		0,
+		"an explicitly-removed unit's stale cell must never cut a hole"
+	)
+
+
+func test_build_clears_previously_excluded_units_for_a_fresh_battle() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(Grid.new(5, 8), DataLibrary.material_table())
+	view.exclude_unit_from_occlusion(7)
+	assert_true(view.is_excluded_from_occlusion(7), "sanity: excluded before the rebuild")
+
+	view.build(Grid.new(5, 8), DataLibrary.material_table())
+
+	assert_false(
+		view.is_excluded_from_occlusion(7), "a fresh battle must not inherit a stale exclusion"
+	)
+
 ## tb32 Pass B was redesigned: the friendly-fade decision and its actual
 ## effect (fading a unit's own real body) now live on `HitVolumeView`/
 ## `BattleScene` (`test_hit_volume_view.gd`/`test_battle_scene_occlusion_
