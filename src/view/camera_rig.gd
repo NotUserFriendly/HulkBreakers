@@ -125,14 +125,17 @@ func center_on(world_position: Vector3) -> void:
 ## `orbit_locked` is set (B3a), since nothing reaches `state.orbit`/
 ## `state.pan` anymore, but harmless: an already-queued ease still lands.
 ##
-## `shooter`/`target` are `Unit`s, not raw positions — the solver needs
-## each unit's ACTUAL bounding sphere (UnitGeometry.bounding_sphere()),
-## never a hardcoded body size, so a giant enemy still gets a correct
-## framing with no special-casing here.
-func ease_to_attack_framing(shooter: Unit, target: Unit) -> void:
-	var framing: Dictionary = state.attack_framing(
-		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
-	)
+## `shooter_sphere`/`target_sphere` are `{center, radius}` Dictionaries
+## (`UnitGeometry.bounding_sphere()`/`bounding_sphere_for_part()`), not raw
+## Units — the solver needs each side's ACTUAL bounding sphere, never a
+## hardcoded body size, so a giant enemy still gets a correct framing with
+## no special-casing here; tb32 Pass C moved the sphere computation to the
+## caller so a non-unit target (a wall/cover/downed object,
+## `bounding_sphere_for_part`) frames exactly the same way a Unit does,
+## with this function staying completely decoupled from which kind of
+## thing it's framing.
+func ease_to_attack_framing(shooter_sphere: Dictionary, target_sphere: Dictionary) -> void:
+	var framing: Dictionary = state.attack_framing(shooter_sphere, target_sphere)
 	_ease_to(framing.yaw, framing.pitch, framing.zoom, framing.pan_offset)
 
 

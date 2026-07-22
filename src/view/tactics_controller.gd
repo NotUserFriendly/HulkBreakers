@@ -88,8 +88,11 @@ var board_view: BoardView
 var camera_rig: CameraRig
 var camera: Camera3D
 
-## Non-null while in Attack mode (docs/10): the enemy being aimed at.
-var aiming_at: Unit = null
+## Non-null while in Attack mode (docs/10): what's being aimed at — a
+## live unit (the original, unchanged case) or, since tb32 Pass C, a
+## non-unit Part (wall/cover/downed object/field item, `PartPicker`'s new
+## HitKind.PART) via `AimTarget`'s `cell`-always-populated wrapper.
+var aiming_at: AimTarget = null
 ## taskblock-08 A: non-null while an action-bar action is armed and
 ## waiting for its target click — "SHOOT armed -> the next enemy click is
 ## the target." Always non-null whenever `aiming_at` is (arming is the
@@ -298,6 +301,8 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			deselect()
 		elif hit_dict["kind"] == Enums.HitKind.UNIT:
 			_click_unit(hit_dict["unit"])
+		elif hit_dict["kind"] == Enums.HitKind.PART:
+			_click_part(hit_dict["part"], hit_dict["cell"])
 		else:
 			if selection.selected_unit != null:
 				selection.queue_move(hit_dict["cell"])
@@ -360,20 +365,35 @@ func _handle_rmb_release() -> void:
 ## was a lossy round-trip: the identity of the specific Unit a ray struck
 ## has to survive to the click handler unchanged, not be thrown away and
 ## guessed back at from a coordinate. Null off the board entirely.
+##
+## tb32 Pass C: `PartPicker` generalizes the ray test to blockers/field
+## items too — a non-unit hit returns the new `Enums.HitKind.PART` kind
+## instead of falling through to bare `CELL`, so a wall/cover/downed
+## object/field item can be targeted at all (today, `CELL` clicks only
+## ever queue a move).
 func _cell_at(from: Vector3, dir: Vector3) -> Variant:
-	var unit_hit: Dictionary = UnitPicker.hit(selection.state.units, from, dir)
+	var part_hit: Dictionary = PartPicker.hit(
+		selection.state.units, selection.state.grid, from, dir
+	)
 	var ground_t: Variant = BoardPicker.plane_hit_t(from, dir)
-	if not unit_hit.is_empty():
-		if ground_t == null or (unit_hit["t"] as float) <= (ground_t as float):
-			var unit: Unit = unit_hit["unit"]
-			# docs/10 taskblock05 C: UnitPicker's own nearest-box search
-			# already knows which Part it struck — carried through here so a
-			# 3D hover can highlight that exact part, not just its unit.
+	if not part_hit.is_empty():
+		if ground_t == null or (part_hit["t"] as float) <= (ground_t as float):
+			var unit: Unit = part_hit["unit"]
+			if unit != null:
+				# docs/10 taskblock05 C: the nearest-box search already knows
+				# which Part it struck — carried through here so a 3D hover can
+				# highlight that exact part, not just its unit.
+				return {
+					"kind": Enums.HitKind.UNIT,
+					"unit": unit,
+					"part": part_hit["part"],
+					"cell": unit.cell
+				}
 			return {
-				"kind": Enums.HitKind.UNIT,
-				"unit": unit,
-				"part": unit_hit["part"],
-				"cell": unit.cell
+				"kind": Enums.HitKind.PART,
+				"unit": null,
+				"part": part_hit["part"],
+				"cell": part_hit["cell"]
 			}
 	if ground_t == null:
 		return null
@@ -468,6 +488,14 @@ func click_cell(cell: Vector2i) -> void:
 	var unit_here: Unit = _unit_at(cell)
 	if unit_here != null:
 		_click_unit(unit_here)
+		return
+	# tb32 Pass C: the `PartPicker` counterpart — the same "coarser,
+	# cell-driven" convenience `_unit_at` above already gives this API,
+	# so a test can drive a PART click with a bare cell too, no real ray
+	# needed.
+	var part_here: Part = selection.state.grid.shootable_part_at(cell)
+	if part_here != null:
+		_click_part(part_here, cell)
 		return
 	if selection.selected_unit != null:
 		selection.queue_move(cell)
@@ -644,7 +672,7 @@ func _enter_aim_or_step_out_mode(target: Unit) -> void:
 	# already reads for the identical reason.
 	var shooter: Unit = selection.previewed_unit()
 	if shooter == null:
-		_enter_aim_mode(target)
+		_enter_aim_mode(AimTarget.for_unit(target))
 		return
 	var weapon: Part = (
 		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
@@ -662,10 +690,23 @@ func _enter_aim_or_step_out_mode(target: Unit) -> void:
 					target, StepOutPlanner.sort_by_safety(selection.state, shooter, candidates)
 				)
 				return
-	_enter_aim_mode(target)
+	_enter_aim_mode(AimTarget.for_unit(target))
 
 
-func _enter_aim_mode(target: Unit) -> void:
+## tb32 Pass C: the `PartPicker` counterpart to `_click_unit` — a click
+## that resolved to a non-unit Part (wall/cover/downed object/field
+## item). No selection concept for a Part (only a Unit can ever be
+## "selected") and no step-out consideration (step-out is about breaking
+## LOS from a live threat; there's no LOS-avoidance concept against inert
+## cover) — armed, with a shooter already selected, goes straight into
+## ordinary aim mode.
+func _click_part(part: Part, cell: Vector2i) -> void:
+	if armed_action != null and selection.selected_unit != null:
+		_enter_aim_mode(AimTarget.for_part(part, cell))
+	_refresh_overlay()
+
+
+func _enter_aim_mode(target: AimTarget) -> void:
 	aiming_at = target
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
@@ -686,7 +727,19 @@ func _enter_aim_mode(target: Unit) -> void:
 	# live during aim": the attack camera also LOOKS at the dartboard now
 	# (B3b/B3c), which a live orbit would fight every frame.
 	camera_rig.start_aiming()
-	camera_rig.ease_to_attack_framing(_framing_shooter(), target)
+	# tb32 Pass C: the sphere to frame on is computed HERE, not inside
+	# CameraRig — a Unit target reads `UnitGeometry.bounding_sphere()`
+	# same as always; a Part target reads `bounding_sphere_for_part()`,
+	# keeping CameraRig itself completely decoupled from which kind of
+	# thing it's framing.
+	var target_sphere: Dictionary = (
+		UnitGeometry.bounding_sphere(target.unit)
+		if target.unit != null
+		else UnitGeometry.bounding_sphere_for_part(target.part, target.cell)
+	)
+	camera_rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(_framing_shooter()), target_sphere
+	)
 	aim_changed.emit()
 
 
@@ -781,7 +834,7 @@ func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 	if aim.is_empty():
 		return
 	var shooter: Unit = aim["shooter"]
-	var target: Unit = aim["target"]
+	var target: AimTarget = aim["target"]
 	var plane: Array[Region] = aim["plane"]
 	var ray_origin: Vector3 = camera.project_ray_origin(screen_pos)
 	var ray_dir: Vector3 = camera.project_ray_normal(screen_pos)
@@ -790,7 +843,12 @@ func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 	)
 	if hit == null:
 		return
-	reticle_offset = (hit as Vector2) - ShotPlane.center_of(plane, target)
+	var center: Vector2 = (
+		ShotPlane.center_of(plane, target.unit)
+		if target.unit != null
+		else ShotPlane.center_of_part(plane, target.part, target.cell)
+	)
+	reticle_offset = (hit as Vector2) - center
 	aim_changed.emit()
 
 
@@ -800,24 +858,36 @@ func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 ## (SelectionController.previewed_unit()'s own source), never the
 ## authoritative `selection.state` — so a queued move behind cover changes
 ## what the reticle resolves to before the human commits anything.
-## `{"shooter": Unit, "target": Unit, "plane": Array[Region]}`, or an empty
-## Dictionary while not aiming. All three MUST come from the same preview:
-## calling `.preview()` a second time to fetch shooter/target separately
-## would hand back an unrelated clone whose Parts never object-match the
-## first clone's Regions, silently breaking anything that matches
-## Region.part/body identity (ShotPlane.center_of, AimController.resolve).
-## That clone already carries every unit (allies included), just with only
-## the shooter's own queued actions replayed onto it — nothing extra is
-## needed for "other units who have also queued moves" until this
+## `{"shooter": Unit, "target": AimTarget, "plane": Array[Region]}`, or an
+## empty Dictionary while not aiming. All three MUST come from the same
+## preview: calling `.preview()` a second time to fetch shooter/target
+## separately would hand back an unrelated clone whose Parts never
+## object-match the first clone's Regions, silently breaking anything that
+## matches Region.part/body identity (ShotPlane.center_of, AimController.
+## resolve). That clone already carries every unit (allies included), just
+## with only the shooter's own queued actions replayed onto it — nothing
+## extra is needed for "other units who have also queued moves" until this
 ## architecture ever lets more than one unit queue at once.
+##
+## tb32 Pass C: a Part target (wall/cover/downed object/field item) never
+## needs re-resolving against the preview the way a Unit target does —
+## queuing mutates nothing (docs/09), so a blocker/field-item Part is
+## exactly as true in the preview as in `selection.state`; only a Unit
+## target gets the `preview.find_unit()` re-lookup, same reason the
+## shooter itself always has.
 func aim_state() -> Dictionary:
 	if aiming_at == null or selection.selected_unit == null:
 		return {}
 	var preview: CombatState = selection.current_queue().preview(selection.state)
 	var shooter: Unit = preview.find_unit(selection.selected_unit.id)
-	var target: Unit = preview.find_unit(aiming_at.id)
-	if shooter == null or target == null:
+	if shooter == null:
 		return {}
+	var target: AimTarget = aiming_at
+	if aiming_at.unit != null:
+		var preview_target: Unit = preview.find_unit(aiming_at.unit.id)
+		if preview_target == null:
+			return {}
+		target = AimTarget.for_unit(preview_target)
 	# docs/10 taskblock05 A3: "aim from where the unit WILL BE" applies to
 	# facing too — the projected shot plane must be built from the facing
 	# the shooter will actually have (AttackAction's own free face at
@@ -866,7 +936,7 @@ func aim_facing() -> Variant:
 	if aim.is_empty():
 		return null
 	var shooter: Unit = aim["shooter"]
-	var target: Unit = aim["target"]
+	var target: AimTarget = aim["target"]
 	return FaceAction.orientation_toward(shooter.cell, target.cell)
 
 
@@ -982,7 +1052,7 @@ func _confirm_step_out() -> void:
 	stepping_out_at = null
 	_step_out_candidates = []
 	_step_out_cell_index = 0
-	_enter_aim_mode(target)
+	_enter_aim_mode(AimTarget.for_unit(target))
 
 
 func cancel_aim() -> void:

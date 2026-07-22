@@ -608,6 +608,50 @@ func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> 
 	assert_eq(scrap.hp, 0)
 
 
+## tb32 Pass C: PartPicker/HitKind.PART — a shot can now be DECLARED
+## against a cell with no live unit at all, just a blocker (scatter
+## cover, a wall) or field item; is_legal() must accept it rather than
+## require a target Unit that was never there.
+func test_is_legal_true_with_a_blocker_but_no_unit_at_the_target_cell() -> void:
+	var weapon := _make_weapon(&"pistol", 10.0)
+	var shooter := _make_shooter(Vector2i(2, 0), weapon)
+	var grid := Grid.new(10, 10)
+	grid.blockers[Vector2i(2, 4)] = DataLibrary.get_part(&"wall")
+	var state := CombatState.new(grid, [shooter])
+
+	var action := AttackAction.new(shooter, &"pistol", Vector2i(2, 4))
+
+	assert_true(action.is_legal(state), "a blocker Part at the target cell must be a legal target")
+
+
+func test_is_legal_false_with_neither_a_unit_nor_a_blocker_at_the_target_cell() -> void:
+	var weapon := _make_weapon(&"pistol", 10.0)
+	var shooter := _make_shooter(Vector2i(2, 0), weapon)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid, [shooter])
+
+	var action := AttackAction.new(shooter, &"pistol", Vector2i(2, 4))
+
+	assert_false(action.is_legal(state), "bare, empty ground is still not a legal target")
+
+
+## The actual resolution path (docs/02: ShotPlane/BodyProjector already
+## resolve against a blocker as a region — this proves apply() itself no
+## longer needs a Unit at target_cell to compute an aim point at all,
+## via ShotPlane.center_of_part instead of center_of).
+func test_apply_resolves_a_declared_shot_against_a_blocker_with_no_unit_there() -> void:
+	var weapon := _make_weapon(&"pistol", 999.0)
+	var shooter := _make_shooter(Vector2i(2, 0), weapon)
+	var grid := Grid.new(10, 10)
+	var wall: Part = DataLibrary.get_part(&"wall")
+	grid.blockers[Vector2i(2, 4)] = wall
+	var state := CombatState.new(grid, [shooter])
+
+	AttackAction.new(shooter, &"pistol", Vector2i(2, 4)).apply(state)
+
+	assert_lt(wall.hp, wall.max_hp, "a shot declared straight at the wall must actually damage it")
+
+
 ## taskblock-22 Pass H: a shooter fixture with a REAL, non-identity GRIP
 ## height (unlike `_make_shooter`'s own identity-transform HAND socket,
 ## which fires from world Y=0) — `shoulder_y` optional, a real SHOULDER

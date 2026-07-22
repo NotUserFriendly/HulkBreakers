@@ -107,6 +107,24 @@ func find_field_item(cell: Vector2i, item_id: StringName) -> Variant:
 	return null
 
 
+## tb32 Pass C: the blocker at `cell`, or (if none) the first loose Part
+## among its field_items — "something physical, but not a unit" a
+## HitKind.PART target resolves to at RESOLUTION time (`AttackAction`/
+## `BurstAction`), same "resolve fresh from state, never a bare cached
+## reference" convention `find_field_item` already follows (docs/09: a
+## preview's blockers/field_items are independently cloned). A loose
+## Matrix never qualifies — nothing to draw real geometry from, so
+## nothing for a shot to strike.
+func shootable_part_at(cell: Vector2i) -> Part:
+	if blockers.has(cell):
+		return blockers[cell]
+	if field_items.has(cell):
+		for item: Variant in field_items[cell]:
+			if item is Part:
+				return item
+	return null
+
+
 func neighbors(cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	for offset: Vector2i in NEIGHBOR_OFFSETS:

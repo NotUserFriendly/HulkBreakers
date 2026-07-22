@@ -125,3 +125,43 @@ func test_clicking_a_units_overhanging_body_selects_it_via_click_unit() -> void:
 	controller._click_unit((hit as Dictionary)["unit"])
 
 	assert_eq(controller.selection.selected_unit, a)
+
+
+## tb32 Pass C: PartPicker generalizes _cell_at to blockers/field items —
+## a ray through a wall (no unit there) resolves to the new PART kind
+## instead of falling through to bare CELL.
+func test_cell_at_resolves_a_blocker_to_the_new_part_kind() -> void:
+	var built: Dictionary = _setup([])
+	var controller: TacticsController = built.controller
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.hp = 10
+	wall.max_hp = 10
+	wall.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2))]
+	built.state.grid.blockers[Vector2i(2, 3)] = wall
+
+	var hit: Variant = controller._cell_at(Vector3(2.0, 5.0, 3.0), Vector3(0.0, -1.0, 0.0))
+
+	assert_eq((hit as Dictionary)["kind"], Enums.HitKind.PART)
+	assert_null((hit as Dictionary)["unit"])
+	assert_eq((hit as Dictionary)["part"], wall)
+	assert_eq((hit as Dictionary)["cell"], Vector2i(2, 3))
+
+
+## A unit overhanging a wall's cell still wins — the unit path is
+## completely unchanged; PartPicker only fills the gap CELL used to be.
+func test_cell_at_still_prefers_a_unit_over_a_blocker_behind_it() -> void:
+	var a := _make_wide_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.hp = 10
+	wall.max_hp = 10
+	wall.volume = [Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0))]
+	built.state.grid.blockers[Vector2i(1, 0)] = wall
+
+	var hit: Variant = controller._cell_at(Vector3(1.0, 5.0, 0.0), Vector3(0.0, -1.0, 0.0))
+
+	assert_eq((hit as Dictionary)["kind"], Enums.HitKind.UNIT, "the overhanging body still wins")
+	assert_eq((hit as Dictionary)["unit"], a)

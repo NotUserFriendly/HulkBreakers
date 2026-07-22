@@ -97,7 +97,10 @@ func test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut() -> void:
 	add_child_autofree(rig)
 	var zoom_before: float = rig.state.zoom
 
-	rig.ease_to_attack_framing(_make_unit(Vector2i(0, 0)), _make_unit(Vector2i(5, 0)))
+	rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(0, 0))),
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(5, 0)))
+	)
 
 	assert_not_null(rig._active_tween)
 	assert_eq(rig.state.zoom, zoom_before, "the state itself doesn't jump on the same frame")
@@ -112,7 +115,10 @@ func test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut() -> void:
 func test_kill_active_tween_clears_an_active_attack_framing_tween() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
-	rig.ease_to_attack_framing(_make_unit(Vector2i(0, 0)), _make_unit(Vector2i(5, 0)))
+	rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(0, 0))),
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(5, 0)))
+	)
 	assert_not_null(rig._active_tween)
 
 	rig._kill_active_tween()
@@ -123,7 +129,10 @@ func test_kill_active_tween_clears_an_active_attack_framing_tween() -> void:
 func test_wheel_zoom_kills_an_active_attack_framing_tween() -> void:
 	var rig := CameraRig.new()
 	add_child_autofree(rig)
-	rig.ease_to_attack_framing(_make_unit(Vector2i(0, 0)), _make_unit(Vector2i(5, 0)))
+	rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(0, 0))),
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(5, 0)))
+	)
 	assert_not_null(rig._active_tween)
 
 	rig._unhandled_input(_wheel_event(MOUSE_BUTTON_WHEEL_UP))
@@ -137,7 +146,9 @@ func test_ease_to_attack_framing_targets_the_solved_framing() -> void:
 	var shooter := _make_unit(Vector2i(2, 2))
 	var target := _make_unit(Vector2i(8, 2))
 
-	rig.ease_to_attack_framing(shooter, target)
+	rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
+	)
 	# Fast-forward past the tween's own duration so the eased values land.
 	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
 
@@ -173,7 +184,10 @@ func test_stop_aiming_eases_the_camera_back_to_its_pre_aim_framing() -> void:
 	var pre_aim_pan: Vector3 = rig.state.pan_offset
 
 	rig.start_aiming()
-	rig.ease_to_attack_framing(_make_unit(Vector2i(2, 2)), _make_unit(Vector2i(8, 2)))
+	rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(2, 2))),
+		UnitGeometry.bounding_sphere(_make_unit(Vector2i(8, 2)))
+	)
 	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
 	assert_ne(rig.state.pan_offset, pre_aim_pan, "sanity: the attack framing actually moved it")
 
@@ -216,7 +230,9 @@ func test_ease_to_attack_framing_centers_the_target_on_screen() -> void:
 	var shooter := _make_unit(Vector2i(2, 3))
 	var target := _make_unit(Vector2i(9, 8))  # diagonal, not sharing a row or column
 
-	rig.ease_to_attack_framing(shooter, target)
+	rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
+	)
 	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
 
 	var camera: Camera3D = rig.camera()
@@ -245,7 +261,9 @@ func test_mid_tween_the_camera_never_gets_close_to_the_shooter() -> void:
 	for fraction in [0.1, 0.25, 0.5, 0.75, 0.9]:
 		var rig := CameraRig.new()
 		add_child_autofree(rig)
-		rig.ease_to_attack_framing(shooter, target)
+		rig.ease_to_attack_framing(
+			UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
+		)
 		rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION * fraction)
 
 		var camera_pos: Vector3 = rig.camera().global_transform.origin

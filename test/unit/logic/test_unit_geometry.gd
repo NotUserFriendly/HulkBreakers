@@ -134,6 +134,24 @@ func test_bounding_sphere_of_a_single_box_is_the_boxs_own_half_diagonal() -> voi
 	assert_almost_eq(sphere.radius, sqrt(3.0), 0.0001)
 
 
+## tb32 Pass C: the `bounding_sphere_for_part` counterpart — no owning
+## Unit at all, same "actual geometry, never a hardcoded size" math,
+## needed so camera framing can aim at a wall/cover/downed object the
+## way it already does a live unit.
+func test_bounding_sphere_for_part_of_a_single_box_is_the_boxs_own_half_diagonal() -> void:
+	var wall := Part.new()
+	wall.id = &"wall"
+	wall.hp = 10
+	wall.max_hp = 10
+	wall.volume = [Box.new(Vector3.ZERO, Vector3(2.0, 2.0, 2.0))]
+
+	var sphere: Dictionary = UnitGeometry.bounding_sphere_for_part(wall, Vector2i(5, 5))
+
+	assert_almost_eq((sphere.center as Vector3).x, 5.0, 0.0001)
+	assert_almost_eq((sphere.center as Vector3).z, 5.0, 0.0001)
+	assert_almost_eq(sphere.radius, sqrt(3.0), 0.0001)
+
+
 ## A unit with limbs must get a LARGER sphere than its torso alone — the
 ## whole point of computing this from real geometry instead of a constant.
 func test_bounding_sphere_grows_to_cover_every_living_box() -> void:

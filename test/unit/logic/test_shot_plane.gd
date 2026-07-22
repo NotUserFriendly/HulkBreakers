@@ -323,6 +323,29 @@ func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
 	assert_eq(ShotPlane.center_of(plane, ghost_unit), Vector2(4, 4))
 
 
+## tb32 Pass C: the PartPicker counterpart — matched by `region.body`
+## (a blocker/field item's own root Part identity, ShotPlane.build's own
+## `region.body = part`) instead of a Unit's `shell.all_parts()`.
+func test_center_of_part_returns_the_frontmost_regions_rect_center() -> void:
+	var grid := Grid.new(10, 10)
+	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
+	grid.blockers[Vector2i(2, 2)] = wall
+	var state := CombatState.new(grid, [])
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+
+	var center: Vector2 = ShotPlane.center_of_part(plane, wall, Vector2i(2, 2))
+	var expected: Region = ShotPlane.resolve_projectile(plane, center)
+	assert_eq(
+		expected.part.id, &"wall", "the returned point must land inside the wall's own region"
+	)
+
+
+func test_center_of_part_falls_back_to_the_given_cell_with_no_matching_region() -> void:
+	var unrelated := _part(&"unrelated", Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0)))
+
+	assert_eq(ShotPlane.center_of_part([], unrelated, Vector2i(4, 4)), Vector2(4, 4))
+
+
 ## taskblock-22 Pass H2: self_obstruction excludes the shooter's own body
 ## — without this, a shooter's own torso (at the ray's own near-zero
 ## depth) would register as its own obstruction before ever reaching any

@@ -417,17 +417,23 @@ kills the process before it runs. Scope what's actually reachable (caught script
 failures, abort reasons) vs. what needs an external wrapper (process-death capture) up front. Its own
 small block; pairs with tester mode.
 
-## Retire the hand-built full-mission test (DECIDED — retire; CC-doable standalone now)
+## Replace the hand-built full-mission test (DECIDED — build a replacement; keep it RED until then)
 `test_full_mission.gd` uses a hardcoded seed and its own in-test turn heuristics (`_take_turn`/
 `_queue_turn`) that **were never rehomed into production AI** (`docs/10`). Every real mechanics fix
 reshuffles its RNG timeline and it's re-seeded by brute force — five times per its own header, a sixth
 pending under BR30.10. Worse, the seed churn was masking the real AI line-of-fire bug above.
-**Decided (tb30 review): retire the hand-built harness** — it's paleozoic and bouts do almost
-everything it did. Replace with a thin `BoutSetup`/`DeepStrike`-based mission smoke test (a bout runs
-start-to-extraction without erroring, asserted on outcomes, not a frozen seed) — the same "starter
-battle folds into the bouts system" consolidation the supervisor flagged (the bout builder is the live
-path; the hand-built starter battle and hand-built mission test are the obsolete ones). Not gated on
-tb31; a standalone cleanup CC can do anytime (currently the one known red test).
+**Decided (tb30 review, refined tb31 review): the hand-built harness goes, replaced by a thin
+`BoutSetup`/`DeepStrike`-based mission smoke test** (a bout runs start-to-extraction without erroring,
+asserted on outcomes, not a frozen seed) — the same "starter battle folds into the bouts system"
+consolidation the supervisor flagged (the bout builder is the live path; the hand-built starter battle
+and hand-built mission test are the obsolete ones).
+
+**Do NOT retire-to-green.** The supervisor wants the mission-coverage gap *visible* until the
+replacement exists — so this is not a delete. Until the `BoutSetup` smoke test is written, a
+deliberately-failing placeholder holds the slot with an honest reason (`fail("full-mission smoke test
+not yet reimplemented on BoutSetup — see PLAN")`), replacing the current confusing seed/turn-cap
+failure with a self-documenting one. The red only clears when the real replacement lands. The actual
+work here is *writing the replacement*, not deleting the old file. No prototype exists yet.
 
 ## Authoring tools (gate mission-gen quality)
 - **Tile editor** — author a map tile (height-aware), save it for proc-gen assembly.
@@ -500,7 +506,9 @@ opening behind the unit's own start position still traps the per-turn greedy sco
 for real needs a genuine shortest-path-to-nearest-LOS-cell search (multi-turn, not single-turn
 reachability) — a real design/scope item, not a bugfix.
 
-**AI fires without verifying a clear line of fire (surfaced BR30.10).** Once walls actually blocked
+**AI fires without verifying a clear line of fire (surfaced BR30.10).** [SUPERVISOR: next-block
+priority, tb33 — alongside the two perf hits BR26.02 (low fps aiming) and BR27.09 (new/end-turn
+hitch).] Once walls actually blocked
 shots (BR30.10 wired wall geometry into `ShotPlane`), a live mission log showed **81% of impacts
 (368/457) landing on a wall instead of the intended target** — the AI commits to a shot trusting
 `ShotPlane` to arbitrate, without first confirming the target is genuinely reachable by the round.
@@ -514,6 +522,26 @@ to do on its turn. Since the sim always knows where everything is, handing a dam
 of the nearest weapon on the field (a `Grid.field_items` weapon, or a downed unit's dropped one — not
 necessarily *functioning*) gives it a purposeful action: go pick something up. Cheap given the data's
 already there; a behavior addition, not new machinery.
+
+**AI item behavior per archetype, with a fallback (future).** Generalizes the nearest-weapon note
+above: each AI archetype declares what it does with items — which item types it seeks/uses and how it
+prioritizes them (a brawler grabs a dropped melee part, a gunner heads for a functioning ranged
+weapon, a support archetype for a welder, etc.) — plus a **fallback action** for when it holds no item
+it knows how to use, so an archetype never stalls with nothing to do. The nearest-weapon behavior is
+the simplest instance of the fallback branch; this is the structured version across archetypes. Sits
+on the AI archetype/playstyle data that already drives bout setup.
+
+**Melee vs. non-unit PART targets (future, split off tb32 Pass C).** Pass C's `PartPicker`/
+`HitKind.PART`/`AimTarget` and the `AttackAction`/`BurstAction` legality relaxation only cover **ranged**
+weapons (shoot/burst) — every motivating example (finish a downed bot, destroy cover, decompress a room
+by holing a wall) is naturally a ranged action anyway. `StabAction`/`SlashAction`/`GrindAction` were
+deliberately left untouched: their own `is_legal()` calls `MeleeReach.in_reach(actual.shell, weapon,
+MeleeReach.distance_3d(actual, target))`, which needs a real target *Unit* body to measure reach
+against — extending melee reach to a bare Part is its own design question (does reach measure against
+the part's own box? the whole blocker assembly's AABB? never designed), not a mechanical follow-on of
+Pass C's work. Melee weapons continue to correctly reject a PART target today (same "nothing operable"
+no-op every other unreachable action already has) — this is the follow-up to make it possible, if
+wanted.
 
 **Step-out batching — coalesce same-square out-legs (was BR30.06, reclassified feature).** Today a unit
 queuing several attacks that each require stepping out into the *same* square steps out and back in per

@@ -123,7 +123,7 @@ func refresh() -> void:
 		readout.text = ""
 		return
 	var shooter: Unit = aim["shooter"]
-	var target: Unit = aim["target"]
+	var target: AimTarget = aim["target"]
 	var plane: Array[Region] = aim["plane"]
 	var state: CombatState = aim["state"]
 	# taskblock-08 A1: "the armed action decides what a click means" applies
@@ -139,7 +139,14 @@ func refresh() -> void:
 		readout.text = "[UNARMED]"
 		return
 
-	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + tactics.reticle_offset
+	var aim_point: Vector2 = (
+		(
+			ShotPlane.center_of(plane, target.unit)
+			if target.unit != null
+			else ShotPlane.center_of_part(plane, target.part, target.cell)
+		)
+		+ tactics.reticle_offset
+	)
 	var result: AimResult = AimController.resolve(
 		plane, aim_point, tactics.layer_index, weapon, shooter, target.cell, state
 	)
@@ -179,8 +186,12 @@ func refresh() -> void:
 	# drags the window back through the scene with it). Clamped so it can
 	# never land behind the shooter — AimController.window_depth()'s own
 	# doc comment has the why.
+	# tb32 Pass C: `window_depth` matches by body IDENTITY (`region.body`,
+	# already `Variant` — a Unit or a blocker/field-item root Part, see
+	# `ShotPlane.build`) — feed whichever one `target` actually is.
+	var target_body: Variant = target.unit if target.unit != null else target.part
 	var depth: float = AimController.window_depth(
-		result.layers, target, target_depth, WINDOW_DEPTH_EPSILON, MIN_WINDOW_DEPTH
+		result.layers, target_body, target_depth, WINDOW_DEPTH_EPSILON, MIN_WINDOW_DEPTH
 	)
 	var window_point: Vector3 = AimPlaneGeometry.world_point_at_depth(
 		shooter.cell, target.cell, aim_point, depth

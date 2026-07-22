@@ -26,7 +26,7 @@ static func hit(units: Array[Unit], from: Vector3, dir: Vector3) -> Dictionary:
 		if not unit.alive:
 			continue
 		for placement: BoxPlacement in UnitGeometry.placements(unit):
-			var t: Variant = _ray_box_t(placement, from, dir)
+			var t: Variant = ray_box_t(placement, from, dir)
 			if t != null and (t as float) < nearest_t:
 				nearest_t = t as float
 				nearest_unit = unit
@@ -39,8 +39,9 @@ static func hit(units: Array[Unit], from: Vector3, dir: Vector3) -> Dictionary:
 ## Ray-vs-oriented-box via the standard slab test, done in the box's own
 ## local frame (placement.transform's basis is orthonormal — unit facing and
 ## socket-chain rotations only, never a scale) so it reduces to a plain
-## axis-aligned test there.
-static func _ray_box_t(placement: BoxPlacement, from: Vector3, dir: Vector3) -> Variant:
+## axis-aligned test there. Public (tb32 Pass C): `PartPicker` reuses this
+## exact math for blocker/field-item boxes rather than duplicating it.
+static func ray_box_t(placement: BoxPlacement, from: Vector3, dir: Vector3) -> Variant:
 	var inv: Transform3D = placement.transform.affine_inverse()
 	var local_from: Vector3 = inv * from
 	var local_dir: Vector3 = inv.basis * dir
