@@ -607,6 +607,53 @@ confirm" roll-up — so pending items surface at a natural review point without 
   click reaches End Turn regardless (confirms mouse_filter was never the problem), and a real
   `mouse_entered` on End Turn now hides a tooltip that was previously left stuck open.
 
+### BR31.02 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Wall/void generation cascaded through solid rock  ·  source: `SUPERVISOR`
+- **Backfilled 2026-07-22** (retroactive ledger pass, CLAUDE.md rule 8 applied historically) —
+  reported and fixed live during taskblock-31 itself; `docs/CHANGELOG.md` and
+  `taskblock_done/Report-Taskblock31.md` both recorded it at the time, but it never got a `BR` id or
+  an entry in this ledger. Filed now so a resolved bug's closure marker exists here too, per this
+  file's own stated job.
+- **Reported:** 2026-07-21, live play testing of tb31 Pass C's new wall/void model: "walls are
+  generating where voids should [be]... there should be a single layer of walls."
+- **Root cause:** `MapGen._finalize_walls_and_void()` classified AND mutated each `WALL` cell in the
+  same scan pass — converting an exposed cell to `OPEN` made it read as a non-WALL neighbor for
+  whatever `WALL` cell got scanned next, so exposure cascaded outward from every real opening through
+  however much solid rock the scan order happened to reach. A real ASCII dump (seed 2, 40×30 —
+  `BattleScene`'s own defaults) confirmed it: walls many tiles thick, effectively zero `VOID` anywhere
+  on the map.
+- **Fix:** split into two passes — classify every `WALL` cell's exposure against the grid's own
+  untouched layout first, then apply every mutation in a second pass. Re-dumped the same seed: clean
+  single-tile wall rings with real void space.
+- **Verified:** re-confirmed via the same real ASCII dump technique, not just re-reading the code.
+  Commit `9909d73`.
+
+### BR31.03 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Wall fading never visibly occluded anything  ·  source: `SUPERVISOR`
+- **Backfilled 2026-07-22** (retroactive ledger pass) — same gap as BR31.02 above: reported and fixed
+  live during taskblock-31, never given a `BR` id or an entry here until now.
+- **Reported:** 2026-07-21, live play testing tb31 Pass C's wall-fade legibility feature: "I can't see
+  wall fading doing anything" — then again, after a first fix attempt, "the wall fading is still not
+  occurring, is it drawing between the camera and the orbited point, or is it something else?"
+- **First root cause, fixed:** the occlusion check was world-space — "is this wall within 1 unit of the
+  straight 3D line from camera to the focal unit." The tactical camera sits well above/back from the
+  board, so that line spends almost its whole length far above wall height; the check essentially
+  never fired for any wall more than a cell or two from the unit, the exact case that matters. Rewrote
+  `WallLegibility.occludes()` → `occludes_on_screen()`: project both the wall and the focal unit
+  through the real camera (`Camera3D.unproject_position()`), compare 2D screen distance, require the
+  wall nearer in depth — the question a player would actually answer by eye, independent of camera
+  angle. Commit `662e8d2`.
+- **Second root cause, found when the supervisor reported it still wasn't working:** traced the whole
+  pipeline end to end through the real production path (real `BattleScene`/`SquadControlOverlay`, real
+  click-to-select, real `CameraRig` framing) and confirmed every intermediate value was already correct
+  — `focal_unit` wiring, camera ownership, `unproject_position()`/depth math all checked out. The one
+  link never directly verified: whether `GeometryInstance3D.transparency` alone renders a visible
+  effect against an otherwise-opaque, `SHADING_MODE_PER_PIXEL` (lit) material — it doesn't. Switched to
+  real alpha blending (`BaseMaterial3D.TRANSPARENCY_ALPHA` + `albedo_color.a`), the same mechanism
+  `show_unit_ghost()` already proves renders correctly in this project, just kept lit (docs/10: real
+  geometry stays lit). New `BoardView._set_wall_alpha()`, `WALL_FADE_ALPHA := 0.25`. Commit `dda90d4`.
+- **Verified:** confirmed working in player view after the second fix. Moot in practice either way —
+  this whole alpha-blend mechanism is itself superseded by tb32 A's per-fragment discard shader
+  (`docs/SUPERSEDED.md`).
+
 ### BR32.01 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Stray wall-cutout hole at a cell with no unit  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-22 (live bout, tb32 review). "A stray culling around cell 2,18, with no unit
   to produce that effect... that is the ONLY culling step I see, it's not showing on the units."

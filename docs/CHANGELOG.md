@@ -3,7 +3,7 @@
 **The current-state snapshot**, by system, with the taskblock that landed each. Grows as work ships.
 For what changed shape along the way see `SUPERSEDED.md`; for what's next see `PLAN.md`.
 
-*Current as of taskblock-26 landed.*
+*Current as of taskblock-32 landed.*
 
 ---
 
@@ -169,14 +169,16 @@ instead of bolted-on `SquadControlOverlay` buttons. `ActionCatalog.ap_cost_for` 
 overwatch/repair — each had the same fixed-cost-vs-part-cost drift BR30.11 fixed for burst, caught on
 first wiring.
 
-**Wall occlusion cutout shader** (tb32 A) — replaces tb31 C's one-wall-at-a-time GDScript alpha-blend
+**Wall occlusion cutout shader** (tb32 A, supersedes tb31 C — `docs/SUPERSEDED.md`) — replaces tb31 C's
+one-wall-at-a-time GDScript alpha-blend
 (`BoardView.WALL_FADE_ALPHA`/`_set_wall_alpha`) with a lit, per-fragment dithered `discard`
 (`wall_cutout.gdshader`, one shared `ShaderMaterial` for every wall). `BoardView.update_wall_cutout()`
 projects every unit in `wall_cutout_units` to a screen position/depth/tile-derived pixel radius
 (`WallLegibility.pixel_radius_for_tiles`, new pure helper) and feeds them as uniforms each frame; the
 shader decides per-fragment whether to discard. Cuts around every unit at once now, not one focal unit;
 spectator never feeds any units, so the cutout simply never fires there (unchanged, flagged as trivial
-to wire later). **Friendly fade in aiming view** (tb32 B, redesigned after live testing) — a friendly
+to wire later). **Friendly fade in aiming view** (tb32 B, redesigned after live testing —
+`docs/SUPERSEDED.md`) — a friendly
 standing between the camera and the active (shooter) unit fades gray. The first version drew a
 separate ghost overlay in `BoardView`, leaving the friendly's own real `HitVolumeView` fully opaque
 underneath it — confirmed live to read as "something faint happening," not an actual fade. Redesigned
@@ -221,14 +223,17 @@ segment pinned to a constant height (tb22 D, real height tb23 D). **Ground-overl
 (tb27 C2) — team marker / extraction tile / overwatch arc / facing wedge each hold a distinct,
 deliberately-ordered depth band (`0.010 → 0.06 → 0.09 → 0.17`) instead of one marker bumped in
 isolation per report; found and fixed a real, previously unreported co-planar pair (team marker vs.
-extraction tile) no prior fix or test had ever checked. **Turn indicator** (tb27 D2) — the active
-unit's own facing wedge and team marker recolor to a distinct `ACTIVE_TURN_COLOR`, driven off
-`combat_state.current_unit()` from both `load_battle()` and `refresh_unit_views()`, shared by
-either overlay. *(Regressed — see BUGS.md BR27.07: highlight can land on the wrong unit, and the
-design is being changed to facing-marker-only. This entry describes what shipped, not the current
-intended behavior.)* **AP-gated action bar** (tb27 D3) — a slot the unit can't afford dims and refuses
-to arm, reusing `ActionCatalog.provider_for`'s own `ap_cost`. *(Regressed — see BUGS.md BR27.05:
-slots are still selectable without enough AP; the gate isn't holding.)* **Camera reset after aiming** (tb27
+extraction tile) no prior fix or test had ever checked. **Turn indicator** (tb27 D2, redesigned tb32 D
+per BR27.07 — `docs/SUPERSEDED.md`) — originally recolored the active unit's facing wedge/team marker
+to a distinct `ACTIVE_TURN_COLOR`; retired once the highlight was found landing on the wrong unit.
+`HitVolumeView.set_active_turn()` now shows/hides the whole marker assembly instead — team marker AND
+facing wedge together (the supervisor's own correction: "facing marker" meant the whole disk+wedge,
+not the wedge alone) — for the active unit only, no recolor at all; presence, not color, indicates
+whose turn it is. `BattleScene.refresh_unit_views()`'s `apply_highlight` parameter defers the flip
+until after the resolution animation actually finishes (the ordering half of BR27.07 — the highlight
+used to jump to the next unit mid-animation). **AP-gated action bar** (tb27 D3, fixed tb30 by BR27.05's
+own fix below) — a slot the unit can't afford dims and refuses
+to arm, reusing `ActionCatalog.provider_for`'s own `ap_cost`. **Camera reset after aiming** (tb27
 D4) — `CameraRig` snapshots the pre-aim orbit state and eases back to it once aiming ends, via a
 shared `_ease_to()` helper. **Wall tiles non-inspectable** (tb27 D5) — a wall click is a real
 no-op, same posture as a miss; `InspectPanel`'s own null-root branch also resets stale isolate-view
@@ -237,6 +242,12 @@ caller. **Spectator/player parity** (tb27 D1a/D1c) — the spectator log no long
 (matching the player log); spectator view gained inspect-on-hover (`UnitPicker.hit()` driven off
 mouse motion, mirroring `SquadControlOverlay`'s own highlight wiring but with no "selected unit"
 gate, since spectator has no selection concept) — previously it had no hover feedback at all.
+**Fix: turn controls swallowed clicks behind a stale tooltip** (BR31.01) — a tooltip left over from
+hovering the 3D board right before the cursor crossed onto a `turn_controls_column` button never
+cleared, since `TacticsController`'s own hover tracking lives in `_unhandled_input`, which a
+`MOUSE_FILTER_STOP` `Button` never lets fire while the cursor sits over it. Each turn-control button's
+own `mouse_entered` now hides the stale tooltip first — the same fix `QueuePanel`/`ApMpPipRow` already
+needed for the identical reason.
 
 **Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu (expanding-list
 teams). The verification rig. **Seeded variant generation** (tb28 A) — `VariantFamily`
