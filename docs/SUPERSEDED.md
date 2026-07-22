@@ -46,14 +46,16 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 | Wall occlusion: one focal wall faded at a time via per-object GDScript alpha (`BoardView.WALL_FADE_ALPHA`/`_set_wall_alpha`, tb31 C, BR31.03) | per-fragment dithered `discard` shader cuts a screen-space porthole around **every** unit at once (`wall_cutout.gdshader`); GDScript only feeds uniforms, the shader owns the discard decision | tb31 C → reversed tb32 A |
 | Friendly-blocks-aim fade drawn as a separate translucent ghost overlay next to the friendly (`BoardView._friendly_fade_overlay`, tb32 B first version) — left the friendly's own real `HitVolumeView` fully opaque underneath it | fades the friendly's own real body directly (`HitVolumeView.set_occlusion_faded()`), decision owned by `BattleScene._process()` | tb32 B (same-taskblock redesign, after live testing showed the first version unreadable) |
 | `AttackAction`/`BurstAction.is_legal()` required a live target `Unit` at `target_cell` | also legal against a shootable non-unit `Part` (`Grid.shootable_part_at`) — cover, walls, downed bots, loose field items; melee actions (`Stab`/`Slash`/`Grind`) unchanged, still require a real Unit | tb32 C |
+| **Checkpoint discipline** — five committed-artifact gates (`./checkpoint.sh N`) at foundation phases, each a hard stop for human review (a surviving v2.1 standing rule; `docs/09`) | retired — CC was told early to prefer clean reports over generated artifacts, so the ritual sat unused ~30 blocks; its review job is now done live (supervisor plays/bug-hunts in spectator/reviews docs) + tester-mode. `test_checkpoint_1–4.gd` survive as ordinary regression tests; checkpoint 5 retires with `test_full_mission` | tb31 review → tb32 |
 
 ---
 
 ## The retired plan
 `PLAN.md` v2.1 and earlier described the from-scratch foundation build (Phase 0 harness, v1-survival
 table, exposure-table deletion, the `los.gd` `range`-shadow bug fix). All shipped. The v2.1 plan is
-fully retired; only its two standing rules (enums-vs-open-data, checkpoint discipline) survive into
-v3.
+fully retired. Of its two standing rules, only **enums-vs-open-data** survives into v3; the other,
+**checkpoint discipline**, was itself later retired (see the ledger row below) once the from-scratch
+foundation shipped and live supervisor review replaced the artifact gates.
 
 ## Overwatch resolves its own shot (observed tb28 — not yet changed)
 **Was:** overwatch's `_fire` is a self-contained shot resolver — it builds its own shot plane, samples

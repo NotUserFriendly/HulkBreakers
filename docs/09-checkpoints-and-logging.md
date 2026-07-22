@@ -1,4 +1,4 @@
-# 09 — Checkpoints, Combat Log & Turn Phases
+# 09 — Combat Log & Turn Phases
 
 ## Turn phases: TACTICS then RESOLUTION
 Turns are **queued, then paid off**. These are two distinct phases and the split is
@@ -73,23 +73,19 @@ Rules:
   seed as the file's first line, so a human session is a regression fixture too, not just a
   headless test run: it's replayable from the log file alone.
 
-## Checkpoints
-Reviewable artifacts at points where a silent geometry or randomization bug would otherwise
-get buried under later code. **Five, deliberately** — enough to catch drift, not so many that
-reviewing them becomes the job.
+## Checkpoints — retired
+The checkpoint ritual (five committed-artifact gates at foundation phases, each a `./checkpoint.sh N`
+hard stop for human review) is **retired**. It was a from-scratch-foundation mechanism; the review it
+performed — a human reading a committed artifact to catch a silent geometry or randomization bug — is
+now done live by the supervisor (playing, bug-hunting in spectator, doc review) plus tester-mode
+(`TESTING.md`: force the condition, watch it). CC was long ago told to prefer clean reports over
+generated artifacts, so the ritual sat unused across ~30 taskblocks before being cut here — see
+`docs/SUPERSEDED.md`.
 
-Each is `./checkpoint.sh N` → writes to `out/checkpoints/NN/` → a short `README.md` plus
-artifacts. CC does **not** proceed past a checkpoint without a go.
-
-| # | After phase | Artifact | What you're looking for |
-|---|---|---|---|
-| **1** | 0 — Harness | ASCII grid + a generated hulk map, several seeds | Does the map look like a place? Are seeds actually different? |
-| **2** | 3 — Projection | One cyborg's shot plane dumped from **8+ angles**, sweeping continuously | Do the boxes track the angle sanely? Does the rear ammo rack appear only from behind? Any pop or discontinuity = bug. |
-| **3** | 5 — Armor & ricochet | A seeded burst into an armored target: impacts, deflections, ricochet paths, retained damage per bounce | Does grazing keep ~90%? Do bounces land somewhere plausible? Is the spray chaotic but not insane? |
-| **4** | 7 — Deep strike | 20 randomly assembled cyborgs from a part pool, ASCII + stat blocks | The randomization/body-combo stress test. Anything malformed, unarmed, or absurd shows up here. |
-| **5** | 11 — Full mission | Complete `combat.log` of a full seeded mission, start to extraction | The whole thing, readable. |
-
-Checkpoint artifacts are **committed** so they diff across runs.
+The foundation baselines it wrapped (`test/checkpoints/test_checkpoint_1–4.gd`) survive as ordinary
+regression tests in the GUT suite — they still run every `./run_tests.sh`, they're just no longer
+"checkpoints." The old checkpoint 5 was the hand-built `test_full_mission`, which retires with that
+harness (`docs/PLAN.md`).
 
 ## Why this matters for CC specifically
 CC cannot see the game. The ASCII dumps and the combat log **are** its eyes — and they're the

@@ -8,7 +8,7 @@ only the two standing rules below survive.
 
 ---
 
-## The two standing rules (unchanged)
+## Standing rules
 
 **1. Enums for engine states. Open `StringName` vocabularies for content.** Anything a designer might
 add later must be addable **as data, without a code edit**. Engine states are enums; content (socket
@@ -25,8 +25,9 @@ world, so human-shaped units fit human infrastructure (seats, doorways, tools) a
 don't. A constraint that *generates* gameplay — a seat expects a torso, so a legless ally can still
 ride but a mulebot can't sit in the driver's seat. Let shape be a real tradeoff, not just cosmetics.
 
-**2. Checkpoints are hard stops.** Verify view math by reading the real node back, never re-deriving
-it in the test.
+**2. Verify view math by reading the real node back**, never re-deriving it in the test. (This slot
+was "checkpoints are hard stops" — that mechanism is retired, `docs/SUPERSEDED.md`; the view-math rule
+is the one that stays.)
 
 ---
 
