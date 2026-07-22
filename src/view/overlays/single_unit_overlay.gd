@@ -38,7 +38,12 @@ func _on_battle_loaded() -> void:
 
 
 func _on_turn_ended(events: Array[LogEvent]) -> void:
-	super._on_turn_ended(events)
+	# tb32 Pass D (BR27.07 compounding bug): `super._on_turn_ended()` now
+	# awaits the resolution animation before flipping the active-turn
+	# indicator (SquadControlOverlay's own fix) — called without `await`
+	# here, that coroutine was left to run in the background while
+	# `_auto_select_if_current()` raced ahead of it immediately.
+	await super._on_turn_ended(events)
 	_auto_select_if_current()
 
 

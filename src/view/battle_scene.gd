@@ -207,7 +207,7 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 
 	# taskblock-27 Pass D2: correct from the very first turn too, not just
 	# once `refresh_unit_views()` first runs post-turn.
-	_apply_active_turn_highlight()
+	apply_active_turn_highlight()
 
 	battle_loaded.emit()
 
@@ -292,21 +292,28 @@ func sync_board_view() -> void:
 ## rebuilds a unit's entire mesh subtree from its own socket tree, real
 ## work that a normal turn has no reason to repeat for every OTHER unit
 ## on the board that this turn never touched.
-func refresh_unit_views(affected_unit_ids: Variant = null) -> void:
+## tb32 Pass D (BR27.07): `apply_highlight` lets a caller defer the
+## active-turn flip separately — `SquadControlOverlay._on_turn_ended()`
+## does, until the previous unit's own action has actually finished
+## animating (`await resolution_player.play(events)`); calling this with
+## the flip still bundled in used to flip the indicator to the NEXT unit
+## before that animation ever played, a real confirmed bug (docs/
+## Bugs-add.md's own investigation). True by default so every other
+## existing caller (`advance_ai_turns`, `SpectatorOverlay._advance()`)
+## keeps its current "always stays in sync, no deferral" behavior
+## unchanged.
+func refresh_unit_views(affected_unit_ids: Variant = null, apply_highlight: bool = true) -> void:
 	for view: HitVolumeView in unit_views:
 		if affected_unit_ids == null or (view.unit != null and view.unit.id in affected_unit_ids):
 			view.refresh()
-	# taskblock-27 Pass D2: stays in sync with `combat_state.current_unit()`
-	# on every call, regardless of `affected_unit_ids`' own mesh-rebuild
-	# narrowing — the active unit can change turn to turn even for a view
-	# this call didn't otherwise touch. Shared by both overlays (Squad's
-	# own `_on_turn_ended`/`advance_ai_turns` and Spectator's own
-	# `_advance()` both already call this), so a turn indicator works
-	# identically whichever is driving.
-	_apply_active_turn_highlight()
+	if apply_highlight:
+		apply_active_turn_highlight()
 
 
-func _apply_active_turn_highlight() -> void:
+## Public (tb32 Pass D): a caller that deferred the flip via
+## `refresh_unit_views(..., false)` calls this directly once it's actually
+## safe to flip.
+func apply_active_turn_highlight() -> void:
 	var current: Unit = combat_state.current_unit() if combat_state != null else null
 	for view: HitVolumeView in unit_views:
 		view.set_active_turn(view.unit != null and view.unit == current)

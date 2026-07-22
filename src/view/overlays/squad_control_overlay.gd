@@ -460,17 +460,20 @@ func _build_ui() -> void:
 	resolve_to_here_button.text = "Resolve to Here"
 	resolve_to_here_button.disabled = true
 	resolve_to_here_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	resolve_to_here_button.mouse_entered.connect(_hide_stale_tooltip)
 	turn_controls_column.add_child(resolve_to_here_button)
 	var end_turn_button := Button.new()
 	end_turn_button.text = "End Turn"
 	end_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
+	end_turn_button.mouse_entered.connect(_hide_stale_tooltip)
 	turn_controls_column.add_child(end_turn_button)
 	# docs/10 taskblock03 D4: "a single Reset Turn control (button + R)."
 	var reset_turn_button := Button.new()
 	reset_turn_button.text = "Reset Turn"
 	reset_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	reset_turn_button.pressed.connect(_on_reset_turn_pressed)
+	reset_turn_button.mouse_entered.connect(_hide_stale_tooltip)
 	turn_controls_column.add_child(reset_turn_button)
 
 	aim_view = AimView.new()
@@ -551,6 +554,22 @@ func _build_ui() -> void:
 	_update_readout_header()
 
 
+## BR31.01 (tb32 Pass D): "the tooltip's presence makes the controls hard
+## to click." A click already reached the button underneath regardless —
+## `TooltipView`/its label both carry MOUSE_FILTER_IGNORE — the real bug
+## is a STALE tooltip left over from hovering the 3D board right before
+## the cursor crossed onto a turn-control button: TacticsController's own
+## hover tracking lives in `_unhandled_input`, which never fires while the
+## cursor sits over a Control with the default STOP filter (every
+## Button), so nothing ever told the tooltip to go away. Same fix
+## QueuePanel's tree (`mouse_exited`) and ApMpPipRow's containers already
+## needed for the identical reason — these three buttons just never got
+## it.
+func _hide_stale_tooltip() -> void:
+	if tooltip_view != null:
+		tooltip_view.hide_tooltip()
+
+
 func _on_end_turn_pressed() -> void:
 	tactics.end_turn()
 
@@ -590,9 +609,16 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 	# own refresh at ITS OWN end (covering whatever it resolves), so a
 	# third, unconditional full-board refresh right after it used to be
 	# pure duplicate work, not a second, more-correct pass.
-	battle.refresh_unit_views(LogPlayback.affected_unit_ids(events))
+	#
+	# tb32 Pass D (BR27.07): the active-turn flip is deferred (`false`)
+	# until AFTER the animation below actually finishes — bundled in here
+	# same as `refresh_unit_views()`'s own mesh rebuild, it used to flip
+	# the indicator to the NEXT unit while THIS unit's action was still
+	# visibly animating, a real confirmed bug.
+	battle.refresh_unit_views(LogPlayback.affected_unit_ids(events), false)
 	_on_selection_changed()
 	await resolution_player.play(events)
+	battle.apply_active_turn_highlight()
 	advance_ai_turns(battle)
 
 
