@@ -640,6 +640,56 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Not yet confirmed which of the two mechanisms (a)/(b) actually produced the (2,18) hole** — both
   are now fixed regardless, but knowing which would confirm the diagnosis. Did a unit get extracted
   or debug-removed near that cell?
+- **2026-07-22 (supervisor):** if extraction/debug-removal was the cause, it happened on a PRIOR
+  bout, not this one — the stray hole was already present on loading into the current bout. See
+  **BR32.03** below — a distinct, not-yet-investigated angle (does something carry over across a
+  "New Battle" that shouldn't?), since this fix's own `_excluded_from_occlusion` is cleared on every
+  `BoardView.build()` and `wall_cutout_units` is reassigned fresh from the new `CombatState.units` on
+  load, so neither of the mechanisms fixed here should be ABLE to survive a bout transition as
+  currently understood — worth a real look, just not yet.
+
+### BR32.02 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Wall cutout never visibly appears near real units  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (same live-bout review as BR32.01). "I rotated the camera around the
+  units, they were still in their original spawn locations, next to walls. No culling observed at
+  all."
+- **Root cause, confirmed against Godot's own docs (two independent sources — no headless test could
+  ever catch this class of bug; dummy/headless rendering never executes a fragment shader at all):**
+  `wall_cutout.gdshader`'s `fragment()` compares `FRAGCOORD.xy` directly against
+  `unit_screen_positions[i]`, fed from `BoardView.update_wall_cutout()` via
+  `Camera3D.unproject_position()`. The two use OPPOSITE Y conventions: `FRAGCOORD` matches GLSL's own
+  `gl_FragCoord` — bottom-left origin, Y increasing UPWARD (confirmed via Godot's own shader-porting
+  docs: "FRAGCOORD... use[s] the same coordinate system" as `gl_FragCoord`) — while
+  `unproject_position()` returns top-left-origin, Y-DOWN screen coordinates (the same convention
+  mouse/UI positions use). Comparing them unflipped mirrors the cutout vertically around the
+  viewport's own horizontal center line, so the hole essentially never lands where a wall and a unit
+  actually overlap on screen — exactly "no culling observed at all," even with real units
+  demonstrably standing next to real walls.
+- **Fix:** `update_wall_cutout()` now flips the fed Y coordinate (`viewport_height - unprojected.y`)
+  before handing it to the shader, so both sides agree on FRAGCOORD's own bottom-left convention.
+  `VERTEX`'s own use in the same shader (view-space depth via `length(VERTEX)`) was separately
+  double-checked against Godot's own docs and is NOT affected — `VERTEX` is documented to already
+  arrive in view space by the time `fragment()` reads it, no flip needed there.
+- **Not visually re-confirmed by me** — this environment has no Xvfb/GPU, so I can't run the actual
+  renderer; the fix is backed by reading Godot's own documented FRAGCOORD/gl_FragCoord equivalence,
+  not a screenshot. Needs the supervisor to actually see a cutout appear near a real unit next to a
+  real wall.
+
+### BR32.03 — SUSPECTED (temporary tag — not one of the usual Active/Pending Confirmation/Resolved
+statuses; a placeholder for "logged as a possible lead, not yet a confirmed/described bug report."
+The supervisor will replace this with a real name/status at their own review pass) — Stray occlusion
+artifact possibly carries over across a bout transition  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22. The supervisor noticed BR32.01's own "stray culling, no unit there"
+  symptom immediately on loading into the current bout — if extraction/debug-removal was the actual
+  cause (BR32.01's own fix), it would have happened on a PRIOR bout, meaning something about that
+  stale state survived a "New Battle" transition into this fresh one.
+- **Explicitly not investigated yet, by instruction** — do not look into this until the supervisor's
+  own review pass. Filed only so it isn't lost.
+- **Why this looks surprising against BR32.01's own fix (not a contradiction, just unexplained):**
+  `BoardView.wall_cutout_units` is reassigned fresh from the NEW `CombatState.units` on every
+  `_on_battle_loaded()`, and `_excluded_from_occlusion` is cleared on every `BoardView.build()` — on
+  paper, neither of BR32.01's two mechanisms should be able to survive a bout transition at all. If
+  this reproduces again, that gap between "should be impossible" and "was observed" is the actual
+  bug.
 
 ---
 
