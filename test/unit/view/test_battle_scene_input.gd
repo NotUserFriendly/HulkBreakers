@@ -160,7 +160,7 @@ func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 ## bug is that nothing ever hides a STALE tooltip once the cursor moves
 ## off the 3D board and onto a Control (TacticsController._unhandled_
 ## input's own hover tracking simply never fires there) — the same class
-## QueuePanel's tree/ApMpPipRow's containers already guard against via
+## QueuePanel's own rows/ApMpPipRow's containers already guard against via
 ## mouse_exited/mouse_entered, but turn_controls_column's own buttons
 ## never got it.
 func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_covering_it() -> void:
@@ -173,7 +173,7 @@ func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_cov
 	# (viewport_size, 0x0) rect, off-screen by construction.
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var end_turn_button: Button = overlay.turn_controls_column.get_child(1)
+	var end_turn_button: Button = overlay.end_turn_button
 	var screen_pos: Vector2 = end_turn_button.get_global_rect().get_center()
 
 	overlay.tooltip_view.show_data(
@@ -190,22 +190,21 @@ func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_cov
 
 
 ## BR27.08 ("Resolve to Here" reported grayed out and unclickable in real
-## play, reopened after a prior investigation only verified
-## `resolve_to_marker()`'s own RESOLUTION logic, never the click-to-select-
-## a-row path a real player actually has to go through first). Every test
-## in test_queue_panel.gd drives the marker via a helper documented as
-## "the same path a real click does... without needing a live viewport" —
-## an assumption never actually proven there, since it calls `.select()`
-## then manually invokes `_on_item_selected()`, bypassing the Tree's own
-## hit-testing and its `item_selected` signal entirely. This pushes a
-## genuine InputEventMouseButton at the row's own real, laid-out screen
-## rect through the real Viewport, inside the FULL real `BattleScene`/
-## `SquadControlOverlay` construction (the queue tree's real
-## `custom_minimum_size`, real container hierarchy — not the bare
-## `Tree.new()` test_queue_panel.gd's own fixture builds with no size at
-## all, which would fail this exact check for an unrelated, fixture-only
-## reason).
-func test_a_real_click_on_a_queue_row_enables_resolve_to_here() -> void:
+## play — the reported symptom was never reproduced headlessly across an
+## extensive investigation, so the whole `Tree`+marker+global-button
+## mechanism was retired and rebuilt on plain `Button`/`Label`/`Container`
+## instead — see `docs/SUPERSEDED.md`). Each queued action is now its own
+## row with its own real "Resolve" button, wired directly to
+## `tactics.resolve_to_marker(index)`. This pushes a genuine
+## `InputEventMouseButton` at that button's own real, laid-out screen rect
+## through the real Viewport, inside the FULL real `BattleScene`/
+## `SquadControlOverlay` construction — proving the whole path end to end,
+## not a shortcut. (This is also what caught a real layout bug while this
+## was being built: the row's own expanding label had no width bound
+## inside its `ScrollContainer`, landing the button hundreds of pixels
+## past the right edge of the viewport — fixed by disabling the scroll
+## container's own horizontal scrolling.)
+func test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var overlay: SquadControlOverlay = _overlay(scene)
@@ -216,10 +215,9 @@ func test_a_real_click_on_a_queue_row_enables_resolve_to_here() -> void:
 	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
 	assert_gt(reachable.size(), 0, "sanity: the current unit must have somewhere to move")
 	overlay.tactics.click_cell(reachable[0])
+	var start_cell: Vector2i = current.cell
 
-	assert_true(
-		overlay.queue_panel.resolve_button.disabled, "sanity: nothing selected in the queue yet"
-	)
+	assert_eq(overlay.queue_panel.rows_container.get_child_count(), 1, "sanity: one row now queued")
 
 	# Anchored/laid-out Controls only resolve a real global_rect after a
 	# live frame runs (tb32 Pass D's own diagnostic note) — read too early
@@ -227,23 +225,19 @@ func test_a_real_click_on_a_queue_row_enables_resolve_to_here() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var tree: Tree = overlay.queue_panel.tree
-	var item: TreeItem = tree.get_root().get_child(0)
-	var row_rect: Rect2 = tree.get_item_area_rect(item)
-	var screen_pos: Vector2 = (
-		tree.get_global_rect().position
-		+ row_rect.position
-		+ Vector2(row_rect.size.x / 2.0, row_rect.size.y / 2.0)
+	var row: HBoxContainer = overlay.queue_panel.rows_container.get_child(0)
+	var resolve_button: Button = row.get_child(row.get_child_count() - 1) as Button
+	_click_at(scene, resolve_button.get_global_rect().get_center())
+
+	assert_ne(
+		current.cell,
+		start_cell,
+		"a real click on the row's own Resolve button must actually resolve the move"
 	)
-
-	_click_at(scene, screen_pos)
-
-	assert_false(
-		overlay.queue_panel.resolve_button.disabled,
-		(
-			"a real click on a queue row must enable Resolve to Here — "
-			+ "not just a manual .select() + _on_item_selected() call"
-		)
+	assert_eq(
+		overlay.queue_panel.rows_container.get_child_count(),
+		0,
+		"the resolved queue is empty — no rows left"
 	)
 
 
@@ -254,7 +248,7 @@ func test_entering_a_turn_control_button_hides_a_stale_tooltip() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var overlay: SquadControlOverlay = _overlay(scene)
-	var end_turn_button: Button = overlay.turn_controls_column.get_child(1)
+	var end_turn_button: Button = overlay.end_turn_button
 
 	overlay.tooltip_view.show_data(
 		TooltipData.new("test", [{"label": "a", "value": "b", "changed": false}]), Vector2(10, 10)
