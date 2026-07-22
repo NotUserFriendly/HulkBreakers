@@ -418,6 +418,26 @@ kills the process before it runs. Scope what's actually reachable (caught script
 failures, abort reasons) vs. what needs an external wrapper (process-death capture) up front. Its own
 small block; pairs with tester mode.
 
+**Verbosity + a build log + intent/outcome pairing (tb32 review).** The same unification wants far
+more logged than combat events — deliberately *excessive* verbosity, since CC greps it cleanly and the
+in-game view folds it. Log lifecycle and view events: bot constructed, part added/attached, cutout
+drawn to (x, y), which overlay is active and when it turns off, and a **bout-build log** in the order
+things actually happen (placed N walls, N void tiles, N units, N cover pieces, …) — recounted in
+build order, not summarized. Not limited to these; the bias is toward logging everything and filtering
+at read time. And pair **"what was sent" with "what happened"**: log the command issued (e.g. a
+remove-unit command was sent) *and* its outcome (unit could not be removed — wrong type / reason), so
+a dropped or rejected command is visible instead of a silent no-op. This intent/outcome split mirrors
+the two-phase turn model (queued intent vs. resolved effect) and directly counters the class of bug
+this review is full of — actions that silently fail (BR32.07, BR30.11): a "sent, not resolved" line
+would make each of them self-announcing.
+
+## Startup should open a generated bout, not the default scene (tb32 review)
+The game currently boots into whatever the default scene is, and that generator may be outmoded.
+Boot instead into a freshly generated bout via the live bout builder — the same "starter battle folds
+into the bouts system" consolidation already flagged with the full-mission-test retirement below (the
+bout builder is the live path; the default/starter scene is the obsolete one). Small, but it also
+removes a stale entry point that can drift out of sync with the real generation path.
+
 ## Replace the hand-built full-mission test (DECIDED — build a replacement; keep it RED until then)
 `test_full_mission.gd` uses a hardcoded seed and its own in-test turn heuristics (`_take_turn`/
 `_queue_turn`) that **were never rehomed into production AI** (`docs/10`). Every real mechanics fix
