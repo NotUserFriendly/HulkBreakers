@@ -176,9 +176,15 @@ projects every unit in `wall_cutout_units` to a screen position/depth/tile-deriv
 (`WallLegibility.pixel_radius_for_tiles`, new pure helper) and feeds them as uniforms each frame; the
 shader decides per-fragment whether to discard. Cuts around every unit at once now, not one focal unit;
 spectator never feeds any units, so the cutout simply never fires there (unchanged, flagged as trivial
-to wire later). **Friendly-ghost fade in aiming view** (tb32 B) — a friendly standing between the
-camera and the active (shooter) unit gray-ghosts (heavier than the team-colored end-of-move ghost, its
-own `_friendly_fade_overlay` container so the two never clobber), reusing Pass A's
+to wire later). **Friendly fade in aiming view** (tb32 B, redesigned after live testing) — a friendly
+standing between the camera and the active (shooter) unit fades gray. The first version drew a
+separate ghost overlay in `BoardView`, leaving the friendly's own real `HitVolumeView` fully opaque
+underneath it — confirmed live to read as "something faint happening," not an actual fade. Redesigned
+to fade the friendly's own real body instead: `HitVolumeView.set_occlusion_faded()` swaps every body
+mesh instance's `material_override` to a translucent gray (never touching the ground marker/facing
+wedge, `set_active_turn()`'s own concern, or `highlight_part()`'s `mesh.material.next_pass` chain,
+which lives underneath, untouched). The occlusion decision itself moved to `BattleScene._process()`
+(the one place holding both the live camera and every `HitVolumeView`), reusing Pass A's
 `occludes_on_screen`/`pixel_radius_for_tiles` unchanged against `BoardView.aim_active_unit`; friendly-
 only, never the active unit, only while `tactics.aiming_at != null`.
 

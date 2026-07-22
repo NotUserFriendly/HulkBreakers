@@ -37,6 +37,24 @@ const TEAM_MARKER_HEIGHT := 0.02
 ## `board_view.gd`'s own `GHOST_HEIGHT` (top face 0.04) with margin.
 const TEAM_MARKER_Y := 0.06
 const SELECTED_BRIGHTEN := 0.35
+## tb32 Pass B: gray = "faded so you can see past it" — deliberately
+## distinct from `BoardView.UNIT_GHOST_ALPHA`'s own team-colored "this is
+## where the queued move ends" ghost, so a faded friendly never reads as
+## a preview of intent (the taskblock's own convention: team-color ghost
+## = current unit, gray fade = faded-for-visibility).
+const OCCLUSION_FADE_COLOR := Color(0.5, 0.5, 0.5)
+## Heavier than `BoardView.UNIT_GHOST_ALPHA` (0.35) — this only ever
+## fires for a friendly you're not controlling, facing away from, so
+## there's nothing about it worth assessing; pure occlusion removal,
+## unlike the wall cutout (still real geometry you might want to read).
+## Flagged, tunable (CLAUDE.md: never invent a "final" balance number) —
+## the first value tried (0.12), on the first version of this fix (a
+## separate ghost overlay drawn alongside the friendly's own still-fully-
+## opaque real body), was confirmed live to be imperceptible. Kept
+## noticeably higher now that the fade applies to the unit's own REAL
+## mesh instances directly (see `set_occlusion_faded` below) rather than
+## an extra translucent decoy sitting next to an unaffected opaque unit.
+const OCCLUSION_FADE_ALPHA := 0.3
 ## docs/10 taskblock02 F3: a facing wedge on the ring, so the player can
 ## actually see which way a unit is turned before spending MP to change
 ## it — a tab riding the marker's own edge, pointing in
@@ -137,6 +155,12 @@ var _facing_wedge: MeshInstance3D = null
 ## highlight survives a rebuild (e.g. taking damage mid-hover).
 var _highlighted_part: Part = null
 var _meshes_by_part: Dictionary = {}  # Part -> Array[MeshInstance3D]
+## tb32 Pass B: set by `BattleScene._process()` — this unit's own real
+## body is currently occluding the active/aiming unit's own read of its
+## shot. `set_occlusion_faded` re-applies this on every `refresh()` (a
+## mid-fade damage tick must not flash the fade off until the next real
+## decision).
+var _occlusion_faded: bool = false
 
 
 func setup(p_unit: Unit, p_material_table: MaterialTable) -> void:
@@ -153,14 +177,51 @@ func set_selected(is_selected: bool) -> void:
 	_recolor_markers()
 
 
-## tb32 Pass D (BR27.07): toggles the facing wedge's own visibility —
-## "the marker's presence indicates whose turn it is, not a color." Every
-## OTHER unit's wedge is simply hidden, not recolored/replaced; a downed
-## unit has no wedge to show regardless (`refresh()`'s own guard).
+## tb32 Pass D (BR27.07): toggles the WHOLE disk/facing-pip assembly's
+## own visibility — supervisor clarification: "facing marker" means the
+## ground disk AND the wedge together, not the wedge alone. "The marker's
+## presence indicates whose turn it is, not a color" — every OTHER unit's
+## disk+wedge is simply hidden, not recolored/replaced; a downed unit has
+## no wedge to show regardless (`refresh()`'s own guard).
 func set_active_turn(is_active: bool) -> void:
 	_is_active_turn = is_active
+	if _team_marker != null:
+		_team_marker.visible = is_active
 	if _facing_wedge != null:
 		_facing_wedge.visible = is_active
+
+
+## tb32 Pass B: "a friendly unit standing between the camera and your
+## active unit... fade it." Fades this unit's own REAL rendered body —
+## every body mesh instance's `material_override` — rather than drawing
+## a decoy ghost elsewhere. The first version of this fix
+## (`BoardView`-owned overlay, drawing extra translucent boxes alongside
+## the friendly) left the friendly's own HitVolumeView fully opaque
+## underneath a barely-visible extra box, confirmed live to read as
+## "something faint happening," not an actual fade of the unit — this
+## fades the unit itself instead. `material_override` is never touched by
+## anything else on a body mesh instance (`highlight_part()`'s own
+## next_pass chain lives on `mesh.material` underneath, untouched and
+## restored the instant this clears) so the two can never fight. Never
+## applies to `_team_marker`/`_facing_wedge` (ground overlays, not body
+## geometry — `set_active_turn`'s own concern).
+func set_occlusion_faded(is_faded: bool) -> void:
+	if _occlusion_faded == is_faded:
+		return
+	_occlusion_faded = is_faded
+	_apply_occlusion_fade()
+
+
+func _apply_occlusion_fade() -> void:
+	var color := Color(
+		OCCLUSION_FADE_COLOR.r, OCCLUSION_FADE_COLOR.g, OCCLUSION_FADE_COLOR.b, OCCLUSION_FADE_ALPHA
+	)
+	var material: StandardMaterial3D = (
+		WorldPalette.translucent_material(color) if _occlusion_faded else null
+	)
+	for meshes: Variant in _meshes_by_part.values():
+		for instance: MeshInstance3D in meshes as Array[MeshInstance3D]:
+			instance.material_override = material
 
 
 func _recolor_markers() -> void:
@@ -181,15 +242,16 @@ func refresh() -> void:
 		return
 
 	_team_marker = _build_team_marker()
+	# tb32 Pass D (BR27.07): re-apply whatever `set_active_turn` last said
+	# — a mid-turn refresh() (e.g. taking damage) must not flash a
+	# non-active unit's marker back to visible until the next explicit
+	# set_active_turn() call.
+	_team_marker.visible = _is_active_turn
 	add_child(_team_marker)
 	if not is_downed():
 		# docs/10 taskblock03 G: "kill its facing wedge" — a downed unit
 		# isn't facing anything.
 		_facing_wedge = _build_facing_wedge()
-		# tb32 Pass D (BR27.07): re-apply whatever `set_active_turn` last
-		# said — a mid-turn refresh() (e.g. taking damage) must not flash
-		# a non-active unit's wedge back to visible until the next
-		# explicit set_active_turn() call.
 		_facing_wedge.visible = _is_active_turn
 		add_child(_facing_wedge)
 
@@ -237,6 +299,8 @@ func refresh() -> void:
 
 	if _highlighted_part != null:
 		highlight_part(_highlighted_part)
+	if _occlusion_faded:
+		_apply_occlusion_fade()
 
 
 ## docs/10 taskblock04 C1's own "field object" case: a bare part tree with

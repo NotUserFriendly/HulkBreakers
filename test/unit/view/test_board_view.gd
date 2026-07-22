@@ -460,24 +460,11 @@ func test_clear_overlays_removes_everything() -> void:
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)]])
 	view.show_unit_ghost(_torso_unit(Vector2i(0, 0)))
 	view.show_overwatch_arc([Vector2i(2, 2)])
-	var active := _torso_unit(Vector2i(2, 6), 0)
-	var blocker := _torso_unit(Vector2i(2, 3), 0)
-	view.wall_cutout_units = [active, blocker]
-	view.aim_active_unit = active
-	var camera := Camera3D.new()
-	add_child_autofree(camera)
-	camera.global_position = Vector3(2, 5, -5)
-	camera.look_at(UnitGeometry.bounding_sphere(active).center, Vector3.UP)
-	view.update_friendly_fade(camera)
-	assert_eq(
-		view._friendly_fade_overlay.get_child_count(), 1, "sanity: fade populated before clearing"
-	)
 	view.clear_overlays()
 	assert_eq(view._reachable_overlay.get_child_count(), 0)
 	assert_eq(view._ghost_overlay.get_child_count(), 0)
 	assert_eq(view._unit_ghost_overlay.get_child_count(), 0)
 	assert_eq(view._overwatch_overlay.get_child_count(), 0)
-	assert_eq(view._friendly_fade_overlay.get_child_count(), 0)
 
 
 ## taskblock-19 Pass D: "a transparent pie slice... the slice shows
