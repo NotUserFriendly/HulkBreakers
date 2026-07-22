@@ -911,6 +911,26 @@ artifact possibly carries over across a bout transition  ·  source: `SUPERVISOR
   this reproduces again, that gap between "should be impossible" and "was observed" is the actual
   bug.
 
+### BR32.04 — Active — Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (BR27.08 rebuild review). "On clicking resolve, cull position moves to the
+  right cell immediately, while animation plays separately, splitting them."
+- **Explicitly not investigated yet, by instruction — "likely a process change so just flag it for
+  now."** Filed only so it isn't lost.
+- **Candidate mechanism, not confirmed:** `resolve_to_marker()` resolves the queued prefix against real
+  `CombatState` synchronously — `unit.cell` (and whatever `BoardView.update_wall_cutout()` projects
+  from `wall_cutout_units`, a live reference into `combat_state.units`) updates the very next frame.
+  The visual slide itself (`ResolutionPlayer`, driven off the `queue_partially_resolved`/`turn_ended`
+  event stream) plays out separately, over multiple frames, from wherever the model's own
+  `HitVolumeView` transform currently sits. If the wall-cutout shader's own per-frame feed
+  (`BattleScene._process()`/`BoardView.update_wall_cutout()`) reads the unit's real, already-resolved
+  `.cell` rather than the model's own currently-animated transform, the cutout hole would jump to the
+  destination instantly while the model is still visibly sliding toward it — a real position, but the
+  WRONG one to be reading from mid-animation. Consistent with the supervisor's own "likely a process
+  change" guess: whichever `_process()` feeds the cutout's unit positions would need to read the
+  animated/rendered position (or hold the old one) until the slide finishes, not the authoritative
+  logical cell the instant it changes.
+- **Not yet reproduced or fixed.** Needs a live look, not guessed at further here.
+
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
