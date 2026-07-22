@@ -148,6 +148,31 @@ func test_for_queue_entry_shows_describe_ap_and_mp() -> void:
 	assert_eq(_row_value(data, "MP"), "1.5")
 
 
+## BR27.08 (supervisor follow-up): a `MoveAction`'s own full path only
+## reaches the tooltip as an extra "Detail" row — `describe` stays the
+## queue-row-safe short label the title itself uses.
+func test_for_queue_entry_shows_an_extra_detail_row_when_present() -> void:
+	var entry: Dictionary = {
+		"describe": "Move",
+		"detail": "MoveAction(unit=3, path=[(0, 0), (1, 0)])",
+		"ap": 2,
+		"mp": 1.5
+	}
+
+	var data: TooltipData = TooltipBuilder.for_queue_entry(entry)
+
+	assert_eq(data.title, "Move")
+	assert_eq(_row_value(data, "Detail"), "MoveAction(unit=3, path=[(0, 0), (1, 0)])")
+
+
+func test_for_queue_entry_omits_the_detail_row_when_absent() -> void:
+	var entry: Dictionary = {"describe": "FaceAction(unit=3, direction=1.00)", "ap": 1, "mp": 0.0}
+
+	var data: TooltipData = TooltipBuilder.for_queue_entry(entry)
+
+	assert_null(_row_value(data, "Detail"))
+
+
 func test_for_tile_shows_terrain_when_nothing_else_is_present() -> void:
 	var info: Dictionary = {
 		"cell": Vector2i(3, 4),

@@ -18,6 +18,17 @@ func describe() -> String:
 	return "CombatAction"
 
 
+## Queue-row-safe label — `describe()` itself can be arbitrarily long
+## (`MoveAction`'s own path grows without bound), fine for a debug log
+## line but not a fixed-width UI row. Defaults to `describe()` unchanged;
+## override only where `describe()`'s own text can get long enough to
+## matter (`MoveAction`). `SelectionController.queue_entries()` reads
+## this for a queue row's own visible text and surfaces the full
+## `describe()` on hover only when the two actually differ.
+func short_describe() -> String:
+	return describe()
+
+
 ## docs/09 taskblock06 Pass E: a SECOND ordering axis — docs/09 Appendix G
 ## already orders UNITS by initiative; this orders ACTIONS at one instant
 ## (a mover's queued shot vs. the overwatch it triggers, say). A method,

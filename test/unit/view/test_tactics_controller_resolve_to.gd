@@ -43,8 +43,9 @@ func test_resolve_to_marker_applies_only_the_prefix_through_the_marker() -> void
 	assert_eq(a.cell, Vector2i(1, 0), "only the first leg actually resolved")
 
 
-## docs/10 taskblock06 G1/TESTS: "queuing resumes after."
-func test_queuing_resumes_after_a_partial_resolve() -> void:
+## BR27.08 (supervisor follow-up): a partial resolve must not discard what
+## was queued after the marker — only the resolved prefix is gone.
+func test_the_later_queued_leg_survives_a_partial_resolve() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
@@ -54,7 +55,11 @@ func test_queuing_resumes_after_a_partial_resolve() -> void:
 
 	controller.resolve_to_marker(0)
 
-	assert_eq(controller.selection.ghost_paths().size(), 0, "the abandoned suffix is discarded")
+	assert_eq(
+		controller.selection.ghost_paths().size(),
+		1,
+		"only the resolved prefix is gone — the still-queued leg survives"
+	)
 	assert_eq(controller.selection.selected_unit, a, "still selected — the turn has not ended")
 
 	# docs/10 Phase 12.4: input stays locked until whoever plays the
@@ -64,12 +69,17 @@ func test_queuing_resumes_after_a_partial_resolve() -> void:
 	controller.unlock_input()
 	controller.click_cell(Vector2i(1, 1))  # queuing must still work after a partial resolve
 
-	assert_eq(controller.selection.ghost_paths().size(), 1, "a fresh move was queued")
+	assert_eq(
+		controller.selection.ghost_paths().size(), 2, "the surviving leg plus a freshly queued one"
+	)
 
 
 ## docs/10 taskblock06 G1/TESTS: "the speculative clone is rebuilt from
-## post-resolve authoritative state."
-func test_previewed_unit_after_a_partial_resolve_reflects_the_moved_authoritative_state() -> void:
+## post-resolve authoritative state" — BR27.08 follow-up: now ALSO carries
+## the still-queued leg's own preview forward, since that leg survives
+## the resolve instead of being discarded.
+func test_previewed_unit_after_a_partial_resolve_reflects_the_moved_state_plus_the_kept_suffix(
+) -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
@@ -79,7 +89,11 @@ func test_previewed_unit_after_a_partial_resolve_reflects_the_moved_authoritativ
 
 	controller.resolve_to_marker(0)
 
-	assert_eq(controller.selection.previewed_unit().cell, Vector2i(1, 0))
+	assert_eq(
+		controller.selection.previewed_unit().cell,
+		Vector2i(2, 0),
+		"the real move happened AND the still-queued leg's own preview carries it further"
+	)
 
 
 ## docs/10 taskblock06 G1/G3/TESTS: "Reset Turn after a partial resolve

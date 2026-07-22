@@ -442,6 +442,23 @@ confirm" roll-up — so pending items surface at a natural review point without 
     root cause was never conclusively identified. Marked `RESOLVED-PENDING-CONFIRMATION`, not plain
     `RESOLVED`, per the provenance gate — this still needs the supervisor's own live click to actually
     close it, since headless tests said the OLD mechanism should have worked too.
+- **2026-07-22, supervisor review of the rebuild — two refinements, same session:**
+  1. **"Resolving to an earlier point should keep the later queued items in the queue."** The prior
+     behavior (inherited unchanged from the original `Tree`-based mechanism, itself dating to
+     taskblock06/07) discarded EVERYTHING queued past the marker, not just the resolved prefix —
+     `resolve_to_marker()`'s own `selection.reset_turn()` call erased the whole remaining queue.
+     Replaced with new `SelectionController.keep_queue_suffix(from_index)`, which drops only the
+     resolved prefix; the surviving suffix replays unmodified against the just-updated real state —
+     safe since every `CombatAction` already re-validates itself against whatever `state` it's handed
+     at apply time, never a captured reference (docs/09). A real design reversal, not a bug fix —
+     logged in `docs/SUPERSEDED.md`.
+  2. **"The coord info can be an on hover event for the MoveAction term... long paths make the readout
+     stretch across the display."** New `CombatAction.short_describe()` (defaults to `describe()`
+     unchanged for every action type) — `MoveAction` overrides it to a fixed `"Move"`, never its own
+     path. `SelectionController.queue_entries()` uses `short_describe()` for a row's own visible text,
+     surfacing the full `describe()` as an extra "Detail" tooltip row only when it actually differs
+     (`TooltipBuilder.for_queue_entry()`) — the coordinate detail is still reachable, just on hover, not
+     stretching every row by construction.
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or

@@ -140,6 +140,16 @@ a-global-button step and no persisted marker state. Rebuilt this way after the p
 mechanism (click a row to set a marker, a separate global button to fire) could never be made to
 reproduce a real, supervisor-confirmed "nothing happens at all" failure in this environment — replaced
 with the same primitives every other reliable click surface in this codebase already uses.
+**Resolving to an earlier point keeps what's queued after it** (supervisor follow-up,
+`docs/SUPERSEDED.md`) — `SelectionController.keep_queue_suffix()` replaces the old `reset_turn()` call
+`resolve_to_marker()` used to make after a partial resolve, which discarded the entire remaining queue
+along with the prefix that actually resolved. The same queued `CombatAction` objects replay unmodified
+against the just-updated real state — safe because every action already re-validates itself against
+whatever `state` it's actually handed (docs/09), not a captured reference. **A `MoveAction`'s own row
+text is now just "Move"**, not its full path — `CombatAction.short_describe()` (new, defaults to
+`describe()`) is what a queue row actually shows; the full path only reaches the hover tooltip as an
+extra "Detail" row (`TooltipBuilder.for_queue_entry()`), since an unbounded path length was stretching
+the readout across the whole display.
 
 **AI** (tb14/16/17-1/24) — `UnitAI.plan_turn`, deterministic, human & AI emit the same queue,
 firing derived from the same `ActionCatalog.build_firing_action` seam a weapon's own
