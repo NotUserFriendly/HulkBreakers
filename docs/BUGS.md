@@ -264,7 +264,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   the file starts at, then arms+clicks: confirmed it fails without the fix (falls into ordinary aim
   mode) and passes with it. 1862/1862 green.
 
-### BR27.07 — Active — Active-turn highlight lands on the wrong unit; change to facing-marker-only  ·  source: `SUPERVISOR`
+### BR27.07 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Active-turn highlight lands on the wrong unit; change to facing-marker-only  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). Two parts: (a) **design change** — instead of recoloring the
   active unit's facing wedge + team marker (tb27 D2), the supervisor wants *only the current unit to
   show a facing marker at all* (the marker's presence indicates whose turn it is, not a color). (b)
@@ -285,8 +285,18 @@ confirm" roll-up — so pending items surface at a natural review point without 
   parent's own animation/AI-batch completion. **Candidate fix (not yet applied):** reorder so
   `refresh_unit_views()`'s highlight flip runs after the animation await completes; add the missing
   `await` in `SingleUnitOverlay`.
+- **2026-07-22 (tb32 Pass D) — both parts done:** (a) design change — `HitVolumeView.set_active_turn()`
+  no longer recolors anything (`ACTIVE_TURN_COLOR` retired); it toggles the facing wedge's own
+  `.visible` instead, so only the current unit ever shows a facing marker at all, exactly as
+  requested. (b) ordering bug — `BattleScene.refresh_unit_views()` gained an `apply_highlight: bool =
+  true` parameter; `SquadControlOverlay._on_turn_ended()` now passes `false` and calls the (newly
+  public) `battle.apply_active_turn_highlight()` itself AFTER `await resolution_player.play(events)`
+  completes, so the marker no longer jumps to the next unit mid-animation. `SingleUnitOverlay._on_
+  turn_ended()` now `await`s its `super` call, closing the compounding race. Every other existing
+  caller (`advance_ai_turns`, `SpectatorOverlay`) keeps the old default (`apply_highlight` true, no
+  deferral) unchanged.
 
-### BR27.08 — Active — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
+### BR27.08 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — "Resolve to here" has never worked  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (logged now; long-standing — backburnered since the button's introduction).
   The "Resolve to here" turn-control (resolve queued actions up to a chosen point) has never
   functioned. Logged here now that the ledger exists so it stops being an untracked known-broken.
@@ -299,6 +309,14 @@ confirm" roll-up — so pending items surface at a natural review point without 
   fixed the historical "button never enables" defect, with passing coverage in `test_queue_panel.gd`.
   **This ledger entry looks stale, not live — worth a quick supervisor re-check before spending
   further investigation on it.**
+- **2026-07-22 (tb32 Pass D):** re-verified rather than blind-fixed — `resolve_to_marker()` still
+  traces clean end-to-end, and `test_tactics_controller_resolve_to.gd::
+  test_resolve_to_marker_applies_only_the_prefix_through_the_marker` is a real queue-then-resolve
+  test (queues two move legs, resolves to the first marker, asserts the unit's own `.cell` actually
+  only advanced one leg) — not a UI-state check that could pass while the real resolve silently
+  no-ops. Nothing changed; this looks like it was already fixed by `888a25f` and the ledger simply
+  never caught up. Marked pending, not `RESOLVED` outright, per the provenance gate (SUPERVISOR-sourced) —
+  needs the supervisor to actually click the button and confirm.
 
 ### BR27.09 — Active — Major hitch on new-turn or end-turn  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or
@@ -544,6 +562,37 @@ confirm" roll-up — so pending items surface at a natural review point without 
   free out-leg, burst never gets added). 1868/1869 green (the one failure is the unrelated,
   already-flagged `test_full_mission.gd`, BR30.10 above).
 - **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
+
+---
+
+### BR31.01 — RESOLVED-PENDING-CONFIRMATION [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — Bottom-right turn controls and tooltip popups fight over clicks  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-22 (tb31 review), long-standing: "the controls on the bottom right of the
+  player view don't block the tooltip popups, making them difficult to click."
+- **Symptom (supervisor's words, exact interaction TBC before fixing):** the bottom-right controls
+  (`turn_controls_column` — Resolve to Here / End Turn / Reset Turn) and the tooltip popup layer
+  (`TooltipController`/`TooltipView`) overlap, and the tooltip's presence makes the controls hard to
+  click. Not yet pinned to which layer intercepts which.
+- **Candidate mechanism (do not blind-fix — confirm first):** a `mouse_filter`/z-order interaction
+  between the tooltip layer and `turn_controls_column`, the same class as Pass A's own
+  `TopLeftControls` STOP→IGNORE fix and BR30.05 (debug-panel click bleed-through). Likely the tooltip
+  popup sits over the controls with a filter that swallows the click, or the controls' own hover
+  raises a tooltip that then covers them. Reproduce and read the real node rects/filters back (docs/10
+  standing rule 2) before changing anything.
+- **2026-07-22 (tb32 Pass D) — reproduced, root cause is NOT mouse_filter:** a real synthetic click
+  (`InputEventMouseButton` pushed through the real `Viewport`, `test_battle_scene_input.gd`, the one
+  file that routes input through the actual Control tree rather than `click_cell()`) proves End Turn
+  still receives the click even with the tooltip visually positioned directly over it —
+  `TooltipView`/its label both already carry `MOUSE_FILTER_IGNORE`. The real bug: nothing ever hides a
+  STALE tooltip left over from hovering the 3D board right before the cursor crosses onto a
+  turn-control button. `TacticsController`'s own hover tracking (`update_hover()`, which would clear
+  it) lives in `_unhandled_input`, which never fires while the cursor sits over a Control with the
+  default `MOUSE_FILTER_STOP` (every `Button`) — Godot's GUI input layer consumes the motion event
+  first. `QueuePanel`'s tree (`mouse_exited`) and `ApMpPipRow`'s AP/MP containers
+  (`mouse_entered`/`mouse_exited`) already needed and got this exact fix for the same reason; the three
+  `turn_controls_column` buttons never did. **Fix:** each button's own `mouse_entered` now calls
+  `SquadControlOverlay._hide_stale_tooltip()`. Proven both ways in `test_battle_scene_input.gd`: a real
+  click reaches End Turn regardless (confirms mouse_filter was never the problem), and a real
+  `mouse_entered` on End Turn now hides a tooltip that was previously left stuck open.
 
 ---
 

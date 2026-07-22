@@ -37,11 +37,6 @@ const TEAM_MARKER_HEIGHT := 0.02
 ## `board_view.gd`'s own `GHOST_HEIGHT` (top face 0.04) with margin.
 const TEAM_MARKER_Y := 0.06
 const SELECTED_BRIGHTEN := 0.35
-## taskblock-27 Pass D2: "no clear indication of whose turn it is." A
-## flagged first pass at a color that reads as "active" without being
-## confused for any team's own color (WorldPalette.team_color) — not a
-## final art decision, only "visually distinguishable" is specified.
-const ACTIVE_TURN_COLOR := Color(1.0, 0.85, 0.2)
 ## docs/10 taskblock02 F3: a facing wedge on the ring, so the player can
 ## actually see which way a unit is turned before spending MP to change
 ## it — a tab riding the marker's own edge, pointing in
@@ -117,19 +112,23 @@ var show_hit_volumes: bool = false
 var preview_orientation: Variant = null
 
 var _selected: bool = false
-## taskblock-27 Pass D2: "no clear indication of whose turn it is in
-## player view." Driven by `BattleScene.refresh_unit_views()` reading
-## `CombatState.current_unit()`, for both overlays alike — additive
-## (a distinct marker color), never hiding any OTHER unit's own facing
-## wedge, which still carries real tactical info (which way an enemy is
-## currently facing).
+## tb32 Pass D (BR27.07): "only the current unit shows a facing marker at
+## all — the marker's PRESENCE indicates whose turn it is, not a color."
+## Supersedes tb27 D2's own recolor approach (`ACTIVE_TURN_COLOR`,
+## retired) — a real, occasionally-visible bug where the highlight landed
+## on the wrong unit turned out to trace to `SquadControlOverlay._on_
+## turn_ended()`'s own ordering, not this class; dropping the recolor
+## mechanism entirely sidesteps re-litigating that gap. Driven by
+## `BattleScene.refresh_unit_views()` reading `CombatState.current_unit()`,
+## for both overlays alike — toggles `_facing_wedge.visible` now, not a
+## color.
 var _is_active_turn: bool = false
 var _team_marker: MeshInstance3D
-## taskblock-27 Pass D2: stored so `set_selected`/`set_active_turn` can
-## recolor it live, the same way they already do `_team_marker` — before
-## this, the wedge's own color was fixed at whatever `_marker_color()`
-## returned at the last `refresh()`, never updated by either setter
-## despite both reading the same function.
+## taskblock-27 Pass D2: stored so `set_selected` can recolor it live —
+## before this, the wedge's own color was fixed at whatever
+## `_marker_color()` returned at the last `refresh()`. tb32 Pass D:
+## `set_active_turn` no longer recolors it (see `_is_active_turn`'s own
+## doc comment above) — only `set_selected`'s brighten still does.
 var _facing_wedge: MeshInstance3D = null
 ## docs/10 taskblock05 C: "hovering a part highlights it in the world" —
 ## which Part is currently glowing, and which of this unit's own mesh
@@ -154,12 +153,14 @@ func set_selected(is_selected: bool) -> void:
 	_recolor_markers()
 
 
-## taskblock-27 Pass D2: recolors this unit's own ground marker/facing
-## wedge (both read `_marker_color()`) to a distinct highlight while it's
-## whoever's turn it currently is.
+## tb32 Pass D (BR27.07): toggles the facing wedge's own visibility —
+## "the marker's presence indicates whose turn it is, not a color." Every
+## OTHER unit's wedge is simply hidden, not recolored/replaced; a downed
+## unit has no wedge to show regardless (`refresh()`'s own guard).
 func set_active_turn(is_active: bool) -> void:
 	_is_active_turn = is_active
-	_recolor_markers()
+	if _facing_wedge != null:
+		_facing_wedge.visible = is_active
 
 
 func _recolor_markers() -> void:
@@ -167,8 +168,6 @@ func _recolor_markers() -> void:
 		return
 	if _team_marker != null:
 		_team_marker.material_override = WorldPalette.overlay_material(_marker_color())
-	if _facing_wedge != null:
-		_facing_wedge.material_override = WorldPalette.overlay_material(_marker_color())
 
 
 func refresh() -> void:
@@ -187,6 +186,11 @@ func refresh() -> void:
 		# docs/10 taskblock03 G: "kill its facing wedge" — a downed unit
 		# isn't facing anything.
 		_facing_wedge = _build_facing_wedge()
+		# tb32 Pass D (BR27.07): re-apply whatever `set_active_turn` last
+		# said — a mid-turn refresh() (e.g. taking damage) must not flash
+		# a non-active unit's wedge back to visible until the next
+		# explicit set_active_turn() call.
+		_facing_wedge.visible = _is_active_turn
 		add_child(_facing_wedge)
 
 	var team_color: Color = WorldPalette.team_color(unit.squad_id)
@@ -496,13 +500,6 @@ func is_downed() -> bool:
 func _marker_color() -> Color:
 	var base: Color = WorldPalette.team_color(unit.squad_id)
 	var color: Color = base.lerp(Color.WHITE, SELECTED_BRIGHTEN) if _selected else base
-	# taskblock-27 Pass D2: the active-turn tint wins over the ordinary
-	# selection brighten above — "whose turn it is" is the more load-
-	# bearing fact to read at a glance, and a unit is very often both
-	# selected AND active at once (the player's own current unit), where
-	# the two would otherwise be indistinguishable.
-	if _is_active_turn:
-		color = ACTIVE_TURN_COLOR
 	if is_downed():
 		color = Color(
 			color.r * DOWNED_MARKER_DIM, color.g * DOWNED_MARKER_DIM, color.b * DOWNED_MARKER_DIM

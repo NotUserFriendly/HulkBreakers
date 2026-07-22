@@ -150,3 +150,63 @@ func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 			offenders.append("%s (%s)" % [control.name, control.get_class()])
 	for child: Node in node.get_children():
 		_scan_for_stop_filters(child, offenders)
+
+
+## BR31.01 (tb32 Pass D): "the bottom-right turn controls and the tooltip
+## popup fight over clicks." Confirmed via a real click before changing
+## anything (docs/10 standing rule 2) — `TooltipView`/its label already
+## carry MOUSE_FILTER_IGNORE, so a click lands on the button underneath
+## regardless of whether the tooltip is visually covering it; the real
+## bug is that nothing ever hides a STALE tooltip once the cursor moves
+## off the 3D board and onto a Control (TacticsController._unhandled_
+## input's own hover tracking simply never fires there) — the same class
+## QueuePanel's tree/ApMpPipRow's containers already guard against via
+## mouse_exited/mouse_entered, but turn_controls_column's own buttons
+## never got it.
+func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_covering_it() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var overlay: SquadControlOverlay = _overlay(scene)
+	# Anchored Controls (turn_controls_column included) only resolve their
+	# real, laid-out `global_rect` after a live frame actually runs —
+	# reading it on the same frame the scene was built returns a garbage
+	# (viewport_size, 0x0) rect, off-screen by construction.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var end_turn_button: Button = overlay.turn_controls_column.get_child(1)
+	var screen_pos: Vector2 = end_turn_button.get_global_rect().get_center()
+
+	overlay.tooltip_view.show_data(
+		TooltipData.new("test", [{"label": "a", "value": "b", "changed": false}]), screen_pos
+	)
+	overlay.tooltip_view._process(TooltipView.HOVER_DELAY_SEC)
+	assert_true(overlay.tooltip_view.visible, "sanity: the tooltip is actually showing")
+
+	var fired: Array[bool] = [false]
+	end_turn_button.pressed.connect(func() -> void: fired[0] = true)
+	_click_at(scene, screen_pos)
+
+	assert_true(fired[0], "a click on End Turn must reach it, tooltip visually overlapping or not")
+
+
+## The actual fix: entering ANY turn-control button must hide a stale
+## tooltip left over from hovering the board right before crossing onto
+## it — not wait for the click, which (proven above) already worked.
+func test_entering_a_turn_control_button_hides_a_stale_tooltip() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var overlay: SquadControlOverlay = _overlay(scene)
+	var end_turn_button: Button = overlay.turn_controls_column.get_child(1)
+
+	overlay.tooltip_view.show_data(
+		TooltipData.new("test", [{"label": "a", "value": "b", "changed": false}]), Vector2(10, 10)
+	)
+	overlay.tooltip_view._process(TooltipView.HOVER_DELAY_SEC)
+	assert_true(overlay.tooltip_view.visible, "sanity: the tooltip is actually showing")
+
+	end_turn_button.mouse_entered.emit()
+
+	assert_false(
+		overlay.tooltip_view.visible,
+		"a stale board tooltip must not linger over a turn-control button"
+	)

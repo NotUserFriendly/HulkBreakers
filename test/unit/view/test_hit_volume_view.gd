@@ -307,28 +307,25 @@ func test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker() -> vo
 	)
 
 
-## taskblock-27 Pass D2: "no clear indication of whose turn it is." Both
-## the ground marker AND the facing wedge (the actual "indicator" named
-## in the report) must recolor — before this pass, `set_selected` already
-## proved the wedge never updated live at all (only `_team_marker` did),
-## a real gap `set_active_turn` closes for both setters.
-func test_set_active_turn_recolors_both_the_marker_and_the_facing_wedge() -> void:
+## tb32 Pass D (BR27.07): "only the current unit shows a facing marker at
+## all — the marker's presence indicates whose turn it is, not a color."
+## Supersedes tb27 D2's own recolor — set_active_turn now toggles the
+## wedge's own visibility instead; the ground marker is never tinted for
+## this at all anymore (plain team/selected color only).
+func test_set_active_turn_true_shows_the_facing_wedge() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
 	view.setup(unit, DataLibrary.material_table())
-	var marker: MeshInstance3D = view.get_child(0)
 	var wedge: MeshInstance3D = view.get_child(1)
+	wedge.visible = false
 
 	view.set_active_turn(true)
 
-	var marker_material: StandardMaterial3D = marker.material_override
-	var wedge_material: StandardMaterial3D = wedge.material_override
-	assert_eq(marker_material.albedo_color, HitVolumeView.ACTIVE_TURN_COLOR)
-	assert_eq(wedge_material.albedo_color, HitVolumeView.ACTIVE_TURN_COLOR)
+	assert_true(wedge.visible)
 
 
-func test_set_active_turn_false_reverts_to_the_ordinary_team_color() -> void:
+func test_set_active_turn_false_hides_the_facing_wedge() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
 	add_child_autofree(view)
@@ -337,9 +334,34 @@ func test_set_active_turn_false_reverts_to_the_ordinary_team_color() -> void:
 	view.set_active_turn(true)
 	view.set_active_turn(false)
 
+	var wedge: MeshInstance3D = view.get_child(1)
+	assert_false(wedge.visible, "only the current unit shows a facing marker at all")
+
+
+func test_set_active_turn_never_recolors_the_ground_marker() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+
+	view.set_active_turn(true)
+
 	var marker: MeshInstance3D = view.get_child(0)
 	var material: StandardMaterial3D = marker.material_override
 	assert_eq(material.albedo_color, WorldPalette.team_color(unit.squad_id))
+
+
+func test_refresh_reapplies_the_last_active_turn_visibility() -> void:
+	var unit := _torso_unit(Vector2i(0, 0), 0)
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+	view.set_active_turn(true)
+
+	view.refresh()
+
+	var wedge: MeshInstance3D = view.get_child(1)
+	assert_true(wedge.visible, "a mid-turn refresh must not flash a non-active wedge visible")
 
 
 func test_a_downed_unit_kills_its_facing_wedge() -> void:
