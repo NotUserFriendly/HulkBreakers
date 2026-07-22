@@ -167,6 +167,22 @@ cells between a candidate cell and the enemy), which strictly decreases as a uni
 corner even while raw distance plateaus — a real, measured improvement (a 60-real-map sweep's
 never-reaches-LOS seed count dropped 16/60 → 8/60), not a complete fix: a corridor requiring
 temporary backward movement before a gap appears can still trap this per-turn greedy scorer.
+**Line of fire, not line of sight** (tb33, `docs/SUPERSEDED.md`) — fixed the corridor case above and
+closed BR30.10's own 81%-into-walls finding in one stroke: `LineOfFire.has_clear_line_of_fire`
+(new, `src/logic/line_of_fire.gd`) resolves the exact same `ShotPlane` a real shot fires through
+(sharing one first-hit resolution with the refactored `_ally_in_firing_line`), rather than trusting
+`LoS.has_los` — opacity-only by design, and blind to the cover-Part walls became (tb31 C). Threaded
+through `_plan_ranged`'s fire gate (`clear_from_here`/`final_blocked`) and `_engagement_score`'s own
+line check (`any_reachable_has_los` → `_has_lof`, `NO_LOS_PENALTY` → `NO_LOF_PENALTY`); a
+weapon-range prefilter (`_any_reachable_has_lof`) keeps the added `ShotPlane.build`-per-cell cost off
+cells that can't fire anyway (BR26.02). **Closes BR32.10** (AI stuck on U-shaped/concave maps): when
+nothing reachable this turn has a shot, `LineOfFire.approach_path` Dijkstra-floods (new
+`Pathfinder.nearest_matching`) to the nearest cell that would, truncated to this turn's own MP budget
+(new `Pathfinder.truncate_to_budget`) — the fallback re-fires turn over turn until a reachable cell
+genuinely has one, unsticking the exact "moves away before it gets closer" detour a per-turn greedy
+scorer structurally can't make. `LoS`/`LoS.obstruction_count` are unchanged and still opacity-based —
+only the AI's own fire/standoff *gate* moved from sight to fire; genuinely sight-based questions
+(`is_covered_from`) still read `LoS`.
 
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
