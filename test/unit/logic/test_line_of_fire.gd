@@ -78,4 +78,64 @@ func test_open_field_line_of_fire_matches_line_of_sight() -> void:
 		LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state),
 		LoS.has_los(grid, shooter.cell, target.cell)
 	)
+
+
+## tb35 Pass B (BR34.06/BR27.02): reconstructs the logged failure — a real
+## target straight ahead, plus a wall several cells BEHIND the shooter
+## (present in the plane on purpose, `ShotPlane.build`'s own doc comment).
+## Unfloored, the rearward wall's negative depth sorted first and won every
+## time; `_first_hit_excluding`'s floor must resolve forward instead.
+func test_first_hit_never_resolves_to_a_wall_behind_the_shooter() -> void:
+	var grid := Grid.new(10, 10)
+	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(5, 5))
+	var target := _standing_unit(&"target", 0.5, Vector2i(5, 9))
+	var state := CombatState.new(grid, [shooter, target])
+	grid.blockers[Vector2i(5, 1)] = DataLibrary.get_part(&"wall")
+
+	var hit: Region = LineOfFire.first_hit(shooter, target, shooter.cell, state)
+
+	assert_not_null(hit, "a wall behind the shooter must never eclipse a real forward target")
+	assert_eq(hit.body, target)
 	assert_true(LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state))
+
+
+## tb35 Pass B (BR34.06): `approach_path` gives up once nothing is within its
+## own weapon-range-plus-margin cap; `closing_path` is the fallback for a
+## unit that starts genuinely far from any LOF cell — real A* toward the
+## enemy, no LOF requirement, so it still makes progress instead of holding.
+func test_closing_path_makes_progress_toward_a_far_off_enemy() -> void:
+	var grid := Grid.new(30, 5)
+	var unit := _standing_unit(&"unit", 0.5, Vector2i(0, 2))
+	var enemy := _standing_unit(&"enemy", 0.5, Vector2i(29, 2))
+	var state := CombatState.new(grid, [unit, enemy])
+	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+
+	var path: Array[Vector2i] = LineOfFire.closing_path(unit, enemy, state, pf, 5.0)
+
+	assert_gte(path.size(), 2, "must queue at least one real step")
+	var end_cell: Vector2i = path[path.size() - 1]
+	assert_lt(
+		Grid.distance_chebyshev(end_cell, enemy.cell),
+		Grid.distance_chebyshev(unit.cell, enemy.cell),
+		"the truncated path must actually close distance"
+	)
+
+
+## Real A* routes around an obstacle rather than getting stuck the instant
+## no reachable cell reduces raw distance further — the exact BR32.10
+## concave/U-shaped-wall freeze a greedy per-turn distance scorer hits.
+func test_closing_path_routes_around_a_concave_wall_instead_of_freezing() -> void:
+	var grid := Grid.new(12, 12)
+	for y in range(10):
+		grid.set_terrain(Vector2i(5, y), Enums.TerrainType.WALL)
+		grid.blockers[Vector2i(5, y)] = DataLibrary.get_part(&"wall")
+	var unit := _standing_unit(&"unit", 0.5, Vector2i(0, 0))
+	var enemy := _standing_unit(&"enemy", 0.5, Vector2i(9, 0))
+	var state := CombatState.new(grid, [unit, enemy])
+	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+
+	var path: Array[Vector2i] = LineOfFire.closing_path(unit, enemy, state, pf, 20.0)
+
+	assert_gte(
+		path.size(), 2, "a route around the wall's own gap (y=10-11) exists and must be found"
+	)

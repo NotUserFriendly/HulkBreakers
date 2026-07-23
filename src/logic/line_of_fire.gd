@@ -56,10 +56,24 @@ static func has_clear_line_of_fire(
 ## existed. Excludes a body by identity (the shooter's own, which sits at
 ## the ray's own near-zero depth and would otherwise register as hitting
 ## itself before anything downrange ever does), not a part list.
+## tb35 Pass B (BR34.06): floors at `depth >= 0`, same fix and same reason
+## as `ShotPlane.resolve_projectile`'s own doc comment — this walker is a
+## second, parallel implementation of that exact rect-lookup (forced by
+## `resolve_projectile`'s own single-file restriction, `shot_plane.gd`'s
+## own doc comment), so it carried the identical unfloored-depth bug
+## independently. Unfloored, a wall many tiles behind the CANDIDATE cell
+## (not the shooter's own body, so the identity exclusion above never
+## catches it) sorted ahead of the real target and won on almost every
+## candidate — which is why `has_clear_line_of_fire` read "no clear line"
+## almost everywhere post-tb31's dense walls, not because real geometry
+## actually blocked every shot: the AI holding every turn (BR34.06) was
+## this same defect, not a separate one.
 static func _first_hit_excluding(
 	plane: Array[Region], point: Vector2, exclude_body: Unit
 ) -> Region:
 	for region: Region in plane:
+		if region.depth < 0.0:
+			continue
 		if region.body == exclude_body:
 			continue
 		if region.rect.has_point(point):
@@ -105,3 +119,33 @@ static func approach_path(
 		return []
 	var full_path: Array[Vector2i] = pf.astar(unit.cell, target)
 	return pf.truncate_to_budget(full_path, budget)
+
+
+## tb35 Pass B (BR34.06): `approach_path` above is capped at the weapon's own
+## range plus a margin, by design — but that leaves a unit that starts
+## genuinely far from any LOF cell (nothing at all within the cap) with no
+## way to make progress, holding forever even though a real route exists
+## somewhere on the map. This is the fallback for exactly that case: real
+## A* toward a cell next to `enemy`, no LOF requirement at all — deliberately
+## NOT a greedy per-turn distance scorer (that reproduces the BR32.10
+## concave/U-shaped-wall freeze `approach_path` itself exists to avoid,
+## since a one-step hill-climb can get stuck the instant no reachable cell
+## reduces raw distance further). `astar` already routes around obstacles by
+## construction, so it doesn't share that failure mode, and it costs one
+## pathfind per neighbor of `enemy`'s cell — never a per-cell LOF probe.
+static func closing_path(
+	unit: Unit, enemy: Unit, state: CombatState, pf: Pathfinder, budget: float
+) -> Array[Vector2i]:
+	var best_path: Array[Vector2i] = []
+	var best_cost: float = INF
+	for neighbor: Vector2i in state.grid.neighbors(enemy.cell):
+		var candidate: Array[Vector2i] = pf.astar(unit.cell, neighbor)
+		if candidate.size() < 2:
+			continue
+		var cost: float = pf.path_cost(candidate)
+		if cost < best_cost:
+			best_cost = cost
+			best_path = candidate
+	if best_path.is_empty():
+		return []
+	return pf.truncate_to_budget(best_path, budget)

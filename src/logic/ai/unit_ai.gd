@@ -321,6 +321,11 @@ static func _plan_ranged(
 			if approach.size() >= 2:
 				queue.enqueue(MoveAction.new(unit, approach), state)
 				best_cell = approach[approach.size() - 1]
+			else:
+				var closing := LineOfFire.closing_path(unit, enemy, state, pf, budget)
+				if closing.size() >= 2:
+					queue.enqueue(MoveAction.new(unit, closing), state)
+					best_cell = closing[closing.size() - 1]
 		else:
 			best_cell = _pick_engagement_position(
 				unit, enemy, state, preferred_range, weight_cover, weapon, reachable, true

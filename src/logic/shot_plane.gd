@@ -71,10 +71,38 @@ static func disc_overlaps_rect(rect: Rect2, point: Vector2, radius: float) -> bo
 ## entirely — taskblock-22 Pass H2's own `self_obstruction` below uses
 ## this to keep a shooter's own body (at its own near-zero depth) from
 ## ever registering as its own obstruction.
+## tb35 Pass B: `floor_at_zero`, default false, opt-in. `ShotPlane.build`'s
+## own sort (`shot_plane.gd:45`) is a bare `a.depth < b.depth` with no
+## floor, by design (the aim window legitimately reads negative-depth
+## regions, `AimController.window_depth`'s own doc comment) — and depth
+## itself is only "distance downrange from a real shooter" once a plane has
+## gone through `build`'s own per-cell offset; called directly on a raw
+## `BodyProjector.project` plane (every fixture in this file's own test
+## suite, plus `test_reference_humanoid.gd`/`test_body_assembler.gd` etc.),
+## depth is body-local instead, and a near-side face legitimately dips
+## negative without meaning "behind the shooter" at all — flooring there
+## unconditionally hides real, intended hits (found live: the lateral-armor
+## fixture in `test_body_assembler.gd` broke this way). So the floor is
+## opt-in, and only the callers below that resolve against a genuine
+## `build`-produced, shooter-anchored plane turn it on: a region actually
+## behind the ray's own origin has no business winning a "what does this
+## shot hit" resolution there — unfloored, it sorts ahead of every real
+## forward obstacle and wins outright once it isn't the shooter's own
+## excluded body, which is exactly how a real fired shot (BR27.02: 12/12
+## chaingun pulls) and the AI's own `LineOfFire.first_hit` predicate
+## (BR34.06: the AI reading "no clear line" almost everywhere) both ended
+## up resolving against a wall many tiles behind the shooter instead of the
+## real target ahead of it.
 static func resolve_projectile(
-	plane: Array[Region], point: Vector2, exclude_parts: Array[Part] = [], radius: float = 0.0
+	plane: Array[Region],
+	point: Vector2,
+	exclude_parts: Array[Part] = [],
+	radius: float = 0.0,
+	floor_at_zero: bool = false
 ) -> Region:
 	for region: Region in plane:
+		if floor_at_zero and region.depth < 0.0:
+			continue
 		if exclude_parts.has(region.part):
 			continue
 		if disc_overlaps_rect(region.rect, point, radius):
@@ -91,7 +119,7 @@ static func resolve_projectile(
 ## never a second, re-derived hit test, without having to become a second
 ## exception to that rule.
 static func region_at(plane: Array[Region], point: Vector2) -> Region:
-	return resolve_projectile(plane, point)
+	return resolve_projectile(plane, point, [], 0.0, true)
 
 
 ## taskblock-22 Pass H2: "the shot's ray originates and immediately hits
@@ -112,7 +140,7 @@ static func region_at(plane: Array[Region], point: Vector2) -> Region:
 static func self_obstruction(
 	plane: Array[Region], muzzle_height: float, shooter_parts: Array[Part]
 ) -> Region:
-	return resolve_projectile(plane, Vector2(0.0, muzzle_height), shooter_parts)
+	return resolve_projectile(plane, Vector2(0.0, muzzle_height), shooter_parts, 0.0, true)
 
 
 ## docs/09 taskblock06 Pass A / taskblock07 Pass A2: the ray-cast
@@ -167,6 +195,8 @@ static func resolve_ray(
 	var vertical_slope: float = dir_n.y / flat_dir.length()
 	var region: Region = null
 	for candidate: Region in plane:
+		if candidate.depth < 0.0:
+			continue
 		if exclude_parts.has(candidate.part):
 			continue
 		var height_here: float = muzzle.y + vertical_slope * candidate.depth

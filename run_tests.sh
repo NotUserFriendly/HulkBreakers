@@ -18,7 +18,8 @@ GODOT="${GODOT:-godot}"
 #    spine") crossed 1000 re-diagnosing taskblock-26's own B2, splitting it is
 #    a bigger, riskier undertaking than a linter default warrants; the
 #    matching test file split instead, same as
-#    test_damage_resolver_deflect_modes.gd already did).
+#    test_damage_resolver_deflect_modes.gd already did; raised again to 1060
+#    for tb35 Pass B's BR34.06 fallback — same file, same reasoning).
 gdlint src test
 
 # 2. Warm-up import so class_name scripts register (required on cold checkouts).

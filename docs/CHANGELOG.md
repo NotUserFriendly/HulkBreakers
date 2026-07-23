@@ -184,6 +184,26 @@ scorer structurally can't make. `LoS`/`LoS.obstruction_count` are unchanged and 
 only the AI's own fire/standoff *gate* moved from sight to fire; genuinely sight-based questions
 (`is_covered_from`) still read `LoS`.
 
+**Depth floor on shot resolution** (tb35 Pass B, BR34.06/BR27.02) — `ShotPlane.build`'s own
+depth-sort has no floor at zero, by design (a region behind the ray's own origin is legitimately
+present, the aim window reads it) — but `LineOfFire._first_hit_excluding`, `ShotPlane.
+resolve_projectile`, and `DamageResolver._find_next` are three independent "walk the depth-sorted
+plane, return the first match" implementations that all inherited that same unfloored sort with no
+floor of their own, so a wall many tiles behind the shooter (still in the plane on purpose) could
+sort first and win almost every resolution. This was BR27.02's own logged 12/12-chaingun-pulls-
+DEFLECT-on-a-wall-behind-the-shooter case, and — post tb31's dense walls — the same defect made
+`has_clear_line_of_fire` read "no clear line" almost everywhere, which was BR34.06 (the AI passing
+every turn in bouts). Fixed by flooring the RESOLVING path only, opt-in (`resolve_projectile` gained
+a `floor_at_zero` parameter, default false — every raw/body-local-plane caller is unaffected;
+`self_obstruction`/`region_at` opt in; `resolve_ray` and `_find_next`, always fed a real
+shooter-anchored plane, floor unconditionally) — `ShotPlane.build`'s own sort and the aim window's
+`window_depth` reading are untouched. **Second, distinct fix once LOF was genuinely correct:**
+`LineOfFire.approach_path` (tb33 Pass B) is capped at `weapon.max_range + APPROACH_MARGIN`, so a unit
+starting genuinely far from the nearest real LOF cell still found nothing and held. New
+`LineOfFire.closing_path` — real A* toward a cell next to the enemy, no LOF requirement — is the
+fallback for that case; deliberately not a greedy per-turn distance scorer (reproduces BR32.10's own
+concave-wall freeze; real A* just routes around).
+
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
 must get everyone to a team-coded tile, can't self-extract early (tb22 A); bout-setup places each

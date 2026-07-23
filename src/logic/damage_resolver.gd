@@ -834,6 +834,11 @@ static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: Im
 ## whether a disc that wide overlaps the region at all, so a gap narrower
 ## than it can't be threaded (the disc catches on whichever region flanks
 ## the gap, same scan, no special-cased gap detection).
+## tb35 Pass B: floors at `depth >= 0` — same fix, same reason, as
+## `ShotPlane.resolve_projectile`'s own doc comment (this is the plane
+## walker `resolve_shot`'s own main loop uses; unfloored, a region behind
+## the ray's own origin could win a real fired shot's resolution, which is
+## exactly BR27.02's own logged case).
 static func _find_next(
 	plane: Array[Region],
 	start: int,
@@ -843,6 +848,8 @@ static func _find_next(
 	radius: float = 0.0
 ) -> int:
 	for i in range(start, plane.size()):
+		if plane[i].depth < 0.0:
+			continue
 		if exclude_parts.has(plane[i].part):
 			continue
 		var height_here: float = point.y + vertical_slope * plane[i].depth
