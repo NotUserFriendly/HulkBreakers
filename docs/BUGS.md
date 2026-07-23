@@ -261,6 +261,22 @@ confirm" roll-up — so pending items surface at a natural review point without 
   original report, but doesn't appear to hold for this DEFLECT case). **Not verified against a
   constructed fixture — this is a read-through-the-code hypothesis from one live example's own
   arithmetic, not a proven root cause.** No fix attempted.
+- **2026-07-23 (tb35 Pass B — this hypothesis confirmed and fixed, advancing but not closing)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. The 2026-07-23 read-only hypothesis above was exactly
+  right: `_find_next` (and `ShotPlane.resolve_projectile`, and a third independent implementation,
+  `LineOfFire._first_hit_excluding`, discovered on the same pass) all walked the unfloored,
+  negative-depth-inclusive plane with no floor of their own. Fixed by flooring the RESOLVING path at
+  `depth >= 0` (opt-in on `resolve_projectile`, unconditional on the other two, which are always fed
+  a real shooter-anchored plane) while leaving `ShotPlane.build`'s own sort and the aim window's
+  `window_depth` reading untouched, per this same bug's own 2026-07-23 note above. Headless
+  regression: `test_line_of_fire.gd::test_first_hit_never_resolves_to_a_wall_behind_the_shooter`
+  reconstructs this exact shape (real target ahead, wall several cells behind the shooter, present in
+  the plane on purpose) and asserts the resolved hit is the target, not the wall. **Stays Active, one
+  entry** (this taskblock's own scope fence, per the supervisor's ruling): this fixes the resolution
+  mechanism the hypothesis named, but the original report was about the drawn TRACER direction
+  specifically, and that rendering path (`resolution_player.gd`) has not been re-checked live against
+  this fix — needs a live bout to confirm the visual symptom is actually gone, not just the
+  resolution math underneath it.
 ### BR27.03 — Active — owner: `SUPERVISOR`
 **Other shots appear to resolve before an earlier shot's own deflect finishes**
 - **Source:** `SUPERVISOR`
@@ -672,6 +688,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
   to see whether approach-pathing works. Note this is the same symptom CC's own tb33 follow-up hit
   ("every unit holds every turn, the whole mission long") — which was written off as a boxed-in seed
   and now looks systemic. Re-check only after BR34.06 is fixed.
+- **2026-07-23 (tb35 Pass A/B — BR34.06 marked Pending, unblocking this one too)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. `LineOfFire.closing_path` (added this pass for
+  BR34.06's own second gap) is real A* to a cell next to the enemy specifically BECAUSE the greedy
+  distance-scorer alternative reproduces this bug's own concave/U-shaped freeze — headless coverage
+  (`test_line_of_fire.gd::test_closing_path_routes_around_a_concave_wall_instead_of_freezing`) proves
+  it routes around a sealed column via a real gap rather than stalling. Live re-check in a supervised
+  bout still needed before promotion — this entry stays Pending.
 - **Reported:** 2026-07-22 (tb32 review; long-standing — logged now, wasn't in the ledger). On
   U-shaped / concave map geometry, opposing units end up stuck on opposite sides, unable to path
   around to engage.
@@ -817,7 +840,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - Likely the same neighbourhood as tb35 Pass B's depth floor and the `&"miss"` handling in
   `ResolutionPlayer`/`shot_resolution.gd` — check whether a miss even builds a continuation ray, or
   simply stops.
-### BR34.06 — Active — owner: `SUPERVISOR`
+### BR34.06 — Pending — owner: `SUPERVISOR`
 **AI passes its turn, in bout matches only — BLOCKER**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (post-tb34 check). Every AI unit passes its turn in bout matches. The
@@ -840,3 +863,47 @@ confirm" roll-up — so pending items surface at a natural review point without 
   said no) — the intent/outcome logging idea in `docs/PLAN.md` is exactly the tool this needs. Do not
   fix by loosening the LOF gate until the log says that's the cause; tb33's correctness fix should not
   be undone to paper over a fallback that isn't firing.
+- **2026-07-23 (tb35 Pass A/B, root cause found and fixed) — RESOLVED-PENDING-CONFIRMATION**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Confirmed the LOF-too-strict half of the prior
+  hypothesis, not the fallback-not-engaging half: `ShotPlane.build`'s own depth-sort
+  (`shot_plane.gd:45`) has no floor at zero, by design — a region behind the ray's own origin is
+  legitimately present (the aim window reads it). But `LineOfFire._first_hit_excluding`,
+  `ShotPlane.resolve_projectile`, and `DamageResolver._find_next` are three independent
+  "walk the depth-sorted plane, return the first match" implementations that all inherited that
+  same unfloored sort with no floor of their own — so a wall many tiles BEHIND the shooter (still
+  in the plane on purpose) sorted first and won almost every resolution, including
+  `has_clear_line_of_fire`'s own. That's why LOF read false almost everywhere post-tb31's dense
+  walls: not because real geometry blocked every shot, but because the resolver was picking the
+  wrong region. Live-diagnosed on a real `BoutSetup`-built bout (not a synthetic fixture): a unit
+  reading zero clear cells even with an UNCAPPED search before the fix found one real cell
+  (`(27, 16)`) after it.
+  - **Fix, scoped as tight as possible:** `resolve_projectile` gained an opt-in `floor_at_zero`
+    parameter (default false — every existing raw/body-local-plane caller, including this file's
+    own test suite, is unaffected). `self_obstruction` and `region_at` opt in; `resolve_ray`'s own
+    inline loop and `DamageResolver._find_next` (both always fed a real shooter-anchored
+    `ShotPlane.build` plane, never a raw body-local one) floor unconditionally.
+    `LineOfFire._first_hit_excluding` likewise floors unconditionally — a THIRD parallel
+    implementation of the same rect-walk, not named in this taskblock's own audit list, found and
+    fixed on the same pass.
+  - **Second, distinct gap found and fixed once the LOF predicate was genuinely correct:**
+    `LineOfFire.approach_path` (tb33 Pass B, BR32.10's own fix) is deliberately capped at
+    `weapon.max_range + APPROACH_MARGIN` — a unit starting genuinely far from the nearest real LOF
+    cell (more common than expected: mission-start positions are often tens of cells apart) found
+    nothing within that cap and held forever even after the depth-floor fix, since nothing was
+    LEFT to fall back to. Added `LineOfFire.closing_path`: real A* toward a cell adjacent to the
+    enemy, no LOF requirement — deliberately NOT a greedy per-turn distance scorer (tried first,
+    reverted: it reproduces BR32.10's own concave/U-shaped-wall freeze, since a one-step
+    hill-climb can permanently stall the instant no reachable cell reduces raw distance further,
+    where real A* just routes around).
+  - **Verified live:** a 60-turn, 6-unit `BoutSetup` bout that previously showed 100% `held` turns
+    (confirmed both before AND immediately after the depth-floor fix alone) now shows real
+    movement, `burst_fired`/`impact`/`part_destroyed`/`part_mangled`/kills across the whole run
+    once `closing_path` was added. Headless coverage:
+    `test_shot_plane.gd::test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter`,
+    `test_shot_plane.gd::test_resolve_projectile_floor_at_zero_is_opt_in`,
+    `test_line_of_fire.gd::test_first_hit_never_resolves_to_a_wall_behind_the_shooter` (a
+    reconstructed BR27.02-shaped fixture), `test_line_of_fire.gd::test_closing_path_*` (progress
+    toward a far enemy; routes around a concave wall instead of freezing).
+  - **Not yet done:** the AI decision-log/FPS-dump instrumentation this same pass's own A1 called
+    for, and BR27.09 (A3) — both still open. Marked Pending, not Resolved: this needs a live bout
+    watched by the supervisor before promotion, same as BR32.10/BR27.07 below.

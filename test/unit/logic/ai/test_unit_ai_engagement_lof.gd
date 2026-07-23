@@ -285,11 +285,19 @@ func test_scorer_ranks_a_clear_lof_cell_above_a_los_but_wall_blocked_cell() -> v
 	var grid := Grid.new(10, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 1), 1, &"")
-	var blocked_cell := Vector2i(5, 1)
+	var blocked_cell := Vector2i(4, 1)
 	# A wall Part with no opacity change: ShotPlane (LOF) blocks it, LoS
 	# (opacity-only) does not -- the exact tb31-C gap this pass closes.
-	grid.blockers[blocked_cell] = DataLibrary.get_part(&"wall")
-	var clear_cell := Vector2i(5, 0)
+	# tb35 Pass B: the wall sits one cell DOWNRANGE of `blocked_cell`, not
+	# on top of it — co-located with the query cell, its own blocking face
+	# resolves at a small negative depth relative to that same cell (the
+	# same near-zero-depth "occupant of the ray's own origin" case
+	# `resolve_projectile`'s exclude-parts/floor already special-cases for
+	# a real shooter's own body), which the depth floor now correctly
+	# excludes since nothing can ever really stand on a wall's own
+	# (unwalkable) cell in play.
+	grid.blockers[Vector2i(5, 1)] = DataLibrary.get_part(&"wall")
+	var clear_cell := Vector2i(4, 0)
 	var state := CombatState.new(grid, [self_unit, enemy])
 	var weapon: Part = self_unit.shell.find_part(&"rifle")
 

@@ -378,6 +378,58 @@ func test_self_obstruction_returns_null_with_nothing_in_the_way() -> void:
 	assert_null(ShotPlane.self_obstruction(plane, 0.15, shooter.shell.all_parts()))
 
 
+## tb35 Pass B (BR27.02/BR34.06): a wall standing BEHIND the shooter (present
+## in the built plane at negative depth on purpose — `ShotPlane.build`'s own
+## doc comment) must never win `self_obstruction`'s resolution just because
+## it sorts first unfloored. Real cover AHEAD must still be found; with
+## nothing ahead at all, the answer is null, never the rearward wall.
+func test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter() -> void:
+	var shooter_torso := _part(
+		&"shooter_torso", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))
+	)
+	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(2, 5))
+	var behind_wall := _part(
+		&"behind_wall", Box.new(Vector3(0.0, 0.15, 0.0), Vector3(1.0, 2.4, 1.0))
+	)
+	var grid := Grid.new(10, 10)
+	grid.blockers[Vector2i(2, 1)] = behind_wall
+	var state_with_nothing_ahead := CombatState.new(grid, [shooter])
+	var plane_with_nothing_ahead: Array[Region] = ShotPlane.build(
+		Vector2(2, 5), Vector2(0, 1), state_with_nothing_ahead
+	)
+
+	assert_null(
+		ShotPlane.self_obstruction(plane_with_nothing_ahead, 0.15, shooter.shell.all_parts()),
+		"a wall behind the shooter must never register as its own forward obstruction"
+	)
+
+	var forward_cover := _part(
+		&"forward_cover", Box.new(Vector3(0.0, 0.15, 0.0), Vector3(1.0, 0.3, 0.6))
+	)
+	grid.blockers[Vector2i(2, 7)] = forward_cover
+	var state_with_cover := CombatState.new(grid, [shooter])
+	var plane_with_cover: Array[Region] = ShotPlane.build(
+		Vector2(2, 5), Vector2(0, 1), state_with_cover
+	)
+
+	var hit: Region = ShotPlane.self_obstruction(plane_with_cover, 0.15, shooter.shell.all_parts())
+	assert_not_null(hit, "must still find real forward cover")
+	assert_eq(hit.part.id, &"forward_cover")
+
+
+## Reading (the aim window's own `layers_for`/`window_depth`) and resolving
+## (`self_obstruction`/a real fired shot) are two paths on purpose — the
+## floor only applies to the latter. Same plane, same point: unfloored
+## (`floor_at_zero` default false, what a raw plane read uses) still finds
+## the rearward region; floored (what resolution opts into) does not.
+func test_resolve_projectile_floor_at_zero_is_opt_in() -> void:
+	var behind := Region.new(Rect2(-0.5, 0.0, 1.0, 1.0), -3.0, _part(&"behind", Box.new()))
+	var plane: Array[Region] = [behind]
+
+	assert_eq(ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5)).part.id, &"behind")
+	assert_null(ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5), [], 0.0, true))
+
+
 ## BR30.10: a wall cell between shooter and target must actually stop a
 ## shot. MapGen only ever gave a WALL cell `opacity = 1.0` (the abstract
 ## LoS/tactical-gating check) — never a `grid.blockers` entry — so
