@@ -1032,6 +1032,29 @@ confirm" roll-up — so pending items surface at a natural review point without 
 
 ---
 
+### BR33.01 — Suspected — Aim-view scroll cycles walls; layer labels read as part names  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb33 review). Scrolling while aiming "cycles parts on a unit (or at least
+  it looks that way)." The original intent: scrolling cycles between the current enemy and what stands
+  *behind* it — preferably other enemies, with cover acceptable now that cover is real.
+- **The mechanism is correct; the input to it isn't.** `AimController.layers_for` groups the shot
+  plane by `region.body` and sorts nearest-first — one layer per distinct body, which *is* the
+  intended "current enemy, then what's behind it." `ShotPlane.build` sets `region.body = unit` for a
+  unit's parts and `= part` for an unowned cover Part, so grouping is genuinely body-level, not
+  part-level.
+- **What changed:** tb31 C turned walls into cover-`Part`s that live in the shot plane, so **every
+  wall is its own body and therefore its own aim layer**. Scrolling a walled scene now cycles wall
+  after wall. Compounding it, `AimView._body_name` renders a non-Unit body as its raw part id
+  (`wall`, `scrap_pile`, `pillar`) — debug strings that read like part names, which is most likely
+  what makes it look like part-cycling. A three-blocks-earlier change to terrain quietly degraded
+  aiming; nobody connected the two.
+- **Suspected, and deliberately not fixed yet.** The supervisor will observe scroll behaviour on
+  tb34's finished aim view before deciding — the fix is a policy call, not a mechanism one.
+  **Options when decided:** skip walls by default (cover still reachable), rank enemies ahead of cover
+  regardless of depth, or collapse contiguous walls into a single layer; plus player-facing names
+  instead of `unit_3` / raw part ids.
+
+---
+
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
 *(Kept in their own trailing block rather than resorted into the main ascending sequence above —
 same relative order this ledger has always kept them in, oldest work first. All `Resolved`.)*
