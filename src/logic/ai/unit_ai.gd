@@ -307,8 +307,14 @@ static func _plan_ranged(
 		var reachable: Array[Vector2i] = pf.reachable(unit.cell, budget)
 		if not reachable.has(unit.cell):
 			reachable.append(unit.cell)
+		# tb35 Pass A3 (BR27.09): one per-turn LOF memo, shared by the scan
+		# below and every `_engagement_score` call `_pick_engagement_position`
+		# makes over the same `reachable` cells — see `LineOfFire.
+		# cached_first_hit`'s own doc comment for why this was the actual
+		# multi-second cost, not the fallback pathing itself.
+		var lof_cache: Dictionary = {}
 		var any_reachable_has_lof: bool = _any_reachable_has_lof(
-			unit, enemy, state, reachable, weapon
+			unit, enemy, state, reachable, weapon, lof_cache
 		)
 
 		var best_cell: Vector2i = unit.cell
@@ -336,7 +342,15 @@ static func _plan_ranged(
 					branch = &"no_lof_no_route"
 		else:
 			best_cell = _pick_engagement_position(
-				unit, enemy, state, preferred_range, weight_cover, weapon, reachable, true
+				unit,
+				enemy,
+				state,
+				preferred_range,
+				weight_cover,
+				weapon,
+				reachable,
+				true,
+				lof_cache
 			)
 			if best_cell != unit.cell:
 				var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
@@ -348,8 +362,10 @@ static func _plan_ranged(
 		# hold to ally-blocking vs no-clear-LOF without a second, redundant
 		# `has_clear_line_of_fire` call — that's exactly the kind of
 		# per-decision `ShotPlane` cost BR27.09 is about.
-		var ally_blocks_shot: bool = _ally_in_firing_line(unit, enemy, best_cell, state)
-		var lof_clear: bool = LineOfFire.has_clear_line_of_fire(unit, enemy, best_cell, state)
+		var ally_blocks_shot: bool = _ally_in_firing_line(unit, enemy, best_cell, state, lof_cache)
+		var lof_clear: bool = LineOfFire.has_clear_line_of_fire(
+			unit, enemy, best_cell, state, lof_cache
+		)
 		var final_blocked: bool = ally_blocks_shot or not lof_clear
 		if (
 			weapon_id != &""
@@ -618,7 +634,12 @@ static func _weapon_reaches(weapon: Part, range_cells: int) -> bool:
 ## tb33 Pass A perf prefilter (BR26.02): a cell out of weapon range can't
 ## fire regardless of what a real `ShotPlane.build` would say.
 static func _any_reachable_has_lof(
-	unit: Unit, enemy: Unit, state: CombatState, reachable: Array[Vector2i], weapon: Part
+	unit: Unit,
+	enemy: Unit,
+	state: CombatState,
+	reachable: Array[Vector2i],
+	weapon: Part,
+	lof_cache: Variant = null
 ) -> bool:
 	for cell: Vector2i in reachable:
 		if (
@@ -626,7 +647,7 @@ static func _any_reachable_has_lof(
 			and not _weapon_reaches(weapon, Grid.distance_chebyshev(cell, enemy.cell))
 		):
 			continue
-		if LineOfFire.has_clear_line_of_fire(unit, enemy, cell, state):
+		if LineOfFire.has_clear_line_of_fire(unit, enemy, cell, state, lof_cache):
 			return true
 	return false
 
@@ -664,10 +685,13 @@ static func is_covered_from(
 ## explicitly excluded from counting as a blocker of itself.
 ## tb33 Pass A: built on `LineOfFire.first_hit()` — shared with
 ## `has_clear_line_of_fire`, not two `ShotPlane` builds for the same shot.
+## tb35 Pass A3 (BR27.09): `cache`, when supplied, is `LineOfFire.
+## cached_first_hit`'s own per-cell memo — see that function's own doc
+## comment. `null` (the default, every pre-existing caller) is unchanged.
 static func _ally_in_firing_line(
-	unit: Unit, target: Unit, from_cell: Vector2i, state: CombatState
+	unit: Unit, target: Unit, from_cell: Vector2i, state: CombatState, cache: Variant = null
 ) -> bool:
-	var region: Region = LineOfFire.first_hit(unit, target, from_cell, state)
+	var region: Region = LineOfFire.cached_first_hit(unit, target, from_cell, state, cache)
 	if region == null or not (region.body is Unit):
 		return false
 	var hit_unit: Unit = region.body as Unit
@@ -701,15 +725,32 @@ static func _pick_engagement_position(
 	weight_cover: bool,
 	weapon: Part,
 	reachable: Array[Vector2i],
-	any_reachable_has_lof: bool
+	any_reachable_has_lof: bool,
+	lof_cache: Variant = null
 ) -> Vector2i:
 	var best_cell: Vector2i = unit.cell
 	var best_score: float = _engagement_score(
-		unit.cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_lof
+		unit.cell,
+		enemy,
+		state,
+		unit,
+		preferred_range,
+		weight_cover,
+		weapon,
+		any_reachable_has_lof,
+		lof_cache
 	)
 	for cell: Vector2i in reachable:
 		var score: float = _engagement_score(
-			cell, enemy, state, unit, preferred_range, weight_cover, weapon, any_reachable_has_lof
+			cell,
+			enemy,
+			state,
+			unit,
+			preferred_range,
+			weight_cover,
+			weapon,
+			any_reachable_has_lof,
+			lof_cache
 		)
 		if score > best_score:
 			best_score = score
@@ -736,7 +777,8 @@ static func _engagement_score(
 	preferred_range: int,
 	weight_cover: bool,
 	weapon: Part = null,
-	any_reachable_has_lof: bool = true
+	any_reachable_has_lof: bool = true,
+	lof_cache: Variant = null
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
 	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
@@ -748,7 +790,9 @@ static func _engagement_score(
 	# taskblock17-1 Pass B: a clear line always outscores cover — see
 	# ALLY_BLOCKED_PENALTY's own doc comment.
 	var blocked_penalty: float = (
-		ALLY_BLOCKED_PENALTY if _ally_in_firing_line(self_unit, enemy, cell, state) else 0.0
+		ALLY_BLOCKED_PENALTY
+		if _ally_in_firing_line(self_unit, enemy, cell, state, lof_cache)
+		else 0.0
 	)
 	# taskblock-19 Pass C3: "only closes inside min_range if forced" —
 	# penalized, not excluded, so a genuinely forced close (nothing else
@@ -823,7 +867,7 @@ static func _engagement_score(
 		if (
 			not any_reachable_has_lof
 			or cell == self_unit.cell
-			or LineOfFire.has_clear_line_of_fire(self_unit, enemy, cell, state)
+			or LineOfFire.has_clear_line_of_fire(self_unit, enemy, cell, state, lof_cache)
 		)
 		else NO_LOF_PENALTY
 	)
