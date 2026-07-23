@@ -106,3 +106,137 @@ func test_aim_reticle_at_screen_does_nothing_while_input_locked() -> void:
 	controller.aim_reticle_at_screen(Vector2(100.0, 100.0))
 
 	assert_eq(controller.reticle_offset, Vector2.ZERO)
+
+
+## tb34 Pass C: "mousing over a part while aiming should say what that part
+## is" — a cursor position aimed at a KNOWN world point on the target's own
+## torso (the same round-trip the reticle's own test above uses) must find
+## that exact Part, the same `ShotPlane.region_at` rect-containment
+## `resolves` itself is built from.
+func test_update_aim_hover_finds_the_part_under_the_cursor() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	var aim: Dictionary = controller.aim_state()
+	var target: AimTarget = aim["target"]
+	# Dead center of the torso's own frontmost region -- guaranteed to fall
+	# inside it, not near an edge.
+	var world: Vector3 = AimPlaneGeometry.world_point(
+		(aim["shooter"] as Unit).cell, target.cell, Vector2.ZERO
+	)
+	var screen_pos: Vector2 = controller.camera.unproject_position(world)
+
+	controller.update_aim_hover(screen_pos)
+
+	assert_not_null(controller.aim_hovered_part)
+	assert_eq(controller.aim_hovered_part.id, &"torso")
+
+
+func test_update_aim_hover_over_empty_space_finds_nothing() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	var aim: Dictionary = controller.aim_state()
+	var target: AimTarget = aim["target"]
+	# Far outside the torso's own narrow box (Box half-width 1.0/half-
+	# height 0.5) -- clean past every region in the plane.
+	var world: Vector3 = AimPlaneGeometry.world_point(
+		(aim["shooter"] as Unit).cell, target.cell, Vector2(5.0, 5.0)
+	)
+	var screen_pos: Vector2 = controller.camera.unproject_position(world)
+
+	controller.update_aim_hover(screen_pos)
+
+	assert_null(controller.aim_hovered_part)
+
+
+## The load-bearing guarantee: "hovering reads, it never re-aims." Calling
+## update_aim_hover() alone -- never aim_reticle_at_screen() -- must never
+## touch reticle_offset, proof the two are structurally independent, not
+## just documented as such.
+func test_update_aim_hover_never_touches_the_reticle() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	var aim: Dictionary = controller.aim_state()
+	var target: AimTarget = aim["target"]
+	var world: Vector3 = AimPlaneGeometry.world_point(
+		(aim["shooter"] as Unit).cell, target.cell, Vector2.ZERO
+	)
+	var screen_pos: Vector2 = controller.camera.unproject_position(world)
+
+	controller.update_aim_hover(screen_pos)
+
+	assert_eq(controller.reticle_offset, Vector2.ZERO, "hover alone must never move the reticle")
+
+
+func test_update_aim_hover_does_nothing_outside_aim_mode() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	controller.click_cell(Vector2i(0, 0))  # selected, not aiming
+
+	controller.update_aim_hover(Vector2(100.0, 100.0))
+
+	assert_null(controller.aim_hovered_part)
+
+
+func test_update_aim_hover_does_nothing_while_input_locked() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	var aim: Dictionary = controller.aim_state()
+	var target: AimTarget = aim["target"]
+	var world: Vector3 = AimPlaneGeometry.world_point(
+		(aim["shooter"] as Unit).cell, target.cell, Vector2.ZERO
+	)
+	var screen_pos: Vector2 = controller.camera.unproject_position(world)
+	controller.input_locked = true
+
+	controller.update_aim_hover(screen_pos)
+
+	assert_null(controller.aim_hovered_part)
+
+
+## aim_reticle_at_screen() itself must still keep the hover in sync (same
+## screen position drives both), never diverging from a direct
+## update_aim_hover() call at the identical position.
+func test_aim_reticle_at_screen_also_updates_the_hover() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	var aim: Dictionary = controller.aim_state()
+	var target: AimTarget = aim["target"]
+	var world: Vector3 = AimPlaneGeometry.world_point(
+		(aim["shooter"] as Unit).cell, target.cell, Vector2.ZERO
+	)
+	var screen_pos: Vector2 = controller.camera.unproject_position(world)
+
+	controller.aim_reticle_at_screen(screen_pos)
+
+	assert_not_null(controller.aim_hovered_part)
+	assert_eq(controller.aim_hovered_part.id, &"torso")

@@ -82,6 +82,18 @@ static func resolve_projectile(
 	return null
 
 
+## tb34 Pass C: "map the cursor to aim-plane coordinates and find the
+## containing Region — the same rect-containment `ShotPlane` already
+## resolves with." A plain public alias for `resolve_projectile` (which
+## every OTHER caller in `src/` is forbidden from reaching directly —
+## `test_resolve_projectile_is_called_only_from_shot_plane_itself`) so
+## hover-to-part picking gets the identical lookup RESOLVES itself uses,
+## never a second, re-derived hit test, without having to become a second
+## exception to that rule.
+static func region_at(plane: Array[Region], point: Vector2) -> Region:
+	return resolve_projectile(plane, point)
+
+
 ## taskblock-22 Pass H2: "the shot's ray originates and immediately hits
 ## the cover if the muzzle is below the cover's height." Tests the
 ## shooter's own real (H1: shouldered) muzzle height straight down the

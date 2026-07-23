@@ -125,6 +125,23 @@ static func to_bbcode(data: TooltipData) -> String:
 	return "\n".join(lines)
 
 
+## tb34 Pass C: a THIRD host for the same `TooltipData` shape `to_bbcode`
+## already renders — a `Label3D` in the aim view, coplanar with the aim
+## window, which has no BBCode support to hand markup to. Same title/rows/
+## footer structure, plain "label: value" lines; the "changed"
+## highlight/dim-footer color distinction is a 2D-panel nicety this
+## in-world label doesn't attempt to reproduce.
+static func to_plain_text(data: TooltipData) -> String:
+	var lines: Array[String] = []
+	if data.title != "":
+		lines.append(data.title)
+	for row: Dictionary in data.rows:
+		lines.append("%s: %s" % [row.get("label", ""), str(row.get("value", ""))])
+	if data.footer != "":
+		lines.append(data.footer)
+	return "\n".join(lines)
+
+
 ## Cursor-anchored, clamped inside the viewport — never lets the box hang
 ## off the right/bottom edge the way an unclamped tooltip would at the
 ## board's own far corners.
