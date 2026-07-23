@@ -8,7 +8,7 @@ const TERRAIN_DIFFICULT := 2
 func _sum_path_cost(pf: Pathfinder, path: Array[Vector2i]) -> float:
 	var total := 0.0
 	for i in range(1, path.size()):
-		total += pf.move_cost(path[i])
+		total += pf.move_cost(path[i - 1], path[i])
 	return total
 
 
@@ -22,22 +22,138 @@ func test_astar_straight_line_uniform_cost() -> void:
 	assert_almost_eq(_sum_path_cost(pf, path), 4.0, 0.0001)
 
 
-## taskblock-36 Pass D: "Pathfinder produces identical paths whether or not
-## levels are set — it genuinely ignores them this pass." Cells along and
-## beside the straight-line path are given a real, varied elevation; the
-## resolved path and its cost must not move.
-func test_astar_ignores_cell_level_entirely() -> void:
+## taskblock-36 Pass D's own acceptance test claimed "Pathfinder produces
+## identical paths whether or not levels are set — it genuinely ignores
+## them this pass." taskblock-37 Pass C deliberately makes that false:
+## level-blindness was the gap this pass exists to close, so the old test
+## (a real, VARIED elevation across the whole grid) is replaced by the two
+## things that must both hold now instead — a UNIFORM level shift (no cell
+## ever differs from its neighbor) still carries no cost anywhere, since
+## every real edge sees a zero delta; a genuinely varied level, by
+## contrast, is covered by the dedicated climb/hop/ramp tests below, which
+## prove the pathfinder now REACTS to it rather than ignoring it.
+func test_astar_is_unaffected_by_a_uniform_level_shift() -> void:
 	var grid := Grid.new(5, 5)
 	var pf := Pathfinder.new(grid)
 	var baseline: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
 
 	for y in range(grid.rows):
 		for x in range(grid.width):
-			grid.set_level(Vector2i(x, y), (x + y) % 3)
+			grid.set_level(Vector2i(x, y), 3)  # every cell raised together -- no edge ever tilts
 
-	var with_levels: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
-	assert_eq(with_levels, baseline, "a real, varied level must not change the resolved path")
-	assert_almost_eq(_sum_path_cost(pf, with_levels), _sum_path_cost(pf, baseline), 0.0001)
+	var uniformly_raised: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
+	assert_eq(uniformly_raised, baseline, "a uniform raise carries no level DELTA anywhere")
+	assert_almost_eq(_sum_path_cost(pf, uniformly_raised), _sum_path_cost(pf, baseline), 0.0001)
+
+
+## taskblock-37 Pass C: the direct replacement for what tb36's acceptance
+## test used to claim — a genuinely varied level (a real, unramped ledge
+## with no alternate route at all, `Grid.new(2, 1)` leaves no row to detour
+## through) now removes a non-climbing mover's only path entirely, proof
+## that level is no longer ignored.
+func test_astar_now_reacts_to_a_genuine_ledge() -> void:
+	var grid := Grid.new(2, 1)
+	grid.set_level(Vector2i(1, 0), 1)
+	var pf := Pathfinder.new(grid)  # default: cannot climb
+
+	assert_eq(pf.astar(Vector2i(0, 0), Vector2i(1, 0)), [] as Array[Vector2i])
+
+
+## taskblock-37 Pass C: "climbing is capability-gated, and it is a real
+## graph edge when present" (docs/PLAN.md) — a climb-capable unit gets the
+## edge at its real, settled cost.
+func test_climb_capable_unit_routes_over_a_1_level_ledge_at_4_mp() -> void:
+	var grid := Grid.new(2, 1)
+	grid.set_level(Vector2i(1, 0), 1)
+	var pf := Pathfinder.new(grid, {}, true)
+
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(1, 0))
+
+	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0)])
+	assert_almost_eq(_sum_path_cost(pf, path), Pathfinder.CLIMB_COST, 0.0001)
+
+
+## "A unit that genuinely can't reach a target is correct behaviour, not
+## stranding" — no fallback that lets a non-climber climb anyway; an empty
+## path, not an illegal one.
+func test_non_climb_capable_unit_has_no_path_over_a_ledge() -> void:
+	var grid := Grid.new(2, 1)
+	grid.set_level(Vector2i(1, 0), 1)
+	var pf := Pathfinder.new(grid)  # default: cannot climb
+
+	assert_eq(pf.astar(Vector2i(0, 0), Vector2i(1, 0)), [] as Array[Vector2i])
+
+
+## "The weighting resolves itself; don't add heuristics" — a climb-capable
+## unit still takes a cheaper ramp-mediated route over paying to climb a
+## ledge directly, with no tiebreaker needed beyond real edge costs. Reads
+## the actual resolved path's own cost back rather than hand-picking an
+## expected route: 8-directional movement can find a cheaper way through a
+## ramp tile than the route this test set out to build (a diagonal step
+## landing ON a ramp tile is itself ordinary cost, `move_cost`'s own rule,
+## whatever level it happens to cross) — asserting the real number is
+## honest about that, asserting a specific path array would not be.
+func test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing() -> void:
+	var grid := Grid.new(3, 2)
+	grid.set_level(Vector2i(1, 0), 1)  # the ledge -- a direct climb, no ramp
+	grid.set_level(Vector2i(2, 0), 1)  # target, already level 1 once the ledge is crested
+	grid.set_terrain(Vector2i(0, 1), Enums.TerrainType.RAMP)
+	grid.set_terrain(Vector2i(1, 1), Enums.TerrainType.RAMP)
+	grid.set_terrain(Vector2i(2, 1), Enums.TerrainType.RAMP)
+	grid.set_level(Vector2i(1, 1), 1)
+	grid.set_level(Vector2i(2, 1), 1)
+	var pf := Pathfinder.new(grid, {}, true)
+
+	var direct_climb_cost: float = (
+		pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)) + pf.move_cost(Vector2i(1, 0), Vector2i(2, 0))
+	)
+	assert_almost_eq(direct_climb_cost, 5.0, 0.0001, "sanity: the direct climb route costs 5 MP")
+
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(2, 0))
+	assert_lt(
+		_sum_path_cost(pf, path),
+		direct_climb_cost,
+		"a climb-capable unit still finds something cheaper than climbing the ledge directly"
+	)
+
+
+## "Ramps and ladders are ordinary pathing... a sloped tile costs 1 MP like
+## any other tile" — no climb capability needed at all, and the tile's own
+## real level genuinely changes underneath the ordinary cost.
+func test_a_ramp_tile_costs_1_mp_and_changes_height() -> void:
+	var grid := Grid.new(2, 1)
+	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.RAMP)
+	grid.set_level(Vector2i(1, 0), 1)
+	var pf := Pathfinder.new(grid)  # no climb capability -- ramps are ordinary movement
+
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(1, 0))
+
+	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0)])
+	assert_almost_eq(_sum_path_cost(pf, path), Pathfinder.DEFAULT_COST, 0.0001)
+	assert_eq(grid.get_level(Vector2i(1, 0)), 1, "the ramp tile's own level genuinely changes")
+
+
+## "Hop-down is a path edge too — 1 MP, valid for a drop of up to 2
+## levels" — legal for every mover, no capability gate at all.
+func test_a_2_level_drop_is_a_legal_1_mp_edge() -> void:
+	var grid := Grid.new(2, 1)
+	grid.set_level(Vector2i(0, 0), 2)
+	var pf := Pathfinder.new(grid)  # hop-down needs no capability
+
+	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(1, 0))
+
+	assert_eq(path, [Vector2i(0, 0), Vector2i(1, 0)])
+	assert_almost_eq(_sum_path_cost(pf, path), Pathfinder.HOP_DOWN_COST, 0.0001)
+
+
+## "Deeper drops don't exist yet. A drop past 2 levels is simply not a
+## legal edge this pass" — not free, not modeled, just absent.
+func test_a_3_level_drop_is_not_a_legal_edge() -> void:
+	var grid := Grid.new(2, 1)
+	grid.set_level(Vector2i(0, 0), 3)
+	var pf := Pathfinder.new(grid)
+
+	assert_eq(pf.astar(Vector2i(0, 0), Vector2i(1, 0)), [] as Array[Vector2i])
 
 
 func test_astar_path_length_with_mixed_terrain_cost() -> void:
@@ -209,7 +325,7 @@ func test_move_cost_treats_occupied_cell_as_blocked() -> void:
 	var grid := Grid.new(3, 3)
 	grid.set_occupant_id(Vector2i(1, 1), 42)
 	var pf := Pathfinder.new(grid)
-	assert_eq(pf.move_cost(Vector2i(1, 1)), -1.0)
+	assert_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 1)), -1.0)
 	assert_false(pf.is_walkable(Vector2i(1, 1)))
 
 
@@ -222,7 +338,7 @@ func test_move_cost_treats_a_field_object_cell_as_blocked() -> void:
 	crate.id = &"crate"
 	grid.blockers[Vector2i(1, 1)] = crate
 	var pf := Pathfinder.new(grid)
-	assert_eq(pf.move_cost(Vector2i(1, 1)), -1.0)
+	assert_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 1)), -1.0)
 	assert_false(pf.is_walkable(Vector2i(1, 1)))
 
 
@@ -240,7 +356,7 @@ func test_move_cost_treats_a_destroyed_field_object_as_passable() -> void:
 	grid.blockers[Vector2i(1, 1)] = crate
 	var pf := Pathfinder.new(grid)
 	assert_true(pf.is_walkable(Vector2i(1, 1)), "a destroyed blocker must no longer block movement")
-	assert_eq(pf.move_cost(Vector2i(1, 1)), Pathfinder.DEFAULT_COST)
+	assert_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 1)), Pathfinder.DEFAULT_COST)
 
 
 ## tb31 Pass C: VOID is non-navigable exactly like WALL always has been —

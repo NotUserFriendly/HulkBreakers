@@ -302,7 +302,7 @@ static func _plan_ranged(
 		AiDecisionLog.emit(state, unit, &"fired_in_place", true, false, &"none")
 	else:
 		var queued_before: int = queue.actions.size()
-		var pf := Pathfinder.new(state.grid, state.terrain_costs)
+		var pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
 		var budget: float = unit.mp_per_ap() * unit.ap  # same flattened budget `_path_toward` uses
 		var reachable: Array[Vector2i] = pf.reachable(unit.cell, budget)
 		if not reachable.has(unit.cell):
@@ -1107,7 +1107,7 @@ static func _nearest_living_enemy(unit: Unit, state: CombatState) -> Unit:
 static func _has_path_toward(unit: Unit, target: Unit, state: CombatState) -> bool:
 	if Grid.distance_chebyshev(unit.cell, target.cell) <= 1:
 		return true
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
 	for neighbor: Vector2i in state.grid.neighbors(target.cell):
 		if not pf.astar(unit.cell, neighbor).is_empty():
 			return true
@@ -1121,7 +1121,7 @@ static func _path_toward(
 ) -> void:
 	if unit.cell == target_cell:
 		return
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
 	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
 	var best_cell: Vector2i = unit.cell
 	var best_dist: int = Grid.distance_chebyshev(unit.cell, target_cell)

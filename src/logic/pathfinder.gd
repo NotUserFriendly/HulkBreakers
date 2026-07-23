@@ -6,19 +6,44 @@ extends RefCounted
 
 const DEFAULT_COST: float = 1.0
 
+## taskblock-37 Pass C: "climb up" / "hop down" (docs/PLAN.md's own
+## settled cost table) are absolute action costs, not a modifier stacked
+## onto ordinary terrain cost.
+const CLIMB_COST: float = 4.0
+const HOP_DOWN_COST: float = 1.0
+## Climbing is capped at one level by default (docs/PLAN.md: "a capability
+## or part may raise that later" — nothing does yet, taskblock-37's own
+## scope fence).
+const MAX_CLIMB_LEVELS: int = 1
+## Hop-down is safe up to two levels; a deeper drop isn't a legal edge this
+## pass (fall damage/knockdown are later work, explicitly out of scope).
+const MAX_HOP_DOWN_LEVELS: int = 2
+
 var _grid: Grid
 ## terrain(int) -> float MP cost; missing = DEFAULT_COST, negative = blocked.
 var _terrain_costs: Dictionary
+## taskblock-37 Pass C: whether THIS pathfinding request's own mover can
+## climb (`Shell.can_climb()`) — a property of the unit doing the moving,
+## not of the grid, so it lives on the instance rather than `move_cost`
+## taking it per call. Defaults false: every existing call site that isn't
+## updated to pass a real unit's capability keeps its exact prior
+## behaviour (never silently grants climbing).
+var _can_climb: bool
 
 
-func _init(grid: Grid, terrain_costs: Dictionary = {}) -> void:
+func _init(grid: Grid, terrain_costs: Dictionary = {}, can_climb: bool = false) -> void:
 	_grid = grid
 	_terrain_costs = terrain_costs
+	_can_climb = can_climb
 
 
-## MP cost to step onto `cell`, or -1.0 if the cell is not walkable (out of
-## bounds, occupied, blocked by a LIVING field object, or mapped to a
-## negative terrain cost).
+## The plain per-cell terrain/occupancy cost of standing on `cell` — the
+## whole of what `move_cost` used to be before taskblock-37 Pass C made it
+## edge- (not just cell-) aware. `is_walkable` and `move_cost` both start
+## here; level/ramp/climb reasoning is layered on top in `move_cost` alone,
+## since "can a unit ever occupy this cell" and "what does stepping onto it
+## from a SPECIFIC neighbor cost" are different questions once height
+## enters the picture.
 ##
 ## taskblock-16 Pass B: `grid.blockers` (cover objects: scrap piles, goo
 ## barrels, pillars, ...) now blocks movement too, same as a unit does —
@@ -40,7 +65,7 @@ func _init(grid: Grid, terrain_costs: Dictionary = {}) -> void:
 ## rubble instead of fully clear ground) are explicitly deferred to a
 ## later authoring pass (PLAN.md) — this pass's own contract is exactly
 ## "destroyed clears to fully passable," nothing partial.
-func move_cost(cell: Vector2i) -> float:
+func _base_cost(cell: Vector2i) -> float:
 	if not _grid.in_bounds(cell):
 		return -1.0
 	if _grid.get_occupant_id(cell) != -1:
@@ -54,8 +79,53 @@ func move_cost(cell: Vector2i) -> float:
 	return DEFAULT_COST
 
 
+## MP cost to step from `from` onto `to` (adjacent cells, though nothing
+## here assumes it), or -1.0 if the edge doesn't exist at all — `to` isn't
+## walkable, or the level delta between the two is a genuine ledge this
+## mover can't cross (a climb beyond `MAX_CLIMB_LEVELS`, any climb at all
+## without `_can_climb`, or a drop beyond `MAX_HOP_DOWN_LEVELS`).
+##
+## taskblock-37 Pass C: `docs/PLAN.md`'s settled cost table, verbatim —
+## - a RAMP edge (either endpoint tagged `Enums.TerrainType.RAMP`) is
+##   ordinary pathing at the plain terrain cost, whatever the level delta:
+##   "a sloped tile costs 1 MP like any other; the path just changes
+##   height as it goes." No special-casing beyond that check.
+## - same level: unchanged, the plain terrain cost (the vast majority of
+##   edges, and everything before this pass).
+## - climbing UP a level with no ramp: capability-gated, `CLIMB_COST` per
+##   level, capped at `MAX_CLIMB_LEVELS` — a non-climber simply has no
+##   such edge, not an illegal-but-attempted one.
+## - dropping DOWN with no ramp: always legal up to `MAX_HOP_DOWN_LEVELS`,
+##   flat `HOP_DOWN_COST` regardless of capability — the taskblock's own
+##   "hop-down at 1 MP against 8 MP to climb back makes one-way routes for
+##   free," deliberately asymmetric.
+## - a deeper drop, or a climb beyond the cap, is simply not an edge —
+##   `_grid.get_level` alone decides this from the two cells, no per-unit
+##   fall-damage/knockdown modeling belongs here (later work, with perks
+##   to avoid it).
+func move_cost(from: Vector2i, to: Vector2i) -> float:
+	var base: float = _base_cost(to)
+	if base < 0.0:
+		return -1.0
+	if (
+		_grid.get_terrain(from) == Enums.TerrainType.RAMP
+		or _grid.get_terrain(to) == Enums.TerrainType.RAMP
+	):
+		return base
+	var level_delta: int = _grid.get_level(to) - _grid.get_level(from)
+	if level_delta == 0:
+		return base
+	if level_delta > 0:
+		if not _can_climb or level_delta > MAX_CLIMB_LEVELS:
+			return -1.0
+		return CLIMB_COST
+	if -level_delta > MAX_HOP_DOWN_LEVELS:
+		return -1.0
+	return HOP_DOWN_COST
+
+
 func is_walkable(cell: Vector2i) -> bool:
-	return move_cost(cell) >= 0.0
+	return _base_cost(cell) >= 0.0
 
 
 ## docs/10 taskblock03 D2: the total MP a full path (inclusive of its own
@@ -64,7 +134,7 @@ func is_walkable(cell: Vector2i) -> bool:
 func path_cost(path: Array[Vector2i]) -> float:
 	var total: float = 0.0
 	for i in range(1, path.size()):
-		total += move_cost(path[i])
+		total += move_cost(path[i - 1], path[i])
 	return total
 
 
@@ -132,7 +202,7 @@ func astar(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 		open_set.remove_at(current_index)
 
 		for neighbor: Vector2i in _grid.neighbors(current):
-			var cost: float = move_cost(neighbor)
+			var cost: float = move_cost(current, neighbor)
 			if cost < 0.0:
 				continue
 			var tentative_g: float = g_score[current] + cost
@@ -192,7 +262,7 @@ func reachable(origin: Vector2i, mp: float) -> Array[Vector2i]:
 		frontier.remove_at(current_index)
 
 		for neighbor: Vector2i in _grid.neighbors(current):
-			var cost: float = move_cost(neighbor)
+			var cost: float = move_cost(current, neighbor)
 			if cost < 0.0:
 				continue
 			var total: float = dist[current] + cost
@@ -235,7 +305,7 @@ func nearest_matching(origin: Vector2i, radius_cap: float, stop_at: Callable) ->
 			return current
 
 		for neighbor: Vector2i in _grid.neighbors(current):
-			var cost: float = move_cost(neighbor)
+			var cost: float = move_cost(current, neighbor)
 			if cost < 0.0:
 				continue
 			var total: float = dist[current] + cost
@@ -260,7 +330,7 @@ func truncate_to_budget(path: Array[Vector2i], mp: float) -> Array[Vector2i]:
 	var truncated: Array[Vector2i] = [path[0]]
 	var total: float = 0.0
 	for i in range(1, path.size()):
-		var cost: float = move_cost(path[i])
+		var cost: float = move_cost(path[i - 1], path[i])
 		if cost < 0.0 or total + cost > mp:
 			break
 		total += cost

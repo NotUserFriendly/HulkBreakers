@@ -38,7 +38,7 @@ func is_legal(state: CombatState) -> bool:
 	if path.size() < 2 or path[0] != actual.cell:
 		return false
 
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, actual.shell.can_climb())
 	var sim_ap: int = actual.ap
 	var sim_mp: float = actual.mp
 	var per_ap: float = actual.mp_per_ap()
@@ -46,7 +46,7 @@ func is_legal(state: CombatState) -> bool:
 	for i in range(1, path.size()):
 		if Grid.distance_chebyshev(path[i - 1], path[i]) != 1:
 			return false
-		var step_cost: float = pf.move_cost(path[i])
+		var step_cost: float = pf.move_cost(path[i - 1], path[i])
 		if step_cost < 0.0:
 			return false
 		if free:
@@ -91,7 +91,7 @@ func apply(state: CombatState) -> void:
 ## IS the untraversed remainder's own leftover).
 func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
 	var actual: Unit = state.find_unit(unit.id)
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, actual.shell.can_climb())
 	# taskblock: "bots visibly spin through every facing, then move" — the
 	# STATE was already correct per-tile (taskblock-16 Pass A), but every
 	# `faced` LogEvent below fired DURING this loop while the single `move`
@@ -120,7 +120,7 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 			# begins.
 			FaceAction.face_for_free(state, actual, target_orientation, &"free_with_move")
 		var per_ap: float = actual.mp_per_ap()
-		var step_cost: float = pf.move_cost(path[i])
+		var step_cost: float = pf.move_cost(path[i - 1], path[i])
 		if not free:
 			while actual.mp < step_cost:
 				actual.ap -= 1
@@ -170,12 +170,12 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 static func _can_still_complete(
 	state: CombatState, actual: Unit, remaining: Array[Vector2i], free: bool = false
 ) -> bool:
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, actual.shell.can_climb())
 	var sim_ap: int = actual.ap
 	var sim_mp: float = actual.mp
 	var per_ap: float = actual.mp_per_ap()
 	for i in range(1, remaining.size()):
-		var step_cost: float = pf.move_cost(remaining[i])
+		var step_cost: float = pf.move_cost(remaining[i - 1], remaining[i])
 		if step_cost < 0.0:
 			return false
 		if free:

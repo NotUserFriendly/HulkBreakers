@@ -92,6 +92,21 @@ func is_powered() -> bool:
 	return false
 
 
+## taskblock-37 Pass C: "climbing is capability-gated... most units can't"
+## (docs/PLAN.md). An open `CLIMBER` tag, same shape as `POWER_SOURCE`
+## above — no part authors it this pass (nothing can climb yet, matching
+## the taskblock's own scope fence), but a future climbing-claw/grapple
+## part needs no code edit to grant it. `operable_parts()`, not
+## `living_parts()`: a severed/wound-disabled limb shouldn't grant an
+## active capability, same posture as any other operable-only gate
+## (weapon manipulators, e.g.).
+func can_climb() -> bool:
+	for part: Part in operable_parts():
+		if &"CLIMBER" in part.tags:
+			return true
+	return false
+
+
 ## True if some `ORGANICS`-tagged item sits in any container this assembly
 ## carries (docs/05 containers; docs/04 taskblock02 Pass D4 life support's
 ## regen fuel) — not recursive into nested containers-within-containers,
