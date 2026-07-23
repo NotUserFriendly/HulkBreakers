@@ -78,6 +78,12 @@ var _targeting_line: MeshInstance3D
 ## weapon has. Cached here, keyed by content (Ring is a Resource — `==`
 ## on two separately-built instances is reference identity, always
 ## false, never a real cache hit) rather than object identity.
+## tb34 Pass A: "only changes when... range actually does" stopped being
+## rare the instant the board became range-aware (`ShotScatter.for_shot`)
+## — range now varies with every retarget/reposition, not just a weapon
+## swap. `_rings_match` keys on ratio-to-outer-ring, not absolute radius,
+## so a pure rescale (same shape, different distance) still reuses this
+## cached image; only a genuine shape change rebuilds it.
 var _cached_rings: Array[Ring] = []
 var _cached_texture: ImageTexture = null
 
@@ -284,12 +290,27 @@ func _ring_texture(rings: Array[Ring]) -> ImageTexture:
 	return _cached_texture
 
 
+## tb34 Pass A: compares the NORMALIZED shape (each ring's radius as a
+## fraction of the outermost ring, plus weight), not absolute radius.
+## `DartboardTexture.build` normalizes by `outer_radius` internally
+## (`px_per_unit = center / outer_radius`), so a pure uniform rescale — the
+## exact shape of change range now produces every time the shooter/target
+## distance changes — draws the byte-identical image; only `_decal.size`/
+## the window quad's own world size need to change, never a pixel rebuild.
+## A genuine ratio change (a real, different-shaped board) still misses,
+## same as before.
 static func _rings_match(a: Array[Ring], b: Array[Ring]) -> bool:
 	if a.size() != b.size():
 		return false
+	if a.is_empty():
+		return true
+	var a_outer: float = a[a.size() - 1].radius
+	var b_outer: float = b[b.size() - 1].radius
+	if a_outer <= 0.0 or b_outer <= 0.0:
+		return a_outer == b_outer
 	for i in range(a.size()):
 		if (
-			not is_equal_approx(a[i].radius, b[i].radius)
+			not is_equal_approx(a[i].radius / a_outer, b[i].radius / b_outer)
 			or not is_equal_approx(a[i].weight, b[i].weight)
 		):
 			return false

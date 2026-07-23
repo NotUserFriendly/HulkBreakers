@@ -14,8 +14,8 @@ extends CombatAction
 ## reach-gated (`MeleeReach.in_reach`, a real 3D distance) instead of
 ## range/LoS-gated — a strike doesn't check `RangeModel`/`LoS` at all, the
 ## same way a shot never checks reach. `apply()` otherwise reuses the
-## ranged accuracy pipeline UNCHANGED (`RangeModel.dartboard_radius_scale`
-## fed the ordinary grid-cell range) — melee's own tight dartboard is
+## ranged accuracy pipeline UNCHANGED (tb34 Pass A: `ShotScatter.for_shot`,
+## same as every other consumer) — melee's own tight dartboard is
 ## "point-blank range through the existing curve," never a special rule
 ## (docs/PLAN.md Pass B).
 
@@ -105,14 +105,13 @@ func apply(state: CombatState) -> void:
 	# anchor — see AttackAction's own doc comment.
 	var direction := Vector2(target_cell) - origin
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
-	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
-	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(
-		weapon, extra_sources, RangeModel.dartboard_radius_scale(weapon, range_cells)
+	var resolved_scatter: Array[Ring] = ShotScatter.for_shot(
+		actual, weapon, target_cell, state, extra_sources
 	)
 	var points: Array[Vector2] = Dartboard.sample(
 		aim_point, resolved_scatter, state.rng, weapon.burst
