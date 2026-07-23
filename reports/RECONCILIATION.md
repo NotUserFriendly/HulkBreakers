@@ -305,3 +305,56 @@ All bugs (BR34.06/BR27.02 fixed and archived since; BR32.01/03 fixed and archive
 BR27.09, BR32.04, BR32.10 root-caused/improved and left open; BR35.01-06 new findings) are present in
 `docs/BUGS.md`/`docs/BUGS-ARCHIVE.md`. No design reversal from this block needed a `SUPERSEDED.md`
 entry (the depth-floor fix and wall-cutout fix were bug fixes, not reversed design decisions).
+
+## Step 3 — Citations pointing at files that are going away
+
+All six confirmed and fixed — each replaced with the fact it was pointing at, not repointed to
+another file:
+- `docs/BUGS.md`'s own preamble (was citing `taskblock_done/` generally as where acceptance criteria
+  stay readable) — reworded: the durable record is this ledger and `docs/BUGS-ARCHIVE.md` now,
+  regardless of whether the originating spec/report is still on disk.
+- `docs/BUGS.md`'s BR27.03 entry (cited `Report-Taskblock27.md` for a correction note) — the fact
+  (Pass A2's premise was wrong, not the bug) was already stated inline; citation removed, no
+  information lost.
+- `docs/PLAN.md`'s AI-target-fixation entry (cited `Report-Taskblock33.md`'s own follow-up) — folded
+  in the actual measurement it was pointing at (zero impacts in 400 turns, the specific defender,
+  the BR30.10 connection).
+- `docs/BUGS-ARCHIVE.md`'s BR31.02 entry (cited `Report-Taskblock31.md` alongside CHANGELOG) —
+  CHANGELOG already has the fix description in full; citation to the report removed.
+- `docs/BUGS-ARCHIVE.md`'s BR32.02 entry (cited `Report-Taskblock32.md` for the over-cutting
+  candidate cause) — that same finding already has its own tracked entry, `BR32.05`, in
+  `docs/BUGS.md`; repointed there instead of the report.
+- `docs/BUGS-ARCHIVE.md`'s legacy BR11.01 entry (cited the tb11 spec's own on-disk presence as part
+  of why the bug recurred) — reworded so the explanation holds regardless of whether the spec is
+  still on disk.
+
+Re-grepped `taskblock_done`/`Report-Taskblock` across the whole repo after: zero remain outside
+`reports/` (where this file and `reports/README.md`'s own naming-convention example are expected).
+
+## Step 4 — CHANGELOG banner
+
+`docs/CHANGELOG.md`'s own banner updated from *"Current as of taskblock-32 landed"* to *"Current as
+of taskblock-35 landed"* (three blocks stale, now current). The task's own instruction to treat this
+banner as part of CLAUDE.md's rule 8 from here on is a `CLAUDE.md` edit — that file is gitignored and
+supervisor-maintained, not something this session edits directly; flagging it here for the
+supervisor to fold in when convenient, rather than editing it unasked.
+
+## Deliverable checklist
+
+- [x] Step 1 inventory table (tb12-35, all anomalies flagged)
+- [x] Step 2 per-block gap record, oldest-first, real content migrated where found missing, clean
+      blocks recorded as clean
+- [x] Step 3 confirmation — zero citations to `taskblock_done`/`Report-TaskblockN` remain outside
+      `reports/`
+- [x] Step 4 — CHANGELOG banner refreshed
+- [x] All living-doc additions committed alongside this file, per step
+
+**Bottom line for the purge decision:** `taskblock_done/`'s specs (tb12-35) are safe to purge — every
+piece of durable content this audit could verify already has a home in a living doc. The one
+irreducible exception is tb25/tb28/tb29's own missing reports: no amount of migration can recover
+design decisions, tried-and-reverted approaches, or self-found bugs that were never written into a
+report that no longer exists — those three blocks' own spec-vs-CHANGELOG reconciliation is as
+complete as it can ever be, and what's missing beyond that is unrecoverable, not unfound. Reports
+moving to the five-report rolling window in `reports/` is also safe under the same logic, going
+forward, now that the discipline of migrating the three new categories out of a report and into a
+living doc before it ages out is established.

@@ -1,11 +1,12 @@
 # BUGS.md — Bug Ledger
 
 **The single place a bug's status lives.** New and resolved, with a rough report time and (for recent
-ones) the taskblock in play. Its job: **a resolved bug must have a closure marker here**, so an old
-report — still readable in `taskblock_done/`, still describing acceptance criteria — is never
-re-derived as open. If you fixed something, mark it RESOLVED here, even if the fix landed as a plain
-commit outside the taskblock cadence. That out-of-cadence gap is exactly what let stale reports
-recur.
+ones) the taskblock in play. Its job: **a resolved bug must have a closure marker here**, so it is
+never re-derived as open once the report or spec that first described it has aged out of
+`reports/`'s own rolling window or been purged — this ledger (and `docs/BUGS-ARCHIVE.md` for closed
+entries) is the durable record now, not whatever taskblock first found it. If you fixed something,
+mark it RESOLVED here, even if the fix landed as a plain commit outside the taskblock cadence. That
+out-of-cadence gap is exactly what let stale reports recur.
 
 **This file holds only what is still open.** Once an entry reaches `Resolved`, it moves verbatim to
 `docs/BUGS-ARCHIVE.md` and is never edited again — so everything here is something that still wants
@@ -87,6 +88,18 @@ confirm" roll-up — so pending items surface at a natural review point without 
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **2026-07-23 (supervisor revision to the instrumentation spec — supersedes the offsets below).**
+  The dumps landed in tb35 A1; the offsets want changing now that they exist:
+  - **Turn FPS at 0 ms** — an additional dump *at* turn start, capturing the boundary cost itself
+    rather than avoiding it (this is the number BR27.09 is actually about).
+  - **Replace the 200 ms dumps with 2000 ms** — 200 ms proved too close to the transient to read as
+    settled state; two seconds in is the honest steady-state sample.
+  Keep both samples rather than replacing one with the other: 0 ms and 2000 ms together give the
+  boundary spike *and* the settled rate, which is exactly the pair needed to tell BR26.02 and BR27.09
+  apart.
+- **Also requested: a live FPS counter, rendered ON TOP OF the combat log rather than logged into
+  it** — a continuous readout for the supervisor's own eyes, distinct from the dumps (which exist for
+  CC to grep). Tracked with the log-window UX work in `docs/PLAN.md`.
 - **2026-07-23 (supervisor re-check — REOPENED; worse, not better).** Framerate while aiming is still
   bad and is *likely worse than originally*. tb34's two fixes (the ratio-normalized texture cache, and
   deleting `AimView._process`'s redundant per-frame `refresh()`) were both reasoned rather than
@@ -202,16 +215,16 @@ confirm" roll-up — so pending items surface at a natural review point without 
 ### BR27.03 — Active — owner: `SUPERVISOR`
 **Other shots appear to resolve before an earlier shot's own deflect finishes**
 - **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
-  `taskblock_done/Report-Taskblock27.md`): a shot and its own deflect are SUPPOSED to resolve
-  simultaneously (not paused apart, as taskblock-27 Pass A2 assumed) — the real defect is that a
-  DIFFERENT, later shot can appear to resolve/animate before an earlier shot's own deflect segment
+- **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis: Pass A2 had assumed a shot and
+  its own deflect were wrongly paused apart and inserted a fix for that — but they're SUPPOSED to
+  resolve simultaneously, that was never broken. The real, still-open defect is different: a
+  DIFFERENT, later shot can appear to resolve/animate before an EARLIER shot's own deflect segment
   has finished.
-- **Status:** not yet investigated. taskblock-27 Pass A2's own `DEFLECT_BEAT_MS` fix inserted a
-  deliberate pause between a primary hit and its own deflect — per this correction, that pause is
-  itself a wrong implementation of the actual intent (simultaneous primary+deflect) and does not
-  address this bug at all. Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between
-  separate impact events, not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
+- **Status:** not yet investigated. taskblock-27 Pass A2's own `DEFLECT_BEAT_MS` fix (a deliberate
+  pause between a primary hit and its own deflect) does not address this bug and is itself now a
+  wrong implementation of the intended simultaneous behavior — not reverted, only reclassified.
+  Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between separate impact events,
+  not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
 - **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** confirmed not an
   intra-event bug — each `ResolutionPlayer.play()` call is fully await-serialized internally,
   primary+deflect included. The gap is a missing reentrancy guard: `play()` has no busy-flag, and
@@ -826,9 +839,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
   actually touch `grid.blockers`/`field_items` — `move_object`/`spawn_object`/`remove_object`) but
   getting the verb-id list exactly right (not missing one that can add/move/remove a blocker or field
   item) wants a careful pass of its own rather than a rushed guess at the end of an already-long one.
-### BR35.04 — Active — owner: `CC`
+### BR35.04 — Active — owner: `SUPERVISOR`
 **A DEFLECT's drawn "bounce" tracer is a decorative fixed-range projection, not the real continuation**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **2026-07-23 (supervisor observation — independently seen, and a decision made).** Observed live as
+  *"some drawn deflect raycasts are blue"* — the same defect from the visual side that this entry
+  found in the log. The blue segments are exactly these decorative fixed-range projections; the real
+  continuation, when one exists, is a separate `stop_dead` ray drawn independently.
+- **Supervisor's call: remove the decorative projection entirely.** Do not try to make it agree with
+  the real resolution — draw only geometry that corresponds to something that actually resolved.
+  A tracer nobody can distinguish from a real hit, drawn to an arbitrary distance, is worse than no
+  tracer: it invented the "wall impacts" the supervisor spent a whole review session investigating.
+  **Owner promoted to `SUPERVISOR`** — the fix is visual, so closure needs a live look.
+- **See also BR35.07**, the same class of defect on the `STOP_DEAD` tracer (drawn past its own hit
+  point). Filed separately per the supervisor's own rule that one entry tracks one observed symptom.
 - **Found:** 2026-07-23, reading a real chaingun burst out of `out/combat.log` at the supervisor's own
   request. Every `DEFLECT` outcome logs a `deflect_end_x/y/height` (`shot_resolution.gd:225-232`),
   drawn by `ResolutionPlayer._play_impact` as a second, visually distinct segment
@@ -897,3 +921,39 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Not fixed yet.** Needs the actual `_engagement_score` breakdown for unit 7's own candidate set on
   one of these turns before concluding this is really the cover-bonus/self-exemption interaction and
   not something else — flagged rather than guessed at further.
+
+### BR35.07 — Active — owner: `SUPERVISOR`
+**`STOP_DEAD` tracers are drawn past their own hit point, reading as a penetration that never happened**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb35 review, live). A drawn `STOP_DEAD` ray continues visibly *beyond* the
+  point where it actually stopped, so a round that was halted dead reads on screen as though it
+  punched through and carried on.
+- **Same class as BR35.04, different outcome type:** tracer geometry drawn from something other than
+  what the resolver actually produced. Where BR35.04 is a deliberately decorative fixed-range
+  projection on `DEFLECT`, this is a `STOP_DEAD` segment overshooting its own resolved endpoint —
+  worth confirming whether it shares the same drawing path (`ResolutionPlayer._play_impact`) and the
+  same "draw to a distance, not to the hit" habit, or is a separate length/endpoint error.
+- **The reason this matters beyond looks:** it makes the two outcomes visually indistinguishable.
+  `STOP_DEAD` and `PENETRATE` are mechanically different results, and if a stopped round is drawn
+  like a penetrating one, the player cannot read what their weapon actually did — the same class of
+  harm as the dartboard understating spread (tb34): the display teaching a rule the sim doesn't
+  follow.
+- Filed separately from BR35.04 per the supervisor's own convention — one entry per observed symptom,
+  cross-linked, rather than bundling by shared root.
+
+### BR35.08 — Active — owner: `SUPERVISOR`
+**Detonations are invisible — nothing is drawn when an explosion resolves**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb35 review, live). A detonation resolves mechanically but draws nothing
+  at all, so neither the fact of the explosion nor its extent is visible.
+- **Supervisor-specified presentation (a spec, not a suggestion):** draw a **translucent red sphere**
+  originating at the detonation point that **grows outward**, its **final radius matching the actual
+  explosion radius** — so the visual is a readout of the real mechanical extent, not decoration —
+  then **fades out**.
+  - **Grow : fade time ratio is 1 : 3.**
+  - **Total time is exposed as a tunable in the same place bullet timing lives**, defaulting to
+    **1000 ms**.
+- **Read the radius from the resolved detonation, never a parallel constant.** The whole value here is
+  that the sphere teaches the player the real blast extent; a separately-authored visual radius that
+  drifts from the mechanical one would be BR35.04's mistake again in a new place — a drawn thing that
+  looks authoritative and isn't.

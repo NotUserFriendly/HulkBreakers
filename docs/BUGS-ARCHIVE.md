@@ -444,10 +444,10 @@ those are exactly what a future session needs when a bug turns out not to be as 
   was "a very complicated description for a simple bug." Investigation depth is welcome in the notes;
   the description line should stay plain enough to recognise the bug from.*
 - **Backfilled 2026-07-22** (retroactive ledger pass, CLAUDE.md rule 8 applied historically) —
-  reported and fixed live during taskblock-31 itself; `docs/CHANGELOG.md` and
-  `taskblock_done/Report-Taskblock31.md` both recorded it at the time, but it never got a `BR` id or
-  an entry in this ledger. Filed now so a resolved bug's closure marker exists here too, per this
-  file's own stated job.
+  reported and fixed live during taskblock-31 itself; `docs/CHANGELOG.md` recorded the fix
+  (`MapGen._finalize_walls_and_void()`'s own classify-then-mutate two-pass split) at the time, but it
+  never got a `BR` id or an entry in this ledger. Filed now so a resolved bug's closure marker exists
+  here too, per this file's own stated job.
 - **Reported:** 2026-07-21, live play testing of tb31 Pass C's new wall/void model: "walls are
   generating where voids should [be]... there should be a single layer of walls."
 - **Root cause:** `MapGen._finalize_walls_and_void()` classified AND mutated each `WALL` cell in the
@@ -543,10 +543,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
   shader-side depth source bug.
 - **Deferred, not a regression from this fix — logged, not chased further per instruction:** with the
   camera and unit on the SAME side of a wall (nothing should occlude at all), the cutout still fires
-  and over-cuts neighboring wall segments, confirmed live via screenshot. See
-  `taskblock_done/Report-Taskblock32.md` for the fuller writeup and a candidate cause — likely
-  inherent to this shader's own 2D screen-space heuristic (nearer-than-unit + within-screen-radius),
-  not a new bug introduced by this fix.
+  and over-cuts neighboring wall segments, confirmed live via screenshot — not a new bug introduced by
+  this fix, inherent to the shader's own coarse occlusion heuristic. Tracked as its own entry,
+  **BR32.05**, in `docs/BUGS.md`.
 - **Both halves of this investigation (BR32.02's flip revert and this fix) were only possible because
   the supervisor tested live and reported back precisely** — no headless test can exercise a fragment
   shader at all (dummy/headless rendering never executes one), so every claim here was confirmed
@@ -653,10 +652,10 @@ same relative order this ledger has always kept them in, oldest work first. All 
   `SUPERVISOR`-sourced bug is legitimately `RESOLVED` (the gate was satisfied: the supervisor
   confirmed it).
 - **Why it kept recurring:** the fixes landed as plain bugfix commits *outside* the "Taskblock N Pass
-  X" cadence, so the usual "update CHANGELOG on landing" never fired. With no closure marker anywhere
-  and the tb11 spec still on disk in `taskblock_done/` (gitignored-but-not-deleted, per repo
-  convention), the taskblock-generating instance treated the living docs as authority, found nothing,
-  and re-derived "go verify the Resource Editor" as open. **This ledger is the fix for that class.**
+  X" cadence, so the usual "update CHANGELOG on landing" never fired. With no closure marker anywhere,
+  and the original tb11 spec's own acceptance criteria still discoverable, a fresh read of the living
+  docs found nothing said "done" and re-derived "go verify the Resource Editor" as open. **This ledger
+  is the fix for that class** — regardless of whether the originating spec is still on disk at all.
 
 ### BR16.01 — Resolved — owner: `CC`
 **Cover-scatter could land a blocker on a cell about to become a spawn zone**
