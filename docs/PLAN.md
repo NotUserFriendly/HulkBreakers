@@ -564,6 +564,17 @@ systems. The unifications:
 Mulebot / follower drones; hacking (Int-based, has a RAM cost already); weak points (poses + failure
 modes + aimable joints exist — cheap); voidhulk stability (environmental hazard).
 
+**Wide scatter can pass clean through a wall seam (BR34.05's own root cause, tb35 Pass B2).**
+`ShotPlane.build` projects each wall cell as its own independent rect; adjacent cells' projected rects
+aren't guaranteed to tile edge-to-edge from an arbitrary shooter angle, so a dartboard point far enough
+off-center (a late pull of a long burst, recoil-widened, at range — reproduced directly, 56/200 empties
+at a lateral offset of ~8) can thread a real gap between them, in an otherwise fully enclosed room.
+There's also no modeled floor Region anywhere — "or the floor" (the supervisor's own stated design
+rule) has nothing to resolve against yet. Needs a real decision among: merge contiguous same-material
+blocker cells into one projected rect run at the source; cap dartboard scatter radius (post-recoil,
+post-range-widen) at a bound that guarantees plane coverage — a real balance number; or add a genuine
+floor Region. Not a code fix waiting to be written so much as a design call waiting to be made.
+
 **AI fixates on the nearest enemy even when it's genuinely unshootable (found re-checking BR30.10
 post-tb33).** `UnitAI._nearest_living_enemy` always targets the closest living candidate, with no
 fallback to a different, actually-reachable-by-shot target if the nearest one turns out to have no
