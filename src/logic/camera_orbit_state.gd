@@ -51,6 +51,18 @@ const ATTACK_BACK_MAX := 200.0
 ## interval, so 40 lands well past float precision for any ATTACK_BACK_MAX
 ## in this range.
 const ATTACK_BACK_ITERATIONS := 40
+## tb34 Pass D: beyond this many cells (Chebyshev — the same distance
+## convention every range/threshold check elsewhere in this codebase
+## already uses), the attack camera frames the target alone
+## (`sniper_framing`) instead of over-the-shoulder (`attack_framing`).
+## Supervisor-given starting point, not a tuned design number — a
+## tunable, never a literal at the call site.
+const SNIPER_FRAME_DISTANCE := 5
+## `sniper_framing`'s own closed-form solve lands exactly on the usable-
+## half-FOV boundary otherwise (no second body's own footprint to leave
+## slack against, unlike `_solve_back`'s binary search) — a small backoff
+## factor on the solved zoom, not a design number.
+const SNIPER_ZOOM_SLACK := 1.02
 
 var yaw: float = 0.0
 var pitch: float = DEFAULT_PITCH
@@ -162,6 +174,42 @@ func attack_framing(shooter: Dictionary, target: Dictionary) -> Dictionary:
 		"pitch": framing_pitch,
 		"zoom": camera_pos.distance_to(target_center),
 		"pan_offset": target_center,
+	}
+
+
+## tb34 Pass D: "frame the target, not shooter-over-shoulder" — over-the-
+## shoulder framing reads well up close but degrades badly at range (both
+## spheres compress toward the same screen point, and the "over the
+## shoulder" offset just wastes frame on the empty middle distance). This
+## rig's own topology (the camera always faces its own `pan_offset` pivot
+## by construction — see `attack_framing`'s own doc comment) means setting
+## `pan_offset = target.center` puts the target dead-center on screen at
+## ANY yaw/pitch — no dual-sphere BACK solve needed, only the single-
+## sphere distance at which the target's own angular footprint fits the
+## usable half-FOV (closed-form here, unlike `_solve_back`'s binary
+## search, because there is no second body's own footprint to jointly
+## satisfy). Keeps the CURRENT yaw/pitch rather than solving a new viewing
+## angle — with nothing else to keep in frame, any direction already
+## centers the target.
+func sniper_framing(target: Dictionary) -> Dictionary:
+	var target_radius: float = target.radius
+	var usable_half_fov: float = deg_to_rad(CAMERA_FOV_DEG * 0.5) * ATTACK_MARGIN
+	# Solving the exact boundary (angular footprint == usable_half_fov, zero
+	# slack beyond ATTACK_MARGIN itself) leaves the sphere grazing the
+	# literal edge, at the mercy of floating-point rounding — the same
+	# grazing ATTACK_MARGIN itself exists to avoid. SNIPER_ZOOM_SLACK backs
+	# the solved distance off a hair further, same as `_solve_back`'s own
+	# binary search always lands strictly inside the fit, never exactly on it.
+	var solved_zoom: float = (
+		(target_radius / sin(usable_half_fov)) * SNIPER_ZOOM_SLACK
+		if target_radius > 0.0
+		else DEFAULT_ZOOM
+	)
+	return {
+		"yaw": yaw,
+		"pitch": pitch,
+		"zoom": clampf(solved_zoom, MIN_ZOOM, ATTACK_BACK_MAX),
+		"pan_offset": target.center,
 	}
 
 

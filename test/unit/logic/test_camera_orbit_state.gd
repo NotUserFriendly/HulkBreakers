@@ -212,3 +212,67 @@ func test_attack_framing_is_deterministic() -> void:
 	assert_eq(a.pitch, b.pitch)
 	assert_eq(a.zoom, b.zoom)
 	assert_eq(a.pan_offset, b.pan_offset)
+
+
+## tb34 Pass D: "frame the target, not shooter-over-shoulder." The
+## structural reason sniper_framing always centers the target regardless
+## of yaw/pitch: the pivot IS the target's own center, full stop -- no
+## shooter-relative offset anywhere in it, unlike attack_framing's own
+## `pan_offset == target.center` (true there too, but only PART of why
+## that one centers; attack_framing's camera_pos is also shooter-relative).
+func test_sniper_framing_pans_directly_on_the_targets_own_center() -> void:
+	var state := CameraOrbitState.new()
+	var target: Dictionary = _sphere(Vector3(9.0, 0.0, 3.0), 0.6)
+
+	var framing: Dictionary = state.sniper_framing(target)
+
+	assert_eq(framing.pan_offset, target.center)
+	assert_gt(framing.zoom, 0.0, "a real orbit distance, not a zero-distance look-at")
+
+
+## docs/10 taskblock04 A2's own acceptance criterion, reused here for the
+## single-sphere case: the target's whole silhouette (its center's angle
+## off the look direction -- zero here, since pan_offset IS its center --
+## plus the half-angle its own radius subtends) must land inside the
+## usable half-FOV, across a range of radii.
+func test_sniper_framing_fits_the_targets_own_sphere_across_a_range_of_radii() -> void:
+	var state := CameraOrbitState.new()
+	state.yaw = 0.7
+	state.pitch = -0.3
+	for radius in [0.2, 0.5, 1.0, 3.0, 8.0]:
+		var target: Dictionary = _sphere(Vector3(4.0, 0.0, -2.0), radius)
+		var framing: Dictionary = state.sniper_framing(target)
+		var camera_pos: Vector3 = _camera_pos(framing)
+		var look: Vector3 = _look_dir(framing.yaw, framing.pitch)
+		assert_true(
+			_fits(camera_pos, look, target), "radius %.1f must fit the usable half-FOV" % radius
+		)
+
+
+## With no second body to keep in frame, any viewing angle already centers
+## the target -- so, unlike attack_framing (which SOLVES a new yaw/pitch
+## from the shooter->target line), this keeps whatever the rig's current
+## orbit angle already is.
+func test_sniper_framing_keeps_the_current_yaw_and_pitch() -> void:
+	var state := CameraOrbitState.new()
+	state.yaw = 1.23
+	state.pitch = -0.8
+	var target: Dictionary = _sphere(Vector3(9.0, 0.0, 3.0), 0.6)
+
+	var framing: Dictionary = state.sniper_framing(target)
+
+	assert_eq(framing.yaw, 1.23)
+	assert_eq(framing.pitch, -0.8)
+
+
+func test_sniper_framing_is_deterministic() -> void:
+	var state := CameraOrbitState.new()
+	var target: Dictionary = _sphere(Vector3(5.0, 0.0, 0.0), 0.4)
+
+	var a: Dictionary = state.sniper_framing(target)
+	var b: Dictionary = state.sniper_framing(target)
+
+	assert_eq(a.yaw, b.yaw)
+	assert_eq(a.pitch, b.pitch)
+	assert_eq(a.zoom, b.zoom)
+	assert_eq(a.pan_offset, b.pan_offset)
