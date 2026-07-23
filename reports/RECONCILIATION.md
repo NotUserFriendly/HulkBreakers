@@ -85,8 +85,71 @@ covered. Missing: a real ordering bug found and fixed in code still current
 (`BattleScene._ready()` used to call `new_battle()`, emitting the session-start log line, before any
 overlay/log-sink existed to catch it). Appended to the "View" entry in `docs/CHANGELOG.md`.
 
-### tb16-19 — pending (see below, inserted out of arrival order; audit was still running when this
-section was first assembled)
+### tb16 — Per-Tile Facing, AI Ranges, Cover-as-Objects, Bout & Map Tuning
+
+**Partially missing, now added.** Cover-as-objects/per-tile-facing reversals, field objects, AI
+preferred ranges, and the melee-playstyle deferral were already covered. Missing: (1) per-tile
+facing itself was never described as a shipped capability (only its reversal recorded) — added to
+the Combat structure & AI section of `docs/CHANGELOG.md`. (2) Map generation tuning (Pass C) had zero
+trace — added to the Bouts paragraph, combined with tb17 A's own grid-size fix (same underlying
+story, one entry). (3) The bout menu's per-bot AI dropdown + duplicate/remove (Pass E) — folded into
+the same Bouts-paragraph edit alongside tb17 D. (4) Three real bugs found and fixed mid-pass with no
+ledger line (a cover/spawn-zone collision, an unseeded-RNG fallback corridor, a corridor-widening
+that could erase a spawn tag) — added as `BR16.01`-`BR16.03`, Resolved, owner CC, in
+`docs/BUGS-ARCHIVE.md`.
+
+### tb17 — Spectator Fixes, Map Regression, Bout Menu, Plate Geometry
+
+**Mostly missing, now added — the worst-reconciled block of the whole audit.** None of the five
+passes had any prior citation anywhere. Added: (1) the map-generation regression itself (folded into
+tb16's own CHANGELOG entry above) plus its own bug-ledger entry, `BR17.01`, Resolved/CC, in
+`docs/BUGS-ARCHIVE.md`. (2) A real facing-error bug (up to 180° off target, not a flat 90°) — added
+as `BR17.02`, Resolved/CC. (3) Two real design reversals with no trace — the spectator hover-inspect
+mechanism swap (a full `TacticsController` stack replaced by a raycast + panel, itself later
+reversed again at tb21 B) and the spectator auto-snap-camera removal — both added to
+`docs/SUPERSEDED.md`. (4) The bout-menu per-bot-AI/duplicate feature (Pass D) — folded into tb16's
+own CHANGELOG edit above (same feature, split across two taskblocks' own passes). Pass E's plate-
+geometry corrections have no trace anywhere, matching this codebase's own established precedent of
+not documenting test-fixture-only content (the original tb13 G rig they correct also has none) — not
+flagged as a gap.
+
+### tb17-1 — Blockers for 18/19
+
+**Nearly complete, one addition.** Pass B (AI friendly-fire safety) and Pass C (reachability-aware
+targeting) were already folded into the existing AI paragraph. Missing: Pass A found
+`CombatState.round_number` already fully correct and needed no code change — a clean "audited and
+found already correct" case with zero prior mention despite tb19 F (Hold) depending on the concept.
+Added as a new "Round" clause in `docs/CHANGELOG.md`'s Combat structure & AI section. Pass D's own
+"per-tile facing already correct, no changes" is a third confirmation of a fact already in
+`docs/SUPERSEDED.md` — added no new information, correctly not re-recorded.
+
+### tb18 — Resolution Speed: Initiative, Simultaneity, Interrupts, and Leans
+
+**Partially missing, now added.** Passes A-D, the speed-direction reversal, and the perk-hook
+deferrals were covered. Missing: (1) "equal-speed simultaneity" was stated as complete when the
+report is explicit it's a logic-level-only query (playback still steps through units one at a time;
+skipping the pause is a flagged, unbuilt follow-up) — exactly the "partial win rounded up to
+complete" the CHANGELOG header warns against; corrected in place, not added alongside. (2) A real
+"ghost bullet" bug found while writing the step-out interrupt test — a single-step move (exactly
+what a step-out leg always is) could trigger overwatch, spend it, and still complete the queue,
+latent since tb06 Pass F — added as `BR18.01`, Resolved/CC, in `docs/BUGS-ARCHIVE.md`.
+
+### tb19 — Combat Corrections, Range, Visible Overwatch, Suppression, Hold
+
+**Partially missing, now added.** The speed re-rank, Lean→Step-Out rename, range model, visible
+overwatch, and the reaction-window deferral were covered. Missing, all added to
+`docs/CHANGELOG.md`: (1) the Hold action (Pass F) was never actually described, only named in
+passing — added alongside tb17-1's Round entry. (2) Suppression's real mechanic (a two-handed weapon
+illegal while adjacent to a living enemy; leaving adjacency draws a free melee attack) was named but
+never explained — the existing sentence was edited in place. (3) Pass H, audited-and-found-not-a-bug
+(the suspected burst-fire code path never existed; a 200-seed sweep confirmed every pull always
+fires — the reported symptom is the chaingun's own wide scatter, a data fact not a code bug) —
+added to the weapons entry. (4) Pass J, audited-and-found-already-correct (headless vs. watched
+bouts already share one `BoutRunner` path, no merge needed) — added to the Bouts paragraph. (5) Two
+real playback performance fixes (a per-frame linear-scan lookup on every tween callback; a
+triple-redundant full mesh-subtree rebuild per player turn) — added to the View paragraph. Pass G
+(plate rebuilds) and I3 (weapon-label decals) have no trace anywhere, matching the same
+test-fixture/cosmetic-polish precedent already established for tb13/tb17 — not flagged as gaps.
 
 ### tb20 — Layered Bodies: Cladding, Skeleton, Organs, Coring, Reactions
 

@@ -60,6 +60,12 @@ a flattened one); ricochet retention `lerp(0.90,0.25,bend)`; crits bypass-or-bon
 DT-discount (penetration only, negative for buckshot). Ammo owns the payload (`AmmoDef`); gun is a
 modifier (`WeaponDef`). Cartridge chambering (family + length). Two scatters: dartboard (aim) vs
 spread pattern (mechanical). Burst = N independent pulls, recoil accumulates. Recoil computed.
+**Audited (tb19 H): burst-fire-sometimes-produces-no-shots** — the suspected cause (`is_legal`/
+`apply` reading different `burst_size` sources) never existed; a 200-seed sweep against the real
+`chaingun.tres` confirmed every pull always fires — the reported symptom is the chaingun's own wide,
+outer-weighted scatter genuinely missing often, even on pull 0 before any recoil (a data/balance
+fact, confirmed with the project owner, not silently retuned). New `&"burst_pull"` combat-log events
+(hit/miss + running `landed_so_far` tally) make "did all N pulls execute" directly observable.
 
 **Layered bodies & power** (tb20/22) — bodies as cladding/skeleton/organs; knowledge-gated occlusion
 of internals (source stubbed to "known"); penetration traversal (DT attenuation, overpen = 0°
@@ -144,11 +150,23 @@ impact/miss logging (made public: `log_impact_result`/`log_miss_result`, were `_
 geometry was invisible outside a live playback or a `data` inspection until this. `Overwatch._fire`'s
 own separate, hand-rolled `&"impact"` event (no geometry, no crit/wound/destroy/salvage cascade at
 all) now routes through the same shared path every other firing action uses — no parallel logging
-system, and overwatch misses are logged for the first time.
+system, and overwatch misses are logged for the first time. **Per-tile move facing** (tb16 A) —
+`MoveAction.apply_stepwise` faces before each step, not once at the end (`FaceAction.face_for_free`
+per tile, free); a curved or interrupted path faces correctly mid-move, and an interrupted move is
+left facing its actual direction of travel at the interrupt point, not its start facing. **Round**
+(tb17-1 A, audited and already correct — no code change needed) — `CombatState.round_number`,
+incremented exactly when turn order wraps back to the front, not once per unit's turn; the boundary
+future per-round effects and the Hold action (tb19 F) key off. **Hold action** (tb19 F) —
+`HoldAction` defers a unit's turn to after the next ally acts, still within the same round; carries
+all held AP/MP forward, regenerates none; available to AI and player — the AI holds instead of
+taking a clearly bad action (e.g., facing uselessly when its own ally blocks the firing line).
 
 **Resolution speed** (tb18) — `Matrix.personal_speed` (flat bonus to everything); unified
 resolution-speed formula (lower resolves first); re-validating ordered resolver; initiative;
-equal-speed simultaneity; **Step Out** (auto-assembled orthogonal move/fire/return through the
+equal-speed simultaneity (`CombatState.simultaneous_group()` — a logic-level grouping query only;
+turn order/`advance_turn()` still hand back one unit at a time, and skipping the inter-turn pause
+during playback for a simultaneous group is a flagged `BoutRunner`/`ResolutionPlayer` follow-up, not
+yet built); **Step Out** (auto-assembled orthogonal move/fire/return through the
 resolver, dies-exposed on interrupt). Both legs are free — `MoveAction.free` costs no MP/AP either
 direction, for the AI's own `StepOutPlanner` usage and the player alike (tb27 B2, docs/SUPERSEDED.md
 — previously a deliberate "real cost, no discount" choice). The player's own Step Out flow now
@@ -183,8 +201,12 @@ convention); the AI can weigh other provided, non-firing actions the same way, o
 consumer (tb24 C). Playstyles: AGGRESSIVE (never holds overwatch), COVER_SEEKER (only from cover),
 SKIRMISHER (~5), MARKSMAN (~7+, prefers it), PSYCHOTIC (prefers melee, closes to minimize
 distance, never flees), TURTLE (flees rather than melee — tb25 F). Line-of-fire safety (won't
-shoot through allies); reachability-aware targeting. Suppression + real melee opportunity attacks
-(tb25 E, was stubbed). **Engagement positioning** (tb27 C1) — when no reachable cell has real line
+shoot through allies); reachability-aware targeting. **Suppression** (tb19 E, un-stubbed tb25 E) — a
+`two_handed` weapon is illegal to fire while its wielder is adjacent to a living enemy
+(`Suppression.blocks_weapon`), and leaving an adjacent tile draws a free melee attack
+(`resolve_opportunity_attacks`, a flagged stub hit until tb25 E gave it a real weapon); this alone
+keeps the AI from crowding into face-to-face range with no melee system built. **Engagement
+positioning** (tb27 C1) — when no reachable cell has real line
 of sight this turn, `_engagement_score` now scores primarily on `LoS.obstruction_count` (opaque
 cells between a candidate cell and the enemy), which strictly decreases as a unit works around a
 corner even while raw distance plateaus — a real, measured improvement (a 60-real-map sweep's
@@ -408,7 +430,12 @@ bug in the merge (tb15 A): `BattleScene._ready()` used to call `new_battle()` (w
 session-start log line) before any overlay — and its log sink — existed to catch it, silently
 dropping the first on-screen log line; fixed by installing the overlay first and having it react to
 a new `battle_loaded` signal, which `load_battle()` now emits synchronously before session-start.
-Playback animation
+**Fix: two playback perf hitches (tb19 I)** — `ResolutionPlayer`'s per-frame tween callback re-ran a
+full linear-scan unit/view lookup on EVERY FRAME of every slide/facing animation, now resolved once
+per event; `refresh_unit_views()` rebuilt every unit's entire mesh subtree on every turn advance, and
+`SquadControlOverlay._on_turn_ended()` called it three times per player turn (one fully redundant) —
+new `LogPlayback.affected_unit_ids()` narrows the rebuild to just the units a turn's events actually
+named. Playback animation
 (slide/facing/shot-fade-to-tracer), animation-gated in the view only, tunable timings; every shot
 and ricochet hop draws its own tracer at its real, fully 3D logged position, not one guessed
 segment pinned to a constant height (tb22 D, real height tb23 D). **Ground-overlay height ladder**
@@ -441,8 +468,23 @@ cleared, since `TacticsController`'s own hover tracking lives in `_unhandled_inp
 own `mouse_entered` now hides the stale tooltip first — the same fix `QueuePanel`/`ApMpPipRow` already
 needed for the identical reason.
 
-**Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu (expanding-list
-teams). The verification rig. **Seeded variant generation** (tb28 A) — `VariantFamily`
+**Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu. The
+verification rig. **Bout roster as an expanding list** (tb16 E, tb17 D) — no count field, list
+length *is* the count; each row is `[Bot ▾][AI ▾][D][-]` — a per-bot playstyle dropdown (moved from
+per-team to per-bot), a `[D]` duplicate (copies profile+playstyle, inserted below its source), `[-]`
+to remove; `BoutSetup.build_bout` takes an `Array[BoutRosterEntry]` (profile+playstyle pair) per
+team. **Map generation** (tb16 C, grid-size fix tb17 A) — BSP room/hallway split with tunable knobs
+(`MIN_ROOM_SIZE`, `MIN_LEAF_SIZE`/`MIN_CHILD_SIZE`, `CORRIDOR_WIDTH_MIN`/`MAX`, grid width/height);
+rooms ≥ 7 on their min dimension, hallways 3–5 wide, deterministic per seed. `BattleScene`/
+`BoutSetup` grid sizes (40×30 / 32×24) are derived off `MapGen.MIN_LEAF_SIZE` so the BSP reliably
+splits 2–3 times per axis — tb16 raised `MIN_ROOM_SIZE` without raising these, silently collapsing
+every real battle/bout to a single room with no hallways until tb17 A caught it (`BR17.01`,
+`docs/BUGS-ARCHIVE.md`); new tests pin each caller's grid constants against `MapGen.MIN_LEAF_SIZE *
+2` so a future threshold raise fails loudly instead of collapsing every map again. **Audited (tb19
+J): headless vs. watched bouts already share one path** — found the taskblock-14/15 split already
+correct: one `BoutRunner` drives every path, `ResolutionPlayer`/`refresh_unit_views()` only ever read
+`combat_state`, never mutate it — no merge needed. Locked in with a direct regression test asserting
+playback never mutates a unit's own real fields. **Seeded variant generation** (tb28 A) — `VariantFamily`
 (DataLibrary-loaded: `variation_amount`, `omittable_sockets`, `swap_pool`, open StringName data, no
 per-family code) + `VariantGenerator` produce structurally different bots from one base `BotPreset`,
 deterministic per seed; `BodyAssembler` gained a `&""` Loadout-override sentinel ("leave this socket
