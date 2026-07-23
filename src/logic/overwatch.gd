@@ -100,7 +100,7 @@ static func arc_cells(state: CombatState, overwatcher: Unit, mover: Unit) -> Arr
 	if weapon == null:
 		return []
 	var cap: float = RangeModel.max_range(weapon)
-	var search_radius: int = int(cap) if cap > 0.0 else maxi(state.grid.width, state.grid.height)
+	var search_radius: int = int(cap) if cap > 0.0 else maxi(state.grid.width, state.grid.rows)
 	var cells: Array[Vector2i] = []
 	for dx in range(-search_radius, search_radius + 1):
 		for dy in range(-search_radius, search_radius + 1):

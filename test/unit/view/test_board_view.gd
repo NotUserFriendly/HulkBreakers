@@ -167,7 +167,7 @@ func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 	assert_almost_eq(aabb.position.x, -half - half_width, 0.0001)
 	assert_almost_eq(aabb.position.z, -half - half_width, 0.0001)
 	assert_almost_eq(aabb.end.x, (grid.width - 1) * cell_size + half + half_width, 0.0001)
-	assert_almost_eq(aabb.end.z, (grid.height - 1) * cell_size + half + half_width, 0.0001)
+	assert_almost_eq(aabb.end.z, (grid.rows - 1) * cell_size + half + half_width, 0.0001)
 
 
 ## docs/10 taskblock03 I: the original color was "nearly the same value" as

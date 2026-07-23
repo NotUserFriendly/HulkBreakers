@@ -44,7 +44,7 @@ func test_check_supports_a_custom_compare_fn_for_reference_types() -> void:
 			b_blocker_ids[cell] = (b.blockers[cell] as Part).id
 		return (
 			a.width == b.width
-			and a.height == b.height
+			and a.rows == b.rows
 			and a.terrain == b.terrain
 			and a.opacity == b.opacity
 			and a_blocker_ids == b_blocker_ids

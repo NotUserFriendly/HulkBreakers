@@ -120,7 +120,7 @@ static func log_miss_result(
 	var dir: Vector2 = direction.normalized()
 	var perp := Vector2(-dir.y, dir.x)
 	var void_range: float = (
-		max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.height)
+		max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.rows)
 	)
 	var end: Vector2 = origin + dir * void_range + perp * point.x
 	(
@@ -224,7 +224,7 @@ static func log_impact_result(
 	# ricochet hop follows it.
 	if result.outcome == Enums.Outcome.DEFLECT:
 		var void_range: float = (
-			max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.height)
+			max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.rows)
 		)
 		var deflect_end: Vector2 = result.hit_point + result.reflected_dir * void_range
 		data["deflect_end_x"] = deflect_end.x

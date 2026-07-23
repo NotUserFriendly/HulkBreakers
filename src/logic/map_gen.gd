@@ -44,19 +44,19 @@ const BARREL_PALLET_MAX_BARRELS: int = 4
 const SPAWN_ZONE_SIZE: int = 2
 
 
-static func generate(map_seed: int, width: int, height: int) -> Grid:
+static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 
-	var grid := Grid.new(width, height)
-	for y in range(height):
+	var grid := Grid.new(width, rows)
+	for y in range(rows):
 		for x in range(width):
 			var cell := Vector2i(x, y)
 			grid.set_terrain(cell, Enums.TerrainType.WALL)
 			grid.set_opacity(cell, 1.0)
 
 	var rooms: Array[Rect2i] = []
-	_split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(width, height)), rng, rooms)
+	_split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(width, rows)), rng, rooms)
 
 	_scatter_cover(grid, rng)
 
@@ -201,7 +201,7 @@ static func _set_open(grid: Grid, cell: Vector2i) -> void:
 ## (`ShotPlane.build` already reads every `grid.blockers` entry) the
 ## instant it's placed here — no further wiring needed.
 static func _scatter_cover(grid: Grid, rng: RandomNumberGenerator) -> void:
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) != Enums.TerrainType.OPEN:
@@ -343,7 +343,7 @@ static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
 ## (nothing mutated yet) is what actually keeps this to one tile.
 static func _finalize_walls_and_void(grid: Grid) -> void:
 	var wall_cells: Array[Vector2i] = []
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) == Enums.TerrainType.WALL:
@@ -409,7 +409,7 @@ static func _ensure_spawns_connected(
 
 static func _find_terrain_cells(grid: Grid, terrain_code: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) == terrain_code:

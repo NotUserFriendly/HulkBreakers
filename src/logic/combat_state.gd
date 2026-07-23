@@ -121,6 +121,11 @@ func add_unit(unit: Unit) -> void:
 	squads[unit.squad_id].append(unit)
 	if unit.alive:
 		grid.set_occupant_id(unit.cell, unit.id)
+	# taskblock-36 Pass D: a unit's own real elevation, re-derived from
+	# THIS grid at registration time — the same grid `dup()`'s own clone
+	# re-registration passes in, so a cloned unit's level stays consistent
+	# with whatever level its cell actually carries on that specific grid.
+	unit.level = grid.get_level(unit.cell)
 
 
 ## The one place a unit's alive flag flips to false (docs/09 "if it changed

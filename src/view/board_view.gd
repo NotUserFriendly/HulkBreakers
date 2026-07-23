@@ -244,13 +244,13 @@ func build(
 
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(grid.width * UnitGeometry.CELL_SIZE, grid.height * UnitGeometry.CELL_SIZE)
+	plane.size = Vector2(grid.width * UnitGeometry.CELL_SIZE, grid.rows * UnitGeometry.CELL_SIZE)
 	plane.material = WorldPalette.lit_material(WorldPalette.GROUND)
 	ground.mesh = plane
 	ground.position = Vector3(
 		(grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,
 		0.0,
-		(grid.height - 1) * UnitGeometry.CELL_SIZE * 0.5
+		(grid.rows - 1) * UnitGeometry.CELL_SIZE * 0.5
 	)
 	ground.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(ground)
@@ -296,7 +296,7 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	var min_x: float = -half
 	var max_x: float = (p_grid.width - 1) * cell_size + half
 	var min_z: float = -half
-	var max_z: float = (p_grid.height - 1) * cell_size + half
+	var max_z: float = (p_grid.rows - 1) * cell_size + half
 
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(GRID_LINE_COLOR))
 	for x in range(p_grid.width + 1):
@@ -308,7 +308,7 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 			Vector3(wx + half_width, GRID_LINE_HEIGHT, max_z),
 			Vector3(wx - half_width, GRID_LINE_HEIGHT, max_z)
 		)
-	for z in range(p_grid.height + 1):
+	for z in range(p_grid.rows + 1):
 		var wz: float = z * cell_size - half
 		_add_quad(
 			mesh,
@@ -337,7 +337,7 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 ## flat marker in that narrow case, since a real wall box already makes
 ## "can't walk here" obvious on its own.
 func _build_wall_indicators(p_grid: Grid) -> void:
-	for y in range(p_grid.height):
+	for y in range(p_grid.rows):
 		for x in range(p_grid.width):
 			var cell := Vector2i(x, y)
 			if p_grid.get_terrain(cell) == Enums.TerrainType.WALL and not p_grid.blockers.has(cell):
@@ -351,7 +351,7 @@ func _build_wall_indicators(p_grid: Grid) -> void:
 ## gray-plus-cross ("this is an obstruction"): void isn't an obstruction
 ## to cross out, it's the absence of anything at all.
 func _build_void_indicators(p_grid: Grid) -> void:
-	for y in range(p_grid.height):
+	for y in range(p_grid.rows):
 		for x in range(p_grid.width):
 			var cell := Vector2i(x, y)
 			if p_grid.get_terrain(cell) == Enums.TerrainType.VOID:

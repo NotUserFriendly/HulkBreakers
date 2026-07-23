@@ -21,6 +21,7 @@ func test_default_cell_values() -> void:
 	assert_eq(_grid.get_opacity(cell), 0.0)
 	assert_eq(_grid.get_occupant_id(cell), -1)
 	assert_false(_grid.blockers.has(cell))
+	assert_eq(_grid.get_level(cell), 0, "taskblock-36 Pass D: a fresh cell defaults to level 0")
 
 
 func test_set_get_cell_data_roundtrip() -> void:
@@ -28,6 +29,7 @@ func test_set_get_cell_data_roundtrip() -> void:
 	_grid.set_terrain(cell, 2)
 	_grid.set_opacity(cell, 1.0)
 	_grid.set_occupant_id(cell, 7)
+	_grid.set_level(cell, 2)
 	# taskblock-16 Pass B2: `blockers` (real Part objects) is the one
 	# source of truth for cover now — no separate scalar to round-trip.
 	var cover := Part.new()
@@ -36,9 +38,24 @@ func test_set_get_cell_data_roundtrip() -> void:
 	assert_eq(_grid.get_terrain(cell), 2)
 	assert_eq(_grid.get_opacity(cell), 1.0)
 	assert_eq(_grid.get_occupant_id(cell), 7)
+	assert_eq(_grid.get_level(cell), 2)
 	assert_eq(_grid.blockers[cell], cover)
 	# Unrelated cell stays default.
 	assert_eq(_grid.get_terrain(Vector2i(0, 0)), 0)
+	assert_eq(_grid.get_level(Vector2i(0, 0)), 0)
+
+
+## taskblock-36 Pass D: `dup()` must carry a cell's own level onto the
+## clone — the same "a preview must see the real world, including any
+## forced scenario" guarantee every other per-cell array already gets.
+func test_dup_copies_level() -> void:
+	_grid.set_level(Vector2i(2, 2), 3)
+	var cloned: Grid = _grid.dup()
+	assert_eq(cloned.get_level(Vector2i(2, 2)), 3)
+	cloned.set_level(Vector2i(2, 2), 0)
+	assert_eq(
+		_grid.get_level(Vector2i(2, 2)), 3, "mutating the clone must never touch the original"
+	)
 
 
 func test_neighbors_center_cell_has_eight() -> void:
@@ -124,6 +141,44 @@ func test_line_symmetric_on_exact_diagonal() -> void:
 	var backward: Array[Vector2i] = Grid.line(b, a)
 	backward.reverse()
 	assert_eq(forward, backward)
+
+
+## taskblock-36 Pass D: "Grid.height no longer exists under that name
+## anywhere, tests included (a grep is the test)" — `rows` replaced it in
+## the same commit that added `level`, so the trap of "height" meaning row
+## count right next to a cell's own real elevation never had a window to
+## exist in.
+func test_grid_height_no_longer_exists_anywhere() -> void:
+	# This file's own name is excluded — it necessarily quotes the banned
+	# string literally, in this very function, to check for it.
+	var allowed_files: Array[String] = ["test_grid.gd"]
+	var offending: Array[String] = []
+	_scan_dir_for_grid_height("res://src", allowed_files, offending)
+	_scan_dir_for_grid_height("res://test", allowed_files, offending)
+	assert_eq(offending, [] as Array[String], "grid.height still referenced in: %s" % [offending])
+
+
+func _scan_dir_for_grid_height(
+	path: String, allowed_files: Array[String], offending: Array[String]
+) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if entry in [".", ".."]:
+			entry = dir.get_next()
+			continue
+		var full_path: String = path.path_join(entry)
+		if dir.current_is_dir():
+			_scan_dir_for_grid_height(full_path, allowed_files, offending)
+		elif entry.ends_with(".gd") and not allowed_files.has(entry):
+			var text: String = FileAccess.get_file_as_string(full_path)
+			if text.contains("grid.height"):
+				offending.append(full_path)
+		entry = dir.get_next()
+	dir.list_dir_end()
 
 
 ## tb32 Pass C: "something physical, but not a unit" — a PART hit-kind

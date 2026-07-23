@@ -26,6 +26,39 @@ func test_a_single_box_root_places_at_the_units_cell() -> void:
 	assert_almost_eq(world_center.y, 0.5, 0.0001)
 
 
+## taskblock-36 Pass D: "a unit on a level-1 cell has a true Y one level
+## above one on level 0." `Unit.level` (not the grid — `UnitGeometry`
+## never touches one) drives the root transform's own Y translation,
+## `LEVEL_HEIGHT` world units per step.
+func test_a_units_true_y_accounts_for_its_own_level() -> void:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+
+	var ground_unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(3, 4))
+	var raised_unit := Unit.new(Matrix.new(), Shell.new(torso.duplicate(true)), Vector2i(3, 4))
+	raised_unit.level = 1
+
+	var ground_y: float = (
+		(
+			UnitGeometry.placements(ground_unit)[0].transform
+			* UnitGeometry.placements(ground_unit)[0].box.center
+		)
+		. y
+	)
+	var raised_y: float = (
+		(
+			UnitGeometry.placements(raised_unit)[0].transform
+			* UnitGeometry.placements(raised_unit)[0].box.center
+		)
+		. y
+	)
+
+	assert_almost_eq(raised_y - ground_y, UnitGeometry.LEVEL_HEIGHT, 0.0001)
+
+
 ## docs/10 taskblock03 E3: `orientation_override` replaces `unit.orientation`
 ## for this placement pass only, so a view can render TACTICS' speculative
 ## preview without cloning the whole Unit.

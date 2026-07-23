@@ -82,7 +82,7 @@ const TURN_CAP := 400
 
 func _cells_of_terrain(grid: Grid, terrain: int) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) == terrain:

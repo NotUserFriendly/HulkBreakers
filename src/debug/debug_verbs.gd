@@ -175,6 +175,12 @@ static func all() -> Array[DebugVerbSpec]:
 			[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"passable", P.BOOL)],
 			Callable(DebugVerbs, &"_apply_set_passable")
 		),
+		DebugVerbSpec.new(
+			&"set_cell_level",
+			"Set Cell Level",
+			[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"level", P.INT)],
+			Callable(DebugVerbs, &"_apply_set_cell_level")
+		),
 		(
 			DebugVerbSpec
 			. new(
@@ -248,6 +254,10 @@ static func _apply_spawn_object(inj: BoutInjector, pool: Dictionary, a: Dictiona
 
 static func _apply_set_passable(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.set_passable(a.cell, a.passable)
+
+
+static func _apply_set_cell_level(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.set_cell_level(a.cell, a.level)
 
 
 static func _apply_force_overwatch_arm(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

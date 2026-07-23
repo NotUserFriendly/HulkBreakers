@@ -7,7 +7,7 @@ const SEED_COUNT := 50
 
 func _find_cells(grid: Grid, terrain_code: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) == terrain_code:
@@ -16,7 +16,7 @@ func _find_cells(grid: Grid, terrain_code: int) -> Array[Vector2i]:
 
 
 func _grids_equal(a: Grid, b: Grid) -> bool:
-	if a.width != b.width or a.height != b.height:
+	if a.width != b.width or a.rows != b.rows:
 		return false
 	# taskblock-16 Pass B2: `blockers` holds real Part objects — Dictionary
 	# `==` on Object values is reference equality, so this compares each
@@ -34,6 +34,17 @@ func _grids_equal(a: Grid, b: Grid) -> bool:
 		and a_blocker_ids == b_blocker_ids
 		and a.occupant_id == b.occupant_id
 	)
+
+
+## taskblock-36 Pass D: "a fresh MapGen map is entirely level 0" —
+## `MapGen` writes 0 everywhere (it doesn't write anything at all;
+## `Grid.level`'s own default fill already is 0), the deliberately inert
+## half of this pass's own acceptance.
+func test_a_fresh_generated_map_is_entirely_level_zero() -> void:
+	var grid: Grid = MapGen.generate(42, WIDTH, HEIGHT)
+	for y in range(grid.rows):
+		for x in range(grid.width):
+			assert_eq(grid.get_level(Vector2i(x, y)), 0)
 
 
 func test_generate_is_seed_deterministic() -> void:
@@ -72,7 +83,7 @@ func test_cover_density_within_target_band() -> void:
 		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
 		var open_count := 0
 		var cover_count := 0
-		for y in range(grid.height):
+		for y in range(grid.rows):
 			for x in range(grid.width):
 				var cell := Vector2i(x, y)
 				if grid.get_terrain(cell) == Enums.TerrainType.VOID:
@@ -112,7 +123,7 @@ func test_generate_resolves_every_wall_cell_into_a_destructible_part_or_void() -
 	var saw_void := false
 	for map_seed in range(SEED_COUNT):
 		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
-		for y in range(grid.height):
+		for y in range(grid.rows):
 			for x in range(grid.width):
 				var cell := Vector2i(x, y)
 				assert_ne(
@@ -214,7 +225,7 @@ func test_carved_corridors_are_three_to_five_wide() -> void:
 		# `generate()` starts every cell as WALL before carving anything —
 		# Grid.new's own default (OPEN) would make the whole column read
 		# as "open" regardless of what the corridor actually carved.
-		for y in range(grid.height):
+		for y in range(grid.rows):
 			for x in range(grid.width):
 				grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
 		MapGen._carve_corridor(grid, Vector2i(2, 2), Vector2i(20, 2), rng)
@@ -223,7 +234,7 @@ func test_carved_corridors_are_three_to_five_wide() -> void:
 		# a cross-section clear of the L-turn (x=10, still on the first,
 		# horizontal leg).
 		var thickness := 0
-		for y in range(grid.height):
+		for y in range(grid.rows):
 			if grid.get_terrain(Vector2i(10, y)) == Enums.TerrainType.OPEN:
 				thickness += 1
 		assert_between(
@@ -292,7 +303,7 @@ func test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else() ->
 	var grid: Grid = MapGen.generate(7, WIDTH, HEIGHT)
 	var saw_wall := false
 	var saw_open := false
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			var blocker: Variant = grid.blockers.get(cell)

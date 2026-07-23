@@ -277,7 +277,7 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 		Vector3(
 			(combat_state.grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,
 			0.0,
-			(combat_state.grid.height - 1) * UnitGeometry.CELL_SIZE * 0.5
+			(combat_state.grid.rows - 1) * UnitGeometry.CELL_SIZE * 0.5
 		)
 	)
 
@@ -446,7 +446,7 @@ func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 ## test_full_mission.gd's `_cells_of_terrain`). `fallback` only fires if a
 ## map somehow has no cell of that terrain at all.
 func _first_cell_of_terrain(grid: Grid, terrain: int, fallback: Vector2i) -> Vector2i:
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) == terrain:

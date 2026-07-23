@@ -407,6 +407,29 @@ func set_passable(cell: Vector2i, passable: bool) -> bool:
 	return true
 
 
+## taskblock-36 Pass D: forces a cell's own elevation — "the supervisor can
+## then force a height scenario and watch it, which is the only way this
+## gets visually confirmed before movement verbs exist." Also re-syncs any
+## unit ALREADY standing on `cell` (the same `CombatState.add_unit` derives
+## at spawn time), so forcing a scenario never requires respawning the
+## unit that's already there. `Pathfinder`/`MapGen` are untouched by this —
+## deliberately inert for anything but the shot plane and view this pass.
+func set_cell_level(cell: Vector2i, level: int) -> bool:
+	if not can_inject():
+		_reject(&"set_cell_level")
+		return false
+	if not state.grid.in_bounds(cell):
+		return false
+	state.grid.set_level(cell, level)
+	for unit: Unit in state.units:
+		if unit.alive and unit.cell == cell:
+			unit.level = level
+	_log_injection(
+		&"set_cell_level", {"cell": cell, "level": level}, "cell %s level=%d" % [cell, level]
+	)
+	return true
+
+
 ## Shared by `hand_weapon`/`attach_part` (taskblock-30/31) — attaches a
 ## fresh `part_id` duplicate (drawn from `pool`) into `socket_id` on
 ## `unit`, via `PartGraph.find_host_of_socket` (tb28)/`PartGraph.attach`,
