@@ -83,3 +83,49 @@ None — this taskblock didn't touch `docs/BUGS.md`; nothing here closes a track
   new `_shear`?** They're independent today (ricochet-only vs. resolve_ray), but once first-hop
   elevation exists they'd both be reconstructing the same kind of height-at-depth. Not urgent while
   neither carries real data for a first hop.
+
+## Supervisor-requested live verification
+
+Not headless assertions — real reference-humanoid scenarios (`DeepStrike.assemble_reference_
+humanoid`), built and read back the same way this codebase's own tests do, per the supervisor's own
+two follow-up requests. No code changed; findings only.
+
+**Prone, shot from the front, and mid-melee lean.** Built a real shooter/target pair 8 cells apart,
+fired 5000 seeded `Dartboard`-scattered shots (a real `pistol`'s own scatter rings) at each pose, and
+diffed the result against the pre-tb36 commit (`d343deb`) via a throwaway `git worktree`:
+- **Before tb36:** a prone target's torso projected 3 regions, but every one had **exactly zero
+  height** (`rect.size.y == 0.000`) — the four-face model's own headline gap, live. 5000 shots aimed
+  dead at torso center: **0 hits**. A prone target directly in front of its shooter was practically
+  unhittable.
+- **After tb36:** the same target projects 6 real regions while prone. Same 5000-shot run: **~55%**
+  hit rate, versus **~51%** for the same target standing — brought to rough parity with standing, not
+  made exploitably easier in either direction. Body silhouette collapses from ~1.9 world units tall
+  standing to ~0.7 tall prone while staying the same ~0.79 wide (read directly off the projected
+  regions' own bounding box, not inferred) — legs/torso/arms/head all land in the same narrow height
+  band, which is the correct shape for "lying flat." Impact breakdown lands on sensible parts
+  (`torso_cladding`, `leg_cladding`, arm/forearm cladding, hand/pistol pieces) in both poses.
+- **Lean (`Poses.lean`) is a pure translation, never a rotation** — confirmed it never engages the
+  six-face model at all: region count and rect geometry are byte-identical before and after tb36 (3
+  regions, same sizes, only depth shifts with the lean distance). Unaffected by design, not by luck.
+
+**Raise a unit a level, shoot it; raise it five levels, shoot it.** Built a shooter/target pair on the
+reference-humanoid fixture again, fired via `ShotPlane.resolve_ray` from a real muzzle point
+(`UnitGeometry.muzzle_point`, level-aware since Pass D):
+- **Shooter and target raised together** (level 1, then level 5): resolves **byte-identically** to
+  the unraised case — same part, same normal, same flight distance to four decimal places (`7.7300`
+  in all three). Confirms the intended invariant: a uniform vertical shift of the whole scene cancels
+  out exactly, since only the *relative* height between shooter and target should matter.
+- **Target alone raised 1 level** (shooter stays at 0, a modest ~7° tilt over an 8-cell shot): same
+  part still hit, flight distance nudges from `7.7300` to `7.7902` — a real, small, sensible effect.
+- **Target alone raised 5 levels** (shooter at 0, a steep ~32° tilt): flight distance grows to
+  `9.1804` (matching the longer 3D hypotenuse) and a *different* part is hit — but it resolves. Not
+  null. Confirmed it can still be shot at a genuinely steep angle.
+
+**Found along the way, logged as `BR36.01` (owner `CC`, not fixed this pass):** building a clean
+"exclude the shooter's own body" list for the diagnostic above surfaced a real, pre-existing gap —
+`BodyProjector._project_joint`'s synthetic joint regions are keyed by `Socket.joint_handle()`, which
+`PartGraph.walk`/`Shell.all_parts()` never traverses. Every exclusion list built the obvious way
+(`shooter.shell.all_parts()`, the pattern this codebase's own production actions already use) misses
+the shooter's own joint regions, and a shooter/target on the same firing line reproduced a self-hit
+directly. Predates tb36 by several taskblocks (`joint_handle()`/`_project_joint` are tb09 D); not
+introduced by this work, just found while testing it.

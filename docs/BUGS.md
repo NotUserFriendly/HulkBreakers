@@ -974,3 +974,28 @@ confirm" roll-up — so pending items surface at a natural review point without 
   that the sphere teaches the player the real blast extent; a separately-authored visual radius that
   drifts from the mechanical one would be BR35.04's mistake again in a new place — a drawn thing that
   looks authoritative and isn't.
+### BR36.01 — Active — owner: `CC`
+**A shooter's own `exclude_parts` list never covers its own joint regions — a self-hit is possible**
+- **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Found:** 2026-07-23, while building a supervisor-requested diagnostic for tb36 (raise a unit a
+  level and shoot it). `BodyProjector._project_joint` emits one synthetic joint `Region` per occupied
+  socket, identified by `region.part = socket.joint_handle()` — a `Part`-like object cached per
+  socket, distinct from the real occupant `Part` and never walked by `PartGraph.walk`
+  (`Shell.all_parts()`'s own backing). Every exclusion list built the obvious way
+  (`shooter.shell.all_parts()`, the pattern `AttackAction`/`BurstAction`/melee actions/`Overwatch`
+  all use to keep a shooter from self-intercepting its own shot) therefore **never excludes the
+  shooter's own joint regions**. Reproduced directly: a shooter and target placed on the same
+  lateral line, firing a ray built from a real muzzle point excluding `shooter.shell.all_parts()`,
+  resolved to the shooter's OWN `"<part>_joint"` region at a near-zero flight distance instead of
+  the target 8 cells downrange — confirmed by additionally collecting every `socket.joint_handle()`
+  in the shooter's own tree, which made the same ray resolve correctly against the target instead.
+- **Why this can reach a real shot, not just a synthetic test:** it requires the shooter's own real
+  muzzle position to sit BEHIND one of its own occupied-socket joints along the firing axis — an
+  idle (non-aiming) pose, where the weapon arm isn't extended forward of the torso/shoulder, is
+  exactly the shape of geometry where that's plausible. Not confirmed live in a real bout; confirmed
+  only in the isolated diagnostic described above.
+- **Not fixed this pass** — found investigating tb36's own multi-level work, not introduced by it
+  (`joint_handle()`/`_project_joint` predate tb36 by several taskblocks, tb09 D). Flagging rather
+  than guessing at a fix under time pressure; the shape of a fix is narrow (exclusion lists that want
+  "every region this body could produce" need `socket.joint_handle()` collected alongside
+  `shell.all_parts()`, or `exclude_parts` needs to gain a "body" concept instead of a bare Part list).
