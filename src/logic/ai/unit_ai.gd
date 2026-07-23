@@ -299,6 +299,7 @@ static func _plan_ranged(
 
 	if fired_without_moving:
 		_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
+		AiDecisionLog.emit(state, unit, &"fired_in_place", true, false, &"none")
 	else:
 		var queued_before: int = queue.actions.size()
 		var pf := Pathfinder.new(state.grid, state.terrain_costs)
@@ -311,6 +312,9 @@ static func _plan_ranged(
 		)
 
 		var best_cell: Vector2i = unit.cell
+		# tb35 Pass A1: which of the reposition sub-branches actually ran —
+		# folded into the decision log below, not read back anywhere.
+		var branch: StringName = &"repositioned"
 		if not any_reachable_has_lof:
 			# tb33 Pass B (BR32.10): walk toward the nearest cell that
 			# WOULD have a shot instead of the greedy least-bad reachable
@@ -321,11 +325,15 @@ static func _plan_ranged(
 			if approach.size() >= 2:
 				queue.enqueue(MoveAction.new(unit, approach), state)
 				best_cell = approach[approach.size() - 1]
+				branch = &"approach_fallback"
 			else:
 				var closing := LineOfFire.closing_path(unit, enemy, state, pf, budget)
 				if closing.size() >= 2:
 					queue.enqueue(MoveAction.new(unit, closing), state)
 					best_cell = closing[closing.size() - 1]
+					branch = &"closing_fallback"
+				else:
+					branch = &"no_lof_no_route"
 		else:
 			best_cell = _pick_engagement_position(
 				unit, enemy, state, preferred_range, weight_cover, weapon, reachable, true
@@ -335,10 +343,14 @@ static func _plan_ranged(
 				if path.size() >= 2:
 					queue.enqueue(MoveAction.new(unit, path), state)
 		# tb33 Pass A: same LOF addition as `clear_from_here` above.
-		var final_blocked: bool = (
-			_ally_in_firing_line(unit, enemy, best_cell, state)
-			or not LineOfFire.has_clear_line_of_fire(unit, enemy, best_cell, state)
-		)
+		# tb35 Pass A1: kept as two named locals (not inlined into
+		# `final_blocked` alone) so the decision log below can attribute a
+		# hold to ally-blocking vs no-clear-LOF without a second, redundant
+		# `has_clear_line_of_fire` call — that's exactly the kind of
+		# per-decision `ShotPlane` cost BR27.09 is about.
+		var ally_blocks_shot: bool = _ally_in_firing_line(unit, enemy, best_cell, state)
+		var lof_clear: bool = LineOfFire.has_clear_line_of_fire(unit, enemy, best_cell, state)
+		var final_blocked: bool = ally_blocks_shot or not lof_clear
 		if (
 			weapon_id != &""
 			and _in_weapon_range(unit, weapon_id, enemy, best_cell)
@@ -376,6 +388,8 @@ static func _plan_ranged(
 				if step_out_queue != null:
 					for action: CombatAction in step_out_queue.actions:
 						queue.enqueue(action, state)
+					if queue.actions.size() > queued_before:
+						branch = &"stepped_out"
 		# taskblock-19 Pass F: "the AI holds when its best option is wait
 		# for an ally to move first." Triggers whenever the turn ends with
 		# NO shot fired specifically because its own ally was in the way —
@@ -397,11 +411,28 @@ static func _plan_ranged(
 		# fire is exactly the "moving didn't help either" case this covers,
 		# and holding overwatch from wherever it ended up is strictly
 		# better than a move that goes nowhere useful.
+		# tb35 Pass A1: why did it not fire — LOF/ally, range, or no weapon at
+		# all. Recomputed from `best_cell` for attribution only; never fed
+		# back into a real decision (that would already be `final_blocked`
+		# above).
+		var hold_reason: StringName = &"none"
+		if not attack_fired:
+			if weapon_id == &"":
+				hold_reason = &"no_weapon"
+			elif ally_blocks_shot:
+				hold_reason = &"ally_in_line"
+			elif not lof_clear:
+				hold_reason = &"no_clear_lof"
+			elif not _in_weapon_range(unit, weapon_id, enemy, best_cell):
+				hold_reason = &"out_of_range"
+			else:
+				hold_reason = &"other"
 		if not attack_fired:
 			var overwatch_action: OverwatchAction = _consider_overwatch(
 				unit, enemy, state, playstyle, weight_cover
 			)
 			if overwatch_action != null and queue.enqueue(overwatch_action, state):
+				AiDecisionLog.emit(state, unit, &"overwatch", false, false, hold_reason)
 				return queue
 		var held: bool = false
 		if not attack_fired and final_blocked:
@@ -409,6 +440,7 @@ static func _plan_ranged(
 		if not held:
 			_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
 			queue.enqueue(EndTurnAction.new(unit, mission), state)
+		AiDecisionLog.emit(state, unit, branch, attack_fired, held, hold_reason)
 		return queue
 
 	queue.enqueue(EndTurnAction.new(unit, mission), state)
@@ -548,6 +580,11 @@ static func _fire_remaining_shots(
 ## STOP_DEAD is what geometry gives you at 0 (docs/03: DEFLECT never
 ## damages the plate the way STOP_DEAD does, so a frozen orientation
 ## could otherwise deflect the same shot forever).
+## tb35 Pass A1: "which branch plan_turn took and why, if it held." A
+## diagnostic side-channel only — never read back by any planner, so this
+## does not compromise `plan_turn`'s own purity/determinism contract
+## (`test_plan_turn_is_pure_and_deterministic` asserts on the returned
+## queue, not on log side effects).
 static func _face_if_nothing_else_queued(
 	unit: Unit, enemy: Unit, state: CombatState, queue: ActionQueue, queued_before: int
 ) -> void:

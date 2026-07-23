@@ -204,6 +204,18 @@ starting genuinely far from the nearest real LOF cell still found nothing and he
 fallback for that case; deliberately not a greedy per-turn distance scorer (reproduces BR32.10's own
 concave-wall freeze; real A* just routes around).
 
+**AI decision log** (tb35 Pass A1) — `plan_turn` was unwatchable: "the AI is broken" and "the game is
+slow" were supervisor adjudications, not greppable evidence. New `AiDecisionLog.emit` (`src/logic/ai/
+ai_decision_log.gd`, kept out of `unit_ai.gd` itself to stay under its own file-length cap) writes one
+`&"ai_decision"` event per unit-turn through the ordinary `CombatState.combat_log` — which branch
+`_plan_ranged` took (`fired_in_place`/`repositioned`/`approach_fallback`/`closing_fallback`/
+`no_lof_no_route`/`stepped_out`/`overwatch`), whether it fired, and if it held, why
+(`no_weapon`/`ally_in_line`/`no_clear_lof`/`out_of_range`/`other`) — read back off a `MemorySink` in
+tests, the same convention `test_combat_log.gd` already uses. A diagnostic side-channel only, never
+read back by any planner, so `plan_turn`'s own purity/determinism contract is untouched. The two
+framerate dumps (aim entry, turn start) this same pass called for are view-layer work, not logic, and
+remain open.
+
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
 must get everyone to a team-coded tile, can't self-extract early (tb22 A); bout-setup places each

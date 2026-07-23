@@ -904,6 +904,9 @@ confirm" roll-up — so pending items surface at a natural review point without 
     `test_line_of_fire.gd::test_first_hit_never_resolves_to_a_wall_behind_the_shooter` (a
     reconstructed BR27.02-shaped fixture), `test_line_of_fire.gd::test_closing_path_*` (progress
     toward a far enemy; routes around a concave wall instead of freezing).
-  - **Not yet done:** the AI decision-log/FPS-dump instrumentation this same pass's own A1 called
-    for, and BR27.09 (A3) — both still open. Marked Pending, not Resolved: this needs a live bout
-    watched by the supervisor before promotion, same as BR32.10/BR27.07 below.
+  - **A1's decision log now exists** (`AiDecisionLog.emit`, `src/logic/ai/ai_decision_log.gd`): one
+    `&"ai_decision"` event per unit-turn, branch taken + fired/held + hold reason, greppable off
+    `combat.log` or a `MemorySink` in tests. **Not yet done:** the two framerate dumps (aim entry,
+    turn start) A1 also called for are view-layer work, not logic, and remain open; so does BR27.09
+    (A3). Marked Pending, not Resolved: this needs a live bout watched by the supervisor before
+    promotion, same as BR32.10/BR27.07 below.
