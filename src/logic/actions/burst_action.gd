@@ -144,7 +144,9 @@ func apply(state: CombatState) -> void:
 	# own (see its doc comment) — computed once here too, since every
 	# pull in the burst reuses this same aim_point, a burst fired from
 	# behind low cover hits that cover on every pull, not just the first.
-	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
+	var muzzle_hit: Region = ShotPlane.self_obstruction(
+		plane, muzzle.y, actual.shell.all_parts_with_joints()
+	)
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
 		aim_depth = muzzle_hit.depth

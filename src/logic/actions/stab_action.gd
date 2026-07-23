@@ -110,7 +110,9 @@ func apply(state: CombatState) -> void:
 	)
 
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target) + aim_offset
-	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
+	var muzzle_hit: Region = ShotPlane.self_obstruction(
+		plane, muzzle.y, actual.shell.all_parts_with_joints()
+	)
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
 	var resolved_scatter: Array[Ring] = ShotScatter.for_shot(

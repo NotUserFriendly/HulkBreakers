@@ -423,6 +423,52 @@ func test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter() -> void
 	assert_eq(hit.part.id, &"forward_cover")
 
 
+## BR36.01: `shell.all_parts()` never covers a socket's own synthetic
+## `joint_handle()` (`region.part` for a joint Region, `BodyProjector.
+## _project_joint`'s own tag) — a self-exclusion list built from it can
+## resolve to the shooter's OWN joint region instead of real cover or the
+## target downrange. `all_parts_with_joints()` is the fix: the joint region
+## really is in the built plane, and only the new list actually excludes
+## it.
+func test_self_obstruction_excludes_the_shooters_own_joint_regions() -> void:
+	var weapon := _part(&"weapon", Box.new(Vector3.ZERO, Vector3(0.1, 0.1, 0.1)))
+	var hand := _part(&"hand", Box.new(Vector3.ZERO, Vector3(0.2, 0.2, 0.2)))
+	var grip := Socket.new(&"GRIP")
+	grip.occupant = weapon
+	hand.sockets = [grip]
+	var shooter_torso := _part(
+		&"shooter_torso", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))
+	)
+	var wrist := Socket.new(&"WRIST")
+	wrist.occupant = hand
+	shooter_torso.sockets = [wrist]
+	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(2, 0))
+	var state := CombatState.new(Grid.new(10, 10), [shooter])
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
+
+	var joint_region: Region = null
+	for region: Region in plane:
+		if region.socket != null:
+			joint_region = region
+			break
+	assert_not_null(
+		joint_region, "the fixture must actually project a joint region to test against"
+	)
+
+	assert_false(
+		shooter.shell.all_parts().has(joint_region.part),
+		"the OLD exclusion list never covers the shooter's own joint region"
+	)
+	assert_true(
+		shooter.shell.all_parts_with_joints().has(joint_region.part),
+		"the fixed exclusion list must cover it"
+	)
+	assert_null(
+		ShotPlane.self_obstruction(plane, 0.0, shooter.shell.all_parts_with_joints()),
+		"nothing real is in the way — the joint region itself must not register as an obstruction"
+	)
+
+
 ## Reading (the aim window's own `layers_for`/`window_depth`) and resolving
 ## (`self_obstruction`/a real fired shot) are two paths on purpose — the
 ## floor only applies to the latter. Same plane, same point: unfloored
@@ -620,7 +666,9 @@ func test_depth_of_returns_the_frontmost_regions_own_depth() -> void:
 	var state := CombatState.new(grid, [near_unit])
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
-	var expected: Region = ShotPlane.resolve_projectile(plane, ShotPlane.center_of(plane, near_unit))
+	var expected: Region = ShotPlane.resolve_projectile(
+		plane, ShotPlane.center_of(plane, near_unit)
+	)
 	assert_eq(ShotPlane.depth_of(plane, near_unit), expected.depth)
 
 

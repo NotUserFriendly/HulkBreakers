@@ -80,7 +80,7 @@ static func resolve_and_log_point(
 		DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
 		DamageResolver.DEFAULT_DAMAGE_FLOOR,
 		DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
-		attacker.shell.all_parts(),
+		attacker.shell.all_parts_with_joints(),
 		bonus_pen,
 		vertical_slope,
 		origin_height,

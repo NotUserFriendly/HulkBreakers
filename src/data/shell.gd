@@ -39,6 +39,19 @@ func all_parts() -> Array[Part]:
 	return PartGraph.walk(root)
 
 
+## BR36.01: `all_parts()` plus every occupied socket's own synthetic
+## `joint_handle()` — the identity a shot-plane self-exclusion list needs
+## ("every region this body could produce"), never what `living_parts()`/
+## `carried_mass()`/`find_part()`/every other `all_parts()` consumer wants
+## (see `PartGraph.walk_with_joints`'s own doc comment for why those must
+## stay joint-free). The one caller this exists for: a shooter's own
+## self-obstruction/self-exclusion list.
+func all_parts_with_joints() -> Array[Part]:
+	if root == null:
+		return []
+	return PartGraph.walk_with_joints(root)
+
+
 func living_parts() -> Array[Part]:
 	var result: Array[Part] = []
 	for part: Part in all_parts():

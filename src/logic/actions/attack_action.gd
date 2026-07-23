@@ -187,7 +187,9 @@ func apply(state: CombatState) -> void:
 	# the dartboard aims at the obstruction instead, so every downstream
 	# mechanic (penetration, destruction, salvage) still runs through the
 	# one real resolution path, just against a different point.
-	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
+	var muzzle_hit: Region = ShotPlane.self_obstruction(
+		plane, muzzle.y, actual.shell.all_parts_with_joints()
+	)
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
 		# taskblock-37 Pass A: the aim point moved to the obstruction's own

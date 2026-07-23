@@ -21,6 +21,37 @@ func test_all_parts_walks_the_whole_assembly() -> void:
 	assert_eq(shell.all_parts().size(), 2)
 
 
+## BR36.01: `all_parts_with_joints()` must add exactly one synthetic
+## `joint_handle()` per OCCUPIED socket — the identity a self-exclusion
+## list needs (see `PartGraph.walk_with_joints`'s own doc comment) — on
+## top of `all_parts()`'s own real parts, and must never fabricate one for
+## an empty socket (nothing occupies it, so no joint region is ever
+## projected there).
+func test_all_parts_with_joints_adds_one_joint_per_occupied_socket() -> void:
+	var torso := _socketed_part(&"torso", [&"SHOULDER", &"HIP"])
+	var arm := _socketed_part(&"arm", [])
+	arm.attaches_to = [&"SHOULDER"]
+	torso.sockets[0].occupant = arm  # SHOULDER: occupied
+	# HIP stays empty on purpose.
+
+	var shell := Shell.new(torso)
+	assert_eq(shell.all_parts().size(), 2, "torso + arm, no joints")
+	assert_eq(
+		shell.all_parts_with_joints().size(),
+		3,
+		"torso + arm + exactly one joint, for the one OCCUPIED socket"
+	)
+	assert_true(
+		shell.all_parts_with_joints().has(torso.sockets[0].joint_handle()),
+		"the same cached joint_handle() identity a real projection would tag its Region with"
+	)
+
+
+func test_all_parts_with_joints_is_empty_with_a_null_root() -> void:
+	var shell := Shell.new(null)
+	assert_eq(shell.all_parts_with_joints(), [] as Array[Part])
+
+
 func test_living_parts_excludes_destroyed() -> void:
 	var torso := _socketed_part(&"torso", [&"SHOULDER"])
 	var arm := _socketed_part(&"arm")
