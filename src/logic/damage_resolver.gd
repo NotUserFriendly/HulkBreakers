@@ -528,6 +528,17 @@ static func _resolve_destruction_consequences(
 	if impact.ejected_matrix != null or impact.ejected_surrogate != null:
 		impact.demoted_unit = owner
 		impact.demoted_tier_before = tier_before
+	# tb35 Pass C: a destroyed blocker (a wall, mainly) stops physically
+	# blocking a shot the instant Pathfinder/ShotPlane see its hp<=0 — but
+	# nothing ever cleared the grid's own opacity flag for that cell, so
+	# `LoS.has_los` kept treating an already-shot-out wall as permanently
+	# opaque forever, contradicting Pathfinder's own "destroyed == passable"
+	# read of the identical hp check. A no-op for ordinary destructible
+	# cover, whose own cell was never flagged opaque to begin with.
+	if owner == null:
+		var cell: Variant = state.grid.cell_of_blocker(region.part)
+		if cell != null:
+			state.grid.set_opacity(cell, 0.0)
 
 
 ## Every part sharing a body with `part` (its whole unit, if any — otherwise

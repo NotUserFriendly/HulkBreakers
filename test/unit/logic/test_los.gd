@@ -119,3 +119,32 @@ func test_visible_cells_excludes_cells_behind_wall() -> void:
 	var visible: Array[Vector2i] = LoS.visible_cells(grid, origin, 6)
 	assert_does_not_have(visible, Vector2i(6, 3))
 	assert_has(visible, Vector2i(2, 3))
+
+
+## tb35 Pass C: a real wall Part destroyed by a real fired shot must stop
+## blocking LOS, not just stop blocking movement/fire — before this fix,
+## nothing ever cleared `grid.opacity` on destruction (only `MapGen` ever
+## set it), so `Pathfinder` already treated a shot-out wall as passable
+## while `LoS` kept it opaque forever, permanently disagreeing about the
+## exact same cell.
+func test_destroying_a_wall_with_a_real_shot_clears_los_through_it() -> void:
+	var grid := _open_grid(7)
+	var cell := Vector2i(3, 3)
+	grid.set_opacity(cell, 1.0)
+	var wall_part: Part = DataLibrary.get_part(&"wall")
+	grid.blockers[cell] = wall_part
+	var state := CombatState.new(grid)
+	var table: MaterialTable = DataLibrary.material_table()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+
+	var a := Vector2i(0, 3)
+	var b := Vector2i(6, 3)
+	assert_false(LoS.has_los(grid, a, b), "sanity: the standing wall blocks LOS")
+
+	DamageResolver.resolve_shot(
+		Vector2(0, 3), Vector2(1, 0), Vector2(0.0, 1.0), 500.0, 0.0, state, table, rng
+	)
+
+	assert_lte(wall_part.hp, 0, "sanity: the shot really destroyed the wall")
+	assert_true(LoS.has_los(grid, a, b), "a destroyed wall must stop blocking LOS")

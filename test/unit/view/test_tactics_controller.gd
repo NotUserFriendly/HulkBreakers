@@ -513,3 +513,25 @@ func test_confirm_shot_with_burst_armed_queues_a_burst_action_not_an_attack_acti
 	var actions: Array[CombatAction] = controller.selection.current_queue().actions
 	assert_eq(actions.size(), 1)
 	assert_true(actions[0] is BurstAction, "arming BURST must actually queue a real BurstAction")
+
+
+## tb35 Pass C (BR32.07): "burst cannot aim at a wall at all" — the reported
+## symptom is a failure at AIM time, not confirm/queue time (`BurstAction.
+## is_legal()`/`apply()` already support a blocker-only target cell, tb32
+## Pass C). Arms burst and clicks a real wall cell — `aiming_at` and
+## `aim_state()` must populate exactly the way they do for a live-unit
+## target, never leave aim mode empty/unentered.
+func test_arming_burst_and_clicking_a_wall_enters_aim_mode() -> void:
+	var a := _make_chaingun_unit(Vector2i(0, 0), 0)
+	var built: Dictionary = _setup([a])
+	var controller: TacticsController = built.controller
+	var state: CombatState = built.state
+	state.grid.blockers[Vector2i(5, 0)] = DataLibrary.get_part(&"wall")
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"burst")
+	controller.click_cell(Vector2i(5, 0))
+
+	assert_not_null(controller.aiming_at, "arming burst at a wall must still enter aim mode")
+	var aim: Dictionary = controller.aim_state()
+	assert_false(aim.is_empty(), "aim_state() must not come back empty for a wall target")

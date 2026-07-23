@@ -676,6 +676,25 @@ confirm" roll-up — so pending items surface at a natural review point without 
   shoot to isolate. Related in spirit to BR30.11 (burst step-out silently dropping the shot) — check
   whether it's the same silent-drop seam, and whether the intent/outcome logging idea in PLAN would
   have surfaced it.
+- **2026-07-23 (tb35 Pass C — re-derived the failure point, found no code-level break)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Traced the full aim-entry chain for a burst-armed click
+  on a wall cell end to end: `TacticsController.click_cell` → `PartPicker.hit` (`HitKind.PART`) →
+  `_enter_aim_mode` → `aim_state()` → `AimController.resolve()` → `ShotScatter.for_shot()`. Every step
+  is generic over action id — `ActionCatalog`'s own `&"burst"` entry gets the same `TargetingMode.
+  BOARD` as `&"shoot"`, `_click_part()` dispatches on `armed_action != null` alone, and
+  `ShotScatter.for_shot()` never even receives the `AimTarget`, only `target_cell`/`weapon` — it
+  cannot distinguish a wall target from a unit target and has no code path assuming a live `Unit`.
+  The one place action id is read in this whole chain (`AimController.recoil_bound_radius`) only
+  gates a cosmetic ring overlay, guarded against a null/empty case, and cannot block aim entry.
+  **New headless regression, confirmed passing:**
+  `test_tactics_controller.gd::test_arming_burst_and_clicking_a_wall_enters_aim_mode` — arms burst,
+  clicks a real wall-blocker cell, asserts `aiming_at != null` and `aim_state()` non-empty. Passes
+  cleanly. **Not fixed, because nothing reproducibly breaks at this level** — if the live symptom
+  persists, it likely lives outside the `TacticsController`/`AimController`/`ShotScatter` chain (a
+  render-layer/raycast issue in the real click path, or `PartPicker`'s own collision setup against
+  live `BoardView` scene nodes — the same class of headless-vs-live gap BR27.08 hit) rather than in
+  the targeting logic itself. Recommend a live re-check before further investigation here; stays
+  Active, not Pending, since no fix was made.
 ### BR32.08 — Suspected — owner: `SUPERVISOR`
 **Dead or knocked-out shells may have strange cutout behavior**
 - **Source:** `SUPERVISOR`
@@ -959,3 +978,51 @@ confirm" roll-up — so pending items surface at a natural review point without 
     turn start) A1 also called for are view-layer work, not logic, and remain open; so does BR27.09
     (A3). Marked Pending, not Resolved: this needs a live bout watched by the supervisor before
     promotion, same as BR32.10/BR27.07 below.
+
+### BR35.01 — Active — owner: `CC`
+**`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23 (tb35 Pass C, `Grid.blockers` audit sweep). `PartPicker.hit()`
+  (`part_picker.gd:40,48`) iterates every entry in `grid.blockers` and `grid.field_items`
+  unconditionally, running a full per-box ray test (`_nearest_t`) against each one regardless of the
+  ray's own direction or distance from it. Before tb31 C, `blockers` held a handful of scattered cover
+  props — cheap to fully scan. Now it holds every wall cell on the map (confirmed: real generated
+  bouts run 200+ blocker entries), and this runs on **every mouse-move**, not just clicks
+  (`TacticsController.update_hover()` calls `_cell_at()` → `PartPicker.hit()` on hover, per its own
+  doc comment) — a real, newly-introduced per-frame cost, not hypothetical.
+- **Not fixed this pass.** The safe fix (march only cells the ray plausibly crosses — a bounded
+  grid-DDA walk along the ray's own 2D projection, the same shape `LoS.has_los` already bounds its own
+  opacity walk to) touches core picking geometry with a real risk of silently skipping a genuine hit
+  if the bound is gotten wrong, and this codebase has already been burned once by a plausible-looking
+  formula nobody could verify without a live client (docs/00's own attack-camera yaw story). Flagging
+  rather than guessing at a fix under time pressure.
+### BR35.02 — Active — owner: `CC`
+**Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay`'s
+  tile-inspect path (`_unhandled_input`) resolves a click via `BoardPicker.cell_at_ray` — pure
+  `y == 0` ground-plane math with no geometry/occlusion awareness at all. Before tb31 C, cover was
+  short and sparse, so a ground-plane hit reliably matched the tile the camera could actually see. Now
+  walls are 2.4m tall and dense; a click that LOOKS like it's on a wall's face, or on an open tile
+  actually hidden behind a wall from the camera's own angle, still resolves via blind plane math to
+  whichever cell the ray crosses at `y=0` — which can be a cell on the far side of the wall, never
+  visible at all. The only existing filter excludes the resolved cell if IT ITSELF is a wall tile; it
+  does nothing for a resolved open tile that's occluded by an intervening one.
+- **Not fixed this pass.** Needs a real line-of-sight/geometry check between the camera and the
+  resolved cell (or a real physics/geometry raycast against the wall meshes `BoardView` already
+  builds) before trusting `BoardPicker`'s own result — a genuine new check, not a one-line guard, and
+  risky to improvise without live verification.
+### BR35.03 — Active — owner: `CC`
+**Every debug-panel verb rebuilds the entire board view, not just ones that touch blockers/field items**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay.
+  _on_debug_panel_applied()` calls `battle.sync_board_view()` (a full teardown/rebuild of every
+  static mesh — walls, field items, indicators) after **every** debug verb, including ones with no
+  possible effect on board geometry (`set_ap`, `set_mp`, `force_current_unit`, ...). Before tb31 C
+  this rebuilt a handful of props each time; now it rebuilds hundreds of wall meshes on every single
+  debug action regardless of relevance. Debug-build-only (`OS.is_debug_build()`), so the blast radius
+  is limited, but it's a real, newly-heavier cost every time.
+- **Not fixed this pass.** The fix is straightforward in shape (gate the rebuild to verbs that can
+  actually touch `grid.blockers`/`field_items` — `move_object`/`spawn_object`/`remove_object`) but
+  getting the verb-id list exactly right (not missing one that can add/move/remove a blocker or field
+  item) wants a careful pass of its own rather than a rushed guess at the end of an already-long one.

@@ -327,11 +327,20 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 ## drawn through it, so "this tile can't be walked on" is legible from the
 ## default tactical camera, not just discoverable by clicking a cell and
 ## being denied a move.
+## tb35 Pass C: a REAL wall cell's own terrain is `OPEN` by the time
+## `MapGen._finalize_walls_and_void` is done with it (its own full-height
+## blocker Part is what "wall" means now) — confirmed on a real generated
+## bout, zero cells still read `TerrainType.WALL`. This loop's own
+## condition can only ever match a hand-authored/debug grid that sets
+## `TerrainType.WALL` directly without a blocker (test fixtures do this),
+## never a live game map — `grid.blockers.has(cell)` skips the redundant
+## flat marker in that narrow case, since a real wall box already makes
+## "can't walk here" obvious on its own.
 func _build_wall_indicators(p_grid: Grid) -> void:
 	for y in range(p_grid.height):
 		for x in range(p_grid.width):
 			var cell := Vector2i(x, y)
-			if p_grid.get_terrain(cell) == Enums.TerrainType.WALL:
+			if p_grid.get_terrain(cell) == Enums.TerrainType.WALL and not p_grid.blockers.has(cell):
 				_static.add_child(_marker(cell, WALL_INDICATOR_COLOR, WALL_INDICATOR_HEIGHT))
 				_static.add_child(_wall_cross(cell))
 
