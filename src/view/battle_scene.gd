@@ -255,6 +255,17 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	bout_injector = BoutInjector.new(combat_state)
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
+	# tb35 Pass D (BR32.01/BR32.03): the wall-cutout feed must be re-pointed
+	# for every bout, regardless of which overlay ends up active —
+	# previously this only happened inside SquadControlOverlay's own
+	# battle_loaded handler, so starting/reloading a bout while staying in
+	# SpectatorOverlay (the default) left it pointing at whatever it held
+	# before: null on first launch, or the PREVIOUS bout's own now-stale
+	# units on a later one — a cutout at a cell with no unit there anymore,
+	# carried over from a bout that no longer exists. Set once, here, the
+	# one place that owns both `board_view` and `combat_state` for every
+	# bout load path.
+	board_view.wall_cutout_units = combat_state.units
 	camera_rig.center_on(
 		Vector3(
 			(combat_state.grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,

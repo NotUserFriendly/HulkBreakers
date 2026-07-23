@@ -539,7 +539,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   expected consequence, not chased this pass (supervisor's own call: "consider the full test failed
   for the moment, we have a couple other things to check").
 - **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
-### BR32.01 — Active — owner: `SUPERVISOR`
+### BR32.01 — Pending — owner: `SUPERVISOR`
 **Stray wall-cutout hole at a cell with no unit**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
 - **2026-07-23 (supervisor re-check — REOPENED, and merged in understanding with BR32.03).** Still
@@ -587,7 +587,35 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `BoardView.build()` and `wall_cutout_units` is reassigned fresh from the new `CombatState.units` on
   load, so neither of the mechanisms fixed here should be ABLE to survive a bout transition as
   currently understood — worth a real look, just not yet.
-### BR32.03 — Active — owner: `SUPERVISOR`
+- **2026-07-23 (tb35 Pass D — the "should be impossible" gap found and fixed)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. The prior note's own "reassigned fresh from the new
+  `CombatState.units` on load" premise was checked directly and is **false in the common case**:
+  `wall_cutout_units` is set in exactly ONE place in the entire codebase —
+  `SquadControlOverlay._on_battle_loaded()`. `SpectatorOverlay` (the DEFAULT overlay every fresh bout
+  and every "New Battle" starts in, unless the Generate Bout menu's own "Assume Control" checkbox was
+  ticked) has no `battle_loaded` handler at all and never touches it.
+  `BattleScene.load_battle()` itself — the one function that runs for every bout, every overlay —
+  rebuilds `board_view`'s static geometry (`board_view.build(...)`) but never re-points
+  `wall_cutout_units`. So starting or reloading a bout while staying in Spectator mode (the ordinary,
+  default path) leaves the feed pointing at whatever it held before: `null`/empty on first launch, or
+  the PREVIOUS bout's own now-orphaned `combat_state.units` array on any later one — exactly "a stray
+  cutout at a cell with no unit" (this entry) and "carried over from a previous bout" (BR32.03,
+  confirmed the same defect). This is also precisely why clicking "Assume Control" (either the bout-
+  start checkbox or a mid-bout control-assumption) "snaps the culls into place": either path installs
+  a real `SquadControlOverlay` for the first time against the *current* `battle`, which is the ONLY
+  code path that ever sets the feed — not a coincidence, the actual mechanism.
+  - **Fix:** `board_view.wall_cutout_units = combat_state.units` moved into `BattleScene.
+    load_battle()` itself, right after `board_view.build(...)` — set once, canonically, for every
+    overlay, every bout. `SquadControlOverlay`'s own now-redundant assignment removed (one source of
+    truth, not two agreeing by coincidence).
+  - **Verified (headless):** new
+    `test_battle_scene.gd::test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode` —
+    loads a bout while in `SpectatorOverlay`, confirms the feed points at that bout's own units;
+    loads a SECOND bout, confirms the feed re-points to the new state's units and the first bout's
+    own (now-stale) array is no longer the feed.
+  - Marked Pending, not Resolved — this needs a live look (start a bout, stay in Spectator, confirm no
+    stray cutout) before promotion, same as every other `SUPERVISOR`-owned entry this session.
+### BR32.03 — Pending — owner: `SUPERVISOR`
 **Wall cutout carries over across a bout transition; new units get none**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-22. The supervisor noticed BR32.01's own "stray culling, no unit there"
@@ -612,6 +640,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
   feed-timing family as **BR32.04** (cutout jumps to the resolved cell ahead of the move animation) —
   both are "`update_wall_cutout()` reads/refreshes at the wrong moment." The bout-load path (and unit
   spawn) needs to trigger the same re-feed Assume-Control already does.
+- **2026-07-23 (tb35 Pass D — confirmed as the SAME defect as BR32.01, one fix closes both)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. This entry's own diagnostic was exactly right: the
+  bout-load path never re-fed `wall_cutout_units` at all unless `SquadControlOverlay` happened to be
+  active — see BR32.01's own dated note above for the full mechanism and the fix
+  (`BattleScene.load_battle()` now re-points the feed itself, for every overlay). Not a separate bug
+  needing its own fix — merged, per this entry's own instruction to treat BR32.01/03 as one defect.
+  Marked Pending alongside BR32.01, same reasoning.
 ### BR32.04 — Active — owner: `SUPERVISOR`
 **Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up**
 - **Source:** `SUPERVISOR`
@@ -633,6 +668,28 @@ confirm" roll-up — so pending items surface at a natural review point without 
   animated/rendered position (or hold the old one) until the slide finishes, not the authoritative
   logical cell the instant it changes.
 - **Not yet reproduced or fixed.** Needs a live look, not guessed at further here.
+- **2026-07-23 (tb35 Pass D — the candidate mechanism confirmed exactly, still not fixed)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Read `ResolutionPlayer._play_slide`/`_set_slide_anchor`
+  (`resolution_player.gd:312-350`) directly: a move's own tween mutates `view.position`/`view.basis`
+  (the `HitVolumeView` node's real, currently-animating transform) every tween step, over the slide's
+  own duration. `BoardView.update_wall_cutout()` never reads that node at all — it recomputes each
+  unit's own screen position fresh from `UnitGeometry.bounding_sphere(unit).center`, which is built
+  from `unit.cell`, the model's own already-resolved, instantaneous cell. So the candidate mechanism
+  above is exactly right: the cutout jumps to the destination the instant `resolve_to_marker()`
+  mutates state, while the SAME unit's own visible body is still several tween-frames from actually
+  arriving there.
+  - **Fix direction (not implemented — real architectural surface, not a one-line change):**
+    `BoardView` has no visibility into `HitVolumeView`'s own current transform at all today (only
+    `BattleScene` holds `unit_views`); `update_wall_cutout()` needs to read the unit's own CURRENTLY
+    RENDERED position (docs/00's own "read the real node back, don't re-derive it" rule, applied here)
+    rather than recomputing from the logical model whenever an animation is in flight. The cleanest
+    shape found by reading the code: a `Dictionary[int, Vector3]` of "current display position per
+    unit," written by `_set_slide_anchor` every tween tick (it already computes the exact anchor
+    needed) and consulted by `update_wall_cutout()` before falling back to the logical
+    `bounding_sphere` position for a unit that isn't mid-animation. Not implemented this pass —
+    correctly scoping the override's own lifecycle (when it's cleared, so a stale display position
+    can't itself become a new staleness bug) wants its own careful pass, not a rushed one at the tail
+    of an already-long taskblock.
 ### BR32.05 — Active — owner: `SUPERVISOR`
 **Wall cutout cuts walls that aren't between camera and unit (coarse heuristic)**
 - **Source:** `SUPERVISOR`
