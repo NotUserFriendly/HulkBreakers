@@ -10,7 +10,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
-### BR26.01 — Resolved — Opposing team teleports before the player's own attack lands  ·  source: `SUPERVISOR`
+### BR26.01 — Resolved — owner: `SUPERVISOR`
+**Opposing team teleports before the player's own attack lands**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the last blue unit took its turn and the opposing team
   appeared to jump to new positions before that unit's attack animation resolved."
 - **Root cause:** `SquadControlOverlay._on_turn_ended` called `advance_ai_turns(battle)` — which
@@ -27,7 +29,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
   this bug's own fix left in place resurfaced as a heavy hitch instead of a teleport — see **BR27.09**,
   which now carries the live investigation.
 
-### BR27.05 — Resolved — Action bar items still selectable without enough AP  ·  source: `SUPERVISOR`
+### BR27.05 — Resolved — owner: `SUPERVISOR`
+**Action bar items still selectable without enough AP**
+- **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). The tb27 Pass D3 fix (dim/disable unaffordable action-bar
   slots) **did not hold** — slots are still clickable/armable when the unit can't afford them.
 - **Root cause (2026-07-21, tb30):** `ActionBar.refresh()`/`_on_box_gui_input()` both compared against
@@ -44,7 +48,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
   with it (`test_action_bar.gd::test_an_action_already_queued_this_turn_counts_against_a_later_
   affordability_check`). 1861/1861 green.
 
-### BR27.06 — Resolved — Step Out no longer occurs at all  ·  source: `SUPERVISOR`
+### BR27.06 — Resolved — owner: `SUPERVISOR`
+**Step Out no longer occurs at all**
+- **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-20 (tb27 review). After the tb27 Pass B flow restructure (BR27.01), Step Out
   now **doesn't happen at all** for the player — a regression past the original four symptoms.
 - **Status:** reopened, and likely *the* blocker that stopped the supervisor verifying BR27.01/BR26.01
@@ -93,7 +99,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
   the file starts at, then arms+clicks: confirmed it fails without the fix (falls into ordinary aim
   mode) and passes with it. 1862/1862 green.
 
-### BR30.01 — Resolved — Debug-spawned unit renders no visual model  ·  source: `SUPERVISOR`
+### BR30.01 — Resolved — owner: `SUPERVISOR`
+**Debug-spawned unit renders no visual model**
+- **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-21 (tb30 follow-up, live bout review). "Spawn unit does not create a visual
   model, but the inspect shows it, indicating something all the debug options use is the issue."
 - **Root cause:** `BattleScene.unit_views` was only ever populated once, in `load_battle()`'s own build
@@ -104,7 +112,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
   `_on_debug_panel_applied` call it before `refresh_unit_views()`.
 - **RESOLVED** 2026-07-21 — supervisor confirms: "Fixed for spawning units."
 
-### BR30.03 — Resolved — Debug-removed unit never visually looks dead  ·  source: `SUPERVISOR`
+### BR30.03 — Resolved — owner: `SUPERVISOR`
+**Debug-removed unit never visually looks dead**
+- **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-21 (tb30 follow-up, same review as BR30.01/BR30.02): "clicking remove on a
   unit is removing it data side, but not visually."
 - **Root cause:** `HitVolumeView.is_downed()` (the one check `refresh()` makes to pick the DOWN pose)
@@ -123,7 +133,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
 - **RESOLVED** 2026-07-21 — supervisor confirms: "looks fixed." Commit `c930930` (original fix),
   renamed in `6f42a4f`, 1860/1860 green.
 
-### BR31.01 — RESOLVED — Bottom-right turn controls and tooltip popups fight over clicks  ·  source: `SUPERVISOR`
+### BR31.01 — Resolved — owner: `SUPERVISOR`
+**Bottom-right turn controls and tooltip popups fight over clicks**
+- **Source:** `SUPERVISOR`
 - **Confirmed fixed by the supervisor (2026-07-22).**
 - **Reported:** 2026-07-22 (tb31 review), long-standing: "the controls on the bottom right of the
   player view don't block the tooltip popups, making them difficult to click."
@@ -153,7 +165,9 @@ those are exactly what a future session needs when a bug turns out not to be as 
   click reaches End Turn regardless (confirms mouse_filter was never the problem), and a real
   `mouse_entered` on End Turn now hides a tooltip that was previously left stuck open.
 
-### BR32.06 — Resolved — Performance drop when orbiting the camera *and* a unit is selected  ·  source: `SUPERVISOR`
+### BR32.06 — Resolved — owner: `SUPERVISOR`
+**Performance drop when orbiting the camera *and* a unit is selected**
+- **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-22 (tb32 review). Framerate took a hit specifically when **both** were true:
   camera orbiting **and** a unit selected. Either alone was fine.
 - **Resolved (supervisor-confirmed, 2026-07-22):** on re-check the hit is gone — it was incidentally
@@ -161,11 +175,390 @@ those are exactly what a future session needs when a bug turns out not to be as 
   per-frame cutout work). Filed for the record; already fixed by the time it was written up. If aiming
   FPS regresses again, it belongs with the standing BR26.02 (low fps while aiming), same path.
 
+### BR27.08 — Resolved — owner: `SUPERVISOR`
+**"Resolve to here" has never worked**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
+- **2026-07-23 — RESOLVED, supervisor-confirmed [HBPaR2].** Worked through directly by the supervisor
+  and confirmed working.
+- **Reported:** 2026-07-20 (logged now; long-standing — backburnered since the button's introduction).
+  The "Resolve to here" turn-control (resolve queued actions up to a chosen point) has never
+  functioned. Logged here now that the ledger exists so it stops being an untracked known-broken.
+- **Status:** open, not yet investigated.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** traces clean
+  end-to-end now — button (`squad_control_overlay.gd:445-449`) → `QueuePanel._on_resolve_pressed`
+  (`queue_panel.gd:104-107`) → `tactics.resolve_to_marker(_marker_index)`
+  (`tactics_controller.gd:1006-1041`), which does slice the queue to a checkpoint index and resolve
+  through it. Git history shows commit `888a25f` ("Resolve to Here now actually enables") already
+  fixed the historical "button never enables" defect, with passing coverage in `test_queue_panel.gd`.
+  **This ledger entry looks stale, not live — worth a quick supervisor re-check before spending
+  further investigation on it.**
+- **2026-07-22 (tb32 Pass D):** re-verified rather than blind-fixed — `resolve_to_marker()` still
+  traces clean end-to-end, and `test_tactics_controller_resolve_to.gd::
+  test_resolve_to_marker_applies_only_the_prefix_through_the_marker` is a real queue-then-resolve
+  test (queues two move legs, resolves to the first marker, asserts the unit's own `.cell` actually
+  only advanced one leg) — not a UI-state check that could pass while the real resolve silently
+  no-ops. Nothing changed; this looks like it was already fixed by `888a25f` and the ledger simply
+  never caught up. Marked pending, not `RESOLVED` outright, per the provenance gate (SUPERVISOR-sourced) —
+  needs the supervisor to actually click the button and confirm.
+- **2026-07-22 (supervisor correction): still active — the prior "already fixed" call was wrong.**
+  `resolve_to_marker()` working correctly when called directly proves the RESOLUTION logic is fine,
+  but says nothing about whether a real player can ever get a `_marker_index` set in the first place
+  through the actual `QueuePanel` UI — that path was never exercised, in this session or (per
+  `test_queue_panel.gd`) apparently ever with a real queue-then-resolve assertion. Re-opening for a
+  real investigation of the click-to-select-a-row → `_marker_index` → resolve-button-enabled chain,
+  not just the logic `resolve_to_marker()` itself already had coverage for.
+- **2026-07-22, later: reproduced live by the supervisor** — "grayed out and unclickable," matching
+  the original report exactly.
+- **2026-07-22, follow-up investigation — a real, confirmed test-coverage gap found and closed, but
+  the reported symptom itself still not reproduced:** every existing test in `test_queue_panel.gd`
+  drove the marker via a helper explicitly documented as "the same path a real click does... without
+  needing a live viewport" — `tree.get_root().get_child(index).select(...)` followed by manually
+  calling `panel._on_item_selected()` directly. That is NOT the same path: it bypasses the `Tree`
+  widget's own hit-testing and its `item_selected` signal entirely. **Nothing, ever, had verified that
+  a real click on a real row in the real running game actually fires that signal at all** — exactly
+  the class of gap that let BR27.06/BR30.02 hide before (a test that re-derives the behavior instead
+  of reading the real thing back).
+  - First built the naive version of this test against `test_queue_panel.gd`'s own bare fixture
+    (`Tree.new()` with no size, added directly with no parent container) — it FAILED. Looked like a
+    smoking gun, but turned out to be a fixture artifact, not the real bug: a bare `Tree` with no
+    `custom_minimum_size` lays out at a tiny size, and `get_item_area_rect()` reported a row extending
+    below the Tree's own visible rect — a click there falls outside `Control.has_point()`'s test and
+    never reaches the Tree at all, regardless of any real production bug. Confirmed via a throwaway
+    diagnostic (not committed): giving the same bare Tree the real production `custom_minimum_size =
+    Vector2(320, 100)` (`squad_control_overlay.gd:397`) made the identical click resolve correctly.
+  - Rebuilt the test against the FULL real `BattleScene`/`SquadControlOverlay` construction instead —
+    real Tree sizing, real container hierarchy, a real `InputEventMouseButton` pushed through the real
+    `Viewport` at the row's own real, laid-out screen rect (`test_battle_scene_input.gd::
+    test_a_real_click_on_a_queue_row_enables_resolve_to_here`). **This passes** — a real click on the
+    first row of a freshly-queued single move correctly fires `item_selected` and enables the button.
+    Also tried clicking the SECOND row of a 2-entry queue (a throwaway diagnostic, not committed,
+    since "resolve to here" is presumably most useful mid-queue, not on the first entry) — also
+    correctly selects/enables.
+  - **So the click-to-enable mechanism itself checks out in every configuration tried so far, and the
+    resolve-when-clicked logic already checked out in tb32 Pass D. Both halves work; the reported
+    symptom still hasn't been reproduced by CC.** New regression coverage added either way (a real
+    gap closes regardless of whether it's THIS bug): `test_battle_scene_input.gd::
+    test_a_real_click_on_a_queue_row_enables_resolve_to_here` (real click, full production wiring) and
+    `test_queue_panel.gd::test_a_real_click_on_a_queue_row_enables_resolve_to_here` (same real-click
+    proof against the bare fixture, given its own proper size this time — documents the fixture
+    sizing gotcha inline so it isn't rediscovered blind next time).
+  - **Not chased further blind — needs a few specific details to build a matching failing fixture:**
+    (a) which overlay — ordinary `SquadControlOverlay`, or `SingleUnitOverlay`? (b) how many actions
+    were queued, and which row (first / a later one) was clicked? (c) fresh turn, or after cycling
+    through End Turn/Reset Turn at least once first? (d) does the ROW itself visibly highlight/select
+    when clicked (proving the click reaches the Tree) while the button alone stays gray — or does
+    NOTHING happen at all, row included? That last one matters most: if the row selects but the button
+    doesn't, the bug is almost certainly cosmetic/redraw-timing in `_update_resolve_button()`'s effect
+    on the real `Button` node — something no headless test can see (the FRAGCOORD/BR32.02 class of
+    bug). If the row itself never highlights, the click isn't reaching the Tree at all in the live
+    game, which every test above says shouldn't be possible — meaning something about the live render/
+    input path differs from headless in a way not yet identified.
+- **2026-07-22, supervisor's answers — every remaining code-level hypothesis ruled out:** (1) both
+  `SquadControlOverlay` and `SingleUnitOverlay` show the identical symptom. (2) 1, 2, or 3 actions
+  queued, moves interspersed with other action types or not — no difference. (3) fresh turn AND after
+  cycling End Turn/Reset Turn — both. (4) **"I don't see any color, or opacity change" — nothing
+  happens at all, including the row.** ("Grayed out" was also corrected to "alpha'd out" — the
+  button's own look, not necessarily relevant to the row question, but the row-highlight answer is the
+  load-bearing one.) This rules out queue length, action type, overlay variant, and turn-state as
+  variables, and confirms it's the FIRST half (click never reaches Tree selection) rather than the
+  second (selection works, only the button's own redraw is stuck) — narrowing but not yet solving it.
+  - Tried two more hypotheses this round, both also ruled out by direct test:
+    1. **A real mouse hover immediately before the click** (what an actual player does — move onto the
+       row, which triggers `_on_tree_gui_input`'s own tooltip-on-hover, THEN click) rather than a cold
+       click with no preceding motion event. Building this properly surfaced a real headless-testing
+       limitation, not a game bug: `Viewport.get_mouse_position()` — which `_on_tree_gui_input` itself
+       reads to position the tooltip (`tooltip_view.show_data(data, tree.get_viewport().
+       get_mouse_position())`) — does **not** update from a synthetic `push_input()`-delivered
+       `InputEventMouseMotion` the way a real OS cursor would; it read back `(0, 0)` regardless of the
+       motion event's own `.position`. Worked around it by calling `tooltip_view.show_data()` directly
+       with the row's real screen position instead, forcing the tooltip genuinely visible at (as close
+       as achievable to) the real click point, THEN performing the real click. Still enables the
+       button correctly — the (already `MOUSE_FILTER_IGNORE`) tooltip doesn't block the click, matching
+       BR31.01's own finding for the turn-control buttons.
+    2. Confirmed `HulkTheme` has **no override at all** for a `Tree` row's selection style
+       (`selected`/`selected_focus`), nor for `Button`'s `disabled` state — both rely entirely on
+       Godot's own default theme. Not a confirmed cause (the default selection highlight is normally a
+       distinctly-colored fill, not something that should blend into this theme), but flagged as a
+       secondary, unverified possibility: if the default highlight ever reads as visually identical to
+       unselected in this specific dark theme, that alone could produce "I see no color change" even if
+       the click IS registering underneath. Can't be ruled in or out without eyes on the real render.
+  - **Genuinely exhausted what headless GUT can check here.** Every code-level variable tried
+    (queue/overlay/turn-state/tooltip-overlap/theme-override-absence) either doesn't reproduce it or
+    can't be tested without a real window. This now reads like the same class of bug as BR32.02's own
+    shader saga — something only visible in a real, rendered, real-input build.
+- **2026-07-22, decision: remove and rebuild rather than keep chasing an unreproducible root cause.**
+  The `Tree`+marker+global-button mechanism was never conclusively root-caused despite an extensive
+  investigation across several taskblocks, and the supervisor's own repeated live reproduction ruled
+  out every code-level variable this session could construct — the strongest remaining signal was
+  simply that nothing else in this codebase drives something this important through a `Tree`'s own
+  click/selection signal, and every plain `Button`-based control in the same general screen region
+  (End Turn, Reset Turn, action bar boxes) has never shown this class of problem. Rather than keep
+  guessing at a live-only cause with no further lead, removed the whole `Tree`/marker mechanism and
+  rebuilt the same capability on primitives with no such history: each queued action is now its own
+  row with its own real "Resolve" button (`QueuePanel._entry_row()`), wired directly to
+  `tactics.resolve_to_marker(index)` — no marker state, no `Tree`, no separate global button. Follows
+  the same "clear every child, rebuild fresh from an array" convention
+  `GenerateBoutOverlay._rebuild_team()`/`_entry_row()` already established, rather than inventing a new
+  shape. Full design/rationale in `docs/SUPERSEDED.md`.
+  - Verified with a real synthetic click (matching this session's own established rigor) against the
+    FULL real `BattleScene`/`SquadControlOverlay` construction — `test_battle_scene_input.gd::
+    test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it` — and against a bare
+    `QueuePanel` fixture — `test_queue_panel.gd`'s own suite, five tests covering empty-queue/N-rows/
+    real-click-resolves-the-right-prefix/refresh-rebuilds-with-fresh-indices.
+  - **Caught a real, separate layout bug while building this**, exactly the kind of thing only a real
+    click test surfaces: the row's own expanding "what" label had no width bound inside its
+    `ScrollContainer` (nothing forced a maximum, since `SIZE_EXPAND_FILL` is only well-defined once
+    something bounds the available width), so the whole row — button included — landed hundreds of
+    pixels past the right edge of a 1920-wide viewport. Fixed by disabling the `ScrollContainer`'s own
+    horizontal scrolling, which makes it clamp its child to its own real width instead.
+  - **A second, unrelated gotcha found and fixed in the test fixture itself, not the game:** the
+    default headless GUT test viewport is tiny (64×64) — a row built wide enough to hold real text
+    lands well outside that by construction, and a real click there is legitimately outside the
+    viewport's own bounds, not a bug. Fixed by resizing the test viewport to `1920×1080`, matching the
+    existing convention `test_tooltip_view.gd` already established for the identical reason.
+  - **Not fixed in place — this is a replacement, not a patch**, precisely because the original bug's
+    root cause was never conclusively identified. Marked `RESOLVED-PENDING-CONFIRMATION`, not plain
+    `RESOLVED`, per the provenance gate — this still needs the supervisor's own live click to actually
+    close it, since headless tests said the OLD mechanism should have worked too.
+- **2026-07-22, supervisor review of the rebuild — two refinements, same session:**
+  1. **"Resolving to an earlier point should keep the later queued items in the queue."** The prior
+     behavior (inherited unchanged from the original `Tree`-based mechanism, itself dating to
+     taskblock06/07) discarded EVERYTHING queued past the marker, not just the resolved prefix —
+     `resolve_to_marker()`'s own `selection.reset_turn()` call erased the whole remaining queue.
+     Replaced with new `SelectionController.keep_queue_suffix(from_index)`, which drops only the
+     resolved prefix; the surviving suffix replays unmodified against the just-updated real state —
+     safe since every `CombatAction` already re-validates itself against whatever `state` it's handed
+     at apply time, never a captured reference (docs/09). A real design reversal, not a bug fix —
+     logged in `docs/SUPERSEDED.md`.
+  2. **"The coord info can be an on hover event for the MoveAction term... long paths make the readout
+     stretch across the display."** New `CombatAction.short_describe()` (defaults to `describe()`
+     unchanged for every action type) — `MoveAction` overrides it to drop only the unbounded `path=...`
+     term (`"MoveAction(unit=%d)"`, matching every sibling action's own `ClassName(unit=%d, ...)` style
+     — supervisor's own follow-up: "I'm okay with it saying MoveAction, it's just a stream of coords
+     that look messy," so only the coordinate stream itself was cut, not the class-name format). The
+     full `describe()` still surfaces as an extra "Detail" tooltip row whenever it actually differs
+     (`TooltipBuilder.for_queue_entry()`) — the coordinate detail is still reachable, just on hover, not
+     stretching every row by construction.
+- **2026-07-22, supervisor report: "Hovering anywhere in the combat readout gives me the details of
+  things behind it."** A real, confirmed bug in the rebuild, same class as the already-fixed action-bar
+  case (`test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath`) — a queue row's own
+  `MOUSE_FILTER_PASS` correctly fired its own `mouse_entered`/`mouse_exited` (its own tooltip was never
+  the problem), but PASS never marks a motion event handled, so it ALSO reached `TacticsController.
+  _unhandled_input`'s `update_hover()` — a pure 3D ray-cast against the board at that screen position
+  with no awareness of what UI is drawn there — showing whatever unit/tile sat behind the deliberately
+  translucent readout panel instead of just the row's own tooltip. Confirmed live via a direct
+  `mouse_moved` signal check (fires with PASS, silent with STOP) before touching anything. Fixed the
+  same way the action bar was: `QueuePanel._entry_row()`'s own row is now `MOUSE_FILTER_STOP`, not
+  PASS — still gets its own `mouse_entered`/`mouse_exited` (confirmed), never lets the same motion reach
+  the board. `test_battle_scene_input.gd`'s own structural test (every non-interactive Control must not
+  default to STOP) widened to also recognize a real `mouse_entered` connection as genuine interactivity,
+  the same way it already recognized a real `gui_input` connection — a Control deliberately wired for
+  hover is exactly as intentional as one wired for clicks. **Not fixed here, flagged as a related, not-
+  yet-reported instance of the identical bug:** `ApMpPipRow`'s own AP/MP pip containers use the same
+  `PASS` + `mouse_entered`/`mouse_exited` shape with no `gui_input` — likely has the same latent leak,
+  just not yet reported, possibly because that row rarely sits over visible board content in practice.
+### BR30.07 / BR30.08 — Resolved — owner: `CC`
+**Pass D audit: `selected_unit` staleness, same class as BR27.05/BR27.06**
+- **Source:** `CC`
+- **Found:** 2026-07-21, taskblock-30 Pass D (a supervisor-authored audit task): "BR27.05 and BR27.06
+  were the same bug in two places: view code read `selection.selected_unit` (raw, turn-start state)
+  during the TACTICS phase, where — per docs/09's 'queuing mutates nothing' — `.cell`/`.ap` don't
+  reflect queued-but-unresolved actions. ... Two instances days apart means this is a pattern, not two
+  isolated bugs. Audit the rest." Every suspect read from the addendum's own list was checked (state vs
+  identity), and none blind-fixed — each confirmed with a failing-then-passing test first.
+- **BR30.07 — `TacticsController._confirm_step_out()` computed the outbound path from the stale
+  cell:** `Pathfinder.astar(shooter.cell, firing_cell)` used `selection.selected_unit.cell` directly.
+  `MoveAction.is_legal()` requires `path[0] == actual.cell` against wherever the unit's real
+  (previewed) position is by validation time — so a move queued before triggering step-out silently
+  failed `enqueue()` and fell through to `cancel_step_out()`, with no visible step-out at all. Every
+  existing test armed+clicked from the shooter's own turn-start cell — the exact gap that also hid
+  BR27.06 itself, in a spot BR27.06's own fix never reached (a different function). **State read,
+  confirmed.** Fix: path from the queue's own preview instead, matching
+  `_append_step_out_return_leg()`'s already-correct sibling pattern. Verified failing without the fix
+  (silent cancel; queue only ever got 1 of the expected 2 entries) and passing with it.
+  **RESOLVED** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `8457ff0`, 1864/1864 green.
+- **BR30.08 — `TooltipController.refresh()` showed LOS from the stale cell:** passed the raw
+  `selected_unit` into `TileInspection.inspect()`, whose `visible_from_selected` field runs a real LOS
+  check from `selected.cell` directly. A move queued toward a cell with different sightlines left the
+  tooltip stuck showing visibility from the turn-start position. **State read, confirmed.** Fix:
+  `previewed_unit()` instead. Verified failing without the fix and passing with it (an opaque cell
+  blocks LOS from the start cell but not the queued destination). **RESOLVED**
+  [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `8457ff0`, 1864/1864 green.
+- **Checked, not a bug:** `TacticsController.step_out_exposure()`/`_refresh_overlay()`'s
+  `Overwatch.would_trigger_at()`/`all_threatened_cells()` calls also read `selected_unit` directly, but
+  tracing `would_trigger_at()`'s own general-case branch shows it always re-resolves the mover by `id`
+  and explicitly relocates the CLONE to the candidate cell before checking arc/range/LOS, regardless of
+  what the passed reference's own `.cell` says — the stale reference only changes which internal branch
+  runs, never the final answer. A direct empirical probe (temporary diagnostic, not committed) confirmed
+  no output difference. No entry filed.
+- **Confirmed correct as-is, no change needed:** `MoveHooks.new(selected_unit.cell)` (both call sites)
+  — these run during REAL `resolve_until()`, where `selected_unit.cell` genuinely IS the live starting
+  cell, not a preview concern; `confirm_shot()`'s own `shooter` reference and `_append_step_out_
+  return_leg()` (both already use raw `selected_unit` ONLY for `.id`/identity, deferring all real
+  geometry to previewed state — the correct split); `ap_mp_pip_row.gd` (already reads `previewed_unit()`
+  — pre-existing correct pattern); `weapon_panel.gd` (purely structural shell/part reads — hp, wounds,
+  manipulators — no position or queue dependency).
+### BR30.11 — Resolved — owner: `SUPERVISOR`
+**Burst: shown as affordable without enough AP; step-out silently drops the shot**
+- **Source:** `SUPERVISOR`
+- **2026-07-23 (supervisor confirmation — Resolved, both halves).** Confirmed fixed. *Process note
+  from the supervisor: bundling two separately-observed symptoms into a single entry because they
+  shared a root is "not really how a bug should be constructed" — the shared root belongs in the
+  investigation notes, not in the entry's identity. File one entry per observed symptom in future,
+  and cross-link.*
+- **Reported:** 2026-07-21, two symptoms the supervisor flagged separately, turned out to be one root
+  cause: (1) "actions selectable when not enough AP available still," and (2) "step out seems to be
+  working with shoot, but not with burst."
+- **Root cause:** `ActionBar._can_afford()` (`src/view/action_bar.gd`) compared the unit's AP against
+  the providing weapon's plain `provider.ap_cost` for EVERY action id, but `BurstAction` has always
+  charged its own, usually-higher `weapon.weapon_def.burst_ap_cost` when authored
+  (`BurstAction._ap_cost`, e.g. `data/parts/chaingun.tres`: `ap_cost = 2`, `weapon_def.burst_ap_cost =
+  4`). A unit with enough AP for the plain cost but not the real burst cost saw (and could arm) BURST
+  as affordable — only to have the actual shot silently rejected at `enqueue()` time
+  (`BurstAction.is_legal()` correctly checks the real cost), with no visible error either way.
+- **Step-out's own part in this:** proved, not assumed — `_enter_aim_or_step_out_mode`'s entry into
+  step-out mode is genuinely action-id-agnostic (a direct test arming `&"burst"` against the same
+  covered-corridor fixture `test_tactics_controller_step_out.gd` already used for `&"shoot"` entered
+  step-out mode correctly, no fix needed there). What actually "doesn't work" with burst: a shooter
+  steps out for free (the outbound leg never costs AP), then the SAME `confirm_shot()` -> `enqueue()`
+  gate silently drops the real attack for the reason above — the unit holds the stepped-out position
+  with nothing ever firing, reading as "step out doesn't work" when the move itself queued fine.
+- **Fix:** `ActionCatalog.ap_cost_for(action_id, provider)` (new) — the one seam: `&"burst"` returns
+  `weapon_def.burst_ap_cost` when authored, else falls back to `provider.ap_cost`, same as every other
+  action. `ActionBar._can_afford()` and `BurstAction._ap_cost()` (now a one-line delegate) both read
+  this instead of duplicating the branch — the "two parallel systems" trap this project's own
+  convention warns against.
+- **Verified:** `test_action_bar.gd::test_burst_dims_using_its_own_higher_ap_cost_not_the_weapons_
+  plain_one` (fails without the fix, passes with it — confirmed via `git stash`) and
+  `test_tactics_controller_step_out.gd::test_firing_burst_after_step_out_is_silently_rejected_with_
+  insufficient_real_ap` (documents the exact silent-rejection mechanism: queue stays at 1 action, the
+  free out-leg, burst never gets added). 1868/1869 green (the one failure is the unrelated,
+  already-flagged `test_full_mission.gd`, BR30.10 above).
+- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
+
+---
+### BR31.02 — Resolved — owner: `SUPERVISOR`
+**Wall/void generation cascaded through solid rock**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
+- **2026-07-23 (supervisor confirmation — Resolved).** Confirmed fixed. *Process note: the write-up
+  was "a very complicated description for a simple bug." Investigation depth is welcome in the notes;
+  the description line should stay plain enough to recognise the bug from.*
+- **Backfilled 2026-07-22** (retroactive ledger pass, CLAUDE.md rule 8 applied historically) —
+  reported and fixed live during taskblock-31 itself; `docs/CHANGELOG.md` and
+  `taskblock_done/Report-Taskblock31.md` both recorded it at the time, but it never got a `BR` id or
+  an entry in this ledger. Filed now so a resolved bug's closure marker exists here too, per this
+  file's own stated job.
+- **Reported:** 2026-07-21, live play testing of tb31 Pass C's new wall/void model: "walls are
+  generating where voids should [be]... there should be a single layer of walls."
+- **Root cause:** `MapGen._finalize_walls_and_void()` classified AND mutated each `WALL` cell in the
+  same scan pass — converting an exposed cell to `OPEN` made it read as a non-WALL neighbor for
+  whatever `WALL` cell got scanned next, so exposure cascaded outward from every real opening through
+  however much solid rock the scan order happened to reach. A real ASCII dump (seed 2, 40×30 —
+  `BattleScene`'s own defaults) confirmed it: walls many tiles thick, effectively zero `VOID` anywhere
+  on the map.
+- **Fix:** split into two passes — classify every `WALL` cell's exposure against the grid's own
+  untouched layout first, then apply every mutation in a second pass. Re-dumped the same seed: clean
+  single-tile wall rings with real void space.
+- **Verified:** re-confirmed via the same real ASCII dump technique, not just re-reading the code.
+  Commit `9909d73`.
+### BR31.03 — Obsolete — owner: `SUPERVISOR`
+**Wall fading never visibly occluded anything**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
+- **2026-07-23 — closed OBSOLETE, not Resolved [HBPaR2].** This entry can no longer be confirmed,
+  because the code it describes no longer exists: its fix was `BoardView._set_wall_alpha()` /
+  `WALL_FADE_ALPHA`, the per-object alpha-blend fade, and **tb32 Pass A retired that mechanism
+  entirely** in favour of the dither cutout shader (`docs/SUPERSEDED.md`; both symbols now survive
+  only in comments describing what replaced them). Marking it `Resolved` would assert a verification
+  that never happened. The question it asked — "does wall occlusion actually reveal anything?" — is
+  now BR32.02's, with the live faults tracked by BR32.01/BR32.03.
+- **Backfilled 2026-07-22** (retroactive ledger pass) — same gap as BR31.02 above: reported and fixed
+  live during taskblock-31, never given a `BR` id or an entry here until now.
+- **Reported:** 2026-07-21, live play testing tb31 Pass C's wall-fade legibility feature: "I can't see
+  wall fading doing anything" — then again, after a first fix attempt, "the wall fading is still not
+  occurring, is it drawing between the camera and the orbited point, or is it something else?"
+- **First root cause, fixed:** the occlusion check was world-space — "is this wall within 1 unit of the
+  straight 3D line from camera to the focal unit." The tactical camera sits well above/back from the
+  board, so that line spends almost its whole length far above wall height; the check essentially
+  never fired for any wall more than a cell or two from the unit, the exact case that matters. Rewrote
+  `WallLegibility.occludes()` → `occludes_on_screen()`: project both the wall and the focal unit
+  through the real camera (`Camera3D.unproject_position()`), compare 2D screen distance, require the
+  wall nearer in depth — the question a player would actually answer by eye, independent of camera
+  angle. Commit `662e8d2`.
+- **Second root cause, found when the supervisor reported it still wasn't working:** traced the whole
+  pipeline end to end through the real production path (real `BattleScene`/`SquadControlOverlay`, real
+  click-to-select, real `CameraRig` framing) and confirmed every intermediate value was already correct
+  — `focal_unit` wiring, camera ownership, `unproject_position()`/depth math all checked out. The one
+  link never directly verified: whether `GeometryInstance3D.transparency` alone renders a visible
+  effect against an otherwise-opaque, `SHADING_MODE_PER_PIXEL` (lit) material — it doesn't. Switched to
+  real alpha blending (`BaseMaterial3D.TRANSPARENCY_ALPHA` + `albedo_color.a`), the same mechanism
+  `show_unit_ghost()` already proves renders correctly in this project, just kept lit (docs/10: real
+  geometry stays lit). New `BoardView._set_wall_alpha()`, `WALL_FADE_ALPHA := 0.25`. Commit `dda90d4`.
+- **Verified:** confirmed working in player view after the second fix. Moot in practice either way —
+  this whole alpha-blend mechanism is itself superseded by tb32 A's per-fragment discard shader
+  (`docs/SUPERSEDED.md`).
+### BR32.02 — Resolved — owner: `SUPERVISOR`
+**Wall cutout never visibly appears near real units**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
+- **2026-07-23 (supervisor confirmation — Resolved as written, but read the next line).** The cutout
+  does now appear near real units; the bug as described is genuinely fixed. **However the underlying
+  cause is not gone — it continues as BR32.03.** What was fixed here was the depth-source half; the
+  feed-timing half (when `update_wall_cutout()` reads, and from what) is the same root and is still
+  live. Closing this entry is not evidence the cutout system is healthy — BR32.01 and BR32.03 are.
+- **Reported:** 2026-07-22 (same live-bout review as BR32.01). "I rotated the camera around the
+  units, they were still in their original spawn locations, next to walls. No culling observed at
+  all."
+- **First theory, tried and EMPIRICALLY DISPROVEN:** hypothesized (from Godot's own documentation —
+  "FRAGCOORD... use[s] the same coordinate system" as `gl_FragCoord`, bottom-left origin) that
+  `FRAGCOORD` and `Camera3D.unproject_position()` (top-left origin) disagreed on Y and needed a flip.
+  Added the flip; the supervisor tested live and reported the cutout became visible but **detached
+  from any unit, drifting/spiraling independently as the camera orbited** — worse, not fixed. A real
+  orbiting-camera test proved the GDScript-side feed (position/depth/radius) tracks the unit
+  correctly and stably at every angle, ruling that layer out. Two live, hardcoded-position diagnostic
+  builds (a fixed hole at viewport center, then at a corner) settled it empirically: **`FRAGCOORD` is
+  actually top-left-origin, Y-down — the SAME convention `unproject_position()` already uses.** No
+  flip was ever needed; documentation for a different rendering context/shader type doesn't
+  necessarily transfer, and this class of bug is entirely invisible to headless testing (dummy
+  rendering never executes a fragment shader) — only live, real rendering could have caught it, and
+  did, twice. **The flip has been reverted** (`update_wall_cutout()` feeds `unproject_position()`'s
+  own output unchanged).
+- **Second theory, tried and confirmed via a sequence of live diagnostic builds (all uncommitted,
+  shader-file-only, removed once each landed):**
+  1. Unconditional discard whenever `unit_count > 0` (ignoring all per-fragment math) made ALL walls
+     vanish, not just ones near units — expected, since every wall shares ONE material/uniform set;
+     confirmed the uniform data genuinely reaches the shader (not a wiring bug).
+  2. Disabling the depth-compare entirely produced a correctly-positioned, correctly-sized porthole
+     at every unit — confirmed the distance/radius/dither math is correct, and narrowed the bug to
+     depth-compare specifically.
+  3. Flipping the depth-compare direction (`<=` instead of `>=`) was wrong in BOTH directions — ruled
+     out a simple sign flip; the depth VALUE itself (`frag_depth = length(VERTEX)`) had to be wrong,
+     not just its comparison.
+  4. `VERTEX` is documented to already arrive in view space by the time `fragment()` reads it — that
+     documentation already failed once this investigation (`FRAGCOORD`'s own origin), and evidently
+     doesn't hold here either. Replaced with true view-space depth reconstructed directly from the
+     hardware depth buffer (`FRAGCOORD.z` + `INV_PROJECTION_MATRIX`, Godot's own standard recipe) —
+     confirmed live: culling from the correct side (wall genuinely between camera and unit) now works
+     as expected.
+- **Fix:** `wall_cutout.gdshader`'s `fragment()` now computes `frag_depth` via the depth-buffer
+  reconstruction above instead of `length(VERTEX)`. No GDScript changes needed — this was entirely a
+  shader-side depth source bug.
+- **Deferred, not a regression from this fix — logged, not chased further per instruction:** with the
+  camera and unit on the SAME side of a wall (nothing should occlude at all), the cutout still fires
+  and over-cuts neighboring wall segments, confirmed live via screenshot. See
+  `taskblock_done/Report-Taskblock32.md` for the fuller writeup and a candidate cause — likely
+  inherent to this shader's own 2D screen-space heuristic (nearer-than-unit + within-screen-radius),
+  not a new bug introduced by this fix.
+- **Both halves of this investigation (BR32.02's flip revert and this fix) were only possible because
+  the supervisor tested live and reported back precisely** — no headless test can exercise a fragment
+  shader at all (dummy/headless rendering never executes one), so every claim here was confirmed
+  against a real, rendered build, not GUT.
+
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
 *(Kept in their own trailing block rather than resorted into the main ascending sequence above —
 same relative order this ledger has always kept them in, oldest work first. All `Resolved`.)*
 
-### BR26.03 — Resolved — Muzzle origin inside the shooter's own armor  ·  source: `SUPERVISOR`
+### BR26.03 — Resolved — owner: `SUPERVISOR`
+**Muzzle origin inside the shooter's own armor**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the muzzle originates at the shoulder socket's center
   ('the literal shoulder, not *from* the shoulder'), so the ray starts inside the shooter's own
   geometry and can hit its own armor."
@@ -181,7 +574,9 @@ same relative order this ledger has always kept them in, oldest work first. All 
   remaining anchor mismatch between `origin` and `direction` that had been obscuring a clean read on
   this one.
 
-### BR26.04 — Resolved — Extract-tile marker / facing-indicator z-fight  ·  source: `SUPERVISOR`
+### BR26.04 — Resolved — owner: `SUPERVISOR`
+**Extract-tile marker / facing-indicator z-fight**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), "same class as tb23's floor/indicator z-fighting."
 - **First two attempts (taskblock-26 Pass A3, twice):** bumped `FACING_WEDGE_Y` in isolation each
   time. Both **reported still present.**
@@ -193,14 +588,18 @@ same relative order this ledger has always kept them in, oldest work first. All 
   tile (0.010, unchanged) → team marker (0.06) → overwatch arc (0.09) → facing wedge (0.17).
 - **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass C2.
 
-### BR27.10 — Resolved — Spectator combat log word-wraps  ·  source: `SUPERVISOR`
+### BR27.10 — Resolved — owner: `SUPERVISOR`
+**Spectator combat log word-wraps**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-27 D1a: the spectator's own log label wraps lines; the player view's log
   already doesn't.
 - **Fix:** `log_label.autowrap_mode = TextServer.AUTOWRAP_OFF`, the same setting the player-view log
   already carried — a direct port, not a new mechanism.
 - **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D1a.
 
-### BR27.11 — Resolved — Inspect-on-hover missing in spectator view  ·  source: `SUPERVISOR`
+### BR27.11 — Resolved — owner: `SUPERVISOR`
+**Inspect-on-hover missing in spectator view**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-27 D1c (tb17-era note): inspect-on-hover should be on the shared control
   layer so both spectator and player view have it. Spectator view had none at all.
 - **Fix:** `SpectatorOverlay._unhandled_input()` now routes `InputEventMouseMotion` to a new
@@ -210,7 +609,9 @@ same relative order this ledger has always kept them in, oldest work first. All 
   clear-every-other-view behavior.
 - **RESOLVED** 2026-07-20 — confirmed by the supervisor. taskblock-27 Pass D1c.
 
-### BR27.12 — Resolved — Wall tiles inspectable → opens the tile inspector  ·  source: `SUPERVISOR`
+### BR27.12 — Resolved — owner: `SUPERVISOR`
+**Wall tiles inspectable → opens the tile inspector**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-27 D5: clicking a wall tile opens the tile inspector.
 - **Fix:** `SpectatorOverlay`'s tile-click path now guards on `TerrainType.WALL` before ever calling
   `open_tile()` — a wall click is a real no-op, the same posture a miss off the board already had.
@@ -218,7 +619,9 @@ same relative order this ledger has always kept them in, oldest work first. All 
   symptom this report also showed was a distinct, deeper bug — see the next entry, found and closed
   by CC in the same pass.)
 
-### BR27.13 — Resolved — InspectPanel's null-root branch leaked stale isolate-viewport state ("garbage inspector")  ·  source: `CC`
+### BR27.13 — Resolved — owner: `CC`
+**InspectPanel's null-root branch leaked stale isolate-viewport state ("garbage inspector")**
+- **Source:** `CC`
 - **Found:** while root-causing the wall-tile report above. `Grid.blockers` returns null identically
   for a wall cell and bare floor, so the tile lookup itself was never the bug. The real defect:
   `InspectPanel.open()`'s null-root branch (reached whenever `unit.shell.root == null`, which
@@ -233,7 +636,9 @@ same relative order this ledger has always kept them in, oldest work first. All 
   null-root-resets-viewport-state test. CC-sourced: found, fixed, and tested entirely by CC in one
   pass, no supervisor confirmation gate applies.
 
-### BR11.01 — Resolved — Resource Editor — four layout bugs (stale-report source)  ·  source: `SUPERVISOR`
+### BR11.01 — Resolved — owner: `SUPERVISOR`
+**Resource Editor — four layout bugs (stale-report source)**
+- **Source:** `SUPERVISOR`
 - **Reported:** recurring through 2026-07-20 (arrived repeatedly as a `## User Request` to launch
   `run_resource_editor.sh` and screenshot the bugs). Era: taskblock 11 was the active block when
   first reported.
@@ -253,7 +658,9 @@ same relative order this ledger has always kept them in, oldest work first. All 
   convention), the taskblock-generating instance treated the living docs as authority, found nothing,
   and re-derived "go verify the Resource Editor" as open. **This ledger is the fix for that class.**
 
-### BR22.01 — Resolved — Waist-line of impacts — the shot-plane Z-discard  ·  source: `SUPERVISOR`
+### BR22.01 — Resolved — owner: `SUPERVISOR`
+**Waist-line of impacts — the shot-plane Z-discard**
+- **Source:** `SUPERVISOR`
 - **Reported:** through mid-2026-07 review passes ("a line of impacts across the waist"; "only seeing
   ~20% of shots"; "no ricochets").
 - **Symptom:** projection collapsed `Vector3 → Vector2(x, z)`, dropping the height axis — so vertical
@@ -262,12 +669,16 @@ same relative order this ledger has always kept them in, oldest work first. All 
   scatters in 3D, `resolve_ray` accepts vertical shots, tracers draw the real 3D path. Tagged in
   `docs/CHANGELOG.md`.
 
-### BR00.01 — Resolved — `los.gd` `range`-shadow (v1)  ·  source: `CC`
+### BR00.01 — Resolved — owner: `CC`
+**`los.gd` `range`-shadow (v1)**
+- **Source:** `CC`
 - **Symptom:** a param named `range` shadowed the builtin, failing at load/call time.
 - **RESOLVED** in the v1 foundation work (noted historically in `docs/SUPERSEDED.md`). `gdlint` now
   catches this class faster than the engine does (see `docs/TOOLING.md` gotchas).
 
-### BR26.05 — Resolved — Deflect tracers never drawn  ·  source: `SUPERVISOR`
+### BR26.05 — Resolved — owner: `SUPERVISOR`
+**Deflect tracers never drawn**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
   logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
   computed, logged, never drawn."
@@ -275,28 +686,36 @@ same relative order this ledger has always kept them in, oldest work first. All 
   carries its own `deflect_end_x/y/height`, drawn as a second, visually distinct tracer segment.
 - **RESOLVED** — confirmed by the supervisor.
 
-### BR26.06 — Resolved — Bout maker AI dropdown missing new playstyles  ·  source: `SUPERVISOR`
+### BR26.06 — Resolved — owner: `SUPERVISOR`
+**Bout maker AI dropdown missing new playstyles**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26: tb24/tb25 added playstyles (overwatch-capable set, PSYCHOTIC, TURTLE)
   but the bout setup menu's own AI dropdown was a hardcoded, independently-maintained list.
 - **Fix:** `taskblock-26 Pass C1` (commit `67c7ca8`) — `GenerateBoutOverlay.PLAYSTYLES` is now a
   direct reference to `UnitAI.PLAYSTYLES`, not a hardcoded copy.
 - **RESOLVED** — confirmed by the supervisor.
 
-### BR26.07 — Resolved — Bout menu jumpy add/duplicate, not truly centered  ·  source: `SUPERVISOR`
+### BR26.07 — Resolved — owner: `SUPERVISOR`
+**Bout menu jumpy add/duplicate, not truly centered**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26: adding/duplicating a roster entry reflows jarringly; the menu reads as
   intended-centered but isn't.
 - **Fix:** `taskblock-26 Pass C2` (commit `67c7ca8`) — anchors pinned to 0.5 with
   `GROW_DIRECTION_BOTH` (no baked offset); every row reserves the same `ROW_MIN_HEIGHT`.
 - **RESOLVED** — confirmed by the supervisor.
 
-### BR26.08 — Resolved — Inspect header shows only the variant, not unit id/squad  ·  source: `SUPERVISOR`
+### BR26.08 — Resolved — owner: `SUPERVISOR`
+**Inspect header shows only the variant, not unit id/squad**
+- **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26: the inspect panel showed the bot's variant but not which unit/squad
   this actually was in the current bout — two units built from the same variant read identically.
 - **Fix:** `taskblock-26 Pass C3` (commit `67c7ca8`) — the title bar now reads "INSPECT — Unit N
   (Squad M) — <variant>" once a unit is open.
 - **RESOLVED** — confirmed by the supervisor.
 
-### BR27.14 — Resolved — Stab's slide-deflect could land back on the shooter's own body  ·  source: `CC`
+### BR27.14 — Resolved — owner: `CC`
+**Stab's slide-deflect could land back on the shooter's own body**
+- **Source:** `CC`
 - **Found:** while re-diagnosing A2 above (see that entry) — `DamageResolver._resolve_slide` (stab's
   own DEFLECT_MODE_SLIDE response) re-searches the WHOLE plane from index 0 with a lateral nudge, but
   hardcoded an EMPTY exclude list on that re-search, unlike every other plane lookup in `resolve_shot`.
