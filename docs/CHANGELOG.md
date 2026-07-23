@@ -19,7 +19,7 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-32 landed.*
+*Current as of taskblock-35 landed.*
 
 ---
 

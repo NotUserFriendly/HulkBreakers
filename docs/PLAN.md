@@ -541,7 +541,13 @@ into it (working as specified), but the landing squad then never tries either of
 defenders instead, and the whole mission stalls on the one unshootable target for the rest of the turn
 cap. Not a LOF/LOS question — target *selection* needs to skip past a genuinely unreachable-by-shot
 enemy toward one that isn't, not just refuse to fire once it's already committed to the unreachable
-one. `taskblock_done/Report-Taskblock33.md`'s own follow-up section has the full trace.
+one. Re-running the original BR30.10 measurement (81% of impacts on a wall) against this same fixture
+post-tb33 found **zero impacts in 400 turns**, not a revised percentage — every unit holds every turn,
+the whole mission long, because the head-hosted defender (`enemy_c`) is the one boxed into this exact
+nook. Not a tb33 regression — this is the taskblock's own explicitly-specified "fully walled-off enemy
+falls through to hold" case, and plausibly a piece of what originally produced BR30.10's 81% figure
+(pre-tb33, permissive opacity-based `LoS` would have confidently walked the AI up to a nook like this
+that real box geometry never had a shot into).
 
 **AI for damaged units — head for the nearest weapon.** A disarmed/damaged unit currently has little
 to do on its turn. Since the sim always knows where everything is, handing a damaged unit the location
