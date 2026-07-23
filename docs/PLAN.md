@@ -14,8 +14,8 @@ that could each be picked up next. Anything deferred, descoped, or spun off from
 **Buckets:**
 - **NEXT** — capped at 3–5, ordered, nothing with an unmet dependency. **Exceeding the cap triggers a
   re-evaluation of the whole bucket, not a silent push of the bottom item.**
-- **QUEUED** — real work, roughly ordered, no commitment on timing.
-- **UNSCHEDULED** — the long tail. Ordered only where dependencies force it.
+- **QUEUED** — everything else that is work, ordered so a dependency appears before the thing needing it.
+  No commitment on timing.
 - **APPENDIX** — recorded findings. Reference, not work.
 
 **Two invariants make the order self-checking.** A violation means the ordering is wrong, not that the
@@ -125,8 +125,7 @@ framerate or a decision. Fixing the instrument is worth more than fixing any one
   project keeps producing — actions that silently fail.
 - **A live FPS counter drawn on top of the log** — distinct from the logged `fps_dump` events, which exist
   for CC to grep. This one is a continuous readout for the supervisor. Keep it *over* the log, not in it:
-  a per-frame FPS line would drown the log it's drawn on. Supervisor note: ~250ms refresh I can't see more
-  resolution than that.
+  a per-frame FPS line would drown the log it's drawn on.
 - **The log window becomes a window** — a title bar reading "Combat Log," a minimize button, vertical
   resize by dragging the bar. And **hand scrolling back to the camera at the ends**: scrolling while
   hovered scrolls the log, but at the top or bottom of the content it falls through to the camera instead
@@ -196,6 +195,7 @@ the perk showed **is** what happens.
 Keyed to queue index, a player un-queues and re-queues to reroll the prophecy. Stable keying means the
 same turn always shows the same future — which is also what makes it read as foresight rather than a slot
 machine.
+
 
 ### Power and therms — the reactor phase
 **Needs:** Status, for burn → therm conversion. **Unblocks:** Nuclear Tuning, MK II Brutalizer, Hot
@@ -272,6 +272,7 @@ nothing visible for a turn or two, then meltdown — unreadable without feedback
 announce itself when *triggered*: a notification saying, calmly, "Nuclear Runaway Detected." Applies to any
 delayed-lethal consequence — signal the cause, not just the death.
 
+
 ### Mission and voidhulk generation
 **Needs:** Multi-level. **Unblocks:** hulk variants, tilesets, hazard sets.
 
@@ -310,6 +311,37 @@ ones, even though 8-directional movement makes them mathematically equivalent. S
 pacing lever: a long diagonal corridor reads as shorter than it is; orthogonal reads as longer,
 deliberately slowing the sense of progress. Usable both ways — diagonal to compress the feel of distance,
 orthogonal to build dread before an arrival. Costs nothing but a generation preference.
+
+
+### Authoring tools
+**Needs:** Multi-level — the tile format must be height-aware.
+
+- **Tile editor** — author a map tile, save it for proc-gen assembly.
+- **Map editor** — author and save a full map, run a **test bout** on it. Built on the tile format.
+- **Main menu** — roll all in-game tools into one reachable place (bot builder, bout sim, map and tile
+  editors). *Resource Editor excepted* — it stays standalone. Built last, once the tools exist.
+
+
+### Moving heavy and multi-tile objects
+**Needs:** Multi-level. **Unblocks:** vehicles.
+
+*The general answer to "how does mass move," forced by the 5000L tank: you rarely take the whole thing, you
+decide how to reduce or extract it. Vehicles are a later solution layered on top; this is the base.*
+
+- **Two axes, checked separately.** **Heavy** needs *strength* — a strong enough unit, or enough total.
+  **Bulky** needs *hands* — multiple units of any strength. Both means strong *and* several.
+- **The team-lift check is average Str × count** — average, not sum, so a **weak link drags the lift down**,
+  discouraging throwing the whole squad at it and rewarding a dedicated hauler. **Size caps how many can
+  help**: a one-tile object fits maybe two lifters, so you can't brute-force a small heavy thing with a crowd.
+- **Reduce ↔ whole is a spectrum.** Fully reduce (cut to scrap) → partially dismantle (split the tank from
+  its mounts, now bulky-but-light) → take whole (needs the good methods). Reducing is efficient; extracting
+  whole is the greedy, skilled play.
+- **The "I want it but lack the right tool" case is the interesting one** — you *can* take it, suboptimally.
+  Introduces a **disassembly-speed** stat and a **mangle-chance on rushed disassembly**: the right tool is
+  clean and fast, the wrong tool slow with a chance you break a piece you wanted.
+- **Bad methods** (drag, personal winch, dollies) versus **good methods** (lifter shells, flatbeds, gantries
+  — the vehicle layer).
+
 
 ### Storage — you store THINGS, not resources
 **Needs:** nothing. **Unblocks:** stash UX, the meta economy, substance content.
@@ -362,6 +394,7 @@ sustenance."* Slots into the existing category-and-rate model without new machin
 economy a grim bottom end. Containment-wise it's clearly vessel-required — the first content test of the
 property above.
 
+
 ### Matrix mobility
 **Needs:** nothing for the core; advanced cases need Perks. **Unblocks:** vehicles, rampancy payoff.
 
@@ -387,6 +420,7 @@ matrix is high-stakes to protect but never unfair.
 - **Perk-gated advanced cases:** Master (steal AP, willpower, minor stats), overwrite a living bot (Cha+Wis),
   live-transfer to an enemy matrix, clean self-extraction.
 
+
 ### Tester ergonomics — bout inheritance and scenario handoff
 **Needs:** nothing.
 
@@ -405,13 +439,6 @@ Two small items that compound, because bouts are the testing surface for everyth
   so it carries `was_injected` and the usual determinism flagging — a dragged-in bout is not a clean seed
   replay.
 
-### Startup opens a generated bout
-**Needs:** nothing.
-
-The game boots into whatever the default scene is, and that generator may be outmoded. Boot instead into a
-freshly generated bout via the live bout builder — the same "starter battle folds into the bouts system"
-consolidation as the full-mission-test replacement. Small, but it removes a stale entry point that can drift
-out of sync with the real generation path.
 
 ### Retire the checkpoint machinery
 **Needs:** nothing.
@@ -428,6 +455,16 @@ references and that describes a game 30-plus blocks out of date.
   `BattleScene` with a GPU frame and captures rendered output. It fits the settled policy — CC authors the
   scenario, the supervisor runs it, the frame lands committed. Practical limit: CC reads images poorly, so
   this is a fallback for when a report genuinely can't carry the answer, not a primary channel.
+
+
+### Startup opens a generated bout
+**Needs:** nothing.
+
+The game boots into whatever the default scene is, and that generator may be outmoded. Boot instead into a
+freshly generated bout via the live bout builder — the same "starter battle folds into the bouts system"
+consolidation as the full-mission-test replacement. Small, but it removes a stale entry point that can drift
+out of sync with the real generation path.
+
 
 ### AI target selection and behaviour
 **Needs:** nothing.
@@ -461,6 +498,7 @@ Four related gaps in what the AI *chooses* to do, all cheap given the data alrea
   item it knows how to use, so an archetype never stalls. Sits on the archetype data that already drives
   bout setup.
 
+
 ### Step-out refinements
 **Needs:** nothing.
 
@@ -476,33 +514,16 @@ Four related gaps in what the AI *chooses* to do, all cheap given the data alrea
   the next thing is illegal" needs to define what happens to the shared return leg. Design the batch boundary
   before coding. If facing-restore is also built, it belongs on the single shared return leg.
 
-### Authoring tools
-**Needs:** Multi-level — the tile format must be height-aware.
 
-- **Tile editor** — author a map tile, save it for proc-gen assembly.
-- **Map editor** — author and save a full map, run a **test bout** on it. Built on the tile format.
-- **Main menu** — roll all in-game tools into one reachable place (bot builder, bout sim, map and tile
-  editors). *Resource Editor excepted* — it stays standalone. Built last, once the tools exist.
+### Remaining melee pieces
+**Needs:** nothing.
 
-### Moving heavy and multi-tile objects
-**Needs:** Multi-level. **Unblocks:** vehicles.
+- **Protector playstyle** — positions between enemies and allies, preferring covered spots (a COVER_SEEKER
+  variant scoring on *ally* protection). Not melee-gated; can land whenever.
+- **Weapon distinctions — saw versus sword versus fist** (the `POWER`/`TRIGGER` capability split). A saw-hand
+  can't add power to a sword swing.
 
-*The general answer to "how does mass move," forced by the 5000L tank: you rarely take the whole thing, you
-decide how to reduce or extract it. Vehicles are a later solution layered on top; this is the base.*
-
-- **Two axes, checked separately.** **Heavy** needs *strength* — a strong enough unit, or enough total.
-  **Bulky** needs *hands* — multiple units of any strength. Both means strong *and* several.
-- **The team-lift check is average Str × count** — average, not sum, so a **weak link drags the lift down**,
-  discouraging throwing the whole squad at it and rewarding a dedicated hauler. **Size caps how many can
-  help**: a one-tile object fits maybe two lifters, so you can't brute-force a small heavy thing with a crowd.
-- **Reduce ↔ whole is a spectrum.** Fully reduce (cut to scrap) → partially dismantle (split the tank from
-  its mounts, now bulky-but-light) → take whole (needs the good methods). Reducing is efficient; extracting
-  whole is the greedy, skilled play.
-- **The "I want it but lack the right tool" case is the interesting one** — you *can* take it, suboptimally.
-  Introduces a **disassembly-speed** stat and a **mangle-chance on rushed disassembly**: the right tool is
-  clean and fast, the wrong tool slow with a chance you break a piece you wanted.
-- **Bad methods** (drag, personal winch, dollies) versus **good methods** (lifter shells, flatbeds, gantries
-  — the vehicle layer).
+---
 
 ### Rampancy
 **Needs:** nothing hard; pays off best alongside matrix mobility.
@@ -518,17 +539,44 @@ decide how to reduce or extract it. Vehicles are a later solution layered on top
 - **Captured enemy matrix → ship defrag → friendly or valuable.** A high-tier matrix you can copy a player
   onto for a boss-tier upgrade, deliver as a quest, or crew.
 
-### Remaining melee pieces
-**Needs:** nothing.
 
-- **Protector playstyle** — positions between enemies and allies, preferring covered spots (a COVER_SEEKER
-  variant scoring on *ally* protection). Not melee-gated; can land whenever.
-- **Weapon distinctions — saw versus sword versus fist** (the `POWER`/`TRIGGER` capability split). A saw-hand
-  can't add power to a sword swing.
+### AI repair
+**Needs:** nothing in the plumbing.
 
----
+`ActionCatalog`-driven repair is already available to the player, and the catalog-derived consideration
+scaffold would surface it to the AI for free — but no when-to-repair logic exists. Enemy self-repair is a
+design choice deferred, not a gap.
 
-# UNSCHEDULED
+
+### Support gaps
+Mulebot and follower drones; hacking (Int-based, RAM cost already exists); weak points (poses, failure modes,
+and aimable joints all exist — cheap); voidhulk stability as an environmental hazard.
+
+
+### Vehicles
+**Needs:** Moving heavy objects, Matrix mobility.
+
+**A vehicle is a shell** — parts, sockets, power, a possible matrix slot — shaped for hauling and driving
+instead of fighting. Not a new pillar; content plus a few capabilities over existing systems.
+
+- **Piloted / driven / follower = where the controlling matrix lives.** A lifter has its own matrix. A **seat
+  is a socket a torso occupies**, so a unit's matrix mounts the driver-seat socket. The mulebot is a
+  low-autonomy matrix. All three are "a shell plus where's the matrix."
+- **The vehicle's actions become the rider's actions** (the action-provider model) — a bot in the driver seat
+  fires its own Shoot *and* the truck's Drive Forward. No new control system.
+- **Wheeled movement needs discrete handling** — turning radius, orientation, reverse, not walker-style
+  occupy-adjacent. **A truck stuck in a hallway is the intended mistake-space.**
+- **Wrecks are pilotable** — a destroyed enemy combat-tank is a huge shell; scrap it, or put a matrix in it
+  and drive it.
+
+**Open structural question — tiles as anchor-sockets** (resolve when multi-tile objects are concrete; don't
+build until then). Unify object-placement with part-attachment: a tile *offers an anchor-socket*; a placeable
+object has "goes on a tile" joints, so a 2×2 object has 4. Placement requires **all** joints simultaneously
+neighbour a compatible anchor-socket — which is how arbitrarily large objects are kept off small vehicles.
+**Direction is fixed to prevent accidental anchoring:** the world is a pure *anchor* (receives, never
+attaches); objects attach *downward* only; a vehicle bed is both. New machinery: multi-socket
+*simultaneous-match* placement, since sockets are one-to-one today.
+
 
 ### The meta layer — the ship and between-missions spine
 **Needs:** Storage for the economy pieces.
@@ -587,29 +635,6 @@ One interlocking spine (travel → time → fuel → heat → storage), not a li
   **research tree**; **scanner tiers** and the knowledge system (reveals internals, un-stubbing the occlusion
   gate); **mission selection**; claims; the mission → credits → upgrade loop; **captured-matrix value**.
 
-### Vehicles
-**Needs:** Moving heavy objects, Matrix mobility.
-
-**A vehicle is a shell** — parts, sockets, power, a possible matrix slot — shaped for hauling and driving
-instead of fighting. Not a new pillar; content plus a few capabilities over existing systems.
-
-- **Piloted / driven / follower = where the controlling matrix lives.** A lifter has its own matrix. A **seat
-  is a socket a torso occupies**, so a unit's matrix mounts the driver-seat socket. The mulebot is a
-  low-autonomy matrix. All three are "a shell plus where's the matrix."
-- **The vehicle's actions become the rider's actions** (the action-provider model) — a bot in the driver seat
-  fires its own Shoot *and* the truck's Drive Forward. No new control system.
-- **Wheeled movement needs discrete handling** — turning radius, orientation, reverse, not walker-style
-  occupy-adjacent. **A truck stuck in a hallway is the intended mistake-space.**
-- **Wrecks are pilotable** — a destroyed enemy combat-tank is a huge shell; scrap it, or put a matrix in it
-  and drive it.
-
-**Open structural question — tiles as anchor-sockets** (resolve when multi-tile objects are concrete; don't
-build until then). Unify object-placement with part-attachment: a tile *offers an anchor-socket*; a placeable
-object has "goes on a tile" joints, so a 2×2 object has 4. Placement requires **all** joints simultaneously
-neighbour a compatible anchor-socket — which is how arbitrarily large objects are kept off small vehicles.
-**Direction is fixed to prevent accidental anchoring:** the world is a pure *anchor* (receives, never
-attaches); objects attach *downward* only; a vehicle bed is both. New machinery: multi-socket
-*simultaneous-match* placement, since sockets are one-to-one today.
 
 ### Player-facing LOS/LOF conflation
 **Needs:** eyes on the targeting UX first.
@@ -620,6 +645,7 @@ because the player sees both the dartboard and the wall and can choose to fire a
 decision first — does the dartboard say "no shot" before the player commits AP? — not a mechanical copy of the
 AI fix.
 
+
 ### Melee against non-unit PART targets
 **Needs:** a reach-measurement design call.
 
@@ -629,6 +655,7 @@ destroy cover, hole a wall) is naturally ranged. Melee was deliberately left unt
 bare Part is its own question — does reach measure against the part's own box, or the whole blocker assembly's
 AABB? Melee correctly rejects a PART target today; this is the follow-up to make it possible, if wanted.
 
+
 ### AI-produced dartboards and an aim beat
 **Needs:** nothing mechanical; it's playback and timing work.
 
@@ -636,6 +663,7 @@ Only the player's shot ever draws a dartboard — an AI attack resolves straight
 no on-screen wind-up. `ShotScatter.for_shot` is now the one place range→radius truth lives, so it's a
 ready-made primitive to drive an enemy-side draw. The real work is *when* the beat plays, how long it holds,
 and how it interacts with other AI units resolving in the same batch.
+
 
 ### Wide scatter passing through a wall seam
 **Needs:** a design call among three options.
@@ -649,16 +677,23 @@ one projected rect at the source; cap dartboard scatter radius at a bound guaran
 balance number); or add a genuine floor Region. A design call waiting to be made, not a code fix waiting to be
 written.
 
-### AI repair
-**Needs:** nothing in the plumbing.
 
-`ActionCatalog`-driven repair is already available to the player, and the catalog-derived consideration
-scaffold would surface it to the AI for free — but no when-to-repair logic exists. Enemy self-repair is a
-design choice deferred, not a gap.
+### Commission real art
+**Needs:** a vocabulary freeze — a stretch of taskblocks in which **no socket type or part kind is
+added or renamed**.
 
-### Support gaps
-Mulebot and follower drones; hacking (Int-based, RAM cost already exists); weak points (poses, failure modes,
-and aimable joints all exist — cheap); voidhulk stability as an environmental hazard.
+Art is commissioned **per part**: every part is a rigged asset (`Part.mesh_scene`). While socket types
+and part kinds are still being added and renamed, commissioning buys against a moving target — and
+*that* is the waste, not the placeholder boxes. Boxes cost nothing while the vocabulary moves.
+
+**The dependency is a real, checkable condition, not a vibe.** Watch socket types and part kinds across
+blocks; when they stop changing, the vocabulary has frozen and art becomes worth money. Until then this
+stays here no matter how much the placeholder look grates.
+
+Style constraints when it does land are already settled in `docs/08` (terminal UI: monospace, six
+colours, one `Theme` resource; no CRT, scanline, or glow fakery — that's a later shader pass over a
+correct flat UI). HL2-era looks, CC0 placeholders in the meantime.
+
 
 ### Independent tracks
 **Needs:** nothing; gate nothing.
@@ -666,10 +701,12 @@ and aimable joints all exist — cheap); voidhulk stability as an environmental 
 The balance pass — roughly 13 flagged placeholder constants, tuned against watched bouts once melee and status
 exist. Cosmetics and clutter: part painting, tchotchkes, dyes, bag labels.
 
+
 ### Long backlog
 Mapping gear and **sellable hulk maps**; combat revives beyond the emergent model; matrix hotswap edge cases;
 loot **affixes**; muscle and bone sub-parts; multiplayer; rampancy-as-active-pressure tuning; mental-hazard and
 psychic content (Wis-resisted).
+
 
 ### Content to author when its system lands
 **Needs:** the named parent system in each case.
@@ -701,6 +738,7 @@ pirates, settlement.
   that pins an enemy to a surface behind them, pin-distance strength-affected. *Needs* thrown-weapon support,
   which doesn't exist yet, plus perks.
 
+
 ### Small mechanical notes
 - **Double crit** — crit above 100% rolls a second tier (125% = always crit, 25% chance to *double* crit:
   bypass armour AND bonus damage). The single-crit rule is built; the >100% tier is the extension.
@@ -723,6 +761,8 @@ pirates, settlement.
   clears to fully passable. The mangle machinery exists (`failure_mode = MANGLE`, `is_mangled`, `mangles_into`)
   but is never authored onto cover. Authoring it turns a destroyed wall or crate into rubble:
   passable-but-higher-cost and still low cover. Data authoring plus a small `move_cost` branch.
+
+---
 
 ---
 
