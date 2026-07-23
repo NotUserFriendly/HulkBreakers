@@ -535,3 +535,28 @@ func test_arming_burst_and_clicking_a_wall_enters_aim_mode() -> void:
 	assert_not_null(controller.aiming_at, "arming burst at a wall must still enter aim mode")
 	var aim: Dictionary = controller.aim_state()
 	assert_false(aim.is_empty(), "aim_state() must not come back empty for a wall target")
+
+
+## tb35 Pass A1 (BR26.02): the aim-side counterpart to `FpsDumpSink` — a
+## real FPS dump, greppable in `out/combat.log`, 200ms after THIS
+## specific transition into aim mode (not every reticle nudge).
+func test_entering_aim_mode_dumps_fps_200ms_later() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var state: CombatState = built.state
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+
+	assert_true(sink.events_of_kind(&"fps_dump").is_empty(), "sanity: not yet, before the delay")
+
+	await controller.get_tree().create_timer(0.25).timeout
+
+	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
+	assert_eq(dumps.size(), 1)
+	assert_eq(dumps[0].data.context, "aim")

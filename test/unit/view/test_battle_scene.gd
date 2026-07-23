@@ -675,3 +675,27 @@ func test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode() -> 
 		first_units,
 		"the stale previous-bout array must not linger as the feed"
 	)
+
+
+## tb35 Pass A1 (BR26.02): "the reason this bug has survived three passes
+## is that CC cannot see a framerate." `FpsDumpSink` watches for
+## `&"turn_start"` and dumps `Engine.get_frames_per_second()` back into
+## the same log 200ms later, so this becomes a real, greppable assertion
+## instead of a felt impression.
+func test_turn_start_triggers_an_fps_dump_200ms_later() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.new_battle(1)
+	var sink := MemorySink.new()
+	scene.combat_state.combat_log.add_sink(sink)
+
+	scene.combat_state.combat_log.emit(
+		LogEvent.new(scene.combat_state.round_number, Enums.Phase.RESOLUTION, 0, &"turn_start")
+	)
+	assert_true(sink.events_of_kind(&"fps_dump").is_empty(), "sanity: not yet, before the delay")
+
+	await scene.get_tree().create_timer(0.25).timeout
+
+	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
+	assert_eq(dumps.size(), 1)
+	assert_eq(dumps[0].data.context, "turn")

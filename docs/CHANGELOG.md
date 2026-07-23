@@ -212,9 +212,17 @@ ai_decision_log.gd`, kept out of `unit_ai.gd` itself to stay under its own file-
 `no_lof_no_route`/`stepped_out`/`overwatch`), whether it fired, and if it held, why
 (`no_weapon`/`ally_in_line`/`no_clear_lof`/`out_of_range`/`other`) — read back off a `MemorySink` in
 tests, the same convention `test_combat_log.gd` already uses. A diagnostic side-channel only, never
-read back by any planner, so `plan_turn`'s own purity/determinism contract is untouched. The two
-framerate dumps (aim entry, turn start) this same pass called for are view-layer work, not logic, and
-remain open.
+read back by any planner, so `plan_turn`'s own purity/determinism contract is untouched.
+
+**Two framerate dumps, in the combat log** (tb35 Pass A1, BR26.02) — "the reason this bug has
+survived three passes is that CC cannot see a framerate" gets an actual fix: **Aim FPS**
+(`TacticsController._dump_aim_fps()`, once per `_enter_aim_mode()` transition, 200ms later, past the
+entry transient) and **Turn FPS** (new `FpsDumpSink`, watching `combat_state.combat_log` for
+`&"turn_start"`, wired in `BattleScene.load_battle()` alongside `file_sink` so every bout gets one
+regardless of overlay) both emit `&"fps_dump"` events with a `context` tag, greppable straight out of
+`out/combat.log`. `Engine.get_frames_per_second()` only means something inside a real running client,
+so the headless coverage here only proves the plumbing fires on schedule — the actual before/after
+numbers still want a live session.
 
 **Per-turn LOF memoisation** (tb35 Pass A3, BR27.09) — `_any_reachable_has_lof` and
 `_engagement_score` each independently resolved `LineOfFire.first_hit` for the same (unit, enemy,

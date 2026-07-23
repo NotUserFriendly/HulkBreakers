@@ -135,6 +135,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
   observation confirms the aiming screen is no longer slow — and per the taskblock's own admission,
   profiling might still name the new Pass B/C overlays as a further cost if the two fixes above aren't
   the whole story. Needs the supervisor's own hands-on confirmation before promotion to `RESOLVED`.
+- **2026-07-23 (tb35 Pass A1 — the two supervisor-specified dumps built)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Both dumps this entry's own "make framerate a logged
+  number" instruction called for now exist, emitting `&"fps_dump"` events into the ordinary combat
+  log: **Aim FPS** — `TacticsController._dump_aim_fps()`, fired once per `_enter_aim_mode()` call
+  (never per reticle nudge), 200ms later. **Turn FPS** — new `FpsDumpSink`
+  (`src/view/fps_dump_sink.gd`), watching for `&"turn_start"` on `combat_state.combat_log`, wired in
+  `BattleScene.load_battle()` alongside `file_sink` so it re-points on every bout regardless of
+  overlay. Headless coverage (`test_tactics_controller.gd::
+  test_entering_aim_mode_dumps_fps_200ms_later`, `test_battle_scene.gd::
+  test_turn_start_triggers_an_fps_dump_200ms_later`) only proves the plumbing fires on schedule with
+  the right context tag — `Engine.get_frames_per_second()` itself is meaningless outside a real
+  running client, so the actual before/after numbers still need a live session and `out/combat.log`.
+  This closes this entry's own instrumentation ask; the underlying "is aiming actually fast now"
+  question stays open pending that live read.
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
 - **Source:** `SUPERVISOR`

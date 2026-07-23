@@ -60,6 +60,11 @@ var mission: MissionState
 ## itself is overlay-owned (SquadControlOverlay/SpectatorOverlay each
 ## place and size it differently).
 var file_sink: FileSink
+## tb35 Pass A1: world-level like `file_sink` above, same reason — every
+## turn's own FPS dump belongs in the one shared log regardless of which
+## overlay is watching, and needs re-pointing at the fresh `CombatState`
+## on every `load_battle()` the same way `file_sink` already does.
+var fps_dump_sink: FpsDumpSink
 var overlay: ControlOverlay
 ## taskblock-30: owned here, not by whichever overlay happens to be
 ## installed — `ControlOverlay`'s own header already establishes that
@@ -252,6 +257,8 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	combat_state = state
 	mission = p_mission
 	combat_state.combat_log.add_sink(file_sink)
+	fps_dump_sink = FpsDumpSink.new(self, combat_state.combat_log)
+	combat_state.combat_log.add_sink(fps_dump_sink)
 	bout_injector = BoutInjector.new(combat_state)
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
