@@ -54,6 +54,13 @@ static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Ar
 		var offset := _offset(unit.cell, origin_flat, dir, perp)
 		for region: Region in BodyProjector.project(unit, dir3):
 			_place(region, offset)
+			# taskblock-36 Pass D: `BodyProjector.project` composes a unit's
+			# whole body in BODY-LOCAL space — it has no notion of `cell` or
+			# `level` at all (that's `UnitGeometry`'s own, entirely separate
+			# placement system, docs/10 "render is hitbox"). A unit's real
+			# elevation only enters HERE, the one place a cell's world
+			# position already gets composed in (`_offset`/`_place` above).
+			region.rect.position.y += unit.level * UnitGeometry.LEVEL_HEIGHT
 			_shear(region, origin.y, vertical_slope)
 			region.body = unit
 			regions.append(region)
@@ -67,6 +74,9 @@ static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Ar
 		# volume.
 		for region: Region in BodyProjector.project_assembly(part, dir3):
 			_place(region, offset)
+			# taskblock-36 Pass D: a piece of cover sitting on an elevated
+			# cell raises exactly like a unit standing there would.
+			region.rect.position.y += state.grid.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
 			_shear(region, origin.y, vertical_slope)
 			region.body = part
 			regions.append(region)

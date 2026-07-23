@@ -12,6 +12,11 @@ extends RefCounted
 ## World units per grid cell — the ground plane's scale for both the board
 ## mesh and unit placement.
 const CELL_SIZE := 1.0
+## taskblock-36 Pass D: world units per `Grid.level` step — docs/PLAN.md's
+## own multi-level math ("22.5 degree ramps rise 0.5/tile -> two ramps
+## make one full level") makes one level exactly 1.0 world unit, not a
+## number invented for this pass.
+const LEVEL_HEIGHT := 1.0
 ## docs/09 taskblock07 Pass A: muzzle_point()'s own fallback when a weapon
 ## somehow has no placement at all (defensive: an operable weapon always
 ## has one) — roughly chest-height on the reference humanoid, the same
@@ -48,7 +53,7 @@ static func placements(
 		orientation_override if orientation_override != null else unit.orientation
 	)
 	var pose: Pose = pose_override if pose_override != null else unit.pose
-	return assembly_placements(unit.shell.root, unit.cell, orientation, pose)
+	return assembly_placements(unit.shell.root, unit.cell, orientation, pose, unit.level)
 
 
 ## docs/10 taskblock04 C1: the same tree-walk `placements()` gives a real
@@ -58,12 +63,19 @@ static func placements(
 ## anything) and no pose of its own (null: it isn't posed at all).
 ## `placements()` is just this with a Unit's own cell/orientation/pose
 ## unpacked for it.
+##
+## taskblock-36 Pass D: `level` (0 by default — a field object doesn't sit
+## on a `Grid.level` cell of its own the way a `Unit` does) is this root's
+## own real elevation, `LEVEL_HEIGHT` world units per step. Applied to the
+## Y translation ALONE, never scaled by `CELL_SIZE` (a genuinely separate
+## axis with its own scale, even though both happen to equal 1.0 today).
 static func assembly_placements(
-	root: Part, cell: Vector2i, orientation: float = 0.0, pose: Pose = null
+	root: Part, cell: Vector2i, orientation: float = 0.0, pose: Pose = null, level: int = 0
 ) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
 	var unit_transform := Transform3D(
-		Basis(Vector3.UP, orientation), Vector3(cell.x, 0.0, cell.y) * CELL_SIZE
+		Basis(Vector3.UP, orientation),
+		Vector3(cell.x * CELL_SIZE, level * LEVEL_HEIGHT, cell.y * CELL_SIZE)
 	)
 	if pose != null and pose.overrides.has(Poses.ROOT_SOCKET_ID):
 		unit_transform = unit_transform * (pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D)
@@ -103,7 +115,9 @@ static func _walk(
 ## rotated boxes, and tight enough for a framing margin check.
 static func bounding_sphere(unit: Unit, orientation_override: Variant = null) -> Dictionary:
 	var box_placements: Array[BoxPlacement] = placements(unit, orientation_override)
-	var origin: Vector3 = Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+	var origin: Vector3 = Vector3(
+		unit.cell.x * CELL_SIZE, unit.level * LEVEL_HEIGHT, unit.cell.y * CELL_SIZE
+	)
 	return _sphere_from_placements(box_placements, origin)
 
 
@@ -179,7 +193,11 @@ static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
 		if placement.part == weapon:
 			var tip: Vector3 = placement.box.center + Vector3(0.0, 0.0, placement.box.size.z * 0.5)
 			return placement.transform.translated_local(tip).origin
-	return Vector3(unit.cell.x, DEFAULT_MUZZLE_HEIGHT, unit.cell.y) * CELL_SIZE
+	return Vector3(
+		unit.cell.x * CELL_SIZE,
+		unit.level * LEVEL_HEIGHT + DEFAULT_MUZZLE_HEIGHT,
+		unit.cell.y * CELL_SIZE
+	)
 
 
 ## taskblock-22 Pass H1: `unit`'s own real SHOULDER socket world height —
@@ -196,7 +214,8 @@ static func shoulder_height(unit: Unit) -> float:
 	if unit.shell.root == null:
 		return -1.0
 	var unit_transform := Transform3D(
-		Basis(Vector3.UP, unit.orientation), Vector3(unit.cell.x, 0.0, unit.cell.y) * CELL_SIZE
+		Basis(Vector3.UP, unit.orientation),
+		Vector3(unit.cell.x * CELL_SIZE, unit.level * LEVEL_HEIGHT, unit.cell.y * CELL_SIZE)
 	)
 	return _find_shoulder(unit.shell.root, Transform3D.IDENTITY, unit_transform)
 

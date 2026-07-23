@@ -22,6 +22,24 @@ func test_astar_straight_line_uniform_cost() -> void:
 	assert_almost_eq(_sum_path_cost(pf, path), 4.0, 0.0001)
 
 
+## taskblock-36 Pass D: "Pathfinder produces identical paths whether or not
+## levels are set — it genuinely ignores them this pass." Cells along and
+## beside the straight-line path are given a real, varied elevation; the
+## resolved path and its cost must not move.
+func test_astar_ignores_cell_level_entirely() -> void:
+	var grid := Grid.new(5, 5)
+	var pf := Pathfinder.new(grid)
+	var baseline: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
+
+	for y in range(grid.rows):
+		for x in range(grid.width):
+			grid.set_level(Vector2i(x, y), (x + y) % 3)
+
+	var with_levels: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(4, 0))
+	assert_eq(with_levels, baseline, "a real, varied level must not change the resolved path")
+	assert_almost_eq(_sum_path_cost(pf, with_levels), _sum_path_cost(pf, baseline), 0.0001)
+
+
 func test_astar_path_length_with_mixed_terrain_cost() -> void:
 	# 1-row corridor forces the path straight through a costly cell — no detour possible.
 	var grid := Grid.new(5, 1)

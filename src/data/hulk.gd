@@ -12,8 +12,8 @@ extends Resource
 @export var visits: int = 0
 
 
-func generate_map(width: int, height: int) -> Grid:
-	return MapGen.generate(map_seed, width, height)
+func generate_map(width: int, rows: int) -> Grid:
+	return MapGen.generate(map_seed, width, rows)
 
 
 ## Combined with `visits` so the population re-rolls every time you come

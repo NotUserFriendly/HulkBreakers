@@ -13,11 +13,24 @@ const NEIGHBOR_OFFSETS: Array[Vector2i] = [
 ]
 
 var width: int
-var height: int
+## taskblock-36 Pass D: renamed from `height` in the same commit that adds
+## `level` below — `height` meaning "row count" and a cell's own real
+## elevation coexisting under similar names is exactly the trap CLAUDE.md
+## warns about; `Region.depth` already means "distance along the shot
+## ray," so `depth` was never a candidate either.
+var rows: int
 
 var terrain: Array[int] = []
 var opacity: Array[float] = []
 var occupant_id: Array[int] = []
+## taskblock-36 Pass D: a cell's own integer elevation — 0 (ground level)
+## everywhere on a fresh `MapGen` map (inert in normal play; nothing
+## consumes this for movement/pathfinding yet) and the first real slice
+## of multi-level (docs/PLAN.md "Multi-level maps"). `UnitGeometry` reads
+## a unit's own cached `Unit.level` (synced from this at
+## `CombatState.add_unit`) rather than this array directly — neither
+## `UnitGeometry` nor `BodyProjector` otherwise touch the grid at all.
+var level: Array[int] = []
 ## Vector2i -> Part; a field object (cover, scrap, a barrel, ...) sitting
 ## at this cell. taskblock-16 Pass B2: the ONE source of truth for "is
 ## this cell covered" — the old `cover_value` scalar is retired (it never
@@ -30,16 +43,18 @@ var blockers: Dictionary = {}
 var field_items: Dictionary = {}  # Vector2i -> Array[Part|Matrix]; loose items lying on the ground
 
 
-func _init(p_width: int, p_height: int) -> void:
+func _init(p_width: int, p_rows: int) -> void:
 	width = p_width
-	height = p_height
-	var count := width * height
+	rows = p_rows
+	var count := width * rows
 	terrain.resize(count)
 	opacity.resize(count)
 	occupant_id.resize(count)
+	level.resize(count)
 	terrain.fill(0)
 	opacity.fill(0.0)
 	occupant_id.fill(-1)
+	level.fill(0)
 
 
 func _index(cell: Vector2i) -> int:
@@ -47,7 +62,7 @@ func _index(cell: Vector2i) -> int:
 
 
 func in_bounds(cell: Vector2i) -> bool:
-	return cell.x >= 0 and cell.x < width and cell.y >= 0 and cell.y < height
+	return cell.x >= 0 and cell.x < width and cell.y >= 0 and cell.y < rows
 
 
 func get_terrain(cell: Vector2i) -> int:
@@ -74,16 +89,25 @@ func set_occupant_id(cell: Vector2i, value: int) -> void:
 	occupant_id[_index(cell)] = value
 
 
+func get_level(cell: Vector2i) -> int:
+	return level[_index(cell)]
+
+
+func set_level(cell: Vector2i, value: int) -> void:
+	level[_index(cell)] = value
+
+
 ## A fully independent copy for TACTICS-time speculative previews (docs/09).
 ## Dictionary.duplicate(true) only deep-copies nested containers, not the
 ## Part/Matrix objects they hold, so blockers and field_items are rebuilt
 ## with their own values individually duplicated — a preview attack that
 ## destroys cover must never touch the real Part.
 func dup() -> Grid:
-	var cloned := Grid.new(width, height)
+	var cloned := Grid.new(width, rows)
 	cloned.terrain = terrain.duplicate()
 	cloned.opacity = opacity.duplicate()
 	cloned.occupant_id = occupant_id.duplicate()
+	cloned.level = level.duplicate()
 	for cell: Vector2i in blockers:
 		cloned.blockers[cell] = (blockers[cell] as Part).duplicate(true)
 	for cell: Vector2i in field_items:

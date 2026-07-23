@@ -45,7 +45,7 @@ static func obstruction_count(grid: Grid, a: Vector2i, b: Vector2i) -> int:
 static func visible_cells(grid: Grid, origin: Vector2i, radius: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var y_start: int = maxi(origin.y - radius, 0)
-	var y_end: int = mini(origin.y + radius, grid.height - 1)
+	var y_end: int = mini(origin.y + radius, grid.rows - 1)
 	var x_start: int = maxi(origin.x - radius, 0)
 	var x_end: int = mini(origin.x + radius, grid.width - 1)
 

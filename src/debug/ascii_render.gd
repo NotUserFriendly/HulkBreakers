@@ -26,7 +26,7 @@ const CHAR_VOID := " "
 ## overrides terrain/cover at that cell (e.g. unit markers).
 static func grid_to_text(grid: Grid, occupants: Dictionary = {}) -> String:
 	var lines: Array[String] = []
-	for y in range(grid.height):
+	for y in range(grid.rows):
 		var row := ""
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)

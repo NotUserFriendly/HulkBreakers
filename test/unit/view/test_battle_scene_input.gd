@@ -47,7 +47,7 @@ func test_a_real_click_over_the_board_selects_the_current_unit_through_every_pan
 	# trusting wherever DeepStrike happened to seed it.
 	var current: Unit = scene.combat_state.current_unit()
 	var board_center := Vector2i(
-		scene.combat_state.grid.width / 2, scene.combat_state.grid.height / 2
+		scene.combat_state.grid.width / 2, scene.combat_state.grid.rows / 2
 	)
 	scene.combat_state.grid.set_occupant_id(current.cell, -1)
 	current.cell = board_center

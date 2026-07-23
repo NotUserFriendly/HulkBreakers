@@ -17,6 +17,13 @@ var id: int = -1  # assigned by CombatState.add_unit; matches Grid.occupant_id
 var matrix: Matrix
 var shell: Shell
 var cell: Vector2i
+## taskblock-36 Pass D: this unit's own true elevation — `Grid.level` at
+## `cell`, cached here (mirroring `cell` itself) rather than re-derived
+## from the grid every time `UnitGeometry` needs a real Y, since neither
+## `UnitGeometry` nor `BodyProjector` otherwise touch the grid at all.
+## Synced from the grid at `CombatState.add_unit()`; nothing else writes
+## it this pass (no vertical movement verb exists yet).
+var level: int = 0
 var squad_id: int = 0
 
 var ap: int = 0

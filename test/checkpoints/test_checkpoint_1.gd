@@ -23,7 +23,7 @@ func test_dump_ascii_maps_across_several_seeds() -> void:
 
 		var spawn_a_found := false
 		var spawn_b_found := false
-		for y in range(grid.height):
+		for y in range(grid.rows):
 			for x in range(grid.width):
 				var terrain: int = grid.get_terrain(Vector2i(x, y))
 				if terrain == Enums.TerrainType.SPAWN_A:
