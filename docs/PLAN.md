@@ -201,6 +201,20 @@ so it builds after those exist.*
   dead center, then normal scatter resumes (the inverse of recoil; binds to the dartboard/accuracy
   seam — "force center on first pull"). A clean data-binding, exactly the shape the framework must
   express.
+- **The see-the-future seam — a derived RNG sub-stream (design settled tb33 review; nothing built).**
+  Perks are meant to let a unit break the rules, including seeing ahead — so "sampling can only happen
+  at resolution" can't be an absolute. The rule such a perk breaks *looks* like determinism but isn't:
+  the real invariant is that **TACTICS must not advance the shared bout RNG stream** — if queuing and
+  un-queuing drew from `state.rng`, the same seed would yield a different battle depending on UI
+  fiddling. Preview-time sampling is therefore legal *provided it draws from a derived sub-stream*,
+  seeded deterministically from the bout seed plus stable identifiers, never from `state.rng`.
+  Resolution replays the identical draw, so what the perk showed **is** what happens — a stronger
+  guarantee than the current architecture gives, and the honest substrate for precognition-style perks
+  generally.
+  **The trap to avoid:** key the sub-stream to something stable (unit + turn + weapon), *never* to
+  queue position. Keyed to queue index, a player un-queues and re-queues to reroll the prophecy —
+  save-scumming through a perk. Stable keying means the same turn always shows the same future, which
+  is also what makes it read as foresight rather than a slot machine.
 - **The five classes are the acceptance test** — Gunslinger, Hotswapper, Hulk, Cutter, Demolitionist.
   If all five express as data bindings with **zero bespoke perk code**, the framework is right. A
   missing seam → add the seam, not the special case.
