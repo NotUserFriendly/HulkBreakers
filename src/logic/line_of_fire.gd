@@ -35,10 +35,18 @@ static func first_hit(
 	if direction.is_zero_approx():
 		return null
 	var origin := Vector2(from_cell.x, from_cell.y)
-	var dir_n: Vector2 = direction.normalized()
-	var plane: Array[Region] = ShotPlane.build(
-		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	# taskblock-37 Pass A: `from_cell` is a CANDIDATE cell, not necessarily
+	# `shooter.cell` (this evaluates hypothetical reachable cells too) — its
+	# own real level, not the shooter's cached one, is the honest origin
+	# height for a shot fired from THAT cell specifically. No real muzzle
+	# exists here (no weapon in view yet, only a candidate position), so
+	# ground level is the origin height, same as `elevation_for`'s own
+	# no-muzzle convention elsewhere.
+	var origin_height: float = state.grid.get_level(from_cell) * UnitGeometry.LEVEL_HEIGHT
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		origin, origin_height, from_cell, target.cell, state.grid
 	)
+	var plane: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, state)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target)
 	return _first_hit_excluding(plane, aim_point, shooter)
 

@@ -205,18 +205,23 @@ static func _torso_visible(
 	var direction := Vector2(mover.cell - overwatcher.cell)
 	if direction.is_zero_approx():
 		return false
-	# Still built once, plane-space, purely to find the torso's own
-	# rect-center as an aim point — the SAME coordinate convention
-	# AimPlaneGeometry.ray_from_muzzle expects (anchored on this exact
-	# shooter->target dead-ahead axis), never resolved against directly.
-	var dir_n: Vector2 = direction.normalized()
-	var plane: Array[Region] = ShotPlane.build(
-		Vector3(overwatcher.cell.x, 0.0, overwatcher.cell.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	var muzzle: Vector3 = UnitGeometry.muzzle_point(overwatcher, weapon)
+	# taskblock-37 Pass A: still built once, plane-space, purely to find
+	# the torso's own rect-center as an aim point — the SAME coordinate
+	# convention AimPlaneGeometry.ray_from_muzzle expects (anchored on this
+	# exact shooter->target dead-ahead axis), never resolved against
+	# directly. Real elevation now, same as every other production plane.
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		Vector2(overwatcher.cell.x, overwatcher.cell.y),
+		muzzle.y,
+		overwatcher.cell,
+		mover.cell,
+		state.grid
 	)
+	var plane: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, state)
 	var torso_region: Region = _torso_region(plane, torso, mover)
 	if torso_region == null:
 		return false
-	var muzzle: Vector3 = UnitGeometry.muzzle_point(overwatcher, weapon)
 	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
 		overwatcher.cell, mover.cell, torso_region.rect.get_center(), muzzle
 	)
@@ -264,16 +269,26 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 
 	var origin := Vector2(overwatcher.cell.x, overwatcher.cell.y)
 	var direction := Vector2(mover.cell - overwatcher.cell)
-	var dir_n: Vector2 = direction.normalized()
-	var plane: Array[Region] = ShotPlane.build(
-		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	# taskblock-37 Pass A: a real muzzle height (this function already
+	# takes a weapon) rather than ground level, matching AttackAction's
+	# own precision.
+	var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(overwatcher, weapon)
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		origin, muzzle.y, overwatcher.cell, mover.cell, state.grid
 	)
+	var plane: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, state)
 	var torso: Part = mover.shell.root
 	var torso_region: Region = _torso_region(plane, torso, mover)
 	var aim_point: Vector2 = (
 		torso_region.rect.get_center()
 		if torso_region != null
 		else ShotPlane.center_of(plane, mover)
+	)
+	# taskblock-37 Pass A: the aim point's own real depth — see
+	# AttackAction's own doc comment for why `_find_next` needs this
+	# anchor, not just the vertical_slope itself.
+	var aim_depth: float = (
+		torso_region.depth if torso_region != null else ShotPlane.depth_of(plane, mover)
 	)
 
 	var range_cells: int = Grid.distance_chebyshev(overwatcher.cell, mover.cell)
@@ -336,7 +351,12 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 			DamageResolver.DEFAULT_DAMAGE_FLOOR,
 			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
 			overwatcher.shell.all_parts(),
-			bonus_pen
+			bonus_pen,
+			elevation.vertical_slope,
+			muzzle.y,
+			DamageResolver.DEFLECT_MODE_RICOCHET,
+			0.0,
+			aim_depth
 		)
 		if state.is_preview:
 			continue
@@ -352,7 +372,9 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 		for result: ImpactResult in results:
 			ShotResolution.log_impact_result(state, overwatcher, result, null, is_dud)
 		if results.is_empty():
-			ShotResolution.log_miss_result(state, overwatcher, origin, direction, point, 0.0)
+			ShotResolution.log_miss_result(
+				state, overwatcher, origin, direction, point, 0.0, muzzle.y
+			)
 
 	if mover.alive and mover.shell.living_parts().is_empty():
 		state.kill_unit(mover)

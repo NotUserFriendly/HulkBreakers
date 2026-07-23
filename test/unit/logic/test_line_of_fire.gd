@@ -82,6 +82,21 @@ func test_open_field_line_of_fire_matches_line_of_sight() -> void:
 	)
 
 
+## taskblock-37 Pass A: `first_hit` builds its plane from `ShotPlane.
+## elevation_for`, a real level delta rather than the old hardcoded-flat
+## `Vector3(x, 0.0, y)` — a target on a raised cell must still be the shot's
+## own first hit, not silently lost once the ray actually tilts.
+func test_has_clear_line_of_fire_is_true_against_an_elevated_target() -> void:
+	var grid := Grid.new(10, 10)
+	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
+	grid.set_level(Vector2i(2, 5), 3)
+	var state := CombatState.new(grid, [shooter, target])
+
+	assert_eq(target.level, 3, "the target must actually pick up the cell's own level at spawn")
+	assert_true(LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state))
+
+
 ## tb35 Pass B (BR34.06/BR27.02): reconstructs the logged failure — a real
 ## target straight ahead, plus a wall several cells BEHIND the shooter
 ## (present in the plane on purpose, `ShotPlane.build`'s own doc comment).

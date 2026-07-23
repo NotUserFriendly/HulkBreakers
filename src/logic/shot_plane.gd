@@ -13,6 +13,57 @@ extends RefCounted
 ## aspirational — there is no other door in.
 
 
+## taskblock-37 Pass A: the shared seam every production firing action
+## (`AttackAction`/`BurstAction`/`Overwatch`/`Suppression`/`LineOfFire`/
+## `TacticsController`) now builds its own real 3D origin/direction
+## through, instead of each re-deriving "target cell's own real height"
+## independently. `origin_flat` is the shooter's own cell-space lateral
+## position (already how every caller computes it: a real muzzle's `(x,
+## z) / CELL_SIZE`, or a bare cell when no weapon-specific muzzle exists
+## yet); `origin_height` is that shooter's own real world height (a real
+## muzzle's `y`, or `grid.get_level(origin_cell) * UnitGeometry.
+## LEVEL_HEIGHT` where no muzzle exists) — used only for `origin`'s own
+## Vector3 (`build`'s absolute-height convention needs it there).
+##
+## The TILT itself is deliberately NOT "target's raw ground height minus
+## the shooter's own absolute muzzle height" — a standing shooter's
+## muzzle already sits above ITS OWN cell's ground by a real amount
+## (shoulder/grip height), and that offset must not read as a downward
+## tilt at an equal-level target 0.9 world units "below" the muzzle. The
+## tilt is the LEVEL DIFFERENCE between the two cells (`Unit.level`'s own
+## source, `Grid.level`) — exactly `0.0` whenever `origin_cell` and
+## `target_cell` share a level, matching every flat shot before this
+## pass, and nonzero only when they genuinely don't. This is exactly what
+## tb36's own verification confirmed: two standing bodies' real muzzle
+## heights differ by precisely `(target_level - origin_level) *
+## LEVEL_HEIGHT`, since both carry the same baseline muzzle-above-own-
+## level offset.
+##
+## `vertical_slope` — rise per unit of ground distance, the same
+## quantity `resolve_ray` used to reconstruct locally before tb36 Pass C
+## folded it into `build`'s own shear — is returned alongside `origin`/
+## `direction` because `DamageResolver.resolve_shot` still needs it as an
+## explicit scalar for its OWN separate, ricochet-carrying height test
+## (`_find_next`); it is NOT re-derived a second way there, just handed
+## across the boundary this function already computed it at.
+static func elevation_for(
+	origin_flat: Vector2,
+	origin_height: float,
+	origin_cell: Vector2i,
+	target_cell: Vector2i,
+	grid: Grid
+) -> Dictionary:
+	var flat: Vector2 = Vector2(target_cell) - origin_flat
+	var level_delta: int = grid.get_level(target_cell) - grid.get_level(origin_cell)
+	var height_delta: float = level_delta * UnitGeometry.LEVEL_HEIGHT
+	var vertical_slope: float = 0.0 if flat.is_zero_approx() else height_delta / flat.length()
+	return {
+		"origin": Vector3(origin_flat.x, origin_height, origin_flat.y),
+		"direction": Vector3(flat.x, height_delta, flat.y),
+		"vertical_slope": vertical_slope,
+	}
+
+
 ## Projects every living unit and every standing cover part in `state` into
 ## one plane, offset so each entity's local Regions land at its cell's true
 ## position relative to `origin`, and sorted nearest-shooter-first.
@@ -26,19 +77,30 @@ extends RefCounted
 ## vertical component (not left at whatever magnitude `dir3`'s own
 ## horizontal slice happens to have — a steep `direction` would otherwise
 ## shrink the whole plane's lateral/depth scale, the same bug Pass B fixed
-## in `BodyProjector._project_box`). `vertical_slope` — `dir3`'s own rise
-## per unit of ground distance, 0.0 for any flat `direction` (every caller
-## before `resolve_ray` started passing a real one) — shears every
-## region's `rect.position.y` from absolute world height into height
-## RELATIVE TO THE RAY'S OWN PATH at that region's own depth via `_shear`
-## below: "a Region's height is simply its own position in the plane"
-## (this pass's own name for retiring `resolve_ray`'s separate
-## `muzzle.y + vertical_slope * depth` reconstruction — that math moves
-## here, computed once, not re-derived by every caller that needs it).
-## Provably inert whenever `origin.y == 0.0` and `direction.y == 0.0`
-## (every caller except `resolve_ray` today): `vertical_slope` is then
-## exactly `0.0` and `_shear` subtracts exactly `0.0` from every region.
-static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Array[Region]:
+## in `BodyProjector._project_box`).
+##
+## taskblock-37 Pass A: `shear` — default `false` — is `resolve_ray`'s OWN
+## private convention, not this function's general contract. Region's own
+## documented invariant is "rect's Y axis is real world height" (region.gd),
+## and every OTHER production caller (`AttackAction`/`BurstAction`/
+## `Overwatch`/`Suppression`/`LineOfFire`/`TacticsController`) reads a
+## region's rect as an ABSOLUTE aim point — `center_of`, `first_hit`,
+## `torso_region.rect.get_center()` all hand that value on to something
+## else expecting real world height (`AimPlaneGeometry.world_point_at_
+## depth`, `Dartboard.sample`, `self_obstruction`'s own `muzzle_height`
+## test). tb36 Pass C's own `_shear` (still below) — subtracting `origin.y
+## + vertical_slope * depth` to express "height relative to the ray's own
+## path" — was undetected as `resolve_ray`-only because, before this pass,
+## no OTHER caller ever passed a nonzero `origin.y`/`direction.y`; the
+## moment a caller here started passing a shooter's real muzzle height,
+## every `Region` it read back shifted by that same height, breaking the
+## "absolute world height" contract those callers depend on. `resolve_ray`
+## is the one caller that opts in (`shear = true`) — it queries at
+## `Vector2.ZERO` for exactly that reason, never reading the resulting
+## rect as an absolute point itself.
+static func build(
+	origin: Vector3, direction: Vector3, state: CombatState, shear: bool = false
+) -> Array[Region]:
 	var dir3: Vector3 = direction.normalized()
 	var raw_horizontal := Vector2(dir3.x, dir3.z)
 	var horizontal_len: float = raw_horizontal.length()
@@ -61,7 +123,8 @@ static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Ar
 			# elevation only enters HERE, the one place a cell's world
 			# position already gets composed in (`_offset`/`_place` above).
 			region.rect.position.y += unit.level * UnitGeometry.LEVEL_HEIGHT
-			_shear(region, origin.y, vertical_slope)
+			if shear:
+				_shear(region, origin.y, vertical_slope)
 			region.body = unit
 			regions.append(region)
 
@@ -77,7 +140,8 @@ static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Ar
 			# taskblock-36 Pass D: a piece of cover sitting on an elevated
 			# cell raises exactly like a unit standing there would.
 			region.rect.position.y += state.grid.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
-			_shear(region, origin.y, vertical_slope)
+			if shear:
+				_shear(region, origin.y, vertical_slope)
 			region.body = part
 			regions.append(region)
 
@@ -234,7 +298,11 @@ static func resolve_ray(
 		return null
 	var flat_origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
 	var origin := Vector3(flat_origin.x, muzzle.y, flat_origin.y)
-	var plane: Array[Region] = build(origin, dir_n, world)
+	# taskblock-37 Pass A: the one caller that opts INTO the shear — see
+	# `build`'s own doc comment. `resolve_ray` queries at `Vector2.ZERO`
+	# below precisely because it wants "relative to the ray," not an
+	# absolute point read back out.
+	var plane: Array[Region] = build(origin, dir_n, world, true)
 	var region: Region = null
 	for candidate: Region in plane:
 		if candidate.depth < 0.0:
@@ -309,6 +377,41 @@ static func center_of_part(plane: Array[Region], part: Part, fallback_cell: Vect
 	if best == null:
 		return Vector2(fallback_cell.x, fallback_cell.y)
 	return best.rect.get_center()
+
+
+## taskblock-37 Pass A: `center_of`'s own companion — the frontmost
+## region's real DEPTH, not just its rect center. `DamageResolver._find_
+## next` reconstructs a candidate's real height as `point.y + vertical_
+## slope * (candidate.depth - point_depth)`: for a genuinely tilted first
+## hop, the dartboard's own aim point sits at the TARGET's own depth, not
+## the origin's, so testing OTHER candidates (in front of or behind the
+## target) needs to adjust relative to THAT depth, not depth zero. `0.0`
+## (no matching region) is exactly a ricochet's own convention too — a
+## ricochet's continuation plane is always fresh-built from the deflection
+## point itself, genuinely AT depth zero, so this reduces to the exact old
+## formula for every ricochet hop and every caller that never computes a
+## real point_depth at all.
+static func depth_of(plane: Array[Region], target: Unit) -> float:
+	var target_parts: Array[Part] = target.shell.all_parts()
+	var best: Region = null
+	for region: Region in plane:
+		if not target_parts.has(region.part):
+			continue
+		if best == null or region.depth < best.depth:
+			best = region
+	return 0.0 if best == null else best.depth
+
+
+## `center_of_part`'s own depth companion — see `depth_of`'s own doc
+## comment for why this exists at all.
+static func depth_of_part(plane: Array[Region], part: Part) -> float:
+	var best: Region = null
+	for region: Region in plane:
+		if region.body != part:
+			continue
+		if best == null or region.depth < best.depth:
+			best = region
+	return 0.0 if best == null else best.depth
 
 
 static func _offset(cell: Vector2i, origin: Vector2, dir: Vector2, perp: Vector2) -> Vector2:

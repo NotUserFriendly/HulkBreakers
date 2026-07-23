@@ -257,6 +257,31 @@ func test_the_exchange_is_deterministic_from_the_same_seed() -> void:
 	assert_almost_eq(damages[0], damages[1], 0.0001)
 
 
+## taskblock-37 Pass A: `_fire`'s own `DamageResolver.resolve_shot` call
+## needed the same `point_depth`/`aim_depth` anchor fix AttackAction's own
+## regression test proves — an elevated mover must still be a real trigger
+## target, not silently missed on every round.
+func test_the_exchange_still_lands_against_an_elevated_mover() -> void:
+	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
+	var overwatcher: Unit = built.unit
+	var mover: Unit = _make_mover(Vector2i(0, 3), 1)
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(0, 3), 2)
+	var state := CombatState.new(grid, [overwatcher, mover])
+	overwatcher.overwatch_weapon_id = &"pistol"
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_eq(mover.level, 2, "the mover must actually pick up the cell's own level at spawn")
+
+	Overwatch.check_trigger(state, mover)
+
+	assert_true(
+		sink.events_of_kind(&"impact").size() > 0,
+		"an elevated mover must still be hittable, not silently missed"
+	)
+
+
 ## docs/09 taskblock07 Pass A/TESTS: "overwatch's torso check equals
 ## resolve_ray" — _torso_visible()'s own true/false answer must agree with
 ## an independently-built resolve_ray call at the torso's own rect center,

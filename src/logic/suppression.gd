@@ -93,11 +93,18 @@ static func resolve_opportunity_attacks(
 		if state.is_preview:
 			continue
 		var origin := Vector2(attacker.cell.x, attacker.cell.y)
-		var dir_n: Vector2 = direction.normalized()
-		var plane: Array[Region] = ShotPlane.build(
-			Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+		# taskblock-37 Pass A: a real muzzle height (this weapon is a real
+		# Part on the attacker), matching AttackAction's own precision.
+		var muzzle: Vector3 = UnitGeometry.shouldered_muzzle_point(attacker, weapon)
+		var elevation: Dictionary = ShotPlane.elevation_for(
+			origin, muzzle.y, attacker.cell, mover.cell, state.grid
 		)
+		var plane: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, state)
 		var aim_point: Vector2 = ShotPlane.center_of(plane, mover)
+		# taskblock-37 Pass A: the aim point's own real depth — see
+		# AttackAction's own doc comment for why `_find_next` needs this
+		# anchor, not just the vertical_slope itself.
+		var aim_depth: float = ShotPlane.depth_of(plane, mover)
 		var damage: float = WeaponResolver.resolve_damage(weapon, []).current
 		var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, []).current
 		var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, []).current
@@ -114,9 +121,11 @@ static func resolve_opportunity_attacks(
 			null,
 			false,
 			RangeModel.max_range(weapon),
-			0.0,
+			muzzle.y,
 			DamageResolver.DEFLECT_MODE_SLIDE,
-			stab_width
+			stab_width,
+			elevation.vertical_slope,
+			aim_depth
 		)
 		if mover.alive and mover.shell.living_parts().is_empty():
 			state.kill_unit(mover)

@@ -980,11 +980,15 @@ func aim_state() -> Dictionary:
 			&"free_with_aim"
 		)
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
-	var direction := Vector2(target.cell - shooter.cell)
-	var dir_n: Vector2 = direction.normalized()
-	var raw: Array[Region] = ShotPlane.build(
-		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), preview
+	# taskblock-37 Pass A: no specific weapon is in view for the aim
+	# PREVIEW itself (armed but not yet resolved) — ground level of the
+	# shooter's own cell, same no-muzzle convention `LineOfFire.first_hit`
+	# uses, real elevation still reaches `BodyProjector`'s visibility test.
+	var origin_height: float = preview.grid.get_level(shooter.cell) * UnitGeometry.LEVEL_HEIGHT
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		origin, origin_height, shooter.cell, target.cell, preview.grid
 	)
+	var raw: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, preview)
 	# The shooter's own body sits right at the ray's origin and would
 	# otherwise resolve as a phantom "nearest layer" the aim UI has no
 	# business reading — the same exclusion AttackAction's own first
