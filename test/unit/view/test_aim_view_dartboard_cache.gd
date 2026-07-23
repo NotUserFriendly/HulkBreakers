@@ -122,3 +122,45 @@ func test_ring_texture_rebuilds_when_a_bound_appears_or_disappears() -> void:
 	assert_ne(
 		without_bound, with_bound, "a newly-armed burst adding a bound must rebuild, not reuse"
 	)
+
+
+## tb34 Pass E (BR26.02): "a headless regression pinning the cache
+## behaviour (no rebuild across range sweep) so the win can't silently
+## regress" — the real pipeline this time (ShotScatter.for_shot, the exact
+## call AimController.resolve makes every frame while aiming), swept
+## across every cell from adjacent to max range, standing in for a
+## shooter/target repositioning throughout a live aim session. Counts
+## actual `DartboardTexture.build` calls via the cached instance identity:
+## if the shape (ratio-to-outer) never changes across the sweep, this
+## must build exactly once, not once per distance.
+func test_a_realistic_range_sweep_builds_the_texture_at_most_once() -> void:
+	var view := AimView.new()
+	add_child_autofree(view)
+	var weapon := Part.new()
+	weapon.id = &"rifle"
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.effective_range = 5.0
+	weapon.weapon_def.max_range = 20.0
+	weapon.scatter = [Ring.new(0.05, 2.0), Ring.new(0.15, 1.0)]
+	var shooter_torso := Part.new()
+	shooter_torso.id = &"torso"
+	shooter_torso.hp = 1
+	shooter_torso.max_hp = 1
+	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(0, 0), 0)
+
+	var textures: Array[ImageTexture] = []
+	for range_cells in range(1, 21):
+		var rings: Array[Ring] = ShotScatter.for_shot(
+			shooter, weapon, Vector2i(range_cells, 0), null
+		)
+		textures.append(view._ring_texture(rings))
+
+	var distinct: Array[ImageTexture] = []
+	for texture: ImageTexture in textures:
+		if not distinct.has(texture):
+			distinct.append(texture)
+	assert_eq(
+		distinct.size(),
+		1,
+		"a continuous range sweep with no shape change must build the texture exactly once"
+	)
