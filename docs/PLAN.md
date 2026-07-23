@@ -428,6 +428,20 @@ instead of reading log text and guessing. A chain of four dependent pieces:*
 
 Each piece depends on the last; build in order. Its own taskblock (likely two).
 
+## Drag-and-drop scenario handoff (tb34 review)
+The missing half of "CC authors, the supervisor watches." CC can already *describe* a situation but
+can't put it on the supervisor's screen; the debug panel (tb30) put forcing verbs in the supervisor's
+hands but requires clicking each one. Close the loop: **drag a scenario file onto the game window and
+it applies immediately** — a file declaring units, tiles, cover, positions, loadouts. Either it sets
+up silently, or it opens a small confirm/tune dialog (adjust a couple of values, then approve).
+
+This makes the existing preset work pay off twice: the same authored presets become a transport
+format, not just a bout-menu entry. And it gives CC a real way to hand over a reproduction — it writes
+the scenario, the supervisor drags it in and looks. Every applied scenario is injection, so it carries
+`was_injected` and the usual determinism flagging (tb29 Pass C) — a dragged-in bout is not a clean
+seed replay. Ties directly to the `BoutInjector` verbs, which already cover most of what such a file
+would need to express.
+
 ## Diagnostics — combat log grows into a crash log
 *Extends `docs/09`, doesn't replace it.* The combat log is already structured `LogEvent`s over one
 stream with pluggable sinks and a `session_start` seed line — most of a crash log already. Grow it to
@@ -452,6 +466,16 @@ a dropped or rejected command is visible instead of a silent no-op. This intent/
 the two-phase turn model (queued intent vs. resolved effect) and directly counters the class of bug
 this review is full of — actions that silently fail (BR32.07, BR30.11): a "sent, not resolved" line
 would make each of them self-announcing.
+
+**The log window itself needs to be a window (tb34 review).** Presentation, separate from what gets
+logged: give the combat log a small **title bar** reading "Combat Log," a **minimize** button, and
+**vertical resize** by dragging the bar — so it can be pushed out of the way or opened up when
+something's being read. And **hand scrolling back to the camera at the ends**: scrolling while hovered
+should scroll the log, but once it hits the top or bottom of the available content, further scroll
+falls through to the camera instead of dead-stopping. Pairs with **BR34.02** (the log is fully
+transparent yet still eats clicks) — a titled, resizable panel wants a real background, which makes
+that bug's "visible background vs click-through" decision answer itself. Worth doing alongside the
+verbosity work above, since a much noisier log makes the window's ergonomics matter a lot more.
 
 ## Startup should open a generated bout, not the default scene (tb32 review)
 The game currently boots into whatever the default scene is, and that generator may be outmoded.
@@ -666,6 +690,40 @@ containers tb04/05, mangle tb09, salvage_yield tb04, StatResolver).
   nothing** — an empty container is still a (poor) part-container; it never *becomes* a substance, it
   *yields* salvage when actively scrapped. Substances never exist without a container, inviolate.
 - **Scrapping is always explicit** — never automatic — *except* a player-set **auto-scrap-by-type**
+
+### New substance & container ideas (tb34 review)
+- **Ammo, and what "must be in a container" actually constrains.** The motivating scenario: you find a
+  barrel of {substance} in a hulk, can't lift the barrel, so you take 10 units into your backpack, walk
+  it to the ship, and put it in the hold. With **ammo** that reads as complete. With **oil** it's
+  missing a step — you can't get oil from a barrel into a backpack bare-handed; you'd need an empty tin
+  first.
+  **This is not an exception to the container rule — it's a compatibility property.** A backpack *is*
+  a container, so loose rounds in a backpack never violate "substances must always be in a container."
+  What differs is **which containers can directly hold which substances**: oil needs a liquid-tight
+  vessel (the tin), ammo can sit directly in any general-purpose container. So the inviolate rule
+  stands as written, and the new data is a per-substance **containment requirement** matched against a
+  per-container **containment capability** — exactly the socket-type/attach-tag compatibility pattern
+  used elsewhere, and addable as data with no code edit.
+  Consequences worth noting: the "can I even pick this up" question becomes a real interaction gate
+  (bare hands work for ammo, not for oil — find a vessel first), which makes empty containers
+  genuinely valuable loot rather than salvage filler; and the existing kit design ("chaingun + bullets
+  + magazines… in the bot's back barrel") stays correct — a magazine is simply a *better* ammo
+  container, not a required one.
+- **Crates, lids, and a crowbar.** A crate is a container part with a **lid**; while lidded, the player
+  **cannot see what's inside**. Opening needs a crowbar (a new tool item) — or presumably any
+  sufficiently violent alternative. Real information-hiding in the loot layer rather than a labelled
+  box: you decide whether the crate is worth the action economy before you know what it holds. Fits the
+  existing container tree directly (a crate is a container part; the lid is its state), and pairs with
+  the existing "opening = a mangle" rule — a pried lid could be a mangle transform (crate → opened
+  crate), or a reversible state if crates are meant to be re-closable for transport. That reversibility
+  question is the one design fork here.
+- **Corpse Mince** — a new substance. *"On densely populated planets and remote stations alike, your
+  old friend's remains make for a valuable resource. As fertilizer, a refining material, or, if you're
+  desperate, sustenance."* Slots into the existing category+rate model without new machinery (it's a
+  thing with a resource category and a conversion rate, like any other substance), and gives the
+  surrogate/organic economy a grim bottom end — the matrices persist, the bodies are ammunition, and
+  what's left of the bodies is stock. (Containment-wise it's clearly a vessel-required substance, not a
+  bare-hands one — the first content test of the property above.)
   policy (default off) so a hundred emptied bean tins isn't a chore. Hoarding empties for storage
   stays possible.
 - **Too-big-to-field containers** (a 5000L tank) are still parts — practically stash-only, but they
@@ -772,6 +830,12 @@ Evocative one-offs captured so they don't scatter. Each waits on a system:
   overlay. A presentation treatment for the hacking / mind-overwrite system (Int hack, Cha+Wis mind
   overwrite) when it lands, not new mechanics: it reads the existing action queue and drives the
   existing overlay in a scripted, locked-out mode.
+- **Cover material split for visual reading (tb34 review).** The temporary cover models are all the
+  same gray, which makes cover types hard to tell apart at a glance. Since colour is material-derived,
+  split the authoring rather than the models: keep a `sheet_steel` material at the current gray and add
+  a `heavy_steel` at a darker gray, **identical stats** — purely a legibility change, not a balance
+  one. Cheap data authoring, no code. (If the stats later diverge that's a separate decision; the point
+  here is only that two cover types shouldn't read as one.)
 - **Mangle/wreck states for cover and walls (deferred from tb31 Pass C).** Walls are now destructible
   cover parts and a destroyed one clears to fully passable. The mangle machinery already exists
   (`Part.failure_mode = MANGLE`, `is_mangled`, `mangles_into` → wreckage pool) but is never authored
