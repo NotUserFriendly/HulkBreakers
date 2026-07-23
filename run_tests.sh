@@ -18,8 +18,11 @@ GODOT="${GODOT:-godot}"
 #    spine") crossed 1000 re-diagnosing taskblock-26's own B2, splitting it is
 #    a bigger, riskier undertaking than a linter default warrants; the
 #    matching test file split instead, same as
-#    test_damage_resolver_deflect_modes.gd already did; raised again to 1060
-#    for tb35 Pass B's BR34.06 fallback — same file, same reasoning).
+#    test_damage_resolver_deflect_modes.gd already did; raised again to 1100
+#    for tb35 Pass B's BR34.06 fallback and Pass A1's decision-log call
+#    sites — same file, same reasoning; the log emission itself lives in
+#    the new src/logic/ai/ai_decision_log.gd rather than growing this file
+#    further).
 gdlint src test
 
 # 2. Warm-up import so class_name scripts register (required on cold checkouts).
