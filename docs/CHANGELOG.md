@@ -216,6 +216,16 @@ read back by any planner, so `plan_turn`'s own purity/determinism contract is un
 framerate dumps (aim entry, turn start) this same pass called for are view-layer work, not logic, and
 remain open.
 
+**Per-turn LOF memoisation** (tb35 Pass A3, BR27.09) — `_any_reachable_has_lof` and
+`_engagement_score` each independently resolved `LineOfFire.first_hit` for the same (unit, enemy,
+cell), doubling the real `ShotPlane.build` cost of every reposition-or-hold turn. New
+`LineOfFire.cached_first_hit` (opt-in `Variant` cache param, `null` default — every other caller
+unaffected) backs one per-turn `Dictionary` threaded through `_plan_ranged` →
+`_any_reachable_has_lof`/`_pick_engagement_position`/`_engagement_score`/`_ally_in_firing_line`, so
+each cell resolves once. Measured on a real 60-turn bout: average reposition/hold-turn cost dropped
+2023ms → 974ms. Not a full fix for BR27.09 — the remaining per-cell `ShotPlane.build` cost is real and
+this memoisation can't remove it further without a bigger algorithmic change.
+
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
 must get everyone to a team-coded tile, can't self-extract early (tb22 A); bout-setup places each

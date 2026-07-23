@@ -40,13 +40,32 @@ static func first_hit(
 	return _first_hit_excluding(plane, aim_point, shooter)
 
 
+## tb35 Pass A3 (BR27.09): `first_hit` builds a real `ShotPlane` per call —
+## `_any_reachable_has_lof` and `_engagement_score` (`unit_ai.gd`) each
+## independently resolve the shot from every reachable cell within one AI
+## turn, so the same cell's shot got resolved twice or more, every turn.
+## `cache`, when the caller supplies one (a plain `Dictionary` keyed by
+## `from_cell`, shared across a whole reachable-cell sweep), makes every
+## repeat lookup for a cell free; `null` (the default, every existing
+## caller) resolves fresh every time, unchanged.
+static func cached_first_hit(
+	shooter: Unit, target: Unit, from_cell: Vector2i, state: CombatState, cache: Variant = null
+) -> Region:
+	if cache == null:
+		return first_hit(shooter, target, from_cell, state)
+	var memo: Dictionary = cache
+	if not memo.has(from_cell):
+		memo[from_cell] = first_hit(shooter, target, from_cell, state)
+	return memo[from_cell]
+
+
 ## Clear iff the first thing the shot would actually hit is the target
 ## itself — a wall, a piece of cover, or the wrong unit as the first hit
 ## is blocked, exactly as a real fired shot would be.
 static func has_clear_line_of_fire(
-	shooter: Unit, target: Unit, from_cell: Vector2i, state: CombatState
+	shooter: Unit, target: Unit, from_cell: Vector2i, state: CombatState, cache: Variant = null
 ) -> bool:
-	var region: Region = first_hit(shooter, target, from_cell, state)
+	var region: Region = cached_first_hit(shooter, target, from_cell, state, cache)
 	return region != null and region.body == target
 
 

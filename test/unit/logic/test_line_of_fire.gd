@@ -139,3 +139,54 @@ func test_closing_path_routes_around_a_concave_wall_instead_of_freezing() -> voi
 	assert_gte(
 		path.size(), 2, "a route around the wall's own gap (y=10-11) exists and must be found"
 	)
+
+
+## tb35 Pass A3 (BR27.09): `cached_first_hit` must agree with the plain,
+## uncached `first_hit` exactly — a memo is only worth adding if it can
+## never change the answer, just how many times the answer gets computed.
+func test_cached_first_hit_agrees_with_the_uncached_resolution() -> void:
+	var grid := Grid.new(10, 10)
+	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 9))
+	var state := CombatState.new(grid, [shooter, target])
+	grid.blockers[Vector2i(2, 4)] = DataLibrary.get_part(&"wall")
+
+	var uncached: Region = LineOfFire.first_hit(shooter, target, shooter.cell, state)
+	var cache: Dictionary = {}
+	var cached: Region = LineOfFire.cached_first_hit(shooter, target, shooter.cell, state, cache)
+
+	assert_eq(cached.part.id, uncached.part.id)
+	assert_eq(cached.body, uncached.body)
+
+
+## A second lookup for the same cell must reuse the memoized Region
+## (identity, not just an equal-looking rebuild) rather than resolving
+## again.
+func test_cached_first_hit_reuses_the_same_region_on_a_repeat_lookup() -> void:
+	var grid := Grid.new(10, 10)
+	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 9))
+	var state := CombatState.new(grid, [shooter, target])
+	var cache: Dictionary = {}
+
+	var first: Region = LineOfFire.cached_first_hit(shooter, target, shooter.cell, state, cache)
+	var second: Region = LineOfFire.cached_first_hit(shooter, target, shooter.cell, state, cache)
+
+	assert_eq(cache.size(), 1, "one cell queried, one memo entry")
+	assert_true(first == second, "the second lookup must return the SAME Region, not a rebuilt one")
+
+
+## `has_clear_line_of_fire` with a cache supplied must agree with the
+## default (uncached) call for the same geometry.
+func test_has_clear_line_of_fire_agrees_with_and_without_a_cache() -> void:
+	var grid := Grid.new(5, 6)
+	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
+	var state := CombatState.new(grid, [shooter, target])
+	grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"wall")
+	var cache: Dictionary = {}
+
+	assert_eq(
+		LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state),
+		LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state, cache)
+	)

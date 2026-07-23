@@ -392,6 +392,21 @@ confirm" roll-up — so pending items surface at a natural review point without 
   runs synchronously for the whole batch. **Instrument the player turn-end path separately from the AI
   batch before fixing** — the candidate fix above (yield between AI units) addresses only one of the
   two, and would leave a several-second player-turn hitch untouched.
+- **2026-07-23 (tb35 Pass A3 — one real cost measured and cut, not the whole bug)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Confirmed the "tb33 added a real `ShotPlane` build per
+  candidate cell" suspicion directly: `_any_reachable_has_lof` and `_engagement_score` each
+  independently resolved `LineOfFire.first_hit` for the same (unit, enemy, cell) — up to ~2 real
+  `ShotPlane.build`s per reachable cell, ~96 reachable cells on a normal map, every single
+  reposition-or-hold turn. Added `LineOfFire.cached_first_hit` (opt-in, `null` default — every other
+  caller unaffected) and threaded one per-turn memo `Dictionary` through `_plan_ranged` →
+  `_any_reachable_has_lof`/`_pick_engagement_position`/`_engagement_score`/`_ally_in_firing_line` so
+  each cell resolves once, not twice. Measured on the same 60-turn `BoutSetup` bout used to verify
+  BR34.06: average per-turn cost for a reposition/hold turn dropped from **2023ms to 974ms** — roughly
+  halved, matching "cut the duplicate resolution" exactly. **Not a full fix:** ~974ms/turn is still
+  real, unavoidable per-cell `ShotPlane.build` cost this memoisation can't remove without a bigger
+  algorithmic change (out of scope for "memoise per cell" as specified) — BR27.09 stays open. The
+  original player-turn-end-hitch-with-no-AI-batch question above is also still unaddressed; this pass
+  only measured and cut the AI-planning half.
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**
 - **Source:** `SUPERVISOR`
