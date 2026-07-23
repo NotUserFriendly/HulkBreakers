@@ -603,6 +603,15 @@ Pass C's work. Melee weapons continue to correctly reject a PART target today (s
 no-op every other unreachable action already has) — this is the follow-up to make it possible, if
 wanted.
 
+**Step-out returns you to your original facing, for free (tb34 review — feature change, not a bug).**
+After a step-out action resolves, the unit's facing should revert to whatever it was before stepping
+out, at **no AP/MP cost** — the same "the automation is in assembly, not in cost" logic that already
+makes both step-out movement legs free (`docs/SUPERSEDED.md`, tb27 B2). Stepping out is a mechanical
+consequence of taking the shot, not a decision the player made about where to look, so it shouldn't
+silently leave them facing somewhere they didn't choose and eat their next turn's reorientation.
+Interacts with the batching note below: if several attacks share one step-out, the facing restore
+belongs on the single shared return leg, not once per attack.
+
 **Step-out batching — coalesce same-square out-legs (was BR30.06, reclassified feature).** Today a unit
 queuing several attacks that each require stepping out into the *same* square steps out and back in per
 attack. Intended shape: if multiple queued attacks share one step-out square, resolve them as one
