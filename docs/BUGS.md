@@ -164,6 +164,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
   computes `origin` as a raw cell-center — never migrated to the muzzle-anchor fix `AttackAction`
   received in Pass A1. A second live instance of the exact same anchor-mismatch class, in a different
   code path. Neither finding implemented or tested yet.
+- **2026-07-23 (live playtest, `out/combat.log`, units 0/1/2 supervisor-controlled) — a new angle,
+  not yet reconciled with the 2026-07-21 suspects above.** Unit 0's 12-round chaingun burst at
+  `(6, 19)`, fired from roughly `(4, 17)`: **all 12 of 12 pulls resolve `DEFLECT on wall`**, every one
+  clustering around hit point `~(0.3-0.8, 13.7-14.8)` —
+  e.g. `DEFLECT on wall [origin (3.95, 17.26)@1.53 -> hit (0.67, 13.80)@1.71]`. That hit point sits in
+  the OPPOSITE quadrant from the aimed target: origin-to-target is `+x, +y`; origin-to-hit is
+  `-x, -y`. Every pull agrees on roughly the same wrong-direction spot (scatter alone wouldn't do
+  that), and — unlike the two-hop chain logged minutes later for unit 2 (`DEFLECT` immediately
+  followed by its own `STOP_DEAD` continuation, sharing an origin/hit boundary) — each of these 12
+  pulls logs exactly ONE impact event, no continuation segment. That means the anomaly sits in the
+  FIRST forward ray-cast (muzzle to first wall) itself, not in the `reflected_dir` bounce-continuation
+  segment the 2026-07-21 note suspected (which only governs what happens AFTER the first hit) — a
+  candidate for a still-live anchor mismatch in the primary ray itself, distinct from that suspect,
+  not yet root-caused. Logged only — not investigated or fixed this pass.
 
 ### BR27.03 — Active — Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
