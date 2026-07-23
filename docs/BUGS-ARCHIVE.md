@@ -669,6 +669,55 @@ same relative order this ledger has always kept them in, oldest work first. All 
   scatters in 3D, `resolve_ray` accepts vertical shots, tracers draw the real 3D path. Tagged in
   `docs/CHANGELOG.md`.
 
+### BR23.01 — Resolved — owner: `CC`
+**Isolate-camera lighting leaked a `WorldEnvironment` node on every `InspectPanel` construction**
+- **Source:** `CC`
+- **Found:** while wiring the isolate camera's own lighting fix (taskblock-23 Pass E2) —
+  `WorldPalette.world_environment().environment` was read just to steal the resource, allocating and
+  never freeing a full `WorldEnvironment` **node** per call (confirmed via GUT's own orphan count).
+- **Fix:** `WorldPalette.environment()` factored out as a resource-only builder that
+  `world_environment()` now delegates to.
+- **RESOLVED** — taskblock-23 Pass E2.
+
+### BR24.01 — Resolved — owner: `CC`
+**Player could never queue `BurstAction` either — `confirm_shot` hardcoded `AttackAction`**
+- **Source:** `CC`
+- **Found:** while tracing the AI's own chaingun-fires-single-shot bug (taskblock-24 Pass A) —
+  `TacticsController.confirm_shot()`/`_confirm_step_out()` and the shared
+  `StepOutPlanner.build_triple` all hardcoded `AttackAction` regardless of `armed_action.id`;
+  grepping the whole view layer, `BurstAction` was never constructed anywhere in `src/view/` at all.
+  A player arming and clicking Burst silently fired a single shot instead.
+- **Fix:** new `ActionCatalog.build_firing_action(action_id, ...)` is the one place an action id
+  becomes a real `CombatAction`, used by both the tactics controller and the AI.
+- **RESOLVED** — taskblock-24 Pass A (flagged and confirmed via a direct question mid-pass).
+
+### BR24.02 — Resolved — owner: `CC`
+**Overwatch structurally unable to trigger for a unit with an ordinary, volumed torso**
+- **Source:** `CC`
+- **Found:** while wiring the AI's own overwatch consideration (taskblock-24 Pass C) —
+  `Overwatch._torso_visible`'s own `ShotPlane.resolve_ray` never excluded the overwatcher's own body,
+  so any unit with a real torso was the first thing its own ray hit, before ever reaching a target
+  downrange. Every overwatch fixture in the test suite already worked around this by building the
+  overwatcher with NO torso volume at all, masking it completely — overwatch had never actually
+  worked for a normally-bodied unit.
+- **Fix:** new `exclude_parts` parameter on `ShotPlane.resolve_ray` (mirroring
+  `resolve_projectile`'s existing one); a regression test proves it against a real, volumed
+  overwatcher.
+- **RESOLVED** — taskblock-24 Pass C.
+
+### BR24.03 — Resolved — owner: `CC`
+**Overwatch never checked during any AI-vs-AI bout — no `mid_move_hook` wired into `BoutRunner.step()`**
+- **Source:** `CC`
+- **Found:** while un-stranding overwatch for AI use (taskblock-24 Pass C) — `BoutRunner.step()`
+  called `state.resolve_until(queue)` with no `mid_move_hook` at all, so `Overwatch.check_trigger`
+  never ran during any bout, regardless of whether a unit had validly declared overwatch. The entire
+  overwatch-vs-movement tension had been dormant in every bout ever run.
+- **Fix:** wired `Overwatch.check_trigger` in, the same Callable `test_reaction_window.gd` already
+  threads through by hand (flagged and confirmed mid-pass). Confirmed zero behavior change for every
+  pre-existing bout fixture (AGGRESSIVE, the only playstyle any of them use, never declares
+  overwatch).
+- **RESOLVED** — taskblock-24 Pass C.
+
 ### BR00.01 — Resolved — owner: `CC`
 **`los.gd` `range`-shadow (v1)**
 - **Source:** `CC`

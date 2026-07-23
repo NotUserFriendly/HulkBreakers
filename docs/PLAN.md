@@ -75,16 +75,13 @@ spread shots stitch a horizontal line across a body (the "line of impacts across
 of spreading up and down. So true-3D resolution is required regardless of maps — multi-level rides
 on the fix.*
 
-## Block 1 — True-3D shot resolution (a bugfix that is also the foundation)
-Buildable and **verifiable in the current flat game** — no maps needed. De-risks everything: the
-scariest piece proven in isolation before any map complexity.
-- Stop discarding height in projection; parts project with real vertical position.
-- The dartboard scatters in **3D** — shots spread up/down a body, fixing the waist-line bug.
-- Firing arcs, grenade lobs, floor-bounces, inter-level shots all become *expressible* (not built
-  here, but the plane can now represent them).
-- **Acceptance:** a spread burst stitches vertically across a body, not a single-height line;
-  same-seed determinism holds; existing flat combat is unchanged except for the corrected vertical
-  spread.
+## Block 1 — True-3D shot resolution — SHIPPED (tb23, see `docs/CHANGELOG.md`'s "Geometry &
+targeting" entry)
+Height-retaining projection, 3D dartboard scatter, a true-3D `resolve_ray`, and 3D ricochet
+continuation all landed in taskblock 23 — verified in the flat game, no maps needed, per the original
+acceptance criteria (a spread burst stitches vertically across a body, not a single-height line;
+same-seed determinism held; existing flat combat unchanged except the corrected spread). Block 2
+below is the only piece of this foundation still unbuilt.
 
 ## Block 2 — Grid height + movement verbs (on proven 3D resolution)
 - **Discrete level for logic, true height for position.** Cells gain an integer level (`Vector2i`
@@ -103,71 +100,19 @@ scariest piece proven in isolation before any map complexity.
 
 # KEYSTONES
 
-## Phase M — Melee (keystone 1)
-*First: the only keystone that's a combat mode; self-contained; un-stubs suppression; unblocks the
-deferred AI playstyles. **Melee reuses the shot plane** — a swing is a very short, very accurate shot
-— so armor, deflection, aimed parts, penetration, and the layered body all apply for free. What
-changes is the *payload shape* and the *deflect response* per attack type.*
+## Phase M — Melee (keystone 1) — SHIPPED (tb25), two pieces remain
+*Delivery (reach = weapon_length + shell_reach, lean-not-cell-move exposure), shot-plane resolution
+reuse, 3D reach, tiny dartboard, aimed-part precision, the three payloads (stab/slash/hold) with
+distinct deflect responses, the spherecast, un-stubbed suppression, the punch, and the psychotic/
+turtle playstyles all landed in taskblock 25 — see `docs/CHANGELOG.md`'s "Melee (tb25, keystone 1)"
+entry. Two pieces from the original phase are still unbuilt:*
 
-**Design identity: melee is precision that spares the goods.** CQC aboard a hulk often has valuables
-around the fight; melee disables an enemy without spraying the room. Only sniper-tier weapons rival
-its precision, but *every* melee weapon has it baked in — the tradeoff is you must **close** (risk) to
-get it (reward). Later enemies may be melee-only (a demon bear can't hold a gun without breaking
-suspension of disbelief).
-
-**Delivery = Step Out, pointed at melee** — the implied action is *step into range, strike, step back*
-as one motion, which is exactly tb18's auto-assembled move/strike/return through the re-validating
-resolver, with the same interrupt-exposure risk. The movement half is already built; melee adds the
-strike payload.
-
-**Dartboard: same system, tiny radius.** A punch from a meter can't miss by a mile — melee sits at the
-low end of the range-accuracy band (tb19), so scatter is minimal. Not a special "always hits" rule,
-just point-blank range.
-
-**Reach = a 3D character-to-character distance** (in tiles, but measured true-3D on the height axis,
-tb23). A sword (reach 1) can't hit someone 1 *up*; a polearm (reach 2) hits at √2. Verticality is
-melee spacing — high ground is melee *safety*, not just sightline.
-
-**Aimed parts — melee's core advantage.** Point-blank means melee targets a specific joint/internal
-*more* reliably than a shot (tb09/tb20 aimed parts). "Disable without damaging goods" made mechanical.
-
-**The three payload types** (a weapon usually provides several — via `provides_actions`, so AI action-
-choice comes free from tb24):
-
-| type | payload | on deflect | role |
-|---|---|---|---|
-| **Stab** (incl. punch) | a **point** — but a **spherecast** (see below), not a ray | **slides sideways** along the surface to an adjacent point, not an angular bounce | pierce armor |
-| **Slash** (sword/polearm swing) | a **line** (horizontal / 45° / vertical) — hits everything along it; length = weapon's `slash_length` | **moves the line** the appropriate direction, then triggers the next damage instances along it | more damage |
-| **Hold** (grab + grind a saw into a joint) | **many tiny hits in sequence**, continuing if it gets through cladding | **no deflect — binary**: chew through or nothing | grind through armor |
-
-- **Weapons carry both stab and slash** with distinct effects — stab pierces (point + lateral slide),
-  slash does more damage across a line. A spear *can* slash (suboptimal, but there if needed). Pierce
-  the armored target, slash the soft one — situational, chosen per strike.
-- **`slash_length`** is a weapon property (dagger short, greatsword long) — named distinctly from
-  `reach` so they don't collide. A vertical slash uses the 3D plane (tb23) to spread up/down a body.
-- **Hold = stacked bonus-pen, raw/linear, uncapped.** Each tiny hit adds bonus-pen (3 hits × 2 pen =
-  6 effective) — a "grind through armor" attack. No cap: a long enough hold gets through *anything*
-  (an angle grinder beats a meter of steel given time), but the **time is the cost** — grinding a tank
-  is many turns of doing nothing else, exposed. Self-balancing via commitment, not a curve.
-
-**The one genuinely-new piece: stabs are spherecasts, not raycasts.** A pointed weapon is *fat*
-compared to a bullet, so a stab resolves as a ray-with-radius. Consequence: **a stab can't thread a
-gap a bullet slips through** — the sniper's gap-fall-through (shot plane resolves a *point*) works
-*because* bullets are tiny; a spear tip is too wide. So melee is high-precision-on-surface but
-low-precision-on-gaps: you can aim a stab at a joint, but can't slip it through a hairline crack a
-sniper threads. Stab effectiveness scales inversely with weapon width (a stiletto threads better than
-a spear). **Requires a radius parameter on shot-plane resolution** (currently point-only,
-`rect.has_point`) — the sole new resolution code in melee; everything else reuses existing systems.
-
-**Also in the phase:**
-- **The punch** — the baseline stab every unit has (patches "no weapon → nothing" with tb21 flee).
-- **Un-stub suppression** — tb19's opportunity attacks resolve as real melee.
-- **Melee AI playstyles** — psychotic (prefer melee, never flee) / turtle (flee over melee).
 - **Protector playstyle** — positions between enemies and allies, preferring covered spots (a
-  COVER_SEEKER variant scoring on *ally* protection). Support behavior for bodyguard bots. Not melee-
-  gated; can land whenever, listed here with the other playstyles.
-- **Weapon distinctions** — saw vs sword vs fist (the `POWER`/`TRIGGER` capability split): a saw-hand
-  can't add power to a sword swing.
+  COVER_SEEKER variant scoring on *ally* protection). Support behavior for bodyguard bots. Not
+  melee-gated; can land whenever.
+- **Weapon distinctions — saw vs sword vs fist (the `POWER`/`TRIGGER` capability split)** — a
+  saw-hand can't add power to a sword swing. tb25's own scope fence flagged this rather than building
+  the capability-math, unless trivial.
 
 ## Phase S — Status effects & boosts (keystone 2)
 *Second: hooks already fire into the void; tb20's wounds need the status→wound threshold; status and
@@ -196,6 +141,20 @@ so it builds after those exist.*
   Fan-the-Hammer); ordering (Quickdraw / Ghost Step / Sixth Sense); reactions (dive-prone,
   shield-turn); rule overrides (dual-weapon inverts `attaches_to`; player-advantage verbs; the
   **matrix-mobility perks** below).
+- **More named perks to stress the framework (tb35 review).**
+  - ***Nuclear Tuning*** — the unit coaxes **1.5×** power out of a reactor assembly; but once the
+    reactor's heat passes **70%** (up to meltdown), the perk **inverts**, instead cutting heat output
+    by **35%**. A genuinely good framework test: it's a *conditional sign flip on its own effect*,
+    keyed to a threshold on a live stat, not a flat modifier. If the perk data model can express
+    "this bonus becomes a different bonus past a threshold" without bespoke code, it's right. Ties to
+    the reactor-heat work and to the subversion ladder above (a rigged-to-detonate bot is what
+    happens when nobody tunes it).
+  - ***Bulk Up*** — an action, not a passive: the unit spends a large chunk of power to
+    **magnetically yank nearby scrap and loose parts onto itself**, cladding everything currently
+    unclad and socketing a **"Scrap Armor Plate"** into every free armour socket. Stresses a
+    different axis — a perk that performs a *bulk assembly operation* through the normal attachment
+    path (`BodyAssembler` + `DataValidator`), turning the battlefield's own debris into armour. Needs
+    the field-items/loose-parts model that already exists, plus one new authored part.
 - **Named perk examples to stress-test the framework** (beyond the five classes): *First One's
   Always Perfect* — the first shot of a burst/activation ignores all accuracy modifiers and lands
   dead center, then normal scatter resumes (the inverse of recoil; binds to the dartboard/accuracy
@@ -402,31 +361,13 @@ matter — you can move the mess around, never make it truly gone except by clea
   adjacency, no overlaps, arbitrarily convoluted layouts. Proc-gen matches doors to doors.
 - Proc-gen is strong for "just make maps"; handmade tiles give quality where it matters.
 
-## In-game tester mode — the headless successor (variant → kit → preset → spectate)
-*Raised repeatedly ("retire headless"); pulled forward because chasing combat bugs blind is the exact
-pain it removes — CC authors and runs bouts in-window with the supervisor spectating and inspecting,
-instead of reading log text and guessing. A chain of four dependent pieces:*
-
-1. **Variant generation** — bot prefabs get *generated* variation, not just fixed variants. A junk bot
-   spawns with armor in random spots and inconsistent cladding; a combat_tester is uniform. Slight,
-   seeded per-bot variation over a base prefab (deterministic — same seed, same bot).
-2. **Kit / generate-inventory** — a bot spawns with a **kit**: the loadout it needs to actually fight,
-   stored in an appropriate container. A "chaingun kit" = chaingun + correct-type bullets + magazines
-   + two grenades, all in the bot's back barrel. **A bout starts by units equipping themselves from
-   their kit** — so a bout is self-arming, not hand-set. (Ties to storage: a kit is items in a
-   container, drawn on demand.)
-3. **Presets** — save a team of bots (with kits) as a named preset, reloadable into the bout menu.
-4. **Tester mode** — CC authors bots, kits, and presets (via data/tools, *not* an in-game builder —
-   throwaway authoring UI earns nothing), loads them into the bout menu, and **runs a bout in the
-   game window with the supervisor in spectator** — watch, pause, inspect. **The authoring loop's
-   intended shape is injection, not clicks:** CC affects the *running* bout directly — build a
-   condition (spawn/position/arm/trigger a state) and inject it into the live bout — rather than
-   clicking through a UI. More powerful (force any state, not just what a UI exposes) and cheaper
-   (no builder UI to make). This *is* the
-   headless successor: enough visual granularity that watching contributes what log-reading can't
-   (the backward-burst bug is the case in point — invisible in the log, obvious in playback).
-
-Each piece depends on the last; build in order. Its own taskblock (likely two).
+## Starting a bout from a bout should inherit the last bout's settings (tb35 review)
+Launching a new bout from inside one currently starts from defaults; it should come up pre-loaded with
+the **previous bout's settings**, so iterating on a scenario is "tweak one thing and go" instead of
+re-entering the whole configuration each time. Small, and it compounds with everything else that makes
+bouts the testing surface — most bout launches during a review session are the same scenario with one
+value changed. Pairs naturally with the drag-and-drop handoff below (both are "get me back into a
+specific situation fast"), and with the preset work already built.
 
 ## Drag-and-drop scenario handoff (tb34 review)
 The missing half of "CC authors, the supervisor watches." CC can already *describe* a situation but
@@ -466,6 +407,12 @@ a dropped or rejected command is visible instead of a silent no-op. This intent/
 the two-phase turn model (queued intent vs. resolved effect) and directly counters the class of bug
 this review is full of — actions that silently fail (BR32.07, BR30.11): a "sent, not resolved" line
 would make each of them self-announcing.
+
+**A live FPS counter, drawn on top of the log (tb35 review).** Distinct from BR26.02's logged
+`fps_dump` events, which exist so CC can grep a number: this is a continuous readout for the
+supervisor's own eyes, rendered **over** the combat log rather than written into it. Keeping it out of
+the log stream matters — a per-frame FPS line would drown the log it's drawn on, and the log's value is
+that it's readable.
 
 **The log window itself needs to be a window (tb34 review).** Presentation, separate from what gets
 logged: give the combat log a small **title bar** reading "Combat Log," a **minimize** button, and
@@ -564,6 +511,14 @@ systems. The unifications:
 Mulebot / follower drones; hacking (Int-based, has a RAM cost already); weak points (poses + failure
 modes + aimable joints exist — cheap); voidhulk stability (environmental hazard).
 
+**`BodyProjector` has no modeled top/bottom faces (flagged, tb23 Pass A).** A shot viewed exactly
+along a tilted part's own local depth axis can still find a degenerate (near-zero-extent) silhouette
+— a real, pre-existing gap in the 4-face body model, out of scope for tb23's true-3D resolution work.
+
+**AI repair (deferred, tb24).** `ActionCatalog`-driven repair is already available to the player, and
+tb24's own catalog-derived consideration scaffold would surface it to the AI for free — but no
+when-to-repair logic exists. Enemy self-repair is a design choice deferred, not a gap in the plumbing.
+
 **Wide scatter can pass clean through a wall seam (BR34.05's own root cause, tb35 Pass B2).**
 `ShotPlane.build` projects each wall cell as its own independent rect; adjacent cells' projected rects
 aren't guaranteed to tile edge-to-edge from an arbitrary shooter angle, so a dartboard point far enough
@@ -613,6 +568,48 @@ the part's own box? the whole blocker assembly's AABB? never designed), not a me
 Pass C's work. Melee weapons continue to correctly reject a PART target today (same "nothing operable"
 no-op every other unreachable action already has) — this is the follow-up to make it possible, if
 wanted.
+
+**Player-facing LOS/LOF conflation in `AttackAction`/`BurstAction.is_legal()` (deferred, tb33).**
+tb33 fixed the AI's own confusion of "can see" with "can hit" (`LineOfFire.has_clear_line_of_fire`),
+but the player's own attack legality still gates on `LoS.has_los` (opacity/sight), not the new LOF
+predicate — a different problem from the AI's silent 81%-into-walls case, because the player sees
+both the dartboard and the wall and can choose to fire anyway. Swapping it to LOF the same way the AI
+path was needs eyes on the targeting UX first (does the dartboard need to say "no shot" before the
+player commits AP?), not a mechanical copy of tb33 A's fix.
+
+**AI-produced dartboards / an "aim beat" before an enemy fires (deferred, tb34's own prerequisite).**
+Today only the player's own shot ever draws a dartboard — an AI unit's attack resolves straight from
+`UnitAI`'s decision with no on-screen wind-up the player watches before the round goes off.
+`ShotScatter.for_shot` (tb34 A) is now the one place `range → radius` truth lives, so it's a
+ready-made primitive to drive an enemy-side dartboard draw. Not built here — it's playback/timing work
+(when the beat plays, how long it holds, how it interacts with other AI units resolving in the same
+batch), not a mechanics gap.
+
+**The inter-turn FPS hitch — three real suspects measured, none fixed (tb21 Pass E, investigation
+only).** Headless probes (real logic/view classes timed directly, not GUT) found three concrete,
+additive costs: (1) the combat-log UI sink's full `label.text` reassignment on every event — ~175-
+180us/call at a full 200-line scrollback, and a real 3v3 bout averages 9.9 events/turn (peak 29), so a
+heavy turn pays ~5ms+ just relaying text nobody scrolled to; `HierarchicalUiSink` (tb22 F) inherited
+the identical full-reassignment pattern, so this is still live today. Recommendation: incremental
+`RichTextLabel.append_text` for the new line, plus a different line-cap strategy than trim-every-line.
+(2) `HitVolumeView.refresh()` rebuilds every mesh/material from scratch for the acting unit on every
+turn (~550-600us/call on a 27-part unit), even on turns where nothing about that unit's geometry
+changed — recommendation: skip the rebuild when the turn's only events were `turn_start`/`turn_end`/
+`faced`. (3) Turn-start power recompute re-walks the same unchanged part graph 5-6 times per
+`_start_turn` (uncached `Shell.all_parts()`/`operable_parts()`) — smaller (~175us/turn) but pure
+waste; recommendation: compute `operable_parts()` once and thread it through. Initiative re-sort was
+measured and ruled out (~40us/turn across a 12-unit roster) — not a contributor.
+
+**Two parallel shot-geometry systems, never unified (tb22 Pass H appendix).** The codebase carries two
+genuinely separate geometry paths: (1) the real 3D muzzle-to-target ray (`UnitGeometry.muzzle_point` →
+`AimPlaneGeometry.ray_from_muzzle` → `ShotPlane.resolve_ray`), used only by the player's aiming
+reticle and Overwatch's pre-check; (2) the flat 2D system that actually deals damage
+(`AttackAction`/`BurstAction` → `ShotPlane.build(origin: Vector2, ...)` + `Dartboard.sample()` →
+`DamageResolver.resolve_shot`), whose `origin` carries no height and always aims at the target's own
+body height rather than the shooter's, until tb22 H layered a height-aware self-obstruction check on
+top. Unifying the two was ruled out of scope for tb22 (a larger change, and the two don't currently
+disagree in a way players notice) — still true today; the next system that needs a real shared height
+model (melee reach, multi-level maps) will hit this duality again.
 
 **Step-out returns you to your original facing, for free (tb34 review — feature change, not a bug).**
 After a step-out action resolves, the unit's facing should revert to whatever it was before stepping
@@ -681,6 +678,17 @@ energy.
 - **Enemy factions SPEND heat to strike** — a **one-time severe hit that resets the heat**, not a
   ramping tax. So high heat is *baitable*: build a team to counter a faction, provoke the strike,
   crush it with hand-picked counters, and loot is delivered to your door.
+- **Heat spent as *subversion*, not just a strike (tb35 review).** Instead of sending a force, a
+  faction spends heat to **hack the bots already fighting you** and supercharge them mid-mission. A
+  ladder of escalation, cheapest to worst: better AI behaviour on an ordinary bot → perks bolted onto
+  its matrix → rigged to detonate → at the top end, **the random bot's matrix is fully overwritten by
+  a boss mind**, so a mook you'd already written off turns into an opponent with a complete perk
+  loadout. Reuses systems already planned rather than adding one: hacking (Int), matrix overwrite
+  (Cha+Wis), the perk framework, and the detonation work in BR35.08. It also gives heat a *scary*
+  expenditure that costs the faction nothing to transport — they don't have to reach you, they only
+  have to reach something already standing next to you. Pairs with the **"control system hacked"**
+  presentation note above: when it's the *player's* shell subverted, the interface itself is what
+  goes wrong.
 - **Per-faction consequences differ by who you angered:** scavs hit you *mid-scavenge* on a hulk;
   space-cops (placeholder) **board you** (the tactical ship-defense fight — heat is *how* you get
   boarded outside story); settlers/merchants **won't buy and gouge you**.
