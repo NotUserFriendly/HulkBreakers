@@ -25,6 +25,8 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 | Cover as a cell scalar (`set_cover_value`) | cover is **placed field-object parts** that block movement and project into the shot plane | tb16 B |
 | Bot facing: single face at end of move | **per-tile** facing — face each tile before stepping; interrupted move leaves you facing your travel direction | tb16 A |
 | Battle and Bout as separate scenes | **one `BattleScene`**; control is a swappable **overlay** (squad / single-unit / spectator / generate-bout); `bout_view.gd` / `simulate_bout_menu.gd` retired | tb15 |
+| `SpectatorOverlay` reused a full `TacticsController`/`TooltipController`/`TooltipView` stack for hover-inspect | replaced by a raycast (`UnitPicker.hit()`) + `InspectPanel` — no `TacticsController` needed for spectator inspect at all (hover-inspect itself had to be re-added separately, BR27.11) | tb17 C1 → tb21 B |
+| Spectator camera hard-cuts to each newly-acting unit | removed outright — spectator has full manual camera control (orbit/pan/zoom), no automatic movement by default | tb17 C2 |
 | Action ordering: facing is fastest (tb06) | overwatch fast, facing slow — an aimed-and-waiting overwatcher resolves before a reorienting unit; flip to lower-resolves-first | tb18 / tb19 A |
 | "Lean" (the step-out mechanic) | renamed **Step Out** — "lean" reserved for a future literal-lean ability | tb19 B |
 | `PowerResolver.max_ap_for` (simple power read) | surplus (output − consumers) → AP via a **diminishing `power_to_ap_curve`** | tb20 F → revised tb22 B |

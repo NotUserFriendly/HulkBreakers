@@ -658,6 +658,79 @@ same relative order this ledger has always kept them in, oldest work first. All 
   convention), the taskblock-generating instance treated the living docs as authority, found nothing,
   and re-derived "go verify the Resource Editor" as open. **This ledger is the fix for that class.**
 
+### BR16.01 — Resolved — owner: `CC`
+**Cover-scatter could land a blocker on a cell about to become a spawn zone**
+- **Source:** `CC`
+- **Found:** while making cover movement-blocking (taskblock-16 Pass B) — `_scatter_cover` ran
+  before spawn zones were placed, so a blocker could land on a cell that becomes a spawn a moment
+  later, or survive `_ensure_spawns_connected`'s forced-corridor fallback and leave that "fix"
+  corridor still impassable.
+- **Fix:** clear any blocker that `_mark_zone`/`_set_open` touches.
+- **RESOLVED** — taskblock-16 Pass B.
+
+### BR16.02 — Resolved — owner: `CC`
+**`_ensure_spawns_connected`'s fallback corridor used an unseeded RNG — real non-determinism**
+- **Source:** `CC`
+- **Found:** while making cover movement-blocking (taskblock-16 Pass B) — the forced-corridor
+  fallback spun up its own unseeded `RandomNumberGenerator`, harmless while it almost never
+  triggered, but movement-blocking cover trips it far more often, producing two different maps from
+  the same seed across two calls.
+- **Fix:** reuse the caller's own seeded rng.
+- **RESOLVED** — taskblock-16 Pass B.
+
+### BR16.03 — Resolved — owner: `CC`
+**Wider corridors could carve straight through and erase a spawn zone's own tag**
+- **Source:** `CC`
+- **Found:** while widening corridors (taskblock-16 Pass C) — `_ensure_spawns_connected`'s forced-
+  corridor fallback carves through the spawn cells themselves (its own `a`/`b` endpoints), and
+  `_set_open` stamps every touched cell back to plain OPEN, including the SPAWN_A/SPAWN_B tag it was
+  supposed to reconnect a path *to*. A single-cell corridor only clipped a corner rarely; a
+  3–5-wide one reliably erased it outright (seed 40 on a 32×24 grid left zero SPAWN_A cells
+  anywhere).
+- **Fix:** snapshot every SPAWN_A/SPAWN_B cell before the fallback carve, re-stamp after.
+- **RESOLVED** — taskblock-16 Pass C.
+
+### BR17.01 — Resolved — owner: `CC`
+**Map generation regressed to a single room, no hallways, since taskblock-16**
+- **Source:** `CC`
+- **Found:** taskblock-17 Pass A — taskblock-16 raised `MIN_ROOM_SIZE` 3→7 (correct), but neither
+  real caller's own hardcoded grid size moved to match: `BattleScene.GRID_WIDTH/HEIGHT` was 12×10,
+  `BoutSetup`'s was 20×14, both well under `MapGen.MIN_LEAF_SIZE * 2` (24) — the size a rect must
+  clear before the BSP splitter will ever divide it. Every real battle and bout had been silently a
+  single room since taskblock-16 landed.
+- **Fix:** grew both grids (`BattleScene` → 40×30, `BoutSetup` → 32×24); new tests pin each caller's
+  grid constants against `MapGen.MIN_LEAF_SIZE * 2` so a future `MIN_ROOM_SIZE` raise fails loudly
+  instead of collapsing every map again, plus a seed-swept "the map actually splits" assertion.
+- **RESOLVED** — taskblock-17 Pass A, confirmed live (screenshot of `BattleScene`'s default map
+  showing four rooms + hallways, vs. one solid block before).
+
+### BR17.02 — Resolved — owner: `CC`
+**Bout facing off by up to 180° from target, not a flat 90°**
+- **Source:** `CC`
+- **Found:** diagnosing a live-play report ("bots face ~90° off their target") (taskblock-17 Pass
+  B) — `FaceAction.orientation_toward` computed the target orientation via `Vector2.angle_to()`'s
+  standard rotation convention, the exact one `BodyProjector.rotate_by_orientation`'s own doc
+  comment says this codebase deliberately departs from since the taskblock-07 B1 fix;
+  `orientation_toward` was never updated to match. Diagnosed against the real composed transform:
+  error was 0° dead ahead, growing to 90° on the diagonals and a full 180° along the world X axis.
+- **Fix:** new `BodyProjector.orientation_for(direction)` — the formal inverse of `forward_for`,
+  solved directly from its own algebra (`atan2`, never `angle_to`); `orientation_toward` now
+  delegates to it.
+- **RESOLVED** — taskblock-17 Pass B.
+
+### BR18.01 — Resolved — owner: `CC`
+**A single-step move could trigger overwatch, spend the watch, and still complete the rest of the queue (latent since tb06 Pass F)**
+- **Source:** `CC`
+- **Found:** writing the step-out interrupt test (taskblock-18 Pass D) — `MoveAction.
+  apply_stepwise`'s interrupt check excluded a move's own FINAL step from ever honoring a triggered
+  hook's forced freeze. A single-step move — exactly what a step-out's own outbound/return leg
+  always is — could trigger overwatch, spend the watch, and still sail on to complete the rest of
+  the queue: the exact "ghost bullet" case the re-validating resolver (Pass B) exists to prevent.
+  Undetected because every prior Overwatch test happened to trigger on an earlier, non-final step.
+- **Fix:** `hook_forces_stop` now escapes the `is_final_step` gate unconditionally, matching the
+  function's own pre-existing (and previously contradicted) doc comment.
+- **RESOLVED** — taskblock-18 Pass D.
+
 ### BR22.01 — Resolved — owner: `SUPERVISOR`
 **Waist-line of impacts — the shot-plane Z-discard**
 - **Source:** `SUPERVISOR`
