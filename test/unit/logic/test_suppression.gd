@@ -210,6 +210,30 @@ func test_resolve_opportunity_attacks_resolves_a_real_melee_strike() -> void:
 	assert_eq(impacts[0].data.get("target_unit_id"), mover.id)
 
 
+## taskblock-37 Pass A: the opportunity attack's own `resolve_and_log_point`
+## call needed the same `point_depth`/`aim_depth` anchor fix AttackAction's
+## own regression test proves — a mover one level up (a ledge/ramp step, the
+## adjacency this attack actually fires on) must still be a real strike
+## target, not silently missed.
+func test_resolve_opportunity_attacks_still_lands_against_a_mover_one_level_up() -> void:
+	var mover := _target_unit(Vector2i(1, 1), 0, 10)
+	var attacker := _melee_unit(Vector2i(1, 0), 1)
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(1, 1), 1)
+	var state := CombatState.new(grid, [mover, attacker], 42)
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_eq(mover.level, 1, "the mover must actually pick up the cell's own level at spawn")
+
+	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
+
+	assert_true(
+		sink.events_of_kind(&"impact").size() > 0,
+		"a mover one level up must still be hittable, not silently missed"
+	)
+
+
 ## "The attack uses the enemy's default melee" — an attacker with NO
 ## melee weapon at all (before Pass F's baseline punch exists) has
 ## nothing to swing, a no-op, never a fallback stub.

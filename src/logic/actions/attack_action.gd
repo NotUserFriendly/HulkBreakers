@@ -145,10 +145,17 @@ func apply(state: CombatState) -> void:
 	# the ray's apparent heading enough that a burst's own pulls read as
 	# firing backward. Both must share the muzzle anchor.
 	var direction := Vector2(target_cell) - origin
-	var dir_n: Vector2 = direction.normalized()
-	var plane: Array[Region] = ShotPlane.build(
-		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	# taskblock-37 Pass A: the target CELL's own real elevation
+	# (`grid.get_level`, the same source `Unit.level` itself reads) against
+	# this shooter's own real muzzle height — a genuinely tilted shot
+	# between different levels now reaches `BodyProjector`'s own 3D
+	# visibility test, not just `resolve_ray`'s. `vertical_slope` carries
+	# across to `resolve_and_log_point` below so `DamageResolver` doesn't
+	# have to reconstruct it a second way.
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		origin, muzzle.y, actual.cell, target_cell, state.grid
 	)
+	var plane: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, state)
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = (
@@ -158,6 +165,14 @@ func apply(state: CombatState) -> void:
 			else ShotPlane.center_of_part(plane, target_part, target_cell)
 		)
 		+ aim_offset
+	)
+	# taskblock-37 Pass A: the aim point's own real depth — see
+	# `ShotPlane.depth_of`'s own doc comment for why `_find_next` needs
+	# this to correctly test a tilted shot's OTHER candidates.
+	var aim_depth: float = (
+		ShotPlane.depth_of(plane, target)
+		if target != null
+		else ShotPlane.depth_of_part(plane, target_part)
 	)
 	# taskblock-22 Pass H2: "low cover interrupts the covered unit's own
 	# shots... the shot's ray originates and immediately hits the cover
@@ -175,6 +190,9 @@ func apply(state: CombatState) -> void:
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
+		# taskblock-37 Pass A: the aim point moved to the obstruction's own
+		# position — its own real depth moves with it, not the target's.
+		aim_depth = muzzle_hit.depth
 	var resolved_scatter: Array[Ring] = ShotScatter.for_shot(
 		actual, weapon, target_cell, state, extra_sources
 	)
@@ -214,7 +232,11 @@ func apply(state: CombatState) -> void:
 			mission,
 			is_dud,
 			RangeModel.max_range(weapon),
-			muzzle.y
+			muzzle.y,
+			DamageResolver.DEFLECT_MODE_RICOCHET,
+			0.0,
+			elevation.vertical_slope,
+			aim_depth
 		)
 
 	# Phase 6 placeholder: no living parts left disables the unit. Phase 7

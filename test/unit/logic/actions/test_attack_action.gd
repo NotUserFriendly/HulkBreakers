@@ -778,4 +778,60 @@ func test_cover_shorter_than_the_muzzle_does_not_obstruct_the_shot() -> void:
 
 	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
 	assert_eq(impacts.size(), 1)
+
+
+## taskblock-37 Pass A (regression for the `_find_next` `point_depth`
+## anchor bug found while building this test): before the fix, EVERY
+## elevated first-hop shot silently resolved to nothing at all — the
+## dartboard aim point is anchored at the TARGET's own real depth, not
+## depth zero, and the old formula assumed the two were always the same
+## (true only for a ricochet's own fresh continuation plane). A real
+## production `AttackAction` between two units on different levels must
+## still land, and the hit must fall somewhere inside the target's own
+## real (elevated) body box, not merely "somewhere."
+func test_a_shot_at_an_elevated_target_still_lands_inside_its_real_body() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0)
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(0, 3))
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(0, 3), 2)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_eq(target.level, 2, "the target must actually pick up the cell's own level at spawn")
+
+	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(
+		impacts.size() > 0, "an elevated target must still be hittable, not silently missed"
+	)
+	# torso box: center (0, 0.5, 0), size (2.0, 1.0, 0.6) -> half-extent
+	# (1.0, 0.5, 0.3) -> world Y [level*LEVEL_HEIGHT, level*LEVEL_HEIGHT +
+	# 1.0] at level 2.
+	var hit_height: float = impacts[0].data.get("hit_height")
+	assert_between(hit_height, 2.0, 3.0, "the hit must land inside the target's own elevated box")
+
+
+## Same regression, pushed to an elevation steep enough that tb36's own
+## `test_multi_level_geometry.gd` reaches only via a hand-built
+## `resolve_ray` call — this is the first time it's reached through a
+## real production action instead.
+func test_a_steeply_elevated_shooter_still_hits_a_close_target() -> void:
+	var weapon := _make_weapon(&"pistol", 20.0)
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(0, 2))
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(0, 0), 5)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(
+		impacts.size() > 0, "a steeply elevated shooter must still be able to hit a close target"
+	)
 	assert_eq(impacts[0].data.get("target_unit_id"), target.id)

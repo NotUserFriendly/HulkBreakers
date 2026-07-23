@@ -561,3 +561,93 @@ func test_build_with_a_flat_direction_matches_a_bare_project_assembly_call() -> 
 		assert_eq(built[i].surface_normal, direct[i].surface_normal, "region %d surface_normal" % i)
 		assert_eq(built[i].thickness, direct[i].thickness, "region %d thickness" % i)
 		assert_eq(built[i].part, direct[i].part, "region %d part" % i)
+
+
+## taskblock-37 Pass A: `elevation_for` is the one shared helper every
+## production caller now builds its plane from — a real level delta
+## between origin and target cells must carry through as a real
+## `direction.y`/`vertical_slope`, never the old hardcoded-flat
+## `Vector3(x, 0.0, y)` every one of the six callers used to construct by
+## hand.
+func test_elevation_for_reflects_the_level_delta_not_flat_zero() -> void:
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(0, 3), 3)
+
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		Vector2(0, 0), 1.25, Vector2i(0, 0), Vector2i(0, 3), grid
+	)
+
+	assert_eq(elevation.origin, Vector3(0.0, 1.25, 0.0))
+	assert_eq(elevation.direction, Vector3(0.0, 3.0, 3.0))
+	assert_almost_eq(elevation.vertical_slope, 1.0, 0.0001)
+
+
+## A uniform raise — both cells on the SAME (nonzero) level — must cancel
+## back to a flat shot: tb36's own confirmed "two standing bodies raised
+## together resolve identically" behaviour, now proven at the `elevation_for`
+## level rather than only through a full resolved shot.
+func test_elevation_for_is_flat_when_origin_and_target_share_a_level() -> void:
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(0, 0), 5)
+	grid.set_level(Vector2i(0, 3), 5)
+
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		Vector2(0, 0), 6.25, Vector2i(0, 0), Vector2i(0, 3), grid
+	)
+
+	assert_eq(elevation.direction.y, 0.0)
+	assert_eq(elevation.vertical_slope, 0.0)
+
+
+## `origin_height` is a caller-supplied real muzzle height, never
+## re-derived from the origin cell's own ground level — a shooter's
+## muzzle always sits above their own cell's floor, and re-deriving it
+## here would silently double-count that offset (the exact bug this pass
+## found and fixed: an artificial tilt on an ordinary same-level shot).
+func test_elevation_for_uses_the_given_origin_height_verbatim() -> void:
+	var grid := Grid.new(10, 10)
+
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		Vector2(0, 0), 0.9, Vector2i(0, 0), Vector2i(0, 3), grid
+	)
+
+	assert_almost_eq(elevation.origin.y, 0.9, 0.0001)
+
+
+func test_depth_of_returns_the_frontmost_regions_own_depth() -> void:
+	var grid := Grid.new(10, 10)
+	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
+	var state := CombatState.new(grid, [near_unit])
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
+
+	var expected: Region = ShotPlane.resolve_projectile(plane, ShotPlane.center_of(plane, near_unit))
+	assert_eq(ShotPlane.depth_of(plane, near_unit), expected.depth)
+
+
+func test_depth_of_falls_back_to_zero_with_no_regions() -> void:
+	var no_volume := Part.new()
+	no_volume.id = &"ghost"
+	no_volume.hp = 5
+	no_volume.max_hp = 5
+	var ghost_unit := Unit.new(Matrix.new(), Shell.new(no_volume), Vector2i(4, 4))
+
+	assert_eq(ShotPlane.depth_of([], ghost_unit), 0.0)
+
+
+func test_depth_of_part_returns_the_frontmost_regions_own_depth() -> void:
+	var grid := Grid.new(10, 10)
+	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
+	grid.blockers[Vector2i(2, 2)] = wall
+	var state := CombatState.new(grid, [])
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
+
+	var expected: Region = ShotPlane.resolve_projectile(
+		plane, ShotPlane.center_of_part(plane, wall, Vector2i(2, 2))
+	)
+	assert_eq(ShotPlane.depth_of_part(plane, wall), expected.depth)
+
+
+func test_depth_of_part_falls_back_to_zero_with_no_matching_region() -> void:
+	var unrelated := _part(&"unrelated", Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0)))
+
+	assert_eq(ShotPlane.depth_of_part([], unrelated), 0.0)

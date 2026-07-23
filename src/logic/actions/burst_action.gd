@@ -117,10 +117,13 @@ func apply(state: CombatState) -> void:
 	# the bare cell center while origin sits at the muzzle is exactly what
 	# made half a burst read as firing backward.
 	var direction := Vector2(target_cell) - origin
-	var dir_n: Vector2 = direction.normalized()
-	var plane: Array[Region] = ShotPlane.build(
-		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	# taskblock-37 Pass A: see AttackAction's own doc comment — the target
+	# cell's real level against the shooter's own, not its own raw ground
+	# height against this shooter's absolute muzzle height.
+	var elevation: Dictionary = ShotPlane.elevation_for(
+		origin, muzzle.y, actual.cell, target_cell, state.grid
 	)
+	var plane: Array[Region] = ShotPlane.build(elevation.origin, elevation.direction, state)
 	var aim_point: Vector2 = (
 		(
 			ShotPlane.center_of(plane, target)
@@ -129,6 +132,14 @@ func apply(state: CombatState) -> void:
 		)
 		+ aim_offset
 	)
+	# taskblock-37 Pass A: the aim point's own real depth — see
+	# AttackAction's own doc comment for why `_find_next` needs this
+	# anchor, not just the vertical_slope itself.
+	var aim_depth: float = (
+		ShotPlane.depth_of(plane, target)
+		if target != null
+		else ShotPlane.depth_of_part(plane, target_part)
+	)
 	# taskblock-22 Pass H2: same self-obstruction check as AttackAction's
 	# own (see its doc comment) — computed once here too, since every
 	# pull in the burst reuses this same aim_point, a burst fired from
@@ -136,6 +147,7 @@ func apply(state: CombatState) -> void:
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
+		aim_depth = muzzle_hit.depth
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 
@@ -218,7 +230,11 @@ func apply(state: CombatState) -> void:
 				mission,
 				is_dud,
 				RangeModel.max_range(weapon),
-				muzzle.y
+				muzzle.y,
+				DamageResolver.DEFLECT_MODE_RICOCHET,
+				0.0,
+				elevation.vertical_slope,
+				aim_depth
 			)
 			pull_hit = pull_hit or landed
 		if pull_hit:

@@ -35,6 +35,20 @@ extends RefCounted
 ## onto the first hop's own `ImpactResult.origin_height` so a real 3D
 ## tracer (Pass D) has it, same real-height convention `resolve_shot`'s
 ## own ricochet hops already carry for free.
+## taskblock-37 Pass A: `vertical_slope` is this FIRST hop's own real rise
+## per unit of ground distance (`ShotPlane.elevation_for`'s own return,
+## the same quantity every production firing action now computes) —
+## appended last, not inserted alongside `origin_height` above, so no
+## existing positional caller shifts. `0.0` (every caller before this
+## pass) reduces to the exact old flat-shot behavior. `point_depth` is
+## the depth `point` (the dartboard's own aim point, generally anchored on
+## the target via `ShotPlane.center_of`/`depth_of`) is itself anchored at
+## — needed so `DamageResolver._find_next` tests OTHER candidates along a
+## tilted ray relative to the AIM point's own depth, not depth zero (see
+## its own doc comment). `0.0` (every caller before this pass, and every
+## ricochet still) is exactly right when there's no real tilt to correct
+## for, or when the point is already anchored at depth zero by
+## construction.
 static func resolve_and_log_point(
 	state: CombatState,
 	attacker: Unit,
@@ -49,7 +63,9 @@ static func resolve_and_log_point(
 	max_range: float = 0.0,
 	origin_height: float = 0.0,
 	deflect_mode: StringName = DamageResolver.DEFLECT_MODE_RICOCHET,
-	radius: float = 0.0
+	radius: float = 0.0,
+	vertical_slope: float = 0.0,
+	point_depth: float = 0.0
 ) -> bool:
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 		origin,
@@ -66,10 +82,11 @@ static func resolve_and_log_point(
 		DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
 		attacker.shell.all_parts(),
 		bonus_pen,
-		0.0,
+		vertical_slope,
 		origin_height,
 		deflect_mode,
-		radius
+		radius,
+		point_depth
 	)
 	for result: ImpactResult in results:
 		log_impact_result(state, attacker, result, mission, is_dud, max_range)

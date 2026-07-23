@@ -415,3 +415,26 @@ func test_apply_resolves_a_declared_burst_against_a_blocker_with_no_unit_there()
 	action.apply(state)
 
 	assert_lt(wall.hp, wall.max_hp, "a burst declared straight at the wall must actually damage it")
+
+
+## taskblock-37 Pass A: same `point_depth` anchor fix AttackAction's own
+## regression test proves — a burst is a separate `resolve_and_log_point`
+## caller with its own `aim_depth` threading, not automatically covered by
+## fixing AttackAction alone. An elevated target must still be hittable
+## through a real burst, not silently missed on every pull.
+func test_a_burst_still_lands_on_an_elevated_target() -> void:
+	var weapon := _make_chaingun()
+	var shooter := _make_shooter(Vector2i(0, 0), weapon)
+	var target := _make_target(Vector2i(0, 3))
+	var grid := Grid.new(10, 10)
+	grid.set_level(Vector2i(0, 3), 2)
+	var state := CombatState.new(grid, [shooter, target])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_eq(target.level, 2, "the target must actually pick up the cell's own level at spawn")
+
+	BurstAction.new(shooter, &"chaingun", target.cell).apply(state)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_true(impacts.size() > 0, "an elevated target must still be hittable through a burst")

@@ -160,6 +160,7 @@ static func _resolve_slide(
 	plane: Array[Region],
 	point: Vector2,
 	region_height: float,
+	region_depth: float,
 	vertical_slope: float,
 	shot_dir: Vector2,
 	current_damage: float,
@@ -175,8 +176,14 @@ static func _resolve_slide(
 	exclude_parts: Array[Part],
 	radius: float = 0.0
 ) -> void:
+	# taskblock-37 Pass A: `nudged_point.y` (== `region_height`) is the
+	# ray's real absolute height at `region_depth` — the ORIGINAL deflect
+	# region's own depth, not depth zero. `_find_next`'s anchor must match,
+	# same reason `resolve_shot`'s own first hop needed `point_depth`.
 	var nudged_point := Vector2(point.x + _SLIDE_NUDGE, region_height)
-	var slid_index: int = _find_next(plane, 0, nudged_point, exclude_parts, vertical_slope, radius)
+	var slid_index: int = _find_next(
+		plane, 0, nudged_point, exclude_parts, vertical_slope, radius, region_depth
+	)
 	if slid_index == -1:
 		return
 	var slid_region: Region = plane[slid_index]
@@ -188,7 +195,7 @@ static func _resolve_slide(
 	slid_impact.origin = origin
 	slid_impact.hit_point = origin + dir * slid_region.depth + perp * nudged_point.x
 	slid_impact.origin_height = origin_height
-	slid_impact.hit_height = region_height + vertical_slope * slid_region.depth
+	slid_impact.hit_height = region_height + vertical_slope * (slid_region.depth - region_depth)
 	results.append(slid_impact)
 	match slid_impact.outcome:
 		Enums.Outcome.PENETRATE, Enums.Outcome.STOP_DEAD:
@@ -620,16 +627,26 @@ static func resolve_shot(
 	vertical_slope: float = 0.0,
 	origin_height: float = 0.0,
 	deflect_mode: StringName = DEFLECT_MODE_RICOCHET,
-	radius: float = 0.0
+	radius: float = 0.0,
+	point_depth: float = 0.0
 ) -> Array[ImpactResult]:
 	var results: Array[ImpactResult] = []
 	var dir: Vector2 = direction.normalized()
 	var perp := Vector2(-dir.y, dir.x)
-	# taskblock-36 Pass A: `origin`/`dir` stay flat (y == 0.0) here — this
-	# function's own `vertical_slope`/`origin_height` pair is the parallel
-	# height tracking Pass C's audit is scoped to look at, not Pass A.
+	# taskblock-37 Pass A: `vertical_slope`/`origin_height` are no longer
+	# discarded here — tb36 audited this and found it a genuinely separate
+	# value from `resolve_ray`'s own (never a duplicate reconstruction),
+	# but still owed a real 3D `build` call of its own once a first hop
+	# could carry real elevation, which this pass is. Reconstructed as a
+	# real Vector3 (not re-derived a second way — `vertical_slope` IS
+	# "rise per unit of ground distance," so `dir * 1.0` rise is exactly
+	# `vertical_slope`) so `BodyProjector`'s own face-visibility test sees
+	# the real 3D direction, same as every other production caller now
+	# does. A flat first hop (`vertical_slope == 0.0`, every caller before
+	# this pass) reduces to exactly the old formula.
+	var dir3: Vector3 = Vector3(dir.x, vertical_slope, dir.y).normalized()
 	var plane: Array[Region] = ShotPlane.build(
-		Vector3(origin.x, 0.0, origin.y), Vector3(dir.x, 0.0, dir.y), state
+		Vector3(origin.x, origin_height, origin.y), dir3, state
 	)
 
 	# One crit roll per projectile flight: it stays in effect through
@@ -662,7 +679,9 @@ static func resolve_shot(
 	# (exiting) — an intervening solid part's own hit never touches this.
 	var inside_hollow_part: Part = null
 	while start < plane.size():
-		var found_index: int = _find_next(plane, start, point, skip_parts, vertical_slope, radius)
+		var found_index: int = _find_next(
+			plane, start, point, skip_parts, vertical_slope, radius, point_depth
+		)
 		skip_parts = []  # the exclusion applies only to this call's first hit
 		if found_index == -1:
 			break
@@ -683,7 +702,13 @@ static func resolve_shot(
 		# (== point.y) for a flat flight (vertical_slope 0.0, the same value
 		# every hop already used before this pass), rising/falling with
 		# depth for a tilted post-ricochet flight.
-		var region_height: float = point.y + vertical_slope * region.depth
+		# taskblock-37 Pass A: `point.y` is anchored at `point_depth`, not
+		# depth zero, for a first hop (the dartboard aim point sits at the
+		# TARGET's own real depth) — same anchor `_find_next` itself needs.
+		# A ricochet's own fresh plane always has `point_depth == 0.0` (its
+		# `point` is built as `Vector2(0.0, region_height)` by construction),
+		# so this is unchanged for every existing ricochet hop.
+		var region_height: float = point.y + vertical_slope * (region.depth - point_depth)
 
 		if region.socket != null:
 			var joint_hit: ImpactResult = _resolve_joint_hit(
@@ -772,6 +797,7 @@ static func resolve_shot(
 						plane,
 						point,
 						region_height,
+						region.depth,
 						vertical_slope,
 						shot_dir,
 						current_damage,
@@ -867,20 +893,36 @@ static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: Im
 ## walker `resolve_shot`'s own main loop uses; unfloored, a region behind
 ## the ray's own origin could win a real fired shot's resolution, which is
 ## exactly BR27.02's own logged case).
+## taskblock-37 Pass A: `point_depth` — the depth `point.y` is itself
+## ANCHORED at, `0.0` by default — is new. `point.y` was always treated as
+## the ray's own height AT DEPTH ZERO (`point.y + vertical_slope * plane[
+## i].depth`), which is exactly true for a ricochet's own continuation
+## (`_resolve_slide`/the recursive `resolve_shot` call both hand in a point
+## whose own flight starts fresh AT depth zero, by construction) but NOT
+## true for a first hop's own dartboard aim point, which `ShotPlane.
+## center_of`/`center_of_part` anchor at the TARGET's own real depth, not
+## the origin's. Correcting for that anchor (`plane[i].depth - point_
+## depth`, not the depth alone) is what lets OTHER candidates along the
+## same tilted ray — in front of or behind the actual target — test
+## against the ray's own real height at THEIR depth, not a value silently
+## re-based on the wrong reference point. `point_depth == 0.0` (every
+## caller before this pass, and every ricochet still) reduces this to the
+## exact old formula.
 static func _find_next(
 	plane: Array[Region],
 	start: int,
 	point: Vector2,
 	exclude_parts: Array[Part] = [],
 	vertical_slope: float = 0.0,
-	radius: float = 0.0
+	radius: float = 0.0,
+	point_depth: float = 0.0
 ) -> int:
 	for i in range(start, plane.size()):
 		if plane[i].depth < 0.0:
 			continue
 		if exclude_parts.has(plane[i].part):
 			continue
-		var height_here: float = point.y + vertical_slope * plane[i].depth
+		var height_here: float = point.y + vertical_slope * (plane[i].depth - point_depth)
 		if ShotPlane.disc_overlaps_rect(plane[i].rect, Vector2(point.x, height_here), radius):
 			return i
 	return -1
