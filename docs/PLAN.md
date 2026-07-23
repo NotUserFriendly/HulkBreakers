@@ -16,12 +16,13 @@ that could each be picked up next. Anything deferred, descoped, or spun off from
   re-evaluation of the whole bucket, not a silent push of the bottom item.**
 - **QUEUED** — everything else that is work, ordered so a dependency appears before the thing needing it.
   No commitment on timing.
-- **APPENDIX** — recorded findings. Reference, not work.
 
-**Two invariants make the order self-checking.** A violation means the ordering is wrong, not that the
-rule needs bending:
-1. Nothing in NEXT has an unmet dependency.
-2. Nothing in NEXT depends on anything in APPENDIX.
+*There is deliberately no third work bucket.* "Queued, but further off" isn't a real distinction — an item
+that can't be picked up yet says so on its own **Needs:** line, and a bucket repeating that is a second
+place for the same fact to live, and therefore a second place for it to go stale.
+
+**One invariant makes the order self-checking:** nothing in NEXT has an unmet dependency. A violation
+means the ordering is wrong, not that the rule needs bending.
 
 **Bugs are scheduled from `docs/BUGS.md`, not from here.** A taskblock may draw from either; PLAN is not
 a claim about what the next taskblock contains.
@@ -50,8 +51,53 @@ mulebot can't sit in the driver's seat.
 
 # NEXT
 
-### 1. Multi-level maps — grid height and movement verbs
-**Needs:** nothing. **Unblocks:** mission generation, authoring tools, moving heavy objects, vehicles.
+### 1. Consolidate the split 2D/3D shot geometry
+**Needs:** nothing. **Unblocks:** multi-level maps.
+
+The codebase reasons about shot geometry in 3D on one side and 2D on the other, and both of the gaps
+below live on that seam. They are one pass, not two.
+
+**Only four faces are modelled.** A box projects one `Region` **per visible face** — that's what lets
+`surface_normal` belong to the specific face struck, and incidence span the full 0–90° range. But
+`_FACE_NORMALS` holds only ±X and ±Z; top and bottom are deliberately absent, on a stated assumption:
+*"top/bottom ignored — shots travel horizontally in this abstraction."* A face is dropped below
+`_MIN_FACE_WIDTH`, and all four go edge-on **simultaneously** exactly when the view direction runs
+along the part's local Y — because ±X and ±Z are mutually perpendicular, so anything perpendicular to
+both is the local up. A sufficiently tilted part viewed along that axis therefore contributes **no
+Region at all**, and the shot passes through as if it weren't there. Tilt is real, not hypothetical:
+`Poses.aiming()` rotates a shoulder −45° about local RIGHT.
+
+**This is already live, not latent.** tb23 Pass C gave rays a genuine vertical component
+(`vertical_slope`, height tracked per-depth along the flight) — but `_project_box`'s facing test stayed
+*purely horizontal*, on the reasoning that "shots are still level in this pass." Pass C then made them
+not level, and nobody reconciled the two halves. `resolve_ray` documents the limit case honestly: a
+**dead-vertical shot returns `null`**, because "this plane model has no azimuth to build along… a real
+PhysicsServer ray would still resolve this, but that's the documented swap-in this function is a seam
+for."
+
+**And the two geometry paths were never unified.** There are genuinely separate systems: the real 3D
+muzzle-to-target ray (`UnitGeometry.muzzle_point` → `AimPlaneGeometry.ray_from_muzzle` →
+`ShotPlane.resolve_ray`), used only by the player's aiming reticle and Overwatch's pre-check; and the
+flat 2D system that actually deals damage (`AttackAction`/`BurstAction` → `ShotPlane.build(origin:
+Vector2, …)` + `Dartboard.sample()` → `DamageResolver.resolve_shot`), whose origin carries no height.
+Unifying them was ruled out of scope at the time as a larger change, and the two don't currently
+disagree in a way players notice — but **the next system needing a real shared height model is
+multi-level maps**, which is the item directly below.
+
+**Why it gates multi-level.** That item claims "height needs no special cover or LoS rules — it falls
+out of correct 3D projection." That claim is false while the projection has no top or bottom faces.
+Once units stand on walkways and shoot down, the most common *new* shot is precisely the one that sees
+four grazing side faces and one unmodelled top face head-on — a unit shot from above would be
+near-transparent.
+
+**The fork, deliberately unresolved:** add real ±Y faces (direct — the four-face parallel arrays become
+six), or take the escape hatch the code already names and swap `resolve_ray`'s inner resolution for a
+real `PhysicsServer` raycast (a bigger change, but it retires the two-path duality above at the same
+time). **Decide before coding** — the two answers imply very different amounts of work.
+
+### 2. Multi-level maps — grid height and movement verbs
+**Needs:** the 2D/3D geometry consolidation above. **Unblocks:** mission generation, authoring tools,
+moving heavy objects, vehicles.
 
 The highest fan-out item in the plan. True-3D shot resolution shipped (tb23); this is the rest of it.
 
@@ -68,7 +114,7 @@ The highest fan-out item in the plan. True-3D shot resolution shipped (tb23); th
 
 *Do this before mission generation, or the tile format encodes flatness forever.*
 
-### 2. Attributes
+### 3. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -90,18 +136,6 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 3. Status effects and boosts
-**Needs:** nothing. **Unblocks:** perks, therm conversion, wound thresholds.
-
-**Burn, bleed, and tesla-charging-allies are the same shape** — a timed, stacking modifier through
-`StatResolver`. Buff versus debuff is a sign. Build once.
-
-- **Stack model** — accumulation, decimal stacks preserved, decay-below-half-vanishes, per-turn tick.
-- **Consume the live hook** — `status_applied` already fires; make burn and bleed read it.
-- **Boosts** — the buff direction, ally-applied.
-- **Status → wound threshold** — closes tb20's dangling hook (burn → burnt_electronics).
-- **Retire the docs/08 burn fiction.**
-
 ### 4. Diagnostics — the log becomes the instrument
 **Needs:** nothing. **Unblocks:** every future perf or behaviour investigation.
 
@@ -115,6 +149,11 @@ framerate or a decision. Fixing the instrument is worth more than fixing any one
   limit to design around, not paper over:** a *hard* engine crash may die before any GDScript sink
   flushes. Scope what's reachable (caught script errors, assertion failures, abort reasons) versus what
   needs an external wrapper, up front.
+- **Fix the log sink before adding volume — BR27.09 measured it.** The combat-log UI sink reassigns
+  `label.text` in full on *every* event (~175–180µs at a 200-line scrollback), and a real 3v3 bout
+  averages 9.9 events per turn. Verbosity multiplies that cost linearly, so shipping the item below
+  without an incremental `append_text` first would turn a measured hitch into a much worse one. Details
+  and the other two measured costs are on BR27.09.
 - **Deliberately excessive verbosity.** CC greps it cleanly and the in-game view folds it. Log lifecycle
   and view events: bot constructed, part attached, cutout drawn to (x, y), which overlay is active and
   when it turns off. Plus a **bout-build log in the order things actually happen** — placed N walls, N
@@ -150,6 +189,18 @@ deleting the old file.
 ---
 
 # QUEUED
+
+### Status effects and boosts
+**Needs:** nothing. **Unblocks:** perks, power and therms, wound thresholds.
+
+**Burn, bleed, and tesla-charging-allies are the same shape** — a timed, stacking modifier through
+`StatResolver`. Buff versus debuff is a sign. Build once.
+
+- **Stack model** — accumulation, decimal stacks preserved, decay-below-half-vanishes, per-turn tick.
+- **Consume the live hook** — `status_applied` already fires; make burn and bleed read it.
+- **Boosts** — the buff direction, ally-applied.
+- **Status → wound threshold** — closes tb20's dangling hook (burn → burnt_electronics).
+- **Retire the docs/08 burn fiction.**
 
 ### Perks
 **Needs:** Attributes, Status. **Unblocks:** most named content.
@@ -761,40 +812,3 @@ pirates, settlement.
   clears to fully passable. The mangle machinery exists (`failure_mode = MANGLE`, `is_mangled`, `mangles_into`)
   but is never authored onto cover. Authoring it turns a destroyed wall or crate into rubble:
   passable-but-higher-cost and still low cover. Data authoring plus a small `move_cost` branch.
-
----
-
----
-
-# APPENDIX — recorded findings
-
-*Not work. Investigations and structural notes that inform the items above.*
-
-### `BodyProjector` has no modelled top or bottom faces
-A shot viewed exactly along a tilted part's own local depth axis can still find a degenerate,
-near-zero-extent silhouette — a real, pre-existing gap in the 4-face body model.
-
-### Two parallel shot-geometry systems, never unified
-The codebase carries two genuinely separate geometry paths: the real 3D muzzle-to-target ray
-(`UnitGeometry.muzzle_point` → `AimPlaneGeometry.ray_from_muzzle` → `ShotPlane.resolve_ray`), used only by the
-player's aiming reticle and Overwatch's pre-check; and the flat 2D system that actually deals damage
-(`AttackAction`/`BurstAction` → `ShotPlane.build(origin: Vector2, …)` + `Dartboard.sample()` →
-`DamageResolver.resolve_shot`), whose origin carries no height. Unifying them was ruled out of scope as a
-larger change, and the two don't currently disagree in a way players notice — but **the next system needing a
-real shared height model (melee reach, multi-level maps) will hit this duality again.**
-
-### The inter-turn FPS hitch — three measured suspects
-Headless probes timing real logic and view classes directly found three concrete, additive costs:
-1. The combat-log UI sink's full `label.text` reassignment on every event — ~175–180µs per call at a 200-line
-   scrollback, and a real 3v3 bout averages 9.9 events per turn (peak 29), so a heavy turn pays ~5ms just
-   relaying text nobody scrolled to. `HierarchicalUiSink` inherited the identical pattern, so this is still
-   live. *Recommendation:* incremental `append_text` for the new line, plus a different line-cap strategy than
-   trim-every-line.
-2. `HitVolumeView.refresh()` rebuilds every mesh and material from scratch for the acting unit on every turn
-   (~550–600µs on a 27-part unit), even when nothing about its geometry changed. *Recommendation:* skip the
-   rebuild when the turn's only events were `turn_start`/`turn_end`/`faced`.
-3. Turn-start power recompute re-walks the same unchanged part graph 5–6 times per `_start_turn` (uncached
-   `all_parts()`/`operable_parts()`) — smaller (~175µs) but pure waste. *Recommendation:* compute
-   `operable_parts()` once and thread it through.
-
-Initiative re-sort was measured and **ruled out** (~40µs per turn across a 12-unit roster).
