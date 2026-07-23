@@ -914,3 +914,105 @@ same relative order this ledger has always kept them in, oldest work first. All 
     promotion, same as BR32.10/BR27.07 below.
 - **RESOLVED** [CC 16507d21-1035-4b1c-a0fe-72a911df7403] — confirmed live by the supervisor (2026-07-23).
 
+### BR27.02 — Resolved — owner: `SUPERVISOR`
+**Chaingun bursts fire half-backward (visual only, hits are correct)**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-20, observed watching a live bout play out — "the most recent two chaingun
+  bursts look odd, both look like half the burst is going backward."
+- **First fix (taskblock-27 Pass A1):** every attack action's shot-plane `direction` was cell-anchored
+  while `origin` was muzzle-anchored — two different anchors for the same ray, which could resolve a
+  target at negative depth and animate as the round travelling backward. Both now share the muzzle
+  anchor. **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] at the time,
+  proven via a constructed overshoot-geometry test.
+- **2026-07-20: supervisor reports still visually backward** — but with a key new detail: "those
+  backwards shots do seem to be hitting the things they're drawn as hitting." The actual hit
+  resolution (which part takes the damage) is correct; only the drawn tracer/animation direction
+  still reads as backward. This means the Pass A1 fix (a `ShotPlane`/`AttackAction` geometry fix)
+  either isn't the code path driving the visible tracer, or there's a second, separate anchor
+  mismatch specifically in the rendering path (`resolution_player.gd`'s own tracer-drawing code, not
+  yet audited against this same origin/direction-anchor class of bug). **Reopened — not
+  investigated further this pass**, per instruction to just log and wait.
+- **2026-07-20 (taskblock-28 Pass C):** not investigated or fixed this pass either — but
+  `out/combat.log` now prints every impact/miss event's own real origin/hit geometry (was already in
+  `data` since tb22/23; `LogEvent._to_string()` just never rendered it, and `Overwatch._fire`'s own
+  separate impact path had no geometry at all until this pass routed it through the shared logger).
+  A future session chasing this bug can read the geometry straight from the log text instead of
+  re-deriving it or relying on live playback. Still open; still unconfirmed.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** primary tracer
+  read/write anchors now match (post first-fix) — no mismatch there. Suspect is the DEFLECT
+  bounce-continuation segment: `resolution_player.gd:464-478` draws from the hit point to
+  `deflect_end_*`, computed in `shot_resolution.gd:225-232` as `hit_point + reflected_dir *
+  void_range`. `reflected_dir`'s sign/normal convention (`damage_resolver.gd:118-131`) has not been
+  audited against this bug class — a flipped convention there would draw a visibly backward secondary
+  ray for DEFLECT-outcome shots while leaving the real hit correct, matching "half the burst backward,
+  hits correct" exactly. **Bonus find (separate, same bug class):** `overwatch.gd:264-265` still
+  computes `origin` as a raw cell-center — never migrated to the muzzle-anchor fix `AttackAction`
+  received in Pass A1. A second live instance of the exact same anchor-mismatch class, in a different
+  code path. Neither finding implemented or tested yet.
+- **2026-07-23 (live playtest, `out/combat.log`, units 0/1/2 supervisor-controlled) — a new angle,
+  not yet reconciled with the 2026-07-21 suspects above.** Unit 0's 12-round chaingun burst at
+  `(6, 19)`, fired from roughly `(4, 17)`: **all 12 of 12 pulls resolve `DEFLECT on wall`**, every one
+  clustering around hit point `~(0.3-0.8, 13.7-14.8)` —
+  e.g. `DEFLECT on wall [origin (3.95, 17.26)@1.53 -> hit (0.67, 13.80)@1.71]`. That hit point sits in
+  the OPPOSITE quadrant from the aimed target: origin-to-target is `+x, +y`; origin-to-hit is
+  `-x, -y`. Every pull agrees on roughly the same wrong-direction spot (scatter alone wouldn't do
+  that), and — unlike the two-hop chain logged minutes later for unit 2 (`DEFLECT` immediately
+  followed by its own `STOP_DEAD` continuation, sharing an origin/hit boundary) — each of these 12
+  pulls logs exactly ONE impact event, no continuation segment. That means the anomaly sits in the
+  FIRST forward ray-cast (muzzle to first wall) itself, not in the `reflected_dir` bounce-continuation
+  segment the 2026-07-21 note suspected (which only governs what happens AFTER the first hit) — a
+  candidate for a still-live anchor mismatch in the primary ray itself, distinct from that suspect,
+  not yet root-caused. Logged only — not investigated or fixed this pass.
+- **2026-07-23 (follow-up, read-only code investigation — no fix attempted): a concrete hypothesis
+  for the first-segment anomaly above, arithmetically consistent with the logged numbers.**
+  `damage_resolver.gd::resolve_shot` computes each hop's own logged point as
+  `origin + dir * region.depth + perp * point.x` (`dir`/`perp` from the outer call's own `direction`,
+  never re-derived per hop). Solving that equation backward for the unit-0 example above
+  (`origin (3.95, 17.26)`, `dir` normalized toward `(6, 19)` ≈ `(0.76, 0.65)`, `hit (0.67, 13.80)`)
+  requires `region.depth ≈ -4.3 to -5.3` — genuinely **negative**, i.e. the resolved region sits
+  BEHIND the shooter along this shot's own fire line, not in front of it.
+  **Why a negative-depth region could win at all:** `ShotPlane.build` (`shot_plane.gd:45`) sorts the
+  whole plane with a bare `a.depth < b.depth` — no floor at zero anywhere — and `_find_next`
+  (`damage_resolver.gd:837`) just walks that sorted array and returns the FIRST region whose rect
+  overlaps the aim point. Negative-depth regions are a known, INTENTIONAL part of the plane (`docs/09`
+  taskblock06 Pass H's own `AimController.window_depth` doc comment: "a body positioned behind the
+  shooter along the fire line still gets a Region... so its own frontmost depth can be small or even
+  negative") — but that fact was only ever handled defensively on the AIM-WINDOW side
+  (`window_depth`'s own `MIN_WINDOW_DEPTH` clamp) and the SHOOTER's-own-body self-exclusion
+  (`_first_hit_excluding`/`self_obstruction`, by identity). Neither guard stops a DIFFERENT body's
+  region — a wall, say — from sorting first purely because its projected depth happens to be more
+  negative than every real, forward obstacle, then winning `_find_next`'s linear scan if the aim
+  point's lateral/height coordinates happen to fall inside that region's rect (which a wide/tall wall
+  segment's own rect can do regardless of which side of the shooter it's actually on). If real, this
+  would be a genuine RESOLUTION bug (which region gets picked), not merely a rendering-direction one —
+  which would refine, not just extend, the 2026-07-20 report's own claim that "hit resolution... is
+  correct; only the drawn tracer direction is backward" (that may hold for whatever case prompted that
+  original report, but doesn't appear to hold for this DEFLECT case). **Not verified against a
+  constructed fixture — this is a read-through-the-code hypothesis from one live example's own
+  arithmetic, not a proven root cause.** No fix attempted.
+- **2026-07-23 (tb35 Pass B — this hypothesis confirmed and fixed, advancing but not closing)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. The 2026-07-23 read-only hypothesis above was exactly
+  right: `_find_next` (and `ShotPlane.resolve_projectile`, and a third independent implementation,
+  `LineOfFire._first_hit_excluding`, discovered on the same pass) all walked the unfloored,
+  negative-depth-inclusive plane with no floor of their own. Fixed by flooring the RESOLVING path at
+  `depth >= 0` (opt-in on `resolve_projectile`, unconditional on the other two, which are always fed
+  a real shooter-anchored plane) while leaving `ShotPlane.build`'s own sort and the aim window's
+  `window_depth` reading untouched, per this same bug's own 2026-07-23 note above. Headless
+  regression: `test_line_of_fire.gd::test_first_hit_never_resolves_to_a_wall_behind_the_shooter`
+  reconstructs this exact shape (real target ahead, wall several cells behind the shooter, present in
+  the plane on purpose) and asserts the resolved hit is the target, not the wall. **Stays Active, one
+  entry** (this taskblock's own scope fence, per the supervisor's ruling): this fixes the resolution
+  mechanism the hypothesis named, but the original report was about the drawn TRACER direction
+  specifically, and that rendering path (`resolution_player.gd`) has not been re-checked live against
+  this fix — needs a live bout to confirm the visual symptom is actually gone, not just the
+  resolution math underneath it.
+- **2026-07-23 (supervisor request, `out/combat.log` read) — positive resolution-side evidence, not a
+  closure.** The most recent chaingun burst in the log (12-round burst at cell (25,4), shooter muzzle
+  (17.83, 5.47)): all 12 pulls landed, and every hit point clusters tightly around (24.7–26.9,
+  4.0–4.3) — on and just past the aimed cell, `dx` ≈ +7 to +9 in the actual aimed direction. Several
+  pulls deflect and continue on to a wall further in that SAME forward direction; none land in the
+  opposite quadrant. This is the exact shape the depth-floor fix predicts, and the opposite of this
+  entry's own original 12/12-pulls-in-the-wrong-quadrant case. Still only resolution data, not the
+  drawn tracer — stays Active, one entry, pending a live look at an actual burst's own tracer.
+- **RESOLVED** [CC 16507d21-1035-4b1c-a0fe-72a911df7403] — confirmed live by the supervisor (2026-07-23), after watching a dozen real bursts post-depth-floor-fix.
+
