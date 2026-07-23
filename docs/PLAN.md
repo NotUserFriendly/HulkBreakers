@@ -359,6 +359,14 @@ whole civilizations (Rome inside a spaceship). Scale is managed by two features:
   and a scripted ship-boarding fight becomes "get back to your ship," reusing combat on one map.
   The ship-as-space decision paying off spatially.
 
+**Corridor geometry as pacing (design note, tb33 review).** Diagonal tile-based structures *feel*
+faster to traverse than orthogonal ones, even though 8-directional movement makes them mathematically
+equivalent. So corridor shape is a free pacing lever: make a very long corridor partially or wholly
+diagonal and it reads as shorter than it is; keep it orthogonal and it reads as longer, deliberately
+slowing the player's sense of progress. Usable in both directions — diagonal to compress the feel of
+necessary distance, orthogonal to pace and build dread before an arrival. Costs nothing but a
+generation preference, and it's a perceptual tuning knob that doesn't touch balance numbers.
+
 **Persistence model — generated once, then a stateful evolving place (NOT re-rolled).** A hulk's
 map *and* contents are generated one time from the seed; after that **nothing regenerates** — the
 hulk only *changes* through causes: player actions (loot taken, holes cut, cargo jettisoned/dumped),
@@ -518,25 +526,18 @@ systems. The unifications:
 Mulebot / follower drones; hacking (Int-based, has a RAM cost already); weak points (poses + failure
 modes + aimable joints exist — cheap); voidhulk stability (environmental hazard).
 
-**AI multi-turn approach pathing (was tracked as a bug, reclassified tb27).** `UnitAI._engagement_score`
-picks the best REACHABLE cell this turn only — it can't plan a route that requires temporarily
-moving away from the enemy (or off the direct line) before a real gap in cover appears. tb27's own
-`LoS.obstruction_count` scoring measurably reduced how often a unit gets stuck at a local minimum
-(16/60 → 8/60 stuck seeds on a 60-map sweep) but doesn't close it: a long corridor with the only
-opening behind the unit's own start position still traps the per-turn greedy scorer. Closing this
-for real needs a genuine shortest-path-to-nearest-LOS-cell search (multi-turn, not single-turn
-reachability) — a real design/scope item, not a bugfix.
-
-**AI fires without verifying a clear line of fire (surfaced BR30.10).** [SUPERVISOR: next-block
-priority, tb33 — alongside the two perf hits BR26.02 (low fps aiming) and BR27.09 (new/end-turn
-hitch).] Once walls actually blocked
-shots (BR30.10 wired wall geometry into `ShotPlane`), a live mission log showed **81% of impacts
-(368/457) landing on a wall instead of the intended target** — the AI commits to a shot trusting
-`ShotPlane` to arbitrate, without first confirming the target is genuinely reachable by the round.
-Invisible before the wall fix (nothing ever blocked a shot). The AI's target-selection / engagement
-step needs a real clear-LOF check before committing. Likely the reason correct wall-blocking makes
-missions grind through many more turns. Pairs with the multi-turn approach-pathing gap above (both are
-"the AI doesn't reason about geometry between itself and the target").
+**AI fixates on the nearest enemy even when it's genuinely unshootable (found re-checking BR30.10
+post-tb33).** `UnitAI._nearest_living_enemy` always targets the closest living candidate, with no
+fallback to a different, actually-reachable-by-shot target if the nearest one turns out to have no
+line anywhere on the map. Surfaced re-running the BR30.10 wall-impact measurement against
+`test_full_mission.gd`'s own fixture post-tb33: one defender spawns in a geometric nook confirmed (via
+an unbounded-radius `Pathfinder.nearest_matching` search) to have **no clean `ShotPlane` line from any
+reachable cell, adjacency included** — tb33 B's own fallback correctly holds rather than firing blind
+into it (working as specified), but the landing squad then never tries either of the OTHER two
+defenders instead, and the whole mission stalls on the one unshootable target for the rest of the turn
+cap. Not a LOF/LOS question — target *selection* needs to skip past a genuinely unreachable-by-shot
+enemy toward one that isn't, not just refuse to fire once it's already committed to the unreachable
+one. `taskblock_done/Report-Taskblock33.md`'s own follow-up section has the full trace.
 
 **AI for damaged units — head for the nearest weapon.** A disarmed/damaged unit currently has little
 to do on its turn. Since the sim always knows where everything is, handing a damaged unit the location
@@ -572,6 +573,20 @@ UI: it interacts with the docs/09 re-validation rule (a batched out-leg must re-
 if the batch's first shot invalidates a later one, the unit is already stepped out, so the "stop the
 instant the next thing is illegal" rule needs to define what happens to the shared return leg). Design
 the batch boundary before coding. Touches `docs/10`'s step-out description on land.
+
+**A "Panic" fallback AI — the stuck-unit escape hatch, made player-visible (tb33 review).** A
+long-term addition: a last-resort behavior that fires when a unit is *stuck* — no legal/productive
+action by any normal path — and forces it out of that situation rather than letting it idle. tb33 B's
+approach-fallback is the first, narrow instance of this idea (no reachable cell has a shot → walk
+toward one that does); the general version catches every stuck case, not just the LOF one.
+
+The second half is the interesting part: **label it visibly, e.g. "Panic," so the player sees it fire.**
+Some escapes are necessarily cheats — a unit teleporting to a tile, extracting without standing on an
+extraction tile, shutting down unexpectedly — and a player who sees them unlabelled learns the wrong
+rules. Surfacing the state as Panic says "something went wrong here, don't take this as normal." That
+makes the fallback self-reporting: an escape hatch nobody can see is indistinguishable from a bug, and
+the same signal doubles as a debugging tell in spectator. Pairs with the intent/outcome log pairing
+(Diagnostics above) — Panic is the "what happened" line for a unit that had no good "what was sent."
 
 ---
 
