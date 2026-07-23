@@ -29,9 +29,7 @@ static func apply_lean(unit: Unit, weapon: Part, distance: float) -> float:
 ## calls `Overwatch.check_trigger` at all — "an un-exposed striker cannot
 ## be interrupted" is not merely "happened not to trigger," nothing is
 ## ever asked.
-static func resolve_exposure(
-	state: CombatState, unit: Unit, weapon: Part, distance: float
-) -> bool:
+static func resolve_exposure(state: CombatState, unit: Unit, weapon: Part, distance: float) -> bool:
 	var lean: float = apply_lean(unit, weapon, distance)
 	if lean <= 0.0:
 		return false
@@ -60,7 +58,7 @@ static func find_step_in_cell(
 ) -> Variant:
 	if MeleeReach.in_reach(unit.shell, weapon, Grid.distance_chebyshev(unit.cell, target.cell)):
 		return null
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
 	var best: Variant = null
 	var best_cost: float = INF
 	for cell: Vector2i in pf.reachable(unit.cell, unit.mp):

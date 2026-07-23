@@ -394,7 +394,7 @@ func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	assert_gt(pf.move_cost(Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
+	assert_gt(pf.move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
 
 	var ok: bool = injector.place_cover(Vector2i(2, 2), &"scrap_pile", pool)
 
@@ -402,7 +402,7 @@ func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 	assert_not_null(state.grid.blockers.get(Vector2i(2, 2)))
 	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"scrap_pile")
 	assert_lt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)),
+		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
 		0.0,
 		"a placed blocker must actually block movement"
 	)
@@ -431,7 +431,10 @@ func test_clear_cover_removes_the_blocker_and_restores_passage() -> void:
 
 	assert_true(ok)
 	assert_false(state.grid.blockers.has(Vector2i(2, 2)))
-	assert_gt(Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)), 0.0)
+	assert_gt(
+		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
+		0.0
+	)
 
 
 func test_clear_cover_refuses_a_cell_with_nothing_to_clear() -> void:
@@ -451,7 +454,10 @@ func test_set_passable_false_makes_a_cell_impassable() -> void:
 
 	assert_true(ok)
 	assert_eq(state.grid.get_terrain(Vector2i(2, 2)), Enums.TerrainType.WALL)
-	assert_lt(Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)), 0.0)
+	assert_lt(
+		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
+		0.0
+	)
 
 
 func test_set_passable_true_restores_passage() -> void:
@@ -466,7 +472,10 @@ func test_set_passable_true_restores_passage() -> void:
 	assert_true(ok)
 	assert_eq(state.grid.get_terrain(Vector2i(2, 2)), Enums.TerrainType.OPEN)
 	assert_almost_eq(state.grid.get_opacity(Vector2i(2, 2)), 0.0, 0.0001)
-	assert_gt(Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)), 0.0)
+	assert_gt(
+		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
+		0.0
+	)
 
 
 ## taskblock-31 (rolled into tb30): the general attach_part verb.

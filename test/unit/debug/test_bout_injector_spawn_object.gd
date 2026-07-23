@@ -59,7 +59,7 @@ func test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers() -> voi
 	var pool := {&"dropped_arm": _cover_part(&"dropped_arm")}
 	var injector := BoutInjector.new(state)
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
-	assert_gt(pf.move_cost(Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
+	assert_gt(pf.move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
 
 	var ok: bool = injector.spawn_object(Vector2i(2, 2), &"dropped_arm", pool, false)
 
@@ -70,7 +70,7 @@ func test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers() -> voi
 	assert_eq(items.size(), 1)
 	assert_eq((items[0] as Part).id, &"dropped_arm")
 	assert_gt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(2, 2)),
+		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
 		0.0,
 		"a loose item must never block movement"
 	)

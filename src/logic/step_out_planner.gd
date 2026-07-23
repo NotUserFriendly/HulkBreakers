@@ -42,7 +42,7 @@ static func is_legal_step_out(
 static func candidate_step_out_cells(
 	state: CombatState, unit: Unit, origin_cell: Vector2i, target: Unit
 ) -> Array[Vector2i]:
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
 	var candidates: Array[Vector2i] = []
 	for offset: Vector2i in _ORTHOGONAL_OFFSETS:
 		var cell: Vector2i = origin_cell + offset
@@ -113,7 +113,7 @@ static func build_triple(
 	origin_cell: Vector2i,
 	firing_cell: Vector2i
 ) -> bool:
-	var out_pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var out_pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
 	var out_path: Array[Vector2i] = out_pf.astar(origin_cell, firing_cell)
 	if out_path.size() < 2:
 		return false
@@ -126,7 +126,7 @@ static func build_triple(
 		return false
 
 	var preview: CombatState = queue.preview(state)
-	var back_pf := Pathfinder.new(preview.grid, preview.terrain_costs)
+	var back_pf := Pathfinder.new(preview.grid, preview.terrain_costs, unit.shell.can_climb())
 	var back_path: Array[Vector2i] = back_pf.astar(firing_cell, origin_cell)
 	if back_path.size() < 2:
 		return false

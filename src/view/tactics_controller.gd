@@ -1072,7 +1072,7 @@ func _append_step_out_return_leg() -> void:
 	var previewed_shooter: Unit = preview.find_unit(shooter.id)
 	if previewed_shooter == null:
 		return
-	var back_pf := Pathfinder.new(preview.grid, preview.terrain_costs)
+	var back_pf := Pathfinder.new(preview.grid, preview.terrain_costs, shooter.shell.can_climb())
 	var back_path: Array[Vector2i] = back_pf.astar(previewed_shooter.cell, _step_out_origin_cell)
 	if back_path.size() < 2:
 		return
@@ -1120,7 +1120,7 @@ func _confirm_step_out() -> void:
 	if previewed_shooter == null:
 		cancel_step_out()
 		return
-	var pf := Pathfinder.new(preview.grid, preview.terrain_costs)
+	var pf := Pathfinder.new(preview.grid, preview.terrain_costs, shooter.shell.can_climb())
 	var out_path: Array[Vector2i] = pf.astar(previewed_shooter.cell, firing_cell)
 	if (
 		out_path.size() < 2

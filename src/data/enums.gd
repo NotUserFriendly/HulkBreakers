@@ -14,12 +14,20 @@ extends RefCounted
 ## like WALL always has), opacity 0 (a shot passes into it — there's
 ## nothing there to hit), no blocker Part. `MapGen` rings the playable
 ## area with wall-Part cells and fills everything past them with VOID.
+## taskblock-37 Pass C: `RAMP` is ordinary pathing that happens to change
+## height — a sloped tile costs the same as any other (docs/PLAN.md's own
+## "22.5 degree ramps... two ramps make one full level"), never the
+## capability-gated climb/hop-down edges `Pathfinder` builds for a genuine
+## level DISCONTINUITY. `Pathfinder.move_cost` reads this to tell "an
+## ordinary graded step that happens to touch a different Grid.level" apart
+## from "a real ledge with nothing bridging it."
 enum TerrainType {
 	OPEN,
 	WALL,
 	SPAWN_A,
 	SPAWN_B,
 	VOID,
+	RAMP,
 }
 
 ## A matrix's fate at battle end (docs/04). PILOTING is the default — still
