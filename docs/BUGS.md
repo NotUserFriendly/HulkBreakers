@@ -291,6 +291,14 @@ confirm" roll-up — so pending items surface at a natural review point without 
   specifically, and that rendering path (`resolution_player.gd`) has not been re-checked live against
   this fix — needs a live bout to confirm the visual symptom is actually gone, not just the
   resolution math underneath it.
+- **2026-07-23 (supervisor request, `out/combat.log` read) — positive resolution-side evidence, not a
+  closure.** The most recent chaingun burst in the log (12-round burst at cell (25,4), shooter muzzle
+  (17.83, 5.47)): all 12 pulls landed, and every hit point clusters tightly around (24.7–26.9,
+  4.0–4.3) — on and just past the aimed cell, `dx` ≈ +7 to +9 in the actual aimed direction. Several
+  pulls deflect and continue on to a wall further in that SAME forward direction; none land in the
+  opposite quadrant. This is the exact shape the depth-floor fix predicts, and the opposite of this
+  entry's own original 12/12-pulls-in-the-wrong-quadrant case. Still only resolution data, not the
+  drawn tracer — stays Active, one entry, pending a live look at an actual burst's own tracer.
 ### BR27.03 — Active — owner: `SUPERVISOR`
 **Other shots appear to resolve before an earlier shot's own deflect finishes**
 - **Source:** `SUPERVISOR`
@@ -553,114 +561,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   expected consequence, not chased this pass (supervisor's own call: "consider the full test failed
   for the moment, we have a couple other things to check").
 - **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
-### BR32.01 — Pending — owner: `SUPERVISOR`
-**Stray wall-cutout hole at a cell with no unit**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
-- **2026-07-23 (supervisor re-check — REOPENED, and merged in understanding with BR32.03).** Still
-  reproduces. The description here is almost certainly the *same phenomenon* BR32.03 describes from
-  the other side: a "stray cutout at a cell with no unit" is what a cutout that **carried over from a
-  previous bout** looks like once the unit that justified it is gone. Treat BR32.01 and BR32.03 as one
-  defect with two observed faces — fix the feed-refresh boundary (bout load, unit spawn, unit removal)
-  once and both should fall. Do not fix them as separate bugs.
-- **Reported:** 2026-07-22 (live bout, tb32 review). "A stray culling around cell 2,18, with no unit
-  to produce that effect... that is the ONLY culling step I see, it's not showing on the units."
-- **Root cause, confirmed by reading the code (no live repro available to me — this session has no
-  Xvfb/GPU, so I can't run the actual bout myself):** `BoardView.wall_cutout_units` is a live
-  reference to `CombatState.units`, fed unfiltered into the wall-cutout shader
-  (`BoardView.update_wall_cutout`) every frame. Two ways a unit can leave the board while STAYING in
-  that array at its own stale `.cell` forever: (a) **extraction** (`MissionState.extract_unit()` sets
-  `alive = false`/`extracted = true` but never clears `.cell`, and nothing in the view layer ever
-  read `.extracted` before this fix — the unit's own `HitVolumeView` doesn't even get hidden,
-  a separate, more visible latent issue flagged below); (b) the **debug panel's "remove object" verb**
-  on a unit (`BoutInjector.remove_object` → `CombatState.kill_unit` — same `alive = false`, cell
-  untouched — plus `BattleScene.remove_unit_view()`, which DOES destroy the `HitVolumeView`,
-  tracked in `_removed_unit_ids`). Either way, the cutout shader keeps cutting a hole at that unit's
-  last position indefinitely, with nothing visibly there to explain it — exactly the reported
-  symptom. ("Not showing on the units" is very likely just describing that no *currently on-board*
-  unit happens to be behind a wall from the camera's current angle right now — not itself a bug,
-  though unconfirmed without seeing the bout.)
-- **Fix:** `update_wall_cutout()` now skips any unit with `.extracted == true`. A new
-  `BoardView.exclude_unit_from_occlusion(unit_id)` (cleared on every `build()`, so a fresh battle
-  never inherits a stale exclusion) is called from `BattleScene.remove_unit_view()` — the same
-  `_removed_unit_ids` moment — and checked alongside `.extracted` in the cutout feed. Pass B's own
-  `BattleScene._occluding_friendlies()` (same `wall_cutout_units` list, same class of bug for the
-  friendly-fade effect) got the matching `.extracted` filter too, since an extracted friendly's own
-  `HitVolumeView` stays live (extraction never calls `remove_unit_view`) and would otherwise visibly
-  fade as if still standing there.
-- **Separate, more visible latent issue flagged, not yet fixed:** nothing in the view layer reads
-  `Unit.extracted` at all outside this fix — an extracted unit's own `HitVolumeView` never gets
-  hidden or specially posed, so its body may just keep standing there, fully rendered, indefinitely.
-  Worth a supervisor look independent of this ticket.
-- **Not yet confirmed which of the two mechanisms (a)/(b) actually produced the (2,18) hole** — both
-  are now fixed regardless, but knowing which would confirm the diagnosis. Did a unit get extracted
-  or debug-removed near that cell?
-- **2026-07-22 (supervisor):** if extraction/debug-removal was the cause, it happened on a PRIOR
-  bout, not this one — the stray hole was already present on loading into the current bout. See
-  **BR32.03** below — a distinct, not-yet-investigated angle (does something carry over across a
-  "New Battle" that shouldn't?), since this fix's own `_excluded_from_occlusion` is cleared on every
-  `BoardView.build()` and `wall_cutout_units` is reassigned fresh from the new `CombatState.units` on
-  load, so neither of the mechanisms fixed here should be ABLE to survive a bout transition as
-  currently understood — worth a real look, just not yet.
-- **2026-07-23 (tb35 Pass D — the "should be impossible" gap found and fixed)**
-  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. The prior note's own "reassigned fresh from the new
-  `CombatState.units` on load" premise was checked directly and is **false in the common case**:
-  `wall_cutout_units` is set in exactly ONE place in the entire codebase —
-  `SquadControlOverlay._on_battle_loaded()`. `SpectatorOverlay` (the DEFAULT overlay every fresh bout
-  and every "New Battle" starts in, unless the Generate Bout menu's own "Assume Control" checkbox was
-  ticked) has no `battle_loaded` handler at all and never touches it.
-  `BattleScene.load_battle()` itself — the one function that runs for every bout, every overlay —
-  rebuilds `board_view`'s static geometry (`board_view.build(...)`) but never re-points
-  `wall_cutout_units`. So starting or reloading a bout while staying in Spectator mode (the ordinary,
-  default path) leaves the feed pointing at whatever it held before: `null`/empty on first launch, or
-  the PREVIOUS bout's own now-orphaned `combat_state.units` array on any later one — exactly "a stray
-  cutout at a cell with no unit" (this entry) and "carried over from a previous bout" (BR32.03,
-  confirmed the same defect). This is also precisely why clicking "Assume Control" (either the bout-
-  start checkbox or a mid-bout control-assumption) "snaps the culls into place": either path installs
-  a real `SquadControlOverlay` for the first time against the *current* `battle`, which is the ONLY
-  code path that ever sets the feed — not a coincidence, the actual mechanism.
-  - **Fix:** `board_view.wall_cutout_units = combat_state.units` moved into `BattleScene.
-    load_battle()` itself, right after `board_view.build(...)` — set once, canonically, for every
-    overlay, every bout. `SquadControlOverlay`'s own now-redundant assignment removed (one source of
-    truth, not two agreeing by coincidence).
-  - **Verified (headless):** new
-    `test_battle_scene.gd::test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode` —
-    loads a bout while in `SpectatorOverlay`, confirms the feed points at that bout's own units;
-    loads a SECOND bout, confirms the feed re-points to the new state's units and the first bout's
-    own (now-stale) array is no longer the feed.
-  - Marked Pending, not Resolved — this needs a live look (start a bout, stay in Spectator, confirm no
-    stray cutout) before promotion, same as every other `SUPERVISOR`-owned entry this session.
-### BR32.03 — Pending — owner: `SUPERVISOR`
-**Wall cutout carries over across a bout transition; new units get none**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-22. The supervisor noticed BR32.01's own "stray culling, no unit there"
-  symptom immediately on loading into the current bout — if extraction/debug-removal was the actual
-  cause (BR32.01's own fix), it would have happened on a PRIOR bout, meaning something about that
-  stale state survived a "New Battle" transition into this fresh one.
-- **Explicitly not investigated yet, by instruction** — do not look into this until the supervisor's
-  own review pass. Filed only so it isn't lost.
-- **Why this looks surprising against BR32.01's own fix (not a contradiction, just unexplained):**
-  `BoardView.wall_cutout_units` is reassigned fresh from the NEW `CombatState.units` on every
-  `_on_battle_loaded()`, and `_excluded_from_occlusion` is cleared on every `BoardView.build()` — on
-  paper, neither of BR32.01's two mechanisms should be able to survive a bout transition at all. If
-  this reproduces again, that gap between "should be impossible" and "was observed" is the actual
-  bug.
-- **2026-07-22 (supervisor review — confirmed, promoted Suspected→Active):** reproduces. The cutout
-  from the *prior* match persists into a new bout — old culling never cleared, and the new bout's own
-  units get no cutout at all (the only hole visible is the stale one). So it's not just a leftover: what
-  survives the transition also prevents the fresh feed from taking effect.
-- **Key diagnostic — clicking "Assume Control" snaps the culls to their proper location.** So the feed
-  isn't permanently broken, it's *stale until an event forces a re-read*: whatever Assume-Control does
-  (re-selects/re-projects the live units) is exactly the refresh the bout-load path is missing. Same
-  feed-timing family as **BR32.04** (cutout jumps to the resolved cell ahead of the move animation) —
-  both are "`update_wall_cutout()` reads/refreshes at the wrong moment." The bout-load path (and unit
-  spawn) needs to trigger the same re-feed Assume-Control already does.
-- **2026-07-23 (tb35 Pass D — confirmed as the SAME defect as BR32.01, one fix closes both)**
-  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. This entry's own diagnostic was exactly right: the
-  bout-load path never re-fed `wall_cutout_units` at all unless `SquadControlOverlay` happened to be
-  active — see BR32.01's own dated note above for the full mechanism and the fix
-  (`BattleScene.load_battle()` now re-points the feed itself, for every overlay). Not a separate bug
-  needing its own fix — merged, per this entry's own instruction to treat BR32.01/03 as one defect.
-  Marked Pending alongside BR32.01, same reasoning.
 ### BR32.04 — Active — owner: `SUPERVISOR`
 **Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up**
 - **Source:** `SUPERVISOR`
@@ -979,77 +879,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
     coverage — a real balance number, not this session's to invent; (c) add a genuine floor Region so
     at least the "hits the floor" half of the design rule has something to resolve against. Flagging
     for supervisor/design input rather than guessing.
-### BR34.06 — Pending — owner: `SUPERVISOR`
-**AI passes its turn, in bout matches only — BLOCKER**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (post-tb34 check). Every AI unit passes its turn in bout matches. The
-  qualifier matters: **bouts specifically**, which is the mode used for essentially all live
-  verification.
-- **This blocks confirmation of at least BR32.10 and BR27.07**, and makes bouts near-useless as a
-  testing surface — which is why it should be treated as the highest-priority open entry rather than
-  one bug among several.
-- **Strong prior hypothesis — this is probably not new, and probably not a bout-setup bug.** CC's own
-  tb33 follow-up investigation reported exactly this symptom while re-measuring the BR30.10 wall-hit
-  ratio: *"zero impacts in 400 turns… every unit holds every turn, the whole mission long."* At the
-  time it was attributed to one enemy spawning in a geometric nook with no clean line anywhere, and
-  written off as a bad seed. The same symptom appearing across bout matches generally says it is
-  **systemic, not seed-specific** — and the obvious candidate is tb33's own LOF work: either
-  `has_clear_line_of_fire` returns false far more often than it should (walls are dense and
-  full-height post-tb31, so a strict first-hit-must-be-the-target test may almost never pass), or the
-  Pass B approach fallback isn't engaging when it should, leaving the unit with nothing to do and
-  holding.
-- **Where to start:** log the AI's own decision per unit per turn (which branch it took, and why LOF
-  said no) — the intent/outcome logging idea in `docs/PLAN.md` is exactly the tool this needs. Do not
-  fix by loosening the LOF gate until the log says that's the cause; tb33's correctness fix should not
-  be undone to paper over a fallback that isn't firing.
-- **2026-07-23 (tb35 Pass A/B, root cause found and fixed) — RESOLVED-PENDING-CONFIRMATION**
-  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Confirmed the LOF-too-strict half of the prior
-  hypothesis, not the fallback-not-engaging half: `ShotPlane.build`'s own depth-sort
-  (`shot_plane.gd:45`) has no floor at zero, by design — a region behind the ray's own origin is
-  legitimately present (the aim window reads it). But `LineOfFire._first_hit_excluding`,
-  `ShotPlane.resolve_projectile`, and `DamageResolver._find_next` are three independent
-  "walk the depth-sorted plane, return the first match" implementations that all inherited that
-  same unfloored sort with no floor of their own — so a wall many tiles BEHIND the shooter (still
-  in the plane on purpose) sorted first and won almost every resolution, including
-  `has_clear_line_of_fire`'s own. That's why LOF read false almost everywhere post-tb31's dense
-  walls: not because real geometry blocked every shot, but because the resolver was picking the
-  wrong region. Live-diagnosed on a real `BoutSetup`-built bout (not a synthetic fixture): a unit
-  reading zero clear cells even with an UNCAPPED search before the fix found one real cell
-  (`(27, 16)`) after it.
-  - **Fix, scoped as tight as possible:** `resolve_projectile` gained an opt-in `floor_at_zero`
-    parameter (default false — every existing raw/body-local-plane caller, including this file's
-    own test suite, is unaffected). `self_obstruction` and `region_at` opt in; `resolve_ray`'s own
-    inline loop and `DamageResolver._find_next` (both always fed a real shooter-anchored
-    `ShotPlane.build` plane, never a raw body-local one) floor unconditionally.
-    `LineOfFire._first_hit_excluding` likewise floors unconditionally — a THIRD parallel
-    implementation of the same rect-walk, not named in this taskblock's own audit list, found and
-    fixed on the same pass.
-  - **Second, distinct gap found and fixed once the LOF predicate was genuinely correct:**
-    `LineOfFire.approach_path` (tb33 Pass B, BR32.10's own fix) is deliberately capped at
-    `weapon.max_range + APPROACH_MARGIN` — a unit starting genuinely far from the nearest real LOF
-    cell (more common than expected: mission-start positions are often tens of cells apart) found
-    nothing within that cap and held forever even after the depth-floor fix, since nothing was
-    LEFT to fall back to. Added `LineOfFire.closing_path`: real A* toward a cell adjacent to the
-    enemy, no LOF requirement — deliberately NOT a greedy per-turn distance scorer (tried first,
-    reverted: it reproduces BR32.10's own concave/U-shaped-wall freeze, since a one-step
-    hill-climb can permanently stall the instant no reachable cell reduces raw distance further,
-    where real A* just routes around).
-  - **Verified live:** a 60-turn, 6-unit `BoutSetup` bout that previously showed 100% `held` turns
-    (confirmed both before AND immediately after the depth-floor fix alone) now shows real
-    movement, `burst_fired`/`impact`/`part_destroyed`/`part_mangled`/kills across the whole run
-    once `closing_path` was added. Headless coverage:
-    `test_shot_plane.gd::test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter`,
-    `test_shot_plane.gd::test_resolve_projectile_floor_at_zero_is_opt_in`,
-    `test_line_of_fire.gd::test_first_hit_never_resolves_to_a_wall_behind_the_shooter` (a
-    reconstructed BR27.02-shaped fixture), `test_line_of_fire.gd::test_closing_path_*` (progress
-    toward a far enemy; routes around a concave wall instead of freezing).
-  - **A1's decision log now exists** (`AiDecisionLog.emit`, `src/logic/ai/ai_decision_log.gd`): one
-    `&"ai_decision"` event per unit-turn, branch taken + fired/held + hold reason, greppable off
-    `combat.log` or a `MemorySink` in tests. **Not yet done:** the two framerate dumps (aim entry,
-    turn start) A1 also called for are view-layer work, not logic, and remain open; so does BR27.09
-    (A3). Marked Pending, not Resolved: this needs a live bout watched by the supervisor before
-    promotion, same as BR32.10/BR27.07 below.
-
 ### BR35.01 — Active — owner: `CC`
 **`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
