@@ -71,6 +71,31 @@ static func walk(root: Part) -> Array[Part]:
 	return result
 
 
+## BR36.01: every real Part `walk` would return, PLUS every occupied
+## socket's own `joint_handle()` — the synthetic identity
+## `BodyProjector._project_joint` tags a joint Region with (tb09 D), never a
+## real member of the socket tree `walk` traverses. A caller building "every
+## region this body could produce" (self-obstruction/self-exclusion lists —
+## `ShotPlane.self_obstruction`/`resolve_shot`'s own `exclude_parts`) needs
+## joints included too, or the shooter's own joint regions are never
+## excluded and a shot can resolve to the shooter's own body at near-zero
+## depth. Deliberately its OWN method rather than a change to `walk` itself
+## (`walk`'s many structural callers — `attach`'s cycle check,
+## `find_host_of_socket`, `find_owning_socket`, `drop` — never expect a
+## synthetic non-tree Part) or to `Shell.all_parts()` (every OTHER consumer
+## of that — `living_parts()`'s hp>0 filter chief among them — would
+## silently pick up a joint handle's own immutable default hp=1, making a
+## unit's joint regions read as permanently-living parts and breaking every
+## `living_parts().is_empty()` kill check in the game).
+static func walk_with_joints(root: Part) -> Array[Part]:
+	var result: Array[Part] = [root]
+	for socket: Socket in root.sockets:
+		if socket.occupant != null:
+			result.append(socket.joint_handle())
+			result.append_array(walk_with_joints(socket.occupant))
+	return result
+
+
 ## The part ANYWHERE in root's own assembly (root included) whose own
 ## `sockets` include one with this `id` — the recursive counterpart to
 ## `find_socket` (which only ever looks at `target`'s own sockets, never

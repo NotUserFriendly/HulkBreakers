@@ -232,7 +232,7 @@ static func _torso_visible(
 	# depth), so a real, volumed torso would otherwise be the FIRST thing
 	# its own ray hits, every time, never reaching the real mover at all.
 	var resolved: HitResult = ShotPlane.resolve_ray(
-		ray["origin"], ray["dir"], state, overwatcher.shell.all_parts()
+		ray["origin"], ray["dir"], state, overwatcher.shell.all_parts_with_joints()
 	)
 	return resolved != null and resolved.part == torso and resolved.body == mover
 
@@ -350,7 +350,7 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 			DamageResolver.DEFAULT_MAX_RICOCHET_DEPTH,
 			DamageResolver.DEFAULT_DAMAGE_FLOOR,
 			DamageResolver.DEFAULT_CRIT_BONUS_MULTIPLIER,
-			overwatcher.shell.all_parts(),
+			overwatcher.shell.all_parts_with_joints(),
 			bonus_pen,
 			elevation.vertical_slope,
 			muzzle.y,

@@ -281,3 +281,35 @@ func test_find_socket_returns_null_for_an_unknown_id() -> void:
 	var torso := _make_part(&"torso")
 	_add_socket(torso, &"ARMOR", &"ARMOR_FRONT")
 	assert_null(PartGraph.find_socket(torso, &"ARMOR_REAR"))
+
+
+## BR36.01: `walk` never returns a socket's own `joint_handle()` — the
+## synthetic identity `BodyProjector._project_joint` tags a joint Region
+## with, never a real member of the socket tree. `walk_with_joints` is the
+## one place that gap is closed, one joint per OCCUPIED socket, at every
+## depth, on top of every real part `walk` already finds.
+func test_walk_with_joints_adds_one_joint_per_occupied_socket_at_every_depth() -> void:
+	var torso := _make_part(&"torso")
+	var shoulder: Socket = _add_socket(torso, &"SHOULDER")
+	_add_socket(torso, &"HIP")  # stays empty on purpose — no joint for it
+
+	var arm := _make_part(&"arm", [&"SHOULDER"])
+	var wrist: Socket = _add_socket(arm, &"WRIST")
+	var hand := _make_part(&"hand", [&"WRIST"])
+
+	shoulder.occupant = arm
+	wrist.occupant = hand
+
+	assert_eq(PartGraph.walk(torso).size(), 3, "torso + arm + hand, no joints")
+
+	var with_joints: Array[Part] = PartGraph.walk_with_joints(torso)
+	assert_eq(with_joints.size(), 5, "torso + arm + hand + one joint per occupied socket (2)")
+	assert_true(with_joints.has(shoulder.joint_handle()))
+	assert_true(with_joints.has(wrist.joint_handle()))
+
+
+func test_walk_with_joints_matches_walk_with_nothing_attached() -> void:
+	var torso := _make_part(&"torso")
+	_add_socket(torso, &"SHOULDER")
+
+	assert_eq(PartGraph.walk_with_joints(torso), PartGraph.walk(torso))

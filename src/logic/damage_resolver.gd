@@ -553,10 +553,13 @@ static func _resolve_destruction_consequences(
 ## excluding only the one part it bounced off still lets it immediately
 ## re-hit a sibling part of the same body at point-blank range; excluding
 ## the whole body for that first lookup is what "it bounced clear" means.
+## BR36.01: `all_parts_with_joints()`, not `all_parts()` — a bounced shot
+## can otherwise immediately re-hit one of its own body's joint regions at
+## point-blank range, same gap as the shooter's own first-hop exclusion.
 static func _body_of(part: Part, state: CombatState) -> Array[Part]:
 	for unit: Unit in state.units:
 		if part in unit.shell.all_parts():
-			return unit.shell.all_parts()
+			return unit.shell.all_parts_with_joints()
 	return [part]
 
 
