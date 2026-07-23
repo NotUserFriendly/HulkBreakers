@@ -65,13 +65,31 @@ const TARGETING_LINE_COLOR := Color(0.95, 0.55, 0.15, 0.35)
 ## exists for, just against the window's flat quad instead of the target's
 ## real geometry, since both would otherwise share the exact same transform.
 const PELLET_CIRCLE_DEPTH_OFFSET := 0.02
+## tb34 Pass C: the part label's own forward nudge off the window's own
+## plane — same z-fight guard as the pellet circle, against the same
+## shared window transform.
+const PART_LABEL_DEPTH_OFFSET := 0.04
+const PART_LABEL_PIXEL_SIZE := 0.01
+const PART_LABEL_COLOR := Color(0.95, 0.95, 0.9)
 
 var tactics: TacticsController
 var readout: RichTextLabel
+## tb34 Pass C: for building a hovered part's tooltip content
+## (`TooltipBuilder.for_part`) — the same shared game data
+## `TooltipController` already reads, never a second source.
+var material_table: MaterialTable
 
 var _window: MeshInstance3D
 var _decal: Decal
 var _targeting_line: MeshInstance3D
+## tb34 Pass C: "say what that part is," rendered in-world — coplanar with
+## the aim window (`_window_basis`), never a screen-space tooltip
+## (`TooltipView` stays the tactics-phase-hover mechanism; this is a
+## genuinely different host for the same `TooltipData` content, per
+## `TooltipView.to_plain_text`'s own doc comment). Hidden whenever nothing
+## is hovered — hovering reads, it never re-aims, so this never touches
+## `resolves`/the reticle.
+var _part_label: Label3D
 ## tb34 Pass B: "grow the central aiming dot into a circle sized to the
 ## spread pattern" — a separate overlay, never baked into `_window`'s own
 ## ring texture (see `DartboardTexture.build`'s own doc comment for why:
@@ -124,11 +142,22 @@ func _init() -> void:
 	_pellet_circle = MeshInstance3D.new()
 	_pellet_circle.visible = false
 	add_child(_pellet_circle)
+	_part_label = Label3D.new()
+	_part_label.visible = false
+	_part_label.pixel_size = PART_LABEL_PIXEL_SIZE
+	_part_label.modulate = PART_LABEL_COLOR
+	_part_label.no_depth_test = true
+	_part_label.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	_part_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	add_child(_part_label)
 
 
-func setup(p_tactics: TacticsController, p_readout: RichTextLabel) -> void:
+func setup(
+	p_tactics: TacticsController, p_readout: RichTextLabel, p_material_table: MaterialTable
+) -> void:
 	tactics = p_tactics
 	readout = p_readout
+	material_table = p_material_table
 	tactics.aim_changed.connect(refresh)
 	refresh()
 
@@ -143,6 +172,7 @@ func refresh() -> void:
 	_decal.visible = false
 	_targeting_line.visible = false
 	_pellet_circle.visible = false
+	_part_label.visible = false
 	if tactics == null or tactics.aiming_at == null:
 		readout.text = ""
 		return
@@ -246,6 +276,7 @@ func refresh() -> void:
 	_draw_window(window_point, dir, result.rings, result.recoil_bound_radius)
 	_draw_decal(target_point, dir, result.rings, result.recoil_bound_radius)
 	_draw_pellet_circle(window_point, dir, result.pellet_circle_radius)
+	_draw_part_label(window_point, dir, tactics.aim_hovered_part)
 	# docs/10 taskblock03 F2 / runNotes.md: "a line from the shooter's
 	# muzzle to the reticle's world point... if a pistol is what's shooting,
 	# the targeting line should come from the pistol," not a generic
@@ -341,6 +372,20 @@ func _pellet_circle_texture() -> ImageTexture:
 		)
 		_cached_dot_texture = ImageTexture.create_from_image(image)
 	return _cached_dot_texture
+
+
+## tb34 Pass C: "mousing over a part while aiming should say what that part
+## is" — `tactics.aim_hovered_part` is a pure read (`aim_reticle_at_screen`'s
+## own hover lookup, never fed back into `resolves`/the reticle); this only
+## ever renders it, same as every other element `refresh()` draws from the
+## controller's own output. `null` (nothing hovered) hides the label.
+func _draw_part_label(world_point: Vector3, dir: Vector3, part: Part) -> void:
+	if part == null or material_table == null:
+		return
+	_part_label.text = TooltipView.to_plain_text(TooltipBuilder.for_part(part, material_table))
+	var nudged_point: Vector3 = world_point - dir.normalized() * PART_LABEL_DEPTH_OFFSET
+	_part_label.transform = Transform3D(_window_basis(dir), nudged_point)
+	_part_label.visible = true
 
 
 func _ring_texture(rings: Array[Ring], bound_radius: float = 0.0) -> ImageTexture:

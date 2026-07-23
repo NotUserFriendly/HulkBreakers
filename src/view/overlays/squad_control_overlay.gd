@@ -490,9 +490,17 @@ func _build_ui() -> void:
 	reset_turn_button.mouse_entered.connect(_hide_stale_tooltip)
 	turn_controls_column.add_child(reset_turn_button)
 
+	# DataLibrary.material_table() directly, not battle.combat_state's own —
+	# _build_ui() must not depend on a battle already being loaded (see
+	# setup()'s own doc comment), and material_table's content is the same
+	# shared game data regardless of which CombatState instance holds it
+	# (today's pre-overlay code already only ever wired this ONCE, in
+	# _ready(), never refreshing it on a later New Battle either).
+	var material_table: MaterialTable = DataLibrary.material_table()
+
 	aim_view = AimView.new()
 	add_child(aim_view)
-	aim_view.setup(tactics, aim_readout)
+	aim_view.setup(tactics, aim_readout, material_table)
 
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
@@ -507,14 +515,6 @@ func _build_ui() -> void:
 	# added to the tree (theme_root's LAST child, so it draws above every
 	# other panel) once they're all wired.
 	tooltip_view = TooltipView.new()
-
-	# DataLibrary.material_table() directly, not battle.combat_state's own —
-	# _build_ui() must not depend on a battle already being loaded (see
-	# setup()'s own doc comment), and material_table's content is the same
-	# shared game data regardless of which CombatState instance holds it
-	# (today's pre-overlay code already only ever wired this ONCE, in
-	# _ready(), never refreshing it on a later New Battle either).
-	var material_table: MaterialTable = DataLibrary.material_table()
 
 	weapon_panel = WeaponPanel.new()
 	add_child(weapon_panel)

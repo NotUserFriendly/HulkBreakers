@@ -101,6 +101,13 @@ var aiming_at: AimTarget = null
 var armed_action: ActionDef = null
 var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
+## tb34 Pass C: the Part the cursor currently sits over inside the aim
+## window, independent of `reticle_offset`/`resolves` — "hovering reads,
+## it never re-aims" (the same discipline the scroll/READING split already
+## enforces). Updated alongside the reticle in `aim_reticle_at_screen`
+## (same cursor-derived plane point, one more read, never fed back into
+## where the reticle sits or what the shot resolves against).
+var aim_hovered_part: Part = null
 
 ## taskblock-18 D2/D4: non-null while choosing a step-out firing cell — the
 ## enemy that's not directly attackable from here but IS from a legal
@@ -710,6 +717,7 @@ func _enter_aim_mode(target: AimTarget) -> void:
 	aiming_at = target
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
+	aim_hovered_part = null
 	# Aiming routes every subsequent mouse motion to aim_reticle_at_screen()
 	# instead of update_hover() (below) — the only two call sites that ever
 	# emit hover_changed/mouse_moved go quiet for the whole aim/confirm-shot
@@ -849,6 +857,44 @@ func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 		else ShotPlane.center_of_part(plane, target.part, target.cell)
 	)
 	reticle_offset = (hit as Vector2) - center
+	aim_changed.emit()
+	# tb34 Pass C: hover reads, never re-aims -- called AFTER reticle_offset
+	# is already set and its own aim_changed already emitted, from the same
+	# screen position, but a fully independent function: update_aim_hover()
+	# never writes reticle_offset or anything `resolves` reads, and is
+	# itself directly callable/testable with no reticle side effect at all.
+	update_aim_hover(screen_pos)
+
+
+## tb34 Pass C: "mousing over a part while aiming should say what that part
+## is" — maps the cursor to an aim-plane point (`AimPlaneGeometry.
+## aim_point_from_ray`, the same conversion `aim_reticle_at_screen` uses)
+## and finds the containing Region (`ShotPlane.region_at`, the same rect-
+## containment `resolves` itself is built from — reused, never a second,
+## re-derived hit test). Writes only `aim_hovered_part`: never
+## `reticle_offset`, never anything `resolves` reads — "hovering reads, it
+## never re-aims," the same discipline the scroll/READING split already
+## enforces, made structural rather than just documented by living in its
+## own function with no other side effect.
+func update_aim_hover(screen_pos: Vector2) -> void:
+	aim_hovered_part = null
+	if input_locked or aiming_at == null or camera == null:
+		return
+	var aim: Dictionary = aim_state()
+	if aim.is_empty():
+		return
+	var shooter: Unit = aim["shooter"]
+	var target: AimTarget = aim["target"]
+	var plane: Array[Region] = aim["plane"]
+	var ray_origin: Vector3 = camera.project_ray_origin(screen_pos)
+	var ray_dir: Vector3 = camera.project_ray_normal(screen_pos)
+	var hit: Variant = AimPlaneGeometry.aim_point_from_ray(
+		shooter.cell, target.cell, ray_origin, ray_dir
+	)
+	if hit == null:
+		return
+	var hovered_region: Region = ShotPlane.region_at(plane, hit as Vector2)
+	aim_hovered_part = hovered_region.part if hovered_region != null else null
 	aim_changed.emit()
 
 
@@ -1068,6 +1114,7 @@ func cancel_aim() -> void:
 	armed_action = null
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
+	aim_hovered_part = null
 	camera_rig.stop_aiming()
 	aim_changed.emit()
 	_refresh_overlay()
