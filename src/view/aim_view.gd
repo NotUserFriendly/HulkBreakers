@@ -162,11 +162,6 @@ func setup(
 	refresh()
 
 
-func _process(_delta: float) -> void:
-	if tactics != null and tactics.aiming_at != null:
-		refresh()
-
-
 func refresh() -> void:
 	_window.visible = false
 	_decal.visible = false

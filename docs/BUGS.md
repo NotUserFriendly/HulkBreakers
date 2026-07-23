@@ -66,7 +66,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   this bug's own fix left in place resurfaced as a heavy hitch instead of a teleport — see **BR27.09**,
   which now carries the live investigation.
 
-### BR26.02 — Active — Low framerate while aiming  ·  source: `SUPERVISOR`
+### BR26.02 — RESOLVED-PENDING-CONFIRMATION [CC 16507d21-1035-4b1c-a0fe-72a911df7403] — Low framerate while aiming  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-26 (bout review), filed in the taskblock's own scope fence as explicitly
   deferred: "B-tier; investigate separately — likely the inspect field updating every frame; not a
   correctness bug, don't rush a fix into this block."
@@ -81,6 +81,24 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `aim_state()`, again inside `AimController.resolve()`), plus reallocates dartboard resolver/mesh
   objects. **Candidate fix (not yet applied):** delete or gate the `_process` override behind the
   same change-detection the signal path already provides.
+- **2026-07-23 (tb34 Pass A + Pass E):** two real fixes landed, addressing the pass's own two named
+  suspects in order. Pass A fixed the OTHER latent cost this same screen was about to acquire:
+  `DartboardTexture.build`'s 128x128 per-pixel rebuild used to always cache-hit because rings were
+  weapon-constant; the instant the board became range-aware (`ShotScatter.for_shot`), every
+  retarget/reposition would have missed the cache and rebuilt it — `AimView._rings_match` now keys on
+  ring-RATIO rather than absolute radius, so a pure range change still reuses the cached texture.
+  Pass E then applied this ticket's own already-diagnosed fix directly: confirmed the redundant
+  `_process()` override (quoted above) was still present and unchanged, confirmed every mutation path
+  `refresh()` cares about already emits `aim_changed` (11 call sites, comprehensive per re-audit), and
+  deleted the override outright — `refresh()` is now purely signal-driven, no per-frame poll at all.
+  Full suite green throughout (headless — the cache-regression test this ticket's own ledger already
+  asked for is in `test_aim_view_dartboard_cache.gd::test_a_realistic_range_sweep_builds_the_texture_
+  at_most_once`).
+- **Not live-verified.** Both fixes are well-reasoned and address the two most concretely diagnosed
+  costs, but per this ticket's own "measure, don't guess" instruction, only an actual live frame-rate
+  observation confirms the aiming screen is no longer slow — and per the taskblock's own admission,
+  profiling might still name the new Pass B/C overlays as a further cost if the two fixes above aren't
+  the whole story. Needs the supervisor's own hands-on confirmation before promotion to `RESOLVED`.
 
 ### BR27.01 — Active — Player Step Out: four bugs, one system  ·  source: `SUPERVISOR`
 - **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
