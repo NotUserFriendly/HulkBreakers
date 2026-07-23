@@ -328,7 +328,7 @@ func test_a_lateral_armor_socket_puts_a_plate_on_the_outer_face_and_a_lateral_sh
 	# The lateral socket sits at local x=-0.09 (the leg's -X side) — nearest
 	# a shooter positioned at -X, i.e. a shot traveling in the +X direction
 	# (view_dir "always direction of travel," docs/02).
-	var lateral_view: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(1, 0)))
+	var lateral_view: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(1, 0.0, 0)))
 	var lateral_region: Region = null
 	for region: Region in lateral_view:
 		if region.part == lateral_plate:

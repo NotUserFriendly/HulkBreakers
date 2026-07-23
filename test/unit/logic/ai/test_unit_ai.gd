@@ -541,7 +541,13 @@ func test_an_ai_repositions_rather_than_firing_through_an_ally_in_the_line() -> 
 		fired_from = move.path[move.path.size() - 1]
 
 	var plane: Array[Region] = ShotPlane.build(
-		Vector2(fired_from.x, fired_from.y), Vector2(enemy.cell - fired_from).normalized(), state
+		Vector3(fired_from.x, 0.0, fired_from.y),
+		Vector3(
+			Vector2(enemy.cell - fired_from).normalized().x,
+			0.0,
+			Vector2(enemy.cell - fired_from).normalized().y
+		),
+		state
 	)
 	var hit: Region = ShotPlane.resolve_projectile(plane, ShotPlane.center_of(plane, enemy))
 	assert_not_null(hit)
@@ -608,7 +614,9 @@ func test_the_shot_plane_itself_does_not_special_case_squad_membership() -> void
 
 	var origin := Vector2(self_unit.cell.x, self_unit.cell.y)
 	var direction := Vector2(enemy.cell - self_unit.cell).normalized()
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var downrange: Array[Region] = plane.filter(
 		func(region: Region) -> bool: return region.body != self_unit
 	)

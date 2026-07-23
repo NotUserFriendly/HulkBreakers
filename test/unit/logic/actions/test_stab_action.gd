@@ -161,7 +161,9 @@ func test_a_stab_can_aim_at_an_internal_part_via_the_existing_aimed_targeting() 
 	var state := CombatState.new(Grid.new(10, 10), [striker, target])
 
 	var direction := Vector2(1, 0)
-	var plane: Array[Region] = ShotPlane.build(Vector2(0, 0), direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(0, 0.0, 0), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var aim_offset: Variant = InternalTargeting.aim_offset_for(
 		state, striker, target, target.shell.root, plane
 	)

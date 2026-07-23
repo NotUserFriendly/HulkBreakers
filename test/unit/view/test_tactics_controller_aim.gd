@@ -345,7 +345,10 @@ func test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets() -> vo
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
 
-	var raw: Array[Region] = ShotPlane.build(Vector2(0, 0), Vector2(5, 5).normalized(), state)
+	var raw_dir: Vector2 = Vector2(5, 5).normalized()
+	var raw: Array[Region] = ShotPlane.build(
+		Vector3(0, 0.0, 0), Vector3(raw_dir.x, 0.0, raw_dir.y), state
+	)
 	var plane: Array[Region] = controller.aim_state()["plane"]
 
 	assert_lt(plane.size(), raw.size(), "the raw plane includes the shooter's own body")

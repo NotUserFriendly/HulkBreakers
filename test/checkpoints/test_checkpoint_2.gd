@@ -68,7 +68,7 @@ func test_shot_plane_sweeps_continuously_across_a_dozen_angles() -> void:
 	for i in range(ANGLE_COUNT):
 		var angle: float = i * TAU / ANGLE_COUNT
 		var view_dir := Vector2(cos(angle), sin(angle))
-		var plane: Array[Region] = BodyProjector.project(unit, view_dir)
+		var plane: Array[Region] = BodyProjector.project(unit, Vector3(view_dir.x, 0.0, view_dir.y))
 		plane.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
 
 		print("\n=== angle %d/%d (%.0f deg) ===" % [i + 1, ANGLE_COUNT, rad_to_deg(angle)])

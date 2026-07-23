@@ -625,7 +625,12 @@ static func resolve_shot(
 	var results: Array[ImpactResult] = []
 	var dir: Vector2 = direction.normalized()
 	var perp := Vector2(-dir.y, dir.x)
-	var plane: Array[Region] = ShotPlane.build(origin, dir, state)
+	# taskblock-36 Pass A: `origin`/`dir` stay flat (y == 0.0) here — this
+	# function's own `vertical_slope`/`origin_height` pair is the parallel
+	# height tracking Pass C's audit is scoped to look at, not Pass A.
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir.x, 0.0, dir.y), state
+	)
 
 	# One crit roll per projectile flight: it stays in effect through
 	# however many layers this same round penetrates or bypasses. A

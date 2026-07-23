@@ -981,7 +981,10 @@ func aim_state() -> Dictionary:
 		)
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(target.cell - shooter.cell)
-	var raw: Array[Region] = ShotPlane.build(origin, direction.normalized(), preview)
+	var dir_n: Vector2 = direction.normalized()
+	var raw: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), preview
+	)
 	# The shooter's own body sits right at the ray's origin and would
 	# otherwise resolve as a phantom "nearest layer" the aim UI has no
 	# business reading — the same exclusion AttackAction's own first

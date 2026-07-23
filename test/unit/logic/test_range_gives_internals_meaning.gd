@@ -36,7 +36,11 @@ func _aim_point_and_offset(built: Dictionary) -> Dictionary:
 	var shooter: Unit = built.shooter
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(built.target.cell - shooter.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), built.state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		built.state
+	)
 	var offset: Variant = InternalTargeting.aim_offset_for(
 		built.state, shooter, built.target, built.reactor, plane
 	)

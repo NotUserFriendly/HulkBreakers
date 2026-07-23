@@ -49,7 +49,11 @@ func _plane(built: Dictionary) -> Array[Region]:
 	var shooter: Unit = built.shooter
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(built.target.cell - shooter.cell)
-	return ShotPlane.build(origin, direction.normalized(), built.state)
+	return ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		built.state
+	)
 
 
 func _fire(built: Dictionary, point: Vector2, damage: float) -> Array[ImpactResult]:
@@ -85,7 +89,9 @@ func test_a_default_center_mass_shot_never_reaches_the_occluded_reactor() -> voi
 	var results: Array[ImpactResult] = _fire(built, center, 10.0)
 
 	for result: ImpactResult in results:
-		assert_ne(result.region.part, built.reactor, "occluded — a default aim must never land here")
+		assert_ne(
+			result.region.part, built.reactor, "occluded — a default aim must never land here"
+		)
 	assert_gt(results.size(), 0, "sanity: the shot must hit something along the way")
 
 

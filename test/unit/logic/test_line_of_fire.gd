@@ -52,7 +52,9 @@ func test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit() -> 
 
 	var direction := Vector2(target.cell - shooter.cell)
 	var plane: Array[Region] = ShotPlane.build(
-		Vector2(shooter.cell.x, shooter.cell.y), direction.normalized(), state
+		Vector3(shooter.cell.x, 0.0, shooter.cell.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		state
 	)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target)
 	var real_hit: Region = ShotPlane.resolve_projectile(plane, aim_point, shooter.shell.all_parts())

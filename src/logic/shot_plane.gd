@@ -16,28 +16,39 @@ extends RefCounted
 ## Projects every living unit and every standing cover part in `state` into
 ## one plane, offset so each entity's local Regions land at its cell's true
 ## position relative to `origin`, and sorted nearest-shooter-first.
-static func build(origin: Vector2, direction: Vector2, state: CombatState) -> Array[Region]:
-	var dir: Vector2 = direction.normalized()
+##
+## taskblock-36 Pass A: `origin`/`direction` are `Vector3` now — pure
+## plumbing, height carried but not yet consumed. The per-cell offset math
+## below still reads only the horizontal slice of each (`origin_flat`/
+## `dir`), byte-identical to the old `Vector2` call whenever a caller's `y`
+## is `0.0` (every caller today). `BodyProjector.project`/`project_assembly`
+## get the real 3D `dir3` though, not the flattened slice — Pass B's own
+## visibility test picks that up for free, without this function changing
+## again.
+static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Array[Region]:
+	var dir3: Vector3 = direction.normalized()
+	var dir := Vector2(dir3.x, dir3.z)
 	var perp := Vector2(-dir.y, dir.x)
+	var origin_flat := Vector2(origin.x, origin.z)
 	var regions: Array[Region] = []
 
 	for unit: Unit in state.units:
 		if not unit.alive:
 			continue
-		var offset := _offset(unit.cell, origin, dir, perp)
-		for region: Region in BodyProjector.project(unit, dir):
+		var offset := _offset(unit.cell, origin_flat, dir, perp)
+		for region: Region in BodyProjector.project(unit, dir3):
 			_place(region, offset)
 			region.body = unit
 			regions.append(region)
 
 	for cell: Vector2i in state.grid.blockers:
 		var part: Part = state.grid.blockers[cell]
-		var offset := _offset(cell, origin, dir, perp)
+		var offset := _offset(cell, origin_flat, dir, perp)
 		# docs/10 taskblock04 C2: a field object can be a whole part TREE (a
 		# dropped assembly — plate, weapon and all), not just one box, so
 		# every attached part has to project too, not only the root's own
 		# volume.
-		for region: Region in BodyProjector.project_assembly(part, dir):
+		for region: Region in BodyProjector.project_assembly(part, dir3):
 			_place(region, offset)
 			region.body = part
 			regions.append(region)
@@ -187,7 +198,12 @@ static func resolve_ray(
 		return null
 	var flat_dir_n: Vector2 = flat_dir.normalized()
 	var flat_origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
-	var plane: Array[Region] = build(flat_origin, flat_dir_n, world)
+	# taskblock-36 Pass A: still built flat (y == 0.0) on purpose — `build`
+	# doesn't consume height yet, and this function's own vertical_slope
+	# math (below) is Pass C's to retire, not Pass A's.
+	var plane: Array[Region] = build(
+		Vector3(flat_origin.x, 0.0, flat_origin.y), Vector3(flat_dir_n.x, 0.0, flat_dir_n.y), world
+	)
 	# `flat_dir.length()` is dir_n's own horizontal fraction (1.0 when dir_n
 	# is itself horizontal) — the ratio of true 3D distance to ground
 	# distance travelled, so dividing by it converts dir_n.y (rise per unit

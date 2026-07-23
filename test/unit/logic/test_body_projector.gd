@@ -38,7 +38,9 @@ func test_rotating_view_angle_produces_continuously_changing_rects() -> void:
 	for i in range(SAMPLES):
 		var angle: float = i * TAU / SAMPLES
 		var view_dir := Vector2(cos(angle), sin(angle))
-		var regions: Array[Region] = BodyProjector.project_part(part, view_dir)
+		var regions: Array[Region] = BodyProjector.project_part(
+			part, Vector3(view_dir.x, 0.0, view_dir.y)
+		)
 		var min_x: float = _union_min_x(regions)
 		positions.append(min_x)
 		seen_x[snappedf(min_x, 0.0001)] = true
@@ -77,7 +79,9 @@ func test_visible_face_rects_union_to_the_same_silhouette_as_the_whole_box() -> 
 	part.hp = 1
 	part.max_hp = 1
 	part.volume = [box]
-	var regions: Array[Region] = BodyProjector.project_part(part, dir, orientation)
+	var regions: Array[Region] = BodyProjector.project_part(
+		part, Vector3(dir.x, 0.0, dir.y), orientation
+	)
 
 	assert_eq(regions.size(), 2, "an oblique corner-on view must show exactly two faces")
 	var union_min := INF
@@ -106,7 +110,7 @@ func test_a_near_edge_on_face_reads_incidence_well_past_45_degrees() -> void:
 	part.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 
 	var dir := Vector2(0.1, -0.995).normalized()
-	var regions: Array[Region] = BodyProjector.project_part(part, dir)
+	var regions: Array[Region] = BodyProjector.project_part(part, Vector3(dir.x, 0.0, dir.y))
 	assert_eq(regions.size(), 2, "a near-axis-aligned direction still shows a sliver side face")
 
 	var max_incidence_deg := 0.0
@@ -145,12 +149,12 @@ func _torso_with_rear_ammo_rack() -> Unit:
 func test_rear_part_is_occluded_from_the_front_but_frontmost_from_behind() -> void:
 	var unit := _torso_with_rear_ammo_rack()
 
-	var front: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var front: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 	var torso_front := _find(front, &"torso")
 	var rack_front := _find(front, &"rack")
 	assert_true(torso_front.depth < rack_front.depth, "front view: torso must occlude the rack")
 
-	var rear: Array[Region] = BodyProjector.project(unit, Vector2(0, 1))
+	var rear: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, 1))
 	var torso_rear := _find(rear, &"torso")
 	var rack_rear := _find(rear, &"rack")
 	assert_true(rack_rear.depth < torso_rear.depth, "rear view: the rack must be frontmost")
@@ -169,10 +173,10 @@ func test_surface_normal_is_the_actual_face_hit_not_always_toward_the_shooter() 
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
-	var front: Region = BodyProjector.project(unit, Vector2(0, -1))[0]
+	var front: Region = BodyProjector.project(unit, Vector3(0, 0.0, -1))[0]
 	assert_eq(front.surface_normal, Vector3(0.0, 0.0, 1.0), "front hit: the front face was hit")
 
-	var flank: Region = BodyProjector.project(unit, Vector2(1, 0))[0]
+	var flank: Region = BodyProjector.project(unit, Vector3(1, 0.0, 0))[0]
 	assert_eq(flank.surface_normal, Vector3(-1.0, 0.0, 0.0), "flank hit: the side face was hit")
 
 
@@ -211,7 +215,7 @@ func test_the_same_arm_resource_projects_per_socket_transform_together_and_alone
 	torso.sockets = [left, right]
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	var arm_regions: Array[Region] = []
 	for region: Region in regions:
@@ -240,7 +244,7 @@ func test_the_same_arm_resource_projects_per_socket_transform_together_and_alone
 	torso_left.max_hp = 10
 	torso_left.sockets = [solo_left]
 	var unit_left := Unit.new(Matrix.new(), Shell.new(torso_left), Vector2i(0, 0))
-	var left_x: float = _center_x(BodyProjector.project(unit_left, Vector2(0, -1)))
+	var left_x: float = _center_x(BodyProjector.project(unit_left, Vector3(0, 0.0, -1)))
 
 	var solo_right := Socket.new(&"SHOULDER", right.transform)
 	solo_right.occupant = arm
@@ -250,7 +254,7 @@ func test_the_same_arm_resource_projects_per_socket_transform_together_and_alone
 	torso_right.max_hp = 10
 	torso_right.sockets = [solo_right]
 	var unit_right := Unit.new(Matrix.new(), Shell.new(torso_right), Vector2i(0, 0))
-	var right_x: float = _center_x(BodyProjector.project(unit_right, Vector2(0, -1)))
+	var right_x: float = _center_x(BodyProjector.project(unit_right, Vector3(0, 0.0, -1)))
 
 	assert_ne(left_x, right_x, "the same Part must also project differently one socket at a time")
 
@@ -272,7 +276,7 @@ func test_twelve_shoulder_sockets_project_twelve_non_overlapping_arms() -> void:
 	torso.sockets = sockets
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	var arm_ids: Array[StringName] = []
 	for socket: Socket in sockets:
@@ -340,7 +344,7 @@ func test_rotating_the_shoulder_socket_moves_the_pistol_at_the_end_of_the_chain(
 		Matrix.new(), Shell.new(_deep_chain_torso(straight)), Vector2i(0, 0)
 	)
 	var straight_x := _center_x(
-		_find_all(BodyProjector.project(unit_straight, Vector2(0, -1)), &"pistol")
+		_find_all(BodyProjector.project(unit_straight, Vector3(0, 0.0, -1)), &"pistol")
 	)
 
 	var rotated := Transform3D(Basis(Vector3.UP, deg_to_rad(45.0)), Vector3(1.0, 0.5, 0.0))
@@ -348,7 +352,7 @@ func test_rotating_the_shoulder_socket_moves_the_pistol_at_the_end_of_the_chain(
 		Matrix.new(), Shell.new(_deep_chain_torso(rotated)), Vector2i(0, 0)
 	)
 	var rotated_x := _center_x(
-		_find_all(BodyProjector.project(unit_rotated, Vector2(0, -1)), &"pistol")
+		_find_all(BodyProjector.project(unit_rotated, Vector3(0, 0.0, -1)), &"pistol")
 	)
 
 	assert_ne(
@@ -379,11 +383,13 @@ func test_aiming_pose_changes_the_projected_shot_plane_vs_idle() -> void:
 	torso.sockets = [shoulder_r]
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var idle_regions: Array[Region] = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")
+	var idle_regions: Array[Region] = _find_all(
+		BodyProjector.project(unit, Vector3(0, 0.0, -1)), &"arm"
+	)
 
 	unit.pose = Poses.aiming()
 	var aiming_regions: Array[Region] = _find_all(
-		BodyProjector.project(unit, Vector2(0, -1)), &"arm"
+		BodyProjector.project(unit, Vector3(0, 0.0, -1)), &"arm"
 	)
 
 	# AIMING rotates the shoulder about the horizontal (RIGHT) axis, which
@@ -420,7 +426,7 @@ func test_a_head_projects_higher_than_a_waist() -> void:
 	waist.sockets = [neck]
 
 	var unit := Unit.new(Matrix.new(), Shell.new(waist), Vector2i(0, 0))
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 	var waist_region: Region = _find_all(regions, &"waist")[0]
 	var head_region: Region = _find_all(regions, &"head")[0]
 
@@ -456,13 +462,13 @@ func test_a_tilted_parts_projected_height_reflects_its_real_corners_not_box_size
 	torso.sockets = [shoulder_r]
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
-	var idle_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	var idle_region: Region = _find_all(BodyProjector.project(unit, Vector3(0, 0.0, -1)), &"arm")[0]
 	assert_almost_eq(
 		idle_region.rect.size.y, 0.9, 0.0001, "sanity: untilted, this is still exactly box.size.y"
 	)
 
 	unit.pose = Poses.aiming()
-	var aiming_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	var aiming_region: Region = _find_all(BodyProjector.project(unit, Vector3(0, 0.0, -1)), &"arm")[0]
 	assert_almost_eq(
 		aiming_region.rect.size.y,
 		0.636396,
@@ -496,13 +502,13 @@ func test_a_tilted_parts_surface_normal_gains_a_real_vertical_component() -> voi
 	torso.sockets = [shoulder_r]
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
-	var idle_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	var idle_region: Region = _find_all(BodyProjector.project(unit, Vector3(0, 0.0, -1)), &"arm")[0]
 	assert_almost_eq(
 		idle_region.surface_normal.y, 0.0, 0.0001, "sanity: untilted, still purely horizontal"
 	)
 
 	unit.pose = Poses.aiming()
-	var aiming_region: Region = _find_all(BodyProjector.project(unit, Vector2(0, -1)), &"arm")[0]
+	var aiming_region: Region = _find_all(BodyProjector.project(unit, Vector3(0, 0.0, -1)), &"arm")[0]
 	assert_almost_eq(
 		aiming_region.surface_normal.y,
 		0.707107,
@@ -530,10 +536,10 @@ func test_prone_pose_changes_the_projected_shot_plane_vs_idle() -> void:
 	torso.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.5, 1.0, 0.5))]
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
-	var idle_regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var idle_regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	unit.pose = Poses.prone()
-	var prone_regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var prone_regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	assert_eq(idle_regions.size(), 1)
 	assert_eq(prone_regions.size(), 1)
@@ -565,10 +571,10 @@ func test_setting_mesh_scene_never_changes_the_projected_shot_plane() -> void:
 	part.volume = [Box.new(Vector3(0.4, 0.5, 0.3), Vector3(0.6, 1.0, 0.6))]
 	var unit := Unit.new(Matrix.new(), Shell.new(part), Vector2i(0, 0))
 
-	var without_mesh: Array[Region] = BodyProjector.project(unit, Vector2(0.0, -1.0))
+	var without_mesh: Array[Region] = BodyProjector.project(unit, Vector3(0.0, 0.0, -1.0))
 
 	part.mesh_scene = PackedScene.new()
-	var with_mesh: Array[Region] = BodyProjector.project(unit, Vector2(0.0, -1.0))
+	var with_mesh: Array[Region] = BodyProjector.project(unit, Vector3(0.0, 0.0, -1.0))
 
 	assert_eq(without_mesh.size(), with_mesh.size())
 	for i in range(without_mesh.size()):
@@ -615,7 +621,7 @@ func test_an_asymmetric_part_projects_on_the_same_side_it_renders() -> void:
 	# What the shot plane puts there — view_dir (0,-1) makes `perp` exactly
 	# world +X, so a Region's own rect-center x IS the world x directly, no
 	# screen-space translation needed to compare the two.
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0.0, -1.0))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0.0, 0.0, -1.0))
 	var pod_region: Region = _find(regions, &"pod")
 	var projected_x: float = pod_region.rect.get_center().x
 
@@ -718,7 +724,7 @@ func test_a_mangled_or_disabled_part_still_projects_at_zero_hp() -> void:
 	mangled.is_mangled = true
 	mangled.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
 	assert_false(
-		BodyProjector.project_part(mangled, Vector2(0, 1)).is_empty(),
+		BodyProjector.project_part(mangled, Vector3(0, 0.0, 1)).is_empty(),
 		"a mangled part must still occlude/be hittable"
 	)
 
@@ -729,7 +735,7 @@ func test_a_mangled_or_disabled_part_still_projects_at_zero_hp() -> void:
 	disabled.is_disabled = true
 	disabled.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
 	assert_false(
-		BodyProjector.project_part(disabled, Vector2(0, 1)).is_empty(),
+		BodyProjector.project_part(disabled, Vector3(0, 0.0, 1)).is_empty(),
 		"a disabled part must still occlude/be hittable"
 	)
 
@@ -741,7 +747,7 @@ func test_a_plain_destroyed_part_still_vanishes_at_zero_hp() -> void:
 	consumed.max_hp = 3
 	consumed.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
 	assert_eq(
-		BodyProjector.project_part(consumed, Vector2(0, 1)),
+		BodyProjector.project_part(consumed, Vector3(0, 0.0, 1)),
 		[] as Array[Region],
 		"a part destroyed with neither flag set (DETONATE/FRAGMENT/MELTDOWN) still vanishes"
 	)
@@ -763,7 +769,7 @@ func test_an_occupied_socket_produces_an_aimable_joint_region_at_its_transform()
 	torso.sockets = [shoulder]
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	var joint_regions: Array[Region] = []
 	for region: Region in regions:
@@ -785,7 +791,7 @@ func test_an_empty_socket_has_no_region() -> void:
 	torso.sockets = [Socket.new(&"SHOULDER", Transform3D(Basis(), Vector3(1.3, 0.5, 0.0)))]
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	for region: Region in regions:
 		assert_null(region.socket, "an empty socket must never produce a joint region")
@@ -824,7 +830,9 @@ func test_a_joint_occluded_by_a_plate_isnt_hittable_until_the_plate_is_gone() ->
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)
-	var plane_before: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane_before: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 
 	var joint_region: Region = null
 	for region: Region in plane_before:
@@ -838,7 +846,9 @@ func test_a_joint_occluded_by_a_plate_isnt_hittable_until_the_plate_is_gone() ->
 	assert_ne(hit_before.socket, shoulder, "occluded: the plate in front must win, not the joint")
 
 	torso.volume = [body_box]
-	var plane_after: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane_after: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var hit_after: Region = ShotPlane.resolve_projectile(plane_after, aim_point)
 	assert_eq(hit_after.socket, shoulder, "plate gone: the joint is finally reachable")
 
@@ -854,5 +864,5 @@ func test_a_boxs_minimum_dimension_becomes_the_regions_thickness() -> void:
 	part.max_hp = 5
 	part.volume = [Box.new(Vector3.ZERO, Vector3(1.2, 0.9, 0.05))]
 
-	var region: Region = BodyProjector.project_part(part, Vector2(0, -1))[0]
+	var region: Region = BodyProjector.project_part(part, Vector3(0, 0.0, -1))[0]
 	assert_almost_eq(region.thickness, 0.05, 0.0001, "0.05 is the smallest of (1.2, 0.9, 0.05)")

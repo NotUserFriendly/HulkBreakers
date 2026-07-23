@@ -274,7 +274,9 @@ func test_torso_visible_agrees_with_an_independently_built_resolve_ray_call() ->
 
 	var direction := Vector2(mover.cell - overwatcher.cell)
 	var plane: Array[Region] = ShotPlane.build(
-		Vector2(overwatcher.cell.x, overwatcher.cell.y), direction.normalized(), state
+		Vector3(overwatcher.cell.x, 0.0, overwatcher.cell.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		state
 	)
 	var torso_region: Region = null
 	for region: Region in plane:

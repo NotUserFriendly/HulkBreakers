@@ -24,8 +24,8 @@ func test_plate_over_part_returns_the_plate_and_uncovered_point_returns_the_part
 
 	var dir := Vector2(0, -1)
 	var plane: Array[Region] = []
-	plane.append_array(BodyProjector.project_part(plate, dir))
-	plane.append_array(BodyProjector.project_part(arm, dir))
+	plane.append_array(BodyProjector.project_part(plate, Vector3(dir.x, 0.0, dir.y)))
+	plane.append_array(BodyProjector.project_part(arm, Vector3(dir.x, 0.0, dir.y)))
 	plane.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
 
 	print("\n=== plate over part (left half only) ===")
@@ -40,7 +40,7 @@ func test_plate_over_part_returns_the_plate_and_uncovered_point_returns_the_part
 
 func test_point_with_nothing_in_the_plane_returns_null() -> void:
 	var arm := _part(&"arm", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6)))
-	var plane: Array[Region] = BodyProjector.project_part(arm, Vector2(0, -1))
+	var plane: Array[Region] = BodyProjector.project_part(arm, Vector3(0, 0.0, -1))
 
 	print("\n=== a shot slipping clean past the only part on the plane ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 2))
@@ -72,8 +72,8 @@ func _walls_with_a_gap() -> Array[Region]:
 	var right := _part(&"right_wall", Box.new(Vector3(0.55, 0.5, 0.0), Vector3(0.9, 1.0, 0.6)))
 	var dir := Vector2(0, -1)
 	var plane: Array[Region] = []
-	plane.append_array(BodyProjector.project_part(left, dir))
-	plane.append_array(BodyProjector.project_part(right, dir))
+	plane.append_array(BodyProjector.project_part(left, Vector3(dir.x, 0.0, dir.y)))
+	plane.append_array(BodyProjector.project_part(right, Vector3(dir.x, 0.0, dir.y)))
 	plane.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
 	return plane
 
@@ -119,8 +119,8 @@ func test_shield_authored_as_boxes_around_a_hole_lets_a_point_in_the_hole_hit_th
 
 	var dir := Vector2(0, -1)
 	var plane: Array[Region] = []
-	plane.append_array(BodyProjector.project_part(shield, dir))
-	plane.append_array(BodyProjector.project_part(body, dir))
+	plane.append_array(BodyProjector.project_part(shield, Vector3(dir.x, 0.0, dir.y)))
+	plane.append_array(BodyProjector.project_part(body, Vector3(dir.x, 0.0, dir.y)))
 	plane.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
 
 	print("\n=== shield with a hole ===")
@@ -148,7 +148,9 @@ func test_layered_targets_a_gap_in_the_near_unit_falls_through_to_the_far_unit()
 
 	var origin := Vector2(2, 0)
 	var direction := Vector2(0, 1)
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 
 	print("\n=== layered targets: a narrow near unit, a wide far unit ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 2))
@@ -171,7 +173,7 @@ func test_units_along_lists_every_layered_target_nearest_first() -> void:
 	state.add_unit(near_unit)
 	state.add_unit(far_unit)
 
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var units: Array[Unit] = ShotPlane.units_along(plane, state)
 
 	assert_eq(units, [near_unit, far_unit])
@@ -190,7 +192,7 @@ func test_units_along_excludes_a_dead_unit_with_no_region_in_the_plane() -> void
 	state.add_unit(visible_unit)
 	state.add_unit(dead_unit)
 
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	assert_eq(ShotPlane.units_along(plane, state), [visible_unit])
 
 
@@ -203,13 +205,17 @@ func test_destroying_cover_removes_its_region_from_the_plane() -> void:
 	var origin := Vector2(2, 0)
 	var direction := Vector2(0, 1)
 
-	var before: Array[Region] = ShotPlane.build(origin, direction, state)
+	var before: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	print("\n=== cover, standing ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(before, 2.0), 4, 2))
 	assert_eq(ShotPlane.resolve_projectile(before, Vector2(0.0, 0.5)).part.id, &"crate")
 
 	crate.hp = 0
-	var after: Array[Region] = ShotPlane.build(origin, direction, state)
+	var after: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	print("\n=== cover, destroyed ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(after, 2.0), 4, 2))
 	assert_null(ShotPlane.resolve_projectile(after, Vector2(0.0, 0.5)))
@@ -234,7 +240,7 @@ func test_a_multi_part_blocker_projects_every_box_not_just_the_root() -> void:
 	arm.sockets = [grip]
 	grid.blockers[Vector2i(2, 2)] = arm
 
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	print("\n=== dropped assembly: arm + pistol riding along ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 2))
 
@@ -267,7 +273,7 @@ func test_a_dead_root_blockers_living_child_still_projects() -> void:
 	shoulder.sockets = [wrist]
 	grid.blockers[Vector2i(2, 2)] = shoulder
 
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	assert_null(
 		ShotPlane.resolve_projectile(plane, Vector2(0.0, 0.5)),
@@ -289,7 +295,7 @@ func test_build_tags_every_region_with_its_owning_body() -> void:
 	var crate := _part(&"crate", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6)))
 	grid.blockers[Vector2i(2, 4)] = crate
 
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	for region: Region in plane:
 		if region.part == crate:
@@ -302,7 +308,7 @@ func test_center_of_returns_the_frontmost_regions_rect_center() -> void:
 	var grid := Grid.new(10, 10)
 	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
 	var state := CombatState.new(grid, [near_unit])
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	var center: Vector2 = ShotPlane.center_of(plane, near_unit)
 	var expected: Region = ShotPlane.resolve_projectile(plane, center)
@@ -318,7 +324,7 @@ func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
 	no_volume.max_hp = 5
 	var ghost_unit := Unit.new(Matrix.new(), Shell.new(no_volume), Vector2i(4, 4))
 	var state := CombatState.new(Grid.new(10, 10), [ghost_unit])
-	var plane: Array[Region] = ShotPlane.build(Vector2(4, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(4, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	assert_eq(ShotPlane.center_of(plane, ghost_unit), Vector2(4, 4))
 
@@ -331,7 +337,7 @@ func test_center_of_part_returns_the_frontmost_regions_rect_center() -> void:
 	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
 	grid.blockers[Vector2i(2, 2)] = wall
 	var state := CombatState.new(grid, [])
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	var center: Vector2 = ShotPlane.center_of_part(plane, wall, Vector2i(2, 2))
 	var expected: Region = ShotPlane.resolve_projectile(plane, center)
@@ -359,7 +365,7 @@ func test_self_obstruction_excludes_the_shooters_own_body() -> void:
 	var grid := Grid.new(10, 10)
 	grid.blockers[Vector2i(2, 2)] = cover
 	var state := CombatState.new(grid, [shooter])
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	var hit: Region = ShotPlane.self_obstruction(plane, 0.15, shooter.shell.all_parts())
 
@@ -373,7 +379,7 @@ func test_self_obstruction_returns_null_with_nothing_in_the_way() -> void:
 	)
 	var shooter := Unit.new(Matrix.new(), Shell.new(shooter_torso), Vector2i(2, 0))
 	var state := CombatState.new(Grid.new(10, 10), [shooter])
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	assert_null(ShotPlane.self_obstruction(plane, 0.15, shooter.shell.all_parts()))
 
@@ -395,7 +401,7 @@ func test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter() -> void
 	grid.blockers[Vector2i(2, 1)] = behind_wall
 	var state_with_nothing_ahead := CombatState.new(grid, [shooter])
 	var plane_with_nothing_ahead: Array[Region] = ShotPlane.build(
-		Vector2(2, 5), Vector2(0, 1), state_with_nothing_ahead
+		Vector3(2, 0.0, 5), Vector3(0, 0.0, 1), state_with_nothing_ahead
 	)
 
 	assert_null(
@@ -409,7 +415,7 @@ func test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter() -> void
 	grid.blockers[Vector2i(2, 7)] = forward_cover
 	var state_with_cover := CombatState.new(grid, [shooter])
 	var plane_with_cover: Array[Region] = ShotPlane.build(
-		Vector2(2, 5), Vector2(0, 1), state_with_cover
+		Vector3(2, 0.0, 5), Vector3(0, 0.0, 1), state_with_cover
 	)
 
 	var hit: Region = ShotPlane.self_obstruction(plane_with_cover, 0.15, shooter.shell.all_parts())
@@ -447,7 +453,7 @@ func test_a_wall_part_between_shooter_and_target_blocks_the_shot() -> void:
 	var wall_part: Part = DataLibrary.get_part(&"wall")
 	grid.blockers[Vector2i(2, 2)] = wall_part
 
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	print("\n=== a wall cell standing between shooter and target ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 6))
 
@@ -473,11 +479,11 @@ func test_destroying_a_wall_removes_its_region_from_the_plane() -> void:
 	var wall_part: Part = DataLibrary.get_part(&"wall")
 	grid.blockers[Vector2i(2, 2)] = wall_part
 
-	var before: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var before: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	assert_eq(ShotPlane.resolve_projectile(before, Vector2(0.0, 0.5)).part.id, &"wall")
 
 	wall_part.hp = 0
-	var after: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var after: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	assert_eq(
 		ShotPlane.resolve_projectile(after, Vector2(0.0, 0.5)).part.id,
@@ -525,3 +531,33 @@ func _scan_dir_for_resolve_projectile(
 				offending.append(full_path)
 		entry = dir.get_next()
 	dir.list_dir_end()
+
+
+## taskblock-36 Pass A: `build`'s own `origin`/`direction` widened to
+## `Vector3`, but a caller with `y == 0.0` on both must still get exactly
+## the old 2D-call's regions. Placing the cover part AT the origin cell
+## makes `_offset` a no-op (`cell - origin == Vector2.ZERO`), so `build`'s
+## own per-region math reduces to a bare `BodyProjector.project_assembly`
+## call — the actual pre-Pass-A code path — and this compares against
+## THAT real call, field by field, rather than re-deriving `_offset`'s own
+## formula by hand.
+func test_build_with_a_flat_direction_matches_a_bare_project_assembly_call() -> void:
+	var box := Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))
+	var part := _part(&"crate", box)
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	grid.blockers[Vector2i(3, 3)] = part
+
+	var origin := Vector3(3.0, 0.0, 3.0)
+	var direction := Vector3(0.0, 0.0, 1.0)
+	var built: Array[Region] = ShotPlane.build(origin, direction, state)
+	var direct: Array[Region] = BodyProjector.project_assembly(part, direction)
+
+	assert_eq(built.size(), direct.size())
+	assert_true(built.size() > 0, "the fixture must actually project something")
+	for i in range(built.size()):
+		assert_eq(built[i].rect, direct[i].rect, "region %d rect" % i)
+		assert_eq(built[i].depth, direct[i].depth, "region %d depth" % i)
+		assert_eq(built[i].surface_normal, direct[i].surface_normal, "region %d surface_normal" % i)
+		assert_eq(built[i].thickness, direct[i].thickness, "region %d thickness" % i)
+		assert_eq(built[i].part, direct[i].part, "region %d part" % i)

@@ -110,7 +110,11 @@ func test_a_through_shot_exits_the_front_unit_and_hits_the_unit_behind() -> void
 	var shooter: Unit = built.shooter
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(built.front_unit.cell - shooter.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), built.state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		built.state
+	)
 	var center: Vector2 = ShotPlane.center_of(plane, built.front_unit)
 
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
@@ -158,7 +162,11 @@ func _fire_at_shell(built: Dictionary, damage: float) -> Array[ImpactResult]:
 	var shooter: Unit = built.shooter
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(built.target.cell - shooter.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), built.state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		built.state
+	)
 	var center: Vector2 = ShotPlane.center_of(plane, built.target)
 	return DamageResolver.resolve_shot(
 		origin,
@@ -222,7 +230,11 @@ func test_a_lodged_wound_is_logged_independent_of_part_destruction() -> void:
 
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(built.target.cell - shooter.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), built.state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		built.state
+	)
 	var center: Vector2 = ShotPlane.center_of(plane, built.target)
 	ShotResolution.resolve_and_log_point(
 		built.state, shooter, origin, direction, center, 4.0, 0.0, 0.0, null
@@ -250,7 +262,11 @@ func test_a_round_stopped_on_a_solid_part_never_lodges_a_wound() -> void:
 	var state := CombatState.new(Grid.new(5, 5), [shooter, target])
 	var origin := Vector2(shooter.cell.x, shooter.cell.y)
 	var direction := Vector2(target.cell - shooter.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		state
+	)
 	var center: Vector2 = ShotPlane.center_of(plane, target)
 
 	var results: Array[ImpactResult] = DamageResolver.resolve_shot(

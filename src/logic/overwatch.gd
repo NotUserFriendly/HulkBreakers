@@ -209,8 +209,9 @@ static func _torso_visible(
 	# rect-center as an aim point — the SAME coordinate convention
 	# AimPlaneGeometry.ray_from_muzzle expects (anchored on this exact
 	# shooter->target dead-ahead axis), never resolved against directly.
+	var dir_n: Vector2 = direction.normalized()
 	var plane: Array[Region] = ShotPlane.build(
-		Vector2(overwatcher.cell.x, overwatcher.cell.y), direction.normalized(), state
+		Vector3(overwatcher.cell.x, 0.0, overwatcher.cell.y), Vector3(dir_n.x, 0.0, dir_n.y), state
 	)
 	var torso_region: Region = _torso_region(plane, torso, mover)
 	if torso_region == null:
@@ -263,7 +264,10 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 
 	var origin := Vector2(overwatcher.cell.x, overwatcher.cell.y)
 	var direction := Vector2(mover.cell - overwatcher.cell)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var dir_n: Vector2 = direction.normalized()
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	)
 	var torso: Part = mover.shell.root
 	var torso_region: Region = _torso_region(plane, torso, mover)
 	var aim_point: Vector2 = (

@@ -112,7 +112,7 @@ static func orientation_for(direction: Vector2) -> float:
 ## computed override like DOWN automatically (see UnitGeometry.placements'
 ## own doc comment for why: most headless fixtures never dock a matrix for
 ## reasons unrelated to piloting status).
-static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
+static func project(unit: Unit, view_dir: Vector3) -> Array[Region]:
 	var regions: Array[Region] = []
 	if unit.shell.root == null:
 		return regions
@@ -142,7 +142,7 @@ static func project(unit: Unit, view_dir: Vector2) -> Array[Region]:
 ## makes a dropped assembly "shootable... a pile of scrap stops rounds":
 ## `project_part` alone (ShotPlane's old cover path) only ever saw the
 ## root's own boxes, never an attached plate or weapon still riding along.
-static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
+static func project_assembly(root: Part, view_dir: Vector3) -> Array[Region]:
 	var regions: Array[Region] = []
 	_project_tree(root, Transform3D.IDENTITY, view_dir, 0.0, regions, null)
 	return regions
@@ -167,7 +167,7 @@ static func project_assembly(root: Part, view_dir: Vector2) -> Array[Region]:
 static func _project_tree(
 	part: Part,
 	part_transform: Transform3D,
-	view_dir: Vector2,
+	view_dir: Vector3,
 	orientation: float,
 	regions: Array[Region],
 	pose: Pose
@@ -215,10 +215,13 @@ static func _project_tree(
 ## depth-sort's nearest-first walk reaches the cladding first, same as
 ## a plate protecting whatever sits directly behind it.
 static func _project_joint(
-	socket: Socket, world_transform: Transform3D, view_dir: Vector2, orientation: float
+	socket: Socket, world_transform: Transform3D, view_dir: Vector3, orientation: float
 ) -> Array[Region]:
-	var dir: Vector2 = view_dir.normalized()
-	var perp := Vector2(-dir.y, dir.x)
+	# taskblock-36 Pass A: `dir` here is only for `anchor_depth` below, which
+	# is real geometry that hasn't gone 3D yet (Pass A is pure plumbing) —
+	# `_project_box` now takes `view_dir` directly and derives its own
+	# horizontal slice internally, same math, computed once more.
+	var dir: Vector2 = Vector2(view_dir.x, view_dir.z).normalized()
 	var regions: Array[Region] = []
 	if socket.joint_cladding != null:
 		regions.append_array(
@@ -226,7 +229,7 @@ static func _project_joint(
 		)
 	var box := Box.new(Vector3.ZERO, _JOINT_BOX_SIZE)
 	var joint_regions: Array[Region] = _project_box(
-		box, dir, perp, orientation, socket.joint_handle(), world_transform
+		box, view_dir, orientation, socket.joint_handle(), world_transform
 	)
 	# Pin every joint region to the socket's own true attachment-point
 	# depth, not whatever depth its own synthetic box's face happens to
@@ -251,7 +254,7 @@ static func _project_joint(
 ## ShotPlane's cover placement, both of which go through identical math).
 static func project_part(
 	part: Part,
-	view_dir: Vector2,
+	view_dir: Vector3,
 	orientation: float = 0.0,
 	local_transform: Transform3D = Transform3D.IDENTITY
 ) -> Array[Region]:
@@ -263,22 +266,25 @@ static func project_part(
 	# hp<=0 check always meant.
 	if part.hp <= 0 and not (part.is_mangled or part.is_disabled):
 		return []
-	var dir: Vector2 = view_dir.normalized()
-	var perp := Vector2(-dir.y, dir.x)
 	var regions: Array[Region] = []
 	for box: Box in part.volume:
-		regions.append_array(_project_box(box, dir, perp, orientation, part, local_transform))
+		regions.append_array(_project_box(box, view_dir, orientation, part, local_transform))
 	return regions
 
 
+## taskblock-36 Pass A: `view_dir` carries a real 3D direction now (the
+## vertical component becomes available everywhere) — pure plumbing, not a
+## behavior change yet. `dir`/`perp` are still derived from `view_dir`'s
+## horizontal slice alone, exactly the old `Vector2` argument's own value
+## whenever a caller's `view_dir.y == 0.0` (every caller today), so this
+## reduces to byte-identical output. Face selection/visibility below still
+## reads only `world_lateral` (Pass B is where the visibility test itself
+## goes 3D).
 static func _project_box(
-	box: Box,
-	dir: Vector2,
-	perp: Vector2,
-	orientation: float,
-	part: Part,
-	local_transform: Transform3D
+	box: Box, view_dir: Vector3, orientation: float, part: Part, local_transform: Transform3D
 ) -> Array[Region]:
+	var dir: Vector2 = Vector2(view_dir.x, view_dir.z).normalized()
+	var perp := Vector2(-dir.y, dir.x)
 	var half := box.size * 0.5
 	var toward_shooter: Vector2 = -dir
 	var regions: Array[Region] = []
