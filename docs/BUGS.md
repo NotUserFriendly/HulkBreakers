@@ -926,3 +926,37 @@ confirm" roll-up — so pending items surface at a natural review point without 
   actually touch `grid.blockers`/`field_items` — `move_object`/`spawn_object`/`remove_object`) but
   getting the verb-id list exactly right (not missing one that can add/move/remove a blocker or field
   item) wants a careful pass of its own rather than a rushed guess at the end of an already-long one.
+### BR35.04 — Active — owner: `CC`
+**A DEFLECT's drawn "bounce" tracer is a decorative fixed-range projection, not the real continuation**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23, reading a real chaingun burst out of `out/combat.log` at the supervisor's own
+  request. Every `DEFLECT` outcome logs a `deflect_end_x/y/height` (`shot_resolution.gd:225-232`),
+  drawn by `ResolutionPlayer._play_impact` as a second, visually distinct segment
+  (`resolution_player.gd:457-478`) — but that endpoint is `hit_point + reflected_dir * void_range`,
+  where `void_range` is just the weapon's own authored max range (or the map's longest side,
+  unauthored) — **a fixed-distance projection with zero awareness of whether anything is actually
+  there.** The code's own doc comment says this is deliberate: drawn "regardless of whether a real
+  ricochet hop happens to follow it." Meanwhile `DamageResolver` separately does a REAL recursive
+  search along that same reflected direction, and when it finds something, that's its own
+  independent, correctly-resolved `impact` event (a `STOP_DEAD`/`PENETRATE`/etc. a few lines later in
+  the log) — with its own separately-drawn tracer.
+- **The two are drawn as if they agree; they usually don't.** On a real burst read from the log: a
+  deflect at (24.91, 4.01) had a REAL follow-up wall hit only ~3.7 units further on, at (25.65, 0.43)
+  — but the cosmetic bounce line was drawn a full 12 units out (the chaingun's own max range) in the
+  same direction, sailing straight through/past the real wall with no awareness it was there. Two
+  visually distinct tracers, same origin, same direction, different endpoints, both drawn as if
+  each were the truth. For pulls where the real recursive search found NOTHING (most of them, in
+  that same burst), the "wall impact" the supervisor visually saw was **purely the decorative
+  projection** — no wall actually took damage there, nothing mechanical happened at that point at
+  all; whether it visually reads as a hit is coincidence.
+- **Why this matters more than a visual nit (supervisor's own framing):** visible raycasts need to
+  match under-the-hood behavior as closely as possible, specifically *because* CC's own debugging
+  process depends on reading the log and reasoning about what the drawn scene must have looked like —
+  a drawn tracer that routinely disagrees with the mechanically-resolved outcome breaks that
+  correspondence, the same class of problem the whole `docs/00` "read the real node back" rule exists
+  to prevent, just on the logging/replay side instead of the geometry side.
+- **Not fixed yet.** Candidate fix: when the real recursive search succeeds, draw the bounce segment
+  to THAT hit's own real coordinates (already logged as its own event) instead of the fixed
+  `void_range` projection — the cosmetic projection should only ever be the fallback for the case
+  where the recursive search genuinely finds nothing, mirroring `log_miss_result`'s own "void" ray
+  exactly, not a separate always-drawn distance regardless of a real hit existing.
