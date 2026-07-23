@@ -51,70 +51,40 @@ mulebot can't sit in the driver's seat.
 
 # NEXT
 
-### 1. Consolidate the split 2D/3D shot geometry
-**Needs:** nothing. **Unblocks:** multi-level maps.
+### 1. Multi-level maps — movement verbs and height-aware pathfinding
+**Needs:** nothing (the 2D/3D geometry consolidation this depended on shipped tb36 — see
+`CHANGELOG.md`). **Unblocks:** mission generation, authoring tools, moving heavy objects, vehicles.
 
-The codebase reasons about shot geometry in 3D on one side and 2D on the other, and both of the gaps
-below live on that seam. They are one pass, not two.
+tb36 landed the geometry half and the first slice of the world model: six real box faces with a
+fully 3D visibility test, `resolve_ray`/`build` sharing one height mechanism instead of two,
+`Grid.level` (per-cell, default 0) with a unit's true Y reading it, and `BoutInjector.set_cell_level`
+to force a scenario. All of it deliberately inert — `MapGen` writes nothing, `Pathfinder` doesn't
+read `level` at all, no unit can currently reach a level other than the one it spawned on. This item
+is the rest: making level *mean* something to movement.
 
-**Only four faces are modelled.** A box projects one `Region` **per visible face** — that's what lets
-`surface_normal` belong to the specific face struck, and incidence span the full 0–90° range. But
-`_FACE_NORMALS` holds only ±X and ±Z; top and bottom are deliberately absent, on a stated assumption:
-*"top/bottom ignored — shots travel horizontally in this abstraction."* A face is dropped below
-`_MIN_FACE_WIDTH`, and all four go edge-on **simultaneously** exactly when the view direction runs
-along the part's local Y — because ±X and ±Z are mutually perpendicular, so anything perpendicular to
-both is the local up. A sufficiently tilted part viewed along that axis therefore contributes **no
-Region at all**, and the shot passes through as if it weren't there. Tilt is real, not hypothetical:
-`Poses.aiming()` rotates a shoulder −45° about local RIGHT.
+- **True height is already continuous; discrete level is what's still missing a mover.** 22.5° ramps
+  rise 0.5/tile → two ramps make one full level (a unit halfway up a one-tile ramp is at 0.25).
+  Discrete height should gate *decisions* — can I climb, is this fall lethal, what can I path to —
+  once ramps/climbing exist; true height already drives position and the shot plane (tb36).
+- **Vertical movement verbs** — hop-down and climb-up via leading-edge detection; ramps and stairs
+  move occupants at true height; height-aware pathfinding (today's `Pathfinder` is level-blind by
+  design, tb36's own acceptance test pins that).
+- **Height needs no special cover or LoS rules** — it falls out of correct 3D projection, and tb36
+  proved the geometry side of that claim true (a shooter above a target resolves against its real
+  top face). Higher → better sightline over cover → the dartboard sees more of the target. Skylined
+  on an edge → nothing behind you → easier to hit. Emergent from geometry, not bolted-on bonuses. (A
+  dedicated *height advantage* like throwing farther waits on a future arc'd-shot handler.)
+- **A shooter's real elevation isn't wired into first-hop damage resolution yet.** tb36 proved the
+  plane genuinely resolves a tilted shot (`ShotPlane.build`/`resolve_ray`, given a real 3D
+  origin/direction) — but `AttackAction`/`BurstAction`/melee actions and `Overwatch`/`LineOfFire`/
+  `Suppression`/`TacticsController` still build a flat `Vector3` (`y == 0.0`) for every real shot,
+  deliberately deferred (tb36 CHANGELOG). Once a mover can actually reach a different level, these
+  need the real muzzle/target height wired through, or a shot between two different-level units in
+  a real bout won't tilt even though the geometry underneath already can.
 
-**This is already live, not latent.** tb23 Pass C gave rays a genuine vertical component
-(`vertical_slope`, height tracked per-depth along the flight) — but `_project_box`'s facing test stayed
-*purely horizontal*, on the reasoning that "shots are still level in this pass." Pass C then made them
-not level, and nobody reconciled the two halves. `resolve_ray` documents the limit case honestly: a
-**dead-vertical shot returns `null`**, because "this plane model has no azimuth to build along… a real
-PhysicsServer ray would still resolve this, but that's the documented swap-in this function is a seam
-for."
+*Do the movement verbs before mission generation, or the tile format encodes flatness forever.*
 
-**And the two geometry paths were never unified.** There are genuinely separate systems: the real 3D
-muzzle-to-target ray (`UnitGeometry.muzzle_point` → `AimPlaneGeometry.ray_from_muzzle` →
-`ShotPlane.resolve_ray`), used only by the player's aiming reticle and Overwatch's pre-check; and the
-flat 2D system that actually deals damage (`AttackAction`/`BurstAction` → `ShotPlane.build(origin:
-Vector2, …)` + `Dartboard.sample()` → `DamageResolver.resolve_shot`), whose origin carries no height.
-Unifying them was ruled out of scope at the time as a larger change, and the two don't currently
-disagree in a way players notice — but **the next system needing a real shared height model is
-multi-level maps**, which is the item directly below.
-
-**Why it gates multi-level.** That item claims "height needs no special cover or LoS rules — it falls
-out of correct 3D projection." That claim is false while the projection has no top or bottom faces.
-Once units stand on walkways and shoot down, the most common *new* shot is precisely the one that sees
-four grazing side faces and one unmodelled top face head-on — a unit shot from above would be
-near-transparent.
-
-**The fork, deliberately unresolved:** add real ±Y faces (direct — the four-face parallel arrays become
-six), or take the escape hatch the code already names and swap `resolve_ray`'s inner resolution for a
-real `PhysicsServer` raycast (a bigger change, but it retires the two-path duality above at the same
-time). **Decide before coding** — the two answers imply very different amounts of work.
-
-### 2. Multi-level maps — grid height and movement verbs
-**Needs:** the 2D/3D geometry consolidation above. **Unblocks:** mission generation, authoring tools,
-moving heavy objects, vehicles.
-
-The highest fan-out item in the plan. True-3D shot resolution shipped (tb23); this is the rest of it.
-
-- **Discrete level for logic, true height for position.** Cells gain an integer level; a unit's actual Y
-  is continuous. 22.5° ramps rise 0.5/tile → two ramps make one full level (a unit halfway up a one-tile
-  ramp is at 0.25). Discrete height gates *decisions* — can I climb, is this fall lethal, what can I path
-  to; true height drives *position and the shot plane*.
-- **Vertical movement verbs** — hop-down and climb-up via leading-edge detection; ramps and stairs move
-  occupants at true height; height-aware pathfinding.
-- **Height needs no special cover or LoS rules** — it falls out of correct 3D projection. Higher → better
-  sightline over cover → the dartboard sees more of the target. Skylined on an edge → nothing behind you →
-  easier to hit. Emergent from geometry, not bolted-on bonuses. (A dedicated *height advantage* like
-  throwing farther waits on a future arc'd-shot handler.)
-
-*Do this before mission generation, or the tile format encodes flatness forever.*
-
-### 3. Attributes
+### 2. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -136,7 +106,7 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 4. Diagnostics — the log becomes the instrument
+### 3. Diagnostics — the log becomes the instrument
 **Needs:** nothing. **Unblocks:** every future perf or behaviour investigation.
 
 *Extends `docs/09`.* Three separate bugs each survived multiple passes purely because CC cannot observe a
@@ -171,7 +141,7 @@ framerate or a decision. Fixing the instrument is worth more than fixing any one
   of dead-stopping. Pairs with BR34.02 — a titled, resizable panel wants a real background, which answers
   that bug's "visible background versus click-through" question on its own.
 
-### 5. Replace the hand-built full-mission test
+### 4. Replace the hand-built full-mission test
 **Needs:** nothing. **Unblocks:** trustworthy mission-level coverage.
 
 `test_full_mission.gd` uses a hardcoded seed and its own in-test turn heuristics that were never rehomed
