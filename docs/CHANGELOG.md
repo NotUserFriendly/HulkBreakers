@@ -226,6 +226,54 @@ each cell resolves once. Measured on a real 60-turn bout: average reposition/hol
 2023ms → 974ms. Not a full fix for BR27.09 — the remaining per-cell `ShotPlane.build` cost is real and
 this memoisation can't remove it further without a bigger algorithmic change.
 
+**The `body is Unit` / `Grid.blockers` assumption audit** (tb35 Pass C) — tb31 C turned walls into
+full-height, dense `Grid.blockers` Parts; this pass checked every place written for the old
+sparse/small-cover shape. **Audited and found correct as-is** (the `is Unit` distinction in each case
+does exactly what it should regardless of wall density): `attack_action.gd`/`burst_action.gd`/
+`stab_action.gd`'s own muzzle self-obstruction redirect (a static obstruction, cover or wall, should
+redirect aim onto it; an ally blocking should not — that's the player's own informed risk, not this
+codebase's call); `shot_resolution.gd`'s `target_unit_id` falling to -1 for a non-Unit body (every
+consumer already treats -1 as "no unit hit," unaffected by what kind of non-unit thing it was);
+`UnitAI._ally_in_firing_line`'s own `region.body is Unit` check (asks specifically "is an ally
+blocking," correctly false for a wall — wall-blocking is `has_clear_line_of_fire`'s own separate,
+already-correct concern); `Pathfinder.move_cost` (an O(1) dict lookup, density-proof by construction);
+`tile_inspection.gd` (a single-key lookup, same reason); `los.gd`/`inspect_panel.gd`/
+`world_palette.gd` (no `grid.blockers` reads at all).
+
+**Fixed:** a destroyed wall (or any blocker) never cleared `grid.opacity` — `Pathfinder` already
+treated a destroyed blocker as passable (its own `hp > 0` check), but `LoS.has_los` kept reading the
+same cell as permanently opaque forever, since nothing at combat time ever touched the `opacity` array
+map-gen set once. New `Grid.cell_of_blocker(part)` (a reverse lookup, only ever run on the rare
+destruction event, never per-frame) backs a new clear in `DamageResolver.
+_resolve_destruction_consequences` — a no-op for ordinary destructible cover, whose own cell was never
+opacity-flagged to begin with. **Fixed:** `BoardView._build_wall_indicators`'s own flat gray-tile-plus-
+cross marker checked `TerrainType.WALL`, a condition confirmed (via a real generated bout) to never
+match any cell on a live map anymore — `MapGen._finalize_walls_and_void` gives every real, exposed
+wall cell `OPEN` terrain plus a genuine blocker Part instead. Not a live-game bug (the wall's own mesh
+already makes "can't walk here" obvious), but the loop's own doc comment was stale and the condition
+could still double-draw on a hand-authored/debug grid that sets `TerrainType.WALL` directly — guarded
+against that narrow case and corrected the comment.
+
+**Re-derived, not fixed: BR32.07** ("burst cannot aim at a wall"). Traced the full aim-entry chain
+(`TacticsController.click_cell` → `PartPicker.hit` → `_enter_aim_mode` → `aim_state()` →
+`AimController.resolve()` → `ShotScatter.for_shot()`) end to end — every step is generic over action
+id, and a new regression (`test_tactics_controller.gd::
+test_arming_burst_and_clicking_a_wall_enters_aim_mode`) confirms arming burst and clicking a real wall
+cell correctly enters aim mode headlessly. No code-level break found; recommends a live re-check
+before further digging (the same class of headless-vs-live gap BR27.08 hit).
+
+**Found, not fixed — logged as BR35.01/02/03:** `PartPicker.hit()` scans every `grid.blockers`/
+`field_items` entry on every mouse-move hover, not just cells near the ray (real perf cost, now that
+blockers number in the hundreds); `SpectatorOverlay`'s tile-inspect click resolves via ground-plane
+math alone, with no check for an intervening wall — a click can silently inspect a cell hidden behind
+one; every debug-panel verb application triggers a full `sync_board_view()` rebuild, not just ones
+that can touch `blockers`/`field_items`. All three have a clear fix shape but real risk if rushed
+(geometry correctness for the first two, an exact debug-verb-id list for the third) — left open rather
+than guessed at.
+
+**BR33.01 left untouched** — no supervisor policy call has been made yet on the aim-scroll-cycles-
+walls question; per the taskblock's own instruction, not guessed at.
+
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
 must get everyone to a team-coded tile, can't self-extract early (tb22 A); bout-setup places each

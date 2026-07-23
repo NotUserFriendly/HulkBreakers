@@ -94,6 +94,18 @@ func dup() -> Grid:
 	return cloned
 
 
+## tb35 Pass C: reverse lookup — the cell holding `part` as its own
+## `blockers` entry, or null if it isn't (or is no longer) one. O(blocker
+## count); only meant for a destroyed-blocker's own rare cleanup (see
+## `DamageResolver._resolve_destruction_consequences`'s own doc comment),
+## never a per-frame path.
+func cell_of_blocker(part: Part) -> Variant:
+	for cell: Vector2i in blockers:
+		if blockers[cell] == part:
+			return cell
+	return null
+
+
 ## The first loose Part or Matrix at `cell` whose id matches, or null.
 ## Actions resolve a targeted ground item this way rather than holding a
 ## bare reference across states (docs/09): a preview's field_items are
