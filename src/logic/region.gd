@@ -12,6 +12,12 @@ extends RefCounted
 ## taskblock-23 Pass A: `rect`'s two axes are `(lateral offset, real world
 ## height)` — NOT `(lateral, depth)`. `depth` (below) is the fully separate
 ## along-the-ray scalar. A part's real vertical extent already lives here.
+## taskblock-36 Pass C: `rect.position.y` is only "real world height" as
+## built — `ShotPlane.build`'s own height shear leaves it exactly that for
+## every flat caller (`origin.y == 0.0`, `direction.y == 0.0`, still every
+## caller except `resolve_ray`), but shifts it to height RELATIVE TO THE
+## RAY'S OWN PATH at that region's own depth for a genuinely tilted one —
+## `0.0` then means "on the ray," not "at the ground."
 var rect: Rect2
 var depth: float
 var part: Part

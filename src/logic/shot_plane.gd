@@ -18,18 +18,34 @@ extends RefCounted
 ## position relative to `origin`, and sorted nearest-shooter-first.
 ##
 ## taskblock-36 Pass A: `origin`/`direction` are `Vector3` now — pure
-## plumbing, height carried but not yet consumed. The per-cell offset math
-## below still reads only the horizontal slice of each (`origin_flat`/
-## `dir`), byte-identical to the old `Vector2` call whenever a caller's `y`
-## is `0.0` (every caller today). `BodyProjector.project`/`project_assembly`
-## get the real 3D `dir3` though, not the flattened slice — Pass B's own
-## visibility test picks that up for free, without this function changing
-## again.
+## plumbing, height carried but not yet consumed by everyday level callers.
+## `BodyProjector.project`/`project_assembly` get the real 3D `dir3`, not a
+## flattened slice — Pass B's own visibility test picks that up for free.
+##
+## taskblock-36 Pass C: `dir` is re-normalized in 2D after slicing off the
+## vertical component (not left at whatever magnitude `dir3`'s own
+## horizontal slice happens to have — a steep `direction` would otherwise
+## shrink the whole plane's lateral/depth scale, the same bug Pass B fixed
+## in `BodyProjector._project_box`). `vertical_slope` — `dir3`'s own rise
+## per unit of ground distance, 0.0 for any flat `direction` (every caller
+## before `resolve_ray` started passing a real one) — shears every
+## region's `rect.position.y` from absolute world height into height
+## RELATIVE TO THE RAY'S OWN PATH at that region's own depth via `_shear`
+## below: "a Region's height is simply its own position in the plane"
+## (this pass's own name for retiring `resolve_ray`'s separate
+## `muzzle.y + vertical_slope * depth` reconstruction — that math moves
+## here, computed once, not re-derived by every caller that needs it).
+## Provably inert whenever `origin.y == 0.0` and `direction.y == 0.0`
+## (every caller except `resolve_ray` today): `vertical_slope` is then
+## exactly `0.0` and `_shear` subtracts exactly `0.0` from every region.
 static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Array[Region]:
 	var dir3: Vector3 = direction.normalized()
-	var dir := Vector2(dir3.x, dir3.z)
+	var raw_horizontal := Vector2(dir3.x, dir3.z)
+	var horizontal_len: float = raw_horizontal.length()
+	var dir: Vector2 = raw_horizontal.normalized()
 	var perp := Vector2(-dir.y, dir.x)
 	var origin_flat := Vector2(origin.x, origin.z)
+	var vertical_slope: float = dir3.y / horizontal_len if horizontal_len > 0.0 else 0.0
 	var regions: Array[Region] = []
 
 	for unit: Unit in state.units:
@@ -38,6 +54,7 @@ static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Ar
 		var offset := _offset(unit.cell, origin_flat, dir, perp)
 		for region: Region in BodyProjector.project(unit, dir3):
 			_place(region, offset)
+			_shear(region, origin.y, vertical_slope)
 			region.body = unit
 			regions.append(region)
 
@@ -50,6 +67,7 @@ static func build(origin: Vector3, direction: Vector3, state: CombatState) -> Ar
 		# volume.
 		for region: Region in BodyProjector.project_assembly(part, dir3):
 			_place(region, offset)
+			_shear(region, origin.y, vertical_slope)
 			region.body = part
 			regions.append(region)
 
@@ -161,17 +179,21 @@ static func self_obstruction(
 ##
 ## taskblock-23 Pass C: `dir` may now travel with a real vertical
 ## component — the old `dir.y ~= 0` guard (docs/02's pre-multi-level "shots
-## travel horizontally") is gone. Built on the same plane math as always:
-## the plane is anchored at `muzzle`'s own flat (x, z) using `dir`'s own
-## flattened heading, but a region is no longer tested at one fixed
-## `muzzle.y` for the whole flight — a tilted ray's real height at a given
-## region's own depth is `muzzle.y` plus however much of `dir`'s own rise
-## went into covering that much ground distance (`vertical_slope`, below).
-## A perfectly level `dir` (every caller before this pass) makes
-## `vertical_slope` exactly 0.0, reducing this to the exact old formula —
-## same math, same regions, same results for every existing horizontal
-## caller, and later a `PhysicsServer.intersect_ray` swap-in still changes
-## this function's body and nothing that calls it.
+## travel horizontally") is gone.
+##
+## taskblock-36 Pass C: `build` now does its own height reconciliation
+## (`_shear`, above) — this function passes its REAL `muzzle`/`dir_n`
+## through (no longer flattening them to `y == 0.0` first, Pass A's own
+## temporary posture) and reads back a plane where every region's own
+## `rect.position.y` is already height RELATIVE TO THIS RAY'S OWN PATH at
+## that region's own depth. `0.0` is exactly "on the ray," at any depth —
+## no separate `muzzle.y + vertical_slope * depth` reconstruction here
+## anymore; `build` and `resolve_ray` now share one geometry instead of
+## merely agreeing on its answer. A perfectly level `dir` (every real
+## production caller today — `AimPlaneGeometry.ray_from_muzzle` expresses
+## vertical aim by repositioning the muzzle's own height, deliberately
+## keeping `dir.y == 0.0`, docs on that function) makes the shear exactly
+## `0.0` throughout, reducing this to the exact old formula.
 ## taskblock-24 Pass C: `exclude_parts` skips those parts entirely — the
 ## same exclusion `resolve_projectile` itself already accepts, needed
 ## here for the same reason `AttackAction.apply()` excludes the shooter's
@@ -190,33 +212,26 @@ static func resolve_ray(
 	var dir_n: Vector3 = dir.normalized()
 	var flat_dir := Vector2(dir_n.x, dir_n.z)
 	if flat_dir.is_zero_approx():
-		# No horizontal heading at all (a dead-vertical shot) — this plane
-		# model has no azimuth to build along; a real PhysicsServer ray
-		# would still resolve this, but that's the documented swap-in this
-		# function is a seam for, not something the flat-plane math can
-		# answer today.
+		# taskblock-36 Pass C: still an honest bail, not something this
+		# pass's own reconciliation resolves — the plane's own lateral/
+		# depth basis is built from the ray's GROUND-projected heading
+		# (docs/02's plane, not a full pinhole camera), and a dead-vertical
+		# ray has no ground heading to build one from at all. Picking an
+		# arbitrary basis would silently rotate the dartboard's own
+		# scatter axes shot to shot — an honest null beats that. A real
+		# `PhysicsServer.intersect_ray` remains the documented swap-in for
+		# exactly this case, never this plane's own math.
 		return null
-	var flat_dir_n: Vector2 = flat_dir.normalized()
 	var flat_origin := Vector2(muzzle.x, muzzle.z) / UnitGeometry.CELL_SIZE
-	# taskblock-36 Pass A: still built flat (y == 0.0) on purpose — `build`
-	# doesn't consume height yet, and this function's own vertical_slope
-	# math (below) is Pass C's to retire, not Pass A's.
-	var plane: Array[Region] = build(
-		Vector3(flat_origin.x, 0.0, flat_origin.y), Vector3(flat_dir_n.x, 0.0, flat_dir_n.y), world
-	)
-	# `flat_dir.length()` is dir_n's own horizontal fraction (1.0 when dir_n
-	# is itself horizontal) — the ratio of true 3D distance to ground
-	# distance travelled, so dividing by it converts dir_n.y (rise per unit
-	# of true distance) into rise per unit of ground depth.
-	var vertical_slope: float = dir_n.y / flat_dir.length()
+	var origin := Vector3(flat_origin.x, muzzle.y, flat_origin.y)
+	var plane: Array[Region] = build(origin, dir_n, world)
 	var region: Region = null
 	for candidate: Region in plane:
 		if candidate.depth < 0.0:
 			continue
 		if exclude_parts.has(candidate.part):
 			continue
-		var height_here: float = muzzle.y + vertical_slope * candidate.depth
-		if candidate.rect.has_point(Vector2(0.0, height_here)):
+		if candidate.rect.has_point(Vector2.ZERO):
 			region = candidate
 			break
 	if region == null:
@@ -294,3 +309,14 @@ static func _offset(cell: Vector2i, origin: Vector2, dir: Vector2, perp: Vector2
 static func _place(region: Region, offset: Vector2) -> void:
 	region.rect.position.x += offset.x
 	region.depth += offset.y
+
+
+## taskblock-36 Pass C: called after `_place` (so `region.depth` is already
+## the real ground distance from `origin`) — subtracts the ray's own real
+## world height AT that depth (`origin_height + vertical_slope * depth`)
+## from the region's rect, converting its `rect.position.y` from absolute
+## world height into height relative to the ray's own straight path. `0.0`
+## is exactly `0.0` for a flat caller (`origin_height` and `vertical_slope`
+## both `0.0`), so this is a no-op for every existing level caller.
+static func _shear(region: Region, origin_height: float, vertical_slope: float) -> void:
+	region.rect.position.y -= origin_height + vertical_slope * region.depth

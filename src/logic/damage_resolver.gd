@@ -844,6 +844,18 @@ static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: Im
 ## pass — the exact height-per-depth relationship `ShotPlane.resolve_ray`
 ## gives a tilted ray, applied here to the plane-walking primitive instead
 ## of a single ray cast.
+## taskblock-36 Pass C audit: this is NOT the same "reconstruct height from
+## depth" gap `ShotPlane.resolve_ray`'s own `vertical_slope` retired —
+## `resolve_shot`'s `origin`/`direction` are still genuinely flat `Vector2`
+## by every real caller today (no caller passes real elevation into a
+## first hop; that's Pass D's wiring, not landed yet), so `vertical_slope`
+## here is `0.0` for every first hop and only ever nonzero for a ricochet's
+## own recursive call, carrying that specific hop's real post-deflection
+## slope — a genuinely different, self-contained value, not an upstream
+## 3D direction flattened and reconstructed. Left as is; worth revisiting
+## once Pass D wires real per-shot elevation into a first hop, at which
+## point this and `ShotPlane.build`'s own shear may be worth reconciling
+## into one shared height mechanism.
 ## taskblock-25 Pass D: `radius` — 0.0 (default) is exactly the point-only
 ## behavior every existing (ranged) caller already gets; a stab's own
 ## positive `stab_width` (`ShotPlane.disc_overlaps_rect`) instead tests
