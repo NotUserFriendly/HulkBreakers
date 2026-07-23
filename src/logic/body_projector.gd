@@ -12,10 +12,19 @@ extends RefCounted
 ## A box projects one Region PER VISIBLE FACE, not one region guessed for
 ## the whole box (docs/03): surface_normal belongs to the specific face that
 ## was hit. A face is visible when its rotated normal points at least partly
-## toward the shooter; an edge-on face projects to near-zero width and is
-## dropped. This lets incidence span the full 0-90 degree range — a box
-## viewed corner-on shows two adjacent faces, one near head-on and one
-## near-grazing, in non-overlapping screen spans.
+## toward the shooter; an edge-on face projects to near-zero width (or,
+## taskblock-36 Pass B, near-zero height — a horizontal face's own
+## degenerate axis) and is dropped. This lets incidence span the full 0-90
+## degree range — a box viewed corner-on shows two adjacent faces, one near
+## head-on and one near-grazing, in non-overlapping screen spans.
+##
+## taskblock-36 Pass B: SIX faces (+/-X, +/-Z, +/-Y), and the visibility
+## test is fully 3D — the face's real world normal (including its vertical
+## component) against the ray's own real 3D direction, not the horizontal
+## slice alone. A level shot at an untilted box still sees exactly the old
+## four faces (+/-Y are exactly edge-on for a level ray), but a tilted part
+## can no longer vanish, and a straight-down shot resolves against a real
+## top face.
 
 ## World-space ground direction a unit with orientation == 0.0 faces.
 const WORLD_FORWARD := Vector2(0.0, 1.0)
@@ -24,18 +33,40 @@ const WORLD_FORWARD := Vector2(0.0, 1.0)
 ## drop rather than emit a degenerate sliver region.
 const _MIN_FACE_WIDTH := 0.001
 
-## A box's four in-plane side faces (top/bottom ignored — shots travel
-## horizontally in this abstraction), as parallel arrays: each face's local
-## normal and the two +/-1 corner multipliers (of the box's half-extents)
-## spanning it.
-const _FACE_NORMALS: Array[Vector2] = [
-	Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, 1.0), Vector2(0.0, -1.0)
+## taskblock-36 Pass B: all SIX faces of a box now — the four side faces
+## (+/-X, +/-Z) plus +/-Y (top/bottom), closing the "a closed box needs six
+## faces to be visible from every direction; four can never cover the full
+## sphere" gap (a sufficiently tilted part used to go edge-on on all four
+## side faces simultaneously and vanish, since +/-X and +/-Z are mutually
+## perpendicular and anything perpendicular to both is the local up).
+## `_FACE_CORNERS` replaces the old 2-Vector2-per-face encoding (which
+## assumed a face's span was one lateral segment at a shared height —
+## exactly the shape that can't express a horizontal face's own real
+## footprint span): each face now carries its own 4 real local corners as
+## +/-1 multipliers of the box's half-extents on ALL THREE axes, the
+## normal's own axis fixed to its `_FACE_NORMALS` value. For the original
+## four side faces this is the exact same 4 real corners Pass A's own
+## tilt-widening already walked (2 lateral corners x 2 vertical extremes) —
+## a re-encoding, not a behavior change; verified by the standing seeded-
+## bout regression guard.
+const _FACE_NORMALS: Array[Vector3] = [
+	Vector3(1.0, 0.0, 0.0),
+	Vector3(-1.0, 0.0, 0.0),
+	Vector3(0.0, 0.0, 1.0),
+	Vector3(0.0, 0.0, -1.0),
+	Vector3(0.0, 1.0, 0.0),
+	Vector3(0.0, -1.0, 0.0),
 ]
-const _FACE_CORNERS_A: Array[Vector2] = [
-	Vector2(1.0, -1.0), Vector2(-1.0, -1.0), Vector2(-1.0, 1.0), Vector2(-1.0, -1.0)
-]
-const _FACE_CORNERS_B: Array[Vector2] = [
-	Vector2(1.0, 1.0), Vector2(-1.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, -1.0)
+const _FACE_CORNERS: Array[Array] = [
+	# +X / -X: normal's axis (x) fixed, y and z vary.
+	[Vector3(1, -1, -1), Vector3(1, -1, 1), Vector3(1, 1, -1), Vector3(1, 1, 1)],
+	[Vector3(-1, -1, -1), Vector3(-1, -1, 1), Vector3(-1, 1, -1), Vector3(-1, 1, 1)],
+	# +Z / -Z: normal's axis (z) fixed, x and y vary.
+	[Vector3(-1, -1, 1), Vector3(1, -1, 1), Vector3(-1, 1, 1), Vector3(1, 1, 1)],
+	[Vector3(-1, -1, -1), Vector3(1, -1, -1), Vector3(-1, 1, -1), Vector3(1, 1, -1)],
+	# +Y / -Y: normal's axis (y) fixed, x and z vary.
+	[Vector3(-1, 1, -1), Vector3(1, 1, -1), Vector3(-1, 1, 1), Vector3(1, 1, 1)],
+	[Vector3(-1, -1, -1), Vector3(1, -1, -1), Vector3(-1, -1, 1), Vector3(1, -1, 1)],
 ]
 
 ## taskblock-09 D: a joint's own aimable footprint — small enough that
@@ -272,29 +303,48 @@ static func project_part(
 	return regions
 
 
-## taskblock-36 Pass A: `view_dir` carries a real 3D direction now (the
-## vertical component becomes available everywhere) — pure plumbing, not a
-## behavior change yet. `dir`/`perp` are still derived from `view_dir`'s
-## horizontal slice alone, exactly the old `Vector2` argument's own value
-## whenever a caller's `view_dir.y == 0.0` (every caller today), so this
-## reduces to byte-identical output. Face selection/visibility below still
-## reads only `world_lateral` (Pass B is where the visibility test itself
-## goes 3D).
+## taskblock-36 Pass B: the visibility test is fully 3D now — the face's
+## real world normal (including its own vertical component, `normal3`
+## below) against the ray's own real 3D direction (`toward_shooter`,
+## no longer flattened before the dot product). That's the actual fix: a
+## tilted face used to have its vertical normal component discarded before
+## this test, which is why a sufficiently tilted part could go edge-on on
+## every one of the old four faces simultaneously and vanish. The
+## depth-axis (`dir`, ground heading only) stays 2D on purpose — the
+## plane's own coordinate convention is (lateral, real world height) x
+## depth-along-the-ground, and reconciling THAT with a genuinely tilted
+## ray is Pass C's job (`resolve_ray`'s `vertical_slope`), not this one's.
+##
+## Each face's rect is built from its own real 4 corners (`_FACE_CORNERS`)
+## rather than assuming a lateral segment shared at one height — a
+## horizontal face's real footprint spans two ground axes, not a lateral
+## span and a flat height. `min_y`/`max_y` degeneracy is pruned exactly
+## like `min_x`/`max_x` always was: a `hollow` part bypasses the FACING
+## prune (so both faces along the shot's own axis still show up entering
+## and exiting) but still needs a genuinely non-degenerate face — without
+## the height-axis check, a level shot at an untilted hollow box would
+## leak the top/bottom faces too (their own lateral span is real, only
+## their HEIGHT collapses to zero), not just the two along the shot.
 static func _project_box(
 	box: Box, view_dir: Vector3, orientation: float, part: Part, local_transform: Transform3D
 ) -> Array[Region]:
-	var dir: Vector2 = Vector2(view_dir.x, view_dir.z).normalized()
+	var view_dir_n: Vector3 = view_dir.normalized()
+	# taskblock-36 Pass B: `dir` is the horizontal HEADING, re-normalized in
+	# 2D (not just `view_dir_n`'s own horizontal slice, which shrinks below
+	# unit length for any ray with real vertical slope) — depth and lateral
+	# position are ground-plane measurements in real world units, and must
+	# stay that way regardless of how steep the shot is. Only `toward_shooter`
+	# below (the visibility test) reads the ray's real 3D direction.
+	var dir: Vector2 = Vector2(view_dir_n.x, view_dir_n.z).normalized()
 	var perp := Vector2(-dir.y, dir.x)
 	var half := box.size * 0.5
-	var toward_shooter: Vector2 = -dir
+	var toward_shooter: Vector3 = -view_dir_n
 	var regions: Array[Region] = []
-	var center_in_frame: Vector3 = local_transform * box.center
 
 	for i in range(_FACE_NORMALS.size()):
-		var local_normal := Vector3(_FACE_NORMALS[i].x, 0.0, _FACE_NORMALS[i].y)
+		var local_normal: Vector3 = _FACE_NORMALS[i]
 		var normal_in_frame: Vector3 = local_transform.basis * local_normal
-		# taskblock-23 Pass A: "parts must project with their real vertical
-		# position retained." `normal_in_frame` already CAN have a real
+		# taskblock-23 Pass A: `normal_in_frame` already CAN have a real
 		# vertical component whenever `local_transform` tilts off pure yaw
 		# (a pose/socket rotation about a horizontal axis — Poses.aiming()
 		# rotates a shoulder -45° about local RIGHT) — only the horizontal
@@ -304,85 +354,63 @@ static func _project_box(
 		var world_lateral: Vector2 = rotate_by_orientation(
 			Vector2(normal_in_frame.x, normal_in_frame.z), orientation
 		)
+		var normal3 := Vector3(world_lateral.x, normal_in_frame.y, world_lateral.y)
 		# taskblock-20 Pass C3: a `hollow` part (an empty-inside shell, not a
 		# solid slab) is struck entering AND exiting — its own far face, which
 		# a solid part's single near-face silhouette would normally never
 		# need, projects too, at that face's own (deeper) depth. A solid
 		# part still shows only whichever face(s) actually face the shooter.
-		# The facing test itself stays purely horizontal — shots are still
-		# level in this pass (Pass C is where a ray itself gains a vertical
-		# component) — a tilted face's own horizontal-facing component is
-		# still the right question for "does this face the shooter."
-		if world_lateral.dot(toward_shooter) <= 0.0 and not part.hollow:
+		var facing: bool = normal3.dot(toward_shooter) > 0.0
+		if not facing and not part.hollow:
 			continue  # facing away from the shooter
 
-		var corner_a_local := Vector3(
-			box.center.x + _FACE_CORNERS_A[i].x * half.x,
-			box.center.y,
-			box.center.z + _FACE_CORNERS_A[i].y * half.z
-		)
-		var corner_b_local := Vector3(
-			box.center.x + _FACE_CORNERS_B[i].x * half.x,
-			box.center.y,
-			box.center.z + _FACE_CORNERS_B[i].y * half.z
-		)
-		var corner_a_in_frame: Vector3 = local_transform * corner_a_local
-		var corner_b_in_frame: Vector3 = local_transform * corner_b_local
-		var corner_a := Vector2(corner_a_in_frame.x, corner_a_in_frame.z)
-		var corner_b := Vector2(corner_b_in_frame.x, corner_b_in_frame.z)
-
-		var screen_a: float = rotate_by_orientation(corner_a, orientation).dot(perp)
-		var screen_b: float = rotate_by_orientation(corner_b, orientation).dot(perp)
-
-		# taskblock-23 Pass A: a face's real world footprint under a TILTED
-		# `local_transform` isn't just "this lateral span at one shared
-		# height" any more — the SAME lateral corners at the box's OTHER
-		# vertical extreme can project to a different lateral position too,
-		# once a rotation mixes height into it (and vice versa: the real
-		# vertical extent can differ from a flat `box.size.y` once tilted).
-		# Widen both axes across all 4 real corners (both lateral corners,
-		# both vertical extremes) rather than assuming an untilted box's
-		# shortcuts still hold. For any Y-axis-only rotation (every existing
-		# socket in this codebase — mirrored SHOULDER_L/R, identity), height
-		# is provably unaffected by the rotation and this reduces to exactly
-		# the old `center_in_frame.y +/- half.y` / unchanged screen_a/screen_b
-		# — this is a strict generalization, not a behavior change, for
-		# every fixture that existed before this pass.
-		var corner_a_low: Vector3 = (
-			local_transform * Vector3(corner_a_local.x, box.center.y - half.y, corner_a_local.z)
-		)
-		var corner_a_high: Vector3 = (
-			local_transform * Vector3(corner_a_local.x, box.center.y + half.y, corner_a_local.z)
-		)
-		var corner_b_low: Vector3 = (
-			local_transform * Vector3(corner_b_local.x, box.center.y - half.y, corner_b_local.z)
-		)
-		var corner_b_high: Vector3 = (
-			local_transform * Vector3(corner_b_local.x, box.center.y + half.y, corner_b_local.z)
-		)
-		var min_x: float = minf(screen_a, screen_b)
-		var max_x: float = maxf(screen_a, screen_b)
+		var corner_mults: Array = _FACE_CORNERS[i]
+		var min_x: float = INF
+		var max_x: float = -INF
 		var min_y: float = INF
 		var max_y: float = -INF
-		for corner: Vector3 in [corner_a_low, corner_a_high, corner_b_low, corner_b_high]:
-			var lateral: float = (
-				rotate_by_orientation(Vector2(corner.x, corner.z), orientation).dot(perp)
+		# The 4 real local corners' own average — for the original 4 side
+		# faces this is exactly the same point Pass A's depth formula used
+		# (their normal-axis value is fixed across all 4, and the other two
+		# axes' +/-1 values average to 0), generalized to a real point on
+		# a horizontal face's own footprint too (its average IS the box's
+		# own horizontal center, at that face's height).
+		var center_local := Vector3.ZERO
+		for mult: Vector3 in corner_mults:
+			var corner_local: Vector3 = (
+				box.center + Vector3(mult.x * half.x, mult.y * half.y, mult.z * half.z)
 			)
+			center_local += corner_local
+			var corner_in_frame: Vector3 = local_transform * corner_local
+			var corner_lateral := Vector2(corner_in_frame.x, corner_in_frame.z)
+			var lateral: float = rotate_by_orientation(corner_lateral, orientation).dot(perp)
 			min_x = minf(min_x, lateral)
 			max_x = maxf(max_x, lateral)
-			min_y = minf(min_y, corner.y)
-			max_y = maxf(max_y, corner.y)
-		if max_x - min_x < _MIN_FACE_WIDTH:
-			continue  # edge-on: a vanishing sliver, not a real target
+			min_y = minf(min_y, corner_in_frame.y)
+			max_y = maxf(max_y, corner_in_frame.y)
+		center_local /= corner_mults.size()
 
-		# Every one of the 4 vertical corners above shares this SAME local
-		# x/z (only y differs) — so this face's own depth-axis center is
-		# already exactly right regardless of tilt; nothing about widening
-		# the rect above changes it.
-		var face_center_local: Vector2 = (corner_a + corner_b) * 0.5
-		var depth: float = rotate_by_orientation(face_center_local, orientation).dot(dir)
+		if max_x - min_x < _MIN_FACE_WIDTH:
+			continue  # laterally edge-on: a vanishing sliver, not a real target
+		# taskblock-36 Pass B: a face genuinely FACING the shooter registers
+		# even with a degenerate height — that's an untilted horizontal
+		# face's own real (if narrow) property in this plane model (its
+		# world height never varies, tilt aside), not a bug to prune; a
+		# straight-down shot against an untilted box's top face is exactly
+		# this case. But a face that only reached here because `hollow`
+		# BYPASSED the "facing away" prune above (`not facing`) still needs
+		# a real footprint in BOTH axes to be a genuine entering/exiting
+		# face — otherwise a level shot's own top/bottom, whose lateral
+		# span is real but whose height is always exactly zero, would leak
+		# through as two extra regions alongside the real entering/exiting
+		# pair.
+		if not facing and max_y - min_y < _MIN_FACE_WIDTH:
+			continue  # perpendicular to the shot, not a real entering/exiting face
+
+		var center_in_frame: Vector3 = local_transform * center_local
+		var center_lateral := Vector2(center_in_frame.x, center_in_frame.z)
+		var depth: float = rotate_by_orientation(center_lateral, orientation).dot(dir)
 		var rect := Rect2(min_x, min_y, max_x - min_x, max_y - min_y)
-		var normal3 := Vector3(world_lateral.x, normal_in_frame.y, world_lateral.y)
 		var region := Region.new(rect, depth, part, normal3)
 		# taskblock-09 E: "the through axis a shot crosses" — the box's own
 		# minimum dimension, regardless of which face got hit (a plate

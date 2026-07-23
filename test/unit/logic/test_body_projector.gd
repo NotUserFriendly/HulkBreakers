@@ -180,6 +180,91 @@ func test_surface_normal_is_the_actual_face_hit_not_always_toward_the_shooter() 
 	assert_eq(flank.surface_normal, Vector3(-1.0, 0.0, 0.0), "flank hit: the side face was hit")
 
 
+## taskblock-36 Pass B headline case: a part tilted 90 degrees about local
+## RIGHT so its local UP now points along world +Z (horizontal, not
+## vertical) -- exactly "Poses.aiming()'s own -45 degree shoulder tilt,
+## taken further." Viewed along that same world-Z axis (an ORDINARY level
+## shot, not a straight-down one), the old four faces (+/-local-X, still
+## world-X-normal and genuinely edge-on to a Z-aligned view; +/-local-Z,
+## now vertical-normal and ALSO genuinely edge-on to a level view) all go
+## edge-on simultaneously -- the old 4-face model had nothing left to show
+## and the shot passed through as if the part weren't there. The new
+## +/-Y faces are exactly what rotated into view: the local -Y face is now
+## a real, non-degenerate wall facing back toward the shooter.
+func test_a_tilted_part_still_projects_when_its_local_up_rotates_into_the_view_axis() -> void:
+	var part := Part.new()
+	part.id = &"tilted_shoulder"
+	part.hp = 5
+	part.max_hp = 5
+	part.volume = [Box.new(Vector3.ZERO, Vector3(0.6, 0.4, 0.3))]
+
+	var tilt := Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)
+	var view_dir := Vector3(0.0, 0.0, 1.0)
+	var regions: Array[Region] = BodyProjector.project_part(part, view_dir, 0.0, tilt)
+
+	var rotated_face: Region = null
+	for region: Region in regions:
+		if region.surface_normal.is_equal_approx(Vector3(0.0, 0.0, -1.0)):
+			rotated_face = region
+	assert_not_null(rotated_face, "the local -Y face, rotated into view, must project — not vanish")
+	assert_gt(rotated_face.rect.size.x, 0.0, "the visible face must have real screen width")
+	assert_gt(rotated_face.rect.size.y, 0.0, "the visible face must have real screen height")
+
+
+## taskblock-36 Pass B: a shooter directly above an untilted box resolves
+## against its TOP face, with the correct surface_normal -- the model's own
+## missing sixth face, now present. `view_dir` keeps a hair of horizontal
+## heading (Pass B doesn't attempt a dead-vertical shot -- that's
+## `resolve_ray`'s own documented, separately-scoped bail); that same hair
+## also exposes one adjacent side face as a genuine (if barely-there)
+## sliver rather than a perfectly-tied edge-on, so this asserts the top
+## face's own presence and shape, not an exact total region count.
+## `rect.size.y` (real world HEIGHT, docs/02 — never re-projected screen
+## space) is correctly zero here: an UNTILTED face's own corners share
+## one exact world height regardless of view angle, tilt aside. Real
+## width, zero height is this model's own honest shape for "looking
+## straight down at a flat top," not a bug — a genuinely TILTED top face
+## (the sibling headline test above) is what gains real height.
+func test_a_shot_from_directly_above_resolves_against_the_top_face() -> void:
+	var part := Part.new()
+	part.id = &"crate"
+	part.hp = 5
+	part.max_hp = 5
+	part.volume = [Box.new(Vector3.ZERO, Vector3(1.0, 0.6, 1.0))]
+
+	var view_dir := Vector3(0.001, -1.0, 0.0)
+	var regions: Array[Region] = BodyProjector.project_part(part, view_dir)
+
+	var top: Region = null
+	for region: Region in regions:
+		if region.surface_normal.is_equal_approx(Vector3(0.0, 1.0, 0.0)):
+			top = region
+	assert_not_null(top, "a shot from directly above must resolve against a real top face")
+	assert_gt(top.rect.size.x, 0.0, "the top face must have real screen width")
+	assert_eq(top.rect.size.y, 0.0, "an untilted top face's own world height never varies")
+
+
+## taskblock-36 Pass B: the hollow far-face rule (tb20 C3) must survive six
+## faces -- entering and exiting the shot's own axis, never the four extra
+## faces that also exist now.
+func test_a_hollow_part_projects_exactly_its_entering_and_exiting_faces_not_four_extra() -> void:
+	var part := Part.new()
+	part.id = &"hollow_shell"
+	part.hp = 5
+	part.max_hp = 5
+	part.hollow = true
+	part.volume = [Box.new(Vector3.ZERO, Vector3(0.6, 0.4, 0.3))]
+
+	var regions: Array[Region] = BodyProjector.project_part(part, Vector3(0, 0.0, -1))
+
+	assert_eq(regions.size(), 2, "only the near and far faces along the shot's own axis")
+	var normals: Array[Vector3] = []
+	for region: Region in regions:
+		normals.append(region.surface_normal)
+	assert_true(normals.has(Vector3(0.0, 0.0, 1.0)), "the entering (near) face")
+	assert_true(normals.has(Vector3(0.0, 0.0, -1.0)), "the exiting (far) face")
+
+
 ## Phase 12.0: Socket.transform makes modularity geometrically real. A box's
 ## `volume` is authored part-local (near its own origin); where it actually
 ## lands is entirely the hosting socket's composed transform.
@@ -528,6 +613,14 @@ func test_a_tilted_parts_surface_normal_gains_a_real_vertical_component() -> voi
 ## pass's"), so this is the regression test for closing that gap, not
 ## just confirming a pre-existing behavior like AIMING's own equivalent
 ## above.
+##
+## taskblock-36 Pass B: PRONE's own tilt (Basis(RIGHT, PI/2), exactly
+## this pass's own headline scenario — a part whose local up rotates
+## horizontal) now reveals a SECOND real face where the old four-face
+## model only ever showed one. That's the fix working, not a regression:
+## a prone torso's real silhouette genuinely has more than one face
+## visible from straight ahead once tilted this far, and the old model
+## had no slot to show it.
 func test_prone_pose_changes_the_projected_shot_plane_vs_idle() -> void:
 	var torso := Part.new()
 	torso.id = &"torso"
@@ -542,12 +635,13 @@ func test_prone_pose_changes_the_projected_shot_plane_vs_idle() -> void:
 	var prone_regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 
 	assert_eq(idle_regions.size(), 1)
-	assert_eq(prone_regions.size(), 1)
-	assert_ne(
-		idle_regions[0].rect.position.y,
-		prone_regions[0].rect.position.y,
-		"PRONE must actually move the torso's own projected height vs IDLE"
-	)
+	assert_eq(prone_regions.size(), 2, "the tilt reveals a second real face, not just one")
+	for prone_region: Region in prone_regions:
+		assert_ne(
+			idle_regions[0].rect.position.y,
+			prone_region.rect.position.y,
+			"PRONE must actually move the torso's own projected height vs IDLE"
+		)
 
 
 func _find_all(regions: Array[Region], part_id: StringName) -> Array[Region]:
