@@ -109,3 +109,20 @@ func test_a_five_ring_weapon_draws_exactly_five_bands() -> void:
 		Ring.new(1.0, 1.0),
 	]
 	assert_eq(_bands_crossed(rings, 128), 5)
+
+
+## tb34 Pass A: `build()` normalizes every distance by `outer_radius`
+## (`px_per_unit = center / outer_radius`) and `dot_radius` is itself a
+## fraction of `outer_radius` — so scaling every ring by a uniform factor
+## scales `world_dist` and every ring boundary identically, and the
+## resulting image is byte-for-byte the same. This is what makes it safe
+## for `AimView`'s own cache to key on ring RATIOS instead of absolute
+## radius (a range change costs a decal resize, never a pixel rebuild).
+func test_output_is_byte_identical_for_rings_scaled_by_a_uniform_factor() -> void:
+	var near: Array[Ring] = [Ring.new(0.2, 0.5), Ring.new(0.5, 1.0), Ring.new(1.0, 2.0)]
+	var far: Array[Ring] = [Ring.new(0.6, 0.5), Ring.new(1.5, 1.0), Ring.new(3.0, 2.0)]  # 3x
+
+	var near_image: Image = DartboardTexture.build(near, Color(1.0, 0.5, 0.25, 1.0), 96)
+	var far_image: Image = DartboardTexture.build(far, Color(1.0, 0.5, 0.25, 1.0), 96)
+
+	assert_eq(near_image.get_data(), far_image.get_data())

@@ -81,7 +81,7 @@ static func resolve(
 		layers,
 		reading,
 		_resolve_hit(reticle, weapon, shooter, target_cell, world),
-		Dartboard.resolve_scatter(weapon, extra_sources)
+		ShotScatter.for_shot(shooter, weapon, target_cell, world, extra_sources)
 	)
 
 

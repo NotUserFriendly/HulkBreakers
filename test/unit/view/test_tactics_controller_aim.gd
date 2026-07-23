@@ -418,6 +418,66 @@ func test_aim_plane_originates_from_the_queued_end_cell_not_the_current_one() ->
 	assert_lt(target_region.depth, 6.0, "must have originated from the queued end cell, not (0,0)")
 
 
+## tb34 Pass A: "aim from where the unit WILL BE" applies to the dartboard's
+## own RANGE too, not just what the reticle resolves against — scatter
+## depends on distance, and with a queued move the distance at aim time
+## isn't the distance at resolution. `aim_state()` already resolves
+## shooter/state from the preview (`selection.previewed_unit()`'s own
+## source); this proves the board built from it actually reflects that,
+## not the turn-start cell.
+func test_aim_boards_range_follows_the_previewed_cell_not_the_turn_start_one() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	a.shell.find_part(&"pistol").weapon_def = WeaponDef.new()
+	a.shell.find_part(&"pistol").weapon_def.effective_range = 2.0
+	a.shell.find_part(&"pistol").weapon_def.max_range = 10.0
+	var b := _make_armed_unit(Vector2i(9, 0), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	a.mp = 10.0
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(9, 0))  # aim from the turn-start cell -- far, degraded
+	var far_aim: Dictionary = controller.aim_state()
+	var far_weapon: Part = DeepStrike.find_operable_weapon(far_aim["shooter"])
+	var far_target: AimTarget = far_aim["target"]
+	var far_point: Vector2 = ShotPlane.center_of(far_aim["plane"], far_target.unit)
+	var far_result: AimResult = AimController.resolve(
+		far_aim["plane"],
+		far_point,
+		controller.layer_index,
+		far_weapon,
+		far_aim["shooter"],
+		far_target.cell,
+		far_aim["state"]
+	)
+	controller.cancel_aim()
+
+	controller.click_cell(Vector2i(7, 0))  # queue a move much closer to b, still just queued
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(9, 0))  # re-aim from the queued end position
+	var near_aim: Dictionary = controller.aim_state()
+	var near_weapon: Part = DeepStrike.find_operable_weapon(near_aim["shooter"])
+	var near_target: AimTarget = near_aim["target"]
+	var near_point: Vector2 = ShotPlane.center_of(near_aim["plane"], near_target.unit)
+	var near_result: AimResult = AimController.resolve(
+		near_aim["plane"],
+		near_point,
+		controller.layer_index,
+		near_weapon,
+		near_aim["shooter"],
+		near_target.cell,
+		near_aim["state"]
+	)
+
+	assert_eq(a.cell, Vector2i(0, 0), "still just queued -- the real unit has not moved")
+	assert_gt(
+		far_result.rings[0].radius,
+		near_result.rings[0].radius,
+		"the board must widen from the far turn-start cell and tighten from the queued, near one"
+	)
+
+
 ## docs/10 taskblock03 D5: "a queued move behind cover changes what the
 ## reticle resolves to, before resolution." The wall sits on column x == 2,
 ## between shooter and target. The shooter's ORIGINAL cell (0,0) shoots at

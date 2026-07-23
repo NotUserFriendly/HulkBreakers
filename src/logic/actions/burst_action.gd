@@ -119,10 +119,13 @@ func apply(state: CombatState) -> void:
 	var direction := Vector2(target_cell) - origin
 	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
 	var aim_point: Vector2 = (
-		ShotPlane.center_of(plane, target)
-		if target != null
-		else ShotPlane.center_of_part(plane, target_part, target_cell)
-	) + aim_offset
+		(
+			ShotPlane.center_of(plane, target)
+			if target != null
+			else ShotPlane.center_of_part(plane, target_part, target_cell)
+		)
+		+ aim_offset
+	)
 	# taskblock-22 Pass H2: same self-obstruction check as AttackAction's
 	# own (see its doc comment) — computed once here too, since every
 	# pull in the burst reuses this same aim_point, a burst fired from
@@ -131,7 +134,6 @@ func apply(state: CombatState) -> void:
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
-	var radius_multiplier: float = RangeModel.dartboard_radius_scale(weapon, range_cells)
 	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 
 	# docs/08: the same resolved numbers a tooltip would show, never a raw
@@ -191,8 +193,8 @@ func apply(state: CombatState) -> void:
 		# by one more cumulative recoil step — resets to 0 automatically
 		# next activation, since `pull` is this loop's own local counter,
 		# never carried on the weapon/unit between calls.
-		var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(
-			weapon, extra_sources, radius_multiplier
+		var resolved_scatter: Array[Ring] = ShotScatter.for_shot(
+			actual, weapon, target_cell, state, extra_sources
 		)
 		var widened_scatter: Array[Ring] = RecoilResolver.widen(resolved_scatter, recoil_step, pull)
 		var pull_point: Vector2 = Dartboard.sample(aim_point, widened_scatter, state.rng, 1)[0]

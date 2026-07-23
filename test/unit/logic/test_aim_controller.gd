@@ -196,6 +196,34 @@ func test_one_ring_and_five_ring_weapons_render_the_correct_ring_counts() -> voi
 	)
 
 
+## tb34 Pass A (BR34's own root bug): the drawn board used to be flat
+## 1.0x accuracy always — `resolve()` called `Dartboard.resolve_scatter`
+## with no range multiplier at all, while every real shot (`AttackAction`/
+## `BurstAction`) widened correctly with range. Asserted directly against
+## `ShotScatter.for_shot` (the SAME primitive `resolve()` itself now calls),
+## never a second re-derivation of the range math — the whole point is
+## that the two can no longer independently disagree, by construction.
+func test_resolve_widens_the_drawn_rings_to_match_a_fired_shots_scatter() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var far_unit := _standing_unit(&"far", 0.5, Vector2i(2, 8))
+	state.add_unit(far_unit)
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var shooter := _shooter_unit(Vector2i(2, 0))
+	var weapon := _weapon([Ring.new(0.1, 1.0)])
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.effective_range = 2.0
+	weapon.weapon_def.max_range = 10.0
+
+	var result: AimResult = AimController.resolve(
+		plane, Vector2(0, 0.5), 0, weapon, shooter, far_unit.cell, state
+	)
+	var expected: Array[Ring] = ShotScatter.for_shot(shooter, weapon, far_unit.cell, state)
+
+	assert_gt(result.rings[0].radius, 0.1, "the drawn board must widen beyond effective range")
+	assert_almost_eq(result.rings[0].radius, expected[0].radius, 0.0001)
+
+
 func test_layer_count_matches_the_number_of_distinct_bodies() -> void:
 	var grid := Grid.new(10, 10)
 	var state := (
@@ -297,7 +325,9 @@ func test_window_depth_ignores_other_layers_even_when_nearer_or_farther() -> voi
 
 	var depth: float = AimController.window_depth(layers, &"target", 6.0, 0.05, 0.3)
 
-	assert_almost_eq(depth, 2.0 - 0.05, 0.0001, "must anchor to the target's own layer, not any other")
+	assert_almost_eq(
+		depth, 2.0 - 0.05, 0.0001, "must anchor to the target's own layer, not any other"
+	)
 
 
 ## taskblock-08 B2/TESTS: a target whose own nearest depth sits at or below

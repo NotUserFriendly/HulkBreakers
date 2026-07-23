@@ -149,10 +149,13 @@ func apply(state: CombatState) -> void:
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = (
-		ShotPlane.center_of(plane, target)
-		if target != null
-		else ShotPlane.center_of_part(plane, target_part, target_cell)
-	) + aim_offset
+		(
+			ShotPlane.center_of(plane, target)
+			if target != null
+			else ShotPlane.center_of_part(plane, target_part, target_cell)
+		)
+		+ aim_offset
+	)
 	# taskblock-22 Pass H2: "low cover interrupts the covered unit's own
 	# shots... the shot's ray originates and immediately hits the cover
 	# if the muzzle is below the cover's height." The real shot-plane
@@ -169,8 +172,8 @@ func apply(state: CombatState) -> void:
 	var muzzle_hit: Region = ShotPlane.self_obstruction(plane, muzzle.y, actual.shell.all_parts())
 	if muzzle_hit != null and not (muzzle_hit.body is Unit):
 		aim_point = Vector2(0.0, muzzle.y) + aim_offset
-	var resolved_scatter: Array[Ring] = Dartboard.resolve_scatter(
-		weapon, extra_sources, RangeModel.dartboard_radius_scale(weapon, range_cells)
+	var resolved_scatter: Array[Ring] = ShotScatter.for_shot(
+		actual, weapon, target_cell, state, extra_sources
 	)
 	var points: Array[Vector2] = Dartboard.sample(
 		aim_point, resolved_scatter, state.rng, weapon.burst
