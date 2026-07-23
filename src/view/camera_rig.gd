@@ -139,6 +139,25 @@ func ease_to_attack_framing(shooter_sphere: Dictionary, target_sphere: Dictionar
 	_ease_to(framing.yaw, framing.pitch, framing.zoom, framing.pan_offset)
 
 
+## tb34 Pass D: the real entry point for entering aim — picks between the
+## two framings by distance (`CameraOrbitState.SNIPER_FRAME_DISTANCE`, a
+## tunable, never a literal here), then eases through the exact same
+## shared tween `ease_to_attack_framing` itself uses (`_ease_to`), never a
+## second easing path. `ease_to_attack_framing` stays the plain, always-
+## over-the-shoulder primitive underneath — every existing caller/test of
+## it is unaffected; this is a new, additional entry point, not a
+## replacement.
+func ease_to_framing(
+	shooter_sphere: Dictionary, target_sphere: Dictionary, distance_cells: int
+) -> void:
+	var framing: Dictionary = (
+		state.sniper_framing(target_sphere)
+		if distance_cells > CameraOrbitState.SNIPER_FRAME_DISTANCE
+		else state.attack_framing(shooter_sphere, target_sphere)
+	)
+	_ease_to(framing.yaw, framing.pitch, framing.zoom, framing.pan_offset)
+
+
 ## taskblock-27 Pass D4: the shared tween both `ease_to_attack_framing`
 ## and `stop_aiming`'s own restore now drive — factored out so "ease to
 ## some target framing" is one real implementation, not two copies that

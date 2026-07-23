@@ -275,3 +275,93 @@ func test_mid_tween_the_camera_never_gets_close_to_the_shooter() -> void:
 			MIN_CLEARANCE,
 			"clearance %.2f at t=%.2f must not sweep through the shooter" % [clearance, fraction]
 		)
+
+
+## tb34 Pass D: "over the shoulder reads poorly at range" — beyond the
+## sniper threshold, the target must still center on screen, same
+## real-node-readback proof as `test_ease_to_attack_framing_centers_the_
+## target_on_screen`, and again on a genuinely diagonal pair (not sharing
+## a row or column) — the exact case that survived a full suite of
+## row/column-aligned hand-written cases before (docs/10's own why for the
+## read-the-real-node-back rule).
+func test_ease_to_framing_beyond_the_threshold_centers_the_target_on_screen() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var shooter := _make_unit(Vector2i(2, 3))
+	var target := _make_unit(Vector2i(9, 15))  # diagonal, well past the sniper threshold
+
+	var distance: int = Grid.distance_chebyshev(shooter.cell, target.cell)
+	assert_gt(distance, CameraOrbitState.SNIPER_FRAME_DISTANCE, "sanity: genuinely past threshold")
+	rig.ease_to_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target), distance
+	)
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	var camera: Camera3D = rig.camera()
+	var target_center: Vector3 = UnitGeometry.bounding_sphere(target).center
+	var screen_pos: Vector2 = camera.unproject_position(target_center)
+	var viewport_size: Vector2 = Vector2(rig.get_viewport().size)
+	assert_almost_eq(screen_pos.x, viewport_size.x * 0.5, 1.0)
+	assert_almost_eq(screen_pos.y, viewport_size.y * 0.5, 1.0)
+
+
+## A target INSIDE the threshold must produce the exact same framing
+## ease_to_attack_framing alone already would — the distance branch must
+## never perturb the close-range case, not even by a whisker.
+func test_ease_to_framing_within_the_threshold_matches_attack_framing_unchanged() -> void:
+	var shooter := _make_unit(Vector2i(2, 3))
+	var target := _make_unit(Vector2i(4, 4))  # well inside the threshold
+	var distance: int = Grid.distance_chebyshev(shooter.cell, target.cell)
+	assert_lt(
+		distance, CameraOrbitState.SNIPER_FRAME_DISTANCE, "sanity: genuinely inside threshold"
+	)
+
+	var plain_rig := CameraRig.new()
+	add_child_autofree(plain_rig)
+	plain_rig.ease_to_attack_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target)
+	)
+	plain_rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	var branched_rig := CameraRig.new()
+	add_child_autofree(branched_rig)
+	branched_rig.ease_to_framing(
+		UnitGeometry.bounding_sphere(shooter), UnitGeometry.bounding_sphere(target), distance
+	)
+	branched_rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	assert_true(
+		plain_rig.camera().global_transform.is_equal_approx(branched_rig.camera().global_transform),
+		(
+			"inside the threshold, ease_to_framing must land the camera exactly where plain "
+			+ "ease_to_attack_framing does"
+		)
+	)
+
+
+func test_sniper_frame_distance_is_a_named_tunable() -> void:
+	assert_eq(
+		CameraOrbitState.SNIPER_FRAME_DISTANCE,
+		5,
+		"a named constant callers reference, never a literal repeated at each call site"
+	)
+
+
+## "both framings ease through the one shared tween" — a beyond-threshold
+## call must start the same real Tween ease_to_attack_framing itself uses,
+## never a second easing path, and never an instant cut.
+func test_ease_to_framing_beyond_the_threshold_still_uses_the_shared_tween() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var shooter := _make_unit(Vector2i(0, 0))
+	var target := _make_unit(Vector2i(20, 0))
+	var zoom_before: float = rig.state.zoom
+
+	rig.ease_to_framing(
+		UnitGeometry.bounding_sphere(shooter),
+		UnitGeometry.bounding_sphere(target),
+		Grid.distance_chebyshev(shooter.cell, target.cell)
+	)
+
+	assert_not_null(rig._active_tween)
+	assert_eq(rig.state.zoom, zoom_before, "the state itself doesn't jump on the same frame")

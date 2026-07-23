@@ -745,8 +745,12 @@ func _enter_aim_mode(target: AimTarget) -> void:
 		if target.unit != null
 		else UnitGeometry.bounding_sphere_for_part(target.part, target.cell)
 	)
-	camera_rig.ease_to_attack_framing(
-		UnitGeometry.bounding_sphere(_framing_shooter()), target_sphere
+	# tb34 Pass D: sniper framing beyond CameraOrbitState.SNIPER_FRAME_
+	# DISTANCE cells — Chebyshev, the same distance convention every
+	# range/threshold check elsewhere in this codebase already uses.
+	var distance_cells: int = Grid.distance_chebyshev(_framing_shooter().cell, target.cell)
+	camera_rig.ease_to_framing(
+		UnitGeometry.bounding_sphere(_framing_shooter()), target_sphere, distance_cells
 	)
 	aim_changed.emit()
 
