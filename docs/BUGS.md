@@ -855,6 +855,40 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - Likely the same neighbourhood as tb35 Pass B's depth floor and the `&"miss"` handling in
   `ResolutionPlayer`/`shot_resolution.gd` — check whether a miss even builds a continuation ray, or
   simply stops.
+- **2026-07-23 (tb35 Pass B2 — root-caused and reproduced, not fixed)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. `resolve_shot` does build a real continuation — the
+  question was never "does it try," it genuinely finds nothing to hit in some cases. Reproduced
+  directly: fired hundreds of simulated shots (`DamageResolver.resolve_shot`) from a unit standing in
+  a fully-walled room (real `grid.blockers` Parts on every perimeter cell, both a hand-built room and
+  real `BoutSetup`-generated maps) with a wide range of aim points. At an ordinary/tight lateral
+  offset (|x| under ~1 unit — the range any single weapon's own authored scatter ring realistically
+  produces), **zero** shots vanished, before or after this taskblock's own depth-floor fix — so this
+  is a genuinely different defect from BR34.06/BR27.02, not the same one re-surfacing. Once the
+  lateral offset is pushed wide (|x| beyond ~4-5 units), misses start appearing reliably (56/200 at
+  |x| up to 8) — **`ShotPlane.build` projects each wall cell as its own independent rect; adjacent
+  cells' projected rects are not guaranteed to tile edge-to-edge from an arbitrary shooter angle, so a
+  sufficiently wide lateral offset can thread a real gap between them and pass clean through, even
+  though the room is genuinely enclosed.**
+  - **Why a real weapon can reach that range:** a burst's own scatter widens per pull
+    (`RecoilResolver.widen`, `factor = 1.0 + resolved_step * recoil_step`) — a late pull in a long
+    burst (the chaingun bursts logged elsewhere in this file routinely run 20-30 pulls) can multiply
+    the base outer ring (chaingun: `0.6`) several times over, and `RangeModel.dartboard_radius_scale`
+    widens it further at long range (up to `1.0 / ACCURACY_FLOOR ≈ 2.86x`). The two compound: a late
+    pull of a long burst fired at range is exactly the shape of shot most likely to reach the lateral
+    offsets that expose this gap — and exactly the shape of shot ("the most recent chaingun bursts")
+    this ledger already has several live reports about.
+  - **The supervisor's own "or the floor" half of the design rule has no geometry to hit at all** —
+    `ShotPlane.build` only ever projects `state.units` and `state.grid.blockers`; there is no modeled
+    floor/ground-plane Region anywhere in this system. That half of the fix is a real feature gap, not
+    a bug in existing code.
+  - **Not fixed this pass — needs a design call, not an invented number.** This touches `ShotPlane`/
+    `BodyProjector`, the shared geometry every single shot in the game resolves against; three
+    directions, not picked between: (a) make adjacent same-material blocker cells project as one
+    contiguous rect run instead of independent per-cell boxes, closing the seam at the source: (b) cap
+    dartboard scatter radius (post-recoil, post-range-widen) at some bound that guarantees plane
+    coverage — a real balance number, not this session's to invent; (c) add a genuine floor Region so
+    at least the "hits the floor" half of the design rule has something to resolve against. Flagging
+    for supervisor/design input rather than guessing.
 ### BR34.06 — Pending — owner: `SUPERVISOR`
 **AI passes its turn, in bout matches only — BLOCKER**
 - **Source:** `SUPERVISOR`
