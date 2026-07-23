@@ -461,6 +461,39 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
+### Review pass over the test suite
+**Needs:** nothing.
+
+2038 test functions across 214 files run on every change, and the suite has never been audited as a
+whole — only ever added to. The suspicion is that a meaningful share is redundant, exercises systems
+that have since been retired or reshaped, or asserts an old model's own limitations rather than a real
+invariant.
+
+That last category is the dangerous one and it has a proven instance: tb36 found
+`test_prone_pose_changes_the_projected_shot_plane_vs_idle` asserting exactly one projected region,
+which encoded the four-face model's *gap* as though it were a rule. It passed for fifteen taskblocks
+while a prone unit was, in real play, unhittable from the front. **A test that pins a bug is worse than
+no test** — it converts a defect into a defended invariant, and every future change that would have
+fixed it looks like a regression instead.
+
+Concrete starting signals, not a full audit:
+- **`checkpoint` appears in 6 test files** — that ritual is retired (`SUPERSEDED.md`); `test_checkpoint_
+  1–4.gd` survive as ordinary regression tests but are still named for a mechanism nobody runs, and the
+  rename is already scoped in the checkpoint-machinery item.
+- **`vertical_slope` and `grid.height` each still appear in a test file**, both retired in tb36 — worth
+  confirming those are deliberate historical references (the `grid.height` one is the rename's own
+  guard test, which necessarily quotes the banned string) rather than stragglers.
+- **Five files exceed 850 lines** (`test_unit_ai`, `test_body_projector`, `test_damage_resolver`,
+  `test_resolution_player`, `test_inspect_panel`) — worth checking whether they've accreted overlapping
+  coverage of the same paths, since several were split at gdlint's cap rather than along a seam.
+
+**Deliverable is a written audit, not a deletion spree.** Per test or cluster: what it covers, whether
+anything else already covers it, and whether it asserts a real invariant or an implementation
+accident. **Deleting a redundant test and deleting the only test of a real rule look identical in the
+diff** — so a test found genuinely load-bearing is a result worth recording, exactly like the
+correct-as-is findings in the tb35 wall audit. Runtime is a secondary benefit; correctness of what the
+suite *claims* is the point.
+
 ### Retire the checkpoint machinery
 **Needs:** nothing.
 
