@@ -224,6 +224,127 @@ func test_resolve_widens_the_drawn_rings_to_match_a_fired_shots_scatter() -> voi
 	assert_almost_eq(result.rings[0].radius, expected[0].radius, 0.0001)
 
 
+## tb34 Pass B: the widest pull's own bound, matched against the exact
+## `RecoilResolver.widen` call `BurstAction` itself resolves through pull
+## by pull (`burst_size - 1`, the last pull of the activation) -- never a
+## re-derived recoil number.
+func test_recoil_bound_radius_matches_recoil_resolver_widen_at_the_widest_pull() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.damage = 5.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.burst_size = 6
+
+	var bound: float = AimController.recoil_bound_radius(weapon.scatter, weapon, true)
+
+	var damage: float = WeaponResolver.resolve_damage(weapon, []).current
+	var resolved_step: float = WeaponResolver.resolve_recoil_step(weapon, damage, []).current
+	var widened: Array[Ring] = RecoilResolver.widen(weapon.scatter, resolved_step, 5)
+	assert_almost_eq(bound, widened[0].radius, 0.0001)
+	assert_gt(bound, weapon.scatter[0].radius, "the bound must genuinely widen past the plain ring")
+
+
+func test_recoil_bound_radius_is_zero_when_the_armed_action_is_not_burst() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.damage = 5.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.burst_size = 6
+
+	assert_almost_eq(
+		AimController.recoil_bound_radius(weapon.scatter, weapon, false),
+		0.0,
+		0.0001,
+		"a weapon that CAN burst but isn't currently armed to must draw no bound"
+	)
+
+
+func test_recoil_bound_radius_is_zero_for_a_single_pull_weapon() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.damage = 5.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.burst_size = 1
+
+	assert_almost_eq(AimController.recoil_bound_radius(weapon.scatter, weapon, true), 0.0, 0.0001)
+
+
+## Degenerate case the taskblock itself calls out: negligible recoil
+## widens the ring by an amount that rounds away to nothing -- the bound
+## would coincide with the plain outer ring, a doubled edge worse than no
+## bound at all, so this must collapse to "nothing to draw."
+func test_recoil_bound_radius_is_zero_when_recoil_is_negligible() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.damage = 0.0
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.burst_size = 6
+
+	assert_almost_eq(AimController.recoil_bound_radius(weapon.scatter, weapon, true), 0.0, 0.0001)
+
+
+func test_pellet_circle_radius_matches_spread_patterns_own_resolved_size() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.ammo_id = &"12ga_buckshot"
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.mechanical_accuracy = 0.5  # a perfect 1.0 collapses the pattern to zero
+
+	var radius: float = AimController.pellet_circle_radius(weapon)
+
+	assert_almost_eq(radius, SpreadPattern.pattern_radius(weapon), 0.0001)
+	assert_gt(radius, 0.0, "a real pellet weapon must produce a real circle size")
+
+
+func test_pellet_circle_radius_is_zero_for_a_single_projectile_weapon() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.ammo_id = &"556x45_fmj"
+	weapon.weapon_def = WeaponDef.new()
+
+	assert_almost_eq(
+		AimController.pellet_circle_radius(weapon),
+		0.0,
+		0.0001,
+		"a single-projectile round must keep the plain dot, never a circle"
+	)
+
+
+func test_pellet_circle_radius_is_zero_with_no_ammo_id_at_all() -> void:
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.weapon_def = WeaponDef.new()
+
+	assert_almost_eq(AimController.pellet_circle_radius(weapon), 0.0, 0.0001)
+
+
+## The end-to-end proof: resolve() itself carries both new elements into
+## the AimResult it hands the view, armed with the actual burst action id.
+func test_resolve_carries_the_recoil_bound_and_pellet_circle_into_the_result() -> void:
+	var grid := Grid.new(10, 10)
+	var state := CombatState.new(grid)
+	var far_unit := _standing_unit(&"far", 0.5, Vector2i(2, 6))
+	state.add_unit(far_unit)
+	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var shooter := _shooter_unit(Vector2i(2, 0))
+	var weapon := _weapon([Ring.new(0.05, 1.0)])
+	weapon.damage = 5.0
+	weapon.ammo_id = &"12ga_buckshot"
+	weapon.weapon_def = WeaponDef.new()
+	weapon.weapon_def.burst_size = 6
+	weapon.weapon_def.mechanical_accuracy = 0.5
+
+	var burst_result: AimResult = AimController.resolve(
+		plane, Vector2(0, 0.5), 0, weapon, shooter, far_unit.cell, state, [], &"burst"
+	)
+	var shoot_result: AimResult = AimController.resolve(
+		plane, Vector2(0, 0.5), 0, weapon, shooter, far_unit.cell, state, [], &"shoot"
+	)
+
+	assert_gt(burst_result.recoil_bound_radius, 0.0, "armed to burst -- must carry a real bound")
+	assert_almost_eq(
+		shoot_result.recoil_bound_radius,
+		0.0,
+		0.0001,
+		"armed to a plain shoot -- the same weapon must draw no bound"
+	)
+	assert_gt(burst_result.pellet_circle_radius, 0.0, "a pellet weapon must carry a real circle")
+	assert_almost_eq(shoot_result.pellet_circle_radius, burst_result.pellet_circle_radius, 0.0001)
+
+
 func test_layer_count_matches_the_number_of_distinct_bodies() -> void:
 	var grid := Grid.new(10, 10)
 	var state := (

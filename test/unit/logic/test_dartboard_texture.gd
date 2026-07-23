@@ -126,3 +126,52 @@ func test_output_is_byte_identical_for_rings_scaled_by_a_uniform_factor() -> voi
 	var far_image: Image = DartboardTexture.build(far, Color(1.0, 0.5, 0.25, 1.0), 96)
 
 	assert_eq(near_image.get_data(), far_image.get_data())
+
+
+## tb34 Pass B: a recoil bound beyond the weighted rings' own outer radius
+## draws a crisp ring at exactly that radius, extending the canvas so it
+## isn't clipped -- and the SAME uniform-scale invariance Pass A relies on
+## must still hold with a bound present (both rings and bound scale
+## together, since the bound is `outer_radius * a weapon-constant factor`).
+func test_a_bound_beyond_the_rings_draws_a_visible_ring_there() -> void:
+	var rings: Array[Ring] = [Ring.new(0.5, 1.0)]
+	var image: Image = DartboardTexture.build(rings, Color(1.0, 1.0, 1.0, 1.0), 128, 1.0)
+
+	# At world radius 1.0 (the bound), on a 128px image whose canvas now
+	# spans out to 1.0 (64 px per unit) -- the last valid pixel (127) sits
+	# just inside that edge, still within the bound's own crisp band.
+	var at_bound: Color = image.get_pixel(127, 64)
+	# Between the weighted ring (0.5) and the bound (1.0) -- otherwise
+	# empty space the bound now reads clearly against.
+	var dead_zone: Color = image.get_pixel(64 + 48, 64)
+	assert_true(at_bound.a > 0.5, "the bound ring itself must be clearly visible")
+	assert_almost_eq(dead_zone.a, 0.0, 0.01, "between the rings and the bound must stay empty")
+
+
+func test_no_bound_ring_drawn_when_bound_radius_is_within_the_weighted_rings() -> void:
+	var rings: Array[Ring] = [Ring.new(1.0, 1.0)]
+	var with_bound: Image = DartboardTexture.build(rings, Color(1.0, 1.0, 1.0, 1.0), 128, 0.5)
+	var without_bound: Image = DartboardTexture.build(rings, Color(1.0, 1.0, 1.0, 1.0), 128, 0.0)
+
+	assert_eq(
+		with_bound.get_data(),
+		without_bound.get_data(),
+		"a bound that doesn't reach past the weighted rings must draw nothing extra"
+	)
+
+
+func test_output_with_a_bound_is_still_byte_identical_under_a_uniform_rescale() -> void:
+	var near: Array[Ring] = [Ring.new(0.2, 0.5), Ring.new(0.5, 1.0)]
+	var far: Array[Ring] = [Ring.new(0.6, 0.5), Ring.new(1.5, 1.0)]  # 3x, same as the bound below
+
+	var near_image: Image = DartboardTexture.build(near, Color(1.0, 0.5, 0.25, 1.0), 96, 0.8)
+	var far_image: Image = DartboardTexture.build(far, Color(1.0, 0.5, 0.25, 1.0), 96, 2.4)
+
+	assert_eq(near_image.get_data(), far_image.get_data())
+
+
+func test_build_solid_dot_is_fully_opaque_inside_and_transparent_outside() -> void:
+	var image: Image = DartboardTexture.build_solid_dot(Color(1.0, 0.0, 0.0, 1.0), 64)
+
+	assert_almost_eq(image.get_pixel(32, 32).a, 1.0, 0.0001, "dead center must be fully opaque")
+	assert_almost_eq(image.get_pixel(0, 0).a, 0.0, 0.0001, "the image's own corner must stay empty")

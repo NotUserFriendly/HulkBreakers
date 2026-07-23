@@ -39,26 +39,46 @@ const EDGE_WIDTH_FRACTION := 0.05
 const DOT_ALPHA := 1.0
 const DOT_RADIUS_FRACTION := 0.06
 
+## tb34 Pass B: burst recoil's own outer bound — the widest pull's ring
+## (`AimController.recoil_bound_radius`), drawn as a crisp OUTLINE only
+## (no probability fill), visually distinct from the weighted bands so it
+## reads as a bound, not one more band. Weapon-constant (its ratio to the
+## weighted rings' own outer radius never varies with range — see that
+## function's own doc comment), so baking it into this same cached
+## texture is safe, unlike Pass B's OTHER new element (the pellet-spread
+## circle), whose ratio to the outer ring genuinely does vary with range
+## and must stay a separate, un-cached overlay instead.
+const BOUND_RING_ALPHA := 0.9
+const BOUND_RING_WIDTH_FRACTION := 0.02
+
 
 ## One RGBA Image, `size` x `size` pixels: a central aiming dot plus
 ## alpha-weighted concentric ring bands (transparent outside the
 ## outermost ring) over `color`'s own RGB. Rings are assumed ascending by
 ## radius (Dartboard.resolve_scatter's own convention). The outermost
-## ring exactly touches the image edge (radius = size/2 in pixels) — a
-## caller sizes the world quad/Decal to `2 * rings.back().radius` so
-## texture space maps 1:1 onto world space, no separate scale factor to
-## keep in sync.
-static func build(rings: Array[Ring], color: Color, size: int = DEFAULT_SIZE) -> Image:
+## ring exactly touches the image edge (radius = size/2 in pixels) UNLESS
+## `bound_radius` reaches farther, in which case bound_radius does instead
+## (0.0, the default, means "no bound to draw" — every ratio/edge
+## computation below collapses to the pre-tb34-Pass-B behavior exactly).
+## A caller sizes the world quad/Decal to `2 * max(rings.back().radius,
+## bound_radius)` so texture space maps 1:1 onto world space, no separate
+## scale factor to keep in sync.
+static func build(
+	rings: Array[Ring], color: Color, size: int = DEFAULT_SIZE, bound_radius: float = 0.0
+) -> Image:
 	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
 	if rings.is_empty():
 		return image
-	var outer_radius: float = rings[rings.size() - 1].radius
-	if outer_radius <= 0.0:
+	var rings_outer: float = rings[rings.size() - 1].radius
+	if rings_outer <= 0.0:
 		return image
+	var canvas_radius: float = maxf(rings_outer, bound_radius)
 	var center: float = size / 2.0
-	var px_per_unit: float = center / outer_radius
+	var px_per_unit: float = center / canvas_radius
 	var max_weight: float = _max_weight(rings)
-	var dot_radius: float = outer_radius * DOT_RADIUS_FRACTION
+	var dot_radius: float = rings_outer * DOT_RADIUS_FRACTION
+	var draw_bound: bool = bound_radius > rings_outer
+	var bound_band: float = bound_radius * BOUND_RING_WIDTH_FRACTION
 
 	for y in range(size):
 		for x in range(size):
@@ -70,11 +90,36 @@ static func build(rings: Array[Ring], color: Color, size: int = DEFAULT_SIZE) ->
 				image.set_pixel(x, y, Color(color.r, color.g, color.b, DOT_ALPHA * color.a))
 				continue
 
+			if draw_bound and absf(world_dist - bound_radius) <= bound_band:
+				image.set_pixel(x, y, Color(color.r, color.g, color.b, BOUND_RING_ALPHA * color.a))
+				continue
+
 			var ring_index: int = _ring_index_at(rings, world_dist)
 			if ring_index < 0:
 				continue
 			var alpha: float = _alpha_at(rings, ring_index, world_dist, max_weight)
 			image.set_pixel(x, y, Color(color.r, color.g, color.b, alpha * color.a))
+	return image
+
+
+## tb34 Pass B: a plain, fully-opaque filled circle exactly touching the
+## image edge (radius = size/2) — the pellet-spread overlay's own texture,
+## kept deliberately separate from `build()`'s own ring machinery. The
+## overlay's WORLD size (the caller's own quad sizing) is what encodes
+## `SpreadPattern.pattern_radius`, never this image's own content, which
+## never varies — cacheable once, forever, unlike the range-aware ring
+## texture above (which is exactly why the pellet circle can't just be a
+## bigger baked-in dot: its ratio to the range-scaled outer ring isn't
+## constant, but this image never needs a ratio at all).
+static func build_solid_dot(color: Color, size: int = DEFAULT_SIZE) -> Image:
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var center: float = size / 2.0
+	for y in range(size):
+		for x in range(size):
+			var dx: float = (x + 0.5) - center
+			var dy: float = (y + 0.5) - center
+			if sqrt(dx * dx + dy * dy) <= center:
+				image.set_pixel(x, y, color)
 	return image
 
 
