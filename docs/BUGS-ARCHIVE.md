@@ -1137,3 +1137,43 @@ same relative order this ledger has always kept them in, oldest work first. All 
   drawn tracer — stays Active, one entry, pending a live look at an actual burst's own tracer.
 - **RESOLVED** [CC 16507d21-1035-4b1c-a0fe-72a911df7403] — confirmed live by the supervisor (2026-07-23), after watching a dozen real bursts post-depth-floor-fix.
 
+
+### BR36.01 — Resolved — owner: `CC`
+**A shooter's own `exclude_parts` list never covers its own joint regions — a self-hit is possible**
+- **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Found:** 2026-07-23, while building a supervisor-requested diagnostic for tb36 (raise a unit a
+  level and shoot it). `BodyProjector._project_joint` emits one synthetic joint `Region` per occupied
+  socket, identified by `region.part = socket.joint_handle()` — a `Part`-like object cached per
+  socket, distinct from the real occupant `Part` and never walked by `PartGraph.walk`
+  (`Shell.all_parts()`'s own backing). Every exclusion list built the obvious way
+  (`shooter.shell.all_parts()`, the pattern `AttackAction`/`BurstAction`/melee actions/`Overwatch`
+  all use to keep a shooter from self-intercepting its own shot) therefore **never excludes the
+  shooter's own joint regions**. Reproduced directly: a shooter and target placed on the same
+  lateral line, firing a ray built from a real muzzle point excluding `shooter.shell.all_parts()`,
+  resolved to the shooter's OWN `"<part>_joint"` region at a near-zero flight distance instead of
+  the target 8 cells downrange — confirmed by additionally collecting every `socket.joint_handle()`
+  in the shooter's own tree, which made the same ray resolve correctly against the target instead.
+- **Why this can reach a real shot, not just a synthetic test:** it requires the shooter's own real
+  muzzle position to sit BEHIND one of its own occupied-socket joints along the firing axis — an
+  idle (non-aiming) pose, where the weapon arm isn't extended forward of the torso/shoulder, is
+  exactly the shape of geometry where that's plausible.
+- **Not fixed at the time of discovery** — found investigating tb36's own multi-level work, not
+  introduced by it (`joint_handle()`/`_project_joint` predate tb36 by several taskblocks, tb09 D).
+  Flagged rather than guessed at under time pressure.
+- **RESOLVED** taskblock-37 Pass B. Fixed at the source with a new
+  `PartGraph.walk_with_joints()`/`Shell.all_parts_with_joints()` — deliberately a NEW method, not a
+  change to `walk()`/`all_parts()` themselves (those back `living_parts()`'s hp>0 filter among other
+  things, and a `joint_handle()` Part's own hp defaults to 1 and is never touched by joint damage,
+  which lands on `socket.joint_hp` instead — repurposing `all_parts()` directly would make every
+  unit's own joints read as permanently-living parts and break every `living_parts().is_empty()` kill
+  check in the game). Used by all six self-exclusion call sites (`AttackAction`, `BurstAction`,
+  `StabAction`, `Overwatch` x2, `ShotResolution`'s first-hop exclusion) and by
+  `DamageResolver._body_of` (a ricochet's own continuation exclusion — the same self-re-hit gap,
+  reached mid-flight instead of at the muzzle).
+- **Live-fire finding, not just a synthetic repro:** the seeded all-level-0 regression bout
+  (`test_full_mission.gd`) was NOT byte-identical after this pass — isolated to the `_body_of` fix
+  alone (every other site is inert in this exact bout). The bug was reachable via ricochet all along,
+  at level 0, with no elevation involved: a shot that deflects off a body could previously re-resolve
+  to that SAME body's own joint region at point-blank range instead of continuing its flight. One
+  early ricochet in the mission now travels much further before its next impact, cascading into a
+  materially different (but more correct) mission outcome.
