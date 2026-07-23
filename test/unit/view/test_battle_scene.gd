@@ -641,3 +641,37 @@ func test_generate_bout_overlay_assume_control_checkbox_lands_on_squad_control()
 	assert_true(scene.overlay is SquadControlOverlay)
 	assert_eq(scene.combat_state.controller_for(0), Enums.SquadController.HUMAN)
 	assert_eq(scene.combat_state.controller_for(1), Enums.SquadController.AI)
+
+
+## tb35 Pass D (BR32.01/BR32.03): "a stray cutout at a cell with no unit"
+## and "carried over from a previous bout" are one defect — `wall_cutout_
+## units` used to be set only inside `SquadControlOverlay`'s own
+## `battle_loaded` handler, so a bout loaded while `SpectatorOverlay` (the
+## default) was active never got a feed at all: `load_battle()` must
+## re-point it itself, for every overlay, every bout.
+func test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.set_overlay(SpectatorOverlay.new())
+
+	scene.new_battle(1)
+	var first_units: Array[Unit] = scene.combat_state.units
+
+	assert_eq(
+		scene.board_view.wall_cutout_units,
+		first_units,
+		"the feed must point at the just-loaded bout's own units, in spectator mode too"
+	)
+
+	scene.new_battle(2)
+
+	assert_eq(
+		scene.board_view.wall_cutout_units,
+		scene.combat_state.units,
+		"reloading a bout must re-point the feed at the NEW state's units, not the previous one's"
+	)
+	assert_ne(
+		scene.board_view.wall_cutout_units,
+		first_units,
+		"the stale previous-bout array must not linger as the feed"
+	)

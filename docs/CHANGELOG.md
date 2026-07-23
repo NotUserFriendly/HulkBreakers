@@ -274,6 +274,23 @@ than guessed at.
 **BR33.01 left untouched** — no supervisor policy call has been made yet on the aim-scroll-cycles-
 walls question; per the taskblock's own instruction, not guessed at.
 
+**Fixed: the wall-cutout feed-refresh boundary (tb35 Pass D, BR32.01/03)** — `BoardView.
+wall_cutout_units` was set in exactly one place in the whole codebase, `SquadControlOverlay._on_
+battle_loaded()`; `SpectatorOverlay` (the default overlay every fresh bout starts in) had no handler
+that ever touched it, and `BattleScene.load_battle()` itself never re-pointed it either. Starting or
+reloading a bout while staying in Spectator mode left the feed pointing at whatever it held before —
+null on first launch, the previous bout's own orphaned units on any later one — exactly "a stray
+cutout with no unit there" (BR32.01) and "carried over from a previous bout" (BR32.03, the same
+defect, not a separate one). Also explains why clicking "Assume Control" always fixed it: that's the
+only path that ever installs a real `SquadControlOverlay`, the only code that ever set the feed.
+Fixed by moving the assignment into `BattleScene.load_battle()` itself, once, for every overlay.
+**Root-caused, not fixed: BR32.04** (cutout snaps to the destination ahead of the move animation) —
+confirmed `ResolutionPlayer._play_slide` animates a unit's own `HitVolumeView.position` directly every
+tween tick, while `update_wall_cutout()` recomputes from the model's own already-resolved `unit.cell`,
+never reading the view's own current transform. Fix direction is clear (a per-unit "current display
+position" `Dictionary` written by the tween, read before falling back to the logical cell) but
+correctly scoping its own lifecycle wants a dedicated pass, not a rushed one here.
+
 **Mission & meta** (tb07, docs/07) — no win state (EXTRACTED/TERMINATED/STRANDED); enemy count never
 an ending; gather→extract/terminate; asymmetric, whole-squad, visible extraction — the player squad
 must get everyone to a team-coded tile, can't self-extract early (tb22 A); bout-setup places each

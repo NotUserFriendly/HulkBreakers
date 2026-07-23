@@ -138,11 +138,10 @@ func _on_battle_loaded() -> void:
 	# reading is about to go stale.
 	log_sink.fold.state = battle.combat_state
 	battle.combat_state.combat_log.add_sink(log_sink)
-	# tb32 Pass A: "cut around every unit, not one focal unit" — the SAME
-	# array reference `CombatState.units` mutates in place (spawn_object
-	# appends, remove_object erases), so this stays live-tracking without
-	# needing to re-point it on every roster change.
-	battle.board_view.wall_cutout_units = battle.combat_state.units
+	# tb35 Pass D (BR32.01/03): `wall_cutout_units` is now set once,
+	# canonically, in `BattleScene.load_battle()` itself — the one place
+	# that owns both `board_view` and `combat_state` for every overlay,
+	# not just this one. See that assignment's own doc comment.
 	if controls_overlay != null:
 		controls_overlay.set_log_path(battle.file_sink.path)
 	advance_ai_turns(battle)
