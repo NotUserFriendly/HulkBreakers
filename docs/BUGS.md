@@ -1094,6 +1094,33 @@ confirm" roll-up — so pending items surface at a natural review point without 
   regardless of depth, or collapse contiguous walls into a single layer; plus player-facing names
   instead of `unit_3` / raw part ids.
 
+### BR34.01 — Active — Every penetration/deflection hop replays the full bright hit-flash, not just the first  ·  source: `SUPERVISOR`
+- **Reported:** 2026-07-23 (live playtest). A single queued shot that penetrates or deflects through
+  several objects visually reads as multiple separate shots firing — "the bright raycast flashing
+  should only play for the first hit," not for every subsequent hop of the same trigger pull.
+- **Root cause, read-only investigation (quick look, not a fix):** `DamageResolver.resolve_shot`
+  correctly returns one `Array[ImpactResult]` per trigger pull, one entry per hop (wall, then cover,
+  then the target, say) — that's the right granularity for damage/consequence bookkeeping.
+  `ResolutionPlayer.play()` (`resolution_player.gd:148`) reuses that SAME granularity directly for
+  PLAYBACK: its own loop treats every `&"impact"`/`&"miss"` `LogEvent` as an independent "shot"
+  (`is_shot := event.kind == &"impact" or event.kind == &"miss"`), inserting `INTER_SHOT_BREAK_MS`
+  between them, and `_play_impact()` (`resolution_player.gd:440`) unconditionally calls
+  `_spawn_tracer()` — the full bright-live-to-dull-fade flash — for every one of them. Nothing in
+  `LogEvent.data`/`ImpactResult` distinguishes "the first hop of this trigger pull" from "hop 2+,
+  the same round continuing forward" — the log's own per-hop granularity (correct for its own job) is
+  being read as the playback's own per-shot granularity (wrong for this job), conflating two different
+  concerns. A 3-hop PENETRATE chain from one queued attack currently plays THREE full bright flashes
+  with pacing gaps between them, reading as three separate trigger pulls.
+- **Distinct from BR27.02** (the backward-tracer-direction ticket) — this is about flash/pacing
+  REPETITION per hop, not the direction of any single segment. Both live in the same playback/
+  resolution-geometry neighborhood but are separate defects.
+- **Not investigated further, no fix attempted** — logged per instruction. A real fix needs a design
+  call on what SHOULD distinguish "first hit of a pull" from "continuation," which doesn't exist in
+  the data today (candidate: thread a hop index/continuation flag through `ImpactResult`/`LogEvent`,
+  then have `ResolutionPlayer` skip the live flash — or use a dimmer one — and skip the inter-shot gap
+  for hop index > 0). That's a design/implementation question for whoever picks this up, not answered
+  here.
+
 ---
 
 ## Legacy (predates the `BR<taskblock>.<seq>` ID convention; IDs assigned retroactively)
