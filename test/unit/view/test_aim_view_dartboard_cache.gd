@@ -67,3 +67,58 @@ func test_rings_match_compares_normalized_shape_not_identity() -> void:
 	assert_true(AimView._rings_match(a, rescaled), "a uniform rescale must still match")
 	assert_false(AimView._rings_match(a, reshaped))
 	assert_false(AimView._rings_match(a, []))
+
+
+## tb34 Pass B: the recoil bound is baked into the same texture, so its
+## own ratio to the outer ring is part of the cache key too — a pure
+## range change (rings AND bound scale by the same factor) must still
+## reuse; a genuine change in whether/how much the board bounds (a
+## different burst size, or switching from armed-to-burst to armed-to-
+## shoot) must still rebuild.
+func test_rings_match_with_a_bound_reuses_across_a_pure_rescale() -> void:
+	var a: Array[Ring] = [_ring(0.1, 0.5), _ring(0.3, 1.0)]
+	var b: Array[Ring] = [_ring(0.2, 0.5), _ring(0.6, 1.0)]  # 2x, same ratios
+
+	assert_true(
+		AimView._rings_match(a, b, 0.45, 0.9),  # bound 1.5x outer on both sides
+		"the bound's own ratio to outer is unchanged by a pure rescale -- must still reuse"
+	)
+
+
+func test_rings_match_with_a_bound_rebuilds_when_the_bound_ratio_changes() -> void:
+	var a: Array[Ring] = [_ring(0.1, 0.5), _ring(0.3, 1.0)]
+	var b: Array[Ring] = [_ring(0.1, 0.5), _ring(0.3, 1.0)]
+
+	assert_false(
+		AimView._rings_match(a, b, 0.45, 0.6),
+		"a different bound ratio is a genuinely different shape -- must rebuild"
+	)
+	assert_false(
+		AimView._rings_match(a, b, 0.45, 0.0),
+		"switching between a bound and no bound at all must rebuild"
+	)
+
+
+func test_ring_texture_with_a_bound_reuses_across_a_pure_rescale() -> void:
+	var view := AimView.new()
+	add_child_autofree(view)
+	var near: Array[Ring] = [_ring(0.1, 0.5), _ring(0.3, 1.0)]
+	var far: Array[Ring] = [_ring(0.2, 0.5), _ring(0.6, 1.0)]  # 2x, same ratios
+
+	var first: ImageTexture = view._ring_texture(near, 0.45)  # bound 1.5x outer
+	var second: ImageTexture = view._ring_texture(far, 0.9)  # same 1.5x ratio
+
+	assert_eq(first, second, "rings and bound scaling together is still a pure rescale")
+
+
+func test_ring_texture_rebuilds_when_a_bound_appears_or_disappears() -> void:
+	var view := AimView.new()
+	add_child_autofree(view)
+	var rings: Array[Ring] = [_ring(0.1, 0.5), _ring(0.3, 1.0)]
+
+	var without_bound: ImageTexture = view._ring_texture(rings)
+	var with_bound: ImageTexture = view._ring_texture(rings, 0.6)
+
+	assert_ne(
+		without_bound, with_bound, "a newly-armed burst adding a bound must rebuild, not reuse"
+	)

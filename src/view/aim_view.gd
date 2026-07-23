@@ -60,6 +60,11 @@ const DECAL_PROJECTION_DEPTH := 3.0
 ## dim: a preview, never mistaken for an actual hit.
 const TARGETING_LINE_THICKNESS := ResolutionPlayer.TRACER_THICKNESS
 const TARGETING_LINE_COLOR := Color(0.95, 0.55, 0.15, 0.35)
+## tb34 Pass B: the pellet-spread overlay's own tiny forward nudge off the
+## window's own plane — same z-fight guard WINDOW_DEPTH_EPSILON already
+## exists for, just against the window's flat quad instead of the target's
+## real geometry, since both would otherwise share the exact same transform.
+const PELLET_CIRCLE_DEPTH_OFFSET := 0.02
 
 var tactics: TacticsController
 var readout: RichTextLabel
@@ -67,6 +72,14 @@ var readout: RichTextLabel
 var _window: MeshInstance3D
 var _decal: Decal
 var _targeting_line: MeshInstance3D
+## tb34 Pass B: "grow the central aiming dot into a circle sized to the
+## spread pattern" — a separate overlay, never baked into `_window`'s own
+## ring texture (see `DartboardTexture.build`'s own doc comment for why:
+## the pattern's world size doesn't scale with the board's range
+## multiplier, so its ratio to the range-scaled outer ring isn't
+## constant). Sits on the window's own plane, nudged a hair toward the
+## camera so it never z-fights with it.
+var _pellet_circle: MeshInstance3D
 ## taskblock-22 Pass I: "the dartboard is very laggy" — traced to
 ## `_ring_texture`: `DartboardTexture.build` walks every pixel of a
 ## 128x128 image via `Image.set_pixel` (16,384 calls) then uploads a
@@ -85,7 +98,17 @@ var _targeting_line: MeshInstance3D
 ## so a pure rescale (same shape, different distance) still reuses this
 ## cached image; only a genuine shape change rebuilds it.
 var _cached_rings: Array[Ring] = []
+## tb34 Pass B: the recoil bound baked alongside `_cached_rings` — the
+## bound's own ratio to the weighted rings' outer radius is weapon-
+## constant (see `AimController.recoil_bound_radius`'s doc comment), so
+## it's part of the SAME cached shape, not a reason to invalidate it on
+## every frame.
+var _cached_bound_radius: float = 0.0
 var _cached_texture: ImageTexture = null
+## tb34 Pass B: the pellet overlay's own texture never varies in content
+## (only the caller's own quad WORLD size does) — built once, reused for
+## every pellet weapon regardless of range or pattern size.
+var _cached_dot_texture: ImageTexture = null
 
 
 func _init() -> void:
@@ -98,6 +121,9 @@ func _init() -> void:
 	_targeting_line = MeshInstance3D.new()
 	_targeting_line.visible = false
 	add_child(_targeting_line)
+	_pellet_circle = MeshInstance3D.new()
+	_pellet_circle.visible = false
+	add_child(_pellet_circle)
 
 
 func setup(p_tactics: TacticsController, p_readout: RichTextLabel) -> void:
@@ -116,6 +142,7 @@ func refresh() -> void:
 	_window.visible = false
 	_decal.visible = false
 	_targeting_line.visible = false
+	_pellet_circle.visible = false
 	if tactics == null or tactics.aiming_at == null:
 		readout.text = ""
 		return
@@ -153,8 +180,9 @@ func refresh() -> void:
 		)
 		+ tactics.reticle_offset
 	)
+	var action_id: StringName = tactics.armed_action.id if tactics.armed_action != null else &""
 	var result: AimResult = AimController.resolve(
-		plane, aim_point, tactics.layer_index, weapon, shooter, target.cell, state
+		plane, aim_point, tactics.layer_index, weapon, shooter, target.cell, state, [], action_id
 	)
 
 	# docs/09 taskblock07 Pass D: "the shadow must use the same axis the ray
@@ -215,8 +243,9 @@ func refresh() -> void:
 	var reticle_point: Vector3 = AimPlaneGeometry.world_point(shooter.cell, target.cell, aim_point)
 	tactics.camera_rig.aim_at(centre, reticle_point)
 
-	_draw_window(window_point, dir, result.rings)
-	_draw_decal(target_point, dir, result.rings)
+	_draw_window(window_point, dir, result.rings, result.recoil_bound_radius)
+	_draw_decal(target_point, dir, result.rings, result.recoil_bound_radius)
+	_draw_pellet_circle(window_point, dir, result.pellet_circle_radius)
 	# docs/10 taskblock03 F2 / runNotes.md: "a line from the shooter's
 	# muzzle to the reticle's world point... if a pistol is what's shooting,
 	# the targeting line should come from the pistol," not a generic
@@ -250,13 +279,16 @@ func _body_name(body: Variant) -> String:
 ## ends up pointing back along -dir — see _window_basis). A no-op with no
 ## scatter rings resolved (an unarmed preview never reaches here anyway,
 ## caught earlier in refresh()).
-func _draw_window(world_point: Vector3, dir: Vector3, rings: Array[Ring]) -> void:
-	var outer: float = rings[rings.size() - 1].radius if not rings.is_empty() else 0.0
-	if outer <= 0.0:
+func _draw_window(
+	world_point: Vector3, dir: Vector3, rings: Array[Ring], bound_radius: float = 0.0
+) -> void:
+	var rings_outer: float = rings[rings.size() - 1].radius if not rings.is_empty() else 0.0
+	if rings_outer <= 0.0:
 		return
+	var outer: float = maxf(rings_outer, bound_radius)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(outer, outer) * 2.0
-	quad.material = WorldPalette.translucent_textured_material(_ring_texture(rings))
+	quad.material = WorldPalette.translucent_textured_material(_ring_texture(rings, bound_radius))
 	_window.mesh = quad
 	_window.transform = Transform3D(_window_basis(dir), world_point)
 	_window.visible = true
@@ -270,23 +302,61 @@ func _draw_window(world_point: Vector3, dir: Vector3, rings: Array[Ring]) -> voi
 ## rings, and the dot most visibly of all, wrap the real geometry exactly
 ## where a shot would actually go. That's what makes this proof rather
 ## than decoration.
-func _draw_decal(world_point: Vector3, dir: Vector3, rings: Array[Ring]) -> void:
-	var outer: float = rings[rings.size() - 1].radius if not rings.is_empty() else 0.0
-	if outer <= 0.0:
+func _draw_decal(
+	world_point: Vector3, dir: Vector3, rings: Array[Ring], bound_radius: float = 0.0
+) -> void:
+	var rings_outer: float = rings[rings.size() - 1].radius if not rings.is_empty() else 0.0
+	if rings_outer <= 0.0:
 		return
-	_decal.texture_albedo = _ring_texture(rings)
+	var outer: float = maxf(rings_outer, bound_radius)
+	_decal.texture_albedo = _ring_texture(rings, bound_radius)
 	_decal.size = Vector3(outer * 2.0, DECAL_PROJECTION_DEPTH, outer * 2.0)
 	_decal.transform = Transform3D(_decal_basis(dir), world_point)
 	_decal.visible = true
 
 
-func _ring_texture(rings: Array[Ring]) -> ImageTexture:
-	if _cached_texture == null or not _rings_match(rings, _cached_rings):
+## tb34 Pass B: "grow the central aiming dot into a circle sized to the
+## spread pattern" — a plain solid circle sized directly in WORLD units
+## (never baked into the ring texture: see `DartboardTexture.build_solid_
+## dot`'s own doc comment for why), sitting on the window's own plane, a
+## hair closer to the camera so it never z-fights with it. `radius <= 0.0`
+## ("not a pellet weapon") hides it — the small dot already baked into
+## the ring texture is what a single-projectile weapon keeps showing.
+func _draw_pellet_circle(world_point: Vector3, dir: Vector3, radius: float) -> void:
+	if radius <= 0.0:
+		return
+	var quad := QuadMesh.new()
+	quad.size = Vector2(radius, radius) * 2.0
+	quad.material = WorldPalette.translucent_textured_material(_pellet_circle_texture())
+	_pellet_circle.mesh = quad
+	var nudged_point: Vector3 = world_point - dir.normalized() * PELLET_CIRCLE_DEPTH_OFFSET
+	_pellet_circle.transform = Transform3D(_window_basis(dir), nudged_point)
+	_pellet_circle.visible = true
+
+
+func _pellet_circle_texture() -> ImageTexture:
+	if _cached_dot_texture == null:
+		var image: Image = DartboardTexture.build_solid_dot(
+			Color(RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, RING_ALPHA)
+		)
+		_cached_dot_texture = ImageTexture.create_from_image(image)
+	return _cached_dot_texture
+
+
+func _ring_texture(rings: Array[Ring], bound_radius: float = 0.0) -> ImageTexture:
+	if (
+		_cached_texture == null
+		or not _rings_match(rings, _cached_rings, bound_radius, _cached_bound_radius)
+	):
 		var image: Image = DartboardTexture.build(
-			rings, Color(RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, RING_ALPHA)
+			rings,
+			Color(RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, RING_ALPHA),
+			DartboardTexture.DEFAULT_SIZE,
+			bound_radius
 		)
 		_cached_texture = ImageTexture.create_from_image(image)
 		_cached_rings = rings
+		_cached_bound_radius = bound_radius
 	return _cached_texture
 
 
@@ -299,7 +369,15 @@ func _ring_texture(rings: Array[Ring]) -> ImageTexture:
 ## the window quad's own world size need to change, never a pixel rebuild.
 ## A genuine ratio change (a real, different-shaped board) still misses,
 ## same as before.
-static func _rings_match(a: Array[Ring], b: Array[Ring]) -> bool:
+## tb34 Pass B: `a_bound`/`b_bound` fold the recoil bound's OWN ratio to
+## the outer ring into the same comparison — it's baked into the same
+## texture now, so a switch between no-bound/bound (or a different burst
+## size, a genuinely different ratio) must still rebuild. Both default to
+## 0.0 ("no bound on either side"), so a call with no bound to compare
+## behaves exactly as before this pass.
+static func _rings_match(
+	a: Array[Ring], b: Array[Ring], a_bound: float = 0.0, b_bound: float = 0.0
+) -> bool:
 	if a.size() != b.size():
 		return false
 	if a.is_empty():
@@ -308,6 +386,8 @@ static func _rings_match(a: Array[Ring], b: Array[Ring]) -> bool:
 	var b_outer: float = b[b.size() - 1].radius
 	if a_outer <= 0.0 or b_outer <= 0.0:
 		return a_outer == b_outer
+	if not is_equal_approx(a_bound / a_outer, b_bound / b_outer):
+		return false
 	for i in range(a.size()):
 		if (
 			not is_equal_approx(a[i].radius / a_outer, b[i].radius / b_outer)

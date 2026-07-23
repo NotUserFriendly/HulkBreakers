@@ -14,15 +14,28 @@ var resolves: HitResult
 ## The weapon's resolved scatter rings, for drawing — N rings, never a
 ## fixed count assumed.
 var rings: Array[Ring]
+## tb34 Pass B: the widest burst pull's own outer radius
+## (`AimController.recoil_bound_radius`) — 0.0 means "nothing to draw,"
+## never a real bound at exactly zero (a zero-radius bound would be
+## indistinguishable from the dot anyway).
+var recoil_bound_radius: float
+## tb34 Pass B: the resolved pellet-spread pattern's own radius
+## (`AimController.pellet_circle_radius`) — 0.0 means "not a pellet
+## weapon, draw the plain dot."
+var pellet_circle_radius: float
 
 
 func _init(
 	p_layers: Array[AimLayer] = [],
 	p_reading: Variant = null,
 	p_resolves: HitResult = null,
-	p_rings: Array[Ring] = []
+	p_rings: Array[Ring] = [],
+	p_recoil_bound_radius: float = 0.0,
+	p_pellet_circle_radius: float = 0.0
 ) -> void:
 	layers = p_layers
 	reading = p_reading
 	resolves = p_resolves
 	rings = p_rings
+	recoil_bound_radius = p_recoil_bound_radius
+	pellet_circle_radius = p_pellet_circle_radius

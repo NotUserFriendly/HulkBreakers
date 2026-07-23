@@ -61,6 +61,12 @@ static func layers_for(plane: Array[Region]) -> Array[AimLayer]:
 ## the whole point (docs/09 taskblock06's own load-bearing rule, still
 ## true): scrolling can only ever change which layer `reading` names, never
 ## what `resolves` hits.
+## tb34 Pass B: `action_id` — the armed action (`&"shoot"`/`&"burst"`/...)
+## `resolve()` is drawing for, so `recoil_bound_radius` knows whether the
+## shot about to be queued genuinely bursts (never inferred from the
+## weapon alone: a weapon that CAN burst but is currently armed to single-
+## shoot draws no bound). Defaults to `&""` (never burst) so every
+## existing call site keeps behaving exactly as before this pass.
 static func resolve(
 	plane: Array[Region],
 	reticle: Vector2,
@@ -69,7 +75,8 @@ static func resolve(
 	shooter: Unit,
 	target_cell: Vector2i,
 	world: CombatState,
-	extra_sources: Array[ModSource] = []
+	extra_sources: Array[ModSource] = [],
+	action_id: StringName = &""
 ) -> AimResult:
 	var layers: Array[AimLayer] = layers_for(plane)
 	var reading: Variant = null
@@ -77,12 +84,59 @@ static func resolve(
 		var clamped: int = clampi(layer_index, 0, layers.size() - 1)
 		reading = layers[clamped].body
 
+	var rings: Array[Ring] = ShotScatter.for_shot(
+		shooter, weapon, target_cell, world, extra_sources
+	)
 	return AimResult.new(
 		layers,
 		reading,
 		_resolve_hit(reticle, weapon, shooter, target_cell, world),
-		ShotScatter.for_shot(shooter, weapon, target_cell, world, extra_sources)
+		rings,
+		recoil_bound_radius(rings, weapon, action_id == &"burst", extra_sources),
+		pellet_circle_radius(weapon)
 	)
+
+
+## tb34 Pass B: the widest pull's own outer-ring radius
+## (`RecoilResolver.widen` at `burst_size - 1`, the same formula
+## `BurstAction` itself resolves through pull by pull) — 0.0 ("nothing to
+## draw") when the armed action isn't really a burst, the weapon can't
+## burst at all, or recoil is negligible enough that the widened ring
+## coincides with the plain outer one (a doubled edge is worse than no
+## bound at all).
+static func recoil_bound_radius(
+	rings: Array[Ring], weapon: Part, is_burst: bool, extra_sources: Array[ModSource] = []
+) -> float:
+	if not is_burst or rings.is_empty() or weapon == null or weapon.weapon_def == null:
+		return 0.0
+	var burst_size: int = weapon.weapon_def.burst_size
+	if burst_size <= 1:
+		return 0.0
+	var damage: float = WeaponResolver.resolve_damage(weapon, extra_sources).current
+	var resolved_step: float = (
+		WeaponResolver.resolve_recoil_step(weapon, damage, extra_sources).current
+	)
+	var widened: Array[Ring] = RecoilResolver.widen(rings, resolved_step, burst_size - 1)
+	var outer: float = rings[rings.size() - 1].radius
+	var widest: float = widened[widened.size() - 1].radius
+	if is_equal_approx(widest, outer):
+		return 0.0
+	return widest
+
+
+## tb34 Pass B: the mechanical pellet pattern's own resolved size
+## (`SpreadPattern.pattern_radius`, the exact radius `BurstAction` itself
+## scatters pellets within) — 0.0 ("draw the plain dot, not a circle")
+## for any weapon that doesn't actually fire more than one projectile per
+## pull. Never baked into the ring texture (see `DartboardTexture.build`'s
+## own doc comment for why) — the caller draws this as its own overlay.
+static func pellet_circle_radius(weapon: Part) -> float:
+	if weapon == null or weapon.ammo_id == &"":
+		return 0.0
+	var ammo: AmmoDef = DataLibrary.get_ammo(weapon.ammo_id)
+	if ammo == null or ammo.projectile_num <= 1:
+		return 0.0
+	return SpreadPattern.pattern_radius(weapon)
 
 
 ## taskblock-08 B2: the aim window's own depth (docs/09 taskblock06 Pass

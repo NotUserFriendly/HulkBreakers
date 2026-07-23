@@ -25,7 +25,7 @@ static func sample(
 ) -> Array[Vector2]:
 	if ammo == null or ammo.projectile_num <= 1:
 		return [center]
-	var radius: float = _pattern_radius(weapon)
+	var radius: float = pattern_radius(weapon)
 	var points: Array[Vector2] = []
 	for i in range(ammo.projectile_num):
 		# Uniform-in-area, same convention as Dartboard.sample.
@@ -43,7 +43,11 @@ static func sample(
 ## better,' sharing the curve keeps them coherent"). A WeaponDef-less
 ## weapon (shouldn't happen — projectile_num > 1 implies a real gun)
 ## falls back to the unscaled base radius rather than crashing.
-static func _pattern_radius(weapon: Part) -> float:
+## tb34 Pass B: made public (was `_pattern_radius`) — the aim view's own
+## pellet-spread circle (`AimController.pellet_circle_radius`) reads the
+## exact same resolved size `sample()` itself scatters around, never a
+## second, re-derived pattern number.
+static func pattern_radius(weapon: Part) -> float:
 	if weapon.weapon_def == null:
 		return BASE_PATTERN_RADIUS
 	var base: float = BASE_PATTERN_RADIUS * (1.0 - weapon.weapon_def.mechanical_accuracy)
