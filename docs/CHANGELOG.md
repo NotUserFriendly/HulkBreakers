@@ -482,6 +482,42 @@ The keybindings display now defaults off, toggled by a `Keybindings` button alon
 H-key. Fixed a latent click-passthrough bug found while wiring it (the shared container's
 `mouse_filter` defaulted STOP, swallowing clicks in the gaps between buttons).
 
+**Aim view: truth & legibility** (tb34) — the dartboard was quietly lying: `AimController.resolve`
+(the drawn board) called `Dartboard.resolve_scatter` with no range multiplier while every real shot
+(`AttackAction`/`BurstAction`/`StabAction`) correctly widened with distance, so the board shown was
+always the weapon's best-case accuracy and understated spread more the farther you fired. New
+`ShotScatter.for_shot` is the one place `range_cells → RangeModel.dartboard_radius_scale →
+Dartboard.resolve_scatter` gets assembled now — every consumer calls it, so the drawn and fired boards
+can't independently drift again. Fixed the cache landmine this creates: `AimView._rings_match` now
+keys on ring-to-outer-ring ratio instead of absolute radius, so a pure range change resizes the decal
+instead of rebuilding the 128x128 ring image pixel-by-pixel every frame (`DartboardTexture.build`
+already normalizes by `outer_radius`, so a uniform rescale is byte-identical). Two previously-invisible
+spread sources now draw: a burst's later pulls widen the board cumulatively
+(`RecoilResolver.widen`), but only pull 0 ever showed — `AimController.recoil_bound_radius` draws the
+widest pull's own bound as a crisp outline, baked into the same texture (its ratio to the outer ring is
+weapon-constant, so the cache invariant survives); a pellet round's mechanical spread pattern
+(`SpreadPattern.pattern_radius`, made public) doesn't scale with range, so it's drawn as a genuinely
+separate, un-cached overlay circle (`DartboardTexture.build_solid_dot`) rather than baked in. **Part
+tooltips in aim view** — new `TacticsController.update_aim_hover` maps the cursor to an aim-plane point
+and finds the Region there (`ShotPlane.region_at`, a thin public alias for the internal
+`resolve_projectile`), writing only `aim_hovered_part`, never the reticle or `resolves` — hovering
+reads, it never re-aims, split into its own function so that's structural, not just documented.
+`AimView` renders the hit part's tooltip in-world via a `Label3D` coplanar with the aim window
+(`TooltipView.to_plain_text`, a third host for the same `TooltipData` shape `to_bbcode` already
+renders, since `Label3D` has no BBCode support). **Sniper framing** — beyond
+`CameraOrbitState.SNIPER_FRAME_DISTANCE` (5 cells, a tunable), the attack camera frames the target
+alone (`sniper_framing`) instead of shooter-over-shoulder (`attack_framing`): this rig's own topology
+(the camera always faces its own pivot) means panning directly onto the target's center puts it
+dead-center on screen at any yaw/pitch, so no dual-sphere BACK solve is needed, just a closed-form
+single-sphere zoom. Both framings ease through the same shared tween
+(`CameraRig.ease_to_framing`/`_ease_to`). **Fix: BR26.02, low framerate while aiming** — two real costs
+removed: the cache-invalidation fix above, and a redundant `AimView._process()` override (found
+2026-07-21, applied here) that unconditionally called `refresh()` every single frame while aiming even
+though `refresh()` was already fully wired to `tactics.aim_changed`; deleted outright once every
+mutation path was re-confirmed to emit it. `docs/BUGS.md`'s own scroll-layer-cycles-walls finding
+(BR33.01) is deliberately still open — a policy call, not a mechanism one, left for the supervisor to
+decide having now seen this block's finished aim view.
+
 ## Economy
 
 **Inventory & economy** (docs/05) — mass/bulk/RAM; discount once at the worn layer (body-attached
