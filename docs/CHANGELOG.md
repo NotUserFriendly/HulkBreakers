@@ -19,7 +19,7 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-35 landed.*
+*Current as of taskblock-36 landed.*
 
 ---
 
@@ -42,6 +42,65 @@ action now builds its shot-plane `origin` from the SAME shouldered-muzzle point 
 resolve a target at negative depth relative to the ray, animating as the burst firing backward).
 Shot/deflect impacts also now hold a deliberate beat (`DEFLECT_BEAT_MS`) between the primary hit
 and its own deflect tracer (tb27 A2), instead of both resolving in the same instant.
+
+**One geometry: the 2D/3D shot-plane split closed, and the first slice of multi-level (tb36,
+docs/02/PLAN.md)** — tb23 gave rays a real vertical component; the surfaces they resolved against
+stayed 2D for three more taskblocks. Four passes, each re-running a seeded full-mission bout (seed
+12354) and diffing its combat-log event stream byte-for-byte against the pass before it — every
+pass landed with **zero observable change** to that bout, the standing proof that none of this
+altered a single level shot.
+- **Pass A** — `BodyProjector.project`/`project_assembly`/`project_part`/`_project_box` and
+  `ShotPlane.build` widen to `Vector3` origins/directions; every existing caller wraps its flat
+  `Vector2` with `y == 0.0`. Pure plumbing, provably inert.
+- **Pass B** — `_FACE_NORMALS`/`_FACE_CORNERS` grow from four side faces to six (`+/-X`, `+/-Z`,
+  `+/-Y`), each carrying its own real 4 local corners instead of the old 2-corner-plus-tilt-
+  widening encoding. The visibility test is fully 3D now — a face's real world normal (including
+  its vertical component) against the ray's own real 3D direction, not the horizontal slice alone.
+  **Fixes the headline bug:** a part tilted so its local up is horizontal (`Poses.aiming()`'s own
+  -45° shoulder tilt, taken further — `Poses.prone()`'s 90° tilt hits this exactly, and
+  `test_prone_pose_changes_the_projected_shot_plane_vs_idle` now correctly shows a SECOND real face
+  where the old four-face model only ever showed one) used to go edge-on on all four old faces
+  simultaneously and vanish; it now projects a real region. A face genuinely facing the shooter
+  registers even with a degenerate-height rect (an untilted horizontal face's own true property in
+  this plane model — see the multi-level note below); the hollow far-face rule (tb20 C3) still
+  emits exactly the entering/exiting pair, not the four extra faces six candidates could otherwise
+  leak.
+- **Pass C** — `ShotPlane.build` does its own height reconciliation once, at the source: a
+  `_shear` step converts every region's `rect.position.y` from absolute world height into height
+  relative to the ray's own real path, providing "height relative to here" — the two-path
+  duality (`resolve_ray`'s own real-3D-ray path vs. `build`'s ground-heading-only path) never
+  fully unified because `build`'s own `(lateral, real world height) x depth-along-ground` plane
+  basis is deliberately not a full pinhole camera; `resolve_ray`'s own separate `muzzle.y +
+  vertical_slope * depth` reconstruction is gone, replaced by reading a plane already built that
+  way. Provably a no-op for every caller except `resolve_ray` (`origin.y`/`direction.y` both
+  `0.0` everywhere else, still true after this pass). The dead-vertical bail stays — an honest
+  `null`, not an arbitrary basis that would silently rotate the dartboard's own scatter axes.
+  **Audited and found correct as scoped:** `DamageResolver`'s own separate `vertical_slope`/
+  `_find_next` mechanism (ricochet flights only, `origin_height`/`vertical_slope` both `0.0` for
+  every real first-hop caller today) is a genuinely different, self-contained value, not a
+  duplicate of the gap this pass retired — flagged as a candidate to reconcile once Pass D's own
+  elevation reaches a first-hop shot, not this pass's to touch.
+- **Pass D** — `Grid.height` (row count) renamed `Grid.rows` in the same commit that adds
+  `Grid.level` (a per-cell integer, defaulting to 0, alongside `terrain`/`opacity`) — the first
+  real slice of multi-level maps (docs/PLAN.md). `Unit.level` (cached, synced from the grid at
+  `CombatState.add_unit`) drives `UnitGeometry`'s own root-transform Y translation
+  (`LEVEL_HEIGHT = 1.0`, docs/PLAN.md's own "two ramps make one full level" math, not a number
+  invented here) and a matching raise in `ShotPlane.build` (`BodyProjector` composes a body in
+  body-local space and has no notion of cell/level at all — elevation only enters where a cell's
+  world position already gets composed in). Deliberately inert in normal play: `MapGen` writes
+  nothing (the array's own default is already 0), and `Pathfinder` never reads `level` at all.
+  `BoutInjector.set_cell_level` (+ a matching debug-panel entry) is the only way a nonzero level
+  exists today — exactly the tool this needs before any movement verb can force a real scenario to
+  watch. **Surfaced, not a bug:** an UNTILTED box's own top face is height-DEGENERATE in this
+  plane's `(lateral, world-height)` basis — a single point, not a range (`Rect2.has_point` never
+  contains any point when `size.y == 0`, confirmed live) — so a shooter standing above a target
+  correctly produces a real top-face `Region` (proven in `test_multi_level_geometry.gd` by reading
+  the produced Region back, per this file's own testing convention — never re-deriving the
+  formula), but "resolving" onto that exact single point via `resolve_ray`'s own query would mean
+  solving for one exact slope, not aiming. Only a genuinely TILTED face (this pass's own headline
+  case) gains real height extent. **Out of this slice, staying that way:** vertical movement verbs
+  (climb/hop-down/ramps/stairs), height-aware pathfinding, fall damage, height-derived combat
+  bonuses — the rest of docs/PLAN.md's own multi-level item.
 
 **Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
 DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
