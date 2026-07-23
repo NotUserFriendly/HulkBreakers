@@ -960,3 +960,40 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `void_range` projection — the cosmetic projection should only ever be the fallback for the case
   where the recursive search genuinely finds nothing, mirroring `log_miss_result`'s own "void" ray
   exactly, not a separate always-drawn distance regardless of a real hit existing.
+### BR35.05 — Active — owner: `CC`
+**`approach_path`/`closing_path` have no ally-awareness — squadmates converge into each other's own line of fire**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23, reading a real bout's own `out/combat.log` at the supervisor's own request
+  ("units that are close all holding action"). On turn 0, units 1/2/3 (all sharing a similar start
+  position and the same target) independently compute nearly identical `closing_fallback` paths —
+  unit 1 and unit 3's own move sequences share the corridor `(6,14)→(7,13)→(7,11)→(11,7)` cell for
+  cell — and end up bunched close together: unit 1 at (13,7), unit 3 at (13,8), **directly adjacent**.
+  Unit 0's and unit 2's own `ai_decision` lines log `held: ally_in_line` — a squadmate is standing
+  in their own intended shot.
+- **Root cause:** `LineOfFire.approach_path` (tb33) and `LineOfFire.closing_path` (tb35 Pass A, this
+  session) both compute "the nearest cell that gets a shot" (or "the nearest cell that closes
+  distance") purely from grid/LOF geometry — **neither has any notion of where other allies already
+  are or are heading.** `closing_path` inherited this blind spot from `approach_path` rather than
+  fixing it. When several squadmates share a similar starting position and target, they independently
+  converge on the same corridor/destination and end up close enough to block each other's own shots,
+  which then makes every one of them hold.
+- **Not fixed yet.** A real fix (giving the fallback pathing awareness of cells allies already occupy
+  or are heading toward, so a squad spreads out instead of stacking) is a genuine design question —
+  how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
+  not a one-line patch, and not guessed at here.
+### BR35.06 — Active — owner: `CC`
+**A unit with a real available shot elsewhere can still get stuck holding a covered, blind position**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23, same log read as BR35.05. Unit 7 logs `repositioned (held: no_clear_lof)` on
+  three consecutive turns (1, 2, 3) — `repositioned` means `_any_reachable_has_lof` found SOME
+  reachable cell with a real shot this turn, yet the unit still resolves to a blocked position and
+  holds anyway, turn after turn, making no progress. Unit 6 shows a compound case of the same family
+  (`no_lof_no_route (held: ally_in_line)`, repeated across all three turns too).
+- **Suspected mechanism, not confirmed:** `_engagement_score`'s own `COVER_SCORE_BONUS` can outscore
+  the distance/LOF terms for a cell that's covered but blind, and `cell == self_unit.cell` is exempt
+  from `NO_LOF_PENALTY` ("staying put is free") — so a unit already sitting somewhere covered has no
+  scoring pressure to ever step into the open for the shot a `repositioned` branch says exists
+  elsewhere. Consistent with, but not yet proven against, the actual per-candidate scores.
+- **Not fixed yet.** Needs the actual `_engagement_score` breakdown for unit 7's own candidate set on
+  one of these turns before concluding this is really the cover-bonus/self-exemption interaction and
+  not something else — flagged rather than guessed at further.
