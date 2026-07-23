@@ -44,7 +44,7 @@ func test_scrolling_changes_reading_and_never_changes_resolves() -> void:
 	var far_unit := _standing_unit(&"far", 1.0, Vector2i(2, 6))
 	state.add_unit(near_unit)
 	state.add_unit(far_unit)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var reticle := Vector2(0.2, 0.5)  # squarely over the near unit
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	var shooter := _shooter_unit(Vector2i(2, 0))
@@ -71,7 +71,7 @@ func test_layer_index_clamps_instead_of_going_out_of_bounds() -> void:
 	var state := CombatState.new(grid)
 	var only_unit := _standing_unit(&"solo", 0.5, Vector2i(2, 2))
 	state.add_unit(only_unit)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
@@ -93,7 +93,7 @@ func test_a_near_body_fully_occluding_a_far_one_never_resolves_to_the_far_body()
 	var far_unit := _standing_unit(&"far", 0.5, Vector2i(2, 6))  # narrow: spans [-0.5, 0.5]
 	state.add_unit(near_unit)
 	state.add_unit(far_unit)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
@@ -124,7 +124,7 @@ func test_a_gap_in_the_near_body_lets_the_reticle_resolve_to_the_far_body() -> v
 	var far_unit := _standing_unit(&"far", 2.0, Vector2i(2, 6))
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid, [near_unit, far_unit])
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
@@ -162,7 +162,7 @@ func test_one_ring_and_five_ring_weapons_render_the_correct_ring_counts() -> voi
 	var state := CombatState.new(grid)
 	var solo := _standing_unit(&"solo", 1.0, Vector2i(2, 2))
 	state.add_unit(solo)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
 	var one_ring := _weapon([Ring.new(1.0, 1.0)])
@@ -208,7 +208,7 @@ func test_resolve_widens_the_drawn_rings_to_match_a_fired_shots_scatter() -> voi
 	var state := CombatState.new(grid)
 	var far_unit := _standing_unit(&"far", 0.5, Vector2i(2, 8))
 	state.add_unit(far_unit)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var shooter := _shooter_unit(Vector2i(2, 0))
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	weapon.weapon_def = WeaponDef.new()
@@ -318,7 +318,7 @@ func test_resolve_carries_the_recoil_bound_and_pellet_circle_into_the_result() -
 	var state := CombatState.new(grid)
 	var far_unit := _standing_unit(&"far", 0.5, Vector2i(2, 6))
 	state.add_unit(far_unit)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var shooter := _shooter_unit(Vector2i(2, 0))
 	var weapon := _weapon([Ring.new(0.05, 1.0)])
 	weapon.damage = 5.0
@@ -358,7 +358,7 @@ func test_layer_count_matches_the_number_of_distinct_bodies() -> void:
 			]
 		)
 	)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
@@ -373,7 +373,7 @@ func test_layers_are_ordered_nearest_first() -> void:
 	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
 	var far_unit := _standing_unit(&"far", 0.5, Vector2i(2, 6))
 	var state := CombatState.new(grid, [far_unit, near_unit])  # deliberately out of order
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
 	var layers: Array[AimLayer] = AimController.layers_for(plane)
 
@@ -393,7 +393,7 @@ func test_resolves_equals_resolve_ray_for_a_corpus_of_reticle_positions() -> voi
 	var far_unit := _standing_unit(&"far", 1.0, Vector2i(2, 6))
 	state.add_unit(near_unit)
 	state.add_unit(far_unit)
-	var plane: Array[Region] = ShotPlane.build(Vector2(2, 0), Vector2(0, 1), state)
+	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	var weapon := _weapon([Ring.new(0.1, 1.0)])
 	var shooter := _shooter_unit(Vector2i(2, 0))
 

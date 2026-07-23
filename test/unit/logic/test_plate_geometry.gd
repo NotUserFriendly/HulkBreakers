@@ -47,7 +47,7 @@ func test_wedge_plates_point_their_apex_toward_incoming_fire() -> void:
 		&"wedge_plate_shallow", &"wedge_plate_steep", &"wedge_plate_torso"
 	]:
 		var wedge: Part = DataLibrary.get_part(wedge_id)
-		var regions: Array[Region] = BodyProjector.project_assembly(wedge, Vector2(0, -1))
+		var regions: Array[Region] = BodyProjector.project_assembly(wedge, Vector3(0, 0.0, -1))
 
 		var left_id: StringName = StringName("%s_face_l" % wedge_id)
 		var right_id: StringName = StringName("%s_face_r" % wedge_id)

@@ -33,7 +33,9 @@ func _standing_unit(id: StringName, half_width: float, cell: Vector2i) -> Unit:
 func _expected_region(muzzle: Vector3, dir: Vector3, world: CombatState) -> Region:
 	var flat_origin := Vector2(muzzle.x, muzzle.z)
 	var flat_dir: Vector2 = Vector2(dir.x, dir.z).normalized()
-	var plane: Array[Region] = ShotPlane.build(flat_origin, flat_dir, world)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(flat_origin.x, 0.0, flat_origin.y), Vector3(flat_dir.x, 0.0, flat_dir.y), world
+	)
 	return ShotPlane.resolve_projectile(plane, Vector2(0.0, muzzle.y))
 
 

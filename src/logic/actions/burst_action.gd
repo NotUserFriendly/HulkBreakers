@@ -117,7 +117,10 @@ func apply(state: CombatState) -> void:
 	# the bare cell center while origin sits at the muzzle is exactly what
 	# made half a burst read as firing backward.
 	var direction := Vector2(target_cell) - origin
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var dir_n: Vector2 = direction.normalized()
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	)
 	var aim_point: Vector2 = (
 		(
 			ShotPlane.center_of(plane, target)

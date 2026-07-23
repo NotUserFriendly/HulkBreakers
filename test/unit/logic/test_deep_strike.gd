@@ -129,7 +129,7 @@ func test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root() -
 			break
 	assert_not_null(unit, "expected at least one of 50 seeds to attach a limb")
 
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 	print("\n=== deep-struck cyborg silhouette (limb-hit sweep) ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(regions, 2.0), 4, 2))
 
@@ -234,7 +234,7 @@ func test_fuzz_many_random_cyborgs_never_crash_and_always_validate() -> void:
 
 		# Must project a sane shot plane: no crash, and the unit is actually
 		# visible from at least one angle (it always has a root part).
-		var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+		var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 		assert_true(regions.size() > 0, "seed %d produced an unprojectable unit" % seed_value)
 
 		# Armed or knowably unarmed — never an exception either way.

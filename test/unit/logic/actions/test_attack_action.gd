@@ -343,7 +343,11 @@ func test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_be
 
 	var old_direction := Vector2(target.cell) - Vector2(shooter.cell)
 	var new_direction := Vector2(target.cell) - origin
-	var plane: Array[Region] = ShotPlane.build(origin, new_direction.normalized(), state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y),
+		Vector3(new_direction.normalized().x, 0.0, new_direction.normalized().y),
+		state
+	)
 	var target_region: Region = null
 	for region: Region in plane:
 		if region.body == target:

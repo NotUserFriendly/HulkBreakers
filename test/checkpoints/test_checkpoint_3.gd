@@ -71,7 +71,9 @@ func test_seeded_burst_into_armor() -> void:
 	var dir: Vector2 = direction.normalized()
 	var origin: Vector2 = Vector2(10, 10) - dir * 8.0
 
-	var plane: Array[Region] = ShotPlane.build(origin, dir, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir.x, 0.0, dir.y), state
+	)
 	var plate_region: Region = null
 	for region: Region in plane:
 		if region.part.id == &"plate" and region.surface_normal.z > 0.5:

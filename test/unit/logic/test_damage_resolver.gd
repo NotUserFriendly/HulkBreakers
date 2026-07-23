@@ -259,7 +259,9 @@ func test_depth_cap_of_zero_stops_a_deflection_from_spawning_any_ricochet() -> v
 	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
 	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var region := _find_region(plane, cover)
 	var aim_point: Vector2 = region.rect.get_center()
 
@@ -286,7 +288,9 @@ func test_damage_floor_stops_a_deflection_from_spawning_a_ricochet() -> void:
 	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
 	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var region := _find_region(plane, cover)
 	var aim_point: Vector2 = region.rect.get_center()
 
@@ -323,7 +327,9 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 	var perp := Vector2(-dir.y, dir.x)
 
 	var state_for_probe := CombatState.new(grid)
-	var plane: Array[Region] = ShotPlane.build(origin, dir, state_for_probe)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir.x, 0.0, dir.y), state_for_probe
+	)
 	var cover_region := _find_region(plane, cover)
 	var aim_point: Vector2 = cover_region.rect.get_center()
 
@@ -408,7 +414,9 @@ func test_each_ricochet_hop_stamps_its_own_real_origin_and_hit_point() -> void:
 	var perp := Vector2(-dir.y, dir.x)
 
 	var state_for_probe := CombatState.new(grid)
-	var plane: Array[Region] = ShotPlane.build(origin, dir, state_for_probe)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir.x, 0.0, dir.y), state_for_probe
+	)
 	var cover_region := _find_region(plane, cover)
 	var aim_point: Vector2 = cover_region.rect.get_center()
 

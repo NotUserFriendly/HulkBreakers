@@ -35,7 +35,10 @@ static func first_hit(
 	if direction.is_zero_approx():
 		return null
 	var origin := Vector2(from_cell.x, from_cell.y)
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var dir_n: Vector2 = direction.normalized()
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target)
 	return _first_hit_excluding(plane, aim_point, shooter)
 

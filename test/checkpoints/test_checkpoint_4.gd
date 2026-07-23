@@ -31,7 +31,7 @@ func test_twenty_random_deep_strike_cyborgs() -> void:
 
 		var violations: Array[String] = DeepStrike.validate_assembly(unit)
 		var armed: bool = DeepStrike.is_armed(unit)
-		var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+		var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 		regions.sort_custom(func(a: Region, b: Region) -> bool: return a.depth < b.depth)
 
 		print("\n=== cyborg %d/%d (seed %d) ===" % [seed_value, CYBORG_COUNT, seed_value])

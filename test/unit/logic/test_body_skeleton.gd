@@ -38,7 +38,7 @@ func _armored_torso() -> Dictionary:
 ## already exposed regardless — a pre-existing mounting detail, not
 ## something this pass touches.
 func _front_shot_plane(state: CombatState) -> Array[Region]:
-	return ShotPlane.build(Vector2(0, 1), Vector2(0, -1), state)
+	return ShotPlane.build(Vector3(0, 0.0, 1), Vector3(0, 0.0, -1), state)
 
 
 func test_the_torso_is_a_real_strut_skeleton_not_one_solid_box() -> void:

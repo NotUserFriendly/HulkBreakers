@@ -130,7 +130,7 @@ func test_carried_body_contributes_volume_to_the_carriers_projection() -> void:
 	var state := CombatState.new(grid, [carrier])
 	CarryBodyAction.new(carrier, Vector2i(0, 0), &"downed_ally").apply(state)
 
-	var regions: Array[Region] = BodyProjector.project(carrier, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(carrier, Vector3(0, 0.0, -1))
 	var body_region_found := false
 	for region: Region in regions:
 		if region.part == body:

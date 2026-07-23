@@ -61,7 +61,7 @@ func _rig(plate_id: StringName, angles: Array) -> Part:
 func test_a_half_cylinder_plates_own_facets_produce_a_wide_spread_of_surface_normals() -> void:
 	var plate: Part = DataLibrary.get_part(&"half_cylinder_plate")
 
-	var regions: Array[Region] = BodyProjector.project_assembly(plate, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project_assembly(plate, Vector3(0, 0.0, -1))
 	var normals_2d: Array[Vector2] = []
 	for region: Region in regions:
 		if String(region.part.id).begins_with("half_cylinder_plate_facet_"):
@@ -91,7 +91,7 @@ func test_a_wedge_plates_own_two_faces_deflect_the_same_shot_in_different_direct
 	var table: MaterialTable = DataLibrary.material_table()
 	var plate: Part = DataLibrary.get_part(&"wedge_plate_shallow")
 
-	var regions: Array[Region] = BodyProjector.project_assembly(plate, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project_assembly(plate, Vector3(0, 0.0, -1))
 
 	# A thin plate mounted at an angle shows a sliver of its own edge
 	# alongside its main face (docs/03: incidence spans the full 0-90

@@ -145,7 +145,10 @@ func apply(state: CombatState) -> void:
 	# the ray's apparent heading enough that a burst's own pulls read as
 	# firing backward. Both must share the muzzle anchor.
 	var direction := Vector2(target_cell) - origin
-	var plane: Array[Region] = ShotPlane.build(origin, direction.normalized(), state)
+	var dir_n: Vector2 = direction.normalized()
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(dir_n.x, 0.0, dir_n.y), state
+	)
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = (

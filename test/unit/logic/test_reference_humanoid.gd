@@ -126,7 +126,7 @@ func test_the_composed_body_fits_inside_one_cell_footprint() -> void:
 
 func test_a_plates_rect_overlaps_its_parents_and_sits_at_lower_depth_from_the_front() -> void:
 	var unit := _reference_unit()
-	var regions: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var regions: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 	var torso: Region = _find(regions, &"torso")
 	var plate: Region = _find(regions, &"plate_large_steel")
 
@@ -143,7 +143,7 @@ func test_a_plates_rect_overlaps_its_parents_and_sits_at_lower_depth_from_the_fr
 func test_the_flank_test() -> void:
 	var unit := _reference_unit()
 
-	var front: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	var front: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, -1)))
 	var plate_rect: Rect2 = _find(front, &"plate_large_steel").rect
 	# Off-center (docs/01a's own BACK-socket ammo rack sits directly behind
 	# the spine, narrower than the plates either side of it) — aim through
@@ -153,7 +153,7 @@ func test_the_flank_test() -> void:
 	var front_hit: Region = ShotPlane.resolve_projectile(front, aim_point)
 	assert_eq(front_hit.part.id, &"plate_large_steel")
 
-	var back: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, 1)))
+	var back: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, 1)))
 	var back_hit: Region = ShotPlane.resolve_projectile(back, aim_point)
 	assert_true(
 		back_hit.part.id == &"plate_large_sheet_steel" or back_hit.part.id == &"torso",
@@ -164,7 +164,7 @@ func test_the_flank_test() -> void:
 func test_ammo_rack_is_occluded_from_the_front_but_frontmost_from_behind() -> void:
 	var unit := _reference_unit()
 
-	var front: Array[Region] = BodyProjector.project(unit, Vector2(0, -1))
+	var front: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, -1))
 	var front_rack: Region = _find(front, &"ammo_rack")
 	var min_front_depth := INF
 	for region: Region in front:
@@ -173,7 +173,7 @@ func test_ammo_rack_is_occluded_from_the_front_but_frontmost_from_behind() -> vo
 		front_rack.depth > min_front_depth, "the rack must not be frontmost viewed from the front"
 	)
 
-	var back: Array[Region] = BodyProjector.project(unit, Vector2(0, 1))
+	var back: Array[Region] = BodyProjector.project(unit, Vector3(0, 0.0, 1))
 	var back_rack: Region = _find(back, &"ammo_rack")
 	var min_back_depth := INF
 	for region: Region in back:
@@ -212,7 +212,9 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 
 	var origin := Vector2(shooter_cell.x, shooter_cell.y)
 	var direction := Vector2(target_cell - shooter_cell).normalized()
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 
 	print("\n=== half cover: masks legs, not the head ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 4))
@@ -267,7 +269,9 @@ func test_full_cover_masks_the_torso_but_not_the_head() -> void:
 
 	var origin := Vector2(shooter_cell.x, shooter_cell.y)
 	var direction := Vector2(target_cell - shooter_cell).normalized()
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 
 	print("\n=== full cover: masks the torso, not the head ===")
 	print(AsciiRender.plane_to_text(AsciiRender.recenter(plane, 2.0), 4, 4))
@@ -301,12 +305,12 @@ func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() 
 	var plate: Part = unit.shell.find_part(&"plate_large_steel")
 	var cladding: Part = unit.shell.find_part(&"torso_cladding")
 
-	var before: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	var before: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, -1)))
 	var aim_point: Vector2 = _find(before, &"plate_large_steel").rect.get_center()
 	assert_eq(ShotPlane.resolve_projectile(before, aim_point).part.id, &"plate_large_steel")
 
 	plate.hp = 0
-	var after_plate: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	var after_plate: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, -1)))
 	for region: Region in after_plate:
 		assert_ne(region.part.id, &"plate_large_steel", "a destroyed plate must leave the plane")
 	assert_eq(
@@ -316,7 +320,7 @@ func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() 
 	)
 
 	cladding.hp = 0
-	var after_cladding: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	var after_cladding: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, -1)))
 	for region: Region in after_cladding:
 		assert_ne(region.part.id, &"torso_cladding", "destroyed cladding must leave the plane too")
 	# taskblock-09 D: the plate's own socket still holds it (a destroyed,
@@ -332,7 +336,7 @@ func test_destroying_layers_progressively_exposes_cladding_then_the_bare_part() 
 	)
 
 	PartGraph.detach(armor_socket)
-	var after_joint: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(0, -1)))
+	var after_joint: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, -1)))
 	assert_eq(
 		ShotPlane.resolve_projectile(after_joint, aim_point).part.id,
 		&"torso",
@@ -356,7 +360,7 @@ func test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate() -> voi
 	PartGraph.attach(cladding, torso, PartGraph.find_socket(torso, &"CLADDING"))
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 
-	var side: Array[Region] = _sorted(BodyProjector.project(unit, Vector2(1, 0)))
+	var side: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(1, 0.0, 0)))
 	var resolved: Region = _find(side, &"torso_cladding")
 
 	assert_ne(resolved.part.id, &"plate_large_steel")

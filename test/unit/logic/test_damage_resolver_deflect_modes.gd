@@ -35,7 +35,9 @@ func _deflecting_fixture() -> Dictionary:
 	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
 	var direction := Vector2(3, 4)  # incidence ~37 deg: clears the 30 deg default threshold
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var region := _find_region(plane, cover)
 	var aim_point: Vector2 = region.rect.get_center()
 

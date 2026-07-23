@@ -211,7 +211,9 @@ func test_resolve_shot_on_a_joint_hit_depletes_joint_hp_never_part_hp() -> void:
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
 
 	var rng := RandomNumberGenerator.new()
@@ -236,7 +238,9 @@ func test_resolve_shot_severs_the_joint_and_drops_the_subtree_when_depleted() ->
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
 
 	var rng := RandomNumberGenerator.new()
@@ -317,7 +321,9 @@ func test_joint_cladding_absorbs_a_hit_before_the_joint_takes_any_damage() -> vo
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
 
 	var rng := RandomNumberGenerator.new()
@@ -344,7 +350,9 @@ func test_an_uncladded_joint_behaves_as_before_just_with_the_new_hp_default() ->
 
 	var origin := Vector2(2, 8)
 	var direction := Vector2(0, -1)
-	var plane: Array[Region] = ShotPlane.build(origin, direction, state)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(origin.x, 0.0, origin.y), Vector3(direction.x, 0.0, direction.y), state
+	)
 	var aim_point: Vector2 = _joint_region(plane, shoulder).rect.get_center()
 
 	var rng := RandomNumberGenerator.new()
