@@ -73,6 +73,15 @@ Randomized affixes and small stat rolls on hulk-found gear, reinforcing the "ori
 - **Dialogue / yapping.** The humanizing face is in scope (`04`); the voice is not, yet.
 - Claims, faction reputation, local space encounters.
 
+## Animation flavour
+- **Parkour-flavoured movement, starting with the hood slide (tb35 review).** When a unit's path
+  forces it to move diagonally twice in a row to get around an obstacle, a humanoid shell plays the
+  **"car hood slide"** across it rather than walking the corner. The point isn't the one animation —
+  it's that *path shape is already a readable signal*, so movement animation can be selected from the
+  geometry the pathfinder already produced, with no new data. A double-diagonal is a vault; other
+  recognisable shapes open up the rest of a parkour vocabulary. Purely presentational: it changes how
+  a move looks, never its cost or legality.
+
 ## Presentation & branding
 - **Startup logo animation.** A stylized/simplified voidhulk fades in, growing until it's logo-sized.
   The instant it's fully visible, a shell drops from above; a weld-splatter sound plays as a molten-
