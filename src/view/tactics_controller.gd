@@ -753,6 +753,32 @@ func _enter_aim_mode(target: AimTarget) -> void:
 		UnitGeometry.bounding_sphere(_framing_shooter()), target_sphere, distance_cells
 	)
 	aim_changed.emit()
+	_dump_aim_fps()
+
+
+## tb35 Pass A1 (BR26.02): `Engine.get_frames_per_second()`, 200ms after
+## THIS specific transition into aim mode — past the entry transient, into
+## the steady-state sweep — logged into the same combat_log every other
+## per-turn FPS dump uses (`FpsDumpSink`), so "aim is slow" is a
+## greppable number in `out/combat.log`, not a felt impression. Fired
+## once per `_enter_aim_mode()` call, never per reticle nudge
+## (`aim_changed` alone fires on those too) — this is a separate function
+## specifically so re-entering aim on a new target restarts the window.
+func _dump_aim_fps() -> void:
+	await get_tree().create_timer(0.2).timeout
+	if not is_inside_tree() or selection == null:
+		return
+	var fps: float = Engine.get_frames_per_second()
+	selection.state.combat_log.emit(
+		LogEvent.new(
+			selection.state.round_number,
+			Enums.Phase.RESOLUTION,
+			selection.selected_unit.id if selection.selected_unit != null else -1,
+			&"fps_dump",
+			{"context": "aim", "fps": fps},
+			"Aim FPS (200ms after entering aim): %.1f" % fps
+		)
+	)
 
 
 ## taskblock-18 D2/D4: enters step-out-CELL-choice mode — safest candidate
