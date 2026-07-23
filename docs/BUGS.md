@@ -178,6 +178,33 @@ confirm" roll-up — so pending items surface at a natural review point without 
   segment the 2026-07-21 note suspected (which only governs what happens AFTER the first hit) — a
   candidate for a still-live anchor mismatch in the primary ray itself, distinct from that suspect,
   not yet root-caused. Logged only — not investigated or fixed this pass.
+- **2026-07-23 (follow-up, read-only code investigation — no fix attempted): a concrete hypothesis
+  for the first-segment anomaly above, arithmetically consistent with the logged numbers.**
+  `damage_resolver.gd::resolve_shot` computes each hop's own logged point as
+  `origin + dir * region.depth + perp * point.x` (`dir`/`perp` from the outer call's own `direction`,
+  never re-derived per hop). Solving that equation backward for the unit-0 example above
+  (`origin (3.95, 17.26)`, `dir` normalized toward `(6, 19)` ≈ `(0.76, 0.65)`, `hit (0.67, 13.80)`)
+  requires `region.depth ≈ -4.3 to -5.3` — genuinely **negative**, i.e. the resolved region sits
+  BEHIND the shooter along this shot's own fire line, not in front of it.
+  **Why a negative-depth region could win at all:** `ShotPlane.build` (`shot_plane.gd:45`) sorts the
+  whole plane with a bare `a.depth < b.depth` — no floor at zero anywhere — and `_find_next`
+  (`damage_resolver.gd:837`) just walks that sorted array and returns the FIRST region whose rect
+  overlaps the aim point. Negative-depth regions are a known, INTENTIONAL part of the plane (`docs/09`
+  taskblock06 Pass H's own `AimController.window_depth` doc comment: "a body positioned behind the
+  shooter along the fire line still gets a Region... so its own frontmost depth can be small or even
+  negative") — but that fact was only ever handled defensively on the AIM-WINDOW side
+  (`window_depth`'s own `MIN_WINDOW_DEPTH` clamp) and the SHOOTER's-own-body self-exclusion
+  (`_first_hit_excluding`/`self_obstruction`, by identity). Neither guard stops a DIFFERENT body's
+  region — a wall, say — from sorting first purely because its projected depth happens to be more
+  negative than every real, forward obstacle, then winning `_find_next`'s linear scan if the aim
+  point's lateral/height coordinates happen to fall inside that region's rect (which a wide/tall wall
+  segment's own rect can do regardless of which side of the shooter it's actually on). If real, this
+  would be a genuine RESOLUTION bug (which region gets picked), not merely a rendering-direction one —
+  which would refine, not just extend, the 2026-07-20 report's own claim that "hit resolution... is
+  correct; only the drawn tracer direction is backward" (that may hold for whatever case prompted that
+  original report, but doesn't appear to hold for this DEFLECT case). **Not verified against a
+  constructed fixture — this is a read-through-the-code hypothesis from one live example's own
+  arithmetic, not a proven root cause.** No fix attempted.
 
 ### BR27.03 — Active — Other shots appear to resolve before an earlier shot's own deflect finishes  ·  source: `SUPERVISOR`
 - **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis (see the correction note in
