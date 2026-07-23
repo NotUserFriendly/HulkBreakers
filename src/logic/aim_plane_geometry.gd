@@ -59,13 +59,14 @@ static func world_point_at_depth(
 
 ## docs/09 taskblock07 Pass A: builds a `ShotPlane.resolve_ray`-ready
 ## `{origin, dir}` pair from a real weapon muzzle and a plane-space aim
-## point. "Shots travel horizontally" (docs/02) means a level ray can only
-## ever hit points at its OWN height — so vertical aim (aim_point.y) is
-## expressed by which height the ray travels AT (the returned origin is
-## `muzzle` raised/lowered to the aim point's own height), never by tilting
-## `dir` (`dir.y` is 0 by construction, satisfying `resolve_ray`'s own
-## precondition, not by discarding anything). Lateral aim (aim_point.x)
-## lives entirely in `dir`'s own horizontal direction, exactly the taskblock
+## point. This function's own convention — never `resolve_ray`'s
+## precondition since taskblock-36 Pass C, which resolves a genuinely
+## tilted `dir` just fine — is that vertical aim (aim_point.y) is expressed
+## by which height the ray travels AT (the returned origin is `muzzle`
+## raised/lowered to the aim point's own height), never by tilting `dir`
+## (`dir.y` is 0 by construction, keeping the reticle's own plane simple,
+## not by discarding anything real). Lateral aim (aim_point.x) lives
+## entirely in `dir`'s own horizontal direction, exactly the taskblock
 ## text: "the aim offset lives entirely in dir." Returns `{}` if `muzzle`
 ## sits exactly above/below the aim world point (no horizontal direction to
 ## fire along).
