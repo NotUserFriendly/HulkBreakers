@@ -3,6 +3,22 @@
 **The current-state snapshot**, by system, with the taskblock that landed each. Grows as work ships.
 For what changed shape along the way see `SUPERSEDED.md`; for what's next see `PLAN.md`.
 
+**A changelog logs changes — it is not a code-you're-proud-of log.** Three kinds of entry belong here
+that are easy to leave out, and all three are worth more than another success line:
+- **Approaches tried and reverted.** "A greedy distance scorer was tried first and reverted, because it
+  reproduces the concave-wall freeze" saves the next person from re-trying it. A dead end that isn't
+  written down gets walked twice.
+- **Partial wins, stated honestly.** "Halved the cost, did not eliminate it — the remainder is real
+  per-cell geometry work" is the useful form. Rounding a partial fix up to a complete one is how a
+  known-incomplete thing gets treated as done.
+- **Audited and found correct.** When a sweep checks N sites and finds them fine, that conclusion is a
+  current-state fact and belongs here — it is exactly what stops the next audit re-deriving the same
+  ground. Record what was checked and *why* it holds, not just that it passed.
+
+**When a later change overwrites an entry, mark the old one and point forward to the newer entry** —
+don't silently leave a description that has stopped being true. A stale entry in a current-state
+snapshot is worse than a missing one, because it still reads as authoritative.
+
 *Current as of taskblock-32 landed.*
 
 ---
@@ -54,12 +70,19 @@ an authored diminishing curve (tb20 F, revised tb22 B) with coring; the reaction
 inert, still occupying its cell/occluding the shot plane, excluded from turn order (tb22 C).
 
 **Range** (tb19) — effective / max / min with a linear sub-1 accuracy band in the effective→max
-range; discrete min-range failure (explosive duds); AI movement is range-aware.
+range; discrete min-range failure (explosive duds); AI movement is range-aware. Internal-targeting
+shots (tb20 B) were audited against this pipeline (tb20 G, confirm-only — no separate code path) and
+confirmed to run through it unchanged: an internal aim just shifts `AttackAction`'s dartboard center,
+so it inherits the same effective→max accuracy band and never bypasses range banding.
 
 **Repair** (tb22 E) — `RepairResolver`/`RepairAction`, five authored battery parts + the Arc Welder,
 repair-with-scrap (1:1, up to 3 HP per use, 4 AP; scrap's own resource id is the damaged part's
 `material` field). Reachable via a right-click "Repair with Scrap" item and an action-bar Repair
-button.
+button. **Partial**: logically complete and tested, but not yet reachable in natural gameplay — no
+existing part's `salvage_yield` produces the `material`-field scrap namespace repair reads, since
+that's a new id space kept deliberately separate from the existing `salvage_yield` categories
+(`metals`/`organics`/`reactives`). A follow-up authoring pass is needed before a scavenged scrap pile
+actually feeds a welder.
 
 ## Melee (tb25, keystone 1)
 
@@ -364,9 +387,28 @@ sort/filter/dropdowns/undo/rotating preview. (Layout/resize/column/preview bugs 
 2026-07-18 in 713f411/1bff29b/944d019 — see BUGS.md; landed outside the taskblock cadence, logged
 here retroactively.)
 
+**Test suite** (tb12) — audited for over-granularity (1,026 funcs, 38% single-assert) by measuring
+directly rather than assuming: only 3 genuine same-setup clusters existed
+(`test_grid`/`test_map_gen`/`test_selection_controller`, 7→3 funcs, 0 asserts lost) — the taskblock's
+own ~394→~120 merge estimate did not hold at this suite's actual granularity, and the remaining
+single-assert funcs are correctly-scoped distinct scenarios, left untouched rather than force-merged
+to chase the estimate. **Audited and found current:** `test_body_projector.gd`/`test_damage_resolver.gd`
+(~25% of test LOC, covering systems rebuilt box→per-face→ray and exposure-table→DT→failure-modes)
+read test-by-test against the live projector/damage model — no dead-shape test survived from a
+replaced model; one redundant pair folded into its survivor instead of deleted.
+`test_data_migration_losslessness.gd`'s hand-typed `EXPECTED_PARTS`/`EXPECTED_MATERIALS` fixtures
+(previously checked only against themselves) re-verified against the real pre-migration
+`DeepStrike.default_part_pool()`/`MaterialTable.default_table()` output, restored from git history —
+0 mismatches across 22 parts/8 materials. Assert count unchanged throughout (2333→2333).
+
 **View** (tb15/22, docs/10/10a) — 3D HL2-era; render is hitbox; two palettes; attack camera solves
 framing (orbits target); poses = socket overrides; `HitVolumeView` permanent; per-part `mesh_scene`
-(mixed assemblies). One `BattleScene` + swappable control overlays. Playback animation
+(mixed assemblies). One `BattleScene` + swappable control overlays. Found and fixed a real ordering
+bug in the merge (tb15 A): `BattleScene._ready()` used to call `new_battle()` (which emits the
+session-start log line) before any overlay — and its log sink — existed to catch it, silently
+dropping the first on-screen log line; fixed by installing the overlay first and having it react to
+a new `battle_loaded` signal, which `load_battle()` now emits synchronously before session-start.
+Playback animation
 (slide/facing/shot-fade-to-tracer), animation-gated in the view only, tunable timings; every shot
 and ricochet hop draws its own tracer at its real, fully 3D logged position, not one guessed
 segment pinned to a constant height (tb22 D, real height tb23 D). **Ground-overlay height ladder**
@@ -427,7 +469,20 @@ threshold`)/`set_ap`/`set_mp`/`set_facing`/`set_pose`/`force_current_unit`/`forc
 `force_action` (`CombatState.try_apply` — reuses the real legality check, never bypasses it);
 `set_therms` is a flagged stub (therms aren't built). RNG needs (a spawned unit's matrix id) draw from
 the bout's own `rng`, so the same injections in the same order on the same seed stay reproducible-given-
-the-injections. **Injection reaches a player-controlled bout too (tb30)** — `bout_injector` moved up to
+the-injections. **Tooling misstep, tried and reverted (tb30)** — investigating BR27.06 by reproducing
+it outside the headless suite, a raw `SceneTree` driver script (`tools/investigate_br27_06.gd`,
+copied from the pre-tb28/29 `checkpoint_6/7.gd` pattern of hand-rebuilding `BattleScene` internals and
+driving `TacticsController` programmatically) crashed Godot outright — it referenced `UnitView`, a
+class renamed to `HitVolumeView` since `checkpoint_7.gd` was written, and the resulting parse error
+dropped Godot into its interactive script debugger, which then SIGSEGV'd under a real Vulkan/X11
+context with no stdin attached. No lasting damage; the script was deleted, not reworked. Two things
+were missed before writing it: `BoutInjector` is deliberately hard-gated out of player-controlled
+bouts (tb29 Pass C) — Step Out is a `SquadControlOverlay`/player-input mechanic, so reaching for
+injection here was a category error before any script got written; and the intended division of
+labor is "CC scripts/forces, the supervisor watches" — for a player-input-only bug, the correct
+non-headless step is the real game with the supervisor at the wheel, not a bespoke driver script
+reinventing what the overlay system and `BoutInjector` already provide. **Injection reaches a
+player-controlled bout too (tb30)** — `bout_injector` moved up to
 `BattleScene` itself (built once per `load_battle()`, survives a spectator ↔ player overlay swap via
 `toggle_blue_control()`, since `CombatState` was always the one shared source of truth regardless of
 which overlay is installed). Both `SpectatorOverlay` (hover-targeted — spectator has no selection
@@ -454,6 +509,13 @@ new duck-typed `board_clicked` signal / `input_capture_mode` flag on both `Tacti
 spectator, and neither gameplay-input class needs to import the panel or `BoutInjector` to expose
 it (the source-routing test from the tb29 paragraph above still holds against both). Both overlays'
 Inject button now opens/closes this one shared panel instead of a per-target popup menu.
+**Fix: debug panel had no anchor, sat on top of the pre-existing top-left HUD (tb30 follow-up)** — a
+freshly opened `DebugControlPanel` defaulted to the top-left corner with no anchor set at all,
+landing directly on top of `controls`/`tunables` (both already anchored there in both overlays). New
+`_center_top()` (horizontal center, a fixed `TOP_MARGIN` from the top) runs once after `setup()`'s
+layout settles and again on every `get_viewport().size_changed`, so a mid-session window resize
+doesn't leave it off-center; `test_debug_control_panel.gd` pins the real node's `position` back
+rather than re-deriving the centering formula.
 **Active-target memory + move-object (tb30 follow-up)** — the panel now keeps an "active target":
 every board click while it's open (not just a field's own "Pick") updates it and a label above the
 panel's own control column shows it, via the same `board_clicked`/`input_capture_mode` hook, now
