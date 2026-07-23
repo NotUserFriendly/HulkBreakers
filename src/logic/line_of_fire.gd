@@ -82,9 +82,12 @@ static func _first_hit_excluding(
 ## own MP) — the same fallback re-fires next turn, walking the rest of
 ## the path, until a reachable cell genuinely has LOF and the normal fire
 ## path takes over. Returns an empty array if no cell within range has
-## LOF, or if `budget` can't afford even the first step — the caller's
-## own existing "nothing queued" fallback (hold/overwatch/end turn)
-## already covers that case.
+## LOF; if one is found but `budget` can't afford even the first step
+## toward it, returns a single-element path (just the unit's own current
+## cell — `truncate_to_budget`'s own "inclusive of its own start"
+## contract) rather than an empty one. Either way the caller's own
+## `size() >= 2` check treats it as "nothing to do this turn," falling
+## through to the existing hold/overwatch/end-turn fallback.
 static func approach_path(
 	unit: Unit, enemy: Unit, state: CombatState, pf: Pathfinder, weapon: Part, budget: float
 ) -> Array[Vector2i]:
