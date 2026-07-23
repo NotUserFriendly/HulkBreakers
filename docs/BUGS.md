@@ -294,6 +294,23 @@ confirm" roll-up — so pending items surface at a natural review point without 
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
 - **Source:** `SUPERVISOR`
+- **Three concrete costs, measured headlessly (tb21 Pass E) — recorded here so they stop living in a
+  planning doc.** Real logic and view classes timed directly, not through GUT. None of the three is
+  fixed:
+  1. **The combat-log UI sink reassigns `label.text` in full on every event** — ~175–180µs per call at
+     a 200-line scrollback, and a real 3v3 bout averages 9.9 events per turn (peak 29), so a heavy turn
+     pays ~5ms just relaying text nobody scrolled to. `HierarchicalUiSink` inherited the identical
+     pattern, so it is still live. *Fix:* incremental `RichTextLabel.append_text` for the new line, plus
+     a line-cap strategy other than trim-every-line. **This one gets worse the moment the planned log
+     verbosity work lands** — that item's cost scales linearly with event count.
+  2. **`HitVolumeView.refresh()` rebuilds every mesh and material from scratch** for the acting unit on
+     every turn (~550–600µs on a 27-part unit), even on turns where nothing about its geometry changed.
+     *Fix:* skip the rebuild when the turn's only events were `turn_start`/`turn_end`/`faced`.
+  3. **Turn-start power recompute re-walks the same unchanged part graph 5–6 times** per `_start_turn`
+     (uncached `all_parts()`/`operable_parts()`) — smaller (~175µs) but pure waste. *Fix:* compute
+     `operable_parts()` once and thread it through.
+  Initiative re-sort was measured and **ruled out** (~40µs per turn across a 12-unit roster) — not a
+  contributor, don't re-investigate it.
 - **Reported:** 2026-07-20 (tb27 review). A significant frame hitch fires on either the new-turn or
   end-turn transition — supervisor can't yet tell which of the two triggers it.
 - **Status:** open. First step is isolating which transition (instrument both, or bisect). Possibly
