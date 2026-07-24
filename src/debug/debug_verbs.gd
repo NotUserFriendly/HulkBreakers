@@ -193,6 +193,18 @@ static func all() -> Array[DebugVerbSpec]:
 				Callable(DebugVerbs, &"_apply_force_overwatch_arm")
 			)
 		),
+		DebugVerbSpec.new(
+			&"force_climb",
+			"Force Climb",
+			[DebugVerbSpec.param(&"unit", P.UNIT), DebugVerbSpec.param(&"target_cell", P.CELL)],
+			Callable(DebugVerbs, &"_apply_force_climb")
+		),
+		DebugVerbSpec.new(
+			&"force_hop_down",
+			"Force Hop Down",
+			[DebugVerbSpec.param(&"unit", P.UNIT), DebugVerbSpec.param(&"target_cell", P.CELL)],
+			Callable(DebugVerbs, &"_apply_force_hop_down")
+		),
 	]
 
 
@@ -262,3 +274,11 @@ static func _apply_set_cell_level(inj: BoutInjector, _pool: Dictionary, a: Dicti
 
 static func _apply_force_overwatch_arm(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.force_overwatch_arm(a.unit, a.weapon_id)
+
+
+static func _apply_force_climb(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.force_climb(a.unit, a.target_cell)
+
+
+static func _apply_force_hop_down(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.force_hop_down(a.unit, a.target_cell)
