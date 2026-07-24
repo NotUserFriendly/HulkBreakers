@@ -126,6 +126,9 @@ func add_unit(unit: Unit) -> void:
 	# re-registration passes in, so a cloned unit's level stays consistent
 	# with whatever level its cell actually carries on that specific grid.
 	unit.level = grid.get_level(unit.cell)
+	# taskblock-37 Pass D: `height` alongside `level` — the real continuous
+	# world height (ramp-aware), same "re-derived from THIS grid" posture.
+	unit.height = UnitGeometry.true_height_for_cell(unit.cell, grid)
 
 
 ## The one place a unit's alive flag flips to false (docs/09 "if it changed

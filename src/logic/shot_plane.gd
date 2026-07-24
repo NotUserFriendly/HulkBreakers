@@ -122,7 +122,12 @@ static func build(
 			# placement system, docs/10 "render is hitbox"). A unit's real
 			# elevation only enters HERE, the one place a cell's world
 			# position already gets composed in (`_offset`/`_place` above).
-			region.rect.position.y += unit.level * UnitGeometry.LEVEL_HEIGHT
+			# taskblock-37 Pass D: reads `unit.height` directly (already the
+			# resolved, ramp-aware real height) rather than re-deriving it
+			# from `unit.level * LEVEL_HEIGHT` — a unit resting on a ramp
+			# tile is genuinely partway up, and "render is hitbox" means the
+			# shot plane must agree with `UnitGeometry`'s own placements.
+			region.rect.position.y += unit.height
 			if shear:
 				_shear(region, origin.y, vertical_slope)
 			region.body = unit

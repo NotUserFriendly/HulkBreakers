@@ -76,6 +76,12 @@ static func would_trigger_at(
 	mover_clone.cell = candidate_cell
 	if preview.grid.in_bounds(candidate_cell):
 		preview.grid.set_occupant_id(candidate_cell, mover_clone.id)
+		# taskblock-37 Pass D: the clone's own level/height must reflect
+		# `candidate_cell`, not wherever `mover` actually stands — a
+		# hypothetical on a different level must be judged at that level's
+		# real height, same reason `MoveAction` re-syncs both on every step.
+		mover_clone.level = preview.grid.get_level(candidate_cell)
+		mover_clone.height = UnitGeometry.true_height_for_cell(candidate_cell, preview.grid)
 	var qualifying: Array[Unit] = _qualifying_overwatchers(preview, mover_clone)
 	var real: Array[Unit] = []
 	for overwatcher: Unit in qualifying:

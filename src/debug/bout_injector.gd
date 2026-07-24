@@ -424,6 +424,7 @@ func set_cell_level(cell: Vector2i, level: int) -> bool:
 	for unit: Unit in state.units:
 		if unit.alive and unit.cell == cell:
 			unit.level = level
+			unit.height = UnitGeometry.true_height_for_cell(cell, state.grid)
 	_log_injection(
 		&"set_cell_level", {"cell": cell, "level": level}, "cell %s level=%d" % [cell, level]
 	)

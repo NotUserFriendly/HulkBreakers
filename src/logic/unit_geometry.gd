@@ -25,6 +25,23 @@ const LEVEL_HEIGHT := 1.0
 const DEFAULT_MUZZLE_HEIGHT := 1.25
 
 
+## taskblock-37 Pass D: a cell's own real, continuous world height —
+## `Grid.level`'s discrete int times `LEVEL_HEIGHT`, plus a fixed HALF-level
+## offset for a `RAMP` tile. MapGen authors a ramp cell's own `Grid.level`
+## at its LOWER (origin) endpoint — a unit resting on it is genuinely
+## partway up, not yet at the ramp's own upper level (docs/PLAN.md: "two
+## ramps make one full level"). The one place true height gets DERIVED
+## from a discrete `Grid.level` — every other reader here (and
+## `ShotPlane.build`) takes the resolved float directly via `Unit.height`,
+## never re-deriving it, so "render is hitbox" stays true even once ramps
+## exist.
+static func true_height_for_cell(cell: Vector2i, grid: Grid) -> float:
+	var height: float = grid.get_level(cell) * LEVEL_HEIGHT
+	if grid.get_terrain(cell) == Enums.TerrainType.RAMP:
+		height += LEVEL_HEIGHT * 0.5
+	return height
+
+
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
 ## full world transform (unit facing + board position + socket chain +
 ## pose).
@@ -53,7 +70,7 @@ static func placements(
 		orientation_override if orientation_override != null else unit.orientation
 	)
 	var pose: Pose = pose_override if pose_override != null else unit.pose
-	return assembly_placements(unit.shell.root, unit.cell, orientation, pose, unit.level)
+	return assembly_placements(unit.shell.root, unit.cell, orientation, pose, unit.height)
 
 
 ## docs/10 taskblock04 C1: the same tree-walk `placements()` gives a real
@@ -64,18 +81,22 @@ static func placements(
 ## `placements()` is just this with a Unit's own cell/orientation/pose
 ## unpacked for it.
 ##
-## taskblock-36 Pass D: `level` (0 by default — a field object doesn't sit
-## on a `Grid.level` cell of its own the way a `Unit` does) is this root's
-## own real elevation, `LEVEL_HEIGHT` world units per step. Applied to the
-## Y translation ALONE, never scaled by `CELL_SIZE` (a genuinely separate
-## axis with its own scale, even though both happen to equal 1.0 today).
+## taskblock-36 Pass D: `height` (0.0 by default — a field object doesn't
+## sit on a `Grid.level` cell of its own the way a `Unit` does) is this
+## root's own real elevation in world units. Applied to the Y translation
+## ALONE, never scaled by `CELL_SIZE` (a genuinely separate axis with its
+## own scale, even though both happen to equal 1.0 today).
+## taskblock-37 Pass D: renamed from `level: int` (always `level *
+## LEVEL_HEIGHT` at the one call site that composed it) to `height: float`
+## — the resolved world height directly, since a ramp tile's real height
+## is no longer a whole multiple of `LEVEL_HEIGHT` (`Unit.height`/
+## `true_height_for_cell`'s own doc comment).
 static func assembly_placements(
-	root: Part, cell: Vector2i, orientation: float = 0.0, pose: Pose = null, level: int = 0
+	root: Part, cell: Vector2i, orientation: float = 0.0, pose: Pose = null, height: float = 0.0
 ) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
 	var unit_transform := Transform3D(
-		Basis(Vector3.UP, orientation),
-		Vector3(cell.x * CELL_SIZE, level * LEVEL_HEIGHT, cell.y * CELL_SIZE)
+		Basis(Vector3.UP, orientation), Vector3(cell.x * CELL_SIZE, height, cell.y * CELL_SIZE)
 	)
 	if pose != null and pose.overrides.has(Poses.ROOT_SOCKET_ID):
 		unit_transform = unit_transform * (pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D)
@@ -115,9 +136,7 @@ static func _walk(
 ## rotated boxes, and tight enough for a framing margin check.
 static func bounding_sphere(unit: Unit, orientation_override: Variant = null) -> Dictionary:
 	var box_placements: Array[BoxPlacement] = placements(unit, orientation_override)
-	var origin: Vector3 = Vector3(
-		unit.cell.x * CELL_SIZE, unit.level * LEVEL_HEIGHT, unit.cell.y * CELL_SIZE
-	)
+	var origin: Vector3 = Vector3(unit.cell.x * CELL_SIZE, unit.height, unit.cell.y * CELL_SIZE)
 	return _sphere_from_placements(box_placements, origin)
 
 
@@ -194,9 +213,7 @@ static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
 			var tip: Vector3 = placement.box.center + Vector3(0.0, 0.0, placement.box.size.z * 0.5)
 			return placement.transform.translated_local(tip).origin
 	return Vector3(
-		unit.cell.x * CELL_SIZE,
-		unit.level * LEVEL_HEIGHT + DEFAULT_MUZZLE_HEIGHT,
-		unit.cell.y * CELL_SIZE
+		unit.cell.x * CELL_SIZE, unit.height + DEFAULT_MUZZLE_HEIGHT, unit.cell.y * CELL_SIZE
 	)
 
 
@@ -215,7 +232,7 @@ static func shoulder_height(unit: Unit) -> float:
 		return -1.0
 	var unit_transform := Transform3D(
 		Basis(Vector3.UP, unit.orientation),
-		Vector3(unit.cell.x * CELL_SIZE, unit.level * LEVEL_HEIGHT, unit.cell.y * CELL_SIZE)
+		Vector3(unit.cell.x * CELL_SIZE, unit.height, unit.cell.y * CELL_SIZE)
 	)
 	return _find_shoulder(unit.shell.root, Transform3D.IDENTITY, unit_transform)
 
