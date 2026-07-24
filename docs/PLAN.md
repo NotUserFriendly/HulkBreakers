@@ -148,6 +148,69 @@ deleting the old file.
 
 ---
 
+### 5. Floor and terrain become parts
+**Needs:** nothing. **Unblocks:** bridges and catwalks, ramp directionality, walkable vehicle beds,
+standing on large units, destructible floors.
+
+**Reflatten every cell and put everything walkable on top of it as a `Part`.** "Ship Floor," "Raised
+Ship Floor," "Catwalk," "Ramp" — and roll walls in under the same model, since they already are parts.
+A cell with nothing attached is simply **empty**; the floor's absence *is* the hole.
+
+**This is the tb31 wall move, generalised.** Walls went from opaque terrain to cover Parts and gained
+destructibility, shot-plane projection, and targeting for free. Floors are the same trade, with a
+longer payoff list — bridges, walkable vehicle beds, standing on a downed Brutalizer, and shooting out
+a floor all become *one* mechanism instead of four special cases. It also satisfies standing rule 3
+("author everything as parts") for the last major thing that isn't one.
+
+**Two of its prerequisites already exist, which is what makes it cheap:**
+- **`Part.tags: Array[StringName]`** is live and documented as "open data, not closed enums." So
+  `walkable`, and later `mantle_able` / `jump_able`, need **no new machinery** — they are tags on an
+  existing field, and they satisfy the enums-vs-open-data hard rule by construction. Tags on the
+  surface can drive both pathing cost and, later, which animation plays.
+- **Flyweight sharing is already proven.** `MapGen` writes `grid.blockers[cell] =
+  DataLibrary.get_part(&"wall")` — one shared reference across every wall cell — while cover uses
+  `_make_cover(rng)` for per-cell instances. So "1600 floor parts on a 40×40 map" is a non-issue: a
+  floor is one shared reference until something makes a cell differ.
+
+**What it collapses.** `Grid` currently carries six parallel structures — `terrain`, `opacity`,
+`occupant_id`, `level`, `blockers`, `field_items`. Three of them merge. And `TerrainType` mostly
+dissolves on its own: `OPEN` becomes "has a floor part," `WALL` is already a wall part with the enum
+value vestigial, `RAMP` becomes a ramp part, and **`VOID` becomes the absence of a floor part**. Only
+`SPAWN_A`/`SPAWN_B` survive, and those are game markers rather than physical facts.
+
+**Vocabulary, fixed by the same change.** "Void" currently means three things: the lore setting
+(voidhulk), `TerrainType.VOID`, and informally "a cell with nothing in it." The enum dissolving leaves
+**void as a lore term only**. Use **empty** or **unfloored** for the physical state — plain, and
+colliding with nothing. Worth doing deliberately, the way "robot" and "frame" were retired.
+
+**Attachment discipline is the guard rail, and it already exists.** Floor parts attach sideways as well
+as down: "Ship Floor" attaches to an empty cell, but "Catwalk" requires a side attach point on
+something like a "Raised Ship Floor" — which is how a bridge's middle spans have anything to hold onto.
+That is `attaches_to` and `DataValidator` semantics, unchanged from body assembly. **This is what keeps
+the model from drifting into a Minecraft-style building system:** that drift comes from *unbounded
+placement*, not from cubes. Here placement is authored by `MapGen` and gated by attachment rules, so it
+stays a construction grammar rather than a sandbox. Keep the rules strict.
+
+**Be clear-eyed about the costs:**
+- **Multi-surface lookup does not disappear.** A catwalk over a floor is one cell with two walkable
+  surfaces at different heights — expressed as "multiple parts at a cell" instead of "multiple levels at
+  a cell." Better shape, same lookup complexity.
+- **Pathfinding pays for it.** `move_cost` goes from an array index to a dict lookup, a tag check, and a
+  height comparison — on a system that already runs Dijkstra floods and up to eight A* passes per
+  fallback. That is the axis that has already bitten twice (BR27.09; tb33's per-cell `ShotPlane`
+  builds). Budget for it rather than discovering it.
+- **Serialization surface grows** — `CombatState` must stay serializable (`docs/09`).
+
+**Most of tb36/37 survives.** The six-face geometry, 3D shot resolution, continuous height, and
+height-aware pathing all stand; only *where a cell's height comes from* changes.
+
+**Sequencing — this comes before the ramp rework and before Pass E's terracing polish.** Under the
+parts model a ramp is a `Ramp` part, and a part has a facing, so **ramp directionality falls out for
+free** — currently the hardest of the three ramp problems (see the ramp entry below). Rework ramps
+first under the old model and they get rebuilt immediately; likewise `_build_terrain`'s per-cell quads
+would be rewritten once floors are parts.
+
+
 # QUEUED
 
 ### Multi-level: AI climb/hop-down and interruptible vertical movement
@@ -269,6 +332,32 @@ keeps the sim cheap and usefully delays the consequence.
   special cases and fall out of the same counter.
 - **Deep sim, shallow surface** — the transfer maths runs under the hood; the player just sees "that's
   glowing and sticking out, shoot it."
+
+**Gas is the same substrate as therms, in different units — build the diffusion engine once.** The
+therm model above is already a diffusion model: particles with a counter and a transfer rate, levelling
+toward equilibrium with their neighbours, resolved per turn at start-of-turn. Gas is that, measuring
+concentration instead of heat.
+
+- **A gas is an intangible `Part`** — transparent, no hp or sockets, tagged so it neither projects into
+  the shot plane nor counts as walkable. It sits in a cell and applies an effect scaled to its own
+  concentration.
+- **Diffusion runs high-to-low**, which is both how real gases behave and cheap to compute. A cell hands
+  half its excess to a lower neighbour on its turn, until concentration levels out and the effect
+  reaches zero, at which point it dissipates. *Determinism is still a hard rule* — high-to-low is
+  reproducible provided the processing order is stable (sort by concentration with the cell index as
+  tiebreak). Mathematical artifacts in a drifting cloud are invisible in play; a bout that doesn't
+  replay from its seed is not.
+- **Vacuum is a gas part at zero** that voids any gas it touches. So **decompression is emergent**: blow
+  a wall, expose the interior, and pressure zeroes over a few chaotic turns before settling to hard
+  vacuum — which is a fair model of a real decompression event. This is finally the payoff for tb31's
+  destructible walls, which were explicitly built as "the hook decompression will later read."
+- **It removes a special case from the therm design above.** Air-cooling is currently a boolean
+  ("the air, unless vacuum"). With real concentration it becomes a function of that concentration, and
+  vacuum is simply zero — no separate rule.
+- **Gases are physical objects, just small ones**, which ties them to the substance model in Storage: a
+  hulk full of valuable hydrogen is a container of substance at hulk scale, and an extremely dangerous
+  salvage job.
+- **Sudden pressure loss flings units** toward the drop — see the forced-movement entry below.
 
 **Weak points are emergent from this, not a separate system.** The reactor is the defining example:
 - Three real parts: **core**, **heatsink**, **insulated cladding**. The reactor is insulated — it does NOT
@@ -555,6 +644,26 @@ Four related gaps in what the AI *chooses* to do, all cheap given the data alrea
   item it knows how to use, so an archetype never stalls. Sits on the archetype data that already drives
   bout setup.
 
+
+### Forced movement — flung, thrown, knocked prone
+**Needs:** nothing mechanically; consequences pair with the deep-fall rules.
+
+**One family, not three features.** Being flung by decompression, thrown by an attack, and knocked
+prone by a fall are the same shape: **an outside actor applies movement and/or a pose to a unit that
+didn't choose it.** Nothing like this exists today — every position change in the game is a unit
+spending its own MP on its own turn — so this is genuinely new machinery, and worth building once for
+all three rather than three times.
+
+- **Movement plus pose, from an external cause.** The mover isn't the moved. A flung unit travels in the
+  direction of the pressure drop; a thrown unit along the attack vector; a fallen unit stays put and
+  changes pose. Same verb, different arguments.
+- **Consequences pair with the deep-fall rules.** Falling past the safe hop-down distance is meant to
+  cost damage or a knockdown; that consequence *is* forced movement's output, so design them together
+  rather than inventing knockdown twice.
+- **Resistance is an attribute roll — later, and not defined yet.** Once attributes land, a unit rolls
+  to resist being moved or posed. Perks that avoid the consequence entirely are already sketched under
+  Perks. **Do not invent the roll's shape or numbers ahead of that** — leave a flagged hook.
+- Standard CRPG vocabulary applies (thrown, knocked prone); no need to invent terms.
 
 ### Step-out refinements
 **Needs:** nothing.
