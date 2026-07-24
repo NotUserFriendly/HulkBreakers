@@ -382,7 +382,7 @@ func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 	var part_hit: Dictionary = PartPicker.hit(
 		selection.state.units, selection.state.grid, from, dir
 	)
-	var ground_t: Variant = BoardPicker.plane_hit_t(from, dir)
+	var ground_t: Variant = BoardPicker.plane_hit_t(from, dir, selection.state.grid)
 	if not part_hit.is_empty():
 		if ground_t == null or (part_hit["t"] as float) <= (ground_t as float):
 			var unit: Unit = part_hit["unit"]
@@ -404,7 +404,11 @@ func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 			}
 	if ground_t == null:
 		return null
-	return {"kind": Enums.HitKind.CELL, "unit": null, "cell": BoardPicker.cell_at_ray(from, dir)}
+	return {
+		"kind": Enums.HitKind.CELL,
+		"unit": null,
+		"cell": BoardPicker.cell_at_ray(from, dir, selection.state.grid)
+	}
 
 
 ## docs/10 taskblock04 E3: "hover, don't click" — the combat readout's own
