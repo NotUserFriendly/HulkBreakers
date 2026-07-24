@@ -66,7 +66,7 @@ func apply(state: CombatState) -> void:
 	FaceAction.face_for_free(
 		state, actual, FaceAction.orientation_toward(origin_cell, target_cell), &"free_with_move"
 	)
-	_log(state, actual, rise, cost)
+	_log(state, actual, origin_cell, rise, cost)
 
 
 func _rise(state: CombatState, actual: Unit) -> float:
@@ -89,7 +89,9 @@ func _can_afford(actual: Unit, cost: float) -> bool:
 	return true
 
 
-func _log(state: CombatState, actual: Unit, rise: float, cost: float) -> void:
+func _log(
+	state: CombatState, actual: Unit, origin_cell: Vector2i, rise: float, cost: float
+) -> void:
 	var text: String = (
 		"ClimbAction: unit %d climbed to %s (rise %.2f, cost %.1f MP)"
 		% [actual.id, target_cell, rise, cost]
@@ -97,14 +99,33 @@ func _log(state: CombatState, actual: Unit, rise: float, cost: float) -> void:
 	state.log_action(text)
 	if state.is_preview:
 		return
-	state.combat_log.emit(
-		LogEvent.new(
-			state.round_number,
-			Enums.Phase.RESOLUTION,
-			actual.id,
-			&"climbed",
-			{"cell": target_cell, "rise": rise, "cost": cost},
-			"unit %d climbed to %s (rise %.2f, cost %.1f MP)" % [actual.id, target_cell, rise, cost]
+	(
+		state
+		. combat_log
+		. emit(
+			(
+				LogEvent
+				. new(
+					state.round_number,
+					Enums.Phase.RESOLUTION,
+					actual.id,
+					&"climbed",
+					# taskblock-37 Pass E: `path`, the same shape a `move` event
+					# carries — ResolutionPlayer's own slide playback reads this
+					# generically, so a climb plays as a real vertical slide with
+					# no dedicated animation code at all.
+					{
+						"cell": target_cell,
+						"rise": rise,
+						"cost": cost,
+						"path": [origin_cell, target_cell] as Array[Vector2i]
+					},
+					(
+						"unit %d climbed to %s (rise %.2f, cost %.1f MP)"
+						% [actual.id, target_cell, rise, cost]
+					)
+				)
+			)
 		)
 	)
 

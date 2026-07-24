@@ -579,7 +579,14 @@ func _build_team_marker() -> MeshInstance3D:
 	disc.height = TEAM_MARKER_HEIGHT
 	instance.mesh = disc
 	instance.material_override = WorldPalette.overlay_material(_marker_color())
-	instance.position = Vector3(unit.cell.x, TEAM_MARKER_Y, unit.cell.y) * UnitGeometry.CELL_SIZE
+	# taskblock-37 Pass E: `unit.height` (real, ramp-aware elevation), not
+	# world ground level — a raised unit's own ground-marker disc must sit
+	# on ITS OWN ground plane, not float at the level-0 floor beneath it.
+	instance.position = (Vector3(
+		unit.cell.x * UnitGeometry.CELL_SIZE,
+		unit.height + TEAM_MARKER_Y,
+		unit.cell.y * UnitGeometry.CELL_SIZE
+	))
 	return instance
 
 
@@ -611,7 +618,13 @@ func _build_facing_wedge() -> MeshInstance3D:
 	# (Basis(Vector3.UP, orientation) just below) must agree, and only
 	# forward_for() is built from that same Basis.
 	var forward: Vector2 = BodyProjector.forward_for(orientation)
-	var base := Vector3(unit.cell.x, FACING_WEDGE_Y, unit.cell.y) * UnitGeometry.CELL_SIZE
+	# taskblock-37 Pass E: `unit.height`, same reason `_build_team_marker`
+	# now reads it — the wedge sits on the unit's OWN real ground plane.
+	var base := Vector3(
+		unit.cell.x * UnitGeometry.CELL_SIZE,
+		unit.height + FACING_WEDGE_Y,
+		unit.cell.y * UnitGeometry.CELL_SIZE
+	)
 	instance.position = base + Vector3(forward.x, 0.0, forward.y) * FACING_WEDGE_OFFSET
 	instance.basis = Basis(Vector3.UP, orientation)
 	return instance

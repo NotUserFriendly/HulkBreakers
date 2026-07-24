@@ -174,7 +174,14 @@ func play(events: Array[LogEvent]) -> void:
 
 func _play_event(event: LogEvent) -> void:
 	match event.kind:
-		&"move":
+		# taskblock-37 Pass E: `ClimbAction`/`HopDownAction` log the same
+		# `"path"` shape `MoveAction`'s own `move` event does (`[origin,
+		# target]`) specifically so this needs no dedicated vertical-slide
+		# code at all — `_play_slide`/`_world_anchor` are already height-
+		# aware, so a climb/drop plays as a real slide through the two
+		# cells' own true elevations instead of the silent snap it got
+		# before (no case at all matched either event kind).
+		&"move", &"climbed", &"hopped_down":
 			await _play_slide(event)
 		&"faced":
 			await _play_facing(event)
@@ -210,7 +217,12 @@ func _prime(events: Array[LogEvent]) -> void:
 	var first_move: Dictionary = {}  # unit_id -> LogEvent
 	var relevant: Dictionary = {}  # unit_id -> true
 	for event: LogEvent in events:
-		if event.kind == &"move":
+		# taskblock-37 Pass E: `climbed`/`hopped_down` carry the same
+		# `"path"` shape a `move` event does — primed identically, or a
+		# climbing unit's `_display_cell` never seeds to its own real
+		# origin and the vertical slide `_play_event` now plays for it has
+		# nothing to animate FROM.
+		if event.kind == &"move" or event.kind == &"climbed" or event.kind == &"hopped_down":
 			relevant[event.unit_id] = true
 			if not first_move.has(event.unit_id):
 				first_move[event.unit_id] = event
@@ -305,8 +317,14 @@ func _apply_display_transform(
 	view.position = display_anchor - basis * pivot
 
 
+## taskblock-37 Pass E: reads the cell's own real, ramp-aware height
+## (`UnitGeometry.true_height_for_cell`) instead of a hardcoded `0.0` — a
+## raised unit's slide/turn pivot now anchors at its true elevation, not
+## world ground level. `battle.combat_state.grid` is the same grid every
+## other lookup in this class already reads through `battle`.
 func _world_anchor(cell: Vector2i) -> Vector3:
-	return Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
+	var height: float = UnitGeometry.true_height_for_cell(cell, battle.combat_state.grid)
+	return Vector3(cell.x * UnitGeometry.CELL_SIZE, height, cell.y * UnitGeometry.CELL_SIZE)
 
 
 ## B2: "slide — a MoveAction's start->end, PER CELL — slide_ms per cell."

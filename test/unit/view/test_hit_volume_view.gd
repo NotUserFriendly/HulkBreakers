@@ -216,6 +216,34 @@ func test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color() -> vo
 	assert_eq(material.albedo_color, WorldPalette.TEAM_B)
 
 
+## taskblock-37 Pass D's own true continuous elevation must reach the
+## ground marker too, or a raised unit's own disc floats at world Y≈0
+## instead of sitting on its own real ground plane.
+func test_team_marker_sits_at_the_units_own_real_height_when_raised() -> void:
+	var unit := _torso_unit(Vector2i(2, 3), 1)
+	unit.level = 3
+	unit.height = 3.0 * UnitGeometry.LEVEL_HEIGHT
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+
+	var marker: MeshInstance3D = view.get_child(0)
+	assert_almost_eq(marker.position.y, unit.height + HitVolumeView.TEAM_MARKER_Y, 0.0001)
+
+
+func test_facing_wedge_sits_at_the_units_own_real_height_when_raised() -> void:
+	var unit := _torso_unit(Vector2i(2, 3), 1)
+	unit.orientation = 0.0
+	unit.level = 3
+	unit.height = 3.0 * UnitGeometry.LEVEL_HEIGHT
+	var view := HitVolumeView.new()
+	add_child_autofree(view)
+	view.setup(unit, DataLibrary.material_table())
+
+	var wedge: MeshInstance3D = view.get_child(1)
+	assert_almost_eq(wedge.position.y, unit.height + HitVolumeView.FACING_WEDGE_Y, 0.0001)
+
+
 func test_set_selected_brightens_the_team_marker() -> void:
 	var unit := _torso_unit(Vector2i(0, 0), 0)
 	var view := HitVolumeView.new()
