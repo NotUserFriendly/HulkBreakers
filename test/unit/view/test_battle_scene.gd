@@ -469,6 +469,16 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 ## MapGen actually carved; it must place both squads on the grid's own
 ## real SPAWN_A/SPAWN_B cells instead, across many seeds, not just the
 ## default one.
+##
+## taskblock-39 Pass C: `grid.get_terrain(cell) != WALL` was already
+## vacuous on any real generated map — `MapGen._finalize_walls_and_void`
+## always resolves a WALL cell to OPEN+blocker or VOID before `_emit`, so
+## no real cell's own terrain is ever raw WALL to begin with, regardless
+## of whether a unit spawned somewhere sane. Whether the cell itself
+## carries a real walkable ground `Surface` is the real, surface-based
+## claim this test actually wants — `Pathfinder.is_walkable` can't be
+## reused here since it also checks occupancy, and every cell under test
+## is occupied by the very unit standing on it.
 func test_seeded_units_always_land_on_navigable_terrain_across_many_seeds() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
@@ -476,10 +486,11 @@ func test_seeded_units_always_land_on_navigable_terrain_across_many_seeds() -> v
 	for seed_value in range(1, 30):
 		scene.new_battle(seed_value)
 		for unit: Unit in scene.combat_state.units:
-			assert_ne(
-				scene.combat_state.grid.get_terrain(unit.cell),
-				Enums.TerrainType.WALL,
-				"seed %d must not spawn a unit on a wall" % seed_value
+			var surface: Surface = Surface.first_walkable(
+				scene.combat_state.grid.surfaces_at(unit.cell)
+			)
+			assert_not_null(
+				surface, "seed %d must not spawn a unit on unwalkable ground" % seed_value
 			)
 
 

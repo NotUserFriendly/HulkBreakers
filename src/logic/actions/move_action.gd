@@ -38,7 +38,7 @@ func is_legal(state: CombatState) -> bool:
 	if path.size() < 2 or path[0] != actual.cell:
 		return false
 
-	var pf := Pathfinder.new(state.grid, state.terrain_costs, actual.shell.can_climb())
+	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
 	var sim_ap: int = actual.ap
 	var sim_mp: float = actual.mp
 	var per_ap: float = actual.mp_per_ap()
@@ -91,7 +91,7 @@ func apply(state: CombatState) -> void:
 ## IS the untraversed remainder's own leftover).
 func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
 	var actual: Unit = state.find_unit(unit.id)
-	var pf := Pathfinder.new(state.grid, state.terrain_costs, actual.shell.can_climb())
+	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
 	# taskblock: "bots visibly spin through every facing, then move" — the
 	# STATE was already correct per-tile (taskblock-16 Pass A), but every
 	# `faced` LogEvent below fired DURING this loop while the single `move`
@@ -132,8 +132,8 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 		# taskblock-37 Pass D: keep level/height in sync as the unit actually
 		# steps across cells (ramps included, ordinary movement per Pass C) —
 		# `CombatState.add_unit`'s own sync only ever ran once, at spawn.
-		actual.level = state.grid.get_level(actual.cell)
 		actual.height = UnitGeometry.true_height_for_cell(actual.cell, state.grid)
+		actual.level = actual.height / UnitGeometry.LEVEL_HEIGHT
 
 		var hook_forces_stop: bool = false
 		if mid_move_hook.is_valid():
@@ -175,7 +175,7 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 static func _can_still_complete(
 	state: CombatState, actual: Unit, remaining: Array[Vector2i], free: bool = false
 ) -> bool:
-	var pf := Pathfinder.new(state.grid, state.terrain_costs, actual.shell.can_climb())
+	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
 	var sim_ap: int = actual.ap
 	var sim_mp: float = actual.mp
 	var per_ap: float = actual.mp_per_ap()

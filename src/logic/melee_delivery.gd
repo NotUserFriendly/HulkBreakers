@@ -58,7 +58,7 @@ static func find_step_in_cell(
 ) -> Variant:
 	if MeleeReach.in_reach(unit.shell, weapon, Grid.distance_chebyshev(unit.cell, target.cell)):
 		return null
-	var pf := Pathfinder.new(state.grid, state.terrain_costs, unit.shell.can_climb())
+	var pf := Pathfinder.new(state.grid, unit.shell.can_climb())
 	var best: Variant = null
 	var best_cost: float = INF
 	for cell: Vector2i in pf.reachable(unit.cell, unit.mp):

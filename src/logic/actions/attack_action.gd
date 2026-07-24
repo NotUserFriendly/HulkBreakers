@@ -146,8 +146,8 @@ func apply(state: CombatState) -> void:
 	# firing backward. Both must share the muzzle anchor.
 	var direction := Vector2(target_cell) - origin
 	# taskblock-37 Pass A: the target CELL's own real elevation
-	# (`grid.get_level`, the same source `Unit.level` itself reads) against
-	# this shooter's own real muzzle height — a genuinely tilted shot
+	# (`UnitGeometry.true_height_for_cell`) against this shooter's own real
+	# muzzle height — a genuinely tilted shot
 	# between different levels now reaches `BodyProjector`'s own 3D
 	# visibility test, not just `resolve_ray`'s. `vertical_slope` carries
 	# across to `resolve_and_log_point` below so `DamageResolver` doesn't

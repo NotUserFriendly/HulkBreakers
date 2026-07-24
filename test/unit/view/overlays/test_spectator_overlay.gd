@@ -325,27 +325,17 @@ func test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel() 
 	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the tile's own object shows")
 
 
-## taskblock-27 Pass D5: "wall tiles inspectable -> garbage inspector."
-## A wall isn't a part assembly (`Grid.blockers` is never populated for
-## one) — clicking one must not open the inspector at all, same "real
-## no-op" posture as clicking empty space off the board entirely.
-func test_clicking_a_wall_tile_does_nothing() -> void:
-	var built: Dictionary = _bout()
-	built.state.grid.set_terrain(Vector2i(4, 0), Enums.TerrainType.WALL)
-	var overlay: SpectatorOverlay = _spectate(built)
-	overlay.playing = true
-
-	var world_point := Vector3(4, 0.0, 0) * UnitGeometry.CELL_SIZE
-	var camera: Camera3D = overlay.battle.camera_rig.camera()
-	var screen_pos: Vector2 = camera.unproject_position(world_point)
-	var click := InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_LEFT
-	click.pressed = true
-	click.position = screen_pos
-	overlay._unhandled_input(click)
-
-	assert_true(overlay.playing, "a wall click must not pause the bout")
-	assert_false(overlay.inspect_panel.visible)
+## taskblock-39 Pass C: this test used to pin taskblock-27 Pass D5's own
+## "wall tiles aren't inspectable" WALL-terrain guard, on the claim that
+## "a wall isn't a part assembly (Grid.blockers is never populated for
+## one)" — false since tb31 Pass C gave every real wall a genuine
+## `Grid.blockers` Part, a fact `spectator_overlay.gd`'s own doc comment
+## already flagged as corrected-but-left-in-place. The guard only ever
+## fired on an unfinalized/raw wall cell no real generated map produces,
+## so it never protected anything a player could actually click; retired
+## along with the check itself rather than migrated. A wall tile is now
+## inspectable exactly like any other field object, already covered by
+## `test_clicking_a_tile_with_a_field_object_shows_it_and_pauses` above.
 
 
 func test_clicking_empty_space_does_nothing() -> void:

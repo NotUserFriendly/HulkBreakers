@@ -181,21 +181,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	var cell: Variant = BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
 		return
-	# taskblock-27 Pass D5: "wall tiles should not be inspectable" — a
-	# deliberate exclusion, not a stand-in for the null-root "empty state"
-	# `open_tile` already handles gracefully.
-	# tb35 Pass C: stale reasoning corrected — tb31 C gave every real wall a
-	# genuine `Grid.blockers` Part (`map_gen.gd`'s own `_finalize_walls_and_
-	# void` writes `blockers[cell] = wall` for every exposed wall tile),
-	# so "a wall isn't a part assembly" is no longer true. This guard's own
-	# mechanism (gating on `TerrainType.WALL` specifically) still excludes
-	# a wall correctly regardless — a finalized, exposed wall cell's own
-	# terrain is `OPEN` (its blocker Part is what carries "wall" now), so
-	# this check only ever matches an UNFINALIZED/raw wall cell, never a
-	# real player-facing one — but the "no blockers exist for a wall" claim
-	# this comment used to make is false and was left uncorrected too long.
-	if battle.combat_state.grid.get_terrain(cell) == Enums.TerrainType.WALL:
-		return
+	# taskblock-39 Pass C: the old "wall tiles aren't inspectable" WALL-
+	# terrain check retired here — it could only ever fire on an
+	# unfinalized/raw wall cell (real generation always resolves WALL to
+	# OPEN+blocker or VOID before this ever runs), and a wall's real
+	# blocker Part is already handled correctly below like any other
+	# field object.
 	_was_playing_before_inspect = playing
 	pause()
 	inspect_panel.open_tile(cell as Vector2i, battle.combat_state.grid.blockers.get(cell))

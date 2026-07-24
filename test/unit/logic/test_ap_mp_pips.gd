@@ -84,7 +84,7 @@ func test_mp_pip_count_matches_a_whole_mp_value_exactly() -> void:
 ## uses), not a synthetic direct field mutation. agility=0 -> mp_per_ap =
 ## BASE_MP = 2.0.
 func test_a_real_move_actions_ap_burn_updates_both_pip_rows_together() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit()
 	unit.max_ap = 2
 	var state := CombatState.new(grid, [unit])

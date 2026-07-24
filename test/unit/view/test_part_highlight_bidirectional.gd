@@ -49,7 +49,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Dictionary:
 ## place the actual cross-panel wiring gets exercised at all.
 func _setup(built: Dictionary) -> Dictionary:
 	var unit: Unit = built.unit
-	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var state := CombatState.new(GridFixture.flat(10, 10), [unit])
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()

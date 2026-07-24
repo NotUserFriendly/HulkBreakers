@@ -101,7 +101,7 @@ func test_is_legal_true_in_the_baseline_case() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	assert_true(BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state))
 
@@ -110,7 +110,7 @@ func test_is_legal_false_without_enough_ap_for_the_burst_ap_cost() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	shooter.ap = 2  # burst_ap_cost is 3
 
 	assert_false(BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state))
@@ -124,7 +124,7 @@ func test_is_legal_false_for_a_two_handed_burst_weapon_adjacent_to_an_enemy() ->
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var adjacent_enemy := _make_target(Vector2i(1, 0))
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, adjacent_enemy, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, adjacent_enemy, target])
 
 	assert_false(BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state))
 
@@ -141,7 +141,7 @@ func test_is_legal_false_for_a_weapon_with_no_burst_mode() -> void:
 	weapon.damage = 4.0
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	assert_false(BurstAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
 
@@ -155,7 +155,7 @@ func test_is_legal_false_for_a_weapon_that_can_burst_but_never_opted_in() -> voi
 	weapon.provides_actions = [&"shoot"]
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	assert_false(
 		BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state),
@@ -169,7 +169,7 @@ func test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst() -> voi
 	var weapon := _make_auto_shotgun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	assert_true(BurstAction.new(shooter, &"auto_shotgun", Vector2i(3, 0)).is_legal(state))
 
@@ -180,7 +180,7 @@ func test_a_burst_fires_exactly_burst_size_independent_pulls() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -198,7 +198,7 @@ func test_burst_spends_its_own_higher_ap_cost() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var before_ap: int = shooter.ap
 
 	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
@@ -211,7 +211,7 @@ func test_a_burst_emits_one_summary_event_plus_full_detail_per_impact() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -233,7 +233,7 @@ func test_a_burst_of_buckshot_resolves_n_pulls_times_m_pellets() -> void:
 	DataLibrary.load_all()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -256,7 +256,7 @@ func test_replays_identically_from_the_same_seed() -> void:
 		var weapon := _make_chaingun()
 		var shooter := _make_shooter(Vector2i(0, 0), weapon)
 		var target := _make_target(Vector2i(4, 0), 200)
-		var state := CombatState.new(Grid.new(10, 10), [shooter, target], 777)
+		var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target], 777)
 
 		BurstAction.new(shooter, &"chaingun", Vector2i(4, 0)).apply(state)
 		results.append([shooter.ap, target.shell.root.hp])
@@ -275,7 +275,7 @@ func test_recoil_resets_between_separate_burst_activations() -> void:
 	weapon.weapon_def.barrel_length = 0.3  # short barrel: recoil actually moves the needle
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0), 5000)
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target], 42)
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target], 42)
 	shooter.ap = 100
 
 	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
@@ -296,7 +296,7 @@ func test_recoil_never_changes_the_pellet_count_per_pull() -> void:
 	DataLibrary.load_all()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -316,7 +316,7 @@ func test_apply_faces_the_shooter_toward_the_target() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
 
@@ -344,7 +344,7 @@ func test_a_real_bursts_pull_events_always_total_burst_size_even_with_misses() -
 	# Seed 0: a real, verified mix of hits and misses for this exact
 	# fixture (confirmed via a live probe before writing this test) —
 	# never all-hit, never all-miss, so this can't pass by accident.
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target], 0)
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target], 0)
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -365,7 +365,7 @@ func test_burst_pull_events_are_indexed_0_to_burst_size_minus_1() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -387,7 +387,7 @@ func test_landed_so_far_matches_the_actual_impact_count_at_the_end() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -404,7 +404,7 @@ func test_landed_so_far_matches_the_actual_impact_count_at_the_end() -> void:
 func test_apply_resolves_a_declared_burst_against_a_blocker_with_no_unit_there() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var wall: Part = DataLibrary.get_part(&"wall")
 	grid.blockers[Vector2i(3, 0)] = wall
 	var state := CombatState.new(grid, [shooter])
@@ -426,8 +426,8 @@ func test_a_burst_still_lands_on_an_elevated_target() -> void:
 	var weapon := _make_chaingun()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(0, 3))
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 3), 2)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 3), 2)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)

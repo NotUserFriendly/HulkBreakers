@@ -381,24 +381,38 @@ func remove_object(target: Dictionary) -> bool:
 	return true
 
 
-## Flips `cell` between navigable (`OPEN`) and non-navigable (`WALL`) —
-## the real passability primitive every existing wall/cover fixture in
-## this codebase already builds by hand (`Pathfinder.move_cost` reads
-## `terrain_costs[WALL]` as impassable by default), not a parallel
-## mechanism layered over `place_cover`'s own `blockers` dictionary
-## (those answer "is a physical, shootable thing here," this answers "can
-## anything path through here at all"). Also sets opacity to match — a
-## wall blocks sightlines too, the same "impassable and opaque together"
-## pairing every real wall already carries (`passable=true` mirrors
-## `MapGen._set_open`'s own reset: `OPEN` + zero opacity).
+## Flips `cell` between navigable and non-navigable — the real
+## passability primitive every existing wall/cover fixture in this
+## codebase already builds by hand, not a parallel mechanism layered over
+## `place_cover`'s own `blockers` dictionary (those answer "is a
+## physical, shootable thing here," this answers "can anything path
+## through here at all").
+##
+## taskblock-39 Pass C: `Pathfinder` reads placed surfaces now, with no
+## `Grid.terrain` fallback — writing `Enums.TerrainType.WALL` directly, as
+## this used to, had already gone silently inert on any real (non-legacy)
+## bout grid since tb38 Pass D shipped the surface-based path; only a
+## bare legacy fixture ever actually saw it block. tb31 Pass C's own
+## settled wall model, verbatim (`MapGen._finalize_walls_and_void`'s
+## "exposed wall" branch): floored ground stays floored — never
+## re-placed, so an already-authored height survives — and passability
+## comes from a real, destructible `wall` Part `blockers` entry plus
+## opacity, the same "impassable and opaque together" pairing every real
+## wall already carries.
 func set_passable(cell: Vector2i, passable: bool) -> bool:
 	if not can_inject():
 		_reject(&"set_passable")
 		return false
 	if not state.grid.in_bounds(cell):
 		return false
-	state.grid.set_terrain(cell, Enums.TerrainType.OPEN if passable else Enums.TerrainType.WALL)
-	state.grid.set_opacity(cell, 0.0 if passable else 1.0)
+	if Surface.first_walkable(state.grid.surfaces_at(cell)) == null:
+		GridPlacement.place(state.grid, cell, DataLibrary.get_part(&"ship_floor"), 0.0)
+	if passable:
+		state.grid.blockers.erase(cell)
+		state.grid.set_opacity(cell, 0.0)
+	else:
+		state.grid.blockers[cell] = DataLibrary.get_part(&"wall")
+		state.grid.set_opacity(cell, 1.0)
 	_log_injection(
 		&"set_passable",
 		{"cell": cell, "passable": passable},
@@ -416,13 +430,22 @@ func set_passable(cell: Vector2i, passable: bool) -> bool:
 ## taskblock-37 Pass E follow-up (supervisor): `level` is a real `float`
 ## now, not a whole number — genuinely arbitrary elevation for a forced
 ## scenario, not just whole levels plus a ramp's own fixed half-step.
+##
+## taskblock-39 Pass C: elevation now lives on the cell's own placed
+## `Surface`, so forcing it re-places one — keeping whatever `Part`
+## (plain floor or ramp) and facing were already there, at the new
+## height, rather than writing a `Grid.level` nothing reads anymore.
 func set_cell_level(cell: Vector2i, level: float) -> bool:
 	if not can_inject():
 		_reject(&"set_cell_level")
 		return false
 	if not state.grid.in_bounds(cell):
 		return false
-	state.grid.set_level(cell, level)
+	var existing: Surface = Surface.first_walkable(state.grid.surfaces_at(cell))
+	var part: Part = existing.part if existing != null else DataLibrary.get_part(&"ship_floor")
+	var facing: float = existing.facing if existing != null else 0.0
+	state.grid.clear_surfaces(cell)
+	GridPlacement.place(state.grid, cell, part, level * UnitGeometry.LEVEL_HEIGHT, facing)
 	for unit: Unit in state.units:
 		if unit.alive and unit.cell == cell:
 			unit.level = level

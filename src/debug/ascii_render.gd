@@ -38,24 +38,32 @@ static func grid_to_text(grid: Grid, occupants: Dictionary = {}) -> String:
 	return "\n".join(lines)
 
 
+## taskblock-39 Pass C: `WALL`/`VOID` terrain codes never actually
+## reached a real generated map's own ASCII dump — `MapGen._finalize_
+## walls_and_void` always resolves a WALL cell to OPEN+blocker or VOID
+## before `_emit`, and a real exposed wall's own blocker would have
+## fallen through to the generic cover glyph below without this fix
+## (silently losing the dedicated `#` glyph for anything but a hand-
+## authored fixture). Wall identity now comes from the blocker's own id;
+## void from having no placed Surface at all — the real placement-model
+## facts, not the retired terrain codes. `SPAWN_A`/`SPAWN_B` stay direct
+## terrain reads — game markers, not physical facts (docs/PLAN.md).
 static func _terrain_char(grid: Grid, cell: Vector2i) -> String:
-	var terrain: int = grid.get_terrain(cell)
-	match terrain:
-		Enums.TerrainType.WALL:
-			return CHAR_WALL
-		Enums.TerrainType.VOID:
-			return CHAR_VOID
+	var blocker: Variant = grid.blockers.get(cell)
+	if blocker != null and (blocker as Part).id == &"wall":
+		return CHAR_WALL
+	if Surface.first_walkable(grid.surfaces_at(cell)) == null:
+		return CHAR_VOID
+	match grid.get_terrain(cell):
 		Enums.TerrainType.SPAWN_A:
 			return CHAR_SPAWN_A
 		Enums.TerrainType.SPAWN_B:
 			return CHAR_SPAWN_B
-		_:
-			var blocker: Variant = grid.blockers.get(cell)
-			if blocker == null:
-				return CHAR_OPEN
-			if _blocker_height(blocker as Part) >= MapGen.FULL_COVER_HEIGHT:
-				return CHAR_FULL_COVER
-			return CHAR_HALF_COVER
+	if blocker == null:
+		return CHAR_OPEN
+	if _blocker_height(blocker as Part) >= MapGen.FULL_COVER_HEIGHT:
+		return CHAR_FULL_COVER
+	return CHAR_HALF_COVER
 
 
 ## taskblock-16 Pass B2: cover height is now a property of the object

@@ -43,7 +43,7 @@ func _armed_unit(cell: Vector2i, squad: int, damage: float) -> Unit:
 func test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage() -> void:
 	var shooter := _armed_unit(Vector2i(0, 0), 0, 7.0)
 	var target := _armed_unit(Vector2i(2, 0), 1, 3.0)
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()

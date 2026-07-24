@@ -68,7 +68,7 @@ func _winning_bout(turn_cap: int = 200) -> Dictionary:
 	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
 	var alice := _armed_unit(&"alice", Vector2i(1, 0), 0, &"rifle", 30)
 	var weak_enemy := _armed_unit(&"weak_enemy", Vector2i(8, 0), 1, &"pistol", 5)
-	var state := CombatState.new(Grid.new(12, 5), [jerry, alice, weak_enemy], 11)
+	var state := CombatState.new(GridFixture.flat(12, 5), [jerry, alice, weak_enemy], 11)
 	state.set_squad_controller(0, Enums.SquadController.AI)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 
@@ -139,7 +139,7 @@ func test_the_turn_cap_guarantees_termination_via_the_terminated_outcome() -> vo
 func test_the_player_squads_own_defeat_ends_the_bout_stranded() -> void:
 	var doomed := _armed_unit(&"doomed", Vector2i(0, 0), 0, &"pistol", 1)
 	var strong_enemy := _armed_unit(&"strong_enemy", Vector2i(1, 0), 1, &"rifle", 200)
-	var state := CombatState.new(Grid.new(10, 5), [doomed, strong_enemy], 5)
+	var state := CombatState.new(GridFixture.flat(10, 5), [doomed, strong_enemy], 5)
 	state.set_squad_controller(0, Enums.SquadController.AI)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 	var mission := MissionState.new(RunState.new(), state)
@@ -184,7 +184,7 @@ func test_stepping_one_call_at_a_time_reaches_the_same_outcome_as_a_tight_loop()
 func test_constructing_a_runner_over_an_unassigned_squad_is_a_hard_error() -> void:
 	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
 	var enemy := _armed_unit(&"enemy", Vector2i(5, 0), 1, &"rifle", 30)
-	var state := CombatState.new(Grid.new(10, 5), [jerry, enemy], 1)
+	var state := CombatState.new(GridFixture.flat(10, 5), [jerry, enemy], 1)
 	state.set_squad_controller(0, Enums.SquadController.AI)
 	# Squad 1 deliberately left UNASSIGNED.
 	var mission := MissionState.new(RunState.new(), state)
@@ -199,7 +199,7 @@ func test_constructing_a_runner_over_an_unassigned_squad_is_a_hard_error() -> vo
 func test_step_does_nothing_for_a_human_controlled_squad() -> void:
 	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
 	var enemy := _armed_unit(&"enemy", Vector2i(5, 0), 1, &"rifle", 30)
-	var state := CombatState.new(Grid.new(10, 5), [jerry, enemy], 1)
+	var state := CombatState.new(GridFixture.flat(10, 5), [jerry, enemy], 1)
 	# tb31 Pass B: HUMAN is no longer a silent default — assigned explicitly.
 	state.set_squad_controller(0, Enums.SquadController.HUMAN)
 	state.set_squad_controller(1, Enums.SquadController.AI)
@@ -244,7 +244,7 @@ func test_last_events_carries_exactly_this_steps_own_events_not_everyones() -> v
 func test_an_injected_wants_turn_for_overrides_the_default_squad_check() -> void:
 	var jerry := _armed_unit(&"jerry", Vector2i(0, 0), 0, &"rifle", 30)
 	var enemy := _armed_unit(&"enemy", Vector2i(5, 0), 1, &"rifle", 30)
-	var state := CombatState.new(Grid.new(10, 5), [jerry, enemy], 1)
+	var state := CombatState.new(GridFixture.flat(10, 5), [jerry, enemy], 1)
 	state.set_squad_controller(0, Enums.SquadController.AI)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 	var mission := MissionState.new(RunState.new(), state)
@@ -317,10 +317,10 @@ func _overwatch_capable_unit(id: StringName, cell: Vector2i, squad_id: int) -> U
 ## mid_move_hook; before this pass, overwatch could be validly declared
 ## by the AI and still never once trigger in any real bout.
 func test_a_bout_contains_held_overwatch_that_triggers_on_an_advancing_enemy() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	for x in range(20):
-		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
-		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, Vector2i(x, 0))
+		GridFixture.place_wall(grid, Vector2i(x, 2))
 	var self_unit := _overwatch_capable_unit(&"self_unit", Vector2i(0, 1), 0)
 	self_unit.max_ap = 3
 	self_unit.orientation = FaceAction.orientation_toward(Vector2i(0, 1), Vector2i(7, 1))

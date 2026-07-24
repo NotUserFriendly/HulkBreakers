@@ -13,7 +13,7 @@ func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:
 	# agility=0 -> mp_per_ap = BASE_MP = 2.0; max_ap pinned to 2 here so the
 	# chunk-burning arithmetic below is exercised regardless of the docs/05
 	# baseline (6) the default actually carries.
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.max_ap = 2
 	var state := CombatState.new(grid, [unit])
@@ -36,7 +36,7 @@ func test_move_costs_right_mp_and_burns_ap_in_chunks() -> void:
 
 
 func test_move_emits_a_move_event_to_the_destination() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var sink := MemorySink.new()
@@ -52,7 +52,7 @@ func test_move_emits_a_move_event_to_the_destination() -> void:
 
 
 func test_move_fails_when_ap_runs_out_mid_path() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.max_ap = 1
 	var state := CombatState.new(grid, [unit])
@@ -72,7 +72,7 @@ func test_move_fails_when_ap_runs_out_mid_path() -> void:
 
 
 func test_move_rejects_path_not_starting_at_units_cell() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var action := MoveAction.new(unit, [Vector2i(5, 5), Vector2i(6, 5)])
@@ -80,7 +80,7 @@ func test_move_rejects_path_not_starting_at_units_cell() -> void:
 
 
 func test_move_rejects_when_not_units_turn() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var a := _make_unit(Vector2i(0, 0))
 	var b := _make_unit(Vector2i(5, 5))
 	b.squad_id = 1
@@ -91,8 +91,8 @@ func test_move_rejects_when_not_units_turn() -> void:
 
 
 func test_move_rejects_blocked_destination() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_wall(grid, Vector2i(1, 0))
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var action := MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)])
@@ -100,7 +100,7 @@ func test_move_rejects_blocked_destination() -> void:
 
 
 func test_move_rejects_non_adjacent_step() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var action := MoveAction.new(unit, [Vector2i(0, 0), Vector2i(5, 5)])
@@ -108,7 +108,7 @@ func test_move_rejects_non_adjacent_step() -> void:
 
 
 func test_move_rejects_trivial_single_cell_path() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var action := MoveAction.new(unit, [Vector2i(0, 0)])
@@ -120,7 +120,7 @@ func test_move_rejects_trivial_single_cell_path() -> void:
 ## SAME direction, so per-tile facing degenerates to exactly the old
 ## once-at-the-end behavior.
 func test_move_faces_the_unit_toward_the_overall_direction_of_travel() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.orientation = 0.0
 	var state := CombatState.new(grid, [unit])
@@ -133,7 +133,7 @@ func test_move_faces_the_unit_toward_the_overall_direction_of_travel() -> void:
 
 
 func test_move_facing_costs_no_mp_and_does_not_consume_the_facing_unlock() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.mp = 3.0
 	var state := CombatState.new(grid, [unit])
@@ -147,7 +147,7 @@ func test_move_facing_costs_no_mp_and_does_not_consume_the_facing_unlock() -> vo
 
 
 func test_move_facing_emits_a_faced_event_with_reason_free_with_move() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var sink := MemorySink.new()
@@ -168,7 +168,7 @@ func test_move_facing_emits_a_faced_event_with_reason_free_with_move() -> void:
 ## aggregate start->end direction (which for an L-shape is neither east
 ## nor north).
 func test_a_curved_move_faces_each_tile_before_entering_it() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var sink := MemorySink.new()
@@ -202,7 +202,7 @@ func test_a_curved_move_faces_each_tile_before_entering_it() -> void:
 ## LEG, interleaved with its own `faced` event, never batched behind
 ## every facing change in the whole path.
 func test_a_curved_move_interleaves_faced_and_move_events_leg_by_leg() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var sink := MemorySink.new()
@@ -236,7 +236,7 @@ func test_a_curved_move_interleaves_faced_and_move_events_leg_by_leg() -> void:
 ## must still collapse to exactly one `move` event — the common case
 ## must stay byte-for-byte unchanged by the leg-splitting fix above.
 func test_a_straight_move_still_emits_exactly_one_move_event() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var sink := MemorySink.new()
@@ -257,7 +257,7 @@ func test_a_straight_move_still_emits_exactly_one_move_event() -> void:
 ## interrupt has ALREADY faced its own direction before the hook is even
 ## consulted.
 func test_an_interrupted_move_leaves_the_unit_facing_its_direction_of_travel() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.orientation = PI  # a start facing that matches neither leg below
 	var state := CombatState.new(grid, [unit])
@@ -282,7 +282,7 @@ func test_an_interrupted_move_leaves_the_unit_facing_its_direction_of_travel() -
 ## multi-direction path costs no more MP than the plain per-tile move cost
 ## itself, regardless of how many times it turned along the way.
 func test_per_tile_facing_on_a_curved_move_still_costs_no_extra_mp() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.mp = 4.0
 	var state := CombatState.new(grid, [unit])
@@ -296,7 +296,7 @@ func test_per_tile_facing_on_a_curved_move_still_costs_no_extra_mp() -> void:
 
 
 func test_leftover_mp_is_discarded_at_end_of_turn() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var mover := _make_unit(Vector2i(0, 0))
 	var other := _make_unit(Vector2i(9, 9))
 	other.squad_id = 1

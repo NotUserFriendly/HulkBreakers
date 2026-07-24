@@ -24,10 +24,6 @@ var squad_controllers: Dictionary = {}
 ## every single turn.
 var round_number: int = 0
 var action_log: Array[String] = []
-## tb31 Pass C: VOID is the negative-space fill past a wall's own ring —
-## non-navigable exactly like WALL always has been (VOID never appears in
-## a freshly generated map's own carved/wall-Part cells, only past them).
-var terrain_costs: Dictionary = {Enums.TerrainType.WALL: -1.0, Enums.TerrainType.VOID: -1.0}
 var rng: RandomNumberGenerator
 ## Structured log (docs/09) — no sinks by default; the caller wires whichever
 ## it wants (Memory/Stdout/File/UI). Every impact and abort in resolve_turn()
@@ -121,14 +117,17 @@ func add_unit(unit: Unit) -> void:
 	squads[unit.squad_id].append(unit)
 	if unit.alive:
 		grid.set_occupant_id(unit.cell, unit.id)
-	# taskblock-36 Pass D: a unit's own real elevation, re-derived from
-	# THIS grid at registration time — the same grid `dup()`'s own clone
-	# re-registration passes in, so a cloned unit's level stays consistent
-	# with whatever level its cell actually carries on that specific grid.
-	unit.level = grid.get_level(unit.cell)
-	# taskblock-37 Pass D: `height` alongside `level` — the real continuous
-	# world height (ramp-aware), same "re-derived from THIS grid" posture.
+	# taskblock-37 Pass D: `height` — the real continuous world height
+	# (ramp-aware), re-derived from THIS grid at registration time — the
+	# same grid `dup()`'s own clone re-registration passes in, so a
+	# cloned unit's height stays consistent with whatever its cell
+	# actually carries on that specific grid.
 	unit.height = UnitGeometry.true_height_for_cell(unit.cell, grid)
+	# taskblock-39 Pass C: `level` derived FROM height now, not `Grid.
+	# level` directly — the placement model's own Surface.height is the
+	# real source of truth; `level` survives only as the whole-level-count
+	# convenience tests and debug tooling read.
+	unit.level = unit.height / UnitGeometry.LEVEL_HEIGHT
 
 
 ## The one place a unit's alive flag flips to false (docs/09 "if it changed
@@ -246,7 +245,6 @@ func dup() -> CombatState:
 
 	var cloned := CombatState.new(grid.dup(), [], rng.seed)
 	cloned.is_preview = true
-	cloned.terrain_costs = terrain_costs.duplicate()
 	cloned.squad_controllers = squad_controllers.duplicate()
 	cloned.material_table = material_table
 	cloned.wreckage_pool = wreckage_pool

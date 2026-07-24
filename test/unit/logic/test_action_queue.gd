@@ -17,7 +17,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 
 
 func test_enqueue_validates_but_never_mutates_the_real_state() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var queue := ActionQueue.new(unit)
@@ -31,7 +31,7 @@ func test_enqueue_validates_but_never_mutates_the_real_state() -> void:
 
 
 func test_enqueue_previews_against_already_queued_actions_not_just_the_real_state() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var queue := ActionQueue.new(unit)
@@ -45,7 +45,7 @@ func test_enqueue_previews_against_already_queued_actions_not_just_the_real_stat
 
 
 func test_resolve_turn_applies_the_whole_queue_in_order() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
 	var state := CombatState.new(grid, [a, b])
@@ -66,7 +66,7 @@ func test_resolve_turn_applies_the_whole_queue_in_order() -> void:
 ## no longer aborts-and-continues; resolve_until STOPS there and returns
 ## control, so nothing queued after it ever runs either.
 func test_resolve_until_stops_at_the_first_illegal_action_and_never_continues() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(grid, [a])
 	var queue := ActionQueue.new(a)
@@ -96,7 +96,7 @@ func test_resolve_until_stops_at_the_first_illegal_action_and_never_continues() 
 
 
 func test_resolve_turn_replays_identically_from_the_same_seed() -> void:
-	var grid_a := Grid.new(10, 10)
+	var grid_a := GridFixture.flat(10, 10)
 	var unit_a := _make_unit(Vector2i(0, 0))
 	var state_a := CombatState.new(grid_a, [unit_a], 42)
 	var queue_a := ActionQueue.new(unit_a)
@@ -105,7 +105,7 @@ func test_resolve_turn_replays_identically_from_the_same_seed() -> void:
 	)
 	state_a.resolve_turn(queue_a)
 
-	var grid_b := Grid.new(10, 10)
+	var grid_b := GridFixture.flat(10, 10)
 	var unit_b := _make_unit(Vector2i(0, 0))
 	var state_b := CombatState.new(grid_b, [unit_b], 42)
 	var queue_b := ActionQueue.new(unit_b)

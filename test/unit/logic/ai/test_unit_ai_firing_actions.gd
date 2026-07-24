@@ -55,7 +55,7 @@ func test_a_chaingun_wielding_ai_queues_a_burst_action_not_an_attack_action() ->
 	weapon.provides_actions = [&"burst"]
 	weapon.weapon_def.burst_size = 12
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 
@@ -72,7 +72,7 @@ func test_a_chaingun_wielding_ai_queues_a_burst_action_not_an_attack_action() ->
 func test_a_pistol_wielding_ai_queues_a_plain_attack_action() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"pistol")
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 
@@ -91,7 +91,7 @@ func test_an_auto_shotgun_ai_prefers_burst_when_it_can_afford_it() -> void:
 	weapon.provides_actions = [&"shoot", &"burst"]
 	weapon.weapon_def.burst_size = 3
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 
@@ -111,7 +111,7 @@ func test_an_auto_shotgun_ai_falls_back_to_shoot_when_it_cannot_afford_burst() -
 	weapon.weapon_def.burst_size = 3
 	weapon.weapon_def.burst_ap_cost = 4
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 
@@ -134,7 +134,7 @@ func test_an_auto_shotgun_ai_falls_back_to_shoot_when_it_cannot_afford_burst() -
 ## or the AI would incorrectly ALSO queue a superfluous HoldAction on top
 ## of a burst it already fired.
 func test_a_repositioned_burst_is_recognized_as_having_fired_no_extra_hold() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"chaingun")
 	var weapon: Part = self_unit.shell.find_part(&"chaingun")
 	weapon.provides_actions = [&"burst"]
@@ -163,7 +163,7 @@ func test_an_ai_never_constructs_a_firing_action_the_weapon_doesnt_provide() -> 
 	var weapon: Part = self_unit.shell.find_part(&"decorative_prop")
 	weapon.provides_actions = []
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 
@@ -181,10 +181,8 @@ func test_an_ai_never_constructs_a_firing_action_the_weapon_doesnt_provide() -> 
 ## `clear_from_here`/`final_blocked` only checked for an ally, so a unit in
 ## exactly this spot would have fired straight into the wall every turn.
 func test_plan_ranged_never_fires_through_a_wall_it_cannot_get_around() -> void:
-	var grid := Grid.new(10, 1)
-	grid.set_terrain(Vector2i(5, 0), Enums.TerrainType.WALL)
-	grid.set_opacity(Vector2i(5, 0), 1.0)
-	grid.blockers[Vector2i(5, 0)] = DataLibrary.get_part(&"wall")
+	var grid := GridFixture.flat(10, 1)
+	GridFixture.place_wall(grid, Vector2i(5, 0))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 0), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
@@ -205,7 +203,7 @@ func test_plan_ranged_never_fires_through_a_wall_it_cannot_get_around() -> void:
 func test_plan_ranged_open_field_still_fires_without_moving() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 

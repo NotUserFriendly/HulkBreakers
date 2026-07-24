@@ -63,7 +63,7 @@ func test_is_legal_true_in_the_baseline_case() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 
 	var action := AttackAction.new(shooter, &"pistol", Vector2i(3, 0))
@@ -74,7 +74,7 @@ func test_is_legal_false_without_enough_ap() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0, 3)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	shooter.ap = 1  # after construction: CombatState._init resets ap to max_ap
 
@@ -85,7 +85,7 @@ func test_is_legal_false_beyond_weapon_range() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0, 1, 3.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(9, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(9, 0)).is_legal(state))
@@ -100,7 +100,7 @@ func test_is_legal_false_for_a_two_handed_weapon_adjacent_to_an_enemy() -> void:
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var adjacent_enemy := _make_target(Vector2i(1, 0))
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, adjacent_enemy, target])
 
 	assert_false(AttackAction.new(shooter, &"rifle", Vector2i(3, 0)).is_legal(state))
@@ -111,7 +111,7 @@ func test_is_legal_true_for_a_short_weapon_adjacent_to_an_enemy() -> void:
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var adjacent_enemy := _make_target(Vector2i(1, 0))
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, adjacent_enemy, target])
 
 	assert_true(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
@@ -124,7 +124,7 @@ func test_is_legal_false_under_min_range_for_a_non_dud_weapon() -> void:
 	weapon.weapon_def.min_range = 3.0
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(2, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(2, 0)).is_legal(state))
@@ -138,7 +138,7 @@ func test_a_dud_capable_weapon_still_fires_under_min_range_and_is_flagged() -> v
 	weapon.weapon_def.min_range_failure = &"dud"
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(2, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -155,7 +155,7 @@ func test_a_normal_shot_within_min_range_is_not_flagged_as_a_dud() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0, 1, 10.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -194,9 +194,8 @@ func test_is_legal_false_without_line_of_sight() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
-	grid.set_opacity(Vector2i(1, 0), 1.0)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_wall(grid, Vector2i(1, 0))
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
@@ -208,7 +207,7 @@ func test_is_legal_false_without_a_capable_manipulator() -> void:
 	# Strip the hand's TRIGGER capability — a saw, say.
 	shooter.shell.find_part(&"hand").capabilities = []
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
@@ -223,7 +222,7 @@ func test_is_legal_false_for_a_weapon_that_only_provides_burst() -> void:
 	weapon.provides_actions = [&"burst"]
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	assert_false(
 		AttackAction.new(shooter, &"chaingun", Vector2i(3, 0)).is_legal(state),
@@ -237,7 +236,7 @@ func test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst() -> voi
 	weapon.provides_actions = [&"shoot", &"burst"]
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var state := CombatState.new(Grid.new(10, 10), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target])
 
 	assert_true(AttackAction.new(shooter, &"auto_shotgun", Vector2i(3, 0)).is_legal(state))
 
@@ -246,7 +245,7 @@ func test_apply_deals_damage_and_spends_ap() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0, 2)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var before_ap: int = shooter.ap
 
@@ -260,7 +259,7 @@ func test_impact_event_names_which_unit_actually_took_the_hit() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0, 2)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -290,7 +289,7 @@ func test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center() ->
 	weapon.volume = [Box.new(Vector3(0.0, 0.0, 0.2), Vector3(0.1, 0.2, 0.4))]
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -331,7 +330,7 @@ func test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_be
 	weapon.volume = [Box.new(Vector3(0.0, 0.0, 1.5), Vector3(0.1, 0.2, 3.0))]
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(1, 0))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	FaceAction.face_for_free(
 		state, shooter, FaceAction.orientation_toward(shooter.cell, target.cell)
@@ -374,7 +373,7 @@ func test_a_queued_attack_on_a_target_that_dies_earlier_stops_resolution() -> vo
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0), 5)  # dies to a single 20-damage hit
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter, target])
 	var queue := ActionQueue.new(shooter)
 	var sink := MemorySink.new()
@@ -437,7 +436,7 @@ func test_flanking_exposes_a_rear_part_a_frontal_shot_cannot_reach() -> void:
 	var rack_front := _make_rack()
 	var shooter_front := _make_shooter(Vector2i(0, 5), weapon_front)
 	var target_front := _make_armored_target(Vector2i(0, 0), rack_front)
-	var state_front := CombatState.new(Grid.new(20, 20), [shooter_front, target_front])
+	var state_front := CombatState.new(GridFixture.flat(20, 20), [shooter_front, target_front])
 	AttackAction.new(shooter_front, &"pistol", Vector2i(0, 0)).apply(state_front)
 	assert_eq(rack_front.hp, 5, "the front-mounted torso must occlude the rear rack")
 
@@ -445,7 +444,7 @@ func test_flanking_exposes_a_rear_part_a_frontal_shot_cannot_reach() -> void:
 	var rack_rear := _make_rack()
 	var shooter_rear := _make_shooter(Vector2i(0, -5), weapon_rear)
 	var target_rear := _make_armored_target(Vector2i(0, 0), rack_rear)
-	var state_rear := CombatState.new(Grid.new(20, 20), [shooter_rear, target_rear])
+	var state_rear := CombatState.new(GridFixture.flat(20, 20), [shooter_rear, target_rear])
 	AttackAction.new(shooter_rear, &"pistol2", Vector2i(0, 0)).apply(state_rear)
 	assert_lt(rack_rear.hp, 5, "attacking from behind must expose the rear rack instead")
 
@@ -529,7 +528,7 @@ func test_destroying_the_head_logs_every_cascading_consequence() -> void:
 	var target: Unit = built.unit
 	var head: Part = built.head
 	var link: Matrix = built.link
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -563,7 +562,7 @@ func test_replays_identically_from_the_same_seed() -> void:
 		weapon.crit_chance = 0.5
 		var shooter := _make_shooter(Vector2i(0, 0), weapon)
 		var target := _make_target(Vector2i(4, 0), 30)
-		var grid := Grid.new(10, 10)
+		var grid := GridFixture.flat(10, 10)
 		var state := CombatState.new(grid, [shooter, target], 777)
 
 		for i in range(5):
@@ -582,7 +581,7 @@ func test_destroying_a_scrap_pile_along_the_shot_credits_its_salvage_to_the_miss
 	var weapon := _make_weapon(&"pistol", 999.0)
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
 	var target := _make_target(Vector2i(2, 4))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(2, 2)] = scrap
 	var state := CombatState.new(grid, [shooter, target])
@@ -602,7 +601,7 @@ func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> 
 	var weapon := _make_weapon(&"pistol", 999.0)
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
 	var target := _make_target(Vector2i(2, 4))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(2, 2)] = scrap
 	var state := CombatState.new(grid, [shooter, target])
@@ -619,7 +618,7 @@ func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> 
 func test_is_legal_true_with_a_blocker_but_no_unit_at_the_target_cell() -> void:
 	var weapon := _make_weapon(&"pistol", 10.0)
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	grid.blockers[Vector2i(2, 4)] = DataLibrary.get_part(&"wall")
 	var state := CombatState.new(grid, [shooter])
 
@@ -631,7 +630,7 @@ func test_is_legal_true_with_a_blocker_but_no_unit_at_the_target_cell() -> void:
 func test_is_legal_false_with_neither_a_unit_nor_a_blocker_at_the_target_cell() -> void:
 	var weapon := _make_weapon(&"pistol", 10.0)
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [shooter])
 
 	var action := AttackAction.new(shooter, &"pistol", Vector2i(2, 4))
@@ -646,7 +645,7 @@ func test_is_legal_false_with_neither_a_unit_nor_a_blocker_at_the_target_cell() 
 func test_apply_resolves_a_declared_shot_against_a_blocker_with_no_unit_there() -> void:
 	var weapon := _make_weapon(&"pistol", 999.0)
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var wall: Part = DataLibrary.get_part(&"wall")
 	grid.blockers[Vector2i(2, 4)] = wall
 	var state := CombatState.new(grid, [shooter])
@@ -711,7 +710,7 @@ func test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target() -
 	var weapon := _make_weapon(&"pistol", 3.0)
 	var shooter := _make_shooter_with_grip_height(Vector2i(2, 0), weapon, 0.3)
 	var target := _make_target(Vector2i(2, 4))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var cover := _make_low_cover(0.6)
 	grid.blockers[Vector2i(2, 2)] = cover
 	var state := CombatState.new(grid, [shooter, target])
@@ -738,7 +737,7 @@ func test_shouldering_clears_cover_the_unshouldered_position_would_not() -> void
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter_with_grip_height(Vector2i(2, 0), weapon, 0.3, 1.53)
 	var target := _make_target(Vector2i(2, 4))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var cover := _make_low_cover(0.4)
 	grid.blockers[Vector2i(2, 2)] = cover
 	var state := CombatState.new(grid, [shooter, target])
@@ -767,7 +766,7 @@ func test_cover_shorter_than_the_muzzle_does_not_obstruct_the_shot() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter_with_grip_height(Vector2i(2, 0), weapon, 0.9)
 	var target := _make_target(Vector2i(2, 4))
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var cover := _make_low_cover(0.4)  # shorter than the 0.9 muzzle
 	grid.blockers[Vector2i(2, 2)] = cover
 	var state := CombatState.new(grid, [shooter, target])
@@ -793,8 +792,8 @@ func test_a_shot_at_an_elevated_target_still_lands_inside_its_real_body() -> voi
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(0, 3))
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 3), 2)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 3), 2)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -822,8 +821,8 @@ func test_a_steeply_elevated_shooter_still_hits_a_close_target() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(0, 2))
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 0), 5)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 5)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)

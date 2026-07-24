@@ -133,7 +133,7 @@ func test_the_ai_never_constructs_an_action_the_catalog_wouldnt_also_offer() -> 
 			var weapon: Part = _weapon(weapon_id, provides)
 			var self_unit := _unit_with_weapon(&"self_unit", Vector2i(0, 0), 0, weapon)
 			var enemy := _target(&"enemy", Vector2i(6, 0), 1)
-			var state := CombatState.new(Grid.new(15, 15), [self_unit, enemy])
+			var state := CombatState.new(GridFixture.flat(15, 15), [self_unit, enemy])
 
 			var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, playstyle)
 
@@ -142,7 +142,7 @@ func test_the_ai_never_constructs_an_action_the_catalog_wouldnt_also_offer() -> 
 	# The weaponless case: no part provides anything at all.
 	var bare_unit := _target(&"bare", Vector2i(0, 0), 0)
 	var bare_enemy := _target(&"enemy", Vector2i(6, 0), 1)
-	var bare_state := CombatState.new(Grid.new(15, 15), [bare_unit, bare_enemy])
+	var bare_state := CombatState.new(GridFixture.flat(15, 15), [bare_unit, bare_enemy])
 	var bare_queue: ActionQueue = UnitAI.plan_turn(bare_unit, bare_state, null, &"MARKSMAN")
 	_assert_every_queued_action_is_catalog_offered(bare_unit, bare_queue)
 
@@ -157,7 +157,7 @@ func test_an_unrecognized_provided_action_is_never_invented_by_the_ai() -> void:
 	var weapon: Part = _weapon(&"prototype_launcher", [&"mag_dump"])
 	var self_unit := _unit_with_weapon(&"self_unit", Vector2i(0, 0), 0, weapon)
 	var enemy := _target(&"enemy", Vector2i(6, 0), 1)
-	var state := CombatState.new(Grid.new(15, 15), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(15, 15), [self_unit, enemy])
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"MARKSMAN")
 

@@ -22,8 +22,8 @@ func _box_unit(id: StringName, cell: Vector2i) -> Unit:
 ## the target's own real body point must actually be tilted (never a flat
 ## `dir.y == 0` by construction), and must still resolve to the target.
 func test_a_shot_between_units_on_different_levels_carries_a_real_vertical_component() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(5, 5), 2)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(5, 5), 2)
 	var shooter := _box_unit(&"shooter_torso", Vector2i(0, 0))
 	var target := _box_unit(&"target_torso", Vector2i(5, 5))
 	var state := CombatState.new(grid, [shooter, target])
@@ -55,8 +55,8 @@ func test_a_shot_between_units_on_different_levels_carries_a_real_vertical_compo
 ## by `ShotPlane.build` once elevation makes it visible — not a hand-solved
 ## exact-slope aim that happens to land on a single point.
 func test_a_shooter_above_a_target_resolves_against_its_top_face() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 0), 4)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 4)
 	var shooter := _box_unit(&"shooter_torso", Vector2i(0, 0))
 	var target := _box_unit(&"target_torso", Vector2i(0, 5))
 	var state := CombatState.new(grid, [shooter, target])
@@ -89,7 +89,7 @@ func test_a_shooter_above_a_target_resolves_against_its_top_face() -> void:
 ## top face too — genuinely MORE of the target's own surface enters the
 ## plane, never authored as a bonus.
 func test_a_shot_from_higher_ground_resolves_against_more_of_the_target() -> void:
-	var flat_grid := Grid.new(10, 10)
+	var flat_grid := GridFixture.flat(10, 10)
 	var flat_shooter := _box_unit(&"shooter_torso", Vector2i(0, 0))
 	var flat_target := _box_unit(&"target_torso", Vector2i(0, 5))
 	var flat_state := CombatState.new(flat_grid, [flat_shooter, flat_target])
@@ -100,8 +100,8 @@ func test_a_shot_from_higher_ground_resolves_against_more_of_the_target() -> voi
 		if region.body == flat_target:
 			flat_target_regions += 1
 
-	var raised_grid := Grid.new(10, 10)
-	raised_grid.set_level(Vector2i(0, 0), 4)
+	var raised_grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(raised_grid, Vector2i(0, 0), 4)
 	var raised_shooter := _box_unit(&"shooter_torso", Vector2i(0, 0))
 	var raised_target := _box_unit(&"target_torso", Vector2i(0, 5))
 	var raised_state := CombatState.new(raised_grid, [raised_shooter, raised_target])

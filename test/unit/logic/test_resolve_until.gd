@@ -73,7 +73,7 @@ func test_a_leg_lost_mid_move_stops_resolution_and_refunds_mp_but_not_ap() -> vo
 	var built: Dictionary = _make_mobile_armed_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
 	var leg: Part = built.leg
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [unit])
 	# CombatState.new() -> _start_turn() resets ap to max_ap and grants
 	# free starting MP (taskblock-08 Pass C), so both must be pinned AFTER
@@ -125,7 +125,7 @@ func test_a_hand_lost_mid_move_does_not_stop_the_move_but_stops_at_the_now_illeg
 	enemy_root.max_hp = 5
 	var enemy := Unit.new(Matrix.new(), Shell.new(enemy_root), Vector2i(5, 0), 1)
 	unit.ap = 6
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [unit, enemy])
 
 	var path: Array[Vector2i] = _straight_path(Vector2i(0, 0), 4)
@@ -156,7 +156,7 @@ func test_a_minor_scratch_mid_move_stops_nothing() -> void:
 	var unit: Unit = built.unit
 	var arm: Part = built.arm
 	unit.ap = 6
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [unit])
 	var path: Array[Vector2i] = _straight_path(Vector2i(0, 0), 4)
 	var queue := ActionQueue.new(unit)
@@ -181,7 +181,7 @@ func test_only_the_interrupted_units_own_state_is_touched() -> void:
 	var unit: Unit = built.unit
 	var leg: Part = built.leg
 	var bystander: Unit = _make_mobile_armed_unit(Vector2i(10, 10), 1).unit
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [unit, bystander])
 	# CombatState.new() -> _start_turn() resets ap to max_ap and grants
 	# free starting MP (taskblock-08 Pass C), so both must be pinned AFTER
@@ -211,7 +211,7 @@ func test_the_outcome_and_refund_are_logged() -> void:
 	var built: Dictionary = _make_mobile_armed_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
 	var leg: Part = built.leg
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [unit])
 	# CombatState.new() -> _start_turn() resets ap to max_ap and grants
 	# free starting MP (taskblock-08 Pass C), so both must be pinned AFTER
@@ -249,7 +249,7 @@ func test_a_stopped_units_turn_still_reaches_turn_end_afterward() -> void:
 	var built: Dictionary = _make_mobile_armed_unit(Vector2i(0, 0))
 	var unit: Unit = built.unit
 	var leg: Part = built.leg
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var state := CombatState.new(grid, [unit])
 	unit.ap = 3
 	unit.mp = 0.0
@@ -292,7 +292,7 @@ func test_the_same_seed_and_setup_stops_at_the_same_interrupt_point() -> void:
 		var built: Dictionary = _make_mobile_armed_unit(Vector2i(0, 0))
 		var unit: Unit = built.unit
 		var leg: Part = built.leg
-		var grid := Grid.new(20, 20)
+		var grid := GridFixture.flat(20, 20)
 		var state := CombatState.new(grid, [unit], 7)
 		# CombatState.new() -> _start_turn() resets ap to max_ap and grants
 		# free starting MP (taskblock-08 Pass C), so both must be pinned

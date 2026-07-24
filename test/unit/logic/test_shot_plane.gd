@@ -616,8 +616,8 @@ func test_build_with_a_flat_direction_matches_a_bare_project_assembly_call() -> 
 ## `Vector3(x, 0.0, y)` every one of the six callers used to construct by
 ## hand.
 func test_elevation_for_reflects_the_level_delta_not_flat_zero() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 3), 3)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 3), 3)
 
 	var elevation: Dictionary = ShotPlane.elevation_for(
 		Vector2(0, 0), 1.25, Vector2i(0, 0), Vector2i(0, 3), grid
@@ -633,9 +633,9 @@ func test_elevation_for_reflects_the_level_delta_not_flat_zero() -> void:
 ## together resolve identically" behaviour, now proven at the `elevation_for`
 ## level rather than only through a full resolved shot.
 func test_elevation_for_is_flat_when_origin_and_target_share_a_level() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 0), 5)
-	grid.set_level(Vector2i(0, 3), 5)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 5)
+	GridFixture.place_floor(grid, Vector2i(0, 3), 5)
 
 	var elevation: Dictionary = ShotPlane.elevation_for(
 		Vector2(0, 0), 6.25, Vector2i(0, 0), Vector2i(0, 3), grid

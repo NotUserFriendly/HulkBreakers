@@ -95,7 +95,7 @@ func _stepper(cell: Vector2i, squad_id: int, torso_hp: int) -> Unit:
 ## assemble_for_shoot's own safest-pick, to exercise the interrupt itself
 ## rather than the cell-choice logic (already covered separately).
 func test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_returns() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var blocker := Part.new()
 	blocker.id = &"cover"
 	blocker.is_destructible = false
@@ -160,7 +160,7 @@ func test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_ret
 ## mid_move_hook contract), independent of whether that shot happens to
 ## kill.
 func test_a_stepper_who_survives_the_trigger_still_freezes_and_never_returns() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var blocker := Part.new()
 	blocker.id = &"cover"
 	blocker.is_destructible = false

@@ -23,8 +23,8 @@ func _blocker(height: float) -> Part:
 ## half/full glyph choice comes from the object's own volume height
 ## (`AsciiRender._blocker_height`), never a stored scalar.
 func test_grid_to_text_renders_terrain_and_cover() -> void:
-	var grid := Grid.new(4, 2)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
+	var grid := GridFixture.flat(4, 2)
+	GridFixture.place_wall(grid, Vector2i(1, 0))
 	grid.set_terrain(Vector2i(2, 0), Enums.TerrainType.SPAWN_A)
 	grid.set_terrain(Vector2i(3, 0), Enums.TerrainType.SPAWN_B)
 	grid.blockers[Vector2i(0, 1)] = _blocker(0.90)  # below FULL_COVER_HEIGHT -> half
@@ -38,7 +38,7 @@ func test_grid_to_text_renders_terrain_and_cover() -> void:
 
 
 func test_grid_to_text_occupant_overlay_overrides_terrain() -> void:
-	var grid := Grid.new(2, 1)
+	var grid := GridFixture.flat(2, 1)
 	var text: String = AsciiRender.grid_to_text(grid, {Vector2i(1, 0): "X"})
 	assert_eq(text, ".X")
 

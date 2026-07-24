@@ -78,7 +78,7 @@ func test_every_raised_area_is_ramp_reachable_across_many_seeds() -> void:
 	for map_seed in range(SEED_COUNT):
 		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
 		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.TerrainType.SPAWN_A)
-		var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+		var pf := Pathfinder.new(grid)
 		var reachable: Array[Vector2i] = pf.reachable(spawn_a[0], 9999.0)
 		var reachable_set: Dictionary = {}
 		for cell: Vector2i in reachable:
@@ -149,7 +149,7 @@ func test_spawn_zones_reachable_across_many_seeds() -> void:
 		assert_true(spawn_a.size() > 0, "seed %d: spawn zone A must exist" % map_seed)
 		assert_true(spawn_b.size() > 0, "seed %d: spawn zone B must exist" % map_seed)
 
-		var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+		var pf := Pathfinder.new(grid)
 		var path: Array[Vector2i] = pf.astar(spawn_a[0], spawn_b[0])
 		assert_true(path.size() > 0, "seed %d: spawn zones must be path-connected" % map_seed)
 
@@ -505,12 +505,12 @@ func test_ensure_spawns_connected_fallback_connects_disconnected_spawns() -> voi
 	# Everything between stays WALL (scratch's own default fill) --
 	# deliberately disconnected, forcing the fallback.
 
-	var pf := Pathfinder.new(scratch.as_temporary_grid(), {Enums.TerrainType.WALL: -1.0})
+	var pf := Pathfinder.new(scratch.as_temporary_grid())
 	assert_true(pf.astar(a, b).is_empty(), "sanity: the two spawns start disconnected")
 
 	MapGen._ensure_spawns_connected(grid, scratch, a, b, rng)
 
-	var pf_after := Pathfinder.new(scratch.as_temporary_grid(), {Enums.TerrainType.WALL: -1.0})
+	var pf_after := Pathfinder.new(scratch.as_temporary_grid())
 	assert_false(
 		pf_after.astar(a, b).is_empty(), "the fallback must actually connect the two spawns"
 	)
@@ -607,7 +607,7 @@ func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_t
 
 func test_spawn_zones_are_walkable() -> void:
 	var grid: Grid = MapGen.generate(3, WIDTH, HEIGHT)
-	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	var pf := Pathfinder.new(grid)
 	for cell: Vector2i in _find_cells(grid, Enums.TerrainType.SPAWN_A):
 		assert_true(pf.is_walkable(cell))
 	for cell: Vector2i in _find_cells(grid, Enums.TerrainType.SPAWN_B):

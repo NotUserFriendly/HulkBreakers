@@ -70,7 +70,7 @@ func test_a_mover_whose_torso_stays_masked_by_cover_does_not_trigger() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	grid.blockers[Vector2i(0, 2)] = _make_blocker(2.0)  # taller than the torso's own Y=1.0 center
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
@@ -87,7 +87,7 @@ func test_a_mover_whose_torso_clears_cover_does_trigger() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	grid.blockers[Vector2i(0, 2)] = _make_blocker(0.3)  # well below the torso's Y=1.0 center
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
@@ -116,7 +116,7 @@ func test_a_real_bodied_overwatcher_still_triggers_against_its_own_body() -> voi
 	var overwatcher: Unit = built.unit
 	overwatcher.shell.root.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.5, 1.0, 0.5))]
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [overwatcher, mover])
+	var state := CombatState.new(GridFixture.flat(10, 10), [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
 	var triggered: bool = Overwatch.check_trigger(state, mover)
@@ -138,7 +138,7 @@ func test_the_trigger_fires_at_the_first_qualifying_cell_not_the_nearest() -> vo
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), PI / 2.0, 1)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(8, 0), 0)
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	# taskblock-18 C1: turn order is by initiative now, not array position
 	# — both units tie on speed (default personal_speed), so mover's own
 	# LOWER id (0 vs the overwatcher's 1) is what makes it go first. The
@@ -166,7 +166,7 @@ func test_out_of_arc_movement_does_not_trigger() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -180,7 +180,7 @@ func test_overwatch_fires_only_once() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	var sink := MemorySink.new()
@@ -202,7 +202,7 @@ func test_the_exchange_is_logged() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	var sink := MemorySink.new()
@@ -224,7 +224,7 @@ func test_the_exchanges_own_impact_carries_real_origin_and_hit_geometry() -> voi
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	var sink := MemorySink.new()
@@ -247,7 +247,7 @@ func test_the_exchange_is_deterministic_from_the_same_seed() -> void:
 		var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 		var overwatcher: Unit = built.unit
 		var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-		var grid := Grid.new(10, 10)
+		var grid := GridFixture.flat(10, 10)
 		var state := CombatState.new(grid, [overwatcher, mover], 42)
 		overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -265,8 +265,8 @@ func test_the_exchange_still_lands_against_an_elevated_mover() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 3), 1)
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 3), 2)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 3), 2)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	var sink := MemorySink.new()
@@ -291,7 +291,7 @@ func test_torso_visible_agrees_with_an_independently_built_resolve_ray_call() ->
 	var overwatcher: Unit = built.unit
 	var pistol: Part = built.pistol
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	grid.blockers[Vector2i(0, 2)] = _make_blocker(0.3)  # clears the torso — a real positive case
 	var state := CombatState.new(grid, [overwatcher, mover])
 
@@ -327,7 +327,7 @@ func test_would_trigger_at_reports_the_same_overwatcher_check_trigger_would_actu
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -341,7 +341,7 @@ func test_would_trigger_at_is_empty_when_out_of_arc() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -357,7 +357,7 @@ func test_would_trigger_at_evaluates_a_hypothetical_cell_not_the_movers_real_one
 	# Real cell (5, 0) is out of arc (0 deg facing = world +Y); the
 	# candidate cell (0, 5) is dead ahead, in arc.
 	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -370,7 +370,7 @@ func test_would_trigger_at_never_mutates_the_real_state() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(5, 0), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -386,7 +386,7 @@ func test_would_trigger_at_ignores_the_dead() -> void:
 	var overwatcher: Unit = built.unit
 	overwatcher.alive = false
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -408,7 +408,7 @@ func test_a_cell_between_30_and_45_degrees_no_longer_triggers() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(3, 4), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -421,7 +421,7 @@ func test_a_cell_well_inside_30_degrees_still_triggers() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(0, 0), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(1, 5), 1)  # ~11.3 degrees off
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -438,7 +438,7 @@ func test_arc_cells_matches_would_trigger_at_exhaustively() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(5, 5), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 0), 1)
-	var grid := Grid.new(11, 11)
+	var grid := GridFixture.flat(11, 11)
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -462,7 +462,7 @@ func test_arc_cells_is_empty_when_the_overwatcher_is_unarmed() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(5, 5), 0.0, 0)
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 0), 1)
-	var grid := Grid.new(11, 11)
+	var grid := GridFixture.flat(11, 11)
 	var state := CombatState.new(grid, [overwatcher, mover])
 
 	assert_eq(Overwatch.arc_cells(state, overwatcher, mover), [] as Array[Vector2i])
@@ -483,7 +483,7 @@ func test_all_threatened_cells_unions_across_every_armed_overwatcher() -> void:
 	overwatcher_b.orientation = BodyProjector.orientation_for(
 		Vector2(mover.cell - overwatcher_b.cell)
 	)
-	var grid := Grid.new(11, 11)
+	var grid := GridFixture.flat(11, 11)
 	var state := CombatState.new(grid, [overwatcher_a, overwatcher_b, mover])
 	overwatcher_a.overwatch_weapon_id = &"pistol"
 	overwatcher_b.overwatch_weapon_id = &"pistol"
@@ -506,7 +506,7 @@ func test_all_threatened_cells_unions_across_every_armed_overwatcher() -> void:
 func test_all_threatened_cells_never_includes_the_mover_threatening_itself() -> void:
 	var built: Dictionary = _make_overwatcher(Vector2i(5, 5), 0.0, 0)
 	var overwatcher: Unit = built.unit
-	var grid := Grid.new(11, 11)
+	var grid := GridFixture.flat(11, 11)
 	var state := CombatState.new(grid, [overwatcher])
 	overwatcher.overwatch_weapon_id = &"pistol"
 

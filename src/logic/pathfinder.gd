@@ -24,8 +24,6 @@ const MAX_CLIMB_LEVELS: float = 1.0
 const MAX_HOP_DOWN_LEVELS: float = 2.0
 
 var _grid: Grid
-## terrain(int) -> float MP cost; missing = DEFAULT_COST, negative = blocked.
-var _terrain_costs: Dictionary
 ## taskblock-37 Pass C: whether THIS pathfinding request's own mover can
 ## climb (`Shell.can_climb()`) — a property of the unit doing the moving,
 ## not of the grid, so it lives on the instance rather than `move_cost`
@@ -35,9 +33,8 @@ var _terrain_costs: Dictionary
 var _can_climb: bool
 
 
-func _init(grid: Grid, terrain_costs: Dictionary = {}, can_climb: bool = false) -> void:
+func _init(grid: Grid, can_climb: bool = false) -> void:
 	_grid = grid
-	_terrain_costs = terrain_costs
 	_can_climb = can_climb
 
 
@@ -59,11 +56,13 @@ func _init(grid: Grid, terrain_costs: Dictionary = {}, can_climb: bool = false) 
 ##
 ## taskblock-38 Pass D: "a cell with no surface has no edge into it at
 ## all" — real walkability comes from a placed, `walkable`-tagged
-## `Surface`, not the terrain enum, UNLESS this grid never went through
-## `GridPlacement`/`MapGen` at all (a hand-built fixture Grid, `GridLegacy
-## Bridge.is_legacy`), in which case the pre-placement terrain/level
-## formula still answers, instrumented so `docs/PLAN.md`'s own follow-up
-## retirement block knows exactly what still depends on it.
+## `Surface`, not the terrain enum.
+##
+## taskblock-39 Pass C: the legacy fallback (a hand-built fixture Grid
+## with no placed surfaces, answered from the pre-placement terrain/level
+## formula through `GridLegacyBridge`) is gone — every fixture in this
+## codebase now places real surfaces (`GridFixture`), so this reads the
+## Surface path unconditionally.
 ##
 ## tb31 Pass C: reads the blocker's own `hp` now, not just its presence —
 ## a DESTROYED blocker (wall or cover) is passable. Before this, a dead
@@ -84,10 +83,6 @@ func _base_cost(cell: Vector2i) -> float:
 		return -1.0
 	if _grid.blockers.has(cell) and (_grid.blockers[cell] as Part).hp > 0:
 		return -1.0
-	if GridLegacyBridge.is_legacy(_grid):
-		return GridLegacyBridge.terrain_cost(
-			_grid, cell, _terrain_costs, DEFAULT_COST, "Pathfinder._base_cost"
-		)
 	return DEFAULT_COST if Surface.first_walkable(_grid.surfaces_at(cell)) != null else -1.0
 
 
@@ -119,15 +114,15 @@ func _base_cost(cell: Vector2i) -> float:
 ##   with perks to avoid it).
 ##
 ## Height now comes from each cell's own placed `Surface`
-## (`UnitGeometry.true_height_for_cell`), not `Grid.level` directly —
-## `GridLegacyBridge` is the same migration bridge `_base_cost` uses, for
-## the identical reason.
+## (`UnitGeometry.true_height_for_cell`), not `Grid.level` directly.
+##
+## taskblock-39 Pass C: the legacy fallback (`GridLegacyBridge`'s own
+## pre-placement ramp/climb formula, for a hand-built fixture Grid with no
+## placed surfaces) is gone, same reason as `_base_cost`.
 func move_cost(from: Vector2i, to: Vector2i) -> float:
 	var base: float = _base_cost(to)
 	if base < 0.0:
 		return -1.0
-	if GridLegacyBridge.is_legacy(_grid):
-		return GridLegacyBridge.move_cost(_grid, from, to, base, _can_climb, "Pathfinder.move_cost")
 	if _is_ramp_surface(from) or _is_ramp_surface(to):
 		return base
 	var from_height: float = UnitGeometry.true_height_for_cell(from, _grid)
@@ -145,10 +140,7 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 
 
 func _is_ramp_surface(cell: Vector2i) -> bool:
-	for surface: Surface in _grid.surfaces_at(cell):
-		if Surface.RAMP_TAG in surface.part.tags:
-			return true
-	return false
+	return Surface.is_ramp_at(_grid, cell)
 
 
 func is_walkable(cell: Vector2i) -> bool:
@@ -163,14 +155,6 @@ func path_cost(path: Array[Vector2i]) -> float:
 	for i in range(1, path.size()):
 		total += move_cost(path[i - 1], path[i])
 	return total
-
-
-func _min_possible_cost() -> float:
-	var m: float = DEFAULT_COST
-	for cost: float in _terrain_costs.values():
-		if cost >= 0.0 and cost < m:
-			m = cost
-	return m
 
 
 ## docs/10 taskblock04 B: with a per-cell MP cost and a Chebyshev heuristic,
@@ -201,7 +185,11 @@ func astar(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 	if not is_walkable(b):
 		return []
 
-	var heuristic_scale: float = _min_possible_cost()
+	# taskblock-39 Pass C: used to be the minimum of _terrain_costs' own
+	# entries (a variable-cost terrain concept the legacy bridge alone
+	# served) — every real edge now costs at least DEFAULT_COST (HOP_DOWN_
+	# COST ties it, CLIMB_COST exceeds it), so that's the admissible floor.
+	var heuristic_scale: float = DEFAULT_COST
 	var open_set: Array[Vector2i] = [a]
 	var came_from: Dictionary = {}
 	var g_score: Dictionary = {a: 0.0}

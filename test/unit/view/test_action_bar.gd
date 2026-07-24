@@ -133,7 +133,7 @@ func _make_repair_capable_unit(cell: Vector2i, squad: int = 0) -> Unit:
 
 
 func _setup_bar(unit: Unit) -> Dictionary:
-	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var state := CombatState.new(GridFixture.flat(10, 10), [unit])
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()
@@ -162,7 +162,7 @@ func test_box_size_is_square() -> void:
 
 
 func test_setup_builds_ten_square_panels() -> void:
-	var state := CombatState.new(Grid.new(10, 10), [_make_unit(Vector2i(0, 0))])
+	var state := CombatState.new(GridFixture.flat(10, 10), [_make_unit(Vector2i(0, 0))])
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()

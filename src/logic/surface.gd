@@ -47,3 +47,18 @@ static func first_walkable(surfaces: Array[Surface]) -> Surface:
 		if WALKABLE_TAG in surface.part.tags:
 			return surface
 	return null
+
+
+## True if any surface placed at `cell` carries the ramp tag — the
+## placement-model check for "stepping onto/off this cell is ordinary
+## ramp movement, never a discrete Climb/HopDown action" (`Pathfinder`'s
+## own "no special-casing" rule; `ClimbAction`/`HopDownAction`'s own
+## "never onto a ramp" gate). taskblock-39 Pass C: replaces every direct
+## `grid.get_terrain(cell) == Enums.TerrainType.RAMP` check — the shared
+## formula so those callers and `Pathfinder`'s own ramp check can never
+## quietly drift apart.
+static func is_ramp_at(grid: Grid, cell: Vector2i) -> bool:
+	for surface: Surface in grid.surfaces_at(cell):
+		if RAMP_TAG in surface.part.tags:
+			return true
+	return false

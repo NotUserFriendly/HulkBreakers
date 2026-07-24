@@ -21,23 +21,24 @@ extends RefCounted
 ## position (already how every caller computes it: a real muzzle's `(x,
 ## z) / CELL_SIZE`, or a bare cell when no weapon-specific muzzle exists
 ## yet); `origin_height` is that shooter's own real world height (a real
-## muzzle's `y`, or `grid.get_level(origin_cell) * UnitGeometry.
-## LEVEL_HEIGHT` where no muzzle exists) — used only for `origin`'s own
-## Vector3 (`build`'s absolute-height convention needs it there).
+## muzzle's `y`, or `UnitGeometry.true_height_for_cell(origin_cell, grid)`
+## where no muzzle exists) — used only for `origin`'s own Vector3
+## (`build`'s absolute-height convention needs it there).
 ##
 ## The TILT itself is deliberately NOT "target's raw ground height minus
 ## the shooter's own absolute muzzle height" — a standing shooter's
 ## muzzle already sits above ITS OWN cell's ground by a real amount
 ## (shoulder/grip height), and that offset must not read as a downward
 ## tilt at an equal-level target 0.9 world units "below" the muzzle. The
-## tilt is the LEVEL DIFFERENCE between the two cells (`Unit.level`'s own
-## source, `Grid.level`) — exactly `0.0` whenever `origin_cell` and
-## `target_cell` share a level, matching every flat shot before this
-## pass, and nonzero only when they genuinely don't. This is exactly what
-## tb36's own verification confirmed: two standing bodies' real muzzle
-## heights differ by precisely `(target_level - origin_level) *
-## LEVEL_HEIGHT`, since both carry the same baseline muzzle-above-own-
-## level offset.
+## tilt is the real HEIGHT DIFFERENCE between the two cells
+## (`UnitGeometry.true_height_for_cell`, ramp-aware — taskblock-39 Pass C:
+## reads each cell's own placed `Surface`, not raw `Grid.level`) —
+## exactly `0.0` whenever `origin_cell` and `target_cell` sit at the same
+## real height, matching every flat shot before this pass, and nonzero
+## only when they genuinely don't. This is exactly what tb36's own
+## verification confirmed: two standing bodies' real muzzle heights
+## differ by precisely their cells' own real height delta, since both
+## carry the same baseline muzzle-above-own-surface offset.
 ##
 ## `vertical_slope` — rise per unit of ground distance, the same
 ## quantity `resolve_ray` used to reconstruct locally before tb36 Pass C
@@ -54,8 +55,10 @@ static func elevation_for(
 	grid: Grid
 ) -> Dictionary:
 	var flat: Vector2 = Vector2(target_cell) - origin_flat
-	var level_delta: float = grid.get_level(target_cell) - grid.get_level(origin_cell)
-	var height_delta: float = level_delta * UnitGeometry.LEVEL_HEIGHT
+	var height_delta: float = (
+		UnitGeometry.true_height_for_cell(target_cell, grid)
+		- UnitGeometry.true_height_for_cell(origin_cell, grid)
+	)
 	var vertical_slope: float = 0.0 if flat.is_zero_approx() else height_delta / flat.length()
 	return {
 		"origin": Vector3(origin_flat.x, origin_height, origin_flat.y),

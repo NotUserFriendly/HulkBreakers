@@ -28,7 +28,7 @@ func _cover_part(id: StringName) -> Part:
 
 func test_spawn_object_as_cover_places_a_real_blocker() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
 
@@ -42,7 +42,7 @@ func test_spawn_object_as_cover_places_a_real_blocker() -> void:
 
 func test_spawn_object_as_cover_refuses_an_already_blocked_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"existing")
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
@@ -55,10 +55,10 @@ func test_spawn_object_as_cover_refuses_an_already_blocked_cell() -> void:
 
 func test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var pool := {&"dropped_arm": _cover_part(&"dropped_arm")}
 	var injector := BoutInjector.new(state)
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	assert_gt(pf.move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
 
 	var ok: bool = injector.spawn_object(Vector2i(2, 2), &"dropped_arm", pool, false)
@@ -70,7 +70,7 @@ func test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers() -> voi
 	assert_eq(items.size(), 1)
 	assert_eq((items[0] as Part).id, &"dropped_arm")
 	assert_gt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
+		Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
 		0.0,
 		"a loose item must never block movement"
 	)
@@ -78,7 +78,7 @@ func test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers() -> voi
 
 func test_spawn_object_as_a_loose_item_appends_to_an_existing_pile() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var already_there := _cover_part(&"salvage")
 	state.grid.field_items[Vector2i(2, 2)] = [already_there]
 	var pool := {&"dropped_arm": _cover_part(&"dropped_arm")}
@@ -93,7 +93,7 @@ func test_spawn_object_as_a_loose_item_appends_to_an_existing_pile() -> void:
 
 func test_spawn_object_refuses_an_unknown_pool_id() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	assert_false(injector.spawn_object(Vector2i(2, 2), &"nonexistent", {}, true))
@@ -102,7 +102,7 @@ func test_spawn_object_refuses_an_unknown_pool_id() -> void:
 
 func test_spawn_object_logs_whether_it_was_cover_or_a_loose_item() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}

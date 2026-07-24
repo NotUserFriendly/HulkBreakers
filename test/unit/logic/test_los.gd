@@ -22,7 +22,6 @@ func test_los_symmetric_on_open_ground() -> void:
 
 func test_wall_blocks_los_both_directions() -> void:
 	var grid := _open_grid(7)
-	grid.set_terrain(Vector2i(3, 3), 1)
 	grid.set_opacity(Vector2i(3, 3), 1.0)
 
 	var a := Vector2i(0, 3)
@@ -33,7 +32,6 @@ func test_wall_blocks_los_both_directions() -> void:
 
 func test_los_clear_when_no_wall_in_path() -> void:
 	var grid := _open_grid(7)
-	grid.set_terrain(Vector2i(3, 3), 1)
 	grid.set_opacity(Vector2i(3, 3), 1.0)
 
 	# A path that never crosses (3,3): straight along row 0.
@@ -85,17 +83,14 @@ func test_cover_does_not_block_los() -> void:
 	)
 
 
-## tb31 Pass C: VOID is the OPPOSITE of a wall — non-navigable
-## (`Pathfinder`, tested separately) but never opaque, "a shot passes into
-## it, there's nothing there." `Grid.new()` defaults every cell to OPEN
-## (opacity 0) already, so this pins the terrain-TYPE change is what
-## actually matters here, not just a bare default.
-func test_void_does_not_block_los() -> void:
-	var grid := _open_grid(7)
-	grid.set_terrain(Vector2i(3, 3), Enums.TerrainType.VOID)
-	assert_true(
-		LoS.has_los(grid, Vector2i(0, 3), Vector2i(6, 3)), "VOID must not affect vision either"
-	)
+## taskblock-39 Pass C: this used to set the cell's own terrain to VOID
+## ("pins the terrain-TYPE change is what actually matters here, not just
+## a bare default") — but `LoS.has_los` is, and always was, purely
+## opacity-based; it never reads terrain at all, so the terrain write was
+## inert and this test was already vacuous, indistinguishable from
+## `test_los_symmetric_on_open_ground`'s own "opacity 0 -> clear" case
+## regardless of terrain type. Removed as a confirmed-vacuous duplicate
+## rather than migrated to an equally-inert placement-model write.
 
 
 func test_visible_cells_open_ground_matches_chebyshev_disc() -> void:

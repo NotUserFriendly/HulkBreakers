@@ -91,6 +91,11 @@ const GRID_LINE_WIDTH := 0.04
 ## A future ground overlay takes the next rung in THIS ladder, not a
 ## value picked independently.
 const EXTRACTION_TILE_HEIGHT := 0.010
+## taskblock-39 Pass C: the wall-indicator marker/cross these four
+## constants used to feed is retired (never actually rendered on a real
+## generated map — see `_build_void_indicators`'s own doc comment). Kept,
+## unconsumed, purely as the height-ladder anchors `VOID_BORDER_HEIGHT`/
+## `FIELD_ITEM_MARKER_HEIGHT` below are still calibrated against.
 const WALL_INDICATOR_COLOR := Color("#3A3A3A")
 ## runNotes.md follow-up: "fade it to a gray that's just slightly darker
 ## than the tile gray" — a quiet reference mark, not a bold warning X.
@@ -248,7 +253,6 @@ func build(
 	var grid_lines: MeshInstance3D = _build_grid_lines(grid)
 	grid_lines.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(grid_lines)
-	_build_wall_indicators(grid)
 	_build_void_indicators(grid)
 	_build_extraction_tiles(team_extraction_cells)
 
@@ -410,86 +414,31 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	return instance
 
 
-## Every non-navigable (WALL) cell gets a flat dark-gray tile plus a cross
-## drawn through it, so "this tile can't be walked on" is legible from the
-## default tactical camera, not just discoverable by clicking a cell and
-## being denied a move.
-## tb35 Pass C: a REAL wall cell's own terrain is `OPEN` by the time
-## `MapGen._finalize_walls_and_void` is done with it (its own full-height
-## blocker Part is what "wall" means now) — confirmed on a real generated
-## bout, zero cells still read `TerrainType.WALL`. This loop's own
-## condition can only ever match a hand-authored/debug grid that sets
-## `TerrainType.WALL` directly without a blocker (test fixtures do this),
-## never a live game map — `grid.blockers.has(cell)` skips the redundant
-## flat marker in that narrow case, since a real wall box already makes
-## "can't walk here" obvious on its own.
-func _build_wall_indicators(p_grid: Grid) -> void:
-	for y in range(p_grid.rows):
-		for x in range(p_grid.width):
-			var cell := Vector2i(x, y)
-			if p_grid.get_terrain(cell) == Enums.TerrainType.WALL and not p_grid.blockers.has(cell):
-				_static.add_child(_marker(cell, WALL_INDICATOR_COLOR, WALL_INDICATOR_HEIGHT))
-				_static.add_child(_wall_cross(cell))
-
-
 ## tb31 Pass C: every VOID cell (the negative-space fill past a wall's
 ## own ring) gets a black fill inside a dark-gray border — "there's
-## nothing here" read at a glance, distinct from a WALL cell's own
-## gray-plus-cross ("this is an obstruction"): void isn't an obstruction
-## to cross out, it's the absence of anything at all.
+## nothing here" read at a glance.
+##
+## taskblock-39 Pass C: the sibling wall-indicator marker (gray tile plus
+## a cross, "this is an obstruction") this comment used to contrast
+## against is retired — it never actually rendered on any real generated
+## map (`MapGen._finalize_walls_and_void` always resolves a WALL cell to
+## OPEN+blocker or VOID before `_emit`, so `Grid.get_terrain(cell) ==
+## WALL` was already unreachable there); a real wall's own full-height
+## blocker box already makes "can't walk here" obvious without a
+## redundant flat marker.
+## taskblock-39 Pass C: void is now "no Surface placed at all" — the
+## exact real-placement equivalent `MapGen._finalize_walls_and_void`
+## resolves an unreachable WALL cell into (no floor, no blocker, opacity
+## 0) — rather than `Grid.get_terrain(cell) == VOID` directly.
 func _build_void_indicators(p_grid: Grid) -> void:
 	for y in range(p_grid.rows):
 		for x in range(p_grid.width):
 			var cell := Vector2i(x, y)
-			if p_grid.get_terrain(cell) == Enums.TerrainType.VOID:
+			if Surface.first_walkable(p_grid.surfaces_at(cell)) == null:
 				_static.add_child(
 					_marker(cell, VOID_BORDER_COLOR, VOID_BORDER_HEIGHT, VOID_BORDER_SIZE)
 				)
 				_static.add_child(_marker(cell, VOID_FILL_COLOR, VOID_FILL_HEIGHT, VOID_FILL_SIZE))
-
-
-func _wall_cross(cell: Vector2i) -> MeshInstance3D:
-	var instance := MeshInstance3D.new()
-	var mesh := ImmediateMesh.new()
-	var cell_size: float = UnitGeometry.CELL_SIZE
-	var half: float = cell_size * 0.5 - GRID_LINE_WIDTH
-	var half_width: float = WALL_CROSS_WIDTH * 0.5
-	var origin: Vector3 = Vector3(cell.x, WALL_CROSS_HEIGHT, cell.y) * cell_size
-	# taskblock-37 Pass E: the cell's own real height, same reason `_marker`
-	# now adds it — a wall on a raised cell must cross out THAT cell's own
-	# real ground, not world level 0.
-	origin.y += _height_for(cell)
-
-	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(WALL_CROSS_COLOR))
-	_add_cross_arm(mesh, origin, Vector3(-half, 0.0, -half), Vector3(half, 0.0, half), half_width)
-	_add_cross_arm(mesh, origin, Vector3(-half, 0.0, half), Vector3(half, 0.0, -half), half_width)
-	mesh.surface_end()
-
-	instance.mesh = mesh
-	return instance
-
-
-## A thick line segment from `origin + from` to `origin + to`, `half_width`
-## on either side along the segment's own horizontal perpendicular — the
-## same real-geometry-not-1px-line convention `_build_grid_lines` already
-## uses, just not axis-aligned.
-##
-## `overlay_material` culls back faces (StandardMaterial3D's own default),
-## so the quad's winding actually matters — `_build_grid_lines`'s own quads
-## go CCW in the X-Z plane; `Vector3(dir.z, 0.0, -dir.x)`, not the more
-## "obvious" `Vector3(-dir.z, 0.0, dir.x)`, is the perpendicular that keeps
-## this quad wound the same way for both diagonal arms (verified by hand:
-## the flipped sign reverses the a-b-c-d cycle exactly once, which is what
-## flips CW to CCW). Get this backwards and the cross renders — just never
-## toward the camera.
-static func _add_cross_arm(
-	mesh: ImmediateMesh, origin: Vector3, from: Vector3, to: Vector3, half_width: float
-) -> void:
-	var dir: Vector3 = (to - from).normalized()
-	var perp: Vector3 = Vector3(dir.z, 0.0, -dir.x) * half_width
-	_add_quad(
-		mesh, origin + from + perp, origin + to + perp, origin + to - perp, origin + from - perp
-	)
 
 
 static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:

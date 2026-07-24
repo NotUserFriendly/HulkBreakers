@@ -42,7 +42,8 @@ static func first_hit(
 	# exists here (no weapon in view yet, only a candidate position), so
 	# ground level is the origin height, same as `elevation_for`'s own
 	# no-muzzle convention elsewhere.
-	var origin_height: float = state.grid.get_level(from_cell) * UnitGeometry.LEVEL_HEIGHT
+	# taskblock-39 Pass C: reads the real placed `Surface`, not `Grid.level`.
+	var origin_height: float = UnitGeometry.true_height_for_cell(from_cell, state.grid)
 	var elevation: Dictionary = ShotPlane.elevation_for(
 		origin, origin_height, from_cell, target.cell, state.grid
 	)

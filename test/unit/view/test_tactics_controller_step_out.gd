@@ -88,11 +88,14 @@ func _make_burst_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 
 
 func _setup_covered_scene_burst() -> Dictionary:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
+	# Row 1: pathing-blocked only, no opacity/blocker -- an unfloored gap is
+	# the placement-model equivalent (see test_unit_ai.gd's own identical
+	# fixture for why `GridFixture.place_wall` would be wrong here: it would
+	# ALSO trip `is_covered_from`'s separate blocker-based cover check).
 	for x in range(8):
-		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
-	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
-	grid.set_opacity(Vector2i(3, 2), 1.0)
+		grid.clear_surfaces(Vector2i(x, 1))
+	GridFixture.place_wall(grid, Vector2i(3, 2))  # blocks pathing AND LoS
 
 	var shooter := _make_burst_armed_unit(Vector2i(3, 0), 0)
 	var enemy := _make_burst_armed_unit(Vector2i(3, 9), 1)
@@ -174,11 +177,14 @@ func test_firing_burst_after_step_out_is_silently_rejected_with_insufficient_rea
 ## itself (it never repositions), kept only so this fixture matches its
 ## AI-side counterpart byte for byte.
 func _setup_covered_scene() -> Dictionary:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
+	# Row 1: pathing-blocked only, no opacity/blocker -- an unfloored gap is
+	# the placement-model equivalent (see test_unit_ai.gd's own identical
+	# fixture for why `GridFixture.place_wall` would be wrong here: it would
+	# ALSO trip `is_covered_from`'s separate blocker-based cover check).
 	for x in range(8):
-		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
-	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
-	grid.set_opacity(Vector2i(3, 2), 1.0)
+		grid.clear_surfaces(Vector2i(x, 1))
+	GridFixture.place_wall(grid, Vector2i(3, 2))  # blocks pathing AND LoS
 
 	var shooter := _make_armed_unit(Vector2i(3, 0), 0)
 	var enemy := _make_armed_unit(Vector2i(3, 9), 1)
@@ -244,7 +250,7 @@ func test_clicking_a_covered_enemy_enters_step_out_mode_not_aim_mode() -> void:
 func test_a_directly_visible_enemy_still_enters_ordinary_aim_mode() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)  # open board, no cover at all
-	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a, b])
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()

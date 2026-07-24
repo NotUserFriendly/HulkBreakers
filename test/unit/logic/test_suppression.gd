@@ -75,7 +75,7 @@ func test_adjacent_living_enemies_includes_orthogonal_and_diagonal() -> void:
 	var north := _torso_unit(Vector2i(1, 0), 1)
 	var diagonal := _torso_unit(Vector2i(2, 2), 1)
 	var far := _torso_unit(Vector2i(5, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, north, diagonal, far])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, north, diagonal, far])
 
 	var enemies: Array[Unit] = Suppression.adjacent_living_enemies(state, self_unit, self_unit.cell)
 
@@ -89,7 +89,7 @@ func test_adjacent_living_enemies_excludes_the_dead_and_same_squad() -> void:
 	var dead_enemy := _torso_unit(Vector2i(1, 0), 1)
 	dead_enemy.alive = false
 	var ally := _torso_unit(Vector2i(2, 1), 0)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, dead_enemy, ally])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, dead_enemy, ally])
 
 	assert_eq(
 		Suppression.adjacent_living_enemies(state, self_unit, self_unit.cell), [] as Array[Unit]
@@ -99,7 +99,7 @@ func test_adjacent_living_enemies_excludes_the_dead_and_same_squad() -> void:
 func test_is_suppressed_true_only_when_adjacent_to_a_living_enemy() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 
 	assert_true(Suppression.is_suppressed(state, self_unit))
 
@@ -112,7 +112,7 @@ func test_is_suppressed_true_only_when_adjacent_to_a_living_enemy() -> void:
 func test_blocks_weapon_true_for_a_long_gun_adjacent_to_an_enemy() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 	var rifle: Part = _weapon(true)
 
 	assert_true(Suppression.blocks_weapon(state, self_unit, rifle))
@@ -121,7 +121,7 @@ func test_blocks_weapon_true_for_a_long_gun_adjacent_to_an_enemy() -> void:
 func test_blocks_weapon_false_for_a_short_gun_adjacent_to_an_enemy() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 	var pistol: Part = _weapon(false)
 
 	assert_false(Suppression.blocks_weapon(state, self_unit, pistol))
@@ -130,7 +130,7 @@ func test_blocks_weapon_false_for_a_short_gun_adjacent_to_an_enemy() -> void:
 func test_blocks_weapon_false_for_a_long_gun_when_not_adjacent() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(9, 9), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 	var rifle: Part = _weapon(true)
 
 	assert_false(Suppression.blocks_weapon(state, self_unit, rifle))
@@ -141,7 +141,7 @@ func test_blocks_weapon_false_for_a_long_gun_when_not_adjacent() -> void:
 func test_would_trigger_opportunity_attack_when_genuinely_leaving_adjacency() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 
 	var attackers: Array[Unit] = Suppression.would_trigger_opportunity_attack(
 		state, self_unit, Vector2i(1, 1), Vector2i(5, 5)
@@ -154,7 +154,7 @@ func test_would_trigger_opportunity_attack_when_genuinely_leaving_adjacency() ->
 func test_no_opportunity_attack_when_still_adjacent_to_the_same_enemy() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 
 	# (2, 1) and (2, 0) are BOTH adjacent to the enemy at (1, 0) —
 	# sidestepping between them never leaves its threat range.
@@ -168,7 +168,7 @@ func test_no_opportunity_attack_when_still_adjacent_to_the_same_enemy() -> void:
 func test_no_opportunity_attack_when_never_adjacent_in_the_first_place() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(9, 9), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 
 	var attackers: Array[Unit] = Suppression.would_trigger_opportunity_attack(
 		state, self_unit, Vector2i(1, 1), Vector2i(5, 5)
@@ -180,7 +180,7 @@ func test_no_opportunity_attack_when_never_adjacent_in_the_first_place() -> void
 func test_would_trigger_opportunity_attack_is_empty_for_a_zero_length_step() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)
 	var enemy := _torso_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [self_unit, enemy])
 
 	assert_eq(
 		Suppression.would_trigger_opportunity_attack(
@@ -197,7 +197,7 @@ func test_would_trigger_opportunity_attack_is_empty_for_a_zero_length_step() -> 
 func test_resolve_opportunity_attacks_resolves_a_real_melee_strike() -> void:
 	var mover := _target_unit(Vector2i(1, 1), 0, 10)
 	var attacker := _melee_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [mover, attacker], 42)
+	var state := CombatState.new(GridFixture.flat(10, 10), [mover, attacker], 42)
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var before_hp: int = mover.shell.root.hp
@@ -218,8 +218,8 @@ func test_resolve_opportunity_attacks_resolves_a_real_melee_strike() -> void:
 func test_resolve_opportunity_attacks_still_lands_against_a_mover_one_level_up() -> void:
 	var mover := _target_unit(Vector2i(1, 1), 0, 10)
 	var attacker := _melee_unit(Vector2i(1, 0), 1)
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(1, 1), 1)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(1, 1), 1)
 	var state := CombatState.new(grid, [mover, attacker], 42)
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -240,7 +240,7 @@ func test_resolve_opportunity_attacks_still_lands_against_a_mover_one_level_up()
 func test_resolve_opportunity_attacks_is_a_no_op_without_a_melee_weapon() -> void:
 	var mover := _target_unit(Vector2i(1, 1), 0, 10)
 	var attacker := _target_unit(Vector2i(1, 0), 1)  # unarmed
-	var state := CombatState.new(Grid.new(10, 10), [mover, attacker])
+	var state := CombatState.new(GridFixture.flat(10, 10), [mover, attacker])
 	var before_hp: int = mover.shell.root.hp
 
 	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
@@ -251,7 +251,7 @@ func test_resolve_opportunity_attacks_is_a_no_op_without_a_melee_weapon() -> voi
 func test_resolve_opportunity_attacks_can_kill_a_unit_with_no_other_parts() -> void:
 	var mover := _target_unit(Vector2i(1, 1), 0, 1)
 	var attacker := _melee_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(10, 10), [mover, attacker], 42)
+	var state := CombatState.new(GridFixture.flat(10, 10), [mover, attacker], 42)
 
 	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
 
@@ -266,7 +266,7 @@ func test_resolve_opportunity_attacks_can_kill_a_unit_with_no_other_parts() -> v
 func test_move_hooks_combined_applies_an_opportunity_attack_on_a_real_move() -> void:
 	var mover := _target_unit(Vector2i(0, 0), 0, 10)
 	var attacker := _melee_unit(Vector2i(1, 0), 1)
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [mover, attacker], 42)
 	var path: Array[Vector2i] = [
 		Vector2i(0, 0),

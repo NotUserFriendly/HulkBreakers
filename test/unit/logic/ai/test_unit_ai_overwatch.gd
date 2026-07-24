@@ -73,7 +73,7 @@ func _target(id: StringName, cell: Vector2i, squad_id: int) -> Unit:
 ## trigger check the same way an ally standing in the exact same firing
 ## line would.
 func _unaffordable_shot_scene(weapon_ap_cost: int = 5) -> Dictionary:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var self_unit := _overwatch_capable_unit(
 		&"self_unit", Vector2i(0, 0), 0, &"rifle", weapon_ap_cost
 	)
@@ -146,7 +146,7 @@ func test_a_marksman_whose_weapon_doesnt_provide_overwatch_cannot_overwatch() ->
 ## A weaponless unit can't overwatch either, for the same catalog reason
 ## (no part anywhere provides it) — not a special case, the general one.
 func test_a_weaponless_marksman_cannot_overwatch() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var self_unit := _target(&"self_unit", Vector2i(0, 0), 0)
 	var enemy := _target(&"enemy", Vector2i(7, 0), 1)
 	var state := CombatState.new(grid, [self_unit, enemy])

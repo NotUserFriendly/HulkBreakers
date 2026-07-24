@@ -47,7 +47,7 @@ func _armed_unit(id: StringName, cell: Vector2i, squad_id: int, weapon_id: Strin
 func test_firing_without_moving_logs_fired_in_place() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -65,10 +65,10 @@ func test_firing_without_moving_logs_fired_in_place() -> void:
 ## uses — a one-tile-wide corridor with an ally squarely in the only line,
 ## nowhere to route around. Must hold, and the log must say why.
 func test_holding_because_an_ally_blocks_the_line_logs_the_reason() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	for x in range(20):
-		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
-		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, Vector2i(x, 0))
+		GridFixture.place_wall(grid, Vector2i(x, 2))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var ally := _armed_unit(&"ally", Vector2i(5, 1), 0, &"")
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
@@ -93,7 +93,7 @@ func test_decision_logging_does_not_disturb_plan_turns_own_determinism() -> void
 	for run in range(2):
 		var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 		var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-		var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+		var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 		var sink := MemorySink.new()
 		state.combat_log.add_sink(sink)
 

@@ -87,10 +87,10 @@ func test_open_field_line_of_fire_matches_line_of_sight() -> void:
 ## `Vector3(x, 0.0, y)` — a target on a raised cell must still be the shot's
 ## own first hit, not silently lost once the ray actually tilts.
 func test_has_clear_line_of_fire_is_true_against_an_elevated_target() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
-	grid.set_level(Vector2i(2, 5), 3)
+	GridFixture.place_floor(grid, Vector2i(2, 5), 3)
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_eq(target.level, 3, "the target must actually pick up the cell's own level at spawn")
@@ -121,11 +121,11 @@ func test_first_hit_never_resolves_to_a_wall_behind_the_shooter() -> void:
 ## unit that starts genuinely far from any LOF cell — real A* toward the
 ## enemy, no LOF requirement, so it still makes progress instead of holding.
 func test_closing_path_makes_progress_toward_a_far_off_enemy() -> void:
-	var grid := Grid.new(30, 5)
+	var grid := GridFixture.flat(30, 5)
 	var unit := _standing_unit(&"unit", 0.5, Vector2i(0, 2))
 	var enemy := _standing_unit(&"enemy", 0.5, Vector2i(29, 2))
 	var state := CombatState.new(grid, [unit, enemy])
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 
 	var path: Array[Vector2i] = LineOfFire.closing_path(unit, enemy, state, pf, 5.0)
 
@@ -142,14 +142,13 @@ func test_closing_path_makes_progress_toward_a_far_off_enemy() -> void:
 ## no reachable cell reduces raw distance further — the exact BR32.10
 ## concave/U-shaped-wall freeze a greedy per-turn distance scorer hits.
 func test_closing_path_routes_around_a_concave_wall_instead_of_freezing() -> void:
-	var grid := Grid.new(12, 12)
+	var grid := GridFixture.flat(12, 12)
 	for y in range(10):
-		grid.set_terrain(Vector2i(5, y), Enums.TerrainType.WALL)
-		grid.blockers[Vector2i(5, y)] = DataLibrary.get_part(&"wall")
+		GridFixture.place_wall(grid, Vector2i(5, y))
 	var unit := _standing_unit(&"unit", 0.5, Vector2i(0, 0))
 	var enemy := _standing_unit(&"enemy", 0.5, Vector2i(9, 0))
 	var state := CombatState.new(grid, [unit, enemy])
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 
 	var path: Array[Vector2i] = LineOfFire.closing_path(unit, enemy, state, pf, 20.0)
 

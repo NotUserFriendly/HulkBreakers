@@ -49,7 +49,7 @@ func _make_armed_unit(cell: Vector2i, squad: int, stat_mod: float = 0.0) -> Unit
 
 
 func _setup_tactics(units: Array[Unit]) -> Dictionary:
-	var state := CombatState.new(Grid.new(10, 10), units)
+	var state := CombatState.new(GridFixture.flat(10, 10), units)
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()

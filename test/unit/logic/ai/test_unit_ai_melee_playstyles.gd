@@ -87,7 +87,7 @@ func _last_move(queue: ActionQueue) -> MoveAction:
 func test_psychotic_prefers_a_strike_over_a_shot_when_in_reach() -> void:
 	var striker: Unit = _melee_capable_unit(&"striker", Vector2i(0, 0), 0, 1.5, true)
 	var enemy := _armed_unit(&"enemy", Vector2i(1, 0), 1, &"enemy_rifle")
-	var state := CombatState.new(Grid.new(10, 10), [striker, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, enemy])
 
 	var queue: ActionQueue = UnitAI.plan_turn(striker, state, null, &"PSYCHOTIC")
 
@@ -104,7 +104,7 @@ func test_psychotic_prefers_a_strike_over_a_shot_when_in_reach() -> void:
 func test_psychotic_closes_distance_instead_of_firing_from_range() -> void:
 	var striker: Unit = _melee_capable_unit(&"striker", Vector2i(0, 0), 0, 1.5, true)
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"enemy_rifle")
-	var state := CombatState.new(Grid.new(10, 10), [striker, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, enemy])
 	var before_distance: int = Grid.distance_chebyshev(striker.cell, enemy.cell)
 
 	var queue: ActionQueue = UnitAI.plan_turn(striker, state, null, &"PSYCHOTIC")
@@ -122,7 +122,7 @@ func test_psychotic_closes_distance_instead_of_firing_from_range() -> void:
 func test_turtle_flees_rather_than_melee() -> void:
 	var striker: Unit = _melee_capable_unit(&"striker", Vector2i(0, 0), 0, 1.5, true)
 	var enemy := _armed_unit(&"enemy", Vector2i(1, 0), 1, &"enemy_rifle")
-	var state := CombatState.new(Grid.new(10, 5), [striker, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 5), [striker, enemy])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
@@ -142,7 +142,7 @@ func test_turtle_flees_rather_than_melee() -> void:
 func test_turtle_does_not_flee_when_not_adjacent_to_an_enemy() -> void:
 	var striker: Unit = _melee_capable_unit(&"striker", Vector2i(0, 0), 0, 1.5, true)
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"enemy_rifle")
-	var state := CombatState.new(Grid.new(10, 10), [striker, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, enemy])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 9)]}
 
