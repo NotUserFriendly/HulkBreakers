@@ -19,7 +19,8 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-36 landed.*
+*Current as of taskblock-37 Passes A–D landed (Pass E — view-layer legibility — is fenced for the
+supervisor and not started).*
 
 ---
 
@@ -100,7 +101,68 @@ altered a single level shot.
   solving for one exact slope, not aiming. Only a genuinely TILTED face (this pass's own headline
   case) gains real height extent. **Out of this slice, staying that way:** vertical movement verbs
   (climb/hop-down/ramps/stairs), height-aware pathfinding, fall damage, height-derived combat
-  bonuses — the rest of docs/PLAN.md's own multi-level item.
+  bonuses — the rest of docs/PLAN.md's own multi-level item. **Superseded by tb37 below** — every
+  item in that "out of this slice" list except fall damage/height-derived bonuses (deliberately
+  still out) is now built.
+
+**Multi-level: elevation reaches the game (tb37, docs/PLAN.md)** — tb36 built the geometry and left
+it wired to nothing; four passes make level mean something. Same "one seeded full-mission bout,
+diffed byte-for-byte" proof as tb36 for Passes A–C (an all-level-0 bout can't observe any of this);
+Pass D's own `MapGen` change necessarily reshuffles the bout's own generated map, so its seed was
+re-picked (12369→12373) instead — the test file's own established convention for exactly this kind
+of change, documented five times over in its own header before this one.
+- **Pass A** — real muzzle height and vertical direction threaded through all six `ShotPlane.build`
+  callers (`AttackAction`/`BurstAction`/`LineOfFire`/`Overwatch`/`Suppression`/`TacticsController`),
+  replacing each one's own hardcoded flat `Vector3(x, 0.0, y)`. New `ShotPlane.elevation_for()` is
+  the one shared helper every caller now builds its plane from (real level DELTA between origin and
+  target cells, never a shooter's raw muzzle height against a target's raw ground height — the
+  former cancels correctly under a uniform raise, the latter would double-count the shooter's own
+  above-ground muzzle offset). `ShotPlane.build`'s tb36 `_shear` step is now opt-in (a new `shear:
+  bool` param, only `resolve_ray` sets it) — it was silently correct only because no other caller
+  ever passed real elevation before this pass; once they did, unconditional shear broke every
+  caller besides `resolve_ray`. **Real bug found and fixed, not just plumbing:** `DamageResolver.
+  _find_next`/`resolve_shot`/`_resolve_slide` assumed a dartboard aim point's height was always
+  anchored at depth zero (true only for a ricochet's own fresh continuation plane) — a first hop's
+  aim point sits at the TARGET's own real depth instead, so every elevated first-hop shot silently
+  resolved to nothing at all until a new `point_depth` anchor was threaded through the whole chain.
+- **Pass B (BR36.01)** — fixed at the source: new `PartGraph.walk_with_joints()`/`Shell.
+  all_parts_with_joints()` (NOT a change to `walk()`/`all_parts()` themselves — those back
+  `living_parts()`'s hp>0 filter, and a joint handle's own hp defaults to 1 and is never touched by
+  joint damage, so repurposing them would make every unit's own joints read as permanently-living
+  parts). Used by all six self-exclusion call sites and by `DamageResolver._body_of`'s own ricochet
+  continuation exclusion. **Live-fire finding:** the seeded bout diverged after this pass alone,
+  isolated to the ricochet fix — a shot that deflects off a body could previously re-hit that SAME
+  body's own joint region at point-blank range instead of continuing its flight, reachable at level
+  0 all along, not an elevation-specific bug.
+- **Pass C** — `Pathfinder.move_cost` becomes an edge cost (`from`, `to`), not a per-destination one:
+  a new `Enums.TerrainType.RAMP` is ordinary pathing regardless of level delta (1 MP, no special-
+  casing); climbing up with no ramp is capability-gated (new `Shell.can_climb()`, an open `CLIMBER`
+  tag nothing authors yet) at 4 MP, capped at 1 level; dropping down with no ramp is always legal up
+  to 2 levels at a flat 1 MP, no capability gate — the deliberate asymmetry makes one-way routes for
+  free. Threaded through every construction site tied to a specific mover; `MapGen`'s own internal
+  connectivity check stays at the default (cannot climb) on purpose. tb36's own "Pathfinder ignores
+  level" acceptance test is deliberately now false, replaced.
+- **Pass D** — new `Unit.height: float`, the real continuous world height (`UnitGeometry.
+  true_height_for_cell`: `level * LEVEL_HEIGHT`, plus a fixed `+0.5` on a `RAMP` tile — a ramp's own
+  `Grid.level` is authored at its LOWER endpoint, so resting on it is genuinely partway up) —
+  `Unit.level` stays the discrete int gating decisions only. New `ClimbAction` (capability-gated,
+  4 MP/level or 2 MP/half — the half case is a climb launched from a ramp tile) and `HopDownAction`
+  (no capability gate, flat 1 MP, legal to 2 levels) as real queued actions. `MapGen` authors real
+  elevation for the first time: a seeded fraction of rooms raised one level, each connected to the
+  surrounding network by exactly one `RAMP` tile, backstopped by a general `_repair_stranded_
+  elevation` flood-and-flatten pass (a raised room's single ramp can still get sealed by ordinary
+  scattered cover landing on its approach tile, or by a wide corridor serving two OTHER rooms
+  crossing through it — rather than chase every such topology by hand, anything a non-climbing
+  `Pathfinder` can't reach from a real anchor gets flattened back to level 0). No deliberate
+  climb-only pockets authored this pass. Height-derived combat bonuses deliberately NOT added — the
+  "a shot from higher ground resolves against more of the target" claim is read back and asserted
+  (`test_a_shot_from_higher_ground_resolves_against_more_of_the_target`), confirming it's already
+  emergent from Pass A's own geometry, matching the taskblock's own explicit instruction not to
+  author a bonus on top of it. **Out of this slice, staying that way:** fall damage/knockdown on
+  deep drops, parts/perks raising the climb cap, ladders as authored content, arc'd shots and
+  thrown-weapon height advantage, no AI path yet queues `ClimbAction`/`HopDownAction` and neither
+  integrates with `MoveAction`'s own mid-move overwatch hook, view-layer elevation correctness
+  (Pass E, fenced for the supervisor, not started).
 
 **Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
 DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
