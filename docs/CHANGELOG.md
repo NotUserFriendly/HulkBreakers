@@ -19,8 +19,9 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-37 Passes A–D landed (Pass E — view-layer legibility — is fenced for the
-supervisor and not started).*
+*Current as of taskblock-37 Passes A–D landed, Pass E in progress with the supervisor (the view
+reads elevation and the ground/grid lines terrace; camera framing and the wall cutout against
+elevation are still open — see `PLAN.md`).*
 
 ---
 
@@ -104,6 +105,34 @@ altered a single level shot.
   bonuses — the rest of docs/PLAN.md's own multi-level item. **Superseded by tb37 below** — every
   item in that "out of this slice" list except fall damage/height-derived bonuses (deliberately
   still out) is now built.
+- **Pass E (in progress, supervisor-driven)** — the view catches up to elevation. `ResolutionPlayer.
+  _world_anchor` reads `UnitGeometry.true_height_for_cell` instead of hardcoding Y=0.0, and the new
+  `&"climbed"`/`&"hopped_down"` log events (both now carrying the same `"path"` shape a `move` event
+  does) route through the exact same `_play_slide` machinery — a climb or hop-down plays as a real
+  vertical slide with no dedicated animation code. `HitVolumeView`'s team marker and facing wedge
+  offset by `unit.height`. `BoutInjector.force_climb`/`force_hop_down` (+ matching debug-panel
+  verbs) let the supervisor trigger either action live — no AI path queues them yet.
+  **Root-caused and fixed a "no visual change on raise" bug:** `BoardView`'s ground was one flat
+  `PlaneMesh` for the whole grid, never reading `Grid.level` at all. Replaced with `_build_terrain`
+  — one flat top quad per cell at its own real height, plus vertical riser quads between
+  differently-elevated orthogonal neighbors, a stepped XCOM-style terrace (supervisor's own call
+  over a smooth heightmap). `_build_grid_lines` got the same per-cell treatment as a follow-up
+  (it was still one flat mesh at a single world height even after the ground itself went per-cell)
+  — each cell now draws its own complete border at its own height, so a riser boundary frames each
+  side's own step instead of one line cutting through it.
+  **Level precision widened, supervisor's explicit choice over two smaller alternatives:**
+  `Grid.level`/`Unit.level` go from `int` to `float` — genuinely arbitrary elevation, not just whole
+  levels plus a ramp's own fixed `+0.5`. `Pathfinder.MAX_CLIMB_LEVELS`/`MAX_HOP_DOWN_LEVELS` become
+  real height caps; climb cost scales proportionally to rise (`CLIMB_COST * rise / LEVEL_HEIGHT`)
+  instead of a flat per-level charge. `HopDownAction`'s drop-distance check now goes through
+  `Unit.height`/`true_height_for_cell` (ramp-aware) instead of raw levels, converging with
+  `ClimbAction`'s own convention. **Real bug found during the level-precision audit, not just
+  plumbing:** `ShotPlane.build`'s cover/blocker projection used `grid.get_level(cell) *
+  LEVEL_HEIGHT` directly, missing a RAMP tile's own `+0.5` rest offset that `BoardView._spawn_
+  blocker` already rendered cover at — a hit on ramp-standing cover could land somewhere the
+  rendered box never occupied. Fixed to read `UnitGeometry.true_height_for_cell` like the unit
+  projection just above it already did. **Still open, per `PLAN.md`:** the camera at height and the
+  wall cutout against elevation, both needing the supervisor's own eyes, not headless-verifiable.
 
 **Multi-level: elevation reaches the game (tb37, docs/PLAN.md)** — tb36 built the geometry and left
 it wired to nothing; four passes make level mean something. Same "one seeded full-mission bout,
