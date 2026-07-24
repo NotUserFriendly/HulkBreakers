@@ -57,6 +57,14 @@ func _init(grid: Grid, terrain_costs: Dictionary = {}, can_climb: bool = false) 
 ## sentinel), and a field object is never a unit — a real cell can now be
 ## blocked by EITHER without the two concepts needing to share one field.
 ##
+## taskblock-38 Pass D: "a cell with no surface has no edge into it at
+## all" — real walkability comes from a placed, `walkable`-tagged
+## `Surface`, not the terrain enum, UNLESS this grid never went through
+## `GridPlacement`/`MapGen` at all (a hand-built fixture Grid, `GridLegacy
+## Bridge.is_legacy`), in which case the pre-placement terrain/level
+## formula still answers, instrumented so `docs/PLAN.md`'s own follow-up
+## retirement block knows exactly what still depends on it.
+##
 ## tb31 Pass C: reads the blocker's own `hp` now, not just its presence —
 ## a DESTROYED blocker (wall or cover) is passable. Before this, a dead
 ## crate (or, with BR30.10's wall geometry, a destroyed wall) still walled
@@ -76,30 +84,11 @@ func _base_cost(cell: Vector2i) -> float:
 		return -1.0
 	if _grid.blockers.has(cell) and (_grid.blockers[cell] as Part).hp > 0:
 		return -1.0
-	if _grid.surfaces.is_empty():
-		return _legacy_terrain_cost(cell)
+	if GridLegacyBridge.is_legacy(_grid):
+		return GridLegacyBridge.terrain_cost(
+			_grid, cell, _terrain_costs, DEFAULT_COST, "Pathfinder._base_cost"
+		)
 	return DEFAULT_COST if Surface.first_walkable(_grid.surfaces_at(cell)) != null else -1.0
-
-
-## taskblock-38 Pass C: "a cell with no surface has no edge into it at
-## all" — real walkability now comes from a placed, `walkable`-tagged
-## `Surface`, not the terrain enum. `_grid.surfaces.is_empty()` is the
-## migration bridge, not a second competing decision path: every grid
-## `MapGen` actually generates authors a surface on every floored cell
-## (Pass B), so the surface-based branch above is what every REAL bout
-## runs on. This branch only ever engages for a hand-built fixture `Grid`
-## that predates the placement model entirely and never authored a single
-## surface anywhere — the same "a caller not yet updated keeps seeing the
-## old behavior" convention this codebase already leans on for a null/
-## empty default elsewhere (`Socket.joint_cladding`, `Part.mesh_scene`,
-## ...). Flagged in `docs/PLAN.md` as a follow-on: migrate the test
-## suite's own hand-built grids to real placement, then delete this.
-func _legacy_terrain_cost(cell: Vector2i) -> float:
-	var terrain: int = _grid.get_terrain(cell)
-	if _terrain_costs.has(terrain):
-		var cost: float = _terrain_costs[terrain]
-		return cost if cost >= 0.0 else -1.0
-	return DEFAULT_COST
 
 
 ## MP cost to step from `from` onto `to` (adjacent cells, though nothing
@@ -130,15 +119,15 @@ func _legacy_terrain_cost(cell: Vector2i) -> float:
 ##   with perks to avoid it).
 ##
 ## Height now comes from each cell's own placed `Surface`
-## (`UnitGeometry.true_height_for_cell`), not `Grid.level` directly — see
-## `_legacy_move_cost`'s own doc comment for the same migration bridge
-## `_base_cost` uses.
+## (`UnitGeometry.true_height_for_cell`), not `Grid.level` directly —
+## `GridLegacyBridge` is the same migration bridge `_base_cost` uses, for
+## the identical reason.
 func move_cost(from: Vector2i, to: Vector2i) -> float:
 	var base: float = _base_cost(to)
 	if base < 0.0:
 		return -1.0
-	if _grid.surfaces.is_empty():
-		return _legacy_move_cost(from, to, base)
+	if GridLegacyBridge.is_legacy(_grid):
+		return GridLegacyBridge.move_cost(_grid, from, to, base, _can_climb, "Pathfinder.move_cost")
 	if _is_ramp_surface(from) or _is_ramp_surface(to):
 		return base
 	var from_height: float = UnitGeometry.true_height_for_cell(from, _grid)
@@ -160,28 +149,6 @@ func _is_ramp_surface(cell: Vector2i) -> bool:
 		if Surface.RAMP_TAG in surface.part.tags:
 			return true
 	return false
-
-
-## taskblock-38 Pass C: the pre-placement formula, verbatim — engages only
-## when `_grid.surfaces` is empty everywhere (see `_base_cost`'s own
-## migration-bridge doc comment). `Grid.level`/terrain read directly here,
-## exactly as every caller of a hand-built fixture Grid already expects.
-func _legacy_move_cost(from: Vector2i, to: Vector2i, base: float) -> float:
-	if (
-		_grid.get_terrain(from) == Enums.TerrainType.RAMP
-		or _grid.get_terrain(to) == Enums.TerrainType.RAMP
-	):
-		return base
-	var level_delta: float = _grid.get_level(to) - _grid.get_level(from)
-	if is_zero_approx(level_delta):
-		return base
-	if level_delta > 0.0:
-		if not _can_climb or level_delta > MAX_CLIMB_LEVELS:
-			return -1.0
-		return CLIMB_COST * (level_delta / UnitGeometry.LEVEL_HEIGHT)
-	if -level_delta > MAX_HOP_DOWN_LEVELS:
-		return -1.0
-	return HOP_DOWN_COST
 
 
 func is_walkable(cell: Vector2i) -> bool:
