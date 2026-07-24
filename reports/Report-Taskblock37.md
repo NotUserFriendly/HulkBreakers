@@ -1,7 +1,9 @@
 # Taskblock 37 Report — Multi-level: elevation reaches the game
 
 Passes A–D landed in order, each committed separately, full suite green throughout: 2080/2080 at the
-end. Pass E is fenced for the supervisor per the taskblock's own instruction and has not been started.
+end. Pass E is fenced for the supervisor per the taskblock's own instruction; it is now in progress,
+run live with the supervisor rather than headless — see the Pass E section below. 2094/2094 at the
+end of the work recorded here.
 
 ## Decisions made without asking
 
@@ -64,6 +66,44 @@ end. Pass E is fenced for the supervisor per the taskblock's own instruction and
   both actions exist, are capability-gated and cost-correct, and are ready for a future pass to wire
   into interruption/AI decision-making. Flagged below, not silently dropped.
 
+## Pass E (supervisor-driven, in progress)
+
+Run live with the supervisor per the taskblock's own fence, not headless. Two rounds so far:
+
+- **The view reads `unit.level`/`unit.height`.** `ResolutionPlayer._world_anchor` reads real cell
+  height instead of hardcoding Y=0.0; new `&"climbed"`/`&"hopped_down"` log events carry the same
+  `"path"` shape a `move` event does and route through the existing `_play_slide` machinery, so a
+  climb/hop-down plays as a real vertical slide with no dedicated animation code; `HitVolumeView`'s
+  team marker and facing wedge offset by `unit.height`; `BoutInjector.force_climb`/`force_hop_down`
+  (+ debug-panel verbs) let the supervisor trigger either action live.
+- **Supervisor's bug report: "Injected states that it raised the level, but no visual change takes
+  place."** Root cause: `BoardView`'s ground was one flat `PlaneMesh` for the whole grid — it never
+  read `Grid.level` at all, so nothing above could have made the raise visible regardless of how
+  correct it was. Asked the supervisor to choose between a smooth heightmap mesh and stepped tiles
+  with riser faces; **the supervisor chose stepped/XCOM-style terracing.** Built as `_build_terrain`
+  (one flat top quad per cell at its own real height, plus vertical riser quads between differently-
+  elevated orthogonal neighbors) and confirmed working live, including on pregen `MapGen` maps.
+  Follow-up requested in the same message: `_build_grid_lines` traced the OLD flat plane underneath
+  the new terraced floor — given the same per-cell treatment, each cell now drawing its own complete
+  border at its own height.
+- **Supervisor's question: "Are levels stuck as integers? ... at least half heights."** Ramps already
+  give a `+0.5` half-height with no data-model change. Presented three options (ramp-only halves;
+  a cosmetic-only float offset layered on top of the integer level; or making `Grid.level` itself
+  continuous) with tradeoffs stated up front, including that the third touches `Pathfinder`'s caps,
+  `MapGen` authoring, and every existing `level=int` read site. **The supervisor picked the third,
+  most invasive option over the recommended smaller one.** `Grid.level`/`Unit.level` are now `float`;
+  `Pathfinder.MAX_CLIMB_LEVELS`/`MAX_HOP_DOWN_LEVELS` became real height caps; climb cost scales
+  proportionally to rise instead of a flat per-level charge; `HopDownAction`'s drop-distance check
+  now goes through `Unit.height`/`true_height_for_cell` (ramp-aware), converging with `ClimbAction`'s
+  own convention. **Real bug found during the level-precision audit, not just plumbing:**
+  `ShotPlane.build`'s cover/blocker projection used `grid.get_level(cell) * LEVEL_HEIGHT` directly,
+  missing a RAMP tile's own `+0.5` offset that `BoardView._spawn_blocker` already rendered cover at —
+  a hit on ramp-standing cover could land somewhere the rendered box never occupied. Fixed to read
+  `UnitGeometry.true_height_for_cell`, matching the unit projection line just above it.
+
+Still open, per `PLAN.md`: the camera at height and the wall cutout against elevation, neither
+exercised live yet.
+
 ## Tests that failed, then were corrected
 
 Six across the four passes, three of them deliberate acceptance-test updates (the taskblock's own
@@ -103,9 +143,9 @@ moved to `docs/BUGS-ARCHIVE.md` in its own commit.
 
 ## Open questions
 
-- **Pass E itself** — view-layer elevation correctness, camera-at-height behavior, wall-cutout
-  interaction, and climb/drop movement animation. Needs the supervisor watching, per the taskblock's
-  own explicit fence; not started.
+- **Pass E's remaining two items** — camera-at-height behavior and wall-cutout interaction against
+  elevation. Needs the supervisor watching, per the taskblock's own explicit fence; not yet
+  exercised live.
 - **No AI path queues `ClimbAction`/`HopDownAction` yet**, and neither integrates with `MoveAction`'s
   own mid-move overwatch-trigger hook. Both actions are real, tested, and capability-correct on their
   own — whether an AI-driven unit should ever choose to climb, and whether climbing/hopping should be
