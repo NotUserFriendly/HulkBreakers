@@ -58,6 +58,47 @@ func test_dup_copies_level() -> void:
 	)
 
 
+## taskblock-38 Pass A: a fresh cell has no surfaces — `surfaces_at` returns
+## a real, empty, typed array rather than requiring a `has()` check first.
+func test_surfaces_at_defaults_empty() -> void:
+	assert_eq(_grid.surfaces_at(Vector2i(2, 2)), [] as Array[Surface])
+
+
+func test_add_surface_appends_in_order() -> void:
+	var cell := Vector2i(1, 1)
+	var floor_surface := Surface.new(Part.new(), 0.0)
+	var catwalk_surface := Surface.new(Part.new(), 1.0)
+	_grid.add_surface(cell, floor_surface)
+	_grid.add_surface(cell, catwalk_surface)
+	assert_eq(_grid.surfaces_at(cell), [floor_surface, catwalk_surface])
+
+
+## `dup()` must deep-copy each cell's own surfaces (a fresh Part per
+## surface, same "a preview must never touch the real Part" guarantee
+## `blockers`/`field_items` already carry) — mutating the clone's surface
+## part must never reach back into the original.
+func test_dup_copies_surfaces_independently() -> void:
+	var part := Part.new()
+	part.id = &"floor"
+	part.hp = 3
+	_grid.add_surface(Vector2i(2, 2), Surface.new(part, 1.0, 0.5))
+
+	var cloned: Grid = _grid.dup()
+	var cloned_surfaces: Array[Surface] = cloned.surfaces_at(Vector2i(2, 2))
+	assert_eq(cloned_surfaces.size(), 1)
+	assert_eq(cloned_surfaces[0].height, 1.0)
+	assert_eq(cloned_surfaces[0].facing, 0.5)
+	assert_eq(cloned_surfaces[0].part.id, &"floor")
+	assert_ne(cloned_surfaces[0].part, part, "the clone must hold its own Part, not the original")
+
+	cloned_surfaces[0].part.hp = 0
+	assert_eq(
+		_grid.surfaces_at(Vector2i(2, 2))[0].part.hp,
+		3,
+		"mutating the clone's surface part must never touch the original"
+	)
+
+
 func test_neighbors_center_cell_has_eight() -> void:
 	var n: Array[Vector2i] = _grid.neighbors(Vector2i(2, 2))
 	assert_eq(n.size(), 8)
