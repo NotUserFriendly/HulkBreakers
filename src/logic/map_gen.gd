@@ -42,6 +42,12 @@ const COVER_IDS: Array[StringName] = [
 const BARREL_PALLET_MAX_BARRELS: int = 4
 
 const SPAWN_ZONE_SIZE: int = 2
+## taskblock-37 Pass D: "MapGen authors real levels... ramps are what make
+## a raised area generally reachable" (docs/PLAN.md) — a flagged, tunable
+## fraction of carved rooms, not a design decision. One raised level only
+## (deep towers are a later authoring concern, not this pass's).
+const RAISED_ROOM_PROBABILITY: float = 0.35
+const RAISED_ROOM_LEVEL: int = 1
 
 
 static func generate(map_seed: int, width: int, rows: int) -> Grid:
@@ -58,7 +64,17 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rooms: Array[Rect2i] = []
 	_split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(width, rows)), rng, rooms)
 
+	_author_levels(grid, rooms, rng)
+
 	_scatter_cover(grid, rng)
+
+	# taskblock-37 Pass D: repairs AFTER cover scatter, not before — a
+	# scattered blocker can land squarely on a raised room's own single
+	# ramp APPROACH (the ramp tile itself is never coverable, but the
+	# ordinary corridor cell leading into it still can be), sealing off
+	# the whole room with no redundant route. Checking before cover exists
+	# would miss exactly this failure mode.
+	_repair_stranded_elevation(grid, rooms)
 
 	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
 	_ensure_spawns_connected(grid, spawn_cells[0], spawn_cells[1], rng)
@@ -146,6 +162,91 @@ static func _carve_room(
 	return room.position + room.size / 2
 
 
+## taskblock-37 Pass D: raises a seeded subset of the already-carved rooms
+## by one level, then guarantees each is generally reachable — "since
+## climbing is capability-gated and most units lack it, ramps are what
+## make a raised area generally reachable" (docs/PLAN.md). Runs before
+## `_scatter_cover` so a scattered blocker never lands on the ramp cell
+## this stamps (`_scatter_cover` only ever sees plain `OPEN` cells, same
+## "runs before, sees only what's already there" posture spawn zones use).
+## `generate()` runs its own `_repair_stranded_elevation` pass AFTER cover
+## scatter too — see that function's own doc comment for why one pass
+## right here isn't enough on its own.
+static func _author_levels(grid: Grid, rooms: Array[Rect2i], rng: RandomNumberGenerator) -> void:
+	for room: Rect2i in rooms:
+		if rng.randf() >= RAISED_ROOM_PROBABILITY:
+			continue
+		for y in range(room.position.y, room.position.y + room.size.y):
+			for x in range(room.position.x, room.position.x + room.size.x):
+				grid.set_level(Vector2i(x, y), RAISED_ROOM_LEVEL)
+		_connect_with_a_ramp(grid, room)
+
+
+## General safety net, not another hand-chased special case: a raised
+## room's single ramp can still leave something stranded in topologies
+## `_connect_with_a_ramp` doesn't anticipate — a wide (`CORRIDOR_WIDTH_MIN`-
+## `_MAX`) corridor connecting two OTHER rooms happens to cross this one's
+## rect and gets raised right along with it, two raised rooms share their
+## only real ground-level neighbor and each leaves the other stranded, or
+## (the reason `generate()` calls this AFTER `_scatter_cover`, not just
+## once right after `_author_levels`) a scattered blocker lands on the
+## ordinary corridor cell leading into a room's own single ramp, sealing
+## the whole room behind it. Rather than chase every such shape by hand,
+## flood from a real anchor point with a non-climbing `Pathfinder` (the
+## same posture any unit without `CLIMBER` always has) and flatten any
+## `OPEN` cell it can't reach back to level 0 — "ramps couldn't fix it"
+## becomes "don't raise it after all," never a silently broken island.
+static func _repair_stranded_elevation(grid: Grid, rooms: Array[Rect2i]) -> void:
+	@warning_ignore("integer_division")
+	var anchor: Vector2i = rooms[0].position + rooms[0].size / 2
+	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	var reachable: Array[Vector2i] = pf.reachable(anchor, INF)
+	var reachable_set: Dictionary = {}
+	for cell: Vector2i in reachable:
+		reachable_set[cell] = true
+	for y in range(grid.rows):
+		for x in range(grid.width):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) == Enums.TerrainType.OPEN and not reachable_set.has(cell):
+				grid.set_level(cell, 0)
+
+
+## The first already-OPEN, genuinely LOWER-level cell in the ring
+## immediately surrounding `room` becomes a RAMP, its own `Grid.level` left
+## untouched (a ramp's level is authored at its LOWER endpoint, docs/
+## PLAN.md's own settled height model) — BSP corridor-carving already
+## guarantees every room borders at least one other open cell at ground
+## level, so this always finds one. One ramp is enough to make the whole
+## room generally reachable without climbing; the rest of its border can
+## stay a real, unramped ledge.
+##
+## Requires `get_level(cell) < RAISED_ROOM_LEVEL`, not just `OPEN` terrain
+## — raising a room changes its own cells' LEVEL only, never their
+## terrain, so an adjacent cell that's actually part of a DIFFERENT,
+## already-raised room still reads as plain `OPEN` too. Ramping a border
+## cell against one of those bridges two level-1 areas together instead
+## of connecting down to real ground level, silently stranding both rooms
+## from spawn even though each one technically "has a ramp."
+static func _connect_with_a_ramp(grid: Grid, room: Rect2i) -> void:
+	for y in range(room.position.y - 1, room.position.y + room.size.y + 1):
+		for x in range(room.position.x - 1, room.position.x + room.size.x + 1):
+			var cell := Vector2i(x, y)
+			var inside_room: bool = (
+				x >= room.position.x
+				and x < room.position.x + room.size.x
+				and y >= room.position.y
+				and y < room.position.y + room.size.y
+			)
+			if inside_room or not grid.in_bounds(cell):
+				continue
+			if grid.get_terrain(cell) != Enums.TerrainType.OPEN:
+				continue
+			if grid.get_level(cell) >= RAISED_ROOM_LEVEL:
+				continue
+			grid.set_terrain(cell, Enums.TerrainType.RAMP)
+			return
+
+
 static func _carve_corridor(
 	grid: Grid, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
 ) -> void:
@@ -184,12 +285,21 @@ static func _carve_straight(grid: Grid, a: Vector2i, b: Vector2i, width: int) ->
 ## open but leaving a blocker sitting in it would still leave that "fix"
 ## corridor impassable (`Pathfinder.move_cost` now checks `blockers`
 ## too), defeating the whole safety net.
+## taskblock-37 Pass D: also flattens `Grid.level` back to 0 — a no-op
+## during the normal carve (nothing has been raised yet; `_author_levels`
+## runs after `_split_and_carve` finishes), but load-bearing for the SAME
+## forced-corridor fallback, which runs AFTER levels are authored: forcing
+## a cell open while leaving its level raised would leave the "fix"
+## corridor climb-gated at whatever raised room it happened to cross,
+## defeating the whole safety net exactly the same way an un-cleared
+## blocker would.
 static func _set_open(grid: Grid, cell: Vector2i) -> void:
 	if not grid.in_bounds(cell):
 		return
 	grid.set_terrain(cell, Enums.TerrainType.OPEN)
 	grid.set_opacity(cell, 0.0)
 	grid.blockers.erase(cell)
+	grid.set_level(cell, 0)
 
 
 ## taskblock-16 Pass B: cover used to be a single synthetic, permanent,

@@ -36,15 +36,99 @@ func _grids_equal(a: Grid, b: Grid) -> bool:
 	)
 
 
-## taskblock-36 Pass D: "a fresh MapGen map is entirely level 0" —
-## `MapGen` writes 0 everywhere (it doesn't write anything at all;
-## `Grid.level`'s own default fill already is 0), the deliberately inert
-## half of this pass's own acceptance.
-func test_a_fresh_generated_map_is_entirely_level_zero() -> void:
-	var grid: Grid = MapGen.generate(42, WIDTH, HEIGHT)
+## taskblock-36 Pass D's own acceptance test claimed "a fresh MapGen map is
+## entirely level 0" — deliberately false as of taskblock-37 Pass D, which
+## exists specifically to make `MapGen` author real elevation (docs/PLAN.md
+## "MapGen authors real levels... until now it writes 0 everywhere").
+## Replaced by the two things that must hold now instead: a generated map
+## genuinely contains more than one level somewhere (across a spread of
+## seeds — `RAISED_ROOM_PROBABILITY` is seeded per room, not guaranteed on
+## any single one), and every raised area a real non-climbing unit could
+## need to reach is actually ramp-reachable from spawn, not silently
+## stranded.
+func test_a_generated_map_contains_more_than_one_level() -> void:
+	var found_a_raised_cell := false
+	for map_seed in range(SEED_COUNT):
+		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		for y in range(grid.rows):
+			for x in range(grid.width):
+				if grid.get_level(Vector2i(x, y)) > 0:
+					found_a_raised_cell = true
+					break
+			if found_a_raised_cell:
+				break
+		if found_a_raised_cell:
+			break
+	assert_true(
+		found_a_raised_cell, "at least one of %d seeds must produce real elevation" % SEED_COUNT
+	)
+
+
+## Every raised region as a whole (not every individual raised CELL —
+## scattered cover, exactly like it can on any ordinary room, can still
+## legitimately wall off an isolated tile or two inside one; that's the
+## same pre-existing "cover blocks movement" contract every other cell on
+## the map is already held to, not a claim about ramps at all) must have
+## at least one entry point reachable from spawn_a through a non-climbing
+## Pathfinder — "since climbing is capability-gated and most units lack
+## it, ramps are what make a raised area generally reachable" (docs/
+## PLAN.md). `MapGen` doesn't author any deliberate climb-only pocket, so
+## every raised region found here is expected to connect.
+func test_every_raised_area_is_ramp_reachable_across_many_seeds() -> void:
+	for map_seed in range(SEED_COUNT):
+		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.TerrainType.SPAWN_A)
+		var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+		var reachable: Array[Vector2i] = pf.reachable(spawn_a[0], 9999.0)
+		var reachable_set: Dictionary = {}
+		for cell: Vector2i in reachable:
+			reachable_set[cell] = true
+
+		for region: Array[Vector2i] in _raised_regions(grid):
+			var region_reachable := false
+			for cell: Vector2i in region:
+				if reachable_set.has(cell):
+					region_reachable = true
+					break
+			assert_true(
+				region_reachable,
+				(
+					"seed %d: raised region at %s must have SOME ramp-reachable entry point"
+					% [map_seed, region[0]]
+				)
+			)
+
+
+## Every level>0 cell grouped into 4-connected components — one entry per
+## physically contiguous raised region, regardless of how MapGen happened
+## to carve the rooms that produced it.
+func _raised_regions(grid: Grid) -> Array:
+	var seen: Dictionary = {}
+	var regions: Array = []
 	for y in range(grid.rows):
 		for x in range(grid.width):
-			assert_eq(grid.get_level(Vector2i(x, y)), 0)
+			var start := Vector2i(x, y)
+			if grid.get_level(start) <= 0 or seen.has(start):
+				continue
+			var region: Array[Vector2i] = []
+			var frontier: Array[Vector2i] = [start]
+			seen[start] = true
+			while not frontier.is_empty():
+				var cell: Vector2i = frontier.pop_back()
+				region.append(cell)
+				for offset: Vector2i in [
+					Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
+				]:
+					var neighbor: Vector2i = cell + offset
+					if (
+						grid.in_bounds(neighbor)
+						and grid.get_level(neighbor) > 0
+						and not seen.has(neighbor)
+					):
+						seen[neighbor] = true
+						frontier.append(neighbor)
+			regions.append(region)
+	return regions
 
 
 func test_generate_is_seed_deterministic() -> void:

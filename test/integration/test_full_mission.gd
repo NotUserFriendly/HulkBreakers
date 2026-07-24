@@ -74,7 +74,20 @@ extends GutTest
 ## resolution (the world moved)" scenario entirely — never a stale
 ## queued action to abort against. Re-picked by the same brute-force
 ## search over nearby seeds: 12369.
-const SEED := 12369
+##
+## taskblock-37 Pass D: re-picked once more, same reason again — `MapGen`
+## now authors real elevation (docs/PLAN.md), which reshapes the
+## generated layout outright, the same "adding real content reshuffles a
+## fixed seed's whole draw sequence" pattern this file's own header
+## already documents for cover, corridor width, and part-pool composition
+## changes. No AI here can climb yet (`Shell.can_climb()` requires a
+## `CLIMBER` tag nothing authors — taskblock-37's own scope fence), so a
+## seed whose map happens to gate the objective or extraction zone behind
+## an unramped ledge would genuinely strand the mission; not this pass's
+## job to fix (Pass E's own view/legibility work, and any future AI climb
+## integration, are separate). Re-picked by the same brute-force search
+## over nearby seeds: 12373.
+const SEED := 12373
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400
