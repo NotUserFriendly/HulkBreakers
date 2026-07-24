@@ -51,38 +51,25 @@ mulebot can't sit in the driver's seat.
 
 # NEXT
 
-### 1. Multi-level maps — movement verbs and height-aware pathfinding
-**Needs:** nothing (the 2D/3D geometry consolidation this depended on shipped tb36 — see
-`CHANGELOG.md`). **Unblocks:** mission generation, authoring tools, moving heavy objects, vehicles.
+### 1. Multi-level maps — Pass E: view-layer legibility
+**Needs:** nothing — taskblock-37 Passes A–D landed the entire headless half (elevation reaches
+damage resolution, height-aware pathfinding, climb-up/hop-down as real actions, `MapGen` authoring
+real levels; see `CHANGELOG.md`). **Unblocks:** nothing further blocks specifically on this, but
+it's the one part of multi-level still open. **Needs the supervisor watching — not headless-
+verifiable, per the taskblock's own fence; do not attempt unattended.**
 
-tb36 landed the geometry half and the first slice of the world model: six real box faces with a
-fully 3D visibility test, `resolve_ray`/`build` sharing one height mechanism instead of two,
-`Grid.level` (per-cell, default 0) with a unit's true Y reading it, and `BoutInjector.set_cell_level`
-to force a scenario. All of it deliberately inert — `MapGen` writes nothing, `Pathfinder` doesn't
-read `level` at all, no unit can currently reach a level other than the one it spawned on. This item
-is the rest: making level *mean* something to movement.
-
-- **True height is already continuous; discrete level is what's still missing a mover.** 22.5° ramps
-  rise 0.5/tile → two ramps make one full level (a unit halfway up a one-tile ramp is at 0.25).
-  Discrete height should gate *decisions* — can I climb, is this fall lethal, what can I path to —
-  once ramps/climbing exist; true height already drives position and the shot plane (tb36).
-- **Vertical movement verbs** — hop-down and climb-up via leading-edge detection; ramps and stairs
-  move occupants at true height; height-aware pathfinding (today's `Pathfinder` is level-blind by
-  design, tb36's own acceptance test pins that).
-- **Height needs no special cover or LoS rules** — it falls out of correct 3D projection, and tb36
-  proved the geometry side of that claim true (a shooter above a target resolves against its real
-  top face). Higher → better sightline over cover → the dartboard sees more of the target. Skylined
-  on an edge → nothing behind you → easier to hit. Emergent from geometry, not bolted-on bonuses. (A
-  dedicated *height advantage* like throwing farther waits on a future arc'd-shot handler.)
-- **A shooter's real elevation isn't wired into first-hop damage resolution yet.** tb36 proved the
-  plane genuinely resolves a tilted shot (`ShotPlane.build`/`resolve_ray`, given a real 3D
-  origin/direction) — but `AttackAction`/`BurstAction`/melee actions and `Overwatch`/`LineOfFire`/
-  `Suppression`/`TacticsController` still build a flat `Vector3` (`y == 0.0`) for every real shot,
-  deliberately deferred (tb36 CHANGELOG). Once a mover can actually reach a different level, these
-  need the real muzzle/target height wired through, or a shot between two different-level units in
-  a real bout won't tilt even though the geometry underneath already can.
-
-*Do the movement verbs before mission generation, or the tile format encodes flatness forever.*
+- **The view reads `unit.level`/`unit.height`.** Nothing in `src/view/` does yet — a raised unit
+  renders at the same visual height as an unraised one. Correctness here IS headless-testable (build
+  the node, apply the state, read `global_transform` back, docs/10's own rule) — write those tests.
+  What can't be tested is whether a raised unit *reads* as raised to a human eye.
+- **The camera at height** — whether the tactical orbit and sniper framing behave sensibly when
+  shooter and target are on different levels. Aesthetic judgement; needs eyes.
+- **Wall cutout against elevation.** BR32.04/BR32.05 are still open (it snaps ahead of the move
+  animation, and cuts walls that aren't between camera and unit) — elevation adds a whole new axis
+  to a shader already known to mis-select walls. Expect interaction; fixing the cutout itself is a
+  separate item, not this one's job.
+- **Movement animation for climbs and drops** — a climb is a vertical translation the resolution
+  player has never had to play. May look wrong in a way no test catches.
 
 ### 2. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
@@ -146,7 +133,8 @@ framerate or a decision. Fixing the instrument is worth more than fixing any one
 
 `test_full_mission.gd` uses a hardcoded seed and its own in-test turn heuristics that were never rehomed
 into production AI. Every real mechanics fix reshuffles its RNG timeline and it gets re-seeded by brute
-force — five times per its own header. Worse, that seed churn was masking the real AI line-of-fire bug.
+force — six times per its own header now (tb37's `MapGen` elevation the latest). Worse, that seed
+churn was masking the real AI line-of-fire bug.
 
 **Decided:** the hand-built harness goes, replaced by a thin `BoutSetup`/`DeepStrike`-based mission smoke
 test — a bout runs start-to-extraction without erroring, asserted on outcomes rather than a frozen seed.
@@ -159,6 +147,19 @@ deleting the old file.
 ---
 
 # QUEUED
+
+### Multi-level: AI climb/hop-down and interruptible vertical movement
+**Needs:** taskblock-37 Passes A–D (landed — `ClimbAction`/`HopDownAction` exist, capability-gated
+and cost-correct on their own). **Unblocks:** nothing; a follow-on refinement, not a dependency of
+anything else.
+
+Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAction`:
+- **No AI path ever queues either action.** `UnitAI` still only ever moves via ordinary `MoveAction`
+  — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
+  in a real bout today.
+- **Neither action integrates with `MoveAction`'s own mid-move overwatch-trigger hook.** An ordinary
+  move can be interrupted mid-flight; a climb or hop-down currently can't be, which is inconsistent
+  with "every real exposure the same" once a raised area is common enough to matter tactically.
 
 ### Status effects and boosts
 **Needs:** nothing. **Unblocks:** perks, power and therms, wound thresholds.
