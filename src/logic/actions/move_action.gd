@@ -129,6 +129,11 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 		state.grid.set_occupant_id(actual.cell, -1)
 		actual.cell = path[i]
 		state.grid.set_occupant_id(actual.cell, actual.id)
+		# taskblock-37 Pass D: keep level/height in sync as the unit actually
+		# steps across cells (ramps included, ordinary movement per Pass C) —
+		# `CombatState.add_unit`'s own sync only ever ran once, at spawn.
+		actual.level = state.grid.get_level(actual.cell)
+		actual.height = UnitGeometry.true_height_for_cell(actual.cell, state.grid)
 
 		var hook_forces_stop: bool = false
 		if mid_move_hook.is_valid():

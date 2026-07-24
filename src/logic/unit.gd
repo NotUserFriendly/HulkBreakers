@@ -21,9 +21,19 @@ var cell: Vector2i
 ## `cell`, cached here (mirroring `cell` itself) rather than re-derived
 ## from the grid every time `UnitGeometry` needs a real Y, since neither
 ## `UnitGeometry` nor `BodyProjector` otherwise touch the grid at all.
-## Synced from the grid at `CombatState.add_unit()`; nothing else writes
-## it this pass (no vertical movement verb exists yet).
+## Synced from the grid at `CombatState.add_unit()`.
+## taskblock-37 Pass D: also re-synced by `MoveAction` on every real cell
+## change (Pass D adds movement verbs that can genuinely change it —
+## tb36's own "nothing else writes it this pass" is no longer true) and by
+## `BoutInjector.set_cell_level`'s existing debug force.
 var level: int = 0
+## taskblock-37 Pass D: the real, continuous world height `UnitGeometry`/
+## `ShotPlane` actually place this unit at — `level * LEVEL_HEIGHT` for an
+## ordinary cell, plus a half-level offset while resting on a RAMP tile
+## (`UnitGeometry.true_height_for_cell`'s own doc comment). `level` alone
+## gates discrete decisions (can I climb, is this drop legal); this is
+## what drives position and the shot plane. Synced everywhere `level` is.
+var height: float = 0.0
 var squad_id: int = 0
 
 var ap: int = 0

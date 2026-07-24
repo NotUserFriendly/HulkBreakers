@@ -27,9 +27,12 @@ func test_a_single_box_root_places_at_the_units_cell() -> void:
 
 
 ## taskblock-36 Pass D: "a unit on a level-1 cell has a true Y one level
-## above one on level 0." `Unit.level` (not the grid — `UnitGeometry`
-## never touches one) drives the root transform's own Y translation,
-## `LEVEL_HEIGHT` world units per step.
+## above one on level 0." taskblock-37 Pass D: `Unit.height` (not `level` —
+## `UnitGeometry` never touches the grid, and a ramp tile's real height is
+## no longer a whole multiple of `LEVEL_HEIGHT`) drives the root
+## transform's own Y translation now; `level` alone gates discrete
+## decisions, `height` is what a real `CombatState.add_unit`/`MoveAction`
+## keeps in sync with it.
 func test_a_units_true_y_accounts_for_its_own_level() -> void:
 	var torso := Part.new()
 	torso.id = &"torso"
@@ -40,6 +43,7 @@ func test_a_units_true_y_accounts_for_its_own_level() -> void:
 	var ground_unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(3, 4))
 	var raised_unit := Unit.new(Matrix.new(), Shell.new(torso.duplicate(true)), Vector2i(3, 4))
 	raised_unit.level = 1
+	raised_unit.height = UnitGeometry.LEVEL_HEIGHT
 
 	var ground_y: float = (
 		(
@@ -516,3 +520,31 @@ func test_shouldered_muzzle_point_falls_back_to_natural_with_no_shoulder_socket(
 	var shouldered: Vector3 = UnitGeometry.shouldered_muzzle_point(unit, pistol)
 
 	assert_true(shouldered.is_equal_approx(natural))
+
+
+## taskblock-37 Pass D: an ordinary cell's true height is just its own
+## discrete level times LEVEL_HEIGHT, whole-number multiples only.
+func test_true_height_for_cell_is_level_times_level_height() -> void:
+	var grid := Grid.new(3, 3)
+	grid.set_level(Vector2i(1, 1), 3)
+
+	assert_almost_eq(
+		UnitGeometry.true_height_for_cell(Vector2i(1, 1), grid),
+		3.0 * UnitGeometry.LEVEL_HEIGHT,
+		0.0001
+	)
+
+
+## docs/PLAN.md: "two ramps make one full level" — MapGen authors a ramp
+## cell's own `Grid.level` at its LOWER (origin) endpoint, so resting on it
+## is genuinely half a level above that, not yet at its upper neighbor.
+func test_true_height_for_cell_adds_a_half_level_on_a_ramp_tile() -> void:
+	var grid := Grid.new(3, 3)
+	grid.set_level(Vector2i(1, 1), 2)
+	grid.set_terrain(Vector2i(1, 1), Enums.TerrainType.RAMP)
+
+	assert_almost_eq(
+		UnitGeometry.true_height_for_cell(Vector2i(1, 1), grid),
+		2.0 * UnitGeometry.LEVEL_HEIGHT + UnitGeometry.LEVEL_HEIGHT * 0.5,
+		0.0001
+	)
