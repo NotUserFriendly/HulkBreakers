@@ -421,6 +421,64 @@ func test_spawn_zones_are_distinct_even_in_a_single_room_grid() -> void:
 		assert_true(spawn_b.size() > 0, "seed %d: spawn zone B must exist" % map_seed)
 
 
+## taskblock-38 Pass B: "MapGen writes floor parts... terrain/level become
+## derived from placement" — the real acceptance is that the finished
+## surfaces store matches the finished terrain/level cell for cell, across
+## a whole generated map, not just a sample.
+func test_generated_map_surfaces_match_terrain_and_level_cell_for_cell() -> void:
+	for map_seed in range(SEED_COUNT):
+		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		for y in range(grid.rows):
+			for x in range(grid.width):
+				var cell := Vector2i(x, y)
+				var surfaces: Array[Surface] = grid.surfaces_at(cell)
+				if grid.get_terrain(cell) == Enums.TerrainType.VOID:
+					assert_true(
+						surfaces.is_empty(), "seed %d: VOID %s must be unfloored" % [map_seed, cell]
+					)
+					continue
+				assert_eq(
+					surfaces.size(),
+					1,
+					"seed %d: %s must carry exactly one floor surface" % [map_seed, cell]
+				)
+				var expected_id: StringName = (
+					&"ramp" if grid.get_terrain(cell) == Enums.TerrainType.RAMP else &"ship_floor"
+				)
+				assert_eq(
+					surfaces[0].part.id,
+					expected_id,
+					"seed %d: %s surface part mismatch" % [map_seed, cell]
+				)
+				assert_almost_eq(
+					surfaces[0].height,
+					UnitGeometry.true_height_for_cell(cell, grid),
+					0.0001,
+					"seed %d: %s surface height mismatch" % [map_seed, cell]
+				)
+
+
+func test_author_surfaces_floors_open_and_ramp_cells_and_skips_void() -> void:
+	var grid := Grid.new(3, 1)
+	grid.set_terrain(Vector2i(0, 0), Enums.TerrainType.OPEN)
+	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.RAMP)
+	grid.set_terrain(Vector2i(2, 0), Enums.TerrainType.VOID)
+
+	MapGen._author_surfaces(grid)
+
+	var open_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(0, 0))
+	assert_eq(open_surfaces.size(), 1)
+	assert_eq(open_surfaces[0].part.id, &"ship_floor")
+	assert_almost_eq(open_surfaces[0].height, 0.0, 0.0001)
+
+	var ramp_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(1, 0))
+	assert_eq(ramp_surfaces.size(), 1)
+	assert_eq(ramp_surfaces[0].part.id, &"ramp")
+	assert_almost_eq(ramp_surfaces[0].height, UnitGeometry.LEVEL_HEIGHT * 0.5, 0.0001)
+
+	assert_true(grid.surfaces_at(Vector2i(2, 0)).is_empty())
+
+
 func test_spawn_zones_are_walkable() -> void:
 	var grid: Grid = MapGen.generate(3, WIDTH, HEIGHT)
 	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})

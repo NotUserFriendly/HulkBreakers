@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_floorpt"]
+
+[resource]
+script = ExtResource("1_floorpt")
+id = &"ship_floor"
+display_name = "Ship Floor"
+material = &"steel"
+attaches_to = Array[StringName]([&"GROUND"])
+tags = Array[StringName]([&"walkable"])
+is_destructible = false
+hp = 1
+max_hp = 1
