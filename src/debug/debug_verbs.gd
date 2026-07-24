@@ -175,11 +175,16 @@ static func all() -> Array[DebugVerbSpec]:
 			[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"passable", P.BOOL)],
 			Callable(DebugVerbs, &"_apply_set_passable")
 		),
-		DebugVerbSpec.new(
-			&"set_cell_level",
-			"Set Cell Level",
-			[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"level", P.INT)],
-			Callable(DebugVerbs, &"_apply_set_cell_level")
+		(
+			DebugVerbSpec
+			. new(
+				&"set_cell_level",
+				"Set Cell Level",
+				# taskblock-37 Pass E follow-up (supervisor): FLOAT, not INT --
+				# Grid.level is a real, arbitrary-precision elevation now.
+				[DebugVerbSpec.param(&"cell", P.CELL), DebugVerbSpec.param(&"level", P.FLOAT)],
+				Callable(DebugVerbs, &"_apply_set_cell_level")
+			)
 		),
 		(
 			DebugVerbSpec

@@ -26,15 +26,19 @@ const DEFAULT_MUZZLE_HEIGHT := 1.25
 
 
 ## taskblock-37 Pass D: a cell's own real, continuous world height —
-## `Grid.level`'s discrete int times `LEVEL_HEIGHT`, plus a fixed HALF-level
-## offset for a `RAMP` tile. MapGen authors a ramp cell's own `Grid.level`
-## at its LOWER (origin) endpoint — a unit resting on it is genuinely
-## partway up, not yet at the ramp's own upper level (docs/PLAN.md: "two
-## ramps make one full level"). The one place true height gets DERIVED
-## from a discrete `Grid.level` — every other reader here (and
-## `ShotPlane.build`) takes the resolved float directly via `Unit.height`,
-## never re-deriving it, so "render is hitbox" stays true even once ramps
-## exist.
+## `Grid.level` times `LEVEL_HEIGHT`, plus a fixed HALF-level offset for a
+## `RAMP` tile. MapGen authors a ramp cell's own `Grid.level` at its LOWER
+## (origin) endpoint — a unit resting on it is genuinely partway up, not
+## yet at the ramp's own upper level (docs/PLAN.md: "two ramps make one
+## full level"). The one place true height gets DERIVED from `Grid.level`
+## — every other reader here (and `ShotPlane.build`) takes the resolved
+## float directly via `Unit.height`, never re-deriving it, so "render is
+## hitbox" stays true even once ramps exist.
+## taskblock-37 Pass E follow-up (supervisor): `Grid.level` itself is a
+## real `float` now, not a whole-number count — this formula needed no
+## change at all to support it (it already just multiplied by
+## `LEVEL_HEIGHT`), the clearest sign the continuous-height design was
+## sound from the start.
 static func true_height_for_cell(cell: Vector2i, grid: Grid) -> float:
 	var height: float = grid.get_level(cell) * LEVEL_HEIGHT
 	if grid.get_terrain(cell) == Enums.TerrainType.RAMP:

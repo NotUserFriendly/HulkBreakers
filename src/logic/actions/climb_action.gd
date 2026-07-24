@@ -41,7 +41,7 @@ func is_legal(state: CombatState) -> bool:
 	if not actual.shell.can_climb():
 		return false
 	var rise: float = _rise(state, actual)
-	if rise <= 0.0 or rise > UnitGeometry.LEVEL_HEIGHT + 0.001:
+	if rise <= 0.0 or rise > Pathfinder.MAX_CLIMB_LEVELS * UnitGeometry.LEVEL_HEIGHT + 0.001:
 		return false
 	return _can_afford(actual, _cost(rise))
 

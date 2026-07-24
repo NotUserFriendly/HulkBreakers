@@ -26,7 +26,10 @@ var cell: Vector2i
 ## change (Pass D adds movement verbs that can genuinely change it —
 ## tb36's own "nothing else writes it this pass" is no longer true) and by
 ## `BoutInjector.set_cell_level`'s existing debug force.
-var level: int = 0
+## taskblock-37 Pass E follow-up (supervisor): widened from `int` to
+## `float`, matching `Grid.level` itself — genuinely arbitrary elevation,
+## not just whole levels.
+var level: float = 0.0
 ## taskblock-37 Pass D: the real, continuous world height `UnitGeometry`/
 ## `ShotPlane` actually place this unit at — `level * LEVEL_HEIGHT` for an
 ## ordinary cell, plus a half-level offset while resting on a RAMP tile

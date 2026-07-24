@@ -4,10 +4,14 @@ extends CombatAction
 ## taskblock-37 Pass D: "hop-down... via leading-edge detection against the
 ## target cell's level" (docs/PLAN.md) — the mirror of `ClimbAction`, but
 ## with none of its gating: no capability needed, flat cost regardless of
-## how much of its 2-level allowance it actually uses. Deliberately
-## discrete-level based (not `Unit.height`/ramp-aware like `ClimbAction`'s
-## own half-cost case) — the taskblock's own settled table gives hop-down
-## no "half" variant, only "1 MP, safe up to 2 levels."
+## how much of its 2-level allowance it actually uses. The settled table
+## gives hop-down no "half" COST variant (always flat `HOP_DOWN_COST`,
+## unlike `ClimbAction`'s own proportional one) — but the DROP DISTANCE
+## itself is real-height/ramp-aware (`Unit.height`/`true_height_for_cell`),
+## matching `ClimbAction`'s own convention (taskblock-37 Pass E follow-up:
+## `Grid.level` is continuous now, so measuring the drop by raw discrete
+## level alone would silently ignore a ramp's own +0.5 rest offset at
+## either end).
 ##
 ## The target cell must NOT be a ramp — stepping ONTO a ramp is always
 ## ordinary movement (`Pathfinder`'s own rule), never this action.
@@ -34,8 +38,13 @@ func is_legal(state: CombatState) -> bool:
 	var pf := Pathfinder.new(state.grid, state.terrain_costs)
 	if not pf.is_walkable(target_cell):
 		return false
-	var drop_levels: int = actual.level - state.grid.get_level(target_cell)
-	if drop_levels <= 0 or drop_levels > Pathfinder.MAX_HOP_DOWN_LEVELS:
+	var drop_height: float = (
+		actual.height - UnitGeometry.true_height_for_cell(target_cell, state.grid)
+	)
+	if (
+		drop_height <= 0.0
+		or drop_height > Pathfinder.MAX_HOP_DOWN_LEVELS * UnitGeometry.LEVEL_HEIGHT
+	):
 		return false
 	return _can_afford(actual)
 
