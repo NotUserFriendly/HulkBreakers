@@ -480,6 +480,13 @@ Two small items that compound, because bouts are the testing surface for everyth
   one currently starts from defaults; it should come up pre-loaded, so iterating is "tweak one thing and go"
   rather than re-entering the whole configuration. Most bout launches during a review session are the same
   scenario with one value changed.
+- **Every test that builds a fight should be loadable in the bout builder as well as headlessly.** CC
+  runs them as tests; the supervisor loads the *same* scenario in the builder and watches the failure.
+  That closes the "CC can't see the game" gap for exactly the class it has been worst at — AI
+  behaviour and mission stalls, where a headless red tells you *that* it failed and nothing about
+  *why*. The inverse of the handoff below: instead of CC authoring a scenario for the supervisor, the
+  suite's existing scenarios become loadable. Needs one shared scenario format both paths consume, so
+  a test fixture and a builder preset stop being different things.
 - **Drag-and-drop scenario handoff** — the missing half of "CC authors, the supervisor watches." CC can
   describe a situation but can't put it on the supervisor's screen; the debug panel put forcing verbs in the
   supervisor's hands but requires clicking each one. Close the loop: **drag a scenario file onto the game
@@ -515,6 +522,18 @@ Concrete starting signals, not a full audit:
 - **Five files exceed 850 lines** (`test_unit_ai`, `test_body_projector`, `test_damage_resolver`,
   `test_resolution_player`, `test_inspect_panel`) — worth checking whether they've accreted overlapping
   coverage of the same paths, since several were split at gdlint's cap rather than along a seam.
+
+**Separate tests that PIN behaviour from tests that SAMPLE a distribution — mixing them is what
+creates a re-pick treadmill.** A pinning test fixes its inputs and must go red the instant behaviour
+changes; that's its whole job. A sampling test asks a statistical question ("are missions completable
+at all?") and should run N cases and assert a *rate*, never a single frozen seed.
+`test_full_mission.gd` is the live example of the confusion: it asks an existence question ("a mission
+can be completed") but is implemented as a pinned seed, so every real mechanics change forces a
+re-pick — six so far. Worse, pass/fail throws away the interesting number: a tb38 investigation of
+seeds 12373–12383 found only **2 of 11 complete**, with the failures concentrated in AI-stuck
+behaviour rather than impossible maps. A rate-asserting version answers the question honestly, needs
+no re-picking, and would have collapsed visibly when the AI line-of-fire bug landed — which the pinned
+version instead absorbed across five re-picks.
 
 **Deliverable is a written audit, not a deletion spree.** Per test or cluster: what it covers, whether
 anything else already covers it, and whether it asserts a real invariant or an implementation
@@ -602,9 +621,21 @@ swaps in a surface placement with a wrong height or a missing `walkable` tag, le
 while asserting nothing. That is precisely how the prone test pinned a bug for fifteen taskblocks.
 **Each migrated fixture needs its intent preserved, not just its syntax.**
 
-**Acceptance is the counter, not a grep.** The floor-parts block instruments the legacy path so every
+**It also carries a MapGen rewrite, which the file counts hide.** tb38 derived surfaces *from* the
+finished grid — once, as the last step — rather than authoring them during carving, because the BSP
+carve/ramp/repair/spawn machinery legitimately re-visits the same cell and the attachment grammar
+correctly refuses to place onto an already-floored one. So `terrain`/`level` remain the source of truth
+*during generation*, and retiring them means **making every carve function idempotent under the
+surfaces model**. CC flagged that as materially larger and riskier than the rest of Pass B; it doesn't
+disappear, it moves here.
+
+**Acceptance is the counter AND a grep — the counter alone is not sufficient.** The floor-parts block instruments the legacy path so every
 fallback hit records its caller. This block is done when **that counter reads zero across the full
-suite** — proving nothing still depends on the old model, including whatever a grep would miss.
+suite** — but that only covers the three functions that read *through* the bridge
+(`Pathfinder._base_cost`, `Pathfinder.move_cost`, `UnitGeometry.true_height_for_cell`). The 4.3M-hit
+figure from tb38 is pathfinding *call frequency*, not breadth. The 14 production and 37 test files
+touching `grid.level`/`terrain` **directly** never touch the bridge at all, so the counter cannot see
+them. Both checks are required: counter at zero, and a grep finding no direct access.
 
 **`SPAWN_A`/`SPAWN_B` survive** — game markers, not physical facts, with no surface to become.
 
