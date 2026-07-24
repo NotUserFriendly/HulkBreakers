@@ -78,3 +78,45 @@ func test_a_shooter_above_a_target_resolves_against_its_top_face() -> void:
 			top_face = region
 	assert_not_null(top_face, "an elevated shooter aiming down must produce a real top-face region")
 	assert_gt(top_face.rect.size.x, 0.0, "the top face must have real screen width")
+
+
+## taskblock-37 Pass D: "a shot from higher ground resolves against more
+## of the target than the same shot from level" (docs/PLAN.md) — "no
+## special cover or LoS rules," this must fall out of the SAME
+## `ShotPlane.build` geometry tb36 already proved, read back and counted
+## rather than trusted. A shooter at level 0 aiming dead ahead sees only
+## the target's front face; the same target, seen from height, adds its
+## top face too — genuinely MORE of the target's own surface enters the
+## plane, never authored as a bonus.
+func test_a_shot_from_higher_ground_resolves_against_more_of_the_target() -> void:
+	var flat_grid := Grid.new(10, 10)
+	var flat_shooter := _box_unit(&"shooter_torso", Vector2i(0, 0))
+	var flat_target := _box_unit(&"target_torso", Vector2i(0, 5))
+	var flat_state := CombatState.new(flat_grid, [flat_shooter, flat_target])
+	var flat_muzzle: Vector3 = UnitGeometry.muzzle_point(flat_shooter, flat_shooter.shell.root)
+	var flat_plane: Array[Region] = ShotPlane.build(flat_muzzle, Vector3(0.0, 0.0, 1.0), flat_state)
+	var flat_target_regions: int = 0
+	for region: Region in flat_plane:
+		if region.body == flat_target:
+			flat_target_regions += 1
+
+	var raised_grid := Grid.new(10, 10)
+	raised_grid.set_level(Vector2i(0, 0), 4)
+	var raised_shooter := _box_unit(&"shooter_torso", Vector2i(0, 0))
+	var raised_target := _box_unit(&"target_torso", Vector2i(0, 5))
+	var raised_state := CombatState.new(raised_grid, [raised_shooter, raised_target])
+	var raised_muzzle: Vector3 = UnitGeometry.muzzle_point(
+		raised_shooter, raised_shooter.shell.root
+	)
+	var raised_dir := Vector3(0.0, -0.95, 0.312).normalized()
+	var raised_plane: Array[Region] = ShotPlane.build(raised_muzzle, raised_dir, raised_state)
+	var raised_target_regions: int = 0
+	for region: Region in raised_plane:
+		if region.body == raised_target:
+			raised_target_regions += 1
+
+	assert_gt(
+		raised_target_regions,
+		flat_target_regions,
+		"a shooter looking down from height must see more of the target's surface than one at level"
+	)
