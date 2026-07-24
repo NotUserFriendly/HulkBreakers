@@ -14,10 +14,14 @@ const HOP_DOWN_COST: float = 1.0
 ## Climbing is capped at one level by default (docs/PLAN.md: "a capability
 ## or part may raise that later" — nothing does yet, taskblock-37's own
 ## scope fence).
-const MAX_CLIMB_LEVELS: int = 1
+## taskblock-37 Pass E follow-up (supervisor): a real height cap now, not
+## an integer level count — `Grid.level` itself is continuous, so a climb
+## can be any real rise up to this many level-equivalents (still 1.0
+## world unit at `UnitGeometry.LEVEL_HEIGHT`'s own default).
+const MAX_CLIMB_LEVELS: float = 1.0
 ## Hop-down is safe up to two levels; a deeper drop isn't a legal edge this
 ## pass (fall damage/knockdown are later work, explicitly out of scope).
-const MAX_HOP_DOWN_LEVELS: int = 2
+const MAX_HOP_DOWN_LEVELS: float = 2.0
 
 var _grid: Grid
 ## terrain(int) -> float MP cost; missing = DEFAULT_COST, negative = blocked.
@@ -92,13 +96,18 @@ func _base_cost(cell: Vector2i) -> float:
 ##   height as it goes." No special-casing beyond that check.
 ## - same level: unchanged, the plain terrain cost (the vast majority of
 ##   edges, and everything before this pass).
-## - climbing UP a level with no ramp: capability-gated, `CLIMB_COST` per
-##   level, capped at `MAX_CLIMB_LEVELS` — a non-climber simply has no
-##   such edge, not an illegal-but-attempted one.
+## - climbing UP with no ramp: capability-gated, `CLIMB_COST` scaled by how
+##   much of a full level's rise this edge actually covers (`taskblock-37
+##   Pass E follow-up: `Grid.level` is continuous now, so this is a real
+##   proportion, not always exactly one whole level — the same formula
+##   `ClimbAction`'s own cost already used), capped at `MAX_CLIMB_LEVELS` —
+##   a non-climber simply has no such edge, not an illegal-but-attempted
+##   one.
 ## - dropping DOWN with no ramp: always legal up to `MAX_HOP_DOWN_LEVELS`,
-##   flat `HOP_DOWN_COST` regardless of capability — the taskblock's own
-##   "hop-down at 1 MP against 8 MP to climb back makes one-way routes for
-##   free," deliberately asymmetric.
+##   flat `HOP_DOWN_COST` regardless of capability or how far within that
+##   cap it actually drops — the taskblock's own settled table gives
+##   hop-down no half variant, and "hop-down at 1 MP against 8 MP to climb
+##   back makes one-way routes for free" is deliberately asymmetric.
 ## - a deeper drop, or a climb beyond the cap, is simply not an edge —
 ##   `_grid.get_level` alone decides this from the two cells, no per-unit
 ##   fall-damage/knockdown modeling belongs here (later work, with perks
@@ -112,13 +121,13 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 		or _grid.get_terrain(to) == Enums.TerrainType.RAMP
 	):
 		return base
-	var level_delta: int = _grid.get_level(to) - _grid.get_level(from)
-	if level_delta == 0:
+	var level_delta: float = _grid.get_level(to) - _grid.get_level(from)
+	if is_zero_approx(level_delta):
 		return base
-	if level_delta > 0:
+	if level_delta > 0.0:
 		if not _can_climb or level_delta > MAX_CLIMB_LEVELS:
 			return -1.0
-		return CLIMB_COST
+		return CLIMB_COST * (level_delta / UnitGeometry.LEVEL_HEIGHT)
 	if -level_delta > MAX_HOP_DOWN_LEVELS:
 		return -1.0
 	return HOP_DOWN_COST

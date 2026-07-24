@@ -54,7 +54,7 @@ static func elevation_for(
 	grid: Grid
 ) -> Dictionary:
 	var flat: Vector2 = Vector2(target_cell) - origin_flat
-	var level_delta: int = grid.get_level(target_cell) - grid.get_level(origin_cell)
+	var level_delta: float = grid.get_level(target_cell) - grid.get_level(origin_cell)
 	var height_delta: float = level_delta * UnitGeometry.LEVEL_HEIGHT
 	var vertical_slope: float = 0.0 if flat.is_zero_approx() else height_delta / flat.length()
 	return {
@@ -144,7 +144,15 @@ static func build(
 			_place(region, offset)
 			# taskblock-36 Pass D: a piece of cover sitting on an elevated
 			# cell raises exactly like a unit standing there would.
-			region.rect.position.y += state.grid.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
+			# taskblock-37 Pass E follow-up (supervisor, found during the
+			# level-precision audit): was `grid.get_level(cell) *
+			# LEVEL_HEIGHT` directly, missing a RAMP tile's own +0.5 rest
+			# offset — `BoardView._spawn_blocker` already renders cover on a
+			# ramp at its true (ramp-aware) height, so the shot plane must
+			# resolve against that SAME real height, not a lower one, or a
+			# hit on ramp-standing cover lands somewhere the rendered box
+			# never actually occupies.
+			region.rect.position.y += UnitGeometry.true_height_for_cell(cell, state.grid)
 			if shear:
 				_shear(region, origin.y, vertical_slope)
 			region.body = part

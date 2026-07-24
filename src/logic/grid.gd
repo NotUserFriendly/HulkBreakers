@@ -23,14 +23,21 @@ var rows: int
 var terrain: Array[int] = []
 var opacity: Array[float] = []
 var occupant_id: Array[int] = []
-## taskblock-36 Pass D: a cell's own integer elevation — 0 (ground level)
-## everywhere on a fresh `MapGen` map (inert in normal play; nothing
-## consumes this for movement/pathfinding yet) and the first real slice
-## of multi-level (docs/PLAN.md "Multi-level maps"). `UnitGeometry` reads
-## a unit's own cached `Unit.level` (synced from this at
-## `CombatState.add_unit`) rather than this array directly — neither
-## `UnitGeometry` nor `BodyProjector` otherwise touch the grid at all.
-var level: Array[int] = []
+## taskblock-36 Pass D: a cell's own elevation — 0 (ground level)
+## everywhere on a fresh `MapGen` map, one whole number per `Grid.
+## UnitGeometry.LEVEL_HEIGHT` step. `UnitGeometry` reads a unit's own
+## cached `Unit.level` (synced from this at `CombatState.add_unit`) rather
+## than this array directly — neither `UnitGeometry` nor `BodyProjector`
+## otherwise touch the grid at all.
+## taskblock-37 Pass E follow-up (supervisor): widened from a discrete
+## `int` to a real `float` — genuinely arbitrary elevation (a gentle
+## rise, a curb, anything finer than a whole level or a ramp's own fixed
+## +0.5), not just whole levels plus the one ramp half-step. Every
+## consumer that used to compare/subtract these as whole level COUNTS
+## (`Pathfinder`'s climb/hop-down caps, `ClimbAction`/`HopDownAction`'s
+## own rise math) already worked in continuous world-height terms or was
+## updated to — nothing here assumes an integer anymore.
+var level: Array[float] = []
 ## Vector2i -> Part; a field object (cover, scrap, a barrel, ...) sitting
 ## at this cell. taskblock-16 Pass B2: the ONE source of truth for "is
 ## this cell covered" — the old `cover_value` scalar is retired (it never
@@ -54,7 +61,7 @@ func _init(p_width: int, p_rows: int) -> void:
 	terrain.fill(0)
 	opacity.fill(0.0)
 	occupant_id.fill(-1)
-	level.fill(0)
+	level.fill(0.0)
 
 
 func _index(cell: Vector2i) -> int:
@@ -89,11 +96,11 @@ func set_occupant_id(cell: Vector2i, value: int) -> void:
 	occupant_id[_index(cell)] = value
 
 
-func get_level(cell: Vector2i) -> int:
+func get_level(cell: Vector2i) -> float:
 	return level[_index(cell)]
 
 
-func set_level(cell: Vector2i, value: int) -> void:
+func set_level(cell: Vector2i, value: float) -> void:
 	level[_index(cell)] = value
 
 

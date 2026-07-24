@@ -412,9 +412,11 @@ func set_passable(cell: Vector2i, passable: bool) -> bool:
 ## gets visually confirmed before movement verbs exist." Also re-syncs any
 ## unit ALREADY standing on `cell` (the same `CombatState.add_unit` derives
 ## at spawn time), so forcing a scenario never requires respawning the
-## unit that's already there. `Pathfinder`/`MapGen` are untouched by this —
-## deliberately inert for anything but the shot plane and view this pass.
-func set_cell_level(cell: Vector2i, level: int) -> bool:
+## unit that's already there.
+## taskblock-37 Pass E follow-up (supervisor): `level` is a real `float`
+## now, not a whole number — genuinely arbitrary elevation for a forced
+## scenario, not just whole levels plus a ramp's own fixed half-step.
+func set_cell_level(cell: Vector2i, level: float) -> bool:
 	if not can_inject():
 		_reject(&"set_cell_level")
 		return false
@@ -426,7 +428,7 @@ func set_cell_level(cell: Vector2i, level: int) -> bool:
 			unit.level = level
 			unit.height = UnitGeometry.true_height_for_cell(cell, state.grid)
 	_log_injection(
-		&"set_cell_level", {"cell": cell, "level": level}, "cell %s level=%d" % [cell, level]
+		&"set_cell_level", {"cell": cell, "level": level}, "cell %s level=%.2f" % [cell, level]
 	)
 	return true
 
