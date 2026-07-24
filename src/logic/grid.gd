@@ -48,6 +48,11 @@ var level: Array[float] = []
 ## (`Pathfinder.move_cost`) — a unit can no longer stand inside cover.
 var blockers: Dictionary = {}
 var field_items: Dictionary = {}  # Vector2i -> Array[Part|Matrix]; loose items lying on the ground
+## taskblock-38 Pass A: Vector2i -> Array[Surface] — the placement model's
+## own store (a cell's ordered set of placed surfaces: floor, raised floor,
+## ramp, catwalk, ...). Inert this pass: `terrain`/`level` stay
+## authoritative and nothing reads this yet (see `GridPlacement`).
+var surfaces: Dictionary = {}
 
 
 func _init(p_width: int, p_rows: int) -> void:
@@ -122,6 +127,13 @@ func dup() -> Grid:
 		for item: Variant in field_items[cell]:
 			cloned_items.append(item.duplicate(true))
 		cloned.field_items[cell] = cloned_items
+	for cell: Vector2i in surfaces:
+		var cloned_surfaces: Array[Surface] = []
+		for surface: Surface in surfaces[cell]:
+			cloned_surfaces.append(
+				Surface.new(surface.part.duplicate(true), surface.height, surface.facing)
+			)
+		cloned.surfaces[cell] = cloned_surfaces
 	return cloned
 
 
@@ -166,6 +178,21 @@ func shootable_part_at(cell: Vector2i) -> Part:
 			if item is Part:
 				return item
 	return null
+
+
+## taskblock-38 Pass A: `surfaces.get(cell, [])`, typed — every reader gets
+## a real (possibly empty) `Array[Surface]` rather than checking `has()`
+## itself first.
+func surfaces_at(cell: Vector2i) -> Array[Surface]:
+	if surfaces.has(cell):
+		return surfaces[cell]
+	return []
+
+
+func add_surface(cell: Vector2i, surface: Surface) -> void:
+	if not surfaces.has(cell):
+		surfaces[cell] = [] as Array[Surface]
+	(surfaces[cell] as Array[Surface]).append(surface)
 
 
 func neighbors(cell: Vector2i) -> Array[Vector2i]:
