@@ -81,6 +81,17 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 
 	_finalize_walls_and_void(grid)
 
+	# taskblock-38 Pass B: last step, deliberately — every carve/ramp/repair/
+	# spawn function above still owns terrain/level exactly as it always
+	# has, since the BSP carve legitimately re-visits the SAME cell more
+	# than once (a re-carved corridor, `_ensure_spawns_connected`'s own
+	# emergency fallback), which `GridPlacement`'s own attachment grammar
+	# correctly refuses a second time. Placing surfaces once, after
+	# everything else has settled, mirrors the finished grid instead of
+	# rewriting the generator's own delicate internals to place surfaces as
+	# their primitive operation — see `_author_surfaces`'s own doc comment.
+	_author_surfaces(grid)
+
 	return grid
 
 
@@ -470,6 +481,34 @@ static func _finalize_walls_and_void(grid: Grid) -> void:
 		else:
 			grid.set_terrain(cell, Enums.TerrainType.VOID)
 			grid.set_opacity(cell, 0.0)
+
+
+## taskblock-38 Pass B: "MapGen writes floor parts instead of writing
+## terrain + level directly" — the pass's own source-of-truth move,
+## implemented as a derivation from the just-finished grid rather than a
+## rewrite of every carve/ramp/repair function's own internals (those stay
+## entirely terrain/level-driven; see `generate()`'s own call-site
+## comment). Every OPEN or RAMP cell (including SPAWN_A/SPAWN_B — walkable
+## ground tagged for spawning, not a different physical fact) gets a
+## flyweight floor surface at its own real height
+## (`UnitGeometry.true_height_for_cell`, the exact existing formula,
+## unchanged); a VOID cell gets none — "a cell with no surface derives as
+## empty."
+static func _author_surfaces(grid: Grid) -> void:
+	for y in range(grid.rows):
+		for x in range(grid.width):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) == Enums.TerrainType.VOID:
+				continue
+			var part_id: StringName = (
+				&"ramp" if grid.get_terrain(cell) == Enums.TerrainType.RAMP else &"ship_floor"
+			)
+			GridPlacement.place(
+				grid,
+				cell,
+				DataLibrary.get_part(part_id),
+				UnitGeometry.true_height_for_cell(cell, grid)
+			)
 
 
 static func _is_exposed_wall(grid: Grid, cell: Vector2i) -> bool:
