@@ -19,9 +19,10 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-37 Passes A–D landed, Pass E in progress with the supervisor (the view
-reads elevation and the ground/grid lines terrace; camera framing and the wall cutout against
-elevation are still open — see `PLAN.md`).*
+*Current as of taskblock-38 Passes A–D landed (floor/terrain become parts; the actual `Grid.level`/
+`TerrainType` retirement is its own follow-up block per the burn-down list Pass D produced — see
+`PLAN.md`). taskblock-37 Pass E (view-layer elevation legibility) still has two open items: camera
+framing and the wall cutout against elevation — see `PLAN.md`.*
 
 ---
 
@@ -202,6 +203,48 @@ of change, documented five times over in its own header before this one.
   thrown-weapon height advantage, no AI path yet queues `ClimbAction`/`HopDownAction` and neither
   integrates with `MoveAction`'s own mid-move overwatch hook, view-layer elevation correctness
   (Pass E, fenced for the supervisor, not started).
+
+**Floor and terrain become parts (tb38, docs/PLAN.md)** — the tb31 wall move, generalised: everything
+walkable is a placed `Part` now, not a terrain code. Same "one seeded flat bout (all level 0, no
+ramps), diffed byte-for-byte after every pass" guard as tb36/37; ramp-carrying content is
+deliberately excluded from that guard and covered by its own dedicated fixture instead.
+- **Pass A** — the placement model, consumed by nothing. New `Surface` (part + real world height +
+  facing) and `Grid.surfaces` (`Vector2i -> Array[Surface]`, the same container shape
+  `field_items` already established) sit alongside `terrain`/`level`, which stay authoritative. New
+  `GridPlacement` is the attachment grammar: a part attaches downward (`GROUND` in its own
+  `attaches_to`) only to a cell with no surface yet, or sideways to a free, type-matching `Socket` on
+  an orthogonal neighbour's own surface — reusing `PartGraph.is_legal_attachment`/`attach` verbatim,
+  never a parallel legality check.
+- **Pass B** — `MapGen` authors two flyweight floor parts (`ship_floor`, `ramp`) onto every non-VOID
+  cell, derived from the just-finished grid rather than rewriting the carve/ramp/repair machinery's
+  own internals (the BSP carve legitimately re-visits the same cell more than once, which the
+  attachment grammar correctly refuses a second time — `_author_surfaces` runs once, last, mirroring
+  the finished terrain/level instead). A `VOID` cell gets no surface at all — "unfloored," not a
+  terrain code.
+- **Pass C** — height and pathfinding now read a cell's own placed surface, not `Grid.level`/terrain
+  directly (`UnitGeometry.true_height_for_cell`, `Pathfinder`'s walkability/move-cost gate). Ramps
+  become a real two-tile, 22.5° profile (`+0.5` level per tile, replacing tb37's one-tile 45° rise) —
+  `MapGen._connect_with_a_ramp` places an inner (room-bordering) and outer tile with a shared facing;
+  new `RampGeometry` pins the settled low/high/lateral edge heights (0 / +0.5 / +0.25), built and
+  tested even though nothing renders it yet. Partial climb MP rounds up (a 1.2 MP climb charges 2).
+  **Real bug found and fixed:** `_repair_stranded_elevation` never flattened a stranded `RAMP` tile,
+  only a stranded `OPEN` cell — invisible under tb37's model (a ramp's own authored level was always
+  0), exposed once the corrected model gives the room-bordering tile a genuinely non-zero level; now
+  reverts a stranded ramp fully to plain ground. `test_full_mission.gd`'s seed re-picked
+  (12373→12383) — the two-tile ramp reshapes which rooms get ramped, the same established pattern as
+  every prior generator-reshaping re-pick.
+- **Pass D** — scope revised by the supervisor mid-taskblock: not the `Grid.level`/`TerrainType`
+  retirement itself (confirmed blast radius: 14–17 production files, 36–37 test files still read the
+  pre-placement model directly), but making that retirement safe to run as its own follow-up block.
+  New `GridLegacyBridge` consolidates three previously-scattered `surfaces.is_empty()` fallback checks
+  into one instrumented seam; a full-suite run tallies **4,318,367** hits across three call sites
+  (`Pathfinder._base_cost`/`move_cost`, `UnitGeometry.true_height_for_cell`) via a GUT post-run hook
+  (`tools/legacy_grid_bridge_burndown.gd`) — the retirement block's own real acceptance test is this
+  counter reading zero, not a grep. **Out of this taskblock, staying that way:** the actual
+  `Grid.level`/`TerrainType.{OPEN,WALL,RAMP,VOID}` deletion and the void→lore-only vocabulary sweep
+  (both the named follow-up block, `PLAN.md`); catwalks/bridges as authored content; floors
+  projecting into the shot plane (BR34.05 stays open — would break this block's own byte-identical
+  guard).
 
 **Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
 DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
