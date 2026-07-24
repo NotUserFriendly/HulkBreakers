@@ -247,6 +247,33 @@ func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 	assert_almost_eq(aabb.end.z, (grid.rows - 1) * cell_size + half + half_width, 0.0001)
 
 
+## taskblock-37 Pass E follow-up (supervisor): grid lines used to be one
+## flat mesh at a single world height — a raised cell's own boundary now
+## reaches its real top face, the same per-cell treatment `_build_terrain`
+## already has, read back from the built mesh's own AABB.
+func test_grid_lines_reflect_a_raised_cells_own_height() -> void:
+	var grid := Grid.new(4, 3)
+	grid.set_level(Vector2i(2, 1), 2)
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var grid_lines: MeshInstance3D = view._static.get_child(1)
+	var aabb: AABB = grid_lines.mesh.get_aabb()
+	assert_almost_eq(
+		aabb.position.y,
+		BoardView.GRID_LINE_HEIGHT,
+		0.0001,
+		"the rest of the grid stays at ground level"
+	)
+	assert_almost_eq(
+		aabb.end.y,
+		2.0 * UnitGeometry.LEVEL_HEIGHT + BoardView.GRID_LINE_HEIGHT,
+		0.0001,
+		"the raised cell's own border must reach its real height"
+	)
+
+
 ## docs/10 taskblock03 I: the original color was "nearly the same value" as
 ## the ground — pushed far enough apart now that this margin is generous,
 ## not a rounding-error-sized gap.

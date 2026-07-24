@@ -360,42 +360,50 @@ func _build_extraction_tiles(team_extraction_cells: Dictionary) -> void:
 ## wide quads, not 1px GPU line primitives (no shader/LOD trick — just
 ## actual geometry with a real width, drawn with the same real-width
 ## convention D2's leg lines / F2's targeting line already use).
-## taskblock-37 Pass E: KNOWN GAP, not fixed this pass — still one flat
-## mesh at `GRID_LINE_HEIGHT` for the whole grid, unlike `_build_terrain`'s
-## now-per-cell tiles. A raised cell's own boundary lines still trace the
-## OLD flat ground plane underneath its terraced floor, not its real top
-## face. Flagged rather than silently left inconsistent; would need the
-## same per-cell-segment treatment `_build_terrain` just got.
+## taskblock-37 Pass E follow-up (supervisor): per-cell now, each cell
+## drawing its own complete 4-edge border at THAT cell's own real height
+## (`UnitGeometry.true_height_for_cell`) — the same per-cell treatment
+## `_build_terrain` already has, closing the gap flagged when the ground
+## itself first went per-cell. A shared edge between two same-height
+## neighbors is simply drawn twice (perfectly overlapping geometry, no
+## visible difference) rather than deduplicated; a riser boundary between
+## two different-height cells is what makes that simplicity pay off — each
+## side's own border lands right at the edge of its own step, framing the
+## terrace instead of both tracing one flat plane through it.
 func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()
 	var cell_size: float = UnitGeometry.CELL_SIZE
 	var half: float = cell_size * 0.5
 	var half_width: float = GRID_LINE_WIDTH * 0.5
-	var min_x: float = -half
-	var max_x: float = (p_grid.width - 1) * cell_size + half
-	var min_z: float = -half
-	var max_z: float = (p_grid.rows - 1) * cell_size + half
 
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(GRID_LINE_COLOR))
-	for x in range(p_grid.width + 1):
-		var wx: float = x * cell_size - half
-		_add_quad(
-			mesh,
-			Vector3(wx - half_width, GRID_LINE_HEIGHT, min_z),
-			Vector3(wx + half_width, GRID_LINE_HEIGHT, min_z),
-			Vector3(wx + half_width, GRID_LINE_HEIGHT, max_z),
-			Vector3(wx - half_width, GRID_LINE_HEIGHT, max_z)
-		)
-	for z in range(p_grid.rows + 1):
-		var wz: float = z * cell_size - half
-		_add_quad(
-			mesh,
-			Vector3(min_x, GRID_LINE_HEIGHT, wz - half_width),
-			Vector3(max_x, GRID_LINE_HEIGHT, wz - half_width),
-			Vector3(max_x, GRID_LINE_HEIGHT, wz + half_width),
-			Vector3(min_x, GRID_LINE_HEIGHT, wz + half_width)
-		)
+	for y in range(p_grid.rows):
+		for x in range(p_grid.width):
+			var cell := Vector2i(x, y)
+			var wy: float = UnitGeometry.true_height_for_cell(cell, p_grid) + GRID_LINE_HEIGHT
+			var cx: float = x * cell_size
+			var cz: float = y * cell_size
+			var x_min: float = cx - half - half_width
+			var x_max: float = cx + half + half_width
+			var z_min: float = cz - half - half_width
+			var z_max: float = cz + half + half_width
+			for wx: float in [cx - half, cx + half]:
+				_add_quad(
+					mesh,
+					Vector3(wx - half_width, wy, z_min),
+					Vector3(wx + half_width, wy, z_min),
+					Vector3(wx + half_width, wy, z_max),
+					Vector3(wx - half_width, wy, z_max)
+				)
+			for wz: float in [cz - half, cz + half]:
+				_add_quad(
+					mesh,
+					Vector3(x_min, wy, wz - half_width),
+					Vector3(x_max, wy, wz - half_width),
+					Vector3(x_max, wy, wz + half_width),
+					Vector3(x_min, wy, wz + half_width)
+				)
 	mesh.surface_end()
 
 	instance.mesh = mesh
