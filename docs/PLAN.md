@@ -58,18 +58,20 @@ real levels; see `CHANGELOG.md`). **Unblocks:** nothing further blocks specifica
 it's the one part of multi-level still open. **Needs the supervisor watching — not headless-
 verifiable, per the taskblock's own fence; do not attempt unattended.**
 
-- **The view reads `unit.level`/`unit.height`.** Nothing in `src/view/` does yet — a raised unit
-  renders at the same visual height as an unraised one. Correctness here IS headless-testable (build
-  the node, apply the state, read `global_transform` back, docs/10's own rule) — write those tests.
-  What can't be tested is whether a raised unit *reads* as raised to a human eye.
+- ~~The view reads `unit.level`/`unit.height`~~ — **done.** `ResolutionPlayer`/`HitVolumeView` read
+  real height; `BoardView`'s ground and grid lines both terrace per-cell instead of one flat mesh at
+  world Y=0 (the root cause of the supervisor's first "raise the level, no visual change" report);
+  confirmed working live, including on pregen `MapGen` maps.
+- ~~Movement animation for climbs and drops~~ — **done.** `&"climbed"`/`&"hopped_down"` log events
+  carry the same `"path"` shape a `move` event does and route through the existing `_play_slide`
+  machinery — no dedicated animation code needed.
 - **The camera at height** — whether the tactical orbit and sniper framing behave sensibly when
-  shooter and target are on different levels. Aesthetic judgement; needs eyes.
+  shooter and target are on different levels. Aesthetic judgement; needs eyes. Not yet exercised
+  live by the supervisor.
 - **Wall cutout against elevation.** BR32.04/BR32.05 are still open (it snaps ahead of the move
   animation, and cuts walls that aren't between camera and unit) — elevation adds a whole new axis
   to a shader already known to mis-select walls. Expect interaction; fixing the cutout itself is a
   separate item, not this one's job.
-- **Movement animation for climbs and drops** — a climb is a vertical translation the resolution
-  player has never had to play. May look wrong in a way no test catches.
 
 ### 2. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
