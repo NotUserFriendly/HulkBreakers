@@ -237,6 +237,52 @@ func test_the_outcome_and_refund_are_logged() -> void:
 	assert_true(events[0].data.has("refund_mp"))
 
 
+## taskblock-39 Pass A: the other half of docs/09 taskblock06 D4's
+## interrupt-and-resume contract — previously exercised only incidentally,
+## as a byproduct of test_full_mission.gd's own natural AI play (replaced
+## this pass by a rate-based bout sweep, which asserts nothing about turn
+## continuity specifically). A unit whose queue stops mid-resolution must
+## stay `current_unit()` (no other unit's turn steals in), and a FRESH
+## queue for that same unit must still be able to reach a real `turn_end`
+## afterward — the interrupt ends a QUEUE, never the unit's own turn.
+func test_a_stopped_units_turn_still_reaches_turn_end_afterward() -> void:
+	var built: Dictionary = _make_mobile_armed_unit(Vector2i(0, 0))
+	var unit: Unit = built.unit
+	var leg: Part = built.leg
+	var grid := Grid.new(20, 20)
+	var state := CombatState.new(grid, [unit])
+	unit.ap = 3
+	unit.mp = 0.0
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+	var path: Array[Vector2i] = _straight_path(Vector2i(0, 0), 10)
+	var queue := ActionQueue.new(unit)
+	assert_true(queue.enqueue(MoveAction.new(unit, path), state))
+
+	var hook := func(_s: CombatState, u: Unit) -> void:
+		if u.cell == Vector2i(1, 0):
+			DamageResolver.apply_damage_to_part(leg, 10.0)
+
+	var outcome: Dictionary = state.resolve_until(queue, hook)
+	assert_eq(
+		outcome.kind, Enums.ResolveOutcome.STOPPED, "sanity: the move must actually interrupt"
+	)
+	assert_eq(
+		state.current_unit(), unit, "the stopped unit must stay current, not hand off to no one"
+	)
+
+	var end_queue := ActionQueue.new(unit)
+	assert_true(end_queue.enqueue(EndTurnAction.new(unit), state))
+	var end_outcome: Dictionary = state.resolve_until(end_queue)
+
+	assert_eq(end_outcome.kind, Enums.ResolveOutcome.COMPLETED)
+	assert_eq(
+		sink.events_of_kind(&"turn_end").size(),
+		1,
+		"the same turn must still reach turn_end, not halt on the earlier interrupt"
+	)
+
+
 ## docs/09 taskblock06 D2/CLAUDE.md: determinism — the same setup always
 ## stops at the same cell with the same outcome.
 func test_the_same_seed_and_setup_stops_at_the_same_interrupt_point() -> void:
