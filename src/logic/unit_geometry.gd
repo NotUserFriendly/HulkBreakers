@@ -35,29 +35,19 @@ const DEFAULT_MUZZLE_HEIGHT := 1.25
 ## (`RampGeometry.STANDING_OFFSET`) into `Surface.height` at placement
 ## time — this just reads it back.
 ##
-## `grid.surfaces.is_empty()` is the SAME migration bridge
-## `Pathfinder._base_cost`/`move_cost` use, and load-bearing here for the
-## identical reason: dozens of existing tests hand-set `Grid.level`
+## taskblock-38 Pass D: `GridLegacyBridge.is_legacy` is the SAME migration
+## bridge `Pathfinder._base_cost`/`move_cost` use, load-bearing here for
+## the identical reason — dozens of existing tests hand-set `Grid.level`
 ## directly on a bare fixture Grid that never went through
 ## `GridPlacement`/`MapGen` at all, and read this function's OLD answer
 ## back (`ClimbAction`/`HopDownAction`'s own rise/drop math chief among
 ## them). Falling through to `Surface.first_walkable` unconditionally
-## would silently collapse every one of those to a flat 0.0 — this
-## preserves the pre-Pass-C formula (tb37's own flat +0.5 ramp offset,
-## untouched) for any grid that hasn't been placement-authored, and reads
-## the real surface for one that has.
+## would silently collapse every one of those to a flat 0.0.
 static func true_height_for_cell(cell: Vector2i, grid: Grid) -> float:
-	if grid.surfaces.is_empty():
-		return _legacy_height_for_cell(cell, grid)
+	if GridLegacyBridge.is_legacy(grid):
+		return GridLegacyBridge.height_for_cell(grid, cell, "UnitGeometry.true_height_for_cell")
 	var surface: Surface = Surface.first_walkable(grid.surfaces_at(cell))
 	return surface.height if surface != null else 0.0
-
-
-static func _legacy_height_for_cell(cell: Vector2i, grid: Grid) -> float:
-	var height: float = grid.get_level(cell) * LEVEL_HEIGHT
-	if grid.get_terrain(cell) == Enums.TerrainType.RAMP:
-		height += LEVEL_HEIGHT * 0.5
-	return height
 
 
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
