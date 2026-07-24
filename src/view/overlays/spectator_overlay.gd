@@ -158,7 +158,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if input_capture_mode:
 		var picked_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
 		var picked_cell: Variant = (
-			hit.unit.cell if picked_unit != null else BoardPicker.cell_at_ray(from, dir)
+			hit.unit.cell
+			if picked_unit != null
+			else BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 		)
 		(
 			board_clicked
@@ -176,7 +178,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		pause()
 		inspect_panel.open(hit.unit as Unit)
 		return
-	var cell: Variant = BoardPicker.cell_at_ray(from, dir)
+	var cell: Variant = BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
 		return
 	# taskblock-27 Pass D5: "wall tiles should not be inspectable" — a
