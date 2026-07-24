@@ -100,7 +100,7 @@ func _armed_unit(cell: Vector2i, squad_id: int, weapon_id: StringName = &"") -> 
 ## neighbors (4,0)/(2,0) read as exposed, (3,1) itself is the blocker's
 ## own cell (unwalkable) and out-of-bounds (3,-1) doesn't exist.
 func _covered_scene() -> Dictionary:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	grid.blockers[Vector2i(3, 1)] = _blocker()
 	var unit := _armed_unit(Vector2i(3, 0), 0, &"rifle")
 	var target := _armed_unit(Vector2i(3, 9), 1)
@@ -124,7 +124,7 @@ func test_a_step_out_is_legal_when_origin_covered_firing_cell_exposed_and_orthog
 
 
 func test_an_uncovered_origin_makes_the_step_out_illegal() -> void:
-	var grid := Grid.new(10, 10)  # no blocker at all
+	var grid := GridFixture.flat(10, 10)  # no blocker at all
 	var unit := _armed_unit(Vector2i(3, 0), 0, &"rifle")
 	var target := _armed_unit(Vector2i(3, 9), 1)
 	var state := CombatState.new(grid, [unit, target])
@@ -261,7 +261,7 @@ func test_the_triple_costs_no_mp_for_either_leg() -> void:
 
 
 func test_assemble_for_shoot_returns_null_when_already_directly_attackable() -> void:
-	var grid := Grid.new(10, 10)  # no cover anywhere
+	var grid := GridFixture.flat(10, 10)  # no cover anywhere
 	var unit := _armed_unit(Vector2i(0, 0), 0, &"rifle")
 	var target := _armed_unit(Vector2i(5, 0), 1)
 	var state := CombatState.new(grid, [unit, target])
@@ -270,12 +270,15 @@ func test_assemble_for_shoot_returns_null_when_already_directly_attackable() -> 
 
 
 func test_assemble_for_shoot_returns_null_when_no_legal_step_out_exists() -> void:
-	var grid := Grid.new(10, 10)  # covered origin, but NO cover blocker at all
+	var grid := GridFixture.flat(10, 10)  # covered origin, but NO cover blocker at all
 	var unit := _armed_unit(Vector2i(0, 0), 0, &"rifle")
 	# Wall the whole board off from the target so nothing (origin or any
-	# neighbor) ever gets LoS to it — no legal step out is even possible.
+	# neighbor) can ever even REACH a cell with a different LOF profile —
+	# an unfloored gap (impassable, no blocker/opacity of its own) rather
+	# than `GridFixture.place_wall`, matching this test's own "no cover
+	# blocker at all" intent.
 	for y in range(10):
-		grid.set_terrain(Vector2i(5, y), Enums.TerrainType.WALL)
+		grid.clear_surfaces(Vector2i(5, y))
 	var target := _armed_unit(Vector2i(9, 0), 1)
 	var state := CombatState.new(grid, [unit, target])
 

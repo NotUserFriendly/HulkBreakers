@@ -58,14 +58,20 @@ func set_level(cell: Vector2i, value: float) -> void:
 
 
 ## A throwaway real `Grid` mirroring this scratch's own terrain/level —
-## `Pathfinder`'s connectivity floods are already correct, tested, and
-## instrumented (`GridLegacyBridge`); rebuilding that logic a second time
-## against scratch directly would be exactly the "two paths that could
-## disagree" CLAUDE.md's own no-parallel-systems rule warns about. This
-## mirror carries no surfaces at all, so `GridLegacyBridge.is_legacy`
-## correctly reads it as legacy and routes through the pre-placement
-## terrain/level formula — precisely what a mid-generation reachability
-## check over a still-forming map wants.
+## `Pathfinder`'s connectivity floods are already correct and tested;
+## rebuilding that logic a second time against scratch directly would be
+## exactly the "two paths that could disagree" CLAUDE.md's own
+## no-parallel-systems rule warns about.
+##
+## taskblock-39 Pass C: `Pathfinder` reads surfaces only now, no legacy
+## fallback — so a mid-generation reachability check over a still-forming
+## map needs a temporary grid that actually CARRIES real surfaces, not
+## just a terrain/level mirror. Every OPEN/RAMP scratch cell gets a real
+## `place_surface` placement (the same formula `MapGen._emit` authors the
+## real map with); every WALL cell (not yet carved, at this point in
+## generation) gets none, reading correctly as unwalkable — the same
+## outcome the old `{WALL: -1.0}` terrain cost achieved, just via a real
+## placed-or-not surface instead of a terrain-code lookup.
 ##
 ## `blockers` is an explicit optional pass-through, not scratch's own
 ## state (this class's own doc comment above is clear that scratch never
@@ -77,7 +83,26 @@ func set_level(cell: Vector2i, value: float) -> void:
 ## running before cover exists simply omit it.
 func as_temporary_grid(blockers: Dictionary = {}) -> Grid:
 	var temp := Grid.new(width, rows)
-	temp.terrain = terrain.duplicate()
-	temp.level = level.duplicate()
+	for y in range(rows):
+		for x in range(width):
+			var cell := Vector2i(x, y)
+			var cell_terrain: int = get_terrain(cell)
+			if cell_terrain == Enums.TerrainType.OPEN or cell_terrain == Enums.TerrainType.RAMP:
+				place_surface(temp, cell, cell_terrain, get_level(cell))
 	temp.blockers = blockers.duplicate()
 	return temp
+
+
+## The one formula that turns a scratch terrain/level reading into a real
+## placed `Surface` — shared between this throwaway-grid builder and
+## `MapGen._emit`'s own real, final authoring pass, so the two can never
+## quietly drift apart into two formulas deciding the same height.
+static func place_surface(
+	grid: Grid, cell: Vector2i, cell_terrain: int, cell_level: float, facing: float = 0.0
+) -> void:
+	var is_ramp: bool = cell_terrain == Enums.TerrainType.RAMP
+	var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
+	var height: float = cell_level * UnitGeometry.LEVEL_HEIGHT
+	if is_ramp:
+		height += RampGeometry.STANDING_OFFSET
+	GridPlacement.place(grid, cell, DataLibrary.get_part(part_id), height, facing)

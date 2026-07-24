@@ -81,7 +81,7 @@ func _blocker(top_y: float) -> Part:
 
 
 func _grid_with_blocker() -> Grid:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	grid.blockers[Vector2i(0, 3)] = _blocker(2.0)
 	return grid
 
@@ -191,7 +191,7 @@ func test_an_unexposed_striker_cannot_be_interrupted() -> void:
 func test_find_step_in_cell_returns_null_when_already_in_reach() -> void:
 	var striker: Unit = _striker(Vector2i(0, 0), 0.0, 1.0, 1)
 	var target: Unit = _striker(Vector2i(0, 1), 0.0, 0.0, 2)
-	var state := CombatState.new(Grid.new(10, 10), [striker, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, target])
 	striker.mp = 10.0
 
 	var result: Variant = MeleeDelivery.find_step_in_cell(state, striker, target, _weapon(0.0))
@@ -202,7 +202,7 @@ func test_find_step_in_cell_returns_null_when_already_in_reach() -> void:
 func test_find_step_in_cell_finds_a_reachable_cell_within_reach_of_the_target() -> void:
 	var striker: Unit = _striker(Vector2i(0, 0), 0.0, 1.0, 1)
 	var target: Unit = _striker(Vector2i(0, 5), 0.0, 0.0, 2)
-	var state := CombatState.new(Grid.new(10, 10), [striker, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, target])
 	striker.mp = 10.0
 
 	var result: Variant = MeleeDelivery.find_step_in_cell(state, striker, target, _weapon(0.0))
@@ -225,12 +225,12 @@ func test_find_step_in_cell_finds_a_reachable_cell_within_reach_of_the_target() 
 func test_find_step_in_cell_is_a_legal_destination_for_a_real_move_action() -> void:
 	var striker: Unit = _striker(Vector2i(0, 0), 0.0, 1.0, 1)
 	var target: Unit = _striker(Vector2i(0, 5), 0.0, 0.0, 2)
-	var state := CombatState.new(Grid.new(10, 10), [striker, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, target])
 	striker.mp = 10.0
 
 	var result: Variant = MeleeDelivery.find_step_in_cell(state, striker, target, _weapon(0.0))
 	var cell: Vector2i = result
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	var path: Array[Vector2i] = pf.astar(striker.cell, cell)
 	var queue := ActionQueue.new(striker)
 
@@ -240,7 +240,7 @@ func test_find_step_in_cell_is_a_legal_destination_for_a_real_move_action() -> v
 func test_find_step_in_cell_returns_null_when_nothing_reachable_is_in_range() -> void:
 	var striker: Unit = _striker(Vector2i(0, 0), 0.0, 1.0, 1)
 	var target: Unit = _striker(Vector2i(0, 9), 0.0, 0.0, 2)
-	var state := CombatState.new(Grid.new(10, 10), [striker, target])
+	var state := CombatState.new(GridFixture.flat(10, 10), [striker, target])
 	striker.mp = 1.0
 
 	var result: Variant = MeleeDelivery.find_step_in_cell(state, striker, target, _weapon(0.0))

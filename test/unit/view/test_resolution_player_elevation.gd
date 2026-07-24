@@ -70,8 +70,8 @@ func _hopped_down_event(unit: Unit, path: Array[Vector2i]) -> LogEvent:
 ## anchor a slide pivots/ends on" and "where the body actually is" can
 ## never drift apart.
 func test_world_anchor_reads_the_cells_own_real_height() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(3, 4), 2)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(3, 4), 2)
 	var built: Dictionary = _setup_player(grid)
 	var player: ResolutionPlayer = built.player
 
@@ -95,16 +95,16 @@ func test_world_anchor_reads_the_cells_own_real_height() -> void:
 ## through a real `&"climbed"` event kind instead of a hand-called
 ## `_play_slide`.
 func test_a_zero_duration_climb_event_plays_as_a_real_slide() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(1, 1), 1)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(1, 1), 1)
 	var built: Dictionary = _setup_player(grid)
 	var player: ResolutionPlayer = built.player
 	var attacker: Unit = built.attacker
 	player.slide_ms = 0.0
 	var view: HitVolumeView = player._view_for(attacker.id)
 	attacker.cell = Vector2i(1, 1)
-	attacker.level = grid.get_level(attacker.cell)
 	attacker.height = UnitGeometry.true_height_for_cell(attacker.cell, grid)
+	attacker.level = attacker.height / UnitGeometry.LEVEL_HEIGHT
 
 	player._play_event(_climbed_event(attacker, [Vector2i(0, 0), Vector2i(1, 1)]))
 
@@ -115,16 +115,16 @@ func test_a_zero_duration_climb_event_plays_as_a_real_slide() -> void:
 
 ## Same proof for `hopped_down`, the mirror action.
 func test_a_zero_duration_hop_down_event_plays_as_a_real_slide() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(0, 0), 1)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
 	var built: Dictionary = _setup_player(grid)
 	var player: ResolutionPlayer = built.player
 	var attacker: Unit = built.attacker
 	player.slide_ms = 0.0
 	var view: HitVolumeView = player._view_for(attacker.id)
 	attacker.cell = Vector2i(1, 1)
-	attacker.level = grid.get_level(attacker.cell)
 	attacker.height = UnitGeometry.true_height_for_cell(attacker.cell, grid)
+	attacker.level = attacker.height / UnitGeometry.LEVEL_HEIGHT
 
 	player._play_event(_hopped_down_event(attacker, [Vector2i(0, 0), Vector2i(1, 1)]))
 
@@ -145,14 +145,14 @@ func test_a_zero_duration_hop_down_event_plays_as_a_real_slide() -> void:
 ## primed) never changes a vector's own Y, so this isolates the height
 ## claim specifically from any incidental X/Z turn.
 func test_priming_a_climb_shows_the_old_height_not_the_already_baked_final_one() -> void:
-	var grid := Grid.new(10, 10)
-	grid.set_level(Vector2i(1, 1), 2)
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(1, 1), 2)
 	var built: Dictionary = _setup_player(grid)
 	var player: ResolutionPlayer = built.player
 	var attacker: Unit = built.attacker
 	attacker.cell = Vector2i(1, 1)
-	attacker.level = grid.get_level(attacker.cell)
 	attacker.height = UnitGeometry.true_height_for_cell(attacker.cell, grid)
+	attacker.level = attacker.height / UnitGeometry.LEVEL_HEIGHT
 	var view: HitVolumeView = player._view_for(attacker.id)
 
 	player._prime([_climbed_event(attacker, [Vector2i(0, 0), attacker.cell])])

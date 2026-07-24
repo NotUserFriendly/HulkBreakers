@@ -48,9 +48,7 @@ func _armed_unit(
 
 
 func _wall_at(grid: Grid, cell: Vector2i) -> void:
-	grid.set_terrain(cell, Enums.TerrainType.WALL)
-	grid.set_opacity(cell, 1.0)
-	grid.blockers[cell] = DataLibrary.get_part(&"wall")
+	GridFixture.place_wall(grid, cell)
 
 
 ## A concave pocket: a narrow 2-wide, 13-tall channel (x=9/x=11, y=3..16)
@@ -61,7 +59,7 @@ func _wall_at(grid: Grid, cell: Vector2i) -> void:
 ## distance scorer can't make (that's `_engagement_score`'s own structural
 ## limit, not this fallback's).
 func _concave_pocket() -> Grid:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	for x in range(9, 12):
 		_wall_at(grid, Vector2i(x, 16))
 	for y in range(3, 17):
@@ -75,7 +73,7 @@ func test_ai_takes_a_step_that_increases_chebyshev_distance_before_it_decreases(
 	var self_unit := _armed_unit(&"self_unit", Vector2i(10, 18), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	var reachable: Array[Vector2i] = pf.reachable(
 		self_unit.cell, self_unit.mp_per_ap() * self_unit.ap
 	)
@@ -190,7 +188,7 @@ func test_the_approach_fallback_eventually_reaches_a_lof_cell_and_fires() -> voi
 ## hold/end-turn behavior -- never freeze, crash, or throw on an empty
 ## `nearest_matching` result.
 func test_a_fully_walled_off_enemy_falls_through_to_hold_without_freezing() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	for y in range(20):
 		_wall_at(grid, Vector2i(10, y))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
@@ -217,11 +215,11 @@ func test_a_fully_walled_off_enemy_falls_through_to_hold_without_freezing() -> v
 ## all -- `_any_reachable_has_lof` is true, so `_plan_ranged`'s normal
 ## engagement-scoring path handles it exactly as before this pass.
 func test_open_field_never_enters_the_approach_fallback() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(19, 10), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	var reachable: Array[Vector2i] = pf.reachable(
 		self_unit.cell, self_unit.mp_per_ap() * self_unit.ap
 	)

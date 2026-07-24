@@ -14,14 +14,14 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 
 
 func test_can_inject_is_true_outside_resolution() -> void:
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 	var injector := BoutInjector.new(state)
 
 	assert_true(injector.can_inject())
 
 
 func test_can_inject_is_false_while_resolving() -> void:
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 	var injector := BoutInjector.new(state)
 
 	state.is_resolving = true
@@ -32,7 +32,7 @@ func test_can_inject_is_false_while_resolving() -> void:
 func test_a_verb_mutates_and_logs_at_a_step_boundary() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(5, 5), [a, b])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a, b])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var injector := BoutInjector.new(state)
@@ -51,7 +51,7 @@ func test_a_verb_mutates_and_logs_at_a_step_boundary() -> void:
 func test_a_mid_resolution_injection_attempt_is_rejected() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(5, 5), [a, b])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a, b])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var injector := BoutInjector.new(state)
@@ -70,7 +70,7 @@ func test_a_mid_resolution_injection_attempt_is_rejected() -> void:
 
 func test_a_rejected_injection_is_a_true_noop_never_marks_the_bout_injected() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 	state.is_resolving = true
 
@@ -83,7 +83,7 @@ func test_a_rejected_injection_is_a_true_noop_never_marks_the_bout_injected() ->
 func test_a_successful_injection_marks_the_bout_as_injected() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(5, 5), [a, b])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a, b])
 	var injector := BoutInjector.new(state)
 	assert_false(state.was_injected, "sanity: a fresh bout is never pre-marked")
 
@@ -147,7 +147,7 @@ func test_spawn_unit_adds_a_real_unit_through_the_real_assembly_path() -> void:
 	var preset: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
 	assert_not_null(preset, "sanity: a real shipped preset must load")
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var before_count: int = state.units.size()
 	var injector := BoutInjector.new(state)
 
@@ -163,11 +163,11 @@ func test_spawn_unit_adds_a_real_unit_through_the_real_assembly_path() -> void:
 func test_spawn_unit_draws_its_matrix_id_from_the_bout_rng_not_a_global_one() -> void:
 	var preset: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state_a := CombatState.new(Grid.new(10, 10), [a], 77)
+	var state_a := CombatState.new(GridFixture.flat(10, 10), [a], 77)
 	var spawned_a: Unit = BoutInjector.new(state_a).spawn_unit(preset, Vector2i(3, 3), 1)
 
 	var b := _make_unit(Vector2i(0, 0), 0)
-	var state_b := CombatState.new(Grid.new(10, 10), [b], 77)
+	var state_b := CombatState.new(GridFixture.flat(10, 10), [b], 77)
 	var spawned_b: Unit = BoutInjector.new(state_b).spawn_unit(preset, Vector2i(3, 3), 1)
 
 	assert_eq(
@@ -177,7 +177,7 @@ func test_spawn_unit_draws_its_matrix_id_from_the_bout_rng_not_a_global_one() ->
 
 func test_set_position_moves_the_unit_and_updates_grid_occupancy() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_position(a, Vector2i(5, 5))
@@ -191,7 +191,7 @@ func test_set_position_moves_the_unit_and_updates_grid_occupancy() -> void:
 func test_set_position_refuses_an_already_occupied_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a, b])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_position(a, Vector2i(5, 5))
@@ -205,7 +205,7 @@ func test_hand_weapon_attaches_a_fresh_pool_copy_into_the_named_socket() -> void
 	var unit: Unit = built.unit
 	var template := _weapon_part(&"pistol")
 	var pool := {&"pistol": template}
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.hand_weapon(unit, &"pistol", &"GRIP", pool)
@@ -223,7 +223,7 @@ func test_equip_from_kit_runs_the_real_kit_equip_path() -> void:
 	var container: Part = built.container
 	var pool := {&"pistol": _weapon_part(&"pistol")}
 	var kit := Kit.new(&"BACK", [&"pistol"], &"pistol", &"GRIP")
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.equip_from_kit(unit, kit, pool)
@@ -236,7 +236,7 @@ func test_equip_from_kit_runs_the_real_kit_equip_path() -> void:
 func test_set_part_hp_forces_an_exact_value() -> void:
 	var built: Dictionary = _armable_unit()
 	var unit: Unit = built.unit
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_part_hp(unit, &"torso", 0)
@@ -248,7 +248,7 @@ func test_set_part_hp_forces_an_exact_value() -> void:
 func test_set_part_hp_refuses_an_unknown_part_id() -> void:
 	var built: Dictionary = _armable_unit()
 	var unit: Unit = built.unit
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_part_hp(unit, &"nonexistent", 0)
@@ -262,7 +262,7 @@ func test_set_part_hp_refuses_an_unknown_part_id() -> void:
 func test_inflict_wound_reuses_wound_effects() -> void:
 	var built: Dictionary = _armable_unit()
 	var unit: Unit = built.unit
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.inflict_wound(unit, &"torso", 5.0, 3.0, &"burnt_electronics")
@@ -274,7 +274,7 @@ func test_inflict_wound_reuses_wound_effects() -> void:
 func test_inflict_wound_below_threshold_never_inflicts() -> void:
 	var built: Dictionary = _armable_unit()
 	var unit: Unit = built.unit
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	injector.inflict_wound(unit, &"torso", 1.0, 3.0, &"burnt_electronics")
@@ -284,7 +284,7 @@ func test_inflict_wound_below_threshold_never_inflicts() -> void:
 
 func test_set_ap_forces_an_exact_value() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	injector.set_ap(a, 0)
@@ -294,7 +294,7 @@ func test_set_ap_forces_an_exact_value() -> void:
 
 func test_set_mp_forces_an_exact_value() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	injector.set_mp(a, 4.5)
@@ -304,7 +304,7 @@ func test_set_mp_forces_an_exact_value() -> void:
 
 func test_set_facing_forces_an_exact_orientation() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	injector.set_facing(a, PI)
@@ -314,7 +314,7 @@ func test_set_facing_forces_an_exact_orientation() -> void:
 
 func test_set_pose_forces_a_named_pose() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	injector.set_pose(a, &"PRONE")
@@ -326,7 +326,7 @@ func test_set_pose_forces_a_named_pose() -> void:
 ## stub, not a fake."
 func test_set_therms_is_a_flagged_stub_that_never_mutates() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_therms(a, &"torso", 10.0)
@@ -338,7 +338,7 @@ func test_set_therms_is_a_flagged_stub_that_never_mutates() -> void:
 
 func test_force_overwatch_arm_sets_the_field_directly() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	injector.force_overwatch_arm(a, &"pistol")
@@ -350,7 +350,7 @@ func test_force_overwatch_arm_sets_the_field_directly() -> void:
 ## that isn't actually legal is refused, never bypassed.
 func test_force_action_reuses_try_apply_and_its_own_legality_check() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 	# A non-adjacent jump — illegal at the same path-continuity check any
 	# ordinary MoveAction already fails on, never a bespoke rejection.
@@ -364,7 +364,7 @@ func test_force_action_reuses_try_apply_and_its_own_legality_check() -> void:
 
 func test_force_action_applies_a_legal_action_for_real() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 	var legal_move := MoveAction.new(a, [Vector2i(0, 0), Vector2i(1, 0)])
 
@@ -390,10 +390,10 @@ func _cover_part(id: StringName) -> Part:
 
 func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	assert_gt(pf.move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0, "sanity: the cell starts passable")
 
 	var ok: bool = injector.place_cover(Vector2i(2, 2), &"scrap_pile", pool)
@@ -402,7 +402,7 @@ func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 	assert_not_null(state.grid.blockers.get(Vector2i(2, 2)))
 	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"scrap_pile")
 	assert_lt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
+		Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
 		0.0,
 		"a placed blocker must actually block movement"
 	)
@@ -410,7 +410,7 @@ func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 
 func test_place_cover_refuses_an_already_blocked_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"existing")
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
@@ -423,7 +423,7 @@ func test_place_cover_refuses_an_already_blocked_cell() -> void:
 
 func test_clear_cover_removes_the_blocker_and_restores_passage() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"scrap_pile")
 	var injector := BoutInjector.new(state)
 
@@ -431,15 +431,12 @@ func test_clear_cover_removes_the_blocker_and_restores_passage() -> void:
 
 	assert_true(ok)
 	assert_false(state.grid.blockers.has(Vector2i(2, 2)))
-	assert_gt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
-		0.0
-	)
+	assert_gt(Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0)
 
 
 func test_clear_cover_refuses_a_cell_with_nothing_to_clear() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	assert_false(injector.clear_cover(Vector2i(2, 2)))
@@ -447,35 +444,29 @@ func test_clear_cover_refuses_a_cell_with_nothing_to_clear() -> void:
 
 func test_set_passable_false_makes_a_cell_impassable() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_passable(Vector2i(2, 2), false)
 
 	assert_true(ok)
-	assert_eq(state.grid.get_terrain(Vector2i(2, 2)), Enums.TerrainType.WALL)
-	assert_lt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
-		0.0
-	)
+	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"wall")
+	assert_almost_eq(state.grid.get_opacity(Vector2i(2, 2)), 1.0, 0.0001)
+	assert_lt(Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0)
 
 
 func test_set_passable_true_restores_passage() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [a])
-	state.grid.set_terrain(Vector2i(2, 2), Enums.TerrainType.WALL)
-	state.grid.set_opacity(Vector2i(2, 2), 1.0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	GridFixture.place_wall(state.grid, Vector2i(2, 2))
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.set_passable(Vector2i(2, 2), true)
 
 	assert_true(ok)
-	assert_eq(state.grid.get_terrain(Vector2i(2, 2)), Enums.TerrainType.OPEN)
+	assert_false(state.grid.blockers.has(Vector2i(2, 2)))
 	assert_almost_eq(state.grid.get_opacity(Vector2i(2, 2)), 0.0, 0.0001)
-	assert_gt(
-		Pathfinder.new(state.grid, state.terrain_costs).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
-		0.0
-	)
+	assert_gt(Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0)
 
 
 ## taskblock-31 (rolled into tb30): the general attach_part verb.
@@ -490,7 +481,7 @@ func test_attach_part_attaches_a_non_weapon_part_to_a_valid_socket() -> void:
 	plate.hp = 2
 	plate.max_hp = 2
 	var pool := {&"backpack": plate}
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.attach_part(unit, &"backpack", &"GRIP", pool)
@@ -506,7 +497,7 @@ func test_attach_part_refuses_an_illegal_attachment() -> void:
 	wrong_socket_part.id = &"wrong"
 	wrong_socket_part.attaches_to = [&"SOMETHING_ELSE"]
 	var pool := {&"wrong": wrong_socket_part}
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.attach_part(unit, &"wrong", &"GRIP", pool)
@@ -519,7 +510,7 @@ func test_hand_weapon_and_attach_part_share_the_same_mechanism_but_log_distinctl
 	var built: Dictionary = _armable_unit()
 	var unit: Unit = built.unit
 	var pool := {&"pistol": _weapon_part(&"pistol")}
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 	var injector := BoutInjector.new(state)

@@ -522,32 +522,18 @@ func test_shouldered_muzzle_point_falls_back_to_natural_with_no_shoulder_socket(
 	assert_true(shouldered.is_equal_approx(natural))
 
 
-## taskblock-37 Pass D: an ordinary cell's true height is just its own
-## discrete level times LEVEL_HEIGHT, whole-number multiples only.
-func test_true_height_for_cell_is_level_times_level_height() -> void:
-	var grid := Grid.new(3, 3)
-	grid.set_level(Vector2i(1, 1), 3)
-
-	assert_almost_eq(
-		UnitGeometry.true_height_for_cell(Vector2i(1, 1), grid),
-		3.0 * UnitGeometry.LEVEL_HEIGHT,
-		0.0001
-	)
-
-
-## docs/PLAN.md: "two ramps make one full level" — MapGen authors a ramp
-## cell's own `Grid.level` at its LOWER (origin) endpoint, so resting on it
-## is genuinely half a level above that, not yet at its upper neighbor.
-func test_true_height_for_cell_adds_a_half_level_on_a_ramp_tile() -> void:
-	var grid := Grid.new(3, 3)
-	grid.set_level(Vector2i(1, 1), 2)
-	grid.set_terrain(Vector2i(1, 1), Enums.TerrainType.RAMP)
-
-	assert_almost_eq(
-		UnitGeometry.true_height_for_cell(Vector2i(1, 1), grid),
-		2.0 * UnitGeometry.LEVEL_HEIGHT + UnitGeometry.LEVEL_HEIGHT * 0.5,
-		0.0001
-	)
+## taskblock-39 Pass C: two prior tests here (`..._is_level_times_level_
+## height` and `..._adds_a_half_level_on_a_ramp_tile`) pinned `true_height_
+## for_cell`'s own OLD legacy-bridge fallback formula (raw `Grid.level`,
+## and tb37's superseded flat +0.5 ramp offset) against a bare, unplaced
+## fixture grid. That fallback is retired outright, not migrated — the
+## function is now exactly the two-line surface read below, with no
+## level/terrain-driven arithmetic left inside it at all, so there is
+## nothing left of that formula to re-target at a placed Surface; the two
+## surviving tests already cover "reads the placed Surface's own height
+## back, unconditionally" and "falls back to 0.0 with nothing placed,"
+## which is the complete real contract now. Removed rather than kept
+## green for the wrong reason.
 
 
 ## taskblock-38 Pass C: once a grid carries any real placement at all, true

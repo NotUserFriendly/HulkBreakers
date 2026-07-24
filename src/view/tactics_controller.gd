@@ -988,7 +988,8 @@ func aim_state() -> Dictionary:
 	# PREVIEW itself (armed but not yet resolved) — ground level of the
 	# shooter's own cell, same no-muzzle convention `LineOfFire.first_hit`
 	# uses, real elevation still reaches `BodyProjector`'s visibility test.
-	var origin_height: float = preview.grid.get_level(shooter.cell) * UnitGeometry.LEVEL_HEIGHT
+	# taskblock-39 Pass C: reads the real placed `Surface`, not `Grid.level`.
+	var origin_height: float = UnitGeometry.true_height_for_cell(shooter.cell, preview.grid)
 	var elevation: Dictionary = ShotPlane.elevation_for(
 		origin, origin_height, shooter.cell, target.cell, preview.grid
 	)
@@ -1076,7 +1077,7 @@ func _append_step_out_return_leg() -> void:
 	var previewed_shooter: Unit = preview.find_unit(shooter.id)
 	if previewed_shooter == null:
 		return
-	var back_pf := Pathfinder.new(preview.grid, preview.terrain_costs, shooter.shell.can_climb())
+	var back_pf := Pathfinder.new(preview.grid, shooter.shell.can_climb())
 	var back_path: Array[Vector2i] = back_pf.astar(previewed_shooter.cell, _step_out_origin_cell)
 	if back_path.size() < 2:
 		return
@@ -1124,7 +1125,7 @@ func _confirm_step_out() -> void:
 	if previewed_shooter == null:
 		cancel_step_out()
 		return
-	var pf := Pathfinder.new(preview.grid, preview.terrain_costs, shooter.shell.can_climb())
+	var pf := Pathfinder.new(preview.grid, shooter.shell.can_climb())
 	var out_path: Array[Vector2i] = pf.astar(previewed_shooter.cell, firing_cell)
 	if (
 		out_path.size() < 2

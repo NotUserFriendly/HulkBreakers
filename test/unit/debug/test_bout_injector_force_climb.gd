@@ -19,8 +19,8 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 
 func test_force_climb_reuses_real_legality_a_non_climber_is_refused() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var grid := Grid.new(5, 5)
-	grid.set_level(Vector2i(1, 0), 1)
+	var grid := GridFixture.flat(5, 5)
+	GridFixture.place_floor(grid, Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a])
 	var injector := BoutInjector.new(state)
 
@@ -33,8 +33,8 @@ func test_force_climb_reuses_real_legality_a_non_climber_is_refused() -> void:
 func test_force_climb_applies_a_legal_climb_for_real() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	a.shell.root.tags = [&"CLIMBER"]
-	var grid := Grid.new(5, 5)
-	grid.set_level(Vector2i(1, 0), 1)
+	var grid := GridFixture.flat(5, 5)
+	GridFixture.place_floor(grid, Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a])
 	var injector := BoutInjector.new(state)
 
@@ -48,8 +48,8 @@ func test_force_climb_applies_a_legal_climb_for_real() -> void:
 
 func test_force_hop_down_applies_a_legal_drop_for_real() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var grid := Grid.new(5, 5)
-	grid.set_level(Vector2i(0, 0), 1)
+	var grid := GridFixture.flat(5, 5)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
 	var state := CombatState.new(grid, [a])
 	var injector := BoutInjector.new(state)
 

@@ -6,7 +6,7 @@ extends GutTest
 
 
 func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var rack := Part.new()
 	rack.id = &"rack"
 	rack.hp = 5
@@ -28,7 +28,7 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 ## of (never instead of) whatever layer they already render on for the
 ## real board's own main camera.
 func test_ground_and_grid_lines_carry_the_floor_layer() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -46,7 +46,7 @@ func test_ground_and_grid_lines_carry_the_floor_layer() -> void:
 ## (docs/10 rule 2: read the real node back) instead of trusted by
 ## construction.
 func test_build_terrain_is_flat_when_no_level_is_set() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -62,8 +62,8 @@ func test_build_terrain_is_flat_when_no_level_is_set() -> void:
 ## genuinely raises its own patch of terrain, read back from the built
 ## mesh's own AABB rather than trusted from the source.
 func test_build_terrain_reflects_a_raised_cells_own_height() -> void:
-	var grid := Grid.new(4, 3)
-	grid.set_level(Vector2i(2, 1), 2)
+	var grid := GridFixture.flat(4, 3)
+	GridFixture.place_floor(grid, Vector2i(2, 1), 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -84,8 +84,8 @@ func test_build_terrain_reflects_a_raised_cells_own_height() -> void:
 ## `_marker`) must sit on the cell's OWN real ground, not float below (or
 ## get buried inside) the terraced terrain above.
 func test_marker_sits_on_a_raised_cells_own_real_height() -> void:
-	var grid := Grid.new(4, 3)
-	grid.set_level(Vector2i(2, 1), 3)
+	var grid := GridFixture.flat(4, 3)
+	GridFixture.place_floor(grid, Vector2i(2, 1), 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table(), {0: [Vector2i(2, 1)]})
@@ -100,8 +100,8 @@ func test_marker_sits_on_a_raised_cells_own_real_height() -> void:
 ## ground too (`assembly_placements` defaults to height 0.0 — `_spawn_
 ## blocker` must pass the cell's own real height explicitly).
 func test_spawn_blocker_sits_on_a_raised_cells_own_real_height() -> void:
-	var grid := Grid.new(4, 3)
-	grid.set_level(Vector2i(2, 1), 2)
+	var grid := GridFixture.flat(4, 3)
+	GridFixture.place_floor(grid, Vector2i(2, 1), 2)
 	var crate := Part.new()
 	crate.id = &"crate"
 	crate.hp = 5
@@ -122,7 +122,7 @@ func test_spawn_blocker_sits_on_a_raised_cells_own_real_height() -> void:
 ## part TREE, not just the root's own `volume` — the old
 ## `for box in part.volume` path would have silently dropped this child.
 func test_build_renders_every_box_in_a_blockers_whole_part_tree() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var pistol := Part.new()
 	pistol.id = &"pistol"
 	pistol.hp = 1
@@ -150,7 +150,7 @@ func test_build_renders_every_box_in_a_blockers_whole_part_tree() -> void:
 ## nothing of its own to draw) while a living child still renders. The old
 ## `if part.hp <= 0: return` guard would have skipped the whole tree.
 func test_a_destroyed_root_with_a_living_child_still_renders_the_child() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var hand := Part.new()
 	hand.id = &"hand"
 	hand.hp = 3
@@ -177,7 +177,7 @@ func test_a_destroyed_root_with_a_living_child_still_renders_the_child() -> void
 ## DROPPED (DamageResolver's own marker) must not stand upright the way
 ## ordinary terrain cover does.
 func test_a_dropped_blocker_lies_on_its_side() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var upright := Part.new()
 	upright.id = &"cover"
 	upright.hp = 5
@@ -207,7 +207,7 @@ func test_a_dropped_blocker_lies_on_its_side() -> void:
 ## material colours" — a field object's albedo comes from its own
 ## `material`, the same MaterialTable lookup every other lit mesh uses.
 func test_a_blockers_mesh_uses_its_own_material_color() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var table := DataLibrary.material_table()
 	var scrap := DataLibrary.get_part(&"scrap_pile")
 	grid.blockers[Vector2i(0, 0)] = scrap
@@ -228,7 +228,7 @@ func test_a_blockers_mesh_uses_its_own_material_color() -> void:
 ## quads rather than 1px GPU lines, so the outermost lines' own geometry now
 ## genuinely extends a little past the plain center-line footprint.
 func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -252,8 +252,8 @@ func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 ## reaches its real top face, the same per-cell treatment `_build_terrain`
 ## already has, read back from the built mesh's own AABB.
 func test_grid_lines_reflect_a_raised_cells_own_height() -> void:
-	var grid := Grid.new(4, 3)
-	grid.set_level(Vector2i(2, 1), 2)
+	var grid := GridFixture.flat(4, 3)
+	GridFixture.place_floor(grid, Vector2i(2, 1), 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -285,7 +285,7 @@ func test_grid_line_color_is_pushed_well_away_from_the_ground_color() -> void:
 
 
 func test_build_clears_previous_children_on_rebuild() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -299,7 +299,7 @@ func test_build_clears_previous_children_on_rebuild() -> void:
 
 
 func test_a_destroyed_blocker_spawns_no_mesh() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var dead := Part.new()
 	dead.id = &"dead"
 	dead.hp = 0
@@ -329,7 +329,7 @@ func test_a_destroyed_blocker_spawns_no_mesh() -> void:
 ## VISUAL side, `test_bout_injector_spawn_object.gd` already proves the
 ## mechanical side separately).
 func test_build_renders_a_loose_part_field_item_the_same_as_a_blocker() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var dropped_arm := Part.new()
 	dropped_arm.id = &"dropped_arm"
 	dropped_arm.hp = 5
@@ -349,7 +349,7 @@ func test_build_renders_a_loose_part_field_item_the_same_as_a_blocker() -> void:
 ## A `Matrix` field item has no `volume` to draw real geometry from — a
 ## flat placeholder marker instead, still a real child of `_static`.
 func test_build_renders_a_loose_matrix_field_item_as_a_flat_marker() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var link := Matrix.new()
 	link.id = &"ejected_link"
 	grid.field_items[Vector2i(1, 1)] = [link]
@@ -362,7 +362,7 @@ func test_build_renders_a_loose_matrix_field_item_as_a_flat_marker() -> void:
 
 
 func test_build_renders_every_item_in_a_multi_item_pile() -> void:
-	var grid := Grid.new(4, 3)
+	var grid := GridFixture.flat(4, 3)
 	var dropped_arm := Part.new()
 	dropped_arm.id = &"dropped_arm"
 	dropped_arm.hp = 5
@@ -380,7 +380,7 @@ func test_build_renders_every_item_in_a_multi_item_pile() -> void:
 
 
 func test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var link := Matrix.new()
 	link.id = &"ejected_link"
 	grid.field_items[Vector2i(0, 0)] = [link]
@@ -395,27 +395,17 @@ func test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call() -> v
 	assert_eq(view._static.get_child_count(), with_item_count - 1)
 
 
-## runNotes.md: "If a tile isn't navigable, it needs something to show
-## that. Color it Dark Gray and draw a cross through it." WALL cells are
-## permanent map geometry, so they belong in `_static`, not an overlay.
-func test_build_adds_a_marker_and_a_cross_per_wall_cell() -> void:
-	var grid := Grid.new(3, 2)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
-	grid.set_terrain(Vector2i(2, 1), Enums.TerrainType.WALL)
-
-	var view := BoardView.new()
-	add_child_autofree(view)
-	view.build(grid, DataLibrary.material_table())
-
-	assert_eq(
-		view._static.get_child_count(),
-		6,
-		"ground plane + grid lines + (marker + cross) per wall cell, 2 wall cells"
-	)
-
-
-func test_a_grid_with_no_walls_adds_no_wall_indicators() -> void:
-	var grid := Grid.new(2, 2)
+## taskblock-39 Pass C: runNotes.md's own "wall cells get a dark-gray
+## marker plus a cross" indicator (and its dedicated test here) is
+## retired — `Grid.get_terrain(cell) == WALL` was already unreachable on
+## any real generated map before this pass (`MapGen._finalize_walls_and_
+## void` always resolves a WALL cell to OPEN+blocker or VOID before
+## `_emit`), so the marker+cross never actually rendered in play; a real
+## wall's own full-height blocker box already makes "can't walk here"
+## obvious without it. `_spawn_blocker`'s own coverage already proves a
+## real wall renders correctly.
+func test_a_plain_grid_adds_no_ground_overlay_markers() -> void:
+	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -425,13 +415,13 @@ func test_a_grid_with_no_walls_adds_no_wall_indicators() -> void:
 
 
 ## tb31 Pass C: "make void tiles black with a dark gray border so they
-## read as void" — same "marker per non-navigable cell" convention the
-## wall indicator test above already locks in, just border+fill (2
-## markers) instead of marker+cross.
+## read as void" — a marker per non-navigable cell.
+## taskblock-39 Pass C: void is an unfloored cell now (no placed Surface
+## at all) rather than a direct `TerrainType.VOID` write.
 func test_build_adds_a_border_and_fill_marker_per_void_cell() -> void:
-	var grid := Grid.new(3, 2)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.VOID)
-	grid.set_terrain(Vector2i(2, 1), Enums.TerrainType.VOID)
+	var grid := GridFixture.flat(3, 2)
+	grid.clear_surfaces(Vector2i(1, 0))
+	grid.clear_surfaces(Vector2i(2, 1))
 
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -445,7 +435,7 @@ func test_build_adds_a_border_and_fill_marker_per_void_cell() -> void:
 
 
 func test_a_grid_with_no_void_adds_no_void_indicators() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -458,7 +448,7 @@ func test_a_grid_with_no_void_adds_no_void_indicators() -> void:
 ## team's color." `team_extraction_cells` is optional (defaults to `{}`)
 ## — every existing caller/test above this one draws none, unchanged.
 func test_build_adds_one_marker_per_extraction_tile() -> void:
-	var grid := Grid.new(3, 3)
+	var grid := GridFixture.flat(3, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -474,7 +464,7 @@ func test_build_adds_one_marker_per_extraction_tile() -> void:
 
 
 func test_extraction_tiles_render_in_their_own_teams_color() -> void:
-	var grid := Grid.new(3, 3)
+	var grid := GridFixture.flat(3, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -490,7 +480,7 @@ func test_extraction_tiles_render_in_their_own_teams_color() -> void:
 
 
 func test_no_team_extraction_cells_adds_no_tile_markers() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -641,7 +631,7 @@ func test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay() -> void:
 
 
 func test_overlays_never_touch_the_static_board() -> void:
-	var grid := Grid.new(2, 2)
+	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())

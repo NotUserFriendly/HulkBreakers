@@ -55,7 +55,7 @@ func _armed_unit(
 func _bout() -> Dictionary:
 	var player_unit := _armed_unit(&"player", Vector2i(0, 0), 0, &"rifle")
 	var ai_unit := _armed_unit(&"ai", Vector2i(8, 0), 1, &"pistol")
-	var state := CombatState.new(Grid.new(12, 5), [player_unit, ai_unit], 1)
+	var state := CombatState.new(GridFixture.flat(12, 5), [player_unit, ai_unit], 1)
 	state.set_squad_controller(0, Enums.SquadController.HUMAN)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 	var mission := MissionState.new(RunState.new(), state)
@@ -175,18 +175,37 @@ func _covered_step_out_bout() -> Dictionary:
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
 
-	var grid := Grid.new(10, 10)
-	for x in range(8):
-		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
-	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
-	grid.set_opacity(Vector2i(3, 2), 1.0)
+	var grid := GridFixture.flat(10, 10)
+	# The row-1 wall band `test_unit_ai.gd`'s own AI-scorer fixture needs
+	# (blocking the diagonal shortcut a greedy per-turn scorer would
+	# otherwise take) is "irrelevant to TacticsController itself (it never
+	# repositions)" per this function's own prior doc comment -- dropped
+	# here rather than carried over for fixture parity.
+	#
+	# taskblock-39 Pass C: shooter/enemy/wall run EAST-WEST (varying x, a
+	# fixed row) rather than the AI fixture's own NORTH-SOUTH layout
+	# (varying y/z, a fixed column) -- a real placed wall Part (unlike the
+	# old flat terrain code) is real 3D geometry the default camera can
+	# actually occlude a click through, and this rig's own fixed pitch/yaw
+	# makes a north-south line (parallel to the camera's own view axis)
+	# the one orientation where an interposed wall's real box can end up
+	# BETWEEN the camera and one of the two clicked units instead of
+	# strictly between the units themselves. East-west keeps the same
+	# wall-blocks-LOS-between-shooter-and-enemy geometry this test needs,
+	# without that parallax risk.
+	# The wall sits close to the shooter (2 cells away, matching the AI
+	# fixture's own shooter(3,0)/wall(3,2) spacing) -- far enough away and
+	# a single step off the direct line no longer shifts the ray's own
+	# intersection with a lone wall cell enough to clear it, leaving every
+	# candidate covered too.
+	GridFixture.place_wall(grid, Vector2i(2, 3))  # blocks pathing AND LoS
 
-	var shooter := Unit.new(Matrix.new(), Shell.new(torso.duplicate(true)), Vector2i(3, 0), 0)
+	var shooter := Unit.new(Matrix.new(), Shell.new(torso.duplicate(true)), Vector2i(0, 3), 0)
 	var enemy_torso: Part = torso.duplicate(true)
 	var enemy_hand: Part = hand.duplicate(true)
 	enemy_hand.sockets[0].occupant = pistol.duplicate(true)
 	enemy_torso.sockets[0].occupant = enemy_hand
-	var enemy := Unit.new(Matrix.new(), Shell.new(enemy_torso), Vector2i(3, 9), 1)
+	var enemy := Unit.new(Matrix.new(), Shell.new(enemy_torso), Vector2i(9, 3), 1)
 
 	var state := CombatState.new(grid, [shooter, enemy])
 	state.set_squad_controller(0, Enums.SquadController.HUMAN)
@@ -403,7 +422,7 @@ func _repair_capable_bout() -> Dictionary:
 	torso.sockets = [hand_socket, leg_socket]
 
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [unit])
+	var state := CombatState.new(GridFixture.flat(10, 10), [unit])
 	state.assign_all_to_human()
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []

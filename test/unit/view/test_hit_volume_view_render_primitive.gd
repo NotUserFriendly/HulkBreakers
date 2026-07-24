@@ -103,8 +103,12 @@ func test_render_scale_scales_the_primitive_instance_only() -> void:
 		if child is MeshInstance3D and (child as MeshInstance3D).mesh is CylinderMesh:
 			found = child
 	assert_not_null(found)
-	assert_eq(found.scale, Vector3(2.0, 3.0, 2.0), "the instance's own scale must carry render_scale")
-	assert_eq(unit.shell.root.volume[0].size, original_box_size, "the hitbox itself must be untouched")
+	assert_eq(
+		found.scale, Vector3(2.0, 3.0, 2.0), "the instance's own scale must carry render_scale"
+	)
+	assert_eq(
+		unit.shell.root.volume[0].size, original_box_size, "the hitbox itself must be untouched"
+	)
 
 
 ## TEST: a BOX render_primitive (the default) draws exactly the existing

@@ -250,9 +250,7 @@ static func _repair_stranded_elevation(
 ) -> void:
 	@warning_ignore("integer_division")
 	var anchor: Vector2i = rooms[0].position + rooms[0].size / 2
-	var pf := Pathfinder.new(
-		scratch.as_temporary_grid(grid.blockers), {Enums.TerrainType.WALL: -1.0}
-	)
+	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers))
 	var reachable: Array[Vector2i] = pf.reachable(anchor, INF)
 	var reachable_set: Dictionary = {}
 	for cell: Vector2i in reachable:
@@ -624,9 +622,7 @@ static func _is_exposed_wall(scratch: MapGenScratch, cell: Vector2i) -> bool:
 static func _ensure_spawns_connected(
 	grid: Grid, scratch: MapGenScratch, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
 ) -> void:
-	var pf := Pathfinder.new(
-		scratch.as_temporary_grid(grid.blockers), {Enums.TerrainType.WALL: -1.0}
-	)
+	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers))
 	if pf.astar(a, b).is_empty():
 		_carve_corridor(grid, scratch, a, b, rng)
 
@@ -657,11 +653,6 @@ static func _emit(grid: Grid, scratch: MapGenScratch, ramp_facings: Dictionary) 
 
 			if scratch_terrain == Enums.TerrainType.VOID:
 				continue
-			var is_ramp: bool = scratch_terrain == Enums.TerrainType.RAMP
-			var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
-			var height: float = scratch.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
-			if is_ramp:
-				height += RampGeometry.STANDING_OFFSET
-			GridPlacement.place(
-				grid, cell, DataLibrary.get_part(part_id), height, ramp_facings.get(cell, 0.0)
+			MapGenScratch.place_surface(
+				grid, cell, scratch_terrain, scratch.get_level(cell), ramp_facings.get(cell, 0.0)
 			)

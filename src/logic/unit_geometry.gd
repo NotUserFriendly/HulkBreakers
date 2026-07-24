@@ -35,17 +35,12 @@ const DEFAULT_MUZZLE_HEIGHT := 1.25
 ## (`RampGeometry.STANDING_OFFSET`) into `Surface.height` at placement
 ## time — this just reads it back.
 ##
-## taskblock-38 Pass D: `GridLegacyBridge.is_legacy` is the SAME migration
-## bridge `Pathfinder._base_cost`/`move_cost` use, load-bearing here for
-## the identical reason — dozens of existing tests hand-set `Grid.level`
-## directly on a bare fixture Grid that never went through
-## `GridPlacement`/`MapGen` at all, and read this function's OLD answer
-## back (`ClimbAction`/`HopDownAction`'s own rise/drop math chief among
-## them). Falling through to `Surface.first_walkable` unconditionally
-## would silently collapse every one of those to a flat 0.0.
+## taskblock-39 Pass C: the legacy fallback (`GridLegacyBridge`'s
+## pre-placement terrain/level formula, for a hand-built fixture Grid
+## that never went through `GridPlacement`/`MapGen`) is gone — every
+## fixture in this codebase now places real surfaces (`GridFixture`), so
+## this reads the Surface path unconditionally.
 static func true_height_for_cell(cell: Vector2i, grid: Grid) -> float:
-	if GridLegacyBridge.is_legacy(grid):
-		return GridLegacyBridge.height_for_cell(grid, cell, "UnitGeometry.true_height_for_cell")
 	var surface: Surface = Surface.first_walkable(grid.surfaces_at(cell))
 	return surface.height if surface != null else 0.0
 

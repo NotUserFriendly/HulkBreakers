@@ -18,7 +18,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 
 
 func _setup(units: Array[Unit]) -> Dictionary:
-	var state := CombatState.new(Grid.new(10, 10), units)
+	var state := CombatState.new(GridFixture.flat(10, 10), units)
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()
@@ -61,7 +61,9 @@ func test_capture_mode_intercepts_click_cell_on_bare_ground_and_emits_its_cell()
 	assert_null(captured[0].get("unit"))
 	assert_eq(captured[0].get("cell"), Vector2i(5, 5))
 	assert_eq(
-		built.state.units[0].cell, Vector2i(0, 0), "capture must never fall through to a queued move"
+		built.state.units[0].cell,
+		Vector2i(0, 0),
+		"capture must never fall through to a queued move"
 	)
 
 
@@ -75,7 +77,9 @@ func test_capture_mode_off_behaves_exactly_as_before() -> void:
 	controller.click_cell(a.cell)
 
 	assert_false(captured[0], "board_clicked must never fire outside capture mode")
-	assert_eq(controller.selection.selected_unit, a, "the ordinary click behavior must be untouched")
+	assert_eq(
+		controller.selection.selected_unit, a, "the ordinary click behavior must be untouched"
+	)
 
 
 ## The real raycast-driven path (`_handle_mouse_button`), not just

@@ -210,7 +210,7 @@ func test_unit_down_suffix_only_appears_with_a_live_state_and_a_dead_target() ->
 	root.max_hp = 1
 	var target := Unit.new(Matrix.new(), Shell.new(root), Vector2i(1, 0), 1)
 	var shooter := Unit.new(Matrix.new(), Shell.new(root.duplicate(true)), Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [shooter, target])
+	var state := CombatState.new(GridFixture.flat(5, 5), [shooter, target])
 
 	var stateless_fold := LogFold.new()
 	var stateless_group: LogFoldGroup = stateless_fold.ingest(
@@ -236,7 +236,7 @@ func test_folding_never_changes_what_other_sinks_on_the_same_log_receive() -> vo
 	root.hp = 10
 	root.max_hp = 10
 	var mover := Unit.new(Matrix.new(), Shell.new(root), Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [mover])
+	var state := CombatState.new(GridFixture.flat(10, 10), [mover])
 	var memory_sink := MemorySink.new()
 	var fold_sink := HierarchicalUiSink.new(null, state)
 	state.combat_log.add_sink(memory_sink)

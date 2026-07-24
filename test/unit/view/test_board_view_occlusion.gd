@@ -29,7 +29,7 @@ func _cutout_material(view: BoardView) -> ShaderMaterial:
 
 
 func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void:
-	var grid := Grid.new(5, 8)
+	var grid := GridFixture.flat(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -75,7 +75,7 @@ func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void
 
 
 func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
-	var grid := Grid.new(5, 8)
+	var grid := GridFixture.flat(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -98,7 +98,7 @@ func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
 ## tile-radius, greater depth) must project to a SMALLER pixel radius,
 ## read back against a real `Camera3D`, not re-derived by hand.
 func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
-	var grid := Grid.new(5, 20)
+	var grid := GridFixture.flat(5, 20)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -130,7 +130,7 @@ func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
 
 
 func test_wall_material_shading_path_is_unchanged_lit() -> void:
-	var grid := Grid.new(5, 8)
+	var grid := GridFixture.flat(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -148,7 +148,7 @@ func test_wall_material_shading_path_is_unchanged_lit() -> void:
 ## unfiltered feed here cut a permanent, unit-less hole at wherever it
 ## left the board from.
 func test_update_wall_cutout_skips_an_extracted_unit() -> void:
-	var grid := Grid.new(5, 8)
+	var grid := GridFixture.flat(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -178,7 +178,7 @@ func test_update_wall_cutout_skips_an_extracted_unit() -> void:
 ## stray-hole symptom, different cause (not `.extracted`, just a
 ## view-level removal `BattleScene` tracks and reports here).
 func test_update_wall_cutout_skips_a_unit_excluded_via_remove_unit_view() -> void:
-	var grid := Grid.new(5, 8)
+	var grid := GridFixture.flat(5, 8)
 	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -205,11 +205,11 @@ func test_update_wall_cutout_skips_a_unit_excluded_via_remove_unit_view() -> voi
 func test_build_clears_previously_excluded_units_for_a_fresh_battle() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)
-	view.build(Grid.new(5, 8), DataLibrary.material_table())
+	view.build(GridFixture.flat(5, 8), DataLibrary.material_table())
 	view.exclude_unit_from_occlusion(7)
 	assert_true(view.is_excluded_from_occlusion(7), "sanity: excluded before the rebuild")
 
-	view.build(Grid.new(5, 8), DataLibrary.material_table())
+	view.build(GridFixture.flat(5, 8), DataLibrary.material_table())
 
 	assert_false(
 		view.is_excluded_from_occlusion(7), "a fresh battle must not inherit a stale exclusion"

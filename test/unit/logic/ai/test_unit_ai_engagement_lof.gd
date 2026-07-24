@@ -62,15 +62,12 @@ func _last_move(queue: ActionQueue) -> MoveAction:
 	return move
 
 
-## tb33 Pass A: a real wall — terrain, opacity, AND a real blocker `Part`
+## tb33 Pass A: a real wall — floored, opaque, AND a real blocker `Part`
 ## (`ShotPlane` only ever reads `state.grid.blockers`/`state.units`, never
-## opacity) — one cell at a time, since `DataLibrary.get_part` hands back
-## a fresh `.duplicate()` every call and sharing one instance across
-## multiple cells would make "destroying" one destroy all of them.
+## opacity) — `GridFixture.place_wall` is the shared, taskblock-39 Pass C
+## placement-model formula for exactly this.
 func _wall_at(grid: Grid, cell: Vector2i) -> void:
-	grid.set_terrain(cell, Enums.TerrainType.WALL)
-	grid.set_opacity(cell, 1.0)
-	grid.blockers[cell] = DataLibrary.get_part(&"wall")
+	GridFixture.place_wall(grid, cell)
 
 
 ## taskblock-26 (CC, re-diagnosing B2): confirmed on 60 REAL generated
@@ -91,7 +88,7 @@ func _wall_at(grid: Grid, cell: Vector2i) -> void:
 ## obstruction regardless of whether the far side was ever reachable at
 ## all.
 func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_lof_yet() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	for y in range(19):  # sealed except one gap at y=19, far from the shared row (y=10)
 		_wall_at(grid, Vector2i(8, y))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
@@ -109,7 +106,7 @@ func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_lof_
 		LineOfFire.has_clear_line_of_fire(self_unit, enemy, self_unit.cell, state),
 		"sanity: the wall blocks the shared row"
 	)
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	var reachable: Array[Vector2i] = pf.reachable(
 		self_unit.cell, self_unit.mp_per_ap() * self_unit.ap
 	)
@@ -142,7 +139,7 @@ func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_lof_
 ## cell really does have one), the self cell keeps its exemption exactly
 ## as before, unchanged from taskblock-26 Pass B2's own original fix.
 func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_has_lof() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	for x in range(5, 15):
 		_wall_at(grid, Vector2i(x, 1))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
@@ -226,11 +223,10 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 ## only the GATE deciding whether to lean on it moved from LOS to LOF, so
 ## this fixture stays opacity-only, no real blocker needed.
 func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_lof() -> void:
-	var grid := Grid.new(25, 5)
+	var grid := GridFixture.flat(25, 5)
 	# A short, thick wall segment directly on the near cell's own line to
 	# the enemy; the far cell's own line clears it by going around instead.
 	for x in range(16, 20):
-		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
 		grid.set_opacity(Vector2i(x, 0), 1.0)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(20, 0), 1, &"")
@@ -282,7 +278,7 @@ func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_lof() 
 ## has_clear_line_of_fire` false). Scoring on `has_los` would have called
 ## this cell just as good as a genuinely clear one; scoring on LOF must not.
 func test_scorer_ranks_a_clear_lof_cell_above_a_los_but_wall_blocked_cell() -> void:
-	var grid := Grid.new(10, 3)
+	var grid := GridFixture.flat(10, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 1), 1, &"")
 	var blocked_cell := Vector2i(4, 1)

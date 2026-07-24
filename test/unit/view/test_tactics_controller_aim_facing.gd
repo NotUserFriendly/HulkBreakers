@@ -52,7 +52,7 @@ func _make_lopsided_armed_unit(cell: Vector2i, orientation: float, squad: int = 
 
 
 func _setup(units: Array[Unit]) -> Dictionary:
-	var state := CombatState.new(Grid.new(10, 10), units)
+	var state := CombatState.new(GridFixture.flat(10, 10), units)
 	var controller := TacticsController.new()
 	var board_view := BoardView.new()
 	var camera_rig := CameraRig.new()

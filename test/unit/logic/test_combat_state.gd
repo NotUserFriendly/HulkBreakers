@@ -9,7 +9,7 @@ func _make_unit(cell: Vector2i, squad: int) -> Unit:
 
 
 func test_add_unit_assigns_sequential_ids_and_occupies_cell() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var state := CombatState.new(grid)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
@@ -22,7 +22,7 @@ func test_add_unit_assigns_sequential_ids_and_occupies_cell() -> void:
 
 
 func test_initial_units_get_first_turn_started() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a, b])
@@ -33,7 +33,7 @@ func test_initial_units_get_first_turn_started() -> void:
 
 
 func test_advance_turn_cycles_and_resets_ap() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a, b])
@@ -52,7 +52,7 @@ func test_advance_turn_cycles_and_resets_ap() -> void:
 ## first" — a unit that spent its whole starting MP grant last turn still
 ## gets a fresh one when its next turn comes around, same as AP.
 func test_the_free_mp_grant_renews_every_turn_not_just_the_first() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a, b])
@@ -67,7 +67,7 @@ func test_the_free_mp_grant_renews_every_turn_not_just_the_first() -> void:
 
 ## taskblock-08 Pass C/TESTS: "spending that MP doesn't touch AP."
 func test_spending_the_free_starting_mp_never_touches_ap() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(grid, [a])
 	var starting_ap: int = a.ap
@@ -85,7 +85,7 @@ func test_spending_the_free_starting_mp_never_touches_ap() -> void:
 ## on top" — the free grant and a manual AP-to-MP burn stack, they don't
 ## replace one another.
 func test_burning_an_ap_adds_another_mp_per_ap_on_top_of_the_free_grant() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	a.max_ap = 2
 	var state := CombatState.new(grid, [a])
@@ -103,7 +103,7 @@ func test_burning_an_ap_adds_another_mp_per_ap_on_top_of_the_free_grant() -> voi
 
 
 func test_advance_turn_skips_dead_units() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var c := _make_unit(Vector2i(2, 0), 0)
@@ -118,7 +118,7 @@ func test_advance_turn_skips_dead_units() -> void:
 ## shut-down unit stays `alive`, unlike death, so this is a SEPARATE
 ## exclusion from the dead-units test above, not the same one reused.
 func test_advance_turn_skips_shut_down_units() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var c := _make_unit(Vector2i(2, 0), 0)
@@ -132,7 +132,7 @@ func test_advance_turn_skips_shut_down_units() -> void:
 
 
 func test_round_number_increments_once_per_full_cycle_not_per_unit_turn() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var c := _make_unit(Vector2i(2, 0), 0)
@@ -158,7 +158,7 @@ func test_round_number_increments_once_per_full_cycle_not_per_unit_turn() -> voi
 
 
 func test_round_number_increments_every_turn_with_a_single_unit() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(grid, [a])
 	assert_eq(state.round_number, 0)
@@ -169,7 +169,7 @@ func test_round_number_increments_every_turn_with_a_single_unit() -> void:
 
 
 func test_round_number_wraps_correctly_around_a_dead_unit() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var c := _make_unit(Vector2i(2, 0), 0)
@@ -189,7 +189,7 @@ func test_round_number_wraps_correctly_around_a_dead_unit() -> void:
 ## (LogEvent._to_string() no longer echoes either per line) — its own
 ## rendered text must actually carry both, since nothing else will.
 func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a, b])
@@ -209,7 +209,7 @@ func test_advance_turn_emits_turn_start_for_the_incoming_unit() -> void:
 
 
 func test_organics_decay_demotion_emits_surrogate_demoted() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(grid, [a])
 	var sink := MemorySink.new()
@@ -230,7 +230,7 @@ func test_organics_decay_demotion_emits_surrogate_demoted() -> void:
 
 
 func test_try_apply_rejects_illegal_action_without_mutating() -> void:
-	var grid := Grid.new(5, 5)
+	var grid := GridFixture.flat(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
 	var state := CombatState.new(grid, [a, b])
@@ -246,14 +246,14 @@ func test_try_apply_rejects_illegal_action_without_mutating() -> void:
 ## state, never a silent side picked (the old HUMAN default's whole
 ## failure mode: BR30.09).
 func test_every_squad_defaults_to_unassigned_control() -> void:
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 
 	assert_eq(state.controller_for(0), Enums.SquadController.UNASSIGNED)
 	assert_eq(state.controller_for(1), Enums.SquadController.UNASSIGNED)
 
 
 func test_a_squad_can_be_set_to_ai_control() -> void:
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 
 	state.set_squad_controller(1, Enums.SquadController.AI)
 
@@ -266,7 +266,7 @@ func _two_squad_state() -> CombatState:
 	root.id = &"root"
 	root.hp = 1
 	root.max_hp = 1
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 	state.add_unit(Unit.new(Matrix.new(), Shell.new(root), Vector2i(0, 0), 0))
 	state.add_unit(Unit.new(Matrix.new(), Shell.new(root), Vector2i(1, 0), 1))
 	return state
@@ -302,7 +302,7 @@ func test_all_squads_assigned_is_false_until_every_present_squad_has_a_real_cont
 
 
 func test_dup_carries_squad_controllers_into_the_preview() -> void:
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 	state.set_squad_controller(1, Enums.SquadController.AI)
 
 	var preview: CombatState = state.dup()
@@ -333,7 +333,7 @@ class _SpyAction:
 
 func test_is_resolving_is_true_only_during_an_active_resolve_until_call() -> void:
 	var unit := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	assert_false(state.is_resolving, "must be false before any resolution ever runs")
 
 	var spy := _SpyAction.new(unit)
@@ -347,7 +347,7 @@ func test_is_resolving_is_true_only_during_an_active_resolve_until_call() -> voi
 
 func test_dup_never_copies_is_resolving() -> void:
 	var unit := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
 	state.is_resolving = true
 
 	var preview: CombatState = state.dup()
@@ -356,7 +356,7 @@ func test_dup_never_copies_is_resolving() -> void:
 
 
 func test_dup_carries_was_injected_into_the_preview() -> void:
-	var state := CombatState.new(Grid.new(5, 5))
+	var state := CombatState.new(GridFixture.flat(5, 5))
 	state.was_injected = true
 
 	var preview: CombatState = state.dup()
@@ -367,7 +367,7 @@ func test_dup_carries_was_injected_into_the_preview() -> void:
 func test_force_current_unit_sets_current_unit_without_resetting_resources() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
-	var state := CombatState.new(Grid.new(5, 5), [a, b])
+	var state := CombatState.new(GridFixture.flat(5, 5), [a, b])
 	# a is already current (fastest_by_initiative on an empty tie goes to
 	# the lowest id) — force b instead, and starve its own AP first so a
 	# real _begin_turn's own resource reset would be obviously detectable.

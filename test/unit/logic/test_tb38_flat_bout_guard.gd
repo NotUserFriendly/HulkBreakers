@@ -39,7 +39,7 @@ func _reduce(events: Array[LogEvent]) -> String:
 func _run_flat_bout() -> String:
 	var a: Unit = _make_unit("a", Vector2i(1, 1), 0)
 	var b: Unit = _make_unit("b", Vector2i(9, 4), 1)
-	var state := CombatState.new(Grid.new(12, 6), [a, b], MAP_SEED)
+	var state := CombatState.new(GridFixture.flat(12, 6), [a, b], MAP_SEED)
 	state.set_squad_controller(0, Enums.SquadController.AI)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 	var mission := MissionState.new(RunState.new(), state)

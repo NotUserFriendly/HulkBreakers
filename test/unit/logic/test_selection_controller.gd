@@ -16,7 +16,7 @@ func _make_unit(cell: Vector2i, squad: int = 0) -> Unit:
 func test_select_accepts_only_the_current_units_turn() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a, b])
 	var selection := SelectionController.new(state)
 
 	selection.select(a)
@@ -28,11 +28,11 @@ func test_select_accepts_only_the_current_units_turn() -> void:
 
 func test_reachable_cells_matches_pathfinder_exactly() -> void:
 	var a := _make_unit(Vector2i(4, 4), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	var budget: float = a.mp + a.mp_per_ap() * a.ap
 	var expected: Array[Vector2i] = pf.reachable(a.cell, budget)
 
@@ -41,7 +41,7 @@ func test_reachable_cells_matches_pathfinder_exactly() -> void:
 
 func test_queue_move_to_an_unreachable_cell_fails() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(20, 20), [a])
+	var state := CombatState.new(GridFixture.flat(20, 20), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -50,7 +50,7 @@ func test_queue_move_to_an_unreachable_cell_fails() -> void:
 
 func test_queuing_two_moves_shows_two_ghosts_the_second_starting_where_the_first_left_off() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -67,7 +67,7 @@ func test_queuing_two_moves_shows_two_ghosts_the_second_starting_where_the_first
 
 func test_queuing_never_mutates_the_real_state() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 
 	var cell_before: Vector2i = a.cell
@@ -94,7 +94,7 @@ func test_queuing_never_mutates_the_real_state() -> void:
 ## docs/10 taskblock03 D2: "the running MP cost per leg and the total."
 func test_leg_costs_matches_pathfinders_own_cost_per_queued_leg() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -110,7 +110,7 @@ func test_leg_costs_matches_pathfinders_own_cost_per_queued_leg() -> void:
 ## docs/10 taskblock03 D3: "RMB pops the last queued action."
 func test_undo_last_pops_the_most_recently_queued_action() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 	selection.queue_move(Vector2i(1, 0))
@@ -125,7 +125,7 @@ func test_undo_last_pops_the_most_recently_queued_action() -> void:
 
 func test_undo_last_with_an_empty_queue_returns_false() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -134,7 +134,7 @@ func test_undo_last_with_an_empty_queue_returns_false() -> void:
 
 func test_undo_last_refunds_the_popped_actions_cost_against_the_speculative_state() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 	var full_budget: Array[Vector2i] = selection.reachable_cells()
@@ -153,7 +153,7 @@ func test_undo_last_refunds_the_popped_actions_cost_against_the_speculative_stat
 ## and empties the queue — but keeps the unit selected.
 func test_reset_turn_clears_the_queue_but_keeps_the_unit_selected() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 	selection.queue_move(Vector2i(1, 0))
@@ -168,7 +168,7 @@ func test_reset_turn_clears_the_queue_but_keeps_the_unit_selected() -> void:
 
 func test_reset_turn_with_nothing_selected_is_a_no_op() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 
 	selection.reset_turn()  # must not crash with no selection
@@ -180,7 +180,7 @@ func test_reset_turn_with_nothing_selected_is_a_no_op() -> void:
 ## queued end state — the ghost's whole source of truth.
 func test_previewed_unit_reflects_the_queued_end_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -192,7 +192,7 @@ func test_previewed_unit_reflects_the_queued_end_cell() -> void:
 
 func test_nothing_selected_yields_no_preview_and_no_queue_entries() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 
 	assert_null(selection.previewed_unit(), "previewed_unit")
@@ -201,7 +201,7 @@ func test_nothing_selected_yields_no_preview_and_no_queue_entries() -> void:
 
 func test_reset_clears_selection_and_queues() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 	selection.queue_move(Vector2i(1, 0))
@@ -219,7 +219,7 @@ func test_reset_clears_selection_and_queues() -> void:
 ## drift from what "Resolve to Here" would actually apply.
 func test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -252,7 +252,7 @@ func test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action() ->
 
 func test_queue_entries_never_mutates_the_real_state() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
-	var state := CombatState.new(Grid.new(10, 10), [a])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 	selection.queue_move(Vector2i(1, 0))
@@ -268,7 +268,7 @@ func test_queue_entries_never_mutates_the_real_state() -> void:
 func test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a, b])
 	var selection := SelectionController.new(state)
 	selection.select(a)
 
@@ -287,7 +287,7 @@ func test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly() -> v
 func test_queue_end_turn_threads_mission_through_for_the_extraction_hold() -> void:
 	var a := _make_unit(Vector2i(4, 4), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a, b])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(4, 4)]
 	var selection := SelectionController.new(state, mission)
@@ -355,7 +355,7 @@ func test_queue_repair_appends_a_repair_action_that_resolves_cleanly() -> void:
 
 	var a := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(5, 5), 1)
-	var state := CombatState.new(Grid.new(10, 10), [a, b])
+	var state := CombatState.new(GridFixture.flat(10, 10), [a, b])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.gather_resource(&"steel", 5)
 	var selection := SelectionController.new(state, mission)

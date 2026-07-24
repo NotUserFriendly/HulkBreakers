@@ -11,8 +11,8 @@ func _make_unit(cell: Vector2i) -> Unit:
 ## "hop-down costs 1 MP and is legal to 2 levels" (taskblock-37 Pass D's
 ## own TESTS) — no climb capability needed at all.
 func test_hop_down_2_levels_moves_the_unit_and_costs_1_mp() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_level(Vector2i(0, 0), 2)
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 2)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	unit.mp = 0.0
@@ -30,8 +30,8 @@ func test_hop_down_2_levels_moves_the_unit_and_costs_1_mp() -> void:
 
 
 func test_hop_down_1_level_is_legal() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_level(Vector2i(0, 0), 1)
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 
@@ -41,8 +41,8 @@ func test_hop_down_1_level_is_legal() -> void:
 ## "illegal at 3" — a deeper drop is simply not a legal edge this pass, no
 ## fallback and no consequence modeling.
 func test_hop_down_3_levels_is_illegal() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_level(Vector2i(0, 0), 3)
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 3)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 
@@ -50,8 +50,8 @@ func test_hop_down_3_levels_is_illegal() -> void:
 
 
 func test_hopping_up_is_illegal_thats_a_climb_not_a_hop() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_level(Vector2i(1, 0), 1)
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(grid, Vector2i(1, 0), 1)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 
@@ -59,9 +59,9 @@ func test_hopping_up_is_illegal_thats_a_climb_not_a_hop() -> void:
 
 
 func test_hopping_onto_a_ramp_tile_is_illegal_thats_ordinary_movement() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.RAMP)
-	grid.set_level(Vector2i(0, 0), 1)
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_ramp(grid, Vector2i(1, 0), 0)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 
@@ -69,8 +69,8 @@ func test_hopping_onto_a_ramp_tile_is_illegal_thats_ordinary_movement() -> void:
 
 
 func test_hop_down_emits_a_hopped_down_event() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_level(Vector2i(0, 0), 1)
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 	var sink := MemorySink.new()

@@ -56,7 +56,7 @@ func test_plan_turn_is_pure_and_deterministic() -> void:
 	for run in range(2):
 		var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 		var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
-		var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 42)
+		var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
 		var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 		var kinds: Array[String] = []
@@ -86,7 +86,7 @@ func test_an_ai_unit_ends_its_turn_facing_the_enemy_it_fired_at() -> void:
 	for offset: Vector2i in offsets:
 		var self_unit := _armed_unit(&"self_unit", Vector2i(20, 20), 0, &"rifle")
 		var enemy := _armed_unit(&"enemy", Vector2i(20, 20) + offset, 1, &"")
-		var state := CombatState.new(Grid.new(40, 40), [self_unit, enemy], 3)
+		var state := CombatState.new(GridFixture.flat(40, 40), [self_unit, enemy], 3)
 
 		var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 		state.resolve_until(queue)
@@ -107,7 +107,7 @@ func test_an_ai_unit_ends_its_turn_facing_the_enemy_it_fired_at() -> void:
 
 ## "COVER_SEEKER prefers a covered cell over an exposed closer one."
 func test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one() -> void:
-	var grid := Grid.new(10, 5)
+	var grid := GridFixture.flat(10, 5)
 	var crate := Part.new()
 	crate.id = &"crate"
 	crate.hp = 10
@@ -158,7 +158,7 @@ func _last_move(queue: ActionQueue) -> MoveAction:
 ## forced regardless of the "stay and fire" gate (there's nothing to
 ## fire at from here).
 func test_skirmisher_advances_when_out_of_weapon_range_and_farther_than_preferred() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
@@ -182,7 +182,7 @@ func test_skirmisher_advances_when_out_of_weapon_range_and_farther_than_preferre
 ## enemy to open distance." Already well within weapon range — the only
 ## reason to move at all is the preferred-range gate itself.
 func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(10, 1), 0, &"rifle")
 	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 15.0
 	# taskblock-19 Pass E: distance 3, not adjacent (1) — this test is
@@ -217,9 +217,9 @@ func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() ->
 ## move to one of THOSE (real LOS), never settle for the line-less
 ## straight-row standoff distance alone would otherwise prefer.
 func test_skirmisher_moves_to_gain_los_instead_of_holding_a_line_less_standoff() -> void:
-	var grid := Grid.new(20, 5)
+	var grid := GridFixture.flat(20, 5)
 	for x in range(5, 10):
-		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, Vector2i(x, 2))
 		grid.set_opacity(Vector2i(x, 2), 1.0)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 2), 0, &"rifle")
 	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 20.0
@@ -249,12 +249,12 @@ func test_marksman_holds_greater_standoff_than_skirmisher() -> void:
 	var skirmisher := _armed_unit(&"skirmisher", Vector2i(0, 1), 0, &"rifle")
 	skirmisher.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy_a := _armed_unit(&"enemy_a", Vector2i(15, 1), 1, &"")
-	var state_a := CombatState.new(Grid.new(20, 3), [skirmisher, enemy_a])
+	var state_a := CombatState.new(GridFixture.flat(20, 3), [skirmisher, enemy_a])
 
 	var marksman := _armed_unit(&"marksman", Vector2i(0, 1), 0, &"rifle")
 	marksman.shell.find_part(&"rifle").weapon_def.max_range = 6.0
 	var enemy_b := _armed_unit(&"enemy_b", Vector2i(15, 1), 1, &"")
-	var state_b := CombatState.new(Grid.new(20, 3), [marksman, enemy_b])
+	var state_b := CombatState.new(GridFixture.flat(20, 3), [marksman, enemy_b])
 
 	var skirmisher_move: MoveAction = _last_move(
 		UnitAI.plan_turn(skirmisher, state_a, null, &"SKIRMISHER")
@@ -288,7 +288,7 @@ func test_marksman_holds_greater_standoff_than_skirmisher() -> void:
 ## DISTANCE TARGET changed, independent of the cover-vs-distance tradeoff
 ## (covered separately below).
 func test_effective_range_supersedes_the_flat_preferred_range_standoff() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	self_unit.shell.find_part(&"rifle").weapon_def.max_range = 15.0
 	self_unit.shell.find_part(&"rifle").weapon_def.effective_range = 3.0
@@ -318,7 +318,7 @@ func test_effective_range_supersedes_the_flat_preferred_range_standoff() -> void
 ## `test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one`
 ## already proves, now confirmed to survive the new distance target too.
 func test_ai_holds_a_covered_degraded_position_over_an_exposed_effective_range_one() -> void:
-	var grid := Grid.new(10, 5)
+	var grid := GridFixture.flat(10, 5)
 	var crate := Part.new()
 	crate.id = &"crate"
 	crate.hp = 10
@@ -353,7 +353,7 @@ func test_ai_holds_a_covered_degraded_position_over_an_exposed_effective_range_o
 ## min_range (3.0) — the penalty must override that pull when a >= min
 ## cell is reachable too.
 func test_ai_avoids_closing_inside_its_own_min_range() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var rifle: Part = self_unit.shell.find_part(&"rifle")
 	rifle.weapon_def.max_range = 15.0
@@ -389,7 +389,7 @@ func test_ai_avoids_closing_inside_its_own_min_range() -> void:
 ## a positioning preference can never make an illegal shot legal.)
 func test_ai_fires_from_inside_min_range_when_forced_and_the_weapon_duds_instead_of_blocking(
 ) -> void:
-	var grid := Grid.new(10, 3)
+	var grid := GridFixture.flat(10, 3)
 	# Wall off every neighbor of (1,1) but the enemy's own (occupied,
 	# already-unwalkable) cell — Pathfinder.reachable always includes the
 	# origin itself, so this boxes the unit into exactly one candidate.
@@ -402,7 +402,7 @@ func test_ai_fires_from_inside_min_range_when_forced_and_the_weapon_duds_instead
 		Vector2i(1, 2),
 		Vector2i(2, 2)
 	]:
-		grid.set_terrain(cell, Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, cell)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(1, 1), 0, &"rifle")
 	var rifle: Part = self_unit.shell.find_part(&"rifle")
 	rifle.weapon_def.max_range = 15.0
@@ -431,7 +431,7 @@ func test_ai_fires_from_inside_min_range_when_forced_and_the_weapon_duds_instead
 ## cell short instead, at distance 2, where the two-handed weapon still
 ## fires.
 func test_ai_avoids_closing_to_adjacency_with_a_two_handed_weapon_equipped() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var rifle: Part = self_unit.shell.find_part(&"rifle")
 	rifle.weapon_def.max_range = 15.0
@@ -464,7 +464,7 @@ func test_ai_avoids_closing_to_adjacency_with_a_two_handed_weapon_equipped() -> 
 ## cell farther out — OPPORTUNITY_ATTACK_PENALTY must outweigh that
 ## marginal 1-point distance gain and keep it from moving at all.
 func test_ai_weights_leaving_adjacency_as_costly() -> void:
-	var grid := Grid.new(10, 3)
+	var grid := GridFixture.flat(10, 3)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(5, 1), 0, &"pistol")
 	var pistol: Part = self_unit.shell.find_part(&"pistol")
 	pistol.weapon_def.max_range = 15.0
@@ -492,7 +492,7 @@ func test_ai_weights_leaving_adjacency_as_costly() -> void:
 ## fixture Part), the actual thing `is_covered_from` reads once cover
 ## objects are real, placed, blocking geometry rather than a cell scalar.
 func test_cover_seeker_relocates_to_a_real_pass_b_cover_object() -> void:
-	var grid := Grid.new(10, 5)
+	var grid := GridFixture.flat(10, 5)
 	var crate: Part = DataLibrary.get_part(&"crate")
 	grid.blockers[Vector2i(5, 2)] = crate
 
@@ -521,7 +521,7 @@ func test_cover_seeker_relocates_to_a_real_pass_b_cover_object() -> void:
 ## muzzle and target. Ample open room and MP: the AI must find SOME clear
 ## firing position rather than shooting blind from where it started.
 func test_an_ai_repositions_rather_than_firing_through_an_ally_in_the_line() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
 	var ally := _armed_unit(&"ally", Vector2i(5, 10), 0, &"")
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
@@ -559,10 +559,10 @@ func test_an_ai_repositions_rather_than_firing_through_an_ally_in_the_line() -> 
 ## with the ally (blocked by its own occupied cell before it can even
 ## pass), so there is genuinely no clear cell to reposition to.
 func test_an_ai_holds_fire_when_no_reachable_cell_clears_the_ally() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	for x in range(20):
-		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
-		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, Vector2i(x, 0))
+		GridFixture.place_wall(grid, Vector2i(x, 2))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var ally := _armed_unit(&"ally", Vector2i(5, 1), 0, &"")
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
@@ -581,10 +581,10 @@ func test_an_ai_holds_fire_when_no_reachable_cell_clears_the_ally() -> void:
 ## own firing line, nothing else to do) is precisely that case: the spot
 ## might clear up once the ally has actually moved.
 func test_an_ai_holds_rather_than_just_facing_when_walled_into_the_allys_line() -> void:
-	var grid := Grid.new(20, 3)
+	var grid := GridFixture.flat(20, 3)
 	for x in range(20):
-		grid.set_terrain(Vector2i(x, 0), Enums.TerrainType.WALL)
-		grid.set_terrain(Vector2i(x, 2), Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, Vector2i(x, 0))
+		GridFixture.place_wall(grid, Vector2i(x, 2))
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 1), 0, &"rifle")
 	var ally := _armed_unit(&"ally", Vector2i(5, 1), 0, &"")
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
@@ -610,7 +610,7 @@ func test_the_shot_plane_itself_does_not_special_case_squad_membership() -> void
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 10), 0, &"rifle")
 	var ally := _armed_unit(&"ally", Vector2i(2, 10), 0, &"")
 	var enemy := _armed_unit(&"enemy", Vector2i(4, 10), 1, &"")
-	var state := CombatState.new(Grid.new(10, 20), [self_unit, ally, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 20), [self_unit, ally, enemy])
 
 	var origin := Vector2(self_unit.cell.x, self_unit.cell.y)
 	var direction := Vector2(enemy.cell - self_unit.cell).normalized()
@@ -642,7 +642,7 @@ func _seal_off(grid: Grid, cell: Vector2i) -> void:
 		Vector2i(0, 1),
 		Vector2i(1, 1)
 	]:
-		grid.set_terrain(cell + offset, Enums.TerrainType.WALL)
+		GridFixture.place_wall(grid, cell + offset)
 
 
 ## taskblock17-1 Pass C: "chebyshev nearest ignores walls" — a bot fixated
@@ -652,7 +652,7 @@ func _seal_off(grid: Grid, cell: Vector2i) -> void:
 ## instead — "moves toward the nearest reachable, doesn't freeze facing
 ## a wall."
 func test_targets_and_moves_toward_a_reachable_enemy_over_a_closer_sealed_off_one() -> void:
-	var grid := Grid.new(20, 20)
+	var grid := GridFixture.flat(20, 20)
 	_seal_off(grid, Vector2i(2, 2))
 
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
@@ -688,7 +688,7 @@ func test_targets_and_moves_toward_a_reachable_enemy_over_a_closer_sealed_off_on
 func test_reachable_enemy_targeting_is_deterministic() -> void:
 	var results: Array = []
 	for run in range(2):
-		var grid := Grid.new(20, 20)
+		var grid := GridFixture.flat(20, 20)
 		_seal_off(grid, Vector2i(2, 2))
 		var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 		self_unit.shell.find_part(&"rifle").weapon_def.max_range = 30.0
@@ -718,7 +718,7 @@ func test_reachable_enemy_targeting_is_deterministic() -> void:
 ## mechanic this pass adds for precisely this case.
 func test_a_unit_with_no_valid_action_shuts_down_cleanly() -> void:
 	var lone_unit := _armed_unit(&"lone_unit", Vector2i(0, 0), 1, &"")
-	var state := CombatState.new(Grid.new(5, 5), [lone_unit])
+	var state := CombatState.new(GridFixture.flat(5, 5), [lone_unit])
 
 	var queue: ActionQueue = UnitAI.plan_turn(lone_unit, state, null)
 
@@ -737,7 +737,7 @@ func test_an_ai_produced_queue_resolves_through_the_normal_resolve_until() -> vo
 	# a real, correct outcome (docs/09: "the world moved"), just not the
 	# one this test is about.
 	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"", 1000)
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 7)
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 7)
 
 	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
 	var outcome: Dictionary = state.resolve_until(queue)
@@ -751,9 +751,9 @@ func test_an_ai_produced_queue_resolves_through_the_normal_resolve_until() -> vo
 func test_an_unknown_playstyle_falls_back_to_aggressive() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"")
-	var state_a := CombatState.new(Grid.new(10, 5), [self_unit, enemy], 3)
+	var state_a := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 3)
 	var state_b := CombatState.new(
-		Grid.new(10, 5),
+		GridFixture.flat(10, 5),
 		[
 			_armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle"),
 			_armed_unit(&"enemy", Vector2i(3, 0), 1, &"")
@@ -777,7 +777,7 @@ func test_an_unknown_playstyle_falls_back_to_aggressive() -> void:
 func test_a_disarmed_unit_flees_toward_its_own_team_extraction_tile() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"")
 	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"rifle")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
@@ -802,7 +802,7 @@ func test_a_disarmed_unit_flees_toward_its_own_team_extraction_tile() -> void:
 ## the fast path is asymmetric, red-only.
 func test_a_disarmed_non_player_unit_already_on_its_tile_queues_extraction() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {1: [Vector2i(9, 4)]}
 
@@ -821,7 +821,7 @@ func test_a_disarmed_non_player_unit_already_on_its_tile_queues_extraction() -> 
 ## queues ExtractAction (illegal for the player squad now).
 func test_a_disarmed_player_squad_unit_already_on_its_tile_never_queues_extract_action() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 0, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
@@ -842,7 +842,7 @@ func test_a_disarmed_player_squad_unit_already_on_its_tile_never_queues_extract_
 ## DIFFERENT squad's own tile.
 func test_a_disarmed_unit_with_no_flee_destination_shuts_down() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(9, 4)]  # squad 0's own zone, not squad 1's
 
@@ -858,7 +858,7 @@ func test_a_disarmed_unit_with_no_flee_destination_shuts_down() -> void:
 ## squad's own zone, and never touches `team_extraction_cells` at all.
 func test_a_disarmed_player_squad_unit_falls_back_to_the_plain_extraction_cells() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(9, 4)]
 
@@ -883,7 +883,7 @@ func test_a_disarmed_player_squad_unit_falls_back_to_the_plain_extraction_cells(
 ## extraction runs when THIS resolves, not before.
 func test_a_disarmed_unit_holding_its_own_extraction_tile_does_not_shut_down() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(9, 4), 0, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(9, 4)]
 
@@ -901,7 +901,7 @@ func test_a_disarmed_unit_holding_its_own_extraction_tile_does_not_shut_down() -
 func test_an_armed_unit_does_not_flee_even_with_a_mission_present() -> void:
 	var self_unit := _armed_unit(&"self_unit", Vector2i(0, 0), 0, &"rifle")
 	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"")
-	var state := CombatState.new(Grid.new(10, 5), [self_unit, enemy])
+	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy])
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
@@ -954,11 +954,19 @@ func test_has_functional_weapon_is_false_once_the_weapon_part_itself_is_destroye
 ## the step out's own two single-cell moves) keeps this from being confused with
 ## a longer, ordinary reposition trek.
 func test_a_covered_aggressive_unit_steps_out_instead_of_just_standing_and_facing() -> void:
-	var grid := Grid.new(10, 10)
+	var grid := GridFixture.flat(10, 10)
+	# Row 1: pathing-blocked only, no opacity and no `blockers` entry --
+	# `place_wall` (a real, physical obstacle) would ALSO trip `is_covered_
+	# from`'s own separate `grid.blockers.has(cell)` cover check, which
+	# this test's geometry deliberately does not want along row 1. An
+	# unfloored gap is the correct placement-model equivalent of "nothing
+	# to stand on here" with no physical presence at all -- unlike the
+	# retired terrain-code model, a placed obstacle can no longer be
+	# pathing-only, since every real Part is inherently a real physical
+	# thing wherever it sits.
 	for x in range(8):
-		grid.set_terrain(Vector2i(x, 1), Enums.TerrainType.WALL)
-	grid.set_terrain(Vector2i(3, 2), Enums.TerrainType.WALL)
-	grid.set_opacity(Vector2i(3, 2), 1.0)
+		grid.clear_surfaces(Vector2i(x, 1))
+	GridFixture.place_wall(grid, Vector2i(3, 2))  # blocks pathing AND LoS
 
 	var self_unit := _armed_unit(&"self_unit", Vector2i(3, 0), 0, &"rifle")
 	self_unit.max_ap = 1

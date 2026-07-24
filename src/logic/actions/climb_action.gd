@@ -33,9 +33,9 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if Grid.distance_chebyshev(actual.cell, target_cell) != 1:
 		return false
-	if state.grid.get_terrain(target_cell) == Enums.TerrainType.RAMP:
+	if Surface.is_ramp_at(state.grid, target_cell):
 		return false
-	var pf := Pathfinder.new(state.grid, state.terrain_costs)
+	var pf := Pathfinder.new(state.grid)
 	if not pf.is_walkable(target_cell):
 		return false
 	if not actual.shell.can_climb():
@@ -60,8 +60,8 @@ func apply(state: CombatState) -> void:
 	state.grid.set_occupant_id(actual.cell, -1)
 	actual.cell = target_cell
 	state.grid.set_occupant_id(actual.cell, actual.id)
-	actual.level = state.grid.get_level(actual.cell)
 	actual.height = UnitGeometry.true_height_for_cell(actual.cell, state.grid)
+	actual.level = actual.height / UnitGeometry.LEVEL_HEIGHT
 
 	FaceAction.face_for_free(
 		state, actual, FaceAction.orientation_toward(origin_cell, target_cell), &"free_with_move"

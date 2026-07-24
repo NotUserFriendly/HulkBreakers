@@ -80,8 +80,9 @@ static func would_trigger_at(
 		# `candidate_cell`, not wherever `mover` actually stands — a
 		# hypothetical on a different level must be judged at that level's
 		# real height, same reason `MoveAction` re-syncs both on every step.
-		mover_clone.level = preview.grid.get_level(candidate_cell)
+		# taskblock-39 Pass C: `level` derived FROM height, not `Grid.level`.
 		mover_clone.height = UnitGeometry.true_height_for_cell(candidate_cell, preview.grid)
+		mover_clone.level = mover_clone.height / UnitGeometry.LEVEL_HEIGHT
 	var qualifying: Array[Unit] = _qualifying_overwatchers(preview, mover_clone)
 	var real: Array[Unit] = []
 	for overwatcher: Unit in qualifying:
