@@ -242,16 +242,7 @@ func build(
 	_wall_cutout_material = null
 	_excluded_from_occlusion.clear()
 
-	var ground := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(grid.width * UnitGeometry.CELL_SIZE, grid.rows * UnitGeometry.CELL_SIZE)
-	plane.material = WorldPalette.lit_material(WorldPalette.GROUND)
-	ground.mesh = plane
-	ground.position = Vector3(
-		(grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,
-		0.0,
-		(grid.rows - 1) * UnitGeometry.CELL_SIZE * 0.5
-	)
+	var ground: MeshInstance3D = _build_terrain(grid)
 	ground.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(ground)
 	var grid_lines: MeshInstance3D = _build_grid_lines(grid)
@@ -267,6 +258,88 @@ func build(
 	for cell: Vector2i in grid.field_items:
 		for item: Variant in grid.field_items[cell]:
 			_spawn_field_item(item, cell, material_table)
+
+
+## taskblock-37 Pass E: the ground used to be one flat `PlaneMesh` for the
+## whole grid — `Grid.level` had no way to become visible at all, since a
+## single flat plane has no per-cell height to move. Now one flat top
+## quad per cell, at THAT cell's own real height
+## (`UnitGeometry.true_height_for_cell`), plus a vertical riser quad
+## between any two orthogonally-adjacent cells whose heights differ — a
+## stepped, XCOM-style terrace rather than a smooth slope (supervisor's
+## own call; a genuinely sloped ramp mesh is a smaller, separate follow-
+## up — a ramp tile still renders as an ordinary flat step today, at its
+## own `+0.5` rest height). Checking only the `+X`/`+Z` neighbor from
+## every cell (never `-X`/`-Y` too) visits each shared edge exactly once —
+## the neighbor on the OTHER side of that same edge would otherwise draw
+## the identical riser a second time. Both winding orders are emitted for
+## every riser face (a real, deliberate double-sided quad, not a bug) —
+## simpler and more robust than reasoning about which single winding a
+## viewer standing on the lower side versus the higher side would each
+## need, for a strip of geometry nobody is meant to look at edge-on
+## anyway.
+func _build_terrain(p_grid: Grid) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var mesh := ImmediateMesh.new()
+	var cell_size: float = UnitGeometry.CELL_SIZE
+	var half: float = cell_size * 0.5
+
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.lit_material(WorldPalette.GROUND))
+	for y in range(p_grid.rows):
+		for x in range(p_grid.width):
+			var cell := Vector2i(x, y)
+			var height: float = UnitGeometry.true_height_for_cell(cell, p_grid)
+			var cx: float = x * cell_size
+			var cz: float = y * cell_size
+			_add_quad(
+				mesh,
+				Vector3(cx - half, height, cz - half),
+				Vector3(cx + half, height, cz - half),
+				Vector3(cx + half, height, cz + half),
+				Vector3(cx - half, height, cz + half)
+			)
+			for offset: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var neighbor: Vector2i = cell + offset
+				if not p_grid.in_bounds(neighbor):
+					continue
+				var neighbor_height: float = UnitGeometry.true_height_for_cell(neighbor, p_grid)
+				if is_equal_approx(height, neighbor_height):
+					continue
+				_add_riser(mesh, cx, cz, half, offset, height, neighbor_height)
+	mesh.surface_end()
+
+	instance.mesh = mesh
+	return instance
+
+
+## The vertical quad filling the gap along one shared cell edge — drawn
+## both windings so it's visible from either side without reasoning about
+## which single winding a given viewing direction needs.
+static func _add_riser(
+	mesh: ImmediateMesh,
+	cx: float,
+	cz: float,
+	half: float,
+	offset: Vector2i,
+	height: float,
+	neighbor_height: float
+) -> void:
+	var low: float = minf(height, neighbor_height)
+	var high: float = maxf(height, neighbor_height)
+	var a: Vector3
+	var b: Vector3
+	if offset == Vector2i(1, 0):
+		a = Vector3(cx + half, 0.0, cz - half)
+		b = Vector3(cx + half, 0.0, cz + half)
+	else:
+		a = Vector3(cx - half, 0.0, cz + half)
+		b = Vector3(cx + half, 0.0, cz + half)
+	var a_low := Vector3(a.x, low, a.z)
+	var a_high := Vector3(a.x, high, a.z)
+	var b_low := Vector3(b.x, low, b.z)
+	var b_high := Vector3(b.x, high, b.z)
+	_add_quad(mesh, a_low, b_low, b_high, a_high)
+	_add_quad(mesh, a_high, b_high, b_low, a_low)
 
 
 ## "Team-coded extraction tiles, drawn in their team's color" — one flat
@@ -287,6 +360,12 @@ func _build_extraction_tiles(team_extraction_cells: Dictionary) -> void:
 ## wide quads, not 1px GPU line primitives (no shader/LOD trick — just
 ## actual geometry with a real width, drawn with the same real-width
 ## convention D2's leg lines / F2's targeting line already use).
+## taskblock-37 Pass E: KNOWN GAP, not fixed this pass — still one flat
+## mesh at `GRID_LINE_HEIGHT` for the whole grid, unlike `_build_terrain`'s
+## now-per-cell tiles. A raised cell's own boundary lines still trace the
+## OLD flat ground plane underneath its terraced floor, not its real top
+## face. Flagged rather than silently left inconsistent; would need the
+## same per-cell-segment treatment `_build_terrain` just got.
 func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()
@@ -368,6 +447,10 @@ func _wall_cross(cell: Vector2i) -> MeshInstance3D:
 	var half: float = cell_size * 0.5 - GRID_LINE_WIDTH
 	var half_width: float = WALL_CROSS_WIDTH * 0.5
 	var origin: Vector3 = Vector3(cell.x, WALL_CROSS_HEIGHT, cell.y) * cell_size
+	# taskblock-37 Pass E: the cell's own real height, same reason `_marker`
+	# now adds it — a wall on a raised cell must cross out THAT cell's own
+	# real ground, not world level 0.
+	origin.y += _height_for(cell)
 
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(WALL_CROSS_COLOR))
 	_add_cross_arm(mesh, origin, Vector3(-half, 0.0, -half), Vector3(half, 0.0, half), half_width)
@@ -421,7 +504,13 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
 	var is_wall: bool = part.id == &"wall"
-	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell):
+	# taskblock-37 Pass E: the cell's own real height — `assembly_placements`
+	# defaults to a flat `height == 0.0`, which used to be harmless (nothing
+	# was ever raised); a cover object or wall on a raised cell now needs to
+	# actually sit ON that cell's own real ground, not float at world level
+	# 0 beneath the terraced terrain `_build_terrain` draws.
+	var height: float = _height_for(cell)
+	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = placement.box.size
@@ -443,7 +532,7 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 			placement.box.center
 		)
 		instance.transform = (
-			_dropped_transform(cell) * world_transform if dropped else world_transform
+			_dropped_transform(cell, height) * world_transform if dropped else world_transform
 		)
 		_static.add_child(instance)
 		# tb31 Pass C: tracked separately so `_process()` only re-evaluates
@@ -453,8 +542,10 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 			_wall_mesh_instances.append(instance)
 
 
-static func _dropped_transform(cell: Vector2i) -> Transform3D:
-	var pivot: Vector3 = Vector3(cell.x, 0.0, cell.y) * UnitGeometry.CELL_SIZE
+static func _dropped_transform(cell: Vector2i, height: float = 0.0) -> Transform3D:
+	var pivot: Vector3 = Vector3(
+		cell.x * UnitGeometry.CELL_SIZE, height, cell.y * UnitGeometry.CELL_SIZE
+	)
 	return (
 		Transform3D(Basis.IDENTITY, pivot)
 		* Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO)
@@ -648,7 +739,11 @@ func show_overwatch_arc(cells: Array[Vector2i]) -> void:
 		box_mesh.size = Vector3(OVERLAY_SIZE, 0.02, OVERLAY_SIZE)
 		box_mesh.material = WorldPalette.translucent_material(OVERWATCH_ARC_COLOR)
 		instance.mesh = box_mesh
-		instance.position = Vector3(cell.x, OVERWATCH_ARC_HEIGHT, cell.y) * UnitGeometry.CELL_SIZE
+		instance.position = Vector3(
+			cell.x * UnitGeometry.CELL_SIZE,
+			OVERWATCH_ARC_HEIGHT + _height_for(cell),
+			cell.y * UnitGeometry.CELL_SIZE
+		)
 		_overwatch_overlay.add_child(instance)
 
 
@@ -666,7 +761,13 @@ func _leg_line(path: Array, color: Color) -> MeshInstance3D:
 	var mesh := ImmediateMesh.new()
 	mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, WorldPalette.overlay_material(color))
 	for cell: Vector2i in path:
-		mesh.surface_add_vertex(Vector3(cell.x, GHOST_HEIGHT, cell.y) * UnitGeometry.CELL_SIZE)
+		mesh.surface_add_vertex(
+			Vector3(
+				cell.x * UnitGeometry.CELL_SIZE,
+				GHOST_HEIGHT + _height_for(cell),
+				cell.y * UnitGeometry.CELL_SIZE
+			)
+		)
 	mesh.surface_end()
 	instance.mesh = mesh
 	return instance
@@ -681,7 +782,11 @@ func _waypoint_label(cell: Vector2i, number: int, leg_cost: float, running_total
 	label.modulate = GHOST_COLOR
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.position = Vector3(cell.x, WAYPOINT_LABEL_HEIGHT, cell.y) * UnitGeometry.CELL_SIZE
+	label.position = Vector3(
+		cell.x * UnitGeometry.CELL_SIZE,
+		WAYPOINT_LABEL_HEIGHT + _height_for(cell),
+		cell.y * UnitGeometry.CELL_SIZE
+	)
 	return label
 
 
@@ -697,8 +802,27 @@ func _marker(
 	box_mesh.size = Vector3(size, 0.02, size)
 	box_mesh.material = WorldPalette.overlay_material(color)
 	instance.mesh = box_mesh
-	instance.position = Vector3(cell.x, height, cell.y) * UnitGeometry.CELL_SIZE
+	# taskblock-37 Pass E: `UnitGeometry.true_height_for_cell` as a base —
+	# every caller (extraction tiles, wall/void indicators, reachable/ghost
+	# overlays, the field-item marker) used to assume ground was always at
+	# world Y 0; a raised cell's own marker must sit on ITS OWN real ground,
+	# not float below (or get buried inside) the terraced terrain
+	# `_build_terrain` now draws.
+	instance.position = Vector3(
+		cell.x * UnitGeometry.CELL_SIZE, height + _height_for(cell), cell.y * UnitGeometry.CELL_SIZE
+	)
 	return instance
+
+
+## `grid` is null whenever a TACTICS overlay method (`show_reachable`/
+## `show_ghost_paths`/`show_overwatch_arc`/etc.) runs against a bare
+## `BoardView` with no prior `build()` call — an established fixture
+## shortcut this file's own test suite already relies on throughout,
+## never a real path (a real caller always has a grid by the time any
+## overlay could be shown at all). Falls back to ground level 0 rather
+## than crashing.
+func _height_for(cell: Vector2i) -> float:
+	return UnitGeometry.true_height_for_cell(cell, grid) if grid != null else 0.0
 
 
 func _clear(container: Node3D) -> void:

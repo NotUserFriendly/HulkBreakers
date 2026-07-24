@@ -40,6 +40,83 @@ func test_ground_and_grid_lines_carry_the_floor_layer() -> void:
 	assert_true(ground.get_layer_mask_value(1), "still renders on the default layer too")
 
 
+## taskblock-37 Pass E: an all-level-0 grid must still terrace to a flat,
+## world-Y-0 ground — the inertness guard tb36/tb37's own regression
+## posture always uses, now proven against the real built mesh's own AABB
+## (docs/10 rule 2: read the real node back) instead of trusted by
+## construction.
+func test_build_terrain_is_flat_when_no_level_is_set() -> void:
+	var grid := Grid.new(4, 3)
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var ground: MeshInstance3D = view._static.get_child(0)
+	var aabb: AABB = ground.mesh.get_aabb()
+	assert_almost_eq(aabb.position.y, 0.0, 0.0001)
+	assert_almost_eq(aabb.size.y, 0.0, 0.0001, "no cell differs from any other -- no riser at all")
+
+
+## taskblock-37 Pass E: the ground used to be one flat `PlaneMesh` with no
+## way to show a cell's own real elevation at all — a raised cell now
+## genuinely raises its own patch of terrain, read back from the built
+## mesh's own AABB rather than trusted from the source.
+func test_build_terrain_reflects_a_raised_cells_own_height() -> void:
+	var grid := Grid.new(4, 3)
+	grid.set_level(Vector2i(2, 1), 2)
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var ground: MeshInstance3D = view._static.get_child(0)
+	var aabb: AABB = ground.mesh.get_aabb()
+	assert_almost_eq(aabb.position.y, 0.0, 0.0001, "the rest of the grid stays at ground level")
+	assert_almost_eq(
+		aabb.end.y,
+		2.0 * UnitGeometry.LEVEL_HEIGHT,
+		0.0001,
+		"the raised cell's own top face must reach its real height"
+	)
+
+
+## A ground overlay marker (extraction tile, wall/void indicator,
+## reachable highlight, ghost path, field-item marker — all built through
+## `_marker`) must sit on the cell's OWN real ground, not float below (or
+## get buried inside) the terraced terrain above.
+func test_marker_sits_on_a_raised_cells_own_real_height() -> void:
+	var grid := Grid.new(4, 3)
+	grid.set_level(Vector2i(2, 1), 3)
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table(), {0: [Vector2i(2, 1)]})
+
+	var tile: MeshInstance3D = view._static.get_child(2)
+	assert_almost_eq(
+		tile.position.y, 3.0 * UnitGeometry.LEVEL_HEIGHT + BoardView.EXTRACTION_TILE_HEIGHT, 0.0001
+	)
+
+
+## A cover blocker on a raised cell must sit on that cell's own real
+## ground too (`assembly_placements` defaults to height 0.0 — `_spawn_
+## blocker` must pass the cell's own real height explicitly).
+func test_spawn_blocker_sits_on_a_raised_cells_own_real_height() -> void:
+	var grid := Grid.new(4, 3)
+	grid.set_level(Vector2i(2, 1), 2)
+	var crate := Part.new()
+	crate.id = &"crate"
+	crate.hp = 5
+	crate.max_hp = 5
+	crate.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
+	grid.blockers[Vector2i(2, 1)] = crate
+	var view := BoardView.new()
+	add_child_autofree(view)
+
+	view.build(grid, DataLibrary.material_table())
+
+	var box: MeshInstance3D = view._static.get_child(2)
+	assert_almost_eq(box.transform.origin.y, 2.0 * UnitGeometry.LEVEL_HEIGHT, 0.0001)
+
+
 ## docs/10 taskblock04 C1: "a dropped arm renders as an actual arm — plate,
 ## pistol and all — lying on the ground." A field object can be a whole
 ## part TREE, not just the root's own `volume` — the old
