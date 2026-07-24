@@ -283,6 +283,8 @@ func test_barrel_pallet_barrel_count_is_deterministic_and_in_range() -> void:
 ## part of) is at the point `_carve_room` produces one — same pattern
 ## other logic tests use to check a "private" static helper directly
 ## (e.g. `AimView._decal_basis`, `ResolutionPlayer._play_slide`).
+## taskblock-39 Pass B: `_carve_room` now carves into a private
+## `MapGenScratch`, not a real `Grid`.
 func test_carved_rooms_are_at_least_seven_on_their_min_dimension() -> void:
 	var rng := RandomNumberGenerator.new()
 	for room_seed in range(SEED_COUNT):
@@ -290,7 +292,13 @@ func test_carved_rooms_are_at_least_seven_on_their_min_dimension() -> void:
 		var rooms: Array[Rect2i] = []
 		# A leaf exactly at the split threshold's boundary — the smallest a
 		# leaf can ever be handed to `_carve_room` in practice.
-		MapGen._carve_room(Grid.new(20, 20), Rect2i(Vector2i.ZERO, Vector2i(9, 9)), rng, rooms)
+		MapGen._carve_room(
+			Grid.new(20, 20),
+			MapGenScratch.new(20, 20),
+			Rect2i(Vector2i.ZERO, Vector2i(9, 9)),
+			rng,
+			rooms
+		)
 		var room: Rect2i = rooms[0]
 		assert_true(
 			mini(room.size.x, room.size.y) >= 7,
@@ -301,25 +309,21 @@ func test_carved_rooms_are_at_least_seven_on_their_min_dimension() -> void:
 ## taskblock-16 Pass C: "hallway width... target 3-5." Same direct-call
 ## pattern as the room-size test above — width is a property of the
 ## carve itself, not something separable from the merged terrain output.
+## taskblock-39 Pass B: scratch already defaults every cell to WALL on
+## construction — no manual fill needed the way a real `Grid` used to.
 func test_carved_corridors_are_three_to_five_wide() -> void:
 	var rng := RandomNumberGenerator.new()
 	for corridor_seed in range(SEED_COUNT):
 		rng.seed = corridor_seed
-		var grid := Grid.new(30, 30)
-		# `generate()` starts every cell as WALL before carving anything —
-		# Grid.new's own default (OPEN) would make the whole column read
-		# as "open" regardless of what the corridor actually carved.
-		for y in range(grid.rows):
-			for x in range(grid.width):
-				grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
-		MapGen._carve_corridor(grid, Vector2i(2, 2), Vector2i(20, 2), rng)
+		var scratch := MapGenScratch.new(30, 30)
+		MapGen._carve_corridor(Grid.new(30, 30), scratch, Vector2i(2, 2), Vector2i(20, 2), rng)
 
 		# The corridor runs along y=2; measure the open band's thickness at
 		# a cross-section clear of the L-turn (x=10, still on the first,
 		# horizontal leg).
 		var thickness := 0
-		for y in range(grid.rows):
-			if grid.get_terrain(Vector2i(10, y)) == Enums.TerrainType.OPEN:
+		for y in range(scratch.rows):
+			if scratch.get_terrain(Vector2i(10, y)) == Enums.TerrainType.OPEN:
 				thickness += 1
 		assert_between(
 			thickness,
@@ -347,13 +351,16 @@ func test_default_size_map_splits_into_multiple_rooms_with_hallways() -> void:
 	for map_seed in range(SEED_COUNT):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = map_seed
-		var grid := Grid.new(WIDTH, HEIGHT)
-		for y in range(HEIGHT):
-			for x in range(WIDTH):
-				grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
+		var scratch := MapGenScratch.new(WIDTH, HEIGHT)
 
 		var rooms: Array[Rect2i] = []
-		MapGen._split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(WIDTH, HEIGHT)), rng, rooms)
+		MapGen._split_and_carve(
+			Grid.new(WIDTH, HEIGHT),
+			scratch,
+			Rect2i(Vector2i.ZERO, Vector2i(WIDTH, HEIGHT)),
+			rng,
+			rooms
+		)
 
 		assert_true(
 			rooms.size() >= 3, "seed %d: expected >= 3 rooms, got %d" % [map_seed, rooms.size()]
@@ -365,7 +372,7 @@ func test_default_size_map_splits_into_multiple_rooms_with_hallways() -> void:
 		var open_cell_count := 0
 		for y in range(HEIGHT):
 			for x in range(WIDTH):
-				if grid.get_terrain(Vector2i(x, y)) == Enums.TerrainType.OPEN:
+				if scratch.get_terrain(Vector2i(x, y)) == Enums.TerrainType.OPEN:
 					open_cell_count += 1
 		var hallway_cell_count: int = open_cell_count - room_cell_count
 		assert_true(
@@ -424,7 +431,10 @@ func test_spawn_zones_are_distinct_even_in_a_single_room_grid() -> void:
 ## taskblock-38 Pass B: "MapGen writes floor parts... terrain/level become
 ## derived from placement" — the real acceptance is that the finished
 ## surfaces store matches the finished terrain/level cell for cell, across
-## a whole generated map, not just a sample.
+## a whole generated map, not just a sample. taskblock-39 Pass B: this also
+## covers "surfaces are emitted with no double-placement rejections" —
+## a cell where `GridPlacement.place` silently returned null would show up
+## here as `surfaces.size() != 1`.
 func test_generated_map_surfaces_match_terrain_and_level_cell_for_cell() -> void:
 	for map_seed in range(SEED_COUNT):
 		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
@@ -461,97 +471,49 @@ func test_generated_map_surfaces_match_terrain_and_level_cell_for_cell() -> void
 				)
 
 
-## taskblock-39 Pass B: `_place_floor` is the (now inline, per-cell)
-## replacement for tb38 Pass C's own one-shot `_author_surfaces` — same
-## formula, invoked as generation goes rather than derived once at the end.
-func test_place_floor_floors_open_and_ramp_cells_with_correct_height_and_facing() -> void:
-	var grid := Grid.new(2, 1)
-	grid.set_terrain(Vector2i(0, 0), Enums.TerrainType.OPEN)
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.RAMP)
-
-	MapGen._place_floor(grid, Vector2i(0, 0))
-	MapGen._place_floor(grid, Vector2i(1, 0), 1.5)
-
-	var open_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(0, 0))
-	assert_eq(open_surfaces.size(), 1)
-	assert_eq(open_surfaces[0].part.id, &"ship_floor")
-	assert_almost_eq(open_surfaces[0].height, 0.0, 0.0001)
-
-	var ramp_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(1, 0))
-	assert_eq(ramp_surfaces.size(), 1)
-	assert_eq(ramp_surfaces[0].part.id, &"ramp")
-	assert_almost_eq(ramp_surfaces[0].height, RampGeometry.STANDING_OFFSET, 0.0001)
-	assert_almost_eq(ramp_surfaces[0].facing, 1.5, 0.0001)
-
-
-## taskblock-39 Pass B: idempotent under the placement model — calling
-## `_place_floor` twice on the same cell REPLACES the surface rather than
-## being refused, which is what lets carving author surfaces inline as it
-## goes instead of deriving them once, after the fact, at the very end
-## (`GridPlacement`'s own downward-attach grammar correctly rejects a
-## second `GROUND` placement onto an already-floored cell — the fix lives
-## here, not by loosening that grammar).
-func test_place_floor_replaces_an_existing_surface_rather_than_being_refused() -> void:
-	var grid := Grid.new(1, 1)
-	grid.set_terrain(Vector2i(0, 0), Enums.TerrainType.OPEN)
-	MapGen._place_floor(grid, Vector2i(0, 0))
-
-	grid.set_level(Vector2i(0, 0), 2.0)
-	MapGen._place_floor(grid, Vector2i(0, 0))
-
-	var surfaces: Array[Surface] = grid.surfaces_at(Vector2i(0, 0))
-	assert_eq(surfaces.size(), 1, "must replace, not stack, a second placement on the same cell")
-	assert_almost_eq(surfaces[0].height, 2.0 * UnitGeometry.LEVEL_HEIGHT, 0.0001)
-
-
 ## taskblock-39 Pass B's own literal acceptance: "carving the same cell
-## twice succeeds and leaves one surface, not an error" — the exact shape
-## a re-carved corridor produces (`_split_and_carve`'s own sibling
-## corridors can legitimately re-visit a cell a previous carve already
-## opened).
+## twice succeeds and leaves one surface, not an error" — scratch has no
+## attachment grammar to fight at all (it's a plain array), and `_emit`
+## only ever visits the finished result once, so this holds by
+## construction now rather than needing an idempotency fix of its own.
 func test_carving_the_same_cell_twice_leaves_exactly_one_surface() -> void:
 	var grid := Grid.new(3, 3)
+	var scratch := MapGenScratch.new(3, 3)
 	var cell := Vector2i(1, 1)
-	MapGen._set_open(grid, cell)
-	MapGen._set_open(grid, cell)
+	MapGen._set_open(grid, scratch, cell)
+	MapGen._set_open(grid, scratch, cell)  # a re-carved corridor visits the same cell twice
+
+	MapGen._emit(grid, scratch, {})
 
 	var surfaces: Array[Surface] = grid.surfaces_at(cell)
-	assert_eq(surfaces.size(), 1, "a re-carve must replace, not stack, the cell's own surface")
+	assert_eq(surfaces.size(), 1, "a re-carve must leave exactly one surface, not stack or error")
 	assert_eq(surfaces[0].part.id, &"ship_floor")
 
 
-## taskblock-39 Pass B: the forced fallback corridor must still work when
-## the grid already carries real surfaces everywhere carved so far — its
-## own internal `Pathfinder` call now runs the surface-based path (not the
-## legacy terrain one, `GridLegacyBridge`'s own migration bridge), since
-## surfaces are authored inline as generation goes, not derived once at
-## the very end the way tb38 Pass B originally had it.
-func test_ensure_spawns_connected_fallback_completes_on_an_already_surfaced_map() -> void:
+## taskblock-39 Pass B: the forced fallback corridor now runs entirely in
+## scratch — no `Grid`/`Grid.surfaces` involved in carving at all, so
+## nothing about the placement model can reject it.
+func test_ensure_spawns_connected_fallback_connects_disconnected_spawns() -> void:
 	var grid := Grid.new(10, 3)
-	for y in range(grid.rows):
-		for x in range(grid.width):
-			grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
+	var scratch := MapGenScratch.new(10, 3)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	var a := Vector2i(0, 1)
 	var b := Vector2i(9, 1)
-	MapGen._set_open(grid, a)
-	MapGen._set_open(grid, b)
-	grid.set_terrain(a, Enums.TerrainType.SPAWN_A)
-	grid.set_terrain(b, Enums.TerrainType.SPAWN_B)
+	MapGen._set_open(grid, scratch, a)
+	MapGen._set_open(grid, scratch, b)
+	# Everything between stays WALL (scratch's own default fill) --
+	# deliberately disconnected, forcing the fallback.
 
-	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	var pf := Pathfinder.new(scratch.as_temporary_grid(), {Enums.TerrainType.WALL: -1.0})
 	assert_true(pf.astar(a, b).is_empty(), "sanity: the two spawns start disconnected")
-	assert_false(grid.surfaces.is_empty(), "sanity: the map already carries real surfaces")
 
-	MapGen._ensure_spawns_connected(grid, a, b, rng)
+	MapGen._ensure_spawns_connected(grid, scratch, a, b, rng)
 
-	var pf_after := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	var pf_after := Pathfinder.new(scratch.as_temporary_grid(), {Enums.TerrainType.WALL: -1.0})
 	assert_false(
 		pf_after.astar(a, b).is_empty(), "the fallback must actually connect the two spawns"
 	)
-	assert_eq(grid.get_terrain(a), Enums.TerrainType.SPAWN_A, "spawn A's own label must survive")
-	assert_eq(grid.get_terrain(b), Enums.TerrainType.SPAWN_B, "spawn B's own label must survive")
 
 
 ## taskblock-38 Pass C: docs/PLAN.md's corrected ramp profile — two tiles,
@@ -559,29 +521,35 @@ func test_ensure_spawns_connected_fallback_completes_on_an_already_surfaced_map(
 ## `RAISED_ROOM_LEVEL - 0.5`; `outer`, one further out along the same
 ## approach, is the lower step at `RAISED_ROOM_LEVEL - 1.0` (real ground
 ## for a level-1 room). Both share one facing (the direction of ascent).
+## taskblock-39 Pass B: `_connect_with_a_ramp` now carves scratch and
+## records facing into `ramp_facings` again — surfaces aren't placed until
+## `_emit` runs, at the very end.
 func test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_levels() -> void:
-	var grid := Grid.new(6, 3)
+	var scratch := MapGenScratch.new(6, 3)
 	var room := Rect2i(Vector2i(3, 1), Vector2i(2, 1))
 	for y in range(room.position.y, room.position.y + room.size.y):
 		for x in range(room.position.x, room.position.x + room.size.x):
-			grid.set_level(Vector2i(x, y), MapGen.RAISED_ROOM_LEVEL)
+			scratch.set_level(Vector2i(x, y), MapGen.RAISED_ROOM_LEVEL)
+	# `MapGenScratch` defaults every cell to WALL (unlike the old bare
+	# `Grid.new()`, which defaulted to OPEN) -- the ring cells this ramp
+	# approach needs must be carved open explicitly, matching what real
+	# BSP carving would already have done by the time `_author_levels`
+	# (and therefore `_connect_with_a_ramp`) runs.
+	scratch.set_terrain(Vector2i(2, 1), Enums.TerrainType.OPEN)
+	scratch.set_terrain(Vector2i(1, 1), Enums.TerrainType.OPEN)
 
-	MapGen._connect_with_a_ramp(grid, room)
+	var ramp_facings: Dictionary = {}
+	MapGen._connect_with_a_ramp(scratch, room, ramp_facings)
 
-	assert_eq(grid.get_terrain(Vector2i(2, 1)), Enums.TerrainType.RAMP, "the room-bordering tile")
-	assert_eq(grid.get_terrain(Vector2i(1, 1)), Enums.TerrainType.RAMP, "one tile further out")
-	assert_almost_eq(grid.get_level(Vector2i(2, 1)), MapGen.RAISED_ROOM_LEVEL - 0.5, 0.0001)
-	assert_almost_eq(grid.get_level(Vector2i(1, 1)), MapGen.RAISED_ROOM_LEVEL - 1.0, 0.0001)
-
-	# taskblock-39 Pass B: ramp surfaces are placed inline now, by
-	# `_connect_with_a_ramp` itself — not derived later from a facing dict.
-	var inner_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(2, 1))
-	var outer_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(1, 1))
-	assert_eq(inner_surfaces.size(), 1)
-	assert_eq(outer_surfaces.size(), 1)
-	assert_eq(inner_surfaces[0].part.id, &"ramp")
-	assert_eq(outer_surfaces[0].part.id, &"ramp")
-	assert_almost_eq(inner_surfaces[0].facing, outer_surfaces[0].facing, 0.0001)
+	assert_eq(
+		scratch.get_terrain(Vector2i(2, 1)), Enums.TerrainType.RAMP, "the room-bordering tile"
+	)
+	assert_eq(scratch.get_terrain(Vector2i(1, 1)), Enums.TerrainType.RAMP, "one tile further out")
+	assert_almost_eq(scratch.get_level(Vector2i(2, 1)), MapGen.RAISED_ROOM_LEVEL - 0.5, 0.0001)
+	assert_almost_eq(scratch.get_level(Vector2i(1, 1)), MapGen.RAISED_ROOM_LEVEL - 1.0, 0.0001)
+	assert_true(ramp_facings.has(Vector2i(2, 1)))
+	assert_true(ramp_facings.has(Vector2i(1, 1)))
+	assert_almost_eq(ramp_facings[Vector2i(2, 1)], ramp_facings[Vector2i(1, 1)], 0.0001)
 
 
 ## taskblock-38 Pass C: a stranded RAMP tile (its own room already flooded
@@ -594,23 +562,18 @@ func test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_le
 ## gap, just never observable, since it was always authored at level 0).
 func test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_ground() -> void:
 	var grid := Grid.new(4, 1)
+	var scratch := MapGenScratch.new(4, 1)
 	var rooms: Array[Rect2i] = [Rect2i(Vector2i(0, 0), Vector2i(1, 1))]
 	# A wall seals the anchor at (0, 0) off from everything past it -- the
 	# ramp tile at (2, 0) has nothing reachable on either side.
-	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
-	grid.set_terrain(Vector2i(2, 0), Enums.TerrainType.RAMP)
-	grid.set_level(Vector2i(2, 0), MapGen.RAISED_ROOM_LEVEL - 0.5)
+	scratch.set_terrain(Vector2i(1, 0), Enums.TerrainType.WALL)
+	scratch.set_terrain(Vector2i(2, 0), Enums.TerrainType.RAMP)
+	scratch.set_level(Vector2i(2, 0), MapGen.RAISED_ROOM_LEVEL - 0.5)
 
-	MapGen._repair_stranded_elevation(grid, rooms)
+	MapGen._repair_stranded_elevation(grid, scratch, rooms)
 
-	assert_eq(grid.get_terrain(Vector2i(2, 0)), Enums.TerrainType.OPEN)
-	assert_almost_eq(grid.get_level(Vector2i(2, 0)), 0.0, 0.0001)
-	# taskblock-39 Pass B: the revert also re-places the cell's own surface
-	# inline (a plain ship_floor now, not the ramp it used to be).
-	var surfaces: Array[Surface] = grid.surfaces_at(Vector2i(2, 0))
-	assert_eq(surfaces.size(), 1)
-	assert_eq(surfaces[0].part.id, &"ship_floor")
-	assert_almost_eq(surfaces[0].height, 0.0, 0.0001)
+	assert_eq(scratch.get_terrain(Vector2i(2, 0)), Enums.TerrainType.OPEN)
+	assert_almost_eq(scratch.get_level(Vector2i(2, 0)), 0.0, 0.0001)
 
 
 ## A ring position with no room for a second tile behind it (map edge on
@@ -618,20 +581,28 @@ func test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_gr
 ## single-tile one. `_repair_stranded_elevation`'s own flood-and-flatten
 ## safety net is what catches the room this leaves stranded.
 func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_tiles() -> void:
-	var grid := Grid.new(2, 3)
+	var scratch := MapGenScratch.new(2, 3)
 	var room := Rect2i(Vector2i(1, 1), Vector2i(1, 1))
-	grid.set_level(Vector2i(1, 1), MapGen.RAISED_ROOM_LEVEL)
+	scratch.set_level(Vector2i(1, 1), MapGen.RAISED_ROOM_LEVEL)
+	# Every ring cell is carved OPEN (matching what a real carve would have
+	# done) so this genuinely tests "no ring position has room for a SECOND
+	# tile" — the map edge is one cell away on every side — rather than the
+	# uninteresting "nothing here is open at all" (`MapGenScratch` defaults
+	# every cell to WALL, unlike the old bare `Grid.new()`).
+	for cell: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, 2), Vector2i(1, 2)]:
+		scratch.set_terrain(cell, Enums.TerrainType.OPEN)
 
-	MapGen._connect_with_a_ramp(grid, room)
+	var ramp_facings: Dictionary = {}
+	MapGen._connect_with_a_ramp(scratch, room, ramp_facings)
 
-	for y in range(grid.rows):
-		for x in range(grid.width):
+	for y in range(scratch.rows):
+		for x in range(scratch.width):
 			assert_ne(
-				grid.get_terrain(Vector2i(x, y)),
+				scratch.get_terrain(Vector2i(x, y)),
 				Enums.TerrainType.RAMP,
 				"no ring position here supports a two-tile ramp"
 			)
-	assert_true(grid.surfaces.is_empty(), "nothing should have been placed")
+	assert_true(ramp_facings.is_empty())
 
 
 func test_spawn_zones_are_walkable() -> void:
@@ -641,3 +612,34 @@ func test_spawn_zones_are_walkable() -> void:
 		assert_true(pf.is_walkable(cell))
 	for cell: Vector2i in _find_cells(grid, Enums.TerrainType.SPAWN_B):
 		assert_true(pf.is_walkable(cell))
+
+
+## taskblock-39 Pass B's own literal acceptance: "map_gen.gd contains no
+## reads or writes of Grid's terrain/level API — carving touches only its
+## own scratch." `_place_spawn_zones`/`_mark_zone` (SPAWN_A/SPAWN_B are a
+## real-`Grid`-only overlay, never scratch's concern) and `_emit` (the ONE
+## place scratch becomes real) are the only legitimate exceptions.
+func test_map_gen_touches_grids_terrain_level_api_only_in_spawn_marking_and_emit() -> void:
+	var allowed_functions: Array[String] = ["_place_spawn_zones", "_mark_zone", "_emit"]
+	var file := FileAccess.open("res://src/logic/map_gen.gd", FileAccess.READ)
+	assert_not_null(file, "sanity: map_gen.gd must exist to check at all")
+	var current_function := ""
+	var offending: Array[String] = []
+	while not file.eof_reached():
+		var line: String = file.get_line()
+		var stripped: String = line.strip_edges()
+		if stripped.begins_with("static func "):
+			current_function = stripped.trim_prefix("static func ").split("(")[0]
+		var touches_terrain_level: bool = (
+			"grid.set_terrain(" in line
+			or "grid.get_terrain(" in line
+			or "grid.set_level(" in line
+			or "grid.get_level(" in line
+		)
+		if touches_terrain_level and current_function not in allowed_functions:
+			offending.append("%s: %s" % [current_function, stripped])
+	assert_eq(
+		offending,
+		[] as Array[String],
+		"terrain/level API used outside spawn-marking/emit: %s" % [offending]
+	)
