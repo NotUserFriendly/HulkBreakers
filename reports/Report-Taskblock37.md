@@ -100,6 +100,15 @@ Run live with the supervisor per the taskblock's own fence, not headless. Two ro
   missing a RAMP tile's own `+0.5` offset that `BoardView._spawn_blocker` already rendered cover at —
   a hit on ramp-standing cover could land somewhere the rendered box never occupied. Fixed to read
   `UnitGeometry.true_height_for_cell`, matching the unit projection line just above it.
+- **Supervisor's follow-up bug report: "mousing over a cell requires you to mouse over the base of
+  the terrain, not the top. Likely true in every case."** Root cause: `BoardPicker.cell_at_ray`/
+  `plane_hit_t` (taskblock03 D1, predates multi-level entirely) always intersected a fixed `y == 0`
+  plane, never updated when elevation landed — a latent gap the terracing exposed rather than
+  caused. Fixed with an optional `grid` param and iterative refinement (guess a height, find where
+  the ray crosses it, look up that candidate cell's own real height, repeat until it stabilizes,
+  capped at 4 passes so a ray skimming a riser boundary still terminates); `grid` defaults to null,
+  so every pre-elevation flat-board test/caller is unaffected. `TacticsController` and
+  `SpectatorOverlay` now thread their real grid through at every hover/click/debug-panel-pick site.
 
 Still open, per `PLAN.md`: the camera at height and the wall cutout against elevation, neither
 exercised live yet.
