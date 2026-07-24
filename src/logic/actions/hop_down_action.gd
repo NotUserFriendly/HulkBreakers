@@ -58,7 +58,7 @@ func apply(state: CombatState) -> void:
 	FaceAction.face_for_free(
 		state, actual, FaceAction.orientation_toward(origin_cell, target_cell), &"free_with_move"
 	)
-	_log(state, actual)
+	_log(state, actual, origin_cell)
 
 
 func _can_afford(actual: Unit) -> bool:
@@ -73,19 +73,34 @@ func _can_afford(actual: Unit) -> bool:
 	return true
 
 
-func _log(state: CombatState, actual: Unit) -> void:
+func _log(state: CombatState, actual: Unit, origin_cell: Vector2i) -> void:
 	var text: String = "HopDownAction: unit %d hopped down to %s" % [actual.id, target_cell]
 	state.log_action(text)
 	if state.is_preview:
 		return
-	state.combat_log.emit(
-		LogEvent.new(
-			state.round_number,
-			Enums.Phase.RESOLUTION,
-			actual.id,
-			&"hopped_down",
-			{"cell": target_cell, "cost": Pathfinder.HOP_DOWN_COST},
-			"unit %d hopped down to %s" % [actual.id, target_cell]
+	(
+		state
+		. combat_log
+		. emit(
+			(
+				LogEvent
+				. new(
+					state.round_number,
+					Enums.Phase.RESOLUTION,
+					actual.id,
+					&"hopped_down",
+					# taskblock-37 Pass E: `path`, the same shape a `move` event
+					# carries — ResolutionPlayer's own slide playback reads this
+					# generically, so a hop-down plays as a real vertical slide
+					# with no dedicated animation code at all.
+					{
+						"cell": target_cell,
+						"cost": Pathfinder.HOP_DOWN_COST,
+						"path": [origin_cell, target_cell] as Array[Vector2i]
+					},
+					"unit %d hopped down to %s" % [actual.id, target_cell]
+				)
+			)
 		)
 	)
 
