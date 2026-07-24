@@ -548,3 +548,23 @@ func test_true_height_for_cell_adds_a_half_level_on_a_ramp_tile() -> void:
 		2.0 * UnitGeometry.LEVEL_HEIGHT + UnitGeometry.LEVEL_HEIGHT * 0.5,
 		0.0001
 	)
+
+
+## taskblock-38 Pass C: once a grid carries any real placement at all, true
+## height reads the placed `Surface` back directly — never re-derived from
+## `Grid.level`, which this test deliberately leaves untouched/wrong to
+## prove the surface, not the old field, is what actually wins.
+func test_true_height_for_cell_reads_the_placed_surface_once_placement_exists() -> void:
+	var grid := Grid.new(3, 3)
+	GridPlacement.place(grid, Vector2i(1, 1), DataLibrary.get_part(&"ship_floor"), 7.5)
+
+	assert_almost_eq(UnitGeometry.true_height_for_cell(Vector2i(1, 1), grid), 7.5, 0.0001)
+
+
+## An unfloored cell on a real (placement-authored) grid falls back to
+## 0.0, same sane default as everywhere else in this class.
+func test_true_height_for_cell_is_zero_for_an_unfloored_cell_on_a_real_grid() -> void:
+	var grid := Grid.new(3, 3)
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(&"ship_floor"), 1.0)
+
+	assert_almost_eq(UnitGeometry.true_height_for_cell(Vector2i(1, 1), grid), 0.0, 0.0001)

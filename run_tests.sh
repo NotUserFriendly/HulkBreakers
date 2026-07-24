@@ -13,7 +13,12 @@ GODOT="${GODOT:-godot}"
 #    single-fix tests that push it one over — taskblock-26 Pass E, then
 #    taskblock-27 Pass D5) — a GUT test file's own `test_*` functions are
 #    deliberately many small, focused cases, not something to split apart just
-#    to satisfy a linter default; max-file-lines raised from 1000 to 1050 —
+#    to satisfy a linter default; raised again to 45 across taskblock-38 Pass
+#    C — test_pathfinder.gd's own placement-mode migration-bridge coverage
+#    (walkable-tag gating, ramp-tagged edges, MP round-up) landed alongside
+#    every existing terrain-based test rather than replacing any of them,
+#    same reasoning as every prior bump; max-file-lines raised from 1000 to
+#    1050 —
 #    src/logic/ai/unit_ai.gd (a single cohesive planner class, "the block's own
 #    spine") crossed 1000 re-diagnosing taskblock-26's own B2, splitting it is
 #    a bigger, riskier undertaking than a linter default warrants; the

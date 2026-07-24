@@ -468,3 +468,67 @@ func test_truncate_to_budget_on_an_empty_path_returns_empty() -> void:
 	var grid := Grid.new(3, 1)
 	var pf := Pathfinder.new(grid)
 	assert_eq(pf.truncate_to_budget([], 5.0), [] as Array[Vector2i])
+
+
+## taskblock-38 Pass C: "a cell with no surface has no edge into it at
+## all." Every test above uses a bare `Grid.new()` with NO surfaces
+## authored anywhere — the migration bridge that keeps them on the OLD
+## terrain-based path. These tests instead place real `Surface`s
+## (`GridPlacement`, the same `ship_floor`/`ramp` parts `MapGen` uses), so
+## a real grid's own new walkability rule is actually exercised.
+func _floor(grid: Grid, cell: Vector2i, height: float = 0.0, facing: float = 0.0) -> void:
+	GridPlacement.place(grid, cell, DataLibrary.get_part(&"ship_floor"), height, facing)
+
+
+func _ramp(grid: Grid, cell: Vector2i, height: float, facing: float = 0.0) -> void:
+	GridPlacement.place(grid, cell, DataLibrary.get_part(&"ramp"), height, facing)
+
+
+func test_placement_mode_an_unfloored_cell_has_no_inbound_edge() -> void:
+	var grid := Grid.new(3, 1)
+	_floor(grid, Vector2i(0, 0))
+	# (1, 0) is deliberately left unfloored -- terrain still defaults to
+	# OPEN, but that no longer matters once ANY surface exists on the grid.
+	_floor(grid, Vector2i(2, 0))
+	var pf := Pathfinder.new(grid)
+
+	assert_false(pf.is_walkable(Vector2i(1, 0)), "an unfloored cell has no edge into it at all")
+	assert_eq(pf.astar(Vector2i(0, 0), Vector2i(2, 0)), [] as Array[Vector2i])
+
+
+func test_placement_mode_rejects_a_surface_missing_the_walkable_tag() -> void:
+	var grid := Grid.new(2, 1)
+	_floor(grid, Vector2i(0, 0))
+	var decorative := Part.new()
+	decorative.id = &"decorative"
+	decorative.attaches_to = [GridPlacement.GROUND]
+	GridPlacement.place(grid, Vector2i(1, 0), decorative, 0.0)
+	var pf := Pathfinder.new(grid)
+
+	assert_false(
+		pf.is_walkable(Vector2i(1, 0)), "a surface without the walkable tag isn't standable"
+	)
+
+
+## "Partial MP costs round up" (docs/PLAN.md, settled) — a 1.2 MP climb
+## (CLIMB_COST 4.0 * a 0.3-level rise) charges 2, not 1.2.
+func test_placement_mode_partial_climb_cost_rounds_up() -> void:
+	var grid := Grid.new(2, 1)
+	_floor(grid, Vector2i(0, 0), 0.0)
+	_floor(grid, Vector2i(1, 0), 0.3)
+	var pf := Pathfinder.new(grid, {}, true)
+
+	assert_almost_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)), 2.0, 0.0001)
+
+
+## A ramp-tagged surface edge stays ordinary movement cost regardless of
+## how large the height delta is, and needs no climb capability — the
+## same "a sloped tile costs 1 MP like any other" rule tb37 already
+## established, now keyed off the surface's own tag instead of terrain.
+func test_placement_mode_ramp_surface_edge_is_free_regardless_of_height_delta() -> void:
+	var grid := Grid.new(2, 1)
+	_floor(grid, Vector2i(0, 0), 0.0)
+	_ramp(grid, Vector2i(1, 0), 5.0)
+	var pf := Pathfinder.new(grid)  # cannot climb
+
+	assert_almost_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)), Pathfinder.DEFAULT_COST, 0.0001)

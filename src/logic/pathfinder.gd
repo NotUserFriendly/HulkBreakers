@@ -76,6 +76,25 @@ func _base_cost(cell: Vector2i) -> float:
 		return -1.0
 	if _grid.blockers.has(cell) and (_grid.blockers[cell] as Part).hp > 0:
 		return -1.0
+	if _grid.surfaces.is_empty():
+		return _legacy_terrain_cost(cell)
+	return DEFAULT_COST if Surface.first_walkable(_grid.surfaces_at(cell)) != null else -1.0
+
+
+## taskblock-38 Pass C: "a cell with no surface has no edge into it at
+## all" — real walkability now comes from a placed, `walkable`-tagged
+## `Surface`, not the terrain enum. `_grid.surfaces.is_empty()` is the
+## migration bridge, not a second competing decision path: every grid
+## `MapGen` actually generates authors a surface on every floored cell
+## (Pass B), so the surface-based branch above is what every REAL bout
+## runs on. This branch only ever engages for a hand-built fixture `Grid`
+## that predates the placement model entirely and never authored a single
+## surface anywhere — the same "a caller not yet updated keeps seeing the
+## old behavior" convention this codebase already leans on for a null/
+## empty default elsewhere (`Socket.joint_cladding`, `Part.mesh_scene`,
+## ...). Flagged in `docs/PLAN.md` as a follow-on: migrate the test
+## suite's own hand-built grids to real placement, then delete this.
+func _legacy_terrain_cost(cell: Vector2i) -> float:
 	var terrain: int = _grid.get_terrain(cell)
 	if _terrain_costs.has(terrain):
 		var cost: float = _terrain_costs[terrain]
@@ -89,33 +108,65 @@ func _base_cost(cell: Vector2i) -> float:
 ## mover can't cross (a climb beyond `MAX_CLIMB_LEVELS`, any climb at all
 ## without `_can_climb`, or a drop beyond `MAX_HOP_DOWN_LEVELS`).
 ##
-## taskblock-37 Pass C: `docs/PLAN.md`'s settled cost table, verbatim —
-## - a RAMP edge (either endpoint tagged `Enums.TerrainType.RAMP`) is
-##   ordinary pathing at the plain terrain cost, whatever the level delta:
-##   "a sloped tile costs 1 MP like any other; the path just changes
-##   height as it goes." No special-casing beyond that check.
-## - same level: unchanged, the plain terrain cost (the vast majority of
-##   edges, and everything before this pass).
+## taskblock-38 Pass C: `docs/PLAN.md`'s settled cost table, verbatim —
+## - a RAMP edge (either endpoint carrying a `Surface.RAMP_TAG`-tagged
+##   surface) is ordinary pathing at the plain terrain cost, whatever the
+##   level delta: "a sloped tile costs 1 MP like any other; the path just
+##   changes height as it goes." No special-casing beyond that check.
+## - same height: unchanged, the plain terrain cost (the vast majority of
+##   edges).
 ## - climbing UP with no ramp: capability-gated, `CLIMB_COST` scaled by how
-##   much of a full level's rise this edge actually covers (`taskblock-37
-##   Pass E follow-up: `Grid.level` is continuous now, so this is a real
-##   proportion, not always exactly one whole level — the same formula
-##   `ClimbAction`'s own cost already used), capped at `MAX_CLIMB_LEVELS` —
-##   a non-climber simply has no such edge, not an illegal-but-attempted
-##   one.
+##   much of a full level's rise this edge actually covers, capped at
+##   `MAX_CLIMB_LEVELS` — a non-climber simply has no such edge, not an
+##   illegal-but-attempted one. **Partial MP costs round up** (docs/
+##   PLAN.md, settled, not a fork) — a 1.2 MP climb charges 2.
 ## - dropping DOWN with no ramp: always legal up to `MAX_HOP_DOWN_LEVELS`,
 ##   flat `HOP_DOWN_COST` regardless of capability or how far within that
 ##   cap it actually drops — the taskblock's own settled table gives
 ##   hop-down no half variant, and "hop-down at 1 MP against 8 MP to climb
 ##   back makes one-way routes for free" is deliberately asymmetric.
-## - a deeper drop, or a climb beyond the cap, is simply not an edge —
-##   `_grid.get_level` alone decides this from the two cells, no per-unit
-##   fall-damage/knockdown modeling belongs here (later work, with perks
-##   to avoid it).
+## - a deeper drop, or a climb beyond the cap, is simply not an edge — no
+##   per-unit fall-damage/knockdown modeling belongs here (later work,
+##   with perks to avoid it).
+##
+## Height now comes from each cell's own placed `Surface`
+## (`UnitGeometry.true_height_for_cell`), not `Grid.level` directly — see
+## `_legacy_move_cost`'s own doc comment for the same migration bridge
+## `_base_cost` uses.
 func move_cost(from: Vector2i, to: Vector2i) -> float:
 	var base: float = _base_cost(to)
 	if base < 0.0:
 		return -1.0
+	if _grid.surfaces.is_empty():
+		return _legacy_move_cost(from, to, base)
+	if _is_ramp_surface(from) or _is_ramp_surface(to):
+		return base
+	var from_height: float = UnitGeometry.true_height_for_cell(from, _grid)
+	var to_height: float = UnitGeometry.true_height_for_cell(to, _grid)
+	var level_delta: float = (to_height - from_height) / UnitGeometry.LEVEL_HEIGHT
+	if is_zero_approx(level_delta):
+		return base
+	if level_delta > 0.0:
+		if not _can_climb or level_delta > MAX_CLIMB_LEVELS:
+			return -1.0
+		return ceil(CLIMB_COST * level_delta)
+	if -level_delta > MAX_HOP_DOWN_LEVELS:
+		return -1.0
+	return HOP_DOWN_COST
+
+
+func _is_ramp_surface(cell: Vector2i) -> bool:
+	for surface: Surface in _grid.surfaces_at(cell):
+		if Surface.RAMP_TAG in surface.part.tags:
+			return true
+	return false
+
+
+## taskblock-38 Pass C: the pre-placement formula, verbatim — engages only
+## when `_grid.surfaces` is empty everywhere (see `_base_cost`'s own
+## migration-bridge doc comment). `Grid.level`/terrain read directly here,
+## exactly as every caller of a hand-built fixture Grid already expects.
+func _legacy_move_cost(from: Vector2i, to: Vector2i, base: float) -> float:
 	if (
 		_grid.get_terrain(from) == Enums.TerrainType.RAMP
 		or _grid.get_terrain(to) == Enums.TerrainType.RAMP
