@@ -87,7 +87,16 @@ extends GutTest
 ## job to fix (Pass E's own view/legibility work, and any future AI climb
 ## integration, are separate). Re-picked by the same brute-force search
 ## over nearby seeds: 12373.
-const SEED := 12373
+##
+## taskblock-38 Pass C: re-picked once more, same reason again —
+## `MapGen`'s own ramp connection is now a two-tile, 22.5-degree profile
+## instead of tb37's one-tile 45-degree rise (docs/PLAN.md's corrected
+## model), which reshapes which rooms actually get ramped and how, the
+## same "adding real content reshuffles a fixed seed's whole draw
+## sequence" pattern this file's own header already documents for every
+## prior generator change. Re-picked by the same brute-force search over
+## nearby seeds: 12383.
+const SEED := 12383
 const WIDTH := 24
 const HEIGHT := 16
 const TURN_CAP := 400

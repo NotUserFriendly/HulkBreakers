@@ -64,7 +64,13 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rooms: Array[Rect2i] = []
 	_split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(width, rows)), rng, rooms)
 
-	_author_levels(grid, rooms, rng)
+	# taskblock-38 Pass C: Vector2i -> float (radians) — the facing
+	# `_connect_with_a_ramp` computes for each ramp tile it stamps, carried
+	# through to `_author_surfaces` (surfaces are still authored once, last;
+	# see that function's own doc comment for why this stays safe against
+	# every MapGen-internal Pathfinder call in between).
+	var ramp_facings: Dictionary = {}
+	_author_levels(grid, rooms, rng, ramp_facings)
 
 	_scatter_cover(grid, rng)
 
@@ -90,7 +96,7 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	# everything else has settled, mirrors the finished grid instead of
 	# rewriting the generator's own delicate internals to place surfaces as
 	# their primitive operation — see `_author_surfaces`'s own doc comment.
-	_author_surfaces(grid)
+	_author_surfaces(grid, ramp_facings)
 
 	return grid
 
@@ -183,14 +189,16 @@ static func _carve_room(
 ## `generate()` runs its own `_repair_stranded_elevation` pass AFTER cover
 ## scatter too — see that function's own doc comment for why one pass
 ## right here isn't enough on its own.
-static func _author_levels(grid: Grid, rooms: Array[Rect2i], rng: RandomNumberGenerator) -> void:
+static func _author_levels(
+	grid: Grid, rooms: Array[Rect2i], rng: RandomNumberGenerator, ramp_facings: Dictionary
+) -> void:
 	for room: Rect2i in rooms:
 		if rng.randf() >= RAISED_ROOM_PROBABILITY:
 			continue
 		for y in range(room.position.y, room.position.y + room.size.y):
 			for x in range(room.position.x, room.position.x + room.size.x):
 				grid.set_level(Vector2i(x, y), RAISED_ROOM_LEVEL)
-		_connect_with_a_ramp(grid, room)
+		_connect_with_a_ramp(grid, room, ramp_facings)
 
 
 ## General safety net, not another hand-chased special case: a raised
@@ -207,6 +215,20 @@ static func _author_levels(grid: Grid, rooms: Array[Rect2i], rng: RandomNumberGe
 ## same posture any unit without `CLIMBER` always has) and flatten any
 ## `OPEN` cell it can't reach back to level 0 — "ramps couldn't fix it"
 ## becomes "don't raise it after all," never a silently broken island.
+##
+## taskblock-38 Pass C: a stranded RAMP tile now needs the same treatment
+## as a stranded room interior, not just OPEN cells — the corrected
+## two-tile profile authors the tile BORDERING the room at a genuinely
+## non-zero level (`RAISED_ROOM_LEVEL - 0.5`), so an orphaned ramp (its
+## own room already flattened above, or its OTHER tile cut off by cover)
+## would otherwise sit at that half-level forever, an isolated "raised"
+## island of one or two tiles this pass's own reachability test can
+## actually see (tb37's single-tile ramp was always authored at its LOWER
+## endpoint, level 0 — the same latent gap existed there too, just never
+## observable, since a level-0 tile never read as "raised" to begin with).
+## Reverting a stranded ramp fully to plain OPEN ground at level 0 is
+## strictly correct: a ramp with nothing reachable on either end isn't a
+## ramp, it's just a dead-end tile.
 static func _repair_stranded_elevation(grid: Grid, rooms: Array[Rect2i]) -> void:
 	@warning_ignore("integer_division")
 	var anchor: Vector2i = rooms[0].position + rooms[0].size / 2
@@ -218,44 +240,93 @@ static func _repair_stranded_elevation(grid: Grid, rooms: Array[Rect2i]) -> void
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
-			if grid.get_terrain(cell) == Enums.TerrainType.OPEN and not reachable_set.has(cell):
+			if reachable_set.has(cell):
+				continue
+			if grid.get_terrain(cell) == Enums.TerrainType.OPEN:
+				grid.set_level(cell, 0)
+			elif grid.get_terrain(cell) == Enums.TerrainType.RAMP:
+				grid.set_terrain(cell, Enums.TerrainType.OPEN)
 				grid.set_level(cell, 0)
 
 
-## The first already-OPEN, genuinely LOWER-level cell in the ring
-## immediately surrounding `room` becomes a RAMP, its own `Grid.level` left
-## untouched (a ramp's level is authored at its LOWER endpoint, docs/
-## PLAN.md's own settled height model) — BSP corridor-carving already
-## guarantees every room borders at least one other open cell at ground
-## level, so this always finds one. One ramp is enough to make the whole
-## room generally reachable without climbing; the rest of its border can
-## stay a real, unramped ledge.
+## taskblock-38 Pass C: TWO already-OPEN, genuinely lower-level cells in a
+## straight line out from `room` become a two-tile RAMP — docs/PLAN.md's
+## corrected profile ("22.5 degrees, +0.5 level per tile, two tiles per
+## full level," replacing tb37's one-tile 45-degree rise). The tile
+## bordering the room (`inner`) is the UPPER step, its own `Grid.level`
+## authored at `RAISED_ROOM_LEVEL - 0.5`; the tile one further out
+## (`outer`), continuing the same outward direction, is the LOWER step, at
+## `RAISED_ROOM_LEVEL - 1.0` (== real ground level for a level-1 room) — a
+## ramp's level is still authored at its own LOWER endpoint (docs/PLAN.md's
+## settled height model), just per-tile now instead of once for the whole
+## approach. `facing` (the direction of ascent, `outer` -> `inner`) is
+## recorded into `ramp_facings` for both tiles, read back by
+## `_author_surfaces`.
 ##
-## Requires `get_level(cell) < RAISED_ROOM_LEVEL`, not just `OPEN` terrain
-## — raising a room changes its own cells' LEVEL only, never their
-## terrain, so an adjacent cell that's actually part of a DIFFERENT,
-## already-raised room still reads as plain `OPEN` too. Ramping a border
-## cell against one of those bridges two level-1 areas together instead
-## of connecting down to real ground level, silently stranding both rooms
-## from spawn even though each one technically "has a ramp."
-static func _connect_with_a_ramp(grid: Grid, room: Rect2i) -> void:
+## Requires BOTH cells `OPEN` and below `RAISED_ROOM_LEVEL` (same "a
+## neighbour that's actually part of a DIFFERENT already-raised room still
+## reads as plain OPEN too" reasoning tb37 already established) — a ring
+## position that can't support the full two-tile depth (an edge of the
+## map, a wall, a corridor only one cell deep) simply isn't used; if NO
+## ring position anywhere around the room supports it, the room gets no
+## ramp at all and `_repair_stranded_elevation`'s own flood-and-flatten
+## safety net (below) catches it, exactly its documented job.
+static func _connect_with_a_ramp(grid: Grid, room: Rect2i, ramp_facings: Dictionary) -> void:
 	for y in range(room.position.y - 1, room.position.y + room.size.y + 1):
 		for x in range(room.position.x - 1, room.position.x + room.size.x + 1):
-			var cell := Vector2i(x, y)
+			var inner := Vector2i(x, y)
 			var inside_room: bool = (
 				x >= room.position.x
 				and x < room.position.x + room.size.x
 				and y >= room.position.y
 				and y < room.position.y + room.size.y
 			)
-			if inside_room or not grid.in_bounds(cell):
+			if inside_room or not grid.in_bounds(inner):
 				continue
-			if grid.get_terrain(cell) != Enums.TerrainType.OPEN:
+			var outward: Variant = _outward_ring_direction(room, inner)
+			if outward == null:
+				continue  # a diagonal corner cell — no cardinal approach to ramp along
+			if grid.get_terrain(inner) != Enums.TerrainType.OPEN:
 				continue
-			if grid.get_level(cell) >= RAISED_ROOM_LEVEL:
+			if grid.get_level(inner) >= RAISED_ROOM_LEVEL:
 				continue
-			grid.set_terrain(cell, Enums.TerrainType.RAMP)
+			var outer: Vector2i = inner + (outward as Vector2i)
+			if not grid.in_bounds(outer):
+				continue
+			if grid.get_terrain(outer) != Enums.TerrainType.OPEN:
+				continue
+			if grid.get_level(outer) >= RAISED_ROOM_LEVEL:
+				continue
+			_stamp_ramp_pair(grid, inner, outer, outward as Vector2i, ramp_facings)
 			return
+
+
+## The cardinal direction from `room` through `cell` (a ring cell exactly
+## one step outside it), or null for a diagonal corner cell — a ramp only
+## ever runs along a single N/S/E/W approach, never a corner graft (the
+## same orthogonal-only posture `GridPlacement`'s own attachment grammar
+## uses).
+static func _outward_ring_direction(room: Rect2i, cell: Vector2i) -> Variant:
+	var x_inside: bool = cell.x >= room.position.x and cell.x < room.position.x + room.size.x
+	var y_inside: bool = cell.y >= room.position.y and cell.y < room.position.y + room.size.y
+	if x_inside:
+		return Vector2i(0, -1) if cell.y < room.position.y else Vector2i(0, 1)
+	if y_inside:
+		return Vector2i(-1, 0) if cell.x < room.position.x else Vector2i(1, 0)
+	return null
+
+
+static func _stamp_ramp_pair(
+	grid: Grid, inner: Vector2i, outer: Vector2i, outward: Vector2i, ramp_facings: Dictionary
+) -> void:
+	var ascent := Vector2(-outward.x, -outward.y)
+	var facing: float = BodyProjector.orientation_for(ascent)
+	grid.set_terrain(inner, Enums.TerrainType.RAMP)
+	grid.set_level(inner, RAISED_ROOM_LEVEL - 0.5)
+	ramp_facings[inner] = facing
+	grid.set_terrain(outer, Enums.TerrainType.RAMP)
+	grid.set_level(outer, RAISED_ROOM_LEVEL - 1.0)
+	ramp_facings[outer] = facing
 
 
 static func _carve_corridor(
@@ -487,27 +558,36 @@ static func _finalize_walls_and_void(grid: Grid) -> void:
 ## terrain + level directly" — the pass's own source-of-truth move,
 ## implemented as a derivation from the just-finished grid rather than a
 ## rewrite of every carve/ramp/repair function's own internals (those stay
-## entirely terrain/level-driven; see `generate()`'s own call-site
-## comment). Every OPEN or RAMP cell (including SPAWN_A/SPAWN_B — walkable
-## ground tagged for spawning, not a different physical fact) gets a
-## flyweight floor surface at its own real height
-## (`UnitGeometry.true_height_for_cell`, the exact existing formula,
-## unchanged); a VOID cell gets none — "a cell with no surface derives as
-## empty."
-static func _author_surfaces(grid: Grid) -> void:
+## entirely terrain/level-driven; every MapGen-internal `Pathfinder` call
+## during generation runs BEFORE this — the last step — so its own
+## migration-bridge `surfaces.is_empty()` check sees no surfaces yet and
+## correctly keeps reading terrain/level exactly as before;
+## `Pathfinder._base_cost`'s own doc comment has the full reasoning). Every
+## OPEN or RAMP cell (including SPAWN_A/SPAWN_B — walkable ground tagged
+## for spawning, not a different physical fact) gets a flyweight floor
+## surface at its own real height; a VOID cell gets none — "a cell with no
+## surface derives as empty."
+##
+## taskblock-38 Pass C: a RAMP cell's own height adds `RampGeometry.
+## STANDING_OFFSET` (+0.25 level — docs/PLAN.md's corrected 22.5-degree,
+## two-tiles-per-level profile) instead of tb37's flat +0.5, and carries
+## the facing `_connect_with_a_ramp` recorded for it — this is now the
+## ONLY place height still gets computed FROM terrain/level rather than
+## read back from a surface; every other consumer goes through
+## `UnitGeometry.true_height_for_cell`, which reads what this bakes in.
+static func _author_surfaces(grid: Grid, ramp_facings: Dictionary) -> void:
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if grid.get_terrain(cell) == Enums.TerrainType.VOID:
 				continue
-			var part_id: StringName = (
-				&"ramp" if grid.get_terrain(cell) == Enums.TerrainType.RAMP else &"ship_floor"
-			)
+			var is_ramp: bool = grid.get_terrain(cell) == Enums.TerrainType.RAMP
+			var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
+			var height: float = grid.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
+			if is_ramp:
+				height += RampGeometry.STANDING_OFFSET
 			GridPlacement.place(
-				grid,
-				cell,
-				DataLibrary.get_part(part_id),
-				UnitGeometry.true_height_for_cell(cell, grid)
+				grid, cell, DataLibrary.get_part(part_id), height, ramp_facings.get(cell, 0.0)
 			)
 
 
