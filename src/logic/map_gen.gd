@@ -64,13 +64,7 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rooms: Array[Rect2i] = []
 	_split_and_carve(grid, Rect2i(Vector2i.ZERO, Vector2i(width, rows)), rng, rooms)
 
-	# taskblock-38 Pass C: Vector2i -> float (radians) — the facing
-	# `_connect_with_a_ramp` computes for each ramp tile it stamps, carried
-	# through to `_author_surfaces` (surfaces are still authored once, last;
-	# see that function's own doc comment for why this stays safe against
-	# every MapGen-internal Pathfinder call in between).
-	var ramp_facings: Dictionary = {}
-	_author_levels(grid, rooms, rng, ramp_facings)
+	_author_levels(grid, rooms, rng)
 
 	_scatter_cover(grid, rng)
 
@@ -86,17 +80,6 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	_ensure_spawns_connected(grid, spawn_cells[0], spawn_cells[1], rng)
 
 	_finalize_walls_and_void(grid)
-
-	# taskblock-38 Pass B: last step, deliberately — every carve/ramp/repair/
-	# spawn function above still owns terrain/level exactly as it always
-	# has, since the BSP carve legitimately re-visits the SAME cell more
-	# than once (a re-carved corridor, `_ensure_spawns_connected`'s own
-	# emergency fallback), which `GridPlacement`'s own attachment grammar
-	# correctly refuses a second time. Placing surfaces once, after
-	# everything else has settled, mirrors the finished grid instead of
-	# rewriting the generator's own delicate internals to place surfaces as
-	# their primitive operation — see `_author_surfaces`'s own doc comment.
-	_author_surfaces(grid, ramp_facings)
 
 	return grid
 
@@ -189,16 +172,16 @@ static func _carve_room(
 ## `generate()` runs its own `_repair_stranded_elevation` pass AFTER cover
 ## scatter too — see that function's own doc comment for why one pass
 ## right here isn't enough on its own.
-static func _author_levels(
-	grid: Grid, rooms: Array[Rect2i], rng: RandomNumberGenerator, ramp_facings: Dictionary
-) -> void:
+static func _author_levels(grid: Grid, rooms: Array[Rect2i], rng: RandomNumberGenerator) -> void:
 	for room: Rect2i in rooms:
 		if rng.randf() >= RAISED_ROOM_PROBABILITY:
 			continue
 		for y in range(room.position.y, room.position.y + room.size.y):
 			for x in range(room.position.x, room.position.x + room.size.x):
-				grid.set_level(Vector2i(x, y), RAISED_ROOM_LEVEL)
-		_connect_with_a_ramp(grid, room, ramp_facings)
+				var cell := Vector2i(x, y)
+				grid.set_level(cell, RAISED_ROOM_LEVEL)
+				_place_floor(grid, cell)
+		_connect_with_a_ramp(grid, room)
 
 
 ## General safety net, not another hand-chased special case: a raised
@@ -244,9 +227,11 @@ static func _repair_stranded_elevation(grid: Grid, rooms: Array[Rect2i]) -> void
 				continue
 			if grid.get_terrain(cell) == Enums.TerrainType.OPEN:
 				grid.set_level(cell, 0)
+				_place_floor(grid, cell)
 			elif grid.get_terrain(cell) == Enums.TerrainType.RAMP:
 				grid.set_terrain(cell, Enums.TerrainType.OPEN)
 				grid.set_level(cell, 0)
+				_place_floor(grid, cell)
 
 
 ## taskblock-38 Pass C: TWO already-OPEN, genuinely lower-level cells in a
@@ -260,8 +245,9 @@ static func _repair_stranded_elevation(grid: Grid, rooms: Array[Rect2i]) -> void
 ## ramp's level is still authored at its own LOWER endpoint (docs/PLAN.md's
 ## settled height model), just per-tile now instead of once for the whole
 ## approach. `facing` (the direction of ascent, `outer` -> `inner`) is
-## recorded into `ramp_facings` for both tiles, read back by
-## `_author_surfaces`.
+## placed directly onto each tile's own surface as soon as it's computed
+## (`_stamp_ramp_pair`) — taskblock-39 Pass B: no more carrying it forward
+## to a later one-shot derivation.
 ##
 ## Requires BOTH cells `OPEN` and below `RAISED_ROOM_LEVEL` (same "a
 ## neighbour that's actually part of a DIFFERENT already-raised room still
@@ -271,7 +257,7 @@ static func _repair_stranded_elevation(grid: Grid, rooms: Array[Rect2i]) -> void
 ## ring position anywhere around the room supports it, the room gets no
 ## ramp at all and `_repair_stranded_elevation`'s own flood-and-flatten
 ## safety net (below) catches it, exactly its documented job.
-static func _connect_with_a_ramp(grid: Grid, room: Rect2i, ramp_facings: Dictionary) -> void:
+static func _connect_with_a_ramp(grid: Grid, room: Rect2i) -> void:
 	for y in range(room.position.y - 1, room.position.y + room.size.y + 1):
 		for x in range(room.position.x - 1, room.position.x + room.size.x + 1):
 			var inner := Vector2i(x, y)
@@ -297,7 +283,7 @@ static func _connect_with_a_ramp(grid: Grid, room: Rect2i, ramp_facings: Diction
 				continue
 			if grid.get_level(outer) >= RAISED_ROOM_LEVEL:
 				continue
-			_stamp_ramp_pair(grid, inner, outer, outward as Vector2i, ramp_facings)
+			_stamp_ramp_pair(grid, inner, outer, outward as Vector2i)
 			return
 
 
@@ -317,16 +303,16 @@ static func _outward_ring_direction(room: Rect2i, cell: Vector2i) -> Variant:
 
 
 static func _stamp_ramp_pair(
-	grid: Grid, inner: Vector2i, outer: Vector2i, outward: Vector2i, ramp_facings: Dictionary
+	grid: Grid, inner: Vector2i, outer: Vector2i, outward: Vector2i
 ) -> void:
 	var ascent := Vector2(-outward.x, -outward.y)
 	var facing: float = BodyProjector.orientation_for(ascent)
 	grid.set_terrain(inner, Enums.TerrainType.RAMP)
 	grid.set_level(inner, RAISED_ROOM_LEVEL - 0.5)
-	ramp_facings[inner] = facing
+	_place_floor(grid, inner, facing)
 	grid.set_terrain(outer, Enums.TerrainType.RAMP)
 	grid.set_level(outer, RAISED_ROOM_LEVEL - 1.0)
-	ramp_facings[outer] = facing
+	_place_floor(grid, outer, facing)
 
 
 static func _carve_corridor(
@@ -382,6 +368,30 @@ static func _set_open(grid: Grid, cell: Vector2i) -> void:
 	grid.set_opacity(cell, 0.0)
 	grid.blockers.erase(cell)
 	grid.set_level(cell, 0)
+	_place_floor(grid, cell)
+
+
+## taskblock-39 Pass B: the ONE place a GROUND-attaching floor surface gets
+## placed (or replaced) during generation — idempotent under the placement
+## model by construction, since the BSP carve/ramp/repair/spawn machinery
+## legitimately re-visits the same cell more than once (a re-carved
+## corridor, a repair pass, `_ensure_spawns_connected`'s own emergency
+## fallback), and `GridPlacement`'s attachment grammar correctly refuses to
+## place `GROUND` onto an already-floored cell twice. Clearing first and
+## re-placing IS the fix, per the taskblock's own explicit instruction —
+## never loosen the grammar itself just to tolerate a double-place. Reads
+## height/ramp status from whatever `terrain`/`level` the caller already
+## set moments earlier, same formula tb38 Pass C's own one-shot
+## `_author_surfaces` used, just invoked per-cell, inline, as generation
+## goes rather than once at the very end.
+static func _place_floor(grid: Grid, cell: Vector2i, facing: float = 0.0) -> void:
+	grid.clear_surfaces(cell)
+	var is_ramp: bool = grid.get_terrain(cell) == Enums.TerrainType.RAMP
+	var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
+	var height: float = grid.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
+	if is_ramp:
+		height += RampGeometry.STANDING_OFFSET
+	GridPlacement.place(grid, cell, DataLibrary.get_part(part_id), height, facing)
 
 
 ## taskblock-16 Pass B: cover used to be a single synthetic, permanent,
@@ -549,46 +559,13 @@ static func _finalize_walls_and_void(grid: Grid) -> void:
 		if exposed_by_cell[cell]:
 			grid.set_terrain(cell, Enums.TerrainType.OPEN)
 			grid.blockers[cell] = DataLibrary.get_part(&"wall")
+			# taskblock-39 Pass B: level is already 0 here (never raised — a
+			# WALL-scratch cell was never part of any carved room), so
+			# `_place_floor` reads back the correct ground-level height.
+			_place_floor(grid, cell)
 		else:
 			grid.set_terrain(cell, Enums.TerrainType.VOID)
 			grid.set_opacity(cell, 0.0)
-
-
-## taskblock-38 Pass B: "MapGen writes floor parts instead of writing
-## terrain + level directly" — the pass's own source-of-truth move,
-## implemented as a derivation from the just-finished grid rather than a
-## rewrite of every carve/ramp/repair function's own internals (those stay
-## entirely terrain/level-driven; every MapGen-internal `Pathfinder` call
-## during generation runs BEFORE this — the last step — so its own
-## migration-bridge `surfaces.is_empty()` check sees no surfaces yet and
-## correctly keeps reading terrain/level exactly as before;
-## `Pathfinder._base_cost`'s own doc comment has the full reasoning). Every
-## OPEN or RAMP cell (including SPAWN_A/SPAWN_B — walkable ground tagged
-## for spawning, not a different physical fact) gets a flyweight floor
-## surface at its own real height; a VOID cell gets none — "a cell with no
-## surface derives as empty."
-##
-## taskblock-38 Pass C: a RAMP cell's own height adds `RampGeometry.
-## STANDING_OFFSET` (+0.25 level — docs/PLAN.md's corrected 22.5-degree,
-## two-tiles-per-level profile) instead of tb37's flat +0.5, and carries
-## the facing `_connect_with_a_ramp` recorded for it — this is now the
-## ONLY place height still gets computed FROM terrain/level rather than
-## read back from a surface; every other consumer goes through
-## `UnitGeometry.true_height_for_cell`, which reads what this bakes in.
-static func _author_surfaces(grid: Grid, ramp_facings: Dictionary) -> void:
-	for y in range(grid.rows):
-		for x in range(grid.width):
-			var cell := Vector2i(x, y)
-			if grid.get_terrain(cell) == Enums.TerrainType.VOID:
-				continue
-			var is_ramp: bool = grid.get_terrain(cell) == Enums.TerrainType.RAMP
-			var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
-			var height: float = grid.get_level(cell) * UnitGeometry.LEVEL_HEIGHT
-			if is_ramp:
-				height += RampGeometry.STANDING_OFFSET
-			GridPlacement.place(
-				grid, cell, DataLibrary.get_part(part_id), height, ramp_facings.get(cell, 0.0)
-			)
 
 
 static func _is_exposed_wall(grid: Grid, cell: Vector2i) -> bool:

@@ -461,13 +461,16 @@ func test_generated_map_surfaces_match_terrain_and_level_cell_for_cell() -> void
 				)
 
 
-func test_author_surfaces_floors_open_and_ramp_cells_and_skips_void() -> void:
-	var grid := Grid.new(3, 1)
+## taskblock-39 Pass B: `_place_floor` is the (now inline, per-cell)
+## replacement for tb38 Pass C's own one-shot `_author_surfaces` — same
+## formula, invoked as generation goes rather than derived once at the end.
+func test_place_floor_floors_open_and_ramp_cells_with_correct_height_and_facing() -> void:
+	var grid := Grid.new(2, 1)
 	grid.set_terrain(Vector2i(0, 0), Enums.TerrainType.OPEN)
 	grid.set_terrain(Vector2i(1, 0), Enums.TerrainType.RAMP)
-	grid.set_terrain(Vector2i(2, 0), Enums.TerrainType.VOID)
 
-	MapGen._author_surfaces(grid, {Vector2i(1, 0): 1.5})
+	MapGen._place_floor(grid, Vector2i(0, 0))
+	MapGen._place_floor(grid, Vector2i(1, 0), 1.5)
 
 	var open_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(0, 0))
 	assert_eq(open_surfaces.size(), 1)
@@ -480,7 +483,75 @@ func test_author_surfaces_floors_open_and_ramp_cells_and_skips_void() -> void:
 	assert_almost_eq(ramp_surfaces[0].height, RampGeometry.STANDING_OFFSET, 0.0001)
 	assert_almost_eq(ramp_surfaces[0].facing, 1.5, 0.0001)
 
-	assert_true(grid.surfaces_at(Vector2i(2, 0)).is_empty())
+
+## taskblock-39 Pass B: idempotent under the placement model — calling
+## `_place_floor` twice on the same cell REPLACES the surface rather than
+## being refused, which is what lets carving author surfaces inline as it
+## goes instead of deriving them once, after the fact, at the very end
+## (`GridPlacement`'s own downward-attach grammar correctly rejects a
+## second `GROUND` placement onto an already-floored cell — the fix lives
+## here, not by loosening that grammar).
+func test_place_floor_replaces_an_existing_surface_rather_than_being_refused() -> void:
+	var grid := Grid.new(1, 1)
+	grid.set_terrain(Vector2i(0, 0), Enums.TerrainType.OPEN)
+	MapGen._place_floor(grid, Vector2i(0, 0))
+
+	grid.set_level(Vector2i(0, 0), 2.0)
+	MapGen._place_floor(grid, Vector2i(0, 0))
+
+	var surfaces: Array[Surface] = grid.surfaces_at(Vector2i(0, 0))
+	assert_eq(surfaces.size(), 1, "must replace, not stack, a second placement on the same cell")
+	assert_almost_eq(surfaces[0].height, 2.0 * UnitGeometry.LEVEL_HEIGHT, 0.0001)
+
+
+## taskblock-39 Pass B's own literal acceptance: "carving the same cell
+## twice succeeds and leaves one surface, not an error" — the exact shape
+## a re-carved corridor produces (`_split_and_carve`'s own sibling
+## corridors can legitimately re-visit a cell a previous carve already
+## opened).
+func test_carving_the_same_cell_twice_leaves_exactly_one_surface() -> void:
+	var grid := Grid.new(3, 3)
+	var cell := Vector2i(1, 1)
+	MapGen._set_open(grid, cell)
+	MapGen._set_open(grid, cell)
+
+	var surfaces: Array[Surface] = grid.surfaces_at(cell)
+	assert_eq(surfaces.size(), 1, "a re-carve must replace, not stack, the cell's own surface")
+	assert_eq(surfaces[0].part.id, &"ship_floor")
+
+
+## taskblock-39 Pass B: the forced fallback corridor must still work when
+## the grid already carries real surfaces everywhere carved so far — its
+## own internal `Pathfinder` call now runs the surface-based path (not the
+## legacy terrain one, `GridLegacyBridge`'s own migration bridge), since
+## surfaces are authored inline as generation goes, not derived once at
+## the very end the way tb38 Pass B originally had it.
+func test_ensure_spawns_connected_fallback_completes_on_an_already_surfaced_map() -> void:
+	var grid := Grid.new(10, 3)
+	for y in range(grid.rows):
+		for x in range(grid.width):
+			grid.set_terrain(Vector2i(x, y), Enums.TerrainType.WALL)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var a := Vector2i(0, 1)
+	var b := Vector2i(9, 1)
+	MapGen._set_open(grid, a)
+	MapGen._set_open(grid, b)
+	grid.set_terrain(a, Enums.TerrainType.SPAWN_A)
+	grid.set_terrain(b, Enums.TerrainType.SPAWN_B)
+
+	var pf := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	assert_true(pf.astar(a, b).is_empty(), "sanity: the two spawns start disconnected")
+	assert_false(grid.surfaces.is_empty(), "sanity: the map already carries real surfaces")
+
+	MapGen._ensure_spawns_connected(grid, a, b, rng)
+
+	var pf_after := Pathfinder.new(grid, {Enums.TerrainType.WALL: -1.0})
+	assert_false(
+		pf_after.astar(a, b).is_empty(), "the fallback must actually connect the two spawns"
+	)
+	assert_eq(grid.get_terrain(a), Enums.TerrainType.SPAWN_A, "spawn A's own label must survive")
+	assert_eq(grid.get_terrain(b), Enums.TerrainType.SPAWN_B, "spawn B's own label must survive")
 
 
 ## taskblock-38 Pass C: docs/PLAN.md's corrected ramp profile — two tiles,
@@ -495,16 +566,22 @@ func test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_le
 		for x in range(room.position.x, room.position.x + room.size.x):
 			grid.set_level(Vector2i(x, y), MapGen.RAISED_ROOM_LEVEL)
 
-	var ramp_facings: Dictionary = {}
-	MapGen._connect_with_a_ramp(grid, room, ramp_facings)
+	MapGen._connect_with_a_ramp(grid, room)
 
 	assert_eq(grid.get_terrain(Vector2i(2, 1)), Enums.TerrainType.RAMP, "the room-bordering tile")
 	assert_eq(grid.get_terrain(Vector2i(1, 1)), Enums.TerrainType.RAMP, "one tile further out")
 	assert_almost_eq(grid.get_level(Vector2i(2, 1)), MapGen.RAISED_ROOM_LEVEL - 0.5, 0.0001)
 	assert_almost_eq(grid.get_level(Vector2i(1, 1)), MapGen.RAISED_ROOM_LEVEL - 1.0, 0.0001)
-	assert_true(ramp_facings.has(Vector2i(2, 1)))
-	assert_true(ramp_facings.has(Vector2i(1, 1)))
-	assert_almost_eq(ramp_facings[Vector2i(2, 1)], ramp_facings[Vector2i(1, 1)], 0.0001)
+
+	# taskblock-39 Pass B: ramp surfaces are placed inline now, by
+	# `_connect_with_a_ramp` itself — not derived later from a facing dict.
+	var inner_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(2, 1))
+	var outer_surfaces: Array[Surface] = grid.surfaces_at(Vector2i(1, 1))
+	assert_eq(inner_surfaces.size(), 1)
+	assert_eq(outer_surfaces.size(), 1)
+	assert_eq(inner_surfaces[0].part.id, &"ramp")
+	assert_eq(outer_surfaces[0].part.id, &"ramp")
+	assert_almost_eq(inner_surfaces[0].facing, outer_surfaces[0].facing, 0.0001)
 
 
 ## taskblock-38 Pass C: a stranded RAMP tile (its own room already flooded
@@ -528,6 +605,12 @@ func test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_gr
 
 	assert_eq(grid.get_terrain(Vector2i(2, 0)), Enums.TerrainType.OPEN)
 	assert_almost_eq(grid.get_level(Vector2i(2, 0)), 0.0, 0.0001)
+	# taskblock-39 Pass B: the revert also re-places the cell's own surface
+	# inline (a plain ship_floor now, not the ramp it used to be).
+	var surfaces: Array[Surface] = grid.surfaces_at(Vector2i(2, 0))
+	assert_eq(surfaces.size(), 1)
+	assert_eq(surfaces[0].part.id, &"ship_floor")
+	assert_almost_eq(surfaces[0].height, 0.0, 0.0001)
 
 
 ## A ring position with no room for a second tile behind it (map edge on
@@ -539,8 +622,7 @@ func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_t
 	var room := Rect2i(Vector2i(1, 1), Vector2i(1, 1))
 	grid.set_level(Vector2i(1, 1), MapGen.RAISED_ROOM_LEVEL)
 
-	var ramp_facings: Dictionary = {}
-	MapGen._connect_with_a_ramp(grid, room, ramp_facings)
+	MapGen._connect_with_a_ramp(grid, room)
 
 	for y in range(grid.rows):
 		for x in range(grid.width):
@@ -549,7 +631,7 @@ func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_t
 				Enums.TerrainType.RAMP,
 				"no ring position here supports a two-tile ramp"
 			)
-	assert_true(ramp_facings.is_empty())
+	assert_true(grid.surfaces.is_empty(), "nothing should have been placed")
 
 
 func test_spawn_zones_are_walkable() -> void:

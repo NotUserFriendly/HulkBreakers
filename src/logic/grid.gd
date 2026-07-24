@@ -195,6 +195,14 @@ func add_surface(cell: Vector2i, surface: Surface) -> void:
 	(surfaces[cell] as Array[Surface]).append(surface)
 
 
+## taskblock-39 Pass B: the idempotent-carving seam — `MapGen._place_floor`
+## clears a cell's own surfaces before re-placing, so a re-carved corridor
+## or a repair pass can touch the same cell twice without `GridPlacement`'s
+## attachment grammar correctly refusing a second `GROUND` placement.
+func clear_surfaces(cell: Vector2i) -> void:
+	surfaces.erase(cell)
+
+
 func neighbors(cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	for offset: Vector2i in NEIGHBOR_OFFSETS:
