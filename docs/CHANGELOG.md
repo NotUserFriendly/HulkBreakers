@@ -131,8 +131,18 @@ altered a single level shot.
   LEVEL_HEIGHT` directly, missing a RAMP tile's own `+0.5` rest offset that `BoardView._spawn_
   blocker` already rendered cover at — a hit on ramp-standing cover could land somewhere the
   rendered box never occupied. Fixed to read `UnitGeometry.true_height_for_cell` like the unit
-  projection just above it already did. **Still open, per `PLAN.md`:** the camera at height and the
-  wall cutout against elevation, both needing the supervisor's own eyes, not headless-verifiable.
+  projection just above it already did.
+  **Cell picking fixed too, a pre-existing gap the terracing exposed rather than caused:**
+  `BoardPicker.cell_at_ray`/`plane_hit_t` (taskblock03 D1, predates multi-level entirely) always
+  intersected a fixed `y == 0` plane — correct until a cell's own real top face could move off world
+  0. Supervisor: "mousing over a cell requires you to mouse over the base of the terrain, not the
+  top." Both now take an optional `grid` and iteratively resolve against the real terrain (guess a
+  height, find the crossing, look up that candidate cell's own real height, repeat, capped at 4
+  passes so a ray skimming a riser boundary still terminates); `grid` defaults to null, so every
+  flat-board caller is unaffected. `TacticsController`/`SpectatorOverlay` thread their real grid
+  through at every hover/click/debug-panel-pick call site.
+  **Still open, per `PLAN.md`:** the camera at height and the wall cutout against elevation, both
+  needing the supervisor's own eyes, not headless-verifiable.
 
 **Multi-level: elevation reaches the game (tb37, docs/PLAN.md)** — tb36 built the geometry and left
 it wired to nothing; four passes make level mean something. Same "one seeded full-mission bout,
