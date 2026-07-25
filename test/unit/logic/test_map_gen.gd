@@ -202,12 +202,12 @@ func test_cover_density_within_target_band() -> void:
 ## wall cell" (which would multiply `ShotPlane.build`'s own unculled
 ## per-shot scan by however much solid rock a map has).
 ## tb31 Pass C: an uncarved cell is only ever a scratch marker —
-## `_finalize_walls_and_void` resolves every remaining uncarved cell into
+## `_finalize_walls_and_empty` resolves every remaining uncarved cell into
 ## either a real, destructible wall Part on real floored ground (exposed —
 ## reachable from the playable area) or empty space (buried in unreachable
 ## rock, no Part at all, the same perf reasoning BR30.10 originally
 ## established for skipping it).
-## taskblock-39 Pass D: `Grid.terrain`'s `WALL`/`OPEN`/`VOID` codes are
+## taskblock-39 Pass D: `Grid.terrain` and its physical-state codes are
 ## deleted — nothing on the real emitted `Grid` distinguishes "uncarved"
 ## from anything else any more, so the "no raw WALL cell survives" half of
 ## this test no longer has a claim to make; only the settled floored+wall-

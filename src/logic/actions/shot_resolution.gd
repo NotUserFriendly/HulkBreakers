@@ -27,7 +27,7 @@ extends RefCounted
 ## future payload/AoE system has a real flag to check.
 ## taskblock-21 Pass F: `max_range` — the weapon's own authored
 ## `RangeModel.max_range` if the caller has one, 0.0 (unauthored) otherwise
-## — is ONLY consulted on a genuine miss, to know how far the void tracer
+## — is ONLY consulted on a genuine miss, to know how far the miss tracer
 ## below should draw. It plays no part in whether anything was actually
 ## hit; that's still `DamageResolver.resolve_shot` alone, unchanged.
 ## taskblock-23 Pass C: `origin_height` is this shot's own real muzzle
@@ -101,7 +101,7 @@ static func resolve_and_log_point(
 ## the whole shot plane covers — every wall/cover object is already its
 ## own `Region` (`ShotPlane.build`'s own blockers loop), so a real "hit a
 ## wall" always comes back as a normal `ImpactResult` above, never an
-## empty list. An empty list is always the void: nothing physical was
+## empty list. An empty list is always a miss: nothing physical was
 ## there to stop it. Mirrors `resolve_shot`'s own `muzzle_to_impact` math
 ## (`dir * depth + perp * point.x`) with `depth` set to the weapon's own
 ## `max_range` when authored, or the map's own longest side otherwise (a
@@ -111,7 +111,7 @@ static func resolve_and_log_point(
 ## height (same convention `resolve_and_log_point`'s own doc comment
 ## already established) — logged alongside `origin_x/y` so the view can
 ## draw a miss's own tracer from its real 3D muzzle, not a re-derived
-## approximation. `end_height` is the void ray's own height — a miss
+## approximation. `end_height` is the miss ray's own height — a miss
 ## can't ricochet or penetrate, so it travels dead level at the shot's own
 ## aimed height (`point.y`) the whole way, same flat assumption
 ## `resolve_shot`'s own first hop always makes.
@@ -136,10 +136,10 @@ static func log_miss_result(
 ) -> void:
 	var dir: Vector2 = direction.normalized()
 	var perp := Vector2(-dir.y, dir.x)
-	var void_range: float = (
+	var miss_range: float = (
 		max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.rows)
 	)
-	var end: Vector2 = origin + dir * void_range + perp * point.x
+	var end: Vector2 = origin + dir * miss_range + perp * point.x
 	(
 		state
 		. combat_log
@@ -235,18 +235,18 @@ static func log_impact_result(
 	# into the log data — a ricochet that then finds nothing to hit (an
 	# empty `resolve_shot` recursion) produces NO further event at all, so
 	# the view had nothing to draw even when it wanted to. Stamped here,
-	# unconditionally on every DEFLECT, the same "void" convention
+	# unconditionally on every DEFLECT, the same "miss" convention
 	# `log_miss_result` already uses for a shot that never hits anything — so the
 	# reflected direction is always drawable regardless of whether a real
 	# ricochet hop follows it.
 	if result.outcome == Enums.Outcome.DEFLECT:
-		var void_range: float = (
+		var miss_range: float = (
 			max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.rows)
 		)
-		var deflect_end: Vector2 = result.hit_point + result.reflected_dir * void_range
+		var deflect_end: Vector2 = result.hit_point + result.reflected_dir * miss_range
 		data["deflect_end_x"] = deflect_end.x
 		data["deflect_end_y"] = deflect_end.y
-		data["deflect_end_height"] = result.hit_height + result.reflected_vertical * void_range
+		data["deflect_end_height"] = result.hit_height + result.reflected_vertical * miss_range
 	var event := LogEvent.new(
 		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text
 	)

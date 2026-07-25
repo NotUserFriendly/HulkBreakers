@@ -90,7 +90,7 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
 	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng)
 
-	_finalize_walls_and_void(grid, scratch)
+	_finalize_walls_and_empty(grid, scratch)
 
 	_emit(grid, scratch, ramp_facings)
 
@@ -552,9 +552,9 @@ static func _mark_zone(grid: Grid, room: Rect2i, marker: int) -> Vector2i:
 ## already had; flagged in the taskblock report, not solved this pass.)
 ##
 ## An UNCARVED cell buried in solid, unreachable rock (no non-UNCARVED
-## neighbor) becomes EMPTY instead (taskblock-39 Pass D: "void" is a lore
-## term only from here on — this is the old `VOID` terrain value,
-## renamed): non-navigable, opacity 0 (nothing to hit — a shot passes
+## neighbor) becomes EMPTY instead (taskblock-39 Pass D renamed this from
+## the old terrain model's own physical-absence value): non-navigable,
+## opacity 0 (nothing to hit — a shot passes
 ## into it), no Part. It can never be the nearest hit along any real ray
 ## anyway (whatever wall cell sits between it and the open area resolves
 ## first) — giving it geometry too would only cost `ShotPlane.build`'s
@@ -575,7 +575,7 @@ static func _mark_zone(grid: Grid, room: Rect2i, marker: int) -> Vector2i:
 ##
 ## taskblock-39 Pass B: reads/writes scratch's own terrain; `grid.blockers`/
 ## `grid.set_opacity` stay direct `Grid` writes, same as everywhere else.
-static func _finalize_walls_and_void(grid: Grid, scratch: MapGenScratch) -> void:
+static func _finalize_walls_and_empty(grid: Grid, scratch: MapGenScratch) -> void:
 	var wall_cells: Array[Vector2i] = []
 	for y in range(scratch.rows):
 		for x in range(scratch.width):

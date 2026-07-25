@@ -501,8 +501,8 @@ func _isolate_focus(view: HitVolumeView) -> void:
 	view.set_isolated(true)
 	_preview_camera.cull_mask = 0
 	_preview_camera.set_cull_mask_value(HitVolumeView.ISOLATE_LAYER, true)
-	# taskblock-23 Pass E2: "the model floats in a void" — cull_mask=0 plus
-	# only the subject's own layer excluded the real board tile beneath it
+	# taskblock-23 Pass E2: the model was floating in empty space — cull_mask=0
+	# plus only the subject's own layer excluded the real board tile beneath it
 	# too. BoardView.FLOOR_LAYER is deliberately a SEPARATE layer from
 	# ISOLATE_LAYER (not the same bit) — other units/blockers never carry
 	# either, so they stay excluded exactly as G2 already fixed.

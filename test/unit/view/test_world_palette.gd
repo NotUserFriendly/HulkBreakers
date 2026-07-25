@@ -10,10 +10,10 @@ extends GutTest
 ## the ground — the original spec's "~0.25 of the ground hue" read as
 ## nearly nothing (a quarter energy of an already-dark green), so any face
 ## away from the key light was still pure black.
-func test_world_environment_uses_the_void_background_and_a_neutral_ambient_fill() -> void:
+func test_world_environment_uses_the_backdrop_color_and_a_neutral_ambient_fill() -> void:
 	var world_environment: WorldEnvironment = WorldPalette.world_environment()
 	assert_eq(world_environment.environment.background_mode, Environment.BG_COLOR)
-	assert_eq(world_environment.environment.background_color, WorldPalette.VOID)
+	assert_eq(world_environment.environment.background_color, WorldPalette.BACKDROP)
 	assert_eq(world_environment.environment.ambient_light_source, Environment.AMBIENT_SOURCE_COLOR)
 	assert_eq(world_environment.environment.ambient_light_color, WorldPalette.AMBIENT_COLOR)
 	assert_ne(
@@ -35,14 +35,14 @@ func test_world_environment_uses_the_void_background_and_a_neutral_ambient_fill(
 func test_environment_matches_world_environments_own_settings_with_no_node() -> void:
 	var env: Environment = WorldPalette.environment()
 	assert_eq(env.background_mode, Environment.BG_COLOR)
-	assert_eq(env.background_color, WorldPalette.VOID)
+	assert_eq(env.background_color, WorldPalette.BACKDROP)
 	assert_eq(env.ambient_light_source, Environment.AMBIENT_SOURCE_COLOR)
 	assert_eq(env.ambient_light_color, WorldPalette.AMBIENT_COLOR)
 	assert_almost_eq(env.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001)
 
 
-func test_void_and_ground_are_distinct_so_the_board_is_actually_visible() -> void:
-	assert_ne(WorldPalette.VOID, WorldPalette.GROUND)
+func test_backdrop_and_ground_are_distinct_so_the_board_is_actually_visible() -> void:
+	assert_ne(WorldPalette.BACKDROP, WorldPalette.GROUND)
 
 
 func test_directional_light_is_angled_off_axis() -> void:

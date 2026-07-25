@@ -23,7 +23,7 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 
 
 ## taskblock-23 Pass E2: the inspect panel's isolate camera needs a real
-## board tile under the model instead of it floating in a void — the
+## board tile under the model instead of it floating in empty space — the
 ## ground plane and grid lines both carry BoardView.FLOOR_LAYER, on top
 ## of (never instead of) whatever layer they already render on for the
 ## real board's own main camera.
@@ -398,7 +398,7 @@ func test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call() -> v
 ## taskblock-39 Pass C: runNotes.md's own "wall cells get a dark-gray
 ## marker plus a cross" indicator (and its dedicated test here) is
 ## retired — a raw uncarved-terrain read was already unreachable on any
-## real generated map before this pass (`MapGen._finalize_walls_and_void`
+## real generated map before this pass (`MapGen._finalize_walls_and_empty`
 ## always resolves an uncarved cell to OPEN+blocker or empty before
 ## `_emit`), so the marker+cross never actually rendered in play; a real
 ## wall's own full-height blocker box already makes "can't walk here"
@@ -414,12 +414,11 @@ func test_a_plain_grid_adds_no_ground_overlay_markers() -> void:
 	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
 
 
-## tb31 Pass C: "make void tiles black with a dark gray border so they
-## read as void" (quoting the original spec language) — a marker per
-## non-navigable cell. taskblock-39 Pass C: an empty cell is an unfloored
-## one now (no placed Surface at all) rather than a direct
-## `TerrainType.VOID` write — taskblock-39 Pass D: "void" is retired for
-## this physical state, "empty"/"unfloored" from here on.
+## tb31 Pass C: make empty/unfloored tiles black with a dark gray border
+## so they read as empty — a marker per non-navigable cell. taskblock-39
+## Pass C: an empty cell is an unfloored one now (no placed Surface at
+## all) rather than a direct write to the old terrain model's own
+## physical-absence value.
 func test_build_adds_a_border_and_fill_marker_per_empty_cell() -> void:
 	var grid := GridFixture.flat(3, 2)
 	grid.clear_surfaces(Vector2i(1, 0))

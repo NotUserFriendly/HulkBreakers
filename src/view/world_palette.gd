@@ -9,7 +9,7 @@ extends RefCounted
 ## below) that never touches albedo, so a steel plate reads as steel on
 ## any team, any unit, or lying on the floor as loot.
 
-const VOID := Color("#050506")
+const BACKDROP := Color("#050506")
 const GROUND := Color("#2E4A32")
 const TEAM_A := Color("#3A7BD5")
 const TEAM_B := Color("#D53A3A")
@@ -37,15 +37,15 @@ const AMBIENT_ENERGY := 0.35
 
 
 ## A flat dark backdrop plus soft ambient — otherwise Godot's default
-## procedural sky paints the void a stock light grey with no relation to
-## the theme, and unlit shadow faces read as pure black holes. Just the
-## resource, no node — `Camera3D.environment` (taskblock-23 Pass E2's own
-## per-camera override) and anything else that only needs the settings,
-## not a whole throwaway `WorldEnvironment` node to steal them from.
+## procedural sky paints a stock light grey with no relation to the theme,
+## and unlit shadow faces read as pure black holes. Just the resource, no
+## node — `Camera3D.environment` (taskblock-23 Pass E2's own per-camera
+## override) and anything else that only needs the settings, not a whole
+## throwaway `WorldEnvironment` node to steal them from.
 static func environment() -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = VOID
+	env.background_color = BACKDROP
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = AMBIENT_COLOR
 	env.ambient_light_energy = AMBIENT_ENERGY

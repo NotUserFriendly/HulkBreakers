@@ -15,9 +15,10 @@ extends RefCounted
 ## representation, never `Grid`'s now-retired `TerrainType` — carving's
 ## own scratch-only concept of "not yet carved" (`UNCARVED`, the old
 ## `WALL`-as-default-marker) and "buried, permanently unreachable"
-## (`EMPTY`, the old `VOID` — "void" is a lore term only from this pass
-## on, docs/PLAN.md) never needs to be expressed as a `Grid`-facing type
-## at all; only `_emit`'s own final sweep ever turns a scratch reading
+## (`EMPTY`, renamed from the old terrain model's own physical-absence
+## value, taskblock-39 Pass D) never needs to be expressed as a
+## `Grid`-facing type at all; only `_emit`'s own final sweep ever turns a
+## scratch reading
 ## into a real placed `Surface`.
 ##
 ## Mirrors the subset of `Grid`'s own shape carving actually needs — never

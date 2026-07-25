@@ -16,7 +16,7 @@ extends Node3D
 ## taskblock-23 Pass E2: a render layer the inspect panel's isolate camera
 ## (taskblock-22 G2, `HitVolumeView.ISOLATE_LAYER`) can ALSO include
 ## alongside the subject unit's own layer, so a real board tile renders
-## under the model instead of it floating in a void — never other units
+## under the model instead of it floating in empty space — never other units
 ## or blockers, which stay excluded exactly as G2 already fixed. Tagged
 ## onto the ground plane and grid lines in `build()` below, on top of
 ## their existing default layer, so the main camera's own view is
@@ -110,9 +110,9 @@ const WALL_INDICATOR_HEIGHT := 0.015
 ## just above the marker's own center height.
 const WALL_CROSS_HEIGHT := 0.03
 const WALL_CROSS_WIDTH := 0.06
-## tb31 Pass C: "make void tiles black with a dark gray border so they
-## read as void" (quoting the original spec language; taskblock-39 Pass D:
-## "void" is a lore term only from here on — this file's own concept is
+## tb31 Pass C: make empty/unfloored tiles black with a dark gray border
+## so they read as empty (taskblock-39 Pass D retired the original spec
+## language's own term for this — this file's own concept has always been
 ## empty/unfloored ground) — the same "non-navigable terrain needs a real
 ## marker" convention `WALL_INDICATOR_COLOR`/`WALL_CROSS_COLOR` above
 ## already established, just a fill+border instead of a fill+cross (an
@@ -417,21 +417,20 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 
 
 ## tb31 Pass C: every empty cell (the negative-space fill past a wall's
-## own ring — taskblock-39 Pass D: "void" is a lore term only from here
-## on) gets a black fill inside a dark-gray border — "there's nothing
-## here" read at a glance.
+## own ring) gets a black fill inside a dark-gray border — "there's
+## nothing here" read at a glance.
 ##
 ## taskblock-39 Pass C: the sibling wall-indicator marker (gray tile plus
 ## a cross, "this is an obstruction") this comment used to contrast
 ## against is retired — it never actually rendered on any real generated
-## map (`MapGen._finalize_walls_and_void` always resolves an uncarved
+## map (`MapGen._finalize_walls_and_empty` always resolves an uncarved
 ## cell to OPEN+blocker or empty before `_emit`, so a raw WALL terrain
 ## read was already unreachable there); a real wall's own full-height
 ## blocker box already makes "can't walk here" obvious without a
 ## redundant flat marker.
 ##
 ## Empty is "no Surface placed at all" — the exact real-placement
-## equivalent `MapGen._finalize_walls_and_void` resolves an unreachable
+## equivalent `MapGen._finalize_walls_and_empty` resolves an unreachable
 ## uncarved cell into (no floor, no blocker, opacity 0), not a retired
 ## terrain code read directly.
 func _build_empty_indicators(p_grid: Grid) -> void:

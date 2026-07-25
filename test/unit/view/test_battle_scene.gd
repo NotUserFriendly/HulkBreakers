@@ -471,7 +471,7 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 ## default one.
 ##
 ## taskblock-39 Pass C: a raw "cell terrain != WALL" check was already
-## vacuous on any real generated map — `MapGen._finalize_walls_and_void`
+## vacuous on any real generated map — `MapGen._finalize_walls_and_empty`
 ## always resolves an uncarved cell to OPEN+blocker or empty before
 ## `_emit`, so no real cell is ever raw WALL to begin with, regardless of
 ## whether a unit spawned somewhere sane. Whether the cell itself carries

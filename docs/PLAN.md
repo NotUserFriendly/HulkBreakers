@@ -51,12 +51,13 @@ mulebot can't sit in the driver's seat.
 
 # NEXT
 
-### 1. Multi-level maps — Pass E: view-layer legibility
+### 1. Multi-level maps — Pass E: view-layer legibility (taskblock-40)
 **Needs:** nothing — taskblock-37 Passes A–D landed the entire headless half (elevation reaches
 damage resolution, height-aware pathfinding, climb-up/hop-down as real actions, `MapGen` authoring
-real levels; see `CHANGELOG.md`). **Unblocks:** nothing further blocks specifically on this, but
-it's the one part of multi-level still open. **Needs the supervisor watching — not headless-
-verifiable, per the taskblock's own fence; do not attempt unattended.**
+real levels; see `CHANGELOG.md`) and taskblock-39 retired the legacy grid model outright. **Unblocks:**
+nothing further blocks specifically on this, but it's the one part of multi-level still open. **Needs
+the supervisor watching — not headless-verifiable, per the taskblock's own fence; do not attempt
+unattended past the point where a pass needs eyes.**
 
 - ~~The view reads `unit.level`/`unit.height`~~ — **done.** `ResolutionPlayer`/`HitVolumeView` read
   real height; `BoardView`'s ground and grid lines both terrace per-cell instead of one flat mesh at
@@ -65,13 +66,20 @@ verifiable, per the taskblock's own fence; do not attempt unattended.**
 - ~~Movement animation for climbs and drops~~ — **done.** `&"climbed"`/`&"hopped_down"` log events
   carry the same `"path"` shape a `move` event does and route through the existing `_play_slide`
   machinery — no dedicated animation code needed.
-- **The camera at height** — whether the tactical orbit and sniper framing behave sensibly when
-  shooter and target are on different levels. Aesthetic judgement; needs eyes. Not yet exercised
-  live by the supervisor.
-- **Wall cutout against elevation.** BR32.04/BR32.05 are still open (it snaps ahead of the move
-  animation, and cuts walls that aren't between camera and unit) — elevation adds a whole new axis
-  to a shader already known to mis-select walls. Expect interaction; fixing the cutout itself is a
-  separate item, not this one's job.
+- ~~Pass A: retire "void" from code entirely~~ — **done (tb40 Pass A).** Grep-clean now, not
+  prose-level (settles the open question tb39 Pass D left): `grep -rniE "\bvoid\b" --include=*.gd
+  src test tools | grep -v -- "-> void"` returns zero lines, enforced by
+  `test_void_vocabulary_guard.gd`. `WorldPalette.VOID` → `BACKDROP`; `MapGen._finalize_walls_and_void`
+  → `_finalize_walls_and_empty`; the miss-tracer cluster → `miss_range`/"miss ray" (a distinct
+  concept, renamed without touching behavior); ordinary-English "void" comments rewritten.
+- **Pass B: camera framing across levels.** Whether the tactical orbit and sniper framing behave
+  sensibly when shooter and target are on different levels. Measure across a height-delta matrix
+  before deciding whether there's a real defect versus an aesthetic-only gap.
+- **Pass C: does elevation break the wall cutout?** Diagnosis only, no fix — BR32.04/BR32.05 stay
+  open and gated separately; this pass answers whether elevation is a new failure mode or the same
+  coarse occlusion heuristic with a larger blast radius.
+- **Pass D: a loadable multi-level scenario + supervisor checklist**, so the supervisor's own look is
+  a short yes/no pass rather than an investigation.
 
 ### 2. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
@@ -116,7 +124,7 @@ framerate or a decision. Fixing the instrument is worth more than fixing any one
 - **Deliberately excessive verbosity.** CC greps it cleanly and the in-game view folds it. Log lifecycle
   and view events: bot constructed, part attached, cutout drawn to (x, y), which overlay is active and
   when it turns off. Plus a **bout-build log in the order things actually happen** — placed N walls, N
-  void tiles, N units, N cover pieces — recounted in build order, not summarised.
+  empty tiles, N units, N cover pieces — recounted in build order, not summarised.
 - **Pair "what was sent" with "what happened."** Log the command issued *and* its outcome (a remove-unit
   command was sent; the unit could not be removed, and why), so a dropped or rejected command is visible
   instead of a silent no-op. Mirrors the two-phase turn model, and directly counters the class of bug this

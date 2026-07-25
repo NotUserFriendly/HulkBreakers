@@ -202,7 +202,7 @@ func _disarm_active_tracking() -> void:
 
 ## A miss (off the board entirely, an empty hit dict) leaves `_active`
 ## alone — "click a tile, it's in memory" means it STAYS in memory until
-## the next real hit, not that a stray click into the void wipes it.
+## the next real hit, not that a stray click into empty space wipes it.
 func _on_active_target_clicked(hit: Dictionary) -> void:
 	if hit.is_empty():
 		return

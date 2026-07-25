@@ -4,8 +4,9 @@ extends RefCounted
 ## Values for Grid.spawn_marker. taskblock-38/39: every PHYSICAL fact a
 ## cell can carry (walkable ground, a wall, a ramp, empty space) is now
 ## expressed by placement (`Surface`/`Grid.surfaces`, `Grid.blockers`) —
-## the old `TerrainType` enum this replaces (`OPEN`/`WALL`/`RAMP`/`VOID`)
-## is retired outright, not migrated. `SPAWN_A`/`SPAWN_B` are the one
+## the old `TerrainType` enum this replaces (its four physical-state
+## values, see docs/SUPERSEDED.md) is retired outright, not migrated.
+## `SPAWN_A`/`SPAWN_B` are the one
 ## thing that survives: a game marker, not a physical fact — nothing
 ## about "this is where squad A starts" has a `Surface` to become.
 ## `NONE` is an explicit sentinel, not a placeholder gap — `Grid.spawn_

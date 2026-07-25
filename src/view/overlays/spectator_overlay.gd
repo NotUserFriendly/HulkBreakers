@@ -135,7 +135,7 @@ func setup(p_battle: BattleScene) -> void:
 ## against `Grid.blockers.get(cell)` (`open_tile()`, InspectPanel's own
 ## tile-shaped entry point; null for a bare tile is already its documented
 ## "empty state" case, not a special case here). A miss against the board
-## plane too (looking off into the void) is still a real no-op.
+## plane too (looking off into empty space) is still a real no-op.
 ##
 ## taskblock-27 Pass D1c: mouse motion drives `_update_hover()` (below) so
 ## this view gets the same inspect-on-hover feedback `SquadControlOverlay`
@@ -184,7 +184,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# taskblock-39 Pass C: the old "wall tiles aren't inspectable" WALL-
 	# terrain check retired here — it could only ever fire on an
 	# unfinalized/raw wall cell (real generation always resolves WALL to
-	# OPEN+blocker or VOID before this ever runs), and a wall's real
+	# OPEN+blocker or empty space before this ever runs), and a wall's real
 	# blocker Part is already handled correctly below like any other
 	# field object.
 	_was_playing_before_inspect = playing
