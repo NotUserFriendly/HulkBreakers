@@ -389,7 +389,7 @@ func remove_object(target: Dictionary) -> bool:
 ## through here at all").
 ##
 ## taskblock-39 Pass C: `Pathfinder` reads placed surfaces now, with no
-## `Grid.terrain` fallback — writing `Enums.TerrainType.WALL` directly, as
+## legacy terrain fallback — writing a raw WALL terrain code directly, as
 ## this used to, had already gone silently inert on any real (non-legacy)
 ## bout grid since tb38 Pass D shipped the surface-based path; only a
 ## bare legacy fixture ever actually saw it block. tb31 Pass C's own

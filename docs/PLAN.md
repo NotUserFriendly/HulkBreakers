@@ -601,55 +601,6 @@ Four related gaps in what the AI *chooses* to do, all cheap given the data alrea
   bout setup.
 
 
-### Retire `Grid.level` and the legacy terrain values
-**Needs:** the floor-parts model (tb38 Passes A–D, landed — `docs/CHANGELOG.md`) and its Pass D
-burn-down list (`GridLegacyBridge`, instrumented at three call sites: `Pathfinder._base_cost`/
-`move_cost`, `UnitGeometry.true_height_for_cell`; 4,318,367 hits across the full suite as of tb38).
-
-The second half of the floor-parts migration, split out because it is a **migration, not a cleanup**.
-Confirmed blast radius: **17 production files and 36 test files** hand-set `grid.level`/`terrain`
-directly — `MapGen`'s BSP carving, `ClimbAction`, `HopDownAction`, `ShotPlane`, `LineOfFire`,
-`CombatState`, `TileInspection`, `TooltipBuilder`, `BoardView`, `BoutInjector`, `SpectatorOverlay`,
-`AsciiRender`, and dozens of fixtures. The floor-parts block's compatibility fallback is what keeps all
-of them working; deleting `Grid.level` and `TerrainType.OPEN/WALL/RAMP/VOID` means deleting that
-fallback and migrating every caller.
-
-**The risk is vacuity, not breakage.** A fixture that sets `grid.terrain[i] = WALL` on a system that no
-longer reads terrain **still passes** — it just stops testing anything. Deleting the field turns that
-into a loud compile error, which is the good case; the bad case is a mechanical find-and-replace that
-swaps in a surface placement with a wrong height or a missing `walkable` tag, leaving the test green
-while asserting nothing. That is precisely how the prone test pinned a bug for fifteen taskblocks.
-**Each migrated fixture needs its intent preserved, not just its syntax.**
-
-**It also carries a MapGen rewrite, which the file counts hide.** tb38 derived surfaces *from* the
-finished grid — once, as the last step — rather than authoring them during carving, because the BSP
-carve/ramp/repair/spawn machinery legitimately re-visits the same cell and the attachment grammar
-correctly refuses to place onto an already-floored one. So `terrain`/`level` remain the source of truth
-*during generation*, and retiring them means **making every carve function idempotent under the
-surfaces model**. CC flagged that as materially larger and riskier than the rest of Pass B; it doesn't
-disappear, it moves here.
-
-**Acceptance is the counter AND a grep — the counter alone is not sufficient.** The floor-parts block instruments the legacy path so every
-fallback hit records its caller. This block is done when **that counter reads zero across the full
-suite** — but that only covers the three functions that read *through* the bridge
-(`Pathfinder._base_cost`, `Pathfinder.move_cost`, `UnitGeometry.true_height_for_cell`). The 4.3M-hit
-figure from tb38 is pathfinding *call frequency*, not breadth. The 14 production and 37 test files
-touching `grid.level`/`terrain` **directly** never touch the bridge at all, so the counter cannot see
-them. Both checks are required: counter at zero, and a grep finding no direct access.
-
-**`SPAWN_A`/`SPAWN_B` survive** — game markers, not physical facts, with no surface to become.
-
-**The vocabulary sweep lands here**, since it is blocked until the enum goes. "Void" currently means
-three things: the lore setting (voidhulk), `TerrainType.VOID`, and informally "a cell with nothing in
-it." With the enum retired, **void becomes a lore term only**; use **empty** or **unfloored** for the
-physical state, in code and comments. A deliberate retirement like "robot" and "frame," with a grep as
-the test.
-
-**Do not let the fallback become permanent.** It is a bridge with a named retirement block, and this
-project has a documented case of exactly that drifting: checkpoint discipline was retired in the docs
-while every piece of machinery survived five blocks, because the cleanup "rode with" a block that later
-changed shape. The burn-down list exists so this one stays visible rather than assumed.
-
 ### Forced movement — flung, thrown, knocked prone
 **Needs:** nothing mechanically; consequences pair with the deep-fall rules.
 

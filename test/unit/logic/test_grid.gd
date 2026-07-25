@@ -17,45 +17,28 @@ func test_in_bounds() -> void:
 
 func test_default_cell_values() -> void:
 	var cell := Vector2i(2, 2)
-	assert_eq(_grid.get_terrain(cell), 0)
+	assert_eq(_grid.get_spawn_marker(cell), Enums.SpawnMarker.NONE)
 	assert_eq(_grid.get_opacity(cell), 0.0)
 	assert_eq(_grid.get_occupant_id(cell), -1)
 	assert_false(_grid.blockers.has(cell))
-	assert_eq(_grid.get_level(cell), 0, "taskblock-36 Pass D: a fresh cell defaults to level 0")
 
 
 func test_set_get_cell_data_roundtrip() -> void:
 	var cell := Vector2i(1, 3)
-	_grid.set_terrain(cell, 2)
+	_grid.set_spawn_marker(cell, Enums.SpawnMarker.SPAWN_A)
 	_grid.set_opacity(cell, 1.0)
 	_grid.set_occupant_id(cell, 7)
-	_grid.set_level(cell, 2)
 	# taskblock-16 Pass B2: `blockers` (real Part objects) is the one
 	# source of truth for cover now — no separate scalar to round-trip.
 	var cover := Part.new()
 	cover.id = &"test_cover"
 	_grid.blockers[cell] = cover
-	assert_eq(_grid.get_terrain(cell), 2)
+	assert_eq(_grid.get_spawn_marker(cell), Enums.SpawnMarker.SPAWN_A)
 	assert_eq(_grid.get_opacity(cell), 1.0)
 	assert_eq(_grid.get_occupant_id(cell), 7)
-	assert_eq(_grid.get_level(cell), 2)
 	assert_eq(_grid.blockers[cell], cover)
 	# Unrelated cell stays default.
-	assert_eq(_grid.get_terrain(Vector2i(0, 0)), 0)
-	assert_eq(_grid.get_level(Vector2i(0, 0)), 0)
-
-
-## taskblock-36 Pass D: `dup()` must carry a cell's own level onto the
-## clone — the same "a preview must see the real world, including any
-## forced scenario" guarantee every other per-cell array already gets.
-func test_dup_copies_level() -> void:
-	_grid.set_level(Vector2i(2, 2), 3)
-	var cloned: Grid = _grid.dup()
-	assert_eq(cloned.get_level(Vector2i(2, 2)), 3)
-	cloned.set_level(Vector2i(2, 2), 0)
-	assert_eq(
-		_grid.get_level(Vector2i(2, 2)), 3, "mutating the clone must never touch the original"
-	)
+	assert_eq(_grid.get_spawn_marker(Vector2i(0, 0)), Enums.SpawnMarker.NONE)
 
 
 ## taskblock-38 Pass A: a fresh cell has no surfaces — `surfaces_at` returns

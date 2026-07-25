@@ -424,8 +424,8 @@ func new_battle(seed_value: int) -> void:
 func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)
 	var pool: Array[Part] = DataLibrary.parts_pool()
-	var spawn_a: Vector2i = _first_cell_of_terrain(grid, Enums.TerrainType.SPAWN_A, Vector2i(2, 2))
-	var spawn_b: Vector2i = _first_cell_of_terrain(grid, Enums.TerrainType.SPAWN_B, Vector2i(9, 7))
+	var spawn_a: Vector2i = _first_cell_of_marker(grid, Enums.SpawnMarker.SPAWN_A, Vector2i(2, 2))
+	var spawn_b: Vector2i = _first_cell_of_marker(grid, Enums.SpawnMarker.SPAWN_B, Vector2i(9, 7))
 	var units: Array[Unit] = [
 		DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng, spawn_a, 0),
 		DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng, spawn_b, 1),
@@ -443,13 +443,13 @@ func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 ## MapGen carves real SPAWN_A/SPAWN_B zones but its own `generate()` return
 ## signature only hands back the Grid, not the cells it placed them at
 ## (test files already re-derive them the same way, e.g.
-## test_full_mission.gd's `_cells_of_terrain`). `fallback` only fires if a
-## map somehow has no cell of that terrain at all.
-func _first_cell_of_terrain(grid: Grid, terrain: int, fallback: Vector2i) -> Vector2i:
+## test_full_mission.gd's own spawn-cell finder). `fallback` only fires if
+## a map somehow has no cell carrying that marker at all.
+func _first_cell_of_marker(grid: Grid, marker: int, fallback: Vector2i) -> Vector2i:
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
-			if grid.get_terrain(cell) == terrain:
+			if grid.get_spawn_marker(cell) == marker:
 				return cell
 	return fallback
 

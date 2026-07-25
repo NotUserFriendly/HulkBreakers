@@ -176,7 +176,7 @@ func test_for_queue_entry_omits_the_detail_row_when_absent() -> void:
 func test_for_tile_shows_terrain_when_nothing_else_is_present() -> void:
 	var info: Dictionary = {
 		"cell": Vector2i(3, 4),
-		"terrain": Enums.TerrainType.OPEN,
+		"terrain": TileInspection.PhysicalState.OPEN,
 		"unit": null,
 		"field_object": null,
 		"visible_from_selected": null,
@@ -185,7 +185,10 @@ func test_for_tile_shows_terrain_when_nothing_else_is_present() -> void:
 	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
 
 	assert_eq(data.title, "cell (3, 4)")
-	assert_eq(_row_value(data, "terrain"), Enums.TerrainType.keys()[Enums.TerrainType.OPEN])
+	assert_eq(
+		_row_value(data, "terrain"),
+		TileInspection.PhysicalState.keys()[TileInspection.PhysicalState.OPEN]
+	)
 
 
 ## taskblock-07 F1/TESTS: "hovering an enemy yields its status" — for_tile
@@ -199,7 +202,7 @@ func test_for_tile_with_a_unit_delegates_to_the_units_own_status() -> void:
 	var enemy := _make_unit(torso, 1)
 	var info: Dictionary = {
 		"cell": Vector2i(1, 1),
-		"terrain": Enums.TerrainType.OPEN,
+		"terrain": TileInspection.PhysicalState.OPEN,
 		"unit": enemy,
 		"field_object": null,
 		"visible_from_selected": true,
@@ -214,7 +217,7 @@ func test_for_tile_with_a_field_object_shows_its_own_detail() -> void:
 	var crate := DataLibrary.get_part(&"crate")
 	var info: Dictionary = {
 		"cell": Vector2i(2, 2),
-		"terrain": Enums.TerrainType.OPEN,
+		"terrain": TileInspection.PhysicalState.OPEN,
 		"unit": null,
 		"field_object": crate,
 		"visible_from_selected": null,

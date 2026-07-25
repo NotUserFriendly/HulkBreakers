@@ -93,8 +93,8 @@ const GRID_LINE_WIDTH := 0.04
 const EXTRACTION_TILE_HEIGHT := 0.010
 ## taskblock-39 Pass C: the wall-indicator marker/cross these four
 ## constants used to feed is retired (never actually rendered on a real
-## generated map — see `_build_void_indicators`'s own doc comment). Kept,
-## unconsumed, purely as the height-ladder anchors `VOID_BORDER_HEIGHT`/
+## generated map — see `_build_empty_indicators`'s own doc comment). Kept,
+## unconsumed, purely as the height-ladder anchors `EMPTY_BORDER_HEIGHT`/
 ## `FIELD_ITEM_MARKER_HEIGHT` below are still calibrated against.
 const WALL_INDICATOR_COLOR := Color("#3A3A3A")
 ## runNotes.md follow-up: "fade it to a gray that's just slightly darker
@@ -111,24 +111,26 @@ const WALL_INDICATOR_HEIGHT := 0.015
 const WALL_CROSS_HEIGHT := 0.03
 const WALL_CROSS_WIDTH := 0.06
 ## tb31 Pass C: "make void tiles black with a dark gray border so they
-## read as void" — the same "non-navigable terrain needs a real marker"
-## convention `WALL_INDICATOR_COLOR`/`WALL_CROSS_COLOR` above already
-## established, just a fill+border instead of a fill+cross (void has
-## nothing to cross out — it's not an obstruction, it's the absence of
-## anything at all). Slots into the SAME ordered ground-overlay height
-## ladder, between the wall indicator (0.015) and the wall cross (0.03) —
-## void never coexists with a wall/extraction/team-marker/overwatch cell
-## in practice, but the ladder convention is "the next rung," not "pick
-## whatever's free."
-const VOID_BORDER_COLOR := Color("#3A3A3A")
-const VOID_FILL_COLOR := Color("#050505")
-const VOID_BORDER_HEIGHT := 0.02
-const VOID_FILL_HEIGHT := 0.025
+## read as void" (quoting the original spec language; taskblock-39 Pass D:
+## "void" is a lore term only from here on — this file's own concept is
+## empty/unfloored ground) — the same "non-navigable terrain needs a real
+## marker" convention `WALL_INDICATOR_COLOR`/`WALL_CROSS_COLOR` above
+## already established, just a fill+border instead of a fill+cross (an
+## empty cell has nothing to cross out — it's not an obstruction, it's the
+## absence of anything at all). Slots into the SAME ordered ground-overlay
+## height ladder, between the wall indicator (0.015) and the wall cross
+## (0.03) — an empty cell never coexists with a wall/extraction/team-
+## marker/overwatch cell in practice, but the ladder convention is "the
+## next rung," not "pick whatever's free."
+const EMPTY_BORDER_COLOR := Color("#3A3A3A")
+const EMPTY_FILL_COLOR := Color("#050505")
+const EMPTY_BORDER_HEIGHT := 0.02
+const EMPTY_FILL_HEIGHT := 0.025
 ## Border size close to the full cell (a thin dark-gray rim); fill
 ## smaller still, same relationship `OVERLAY_SIZE` already has to a full
 ## `CELL_SIZE` cell.
-const VOID_BORDER_SIZE := 0.98
-const VOID_FILL_SIZE := 0.8
+const EMPTY_BORDER_SIZE := 0.98
+const EMPTY_FILL_SIZE := 0.8
 ## taskblock-30 follow-up: a loose `Matrix` field item has no `volume` to
 ## draw real geometry from (unlike a loose Part, rendered via the SAME
 ## `_spawn_blocker` boxes a cover item uses) — a flat marker, same "ground
@@ -253,7 +255,7 @@ func build(
 	var grid_lines: MeshInstance3D = _build_grid_lines(grid)
 	grid_lines.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(grid_lines)
-	_build_void_indicators(grid)
+	_build_empty_indicators(grid)
 	_build_extraction_tiles(team_extraction_cells)
 
 	for cell: Vector2i in grid.blockers:
@@ -414,31 +416,35 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	return instance
 
 
-## tb31 Pass C: every VOID cell (the negative-space fill past a wall's
-## own ring) gets a black fill inside a dark-gray border — "there's
-## nothing here" read at a glance.
+## tb31 Pass C: every empty cell (the negative-space fill past a wall's
+## own ring — taskblock-39 Pass D: "void" is a lore term only from here
+## on) gets a black fill inside a dark-gray border — "there's nothing
+## here" read at a glance.
 ##
 ## taskblock-39 Pass C: the sibling wall-indicator marker (gray tile plus
 ## a cross, "this is an obstruction") this comment used to contrast
 ## against is retired — it never actually rendered on any real generated
-## map (`MapGen._finalize_walls_and_void` always resolves a WALL cell to
-## OPEN+blocker or VOID before `_emit`, so `Grid.get_terrain(cell) ==
-## WALL` was already unreachable there); a real wall's own full-height
+## map (`MapGen._finalize_walls_and_void` always resolves an uncarved
+## cell to OPEN+blocker or empty before `_emit`, so a raw WALL terrain
+## read was already unreachable there); a real wall's own full-height
 ## blocker box already makes "can't walk here" obvious without a
 ## redundant flat marker.
-## taskblock-39 Pass C: void is now "no Surface placed at all" — the
-## exact real-placement equivalent `MapGen._finalize_walls_and_void`
-## resolves an unreachable WALL cell into (no floor, no blocker, opacity
-## 0) — rather than `Grid.get_terrain(cell) == VOID` directly.
-func _build_void_indicators(p_grid: Grid) -> void:
+##
+## Empty is "no Surface placed at all" — the exact real-placement
+## equivalent `MapGen._finalize_walls_and_void` resolves an unreachable
+## uncarved cell into (no floor, no blocker, opacity 0), not a retired
+## terrain code read directly.
+func _build_empty_indicators(p_grid: Grid) -> void:
 	for y in range(p_grid.rows):
 		for x in range(p_grid.width):
 			var cell := Vector2i(x, y)
 			if Surface.first_walkable(p_grid.surfaces_at(cell)) == null:
 				_static.add_child(
-					_marker(cell, VOID_BORDER_COLOR, VOID_BORDER_HEIGHT, VOID_BORDER_SIZE)
+					_marker(cell, EMPTY_BORDER_COLOR, EMPTY_BORDER_HEIGHT, EMPTY_BORDER_SIZE)
 				)
-				_static.add_child(_marker(cell, VOID_FILL_COLOR, VOID_FILL_HEIGHT, VOID_FILL_SIZE))
+				_static.add_child(
+					_marker(cell, EMPTY_FILL_COLOR, EMPTY_FILL_HEIGHT, EMPTY_FILL_SIZE)
+				)
 
 
 static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
@@ -749,8 +755,8 @@ func _waypoint_label(cell: Vector2i, number: int, leg_cost: float, running_total
 
 ## `size` defaults to `OVERLAY_SIZE` — every pre-existing call site (extraction
 ## tiles, wall indicator, field item marker, reachable/ghost overlays) keeps
-## its own footprint unchanged; the void border/fill markers are the only
-## callers that pass an explicit one.
+## its own footprint unchanged; the empty-cell border/fill markers are the
+## only callers that pass an explicit one.
 func _marker(
 	cell: Vector2i, color: Color, height: float, size: float = OVERLAY_SIZE
 ) -> MeshInstance3D:
@@ -760,8 +766,8 @@ func _marker(
 	box_mesh.material = WorldPalette.overlay_material(color)
 	instance.mesh = box_mesh
 	# taskblock-37 Pass E: `UnitGeometry.true_height_for_cell` as a base —
-	# every caller (extraction tiles, wall/void indicators, reachable/ghost
-	# overlays, the field-item marker) used to assume ground was always at
+	# every caller (extraction tiles, wall/empty-cell indicators, reachable/
+	# ghost overlays, the field-item marker) used to assume ground was always at
 	# world Y 0; a raised cell's own marker must sit on ITS OWN real ground,
 	# not float below (or get buried inside) the terraced terrain
 	# `_build_terrain` now draws.

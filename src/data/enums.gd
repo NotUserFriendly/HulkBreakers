@@ -1,33 +1,21 @@
 class_name Enums
 extends RefCounted
 
-## Values for Grid.terrain. Cover (Grid.blockers — real field-object
-## geometry, taskblock-16 Pass B) is a separate overlay — terrain only
-## governs walkability and vision blocking.
-##
-## tb31 Pass C: `WALL` is vestigial as of `MapGen.generate()` — a wall is
-## now a destructible cover `Part` sitting on an `OPEN` tile (the exact
-## `_scatter_cover` shape, just high-DT), never its own terrain type in a
-## freshly generated map. Kept in the enum (not removed) since hand-built
-## fixtures/tests still legitimately construct WALL cells directly. `VOID`
-## is the new negative-space fill: non-navigable (`Pathfinder` treats it
-## like WALL always has), opacity 0 (a shot passes into it — there's
-## nothing there to hit), no blocker Part. `MapGen` rings the playable
-## area with wall-Part cells and fills everything past them with VOID.
-## taskblock-37 Pass C: `RAMP` is ordinary pathing that happens to change
-## height — a sloped tile costs the same as any other (docs/PLAN.md's own
-## "22.5 degree ramps... two ramps make one full level"), never the
-## capability-gated climb/hop-down edges `Pathfinder` builds for a genuine
-## level DISCONTINUITY. `Pathfinder.move_cost` reads this to tell "an
-## ordinary graded step that happens to touch a different Grid.level" apart
-## from "a real ledge with nothing bridging it."
-enum TerrainType {
-	OPEN,
-	WALL,
+## Values for Grid.spawn_marker. taskblock-38/39: every PHYSICAL fact a
+## cell can carry (walkable ground, a wall, a ramp, empty space) is now
+## expressed by placement (`Surface`/`Grid.surfaces`, `Grid.blockers`) —
+## the old `TerrainType` enum this replaces (`OPEN`/`WALL`/`RAMP`/`VOID`)
+## is retired outright, not migrated. `SPAWN_A`/`SPAWN_B` are the one
+## thing that survives: a game marker, not a physical fact — nothing
+## about "this is where squad A starts" has a `Surface` to become.
+## `NONE` is an explicit sentinel, not a placeholder gap — `Grid.spawn_
+## marker`'s own array defaults every cell to `0`, and `SPAWN_A` must
+## never silently alias to that default the way it would if this enum
+## started directly at a real marker value.
+enum SpawnMarker {
+	NONE,
 	SPAWN_A,
 	SPAWN_B,
-	VOID,
-	RAMP,
 }
 
 ## A matrix's fate at battle end (docs/04). PILOTING is the default — still

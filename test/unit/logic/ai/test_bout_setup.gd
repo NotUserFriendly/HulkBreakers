@@ -243,12 +243,8 @@ func test_build_bout_places_each_squads_extraction_on_the_opposing_side() -> voi
 
 	var mission: MissionState = result.mission
 	var state: CombatState = result.state
-	var spawn_a: Array[Vector2i] = BoutSetup._cells_of_terrain(
-		state.grid, Enums.TerrainType.SPAWN_A
-	)
-	var spawn_b: Array[Vector2i] = BoutSetup._cells_of_terrain(
-		state.grid, Enums.TerrainType.SPAWN_B
-	)
+	var spawn_a: Array[Vector2i] = BoutSetup._cells_of_marker(state.grid, Enums.SpawnMarker.SPAWN_A)
+	var spawn_b: Array[Vector2i] = BoutSetup._cells_of_marker(state.grid, Enums.SpawnMarker.SPAWN_B)
 
 	assert_eq(
 		mission.team_extraction_cells[0], spawn_b, "squad 0 (spawns at SPAWN_A) extracts at SPAWN_B"

@@ -28,14 +28,15 @@ const DEFAULT_MUZZLE_HEIGHT := 1.25
 ## taskblock-38 Pass C: a cell's own real, continuous world height now
 ## resolves against the placed `Surface` a unit standing there would
 ## actually be on (`GridPlacement`/`Surface`, docs/PLAN.md's floors-become-
-## parts model) — never re-derived from `Grid.level`/terrain directly.
-## `MapGen` (the one remaining place that still computes a height FROM
+## parts model) — never re-derived from terrain/level directly (taskblock-
+## 39 Pass D retired that field/enum pair outright). `MapGen` (the one
+## remaining place that still computes a height FROM its own scratch
 ## terrain/level, since it's what AUTHORS the surface in the first place)
 ## already bakes the ramp's own corrected +0.25 offset
 ## (`RampGeometry.STANDING_OFFSET`) into `Surface.height` at placement
 ## time — this just reads it back.
 ##
-## taskblock-39 Pass C: the legacy fallback (`GridLegacyBridge`'s
+## taskblock-39 Pass C: the legacy fallback (the migration bridge's own
 ## pre-placement terrain/level formula, for a hand-built fixture Grid
 ## that never went through `GridPlacement`/`MapGen`) is gone — every
 ## fixture in this codebase now places real surfaces (`GridFixture`), so

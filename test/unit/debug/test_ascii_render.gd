@@ -25,8 +25,8 @@ func _blocker(height: float) -> Part:
 func test_grid_to_text_renders_terrain_and_cover() -> void:
 	var grid := GridFixture.flat(4, 2)
 	GridFixture.place_wall(grid, Vector2i(1, 0))
-	grid.set_terrain(Vector2i(2, 0), Enums.TerrainType.SPAWN_A)
-	grid.set_terrain(Vector2i(3, 0), Enums.TerrainType.SPAWN_B)
+	grid.set_spawn_marker(Vector2i(2, 0), Enums.SpawnMarker.SPAWN_A)
+	grid.set_spawn_marker(Vector2i(3, 0), Enums.SpawnMarker.SPAWN_B)
 	grid.blockers[Vector2i(0, 1)] = _blocker(0.90)  # below FULL_COVER_HEIGHT -> half
 	grid.blockers[Vector2i(1, 1)] = _blocker(1.60)  # at/above FULL_COVER_HEIGHT -> full
 

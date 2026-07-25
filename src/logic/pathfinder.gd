@@ -60,8 +60,9 @@ func _init(grid: Grid, can_climb: bool = false) -> void:
 ##
 ## taskblock-39 Pass C: the legacy fallback (a hand-built fixture Grid
 ## with no placed surfaces, answered from the pre-placement terrain/level
-## formula through `GridLegacyBridge`) is gone — every fixture in this
-## codebase now places real surfaces (`GridFixture`), so this reads the
+## formula through a migration bridge, taskblock-39 Pass D: retired
+## outright) is gone — every fixture in this codebase now places real
+## surfaces (`GridFixture`), so this reads the
 ## Surface path unconditionally.
 ##
 ## tb31 Pass C: reads the blocker's own `hp` now, not just its presence —
@@ -114,9 +115,10 @@ func _base_cost(cell: Vector2i) -> float:
 ##   with perks to avoid it).
 ##
 ## Height now comes from each cell's own placed `Surface`
-## (`UnitGeometry.true_height_for_cell`), not `Grid.level` directly.
+## (`UnitGeometry.true_height_for_cell`), never a per-cell level field
+## directly (taskblock-39 Pass D retired that field outright).
 ##
-## taskblock-39 Pass C: the legacy fallback (`GridLegacyBridge`'s own
+## taskblock-39 Pass C: the legacy fallback (the migration bridge's own
 ## pre-placement ramp/climb formula, for a hand-built fixture Grid with no
 ## placed surfaces) is gone, same reason as `_base_cost`.
 func move_cost(from: Vector2i, to: Vector2i) -> float:

@@ -13,12 +13,10 @@ const CHAR_FULL_COVER := "O"
 const CHAR_IMPACT := "*"
 const CHAR_GAP := "."
 const CHAR_UNKNOWN := "?"
-## tb31 Pass C: negative-space fill past a wall's own ring — a real,
-## generated map never uses CHAR_WALL for its own OUTPUT anymore (a
-## MapGen-produced wall is OPEN + a blocker, already caught by the
-## fallthrough branch below), but hand-built fixtures can still construct
-## a raw WALL cell directly, so that glyph stays live too.
-const CHAR_VOID := " "
+## tb31 Pass C: negative-space fill past a wall's own ring — any cell
+## with no placed Surface at all (taskblock-39 Pass D: "void" is a lore
+## term only from here on; this glyph name follows).
+const CHAR_EMPTY := " "
 
 
 ## Renders a Grid as a text block, one row per line, one char per cell.
@@ -38,26 +36,27 @@ static func grid_to_text(grid: Grid, occupants: Dictionary = {}) -> String:
 	return "\n".join(lines)
 
 
-## taskblock-39 Pass C: `WALL`/`VOID` terrain codes never actually
-## reached a real generated map's own ASCII dump — `MapGen._finalize_
-## walls_and_void` always resolves a WALL cell to OPEN+blocker or VOID
-## before `_emit`, and a real exposed wall's own blocker would have
-## fallen through to the generic cover glyph below without this fix
+## taskblock-39 Pass C/D: the old `WALL`/`VOID` terrain codes never
+## actually reached a real generated map's own ASCII dump — `MapGen.
+## _finalize_walls_and_void` always resolves a WALL cell to OPEN+blocker
+## or VOID before `_emit`, and a real exposed wall's own blocker would
+## have fallen through to the generic cover glyph below without this fix
 ## (silently losing the dedicated `#` glyph for anything but a hand-
 ## authored fixture). Wall identity now comes from the blocker's own id;
-## void from having no placed Surface at all — the real placement-model
-## facts, not the retired terrain codes. `SPAWN_A`/`SPAWN_B` stay direct
-## terrain reads — game markers, not physical facts (docs/PLAN.md).
+## empty space from having no placed Surface at all — the real
+## placement-model facts, not the retired terrain enum (Pass D deleted
+## it outright). `SPAWN_A`/`SPAWN_B` stay direct `Grid.spawn_marker`
+## reads — game markers, not physical facts (docs/PLAN.md).
 static func _terrain_char(grid: Grid, cell: Vector2i) -> String:
 	var blocker: Variant = grid.blockers.get(cell)
 	if blocker != null and (blocker as Part).id == &"wall":
 		return CHAR_WALL
 	if Surface.first_walkable(grid.surfaces_at(cell)) == null:
-		return CHAR_VOID
-	match grid.get_terrain(cell):
-		Enums.TerrainType.SPAWN_A:
+		return CHAR_EMPTY
+	match grid.get_spawn_marker(cell):
+		Enums.SpawnMarker.SPAWN_A:
 			return CHAR_SPAWN_A
-		Enums.TerrainType.SPAWN_B:
+		Enums.SpawnMarker.SPAWN_B:
 			return CHAR_SPAWN_B
 	if blocker == null:
 		return CHAR_OPEN

@@ -19,10 +19,10 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-38 Passes A–D landed (floor/terrain become parts; the actual `Grid.level`/
-`TerrainType` retirement is its own follow-up block per the burn-down list Pass D produced — see
-`PLAN.md`). taskblock-37 Pass E (view-layer elevation legibility) still has two open items: camera
-framing and the wall cutout against elevation — see `PLAN.md`.*
+*Current as of taskblock-39 Passes A–D landed (the legacy grid model — `Grid.level`,
+`Enums.TerrainType`, `GridLegacyBridge` — is fully retired; every reader and fixture now reads the
+real placement model, `docs/SUPERSEDED.md`). taskblock-37 Pass E (view-layer elevation legibility)
+still has two open items: camera framing and the wall cutout against elevation — see `PLAN.md`.*
 
 ---
 
@@ -245,6 +245,69 @@ deliberately excluded from that guard and covered by its own dedicated fixture i
   (both the named follow-up block, `PLAN.md`); catwalks/bridges as authored content; floors
   projecting into the shot plane (BR34.05 stays open — would break this block's own byte-identical
   guard).
+
+**Legacy grid model retired (tb39, docs/PLAN.md)** — the follow-up block tb38 Pass D split out:
+deletes `Grid.level`, `Enums.TerrainType`, and `GridLegacyBridge` outright, migrating every
+remaining direct reader and fixture onto the real placement model. Full suite ends at 2120/2120,
+`GridLegacyBridge`'s own burn-down counter at zero (down from tb38's 4,318,367 hits), and a
+grep finds no surviving `Grid.level`/retired `TerrainType` value/`GridLegacyBridge` reference
+anywhere, tests included.
+- **Pass A** — replaces the old pinned-seed "does THIS scripted mission reach extraction" harness
+  (`docs/SUPERSEDED.md` — six re-picks, every one a legitimate mechanics change absorbed as noise
+  instead of a signal) with a completion-RATE sampling test (`test_full_mission.gd`) built on the
+  same `BoutSetup`/`DeepStrike`/`BoutRunner` path a real "Simulate Bout" menu uses, never a
+  hand-rolled turn loop. Measured baseline: 12 seeds at a 100-turn cap, 1-vs-1 AGGRESSIVE
+  `a_brand_laborer` bouts, ~80% EXTRACTED; `MIN_COMPLETION_RATE` set to 0.5, well below the
+  observed rate but low enough to catch a real collapse — flagged as a tunable, not a design
+  number.
+- **Pass B** — `MapGen` carves into a private `MapGenScratch` (its own local `terrain`/`level`
+  arrays, never `Grid`'s public surfaces API) and emits real `Surface`s once, at the very end
+  (`_emit`), rather than authoring onto a real `Grid` mid-carve the way tb38 Pass B did — carving
+  legitimately re-visits the same cell many times (splitting rooms, re-cutting corridors, the
+  emergency fallback corridor), which `Grid.surfaces`'s attachment grammar correctly refuses a
+  second `GROUND` placement onto; scratch has no grammar to fight at all. `MapGenScratch.
+  place_surface` is the one shared formula both `as_temporary_grid()`'s mid-generation
+  reachability grids and `_emit`'s real final authoring use, so the two can never drift apart.
+- **Pass C** — the three legacy-bridge readers (`Pathfinder._base_cost`/`move_cost`,
+  `UnitGeometry.true_height_for_cell`) read real placed surfaces unconditionally now, no fallback;
+  `GridLegacyBridge`'s counter confirmed at zero across the full suite before deletion. New
+  `test/support/grid_fixture.gd` (`GridFixture.flat`/`place_floor`/`place_ramp`/`place_wall`)
+  builds real placed `Surface`s for a fixture instead of hand-set terrain arrays — the single
+  mechanism used to migrate roughly 55 test files off the legacy model, each proven to still fail
+  for its own reason (anti-vacuity) after migration. `Pathfinder._terrain_costs`/`_min_possible_
+  cost` and `CombatState.terrain_costs` retired outright as dead weight (only ever read inside the
+  now-deleted legacy-bridge branch); `Pathfinder.new(grid, can_climb)` drops the parameter. New
+  `Surface.is_ramp_at(grid, cell)` de-duplicates a ramp check `Pathfinder`/`ClimbAction`/
+  `HopDownAction` each held their own private copy of. **Two real bugs found via migration, not
+  cosmetic swaps:** `test_climb_action.gd`'s ramp-climb test was pinned against
+  `GridLegacyBridge`'s superseded flat `+0.5` ramp offset (tb37) — migrating onto a real placed
+  ramp `Surface` changed the asserted cost from 2 MP to 3 MP, matching `RampGeometry.
+  STANDING_OFFSET` (tb38 Pass C's already-corrected value); the test itself was stale, not the
+  game. `test_squad_control_overlay.gd`'s real-raycast click test broke once a wall got real 3D
+  geometry — `PartPicker.hit()` can report a closer blocker hit than a unit hit, so a wall on the
+  shooter/enemy's shared view-axis column could occlude a click; fixed by reorienting the fixture
+  perpendicular to the camera's default view axis, not by weakening the click test.
+- **Pass D** — full rename, not a partial one (explicit call): `Enums.TerrainType`
+  (`OPEN`/`WALL`/`SPAWN_A`/`SPAWN_B`/`VOID`/`RAMP`) → `Enums.SpawnMarker`
+  (`NONE`/`SPAWN_A`/`SPAWN_B`, an explicit `NONE = 0` sentinel since a fresh `Grid.spawn_marker`
+  array already defaults every cell to `0`); `Grid.terrain`/`get_terrain`/`set_terrain` →
+  `Grid.spawn_marker`/`get_spawn_marker`/`set_spawn_marker`; `Grid.level`/`get_level`/`set_level`
+  deleted outright, no replacement field. `MapGenScratch` gets its own local `CellKind` enum
+  (`UNCARVED`/`OPEN`/`RAMP`/`EMPTY`) — never reuses `Enums.SpawnMarker`. `TileInspection` gets its
+  own local `PhysicalState` enum (`EMPTY`/`OPEN`/`RAMP`) for its tooltip classification, since
+  `Grid`'s enum no longer represents any physical fact at all. `GridLegacyBridge` and
+  `tools/legacy_grid_bridge_burndown.gd` deleted outright. Vocabulary sweep: "void" retired for
+  the physical-absence state everywhere in code/comments (lore-only from here on, e.g. the ship
+  setting); "empty"/"unfloored" instead — `MapGenScratch.CellKind.EMPTY`, `AsciiRender.
+  CHAR_EMPTY`, `BoardView.EMPTY_BORDER_COLOR`/`EMPTY_FILL_COLOR`/`_build_empty_indicators`,
+  `TileInspection.PhysicalState.EMPTY`. **Checked and found correct:** `MapGenScratch` never
+  reaches for `Grid`'s public spawn-marker/blocker API outside `as_temporary_grid()`'s documented
+  blocker pass-through; `map_gen.gd` touches `Grid.spawn_marker` only inside
+  `_place_spawn_zones`/`_mark_zone`, confirmed by the file's own source-scanning acceptance test
+  (`test_map_gen_touches_grids_spawn_marker_api_only_in_spawn_marking`). One test-suite-only bug
+  found during the final full-run verification: `test_determinism_check.gd`'s own custom compare
+  lambda still read `a.terrain`/`b.terrain` post-rename, a stale reference with no production
+  impact (caught by the very first full-suite run after the rename, not shipped).
 
 **Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
 DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
