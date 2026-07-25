@@ -130,22 +130,6 @@ framerate or a decision. Fixing the instrument is worth more than fixing any one
   of dead-stopping. Pairs with BR34.02 — a titled, resizable panel wants a real background, which answers
   that bug's "visible background versus click-through" question on its own.
 
-### 4. Replace the hand-built full-mission test
-**Needs:** nothing. **Unblocks:** trustworthy mission-level coverage.
-
-`test_full_mission.gd` uses a hardcoded seed and its own in-test turn heuristics that were never rehomed
-into production AI. Every real mechanics fix reshuffles its RNG timeline and it gets re-seeded by brute
-force — six times per its own header now (tb37's `MapGen` elevation the latest). Worse, that seed
-churn was masking the real AI line-of-fire bug.
-
-**Decided:** the hand-built harness goes, replaced by a thin `BoutSetup`/`DeepStrike`-based mission smoke
-test — a bout runs start-to-extraction without erroring, asserted on outcomes rather than a frozen seed.
-
-**Do NOT retire-to-green.** The mission-coverage gap stays *visible* until the replacement exists. Until
-then a deliberately-failing placeholder holds the slot with an honest reason, replacing the current
-confusing seed/turn-cap failure with a self-documenting one. The work is *writing the replacement*, not
-deleting the old file.
-
 ---
 
 # QUEUED
@@ -527,13 +511,18 @@ Concrete starting signals, not a full audit:
 creates a re-pick treadmill.** A pinning test fixes its inputs and must go red the instant behaviour
 changes; that's its whole job. A sampling test asks a statistical question ("are missions completable
 at all?") and should run N cases and assert a *rate*, never a single frozen seed.
-`test_full_mission.gd` is the live example of the confusion: it asks an existence question ("a mission
-can be completed") but is implemented as a pinned seed, so every real mechanics change forces a
-re-pick — six so far. Worse, pass/fail throws away the interesting number: a tb38 investigation of
-seeds 12373–12383 found only **2 of 11 complete**, with the failures concentrated in AI-stuck
-behaviour rather than impossible maps. A rate-asserting version answers the question honestly, needs
-no re-picking, and would have collapsed visibly when the AI line-of-fire bug landed — which the pinned
-version instead absorbed across five re-picks.
+
+`test_full_mission.gd` **was** the worked example, and tb39 Pass A fixed it: it asked an existence
+question ("a mission can be completed") but was implemented as a pinned seed, so every real mechanics
+change forced a re-pick — six of them, and that churn absorbed a real AI line-of-fire bug as noise
+instead of surfacing it. A tb38 investigation of seeds 12373–12383 found only **2 of 11** complete,
+with the failures concentrated in AI-stuck behaviour rather than impossible maps. It now samples 12
+seeds and asserts a completion rate (`MIN_COMPLETION_RATE`), which needs no re-picking and collapses
+visibly when the AI actually regresses.
+
+**The audit's job is to find the others.** One instance is fixed; the confusion it came from is a
+suite-wide habit, and any other test asserting an existence or capability claim through a frozen seed
+has the same defect. A re-pick in a test's own header is the tell.
 
 **Deliverable is a written audit, not a deletion spree.** Per test or cluster: what it covers, whether
 anything else already covers it, and whether it asserts a real invariant or an implementation
@@ -541,6 +530,33 @@ accident. **Deleting a redundant test and deleting the only test of a real rule 
 diff** — so a test found genuinely load-bearing is a result worth recording, exactly like the
 correct-as-is findings in the tb35 wall audit. Runtime is a secondary benefit; correctness of what the
 suite *claims* is the point.
+
+### Review pass over map generation
+**Needs:** multi-level landed and confirmed live (`NEXT` item 1). **Unblocks:** trusting generated
+maps as a test surface.
+
+`MapGen` has been reshaped three times in quick succession — tb38 made floor and terrain into parts,
+tb39 moved carving into a private `MapGenScratch` that emits real `Surface`s once at the end, and
+elevation arrived across tb36–37. Each change was verified against its own acceptance, but nobody has
+looked at the *output* as a whole since before any of them.
+
+Deliberately deferred until multi-level is finished, because a review now would audit a shape that is
+about to change again.
+
+Starting signals, not a full audit:
+
+- **Are generated maps actually good?** Room count, hallway width, connectivity, and elevation
+  distribution across a seed sweep — reported as numbers, not a pass/fail. tb17 Pass A already caught
+  one arithmetic cascade that silently collapsed every map to a single room; the guard added then
+  proves it splits, not that the result is worth playing.
+- **Is elevation being used, or just supported?** `RAISED_ROOM_LEVEL` exists; how often does a
+  generated map produce a meaningful height difference, and does the AI ever path through it?
+- **Does the scratch/emit split hold under every branch?** The emergency fallback corridor and the
+  re-carve paths are the ones that motivated the split; confirm they still produce exactly one
+  correctly-typed surface per cell.
+- **`MapGenScratch`'s `get_level`/`set_level` are the last survivors of the old vocabulary.** They're
+  legitimate — a private carving model — but worth confirming they haven't quietly become a second
+  source of elevation truth alongside placed `Surface` height.
 
 ### Retire the checkpoint machinery
 **Needs:** nothing.
