@@ -470,15 +470,15 @@ func test_every_rendered_mesh_matches_a_living_boxs_placement_exactly() -> void:
 ## real SPAWN_A/SPAWN_B cells instead, across many seeds, not just the
 ## default one.
 ##
-## taskblock-39 Pass C: `grid.get_terrain(cell) != WALL` was already
+## taskblock-39 Pass C: a raw "cell terrain != WALL" check was already
 ## vacuous on any real generated map — `MapGen._finalize_walls_and_void`
-## always resolves a WALL cell to OPEN+blocker or VOID before `_emit`, so
-## no real cell's own terrain is ever raw WALL to begin with, regardless
-## of whether a unit spawned somewhere sane. Whether the cell itself
-## carries a real walkable ground `Surface` is the real, surface-based
-## claim this test actually wants — `Pathfinder.is_walkable` can't be
-## reused here since it also checks occupancy, and every cell under test
-## is occupied by the very unit standing on it.
+## always resolves an uncarved cell to OPEN+blocker or empty before
+## `_emit`, so no real cell is ever raw WALL to begin with, regardless of
+## whether a unit spawned somewhere sane. Whether the cell itself carries
+## a real walkable ground `Surface` is the real, surface-based claim this
+## test actually wants — `Pathfinder.is_walkable` can't be reused here
+## since it also checks occupancy, and every cell under test is occupied
+## by the very unit standing on it.
 func test_seeded_units_always_land_on_navigable_terrain_across_many_seeds() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
@@ -499,12 +499,12 @@ func test_seeded_units_spawn_on_the_grids_own_spawn_a_and_spawn_b_cells() -> voi
 	add_child_autofree(scene)
 	scene.new_battle(7)
 
-	var terrains: Array[int] = []
+	var markers: Array[int] = []
 	for unit: Unit in scene.combat_state.units:
-		terrains.append(scene.combat_state.grid.get_terrain(unit.cell))
+		markers.append(scene.combat_state.grid.get_spawn_marker(unit.cell))
 
-	assert_true(terrains.has(Enums.TerrainType.SPAWN_A))
-	assert_true(terrains.has(Enums.TerrainType.SPAWN_B))
+	assert_true(markers.has(Enums.SpawnMarker.SPAWN_A))
+	assert_true(markers.has(Enums.SpawnMarker.SPAWN_B))
 
 
 func test_tactics_is_wired_to_the_real_camera_and_board() -> void:

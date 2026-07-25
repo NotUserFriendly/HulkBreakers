@@ -3,15 +3,16 @@ extends RefCounted
 
 ## taskblock-39 Pass C: a real placement-model fixture builder for tests —
 ## every cell this builds carries an actual placed `Surface` via
-## `GridPlacement`, the SAME call `MapGen._emit` makes, so a fixture Grid
-## is never `GridLegacyBridge.is_legacy` and a test exercises the real
-## surface-based `Pathfinder`/`UnitGeometry` formula gameplay itself uses
-## — never the bridge's now migration-only fallback.
+## `GridPlacement`, the SAME call `MapGen._emit` makes, so a test exercises
+## the real surface-based `Pathfinder`/`UnitGeometry` formula gameplay
+## itself uses, unconditionally (taskblock-39 Pass D: the legacy
+## migration bridge this used to route non-fixture grids through instead
+## is retired outright).
 ##
 ## States intent, not syntax: "this cell is walkable at level 2" is
-## `place_floor(grid, cell, 2.0)`, not a `grid.set_level`/`set_terrain`
-## poke a reader has to reverse-engineer, and the one thing every migrated
-## fixture in this taskblock goes through instead of hand-rolling its own.
+## `place_floor(grid, cell, 2.0)`, not a raw terrain/level poke a reader
+## has to reverse-engineer, and the one thing every migrated fixture in
+## this taskblock goes through instead of hand-rolling its own.
 
 
 ## A grid entirely floored at `level` (world height `level *

@@ -2,20 +2,34 @@ class_name MapGenScratch
 extends RefCounted
 
 ## taskblock-39 Pass B: `MapGen`'s own private carving scratch — never
-## `Grid`'s public `terrain`/`level` API. BSP carving legitimately
-## re-visits the same cell many times (splitting rooms, re-cutting
-## corridors, repair passes, the emergency fallback corridor), which
-## `Grid.surfaces`'s own attachment grammar correctly refuses a second
-## `GROUND` placement onto. Carving here, with no grammar involved at all,
-## and emitting real surfaces once from the finished result, is what
-## actually resolves that tension instead of contorting the carver to
-## satisfy a grammar it shouldn't be talking to yet (`MapGen._emit`'s own
-## doc comment has the full picture).
+## `Grid`'s public API. BSP carving legitimately re-visits the same cell
+## many times (splitting rooms, re-cutting corridors, repair passes, the
+## emergency fallback corridor), which `Grid.surfaces`'s own attachment
+## grammar correctly refuses a second `GROUND` placement onto. Carving
+## here, with no grammar involved at all, and emitting real surfaces once
+## from the finished result, is what actually resolves that tension
+## instead of contorting the carver to satisfy a grammar it shouldn't be
+## talking to yet (`MapGen._emit`'s own doc comment has the full picture).
+##
+## taskblock-39 Pass D: `CellKind` is this class's own local terrain
+## representation, never `Grid`'s now-retired `TerrainType` — carving's
+## own scratch-only concept of "not yet carved" (`UNCARVED`, the old
+## `WALL`-as-default-marker) and "buried, permanently unreachable"
+## (`EMPTY`, the old `VOID` — "void" is a lore term only from this pass
+## on, docs/PLAN.md) never needs to be expressed as a `Grid`-facing type
+## at all; only `_emit`'s own final sweep ever turns a scratch reading
+## into a real placed `Surface`.
 ##
 ## Mirrors the subset of `Grid`'s own shape carving actually needs — never
 ## `opacity`/`blockers`/`surfaces`/`occupant_id`, none of which this
 ## taskblock's own scope touches; those stay direct `Grid` writes
 ## throughout generation, unaffected by this split.
+enum CellKind {
+	UNCARVED,
+	OPEN,
+	RAMP,
+	EMPTY,
+}
 
 var width: int
 var rows: int
@@ -29,7 +43,7 @@ func _init(p_width: int, p_rows: int) -> void:
 	var count := width * rows
 	terrain.resize(count)
 	level.resize(count)
-	terrain.fill(Enums.TerrainType.WALL)
+	terrain.fill(CellKind.UNCARVED)
 	level.fill(0.0)
 
 
@@ -87,7 +101,7 @@ func as_temporary_grid(blockers: Dictionary = {}) -> Grid:
 		for x in range(width):
 			var cell := Vector2i(x, y)
 			var cell_terrain: int = get_terrain(cell)
-			if cell_terrain == Enums.TerrainType.OPEN or cell_terrain == Enums.TerrainType.RAMP:
+			if cell_terrain == CellKind.OPEN or cell_terrain == CellKind.RAMP:
 				place_surface(temp, cell, cell_terrain, get_level(cell))
 	temp.blockers = blockers.duplicate()
 	return temp
@@ -100,7 +114,7 @@ func as_temporary_grid(blockers: Dictionary = {}) -> Grid:
 static func place_surface(
 	grid: Grid, cell: Vector2i, cell_terrain: int, cell_level: float, facing: float = 0.0
 ) -> void:
-	var is_ramp: bool = cell_terrain == Enums.TerrainType.RAMP
+	var is_ramp: bool = cell_terrain == CellKind.RAMP
 	var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
 	var height: float = cell_level * UnitGeometry.LEVEL_HEIGHT
 	if is_ramp:

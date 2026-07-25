@@ -79,7 +79,7 @@ func test_build_terrain_reflects_a_raised_cells_own_height() -> void:
 	)
 
 
-## A ground overlay marker (extraction tile, wall/void indicator,
+## A ground overlay marker (extraction tile, wall/empty-cell indicator,
 ## reachable highlight, ghost path, field-item marker — all built through
 ## `_marker`) must sit on the cell's OWN real ground, not float below (or
 ## get buried inside) the terraced terrain above.
@@ -397,9 +397,9 @@ func test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call() -> v
 
 ## taskblock-39 Pass C: runNotes.md's own "wall cells get a dark-gray
 ## marker plus a cross" indicator (and its dedicated test here) is
-## retired — `Grid.get_terrain(cell) == WALL` was already unreachable on
-## any real generated map before this pass (`MapGen._finalize_walls_and_
-## void` always resolves a WALL cell to OPEN+blocker or VOID before
+## retired — a raw uncarved-terrain read was already unreachable on any
+## real generated map before this pass (`MapGen._finalize_walls_and_void`
+## always resolves an uncarved cell to OPEN+blocker or empty before
 ## `_emit`), so the marker+cross never actually rendered in play; a real
 ## wall's own full-height blocker box already makes "can't walk here"
 ## obvious without it. `_spawn_blocker`'s own coverage already proves a
@@ -415,10 +415,12 @@ func test_a_plain_grid_adds_no_ground_overlay_markers() -> void:
 
 
 ## tb31 Pass C: "make void tiles black with a dark gray border so they
-## read as void" — a marker per non-navigable cell.
-## taskblock-39 Pass C: void is an unfloored cell now (no placed Surface
-## at all) rather than a direct `TerrainType.VOID` write.
-func test_build_adds_a_border_and_fill_marker_per_void_cell() -> void:
+## read as void" (quoting the original spec language) — a marker per
+## non-navigable cell. taskblock-39 Pass C: an empty cell is an unfloored
+## one now (no placed Surface at all) rather than a direct
+## `TerrainType.VOID` write — taskblock-39 Pass D: "void" is retired for
+## this physical state, "empty"/"unfloored" from here on.
+func test_build_adds_a_border_and_fill_marker_per_empty_cell() -> void:
 	var grid := GridFixture.flat(3, 2)
 	grid.clear_surfaces(Vector2i(1, 0))
 	grid.clear_surfaces(Vector2i(2, 1))
@@ -430,11 +432,11 @@ func test_build_adds_a_border_and_fill_marker_per_void_cell() -> void:
 	assert_eq(
 		view._static.get_child_count(),
 		6,
-		"ground plane + grid lines + (border + fill) per void cell, 2 void cells"
+		"ground plane + grid lines + (border + fill) per empty cell, 2 empty cells"
 	)
 
 
-func test_a_grid_with_no_void_adds_no_void_indicators() -> void:
+func test_a_grid_with_nothing_empty_adds_no_empty_indicators() -> void:
 	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)

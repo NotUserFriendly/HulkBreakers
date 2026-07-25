@@ -7,11 +7,11 @@ extends RefCounted
 ## (and therefore both spawn zones) sits in one connected component.
 ##
 ## taskblock-39 Pass B: every carving decision below works against a private
-## `MapGenScratch`, never `Grid`'s own public `terrain`/`level` fields —
-## `_emit` is the ONE place the finished scratch becomes real, both as
-## `Grid.terrain`/`Grid.level` (kept populated for every caller not yet
-## migrated off them) and as `Grid.surfaces` (the placement model's real
-## output). See `MapGenScratch`'s and `_emit`'s own doc comments for why.
+## `MapGenScratch`, never `Grid`'s own public API — `_emit` is the ONE
+## place the finished scratch becomes real, as `Grid.surfaces` (the
+## placement model's real output; Pass D retired the `Grid.terrain`/
+## `Grid.level` legacy fields `_emit` used to also populate). See
+## `MapGenScratch`'s and `_emit`'s own doc comments for why.
 
 ## taskblock-16 Pass C: "too cramped — no room to maneuver or use cover."
 ## Rooms >= 7 on their min dimension; MIN_CHILD_SIZE keeps a split child
@@ -260,10 +260,10 @@ static func _repair_stranded_elevation(
 			var cell := Vector2i(x, y)
 			if reachable_set.has(cell):
 				continue
-			if scratch.get_terrain(cell) == Enums.TerrainType.OPEN:
+			if scratch.get_terrain(cell) == MapGenScratch.CellKind.OPEN:
 				scratch.set_level(cell, 0)
-			elif scratch.get_terrain(cell) == Enums.TerrainType.RAMP:
-				scratch.set_terrain(cell, Enums.TerrainType.OPEN)
+			elif scratch.get_terrain(cell) == MapGenScratch.CellKind.RAMP:
+				scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
 				scratch.set_level(cell, 0)
 
 
@@ -305,14 +305,14 @@ static func _connect_with_a_ramp(
 			var outward: Variant = _outward_ring_direction(room, inner)
 			if outward == null:
 				continue  # a diagonal corner cell — no cardinal approach to ramp along
-			if scratch.get_terrain(inner) != Enums.TerrainType.OPEN:
+			if scratch.get_terrain(inner) != MapGenScratch.CellKind.OPEN:
 				continue
 			if scratch.get_level(inner) >= RAISED_ROOM_LEVEL:
 				continue
 			var outer: Vector2i = inner + (outward as Vector2i)
 			if not scratch.in_bounds(outer):
 				continue
-			if scratch.get_terrain(outer) != Enums.TerrainType.OPEN:
+			if scratch.get_terrain(outer) != MapGenScratch.CellKind.OPEN:
 				continue
 			if scratch.get_level(outer) >= RAISED_ROOM_LEVEL:
 				continue
@@ -344,10 +344,10 @@ static func _stamp_ramp_pair(
 ) -> void:
 	var ascent := Vector2(-outward.x, -outward.y)
 	var facing: float = BodyProjector.orientation_for(ascent)
-	scratch.set_terrain(inner, Enums.TerrainType.RAMP)
+	scratch.set_terrain(inner, MapGenScratch.CellKind.RAMP)
 	scratch.set_level(inner, RAISED_ROOM_LEVEL - 0.5)
 	ramp_facings[inner] = facing
-	scratch.set_terrain(outer, Enums.TerrainType.RAMP)
+	scratch.set_terrain(outer, MapGenScratch.CellKind.RAMP)
 	scratch.set_level(outer, RAISED_ROOM_LEVEL - 1.0)
 	ramp_facings[outer] = facing
 
@@ -409,7 +409,7 @@ static func _carve_straight(
 static func _set_open(grid: Grid, scratch: MapGenScratch, cell: Vector2i) -> void:
 	if not scratch.in_bounds(cell):
 		return
-	scratch.set_terrain(cell, Enums.TerrainType.OPEN)
+	scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
 	grid.set_opacity(cell, 0.0)
 	grid.blockers.erase(cell)
 	scratch.set_level(cell, 0)
@@ -427,7 +427,7 @@ static func _scatter_cover(grid: Grid, scratch: MapGenScratch, rng: RandomNumber
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
-			if scratch.get_terrain(cell) != Enums.TerrainType.OPEN:
+			if scratch.get_terrain(cell) != MapGenScratch.CellKind.OPEN:
 				continue
 			if rng.randf() < COVER_PROBABILITY:
 				grid.blockers[cell] = _make_cover(rng)
@@ -493,12 +493,12 @@ static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
 				best_b = rooms[j]
 
 	if best_a == best_b:
-		var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.TerrainType.SPAWN_A)
-		var cell_b: Vector2i = _mark_zone(grid, _far_corner(best_a), Enums.TerrainType.SPAWN_B)
+		var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.SpawnMarker.SPAWN_A)
+		var cell_b: Vector2i = _mark_zone(grid, _far_corner(best_a), Enums.SpawnMarker.SPAWN_B)
 		return [cell_a, cell_b]
 
-	var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.TerrainType.SPAWN_A)
-	var cell_b: Vector2i = _mark_zone(grid, best_b, Enums.TerrainType.SPAWN_B)
+	var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.SpawnMarker.SPAWN_A)
+	var cell_b: Vector2i = _mark_zone(grid, best_b, Enums.SpawnMarker.SPAWN_B)
 	return [cell_a, cell_b]
 
 
@@ -521,54 +521,57 @@ static func _far_corner(room: Rect2i) -> Rect2i:
 ## occupied geometry at turn 0. Clearing any blocker here — the one
 ## place every spawn cell is already visited — keeps spawn zones
 ## guaranteed clear without a second full-grid pass.
-static func _mark_zone(grid: Grid, room: Rect2i, terrain_code: int) -> Vector2i:
+static func _mark_zone(grid: Grid, room: Rect2i, marker: int) -> Vector2i:
 	var w: int = mini(SPAWN_ZONE_SIZE, room.size.x)
 	var h: int = mini(SPAWN_ZONE_SIZE, room.size.y)
 	for y in range(room.position.y, room.position.y + h):
 		for x in range(room.position.x, room.position.x + w):
 			var cell := Vector2i(x, y)
-			grid.set_terrain(cell, terrain_code)
+			grid.set_spawn_marker(cell, marker)
 			grid.blockers.erase(cell)
 	return room.position
 
 
-## tb31 Pass C: the settled wall/void model, replacing BR30.10's
-## indestructible-wall-terrain approach. `WALL` is only ever a SCRATCH
-## marker while `_split_and_carve` is still carving ("not yet carved") —
-## this is the ONE place it gets resolved into its final, real form. Run
-## LAST (after `_ensure_spawns_connected`, which can still carve WALL
-## cells to OPEN) so this sees the grid's final layout.
+## tb31 Pass C: the settled wall/empty model, replacing BR30.10's
+## indestructible-wall-terrain approach. `UNCARVED` is only ever a
+## SCRATCH marker while `_split_and_carve` is still carving ("not yet
+## carved") — this is the ONE place it gets resolved into its final,
+## real form. Run LAST (after `_ensure_spawns_connected`, which can still
+## carve UNCARVED cells to OPEN) so this sees the grid's final layout.
 ##
-## A WALL cell with at least one non-WALL neighbor (reachable from the
-## playable area) becomes ordinary OPEN ground carrying a destructible
-## wall `Part` blocker — the exact `_scatter_cover` shape (a real,
-## high-DT field object in `grid.blockers`), just authored on `wall.tres`
-## instead of rolled from `COVER_IDS`. Opacity is left at the `1.0` the
-## initial full-grid fill already gave it: an INTACT wall must still block
-## LoS/tactical-cover checks exactly as it always has — only its
-## terrain/blocker REPRESENTATION changes here, not what "wall opacity"
-## means. (`LoS` doesn't yet react to a wall's later destruction — same
-## known, deliberately out-of-scope gap BR30.10 already had; flagged in
-## the taskblock report, not solved this pass.)
+## An UNCARVED cell with at least one non-UNCARVED neighbor (reachable
+## from the playable area) becomes ordinary OPEN ground carrying a
+## destructible wall `Part` blocker — the exact `_scatter_cover` shape (a
+## real, high-DT field object in `grid.blockers`), just authored on
+## `wall.tres` instead of rolled from `COVER_IDS`. Opacity is left at the
+## `1.0` the initial full-grid fill already gave it: an INTACT wall must
+## still block LoS/tactical-cover checks exactly as it always has — only
+## its terrain/blocker REPRESENTATION changes here, not what "wall
+## opacity" means. (`LoS` doesn't yet react to a wall's later
+## destruction — same known, deliberately out-of-scope gap BR30.10
+## already had; flagged in the taskblock report, not solved this pass.)
 ##
-## A WALL cell buried in solid, unreachable rock (no non-WALL neighbor)
-## becomes VOID instead: non-navigable, opacity 0 (nothing to hit — a shot
-## passes into it), no Part. It can never be the nearest hit along any
-## real ray anyway (whatever wall cell sits between it and the open area
-## resolves first) — giving it geometry too would only cost `ShotPlane.
-## build`'s own unculled per-shot scan for zero behavior change, the same
-## perf reasoning BR30.10 already established for skipping it.
-## Two passes, deliberately: classify every WALL cell's exposure FIRST,
-## against the grid's own untouched layout, THEN apply every mutation in
-## a second pass. A single combined pass (classify-and-mutate per cell in
-## one scan order) has a real bug: converting an exposed cell to OPEN
-## makes it read as a non-WALL neighbor for whatever WALL cell is
-## scanned next, so exposure cascades outward from every real opening
-## through however much solid rock the scan order happens to reach —
-## walls many tiles thick instead of the intended single ring, VOID
-## reduced to whatever pocket a run of stale WALL neighbors on every side
-## never got swept into. Classifying against a frozen snapshot first
-## (nothing mutated yet) is what actually keeps this to one tile.
+## An UNCARVED cell buried in solid, unreachable rock (no non-UNCARVED
+## neighbor) becomes EMPTY instead (taskblock-39 Pass D: "void" is a lore
+## term only from here on — this is the old `VOID` terrain value,
+## renamed): non-navigable, opacity 0 (nothing to hit — a shot passes
+## into it), no Part. It can never be the nearest hit along any real ray
+## anyway (whatever wall cell sits between it and the open area resolves
+## first) — giving it geometry too would only cost `ShotPlane.build`'s
+## own unculled per-shot scan for zero behavior change, the same perf
+## reasoning BR30.10 already established for skipping it.
+## Two passes, deliberately: classify every UNCARVED cell's exposure
+## FIRST, against the grid's own untouched layout, THEN apply every
+## mutation in a second pass. A single combined pass (classify-and-mutate
+## per cell in one scan order) has a real bug: converting an exposed cell
+## to OPEN makes it read as a non-UNCARVED neighbor for whatever UNCARVED
+## cell is scanned next, so exposure cascades outward from every real
+## opening through however much solid rock the scan order happens to
+## reach — walls many tiles thick instead of the intended single ring,
+## empty space reduced to whatever pocket a run of stale UNCARVED
+## neighbors on every side never got swept into. Classifying against a
+## frozen snapshot first (nothing mutated yet) is what actually keeps
+## this to one tile.
 ##
 ## taskblock-39 Pass B: reads/writes scratch's own terrain; `grid.blockers`/
 ## `grid.set_opacity` stay direct `Grid` writes, same as everywhere else.
@@ -577,7 +580,7 @@ static func _finalize_walls_and_void(grid: Grid, scratch: MapGenScratch) -> void
 	for y in range(scratch.rows):
 		for x in range(scratch.width):
 			var cell := Vector2i(x, y)
-			if scratch.get_terrain(cell) == Enums.TerrainType.WALL:
+			if scratch.get_terrain(cell) == MapGenScratch.CellKind.UNCARVED:
 				wall_cells.append(cell)
 
 	var exposed_by_cell: Dictionary = {}
@@ -586,17 +589,17 @@ static func _finalize_walls_and_void(grid: Grid, scratch: MapGenScratch) -> void
 
 	for cell: Vector2i in wall_cells:
 		if exposed_by_cell[cell]:
-			scratch.set_terrain(cell, Enums.TerrainType.OPEN)
+			scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
 			grid.blockers[cell] = DataLibrary.get_part(&"wall")
 		else:
-			scratch.set_terrain(cell, Enums.TerrainType.VOID)
+			scratch.set_terrain(cell, MapGenScratch.CellKind.EMPTY)
 			grid.set_opacity(cell, 0.0)
 
 
 static func _is_exposed_wall(scratch: MapGenScratch, cell: Vector2i) -> bool:
 	for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
 		var n: Vector2i = cell + offset
-		if scratch.in_bounds(n) and scratch.get_terrain(n) != Enums.TerrainType.WALL:
+		if scratch.in_bounds(n) and scratch.get_terrain(n) != MapGenScratch.CellKind.UNCARVED:
 			return true
 	return false
 
@@ -627,31 +630,26 @@ static func _ensure_spawns_connected(
 		_carve_corridor(grid, scratch, a, b, rng)
 
 
-## taskblock-39 Pass B: the ONE place the finished scratch becomes real —
-## both `Grid.terrain`/`Grid.level` (kept populated for every caller not
-## yet migrated off them, `GridLegacyBridge`'s own migration bridge chief
-## among them) and `Grid.surfaces` (the placement model's real output,
-## `GridPlacement`'s attachment grammar validated exactly ONCE against a
-## finished map, never fighting a cell carving re-visits). Replaces tb38
-## Pass C's own `_author_surfaces` — same formula, now sourced from
-## scratch instead of `Grid` directly, and this pass's own reason for
-## being: carving no longer talks to the attachment grammar at all, only
-## this one final sweep does.
+## taskblock-39 Pass D: the ONE place the finished scratch becomes real —
+## `Grid.surfaces` (the placement model's real output, `GridPlacement`'s
+## attachment grammar validated exactly ONCE against a finished map,
+## never fighting a cell carving re-visits). `Grid.terrain`/`Grid.level`,
+## the legacy fields this used to also populate for compat, are retired
+## outright — every real caller now reads the surface this places
+## directly instead. Replaces tb38 Pass C's own `_author_surfaces` — same
+## formula, now sourced from scratch instead of `Grid` directly, and this
+## pass's own reason for being: carving no longer talks to the attachment
+## grammar at all, only this one final sweep does.
 ##
 ## `SPAWN_A`/`SPAWN_B` are a real-`Grid`-only overlay (`_place_spawn_
-## zones` writes them directly, never touching scratch) — a spawn-marked
-## cell's own terrain CODE survives this copy untouched; only its level
-## and surface come from scratch, same as any other floored cell.
+## zones` writes `Grid.spawn_marker` directly, never touching scratch) —
+## untouched here; only the surface comes from scratch.
 static func _emit(grid: Grid, scratch: MapGenScratch, ramp_facings: Dictionary) -> void:
 	for y in range(scratch.rows):
 		for x in range(scratch.width):
 			var cell := Vector2i(x, y)
 			var scratch_terrain: int = scratch.get_terrain(cell)
-			if grid.get_terrain(cell) not in [Enums.TerrainType.SPAWN_A, Enums.TerrainType.SPAWN_B]:
-				grid.set_terrain(cell, scratch_terrain)
-			grid.set_level(cell, scratch.get_level(cell))
-
-			if scratch_terrain == Enums.TerrainType.VOID:
+			if scratch_terrain == MapGenScratch.CellKind.EMPTY:
 				continue
 			MapGenScratch.place_surface(
 				grid, cell, scratch_terrain, scratch.get_level(cell), ramp_facings.get(cell, 0.0)

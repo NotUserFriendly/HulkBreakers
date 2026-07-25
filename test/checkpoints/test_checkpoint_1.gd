@@ -25,10 +25,10 @@ func test_dump_ascii_maps_across_several_seeds() -> void:
 		var spawn_b_found := false
 		for y in range(grid.rows):
 			for x in range(grid.width):
-				var terrain: int = grid.get_terrain(Vector2i(x, y))
-				if terrain == Enums.TerrainType.SPAWN_A:
+				var marker: int = grid.get_spawn_marker(Vector2i(x, y))
+				if marker == Enums.SpawnMarker.SPAWN_A:
 					spawn_a_found = true
-				elif terrain == Enums.TerrainType.SPAWN_B:
+				elif marker == Enums.SpawnMarker.SPAWN_B:
 					spawn_b_found = true
 		assert_true(spawn_a_found, "seed %d: spawn zone A must exist" % map_seed)
 		assert_true(spawn_b_found, "seed %d: spawn zone B must exist" % map_seed)

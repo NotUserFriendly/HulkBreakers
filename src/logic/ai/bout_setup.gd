@@ -44,8 +44,8 @@ static func build_bout(
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)
-	var spawn_a_cells: Array[Vector2i] = _cells_of_terrain(grid, Enums.TerrainType.SPAWN_A)
-	var spawn_b_cells: Array[Vector2i] = _cells_of_terrain(grid, Enums.TerrainType.SPAWN_B)
+	var spawn_a_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_A)
+	var spawn_b_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_B)
 
 	var units: Array[Unit] = []
 	units.append_array(_spawn_squad(roster_a, 0, spawn_a_cells))
@@ -111,12 +111,12 @@ static func _spawn_squad(
 	return units
 
 
-static func _cells_of_terrain(grid: Grid, terrain: int) -> Array[Vector2i]:
+static func _cells_of_marker(grid: Grid, marker: int) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
-			if grid.get_terrain(cell) == terrain:
+			if grid.get_spawn_marker(cell) == marker:
 				cells.append(cell)
 	return cells
 

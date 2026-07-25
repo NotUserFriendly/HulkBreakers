@@ -32,20 +32,20 @@ func test_inspect_reports_terrain_and_the_real_field_object() -> void:
 	var state := CombatState.new(grid)
 
 	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
-	assert_eq(info.terrain, Enums.TerrainType.OPEN)
+	assert_eq(info.terrain, TileInspection.PhysicalState.OPEN)
 	assert_eq(info.field_object, wall)
 	assert_null(info.unit)
 
 
 ## An unfloored cell (no Surface placed at all) is the real placement-
-## model equivalent of the old VOID terrain state.
-func test_inspect_reports_void_for_an_unfloored_cell() -> void:
+## model equivalent of the old, retired VOID terrain state.
+func test_inspect_reports_empty_for_an_unfloored_cell() -> void:
 	var grid := GridFixture.flat(5, 5)
 	grid.clear_surfaces(Vector2i(2, 2))
 	var state := CombatState.new(grid)
 
 	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
-	assert_eq(info.terrain, Enums.TerrainType.VOID)
+	assert_eq(info.terrain, TileInspection.PhysicalState.EMPTY)
 
 
 ## A ramp-tagged Surface reads back as RAMP, matching what a real
@@ -56,7 +56,7 @@ func test_inspect_reports_ramp_for_a_ramp_tagged_surface() -> void:
 	var state := CombatState.new(grid)
 
 	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
-	assert_eq(info.terrain, Enums.TerrainType.RAMP)
+	assert_eq(info.terrain, TileInspection.PhysicalState.RAMP)
 
 
 ## docs/10 taskblock04 E1: "enemy parts, HP, materials and DT are fully

@@ -144,7 +144,7 @@ static func for_tile(info: Dictionary, material_table: MaterialTable) -> Tooltip
 
 	var cell: Vector2i = info.cell
 	var data := TooltipData.new("cell (%d, %d)" % [cell.x, cell.y])
-	data.add_row("terrain", Enums.TerrainType.keys()[info.terrain])
+	data.add_row("terrain", TileInspection.PhysicalState.keys()[info.terrain])
 	# taskblock-16 Pass B2: no separate "cover" row here — a cell WITH
 	# cover always has a `field_object`, and the branch above already
 	# returns that object's own full tooltip (for_part) before this
