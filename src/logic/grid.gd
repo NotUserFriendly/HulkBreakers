@@ -24,9 +24,9 @@ var rows: int
 ## marker (which squad starts where), never a physical fact. Every
 ## physical fact a cell can carry (walkable ground, a ramp, a wall,
 ## empty space) is expressed by placement now (`surfaces`/`blockers`
-## below); the old dense `TerrainType` array this used to be (`OPEN`/
-## `WALL`/`RAMP`/`VOID`, and the field's own old name `terrain`) is
-## retired outright, along with `Grid.level` — see docs/SUPERSEDED.md.
+## below); the old dense `TerrainType` array this used to be (the
+## field's own old name was `terrain`, with four retired values — see
+## docs/SUPERSEDED.md) is retired outright, along with `Grid.level`.
 var spawn_marker: Array[int] = []
 var opacity: Array[float] = []
 var occupant_id: Array[int] = []

@@ -38,7 +38,8 @@ func test_inspect_reports_terrain_and_the_real_field_object() -> void:
 
 
 ## An unfloored cell (no Surface placed at all) is the real placement-
-## model equivalent of the old, retired VOID terrain state.
+## model equivalent of the old terrain model's own retired physical-
+## absence state.
 func test_inspect_reports_empty_for_an_unfloored_cell() -> void:
 	var grid := GridFixture.flat(5, 5)
 	grid.clear_surfaces(Vector2i(2, 2))

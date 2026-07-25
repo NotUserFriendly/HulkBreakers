@@ -83,9 +83,10 @@ func test_cover_does_not_block_los() -> void:
 	)
 
 
-## taskblock-39 Pass C: this used to set the cell's own terrain to VOID
-## ("pins the terrain-TYPE change is what actually matters here, not just
-## a bare default") — but `LoS.has_los` is, and always was, purely
+## taskblock-39 Pass C: this used to set the cell's own terrain to the
+## old model's physical-absence value ("pins the terrain-TYPE change is
+## what actually matters here, not just a bare default") — but
+## `LoS.has_los` is, and always was, purely
 ## opacity-based; it never reads terrain at all, so the terrain write was
 ## inert and this test was already vacuous, indistinguishable from
 ## `test_los_symmetric_on_open_ground`'s own "opacity 0 -> clear" case

@@ -128,7 +128,7 @@ func _impact_event(
 	)
 
 
-## A no-target hit (clutter, a wall, the void) — target_unit_id stays -1.
+## A no-target hit (clutter, a wall, empty space) — target_unit_id stays -1.
 func _clutter_impact_event(attacker: Unit, hit: Vector2, origin: Vector2 = Vector2.INF) -> LogEvent:
 	var real_origin: Vector2 = (
 		Vector2(attacker.cell.x, attacker.cell.y) if origin == Vector2.INF else origin
@@ -470,7 +470,7 @@ func _miss_event(attacker: Unit, end_x: float, end_y: float) -> LogEvent:
 
 ## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
 ## same tracer path an impact uses, just terminating at the miss's own
-## logged void endpoint instead of a struck part.
+## logged miss endpoint instead of a struck part.
 func test_play_miss_spawns_a_tracer_along_its_own_logged_endpoint() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
@@ -493,7 +493,7 @@ func test_play_miss_spawns_a_tracer_along_its_own_logged_endpoint() -> void:
 
 
 ## taskblock-23 Pass D: same "no tracer is pinned to a single constant
-## height" property, for a miss's own void tracer.
+## height" property, for a miss's own miss tracer.
 func test_play_miss_draws_at_its_own_real_logged_heights() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player

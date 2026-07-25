@@ -14,8 +14,7 @@ const CHAR_IMPACT := "*"
 const CHAR_GAP := "."
 const CHAR_UNKNOWN := "?"
 ## tb31 Pass C: negative-space fill past a wall's own ring — any cell
-## with no placed Surface at all (taskblock-39 Pass D: "void" is a lore
-## term only from here on; this glyph name follows).
+## with no placed Surface at all.
 const CHAR_EMPTY := " "
 
 
@@ -36,10 +35,10 @@ static func grid_to_text(grid: Grid, occupants: Dictionary = {}) -> String:
 	return "\n".join(lines)
 
 
-## taskblock-39 Pass C/D: the old `WALL`/`VOID` terrain codes never
-## actually reached a real generated map's own ASCII dump — `MapGen.
-## _finalize_walls_and_void` always resolves a WALL cell to OPEN+blocker
-## or VOID before `_emit`, and a real exposed wall's own blocker would
+## taskblock-39 Pass C/D: the old raw `WALL` terrain code never actually
+## reached a real generated map's own ASCII dump — `MapGen.
+## _finalize_walls_and_empty` always resolves a WALL cell to OPEN+blocker
+## or empty space before `_emit`, and a real exposed wall's own blocker would
 ## have fallen through to the generic cover glyph below without this fix
 ## (silently losing the dedicated `#` glyph for anything but a hand-
 ## authored fixture). Wall identity now comes from the blocker's own id;

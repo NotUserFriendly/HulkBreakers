@@ -77,8 +77,9 @@ func apply(state: CombatState) -> void:
 ## queued actions. A hook may also force an immediate freeze by returning
 ## `true` (docs/09 taskblock06 F2: "the mover freezes" the instant
 ## overwatch triggers, unconditionally — Pass D's own legality rule only
-## governs the queue AFTER that freeze, not whether it happens); a void
-## hook's `null` return is simply not `true`, so every pre-Overwatch hook
+## governs the queue AFTER that freeze, not whether it happens); a hook
+## typed `-> void`'s implicit `null` return is simply not `true`, so
+## every pre-Overwatch hook
 ## keeps its old unconditional-continue behaviour untouched. `apply()` is
 ## just this with no hook, matching its old unconditional behaviour
 ## exactly.

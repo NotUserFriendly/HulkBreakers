@@ -677,9 +677,9 @@ func test_opening_a_bare_tile_after_a_live_unit_leaves_the_preview_genuinely_emp
 	)
 
 
-## taskblock-23 Pass E2: "the model floats in a void" — the isolate
-## camera's own cull_mask must ALSO include the real board's floor
-## layer, not just the subject's own isolate layer.
+## taskblock-23 Pass E2: the model was floating in empty space — the
+## isolate camera's own cull_mask must ALSO include the real board's
+## floor layer, not just the subject's own isolate layer.
 func test_isolate_focus_also_includes_the_floor_layer() -> void:
 	var unit: Unit = _unit_with_geometry()
 	var live_view := HitVolumeView.new()

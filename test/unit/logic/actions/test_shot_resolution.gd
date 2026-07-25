@@ -70,7 +70,7 @@ func test_a_miss_events_endpoint_continues_along_the_fired_direction() -> void:
 	assert_gt(end_x, 0.0, "the ray must continue forward along +x, not sit at the origin")
 
 
-## When the firing weapon authored a real `max_range`, the void endpoint
+## When the firing weapon authored a real `max_range`, the miss endpoint
 ## must respect it — never draw a "miss" tracer past where the round could
 ## ever have actually reached.
 func test_a_miss_respects_the_weapons_own_authored_max_range() -> void:
@@ -89,7 +89,7 @@ func test_a_miss_respects_the_weapons_own_authored_max_range() -> void:
 
 
 ## An unauthored weapon (`max_range` 0.0, the default) has no real cap to
-## draw to — falls back to the map's own longest side so the void tracer
+## draw to — falls back to the map's own longest side so the miss tracer
 ## still terminates somewhere on-board-ish, never grows unbounded.
 func test_a_miss_with_no_authored_max_range_falls_back_to_the_map_size() -> void:
 	var shooter := _make_unit(Vector2i(0, 0))
@@ -135,12 +135,12 @@ func test_a_hit_logs_its_own_origin_and_hit_point() -> void:
 
 
 ## taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
-## never drawn." A DEFLECT must always carry its own reflected void
+## never drawn." A DEFLECT must always carry its own reflected miss
 ## endpoint (the same convention a total miss's own endpoint already
 ## uses) — regardless of whether a real ricochet continuation happens to
 ## follow it, since a ricochet that finds nothing to hit produces no
 ## further event of its own.
-func test_a_deflect_logs_its_own_reflected_void_endpoint() -> void:
+func test_a_deflect_logs_its_own_reflected_miss_endpoint() -> void:
 	var shooter := _make_unit(Vector2i(2, 0))
 	var cover := Part.new()
 	cover.id = &"cover"

@@ -393,7 +393,7 @@ func remove_object(target: Dictionary) -> bool:
 ## this used to, had already gone silently inert on any real (non-legacy)
 ## bout grid since tb38 Pass D shipped the surface-based path; only a
 ## bare legacy fixture ever actually saw it block. tb31 Pass C's own
-## settled wall model, verbatim (`MapGen._finalize_walls_and_void`'s
+## settled wall model, verbatim (`MapGen._finalize_walls_and_empty`'s
 ## "exposed wall" branch): floored ground stays floored — never
 ## re-placed, so an already-authored height survives — and passability
 ## comes from a real, destructible `wall` Part `blockers` entry plus

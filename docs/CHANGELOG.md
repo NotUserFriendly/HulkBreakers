@@ -19,10 +19,10 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-39 Passes A–D landed (the legacy grid model — `Grid.level`,
-`Enums.TerrainType`, `GridLegacyBridge` — is fully retired; every reader and fixture now reads the
-real placement model, `docs/SUPERSEDED.md`). taskblock-37 Pass E (view-layer elevation legibility)
-still has two open items: camera framing and the wall cutout against elevation — see `PLAN.md`.*
+*Current as of taskblock-40 Pass A landed ("void" retired from code entirely — a grep-clean rule now,
+not a prose one; `docs/SUPERSEDED.md`). taskblock-37 Pass E (view-layer elevation legibility, now
+taskblock-40 Passes B–D) still has two open items: camera framing and the wall cutout against
+elevation — see `PLAN.md`.*
 
 ---
 
@@ -308,6 +308,22 @@ anywhere, tests included.
   found during the final full-run verification: `test_determinism_check.gd`'s own custom compare
   lambda still read `a.terrain`/`b.terrain` post-rename, a stale reference with no production
   impact (caught by the very first full-suite run after the rename, not shipped).
+
+**"Void" retired from code entirely (tb40 Pass A, docs/PLAN.md)** — tb39 Pass D's vocabulary sweep
+left the word alive in ~44 identifiers/comments and left open whether the rule was prose-level or
+grep-strict; settled grep-strict, since "voidhulk" is the game's own lore term and a future grep for
+it needs to return lore only. Four distinct categories, not one find-and-replace: `WorldPalette.VOID`
+(the 3D environment's background color, not tile coloring) → `WorldPalette.BACKDROP`, naming the role
+rather than the value; `MapGen._finalize_walls_and_void` → `_finalize_walls_and_empty` (and every
+citing comment); the miss-tracer cluster in `ShotResolution`/`ResolutionPlayer` (`void_range`, "void
+ray"/"void tracer"/"void endpoint") → `miss_range`/"miss ray"/"miss tracer"/"miss endpoint" — a
+distinct concept from physical absence (how far a missed shot's tracer draws), renamed without
+touching miss-tracer behavior, ranges, or the deflect path; ordinary-English "void" in comments
+("floating in a void", historical quotes of retired spec language) rewritten in current terms, tbNN
+provenance tags kept. New repo-wide guard test (`test_void_vocabulary_guard.gd`, modeled on tb39's
+own `test_map_gen_touches_grids_spawn_marker_api_only_in_spawn_marking` file-scan pattern) walks
+`src/`/`test/`/`tools/` and fails on any `\bvoid\b` outside a literal `-> void` return annotation —
+the acceptance grep as a real test, not a one-off shell command. Full suite: 2121/2121.
 
 **Failure model & joints** (tb09, joint depth tb26 D) — five failure modes: `MANGLE` (¼ residual
 DT, stays attached), `DISABLE` (inert, attached), `DETONATE` (replaces cook-off), `FRAGMENT`,
