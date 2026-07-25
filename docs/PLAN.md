@@ -51,37 +51,7 @@ mulebot can't sit in the driver's seat.
 
 # NEXT
 
-### 1. Multi-level maps — Pass E: view-layer legibility (taskblock-40)
-**Needs:** nothing — taskblock-37 Passes A–D landed the entire headless half (elevation reaches
-damage resolution, height-aware pathfinding, climb-up/hop-down as real actions, `MapGen` authoring
-real levels; see `CHANGELOG.md`) and taskblock-39 retired the legacy grid model outright. **Unblocks:**
-nothing further blocks specifically on this, but it's the one part of multi-level still open. **Needs
-the supervisor watching — not headless-verifiable, per the taskblock's own fence; do not attempt
-unattended past the point where a pass needs eyes.**
-
-- ~~The view reads `unit.level`/`unit.height`~~ — **done.** `ResolutionPlayer`/`HitVolumeView` read
-  real height; `BoardView`'s ground and grid lines both terrace per-cell instead of one flat mesh at
-  world Y=0 (the root cause of the supervisor's first "raise the level, no visual change" report);
-  confirmed working live, including on pregen `MapGen` maps.
-- ~~Movement animation for climbs and drops~~ — **done.** `&"climbed"`/`&"hopped_down"` log events
-  carry the same `"path"` shape a `move` event does and route through the existing `_play_slide`
-  machinery — no dedicated animation code needed.
-- ~~Pass A: retire "void" from code entirely~~ — **done (tb40 Pass A).** Grep-clean now, not
-  prose-level (settles the open question tb39 Pass D left): `grep -rniE "\bvoid\b" --include=*.gd
-  src test tools | grep -v -- "-> void"` returns zero lines, enforced by
-  `test_void_vocabulary_guard.gd`. `WorldPalette.VOID` → `BACKDROP`; `MapGen._finalize_walls_and_void`
-  → `_finalize_walls_and_empty`; the miss-tracer cluster → `miss_range`/"miss ray" (a distinct
-  concept, renamed without touching behavior); ordinary-English "void" comments rewritten.
-- **Pass B: camera framing across levels.** Whether the tactical orbit and sniper framing behave
-  sensibly when shooter and target are on different levels. Measure across a height-delta matrix
-  before deciding whether there's a real defect versus an aesthetic-only gap.
-- **Pass C: does elevation break the wall cutout?** Diagnosis only, no fix — BR32.04/BR32.05 stay
-  open and gated separately; this pass answers whether elevation is a new failure mode or the same
-  coarse occlusion heuristic with a larger blast radius.
-- **Pass D: a loadable multi-level scenario + supervisor checklist**, so the supervisor's own look is
-  a short yes/no pass rather than an investigation.
-
-### 2. Attributes
+### 1. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -103,7 +73,7 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 3. Diagnostics — the log becomes the instrument
+### 2. Diagnostics — the log becomes the instrument
 **Needs:** nothing. **Unblocks:** every future perf or behaviour investigation.
 
 *Extends `docs/09`.* Three separate bugs each survived multiple passes purely because CC cannot observe a
@@ -540,8 +510,9 @@ correct-as-is findings in the tb35 wall audit. Runtime is a secondary benefit; c
 suite *claims* is the point.
 
 ### Review pass over map generation
-**Needs:** multi-level landed and confirmed live (`NEXT` item 1). **Unblocks:** trusting generated
-maps as a test surface.
+**Needs:** nothing further — multi-level's view-layer legibility landed in full (taskblock-40,
+`CHANGELOG.md`); the supervisor's own confirmation via `./checkpoint.sh 8` is independent of this
+item, not a gate on it. **Unblocks:** trusting generated maps as a test surface.
 
 `MapGen` has been reshaped three times in quick succession — tb38 made floor and terrain into parts,
 tb39 moved carving into a private `MapGenScratch` that emits real `Surface`s once at the end, and

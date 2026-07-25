@@ -12,11 +12,11 @@ GODOT="${GODOT:-godot}"
 
 mkdir -p "$OUT_DIR"
 
-# Checkpoints 6 and 7 need a real rendered frame (BattleScene, box meshes,
-# lighting) — `--headless` only has the no-op renderer and can't produce
-# one, so they run through a different pipeline than the GUT-based
+# Checkpoints 6, 7, and 8 need a real rendered frame (BattleScene, box
+# meshes, lighting) — `--headless` only has the no-op renderer and can't
+# produce one, so they run through a different pipeline than the GUT-based
 # checkpoints below: a real display driver, and (for 7) --write-movie.
-if [ "$N" = "6" ] || [ "$N" = "7" ]; then
+if [ "$N" = "6" ] || [ "$N" = "7" ] || [ "$N" = "8" ]; then
   ./tools/checkpoints/run_visual_checkpoint.sh "$N" "$OUT_DIR"
   exit 0
 fi

@@ -555,6 +555,40 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Interior-texture exposure** is a sub-symptom (the cut reveals unlit/placeholder wall interiors);
   it may largely resolve once the shape is corrected, and is otherwise shader-pass polish, not worth
   chasing separately before then.
+- **2026-07-25 (tb40 Pass C — elevation diagnosis, reasoned from shader source, not run; no fix, per
+  the pass's own scope)** [CC d0685fa0-63d7-4f3e-b29b-f52886a5e0bc]. Read `wall_cutout.gdshader`'s
+  `fragment()` and `BoardView.update_wall_cutout`/`WallLegibility.pixel_radius_for_tiles` end to end
+  against two named cases (unit on level 3, wall at level 0 in front and below, genuinely occluding —
+  should cut; unit on level 0, wall at level 3 behind them, occluding nothing — should not cut).
+  **Same root cause as the rest of this entry — no real ray/line-of-sight test — but elevation opens a
+  genuinely new way for the SAME coarse heuristic to misfire, not just a bigger blast radius on the
+  existing same-side over-cut:**
+  - **The depth gate (`frag_depth >= unit_depths[i]` → skip) is itself already elevation-correct.**
+    Both sides of the compare are real 3D Euclidean distances (`length(view_pos.xyz)` reconstructed
+    from the hardware depth buffer on the shader side; `camera_position.distance_to(bounding_sphere(
+    unit).center)` on the GDScript side, and `bounding_sphere` already reads `unit.height` — real
+    elevation, not a flattened ground-plane read). Nothing here assumes a flat map.
+  - **Case 1 (should cut) is not newly broken by elevation.** A fragment that is genuinely ON the
+    camera-to-unit ray projects, by definition, to very nearly the SAME screen position as the unit
+    itself — screen-space proximity is not a flat-map assumption, it's true of any real 3D projection
+    regardless of height. Reasoned through; no failure mode found here.
+  - **Case 2 (should not cut) exposes a case the depth gate cannot catch once height varies.** On a
+    flat map, "positioned behind the unit relative to the camera" and "farther from the camera in
+    Euclidean distance" are the same condition, because everything sits near one shared height — so
+    the depth gate has always doubled as a correct "is this wall really between camera and unit" proxy
+    *for that reason*, not because it's a real occlusion test. Once a wall can be elevated far above a
+    low unit, that equivalence breaks: a wall that is horizontally BEHIND the unit (farther along the
+    ground-plane line from camera through unit) can still be Euclidean-NEARER to an elevated camera
+    than the low unit is, purely because it sits closer to the camera's own altitude — geometry no
+    flat map can produce. `frag_depth >= unit_depths[i]` then evaluates false (wall reads as nearer),
+    the screen-space radius check is the only remaining gate, and `WallLegibility`'s own doc comment
+    already concedes that gate was sized for "the tactical camera sits well above and back... a wall
+    within N world units of that [camera-to-ground-unit] ray almost never fires" — a premise about
+    where walls and units sit relative to the camera that elevation is specifically what breaks.
+  - **Conclusion: do not open a new BUGS.md entry** — the fix (a real ray/line-of-sight test, or
+    gating on the angle between camera→wall and camera→unit, both already named above as candidate
+    fixes) is the same fix this entry already wants; elevation just adds one more concrete geometry
+    that motivates it, worth having on record for whoever picks the candidate fixes.
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **Source:** `SUPERVISOR`
@@ -974,3 +1008,56 @@ confirm" roll-up — so pending items surface at a natural review point without 
   that the sphere teaches the player the real blast extent; a separately-authored visual radius that
   drifts from the mechanical one would be BR35.04's mistake again in a new place — a drawn thing that
   looks authoritative and isn't.
+
+### BR40.01 — Active — owner: `CC`
+**Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
+shooter is elevated on a small platform and the target is below**
+- **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Reported:** 2026-07-25 (tb40 Pass D, discovered building checkpoint 8's own loadable scenario —
+  not something Pass B's headless height-delta matrix could have caught: that matrix checks only
+  whether both bounding SPHERES fit inside the FOV cone, with no scene geometry in the harness at all
+  to occlude against. `checkpoint_8.gd`'s scenario B is a real render, with a real platform.)
+- **Repro:** `./checkpoint.sh 8` → `b_target_below.png` (shooter on a 3x3 platform at level 3, cell
+  (5,3); target on the ground at level 0, cell (1,3); a real wall at (3,3)). The rendered frame shows
+  almost nothing but a huge, near, blank green expanse — no wall, no target, no drop-off — filling
+  the whole visible area.
+- **Root cause, confirmed numerically** (reproduced the exact solve standalone):
+  `CameraOrbitState.attack_framing(shooter, target)` for this pair solves `camera_pos = (8.49, 3.6,
+  2.1)` — **x=8.49, well past the platform's own far edge (the platform only spans x in [4,6])**,
+  because `_solve_back` pushes the camera backward along the shooter->target line far enough to fit
+  both bodies' angular footprint, with no awareness that "backward" here walks the camera clean off
+  the platform the shooter is standing on. The platform's own solid mass — quite close to the camera
+  now, and directly on the line toward the target — fills the frame. `_both_fit`'s own fit check
+  still reports true throughout, correctly, because it only tests each SPHERE's angular footprint
+  against the FOV — it has no concept of intervening solid terrain at all, on a flat map or this one.
+  This is a real gap in the solver, not a mock/scenario artifact: any elevated stand small enough for
+  `back` to walk the camera past its own edge would reproduce this in real play, not just this
+  fixture.
+- **Not fixed.** Out of taskblock-40 Pass D's own scope (build a loadable scenario + checklist, not a
+  camera fix) and out of Pass B's own scope too (Pass B's fence was "fix the vertical anchor if the
+  numbers show a problem" — this isn't an anchor-height problem, it's a missing occlusion/terrain
+  awareness the anchor fix wouldn't touch). Candidate fix directions, not chosen: cap `back` at the
+  shooter's own platform extent (clamp the search's `hi` to stay within the shooter's floored area,
+  where knowable), or a real occlusion check against `Grid.blockers`/placed `Surface`s alongside the
+  angular fit — the same class of fix BR32.05 already wants for the wall cutout, possibly shareable.
+
+### BR40.02 — Active — owner: `CC`
+**`checkpoint_6.gd`/`checkpoint_7.gd` crash outright — both reference the retired `UnitView` class**
+- **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Reported:** 2026-07-25 (tb40 Pass D, discovered confirming this sandbox's GPU/X11 setup could
+  run a visual checkpoint at all, before authoring checkpoint 8). `./checkpoint.sh 6` (and, by the
+  same reference, 7) crashes with `Parser Error: Identifier "UnitView" not declared in the current
+  scope`, a hard Godot debugger break followed by a signal-11 abort — no PNGs, no recording, nothing
+  usable written.
+- **Root cause:** `UnitView` was renamed to `HitVolumeView` in an earlier taskblock (grep finds no
+  `class_name UnitView` anywhere in `src/` — `BattleScene`, `HitVolumeView` itself, and everything
+  else already moved on). `checkpoint_6.gd`/`checkpoint_7.gd` were never updated, because visual
+  checkpoints need a real GPU frame and are deliberately outside `run_tests.sh`'s own headless gate
+  (`docs/00`) — nothing re-runs them automatically, so the rename silently orphaned both scripts and
+  nobody noticed until this session ran one by hand. Both scripts also hand-roll the board/camera/
+  unit-view wiring `BattleScene.load_battle()` now does in one call (added after these two were
+  written) — the more durable fix is probably routing them through `load_battle()` the way
+  `checkpoint_8.gd` (this same pass) does, not just swapping the class name.
+- **Not fixed.** Out of taskblock-40 Pass D's own scope — flagged rather than silently repaired
+  mid-pass. `checkpoint_8.gd` is unaffected (built fresh against `HitVolumeView`/`load_battle()`
+  throughout), but 6 and 7 need their own pass before either will run again.

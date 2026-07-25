@@ -3,6 +3,17 @@ extends GutTest
 ## docs/10: every camera clamp/delta lives in pure, headless-testable math —
 ## CameraRig (the Node) is a thin shell over this.
 
+## taskblock-40 Pass B3: "measure before changing anything." The shared
+## height-delta matrix (shooter fixed at the origin, target displaced
+## vertically at a fixed horizontal offset) every Pass B test below runs
+## through the REAL solver internals (`_solve_back`/`_both_fit`, the exact
+## functions `attack_framing` itself calls — not a reconstruction from the
+## returned {yaw, pitch, zoom} via trig round-trip, which loses enough
+## precision right at the fit boundary the solver deliberately lands on to
+## read as a false failure that was never real; verified against a raw
+## non-reconstructed camera_pos before writing this down as the real test).
+const HEIGHT_DELTAS: Array[float] = [-6.0, -3.0, -1.0, 0.0, 1.0, 3.0, 6.0]
+
 
 func test_orbit_accumulates_yaw() -> void:
 	var state := CameraOrbitState.new()
@@ -276,3 +287,120 @@ func test_sniper_framing_is_deterministic() -> void:
 	assert_eq(a.pitch, b.pitch)
 	assert_eq(a.zoom, b.zoom)
 	assert_eq(a.pan_offset, b.pan_offset)
+
+
+func test_pass_b_height_delta_matrix_always_fits_and_never_drops_below_the_lower_body() -> void:
+	var state := CameraOrbitState.new()
+	var to_target := Vector2(3.0, 0.0)
+	var dir: Vector2 = to_target.normalized()
+	var right := Vector2(-dir.y, dir.x)
+	var usable_half_fov: float = (
+		deg_to_rad(CameraOrbitState.CAMERA_FOV_DEG * 0.5) * CameraOrbitState.ATTACK_MARGIN
+	)
+	print("tb40 Pass B3 attack_framing height-delta matrix (horizontal dist 3, radius 0.4):")
+	print("  delta | back    | zoom    | cam.y | vert_angle_deg | both_fit | cam_below_lower_body")
+	for delta: float in HEIGHT_DELTAS:
+		var shooter: Dictionary = _sphere(Vector3.ZERO, 0.4)
+		var target: Dictionary = _sphere(Vector3(3.0, delta, 0.0), 0.4)
+		var back: float = state._solve_back(
+			shooter.center, shooter.radius, target.center, target.radius, dir, right
+		)
+		var both_fit: bool = state._both_fit(
+			shooter.center,
+			shooter.radius,
+			target.center,
+			target.radius,
+			dir,
+			right,
+			back,
+			usable_half_fov
+		)
+		var camera_pos: Vector3 = (
+			(shooter.center as Vector3)
+			- Vector3(dir.x, 0.0, dir.y) * back
+			+ Vector3(right.x, 0.0, right.y) * CameraOrbitState.ATTACK_RIGHT_OFFSET
+			+ Vector3(0.0, CameraOrbitState.ATTACK_UP_OFFSET, 0.0)
+		)
+		var look_dir: Vector3 = ((target.center as Vector3) - camera_pos).normalized()
+		var vert_angle_deg: float = rad_to_deg(asin(clampf(look_dir.y, -1.0, 1.0)))
+		var lower_y: float = minf((shooter.center as Vector3).y, (target.center as Vector3).y)
+		var below_lower: bool = camera_pos.y < lower_y
+		print(
+			(
+				"  %5.1f | %7.3f | %7.3f | %5.2f | %14.2f | %8s | %s"
+				% [
+					delta,
+					back,
+					camera_pos.distance_to(target.center),
+					camera_pos.y,
+					vert_angle_deg,
+					both_fit,
+					below_lower
+				]
+			)
+		)
+		assert_true(both_fit, "both bodies must fit at height delta %s" % delta)
+		assert_false(below_lower, "camera must never sit below the lower body at delta %s" % delta)
+
+
+## The regression guard taskblock-40 Pass B itself calls "the important
+## one": pins the exact same-level solve so a later change to the
+## height-anchoring formula (if Pass B4 ever lands one) is provably a
+## no-op when shooter and target share a level — most of the game is
+## still played on one level. Values captured from the real solver, not
+## hand-derived.
+func test_pass_b_same_level_solve_is_pinned_as_a_regression_guard() -> void:
+	var state := CameraOrbitState.new()
+	var shooter: Dictionary = _sphere(Vector3.ZERO, 0.4)
+	var target: Dictionary = _sphere(Vector3(3.0, 0.0, 0.0), 0.4)
+
+	var framing: Dictionary = state.attack_framing(shooter, target)
+
+	assert_almost_eq(framing.yaw as float, -1.379556, 0.0001)
+	assert_almost_eq(framing.pitch as float, -0.126046, 0.0001)
+	assert_almost_eq(framing.zoom as float, 4.772782, 0.0001)
+	assert_eq(framing.pan_offset as Vector3, target.center)
+
+
+## taskblock-40 Pass B: `sniper_framing` never even reads a shooter, so
+## `pan_offset == target.center` (Y included) holds at any height by
+## construction, not by height-specific logic -- checked across the same
+## matrix anyway since it's explicitly named in the taskblock's own
+## acceptance, not assumed from the structural argument alone.
+func test_pass_b_sniper_framing_centers_the_target_at_any_height() -> void:
+	var state := CameraOrbitState.new()
+	for delta: float in HEIGHT_DELTAS:
+		var target: Dictionary = _sphere(Vector3(3.0, delta, 0.0), 0.4)
+		var framing: Dictionary = state.sniper_framing(target)
+		assert_eq(
+			framing.pan_offset as Vector3, target.center, "must center target at delta %s" % delta
+		)
+
+
+## taskblock-40 Pass B3: continuity across the delta-crosses-zero seam --
+## fine-grained sampling either side of zero must show no jump, since
+## `attack_framing` has no explicit height branch (the whole solve is
+## uniform 3D algebra) and shouldn't accidentally grow one.
+func test_pass_b_solved_framing_is_continuous_across_the_zero_height_crossing() -> void:
+	var state := CameraOrbitState.new()
+	var shooter: Dictionary = _sphere(Vector3.ZERO, 0.4)
+	var previous: Dictionary = {}
+	var step := 0.01
+	for i in range(-5, 6):
+		var delta: float = i * step
+		var target: Dictionary = _sphere(Vector3(3.0, delta, 0.0), 0.4)
+		var framing: Dictionary = state.attack_framing(shooter, target)
+		if not previous.is_empty():
+			assert_almost_eq(
+				framing.zoom as float,
+				previous.zoom as float,
+				0.05,
+				"zoom must not jump crossing delta %s" % delta
+			)
+			assert_almost_eq(
+				framing.pitch as float,
+				previous.pitch as float,
+				0.05,
+				"pitch must not jump crossing delta %s" % delta
+			)
+		previous = framing
