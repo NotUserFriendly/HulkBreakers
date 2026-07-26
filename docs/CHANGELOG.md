@@ -19,10 +19,11 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-40 Passes A–D landed — multi-level maps' view-layer legibility (taskblock-37
-Pass E) is closed. Checkpoint 8 (a loadable multi-level scenario, `./checkpoint.sh 8`) is the
-supervisor's own hand-off; a real render surfaced a new camera-solver limitation, `BR40.01` (open,
-`CC`-owned), that no headless matrix could have caught. See `PLAN.md`.*
+*Current as of taskblock-41 Passes A–F landed — "Diagnostics: the log becomes the instrument" is
+closed, and so is "Checkpoints return as an ordinary tool." The combat log now carries engine and
+script errors, pairs every command with its outcome and a reason, narrates a bout build in
+construction order, and draws itself as a real window with a live framerate on it. Checkpoints are a
+tool again rather than a gate, guarded in CI by parsing what cannot be rendered. See `PLAN.md`.*
 
 ---
 
@@ -1092,6 +1093,99 @@ though `refresh()` was already fully wired to `tactics.aim_changed`; deleted out
 mutation path was re-confirmed to emit it. `docs/BUGS.md`'s own scroll-layer-cycles-walls finding
 (BR33.01) is deliberately still open — a policy call, not a mechanism one, left for the supervisor to
 decide having now seen this block's finished aim view.
+
+
+### Diagnostics: the log becomes the instrument (tb41 Passes A–D, F, docs/09)
+**Render coalescing (Pass A, BR27.09 cost #1).** `emit()` updates the model and marks dirty; the
+`RichTextLabel` draw happens at most once per frame, driven from `ControlOverlay._process`. New shared
+`UiLogSink` base; both `UISink` and `HierarchicalUiSink` extend it. **BR27.09's own prescribed fix —
+incremental `append_text` — was overridden with the supervisor's approval and NOT taken**: it fits the
+flat sink but cannot fit the folding one, where a new event routinely rewrites an existing group's
+summary rather than appending a row. Coalescing is correct for both, and its real value is that render
+cost stops scaling with event count *at all*, which is what makes Pass D affordable.
+Measured on BR27.09's own scenario (200-line scrollback, 3v3, peak 29 events), real classes against a
+real label in a real tree: `UISink` 4845µs → 225µs on a peak turn, `HierarchicalUiSink` 10058µs →
+870µs. **`HierarchicalUiSink` had never actually been measured and is ~2× the sink that had been** —
+~10ms on a peak turn in the sink both live overlays use, not the ~5ms BR27.09 estimated from the flat
+one. Headless and a real x11 display agreed within ~2%. **The several-second hitch survives, as
+expected** — its mechanism is the synchronous AI batch, untouched here; BR27.09 stays `Active`.
+
+**Engine and script errors on the same stream (Pass B).** `EngineErrorTap` is a real Godot `Logger`
+(`OS.add_logger`); every error becomes a `LogEvent` of kind `diagnostic` on whichever `CombatLog` is
+current. `LogSink.wants()` is the opt-out, checked once in `CombatLog.emit()`. **The reachable set was
+observed, not assumed**: `push_error`/`push_warning`, GDScript runtime errors *with the real script
+file and line*, and engine-internal C++ `ERR_FAIL_*` all reach it; **a hard crash never will**, and
+that boundary is stated in docs/09 rather than left implied. One engine failure can produce several
+callbacks as the C++ chain unwinds — reported faithfully, not deduplicated. `_log_message` is
+deliberately not hooked (`print()` routes through it and `StdoutSink` prints every event — an
+unbounded loop).
+
+**Commands paired with outcomes (Pass C).** `CommandLog` emits a `command` event before every attempt
+and a `command_outcome` after, carrying a machine-readable `reason`. Pass B covered every rejection
+that already went through `push_error`; this covered the remainder — **~40 bare `return false` paths in
+`BoutInjector` that were silent even to the console**, each now naming its cause. Shared helpers stopped
+answering only "no": `_move_unit`/`_place_cover`/`_clear_cover`/`_spawn_field_item` return a reason and
+`_attach` returns `{part, reason}`, because three different failures collapsing into one null left
+callers unable to say which happened. A refusal while queueing and a refusal at resolution read
+differently. `try_apply` no longer refuses silently and `resolution_stopped` names the action that
+could not run. **Reverses tb29's "a rejected call is a true no-op (no log entry)"** — the mutation and
+RNG halves stand, the silence does not (`SUPERSEDED.md`). **Not done:** a per-action legality *reason*
+would mean changing `is_legal`'s signature across every action; deliberately out of scope, so
+`try_apply` reports `action_illegal` plus the action's own `describe()`.
+
+**Deliberate verbosity and the bout-build log (Pass D).** `BoardView.build()` narrates itself in
+construction order — terrain, grid lines, empty tiles, extraction tiles, walls, cover, field items —
+each with its own count and a running index, counted where they are built rather than re-derived from
+the grid. Plus `unit_assembled` (listing parts in socket-tree order) and `overlay_activated`/
+`overlay_deactivated`. **"bot constructed, part attached" is logged where a unit ENTERS the world**, not
+inside `DeepStrike`/`BodyAssembler`/`PartGraph.attach`: those are pure static logic with no `CombatLog`
+in reach, and threading one down would push a diagnostic concern into the deepest layer for a per-socket
+event nobody asked for. **The wall cutout is deliberately NOT logged per frame** — it runs every frame
+on every wall while the camera orbits and `FileSink` flushes per line, so it logs only when the cut set
+meaningfully changes. `LogFold` folds the new high-volume kinds into one counted row per run;
+`diagnostic` is pointedly excluded, because collapsing an error into a quiet counted row is the
+opposite of what an error is for.
+*Fixed a regression this pass caused:* the build log displaced `session_start` from the log file's
+first line, breaking docs/09's "replayable from its own log file alone". `load_battle` now takes an
+optional header event emitted between attaching the sinks and building anything, and the active
+overlay's log sink attaches explicitly at that point (`ControlOverlay.attach_log_sink`) instead of as a
+side effect of `battle_loaded`, which fires at the *end* of the load and missed everything.
+
+**The log becomes a window (Pass F).** `CombatLogPanel`: title bar, minimize, drag-to-resize, a real
+background, scroll hand-off at the content's ends, and a live FPS readout in the title bar.
+`FpsMeter` and `LogScrollHandoff` hold the real rules and are headlessly tested; the chrome is
+plumbing, deliberately untested, and this pass is **a session opener, not a definition of done**.
+docs/09 now records that `FpsDumpSink` and this readout are *supposed* to disagree and must not be
+reconciled — the gap between them is the only signal separating BR26.02 from BR27.09. **BR34.02 is
+answered structurally (the panel has a real background) but NOT closed** — it is `SUPERVISOR`-owned.
+*Two layout bugs were found by rendering, not by testing*: a `PanelContainer` sizes every child to
+fill, so the readout stacked under the log instead of overlaying it; and `PRESET_TOP_RIGHT` bakes
+offsets from a zero-width Label, so it grew off the panel and over the board. Neither was visible to
+any headless assertion. `SpectatorOverlay` still uses its own bare label — converting it belongs to the
+live iteration this pass opens.
+
+### Checkpoints return as an ordinary tool (tb41 Pass E, docs/09)
+The **gate** was retired, not the capability: no hard stop, no permission step. `./checkpoint.sh N`
+runs `tools/checkpoints/checkpoint_N.gd` against a real display; the driver is generic and **the
+scenario owns its own README and checklist**, so the description cannot drift from the code (three
+heredocs were ~200 of the driver's 224 lines).
+**The parse guard is the load-bearing piece.** Visual checkpoints sit outside the headless gate by
+necessity, so nothing re-runs them — which is how a `UnitView` rename orphaned two scripts for ~15
+taskblocks with nothing going red (`BR40.02`). Rendering can't happen in CI; parsing can.
+`tools/checkpoints/parse_guard.gd` fails the build on a parse error or a script that stopped being a
+`SceneTree` entry point. **It is a script, not a GUT test, and that was found the hard way:** written
+as a test first, it worked — but `run_tests.sh` runs GUT with `-d`, and under the debugger a parse
+error raises a break that *waits for input*, so the guard would have hung the build instead of failing
+it. It now runs without `-d`, ahead of GUT. Proven both ways by reintroducing BR40.02's exact
+`UnitView` reference and watching each behave.
+`checkpoint_{6,7}.gd` **deleted** rather than repaired — updating two dead scripts so they could then
+be removed is work with no product. `BR40.02` closed as **`Obsolete`, not `Resolved`**: nobody
+verified a fix, because there was no fix. `out/checkpoints/` is local-only now (`.gitignore` plus
+`git rm -r --cached`; the ignore alone does not untrack), with `out/checkpoints-kept/` tracked so
+keeping an image is a copy rather than a forgotten `git add -f`. **The durable artifact is the answers,
+not the images** — they go in `reports/`. The old GUT-based checkpoints 1–5 left `checkpoint.sh`
+entirely: they were never checkpoints, just regression tests, and now live under `test/baselines/` with
+names that say so.
 
 ## Economy
 
