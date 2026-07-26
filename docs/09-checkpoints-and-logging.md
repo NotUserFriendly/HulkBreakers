@@ -107,6 +107,26 @@ reported faithfully rather than deduplicated; and `_log_message` is deliberately
 because `print()` routes through it and `StdoutSink` prints every event it receives — capturing
 messages would be an unbounded loop.
 
+## Two framerate numbers, and they are SUPPOSED to disagree (taskblock-41 Pass F)
+There are two, deliberately, and they answer different questions:
+
+- **`FpsDumpSink`** samples a fixed delay *after* `turn_start` — past the turn-boundary hitch, into
+  settled steady state — and emits a `fps_dump` event into the log. It answers **"is the game slow in
+  general,"** for CC to grep out of `out/combat.log`.
+- **The on-screen readout** (`FpsMeter`, drawn over the combat-log panel) does the opposite: it shows
+  the hitch **as it happens**, instantaneous alongside a rolling one-second average, for a human
+  watching the screen.
+
+**This divergence is intended and must not be reconciled. Keep the dump exactly as it is.** When the
+two agree, that is a positive indicator. When they disagree, **the disagreement is itself the clue**
+— the gap between them measures transient cost that neither number shows alone. A later pass that
+"fixes" the discrepancy by making them sample the same way deletes the only signal that distinguishes
+BR26.02 (slow in general) from BR27.09 (a hitch at a boundary).
+
+The readout shows both its own numbers for the same reason: a single blended figure hides the gap
+between "right now" and "over the last second". The rolling window is time-bounded, not
+frame-bounded, so one second means one second at 5 FPS and at 500 FPS alike.
+
 ## Checkpoints — an ordinary tool (taskblock-41 Pass E)
 What was retired was the **gate**, not the capability. The original ritual was five
 committed-artifact checkpoints, each ending in "stop and wait for a go" — that stalled the pipeline
