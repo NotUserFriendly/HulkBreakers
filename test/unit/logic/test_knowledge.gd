@@ -17,7 +17,9 @@ func after_each() -> void:
 func test_knows_internal_defaults_to_true_with_no_sensor_system_to_gate_on() -> void:
 	var torso: Part = DataLibrary.get_part(&"torso")
 	var reactor: Part = DataLibrary.get_part(&"reactor")
-	var observer := Unit.new(Matrix.new(), Shell.new(DataLibrary.get_part(&"torso")), Vector2i(0, 0))
+	var observer := Unit.new(
+		Matrix.new(), Shell.new(DataLibrary.get_part(&"torso")), Vector2i(0, 0)
+	)
 	var target := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(1, 0))
 	var state := CombatState.new(Grid.new(3, 3), [observer, target])
 

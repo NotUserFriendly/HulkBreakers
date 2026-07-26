@@ -1,5 +1,5 @@
 class_name HierarchicalUiSink
-extends LogSink
+extends UiLogSink
 
 ## taskblock-22 Pass F: "the UI sink gets a tree" — a hierarchical VIEW of
 ## the same flat LogEvent stream FileSink/MemorySink still get untouched
@@ -14,12 +14,21 @@ extends LogSink
 ## top-level group's current summary, in order) for anything that only
 ## wants the flat view — same shape test_battle_scene.gd's existing
 ## session-start assertions already read.
+##
+## taskblock-41 Pass A: the BBCode render into `label` is coalesced to at
+## most once per frame (`UiLogSink`), which is why the old single `_render()`
+## is now split in two. `_rebuild_lines()` is the cheap model update and
+## still runs on EVERY `emit()` — `lines` must never lag the event stream,
+## since it is the whole headless surface. `_render_label()` is the
+## expensive BBCode build and waits for the frame tick. This sink is exactly
+## why BR27.09's own prescribed `append_text` fix could not be taken: a new
+## event routinely rewrites an existing group's summary rather than
+## appending a row, so there is no correct incremental append here.
 
 var fold: LogFold
-var label: RichTextLabel = null
-## One string per top-level group's current summary, in order — rebuilt
-## alongside the BBCode render on every emit(), same "always a real
-## stored array" shape as UISink.lines, not a computed property.
+## One string per top-level group's current summary, in order — rebuilt on
+## every emit(), same "always a real stored array" shape as UISink.lines,
+## not a computed property.
 var lines: Array[String] = []
 var _expanded: Dictionary = {}
 
@@ -34,20 +43,28 @@ func _init(p_label: RichTextLabel = null, p_state: CombatState = null) -> void:
 
 func emit(event: LogEvent) -> void:
 	fold.ingest(event)
-	_render()
+	_rebuild_lines()
+	mark_dirty()
 
 
+## Expand/collapse renders immediately rather than waiting for the frame
+## tick — a click is direct manipulation, and a one-frame dirty flag would
+## make it read as dropped. The fold model itself is untouched here; only
+## which rows are drawn expanded changes, so there is nothing to rebuild.
 func _on_meta_clicked(meta: Variant) -> void:
 	if meta is String and (meta as String).begins_with("group_"):
 		var id: int = int((meta as String).trim_prefix("group_"))
 		_expanded[id] = not _expanded.get(id, false)
-		_render()
+		render_now()
 
 
-func _render() -> void:
+func _rebuild_lines() -> void:
 	lines.clear()
 	for group: LogFoldGroup in fold.groups:
 		lines.append(group.summary)
+
+
+func _render_label() -> void:
 	if label == null:
 		return
 	var out := PackedStringArray()
