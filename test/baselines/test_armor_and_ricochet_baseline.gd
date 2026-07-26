@@ -1,11 +1,14 @@
 extends GutTest
 
-## Checkpoint 3 artifact (docs/09): a seeded burst fired at a steel-plated
-## torso, dumped round by round — outcome, retained damage, and any
-## ricochet's landing spot — so a human can eyeball "does grazing keep
+## An ordinary regression baseline (docs/09), formerly checkpoint 3: a seeded
+## burst fired at a steel-plated torso, dumped round by round — outcome,
+## retained damage, and any ricochet's landing spot — so "does grazing keep
 ## ~90%, do bounces land somewhere plausible, is the spray chaotic but not
-## insane." Run via ./checkpoint.sh 3 — its stdout is what lands in
-## out/checkpoints/03/output.txt.
+## insane" is answerable from the test log alone.
+##
+## taskblock-41 Pass E: renamed out of the checkpoint frame — the ritual is
+## retired, the check is not. It runs every `./run_tests.sh`, as it always
+## did; only the name, which implied a gate that no longer exists, changed.
 
 const BURST_SIZE := 10
 const SEED := 20260715

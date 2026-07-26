@@ -1,10 +1,13 @@
 extends GutTest
 
-## Checkpoint 4 artifact (docs/09): 20 randomly deep-struck cyborgs, ASCII
-## shot planes + stat blocks, so a human can eyeball "is any of these
-## malformed, unarmed-when-it-shouldn't-be, or otherwise absurd." Run via
-## ./checkpoint.sh 4 — its stdout is what lands in
-## out/checkpoints/04/output.txt.
+## An ordinary regression baseline (docs/09), formerly checkpoint 4: 20 randomly
+## deep-struck cyborgs, ASCII shot planes plus stat blocks, so "is any of these
+## malformed, unarmed-when-it-shouldn't-be, or otherwise absurd" is answerable
+## from the test log alone.
+##
+## taskblock-41 Pass E: renamed out of the checkpoint frame — the ritual is
+## retired, the check is not. It runs every `./run_tests.sh`, as it always
+## did; only the name, which implied a gate that no longer exists, changed.
 
 const CYBORG_COUNT := 20
 

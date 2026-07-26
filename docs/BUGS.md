@@ -1082,27 +1082,6 @@ shooter is elevated on a small platform and the target is below**
   where knowable), or a real occlusion check against `Grid.blockers`/placed `Surface`s alongside the
   angular fit — the same class of fix BR32.05 already wants for the wall cutout, possibly shareable.
 
-### BR40.02 — Active — owner: `CC`
-**`checkpoint_6.gd`/`checkpoint_7.gd` crash outright — both reference the retired `UnitView` class**
-- **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
-- **Reported:** 2026-07-25 (tb40 Pass D, discovered confirming this sandbox's GPU/X11 setup could
-  run a visual checkpoint at all, before authoring checkpoint 8). `./checkpoint.sh 6` (and, by the
-  same reference, 7) crashes with `Parser Error: Identifier "UnitView" not declared in the current
-  scope`, a hard Godot debugger break followed by a signal-11 abort — no PNGs, no recording, nothing
-  usable written.
-- **Root cause:** `UnitView` was renamed to `HitVolumeView` in an earlier taskblock (grep finds no
-  `class_name UnitView` anywhere in `src/` — `BattleScene`, `HitVolumeView` itself, and everything
-  else already moved on). `checkpoint_6.gd`/`checkpoint_7.gd` were never updated, because visual
-  checkpoints need a real GPU frame and are deliberately outside `run_tests.sh`'s own headless gate
-  (`docs/00`) — nothing re-runs them automatically, so the rename silently orphaned both scripts and
-  nobody noticed until this session ran one by hand. Both scripts also hand-roll the board/camera/
-  unit-view wiring `BattleScene.load_battle()` now does in one call (added after these two were
-  written) — the more durable fix is probably routing them through `load_battle()` the way
-  `checkpoint_8.gd` (this same pass) does, not just swapping the class name.
-- **Not fixed.** Out of taskblock-40 Pass D's own scope — flagged rather than silently repaired
-  mid-pass. `checkpoint_8.gd` is unaffected (built fresh against `HitVolumeView`/`load_battle()`
-  throughout), but 6 and 7 need their own pass before either will run again.
-
 ### BR40.03 — Active — owner: `SUPERVISOR`
 **Scattered cover generates at level 0 inside raised rooms — each cover object sits at the bottom of
 its own one-tile pit punched through the raised floor**

@@ -1177,3 +1177,38 @@ same relative order this ledger has always kept them in, oldest work first. All 
   to that SAME body's own joint region at point-blank range instead of continuing its flight. One
   early ricochet in the mission now travels much further before its next impact, cascading into a
   materially different (but more correct) mission outcome.
+
+### BR40.02 — Obsolete — owner: `CC`
+**`checkpoint_6.gd`/`checkpoint_7.gd` crash outright — both reference the retired `UnitView` class**
+- **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Reported:** 2026-07-25 (tb40 Pass D, discovered confirming this sandbox's GPU/X11 setup could
+  run a visual checkpoint at all, before authoring checkpoint 8). `./checkpoint.sh 6` (and, by the
+  same reference, 7) crashes with `Parser Error: Identifier "UnitView" not declared in the current
+  scope`, a hard Godot debugger break followed by a signal-11 abort — no PNGs, no recording, nothing
+  usable written.
+- **Root cause:** `UnitView` was renamed to `HitVolumeView` in an earlier taskblock (grep finds no
+  `class_name UnitView` anywhere in `src/` — `BattleScene`, `HitVolumeView` itself, and everything
+  else already moved on). `checkpoint_6.gd`/`checkpoint_7.gd` were never updated, because visual
+  checkpoints need a real GPU frame and are deliberately outside `run_tests.sh`'s own headless gate
+  (`docs/00`) — nothing re-runs them automatically, so the rename silently orphaned both scripts and
+  nobody noticed until this session ran one by hand. Both scripts also hand-roll the board/camera/
+  unit-view wiring `BattleScene.load_battle()` now does in one call (added after these two were
+  written) — the more durable fix is probably routing them through `load_battle()` the way
+  `checkpoint_8.gd` (this same pass) does, not just swapping the class name.
+- **Not fixed.** Out of taskblock-40 Pass D's own scope — flagged rather than silently repaired
+  mid-pass. `checkpoint_8.gd` is unaffected (built fresh against `HitVolumeView`/`load_battle()`
+  throughout), but 6 and 7 need their own pass before either will run again.
+- **2026-07-26 — `Obsolete` (tb41 Pass E)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`].
+  **Deliberately `Obsolete`, not `Resolved`: nobody verified a fix, because there was no fix.**
+  `checkpoint_6.gd` and `checkpoint_7.gd` were **deleted**, per `docs/PLAN.md`'s own call — repairing
+  two dead scripts to current APIs so they could then be removed is work with no product, and
+  `checkpoint_8.gd` already demonstrates the pattern against the live
+  `HitVolumeView`/`load_battle()` path. Git history keeps both. The code this entry describes no
+  longer exists, so the entry can no longer be confirmed either way. `CC`-owned, so CC may close it.
+- **What actually mattered here outlived the entry.** The root cause was never the rename — it was
+  that nothing re-ran these scripts, so a rename could orphan them silently for ~15 taskblocks. That
+  gap is now closed by `tools/checkpoints/parse_guard.gd`, run in `run_tests.sh` ahead of GUT:
+  rendering can't happen in CI, but parsing can, and a scenario that stops parsing (or stops being a
+  `SceneTree` entry point) fails the build. Verified by reintroducing this entry's exact `UnitView`
+  reference into `checkpoint_8.gd`, watching the guard go red, then reverting.
+
