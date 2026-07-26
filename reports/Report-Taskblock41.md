@@ -105,7 +105,9 @@ assumption" kind.
 
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
-**None.** No `SUPERVISOR`-owned entry was closed or moved this taskblock.
+**None during the block itself.** One during the supervisor-driven work that followed it —
+`BR30.05`, moved to `Pending` and then `Resolved` by the supervisor the same session (see the
+appendix).
 
 - `BR27.09` (Pass A) gained a measured before/after note and an explicit record that its prescribed
   fix was overridden — it stays `Active`, and the several-second hitch it is really about is
@@ -116,18 +118,77 @@ assumption" kind.
 
 ## Open questions
 
-- **`BR34.02` is ready for a look.** Pass F gives the log a real background, which is one of the two
-  things that entry says must change. Whether that settles it, or whether the click-through half is
-  still wanted, is the supervisor's call. The `mouse_filter` sweep it also asks for stayed out of
-  scope per the taskblock; it is still the third instance of that failure class.
-- **How far to take the log window.** Pass F is deliberately a starting position: panel width comes
-  from the surrounding column and the log is narrow enough that lines are cut off, minimize collapses
-  to the bar without remembering a dragged height across a minimize/restore cycle, and
-  `SpectatorOverlay` is unconverted. All of that is cheap to change once there is an opinion; none of
-  it is worth guessing at.
+- ~~**`BR34.02` is ready for a look.**~~ **Answered:** closed `Resolved` by the supervisor. The
+  `mouse_filter` sweep it also asked for is still not done — now the *fourth* instance of that
+  failure class, and filed as its own `PLAN.md` item rather than left inside a closed entry.
+- **How far to take the log window.** Partly answered — width and scroll behaviour were both
+  corrected by the supervisor (appendix). Still open: minimize collapses to the bar without
+  remembering a dragged height across a restore, and `SpectatorOverlay` is unconverted.
 - **Whether the engine-error unwind chain should be deduplicated.** One failure currently produces
   several `diagnostic` events. It is faithful, and the chain is real information, but it is also
   three lines where a reader wants one. Evidence is thin either way until the log has been read in
   anger — no policy invented.
 - **`FpsMeter`'s one-second window and `CUTOUT_LOG_GRID`'s 64px quantum are flagged placeholders**,
   picked to be reasonable rather than right. Both are one-line changes.
+
+---
+
+# Appendix — supervisor-driven changes after the block closed
+
+Three, all after the taskblock's own commits. Recorded here because two of them contradict the
+taskblock's spec, and that contradiction is the useful part.
+
+## The scroll hand-off was reversed outright — and the spec was wrong
+
+Pass F specified, in as many words: *"at the top or bottom of the content it falls through to the
+camera rather than dead-stopping."* I built that. The supervisor used it and reported the opposite
+requirement: the log should absorb the wheel at its ends.
+
+**The spec's own behaviour is what `BR30.05` already reports as a bug**, for the debug panel's verb
+list — "further scroll input bleeds through and zooms the world camera instead of stopping at the
+list's own end." So implementing the taskblock faithfully reproduced a known, open defect somewhere
+new. I did not notice the contradiction while building it, and should have: the entry was in the
+ledger the whole time, and the taskblock's own "At the end of the block" section even names
+`BR30.05`'s sibling `BR34.02`. **Checking a UX spec against the open bug ledger before building it
+is the lesson**, not anything about the implementation.
+
+## The feature had never worked at all, and its unit tests were green throughout
+
+Worse than the spec being wrong: my implementation of it did nothing. `LogScrollHandoff` — the
+threshold rule, unit-tested, correct — was never consulted, because `RichTextLabel` consumed the
+wheel before the panel's `_gui_input` ran. Green tests on a rule, and a feature that was inert.
+
+It took two further wrong attempts to fix, both from the same false premise: **`MOUSE_FILTER_STOP`
+consumes ordinary clicks but does not stop a wheel reaching `_unhandled_input`.** That is measured
+now, not assumed, and it is why the click half and the scroll half of `BR30.05` looked like two
+different bugs for years. Recorded in `SUPERSEDED.md` so the next person doesn't re-derive it.
+
+The test that finally caught it spies on `_unhandled_input` — the stage `CameraRig` actually reads —
+rather than on a filter or on `is_input_handled()` (which reports GUT's own runner UI, not the
+panel). **It carries a deliberate control case asserting the spy DOES see a wheel that misses the
+panel.** Without that, "the camera saw nothing" would have passed vacuously and I would have shipped
+it broken a second time.
+
+## `BR30.05` fixed on request, with one decision made without asking
+
+The same two defects in the debug panel. Symptom 1 (clicks falling through) needed reversing
+taskblock-07 Pass B4's "a plain container has no click of its own" rule for that panel — it draws an
+opaque `HulkTheme` background, so `BR34.02`'s resolution applies instead; scoped in `SUPERSEDED.md`
+rather than overturned.
+
+**Decided without asking:** the wheel is *forwarded* to whatever is under the cursor before being
+consumed, rather than swallowed. Consuming wholesale was simpler and would have silently deleted
+`SpinBox`'s wheel-to-adjust, which several verb forms use. The alternative — accept that loss in a
+debug panel — is defensible and I did not take it, because a silent capability loss is the kind of
+thing nobody notices until they need it.
+
+That forwarding hit-tests by position instead of reading `Viewport.gui_get_hovered_control()`: hover
+is only bookkept from real mouse *motion*, so it is null whenever a wheel arrives without one having
+preceded it. The `SpinBox` test failing against the hover version is what surfaced that.
+
+## Process note
+
+**These three should have been appended to this report as they landed** — `CLAUDE.md` says supervisor
+-driven changes go in the report before the rest of the repo is committed. They were not; the report
+was written at the end of Pass F and left untouched while three more commits went in, and the
+supervisor had to ask whether it had been updated. The two open questions above were stale by then.
