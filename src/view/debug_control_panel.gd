@@ -39,6 +39,9 @@ signal applied(verb_id: StringName, args: Dictionary)
 ## and a fixed screen anchor (not "wherever the mouse happened to be")
 ## means it's always found in the same place.
 const TOP_MARGIN := 16.0
+## How far one wheel notch scrolls the verb list, as a fraction of a visible
+## page. Flagged and tunable, same as `CombatLogPanel`'s own.
+const VERB_LIST_SCROLL_PAGE_FRACTION := 0.25
 
 var bout_injector: BoutInjector
 var pool: Dictionary
@@ -61,15 +64,22 @@ var _active: Dictionary = {}
 var _picking: bool = false
 
 
-## docs/09 taskblock07 Pass B4's own rule: a plain container has no click
-## of its own — IGNORE, same as InspectPanel's own root, so empty panel
-## padding never swallows a click intended for the board underneath.
-## Set here, in `_init`, not `_build_ui()` — both overlays construct this
-## panel eagerly (`DebugControlPanel.new()`) well before `setup()` ever
-## runs (deferred until the operator actually presses Inject), so the
-## fix has to land the instant the object exists, not lazily.
+## BR30.05: "clicking within the debug menu itself can also select a world
+## cell." This was `MOUSE_FILTER_IGNORE`, on docs/09 taskblock07 Pass B4's rule
+## that "a plain container has no click of its own." **That rule does not fit
+## this panel**, and BR34.02's own resolution is the refinement: a container
+## that draws a REAL background is not plain — it visibly occupies that space,
+## so blocking clicks over it is honest rather than a bug. This is a
+## `PanelContainer`, and `HulkTheme` gives it an opaque `BACKGROUND` panel
+## stylebox. The B4 rule still holds for genuinely invisible containers, which
+## is what it was written about (`InspectPanel`'s own root, empty padding).
+##
+## Set here, in `_init`, not `_build_ui()` — both overlays construct this panel
+## eagerly (`DebugControlPanel.new()`) well before `setup()` ever runs
+## (deferred until the operator actually presses Inject), so it has to land the
+## instant the object exists, not lazily.
 func _init() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 ## Re-centers on every viewport resize (setup()'s own call handles the
@@ -113,14 +123,76 @@ func setup(p_bout_injector: BoutInjector, p_pool: Dictionary, p_input_owner: Obj
 	call_deferred(&"_center_top")
 
 
+## BR30.05, second symptom: "once the verb list's own `ItemList` is scrolled to
+## the bottom, further scroll input bleeds through and zooms the world camera
+## instead of stopping at the list's own end."
+##
+## The same defect the combat log had, and the same non-obvious cause:
+## `MOUSE_FILTER_STOP` consumes ordinary clicks but a wheel event still reaches
+## `_unhandled_input`, where `CameraRig` lives — measured, not assumed (see
+## `CombatLogPanel`'s own note and `docs/SUPERSEDED.md`). So the wheel is
+## consumed explicitly here.
+##
+## Unlike the combat log, this panel has widgets that legitimately want the
+## wheel — a `SpinBox` adjusts by it. Consuming everything would silently delete
+## that, so the event is FORWARDED to whatever is actually under the cursor
+## before being marked handled: the verb list scrolls, a `Range` steps. Nothing
+## reaches the camera either way.
+func _input(event: InputEvent) -> void:
+	if not visible or event is not InputEventMouseButton:
+		return
+	var button := event as InputEventMouseButton
+	if not button.pressed:
+		return
+	var direction := 0
+	if button.button_index == MOUSE_BUTTON_WHEEL_UP:
+		direction = -1
+	elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		direction = 1
+	else:
+		return
+	if not get_global_rect().has_point(button.position):
+		return
+
+	var range_control: Range = _range_at(self, button.position)
+	if range_control != null:
+		# What the widget's own handler would have done, done explicitly.
+		range_control.value += direction * maxf(range_control.step, 1.0)
+	elif _verb_list != null and _verb_list.get_global_rect().has_point(button.position):
+		var bar: VScrollBar = _verb_list.get_v_scroll_bar()
+		var step: float = maxf(bar.page * VERB_LIST_SCROLL_PAGE_FRACTION, 1.0)
+		bar.value = clampf(bar.value + direction * step, bar.min_value, bar.max_value - bar.page)
+	get_viewport().set_input_as_handled()
+
+
+## The `Range` (a `SpinBox`, a slider) whose rect contains `position`, or null.
+##
+## Deliberately a hit-test rather than `Viewport.gui_get_hovered_control()`:
+## hover is only bookkept from real mouse MOTION, so it is null whenever a wheel
+## arrives without one having preceded it — true in tests, and true in play any
+## time the wheel is spun without moving first. Reading the rects answers the
+## question directly and is true in both cases. Found by the SpinBox test
+## failing against the hover version.
+func _range_at(node: Node, position: Vector2) -> Range:
+	# Children first: a Range nested inside a container must win over the
+	# container itself, and the last match in tree order is the topmost.
+	for i in range(node.get_child_count() - 1, -1, -1):
+		var found: Range = _range_at(node.get_child(i), position)
+		if found != null:
+			return found
+	if node is Range and (node as Control).visible:
+		var control := node as Control
+		if control.get_global_rect().has_point(position):
+			return node as Range
+	return null
+
+
 func _build_ui() -> void:
 	custom_minimum_size = Vector2(520, 0)
-	# docs/09 taskblock07 Pass B4's own rule: a plain container has no click
-	# of its own — IGNORE, same as InspectPanel's own root, so empty panel
-	# padding never swallows a click intended for the board underneath.
-	# Every genuinely interactive child (Button/SpinBox/ItemList/...) keeps
-	# its own native STOP; this is only the container shell.
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# BR30.05: a real, opaque panel blocks what lands on it — see `_init`'s own
+	# comment for why this reverses taskblock-07 Pass B4's rule for this panel
+	# specifically. Every interactive child keeps its own native STOP as before.
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	var root := VBoxContainer.new()
 	add_child(root)
 
