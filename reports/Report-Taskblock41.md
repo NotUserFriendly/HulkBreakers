@@ -186,6 +186,26 @@ That forwarding hit-tests by position instead of reading `Viewport.gui_get_hover
 is only bookkept from real mouse *motion*, so it is null whenever a wheel arrives without one having
 preceded it. The `SpinBox` test failing against the hover version is what surfaced that.
 
+## Drag-to-resize was mine, was broken, and had no test
+
+The supervisor asked whether drag-to-resize was something I wrote or built-in
+`Control` behaviour. It was mine, from Pass F — and checking to answer the question showed it could
+not have worked: the title bar was a single `Button` wired to *both* gestures, and `Button` emits
+`pressed` on **release**, so every drag-to-resize also toggled minimize the moment the mouse came up.
+A second defect underneath it: restore returned to the height captured when some earlier *drag*
+began, not the height the panel was at when minimized, so a resize never survived a minimize cycle.
+
+Neither had a test. Drag is a multi-event gesture — press, motion, release — and nothing in Pass F
+exercised one; the rendered frames I did check show the panel at rest, which a drag bug cannot
+appear in. **This is the same blind spot as the scroll hand-off**, twice in one pass: behaviour that
+only exists across a sequence of input events, verified by looking at a static result.
+
+Fixed on the supervisor's design: the bar resizes and nothing else, minimize is its own `[-]`/`[+]`
+button inside the bar, and restore returns to the height captured at the moment of minimizing. The
+split is structural rather than a flag — the button is a child, so it consumes its own press and the
+bar underneath never sees one. Five tests now drive real press/motion/release sequences through the
+viewport, including "a drag must not minimize" and "a press on the button must not start a drag".
+
 ## Process note
 
 **These three should have been appended to this report as they landed** — `CLAUDE.md` says supervisor
