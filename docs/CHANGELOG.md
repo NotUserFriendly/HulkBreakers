@@ -1223,6 +1223,29 @@ not the images** — they go in `reports/`. The old GUT-based checkpoints 1–5 
 entirely: they were never checkpoints, just regression tests, and now live under `test/baselines/` with
 names that say so.
 
+### Both views share one combat log (supervisor request, post-tb41)
+`SpectatorOverlay`'s bare `RichTextLabel` is retired for the same `CombatLogPanel` the player view
+uses, so the title bar, drag-to-resize, `[-]`/`[+]` minimize, real background, wheel absorption and
+FPS readout stop being a player-view-only privilege — two views with two log widgets is how they
+drift apart every time one is improved.
+
+The panel writes its height through **both** `custom_minimum_size.y` and `size.y`. The overlays lay
+it out completely differently — a column child in the player view, absolutely positioned against the
+bottom-left corner in the spectator view — and each situation respects only one of those, so writing
+one leaves drag-to-resize silently inert in whichever view the author wasn't looking at.
+
+**`fps_dump` joined `LogFold.PLUMBING_KINDS` off the back of it, and that was a real bug nobody had
+reported.** Rendering the converted spectator log showed eleven identical `Turn FPS ... 74.0` rows
+filling the panel and pushing every combat event out of view: `FpsDumpSink` emits one per turn, and
+Pass D never added the kind to the fold list. Folded, not dropped — `out/combat.log` is unaffected,
+folding being presentation only (tb22 F2). **The same flooding was live in the player view**; the
+spectator view only made it obvious because it runs turns continuously.
+
+Checkpoint 9 (`./checkpoint.sh 9`) authored for the conversion under Pass E's own no-permission
+policy — and it earned the parse guard its keep immediately: the first draft called a
+`DataLibrary.bot_presets()` that does not exist, and the guard failed the run and named the file
+before anything rendered.
+
 ## Economy
 
 **Inventory & economy** (docs/05) — mass/bulk/RAM; discount once at the worn layer (body-attached

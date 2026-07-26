@@ -718,3 +718,41 @@ func test_capture_mode_off_behaves_exactly_as_before() -> void:
 
 	assert_false(captured[0], "board_clicked must never fire outside capture mode")
 	assert_true(overlay.inspect_panel.visible, "the ordinary click behavior must be untouched")
+
+
+## Supervisor, post-tb41: the bare `RichTextLabel` this overlay used to build is
+## obsolete — both views use the same `CombatLogPanel` now, so neither can
+## quietly keep the worse widget while the other is improved.
+func test_the_spectator_log_is_the_shared_combat_log_panel() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+
+	assert_not_null(overlay.log_panel, "not a hand-built label any more")
+	assert_eq(
+		overlay.log_label, overlay.log_panel.log_label, "the sink writes into the panel's own"
+	)
+	assert_not_null(overlay.log_panel.minimize_button)
+	assert_not_null(overlay.log_panel.title_bar)
+
+
+## The panel is absolutely positioned here rather than sitting in a column, and
+## only `size` means anything in that situation — `custom_minimum_size` alone
+## would leave resize silently inert in this overlay while working in the other.
+func test_resizing_the_spectator_log_actually_changes_its_size() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var panel: CombatLogPanel = overlay.log_panel
+	var before: float = panel.size.y
+
+	panel._apply_height(before + 90.0)
+	await get_tree().process_frame
+
+	assert_almost_eq(panel.size.y, before + 90.0, 1.0)
+	assert_almost_eq(panel.custom_minimum_size.y, before + 90.0, 1.0, "and both routes agree")
+
+
+## Growing must go upward: the panel's top-left is anchored to the viewport's
+## bottom-left, so growing downward would push it off the bottom of the screen.
+func test_the_spectator_log_grows_upward_not_off_the_screen() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	assert_eq(overlay.log_panel.grow_vertical, Control.GROW_DIRECTION_BEGIN)

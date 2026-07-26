@@ -179,9 +179,9 @@ func toggle_minimized() -> void:
 		# Captured HERE, at the moment of collapsing, so whatever the panel had
 		# been dragged to is what comes back.
 		_restore_height = custom_minimum_size.y
-		custom_minimum_size.y = TITLE_BAR_HEIGHT
+		_apply_height(TITLE_BAR_HEIGHT)
 	else:
-		custom_minimum_size.y = _restore_height
+		_apply_height(_restore_height)
 	_body.visible = not _minimized
 	minimize_button.text = RESTORE_LABEL if _minimized else MINIMIZE_LABEL
 	minimize_button.tooltip_text = "Restore" if _minimized else "Minimize"
@@ -209,7 +209,22 @@ func _on_title_bar_input(event: InputEvent) -> void:
 		# The panel is anchored at the BOTTOM of its column, so dragging the bar
 		# UP (a decreasing y) must make it taller.
 		var delta_y: float = _drag_start_y - motion.global_position.y
-		custom_minimum_size.y = clampf(_drag_start_height + delta_y, MIN_HEIGHT, MAX_HEIGHT)
+		_apply_height(clampf(_drag_start_height + delta_y, MIN_HEIGHT, MAX_HEIGHT))
+
+
+## Sets the panel's height through BOTH routes, because this panel is used in
+## two different layout situations and only one of them respects each.
+##
+## Inside a container (`SquadControlOverlay`'s left column) the container sizes
+## its children from `custom_minimum_size` and overwrites `size` every layout
+## pass. Absolutely positioned (`SpectatorOverlay` anchors it to the bottom-left
+## corner) nothing reads `custom_minimum_size` at all and only `size` does
+## anything. Writing one and not the other silently breaks resize in whichever
+## situation the author wasn't looking at — so write both, and let each layout
+## take the one it cares about.
+func _apply_height(height: float) -> void:
+	custom_minimum_size.y = height
+	size.y = height
 
 
 ## **The log absorbs the wheel whenever the cursor is over it — at the ends of
