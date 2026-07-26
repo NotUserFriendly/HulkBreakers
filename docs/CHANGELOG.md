@@ -1163,6 +1163,16 @@ fill, so the readout stacked under the log instead of overlaying it; and `PRESET
 offsets from a zero-width Label, so it grew off the panel and over the board. Neither was visible to
 any headless assertion. `SpectatorOverlay` still uses its own bare label — converting it belongs to the
 live iteration this pass opens.
+*Supervisor follow-up, same block:* panel widened to a self-declared 520px (it previously inherited
+~260px from the surrounding column, which cut most lines off), and **the scroll hand-off was fixed —
+it had never actually worked.** `LogScrollHandoff` was correct and unit-tested throughout; the rule was
+simply never consulted, because Godot marks a mouse event handled whenever it reaches a
+`MOUSE_FILTER_STOP` control under the cursor, whether or not that control calls `accept_event()`. The
+`RichTextLabel` consumed the wheel before `_gui_input` on the panel ever ran. Handing off therefore
+cannot be expressed by declining to consume: the decision moved to `_input` (before GUI routing) and
+makes the log genuinely transparent for exactly the event being handed off. **`BR34.02` closed
+`Resolved` by the supervisor** — the panel's real background was one of the two changes that entry
+asked for; the `mouse_filter` sweep it also wanted is still outstanding.
 
 ### Checkpoints return as an ordinary tool (tb41 Pass E, docs/09)
 The **gate** was retired, not the capability: no hard stop, no permission step. `./checkpoint.sh N`

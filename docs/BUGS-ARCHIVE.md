@@ -1212,3 +1212,31 @@ same relative order this ledger has always kept them in, oldest work first. All 
   `SceneTree` entry point) fails the build. Verified by reintroducing this entry's exact `UnitView`
   reference into `checkpoint_8.gd`, watching the guard go red, then reverting.
 
+### BR34.02 — Resolved — owner: `SUPERVISOR`
+**Combat log is fully transparent but still eats clicks**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb34 review). Most of the combat log is fully transparent, yet the
+  transparent area cannot be clicked through — so an invisible panel blocks board interaction. The
+  supervisor's framing: **one of the two should change** — either the log gets a visible background
+  (so it's honest about occupying that space), or the transparent region stops intercepting clicks.
+- **Same class as BR31.01 and tb31 Pass A's `TopLeftControls` fix** — a container whose `mouse_filter`
+  defaults to `STOP` swallowing input across its whole rect, including areas that render nothing.
+  That's now the third instance of this exact failure; worth checking every full-rect UI container's
+  filter in one sweep rather than one bug at a time.
+- **Pairs with the log-window UX work in `docs/PLAN.md`** (title bar, minimize, resize, scroll
+  hand-off). If that lands in the same pass, the "visible background vs click-through" decision is
+  made naturally — a titled, resizable panel wants a real background, and the click question answers
+  itself.
+- **2026-07-26 — `Resolved` by the supervisor** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`].
+  **Closed on the supervisor's explicit instruction, not by CC's own judgement** — this entry is
+  `SUPERVISOR`-owned and the most CC may write toward closure on its own is `Pending`.
+  taskblock-41 Pass F took the first of the two options this entry offered: the combat log is a real
+  titled panel with a real background (`CombatLogPanel`), so it is honest about the space it occupies
+  and blocking clicks over that space is no longer an invisible surprise.
+- **The class of bug is not closed with it.** This entry also noted it was the third instance of a
+  full-rect container at `mouse_filter = STOP` swallowing input (after BR31.01 and the
+  `TopLeftControls` fix), and suggested sweeping every container at once. **That sweep has still not
+  happened** and is not covered by this closure. `test_battle_scene_input.gd`'s own audit is the
+  standing guard in the meantime — taskblock-41 Pass F taught it to distinguish a Control that renders
+  nothing (still a bug) from one drawing a real background (legitimate), so it keeps its teeth.
+
