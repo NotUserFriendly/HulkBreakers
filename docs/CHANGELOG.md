@@ -1169,10 +1169,21 @@ it had never actually worked.** `LogScrollHandoff` was correct and unit-tested t
 simply never consulted, because Godot marks a mouse event handled whenever it reaches a
 `MOUSE_FILTER_STOP` control under the cursor, whether or not that control calls `accept_event()`. The
 `RichTextLabel` consumed the wheel before `_gui_input` on the panel ever ran. Handing off therefore
-cannot be expressed by declining to consume: the decision moved to `_input` (before GUI routing) and
-makes the log genuinely transparent for exactly the event being handed off. **`BR34.02` closed
-`Resolved` by the supervisor** — the panel's real background was one of the two changes that entry
-asked for; the `mouse_filter` sweep it also wanted is still outstanding.
+**`BR34.02` closed `Resolved` by the supervisor** — the panel's real background was one of the two
+changes that entry asked for; the `mouse_filter` sweep it also wanted is still outstanding.
+*Then the scroll behaviour was reversed outright on supervisor correction*, and the reversal is the
+more useful record: Pass F's spec said the wheel should fall through to the camera at the content's
+ends, **which is the behaviour `BR30.05` already reports as a bug** for the debug panel — so building
+it as written reproduced a known defect somewhere new. The log now absorbs the wheel whenever the
+cursor is over it. Two implementation attempts were wrong before the third worked, both because
+`MOUSE_FILTER_STOP` does less than it appears to: it consumes clicks (which is why left/middle/right
+always behaved) but a wheel still reaches `_unhandled_input`, and `RichTextLabel` scrolls without
+consuming. The panel now scrolls explicitly in `_input` and calls `set_input_as_handled()`.
+`LogScrollHandoff` and its unit tests are deleted — the rule they encoded no longer exists. **A
+cautionary case worth keeping:** that class was correct and green throughout, while the feature it
+served did nothing at all, because nothing ever asked it. Only a spy at the real input stage showed
+it (`test_combat_log_panel.gd`), and that test carries a deliberate control case so it cannot pass
+vacuously.
 
 ### Checkpoints return as an ordinary tool (tb41 Pass E, docs/09)
 The **gate** was retired, not the capability: no hard stop, no permission step. `./checkpoint.sh N`

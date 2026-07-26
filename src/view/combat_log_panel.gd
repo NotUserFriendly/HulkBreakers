@@ -10,10 +10,11 @@ extends VBoxContainer
 ## spec'd up front, so this is deliberately something concrete to react to. The
 ## numbers below are flagged starting positions, not decisions.
 ##
-## Everything with a real rule lives outside this class and is unit-tested
-## headlessly — `LogScrollHandoff` decides the wheel, `FpsMeter` does the
-## arithmetic. What is left here is plumbing, which is why there are no
-## acceptance tests on the chrome itself.
+## The one real rule left outside this class is `FpsMeter`'s arithmetic, which
+## is unit-tested headlessly. What remains here is plumbing, which is why there
+## are no acceptance tests on the chrome itself — the exception being the
+## wheel's behaviour, which has its own test because getting it wrong is
+## invisible until someone tries to zoom.
 ##
 ## **BR34.02 is answered structurally, not closed.** That entry (SUPERVISOR-
 ## owned) says one of two things must change: the log gets a visible background,
@@ -45,6 +46,11 @@ const BACKGROUND_ALPHA := 0.82
 ## event would drown the log it sits on (tb35 A1 already established the log is
 ## for greppable dumps, not a continuous readout).
 const FPS_MARGIN := Vector2(8.0, 4.0)
+
+## How far one wheel notch scrolls, as a fraction of a visible page. Flagged and
+## tunable (CLAUDE.md: never invent a final number); picked to feel close to the
+## engine default rather than derived from anything.
+const SCROLL_PAGE_FRACTION := 0.25
 
 var log_label: RichTextLabel
 var title_bar: Button
@@ -170,60 +176,54 @@ func _on_title_bar_input(event: InputEvent) -> void:
 		custom_minimum_size.y = clampf(_drag_start_height + delta_y, MIN_HEIGHT, MAX_HEIGHT)
 
 
-## "Scrolling while hovered scrolls the log; at the top or bottom of the
-## content it falls through to the camera rather than dead-stopping."
+## **The log absorbs the wheel whenever the cursor is over it — at the ends of
+## the content too.** Scrolling past the bottom must not start zooming the
+## camera; the panel is a solid surface for the wheel exactly as it already is
+## for left/middle/right clicks.
 ##
-## **Handled in `_input`, before GUI routing, and NOT in `_gui_input` — the
-## first attempt used `_gui_input` and silently did nothing.** Godot marks a
-## mouse event handled whenever it is delivered to a `MOUSE_FILTER_STOP`
-## control under the cursor, whether or not that control calls
-## `accept_event()`. `RichTextLabel` is STOP (it has a real scrollbar and real
-## click-to-expand metas), so the wheel was consumed before the panel was ever
-## consulted. `LogScrollHandoff` was correct and unit-tested throughout; the
-## rule was simply never asked. Verified against a real panel with a real wheel
-## event in `test_combat_log_panel.gd` — the threshold tests alone passed
-## happily while the feature did not work at all.
+## This REVERSES taskblock-41 Pass F's own spec, which said the wheel should
+## "fall through to the camera rather than dead-stopping" at the ends. The
+## supervisor corrected it after using it, and the correction is consistent with
+## `BR30.05`, which reports that same fall-through as a bug in the debug panel:
+## "once the verb list's own `ItemList` is scrolled to the bottom, further
+## scroll input bleeds through and zooms the world camera instead of stopping at
+## the list's own end." Building the spec as written reproduced a known bug in a
+## second place. See `docs/SUPERSEDED.md`.
 ##
-## So the hand-off cannot be expressed by declining to consume: it has to make
-## the panel genuinely transparent for exactly the event being handed off.
-## `_input` runs before GUI routing for the same event, so flipping the filters
-## here takes effect for that event and is restored on the next one.
+## **`MOUSE_FILTER_STOP` is not enough, which is not obvious and was measured.**
+## A STOP control consumes ordinary clicks — which is why left/middle/right
+## already behaved — but a wheel event still reaches `_unhandled_input`, where
+## `CameraRig` lives, unless something actively consumes it. Verified with a spy
+## at that exact stage (`test_combat_log_panel.gd`), including a control case
+## proving the spy sees wheels that miss the panel. So the scrolling is done
+## here explicitly and the event is marked handled, rather than left to the
+## `RichTextLabel`'s own handler, which scrolls without consuming.
+##
+## Handled in `_input` — before GUI routing — so marking it handled also stops
+## the label's built-in handler, and the log scrolls once rather than twice.
+
+
 func _input(event: InputEvent) -> void:
 	if event is not InputEventMouseButton:
 		return
 	var button := event as InputEventMouseButton
-	var direction: LogScrollHandoff.Direction
-	if button.button_index == MOUSE_BUTTON_WHEEL_UP:
-		direction = LogScrollHandoff.Direction.UP
-	elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-		direction = LogScrollHandoff.Direction.DOWN
-	else:
-		# Any non-wheel mouse event restores the normal filters, so a hand-off
-		# can never leave the panel click-through for an ordinary click.
-		_set_click_through(false)
-		return
 	if not button.pressed:
 		return
-	if _minimized or not get_global_rect().has_point(button.position):
-		_set_click_through(false)
+	var direction := 0
+	if button.button_index == MOUSE_BUTTON_WHEEL_UP:
+		direction = -1
+	elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		direction = 1
+	else:
 		return
-	_set_click_through(
-		not LogScrollHandoff.consumes_scrollbar(direction, log_label.get_v_scroll_bar())
-	)
-
-
-## Makes the whole panel ignore the mouse (so a wheel event reaches
-## `_unhandled_input`, where the camera lives) or take it normally again. The
-## body and the label are flipped alongside the panel: a STOP child under the
-## cursor consumes the event by itself, so leaving either one behind would make
-## this a no-op — which is precisely the bug this method exists to fix.
-func _set_click_through(click_through: bool) -> void:
-	if click_through:
-		_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not get_global_rect().has_point(button.position):
 		return
-	# Restored to what each is normally: the body blocks because it draws a
-	# real background, the label because it owns a scrollbar and click-to-expand
-	# metas. The container itself is never restored to STOP — it never was.
-	_body.mouse_filter = Control.MOUSE_FILTER_STOP
-	log_label.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# Minimized: nothing to scroll, but the bar is still a solid surface — a
+	# strip of the screen that zooms while the rest of the panel does not would
+	# be worse than either behaviour on its own.
+	if not _minimized:
+		var bar: VScrollBar = log_label.get_v_scroll_bar()
+		var step: float = maxf(bar.page * SCROLL_PAGE_FRACTION, 1.0)
+		bar.value = clampf(bar.value + direction * step, bar.min_value, bar.max_value - bar.page)
+	get_viewport().set_input_as_handled()

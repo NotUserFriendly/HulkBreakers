@@ -1,18 +1,39 @@
 extends GutTest
 
-## taskblock-41 Pass F follow-up: the scroll hand-off has to be verified
-## against a REAL panel in a REAL tree with a REAL wheel event, not against the
-## threshold rule alone. `LogScrollHandoff` was already unit-tested and correct
-## — and the hand-off still did not work, because the event never reached the
-## code that consulted it. That is exactly the "read the real node back, don't
-## re-derive it" case docs/00 warns about, in event-routing form.
+## Supervisor correction, post-taskblock-41: **the combat log absorbs the wheel
+## whenever the cursor is over it, at the ends of its content too.** Scrolling
+## past the bottom must not start zooming the camera. This reverses Pass F's own
+## spec ("falls through to the camera rather than dead-stopping"), which had
+## reproduced `BR30.05`'s reported behaviour in a second place.
+##
+## `CameraRig` reads the wheel in `_unhandled_input`, so "did it reach the
+## camera" is testable directly with a spy at that same stage — which is what
+## these do, rather than asserting on a `mouse_filter` and hoping it means what
+## I think it means. Pass F's first version of this file asserted the filter
+## because `is_input_handled()` reports GUT's own runner UI; a spy sidesteps
+## both problems and tests the actual requirement.
 
 
-func _panel_in_tree() -> CombatLogPanel:
+## Stands in for `CameraRig`: same input stage, records what reached it.
+class UnhandledWheelSpy:
+	extends Node
+
+	var wheels: Array[int] = []
+
+	func _unhandled_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton:
+			var button := event as InputEventMouseButton
+			if button.pressed:
+				wheels.append(button.button_index)
+
+
+func _panel_and_spy() -> Array:
+	var spy := UnhandledWheelSpy.new()
+	add_child_autofree(spy)
 	var panel := CombatLogPanel.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child_autofree(panel)
-	return panel
+	return [panel, spy]
 
 
 func _fill(panel: CombatLogPanel, lines: int) -> void:
@@ -22,40 +43,41 @@ func _fill(panel: CombatLogPanel, lines: int) -> void:
 	panel.log_label.text = "\n".join(text)
 
 
-## The load-bearing state: is the LOG transparent for this event. The panel
-## container itself is always IGNORE (it draws nothing — see its own comment),
-## so it is not the thing to read.
-func _handed_off(panel: CombatLogPanel) -> bool:
-	return panel.log_label.mouse_filter == Control.MOUSE_FILTER_IGNORE
-
-
 func _over_the_log(panel: CombatLogPanel) -> Vector2:
 	return panel.log_label.get_global_rect().get_center()
 
 
-func _wheel(button_index: MouseButton, at: Vector2) -> InputEventMouseButton:
+func _wheel(button_index: MouseButton, at: Vector2) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = button_index
 	event.pressed = true
 	event.position = at
-	return event
+	get_viewport().push_input(event)
 
 
-## **Why these read `mouse_filter` rather than `is_input_handled()`.** The
-## obvious observable — "was the event left unhandled" — is not usable here:
-## GUT's own runner UI shares the viewport and marks mouse events handled
-## itself, so that flag reports the harness, not the panel. What actually
-## matters, and what the camera actually depends on, is whether the panel made
-## itself transparent for that event. That is real state on a real node after a
-## real wheel event, read back rather than re-derived.
+## Guards every other test in this file against being vacuously true. If the
+## harness swallowed wheel events before `_unhandled_input` regardless of the
+## panel, "the camera saw nothing" would pass everywhere and prove nothing.
+func test_the_spy_does_see_a_wheel_that_misses_the_panel() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	var spy: UnhandledWheelSpy = built[1]
+	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	panel.size = Vector2(200.0, 100.0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	_wheel(MOUSE_BUTTON_WHEEL_DOWN, panel.get_global_rect().end + Vector2(300.0, 300.0))
+
+	assert_eq(spy.wheels.size(), 1, "a wheel nowhere near the panel does reach the camera stage")
 
 
-## The load-bearing one. With the log scrolled to its end, a further wheel-down
-## must leave the panel click-through so the event reaches the camera. A panel
-## that stays opaque turns part of the screen into a dead zone where zoom
-## silently stops working.
-func test_a_wheel_at_the_end_of_the_content_hands_the_panel_over_to_the_camera() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
+## The reported bug, directly: hover the log, scroll to the bottom, keep
+## scrolling — the camera must not move.
+func test_scrolling_past_the_bottom_never_reaches_the_camera() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	var spy: UnhandledWheelSpy = built[1]
 	_fill(panel, 200)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -64,35 +86,16 @@ func test_a_wheel_at_the_end_of_the_content_hands_the_panel_over_to_the_camera()
 	bar.value = bar.max_value - bar.page
 	await get_tree().process_frame
 
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel)))
+	for _i in range(5):
+		_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel))
 
-	assert_true(
-		_handed_off(panel), "at the bottom the log must go transparent, not dead-stop the wheel"
-	)
-	assert_eq(
-		panel._body.mouse_filter,
-		Control.MOUSE_FILTER_IGNORE,
-		"and so must the background — a STOP control under the cursor consumes it alone"
-	)
+	assert_eq(spy.wheels, [] as Array[int], "the log absorbs the wheel at its own end")
 
 
-func test_a_wheel_mid_content_keeps_the_panel_opaque_so_the_log_scrolls() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
-	_fill(panel, 200)
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	var bar: VScrollBar = panel.log_label.get_v_scroll_bar()
-	bar.value = maxf((bar.max_value - bar.page) * 0.5, 1.0)
-	await get_tree().process_frame
-
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel)))
-
-	assert_false(_handed_off(panel), "there is content below — the log keeps the wheel")
-
-
-func test_a_wheel_up_at_the_top_hands_over() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
+func test_scrolling_past_the_top_never_reaches_the_camera() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	var spy: UnhandledWheelSpy = built[1]
 	_fill(panel, 200)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -100,56 +103,66 @@ func test_a_wheel_up_at_the_top_hands_over() -> void:
 	panel.log_label.get_v_scroll_bar().value = 0.0
 	await get_tree().process_frame
 
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_WHEEL_UP, _over_the_log(panel)))
+	for _i in range(5):
+		_wheel(MOUSE_BUTTON_WHEEL_UP, _over_the_log(panel))
 
-	assert_true(_handed_off(panel), "nothing above — hand off")
+	assert_eq(spy.wheels, [] as Array[int])
 
 
-## A nearly-empty log has nothing to scroll at all, so every wheel event over
-## it belongs to the camera.
-func test_a_log_shorter_than_its_viewport_never_takes_the_wheel() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
+## A log with nothing to scroll must still block — it is a solid surface, not a
+## conditionally solid one, and "there is nothing left to scroll" is invisible
+## to whoever is spinning the wheel.
+func test_a_log_shorter_than_its_viewport_still_blocks_the_wheel() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	var spy: UnhandledWheelSpy = built[1]
 	_fill(panel, 2)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel)))
+	_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel))
+	_wheel(MOUSE_BUTTON_WHEEL_UP, _over_the_log(panel))
 
-	assert_true(_handed_off(panel))
-
-
-## A hand-off must never leave the panel click-through for an ordinary click —
-## that would make the title bar and the fold's click-to-expand dead.
-func test_an_ordinary_click_after_a_hand_off_restores_the_panel() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
-	_fill(panel, 2)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel)))
-	assert_true(_handed_off(panel), "sanity: handed off")
-
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_LEFT, _over_the_log(panel)))
-
-	assert_false(_handed_off(panel), "a click restores it")
-	assert_eq(panel._body.mouse_filter, Control.MOUSE_FILTER_STOP)
+	assert_eq(spy.wheels, [] as Array[int])
 
 
-## The wheel outside the panel is nobody's business but the camera's, and must
-## not leave the panel transparent either.
-func test_a_wheel_outside_the_panel_leaves_it_alone() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
+## The title bar is part of the same surface — scrolling over it must not zoom
+## either, or the panel would have a strip along its top that behaves
+## differently from the rest of it.
+func test_the_title_bar_blocks_the_wheel_too() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	var spy: UnhandledWheelSpy = built[1]
 	_fill(panel, 200)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var outside: Vector2 = panel.get_global_rect().end + Vector2(200, 200)
-	get_viewport().push_input(_wheel(MOUSE_BUTTON_WHEEL_DOWN, outside))
+	_wheel(MOUSE_BUTTON_WHEEL_DOWN, panel.title_bar.get_global_rect().get_center())
 
-	assert_false(_handed_off(panel))
+	assert_eq(spy.wheels, [] as Array[int])
+
+
+## Blocking the camera must not have been achieved by breaking scrolling.
+func test_the_log_still_scrolls_mid_content() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	_fill(panel, 200)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var bar: VScrollBar = panel.log_label.get_v_scroll_bar()
+	bar.value = 0.0
+	await get_tree().process_frame
+
+	_wheel(MOUSE_BUTTON_WHEEL_DOWN, _over_the_log(panel))
+	await get_tree().process_frame
+
+	assert_gt(bar.value, 0.0, "the wheel is absorbed BY scrolling, not instead of it")
 
 
 ## Supervisor, post-tb41: "~2x as wide as it is currently."
 func test_the_panel_asks_for_its_own_width_rather_than_inheriting_the_columns() -> void:
-	var panel: CombatLogPanel = _panel_in_tree()
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
 	assert_eq(panel.custom_minimum_size.x, CombatLogPanel.DEFAULT_WIDTH)
 	assert_true(CombatLogPanel.DEFAULT_WIDTH >= 500.0, "roughly double the old ~260px column")
