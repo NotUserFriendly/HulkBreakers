@@ -788,21 +788,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   here.
 
 ---
-### BR34.02 — Active — owner: `SUPERVISOR`
-**Combat log is fully transparent but still eats clicks**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (tb34 review). Most of the combat log is fully transparent, yet the
-  transparent area cannot be clicked through — so an invisible panel blocks board interaction. The
-  supervisor's framing: **one of the two should change** — either the log gets a visible background
-  (so it's honest about occupying that space), or the transparent region stops intercepting clicks.
-- **Same class as BR31.01 and tb31 Pass A's `TopLeftControls` fix** — a container whose `mouse_filter`
-  defaults to `STOP` swallowing input across its whole rect, including areas that render nothing.
-  That's now the third instance of this exact failure; worth checking every full-rect UI container's
-  filter in one sweep rather than one bug at a time.
-- **Pairs with the log-window UX work in `docs/PLAN.md`** (title bar, minimize, resize, scroll
-  hand-off). If that lands in the same pass, the "visible background vs click-through" decision is
-  made naturally — a titled, resizable panel wants a real background, and the click question answers
-  itself.
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **Source:** `SUPERVISOR`

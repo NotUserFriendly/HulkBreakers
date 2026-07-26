@@ -27,6 +27,11 @@ signal minimized_changed(is_minimized: bool)
 
 ## Starting geometry. Flagged/tunable — resize is interactive anyway, so these
 ## only set where it opens.
+## Supervisor, post-tb41: "the combat log should be ~2x as wide as it is
+## currently." It previously took whatever width the surrounding column
+## happened to give it (~260px), which cut most lines off — the panel asks for
+## its own width now rather than inheriting one.
+const DEFAULT_WIDTH := 520.0
 const DEFAULT_HEIGHT := 220.0
 const MIN_HEIGHT := 64.0
 const MAX_HEIGHT := 640.0
@@ -54,11 +59,13 @@ var _drag_start_height := 0.0
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(0, DEFAULT_HEIGHT)
-	# The panel is a real, opaque-ish surface now, so it must take its own
-	# clicks — but only over the rect it actually draws. Children that render
-	# nothing still set IGNORE individually (the BR31.01/BR34.02 class of bug).
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	custom_minimum_size = Vector2(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+	# The container itself draws NOTHING — the background lives on `_body` and
+	# the bar is a real Button. A full-rect container at STOP that renders
+	# nothing is exactly the BR31.01/BR34.02 failure, so it stays IGNORE and
+	# lets its children take their own clicks. `_input` below still runs
+	# regardless of this filter, so the scroll decision is unaffected.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	title_bar = Button.new()
 	title_bar.text = TITLE
@@ -164,23 +171,59 @@ func _on_title_bar_input(event: InputEvent) -> void:
 
 
 ## "Scrolling while hovered scrolls the log; at the top or bottom of the
-## content it falls through to the camera rather than dead-stopping." The
-## threshold itself is `LogScrollHandoff`, headlessly tested — this only
-## decides whether to mark the event handled.
-func _gui_input(event: InputEvent) -> void:
+## content it falls through to the camera rather than dead-stopping."
+##
+## **Handled in `_input`, before GUI routing, and NOT in `_gui_input` — the
+## first attempt used `_gui_input` and silently did nothing.** Godot marks a
+## mouse event handled whenever it is delivered to a `MOUSE_FILTER_STOP`
+## control under the cursor, whether or not that control calls
+## `accept_event()`. `RichTextLabel` is STOP (it has a real scrollbar and real
+## click-to-expand metas), so the wheel was consumed before the panel was ever
+## consulted. `LogScrollHandoff` was correct and unit-tested throughout; the
+## rule was simply never asked. Verified against a real panel with a real wheel
+## event in `test_combat_log_panel.gd` — the threshold tests alone passed
+## happily while the feature did not work at all.
+##
+## So the hand-off cannot be expressed by declining to consume: it has to make
+## the panel genuinely transparent for exactly the event being handed off.
+## `_input` runs before GUI routing for the same event, so flipping the filters
+## here takes effect for that event and is restored on the next one.
+func _input(event: InputEvent) -> void:
 	if event is not InputEventMouseButton:
 		return
 	var button := event as InputEventMouseButton
-	if not button.pressed:
-		return
 	var direction: LogScrollHandoff.Direction
 	if button.button_index == MOUSE_BUTTON_WHEEL_UP:
 		direction = LogScrollHandoff.Direction.UP
 	elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 		direction = LogScrollHandoff.Direction.DOWN
 	else:
+		# Any non-wheel mouse event restores the normal filters, so a hand-off
+		# can never leave the panel click-through for an ordinary click.
+		_set_click_through(false)
 		return
-	if _minimized:
+	if not button.pressed:
 		return
-	if LogScrollHandoff.consumes_scrollbar(direction, log_label.get_v_scroll_bar()):
-		accept_event()
+	if _minimized or not get_global_rect().has_point(button.position):
+		_set_click_through(false)
+		return
+	_set_click_through(
+		not LogScrollHandoff.consumes_scrollbar(direction, log_label.get_v_scroll_bar())
+	)
+
+
+## Makes the whole panel ignore the mouse (so a wheel event reaches
+## `_unhandled_input`, where the camera lives) or take it normally again. The
+## body and the label are flipped alongside the panel: a STOP child under the
+## cursor consumes the event by itself, so leaving either one behind would make
+## this a no-op — which is precisely the bug this method exists to fix.
+func _set_click_through(click_through: bool) -> void:
+	if click_through:
+		_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return
+	# Restored to what each is normally: the body blocks because it draws a
+	# real background, the label because it owns a scrollbar and click-to-expand
+	# metas. The container itself is never restored to STOP — it never was.
+	_body.mouse_filter = Control.MOUSE_FILTER_STOP
+	log_label.mouse_filter = Control.MOUSE_FILTER_STOP
