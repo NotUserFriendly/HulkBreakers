@@ -73,41 +73,6 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. Diagnostics — the log becomes the instrument
-**Needs:** nothing. **Unblocks:** every future perf or behaviour investigation.
-
-*Extends `docs/09`.* Three separate bugs each survived multiple passes purely because CC cannot observe a
-framerate or a decision. Fixing the instrument is worth more than fixing any one of them.
-
-- **Crash-log unification.** The combat log is already structured `LogEvent`s over one stream with
-  pluggable sinks and a `session_start` seed line — most of a crash log already. Grow it to capture engine
-  and script errors too (a new `kind`, or an error sink on the same stream), so combat events and
-  diagnostics share one filterable channel: conflated on purpose, mixed only when we want. **One real
-  limit to design around, not paper over:** a *hard* engine crash may die before any GDScript sink
-  flushes. Scope what's reachable (caught script errors, assertion failures, abort reasons) versus what
-  needs an external wrapper, up front.
-- **Fix the log sink before adding volume — BR27.09 measured it.** The combat-log UI sink reassigns
-  `label.text` in full on *every* event (~175–180µs at a 200-line scrollback), and a real 3v3 bout
-  averages 9.9 events per turn. Verbosity multiplies that cost linearly, so shipping the item below
-  without an incremental `append_text` first would turn a measured hitch into a much worse one. Details
-  and the other two measured costs are on BR27.09.
-- **Deliberately excessive verbosity.** CC greps it cleanly and the in-game view folds it. Log lifecycle
-  and view events: bot constructed, part attached, cutout drawn to (x, y), which overlay is active and
-  when it turns off. Plus a **bout-build log in the order things actually happen** — placed N walls, N
-  empty tiles, N units, N cover pieces — recounted in build order, not summarised.
-- **Pair "what was sent" with "what happened."** Log the command issued *and* its outcome (a remove-unit
-  command was sent; the unit could not be removed, and why), so a dropped or rejected command is visible
-  instead of a silent no-op. Mirrors the two-phase turn model, and directly counters the class of bug this
-  project keeps producing — actions that silently fail.
-- **A live FPS counter drawn on top of the log** — distinct from the logged `fps_dump` events, which exist
-  for CC to grep. This one is a continuous readout for the supervisor. Keep it *over* the log, not in it:
-  a per-frame FPS line would drown the log it's drawn on.
-- **The log window becomes a window** — a title bar reading "Combat Log," a minimize button, vertical
-  resize by dragging the bar. And **hand scrolling back to the camera at the ends**: scrolling while
-  hovered scrolls the log, but at the top or bottom of the content it falls through to the camera instead
-  of dead-stopping. Pairs with BR34.02 — a titled, resizable panel wants a real background, which answers
-  that bug's "visible background versus click-through" question on its own.
-
 ---
 
 # QUEUED
@@ -536,58 +501,6 @@ Starting signals, not a full audit:
 - **`MapGenScratch`'s `get_level`/`set_level` are the last survivors of the old vocabulary.** They're
   legitimate — a private carving model — but worth confirming they haven't quietly become a second
   source of elevation truth alongside placed `Surface` height.
-
-### Checkpoints return as an ordinary tool
-**Needs:** nothing.
-
-What was retired was the **gate**, not the capability. The original ritual was five committed-artifact
-checkpoints, each ending in "stop and wait for a go" — that stalled the pipeline and deserved to go. The
-underlying ability (drive the real `BattleScene` through a real GPU frame, capture what it actually looks
-like) never stopped being valuable, and taskblock-40 Pass D rebuilt most of it without this item being
-touched: `run_visual_checkpoint.sh` grew a case 8 driving real `GridFixture` placement through the real
-`BattleScene.load_battle()` and the real `CameraRig.ease_to_framing()`, with a generated README carrying a
-yes/no checklist and citing its headless coverage alongside.
-
-It paid for itself on the first run. **BR40.01** — the camera solving a position past the far edge of the
-platform the shooter stands on, filling the frame with that platform's own mass — was found by rendering,
-not by testing. Pass B's height-delta matrix passed every invariant it checks: both bodies fit, the camera
-never dropped below the lower body, continuity held across the zero crossing. The frame was still garbage.
-Numerically clean and visually broken is exactly the gap a screenshot closes and a test cannot.
-
-**CC authors a checkpoint whenever it judges one useful** — no permission step, no hard stop. The supervisor
-looks at it when convenient.
-
-- **A parse guard in `run_tests.sh`, and this is the load-bearing item.** BR40.02: `checkpoint_6.gd` and
-  `checkpoint_7.gd` crash on a `UnitView` identifier retired ~15 blocks ago, because visual checkpoints sit
-  outside the headless gate by necessity and nothing re-runs them. Rendering can't happen in CI; **parsing
-  can**. Headlessly loading every `tools/checkpoints/checkpoint_*.gd` and failing on a parse error turns
-  silent rot into a red test for almost nothing. Without it the rebuilt system rots exactly the same way.
-- **Delete the stop-and-wait.** `run_visual_checkpoint.sh` still prints *"This is a hard stop — wait for a go
-  before continuing."* The machinery announces the discipline the docs retired.
-- **Delete `checkpoint_{6,7}.gd`.** Not worth repairing to current APIs when `checkpoint_8.gd` already
-  demonstrates the pattern; repairing them means updating two dead scripts so they can then be removed. Git
-  history keeps them. **BR40.02 closes as superseded, not fixed.**
-- **`out/checkpoints/` goes local-only.** Real sizes: ~72K and ~180K for the two stills checkpoints, 484K for
-  the one carrying a 300K video; individual 1920x1080 PNGs run 43-58K. Thousands are affordable on local disk
-  and none of them belong in git. Note `.gitignore` doesn't untrack — this needs `git rm -r --cached
-  out/checkpoints` alongside the rule. `.gitignore`'s own comment currently asserts the opposite ("checkpoint
-  artifacts under out/checkpoints/ ARE committed") and `docs/09`'s "Checkpoints — retired" section both
-  invert.
-- **Promotion is a copy, not a force-add.** Occasionally a checkpoint is worth committing. If the whole tree
-  is ignored that means `git add -f`, which gets forgotten. A separate non-ignored directory makes copying
-  the file *be* the decision to keep it.
-- **The durable artifact is the answers, not the images.** Once the folder is local-only, a generated
-  checklist lives somewhere nobody downstream can read — the supervisor works through checkpoint 8's nine
-  yes/no items and the verdicts exist on one disk. The checklist and its answers belong in
-  `reports/Report-TaskblockN.md`, which is already committed on a rolling window and already the
-  supervisor-facing artifact. The PNGs stay local as the thing that was looked at; CC reads images poorly
-  anyway, and BR40.01 was root-caused from solved coordinates in `run.log` rather than from the picture.
-- **Move the READMEs into the `.gd` scripts.** `run_visual_checkpoint.sh` is 224 lines, nearly all of it three
-  per-checkpoint heredocs, and each new checkpoint adds ~70 more. The scenario script should own its own
-  README and checklist; the shell driver stays generic and stops growing.
-- **Keep `test/checkpoints/test_checkpoint_1-4.gd`** as ordinary regression tests, renamed out of the
-  checkpoint frame so the name stops implying a retired ritual.
-
 
 ### Startup opens a generated bout
 **Needs:** nothing.
