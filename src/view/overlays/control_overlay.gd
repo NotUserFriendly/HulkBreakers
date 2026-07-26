@@ -54,6 +54,20 @@ func teardown() -> void:
 	pass
 
 
+## taskblock-41 Pass D: re-points this overlay's own log sink at `log`, the
+## stream of whichever battle is being loaded. Called by
+## `BattleScene.load_battle()` BEFORE anything is built or emitted, because
+## the session header (docs/09: "carries the seed as the file's FIRST line")
+## and the bout-build log both fire during the load — a sink that only
+## attaches on `battle_loaded`, at the END of the load, misses all of it.
+##
+## Must be idempotent: `_on_battle_loaded` calls it again for the overlays
+## that re-wire themselves on a "New Battle" press under an already-active
+## overlay.
+func attach_log_sink(_log: CombatLog) -> void:
+	pass
+
+
 ## taskblock-41 Pass A: whichever `RichTextLabel`-backed combat-log sink
 ## this overlay owns, or null. A `UiLogSink` only marks itself dirty on
 ## `emit()` now — a `RefCounted` has no frame of its own — so something

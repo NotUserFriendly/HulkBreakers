@@ -263,3 +263,53 @@ func test_folding_never_changes_what_other_sinks_on_the_same_log_receive() -> vo
 	assert_eq(
 		fold_sink.fold.groups.size(), 1, "the whole curved path still folds into one move group"
 	)
+
+
+## taskblock-41 Pass D: the deliberately-verbose kinds Passes B-D added must
+## fold, or a single board build pushes seven admin rows through the panel
+## before the first shot.
+func test_a_run_of_plumbing_events_folds_into_one_counted_row() -> void:
+	var fold := LogFold.new()
+	for i in range(7):
+		fold.ingest(
+			LogEvent.new(0, Enums.Phase.TACTICS, -1, &"build_step", {"index": i}, "build %d" % i)
+		)
+
+	assert_eq(fold.groups.size(), 1, "seven build steps, one row")
+	assert_eq(fold.groups[0].summary, "7× build_step")
+	assert_eq(fold.groups[0].detail_lines().size(), 7, "and all seven are still drillable")
+
+
+func test_a_mixed_plumbing_run_does_not_claim_to_be_one_kind() -> void:
+	var fold := LogFold.new()
+	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"command", {}, "c"))
+	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"command_outcome", {}, "o"))
+
+	assert_eq(fold.groups.size(), 1)
+	assert_eq(fold.groups[0].summary, "2 log events", "a uniform label here would be a lie")
+
+
+## An engine or script error is exactly what must NOT be quietly counted away.
+func test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing() -> void:
+	var fold := LogFold.new()
+	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"build_step", {}, "build"))
+	fold.ingest(
+		LogEvent.new(0, Enums.Phase.TACTICS, -1, LogEvent.DIAGNOSTIC_KIND, {}, "[error] boom")
+	)
+	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"build_step", {}, "build"))
+
+	assert_eq(fold.groups.size(), 3, "the error breaks the run rather than joining it")
+	assert_eq(fold.groups[1].kind, &"admin")
+	assert_true(fold.groups[1].summary.find("boom") != -1, "and stays legible on its own line")
+
+
+## Folding is presentation only (tb22 F2) — the raw stream is untouched.
+func test_folding_plumbing_never_drops_an_event() -> void:
+	var fold := LogFold.new()
+	for i in range(12):
+		fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"command", {}, "c%d" % i))
+
+	var total := 0
+	for group: LogFoldGroup in fold.groups:
+		total += group.events.size()
+	assert_eq(total, 12, "collapsed for reading, never for counting")

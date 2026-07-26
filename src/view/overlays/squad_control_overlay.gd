@@ -107,6 +107,18 @@ func teardown() -> void:
 		battle.combat_state.combat_log.remove_sink(log_sink)
 
 
+## taskblock-22 Pass F: "unit N down" in a folded attack summary is derived
+## from the live CombatState (`LogFold.state`), never a new LogEvent kind — so
+## the fold is re-pointed here alongside the sink itself, same reason: the
+## PREVIOUS CombatState it was reading is about to go stale.
+func attach_log_sink(log: CombatLog) -> void:
+	if log_sink == null:
+		return
+	log.remove_sink(log_sink)
+	log_sink.fold.state = battle.combat_state
+	log.add_sink(log_sink)
+
+
 ## taskblock-41 Pass A: hands `ControlOverlay`'s own per-frame tick the log
 ## panel to draw. Null until `_build_ui()` has run.
 func ui_log_sink() -> UiLogSink:
@@ -136,14 +148,9 @@ func _on_battle_loaded() -> void:
 	# written to; nothing left to explicitly detach from. remove_sink() is a
 	# documented no-op on a sink that was never added, so this is safe on
 	# the very first call too (right after _build_ui() just created it).
-	battle.combat_state.combat_log.remove_sink(log_sink)
-	# taskblock-22 Pass F: "unit N down" in a folded attack summary is
-	# derived from the live CombatState (LogFold.state), never a new
-	# LogEvent kind — re-pointed here alongside every other panel's own
-	# re-wire, same reason: the PREVIOUS CombatState this sink's fold was
-	# reading is about to go stale.
-	log_sink.fold.state = battle.combat_state
-	battle.combat_state.combat_log.add_sink(log_sink)
+	# taskblock-41 Pass D: one place does the re-pointing now — `load_battle`
+	# calls it early (before the build) and this calls it again on a re-load.
+	attach_log_sink(battle.combat_state.combat_log)
 	# tb35 Pass D (BR32.01/03): `wall_cutout_units` is now set once,
 	# canonically, in `BattleScene.load_battle()` itself — the one place
 	# that owns both `board_view` and `combat_state` for every overlay,

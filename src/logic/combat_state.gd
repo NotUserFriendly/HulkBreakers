@@ -128,6 +128,34 @@ func add_unit(unit: Unit) -> void:
 	# real source of truth; `level` survives only as the whole-level-count
 	# convenience tests and debug tooling read.
 	unit.level = unit.height / UnitGeometry.LEVEL_HEIGHT
+	_log_unit_assembled(unit)
+
+
+## taskblock-41 Pass D: "bot constructed, part attached." Logged HERE, at the
+## moment an assembled unit enters the world, rather than inside
+## `DeepStrike`/`BodyAssembler`/`PartGraph.attach` — those are pure static
+## logic with no `CombatLog` in reach, and threading one down into them would
+## push a diagnostic concern into the deepest layer of the codebase to buy a
+## per-socket event nobody asked for. The parts are listed in the order
+## `all_parts()` walks the socket tree, so "what did this bot actually get
+## built out of, and in what order" is answerable from the log alone.
+func _log_unit_assembled(unit: Unit) -> void:
+	var part_ids := PackedStringArray()
+	for part: Part in unit.shell.all_parts():
+		part_ids.append(String(part.id))
+	combat_log.emit(
+		LogEvent.new(
+			round_number,
+			Enums.Phase.TACTICS,
+			unit.id,
+			&"unit_assembled",
+			{"unit": unit.id, "squad": unit.squad_id, "cell": unit.cell, "parts": part_ids},
+			(
+				"unit %d assembled for squad %d at %s from %d parts: %s"
+				% [unit.id, unit.squad_id, unit.cell, part_ids.size(), ", ".join(part_ids)]
+			)
+		)
+	)
 
 
 ## The one place a unit's alive flag flips to false (docs/09 "if it changed
