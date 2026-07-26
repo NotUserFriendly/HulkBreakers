@@ -1240,3 +1240,56 @@ same relative order this ledger has always kept them in, oldest work first. All 
   standing guard in the meantime — taskblock-41 Pass F taught it to distinguish a Control that renders
   nothing (still a bug) from one drawing a real background (legitimate), so it keeps its teeth.
 
+### BR30.05 — Resolved — owner: `SUPERVISOR`
+**Debug panel: clicks and scroll bleed through to the world board/camera**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-21, live debug-panel use. Two related symptoms: (1) clicking within the debug
+  menu itself can also select a world cell (the click reaches the board underneath, not just the
+  panel widget); (2) once the verb list's own `ItemList` is scrolled to the bottom, further scroll
+  input bleeds through and zooms the world camera instead of stopping at the list's own end.
+- **Status:** not yet investigated. Likely candidates: (1) some region within `DebugControlPanel`'s
+  own layout still has a plain `Control.MOUSE_FILTER_IGNORE` container gap that isn't actually
+  covered by an interactive child, letting a click over that gap fall through to the 3D
+  viewport/`_unhandled_input` underneath (the same class of bug `docs/09` taskblock07 Pass B4 already
+  fixed once elsewhere); (2) `ItemList`'s own scroll wheel input isn't marked handled once it can't
+  scroll further, so the same wheel event continues on to `CameraRig`'s own zoom handler. Both are
+  UI-event-consumption gaps in the SAME panel, not two unrelated bugs.
+- **2026-07-26 — `Pending` (post-tb41 supervisor request)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Both symptoms addressed, and the 2021 diagnosis above
+  was right about symptom 2's mechanism and half-right about symptom 1's.
+  - **Symptom 1 (clicks).** The panel was `MOUSE_FILTER_IGNORE`, set deliberately on docs/09
+    taskblock-07 Pass B4's rule that "a plain container has no click of its own." **That rule does
+    not fit this panel** — it is a `PanelContainer`, and `HulkTheme` gives every one an *opaque*
+    `BACKGROUND` stylebox, so it visibly occupies its rect. `BR34.02`'s own resolution is the
+    refinement: a container drawing a real background is not plain, and blocking clicks over it is
+    honest. Now `STOP`. The B4 rule still stands for genuinely invisible containers, which is what it
+    was written about.
+  - **Symptom 2 (scroll).** Correct that the wheel wasn't being marked handled — but this is **not**
+    specific to `ItemList` being at its end. **`MOUSE_FILTER_STOP` never blocks a wheel from
+    `_unhandled_input` at all**, at any scroll position; it consumes ordinary clicks only. Measured
+    with a spy at that exact input stage, after the identical defect was fixed in the combat log
+    (`docs/SUPERSEDED.md`). The panel now consumes the wheel explicitly over its own rect.
+  - **The wheel is forwarded before being consumed, not swallowed.** Consuming wholesale would have
+    silently deleted `SpinBox`'s own wheel-to-adjust, which several verb forms use. The event is
+    routed to whatever is actually under the cursor first — the verb list scrolls, a `Range` steps —
+    and only then marked handled. Nothing reaches the camera either way.
+  - **Regression tests** in `test_debug_control_panel.gd`, each spying on `_unhandled_input` (the
+    stage `CameraRig` reads) rather than on a filter, with a deliberate control case asserting the
+    spy DOES see a wheel that misses the panel, so they cannot pass vacuously.
+  - **To confirm:** open `Inject...`, click around inside the panel (no world cell should get
+    selected underneath), and spin the wheel over the verb list — past the bottom, past the top, and
+    over a number field. The camera must not zoom in any of those; the number field must still step.
+  - **Not covered by this:** the entry's own "worth checking every full-rect UI container's filter in
+    one sweep" — that sweep still hasn't happened. `test_battle_scene_input.gd`'s audit is the
+    standing guard, and it now distinguishes a container that renders nothing (still a bug) from one
+    drawing a real background (legitimate).
+- **2026-07-26 — `Resolved` by the supervisor**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`], confirmed live after the fix above. Both symptoms
+  closed together, as this entry always argued they should be ("two UI-event-consumption gaps in the
+  SAME panel, not two unrelated bugs") — that framing was right, and the shared cause turned out to
+  be narrower than either half suggested: `MOUSE_FILTER_STOP` consumes clicks but never wheels.
+- **The sweep this entry also asked for is NOT closed with it.** "Worth checking every full-rect UI
+  container's filter in one sweep rather than one bug at a time" — that has still never been done,
+  and this is now the fourth instance of the class (BR31.01, `TopLeftControls`, BR34.02, this).
+  Carried forward to `docs/PLAN.md` rather than left buried in a closed entry.
+
