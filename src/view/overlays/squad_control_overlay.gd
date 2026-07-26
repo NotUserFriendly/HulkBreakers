@@ -294,22 +294,14 @@ func _build_ui() -> void:
 	# natively, no per-frame re-assertion. The matching left content margin
 	# below (the scrollbar's own width) stops it from overlapping even the
 	# shared "[T0/TACTICS]" prefix every line starts with.
-	var log_label := RichTextLabel.new()
-	log_label.layout_direction = Control.LAYOUT_DIRECTION_RTL
-	log_label.custom_minimum_size = Vector2(0, 220)
-	log_label.scroll_following = true
-	# runNotes.md: "log needs to both be scrollable and not word wrapping" —
-	# scroll_following/scroll_active above already provide the first half;
-	# this is the actual fix for the second (autowrap defaults to wrapping
-	# at the word boundary, which is what was cutting long lines across
-	# multiple visual rows).
-	log_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	left_layout.add_child(log_label)
-	var log_style := StyleBoxFlat.new()
-	log_style.bg_color = Color.TRANSPARENT
-	log_style.content_margin_left = log_label.get_v_scroll_bar().get_combined_minimum_size().x
-	log_label.add_theme_stylebox_override("normal", log_style)
-	log_sink = HierarchicalUiSink.new(log_label)
+	# taskblock-41 Pass F: the log is a real window now — title bar, minimize,
+	# drag-to-resize, a genuine background, scroll hand-off at the content's
+	# ends, and a live FPS readout over it. Everything that used to be set on a
+	# bare RichTextLabel here moved into `CombatLogPanel` verbatim (RTL layout
+	# so the scrollbar never overlaps the text, autowrap off, scroll-following).
+	var log_panel := CombatLogPanel.new()
+	left_layout.add_child(log_panel)
+	log_sink = HierarchicalUiSink.new(log_panel.log_label)
 
 	# runNotes.md follow-up: same MOUSE_FILTER_IGNORE fix as left_half — this
 	# still spans the right half (controls_label and bottom_right anchor to

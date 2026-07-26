@@ -188,6 +188,27 @@ func test_every_richtextlabel_panel_ignores_the_mouse_except_the_log() -> void:
 ## deliberately wired for hover is exactly as "genuinely interactive" as
 ## one wired for clicks; only an UNWIRED Control defaulting to STOP by
 ## accident is the bug this test exists to catch.
+## taskblock-41 Pass F (BR34.02): the rule this test enforces is "a Control
+## that renders NOTHING must not eat clicks" — the invisible-panel failure
+## BR31.01/BR34.02 are all instances of. A Control drawing a real, opaque
+## background is the opposite case: it visibly occupies that space, so blocking
+## clicks over it is honest rather than a bug. `CombatLogPanel`'s own body is
+## exactly that, and is the direct answer to BR34.02's "one of the two must
+## change."
+##
+## Deliberately checks the actual style box rather than trusting a type: a
+## PanelContainer with a transparent override still renders nothing and must
+## still be caught.
+func _draws_a_visible_background(control: Control) -> bool:
+	for style_name: String in ["panel", "normal"]:
+		if not control.has_theme_stylebox_override(style_name):
+			continue
+		var box: StyleBox = control.get_theme_stylebox(style_name)
+		if box is StyleBoxFlat and (box as StyleBoxFlat).bg_color.a > 0.0:
+			return true
+	return false
+
+
 func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 	if node is Control:
 		var control := node as Control
@@ -198,9 +219,19 @@ func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 			or control is ScrollBar
 			or control.gui_input.get_connections().size() > 0
 			or control.mouse_entered.get_connections().size() > 0
+			# taskblock-41 Pass F: a script that OVERRIDES `_gui_input` is
+			# handling input just as really as one that connects the signal —
+			# `CombatLogPanel` decides the scroll hand-off that way. The
+			# connection count cannot see a virtual override, so ask the script.
+			or (control.get_script() != null and control.has_method("_gui_input"))
 		)
 		var is_log: bool = control is RichTextLabel and (control as RichTextLabel).scroll_following
-		if not interactive and not is_log and control.mouse_filter == Control.MOUSE_FILTER_STOP:
+		if (
+			not interactive
+			and not is_log
+			and not _draws_a_visible_background(control)
+			and control.mouse_filter == Control.MOUSE_FILTER_STOP
+		):
 			offenders.append("%s (%s)" % [control.name, control.get_class()])
 	for child: Node in node.get_children():
 		_scan_for_stop_filters(child, offenders)
