@@ -260,6 +260,14 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	fps_dump_sink = FpsDumpSink.new(self, combat_state.combat_log)
 	combat_state.combat_log.add_sink(fps_dump_sink)
 	bout_injector = BoutInjector.new(combat_state)
+	# taskblock-41 Pass B: engine and script errors ride this battle's own
+	# stream from here on. Re-POINTED, never re-created — `OS.add_logger` is
+	# process-global, so one shared tap follows whichever battle is current
+	# (see `EngineErrorTap.shared()`'s own doc comment). Installed here rather
+	# than in `_ready()` so it is always pointing at a real log by the time
+	# it can fire at all.
+	EngineErrorTap.shared().watch(combat_state.combat_log, combat_state)
+	EngineErrorTap.shared().install()
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	# tb35 Pass D (BR32.01/BR32.03): the wall-cutout feed must be re-pointed
@@ -467,3 +475,13 @@ func _session_start_event(seed_value: int) -> LogEvent:
 func _exit_tree() -> void:
 	if file_sink != null:
 		file_sink.close()
+	# taskblock-41 Pass B: stop feeding a log whose battle is gone. The tap
+	# itself stays installed (it is process-global and shared); pointing it
+	# at nothing makes it a silent no-op until the next `load_battle()`
+	# claims it, which is what keeps a torn-down battle from collecting
+	# diagnostics nobody will ever read.
+	# Only if it is still pointed at THIS battle — a newer `load_battle()`
+	# may already have claimed it, and stealing it back would silence the
+	# live one.
+	if combat_state != null and EngineErrorTap.shared().combat_log == combat_state.combat_log:
+		EngineErrorTap.shared().stop_watching()

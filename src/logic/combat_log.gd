@@ -21,6 +21,12 @@ func remove_sink(sink: LogSink) -> void:
 	_sinks.erase(sink)
 
 
+## taskblock-41 Pass B: `wants()` is checked here rather than inside each
+## sink, so declining a kind is one override rather than a guard every
+## `emit()` implementation has to remember. Still ONE stream — a sink that
+## declines diagnostics is filtering a shared stream, not subscribing to a
+## different one (docs/09: never two streams).
 func emit(event: LogEvent) -> void:
 	for sink: LogSink in _sinks:
-		sink.emit(event)
+		if sink.wants(event):
+			sink.emit(event)

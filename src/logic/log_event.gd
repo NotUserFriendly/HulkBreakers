@@ -8,6 +8,13 @@ extends RefCounted
 ## tooltips can never disagree — never hand-write `text` for a player-facing
 ## event.
 
+## taskblock-41 Pass B: the one kind carrying an engine/script diagnostic
+## rather than something the game itself did (`EngineErrorTap`). Named here,
+## next to `kind` itself, because it is vocabulary — every consumer that
+## wants to filter diagnostics in or out reads this constant rather than
+## re-typing the literal and drifting.
+const DIAGNOSTIC_KIND: StringName = &"diagnostic"
+
 var turn: int
 var phase: Enums.Phase
 var unit_id: int
@@ -40,3 +47,10 @@ func _init(
 ## varies line to line.
 func _to_string() -> String:
 	return "%s: %s" % [kind, text]
+
+
+## taskblock-41 Pass B: "separable on demand" — the one question a sink asks
+## in its own `wants()` override to decline engine/script diagnostics while
+## still taking every event the game itself emits.
+func is_diagnostic() -> bool:
+	return kind == DIAGNOSTIC_KIND
