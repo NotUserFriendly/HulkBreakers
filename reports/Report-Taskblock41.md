@@ -227,6 +227,14 @@ Pass D's `PLUMBING_KINDS`, so each got its own row. Added — folded, not droppe
 is unaffected since folding is presentation only. That bug was live in the player view too; the
 spectator view just runs enough turns fast enough to make it obvious.
 
+**Two more layout bugs in the converted panel, both reported by the supervisor rather than caught
+here.** Resizing moved the *bottom* edge instead of the top, because writing `size.y` pins the top —
+`grow_vertical` does not cover it, applying only when a control's MINIMUM size forces a resize, not
+when `size` is written directly. `_apply_height` now pins the bottom edge explicitly. And the panel
+sat 16px off the corner where the player view's is flush, because I invented a margin the other view
+does not have. Both are the same root failure as everything else on this panel: it is used in two
+layout situations and I kept verifying one.
+
 Checkpoint 9 (`./checkpoint.sh 9`) authored for the conversion, under the new no-permission policy.
 It immediately earned the Pass E parse guard its keep: my first draft called a
 `DataLibrary.bot_presets()` that does not exist, and the guard failed the run and named the file
