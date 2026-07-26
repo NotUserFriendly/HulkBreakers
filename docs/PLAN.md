@@ -701,6 +701,25 @@ One interlocking spine (travel → time → fuel → heat → storage), not a li
   gate); **mission selection**; claims; the mission → credits → upgrade loop; **captured-matrix value**.
 
 
+### The `mouse_filter` sweep
+**Needs:** nothing. **Unblocks:** closing a recurring class of UI bug instead of one instance at a time.
+
+Four separate bugs have now been the same defect: a full-rect `Control` whose `mouse_filter` doesn't match
+what it actually draws. `BR31.01` (turn controls vs. tooltip), the `TopLeftControls` fix, `BR34.02` (the log
+ate clicks through a fully transparent region), `BR30.05` (the debug panel let clicks through a fully opaque
+one — the same mistake inverted). Each was found by a human noticing, then fixed alone. `BR30.05` asked for
+the sweep by name and was closed without it.
+
+Two rules, both already written down and both now testable:
+- **Renders nothing → must not take the mouse.** docs/09 taskblock-07 Pass B4's rule, correct as far as it
+  goes.
+- **Draws a real background → must take the mouse over what it draws.** `BR34.02`'s own resolution, and the
+  half B4 never covered. A panel honest about occupying space is not a bug.
+
+`test_battle_scene_input.gd`'s audit already encodes both and walks `BattleScene`'s live tree — but only what
+that scene happens to build. The sweep is: run it over every `Control`-bearing scene, and fix what it names.
+Cheap, mechanical, and it converts "someone will notice the fifth one" into a red test.
+
 ### Player-facing LOS/LOF conflation
 **Needs:** eyes on the targeting UX first.
 
