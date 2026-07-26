@@ -1061,3 +1061,85 @@ shooter is elevated on a small platform and the target is below**
 - **Not fixed.** Out of taskblock-40 Pass D's own scope — flagged rather than silently repaired
   mid-pass. `checkpoint_8.gd` is unaffected (built fresh against `HitVolumeView`/`load_battle()`
   throughout), but 6 and 7 need their own pass before either will run again.
+
+### BR40.03 — Active — owner: `SUPERVISOR`
+**Scattered cover generates at level 0 inside raised rooms — each cover object sits at the bottom of
+its own one-tile pit punched through the raised floor**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Reported:** 2026-07-26, post-taskblock-40, from looking at real generated maps. "Cover items are
+  generating at 0 level, not up on top of lifted terrain."
+- **Root cause, confirmed by re-running `MapGen.generate()`'s own steps in order with a level
+  snapshot between each** (same private statics, same order, nothing simulated):
+  `MapGen._repair_stranded_elevation` (`map_gen.gd:248`) floods with a real `Pathfinder` and flattens
+  every unreached `OPEN` cell back to level 0. `Pathfinder._base_cost` (`pathfinder.gd:85`) returns
+  `-1.0` for **any cell carrying a live blocker** — so every cell `_scatter_cover` (`map_gen.gd:426`,
+  which runs first, at `map_gen.gd:80`) just dropped a crate/pillar/forklift on is *by construction*
+  outside the reachable set, and gets `set_level(cell, 0)`. `_emit` then places that cell's
+  `ship_floor` `Surface` at height 0, and `BoardView._spawn_blocker`/`_build_terrain` faithfully draw
+  both the floor and the cover object down there — a `LEVEL_HEIGHT` (1.0) deep hole in an otherwise
+  flat raised floor, with the cover item at the bottom of it. The view layer is innocent; the map is
+  genuinely authored that way.
+- **The pass is conflating two different questions.** Its documented job (its own doc comment) is
+  "a raised room whose only ramp approach got sealed by cover shouldn't stay raised and stranded" —
+  that requires flooding *with* blockers, which is correct and deliberate. But "a cell a mover cannot
+  stand on" and "a cell that is stranded" are not the same question, and the blocker's **own** cell
+  always answers the first one `false` for reasons that have nothing to do with connectivity.
+- **Scale (40 seeds, 32×24 — `BoutSetup`'s own map size):** 30/40 maps author at least one raised
+  room. **870 raised cells are flattened by this pass; 716 of them (82%) are cells that carry a
+  scattered cover blocker.** Counting the visible symptom instead — a level-0 floored cell with 3+
+  orthogonally raised neighbours — **483 of 2882 cover cells sit in such a pit, and *zero* cells with
+  neither a blocker nor a spawn marker do.** Nothing else sinks. `_ensure_spawns_connected`'s own
+  forced-corridor fallback (the other thing in `generate()` that can flatten terrain) fired on 0/40
+  seeds and is not a contributor.
+- **Same root cause as `BR40.04`** (spawn/extraction cells recessed) — one fix very likely closes
+  both, but they are filed separately because the symptoms and the gameplay consequences differ and
+  each wants confirming on its own.
+- **Not fixed** — no fix attempted; reported for a call on direction first (CLAUDE.md: ask, don't
+  invent). Candidate directions, none chosen: (a) exclude blocker-carrying cells from the *flatten*
+  decision and give each one whatever level its own reachable neighbours ended up at, in a second
+  pass — this keeps the sealed-room case working (the room behind the blocker is still unreachable
+  and still flattens) while stopping the blocker's own tile from punching a hole, and it correctly
+  lowers a cover object along with its room when the room really does get flattened; (b) flatten by
+  *region* rather than per cell, so a single unstandable tile inside an otherwise reachable area is
+  never treated as a stranded island. Naïvely re-flooding without blockers is **not** a fix — it
+  would report a cover-sealed raised room as reachable and defeat the pass's whole purpose.
+  `docs/PLAN.md`'s queued "Review pass over map generation" item is the natural home.
+
+### BR40.04 — Active — owner: `SUPERVISOR`
+**Extraction/spawn tiles recessed to level 0 inside raised rooms — and a unit that spawns on one can
+be permanently immobilised**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
+- **Reported:** 2026-07-26, post-taskblock-40. "Extract tiles that spawn without a unit atop them are
+  recessed down to 0 level."
+- **Root cause: the same `_repair_stranded_elevation` flatten as `BR40.03`, plus an ordering
+  detail.** `_scatter_cover` (`map_gen.gd:80`) can drop a blocker on a cell that becomes a spawn zone
+  a moment later; `_repair_stranded_elevation` (`map_gen.gd:88`) then flattens that cell to level 0
+  because the blocker makes it unreachable; and only *afterwards* does `_place_spawn_zones` →
+  `_mark_zone` (`map_gen.gd:90`, `map_gen.gd:531`) erase the blocker — deliberately, so spawns are
+  guaranteed clear. The blocker goes away; **the level-0 flattening it caused does not.** What is left
+  is a clean, empty, correctly-marked spawn/extraction cell sitting a full `LEVEL_HEIGHT` below the
+  rest of its own raised room. `BoardView._build_extraction_tiles` draws the team-coloured marker at
+  that cell's real floor height, so the marker is exactly where the map says it is — recessed.
+- **The "without a unit atop them" qualifier is a visibility artifact, and the occupied case is the
+  worse one.** `CombatState`'s constructor (`combat_state.gd:125`) sets `unit.height` from the same
+  `UnitGeometry.true_height_for_cell`, so a unit spawned on a sunk tile sinks *with* it and its body
+  hides the marker — the tile only *reads* as recessed when nothing is standing on it. Both cases are
+  the same defect.
+- **Gameplay consequence — a unit can spawn unable to move at all.** The pit is exactly one level
+  deep, climbing is capability-gated on `Shell.can_climb()` (`shell.gd:105`, an open `CLIMBER` part
+  tag), and **no part anywhere in the repo carries `CLIMBER` today** — so no unit that currently
+  exists can climb out of anything. Asking a real non-climbing `Pathfinder` what a unit standing on
+  each sunk spawn cell can reach: **seeds 17, 18 and 38 return exactly 1 cell — the one it is standing
+  on.** Seed 32 returns 2 (the two sunk cells, both spawn tiles). It is a sealed hole, and the unit
+  spends the whole battle in it. Hop-down *into* the pit is legal, so the tile still works as an
+  extraction target; it is the spawning unit that is stuck.
+- **Scale (same 40-seed, 32×24 sweep):** 8 of 80 spawn zones (10%) come out with non-uniform floor
+  heights — always one or two of the four cells at 0.0 with the rest at 1.0. Which of the four sinks
+  is uncorrelated with whether a unit spawns there (`BoutSetup._spawn_squad` takes cells in reading
+  order): 4 of the 8 sank a cell a 2-unit roster would occupy, 4 sank one it would not.
+- **Same root cause as `BR40.03`.** A fix there very likely closes this too. If it does not, the
+  narrower fix available here is ordering — running `_place_spawn_zones` (which already erases spawn
+  blockers) *before* `_repair_stranded_elevation` would make spawn cells blocker-free at flood time —
+  but that only addresses spawn cells, leaves `BR40.03` untouched, and reorders a sequence whose
+  current order is itself load-bearing and documented, so it is not obviously the right lever.
+- **Not fixed** — no fix attempted; reported for a call on direction alongside `BR40.03`.
