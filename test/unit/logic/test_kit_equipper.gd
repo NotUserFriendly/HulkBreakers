@@ -51,7 +51,9 @@ func _build_unit(container_id: StringName = &"container") -> Dictionary:
 	torso.max_hp = 5
 	var back_socket := Socket.new(&"BACK", Transform3D.IDENTITY, &"BACK")
 	back_socket.occupant = container
-	torso.sockets = [back_socket, Socket.new(&"GRIP", Transform3D.IDENTITY, &"GRIP"), _matrix_socket()]
+	torso.sockets = [
+		back_socket, Socket.new(&"GRIP", Transform3D.IDENTITY, &"GRIP"), _matrix_socket()
+	]
 	var unit := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
 	return {"unit": unit, "container": container}
 

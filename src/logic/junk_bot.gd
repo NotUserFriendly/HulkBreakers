@@ -23,47 +23,58 @@ const TEMPLATE_ID := &"junk_bot"
 
 static func template() -> ShellTemplate:
 	var arm_mount := func(shoulder_id: StringName, side: String) -> Mount:
-		return Mount.new(
-			shoulder_id,
-			StringName("arm_%s" % side),
-			[
-				Mount.new(StringName("ARMOR_ARM_%s" % side.to_upper()), &"plate_small_steel"),
-				Mount.new(StringName("CLADDING_ARM_%s" % side.to_upper()), &"arm_cladding"),
-			]
+		return (
+			Mount
+			. new(
+				shoulder_id,
+				StringName("arm_%s" % side),
+				[
+					Mount.new(StringName("ARMOR_ARM_%s" % side.to_upper()), &"plate_small_steel"),
+					Mount.new(StringName("CLADDING_ARM_%s" % side.to_upper()), &"arm_cladding"),
+				]
+			)
 		)
 	var leg_mount := func(hip_id: StringName, side: String) -> Mount:
-		return Mount.new(
-			hip_id,
-			StringName("leg_%s" % side),
-			[
-				Mount.new(StringName("ARMOR_LEG_%s" % side.to_upper()), &"plate_medium_sheet_steel"),
-				Mount.new(StringName("CLADDING_LEG_%s" % side.to_upper()), &"leg_cladding"),
-			]
+		return (
+			Mount
+			. new(
+				hip_id,
+				StringName("leg_%s" % side),
+				[
+					Mount.new(
+						StringName("ARMOR_LEG_%s" % side.to_upper()), &"plate_medium_sheet_steel"
+					),
+					Mount.new(StringName("CLADDING_LEG_%s" % side.to_upper()), &"leg_cladding"),
+				]
+			)
 		)
 
-	return ShellTemplate.new(
-		&"torso",
-		[
-			(
-				Mount
-				. new(
-					&"NECK",
-					&"head",
-					[
-						Mount.new(&"ARMOR", &"plate_small_ceramic"),
-						Mount.new(&"CLADDING", &"head_cladding"),
-					]
-				)
-			),
-			arm_mount.call(&"SHOULDER_L", "l"),
-			arm_mount.call(&"SHOULDER_R", "r"),
-			leg_mount.call(&"HIP_L", "l"),
-			leg_mount.call(&"HIP_R", "r"),
-			Mount.new(&"ARMOR_FRONT", &"plate_large_steel"),
-			Mount.new(&"CLADDING", &"torso_cladding"),
-		],
-		DeepStrike.DEFAULT_MAX_MASS,
-		DeepStrike.DEFAULT_MAX_RAM
+	return (
+		ShellTemplate
+		. new(
+			&"torso",
+			[
+				(
+					Mount
+					. new(
+						&"NECK",
+						&"head",
+						[
+							Mount.new(&"ARMOR", &"plate_small_ceramic"),
+							Mount.new(&"CLADDING", &"head_cladding"),
+						]
+					)
+				),
+				arm_mount.call(&"SHOULDER_L", "l"),
+				arm_mount.call(&"SHOULDER_R", "r"),
+				leg_mount.call(&"HIP_L", "l"),
+				leg_mount.call(&"HIP_R", "r"),
+				Mount.new(&"ARMOR_FRONT", &"plate_large_steel"),
+				Mount.new(&"CLADDING", &"torso_cladding"),
+			],
+			DeepStrike.DEFAULT_MAX_MASS,
+			DeepStrike.DEFAULT_MAX_RAM
+		)
 	)
 
 

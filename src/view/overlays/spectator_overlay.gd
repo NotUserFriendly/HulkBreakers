@@ -229,6 +229,12 @@ func teardown() -> void:
 		battle.combat_state.combat_log.remove_sink(log_sink)
 
 
+## taskblock-41 Pass A: hands `ControlOverlay`'s own per-frame tick the log
+## panel to draw. Null until `_build_ui()` has run.
+func ui_log_sink() -> UiLogSink:
+	return log_sink
+
+
 ## docs: "play / pause / step-one-action / speed (1x, 2x, 4x)."
 func play() -> void:
 	if runner == null or runner.finished or playing:

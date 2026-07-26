@@ -25,10 +25,15 @@ func test_emit_caps_at_max_lines_dropping_the_oldest() -> void:
 	assert_true(sink.lines[-1].find("event_%d" % (UISink.MAX_LINES + 9)) != -1)
 
 
+## taskblock-41 Pass A: the label mirror is coalesced to one draw per frame
+## now, so the render tick a live `ControlOverlay._process` would supply is
+## explicit here. `lines` (every other assertion in this file) still updates
+## on emit and needed no change — see test_ui_log_sink_coalescing.gd.
 func test_emit_mirrors_into_an_attached_label() -> void:
 	var label := RichTextLabel.new()
 	var sink := UISink.new(label)
 	sink.emit(_event("hello"))
+	sink.render_if_dirty()
 	assert_true(label.text.find("hello") != -1)
 	label.queue_free()
 

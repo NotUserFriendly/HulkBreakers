@@ -19,10 +19,15 @@ func test_lines_mirrors_one_summary_string_per_top_level_group() -> void:
 	assert_eq(sink.lines.size(), 2, "turn_start is its own row; both misses fold into one attack")
 
 
+## taskblock-41 Pass A: the BBCode draw is coalesced to one render per frame
+## now, so the tick a live `ControlOverlay._process` would supply is explicit
+## in every label-reading test below. `lines` still updates on emit and
+## needed no change — see test_ui_log_sink_coalescing.gd.
 func test_emit_mirrors_into_an_attached_label() -> void:
 	var label := RichTextLabel.new()
 	var sink := HierarchicalUiSink.new(label)
 	sink.emit(_event(&"turn_start", 0, {}))
+	sink.render_if_dirty()
 
 	assert_true(label.bbcode_enabled)
 	assert_true(label.text.find("turn_start") != -1)
@@ -36,6 +41,7 @@ func test_a_single_event_admin_row_is_not_clickable() -> void:
 	var label := RichTextLabel.new()
 	var sink := HierarchicalUiSink.new(label)
 	sink.emit(_event(&"turn_start"))
+	sink.render_if_dirty()
 
 	assert_true(label.text.find("[url=") == -1, "nothing to expand, so nothing should be a link")
 	label.queue_free()
@@ -48,6 +54,7 @@ func test_clicking_an_attack_summary_expands_its_detail_then_collapses_again() -
 	var label := RichTextLabel.new()
 	var sink := HierarchicalUiSink.new(label)
 	sink.emit(_event(&"miss"))
+	sink.render_if_dirty()
 	assert_true(label.text.find("Miss") == -1, "collapsed by default — detail not shown yet")
 
 	var group: LogFoldGroup = sink.fold.groups[0]

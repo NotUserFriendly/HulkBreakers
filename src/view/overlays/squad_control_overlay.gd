@@ -107,6 +107,12 @@ func teardown() -> void:
 		battle.combat_state.combat_log.remove_sink(log_sink)
 
 
+## taskblock-41 Pass A: hands `ControlOverlay`'s own per-frame tick the log
+## panel to draw. Null until `_build_ui()` has run.
+func ui_log_sink() -> UiLogSink:
+	return log_sink
+
+
 ## docs/10 taskblock02 F1 (tb31 Pass B): true only for an explicitly
 ## HUMAN squad — `controller_for` no longer has a silent HUMAN default to
 ## fall back on (UNASSIGNED is the zero-default now, and a bout can't

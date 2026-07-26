@@ -359,6 +359,47 @@ confirm" roll-up — so pending items surface at a natural review point without 
   algorithmic change (out of scope for "memoise per cell" as specified) — BR27.09 stays open. The
   original player-turn-end-hitch-with-no-AI-batch question above is also still unaddressed; this pass
   only measured and cut the AI-planning half.
+- **2026-07-26 (tb41 Pass A — cost #1 fixed, but by coalescing, NOT by the `append_text` this entry
+  prescribes)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. **Supervisor approved the override; this
+  is an append, not a status change.** Cost #1's stated fix — "incremental `RichTextLabel.append_text`
+  for the new line" — fits `UISink`, which genuinely is append-only. It **cannot** fit
+  `HierarchicalUiSink`, which this entry itself flags as having inherited the same pattern and still
+  being live: a new event there routinely rewrites an **existing** group's summary rather than
+  appending a row, and expand/collapse re-renders everything. There is no correct incremental append
+  against a folding model. What landed instead: `emit()` updates the model and marks dirty, and the
+  label draw happens at most once per frame, driven from `ControlOverlay._process` (new
+  `UiLogSink` base, shared by both sinks). Two properties `append_text` would not have given: it is
+  correct for the folding sink, and **render cost stops scaling with event count at all** rather than
+  merely getting cheaper per event — which is what makes tb41 Pass D's deliberate verbosity
+  affordable instead of a regression. Incremental `append_text` in `UISink` alone is still available
+  on top, and is deliberately **not** taken here: it should only be judged against the coalesced
+  baseline, not the old per-event one.
+  - **Measured, real classes against a real `RichTextLabel` in a real tree** (same posture tb21 Pass E
+    used for the original figures), at this entry's own scenario — 200-line scrollback, 3v3, 9.9
+    events/turn averaged, peak 29. Before = render after every emit (exactly what these sinks did),
+    after = one render for the frame, 200 repeats each:
+
+    | | peak turn (29 events) | average turn (10 events) |
+    |---|---|---|
+    | `UISink` before | 4845µs | 1677µs |
+    | `UISink` after | **225µs** | **193µs** |
+    | `HierarchicalUiSink` before | 10058µs | 3263µs |
+    | `HierarchicalUiSink` after | **870µs** | **495µs** |
+
+    The `UISink` "before" figure works out to ~167µs per event, which corroborates this entry's own
+    original ~175–180µs measurement closely enough to trust the rest. **`HierarchicalUiSink` was
+    never actually measured before and is roughly twice as expensive as the sink that was** — a peak
+    turn cost ~10ms in the sink that is the one actually wired into both live overlays, not the ~5ms
+    this entry estimated from the flat sink. Headless and a real x11 display agreed within ~2% on
+    every figure, so the headless number is trustworthy for this particular cost and no GPU frame is
+    needed to re-measure it later.
+  - **The hitch is still there, and that is the expected result.** This entry is now a
+    several-second hitch whose known mechanism is `advance_ai_turns` stepping the whole AI batch
+    synchronously with no yield; the sink was ~5–10ms of it. Cost #1 is closed as a cost. Costs #2
+    (`HitVolumeView.refresh()` rebuilding every mesh per turn) and #3 (turn-start power recompute
+    re-walking the part graph 5–6 times) are untouched, as is the AI batch itself and the
+    player-turn-end-with-no-AI-batch question. **Not resolved, not pending — still `Active`.**
+
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**
 - **Source:** `SUPERVISOR`

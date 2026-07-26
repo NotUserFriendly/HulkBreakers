@@ -31,8 +31,10 @@ static func stock(unit: Unit, kit: Kit, pool: Dictionary) -> bool:
 	var container: Part = _container(unit, kit)
 	if container == null or not container.is_container:
 		push_error(
-			"KitEquipper: %s has no container socket %s to stock"
-			% [unit.shell.root.id, kit.container_socket_id]
+			(
+				"KitEquipper: %s has no container socket %s to stock"
+				% [unit.shell.root.id, kit.container_socket_id]
+			)
 		)
 		return false
 	for item_id: StringName in kit.stored_item_ids:
@@ -42,8 +44,7 @@ static func stock(unit: Unit, kit: Kit, pool: Dictionary) -> bool:
 			return false
 		if not Inventory.attach(item_template.duplicate(true), container, unit.shell):
 			push_error(
-				"KitEquipper: %s does not fit in its own kit container %s"
-				% [item_id, container.id]
+				"KitEquipper: %s does not fit in its own kit container %s" % [item_id, container.id]
 			)
 			return false
 	return true
@@ -74,8 +75,10 @@ static func _equip_instant(unit: Unit, kit: Kit) -> bool:
 	var container: Part = _container(unit, kit)
 	if container == null:
 		push_error(
-			"KitEquipper: %s has no container socket %s to equip from"
-			% [unit.shell.root.id, kit.container_socket_id]
+			(
+				"KitEquipper: %s has no container socket %s to equip from"
+				% [unit.shell.root.id, kit.container_socket_id]
+			)
 		)
 		return false
 	var weapon: Part = null
@@ -85,8 +88,10 @@ static func _equip_instant(unit: Unit, kit: Kit) -> bool:
 			break
 	if weapon == null:
 		push_error(
-			"KitEquipper: %s never made it into its own kit container %s"
-			% [kit.weapon_part_id, container.id]
+			(
+				"KitEquipper: %s never made it into its own kit container %s"
+				% [kit.weapon_part_id, container.id]
+			)
 		)
 		return false
 
@@ -103,8 +108,10 @@ static func _equip_instant(unit: Unit, kit: Kit) -> bool:
 		# a failed equip must never silently drop the unit's own gear.
 		Inventory.attach(weapon, container)
 		push_error(
-			"KitEquipper: %s cannot attach to socket %s on %s"
-			% [weapon.id, kit.weapon_socket_id, host.id]
+			(
+				"KitEquipper: %s cannot attach to socket %s on %s"
+				% [weapon.id, kit.weapon_socket_id, host.id]
+			)
 		)
 		return false
 

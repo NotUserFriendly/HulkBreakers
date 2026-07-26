@@ -54,6 +54,28 @@ func teardown() -> void:
 	pass
 
 
+## taskblock-41 Pass A: whichever `RichTextLabel`-backed combat-log sink
+## this overlay owns, or null. A `UiLogSink` only marks itself dirty on
+## `emit()` now — a `RefCounted` has no frame of its own — so something
+## with a real frame has to draw it, and the overlay that built the label
+## is the one thing that always outlives it. Overlays with no log panel
+## (`SingleUnitOverlay`, `GenerateBoutOverlay`) keep the null default and
+## never pay for the tick at all.
+func ui_log_sink() -> UiLogSink:
+	return null
+
+
+## The one per-frame render tick for this overlay's log panel. At most one
+## `label.text` reassignment per frame regardless of how many events landed
+## in it — which is the whole point: render cost stops scaling with event
+## count, so taskblock-41 Pass D's deliberate verbosity is affordable
+## rather than a regression (BR27.09 cost #1).
+func _process(_delta: float) -> void:
+	var sink: UiLogSink = ui_log_sink()
+	if sink != null:
+		sink.render_if_dirty()
+
+
 ## The ONE shared "auto-advance AI turns" loop every interactive overlay
 ## (`SquadControlOverlay`, `SingleUnitOverlay`) drives after its own human
 ## turn resolves — auto-resolves consecutive units this overlay does NOT
