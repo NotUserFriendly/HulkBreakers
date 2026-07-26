@@ -537,21 +537,56 @@ Starting signals, not a full audit:
   legitimate — a private carving model — but worth confirming they haven't quietly become a second
   source of elevation truth alongside placed `Surface` height.
 
-### Retire the checkpoint machinery
+### Checkpoints return as an ordinary tool
 **Needs:** nothing.
 
-Checkpoint *discipline* was retired in the docs; every piece of machinery survives. `checkpoint.sh`,
-`tools/checkpoints/checkpoint_{6,7}.gd`, and 636K of committed `out/checkpoints/` output that nothing
-references and that describes a game 30-plus blocks out of date.
+What was retired was the **gate**, not the capability. The original ritual was five committed-artifact
+checkpoints, each ending in "stop and wait for a go" — that stalled the pipeline and deserved to go. The
+underlying ability (drive the real `BattleScene` through a real GPU frame, capture what it actually looks
+like) never stopped being valuable, and taskblock-40 Pass D rebuilt most of it without this item being
+touched: `run_visual_checkpoint.sh` grew a case 8 driving real `GridFixture` placement through the real
+`BattleScene.load_battle()` and the real `CameraRig.ease_to_framing()`, with a generated README carrying a
+yes/no checklist and citing its headless coverage alongside.
 
-- **Delete the committed outputs and `checkpoint.sh`.** Git history keeps them; a committed, unreferenced,
-  stale record that still looks documentary is the same failure as a stale CHANGELOG entry.
-- **Keep `test/checkpoints/test_checkpoint_1–4.gd`** — they still run every suite as ordinary regression
-  tests. Rename them out of the checkpoint frame so the name stops implying a retired ritual.
-- **Keep the visual harness, repointed.** `tools/checkpoints/run_visual_checkpoint.sh` drives the real
-  `BattleScene` with a GPU frame and captures rendered output. It fits the settled policy — CC authors the
-  scenario, the supervisor runs it, the frame lands committed. Practical limit: CC reads images poorly, so
-  this is a fallback for when a report genuinely can't carry the answer, not a primary channel.
+It paid for itself on the first run. **BR40.01** — the camera solving a position past the far edge of the
+platform the shooter stands on, filling the frame with that platform's own mass — was found by rendering,
+not by testing. Pass B's height-delta matrix passed every invariant it checks: both bodies fit, the camera
+never dropped below the lower body, continuity held across the zero crossing. The frame was still garbage.
+Numerically clean and visually broken is exactly the gap a screenshot closes and a test cannot.
+
+**CC authors a checkpoint whenever it judges one useful** — no permission step, no hard stop. The supervisor
+looks at it when convenient.
+
+- **A parse guard in `run_tests.sh`, and this is the load-bearing item.** BR40.02: `checkpoint_6.gd` and
+  `checkpoint_7.gd` crash on a `UnitView` identifier retired ~15 blocks ago, because visual checkpoints sit
+  outside the headless gate by necessity and nothing re-runs them. Rendering can't happen in CI; **parsing
+  can**. Headlessly loading every `tools/checkpoints/checkpoint_*.gd` and failing on a parse error turns
+  silent rot into a red test for almost nothing. Without it the rebuilt system rots exactly the same way.
+- **Delete the stop-and-wait.** `run_visual_checkpoint.sh` still prints *"This is a hard stop — wait for a go
+  before continuing."* The machinery announces the discipline the docs retired.
+- **Delete `checkpoint_{6,7}.gd`.** Not worth repairing to current APIs when `checkpoint_8.gd` already
+  demonstrates the pattern; repairing them means updating two dead scripts so they can then be removed. Git
+  history keeps them. **BR40.02 closes as superseded, not fixed.**
+- **`out/checkpoints/` goes local-only.** Real sizes: ~72K and ~180K for the two stills checkpoints, 484K for
+  the one carrying a 300K video; individual 1920x1080 PNGs run 43-58K. Thousands are affordable on local disk
+  and none of them belong in git. Note `.gitignore` doesn't untrack — this needs `git rm -r --cached
+  out/checkpoints` alongside the rule. `.gitignore`'s own comment currently asserts the opposite ("checkpoint
+  artifacts under out/checkpoints/ ARE committed") and `docs/09`'s "Checkpoints — retired" section both
+  invert.
+- **Promotion is a copy, not a force-add.** Occasionally a checkpoint is worth committing. If the whole tree
+  is ignored that means `git add -f`, which gets forgotten. A separate non-ignored directory makes copying
+  the file *be* the decision to keep it.
+- **The durable artifact is the answers, not the images.** Once the folder is local-only, a generated
+  checklist lives somewhere nobody downstream can read — the supervisor works through checkpoint 8's nine
+  yes/no items and the verdicts exist on one disk. The checklist and its answers belong in
+  `reports/Report-TaskblockN.md`, which is already committed on a rolling window and already the
+  supervisor-facing artifact. The PNGs stay local as the thing that was looked at; CC reads images poorly
+  anyway, and BR40.01 was root-caused from solved coordinates in `run.log` rather than from the picture.
+- **Move the READMEs into the `.gd` scripts.** `run_visual_checkpoint.sh` is 224 lines, nearly all of it three
+  per-checkpoint heredocs, and each new checkpoint adds ~70 more. The scenario script should own its own
+  README and checklist; the shell driver stays generic and stops growing.
+- **Keep `test/checkpoints/test_checkpoint_1-4.gd`** as ordinary regression tests, renamed out of the
+  checkpoint frame so the name stops implying a retired ritual.
 
 
 ### Startup opens a generated bout
