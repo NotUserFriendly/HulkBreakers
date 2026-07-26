@@ -64,10 +64,13 @@ the QUEUED "Checkpoints return as an ordinary tool" outright.
   corner is exactly where the first log line sits, so it printed straight through the text. The title
   bar is the one strip of the panel with no content to collide with. Still over the panel, never
   emitted into the stream, which is what the instruction was protecting.
-- **Pass F: `SpectatorOverlay` still uses its own bare log label.** Only `SquadControlOverlay` was
-  converted. The pass is explicitly a session opener to be iterated live, and converting the second
-  overlay to a shape that is about to change seemed worse than leaving it consistent with itself.
-  Flagged rather than silently skipped.
+- **Pass F: `SpectatorOverlay` left on its own bare log label.** Only `SquadControlOverlay` was
+  converted during the block. The pass is explicitly a session opener to be iterated live, and
+  converting the second overlay to a shape that was about to change seemed worse than leaving it
+  consistent with itself. **Reversed afterwards at the supervisor's request** — the bare widget was
+  called obsolete, and both views share `CombatLogPanel` now (appendix). The judgement was wrong in
+  the direction that matters: one of two views quietly keeping the worse widget is how they drift,
+  and the conversion immediately exposed a log-flooding bug that was live in *both*.
 - **Passes A/F: I rendered real frames and looked at them.** This sandbox has a working GPU and X11.
   Pass A's numbers were measured against a real `RichTextLabel` in a real tree (headless and x11
   agreed within ~2%, so that cost needs no GPU to re-measure later), and Pass F's panel was checked by
@@ -121,9 +124,10 @@ appendix).
 - ~~**`BR34.02` is ready for a look.**~~ **Answered:** closed `Resolved` by the supervisor. The
   `mouse_filter` sweep it also asked for is still not done — now the *fourth* instance of that
   failure class, and filed as its own `PLAN.md` item rather than left inside a closed entry.
-- **How far to take the log window.** Partly answered — width and scroll behaviour were both
-  corrected by the supervisor (appendix). Still open: minimize collapses to the bar without
-  remembering a dragged height across a restore, and `SpectatorOverlay` is unconverted.
+- ~~**How far to take the log window.**~~ **Answered, over five supervisor corrections** (appendix):
+  width, scroll behaviour, the drag/minimize split and its restore height, the spectator conversion,
+  and that panel's own bottom-edge anchoring and corner placement. Nothing about the log window is
+  left open from CC's side. The standing lesson is in the appendix, not here.
 - **Whether the engine-error unwind chain should be deduplicated.** One failure currently produces
   several `diagnostic` events. It is faithful, and the chain is real information, but it is also
   three lines where a reader wants one. Evidence is thin either way until the log has been read in
@@ -239,6 +243,17 @@ Checkpoint 9 (`./checkpoint.sh 9`) authored for the conversion, under the new no
 It immediately earned the Pass E parse guard its keep: my first draft called a
 `DataLibrary.bot_presets()` that does not exist, and the guard failed the run and named the file
 before anything was rendered.
+
+## The one lesson worth carrying out of this block
+
+Every defect in the combat-log panel — six of them, across the block and the corrections after it —
+was invisible to the thing I was checking with. The scroll hand-off had a correct, green unit test
+and did nothing. The drag gestures were verified against rendered frames, which show a panel at
+rest and cannot show a three-event gesture. The bottom-edge and corner bugs came from verifying one
+of the two layout situations the panel is used in. **None of them were logic errors; all of them
+were verification-shape errors.** The pattern to watch for: a rule tested in isolation from the
+wiring that must ask it, a gesture tested by its end state, and a component tested in one of the
+contexts it ships in.
 
 ## Process note
 
