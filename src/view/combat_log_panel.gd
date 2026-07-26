@@ -38,6 +38,9 @@ const MIN_HEIGHT := 64.0
 const MAX_HEIGHT := 640.0
 const TITLE_BAR_HEIGHT := 22.0
 const TITLE := "Combat Log"
+## The minimize toggle's two faces. `[-]` collapses to the bar, `[+]` restores.
+const MINIMIZE_LABEL := "[-]"
+const RESTORE_LABEL := "[+]"
 ## The bar is the resize grip as well as the title, so it wants a little more
 ## than a text row's worth of height to be an easy target.
 const BACKGROUND_ALPHA := 0.82
@@ -53,7 +56,10 @@ const FPS_MARGIN := Vector2(8.0, 4.0)
 const SCROLL_PAGE_FRACTION := 0.25
 
 var log_label: RichTextLabel
-var title_bar: Button
+## The drag-to-resize strip. A `PanelContainer`, deliberately NOT a `Button`
+## any more — see `_on_title_bar_input`.
+var title_bar: PanelContainer
+var minimize_button: Button
 var fps_label: Label
 
 var _meter := FpsMeter.new()
@@ -62,6 +68,11 @@ var _minimized := false
 var _dragging := false
 var _drag_start_y := 0.0
 var _drag_start_height := 0.0
+## The height to come back to when restored. Captured at the moment of
+## minimizing, so a panel that was dragged taller returns to the height it was
+## dragged to — not to whatever it happened to be when some earlier drag began,
+## which is what the first version restored to.
+var _restore_height := DEFAULT_HEIGHT
 
 
 func _init() -> void:
@@ -73,15 +84,33 @@ func _init() -> void:
 	# regardless of this filter, so the scroll decision is unaffected.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	title_bar = Button.new()
-	title_bar.text = TITLE
+	# The bar does ONE thing: resize. Minimizing is its own button, below.
+	# It used to be a single `Button` wired to both — and `Button` emits
+	# `pressed` on RELEASE, so every drag-to-resize also toggled minimize the
+	# instant you let go. Supervisor: "behaving erratically", which it was.
+	# Splitting the two gestures onto two controls is the fix; nothing about
+	# the resize maths needed changing.
+	title_bar = PanelContainer.new()
 	title_bar.custom_minimum_size = Vector2(0, TITLE_BAR_HEIGHT)
-	title_bar.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	title_bar.focus_mode = Control.FOCUS_NONE
-	title_bar.tooltip_text = "Click to minimize/restore. Drag to resize."
-	title_bar.pressed.connect(toggle_minimized)
+	title_bar.tooltip_text = "Drag to resize."
+	var bar_style := StyleBoxFlat.new()
+	bar_style.bg_color = Color(
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, 1.0
+	)
+	title_bar.add_theme_stylebox_override("panel", bar_style)
 	title_bar.gui_input.connect(_on_title_bar_input)
 	add_child(title_bar)
+
+	var bar_row := HBoxContainer.new()
+	bar_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_bar.add_child(bar_row)
+
+	var title_label := Label.new()
+	title_label.text = TITLE
+	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bar_row.add_child(title_label)
 
 	_body = PanelContainer.new()
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -102,29 +131,28 @@ func _init() -> void:
 	log_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	_body.add_child(log_label)
 
-	# In the TITLE BAR, right-aligned — not over the log body. Rendering it
-	# revealed the obvious-in-hindsight problem: at this panel's real width the
-	# body's top-right corner is exactly where the first log line sits, so the
-	# readout printed straight through the text. The bar is the one strip of
-	# this panel with no content to collide with. `MOUSE_FILTER_IGNORE` keeps
-	# the click-to-minimize and drag-to-resize on the bar underneath it.
-	#
-	# Anchored right and grown LEFTWARD rather than via `PRESET_TOP_RIGHT`:
-	# that preset bakes offsets from the control's minimum size, zero for a
-	# Label with no text yet, so the readout grew rightward off the panel and
-	# over the board instead. Both of these were found by rendering; neither was
-	# visible to any headless assertion.
+	# In the TITLE BAR, not over the log body: at this panel's real width the
+	# body's top-right corner is exactly where the first log line sits, so a
+	# readout there printed straight through the text. Found by rendering.
+	# `MOUSE_FILTER_IGNORE` so it never interrupts a drag started on the bar.
+	# It is a row child now rather than an anchored overlay — the HBox handles
+	# the placement the old hand-rolled anchors were doing badly.
 	fps_label = Label.new()
 	fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fps_label.anchor_left = 1.0
-	fps_label.anchor_right = 1.0
-	fps_label.anchor_top = 0.0
-	fps_label.anchor_bottom = 1.0
-	fps_label.offset_right = -FPS_MARGIN.x
-	fps_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	fps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	fps_label.add_theme_color_override("font_color", HulkTheme.DIM)
-	title_bar.add_child(fps_label)
+	bar_row.add_child(fps_label)
+
+	# The minimize toggle. A real child Button, so it takes its own click and a
+	# press on it never starts a drag on the bar underneath — that separation is
+	# structural, not a flag either handler has to remember to check.
+	minimize_button = Button.new()
+	minimize_button.text = MINIMIZE_LABEL
+	minimize_button.focus_mode = Control.FOCUS_NONE
+	minimize_button.tooltip_text = "Minimize"
+	minimize_button.custom_minimum_size = Vector2(TITLE_BAR_HEIGHT, 0)
+	minimize_button.pressed.connect(toggle_minimized)
+	bar_row.add_child(minimize_button)
 
 
 func _ready() -> void:
@@ -147,18 +175,26 @@ func is_minimized() -> bool:
 ## without losing where it is or what it says.
 func toggle_minimized() -> void:
 	_minimized = not _minimized
+	if _minimized:
+		# Captured HERE, at the moment of collapsing, so whatever the panel had
+		# been dragged to is what comes back.
+		_restore_height = custom_minimum_size.y
+		custom_minimum_size.y = TITLE_BAR_HEIGHT
+	else:
+		custom_minimum_size.y = _restore_height
 	_body.visible = not _minimized
-	custom_minimum_size.y = TITLE_BAR_HEIGHT if _minimized else _drag_start_height_or_default()
+	minimize_button.text = RESTORE_LABEL if _minimized else MINIMIZE_LABEL
+	minimize_button.tooltip_text = "Restore" if _minimized else "Minimize"
 	minimized_changed.emit(_minimized)
-
-
-func _drag_start_height_or_default() -> float:
-	return DEFAULT_HEIGHT if _drag_start_height <= 0.0 else _drag_start_height
 
 
 ## Drag the title bar to resize vertically. Deliberately drag-on-the-bar rather
 ## than a separate grip: the bar is already the one part of this panel with no
 ## content to occlude.
+## Drag the bar to resize vertically, and nothing else. The minimize button is
+## a child of this bar, so a press on it is consumed there and never reaches
+## here — the two gestures cannot collide the way they did when one `Button`
+## owned both (`pressed` fires on release, so every drag ended in a toggle).
 func _on_title_bar_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton

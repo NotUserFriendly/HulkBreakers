@@ -166,3 +166,126 @@ func test_the_panel_asks_for_its_own_width_rather_than_inheriting_the_columns() 
 	var panel: CombatLogPanel = built[0]
 	assert_eq(panel.custom_minimum_size.x, CombatLogPanel.DEFAULT_WIDTH)
 	assert_true(CombatLogPanel.DEFAULT_WIDTH >= 500.0, "roughly double the old ~260px column")
+
+
+# --- title bar: drag to resize, minimize is its own button ------------------
+#
+# Supervisor: the first version wired BOTH to one `Button`, and `Button` emits
+# `pressed` on release — so every drag-to-resize also toggled minimize the
+# instant you let go ("behaving erratically"). These pin the split: a drag on
+# the bar must never minimize, and a click on the button must never resize.
+
+
+func _press(at: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.position = at
+	get_viewport().push_input(event)
+
+
+func _release(at: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = false
+	event.position = at
+	get_viewport().push_input(event)
+
+
+func _move_to(at: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = at
+	get_viewport().push_input(event)
+
+
+## Dragging the bar upward makes the panel taller (it is anchored at the bottom
+## of its column), and must leave it expanded.
+func test_dragging_the_title_bar_resizes_and_never_minimizes() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var before: float = panel.custom_minimum_size.y
+
+	var grip: Vector2 = panel.title_bar.get_global_rect().get_center()
+	_press(grip)
+	_move_to(grip - Vector2(0.0, 60.0))
+	_release(grip - Vector2(0.0, 60.0))
+	await get_tree().process_frame
+
+	assert_almost_eq(
+		panel.custom_minimum_size.y, before + 60.0, 1.0, "dragged up 60px, 60px taller"
+	)
+	assert_false(panel.is_minimized(), "a drag must not toggle minimize on release")
+	assert_eq(panel.minimize_button.text, CombatLogPanel.MINIMIZE_LABEL)
+
+
+func test_the_minimize_button_collapses_to_the_bar_and_flips_to_plus() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	panel.minimize_button.pressed.emit()
+
+	assert_true(panel.is_minimized())
+	assert_eq(panel.custom_minimum_size.y, CombatLogPanel.TITLE_BAR_HEIGHT)
+	assert_eq(panel.minimize_button.text, CombatLogPanel.RESTORE_LABEL)
+	assert_false(panel._body.visible, "the log itself is hidden, not merely squashed")
+
+
+## The bug the first version could not have got right: restore went back to the
+## height captured when some earlier DRAG began, not to the height the panel was
+## actually at when it was minimized.
+func test_restoring_returns_to_the_height_it_was_dragged_to() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var grip: Vector2 = panel.title_bar.get_global_rect().get_center()
+	_press(grip)
+	_move_to(grip - Vector2(0.0, 80.0))
+	_release(grip - Vector2(0.0, 80.0))
+	await get_tree().process_frame
+	var dragged_to: float = panel.custom_minimum_size.y
+
+	panel.minimize_button.pressed.emit()
+	panel.minimize_button.pressed.emit()
+
+	assert_almost_eq(panel.custom_minimum_size.y, dragged_to, 0.5)
+	assert_false(panel.is_minimized())
+	assert_true(panel._body.visible)
+
+
+## The button sits inside the bar, so pressing it must be consumed there rather
+## than starting a drag on the bar underneath.
+func test_pressing_the_minimize_button_does_not_start_a_drag() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var on_button: Vector2 = panel.minimize_button.get_global_rect().get_center()
+	_press(on_button)
+	_move_to(on_button - Vector2(0.0, 50.0))
+
+	assert_false(panel._dragging, "the button consumed the press; the bar never saw it")
+	_release(on_button - Vector2(0.0, 50.0))
+
+
+## Resizing is clamped, so a wild drag cannot collapse the panel to nothing or
+## grow it past the screen.
+func test_a_drag_is_clamped_at_both_ends() -> void:
+	var built: Array = _panel_and_spy()
+	var panel: CombatLogPanel = built[0]
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var grip: Vector2 = panel.title_bar.get_global_rect().get_center()
+	_press(grip)
+	_move_to(grip + Vector2(0.0, 5000.0))
+	assert_eq(panel.custom_minimum_size.y, CombatLogPanel.MIN_HEIGHT)
+	_move_to(grip - Vector2(0.0, 5000.0))
+	assert_eq(panel.custom_minimum_size.y, CombatLogPanel.MAX_HEIGHT)
+	_release(grip)
