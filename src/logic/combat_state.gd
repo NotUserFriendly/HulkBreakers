@@ -312,17 +312,21 @@ func resolve_until(queue: ActionQueue, mid_move_hook: Callable = Callable()) -> 
 func _resolve_until_body(queue: ActionQueue, mid_move_hook: Callable) -> Dictionary:
 	for action: CombatAction in queue.actions:
 		if not action.is_legal(self):
-			return _stopped(queue.unit, &"next_action_illegal")
+			# taskblock-41 Pass C: the refused action is named, not just
+			# counted. "stopped (next_action_illegal)" told you a queue died
+			# without telling you which action killed it — the one thing you
+			# actually need to reproduce it.
+			return _stopped(queue.unit, &"next_action_illegal", action)
 		if action is MoveAction:
 			var result: Dictionary = (action as MoveAction).apply_stepwise(self, mid_move_hook)
 			if result.stopped:
-				return _stopped(queue.unit, &"mid_move_interrupt")
+				return _stopped(queue.unit, &"mid_move_interrupt", action)
 		else:
 			action.apply(self)
 	return {"kind": Enums.ResolveOutcome.COMPLETED}
 
 
-func _stopped(unit: Unit, reason: StringName) -> Dictionary:
+func _stopped(unit: Unit, reason: StringName, action: CombatAction = null) -> Dictionary:
 	var actual: Unit = find_unit(unit.id)
 	var outcome: Dictionary = {
 		"kind": Enums.ResolveOutcome.STOPPED,
@@ -330,7 +334,10 @@ func _stopped(unit: Unit, reason: StringName) -> Dictionary:
 		"reason": reason,
 		"refund": {"ap": 0, "mp": actual.mp if actual != null else 0.0},
 	}
+	var described: String = action.describe() if action != null else ""
 	var text: String = "resolve_until: unit %d stopped (%s)" % [unit.id, reason]
+	if described != "":
+		text += " on %s" % described
 	log_action(text)
 	combat_log.emit(
 		LogEvent.new(
@@ -338,8 +345,8 @@ func _stopped(unit: Unit, reason: StringName) -> Dictionary:
 			Enums.Phase.RESOLUTION,
 			unit.id,
 			&"resolution_stopped",
-			{"reason": reason, "refund_mp": outcome.refund.mp},
-			"stopped (%s)" % reason
+			{"reason": reason, "refund_mp": outcome.refund.mp, "action": described},
+			"stopped (%s)%s" % [reason, "" if described == "" else " on %s" % described]
 		)
 	)
 	return outcome
@@ -347,10 +354,23 @@ func _stopped(unit: Unit, reason: StringName) -> Dictionary:
 
 ## Attempts an action: rejects (returns false, no mutation) if illegal,
 ## otherwise applies it and returns true.
+##
+## taskblock-41 Pass C: the refusal is no longer silent — this was one of the
+## genuinely quiet `return false` paths, indistinguishable from an action that
+## ran and did nothing. `is_legal()` is a plain bool across every action, so the
+## reason available here is `action_illegal` plus the action's own
+## `describe()`; a per-action legality REASON would mean changing `is_legal`'s
+## signature everywhere, which is deliberately out of this pass's scope and
+## flagged rather than half-done.
 func try_apply(action: CombatAction) -> bool:
+	var described: String = action.describe()
+	CommandLog.issued(self, &"try_apply", {"action": described, "unit": action.unit_id()})
 	if not action.is_legal(self):
-		return false
+		return CommandLog.refused(
+			self, &"try_apply", &"action_illegal", {"action": described, "unit": action.unit_id()}
+		)
 	action.apply(self)
+	CommandLog.accepted(self, &"try_apply", {"action": described, "unit": action.unit_id()})
 	return true
 
 

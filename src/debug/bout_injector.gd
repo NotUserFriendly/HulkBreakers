@@ -18,8 +18,15 @@ extends RefCounted
 ## otherwise mark `state.was_injected` and log a distinct `&"inject"`
 ## event BEFORE doing anything else, naming exactly what's about to
 ## happen — so a bug found under injection is traceable to the injection
-## that set it up, and a rejected call is a true no-op (nothing mutated,
-## no log entry, no RNG draw).
+## that set it up.
+##
+## taskblock-41 Pass C: a rejected call still mutates nothing and still draws
+## no RNG, but it is **no longer silent** (this reverses the original "no log
+## entry" half — see `docs/SUPERSEDED.md`). Every verb emits a `command` event
+## before anything can refuse it and a `command_outcome` after, carrying a
+## machine-readable `reason` — a debug scalpel that quietly does nothing is
+## indistinguishable from one that ran and had no effect, which is precisely
+## the class of bug this project keeps producing.
 ##
 ## **No parallel systems.** Every verb below is a thin call into the real
 ## mutation path it fronts (`DeepStrike`/`BodyAssembler`, `KitEquipper`,
@@ -38,8 +45,31 @@ func can_inject() -> bool:
 	return not state.is_resolving
 
 
-func _reject(kind: StringName) -> void:
-	push_error("BoutInjector: %s rejected — injection mid-resolution is forbidden" % kind)
+## taskblock-41 Pass C: every verb's own first line. Logs "what was sent"
+## (always, before anything can refuse it) and then answers the one gate every
+## verb shares. False means the caller returns false immediately — the refusal
+## is already logged by the time this returns.
+##
+## This is the `_guard` the file header has always described; it existed only
+## as a convention repeated in 25 places until this pass gave it a body.
+func _guard(kind: StringName, data: Dictionary = {}) -> bool:
+	CommandLog.issued(state, kind, data)
+	if state.is_resolving:
+		# Kept alongside the log line, deliberately: `push_error` is what makes
+		# this visible in the Godot console and in GUT's own error tracker, and
+		# since tb41 Pass B it ALSO lands on the combat-log stream as a
+		# `diagnostic`. The `command_outcome` below is the structured half —
+		# greppable, with a machine-readable reason — not a duplicate of it.
+		push_error("BoutInjector: %s rejected — injection mid-resolution is forbidden" % kind)
+		_refuse(kind, &"mid_resolution", data)
+		return false
+	return true
+
+
+## Every refusal below routes through here. Returns false so a caller reads
+## `return _refuse(...)` and cannot refuse silently.
+func _refuse(kind: StringName, reason: StringName, data: Dictionary = {}) -> bool:
+	return CommandLog.refused(state, kind, reason, data)
 
 
 ## Every successful verb's own tail call: marks the bout non-deterministic
@@ -54,6 +84,12 @@ func _log_injection(kind: StringName, data: Dictionary, text: String) -> void:
 	state.combat_log.emit(
 		LogEvent.new(state.round_number, Enums.Phase.RESOLUTION, -1, &"inject", full_data, text)
 	)
+	# taskblock-41 Pass C: the accepted half of the command/outcome pair. The
+	# `inject` event above is unchanged and keeps carrying this verb's own rich
+	# detail; this is the uniform outcome every command path emits, so "was it
+	# accepted" is one grep across the injector AND the action path rather than
+	# a different shape per verb.
+	CommandLog.accepted(state, kind, data)
 
 
 ## Forces whose turn it is — `CombatState.force_current_unit`, which
@@ -62,8 +98,7 @@ func _log_injection(kind: StringName, data: Dictionary, text: String) -> void:
 ## should follow this with a real `set_ap`/`set_mp` call, not get one
 ## silently bundled in.
 func force_current_unit(unit: Unit) -> bool:
-	if not can_inject():
-		_reject(&"force_current_unit")
+	if not _guard(&"force_current_unit", {"unit": unit.id}):
 		return false
 	state.force_current_unit(unit.id)
 	_log_injection(&"force_current_unit", {"unit": unit.id}, "unit %d forced current" % unit.id)
@@ -88,13 +123,13 @@ func force_current_unit(unit: Unit) -> bool:
 func spawn_unit(
 	preset: BotPreset, cell: Vector2i, squad_id: int, matrix_id: StringName = &""
 ) -> Unit:
-	if not can_inject():
-		_reject(&"spawn_unit")
+	if not _guard(&"spawn_unit", {"cell": cell, "squad": squad_id}):
 		return null
 	var matrix := Matrix.new()
 	matrix.id = matrix_id if matrix_id != &"" else StringName("injected_%d" % state.rng.randi())
 	var unit: Unit = DeepStrike.assemble_from_preset(preset, matrix, cell, squad_id)
 	if unit == null:
+		_refuse(&"spawn_unit", &"preset_could_not_assemble", {"preset": preset.preset_name})
 		return null
 	state.add_unit(unit)
 	if preset.kit != null:
@@ -131,11 +166,10 @@ func spawn_unit(
 ## kill read exactly like a real one, not a half-measure invisible to the
 ## one thing that actually checks it.
 func kill(unit: Unit) -> bool:
-	if not can_inject():
-		_reject(&"kill")
+	if not _guard(&"kill", {"unit": unit.id}):
 		return false
 	if not unit.alive:
-		return false
+		return _refuse(&"kill", &"already_dead", {"unit": unit.id})
 	for part: Part in unit.shell.all_parts():
 		if part.hosts_matrix() and part.hosted_matrix != null:
 			var ejected: Matrix = part.hosted_matrix
@@ -154,15 +188,21 @@ func kill(unit: Unit) -> bool:
 ## under its OWN name (the same split `_attach` already uses for
 ## `hand_weapon`/`attach_part`). Refuses (no mutation) onto an
 ## out-of-bounds or already-occupied cell.
-func _move_unit(unit: Unit, cell: Vector2i) -> bool:
-	if not state.grid.in_bounds(cell) or state.grid.get_occupant_id(cell) != -1:
-		return false
+## taskblock-41 Pass C: returns the REFUSAL REASON (`&""` on success) rather
+## than a bare bool — a shared helper that only answers "no" gives its callers
+## nothing to log, which is exactly the silent no-op this pass exists to
+## delete.
+func _move_unit(unit: Unit, cell: Vector2i) -> StringName:
+	if not state.grid.in_bounds(cell):
+		return &"destination_out_of_bounds"
+	if state.grid.get_occupant_id(cell) != -1:
+		return &"destination_occupied"
 	if unit.alive:
 		state.grid.set_occupant_id(unit.cell, -1)
 	unit.cell = cell
 	if unit.alive:
 		state.grid.set_occupant_id(cell, unit.id)
-	return true
+	return &""
 
 
 ## Moves `unit` to `cell` directly — no pathing, no AP/MP cost — updating
@@ -170,12 +210,12 @@ func _move_unit(unit: Unit, cell: Vector2i) -> bool:
 ## already do, never a bare field write that leaves the grid stale.
 ## Refuses (no mutation) onto an out-of-bounds or already-occupied cell.
 func set_position(unit: Unit, cell: Vector2i) -> bool:
-	if not can_inject():
-		_reject(&"set_position")
+	if not _guard(&"set_position", {"unit": unit.id, "cell": cell}):
 		return false
 	var from_cell: Vector2i = unit.cell
-	if not _move_unit(unit, cell):
-		return false
+	var move_refusal: StringName = _move_unit(unit, cell)
+	if move_refusal != &"":
+		return _refuse(&"set_position", move_refusal, {"unit": unit.id, "cell": cell})
 	_log_injection(
 		&"set_position",
 		{"unit": unit.id, "from": from_cell, "to": cell},
@@ -200,16 +240,16 @@ func set_position(unit: Unit, cell: Vector2i) -> bool:
 ## source cell holds neither, if a blocker would collide with one already
 ## at the destination, or if source and destination are the same cell.
 func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
-	if not can_inject():
-		_reject(&"move_object")
+	if not _guard(&"move_object", {"to_cell": to_cell}):
 		return false
 	if target.get("kind") == Enums.HitKind.UNIT:
 		var unit: Variant = target.get("unit")
 		if unit == null:
-			return false
+			return _refuse(&"move_object", &"target_names_no_unit")
 		var unit_from_cell: Vector2i = (unit as Unit).cell
-		if not _move_unit(unit, to_cell):
-			return false
+		var unit_refusal: StringName = _move_unit(unit, to_cell)
+		if unit_refusal != &"":
+			return _refuse(&"move_object", unit_refusal, {"unit": (unit as Unit).id})
 		_log_injection(
 			&"move_object",
 			{"unit": (unit as Unit).id, "from": unit_from_cell, "to": to_cell},
@@ -217,16 +257,18 @@ func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
 		)
 		return true
 	var from_cell: Variant = target.get("cell")
-	if from_cell == null or from_cell == to_cell:
-		return false
+	if from_cell == null:
+		return _refuse(&"move_object", &"target_names_no_cell")
+	if from_cell == to_cell:
+		return _refuse(&"move_object", &"source_is_destination", {"cell": from_cell})
 	if not state.grid.in_bounds(from_cell) or not state.grid.in_bounds(to_cell):
-		return false
+		return _refuse(&"move_object", &"out_of_bounds", {"from": from_cell, "to": to_cell})
 	var has_blocker: bool = state.grid.blockers.has(from_cell)
 	var has_items: bool = state.grid.field_items.has(from_cell)
 	if not has_blocker and not has_items:
-		return false
+		return _refuse(&"move_object", &"nothing_at_source", {"from": from_cell})
 	if has_blocker and state.grid.blockers.has(to_cell):
-		return false
+		return _refuse(&"move_object", &"destination_already_blocked", {"to": to_cell})
 	if has_blocker:
 		state.grid.blockers[to_cell] = state.grid.blockers[from_cell]
 		state.grid.blockers.erase(from_cell)
@@ -247,23 +289,25 @@ func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
 ## raw blocker write, no guard, no log (the `_move_unit`/`_attach` split
 ## applied here too). Refuses (no mutation) onto an out-of-bounds or
 ## already-blocked cell, or an unknown pool id.
-func _place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
-	if not state.grid.in_bounds(cell) or state.grid.blockers.has(cell):
-		return false
+func _place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> StringName:
+	if not state.grid.in_bounds(cell):
+		return &"out_of_bounds"
+	if state.grid.blockers.has(cell):
+		return &"cell_already_blocked"
 	var template: Part = pool.get(part_id)
 	if template == null:
-		return false
+		return &"unknown_part_id"
 	state.grid.blockers[cell] = template.duplicate(true)
-	return true
+	return &""
 
 
 ## Shared by `clear_cover`/`remove_object` — the raw blocker erase, no
 ## guard, no log. Refuses (no mutation) on a cell with no blocker.
-func _clear_cover(cell: Vector2i) -> bool:
+func _clear_cover(cell: Vector2i) -> StringName:
 	if not state.grid.blockers.has(cell):
-		return false
+		return &"no_blocker_at_cell"
 	state.grid.blockers.erase(cell)
-	return true
+	return &""
 
 
 ## Shared by `spawn_object` — the raw `Grid.field_items` write, no guard,
@@ -271,16 +315,16 @@ func _clear_cover(cell: Vector2i) -> bool:
 ## `Vector2i -> Array[Part|Matrix]` shape), so this appends, never
 ## overwrites. Refuses (no mutation) on an out-of-bounds cell or an
 ## unknown pool id.
-func _spawn_field_item(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
+func _spawn_field_item(cell: Vector2i, part_id: StringName, pool: Dictionary) -> StringName:
 	if not state.grid.in_bounds(cell):
-		return false
+		return &"out_of_bounds"
 	var template: Part = pool.get(part_id)
 	if template == null:
-		return false
+		return &"unknown_part_id"
 	if not state.grid.field_items.has(cell):
 		state.grid.field_items[cell] = []
 	state.grid.field_items[cell].append(template.duplicate(true))
-	return true
+	return &""
 
 
 ## taskblock-31 (rolled into tb30) Pass A: places a real field-object
@@ -292,11 +336,11 @@ func _spawn_field_item(cell: Vector2i, part_id: StringName, pool: Dictionary) ->
 ## part is real cover for free, nothing extra to wire. Refuses (no
 ## mutation) onto an out-of-bounds or already-blocked cell.
 func place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
-	if not can_inject():
-		_reject(&"place_cover")
+	if not _guard(&"place_cover", {"cell": cell, "part": part_id}):
 		return false
-	if not _place_cover(cell, part_id, pool):
-		return false
+	var place_refusal: StringName = _place_cover(cell, part_id, pool)
+	if place_refusal != &"":
+		return _refuse(&"place_cover", place_refusal, {"cell": cell, "part": part_id})
 	_log_injection(
 		&"place_cover", {"cell": cell, "part": part_id}, "cover %s at %s" % [part_id, cell]
 	)
@@ -307,11 +351,11 @@ func place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> bool:
 ## `MapGen._set_open` already makes when it needs a cell genuinely clear.
 ## Refuses (no mutation) on a cell with no blocker to clear.
 func clear_cover(cell: Vector2i) -> bool:
-	if not can_inject():
-		_reject(&"clear_cover")
+	if not _guard(&"clear_cover", {"cell": cell}):
 		return false
-	if not _clear_cover(cell):
-		return false
+	var clear_refusal: StringName = _clear_cover(cell)
+	if clear_refusal != &"":
+		return _refuse(&"clear_cover", clear_refusal, {"cell": cell})
 	_log_injection(&"clear_cover", {"cell": cell}, "cover cleared at %s" % cell)
 	return true
 
@@ -325,14 +369,13 @@ func clear_cover(cell: Vector2i) -> bool:
 ## (a loose item lying on the ground, pickable, never blocking). Refuses
 ## (no mutation) on whatever the chosen mechanism itself refuses on.
 func spawn_object(cell: Vector2i, part_id: StringName, pool: Dictionary, as_cover: bool) -> bool:
-	if not can_inject():
-		_reject(&"spawn_object")
+	if not _guard(&"spawn_object", {"cell": cell, "part": part_id, "as_cover": as_cover}):
 		return false
-	var ok: bool = (
+	var spawn_refusal: StringName = (
 		_place_cover(cell, part_id, pool) if as_cover else _spawn_field_item(cell, part_id, pool)
 	)
-	if not ok:
-		return false
+	if spawn_refusal != &"":
+		return _refuse(&"spawn_object", spawn_refusal, {"cell": cell, "part": part_id})
 	_log_injection(
 		&"spawn_object",
 		{"cell": cell, "part": part_id, "as_cover": as_cover},
@@ -356,13 +399,12 @@ func spawn_object(cell: Vector2i, part_id: StringName, pool: Dictionary, as_cove
 ## whatever's there, gone, not just one or the other. Refuses (no
 ## mutation) if the cell held neither.
 func remove_object(target: Dictionary) -> bool:
-	if not can_inject():
-		_reject(&"remove_object")
+	if not _guard(&"remove_object", {}):
 		return false
 	if target.get("kind") == Enums.HitKind.UNIT:
 		var unit: Variant = target.get("unit")
 		if unit == null:
-			return false
+			return _refuse(&"remove_object", &"target_names_no_unit")
 		state.kill_unit(unit)
 		_log_injection(
 			&"remove_object", {"unit": (unit as Unit).id}, "unit %d removed" % (unit as Unit).id
@@ -370,13 +412,13 @@ func remove_object(target: Dictionary) -> bool:
 		return true
 	var cell: Variant = target.get("cell")
 	if cell == null:
-		return false
-	var removed_blocker: bool = _clear_cover(cell)
+		return _refuse(&"remove_object", &"target_names_no_cell")
+	var removed_blocker: bool = _clear_cover(cell) == &""
 	var removed_items: bool = state.grid.field_items.has(cell)
 	if removed_items:
 		state.grid.field_items.erase(cell)
 	if not removed_blocker and not removed_items:
-		return false
+		return _refuse(&"remove_object", &"nothing_at_cell", {"cell": cell})
 	_log_injection(&"remove_object", {"cell": cell}, "cell %s cleared" % cell)
 	return true
 
@@ -400,11 +442,10 @@ func remove_object(target: Dictionary) -> bool:
 ## opacity, the same "impassable and opaque together" pairing every real
 ## wall already carries.
 func set_passable(cell: Vector2i, passable: bool) -> bool:
-	if not can_inject():
-		_reject(&"set_passable")
+	if not _guard(&"set_passable", {"cell": cell, "passable": passable}):
 		return false
 	if not state.grid.in_bounds(cell):
-		return false
+		return _refuse(&"set_passable", &"out_of_bounds", {"cell": cell})
 	if Surface.first_walkable(state.grid.surfaces_at(cell)) == null:
 		GridPlacement.place(state.grid, cell, DataLibrary.get_part(&"ship_floor"), 0.0)
 	if passable:
@@ -436,11 +477,10 @@ func set_passable(cell: Vector2i, passable: bool) -> bool:
 ## (plain floor or ramp) and facing were already there, at the new
 ## height, rather than writing a `Grid.level` nothing reads anymore.
 func set_cell_level(cell: Vector2i, level: float) -> bool:
-	if not can_inject():
-		_reject(&"set_cell_level")
+	if not _guard(&"set_cell_level", {"cell": cell, "level": level}):
 		return false
 	if not state.grid.in_bounds(cell):
-		return false
+		return _refuse(&"set_cell_level", &"out_of_bounds", {"cell": cell})
 	var existing: Surface = Surface.first_walkable(state.grid.surfaces_at(cell))
 	var part: Part = existing.part if existing != null else DataLibrary.get_part(&"ship_floor")
 	var facing: float = existing.facing if existing != null else 0.0
@@ -464,18 +504,24 @@ func set_cell_level(cell: Vector2i, level: float) -> bool:
 ## attachment) — never logs itself; each caller logs under its OWN verb
 ## name, since "hand a weapon" and "attach a part" are readably distinct
 ## verbs in the combat log even though they share one mechanism.
-func _attach(unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary) -> Part:
+## taskblock-41 Pass C: returns `{"part": Part, "reason": StringName}` rather
+## than a bare Part-or-null. Three genuinely different failures used to
+## collapse into one null, so neither caller could say WHICH — "attach_part
+## rejected" with no reason is exactly the outcome this pass deletes.
+func _attach(
+	unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary
+) -> Dictionary:
 	var template: Part = pool.get(part_id)
 	if template == null:
-		return null
+		return {"part": null, "reason": &"unknown_part_id"}
 	var host: Part = PartGraph.find_host_of_socket(unit.shell.root, socket_id)
 	if host == null:
-		return null
+		return {"part": null, "reason": &"no_such_socket"}
 	var socket: Socket = PartGraph.find_socket(host, socket_id)
 	var attached: Part = template.duplicate(true)
 	if not PartGraph.attach(attached, host, socket):
-		return null
-	return attached
+		return {"part": null, "reason": &"attachment_illegal"}
+	return {"part": attached, "reason": &""}
 
 
 ## Directly attaches a fresh `weapon_id` duplicate into `socket_id` on
@@ -486,11 +532,15 @@ func _attach(unit: Unit, part_id: StringName, socket_id: StringName, pool: Dicti
 func hand_weapon(
 	unit: Unit, weapon_id: StringName, socket_id: StringName, pool: Dictionary
 ) -> bool:
-	if not can_inject():
-		_reject(&"hand_weapon")
+	if not _guard(&"hand_weapon", {"unit": unit.id, "weapon": weapon_id, "socket": socket_id}):
 		return false
-	if _attach(unit, weapon_id, socket_id, pool) == null:
-		return false
+	var hand_result: Dictionary = _attach(unit, weapon_id, socket_id, pool)
+	if hand_result["part"] == null:
+		return _refuse(
+			&"hand_weapon",
+			hand_result["reason"],
+			{"unit": unit.id, "weapon": weapon_id, "socket": socket_id}
+		)
 	_log_injection(
 		&"hand_weapon",
 		{"unit": unit.id, "weapon": weapon_id, "socket": socket_id},
@@ -504,11 +554,15 @@ func hand_weapon(
 ## plate, a backpack), not just a weapon. Same `_attach` mechanism, own
 ## verb name/log text.
 func attach_part(unit: Unit, part_id: StringName, socket_id: StringName, pool: Dictionary) -> bool:
-	if not can_inject():
-		_reject(&"attach_part")
+	if not _guard(&"attach_part", {"unit": unit.id, "part": part_id, "socket": socket_id}):
 		return false
-	if _attach(unit, part_id, socket_id, pool) == null:
-		return false
+	var attach_result: Dictionary = _attach(unit, part_id, socket_id, pool)
+	if attach_result["part"] == null:
+		return _refuse(
+			&"attach_part",
+			attach_result["reason"],
+			{"unit": unit.id, "part": part_id, "socket": socket_id}
+		)
 	_log_injection(
 		&"attach_part",
 		{"unit": unit.id, "part": part_id, "socket": socket_id},
@@ -521,13 +575,12 @@ func attach_part(unit: Unit, part_id: StringName, socket_id: StringName, pool: D
 ## mid-bout — the exact self-arming path a bout-setup spawn already runs,
 ## forced after the fact instead of at spawn.
 func equip_from_kit(unit: Unit, kit: Kit, pool: Dictionary) -> bool:
-	if not can_inject():
-		_reject(&"equip_from_kit")
+	if not _guard(&"equip_from_kit", {"unit": unit.id}):
 		return false
 	if not KitEquipper.stock(unit, kit, pool):
-		return false
+		return _refuse(&"equip_from_kit", &"kit_stock_failed", {"unit": unit.id})
 	if not KitEquipper.equip(unit, kit):
-		return false
+		return _refuse(&"equip_from_kit", &"kit_equip_failed", {"unit": unit.id})
 	_log_injection(
 		&"equip_from_kit",
 		{"unit": unit.id, "weapon": kit.weapon_part_id},
@@ -541,12 +594,11 @@ func equip_from_kit(unit: Unit, kit: Kit, pool: Dictionary) -> bool:
 ## not re-guarding against them. Refuses (no mutation) if `unit` has no
 ## part by that id.
 func set_part_hp(unit: Unit, part_id: StringName, hp: int) -> bool:
-	if not can_inject():
-		_reject(&"set_part_hp")
+	if not _guard(&"set_part_hp", {"unit": unit.id, "part": part_id, "hp": hp}):
 		return false
 	var part: Part = unit.shell.find_part(part_id)
 	if part == null:
-		return false
+		return _refuse(&"set_part_hp", &"no_such_part", {"unit": unit.id, "part": part_id})
 	part.hp = hp
 	_log_injection(
 		&"set_part_hp",
@@ -563,12 +615,11 @@ func set_part_hp(unit: Unit, part_id: StringName, hp: int) -> bool:
 func inflict_wound(
 	unit: Unit, part_id: StringName, stack: float, threshold: float, wound_id: StringName
 ) -> bool:
-	if not can_inject():
-		_reject(&"inflict_wound")
+	if not _guard(&"inflict_wound", {"unit": unit.id, "part": part_id, "wound": wound_id}):
 		return false
 	var part: Part = unit.shell.find_part(part_id)
 	if part == null:
-		return false
+		return _refuse(&"inflict_wound", &"no_such_part", {"unit": unit.id, "part": part_id})
 	WoundEffects.apply_if_status_crosses_threshold(part, stack, threshold, wound_id)
 	_log_injection(
 		&"inflict_wound",
@@ -579,8 +630,7 @@ func inflict_wound(
 
 
 func set_ap(unit: Unit, ap: int) -> bool:
-	if not can_inject():
-		_reject(&"set_ap")
+	if not _guard(&"set_ap", {"unit": unit.id, "ap": ap}):
 		return false
 	unit.ap = ap
 	_log_injection(&"set_ap", {"unit": unit.id, "ap": ap}, "unit %d ap -> %d" % [unit.id, ap])
@@ -588,8 +638,7 @@ func set_ap(unit: Unit, ap: int) -> bool:
 
 
 func set_mp(unit: Unit, mp: float) -> bool:
-	if not can_inject():
-		_reject(&"set_mp")
+	if not _guard(&"set_mp", {"unit": unit.id, "mp": mp}):
 		return false
 	unit.mp = mp
 	_log_injection(&"set_mp", {"unit": unit.id, "mp": mp}, "unit %d mp -> %.2f" % [unit.id, mp])
@@ -597,8 +646,7 @@ func set_mp(unit: Unit, mp: float) -> bool:
 
 
 func set_facing(unit: Unit, orientation: float) -> bool:
-	if not can_inject():
-		_reject(&"set_facing")
+	if not _guard(&"set_facing", {"unit": unit.id, "orientation": orientation}):
 		return false
 	unit.orientation = orientation
 	_log_injection(
@@ -613,8 +661,7 @@ func set_facing(unit: Unit, orientation: float) -> bool:
 ## unrecognized id already falls back to `idle()` there, the same posture
 ## every other caller of it gets, not a special case here.
 func set_pose(unit: Unit, pose_id: StringName) -> bool:
-	if not can_inject():
-		_reject(&"set_pose")
+	if not _guard(&"set_pose", {"unit": unit.id, "pose": pose_id}):
 		return false
 	var pose: Pose = Poses.by_id(pose_id)
 	unit.pose = pose
@@ -627,9 +674,10 @@ func set_pose(unit: Unit, pose_id: StringName) -> bool:
 ## taskblock-29 Pass B: therms (docs/PLAN.md "Power + Therms") are not
 ## built yet — no real backing path exists to front, so this is a
 ## flagged stub, never a faked mutation. Always refuses.
-func set_therms(_unit: Unit, _part_id: StringName, _amount: float) -> bool:
+func set_therms(unit: Unit, part_id: StringName, _amount: float) -> bool:
+	CommandLog.issued(state, &"set_therms", {"unit": unit.id, "part": part_id})
 	push_error("BoutInjector: set_therms is a stub — therms are not built yet (docs/PLAN.md)")
-	return false
+	return _refuse(&"set_therms", &"not_implemented", {"unit": unit.id, "part": part_id})
 
 
 ## Arms an overwatch watch directly — the same `Unit.overwatch_weapon_id`
@@ -637,8 +685,7 @@ func set_therms(_unit: Unit, _part_id: StringName, _amount: float) -> bool:
 ## check): a scenario forcing "this unit is watching with this weapon" may
 ## deliberately want a state a real `OverwatchAction` could never reach.
 func force_overwatch_arm(unit: Unit, weapon_id: StringName) -> bool:
-	if not can_inject():
-		_reject(&"force_overwatch_arm")
+	if not _guard(&"force_overwatch_arm", {"unit": unit.id, "weapon": weapon_id}):
 		return false
 	unit.overwatch_weapon_id = weapon_id
 	_log_injection(
@@ -655,11 +702,10 @@ func force_overwatch_arm(unit: Unit, weapon_id: StringName) -> bool:
 ## (no mutation, no log) if the action isn't actually legal — injection
 ## forces WHEN, never WHETHER, an action is allowed.
 func force_action(action: CombatAction) -> bool:
-	if not can_inject():
-		_reject(&"force_action")
+	if not _guard(&"force_action", {"action": action.describe()}):
 		return false
 	if not state.try_apply(action):
-		return false
+		return _refuse(&"force_action", &"action_illegal", {"action": action.describe()})
 	_log_injection(&"force_action", {"action": action.describe()}, "forced: %s" % action.describe())
 	return true
 
