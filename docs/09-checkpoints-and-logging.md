@@ -73,6 +73,40 @@ Rules:
   seed as the file's first line, so a human session is a regression fixture too, not just a
   headless test run: it's replayable from the log file alone.
 
+## Diagnostics ride the same stream (taskblock-41 Pass B)
+Engine and script errors are **combat-log events**, not a second log. `EngineErrorTap` is a real
+Godot `Logger` registered with `OS.add_logger`; every error it sees becomes a `LogEvent` of kind
+`diagnostic`, emitted onto whichever `CombatLog` is current. **Conflated on purpose, separable on
+demand** — `LogSink.wants(event)` is the opt-out, checked once in `CombatLog.emit()`, and
+`LogEvent.is_diagnostic()` is the question a sink asks. Declining is filtering one stream, never
+subscribing to a different one.
+
+`data` carries `severity` (`error` / `warning` / `script` / `shader`), plus the raw `function`,
+`file`, `line`, `code` and `rationale` — nothing is collapsed away.
+
+**What this actually reaches, verified empirically against 4.7 headless — not read off an API page:**
+
+| Source | Reached? |
+|---|---|
+| `push_error` / `push_warning` | **yes** |
+| **GDScript runtime errors** (null deref, bad index) — with the real script file and line | **yes** |
+| Engine-internal C++ `ERR_FAIL_*` | **yes** |
+| Shader compile failures | expected (same callback, own severity) |
+| **A hard crash — segfault, OOM, abort** | **NO** |
+| Anything raised before `install()` | **NO** |
+
+**The boundary is load-bearing: a crash log that goes silent exactly when it matters most is worse
+than no crash log.** A segfault kills the process before any GDScript sink runs, and no in-process
+hook can change that — catching it needs an **external wrapper** around the engine (a shell runner
+capturing stdout, or a core-dump handler). What does survive is everything written up to the instant
+of death: `FileSink` flushes per line, so `out/combat.log` is a real pre-crash trail.
+
+Two further behaviours worth knowing before reading a log: one engine failure can produce **several**
+callbacks as the C++ error chain unwinds (a single missing resource produced three), and these are
+reported faithfully rather than deduplicated; and `_log_message` is deliberately **not** hooked,
+because `print()` routes through it and `StdoutSink` prints every event it receives — capturing
+messages would be an unbounded loop.
+
 ## Checkpoints — retired
 The checkpoint ritual (five committed-artifact gates at foundation phases, each a `./checkpoint.sh N`
 hard stop for human review) is **retired**. It was a from-scratch-foundation mechanism; the review it
