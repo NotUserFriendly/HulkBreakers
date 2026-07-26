@@ -29,11 +29,23 @@ func test_end_turn_emits_turn_end_for_the_ending_unit_then_turn_start_for_the_ne
 
 	state.try_apply(EndTurnAction.new(a))
 
-	assert_eq(sink.events.size(), 2)
-	assert_eq(sink.events[0].kind, &"turn_end")
-	assert_eq(sink.events[0].unit_id, a.id)
-	assert_eq(sink.events[1].kind, &"turn_start")
-	assert_eq(sink.events[1].unit_id, b.id)
+	# taskblock-41 Pass C: `try_apply` now brackets every action with a
+	# `command`/`command_outcome` pair, so this reads the two turn events it
+	# is actually about rather than asserting the whole stream's length —
+	# which would break again on the next thing that legitimately joins it.
+	var turn_events: Array[LogEvent] = sink.events.filter(
+		func(e: LogEvent) -> bool: return e.kind == &"turn_end" or e.kind == &"turn_start"
+	)
+	assert_eq(turn_events.size(), 2)
+	assert_eq(turn_events[0].kind, &"turn_end")
+	assert_eq(turn_events[0].unit_id, a.id)
+	assert_eq(turn_events[1].kind, &"turn_start")
+	assert_eq(turn_events[1].unit_id, b.id)
+
+	# And the pair really does bracket them: issued first, resolved last.
+	assert_eq(sink.events[0].kind, CommandLog.COMMAND_KIND)
+	assert_eq(sink.events[-1].kind, CommandLog.OUTCOME_KIND)
+	assert_true(sink.events[-1].data["accepted"])
 
 
 ## A unit can die mid-turn from its own queued action (docs/09: e.g.
