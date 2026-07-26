@@ -760,27 +760,34 @@ func _enter_aim_mode(target: AimTarget) -> void:
 	_dump_aim_fps()
 
 
-## tb35 Pass A1 (BR26.02): `Engine.get_frames_per_second()`, 200ms after
-## THIS specific transition into aim mode — past the entry transient, into
-## the steady-state sweep — logged into the same combat_log every other
-## per-turn FPS dump uses (`FpsDumpSink`), so "aim is slow" is a
-## greppable number in `out/combat.log`, not a felt impression. Fired
-## once per `_enter_aim_mode()` call, never per reticle nudge
-## (`aim_changed` alone fires on those too) — this is a separate function
-## specifically so re-entering aim on a new target restarts the window.
+## tb35 Pass A1 (BR26.02): `Engine.get_frames_per_second()` after THIS
+## specific transition into aim mode — past the entry transient, into the
+## steady-state sweep — logged into the same combat_log every other FPS dump
+## uses (`FpsDumpSink`), so "aim is slow" is a greppable number in
+## `out/combat.log`, not a felt impression. Fired once per
+## `_enter_aim_mode()` call, never per reticle nudge (`aim_changed` alone
+## fires on those too) — a separate function specifically so re-entering aim
+## on a new target restarts the window.
+##
+## taskblock-42 Pass A: the delay moved from 200ms to
+## `FpsDumpSink.SETTLED_DELAY_SECONDS`, per BR26.02's own supervisor revision
+## — 200ms proved close enough to the transient to still be contaminated by
+## it. Reads the constant rather than repeating the number, so the turn dump
+## and this one can never drift to different definitions of "settled."
 func _dump_aim_fps() -> void:
-	await get_tree().create_timer(0.2).timeout
+	await get_tree().create_timer(FpsDumpSink.SETTLED_DELAY_SECONDS).timeout
 	if not is_inside_tree() or selection == null:
 		return
 	var fps: float = Engine.get_frames_per_second()
+	var offset_ms: int = int(FpsDumpSink.SETTLED_DELAY_SECONDS * 1000.0)
 	selection.state.combat_log.emit(
 		LogEvent.new(
 			selection.state.round_number,
 			Enums.Phase.RESOLUTION,
 			selection.selected_unit.id if selection.selected_unit != null else -1,
 			&"fps_dump",
-			{"context": "aim", "fps": fps},
-			"Aim FPS (200ms after entering aim): %.1f" % fps
+			{"context": "aim", "fps": fps, "offset_ms": offset_ms},
+			"Aim FPS (%dms after entering aim): %.1f" % [offset_ms, fps]
 		)
 	)
 
