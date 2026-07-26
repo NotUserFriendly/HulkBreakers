@@ -200,13 +200,26 @@ func test_every_richtextlabel_panel_ignores_the_mouse_except_the_log() -> void:
 ## PanelContainer with a transparent override still renders nothing and must
 ## still be caught.
 func _draws_a_visible_background(control: Control) -> bool:
+	# A `PanelContainer` exists to draw a panel, and `HulkTheme` gives it an
+	# opaque background — so the THEME's stylebox counts, not only an explicit
+	# override. `DebugControlPanel` (BR30.05) is exactly that case: a real
+	# opaque panel that must block what lands on it, with no override of its
+	# own. Checking the actual drawn box rather than trusting the type also
+	# keeps a PanelContainer with a transparent style honest — it still renders
+	# nothing, and is still caught.
+	if control is PanelContainer and _is_opaque(control.get_theme_stylebox("panel")):
+		return true
 	for style_name: String in ["panel", "normal"]:
-		if not control.has_theme_stylebox_override(style_name):
-			continue
-		var box: StyleBox = control.get_theme_stylebox(style_name)
-		if box is StyleBoxFlat and (box as StyleBoxFlat).bg_color.a > 0.0:
+		if (
+			control.has_theme_stylebox_override(style_name)
+			and _is_opaque(control.get_theme_stylebox(style_name))
+		):
 			return true
 	return false
+
+
+static func _is_opaque(box: StyleBox) -> bool:
+	return box is StyleBoxFlat and (box as StyleBoxFlat).bg_color.a > 0.0
 
 
 func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:

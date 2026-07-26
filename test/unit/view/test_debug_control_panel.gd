@@ -295,3 +295,115 @@ func test_move_on_next_click_refuses_with_no_active_target() -> void:
 	_find_button(panel._param_container, "Move On Next Click").pressed.emit()
 
 	assert_eq(panel._status_label.text, "Move Object: no active target set")
+
+
+## Stands in for `CameraRig`: same input stage, records what reached it.
+class UnhandledWheelSpy:
+	extends Node
+
+	var wheels: Array[int] = []
+
+	func _unhandled_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton:
+			var button := event as InputEventMouseButton
+			if button.pressed:
+				wheels.append(button.button_index)
+
+
+func _wheel_at(button_index: MouseButton, at: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = button_index
+	event.pressed = true
+	event.position = at
+	get_viewport().push_input(event)
+
+
+## BR30.05, symptom 1: "clicking within the debug menu itself can also select a
+## world cell." The panel draws a real opaque background (`HulkTheme` gives
+## every `PanelContainer` one), so it must take what lands on it — taskblock-07
+## Pass B4's "a plain container has no click of its own" rule was written about
+## genuinely invisible containers and does not fit this one.
+func test_the_panel_blocks_clicks_because_it_draws_a_real_background() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	assert_eq(panel.mouse_filter, Control.MOUSE_FILTER_STOP)
+
+
+## Guards the wheel tests below against passing vacuously.
+func test_the_spy_does_see_a_wheel_that_misses_the_panel() -> void:
+	var spy := UnhandledWheelSpy.new()
+	add_child_autofree(spy)
+	var panel: DebugControlPanel = _open_panel()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	_wheel_at(MOUSE_BUTTON_WHEEL_DOWN, panel.get_global_rect().end + Vector2(400.0, 400.0))
+
+	assert_eq(spy.wheels.size(), 1, "a wheel away from the panel does reach the camera stage")
+
+
+## BR30.05, symptom 2: "once the verb list's own `ItemList` is scrolled to the
+## bottom, further scroll input bleeds through and zooms the world camera
+## instead of stopping at the list's own end."
+func test_scrolling_the_verb_list_never_reaches_the_camera() -> void:
+	var spy := UnhandledWheelSpy.new()
+	add_child_autofree(spy)
+	var panel: DebugControlPanel = _open_panel()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var over_the_list: Vector2 = panel._verb_list.get_global_rect().get_center()
+	for _i in range(6):
+		_wheel_at(MOUSE_BUTTON_WHEEL_DOWN, over_the_list)
+	for _i in range(6):
+		_wheel_at(MOUSE_BUTTON_WHEEL_UP, over_the_list)
+
+	assert_eq(
+		spy.wheels, [] as Array[int], "past both ends of the list, the panel still absorbs it"
+	)
+
+
+func test_the_verb_list_still_scrolls() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var bar: VScrollBar = panel._verb_list.get_v_scroll_bar()
+	if bar.max_value <= bar.page:
+		pass_test("the verb list fits without scrolling in this layout — nothing to check")
+		return
+	bar.value = 0.0
+
+	_wheel_at(MOUSE_BUTTON_WHEEL_DOWN, panel._verb_list.get_global_rect().get_center())
+	await get_tree().process_frame
+
+	assert_gt(bar.value, 0.0, "absorbed BY scrolling, not instead of it")
+
+
+## Consuming the wheel wholesale would silently delete `SpinBox`'s own
+## wheel-to-adjust. The panel forwards to whatever is under the cursor first.
+func test_a_spin_box_still_adjusts_on_the_wheel() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	panel._select_verb(_verb_index(&"set_ap"))
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var spin: SpinBox = _first_spin_box(panel)
+	if spin == null:
+		pass_test("no SpinBox on this verb's form — nothing to check")
+		return
+	spin.value = 5.0
+	var before: float = spin.value
+
+	_wheel_at(MOUSE_BUTTON_WHEEL_UP, spin.get_global_rect().get_center())
+	await get_tree().process_frame
+
+	assert_ne(spin.value, before, "the wheel still reaches the widget that wanted it")
+
+
+func _first_spin_box(node: Node) -> SpinBox:
+	if node is SpinBox:
+		return node as SpinBox
+	for child: Node in node.get_children():
+		var found: SpinBox = _first_spin_box(child)
+		if found != null:
+			return found
+	return null

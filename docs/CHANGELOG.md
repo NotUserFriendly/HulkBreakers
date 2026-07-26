@@ -1185,6 +1185,21 @@ served did nothing at all, because nothing ever asked it. Only a spy at the real
 it (`test_combat_log_panel.gd`), and that test carries a deliberate control case so it cannot pass
 vacuously.
 
+**`BR30.05` — the same two defects in the debug panel, fixed (`Pending`, `SUPERVISOR`-owned).**
+Clicks: `DebugControlPanel` was `MOUSE_FILTER_IGNORE` on taskblock-07 Pass B4's "a plain container
+has no click of its own" rule — but it is a `PanelContainer` with an opaque `HulkTheme` background,
+so the rule does not fit it; scoped to genuinely invisible containers and this panel set to `STOP`
+(`SUPERSEDED.md`). Scroll: the 2021 diagnosis blamed `ItemList` not marking the wheel handled *once
+it can't scroll further* — the real fact is broader and was measured, **`MOUSE_FILTER_STOP` never
+blocks a wheel from `_unhandled_input` at any scroll position**. The panel consumes it explicitly.
+The wheel is **forwarded before being consumed** rather than swallowed: consuming wholesale would
+have silently deleted `SpinBox`'s wheel-to-adjust, which several verb forms use, so the event routes
+to whatever is under the cursor first (verb list scrolls, `Range` steps) and only then is marked
+handled. The forwarding hit-tests by position rather than reading
+`Viewport.gui_get_hovered_control()`, because hover is only bookkept from real mouse *motion* and is
+null whenever a wheel arrives without one — caught by the `SpinBox` test failing against the hover
+version. The entry's own request for a repo-wide `mouse_filter` sweep is **not** covered.
+
 ### Checkpoints return as an ordinary tool (tb41 Pass E, docs/09)
 The **gate** was retired, not the capability: no hard stop, no permission step. `./checkpoint.sh N`
 runs `tools/checkpoints/checkpoint_N.gd` against a real display; the driver is generic and **the

@@ -460,7 +460,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   wraps, which is why the bug only shows on cover-item targeting. **Candidate fix (not yet applied):**
   either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
   only "real" queued legs consume a color slot.
-### BR30.05 — Active — owner: `SUPERVISOR`
+### BR30.05 — Pending — owner: `SUPERVISOR`
 **Debug panel: clicks and scroll bleed through to the world board/camera**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-21, live debug-panel use. Two related symptoms: (1) clicking within the debug
@@ -474,6 +474,35 @@ confirm" roll-up — so pending items surface at a natural review point without 
   fixed once elsewhere); (2) `ItemList`'s own scroll wheel input isn't marked handled once it can't
   scroll further, so the same wheel event continues on to `CameraRig`'s own zoom handler. Both are
   UI-event-consumption gaps in the SAME panel, not two unrelated bugs.
+- **2026-07-26 — `Pending` (post-tb41 supervisor request)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Both symptoms addressed, and the 2021 diagnosis above
+  was right about symptom 2's mechanism and half-right about symptom 1's.
+  - **Symptom 1 (clicks).** The panel was `MOUSE_FILTER_IGNORE`, set deliberately on docs/09
+    taskblock-07 Pass B4's rule that "a plain container has no click of its own." **That rule does
+    not fit this panel** — it is a `PanelContainer`, and `HulkTheme` gives every one an *opaque*
+    `BACKGROUND` stylebox, so it visibly occupies its rect. `BR34.02`'s own resolution is the
+    refinement: a container drawing a real background is not plain, and blocking clicks over it is
+    honest. Now `STOP`. The B4 rule still stands for genuinely invisible containers, which is what it
+    was written about.
+  - **Symptom 2 (scroll).** Correct that the wheel wasn't being marked handled — but this is **not**
+    specific to `ItemList` being at its end. **`MOUSE_FILTER_STOP` never blocks a wheel from
+    `_unhandled_input` at all**, at any scroll position; it consumes ordinary clicks only. Measured
+    with a spy at that exact input stage, after the identical defect was fixed in the combat log
+    (`docs/SUPERSEDED.md`). The panel now consumes the wheel explicitly over its own rect.
+  - **The wheel is forwarded before being consumed, not swallowed.** Consuming wholesale would have
+    silently deleted `SpinBox`'s own wheel-to-adjust, which several verb forms use. The event is
+    routed to whatever is actually under the cursor first — the verb list scrolls, a `Range` steps —
+    and only then marked handled. Nothing reaches the camera either way.
+  - **Regression tests** in `test_debug_control_panel.gd`, each spying on `_unhandled_input` (the
+    stage `CameraRig` reads) rather than on a filter, with a deliberate control case asserting the
+    spy DOES see a wheel that misses the panel, so they cannot pass vacuously.
+  - **To confirm:** open `Inject...`, click around inside the panel (no world cell should get
+    selected underneath), and spin the wheel over the verb list — past the bottom, past the top, and
+    over a number field. The camera must not zoom in any of those; the number field must still step.
+  - **Not covered by this:** the entry's own "worth checking every full-rect UI container's filter in
+    one sweep" — that sweep still hasn't happened. `test_battle_scene_input.gd`'s audit is the
+    standing guard, and it now distinguishes a container that renders nothing (still a bug) from one
+    drawing a real background (legitimate).
 ### BR30.10 — Pending — owner: `SUPERVISOR`
 **Shots resolve straight through walls**
 - **Source:** `SUPERVISOR`
