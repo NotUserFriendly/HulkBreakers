@@ -544,6 +544,38 @@ Four related gaps in what the AI *chooses* to do, all cheap given the data alrea
   bout setup.
 
 
+### Momentum
+**Needs:** Attributes (Dex). **Unblocks:** nothing directly; it's what makes "fast" and "fast-attacking"
+different characters instead of the same one.
+
+**Movement in a turn accumulates momentum, and it is spent entirely on the NEXT attack** — not divided
+across the turn's attacks. Move two MP and strike once, that strike carries the whole bonus. Move two MP
+and strike five times, the first carries it and the other four are normal.
+
+- **That single rule is the whole distinction.** A giant-sword build converts an entire turn of running
+  into one hit. A flurry build, running the same distance, dumps the same momentum into its *smallest*
+  strike and the rest land normal. Dex feeds both movement and attack speed, so the fast-attacking
+  character is usually also a fast character — and gains far less from it. Same attribute, opposite
+  payoff shape, no special-casing.
+- **Attack ordering becomes tactical for free.** With a mixed loadout, leading with the heavy weapon is
+  correct and leading with the light one wastes the charge. Falls straight out of "spent on the next
+  attack" — nothing to build for it.
+- **It also changes behaviour on interruption.** A unit carrying real momentum shouldn't stop dead when
+  something interrupts it mid-move. Same machinery family as *Forced movement* below, and it reads the
+  mid-move overwatch-trigger hook `MoveAction` already has.
+- **Preserved between turns.** A unit flung to the backline is out of the fight for a few turns, then
+  arrives coming in hot. Persistence is what makes that arc exist at all.
+
+**Two forks to settle when this is picked up:**
+- **Does forced movement generate momentum, or only self-directed movement?** If being flung builds it,
+  decompression and throws *arm* their victim as well as displacing them, and the backline-return arc
+  gets much sharper. If only chosen movement counts, the momentum comes from running back rather than
+  from being thrown. Both fit the intent; they're different mechanics.
+- **Does it decay while stationary?** Persistence with no decay means momentum banks indefinitely — move
+  a lot once, sit on it, swing whenever — which inverts the intended fantasy into stockpiling. Decay
+  while still is probably what keeps it dynamic, and the rate is a real balance number rather than a
+  detail to fill in later.
+
 ### Forced movement — flung, thrown, knocked prone
 **Needs:** nothing mechanically; consequences pair with the deep-fall rules.
 
@@ -700,6 +732,39 @@ One interlocking spine (travel → time → fuel → heat → storage), not a li
   **research tree**; **scanner tiers** and the knowledge system (reveals internals, un-stubbing the occlusion
   gate); **mission selection**; claims; the mission → credits → upgrade loop; **captured-matrix value**.
 
+
+### One view, toggleable modules
+**Needs:** nothing. **Unblocks:** closes a recurring bug class structurally, and makes every panel
+verifiable in one context instead of several.
+
+`SingleUnitOverlay` is **54 lines** because it inherits `SquadControlOverlay` wholesale — sharing works
+fine when inheritance is available. `SpectatorOverlay` is **527 lines** because it *cannot* inherit it:
+doing so would drag in `TacticsController` and the entire unit-input path the spectator view is
+specifically defined not to have. So it re-implemented the display half separately, and every shared
+panel now exists twice. **Inheritance forced the fork.**
+
+taskblock-41 paid for that six times in one block, and its own conclusion is the argument for this item:
+
+> it is used in two layout situations and I kept verifying one … **None of them were logic errors; all
+> of them were verification-shape errors.**
+
+**Shape: one view whose modules toggle**, rather than N overlays each assembling their own subset. A
+module — combat log, stat block, turn controls, tooltips, unit inspector — is implemented once and
+behaves identically wherever it appears. An overlay becomes a *declaration of which modules are on*
+rather than a builder of panels. Composition where inheritance couldn't reach: display modules and input
+modules toggle on separate axes, which is exactly the axis `SpectatorOverlay` needed and couldn't get.
+
+**Why it earns real work rather than more diligence:** a module with one implementation has one context
+to verify. The whole class of defect tb41 hit — correct logic, wrong context — stops being *possible*
+instead of being caught more reliably.
+
+- **Inventory what's actually duplicated before designing the boundary.** The 527 and 812 line counts
+  include plenty that isn't panels; the module seam should follow real duplication, not the file split.
+- **The combat log is the worked example and is already half-converted** (tb41: "Both views share one
+  combat log"). That conversion is the template, and its leftover rough edges — bottom-edge pinning on
+  resize, flush-to-corner placement — are precisely the kind that stop recurring under this model.
+- **Pairs with the `mouse_filter` sweep.** Both close an entire class of UI bug structurally rather than
+  one instance at a time, and both are cheap relative to what they prevent.
 
 ### The `mouse_filter` sweep
 **Needs:** nothing. **Unblocks:** closing a recurring class of UI bug instead of one instance at a time.
