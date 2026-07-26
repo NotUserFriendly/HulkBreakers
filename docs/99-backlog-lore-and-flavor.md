@@ -65,6 +65,43 @@ without severing it. **The socket graph already expresses this** — they're sub
 Randomized affixes and small stat rolls on hulk-found gear, reinforcing the "original pattern
 / prototype" feel (`07`).
 
+### Climbing and grappling large shells
+High-mobility units **climb** a shell larger than themselves and **grapple** one their own size — the
+interaction is chosen by the *relationship between two shells*, not by either unit's own stats. Bespoke
+animations per pairing.
+
+Same principle as the parkour note under *Animation flavour*: select the animation from data the game
+already produced rather than authoring a new decision layer on top. The difference is the input is
+**relational** — the pathfinder's output describes one unit, this needs a comparison between two.
+
+**Decide "bigger" before anything else here.** No size class exists. Three candidates already in the
+codebase: `ShellTemplate.max_mass`, the summed `mass` of placed parts, or `UnitGeometry.bounding_sphere()`
+radius (already computed for camera framing). The bounding sphere matches what a player *sees* and comes
+free; mass matches what the fiction says and is already authored per-part. They will disagree — a spindly
+tall frame and a dense squat one invert between the two — and the choice sets whether the mechanic reads
+visually or numerically. Wants melee mature first.
+
+### Melee zone targeting: manipulation and agility
+Several distinct **routes to reaching a specific zone**, rather than one roll that either lands where you
+wanted or doesn't:
+
+- **Manipulation** — act on the opponent. Force an opposing unit's facing so its back is to you, opening
+  whatever its front was covering.
+- **Agility** — act on yourself. Jump behind the enemy and reach the same zones by moving instead of by
+  forcing.
+
+**Facing already exists** as a real float orientation across ~36 files, mutated through
+`BoutInjector.set_facing()` and read by the tactics layer's `aim_facing()`. Manipulation is a mutation of a
+value the game already tracks, not a new system.
+
+Pairs with **Weak points** above: that entry supplies *why* a specific zone is worth reaching, this one
+supplies *how you get there*. Neither is worth much alone.
+
+Design tension worth keeping in view when this is picked up: if both routes reach the same zones, the
+choice between them has to be about cost and risk rather than outcome, or one of them is dead weight.
+Contested manipulation (the target resists) against uncontested but MP-expensive agility is the obvious
+first shape to try.
+
 ## Deferred systems
 - **Ship upgrade tree** and **scanner tiers**.
 - **Map selling** to other scavs.
