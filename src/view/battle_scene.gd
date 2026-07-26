@@ -206,13 +206,43 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Tears the old one down first (its own UI/connections), then wires the
 ## new one against the world already built.
 func set_overlay(new_overlay: ControlOverlay) -> void:
+	# taskblock-41 Pass D: "which overlay is active and when it turns off."
+	# Emitted around the swap rather than after it, so the log distinguishes
+	# "the old one tore down" from "the new one came up" — a teardown that
+	# leaves something behind (a sink still attached, a paused runner) shows as
+	# a missing pair, not as silence.
+	var previous: String = overlay.get_class() if overlay != null else ""
 	if overlay != null:
+		_log_overlay(&"overlay_deactivated", previous, "overlay %s torn down" % previous)
 		overlay.teardown()
 		remove_child(overlay)
 		overlay.queue_free()
 	overlay = new_overlay
 	add_child(overlay)
 	overlay.setup(self)
+	var active: String = overlay.get_class()
+	_log_overlay(
+		&"overlay_activated",
+		active,
+		"overlay %s active%s" % [active, "" if previous == "" else " (was %s)" % previous]
+	)
+
+
+## Null-safe: `set_overlay` runs before the first `load_battle()` on a fresh
+## scene, so there is genuinely no log to write to yet on the very first swap.
+func _log_overlay(kind: StringName, overlay_name: String, text: String) -> void:
+	if combat_state == null:
+		return
+	combat_state.combat_log.emit(
+		LogEvent.new(
+			combat_state.round_number,
+			Enums.Phase.TACTICS,
+			-1,
+			kind,
+			{"overlay": overlay_name},
+			text
+		)
+	)
 
 
 ## taskblock-21 Pass C: "assume control of blue team <-> watch." No new
@@ -243,7 +273,9 @@ func toggle_blue_control() -> void:
 ## whichever overlay is ALREADY active (e.g. "New Battle" pressed again
 ## under `SquadControlOverlay`) can re-wire itself without a full
 ## teardown/setup cycle.
-func load_battle(state: CombatState, p_mission: MissionState) -> void:
+func load_battle(
+	state: CombatState, p_mission: MissionState, header_event: LogEvent = null
+) -> void:
 	for view: HitVolumeView in unit_views:
 		remove_child(view)
 		view.queue_free()
@@ -268,6 +300,24 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	# it can fire at all.
 	EngineErrorTap.shared().watch(combat_state.combat_log, combat_state)
 	EngineErrorTap.shared().install()
+	# taskblock-41 Pass D: point the bout-build log at this battle's stream
+	# BEFORE `board_view.build()` below, or the build it is meant to narrate
+	# happens unlogged.
+	board_view.build_log = combat_state.combat_log
+	# Before the header below and before the build: the active overlay's own
+	# log panel has to be listening to THIS battle's stream by now, or it
+	# starts mid-sentence. (`battle_loaded`, at the end of this function, is
+	# far too late — it fires after everything worth seeing has been emitted.)
+	if overlay != null:
+		overlay.attach_log_sink(combat_state.combat_log)
+	# docs/09: "A `session_start` event carries the seed as the file's FIRST
+	# line, so a human session is a regression fixture too." taskblock-41 Pass
+	# D's bout-build log would otherwise land ahead of it — the header is
+	# emitted here, structurally, between attaching the sinks and building
+	# anything, rather than by whoever happens to call this and remembers to do
+	# it afterwards.
+	if header_event != null:
+		combat_state.combat_log.emit(header_event)
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	# tb35 Pass D (BR32.01/BR32.03): the wall-cutout feed must be re-pointed
@@ -421,12 +471,13 @@ func new_battle(seed_value: int) -> void:
 	var state: CombatState = _seed_battle(rng)
 	var fresh_mission := MissionState.new(RunState.new(), state)
 	fresh_mission.objectives = []
-	load_battle(state, fresh_mission)
 	# docs/09 taskblock03 Pass B2: the seed at session start, so a session
 	# is replayable from its own log file alone. This scene has no separate
 	# loadout selection to log (assemble_random draws everything — geometry,
-	# loadout, the works — from this one seed already).
-	combat_state.combat_log.emit(_session_start_event(seed_value))
+	# loadout, the works — from this one seed already). Handed to
+	# `load_battle` rather than emitted after it, so it is genuinely the first
+	# line in the file — see that parameter's own comment.
+	load_battle(state, fresh_mission, _session_start_event(seed_value))
 
 
 func _seed_battle(rng: RandomNumberGenerator) -> CombatState:

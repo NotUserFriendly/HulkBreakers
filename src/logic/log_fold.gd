@@ -56,6 +56,23 @@ const CASCADE_KINDS: Array[StringName] = [
 	&"subtree_dropped",
 ]
 
+## taskblock-41 Pass D: the high-volume plumbing kinds Passes B–D added, folded
+## into one counted row per consecutive run (`_ingest_plumbing`). An open
+## vocabulary, like every other kind list here — a new diagnostic event kind
+## joins this array and needs no other code edit to stop flooding the panel.
+##
+## `diagnostic` is deliberately absent: an error must not be collapsed into a
+## quiet counted row.
+const PLUMBING_KINDS: Array[StringName] = [
+	&"command",
+	&"command_outcome",
+	&"build_step",
+	&"wall_cutout",
+	&"unit_assembled",
+	&"overlay_activated",
+	&"overlay_deactivated",
+]
+
 var groups: Array[LogFoldGroup] = []
 ## Optional — enables "unit N down" in an attack summary and nothing
 ## else. A null state just omits that suffix; every other fold behavior
@@ -88,6 +105,8 @@ func ingest(event: LogEvent) -> LogFoldGroup:
 		return _ingest_move(event)
 	if CASCADE_KINDS.has(event.kind):
 		return _ingest_attack_cascade(event)
+	if PLUMBING_KINDS.has(event.kind):
+		return _ingest_plumbing(event)
 	return _ingest_admin(event)
 
 
@@ -165,6 +184,36 @@ func _ingest_move(event: LogEvent) -> LogFoldGroup:
 		% [event.unit_id, _open_move_tiles, "" if _open_move_tiles == 1 else "s", dest]
 	)
 	return group
+
+
+## taskblock-41 Pass D: the deliberately-verbose kinds Passes B–D added fold
+## into ONE row per consecutive run, drillable into the individual lines —
+## otherwise a board build alone would push seven admin rows through the panel
+## before the first shot, and every debug verb two more.
+##
+## `diagnostic` (tb41 Pass B — a real engine or script error) is pointedly NOT
+## in this set. Collapsing an error into a quiet counted row is the opposite of
+## what an error is for; it keeps its own admin row and stays loud.
+func _ingest_plumbing(event: LogEvent) -> LogFoldGroup:
+	if _open == null or _open.kind != &"plumbing":
+		_close()
+		_open = LogFoldGroup.new(&"plumbing", event.unit_id)
+		_add(_open)
+	_open.events.append(event)
+	_open.summary = _plumbing_summary(_open)
+	return _open
+
+
+## "12× command" when the run is uniform, "12 log events" when it is mixed —
+## a single label that lies about its contents is worse than a vaguer one.
+static func _plumbing_summary(group: LogFoldGroup) -> String:
+	var kinds: Dictionary = {}
+	for event: LogEvent in group.events:
+		kinds[event.kind] = true
+	var count: int = group.events.size()
+	if kinds.size() == 1:
+		return "%d× %s" % [count, group.events[0].kind]
+	return "%d log events" % count
 
 
 func _ingest_admin(event: LogEvent) -> LogFoldGroup:

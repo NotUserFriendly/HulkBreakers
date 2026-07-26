@@ -176,3 +176,30 @@ func test_a_click_in_the_same_frame_as_new_events_draws_both() -> void:
 	assert_true(label.text.find("Miss") != -1, "the expansion the click asked for")
 	assert_true(label.text.find("turn_start") != -1, "and the event that arrived just before it")
 	label.queue_free()
+
+
+# --- Pass D's own guarantee, pinned here where the render count lives -------
+
+
+## taskblock-41 Pass D's acceptance, and the entire reason Pass A precedes it:
+## "Pass A's per-frame render count does not rise with the new event volume."
+## 10 events and 500 events must both cost exactly one render per frame — if
+## this ever fails, deliberate verbosity has become a framerate regression.
+func test_render_count_per_frame_is_flat_regardless_of_event_volume() -> void:
+	for volume: int in [1, 10, 100, 500]:
+		var label := RichTextLabel.new()
+		var sink := HierarchicalUiSink.new(label)
+		for i in range(volume):
+			sink.emit(_event(&"miss"))
+
+		var renders := 0
+		if sink.render_if_dirty():
+			renders += 1
+		# Two further ticks in the same frame-run with nothing new arriving.
+		if sink.render_if_dirty():
+			renders += 1
+		if sink.render_if_dirty():
+			renders += 1
+
+		assert_eq(renders, 1, "%d events still cost exactly one render" % volume)
+		label.queue_free()

@@ -116,7 +116,7 @@ func setup(p_battle: BattleScene) -> void:
 	bout_injector = battle.bout_injector
 
 	_build_ui()
-	battle.combat_state.combat_log.add_sink(log_sink)
+	attach_log_sink(battle.combat_state.combat_log)
 	_refresh_status()
 
 
@@ -227,6 +227,16 @@ func teardown() -> void:
 	pause()
 	if battle != null and battle.combat_state != null:
 		battle.combat_state.combat_log.remove_sink(log_sink)
+
+
+## taskblock-41 Pass D: idempotent — `remove_sink` is a documented no-op on a
+## sink that was never added, so this is safe both on first setup and on a
+## re-load under an already-active overlay.
+func attach_log_sink(log: CombatLog) -> void:
+	if log_sink == null:
+		return
+	log.remove_sink(log_sink)
+	log.add_sink(log_sink)
 
 
 ## taskblock-41 Pass A: hands `ControlOverlay`'s own per-frame tick the log

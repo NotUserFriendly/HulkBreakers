@@ -155,6 +155,18 @@ const OCCLUSION_RADIUS_TILES := 2.5
 ## this simply stops feeding the excess to the cutout (they'd still be
 ## visible, just not cut through a wall for).
 const WALL_CUTOUT_MAX_UNITS := 32
+## taskblock-41 Pass D: how coarsely a cut unit's screen position is quantised
+## before deciding the cutout "changed" — see `_log_cutout`. Big enough that a
+## slow orbit produces a readable trickle rather than one event per frame,
+## small enough that a real repositioning still registers. Flagged and tunable
+## (CLAUDE.md: never invent a final number).
+const CUTOUT_LOG_GRID := 64.0
+
+## taskblock-41 Pass D: the bout-build log's destination, set by
+## `BattleScene.load_battle()` before it calls `build()`. Optional and
+## null-safe — every headless fixture builds a board with no battle around it
+## and must keep working untouched.
+var build_log: CombatLog = null
 
 var grid: Grid
 ## tb32 Pass A: "cut around every unit, not one focal unit." Whichever
@@ -196,6 +208,12 @@ var aim_active_unit: Unit = null
 ## explicitly vanished view has nothing left to protect visibility of.
 var _excluded_from_occlusion: Dictionary = {}
 
+## Reset at the top of every `build()` — a rebuilt board restarts its own
+## sequence rather than continuing the previous one's numbering.
+var _build_step_index := 0
+## The last cutout arrangement actually written to the log, so an unchanged
+## one is not written again. Cleared on every `build()`.
+var _last_cutout_fingerprint := ""
 var _static: Node3D
 var _reachable_overlay: Node3D
 var _ghost_overlay: Node3D
@@ -244,26 +262,69 @@ func build(
 	p_grid: Grid, material_table: MaterialTable, team_extraction_cells: Dictionary = {}
 ) -> void:
 	grid = p_grid
+	_build_step_index = 0
+	_last_cutout_fingerprint = ""
 	_clear(_static)
 	_wall_mesh_instances.clear()
 	_wall_cutout_material = null
 	_excluded_from_occlusion.clear()
 
+	# taskblock-41 Pass D: "a bout-build log in the order things actually
+	# happen... recounted in build order rather than summarised at the end.
+	# Build order is what makes it a diagnostic; the same numbers summarised
+	# are not." Each step is emitted as it completes, so a board that comes out
+	# wrong can be read as a sequence — the step that produced nothing, or ran
+	# before something it depended on, is visible without a rebuild.
+	_log_build_step(&"terrain", grid.width * grid.rows, "cells")
 	var ground: MeshInstance3D = _build_terrain(grid)
 	ground.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(ground)
 	var grid_lines: MeshInstance3D = _build_grid_lines(grid)
 	grid_lines.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(grid_lines)
-	_build_empty_indicators(grid)
-	_build_extraction_tiles(team_extraction_cells)
+	_log_build_step(&"grid_lines", grid.width * grid.rows, "cell borders")
+	_log_build_step(&"empty_tiles", _build_empty_indicators(grid), "unfloored tiles")
+	_log_build_step(&"extraction_tiles", _build_extraction_tiles(team_extraction_cells), "tiles")
 
+	var walls := 0
+	var cover := 0
 	for cell: Vector2i in grid.blockers:
-		_spawn_blocker(grid.blockers[cell], cell, material_table)
+		var blocker: Part = grid.blockers[cell]
+		_spawn_blocker(blocker, cell, material_table)
+		if blocker.id == &"wall":
+			walls += 1
+		else:
+			cover += 1
+	# Walls and cover come off the SAME `grid.blockers` sweep, so they are
+	# counted where they are actually built rather than re-derived afterwards
+	# from the grid — a recount would agree with the map, not with the board.
+	_log_build_step(&"walls", walls, "wall blockers")
+	_log_build_step(&"cover", cover, "cover objects")
 
+	var field_items := 0
 	for cell: Vector2i in grid.field_items:
 		for item: Variant in grid.field_items[cell]:
 			_spawn_field_item(item, cell, material_table)
+			field_items += 1
+	_log_build_step(&"field_items", field_items, "loose items")
+
+
+## One step of the bout-build log. `index` is the running step number, so the
+## ORDER survives even if a consumer sorts or filters the stream.
+func _log_build_step(step: StringName, count: int, noun: String) -> void:
+	if build_log == null:
+		return
+	_build_step_index += 1
+	build_log.emit(
+		LogEvent.new(
+			0,
+			Enums.Phase.TACTICS,
+			-1,
+			&"build_step",
+			{"step": step, "count": count, "index": _build_step_index},
+			"build %d: %s — %d %s" % [_build_step_index, step, count, noun]
+		)
+	)
 
 
 ## taskblock-37 Pass E: the ground used to be one flat `PlaneMesh` for the
@@ -351,12 +412,17 @@ static func _add_riser(
 ## "Team-coded extraction tiles, drawn in their team's color" — one flat
 ## marker per tile, `WorldPalette.team_color(squad_id)` same as every other
 ## team-coded visual already reads (docs/10).
-func _build_extraction_tiles(team_extraction_cells: Dictionary) -> void:
+## taskblock-41 Pass D: returns how many tiles it drew, same reasoning as
+## `_build_empty_indicators`.
+func _build_extraction_tiles(team_extraction_cells: Dictionary) -> int:
+	var count := 0
 	for squad_id: int in team_extraction_cells:
 		var color: Color = WorldPalette.team_color(squad_id)
 		var cells: Array = team_extraction_cells[squad_id]
 		for cell: Vector2i in cells:
 			_static.add_child(_marker(cell, color, EXTRACTION_TILE_HEIGHT))
+			count += 1
+	return count
 
 
 ## docs/10 taskblock02 G3 / taskblock03 I: "the ground is a flat green plane
@@ -433,7 +499,11 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 ## equivalent `MapGen._finalize_walls_and_empty` resolves an unreachable
 ## uncarved cell into (no floor, no blocker, opacity 0), not a retired
 ## terrain code read directly.
-func _build_empty_indicators(p_grid: Grid) -> void:
+## taskblock-41 Pass D: returns how many it drew, so the bout-build log counts
+## what was actually placed rather than re-deriving it from the grid a second
+## time — two counts of the same thing eventually disagree.
+func _build_empty_indicators(p_grid: Grid) -> int:
+	var count := 0
 	for y in range(p_grid.rows):
 		for x in range(p_grid.width):
 			var cell := Vector2i(x, y)
@@ -444,6 +514,8 @@ func _build_empty_indicators(p_grid: Grid) -> void:
 				_static.add_child(
 					_marker(cell, EMPTY_FILL_COLOR, EMPTY_FILL_HEIGHT, EMPTY_FILL_SIZE)
 				)
+				count += 1
+	return count
 
 
 static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
@@ -610,6 +682,51 @@ func update_wall_cutout(camera: Camera3D) -> void:
 	_wall_cutout_material.set_shader_parameter("unit_depths", depths)
 	_wall_cutout_material.set_shader_parameter("unit_radii_px", radii)
 	_wall_cutout_material.set_shader_parameter("unit_count", count)
+	_log_cutout(screen_positions, count)
+
+
+## taskblock-41 Pass D: "cutout drawn to (x, y)."
+##
+## **Deliberately not per frame.** This runs every frame, on every wall, while
+## the camera orbits — and `FileSink.emit()` flushes to disk per line, so a
+## genuine per-frame event here would cost more than the effect it documents
+## and would bury every other event in the log. Emitted only when the cutout
+## meaningfully CHANGES: how many units are being cut for, or any of them
+## crossing into a different `CUTOUT_LOG_GRID` block of screen space. Holding
+## still logs nothing; a real change logs once. Stated here rather than
+## silently narrowed — the volume ceiling is the design, not an oversight.
+func _log_cutout(screen_positions: PackedVector2Array, count: int) -> void:
+	if build_log == null:
+		return
+	var fingerprint := PackedStringArray()
+	for i in range(count):
+		var position: Vector2 = screen_positions[i]
+		(
+			fingerprint
+			. append(
+				(
+					"%d,%d"
+					% [
+						int(position.x / CUTOUT_LOG_GRID),
+						int(position.y / CUTOUT_LOG_GRID),
+					]
+				)
+			)
+		)
+	var current: String = "|".join(fingerprint)
+	if current == _last_cutout_fingerprint:
+		return
+	_last_cutout_fingerprint = current
+	build_log.emit(
+		LogEvent.new(
+			0,
+			Enums.Phase.TACTICS,
+			-1,
+			&"wall_cutout",
+			{"units": count, "blocks": current},
+			"wall cutout: %d unit(s) at screen blocks [%s]" % [count, current]
+		)
+	)
 
 
 func _process(_delta: float) -> void:
