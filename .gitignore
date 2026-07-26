@@ -2,10 +2,12 @@
 .godot/
 .import/
 
-# Checkpoint screenshots (out/checkpoints/) are documentation artifacts, not
-# game assets — the .import sidecar Godot generates for them is regenerated
-# identically on any checkout and isn't worth committing.
-out/checkpoints/**/*.import
+# Checkpoint artifacts (taskblock-41 Pass E) are LOCAL ONLY. Real sizes: ~72K
+# and ~180K for the two stills checkpoints, 484K for the one carrying a video,
+# 43-58K per 1920x1080 PNG. Thousands are affordable on local disk and none of
+# them belong in git. The durable record of a checkpoint is the ANSWERS to its
+# checklist, which go in reports/Report-TaskblockN.md.
+out/checkpoints/
 
 # Export artifacts
 export_presets.cfg
@@ -20,6 +22,5 @@ export_presets.cfg
 # Completed taskblock specs — local working notes, not published
 /taskblock_done/
 
-# Regenerated every run — checkpoint artifacts under out/checkpoints/ ARE
-# committed (docs/09); this rolling log is not.
+# Regenerated every run.
 /out/combat.log

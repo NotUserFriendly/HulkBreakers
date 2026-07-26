@@ -36,7 +36,17 @@ gdlint src test
 #    This step can exit non-zero on benign import warnings, so don't let it abort.
 "$GODOT" --headless --path . --import --quit || true
 
-# 3. Run GUT fully headless. GODOT_DISABLE_LEAK_CHECKS avoids false failures from
+# 3. Checkpoint parse guard (taskblock-41 Pass E). Visual checkpoints need a
+#    real GPU frame, so they can never RUN here — but they can be PARSED, and
+#    that is exactly what BR40.02 needed: a UnitView -> HitVolumeView rename
+#    orphaned two scenario scripts for ~15 taskblocks because nothing re-ran
+#    them. Deliberately NOT under `-d`: a parse error inside load() raises a
+#    Debugger Break there and would hang the build instead of failing it. Runs
+#    ahead of GUT so a broken scenario fails fast, before the debugger-enabled
+#    step below could hit the same script.
+"$GODOT" --headless --path . -s res://tools/checkpoints/parse_guard.gd
+
+# 4. Run GUT fully headless. GODOT_DISABLE_LEAK_CHECKS avoids false failures from
 #    leak logs printed on exit. -gexit makes a failing test fail the process.
 GODOT_DISABLE_LEAK_CHECKS=1 "$GODOT" --headless -d \
   --display-driver headless --audio-driver Dummy \

@@ -1,10 +1,14 @@
 extends GutTest
 
-## Checkpoint 2 artifact (docs/09): one cyborg's shot plane dumped from 12
-## angles swept continuously around a full circle, so a human can eyeball
-## "do the boxes track the angle sanely" and "does the rear ammo rack
-## appear only from behind." Run via ./checkpoint.sh 2 — its stdout is what
-## lands in out/checkpoints/02/output.txt.
+## An ordinary regression baseline (docs/09), formerly checkpoint 2: one
+## cyborg's shot plane dumped from 12 angles swept continuously around a full
+## circle, so "do the boxes track the angle sanely" and "does the rear ammo
+## rack appear only from behind" are answerable from the test log alone. Any
+## pop or discontinuity between adjacent angles is a bug.
+##
+## taskblock-41 Pass E: renamed out of the checkpoint frame — the ritual is
+## retired, the check is not. It runs every `./run_tests.sh`, as it always
+## did; only the name, which implied a gate that no longer exists, changed.
 
 const ANGLE_COUNT := 12
 const CANVAS_WIDTH := 6

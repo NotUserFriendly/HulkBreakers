@@ -1,9 +1,14 @@
 extends GutTest
 
-## Checkpoint 1 artifact (docs/09): ASCII maps across several seeds, plus a
-## combat-log line, so a human can eyeball "does this look like a place?"
-## and "are seeds actually different?" Run via ./checkpoint.sh 1 — its
-## stdout is what lands in out/checkpoints/01/output.txt.
+## An ordinary regression baseline: ASCII maps across several seeds, plus a
+## combat-log line, so "does this read as a place?" and "are seeds actually
+## different?" are answerable from the test log alone (docs/00's own "a spatial
+## system without a dump is one nobody can verify").
+##
+## taskblock-41 Pass E: was `test_checkpoint_1.gd`, run through a retired
+## `./checkpoint.sh 1` ritual. Nothing about what it checks changed — only the
+## name, which used to imply a gate that no longer exists. It runs every
+## `./run_tests.sh` like any other test, and always did.
 
 const SEEDS: Array[int] = [1, 2, 3, 4, 5]
 const WIDTH := 28

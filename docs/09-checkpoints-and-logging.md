@@ -107,19 +107,42 @@ reported faithfully rather than deduplicated; and `_log_message` is deliberately
 because `print()` routes through it and `StdoutSink` prints every event it receives — capturing
 messages would be an unbounded loop.
 
-## Checkpoints — retired
-The checkpoint ritual (five committed-artifact gates at foundation phases, each a `./checkpoint.sh N`
-hard stop for human review) is **retired**. It was a from-scratch-foundation mechanism; the review it
-performed — a human reading a committed artifact to catch a silent geometry or randomization bug — is
-now done live by the supervisor (playing, bug-hunting in spectator, doc review) plus tester-mode
-(`TESTING.md`: force the condition, watch it). CC was long ago told to prefer clean reports over
-generated artifacts, so the ritual sat unused across ~30 taskblocks before being cut here — see
-`docs/SUPERSEDED.md`.
+## Checkpoints — an ordinary tool (taskblock-41 Pass E)
+What was retired was the **gate**, not the capability. The original ritual was five
+committed-artifact checkpoints, each ending in "stop and wait for a go" — that stalled the pipeline
+and deserved to go, and `SUPERSEDED.md` records it. The underlying ability never stopped being
+valuable: drive the real `BattleScene` through a real GPU frame and capture what it actually looks
+like.
 
-The foundation baselines it wrapped (`test/checkpoints/test_checkpoint_1–4.gd`) survive as ordinary
-regression tests in the GUT suite — they still run every `./run_tests.sh`, they're just no longer
-"checkpoints." The old checkpoint 5 was the hand-built `test_full_mission`, which retires with that
-harness (`docs/PLAN.md`).
+It pays for itself. **BR40.01** — the attack camera solving a position past the far edge of the
+platform the shooter stands on, filling the frame with that platform's own mass — was found by
+rendering, not by testing. The headless height-delta matrix passed every invariant it checks: both
+bodies fit, the camera never dropped below the lower body, continuity held across the zero crossing.
+The frame was still garbage. **Numerically clean and visually broken is exactly the gap a screenshot
+closes and a test cannot.**
+
+How it works now:
+- **CC authors a checkpoint whenever it judges one useful.** No permission step, no hard stop. The
+  supervisor looks at it when convenient.
+- `./checkpoint.sh N` runs `tools/checkpoints/checkpoint_N.gd` against a real display driver. The
+  driver script is generic; **the scenario owns its own README and checklist**, so the description
+  and the code it describes cannot drift apart.
+- **`out/checkpoints/` is local only** (`.gitignore`). Images are large and cheap to regenerate.
+  **The durable artifact is the answers, not the images** — a checklist worked through by the
+  supervisor belongs in `reports/Report-TaskblockN.md`, which is committed. To keep one specific
+  image, copy it into `out/checkpoints-kept/`, which is tracked; copying it *is* the decision.
+- **A parse guard runs in `run_tests.sh`, and it is the load-bearing piece.** Visual checkpoints sit
+  outside the headless gate by necessity, so nothing re-runs them — which is why a `UnitView` rename
+  orphaned two scripts for ~15 taskblocks (BR40.02) with no test going red. Rendering can't happen in
+  CI; **parsing can**. `tools/checkpoints/parse_guard.gd` loads every scenario and fails the build on
+  a parse error or a script that has stopped being a `SceneTree` entry point. It runs *without* `-d`
+  and *before* GUT: under the debugger a parse error raises a break that waits for input, so the
+  guard would hang the build rather than fail it.
+
+The foundation baselines the old ritual wrapped survive as ordinary regression tests in the GUT
+suite — `test/baselines/test_map_generation_baseline.gd` and friends, renamed out of the checkpoint
+frame because the names implied a gate that no longer exists. They run every `./run_tests.sh`, and
+always did.
 
 ## Why this matters for CC specifically
 CC cannot see the game. The ASCII dumps and the combat log **are** its eyes — and they're the
