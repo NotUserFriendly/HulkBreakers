@@ -97,6 +97,21 @@ confirm" roll-up — so pending items surface at a natural review point without 
   Keep both samples rather than replacing one with the other: 0 ms and 2000 ms together give the
   boundary spike *and* the settled rate, which is exactly the pair needed to tell BR26.02 and BR27.09
   apart.
+- **2026-07-26 — the instrumentation revision above is BUILT (tb42 Pass A)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. It had sat unbuilt since 2026-07-23: `FpsDumpSink` was
+  last touched in tb35 and still fired a single 200ms sample. Now two per turn —
+  `context: turn_boundary` at **0ms** and `context: turn_settled` at **2000ms** — plus the aim-entry
+  dump in `TacticsController._enter_aim_mode()` moved to the same 2000ms and reading the shared
+  `FpsDumpSink.SETTLED_DELAY_SECONDS` rather than repeating the number.
+  - **The boundary sample is emitted synchronously, with no `await` at all.** `create_timer(0.0)` or
+    `process_frame` would push it a frame past the boundary — exactly the transient it exists to
+    catch — and quietly turn it into a second copy of the settled sample under a different label.
+    There is a test asserting it lands before anything yields.
+  - `data.offset_ms` rides alongside `context` so a log reader never has to parse the prose, and a
+    test pins that the settled sample has NOT arrived at the old 200ms mark.
+  - **No measurement is claimed here.** This pass built the instrument only; every number in
+    taskblock-42 is taken with it afterwards. **Status unchanged, and the aiming path is still
+    unmeasured** — that is Pass B's job, and this entry stays `SUPERVISOR`-owned regardless.
 - **Also requested: a live FPS counter, rendered ON TOP OF the combat log rather than logged into
   it** — a continuous readout for the supervisor's own eyes, distinct from the dumps (which exist for
   CC to grep). Tracked with the log-window UX work in `docs/PLAN.md`.

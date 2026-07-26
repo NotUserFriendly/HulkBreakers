@@ -691,9 +691,13 @@ func test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode() -> 
 ## tb35 Pass A1 (BR26.02): "the reason this bug has survived three passes
 ## is that CC cannot see a framerate." `FpsDumpSink` watches for
 ## `&"turn_start"` and dumps `Engine.get_frames_per_second()` back into
-## the same log 200ms later, so this becomes a real, greppable assertion
-## instead of a felt impression.
-func test_turn_start_triggers_an_fps_dump_200ms_later() -> void:
+## the same log, so this becomes a real, greppable assertion instead of a
+## felt impression.
+##
+## taskblock-42 Pass A: TWO dumps per turn now, and this test was updated
+## rather than replaced. The boundary sample is the one BR27.09 is about and
+## did not previously exist; the settled sample moved from 200ms to 2000ms.
+func test_turn_start_triggers_both_a_boundary_and_a_settled_fps_dump() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	scene.new_battle(1)
@@ -703,10 +707,40 @@ func test_turn_start_triggers_an_fps_dump_200ms_later() -> void:
 	scene.combat_state.combat_log.emit(
 		LogEvent.new(scene.combat_state.round_number, Enums.Phase.RESOLUTION, 0, &"turn_start")
 	)
-	assert_true(sink.events_of_kind(&"fps_dump").is_empty(), "sanity: not yet, before the delay")
 
+	# **Synchronously, with no await at all.** The boundary sample exists to
+	# catch the turn transient; deferring it even one frame would step past the
+	# very thing it measures and make it a duplicate of the settled sample.
+	var immediate: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
+	assert_eq(immediate.size(), 1, "the boundary dump fires before anything yields")
+	assert_eq(immediate[0].data.context, FpsDumpSink.CONTEXT_BOUNDARY)
+	assert_eq(immediate[0].data.offset_ms, 0)
+
+	await scene.get_tree().create_timer(FpsDumpSink.SETTLED_DELAY_SECONDS + 0.25).timeout
+
+	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
+	assert_eq(dumps.size(), 2, "and the settled one follows it")
+	assert_eq(dumps[1].data.context, FpsDumpSink.CONTEXT_SETTLED)
+	assert_eq(dumps[1].data.offset_ms, int(FpsDumpSink.SETTLED_DELAY_SECONDS * 1000.0))
+	assert_ne(
+		dumps[0].data.context, dumps[1].data.context, "distinguishable without parsing the prose"
+	)
+
+
+## The settled sample must NOT arrive at the old 200ms offset — that offset is
+## the thing BR26.02's revision rejected as still contaminated by the transient.
+func test_the_settled_dump_has_not_arrived_at_the_old_200ms_offset() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	scene.new_battle(1)
+	var sink := MemorySink.new()
+	scene.combat_state.combat_log.add_sink(sink)
+
+	scene.combat_state.combat_log.emit(
+		LogEvent.new(scene.combat_state.round_number, Enums.Phase.RESOLUTION, 0, &"turn_start")
+	)
 	await scene.get_tree().create_timer(0.25).timeout
 
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
-	assert_eq(dumps.size(), 1)
-	assert_eq(dumps[0].data.context, "turn")
+	assert_eq(dumps.size(), 1, "only the boundary sample this early")
+	assert_eq(dumps[0].data.context, FpsDumpSink.CONTEXT_BOUNDARY)

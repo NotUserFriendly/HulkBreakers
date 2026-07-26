@@ -538,9 +538,13 @@ func test_arming_burst_and_clicking_a_wall_enters_aim_mode() -> void:
 
 
 ## tb35 Pass A1 (BR26.02): the aim-side counterpart to `FpsDumpSink` — a
-## real FPS dump, greppable in `out/combat.log`, 200ms after THIS
-## specific transition into aim mode (not every reticle nudge).
-func test_entering_aim_mode_dumps_fps_200ms_later() -> void:
+## real FPS dump, greppable in `out/combat.log`, after THIS specific
+## transition into aim mode (not every reticle nudge).
+##
+## taskblock-42 Pass A: the offset moved from 200ms to
+## `FpsDumpSink.SETTLED_DELAY_SECONDS`, so this waits on the constant rather
+## than on a hardcoded number that would silently stop covering the real delay.
+func test_entering_aim_mode_dumps_fps_once_settled() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
 	var built: Dictionary = _setup([a, b])
@@ -555,8 +559,9 @@ func test_entering_aim_mode_dumps_fps_200ms_later() -> void:
 
 	assert_true(sink.events_of_kind(&"fps_dump").is_empty(), "sanity: not yet, before the delay")
 
-	await controller.get_tree().create_timer(0.25).timeout
+	await controller.get_tree().create_timer(FpsDumpSink.SETTLED_DELAY_SECONDS + 0.25).timeout
 
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
 	assert_eq(dumps.size(), 1)
 	assert_eq(dumps[0].data.context, "aim")
+	assert_eq(dumps[0].data.offset_ms, int(FpsDumpSink.SETTLED_DELAY_SECONDS * 1000.0))
