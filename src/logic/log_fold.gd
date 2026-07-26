@@ -71,6 +71,15 @@ const PLUMBING_KINDS: Array[StringName] = [
 	&"unit_assembled",
 	&"overlay_activated",
 	&"overlay_deactivated",
+	# Added after rendering the spectator log (post-tb41): `FpsDumpSink` emits
+	# one of these per turn, and a spectated bout runs turns continuously, so
+	# eleven identical "Turn FPS ... 74.0" rows were filling the panel and
+	# pushing every real combat event out of view. Exactly the flooding this
+	# array exists to stop — it just predates this kind being high-volume
+	# enough to notice. Folded, not dropped: the numbers are still drillable,
+	# and `out/combat.log` is unaffected either way (folding is presentation
+	# only, tb22 F2).
+	&"fps_dump",
 ]
 
 var groups: Array[LogFoldGroup] = []

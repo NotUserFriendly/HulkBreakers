@@ -40,10 +40,17 @@ signal board_clicked(hit: Dictionary)
 ## watchable, not a blur"), so this is deliberately paced. Flagged, not
 ## tuned.
 const BASE_STEP_INTERVAL := 1.2
+## Gap between the combat-log window and the bottom-left corner it sits in.
+const LOG_MARGIN := 16.0
 
 var battle: BattleScene
 var runner: BoutRunner
 var resolution_player: ResolutionPlayer
+## The shared combat-log window (title bar, drag-to-resize, minimize, FPS
+## readout) — the same class the player view uses. `log_label` below is its own
+## label, kept as a field because this file and its tests already reach for it
+## by that name.
+var log_panel: CombatLogPanel
 var log_label: RichTextLabel
 var log_sink: HierarchicalUiSink
 
@@ -396,18 +403,24 @@ func _build_ui() -> void:
 		tunables, "Tracers:", float(resolution_player.tracer_count), _on_tracer_count_changed
 	)
 
-	log_label = RichTextLabel.new()
-	log_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	log_label.position = Vector2(16, -216)
-	log_label.size = Vector2(520, 200)
-	log_label.scroll_following = true
-	# taskblock-27 Pass D1a: `SquadControlOverlay`'s own log label already
-	# fixed this (runNotes.md: "log needs to both be scrollable and not
-	# word wrapping") — autowrap defaults to wrapping at the word
-	# boundary, cutting long lines across multiple visual rows. This
-	# overlay's own log label never got the same one-line fix.
-	log_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	theme_root.add_child(log_label)
+	# Supervisor, post-tb41: the bare `RichTextLabel` this used to build is
+	# obsolete — the same `CombatLogPanel` the player view uses goes here too,
+	# so both views get the title bar, drag-to-resize, `[-]`/`[+]` minimize,
+	# real background, wheel absorption and live FPS readout rather than one
+	# view quietly keeping a worse widget. Everything that used to be set by
+	# hand here (scroll-following, `AUTOWRAP_OFF` per taskblock-27 Pass D1a's
+	# own one-line fix, the RTL scrollbar placement) lives inside the panel now,
+	# which is the point: there is one combat log, configured once.
+	log_panel = CombatLogPanel.new()
+	log_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	log_panel.position = Vector2(LOG_MARGIN, -CombatLogPanel.DEFAULT_HEIGHT - LOG_MARGIN)
+	log_panel.size = Vector2(CombatLogPanel.DEFAULT_WIDTH, CombatLogPanel.DEFAULT_HEIGHT)
+	# Anchored by its TOP-left to the viewport's bottom-left, so growing taller
+	# has to grow upward — otherwise a resize drags the panel off the bottom of
+	# the screen instead of enlarging it.
+	log_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	theme_root.add_child(log_panel)
+	log_label = log_panel.log_label
 	log_sink = HierarchicalUiSink.new(log_label, battle.combat_state)
 
 	# taskblock-21 Pass B: THE inspect surface now, superseding tb17 C's

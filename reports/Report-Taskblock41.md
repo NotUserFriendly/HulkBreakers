@@ -206,6 +206,32 @@ split is structural rather than a flag — the button is a child, so it consumes
 bar underneath never sees one. Five tests now drive real press/motion/release sequences through the
 viewport, including "a drag must not minimize" and "a press on the button must not start a drag".
 
+## The spectator log converted to the shared panel
+
+Pass F converted only `SquadControlOverlay` and left `SpectatorOverlay` on a bare `RichTextLabel`,
+flagged as belonging to the live iteration. The supervisor called that widget obsolete and asked for
+the conversion, which is the right call — one of two views quietly keeping the worse widget is how
+they drift.
+
+**Decided without asking:** `CombatLogPanel` now writes its height through *both*
+`custom_minimum_size.y` and `size.y`. The two overlays lay it out completely differently — a column
+child in the player view, absolutely positioned against the bottom-left corner in the spectator view
+— and each situation respects only one of those properties. Writing one and not the other leaves
+resize silently inert in whichever view the author wasn't looking at, which is exactly the failure
+mode this session kept producing.
+
+**Found by rendering, again, and worth having found:** the spectator log came up filled with eleven
+identical `fps_dump: Turn FPS ... 74.0` rows, pushing every real event out of view. `FpsDumpSink`
+emits one per turn and a spectated bout runs turns continuously, but `fps_dump` was never added to
+Pass D's `PLUMBING_KINDS`, so each got its own row. Added — folded, not dropped, and `out/combat.log`
+is unaffected since folding is presentation only. That bug was live in the player view too; the
+spectator view just runs enough turns fast enough to make it obvious.
+
+Checkpoint 9 (`./checkpoint.sh 9`) authored for the conversion, under the new no-permission policy.
+It immediately earned the Pass E parse guard its keep: my first draft called a
+`DataLibrary.bot_presets()` that does not exist, and the guard failed the run and named the file
+before anything was rendered.
+
 ## Process note
 
 **These three should have been appended to this report as they landed** — `CLAUDE.md` says supervisor
