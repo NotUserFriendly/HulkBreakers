@@ -223,8 +223,16 @@ func _on_title_bar_input(event: InputEvent) -> void:
 ## situation the author wasn't looking at — so write both, and let each layout
 ## take the one it cares about.
 func _apply_height(height: float) -> void:
+	# The BOTTOM edge is what stays put. This panel lives at the bottom of the
+	# screen in both views, so growing it has to extend the top upward — writing
+	# `size.y` alone pins the top and pushes the bottom down off the corner
+	# instead, which is what "the bottom of the panel changes shape" looked like.
+	# `grow_vertical` does not cover this: it only applies when a control's
+	# MINIMUM size forces a resize, not when `size` is written directly.
+	var bottom_edge: float = position.y + size.y
 	custom_minimum_size.y = height
 	size.y = height
+	position.y = bottom_edge - height
 
 
 ## **The log absorbs the wheel whenever the cursor is over it — at the ends of

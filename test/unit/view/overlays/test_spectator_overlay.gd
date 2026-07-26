@@ -751,8 +751,41 @@ func test_resizing_the_spectator_log_actually_changes_its_size() -> void:
 	assert_almost_eq(panel.custom_minimum_size.y, before + 90.0, 1.0, "and both routes agree")
 
 
-## Growing must go upward: the panel's top-left is anchored to the viewport's
-## bottom-left, so growing downward would push it off the bottom of the screen.
-func test_the_spectator_log_grows_upward_not_off_the_screen() -> void:
+## Growing must extend the TOP upward and leave the bottom where it is. Setting
+## `size.y` alone pins the top and pushes the bottom down off the corner, which
+## is what the supervisor saw as "the bottom of the panel changes shape".
+func test_resizing_keeps_the_bottom_edge_pinned_and_grows_upward() -> void:
 	var overlay: SpectatorOverlay = _spectate(_bout())
-	assert_eq(overlay.log_panel.grow_vertical, Control.GROW_DIRECTION_BEGIN)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var panel: CombatLogPanel = overlay.log_panel
+	var bottom_before: float = panel.position.y + panel.size.y
+	var top_before: float = panel.position.y
+
+	panel._apply_height(panel.size.y + 100.0)
+	await get_tree().process_frame
+
+	assert_almost_eq(
+		panel.position.y + panel.size.y, bottom_before, 1.0, "the bottom edge does not move"
+	)
+	assert_almost_eq(panel.position.y, top_before - 100.0, 1.0, "the top edge is what rises")
+
+
+## Both views put the log hard into the bottom-left corner; a margin in one and
+## not the other made them sit in visibly different places for no reason.
+func test_the_spectator_log_sits_flush_in_the_bottom_left_corner() -> void:
+	var overlay: SpectatorOverlay = _spectate(_bout())
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var panel: CombatLogPanel = overlay.log_panel
+
+	# `position` is in PARENT coordinates, not relative to the anchor it hangs
+	# from — so "flush to the bottom" means the panel's bottom edge equals the
+	# viewport's height, not zero.
+	assert_eq(panel.position.x, 0.0, "flush left")
+	assert_almost_eq(
+		panel.position.y + panel.size.y,
+		panel.get_viewport_rect().size.y,
+		1.0,
+		"and flush to the bottom of the screen"
+	)

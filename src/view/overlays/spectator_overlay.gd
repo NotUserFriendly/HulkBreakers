@@ -40,8 +40,6 @@ signal board_clicked(hit: Dictionary)
 ## watchable, not a blur"), so this is deliberately paced. Flagged, not
 ## tuned.
 const BASE_STEP_INTERVAL := 1.2
-## Gap between the combat-log window and the bottom-left corner it sits in.
-const LOG_MARGIN := 16.0
 
 var battle: BattleScene
 var runner: BoutRunner
@@ -412,13 +410,13 @@ func _build_ui() -> void:
 	# own one-line fix, the RTL scrollbar placement) lives inside the panel now,
 	# which is the point: there is one combat log, configured once.
 	log_panel = CombatLogPanel.new()
+	# Flush into the bottom-left corner, matching the player view exactly — that
+	# one is the last child of a full-rect column, so it sits hard against both
+	# edges. A margin here made the two views' logs sit in visibly different
+	# places for no reason.
 	log_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	log_panel.position = Vector2(LOG_MARGIN, -CombatLogPanel.DEFAULT_HEIGHT - LOG_MARGIN)
+	log_panel.position = Vector2(0.0, -CombatLogPanel.DEFAULT_HEIGHT)
 	log_panel.size = Vector2(CombatLogPanel.DEFAULT_WIDTH, CombatLogPanel.DEFAULT_HEIGHT)
-	# Anchored by its TOP-left to the viewport's bottom-left, so growing taller
-	# has to grow upward — otherwise a resize drags the panel off the bottom of
-	# the screen instead of enlarging it.
-	log_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	theme_root.add_child(log_panel)
 	log_label = log_panel.log_label
 	log_sink = HierarchicalUiSink.new(log_label, battle.combat_state)
