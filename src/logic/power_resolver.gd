@@ -64,8 +64,8 @@ const TOOL_BATTERY_TAG := &"TOOL_BATTERY"
 ## "has a power system" — its own power output correctly reads as reduced
 ## (maybe to 0), never silently substituted back to the flat baseline as
 ## if it never had one.
-static func has_power_system(shell: Shell) -> bool:
-	for part: Part in shell.all_parts():
+static func has_power_system(shell: Shell, all_parts: Array[Part] = []) -> bool:
+	for part: Part in all_parts if not all_parts.is_empty() else shell.all_parts():
 		if part.power_produced > 0.0:
 			return true
 		if part.battery_capacity > 0.0 and not part.tags.has(TOOL_BATTERY_TAG):
@@ -75,9 +75,9 @@ static func has_power_system(shell: Shell) -> bool:
 
 ## Every operable reactor's own steady output, summed — a wound-disabled or
 ## destroyed reactor (`operable_parts()`) contributes nothing.
-static func reactor_power(shell: Shell) -> float:
+static func reactor_power(shell: Shell, operable: Array[Part] = []) -> float:
 	var total := 0.0
-	for part: Part in shell.operable_parts():
+	for part: Part in _operable(shell, operable):
 		total += part.power_produced
 	return total
 
@@ -85,9 +85,9 @@ static func reactor_power(shell: Shell) -> float:
 ## Every operable, non-tool battery's own AVAILABLE discharge this turn —
 ## capped by its own `battery_power_out`, never by more charge than it
 ## actually holds.
-static func battery_power(shell: Shell) -> float:
+static func battery_power(shell: Shell, operable: Array[Part] = []) -> float:
 	var total := 0.0
-	for part: Part in shell.operable_parts():
+	for part: Part in _operable(shell, operable):
 		if part.battery_capacity > 0.0 and not part.tags.has(TOOL_BATTERY_TAG):
 			total += minf(part.battery_charge, part.battery_power_out)
 	return total
@@ -96,9 +96,9 @@ static func battery_power(shell: Shell) -> float:
 ## taskblock-22 Pass B1: every operable power-hungry part's own draw,
 ## summed — a wound-disabled or destroyed consumer draws nothing, same
 ## `operable_parts()` gate every other power field already reads.
-static func consumer_power(shell: Shell) -> float:
+static func consumer_power(shell: Shell, operable: Array[Part] = []) -> float:
 	var total := 0.0
-	for part: Part in shell.operable_parts():
+	for part: Part in _operable(shell, operable):
 		total += part.power_consumed
 	return total
 
@@ -107,9 +107,10 @@ static func consumer_power(shell: Shell) -> float:
 ## to AP." Floored at 0.0: a shell drawing more than it produces has
 ## nothing left over, never a negative surplus (there's no such thing as
 ## negative AP to feed the curve below).
-static func surplus(unit: Unit) -> float:
-	var total: float = reactor_power(unit.shell) + battery_power(unit.shell)
-	return maxf(0.0, total - consumer_power(unit.shell))
+static func surplus(unit: Unit, operable: Array[Part] = []) -> float:
+	var parts: Array[Part] = _operable(unit.shell, operable)
+	var total: float = reactor_power(unit.shell, parts) + battery_power(unit.shell, parts)
+	return maxf(0.0, total - consumer_power(unit.shell, parts))
 
 
 ## taskblock-22 Pass B1: `surplus` run through `POWER_TO_AP_CURVE` — the
@@ -142,11 +143,11 @@ static func ap_for_surplus(surplus_value: float) -> int:
 ## another (each battery reads the SAME reactor total independently, not a
 ## shared pool depleted in some arbitrary order). A no-op with no reactor
 ## power at all — nothing to recharge FROM.
-static func recharge_batteries(shell: Shell) -> void:
-	var available: float = reactor_power(shell)
+static func recharge_batteries(shell: Shell, operable: Array[Part] = []) -> void:
+	var available: float = reactor_power(shell, _operable(shell, operable))
 	if available <= 0.0:
 		return
-	for part: Part in shell.operable_parts():
+	for part: Part in _operable(shell, operable):
 		if part.battery_capacity <= 0.0 or part.tags.has(TOOL_BATTERY_TAG):
 			continue
 		var room: float = part.battery_capacity - part.battery_charge
@@ -159,8 +160,8 @@ static func recharge_batteries(shell: Shell) -> void:
 ## so a shell drawing on battery power always has less available next
 ## turn unless recharge (from real reactor output) offsets it. A no-op for
 ## a reactor that never touches battery_charge at all.
-static func discharge_batteries(shell: Shell) -> void:
-	for part: Part in shell.operable_parts():
+static func discharge_batteries(shell: Shell, operable: Array[Part] = []) -> void:
+	for part: Part in _operable(shell, operable):
 		if part.battery_capacity <= 0.0 or part.tags.has(TOOL_BATTERY_TAG):
 			continue
 		part.battery_charge -= minf(part.battery_charge, part.battery_power_out)
@@ -176,5 +177,19 @@ static func discharge_batteries(shell: Shell) -> void:
 ## leaves `Unit.max_ap` COMPLETELY untouched — whatever it already was,
 ## including a test's own direct override — rather than this function
 ## quietly overwriting it back to some baseline on every turn start.
-static func max_ap_for(unit: Unit) -> int:
-	return ap_for_surplus(surplus(unit))
+static func max_ap_for(unit: Unit, operable: Array[Part] = []) -> int:
+	return ap_for_surplus(surplus(unit, operable))
+
+
+## taskblock-42 Pass C (BR27.09 cost #3): the pre-walked operable list, or one
+## walked on demand when a caller did not supply one.
+##
+## **Explicit threading rather than a cache, deliberately.** A per-turn memo
+## would need invalidating on every structural change to the part tree — a part
+## destroyed, mangled, attached, detached, wounded into inertness — and a stale
+## power reading is a silent wrong number, not a crash. Threading has no state
+## to go stale: the acceptance "cache invalidates on any structural change" is
+## satisfied by there being nothing to invalidate. Every existing call site
+## keeps working untouched by passing nothing.
+static func _operable(shell: Shell, operable: Array[Part]) -> Array[Part]:
+	return operable if not operable.is_empty() else shell.operable_parts()
