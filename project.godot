@@ -8,6 +8,13 @@ config_version=5
 config/name="HulkBreakers"
 config/features=PackedStringArray("4.7")
 run/main_scene="res://src/view/battle_scene.tscn"
+; taskblock-44 Pass A: a per-feature override of the line above, active only when
+; a build declares the `bench` custom feature (`export_presets.cfg`). An export
+; template ignores `-s res://...` — it is tools-only — so a release build can
+; ONLY be driven through its main scene, and the release half of the
+; release-vs-debug measurement would otherwise be unreachable. The ordinary game
+; export declares no such feature and boots battle_scene.tscn exactly as before.
+run/main_scene.bench="res://tools/bench_main.tscn"
 
 [display]
 

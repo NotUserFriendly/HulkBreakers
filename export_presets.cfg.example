@@ -1,0 +1,65 @@
+; taskblock-44 Pass A — the export preset the release bench expects.
+;
+; COPY THIS TO `export_presets.cfg` (same directory, drop the `.example`).
+;
+; `export_presets.cfg` itself is gitignored: export paths and platform choices
+; are per-machine. But **which preset name the tooling looks for is shared
+; knowledge**, and without this file the next person to run a release
+; measurement rediscovers the whole setup from scratch. That is the only reason
+; this exists — it is documentation that happens to be executable.
+;
+; TWO things below are load-bearing and must not be edited casually:
+;   * `name` — `tools/bench_release.sh` passes it to `--export-release`.
+;   * `custom_features="bench"` — this is what activates `run/main_scene.bench`
+;     in project.godot. Without it the exported build boots the real game
+;     instead of the bench, and there is no release number at all.
+;
+; Prerequisite: export templates matching the engine version must be installed
+; (`Editor > Manage Export Templates > Download and Install`, or unzip the
+; `Godot_v<version>-stable_export_templates.tpz` release asset into
+; `~/.local/share/godot/export_templates/<version>.stable/`). Godot refuses the
+; export with a clear error if they are missing, so a wrong setup here fails
+; loudly rather than silently producing a debug binary — which matters, because
+; a debug binary silently standing in for a release one is the one failure mode
+; that would invalidate the whole measurement. `BuildIdentity` is the second
+; guard on exactly that.
+;
+; `export_path` is deliberately empty: `bench_release.sh` supplies a temp path on
+; the command line. An exported build is a measurement artifact, not something
+; that belongs in the tree.
+
+[preset.0]
+
+name="Linux Bench Release"
+platform="Linux"
+runnable=true
+advanced_options=false
+dedicated_server=false
+custom_features="bench"
+export_filter="all_resources"
+include_filter=""
+exclude_filter=""
+export_path=""
+encryption_include_filters=""
+encryption_exclude_filters=""
+seed=0
+encrypt_pck=false
+encrypt_directory=false
+script_export_mode=2
+
+[preset.0.options]
+
+custom_template/debug=""
+custom_template/release=""
+debug/export_console_wrapper=0
+binary_format/embed_pck=false
+texture_format/s3tc_bptc=true
+texture_format/etc2_astc=false
+binary_format/architecture="x86_64"
+ssh_remote_deploy/enabled=false
+ssh_remote_deploy/host="user@host_ip"
+ssh_remote_deploy/port="22"
+ssh_remote_deploy/extra_args_ssh=""
+ssh_remote_deploy/extra_args_scp=""
+ssh_remote_deploy/run_script=""
+ssh_remote_deploy/cleanup_script=""

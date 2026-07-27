@@ -207,3 +207,47 @@ func test_save_rejects_an_invalid_resource_without_writing_a_file() -> void:
 	assert_eq(errors[0].field, &"failure_mode")
 	assert_false(ResourceLoader.exists(USER_ROOT + "/parts/bad_plate.tres"))
 	assert_null(DataLibrary.get_part(&"bad_plate"))
+
+
+## taskblock-44 Pass A (BR44.01): **an exported build loaded no data at all.**
+##
+## `_load_dir` filtered directory entries on `ends_with(".tres")`, which is true
+## in the editor and false in every export: `editor/export/convert_text_resources
+## _to_binary` defaults to true, so `crab.tres` ships as `crab.res` plus a
+## `crab.tres.remap`. The filter matched neither, every pool came back empty, and
+## the first `i % pool.size()` downstream trapped — reported as a script error in
+## a debug export and as a bare SIGFPE, with no message whatsoever, in a release
+## one.
+##
+## Nothing had ever been exported, so nothing had ever noticed. These cases pin
+## the name normalisation directly, because the bug is only reachable through a
+## real export and a test that needed one would never be written.
+func test_an_exported_remap_entry_resolves_to_its_authored_name() -> void:
+	assert_eq(
+		DataLibrary._authored_resource_name("crab.tres.remap"),
+		"crab.tres",
+		"the remap names the authored path, which is what ResourceLoader wants"
+	)
+
+
+func test_an_ordinary_editor_entry_is_unchanged() -> void:
+	assert_eq(DataLibrary._authored_resource_name("crab.tres"), "crab.tres")
+
+
+## The dedupe in `_load_dir` exists because an exported directory legitimately
+## contains BOTH forms for one resource; without it every preset would load
+## twice.
+func test_both_exported_forms_of_one_resource_agree_on_the_authored_name() -> void:
+	assert_eq(
+		DataLibrary._authored_resource_name("crab.tres.remap"),
+		DataLibrary._authored_resource_name("crab.tres")
+	)
+
+
+## Everything else is ignored exactly as before — `.res` included, deliberately:
+## a converted resource always ships with its remap, so handling a bare `.res`
+## would be speculative code for a case this project's data cannot produce.
+func test_non_resource_entries_are_ignored() -> void:
+	assert_eq(DataLibrary._authored_resource_name("notes.txt"), "")
+	assert_eq(DataLibrary._authored_resource_name("crab.tres.import"), "")
+	assert_eq(DataLibrary._authored_resource_name(""), "")
