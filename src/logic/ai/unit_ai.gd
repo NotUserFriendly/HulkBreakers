@@ -347,6 +347,12 @@ static func _plan_ranged(
 				else:
 					branch = &"no_lof_no_route"
 		else:
+			# tb43 Pass B: the scorer sees the culled rectangle; the LOF scan
+			# above deliberately still sees the WHOLE reachable set. Culling
+			# before that check would let a discarded cell flip which BRANCH
+			# runs (engagement vs. the approach fallback), which is a much
+			# larger behaviour change than picking a different cell within
+			# the branch this pass is actually scoped to.
 			best_cell = _pick_engagement_position(
 				unit,
 				enemy,
@@ -354,7 +360,9 @@ static func _plan_ranged(
 				preferred_range,
 				weight_cover,
 				weapon,
-				reachable,
+				EngagementRect.cull(
+					unit, enemy, _target_distance(weapon, preferred_range), reachable
+				),
 				true,
 				lof_cache
 			)

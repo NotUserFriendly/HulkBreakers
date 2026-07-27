@@ -451,6 +451,26 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-26 (tb43 Pass B — the candidate rectangle, and a repeatable bench to judge it by)**
+  [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. `_pick_engagement_position` now scores only the
+  reachable cells inside a rectangle with two corners on the acting unit and its target
+  (`src/logic/ai/engagement_rect.gd`), padded 2 cells laterally and, on the far side beyond the unit,
+  by the weapon's own standoff distance — the asymmetric half, without which a unit that wants to
+  back off finds no candidates behind it.
+  - **The numbers here are NOT comparable to this entry's earlier ones and the reason matters.**
+    Every figure above came from a bench nobody kept; `tools/bench_ai_planning.gd` is now in the
+    tree, fixed at 5 seeds x 12 steps of a 3v3, and every number below is from it. **On that bench:
+    ~745ms -> ~674ms per AI step (~9%)**, taken twice per build. Treat the earlier ~1672/~1498ms as a
+    different instrument's readings, not as a series this continues.
+  - **Honest size, and the block predicted it: the rect keeps 64.9% of candidates**, mean 95.7 -> 62.1
+    per decision. It does not carry this bug and was never going to.
+  - **The behavioural cost, measured rather than assumed: the chosen cell differs in 7 of 60
+    decisions (11.7%).** Full-suite green including `test_full_mission.gd`'s `MIN_COMPLETION_RATE`.
+    Much of that 11.7% is cells that *tie* — on open ground a whole arc sits at exactly the standoff
+    distance and scores identically, so dropping one changes the cell without changing the decision.
+  - **The LOF scan deliberately still sees the WHOLE reachable set.** Culling before it would let a
+    discarded cell flip which BRANCH runs (engagement vs. the approach fallback), a far larger
+    behaviour change than picking a different cell inside the branch this pass is scoped to.
 - **2026-07-26 (tb43 Pass A — exact early-out in the candidate scorer)**
   [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. `_engagement_score` walked two paths per candidate
   cell (`is_covered_from`, `_ally_in_firing_line`) regardless of how bad the cell's cheap terms
