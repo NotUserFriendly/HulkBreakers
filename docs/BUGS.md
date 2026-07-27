@@ -85,6 +85,36 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
+### BR45.01 — Active — owner: `CC`
+**Surrogate demotion from an ambiguous DAG node is an unresolved placeholder, and says so loudly on
+every fire**
+- **Source:** `CC`  ·  **CC session:** `a56eac1a-eddb-4d30-946a-4c8e594ef198`
+- **Raised 2026-07-27 by the supervisor noticing the warning volume in `run_tests.sh`.** The warning
+  is not new and nothing in taskblock-44 caused it — `SurrogateLadder.demote` has emitted it since
+  taskblock-03 Pass A2 (`e82d35c`). What changed is that taskblock-44 added tests that run real
+  seeded bouts, so more combat resolves, more surrogates take damage, and the existing warning simply
+  fires more often. **It became audible rather than becoming a defect.**
+- **The actual gap.** `docs/04` makes the surrogate ladder a DAG, not a line. Demotion walks *upstream*
+  — the tiers whose `promotes_to` names the current one — and where a tier has **two or more**
+  upstream branches there is no rule for which one a damaged surrogate falls back to. taskblock-03
+  deliberately did not invent one. Today `demote()` takes `candidates[0]`, first in ladder
+  declaration order: deterministic (so it cannot break seeded replay) but arbitrary, and
+  `push_warning`'d every single time precisely so it could not be mistaken for a decision.
+- **Why it matters beyond noise.** The fallback is authoring-order-dependent. Reordering the tier
+  `.tres` files, or adding a new tier that promotes into an existing one, silently changes what a
+  damaged surrogate becomes — with no test that would notice, because every current test asserts
+  against whatever the first branch happens to be.
+- **What closing it needs is a DESIGN answer, not code.** Candidates, none chosen: pick by what was
+  destroyed (taskblock-03's own stated intent, and the reason it was left open); pick the branch
+  retaining the most capabilities; pick the cheapest to re-promote from; or author an explicit
+  `demotes_to` on the tier and make the DAG's reverse edges data rather than derived. **The last is
+  the only one that needs no new rule invented** — it makes the answer authorable per tier, which is
+  the same "content is data, not code" posture the rest of the project takes.
+- **`CC`-owned** per the supervisor. CC may close it once a rule is chosen and authored — but the
+  choice itself is a design call, so it wants stating before it is built rather than after.
+- **Do not silence the warning as the fix.** It is doing its job; the placeholder is what wants
+  resolving.
+
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
