@@ -88,6 +88,28 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 
 ---
 
+## Ordering the LOF prefilter scan, superseded by inverting the query
+
+**Raised** taskblock-43 (as `PLAN.md` NEXT item 2, from the block's own profiling).
+**Superseded** before implementation, by AI v2 part one.
+
+taskblock-43 measured `UnitAI._any_reachable_has_lof` at **271.9ms** per repositioning turn against
+`_pick_engagement_position`'s **98.3ms**, and proposed sorting the scan nearest-target-first so its
+early-return fires sooner. Exact, cheap, and correct as far as it went — but the same block's branch
+census found **19 of 60 turns end with no reachable cell having a line at all**, and ordering does
+nothing for those: they must still scan everything to prove the negative. That half was written up as
+"real work, not a follow-up."
+
+Inverting the query answers both halves at once. One shadowcast from the target produces a visibility
+field; `reachable & vis[target] == 0` settles the negative case in a word operation, so the case that
+ordering could not help stops existing rather than being reordered. The prefilter contract (never
+report "no line" where one exists, `ShotPlane` stays final) means the field never has to be exact to
+be sound.
+
+Not a reversal of anything built — the ordering change was never implemented. Recorded because the
+reasoning that produced it was sound and is worth keeping: it was the right fix for the half of the
+problem that had been measured, and it was replaced by re-examining the half that hadn't.
+
 ## The retired plan
 `PLAN.md` v2.1 and earlier described the from-scratch foundation build (Phase 0 harness, v1-survival
 table, exposure-table deletion, the `los.gd` `range`-shadow bug fix). All shipped. The v2.1 plan is
