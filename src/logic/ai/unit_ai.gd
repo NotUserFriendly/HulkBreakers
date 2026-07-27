@@ -79,6 +79,14 @@ const NO_LOF_PENALTY := 2000.0
 ## dominate any plausible `distance_penalty` spread on a real map" is
 ## specified.
 const OBSTRUCTION_PENALTY_WEIGHT := 1000.0
+## taskblock-43 Pass D: how far from its leader's destination a FOLLOWER will
+## look for a cell of its own — "a decent cell within a small radius of it, a
+## local scan over a handful of cells, not a search over everything reachable."
+## 1 keeps it to the 9 cells around the destination at most, which is what makes
+## a follower's plan dramatically cheaper than a leader's rather than merely
+## cheaper. Flagged, not a tuned design number: widen it and followers spread out
+## more while the pass buys less.
+const FOLLOWER_SCAN_RADIUS := 1
 
 ## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
 ## actual playstyle set... so new playstyles appear automatically, not a
@@ -104,6 +112,14 @@ const PLAYSTYLES: Array[StringName] = [
 ## perf change whose fast path never runs passes an identical-output test
 ## trivially and proves nothing. Reset by the test; never read by planning.
 static var candidates_skipped: int = 0
+## taskblock-43 Pass D: how many full `_pick_engagement_position` searches have
+## run since the last reset. Exists for the same reason `candidates_skipped`
+## does — "a follower's plan does not call `_pick_engagement_position`" is the
+## pass's own acceptance, and it is not observable from the returned queue: a
+## follower and a leader can legitimately choose the same cell, so only counting
+## the searches distinguishes "skipped the search" from "searched and agreed."
+## Reset by tests; never read by planning.
+static var engagement_searches: int = 0
 
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
@@ -305,6 +321,13 @@ static func _plan_ranged(
 
 	if fired_without_moving:
 		_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
+		# tb43 Pass D: standing and firing IS a settled destination, so a batch's
+		# first mover claims leadership here too rather than only on the
+		# repositioning path. Otherwise a leader that had a shot from where it
+		# stood would silently hand leadership to the next member to act, and the
+		# batch would converge on that unit instead of on the one already
+		# engaging — leadership would follow whoever happened to need to move.
+		state.batch_plans.claim(unit, state.round_number, unit.cell)
 		AiDecisionLog.emit(state, unit, &"fired_in_place", true, false, &"none")
 	else:
 		var queued_before: int = queue.actions.size()
@@ -347,29 +370,57 @@ static func _plan_ranged(
 				else:
 					branch = &"no_lof_no_route"
 		else:
-			# tb43 Pass B: the scorer sees the culled rectangle; the LOF scan
-			# above deliberately still sees the WHOLE reachable set. Culling
-			# before that check would let a discarded cell flip which BRANCH
-			# runs (engagement vs. the approach fallback), which is a much
-			# larger behaviour change than picking a different cell within
-			# the branch this pass is actually scoped to.
-			best_cell = _pick_engagement_position(
-				unit,
-				enemy,
-				state,
-				preferred_range,
-				weight_cover,
-				weapon,
-				EngagementRect.cull(
-					unit, enemy, _target_distance(weapon, preferred_range), reachable
-				),
-				true,
-				lof_cache
-			)
+			# tb43 Pass D: a FOLLOWER skips the positional search entirely and
+			# scans a handful of cells around its leader's destination instead.
+			# `plan_to_follow` is empty for an independent unit (every unit,
+			# until a bout assigns a batch by hand) and for the batch's own
+			# leader, both of which fall through to the full search below.
+			var follow: Dictionary = state.batch_plans.plan_to_follow(unit, state.round_number)
+			if not follow.is_empty():
+				best_cell = _pick_follow_position(
+					unit,
+					enemy,
+					state,
+					preferred_range,
+					weight_cover,
+					weapon,
+					reachable,
+					follow["destination"],
+					lof_cache
+				)
+				branch = &"followed_leader"
+			else:
+				# tb43 Pass B: the scorer sees the culled rectangle; the LOF scan
+				# above deliberately still sees the WHOLE reachable set. Culling
+				# before that check would let a discarded cell flip which BRANCH
+				# runs (engagement vs. the approach fallback), which is a much
+				# larger behaviour change than picking a different cell within
+				# the branch this pass is actually scoped to.
+				best_cell = _pick_engagement_position(
+					unit,
+					enemy,
+					state,
+					preferred_range,
+					weight_cover,
+					weapon,
+					EngagementRect.cull(
+						unit, enemy, _target_distance(weapon, preferred_range), reachable
+					),
+					true,
+					lof_cache
+				)
 			if best_cell != unit.cell:
 				var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
 				if path.size() >= 2:
 					queue.enqueue(MoveAction.new(unit, path), state)
+		# tb43 Pass D: claimed AFTER the whole branch, so the approach/closing
+		# fallbacks settle on a real destination and claim it too — a batch whose
+		# leader spent its turn walking around a corner should still be led toward
+		# that corner. Safe to call on the follower path as well: a follower only
+		# IS one because a plan already exists this round, and `BatchPlan.record`
+		# refuses a second claim, so this can never let a follower redirect the
+		# batch it belongs to.
+		state.batch_plans.claim(unit, state.round_number, best_cell)
 		# tb33 Pass A: same LOF addition as `clear_from_here` above.
 		# tb35 Pass A1: kept as two named locals (not inlined into
 		# `final_blocked` alone) so the decision log below can attribute a
@@ -712,6 +763,71 @@ static func _ally_in_firing_line(
 	return hit_unit != target and hit_unit.alive and hit_unit.squad_id == unit.squad_id
 
 
+## taskblock-43 Pass D: a follower's whole positional decision — a local scan of
+## the handful of reachable cells near its leader's destination, in place of
+## `_pick_engagement_position`'s search over everything reachable. This is where
+## the block's cost actually goes: the expensive search runs once per batch per
+## round instead of once per unit per round.
+##
+## **The unit's own cell is deliberately NOT seeded as the incumbent**, unlike
+## `_pick_engagement_position`. Seeding it would compare "stand still" against a
+## handful of cells clustered somewhere else entirely, and standing still would
+## usually win on distance alone — every follower would freeze in place and the
+## batch would never form up. The follower already had its chance to stay put:
+## `_plan_ranged`'s own "can I fire from where I stand" check runs BEFORE this
+## and is untouched, so a follower with a real shot takes it rather than jogging
+## toward its leader first.
+##
+## When nothing reachable is near the destination — the common case for a
+## follower that starts the round far from its leader — this walks as far toward
+## it as the turn allows, greedily and with **no scoring at all**. That is the
+## cheapest branch and the most frequent one.
+static func _pick_follow_position(
+	unit: Unit,
+	enemy: Unit,
+	state: CombatState,
+	preferred_range: int,
+	weight_cover: bool,
+	weapon: Part,
+	reachable: Array[Vector2i],
+	destination: Vector2i,
+	lof_cache: Variant = null
+) -> Vector2i:
+	var near: Array[Vector2i] = []
+	for cell: Vector2i in reachable:
+		if Grid.distance_chebyshev(cell, destination) <= FOLLOWER_SCAN_RADIUS:
+			near.append(cell)
+	if near.is_empty():
+		return _closest_reachable_to(unit.cell, destination, reachable)
+
+	var best_cell: Vector2i = near[0]
+	var best_score: float = -INF
+	for cell: Vector2i in near:
+		var score: float = _engagement_score(
+			cell, enemy, state, unit, preferred_range, weight_cover, weapon, true, lof_cache
+		)
+		if score > best_score:
+			best_score = score
+			best_cell = cell
+	return best_cell
+
+
+## Plain greedy closing on `target`, no scoring — the same shape `_path_toward`
+## uses, over a candidate list the caller already has rather than a fresh
+## `Pathfinder.reachable` walk of its own.
+static func _closest_reachable_to(
+	from_cell: Vector2i, target: Vector2i, reachable: Array[Vector2i]
+) -> Vector2i:
+	var best_cell: Vector2i = from_cell
+	var best_distance: int = Grid.distance_chebyshev(from_cell, target)
+	for cell: Vector2i in reachable:
+		var distance: int = Grid.distance_chebyshev(cell, target)
+		if distance < best_distance:
+			best_distance = distance
+			best_cell = cell
+	return best_cell
+
+
 ## The best reachable-this-turn cell to fight from: if `weight_cover`,
 ## covered cells always beat uncovered ones; among cells tied on cover
 ## (or always, when `weight_cover` is false), the one closest to
@@ -742,6 +858,7 @@ static func _pick_engagement_position(
 	any_reachable_has_lof: bool,
 	lof_cache: Variant = null
 ) -> Vector2i:
+	engagement_searches += 1
 	var best_cell: Vector2i = unit.cell
 	var best_score: float = _engagement_score(
 		unit.cell,

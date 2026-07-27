@@ -33,7 +33,15 @@ GODOT="${GODOT:-godot}"
 #    score early-out's own soundness argument (the enumeration of which terms
 #    can raise a score) belongs next to the code it constrains, since a future
 #    term added without joining that list silently changes which cell the AI
-#    picks. Same file, same reasoning as every prior bump.
+#    picks. Same file, same reasoning as every prior bump; raised again to
+#    1300 across taskblock-43 Pass D's follower planner. Pass B and Pass C
+#    both took the other option first and put their new logic in NEW files
+#    (src/logic/ai/engagement_rect.gd, src/logic/ai/batch_plan.gd), and Pass D
+#    moved its two batch-plan queries onto BatchPlan for the same reason —
+#    what is left in unit_ai.gd is the follower's local scan, which calls the
+#    private _engagement_score and cannot leave without either making that
+#    public or threading a scorer Callable through, both worse than 100 lines
+#    of headroom.
 gdlint src test
 
 # 2. Warm-up import so class_name scripts register (required on cold checkouts).
