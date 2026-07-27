@@ -38,6 +38,21 @@ var level: float = 0.0
 ## what drives position and the shot plane. Synced everywhere `level` is.
 var height: float = 0.0
 var squad_id: int = 0
+## taskblock-43 Pass C: which planning batch this unit belongs to, where **0
+## means "independent — plans for itself"** and is the default, so nothing
+## changes until a bout deliberately assigns one.
+##
+## **This is deliberately NOT `squad_id`, which cannot carry it.** `squad_id` is
+## the TEAM — 0/1, player/enemy, the two rosters `generate_bout_overlay` builds —
+## and that meaning is assumed throughout the tests and every extraction/
+## targeting/friendly-fire check in the codebase. A batch is a sub-group WITHIN a
+## team, so it needs its own field; overloading the team id would have made every
+## batch a second team.
+##
+## Assigned by hand only (`BoutInjector.set_batch`). Generated missions do not
+## assign batches — automatic assignment is explicitly out of scope for this
+## block and lives in `docs/PLAN.md`.
+var batch_id: int = 0
 
 var ap: int = 0
 var max_ap: int = DEFAULT_MAX_AP
@@ -230,6 +245,11 @@ func can_use_part(part: Part, ladder: Array[SurrogateTier]) -> bool:
 func dup() -> Unit:
 	var cloned := Unit.new(matrix.duplicate(true) as Matrix, shell.dup(), cell, squad_id)
 	cloned.id = id
+	# taskblock-43 Pass C: batch membership has to ride along here and survive
+	# `CombatState.add_unit`'s own re-registration (which re-registers EVERY
+	# unit, dead ones included) — a preview clone that silently lost its batch
+	# would plan as an independent and disagree with the real unit it previews.
+	cloned.batch_id = batch_id
 	cloned.ap = ap
 	cloned.max_ap = max_ap
 	cloned.mp = mp

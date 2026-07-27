@@ -100,6 +100,19 @@ const WEAPON_LABEL_FIT_FRACTION := 0.6
 ## same order of magnitude as board_view.gd's own overlay-above-ground
 ## offsets (0.02-0.04).
 const WEAPON_LABEL_SURFACE_OFFSET := 0.005
+## taskblock-43 Pass C: the batch badge — a small billboarded tag floating above
+## a batched unit, reading `B2` for a member and `B2*` for whichever member is
+## currently leading (`BatchPlan.badge_for` decides the text; this only draws
+## it). An unbatched unit gets an empty string and therefore no node at all, so
+## the overwhelmingly common case looks exactly as it did before this pass.
+##
+## Clear of the tallest reference humanoid rather than scaled to the body: a
+## badge whose height depended on the shell would drift between units and stop
+## reading as one row across a squad.
+const BATCH_BADGE_Y := 2.6
+const BATCH_BADGE_FONT_SIZE := 22
+const BATCH_BADGE_PIXEL_SIZE := 0.006
+const BATCH_BADGE_COLOR := Color(1.0, 0.92, 0.55)
 ## taskblock-22 Pass G2: the isolate-camera primitive — a SECOND, real
 ## Camera3D (InspectPanel's own bot viewer) shares this SAME live World3D
 ## (never a disconnected duplicate) so it can render the actual unit at
@@ -141,6 +154,12 @@ var _selected: bool = false
 ## for both overlays alike — toggles `_facing_wedge.visible` now, not a
 ## color.
 var _is_active_turn: bool = false
+## taskblock-43 Pass C: the last text `set_batch_badge` was given, and the node
+## drawing it (null whenever the text is empty). Stored for the same reason
+## `_is_active_turn` is: `refresh()` tears the whole child subtree down, and a
+## mid-turn rebuild must not drop a badge until something explicitly clears it.
+var _batch_badge_text: String = ""
+var _batch_badge: Label3D = null
 var _team_marker: MeshInstance3D
 ## taskblock-27 Pass D2: stored so `set_selected` can recolor it live —
 ## before this, the wedge's own color was fixed at whatever
@@ -213,6 +232,55 @@ func set_active_turn(is_active: bool) -> void:
 ## restored the instant this clears) so the two can never fight. Never
 ## applies to `_team_marker`/`_facing_wedge` (ground overlays, not body
 ## geometry — `set_active_turn`'s own concern).
+## taskblock-43 Pass C: shows (or clears, on `""`) this unit's batch badge.
+## Driven by `BattleScene.apply_batch_badges()` from `BatchPlan.badge_for` — this
+## side never asks what a batch is or who leads it, it only draws the string it
+## is handed. That split is what makes the decision headlessly testable while CC
+## cannot see the screen.
+func set_batch_badge(text: String) -> void:
+	if text == _batch_badge_text and (text == "") == (_batch_badge == null):
+		return
+	_batch_badge_text = text
+	_rebuild_batch_badge()
+
+
+## The badge is a direct child of this view, like the ground markers, so the full
+## rebuild and the cheap transform-only refresh both have to place it at the SAME
+## index — `test_hit_volume_view.gd` pins that those two paths leave an identical
+## node list, and a badge appended at a different point in each would break that
+## identity without changing anything visible. It sits immediately after the
+## markers in both.
+func _rebuild_batch_badge() -> void:
+	if _batch_badge != null:
+		remove_child(_batch_badge)
+		_batch_badge.queue_free()
+		_batch_badge = null
+	if _batch_badge_text == "" or unit == null:
+		return
+	_batch_badge = _build_batch_badge(_batch_badge_text)
+	add_child(_batch_badge)
+	move_child(_batch_badge, 2 if _facing_wedge != null else 1)
+
+
+func _build_batch_badge(text: String) -> Label3D:
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = BATCH_BADGE_FONT_SIZE
+	label.pixel_size = BATCH_BADGE_PIXEL_SIZE
+	label.modulate = BATCH_BADGE_COLOR
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	# Readable through whatever it happens to float behind — a badge that
+	# disappears behind a wall is worse than no badge, since it reads as "this
+	# unit left its batch" rather than "you cannot see it from here".
+	label.no_depth_test = true
+	label.position = Vector3(
+		unit.cell.x * UnitGeometry.CELL_SIZE,
+		unit.height + BATCH_BADGE_Y,
+		unit.cell.y * UnitGeometry.CELL_SIZE
+	)
+	return label
+
+
 func set_occlusion_faded(is_faded: bool) -> void:
 	if _occlusion_faded == is_faded:
 		return
@@ -245,6 +313,11 @@ func refresh() -> void:
 		child.queue_free()
 	_team_marker = null
 	_facing_wedge = null
+	# tb43 Pass C: the NODE is gone with every other child; `_batch_badge_text`
+	# deliberately is not, so the badge comes back below rather than vanishing
+	# until something explicitly re-sets it — the same posture `_is_active_turn`
+	# already has.
+	_batch_badge = null
 	_meshes_by_part.clear()
 	_transform_nodes.clear()
 	_structure_signature = ""
@@ -264,6 +337,7 @@ func refresh() -> void:
 		_facing_wedge = _build_facing_wedge()
 		_facing_wedge.visible = _is_active_turn
 		add_child(_facing_wedge)
+	_rebuild_batch_badge()
 
 	var team_color: Color = WorldPalette.team_color(unit.squad_id)
 	# docs/10 taskblock05 F3: DOWN is now a real Pose, passed in explicitly
@@ -436,6 +510,9 @@ func _rebuild_ground_markers() -> void:
 		_facing_wedge.visible = _is_active_turn
 		add_child(_facing_wedge)
 		move_child(_facing_wedge, 1)
+	# tb43 Pass C: the badge carries a world transform like the markers, so a
+	# move has to move it too.
+	_rebuild_batch_badge()
 
 
 ## docs/10 taskblock04 C1's own "field object" case: a bare part tree with

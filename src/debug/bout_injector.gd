@@ -653,6 +653,33 @@ func set_mp(unit: Unit, mp: float) -> bool:
 	return true
 
 
+## taskblock-43 Pass C: assigns `unit` to a planning batch, or back to
+## independence with `batch_id` 0 — the one way batches are assigned at all in
+## this block (generated missions deliberately assign none). A plain field write
+## with no backing mechanism to front, like `set_ap`/`set_facing` above; the
+## behaviour it unlocks is the planner's, not this verb's.
+##
+## Deliberately NOT clamped or validated against existing batch ids: a batch is
+## an open integer grouping, so "put this unit in a batch nothing else is in yet"
+## is a legitimate thing to force, and inventing a registry to check against
+## would be a second source of truth for something `Unit.batch_id` already fully
+## describes.
+func set_batch(unit: Unit, batch_id: int) -> bool:
+	if not _guard(&"set_batch", {"unit": unit.id, "batch": batch_id}):
+		return false
+	unit.batch_id = batch_id
+	_log_injection(
+		&"set_batch",
+		{"unit": unit.id, "batch": batch_id},
+		(
+			"unit %d -> batch %d" % [unit.id, batch_id]
+			if batch_id != 0
+			else "unit %d -> independent" % unit.id
+		)
+	)
+	return true
+
+
 func set_facing(unit: Unit, orientation: float) -> bool:
 	if not _guard(&"set_facing", {"unit": unit.id, "orientation": orientation}):
 		return false
