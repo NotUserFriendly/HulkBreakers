@@ -130,6 +130,12 @@ static func all() -> Array[DebugVerbSpec]:
 			Callable(DebugVerbs, &"_apply_set_facing")
 		),
 		DebugVerbSpec.new(
+			&"set_batch",
+			"Set Batch",
+			[DebugVerbSpec.param(&"unit", P.UNIT), DebugVerbSpec.param(&"batch_id", P.INT)],
+			Callable(DebugVerbs, &"_apply_set_batch")
+		),
+		DebugVerbSpec.new(
 			&"set_pose",
 			"Set Pose",
 			[DebugVerbSpec.param(&"unit", P.UNIT), DebugVerbSpec.param(&"pose_id", P.POSE)],
@@ -276,6 +282,10 @@ static func _apply_set_mp(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -
 
 static func _apply_set_facing(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.set_facing(a.unit, a.orientation)
+
+
+static func _apply_set_batch(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.set_batch(a.unit, a.batch_id)
 
 
 static func _apply_set_pose(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

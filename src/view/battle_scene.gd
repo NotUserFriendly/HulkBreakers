@@ -455,6 +455,7 @@ func refresh_unit_views(affected_unit_ids: Variant = null, apply_highlight: bool
 		if affected_unit_ids == null or (view.unit != null and view.unit.id in affected_unit_ids):
 			if not view.refresh_transforms():
 				view.refresh()
+	apply_batch_badges()
 	if apply_highlight:
 		apply_active_turn_highlight()
 
@@ -466,6 +467,29 @@ func apply_active_turn_highlight() -> void:
 	var current: Unit = combat_state.current_unit() if combat_state != null else null
 	for view: HitVolumeView in unit_views:
 		view.set_active_turn(view.unit != null and view.unit == current)
+
+
+## taskblock-43 Pass C: pushes each unit's batch badge — `B2` for a member of
+## batch 2, `B2*` for whichever member is currently leading it, nothing at all
+## for the independent (`batch_id == 0`) units that make up every bout until one
+## is assigned by hand. Unconditional in `refresh_unit_views`, unlike the
+## active-turn highlight: the badge is not a turn-ordering signal that a caller
+## might want to defer until an animation finishes, it just says who is grouped
+## with whom.
+##
+## Every decision here belongs to `BatchPlan.badge_for` and none of it to the
+## view — CC cannot see the screen, so what the badge SAYS has to be answerable
+## in a headless test, leaving this loop with nothing in it that could be
+## subtly wrong.
+func apply_batch_badges() -> void:
+	if combat_state == null:
+		return
+	for view: HitVolumeView in unit_views:
+		if view.unit == null:
+			continue
+		view.set_batch_badge(
+			combat_state.batch_plans.badge_for(view.unit, combat_state.round_number)
+		)
 
 
 ## Public (not just _ready-internal) so a headless caller/test can seed a

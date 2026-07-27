@@ -29,6 +29,13 @@ var rng: RandomNumberGenerator
 ## it wants (Memory/Stdout/File/UI). Every impact and abort in resolve_turn()
 ## emits here.
 var combat_log: CombatLog = CombatLog.new()
+## taskblock-43 Pass C: the AI's own round-scoped batch plans (`BatchPlan`).
+## Per-bout, like `combat_log` and `rng` above, because a batch's leader records
+## a plan on its turn that a follower reads on a LATER turn in the same round —
+## there is nowhere else with that lifetime. A planner memo only: nothing in
+## resolution reads it, and it is empty for every bout that never assigns a
+## `Unit.batch_id` (all of them, until one is assigned by hand).
+var batch_plans: BatchPlan = BatchPlan.new()
 ## Shared across the whole battle (docs/03) so every attack resolves DT and
 ## ricochet against the same tuning, not a fresh default per shot.
 var material_table: MaterialTable = DataLibrary.material_table()
