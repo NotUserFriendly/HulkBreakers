@@ -964,6 +964,10 @@ confirm" roll-up — so pending items surface at a natural review point without 
   if the bound is gotten wrong, and this codebase has already been burned once by a plausible-looking
   formula nobody could verify without a live client (docs/00's own attack-camera yaw story). Flagging
   rather than guessing at a fix under time pressure.
+- **2026-07-26 — NOT addressed (tb42 Pass E)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Named in
+  the pass as a companion item and deliberately left: `PartPicker.hit` still scans every
+  `grid.blockers`/`field_items` entry per call. Stated rather than quietly dropped — it is `CC`-owned
+  and small, and belongs to whoever picks this up next.
 ### BR35.02 — Active — owner: `CC`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
@@ -980,7 +984,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   resolved cell (or a real physics/geometry raycast against the wall meshes `BoardView` already
   builds) before trusting `BoardPicker`'s own result — a genuine new check, not a one-line guard, and
   risky to improvise without live verification.
-### BR35.03 — Active — owner: `CC`
+### BR35.03 — Pending — owner: `CC`
 **Every debug-panel verb rebuilds the entire board view, not just ones that touch blockers/field items**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay.
@@ -994,6 +998,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
   actually touch `grid.blockers`/`field_items` — `move_object`/`spawn_object`/`remove_object`) but
   getting the verb-id list exactly right (not missing one that can add/move/remove a blocker or field
   item) wants a careful pass of its own rather than a rushed guess at the end of an already-long one.
+- **2026-07-26 — `Pending` (tb42 Pass E)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Both overlays'
+  `_on_debug_panel_applied` called `sync_board_view()` — a full `BoardView.build()` of terrain, grid
+  lines, every blocker and every field item — after **every** verb, including the ~20 that only ever
+  touch one unit's AP, facing, pose or parts. `DebugVerbs.affects_board()` is now the one authority
+  both overlays read; the same question answered separately in two files is how they drift.
+  `move_object`/`remove_object` stay in the list unconditionally: either can target a cell or a unit,
+  decided at call time, and a missed board rebuild is invisible-until-noticed while an extra one is
+  merely slow.
+  - A test checks the list against `DebugVerbs.all()`, and immediately earned it: my first draft
+    listed `place_cover`/`clear_cover`, which are **not** panel verbs (the panel exposes
+    `spawn_object`/`remove_object`, which front both). They matched nothing and would have quietly
+    misled the next reader.
+  - **To confirm:** open `Inject...`, apply a unit-only verb (Set AP, Set Facing), and check the board
+    does not visibly rebuild; then apply Set Cell Level or Spawn Object and check it does.
 ### BR35.04 — Active — owner: `SUPERVISOR`
 **A DEFLECT's drawn "bounce" tracer is a decorative fixed-range projection, not the real continuation**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`

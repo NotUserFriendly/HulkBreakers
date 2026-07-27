@@ -758,7 +758,11 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 		if object.get("kind") == Enums.HitKind.UNIT and object.get("unit") != null:
 			battle.remove_unit_view(object.unit)
 	battle.sync_unit_views()
-	battle.sync_board_view()
+	# taskblock-42 Pass E (BR35.03): only when the verb actually changed the
+	# board. Rebuilding terrain, grid lines and every blocker to reflect a
+	# changed AP value was the whole of that entry.
+	if DebugVerbs.affects_board(verb_id):
+		battle.sync_board_view()
 	battle.refresh_unit_views()
 	_update_readout_header()
 

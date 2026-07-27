@@ -202,6 +202,14 @@ func _move_unit(unit: Unit, cell: Vector2i) -> StringName:
 	unit.cell = cell
 	if unit.alive:
 		state.grid.set_occupant_id(cell, unit.id)
+	# taskblock-42 Pass E: `height`/`level` re-derived from the destination, the
+	# same thing `CombatState.add_unit` and `MoveAction` both already do on every
+	# real move. This was missing, so a debug move onto a raised cell left the
+	# unit rendering at its OLD elevation — it moved in X/Z and stayed at the
+	# wrong height. Invisible on a flat map, which is why it survived: every
+	# headless fixture that exercised this verb was flat.
+	unit.height = UnitGeometry.true_height_for_cell(cell, state.grid)
+	unit.level = unit.height / UnitGeometry.LEVEL_HEIGHT
 	return &""
 
 
