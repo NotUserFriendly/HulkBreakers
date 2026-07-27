@@ -424,6 +424,33 @@ confirm" roll-up — so pending items surface at a natural review point without 
     Threading has no state to go stale — the "cache invalidates on any structural change" acceptance
     is met by there being nothing to invalidate. Every existing call site is untouched: the new
     parameters default to empty and walk on demand exactly as before.
+- **2026-07-26 (tb42 Pass D — cost #4: the batch yields now, and THE HITCH IS NOT FIXED)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. `advance_ai_turns` was a bare `while` loop with no
+  `await` anywhere in it; it now yields a frame between units, so input is processed and the board
+  draws while the batch runs, and each unit's own move becomes visible as it happens instead of the
+  whole opposing team appearing to teleport at the end.
+  - **The measurement that matters, and it is bad: a single `BoutRunner.step()` costs ~1672ms.**
+    24 steps of a real 3v3 bout took **40.1 seconds** of pure planning. **Yielding BETWEEN steps
+    therefore buys one responsive frame every ~1.7 seconds — it does not fix this entry.** The
+    several-second hitch is one `UnitAI.plan_turn` call, not an accumulation of small ones, and no
+    amount of yielding around it addresses that.
+  - **This relocates the bug.** Costs #1–#3 are now measured and cut (5–10ms, ~500µs, ~78µs
+    respectively) and together they are **under 1%** of a single step. The remaining ~1.7s/step lives
+    inside `UnitAI.plan_turn` — per-candidate-cell pathfinding, LOS and cover scoring, which tb35
+    Pass A3 already halved once (2023ms → 974ms per turn) by removing duplicate `ShotPlane` work and
+    named the remainder as real per-cell geometry. It has since grown again. **That is the whole
+    bug now, and it wants an algorithmic pass of its own, not another sweep.**
+  - **Determinism verified, and it was the acceptance rather than the speed.** A seeded bout driven
+    through the yielding overlay path and through a tight `BoutRunner` loop with no yielding lands
+    in an identical state (`test_ai_batch_yield.gd`). `step()` draws only from `state.rng` and
+    nothing on the frame path touches it.
+  - **Coalescing fork, decided before implementing:** refresh only the units THAT step touched,
+    after that step. taskblock-19 Pass I2's measured waste was refreshing the whole board repeatedly;
+    this is proportional to what changed (usually one unit), and Pass B made each ~2.4× cheaper. The
+    accumulated set still gets one final pass so the active-turn highlight lands on the real end
+    state.
+  - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
+    actual symptom is not.
 - **2026-07-26 (tb41 Pass A — cost #1 fixed, but by coalescing, NOT by the `append_text` this entry
   prescribes)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. **Supervisor approved the override; this
   is an append, not a status change.** Cost #1's stated fix — "incremental `RichTextLabel.append_text`
