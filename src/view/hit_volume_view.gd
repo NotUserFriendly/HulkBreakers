@@ -155,6 +155,14 @@ var _facing_wedge: MeshInstance3D = null
 ## highlight survives a rebuild (e.g. taking damage mid-hover).
 var _highlighted_part: Part = null
 var _meshes_by_part: Dictionary = {}  # Part -> Array[MeshInstance3D]
+## taskblock-42 Pass B: every node whose transform comes from a `BoxPlacement`,
+## in the exact order `refresh()` created them, so `refresh_transforms()` can
+## rewrite them by index against a re-walk that produces the same order.
+var _transform_nodes: Array[Node3D] = []
+## What the NODE SET depends on — part order, per-part box counts, which render
+## path each part took, and downed-ness. `refresh_transforms()` refuses to run
+## when this changes, because that is exactly when reusing nodes would be wrong.
+var _structure_signature := ""
 ## tb32 Pass B: set by `BattleScene._process()` — this unit's own real
 ## body is currently occluding the active/aiming unit's own read of its
 ## shot. `set_occlusion_faded` re-applies this on every `refresh()` (a
@@ -238,6 +246,8 @@ func refresh() -> void:
 	_team_marker = null
 	_facing_wedge = null
 	_meshes_by_part.clear()
+	_transform_nodes.clear()
+	_structure_signature = ""
 	if unit == null:
 		return
 
@@ -297,10 +307,135 @@ func refresh() -> void:
 			for placement: BoxPlacement in part_placements:
 				_add_box_instance(placement, team_color)
 
+	_structure_signature = _signature_for(part_order, placements_by_part)
+
 	if _highlighted_part != null:
 		highlight_part(_highlighted_part)
 	if _occlusion_faded:
 		_apply_occlusion_fade()
+
+
+## taskblock-42 Pass B (BR27.09 cost #2): the cheap refresh. A unit that MOVED
+## has the same parts, the same boxes and the same meshes — only transforms
+## changed — yet `refresh()` frees every child and re-instances all of them.
+## That teardown is fully wasted for the most common case there is.
+##
+## Rewrites transforms on the nodes already built and returns true. **Returns
+## false, changing nothing, whenever the node set would differ** — a part
+## destroyed, attached, mangled into a different render path, or the unit going
+## down. The caller then falls back to a full `refresh()`.
+##
+## The self-check is the whole safety argument for this pass. The risk here was
+## never speed, it was a view that silently stops updating in a case nobody
+## enumerated; refusing on any structural difference means the cheap path can
+## only ever be correct or decline.
+func refresh_transforms() -> bool:
+	if unit == null or _structure_signature == "":
+		return false
+	var pose: Variant = Poses.down() if is_downed() else null
+	var placements_by_part: Dictionary = {}
+	var part_order: Array[Part] = []
+	for placement: BoxPlacement in UnitGeometry.placements(unit, preview_orientation, pose):
+		if not placements_by_part.has(placement.part):
+			placements_by_part[placement.part] = [] as Array[BoxPlacement]
+			part_order.append(placement.part)
+		(placements_by_part[placement.part] as Array[BoxPlacement]).append(placement)
+
+	if _signature_for(part_order, placements_by_part) != _structure_signature:
+		return false
+	var transforms: Array[Transform3D] = _ordered_transforms(part_order, placements_by_part)
+	if transforms.size() != _transform_nodes.size():
+		return false
+
+	for i in range(transforms.size()):
+		var node: Node3D = _transform_nodes[i]
+		if not is_instance_valid(node):
+			return false
+		node.transform = transforms[i]
+
+	# The marker and wedge carry world transforms of their own (every child of
+	# this view does — placements are world-space), so a move has to move them
+	# too. Two nodes rebuilt instead of the ~30 a full refresh frees.
+	_rebuild_ground_markers()
+	return true
+
+
+## The flat transform list in the exact order `refresh()` creates nodes: per
+## part, the whole-part mesh or primitive first (which uses placement 0), then
+## one box per placement. Kept adjacent to `refresh()` deliberately — if that
+## loop's order ever changes, this must change with it, and the signature check
+## alone would not catch a pure reordering.
+func _ordered_transforms(
+	part_order: Array[Part], placements_by_part: Dictionary
+) -> Array[Transform3D]:
+	var result: Array[Transform3D] = []
+	for part: Part in part_order:
+		var part_placements: Array[BoxPlacement] = placements_by_part[part]
+		var has_mesh: bool = part.mesh_scene != null
+		var has_primitive: bool = not has_mesh and part.render_primitive != &"BOX"
+		if has_mesh:
+			result.append(part_placements[0].transform)
+		elif has_primitive:
+			result.append(
+				part_placements[0].transform.translated_local(part_placements[0].box.center)
+			)
+		if (not has_mesh and not has_primitive) or show_hit_volumes:
+			for placement: BoxPlacement in part_placements:
+				result.append(placement.transform.translated_local(placement.box.center))
+	return result
+
+
+## Everything the NODE SET depends on, and nothing the transforms depend on —
+## a signature that changed when a unit merely moved would defeat the purpose.
+func _signature_for(part_order: Array[Part], placements_by_part: Dictionary) -> String:
+	var parts := PackedStringArray()
+	for part: Part in part_order:
+		var has_mesh: bool = part.mesh_scene != null
+		var has_primitive: bool = not has_mesh and part.render_primitive != &"BOX"
+		(
+			parts
+			. append(
+				(
+					"%d:%d:%s"
+					% [
+						part.get_instance_id(),
+						(placements_by_part[part] as Array[BoxPlacement]).size(),
+						"m" if has_mesh else ("p" if has_primitive else "b"),
+					]
+				)
+			)
+		)
+	return "%s|%s|%s" % ["down" if is_downed() else "up", show_hit_volumes, "/".join(parts)]
+
+
+## The marker and wedge carry world transforms like every other child, so a
+## move has to move them — but they are two nodes, not the ~30 a full rebuild
+## frees, so they are simply rebuilt.
+##
+## **Re-inserted at the front, in the order `refresh()` builds them.** Without
+## the `move_child` calls a rebuilt marker lands at the END of the child list,
+## so a cheaply-refreshed view and a fully-rebuilt one would hold the same
+## nodes in a different tree order. Nothing renders differently for it — every
+## child is world-space — but "identical to a full rebuild" then stops being
+## literally true, and the equivalence test that guards this pass is worth more
+## than the two lines it costs to keep honest.
+func _rebuild_ground_markers() -> void:
+	if _team_marker != null:
+		remove_child(_team_marker)
+		_team_marker.queue_free()
+	_team_marker = _build_team_marker()
+	_team_marker.visible = _is_active_turn
+	add_child(_team_marker)
+	move_child(_team_marker, 0)
+	if _facing_wedge != null:
+		remove_child(_facing_wedge)
+		_facing_wedge.queue_free()
+		_facing_wedge = null
+	if not is_downed():
+		_facing_wedge = _build_facing_wedge()
+		_facing_wedge.visible = _is_active_turn
+		add_child(_facing_wedge)
+		move_child(_facing_wedge, 1)
 
 
 ## docs/10 taskblock04 C1's own "field object" case: a bare part tree with
@@ -372,6 +507,7 @@ func _add_mesh_instance(part: Part, placement: BoxPlacement) -> void:
 	var instance: Node3D = part.mesh_scene.instantiate() as Node3D
 	instance.transform = placement.transform
 	add_child(instance)
+	_transform_nodes.append(instance)
 
 
 ## taskblock-10 Pass A: one primitive per part, positioned at that part's
@@ -397,6 +533,7 @@ func _add_primitive_instance(
 	instance.transform = placement.transform
 	instance.scale = part.render_scale
 	add_child(instance)
+	_transform_nodes.append(instance)
 	if not _meshes_by_part.has(part):
 		_meshes_by_part[part] = [] as Array[MeshInstance3D]
 	(_meshes_by_part[part] as Array[MeshInstance3D]).append(instance)
@@ -448,9 +585,12 @@ func _add_box_instance(placement: BoxPlacement, team_color: Color, apply_rim: bo
 	instance.mesh = box_mesh
 	instance.transform = placement.transform.translated_local(placement.box.center)
 	add_child(instance)
+	_transform_nodes.append(instance)
 	if not _meshes_by_part.has(placement.part):
 		_meshes_by_part[placement.part] = [] as Array[MeshInstance3D]
 	(_meshes_by_part[placement.part] as Array[MeshInstance3D]).append(instance)
+	# The weapon label is a CHILD of this instance, so it follows the transform
+	# automatically — nothing extra to track for the cheap refresh path.
 	_add_weapon_label(placement.part, instance, placement.box.size)
 
 

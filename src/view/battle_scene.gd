@@ -444,10 +444,17 @@ func sync_board_view() -> void:
 ## existing caller (`advance_ai_turns`, `SpectatorOverlay._advance()`)
 ## keeps its current "always stays in sync, no deferral" behavior
 ## unchanged.
+## taskblock-42 Pass B (BR27.09 cost #2): tries the cheap transform-only path
+## first and falls back to a full rebuild when the node set genuinely changed.
+## The overwhelmingly common case here is a unit that MOVED — same parts, same
+## boxes, same meshes, only transforms — for which the full teardown was pure
+## waste. `refresh_transforms()` refuses on any structural difference, so the
+## fallback is not a heuristic: it fires whenever reuse would be wrong.
 func refresh_unit_views(affected_unit_ids: Variant = null, apply_highlight: bool = true) -> void:
 	for view: HitVolumeView in unit_views:
 		if affected_unit_ids == null or (view.unit != null and view.unit.id in affected_unit_ids):
-			view.refresh()
+			if not view.refresh_transforms():
+				view.refresh()
 	if apply_highlight:
 		apply_active_turn_highlight()
 

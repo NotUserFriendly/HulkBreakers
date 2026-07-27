@@ -779,7 +779,12 @@ func _on_selection_changed() -> void:
 			target_preview = facing if facing != null else tactics.selection.previewed_orientation()
 		if view.preview_orientation != target_preview:
 			view.preview_orientation = target_preview
-			view.refresh()
+			# taskblock-42 Pass B: this fires on EVERY orientation preview change
+			# while aiming, and an orientation change moves boxes without adding
+			# or removing any — the cheap path's best case. Sits squarely in
+			# BR26.02's aiming path; measured, not assumed.
+			if not view.refresh_transforms():
+				view.refresh()
 	_update_readout_header()
 
 
