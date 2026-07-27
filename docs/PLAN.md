@@ -167,6 +167,37 @@ with it.
 
 # QUEUED
 
+### AI v2 — fill in the tier table
+**Needs:** *AI v2, part two* (the framework and its first two tiers). **Unblocks:** intelligence
+reading as character rather than as difficulty; sensors-as-parts having tiers to degrade *between*.
+
+Part two stands up the machinery against a deliberately small set — a handful of actions, the two
+tiers at opposite ends of the axis, two profiles — because a tier that silently does nothing is the
+failure this design is most exposed to, and that is far easier to catch on a small surface. **This
+item is the rest of the table, and it is deliberately not pinned to a block number**: it is light
+work against a framework that already exists, and it should land when it is convenient rather than
+gate anything.
+
+- **The middle tiers.** Grunt and Elite, filling in between Mindless and Trained. Grunt adds cover,
+  ranged and regroup against last-known positions; Elite adds bait, ambush and setting the batch
+  objective, with full team knowledge and predicted enemy moves at depth 2–3. Elite's lookahead is
+  the one piece with real structural weight — it is also the tier that tests part two's resumability
+  constraint hardest, since a recursive search is the hard thing to suspend and resume.
+- **The rest of the action pool.** The executors already exist in `src/logic/actions/` — twenty of
+  them, tested. What each addition needs is preconditions and a consideration set, not new machinery.
+  Flank, suppress, use-item, call-for-help, and the melee entries once *Momentum* lands.
+- **The rest of the profile table.** Aggressive, cowardly, defensive and the rest as weight vectors
+  over shared considerations (`own_hp_ratio`, `local_threat`, `ally_proximity`, `objective_value`).
+- **Retire the playstyle enum here.** `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER` mixes
+  profile with role and range; standoff and cover-seeking both become consideration weights. Every
+  test keyed to those playstyles migrates with it, which is why it waits until the profile table is
+  real rather than happening alongside the framework.
+- **Tier should derive from Attributes** by the time this lands, rather than staying authored.
+
+**The acceptance is the same one that matters throughout:** each tier and each profile must decide
+*differently* from its neighbours on the same seed. A table where two rows produce identical play is
+a table with a bug in it, and `MIN_COMPLETION_RATE` will not catch it.
+
 ### Player view and sim view — render a snapshot, stay responsive
 **Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the
 snapshot half. **Unblocks:** the hitch stops being a freeze even where it is still slow; safe
@@ -318,6 +349,24 @@ Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAct
   all five express as data bindings with **zero bespoke perk code**, the framework is right. A missing
   seam means add the seam, not the special case.
 - **`Matrix.perks` finally read.**
+
+**Perk families — one slot, several weapon classes.**
+A perk belongs to a **family**, and a family is taken as a unit. *Rapid Fire* consists of *Fan the
+Hammer*, *Mag Dump* and *Pump It*, granting attacks to revolvers, rifles and shotguns respectively.
+
+- **This is a capacity mechanic, not a taxonomy.** A matrix holds only so many perks, so the real
+  choice is breadth against depth: one slot that does something for whatever you happen to be holding,
+  versus one slot that does more for exactly one thing. That trade is what makes families interesting
+  rather than merely tidy.
+- **It is self-limiting, which is why it can be generous.** A family grants all its members, but a
+  member only does anything when you are carrying the weapon it binds to — so a revolver specialist
+  taking *Rapid Fire* gets *Fan the Hammer* and two dead entries. The breadth only pays for a build
+  that actually switches weapons, and no cap or exclusion rule is needed to enforce that.
+- **It costs the framework nothing.** A family `.tres` lists member perks, each already a data binding
+  of an existing kind (*Fan the Hammer* is the action-grant example above). No new binding type, no
+  bespoke code — which is itself a check that the family concept is the right shape.
+- **It gives builds an identity.** "Rapid Fire" reads as a versatile shooter; taking only *Mag Dump*
+  reads as a rifle specialist. Same underlying grants, different character.
 
 **Named perks that stress the framework:**
 - ***First One's Always Perfect*** — the first shot of a burst or activation ignores all accuracy
