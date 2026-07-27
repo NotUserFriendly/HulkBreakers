@@ -47,6 +47,15 @@ human-shaped units fit human infrastructure (seats, doorways, tools) and weird-s
 constraint that *generates* gameplay — a seat expects a torso, so a legless ally can still ride but a
 mulebot can't sit in the driver's seat.
 
+**5. Everything follows turn order.** Units act one at a time, in initiative order, and nothing changes
+that — not batching, not parallelism, not any optimization. A batch is an **amortization** device: the
+leader's expensive work is computed once and reused by followers who each still take their own turn in
+sequence. It is never a device for resolving several units together, and "these units could be decided
+at the same time" is not a licence to act them at the same time. A design that saves time by acting on
+units concurrently or out of order is wrong regardless of how much time it saves. Parallelism, if it
+ever arrives, applies to **pure computation** (visibility fields, reachability against a snapshot) whose
+results are then consumed in turn order — never to the acting itself.
+
 ---
 
 # NEXT
@@ -168,6 +177,20 @@ gets acceptance or only the extremes. `MIN_COMPLETION_RATE` will not catch a mid
 wrong, and a tier that silently does nothing is the failure this design is most exposed to — the
 part-one seam's own anti-vacuity test is the precedent.
 
+**Two structural constraints that must be decided before the scorer is written, not after:**
+
+- **The planner must be resumable.** Yielding mid-plan is what lets the view stay responsive while a
+  unit thinks (see *Player view and sim view*, below), and it is also the deterministic alternative to
+  threading — same candidates, same order, same result, wherever the frame boundaries land. A scorer
+  walking N candidates in a loop is naturally chunkable: yield every K, keep a cursor. An Elite-tier
+  lookahead recursing over predicted enemy moves at depth 2-3 is not, and retrofitting suspend/resume
+  onto the deepest tier later is the expensive version of this decision.
+- **Ties need an explicit deterministic tiebreak.** taskblock-43 already hit this: its Pass B test
+  failed because two cells scored *identically*, and on open ground a whole arc sits at exactly the
+  standoff distance, so which one wins is currently decided by iteration order. Serial iteration is
+  stable, so it is invisible today. Any reordering — parallel scoring, a different candidate source,
+  a reduction — exposes it. Lowest cell index, decided once, written down.
+
 **Intelligence is authored per unit until Attributes lands**, then derived (Int and Wis are the
 obvious sources). Not a blocker; a rewiring.
 
@@ -175,6 +198,59 @@ obvious sources). Not a blocker; a rewiring.
 (aggressive) with role and range (marksman); standoff becomes a consideration weight and cover-seeking
 becomes another. This is a migration, not an addition — every test keyed to those playstyles moves
 with it.
+
+### Player view and sim view — render a snapshot, stay responsive
+**Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the
+snapshot half. **Unblocks:** the hitch stops being a freeze even where it is still slow; safe
+threading later, if it is ever wanted.
+
+**The strategy is to stop hiding the wait and start making it navigable.** A player who can pan, click,
+inspect a unit, and read a panel while a label says *"Unit 2 is thinking…"* is playing a game that is
+working. A player staring at a frozen frame is playing a game that has crashed. Those can be the same
+number of milliseconds.
+
+- **The view renders a snapshot**, holding state as of the last resolved action while the sim works on
+  its own copy; it swaps and animates when planning completes. `refresh_unit_views(touched_ids)` is
+  already the explicit sync point and `dup()` already exists for previews, so the seams are present.
+  This buys *consistency* — the view can never observe a half-mutated state — and it is what would make
+  off-thread work safe later, since a view reading an immutable snapshot cannot race a sim mutating its
+  own copy.
+- **Responsiveness is a separate problem and needs the planner to yield.** A snapshot does not help if
+  the main thread is the busy one; panning still needs that thread to process input and draw. This is
+  why part two's resumability constraint is not optional.
+- **Name the unit in the indicator: "Unit 2 is thinking…", not "Thinking…".** Once named enemies exist,
+  the difference between a mook's turn and a boss's turn becomes legible as *character* rather than as
+  lag — the intelligence tiers make a smarter unit genuinely think longer, and the label turns that
+  from a defect into a tell. Costs nothing to do now and cannot be retrofitted into a habit later.
+- **Time-slice only after the work is small.** Slicing is a smoothness technique, not a speed one:
+  applied to work that is too large it converts a freeze into a long responsive wait, which reads as
+  the game answering input while nothing happens. Make it fast first, slice the remainder.
+
+**This raises the stakes on the stuck-unit escape hatch.** A visible "thinking" state that never ends is
+worse than a freeze, because the player waits *longer* before concluding something is wrong. Panic (see
+below) is the exit strategy and should land with or before this.
+
+### Panic — the stuck-unit escape hatch, made player-visible
+**Needs:** nothing. **Unblocks:** *Player view and sim view* (its indicator needs a guaranteed
+termination); trustworthy AI behaviour generally.
+
+*Promoted out of AI target selection and behaviour, which is where it was first written down.*
+
+A last-resort behaviour when a unit has no productive action, forcing it out rather than idling. The
+approach-fallback is the first narrow instance; the general version catches every stuck case, including
+the one the rebuild makes newly possible — a utility scorer can return **no positive-utility action at
+all**, which is a state the current planner cannot even express.
+
+**Label it visibly so the player sees it fire.** Some escapes are necessarily cheats — a unit
+teleporting, extracting off an extraction tile, shutting down — and a player who sees them unlabelled
+learns the wrong rules. "Panic" says *something went wrong here, don't take this as normal.* An escape
+hatch nobody can see is indistinguishable from a bug, and the same signal doubles as a debugging tell.
+Pairs with command/outcome logging — Panic is the "what happened" line for a unit that had no good
+"what was sent."
+
+**A hard turn budget belongs here too.** Whatever the planner is doing, a unit's turn ends: exceed the
+budget and Panic fires rather than the plan running longer. That is what makes "Unit 2 is thinking…"
+a promise instead of a hope.
 
 ### Tracers and hit visuals
 **Needs:** NEXT item 2 (AI v2 part one). Nominally unblocked by taskblock-43, which did not move the
@@ -684,15 +760,6 @@ Four related gaps in what the AI *chooses* to do, all cheap given the data alrea
   measurement against that fixture found **zero impacts in 400 turns** — not a revised percentage, because
   every unit holds every turn. Not a LOF question: target *selection* needs to skip past a genuinely
   unreachable-by-shot enemy toward one that isn't.
-- **A "Panic" fallback — the stuck-unit escape hatch, made player-visible.** A last-resort behaviour when a
-  unit is stuck with no productive action, forcing it out rather than idling. The approach-fallback is the
-  first narrow instance; the general version catches every stuck case. The second half is the interesting
-  part: **label it visibly, so the player sees it fire.** Some escapes are necessarily cheats — a unit
-  teleporting, extracting off an extraction tile, shutting down — and a player who sees them unlabelled
-  learns the wrong rules. "Panic" says *something went wrong here, don't take this as normal.* An escape
-  hatch nobody can see is indistinguishable from a bug, and the same signal doubles as a debugging tell.
-  Pairs with intent/outcome logging — Panic is the "what happened" line for a unit that had no good "what
-  was sent."
 - **AI for damaged units — head for the nearest weapon.** A disarmed unit has little to do. Since the sim
   knows where everything is, handing it the location of the nearest weapon on the field — not necessarily a
   *functioning* one — gives it a purposeful action.
