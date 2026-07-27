@@ -451,6 +451,23 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-26 (tb43 Pass A — exact early-out in the candidate scorer)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. `_engagement_score` walked two paths per candidate
+  cell (`is_covered_from`, `_ally_in_firing_line`) regardless of how bad the cell's cheap terms
+  already were. **Bound enumeration, in full, because the soundness rests on it:** every term is a
+  non-negative penalty subtracted from the total — distance, obstruction, ally-blocked, min-range,
+  suppression, opportunity, no-LOF — and **exactly one term can raise the score**, `cover_bonus`,
+  bounded by `COVER_SCORE_BONUS` (zero when `weight_cover` is false). Dropping every not-yet-computed
+  penalty therefore gives a true upper bound, and a cell that cannot beat the best complete score so
+  far is skipped whole. `<=` is correct because selection is strict `score > best_score`: a cell that
+  can at best tie never wins.
+  - **Measured: ~1672ms → ~1498ms per AI step (~10%)**, 203 candidates skipped across 12 steps.
+    Real, exact, and **nowhere near enough on its own** — the taskblock's own expectation.
+  - **Acceptance was identical output, not the number.** A seeded bout produces a byte-identical
+    action sequence, and a separate test asserts the skip actually fires — an early-out that never
+    runs passes an identical-output test trivially.
+  - Any future term that can INCREASE a cell's score must join the ceiling, or this silently starts
+    choosing a different cell. Stated in the code at the branch itself.
 - **2026-07-26 (tb41 Pass A — cost #1 fixed, but by coalescing, NOT by the `append_text` this entry
   prescribes)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. **Supervisor approved the override; this
   is an append, not a status change.** Cost #1's stated fix — "incremental `RichTextLabel.append_text`

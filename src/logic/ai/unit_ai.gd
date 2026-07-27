@@ -99,6 +99,12 @@ const PLAYSTYLES: Array[StringName] = [
 	&"TURTLE",
 ]
 
+## taskblock-43 Pass A: how many candidate cells the score early-out skipped
+## since the last reset. Exists so a test can prove the skip actually FIRES — a
+## perf change whose fast path never runs passes an identical-output test
+## trivially and proves nothing. Reset by the test; never read by planning.
+static var candidates_skipped: int = 0
+
 
 ## `playstyle` biases decisions; unrecognised/empty falls back to
 ## AGGRESSIVE (today's own only behaviour) rather than erroring — an
@@ -750,7 +756,8 @@ static func _pick_engagement_position(
 			weight_cover,
 			weapon,
 			any_reachable_has_lof,
-			lof_cache
+			lof_cache,
+			best_score
 		)
 		if score > best_score:
 			best_score = score
@@ -778,10 +785,37 @@ static func _engagement_score(
 	weight_cover: bool,
 	weapon: Part = null,
 	any_reachable_has_lof: bool = true,
-	lof_cache: Variant = null
+	lof_cache: Variant = null,
+	score_to_beat: float = -INF
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
 	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
+	var min_range_penalty: float = (
+		MIN_RANGE_PENALTY if RangeModel.blocks_min_range(weapon, distance) else 0.0
+	)
+	# taskblock-43 Pass A: EXACT early-out, not an approximation.
+	#
+	# **Every term below is subtracted and non-negative; exactly ONE can RAISE
+	# this score — `cover_bonus`, bounded by `COVER_SCORE_BONUS` and zero when
+	# `weight_cover` is false.** Enumerated in full: distance, obstruction,
+	# ally-blocked, min-range, suppression, opportunity and no-LOF are all
+	# penalties in `[0, inf)`. So dropping every not-yet-computed penalty yields
+	# a genuine UPPER BOUND, and a cell that cannot beat the best complete score
+	# so far can skip both line walks (`is_covered_from`, `_ally_in_firing_line`)
+	# and the suppression, opportunity, LOF and obstruction queries with it.
+	#
+	# `<=` is correct because selection uses strict `score > best_score`: a cell
+	# that can at best TIE never wins, so skipping it cannot change the choice.
+	#
+	# **Soundness depends on that enumeration staying true — a future term that
+	# can INCREASE the score must join `ceiling` or this silently picks a
+	# different cell.**
+	var ceiling: float = (
+		(COVER_SCORE_BONUS if weight_cover else 0.0) - distance_penalty - min_range_penalty
+	)
+	if ceiling <= score_to_beat:
+		candidates_skipped += 1
+		return -INF
 	var cover_bonus: float = (
 		COVER_SCORE_BONUS
 		if weight_cover and is_covered_from(cell, enemy.cell, state, self_unit)
@@ -797,9 +831,7 @@ static func _engagement_score(
 	# taskblock-19 Pass C3: "only closes inside min_range if forced" —
 	# penalized, not excluded, so a genuinely forced close (nothing else
 	# reachable clears min_range either) still wins as the least-bad cell.
-	var min_range_penalty: float = (
-		MIN_RANGE_PENALTY if RangeModel.blocks_min_range(weapon, distance) else 0.0
-	)
+	# (Computed above, with the early-out that needs it.)
 	# taskblock-19 Pass E: landing adjacent to a living enemy with a
 	# two-handed weapon disarms it for the whole turn (Suppression.
 	# blocks_weapon) — the AI avoids CHOOSING that, same "penalty, not

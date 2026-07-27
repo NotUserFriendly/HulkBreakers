@@ -29,7 +29,11 @@ GODOT="${GODOT:-godot}"
 #    src/logic/ai/ai_decision_log.gd rather than growing this file further),
 #    and Pass A3's per-turn LOF memoisation — same file, same reasoning,
 #    given headroom this time since tb35's own Pass C is scoped to touch
-#    this file again).
+#    this file again); raised again to 1200 across taskblock-43 Pass A — the
+#    score early-out's own soundness argument (the enumeration of which terms
+#    can raise a score) belongs next to the code it constrains, since a future
+#    term added without joining that list silently changes which cell the AI
+#    picks. Same file, same reasoning as every prior bump.
 gdlint src test
 
 # 2. Warm-up import so class_name scripts register (required on cold checkouts).
