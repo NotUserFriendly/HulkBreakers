@@ -101,19 +101,46 @@ func _process(_delta: float) -> void:
 ## anyway. This is the literal, single turn-driver the taskblock asks for:
 ## every overlay that needs AI auto-advancement shares this one method,
 ## never a per-overlay reimplementation of it.
+## taskblock-42 Pass D (BR27.09 cost #4): this was a bare `while` loop with no
+## `await` anywhere in it. Each `step()` runs a full `UnitAI.plan_turn` —
+## pathfinding, LOS, cover scoring — so the main thread was blocked for the
+## entire batch: nothing rendered, no input was processed, the window was
+## unresponsive, and every opposing unit appeared to move at once at the end.
+##
+## **The coalescing fork, decided before implementing (the pass required it).**
+## taskblock-19 Pass I2 deliberately made this refresh ONCE at the end, having
+## measured a full-board refresh per batch as waste. Yielding reopens that: yield
+## without refreshing and the player watches a frozen board for several seconds,
+## merely an interactive one; refresh the whole board per step and I2's finding
+## is undone.
+##
+## Neither. **Refresh only the units THAT step actually touched, after that
+## step.** I2's waste was refreshing every unit on the board repeatedly; this is
+## proportional to what changed, which is usually one unit — and taskblock-42
+## Pass B made each of those ~2.4× cheaper. The accumulated set still gets a
+## final pass so the active-turn highlight lands once, on the real end state.
+##
+## **Determinism is unaffected and that is the load-bearing property, not the
+## speed.** `BoutRunner.step()` draws only from `state.rng`, and nothing on the
+## frame path draws from it, so yielding cannot reorder the sim. The test asserts
+## a seeded bout is identical whether driven through here or through a tight
+## `BoutRunner` loop with no yielding at all.
 func advance_ai_turns(battle: BattleScene) -> void:
 	var runner := BoutRunner.new(
 		battle.combat_state, battle.mission, BoutRunner.DEFAULT_TURN_CAP, wants_turn_for
 	)
-	# taskblock-19 Pass I2: accumulated across every step this batch takes
-	# (each `step()` call overwrites `last_events` with just that one
-	# unit's own turn) — see BattleScene.refresh_unit_views()'s own doc
-	# comment for why a full-board refresh per batch was real, wasted work.
 	var touched_ids: Dictionary = {}
 	while not runner.finished and not wants_turn_for(battle.combat_state.current_unit()):
 		var run_finished: bool = runner.step()
-		for id: int in LogPlayback.affected_unit_ids(runner.last_events):
+		var stepped: Array[int] = LogPlayback.affected_unit_ids(runner.last_events)
+		for id: int in stepped:
 			touched_ids[id] = true
+		# This step's own units only — never the whole board (taskblock-19 I2).
+		battle.refresh_unit_views(stepped, false)
 		if run_finished:
 			break
+		# The yield. One frame between units, so input is processed and the
+		# board draws while the batch is still running.
+		if is_inside_tree():
+			await get_tree().process_frame
 	battle.refresh_unit_views(touched_ids.keys())
