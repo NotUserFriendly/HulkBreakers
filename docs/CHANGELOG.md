@@ -19,7 +19,9 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-42 Passes A–E landed (F and G held — see below). taskblock-41 Passes A–F — "Diagnostics: the log becomes the instrument" is
+*Current as of taskblock-43 Passes A–D landed — the AI planning-cost block, whose most useful result
+is that the candidate search it attacks is only ~25% of a planning turn and the LOF prefilter scan is
+the rest (see "AI planning cost" below). taskblock-42 Passes A–E landed (F and G held — see below). taskblock-41 Passes A–F — "Diagnostics: the log becomes the instrument" is
 closed, and so is "Checkpoints return as an ordinary tool." The combat log now carries engine and
 script errors, pairs every command with its outcome and a reason, narrates a bout build in
 construction order, and draws itself as a real window with a live framerate on it. Checkpoints are a
@@ -1268,7 +1270,10 @@ opposing team teleporting. **But a single `BoutRunner.step()` costs ~1672ms** �
 3v3 bout is 40.1 seconds of pure planning. Yielding between steps buys one responsive frame every
 ~1.7s. **The several-second hitch is ONE `UnitAI.plan_turn` call, not an accumulation**, so this
 relocates the bug rather than fixing it: the remaining work is per-candidate-cell pathfinding/LOS/
-cover scoring in `unit_ai.gd`, which tb35 Pass A3 halved once and which has grown back. Determinism
+cover scoring in `unit_ai.gd`, which tb35 Pass A3 halved once and which has grown back.
+**⇒ SUPERSEDED in part by "AI planning cost" (tb43) below — that naming of the remainder was right
+about the file and wrong about the function.** The candidate scoring is ~25% of a planning turn;
+`_any_reachable_has_lof`'s prefilter scan over the whole reachable set is ~70%. Determinism
 verified — a seeded bout is identical through the yielding path and a tight no-yield loop.
 Coalescing fork settled as "refresh only the units that step touched", which is proportional to what
 changed rather than tb19 I2's measured whole-board waste.
@@ -1279,6 +1284,73 @@ overlays read (BR35.03, `Pending`). Also fixed: `BoutInjector._move_unit` set `u
 re-deriving `unit.height`, so a debug move onto a raised cell rendered at the old elevation —
 invisible on a flat map, which is why every flat fixture missed it. **Not a fix for BR30.02**, whose
 symptom still does not reproduce. `BR35.01` deliberately untouched and said so.
+
+### AI planning cost: cut the search, and find out the search was not the cost (tb43 Passes A–D, BR27.09)
+
+**The block did what it set out to do and disproved its own premise doing it.** It is scoped as
+"attack the candidate count and the work per candidate", on the standing assumption — carried by
+tb35, tb42 and this block alike — that `UnitAI._pick_engagement_position` is where an AI turn's
+seconds go. Passes A, B and D all attack it. **It is about a quarter of a planning turn.** The
+measurement that says so is in Pass D below, and it retargets BR27.09.
+
+**The instrument first.** `tools/bench_ai_planning.gd` — 5 seeds x 12 steps of a 3v3, headless and
+repeatable, reporting ms per AI step, the Pass B difference rate, a per-role cost split, a branch
+census, and a `--profile` breakdown of one turn. Every number here comes from it. **The earlier
+~1672ms/~1498ms figures in this bug came from a bench nobody kept and are not part of this series** —
+this one starts at ~745ms for the same work, and only differences within it mean anything.
+
+**Pass A — exact early-out in the scorer** (landed in a prior session, `8ebca0e`). Every term in
+`_engagement_score` is a non-negative penalty except `cover_bonus`, which is bounded by
+`COVER_SCORE_BONUS`, so a cell whose cheap terms already put its ceiling at or below the best
+complete score cannot win and skips both line walks whole. `<=` rather than `<` because selection is
+strict `>`: a cell that can at best tie never wins. Acceptance was identical output, not speed.
+**~1672ms → ~1498ms on the old bench (~10%).**
+
+**Pass B — the candidate rectangle** (`src/logic/ai/engagement_rect.gd`). Scores only the reachable
+cells inside a box with two corners on the unit and its target, padded 2 laterally and, on the far
+side beyond the unit, by the weapon's own standoff distance. **The asymmetric half is the load-bearing
+half**: a unit that wants to back off finds its cells behind itself, exactly where a symmetric pad is
+thinnest, and `MIN_COMPLETION_RATE` would very likely still pass while the optimisation shoved
+long-range units into knife fights. **~745ms → ~674ms (~9%), keeping 64.9% of candidates
+(95.7 → 62.1 per decision), chosen cell differing in 7 of 60 decisions (11.7%)** — much of that being
+cells that *tie*, since on open ground a whole arc sits at the standoff distance and scores
+identically. The LOF prefilter deliberately still sees the **whole** reachable set: culling before it
+would flip which branch runs, not just which cell wins inside one.
+
+**Pass C — batch plumbing.** `Unit.batch_id` (0 = independent, and every generated mission leaves it
+there), a `set_batch` injector verb and debug-panel row, a round-scoped `BatchPlan` on `CombatState`,
+and a board badge (`B2`, `B2*` for the leader) whose text is decided by a headless logic-layer
+function so what it says is testable without a screen. Explicitly **not** `squad_id`: that is the
+team, and overloading it would make every batch a second team.
+
+**Pass D — leaders plan, followers follow.** First member of a batch to take a turn claims the lead
+and pays for the full search; later members that round read its destination and scan the ≤9 cells
+around it. Leadership is **derived, never stored** — no `leader_id`, no promotion logic, nothing to
+desync; a leader dying mid-round leaves its record intact so the squad finishes the manoeuvre and
+reorganises next round when the record ages out.
+
+**Pass D's own acceptance is NOT met, and that is the block's most valuable output.** It asks for a
+follower to be dramatically cheaper and says that if it isn't, the local scan is too wide. Measured:
+**leader ~330ms, follower ~317ms, about 4%** — and the scan cannot be narrowed below radius 1. So the
+turn was profiled rather than the constant tuned, and per repositioning turn (means over 60):
+
+| | ms |
+|---|---|
+| `_any_reachable_has_lof` | **271.9** |
+| `_pick_engagement_position` | 98.3 |
+| `_nearest_living_enemy` | 15.0 |
+| `Pathfinder.reachable` | 2.5 |
+
+**The LOF prefilter scan over the whole reachable set is the real remaining cost**, and it is paid by
+leader and follower alike. Branch census over the same 60 turns — `repositioned` 23,
+`no_lof_no_route` 15, `followed_leader` 10, `closing_fallback` 4, `fired_in_place` 5, `stepped_out` 2
+— shows **19 turns in 60 end with no reachable cell having a line at all**, each having scanned every
+reachable cell to find out. The cheapest exact attack is ordering that scan nearest-the-target first,
+since it early-returns on the first hit and currently walks BFS-from-the-unit order. **Deliberately
+not built**: this block is triage with a stated scope. It is in `PLAN.md` and on BR27.09.
+
+Whole-bout effect of batching one squad of three: **~671ms → ~646ms per AI step.** BR27.09 stays
+`Active`; nothing here closes it.
 
 ## Economy
 

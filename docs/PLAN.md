@@ -73,9 +73,53 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
+### 2. Order the LOF prefilter scan nearest-target-first
+**Needs:** nothing. **Unblocks:** item 3 below, and anything else gated on watching a bout at a
+tolerable rate.
+
+**This is what BR27.09 actually is, now that it has been measured.** taskblock-43 profiled a
+repositioning AI turn and found `UnitAI._any_reachable_has_lof` at **271.9ms** against
+`_pick_engagement_position`'s **98.3ms** — so the candidate search that tb35, tb42 and tb43 all
+attacked is about a quarter of a turn, and the prefilter scan is most of the rest. Three passes went
+at the wrong function on an assumption nobody had checked; see `SUPERSEDED.md`.
+
+`_any_reachable_has_lof` early-returns on the **first** reachable cell with a clear line, but walks
+`reachable` in `Pathfinder`'s BFS-from-the-unit order — so it tends to try the cells furthest from
+the target first. Sorting the scan by distance to the target should make the common "some cell has a
+line" case return almost immediately. **Exact, not lossy:** the function returns a bool and order
+cannot change the answer, so this is an equivalence-testable change of the same kind as tb43 Pass A.
+
+It does not help the other case, and the branch census says that case is common: **19 of 60 turns end
+with no reachable cell having a line at all**, and each of those must scan everything to prove it.
+That half wants a real cheap negative — a bounding test that rules out a whole region without a
+per-cell `ShotPlane` query — and is the harder, separate half.
+
+**Acceptance:** identical chosen cells across a seeded sweep; a measured drop in
+`tools/bench_ai_planning.gd --profile`'s `any_lof_scan` line; per-step cost reported before and after.
+
+### 3. taskblock-42 Passes F and G
+**Needs:** item 2 (they were nominally unblocked by taskblock-43, which did not move the number
+enough to make watching a bout comfortable). **Unblocks:** the six tracer/hit-visual bugs they cover.
+
+Verifying those bugs means watching shots resolve, and the turn-boundary hitch is what makes that
+unverifiable by eye. taskblock-43 brought an AI step from ~745ms to ~646ms — real, and not enough.
+
 ---
 
 # QUEUED
+
+### Automatic batch assignment in generated missions
+**Needs:** taskblock-43 Pass C/D (landed — `Unit.batch_id`, `BatchPlan`, the leader/follower split all
+exist and are hand-assignable via the `set_batch` debug verb). **Unblocks:** nothing.
+
+taskblock-43 deliberately built batches as **manual assignment only**; no generated mission assigns
+one, so `batch_id` is 0 everywhere in real play and the whole mechanism is currently dormant outside
+tests and the debug panel. Turning it on means deciding what a batch *is* in mission terms — a fire
+team, a patrol, everything sharing a spawn point — which is a design question, not a follow-up chore.
+
+**Worth weighing against item 2 in NEXT before building:** batching one squad of three measured
+~671ms → ~646ms per AI step, so as a *performance* argument this is weak; if it earns its place it
+will be as squad behaviour that reads better, not as a speed-up.
 
 ### Multi-level: AI climb/hop-down and interruptible vertical movement
 **Needs:** taskblock-37 Passes A–D (landed — `ClimbAction`/`HopDownAction` exist, capability-gated
