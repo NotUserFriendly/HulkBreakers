@@ -8,8 +8,8 @@ extends RefCounted
 ## the full mission test still passes unchanged) so it's a real, driveable
 ## module instead of test-only scaffolding.
 ##
-## Pure: `(unit, state, mission, playstyle) -> ActionQueue`. No SceneTree,
-## no view, deterministic — same seed + same state always produces the
+## Pure: `(unit, view, mission, playstyle) -> ActionQueue`. No SceneTree,
+## no view, deterministic — same seed + same view always produces the
 ## same queue. Human and AI paths emit the same `ActionQueue` through the
 ## same `CombatState.resolve_until` — this is not a parallel turn system,
 ## it's an action-queue PRODUCER the same as the human UI, which is what
@@ -172,9 +172,10 @@ static var engagement_searches: int = 0
 ## own tile got shut down on arrival instead of holding, then never
 ## resolved again since it was now the board's only remaining unit).
 static func plan_turn(
-	unit: Unit, state: CombatState, mission: MissionState, playstyle: StringName = &"AGGRESSIVE"
+	unit: Unit, view: WorldView, mission: MissionState, playstyle: StringName = &"AGGRESSIVE"
 ) -> ActionQueue:
-	var queue: ActionQueue = _plan_turn_before_shutdown_check(unit, state, mission, playstyle)
+	var state: CombatState = view.canonical_state_for_resolvers()
+	var queue: ActionQueue = _plan_turn_before_shutdown_check(unit, view, mission, playstyle)
 	var should_shut_down: bool = (
 		not unit.shutdown
 		and not EndTurnAction.is_holding_position(unit, mission)
@@ -188,20 +189,21 @@ static func plan_turn(
 
 
 static func _plan_turn_before_shutdown_check(
-	unit: Unit, state: CombatState, mission: MissionState, playstyle: StringName
+	unit: Unit, view: WorldView, mission: MissionState, playstyle: StringName
 ) -> ActionQueue:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	if mission != null and not _has_functional_weapon(unit):
-		return _plan_flee(unit, state, mission)
+		return _plan_flee(unit, view, mission)
 	match playstyle:
 		&"SKIRMISHER":
-			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, false, playstyle)
+			return _plan_ranged(unit, view, mission, SKIRMISHER_PREFERRED_RANGE, false, playstyle)
 		&"MARKSMAN":
-			return _plan_ranged(unit, state, mission, MARKSMAN_PREFERRED_RANGE, false, playstyle)
+			return _plan_ranged(unit, view, mission, MARKSMAN_PREFERRED_RANGE, false, playstyle)
 		&"COVER_SEEKER":
 			# taskblock-16 D2: "a cover-seeker is a skirmisher that also
 			# weights cover" — its own preferred standoff is SKIRMISHER's,
 			# not a fourth, independently-tuned number.
-			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
+			return _plan_ranged(unit, view, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
 		&"PSYCHOTIC":
 			# taskblock-25 Pass F (docs/PLAN.md "Phase M — Melee"): "prefers
 			# melee, closes to minimize distance, never flees." Reuses
@@ -209,7 +211,7 @@ static func _plan_turn_before_shutdown_check(
 			# distance-closing logic is unchanged — only WHICH weapon it
 			# fires with differs, see `_plan_ranged`'s own PSYCHOTIC branch)
 			# — never a second, independently-tuned closing behavior.
-			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
+			return _plan_ranged(unit, view, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
 		&"TURTLE":
 			# taskblock-25 Pass F: "keeps distance, would rather flee than
 			# melee, uses cover." Melee weighted as a last resort — reached
@@ -220,10 +222,10 @@ static func _plan_turn_before_shutdown_check(
 			# ordinary cover-weighting planner, same standoff COVER_SEEKER
 			# already uses.
 			if mission != null and Suppression.is_suppressed(state, unit):
-				return _plan_flee(unit, state, mission)
-			return _plan_ranged(unit, state, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
+				return _plan_flee(unit, view, mission)
+			return _plan_ranged(unit, view, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
 		_:
-			return _plan_ranged(unit, state, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
+			return _plan_ranged(unit, view, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
 
 
 ## taskblock-16 Pass D: the one ranged planner every playstyle above
@@ -257,17 +259,18 @@ static func _plan_turn_before_shutdown_check(
 ## actually being out of weapon range (below).
 static func _plan_ranged(
 	unit: Unit,
-	state: CombatState,
+	view: WorldView,
 	mission: MissionState,
 	preferred_range: int,
 	weight_cover: bool,
 	playstyle: StringName = &"AGGRESSIVE"
 ) -> ActionQueue:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var queue := ActionQueue.new(unit)
-	var enemy: Unit = _nearest_living_enemy(unit, state)
+	var enemy: Unit = _nearest_living_enemy(unit, view)
 
 	if enemy == null:
-		return _plan_non_combat_turn(unit, state, mission, queue)
+		return _plan_non_combat_turn(unit, view, mission, queue)
 
 	var weapon_id: StringName = _find_weapon_id(unit)
 	# taskblock-25 Pass F: "prefers the melee action... uses ranged only if
@@ -298,18 +301,18 @@ static func _plan_ranged(
 		Grid.distance_chebyshev(unit.cell, enemy.cell) >= preferred_range and within_effective
 	)
 	var covered_enough: bool = (
-		not weight_cover or is_covered_from(unit.cell, enemy.cell, state, unit)
+		not weight_cover or is_covered_from(unit.cell, enemy.cell, view, unit)
 	)
 	# taskblock17-1 Pass B: an AI never CHOOSES to shoot through its own
 	# ally — friendly fire is still mechanically possible (a player can
 	# still line one up), this only stops the AI from picking it.
 	# tb33 Pass A: "no ally" alone was never sufficient (BR30.10's 81%).
 	var clear_from_here: bool = (
-		not _ally_in_firing_line(unit, enemy, unit.cell, state)
+		not _ally_in_firing_line(unit, enemy, unit.cell, view)
 		and LineOfFire.has_clear_line_of_fire(unit, enemy, unit.cell, state)
 	)
 	var firing_action: CombatAction = (
-		_firing_action_for(unit, weapon_id, enemy.cell, state) if weapon_id != &"" else null
+		_firing_action_for(unit, weapon_id, enemy.cell, view) if weapon_id != &"" else null
 	)
 	var fired_without_moving: bool = (
 		firing_action != null
@@ -320,18 +323,18 @@ static func _plan_ranged(
 	)
 
 	if fired_without_moving:
-		_fire_remaining_shots(unit, weapon_id, enemy, state, queue, 1)
+		_fire_remaining_shots(unit, weapon_id, enemy, view, queue, 1)
 		# tb43 Pass D: standing and firing IS a settled destination, so a batch's
 		# first mover claims leadership here too rather than only on the
 		# repositioning path. Otherwise a leader that had a shot from where it
 		# stood would silently hand leadership to the next member to act, and the
 		# batch would converge on that unit instead of on the one already
 		# engaging — leadership would follow whoever happened to need to move.
-		state.batch_plans.claim(unit, state.round_number, unit.cell)
+		view.claim_batch_lead(unit, unit.cell)
 		AiDecisionLog.emit(state, unit, &"fired_in_place", true, false, &"none")
 	else:
 		var queued_before: int = queue.actions.size()
-		var pf := Pathfinder.new(state.grid, unit.shell.can_climb())
+		var pf := Pathfinder.new(view.grid, unit.shell.can_climb())
 		var budget: float = unit.mp_per_ap() * unit.ap  # same flattened budget `_path_toward` uses
 		var reachable: Array[Vector2i] = pf.reachable(unit.cell, budget)
 		if not reachable.has(unit.cell):
@@ -348,7 +351,7 @@ static func _plan_ranged(
 		# here" stops scaling with the number of cells asking.
 		var field: VisibilityField = VisibilityField.build(state, enemy.cell)
 		var any_reachable_has_lof: bool = _any_reachable_has_lof(
-			unit, enemy, state, reachable, weapon, lof_cache, field
+			unit, enemy, view, reachable, weapon, lof_cache, field
 		)
 
 		var best_cell: Vector2i = unit.cell
@@ -380,12 +383,12 @@ static func _plan_ranged(
 			# `plan_to_follow` is empty for an independent unit (every unit,
 			# until a bout assigns a batch by hand) and for the batch's own
 			# leader, both of which fall through to the full search below.
-			var follow: Dictionary = state.batch_plans.plan_to_follow(unit, state.round_number)
+			var follow: Dictionary = view.batch_plan_for(unit)
 			if not follow.is_empty():
 				best_cell = _pick_follow_position(
 					unit,
 					enemy,
-					state,
+					view,
 					preferred_range,
 					weight_cover,
 					weapon,
@@ -404,7 +407,7 @@ static func _plan_ranged(
 				best_cell = _pick_engagement_position(
 					unit,
 					enemy,
-					state,
+					view,
 					preferred_range,
 					weight_cover,
 					weapon,
@@ -426,14 +429,14 @@ static func _plan_ranged(
 		# IS one because a plan already exists this round, and `BatchPlan.record`
 		# refuses a second claim, so this can never let a follower redirect the
 		# batch it belongs to.
-		state.batch_plans.claim(unit, state.round_number, best_cell)
+		view.claim_batch_lead(unit, best_cell)
 		# tb33 Pass A: same LOF addition as `clear_from_here` above.
 		# tb35 Pass A1: kept as two named locals (not inlined into
 		# `final_blocked` alone) so the decision log below can attribute a
 		# hold to ally-blocking vs no-clear-LOF without a second, redundant
 		# `has_clear_line_of_fire` call — that's exactly the kind of
 		# per-decision `ShotPlane` cost BR27.09 is about.
-		var ally_blocks_shot: bool = _ally_in_firing_line(unit, enemy, best_cell, state, lof_cache)
+		var ally_blocks_shot: bool = _ally_in_firing_line(unit, enemy, best_cell, view, lof_cache)
 		var lof_clear: bool = LineOfFire.has_clear_line_of_fire(
 			unit, enemy, best_cell, state, lof_cache, field
 		)
@@ -444,7 +447,7 @@ static func _plan_ranged(
 			and not final_blocked
 		):
 			var repositioned_firing_action: CombatAction = _firing_action_for(
-				unit, weapon_id, enemy.cell, state
+				unit, weapon_id, enemy.cell, view
 			)
 			if repositioned_firing_action != null:
 				queue.enqueue(repositioned_firing_action, state)
@@ -516,7 +519,7 @@ static func _plan_ranged(
 				hold_reason = &"other"
 		if not attack_fired:
 			var overwatch_action: OverwatchAction = _consider_overwatch(
-				unit, enemy, state, playstyle, weight_cover
+				unit, enemy, view, playstyle, weight_cover
 			)
 			if overwatch_action != null and queue.enqueue(overwatch_action, state):
 				AiDecisionLog.emit(state, unit, &"overwatch", false, false, hold_reason)
@@ -525,7 +528,7 @@ static func _plan_ranged(
 		if not attack_fired and final_blocked:
 			held = queue.enqueue(HoldAction.new(unit), state)
 		if not held:
-			_face_if_nothing_else_queued(unit, enemy, state, queue, queued_before)
+			_face_if_nothing_else_queued(unit, enemy, view, queue, queued_before)
 			queue.enqueue(EndTurnAction.new(unit, mission), state)
 		AiDecisionLog.emit(state, unit, branch, attack_fired, held, hold_reason)
 		return queue
@@ -539,8 +542,9 @@ static func _plan_ranged(
 ## to extraction and call it." Shared by every playstyle — none of this
 ## is combat behaviour.
 static func _plan_non_combat_turn(
-	unit: Unit, state: CombatState, mission: MissionState, queue: ActionQueue
+	unit: Unit, view: WorldView, mission: MissionState, queue: ActionQueue
 ) -> ActionQueue:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	if unit.squad_id != 0:
 		queue.enqueue(EndTurnAction.new(unit, mission), state)
 		return queue
@@ -553,7 +557,7 @@ static func _plan_non_combat_turn(
 		if unit.cell == node_cell:
 			queue.enqueue(GatherAction.new(mission, unit, node_cell), state)
 		else:
-			_path_toward(unit, node_cell, state, queue)
+			_path_toward(unit, node_cell, view, queue)
 	else:
 		# taskblock-22 Pass A2: the player squad has no fast extract button —
 		# it walks to its own tile and simply ends its turn there, same as
@@ -561,7 +565,7 @@ static func _plan_non_combat_turn(
 		# the tile" from here and starts/advances the passive hold.
 		var extraction_cell: Vector2i = mission.extraction_cells[0]
 		if unit.cell != extraction_cell:
-			_path_toward(unit, extraction_cell, state, queue)
+			_path_toward(unit, extraction_cell, view, queue)
 
 	queue.enqueue(EndTurnAction.new(unit, mission), state)
 	return queue
@@ -605,7 +609,8 @@ static func _has_functional_weapon(unit: Unit) -> bool:
 ## and ends its turn like any other — `EndTurnAction`'s own hold-check
 ## picks up "still on the tile" from here and starts/advances the hold
 ## automatically, no separate action to queue.
-static func _plan_flee(unit: Unit, state: CombatState, mission: MissionState) -> ActionQueue:
+static func _plan_flee(unit: Unit, view: WorldView, mission: MissionState) -> ActionQueue:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var queue := ActionQueue.new(unit)
 	var cells: Array = mission.team_extraction_cells.get(unit.squad_id, [])
 	if cells.is_empty() and unit.squad_id == mission.player_squad_id:
@@ -619,7 +624,7 @@ static func _plan_flee(unit: Unit, state: CombatState, mission: MissionState) ->
 		if unit.squad_id != mission.player_squad_id:
 			queue.enqueue(ExtractAction.new(mission, unit), state)
 	else:
-		_path_toward(unit, target_cell, state, queue)
+		_path_toward(unit, target_cell, view, queue)
 
 	queue.enqueue(EndTurnAction.new(unit, mission), state)
 	return queue
@@ -648,13 +653,14 @@ static func _fire_remaining_shots(
 	unit: Unit,
 	weapon_id: StringName,
 	enemy: Unit,
-	state: CombatState,
+	view: WorldView,
 	queue: ActionQueue,
 	already_fired: int
 ) -> void:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var fired := already_fired
 	while fired < MAX_SHOTS_PER_TURN:
-		var firing_action: CombatAction = _firing_action_for(unit, weapon_id, enemy.cell, state)
+		var firing_action: CombatAction = _firing_action_for(unit, weapon_id, enemy.cell, view)
 		if firing_action == null or not queue.enqueue(firing_action, state):
 			break
 		fired += 1
@@ -673,8 +679,9 @@ static func _fire_remaining_shots(
 ## (`test_plan_turn_is_pure_and_deterministic` asserts on the returned
 ## queue, not on log side effects).
 static func _face_if_nothing_else_queued(
-	unit: Unit, enemy: Unit, state: CombatState, queue: ActionQueue, queued_before: int
+	unit: Unit, enemy: Unit, view: WorldView, queue: ActionQueue, queued_before: int
 ) -> void:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	if queue.actions.size() == queued_before:
 		queue.enqueue(
 			FaceAction.new(unit, FaceAction.orientation_toward(unit.cell, enemy.cell)), state
@@ -707,12 +714,13 @@ static func _weapon_reaches(weapon: Part, range_cells: int) -> bool:
 static func _any_reachable_has_lof(
 	unit: Unit,
 	enemy: Unit,
-	state: CombatState,
+	view: WorldView,
 	reachable: Array[Vector2i],
 	weapon: Part,
 	lof_cache: Variant = null,
 	field: VisibilityField = null
 ) -> bool:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	# tb44 Pass B: the case this pass exists for. taskblock-43's branch census
 	# found 19 turns in 60 ending with NO reachable cell having a line, and each
 	# of those built a real `ShotPlane` per candidate to find that out. When the
@@ -739,19 +747,19 @@ static func _any_reachable_has_lof(
 ## true if the line is fully opaque (no LoS at all — maximally covered)
 ## or a real blocker/another unit sits strictly between the two cells.
 static func is_covered_from(
-	candidate_cell: Vector2i, threat_cell: Vector2i, state: CombatState, self_unit: Unit
+	candidate_cell: Vector2i, threat_cell: Vector2i, view: WorldView, self_unit: Unit
 ) -> bool:
 	if candidate_cell == threat_cell:
 		return false
-	if not LoS.has_los(state.grid, threat_cell, candidate_cell):
+	if not LoS.has_los(view.grid, threat_cell, candidate_cell):
 		return true
 	var cells: Array[Vector2i] = Grid.line(threat_cell, candidate_cell)
 	for i in range(1, cells.size() - 1):
 		var cell: Vector2i = cells[i]
-		if state.grid.blockers.has(cell):
+		if view.grid.blockers.has(cell):
 			return true
-		for unit: Unit in state.units:
-			if unit != self_unit and unit.alive and unit.cell == cell:
+		for other: Unit in view.units_visible_to(self_unit):
+			if other != self_unit and other.alive and other.cell == cell:
 				return true
 	return false
 
@@ -760,7 +768,7 @@ static func is_covered_from(
 ## line between muzzle and target — reuse the shot-plane path, the same
 ## geometry that would hit them, asked in advance." `from_cell` is a
 ## candidate (possibly not yet occupied) cell, so `unit`'s own real body —
-## still registered in `state.units` at its true `unit.cell` — is
+## still registered in `view.units` at its true `unit.cell` — is
 ## explicitly excluded from counting as a blocker of itself.
 ## tb33 Pass A: built on `LineOfFire.first_hit()` — shared with
 ## `has_clear_line_of_fire`, not two `ShotPlane` builds for the same shot.
@@ -768,8 +776,9 @@ static func is_covered_from(
 ## cached_first_hit`'s own per-cell memo — see that function's own doc
 ## comment. `null` (the default, every pre-existing caller) is unchanged.
 static func _ally_in_firing_line(
-	unit: Unit, target: Unit, from_cell: Vector2i, state: CombatState, cache: Variant = null
+	unit: Unit, target: Unit, from_cell: Vector2i, view: WorldView, cache: Variant = null
 ) -> bool:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var region: Region = LineOfFire.cached_first_hit(unit, target, from_cell, state, cache)
 	if region == null or not (region.body is Unit):
 		return false
@@ -799,7 +808,7 @@ static func _ally_in_firing_line(
 static func _pick_follow_position(
 	unit: Unit,
 	enemy: Unit,
-	state: CombatState,
+	view: WorldView,
 	preferred_range: int,
 	weight_cover: bool,
 	weapon: Part,
@@ -818,7 +827,7 @@ static func _pick_follow_position(
 	var best_score: float = -INF
 	for cell: Vector2i in near:
 		var score: float = _engagement_score(
-			cell, enemy, state, unit, preferred_range, weight_cover, weapon, true, lof_cache
+			cell, enemy, view, unit, preferred_range, weight_cover, weapon, true, lof_cache
 		)
 		if score > best_score:
 			best_score = score
@@ -864,7 +873,7 @@ static func _closest_reachable_to(
 static func _pick_engagement_position(
 	unit: Unit,
 	enemy: Unit,
-	state: CombatState,
+	view: WorldView,
 	preferred_range: int,
 	weight_cover: bool,
 	weapon: Part,
@@ -878,7 +887,7 @@ static func _pick_engagement_position(
 	var best_score: float = _engagement_score(
 		unit.cell,
 		enemy,
-		state,
+		view,
 		unit,
 		preferred_range,
 		weight_cover,
@@ -892,7 +901,7 @@ static func _pick_engagement_position(
 		var score: float = _engagement_score(
 			cell,
 			enemy,
-			state,
+			view,
 			unit,
 			preferred_range,
 			weight_cover,
@@ -922,7 +931,7 @@ static func _target_distance(weapon: Part, preferred_range: int) -> float:
 static func _engagement_score(
 	cell: Vector2i,
 	enemy: Unit,
-	state: CombatState,
+	view: WorldView,
 	self_unit: Unit,
 	preferred_range: int,
 	weight_cover: bool,
@@ -932,6 +941,7 @@ static func _engagement_score(
 	score_to_beat: float = -INF,
 	field: VisibilityField = null
 ) -> float:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
 	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
 	var min_range_penalty: float = (
@@ -962,14 +972,14 @@ static func _engagement_score(
 		return -INF
 	var cover_bonus: float = (
 		COVER_SCORE_BONUS
-		if weight_cover and is_covered_from(cell, enemy.cell, state, self_unit)
+		if weight_cover and is_covered_from(cell, enemy.cell, view, self_unit)
 		else 0.0
 	)
 	# taskblock17-1 Pass B: a clear line always outscores cover — see
 	# ALLY_BLOCKED_PENALTY's own doc comment.
 	var blocked_penalty: float = (
 		ALLY_BLOCKED_PENALTY
-		if _ally_in_firing_line(self_unit, enemy, cell, state, lof_cache)
+		if _ally_in_firing_line(self_unit, enemy, cell, view, lof_cache)
 		else 0.0
 	)
 	# taskblock-19 Pass C3: "only closes inside min_range if forced" —
@@ -1070,7 +1080,7 @@ static func _engagement_score(
 	var obstruction_penalty: float = (
 		0.0
 		if any_reachable_has_lof
-		else float(LoS.obstruction_count(state.grid, cell, enemy.cell)) * OBSTRUCTION_PENALTY_WEIGHT
+		else float(LoS.obstruction_count(view.grid, cell, enemy.cell)) * OBSTRUCTION_PENALTY_WEIGHT
 	)
 	return (
 		cover_bonus
@@ -1100,8 +1110,9 @@ static func _find_weapon_id(unit: Unit) -> StringName:
 ## from it) — falling back to `&"shoot"` only when burst itself isn't.
 ## `&""` if the weapon provides no legal firing action at all.
 static func _preferred_firing_action_id(
-	unit: Unit, weapon_id: StringName, target_cell: Vector2i, state: CombatState
+	unit: Unit, weapon_id: StringName, target_cell: Vector2i, view: WorldView
 ) -> StringName:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var weapon: Part = unit.shell.find_part(weapon_id)
 	if weapon == null:
 		return &""
@@ -1152,9 +1163,9 @@ static func _provided_firing_action_id(unit: Unit, weapon_id: StringName) -> Str
 ## same "nothing to enqueue" contract every other speculative pick in
 ## this planner already has.
 static func _firing_action_for(
-	unit: Unit, weapon_id: StringName, target_cell: Vector2i, state: CombatState
+	unit: Unit, weapon_id: StringName, target_cell: Vector2i, view: WorldView
 ) -> CombatAction:
-	var action_id: StringName = _preferred_firing_action_id(unit, weapon_id, target_cell, state)
+	var action_id: StringName = _preferred_firing_action_id(unit, weapon_id, target_cell, view)
 	if action_id == &"":
 		return null
 	return ActionCatalog.build_firing_action(action_id, unit, weapon_id, target_cell)
@@ -1180,15 +1191,16 @@ static func _playstyle_considers_overwatch(playstyle: StringName) -> bool:
 ## a single further step keeps it there, this is as good a signal as this
 ## codebase has without inventing a movement-prediction system outright.
 ## Temporarily arms `unit`'s own `overwatch_weapon_id` to ask, then
-## restores whatever it was — never mutates state a caller didn't already
+## restores whatever it was — never mutates view a caller didn't already
 ## choose to commit to.
 static func _overwatch_would_threaten_a_living_enemy(
-	unit: Unit, weapon_id: StringName, state: CombatState
+	unit: Unit, weapon_id: StringName, view: WorldView
 ) -> bool:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	var previous_weapon_id: StringName = unit.overwatch_weapon_id
 	unit.overwatch_weapon_id = weapon_id
 	var threatens := false
-	for candidate: Unit in state.units:
+	for candidate: Unit in view.units_visible_to(unit):
 		if candidate.squad_id == unit.squad_id or not candidate.alive:
 			continue
 		if Overwatch.would_trigger_at(state, candidate, candidate.cell).has(unit):
@@ -1211,8 +1223,9 @@ static func _overwatch_would_threaten_a_living_enemy(
 ## invents an action) unless every check, including a final real
 ## `is_legal`, passes.
 static func _consider_overwatch(
-	unit: Unit, enemy: Unit, state: CombatState, playstyle: StringName, weight_cover: bool
+	unit: Unit, enemy: Unit, view: WorldView, playstyle: StringName, weight_cover: bool
 ) -> OverwatchAction:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	if not _playstyle_considers_overwatch(playstyle):
 		return null
 	# taskblock-24 Pass C: `ActionCatalog.actions_for` itself, not a bare
@@ -1231,9 +1244,9 @@ static func _consider_overwatch(
 	var weapon: Part = ActionCatalog.provider_for(unit, &"overwatch")
 	if weapon == null:
 		return null
-	if weight_cover and not is_covered_from(unit.cell, enemy.cell, state, unit):
+	if weight_cover and not is_covered_from(unit.cell, enemy.cell, view, unit):
 		return null
-	if not _overwatch_would_threaten_a_living_enemy(unit, weapon.id, state):
+	if not _overwatch_would_threaten_a_living_enemy(unit, weapon.id, view):
 		return null
 	var action := OverwatchAction.new(unit, weapon.id)
 	return action if action.is_legal(state) else null
@@ -1248,9 +1261,9 @@ static func _consider_overwatch(
 ## (nearest) candidate, so only one reachability check ever runs; the
 ## fallback loop only costs more when the nearest candidates genuinely
 ## are walled off.
-static func _nearest_living_enemy(unit: Unit, state: CombatState) -> Unit:
+static func _nearest_living_enemy(unit: Unit, view: WorldView) -> Unit:
 	var living_enemies: Array[Unit] = []
-	for candidate: Unit in state.units:
+	for candidate: Unit in view.units_visible_to(unit):
 		if candidate.squad_id != unit.squad_id and candidate.alive:
 			living_enemies.append(candidate)
 	if living_enemies.is_empty():
@@ -1263,7 +1276,7 @@ static func _nearest_living_enemy(unit: Unit, state: CombatState) -> Unit:
 			)
 	)
 	for candidate: Unit in living_enemies:
-		if _has_path_toward(unit, candidate, state):
+		if _has_path_toward(unit, candidate, view):
 			return candidate
 	# Nothing is reachable at all — the nearest-by-distance candidate is
 	# still the most sensible fallback (unchanged from the old behaviour)
@@ -1280,11 +1293,11 @@ static func _nearest_living_enemy(unit: Unit, state: CombatState) -> Unit:
 ## per neighbour, not a full-grid flood fill, and only ever called on
 ## candidates that actually need it (the common unobstructed case never
 ## reaches this at all — see `_nearest_living_enemy`'s own doc comment).
-static func _has_path_toward(unit: Unit, target: Unit, state: CombatState) -> bool:
+static func _has_path_toward(unit: Unit, target: Unit, view: WorldView) -> bool:
 	if Grid.distance_chebyshev(unit.cell, target.cell) <= 1:
 		return true
-	var pf := Pathfinder.new(state.grid, unit.shell.can_climb())
-	for neighbor: Vector2i in state.grid.neighbors(target.cell):
+	var pf := Pathfinder.new(view.grid, unit.shell.can_climb())
+	for neighbor: Vector2i in view.grid.neighbors(target.cell):
 		if not pf.astar(unit.cell, neighbor).is_empty():
 			return true
 	return false
@@ -1293,11 +1306,12 @@ static func _has_path_toward(unit: Unit, target: Unit, state: CombatState) -> bo
 ## Greedily closes the distance to `target_cell` by one reachable-this-turn
 ## step, queuing a MoveAction if that step actually goes anywhere.
 static func _path_toward(
-	unit: Unit, target_cell: Vector2i, state: CombatState, queue: ActionQueue
+	unit: Unit, target_cell: Vector2i, view: WorldView, queue: ActionQueue
 ) -> void:
+	var state: CombatState = view.canonical_state_for_resolvers()
 	if unit.cell == target_cell:
 		return
-	var pf := Pathfinder.new(state.grid, unit.shell.can_climb())
+	var pf := Pathfinder.new(view.grid, unit.shell.can_climb())
 	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
 	var best_cell: Vector2i = unit.cell
 	var best_dist: int = Grid.distance_chebyshev(unit.cell, target_cell)

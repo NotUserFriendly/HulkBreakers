@@ -298,6 +298,17 @@ func dup() -> CombatState:
 	# between resolve_until() calls in practice, but this makes it true by
 	# construction rather than by calling convention).
 	cloned.was_injected = was_injected
+	# taskblock-44 Pass C: `batch_plans` is deliberately NOT copied, and this
+	# comment is the point — taskblock-43 left it neither carried nor explained,
+	# which is the state `is_resolving` above exists to demonstrate the fix for.
+	# A dup() is a TACTICS-time speculative preview (docs/09). A batch plan is a
+	# record of what the AI decided during a real turn, and a preview neither
+	# takes turns nor leads a batch, so carrying one would let a throwaway clone
+	# answer "who is leading this round" — a question only the real bout can
+	# answer. A fresh, empty `BatchPlan` is correct by construction, not an
+	# oversight. `WorldView` is likewise never cloned: it is built per plan from
+	# whichever state is being planned against, so a preview gets a view over the
+	# preview, which is exactly right.
 	return cloned
 
 

@@ -160,7 +160,13 @@ func test_a_walled_off_target_costs_exactly_zero_shot_plane_builds() -> void:
 
 	ShotPlane.builds = 0
 	var any: bool = UnitAI._any_reachable_has_lof(
-		shooter, target, state, reachable, shooter.shell.find_part(&"shooter_gun"), {}, field
+		shooter,
+		target,
+		WorldView.full(state),
+		reachable,
+		shooter.shell.find_part(&"shooter_gun"),
+		{},
+		field
 	)
 
 	assert_false(any)

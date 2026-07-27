@@ -112,12 +112,12 @@ func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_lof_
 	)
 	assert_false(
 		UnitAI._any_reachable_has_lof(
-			self_unit, enemy, state, reachable, self_unit.shell.find_part(&"rifle")
+			self_unit, enemy, WorldView.full(state), reachable, self_unit.shell.find_part(&"rifle")
 		),
 		"sanity: the wall band really is too tall for one turn to clear"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(
@@ -158,7 +158,7 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 	var self_score_when_nothing_has_lof: float = UnitAI._engagement_score(
 		self_unit.cell,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -168,7 +168,7 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 	var progress_score_when_nothing_has_lof: float = UnitAI._engagement_score(
 		progress_cell,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -184,7 +184,7 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 	var self_score_when_something_has_lof: float = UnitAI._engagement_score(
 		self_unit.cell,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -194,7 +194,7 @@ func test_engagement_score_self_exemption_only_applies_when_some_cell_actually_h
 	var progress_score_when_something_has_lof: float = UnitAI._engagement_score(
 		progress_cell,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -248,7 +248,7 @@ func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_lof() 
 	var near_score: float = UnitAI._engagement_score(
 		near_but_obstructed,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -258,7 +258,7 @@ func test_obstruction_count_beats_raw_distance_when_nothing_reachable_has_lof() 
 	var far_score: float = UnitAI._engagement_score(
 		far_but_clear,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -307,7 +307,7 @@ func test_scorer_ranks_a_clear_lof_cell_above_a_los_but_wall_blocked_cell() -> v
 	var blocked_score: float = UnitAI._engagement_score(
 		blocked_cell,
 		enemy,
-		state,
+		WorldView.full(state),
 		self_unit,
 		UnitAI.SKIRMISHER_PREFERRED_RANGE,
 		false,
@@ -315,7 +315,14 @@ func test_scorer_ranks_a_clear_lof_cell_above_a_los_but_wall_blocked_cell() -> v
 		true
 	)
 	var clear_score: float = UnitAI._engagement_score(
-		clear_cell, enemy, state, self_unit, UnitAI.SKIRMISHER_PREFERRED_RANGE, false, weapon, true
+		clear_cell,
+		enemy,
+		WorldView.full(state),
+		self_unit,
+		UnitAI.SKIRMISHER_PREFERRED_RANGE,
+		false,
+		weapon,
+		true
 	)
 	assert_gt(
 		clear_score,

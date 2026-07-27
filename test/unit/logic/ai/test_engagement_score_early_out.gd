@@ -70,13 +70,13 @@ func test_a_hopeless_cell_is_skipped_and_a_promising_one_is_not() -> void:
 	# its distance penalty is 9 and its ceiling is COVER_SCORE_BONUS - 9 = 1.0.
 	# An incumbent of 5.0 is therefore unbeatable for it.
 	var hopeless: float = UnitAI._engagement_score(
-		Vector2i(19, 19), enemy, state, shooter, 0, true, null, true, null, 5.0
+		Vector2i(19, 19), enemy, WorldView.full(state), shooter, 0, true, null, true, null, 5.0
 	)
 	assert_eq(hopeless, -INF, "its ceiling is far below the incumbent, so it is skipped")
 
 	# The same cell against a hopeless incumbent is scored for real.
 	var scored: float = UnitAI._engagement_score(
-		Vector2i(19, 19), enemy, state, shooter, 0, true, null, true, null, -INF
+		Vector2i(19, 19), enemy, WorldView.full(state), shooter, 0, true, null, true, null, -INF
 	)
 	assert_ne(scored, -INF, "with nothing to beat, it must be evaluated normally")
 
@@ -91,7 +91,7 @@ func test_a_cell_that_could_only_tie_is_skipped() -> void:
 
 	var ceiling: float = UnitAI.COVER_SCORE_BONUS  # distance 0 from the target
 	var tied: float = UnitAI._engagement_score(
-		enemy.cell, enemy, state, shooter, 0, true, null, true, null, ceiling
+		enemy.cell, enemy, WorldView.full(state), shooter, 0, true, null, true, null, ceiling
 	)
 
 	assert_eq(tied, -INF, "it could at best tie, and a tie never wins")
@@ -107,7 +107,7 @@ func test_an_all_equal_field_still_picks_the_incumbent() -> void:
 	var reachable: Array[Vector2i] = [Vector2i(5, 5), Vector2i(5, 5), Vector2i(5, 5)]
 
 	var chosen: Vector2i = UnitAI._pick_engagement_position(
-		shooter, enemy, state, 0, false, null, reachable, true, null
+		shooter, enemy, WorldView.full(state), 0, false, null, reachable, true, null
 	)
 
 	assert_eq(chosen, Vector2i(5, 5))

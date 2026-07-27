@@ -53,6 +53,21 @@ var squad_id: int = 0
 ## assign batches — automatic assignment is explicitly out of scope for this
 ## block and lives in `docs/PLAN.md`.
 var batch_id: int = 0
+## taskblock-44 Pass C: how much this unit's planner is allowed to know and do.
+##
+## **Authored per unit for now, and this block uses it for nothing** — it exists
+## so part two's tier table has somewhere to read from, and so the field is
+## already riding through `dup()` and re-registration before anything depends on
+## it. It wants to DERIVE from Attributes (Int and Wis are the obvious sources),
+## which have not landed; that is a rewiring, not a blocker.
+##
+## An open `StringName` vocabulary, not an enum (CLAUDE.md): tiers are content a
+## designer extends, not a closed engine state. `WorldView` is the only thing
+## that reads it today, to decide whether this unit gets team-blackboard access.
+##
+## The default is deliberately a tier that has full access, so every existing
+## bout behaves exactly as it did before this field existed.
+var intelligence_tier: StringName = &"TRAINED"
 
 var ap: int = 0
 var max_ap: int = DEFAULT_MAX_AP
@@ -250,6 +265,7 @@ func dup() -> Unit:
 	# unit, dead ones included) — a preview clone that silently lost its batch
 	# would plan as an independent and disagree with the real unit it previews.
 	cloned.batch_id = batch_id
+	cloned.intelligence_tier = intelligence_tier
 	cloned.ap = ap
 	cloned.max_ap = max_ap
 	cloned.mp = mp

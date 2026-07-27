@@ -79,7 +79,7 @@ func _field() -> Dictionary:
 ## follower had decided to do nothing.
 func _plan(unit: Unit, state: CombatState) -> ActionQueue:
 	state.force_current_unit(unit.id)
-	return UnitAI.plan_turn(unit, state, null, &"MARKSMAN")
+	return UnitAI.plan_turn(unit, WorldView.full(state), null, &"MARKSMAN")
 
 
 ## Which branch `_plan_ranged` actually took, off the decision log — the guard

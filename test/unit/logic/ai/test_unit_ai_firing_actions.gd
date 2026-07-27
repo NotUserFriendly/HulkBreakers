@@ -57,7 +57,7 @@ func test_a_chaingun_wielding_ai_queues_a_burst_action_not_an_attack_action() ->
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_true(
 		queue.actions.any(func(a: CombatAction) -> bool: return a is BurstAction),
@@ -74,7 +74,7 @@ func test_a_pistol_wielding_ai_queues_a_plain_attack_action() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_true(
 		queue.actions.any(func(a: CombatAction) -> bool: return a is AttackAction),
@@ -93,7 +93,7 @@ func test_an_auto_shotgun_ai_prefers_burst_when_it_can_afford_it() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_true(
 		queue.actions.any(func(a: CombatAction) -> bool: return a is BurstAction),
@@ -113,7 +113,7 @@ func test_an_auto_shotgun_ai_falls_back_to_shoot_when_it_cannot_afford_burst() -
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_true(
 		queue.actions.any(func(a: CombatAction) -> bool: return a is AttackAction),
@@ -143,7 +143,7 @@ func test_a_repositioned_burst_is_recognized_as_having_fired_no_extra_hold() -> 
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
 	var state := CombatState.new(grid, [self_unit, ally, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_true(
 		queue.actions.any(func(a: CombatAction) -> bool: return a is BurstAction),
@@ -165,7 +165,7 @@ func test_an_ai_never_constructs_a_firing_action_the_weapon_doesnt_provide() -> 
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_false(
 		queue.actions.any(
@@ -187,7 +187,7 @@ func test_plan_ranged_never_fires_through_a_wall_it_cannot_get_around() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 0), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_false(
 		queue.actions.any(
@@ -205,7 +205,7 @@ func test_plan_ranged_open_field_still_fires_without_moving() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_true(
 		queue.actions.any(func(a: CombatAction) -> bool: return a is AttackAction),

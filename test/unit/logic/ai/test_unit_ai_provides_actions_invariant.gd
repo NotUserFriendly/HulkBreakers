@@ -135,7 +135,9 @@ func test_the_ai_never_constructs_an_action_the_catalog_wouldnt_also_offer() -> 
 			var enemy := _target(&"enemy", Vector2i(6, 0), 1)
 			var state := CombatState.new(GridFixture.flat(15, 15), [self_unit, enemy])
 
-			var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, playstyle)
+			var queue: ActionQueue = UnitAI.plan_turn(
+				self_unit, WorldView.full(state), null, playstyle
+			)
 
 			_assert_every_queued_action_is_catalog_offered(self_unit, queue)
 
@@ -143,7 +145,9 @@ func test_the_ai_never_constructs_an_action_the_catalog_wouldnt_also_offer() -> 
 	var bare_unit := _target(&"bare", Vector2i(0, 0), 0)
 	var bare_enemy := _target(&"enemy", Vector2i(6, 0), 1)
 	var bare_state := CombatState.new(GridFixture.flat(15, 15), [bare_unit, bare_enemy])
-	var bare_queue: ActionQueue = UnitAI.plan_turn(bare_unit, bare_state, null, &"MARKSMAN")
+	var bare_queue: ActionQueue = UnitAI.plan_turn(
+		bare_unit, WorldView.full(bare_state), null, &"MARKSMAN"
+	)
 	_assert_every_queued_action_is_catalog_offered(bare_unit, bare_queue)
 
 
@@ -159,7 +163,7 @@ func test_an_unrecognized_provided_action_is_never_invented_by_the_ai() -> void:
 	var enemy := _target(&"enemy", Vector2i(6, 0), 1)
 	var state := CombatState.new(GridFixture.flat(15, 15), [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"MARKSMAN")
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"MARKSMAN")
 
 	var fires_or_overwatches := func(a: CombatAction) -> bool:
 		return a is AttackAction or a is BurstAction or a is OverwatchAction

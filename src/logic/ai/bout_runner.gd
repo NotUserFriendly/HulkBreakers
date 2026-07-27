@@ -147,7 +147,11 @@ func step() -> bool:
 		return false
 
 	var playstyle: StringName = unit.matrix.playstyle if unit.matrix != null else &"AGGRESSIVE"
-	var queue: ActionQueue = UnitAI.plan_turn(unit, state, mission, playstyle)
+	# tb44 Pass C: the planner is handed a WorldView, never the state. Today this
+	# is the unrestricted one — everything, exactly as before — but the doorway is
+	# in, so part two's tiers have a chokepoint to gate information at rather than
+	# a retrofit across a planner that already reads global state everywhere.
+	var queue: ActionQueue = UnitAI.plan_turn(unit, WorldView.full(state), mission, playstyle)
 	last_unit = unit
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
