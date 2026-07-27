@@ -137,11 +137,11 @@ func test_the_same_injections_in_the_same_order_reproduce_the_same_result() -> v
 		var runner := BoutRunner.new(state, mission, 20)
 		var injector := BoutInjector.new(state)
 
-		runner.step()
+		await runner.step()
 		injector.set_position(state.find_unit(a.id), Vector2i(4, 4))
 		injector.set_ap(state.find_unit(b.id), 1)
-		runner.step()
-		runner.step()
+		await runner.step()
+		await runner.step()
 
 		snapshots.append(_snapshot(state))
 

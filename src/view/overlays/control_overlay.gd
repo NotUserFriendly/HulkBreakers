@@ -50,6 +50,21 @@ func build_queue(_unit: Unit, _state: CombatState, _mission: MissionState) -> Ac
 
 ## Cleans up this overlay's own UI/connections before `BattleScene` swaps
 ## to a different one (A2: generate-bout -> spectator) or frees it.
+## taskblock-44 Pass D3: shows (or clears, on "") which unit is currently
+## planning. **Named, never a bare "Thinking…"** — once named enemies exist, the
+## difference between a mook's turn and a boss's turn reads as *character* rather
+## than as lag, because the intelligence tiers make a smarter unit genuinely
+## think longer. What the label SAYS is `PlanPacer.thinking_label`'s decision, in
+## logic, so it is answerable in a headless test; this is the render half only.
+##
+## A no-op on the base overlay: not every control surface has somewhere sensible
+## to put it, and an overlay that does overrides this. `advance_ai_turns` above
+## calls it unconditionally regardless, so adding the display to a new overlay is
+## one override and nothing else.
+func set_thinking_label(_text: String) -> void:
+	pass
+
+
 func teardown() -> void:
 	pass
 
@@ -129,9 +144,18 @@ func advance_ai_turns(battle: BattleScene) -> void:
 	var runner := BoutRunner.new(
 		battle.combat_state, battle.mission, BoutRunner.DEFAULT_TURN_CAP, wants_turn_for
 	)
+	# tb44 Pass D: the pacer is what makes a unit's turn watchable rather than a
+	# freeze. It carries the frame signal the planner suspends on — supplied here
+	# because only the view knows what a tree is — and the hard budget that
+	# guarantees the turn ends, which is what makes the label below a promise
+	# instead of a hope. Headless drivers build no pacer and never suspend.
+	if is_inside_tree():
+		runner.pacer = PlanPacer.new()
+		runner.pacer.frame_signal = get_tree().process_frame
 	var touched_ids: Dictionary = {}
 	while not runner.finished and not wants_turn_for(battle.combat_state.current_unit()):
-		var run_finished: bool = runner.step()
+		set_thinking_label(PlanPacer.thinking_label(battle.combat_state.current_unit()))
+		var run_finished: bool = await runner.step()
 		var stepped: Array[int] = LogPlayback.affected_unit_ids(runner.last_events)
 		for id: int in stepped:
 			touched_ids[id] = true
@@ -143,4 +167,5 @@ func advance_ai_turns(battle: BattleScene) -> void:
 		# board draws while the batch is still running.
 		if is_inside_tree():
 			await get_tree().process_frame
+	set_thinking_label("")
 	battle.refresh_unit_views(touched_ids.keys())

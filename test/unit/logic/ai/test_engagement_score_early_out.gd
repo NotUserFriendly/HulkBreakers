@@ -26,7 +26,7 @@ func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> 
 	var taken: Array[String] = []
 	var i := 0
 	while not runner.finished and i < steps:
-		runner.step()
+		await runner.step()
 		for event: LogEvent in runner.last_events:
 			taken.append("%s@%d" % [event.kind, event.unit_id])
 		i += 1
@@ -38,10 +38,10 @@ func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> 
 func test_a_seeded_bout_produces_an_identical_action_sequence() -> void:
 	var a: Dictionary = _bout(31337)
 	assert_eq(a.get("error", ""), "", "sanity: the bout built")
-	var expected: Array[String] = _action_sequence(a.state, a.mission, 8)
+	var expected: Array[String] = await _action_sequence(a.state, a.mission, 8)
 
 	var b: Dictionary = _bout(31337)
-	var actual: Array[String] = _action_sequence(b.state, b.mission, 8)
+	var actual: Array[String] = await _action_sequence(b.state, b.mission, 8)
 
 	assert_eq(actual, expected)
 	assert_gt(expected.size(), 0, "sanity: the bout actually did something")
@@ -53,7 +53,7 @@ func test_the_early_out_actually_fires_during_a_real_bout() -> void:
 	var built: Dictionary = _bout(31337)
 	UnitAI.candidates_skipped = 0
 
-	_action_sequence(built.state, built.mission, 6)
+	await _action_sequence(built.state, built.mission, 6)
 
 	assert_gt(UnitAI.candidates_skipped, 0, "the fast path ran at least once")
 
@@ -106,7 +106,7 @@ func test_an_all_equal_field_still_picks_the_incumbent() -> void:
 	var state := CombatState.new(grid, [shooter, enemy])
 	var reachable: Array[Vector2i] = [Vector2i(5, 5), Vector2i(5, 5), Vector2i(5, 5)]
 
-	var chosen: Vector2i = UnitAI._pick_engagement_position(
+	var chosen: Vector2i = await UnitAI._pick_engagement_position(
 		shooter, enemy, WorldView.full(state), 0, false, null, reachable, true, null
 	)
 

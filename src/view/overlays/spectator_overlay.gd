@@ -115,6 +115,10 @@ var _hovered_unit: Unit = null
 func setup(p_battle: BattleScene) -> void:
 	battle = p_battle
 	runner = BoutRunner.new(battle.combat_state, battle.mission)
+	# tb44 Pass D: the spectator watches a bout play, so it is the surface that
+	# most needs a unit's think to stay navigable rather than freeze.
+	runner.pacer = PlanPacer.new()
+	runner.pacer.frame_signal = get_tree().process_frame
 	resolution_player = ResolutionPlayer.new()
 	add_child(resolution_player)
 	resolution_player.setup(battle)
@@ -306,7 +310,9 @@ func _advance() -> void:
 	if runner == null or runner.finished:
 		pause()
 		return
-	runner.step()
+	set_thinking_label(PlanPacer.thinking_label(runner.state.current_unit()))
+	await runner.step()
+	set_thinking_label("")
 	# taskblock-19 Pass I2: only the units this step's own events named —
 	# see BattleScene.refresh_unit_views()'s own doc comment.
 	battle.refresh_unit_views(LogPlayback.affected_unit_ids(runner.last_events))
@@ -314,6 +320,18 @@ func _advance() -> void:
 	_refresh_status()
 	if runner.finished:
 		pause()
+
+
+## taskblock-44 Pass D3: the spectator overlay has the one status line on screen,
+## so it is where a thinking unit is named. Set while a unit plans and cleared
+## when the batch finishes; `_refresh_status` restores the ordinary line.
+func set_thinking_label(text: String) -> void:
+	if _status_label == null:
+		return
+	if text == "":
+		_refresh_status()
+		return
+	_status_label.text = text
 
 
 func _refresh_status() -> void:

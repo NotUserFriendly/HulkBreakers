@@ -451,6 +451,27 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-27 (tb44 Pass D — the hitch becomes a wait you can navigate)**
+  [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. **This does not make planning faster and is not meant
+  to.** taskblock-42 Pass D yielded BETWEEN `BoutRunner.step()` calls, which bought nothing, because
+  one step is the entire think. The planner now yields **inside** one unit's plan — every `chunk`
+  candidate cells — so input is processed and the board draws while a unit is still deciding, with
+  the acting unit named on screen ("<name> is thinking…", never a bare "Thinking…").
+  - **The planner chain is coroutines now**, which was forced rather than chosen: GDScript rejects a
+    conditional-await single implementation at parse time (any function containing `await` is a
+    coroutine and every caller must await), and a second synchronous planner would be two code paths
+    deciding the same thing. Headless callers pass no pacer, nothing ever suspends, and the whole
+    suite is unchanged — 2301/2301.
+  - **A hard turn budget backs the label**, because a visible "thinking" state that never ends is
+    worse than a freeze: the player waits longer before concluding something is wrong. Past
+    `budget_msec` the scan stops and the unit acts on its best cell so far, which is safe at any
+    iteration because the incumbent is seeded with the unit's own cell and only ever replaced on a
+    strict improvement.
+  - **Frame boundaries do not change decisions** — a seeded bout is identical with and without
+    slicing, asserted directly. The one thing that DOES change a decision is an abort, which is the
+    trade the budget makes deliberately and is covered by its own case.
+  - Status unchanged, `Active`. The per-step figure is untouched by this pass by design; what changed
+    is that the wait is navigable rather than frozen.
 - **2026-07-27 (tb44 Pass B — the line-of-fire query inverted; ~700ms -> ~525ms per AI step)**
   [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. The planner cast from N candidate cells to one target,
   paying a real `ShotPlane.build` per candidate. It now builds **one `VisibilityField` per target per

@@ -84,7 +84,7 @@ func test_a_winning_bout_runs_to_a_terminal_state_and_never_loops_forever() -> v
 	var built: Dictionary = _winning_bout()
 	var runner: BoutRunner = built.runner
 
-	runner.run_to_completion()
+	await runner.run_to_completion()
 
 	assert_true(runner.finished)
 	assert_lt(runner.turns_taken, runner.turn_cap, "must terminate well inside the cap")
@@ -102,7 +102,7 @@ func test_every_step_resolves_a_real_turn_through_resolve_until() -> void:
 	var acting_unit: Unit = state.current_unit()
 	var ap_before: int = acting_unit.ap
 
-	runner.step()
+	await runner.step()
 
 	assert_eq(runner.last_unit, acting_unit)
 	assert_true(runner.last_outcome.has("kind"))
@@ -115,7 +115,7 @@ func test_the_bout_is_deterministic_for_the_same_seed() -> void:
 	for run in range(2):
 		var built: Dictionary = _winning_bout()
 		var runner: BoutRunner = built.runner
-		runner.run_to_completion()
+		await runner.run_to_completion()
 		results.append([built.mission.outcome, runner.turns_taken])
 
 	assert_eq(results[0], results[1])
@@ -129,7 +129,7 @@ func test_the_turn_cap_guarantees_termination_via_the_terminated_outcome() -> vo
 	var built: Dictionary = _winning_bout(0)
 	var runner: BoutRunner = built.runner
 
-	var finished: bool = runner.step()
+	var finished: bool = await runner.step()
 
 	assert_true(finished)
 	assert_eq(built.mission.outcome, Enums.MissionOutcome.TERMINATED)
@@ -146,7 +146,7 @@ func test_the_player_squads_own_defeat_ends_the_bout_stranded() -> void:
 	mission.extraction_cells = [Vector2i(0, 0)]
 	var runner := BoutRunner.new(state, mission, 200)
 
-	runner.run_to_completion()
+	await runner.run_to_completion()
 
 	assert_eq(mission.outcome, Enums.MissionOutcome.STRANDED)
 
@@ -158,11 +158,11 @@ func test_the_player_squads_own_defeat_ends_the_bout_stranded() -> void:
 ## BoutRunner itself has no notion of.
 func test_stepping_one_call_at_a_time_reaches_the_same_outcome_as_a_tight_loop() -> void:
 	var tight: Dictionary = _winning_bout()
-	tight.runner.run_to_completion()
+	await tight.runner.run_to_completion()
 
 	var stepped: Dictionary = _winning_bout()
 	var guard := 0
-	while not stepped.runner.step():
+	while not await stepped.runner.step():
 		guard += 1
 		if guard > 1000:
 			fail_test("stepped runner never finished")
@@ -208,7 +208,7 @@ func test_step_does_nothing_for_a_human_controlled_squad() -> void:
 	var runner := BoutRunner.new(state, mission, 50)
 	var ap_before: int = jerry.ap
 
-	var finished: bool = runner.step()
+	var finished: bool = await runner.step()
 
 	assert_false(finished)
 	assert_eq(jerry.ap, ap_before, "a human squad's turn must never be auto-resolved")
@@ -223,11 +223,11 @@ func test_last_events_carries_exactly_this_steps_own_events_not_everyones() -> v
 	var built: Dictionary = _winning_bout()
 	var runner: BoutRunner = built.runner
 
-	runner.step()
+	await runner.step()
 	var first_step_events: Array[LogEvent] = runner.last_events
 	assert_false(first_step_events.is_empty(), "a real turn must emit at least turn_start")
 
-	runner.step()
+	await runner.step()
 	var second_step_events: Array[LogEvent] = runner.last_events
 	assert_ne(
 		second_step_events,
@@ -253,7 +253,7 @@ func test_an_injected_wants_turn_for_overrides_the_default_squad_check() -> void
 	var runner := BoutRunner.new(state, mission, 50, claims_jerry)
 	var ap_before: int = jerry.ap
 
-	var finished: bool = runner.step()
+	var finished: bool = await runner.step()
 
 	assert_false(finished)
 	assert_eq(jerry.ap, ap_before, "the injected predicate must claim jerry even though AI owns it")
@@ -339,7 +339,7 @@ func test_a_bout_contains_held_overwatch_that_triggers_on_an_advancing_enemy() -
 	var declared := false
 	var triggered := false
 	while not runner.finished:
-		runner.step()
+		await runner.step()
 		for event: LogEvent in runner.last_events:
 			if event.kind == &"overwatch_declared":
 				declared = true

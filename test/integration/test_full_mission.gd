@@ -69,7 +69,7 @@ func test_bout_completion_rate_meets_the_measured_floor() -> void:
 		assert_eq(result.error, "", "seed %d: bout must build" % map_seed)
 
 		var runner := BoutRunner.new(result.state, result.mission, TURN_CAP)
-		runner.run_to_completion()
+		await runner.run_to_completion()
 
 		var outcome: int = result.mission.outcome
 		assert_ne(

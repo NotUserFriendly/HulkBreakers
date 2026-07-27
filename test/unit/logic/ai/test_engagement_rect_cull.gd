@@ -93,7 +93,7 @@ func test_a_unit_inside_its_minimum_range_still_chooses_a_cell_behind_itself() -
 		shooter, enemy, UnitAI._target_distance(weapon, UnitAI.MARKSMAN_PREFERRED_RANGE), reachable
 	)
 
-	var full_choice: Vector2i = UnitAI._pick_engagement_position(
+	var full_choice: Vector2i = await UnitAI._pick_engagement_position(
 		shooter,
 		enemy,
 		WorldView.full(state),
@@ -104,7 +104,7 @@ func test_a_unit_inside_its_minimum_range_still_chooses_a_cell_behind_itself() -
 		true,
 		{}
 	)
-	var culled_choice: Vector2i = UnitAI._pick_engagement_position(
+	var culled_choice: Vector2i = await UnitAI._pick_engagement_position(
 		shooter,
 		enemy,
 		WorldView.full(state),

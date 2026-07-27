@@ -58,7 +58,7 @@ func test_plan_turn_is_pure_and_deterministic() -> void:
 		var enemy := _armed_unit(&"enemy", Vector2i(6, 0), 1, &"")
 		var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 42)
 
-		var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+		var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 		var kinds: Array[String] = []
 		for action: CombatAction in queue.actions:
 			kinds.append(action.describe())
@@ -88,7 +88,7 @@ func test_an_ai_unit_ends_its_turn_facing_the_enemy_it_fired_at() -> void:
 		var enemy := _armed_unit(&"enemy", Vector2i(20, 20) + offset, 1, &"")
 		var state := CombatState.new(GridFixture.flat(40, 40), [self_unit, enemy], 3)
 
-		var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+		var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 		state.resolve_until(queue)
 
 		var real_self: Unit = state.find_unit(self_unit.id)
@@ -131,7 +131,7 @@ func test_cover_seeker_prefers_a_covered_cell_over_an_exposed_closer_one() -> vo
 		"sanity: the starting cell itself must not already read as covered"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(
+	var queue: ActionQueue = await UnitAI.plan_turn(
 		self_unit, WorldView.full(state), null, &"COVER_SEEKER"
 	)
 
@@ -166,7 +166,9 @@ func test_skirmisher_advances_when_out_of_weapon_range_and_farther_than_preferre
 	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(
@@ -200,7 +202,9 @@ func test_skirmisher_retreats_when_standing_closer_than_its_preferred_range() ->
 		"sanity: must start closer than preferred"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "a SKIRMISHER standing too close must reposition, not just fire")
@@ -231,7 +235,9 @@ func test_skirmisher_moves_to_gain_los_instead_of_holding_a_line_less_standoff()
 		LoS.has_los(grid, self_unit.cell, enemy.cell), "sanity: the wall blocks the straight row"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "a line-less standoff is not good enough — the unit must move")
@@ -259,10 +265,10 @@ func test_marksman_holds_greater_standoff_than_skirmisher() -> void:
 	var state_b := CombatState.new(GridFixture.flat(20, 3), [marksman, enemy_b])
 
 	var skirmisher_move: MoveAction = _last_move(
-		UnitAI.plan_turn(skirmisher, WorldView.full(state_a), null, &"SKIRMISHER")
+		await UnitAI.plan_turn(skirmisher, WorldView.full(state_a), null, &"SKIRMISHER")
 	)
 	var marksman_move: MoveAction = _last_move(
-		UnitAI.plan_turn(marksman, WorldView.full(state_b), null, &"MARKSMAN")
+		await UnitAI.plan_turn(marksman, WorldView.full(state_b), null, &"MARKSMAN")
 	)
 	assert_not_null(skirmisher_move)
 	assert_not_null(marksman_move)
@@ -300,7 +306,9 @@ func test_effective_range_supersedes_the_flat_preferred_range_standoff() -> void
 	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "must reposition toward its own weapon's effective range")
@@ -338,7 +346,7 @@ func test_ai_holds_a_covered_degraded_position_over_an_exposed_effective_range_o
 	var enemy := _armed_unit(&"enemy", Vector2i(9, 2), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(
+	var queue: ActionQueue = await UnitAI.plan_turn(
 		self_unit, WorldView.full(state), null, &"COVER_SEEKER"
 	)
 
@@ -366,7 +374,9 @@ func test_ai_avoids_closing_inside_its_own_min_range() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(15, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move)
@@ -420,7 +430,9 @@ func test_ai_fires_from_inside_min_range_when_forced_and_the_weapon_duds_instead
 		"sanity: the only reachable cell is already inside min_range"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var shot: AttackAction = null
 	for action: CombatAction in queue.actions:
@@ -444,7 +456,9 @@ func test_ai_avoids_closing_to_adjacency_with_a_two_handed_weapon_equipped() -> 
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move)
@@ -477,7 +491,9 @@ func test_ai_weights_leaving_adjacency_as_costly() -> void:
 	var state := CombatState.new(grid, [self_unit, enemy])
 	assert_eq(Grid.distance_chebyshev(self_unit.cell, enemy.cell), 1, "sanity: starts adjacent")
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	assert_null(
 		_last_move(queue),
@@ -509,7 +525,7 @@ func test_cover_seeker_relocates_to_a_real_pass_b_cover_object() -> void:
 		"sanity: the starting cell itself must not already read as covered"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(
+	var queue: ActionQueue = await UnitAI.plan_turn(
 		self_unit, WorldView.full(state), null, &"COVER_SEEKER"
 	)
 
@@ -533,7 +549,7 @@ func test_an_ai_repositions_rather_than_firing_through_an_ally_in_the_line() -> 
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
 	var state := CombatState.new(grid, [self_unit, ally, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	var shot: AttackAction = null
 	for action: CombatAction in queue.actions:
@@ -574,7 +590,7 @@ func test_an_ai_holds_fire_when_no_reachable_cell_clears_the_ally() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, ally, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	for action: CombatAction in queue.actions:
 		assert_false(
@@ -596,7 +612,7 @@ func test_an_ai_holds_rather_than_just_facing_when_walled_into_the_allys_line() 
 	var enemy := _armed_unit(&"enemy", Vector2i(10, 1), 1, &"")
 	var state := CombatState.new(grid, [self_unit, ally, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	var held: bool = false
 	for action: CombatAction in queue.actions:
@@ -675,7 +691,7 @@ func test_targets_and_moves_toward_a_reachable_enemy_over_a_closer_sealed_off_on
 		"sanity: the sealed-off enemy really is the closer one as the crow flies"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(
@@ -707,7 +723,7 @@ func test_reachable_enemy_targeting_is_deterministic() -> void:
 			],
 			11
 		)
-		var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+		var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 		var kinds: Array[String] = []
 		for action: CombatAction in queue.actions:
 			kinds.append(action.describe())
@@ -726,7 +742,7 @@ func test_a_unit_with_no_valid_action_shuts_down_cleanly() -> void:
 	var lone_unit := _armed_unit(&"lone_unit", Vector2i(0, 0), 1, &"")
 	var state := CombatState.new(GridFixture.flat(5, 5), [lone_unit])
 
-	var queue: ActionQueue = UnitAI.plan_turn(lone_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(lone_unit, WorldView.full(state), null)
 
 	assert_eq(queue.actions.size(), 1)
 	assert_true(queue.actions[0] is ShutdownAction)
@@ -745,7 +761,7 @@ func test_an_ai_produced_queue_resolves_through_the_normal_resolve_until() -> vo
 	var enemy := _armed_unit(&"enemy", Vector2i(3, 0), 1, &"", 1000)
 	var state := CombatState.new(GridFixture.flat(10, 5), [self_unit, enemy], 7)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 	var outcome: Dictionary = state.resolve_until(queue)
 
 	assert_eq(outcome.kind, Enums.ResolveOutcome.COMPLETED)
@@ -767,8 +783,10 @@ func test_an_unknown_playstyle_falls_back_to_aggressive() -> void:
 		3
 	)
 
-	var default_queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state_a), null)
-	var unknown_queue: ActionQueue = UnitAI.plan_turn(
+	var default_queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state_a), null
+	)
+	var unknown_queue: ActionQueue = await UnitAI.plan_turn(
 		state_b.units[0], WorldView.full(state_b), null, &"SOMETHING_MADE_UP"
 	)
 
@@ -787,7 +805,7 @@ func test_a_disarmed_unit_flees_toward_its_own_team_extraction_tile() -> void:
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "a disarmed unit with somewhere to flee must move toward it")
@@ -812,7 +830,7 @@ func test_a_disarmed_non_player_unit_already_on_its_tile_queues_extraction() -> 
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {1: [Vector2i(9, 4)]}
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	var extract: ExtractAction = null
 	for action: CombatAction in queue.actions:
@@ -831,7 +849,7 @@ func test_a_disarmed_player_squad_unit_already_on_its_tile_never_queues_extract_
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	for action: CombatAction in queue.actions:
 		assert_false(action is ExtractAction, "the player squad never gets the fast action")
@@ -852,7 +870,7 @@ func test_a_disarmed_unit_with_no_flee_destination_shuts_down() -> void:
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(9, 4)]  # squad 0's own zone, not squad 1's
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	assert_eq(queue.actions.size(), 1)
 	assert_true(queue.actions[0] is ShutdownAction)
@@ -868,7 +886,7 @@ func test_a_disarmed_player_squad_unit_falls_back_to_the_plain_extraction_cells(
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(9, 4)]
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "the player squad must still fall back to mission.extraction_cells")
@@ -893,7 +911,7 @@ func test_a_disarmed_unit_holding_its_own_extraction_tile_does_not_shut_down() -
 	var mission := MissionState.new(RunState.new(), state)
 	mission.extraction_cells = [Vector2i(9, 4)]
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	assert_eq(queue.actions.size(), 1)
 	assert_true(
@@ -911,7 +929,7 @@ func test_an_armed_unit_does_not_flee_even_with_a_mission_present() -> void:
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), mission)
 
 	var shot: AttackAction = null
 	for action: CombatAction in queue.actions:
@@ -984,7 +1002,7 @@ func test_a_covered_aggressive_unit_steps_out_instead_of_just_standing_and_facin
 		"sanity: the origin must actually be covered"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
+	var queue: ActionQueue = await UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	assert_eq(
 		queue.actions.size(),
