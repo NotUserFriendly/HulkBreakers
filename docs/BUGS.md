@@ -409,6 +409,21 @@ confirm" roll-up — so pending items surface at a natural review point without 
     to the end of the child list, so the two paths held the same nodes in different tree order.
     Nothing rendered differently, but "identical" stopped being literally true — fixed with
     `move_child`.
+- **2026-07-26 (tb42 Pass C — cost #3 confirmed, collapsed, and it is SMALL)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Instrumented `PartGraph.walk` before changing
+  anything: **exactly five full socket-tree walks per turn start** — `recharge_batteries`,
+  `has_power_system`, `max_ap_for` (three internally), `discharge_batteries`, `mp_per_ap`, each
+  walking independently. **This entry's own "5–6 times" was right.** Collapsed to one walk threaded
+  through all of them: **117.7µs → 39.6µs per unit per turn start (3.0×)**.
+  - **Say the unwelcome half plainly: this is noise next to the real problem.** ~78µs saved per unit
+    per turn, against a hitch this entry now describes as *several seconds*. It is a genuine
+    inefficiency genuinely removed, and it will not be felt. Cost #2 (tb42 Pass B) is ~10× larger,
+    and cost #4 (the synchronous AI batch) is four orders of magnitude larger.
+  - **Explicit threading, not a per-turn cache.** A cache needs invalidating on every structural
+    change to the part tree, and a stale power reading is a silent wrong number rather than a crash.
+    Threading has no state to go stale — the "cache invalidates on any structural change" acceptance
+    is met by there being nothing to invalidate. Every existing call site is untouched: the new
+    parameters default to empty and walk on demand exactly as before.
 - **2026-07-26 (tb41 Pass A — cost #1 fixed, but by coalescing, NOT by the `append_text` this entry
   prescribes)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. **Supervisor approved the override; this
   is an append, not a status change.** Cost #1's stated fix — "incremental `RichTextLabel.append_text`

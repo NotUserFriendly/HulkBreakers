@@ -410,21 +410,28 @@ func _start_turn(unit: Unit) -> void:
 	# all (no reactor/battery ever attached — every shell built before this
 	# pass) leaves `max_ap` completely untouched, so nothing not opted into
 	# the power system changes behavior.
-	PowerResolver.recharge_batteries(unit.shell)
-	if PowerResolver.has_power_system(unit.shell):
-		unit.max_ap = PowerResolver.max_ap_for(unit)
+	# taskblock-42 Pass C (BR27.09 cost #3): ONE socket-tree walk, threaded
+	# through everything below. Measured before this change: five full walks per
+	# turn start (`recharge_batteries`, `has_power_system`, `max_ap_for` ×3
+	# internally, `discharge_batteries`, `mp_per_ap`), which is exactly the
+	# "5-6 times" BR27.09 recorded.
+	var all_parts: Array[Part] = unit.shell.all_parts()
+	var operable: Array[Part] = Shell.operable_from(all_parts)
+	PowerResolver.recharge_batteries(unit.shell, operable)
+	if PowerResolver.has_power_system(unit.shell, all_parts):
+		unit.max_ap = PowerResolver.max_ap_for(unit, operable)
 	unit.ap = unit.max_ap
 	# taskblock-20 Pass F: batteries give up whatever they just contributed
 	# to THIS turn's max_ap — a shell drawing on battery power has less
 	# available next turn unless recharge offsets it (recharge already ran
 	# above, using last turn's own charge, before this drains it).
-	PowerResolver.discharge_batteries(unit.shell)
+	PowerResolver.discharge_batteries(unit.shell, operable)
 	# taskblock-08 Pass C: leftover MP from a prior turn is discarded
 	# (Appendix E), but every turn starts with one AP's worth of MP
 	# already banked, free — a turn-start grant, not a permanent mp_per_ap
 	# change, so the AP itself is never spent and stays fully available.
 	# "The first bit of movement is free tempo."
-	unit.mp = unit.mp_per_ap()
+	unit.mp = unit.mp_per_ap(operable)
 	# docs/10 taskblock03 E2: the free-refacing unlock is a per-turn toll,
 	# not a permanent one — a new turn always starts locked again.
 	unit.facing_unlocked = false

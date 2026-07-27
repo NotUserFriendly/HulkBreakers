@@ -149,9 +149,12 @@ func tick_organics_decay(ladder: Array[SurrogateTier]) -> void:
 ## now, not `living_parts()` directly — a `severed_controls`-wounded leg
 ## (hp intact, but inert) must stop contributing agility the same way a
 ## destroyed one already does.
-func mp_per_ap() -> float:
+## taskblock-42 Pass C: `operable` lets turn start hand in a list it has already
+## walked instead of this walking the socket tree again. Empty (every other
+## caller) behaves exactly as before.
+func mp_per_ap(operable: Array[Part] = []) -> float:
 	var context := ResolverContext.new()
-	context.parts = shell.operable_parts()
+	context.parts = operable if not operable.is_empty() else shell.operable_parts()
 	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility
 

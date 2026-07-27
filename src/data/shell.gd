@@ -72,9 +72,18 @@ func living_parts() -> Array[Part]:
 ## that only cares "is this unit still structurally alive" (a kill check)
 ## keeps reading `living_parts()`.
 func operable_parts() -> Array[Part]:
+	return operable_from(all_parts())
+
+
+## taskblock-42 Pass C: the same filter, applied to a part list the caller has
+## ALREADY walked. Turn start needed `all_parts()` and `operable_parts()`
+## repeatedly and re-walked the whole socket tree for each — this is what lets
+## one walk feed every consumer, with no cache and therefore no invalidation to
+## get wrong.
+static func operable_from(parts: Array[Part]) -> Array[Part]:
 	var result: Array[Part] = []
-	for part: Part in living_parts():
-		if not WoundEffects.is_disabled_by_wounds(part):
+	for part: Part in parts:
+		if part.hp > 0 and not WoundEffects.is_disabled_by_wounds(part):
 			result.append(part)
 	return result
 
