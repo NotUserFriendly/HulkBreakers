@@ -51,7 +51,7 @@ func test_firing_without_moving_logs_fired_in_place() -> void:
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
-	UnitAI.plan_turn(self_unit, state, null)
+	UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	var decisions: Array[LogEvent] = sink.events_of_kind(&"ai_decision")
 	assert_eq(decisions.size(), 1)
@@ -76,7 +76,7 @@ func test_holding_because_an_ally_blocks_the_line_logs_the_reason() -> void:
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
-	UnitAI.plan_turn(self_unit, state, null)
+	UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 
 	var decisions: Array[LogEvent] = sink.events_of_kind(&"ai_decision")
 	assert_eq(decisions.size(), 1)
@@ -97,7 +97,7 @@ func test_decision_logging_does_not_disturb_plan_turns_own_determinism() -> void
 		var sink := MemorySink.new()
 		state.combat_log.add_sink(sink)
 
-		var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null)
+		var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null)
 		results.append(queue.actions.map(func(a: CombatAction) -> String: return a.describe()))
 
 	assert_eq(results[0], results[1])

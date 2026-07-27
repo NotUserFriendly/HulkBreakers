@@ -94,17 +94,45 @@ func test_a_unit_inside_its_minimum_range_still_chooses_a_cell_behind_itself() -
 	)
 
 	var full_choice: Vector2i = UnitAI._pick_engagement_position(
-		shooter, enemy, state, UnitAI.MARKSMAN_PREFERRED_RANGE, false, weapon, reachable, true, {}
+		shooter,
+		enemy,
+		WorldView.full(state),
+		UnitAI.MARKSMAN_PREFERRED_RANGE,
+		false,
+		weapon,
+		reachable,
+		true,
+		{}
 	)
 	var culled_choice: Vector2i = UnitAI._pick_engagement_position(
-		shooter, enemy, state, UnitAI.MARKSMAN_PREFERRED_RANGE, false, weapon, culled, true, {}
+		shooter,
+		enemy,
+		WorldView.full(state),
+		UnitAI.MARKSMAN_PREFERRED_RANGE,
+		false,
+		weapon,
+		culled,
+		true,
+		{}
 	)
 
 	var full_score: float = UnitAI._engagement_score(
-		full_choice, enemy, state, shooter, UnitAI.MARKSMAN_PREFERRED_RANGE, false, weapon
+		full_choice,
+		enemy,
+		WorldView.full(state),
+		shooter,
+		UnitAI.MARKSMAN_PREFERRED_RANGE,
+		false,
+		weapon
 	)
 	var culled_score: float = UnitAI._engagement_score(
-		culled_choice, enemy, state, shooter, UnitAI.MARKSMAN_PREFERRED_RANGE, false, weapon
+		culled_choice,
+		enemy,
+		WorldView.full(state),
+		shooter,
+		UnitAI.MARKSMAN_PREFERRED_RANGE,
+		false,
+		weapon
 	)
 
 	assert_almost_eq(

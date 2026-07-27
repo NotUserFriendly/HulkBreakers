@@ -690,7 +690,7 @@ func _enter_aim_or_step_out_mode(target: Unit) -> void:
 	)
 	if weapon != null:
 		var origin_covered: bool = UnitAI.is_covered_from(
-			shooter.cell, target.cell, selection.state, shooter
+			shooter.cell, target.cell, WorldView.full(selection.state), shooter
 		)
 		if origin_covered:
 			var candidates: Array[Vector2i] = StepOutPlanner.candidate_step_out_cells(

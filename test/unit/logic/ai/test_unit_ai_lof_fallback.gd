@@ -79,12 +79,12 @@ func test_ai_takes_a_step_that_increases_chebyshev_distance_before_it_decreases(
 	)
 	assert_false(
 		UnitAI._any_reachable_has_lof(
-			self_unit, enemy, state, reachable, self_unit.shell.find_part(&"rifle")
+			self_unit, enemy, WorldView.full(state), reachable, self_unit.shell.find_part(&"rifle")
 		),
 		"sanity: nothing reachable this turn has a real shot"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
 	var move: MoveAction = null
 	for action: CombatAction in queue.actions:
 		if action is MoveAction:
@@ -131,13 +131,17 @@ func test_the_approach_fallback_is_deterministic_across_repeated_plans() -> void
 	var self_unit_a := _armed_unit(&"self_unit", Vector2i(10, 18), 0, &"rifle")
 	var enemy_a := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
 	var state_a := CombatState.new(grid, [self_unit_a, enemy_a], 7)
-	var queue_a: ActionQueue = UnitAI.plan_turn(self_unit_a, state_a, null, &"SKIRMISHER")
+	var queue_a: ActionQueue = UnitAI.plan_turn(
+		self_unit_a, WorldView.full(state_a), null, &"SKIRMISHER"
+	)
 
 	var grid_b := _concave_pocket()
 	var self_unit_b := _armed_unit(&"self_unit", Vector2i(10, 18), 0, &"rifle")
 	var enemy_b := _armed_unit(&"enemy", Vector2i(10, 10), 1, &"")
 	var state_b := CombatState.new(grid_b, [self_unit_b, enemy_b], 7)
-	var queue_b: ActionQueue = UnitAI.plan_turn(self_unit_b, state_b, null, &"SKIRMISHER")
+	var queue_b: ActionQueue = UnitAI.plan_turn(
+		self_unit_b, WorldView.full(state_b), null, &"SKIRMISHER"
+	)
 
 	var move_a: MoveAction = null
 	var move_b: MoveAction = null
@@ -166,7 +170,9 @@ func test_the_approach_fallback_eventually_reaches_a_lof_cell_and_fires() -> voi
 
 	var fired := false
 	for round_index in range(10):
-		var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+		var queue: ActionQueue = UnitAI.plan_turn(
+			self_unit, WorldView.full(state), null, &"SKIRMISHER"
+		)
 		if queue.actions.any(
 			func(a: CombatAction) -> bool: return a is AttackAction or a is BurstAction
 		):
@@ -195,7 +201,7 @@ func test_a_fully_walled_off_enemy_falls_through_to_hold_without_freezing() -> v
 	var enemy := _armed_unit(&"enemy", Vector2i(19, 10), 1, &"")
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, state, null, &"SKIRMISHER")
+	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
 
 	assert_false(
 		queue.actions.any(
@@ -226,7 +232,7 @@ func test_open_field_never_enters_the_approach_fallback() -> void:
 
 	assert_true(
 		UnitAI._any_reachable_has_lof(
-			self_unit, enemy, state, reachable, self_unit.shell.find_part(&"rifle")
+			self_unit, enemy, WorldView.full(state), reachable, self_unit.shell.find_part(&"rifle")
 		),
 		"an open field always has a reachable clear cell -- the fallback must never trigger"
 	)

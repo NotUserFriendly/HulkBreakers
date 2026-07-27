@@ -29,9 +29,9 @@ static func is_legal_step_out(
 ) -> bool:
 	if Grid.distance_manhattan(origin_cell, firing_cell) != 1:
 		return false
-	if not UnitAI.is_covered_from(origin_cell, target.cell, state, unit):
+	if not UnitAI.is_covered_from(origin_cell, target.cell, WorldView.full(state), unit):
 		return false
-	if UnitAI.is_covered_from(firing_cell, target.cell, state, unit):
+	if UnitAI.is_covered_from(firing_cell, target.cell, WorldView.full(state), unit):
 		return false
 	return true
 
@@ -157,7 +157,7 @@ static func build_triple(
 static func assemble_for_shoot(
 	state: CombatState, unit: Unit, action_id: StringName, weapon_id: StringName, target: Unit
 ) -> ActionQueue:
-	if not UnitAI.is_covered_from(unit.cell, target.cell, state, unit):
+	if not UnitAI.is_covered_from(unit.cell, target.cell, WorldView.full(state), unit):
 		return null
 	var candidates: Array[Vector2i] = candidate_step_out_cells(state, unit, unit.cell, target)
 	if candidates.is_empty():
