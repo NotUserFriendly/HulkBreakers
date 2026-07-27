@@ -3,10 +3,13 @@
 Passes A–D landed in order (A in a prior session, B–D in this one). Suite green at every pass,
 2261/2261 at D.
 
-**Read the last section first if you read only one.** The block's stated target — the candidate
+**Read the last two sections first if you read only one.** The block's stated target — the candidate
 search — turned out to be about a quarter of the cost it was assumed to be, and the measurement that
 says so is the most useful thing here. Pass D's own acceptance is not met, and the reason is the
 finding, not an excuse.
+
+**Supervisor, 2026-07-27: keep all of it.** Nothing was reverted; the one live question left is where
+BR27.09 goes next.
 
 ## Decisions made without asking
 
@@ -85,6 +88,14 @@ Four, and all four premises were mine rather than the code's.
 status is untouched, per the block's own instruction. Nothing here closes it and the per-step figure
 has not moved by anything like the order of magnitude that would.
 
+## Supervisor decisions (post-block)
+
+- **2026-07-27 — "Keep it all for now."** Asked whether Pass B should be reverted (it is the one pass
+  here that can be, on its own) and whether the dormant batch mechanism should stay, the supervisor
+  kept **everything**: Pass B's rectangle cull, Pass C's plumbing and badge, and Pass D's
+  leader/follower split all stay in as landed. Two of the open questions below are answered by that
+  and are marked; the BR27.09 retargeting question is not, and is still the live one.
+
 ## Open questions
 
 - **BR27.09 has been re-aimed and wants your call on the next block.** Measured per repositioning
@@ -95,15 +106,17 @@ has not moved by anything like the order of magnitude that would.
   line at all**, and ordering does nothing for those; they need a cheap negative test that rules out
   a region without a per-cell query. That second half is real work, not a follow-up.
 
-- **Whether Pass B earned its behavioural risk is genuinely arguable.** It buys ~9% and changes the
-  chosen cell in 11.7% of decisions (much of that being ties). `MIN_COMPLETION_RATE` holds. If you
-  would rather the AI be exactly what it was, Pass B is the one pass here that is safe to revert on
-  its own — A is exact, C is inert, D only activates on a hand-assigned batch.
+- ~~**Whether Pass B earned its behavioural risk.**~~ **Answered 2026-07-27: kept.** It buys ~9% and
+  changes the chosen cell in 11.7% of decisions (much of that being ties), with
+  `MIN_COMPLETION_RATE` holding. It was the one pass safe to revert alone — A is exact, C is inert,
+  D only activates on a hand-assigned batch — and the supervisor chose to keep it. Worth re-reading
+  if the AI ever starts reading as positionally worse than it used to.
 
-- **Batches are dormant in real play.** No generated mission assigns one, so the whole Pass C/D
-  mechanism only runs in tests and via the debug panel. Automatic assignment is in `PLAN.md` under
-  QUEUED, and I have flagged there that as a *performance* argument it is weak (~671ms → ~646ms for a
-  batched squad of three) — if it earns its place it will be as squad behaviour that reads better.
+- ~~**Batches are dormant in real play.**~~ **Answered 2026-07-27: kept as-is, dormant.** No generated
+  mission assigns one, so the Pass C/D mechanism runs only in tests and via the debug panel.
+  Automatic assignment stays in `PLAN.md` under QUEUED with the flag that as a *performance*
+  argument it is weak (~671ms → ~646ms for a batched squad of three) — if it earns its place it will
+  be as squad behaviour that reads better.
 
 - **Pass D's acceptance is unmet and I did not tune around it.** The block says a follower that is
   not dramatically cheaper means the local scan is too wide. The scan is radius 1, at most 9 cells;
