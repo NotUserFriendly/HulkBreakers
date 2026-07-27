@@ -1,14 +1,13 @@
 # Taskblock 44 Report — AI v2, part one: measure, invert, seam
 
-**IN PROGRESS — Pass A only.** B, C and D are not started. `taskblock44.md` is in the tree and is
-still the authority on what they are; this file records what A actually did.
+**IN PROGRESS — Passes A and B.** C and D are not started. `taskblock44.md` is in the tree and is
+still the authority on what they are; this file records what landed.
 
 **The rolling-five window is deliberately NOT rolled yet.** `Report-Taskblock39.md` stays until this
 block finishes — deleting it for a one-pass stub would trade a complete record for an incomplete one.
 Roll it when the block closes.
 
-Suite 2270/2270 at Pass A. Commits `c7d6afe` (the provenance half) and `7c6dab0` (the measurement,
-after the supervisor installed export templates).
+Suite 2279/2279 at Pass B. Commits `c7d6afe` and `7c6dab0` (Pass A), `89070ec` (Pass B).
 
 ## Where the number stands
 
@@ -26,6 +25,30 @@ cost is the harness"; roughly 78% of it survives into a real player build. The A
 genuine and Pass B's urgency is unchanged. `candidates_skipped` was identical (2306) across all three
 builds — the cross-check that the same deterministic work ran in each, rather than three different
 trajectories being compared.
+
+## Pass B: the cost moved rather than vanished, and that is the finding
+
+**~686–712ms → ~523–528ms per AI step (~24%)** on `editor_debug`; **~412ms** exported release. Full
+suite green including `test_full_mission.gd` and the byte-identical seeded-bout tests, which is the
+stated acceptance — the field only prefilters and `ShotPlane` still confirms, so no decision may
+change.
+
+The per-turn profile is where the interesting part is:
+
+| | before | after |
+|---|---|---|
+| `field_build` | — | **4.2ms** |
+| `any_lof_scan` | 271.9ms | **77.8ms** |
+| `engagement_search` | 98.3ms | **251.2ms** |
+| `nearest_enemy` | 15.0ms | 14.9ms |
+| `Pathfinder.reachable` | 2.5ms | 2.5ms |
+
+**`engagement_search` did not get slower — it was being subsidised.** The old scan built a
+`ShotPlane` for nearly every reachable cell and left them in the per-turn memo, so the scorer ran
+warm off work the scan had already paid for. Now the scan short-circuits on the field and the scorer
+pays for its own casts on the cells the field allows. **The remaining cost is per-candidate casts
+inside `_engagement_score`, not the prefilter** — which is the answer B4 asks for before Pass D, and
+it says the per-unit plan is still far above D2's ~100ms threshold.
 
 ## Decisions made without asking
 
@@ -61,6 +84,27 @@ trajectories being compared.
 - **`export_presets.cfg` stays gitignored; a committed `.example` carries what is shared.** Export
   paths are per-machine, but the preset *name* `bench_release.sh` passes to `--export-release`, and
   the `bench` feature without which the export boots the game instead of the bench, are not.
+- **Pass B: the field occludes on opacity AND a projecting blocker, never opacity alone.** Opacity
+  alone is not merely coarse, it is wrong: `Grid.opacity` is never cleared when a wall is destroyed,
+  so a dead wall would occlude in the field while shots pass straight through it. That is
+  under-inclusion, the one failure mode the design cannot tolerate. `BodyProjector.projects` was
+  extracted from `project_part`'s body so there is one answer to "is this blocker still real" rather
+  than two that could drift.
+- **Pass B: no shadowcast.** The block specifies "one symmetric shadowcast"; the field instead runs
+  the same `Grid.line` supercover walk `LoS` already uses, per cell, with a strictly weaker occluder
+  test. The reason is that the containment obligation is the acceptance, and matching the walk the
+  rest of the codebase already means by "a line between two cells" makes soundness inspectable rather
+  than argued. The asymptotic win — one field per target instead of a cast per candidate — is fully
+  realised either way; a shadowcast would further reduce the field's *own* build cost, which the
+  profile now measures at **4.2ms** and is therefore not where the remaining time is. Worth revisiting
+  only if that line grows.
+- **Pass B: the 3D index carries one real distinction today.** `i = x + y*W + z*W*H` over a
+  `PackedInt64Array` as instructed, but occlusion data in this project is 2D (`Grid.opacity` is per
+  cell, no per-level component), so the z axis currently encodes exactly one thing: a cell at a
+  different elevation from the target is always allowed, because a wall "at" a cell says nothing
+  reliable about a shot passing over it. That is over-inclusion and therefore sound, and the
+  representation is the part that has to be right now — a per-level structure with a cross-level path
+  bolted on later is the thing that gets rewritten.
 
 ## Tests that failed, then were corrected
 
@@ -79,6 +123,14 @@ worth recording anyway, because two of them cost real time and neither was a tes
 The one methodological correction worth naming: I initially assumed `-s` was honoured in export
 templates. Rather than keep guessing I passed `-s` a **nonexistent** script path — identical crash,
 which proves the argument was never read. That is now recorded at the seam in `AiPlanningBench`.
+
+**Pass B had one, and the premise was mine.** The containment sweep failed on two cells that were
+themselves walls. `Grid.line`'s supercover picks up the neighbouring wall cells along the same wall,
+while the real plane resolving from a position *inside* that wall does not. No call site can pose
+that question — candidates come from `Pathfinder.reachable`, which never returns a live-blocker cell
+— so the sweep is now scoped to standable cells and the disagreement is recorded at the contract
+rather than papered over. A second failure was the bench itself: `--profile` was still calling the
+pre-inversion path, and would have reported that Pass B changed nothing.
 
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
