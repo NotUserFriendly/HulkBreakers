@@ -19,7 +19,9 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-43 Passes A–D landed — the AI planning-cost block, whose most useful result
+*Current as of taskblock-44 Passes A–D landed — AI v2 part one: the release-vs-debug number exists
+(~1.29x, so debug overhead is not the explanation), the line-of-fire query is inverted, the WorldView
+information seam is in, and a unit's turn is navigable rather than frozen. taskblock-43 Passes A–D landed — the AI planning-cost block, whose most useful result
 is that the candidate search it attacks is only ~25% of a planning turn and the LOF prefilter scan is
 the rest (see "AI planning cost" below). taskblock-42 Passes A–E landed (F and G held — see below). taskblock-41 Passes A–F — "Diagnostics: the log becomes the instrument" is
 closed, and so is "Checkpoints return as an ordinary tool." The combat log now carries engine and
@@ -1351,6 +1353,63 @@ not built**: this block is triage with a stated scope. It is in `PLAN.md` and on
 
 Whole-bout effect of batching one squad of three: **~671ms → ~646ms per AI step.** BR27.09 stays
 `Active`; nothing here closes it.
+
+### AI v2, part one: measure, invert, seam (tb44 Passes A–D, BR27.09/BR44.01)
+
+**Every performance figure this project had ever recorded came from a tools binary**, and nobody had
+checked how much of the hitch was GDScript's debug per-line overhead. Now measured, on the same bench
+and seeds throughout: `editor_debug` ~686–712ms → `exported_release` ~530–554ms per AI step,
+**~1.29×**. Roughly 78% of the cost survives into a real player build, so the planning cost is
+genuine. `src/debug/build_identity.gd` classifies the running build and is stamped into the bench's
+first line and every `fps_dump` event, so a number never again needs its provenance explained in
+prose. `tools/bench_release.sh` runs both builds and refuses to report unless the binary itself
+declares `build=exported_release`.
+
+**Getting that number required fixing BR44.01, and it is the more consequential find: the first-ever
+export of this project loaded no data at all** — no parts, ammo, presets, materials or variant
+families. `DataLibrary._load_dir` filtered on `ends_with(".tres")`, true in the editor and false in
+every export, since `convert_text_resources_to_binary` ships `crab.res` + `crab.tres.remap`. It
+presented as a bare SIGFPE with no message, because an empty pool makes `i % pool.size()` an integer
+modulo by zero that a release build traps at the CPU. Two structural consequences: an export template
+**ignores `-s res://...`** (confirmed by passing a nonexistent script and getting the identical
+crash), so the bench needed a main-scene entry point behind a `bench` feature tag; and the bench body
+moved to `AiPlanningBench` so the debug and release entry points cannot drift.
+
+**The line-of-fire query is inverted** (`src/logic/visibility_field.gd`). One `VisibilityField` per
+target per turn, `PackedInt64Array`, flat `i = x + y*W + z*W*H`; each candidate's question becomes a
+bit test. **~700ms → ~525ms per AI step (~24%)**, ~412ms release. It is a conservative **prefilter** —
+one obligation, never report "no line" where one exists — and `ShotPlane` stays final, so acceptance
+was identical output. It deliberately over-includes on cover, on units, and across elevations. The
+occluder test is opacity **and** a blocker the plane would actually resolve against
+(`BodyProjector.projects`, extracted so there is one answer): opacity alone is *wrong*, not coarse,
+because `Grid.opacity` is never cleared when a wall dies. The all-negative case — 19 of 60 turns in
+taskblock-43's census — now costs **exactly zero** `ShotPlane` builds.
+
+**Where the cost went, which is the pass's real output.** `any_lof_scan` 271.9 → 77.8ms, new
+`field_build` 4.2ms, but `engagement_search` 98.3 → **251.2ms**. The scorer did not get slower; it was
+being subsidised by a scan that built a plane for nearly every reachable cell and left them in the
+per-turn memo. The remaining cost is per-candidate casts inside `_engagement_score`.
+
+**The `WorldView` seam** is the planner's entry point; `CombatState` reaches it only through
+`canonical_state_for_resolvers()`. Today it returns everything — a pass-through with a doorway in it,
+byte-identical across a seeded bout. **The boundary is not `CombatState` versus not-`CombatState`: it
+is knowledge-about-units versus everything else, and that line runs THROUGH `Grid` and THROUGH
+`BatchPlan`.** Geometry is free; occupancy is not geometry (`Grid.occupant_id` would leak every unit's
+position past the filter, so the guard forbids it); the team blackboard is a Trained-and-above tier
+capability, so batch plans are observer-gated on both read and write. The resolver door may appear
+only as a bare argument, never followed by a dot — greppable, and enforced, because a prose rule with
+no enforcement is what BR40.02 was. Restriction is stubbed behind a disabled flag with staleness
+derived rather than maintained, and an anti-vacuity test proves a restricted view changes what a unit
+decides.
+
+**A unit's turn is now navigable rather than frozen.** The planner yields mid-plan every `chunk`
+candidates and the acting unit is named on screen while it thinks. This makes nothing faster and is
+not meant to: taskblock-42 Pass D yielded *between* steps, which bought nothing, because one step is
+the entire think. The chain became coroutines because GDScript rejects a conditional-await single
+implementation at parse time and a second planner would be two paths deciding one thing. A hard turn
+budget backs the label, since a thinking state that never ends is worse than a freeze; aborting is
+safe at any iteration because the incumbent is the unit's own cell until strictly beaten. Frame
+boundaries do not change decisions, asserted directly.
 
 ## Economy
 

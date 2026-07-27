@@ -1,13 +1,10 @@
 # Taskblock 44 Report — AI v2, part one: measure, invert, seam
 
-**IN PROGRESS — Passes A and B.** C and D are not started. `taskblock44.md` is in the tree and is
-still the authority on what they are; this file records what landed.
+Passes A–D all landed, in order. Suite 2301/2301.
 
-**The rolling-five window is deliberately NOT rolled yet.** `Report-Taskblock39.md` stays until this
-block finishes — deleting it for a one-pass stub would trade a complete record for an incomplete one.
-Roll it when the block closes.
-
-Suite 2279/2279 at Pass B. Commits `c7d6afe` and `7c6dab0` (Pass A), `89070ec` (Pass B).
+**Two things are worth reading before the rest.** The block's own premise about where AI time goes was
+right for the first time in four taskblocks — and acting on it revealed that the project had never
+been exported, which turned out to matter more than the optimisation did.
 
 ## Where the number stands
 
@@ -49,6 +46,46 @@ warm off work the scan had already paid for. Now the scan short-circuits on the 
 pays for its own casts on the cells the field allows. **The remaining cost is per-candidate casts
 inside `_engagement_score`, not the prefilter** — which is the answer B4 asks for before Pass D, and
 it says the per-unit plan is still far above D2's ~100ms threshold.
+
+## Pass C: the seam, with the boundary drawn where review put it
+
+The planner takes a `WorldView`; `CombatState` is reachable only through
+`canonical_state_for_resolvers()`. Today it returns everything — a doorway, not a behaviour change —
+and a seeded bout is byte-identical.
+
+Supervisor review corrected the shape in three places before it was built, and the first was a hole I
+would otherwise have shipped:
+
+- **`grid` is not geometry.** `Grid` carries `occupant_id`/`get_occupant_id()` beside `blockers` and
+  `surfaces`, so a raw grid lets the planner read the position of every unit on the board — including
+  ones `units_visible_to` just filtered out. My proposed guard watched only the four `CombatState`
+  fields and would have passed it clean. Took the cheaper of the two fixes deliberately: the guard
+  refuses occupancy reads from the planner path.
+- **`batch_plans` is gated information, not infrastructure** — the blackboard is Trained-and-above, so
+  it sits on the observer-parameterised side. I gated the write as well as the read; a unit that could
+  set a plan it cannot read back would be worse than one that plans for itself.
+- **The resolver door needed a guard on derived access.** `canonical_state_for_resolvers()` may appear
+  only as a bare argument, never followed by a dot.
+
+The framing sentence is written at the seam because it is what tells part two where new fields go:
+**the boundary is knowledge-about-units versus everything else, and that line runs through `Grid` and
+through `BatchPlan` rather than around them.**
+
+## Pass D: not faster, navigable
+
+The planner yields mid-plan every `chunk` candidates and names the acting unit while it thinks. **This
+makes nothing faster and is not meant to.** taskblock-42 Pass D yielded *between* steps and bought
+nothing, because one step is the entire think.
+
+**The chain became coroutines because GDScript forced it, and I probed rather than assumed:** a
+conditional `await` is rejected at parse time — any function containing one is a coroutine and every
+caller must await. The alternatives were a second synchronous planner (two code paths deciding one
+thing) or no mid-plan yield. The upside is that the parser enumerated every call site, so the
+conversion could not be silently incomplete.
+
+A hard turn budget backs the label, because a thinking state that never ends is worse than a freeze.
+Aborting is safe at any iteration by construction: the incumbent is the unit's own cell until
+strictly beaten, so a cut-off scan returns a legitimate answer rather than a partial one.
 
 ## Decisions made without asking
 
@@ -132,6 +169,18 @@ that question — candidates come from `Pathfinder.reachable`, which never retur
 rather than papered over. A second failure was the bench itself: `--profile` was still calling the
 pre-inversion path, and would have reported that Pass B changed nothing.
 
+- **Pass D: `yields` is cumulative, `aborted` is per-turn.** They started as one reset-together pair
+  and that made a bout-level "is slicing firing" assertion impossible — it could only ever see the
+  last unit's count. "Did this unit overrun" and "is the mechanism working at all" are different
+  questions and should not share a counter.
+- **`gdlintrc max-file-lines` 1300 → 1350 → 1400, and I am flagging it rather than defending it.**
+  That is the eighth bump for `unit_ai.gd`. The justification each time is that part two replaces this
+  planner outright so a split would be discarded work — but that justification has now been used three
+  times across two blocks, and it stops being true the moment part two slips. Passes B and C both took
+  the other option first and put their logic in new files (`visibility_field.gd`, `world_view.gd`,
+  `plan_pacer.gd`); what remains in `unit_ai.gd` is threading, which cannot leave without making
+  private helpers public.
+
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
 **None.** `BR27.09` gained the completed release-vs-debug measurement and its status is untouched, per
@@ -140,6 +189,16 @@ CC, is `CC`-owned, and was resolved and archived directly.
 
 ## Open questions
 
-- **The release number does not reduce Pass B's urgency, and the supervisor's call is whether it
-  changes anything else.** ~1.29× was the optimistic scenario failing; the planning cost is real.
-- **Nothing else is open on Pass A.** Both halves are done: the provenance stamp and the measurement.
+- **BR27.09 is much smaller but not closed, and closing it is the supervisor's call.** ~700ms → ~525ms
+  debug, ~412ms release, and the freeze is now a navigable wait. Whether that clears the bar the bug
+  was filed against is a judgement about how it *feels*, which is exactly the kind of thing this
+  ledger says CC does not get to decide.
+- **The remaining cost has a name and it is not the prefilter.** Per-candidate `ShotPlane` casts
+  inside `_engagement_score`, ~251ms per repositioning turn. Part two's scorer replaces that code
+  entirely, so the honest question is whether to spend anything more on it first.
+- **`unit_ai.gd` is at 1400 lines after eight cap bumps.** Worth an explicit decision: either part two
+  starts soon and the file is genuinely throwaway, or it gets split. It should not quietly take a
+  ninth bump.
+- **Batches are still dormant** (taskblock-43 Pass C/D) and now so is the restriction flag — both are
+  built, tested, and off. That is correct for a seam landed ahead of its consumer, but it is two
+  mechanisms whose first real exercise is part two.
