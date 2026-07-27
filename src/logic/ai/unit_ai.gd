@@ -342,8 +342,13 @@ static func _plan_ranged(
 		# cached_first_hit`'s own doc comment for why this was the actual
 		# multi-second cost, not the fallback pathing itself.
 		var lof_cache: Dictionary = {}
+		# tb44 Pass B: ONE field per target per turn, shared by the scan below and
+		# every scorer call over the same reachable cells. This is where the
+		# inversion's win is — the cost of answering "can anything shoot from
+		# here" stops scaling with the number of cells asking.
+		var field: VisibilityField = VisibilityField.build(state, enemy.cell)
 		var any_reachable_has_lof: bool = _any_reachable_has_lof(
-			unit, enemy, state, reachable, weapon, lof_cache
+			unit, enemy, state, reachable, weapon, lof_cache, field
 		)
 
 		var best_cell: Vector2i = unit.cell
@@ -407,7 +412,8 @@ static func _plan_ranged(
 						unit, enemy, _target_distance(weapon, preferred_range), reachable
 					),
 					true,
-					lof_cache
+					lof_cache,
+					field
 				)
 			if best_cell != unit.cell:
 				var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
@@ -429,7 +435,7 @@ static func _plan_ranged(
 		# per-decision `ShotPlane` cost BR27.09 is about.
 		var ally_blocks_shot: bool = _ally_in_firing_line(unit, enemy, best_cell, state, lof_cache)
 		var lof_clear: bool = LineOfFire.has_clear_line_of_fire(
-			unit, enemy, best_cell, state, lof_cache
+			unit, enemy, best_cell, state, lof_cache, field
 		)
 		var final_blocked: bool = ally_blocks_shot or not lof_clear
 		if (
@@ -704,15 +710,23 @@ static func _any_reachable_has_lof(
 	state: CombatState,
 	reachable: Array[Vector2i],
 	weapon: Part,
-	lof_cache: Variant = null
+	lof_cache: Variant = null,
+	field: VisibilityField = null
 ) -> bool:
+	# tb44 Pass B: the case this pass exists for. taskblock-43's branch census
+	# found 19 turns in 60 ending with NO reachable cell having a line, and each
+	# of those built a real `ShotPlane` per candidate to find that out. When the
+	# field rules out every reachable cell the answer is conclusive with **zero**
+	# casts — one scan of bits, no geometry at all.
+	if field != null and field.allows_none(reachable):
+		return false
 	for cell: Vector2i in reachable:
 		if (
 			weapon != null
 			and not _weapon_reaches(weapon, Grid.distance_chebyshev(cell, enemy.cell))
 		):
 			continue
-		if LineOfFire.has_clear_line_of_fire(unit, enemy, cell, state, lof_cache):
+		if LineOfFire.has_clear_line_of_fire(unit, enemy, cell, state, lof_cache, field):
 			return true
 	return false
 
@@ -856,7 +870,8 @@ static func _pick_engagement_position(
 	weapon: Part,
 	reachable: Array[Vector2i],
 	any_reachable_has_lof: bool,
-	lof_cache: Variant = null
+	lof_cache: Variant = null,
+	field: VisibilityField = null
 ) -> Vector2i:
 	engagement_searches += 1
 	var best_cell: Vector2i = unit.cell
@@ -869,7 +884,9 @@ static func _pick_engagement_position(
 		weight_cover,
 		weapon,
 		any_reachable_has_lof,
-		lof_cache
+		lof_cache,
+		-INF,
+		field
 	)
 	for cell: Vector2i in reachable:
 		var score: float = _engagement_score(
@@ -882,7 +899,8 @@ static func _pick_engagement_position(
 			weapon,
 			any_reachable_has_lof,
 			lof_cache,
-			best_score
+			best_score,
+			field
 		)
 		if score > best_score:
 			best_score = score
@@ -911,7 +929,8 @@ static func _engagement_score(
 	weapon: Part = null,
 	any_reachable_has_lof: bool = true,
 	lof_cache: Variant = null,
-	score_to_beat: float = -INF
+	score_to_beat: float = -INF,
+	field: VisibilityField = null
 ) -> float:
 	var distance: int = Grid.distance_chebyshev(cell, enemy.cell)
 	var distance_penalty: float = absf(float(distance) - _target_distance(weapon, preferred_range))
@@ -1024,7 +1043,7 @@ static func _engagement_score(
 		if (
 			not any_reachable_has_lof
 			or cell == self_unit.cell
-			or LineOfFire.has_clear_line_of_fire(self_unit, enemy, cell, state, lof_cache)
+			or LineOfFire.has_clear_line_of_fire(self_unit, enemy, cell, state, lof_cache, field)
 		)
 		else NO_LOF_PENALTY
 	)

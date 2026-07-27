@@ -451,6 +451,36 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-27 (tb44 Pass B — the line-of-fire query inverted; ~700ms -> ~525ms per AI step)**
+  [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. The planner cast from N candidate cells to one target,
+  paying a real `ShotPlane.build` per candidate. It now builds **one `VisibilityField` per target per
+  turn** (`src/logic/visibility_field.gd`) and each candidate's question becomes a bit test.
+  `PackedInt64Array`, flat `i = x + y*W + z*W*H`.
+  - **Measured, editor_debug, same bench/seeds/steps throughout:** **~686-712ms -> ~523-528ms per AI
+    step (~24%)**. Exported release: **~412ms**, still ~1.29x under debug.
+  - **The field is a conservative PREFILTER; `ShotPlane` stays final.** One obligation — never report
+    "no line" where one exists. It therefore deliberately over-includes in three places, each costing
+    a cast it could in principle have saved: cover never occludes (cover blocks shots, not sight),
+    units never occlude, and any cell at a different elevation from the target is always allowed
+    (occlusion data here is 2D, so it says nothing reliable about a shot passing over a wall).
+  - **The occluder test is opacity AND a blocker the plane would actually resolve against**
+    (`BodyProjector.projects`, extracted so there is one answer rather than two). Opacity alone would
+    be genuinely WRONG: `Grid.opacity` is never cleared when a wall is destroyed, so a dead wall would
+    occlude in the field while shots pass straight through it — under-inclusion, the one failure mode
+    that matters. There is a direct test for exactly that.
+  - **The negative case now costs nothing.** `field.allows_none(reachable)` settles "nobody can shoot
+    from anywhere reachable" with **exactly zero** `ShotPlane` builds, asserted as a number rather
+    than a bound. That was 19 of 60 turns in taskblock-43's census.
+  - **Where the cost moved, which is Pass B4's answer and matters for Pass D.** Per repositioning turn:
+    `any_lof_scan` **271.9ms -> 77.8ms**, new `field_build` **4.2ms** — but `engagement_search`
+    **98.3ms -> 251.2ms**. It did not get slower; it was previously being subsidised. The old scan
+    built a `ShotPlane` for nearly every reachable cell and left them in the per-turn memo, so the
+    scorer ran warm. Now the scan short-circuits and the scorer pays for its own casts on the cells the
+    field allows. **The remaining cost is per-candidate casts inside `_engagement_score`**, not the
+    prefilter.
+  - Acceptance was identical output and it holds: full suite green including `test_full_mission.gd`
+    and the byte-identical seeded-bout tests. **Status unchanged, `Active`** — CC appends numbers, the
+    supervisor closes.
 - **2026-07-27 (tb44 Pass A COMPLETE — the release number exists, and debug overhead is NOT the story)**
   [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. The supervisor installed export templates, CC wrote
   `export_presets.cfg` (+ a committed `.example`) and `tools/bench_release.sh`, and the measurement
