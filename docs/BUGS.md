@@ -112,6 +112,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   - **No measurement is claimed here.** This pass built the instrument only; every number in
     taskblock-42 is taken with it afterwards. **Status unchanged, and the aiming path is still
     unmeasured** — that is Pass B's job, and this entry stays `SUPERVISOR`-owned regardless.
+- **2026-07-26 (tb42 Pass B — the aiming path finally has a number)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. This entry has absorbed three fixes that were reasoned
+  rather than measured. The first measurement: the per-orientation-preview
+  `HitVolumeView.refresh()` at `squad_control_overlay.gd:782`, which fires on **every** reticle-driven
+  facing change while aiming, cost **795µs per unit per change** and now costs **267µs** (3.0×, real
+  class, 30-part humanoid, 200 repeats).
+  - **This does not close anything.** It is one cost on the aiming path, now smaller; nobody has
+    measured what the rest of that path costs, and the supervisor has already said aiming is
+    tolerable. `SUPERVISOR`-owned — **do not close from CC's side.**
+  - The `fps_dump` numbers this wants comparing against are taken at taskblock-42's own hard pause,
+    on a real build, not here.
 - **Also requested: a live FPS counter, rendered ON TOP OF the combat log rather than logged into
   it** — a continuous readout for the supervisor's own eyes, distinct from the dumps (which exist for
   CC to grep). Tracked with the log-window UX work in `docs/PLAN.md`.
@@ -374,6 +385,30 @@ confirm" roll-up — so pending items surface at a natural review point without 
   algorithmic change (out of scope for "memoise per cell" as specified) — BR27.09 stays open. The
   original player-turn-end-hitch-with-no-AI-batch question above is also still unaddressed; this pass
   only measured and cut the AI-planning half.
+- **2026-07-26 (tb42 Pass B — cost #2 cut, not eliminated)**
+  [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. `HitVolumeView.refresh()` freed every child and
+  re-instanced all of them even when only a transform had changed — which is the most common case
+  there is, a unit that moved. Added `refresh_transforms()`: same nodes, new transforms.
+  **Measured on a real 30-part reference humanoid (34 child nodes per view), 200 repeats:**
+
+  | path | before | after | |
+  |---|---|---|---|
+  | move refresh (post-AI-batch) | 858µs | **351µs** | 2.4× |
+  | orientation preview (aim path) | 795µs | **267µs** | 3.0× |
+
+  The "before" figure corroborates this entry's own original ~550–600µs on a 27-part unit.
+  - **Partial, and the remainder is named.** The teardown is gone; what is left is
+    `UnitGeometry.placements()` recomposing the socket tree, which the cheap path cannot skip — it
+    needs the new transforms. Removing that needs cached geometry, a larger change than this pass.
+  - **The cheap path REFUSES rather than guesses.** It compares a signature of everything the node
+    SET depends on (part order, per-part box counts, render path per part, downed-ness, hit-volume
+    toggle) and returns false on any difference, so the caller falls back to a full rebuild. The risk
+    here was never speed, it was a view that silently stops updating in a case nobody enumerated.
+  - A test pins that a cheap refresh lands the scene in a state **identical** to a full rebuild, node
+    for node. Writing it surfaced a real ordering defect: rebuilding the ground markers appended them
+    to the end of the child list, so the two paths held the same nodes in different tree order.
+    Nothing rendered differently, but "identical" stopped being literally true — fixed with
+    `move_child`.
 - **2026-07-26 (tb41 Pass A — cost #1 fixed, but by coalescing, NOT by the `append_text` this entry
   prescribes)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. **Supervisor approved the override; this
   is an append, not a status change.** Cost #1's stated fix — "incremental `RichTextLabel.append_text`
