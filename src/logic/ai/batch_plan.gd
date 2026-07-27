@@ -74,6 +74,41 @@ func leader_id_for(batch_id: int, round_number: int) -> int:
 	return int(plan["leader_id"]) if not plan.is_empty() else NO_LEADER
 
 
+## taskblock-43 Pass D: records `destination` as `unit`'s batch's plan for
+## `round_number`, making `unit` that batch's leader.
+##
+## **Leadership is claimed, never assigned.** `record` takes the FIRST claim of a
+## round and refuses every later one, so "the leader is the first member of the
+## batch to take a turn this round" needs no leader field, no promotion logic
+## when one dies, and nothing that can go stale. A no-op for the independent
+## (`batch_id == 0`) units that make up every bout until one is assigned by hand.
+func claim(unit: Unit, round_number: int, destination: Vector2i) -> void:
+	if unit == null or unit.batch_id == 0:
+		return
+	record(unit.batch_id, round_number, unit.id, destination)
+
+
+## taskblock-43 Pass D: `unit`'s batch plan if it is a FOLLOWER — a member of a
+## batch that someone else has already led this round — and empty otherwise.
+##
+## Empty for an independent unit, for a batch nobody has acted for yet, and for
+## the leader itself, all three of which must go on to plan normally.
+##
+## **A leader that dies mid-round leaves this untouched**, so its followers keep
+## the cached destination for the rest of the round: the squad finishes the
+## manoeuvre it was already committed to and reorganises next round, when the
+## record has aged out and the next-fastest living member claims the lead. That
+## reads correctly and costs no code — promoting a new leader mid-round is
+## exactly what deriving leadership exists to avoid.
+func plan_to_follow(unit: Unit, round_number: int) -> Dictionary:
+	if unit == null or unit.batch_id == 0:
+		return {}
+	var plan: Dictionary = for_batch(unit.batch_id, round_number)
+	if plan.is_empty() or int(plan["leader_id"]) == unit.id:
+		return {}
+	return plan
+
+
 ## The board indicator's text for one unit: empty for an independent unit (the
 ## overwhelming majority, which must stay visually unchanged), `"B2"` for a
 ## member of batch 2, and `"B2*"` for the member currently leading it.

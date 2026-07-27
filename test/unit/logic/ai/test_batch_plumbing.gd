@@ -194,11 +194,17 @@ func test_default_zero_units_produce_an_unchanged_action_sequence() -> void:
 	assert_gt(expected.size(), 0, "sanity: the bout actually did something")
 
 
-## And the same claim from the other side: assigning a batch changes nothing YET.
-## This test is expected to CHANGE in Pass D — a batched unit is supposed to plan
-## differently once followers exist — and it is here so that change is a
-## deliberate edit rather than a silent one.
-func test_assigning_a_batch_changes_no_behaviour_in_this_pass() -> void:
+## The other side of the same claim, and **this test was deliberately written in
+## Pass C to break in Pass D.** It asserted that assigning a batch changed
+## nothing, which was true while `batch_id` was plumbing nobody read; Pass D made
+## followers plan differently, so the assertion inverted rather than being
+## deleted. Keeping it as a live claim in the opposite direction is what makes
+## "batches now change behaviour" a deliberate, dated edit instead of a quietly
+## removed test.
+##
+## `test_batch_follow.gd` is where WHAT changes is pinned; this only pins THAT it
+## does, from the same seeded-bout angle the unbatched case above uses.
+func test_assigning_a_batch_now_changes_behaviour() -> void:
 	var a: Dictionary = _bout(31337)
 	var expected: Array[String] = _action_sequence(a.state, a.mission, 8)
 
@@ -207,4 +213,4 @@ func test_assigning_a_batch_changes_no_behaviour_in_this_pass() -> void:
 		unit.batch_id = 1
 	var actual: Array[String] = _action_sequence(b.state, b.mission, 8)
 
-	assert_eq(actual, expected, "Pass C is plumbing; nothing reads batch_id while planning")
+	assert_ne(actual, expected, "tb43 Pass D: followers no longer plan for themselves")

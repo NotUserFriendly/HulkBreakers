@@ -37,12 +37,25 @@ func _init() -> void:
 		compare = false
 	elif argv.has("--compare"):
 		compare = true
+	# tb43 Pass D: `--batched` puts every unit of squad 1 into one batch, leaving
+	# squad 0 independent, so a single run measures a leader's turn, a follower's
+	# turn and an unbatched turn against the same maps and the same seeds. The
+	# pass's acceptance is "a follower is dramatically cheaper than a leader", and
+	# comparing across two separate runs would compare different trajectories.
+	var batched: bool = argv.has("--batched")
+	var profile: bool = argv.has("--profile")
+	var profile_totals: Dictionary = {
+		"turns": 0, "reachable": 0, "any_lof_scan": 0, "engagement_search": 0, "nearest_enemy": 0
+	}
 	var total_steps := 0
 	var total_usec := 0
 	var decisions := 0
 	var differing := 0
 	var full_candidates := 0
 	var culled_candidates := 0
+	# role -> [steps, usec]
+	var by_role: Dictionary = {"independent": [0, 0], "leader": [0, 0], "follower": [0, 0]}
+	var branches: Dictionary = {}
 
 	for map_seed: int in SEEDS:
 		var built: Dictionary = _bout(map_seed)
@@ -51,7 +64,13 @@ func _init() -> void:
 			continue
 		var state: CombatState = built["state"]
 		var mission: MissionState = built["mission"]
+		if batched:
+			for unit: Unit in state.units:
+				if unit.squad_id == 1:
+					unit.batch_id = 1
 		var runner := BoutRunner.new(state, mission)
+		var sink := MemorySink.new()
+		state.combat_log.add_sink(sink)
 
 		var step := 0
 		while not runner.finished and step < STEPS_PER_SEED:
@@ -63,12 +82,24 @@ func _init() -> void:
 				culled_candidates += int(sample["culled_count"])
 				if sample["full_cell"] != sample["culled_cell"]:
 					differing += 1
+			# Read BEFORE the step: afterwards this unit has claimed the lead and
+			# would read as a leader whichever role it actually played.
+			var role: String = _role_of(unit, state)
+			if profile:
+				_profile_turn(unit, state, profile_totals)
 
 			var started: int = Time.get_ticks_usec()
 			runner.step()
-			total_usec += Time.get_ticks_usec() - started
+			var spent: int = Time.get_ticks_usec() - started
+			total_usec += spent
 			total_steps += 1
+			(by_role[role] as Array)[0] += 1
+			(by_role[role] as Array)[1] += spent
 			step += 1
+		for event: LogEvent in sink.events:
+			if event.kind == &"ai_decision":
+				var branch: StringName = event.data["branch"]
+				branches[branch] = int(branches.get(branch, 0)) + 1
 
 	print("=== tb43 AI planning bench ===")
 	print("seeds            : %s" % str(SEEDS))
@@ -76,6 +107,27 @@ func _init() -> void:
 	if total_steps > 0:
 		print("ms per AI step   : %.1f" % (float(total_usec) / float(total_steps) / 1000.0))
 	print("candidates skipped by the Pass A early-out: %d" % UnitAI.candidates_skipped)
+	if batched:
+		print("--- Pass D: cost per turn by batch role ---")
+		for role: String in ["independent", "leader", "follower"]:
+			var bucket: Array = by_role[role]
+			if int(bucket[0]) == 0:
+				print("%-12s: no turns" % role)
+				continue
+			print(
+				(
+					"%-12s: %5.1f ms over %d turns"
+					% [role, float(bucket[1]) / float(bucket[0]) / 1000.0, bucket[0]]
+				)
+			)
+	if profile and int(profile_totals["turns"]) > 0:
+		print("--- where a turn's time goes (mean per turn) ---")
+		var turns: float = float(profile_totals["turns"])
+		for key: String in ["reachable", "any_lof_scan", "engagement_search", "nearest_enemy"]:
+			print("%-18s: %6.1f ms" % [key, float(profile_totals[key]) / turns / 1000.0])
+	print("--- which branch _plan_ranged took ---")
+	for branch: StringName in branches:
+		print("%-20s: %d" % [branch, branches[branch]])
 	print("--- Pass B: culled rectangle vs. full reachable ---")
 	print("decisions sampled: %d" % decisions)
 	if decisions > 0:
@@ -102,6 +154,62 @@ func _init() -> void:
 				)
 			)
 	quit()
+
+
+## `--profile`: where a repositioning turn's time actually goes, by re-running
+## `_plan_ranged`'s own prologue piece by piece against the same state and timing
+## each. Added when Pass D's leader-vs-follower gap came out at 5% instead of the
+## order of magnitude the block expected — the answer being that the positional
+## search is not the whole cost of a turn, and everything before it is paid by
+## leader and follower alike.
+func _profile_turn(unit: Unit, state: CombatState, totals: Dictionary) -> void:
+	if unit == null or not unit.alive or unit.shutdown:
+		return
+	var enemy: Unit = UnitAI._nearest_living_enemy(unit, state)
+	if enemy == null:
+		return
+	var weapon_id: StringName = UnitAI._find_weapon_id(unit)
+	var weapon: Part = unit.shell.find_part(weapon_id) if weapon_id != &"" else null
+	var playstyle: StringName = unit.matrix.playstyle if unit.matrix != null else &"AGGRESSIVE"
+	var preferred_range: int = _preferred_range_for(playstyle)
+	var weight_cover: bool = playstyle in [&"COVER_SEEKER", &"TURTLE"]
+
+	var mark: int = Time.get_ticks_usec()
+	var pf := Pathfinder.new(state.grid, unit.shell.can_climb())
+	var reachable: Array[Vector2i] = pf.reachable(unit.cell, unit.mp_per_ap() * unit.ap)
+	if not reachable.has(unit.cell):
+		reachable.append(unit.cell)
+	totals["reachable"] += Time.get_ticks_usec() - mark
+
+	var lof_cache: Dictionary = {}
+	mark = Time.get_ticks_usec()
+	UnitAI._any_reachable_has_lof(unit, enemy, state, reachable, weapon, lof_cache)
+	totals["any_lof_scan"] += Time.get_ticks_usec() - mark
+
+	var culled: Array[Vector2i] = EngagementRect.cull(
+		unit, enemy, UnitAI._target_distance(weapon, preferred_range), reachable
+	)
+	mark = Time.get_ticks_usec()
+	UnitAI._pick_engagement_position(
+		unit, enemy, state, preferred_range, weight_cover, weapon, culled, true, lof_cache
+	)
+	totals["engagement_search"] += Time.get_ticks_usec() - mark
+
+	mark = Time.get_ticks_usec()
+	UnitAI._nearest_living_enemy(unit, state)
+	totals["nearest_enemy"] += Time.get_ticks_usec() - mark
+	totals["turns"] += 1
+
+
+## Which part this unit is about to play in its batch, read BEFORE its turn
+## runs: independent, the leader that will claim this round, or a follower that
+## will read a plan someone already recorded.
+func _role_of(unit: Unit, state: CombatState) -> String:
+	if unit == null or unit.batch_id == 0:
+		return "independent"
+	if state.batch_plans.plan_to_follow(unit, state.round_number).is_empty():
+		return "leader"
+	return "follower"
 
 
 ## Both choices from ONE state, at the point in `_plan_ranged` where the cull is

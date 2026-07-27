@@ -451,6 +451,38 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-26 (tb43 Passes C+D — batches land, and they measure the block's own premise WRONG)**
+  [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. `Unit.batch_id` (0 = independent), a `set_batch`
+  injector verb, a round-scoped `BatchPlan` on `CombatState`, a board badge, and the planner split:
+  the first member of a batch to take a turn claims the lead and pays for the full positional search,
+  every later member that round reads its destination and scans a handful of cells around it instead.
+  Leadership is derived, never stored — no `leader_id`, no promotion logic, nothing to desync.
+  - **Pass D's stated acceptance is NOT met, and this is the block's most useful finding.** It asks
+    for a follower to be "dramatically cheaper" than a leader, and says that if it isn't, "the local
+    scan is too wide." Measured on `tools/bench_ai_planning.gd --batched`: **leader ~330ms, follower
+    ~317ms — about 4%.** The scan is not too wide (radius 1, at most 9 cells); **the diagnosis in the
+    taskblock is wrong**, and the profile says where the time actually is.
+  - **`_any_reachable_has_lof` is the hog, not `_pick_engagement_position`.** Per repositioning turn
+    (`--profile`, means over 60 turns): **`_any_reachable_has_lof` 271.9ms, `_pick_engagement_position`
+    98.3ms** (warm cache, which is the real in-planner order), `_nearest_living_enemy` 15.0ms,
+    `Pathfinder.reachable` 2.5ms. So the positional search is **~25% of a planning turn**, and
+    removing it outright for followers cannot save more than that. Everything before it is paid by
+    leader and follower alike.
+  - **This retargets BR27.09.** Passes A, B and D all attacked the candidate search — a quarter of
+    the cost — because that is where three taskblocks in a row assumed the time went. The **LOF
+    prefilter scan over the whole reachable set is the actual remaining bug**, and the cheapest exact
+    attack on it is ordering: it early-returns on the first cell with a clear line, and currently
+    walks `reachable` in BFS-from-the-unit order rather than trying cells nearest the target first.
+    Deliberately NOT built here — this block is triage with a stated scope, and an unrequested fifth
+    pass on the newly-found real cause is how a scope fence stops meaning anything.
+  - Branch census over the same 60 turns, which is what makes the above legible: `repositioned` 23,
+    `no_lof_no_route` 15, `followed_leader` 10, `closing_fallback` 4, `fired_in_place` 5,
+    `stepped_out` 2. **19 of 60 turns end with no reachable cell having a line at all**, and each of
+    those scanned every reachable cell to find that out.
+  - Whole-bout effect of batching one squad of three: **~671ms -> ~646ms per AI step**, two runs each.
+    Real, small, and honest about being small.
+  - **Status unchanged — `Active`.** `SUPERVISOR`-owned; nothing here closes it, and the per-step
+    figure has not moved by anything like the order of magnitude that would.
 - **2026-07-26 (tb43 Pass B — the candidate rectangle, and a repeatable bench to judge it by)**
   [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. `_pick_engagement_position` now scores only the
   reachable cells inside a rectangle with two corners on the acting unit and its target
