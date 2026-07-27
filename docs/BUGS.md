@@ -451,6 +451,31 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-27 (tb44 Pass A COMPLETE — the release number exists, and debug overhead is NOT the story)**
+  [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. The supervisor installed export templates, CC wrote
+  `export_presets.cfg` (+ a committed `.example`) and `tools/bench_release.sh`, and the measurement
+  this pass asks for is done. Same bench, same seeds, same steps, both builds:
+
+  | build | ms per AI step |
+  |---|---|
+  | `editor_debug` (every historical figure in this entry) | ~686-712 |
+  | `exported_debug` | ~665 |
+  | **`exported_release`** | **~530-554** |
+
+  - **Release is ~1.29x faster — it is not the explanation.** A hoped-for answer here was "most of the
+    hitch is the harness"; it is not. Roughly 78% of the debug cost survives into a real player build,
+    so **the AI planning cost is genuine** and the rebuild's urgency stands essentially unchanged.
+    `candidates_skipped` was identical (2306) across all three builds, which is the cross-check that
+    the same deterministic work ran in each.
+  - **Getting there required fixing BR44.01** (`docs/BUGS-ARCHIVE.md`): the first-ever export of this
+    project loaded **no data at all**, and presented as a bare SIGFPE with no message. Every number
+    above is from a build with that fix in.
+  - **Two structural things worth knowing.** An export template **ignores `-s res://...`** — it is
+    tools-only — so the bench needed a main-scene entry point (`run/main_scene.bench`, activated by
+    the preset's `bench` custom feature) alongside the existing `-s` one, sharing one implementation
+    via `AiPlanningBench`. And `BuildIdentity` did its job: `bench_release.sh` refuses to report a
+    number unless the binary itself declares `build=exported_release`, so a silent fallback to a debug
+    binary cannot be mistaken for the real figure.
 - **2026-07-27 (tb44 Pass A — every number in this entry came from a tools binary, and now says so)**
   [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. **The release-vs-debug measurement this pass asks for
   could NOT be taken here and no proxy was substituted.** `~/.local/share/godot/export_templates/` is

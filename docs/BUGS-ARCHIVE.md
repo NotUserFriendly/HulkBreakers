@@ -1293,3 +1293,30 @@ same relative order this ledger has always kept them in, oldest work first. All 
   and this is now the fourth instance of the class (BR31.01, `TopLeftControls`, BR34.02, this).
   Carried forward to `docs/PLAN.md` rather than left buried in a closed entry.
 
+### BR44.01 — Resolved — owner: `CC`
+**An exported build loaded NO DATA AT ALL — no parts, ammo, presets, materials or variant families**
+- **Source:** `CC`  ·  **CC session:** `a56eac1a-eddb-4d30-946a-4c8e594ef198`
+- **Found by exporting the project for the first time** (taskblock-44 Pass A's release measurement).
+  Nothing had ever been exported, so nothing had ever noticed.
+- **Cause.** `DataLibrary._load_dir` filtered directory entries on `ends_with(".tres")`. That is true
+  in the editor and false in **every** export: `editor/export/convert_text_resources_to_binary`
+  defaults to true, so `crab.tres` ships as `crab.res` plus a `crab.tres.remap`. The filter matched
+  neither form, every scan returned an empty list, and all five registries came back empty.
+- **How it presented, which is the part worth remembering.** The first `i % pool.size()` downstream of
+  an empty pool is an **integer modulo by zero**. A debug export reports it as a GDScript error with a
+  backtrace; a **release export traps it as SIGFPE and dies with no message at all** — exit 136, no
+  banner, no log line. A missing-data bug presenting as a bare hard crash cost most of the diagnosis
+  time here. The earlier SIGSEGV (exit 139) seen while probing was a different symptom of the same
+  emptiness reached through the real main scene.
+- **Fix.** `_load_dir` normalises a directory entry to the authored `.tres` name it stands for
+  (`_authored_resource_name`), accepting `crab.tres` and `crab.tres.remap` alike and deduping, since
+  an exported directory legitimately contains both. It still loads by the **authored** path so
+  `ResourceLoader` resolves the remap itself — one code path for editor and export, and `_load_file`'s
+  existing checks are untouched. A bare `.res` with no remap is deliberately NOT handled: converted
+  resources always ship with a remap, so that branch would be speculative.
+- **Verified against a real export, not by inspection:** an exported debug build now runs the full AI
+  bench and an exported release build produces a complete measurement (`tools/bench_release.sh`).
+  Unit coverage for the name normalisation is in `test_data_library.gd`, because the bug itself is
+  only reachable through an actual export.
+- **`CC`-owned and resolved directly** — found by CC, fixed by CC, confirmed by the export that
+  exposed it now working end to end.

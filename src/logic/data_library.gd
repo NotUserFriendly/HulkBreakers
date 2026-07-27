@@ -114,13 +114,49 @@ static func _load_dir(
 	dir.list_dir_begin()
 	var file_name: String = dir.get_next()
 	while file_name != "":
-		if file_name.ends_with(".tres"):
-			file_names.append(file_name)
+		var authored_name: String = _authored_resource_name(file_name)
+		if authored_name != "" and not file_names.has(authored_name):
+			file_names.append(authored_name)
 		file_name = dir.get_next()
 	dir.list_dir_end()
 	file_names.sort()
 	for sorted_name: String in file_names:
 		_load_file(path + "/" + sorted_name, sorted_name, into, type_key, source)
+
+
+## taskblock-44 Pass A: the authored `.tres` name a directory entry stands for,
+## or `""` for an entry that isn't a data resource at all.
+##
+## **This existed as a bare `ends_with(".tres")` and it meant an exported build
+## loaded NO DATA AT ALL** — no parts, no ammo, no presets, no materials. Nothing
+## had ever been exported, so nothing had ever noticed (BR44.01).
+##
+## Exporting rewrites the data directory. `editor/export/convert_text_resources_
+## to_binary` defaults to **true**, so `crab.tres` ships as `crab.res` plus a
+## `crab.tres.remap` pointing at it. A filter looking only for `.tres` matches
+## neither, the scan yields an empty list, and every pool comes back empty — which
+## surfaced as an *integer modulo-by-zero* (`i % pool.size()`) that a debug build
+## reports as a script error and a **release build traps as SIGFPE**, with no
+## message at all. That is how a missing-data bug presents as a hard crash.
+##
+## Normalising back to the authored `.tres` name rather than loading the `.res`
+## directly is deliberate: `ResourceLoader` resolves the remap itself, so one
+## code path serves both the editor and an export, and `_load_file`'s own
+## `ResourceLoader.exists` check keeps working unchanged. The caller dedupes,
+## because an exported directory legitimately contains **both** `crab.res` and
+## `crab.tres.remap` for the same resource.
+static func _authored_resource_name(file_name: String) -> String:
+	if file_name.ends_with(".tres"):
+		return file_name
+	# `crab.tres.remap` -> `crab.tres`. The remap is the authoritative entry: it
+	# names the original path, which is what ResourceLoader wants.
+	if file_name.ends_with(".tres.remap"):
+		return file_name.trim_suffix(".remap")
+	# Everything else is ignored exactly as it was before, `.res` included: a
+	# converted resource always ships WITH its remap, so the remap above is
+	# sufficient and a bare-`.res` branch would be speculative handling for a
+	# case this project's data cannot currently produce.
+	return ""
 
 
 static func _load_file(
