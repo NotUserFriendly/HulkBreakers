@@ -102,7 +102,15 @@ func _init() -> void:
 				branches[branch] = int(branches.get(branch, 0)) + 1
 
 	print("=== tb43 AI planning bench ===")
+	# tb44 Pass A: the numbers below say which build produced them, first line,
+	# every run. taskblock-43's report had to explain at length why its figures
+	# were not continuous with the historical series; that should never need
+	# explaining again.
+	print("%s" % BuildIdentity.describe())
+	if not BuildIdentity.is_representative_of_play():
+		print("  ^ NOT an exported release build — carries GDScript debug per-line overhead")
 	print("seeds            : %s" % str(SEEDS))
+	print("steps per seed   : %d, squad size %d" % [STEPS_PER_SEED, SQUAD_SIZE])
 	print("AI steps timed   : %d" % total_steps)
 	if total_steps > 0:
 		print("ms per AI step   : %.1f" % (float(total_usec) / float(total_steps) / 1000.0))

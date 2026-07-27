@@ -68,17 +68,26 @@ func _dump_after_delay(turn: int, unit_id: int) -> void:
 	_dump(turn, unit_id, CONTEXT_SETTLED, SETTLED_DELAY_SECONDS)
 
 
+## taskblock-44 Pass A: the dump carries `BuildIdentity` alongside the number.
+## A framerate is meaningless without knowing whether it came from a tools binary
+## or an exported release build, and this sink is the one instrument whose output
+## a supervisor reads directly out of `out/combat.log` — so the provenance has to
+## ride in the event rather than being something a reader is expected to recall.
+## Merged into `data` (machine-readable, the same convention `offset_ms` follows)
+## and left out of the prose line, which stays short enough to skim.
 func _dump(turn: int, unit_id: int, context: StringName, offset_seconds: float) -> void:
 	var fps: float = Engine.get_frames_per_second()
 	var offset_ms: int = int(offset_seconds * 1000.0)
 	var when: String = "at turn start" if offset_ms <= 0 else "%dms after turn start" % offset_ms
+	var data: Dictionary = {"context": context, "fps": fps, "offset_ms": offset_ms}
+	data.merge(BuildIdentity.as_data())
 	_combat_log.emit(
 		LogEvent.new(
 			turn,
 			Enums.Phase.RESOLUTION,
 			unit_id,
 			&"fps_dump",
-			{"context": context, "fps": fps, "offset_ms": offset_ms},
+			data,
 			"Turn FPS (%s): %.1f" % [when, fps]
 		)
 	)
