@@ -11,6 +11,22 @@ extends RefCounted
 ## runs, never a second, parallel resolution path a caller reaches for
 ## directly. That's what makes the no-drift invariant real rather than
 ## aspirational — there is no other door in.
+##
+## taskblock-44 Pass B: `VisibilityField` prefilters which cells are worth
+## building a plane for at all. It never overrides this file — a survivor of the
+## field is still confirmed by a real `build` — because there is exactly one
+## canonical resolver and a second visibility system allowed to disagree with it
+## would be a two-sources-of-truth problem.
+
+## taskblock-44 Pass B: how many planes have been built since the last reset.
+##
+## Exists because that pass's acceptance is stated as a COUNT and cannot be
+## observed any other way: "the all-negative case performs exactly zero
+## `ShotPlane` builds" is the case the inversion exists for, and an anti-vacuity
+## check needs to prove the field eliminates candidates at all — a field with
+## every bit set passes containment and does nothing. Reset by tests; never read
+## by resolution.
+static var builds: int = 0
 
 
 ## taskblock-37 Pass A: the shared seam every production firing action
@@ -101,9 +117,12 @@ static func elevation_for(
 ## is the one caller that opts in (`shear = true`) — it queries at
 ## `Vector2.ZERO` for exactly that reason, never reading the resulting
 ## rect as an absolute point itself.
+
+
 static func build(
 	origin: Vector3, direction: Vector3, state: CombatState, shear: bool = false
 ) -> Array[Region]:
+	builds += 1
 	var dir3: Vector3 = direction.normalized()
 	var raw_horizontal := Vector2(dir3.x, dir3.z)
 	var horizontal_len: float = raw_horizontal.length()

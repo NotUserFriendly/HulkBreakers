@@ -283,19 +283,31 @@ static func _project_joint(
 ## within its own shell (identity for a standalone part, or when called
 ## directly outside a socket tree — the common case in tests and for
 ## ShotPlane's cover placement, both of which go through identical math).
+## taskblock-09 A1/A2: a part at 0 hp still projects — still occludes, still
+## hittable — if it failed under MANGLE or DISABLE (both stay fully attached,
+## docs/03). A part that failed under DETONATE/FRAGMENT/MELTDOWN really is
+## "consumed in place" (taskblock-09 C2) and correctly vanishes, exactly like the
+## old blanket `hp <= 0` check always meant.
+##
+## taskblock-44 Pass B: extracted from `project_part`'s own body so
+## `VisibilityField` can ask the same question. That field's whole correctness
+## obligation is that it never reports "no line" where one exists, which means
+## its occluder set must never be LARGER than what the shot plane actually
+## resolves against. Re-deriving "is this blocker still real" there would be a
+## second answer free to drift from this one — and a destroyed wall is exactly
+## the case where the two would disagree, because `Grid.opacity` is not cleared
+## when a wall dies.
+static func projects(part: Part) -> bool:
+	return part != null and (part.hp > 0 or part.is_mangled or part.is_disabled)
+
+
 static func project_part(
 	part: Part,
 	view_dir: Vector3,
 	orientation: float = 0.0,
 	local_transform: Transform3D = Transform3D.IDENTITY
 ) -> Array[Region]:
-	# taskblock-09 A1/A2: a part at 0 hp still projects — still occludes,
-	# still hittable — if it failed under MANGLE or DISABLE (both stay
-	# fully attached, docs/03). A part that failed under
-	# DETONATE/FRAGMENT/MELTDOWN really is "consumed in place" (taskblock-
-	# 09 C2) and correctly vanishes here exactly like the old blanket
-	# hp<=0 check always meant.
-	if part.hp <= 0 and not (part.is_mangled or part.is_disabled):
+	if not projects(part):
 		return []
 	var regions: Array[Region] = []
 	for box: Box in part.volume:

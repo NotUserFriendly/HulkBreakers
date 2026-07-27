@@ -74,9 +74,23 @@ static func cached_first_hit(
 ## Clear iff the first thing the shot would actually hit is the target
 ## itself — a wall, a piece of cover, or the wrong unit as the first hit
 ## is blocked, exactly as a real fired shot would be.
+## taskblock-44 Pass B: `field`, when supplied, is a `VisibilityField` built for
+## `target` — a conservative prefilter that can only ever answer "definitely no
+## line", never "yes". A cell it rejects skips the `ShotPlane` build entirely; a
+## cell it accepts is resolved exactly as before. **`ShotPlane` stays final**:
+## nothing here lets the field's opinion stand in for a real cast, which is what
+## keeps this from becoming a second visibility system that could disagree with
+## the canonical one.
 static func has_clear_line_of_fire(
-	shooter: Unit, target: Unit, from_cell: Vector2i, state: CombatState, cache: Variant = null
+	shooter: Unit,
+	target: Unit,
+	from_cell: Vector2i,
+	state: CombatState,
+	cache: Variant = null,
+	field: VisibilityField = null
 ) -> bool:
+	if field != null and not field.allows(from_cell):
+		return false
 	var region: Region = cached_first_hit(shooter, target, from_cell, state, cache)
 	return region != null and region.body == target
 

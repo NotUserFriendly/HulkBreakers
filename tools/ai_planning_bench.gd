@@ -58,7 +58,12 @@ func run(argv: PackedStringArray) -> void:
 	var batched: bool = argv.has("--batched")
 	var profile: bool = argv.has("--profile")
 	var profile_totals: Dictionary = {
-		"turns": 0, "reachable": 0, "any_lof_scan": 0, "engagement_search": 0, "nearest_enemy": 0
+		"turns": 0,
+		"reachable": 0,
+		"field_build": 0,
+		"any_lof_scan": 0,
+		"engagement_search": 0,
+		"nearest_enemy": 0
 	}
 	var total_steps := 0
 	var total_usec := 0
@@ -144,7 +149,9 @@ func run(argv: PackedStringArray) -> void:
 	if profile and int(profile_totals["turns"]) > 0:
 		print("--- where a turn's time goes (mean per turn) ---")
 		var turns: float = float(profile_totals["turns"])
-		for key: String in ["reachable", "any_lof_scan", "engagement_search", "nearest_enemy"]:
+		for key: String in [
+			"reachable", "field_build", "any_lof_scan", "engagement_search", "nearest_enemy"
+		]:
 			print("%-18s: %6.1f ms" % [key, float(profile_totals[key]) / turns / 1000.0])
 	print("--- which branch _plan_ranged took ---")
 	for branch: StringName in branches:
@@ -201,9 +208,17 @@ func _profile_turn(unit: Unit, state: CombatState, totals: Dictionary) -> void:
 		reachable.append(unit.cell)
 	totals["reachable"] += Time.get_ticks_usec() - mark
 
+	# tb44 Pass B: the field is built once per target per turn and then shared, so
+	# it is timed as its own line rather than folded into the scan it replaces.
+	# Without this the profile would keep reporting the pre-inversion path and
+	# quietly claim the pass changed nothing.
+	mark = Time.get_ticks_usec()
+	var field: VisibilityField = VisibilityField.build(state, enemy.cell)
+	totals["field_build"] += Time.get_ticks_usec() - mark
+
 	var lof_cache: Dictionary = {}
 	mark = Time.get_ticks_usec()
-	UnitAI._any_reachable_has_lof(unit, enemy, state, reachable, weapon, lof_cache)
+	UnitAI._any_reachable_has_lof(unit, enemy, state, reachable, weapon, lof_cache, field)
 	totals["any_lof_scan"] += Time.get_ticks_usec() - mark
 
 	var culled: Array[Vector2i] = EngagementRect.cull(
@@ -211,7 +226,7 @@ func _profile_turn(unit: Unit, state: CombatState, totals: Dictionary) -> void:
 	)
 	mark = Time.get_ticks_usec()
 	UnitAI._pick_engagement_position(
-		unit, enemy, state, preferred_range, weight_cover, weapon, culled, true, lof_cache
+		unit, enemy, state, preferred_range, weight_cover, weapon, culled, true, lof_cache, field
 	)
 	totals["engagement_search"] += Time.get_ticks_usec() - mark
 
