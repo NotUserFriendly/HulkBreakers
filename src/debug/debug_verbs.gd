@@ -38,6 +38,39 @@ extends RefCounted
 
 const P := DebugVerbSpec.ParamType
 
+## taskblock-42 Pass E (BR35.03): which verbs actually change the BOARD — the
+## grid's own surfaces, blockers or loose field items — and therefore need
+## `BattleScene.sync_board_view()`, a full `BoardView.build()` of terrain, grid
+## lines, every blocker and every field item.
+##
+## Every debug verb triggered that rebuild, including the ~20 that only ever
+## touch one unit's AP, facing, pose or parts. **One authority for the answer,**
+## read by both overlays' `_on_debug_panel_applied` — the same question answered
+## twice in two files is how they drift.
+##
+## The list is checked against `all()` by a test — `place_cover`/`clear_cover`
+## were in the first draft of it and are NOT panel verbs (the panel exposes
+## `spawn_object`/`remove_object`, which front both). They matched nothing and
+## would have quietly misled the next reader into thinking cover placement was
+## covered by a different id than it is.
+##
+## `move_object` and `remove_object` are in the list unconditionally because
+## either can target a cell OR a unit (their `target` dict decides at call
+## time); claiming "unit only" for them would be wrong exactly half the time,
+## and a missed board rebuild is an invisible-until-noticed bug rather than a
+## slow one.
+const BOARD_CHANGING_VERBS: Array[StringName] = [
+	&"spawn_object",
+	&"remove_object",
+	&"move_object",
+	&"set_passable",
+	&"set_cell_level",
+]
+
+
+static func affects_board(verb_id: StringName) -> bool:
+	return verb_id in BOARD_CHANGING_VERBS
+
 
 static func all() -> Array[DebugVerbSpec]:
 	return [

@@ -521,7 +521,44 @@ func test_hand_weapon_and_attach_part_share_the_same_mechanism_but_log_distinctl
 	assert_eq(events.size(), 1)
 	assert_eq(events[0].data.get("verb"), &"hand_weapon", "hand_weapon must log its own verb name")
 
+
 ## `kill` (taskblock-30 follow-up: renamed from this file's own earlier
 ## `remove_unit`, and now also ejects the matrix) has its own dedicated
 ## test_bout_injector_kill.gd — this file was already at gdlint's own
 ## public-method cap.
+
+
+## taskblock-42 Pass E: `set_position`/`move_object` set the cell but never
+## re-derived `height`, so a debug move onto a raised cell left the unit
+## rendering at its old elevation — moved in X/Z, wrong height. Invisible on a
+## flat map, which is exactly why it survived: every fixture exercising this
+## verb was flat.
+func test_a_debug_move_onto_a_raised_cell_updates_the_units_height() -> void:
+	var grid: Grid = GridFixture.flat(8, 8, 0.0)
+	GridFixture.place_floor(grid, Vector2i(4, 4), 3.0)
+	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(1, 1), 0)
+	var state := CombatState.new(grid, [unit])
+	var injector := BoutInjector.new(state)
+	assert_eq(unit.height, 0.0, "sanity: starts on the flat floor")
+
+	assert_true(injector.set_position(unit, Vector2i(4, 4)))
+
+	assert_eq(unit.cell, Vector2i(4, 4))
+	assert_eq(
+		unit.height,
+		UnitGeometry.true_height_for_cell(Vector2i(4, 4), grid),
+		"the unit stands on the raised floor, not below it"
+	)
+	assert_almost_eq(unit.level, unit.height / UnitGeometry.LEVEL_HEIGHT, 0.0001)
+
+
+func test_move_object_onto_a_raised_cell_updates_height_too() -> void:
+	var grid: Grid = GridFixture.flat(8, 8, 0.0)
+	GridFixture.place_floor(grid, Vector2i(6, 2), 3.0)
+	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(1, 1), 0)
+	var state := CombatState.new(grid, [unit])
+	var injector := BoutInjector.new(state)
+
+	assert_true(injector.move_object({"kind": Enums.HitKind.UNIT, "unit": unit}, Vector2i(6, 2)))
+
+	assert_eq(unit.height, UnitGeometry.true_height_for_cell(Vector2i(6, 2), grid))
