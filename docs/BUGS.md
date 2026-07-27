@@ -451,6 +451,22 @@ confirm" roll-up — so pending items surface at a natural review point without 
     state.
   - **Status unchanged — `Active`.** Three of its four named costs are closed as costs; the entry's
     actual symptom is not.
+- **2026-07-27 (tb44 Pass A — every number in this entry came from a tools binary, and now says so)**
+  [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. **The release-vs-debug measurement this pass asks for
+  could NOT be taken here and no proxy was substituted.** `~/.local/share/godot/export_templates/` is
+  empty and the project has no `export_presets.cfg` (it is gitignored), so `--export-release` refuses.
+  The pass's own instruction on this is "say so and stop"; the exact procedure for the supervisor to
+  run it locally is in `reports/Report-Taskblock44.md`.
+  - **What the missing number means for this entry:** every figure above — the ~1672ms, the ~1498ms,
+    tb35's 2023ms→974ms, tb43's whole bench series — was taken on an **editor/tools binary**, which
+    carries GDScript's per-line debug overhead by a factor nobody has measured. **They may all be
+    proportionally right and absolutely wrong.** That does not invalidate any of the A/B comparisons
+    (both sides shared the build) but it does mean the absolute severity of this bug is unknown.
+  - **Built instead: the provenance itself.** `src/debug/build_identity.gd` classifies the running
+    build (`editor_debug` / `exported_debug` / `exported_release`) and is stamped into both
+    instruments — `tools/bench_ai_planning.gd` prints it as its first line with an explicit warning
+    when the build is not representative, and every `FpsDumpSink` event now carries it in `data`, so a
+    framerate read out of `out/combat.log` says which build produced it. Status unchanged, `Active`.
 - **2026-07-26 (tb43 Passes C+D — batches land, and they measure the block's own premise WRONG)**
   [CC `a56eac1a-eddb-4d30-946a-4c8e594ef198`]. `Unit.batch_id` (0 = independent), a `set_batch`
   injector verb, a round-scoped `BatchPlan` on `CombatState`, a board badge, and the planner split:

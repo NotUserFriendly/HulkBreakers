@@ -725,6 +725,13 @@ func test_turn_start_triggers_both_a_boundary_and_a_settled_fps_dump() -> void:
 	assert_ne(
 		dumps[0].data.context, dumps[1].data.context, "distinguishable without parsing the prose"
 	)
+	# taskblock-44 Pass A: a framerate is meaningless without knowing which build
+	# produced it, and this sink's output is read straight out of out/combat.log
+	# by a human. The provenance rides in the event rather than being something
+	# the reader is expected to recall about how they launched the game.
+	for dump: LogEvent in dumps:
+		assert_eq(dump.data.build, BuildIdentity.kind(), "every dump says which build it came from")
+		assert_true(dump.data.has("representative"), "and whether that build's numbers count")
 
 
 ## The settled sample must NOT arrive at the old 200ms offset — that offset is
