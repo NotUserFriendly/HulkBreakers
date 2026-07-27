@@ -110,6 +110,29 @@ Not a reversal of anything built — the ordering change was never implemented. 
 reasoning that produced it was sound and is worth keeping: it was the right fix for the half of the
 problem that had been measured, and it was replaced by re-examining the half that hadn't.
 
+## `UnitAI.plan_turn` is a synchronous pure function
+
+**Was** (taskblock-14 Pass B onward, and stated at the top of `unit_ai.gd`): `(unit, state, mission,
+playstyle) -> ActionQueue`, synchronous, callable from anywhere.
+
+**Now** (taskblock-44): `(unit, view, mission, playstyle, pacer) -> ActionQueue`, **a coroutine**, and
+it takes a `WorldView` rather than a `CombatState`.
+
+Two independent changes landed on the same signature:
+
+- **Pass C** replaced the state with a view, because the rebuild's tiers gate *information* and that
+  needs a chokepoint. `CombatState` is reachable only through `canonical_state_for_resolvers()`, which
+  may be passed to a resolver and never dereferenced.
+- **Pass D** made it a coroutine so it can yield mid-plan. This was forced, not preferred: GDScript
+  rejects a conditional `await` at parse time — any function containing one is a coroutine and every
+  caller must await — so the only alternatives were a second synchronous planner (two code paths
+  deciding the same thing) or no mid-plan yield at all.
+
+**What did NOT change: purity and determinism.** The planner still draws no randomness of its own,
+still has zero SceneTree dependency (the pacer carries a `Signal` the view supplies), and a headless
+caller passing no pacer never suspends. `test_plan_turn_is_pure_and_deterministic` still holds, and a
+seeded bout is byte-identical with and without slicing.
+
 ## The retired plan
 `PLAN.md` v2.1 and earlier described the from-scratch foundation build (Phase 0 harness, v1-survival
 table, exposure-table deletion, the `los.gd` `range`-shadow bug fix). All shipped. The v2.1 plan is

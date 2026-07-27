@@ -82,46 +82,10 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. AI v2, part one — measure, invert, seam
-**Needs:** nothing. **Unblocks:** part two (below, in QUEUED), taskblock-42 Passes F and G, and
-anything else gated on watching a bout at a tolerable rate.
-
-**Supersedes the previous item here** (ordering the LOF prefilter scan nearest-target-first). Ordering
-made the common case return sooner; inverting the query removes the scan. See `SUPERSEDED.md`.
-
-taskblock-43 profiled a repositioning AI turn: `_any_reachable_has_lof` at **271.9ms** against
-`_pick_engagement_position`'s **98.3ms**. Three blocks attacked the 98ms on an assumption nobody had
-checked. This block contains **no new decision-making** — it establishes the numbers the rebuild is
-judged against, replaces the expensive query, and puts in the seam everything after depends on.
-
-- **Measure the build first.** Every performance figure this project has recorded came from a debug
-  run, and GDScript's per-line debug overhead has never been quantified here. An exported release
-  build against the same bench, same seeds, may change how urgent the rest is. The bench should record
-  which build produced its numbers so this is never ambiguous again.
-- **Invert the line-of-fire query.** One symmetric shadowcast *from the target* yields a visibility set
-  over the volume; every candidate cell's query becomes a bit test. `PackedInt64Array` bitboards, flat
-  `i = x + y*W + z*W*H` indexing, **3D from the start**. One field per target, reused by every shooter,
-  so cost stops scaling with unit count.
-- **The field is a conservative prefilter; `ShotPlane` stays final.** Its single obligation is to never
-  report "no line" where one exists — over-inclusion safe, under-inclusion a bug. A second visibility
-  system allowed to *disagree* with the canonical resolver is a two-sources-of-truth problem, and it
-  would disagree. Under that contract the 19-of-60 turns where nothing has a line collapse to
-  `reachable & vis[target] == 0` with zero `ShotPlane` builds, and the field never has to be exact.
-- **Land it under the existing planner.** Building it into new code makes it permanently impossible to
-  separate what the inversion bought from what the rewrite bought — the exact mistake of the last three
-  blocks. Acceptance is identical output; the speedup is the side effect.
-- **The `WorldView` seam, stubbed.** The planner takes a view; `CombatState` is not reachable from it.
-  Today it returns everything. Retrofitting "this unit doesn't get to know that" onto a planner already
-  reading global state touches everything, so the doorway goes in while nothing depends on it, with the
-  restriction path stubbed behind a disabled flag so the rule exists before the thing it governs.
-
----
-
-# QUEUED
-
-### AI v2, part two — the utility planner
-**Needs:** NEXT item 2 (AI v2 part one) — the `WorldView` seam above all, since tiers gate information
-and that only works if information access is a chokepoint. **Unblocks:** retiring the playstyle enum;
+### 2. AI v2, part two — the utility planner
+**Needs:** nothing — **AI v2 part one landed as taskblock-44** (`docs/CHANGELOG.md`). The `WorldView`
+seam it depended on exists, guarded, with a disabled restriction flag and an anti-vacuity test proving
+restriction changes decisions. **Unblocks:** retiring the playstyle enum;
 intelligence as a played mechanic rather than a difficulty slider; sensors-as-parts having something to
 feed.
 
@@ -199,6 +163,10 @@ obvious sources). Not a blocker; a rewiring.
 becomes another. This is a migration, not an addition — every test keyed to those playstyles moves
 with it.
 
+---
+
+# QUEUED
+
 ### Player view and sim view — render a snapshot, stay responsive
 **Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the
 snapshot half. **Unblocks:** the hitch stops being a freeze even where it is still slow; safe
@@ -253,8 +221,8 @@ budget and Panic fires rather than the plan running longer. That is what makes "
 a promise instead of a hope.
 
 ### Tracers and hit visuals
-**Needs:** NEXT item 2 (AI v2 part one). Nominally unblocked by taskblock-43, which did not move the
-number enough to make watching a bout comfortable. **Unblocks:** the six bugs it covers.
+**Needs:** nothing now. taskblock-44 brought an AI step to ~525ms debug / ~412ms release and made the
+wait navigable rather than frozen, so shots can be watched resolve. **Unblocks:** the six bugs it covers.
 
 *Was taskblock-42 Pass F, carried inline here because that spec file is archived and a pointer to it
 would dangle.*
