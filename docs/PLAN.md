@@ -176,12 +176,48 @@ obvious sources). Not a blocker; a rewiring.
 becomes another. This is a migration, not an addition — every test keyed to those playstyles moves
 with it.
 
-### taskblock-42 Passes F and G
-**Needs:** NEXT item 2 (AI v2 part one) (they were nominally unblocked by taskblock-43, which did not move the number
-enough to make watching a bout comfortable). **Unblocks:** the six tracer/hit-visual bugs they cover.
+### Tracers and hit visuals
+**Needs:** NEXT item 2 (AI v2 part one). Nominally unblocked by taskblock-43, which did not move the
+number enough to make watching a bout comfortable. **Unblocks:** the six bugs it covers.
 
-Verifying those bugs means watching shots resolve, and the turn-boundary hitch is what makes that
+*Was taskblock-42 Pass F, carried inline here because that spec file is archived and a pointer to it
+would dangle.*
+
+Verifying any of these means watching shots resolve, and the turn-boundary hitch is what makes that
 unverifiable by eye. taskblock-43 brought an AI step from ~745ms to ~646ms — real, and not enough.
+
+**Treat as one investigation, not six fixes.** The suspicion is that several share a root in how a
+shot's endpoint and hop sequence are turned into drawn geometry. All six live in `ResolutionPlayer`
+and the tracer-drawing path:
+
+- **BR34.05** — misses vanish instead of striking anything.
+- **BR35.04** — a DEFLECT's bounce tracer is a decorative fixed-range projection, not the real path.
+- **BR35.07** — `STOP_DEAD` tracers are drawn past their own hit point, reading as penetration.
+- **BR34.01** — every penetration/deflection hop replays the full bright hit-flash.
+- **BR35.08** — detonations are invisible; nothing is drawn when an explosion resolves.
+- **BR27.03** — other shots appear to resolve before an earlier shot's deflect finishes. Ordering
+  rather than geometry, but the same player-facing subsystem and worth holding in view while the rest
+  is open.
+
+**The rename-only fence is lifted for this work.** taskblock-40 Pass A renamed `void_range` to
+`miss_range` under an explicit fence because the supervisor believed the area held a live bug.
+**BR34.05 and BR35.04 are that bug.**
+
+### Raised rooms generate at level 0
+**Needs:** nothing. **Unblocks:** nothing directly, but it cleans the surface every other
+generated-map test runs on.
+
+*Was taskblock-42 Pass G, carried inline for the same reason as the item above.*
+
+- **BR40.03** — scattered cover generates at level 0 inside raised rooms.
+- **BR40.04** — extraction and spawn tiles recessed to level 0 inside raised rooms.
+
+Two entries, one cause: `MapGen` places objects without reading the room's level. Almost certainly a
+single fix. Cheap, and it removes a class of nonsense from every generated multi-level map — which
+matters because generated maps are the test surface for everything else.
+
+**Acceptance:** across a seed sweep, no cover, extraction tile, or spawn tile sits at a level below
+the room containing it.
 
 ### Automatic batch assignment in generated missions
 **Needs:** taskblock-43 Pass C/D (landed — `Unit.batch_id`, `BatchPlan`, the leader/follower split all
