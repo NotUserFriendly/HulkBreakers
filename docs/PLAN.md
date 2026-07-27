@@ -73,40 +73,115 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. Order the LOF prefilter scan nearest-target-first
-**Needs:** nothing. **Unblocks:** item 3 below, and anything else gated on watching a bout at a
-tolerable rate.
+### 2. AI v2, part one — measure, invert, seam
+**Needs:** nothing. **Unblocks:** part two (below, in QUEUED), taskblock-42 Passes F and G, and
+anything else gated on watching a bout at a tolerable rate.
 
-**This is what BR27.09 actually is, now that it has been measured.** taskblock-43 profiled a
-repositioning AI turn and found `UnitAI._any_reachable_has_lof` at **271.9ms** against
-`_pick_engagement_position`'s **98.3ms** — so the candidate search that tb35, tb42 and tb43 all
-attacked is about a quarter of a turn, and the prefilter scan is most of the rest. Three passes went
-at the wrong function on an assumption nobody had checked; see `SUPERSEDED.md`.
+**Supersedes the previous item here** (ordering the LOF prefilter scan nearest-target-first). Ordering
+made the common case return sooner; inverting the query removes the scan. See `SUPERSEDED.md`.
 
-`_any_reachable_has_lof` early-returns on the **first** reachable cell with a clear line, but walks
-`reachable` in `Pathfinder`'s BFS-from-the-unit order — so it tends to try the cells furthest from
-the target first. Sorting the scan by distance to the target should make the common "some cell has a
-line" case return almost immediately. **Exact, not lossy:** the function returns a bool and order
-cannot change the answer, so this is an equivalence-testable change of the same kind as tb43 Pass A.
+taskblock-43 profiled a repositioning AI turn: `_any_reachable_has_lof` at **271.9ms** against
+`_pick_engagement_position`'s **98.3ms**. Three blocks attacked the 98ms on an assumption nobody had
+checked. This block contains **no new decision-making** — it establishes the numbers the rebuild is
+judged against, replaces the expensive query, and puts in the seam everything after depends on.
 
-It does not help the other case, and the branch census says that case is common: **19 of 60 turns end
-with no reachable cell having a line at all**, and each of those must scan everything to prove it.
-That half wants a real cheap negative — a bounding test that rules out a whole region without a
-per-cell `ShotPlane` query — and is the harder, separate half.
-
-**Acceptance:** identical chosen cells across a seeded sweep; a measured drop in
-`tools/bench_ai_planning.gd --profile`'s `any_lof_scan` line; per-step cost reported before and after.
-
-### 3. taskblock-42 Passes F and G
-**Needs:** item 2 (they were nominally unblocked by taskblock-43, which did not move the number
-enough to make watching a bout comfortable). **Unblocks:** the six tracer/hit-visual bugs they cover.
-
-Verifying those bugs means watching shots resolve, and the turn-boundary hitch is what makes that
-unverifiable by eye. taskblock-43 brought an AI step from ~745ms to ~646ms — real, and not enough.
+- **Measure the build first.** Every performance figure this project has recorded came from a debug
+  run, and GDScript's per-line debug overhead has never been quantified here. An exported release
+  build against the same bench, same seeds, may change how urgent the rest is. The bench should record
+  which build produced its numbers so this is never ambiguous again.
+- **Invert the line-of-fire query.** One symmetric shadowcast *from the target* yields a visibility set
+  over the volume; every candidate cell's query becomes a bit test. `PackedInt64Array` bitboards, flat
+  `i = x + y*W + z*W*H` indexing, **3D from the start**. One field per target, reused by every shooter,
+  so cost stops scaling with unit count.
+- **The field is a conservative prefilter; `ShotPlane` stays final.** Its single obligation is to never
+  report "no line" where one exists — over-inclusion safe, under-inclusion a bug. A second visibility
+  system allowed to *disagree* with the canonical resolver is a two-sources-of-truth problem, and it
+  would disagree. Under that contract the 19-of-60 turns where nothing has a line collapse to
+  `reachable & vis[target] == 0` with zero `ShotPlane` builds, and the field never has to be exact.
+- **Land it under the existing planner.** Building it into new code makes it permanently impossible to
+  separate what the inversion bought from what the rewrite bought — the exact mistake of the last three
+  blocks. Acceptance is identical output; the speedup is the side effect.
+- **The `WorldView` seam, stubbed.** The planner takes a view; `CombatState` is not reachable from it.
+  Today it returns everything. Retrofitting "this unit doesn't get to know that" onto a planner already
+  reading global state touches everything, so the doorway goes in while nothing depends on it, with the
+  restriction path stubbed behind a disabled flag so the rule exists before the thing it governs.
 
 ---
 
 # QUEUED
+
+### AI v2, part two — the utility planner
+**Needs:** NEXT item 2 (AI v2 part one) — the `WorldView` seam above all, since tiers gate information
+and that only works if information access is a chokepoint. **Unblocks:** retiring the playstyle enum;
+intelligence as a played mechanic rather than a difficulty slider; sensors-as-parts having something to
+feed.
+
+**Utility scoring, not behaviour trees.** A BT forces a duplicated subtree per profile; utility gives
+both axes — how *smart* a unit is and what *kind* of unit it is — as data over one shared action set.
+
+| Concept | Implementation |
+|---|---|
+| Action | Resource: preconditions, considerations list, executor |
+| Consideration | Normalized 0–1 input x response curve (linear / quad / logistic / step) |
+| Score | Product of considerations x base weight x profile multiplier, plus a compensation factor |
+| Intelligence | Action pool subset ∩ sensor access ∩ lookahead depth |
+| Profile | Weight vector over considerations and actions |
+
+**Product, not sum** — a single zero vetoes the action outright, so "unreachable" kills a candidate
+rather than merely lowering it. The compensation factor counters the standard bias where adding
+considerations always drives scores down.
+
+**Intelligence gates INFORMATION, not just actions — this is the load-bearing idea.** Gating actions
+alone produces a smart unit with fewer options, and it still plays those options optimally, which reads
+as *limited* rather than dumb. Gating the world model makes it make real mistakes: firing at where
+someone was, walking into a flank it had no way to see. Plausible-but-wrong instead of random, which is
+the behaviour actually wanted. It also aligns cost with design for once — a degraded world model is
+genuinely cheaper to compute, so **the cheap units are cheap because they are dumb, not despite it.**
+
+| Tier | Actions added | World model | Depth |
+|---|---|---|---|
+| Mindless | Approach, flee, idle | Current LOS only | 0 |
+| Grunt | Cover, ranged, regroup | + last-known positions | 0 |
+| Trained | Flank, suppress, item, call help | + team blackboard, threat map | 1 (score post-move) |
+| Elite | Bait, ambush, set batch objective | + full team knowledge, predicted enemy moves | 2–3 |
+
+**Profiles are multiplier tables over shared considerations** — aggressive, cowardly, defensive as
+weight vectors (`own_hp_ratio`, `local_threat`, `ally_proximity`, `objective_value`), never as code
+paths.
+
+**The batch objective replaces taskblock-43's follower planner.** A coarse batch-level utility pass on
+the leader picks one objective — advance, hold, withdraw, flank — and that objective is injected as a
+consideration input for every follower. Squad coordination without a squad planner, and followers keep
+individual agency instead of copying a destination. taskblock-43 Pass C's plumbing (`Unit.batch_id`,
+`BatchPlan`, the `set_batch` verb, the board badge) carries forward unchanged; only Pass D's follower
+logic is replaced. Pass D's own unmet acceptance — a follower that wasn't dramatically cheaper — is
+answered here rather than by widening or narrowing its local scan.
+
+**Decision logging is designed in from the first pass, not added when something goes wrong.** A BT
+fails legibly; a scorer produces a number and you reconstruct why afterward. `ai_decision_log.gd` must
+carry, per candidate per decision, each consideration's normalized input and its curve output, plus the
+acting tier and what that unit could see. Without it "why did it do that" is unanswerable — the exact
+hole BR26.02 sat in through three passes of reasoned-but-unmeasured fixes.
+
+**The test surface multiplies: tier x profile x sensor state.** Decide early whether every combination
+gets acceptance or only the extremes. `MIN_COMPLETION_RATE` will not catch a middle tier being subtly
+wrong, and a tier that silently does nothing is the failure this design is most exposed to — the
+part-one seam's own anti-vacuity test is the precedent.
+
+**Intelligence is authored per unit until Attributes lands**, then derived (Int and Wis are the
+obvious sources). Not a blocker; a rewiring.
+
+**The playstyle enum dissolves here.** `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER` mixes profile
+(aggressive) with role and range (marksman); standoff becomes a consideration weight and cover-seeking
+becomes another. This is a migration, not an addition — every test keyed to those playstyles moves
+with it.
+
+### taskblock-42 Passes F and G
+**Needs:** NEXT item 2 (AI v2 part one) (they were nominally unblocked by taskblock-43, which did not move the number
+enough to make watching a bout comfortable). **Unblocks:** the six tracer/hit-visual bugs they cover.
+
+Verifying those bugs means watching shots resolve, and the turn-boundary hitch is what makes that
+unverifiable by eye. taskblock-43 brought an AI step from ~745ms to ~646ms — real, and not enough.
 
 ### Automatic batch assignment in generated missions
 **Needs:** taskblock-43 Pass C/D (landed — `Unit.batch_id`, `BatchPlan`, the leader/follower split all
@@ -556,7 +631,11 @@ out of sync with the real generation path.
 
 
 ### AI target selection and behaviour
-**Needs:** nothing.
+**Needs:** nothing, but read against *AI v2, part two* first — **three of the four bullets below become
+action-pool and consideration content for the utility planner rather than separate work.** Target
+selection becomes a consideration; nearest-weapon and per-archetype item behaviour become Actions with
+preconditions. Only **Panic** is genuinely independent, and the rebuild makes it *more* necessary, since
+a scorer can return no positive-utility action at all. Build them here only if the rebuild slips.
 
 Four related gaps in what the AI *chooses* to do, all cheap given the data already exists.
 
