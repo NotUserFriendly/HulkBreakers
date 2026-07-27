@@ -19,7 +19,7 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-41 Passes A–F landed — "Diagnostics: the log becomes the instrument" is
+*Current as of taskblock-42 Passes A–E landed (F and G held — see below). taskblock-41 Passes A–F — "Diagnostics: the log becomes the instrument" is
 closed, and so is "Checkpoints return as an ordinary tool." The combat log now carries engine and
 script errors, pairs every command with its outcome and a reason, narrates a bout build in
 construction order, and draws itself as a real window with a live framerate on it. Checkpoints are a
@@ -1245,6 +1245,40 @@ Checkpoint 9 (`./checkpoint.sh 9`) authored for the conversion under Pass E's ow
 policy — and it earned the parse guard its keep immediately: the first draft called a
 `DataLibrary.bot_presets()` that does not exist, and the guard failed the run and named the file
 before anything rendered.
+
+### Bug hunt: the turn-boundary hitch, measured (tb42 Passes A–E, BR27.09/BR26.02)
+**Partial by design; F and G are not started.** The block's result is a diagnosis, not a fix.
+
+**Pass A — the instrument.** BR26.02's 2026-07-23 revision, unbuilt since. Two dumps per turn:
+`turn_boundary` at **0ms** (the boundary cost itself — the number BR27.09 is about, which did not
+previously exist at any offset) and `turn_settled` at **2000ms**. The boundary dump is emitted
+**synchronously**: any await would push it past the transient it exists to catch. The aim-entry dump
+moved to the same delay and reads the shared constant.
+
+**Passes B–C — costs #2 and #3 cut, and they are small.** `HitVolumeView.refresh()` freed and
+re-instanced every child even when only a transform changed: 858µs → **351µs** on the move path,
+795µs → **267µs** on the aim path. The cheap path **refuses** on any node-set difference rather than
+enumerating safe cases. Turn start walked the socket tree five separate times (instrumented and
+confirmed — BR27.09's "5–6" was right): 118µs → **40µs**, threaded rather than cached, because a
+stale power reading is a silent wrong number. **Both together are under 1% of one AI step.**
+
+**Pass D — the batch yields, and the hitch survives.** `advance_ai_turns` had no `await` at all; it
+now yields a frame between units, so input stays alive and each unit's move is visible instead of the
+opposing team teleporting. **But a single `BoutRunner.step()` costs ~1672ms** — 24 steps of a real
+3v3 bout is 40.1 seconds of pure planning. Yielding between steps buys one responsive frame every
+~1.7s. **The several-second hitch is ONE `UnitAI.plan_turn` call, not an accumulation**, so this
+relocates the bug rather than fixing it: the remaining work is per-candidate-cell pathfinding/LOS/
+cover scoring in `unit_ai.gd`, which tb35 Pass A3 halved once and which has grown back. Determinism
+verified — a seeded bout is identical through the yielding path and a tight no-yield loop.
+Coalescing fork settled as "refresh only the units that step touched", which is proportional to what
+changed rather than tb19 I2's measured whole-board waste.
+
+**Pass E — the debug path.** Every debug verb triggered a full `BoardView.build()`, including the ~20
+that touch one unit's AP or facing; `DebugVerbs.affects_board()` is now the one authority both
+overlays read (BR35.03, `Pending`). Also fixed: `BoutInjector._move_unit` set `unit.cell` without
+re-deriving `unit.height`, so a debug move onto a raised cell rendered at the old elevation —
+invisible on a flat map, which is why every flat fixture missed it. **Not a fix for BR30.02**, whose
+symptom still does not reproduce. `BR35.01` deliberately untouched and said so.
 
 ## Economy
 
