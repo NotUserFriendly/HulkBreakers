@@ -78,6 +78,11 @@ var last_outcome: Dictionary = {}
 ## remembers the same events every other sink on `state.combat_log`
 ## already saw.
 var last_events: Array[LogEvent] = []
+## tb44 Pass D: supplied by a view that wants a unit's turn to stay watchable —
+## it carries the frame signal the planner yields on and the hard budget that
+## guarantees the turn ends. Null (every headless caller and every test) means
+## nothing suspends and `step()` behaves exactly as it did before.
+var pacer: PlanPacer = null
 
 ## `Callable(unit: Unit) -> bool` — "does someone other than the AI drive
 ## this unit." An invalid Callable (the default) falls back to today's
@@ -151,7 +156,9 @@ func step() -> bool:
 	# is the unrestricted one — everything, exactly as before — but the doorway is
 	# in, so part two's tiers have a chokepoint to gate information at rather than
 	# a retrofit across a planner that already reads global state everywhere.
-	var queue: ActionQueue = UnitAI.plan_turn(unit, WorldView.full(state), mission, playstyle)
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		unit, WorldView.full(state), mission, playstyle, pacer
+	)
 	last_unit = unit
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -177,5 +184,5 @@ func step() -> bool:
 ## non-visual equivalent of a watch loop's own timer-paced calls. Never
 ## exceeds `turn_cap` steps (the same guarantee `step()` itself gives).
 func run_to_completion() -> void:
-	while not step():
+	while not await step():
 		pass

@@ -117,7 +117,9 @@ func test_skirmisher_advances_around_a_wall_even_when_no_reachable_cell_has_lof_
 		"sanity: the wall band really is too tall for one turn to clear"
 	)
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"SKIRMISHER")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"SKIRMISHER"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(

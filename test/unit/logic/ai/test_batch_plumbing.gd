@@ -24,7 +24,7 @@ func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> 
 	var taken: Array[String] = []
 	var i := 0
 	while not runner.finished and i < steps:
-		runner.step()
+		await runner.step()
 		for event: LogEvent in runner.last_events:
 			taken.append("%s@%d" % [event.kind, event.unit_id])
 		i += 1
@@ -185,10 +185,10 @@ func test_no_member_is_marked_leader_before_the_batch_has_acted() -> void:
 func test_default_zero_units_produce_an_unchanged_action_sequence() -> void:
 	var a: Dictionary = _bout(31337)
 	assert_eq(a.get("error", ""), "", "sanity: the bout built")
-	var expected: Array[String] = _action_sequence(a.state, a.mission, 8)
+	var expected: Array[String] = await _action_sequence(a.state, a.mission, 8)
 
 	var b: Dictionary = _bout(31337)
-	var actual: Array[String] = _action_sequence(b.state, b.mission, 8)
+	var actual: Array[String] = await _action_sequence(b.state, b.mission, 8)
 
 	assert_eq(actual, expected)
 	assert_gt(expected.size(), 0, "sanity: the bout actually did something")
@@ -206,11 +206,11 @@ func test_default_zero_units_produce_an_unchanged_action_sequence() -> void:
 ## does, from the same seeded-bout angle the unbatched case above uses.
 func test_assigning_a_batch_now_changes_behaviour() -> void:
 	var a: Dictionary = _bout(31337)
-	var expected: Array[String] = _action_sequence(a.state, a.mission, 8)
+	var expected: Array[String] = await _action_sequence(a.state, a.mission, 8)
 
 	var b: Dictionary = _bout(31337)
 	for unit: Unit in (b.state as CombatState).units:
 		unit.batch_id = 1
-	var actual: Array[String] = _action_sequence(b.state, b.mission, 8)
+	var actual: Array[String] = await _action_sequence(b.state, b.mission, 8)
 
 	assert_ne(actual, expected, "tb43 Pass D: followers no longer plan for themselves")

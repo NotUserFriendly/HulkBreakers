@@ -79,7 +79,7 @@ func _field() -> Dictionary:
 ## follower had decided to do nothing.
 func _plan(unit: Unit, state: CombatState) -> ActionQueue:
 	state.force_current_unit(unit.id)
-	return UnitAI.plan_turn(unit, WorldView.full(state), null, &"MARKSMAN")
+	return await UnitAI.plan_turn(unit, WorldView.full(state), null, &"MARKSMAN")
 
 
 ## Which branch `_plan_ranged` actually took, off the decision log — the guard
@@ -87,7 +87,7 @@ func _plan(unit: Unit, state: CombatState) -> ActionQueue:
 func _branch_taken(unit: Unit, state: CombatState) -> StringName:
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
-	_plan(unit, state)
+	await _plan(unit, state)
 	state.combat_log.remove_sink(sink)
 	for event: LogEvent in sink.events:
 		if event.kind == &"ai_decision" and event.unit_id == unit.id:
@@ -109,9 +109,9 @@ func test_a_two_unit_batch_runs_one_full_search_and_one_cheap_plan() -> void:
 	beta.batch_id = 1
 
 	UnitAI.engagement_searches = 0
-	assert_eq(_branch_taken(alpha, state), &"repositioned", "the leader searched for real")
+	assert_eq(await _branch_taken(alpha, state), &"repositioned", "the leader searched for real")
 	var after_leader: int = UnitAI.engagement_searches
-	assert_eq(_branch_taken(beta, state), &"followed_leader", "and the follower did not")
+	assert_eq(await _branch_taken(beta, state), &"followed_leader", "and the follower did not")
 	var after_follower: int = UnitAI.engagement_searches
 
 	assert_eq(after_leader, 1, "the leader pays the real cost, once")
@@ -126,7 +126,7 @@ func test_the_first_member_to_act_becomes_the_leader() -> void:
 	alpha.batch_id = 1
 	beta.batch_id = 1
 
-	_plan(beta, state)
+	await _plan(beta, state)
 
 	assert_eq(
 		state.batch_plans.leader_id_for(1, state.round_number),
@@ -146,8 +146,8 @@ func test_members_of_different_batches_each_lead_their_own() -> void:
 	beta.batch_id = 2
 
 	UnitAI.engagement_searches = 0
-	_plan(alpha, state)
-	_plan(beta, state)
+	await _plan(alpha, state)
+	await _plan(beta, state)
 
 	assert_eq(UnitAI.engagement_searches, 2)
 
@@ -156,7 +156,7 @@ func test_an_independent_unit_never_records_a_plan() -> void:
 	var field: Dictionary = _field()
 	var state: CombatState = field["state"]
 
-	_plan(field["alpha"], state)
+	await _plan(field["alpha"], state)
 
 	assert_true(state.batch_plans.for_batch(0, state.round_number).is_empty())
 
@@ -182,7 +182,7 @@ func test_a_follower_with_a_shot_fires_instead_of_forming_up() -> void:
 	# The leader is somewhere else entirely, so "form up" and "shoot" disagree.
 	state.batch_plans.record(1, state.round_number, leader.id, Vector2i(2, 2))
 
-	var queue: ActionQueue = _plan(follower, state)
+	var queue: ActionQueue = await _plan(follower, state)
 
 	var fired: bool = queue.actions.any(
 		func(action: CombatAction) -> bool: return action is AttackAction or action is BurstAction
@@ -201,8 +201,8 @@ func test_a_follower_lands_beside_its_leaders_destination_when_it_can_reach_it()
 	var destination := Vector2i(9, 10)
 	state.batch_plans.record(1, state.round_number, (field["alpha"] as Unit).id, destination)
 
-	assert_eq(_branch_taken(beta, state), &"followed_leader", "sanity: the follow branch ran")
-	var landed: Vector2i = _destination_of(_plan(beta, state), beta)
+	assert_eq(await _branch_taken(beta, state), &"followed_leader", "sanity: the follow branch ran")
+	var landed: Vector2i = _destination_of(await _plan(beta, state), beta)
 	assert_lte(
 		Grid.distance_chebyshev(landed, destination),
 		UnitAI.FOLLOWER_SCAN_RADIUS,
@@ -224,8 +224,8 @@ func test_a_distant_follower_closes_on_the_leaders_destination() -> void:
 	state.batch_plans.record(1, state.round_number, (field["alpha"] as Unit).id, destination)
 	var before: int = Grid.distance_chebyshev(beta.cell, destination)
 
-	assert_eq(_branch_taken(beta, state), &"followed_leader", "sanity: the follow branch ran")
-	var landed: Vector2i = _destination_of(_plan(beta, state), beta)
+	assert_eq(await _branch_taken(beta, state), &"followed_leader", "sanity: the follow branch ran")
+	var landed: Vector2i = _destination_of(await _plan(beta, state), beta)
 	assert_lt(Grid.distance_chebyshev(landed, destination), before, "it closed on the leader")
 
 
@@ -253,7 +253,7 @@ func test_a_follower_keeps_the_plan_after_its_leader_dies_mid_round() -> void:
 	var beta: Unit = field["beta"]
 	alpha.batch_id = 1
 	beta.batch_id = 1
-	_plan(alpha, state)
+	await _plan(alpha, state)
 	var destination: Vector2i = state.batch_plans.for_batch(1, state.round_number)["destination"]
 
 	state.kill_unit(alpha)
@@ -264,7 +264,7 @@ func test_a_follower_keeps_the_plan_after_its_leader_dies_mid_round() -> void:
 		"the record outlives the unit that made it"
 	)
 	UnitAI.engagement_searches = 0
-	_plan(beta, state)
+	await _plan(beta, state)
 	assert_eq(UnitAI.engagement_searches, 0, "and the survivor still follows it")
 
 
@@ -278,13 +278,13 @@ func test_the_next_round_hands_the_lead_to_a_living_member_with_no_promotion() -
 	var beta: Unit = field["beta"]
 	alpha.batch_id = 1
 	beta.batch_id = 1
-	_plan(alpha, state)
+	await _plan(alpha, state)
 	state.kill_unit(alpha)
 
 	state.round_number += 1
 	beta.ap = beta.max_ap
 	UnitAI.engagement_searches = 0
-	_plan(beta, state)
+	await _plan(beta, state)
 
 	assert_eq(UnitAI.engagement_searches, 1, "the survivor pays the real cost now")
 	assert_eq(state.batch_plans.leader_id_for(1, state.round_number), beta.id)
@@ -299,7 +299,7 @@ func test_a_wholly_dead_batch_is_inert() -> void:
 	var beta: Unit = field["beta"]
 	alpha.batch_id = 1
 	beta.batch_id = 1
-	_plan(alpha, state)
+	await _plan(alpha, state)
 	state.kill_unit(alpha)
 	state.kill_unit(beta)
 
@@ -326,7 +326,7 @@ func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> 
 	var taken: Array[String] = []
 	var i := 0
 	while not runner.finished and i < steps:
-		runner.step()
+		await runner.step()
 		for event: LogEvent in runner.last_events:
 			taken.append("%s@%d" % [event.kind, event.unit_id])
 		i += 1
@@ -338,10 +338,10 @@ func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> 
 func test_an_unbatched_bout_is_byte_identical() -> void:
 	var a: Dictionary = _bout(31337)
 	assert_eq(a.get("error", ""), "", "sanity: the bout built")
-	var expected: Array[String] = _action_sequence(a.state, a.mission, 8)
+	var expected: Array[String] = await _action_sequence(a.state, a.mission, 8)
 
 	var b: Dictionary = _bout(31337)
-	var actual: Array[String] = _action_sequence(b.state, b.mission, 8)
+	var actual: Array[String] = await _action_sequence(b.state, b.mission, 8)
 
 	assert_eq(actual, expected)
 	assert_gt(expected.size(), 0, "sanity: the bout actually did something")

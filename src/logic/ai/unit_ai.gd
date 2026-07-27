@@ -172,10 +172,23 @@ static var engagement_searches: int = 0
 ## own tile got shut down on arrival instead of holding, then never
 ## resolved again since it was now the board's only remaining unit).
 static func plan_turn(
-	unit: Unit, view: WorldView, mission: MissionState, playstyle: StringName = &"AGGRESSIVE"
+	unit: Unit,
+	view: WorldView,
+	mission: MissionState,
+	playstyle: StringName = &"AGGRESSIVE",
+	pacer: PlanPacer = null
 ) -> ActionQueue:
+	# tb44 Pass D: a coroutine, because GDScript has no other way to hand the main
+	# thread back mid-computation, and taskblock-42 Pass D already established that
+	# yielding BETWEEN units does not help — one step IS the entire think. Headless
+	# callers pass no pacer, nothing ever suspends, and awaiting a coroutine that
+	# never suspended returns immediately.
 	var state: CombatState = view.canonical_state_for_resolvers()
-	var queue: ActionQueue = _plan_turn_before_shutdown_check(unit, view, mission, playstyle)
+	if pacer != null:
+		pacer.begin()
+	var queue: ActionQueue = await _plan_turn_before_shutdown_check(
+		unit, view, mission, playstyle, pacer
+	)
 	var should_shut_down: bool = (
 		not unit.shutdown
 		and not EndTurnAction.is_holding_position(unit, mission)
@@ -189,21 +202,31 @@ static func plan_turn(
 
 
 static func _plan_turn_before_shutdown_check(
-	unit: Unit, view: WorldView, mission: MissionState, playstyle: StringName
+	unit: Unit,
+	view: WorldView,
+	mission: MissionState,
+	playstyle: StringName,
+	pacer: PlanPacer = null
 ) -> ActionQueue:
 	var state: CombatState = view.canonical_state_for_resolvers()
 	if mission != null and not _has_functional_weapon(unit):
 		return _plan_flee(unit, view, mission)
 	match playstyle:
 		&"SKIRMISHER":
-			return _plan_ranged(unit, view, mission, SKIRMISHER_PREFERRED_RANGE, false, playstyle)
+			return await _plan_ranged(
+				unit, view, mission, SKIRMISHER_PREFERRED_RANGE, false, playstyle, pacer
+			)
 		&"MARKSMAN":
-			return _plan_ranged(unit, view, mission, MARKSMAN_PREFERRED_RANGE, false, playstyle)
+			return await _plan_ranged(
+				unit, view, mission, MARKSMAN_PREFERRED_RANGE, false, playstyle, pacer
+			)
 		&"COVER_SEEKER":
 			# taskblock-16 D2: "a cover-seeker is a skirmisher that also
 			# weights cover" — its own preferred standoff is SKIRMISHER's,
 			# not a fourth, independently-tuned number.
-			return _plan_ranged(unit, view, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
+			return await _plan_ranged(
+				unit, view, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle, pacer
+			)
 		&"PSYCHOTIC":
 			# taskblock-25 Pass F (docs/PLAN.md "Phase M — Melee"): "prefers
 			# melee, closes to minimize distance, never flees." Reuses
@@ -211,7 +234,9 @@ static func _plan_turn_before_shutdown_check(
 			# distance-closing logic is unchanged — only WHICH weapon it
 			# fires with differs, see `_plan_ranged`'s own PSYCHOTIC branch)
 			# — never a second, independently-tuned closing behavior.
-			return _plan_ranged(unit, view, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
+			return await _plan_ranged(
+				unit, view, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle, pacer
+			)
 		&"TURTLE":
 			# taskblock-25 Pass F: "keeps distance, would rather flee than
 			# melee, uses cover." Melee weighted as a last resort — reached
@@ -223,9 +248,13 @@ static func _plan_turn_before_shutdown_check(
 			# already uses.
 			if mission != null and Suppression.is_suppressed(state, unit):
 				return _plan_flee(unit, view, mission)
-			return _plan_ranged(unit, view, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle)
+			return await _plan_ranged(
+				unit, view, mission, SKIRMISHER_PREFERRED_RANGE, true, playstyle, pacer
+			)
 		_:
-			return _plan_ranged(unit, view, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle)
+			return await _plan_ranged(
+				unit, view, mission, AGGRESSIVE_PREFERRED_RANGE, false, playstyle, pacer
+			)
 
 
 ## taskblock-16 Pass D: the one ranged planner every playstyle above
@@ -263,7 +292,8 @@ static func _plan_ranged(
 	mission: MissionState,
 	preferred_range: int,
 	weight_cover: bool,
-	playstyle: StringName = &"AGGRESSIVE"
+	playstyle: StringName = &"AGGRESSIVE",
+	pacer: PlanPacer = null
 ) -> ActionQueue:
 	var state: CombatState = view.canonical_state_for_resolvers()
 	var queue := ActionQueue.new(unit)
@@ -404,7 +434,7 @@ static func _plan_ranged(
 				# runs (engagement vs. the approach fallback), which is a much
 				# larger behaviour change than picking a different cell within
 				# the branch this pass is actually scoped to.
-				best_cell = _pick_engagement_position(
+				best_cell = await _pick_engagement_position(
 					unit,
 					enemy,
 					view,
@@ -416,7 +446,8 @@ static func _plan_ranged(
 					),
 					true,
 					lof_cache,
-					field
+					field,
+					pacer
 				)
 			if best_cell != unit.cell:
 				var path: Array[Vector2i] = pf.astar(unit.cell, best_cell)
@@ -880,7 +911,8 @@ static func _pick_engagement_position(
 	reachable: Array[Vector2i],
 	any_reachable_has_lof: bool,
 	lof_cache: Variant = null,
-	field: VisibilityField = null
+	field: VisibilityField = null,
+	pacer: PlanPacer = null
 ) -> Vector2i:
 	engagement_searches += 1
 	var best_cell: Vector2i = unit.cell
@@ -898,6 +930,16 @@ static func _pick_engagement_position(
 		field
 	)
 	for cell: Vector2i in reachable:
+		# tb44 Pass D: the one loop worth slicing — Pass B's profile put the
+		# remaining per-turn cost squarely in these per-candidate casts. Aborting
+		# is safe at ANY iteration: `best_cell` is seeded with the unit's own cell
+		# and only ever replaced on a strict improvement, so the incumbent is a
+		# legitimate answer after every step, never a partial one.
+		if pacer != null:
+			if pacer.should_abort():
+				break
+			if pacer.note_candidate():
+				await pacer.frame_signal
 		var score: float = _engagement_score(
 			cell,
 			enemy,

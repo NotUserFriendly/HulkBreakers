@@ -94,7 +94,7 @@ func test_a_marksman_with_no_improving_move_and_a_threatened_enemy_queues_overwa
 	var scene: Dictionary = _unaffordable_shot_scene()
 	var self_unit: Unit = scene.self_unit
 
-	var queue: ActionQueue = UnitAI.plan_turn(
+	var queue: ActionQueue = await UnitAI.plan_turn(
 		self_unit, WorldView.full(scene.state), null, &"MARKSMAN"
 	)
 
@@ -120,7 +120,7 @@ func test_an_aggressive_unit_never_overwatches_the_same_scenario() -> void:
 	var scene: Dictionary = _unaffordable_shot_scene()
 	var self_unit: Unit = scene.self_unit
 
-	var queue: ActionQueue = UnitAI.plan_turn(
+	var queue: ActionQueue = await UnitAI.plan_turn(
 		self_unit, WorldView.full(scene.state), null, &"AGGRESSIVE"
 	)
 
@@ -139,7 +139,7 @@ func test_a_marksman_whose_weapon_doesnt_provide_overwatch_cannot_overwatch() ->
 	var self_unit: Unit = scene.self_unit
 	self_unit.shell.find_part(&"rifle").provides_actions = [&"shoot"]
 
-	var queue: ActionQueue = UnitAI.plan_turn(
+	var queue: ActionQueue = await UnitAI.plan_turn(
 		self_unit, WorldView.full(scene.state), null, &"MARKSMAN"
 	)
 
@@ -157,7 +157,9 @@ func test_a_weaponless_marksman_cannot_overwatch() -> void:
 	var enemy := _target(&"enemy", Vector2i(7, 0), 1)
 	var state := CombatState.new(grid, [self_unit, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(self_unit, WorldView.full(state), null, &"MARKSMAN")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		self_unit, WorldView.full(state), null, &"MARKSMAN"
+	)
 
 	assert_false(queue.actions.any(func(a: CombatAction) -> bool: return a is OverwatchAction))
 
@@ -170,7 +172,7 @@ func test_overwatch_choice_is_deterministic_per_seed() -> void:
 		var scene: Dictionary = _unaffordable_shot_scene()
 		var self_unit: Unit = scene.self_unit
 
-		var queue: ActionQueue = UnitAI.plan_turn(
+		var queue: ActionQueue = await UnitAI.plan_turn(
 			self_unit, WorldView.full(scene.state), null, &"MARKSMAN"
 		)
 		results.append(

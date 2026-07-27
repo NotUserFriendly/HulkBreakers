@@ -89,7 +89,9 @@ func test_psychotic_prefers_a_strike_over_a_shot_when_in_reach() -> void:
 	var enemy := _armed_unit(&"enemy", Vector2i(1, 0), 1, &"enemy_rifle")
 	var state := CombatState.new(GridFixture.flat(10, 10), [striker, enemy])
 
-	var queue: ActionQueue = UnitAI.plan_turn(striker, WorldView.full(state), null, &"PSYCHOTIC")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		striker, WorldView.full(state), null, &"PSYCHOTIC"
+	)
 
 	var stabbed := false
 	for action: CombatAction in queue.actions:
@@ -107,7 +109,9 @@ func test_psychotic_closes_distance_instead_of_firing_from_range() -> void:
 	var state := CombatState.new(GridFixture.flat(10, 10), [striker, enemy])
 	var before_distance: int = Grid.distance_chebyshev(striker.cell, enemy.cell)
 
-	var queue: ActionQueue = UnitAI.plan_turn(striker, WorldView.full(state), null, &"PSYCHOTIC")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		striker, WorldView.full(state), null, &"PSYCHOTIC"
+	)
 
 	for action: CombatAction in queue.actions:
 		assert_false(action is AttackAction, "psychotic must not open fire with its own gun")
@@ -126,7 +130,9 @@ func test_turtle_flees_rather_than_melee() -> void:
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 4)]}
 
-	var queue: ActionQueue = UnitAI.plan_turn(striker, WorldView.full(state), mission, &"TURTLE")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		striker, WorldView.full(state), mission, &"TURTLE"
+	)
 
 	for action: CombatAction in queue.actions:
 		assert_false(action is StabAction, "turtle must never choose melee")
@@ -146,7 +152,9 @@ func test_turtle_does_not_flee_when_not_adjacent_to_an_enemy() -> void:
 	var mission := MissionState.new(RunState.new(), state)
 	mission.team_extraction_cells = {0: [Vector2i(9, 9)]}
 
-	var queue: ActionQueue = UnitAI.plan_turn(striker, WorldView.full(state), mission, &"TURTLE")
+	var queue: ActionQueue = await UnitAI.plan_turn(
+		striker, WorldView.full(state), mission, &"TURTLE"
+	)
 
 	var move: MoveAction = _last_move(queue)
 	assert_not_null(move, "sanity: a turtle far from the enemy still repositions")

@@ -39,7 +39,7 @@ func test_a_yielding_batch_produces_the_identical_bout() -> void:
 	var tight_runner := BoutRunner.new(tight.state, tight.mission)
 	var guard := 0
 	while not tight_runner.finished and guard < 200:
-		tight_runner.step()
+		await tight_runner.step()
 		guard += 1
 	var expected: String = _fingerprint(tight.state)
 

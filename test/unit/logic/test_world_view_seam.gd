@@ -231,7 +231,7 @@ func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> 
 	var taken: Array[String] = []
 	var i := 0
 	while not runner.finished and i < steps:
-		runner.step()
+		await runner.step()
 		for event: LogEvent in runner.last_events:
 			taken.append("%s@%d" % [event.kind, event.unit_id])
 		i += 1
@@ -253,10 +253,10 @@ func _bout(map_seed: int) -> Dictionary:
 func test_the_unrestricted_view_is_byte_identical_across_a_seeded_bout() -> void:
 	var a: Dictionary = _bout(31337)
 	assert_eq(a.get("error", ""), "", "sanity: the bout built")
-	var expected: Array[String] = _action_sequence(a.state, a.mission, 8)
+	var expected: Array[String] = await _action_sequence(a.state, a.mission, 8)
 
 	var b: Dictionary = _bout(31337)
-	var actual: Array[String] = _action_sequence(b.state, b.mission, 8)
+	var actual: Array[String] = await _action_sequence(b.state, b.mission, 8)
 
 	assert_eq(actual, expected)
 	assert_gt(expected.size(), 0, "sanity: the bout actually did something")
