@@ -85,13 +85,21 @@ func _roster(profile: BotPreset, playstyle: StringName, count: int) -> Array[Bou
 	return roster
 
 
-## taskblock-46 Pass B: **sample to notice, escalate to measure.**
+## taskblock-46 Pass B: **sample here, measure with a command.**
 ##
-## Ten seeds drawn at random per run, every one printed. If the sample clears the
-## floor the run is done and cheap. If it dips, that proves nothing by itself — at
-## the measured 0.54 a ten-seed draw lands below 0.35 about one run in nine by
-## chance — so the verdict comes from `CompletionSampler.escalate()`, a fixed
-## 100-seed list that is deterministic where the sample is not.
+## Twenty seeds drawn at random per run, every one printed. The floor is checked
+## against that sample, and a dip **fails and names the command that settles it**
+## rather than running a hundred missions inline.
+##
+## The escalation is still the authority and still deterministic — it just is not
+## the suite's to run. It plays a hundred bouts and costs upward of ten minutes;
+## the suite is the feedback loop everything else depends on, and a gate that
+## occasionally triples its own runtime teaches people to stop running it.
+##
+## **That trade only works if a spurious dip is rare**, and it is: at the measured
+## 0.60 completion rate a twenty-seed draw lands below the 0.35 floor roughly one
+## run in 160. The reported probability below is exactly that number, so if it ever
+## climbs, this design is the thing to revisit.
 ##
 ## **This replaces a pinned window that was measuring the wrong thing.** Seeds 0–11
 ## read 33.3% while the real rate was 54%, because that window is the pessimistic
@@ -111,48 +119,33 @@ func test_bout_completion_rate_meets_the_measured_floor() -> void:
 		print(line)
 
 	var rate: float = float(sampled["rate"])
-	# Reported every run, pass or fail. It is the one figure here that does not
-	# depend on which seeds came up: how often this gate escalates is a statement
-	# about how marginal the planner is.
+	# Reported every run, pass or fail. With the escalation moved out of the suite
+	# this is the probability of a SPURIOUS failure, which is the number that says
+	# whether sampling is still a fair gate.
+	var spurious: float = CompletionSampler.escalation_probability(rate, MIN_COMPLETION_RATE)
 	print(
 		(
-			"escalation probability at this rate: %.1f%% (~1 run in %d)"
-			% [
-				CompletionSampler.escalation_probability(rate, MIN_COMPLETION_RATE) * 100.0,
-				int(
-					round(
-						(
-							1.0
-							/ maxf(
-								0.0001,
-								CompletionSampler.escalation_probability(rate, MIN_COMPLETION_RATE)
-							)
-						)
-					)
-				)
-			]
+			"spurious-failure probability at this rate: %.1f%% (~1 run in %d)"
+			% [spurious * 100.0, int(round(1.0 / maxf(0.0001, spurious)))]
 		)
 	)
 	assert_gt(int(sampled["counted"]), 0, "sanity: the sample actually ran bouts")
 
-	if not CompletionSampler.should_escalate(rate, MIN_COMPLETION_RATE):
-		return
-
-	CompletionSampler.escalations += 1
-	print(
+	assert_false(
+		CompletionSampler.should_escalate(rate, MIN_COMPLETION_RATE),
 		(
-			"sample %.1f%% is below the %.1f%% floor — escalating to the deterministic %d-seed run"
-			% [rate * 100.0, MIN_COMPLETION_RATE * 100.0, CompletionSampler.ESCALATION_SEEDS]
-		)
-	)
-	var full: Dictionary = await CompletionSampler.escalate()
-	for line: String in CompletionSampler.describe(full):
-		print(line)
-
-	assert_true(
-		float(full["rate"]) >= MIN_COMPLETION_RATE,
-		(
-			"completion rate %.1f%% over %d deterministic seeds fell below the floor %.1f%%"
-			% [float(full["rate"]) * 100.0, int(full["counted"]), MIN_COMPLETION_RATE * 100.0]
+			(
+				"sample %.1f%% is below the %.1f%% floor over %d seeds. Confirm with the "
+				+ "deterministic %d-seed run before treating this as real:\n"
+				+ "    godot --headless --path . -s res://tools/probe_seeds.gd\n"
+				+ "seeds drawn: %s"
+			)
+			% [
+				rate * 100.0,
+				MIN_COMPLETION_RATE * 100.0,
+				int(sampled["counted"]),
+				CompletionSampler.ESCALATION_SEEDS,
+				str(sampled["seeds"])
+			]
 		)
 	)

@@ -30,15 +30,23 @@ extends GutTest
 ## attached is what keeps the guard meaningful for the next taskblock that has no
 ## business changing flat play.
 ##
-## Was `1167294328` (tb38 Pass A through taskblock-44), then `1554552115`
-## (taskblock-45's planner swap).
+## Re-pinned at: `1167294328` (tb38 Pass A → taskblock-44) → `1554552115`
+## (taskblock-45's planner swap) → `2102842205` (taskblock-46 Pass C, search verbs)
+## → this (taskblock-46 Pass D, Panic).
 ##
-## taskblock-46 Pass C re-pinned it again, for the same reason and with the same
-## caveat: the block's deliverable is that a unit which knows of no enemy now
-## SEARCHES instead of standing still, and both units in this deliberately
-## weaponless bout know of no enemy. Changed flat play is the change, not an
-## accident. The finding is recorded in `CHANGELOG.md` rather than swallowed here.
-const GOLDEN_HASH: int = 2102842205
+## Each time for the same reason: the bout is two deliberately weaponless units who
+## know of no enemy, which is *precisely* the state the AI work keeps changing the
+## behaviour of. Changed flat play has been the deliverable three times running.
+##
+## **Four re-pins in two taskblocks is worth noticing.** This guard was written for
+## taskblock-38, whose promise was that nothing in it changed flat play, and against
+## that promise a divergence was a bug by definition. It is now, in practice, an
+## AI-behaviour change detector that goes red whenever the AI changes on purpose.
+## It still earns its place — it would catch an *unintended* change to flat play by
+## a block with no business touching the AI — but if it keeps needing re-pinning by
+## blocks whose job is the AI, the honest move is to narrow it to something that
+## does not involve a planner rather than to keep re-pinning it.
+const GOLDEN_HASH: int = 239821190
 
 const TURN_CAP: int = 30
 const MAP_SEED: int = 20260724
