@@ -1,7 +1,7 @@
 # Taskblock 46 Report — Fix the ground, then fix the AI
 
-**IN PROGRESS — Passes A and B only.** C, D, E and F are not started; `taskblock46.md` is in the tree
-and is the authority on what they are. Suite green, 2295/2295.
+**IN PROGRESS — Passes A, B, C and D landed; stopped at the block's own HARD PAUSE.** E and F are not
+started; `taskblock46.md` is the authority on what they are.
 
 **The rolling-five window is NOT rolled yet.** `Report-Taskblock41.md` stays until this block
 finishes.
@@ -45,6 +45,32 @@ Two, both mine, both caught before commit.
    green while deleting the feature it guards. `test_the_generator_still_authors_raised_rooms` now
    pins 30/40 maps and >5% of floored cells raised. **Maps are not forced flat** — the fix removed
    pits, not elevation, and the raised-room count is unchanged from BR40.03's pre-fix measurement.
+
+## Passes C and D
+
+**C filled the hole and it worked.** Completion **54% → 60%** over 100 seeds, and the breakdown shows
+the intended mechanism rather than a coincidence: **`TERMINATED` 37 → 27** — bouts that never ended
+now end — with `STRANDED` 9 → 13, because units that search actually find each other. The gap to the
+old planner narrows **25 → 15 points**.
+
+Four search verbs, each a `.tres` gated on `Unit.search_behaviour` as a precondition, so exactly one
+is offered to any unit. **Roam, hunt and putter are one published input under three curves** — three
+behaviours with no code between them, which is the clearest thing in the pool for what the model is
+for. Patrol owns the only state, so it is its own class; points are derived from the map with no RNG,
+and "visited longest ago wins" buys every-point-visited, no ping-ponging, and unreachable-points-age-
+out with nothing to detect or remove.
+
+**C3 confirmed the taskblock's guess rather than assuming it.** `Pathfinder.reachable` already built a
+full cost map and discarded it, so `closes_distance` now reads real path distance from one flood
+rooted at the target. Measured on the case: **against the wall 0.500 vs toward the opening 0.667**,
+though the wall cell is nearer as the crow flies. `LineOfFire.approach_path`/`closing_path` deleted
+with their tests — what replaces them is not a branch at all.
+
+**D named the state the cascade could not express.** A panic emits a reason, and the reason is the
+diagnostic: `nothing_offered` says the pool has a hole for this unit, `all_vetoed` says it looked and
+wanted none of it, `budget_aborted` says the clock ran out and no verdict was reached. Panic did not
+move completion (60% before and after), which is the expected result — it fires only when nothing is
+offered, and C made that rare.
 
 ## Open questions
 
@@ -91,6 +117,30 @@ Two, both mine, both caught before commit.
   **only seed 6 was.** Seeds 1 and 2 still fail under both planners, so that component is something
   else. True rate is **54%** over 100 seeds.
 
-- **Passes C–F remain**, and C is where the regression actually gets addressed: the action-pool hole
-  (`BR45.03`) and `approach` scoring straight-line distance where it needs path distance
-  (`BR32.10`). The hard pause before Pass E stands.
+- **The block's HARD PAUSE is where this stops, and the decision is the supervisor's.** Completion
+  against Pass B's fresh baseline: **54% → 60%** over the same 100 seeds, old planner 75%. The floor
+  (0.35) holds comfortably. **Whether that counts as "recovered" is the call the pause exists for** —
+  it is real progress and it is still 15 points short, and the taskblock's own warning is that
+  filling the tier table on a planner that cannot finish a mission buries the regression under a
+  hundred new decisions.
+
+- **What is left in the 40 failures, for whoever picks this up.** 27 `TERMINATED` and 13 `STRANDED`.
+  The `STRANDED` count ROSE (9 → 13) as a direct consequence of C: units that search find each other,
+  and some of those fights are lost. That is a different problem from the one this block fixed, and
+  it wants combat quality rather than another gate.
+
+- **Two lessons re-learned the hard way, both already written down somewhere.** The candidate-cell
+  early-out was wrong for the *second* time (it gates on having a reason to move, and that list is
+  never complete); and Panic shut down a unit holding its extraction tile, which the retired planner
+  had a guard for and a comment saying it had been caught live. Both were caught by tests rather than
+  by review.
+
+- **The suite is ~1290 s and Pass C is why.** Search verbs make bouts longer (mean 9.8 → 12.0 turns),
+  so every bout-running test costs more. Moving the escalation out of `run_tests.sh` (supervisor's
+  call) keeps the worst case bounded, but the base cost roughly doubled across this block.
+
+- **The tb38 flat-bout guard has been re-pinned four times in two taskblocks.** It was written for a
+  block that promised not to change flat play; it is now in practice an AI-behaviour change detector,
+  because its two weaponless units are exactly the case the AI work keeps changing. Flagged in the
+  file itself: if AI blocks keep re-pinning it, narrow it to something with no planner in it rather
+  than keep re-pinning.
