@@ -33,34 +33,13 @@ static func emit(
 	)
 
 
-## taskblock-45 Pass A3: **the utility planner's decision, recorded well enough
-## to reconstruct.**
+## The utility planner's decision, recorded well enough to reconstruct by hand.
+## `docs/11` has why the log is the instrument rather than a diagnostic afterthought.
 ##
-## A behaviour tree fails legibly — it took a branch and you can see which. **A
-## scorer produces a number, and you either reconstruct why afterwards or you
-## cannot.** BR26.02 sat in exactly that hole through three passes of
-## reasoned-but-unmeasured fixes, which is why this is designed in rather than
-## added the first time behaviour looks wrong.
-##
-## Four things go in, and each answers a question that is otherwise unanswerable:
-##
-## - **Every candidate and its final score**, not just the winner. "Why not the
-##   other one" is the question actually asked, and the winner alone cannot
-##   answer it.
-## - **Per consideration, the raw input AND the curve output** — the trace
-##   `UtilityScorer.score` fills. A veto is invisible in a product, so "which
-##   consideration returned zero" needs the individual factors; the product tells
-##   you only that something did.
-## - **Tier, profile, and what the unit could see.** A decision that looks wrong
-##   is often correct given a degraded world model, and without the visible set
-##   there is no way to tell that apart from a scoring bug. This is the half that
-##   taskblock-44's `WorldView` exists to make knowable.
-## - **The margin over second place.** A landslide and a near-tie want reading
-##   very differently, and the winning score alone cannot distinguish them.
-##
-## `candidates` entries are `{label, action_id, score, offered, trace}` —
-## `offered` false meaning a precondition refused it, which is a different answer
-## from "offered and scored zero".
+## `candidates` entries are `{label, action_id, cell, score, offered, trace}`.
+## **`offered: false` means a precondition refused it**, which is a different answer
+## from "offered and scored zero" — and telling those apart is most of the value
+## when someone asks why a unit did not do something.
 static func emit_utility_decision(
 	state: CombatState,
 	unit: Unit,

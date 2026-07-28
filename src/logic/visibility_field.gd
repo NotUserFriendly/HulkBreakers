@@ -1,54 +1,35 @@
 class_name VisibilityField
 extends RefCounted
 
-## taskblock-44 Pass B: the line-of-fire query, inverted.
-##
-## The planner used to cast from N candidate cells to one target, paying a real
-## `ShotPlane.build` per candidate — measured at **271.9ms per repositioning
-## turn** (taskblock-43's profile), which is roughly 70% of a planning turn and
-## the single largest cost in the AI. This computes one field **from the target**
-## instead, after which each candidate's question is a bit test.
-##
-## **One field per target, reused by every shooter.** That is where the
-## asymptotic win is: cost stops scaling with the number of units asking.
-##
-## ## The correctness obligation, which is the whole design
+## The line-of-fire query, inverted: one field computed **from the target**, after
+## which each candidate's question is a bit test. `docs/11` has why, and the
+## correctness obligation this rests on:
 ##
 ## > **Never report "no line" for a cell that actually has one.**
 ##
-## Over-inclusion is safe; under-inclusion is a bug. `ShotPlane` remains the one
-## canonical resolver (`docs/02`, `docs/08`) and this never overrides it — a
-## survivor of the field is still confirmed by a real cast. A second visibility
-## system permitted to *disagree* with `ShotPlane` would be a two-sources-of-truth
-## problem, and it would disagree: different rounding, different partial-cover
-## handling, different level transitions. Being a conservative prefilter is a far
-## weaker burden than being right, and it is directly testable
-## (`test_visibility_field.gd`).
+## Over-inclusion is safe; under-inclusion is a bug. Three deliberate
+## over-inclusions follow, each costing a `ShotPlane` build the field could in
+## principle have saved:
 ##
-## Three deliberate over-inclusions follow from that, each of which costs a
-## `ShotPlane` build that the field could in principle have saved:
-##
-## 1. **Cover never occludes here.** `Grid.blockers` cover blocks shots but is
-##    not opaque (`LoS`: "cover never blocks vision"). Excluding those cells
-##    would be under-inclusion.
-## 2. **Units never occlude here.** An ally in the way blocks a shot;
-##    `_ally_in_firing_line` is what answers that, against the real plane.
+## 1. **Cover never occludes here.** `Grid.blockers` cover blocks shots but is not
+##    opaque (`LoS`: cover never blocks vision). Excluding those cells would be
+##    under-inclusion.
+## 2. **Units never occlude here.** An ally in the way blocks a shot; the
+##    ally-in-line check answers that against the real plane.
 ## 3. **A cell at a different elevation from the target is always included.**
-##    Occlusion data in this project is 2D — `Grid.opacity` is per cell, with no
-##    per-level component — so a wall "at" a cell says nothing reliable about a
-##    shot passing over it from a catwalk. The 2D answer is only sound within the
-##    target's own level band.
+##    Occlusion data here is 2D — `Grid.opacity` is per cell with no per-level
+##    component — so a wall "at" a cell says nothing reliable about a shot passing
+##    over it from a catwalk. The 2D answer is sound only within the target's band.
 ##
 ## ## Why the volume is indexed in 3D when the occlusion data is 2D
 ##
-## `i = x + y*W + z*W*H` over a `PackedInt64Array`, per the block's own
-## instruction, and it is not decoration. Today the z axis carries the third
-## over-inclusion above and nothing else. But multi-level has landed, the game is
-## 3D, and a per-level structure with a cross-level path bolted on later is the
-## thing that gets rewritten. The representation is also load-bearing beyond
-## speed: a packed array is what can be handed to a worker thread safely, where a
-## `CombatState`/`Grid`/`Unit` object graph cannot — so this is a prerequisite
-## for any later off-thread work rather than an alternative to it.
+## `i = x + y*W + z*W*H` over a `PackedInt64Array`. Today the z axis carries the
+## third over-inclusion and nothing else — but multi-level has landed, and a
+## per-level structure with a cross-level path bolted on later is the thing that
+## gets rewritten. The representation is also load-bearing beyond speed: a packed
+## array can be handed to a worker thread where a `CombatState`/`Grid`/`Unit` object
+## graph cannot, so this is a prerequisite for later off-thread work rather than an
+## alternative to it.
 
 ## Bits per word in the `PackedInt64Array` backing store.
 const BITS_PER_WORD := 64

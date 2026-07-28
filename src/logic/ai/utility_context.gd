@@ -1,40 +1,33 @@
 class_name UtilityContext
 extends RefCounted
 
-## taskblock-45 Pass B: **the seam that publishes what a candidate is worth
-## knowing about.** Pass A built the maths; this is what feeds it.
+## **The seam that publishes what a candidate is worth knowing about.** `docs/11`
+## has the model; this is the only file in the planner that knows what a grid, a
+## weapon or a line of fire is.
 ##
 ## `UtilityScorer.score` consumes a flat `{input_id: 0.0–1.0}` dictionary and
-## `preconditions_hold` consumes a flat `{predicate: bool}` one. Nothing in Pass A
-## knows where either comes from, and that is the point: **a new consideration is a
-## new entry published here plus a new `.tres`, never a branch in the scorer.**
-## This file is therefore the only place in the utility planner that knows what a
-## grid, a weapon or a line of fire is.
+## `preconditions_hold` a flat `{predicate: bool}` one. Nothing in the scorer knows
+## where either comes from, which is what makes a new consideration an entry
+## published here plus a `.tres`, never a branch in the scorer.
 ##
-## ## The cost model, which is the block's whole reason for existing
+## ## Cheap answers here, canonical answers at the executor
 ##
-## taskblock-43 measured the old planner at **271.9ms per repositioning turn**,
-## roughly 70% of it real `ShotPlane` casts inside `_engagement_score` — one per
-## candidate cell. This publishes the same fact from `VisibilityField`, built
-## **once per target per turn**, after which each candidate's line-of-fire question
-## is a bit test. That is not an optimisation of the old scorer; it is why the old
-## scorer is deleted rather than tuned.
+## Line of fire is a bit test against one `VisibilityField` per target per turn.
+## The field over-includes by design (`docs/11`), so a shoot candidate it waves
+## through may still be blocked — and is caught by `ActionQueue.enqueue`, which
+## validates against a preview with the queued move already replayed onto it. The
+## planner proposes from a cheap answer and the executor refuses from the canonical
+## one; that is the one-resolver rule working, not being worked around.
 ##
-## **The field over-includes and that is safe here.** `VisibilityField.allows` is
-## conclusive only when false; true means "ask `ShotPlane`". So a shoot candidate
-## the field waves through may still be blocked — and is caught by
-## `ActionQueue.enqueue`, which validates against a speculative preview with the
-## queued move already replayed onto it. The planner proposes from a cheap answer
-## and the executor refuses from the canonical one, which is `docs/08`'s
-## one-resolver rule working exactly as intended rather than being worked around.
+## The same posture covers `_move_economy`, which ranks candidates on chebyshev
+## distance rather than real path cost. A true cost needs a pathfind per candidate,
+## which is the class of work this design exists to remove, and the proxy only ever
+## orders candidates against each other — never decides whether a move is
+## affordable.
 ##
-## ## Normalisation constants are flagged, not tuned
-##
-## Every constant below turns some unbounded game quantity into 0–1. They are
-## chosen to put ordinary map distances somewhere useful in the range and nothing
-## more; none is a balance decision, and the profile weights are where behaviour is
-## actually authored (CLAUDE.md: never invent balance numbers and present them as
-## design).
+## **Normalisation constants below are flagged, not tuned.** They turn unbounded
+## game quantities into 0–1 and put ordinary map distances somewhere useful in the
+## range; behaviour is authored in the profile weights.
 
 # --- the published vocabulary ------------------------------------------------
 #
@@ -58,18 +51,15 @@ const INPUT_MOVE_ECONOMY := &"move_economy"
 ## Shell condition, 1.0 undamaged. Inverted by a curve to mean "how hurt am I".
 const INPUT_OWN_INTEGRITY := &"own_integrity"
 
-## taskblock-45 Pass C: one further input per authored batch objective, named
-## `objective_<id>` (`BatchObjective.input_id_for`). **Not listed as constants
-## here, because the objective vocabulary is the `.tres` set** — a fifth objective
-## publishes a fifth input with no code edit, which is the whole reason objectives
-## are data.
+## One further input per authored batch objective, named `objective_<id>`
+## (`BatchObjective.input_id_for`). **Not constants here, because the objective
+## vocabulary is the `.tres` set** — a fifth objective publishes a fifth input with
+## no code edit.
 ##
 ## **Dormant publishes 1.0 for every one of them.** A neutral vector, not a zero
-## vector: zeroes would veto through the product and a batchless unit — which is
-## every unit until something assigns a batch by hand — would stop acting. So with
-## no objective in force, an action reading `objective_advance` is affected exactly
-## as much as if the input did not exist, which is what makes the dormancy claim
-## literal rather than approximate.
+## vector: zeroes would veto through the product and every batchless unit — which
+## is every unit until a batch is assigned by hand — would stop acting entirely.
+## That is what makes the dormancy claim literal rather than approximate.
 
 ## Some attached weapon can actually fire right now.
 const PRED_HAS_WEAPON := &"has_weapon"
@@ -96,24 +86,23 @@ const PRED_CAN_DEFER_TURN := &"can_defer_turn"
 
 # --- the mission ------------------------------------------------------------
 #
-# taskblock-45 Pass D. **A combat-only action pool cannot finish a mission**, and
-# the head-to-head is what made that concrete rather than obvious: the utility
-# planner was 5.4x faster than the old one and completed 0% of bouts against its
-# 75%, because completion means EXTRACTED and nothing in the Pass B pool can
-# gather an objective or walk to an extraction tile. That is a missing action, not
-# a worse planner.
+# **A combat-only action pool cannot finish a mission**, and measuring is what made
+# that concrete: the planner completed 0% of bouts on its first head-to-head,
+# because completion means EXTRACTED and nothing in a combat pool can gather an
+# objective or walk to an extraction tile. A missing action, not a worse planner.
 #
-# The old planner answered this with `_plan_non_combat_turn` — a branch above the
-# combat planners that walks to the resource node, gathers, then walks to
-# extraction. Here it is four more `.tres` rows over the inputs below, which is the
-# claim `PLAN.md` makes about this architecture ("preconditions and a consideration
-# set, not new machinery") being cashed rather than asserted.
+# The retired planner answered this with a non-combat branch above the combat ones.
+# Here it is four `.tres` rows over the inputs below — the architecture's own claim
+# ("preconditions and a consideration set, not new machinery") being cashed.
 #
 # **Precedence needs no branch.** Every combat action requires `enemy_known`, so
-# with nothing in sight the mission actions are the only ones offered and win by
-# default; with an enemy in sight both compete and the authored weights decide.
-# The old planner's hard "combat first" ordering becomes a weight, which is the
-# whole point of the model.
+# with nothing in sight the mission actions are the only ones offered; with an
+# enemy in sight both compete and the authored weights decide. A hard "combat
+# first" ordering becomes a weight.
+#
+# **These gate on `is_player_squad`, and that is half of a known hole** — see
+# `BR45.03`: a non-player squad with nothing in sight fails every gate in the pool
+# and idles. `docs/11` names the failure mode.
 
 ## Some objective is still open.
 const PRED_OBJECTIVE_OPEN := &"objective_open"
@@ -181,11 +170,10 @@ var _extraction_cell: Variant = null
 
 
 ## Gathers everything that is per-TURN rather than per-candidate, so the
-## per-candidate work below stays arithmetic and bit tests.
+## per-candidate work stays arithmetic and bit tests.
 ##
 ## **`units_visible_to` is the only unit knowledge read**, here and nowhere else in
-## the utility planner — the chokepoint `test_world_view_seam.gd` exists to keep
-## singular. Geometry is free and read directly.
+## the planner — the chokepoint `test_world_view_seam.gd` keeps singular.
 static func build(
 	p_unit: Unit, p_view: WorldView, p_mission: MissionState = null
 ) -> UtilityContext:
@@ -289,16 +277,14 @@ func _add_mission_progress_cells(reachable: Array[Vector2i]) -> void:
 			candidate_cells.append(best)
 
 
-## Re-bases the context on `cell`, for scoring what the unit does AFTER the move it
-## has already committed to this turn.
+## Re-bases the context on `cell`, for scoring what the unit does AFTER a move it
+## has already committed to this turn — `docs/11`'s depth-1 "score post-move".
 ##
-## This is `PLAN.md`'s "depth 1 (score post-move)" and it is the whole reason a
-## utility planner can shoot after repositioning without a second hardcoded
-## "and then fire" branch: the same scorer is asked the same question from the new
-## position. Only geometry is re-based — AP and legality are never simulated here,
-## because `ActionQueue.enqueue` validates against a speculative preview with the
-## queued move already replayed onto it, which is the only place that can answer
-## them correctly.
+## It is why the planner can shoot after repositioning with no hardcoded "and then
+## fire" branch: the same scorer is asked the same question from the new position.
+## **Only geometry is re-based.** AP and legality are never simulated here;
+## `ActionQueue.enqueue` owns those and is the only thing that can answer them
+## against the queued move.
 func settle_at(cell: Vector2i) -> void:
 	_origin = cell
 	candidate_cells = [cell]

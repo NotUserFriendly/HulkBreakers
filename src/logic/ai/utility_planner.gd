@@ -1,53 +1,49 @@
 class_name UtilityPlanner
 extends RefCounted
 
-## taskblock-45 Pass B: **the planner the block exists to build.**
+## `(unit, view, mission, profile, pacer) -> ActionQueue`. Pure, deterministic, no
+## SceneTree, and an action-queue PRODUCER rather than a second turn system — human
+## and AI paths emit the same queue through the same `CombatState.resolve_until`.
 ##
-## `(unit, view, mission, profile, pacer) -> ActionQueue`, the identical signature
-## and identical contract the old engagement-score planner has: pure, deterministic,
-## no SceneTree, and an action-queue PRODUCER rather than a second turn system.
-## Human and AI paths still emit the same queue through the same
-## `CombatState.resolve_until` (CLAUDE.md: no parallel systems).
+## `docs/11` has the model: scoring, resumability, why intelligence gates
+## information, and why batches amortize rather than act together. What follows is
+## how this file implements it and the three traps it has already fallen into.
 ##
-## ## What replaces what
+## ## One loop, not a cascade
 ##
-## The old planner decided a turn with a hand-ordered cascade of branches — fire in
-## place, else approach-fallback, else closing-fallback, else engagement search,
-## else step out, else overwatch, else hold — each with its own penalty constants
-## dominating the one below it. That structure is why it reached 1400 lines and
-## eight file-cap bumps: every new consideration had to be inserted at the right
-## height in a total order, and the order was the design.
+## Score every (cell, action) pair, take the best, do it. **Precedence is not
+## written down anywhere** — it emerges from authored weights, so changing what a
+## unit prefers is a `.tres` edit rather than a re-ordering of branches. The
+## planner this replaced encoded precedence as a hand-ordered branch cascade with
+## seven penalty constants each sized to dominate the one below it; that structure
+## is why it reached 1400 lines and eight file-cap bumps.
 ##
-## Here there is **one loop**: score every (cell, action) pair, take the best, do
-## it. Precedence is not written down at all — it emerges from weights, and a
-## profile changing which action wins is a `.tres` edit rather than a re-ordering
-## of branches.
+## ## A turn is several selections, and each one can fail
 ##
-## ## Two selections per turn, not one
+## After committing a choice the planner re-scores from the settled cell and
+## selects again, up to `MAX_SELECTIONS`. Three rules govern that loop, each
+## learned the hard way:
 ##
-## A turn is not one action: a unit repositions and then shoots. Rather than a
-## hardcoded "and then fire" step, the planner **re-scores from the settled cell**
-## (`UtilityContext.settle_at`) and selects again, up to `MAX_SELECTIONS`. That is
-## `PLAN.md`'s "depth 1 — score post-move", and it is what makes "fire until the AP
-## runs out" fall out of `ActionQueue.enqueue` refusing the shot that cannot be
-## paid for, instead of out of a `MAX_SHOTS_PER_TURN` constant.
-##
-## ## Resumable from the first line, because it cannot be retrofitted
-##
-## The candidate loop yields through `PlanPacer` exactly where the old one did. A
-## conditional `await` is a **parse error** in GDScript, so "make it resumable
-## later" means converting the whole call chain again — measured, not assumed
-## (taskblock-44 Pass D). Aborting mid-scan is safe by construction: candidates are
-## only ever appended, and `UtilityScorer.best_index` over a partial list returns
-## the best of what was actually scored, which is a legitimate answer at every
-## point rather than a partial one.
+## - **A candidate's cell is where the action HAPPENS, so committing to it means
+##   going there first** — whatever the action is. `_commit` originally pathed only
+##   when the executor was itself a move, so `shoot@(3,0)`, chosen for the standoff
+##   at (3,0), was fired from wherever the unit already stood. Units traded shots
+##   across a corridor forever, and the decision log said so in every line.
+## - **A refused action removes one option; it does not end the turn.**
+##   `ActionQueue.enqueue` is the only thing that knows what a unit can afford from
+##   where it will be standing, so "the scorer wanted this and the executor said
+##   no" is ordinary. Stopping there left a marksman whose shot was unaffordable
+##   ending its turn without ever reaching the overwatch it should have held.
+## - **An `ends_turn` action is a substitute for acting, not a coda to it.**
+##   `HoldAction` keeps the unit current — that is what deferring means — so
+##   queueing anything behind it, or letting it win after the unit has already
+##   acted, livelocks the bout.
 ##
 ## ## No positive-utility action is a real answer
 ##
-## A scorer can genuinely rate everything at or below the veto floor — an unarmed
-## unit with no enemy known and nobody to defer to. The turn then ends, which is
-## honest rather than a fallback: `PLAN.md`'s *Panic* item is what eventually gives
-## that state its own behaviour, and this block only needs the turn to end.
+## Everything can legitimately score at or below the veto floor. The turn then
+## ends, which is honest rather than a fallback — `PLAN.md`'s *Panic* item is what
+## eventually gives that state its own behaviour.
 
 ## The hard cap on selections in one turn. **Not a shot limit** — a limit on how
 ## many times the scorer is consulted before the turn is forced to end, so a
@@ -122,23 +118,15 @@ static func plan_turn(
 			if selection == 0:
 				empty_decisions += 1
 			break
-		# **A refused winner re-scores without it rather than ending the turn.**
-		# `ActionQueue.enqueue` is the only place that knows what a unit can
-		# actually afford from where it will actually be standing, so "the scorer
-		# wanted this and the executor said no" is ordinary and must fall through to
-		# the next-best option. Stopping instead was a real defect: a marksman whose
-		# own shot was unaffordable picked `shoot`, had it refused, and ended its
-		# turn — never reaching the overwatch it should have held, because overwatch
-		# was simply never scored again.
+		# A refused winner re-scores without it rather than ending the turn — see
+		# the second of the three loop rules at the top of this file.
 		var action_id: StringName = candidates[winner]["action_id"]
 		if not _commit(candidates[winner], context, queue, state):
 			refused_ids.append(action_id)
 			continue
 		chosen_ids.append(action_id)
 		if _find_action(context, action_id).ends_turn:
-			# `HoldAction`/`ShutdownAction` ARE the end of the turn. Selecting again
-			# would queue behind something that already ended it, and the backstop
-			# below would overwrite the deferral it just chose.
+			# Nothing may be queued behind it, including the backstop below.
 			return queue
 
 	# Always last, and always attempted: `EndTurnAction.is_legal` is deliberately
@@ -148,22 +136,12 @@ static func plan_turn(
 	return queue
 
 
-## taskblock-45 Pass C: the objective this unit plans under.
+## The objective this unit plans under (`docs/11`: batches amortize).
 ##
-## **The leader is derived, never assigned** — it is whichever member of the batch
-## takes a turn first this round, which `BatchPlan.record` captures by refusing
-## every claim after the first. So the branch below is not "am I the leader" but
-## "has anyone led yet": if nobody has, this unit is leading by virtue of asking.
-## That is what makes leader death free — the next-fastest living member is simply
-## first next round, with no promotion code and no field to keep in sync.
-##
-## A leader that dies mid-round leaves the record untouched, so its followers keep
-## the round's objective and finish the manoeuvre they were committed to.
-##
-## **Tier-gated, and checked before any work is done.** A unit with no blackboard
-## can neither read an objective nor record one, so it plans for itself — correct
-## behaviour for it rather than a gap — and does not pay to choose an objective
-## that would be discarded.
+## **The branch below is not "am I the leader" but "has anyone led yet"** — the
+## leader is derived, so a unit leads by virtue of asking first. Tier-gated before
+## any work is done: a unit with no blackboard can neither read an objective nor
+## record one, so it plans alone and does not pay to choose one that gets discarded.
 static func _batch_objective(
 	unit: Unit, view: WorldView, context: UtilityContext, profile: UtilityProfile
 ) -> StringName:
@@ -208,12 +186,8 @@ static func _score_all(
 				continue
 			if action.id in chosen_ids and not action.repeatable:
 				continue
-			# **An `ends_turn` action is a substitute for acting, not a coda to it.**
-			# Holding means "I would rather act after someone else moves"; a unit that
-			# has already spent its whole turn shooting has nothing left to defer, and
-			# `HoldAction` keeps it the current unit rather than yielding — so a unit
-			# that shot six times and then held never handed the turn on at all. Only
-			# offered while the turn is still empty.
+			# Only offered while the turn is still empty — a substitute for acting,
+			# not a coda to it. See the third loop rule at the top of this file.
 			if action.ends_turn and not chosen_ids.is_empty():
 				continue
 			candidates_scored += 1
@@ -242,29 +216,12 @@ static func _score_all(
 	return candidates
 
 
-## Turns the winning candidate into real queued actions, and re-bases the context
-## on wherever the unit ends up. Returns false when nothing could be enqueued, so
-## the caller stops rather than re-selecting the same refused action forever.
+## Turns the winning candidate into real queued actions and re-bases the context on
+## wherever the unit ends up. False when nothing could be enqueued, so the caller
+## drops that option rather than re-selecting it forever.
 ##
-## ## The candidate cell is where the action HAPPENS, so getting there is part of
-## committing to it
-##
-## A candidate is a (cell, action) pair and the cell is where the unit is standing
-## when the action is performed — that is the whole premise the scoring rests on,
-## since `standoff_match`, `cover` and `line_of_fire` are all read AT that cell. So
-## a winning candidate whose cell is not the unit's current one must **move there
-## first**, whatever the action is.
-##
-## **This was missed in Pass B and it was the block's worst bug.** `_commit` built
-## a path only when the executor was itself a move, so `shoot@(3,0)` — chosen
-## because (3,0) sits at a good standoff — was enqueued from wherever the unit
-## already stood. The unit scored a cell it liked, never went there, and fired from
-## the wrong place; next turn it scored the same cell again and did the same thing.
-## Two units plinking at each other across a corridor forever, neither closing,
-## which is exactly the `TERMINATED`-not-`STRANDED` signature behind taskblock-45
-## Pass D's completion drop. The decision log is what found it: every entry read
-## `shoot@(3,0)` while the unit sat at (1,0), and the mismatch between those two
-## coordinates is the whole bug in one line.
+## **The candidate's cell is where the action happens, so getting there is part of
+## committing to it** — the first of the three loop rules at the top of this file.
 static func _commit(
 	winner: Dictionary, context: UtilityContext, queue: ActionQueue, state: CombatState
 ) -> bool:
@@ -276,9 +233,8 @@ static func _commit(
 
 	if cell != context.origin():
 		# **The one pathfind per selection.** Scoring ranked candidates on a
-		# chebyshev proxy (`UtilityContext._move_economy`); the real route is
-		# computed only for the cell that actually won, which is the difference
-		# between one `astar` call and one per candidate.
+		# chebyshev proxy; the real route is computed only for the cell that won —
+		# one `astar` call per selection rather than one per candidate.
 		var pathfinder := Pathfinder.new(context.view.grid, context.unit.shell.can_climb())
 		var path: Array[Vector2i] = pathfinder.astar(context.unit.cell, cell)
 		if path.size() < 2:
@@ -289,9 +245,9 @@ static func _commit(
 		context.settle_at(cell)
 
 	if UtilityExecutors.needs_path(action):
-		# The move WAS the action. A move action that won its own cell is a
-		# contradiction the preconditions already forbid (`cell_is_elsewhere`), so
-		# reaching here without having moved is a refusal, not a no-op.
+		# The move WAS the action. Winning its own cell is a contradiction
+		# `cell_is_elsewhere` already forbids, so arriving here without having moved
+		# is a refusal rather than a no-op.
 		return moved
 
 	var built: CombatAction = UtilityExecutors.build(

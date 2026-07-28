@@ -1,27 +1,23 @@
 class_name UtilityExecutors
 extends RefCounted
 
-## taskblock-45 Pass B: the one place a `UtilityActionDef.executor_id` becomes a
-## real `CombatAction`.
+## The one place a `UtilityActionDef.executor_id` becomes a real `CombatAction`.
 ##
-## **This is an arming seam, not a second action layer.** `src/logic/actions/`
-## already holds twenty tested executors and none of them are reimplemented here;
-## this file is to the AI exactly what `TacticsController`'s arm-and-click path is
-## to the player — the step that turns "I have chosen to shoot" into the concrete
-## `AttackAction` instance. Everything it can build, it builds through
-## `ActionCatalog`, which is the same seam the player's action bar reads, so the AI
-## can never fire something a player's own bar would not have offered.
+## **An arming seam, not a second action layer.** `src/logic/actions/` holds the
+## tested executors and none are reimplemented here; this is to the AI what the
+## arm-and-click path is to the player. Everything it can, it builds through
+## `ActionCatalog` — the same seam the player's action bar reads — so the AI can
+## never fire something a player's bar would not have offered.
 ##
 ## ## The `&"hold"` collision, stated rather than worked around
 ##
-## `ActionCatalog`'s `&"hold"` is **`GrindAction`** — taskblock-25's many-hit melee
-## grind, which took the taskblock's own payload name. taskblock-19's
-## `HoldAction` ("defer to the next ally") has no catalog id at all and never
-## appears on the action bar. So the utility action that means *hold position* uses
-## the executor id `&"hold_position"`, and the two stay distinguishable by name
-## instead of by which caller happened to ask. Adding `&"hold_position"` to
-## `ActionCatalog.defs()` would have been the other fix and is wrong: that registry
-## is what the PLAYER is offered, and this is not a button.
+## `ActionCatalog`'s `&"hold"` is **`GrindAction`**, taskblock-25's many-hit melee
+## grind, which took the name first. taskblock-19's `HoldAction` ("defer to the next
+## ally") has no catalog id and never appears on the action bar. So the utility
+## action meaning *hold position* uses `&"hold_position"`, and the two stay
+## distinguishable by name rather than by which caller happened to ask. Adding
+## `&"hold_position"` to `ActionCatalog.defs()` was the other option and is wrong:
+## that registry is what the PLAYER is offered, and this is not a button.
 
 ## Executor ids this file resolves itself, because `ActionCatalog` has no entry for
 ## them. Everything not on this list is delegated to the catalog unchanged.
@@ -40,17 +36,14 @@ const CATALOG_HOLD := &"hold"
 
 ## The concrete action `action` names, or null when it cannot be built at all.
 ##
-## **Null is a legitimate answer and never an error.** A scorer can select an
-## action whose executor declines to instantiate — a weapon that provides no legal
-## firing action, a move to the cell already occupied — and the caller simply
-## enqueues nothing, the same "no further action, no silent rollback" contract
-## `ActionQueue.enqueue` and `ActionCatalog.build_firing_action` already have.
+## **Null is a legitimate answer, never an error** — the same "nothing to enqueue"
+## contract `ActionCatalog.build_firing_action` already has.
 ##
-## Legality is deliberately NOT checked here. `ActionQueue.enqueue` validates
-## against a speculative preview with every already-queued action replayed onto it,
-## which is the only place that can answer "is this legal AFTER the move I queued
-## in front of it" — asking here would answer from the pre-move cell and be wrong
-## in exactly the case that matters.
+## **Legality is deliberately not checked here.** `ActionQueue.enqueue` validates
+## against a preview with every queued action replayed onto it, which is the only
+## thing that can answer "is this legal AFTER the move I queued in front of it".
+## Asking here would answer from the pre-move cell — wrong in exactly the case that
+## matters.
 static func build(
 	action: UtilityActionDef,
 	unit: Unit,
