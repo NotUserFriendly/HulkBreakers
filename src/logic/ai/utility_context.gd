@@ -45,6 +45,10 @@ const INPUT_STANDOFF_MATCH := &"standoff_match"
 ## 1.0 when something is interposed between this cell and the target.
 const INPUT_COVER := &"cover"
 ## 0.5 for no change, 1.0 for standing on the target, 0.0 for retreating far.
+##
+## **Path distance, not straight-line** — see `_closes_distance`. A scalar
+## as-the-crow-flies number is what made a unit walk into the wall between itself
+## and its target and stay there (`BR32.10`).
 const INPUT_CLOSES_DISTANCE := &"closes_distance"
 ## 1.0 for staying put, falling as the move gets longer.
 const INPUT_MOVE_ECONOMY := &"move_economy"
@@ -83,6 +87,47 @@ const PRED_CELL_IS_COVERED := &"cell_is_covered"
 ## legality requirement. Published so a hold that could never be enqueued is never
 ## even offered, rather than winning and then silently failing.
 const PRED_CAN_DEFER_TURN := &"can_defer_turn"
+
+# --- search: what a unit does when it knows of nobody ------------------------
+#
+# taskblock-46 Pass C. **This is the hole `BR45.03` named.** Every combat action
+# required `enemy_known` and every mission action `is_player_squad`, so a
+# non-player squad that had seen nobody matched neither gate and was offered
+# nothing at all — `nothing over 488 candidates`, turn after turn, until the other
+# squad wandered into view. A squad that never moves never closes, and the bout
+# runs to the cap.
+#
+# The fill is four ordinary utility actions, one per unit, selected by precondition
+# rather than by a mode flag. `docs/11` names the failure mode in general: when
+# adding a gated action, ask what a unit that fails every gate does instead.
+
+## No living enemy is known — the explicit inverse of `enemy_known`, published for
+## the same reason `lof_blocked` is: preconditions are an all-must-hold list with no
+## negation, so "only when I know of nobody" has no other way to be said.
+const PRED_ENEMY_UNKNOWN := &"enemy_unknown"
+## `search_<behaviour>` — one per authored verb, derived from `Unit.search_behaviour`
+## so the vocabulary follows the `.tres` set. Exactly one is ever true.
+const PRED_SEARCH_PREFIX := "search_"
+## How much of this turn's movement budget the candidate cell spends. 0.0 is
+## standing still, 1.0 is the whole budget. **One input, three verbs**: roam reads
+## it plainly, hunt through a quadratic that strongly prefers distance, putter
+## inverted. That is the model earning its keep — three behaviours, no branches.
+const INPUT_TRAVEL_FRACTION := &"travel_fraction"
+## Progress toward the patrol point visited longest ago. Same 0.5-is-no-change shape
+## as the other closing inputs.
+const INPUT_CLOSES_TO_PATROL := &"closes_to_patrol"
+## The unit is NOT standing where the mission wants it — so searching is allowed.
+##
+## **Without this a unit wanders off its own extraction tile.** Once it has arrived,
+## `seek_extraction` stops being offered (no candidate makes progress toward a place
+## it is already at), which leaves searching as the best-scoring thing available and
+## walks it straight back off. Standing still and letting the hold mature is the
+## job, and the search verbs have to know that the job exists.
+##
+## Stated positively rather than as a negation because preconditions are an
+## all-must-hold list — the same reason `enemy_unknown` and `lof_blocked` are
+## published as their own predicates.
+const PRED_FREE_TO_SEARCH := &"free_to_search"
 
 # --- the mission ------------------------------------------------------------
 #
@@ -154,6 +199,12 @@ var candidate_cells: Array[Vector2i] = []
 ## position change stays where it belongs, in RESOLUTION replaying the queue.
 var _origin: Vector2i = Vector2i.ZERO
 
+## `cell -> path cost from the target's own cell`, flooded once per turn. Absent
+## means genuinely unreachable from the target, which is a different thing from far.
+var _path_cost_from_target: Dictionary = {}
+## The patrol point this unit is heading for, or null when it is not patrolling.
+var _patrol_target: Variant = null
+
 var _standoff: float = DEFAULT_STANDOFF_CELLS
 var _integrity: float = 1.0
 var _current_distance: int = 0
@@ -196,24 +247,31 @@ static func build(
 	context._can_defer = context._some_other_living_unit()
 
 	context._move_budget = maxf(1.0, p_unit.mp_per_ap() * float(p_unit.ap))
-
-	# taskblock-45 Pass D: candidate cells are computed whether or not an enemy is
-	# known. **They used to be `[unit.cell]` with no target**, which quietly made it
-	# impossible for a unit with nothing in sight to move anywhere at all — so it
-	# could never walk to a resource node or an extraction tile, and the mission
-	# actions the head-to-head added would have been offered a candidate set of
-	# exactly one cell and never fired. A planner that can only move toward things
-	# it can see cannot finish a mission.
-	var needs_cells: bool = (
-		context.target != null
-		or context._objective_cell != null
-		or context._extraction_cell != null
-	)
-	if not needs_cells:
-		context.candidate_cells = [p_unit.cell]
-		return context
-
 	var pathfinder := Pathfinder.new(p_view.grid, p_unit.shell.can_climb())
+	# taskblock-46 Pass C: a patrolling unit lays out its route the first time it
+	# needs one, records that it has arrived somewhere, and then picks the point it
+	# has neglected longest. Done here rather than in the planner because it is
+	# per-turn context exactly like the visibility field is, and doing it before
+	# scoring is what stops a unit being drawn back to the point it is stood on.
+	if p_unit.search_behaviour == &"PATROL":
+		if p_unit.patrol_points.is_empty():
+			p_unit.patrol_points = SearchRoute.generate(
+				p_view.grid, p_unit.cell, p_unit.shell.can_climb()
+			)
+		SearchRoute.record_arrival(p_unit, p_view.round_number)
+		context._patrol_target = SearchRoute.next_point(p_unit)
+
+	# **Candidate cells are always computed.** This was gated on having something to
+	# move toward — a target, a resource node, an extraction tile — and the gate has
+	# now been wrong twice for the same reason: whatever the list of reasons to move
+	# is, it is never complete, and a unit whose reason is missing from it silently
+	# gets a candidate set of exactly one cell and cannot move at all.
+	#
+	# taskblock-45 Pass D found it with the mission actions, which could never fire
+	# because a unit with nothing in sight had nowhere to consider going. taskblock-46
+	# Pass C found it again with the search verbs, for which "nothing in sight" is
+	# the entire trigger. The flood is cheap next to what the planner used to spend
+	# per candidate, so the gate bought little and cost a class of bug twice.
 	var reachable: Array[Vector2i] = pathfinder.reachable(p_unit.cell, context._move_budget)
 	if not reachable.has(p_unit.cell):
 		reachable.append(p_unit.cell)
@@ -228,6 +286,13 @@ static func build(
 	context._standoff = standoff_for(context.weapon)
 	context._current_distance = Grid.distance_chebyshev(p_unit.cell, context.target.cell)
 	context.field = VisibilityField.build(state, context.target.cell)
+	# taskblock-46 Pass C (BR32.10): one flood rooted at the TARGET, giving every
+	# cell its real path distance to the enemy. Rooted there rather than at the unit
+	# because the enemy's own cell is what distance is measured to, and a flood from
+	# the unit cannot answer that — the enemy's cell is occupied and never entered.
+	# Same shape as the visibility field: one per target per turn, shared by every
+	# candidate.
+	context._path_cost_from_target = pathfinder.reachable_costs(context.target.cell, INF)
 	# taskblock-43 Pass B's rectangle carries forward: it is candidate-set geometry
 	# with no planner state in it, so nothing about replacing the scorer invalidates
 	# it.
@@ -244,6 +309,13 @@ static func build(
 	# per direction, not the whole reachable blob.
 	context._add_mission_progress_cells(reachable)
 	return context
+
+
+## The predicate id for a search behaviour — `ROAM` becomes `search_roam`. Derived
+## rather than enumerated, so a fifth verb is a `.tres` naming `search_<its id>` and
+## no code learns its name.
+static func search_predicate_for(behaviour: StringName) -> StringName:
+	return StringName(PRED_SEARCH_PREFIX + String(behaviour).to_lower())
 
 
 ## Where the unit is standing for scoring purposes — its own cell, or the
@@ -300,6 +372,8 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 		var idle: Dictionary = {
 			INPUT_OWN_INTEGRITY: _integrity,
 			INPUT_MOVE_ECONOMY: _move_economy(cell),
+			INPUT_TRAVEL_FRACTION: _travel_fraction(cell),
+			INPUT_CLOSES_TO_PATROL: _closes_to(cell, _patrol_target),
 		}
 		idle.merge(_objective_inputs())
 		idle.merge(_mission_inputs(cell))
@@ -310,9 +384,11 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 		INPUT_IN_WEAPON_RANGE: 1.0 if _weapon_reaches(distance) else 0.0,
 		INPUT_STANDOFF_MATCH: _standoff_match(distance),
 		INPUT_COVER: 1.0 if _is_covered(cell) else 0.0,
-		INPUT_CLOSES_DISTANCE: _closes_distance(distance),
+		INPUT_CLOSES_DISTANCE: _closes_distance(cell, distance),
 		INPUT_MOVE_ECONOMY: _move_economy(cell),
 		INPUT_OWN_INTEGRITY: _integrity,
+		INPUT_TRAVEL_FRACTION: _travel_fraction(cell),
+		INPUT_CLOSES_TO_PATROL: _closes_to(cell, _patrol_target),
 	}
 	inputs.merge(_objective_inputs())
 	inputs.merge(_mission_inputs(cell))
@@ -383,6 +459,9 @@ func predicates_for(cell: Vector2i) -> Dictionary:
 		PRED_OBJECTIVE_DONE: mission != null and not _has_open_objective(),
 		PRED_CELL_IS_OBJECTIVE: _objective_cell != null and cell == _objective_cell,
 		PRED_IS_PLAYER_SQUAD: mission != null and unit.squad_id == mission.player_squad_id,
+		PRED_ENEMY_UNKNOWN: target == null,
+		PRED_FREE_TO_SEARCH: not _at_mission_post(),
+		search_predicate_for(unit.search_behaviour): true,
 	}
 
 
@@ -424,14 +503,50 @@ func _standoff_match(distance: int) -> float:
 	return clampf(1.0 - deviation / STANDOFF_FALLOFF_CELLS, 0.0, 1.0)
 
 
-## 0.5 means "no closer than I already am", which keeps a neutral candidate at the
-## middle of the range rather than at an end — an input pinned to 0.0 would veto
-## through the product, and "did not improve" is not a veto.
-func _closes_distance(distance: int) -> float:
-	if _current_distance <= 0:
+## **How much nearer this cell gets me ALONG A PATH**, not as the crow flies.
+##
+## 0.5 means "no closer than I already am", which keeps a neutral candidate mid-range
+## rather than at an end — an input pinned to 0.0 would veto through the product,
+## and "did not improve" is not a veto.
+##
+## ## Why straight-line was wrong (BR32.10)
+##
+## `approach` scores this input, and on concave geometry the cell on the WRONG side
+## of a wall is the one closest as the crow flies. A unit therefore walked into the
+## wall between itself and its target and stayed there, every turn, because the
+## scoring genuinely preferred it. That is not a fallback that failed to fire — the
+## retired planner had a Dijkstra-to-a-cell-with-a-line branch for exactly this, and
+## nothing calls it any more. **Being stuck became a scoring outcome**, and the fix
+## belongs in the score.
+##
+## Path cost comes from one flood rooted at the target (`_path_cost_from_target`),
+## so a cell behind a wall is correctly *further* even when it is spatially nearer.
+## A cell the flood never reached is genuinely unreachable from the target and falls
+## back to straight-line, which keeps a fully walled-off target from vetoing every
+## approach rather than merely ranking them.
+func _closes_distance(cell: Vector2i, distance: int) -> float:
+	var here: float = _path_distance_to_target(_origin, float(_current_distance))
+	var there: float = _path_distance_to_target(cell, float(distance))
+	if here <= 0.0:
 		return 0.5
-	var gained: float = float(_current_distance - distance) / float(_current_distance)
-	return clampf(0.5 + 0.5 * gained, 0.0, 1.0)
+	return clampf(0.5 + 0.5 * (here - there) / here, 0.0, 1.0)
+
+
+## Path cost from `cell` to the target, or `fallback` when the flood never reached
+## it. **The unit's own cell is normally absent** — it is occupied, so the flood
+## cannot enter it — and is answered from its cheapest neighbour plus one step,
+## which is exactly what it would cost to leave and continue.
+func _path_distance_to_target(cell: Vector2i, fallback: float) -> float:
+	if _path_cost_from_target.is_empty():
+		return fallback
+	if _path_cost_from_target.has(cell):
+		return float(_path_cost_from_target[cell])
+	var best: float = INF
+	for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
+		var neighbour: Vector2i = cell + offset
+		if _path_cost_from_target.has(neighbour):
+			best = minf(best, float(_path_cost_from_target[neighbour]) + 1.0)
+	return best if best < INF else fallback
 
 
 ## Chebyshev distance against the turn's movement budget — a deliberate PROXY for
@@ -439,6 +554,14 @@ func _closes_distance(distance: int) -> float:
 ## of per-candidate work this block exists to remove; the proxy only ever ranks
 ## candidates against each other and is never shown to a player or used to decide
 ## whether a move is affordable (`ActionQueue.enqueue` owns that).
+## The complement of `move_economy`: how much of the budget this cell SPENDS.
+## Published as its own input rather than expecting every author to invert
+## `move_economy`, because "prefer to travel" and "prefer to stay" are both ordinary
+## things to want and an inverted curve at the authoring site reads like a mistake.
+func _travel_fraction(cell: Vector2i) -> float:
+	return clampf(float(Grid.distance_chebyshev(_origin, cell)) / _move_budget, 0.0, 1.0)
+
+
 func _move_economy(cell: Vector2i) -> float:
 	var steps: float = float(Grid.distance_chebyshev(_origin, cell))
 	return clampf(1.0 - steps / _move_budget, 0.0, 1.0)
@@ -478,6 +601,19 @@ func _some_other_living_unit() -> bool:
 		if other != unit and other.alive:
 			return true
 	return false
+
+
+## Whether the unit is already standing where its mission wants it — on the
+## resource node with something left to gather, or on its extraction tile with the
+## objectives done. **A fact about the unit, not about a candidate cell**, which is
+## why it reads `_origin` rather than the cell being scored: the question is "does
+## this unit have a post", not "would this cell be one".
+func _at_mission_post() -> bool:
+	if mission == null or unit.squad_id != mission.player_squad_id:
+		return false
+	if _objective_cell != null and _origin == _objective_cell:
+		return true
+	return _extraction_cell != null and not _has_open_objective() and _origin == _extraction_cell
 
 
 func _has_open_objective() -> bool:

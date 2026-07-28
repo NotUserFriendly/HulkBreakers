@@ -97,9 +97,7 @@ func _write_objectives() -> int:
 	return count
 
 
-func _consideration(
-	input_id: StringName, weight: float, curve: ResponseCurve
-) -> ConsiderationDef:
+func _consideration(input_id: StringName, weight: float, curve: ResponseCurve) -> ConsiderationDef:
 	return ConsiderationDef.new(input_id, curve, weight)
 
 
@@ -122,9 +120,7 @@ func _consideration(
 ## `invert` reads the same input backwards — high input, low utility — which is far
 ## clearer at the authoring site than a negative slope plus a compensating offset.
 func _floored(floor_value: float, invert: bool = false) -> ResponseCurve:
-	return ResponseCurve.new(
-		ResponseCurve.LINEAR, 1.0 - floor_value, floor_value, 2.0, 0.5, invert
-	)
+	return ResponseCurve.new(ResponseCurve.LINEAR, 1.0 - floor_value, floor_value, 2.0, 0.5, invert)
 
 
 ## The opposite of `_floored`, and the one place a zero is WANTED: maps the
@@ -173,9 +169,7 @@ func _actions() -> Array[UtilityActionDef]:
 		# a destination to copy. Floored, so an objective BIASES a follower rather
 		# than forbidding it anything — the follower keeps individual agency, which
 		# is the difference between squad coordination and a squad planner.
-		_consideration(
-			BatchObjective.input_id_for(&"advance"), 1.0, _floored(OBJECTIVE_FLOOR)
-		),
+		_consideration(BatchObjective.input_id_for(&"advance"), 1.0, _floored(OBJECTIVE_FLOOR)),
 	]
 
 	# --- shoot: fire on a known enemy from this cell --------------------------
@@ -225,9 +219,7 @@ func _actions() -> Array[UtilityActionDef]:
 		# must be kept in sync.
 		_consideration(UtilityContext.INPUT_OWN_INTEGRITY, 1.0, _floored(0.25, true)),
 		_consideration(UtilityContext.INPUT_STANDOFF_MATCH, 1.0, _floored(0.25)),
-		_consideration(
-			BatchObjective.input_id_for(&"withdraw"), 1.0, _floored(OBJECTIVE_FLOOR)
-		),
+		_consideration(BatchObjective.input_id_for(&"withdraw"), 1.0, _floored(OBJECTIVE_FLOOR)),
 	]
 
 	# --- hold_position: defer to the next unit --------------------------------
@@ -307,9 +299,7 @@ func _actions() -> Array[UtilityActionDef]:
 		UtilityContext.PRED_OBJECTIVE_OPEN,
 		UtilityContext.PRED_CELL_IS_OBJECTIVE,
 	]
-	gather.considerations = [
-		_consideration(UtilityContext.INPUT_OWN_INTEGRITY, 1.0, _floored(0.6))
-	]
+	gather.considerations = [_consideration(UtilityContext.INPUT_OWN_INTEGRITY, 1.0, _floored(0.6))]
 
 	# Objectives done — leave. The player's own squad has no extract BUTTON: it
 	# walks onto its tile and ends its turn, and `EndTurnAction`'s own hold-check
@@ -355,16 +345,85 @@ func _actions() -> Array[UtilityActionDef]:
 		_consideration(BatchObjective.input_id_for(&"hold"), 1.0, _floored(OBJECTIVE_FLOOR)),
 	]
 
+	# --- the four search verbs (taskblock-46 Pass C) --------------------------
+	#
+	# **The hole BR45.03 named.** Every combat action gated on `enemy_known` and
+	# every mission action on `is_player_squad`, so a non-player squad that had seen
+	# nobody matched neither and was offered nothing at all. These fill it.
+	#
+	# One verb per unit, chosen by `Unit.search_behaviour` as a PRECONDITION, so
+	# exactly one is ever offered — no mode flag and no branch. That is the
+	# diagnostic as much as the design: if patrol misbehaves, only patrolling units
+	# do, and the failure names a verb.
+	#
+	# Roam, hunt and putter are the same `travel_fraction` input under three curves.
+	# Three behaviours out of one published number, with no code between them, is
+	# the clearest demonstration in the pool of what the model is for.
+	var roam := _search_verb(&"roam", &"ROAM", "Roam")
+	# Cover ground steadily. Floored so a short step is still worth something when a
+	# long one is not available.
+	roam.considerations.append(
+		_consideration(UtilityContext.INPUT_TRAVEL_FRACTION, 1.0, _floored(0.3))
+	)
+
+	var hunt := _search_verb(&"hunt", &"HUNT", "Hunt")
+	# Roam at speed: quadratic, so the far cells pull much harder than the near ones.
+	hunt.base_weight = 1.2
+	hunt.considerations.append(
+		_consideration(
+			UtilityContext.INPUT_TRAVEL_FRACTION,
+			1.0,
+			ResponseCurve.new(ResponseCurve.QUADRATIC, 0.85, 0.15)
+		)
+	)
+
+	var putter := _search_verb(&"putter", &"PUTTER", "Putter")
+	# Stay local without idling — the same input read backwards.
+	putter.considerations.append(
+		_consideration(UtilityContext.INPUT_TRAVEL_FRACTION, 1.0, _floored(0.25, true))
+	)
+
+	var patrol := _search_verb(&"patrol", &"PATROL", "Patrol")
+	# Progress-only: a step that does not close on the point it is heading for is
+	# not patrolling, it is milling about. Same curve the seek actions use, and the
+	# same reason - see `_progress_only`.
+	patrol.considerations.append(
+		_consideration(UtilityContext.INPUT_CLOSES_TO_PATROL, 1.0, _progress_only())
+	)
+
 	return [
 		approach,
 		gather,
 		hold,
+		hunt,
 		overwatch,
+		patrol,
+		putter,
+		roam,
 		seek_extraction,
 		seek_objective,
 		shoot,
 		take_cover,
 	]
+
+
+## The shared shape of a search verb: it moves, it only applies when this unit is
+## the one assigned that behaviour, and it only applies when there is nobody to
+## fight. What differs between the four is the consideration the caller appends.
+func _search_verb(id: StringName, behaviour: StringName, display: String) -> UtilityActionDef:
+	var verb := UtilityActionDef.new(id, UtilityExecutors.MOVE)
+	verb.display_name = display
+	# Below the combat and mission actions: searching is what a unit does when it
+	# has nothing better, and "nothing better" is already expressed by those
+	# actions' own gates failing. Flagged, not tuned.
+	verb.base_weight = 0.8
+	verb.preconditions = [
+		UtilityContext.PRED_ENEMY_UNKNOWN,
+		UtilityContext.PRED_FREE_TO_SEARCH,
+		UtilityContext.PRED_CELL_IS_ELSEWHERE,
+		UtilityContext.search_predicate_for(behaviour),
+	]
+	return verb
 
 
 ## The four coarse calls a batch LEADER picks between, scored from the leader's own

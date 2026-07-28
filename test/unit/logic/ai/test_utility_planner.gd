@@ -72,9 +72,7 @@ func _armed_unit(id: StringName, cell: Vector2i, squad_id: int) -> Unit:
 	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad_id)
 
 
-func _duel(
-	grid: Grid, hunter_cell: Vector2i, prey_cell: Vector2i
-) -> Dictionary:
+func _duel(grid: Grid, hunter_cell: Vector2i, prey_cell: Vector2i) -> Dictionary:
 	var hunter: Unit = _armed_unit(&"hunter", hunter_cell, 0)
 	var prey: Unit = _armed_unit(&"prey", prey_cell, 1)
 	var state := CombatState.new(grid, [hunter, prey])
@@ -164,10 +162,18 @@ func test_the_two_tiers_decide_differently_on_the_same_board() -> void:
 		["EndTurnAction"] as Array[String],
 		"TRAINED acts on the sighting it is entitled to"
 	)
-	assert_eq(
+	# taskblock-46 Pass C: this used to assert `["EndTurnAction"]` — a blind unit was
+	# offered nothing and idled, which was `BR45.03`'s hole. It now searches. The
+	# tier claim is unchanged and sharper: TRAINED acts on knowledge MINDLESS does
+	# not have, while MINDLESS goes looking.
+	assert_true(
+		_shape(mindless).any(func(step: String) -> bool: return step.begins_with("move")),
+		"MINDLESS searches rather than idling"
+	)
+	assert_does_not_have(
 		_shape(mindless),
-		["EndTurnAction"] as Array[String],
-		"MINDLESS knows of no enemy at all, so there is nothing it wants to do"
+		"AttackAction",
+		"but it has nothing to shoot at, because it knows of nobody"
 	)
 
 
@@ -184,9 +190,7 @@ func test_the_same_mindless_unit_engages_once_it_can_actually_see() -> void:
 	)
 
 	gut.p("MINDLESS with line of sight: %s" % [_shape(queue)])
-	assert_gt(
-		queue.actions.size(), 1, "with the enemy in plain sight it plans a real turn"
-	)
+	assert_gt(queue.actions.size(), 1, "with the enemy in plain sight it plans a real turn")
 
 
 # --- 2. the two profiles decide differently ----------------------------------
@@ -206,10 +210,7 @@ func test_the_two_profiles_decide_differently_with_tier_held_constant() -> void:
 	cautious_bout.hunter.intelligence_tier = &"TRAINED"
 
 	var aggressive: ActionQueue = await UtilityPlanner.plan_turn(
-		aggressive_bout.hunter,
-		_restricted_view(aggressive_bout.state),
-		null,
-		AGGRESSIVE_PROFILE
+		aggressive_bout.hunter, _restricted_view(aggressive_bout.state), null, AGGRESSIVE_PROFILE
 	)
 	var cautious: ActionQueue = await UtilityPlanner.plan_turn(
 		cautious_bout.hunter, _restricted_view(cautious_bout.state), null, CAUTIOUS_PROFILE
@@ -255,9 +256,7 @@ func test_a_mindless_unit_forgets_an_enemy_that_breaks_line_of_sight() -> void:
 
 	# Turn one: in plain sight. Whatever it records, it records now.
 	await UtilityPlanner.plan_turn(bout.hunter, view, null, AGGRESSIVE_PROFILE)
-	assert_true(
-		view.remembered.is_empty(), "a tier with no memory writes none either"
-	)
+	assert_true(view.remembered.is_empty(), "a tier with no memory writes none either")
 
 	# The enemy steps behind a wall.
 	for y in range(open_grid.rows):
@@ -268,9 +267,12 @@ func test_a_mindless_unit_forgets_an_enemy_that_breaks_line_of_sight() -> void:
 		bout.hunter, view, null, AGGRESSIVE_PROFILE
 	)
 
-	assert_eq(
+	# taskblock-46 Pass C: out of sight is still out of mind — it just searches now
+	# instead of standing still. What matters for the tier is that it is no longer
+	# ENGAGING: nothing it does is aimed at an enemy it cannot know about.
+	assert_does_not_have(
 		_shape(blind_turn),
-		["EndTurnAction"] as Array[String],
+		"AttackAction",
 		"out of sight is out of mind, which is the whole tier"
 	)
 
@@ -293,9 +295,7 @@ func test_a_trained_unit_keeps_engaging_the_sighting_it_recorded() -> void:
 	)
 
 	gut.p("TRAINED, sight broken: %s" % [_shape(blind_turn)])
-	assert_gt(
-		blind_turn.actions.size(), 1, "it still acts on the position it remembers"
-	)
+	assert_gt(blind_turn.actions.size(), 1, "it still acts on the position it remembers")
 
 
 # --- 4. preconditions genuinely gate ------------------------------------------
@@ -307,9 +307,7 @@ func test_a_trained_unit_keeps_engaging_the_sighting_it_recorded() -> void:
 func test_an_action_with_an_unsatisfiable_precondition_is_never_selected() -> void:
 	var grid: Grid = GridFixture.flat(24, 16)
 	var bout: Dictionary = _duel(grid, Vector2i(2, 8), Vector2i(16, 8))
-	var context: UtilityContext = UtilityContext.build(
-		bout.hunter, _restricted_view(bout.state)
-	)
+	var context: UtilityContext = UtilityContext.build(bout.hunter, _restricted_view(bout.state))
 	var impossible := UtilityActionDef.new(&"impossible", &"shoot")
 	impossible.preconditions = [&"a_predicate_nothing_publishes"]
 
@@ -326,20 +324,17 @@ func test_an_action_with_an_unsatisfiable_precondition_is_never_selected() -> vo
 func test_every_authored_action_declares_at_least_one_precondition() -> void:
 	var pool: Array[UtilityActionDef] = DataLibrary.utility_actions_pool()
 
-	# taskblock-45 Pass D/E grew the pool past Pass B's deliberate four: the mission
-	# actions (the head-to-head found a combat-only pool completing 0% of bouts) and
-	# overwatch (the retired planner had it and a real bout test asserts it). The
-	# count is asserted so a `.tres` going missing is loud, not because four was
-	# ever the target.
-	assert_eq(pool.size(), 8, "the authored pool is eight rows")
+	# The pool has grown past Pass B's deliberate four: the mission actions (a
+	# combat-only pool completed 0% of bouts), overwatch, and taskblock-46's four
+	# search verbs (a unit matching no gate was offered nothing at all). The count is
+	# asserted so a `.tres` going missing is loud, not because any number was ever
+	# the target.
+	assert_eq(pool.size(), 12, "the authored pool is twelve rows")
 	for action: UtilityActionDef in pool:
 		assert_false(
-			action.preconditions.is_empty(),
-			"%s must state when it is even possible" % action.id
+			action.preconditions.is_empty(), "%s must state when it is even possible" % action.id
 		)
-		assert_false(
-			action.considerations.is_empty(), "%s must state what it wants" % action.id
-		)
+		assert_false(action.considerations.is_empty(), "%s must state what it wants" % action.id)
 
 
 ## `hold_position` is gated on there being someone to defer to, which is
@@ -574,9 +569,7 @@ func test_line_of_fire_is_answered_from_one_field_not_a_cast_per_candidate() -> 
 		GridFixture.place_wall(grid, Vector2i(9, y))
 	var bout: Dictionary = _duel(grid, Vector2i(2, 8), Vector2i(16, 8))
 
-	var context: UtilityContext = UtilityContext.build(
-		bout.hunter, _restricted_view(bout.state)
-	)
+	var context: UtilityContext = UtilityContext.build(bout.hunter, _restricted_view(bout.state))
 
 	assert_not_null(context.field, "one field, built once for this target")
 	var blocked := 0
@@ -588,3 +581,96 @@ func test_line_of_fire_is_answered_from_one_field_not_a_cast_per_candidate() -> 
 			blocked += 1
 	gut.p("candidates: %d with a possible line, %d without" % [open, blocked])
 	assert_gt(blocked, 0, "the wall genuinely rules cells out")
+
+
+# --- BR32.10: concave geometry ------------------------------------------------
+
+
+## **The bug stated as behaviour, not as a distance metric.** A unit tucked inside a
+## U-shaped pocket, target outside the opening: the cell closest as the crow flies
+## is on the wrong side of the wall, so a scorer reading straight-line distance
+## walks into that wall and stays there every turn.
+##
+## Asserted as "it ends up somewhere with a line to its target" rather than "it
+## picked cell X" — the route around a pocket is a property of the map, and pinning
+## a cell would pin one map's answer instead of the behaviour.
+##
+## The retired planner had a Dijkstra-to-a-cell-with-a-line branch for this;
+## taskblock-46 deleted it, because being stuck became a scoring outcome rather
+## than a branch that failed to fire, and the fix belongs in the score
+## (`UtilityContext._closes_distance` reads path distance).
+func test_a_unit_in_a_concave_pocket_works_its_way_to_a_cell_with_a_line() -> void:
+	var grid: Grid = GridFixture.flat(24, 16)
+	# A pocket opening downward: walls above, left and right of the hunter.
+	for x in range(6, 13):
+		GridFixture.place_wall(grid, Vector2i(x, 5))
+	for y in range(5, 9):
+		GridFixture.place_wall(grid, Vector2i(6, y))
+		GridFixture.place_wall(grid, Vector2i(12, y))
+	var bout: Dictionary = _duel(grid, Vector2i(9, 6), Vector2i(9, 2))
+	var hunter: Unit = bout.hunter
+	var prey: Unit = bout.prey
+	var view: WorldView = _restricted_view(bout.state)
+	# It knows where the enemy is; the question is whether it can get to it.
+	view.remembered[prey.id] = {"cell": prey.cell, "round_seen": view.round_number}
+	hunter.intelligence_tier = &"TRAINED"
+
+	var reached_a_firing_cell := false
+	var visited: Array[Vector2i] = [hunter.cell]
+	for turn in range(12):
+		hunter.ap = hunter.max_ap
+		bout.state.force_current_unit(hunter.id)
+		var queue: ActionQueue = await UtilityPlanner.plan_turn(
+			hunter, view, null, AGGRESSIVE_PROFILE
+		)
+		bout.state.resolve_until(queue)
+		visited.append(hunter.cell)
+		if LineOfFire.has_clear_line_of_fire(hunter, prey, hunter.cell, bout.state):
+			reached_a_firing_cell = true
+			break
+
+	gut.p("path out of the pocket: %s" % [visited])
+	assert_true(
+		reached_a_firing_cell,
+		"it never found a cell with a line — straight-line scoring walks into the wall"
+	)
+
+
+## The mechanism underneath it, asserted directly so a regression says WHY. A cell
+## on the far side of a wall is nearer as the crow flies and further along a path,
+## and the input the scorer reads must report the second.
+func test_closes_distance_reads_path_distance_not_straight_line() -> void:
+	var grid: Grid = GridFixture.flat(24, 16)
+	for y in range(0, 12):
+		GridFixture.place_wall(grid, Vector2i(11, y))
+	var bout: Dictionary = _duel(grid, Vector2i(9, 6), Vector2i(13, 6))
+	var view: WorldView = _restricted_view(bout.state)
+	# The wall blocks sight, so without a remembered sighting there is no target and
+	# no distance input at all — the enemy has to be KNOWN for the question to exist.
+	view.remembered[bout.prey.id] = {"cell": bout.prey.cell, "round_seen": view.round_number}
+	var context: UtilityContext = UtilityContext.build(bout.hunter, view)
+
+	# Hard against the wall: two cells from the target in a straight line, but the
+	# only route is the long way round the wall's end.
+	var against_the_wall := Vector2i(10, 6)
+	# Backing off along the open route the unit must actually take.
+	var toward_the_opening := Vector2i(9, 11)
+
+	var wall_score: float = float(
+		context.inputs_for(against_the_wall)[UtilityContext.INPUT_CLOSES_DISTANCE]
+	)
+	var opening_score: float = float(
+		context.inputs_for(toward_the_opening)[UtilityContext.INPUT_CLOSES_DISTANCE]
+	)
+	gut.p("against the wall %.3f vs toward the opening %.3f" % [wall_score, opening_score])
+
+	assert_lt(
+		Grid.distance_chebyshev(against_the_wall, bout.prey.cell),
+		Grid.distance_chebyshev(toward_the_opening, bout.prey.cell),
+		"sanity: the wall cell IS nearer as the crow flies, which is the trap"
+	)
+	assert_gt(
+		opening_score,
+		wall_score,
+		"but the route around must score higher, or the unit walks into the wall"
+	)

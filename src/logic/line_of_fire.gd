@@ -1,12 +1,6 @@
 class_name LineOfFire
 extends RefCounted
 
-## tb33 Pass B: bounds for `approach_path`'s own Dijkstra flood — margin
-## added to an authored weapon range, or a small flat default with no
-## range to anchor on. Both flagged, not tuned design numbers.
-const APPROACH_MARGIN := 5.0
-const APPROACH_DEFAULT_RADIUS := 10.0
-
 ## tb33: line of FIRE, not line of SIGHT. `LoS` (`los.gd`) answers "can I
 ## see it" over pure opacity, by design ("cover never blocks vision — only
 ## opacity does; cover is a hit-resolution concern"). This answers "would
@@ -124,73 +118,3 @@ static func _first_hit_excluding(
 		if region.rect.has_point(point):
 			return region
 	return null
-
-
-## tb33 Pass B (BR32.10): when nothing reachable this turn has a shot at
-## all, the fix is to walk toward the nearest cell that WOULD — not the
-## greedy least-bad reachable cell a single-turn scorer would otherwise
-## settle for, which is what leaves a unit stuck facing a concave/
-## U-shaped wall forever (the path around it can genuinely require a step
-## that INCREASES raw distance to the enemy before it decreases, the one
-## move a per-turn reachability scorer structurally can't make). Dijkstra
-## to the nearest cell with real LOF (`Pathfinder.nearest_matching`,
-## lazy — the expensive LOF check only runs on cells as they're actually
-## popped, never the whole map), capped at `weapon`'s own authored range
-## plus a margin so a hopeless, fully walled-off target doesn't scan the
-## entire map; the resulting path is truncated to `budget` (this turn's
-## own MP) — the same fallback re-fires next turn, walking the rest of
-## the path, until a reachable cell genuinely has LOF and the normal fire
-## path takes over. Returns an empty array if no cell within range has
-## LOF; if one is found but `budget` can't afford even the first step
-## toward it, returns a single-element path (just the unit's own current
-## cell — `truncate_to_budget`'s own "inclusive of its own start"
-## contract) rather than an empty one. Either way the caller's own
-## `size() >= 2` check treats it as "nothing to do this turn," falling
-## through to the existing hold/overwatch/end-turn fallback.
-static func approach_path(
-	unit: Unit, enemy: Unit, state: CombatState, pf: Pathfinder, weapon: Part, budget: float
-) -> Array[Vector2i]:
-	var radius_cap: float = (
-		weapon.weapon_def.max_range + APPROACH_MARGIN
-		if weapon != null and weapon.weapon_def != null and weapon.weapon_def.max_range > 0.0
-		else APPROACH_DEFAULT_RADIUS
-	)
-	var target: Variant = pf.nearest_matching(
-		unit.cell,
-		radius_cap,
-		func(cell: Vector2i) -> bool: return has_clear_line_of_fire(unit, enemy, cell, state)
-	)
-	if target == null:
-		return []
-	var full_path: Array[Vector2i] = pf.astar(unit.cell, target)
-	return pf.truncate_to_budget(full_path, budget)
-
-
-## tb35 Pass B (BR34.06): `approach_path` above is capped at the weapon's own
-## range plus a margin, by design — but that leaves a unit that starts
-## genuinely far from any LOF cell (nothing at all within the cap) with no
-## way to make progress, holding forever even though a real route exists
-## somewhere on the map. This is the fallback for exactly that case: real
-## A* toward a cell next to `enemy`, no LOF requirement at all — deliberately
-## NOT a greedy per-turn distance scorer (that reproduces the BR32.10
-## concave/U-shaped-wall freeze `approach_path` itself exists to avoid,
-## since a one-step hill-climb can get stuck the instant no reachable cell
-## reduces raw distance further). `astar` already routes around obstacles by
-## construction, so it doesn't share that failure mode, and it costs one
-## pathfind per neighbor of `enemy`'s cell — never a per-cell LOF probe.
-static func closing_path(
-	unit: Unit, enemy: Unit, state: CombatState, pf: Pathfinder, budget: float
-) -> Array[Vector2i]:
-	var best_path: Array[Vector2i] = []
-	var best_cost: float = INF
-	for neighbor: Vector2i in state.grid.neighbors(enemy.cell):
-		var candidate: Array[Vector2i] = pf.astar(unit.cell, neighbor)
-		if candidate.size() < 2:
-			continue
-		var cost: float = pf.path_cost(candidate)
-		if cost < best_cost:
-			best_cost = cost
-			best_path = candidate
-	if best_path.is_empty():
-		return []
-	return pf.truncate_to_budget(best_path, budget)

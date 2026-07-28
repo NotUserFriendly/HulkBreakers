@@ -264,9 +264,27 @@ func _reconstruct_path(came_from: Dictionary, end: Vector2i) -> Array[Vector2i]:
 ## All cells reachable from origin within an MP budget (Dijkstra), including
 ## origin itself at zero cost. Blocked cells and cells over budget are excluded.
 func reachable(origin: Vector2i, mp: float) -> Array[Vector2i]:
+	var result: Array[Vector2i] = [origin]
+	for cell: Vector2i in reachable_costs(origin, mp):
+		if cell != origin:
+			result.append(cell)
+	return result
+
+
+## taskblock-46 Pass C: the same flood, keeping the distances it already computes.
+##
+## `cell -> path cost from origin`, always including `origin` at 0.0. **`reachable()`
+## has always built this and thrown it away**, which is why straight-line distance
+## got used in places that wanted path distance: the real number looked expensive
+## and was already in hand.
+##
+## `origin` itself is never cost-checked, so a flood may be rooted on an occupied or
+## blocked cell — which is what lets a caller ask "how far is everything from THAT
+## unit" about a cell the unit is standing in. Edges are still gated normally
+## (`move_cost` reads the destination), so nothing walks through anything.
+func reachable_costs(origin: Vector2i, mp: float) -> Dictionary:
 	var dist: Dictionary = {origin: 0.0}
 	var frontier: Array[Vector2i] = [origin]
-	var result: Array[Vector2i] = [origin]
 
 	while not frontier.is_empty():
 		var current: Vector2i = frontier[0]
@@ -286,10 +304,8 @@ func reachable(origin: Vector2i, mp: float) -> Array[Vector2i]:
 			if total <= mp and total < dist.get(neighbor, INF):
 				dist[neighbor] = total
 				frontier.append(neighbor)
-				if not result.has(neighbor):
-					result.append(neighbor)
 
-	return result
+	return dist
 
 
 ## tb33 Pass B (BR32.10): the same Dijkstra flood as `reachable()`, but
