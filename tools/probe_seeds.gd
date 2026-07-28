@@ -1,46 +1,37 @@
 extends SceneTree
 
-## Temporary measuring probe — same fixture as test_full_mission.gd (same presets,
-## same 1v1 AGGRESSIVE shape, same turn cap, same EXTRACTED-means-completed
-## definition). Copied verbatim into both trees so the two halves of a comparison
-## cannot come from different code paths.
-
-const TURN_CAP := 100
-
-
-func _roster(profile: BotPreset) -> Array[BoutRosterEntry]:
-	return [BoutRosterEntry.new(profile, &"AGGRESSIVE")] as Array[BoutRosterEntry]
+## taskblock-46 Pass B: headless re-measurement of the completion rate over an
+## arbitrary seed window.
+##
+##     godot --headless --path . -s res://tools/probe_seeds.gd -- <first> <count>
+##
+## **A thin entry point over `CompletionSampler`, never its own copy of the
+## measurement.** It was written as a standalone probe first, and committing it
+## that way would have left two implementations of "play N bouts and count the
+## extractions" — which is how the number the suite gates on and the number a
+## person quotes start to disagree. The sampler is the one implementation; this
+## chooses a seed window and prints.
+##
+## Kept because the in-window verb samples ten random seeds and the suite's
+## escalation is fixed at 0..99, while re-baselining wants an arbitrary window —
+## seeds 12-23 against 0-11, say, which is how the pinned window was caught being
+## the pessimistic one.
 
 
 func _initialize() -> void:
 	DataLibrary.reset()
 	DataLibrary.load_all()
-	var a: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
-	var b: BotPreset = DataLibrary.get_preset(&"a_brand_laborer_battery_mods")
-	var first: int = int(OS.get_cmdline_user_args()[0])
-	var count: int = int(OS.get_cmdline_user_args()[1])
-	var tally: Dictionary = {}
-	var extracted := 0
-	var turns_when_extracted := 0
-	for map_seed in range(first, first + count):
-		var built: Dictionary = BoutSetup.build_bout(_roster(a), _roster(b), map_seed)
-		if built.get("error", "") != "":
-			print("RESULT seed %d: BUILD FAILED" % map_seed)
-			continue
-		var runner := BoutRunner.new(built["state"], built["mission"], TURN_CAP)
-		await runner.run_to_completion()
-		var outcome: int = built["mission"].outcome
-		var outcome_name: String = Enums.MissionOutcome.keys()[outcome]
-		tally[outcome_name] = int(tally.get(outcome_name, 0)) + 1
-		if outcome == Enums.MissionOutcome.EXTRACTED:
-			extracted += 1
-			turns_when_extracted += runner.turns_taken
-		print("RESULT seed %d: %s in %d turns" % [map_seed, outcome_name, runner.turns_taken])
-	var mean: float = float(turns_when_extracted) / float(extracted) if extracted > 0 else 0.0
-	print(
-		(
-			"RATE %d/%d (%.1f%%) mean_turns=%.1f %s"
-			% [extracted, count, 100.0 * extracted / count, mean, tally]
-		)
-	)
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var first: int = int(args[0]) if args.size() > 0 else 0
+	var count: int = int(args[1]) if args.size() > 1 else 24
+
+	var seeds: Array[int] = []
+	for i in range(first, first + count):
+		seeds.append(i)
+	var started: int = Time.get_ticks_msec()
+	var result: Dictionary = await CompletionSampler.run_seeds(seeds)
+
+	for line: String in CompletionSampler.describe(result):
+		print(line)
+	print("elapsed: %.1f s" % ((Time.get_ticks_msec() - started) / 1000.0))
 	quit()
