@@ -1467,34 +1467,36 @@ alone, so `advance` and `withdraw` damped it identically. At 0.25 the three case
 mechanism that is wired end to end and still inert is exactly the "silently does nothing" failure,
 arriving on the batch axis instead of the tier one.
 
-**Head to head, then the flip** (Pass D). The same seeds through both planners, 24 of them:
+**Head to head, then the flip** (Pass D). The same seeds through both planners, 24 of them, re-taken
+at the end of the block from one standalone probe with the old planner run from a worktree:
 
 | | old | new |
 |---|---|---|
-| completion rate, seeds 0-11 | 75% | **33%** |
-| completion rate, seeds 12-23 | **100%** | 42% |
-| completion rate, 24 seeds combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
-| turns to complete | 23.9 | 27.0 |
+| seeds 0–11 | 9/12 (75.0%) | 5/12 (41.7%) |
+| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
+| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
+| mean turns to complete | 23.6 | **10.6** |
 | per-unit plan cost, mission bout | 139.90 ms | **86.51 ms** |
 | per-unit plan cost, 3v3 combat bout | 485.16 ms | **131.25 ms** |
 | `ShotPlane` builds per turn | 29.1 | **0.0** |
 
-**The speed win is large and the play regression is larger.** `ShotPlane` builds per turn falling to
-exactly zero is the structural claim, not a speed tweak — line of fire is a bit test against one
-`VisibilityField` per target per turn, and the canonical resolver is consulted only when an action is
-actually enqueued.
+**The speed win is large and the play regression is real but smaller than it first looked.**
+`ShotPlane` builds per turn falling to exactly zero is the structural claim, not a speed tweak — line
+of fire is a bit test against one `VisibilityField` per target per turn, and the canonical resolver is
+consulted only when an action is actually enqueued.
 
-**The completion regression was landed knowingly, against CC's recommendation.** The dominant failure
-is `TERMINATED`, the turn cap running out — **the planner is not losing fights, it is failing to
-finish**. Two structural causes were tested and ruled out: the information restriction (identical
-33.3% with the view forced unrestricted) and the candidate-set cull (no change). `MIN_COMPLETION_RATE`
-was lowered 0.5 → 0.25 to land it, with the measurement and the objection recorded beside the
-constant. **This is the first thing to open when this area is next touched.**
+**It is not uniformly worse: when it finishes, it finishes in less than half the turns.** The dominant
+failure is `TERMINATED`, the turn cap running out — mostly not losing fights, failing to finish. Two
+structural causes were tested and ruled out: the information restriction (identical 33.3% with the
+view forced unrestricted) and the candidate-set cull (no change). **Seeds 1, 2 and 6 fail under both
+planners**, so three of the eleven failures predate this block and the incremental regression is
+eight seeds.
 
-**A 12-seed sample was too thin to decide on, and the first decision was made on a wrong number.** The
-head-to-head initially reported 58% and the default was flipped on it; that measurement was taken with
-a live defect (below) and never described the planner as shipped. Re-measured post-fix over 24 seeds,
-the real figure is 37.5% against the old planner's 87.5% — and even that predates the last four fixes, after which seeds 0–11 came out at 41.7%. `BR45.03` carries the caveat; the table wants re-taking before anyone diagnoses from it.
+**`MIN_COMPLETION_RATE` went 0.5 → 0.25 → 0.35.** It was landed at 0.25 against a mid-block reading of
+37.5%; re-measuring at the end put the real figure at 54.2% and the floor came back up to one seed
+below the window the test actually samples. **This is the block's most repeatable lesson: a
+measurement taken once, mid-change, is not evidence.** Three numbers here were reported before they
+were true, and re-taking them cost minutes and moved the headline by seventeen points.
 
 **A combat-only pool cannot finish a mission, and the head-to-head is what made that concrete.** The
 first measurement returned **0% completion** against the old planner's 75% — not because the planner

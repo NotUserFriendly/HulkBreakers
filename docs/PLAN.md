@@ -87,19 +87,24 @@ shell performs measurably differently under two different-attribute matrices.
 raising `MIN_COMPLETION_RATE` back to a floor that means something; trusting any later AI measurement.
 
 **This is the highest-priority AI item and it is a bug, not a feature.** taskblock-45 replaced the
-engagement-score planner with the utility planner and mission completion fell from **87.5% to 37.5%**
-over 24 seeds, measured on both planners against the same fixture. `MIN_COMPLETION_RATE` was lowered
-0.5 → 0.25 to land it. Until this closes, the project's one automated check on "can the AI finish a
-mission at all" is calibrated to a broken planner.
+engagement-score planner with the utility planner and mission completion fell from **87.5% to 54.2%**
+over 24 seeds, measured on both planners against the same fixture and the same probe.
+`MIN_COMPLETION_RATE` sits at 0.35, below the 0.5 it held before this block. Until this closes, the
+project's one automated check on "can the AI finish a mission at all" is calibrated to a planner that
+finishes barely half its missions.
+
+**The new planner is much FASTER at the missions it does finish** — 10.6 turns against 23.6 — so this
+is not a planner that is uniformly worse. It either finishes decisively or not at all.
 
 **What is already known, so nobody re-derives it:**
 - **The dominant failure is `TERMINATED`, not `STRANDED`** — the turn cap running out. The planner is
-  **not losing fights; it is failing to finish.** 11 of 24 seeds never ended.
+  mostly **not losing fights; it is failing to finish**: 9 of its 11 failures never ended, and only 2
+  were the squad being wiped.
 - **Not the information gating.** Forcing the world view unrestricted gives an identical 33.3%.
 - **Not the candidate-set cull.** Removing it changes nothing.
 - **Not the four defects taskblock-45 already fixed** (scored-cell-never-moved-to, arrival scoring
   every cell as perfect, refused-action-ends-turn, hold offered with no enemy). Those were real, are
-  fixed, and the 37.5% is post-fix.
+  fixed, and the 54.2% is post-fix — every one of them is already in the number.
 - **The decision log is the instrument.** Every one of those defects was found by dumping
   `ai_utility_decision` per turn and reading it, not by reading the code. Start there, on seeds 13 or
   20, which never finish.
@@ -107,9 +112,14 @@ mission at all" is calibrated to a broken planner.
 **Do not chase this by adjusting profile weights.** The gap is ~50 points; that is structural, and
 hand-tuning weights to move a completion rate is inventing balance numbers (CLAUDE.md).
 
-**Re-measure before diagnosing.** The 37.5% above was taken before taskblock-45's last four fixes;
-seeds 0–11 came out at 41.7% afterwards. Take a fresh 24-seed reading of both planners first — the old
-one is recoverable from git history — because the stale table is the only reason the floor moved.
+****Seeds 1, 2 and 6 `TERMINATE` under BOTH planners.** Three of the new planner's eleven failures are
+not its doing — they are pre-existing on those maps and predate this block entirely. The incremental
+regression is **8 seeds, not 11**, and anyone diagnosing this should start on a seed the old planner
+actually completed (5, 10, 14, 20, 22, 23) rather than on one that was already broken.**
+
+**Where to start.** The decision log is emitted per turn and every defect taskblock-45 found came out
+of reading it rather than the code. Dump `ai_utility_decision` for seed 20 or 22 and read what the
+unit wanted, turn by turn.
 
 **Acceptance:** completion rate back above 0.5 on 24 seeds; `MIN_COMPLETION_RATE` raised to match with
 its measurement recorded; the cause written into `CHANGELOG.md` whether or not it is what anyone

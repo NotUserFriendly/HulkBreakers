@@ -4,6 +4,11 @@ Passes A–E all landed, in order, suite green. Pass A was the previous session'
 one's. **Pass D's acceptance was not met and the block was landed anyway on a supervisor decision** —
 that is the first thing below and the reason this report is worth reading.
 
+**The completion figure was measured three times and moved twice.** The final reading, taken after the
+block's last fixes with both planners run from the same probe over the same 24 seeds, is **87.5% old
+against 54.2% new** — not the 37.5% that reached the landing decision. `MIN_COMPLETION_RATE` ended at
+0.35 rather than the 0.25 that stale number bought.
+
 ## Decisions made without asking
 
 - **`MINDLESS` is strictly current-sight-only, which makes one of Pass B's own test bullets
@@ -46,8 +51,8 @@ right and my code was wrong**, which is the opposite of the usual shape.
    there.** `_commit` built a path only when the executor was itself a move, so `shoot@(3,0)` — chosen
    for the standoff at (3,0) — was fired from wherever the unit already stood. Two units traded shots
    across a corridor to the turn cap. **This invalidated the number the supervisor had already
-   approved the block on**; the head-to-head had reported 58% completion and was re-measured at 37.5%
-   afterwards.
+   approved the block on**; the head-to-head had reported 58% completion, was re-measured at 37.5%
+   once this was fixed, and settled at 54.2% once the block's remaining fixes landed.
 
 2. **The same test again — a unit standing on its destination scored every other cell as a perfect
    approach.** `_closes_to` returned a flat 1.0 once the distance was already zero, so a unit that
@@ -80,22 +85,68 @@ right and my code was wrong**, which is the opposite of the usual shape.
 found it and would normally own it, but the decision to land with it open was the supervisor's, and it
 should not be closable by me.
 
+## Measuring the regression, which took three attempts to get right
+
+The number that decided this block was wrong twice before it was right, and the way it was wrong is
+more useful than the number.
+
+**First reading: 58%.** Taken by the head-to-head as soon as it existed. It was measured with a live
+defect — the planner scored a cell and never walked to it — so it described a planner that has never
+existed. **It had already reached a decision by the time it was corrected.**
+
+**Second reading: 37.5%**, over 24 seeds instead of 12 after the supervisor asked for a wider sample.
+That request changed the picture twice over: it exposed that the old planner completed *every one* of
+the twelve fresh seeds, and it made the gap look far worse than the first 12-seed window suggested.
+But it was taken mid-block, before the last four fixes landed.
+
+**Final reading**, both planners from the same standalone probe over seeds 0–23, the old one run from
+a worktree at `107af1e` because its own bench does not compile (BR45.02):
+
+| | old | new |
+|---|---|---|
+| seeds 0–11 (the floor test's window) | 9/12 (75.0%) | 5/12 (41.7%) |
+| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
+| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
+| mean turns to complete | 23.6 | **10.6** |
+| failure modes | 3 `TERMINATED` | 9 `TERMINATED`, 2 `STRANDED` |
+
+Three things fall out of it that none of the earlier readings showed:
+
+- **The gap is ~33 points, not ~50.** The last four fixes were worth roughly seventeen points and
+  nobody knew, because the table was never re-taken.
+- **Seeds 1, 2 and 6 `TERMINATE` under both planners.** Three of the eleven failures predate this
+  block entirely, so the incremental regression is **eight seeds, not eleven** — and a diagnosis
+  should start on a seed the old planner actually completed (5, 10, 14, 20, 22, 23), not on one that
+  was already broken.
+- **It is not uniformly worse.** When the new planner finishes, it finishes in **less than half the
+  turns** — 10.6 against 23.6. It either resolves a mission decisively or not at all, which is a very
+  different shape of problem from "plays badly" and points at something structural rather than at
+  weights.
+
+**A 12-seed sample was never enough to decide this on.** The two windows disagree by 25 points for the
+new planner and by 25 for the old. The floor test samples only seeds 0–11, which is the pessimistic
+window, and that is worth knowing before anyone reads its number as the whole truth.
+
 ## Open questions
 
-- **The completion regression is the block's real output and it is unresolved.** Old planner 21/24
-  seeds (87.5%), new planner 9/24 (37.5%), against a floor that was 0.5 and is now 0.25. The dominant
-  failure is `TERMINATED` — **the planner is not losing fights, it is failing to finish.** Ruled out:
-  the information gating (identical 33.3% with the view forced unrestricted) and the candidate cull
-  (no change). `PLAN.md` item 2 and `BR45.03` carry the detail; seeds 13 and 20 never finish and the
-  decision log is already emitted per turn, which is how every planner defect above was found. **The 37.5% predates the block's last four fixes** — seeds 0–11 came out at 41.7% afterwards — so the table wants re-taking before anyone diagnoses from it.
+- **The completion regression is the block's real output and it is unresolved.** 87.5% → 54.2%,
+  against a floor that was 0.5 and is now 0.35. Ruled out as causes: the information gating (identical
+  33.3% with the view forced unrestricted) and the candidate cull (no change). `PLAN.md` item 2 and
+  `BR45.03` carry the detail, including which seeds to start on. The decision log is emitted per turn
+  and is how every planner defect in this block was found.
 
 - **I recommended against landing this and against lowering `MIN_COMPLETION_RATE`, and was overruled
   on both.** Recorded here and beside the constant itself, not because the call was wrong — the speed
   win is large and real, `ShotPlane` builds per turn went 29.1 → 0.0 — but because that floor is the
-  one automated check standing between the project and an AI that cannot finish a mission, and it is
-  currently calibrated to a planner that cannot.
+  one automated check standing between the project and an AI that cannot finish a mission. **The
+  re-measurement partly vindicates the decision**: at 54.2% the planner is a good deal closer to the
+  old floor than the number it was landed on suggested, and 0.25 turned out to be looser than the
+  evidence ever required.
 
-- **Two numbers in this block were reported before they were true.** The 58% completion above, and an
-  objective damping floor of 0.5 that read as working while changing not one decision. Both were
-  caught by asking "what would this look like if it were doing nothing" rather than by a failing test.
-  That question is worth asking of the tier table next.
+- **Three numbers in this block were reported before they were true**: 58% completion, 37.5%
+  completion, and an objective damping floor of 0.5 that read as working while changing not one
+  decision. None was caught by a failing test. Two were caught by asking "what would this look like if
+  it were doing nothing", and the third only because the supervisor asked for more seeds. **The
+  standing lesson is that a measurement taken once, mid-change, is not evidence** — and the cheapest
+  guard against it is a wider sample and a re-take at the end, both of which cost minutes here and
+  moved the headline number by seventeen points.
