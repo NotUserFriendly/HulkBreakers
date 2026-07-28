@@ -123,12 +123,30 @@ func test_escalation_probability_is_the_exact_binomial_tail() -> void:
 	assert_almost_eq(CompletionSampler.escalation_probability(1.0, 0.35), 0.0, 0.0001)
 	assert_almost_eq(CompletionSampler.escalation_probability(0.0, 0.35), 1.0, 0.0001)
 
-	# At the rate taskblock-46 measured (0.54) against the shipped floor, the
-	# taskblock's own estimate was "roughly one run in nine".
+	# At the rate taskblock-46 measured (0.54) against the shipped floor. The
+	# taskblock estimated ~1 run in 9, which was right for a 10-seed sample;
+	# `SAMPLE_SEEDS` was then raised to 20 on the measured escalation cost, which
+	# takes it to roughly 1 in 38.
 	var measured: float = CompletionSampler.escalation_probability(0.54, 0.35)
-	gut.p("escalation probability at the measured 0.54: %.3f" % measured)
-	assert_gt(measured, 0.08, "~1 in 9, which is what a marginal planner looks like")
-	assert_lt(measured, 0.15)
+	gut.p(
+		(
+			"escalation probability at the measured 0.54 with n=%d: %.3f (~1 run in %d)"
+			% [CompletionSampler.SAMPLE_SEEDS, measured, int(round(1.0 / maxf(0.0001, measured)))]
+		)
+	)
+	assert_gt(measured, 0.0, "a marginal planner must still escalate sometimes")
+	assert_lt(measured, 0.06, "but rarely enough that the suite stays predictable")
+
+
+## **A bigger sample must escalate LESS at the same true rate** — that is the whole
+## reason for choosing one. Asserted as the relationship rather than as a pinned
+## number, so re-sizing `SAMPLE_SEEDS` does not require editing an expectation.
+func test_a_larger_sample_is_steadier_than_a_smaller_one() -> void:
+	var ten: float = CompletionSampler.escalation_probability_for(10, 0.54, 0.35)
+	var twenty: float = CompletionSampler.escalation_probability_for(20, 0.54, 0.35)
+
+	assert_lt(twenty, ten, "twenty draws vary less than ten at the same true rate")
+	assert_almost_eq(ten, 0.114, 0.005, "the figure taskblock-46 sized against")
 
 
 ## A healthy planner makes escalation rare — the property that keeps the gate cheap
