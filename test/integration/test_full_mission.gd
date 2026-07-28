@@ -55,11 +55,12 @@ const TURN_CAP := 100
 ## finishes in a third of the turns when it finishes at all.
 ##
 ## **0.35 is unchanged, and deliberately so.** At a true 0.54 a 100-seed run falls
-## below it essentially never, so the gate is comfortable where it matters. It is a
-## 10-seed *sample* that dips below 0.35 about one run in nine — which is why a dip
-## escalates rather than fails (`CompletionSampler`). The old harness pinned seeds
-## 0–11, the pessimistic window, and read 33.3% there while the real rate was 54%;
-## that is what made this constant look like it needed lowering again. It did not.
+## below it essentially never, so the gate is comfortable where it matters. A
+## *sample* can still dip, which is why a dip escalates rather than fails
+## (`CompletionSampler`, whose `SAMPLE_SEEDS` is sized so that happens about one run
+## in 38). The old harness pinned seeds 0–11, the pessimistic window, and read 33.3%
+## there while the real rate was 54%; that is what made this constant look like it
+## needed lowering again. It did not.
 ##
 ## **CC recommended against both landing the planner with this open and moving this
 ## constant; the supervisor decided otherwise.** Raise it back toward 0.5 as

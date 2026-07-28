@@ -92,6 +92,52 @@ func _spawn_zones(grid: Grid) -> Dictionary:
 	return zones
 
 
+# --- the tests below are not vacuous ----------------------------------------
+
+
+## **Every other assertion in this file passes trivially on a flat map.** "No cell
+## sits in a pit" is free if nothing is ever raised, so a change that quietly
+## stopped generating elevation would turn this whole file green while deleting the
+## feature it guards. This is the assertion that stops that reading.
+##
+## The numbers are the ones BR40.03 measured on the *broken* generator, which is
+## the point: the fix removed pits, not elevation, so the raised-room count is
+## unchanged at 30/40 while the sunk-cell count went to zero.
+func test_the_generator_still_authors_raised_rooms() -> void:
+	var maps_with_raised := 0
+	var raised_cells := 0
+	var floored_cells := 0
+	for map_seed in range(SEEDS):
+		var grid: Grid = MapGen.generate(map_seed, WIDTH, ROWS)
+		var any := false
+		for cell: Vector2i in _cells(grid):
+			if not _is_floored(grid, cell):
+				continue
+			floored_cells += 1
+			if _height(grid, cell) > 0.01:
+				raised_cells += 1
+				any = true
+		if any:
+			maps_with_raised += 1
+
+	gut.p(
+		(
+			"raised: %d/%d maps, %d of %d floored cells"
+			% [maps_with_raised, SEEDS, raised_cells, floored_cells]
+		)
+	)
+	assert_gt(
+		maps_with_raised,
+		SEEDS / 2,
+		"most maps should author a raised room — BR40.03 measured 30/40 before the fix"
+	)
+	assert_gt(
+		float(raised_cells) / float(floored_cells),
+		0.05,
+		"raised ground must be a real share of the map, not a token cell or two"
+	)
+
+
 # --- BR40.03: cover does not punch a hole ------------------------------------
 
 

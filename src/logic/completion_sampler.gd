@@ -26,8 +26,8 @@ extends RefCounted
 ## re-asking the same twelve questions. It prints every seed it drew, which is what
 ## makes any run reproducible after the fact.
 ##
-## A sample below the floor proves nothing on its own — at a true rate of 0.5, ten
-## draws land below 0.35 about one run in six by chance alone. So the sample only
+## A sample below the floor proves nothing on its own — even at a healthy rate a
+## short draw dips by chance sometimes. So the sample only
 ## ever *notices*; `escalate()` runs a fixed seed list and is the measurement the
 ## verdict comes from. **Deterministic where the sampler is not**, so a failure is
 ## reproducible and a pass is not luck.
@@ -41,9 +41,27 @@ extends RefCounted
 ## concluded. That number is worth reading on its own — it is the one figure here
 ## that does not depend on which seeds happened to come up.
 
-## Seeds drawn per sample. Small enough to be cheap in an ordinary suite run;
-## the escalation is where statistical weight comes from.
-const SAMPLE_SEEDS := 10
+## Seeds drawn per sample. **Sized from the measured escalation cost, not by feel.**
+##
+## At the measured 0.54 completion rate against a 0.35 floor, with ~3 s per seed
+## and ~300 s for the escalation:
+##
+## | n | P(escalate) | ~1 run in | expected cost |
+## |---|---|---|---|
+## | 10 | 0.114 | 9 | 64 s |
+## | 15 | 0.089 | 11 | 72 s |
+## | **20** | **0.027** | **38** | **68 s** |
+## | 30 | 0.018 | 55 | 95 s |
+##
+## **20 costs four seconds more than 10 in expectation and escalates four times
+## less often.** Expected cost is the wrong axis on its own: a run that escalates
+## pays the full ~330 s whatever `n` is, so the number that matters for a suite
+## people actually wait on is how often that happens, not the average.
+##
+## Note the non-monotonicity — 12 is *worse* than 10 (0.126). The threshold is an
+## integer count, so `ceil(0.35 * 12) = 5` demands 41.7% where `ceil(0.35 * 10) = 4`
+## demands 40%. Picking `n` by intuition walks straight into that.
+const SAMPLE_SEEDS := 20
 ## The escalation's fixed seed list — `0` to `ESCALATION_SEEDS - 1`. Flagged, not
 ## tuned; it trades runtime against confidence and nothing else.
 const ESCALATION_SEEDS := 100
@@ -162,10 +180,16 @@ static func should_escalate(rate: float, floor_rate: float) -> bool:
 ## value means the planner sits close enough to the floor that the sampler is
 ## effectively a coin toss, which is worth knowing even on a run that passed.
 static func escalation_probability(rate: float, floor_rate: float) -> float:
-	var need: int = int(ceilf(floor_rate * float(SAMPLE_SEEDS)))
+	return escalation_probability_for(SAMPLE_SEEDS, rate, floor_rate)
+
+
+## The same figure for an arbitrary sample size — what `SAMPLE_SEEDS` was chosen
+## with, and what re-choosing it should be argued from.
+static func escalation_probability_for(n: int, rate: float, floor_rate: float) -> float:
+	var need: int = int(ceilf(floor_rate * float(n)))
 	var total := 0.0
 	for k in range(need):
-		total += _binomial_pmf(SAMPLE_SEEDS, k, rate)
+		total += _binomial_pmf(n, k, rate)
 	return clampf(total, 0.0, 1.0)
 
 
