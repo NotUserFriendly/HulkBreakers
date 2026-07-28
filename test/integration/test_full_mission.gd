@@ -31,37 +31,36 @@ extends GutTest
 ## specifically because of it.
 const SEED_COUNT := 12
 const TURN_CAP := 100
-## **taskblock-45 Pass D lowered this from 0.5 to 0.25, and that is a recorded
-## regression rather than a re-measurement.** Read this before trusting the number.
+## **taskblock-45 lowered this from 0.5, and that is a recorded regression rather than a
+## re-measurement.** Read this before trusting the number.
 ##
-## The utility planner that replaced the engagement-score planner completes far
-## fewer missions. Measured over 24 seeds, the same fixture, both planners:
+## The utility planner that replaced the engagement-score planner completes fewer missions.
+## Re-measured at the end of the block, both planners, same fixture, same probe, 24 seeds, the old
+## one run from a worktree at `107af1e`:
 ##
 ## | | old | new |
 ## |---|---|---|
-## | seeds 0-11 | 9/12 (75%) | 4/12 (33%) |
-## | seeds 12-23 | 12/12 (100%) | 5/12 (42%) |
-## | combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
+## | seeds 0–11 (this test's window) | 9/12 (75.0%) | **5/12 (41.7%)** |
+## | seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
+## | combined | **21/24 (87.5%)** | **13/24 (54.2%)** |
+## | mean turns to complete | 23.6 | **10.6** |
 ##
-## The old planner completed every fresh seed. The new one's dominant failure is
-## `TERMINATED` — the turn cap running out — not `STRANDED`: **it is not losing
-## fights, it is failing to finish.** Ruled out as causes: the information
-## restriction (identical 33.3% with the view forced unrestricted) and the
-## candidate-set cull (no change).
+## **It is not uniformly worse — it finishes in less than half the turns when it finishes at
+## all.** The dominant failure is `TERMINATED`, the turn cap running out, not `STRANDED`: mostly it
+## is not losing fights, it is failing to finish. **Seeds 1, 2 and 6 fail under both planners**, so
+## three of the eleven failures predate this block and the incremental regression is eight seeds.
 ##
-## **The supervisor was shown these numbers and chose to land the planner anyway**,
-## accepting the regression as known and carried forward. CC recommended against
-## moving this constant and that objection is recorded here rather than in a report
-## that ages out.
+## **0.35 is one seed of margin below the 41.7% this test's own window measures.** The sample is
+## deterministic — fixed seeds, seeded RNG — so there is no run-to-run flake to absorb, and the only
+## thing this slack exists for is a future change costing a single seed. It was briefly 0.25, set
+## against a mid-block reading of 37.5%, taken before the last four fixes and never describing
+## the planner as shipped.
 ##
-## 0.25 keeps roughly the margin the old number had — the old floor sat at ~62% of
-## the observed rate (0.5 against ~0.8), and 0.25 sits at ~67% of 0.375. So it
-## still catches a real collapse: a planner that stopped completing missions
-## entirely, or halved again from here, goes red. **What it can no longer catch is
-## the regression that is already here.** Raise it back as the gap closes; it is
-## the one automated check standing between this project and an AI that cannot
-## finish a mission.
-const MIN_COMPLETION_RATE := 0.25
+## **CC recommended against both landing the planner with this open and moving this constant; the
+## supervisor decided otherwise on the evidence above.** The objection is recorded here rather than
+## only in a report that ages out. Raise it back toward 0.5 as `BR45.03` closes — it is the one
+## automated check standing between this project and an AI that cannot finish a mission.
+const MIN_COMPLETION_RATE := 0.35
 
 
 func before_each() -> void:

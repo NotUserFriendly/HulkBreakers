@@ -116,26 +116,37 @@ every fire**
   resolving.
 
 ### BR45.03 — Active — owner: `SUPERVISOR`
-**The utility planner completes 37.5% of missions where the planner it replaced completed 87.5%**
+**The utility planner completes 54.2% of missions where the planner it replaced completed 87.5%**
 - **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
 - **`SUPERVISOR`-owned at CC's request**, not by default. CC found it and would ordinarily own it, but
   the decision to land the planner with this regression open was the supervisor's, made on this
   evidence, and this entry is the thing that must not be closed without them seeing a real completion
   rate again.
-- **Measured 2026-07-28, both planners, same fixture, 24 seeds** (`test_full_mission.gd`'s own harness,
-  1v1 AGGRESSIVE, turn cap 100, completion == `EXTRACTED`):
+- **Re-measured 2026-07-28 after the block's final fixes**, both planners, same fixture, same probe,
+  24 seeds (`test_full_mission.gd`'s own harness, 1v1 AGGRESSIVE, turn cap 100, completion ==
+  `EXTRACTED`). The old planner was run from a worktree at `107af1e`:
 
-  | | old | new |
-  |---|---|---|
-  | seeds 0–11 | 9/12 (75%) | 4/12 (33%) |
-  | seeds 12–23 | **12/12 (100%)** | 5/12 (42%) |
-  | combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
+| | old | new |
+|---|---|---|
+| seeds 0–11 | 9/12 (75.0%) | 5/12 (41.7%) |
+| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
+| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
+| mean turns to complete | 23.6 | **10.6** |
+| failure modes | 3 `TERMINATED` | 9 `TERMINATED`, 2 `STRANDED` |
 
+- **Seeds 1, 2 and 6 `TERMINATE` under BOTH planners.** Three of the new planner's eleven failures are
+  not its doing — they are pre-existing on those maps and predate this block entirely. The incremental
+  regression is **8 seeds, not 11**, and anyone diagnosing this should start on a seed the old planner
+  actually completed (5, 10, 14, 20, 22, 23) rather than on one that was already broken.
+- **The first reading of this was 37.5% and was taken mid-block, before the last four fixes.** It is
+  superseded by the table above. `MIN_COMPLETION_RATE` had been dropped to 0.25 on the strength of it
+  and has been raised to 0.35 now that the real figure is known — still below the gated window's 41.7%
+  by one seed, which is the margin a deterministic 12-seed sample allows.
 - **The dominant failure is `TERMINATED`, not `STRANDED`** — 11 of 24 seeds simply never end. The
   planner is **not losing fights; it is failing to finish**.
 - **Already ruled out, so nobody re-derives it:** the information restriction (identical 33.3% with
   the view forced unrestricted), the candidate-set cull (no change), and the four planner defects
-  taskblock-45 found and fixed (the 37.5% is post-fix).
+  taskblock-45 found and fixed (the 54.2% is post-fix — every fix is in the number).
 - **`MIN_COMPLETION_RATE` was lowered 0.5 → 0.25 to land this.** That constant is the project's one
   automated check on "can the AI finish a mission at all", and it is currently calibrated to a broken
   planner. Raising it back is this entry's real closure condition.

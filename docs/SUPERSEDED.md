@@ -110,31 +110,27 @@ consideration had to be inserted at the right height in it. The file was raised 
 deeper cost was structural: answering "can I shoot from here" per candidate cell meant a real
 `ShotPlane` build per candidate, which taskblock-43 measured at ~70% of a planning turn.
 
-**Measured before/after** (`tools/ai_planning_bench.gd --full`, `editor_debug`, 2026-07-28):
+**Measured before/after**, both planners over the same 24 seeds from one standalone probe, the old
+one run from a worktree at `107af1e` (2026-07-28):
 
 | | old | new |
 |---|---|---|
-| completion rate, seeds 0-11 | 75% | **33%** |
-| completion rate, seeds 12-23 | **100%** | 42% |
-| completion rate, 24 seeds combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
-| turns to complete | 23.9 | 27.0 |
+| seeds 0–11 | 9/12 (75.0%) | 5/12 (41.7%) |
+| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
+| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
+| mean turns to complete | 23.6 | **10.6** |
 | per-unit plan cost, mission bout | 139.90 ms | **86.51 ms** |
 | per-unit plan cost, 3v3 combat bout | 485.16 ms | **131.25 ms** |
 | `ShotPlane` builds per turn | 29.1 | **0.0** |
 
-**An earlier version of this table read 58% and it was wrong.** It was taken while the new planner
-still carried a defect that stopped it moving to the cell it had scored, so it was not measuring the
-planner as shipped. The numbers above are post-fix and were taken over 24 seeds rather than 12,
-because 12 was too thin a sample to condemn or clear a planner on. The old planner completed **every
-one** of the twelve fresh seeds.
-
-**The completion regression is large, real, and was landed knowingly.** The dominant failure is
-`TERMINATED` — the turn cap running out — not `STRANDED`: **the new planner is not losing fights, it
-is failing to finish.** Two structural causes were tested and ruled out: the information restriction
-(identical 33.3% with the view forced unrestricted) and the candidate-set cull (no change).
-`MIN_COMPLETION_RATE` was lowered from 0.5 to 0.25 to land it; CC recommended against both the
-landing and the lowering, the supervisor decided otherwise on this evidence, and the objection is
-recorded in `test_full_mission.gd` beside the constant rather than only here. The table predates the block's last four fixes and is pessimistic by roughly one seed in twelve; `BR45.03` says so and asks for a fresh reading.
+**The completion regression is real and was landed knowingly, but it is smaller than the figure that
+decided it.** The block was landed on a mid-change reading of 37.5%; re-measured after the final
+fixes it is 54.2%, and `MIN_COMPLETION_RATE` came back from 0.25 to 0.35. The dominant failure is
+`TERMINATED` — mostly **not losing fights, failing to finish** — and seeds 1, 2 and 6 fail under both
+planners, so three of the eleven failures predate this block. Ruled out as causes: the information
+restriction (identical 33.3% unrestricted) and the candidate-set cull (no change). CC recommended
+against landing and against moving the floor; the supervisor decided otherwise, and the objection is
+recorded in `test_full_mission.gd` beside the constant.
 
 **`ShotPlane` builds per turn falling to exactly zero is the structural claim**, not a speed
 tweak: line-of-fire is now a bit test against one `VisibilityField` built per target per turn, and
