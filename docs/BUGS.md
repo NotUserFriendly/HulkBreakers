@@ -1071,7 +1071,7 @@ every fire**
   (`SquadControlOverlay._on_turn_ended()`), but the spectator path wasn't touched — its indicator
   still flips ahead of resolution. Apply the same defer-until-animation-finishes fix on the spectator
   overlay's turn-end handler.
-### BR32.10 — Pending — owner: `SUPERVISOR`
+### BR32.10 — Active — owner: `SUPERVISOR`
 **AI gets stuck on opposite sides of U-shaped / concave maps**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **2026-07-23 (supervisor check — BLOCKED, not verifiable).** Cannot be checked: **BR34.06** (AI
@@ -1122,6 +1122,27 @@ every fire**
   before promotion to `RESOLVED`.
 
 ---
+- **2026-07-28 (supervisor observation via review session `HBPaR3`) — REOPENED from `Pending`.** The
+  behaviour was seen again in play: units still get stuck on opposite sides of concave geometry. The
+  prior fix is therefore unconfirmed, not confirmed-and-regressed — `Pending` was never discharged.
+- **Re-verify before re-fixing; it cannot reproduce for the old reason.** taskblock-45 deleted the
+  engagement-score planner entirely, so whatever produces this now is new machinery reaching an old
+  outcome. `LineOfFire.approach_path` survived the swap (`line_of_fire.gd:150`) and its own comment at
+  :176 still names the concave/U-shaped-wall freeze as the thing it exists to avoid — so that is the
+  first place to look, but the *caller* is completely different code.
+- **Correction to the pointer above (CC, 2026-07-28, verified):** `LineOfFire.approach_path` and
+  `closing_path` survived the swap as *code*, but **nothing calls them any more.** The retired planner
+  was their only caller; today the sole references in the tree are in `test_line_of_fire.gd`, which
+  exercises them directly. They are dead in production, so the comment at `line_of_fire.gd:176` is
+  describing a branch that no longer runs and is the wrong place to start.
+- **What replaced them is not a fallback at all.** The utility planner has no "nothing has a line, so
+  walk toward somewhere that does" branch. It scores cells, and a cell with no line simply scores low
+  — so a unit stuck behind concave geometry is a *scoring* outcome now, not a branch that failed to
+  fire. Read `ai_utility_decision` for the stuck turn and see what actually won.
+- **Do not diagnose this alongside BR45.03.** Both present as "the AI does nothing," and BR45.03 has a
+  far better-evidenced mechanism (an action pool with a hole in it). Close that one first; if this
+  survives it, it is genuinely separate.
+
 ### BR33.01 — Suspected — owner: `SUPERVISOR`
 **Aim-view scroll cycles walls; layer labels read as part names**
 - **Source:** `SUPERVISOR`
@@ -1276,7 +1297,7 @@ every fire**
   the pass as a companion item and deliberately left: `PartPicker.hit` still scans every
   `grid.blockers`/`field_items` entry per call. Stated rather than quietly dropped — it is `CC`-owned
   and small, and belongs to whoever picks this up next.
-### BR35.02 — Active — owner: `CC`
+### BR35.02 — Active — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay`'s
@@ -1292,7 +1313,15 @@ every fire**
   resolved cell (or a real physics/geometry raycast against the wall meshes `BoardView` already
   builds) before trusting `BoardPicker`'s own result — a genuine new check, not a one-line guard, and
   risky to improvise without live verification.
-### BR35.03 — Pending — owner: `CC`
+- **2026-07-28 (review session `HBPaR3`) — promoted to `SUPERVISOR` ownership.**
+- **Do not fix this one individually.** It is the third of a set — with BR27.04 (lighting differs
+  between the two views) and BR32.09 (spectator's current-unit indicator jumps early) — all of which
+  are the same root: `SpectatorOverlay` re-implements a subset of `SquadControlOverlay`'s panels
+  because it cannot inherit them without dragging in `TacticsController` and the whole unit-input path.
+  `PLAN.md`'s *One view, toggleable modules* dissolves the class. Fixing an instance is work that
+  refactor discards.
+
+### BR35.03 — Active — owner: `CC`
 **Every debug-panel verb rebuilds the entire board view, not just ones that touch blockers/field items**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay.
@@ -1320,6 +1349,12 @@ every fire**
     misled the next reader.
   - **To confirm:** open `Inject...`, apply a unit-only verb (Set AP, Set Facing), and check the board
     does not visibly rebuild; then apply Set Cell Level or Spawn Object and check it does.
+- **2026-07-28 (review session `HBPaR3`) — moved from `Pending` back to `Active`.** A `CC`-owned
+  `Pending` is not a stable state: `Pending` means the *owner* has not seen the fix work, and CC is the
+  owner here. Either it is verifiable and should be closed, or it is not and CC is the wrong owner.
+  Returned to `Active` so it is picked up in the next bug hunt rather than sitting in a status that
+  nobody can discharge.
+
 ### BR35.04 — Active — owner: `SUPERVISOR`
 **A DEFLECT's drawn "bounce" tracer is a decorative fixed-range projection, not the real continuation**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
@@ -1402,6 +1437,27 @@ every fire**
 - **Not fixed yet.** Needs the actual `_engagement_score` breakdown for unit 7's own candidate set on
   one of these turns before concluding this is really the cover-bonus/self-exemption interaction and
   not something else — flagged rather than guessed at further.
+
+- **2026-07-28 (review session `HBPaR3`) — description predates the planner it describes.** This was
+  written against the engagement-score planner's hold branch, and taskblock-45 deleted that planner. It
+  is being kept `Active` rather than closed because the *symptom* may well survive — but if it
+  reproduces, it reproduces through the utility scorer returning `hold_position` as its best-scoring
+  action, which is a different mechanism with a different fix. **Re-verify against the new planner and
+  then either rewrite this entry or close it `Obsolete`;** do not fix it from the description above.
+- **The decision log answers this directly.** `ai_utility_decision` records every candidate and its
+  score, so "why did it hold when a shot existed" is now a question with a printed answer rather than
+  an inference — check whether `shoot` was scored and lost, or never offered at all. If it was never
+  offered, this is BR45.03 and not a separate defect.
+- **The gates as currently authored (CC, 2026-07-28), so re-verification is cheap.**
+  `data/utility_actions/hold_position.tres` requires **all four** of `enemy_known`, `cell_is_current`,
+  `can_defer_turn` and `lof_blocked`, carries `base_weight` 0.3 — well below `shoot`'s 1.5 — and is
+  marked `ends_turn`. The planner additionally refuses to offer any `ends_turn` action once the turn
+  has already committed to something.
+- **So a hold while a shot existed should now be impossible by construction**, since `lof_blocked` is
+  the exact negation of the line-of-fire gate `shoot` requires. If it reproduces anyway, the
+  interesting question is which of those two predicates disagreed with reality — not why the weights
+  came out that way. Three of taskblock-45's own defects were holds winning for reasons that had
+  nothing to do with weights.
 
 ### BR35.07 — Active — owner: `SUPERVISOR`
 **`STOP_DEAD` tracers are drawn past their own hit point, reading as a penetration that never happened**
