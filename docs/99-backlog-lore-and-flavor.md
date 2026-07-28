@@ -3,6 +3,11 @@
 **Nothing in this file is in scope.** It is parked here so it stops cluttering the design
 docs. CC must not build any of it. It exists so it isn't lost.
 
+**What belongs here: the unspecified and unqueued.** Lore, character notes, interactions, and ideas
+that do not yet have a shape. **If a thing is specified, it belongs in `PLAN.md`; if `PLAN.md` queues
+it, it must be specified there. Nothing lives in both files.** A note here that grows a mechanism
+graduates out into `PLAN.md`; a `PLAN.md` item that turns out to be a vague wish comes back here.
+
 ---
 
 ## Story (deliberately nebulous)
@@ -47,15 +52,6 @@ Later you may find uses for:
 
 ## Deferred mechanics (raised, deliberately postponed)
 
-### Weak points
-A **major benefit that forces a vulnerability**. Example: a powerful reactor that must vent
-heat every few turns — vents open, a large heat sink protrudes, and for that window shooting
-the sink is equivalent to shooting the reactor directly: coolant leaks, possible meltdown.
-
-Architecturally cheap once `02`/`03` exist: a weak point is a **volume box that only projects
-during certain turns**, plus a damage rule that forwards to its parent. No new systems. Purely
-a scope call — postponed.
-
 ### Artificial muscle vs artificial bone
 Distinct stats for the actuator and the structure of a limb, enabling *disabling* an arm
 without severing it. **The socket graph already expresses this** — they're sub-parts on
@@ -64,6 +60,17 @@ without severing it. **The socket graph already expresses this** — they're sub
 ### Loot affixes
 Randomized affixes and small stat rolls on hulk-found gear, reinforcing the "original pattern
 / prototype" feel (`07`).
+
+### Multiplayer
+Raised, never scoped. Recorded so it is not mistaken for an oversight — it is a different game's worth
+of work and it has never been costed. Not a taskblock.
+
+### Mental hazards and psychic content
+Wis-resisted effects as a hazard category. A premise with no mechanism behind it yet.
+
+### Rampancy as active pressure
+`PLAN.md` carries rampancy as a system; this is the separate question of whether it should push on the
+player turn to turn rather than sitting as a state. A tuning and design question, not queued work.
 
 ### Climbing and grappling large shells
 High-mobility units **climb** a shell larger than themselves and **grapple** one their own size — the
@@ -94,7 +101,8 @@ wanted or doesn't:
 `BoutInjector.set_facing()` and read by the tactics layer's `aim_facing()`. Manipulation is a mutation of a
 value the game already tracks, not a new system.
 
-Pairs with **Weak points** above: that entry supplies *why* a specific zone is worth reaching, this one
+Pairs with **Weak points**, which graduated to `PLAN.md`: that item supplies *why* a specific zone is
+worth reaching, this one
 supplies *how you get there*. Neither is worth much alone.
 
 Design tension worth keeping in view when this is picked up: if both routes reach the same zones, the

@@ -1,0 +1,166 @@
+# 11 — AI: World Model, Utility & Tiers
+
+How a unit that isn't being driven by a player decides what to do. Landed taskblock-44 (the seam and
+the visibility field) and taskblock-45 (the scorer), replacing a branch-cascade planner that is gone
+and should not be reasoned from — see `SUPERSEDED.md`.
+
+---
+
+## The world model is a chokepoint, not a convention
+
+**A planner takes a `WorldView`. It never touches `CombatState`.** The view is the only channel through
+which a unit learns anything, and that is what makes intelligence tiers possible at all: retrofitting
+"this unit doesn't get to know that" onto a planner already reading global state touches everything.
+
+### The boundary runs through objects, not around them
+
+The line is **knowledge about units** versus everything else. It is *not* `CombatState` versus
+not-`CombatState`, and two of the obvious pass-throughs sit on the wrong side of it:
+
+- **`Grid` is not pure geometry.** It carries `occupant_id` alongside `blockers` and `surfaces`. Handing
+  a planner a raw grid leaks the position of every unit on the board, including ones the view just
+  filtered out. Occupancy reaches a planner **only** through `units_visible_to(observer)`.
+- **`BatchPlan` is team knowledge, not infrastructure.** The blackboard is a tier capability
+  (`BLACKBOARD_TIERS`), so batch plans are observer-parameterized like visible units are — and the
+  *write* is gated too, since a unit that can set a plan it cannot read back is worse than one planning
+  alone.
+
+Static geometry is never gated. A unit standing in a room knows where its walls are; what it doesn't
+know is who is behind them.
+
+### The resolver door
+
+`canonical_state_for_resolvers()` hands the real state to `ShotPlane` and friends, because geometry
+must resolve objectively no matter what a unit believes. **It may be passed as an argument and never
+dereferenced** — `view.canonical_state_for_resolvers().units` defeats the entire seam, and it is a hole
+rather than a door if nothing enforces that.
+
+Three guard tests hold this, plus one that checks the guards are reading a planner that actually uses
+the view — a guard whose subject is absent passes forever.
+
+A unit planning against a *remembered* enemy position asks the resolver about geometry to a cell. The
+resolver answers correctly; the unit's error is in choosing the cell. **Degraded knowledge never means
+degraded geometry.**
+
+---
+
+## `ShotPlane` is final; the visibility field is a prefilter
+
+Line-of-fire is answered from **one symmetric shadowcast per target**, stored as `PackedInt64Array`
+bitboards over the volume, so a candidate cell's query is a bit test rather than a cast. One field
+serves every shooter, so cost stops scaling with unit count.
+
+The field carries exactly one correctness obligation:
+
+> **It never reports "no line" for a cell that actually has one.**
+
+Over-inclusion is safe; under-inclusion is a bug. That is a far weaker burden than exactness, and it is
+what keeps the field from becoming a second visibility system able to disagree with the canonical
+resolver (`02`, `08`). The field narrows candidates; `ShotPlane` confirms the survivors.
+
+The payoff is asymmetric and deliberate: when *no* reachable cell has a line, `reachable & vis[target]
+== 0` settles it in one word operation with zero `ShotPlane` builds. Proving a negative used to cost
+more than finding a positive.
+
+---
+
+## Scoring
+
+| Concept | Implementation |
+|---|---|
+| Action | Resource: preconditions, considerations, executor |
+| Consideration | Normalized 0–1 input × response curve |
+| Score | Product of considerations × base weight × profile multiplier, with a compensation factor |
+
+**Actions, profiles and batch objectives are `.tres` under `res://data/`**, not code — the same rule as
+every other content vocabulary. Adding a behaviour is a resource plus a published input, never a code
+edit. Executors are the existing action classes in `src/logic/actions/`; the scorer is a *selection*
+layer over them, not a second implementation.
+
+**The product is not a sum.** A single zero vetoes the action outright, so "unreachable" kills a
+candidate rather than merely lowering it. The compensation factor exists because otherwise an action
+with more considerations always scores below one with fewer — a bias that looks like a tuning problem
+and isn't.
+
+**Ties need an explicit tiebreak.** On open ground a whole arc sits at exactly the standoff distance, so
+equal scores are common rather than exotic. Serial iteration order is stable and hides it; any
+reordering exposes it. Lowest cell index, decided once.
+
+**The planner is resumable.** Candidate scanning yields and keeps a cursor, so a long plan does not
+block input and the view can say which unit is thinking. Frame boundaries must never change a decision.
+GDScript makes this structural rather than incremental — a conditional `await` is a parse error, so a
+synchronous scorer written "to be made resumable later" means converting the whole chain again.
+
+---
+
+## Intelligence gates information, not just actions
+
+**This is the load-bearing idea.** Gating actions alone produces a smart unit with fewer options, and it
+still plays those options optimally — which reads as *limited*, not dumb. Gating the world model makes
+it make real mistakes: firing at where someone was, walking into a flank it had no way to see.
+Plausible-but-wrong rather than random.
+
+It also aligns cost with design, which is rare: a degraded world model is genuinely cheaper to compute,
+so **cheap units are cheap because they are dumb, not despite it.**
+
+| Tier | Actions added | World model | Depth |
+|---|---|---|---|
+| Mindless | approach, flee, idle | current sight only | 0 |
+| Grunt | cover, ranged, regroup | + last-known positions | 0 |
+| Trained | flank, suppress, item, call help | + team blackboard, threat map | 1 |
+| Elite | bait, ambush, set batch objective | + full team knowledge, predicted moves | 2–3 |
+
+`MEMORY_TIERS` and `BLACKBOARD_TIERS` in `WorldView` are the authored gates. `Unit.intelligence_tier`
+is a `StringName`, authored per unit; it should derive from Attributes once those land.
+
+**Profiles are a separate axis** — weight vectors over shared considerations, never code paths.
+Intelligence says *what a unit can know and do*; profile says *what it wants*.
+
+**Every tier and every profile must decide differently from its neighbours on the same seed.** A table
+where two rows play identically has a bug in it, and no completion metric will catch it. This is the
+acceptance that matters most whenever the table grows.
+
+---
+
+## Batches amortize; they never act together
+
+Units act one at a time in initiative order, and batching does not change that. A batch is a device for
+computing the leader's expensive work **once** and reusing it — never for resolving several units
+together. "These units could be decided at the same time" is not a licence to act them at the same time.
+
+**The leader is derived, not stored:** it is whichever member of a batch acts first this round. That
+makes leader death free — the next-fastest living member is simply first next round — with no promotion
+logic and nothing that can desync. Do not add a `leader_id`.
+
+The leader's coarse utility pass picks one objective (`advance`, `hold`, `withdraw`, `flank`), which is
+injected as **a consideration input** for every follower rather than a destination to copy. Followers
+keep their own judgement; they just share a direction. Blackboard access is tier-gated, so a `MINDLESS`
+member plans alone — correctly, not as a gap.
+
+---
+
+## The decision log is the instrument
+
+A behaviour tree fails legibly: it took a branch and you can see which. **A scorer produces a number,
+and you reconstruct why afterwards or not at all.**
+
+`ai_decision_log.gd` records, per decision: every candidate and its score, **each consideration's
+normalized input and curve output** (a veto is invisible in a product — "which consideration returned
+zero" is the question that gets asked), the acting tier and profile, what the unit could see, and the
+margin over second place.
+
+Every planner defect found in taskblock-45 came out of reading this, not out of reading the code. It is
+the first place to look, not the last.
+
+---
+
+## Two failure modes worth naming
+
+**An action pool can have a hole in it.** Predicates partition the pool, and a unit matching none of
+them is offered nothing at all and idles. This has happened: every action was gated behind either
+`enemy_known` or `is_player_squad`, so a non-player squad that had seen nobody had no action available,
+and bouts ran to the turn cap with nothing wrong in any individual rule. **When adding a gated action,
+ask what a unit that fails every gate does instead.**
+
+**A tier or restriction that does nothing passes every test that asserts what it should do.** The
+companion assertion — that turning it off changes the outcome — is the one that catches it.

@@ -140,5 +140,10 @@ rendering-path bug like a backward-drawing tracer is finally diagnosable from bo
   behind a real `OS.is_debug_build()` gate: the affordance is never even constructed in a release
   export, so there's nothing to click regardless of what a screen-reader of the code might imply
   from the `[*]` label alone. It's a dev scalpel, not a game feature, in either overlay.
-- **Doesn't retire the headless harness on its own** — that happens once this workflow is proven in
-  practice. Until then both exist.
+- **Not a replacement for the headless harness, and not trying to become one.** An earlier note here
+  framed this as "until this workflow is proven, both exist," which implied a retirement that was never
+  intended. **Both stay.** They answer different questions: headless is the only mode that can gate a
+  commit, and it has a no-op renderer, so it can never answer "does this *look* right." The actual goal
+  is **parity** — anything checkable headlessly should also be reachable from the on-screen tools, so a
+  supervisor can re-take a measurement or reproduce a bout without a CC session. The completion probe
+  becoming runnable from the game window is that parity, not a migration.

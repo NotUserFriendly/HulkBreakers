@@ -7,9 +7,22 @@ defects → `BUGS.md`.
 because of how big it is, how interesting it is, or when it was written down. A one-line change and a
 whole system are peers here: work is single-threaded, so size never affects what comes first.
 
+**An item is roughly one taskblock.** Loosely — a block can be large because everything in it is
+related, or small because it is a standalone content add. The rule guards granularity in both
+directions: an item that would take three blocks is really three items with its dependencies hidden
+inside it, and six items that would all land in one block are one item pretending to be a sequence.
+When scope changes, resize the item rather than letting it drift. This is about *granularity*, not
+ordering — size still never affects what comes first.
+
 **Everything is levelled.** No phases, no keystones, no topical sections — a flat ordered list of things
 that could each be picked up next. Anything deferred, descoped, or spun off from a taskblock lands here
 (CLAUDE.md rule 7). "Too small for PLAN" is what let work get dropped before.
+
+**The boundary with `docs/99`.** That file holds what is *unspecified and unqueued* — lore, character
+notes, ideas without a shape yet. **If a thing is specified, it belongs here; if it is queued here, it
+must be specified. Nothing lives in both.** A note that grows a mechanism graduates out of 99 into this
+file; an item here that turns out to be a vague wish belongs back in 99. Two homes for one idea is two
+places for it to go stale, and the one nobody edits is the one that gets read.
 
 **Buckets:**
 - **NEXT** — capped at 3–5, ordered, nothing with an unmet dependency. **Exceeding the cap triggers a
@@ -82,85 +95,137 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. Close the AI completion regression
-**Needs:** nothing — *AI v2, part two* landed as taskblock-45 (`docs/CHANGELOG.md`). **Unblocks:**
-raising `MIN_COMPLETION_RATE` back to a floor that means something; trusting any later AI measurement.
+### 2. The AI action pool — close the regression, then fill the table
+**Needs:** nothing; the utility framework landed as taskblock-45. **Unblocks:** a
+`MIN_COMPLETION_RATE` that means something, intelligence reading as character rather than as
+difficulty, and trusting any later AI measurement.
 
-**This is the highest-priority AI item and it is a bug, not a feature.** taskblock-45 replaced the
-engagement-score planner with the utility planner and mission completion fell from **87.5% to 54.2%**
-over 24 seeds, measured on both planners against the same fixture and the same probe.
-`MIN_COMPLETION_RATE` sits at 0.35, below the 0.5 it held before this block. Until this closes, the
-project's one automated check on "can the AI finish a mission at all" is calibrated to a planner that
-finishes barely half its missions.
+Six items were folded into this one because they are the same shape of work: **the utility framework
+takes new behaviour as a `.tres` plus a published input**, so almost everything below is authoring
+against machinery that already exists. Ordered — instrument, bug, fix, measure, then the table.
 
-**The new planner is much FASTER at the missions it does finish** — 10.6 turns against 23.6 — so this
-is not a planner that is uniformly worse. It either finishes decisively or not at all.
+#### First: make the number re-takeable
 
-**What is already known, so nobody re-derives it:**
-- **The dominant failure is `TERMINATED`, not `STRANDED`** — the turn cap running out. The planner is
-  mostly **not losing fights; it is failing to finish**: 9 of its 11 failures never ended, and only 2
-  were the squad being wiped.
-- **Not the information gating.** Forcing the world view unrestricted gives an identical 33.3%.
-- **Not the candidate-set cull.** Removing it changes nothing.
-- **Not the four defects taskblock-45 already fixed** (scored-cell-never-moved-to, arrival scoring
-  every cell as perfect, refused-action-ends-turn, hold offered with no enemy). Those were real, are
-  fixed, and the 54.2% is post-fix — every one of them is already in the number.
-- **The decision log is the instrument.** Every one of those defects was found by dumping
-  `ai_utility_decision` per turn and reading it, not by reading the code. Start there, on seeds 13 or
-  20, which never finish.
+`test_full_mission.gd` samples seeds 0–11, which is the pessimistic window — the planner scores 41.7%
+there against 66.7% on seeds 12–23 — and at a 0.35 floor the test sits **less than one seed from red**.
+A threshold between two adjacent integers is a tripwire, not a canary, and the usual answer to a
+flapping test is to lower the constant again.
 
-**Do not chase this by adjusting profile weights.** The gap is ~50 points; that is structural, and
-hand-tuning weights to move a completion rate is inventing balance numbers (CLAUDE.md).
+- **Ten random seeds per run, printing the seeds it drew.** The sample moves across the space over time
+  instead of re-asking the same twelve questions.
+- **On failure, escalate to a fixed 100-seed run.** The sampler only has to notice; the escalation is
+  the measurement, and it is deterministic where the sampler is not.
+- **The escalation rate is itself the metric.** At a healthy rate the sampler almost never escalates; at
+  54% it would escalate roughly one run in nine. Frequent escalation says the planner is marginal
+  regardless of what any single run concluded.
+- **Runnable from the game window**, showing per-seed outcomes and the seed list rather than a bare
+  rate. This closes the last gap where the supervisor and CC read different evidence, and it makes the
+  number re-takeable without a session.
 
-****Seeds 1, 2 and 6 `TERMINATE` under BOTH planners.** Three of the new planner's eleven failures are
-not its doing — they are pre-existing on those maps and predate this block entirely. The incremental
-regression is **8 seeds, not 11**, and anyone diagnosing this should start on a seed the old planner
-actually completed (5, 10, 14, 20, 22, 23) rather than on one that was already broken.**
+#### The regression itself
 
-**Where to start.** The decision log is emitted per turn and every defect taskblock-45 found came out
-of reading it rather than the code. Dump `ai_utility_decision` for seed 20 or 22 and read what the
-unit wanted, turn by turn.
+taskblock-45 replaced the engagement-score planner and completion fell from **87.5% to 54.2%** over 24
+seeds, both planners measured against the same fixture and probe. `MIN_COMPLETION_RATE` sits at 0.35,
+below the 0.5 it held before. **It is a bug, not a feature**, and until it closes the project's one
+automated check on "can the AI finish a mission at all" is calibrated to a planner that finishes barely
+half of them.
 
-**Acceptance:** completion rate back above 0.5 on 24 seeds; `MIN_COMPLETION_RATE` raised to match with
-its measurement recorded; the cause written into `CHANGELOG.md` whether or not it is what anyone
+The planner is **much faster at the missions it does finish** — 10.6 turns against 23.6. It finishes
+decisively or not at all, which is the shape of a defect rather than of bad weights.
+
+**Leading hypothesis (BR45.03), found in a real bout's combat log: a non-player squad with no enemy in
+sight has no action available at all.** The eight authored actions partition into two gates with
+nothing in neither —
+
+| gate | actions |
+|---|---|
+| `enemy_known` | approach, shoot, take_cover, overwatch, hold_position |
+| `is_player_squad` | seek_objective, gather, seek_extraction |
+
+— so a squad-1 unit that cannot see an enemy is offered nothing. Observed directly: `nothing over 488
+candidates` on turns 0 and 1, then a shot the moment the other squad came into view. A squad that never
+moves never closes, and the bout runs to the cap. **Try this first.**
+
+**Already ruled out, so nobody re-derives it:** the information gating (identical 33.3% with the view
+forced unrestricted), the candidate-set cull (no change), and the four defects taskblock-45 fixed — the
+54.2% is post-fix. **Seeds 1, 2 and 6 `TERMINATE` under both planners**, so the incremental regression is
+8 seeds, not 11; diagnose on 5, 10, 14, 20, 22 or 23. **The decision log is the instrument** — every
+defect that block found came out of reading `ai_utility_decision`, not the code.
+
+**Do not chase this by adjusting profile weights.** Hand-tuning a completion rate is inventing balance
+numbers (CLAUDE.md).
+
+#### The fix: search and idle behaviour
+
+Fills the hole above. Four behaviours, each an Action with its own considerations rather than a mode
+flag:
+
+- **Roam** — cover ground steadily, below top speed. The default "I have seen nobody" behaviour, and the
+  minimal fix for the regression on its own.
+- **Hunt** — roam at speed. Weighted up by a recent sighting, noise, or a squadmate's contact.
+- **Putter** — stay local without being idle. For a unit posted somewhere it has reason to hold.
+- **Patrol** — generate two or three points and move between them. **Pick the next point by oldest visit
+  time**, which cycles all of them with no authored order, never bounces between two while a third goes
+  unvisited, and lets an unreachable point simply age out.
+
+**These are load-bearing for completion, not flavour.** Gated player vision means nobody watches an
+enemy roam — but a unit that never moves never closes with anyone, and the bout hits the cap. The AI
+has to act whether or not it is being observed. Tier-gated like everything else: roam suits `MINDLESS`,
+patrol and hunt want memory and a blackboard.
+
+#### Panic — the stuck-unit escape hatch, made player-visible
+
+Also an action: the case where the scorer returns **no positive-utility action at all**, which the
+previous planner could not even express. The approach-fallback was the first narrow instance.
+
+**Label it visibly so the player sees it fire.** Some escapes are necessarily cheats — teleporting,
+extracting off an extraction tile, shutting down — and a player who sees them unlabelled learns the
+wrong rules. An escape hatch nobody can see is indistinguishable from a bug, and the same signal doubles
+as a debugging tell. **A hard turn budget belongs here**: whatever the planner is doing, the turn ends
+rather than the plan running longer, which is what makes "Unit 2 is thinking…" a promise instead of a
+hope.
+
+#### ⏸ Measure before continuing
+
+**If roam does not recover completion, stop here.** Filling the tier table on a planner that cannot
+finish a mission buries the regression under a hundred new decisions, and every later measurement
+inherits the doubt. Re-take the rate, then continue or divert.
+
+#### Then: fill in the tier table
+
+The framework stood up against a deliberately small set — four actions, two tiers at opposite ends, two
+profiles — because a tier that silently does nothing is the failure this design is most exposed to, and
+that is far easier to catch on a small surface.
+
+- **The middle tiers.** Grunt adds cover, ranged and regroup against last-known positions; Elite adds
+  bait, ambush and setting the batch objective, with full team knowledge and predicted enemy moves at
+  depth 2–3. **Elite's lookahead is the one piece with real structural weight** — it tests the
+  resumability constraint hardest, since a recursive search is the hard thing to suspend and resume.
+- **The rest of the action pool.** The executors already exist in `src/logic/actions/` — twenty of them,
+  tested. Each addition needs preconditions and a consideration set, not new machinery: flank, suppress,
+  use-item, call-for-help, and the melee entries once *Momentum* lands.
+- **The rest of the profile table**, as weight vectors over shared considerations (`own_hp_ratio`,
+  `local_threat`, `ally_proximity`, `objective_value`).
+- **Tier should derive from Attributes** by the time this lands, rather than staying authored.
+
+**Retire the playstyle enum here**, not separately. `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER`
+mixes profile with role and range; standoff and cover-seeking both become consideration weights. Every
+test keyed to those playstyles migrates with it — doing it as its own item means touching the same tests
+twice.
+
+#### Riding along, because they are the same authoring
+
+- **Three of the four bullets in *AI target selection and behaviour*** are action-pool content: target
+  selection becomes a consideration, nearest-weapon and per-archetype item behaviour become Actions with
+  preconditions.
+- **No AI path ever queues `ClimbAction` or `HopDownAction`** (see *Multi-level* below). Two more actions
+  in the same pool.
+
+**Acceptance:** completion above 0.5 on the escalated sample; `MIN_COMPLETION_RATE` raised to match with
+its measurement recorded; each tier and each profile decides *differently* from its neighbours on the
+same seed — a table where two rows play identically has a bug in it, and the completion floor will not
+catch it; the cause of the regression written into `CHANGELOG.md` whether or not it is what anyone
 expected.
-
-### 3. AI v2 — fill in the tier table
-**Needs:** *Close the AI completion regression* (there is no point tuning a tier table on a planner
-that cannot finish a mission). **Unblocks:** intelligence reading as character rather than as
-difficulty; sensors-as-parts having tiers to degrade *between*.
-
-taskblock-45 stood the machinery up against a deliberately small set — eight actions, two tiers at
-opposite ends of the axis, two profiles — because a tier that silently does nothing is the failure
-this design is most exposed to, and that is far easier to catch on a small surface. This item is the
-rest of the table. **It is light work against a framework that already exists**, and taskblock-45
-proved the claim: adding the mission actions, overwatch, and the whole batch-objective set were all
-`.tres` edits plus published inputs, with no new machinery.
-
-- **The middle tiers.** Grunt and Elite, between Mindless and Trained. Grunt is the tier that adds
-  "+ last-known positions" — **and it is what taskblock-45 Pass B's own third test bullet actually
-  described**, a unit acting on a remembered position that is now wrong. `MINDLESS` was made strictly
-  current-sight-only by supervisor decision, so chasing a stale sighting belongs here. It needs one
-  entry added to `WorldView.MEMORY_TIERS` and nothing else.
-- **Elite's lookahead** (depth 2–3) is the one piece with real structural weight, and the tier that
-  tests the resumability constraint hardest, since a recursive search is the hard thing to suspend.
-- **The rest of the action pool.** Flank, suppress, use-item, call-for-help, and the melee entries
-  once *Momentum* lands. **`flank` already has an authored batch objective with no consumer** — a
-  `flank` action is what gives it one.
-- **The rest of the profile table.** Note the trap taskblock-45 documented: a profile weight on an
-  input two actions read in OPPOSITE directions is ambiguous and cannot express what is wanted. Publish
-  a second input rather than reusing one inverted.
-
-### 4. Retire the playstyle enum
-**Needs:** the profile table (item 3). **Unblocks:** deleting `AiPlanner.profile_id_for`.
-
-`AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER` mixes profile (aggressive) with role and range
-(marksman). taskblock-45 moved the vocabulary to `AiPlanner.PLAYSTYLES` and bridged it to the profile
-table through one function built to be deleted rather than grown; standoff already became a
-consideration and cover-seeking already became a weight. This is a migration, not an addition — every
-test keyed to those playstyles moves with it.
-
----
 
 # QUEUED
 
@@ -194,28 +259,6 @@ number of milliseconds.
 **This raises the stakes on the stuck-unit escape hatch.** A visible "thinking" state that never ends is
 worse than a freeze, because the player waits *longer* before concluding something is wrong. Panic (see
 below) is the exit strategy and should land with or before this.
-
-### Panic — the stuck-unit escape hatch, made player-visible
-**Needs:** nothing. **Unblocks:** *Player view and sim view* (its indicator needs a guaranteed
-termination); trustworthy AI behaviour generally.
-
-*Promoted out of AI target selection and behaviour, which is where it was first written down.*
-
-A last-resort behaviour when a unit has no productive action, forcing it out rather than idling. The
-approach-fallback is the first narrow instance; the general version catches every stuck case, including
-the one the rebuild makes newly possible — a utility scorer can return **no positive-utility action at
-all**, which is a state the current planner cannot even express.
-
-**Label it visibly so the player sees it fire.** Some escapes are necessarily cheats — a unit
-teleporting, extracting off an extraction tile, shutting down — and a player who sees them unlabelled
-learns the wrong rules. "Panic" says *something went wrong here, don't take this as normal.* An escape
-hatch nobody can see is indistinguishable from a bug, and the same signal doubles as a debugging tell.
-Pairs with command/outcome logging — Panic is the "what happened" line for a unit that had no good
-"what was sent."
-
-**A hard turn budget belongs here too.** Whatever the planner is doing, a unit's turn ends: exceed the
-budget and Panic fires rather than the plan running longer. That is what makes "Unit 2 is thinking…"
-a promise instead of a hope.
 
 ### Tracers and hit visuals
 **Needs:** nothing now. taskblock-44 brought an AI step to ~525ms debug / ~412ms release and made the
@@ -282,6 +325,14 @@ Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAct
 - **No AI path ever queues either action.** The planner still only ever moves via ordinary `MoveAction`
   — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
   in a real bout today.
+- **No part anywhere authors `CLIMBER`, so nothing that exists can climb out of anything.**
+  `Shell.can_climb()` reads the tag (`shell.gd:105`) and no `.tres` carries it. A **content gap, not a
+  pathfinding bug** — the pathfinder correctly reports that a unit which hopped down a ledge cannot get
+  back up, and BR40.04 measured the consequence: a unit spawned in a sunk cell has exactly one reachable
+  cell. Authoring one `CLIMBER` part closes a whole class of stranding in one file.
+- **Until it exists, the planner must treat a hop-down as one-way.** A unit that drops off a ledge to
+  reach something strands itself for the rest of the bout. "Can I get back?" belongs in the decision
+  rather than being discovered afterwards.
 - **Neither action integrates with `MoveAction`'s own mid-move overwatch-trigger hook.** An ordinary
   move can be interrupted mid-flight; a climb or hop-down currently can't be, which is inconsistent
   with "every real exposure the same" once a raised area is common enough to matter tactically.
@@ -437,22 +488,11 @@ concentration instead of heat.
   salvage job.
 - **Sudden pressure loss flings units** toward the drop — see the forced-movement entry below.
 
-**Weak points are emergent from this, not a separate system.** The reactor is the defining example:
-- Three real parts: **core**, **heatsink**, **insulated cladding**. The reactor is insulated — it does NOT
-  leak therms into its sockets, so it can't cook the shell directly. Its **only** cooling path is the
-  heatsink, which is *why* the heatsink is the single point of failure.
-- **Heat loop per round:** reactor makes 10 power and 10 therms; heatsink pulls 10, mitigates 1 (net +9
-  accumulating); sink over 20 → it **physically juts out of the shell** (a pose, so it now projects into
-  the shot plane and is hittable), venting 13/round while extended; hits 0 → retracts.
-- **The weak point is a moving part, not an occlusion toggle.** Nothing un-hides; the heatsink is always
-  there, but only *reachable* when extended. A high-damage round can punch the cladding DT anytime; the
-  vent just opens a window where a *weak* round reaches it too.
-- **Usage-driven and self-balancing:** more reactor use → more therms → more venting. A unit burning all
-  its AP vents predictably; a paced unit stays protected. Same mechanic, playstyle-differentiated, no
-  special-casing.
-- **Failure cascade:** heatsink extended → shot → **mangled** → stops pulling therms → reactor climbs
-  unchecked → over 50 → **meltdown**. The attacker isn't hitting a designated weakspot, they're
-  *sabotaging the cooling system*.
+**Therms supply the trigger math for weak points; the weak points themselves are a separate item.**
+The reactor is the defining example — a vent cycle is a therm threshold, and the window it opens is
+computed here. What that window *looks like* (which pose, which box, where it protrudes) is authored
+content with its own rules, and lives in *Weak points* below. This item owes that one a signal, not an
+implementation.
 
 **General weakness pattern beyond the reactor:** any part can carry a weakness as an **exposure condition**
 (usage-threshold, action-active, fixed-cycle) that moves an internal into reach. "Something opens up while
@@ -463,6 +503,35 @@ nothing visible for a turn or two, then meltdown — unreadable without feedback
 announce itself when *triggered*: a notification saying, calmly, "Nuclear Runaway Detected." Applies to any
 delayed-lethal consequence — signal the cause, not just the death.
 
+
+### Weak points
+**Needs:** *Power and therms* for the trigger math; `02`/`03` (landed). **Unblocks:** the reactor vent
+window; per-part weaknesses generally; the Cutter and Demolitionist fantasies having something to aim at.
+
+**A major benefit that forces a vulnerability.** A powerful reactor must vent heat every few turns —
+vents open, a large heat sink protrudes, and for that window shooting the sink is equivalent to shooting
+the reactor directly: coolant leaks, possible meltdown.
+
+**Discrete from the therm math that drives it.** *Power and therms* computes *when* a window is open; this
+item is *what is exposed while it is* — poses, box placement, which socket the exposed geometry hangs
+off, and how it reads to a player deciding whether the shot is worth taking. The two are separable and
+should stay separable: a weakness triggered by a status effect or a firing cycle rather than by heat
+needs the same authoring and none of the reactor's arithmetic.
+
+**Architecturally cheap because `02` and `03` already exist.** A weak point is a **volume box that only
+projects during certain turns**, plus a damage rule forwarding to its parent. The shot plane already
+projects body-space boxes from the shooter's real angle; a conditionally-projecting box is the same
+machinery with a predicate. Poses already exist and already swap geometry. No new systems — the work is
+the authoring vocabulary and the predicate, not the projection.
+
+**The general pattern beyond the reactor:** any part may carry a weakness as an **exposure condition** —
+a box that projects only while some predicate holds. Firing cycles, vent cycles, status effects, pose
+transitions. Authored per part, evaluated by one rule.
+
+**Delayed-lethal consequences need a signal at trigger time, not death time.** A heat-sink shot that
+starts a meltdown resolves several turns later; the player must learn that the shot *caused* it, or the
+mechanic reads as random. Whatever fires the delayed effect emits at the moment of the hit, not at the
+moment of the death.
 
 ### Mission and voidhulk generation
 **Needs:** Multi-level. **Unblocks:** hulk variants, tilesets, hazard sets.
@@ -504,14 +573,33 @@ deliberately slowing the sense of progress. Usable both ways — diagonal to com
 orthogonal to build dread before an arrival. Costs nothing but a generation preference.
 
 
-### Authoring tools
-**Needs:** Multi-level — the tile format must be height-aware.
+### The tile format
+**Needs:** nothing — **multi-level landed in taskblock-40 and this item's old blocker is gone.**
+**Unblocks:** both editors below, and hand-authored maps as a diagnostic surface.
 
-- **Tile editor** — author a map tile, save it for proc-gen assembly.
-- **Map editor** — author and save a full map, run a **test bout** on it. Built on the tile format.
-- **Main menu** — roll all in-game tools into one reachable place (bot builder, bout sim, map and tile
-  editors). *Resource Editor excepted* — it stays standalone. Built last, once the tools exist.
+A saved, height-aware map tile that proc-gen assembles from. Everything else in the authoring chain sits
+on this, so it goes first and alone.
 
+**Worth more than it looks.** Every AI diagnosis for the last four blocks has been conducted by hunting
+seeds — reading a completion table to find which generated map exposed a defect. A hand-authored map
+turns "find a seed that reproduces this" into "build the situation." That is a permanent reduction in
+the cost of every future investigation, not a content feature.
+
+### Map and tile editors
+**Needs:** *The tile format*. **Unblocks:** *Main menu*.
+
+- **Tile editor** — author a tile, save it for proc-gen assembly.
+- **Map editor** — author and save a full map, and **run a test bout on it**. The test-bout half is the
+  part that matters; an editor that cannot launch what it authored is a file format with a GUI.
+
+Built on the tile format, and on the bout builder that already exists rather than a second path into
+combat.
+
+### Main menu
+**Needs:** *Map and tile editors*. **Unblocks:** nothing.
+
+Rolls the in-game tools into one reachable place — bot builder, bout sim, map and tile editors.
+***Resource Editor excepted*** — it stays standalone. Built last, once there is something to roll up.
 
 ### Moving heavy and multi-tile objects
 **Needs:** Multi-level. **Unblocks:** vehicles.
@@ -716,6 +804,27 @@ Starting signals, not a full audit:
   legitimate — a private carving model — but worth confirming they haven't quietly become a second
   source of elevation truth alongside placed `Surface` height.
 
+### Review pass over the docs
+**Needs:** nothing. **Unblocks:** trusting a `docs/NN` citation without opening the file.
+
+Filed when `docs/09` was renamed and `docs/11` added, to record what was already checked and what
+was not.
+
+- **The `docs/09` rename is verified clean — do not re-derive this.** `09-checkpoints-and-logging.md`
+  became `09-combat-log-and-turn-phases.md`, matching the `# 09 — Combat Log & Turn Phases` heading
+  the file already carried. The content is **byte-identical**, all 237 code citations use the bare
+  `docs/09` form the conventions prescribe, and **nothing anywhere referenced the old filename**. No
+  reference dangles.
+- **`docs/11` is new and nothing cites it yet.** taskblock-45 landed the utility planner with long
+  architectural doc comments on `UtilityScorer`, `UtilityContext`, `WorldView`, `BatchObjective` and
+  `UtilityPlanner` that now restate what `docs/11` says in one place. The convention is to cite
+  `docs/NN` rather than restate, so those comments want thinning to the decisions genuinely local to
+  each file, pointing at `docs/11` for the model itself. **This is the substantive half of this
+  item** — duplicated prose is what goes stale, and it is currently duplicated in five files.
+- **Sweep the rest of `docs/` for statements the taskblock-45 retirement made false.** The
+  engagement-score planner, its penalty constants and its branch cascade are gone; any doc still
+  describing the AI in those terms is describing nothing.
+
 ### Startup opens a generated bout
 **Needs:** nothing.
 
@@ -854,10 +963,24 @@ scaffold would surface it to the AI for free — but no when-to-repair logic exi
 design choice deferred, not a gap.
 
 
-### Support gaps
-Mulebot and follower drones; hacking (Int-based, RAM cost already exists); weak points (poses, failure modes,
-and aimable joints all exist — cheap); voidhulk stability as an environmental hazard.
+### Mulebot and follower drones
+**Needs:** nothing identified. **Unblocks:** carrying capacity beyond a squad's own arms.
 
+Carried over from the old `Support gaps` grouping, unchanged and still unspecified beyond the name. If
+it stays this thin through another review it belongs in `docs/99` until it has a shape.
+
+### Hacking
+**Needs:** Attributes (Int-based), Status. **Unblocks:** *Rampancy*'s active-pressure framing; the
+"control system hacked" presentation note under *Small mechanical notes*.
+
+Int-based, and the RAM cost model it would spend against already exists (`05`). The presentation
+treatment is already written down separately — what is missing is the mechanic it would present.
+
+### Voidhulk stability as an environmental hazard
+**Needs:** nothing identified. **Unblocks:** nothing.
+
+Carried over from `Support gaps`. A hulk that degrades structurally over a mission, as pressure on
+lingering. Unspecified beyond the premise — same caveat as *Mulebot* above.
 
 ### Vehicles
 **Needs:** Moving heavy objects, Matrix mobility.
@@ -1053,18 +1176,29 @@ colours, one `Theme` resource; no CRT, scanline, or glow fakery — that's a lat
 correct flat UI). HL2-era looks, CC0 placeholders in the meantime.
 
 
-### Independent tracks
-**Needs:** nothing; gate nothing.
+### The balance pass
+**Needs:** melee and *Status effects and boosts*, so the numbers are being tuned against a system that
+exists. **Unblocks:** every "is this fun" question; the point at which flagged placeholders stop being
+flagged.
 
-The balance pass — roughly 13 flagged placeholder constants, tuned against watched bouts once melee and status
-exist. Cosmetics and clutter: part painting, tchotchkes, dyes, bag labels.
+**Roughly 13 constants are currently marked as placeholders** across the codebase — deliberately, per
+CLAUDE.md's rule against inventing balance numbers. This is the item that retires the flags.
 
+- **Tuned against watched bouts, not against a spreadsheet.** The instrument is the supervisor watching
+  real fights, with the combat log as the record of what actually happened. The completion sampler and
+  the decision log both feed this — a constant that looks wrong in a log is worth more than one that
+  looks wrong in isolation.
+- **Inventory the flagged constants first**, as a list with what each one governs and what would make it
+  right. Half the work is knowing which numbers are actually load-bearing; several are almost certainly
+  fine at their placeholder value and can be un-flagged rather than tuned.
+- **Done means every flag is either tuned-and-justified or deliberately un-flagged**, with the reasoning
+  written down. A constant that stays flagged forever is a decision nobody made.
 
-### Long backlog
-Mapping gear and **sellable hulk maps**; combat revives beyond the emergent model; matrix hotswap edge cases;
-loot **affixes**; muscle and bone sub-parts; multiplayer; rampancy-as-active-pressure tuning; mental-hazard and
-psychic content (Wis-resisted).
+### Cosmetics and clutter
+**Needs:** nothing; gates nothing. **Unblocks:** nothing.
 
+Part painting, tchotchkes, dyes, bag labels. Genuinely independent of everything and safe to pick up
+whenever something short is wanted.
 
 ### Content to author when its system lands
 **Needs:** the named parent system in each case.
@@ -1098,6 +1232,11 @@ pirates, settlement.
 
 
 ### Small mechanical notes
+- **The FPS readout repaints far faster than it changes.** `FpsMeter`'s window is already one second and
+  its arithmetic is right (frame count over elapsed time, not the mean of per-frame rates); the churn is
+  `CombatLogPanel._process` rebuilding the label every frame. Throttle the *text* to roughly three times a
+  second and keep `sample()` on every frame — sampling once a second instead reduces the average to a
+  single sample and makes the instantaneous figure meaningless.
 - **Double crit** — crit above 100% rolls a second tier (125% = always crit, 25% chance to *double* crit:
   bypass armour AND bonus damage). The single-crit rule is built; the >100% tier is the extension.
 - **Body-as-cover / bullet-catcher** — body-carry as inert cargo is built; the *tactical* use, holding a corpse

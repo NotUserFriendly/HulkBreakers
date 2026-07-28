@@ -16,6 +16,18 @@ can be described as "+10% damage," rewrite it until it's a verb.
 | +10% accuracy | **Spin Up** — free, and shrinks ring 1 (see `02`) |
 | +20% armor | **Angle It** — reaction: turn your thickest plate toward a shot |
 
+**Every perk is data describing a modification, plugged into an existing seam — never bespoke code per
+perk.** This is the constraint the whole system rests on: if perks are each programmed differently the
+system becomes unmaintainable, and the game is meant to outlive the assistant that built it. A perk
+`.tres` declares *what seam it binds and how* — a stat modifier, an action grant, an ordering change, a
+reaction, or a rule override. A perk that cannot be expressed that way means **a missing seam to add**,
+not a special case to write.
+
+**Perks belong to families, and a family is taken as a unit.** *Rapid Fire* grants *Fan the Hammer*,
+*Mag Dump* and *Pump It* — revolver, rifle and shotgun. Because a member does nothing unless you are
+carrying the weapon it binds to, breadth only pays for a build that actually switches weapons, and the
+trade against a single deep perk needs no cap rule to enforce it.
+
 Perk slots are capped by **link tier** (see `04`) — a low-tier link carries few perks, but
 the player picks which, and may choose the highest-tier ones.
 
