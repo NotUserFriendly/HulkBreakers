@@ -260,11 +260,69 @@ static func _repair_stranded_elevation(
 			var cell := Vector2i(x, y)
 			if reachable_set.has(cell):
 				continue
+			# taskblock-46 Pass A (BR40.03/BR40.04): **a cell carrying a blocker is
+			# unreachable BY CONSTRUCTION** — `Pathfinder._base_cost` returns -1.0 for
+			# any cell with a live blocker — so its absence from the flood says nothing
+			# about whether it is stranded. Flattening on that answer punched a
+			# one-tile pit through every raised floor a crate happened to land on, and
+			# for a spawn cell the pit outlived the blocker `_mark_zone` later erased.
+			# Deferred to the connectivity question below instead.
+			if grid.blockers.has(cell):
+				continue
 			if scratch.get_terrain(cell) == MapGenScratch.CellKind.OPEN:
 				scratch.set_level(cell, 0)
 			elif scratch.get_terrain(cell) == MapGenScratch.CellKind.RAMP:
 				scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
 				scratch.set_level(cell, 0)
+	_flatten_stranded_blocker_cells(grid, scratch, reachable_set)
+
+
+## taskblock-46 Pass A: the second half of the strand repair, for the cells the
+## flood cannot answer for.
+##
+## A blocker's own cell is never in the reachable set, so "is this cell stranded"
+## has to be asked of its **surroundings** instead. If anything orthogonally
+## adjacent is reachable, the cell is part of connected ground and keeps the level
+## its room authored. If nothing adjacent is reachable it really is inside a
+## stranded region, and it flattens with that region exactly as before — which is
+## what keeps a cover object sinking along with a room that genuinely gets lowered.
+##
+## **Its own authored level is kept rather than copied from the neighbour.** Copying
+## reads better in prose and is wrong at a room boundary: a crate on the edge of a
+## raised room sits next to a reachable corridor cell at ground level, and adopting
+## that neighbour's level would punch the same hole this pass exists to stop, just
+## from the other direction. The flatten exists to repair strandedness and nothing
+## else, so a cell that is not stranded should not be touched at all.
+static func _flatten_stranded_blocker_cells(
+	grid: Grid, scratch: MapGenScratch, reachable_set: Dictionary
+) -> void:
+	for cell: Vector2i in grid.blockers.keys():
+		if _has_reachable_neighbour(scratch, reachable_set, cell):
+			continue
+		if scratch.get_terrain(cell) == MapGenScratch.CellKind.OPEN:
+			scratch.set_level(cell, 0)
+
+
+## **`Grid.NEIGHBOR_OFFSETS`, deliberately — the same adjacency the flood used.**
+## Movement here is 8-way and a diagonal step costs exactly what an orthogonal one
+## does, so asking "is anything next to this reachable" with a 4-way answer
+## disagrees with the flood that produced `reachable_set`. Written orthogonal-only
+## first, it left one crate sunk out of 9279 across the sweep: a cell whose only
+## reachable neighbour was diagonal read as stranded and flattened. One cell in
+## nine thousand is exactly the density at which a wrong adjacency looks like an
+## acceptable rounding error rather than a bug.
+static func _has_reachable_neighbour(
+	scratch: MapGenScratch, reachable_set: Dictionary, cell: Vector2i
+) -> bool:
+	for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
+		var neighbour: Vector2i = cell + offset
+		if neighbour.x < 0 or neighbour.y < 0:
+			continue
+		if neighbour.x >= scratch.width or neighbour.y >= scratch.rows:
+			continue
+		if reachable_set.has(neighbour):
+			return true
+	return false
 
 
 ## taskblock-38 Pass C: TWO already-OPEN, genuinely lower-level cells in a

@@ -31,35 +31,40 @@ extends GutTest
 ## specifically because of it.
 const SEED_COUNT := 12
 const TURN_CAP := 100
-## **taskblock-45 lowered this from 0.5, and that is a recorded regression rather than a
-## re-measurement.** Read this before trusting the number.
+## **taskblock-45 lowered this from 0.5, and that is a recorded regression rather
+## than a re-measurement.** taskblock-46 re-baselined it on fixed ground and left
+## it here. Read this before trusting the number.
 ##
-## The utility planner that replaced the engagement-score planner completes fewer missions.
-## Re-measured at the end of the block, both planners, same fixture, same probe, 24 seeds, the old
-## one run from a worktree at `107af1e`:
+## Re-measured taskblock-46 Pass B, both planners, same probe, same 24 seeds, on
+## the map generator AFTER Pass A stopped raised rooms sinking objects to level 0.
+## The old planner was run from a worktree at `107af1e` carrying the same map fix,
+## so the only difference between the columns is the planner:
 ##
 ## | | old | new |
 ## |---|---|---|
-## | seeds 0–11 (this test's window) | 9/12 (75.0%) | **5/12 (41.7%)** |
-## | seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
-## | combined | **21/24 (87.5%)** | **13/24 (54.2%)** |
-## | mean turns to complete | 23.6 | **10.6** |
+## | completion, 24 seeds | 18/24 (75.0%) | 12/24 (50.0%) |
+## | mean turns to complete | 31.3 | **10.8** |
+## | failure modes | 6 `TERMINATED` | 10 `TERMINATED`, 2 `STRANDED` |
 ##
-## **It is not uniformly worse — it finishes in less than half the turns when it finishes at
-## all.** The dominant failure is `TERMINATED`, the turn cap running out, not `STRANDED`: mostly it
-## is not losing fights, it is failing to finish. **Seeds 1, 2 and 6 fail under both planners**, so
-## three of the eleven failures predate this block and the incremental regression is eight seeds.
+## **The true rate is 54%**, from a 100-seed run of the new planner on the same
+## ground (54 EXTRACTED, 37 TERMINATED, 9 STRANDED, mean 9.8 turns, 307 s). The
+## 24-seed figure above is one draw; this is the number the floor is set against.
 ##
-## **0.35 is one seed of margin below the 41.7% this test's own window measures.** The sample is
-## deterministic — fixed seeds, seeded RNG — so there is no run-to-run flake to absorb, and the only
-## thing this slack exists for is a future change costing a single seed. It was briefly 0.25, set
-## against a mid-block reading of 37.5%, taken before the last four fixes and never describing
-## the planner as shipped.
+## **The gap narrowed from 33 points to 25** once the ground was level, and it is
+## still a real regression — `BR45.03`. The planner is not uniformly worse: it
+## finishes in a third of the turns when it finishes at all.
 ##
-## **CC recommended against both landing the planner with this open and moving this constant; the
-## supervisor decided otherwise on the evidence above.** The objection is recorded here rather than
-## only in a report that ages out. Raise it back toward 0.5 as `BR45.03` closes — it is the one
-## automated check standing between this project and an AI that cannot finish a mission.
+## **0.35 is unchanged, and deliberately so.** At a true 0.54 a 100-seed run falls
+## below it essentially never, so the gate is comfortable where it matters. It is a
+## 10-seed *sample* that dips below 0.35 about one run in nine — which is why a dip
+## escalates rather than fails (`CompletionSampler`). The old harness pinned seeds
+## 0–11, the pessimistic window, and read 33.3% there while the real rate was 54%;
+## that is what made this constant look like it needed lowering again. It did not.
+##
+## **CC recommended against both landing the planner with this open and moving this
+## constant; the supervisor decided otherwise.** Raise it back toward 0.5 as
+## `BR45.03` closes — it is the one automated check standing between this project
+## and an AI that cannot finish a mission.
 const MIN_COMPLETION_RATE := 0.35
 
 
@@ -79,51 +84,74 @@ func _roster(profile: BotPreset, playstyle: StringName, count: int) -> Array[Bou
 	return roster
 
 
-## Every seed's own outcome and turn count, printed once at the end — the
-## per-seed numbers are the actual useful artifact here (docs/taskblock39's
-## own instruction), not just the pass/fail the assertion below reduces
-## them to.
+## taskblock-46 Pass B: **sample to notice, escalate to measure.**
+##
+## Ten seeds drawn at random per run, every one printed. If the sample clears the
+## floor the run is done and cheap. If it dips, that proves nothing by itself — at
+## the measured 0.54 a ten-seed draw lands below 0.35 about one run in nine by
+## chance — so the verdict comes from `CompletionSampler.escalate()`, a fixed
+## 100-seed list that is deterministic where the sample is not.
+##
+## **This replaces a pinned window that was measuring the wrong thing.** Seeds 0–11
+## read 33.3% while the real rate was 54%, because that window is the pessimistic
+## one; the response to a floor that keeps flapping had twice been to lower it.
+##
+## The RNG is seeded from the clock ON PURPOSE. A fixed seed here would rebuild the
+## pinned window under a new name — the point is that the sample walks the space
+## over runs, and the printed seed list is what makes any individual run
+## reproducible afterwards.
 func test_bout_completion_rate_meets_the_measured_floor() -> void:
-	var profile_a: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
-	var profile_b: BotPreset = DataLibrary.get_preset(&"a_brand_laborer_battery_mods")
-	assert_not_null(profile_a, "sanity: a_brand_laborer must load")
-	assert_not_null(profile_b, "sanity: a_brand_laborer_battery_mods must load")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(Time.get_unix_time_from_system())
 
-	var completed := 0
-	var summary_lines: Array[String] = []
-	for map_seed in range(SEED_COUNT):
-		var result: Dictionary = BoutSetup.build_bout(
-			_roster(profile_a, &"AGGRESSIVE", 1), _roster(profile_b, &"AGGRESSIVE", 1), map_seed
+	var sampled: Dictionary = await CompletionSampler.sample(rng)
+	print("\n--- completion sample ---")
+	for line: String in CompletionSampler.describe(sampled):
+		print(line)
+
+	var rate: float = float(sampled["rate"])
+	# Reported every run, pass or fail. It is the one figure here that does not
+	# depend on which seeds came up: how often this gate escalates is a statement
+	# about how marginal the planner is.
+	print(
+		(
+			"escalation probability at this rate: %.1f%% (~1 run in %d)"
+			% [
+				CompletionSampler.escalation_probability(rate, MIN_COMPLETION_RATE) * 100.0,
+				int(
+					round(
+						(
+							1.0
+							/ maxf(
+								0.0001,
+								CompletionSampler.escalation_probability(rate, MIN_COMPLETION_RATE)
+							)
+						)
+					)
+				)
+			]
 		)
-		assert_eq(result.error, "", "seed %d: bout must build" % map_seed)
+	)
+	assert_gt(int(sampled["counted"]), 0, "sanity: the sample actually ran bouts")
 
-		var runner := BoutRunner.new(result.state, result.mission, TURN_CAP)
-		await runner.run_to_completion()
+	if not CompletionSampler.should_escalate(rate, MIN_COMPLETION_RATE):
+		return
 
-		var outcome: int = result.mission.outcome
-		assert_ne(
-			outcome,
-			Enums.MissionOutcome.UNDECIDED,
-			"seed %d: BoutRunner guarantees a terminal outcome" % map_seed
+	CompletionSampler.escalations += 1
+	print(
+		(
+			"sample %.1f%% is below the %.1f%% floor — escalating to the deterministic %d-seed run"
+			% [rate * 100.0, MIN_COMPLETION_RATE * 100.0, CompletionSampler.ESCALATION_SEEDS]
 		)
-		if outcome == Enums.MissionOutcome.EXTRACTED:
-			completed += 1
-		summary_lines.append(
-			(
-				"seed %d: %s in %d turns"
-				% [map_seed, Enums.MissionOutcome.keys()[outcome], runner.turns_taken]
-			)
-		)
-
-	var rate: float = float(completed) / SEED_COUNT
-	print("\nbout completion rate: %d/%d (%.1f%%)" % [completed, SEED_COUNT, rate * 100.0])
-	for line: String in summary_lines:
-		print("  " + line)
+	)
+	var full: Dictionary = await CompletionSampler.escalate()
+	for line: String in CompletionSampler.describe(full):
+		print(line)
 
 	assert_true(
-		rate >= MIN_COMPLETION_RATE,
+		float(full["rate"]) >= MIN_COMPLETION_RATE,
 		(
-			"completion rate %.1f%% fell below the measured floor %.1f%%"
-			% [rate * 100.0, MIN_COMPLETION_RATE * 100.0]
+			"completion rate %.1f%% over %d deterministic seeds fell below the floor %.1f%%"
+			% [float(full["rate"]) * 100.0, int(full["counted"]), MIN_COMPLETION_RATE * 100.0]
 		)
 	)
