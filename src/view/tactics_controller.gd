@@ -689,7 +689,7 @@ func _enter_aim_or_step_out_mode(target: Unit) -> void:
 		ActionCatalog.provider_for(shooter, armed_action.id) if armed_action != null else null
 	)
 	if weapon != null:
-		var origin_covered: bool = UnitAI.is_covered_from(
+		var origin_covered: bool = Cover.is_covered_from(
 			shooter.cell, target.cell, WorldView.full(selection.state), shooter
 		)
 		if origin_covered:

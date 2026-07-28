@@ -79,7 +79,9 @@ func test_a_single_units_plan_yields_more_than_once_while_it_runs() -> void:
 	# measure the yielding rather than the abort.
 	pacer.budget_msec = 1000 * 60
 
-	await UnitAI.plan_turn(field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer)
+	await AiPlanner.plan_turn(
+		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+	)
 
 	assert_gt(pacer.yields, 1, "the main thread was handed back repeatedly DURING one plan")
 	assert_false(pacer.aborted, "and it finished on its own rather than being cut off")
@@ -100,7 +102,9 @@ func test_real_frames_pass_while_one_unit_plans() -> void:
 	var tick: Callable = func() -> void: frames[0] += 1
 	get_tree().process_frame.connect(tick)
 
-	await UnitAI.plan_turn(field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer)
+	await AiPlanner.plan_turn(
+		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+	)
 	get_tree().process_frame.disconnect(tick)
 
 	assert_gt(frames[0], 0, "the tree kept running while the unit thought")
@@ -113,7 +117,9 @@ func test_a_headless_plan_never_suspends() -> void:
 	var pacer := PlanPacer.new()  # deliberately no frame_signal
 	pacer.chunk = 1
 
-	await UnitAI.plan_turn(field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer)
+	await AiPlanner.plan_turn(
+		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+	)
 
 	assert_eq(pacer.yields, 0, "nobody is watching, so nothing yields")
 
@@ -128,7 +134,7 @@ func test_an_overrun_budget_ends_the_scan_rather_than_extending_it() -> void:
 	var pacer := PlanPacer.new()
 	pacer.budget_msec = 0  # already overrun on the first candidate
 
-	var queue: ActionQueue = await UnitAI.plan_turn(
+	var queue: ActionQueue = await AiPlanner.plan_turn(
 		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
 	)
 
@@ -136,30 +142,26 @@ func test_an_overrun_budget_ends_the_scan_rather_than_extending_it() -> void:
 	assert_gt(queue.actions.size(), 0, "and the unit still produced a real turn")
 
 
-## Aborting is safe at any iteration because the incumbent is seeded with the
-## unit's own cell and only replaced on a strict improvement — so a cut-off scan
-## returns a legitimate answer, never a partial one.
-func test_an_aborted_scan_still_returns_a_usable_cell() -> void:
+## Aborting is safe at any iteration, because candidates are only ever APPENDED to
+## the scored list — so `UtilityScorer.best_index` over a cut-off scan returns the
+## best of what was actually scored, which is a legitimate answer at every point
+## rather than a partial one.
+##
+## taskblock-45 Pass E: this used to assert the retired planner's own version of
+## the property — an incumbent seeded with the unit's own cell and replaced only on
+## a strict improvement. The property survived the planner; the mechanism did not.
+func test_an_aborted_scan_still_returns_a_usable_turn() -> void:
 	var field: Dictionary = _field()
-	var actor: Unit = field["actor"]
 	var pacer := PlanPacer.new()
 	pacer.budget_msec = 0
+	pacer.frame_signal = get_tree().process_frame
 
-	var chosen: Vector2i = await UnitAI._pick_engagement_position(
-		actor,
-		field["enemy"],
-		WorldView.full(field["state"]),
-		UnitAI.MARKSMAN_PREFERRED_RANGE,
-		false,
-		actor.shell.find_part(&"actor_gun"),
-		[Vector2i(6, 6), Vector2i(7, 7), Vector2i(4, 4)],
-		true,
-		{},
-		null,
-		pacer
+	var queue: ActionQueue = await AiPlanner.plan_turn(
+		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
 	)
 
-	assert_eq(chosen, actor.cell, "cut off immediately, the incumbent is the answer")
+	assert_true(pacer.aborted, "cut off on the first candidate")
+	assert_gt(queue.actions.size(), 0, "and the turn still ends rather than hanging")
 
 
 func test_the_budget_latches_so_it_reports_the_same_answer_twice() -> void:

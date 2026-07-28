@@ -1320,3 +1320,41 @@ same relative order this ledger has always kept them in, oldest work first. All 
   only reachable through an actual export.
 - **`CC`-owned and resolved directly** — found by CC, fixed by CC, confirmed by the export that
   exposed it now working end to end.
+
+### BR45.02 — Resolved — owner: `CC`
+**The AI planning bench has been unable to parse since taskblock-44, and nothing noticed**
+- **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
+- **Found 2026-07-27 during taskblock-45 Pass D**, by running `tools/bench_ai_planning.gd` — the
+  instrument Pass D's whole head-to-head depends on. It does not run. It does not even compile:
+
+  ```
+  Parse Error: argument 2 should be "WorldView" but is "CombatState"   (ai_planning_bench.gd:195)
+  Parse Error: "_pick_engagement_position()" is a coroutine, so it must be called with "await"
+  ```
+
+- **Two taskblock-44 changes broke it and neither was noticed.** Pass C changed the planner's
+  helpers to take a `WorldView` instead of a `CombatState`; Pass D made
+  `_pick_engagement_position` a coroutine. `AiPlanningBench` calls all of them directly and was
+  updated for neither. **Every number taskblock-44 and taskblock-45 quote from this bench predates
+  the break** — they are not wrong, but nothing has been measurable since, and the 251.2ms figure
+  taskblock-45's own spec opens with cannot currently be re-taken.
+- **This is BR40.02's failure mode exactly, one directory over.** A renamed identifier orphaned a
+  tool, nothing re-ran it, and it rotted silently. taskblock-41 Pass E built a parse guard for
+  precisely this — but scoped it to `tools/checkpoints/checkpoint_*.gd`, so `tools/` itself stayed
+  unguarded. A guard that covers one directory is a guard that documents which directory was on
+  someone's mind, not which ones can rot.
+- **Fixed in taskblock-45 Pass D** by repairing the bench and by **widening `parse_guard.gd` to
+  every `tools/*.gd`**, so the class of failure is closed rather than this instance of it.
+- **The widened guard was wrong before it was right, and that is the part worth keeping.** `load()`
+  returns a `GDScript` object for a script that failed to COMPILE — the resource loads and the compile
+  fails, and those are separate events — so the first version reported "16 script(s) OK" with a
+  deliberate syntax error sitting in the tree. It checks `reload() == OK` now, and it is verified in
+  BOTH directions: a deliberate break makes it exit 1 and name the file, removing the break makes it
+  pass. A guard that can only ever pass is worse than no guard.
+- **`tools/migrate_data.gd` turned out to be broken too, and is meant to be.** Its own doc comment
+  records that the generators it walks were deleted by the pass that landed its output, so it can
+  never parse again. It carries an `@retired-tool` marker the guard skips — the marker lives in the
+  retired file rather than in a list inside the guard, so the exemption and its reason cannot drift
+  apart.
+- **`Resolved`:** both halves are verified — the bench runs and produced taskblock-45 Pass D's numbers,
+  and the guard demonstrably fails on a broken tool. `CC`-owned, closed by CC.

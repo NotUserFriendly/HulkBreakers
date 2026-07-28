@@ -26,7 +26,7 @@ extends Logger
 ## | Anything before `install()` runs | **NO** | — |
 ##
 ## The GDScript runtime-error case is the valuable one and was not a given:
-## the callback carries the REAL script file and line (`unit_ai.gd:412`), so a
+## the callback carries the REAL script file and line (`some_script.gd:412`), so a
 ## null deref mid-resolution lands in the log next to the event before it.
 ##
 ## **A segfault is not reachable and never will be from in-process GDScript** —

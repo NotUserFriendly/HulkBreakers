@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_wqy4i"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_xenki"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_u0r4n"]
+
+[sub_resource type="Resource" id="Resource_o7d32"]
+script = ExtResource("2_xenki")
+slope = 0.8
+offset = 0.2
+invert = true
+
+[sub_resource type="Resource" id="Resource_p7ke4"]
+script = ExtResource("1_wqy4i")
+input_id = &"own_integrity"
+curve = SubResource("Resource_o7d32")
+
+[sub_resource type="Resource" id="Resource_1qtx6"]
+script = ExtResource("2_xenki")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_3q4wg"]
+script = ExtResource("1_wqy4i")
+input_id = &"objective_hold"
+curve = SubResource("Resource_1qtx6")
+
+[resource]
+script = ExtResource("3_u0r4n")
+id = &"hold_position"
+display_name = "Hold position"
+executor_id = &"hold_position"
+preconditions = Array[StringName]([&"enemy_known", &"cell_is_current", &"can_defer_turn", &"lof_blocked"])
+considerations = Array[ExtResource("1_wqy4i")]([SubResource("Resource_p7ke4"), SubResource("Resource_3q4wg")])
+base_weight = 0.3
+ends_turn = true

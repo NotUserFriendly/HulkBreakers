@@ -38,7 +38,13 @@ const NO_LEADER := -1
 ## A member with no marker is a follower.
 const LEADER_MARK := "*"
 
-## batch_id(int) -> {"round": int, "leader_id": int, "destination": Vector2i}
+## taskblock-45 Pass C: what a batch with no objective chosen carries. Read as
+## "plan for yourself" by every consumer, which is what makes the whole mechanism
+## dormant until something actually assigns one.
+const NO_OBJECTIVE: StringName = &""
+
+## batch_id(int) -> {"round": int, "leader_id": int, "destination": Vector2i,
+## "objective": StringName}
 var _plans: Dictionary = {}
 
 
@@ -47,12 +53,33 @@ var _plans: Dictionary = {}
 ## same round is refused rather than overwriting, because the first member to act
 ## IS the leader and a follower must never redirect the batch mid-manoeuvre.
 ## Returns true when the record was actually taken.
-func record(batch_id: int, round_number: int, leader_id: int, destination: Vector2i) -> bool:
+##
+## taskblock-45 Pass C: `objective` is the coarse call — advance, hold, withdraw,
+## flank — the leader made for the whole batch this round. **It is what followers
+## actually consume**, in place of taskblock-43 Pass D's copied `destination`: an
+## objective is injected as a consideration input and each follower still decides
+## its own turn, where a destination made every follower converge on one cell and
+## produced a follower planner that was not dramatically cheaper (that pass's own
+## unmet acceptance). `destination` is retained because the old planner still reads
+## it for this block only, and because the board badge is derived from the same
+## record.
+func record(
+	batch_id: int,
+	round_number: int,
+	leader_id: int,
+	destination: Vector2i,
+	objective: StringName = NO_OBJECTIVE
+) -> bool:
 	if batch_id == 0:
 		return false
 	if not for_batch(batch_id, round_number).is_empty():
 		return false
-	_plans[batch_id] = {"round": round_number, "leader_id": leader_id, "destination": destination}
+	_plans[batch_id] = {
+		"round": round_number,
+		"leader_id": leader_id,
+		"destination": destination,
+		"objective": objective,
+	}
 	return true
 
 
@@ -82,10 +109,20 @@ func leader_id_for(batch_id: int, round_number: int) -> int:
 ## batch to take a turn this round" needs no leader field, no promotion logic
 ## when one dies, and nothing that can go stale. A no-op for the independent
 ## (`batch_id == 0`) units that make up every bout until one is assigned by hand.
-func claim(unit: Unit, round_number: int, destination: Vector2i) -> void:
+func claim(
+	unit: Unit, round_number: int, destination: Vector2i, objective: StringName = NO_OBJECTIVE
+) -> void:
 	if unit == null or unit.batch_id == 0:
 		return
-	record(unit.batch_id, round_number, unit.id, destination)
+	record(unit.batch_id, round_number, unit.id, destination, objective)
+
+
+## taskblock-45 Pass C: this batch's objective for `round_number`, or
+## `NO_OBJECTIVE` when it has none — never assigned, assigned in an earlier round,
+## or assigned by a leader that had no blackboard access to set one with.
+func objective_for(batch_id: int, round_number: int) -> StringName:
+	var plan: Dictionary = for_batch(batch_id, round_number)
+	return plan.get("objective", NO_OBJECTIVE) if not plan.is_empty() else NO_OBJECTIVE
 
 
 ## taskblock-43 Pass D: `unit`'s batch plan if it is a FOLLOWER — a member of a

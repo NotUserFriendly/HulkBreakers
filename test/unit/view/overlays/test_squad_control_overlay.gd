@@ -176,7 +176,7 @@ func _covered_step_out_bout() -> Dictionary:
 	torso.sockets = [hand_socket]
 
 	var grid := GridFixture.flat(10, 10)
-	# The row-1 wall band `test_unit_ai.gd`'s own AI-scorer fixture needs
+	# The row-1 wall band the AI-scorer fixtures need
 	# (blocking the diagonal shortcut a greedy per-turn scorer would
 	# otherwise take) is "irrelevant to TacticsController itself (it never
 	# repositions)" per this function's own prior doc comment -- dropped

@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_vjdwd"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_vavel"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_hfkhb"]
+
+[sub_resource type="Resource" id="Resource_u6ubi"]
+script = ExtResource("2_vavel")
+
+[sub_resource type="Resource" id="Resource_pkp1m"]
+script = ExtResource("1_vjdwd")
+input_id = &"cover"
+curve = SubResource("Resource_u6ubi")
+
+[sub_resource type="Resource" id="Resource_yqjbk"]
+script = ExtResource("2_vavel")
+slope = 0.75
+offset = 0.25
+invert = true
+
+[sub_resource type="Resource" id="Resource_ms5kh"]
+script = ExtResource("1_vjdwd")
+input_id = &"own_integrity"
+curve = SubResource("Resource_yqjbk")
+
+[sub_resource type="Resource" id="Resource_360d7"]
+script = ExtResource("2_vavel")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_ps2sm"]
+script = ExtResource("1_vjdwd")
+input_id = &"standoff_match"
+curve = SubResource("Resource_360d7")
+
+[sub_resource type="Resource" id="Resource_1tfu1"]
+script = ExtResource("2_vavel")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_ncqvf"]
+script = ExtResource("1_vjdwd")
+input_id = &"objective_withdraw"
+curve = SubResource("Resource_1tfu1")
+
+[resource]
+script = ExtResource("3_hfkhb")
+id = &"take_cover"
+display_name = "Take cover"
+executor_id = &"move"
+preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere", &"cell_is_covered"])
+considerations = Array[ExtResource("1_vjdwd")]([SubResource("Resource_pkp1m"), SubResource("Resource_ms5kh"), SubResource("Resource_ps2sm"), SubResource("Resource_ncqvf")])

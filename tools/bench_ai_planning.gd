@@ -15,5 +15,7 @@ extends SceneTree
 
 
 func _init() -> void:
-	AiPlanningBench.new().run(OS.get_cmdline_user_args())
+	# tb45 Pass D: awaited — `run()` became a coroutine when the bench was repaired
+	# for taskblock-44's planner changes (BR45.02).
+	await AiPlanningBench.new().run(OS.get_cmdline_user_args())
 	quit()

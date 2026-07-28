@@ -154,7 +154,7 @@ static func provider_for(
 ## taskblock-24 Pass A: the ONE place an action id becomes a real
 ## `CombatAction` instance — used by both the player's own click-to-fire
 ## confirm (`TacticsController.confirm_shot`/`_confirm_step_out`) and the
-## AI's own firing helper (`UnitAI._firing_action_for`), so neither can
+## AI's own firing helper (`preferred_firing_action_id` below), so neither can
 ## silently drift from what a weapon actually provides. `&"burst"` is the
 ## one id backed by a distinct class. Returns null for any other id
 ## (never invents an action for one this file doesn't recognize) — a
@@ -197,6 +197,53 @@ static func build_untargeted_action(
 	if action_id == &"overwatch":
 		return OverwatchAction.new(unit, weapon_id)
 	return null
+
+
+## taskblock-24 Pass A/B1, moved here from the engagement-score planner by taskblock-45 Pass B:
+## which firing action id `weapon_id`'s own part should fire WITH right now.
+##
+## Prefers `&"burst"` when the weapon provides it AND it is actually legal right
+## now (`is_legal` is the one true afford/range/LoS check, never a re-derived guess
+## that could drift from it), falling back to `&"shoot"` only when burst is not,
+## then to `&"stab"` for a melee-only provider. `&""` when the weapon provides no
+## legal firing action at all.
+##
+## **It lives here rather than in a planner because it is a question about the
+## WEAPON, not about the plan.** It was moved out of the engagement-score planner
+## while taskblock-45 had two planners alive at once — leaving it in either would
+## have made the other duplicate it or reach into a file scheduled for deletion,
+## both the "two code paths decide the same thing" bug CLAUDE.md names directly.
+## `provider_for` and `build_firing_action` were already here, so this is the seam
+## rejoining the rest of itself.
+static func preferred_firing_action_id(
+	unit: Unit, weapon_id: StringName, target_cell: Vector2i, state: CombatState
+) -> StringName:
+	var weapon: Part = unit.shell.find_part(weapon_id)
+	if weapon == null:
+		return &""
+	for action_id: StringName in [&"burst", &"shoot", &"stab"]:
+		if provider_for(unit, action_id) != weapon:
+			continue
+		var candidate: CombatAction = build_firing_action(action_id, unit, weapon_id, target_cell)
+		if candidate != null and candidate.is_legal(state):
+			return action_id
+	return &""
+
+
+## The same burst-over-shoot preference as `preferred_firing_action_id`, but
+## WITHOUT requiring it to already be legal from here — for a caller (the step-out
+## fallback) reached PRECISELY because firing from here is currently illegal;
+## gating on `is_legal` at the pre-move cell would make this always return `&""`
+## and the fallback could never trigger. `&""` only when the weapon provides no
+## firing action at all.
+static func provided_firing_action_id(unit: Unit, weapon_id: StringName) -> StringName:
+	var weapon: Part = unit.shell.find_part(weapon_id)
+	if weapon == null:
+		return &""
+	for action_id: StringName in [&"burst", &"shoot"]:
+		if provider_for(unit, action_id) == weapon:
+			return action_id
+	return &""
 
 
 ## BR30.xx: the AP `action_id` actually charges from `provider` — almost

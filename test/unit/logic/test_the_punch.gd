@@ -6,7 +6,7 @@ extends GutTest
 ## engine-mechanism level with a synthetic fixture, not by editing the
 ## real data/parts/hand.tres: that file's exact fields are pinned by
 ## test_data_migration_losslessness.gd's own snapshot, and giving it a
-## nonzero `damage` collides with UnitAI._find_weapon_id (first living
+## nonzero `damage` collides with the AI's own weapon pick (first living
 ## part with damage > 0 — the hand would win over the actual gripped gun
 ## for every existing ranged loadout, breaking test_full_mission.gd and
 ## test_combat_tester_presets.gd). A real "every shell gets a punching

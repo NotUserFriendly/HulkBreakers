@@ -15,13 +15,24 @@ extends GutTest
 ## Mindless unit still knows where the walls are. Occupancy is not geometry, and
 ## the blackboard is a tier capability.
 
-const PLANNER_PATH := "res://src/logic/ai/unit_ai.gd"
+## taskblock-45 Pass E: the guard follows the planner. The old one is retired; the
+## files that now read unit knowledge are the utility planner and the context that
+## feeds it, and BOTH are watched — a chokepoint guarded in one of the two files
+## that can bypass it is not a chokepoint.
+const PLANNER_PATHS: Array[String] = [
+	"res://src/logic/ai/utility_planner.gd",
+	"res://src/logic/ai/utility_context.gd",
+]
 
 
 func _planner_source() -> String:
-	var file: FileAccess = FileAccess.open(PLANNER_PATH, FileAccess.READ)
-	assert_not_null(file, "the planner source must be readable for this guard to mean anything")
-	return file.get_as_text() if file != null else ""
+	var combined: String = ""
+	for path: String in PLANNER_PATHS:
+		var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+		assert_not_null(file, "%s must be readable for this guard to mean anything" % path)
+		if file != null:
+			combined += file.get_as_text() + "\n"
+	return combined
 
 
 func _code_lines() -> Array[String]:
@@ -143,7 +154,7 @@ func test_a_restricted_view_makes_the_unit_decide_differently() -> void:
 
 	var full: WorldView = WorldView.full(state)
 	assert_eq(
-		UnitAI._nearest_living_enemy(hunter, full), hidden, "unrestricted, it knows about the enemy"
+		UtilityContext.build(hunter, full).target, hidden, "unrestricted, it knows about the enemy"
 	)
 
 	var blind: WorldView = WorldView.full(state)
@@ -154,7 +165,7 @@ func test_a_restricted_view_makes_the_unit_decide_differently() -> void:
 		GridFixture.place_wall(grid, Vector2i(11, y))
 
 	assert_null(
-		UnitAI._nearest_living_enemy(hunter, blind),
+		UtilityContext.build(hunter, blind).target,
 		"restricted and with nothing remembered, there is no enemy to plan against"
 	)
 

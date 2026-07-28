@@ -7,7 +7,7 @@ extends RefCounted
 ## fires, and returns as one automated motion... three normal actions in
 ## the ordered resolver, never a special-cased triple." `assemble_for_shoot()`
 ## is the ONE shared entry point (D2: "shared AI and player path... one
-## implementation") — a human's SHOOT click and UnitAI's own ranged
+## implementation") — a human's SHOOT click and the AI's own ranged
 ## planner both call this, never two separate notions of "how do I step
 ## out to hit this."
 
@@ -18,7 +18,7 @@ const _ORTHOGONAL_OFFSETS: Array[Vector2i] = [
 
 ## D1: "the origin cell is covered from the target... the firing cell is
 ## NOT covered from the target... orthogonally adjacent." Reuses
-## `UnitAI.is_covered_from` as-is for both halves — its own existing
+## `Cover.is_covered_from` as-is for both halves — its own existing
 ## definition (no LoS at all counts as maximally covered, same as a
 ## physical blocker in the way) already matches "something blocks the
 ## shot from here" either way, so this is never a second, narrower cover
@@ -29,9 +29,9 @@ static func is_legal_step_out(
 ) -> bool:
 	if Grid.distance_manhattan(origin_cell, firing_cell) != 1:
 		return false
-	if not UnitAI.is_covered_from(origin_cell, target.cell, WorldView.full(state), unit):
+	if not Cover.is_covered_from(origin_cell, target.cell, WorldView.full(state), unit):
 		return false
-	if UnitAI.is_covered_from(firing_cell, target.cell, WorldView.full(state), unit):
+	if Cover.is_covered_from(firing_cell, target.cell, WorldView.full(state), unit):
 		return false
 	return true
 
@@ -76,7 +76,7 @@ static func sort_by_safety(
 
 ## D2: builds the Move(->firing)+Attack+Move(->origin) triple into
 ## `queue`, through the exact same `enqueue()`/`preview()` legality gate
-## every other queued action goes through (`UnitAI._plan_ranged` is the
+## every other queued action goes through (the AI planner is the
 ## established precedent for composing a Move+Attack this way; a third
 ## leg follows identically). taskblock-27 Pass B2 (docs/SUPERSEDED.md):
 ## reverses this pass's own original "real MP/AP cost for both moves, no
@@ -89,7 +89,7 @@ static func sort_by_safety(
 ## never trust the raw grid mid-assembly) — `origin_cell` still shows as
 ## occupied by `unit` itself in the real, pre-move `state.grid`
 ## (Pathfinder.move_cost treats any occupied cell as unwalkable), so the
-## SAME trap `UnitAI._has_path_toward` had to work around for "a
+## SAME trap the retired planner's own reachability check had to work around for "a
 ## candidate's own cell is never walkable" — here the fix is reading the
 ## path off the preview where the outbound move has already actually
 ## relocated the unit, leaving origin genuinely vacant.
@@ -157,7 +157,7 @@ static func build_triple(
 static func assemble_for_shoot(
 	state: CombatState, unit: Unit, action_id: StringName, weapon_id: StringName, target: Unit
 ) -> ActionQueue:
-	if not UnitAI.is_covered_from(unit.cell, target.cell, WorldView.full(state), unit):
+	if not Cover.is_covered_from(unit.cell, target.cell, WorldView.full(state), unit):
 		return null
 	var candidates: Array[Vector2i] = candidate_step_out_cells(state, unit, unit.cell, target)
 	if candidates.is_empty():

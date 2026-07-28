@@ -19,15 +19,36 @@ func _bout(map_seed: int) -> Dictionary:
 	return BoutSetup.build_bout(roster, roster, map_seed)
 
 
+## taskblock-45 Pass E: a utility decision contributes the ACTION IT CHOSE, not
+## just its event kind.
+##
+## **A queue shape cannot tell two decisions apart when they land on the same
+## cell** — `approach` and `take_cover` both emit a `MoveAction`, so an event-kind
+## diff reads them as identical while the decisions differ. That made the
+## batch-behaviour claim below unfalsifiable in either direction: it could pass on
+## an unrelated difference or fail on a real one it could not see. The decision log
+## exists for exactly this question, so it is what gets read.
 func _action_sequence(state: CombatState, mission: MissionState, steps: int) -> Array[String]:
+	# **Its own sink across the whole run, not `runner.last_events`.** `last_events`
+	# captures what RESOLUTION emitted, and a planning decision is emitted during
+	# TACTICS, before `resolve_until` is ever called — so the decisions were
+	# invisible to this helper entirely. That is why the batch claim below could
+	# neither pass nor fail for the right reason.
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
 	var runner := BoutRunner.new(state, mission)
-	var taken: Array[String] = []
 	var i := 0
 	while not runner.finished and i < steps:
 		await runner.step()
-		for event: LogEvent in runner.last_events:
-			taken.append("%s@%d" % [event.kind, event.unit_id])
 		i += 1
+	state.combat_log.remove_sink(sink)
+
+	var taken: Array[String] = []
+	for event: LogEvent in sink.events:
+		if event.kind == &"ai_utility_decision":
+			taken.append("chose:%s@%d" % [event.data.get("winner", "nothing"), event.unit_id])
+			continue
+		taken.append("%s@%d" % [event.kind, event.unit_id])
 	return taken
 
 
@@ -194,17 +215,29 @@ func test_default_zero_units_produce_an_unchanged_action_sequence() -> void:
 	assert_gt(expected.size(), 0, "sanity: the bout actually did something")
 
 
-## The other side of the same claim, and **this test was deliberately written in
-## Pass C to break in Pass D.** It asserted that assigning a batch changed
-## nothing, which was true while `batch_id` was plumbing nobody read; Pass D made
-## followers plan differently, so the assertion inverted rather than being
-## deleted. Keeping it as a live claim in the opposite direction is what makes
-## "batches now change behaviour" a deliberate, dated edit instead of a quietly
-## removed test.
+## The other side of the same claim, and **this test has been re-aimed twice.**
 ##
-## `test_batch_follow.gd` is where WHAT changes is pinned; this only pins THAT it
-## does, from the same seeded-bout angle the unbatched case above uses.
-func test_assigning_a_batch_now_changes_behaviour() -> void:
+## Pass C wrote it asserting that assigning a batch changed nothing, which was true
+## while `batch_id` was plumbing nobody read. taskblock-43 Pass D inverted it: a
+## follower copied its leader's DESTINATION, so a batched bout diverged from an
+## unbatched one within a few steps and an event-stream diff could see that.
+##
+## **taskblock-45 Pass C replaced the destination with an objective, and the
+## original assertion becomes true again — for a completely different reason.** An
+## objective is injected as a consideration input and biases what a follower WANTS;
+## it is read only by the combat actions. In this seeded bout every unit is running
+## MISSION actions (walk to the node, gather, walk to extraction) which read no
+## objective input at all, and the leader cannot see an enemy on its own first turn,
+## so no objective is even chosen. Nothing changes, and nothing should.
+##
+## That is a real guard rather than a tautology: **it fails the moment an objective
+## starts damping something it has no business damping** — a mission action that
+## grew an objective consideration, or a dormant vector that stopped being neutral.
+##
+## The behavioural claim — that a follower under `withdraw` decides differently from
+## one under `advance` — is `test_batch_objective.gd`'s, on a board where combat
+## actions are genuinely on offer and an enemy is genuinely visible.
+func test_assigning_a_batch_leaves_a_mission_only_bout_untouched() -> void:
 	var a: Dictionary = _bout(31337)
 	var expected: Array[String] = await _action_sequence(a.state, a.mission, 8)
 
@@ -213,4 +246,5 @@ func test_assigning_a_batch_now_changes_behaviour() -> void:
 		unit.batch_id = 1
 	var actual: Array[String] = await _action_sequence(b.state, b.mission, 8)
 
-	assert_ne(actual, expected, "tb43 Pass D: followers no longer plan for themselves")
+	assert_eq(actual, expected, "an objective may only ever bias a COMBAT decision")
+	assert_gt(expected.size(), 0, "sanity: the bout actually did something")

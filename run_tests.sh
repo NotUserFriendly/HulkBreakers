@@ -8,40 +8,21 @@ GODOT="${GODOT:-godot}"
 #    gdlint/gdformat. Project style overrides live in ./gdlintrc (max-returns
 #    raised from the default 6 — this codebase's is_legal() validation gates
 #    are deliberate early-return chains, not something to collapse for a
-#    linter default; max-public-methods raised from 20, currently 37
-#    (test_inspect_panel.gd keeps landing exactly the taskblock's own bundled/
-#    single-fix tests that push it one over — taskblock-26 Pass E, then
-#    taskblock-27 Pass D5) — a GUT test file's own `test_*` functions are
-#    deliberately many small, focused cases, not something to split apart just
-#    to satisfy a linter default; raised again to 45 across taskblock-38 Pass
-#    C — test_pathfinder.gd's own placement-mode migration-bridge coverage
-#    (walkable-tag gating, ramp-tagged edges, MP round-up) landed alongside
-#    every existing terrain-based test rather than replacing any of them,
-#    same reasoning as every prior bump; max-file-lines raised from 1000 to
-#    1050 —
-#    src/logic/ai/unit_ai.gd (a single cohesive planner class, "the block's own
-#    spine") crossed 1000 re-diagnosing taskblock-26's own B2, splitting it is
-#    a bigger, riskier undertaking than a linter default warrants; the
-#    matching test file split instead, same as
-#    test_damage_resolver_deflect_modes.gd already did; raised again to 1150
-#    across tb35 Pass B's BR34.06 fallback, Pass A1's decision-log call
-#    sites (the log emission itself lives in the new
-#    src/logic/ai/ai_decision_log.gd rather than growing this file further),
-#    and Pass A3's per-turn LOF memoisation — same file, same reasoning,
-#    given headroom this time since tb35's own Pass C is scoped to touch
-#    this file again); raised again to 1200 across taskblock-43 Pass A — the
-#    score early-out's own soundness argument (the enumeration of which terms
-#    can raise a score) belongs next to the code it constrains, since a future
-#    term added without joining that list silently changes which cell the AI
-#    picks. Same file, same reasoning as every prior bump; raised again to
-#    1300 across taskblock-43 Pass D's follower planner. Pass B and Pass C
-#    both took the other option first and put their new logic in NEW files
-#    (src/logic/ai/engagement_rect.gd, src/logic/ai/batch_plan.gd), and Pass D
-#    moved its two batch-plan queries onto BatchPlan for the same reason —
-#    what is left in unit_ai.gd is the follower's local scan, which calls the
-#    private _engagement_score and cannot leave without either making that
-#    public or threading a scorer Callable through, both worse than 100 lines
-#    of headroom.
+#    linter default; max-public-methods raised from 20 — a GUT test file's own
+#    `test_*` functions are deliberately many small, focused cases, not
+#    something to split apart just to satisfy a linter default).
+#
+#    taskblock-45 Pass E: **max-file-lines is back at its default 1000, and the
+#    ~40 lines of bump rationale that used to sit here are deleted with it.**
+#    It had been raised eight times — 1000 to 1050 to 1150 to 1200 to 1300 to
+#    1400 — every single time for one file, src/logic/ai/unit_ai.gd, and every
+#    time on the promise that "part two replaces this file". Part two landed and
+#    the file is gone. The limit coming back down is the objective proof of that,
+#    which is why it was taskblock-45 Pass E's acceptance rather than a tidy-up:
+#    a planner that had truly been replaced could not need the headroom, and one
+#    that had merely been added alongside would still need every line of it.
+#    `test/unit/test_retired_planner_sweep.gd` asserts the 1000 directly, so this
+#    cannot quietly drift back up without someone saying why in a test.
 gdlint src test
 
 # 2. Warm-up import so class_name scripts register (required on cold checkouts).

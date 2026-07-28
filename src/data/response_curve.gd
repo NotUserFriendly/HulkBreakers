@@ -17,8 +17,8 @@ extends Resource
 ## rests on.
 ##
 ## `shape` is an open `StringName` (CLAUDE.md) with an unrecognised value falling
-## back to linear rather than erroring, same posture as `UnitAI`'s playstyle
-## dispatch. **In practice the set is closed by the maths below** — a genuinely
+## back to linear rather than erroring, same posture as the playstyle vocabulary's
+## own unknown-value fallback. **In practice the set is closed by the maths below** — a genuinely
 ## new shape needs a new arm here, not just new data — so this is the one place
 ## in the AI data model where "addable as data" does not fully hold, and it is
 ## flagged rather than pretended otherwise.

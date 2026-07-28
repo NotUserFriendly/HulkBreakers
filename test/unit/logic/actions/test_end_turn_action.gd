@@ -208,7 +208,7 @@ func test_end_turn_with_no_mission_skips_the_hold_check_entirely() -> void:
 	assert_true(a.alive)
 
 
-## taskblock-22 Pass C: shared with UnitAI's own shutdown-swap — used
+## taskblock-22 Pass C: shared with the AI planner's own shutdown-swap — used
 ## there specifically to avoid hijacking a productive hold as "stalled."
 func test_is_holding_position_true_on_the_tile_with_objectives_complete() -> void:
 	var unit := _make_unit(Vector2i(4, 4), 0)

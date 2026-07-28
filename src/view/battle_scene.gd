@@ -46,10 +46,10 @@ var camera_rig: CameraRig
 var unit_views: Array[HitVolumeView] = []
 var combat_state: CombatState
 ## taskblock-15 Pass A: every overlay needs a MissionState to hand
-## `UnitAI.plan_turn`/`BoutRunner` — including the plain hand-seeded
+## `AiPlanner.plan_turn`/`BoutRunner` — including the plain hand-seeded
 ## default battle, which has none of its own yet (Phase 12 scope: "no
 ## mission loop"). An empty-objectives MissionState is inert for that
-## case (UnitAI's own non-combat branch just walks to extraction) and
+## case (the AI just walks to extraction) and
 ## costs nothing; a squad later set to AI under SquadControlOverlay
 ## auto-resolves through this same object, for free.
 var mission: MissionState

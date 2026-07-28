@@ -59,6 +59,26 @@ extends RefCounted
 ## the gate is testable now.
 const BLACKBOARD_TIERS: Array[StringName] = [&"TRAINED", &"ELITE"]
 
+## taskblock-45 Pass B: tiers that may read `remembered` at all — `docs/PLAN.md`'s
+## tier table, where Mindless is "current LOS only" and Grunt is the first tier to
+## add "+ last-known positions".
+##
+## **A `MINDLESS` unit therefore stops knowing an enemy exists the moment line of
+## sight breaks**, and plans against an empty board rather than against a stale
+## belief. That is a deliberate, supervisor-made call and it overrides taskblock-45
+## Pass B's own third test bullet, which asked for the opposite behaviour ("acts on
+## a remembered position that is now wrong"). The two are mutually exclusive: a
+## tier with no memory has nothing to be wrong about. Chasing a ghost is what the
+## tier ABOVE this one does — that behaviour arrives with Grunt, in `PLAN.md`'s
+## *AI v2 — fill in the tier table*, and needs no new machinery, only this list
+## gaining an entry.
+##
+## Memory and blackboard are two separate lists rather than one ordered ladder
+## because tier ordering is not a thing this codebase has decided: `intelligence_
+## tier` is an open `StringName` (CLAUDE.md), so "at least Grunt" is not expressible
+## without inventing a rank. Membership is.
+const MEMORY_TIERS: Array[StringName] = [&"GRUNT", &"TRAINED", &"ELITE"]
+
 ## Free side — geometry, gated by nothing, the same for every observer.
 var grid: Grid
 var round_number: int = 0
@@ -121,9 +141,17 @@ func canonical_state_for_resolvers() -> CombatState:
 ## Restricted, an enemy the observer cannot currently see is reported at its last
 ## remembered position if that sighting is still fresh, and omitted entirely
 ## otherwise. Allies are always known: they are on the radio.
+##
+## taskblock-45 Pass B: **memory is itself a tier capability** (`MEMORY_TIERS`), so
+## a `MINDLESS` observer skips the remembered branch entirely and sees only what
+## its own eyes currently reach. That is the whole gap between the two tiers this
+## block stands up, and it is information rather than actions — gating actions
+## alone produces a unit with fewer options that still plays them optimally, which
+## reads as *limited* rather than dumb (`docs/PLAN.md`).
 func units_visible_to(observer: Unit) -> Array[Unit]:
 	if not restricted or observer == null:
 		return _state.units
+	var may_remember: bool = observer.intelligence_tier in MEMORY_TIERS
 	var seen: Array[Unit] = []
 	for candidate: Unit in _state.units:
 		if candidate == observer or candidate.squad_id == observer.squad_id:
@@ -132,6 +160,8 @@ func units_visible_to(observer: Unit) -> Array[Unit]:
 		if _has_direct_sight(observer, candidate):
 			seen.append(candidate)
 			continue
+		if not may_remember:
+			continue
 		var memory: Dictionary = remembered.get(candidate.id, {})
 		if memory.is_empty():
 			continue
@@ -139,6 +169,30 @@ func units_visible_to(observer: Unit) -> Array[Unit]:
 			continue
 		seen.append(candidate)
 	return seen
+
+
+## taskblock-45 Pass B: records everything `observer` can currently SEE, so a later
+## turn can act on it once direct sight is gone.
+##
+## **Nothing calls this for a `MINDLESS` observer** — a tier that cannot read the
+## memory has no business writing it, exactly as `claim_batch_lead` refuses a write
+## from a tier that cannot read the blackboard. The asymmetry that would otherwise
+## creep in is a Mindless unit feeding sightings to the Trained units around it,
+## which is the team blackboard arriving through a side door.
+##
+## Sightings are stamped with the round they were taken and never expired here;
+## `units_visible_to` compares on read. **No invalidation hook is a hook that
+## cannot be missed** — taskblock-43's `BatchPlan` trick, for the same reason.
+func record_sightings(observer: Unit) -> void:
+	if observer == null or not observer.intelligence_tier in MEMORY_TIERS:
+		return
+	for candidate: Unit in _state.units:
+		if candidate == observer or candidate.squad_id == observer.squad_id:
+			continue
+		if not candidate.alive:
+			continue
+		if _has_direct_sight(observer, candidate):
+			remembered[candidate.id] = {"cell": candidate.cell, "round_seen": round_number}
 
 
 ## This batch's shared plan for the current round, or empty when `observer` is
@@ -151,7 +205,7 @@ func units_visible_to(observer: Unit) -> Array[Unit]:
 func batch_plan_for(observer: Unit) -> Dictionary:
 	if observer == null:
 		return {}
-	if restricted and not observer.intelligence_tier in BLACKBOARD_TIERS:
+	if not has_blackboard(observer):
 		return {}
 	return _state.batch_plans.plan_to_follow(observer, round_number)
 
@@ -159,12 +213,31 @@ func batch_plan_for(observer: Unit) -> Dictionary:
 ## Records `observer` as this batch's leader for the current round. Writing to
 ## the blackboard is gated exactly as reading it is — a unit with no access to
 ## the shared plan cannot set one either.
-func claim_batch_lead(observer: Unit, destination: Vector2i) -> void:
+##
+## taskblock-45 Pass C: `objective` is the coarse call the leader made for the
+## batch. A tier with no blackboard cannot set one for the same reason it cannot
+## read one — a `MINDLESS` unit acting first in a batch simply leaves the batch
+## without an objective, and every member plans for itself. That is correct rather
+## than a gap: a squad led by something that cannot coordinate is not coordinated.
+func claim_batch_lead(
+	observer: Unit, destination: Vector2i, objective: StringName = BatchPlan.NO_OBJECTIVE
+) -> void:
+	if not has_blackboard(observer):
+		return
+	_state.batch_plans.claim(observer, round_number, destination, objective)
+
+
+## taskblock-45 Pass C: whether `observer` may use the team blackboard at all.
+##
+## The same gate `batch_plan_for` and `claim_batch_lead` apply, exposed so a caller
+## can skip work it is not entitled to do rather than doing it and having the
+## result discarded — a `MINDLESS` unit should not pay to choose a batch objective
+## it can neither record nor read. **One gate, asked three ways**, never a second
+## copy of the tier list.
+func has_blackboard(observer: Unit) -> bool:
 	if observer == null:
-		return
-	if restricted and not observer.intelligence_tier in BLACKBOARD_TIERS:
-		return
-	_state.batch_plans.claim(observer, round_number, destination)
+		return false
+	return not restricted or observer.intelligence_tier in BLACKBOARD_TIERS
 
 
 ## Deliberately `LoS`, not `LineOfFire`: this answers "can this unit SEE that

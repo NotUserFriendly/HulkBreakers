@@ -4,7 +4,7 @@ extends CombatAction
 ## taskblock-22 Pass C: "a unit that cannot move and cannot act can
 ## shutdown — the player equivalent of matrix ejection, available to both
 ## sides." Legal for ANY unit at ANY time ("any unit may shutdown — it's a
-## choice"); "NPCs use it when they can't move or act" is `UnitAI`'s own
+## choice"); "NPCs use it when they can't move or act" is `the AI planner`'s own
 ## POLICY for when to queue this, never a legality restriction here — a
 ## human player can shut a perfectly healthy unit down too, the same way
 ## nothing stops a human from voluntarily ejecting a matrix.

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_r4qql"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_ormq8"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_ec2wo"]
+
+[sub_resource type="Resource" id="Resource_sa8qx"]
+script = ExtResource("2_ormq8")
+slope = 2.0
+offset = -1.0
+
+[sub_resource type="Resource" id="Resource_g3v3l"]
+script = ExtResource("1_r4qql")
+input_id = &"closes_to_extraction"
+curve = SubResource("Resource_sa8qx")
+
+[resource]
+script = ExtResource("3_ec2wo")
+id = &"seek_extraction"
+display_name = "Seek extraction"
+executor_id = &"move"
+preconditions = Array[StringName]([&"is_player_squad", &"objective_done", &"cell_is_elsewhere"])
+considerations = Array[ExtResource("1_r4qql")]([SubResource("Resource_g3v3l")])
+base_weight = 1.2

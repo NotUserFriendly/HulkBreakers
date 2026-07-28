@@ -9,6 +9,14 @@ extends SceneTree
 ## generators it reads from are deleted in the same pass that lands this
 ## tool's output, so re-running it after that point has nothing left to
 ## walk.
+##
+## **@retired-tool** — taskblock-45 Pass D. This file no longer compiles and is not
+## expected to: `DeepStrike.default_part_pool()` and `MaterialTable.default_table()`
+## were deleted by the very pass this tool's output replaced, exactly as the comment
+## above says. It is kept as the historical record of how `res://data/` was first
+## populated. The marker is what stops `tools/checkpoints/parse_guard.gd` — widened
+## across `tools/` in the same pass — from reporting an intended tombstone as rot
+## every single build.
 
 
 func _initialize() -> void:

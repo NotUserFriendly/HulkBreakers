@@ -259,12 +259,12 @@ func test_start_bout_threads_each_entrys_own_playstyle_into_the_built_units() ->
 
 ## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
 ## actual playstyle set... so new playstyles appear automatically, not a
-## hardcoded menu list." A direct reference to `UnitAI.PLAYSTYLES`, not a
+## hardcoded menu list." A direct reference to `AiPlanner.PLAYSTYLES`, not a
 ## hand-copied list — a playstyle added there (PSYCHOTIC/TURTLE, tb25 F)
 ## is already present here with no menu edit of its own, and any FUTURE
 ## addition is too, by construction.
 func test_the_menus_own_playstyle_list_is_the_real_planners_list() -> void:
-	assert_eq(GenerateBoutOverlay.PLAYSTYLES, UnitAI.PLAYSTYLES)
+	assert_eq(GenerateBoutOverlay.PLAYSTYLES, AiPlanner.PLAYSTYLES)
 	assert_true(&"PSYCHOTIC" in GenerateBoutOverlay.PLAYSTYLES)
 	assert_true(&"TURTLE" in GenerateBoutOverlay.PLAYSTYLES)
 

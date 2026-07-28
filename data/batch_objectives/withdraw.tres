@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_e51ik"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_y8eb3"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_3248d"]
+
+[sub_resource type="Resource" id="Resource_7a3uq"]
+script = ExtResource("2_y8eb3")
+slope = 0.85
+offset = 0.15
+invert = true
+
+[sub_resource type="Resource" id="Resource_17upi"]
+script = ExtResource("1_e51ik")
+input_id = &"own_integrity"
+curve = SubResource("Resource_7a3uq")
+
+[resource]
+script = ExtResource("3_3248d")
+id = &"withdraw"
+display_name = "Withdraw"
+executor_id = &"objective"
+preconditions = Array[StringName]([&"enemy_known"])
+considerations = Array[ExtResource("1_e51ik")]([SubResource("Resource_17upi")])

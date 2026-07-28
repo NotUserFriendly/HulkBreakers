@@ -82,121 +82,77 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. AI v2, part two — the utility planner
-**Needs:** nothing — **AI v2 part one landed as taskblock-44** (`docs/CHANGELOG.md`). The `WorldView`
-seam it depended on exists, guarded, with a disabled restriction flag and an anti-vacuity test proving
-restriction changes decisions. **Unblocks:** retiring the playstyle enum;
-intelligence as a played mechanic rather than a difficulty slider; sensors-as-parts having something to
-feed.
+### 2. Close the AI completion regression
+**Needs:** nothing — *AI v2, part two* landed as taskblock-45 (`docs/CHANGELOG.md`). **Unblocks:**
+raising `MIN_COMPLETION_RATE` back to a floor that means something; trusting any later AI measurement.
 
-**Utility scoring, not behaviour trees.** A BT forces a duplicated subtree per profile; utility gives
-both axes — how *smart* a unit is and what *kind* of unit it is — as data over one shared action set.
+**This is the highest-priority AI item and it is a bug, not a feature.** taskblock-45 replaced the
+engagement-score planner with the utility planner and mission completion fell from **87.5% to 37.5%**
+over 24 seeds, measured on both planners against the same fixture. `MIN_COMPLETION_RATE` was lowered
+0.5 → 0.25 to land it. Until this closes, the project's one automated check on "can the AI finish a
+mission at all" is calibrated to a broken planner.
 
-| Concept | Implementation |
-|---|---|
-| Action | Resource: preconditions, considerations list, executor |
-| Consideration | Normalized 0–1 input x response curve (linear / quad / logistic / step) |
-| Score | Product of considerations x base weight x profile multiplier, plus a compensation factor |
-| Intelligence | Action pool subset ∩ sensor access ∩ lookahead depth |
-| Profile | Weight vector over considerations and actions |
+**What is already known, so nobody re-derives it:**
+- **The dominant failure is `TERMINATED`, not `STRANDED`** — the turn cap running out. The planner is
+  **not losing fights; it is failing to finish.** 11 of 24 seeds never ended.
+- **Not the information gating.** Forcing the world view unrestricted gives an identical 33.3%.
+- **Not the candidate-set cull.** Removing it changes nothing.
+- **Not the four defects taskblock-45 already fixed** (scored-cell-never-moved-to, arrival scoring
+  every cell as perfect, refused-action-ends-turn, hold offered with no enemy). Those were real, are
+  fixed, and the 37.5% is post-fix.
+- **The decision log is the instrument.** Every one of those defects was found by dumping
+  `ai_utility_decision` per turn and reading it, not by reading the code. Start there, on seeds 13 or
+  20, which never finish.
 
-**Product, not sum** — a single zero vetoes the action outright, so "unreachable" kills a candidate
-rather than merely lowering it. The compensation factor counters the standard bias where adding
-considerations always drives scores down.
+**Do not chase this by adjusting profile weights.** The gap is ~50 points; that is structural, and
+hand-tuning weights to move a completion rate is inventing balance numbers (CLAUDE.md).
 
-**Intelligence gates INFORMATION, not just actions — this is the load-bearing idea.** Gating actions
-alone produces a smart unit with fewer options, and it still plays those options optimally, which reads
-as *limited* rather than dumb. Gating the world model makes it make real mistakes: firing at where
-someone was, walking into a flank it had no way to see. Plausible-but-wrong instead of random, which is
-the behaviour actually wanted. It also aligns cost with design for once — a degraded world model is
-genuinely cheaper to compute, so **the cheap units are cheap because they are dumb, not despite it.**
+**Re-measure before diagnosing.** The 37.5% above was taken before taskblock-45's last four fixes;
+seeds 0–11 came out at 41.7% afterwards. Take a fresh 24-seed reading of both planners first — the old
+one is recoverable from git history — because the stale table is the only reason the floor moved.
 
-| Tier | Actions added | World model | Depth |
-|---|---|---|---|
-| Mindless | Approach, flee, idle | Current LOS only | 0 |
-| Grunt | Cover, ranged, regroup | + last-known positions | 0 |
-| Trained | Flank, suppress, item, call help | + team blackboard, threat map | 1 (score post-move) |
-| Elite | Bait, ambush, set batch objective | + full team knowledge, predicted enemy moves | 2–3 |
+**Acceptance:** completion rate back above 0.5 on 24 seeds; `MIN_COMPLETION_RATE` raised to match with
+its measurement recorded; the cause written into `CHANGELOG.md` whether or not it is what anyone
+expected.
 
-**Profiles are multiplier tables over shared considerations** — aggressive, cowardly, defensive as
-weight vectors (`own_hp_ratio`, `local_threat`, `ally_proximity`, `objective_value`), never as code
-paths.
+### 3. AI v2 — fill in the tier table
+**Needs:** *Close the AI completion regression* (there is no point tuning a tier table on a planner
+that cannot finish a mission). **Unblocks:** intelligence reading as character rather than as
+difficulty; sensors-as-parts having tiers to degrade *between*.
 
-**The batch objective replaces taskblock-43's follower planner.** A coarse batch-level utility pass on
-the leader picks one objective — advance, hold, withdraw, flank — and that objective is injected as a
-consideration input for every follower. Squad coordination without a squad planner, and followers keep
-individual agency instead of copying a destination. taskblock-43 Pass C's plumbing (`Unit.batch_id`,
-`BatchPlan`, the `set_batch` verb, the board badge) carries forward unchanged; only Pass D's follower
-logic is replaced. Pass D's own unmet acceptance — a follower that wasn't dramatically cheaper — is
-answered here rather than by widening or narrowing its local scan.
+taskblock-45 stood the machinery up against a deliberately small set — eight actions, two tiers at
+opposite ends of the axis, two profiles — because a tier that silently does nothing is the failure
+this design is most exposed to, and that is far easier to catch on a small surface. This item is the
+rest of the table. **It is light work against a framework that already exists**, and taskblock-45
+proved the claim: adding the mission actions, overwatch, and the whole batch-objective set were all
+`.tres` edits plus published inputs, with no new machinery.
 
-**Decision logging is designed in from the first pass, not added when something goes wrong.** A BT
-fails legibly; a scorer produces a number and you reconstruct why afterward. `ai_decision_log.gd` must
-carry, per candidate per decision, each consideration's normalized input and its curve output, plus the
-acting tier and what that unit could see. Without it "why did it do that" is unanswerable — the exact
-hole BR26.02 sat in through three passes of reasoned-but-unmeasured fixes.
+- **The middle tiers.** Grunt and Elite, between Mindless and Trained. Grunt is the tier that adds
+  "+ last-known positions" — **and it is what taskblock-45 Pass B's own third test bullet actually
+  described**, a unit acting on a remembered position that is now wrong. `MINDLESS` was made strictly
+  current-sight-only by supervisor decision, so chasing a stale sighting belongs here. It needs one
+  entry added to `WorldView.MEMORY_TIERS` and nothing else.
+- **Elite's lookahead** (depth 2–3) is the one piece with real structural weight, and the tier that
+  tests the resumability constraint hardest, since a recursive search is the hard thing to suspend.
+- **The rest of the action pool.** Flank, suppress, use-item, call-for-help, and the melee entries
+  once *Momentum* lands. **`flank` already has an authored batch objective with no consumer** — a
+  `flank` action is what gives it one.
+- **The rest of the profile table.** Note the trap taskblock-45 documented: a profile weight on an
+  input two actions read in OPPOSITE directions is ambiguous and cannot express what is wanted. Publish
+  a second input rather than reusing one inverted.
 
-**The test surface multiplies: tier x profile x sensor state.** Decide early whether every combination
-gets acceptance or only the extremes. `MIN_COMPLETION_RATE` will not catch a middle tier being subtly
-wrong, and a tier that silently does nothing is the failure this design is most exposed to — the
-part-one seam's own anti-vacuity test is the precedent.
+### 4. Retire the playstyle enum
+**Needs:** the profile table (item 3). **Unblocks:** deleting `AiPlanner.profile_id_for`.
 
-**Two structural constraints that must be decided before the scorer is written, not after:**
-
-- **The planner must be resumable.** Yielding mid-plan is what lets the view stay responsive while a
-  unit thinks (see *Player view and sim view*, below), and it is also the deterministic alternative to
-  threading — same candidates, same order, same result, wherever the frame boundaries land. A scorer
-  walking N candidates in a loop is naturally chunkable: yield every K, keep a cursor. An Elite-tier
-  lookahead recursing over predicted enemy moves at depth 2-3 is not, and retrofitting suspend/resume
-  onto the deepest tier later is the expensive version of this decision.
-- **Ties need an explicit deterministic tiebreak.** taskblock-43 already hit this: its Pass B test
-  failed because two cells scored *identically*, and on open ground a whole arc sits at exactly the
-  standoff distance, so which one wins is currently decided by iteration order. Serial iteration is
-  stable, so it is invisible today. Any reordering — parallel scoring, a different candidate source,
-  a reduction — exposes it. Lowest cell index, decided once, written down.
-
-**Intelligence is authored per unit until Attributes lands**, then derived (Int and Wis are the
-obvious sources). Not a blocker; a rewiring.
-
-**The playstyle enum dissolves here.** `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER` mixes profile
-(aggressive) with role and range (marksman); standoff becomes a consideration weight and cover-seeking
-becomes another. This is a migration, not an addition — every test keyed to those playstyles moves
-with it.
+`AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER` mixes profile (aggressive) with role and range
+(marksman). taskblock-45 moved the vocabulary to `AiPlanner.PLAYSTYLES` and bridged it to the profile
+table through one function built to be deleted rather than grown; standoff already became a
+consideration and cover-seeking already became a weight. This is a migration, not an addition — every
+test keyed to those playstyles moves with it.
 
 ---
 
 # QUEUED
-
-### AI v2 — fill in the tier table
-**Needs:** *AI v2, part two* (the framework and its first two tiers). **Unblocks:** intelligence
-reading as character rather than as difficulty; sensors-as-parts having tiers to degrade *between*.
-
-Part two stands up the machinery against a deliberately small set — a handful of actions, the two
-tiers at opposite ends of the axis, two profiles — because a tier that silently does nothing is the
-failure this design is most exposed to, and that is far easier to catch on a small surface. **This
-item is the rest of the table, and it is deliberately not pinned to a block number**: it is light
-work against a framework that already exists, and it should land when it is convenient rather than
-gate anything.
-
-- **The middle tiers.** Grunt and Elite, filling in between Mindless and Trained. Grunt adds cover,
-  ranged and regroup against last-known positions; Elite adds bait, ambush and setting the batch
-  objective, with full team knowledge and predicted enemy moves at depth 2–3. Elite's lookahead is
-  the one piece with real structural weight — it is also the tier that tests part two's resumability
-  constraint hardest, since a recursive search is the hard thing to suspend and resume.
-- **The rest of the action pool.** The executors already exist in `src/logic/actions/` — twenty of
-  them, tested. What each addition needs is preconditions and a consideration set, not new machinery.
-  Flank, suppress, use-item, call-for-help, and the melee entries once *Momentum* lands.
-- **The rest of the profile table.** Aggressive, cowardly, defensive and the rest as weight vectors
-  over shared considerations (`own_hp_ratio`, `local_threat`, `ally_proximity`, `objective_value`).
-- **Retire the playstyle enum here.** `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER` mixes
-  profile with role and range; standoff and cover-seeking both become consideration weights. Every
-  test keyed to those playstyles migrates with it, which is why it waits until the profile table is
-  real rather than happening alongside the framework.
-- **Tier should derive from Attributes** by the time this lands, rather than staying authored.
-
-**The acceptance is the same one that matters throughout:** each tier and each profile must decide
-*differently* from its neighbours on the same seed. A table where two rows produce identical play is
-a table with a bug in it, and `MIN_COMPLETION_RATE` will not catch it.
 
 ### Player view and sim view — render a snapshot, stay responsive
 **Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the

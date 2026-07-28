@@ -36,6 +36,23 @@ const TYPE_WOUNDS := &"wounds"
 ## posture as every other content type, so "a designer adds a new variant
 ## family without code" is literal, not aspirational.
 const TYPE_VARIANT_FAMILIES := &"variant_families"
+## taskblock-45 Pass B: the AI's own action pool and profile table, authored as
+## data for the same reason every other content type is.
+##
+## **`PLAN.md`'s *fill in the tier table* says the rest of the pool "needs
+## preconditions and a consideration set, not new machinery."** That sentence is
+## only true if the machinery ships here — otherwise every added action is a code
+## edit to a hardcoded list, which is exactly what CLAUDE.md's open-vocabulary rule
+## forbids for designer content. A fifth action is a fifth `.tres`.
+const TYPE_UTILITY_ACTIONS := &"utility_actions"
+const TYPE_UTILITY_PROFILES := &"utility_profiles"
+## taskblock-45 Pass C: the coarse objectives a batch LEADER picks between —
+## advance, hold, withdraw, flank. Authored as `UtilityActionDef` rows, reusing the
+## type rather than adding a near-identical one: an objective is structurally the
+## same thing as an action (an id, preconditions, considerations, a base weight)
+## scored by the same `UtilityScorer`, and the only field it does not use is
+## `executor_id`, which is authored as `&"objective"` and never built.
+const TYPE_BATCH_OBJECTIVES := &"batch_objectives"
 
 static var _parts: Dictionary = {}  # StringName -> Part
 static var _ammo: Dictionary = {}  # StringName -> AmmoDef
@@ -43,6 +60,9 @@ static var _materials: Dictionary = {}  # StringName -> MaterialEntry
 static var _presets: Dictionary = {}  # StringName -> BotPreset
 static var _wounds: Dictionary = {}  # StringName -> WoundDef
 static var _variant_families: Dictionary = {}  # StringName -> VariantFamily
+static var _utility_actions: Dictionary = {}  # StringName -> UtilityActionDef
+static var _utility_profiles: Dictionary = {}  # StringName -> UtilityProfile
+static var _batch_objectives: Dictionary = {}  # StringName -> UtilityActionDef
 ## "type:id" -> &"builtin" | &"user" (taskblock-11 B2: "source (res://
 ## built-in vs user:// override)"). Not derivable from `_parts`/`_ammo`/
 ## `_materials` alone once a `user://` row has overridden a built-in one
@@ -76,6 +96,9 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 	_presets.clear()
 	_wounds.clear()
 	_variant_families.clear()
+	_utility_actions.clear()
+	_utility_profiles.clear()
+	_batch_objectives.clear()
 	_sources.clear()
 	_errors.clear()
 	# Materials first: Part validation cross-references material ids.
@@ -93,6 +116,16 @@ static func load_all(builtin_root: String = BUILTIN_ROOT, user_root: String = US
 		builtin_root + "/variant_families", _variant_families, TYPE_VARIANT_FAMILIES, &"builtin"
 	)
 	_load_dir(user_root + "/variant_families", _variant_families, TYPE_VARIANT_FAMILIES, &"user")
+	_load_dir(builtin_root + "/utility_actions", _utility_actions, TYPE_UTILITY_ACTIONS, &"builtin")
+	_load_dir(user_root + "/utility_actions", _utility_actions, TYPE_UTILITY_ACTIONS, &"user")
+	_load_dir(
+		builtin_root + "/utility_profiles", _utility_profiles, TYPE_UTILITY_PROFILES, &"builtin"
+	)
+	_load_dir(user_root + "/utility_profiles", _utility_profiles, TYPE_UTILITY_PROFILES, &"user")
+	_load_dir(
+		builtin_root + "/batch_objectives", _batch_objectives, TYPE_BATCH_OBJECTIVES, &"builtin"
+	)
+	_load_dir(user_root + "/batch_objectives", _batch_objectives, TYPE_BATCH_OBJECTIVES, &"user")
 
 
 ## docs/00 (determinism: "same seed = same battle, always"): a raw
@@ -239,6 +272,65 @@ static func get_variant_family(id: StringName) -> VariantFamily:
 	return family_def.duplicate(true) if family_def != null else null
 
 
+## taskblock-45 Pass B: the AI's authored action pool, sorted by `id`.
+##
+## **Sorted by id rather than by filename**, unlike every other pool here. The
+## `_load_dir` filename sort already makes load order a pure function of the data,
+## which is enough for a pool consumed by a seeded RNG draw — but this pool is
+## walked in order by a SCORER whose documented tiebreak is "lowest candidate index
+## wins". Filename order would make renaming a `.tres` silently change which action
+## wins a tie, which is a decision changing for a reason that is not a decision.
+##
+## **These are the cached instances, not duplicates.** Every other accessor here
+## hands back a copy because pool draws are mutated downstream (`assemble_random`);
+## an action definition is read-only configuration read every turn by every unit,
+## and a deep copy per turn of a resource graph three levels tall would be real
+## cost bought for nobody.
+static func utility_actions_pool() -> Array[UtilityActionDef]:
+	_ensure_loaded()
+	var ids: Array = _utility_actions.keys()
+	ids.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	var pool: Array[UtilityActionDef] = []
+	for id: StringName in ids:
+		pool.append(_utility_actions[id])
+	return pool
+
+
+## Null for an unknown profile id, which `UtilityScorer` treats as a fully neutral
+## profile rather than an error — an unauthored profile means "no deviation from
+## the authored baseline", the same posture `UtilityProfile`'s own empty-dictionary
+## default already has.
+static func get_utility_profile(id: StringName) -> UtilityProfile:
+	_ensure_loaded()
+	return _utility_profiles.get(id)
+
+
+## The batch objectives a leader chooses between, sorted by id for the same
+## tiebreak reason `utility_actions_pool` is.
+##
+## **Also the objective VOCABULARY.** `UtilityContext` derives one published input
+## per entry (`objective_<id>`), so adding a fifth objective is a fifth `.tres` and
+## the input every action can read appears with it — no code knows the four names.
+static func batch_objectives_pool() -> Array[UtilityActionDef]:
+	_ensure_loaded()
+	var ids: Array = _batch_objectives.keys()
+	ids.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	var pool: Array[UtilityActionDef] = []
+	for id: StringName in ids:
+		pool.append(_batch_objectives[id])
+	return pool
+
+
+static func utility_profiles_pool() -> Array[UtilityProfile]:
+	_ensure_loaded()
+	var ids: Array = _utility_profiles.keys()
+	ids.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	var pool: Array[UtilityProfile] = []
+	for id: StringName in ids:
+		pool.append(_utility_profiles[id])
+	return pool
+
+
 ## Every loaded reference profile — for a bout-setup menu's own dropdown
 ## (taskblock-14 Pass D), grouped by `profile_family` client-side.
 static func presets_pool() -> Array[BotPreset]:
@@ -377,5 +469,8 @@ static func reset() -> void:
 	_presets.clear()
 	_wounds.clear()
 	_variant_families.clear()
+	_utility_actions.clear()
+	_utility_profiles.clear()
+	_batch_objectives.clear()
 	_sources.clear()
 	_errors.clear()

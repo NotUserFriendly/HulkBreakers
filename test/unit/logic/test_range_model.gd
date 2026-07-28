@@ -1,7 +1,7 @@
 extends GutTest
 
 ## taskblock-19 Pass C: RangeModel — effective/max/min range consolidated
-## onto WeaponDef. Pure-function tests; AttackAction/Overwatch/UnitAI
+## onto WeaponDef. Pure-function tests; AttackAction/Overwatch/the AI planner
 ## integration is covered in their own test files.
 
 

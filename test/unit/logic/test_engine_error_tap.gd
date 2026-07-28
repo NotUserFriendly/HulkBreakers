@@ -148,7 +148,9 @@ func test_memory_file_and_stdout_sinks_all_carry_diagnostics_without_special_cas
 	log.add_sink(StdoutSink.new())
 	var tap: EngineErrorTap = _tap_on(log)
 
-	tap.report(Logger.ERROR_TYPE_SCRIPT, "plan_turn", "res://src/logic/ai/unit_ai.gd", 412, "x", "")
+	tap.report(
+		Logger.ERROR_TYPE_SCRIPT, "plan_turn", "res://src/logic/ai/some_script.gd", 412, "x", ""
+	)
 	file.close()
 
 	assert_eq(memory.events_of_kind(LogEvent.DIAGNOSTIC_KIND).size(), 1)
@@ -156,7 +158,7 @@ func test_memory_file_and_stdout_sinks_all_carry_diagnostics_without_special_cas
 	var contents: String = handle.get_as_text()
 	handle.close()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
-	assert_true(contents.find("unit_ai.gd:412") != -1, "the file sink wrote it verbatim")
+	assert_true(contents.find("some_script.gd:412") != -1, "the file sink wrote it verbatim")
 
 
 ## An error raised while a sink is handling an error would re-enter the tap

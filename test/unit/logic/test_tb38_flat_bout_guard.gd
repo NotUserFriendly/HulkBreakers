@@ -13,7 +13,25 @@ extends GutTest
 ## it must never be edited to make a later pass's divergence disappear; a
 ## mismatch means some pass touched flat play, which this whole taskblock
 ## promises not to.
-const GOLDEN_HASH: int = 1167294328
+##
+## ## taskblock-45 Pass E re-pinned it, and here is why that is not a violation
+##
+## The rule above is "do not re-seed to make it green", and it is scoped to
+## taskblock-38, whose whole promise was that **nothing in it changed flat play**.
+## A divergence there was a bug by definition. taskblock-45 replaced the AI planner
+## outright — changing flat play is the deliverable, not an accident — so this
+## bout's event stream necessarily differs, and the difference is not a finding
+## this guard can report.
+##
+## **The finding is recorded where a finding belongs**, not swallowed: the
+## before/after is in `docs/SUPERSEDED.md`'s retirement note and in
+## `docs/CHANGELOG.md`, including the completion-rate regression that came with it.
+## Re-pinning silently would have been the violation; re-pinning with the reason
+## attached is what keeps the guard meaningful for the next taskblock that has no
+## business changing flat play.
+##
+## Was `1167294328` (tb38 Pass A through taskblock-44).
+const GOLDEN_HASH: int = 1554552115
 
 const TURN_CAP: int = 30
 const MAP_SEED: int = 20260724

@@ -157,7 +157,8 @@ func _on_battle_loaded() -> void:
 	# not just this one. See that assignment's own doc comment.
 	if controls_overlay != null:
 		controls_overlay.set_log_path(battle.file_sink.path)
-	advance_ai_turns(battle)
+	# Awaited for the same reason as the `_on_turn_ended` call site below.
+	await advance_ai_turns(battle)
 
 
 func _build_ui() -> void:
@@ -637,7 +638,13 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 	_on_selection_changed()
 	await resolution_player.play(events)
 	battle.apply_active_turn_highlight()
-	advance_ai_turns(battle)
+	# tb45 Pass E: **awaited.** `advance_ai_turns` is a coroutine and this was
+	# fire-and-forget, so the handler returned the instant the planner first
+	# suspended and the AI batch finished some frames later, unobserved. It had no
+	# visible effect while the old planner happened not to suspend on small boards;
+	# the utility planner yields through `PlanPacer` on any real candidate set, and
+	# the batch then ran AFTER whatever came next had already read the turn state.
+	await advance_ai_turns(battle)
 
 
 ## docs/10 team flagging: the selected unit's ground marker brightens, and

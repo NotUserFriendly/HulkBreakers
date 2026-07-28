@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_a20ve"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_02rk8"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_npjil"]
+
+[sub_resource type="Resource" id="Resource_hi8j8"]
+script = ExtResource("2_02rk8")
+
+[sub_resource type="Resource" id="Resource_poawr"]
+script = ExtResource("1_a20ve")
+input_id = &"line_of_fire"
+curve = SubResource("Resource_hi8j8")
+
+[sub_resource type="Resource" id="Resource_a4chh"]
+script = ExtResource("2_02rk8")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_b70pp"]
+script = ExtResource("1_a20ve")
+input_id = &"standoff_match"
+curve = SubResource("Resource_a4chh")
+
+[sub_resource type="Resource" id="Resource_u0yhf"]
+script = ExtResource("2_02rk8")
+slope = 0.8
+offset = 0.2
+
+[sub_resource type="Resource" id="Resource_2wjnm"]
+script = ExtResource("1_a20ve")
+input_id = &"move_economy"
+curve = SubResource("Resource_u0yhf")
+
+[sub_resource type="Resource" id="Resource_17i5u"]
+script = ExtResource("2_02rk8")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_gjpc2"]
+script = ExtResource("1_a20ve")
+input_id = &"objective_hold"
+curve = SubResource("Resource_17i5u")
+
+[resource]
+script = ExtResource("3_npjil")
+id = &"shoot"
+display_name = "Shoot"
+executor_id = &"shoot"
+preconditions = Array[StringName]([&"has_weapon", &"enemy_known", &"weapon_reaches", &"lof_possible"])
+considerations = Array[ExtResource("1_a20ve")]([SubResource("Resource_poawr"), SubResource("Resource_b70pp"), SubResource("Resource_2wjnm"), SubResource("Resource_gjpc2")])
+base_weight = 1.5
+repeatable = true
