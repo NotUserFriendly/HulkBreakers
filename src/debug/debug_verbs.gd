@@ -105,6 +105,20 @@ static func all() -> Array[DebugVerbSpec]:
 			[DebugVerbSpec.param(&"unit", P.UNIT)],
 			Callable(DebugVerbs, &"_apply_kill")
 		),
+		# taskblock-46 Pass B: **the one entry here that is not a `BoutInjector`
+		# call, and the exception is deliberate.** Every other row wraps a verb that
+		# MUTATES the bout; this one mutates nothing at all — it plays a sample of
+		# throwaway missions elsewhere and writes what happened into the combat log.
+		# It sits here because this table is the only surface that already turns "a
+		# thing you can do from the game window" into a form with typed parameters,
+		# and rebuilding that for one button would be the duplication this table
+		# exists to avoid.
+		DebugVerbSpec.new(
+			&"sample_completion",
+			"Sample Completion",
+			[DebugVerbSpec.param(&"rng_seed", P.INT)],
+			Callable(DebugVerbs, &"_apply_sample_completion")
+		),
 		DebugVerbSpec.new(
 			&"force_current_unit",
 			"Make Current",
@@ -330,3 +344,35 @@ static func _apply_force_climb(inj: BoutInjector, _pool: Dictionary, a: Dictiona
 
 static func _apply_force_hop_down(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.force_hop_down(a.unit, a.target_cell)
+
+
+## taskblock-46 Pass B: runs a completion sample and reports it into the combat log.
+##
+## **This blocks the window for roughly thirty seconds** — ten full missions, and
+## nothing in the sampler suspends without a `PlanPacer`. That is stated rather than
+## hidden because a debug tool that freezes silently reads as a crash. It is worth
+## the freeze: the alternative to a button is a CC session, and `BR45.03`'s whole
+## lesson was that a number nobody can re-take goes stale attached to a decision.
+##
+## **Reports through `CompletionSampler.describe`, the same function the headless
+## test prints.** The in-window numbers cannot drift from the measured ones because
+## there is only one formatter.
+##
+## `rng_seed` is a parameter rather than a clock read so a sample is reproducible:
+## the log records which seeds were drawn, and the same `rng_seed` draws them again.
+static func _apply_sample_completion(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(a.rng_seed)
+	var result: Dictionary = await CompletionSampler.sample(rng)
+	for line: String in CompletionSampler.describe(result):
+		inj.state.combat_log.emit(
+			LogEvent.new(
+				inj.state.round_number,
+				Enums.Phase.RESOLUTION,
+				-1,
+				&"completion_sample",
+				{"rng_seed": int(a.rng_seed), "rate": result.get("rate", 0.0)},
+				line
+			)
+		)
+	return true
