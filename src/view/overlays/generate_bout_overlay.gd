@@ -26,11 +26,11 @@ extends ControlOverlay
 ## playstyle), and `[D]` duplicates the row (same profile + playstyle)
 ## right below itself, the fast way to build "4 of these, 1 of those."
 
-## taskblock-26 Pass C1: reads `UnitAI.PLAYSTYLES` — the same list the real
+## taskblock-26 Pass C1: reads `AiPlanner.PLAYSTYLES` — the same list the real
 ## planner dispatches on — instead of its own, independently-maintained
 ## copy; a new playstyle added there now appears here automatically, no
 ## second edit required.
-const PLAYSTYLES: Array[StringName] = UnitAI.PLAYSTYLES
+const PLAYSTYLES: Array[StringName] = AiPlanner.PLAYSTYLES
 ## Flagged UX default, not a spec literal: a completely empty menu would
 ## still work (Start Bout is rejected-not-crashed on an empty roster,
 ## same as always), but starting both teams pre-populated keeps "open the

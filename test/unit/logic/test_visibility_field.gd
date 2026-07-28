@@ -158,16 +158,16 @@ func test_a_walled_off_target_costs_exactly_zero_shot_plane_builds() -> void:
 
 	assert_true(field.allows_none(reachable), "the wall spans the board, so nothing has a line")
 
+	# taskblock-45 Pass E: the planner that used to scan for this is gone, and the
+	# claim outlived it — the utility planner asks the same question per candidate
+	# and this is what makes the answer free. `_lof_possible` is a bit test against
+	# the field; nothing here builds geometry.
 	ShotPlane.builds = 0
-	var any: bool = UnitAI._any_reachable_has_lof(
-		shooter,
-		target,
-		WorldView.full(state),
-		reachable,
-		shooter.shell.find_part(&"shooter_gun"),
-		{},
-		field
-	)
+	var context: UtilityContext = UtilityContext.build(shooter, WorldView.full(state))
+	var any := false
+	for cell: Vector2i in reachable:
+		if float(context.inputs_for(cell)[UtilityContext.INPUT_LINE_OF_FIRE]) > 0.0:
+			any = true
 
 	assert_false(any)
 	assert_eq(ShotPlane.builds, 0, "the negative answer cost no geometry at all")

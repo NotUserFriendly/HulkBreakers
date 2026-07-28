@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="UtilityProfile" format=3]
+
+[ext_resource type="Script" path="res://src/data/utility_profile.gd" id="1_vtc75"]
+
+[resource]
+script = ExtResource("1_vtc75")
+id = &"aggressive"
+display_name = "Aggressive"
+action_weights = {
+&"approach": 1.6,
+&"hold_position": 0.2,
+&"overwatch": 0.05,
+&"shoot": 1.4,
+&"take_cover": 0.35
+}
+consideration_weights = {
+&"closes_distance": 1.0,
+&"cover": 0.5,
+&"standoff_match": 4.0
+}

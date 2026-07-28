@@ -18,7 +18,7 @@ extends GutTest
 ## wants to back off — the asymmetric pad's whole reason to exist.
 
 
-## Copied from test_unit_ai_engagement_lof.gd's own fixture rather than shared:
+## Copied from the retired planner's own line-of-fire fixture rather than shared:
 ## the ranges below are what these cases are about, so they are authored here
 ## where a reader can see them.
 func _armed_unit(
@@ -85,69 +85,48 @@ func test_a_unit_inside_its_minimum_range_still_chooses_a_cell_behind_itself() -
 	var shooter: Unit = _armed_unit(&"marksman", Vector2i(16, 12), 0, 6.0, 8.0)
 	var enemy: Unit = _armed_unit(&"target", Vector2i(18, 12), 1)
 	var state := CombatState.new(grid, [shooter, enemy])
-	var weapon: Part = shooter.shell.find_part(&"marksman_gun")
+	state.force_current_unit(shooter.id)
+	for unit: Unit in state.units:
+		unit.ap = unit.max_ap
+	var view: WorldView = WorldView.full(state)
+	view.restricted = true
 
+	var context: UtilityContext = UtilityContext.build(shooter, view)
 	var pf := Pathfinder.new(grid, shooter.shell.can_climb())
-	var reachable: Array[Vector2i] = pf.reachable(shooter.cell, 8.0)
-	var culled: Array[Vector2i] = EngagementRect.cull(
-		shooter, enemy, UnitAI._target_distance(weapon, UnitAI.MARKSMAN_PREFERRED_RANGE), reachable
-	)
+	var full_reachable: Array[Vector2i] = pf.reachable(shooter.cell, 8.0)
 
-	var full_choice: Vector2i = await UnitAI._pick_engagement_position(
-		shooter,
-		enemy,
-		WorldView.full(state),
-		UnitAI.MARKSMAN_PREFERRED_RANGE,
-		false,
-		weapon,
-		reachable,
-		true,
-		{}
-	)
-	var culled_choice: Vector2i = await UnitAI._pick_engagement_position(
-		shooter,
-		enemy,
-		WorldView.full(state),
-		UnitAI.MARKSMAN_PREFERRED_RANGE,
-		false,
-		weapon,
-		culled,
-		true,
-		{}
-	)
-
-	var full_score: float = UnitAI._engagement_score(
-		full_choice,
-		enemy,
-		WorldView.full(state),
-		shooter,
-		UnitAI.MARKSMAN_PREFERRED_RANGE,
-		false,
-		weapon
-	)
-	var culled_score: float = UnitAI._engagement_score(
-		culled_choice,
-		enemy,
-		WorldView.full(state),
-		shooter,
-		UnitAI.MARKSMAN_PREFERRED_RANGE,
-		false,
-		weapon
-	)
+	var best_full: float = _best_standoff(context, full_reachable)
+	var best_culled: float = _best_standoff(context, context.candidate_cells)
 
 	assert_almost_eq(
-		culled_score, full_score, 0.0001, "the far-side pad kept a cell as good as the best one"
+		best_culled, best_full, 0.0001, "the far-side pad kept a cell as good as the best one"
 	)
-	assert_gt(
-		Grid.distance_chebyshev(culled_choice, enemy.cell),
-		Grid.distance_chebyshev(shooter.cell, enemy.cell),
-		"sanity: it is genuinely backing off, so the score match above is not vacuous"
+	assert_lt(
+		context.candidate_cells.size(),
+		full_reachable.size(),
+		"sanity: the cull actually dropped cells, so the equality above means something"
 	)
 
 
-## `_pick_engagement_position` seeds `best_cell` with it, and `_plan_ranged`
-## gates its step-out fallback on `best_cell == unit.cell` — losing it would
-## break both silently.
+## The best `standoff_match` any of `cells` offers. **The property the pad has to
+## guarantee is that culling keeps a cell as GOOD as the best one**, never that it
+## keeps the same cell — on open ground a whole arc sits at exactly the standoff
+## distance and scores identically, so pinning the cell would pin an iteration-order
+## accident. That reasoning is taskblock-43's and survived the planner it was
+## written against; only the scorer being asked has changed.
+func _best_standoff(context: UtilityContext, cells: Array[Vector2i]) -> float:
+	var best: float = -1.0
+	for cell: Vector2i in cells:
+		var match_value: float = float(
+			context.inputs_for(cell)[UtilityContext.INPUT_STANDOFF_MATCH]
+		)
+		best = maxf(best, match_value)
+	return best
+
+
+## Standing still must stay a candidate: `UtilityContext` relies on the unit's own
+## cell being in the culled set, because a unit whose own cell was dropped could
+## not be offered `hold_position` or a shot from where it already stands.
 func test_the_units_own_cell_survives_a_reachable_set_that_never_held_it() -> void:
 	var grid: Grid = GridFixture.flat(30, 24)
 	var shooter: Unit = _armed_unit(&"shooter", Vector2i(4, 4), 0)
@@ -158,7 +137,7 @@ func test_the_units_own_cell_survives_a_reachable_set_that_never_held_it() -> vo
 	# which is the only way this guard can ever be reached in practice.
 	var reachable: Array[Vector2i] = [Vector2i(5, 5), Vector2i(6, 6)]
 	var culled: Array[Vector2i] = EngagementRect.cull(
-		shooter, enemy, UnitAI._target_distance(weapon, 0), reachable
+		shooter, enemy, UtilityContext.standoff_for(weapon), reachable
 	)
 
 	assert_true(culled.has(shooter.cell), "the standing fallback is always a candidate")
@@ -175,7 +154,7 @@ func test_a_diagonally_distant_target_keeps_the_whole_direct_approach() -> void:
 
 	var approach: Array[Vector2i] = Grid.line(shooter.cell, enemy.cell)
 	var culled: Array[Vector2i] = EngagementRect.cull(
-		shooter, enemy, UnitAI._target_distance(weapon, 0), approach
+		shooter, enemy, UtilityContext.standoff_for(weapon), approach
 	)
 
 	for cell: Vector2i in approach:
@@ -188,47 +167,47 @@ func test_the_cull_actually_discards_cells_off_to_the_side() -> void:
 	var grid: Grid = GridFixture.flat(40, 40)
 	var shooter: Unit = _armed_unit(&"shooter", Vector2i(20, 20), 0)
 	var enemy: Unit = _armed_unit(&"target", Vector2i(26, 20), 1)
-	var weapon: Part = shooter.shell.find_part(&"shooter_gun")
 
-	# `preferred_range` 0 and no authored effective_range, so the far-side pad is
-	# zero and only the lateral pad applies: y is kept within +/-2 of the shared
-	# row, and x within [18, 28].
+	# A standoff of zero, so the far-side pad is zero and only the lateral pad
+	# applies: y is kept within +/-2 of the shared row, and x within [18, 28].
+	#
+	# taskblock-45 Pass E: passed in explicitly rather than derived from a
+	# playstyle's preferred range, which is what this used to do. The per-playstyle
+	# ranges dissolved into the profile weights; `cull` always took a bare float and
+	# this test is about the PAD, not about where the number comes from.
 	var sideways := Vector2i(20, 30)
 	var behind := Vector2i(14, 20)
 	var reachable: Array[Vector2i] = [shooter.cell, sideways, behind, Vector2i(23, 21)]
-	var culled: Array[Vector2i] = EngagementRect.cull(
-		shooter, enemy, UnitAI._target_distance(weapon, 0), reachable
-	)
+	var culled: Array[Vector2i] = EngagementRect.cull(shooter, enemy, 0.0, reachable)
 
 	assert_false(culled.has(sideways), "10 cells off the axis is outside the lateral pad")
-	assert_false(culled.has(behind), "with no preferred range there is no far-side pad to keep it")
+	assert_false(culled.has(behind), "with a zero standoff there is no far-side pad to keep it")
 	assert_true(culled.has(Vector2i(23, 21)), "a cell between the two, one off the line, is kept")
 
 
-## The same cell as above, kept once the unit actually has a standoff to fall
-## back to — the pad is a function of `_target_distance`, so a MARKSMAN and an
-## AGGRESSIVE unit standing in the same place get different rectangles.
-func test_the_far_side_pad_scales_with_the_units_own_preferred_range() -> void:
+## The same cell as above, kept once the unit actually has a standoff to fall back
+## to — the pad is a function of the standoff distance, so two units standing in
+## the same place with different standoffs get different rectangles.
+##
+## taskblock-45 Pass E: this used to read the numbers off the retired planner's
+## per-playstyle preferred ranges (AGGRESSIVE 0, MARKSMAN 7). Those dissolved into the profile
+## weights; the two distances are now stated by the test as its own fixture, which
+## is what CLAUDE.md asks for anyway — the property under test is that the pad
+## SCALES, and reading the numbers out of production code made the test agree with
+## it by construction.
+func test_the_far_side_pad_scales_with_the_standoff_distance() -> void:
 	var grid: Grid = GridFixture.flat(40, 40)
 	var shooter: Unit = _armed_unit(&"shooter", Vector2i(20, 20), 0)
 	var enemy: Unit = _armed_unit(&"target", Vector2i(26, 20), 1)
-	var weapon: Part = shooter.shell.find_part(&"shooter_gun")
 
 	var behind := Vector2i(14, 20)
 	var reachable: Array[Vector2i] = [shooter.cell, behind]
 
-	var aggressive: Array[Vector2i] = EngagementRect.cull(
-		shooter,
-		enemy,
-		UnitAI._target_distance(weapon, UnitAI.AGGRESSIVE_PREFERRED_RANGE),
-		reachable
-	)
-	var marksman: Array[Vector2i] = EngagementRect.cull(
-		shooter, enemy, UnitAI._target_distance(weapon, UnitAI.MARKSMAN_PREFERRED_RANGE), reachable
-	)
+	var no_standoff: Array[Vector2i] = EngagementRect.cull(shooter, enemy, 0.0, reachable)
+	var long_standoff: Array[Vector2i] = EngagementRect.cull(shooter, enemy, 7.0, reachable)
 
-	assert_false(aggressive.has(behind), "AGGRESSIVE's own 0 leaves the far side unpadded")
-	assert_true(marksman.has(behind), "MARKSMAN's own 7 reaches 6 cells behind the unit")
+	assert_false(no_standoff.has(behind), "a zero standoff leaves the far side unpadded")
+	assert_true(long_standoff.has(behind), "a standoff of 7 reaches 6 cells behind the unit")
 
 
 ## An axis the two units share has no "away" direction along it at all, so it
@@ -245,7 +224,7 @@ func test_a_shared_axis_gets_only_the_lateral_pad() -> void:
 	var behind := Vector2i(20, 15)
 	var reachable: Array[Vector2i] = [shooter.cell, far_along_x, behind]
 	var culled: Array[Vector2i] = EngagementRect.cull(
-		shooter, enemy, UnitAI._target_distance(weapon, UnitAI.MARKSMAN_PREFERRED_RANGE), reachable
+		shooter, enemy, UtilityContext.standoff_for(weapon), reachable
 	)
 
 	assert_false(culled.has(far_along_x), "the shared axis is lateral, padded by 2 and no more")

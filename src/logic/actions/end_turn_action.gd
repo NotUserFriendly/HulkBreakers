@@ -64,7 +64,7 @@ func _update_extraction_hold(state: CombatState, actual: Unit) -> void:
 		mission.extract_unit(actual)
 
 
-## taskblock-22 Pass C: shared with UnitAI's own shutdown-swap. A unit
+## taskblock-22 Pass C: shared with the AI planner's own shutdown-swap. A unit
 ## standing on its own team's extraction tile with every objective
 ## complete is ACTIVELY holding for extraction (this exact function is
 ## what matures that hold, one call at a time) — never "stalled" just

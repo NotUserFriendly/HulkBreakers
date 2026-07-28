@@ -2,7 +2,7 @@ class_name BoutRunner
 extends RefCounted
 
 ## taskblock-14 Pass C: drives a CombatState turn by turn — the SAME
-## UnitAI.plan_turn + CombatState.resolve_until a human's own UI already
+## AiPlanner.plan_turn + CombatState.resolve_until a human's own UI already
 ## uses for one squad, just called for every AI-driven unit's own turn
 ## instead. Headless, no timer/view dependency of its own: a watch loop's
 ## own timer calls `step()` on a cadence for pacing (Pass C's own
@@ -49,7 +49,7 @@ extends RefCounted
 ## - STRANDED: `mission.is_stranded()` (no living unit on
 ##   `player_squad_id`) — involuntary, real.
 ## - EXTRACTED: the surviving squad's own AI naturally reaches this once
-##   no enemy remains (UnitAI's existing gather -> extract branch) IF the
+##   no enemy remains (the planner's gather/extract actions) IF the
 ##   bout was configured with a real objective/extraction zone.
 ## - TERMINATED: this runner's own safety net — `turn_cap` guarantees
 ##   `step()` always eventually returns `finished`, never an infinite
@@ -152,11 +152,12 @@ func step() -> bool:
 		return false
 
 	var playstyle: StringName = unit.matrix.playstyle if unit.matrix != null else &"AGGRESSIVE"
-	# tb44 Pass C: the planner is handed a WorldView, never the state. Today this
-	# is the unrestricted one — everything, exactly as before — but the doorway is
-	# in, so part two's tiers have a chokepoint to gate information at rather than
-	# a retrofit across a planner that already reads global state everywhere.
-	var queue: ActionQueue = await UnitAI.plan_turn(
+	# tb44 Pass C: the planner is handed a WorldView, never the state — the
+	# chokepoint part two's tiers gate information at.
+	# tb45 Pass B/E: `AiPlanner` is the one seam every AI turn is planned through.
+	# It restricts the view itself, so this hands in the unrestricted one and the
+	# tier gating applies regardless of what any caller remembered to set.
+	var queue: ActionQueue = await AiPlanner.plan_turn(
 		unit, WorldView.full(state), mission, playstyle, pacer
 	)
 	last_unit = unit

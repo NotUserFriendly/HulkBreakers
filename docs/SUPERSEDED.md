@@ -85,6 +85,60 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 | docs/09 taskblock-07 Pass B4: "a plain container has no click of its own" — applied to `DebugControlPanel`, which sat at `MOUSE_FILTER_IGNORE` and let clicks fall through to the board (`BR30.05` symptom 1) | the rule is scoped to genuinely INVISIBLE containers (`InspectPanel`'s own root, empty padding), which is what it was written about. A container that draws a real background blocks what lands on it — `BR34.02`'s own resolution, generalised. `DebugControlPanel` is a `PanelContainer` with an opaque `HulkTheme` background and is now `STOP` | BR30.05 fix |
 | **"An AI turn's seconds are spent scoring candidate cells"** — carried unmeasured from tb35 through tb42 into tb43's own framing ("attack the candidate count and the work per candidate"), and the reason three passes in a row attacked `_pick_engagement_position` | **measured false.** Per repositioning turn, means over 60 turns: `_any_reachable_has_lof` **271.9ms**, `_pick_engagement_position` **98.3ms**, `_nearest_living_enemy` 15.0ms, `Pathfinder.reachable` 2.5ms. The candidate search is ~25% of a planning turn; the **LOF prefilter scan over the whole reachable set** is ~70%, and it is paid identically by a batch leader and a batch follower, which is why tb43 Pass D's leader/follower split bought 4% instead of an order of magnitude. `tools/bench_ai_planning.gd --profile` is the instrument | tb43 Pass D |
 | tb43's own Pass D acceptance: "if a follower isn't dramatically cheaper, the local scan is too wide" | **the diagnosis, not the constant, was wrong.** The scan is radius 1 — at most 9 cells — and narrowing it further cannot help, because what a follower still pays is the shared prologue above. Widening or narrowing `FOLLOWER_SCAN_RADIUS` is not the lever | tb43 Pass D |
+| `UnitAI` — the engagement-score planner: a hand-ordered cascade of branches (fire in place → approach fallback → closing fallback → engagement search → step out → overwatch → hold) ranked by seven penalty constants each dominating the one below it | `UtilityPlanner` — one loop scoring every (cell, action) pair and taking the best. Precedence is not written down at all; it emerges from authored weights, so changing what a unit prefers is a `.tres` edit rather than a re-ordering of branches. See the retirement note below for the measured before/after | tb45 Pass E |
+| `UnitAI.PLAYSTYLES` and the per-playstyle preferred-range constants (`AGGRESSIVE_PREFERRED_RANGE` 0, `SKIRMISHER` 5, `MARKSMAN` 7) | `AiPlanner.PLAYSTYLES` (the vocabulary outlives the planner — `Matrix.playstyle` authors it and the bout dropdown reads it); the preferred ranges dissolve into `UtilityContext.standoff_for`, which reads the weapon's own authored `effective_range` and falls back to one flagged default. **Retiring the playstyle vocabulary itself is still `PLAN.md`'s, not done here** | tb45 Pass E |
+| `UnitAI.is_covered_from` — a shared cover predicate parked inside the planner, read by `StepOutPlanner` and `TacticsController` for the PLAYER's own step-out affordance | `Cover.is_covered_from`, its own file. Three callers outlived the planner they were reaching into; a shared predicate living in a file scheduled for deletion is how a "no hanging references" acceptance turns into a scramble | tb45 Pass E |
+| `UnitAI._preferred_firing_action_id`/`_provided_firing_action_id` — burst-over-shoot-over-stab preference living in the planner | `ActionCatalog.preferred_firing_action_id`/`provided_firing_action_id`, beside `provider_for` and `build_firing_action`. It is a question about the WEAPON, not about the plan, and taskblock-45 briefly had two planners that would each have needed a copy | tb45 Pass B |
+| taskblock-43 Pass D's follower planner — the batch leader publishes a **destination** and each follower scans the handful of cells around it | the leader publishes an **objective** (advance / hold / withdraw / flank) and it is injected as a consideration input. A follower consumes it for free — one more entry in a dictionary it was already building — where the local scan was never dramatically cheaper (that pass's own unmet acceptance). It also fixes a behavioural problem the destination had: every follower converging on one cell is a queue, not a manoeuvre | tb45 Pass C |
+| `AiDecisionLog.emit` — the tb35 branch-name decision log (`&"ai_decision"`, "which branch `plan_turn` took and why, if it held") | deleted with the branches it named. `emit_utility_decision` is the survivor: per candidate, per consideration, the raw input AND the curve output, plus tier, profile, visible set and the margin over second place | tb45 Pass E |
+| `WorldView.remembered` readable by every restricted observer regardless of tier | gated on `WorldView.MEMORY_TIERS`. **`MINDLESS` is strictly current-sight-only** and stops knowing an enemy exists the moment line of sight breaks. This overrides taskblock-45 Pass B's own third test bullet, which asked for a `MINDLESS` unit acting on a stale remembered position — the two are mutually exclusive, and the supervisor chose current-sight-only. Chasing a stale sighting is Grunt's behaviour and arrives with `PLAN.md`'s *fill in the tier table* | tb45 Pass B (supervisor) |
+
+---
+
+## The engagement-score planner, retired (tb45 Pass E)
+
+**What it was.** `src/logic/ai/unit_ai.gd`, 1369 lines at the end, the only decision-maker for a
+non-human unit's turn from taskblock-14 onward. It decided a turn by walking a fixed cascade of
+branches and picked a cell with `_engagement_score`, an additive score built from seven penalty
+constants — `NO_LOF_PENALTY` 2000, `OBSTRUCTION_PENALTY_WEIGHT` 1000, `ALLY_BLOCKED_PENALTY` 1000,
+`SUPPRESSION_PENALTY` 25, `MIN_RANGE_PENALTY` 20, `OPPORTUNITY_ATTACK_PENALTY` 15,
+`COVER_SCORE_BONUS` 10 — each deliberately sized to dominate the one below it.
+
+**Why it was replaced rather than tuned.** That total ordering *was* the design, and every new
+consideration had to be inserted at the right height in it. The file was raised past the linter's
+`max-file-lines` cap **eight times**, every one justified by "part two replaces this file". The
+deeper cost was structural: answering "can I shoot from here" per candidate cell meant a real
+`ShotPlane` build per candidate, which taskblock-43 measured at ~70% of a planning turn.
+
+**Measured before/after** (`tools/ai_planning_bench.gd --full`, `editor_debug`, 2026-07-28):
+
+| | old | new |
+|---|---|---|
+| completion rate, seeds 0-11 | 75% | **33%** |
+| completion rate, seeds 12-23 | **100%** | 42% |
+| completion rate, 24 seeds combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
+| turns to complete | 23.9 | 27.0 |
+| per-unit plan cost, mission bout | 139.90 ms | **86.51 ms** |
+| per-unit plan cost, 3v3 combat bout | 485.16 ms | **131.25 ms** |
+| `ShotPlane` builds per turn | 29.1 | **0.0** |
+
+**An earlier version of this table read 58% and it was wrong.** It was taken while the new planner
+still carried a defect that stopped it moving to the cell it had scored, so it was not measuring the
+planner as shipped. The numbers above are post-fix and were taken over 24 seeds rather than 12,
+because 12 was too thin a sample to condemn or clear a planner on. The old planner completed **every
+one** of the twelve fresh seeds.
+
+**The completion regression is large, real, and was landed knowingly.** The dominant failure is
+`TERMINATED` — the turn cap running out — not `STRANDED`: **the new planner is not losing fights, it
+is failing to finish.** Two structural causes were tested and ruled out: the information restriction
+(identical 33.3% with the view forced unrestricted) and the candidate-set cull (no change).
+`MIN_COMPLETION_RATE` was lowered from 0.5 to 0.25 to land it; CC recommended against both the
+landing and the lowering, the supervisor decided otherwise on this evidence, and the objection is
+recorded in `test_full_mission.gd` beside the constant rather than only here. The table predates the block's last four fixes and is pessimistic by roughly one seed in twelve; `BR45.03` says so and asks for a fresh reading.
+
+**`ShotPlane` builds per turn falling to exactly zero is the structural claim**, not a speed
+tweak: line-of-fire is now a bit test against one `VisibilityField` built per target per turn, and
+the canonical resolver is consulted only when an action is actually enqueued.
 
 ---
 

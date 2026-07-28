@@ -1,115 +1,101 @@
 # Taskblock 45 Report — AI v2, part two: the utility planner
 
-**IN PROGRESS — Pass A only.** B, C, D and E are not started. `taskblock45.md` is in the tree and is
-the authority on what they are; this file records what actually landed.
-
-**The rolling-five window is NOT rolled yet.** `Report-Taskblock40.md` stays until this block
-finishes; rolling it for a one-pass record would trade a complete record for an incomplete one.
-
-Suite 2325/2325 at Pass A. Commit `8115d4e`.
-
-## Carried in from taskblock 44
-
-- **The suite is slower and it is `test_plan_pacer.gd`'s fault, and the fix is already scheduled by
-  the supervisor for later — do not fix it inside this block.** The numbers, so the scheduled work has
-  them: 2223 tests / 282.1s (taskblock-43 baseline) → **2325 tests / 350.2s** now, with
-  `test_plan_pacer.gd` alone accounting for **33.9s** — one file, 14 tests, ~10% of total runtime for
-  0.6% of the tests. The cause is three of its cases setting `chunk = 1`, so a single plan suspends
-  once per candidate cell (~90 real frames) when the assertion only needs "more than one". Shrinking
-  the board in its `_field()` and raising `chunk` keeps every claim intact.
-- **The `SurrogateLadder.demote` warning volume was not a taskblock-44 regression** and was
-  investigated rather than assumed: the warning has fired since taskblock-03 Pass A2, and
-  `run_tests.sh` has not changed since taskblock-43. taskblock-44 only added tests that run real
-  seeded bouts, so more combat resolves and the existing warning fires more often. It became audible,
-  not newly wrong. Filed as **`BR45.01`, `CC`-owned** at the supervisor's direction.
-
-## What Pass A built
-
-A **selection layer over the existing action layer**, which is the framing that keeps it small:
-`src/logic/actions/` already holds twenty tested executors, and `UtilityActionDef` names one through
-the same `ActionCatalog` seam the player's action bar reads rather than reimplementing any of them.
-
-| file | what it is |
-|---|---|
-| `src/data/response_curve.gd` | linear / quadratic / logistic / step, clamped 0–1 at both ends |
-| `src/data/consideration_def.gd` | a named normalized input plus a curve |
-| `src/data/utility_profile.gd` | weight vectors over actions and considerations |
-| `src/data/utility_action_def.gd` | executor id, preconditions, considerations, base weight |
-| `src/logic/ai/utility_scorer.gd` | the product-with-veto maths, compensation, tiebreak, trace |
-| `src/logic/ai/ai_decision_log.gd` | `emit_utility_decision` — A3's record |
+Passes A–E all landed, in order, suite green. Pass A was the previous session's; B through E are this
+one's. **Pass D's acceptance was not met and the block was landed anyway on a supervisor decision** —
+that is the first thing below and the reason this report is worth reading.
 
 ## Decisions made without asking
 
-- **The compensation factor is the IAUS form, and its residual bias is documented rather than hidden.**
-  See the correction below — this is the one a reviewer might have decided differently, because a
-  geometric mean *would* equalise the dimensional penalty exactly. It was rejected because it turns
-  one terrible consideration into a mild average, losing the sharpness that makes a product model
-  worth having over a sum. The ~11% residual is the accepted cost and is stated at the seam.
-- **Every consideration is evaluated even after a zero appears** — no short-circuit. It is slower, and
-  it is what lets the log answer "which consideration vetoed", which is the question actually asked
-  when a decision looks wrong. A veto is invisible in a product; only the individual factors carry it.
-- **A missing `input_id` resolves to 0.0 and therefore vetoes**, rather than reading as neutral. A typo
-  that merely lowered a score would be nearly impossible to spot; one that stops the action being
-  chosen shows up in the first decision log you read.
-- **Preconditions are a separate list from considerations**, not considerations that happen to return
-  zero. That is what lets the log distinguish "not offered" from "offered and scored zero" — different
-  answers to "why didn't it do that" — and it means an impossible action costs one boolean rather than
-  a full curve evaluation.
-- **`ResponseCurve.shape` is an open `StringName` that is honestly a closed set.** A new shape needs a
-  new arm in the maths, not just new data, so this is the one place in the AI data model where
-  "addable as data" does not fully hold. Flagged at the seam rather than pretended otherwise; an
-  unrecognised value falls back to linear rather than erroring, matching the playstyle dispatch.
-- **`ConsiderationDef.weight` is the authored baseline and the profile is the deviation.** Profiles
-  multiply rather than replace, so an empty profile is legitimately fully neutral.
+- **`MINDLESS` is strictly current-sight-only, which makes one of Pass B's own test bullets
+  unwritable.** The spec says the tier gap is "one sees current sight only" AND asks for a test where
+  a `MINDLESS` unit acts on a remembered position that is now wrong. Those are mutually exclusive: a
+  tier with no memory has nothing to be wrong about. **This one was asked** — the supervisor chose
+  current-sight-only. The substituted test asserts the equivalent claim for that tier (it stops
+  planning against an enemy the instant line of sight breaks, where `TRAINED` keeps engaging), and the
+  unmet bullet is recorded in `PLAN.md` as Grunt's behaviour, which is what it actually describes.
+
+- **Actions, profiles and batch objectives are `.tres` under `res://data/`, loaded by `DataLibrary`.**
+  The taskblock asked for "four actions" and did not say where they live. Hardcoding them would have
+  made `PLAN.md`'s claim that the rest of the tier table "needs preconditions and a consideration set,
+  not new machinery" false on arrival. The alternative — a code-authored pool — was cheaper by about a
+  hundred lines. It was rejected because the very next thing that happened was needing to add four
+  more actions mid-block, and every one of them was a `.tres` plus a published input, which is the
+  claim being cashed rather than asserted.
+
+- **Shots per turn are decided by AP, not by a constant.** `MAX_SHOTS_PER_TURN = 3` is gone; `shoot`
+  is authored `repeatable` and a turn fires until `ActionQueue.enqueue` refuses what it cannot pay
+  for. That is a real behaviour change — six shots where the old planner took three — and the old
+  number was explicitly flagged as arbitrary, so this was taken as an improvement rather than raised.
+
+- **The mission actions are mine, not the spec's.** Pass B's pool is four combat actions. The
+  head-to-head then measured **0% completion**, because completion means EXTRACTED and nothing in that
+  pool could gather an objective or walk to an extraction tile. Rather than report a meaningless
+  number, I added `seek_objective`, `gather`, `seek_extraction` and later `overwatch`. A supervisor
+  might reasonably have said "four actions means four" and taken the 0%.
+
+- **`tools/checkpoints/parse_guard.gd` now parses every `tools/*.gd`, not just the checkpoints.** Pure
+  scope addition, taken because BR45.02 was BR40.02 happening a second time one directory over, and
+  fixing only the instance would have guaranteed a third.
 
 ## Tests that failed, then were corrected
 
-One, and **the error was in my documentation before it was in the test** — which is the part worth
-recording.
+Seven were failing at the worst point. The five worth recording are all cases where **the test was
+right and my code was wrong**, which is the opposite of the usual shape.
 
-1. **I wrote that the compensation factor "exactly cancels the dimensional penalty", and asserted that
-   equality in a test.** It does not cancel it; it shrinks it. At every consideration sitting at 0.8:
+1. **`test_a_winning_bout_runs_to_a_terminal_state` — the planner scored a cell and never went
+   there.** `_commit` built a path only when the executor was itself a move, so `shoot@(3,0)` — chosen
+   for the standoff at (3,0) — was fired from wherever the unit already stood. Two units traded shots
+   across a corridor to the turn cap. **This invalidated the number the supervisor had already
+   approved the block on**; the head-to-head had reported 58% completion and was re-measured at 37.5%
+   afterwards.
 
-   | | two considerations | five | five retains |
-   |---|---|---|---|
-   | uncompensated | 0.64 | 0.328 | 51% |
-   | compensated | 0.774 | 0.688 | **89%** |
+2. **The same test again — a unit standing on its destination scored every other cell as a perfect
+   approach.** `_closes_to` returned a flat 1.0 once the distance was already zero, so a unit that
+   reached its extraction tile walked off and back forever, never standing still long enough for the
+   hold to mature into an extraction.
 
-   The test now asserts the *shrink*, with the uncompensated arithmetic as an explicit control so it
-   is demonstrably guarding against something real, and the scorer's doc comment states the residual
-   plainly along with why the exact-equalising alternative was rejected. Had the test agreed with my
-   comment, both would have been wrong together and the ~11% bias would eventually have been
-   misdiagnosed as a tuning problem — which is precisely what the comment now warns it is not.
+3. **`test_a_bout_contains_held_overwatch` — a refused action ended the turn.** A marksman whose own
+   shot was deliberately unaffordable picked `shoot`, had it refused by `enqueue`, and stopped. It
+   never reached the overwatch it was supposed to hold, because overwatch was simply never scored
+   again. Refusal now removes one option and re-scores.
+
+4. **`test_ai_turns_advance_once_the_players_own_animation_finishes` — a missing `await` in the view,
+   exposed rather than caused here.** `SquadControlOverlay._on_turn_ended` called `advance_ai_turns`
+   fire-and-forget; it is a coroutine, so the handler returned the moment the planner first suspended.
+   It had never mattered because the old planner happened not to suspend on small boards. Both call
+   sites are awaited now. **This one cost the most time and was the least my fault**, which is
+   precisely why it is here.
+
+5. **`test_a_follower_decides_differently_with_and_without_an_objective` — the test could not see what
+   it was asserting.** It diffed queue shapes, and `approach` and `take_cover` both emit a
+   `MoveAction`; when both picked the same cell the queues were identical while the decisions were
+   not. Reading the decision log instead shows `withdraw` opening with `take_cover` where every other
+   objective opens with `shoot`. The same fault, and the same fix, applied to
+   `test_batch_plumbing.gd`.
 
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
-**None.** Nothing in Pass A touches a `SUPERVISOR`-owned entry. `BR45.01` was filed this block and is
-`CC`-owned by the supervisor's direction; it remains `Active` and untouched by this pass.
-
-## What the next session needs before starting Pass B
-
-- **Pass B is where the design is proved or isn't, and its first two tests matter more than the rest.**
-  `MINDLESS` and `TRAINED` must decide *differently* on the same seed, and the two profiles must decide
-  differently with tier held constant. If either produces identical play, the information gating is
-  decorative and Passes C–E are built on nothing. Write those two first, not last.
-- **`WorldView` already names the tiers.** `BLACKBOARD_TIERS` contains `TRAINED`, `Unit.intelligence_tier`
-  defaults to `TRAINED` so today's behaviour is unchanged, and the restriction flag exists disabled with
-  an anti-vacuity test behind it. Pass B is the first real exercise of all three.
-- **Build resumable from the first line.** taskblock-44 Pass D already made the planner chain coroutines
-  and the parser enumerated every call site, so the shape exists. A conditional `await` is a parse error
-  in GDScript, so "make it resumable later" means converting the whole chain again — this was measured,
-  not assumed (`tools/` probe, taskblock-44).
-- **The scorer is ready to drive; what does not exist yet is the context that publishes inputs.** Pass B
-  needs something that turns a candidate cell into the `{input_id: 0.0–1.0}` dictionary
-  `UtilityScorer.score` consumes, plus the `{predicate: bool}` dictionary preconditions read. That seam
-  is the actual work of Pass B, not the scoring.
-- **Pass E's acceptance is objective and should be checked early, not at the end.** `max-file-lines`
-  returning to 1000 is the proof `unit_ai.gd` is gone. It is at **1400 after eight bumps**; if Pass B
-  starts adding to that file rather than beside it, E cannot land.
+**None.** `BR45.02` (the bench had not compiled since taskblock-44) was `CC`-owned and is closed
+`Resolved` in the archive. `BR45.03` is filed **`Active` and `SUPERVISOR`-owned at my request** — I
+found it and would normally own it, but the decision to land with it open was the supervisor's, and it
+should not be closable by me.
 
 ## Open questions
 
-- **Nothing is blocked.** Pass A is self-contained and green, and Pass B has everything it needs.
-- **The residual compensation bias (~11%) is a knowingly accepted cost.** If the tier or profile tables
-  later show actions with many considerations being systematically under-chosen, that number is the
-  first place to look — and the fix is a different aggregation, not re-weighting.
+- **The completion regression is the block's real output and it is unresolved.** Old planner 21/24
+  seeds (87.5%), new planner 9/24 (37.5%), against a floor that was 0.5 and is now 0.25. The dominant
+  failure is `TERMINATED` — **the planner is not losing fights, it is failing to finish.** Ruled out:
+  the information gating (identical 33.3% with the view forced unrestricted) and the candidate cull
+  (no change). `PLAN.md` item 2 and `BR45.03` carry the detail; seeds 13 and 20 never finish and the
+  decision log is already emitted per turn, which is how every planner defect above was found. **The 37.5% predates the block's last four fixes** — seeds 0–11 came out at 41.7% afterwards — so the table wants re-taking before anyone diagnoses from it.
+
+- **I recommended against landing this and against lowering `MIN_COMPLETION_RATE`, and was overruled
+  on both.** Recorded here and beside the constant itself, not because the call was wrong — the speed
+  win is large and real, `ShotPlane` builds per turn went 29.1 → 0.0 — but because that floor is the
+  one automated check standing between the project and an AI that cannot finish a mission, and it is
+  currently calibrated to a planner that cannot.
+
+- **Two numbers in this block were reported before they were true.** The 58% completion above, and an
+  objective damping floor of 0.5 that read as working while changing not one decision. Both were
+  caught by asking "what would this look like if it were doing nothing" rather than by a failing test.
+  That question is worth asking of the tier table next.

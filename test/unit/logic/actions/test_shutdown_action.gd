@@ -3,8 +3,8 @@ extends GutTest
 ## taskblock-22 Pass C: "a unit that cannot move and cannot act can
 ## shutdown — the player equivalent of matrix ejection, available to both
 ## sides." Legal for any unit at any time (a choice), not gated on being
-## stalled — that's UnitAI's own policy for when to queue it, tested in
-## test_unit_ai.gd instead.
+## stalled — that's the AI planner's own policy for when to queue it, tested in
+## the AI planner's own tests instead.
 
 
 func _unit(cell: Vector2i, squad: int = 0) -> Unit:

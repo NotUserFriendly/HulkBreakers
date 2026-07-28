@@ -28,7 +28,7 @@ static func has_los(grid: Grid, a: Vector2i, b: Vector2i) -> bool:
 ## yet: working around a corner reduces the obstruction count one wall at
 ## a time, where raw Chebyshev distance-to-preferred-range can plateau or
 ## even worsen mid-detour (the exact freeze this exists to fix — see
-## `UnitAI._engagement_score`'s own use of it). Same `Grid.line` walk
+## the retired engagement scorer's own use of it). Same `Grid.line` walk
 ## `has_los` already does, just counting instead of early-exiting on the
 ## first hit — never a second, differently-shaped visibility test.
 static func obstruction_count(grid: Grid, a: Vector2i, b: Vector2i) -> int:

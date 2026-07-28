@@ -90,7 +90,7 @@ func _make_burst_armed_unit(cell: Vector2i, squad: int = 0) -> Unit:
 func _setup_covered_scene_burst() -> Dictionary:
 	var grid := GridFixture.flat(10, 10)
 	# Row 1: pathing-blocked only, no opacity/blocker -- an unfloored gap is
-	# the placement-model equivalent (see test_unit_ai.gd's own identical
+	# the placement-model equivalent (see the AI planner tests' own identical
 	# fixture for why `GridFixture.place_wall` would be wrong here: it would
 	# ALSO trip `is_covered_from`'s separate blocker-based cover check).
 	for x in range(8):
@@ -168,7 +168,7 @@ func test_firing_burst_after_step_out_is_silently_rejected_with_insufficient_rea
 	)
 
 
-## Verified geometry (matches test_unit_ai.gd's own AI-step-out-fallback
+## Verified geometry (matched the retired planner's own AI-step-out-fallback
 ## fixture): a real WALL (opacity) at (3,2) blinds a shooter at (3,0)
 ## from an enemy at (3,9), while both orthogonal neighbors keep clear
 ## LoS around it. Row y=1 is ALSO walled (pathing only, no opacity) so
@@ -179,7 +179,7 @@ func test_firing_burst_after_step_out_is_silently_rejected_with_insufficient_rea
 func _setup_covered_scene() -> Dictionary:
 	var grid := GridFixture.flat(10, 10)
 	# Row 1: pathing-blocked only, no opacity/blocker -- an unfloored gap is
-	# the placement-model equivalent (see test_unit_ai.gd's own identical
+	# the placement-model equivalent (see the AI planner tests' own identical
 	# fixture for why `GridFixture.place_wall` would be wrong here: it would
 	# ALSO trip `is_covered_from`'s separate blocker-based cover check).
 	for x in range(8):

@@ -1411,6 +1411,185 @@ budget backs the label, since a thinking state that never ends is worse than a f
 safe at any iteration because the incumbent is the unit's own cell until strictly beaten. Frame
 boundaries do not change decisions, asserted directly.
 
+### AI v2, part two: the utility planner replaces the branch cascade (tb45 Passes A–E, docs/PLAN.md)
+
+**The engagement-score planner is deleted.** `src/logic/ai/unit_ai.gd` — 1369 lines, eight
+`max-file-lines` bumps, every one justified by "part two replaces this file" — is gone, and the
+linter cap is back at its default 1000. `test/unit/test_retired_planner_sweep.gd` greps `src/`,
+`test/` and `tools/` for the retired name and asserts the 1000 directly, so neither can drift back
+silently. Full retirement note, including the measured before/after, in `SUPERSEDED.md`.
+
+**The model** (Pass A). `ResponseCurve` / `ConsiderationDef` / `UtilityActionDef` / `UtilityProfile`
+as data; `UtilityScorer` as the maths. Considerations MULTIPLY, so one zero vetoes outright; the
+IAUS compensation factor keeps a 5-consideration action comparable to a 2-consideration one at equal
+quality. **The compensation is not exact and the residual is documented rather than hidden** — it
+shrinks the dimensional penalty from "five inputs retain 51%" to "89%", and the remaining ~11% is an
+accepted cost, not a tuning problem.
+
+**Selection over the existing action layer** (Pass B). `UtilityActionDef.executor_id` names one of
+the twenty tested classes in `src/logic/actions/` through `UtilityExecutors`; nothing was
+reimplemented. `UtilityContext` is the seam that turns a candidate cell into the `{input_id: 0–1}`
+dictionary the scorer consumes — and is the only place in the planner that knows what a grid, a
+weapon or a line of fire is.
+
+**Actions and profiles are `.tres` files**, under `res://data/utility_actions/`,
+`res://data/utility_profiles/` and `res://data/batch_objectives/`, loaded by `DataLibrary` like every
+other content type. `PLAN.md`'s claim that the rest of the tier table "needs preconditions and a
+consideration set, not new machinery" is now literal. `tools/author_taskblock45_ai.gd` authors them.
+
+**Intelligence gates information, and the gate is load-bearing.** `WorldView.MEMORY_TIERS` makes
+remembered sightings a tier capability: `MINDLESS` sees only what its own eyes currently reach and
+stops knowing an enemy exists the moment line of sight breaks, where `TRAINED` acts on what it wrote
+down. The two tiers decide differently on the same board and the two profiles decide differently with
+tier held constant — both asserted directly, because a tier that silently does nothing is the failure
+this design is most exposed to.
+
+**A floor is not a preference — the most consequential authoring lesson of the block.** In a product
+model, a consideration whose curve can reach 0.0 does not express "prefer this", it expresses
+"refuse everything else". A plain linear `standoff_match` therefore meant "refuse to act more than
+eight cells off the preferred distance", which would stop a rifleman with a thirty-cell weapon ever
+taking a long shot, and nothing about the arithmetic announces it. Every consideration expressing a
+preference is now floored; only `line_of_fire`, which expresses a genuine impossibility, can reach
+zero.
+
+**The batch objective, built dormant** (Pass C). A leader runs one coarse utility pass over four
+authored objectives and the answer is injected as a consideration input for every follower — squad
+coordination without a squad planner, replacing taskblock-43 Pass D's copied destination. Standing
+rule 5 is untouched: the objective is computed once per batch per round and reused, never a licence
+to resolve units together. **Dormant publishes an all-ones neutral vector, never all-zeros** — zeros
+would veto through the product and every `batch_id == 0` unit, which is every unit in play today,
+would stop acting.
+
+**The objective damping floor had to be lowered to do anything, and that was found by testing rather
+than by reading.** At 0.5 the batch had an objective, the log recorded it, every follower read it,
+and **not one decision changed** — `shoot` carries a higher base weight and is served by `hold`
+alone, so `advance` and `withdraw` damped it identically. At 0.25 the three cases separate. A
+mechanism that is wired end to end and still inert is exactly the "silently does nothing" failure,
+arriving on the batch axis instead of the tier one.
+
+**Head to head, then the flip** (Pass D). The same seeds through both planners, 24 of them:
+
+| | old | new |
+|---|---|---|
+| completion rate, seeds 0-11 | 75% | **33%** |
+| completion rate, seeds 12-23 | **100%** | 42% |
+| completion rate, 24 seeds combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
+| turns to complete | 23.9 | 27.0 |
+| per-unit plan cost, mission bout | 139.90 ms | **86.51 ms** |
+| per-unit plan cost, 3v3 combat bout | 485.16 ms | **131.25 ms** |
+| `ShotPlane` builds per turn | 29.1 | **0.0** |
+
+**The speed win is large and the play regression is larger.** `ShotPlane` builds per turn falling to
+exactly zero is the structural claim, not a speed tweak — line of fire is a bit test against one
+`VisibilityField` per target per turn, and the canonical resolver is consulted only when an action is
+actually enqueued.
+
+**The completion regression was landed knowingly, against CC's recommendation.** The dominant failure
+is `TERMINATED`, the turn cap running out — **the planner is not losing fights, it is failing to
+finish**. Two structural causes were tested and ruled out: the information restriction (identical
+33.3% with the view forced unrestricted) and the candidate-set cull (no change). `MIN_COMPLETION_RATE`
+was lowered 0.5 → 0.25 to land it, with the measurement and the objection recorded beside the
+constant. **This is the first thing to open when this area is next touched.**
+
+**A 12-seed sample was too thin to decide on, and the first decision was made on a wrong number.** The
+head-to-head initially reported 58% and the default was flipped on it; that measurement was taken with
+a live defect (below) and never described the planner as shipped. Re-measured post-fix over 24 seeds,
+the real figure is 37.5% against the old planner's 87.5% — and even that predates the last four fixes, after which seeds 0–11 came out at 41.7%. `BR45.03` carries the caveat; the table wants re-taking before anyone diagnoses from it.
+
+**A combat-only pool cannot finish a mission, and the head-to-head is what made that concrete.** The
+first measurement returned **0% completion** against the old planner's 75% — not because the planner
+played worse, but because completion means EXTRACTED and nothing in the Pass B pool could gather an
+objective or walk to an extraction tile. The fix was four more `.tres` rows (`seek_objective`,
+`gather`, `seek_extraction`) plus the mission inputs to score them over. It also exposed a real
+defect the tests had not: candidate cells were computed only when an enemy was known, so a unit with
+nothing in sight could not move anywhere at all.
+
+**Three real planner defects, all found by reading the decision log rather than the code.** Each had
+survived a green test suite, and each is the kind that a completion rate alone reports only as a
+number:
+- **A candidate is a (cell, action) pair, and the planner only moved to the cell when the action was
+  itself a move.** So `shoot@(3,0)` — chosen because (3,0) sits at a good standoff — was fired from
+  wherever the unit already stood. Two units traded shots across a corridor forever, neither closing.
+  The log is what exposed it: every entry read `shoot@(3,0)` while the unit sat at (1,0), and the
+  mismatch between those two coordinates is the whole bug in one line.
+- **A unit standing on its destination scored every OTHER cell as a perfect approach.** `_closes_to`
+  returned a flat 1.0 when the distance-to-target was already zero, so a unit that reached its
+  extraction tile walked off it and back, every turn, forever — two units alternating onto one tile
+  for a whole turn cap, neither ever standing still long enough for the hold to mature.
+- **A refused action ended the turn instead of falling through.** `ActionQueue.enqueue` is the only
+  thing that knows what a unit can afford from where it will actually be standing, so "the scorer
+  wanted this and the executor said no" is ordinary. Stopping there meant a marksman whose own shot
+  was unaffordable picked `shoot`, had it refused, and ended its turn — never reaching the overwatch
+  it should have held, because overwatch was simply never scored again.
+
+**Holding turned out to be the hardest single action to author, and it broke three different
+things.** `HoldAction` keeps the unit CURRENT — that is what deferring means — so anything that lets
+it win by default livelocks a bout:
+- **It was offered after the unit had already acted.** A unit that spent its whole turn on six shots
+  then "held", which is a contradiction: holding is a substitute for acting, not a coda to it. Only
+  offered while the turn is still empty.
+- **The planner appended `EndTurnAction` behind it.** Hold means *do not end my turn yet*; ending it
+  anyway threw the deferral away. `UtilityActionDef.ends_turn` marks the actions nothing may be
+  queued behind — data, not an `is HoldAction` branch, for the same reason `repeatable` is.
+- **It won by forfeit whenever the candidate scan was short.** The retired planner only held when the
+  shot was genuinely blocked; offered unconditionally, hold is what is left when everything else is
+  out of range or out of reach. **The view's own `PlanPacer` budget shortens the scan**, so a watched
+  bout could livelock where a headless one did not — the worst kind of difference. `lof_blocked` is
+  published as an explicit inverse predicate (preconditions are an all-must-hold list with no
+  negation) and hold now requires it.
+
+**A missing `await` in the view, exposed rather than caused by this block.**
+`SquadControlOverlay._on_turn_ended` called `advance_ai_turns(battle)` fire-and-forget. It is a
+coroutine, so the handler returned the instant the planner first suspended and the AI batch completed
+some frames later, unobserved. It had no visible effect while the old planner happened never to
+suspend on small boards; the utility planner yields through `PlanPacer` on any real candidate set, and
+the batch then ran after whatever came next had already read the turn state. Both call sites are
+awaited now.
+
+**`hold_position` needed `enemy_known`, which is subtler than it looks.** Holding means "defer to the
+next ally, who may open a line" — a combat reason. Offered with no enemy known it broke extraction
+outright: `HoldAction` ends the turn itself, so a unit on its extraction tile that chose to hold never
+reached the trailing `EndTurnAction` whose hold-check is what matures a hold into a real extraction.
+It sat on the tile holding, correctly, forever.
+
+**The candidate rectangle is drawn toward the enemy, and a unit has somewhere else to be.** Culled
+alone, a unit that could see an enemy could not consider a single cell toward its resource node or
+extraction tile — it could fight or travel, never both. The cells that genuinely close on a mission
+destination are added back, at most one per destination.
+
+**Precedence became a weight instead of a branch.** The old planner had a hard "combat first"
+ordering above a non-combat branch. Every combat action requires `enemy_known`, so with nothing in
+sight the mission actions are the only ones offered and win by default; with an enemy in sight both
+compete and the authored weights decide.
+
+**Shots per turn are decided by AP, not by a constant.** `MAX_SHOTS_PER_TURN = 3` is gone; `shoot`
+is authored `repeatable` and a turn fires until `ActionQueue.enqueue` refuses the shot it cannot pay
+for. `MAX_SELECTIONS` is a backstop deliberately set ABOVE the AP ceiling — it sat exactly at it for
+one commit, where the two were indistinguishable, and a test now keeps them apart.
+
+**Moved out of the planner so they could outlive it**: `Cover.is_covered_from` (read by
+`StepOutPlanner` and `TacticsController` for the player's own step-out affordance),
+`ActionCatalog.preferred_firing_action_id`/`provided_firing_action_id` (a question about the weapon,
+not the plan), and `AiPlanner.PLAYSTYLES` (the vocabulary outlives the planner; retiring it is still
+`PLAN.md`'s). `EngagementRect` survived untouched — it was always pure candidate-set geometry with no
+planner state in it, which is why it separated cleanly in taskblock-43 and cost nothing here.
+
+**Found and fixed on the way: the AI planning bench had been unable to compile since taskblock-44**
+(BR45.02). taskblock-44 Pass C changed the planner's helpers to take a `WorldView` and Pass D made
+`_pick_engagement_position` a coroutine; the bench called all of them and was updated for neither.
+Nobody found out until Pass D tried to use it. **This is BR40.02's failure mode one directory over**,
+so the fix is the class rather than the instance: `tools/checkpoints/parse_guard.gd` now parses every
+`tools/*.gd`, not only `tools/checkpoints/checkpoint_*.gd`.
+
+**The guard was wrong before it was right, and the wrongness is the point.** `load()` returns a
+`GDScript` object for a script that failed to COMPILE — the resource loads and the compile fails, and
+they are separate events — so the widened guard reported "16 script(s) OK" with a deliberate syntax
+error sitting in the tree. It checks `reload() == OK` now, and it is verified in both directions:
+a deliberate break makes it fail, removing the break makes it pass. `tools/migrate_data.gd` carries
+an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comment records that the
+generators it walks were deleted by the pass that landed its output, so it can never parse again and
+reporting it every build would be noise.
+
 ## Economy
 
 **Inventory & economy** (docs/05) — mass/bulk/RAM; discount once at the worn layer (body-attached

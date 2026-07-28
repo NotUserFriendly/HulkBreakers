@@ -26,11 +26,29 @@ extends SceneTree
 ## renderer this guard exists because we don't have.
 
 const CHECKPOINT_DIR := "res://tools/checkpoints"
+## taskblock-45 Pass D (BR45.02): **every tool, not just the checkpoints.**
+##
+## This guard was built for BR40.02 — a rename orphaning two scenario scripts for
+## fifteen taskblocks because nothing re-ran them — and then scoped to the one
+## directory that bug happened in. `tools/` itself stayed unguarded, and the exact
+## same thing happened again: taskblock-44 changed the planner's helpers to take a
+## `WorldView` and made `_pick_engagement_position` a coroutine, and
+## `ai_planning_bench.gd` stopped compiling. Nobody found out until Pass D tried to
+## use it, because a bench is run by hand and by hand is not a schedule.
+##
+## **A guard covering one directory documents which directory was on someone's
+## mind, not which ones can rot.** Tools are the whole class: nothing in
+## `run_tests.sh` imports them, so nothing else will ever notice them breaking.
+const TOOLS_DIR := "res://tools"
+## What a tool writes in its own doc comment to declare that it is expected never
+## to compile again. See `_is_retired`.
+const RETIRED_MARKER := "@retired-tool"
 
 
 func _initialize() -> void:
 	var failures: Array[String] = []
 	var checked := 0
+	var retired := 0
 
 	for path: String in _scenario_paths():
 		checked += 1
@@ -48,6 +66,17 @@ func _initialize() -> void:
 		if base != &"SceneTree":
 			failures.append("%s — extends %s, must extend SceneTree" % [path, base])
 
+	# Tools are parse-only: they legitimately extend SceneTree, Node or RefCounted
+	# depending on how each is launched, so there is no single base type to demand.
+	# Parsing is the whole check, and parsing is what actually rotted.
+	for path: String in _tool_paths():
+		if _is_retired(path):
+			retired += 1
+			continue
+		checked += 1
+		if not _parses(path):
+			failures.append("%s — failed to parse" % path)
+
 	if checked == 0:
 		print("checkpoint parse guard: no scenarios found in %s" % CHECKPOINT_DIR)
 		quit(1)
@@ -56,11 +85,67 @@ func _initialize() -> void:
 	for failure: String in failures:
 		printerr("checkpoint parse guard: %s" % failure)
 	if failures.is_empty():
-		print("checkpoint parse guard: %d scenario(s) OK" % checked)
+		print("checkpoint parse guard: %d script(s) OK, %d retired" % [checked, retired])
 		quit(0)
 	else:
-		printerr("checkpoint parse guard: %d of %d scenario(s) broken" % [failures.size(), checked])
+		printerr("checkpoint parse guard: %d of %d script(s) broken" % [failures.size(), checked])
 		quit(1)
+
+
+## **`load()` is not the check, and finding that out is why this widening was worth
+## doing.** Godot hands back a `GDScript` object for a script that failed to
+## compile — the resource loads, the compile fails, and the two are separate
+## events. A guard testing `load(path) == null` therefore passes on a broken
+## script, which this one did: it reported "16 script(s) OK" with a deliberate
+## syntax error sitting in `migrate_data.gd`. `reload()` returns the parse result
+## itself, which is the thing actually being asserted.
+##
+## Verified in both directions rather than reasoned about, the same way
+## taskblock-41 Pass E verified the original: a deliberate break makes this fail,
+## and removing it makes it pass.
+func _parses(path: String) -> bool:
+	var script: Resource = load(path)
+	if script == null or script is not GDScript:
+		return false
+	return (script as GDScript).reload() == OK
+
+
+## A tool that is **meant** to have stopped compiling, marked in its own source.
+##
+## `tools/migrate_data.gd` is the case: a one-time taskblock-10 migration whose own
+## doc comment records that "the hardcoded generators it reads from are deleted in
+## the same pass that lands this tool's output". It is a tombstone, kept as a
+## historical record, and it can never parse again. That is not rot and a guard
+## that reported it as rot every build would be noise teaching everyone to ignore
+## the guard.
+##
+## **The marker lives in the retired file, not in a list here**, so the exemption
+## and its reason cannot drift apart, and so adding one is a decision made while
+## looking at the file being exempted.
+func _is_retired(path: String) -> bool:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	return file.get_as_text().contains(RETIRED_MARKER)
+
+
+## Every `.gd` directly under `res://tools/`. Deliberately not recursive: the one
+## subdirectory is `tools/checkpoints/`, which the scan above already covers with a
+## stricter check, and parsing it twice would double-report a single break.
+func _tool_paths() -> Array[String]:
+	var paths: Array[String] = []
+	var dir := DirAccess.open(TOOLS_DIR)
+	if dir == null:
+		return paths
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if entry.ends_with(".gd") and not dir.current_is_dir():
+			paths.append("%s/%s" % [TOOLS_DIR, entry])
+		entry = dir.get_next()
+	dir.list_dir_end()
+	paths.sort()
+	return paths
 
 
 func _scenario_paths() -> Array[String]:

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_g0mfm"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_3pu21"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_gy6mh"]
+
+[sub_resource type="Resource" id="Resource_vkbyj"]
+script = ExtResource("2_3pu21")
+slope = 0.4
+offset = 0.6
+
+[sub_resource type="Resource" id="Resource_24b3h"]
+script = ExtResource("1_g0mfm")
+input_id = &"own_integrity"
+curve = SubResource("Resource_vkbyj")
+
+[resource]
+script = ExtResource("3_gy6mh")
+id = &"gather"
+display_name = "Gather"
+executor_id = &"gather"
+preconditions = Array[StringName]([&"is_player_squad", &"objective_open", &"cell_is_objective"])
+considerations = Array[ExtResource("1_g0mfm")]([SubResource("Resource_24b3h")])
+base_weight = 3.0
+repeatable = true

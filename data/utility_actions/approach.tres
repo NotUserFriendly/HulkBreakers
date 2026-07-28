@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_otma3"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_uyq50"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_krc6j"]
+
+[sub_resource type="Resource" id="Resource_7s5jk"]
+script = ExtResource("2_uyq50")
+slope = 2.0
+offset = -1.0
+
+[sub_resource type="Resource" id="Resource_2be1b"]
+script = ExtResource("1_otma3")
+input_id = &"closes_distance"
+curve = SubResource("Resource_7s5jk")
+
+[sub_resource type="Resource" id="Resource_rrft0"]
+script = ExtResource("2_uyq50")
+slope = 0.7
+offset = 0.3
+
+[sub_resource type="Resource" id="Resource_iwl4i"]
+script = ExtResource("1_otma3")
+input_id = &"own_integrity"
+curve = SubResource("Resource_rrft0")
+
+[sub_resource type="Resource" id="Resource_agi0a"]
+script = ExtResource("2_uyq50")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_3dj6r"]
+script = ExtResource("1_otma3")
+input_id = &"objective_advance"
+curve = SubResource("Resource_agi0a")
+
+[resource]
+script = ExtResource("3_krc6j")
+id = &"approach"
+display_name = "Approach"
+executor_id = &"move"
+preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere"])
+considerations = Array[ExtResource("1_otma3")]([SubResource("Resource_2be1b"), SubResource("Resource_iwl4i"), SubResource("Resource_3dj6r")])

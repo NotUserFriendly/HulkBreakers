@@ -55,7 +55,7 @@ func test_wants_turn_for_is_true_only_for_the_controlled_unit() -> void:
 
 
 ## unit_b goes first in turn order and is NOT the controlled unit — its
-## whole turn must auto-resolve via UnitAI with no End Turn press, landing
+## whole turn must auto-resolve via the AI planner with no End Turn press, landing
 ## on unit_a already selected with no click either ("no selection step").
 func test_a_non_controlled_units_turn_auto_resolves_and_the_controlled_unit_auto_selects() -> void:
 	var unit_a := _plain_unit(&"a", Vector2i(0, 0), 0)

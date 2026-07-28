@@ -24,7 +24,7 @@ const APPROACH_DEFAULT_RADIUS := 10.0
 ## The frontmost thing a shot from `from_cell` toward `target` would
 ## actually hit, excluding `shooter`'s own body — `null` if the line
 ## passes clean through everything, target included. Shared by
-## `has_clear_line_of_fire` and `UnitAI._ally_in_firing_line`: one
+## `has_clear_line_of_fire` and the planner's ally-in-line check: one
 ## first-hit resolution built from the exact same `ShotPlane.build`/
 ## `center_of` path `AttackAction.apply()` itself resolves against, never
 ## a second, re-derived approximation of that geometry.
@@ -53,8 +53,8 @@ static func first_hit(
 
 
 ## tb35 Pass A3 (BR27.09): `first_hit` builds a real `ShotPlane` per call —
-## `_any_reachable_has_lof` and `_engagement_score` (`unit_ai.gd`) each
-## independently resolve the shot from every reachable cell within one AI
+## the retired planner's reachability scan and its engagement scorer each
+## independently resolved the shot from every reachable cell within one AI
 ## turn, so the same cell's shot got resolved twice or more, every turn.
 ## `cache`, when the caller supplies one (a plain `Dictionary` keyed by
 ## `from_cell`, shared across a whole reachable-cell sweep), makes every
@@ -97,7 +97,7 @@ static func has_clear_line_of_fire(
 
 ## docs/09 taskblock07 Pass A1: `ShotPlane.resolve_projectile` is that
 ## file's own internal lookup, forbidden to every other caller in `src/` —
-## the same rect-lookup `UnitAI` used to keep locally before this class
+## the same rect-lookup the AI planner used to keep locally before this class
 ## existed. Excludes a body by identity (the shooter's own, which sits at
 ## the ray's own near-zero depth and would otherwise register as hitting
 ## itself before anything downrange ever does), not a part list.

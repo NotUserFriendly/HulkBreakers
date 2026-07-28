@@ -115,6 +115,43 @@ every fire**
 - **Do not silence the warning as the fix.** It is doing its job; the placeholder is what wants
   resolving.
 
+### BR45.03 — Active — owner: `SUPERVISOR`
+**The utility planner completes 37.5% of missions where the planner it replaced completed 87.5%**
+- **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
+- **`SUPERVISOR`-owned at CC's request**, not by default. CC found it and would ordinarily own it, but
+  the decision to land the planner with this regression open was the supervisor's, made on this
+  evidence, and this entry is the thing that must not be closed without them seeing a real completion
+  rate again.
+- **Measured 2026-07-28, both planners, same fixture, 24 seeds** (`test_full_mission.gd`'s own harness,
+  1v1 AGGRESSIVE, turn cap 100, completion == `EXTRACTED`):
+
+  | | old | new |
+  |---|---|---|
+  | seeds 0–11 | 9/12 (75%) | 4/12 (33%) |
+  | seeds 12–23 | **12/12 (100%)** | 5/12 (42%) |
+  | combined | **21/24 (87.5%)** | **9/24 (37.5%)** |
+
+- **The dominant failure is `TERMINATED`, not `STRANDED`** — 11 of 24 seeds simply never end. The
+  planner is **not losing fights; it is failing to finish**.
+- **Already ruled out, so nobody re-derives it:** the information restriction (identical 33.3% with
+  the view forced unrestricted), the candidate-set cull (no change), and the four planner defects
+  taskblock-45 found and fixed (the 37.5% is post-fix).
+- **`MIN_COMPLETION_RATE` was lowered 0.5 → 0.25 to land this.** That constant is the project's one
+  automated check on "can the AI finish a mission at all", and it is currently calibrated to a broken
+  planner. Raising it back is this entry's real closure condition.
+- **An earlier figure of 58% was reported and is wrong** — measured with a live defect, it never
+  described the planner as shipped. Recorded because it reached a decision before it was corrected.
+- **Do not chase this with profile weights.** A ~50-point gap is structural; hand-tuning weights to
+  move a completion rate is inventing balance numbers. The decision log is the instrument — every
+  fixed defect was found by dumping `ai_utility_decision` per turn and reading it. Seeds 13 and 20
+  never finish.
+- **The figures above predate the last four fixes and are now pessimistic.** The head-to-head was
+  taken before the hold-gating and missing-`await` fixes; re-running `test_full_mission.gd` afterwards
+  puts seeds 0–11 at **5/12 (41.7%)** rather than 4/12 (33.3%). A fresh 24-seed measurement of BOTH
+  planners is the first thing this item should take, because the table is the only reason the floor
+  moved and it is no longer accurate.
+
+
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`

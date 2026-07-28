@@ -14,7 +14,7 @@ extends Node3D
 ## `wants_turn_for(unit)`. `wants_turn_for` true for the CURRENT unit means
 ## this overlay's own UI drives that turn (already wired in `setup()`, the
 ## same way `TacticsController`'s End Turn button already resolves a turn
-## today); false means `UnitAI.plan_turn` drives it instead
+## today); false means `AiPlanner.plan_turn` drives it instead
 ## (taskblock-14).
 
 
@@ -26,7 +26,7 @@ func setup(_battle: BattleScene) -> void:
 
 ## True if a HUMAN drives `unit`'s turn under this overlay — the one
 ## question the shared turn driver (`BoutRunner`) ever asks. False means
-## `UnitAI.plan_turn` drives it instead. The base default (false, always
+## `AiPlanner.plan_turn` drives it instead. The base default (false, always
 ## AI) is exactly `SpectatorOverlay`'s and `GenerateBoutOverlay`'s own
 ## answer — neither overrides this.
 func wants_turn_for(_unit: Unit) -> bool:
@@ -108,7 +108,7 @@ func _process(_delta: float) -> void:
 ## The ONE shared "auto-advance AI turns" loop every interactive overlay
 ## (`SquadControlOverlay`, `SingleUnitOverlay`) drives after its own human
 ## turn resolves — auto-resolves consecutive units this overlay does NOT
-## want (`UnitAI.plan_turn`, taskblock-14) starting at the current unit,
+## want (`AiPlanner.plan_turn`, taskblock-14) starting at the current unit,
 ## stopping the instant either the mission reaches a real outcome or a
 ## unit this overlay DOES want control of comes up. `SpectatorOverlay`
 ## never calls this — it drives its own `BoutRunner` directly, at its own
@@ -117,7 +117,7 @@ func _process(_delta: float) -> void:
 ## every overlay that needs AI auto-advancement shares this one method,
 ## never a per-overlay reimplementation of it.
 ## taskblock-42 Pass D (BR27.09 cost #4): this was a bare `while` loop with no
-## `await` anywhere in it. Each `step()` runs a full `UnitAI.plan_turn` —
+## `await` anywhere in it. Each `step()` runs a full `AiPlanner.plan_turn` —
 ## pathfinding, LOS, cover scoring — so the main thread was blocked for the
 ## entire batch: nothing rendered, no input was processed, the window was
 ## unresponsive, and every opposing unit appeared to move at once at the end.

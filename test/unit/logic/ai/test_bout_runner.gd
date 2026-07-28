@@ -1,7 +1,7 @@
 extends GutTest
 
 ## taskblock-14 Pass C: BoutRunner — an all-AI CombatState driven turn by
-## turn through the same UnitAI.plan_turn + CombatState.resolve_until a
+## turn through the same AiPlanner.plan_turn + CombatState.resolve_until a
 ## human's own UI uses.
 ##
 ## taskblock-15 Pass A: generalized into every ControlOverlay's shared

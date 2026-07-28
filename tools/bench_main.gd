@@ -16,5 +16,6 @@ extends Node
 
 
 func _ready() -> void:
-	AiPlanningBench.new().run(OS.get_cmdline_user_args())
+	# tb45 Pass D: awaited — see `tools/bench_ai_planning.gd`.
+	await AiPlanningBench.new().run(OS.get_cmdline_user_args())
 	get_tree().quit()

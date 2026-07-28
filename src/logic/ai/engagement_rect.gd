@@ -1,8 +1,12 @@
 class_name EngagementRect
 extends RefCounted
 
-## taskblock-43 Pass B: which reachable cells `UnitAI._pick_engagement_position`
-## is worth scoring at all.
+## taskblock-43 Pass B: which reachable cells the planner is worth scoring at all.
+##
+## taskblock-45 Pass E: it outlived the engagement-score planner it was built for.
+## `UtilityContext.build` culls with it unchanged, because this was always pure
+## candidate-set geometry with no planner state in it — which is exactly why it
+## separated cleanly then and survives now.
 ##
 ## The planner used to score every cell `Pathfinder.reachable` returned — a blob
 ## centred on the acting unit, most of which faces away from the fight. This
@@ -11,12 +15,11 @@ extends RefCounted
 ## compounds with the Pass A score early-out rather than replacing it: A makes a
 ## hopeless cell cheap to reject, this stops it being a candidate at all.
 ##
-## **Its own file rather than more lines in `unit_ai.gd`**, which was already at
-## the linter's file cap after five bumps. This is pure candidate-set geometry
-## with no planner state in it, so it separates cleanly — and it takes only a
-## `target_distance` float rather than reaching back for `UnitAI._target_distance`
-## itself, keeping the dependency one-directional (no `class_name` cycle) and
-## leaving that function the single source of what the standoff distance is.
+## **Its own file rather than more lines in the planner**, which was already at the
+## linter's file cap after five bumps. It takes a bare `target_distance` float
+## rather than reaching back into a planner for it, keeping the dependency
+## one-directional (no `class_name` cycle) — which is what let the planner it was
+## written against be deleted without touching a line of this.
 
 ## How far the rectangle is padded SIDEWAYS, beyond the box spanned by the acting
 ## unit and its target. "A couple of cells laterally" — enough to keep a
@@ -52,11 +55,12 @@ const LATERAL_PAD := 2
 ## it at all — retreating happens along the other axis — so it takes only the
 ## lateral pad, which is what the per-axis sign already produces.
 ##
-## **`unit.cell` is always retained** regardless of the rect: it is the standing
-## fallback, `_pick_engagement_position` seeds `best_cell` with it, and
-## `_plan_ranged`'s step-out fallback is gated on `best_cell == unit.cell`. It is
-## a corner of the rectangle and so cannot be culled by the geometry as written;
-## the guard is for a direct caller handing in an arbitrary `reachable`.
+## **`unit.cell` is always retained** regardless of the rect: standing still must
+## stay a candidate, and `UtilityContext` relies on it being one — a unit whose own
+## cell was culled could not be offered `hold_position` or a shot from where it
+## already is. It is a corner of the rectangle and so cannot be culled by the
+## geometry as written; the guard is for a direct caller handing in an arbitrary
+## `reachable`.
 static func cull(
 	unit: Unit, enemy: Unit, target_distance: float, reachable: Array[Vector2i]
 ) -> Array[Vector2i]:
