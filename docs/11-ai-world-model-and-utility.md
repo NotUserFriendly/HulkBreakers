@@ -66,19 +66,42 @@ more than finding a positive.
 
 ## Scoring
 
+### Two things are called "action" — keep them apart
+
+| | What it is | Who uses it |
+|---|---|---|
+| **Executor** (`src/logic/actions/*.gd`) | `AttackAction`, `MoveAction`, `OverwatchAction`. The thing enqueued and run through the resolver. | **Player and AI** |
+| **Utility action** (`UtilityActionDef`, `data/utility_actions/*.tres`) | Preconditions, considerations, `base_weight`, and an `executor_id` naming one of the above. | **AI only** |
+
+Bare "action" in this document means the **executor**. The AI-side wrapper is always a **utility
+action**. Getting this backwards is how a selection concept ends up on the player's action bar.
+
+`utility_executors.gd` is the single seam between the two, and it **reimplements nothing** — an
+`executor_id` resolves by delegating to `ActionCatalog`, the same registry the player's action bar
+reads. That is what keeps "no parallel systems" true: the AI still derives what it can do from what
+parts provide.
+
+Four ids resolve locally instead, because `ActionCatalog` has no entry for them and **should not** —
+that registry is what the player is *offered*, and these are not buttons. `hold_position` is the
+worked example: "stand still so a shot clears an ally" is a selection outcome, not a verb anyone
+presses. Note the live collision it sits next to — `ActionCatalog`'s `&"hold"` is **`GrindAction`**,
+the many-hit melee, an entirely different thing from the AI's `&"hold_position"`.
+
+### The model
+
 | Concept | Implementation |
 |---|---|
-| Action | Resource: preconditions, considerations, executor |
+| Utility action | Resource: preconditions, considerations, `executor_id` |
 | Consideration | Normalized 0–1 input × response curve |
 | Score | Product of considerations × base weight × profile multiplier, with a compensation factor |
 
-**Actions, profiles and batch objectives are `.tres` under `res://data/`**, not code — the same rule as
-every other content vocabulary. Adding a behaviour is a resource plus a published input, never a code
-edit. Executors are the existing action classes in `src/logic/actions/`; the scorer is a *selection*
-layer over them, not a second implementation.
+**Utility actions, profiles and batch objectives are `.tres` under `res://data/`**, not code — the same
+rule as every other content vocabulary. Adding a behaviour is a resource plus a published input, never
+a code edit. The scorer is a *selection* layer over executors that already exist, not a second
+implementation of them.
 
-**The product is not a sum.** A single zero vetoes the action outright, so "unreachable" kills a
-candidate rather than merely lowering it. The compensation factor exists because otherwise an action
+**The product is not a sum.** A single zero vetoes that utility action outright, so "unreachable" kills a
+candidate rather than merely lowering it. The compensation factor exists because otherwise a utility action
 with more considerations always scores below one with fewer — a bias that looks like a tuning problem
 and isn't.
 
@@ -93,7 +116,7 @@ synchronous scorer written "to be made resumable later" means converting the who
 
 ---
 
-## Intelligence gates information, not just actions
+## Intelligence gates information, not just the action pool
 
 **This is the load-bearing idea.** Gating actions alone produces a smart unit with fewer options, and it
 still plays those options optimally — which reads as *limited*, not dumb. Gating the world model makes
@@ -156,10 +179,10 @@ the first place to look, not the last.
 
 ## Two failure modes worth naming
 
-**An action pool can have a hole in it.** Predicates partition the pool, and a unit matching none of
+**A utility action pool can have a hole in it.** Predicates partition the pool, and a unit matching none of
 them is offered nothing at all and idles. This has happened: every action was gated behind either
 `enemy_known` or `is_player_squad`, so a non-player squad that had seen nobody had no action available,
-and bouts ran to the turn cap with nothing wrong in any individual rule. **When adding a gated action,
+and bouts ran to the turn cap with nothing wrong in any individual rule. **When adding a gated utility action,
 ask what a unit that fails every gate does instead.**
 
 **A tier or restriction that does nothing passes every test that asserts what it should do.** The
