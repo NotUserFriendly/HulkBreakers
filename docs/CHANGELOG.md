@@ -19,15 +19,22 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-44 Passes A–D landed — AI v2 part one: the release-vs-debug number exists
-(~1.29x, so debug overhead is not the explanation), the line-of-fire query is inverted, the WorldView
-information seam is in, and a unit's turn is navigable rather than frozen. taskblock-43 Passes A–D landed — the AI planning-cost block, whose most useful result
-is that the candidate search it attacks is only ~25% of a planning turn and the LOF prefilter scan is
-the rest (see "AI planning cost" below). taskblock-42 Passes A–E landed (F and G held — see below). taskblock-41 Passes A–F — "Diagnostics: the log becomes the instrument" is
-closed, and so is "Checkpoints return as an ordinary tool." The combat log now carries engine and
-script errors, pairs every command with its outcome and a reason, narrates a bout build in
-construction order, and draws itself as a real window with a live framerate on it. Checkpoints are a
-tool again rather than a gate, guarded in CI by parsing what cannot be rendered. See `PLAN.md`.*
+*Current as of taskblock-45 Passes A–E landed — AI v2 part two: the engagement-score planner is
+deleted and a utility scorer over data-authored actions replaces it. Per-candidate `ShotPlane` casts
+are gone outright (29.1 builds per turn → 0.0) and plan cost fell 485ms → 131ms, but **mission
+completion fell 87.5% → 54.2% over 24 seeds and `MIN_COMPLETION_RATE` sits at 0.35 rather than its
+old 0.5** — a known, characterized regression carried forward as `BR45.03`, and the highest-priority
+AI item in `PLAN.md`. taskblock-44 Passes A–D landed — AI v2 part one: the release-vs-debug number
+exists (~1.29x, so debug overhead is not the explanation), the line-of-fire query is inverted, the
+WorldView information seam is in, and a unit's turn is navigable rather than frozen. taskblock-43
+Passes A–D landed — the AI planning-cost block, whose most useful result is that the candidate search
+it attacks is only ~25% of a planning turn and the LOF prefilter scan is the rest (see "AI planning
+cost" below). taskblock-42 Passes A–E landed (F and G held — see below). taskblock-41 Passes A–F —
+"Diagnostics: the log becomes the instrument" is closed, and so is "Checkpoints return as an ordinary
+tool." The combat log now carries engine and script errors, pairs every command with its outcome and
+a reason, narrates a bout build in construction order, and draws itself as a real window with a live
+framerate on it. Checkpoints are a tool again rather than a gate, guarded in CI by parsing what
+cannot be rendered. See `PLAN.md`.*
 
 ---
 

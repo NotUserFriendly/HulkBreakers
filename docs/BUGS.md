@@ -147,12 +147,15 @@ every fire**
 - **Already ruled out, so nobody re-derives it:** the information restriction (identical 33.3% with
   the view forced unrestricted), the candidate-set cull (no change), and the four planner defects
   taskblock-45 found and fixed (the 54.2% is post-fix — every fix is in the number).
-- **`MIN_COMPLETION_RATE` was lowered 0.5 → 0.25 to land this.** That constant is the project's one
-  automated check on "can the AI finish a mission at all", and it is currently calibrated to a broken
-  planner. Raising it back is this entry's real closure condition.
-- **An earlier figure of 58% was reported and is wrong** — measured with a live defect, it never
-  described the planner as shipped. Recorded because it reached a decision before it was corrected.
-- **Do not chase this with profile weights.** A ~50-point gap is structural; hand-tuning weights to
+- **`MIN_COMPLETION_RATE` went 0.5 → 0.25 → 0.35.** It was dropped to 0.25 to land the planner, on a
+  mid-change reading of 37.5%; the re-measurement above put the real figure at 54.2% and it came back
+  to 0.35 — one seed of margin below the 41.7% the test's own 12-seed window samples. That constant is
+  the project's one automated check on "can the AI finish a mission at all". **Getting it back to 0.5
+  is this entry's closure condition**, and it cannot be done by moving the number.
+- **Two earlier figures were reported and are wrong**: 58% (measured with a live defect, describing a
+  planner that never existed) and 37.5% (taken mid-block, before the last four fixes). Recorded
+  because the first reached a landing decision before it was corrected.
+- **Do not chase this with profile weights.** A ~33-point gap is structural; hand-tuning weights to
   move a completion rate is inventing balance numbers. The decision log is the instrument — every
   fixed defect was found by dumping `ai_utility_decision` per turn and reading it. Seeds 13 and 20
   never finish.
@@ -730,6 +733,34 @@ every fire**
     (`HitVolumeView.refresh()` rebuilding every mesh per turn) and #3 (turn-start power recompute
     re-walking the part graph 5–6 times) are untouched, as is the AI batch itself and the
     player-turn-end-with-no-AI-batch question. **Not resolved, not pending — still `Active`.**
+- **2026-07-28 — taskblock-45's numbers, appended per that block's own instruction ("append the
+  numbers; the supervisor closes it"). CC does not close this — it is `SUPERVISOR`-owned.**
+
+  The AI batch cost this entry has tracked since taskblock-27 is now measured directly, at the one
+  seam every AI turn is planned through (`AiPlanner`'s own `plans`/`plan_usec`/`plan_shot_planes`
+  counters), rather than by timing `BoutRunner.step()` from outside and mixing planning with damage
+  resolution:
+
+  | | old planner | utility planner |
+  |---|---|---|
+  | per-unit plan cost, 3v3 combat bout | 485.16 ms | **131.25 ms** |
+  | per-unit plan cost, mission bout | 139.90 ms | **86.51 ms** |
+  | `ShotPlane` builds per turn | 29.1 | **0.0** |
+
+  - **The per-candidate `ShotPlane` cast is gone outright, not reduced.** That was ~70% of a
+    planning turn by taskblock-43's profile and is the cost this entry has circled for four blocks.
+    Line of fire is now a bit test against one `VisibilityField` built per target per turn; the
+    canonical resolver is consulted only when an action is actually enqueued.
+  - **The synchronous-batch mechanism this entry names is also addressed, from two directions.**
+    taskblock-44 Pass D made the planner a coroutine that yields mid-plan through `PlanPacer`, and
+    taskblock-45 found that `SquadControlOverlay._on_turn_ended` was calling `advance_ai_turns`
+    **fire-and-forget** — it is a coroutine, so the handler returned the instant the planner first
+    suspended and the batch completed later, unobserved. Both call sites are awaited now.
+  - **Costs #2 and #3 remain untouched** (`HitVolumeView.refresh()` rebuilding every mesh per turn;
+    the turn-start power recompute re-walking the part graph). Whether the hitch is still *felt* is
+    a supervisor observation, not something CC can assert — which is why this stays `Active`.
+  - Numbers are `editor_debug`. `tools/bench_release.sh` takes the release figure, which is the one
+    that describes the game.
 
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**
@@ -839,7 +870,8 @@ every fire**
   `ShotPlane` alone to arbitrate (harmless before this fix, since nothing ever blocked a shot). Likely
   why missions now grind through more turns under the fix. Not filed as its own bug yet — flagged here
   as the reason `test_full_mission.gd`'s current failure may need more than a seed re-pick, and as a
-  candidate follow-up investigation into AI engagement/target selection (`UnitAI._pick_engagement_
+  candidate follow-up investigation into AI engagement/target selection (taskblock-45 retired the
+  planner named here; the successor is `UtilityContext`/`UtilityScorer` — `UnitAI._pick_engagement_
   position`/`_engagement_score`).
 - **Verified:** `test_shot_plane.gd::test_a_wall_part_between_shooter_and_target_blocks_the_shot` (a
   wall Part between shooter and target intercepts the shot; the target is still there once the wall is
@@ -1041,6 +1073,11 @@ every fire**
   give it: a real multi-turn path to a target cell, including the step that moves farther from the
   enemy before it curves back in — the move a per-turn distance/obstruction scorer can't make no
   matter how it's weighted.
+- **taskblock-45 note:** the verification named below ran against the engagement-score planner, which
+  is now deleted, and its test file went with it. **The claim was never re-verified against the
+  utility planner** — that planner has no `approach_path` fallback branch at all; it scores cells and
+  a cell with no line simply scores low. Re-check before closing, or close as `Obsolete` naming the
+  retirement, but do not read the verification below as current.
 - **Verified (headless):** `test_unit_ai_lof_fallback.gd` — a concave-pocket fixture where the AI's
   queued move includes a genuine Chebyshev-distance increase before it decreases
   (`test_ai_takes_a_step_that_increases_chebyshev_distance_before_it_decreases`); the fallback reaches

@@ -279,7 +279,7 @@ and cost-correct on their own). **Unblocks:** nothing; a follow-on refinement, n
 anything else.
 
 Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAction`:
-- **No AI path ever queues either action.** `UnitAI` still only ever moves via ordinary `MoveAction`
+- **No AI path ever queues either action.** The planner still only ever moves via ordinary `MoveAction`
   — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
   in a real bout today.
 - **Neither action integrates with `MoveAction`'s own mid-move overwatch-trigger hook.** An ordinary
@@ -660,7 +660,7 @@ Concrete starting signals, not a full audit:
 - **`vertical_slope` and `grid.height` each still appear in a test file**, both retired in tb36 — worth
   confirming those are deliberate historical references (the `grid.height` one is the rename's own
   guard test, which necessarily quotes the banned string) rather than stragglers.
-- **Five files exceed 850 lines** (`test_unit_ai`, `test_body_projector`, `test_damage_resolver`,
+- **Four files exceed 850 lines** (`test_body_projector`, `test_damage_resolver`,
   `test_resolution_player`, `test_inspect_panel`) — worth checking whether they've accreted overlapping
   coverage of the same paths, since several were split at gdlint's cap rather than along a seam.
 
@@ -734,7 +734,7 @@ a scorer can return no positive-utility action at all. Build them here only if t
 
 Four related gaps in what the AI *chooses* to do, all cheap given the data already exists.
 
-- **AI fixates on the nearest enemy even when it's genuinely unshootable.** `UnitAI._nearest_living_enemy`
+- **AI fixates on the nearest enemy even when it's genuinely unshootable.** `UtilityContext._nearest_known_enemy`
   always targets the closest living candidate, with no fallback to a different, actually-reachable target if
   the nearest has no line anywhere. Surfaced re-running the wall-impact measurement: one defender spawns in
   a nook confirmed to have no clean line from any reachable cell, adjacency included. The fallback correctly
@@ -1017,7 +1017,7 @@ AABB? Melee correctly rejects a PART target today; this is the follow-up to make
 ### AI-produced dartboards and an aim beat
 **Needs:** nothing mechanical; it's playback and timing work.
 
-Only the player's shot ever draws a dartboard — an AI attack resolves straight from `UnitAI`'s decision with
+Only the player's shot ever draws a dartboard — an AI attack resolves straight from the planner's decision with
 no on-screen wind-up. `ShotScatter.for_shot` is now the one place range→radius truth lives, so it's a
 ready-made primitive to drive an enemy-side draw. The real work is *when* the beat plays, how long it holds,
 and how it interacts with other AI units resolving in the same batch.
