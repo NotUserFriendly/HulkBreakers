@@ -1,22 +1,17 @@
 class_name AiPlanner
 extends RefCounted
 
-## taskblock-45 Pass B: **the one seam every AI turn is planned through**, and the
-## place the playstyle vocabulary meets the profile table.
+## **The one seam every AI turn is planned through**, and where the playstyle
+## vocabulary meets the profile table.
 ##
-## For one block it dispatched between two planners — the engagement-score planner
-## and the utility planner — so Pass D could run the same seeds through both and
-## flip the default on evidence. **Pass E deleted the loser.** What is left is the
-## seam itself: one entry point, the plan-cost diagnostics taken around it, and the
-## playstyle bridge.
+## For one block it dispatched between two planners so a head-to-head could flip
+## the default on evidence; the loser is deleted and `SUPERSEDED.md` holds the
+## comparison. What is left is the seam itself, the plan-cost diagnostics taken
+## around it, and the playstyle bridge.
 ##
-## ## The view is restricted here, once, for everyone
-##
-## The utility planner is built to plan against a degraded world model — the tier
-## gap is the entire reason it exists — so restriction is switched on at this seam
-## rather than left for each caller to remember. `BoutRunner` hands in an
-## unrestricted view and gets the gating regardless, which is what stops "did this
-## caller set the flag" from being a thing anyone has to know.
+## **The view is restricted here, once, for everyone.** Callers hand in an
+## unrestricted view and get the tier gating regardless, so "did this caller
+## remember to set the flag" is not something anyone has to know.
 
 ## taskblock-45 Pass E: the playstyle vocabulary, moved here from the retired
 ## planner.
@@ -35,39 +30,25 @@ const PLAYSTYLES: Array[StringName] = [
 	&"TURTLE",
 ]
 
-## taskblock-45 Pass D: **the utility planner is now the default**, and after Pass E
-## it is the only one. Kept as a `true` constant-in-practice rather than deleted so
-## the head-to-head that justified the switch stays attached to the switch.
+## The utility planner is the default and, since the retirement, the only one.
 ##
-## Flipped on the head-to-head, which is what the pass exists to produce:
-##
-## | | old | new |
-## |---|---|---|
-## | completion rate | 75% | 58% |
-## | turns to complete | 23.9 | 13.1 |
-## | per-unit plan cost (ms), mission bout | 139.90 | 51.04 |
-## | per-unit plan cost (ms), 3v3 combat bout | 485.16 | 112.53 |
-## | `ShotPlane` builds per turn | 29.1 | **0.0** |
-##
-## **The completion drop is real, was flagged to the supervisor, and the decision to
-## proceed was theirs.** `MIN_COMPLETION_RATE` (0.5) holds at 0.58, which is the
-## codified criterion, and no seed on either side ended `STRANDED` — the five that
-## fail under the new planner all end `TERMINATED`, meaning the turn cap ran out.
-## **Nothing is losing fights; something is failing to finish.** That is a
-## characterized regression carried forward, not an unknown.
+## **No measurement is quoted here on purpose.** This comment carried the
+## head-to-head table for one commit and the numbers in it were already wrong —
+## they had been taken mid-change, before the fixes that followed. A measurement
+## duplicated at a call site is a measurement nobody re-takes. `SUPERSEDED.md` holds
+## the authoritative before/after and `BR45.03` holds the open regression.
 static var use_utility_planner: bool = true
 
-## taskblock-45 Pass D: what a plan actually cost, accumulated across every turn
-## since the last reset. Diagnostics for the bench and for tests; **never read by
-## planning**, so no decision can depend on them.
+## What a plan actually cost, accumulated since the last reset. Diagnostics for the
+## bench and for tests; **never read by planning**, so no decision can depend on
+## them.
 ##
-## **Measured here rather than in the bench**, because this is the one seam both
-## planners pass through with identical instrumentation. A bench timing each
-## planner from the outside would have to reach into `BoutRunner.step`, which also
-## resolves the turn — mixing planning cost with damage resolution and making the
-## head-to-head measure the wrong thing. Taken around the dispatch, these are
-## exactly "per-unit plan cost" and "`ShotPlane` builds per plan", which are two of
-## the four rows Pass D's comparison table asks for.
+## **Measured at this seam rather than in the bench.** Timing a planner from
+## outside means timing `BoutRunner.step`, which also resolves the turn — mixing
+## planning cost with damage resolution. Taken around the dispatch, these are
+## exactly per-unit plan cost and `ShotPlane` builds per plan, and they survive a
+## planner being replaced because they measure the seam rather than the
+## implementation.
 static var plans: int = 0
 static var plan_usec: int = 0
 static var plan_shot_planes: int = 0
@@ -83,10 +64,9 @@ static func reset_diagnostics() -> void:
 
 ## `(unit, view, mission, playstyle, pacer) -> ActionQueue`.
 ##
-## `playstyle` is still the caller's vocabulary. Retiring it is explicitly NOT this
-## block's job — it migrates with the profile table (`PLAN.md`) — so the mapping to
-## a profile id lives in `profile_id_for` below, in one place, ready to be deleted
-## rather than untangled.
+## `playstyle` is still the caller's vocabulary; the mapping to a profile id lives
+## in `profile_id_for` below, in one place, built to be deleted rather than
+## untangled when `PLAN.md` retires the vocabulary.
 static func plan_turn(
 	unit: Unit,
 	view: WorldView,
@@ -111,20 +91,16 @@ static func plan_turn(
 	return queue
 
 
-## The temporary bridge from the playstyle enum to the profile table.
+## The temporary bridge from the playstyle vocabulary to the profile table.
 ##
-## **Both sides of this mapping are real content and neither is code.** The
-## playstyles are `Matrix.playstyle` values a bout already authors; the profiles are
-## `.tres` files under `res://data/utility_profiles/`. What is temporary is the
-## MAPPING — `PLAN.md` retires the playstyle vocabulary entirely, at which point a
-## matrix names its profile directly and this function goes away rather than
-## growing arms.
+## **Both sides are content, not code** — playstyles are `Matrix.playstyle` values a
+## bout authors, profiles are `.tres` under `res://data/utility_profiles/`. Only the
+## MAPPING is temporary, and it is one function so it can be deleted whole.
 ##
-## The split is the one the playstyle names already imply: the two that close and
-## press an attack read as aggressive, and everything that keeps its distance,
-## weights cover or would rather withdraw reads as cautious. An unrecognised value
-## falls to cautious, matching the codebase's standing "unknown open-vocabulary
-## value falls back rather than errors" posture.
+## The split is what the names already imply: the two that close and press an attack
+## read as aggressive, everything that keeps its distance or weights cover reads as
+## cautious. An unrecognised value falls to cautious — the standing posture for an
+## unknown open-vocabulary value.
 static func profile_id_for(playstyle: StringName) -> StringName:
 	if playstyle in [&"AGGRESSIVE", &"PSYCHOTIC"]:
 		return &"aggressive"

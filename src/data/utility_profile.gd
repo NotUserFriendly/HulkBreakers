@@ -1,18 +1,18 @@
 class_name UtilityProfile
 extends Resource
 
-## taskblock-45 Pass A: what kind of unit this is, as numbers rather than code.
+## What kind of unit this is, as numbers rather than code. `docs/11`: profiles are
+## a separate axis from intelligence — tier says what a unit can know and do,
+## profile says what it wants.
 ##
-## A profile is a **weight vector**, never a behaviour: aggressive and cautious
-## run the identical scorer over the identical action pool and disagree only
-## about what things are worth. That is the property that stops the profile table
-## from becoming a pile of per-personality branches, and it is why
-## `PLAN.md` can say the playstyle enum dissolves into this — `AGGRESSIVE`,
-## `SKIRMISHER`, `MARKSMAN` and `COVER_SEEKER` mix profile with role and range,
-## and both halves become weights here.
+## Absent entries are 1.0, so a profile states only where it deviates from neutral
+## and an empty profile is a legitimate one.
 ##
-## Absent entries are 1.0, so a profile only states where it *deviates* from
-## neutral. An empty profile is a legitimate, fully neutral one.
+## **A weight on an input that two actions read in OPPOSITE directions is
+## ambiguous, and the model cannot express what you want.** `own_integrity` is read
+## forwards by an approach ("I am healthy, so charge") and backwards by a
+## take-cover ("I am hurt, so hide"); one weight pushes both the same way. Publish a
+## second input rather than reusing one inverted.
 
 @export var id: StringName = &""
 @export var display_name: String = ""

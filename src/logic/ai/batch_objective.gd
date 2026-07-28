@@ -1,40 +1,21 @@
 class_name BatchObjective
 extends RefCounted
 
-## taskblock-45 Pass C: **squad coordination without a squad planner.**
+## The leader's coarse call, scored by the same `UtilityScorer` over the same
+## profile as everything else — an objective is not a special kind of decision,
+## just the same one asked about a coarser question. `docs/11` has why batches
+## amortize and why the objective is injected as a consideration input rather than
+## a destination to copy.
 ##
-## A batch's leader runs one coarse utility pass — over four authored objectives
-## rather than over cells — and the answer is injected into every follower's
-## scoring as a consideration input. Followers keep individual agency: an objective
-## biases what each of them wants, and none of them is told where to stand.
+## Two things worth stating here rather than there:
 ##
-## ## Why this replaces taskblock-43 Pass D rather than extending it
-##
-## That pass had the leader publish a **destination** and each follower scan the
-## handful of cells around it. Its own acceptance went unmet — the follower was not
-## dramatically cheaper — and widening or narrowing the local scan does not fix
-## that, because the cost was never the scan's size. An objective is a single
-## `StringName` that costs a follower **nothing** to consume: it is one more entry
-## in a dictionary the follower was already building. That is what "dramatically
-## cheaper" actually looks like.
-##
-## It also fixes a behavioural problem the destination had: every follower
-## converging on one cell is not a squad manoeuvre, it is a queue.
-##
-## ## Standing rule 5 is untouched
-##
-## The leader acts, then follower one, then follower two, each on their own turn in
-## initiative order. The objective is computed **once per batch per round** and
-## reused — an amortisation device, never a licence to resolve several units
-## together (`docs/PLAN.md` standing rule 5).
-##
-## ## Dormant until a batch exists
-##
-## Every unit is `batch_id == 0` until something assigns otherwise, and automatic
-## assignment is explicitly not this block's job. So in ordinary play nothing here
-## runs at all, and `UtilityContext` publishes a fully neutral objective vector —
-## which is what makes "the dormancy is the claim, so assert it" testable rather
-## than aspirational.
+## - **The inputs are read at the leader's own cell**, not per candidate. This is a
+##   judgement about the squad's situation, not about anywhere it might move, so it
+##   costs four scores per batch per round rather than four per cell.
+## - **A follower consumes it for free.** The objective is one more entry in a
+##   dictionary the follower was already building — which is what "dramatically
+##   cheaper than the leader" actually looks like, and what the destination-copying
+##   model it replaced never managed.
 
 ## Prefix for the per-objective inputs `UtilityContext` publishes. An objective
 ## `&"advance"` becomes the input `&"objective_advance"`, so the vocabulary follows

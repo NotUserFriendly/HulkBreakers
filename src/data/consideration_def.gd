@@ -1,17 +1,12 @@
 class_name ConsiderationDef
 extends Resource
 
-## taskblock-45 Pass A: one question an action asks about a candidate.
+## One question an action asks about a candidate: a normalized 0–1 fact published
+## by `UtilityContext`, turned into utility by a curve. `docs/11` has the model.
 ##
-## `input_id` names a normalized 0–1 fact the scoring context supplies — an open
-## `StringName` (CLAUDE.md), so a new consideration is a new input published by
-## the context plus a new `.tres`, never a code edit to the scorer. `curve` turns
-## that fact into utility.
-##
-## **Considerations are shared across actions and across profiles.** That is what
-## makes a profile a weight vector rather than a code path: aggressive and
-## cautious both read `own_hp_ratio`, and differ only in the curve over it and
-## the weight on it.
+## **Considerations are shared across actions and profiles.** That is what makes a
+## profile a weight vector rather than a code path — aggressive and cautious both
+## read `own_hp_ratio` and differ only in what they weight it at.
 
 ## The 0–1 fact this reads, by name. Unknown ids resolve to 0.0 at scoring time,
 ## which vetoes — deliberately loud rather than silently neutral, because a typo

@@ -150,3 +150,60 @@ window, and that is worth knowing before anyone reads its number as the whole tr
   standing lesson is that a measurement taken once, mid-change, is not evidence** — and the cheapest
   guard against it is a wider sample and a re-take at the end, both of which cost minutes here and
   moved the headline number by seventeen points.
+
+---
+
+## Appended after the block: the doc pass
+
+**Supervisor-authored, then a CC pass on top of it.** Recorded here because both
+changed what the block leaves behind, and neither is visible in the block's own passes.
+
+### What the supervisor did
+
+- **`docs/09` renamed** `09-checkpoints-and-logging.md` → `09-combat-log-and-turn-phases.md`,
+  matching the `# 09 — Combat Log & Turn Phases` heading the file already carried. CC verified this
+  before committing: content byte-identical, all 237 code citations use the bare `docs/09` form the
+  conventions prescribe, and **nothing anywhere referenced the old filename**. No reference dangles,
+  and the finding is recorded in `PLAN.md` so nobody re-derives it.
+- **`docs/11-ai-world-model-and-utility.md` added** — the AI model in one place: the world-model
+  chokepoint, the visibility field's correctness obligation, the scoring model, the tier table,
+  batch amortization, and the decision log. It also names two failure modes as general rules, both
+  of which this block hit: **an action pool can have a hole in it** (a unit matching no gate is
+  offered nothing and idles), and **a tier or restriction that does nothing passes every test that
+  asserts what it should do** — only the companion "turning it off changes the outcome" assertion
+  catches that.
+- **`CLAUDE.md` gained "prefer measurements you've retaken"** and a workflow step requiring any
+  measurement taken before a block's final fixes to be re-taken, with a plain statement when a number
+  that informed a decision turned out wrong. That rule is this block's own experience promoted to
+  standing practice — see the three-readings section above.
+- 06, 10, 99, TESTING, TOOLING and PLAN edited alongside.
+
+### What CC did on top
+
+**Thinned the taskblock-45 comments against `docs/11`.** Ten files now cite it rather than restate
+it: `UtilityScorer`, `UtilityContext`, `UtilityPlanner`, `WorldView`, `VisibilityField`,
+`BatchObjective`, `AiDecisionLog`, `AiPlanner`, and the `UtilityActionDef`/`ConsiderationDef`/
+`UtilityProfile` resources. The rule applied was **keep what is local, cite what is general**:
+
+- *Kept, because it exists nowhere else* — the Mark & Dill formula and its measured ~11% residual;
+  the `&"hold"`/`GrindAction` name collision; `MAX_SELECTIONS` sitting deliberately above the AP
+  ceiling; the chebyshev move-cost proxy; the three planner traps (scored-a-cell-and-never-went,
+  refusal-ends-turn, hold-as-a-coda); the profile-weight direction ambiguity; the authoring lessons
+  in `tools/author_taskblock45_ai.gd` (floors, progress-only curves, the objective floor).
+- *Removed, because `docs/11` says it once* — product-not-sum, the tiebreak rationale, the seam
+  boundary argument, the visibility-field payoff, resumability, the tier philosophy.
+
+**One real find while doing it: `AiPlanner` still carried the invalidated 58% head-to-head table in
+its doc comment.** The living docs had been corrected; the code comment had not. It is deleted rather
+than re-synced, and the comment now says why — *a measurement duplicated at a call site is a
+measurement nobody re-takes*, which is the same lesson `CLAUDE.md` just absorbed, arriving from the
+other direction. `SUPERSEDED.md` and `BR45.03` hold the authoritative numbers.
+
+**Filed rather than fixed:** `BR45.03` gained its strongest lead, found by reading a bout's combat
+log. The eight authored actions partition into two groups with **nothing in neither** — five gate on
+`enemy_known`, three on `is_player_squad` — so a non-player squad that has seen nobody is offered no
+action at all and idles until someone walks into view (`nothing over 488 candidates`, two turns
+running, then `shoot@(22,14)` the moment squad 0 appeared). Reproduced outside the log at seed 31337.
+Neither gate is wrong alone; the retired planner had the same squad gate but ran **unrestricted**, so
+its enemy lookup always found a target and enemy units advanced. What an enemy squad should do with
+nothing in sight is a design call, so it is documented and left open.
