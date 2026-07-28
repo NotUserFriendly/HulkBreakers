@@ -155,6 +155,38 @@ every fire**
 - **Two earlier figures were reported and are wrong**: 58% (measured with a live defect, describing a
   planner that never existed) and 37.5% (taken mid-block, before the last four fixes). Recorded
   because the first reached a landing decision before it was corrected.
+- **2026-07-28 — leading hypothesis, found in a real bout's combat log: a NON-PLAYER squad with no
+  enemy in sight has no action available at all, and idles until someone walks into view.** This is
+  the strongest lead on the `TERMINATED` seeds and should be the first thing tried.
+
+  The eight authored actions partition into two groups with **nothing in neither**:
+
+  | gate | actions |
+  |---|---|
+  | `enemy_known` | approach, shoot, take_cover, overwatch, hold_position |
+  | `is_player_squad` | seek_objective, gather, seek_extraction |
+
+  A squad-1 unit that cannot see an enemy fails both gates, so every action is un-offered. Observed
+  directly — `AI unit 3 [TRAINED/cautious]: nothing over 488 candidates` on turns 0 and 1, then
+  `shoot@(22,14)` on turn 2 the moment squad 0 came into view — and reproduced by dumping the
+  predicates for a `BoutSetup` bout at seed 31337, where squad 0 is offered `seek_extraction` and
+  squad 1 is offered `[]`.
+
+  **Neither gate is wrong on its own; the combination is.** `is_player_squad` reproduces the retired
+  planner's own `_plan_non_combat_turn` early-return for other squads, and `enemy_known` is what makes
+  a combat action mean something. What changed is that the old planner ran **unrestricted**, so its
+  `_nearest_living_enemy` always found a target and every enemy unit advanced across the map;
+  taskblock-45 switched restriction on at the `AiPlanner` seam, and an enemy squad that cannot see
+  anyone now has nothing to do. **If the enemy squad never advances, contact depends entirely on the
+  player squad wandering into it** — which on a large map, with squad 0 heading for extraction, may
+  simply never happen before the turn cap.
+
+  **The fix is a design call and is deliberately not made here** (CLAUDE.md: ask, don't invent). The
+  options, roughly: give every squad an advance-to-contact action scored on closing with the enemy's
+  last known or likely position; let non-player squads use the mission actions against their own
+  team's extraction zone; or have units patrol toward map features. The first is closest to what the
+  old planner did by accident.
+
 - **Do not chase this with profile weights.** A ~33-point gap is structural; hand-tuning weights to
   move a completion rate is inventing balance numbers. The decision log is the instrument — every
   fixed defect was found by dumping `ai_utility_decision` per turn and reading it. Seeds 13 and 20
