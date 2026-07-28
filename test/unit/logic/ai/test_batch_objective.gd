@@ -17,7 +17,6 @@ extends GutTest
 const AGGRESSIVE_PROFILE := &"aggressive"
 const CAUTIOUS_PROFILE := &"cautious"
 
-
 # --- fixtures ----------------------------------------------------------------
 
 
@@ -128,9 +127,7 @@ func test_with_no_batch_assigned_no_objective_is_ever_recorded() -> void:
 func test_a_dormant_objective_vector_is_neutral_rather_than_vetoing() -> void:
 	var grid: Grid = GridFixture.flat(24, 16)
 	var bout: Dictionary = _squad(grid)
-	var context: UtilityContext = UtilityContext.build(
-		bout.leader, _restricted_view(bout.state)
-	)
+	var context: UtilityContext = UtilityContext.build(bout.leader, _restricted_view(bout.state))
 
 	var inputs: Dictionary = context.inputs_for(bout.leader.cell)
 
@@ -223,9 +220,7 @@ func _follower_decisions_under(objective: StringName) -> Array[String]:
 	for unit: Unit in [bout.leader, bout.follower]:
 		unit.batch_id = 1
 	var view: WorldView = _restricted_view(bout.state)
-	bout.state.batch_plans.record(
-		1, view.round_number, bout.leader.id, bout.leader.cell, objective
-	)
+	bout.state.batch_plans.record(1, view.round_number, bout.leader.id, bout.leader.cell, objective)
 	bout.state.force_current_unit(bout.follower.id)
 	var sink := MemorySink.new()
 	bout.state.combat_log.add_sink(sink)

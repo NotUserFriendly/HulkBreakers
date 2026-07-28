@@ -30,8 +30,15 @@ extends GutTest
 ## attached is what keeps the guard meaningful for the next taskblock that has no
 ## business changing flat play.
 ##
-## Was `1167294328` (tb38 Pass A through taskblock-44).
-const GOLDEN_HASH: int = 1554552115
+## Was `1167294328` (tb38 Pass A through taskblock-44), then `1554552115`
+## (taskblock-45's planner swap).
+##
+## taskblock-46 Pass C re-pinned it again, for the same reason and with the same
+## caveat: the block's deliverable is that a unit which knows of no enemy now
+## SEARCHES instead of standing still, and both units in this deliberately
+## weaponless bout know of no enemy. Changed flat play is the change, not an
+## accident. The finding is recorded in `CHANGELOG.md` rather than swallowed here.
+const GOLDEN_HASH: int = 2102842205
 
 const TURN_CAP: int = 30
 const MAP_SEED: int = 20260724

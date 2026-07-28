@@ -69,6 +69,32 @@ var batch_id: int = 0
 ## bout behaves exactly as it did before this field existed.
 var intelligence_tier: StringName = &"TRAINED"
 
+## taskblock-46 Pass C: what this unit does when it knows of no enemy.
+##
+## **An open `StringName`, one verb per unit, and that is the diagnostic** — if
+## patrol is broken, only patrolling units misbehave and the failure is attributable
+## to a verb rather than to "the search behaviour". Read as a PRECONDITION on the
+## search actions (`UtilityContext.PRED_SEARCH_IS`), so exactly one of them is ever
+## offered to a given unit: no mode flag, no branch, and a fifth verb is a `.tres`
+## plus one published predicate.
+##
+## `ROAM` is the default because it is the one that suits a unit nobody has said
+## anything about — cover ground, steadily, and find the fight.
+var search_behaviour: StringName = &"ROAM"
+
+## taskblock-46 Pass C: `PATROL`'s own route, and when each point was last stood on.
+##
+## Generated once, lazily, from where the unit finds itself (`SearchRoute`), because
+## a patrol assigned at spawn would need a map the roster does not have. **Visit
+## times drive the choice of next point — oldest first** — which cycles every point
+## with no authored order, never ping-pongs between two while a third goes
+## unvisited, and lets a point that turns out to be unreachable age out of
+## contention on its own rather than needing to be detected and removed.
+var patrol_points: Array[Vector2i] = []
+## `Vector2i -> int` round number. An absent point has never been visited, which
+## sorts oldest and therefore wins.
+var patrol_visits: Dictionary = {}
+
 var ap: int = 0
 var max_ap: int = DEFAULT_MAX_AP
 var mp: float = 0.0  # movement pool; discarded (not banked) at end of turn
@@ -266,6 +292,9 @@ func dup() -> Unit:
 	# would plan as an independent and disagree with the real unit it previews.
 	cloned.batch_id = batch_id
 	cloned.intelligence_tier = intelligence_tier
+	cloned.search_behaviour = search_behaviour
+	cloned.patrol_points = patrol_points.duplicate()
+	cloned.patrol_visits = patrol_visits.duplicate()
 	cloned.ap = ap
 	cloned.max_ap = max_ap
 	cloned.mp = mp
