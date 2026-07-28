@@ -223,7 +223,7 @@ direction to turn toward and neither calls it. Both paths log `faced`, with `rea
 `free_with_action` and `cost` (1 or 0) either way (`docs/09`: "if it changed the world, it's in
 the log").
 
-UI: a small wedge on the unit's own team marker (`UnitView`), pointing along `Unit.orientation` —
+UI: a small wedge on the unit's own team marker (`HitVolumeView`), pointing along `Unit.orientation` —
 present on every unit, not gated to the selected one, since it's strictly more information for
 free. Q/E turn the selected unit by 45° (`TacticsController.FACE_STEP`, a flagged placeholder
 same as `RETICLE_SENSITIVITY` — docs/10 doesn't pin an exact increment).
