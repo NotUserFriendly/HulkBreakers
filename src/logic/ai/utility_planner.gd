@@ -39,11 +39,13 @@ extends RefCounted
 ##   queueing anything behind it, or letting it win after the unit has already
 ##   acted, livelocks the bout.
 ##
-## ## No positive-utility action is a real answer
+## ## No positive-utility action is a real answer, and it is named
 ##
-## Everything can legitimately score at or below the veto floor. The turn then
-## ends, which is honest rather than a fallback — `PLAN.md`'s *Panic* item is what
-## eventually gives that state its own behaviour.
+## Everything can legitimately score at or below the veto floor — a state the
+## branch cascade could not express, since a cascade always falls through to its
+## last branch whether or not that branch made sense. That state is `Panic`: it is
+## logged with a reason and takes a visible action, never a silent empty turn. See
+## `panic.gd` for why the label matters more than the escape.
 
 ## The hard cap on selections in one turn. **Not a shot limit** — a limit on how
 ## many times the scorer is consulted before the turn is forced to end, so a
@@ -116,7 +118,19 @@ static func plan_turn(
 		)
 		if winner < 0:
 			if selection == 0:
+				# taskblock-46 Pass D: nothing scored on the FIRST selection means the
+				# turn produced no action at all — `Panic`, named and logged, rather
+				# than a silent empty turn. A later selection finding nothing is
+				# ordinary: it means the unit has finished acting.
 				empty_decisions += 1
+				var offered := 0
+				for candidate: Dictionary in candidates:
+					if bool(candidate["offered"]):
+						offered += 1
+				var reason: StringName = Panic.reason_for(offered, pacer != null and pacer.aborted)
+				Panic.emit(state, unit, reason, offered)
+				queue.enqueue(Panic.action_for(unit, mission, state), state)
+				return queue
 			break
 		# A refused winner re-scores without it rather than ending the turn — see
 		# the second of the three loop rules at the top of this file.
