@@ -14,11 +14,19 @@ script = ExtResource("1_34gr1")
 input_id = &"travel_fraction"
 curve = SubResource("Resource_lalit")
 
+[sub_resource type="Resource" id="Resource_q8gfe"]
+script = ExtResource("2_7jahr")
+
+[sub_resource type="Resource" id="Resource_4fjro"]
+script = ExtResource("1_34gr1")
+input_id = &"unvisited"
+curve = SubResource("Resource_q8gfe")
+
 [resource]
 script = ExtResource("3_gkguw")
 id = &"roam"
 display_name = "Roam"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_unknown", &"free_to_search", &"cell_is_elsewhere", &"search_roam"])
-considerations = Array[ExtResource("1_34gr1")]([SubResource("Resource_a4ws4")])
+considerations = Array[ExtResource("1_34gr1")]([SubResource("Resource_a4ws4"), SubResource("Resource_4fjro")])
 base_weight = 0.8

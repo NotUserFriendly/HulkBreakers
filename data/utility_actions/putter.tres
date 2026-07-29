@@ -15,11 +15,21 @@ script = ExtResource("1_ywku5")
 input_id = &"travel_fraction"
 curve = SubResource("Resource_cm8um")
 
+[sub_resource type="Resource" id="Resource_nq7f2"]
+script = ExtResource("2_qy8vt")
+slope = 0.5
+offset = 0.5
+
+[sub_resource type="Resource" id="Resource_520a2"]
+script = ExtResource("1_ywku5")
+input_id = &"unvisited"
+curve = SubResource("Resource_nq7f2")
+
 [resource]
 script = ExtResource("3_bv6o8")
 id = &"putter"
 display_name = "Putter"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_unknown", &"free_to_search", &"cell_is_elsewhere", &"search_putter"])
-considerations = Array[ExtResource("1_ywku5")]([SubResource("Resource_67nql")])
+considerations = Array[ExtResource("1_ywku5")]([SubResource("Resource_67nql"), SubResource("Resource_520a2")])
 base_weight = 0.8

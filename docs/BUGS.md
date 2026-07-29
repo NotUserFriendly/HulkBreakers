@@ -85,6 +85,84 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
+### BR46.01 — Pending — owner: `SUPERVISOR`
+**A searching unit ping-pongs between two cells forever — `ROAM` and `HUNT` have no memory**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Reported:** 2026-07-28, from a real bout: "Squad 0 ping pongs in a small area without ever
+  escaping the U shape." Found under `BR32.10`, but it is not that bug — see the split recorded there.
+- **Confirmed from the supervisor's own combat log, and it is unambiguous.** Every unit on both squads
+  decided `roam` on every single turn of the bout, and each one alternated between two or three cells
+  for its whole length:
+
+  | unit | squad | distinct cells | trail |
+  |---|---|---|---|
+  | 0 | 0 | 2 | (25,4) (13,4) (25,4) (13,4) (25,4) |
+  | 4 | 1 | 2 | (30,17) (19,17) (30,17) (19,17) (30,17) |
+  | 3 | 1 | 3 | (30,16) (19,18) (30,18) (19,18) (30,18) |
+
+- **Mechanism: distance-from-here is memoryless.** `roam` scores `travel_fraction` — go as far as you
+  can — and `hunt` scores the same input on a steeper curve. **The farthest reachable cell from A is B,
+  and the farthest from B is A.** A unit with no enemy in sight walks to the edge of its reach and then
+  oscillates until the turn cap. Reproduced on an open 32x24 board with no enemy present: **6 distinct
+  cells over 14 turns, ten of them spent alternating between `(19,23)` and `(31,23)`.**
+- **This is taskblock-46 Pass C's own bug, and the fix for it was already written down in that pass.**
+  `SearchRoute`'s comment says oldest-visit-wins "cannot ping-pong between two while a third is
+  ignored" — correct, and applied to `PATROL` only. The other three verbs had no route to hang a memory
+  on and so got none. A verb-shaped fix would have missed it again; the fix is a published input.
+- **Fixed 2026-07-28, `Pending` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** `Unit.recent_cells` is a bounded
+  trail (`RECENT_CELLS` = 8, flagged) written for **every** unit every turn — not only while searching,
+  because a unit that fought across a room and then lost its target must not treat that room as
+  unexplored. `UtilityContext.INPUT_UNVISITED` grades it by recency rather than a binary visited/not:
+  a binary makes every cell outside the trail identical and allows the same oscillation with a longer
+  period. `roam` and `hunt` score it unfloored so ground just left can reach zero; `putter` scores it
+  floored, because puttering is *meant* to stay local and an unfloored memory would turn it into a slow
+  roam.
+- **After the fix, the same probe covers 15 distinct cells in 14 turns.** Regression-tested as ground
+  covered plus an explicit A-B-A-B alternation count, because "it moved a lot" and "it stopped looping"
+  are different claims and only the second is the bug.
+- **It did not improve completion, and saying otherwise would be the mistake this project keeps
+  making.** The deterministic 100-seed escalation after the fix returns **56/100 (56.0%)**. The run
+  that prompted this note showed 14/20 (70%) and that was a lucky draw — a 20-seed sample, exactly the
+  kind of reading `BR45.03` records two earlier bad numbers for.
+- **There is no clean before/after at n=100, and the honest reason is that the baseline is stale.** The
+  last 100-seed reading was 60% and it predates taskblock-46 Pass E, so it measures a different action
+  pool. Comparing 56% against it would be comparing two builds, not two behaviours.
+- **What the fix demonstrably did is change the failure MODE**, which is the evidence that matters
+  here: `TERMINATED` (bouts that simply never end — the oscillation's signature) fell **27 → 20**,
+  while `STRANDED` rose **13 → 24**. Units that cover ground find each other, and some of those fights
+  are lost. That is the same trade taskblock-46 Pass C recorded, and it points at combat quality rather
+  than at another search gate.
+- **To confirm:** watch a bout where the squads do not meet early. Units should sweep outward instead
+  of shuttling between two tiles. The number to judge it by is the shuttle, not the completion rate.
+
+### BR46.02 — Active — owner: `CC`
+**16 of 40 generated maps contain ground a unit can walk into and never leave**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-28, while checking the supervisor's report that "Squad 1 is trapped in a lowered
+  section" during a real bout. It is a real and separate defect from `BR46.01`.
+- **Descent is free and ascent is capability-gated.** Dropping to a lower level is legal for everyone;
+  climbing back needs `Shell.can_climb()`, which reads a `CLIMBER` part tag, and **no part in the repo
+  carries it.** So every lowered region is a one-way door for every unit that currently exists.
+- **A symmetric connectivity check cannot see this, which is why it was missed.** Spawn zones are
+  mutually reachable on **60 of 60** seeds — the map is connected in the ordinary sense. The defect
+  only appears under *asymmetric* reachability: flood out from a spawn cell, then flood back from each
+  cell reached and ask whether the spawn is still reachable.
+- **Measured over 40 seeds at the real 32x24 bout size: 16 seeds contain at least one one-way cell,
+  worst case seed 16 with 216 of them** (e.g. `(11,10)`). A unit that wanders in is out of the mission
+  while still alive and still taking turns — which reads as `TERMINATED`, and is a plausible
+  contributor to `BR45.03`'s dominant failure mode.
+- **Not fixed, and deliberately not fixed by me: the direction is a design call.** Three options, none
+  obviously right:
+  (a) **author a `CLIMBER` part** — `PLAN.md` already carries this as its own item, and it makes the
+  gate real rather than removing it, but it changes what every shell can do;
+  (b) **make `MapGen` guarantee two-way connectivity** — ramp or raise any region whose only exits are
+  descents, which keeps the movement rules alone and constrains the generator;
+  (c) **make the planner refuse a one-way step** — cheapest, and wrong on its own, since a player can
+  still walk in and the AI would be avoiding terrain rather than the terrain being fixed.
+  The evidence points at (b) as the floor and (a) as the feature; (c) is a mitigation, not a fix.
+- **Reproduction is `tools/`-free and cheap:** flood from any spawn cell with a non-climbing
+  `Pathfinder`, then flood back from each reached cell and check the spawn is still in the set.
+
 ### BR45.01 — Active — owner: `CC`
 **Surrogate demotion from an ambiguous DAG node is an unresolved placeholder, and says so loudly on
 every fire**
@@ -1188,6 +1266,20 @@ every fire**
   assertion — a cell nearer as the crow flies and further along a path must report the second.
 - **Still headless only.** This entry's blocker was always that a supervised bout was needed to see it;
   that has not changed, and it is why this is `Pending` rather than anything stronger.
+- **2026-07-28 (supervisor) — the concave-pathing cause is confirmed fixed; the observed symptom split
+  into two other defects** [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`]. The supervisor watched a bout that still got
+  stuck and reported both halves: "Squad 1 is trapped in a lowered section, and Squad 0 ping pongs in a
+  small area without ever escaping the U shape." Reading the combat log, **neither half is this bug**:
+  - Squad 0's ping-ponging is `BR46.01` — `ROAM` and `HUNT` score distance-from-here with no memory, so
+    a unit with nothing in sight alternates between two cells regardless of geometry. It looks like a
+    U-shape problem because a U-shape is where a unit ends up with nothing in sight for long enough to
+    notice. Fixed.
+  - Squad 1 being trapped is `BR46.02` — descent is free and climbing needs a `CLIMBER` part that does
+    not exist, so 16 of 40 generated maps contain ground a unit can enter and never leave. Open.
+- **The lesson worth keeping, since this entry has now been misattributed twice:** "the AI is stuck on
+  a concave map" is a *symptom* with at least three unrelated causes — no path to a firing cell (this
+  entry, fixed), no memory of where it has been (`BR46.01`), and no way back out of where it went
+  (`BR46.02`). The combat log distinguishes them and the screen does not.
 
 ### BR33.01 — Suspected — owner: `SUPERVISOR`
 **Aim-view scroll cycles walls; layer labels read as part names**
@@ -1535,104 +1627,3 @@ shooter is elevated on a small platform and the target is below**
   where knowable), or a real occlusion check against `Grid.blockers`/placed `Surface`s alongside the
   angular fit — the same class of fix BR32.05 already wants for the wall cutout, possibly shareable.
 
-### BR40.03 — Pending — owner: `SUPERVISOR`
-**Scattered cover generates at level 0 inside raised rooms — each cover object sits at the bottom of
-its own one-tile pit punched through the raised floor**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
-- **Reported:** 2026-07-26, post-taskblock-40, from looking at real generated maps. "Cover items are
-  generating at 0 level, not up on top of lifted terrain."
-- **Root cause, confirmed by re-running `MapGen.generate()`'s own steps in order with a level
-  snapshot between each** (same private statics, same order, nothing simulated):
-  `MapGen._repair_stranded_elevation` (`map_gen.gd:248`) floods with a real `Pathfinder` and flattens
-  every unreached `OPEN` cell back to level 0. `Pathfinder._base_cost` (`pathfinder.gd:85`) returns
-  `-1.0` for **any cell carrying a live blocker** — so every cell `_scatter_cover` (`map_gen.gd:426`,
-  which runs first, at `map_gen.gd:80`) just dropped a crate/pillar/forklift on is *by construction*
-  outside the reachable set, and gets `set_level(cell, 0)`. `_emit` then places that cell's
-  `ship_floor` `Surface` at height 0, and `BoardView._spawn_blocker`/`_build_terrain` faithfully draw
-  both the floor and the cover object down there — a `LEVEL_HEIGHT` (1.0) deep hole in an otherwise
-  flat raised floor, with the cover item at the bottom of it. The view layer is innocent; the map is
-  genuinely authored that way.
-- **The pass is conflating two different questions.** Its documented job (its own doc comment) is
-  "a raised room whose only ramp approach got sealed by cover shouldn't stay raised and stranded" —
-  that requires flooding *with* blockers, which is correct and deliberate. But "a cell a mover cannot
-  stand on" and "a cell that is stranded" are not the same question, and the blocker's **own** cell
-  always answers the first one `false` for reasons that have nothing to do with connectivity.
-- **Scale (40 seeds, 32×24 — `BoutSetup`'s own map size):** 30/40 maps author at least one raised
-  room. **870 raised cells are flattened by this pass; 716 of them (82%) are cells that carry a
-  scattered cover blocker.** Counting the visible symptom instead — a level-0 floored cell with 3+
-  orthogonally raised neighbours — **483 of 2882 cover cells sit in such a pit, and *zero* cells with
-  neither a blocker nor a spawn marker do.** Nothing else sinks. `_ensure_spawns_connected`'s own
-  forced-corridor fallback (the other thing in `generate()` that can flatten terrain) fired on 0/40
-  seeds and is not a contributor.
-- **Same root cause as `BR40.04`** (spawn/extraction cells recessed) — one fix very likely closes
-  both, but they are filed separately because the symptoms and the gameplay consequences differ and
-  each wants confirming on its own.
-- **Not fixed** — no fix attempted; reported for a call on direction first (CLAUDE.md: ask, don't
-  invent). Candidate directions, none chosen: (a) exclude blocker-carrying cells from the *flatten*
-  decision and give each one whatever level its own reachable neighbours ended up at, in a second
-  pass — this keeps the sealed-room case working (the room behind the blocker is still unreachable
-  and still flattens) while stopping the blocker's own tile from punching a hole, and it correctly
-  lowers a cover object along with its room when the room really does get flattened; (b) flatten by
-  *region* rather than per cell, so a single unstandable tile inside an otherwise reachable area is
-  never treated as a stranded island. Naïvely re-flooding without blockers is **not** a fix — it
-  would report a cover-sealed raised room as reachable and defeat the pass's whole purpose.
-  `docs/PLAN.md`'s queued "Review pass over map generation" item is the natural home.
-- **2026-07-28 (taskblock-46 Pass A) — fixed, `Pending` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Option (a) above, taken as
-  written: blocker cells are skipped by the flatten and levelled against their neighbours afterwards
-  (`_flatten_stranded_blocker_cells` / `_has_reachable_neighbour`), so a cover-sealed raised room still
-  flattens as a region while a crate's own tile no longer punches a hole through the floor it sits on.
-- **Measured over this entry's own 40-seed sweep:** 9,279 cover cells, **0** in a pit, against the
-  483-of-2,882 reported above. Also 0 floored cells anywhere in a pit, by the same
-  below-three-or-more-orthogonal-neighbours metric this entry was reported with.
-- **The fix was wrong once first, and the miss is worth recording.** The deferred pass checked only
-  orthogonal neighbours while the flood is 8-way, which left **1 sunk crate out of 9,279** — a single
-  cell across the whole sweep, invisible to anything but a total count. If a similar deferral is ever
-  added, matching the flood's adjacency is not a detail.
-- **The elevation itself survived the fix**, which is the half a "no pits" assertion cannot prove on
-  its own: 30/40 maps still author a raised room and 3,996 of 22,938 floored cells sit above level 0.
-  Pinned by `test_map_gen_raised_rooms.gd::test_the_generator_still_authors_raised_rooms`, because
-  every other assertion in that file passes trivially on a map with no elevation at all.
-
-### BR40.04 — Pending — owner: `SUPERVISOR`
-**Extraction/spawn tiles recessed to level 0 inside raised rooms — and a unit that spawns on one can
-be permanently immobilised**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
-- **Reported:** 2026-07-26, post-taskblock-40. "Extract tiles that spawn without a unit atop them are
-  recessed down to 0 level."
-- **Root cause: the same `_repair_stranded_elevation` flatten as `BR40.03`, plus an ordering
-  detail.** `_scatter_cover` (`map_gen.gd:80`) can drop a blocker on a cell that becomes a spawn zone
-  a moment later; `_repair_stranded_elevation` (`map_gen.gd:88`) then flattens that cell to level 0
-  because the blocker makes it unreachable; and only *afterwards* does `_place_spawn_zones` →
-  `_mark_zone` (`map_gen.gd:90`, `map_gen.gd:531`) erase the blocker — deliberately, so spawns are
-  guaranteed clear. The blocker goes away; **the level-0 flattening it caused does not.** What is left
-  is a clean, empty, correctly-marked spawn/extraction cell sitting a full `LEVEL_HEIGHT` below the
-  rest of its own raised room. `BoardView._build_extraction_tiles` draws the team-coloured marker at
-  that cell's real floor height, so the marker is exactly where the map says it is — recessed.
-- **The "without a unit atop them" qualifier is a visibility artifact, and the occupied case is the
-  worse one.** `CombatState`'s constructor (`combat_state.gd:125`) sets `unit.height` from the same
-  `UnitGeometry.true_height_for_cell`, so a unit spawned on a sunk tile sinks *with* it and its body
-  hides the marker — the tile only *reads* as recessed when nothing is standing on it. Both cases are
-  the same defect.
-- **Gameplay consequence — a unit can spawn unable to move at all.** The pit is exactly one level
-  deep, climbing is capability-gated on `Shell.can_climb()` (`shell.gd:105`, an open `CLIMBER` part
-  tag), and **no part anywhere in the repo carries `CLIMBER` today** — so no unit that currently
-  exists can climb out of anything. Asking a real non-climbing `Pathfinder` what a unit standing on
-  each sunk spawn cell can reach: **seeds 17, 18 and 38 return exactly 1 cell — the one it is standing
-  on.** Seed 32 returns 2 (the two sunk cells, both spawn tiles). It is a sealed hole, and the unit
-  spends the whole battle in it. Hop-down *into* the pit is legal, so the tile still works as an
-  extraction target; it is the spawning unit that is stuck.
-- **Scale (same 40-seed, 32×24 sweep):** 8 of 80 spawn zones (10%) come out with non-uniform floor
-  heights — always one or two of the four cells at 0.0 with the rest at 1.0. Which of the four sinks
-  is uncorrelated with whether a unit spawns there (`BoutSetup._spawn_squad` takes cells in reading
-  order): 4 of the 8 sank a cell a 2-unit roster would occupy, 4 sank one it would not.
-- **Same root cause as `BR40.03`.** A fix there very likely closes this too. If it does not, the
-  narrower fix available here is ordering — running `_place_spawn_zones` (which already erases spawn
-  blockers) *before* `_repair_stranded_elevation` would make spawn cells blocker-free at flood time —
-  but that only addresses spawn cells, leaves `BR40.03` untouched, and reorders a sequence whose
-  current order is itself load-bearing and documented, so it is not obviously the right lever.
-- **2026-07-28 (taskblock-46 Pass A) — fixed, `Pending` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Closed by the `BR40.03` fix
-  as predicted, with no ordering change needed — `_place_spawn_zones` still runs where it did.
-- **The immobilisation half is asserted as gameplay**, with a real non-climbing `Pathfinder`, which is
-  every unit that exists. Over this entry's own 40-seed sweep: **0 spawn cells with only their own cell
-  reachable** (against seeds 17, 18 and 38 above), and **0 non-uniform spawn zones** against the 8 of 80
-  reported.
