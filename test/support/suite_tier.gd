@@ -16,9 +16,9 @@ extends RefCounted
 ## ## Why the tier is a list of files rather than a directory
 ##
 ## The obvious implementation is "skip `integration/`". It is wrong today, not
-## hypothetically: **eight of the eleven bout-building files live under `unit/`**,
+## hypothetically: **eleven of the twelve bout-building files live under `unit/`**,
 ## including the most expensive file in the whole suite. A directory rule would have
-## declared the fast gate bout-free while it played 116 of the 136.
+## declared the fast gate bout-free while it played nearly all of them.
 ##
 ## So the list is explicit, and `test_suite_tier.gd` checks it against the profile's
 ## own bout counter every run. **Adding a bout to a unit test makes that test fail**
@@ -60,7 +60,7 @@ static func is_fast_gate() -> bool:
 ## **`Variant`, and that is GUT's contract rather than sloppiness.** `gut.gd` skips on
 ## *any* String — including an empty one — and only a `bool false` means "run me". The
 ## first version of this returned `""` for the non-skip case and silently skipped all
-## eleven files in the full gate; the suite went green with 11 fewer files in it, which
+## every bout file in the full gate; the suite went green with 11 fewer files in it, which
 ## is exactly the shape of failure this pass is supposed to prevent.
 ##
 ## The reason is spelled out rather than left blank because a skipped test with no

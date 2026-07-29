@@ -11,9 +11,9 @@ GODOT="${GODOT:-godot}"
 #
 # The full gate is a strict superset; nothing exists only in the fast tier. Which
 # files the fast gate skips is `SuiteTier.BOUT_FILES`, and it is NOT a directory rule:
-# eight of the eleven bout-building files live under test/unit/, including the single
+# eleven of the twelve bout-building files live under test/unit/, including the single
 # most expensive file in the suite, so "skip integration/" would have declared the
-# fast gate bout-free while it played 116 of the 136 bouts.
+# fast gate bout-free while it played almost all of them.
 #
 # The tier list is checked against the profile's own bout counter on every run
 # (test_suite_tier.gd), so adding a bout to a unit test fails a test rather than

@@ -40,18 +40,18 @@ answer "does this *look* right." Both stay.
 ### Two gates
 
 ```bash
-./run_tests.sh fast   # the per-change loop — ~118 s
+./run_tests.sh fast   # the per-change loop — ~119 s
 ./run_tests.sh        # the per-pass loop — everything, ~1300 s
 ```
 
-The full gate is a strict superset; the fast one is the full one minus the eleven
+The full gate is a strict superset; the fast one is the full one minus the twelve
 files that build bouts. **Green on the full gate before a pass commits** — that rule
 is unchanged, and `fast` is for the edit-run-edit loop, not for landing work.
 
-**The tier is a list of files, not a directory.** Ten of the eleven bout-building
+**The tier is a list of files, not a directory.** Eleven of the twelve bout-building
 files live outside `test/integration/`, including the most expensive file in the
 suite, so a "skip integration/" rule would have declared the fast gate bout-free
-while it played 116 of the 136 bouts. `test_suite_tier.gd` checks the list against
+while it played nearly every bout in the suite. `test_suite_tier.gd` checks the list against
 the profile's own bout counter every run, so adding a bout to a unit test fails a
 test rather than quietly making the fast gate slow.
 

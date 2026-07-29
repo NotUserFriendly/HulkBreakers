@@ -47,21 +47,32 @@ const TURN_CAP := 100
 ## | mean turns to complete | 31.3 | **10.8** |
 ## | failure modes | 6 `TERMINATED` | 10 `TERMINATED`, 2 `STRANDED` |
 ##
-## **The true rate is 54%**, from a 100-seed run of the new planner on the same
-## ground (54 EXTRACTED, 37 TERMINATED, 9 STRANDED, mean 9.8 turns, 307 s). The
-## 24-seed figure above is one draw; this is the number the floor is set against.
+## **Everything above this line was measured with the AI's profile weights switched
+## off, and nobody knew.** `CompletionSampler` named `&"AGGRESSIVE"` as the profile
+## its bouts fought under — a playstyle taskblock-46 Pass E retired. An unknown
+## profile id does not throw; the scorer falls back to unweighted. taskblock-47 Pass D
+## fixed the id and re-measured:
 ##
-## **The gap narrowed from 33 points to 25** once the ground was level, and it is
-## still a real regression — `BR45.03`. The planner is not uniformly worse: it
-## finishes in a third of the turns when it finishes at all.
+## | 100-seed run | rate | mean turns |
+## |---|---|---|
+## | unweighted (what the table above compares) | 56% | 26.8 |
+## | **weighted (what the planner actually does)** | **72%** | **13.5** |
 ##
-## **0.35 is unchanged, and deliberately so.** At a true 0.54 a 100-seed run falls
-## below it essentially never, so the gate is comfortable where it matters. A
-## *sample* can still dip, which is why a dip escalates rather than fails
-## (`CompletionSampler`, whose `SAMPLE_SEEDS` is sized so that happens about one run
-## in 38). The old harness pinned seeds 0–11, the pessimistic window, and read 33.3%
-## there while the real rate was 54%; that is what made this constant look like it
-## needed lowering again. It did not.
+## **So the gap to the retired planner is 3 points, not 25.** The old planner's 75%
+## on level ground stands; the new planner's column does not, and the 24-seed table
+## above is kept only because it is what the landing decision was made on.
+##
+## **0.35 is unchanged, and that is now a decision waiting on the supervisor rather
+## than a defence of the number.** At a true 0.72 this floor is far below anything the
+## planner does, and `BR45.03`'s own closure condition is 0.5 — which the measured
+## rate clears comfortably. taskblock-47's scope explicitly excluded this constant,
+## and moving a floor on the same day the number moved is exactly how it ended up at
+## 0.25 once already. **Raise it deliberately, not reflexively.**
+##
+## A *sample* can still dip, which is why a dip escalates rather than fails
+## (`CompletionSampler`, whose `SAMPLE_SEEDS` is re-derived rather than picked — at
+## n=8 a dip happens about one run in thirteen, and escalating is now a manual
+## command rather than something the gate pays for).
 ##
 ## **CC recommended against both landing the planner with this open and moving this
 ## constant; the supervisor decided otherwise.** Raise it back toward 0.5 as
@@ -109,13 +120,14 @@ func _roster(profile: BotPreset, ai_profile: StringName, count: int) -> Array[Bo
 ## occasionally triples its own runtime teaches people to stop running it.
 ##
 ## **That trade only works if a spurious dip is rare**, and it is: at the measured
-## 0.60 completion rate a twenty-seed draw lands below the 0.35 floor roughly one
-## run in 160. The reported probability below is exactly that number, so if it ever
-## climbs, this design is the thing to revisit.
+## 0.72 completion rate an eight-seed draw lands below the 0.35 floor rarely; the
+## reported probability below is exactly that number, so if it ever climbs, this
+## design is the thing to revisit.
 ##
 ## **This replaces a pinned window that was measuring the wrong thing.** Seeds 0–11
-## read 33.3% while the real rate was 54%, because that window is the pessimistic
-## one; the response to a floor that keeps flapping had twice been to lower it.
+## read 33.3% against a real rate more than twenty points higher, because that window
+## is the pessimistic one; the response to a floor that keeps flapping had twice been
+## to lower it.
 ##
 ## The RNG is seeded from the clock ON PURPOSE. A fixed seed here would rebuild the
 ## pinned window under a new name — the point is that the sample walks the space

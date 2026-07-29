@@ -1,7 +1,7 @@
 # Taskblock 47 Report — The suite: measure it, tier it, watch it, cut it
 
 **Passes A–E landed in order; suite green.** Full gate **1493 s → 537 s**, turns resolved
-**4545 → 1578**, and a fast gate at **118 s** for the per-change loop. Pass A also turned up a broken
+**4545 → 1578**, and a fast gate at **119 s** for the per-change loop. Pass A also turned up a broken
 profile id that had been silently disabling AI profile weights since taskblock-46 — see *Open
 questions*, it re-frames `BR45.03`.
 
@@ -28,9 +28,10 @@ questions*, it re-frames `BR45.03`.
   smaller*, because `ceil(0.35 × 6) = 3` demands 50% where `ceil(0.35 × 8) = 3` demands 37.5%. A round
   number would have been actively worse than a bigger one.
 
-- **The tier is an explicit file list, not a directory rule.** Ten of the eleven bout-building files
+- **The tier is an explicit file list, not a directory rule.** Eleven of the twelve bout-building files
   live outside `test/integration/`, including the most expensive file in the suite, so "skip
-  integration/" would have declared the fast gate bout-free while it played 116 of the 136 bouts. The
+  integration/" would have declared the fast gate bout-free while it played nearly every bout in the
+  suite. The
   list is checked against the profile's own bout counter every run.
 
 - **`MIN_COMPLETION_RATE` left at 0.35 despite measuring 72%.** The taskblock excludes that constant,
@@ -58,7 +59,7 @@ particular block.
    a deliberate reset. Script counts are the sum of their tests' windows now, which are short enough
    for the reset handling to be exact.
 
-3. **Returning `""` from `should_skip_script()` silently removed all eleven bout files from the FULL
+3. **Returning `""` from `should_skip_script()` silently removed every bout file from the FULL
    gate.** GUT skips on *any* String, empty included; only `bool false` means "run me". The suite went
    green with 11 fewer files in it. Related: GUT declares the method untyped, so an override adding
    `-> Variant` is a signature mismatch, and the script then fails to parse while GUT reports "does not
@@ -109,7 +110,7 @@ None this block. `BR45.03` stays `Active` and gained a substantial correction �
 
   **C and E did the work; D is an honest increase** and is left visible rather than netted out.
 
-- **The fast gate is 118 s against the full gate's 537 s**, and I have not changed which one anyone is
+- **The fast gate is 119 s against the full gate's 537 s**, and I have not changed which one anyone is
   told to run before committing — that is still the full one. The fast gate is for the edit-run-edit
   loop. If it turns out people land work on `fast` alone, the tier list is the thing to revisit, not
   the rule.

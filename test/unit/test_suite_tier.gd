@@ -8,9 +8,9 @@ extends GutTest
 ##
 ## So the tier list is checked against the profile's **own bout counter** every run,
 ## never against a directory. That distinction is not theoretical here — eight of the
-## eleven bout-building files live under `test/unit/`, including the most expensive
+## twelve bout-building files live under `test/unit/`, including the most expensive
 ## file in the suite, so a `skip integration/` rule would have declared the fast gate
-## bout-free while it played 116 of the 136 bouts.
+## bout-free while it played almost all of them.
 ##
 ## Cheap by construction: it parses one JSON file and compares two sorted lists. It
 ## does not run either gate, because a test that ran the suite to check the suite
@@ -108,7 +108,7 @@ func test_the_skip_only_ever_subtracts() -> void:
 		assert_eq(typeof(skip), TYPE_STRING, "fast gate: a String, which is what GUT skips on")
 	else:
 		# **`false`, not `""`.** GUT skips on any String, empty included, so an
-		# empty-string "don't skip" silently removed all eleven files from the full
+		# empty-string "don't skip" silently removed every bout file from the full
 		# gate — caught by the suite going green with 11 fewer files in it.
 		assert_eq(skip, false, "full gate: skips nothing")
 		assert_eq(typeof(skip), TYPE_BOOL, "and says so in GUT's own terms")
