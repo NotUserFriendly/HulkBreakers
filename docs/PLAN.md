@@ -129,6 +129,21 @@ Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAct
 - **No AI path ever queues either action.** The planner still only ever moves via ordinary `MoveAction`
   — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
   in a real bout today.
+**BR46.02 — 16 of 40 generated maps contain ground a unit can walk into and never leave.** Descent is
+free, ascent is `CLIMBER`-gated, and nothing carries the tag. A symmetric connectivity check reports
+these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defect only appears under
+*asymmetric* reachability. Three directions, and the map-generator half is **low priority**:
+
+- **Ramps where they are missing** is the cheap generator fix — any region whose only exits are
+  descents gets a ramp — and it should ride along with other map-gen work rather than justifying a
+  block.
+- **A short-term behavioural mitigation, worth more than it sounds:** a unit that finds itself confined
+  escalates to an **agitated roam** or **pace** — visibly restless rather than idle — and after a few
+  turns of no progress, **shuts down**. That converts a unit silently absent from the mission into a
+  legible outcome the player can see and the log can record. It does not fix the terrain, and it should
+  not be mistaken for a fix; it stops a `TERMINATED` bout from being indistinguishable from a hang.
+- **Authoring a `CLIMBER` part** is the feature, below.
+
 - **No part anywhere authors `CLIMBER`, so nothing that exists can climb out of anything.**
   `Shell.can_climb()` reads the tag (`shell.gd:105`) and no `.tres` carries it. A **content gap, not a
   pathfinding bug** — the pathfinder correctly reports that a unit which hopped down a ledge cannot get
@@ -206,6 +221,29 @@ and the tracer-drawing path:
 **The rename-only fence is lifted for this work.** taskblock-40 Pass A renamed `void_range` to
 `miss_range` under an explicit fence because the supervisor believed the area held a live bug.
 **BR34.05 and BR35.04 are that bug.**
+
+### Visible combat artifacts
+**Needs:** nothing. **Unblocks:** the supervisor being able to judge combat by watching it rather than
+by reading a log.
+
+**If a combat rule has a spatial extent, the player should be able to see that extent.** Several
+currently exist only as numbers in the log or as inferences from an outcome:
+
+- **The overwatch cone.** A unit on overwatch is watching a real region; nothing draws it. The player
+  cannot tell whether stepping one cell left is safe, which makes overwatch a guess rather than a
+  threat to route around.
+- **Explosions.** A detonation resolves and nothing is drawn (`BR35.08`). The blast has a radius and a
+  falloff that the resolver knows exactly.
+- **Then everything else of the same shape** — suppression fields, hazard volumes, the reach of a melee
+  action, the projected path of forced movement. The rule is general: **a spatial rule with no drawn
+  extent is a rule the player has to learn by dying to it.**
+
+Pairs with *Tracers and hit visuals* above — that item is about shots that already draw drawing
+*correctly*; this one is about effects that do not draw at all. Same subsystem, opposite defect, and
+worth doing together if either is picked up.
+
+**`08`'s transparency pillar applies unchanged:** whatever is drawn must come from the same computation
+the resolver uses, never a second approximation authored to look right.
 
 ### Automatic batch assignment in generated missions
 **Needs:** taskblock-43 Pass C/D (landed — `Unit.batch_id`, `BatchPlan`, the leader/follower split all
