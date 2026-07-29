@@ -103,3 +103,60 @@ func test_the_debug_panels_stay_inside_the_viewport() -> void:
 				% [panel.name, screen, panel.get_global_rect()]
 			)
 		)
+
+
+## **Pinned width, asserted against content that would otherwise change it.**
+##
+## GUT prints everything from `* test_x` to a full `res://` path to a wrapped
+## assertion message, so a panel sized to its content jumped on every poll. Fed a line
+## far longer than the panel, the width must not move — which is a claim about
+## `clip_text` and `custom_minimum_size` together, and neither alone would hold it.
+func test_the_run_panel_keeps_its_width_whatever_the_feed_says() -> void:
+	var overlay: SpectatorOverlay = _overlay()
+	if overlay.suite_run_panel == null:
+		assert_true(true)
+		return
+	var panel: SuiteRunPanel = overlay.suite_run_panel
+	await get_tree().process_frame
+	var empty_width: float = panel.get_global_rect().size.x
+
+	panel.run = SuiteRun.new()
+	panel.run.ingest(
+		(
+			"res://test/unit/logic/ai/test_something_with_a_very_long_name_indeed.gd\n"
+			+ "    [Failed]: "
+			+ "x".repeat(400)
+			+ "\n"
+		)
+	)
+	panel._refresh()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var loaded_width: float = panel.get_global_rect().size.x
+	gut.p("width empty %.0f, with a 400-char line %.0f" % [empty_width, loaded_width])
+	assert_almost_eq(loaded_width, empty_width, 1.0, "the feed must not widen the panel")
+	assert_almost_eq(
+		loaded_width, SuiteRunPanel.PANEL_WIDTH, 1.0, "and it sits at the pinned width"
+	)
+
+
+## The background is a real drawn surface, not a transparent container. Asserted
+## against the same alpha `CombatLogPanel` uses, so the two cannot silently diverge
+## into "one has a background and one does not".
+func test_the_run_panel_draws_a_background_like_the_combat_log() -> void:
+	var overlay: SpectatorOverlay = _overlay()
+	if overlay.suite_run_panel == null:
+		assert_true(true)
+		return
+
+	var body: PanelContainer = overlay.suite_run_panel._body
+	assert_not_null(body, "the panel has a body to draw on")
+	var style: StyleBox = body.get_theme_stylebox("panel")
+	assert_true(style is StyleBoxFlat, "and a real stylebox rather than the default")
+	var flat: StyleBoxFlat = style
+	gut.p("background %s" % flat.bg_color)
+	assert_gt(flat.bg_color.a, 0.5, "opaque enough to read text over the board")
+	assert_almost_eq(
+		flat.bg_color.a, CombatLogPanel.BACKGROUND_ALPHA, 0.001, "same alpha as the combat log"
+	)
