@@ -1,0 +1,181 @@
+extends GutTest
+
+## taskblock-47 Pass B: **the test for the tests.**
+##
+## Reads the committed profile and fails when the suite's work has grown past its
+## budget. Deliberately cheap — it parses one JSON file and compares integers. **It
+## must never re-run anything**: a budget check that costs a suite run to answer is a
+## thing people disable.
+##
+## ## What "cheap" costs in coverage, stated rather than hidden
+##
+## Because it reads the committed profile rather than measuring the live run, it
+## catches a regression when the profile is regenerated, not the instant it lands.
+## That is the trade, and it is the right one: the alternative is measuring the whole
+## suite from inside the suite, which is either circular or expensive. The profile is
+## regenerated per taskblock, which is the same cadence the numbers move at.
+##
+## The checker's own logic is tested against synthetic profiles, so its behaviour is
+## pinned regardless of what the committed one currently says.
+
+const PROFILE_PATH := "res://test/suite_profile.json"
+
+
+func _profile() -> Dictionary:
+	var file := FileAccess.open(PROFILE_PATH, FileAccess.READ)
+	assert_not_null(file, "the committed profile must exist — regenerate it")
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	assert_true(parsed is Dictionary, "the profile must be a JSON object")
+	return parsed if parsed is Dictionary else {}
+
+
+# --- the budget itself ----------------------------------------------------------
+
+
+## **The gate.** Everything else in this file exists to make this one trustworthy.
+func test_the_suite_is_within_its_work_budget() -> void:
+	var violations: Array[String] = SuiteBudget.violations(_profile())
+
+	for message: String in violations:
+		gut.p("OVER BUDGET: %s" % message)
+	assert_eq(
+		violations.size(),
+		0,
+		(
+			(
+				"the suite's work grew past budget:\n  %s\n\nThis is a ratchet, not a wall — "
+				+ "raise the number in `suite_budget.gd` and say why in the same commit, or "
+				+ "find the work and remove it."
+			)
+			% "\n  ".join(violations)
+		)
+	)
+
+
+## The budget has to describe the suite that exists, or it is guarding a fiction. A
+## baseline that has drifted far below reality means someone changed the suite and
+## never re-ratcheted, and the gate has been passing on slack ever since.
+func test_the_recorded_baseline_still_resembles_the_measured_suite() -> void:
+	var totals: Dictionary = _profile().get("totals", {})
+
+	for counter: String in SuiteBudget.GATED:
+		var baseline: int = int(SuiteBudget.BASELINE[counter])
+		var observed: int = int(totals.get(counter, 0))
+		gut.p("%-8s baseline %d, measured %d" % [counter, baseline, observed])
+		assert_gt(observed, 0, "%s should be non-zero in a real profile" % counter)
+		# Below budget is the passing direction; this catches the *other* drift —
+		# a baseline left far above what the suite now does, which is a budget with
+		# nothing in it.
+		assert_gt(
+			float(observed),
+			float(baseline) * 0.5,
+			(
+				(
+					"%s has fallen to less than half its baseline — re-ratchet the budget "
+					+ "down or it is guarding nothing"
+				)
+				% counter
+			)
+		)
+
+
+# --- the checker's own behaviour, pinned on synthetic input ----------------------
+
+
+func _synthetic(totals: Dictionary, files: Array = []) -> Dictionary:
+	return {"totals": totals, "files": files}
+
+
+func test_a_profile_at_the_baseline_passes() -> void:
+	assert_eq(SuiteBudget.violations(_synthetic(SuiteBudget.BASELINE.duplicate())).size(), 0)
+
+
+## Exactly at the limit is a pass; one over is a failure. Pinned because an
+## off-by-one here makes the budget either unreachable or permanently red.
+func test_the_boundary_is_inclusive() -> void:
+	var at_limit: Dictionary = SuiteBudget.BASELINE.duplicate()
+	at_limit["turns"] = SuiteBudget.limit_for("turns")
+	assert_eq(SuiteBudget.violations(_synthetic(at_limit)).size(), 0, "exactly at budget passes")
+
+	at_limit["turns"] = SuiteBudget.limit_for("turns") + 1
+	assert_eq(SuiteBudget.violations(_synthetic(at_limit)).size(), 1, "one over fails")
+
+
+## **The acceptance the taskblock names: the message says which file and by how
+## much.** "The suite got more expensive" is not something anyone can act on.
+func test_going_over_names_the_file_and_the_delta() -> void:
+	var path: String = SuiteBudget.PER_FILE.keys()[0]
+	var cap: int = int(SuiteBudget.PER_FILE[path]["turns"])
+	var profile: Dictionary = _synthetic(
+		SuiteBudget.BASELINE.duplicate(), [{"path": path, "turns": cap + 40, "bouts": 0}]
+	)
+
+	var violations: Array[String] = SuiteBudget.violations(profile)
+
+	assert_eq(violations.size(), 1)
+	gut.p(violations[0])
+	assert_true(violations[0].contains(path.replace("res://test/", "")), "names the file")
+	assert_true(violations[0].contains("+40"), "and states the delta")
+
+
+## Every violation at once, not the first one. A change that pushes three files over
+## is one investigation; reporting it as three consecutive red runs makes it three.
+func test_every_violation_is_reported_not_just_the_first() -> void:
+	var over: Dictionary = {}
+	for counter: String in SuiteBudget.GATED:
+		over[counter] = SuiteBudget.limit_for(counter) * 2
+
+	var violations: Array[String] = SuiteBudget.violations(_synthetic(over))
+
+	assert_eq(violations.size(), SuiteBudget.GATED.size(), "one per gated counter")
+
+
+## A counter that is measured but not gated must not fail the build. `candidates` and
+## `shot_planes` move with how the planner scores rather than with how much the suite
+## asks of it, and an AI change failing a suite-cost test is the false positive that
+## gets budgets deleted.
+func test_an_ungated_counter_does_not_fail_the_build() -> void:
+	var inflated: Dictionary = SuiteBudget.BASELINE.duplicate()
+	inflated["candidates"] = int(inflated["candidates"]) * 100
+	inflated["shot_planes"] = int(inflated["shot_planes"]) * 100
+
+	assert_eq(SuiteBudget.violations(_synthetic(inflated)).size(), 0)
+	assert_false(SuiteBudget.GATED.has("candidates"), "and it is ungated on purpose")
+
+
+## A file with no entry in the per-file table is governed by the suite total alone —
+## it must not silently pass *or* silently fail.
+func test_a_file_without_its_own_budget_is_ignored_per_file() -> void:
+	var profile: Dictionary = _synthetic(
+		SuiteBudget.BASELINE.duplicate(),
+		[{"path": "res://test/unit/logic/test_nothing_special.gd", "turns": 999999, "bouts": 9999}]
+	)
+
+	assert_eq(SuiteBudget.violations(profile).size(), 0, "no per-file entry, no per-file verdict")
+
+
+# --- the tier definition Pass C builds on ---------------------------------------
+
+
+## Bout-building files are identified by **the counter, never a directory glob** —
+## a glob goes stale the moment someone adds a bout to a unit test, and the whole
+## point of the fast tier is that it cannot quietly acquire one.
+func test_bout_building_files_come_from_the_counter() -> void:
+	var files: Array[String] = SuiteBudget.bout_building_files(_profile())
+
+	gut.p("%d file(s) build bouts: %s" % [files.size(), files])
+	assert_gt(files.size(), 0, "sanity: some file builds a bout")
+	assert_true(
+		files.has("res://test/unit/logic/test_completion_sampler.gd"),
+		"the heaviest bout file is in the list"
+	)
+	# The counter finds them wherever they live — three of these are under unit/,
+	# which is exactly why a directory glob would be wrong.
+	var outside_integration := 0
+	for path: String in files:
+		if not path.begins_with("res://test/integration/"):
+			outside_integration += 1
+	assert_gt(outside_integration, 0, "bout-building files are not confined to integration/")

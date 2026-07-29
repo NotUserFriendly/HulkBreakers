@@ -32,6 +32,11 @@ extends SceneTree
 ## Usage: `godot --headless --path . -s res://tools/profile_suite.gd`
 
 const OUTPUT_PATH := "res://test/SUITE-PROFILE.md"
+## The same run, machine-readable and complete. The markdown carries the top 20
+## because that is what a human reads; **the budget check needs every file**, and
+## having it re-parse a table that was formatted for reading would make the gate
+## depend on column alignment.
+const DATA_PATH := "res://test/suite_profile.json"
 ## How many rows each of the two tables carries. The taskblock asks for 20.
 const TOP_N := 20
 
@@ -185,6 +190,22 @@ func _on_end_run() -> void:
 	for line: String in _render(total_usec):
 		file.store_line(line)
 	file.close()
+
+	var data := FileAccess.open(DATA_PATH, FileAccess.WRITE)
+	if data == null:
+		push_error("could not write %s" % DATA_PATH)
+		quit(1)
+		return
+	# Sorted by path, so the committed file diffs as changed numbers rather than as
+	# reordered rows.
+	var by_path: Array[Dictionary] = _script_rows.duplicate()
+	by_path.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool: return String(a["path"]) < String(b["path"])
+	)
+	data.store_line(
+		JSON.stringify({"totals": _totals(), "wall_clock_usec": total_usec, "files": by_path}, "  ")
+	)
+	data.close()
 	print("wrote %s (%d scripts, %d tests)" % [OUTPUT_PATH, _script_rows.size(), _test_rows.size()])
 	quit(0)
 
