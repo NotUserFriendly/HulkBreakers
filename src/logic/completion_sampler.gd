@@ -41,27 +41,34 @@ extends RefCounted
 ## concluded. That number is worth reading on its own — it is the one figure here
 ## that does not depend on which seeds happened to come up.
 
-## Seeds drawn per sample. **Sized from the measured escalation cost, not by feel.**
+## Seeds drawn per sample. **Re-derived at taskblock-47 Pass C, not adjusted.**
 ##
-## At the measured 0.54 completion rate against a 0.35 floor, with ~3 s per seed
-## and ~300 s for the escalation:
+## taskblock-46 sized this at 20 when the escalation ran inside `run_tests.sh`, so a
+## sample that dipped cost the suite an extra ~330 s automatically and the only thing
+## worth optimising was how rarely that happened. **The escalation is a manual command
+## now** (`tools/probe_seeds.gd`), so an escalation costs a person deciding to run one
+## rather than suite time, and the trade moves: the gate should be cheap and dipping
+## should merely be informative.
 ##
-## | n | P(escalate) | ~1 run in | expected cost |
-## |---|---|---|---|
-## | 10 | 0.114 | 9 | 64 s |
-## | 15 | 0.089 | 11 | 72 s |
-## | **20** | **0.027** | **38** | **68 s** |
-## | 30 | 0.018 | 55 | 95 s |
+## At the currently measured 0.56 completion rate against the 0.35 floor, ~12.2 s per
+## seed:
 ##
-## **20 costs four seconds more than 10 in expectation and escalates four times
-## less often.** Expected cost is the wrong axis on its own: a run that escalates
-## pays the full ~330 s whatever `n` is, so the number that matters for a suite
-## people actually wait on is how often that happens, not the average.
+## | n | demands | P(escalate) | ~1 run in | gate cost |
+## |---|---|---|---|---|
+## | 5 | 40.0% | 0.121 | 8 | 61 s |
+## | 6 | 50.0% | 0.239 | 4 | 73 s |
+## | **8** | **37.5%** | **0.079** | **13** | **98 s** |
+## | 10 | 40.0% | 0.091 | 11 | 122 s |
+## | 15 | 40.0% | 0.066 | 15 | 183 s |
+## | 20 | 35.0% | 0.017 | 58 | 244 s |
 ##
-## Note the non-monotonicity — 12 is *worse* than 10 (0.126). The threshold is an
-## integer count, so `ceil(0.35 * 12) = 5` demands 41.7% where `ceil(0.35 * 10) = 4`
-## demands 40%. Picking `n` by intuition walks straight into that.
-const SAMPLE_SEEDS := 20
+## **8 costs 146 s less than 20 and still only asks for an escalation about one run in
+## thirteen.** The non-monotonicity taskblock-46 found is worse here than it was there
+## and is the reason this cannot be eyeballed: **n=6 is three times more likely to
+## escalate than n=8 despite being smaller**, because the threshold is an integer count
+## and `ceil(0.35 x 6) = 3` demands 50% where `ceil(0.35 x 8) = 3` demands 37.5%.
+## Picking a round number here would have been actively worse than picking a bigger one.
+const SAMPLE_SEEDS := 8
 ## The escalation's fixed seed list — `0` to `ESCALATION_SEEDS - 1`. Flagged, not
 ## tuned; it trades runtime against confidence and nothing else.
 const ESCALATION_SEEDS := 100

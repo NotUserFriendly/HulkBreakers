@@ -53,12 +53,12 @@ const HEADROOM := 0.15
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
-	"bouts": 136,
-	"turns": 4545,
-	"plans": 4443,
-	"candidates": 6034735,
-	"shot_planes": 43915,
-	"floods": 13645,
+	"bouts": 76,
+	"turns": 2171,
+	"plans": 2056,
+	"candidates": 3108725,
+	"shot_planes": 24380,
+	"floods": 7640,
 }
 
 ## Which counters are actually gated. **`candidates` and `shot_planes` are measured
@@ -74,10 +74,13 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## precisely the drift being guarded against. Only files that build bouts get an
 ## entry — everything else is noise against these.
 ##
-## Values are the Pass A measurement with the same headroom applied, rounded up.
+## Values are the current measurement with the same headroom applied, rounded up.
+## **Re-ratcheted at Pass C**, where `SAMPLE_SEEDS` 20 → 8 took the sampler file from
+## 88 bouts to 40 and the integration test from 20 to 8. Leaving the old numbers would
+## have left ~60% slack in the two files that matter most.
 const PER_FILE: Dictionary = {
-	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 102, "turns": 3295},
-	"res://test/integration/test_full_mission.gd": {"bouts": 23, "turns": 1007},
+	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 46, "turns": 1409},
+	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 163},
 	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 5, "turns": 596},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
 }

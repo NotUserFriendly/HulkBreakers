@@ -4,6 +4,29 @@ set -euo pipefail
 # Set GODOT=/path/to/godot if 'godot' isn't on PATH.
 GODOT="${GODOT:-godot}"
 
+# taskblock-47 Pass C: two gates, because they answer different questions.
+#
+#   ./run_tests.sh fast   the per-change loop — everything that does not build a bout
+#   ./run_tests.sh        the per-pass loop — everything. Green before a pass commits.
+#
+# The full gate is a strict superset; nothing exists only in the fast tier. Which
+# files the fast gate skips is `SuiteTier.BOUT_FILES`, and it is NOT a directory rule:
+# eight of the eleven bout-building files live under test/unit/, including the single
+# most expensive file in the suite, so "skip integration/" would have declared the
+# fast gate bout-free while it played 116 of the 136 bouts.
+#
+# The tier list is checked against the profile's own bout counter on every run
+# (test_suite_tier.gd), so adding a bout to a unit test fails a test rather than
+# quietly making the fast gate slow.
+GATE="${1:-full}"
+if [[ "$GATE" == "fast" ]]; then
+  export HULK_FAST_GATE=1
+  echo "== fast gate: skipping bout-building files =="
+elif [[ "$GATE" != "full" ]]; then
+  echo "usage: $0 [fast|full]" >&2
+  exit 2
+fi
+
 # 1. Lint gate — fast failure, no engine needed. `pip install gdtoolkit` to get
 #    gdlint/gdformat. Project style overrides live in ./gdlintrc (max-returns
 #    raised from the default 6 — this codebase's is_legal() validation gates

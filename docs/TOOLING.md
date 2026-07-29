@@ -24,7 +24,8 @@ Every script honours `GODOT=/path/to/godot` if `godot` isn't on `PATH`.
 
 | Script | Screen? | What it is |
 |---|---|---|
-| `run_tests.sh` | headless | The gate. Lint → import → GUT. |
+| `run_tests.sh` | headless | The full gate. Lint → import → GUT, bouts included. |
+| `run_tests.sh fast` | headless | The per-change gate. Everything that does not build a bout. |
 | `run_game.sh` | **on-screen** | The actual game. Press `B` at `battle_scene` for Simulate Bout. |
 | `run_resource_editor.sh` | **on-screen** | The Resource Editor as its own process. |
 | `checkpoint.sh N` | **on-screen** | Runs visual checkpoint `N`. |
@@ -35,6 +36,24 @@ Every script honours `GODOT=/path/to/godot` if `godot` isn't on `PATH`.
 **Headless is not a lesser mode and is not being retired.** It is the only mode that can gate a
 commit, and the on-screen tools exist because `--headless` has a no-op renderer and therefore cannot
 answer "does this *look* right." Both stay.
+
+### Two gates
+
+```bash
+./run_tests.sh fast   # the per-change loop — ~118 s
+./run_tests.sh        # the per-pass loop — everything, ~1300 s
+```
+
+The full gate is a strict superset; the fast one is the full one minus the eleven
+files that build bouts. **Green on the full gate before a pass commits** — that rule
+is unchanged, and `fast` is for the edit-run-edit loop, not for landing work.
+
+**The tier is a list of files, not a directory.** Ten of the eleven bout-building
+files live outside `test/integration/`, including the most expensive file in the
+suite, so a "skip integration/" rule would have declared the fast gate bout-free
+while it played 116 of the 136 bouts. `test_suite_tier.gd` checks the list against
+the profile's own bout counter every run, so adding a bout to a unit test fails a
+test rather than quietly making the fast gate slow.
 
 ### `run_tests.sh`
 ```bash
