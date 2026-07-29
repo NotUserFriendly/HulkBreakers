@@ -30,6 +30,7 @@ Every script honours `GODOT=/path/to/godot` if `godot` isn't on `PATH`.
 | `checkpoint.sh N` | **on-screen** | Runs visual checkpoint `N`. |
 | `tools/checkpoints/run_visual_checkpoint.sh` | **on-screen** | The generic driver `checkpoint.sh` dispatches to. |
 | `tools/bench_release.sh` | export | Release-vs-debug AI planning measurement. |
+| `tools/profile_suite.gd` | headless | Regenerates the suite profile and the budget's baseline. |
 
 **Headless is not a lesser mode and is not being retired.** It is the only mode that can gate a
 commit, and the on-screen tools exist because `--headless` has a no-op renderer and therefore cannot
@@ -101,6 +102,33 @@ taskblock-44, and the first export revealed that the shipping configuration load
 binary conversion produced `.res` and `.tres.remap` files that the loader's `.tres` filter skipped, so
 every downstream path died on a division by zero, as a bare `SIGFPE` with no message. Export **debug
 and release**: the debug export is what makes such a crash legible; release alone is a silent trap.
+
+### Profiling the suite
+
+```bash
+godot --headless --path . -s res://tools/profile_suite.gd
+```
+
+Runs the whole suite once and writes two files, both committed:
+
+- **`test/SUITE-PROFILE.md`** — for reading. Totals, then the top 20 files by wall-clock, the top 20
+  by turns resolved, and the top 20 tests by wall-clock. The two file lists are separate on purpose:
+  a file that is slow *without* resolving turns is slow for a reason worth understanding rather than
+  a reason worth budgeting.
+- **`test/suite_profile.json`** — for machines. Every file, so the budget check does not have to
+  re-parse a table that was formatted for a human.
+
+**Wall-clock is the softer number and the profile says so.** Two runs of identical work measured
+1286 s and 1493 s on the same machine; the work counts were identical to the integer. Compare counts
+across commits and seconds only against themselves.
+
+`test/support/suite_budget.gd` holds the budget those counts are gated against, and
+`test/unit/test_suite_budget.gd` is the gate. **It is a ratchet, not a ceiling** — going over is a
+decision, not a crime: raise the number and say why in the same commit. It ratchets *down* too, so a
+pass that removes work re-measures rather than leaving slack behind.
+
+Re-generate the profile after any change that moves the suite's shape, and update
+`SuiteBudget.BASELINE` from `totals` in the same commit.
 
 ### `tools/` one-offs
 `author_*.gd` and `migrate_data.gd` are single-use data-authoring scripts, run once and kept for
