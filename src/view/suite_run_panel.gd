@@ -49,7 +49,16 @@ const FEED_HEIGHT := 260.0
 ## Matches `CombatLogPanel`'s own alpha so the two read as the same kind of surface.
 const BACKGROUND_ALPHA := 0.82
 
+## The size of the cleared board. Matches `BoutSetup`'s own so the camera does not jump
+## between the empty state and a replayed bout.
+const CLEARED_WIDTH := 32
+const CLEARED_ROWS := 24
+
 var run: SuiteRun = null
+## Set by the host overlay so a launch can clear the board.
+var battle: BattleScene = null
+
+var _force_failure: CheckBox = null
 
 var _body: PanelContainer = null
 var _status: Label = null
@@ -92,6 +101,16 @@ func _ready() -> void:
 	stop.text = "kill"
 	stop.pressed.connect(_stop)
 	buttons.add_child(stop)
+
+	# **Reachable without knowing a variable name.** Proving the replay path end to end
+	# needs a failing run, and requiring `HULK_FORCE_TEST_FAILURE=1` on the shell that
+	# launched the game is exactly the "incantation" this surface exists to avoid.
+	_force_failure = CheckBox.new()
+	_force_failure.text = "force a failure"
+	_force_failure.tooltip_text = (
+		"Makes test_exit_code_probe.gd fail on purpose," + " so a run has something to replay"
+	)
+	buttons.add_child(_force_failure)
 
 	_counts = Label.new()
 	_counts.clip_text = true
@@ -137,10 +156,28 @@ func _process(delta: float) -> void:
 
 func _start(rung: StringName) -> void:
 	run = SuiteRun.new()
+	run.force_failure = _force_failure != null and _force_failure.button_pressed
 	if not run.start(rung):
 		_status.text = "could not launch — is run_tests.sh executable?"
 		return
+	# **The board is cleared the moment a run starts**, and that is the point rather
+	# than tidiness. Without it the window keeps showing whatever bout was already
+	# there, so a replay that works and a replay that does nothing look identical —
+	# which is exactly what the supervisor was unable to tell apart. An empty board is
+	# an unambiguous "this is not the old bout".
+	clear_board()
 	_refresh()
+
+
+## Replaces whatever is on screen with an empty board. Unfloored cells, no units: it
+## renders as bare tiles, which reads as *cleared* rather than as a map that happens to
+## be dull.
+func clear_board() -> void:
+	if battle == null:
+		return
+	var blank := Grid.new(CLEARED_WIDTH, CLEARED_ROWS)
+	var empty := CombatState.new(blank, [] as Array[Unit])
+	battle.load_battle(empty, MissionState.new(RunState.new(), empty))
 
 
 func _stop() -> void:

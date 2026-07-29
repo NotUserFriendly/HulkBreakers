@@ -327,6 +327,7 @@ func _build_ui() -> void:
 		# replay path was reachable only from its own tests. `docs/11`'s failure mode
 		# exactly: the mechanism passed every test asserting it worked when called, and
 		# nothing asserted it got called.
+		suite_run_panel.battle = self.battle
 		watched_run_panel.bind(self.battle, null)
 		suite_run_panel.run_completed.connect(_on_suite_run_completed)
 		watched_run_panel.seed_loaded.connect(_on_replay_loaded)

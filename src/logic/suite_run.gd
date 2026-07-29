@@ -52,6 +52,15 @@ const RUNGS: Dictionary = {
 ## in the same millisecond are exactly the case this has to survive.
 static var _next_id: int = 0
 
+## When true the child is given `HULK_FORCE_TEST_FAILURE=1`, which makes
+## `test_exit_code_probe.gd` fail on purpose.
+##
+## **The variable is put on the child's command line, never set on this process.**
+## `OS.set_environment` is process-wide, and taskblock-47 already had one test switch
+## the fast gate off for every file GUT had not reached by clearing a variable it had
+## set. A prefix cannot leak.
+var force_failure: bool = false
+
 var pid: int = -1
 var lines: Array[String] = []
 var exit_code: int = -1
@@ -80,9 +89,10 @@ func start(rung: StringName, target: String = "") -> bool:
 	DirAccess.remove_absolute(pgid_file)
 	# `$$` inside the `setsid`-ed shell is the new session leader, which is also the
 	# process group every descendant inherits — the handle `kill()` needs.
+	var forced: String = "HULK_FORCE_TEST_FAILURE=1 " if force_failure else ""
 	var command: String = (
-		'echo $$ > %s; ./run_tests.sh %s > %s 2>&1; echo "%s=$?" >> %s'
-		% [pgid_file, argument, log_file, EXIT_MARKER, log_file]
+		'echo $$ > %s; %s./run_tests.sh %s > %s 2>&1; echo "%s=$?" >> %s'
+		% [pgid_file, forced, argument, log_file, EXIT_MARKER, log_file]
 	)
 	pid = OS.create_process("/usr/bin/env", ["setsid", "bash", "-c", command])
 	if pid <= 0:
@@ -127,7 +137,7 @@ func poll() -> void:
 func ingest(text: String) -> void:
 	if text == "":
 		return
-	for line: String in text.split("\n"):
+	for line: String in _strip_ansi(text).split("\n"):
 		if line.begins_with(EXIT_MARKER):
 			exit_code = line.split("=")[-1].to_int()
 			finished = true
@@ -143,6 +153,22 @@ func ingest(text: String) -> void:
 ## is a launcher that exits immediately, and a run was reported as over about a
 ## millisecond after it started. The pid is kept for diagnostics; the group is what
 ## can be signalled and the marker is what says it ended.
+## Removes the colour codes GUT wraps its output in.
+##
+## **This is why `failures()` found nothing on a real run.** GUT prints
+## `\u001b[0m- test_name`, so every prefix test in this file silently missed — and it
+## went unnoticed because the tests fed it hand-written lines with no escapes in them.
+## Fabricated input that is tidier than the real thing is worse than no test: it
+## reports success for a parser that has never seen its actual subject.
+##
+## Stripped on the way in, so the panel does not render escape junk either.
+static func _strip_ansi(text: String) -> String:
+	var pattern := RegEx.new()
+	# CSI sequences: ESC [ ... final byte in @-~.
+	pattern.compile("\u001b\\[[0-9;?]*[ -/]*[@-~]")
+	return pattern.sub(text, "", true)
+
+
 func is_running() -> bool:
 	return _log_path != "" and not finished
 
@@ -256,10 +282,14 @@ func tallies() -> Dictionary:
 ## Which tests failed, as `[{"script": String, "test": String}, ...]`, in the order
 ## GUT reported them.
 ##
-## Read from the **Run Summary**, not from the inline `[Failed]` lines scattered
-## through the feed: the summary is GUT's own deduplicated list, so a test that failed
-## three assertions appears once rather than three times. Replaying the same fixture
-## three times would be exactly the noise the cap exists to avoid.
+## Read from the **Run Summary** rather than the inline `[Failed]` lines scattered
+## through the feed, and **deduplicated here**.
+##
+## Reading the summary was supposed to make deduplication free. It does not: the parse
+## latches on at the first "Run Summary" and GUT repeats a failing test's script and
+## name more than once after it, so one failed test came back three times. Replaying
+## the same fixture three times is exactly the noise the cap exists to prevent, so the
+## dedup is explicit and does not depend on GUT's formatting staying put.
 ##
 ## Parsed rather than tracked, for the same reason everything else here is: the feed is
 ## the real output, and anything derived from a second source could disagree with what
@@ -278,7 +308,9 @@ func failures() -> Array[Dictionary]:
 		if trimmed.begins_with("res://") and trimmed.ends_with(".gd"):
 			script = trimmed
 		elif trimmed.begins_with("- test_") and script != "":
-			found.append({"script": script, "test": trimmed.substr(2).strip_edges()})
+			var row := {"script": script, "test": trimmed.substr(2).strip_edges()}
+			if not found.has(row):
+				found.append(row)
 	return found
 
 

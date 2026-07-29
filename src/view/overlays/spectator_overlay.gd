@@ -470,6 +470,7 @@ func _build_ui() -> void:
 		# replay path was reachable only from its own tests. `docs/11`'s failure mode
 		# exactly: the mechanism passed every test asserting it worked when called, and
 		# nothing asserted it got called.
+		suite_run_panel.battle = self.battle
 		watched_run_panel.bind(self.battle, null)
 		suite_run_panel.run_completed.connect(_on_suite_run_completed)
 		watched_run_panel.seed_loaded.connect(_on_replay_loaded)
@@ -598,14 +599,26 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 ## when there are none is the common case and is deliberately silent — a green run
 ## should not put anything on screen.
 func _on_suite_run_completed(finished_run: SuiteRun) -> void:
-	if watched_run_panel == null or finished_run.passed():
+	if watched_run_panel == null:
+		return
+	# **Every outcome says something.** Silence after a run is indistinguishable from a
+	# broken replay, which is exactly what the supervisor could not tell apart — the
+	# board had been cleared and nothing said whether that was the end of the story.
+	if finished_run.passed():
+		watched_run_panel.set_notice("run passed — nothing to replay (board cleared)")
 		return
 	watched_run_panel.bind(battle, null)
 	var offered: int = watched_run_panel.offer_failures(finished_run)
+	var failed: int = finished_run.failures().size()
 	if offered == 0:
+		watched_run_panel.set_notice(
+			"%d failure(s), none with a visual form — nothing to replay" % failed
+		)
 		return
 	var total: int = watched_run_panel.replayable_total(finished_run)
-	set_thinking_label("replaying %d of %d replayable failure(s)" % [offered, total])
+	watched_run_panel.set_notice(
+		"replaying %d of %d replayable failure(s), from %d total" % [offered, total, failed]
+	)
 
 
 ## A replayed fixture has been loaded into the board. **Rebind, then play** — a loaded

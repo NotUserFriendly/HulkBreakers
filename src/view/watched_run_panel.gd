@@ -40,6 +40,7 @@ var battle: BattleScene = null
 ## Set by the host before `on_bout_finished`, since the runner belongs to the overlay.
 var turns_taken: int = 0
 
+var _notice_label: Label = null
 var _criteria_label: Label = null
 var _table_label: Label = null
 
@@ -97,6 +98,9 @@ func bind(p_battle: BattleScene, p_run: WatchedRun) -> void:
 	battle = p_battle
 	run = p_run if p_run != null else WatchedRun.new()
 
+	if _notice_label == null:
+		_notice_label = Label.new()
+		add_child(_notice_label)
 	if _criteria_label == null:
 		# Deliberately plain `Label`s: this is a debug surface and the information is
 		# the product, not the presentation.
@@ -106,6 +110,17 @@ func bind(p_battle: BattleScene, p_run: WatchedRun) -> void:
 		add_child(_table_label)
 	_criteria_label.text = "\n".join(WatchedRun.describe_criteria(CompletionSampler.TURN_CAP, 0.35))
 	refresh()
+
+
+## One line saying what the last run led to. **Set on every outcome, including the
+## boring ones** — "run passed, nothing to replay" is information, and its absence is
+## indistinguishable from a replay that silently failed.
+func set_notice(text: String) -> void:
+	if _notice_label == null:
+		_notice_label = Label.new()
+		add_child(_notice_label)
+		move_child(_notice_label, 0)
+	_notice_label.text = text
 
 
 ## Redrawn every time a row changes rather than only at the end. **The 15-of-20 case is
