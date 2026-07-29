@@ -1513,3 +1513,164 @@ be permanently immobilised**
   every unit that exists. Over this entry's own 40-seed sweep: **0 spawn cells with only their own cell
   reachable** (against seeds 17, 18 and 38 above), and **0 non-uniform spawn zones** against the 8 of 80
   reported.
+
+### BR46.01 — Resolved — owner: `SUPERVISOR`
+**A searching unit ping-pongs between two cells forever — `ROAM` and `HUNT` have no memory**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Reported:** 2026-07-28, from a real bout: "Squad 0 ping pongs in a small area without ever
+  escaping the U shape." Found under `BR32.10`, but it is not that bug — see the split recorded there.
+- **Confirmed from the supervisor's own combat log, and it is unambiguous.** Every unit on both squads
+  decided `roam` on every single turn of the bout, and each one alternated between two or three cells
+  for its whole length:
+
+  | unit | squad | distinct cells | trail |
+  |---|---|---|---|
+  | 0 | 0 | 2 | (25,4) (13,4) (25,4) (13,4) (25,4) |
+  | 4 | 1 | 2 | (30,17) (19,17) (30,17) (19,17) (30,17) |
+  | 3 | 1 | 3 | (30,16) (19,18) (30,18) (19,18) (30,18) |
+
+- **Mechanism: distance-from-here is memoryless.** `roam` scores `travel_fraction` — go as far as you
+  can — and `hunt` scores the same input on a steeper curve. **The farthest reachable cell from A is B,
+  and the farthest from B is A.** A unit with no enemy in sight walks to the edge of its reach and then
+  oscillates until the turn cap. Reproduced on an open 32x24 board with no enemy present: **6 distinct
+  cells over 14 turns, ten of them spent alternating between `(19,23)` and `(31,23)`.**
+- **This is taskblock-46 Pass C's own bug, and the fix for it was already written down in that pass.**
+  `SearchRoute`'s comment says oldest-visit-wins "cannot ping-pong between two while a third is
+  ignored" — correct, and applied to `PATROL` only. The other three verbs had no route to hang a memory
+  on and so got none. A verb-shaped fix would have missed it again; the fix is a published input.
+- **Fixed 2026-07-28, `Pending` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** `Unit.recent_cells` is a bounded
+  trail (`RECENT_CELLS` = 8, flagged) written for **every** unit every turn — not only while searching,
+  because a unit that fought across a room and then lost its target must not treat that room as
+  unexplored. `UtilityContext.INPUT_UNVISITED` grades it by recency rather than a binary visited/not:
+  a binary makes every cell outside the trail identical and allows the same oscillation with a longer
+  period. `roam` and `hunt` score it unfloored so ground just left can reach zero; `putter` scores it
+  floored, because puttering is *meant* to stay local and an unfloored memory would turn it into a slow
+  roam.
+- **After the fix, the same probe covers 15 distinct cells in 14 turns.** Regression-tested as ground
+  covered plus an explicit A-B-A-B alternation count, because "it moved a lot" and "it stopped looping"
+  are different claims and only the second is the bug.
+- **It did not improve completion, and saying otherwise would be the mistake this project keeps
+  making.** The deterministic 100-seed escalation after the fix returns **56/100 (56.0%)**. The run
+  that prompted this note showed 14/20 (70%) and that was a lucky draw — a 20-seed sample, exactly the
+  kind of reading `BR45.03` records two earlier bad numbers for.
+- **There is no clean before/after at n=100, and the honest reason is that the baseline is stale.** The
+  last 100-seed reading was 60% and it predates taskblock-46 Pass E, so it measures a different action
+  pool. Comparing 56% against it would be comparing two builds, not two behaviours.
+- **What the fix demonstrably did is change the failure MODE**, which is the evidence that matters
+  here: `TERMINATED` (bouts that simply never end — the oscillation's signature) fell **27 → 20**,
+  while `STRANDED` rose **13 → 24**. Units that cover ground find each other, and some of those fights
+  are lost. That is the same trade taskblock-46 Pass C recorded, and it points at combat quality rather
+  than at another search gate.
+- **To confirm:** watch a bout where the squads do not meet early. Units should sweep outward instead
+  of shuttling between two tiles. The number to judge it by is the shuttle, not the completion rate.
+- **2026-07-28 (supervisor check — RESOLVED).** Watched in a live bout: searching units sweep
+  outward and cover ground instead of oscillating over two or three cells.
+
+### BR32.10 — Resolved — owner: `SUPERVISOR`
+**AI gets stuck on opposite sides of U-shaped / concave maps**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **2026-07-23 (supervisor check — BLOCKED, not verifiable).** Cannot be checked: **BR34.06** (AI
+  passes its turn in bout matches) means the AI does nothing observable in a bout, so there is no way
+  to see whether approach-pathing works. Note this is the same symptom CC's own tb33 follow-up hit
+  ("every unit holds every turn, the whole mission long") — which was written off as a boxed-in seed
+  and now looks systemic. Re-check only after BR34.06 is fixed.
+- **2026-07-23 (tb35 Pass A/B — BR34.06 marked Pending, unblocking this one too)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. `LineOfFire.closing_path` (added this pass for
+  BR34.06's own second gap) is real A* to a cell next to the enemy specifically BECAUSE the greedy
+  distance-scorer alternative reproduces this bug's own concave/U-shaped freeze — headless coverage
+  (`test_line_of_fire.gd::test_closing_path_routes_around_a_concave_wall_instead_of_freezing`) proves
+  it routes around a sealed column via a real gap rather than stalling. Live re-check in a supervised
+  bout still needed before promotion — this entry stays Pending.
+- **Reported:** 2026-07-22 (tb32 review; long-standing — logged now, wasn't in the ledger). On
+  U-shaped / concave map geometry, opposing units end up stuck on opposite sides, unable to path
+  around to engage.
+- **Root is the known AI pathing gap, not a new defect.** `docs/PLAN.md` (Support & combat gaps): the
+  AI does single-turn reachability, not a genuine multi-turn shortest-path-to-nearest-LOS search — so
+  a concave wall between two units, where no single turn's reachable set reaches the other side, leaves
+  the AI with nothing to move toward. Same family as the AI line-of-fire gap. The real fix is the
+  multi-turn approach-pathing design in PLAN; this entry tracks the observable symptom against it.
+- **Fix (tb33 Pass B):** when no cell reachable this turn has a real shot (`_any_reachable_has_lof`
+  false), `_plan_ranged` no longer hands off to the greedy least-bad-reachable-cell scorer at all —
+  `LineOfFire.approach_path` Dijkstra-floods (`Pathfinder.nearest_matching`, lazy — the real
+  `ShotPlane`-based LOF check only runs on cells as they're popped) to the nearest cell that WOULD
+  have a clear shot, capped at weapon range + margin, and queues a move truncated to this turn's own
+  MP budget (`Pathfinder.truncate_to_budget`). The same fallback re-fires next turn, walking the rest
+  of the path, until a reachable cell genuinely has LOF and the normal engagement scorer takes back
+  over. This is what a concave map needs that the tb27 C1 `obstruction_count` fix (above) couldn't
+  give it: a real multi-turn path to a target cell, including the step that moves farther from the
+  enemy before it curves back in — the move a per-turn distance/obstruction scorer can't make no
+  matter how it's weighted.
+- **taskblock-45 note:** the verification named below ran against the engagement-score planner, which
+  is now deleted, and its test file went with it. **The claim was never re-verified against the
+  utility planner** — that planner has no `approach_path` fallback branch at all; it scores cells and
+  a cell with no line simply scores low. Re-check before closing, or close as `Obsolete` naming the
+  retirement, but do not read the verification below as current.
+- **Verified (headless):** `test_unit_ai_lof_fallback.gd` — a concave-pocket fixture where the AI's
+  queued move includes a genuine Chebyshev-distance increase before it decreases
+  (`test_ai_takes_a_step_that_increases_chebyshev_distance_before_it_decreases`); the fallback reaches
+  a real shot and fires within a bounded number of simulated turns
+  (`test_the_approach_fallback_eventually_reaches_a_lof_cell_and_fires`); a fully walled-off enemy
+  falls through to hold/end-turn instead of freezing or erroring; an open-field engagement never
+  enters the fallback at all; same seed/fixture produces the same path (determinism).
+- **Not live-verified** — headless-only per the taskblock's own design (no rendering needed: grid +
+  `ShotPlane`). Needs the supervisor's own hands-on confirmation on a real U-shaped/concave bout
+  before promotion to `RESOLVED`.
+
+---
+- **2026-07-28 (supervisor observation via review session `HBPaR3`) — REOPENED from `Pending`.** The
+  behaviour was seen again in play: units still get stuck on opposite sides of concave geometry. The
+  prior fix is therefore unconfirmed, not confirmed-and-regressed — `Pending` was never discharged.
+- **Re-verify before re-fixing; it cannot reproduce for the old reason.** taskblock-45 deleted the
+  engagement-score planner entirely, so whatever produces this now is new machinery reaching an old
+  outcome. `LineOfFire.approach_path` survived the swap (`line_of_fire.gd:150`) and its own comment at
+  :176 still names the concave/U-shaped-wall freeze as the thing it exists to avoid — so that is the
+  first place to look, but the *caller* is completely different code.
+- **Correction to the pointer above (CC, 2026-07-28, verified):** `LineOfFire.approach_path` and
+  `closing_path` survived the swap as *code*, but **nothing calls them any more.** The retired planner
+  was their only caller; today the sole references in the tree are in `test_line_of_fire.gd`, which
+  exercises them directly. They are dead in production, so the comment at `line_of_fire.gd:176` is
+  describing a branch that no longer runs and is the wrong place to start.
+- **What replaced them is not a fallback at all.** The utility planner has no "nothing has a line, so
+  walk toward somewhere that does" branch. It scores cells, and a cell with no line simply scores low
+  — so a unit stuck behind concave geometry is a *scoring* outcome now, not a branch that failed to
+  fire. Read `ai_utility_decision` for the stuck turn and see what actually won.
+- **Do not diagnose this alongside BR45.03.** Both present as "the AI does nothing," and BR45.03 has a
+  far better-evidenced mechanism (an action pool with a hole in it). Close that one first; if this
+  survives it, it is genuinely separate.
+
+- **2026-07-28 (taskblock-46 Pass C) — re-tested on concave geometry, new mechanism named, `Pending`
+  [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** The tb33/tb35 fix cited above — `LineOfFire.approach_path`/`closing_path`, a
+  Dijkstra flood to the nearest cell with a real shot, invoked as an explicit BRANCH — **has been
+  deleted**, along with its own concave test. Anything reading this entry for the current mechanism
+  should stop at this line and not at the paragraph above.
+- **What replaces it is not a branch.** `UtilityContext._closes_distance` reads **path distance from
+  one flood rooted at the target** (`Pathfinder.reachable_costs`), so a cell on the far side of a wall
+  is correctly further than one that is spatially nearer, and routing around a pocket falls out of
+  ordinary scoring rather than out of a fallback that has to fire. That matters for this entry
+  specifically: a branch that fails to fire leaves a unit stuck with nothing in the log to say why,
+  where a scoring outcome is printed per candidate in `ai_utility_decision`.
+- **Re-tested as behaviour, not as a distance metric**
+  (`test_utility_planner.gd::test_a_unit_in_a_concave_pocket_works_its_way_to_a_cell_with_a_line`): a
+  unit inside a U-shaped pocket with its target outside the opening reaches a cell with a real line
+  within the turn budget, asserted as "it ends up somewhere with a line" rather than as a named cell,
+  because the route around a pocket is a property of the map. The mechanism underneath has its own
+  assertion — a cell nearer as the crow flies and further along a path must report the second.
+- **Still headless only.** This entry's blocker was always that a supervised bout was needed to see it;
+  that has not changed, and it is why this is `Pending` rather than anything stronger.
+- **2026-07-28 (supervisor) — the concave-pathing cause is confirmed fixed; the observed symptom split
+  into two other defects** [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`]. The supervisor watched a bout that still got
+  stuck and reported both halves: "Squad 1 is trapped in a lowered section, and Squad 0 ping pongs in a
+  small area without ever escaping the U shape." Reading the combat log, **neither half is this bug**:
+  - Squad 0's ping-ponging is `BR46.01` — `ROAM` and `HUNT` score distance-from-here with no memory, so
+    a unit with nothing in sight alternates between two cells regardless of geometry. It looks like a
+    U-shape problem because a U-shape is where a unit ends up with nothing in sight for long enough to
+    notice. Fixed.
+  - Squad 1 being trapped is `BR46.02` — descent is free and climbing needs a `CLIMBER` part that does
+    not exist, so 16 of 40 generated maps contain ground a unit can enter and never leave. Open.
+- **The lesson worth keeping, since this entry has now been misattributed twice:** "the AI is stuck on
+  a concave map" is a *symptom* with at least three unrelated causes — no path to a firing cell (this
+  entry, fixed), no memory of where it has been (`BR46.01`), and no way back out of where it went
+  (`BR46.02`). The combat log distinguishes them and the screen does not.
+- **2026-07-28 (supervisor check — RESOLVED).** Watched on concave geometry: units route around a
+  pocket rather than freezing on the far side of it. This entry had been blocked on BR34.06 since
+  2026-07-23; that entry is now `Resolved`, which is what made the check possible at all.
