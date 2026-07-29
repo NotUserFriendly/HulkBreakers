@@ -70,6 +70,13 @@ func offer_failures(suite: SuiteRun, limit: int = ReplayCatalog.DEFAULT_LIMIT) -
 	return handles.size()
 
 
+## How many of `suite`'s failures could be replayed at all, ignoring the cap — so the
+## panel can say "3 of 11" rather than letting a capped list read as though the other
+## eight had nothing to show.
+func replayable_total(suite: SuiteRun) -> int:
+	return 0 if suite == null else ReplayCatalog.replayable_count(suite.failures())
+
+
 ## Loads whatever the run is currently pointing at, without recording anything — the
 ## entry point, where `_advance()` is the step *after* a result.
 func _advance_to_first() -> void:
