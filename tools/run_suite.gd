@@ -1,6 +1,22 @@
 extends SceneTree
 
-## taskblock-47 Pass A: **what the test suite actually spends, per file and per test.**
+## **The one way this project runs its tests**, and what each run cost.
+##
+## taskblock-47 Pass A: what the suite spends, per file and per test.
+## taskblock-48 Pass A2: **and it is the runner now, not a second entry point.**
+##
+## ## Why the two collapsed
+##
+## Work counts exist only in-process, and only this file collected them, because it
+## hosts `GutRunner` itself to reach the `start_script`/`end_script` boundaries. A
+## normal run went through `gut_cmdln.gd` and produced no counts at all — two entry
+## points into one suite, and **only one of them failed the build**: `gut_cmdln.gd`
+## passes `-gexit`, while this file used to set `should_exit = false` and `quit(0)`
+## after writing its JSON.
+##
+## A runner that reports counts beautifully and exits 0 on a red suite is worse than
+## no runner at all, so the exit code is the load-bearing part of the collapse and
+## `test_run_suite.gd` asserts it against a deliberately failing test.
 ##
 ## The suite went ~355 s to ~1370 s across one taskblock and became the dominant
 ## cost of doing work here. This measures that before anything is changed, because
@@ -29,7 +45,17 @@ extends SceneTree
 ## reads — the profiler is close to free, which is the standing requirement for
 ## instrumentation that ships. Nothing here changes what any test does.
 ##
-## Usage: `godot --headless --path . -s res://tools/profile_suite.gd`
+## ## Artifacts are opt-in
+##
+## `SUITE-PROFILE.md` and `suite_profile.json` are committed, so rewriting them on
+## every run would churn the tree and drop noise into unrelated diffs. They are
+## written only with `--write`; counts print either way.
+##
+## Usage — normally reached through `run_tests.sh` rather than directly:
+## ```
+## godot --headless --path . -s res://tools/run_suite.gd -- --dir=res://test --write
+## godot --headless --path . -s res://tools/run_suite.gd -- --test=res://test/unit/foo.gd
+## ```
 
 const OUTPUT_PATH := "res://test/SUITE-PROFILE.md"
 ## The same run, machine-readable and complete. The markdown carries the top 20
@@ -50,6 +76,9 @@ var _test_name: String = ""
 var _test_mark: Dictionary = {}
 var _test_usec: int = 0
 var _run_usec: int = 0
+var _dirs: Array[String] = []
+var _tests: Array[String] = []
+var _write_artifacts: bool = false
 
 
 func _init() -> void:
@@ -67,11 +96,18 @@ func _init() -> void:
 		iterations += 1
 
 	DataLibrary.load_all()
+	_parse_args()
 	var config: Object = load("res://addons/gut/gut_config.gd").new()
-	config.options.dirs = ["res://test"]
 	config.options.include_subdirs = true
+	# **`should_exit` stays false and the exit code is computed by hand below.** GUT
+	# would otherwise quit before `end_run` finishes writing, and the whole point of
+	# this collapse is that the process still fails when the suite does.
 	config.options.should_exit = false
 	config.options.log_level = 0
+	if _tests.is_empty():
+		config.options.dirs = _dirs if not _dirs.is_empty() else ["res://test"]
+	else:
+		config.options.tests = _tests
 
 	_runner = load("res://addons/gut/gui/GutRunner.tscn").instantiate()
 	_runner.set_gut_config(config)
@@ -86,6 +122,79 @@ func _init() -> void:
 
 	_run_usec = Time.get_ticks_usec()
 	_runner.run_tests(false)
+
+
+## `--dir=`, `--test=` and `--write`, from the user args after `--`. Deliberately
+## tiny: `run_tests.sh` is the interface people use, and a second option surface here
+## would be somewhere for the two to disagree.
+func _parse_args() -> void:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--dir="):
+			_dirs.append(arg.trim_prefix("--dir="))
+		elif arg.begins_with("--test="):
+			_tests.append(arg.trim_prefix("--test="))
+		elif arg == "--write":
+			_write_artifacts = true
+
+
+## **Printed on every run, artifacts or not.** The counts are what taskblock-48 Pass
+## A3 diffs against the committed profile, and a number you have to opt into is a
+## number nobody reads.
+##
+## The per-file delta is only printed for a targeted run: over the whole suite it
+## would be 245 lines of noise, and the interesting case is exactly the one where
+## someone just changed one file.
+func _print_summary(total_usec: int, failures: int) -> void:
+	var total: Dictionary = _totals()
+	print("")
+	print("--- suite cost ---")
+	print(
+		(
+			"%d script(s), %d test(s), %d failure(s), %.1f s"
+			% [_script_rows.size(), _test_rows.size(), failures, float(total_usec) / 1_000_000.0]
+		)
+	)
+	var parts: Array[String] = []
+	for key: String in ["bouts", "turns", "plans", "candidates", "shot_planes", "floods"]:
+		parts.append("%s %d" % [key, int(total.get(key, 0))])
+	print("  ".join(parts))
+	if _script_rows.size() == 1:
+		_print_delta(_script_rows[0])
+
+
+## `+3 tests, +47 turns in test_utility_planner` — a vetoable statement, where
+## "+47 turns somewhere" is not.
+##
+## The committed profile already holds this file's previous numbers, so the diff is
+## exact and costs a file read. A file with no row yet is new, and says so rather than
+## reporting its whole cost as an increase.
+func _print_delta(row: Dictionary) -> void:
+	var file := FileAccess.open(DATA_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not parsed is Dictionary:
+		return
+	var path: String = String(row["path"])
+	var previous: Dictionary = {}
+	for candidate: Dictionary in (parsed as Dictionary).get("files", []):
+		if String(candidate.get("path", "")) == path:
+			previous = candidate
+			break
+	var short: String = path.replace("res://test/", "")
+	if previous.is_empty():
+		print("delta: %s is new — no previous numbers to compare against" % short)
+		return
+	var moved: Array[String] = []
+	for key: String in ["turns", "bouts", "floods", "candidates"]:
+		var change: int = int(row.get(key, 0)) - int(previous.get(key, 0))
+		if change != 0:
+			moved.append("%+d %s" % [change, key])
+	if moved.is_empty():
+		print("delta: no change in %s" % short)
+		return
+	print("delta: %s in %s" % [", ".join(moved), short])
 
 
 ## Every deterministic counter, read at once. **One function, so a new counter is
@@ -182,6 +291,14 @@ func _on_end_test() -> void:
 
 func _on_end_run() -> void:
 	var total_usec: int = Time.get_ticks_usec() - _run_usec
+	var failures: int = int(_runner.gut.get_fail_count())
+	_print_summary(total_usec, failures)
+	if not _write_artifacts:
+		# **A clean run leaves the committed artifacts alone.** They are in git; a
+		# runner that rewrote them every invocation would put unrelated churn in every
+		# diff and train people to `git checkout` them without reading.
+		quit(1 if failures > 0 else 0)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s" % OUTPUT_PATH)
@@ -206,8 +323,10 @@ func _on_end_run() -> void:
 		JSON.stringify({"totals": _totals(), "wall_clock_usec": total_usec, "files": by_path}, "  ")
 	)
 	data.close()
-	print("wrote %s (%d scripts, %d tests)" % [OUTPUT_PATH, _script_rows.size(), _test_rows.size()])
-	quit(0)
+	print("wrote %s and %s" % [OUTPUT_PATH, DATA_PATH])
+	# **The exit code is the point of taskblock-48 Pass A2.** This used to be an
+	# unconditional `quit(0)`.
+	quit(1 if failures > 0 else 0)
 
 
 func _totals() -> Dictionary:

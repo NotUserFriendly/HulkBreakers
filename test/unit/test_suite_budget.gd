@@ -61,9 +61,15 @@ func test_the_suite_is_within_its_work_budget() -> void:
 func test_the_recorded_baseline_still_resembles_the_measured_suite() -> void:
 	var totals: Dictionary = _profile().get("totals", {})
 
+	var profile: Dictionary = _profile()
 	for counter: String in SuiteBudget.GATED:
 		var baseline: int = int(SuiteBudget.BASELINE[counter])
 		var observed: int = int(totals.get(counter, 0))
+		# The `turns` baseline is the total minus the randomly-sampled file, so the
+		# measured side has to be too — comparing the raw total against it would be
+		# comparing two different quantities and calling the difference drift.
+		if counter == "turns":
+			observed -= SuiteBudget._excluded_turns(profile)
 		gut.p("%-8s baseline %d, measured %d" % [counter, baseline, observed])
 		assert_gt(observed, 0, "%s should be non-zero in a real profile" % counter)
 		# Below budget is the passing direction; this catches the *other* drift —
@@ -179,3 +185,54 @@ func test_bout_building_files_come_from_the_counter() -> void:
 		if not path.begins_with("res://test/integration/"):
 			outside_integration += 1
 	assert_gt(outside_integration, 0, "bout-building files are not confined to integration/")
+
+
+## **A quantity the suite does not control cannot be budgeted**, and pretending
+## otherwise produces exactly the flaky threshold this file was written against.
+##
+## `test_full_mission.gd` seeds its sample from the clock deliberately — taskblock-46
+## spent a pass establishing that, because a fixed window was measuring the wrong
+## thing. Eight bouts each ending somewhere between ~10 turns and the 100-turn cap
+## means its turn count swings by hundreds. Measured across three full runs, the suite
+## total came out at **1680, 1578 and 1385 turns — a 19% spread against 15%
+## headroom**, so the budget would eventually have gone red on nobody's change.
+##
+## The fix is exclusion, not a bigger number: its *bouts* are still gated, because
+## that count is exactly `SAMPLE_SEEDS` and holds still.
+func test_the_randomly_sampled_file_is_excluded_from_the_turns_budget() -> void:
+	assert_true(
+		SuiteBudget.TURNS_EXCLUDED.has("res://test/integration/test_full_mission.gd"),
+		"the file that samples from the clock is excluded from the turns gate",
+	)
+
+	# Its turns can swing by any amount without tripping the budget...
+	var wild: Dictionary = SuiteBudget.BASELINE.duplicate()
+	wild["turns"] = int(SuiteBudget.BASELINE["turns"]) + 5000
+	var profile: Dictionary = {
+		"totals": wild,
+		"files":
+		[{"path": "res://test/integration/test_full_mission.gd", "turns": 5000, "bouts": 8}],
+	}
+	assert_eq(
+		SuiteBudget.violations(profile).size(),
+		0,
+		"a wild swing in the sampled file's turns must not fail the build",
+	)
+
+	# ...but the same swing anywhere else still does.
+	var elsewhere: Dictionary = {
+		"totals": wild,
+		"files": [{"path": "res://test/unit/logic/test_something.gd", "turns": 5000, "bouts": 0}],
+	}
+	assert_gt(
+		SuiteBudget.violations(elsewhere).size(),
+		0,
+		"turns growing outside the excluded file is still a regression",
+	)
+
+
+## And the exclusion must not become a hiding place. A file listed here is exempt from
+## the turns gate entirely, so the list staying short is the property worth pinning.
+func test_the_exclusion_list_stays_small_and_gates_bouts_regardless() -> void:
+	assert_lt(SuiteBudget.TURNS_EXCLUDED.size(), 3, "exclusions are exceptional, not a habit")
+	assert_true(SuiteBudget.GATED.has("bouts"), "bouts are deterministic and stay gated")

@@ -48,18 +48,36 @@ extends RefCounted
 ## before anyone has to think about it, which is more than a taskblock adds.
 const HEADROOM := 0.15
 
-## The Pass A baseline these are derived from, kept as the raw measurement so a later
+## **`turns` here is the suite total MINUS `TURNS_EXCLUDED`.** The baseline these are
+## derived from, kept as the raw measurement so a later
 ## re-ratchet can see what moved rather than only what the limit became.
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
 	"bouts": 62,
-	"turns": 1578,
-	"plans": 1456,
-	"candidates": 2068318,
-	"shot_planes": 19599,
-	"floods": 6032,
+	"turns": 1220,
+	"plans": 1265,
+	"candidates": 1773990,
+	"shot_planes": 16928,
+	"floods": 5600,
 }
+
+## Files whose **turns** are excluded from the gated suite total.
+##
+## `test_full_mission.gd` seeds its sample from the clock on purpose — taskblock-46
+## spent a pass establishing that, because a fixed window was measuring the wrong
+## thing. The consequence is that its turn count is not a controlled quantity: eight
+## bouts that each end somewhere between ~10 turns and the 100-turn cap.
+##
+## **Measured across three full runs the suite total came out at 1680, 1578 and 1385
+## turns — a 19% spread against 15% headroom.** Gating that total on turns is
+## therefore gating on which seeds came up, and the budget would have gone red on
+## nobody's change. Its *bouts* stay gated, because that count is exactly
+## `SAMPLE_SEEDS` and is entirely deterministic.
+##
+## This is the honest version of a flaky threshold: not "raise the number until it
+## stops", but "this quantity was never something the suite controls".
+const TURNS_EXCLUDED: Array[String] = ["res://test/integration/test_full_mission.gd"]
 
 ## Which counters are actually gated. **`candidates` and `shot_planes` are measured
 ## and reported but deliberately NOT gated**: they are consequences of how the planner
@@ -75,6 +93,8 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## entry — everything else is noise against these.
 ##
 ## Values are the current measurement with the same headroom applied, rounded up.
+## A `turns` entry for a file in `TURNS_EXCLUDED` is ignored — kept in the table as a
+## record of what it measured, not as a limit.
 ## **Re-ratcheted twice**: at Pass C, where `SAMPLE_SEEDS` 20 → 8 took the sampler file
 ## from 88 bouts to 40, and again at Pass E, where retargeting and merging took it to
 ## 24. Leaving either set of old numbers behind would have left most of the budget as
@@ -104,6 +124,8 @@ static func violations(profile: Dictionary) -> Array[String]:
 	var totals: Dictionary = profile.get("totals", {})
 	for counter: String in GATED:
 		var observed: int = int(totals.get(counter, 0))
+		if counter == "turns":
+			observed -= _excluded_turns(profile)
 		var limit: int = limit_for(counter)
 		if observed > limit:
 			(
@@ -128,6 +150,12 @@ static func violations(profile: Dictionary) -> Array[String]:
 			continue
 		var caps: Dictionary = PER_FILE[path]
 		for counter: String in caps:
+			# **The exclusion applies here too, or it is not a rule.** A quantity the
+			# suite does not control is no more budgetable per file than in aggregate,
+			# and gating it in one place while exempting it in the other is the kind of
+			# half-applied rule that reads as a bug in whichever half you hit first.
+			if counter == "turns" and path in TURNS_EXCLUDED:
+				continue
 			var observed: int = int(row.get(counter, 0))
 			var limit: int = int(caps[counter])
 			if observed > limit:
@@ -147,6 +175,16 @@ static func violations(profile: Dictionary) -> Array[String]:
 					)
 				)
 	return found
+
+
+## The turns contributed by `TURNS_EXCLUDED`, so the gated total is the part of the
+## suite that actually holds still between runs.
+static func _excluded_turns(profile: Dictionary) -> int:
+	var total := 0
+	for row: Dictionary in profile.get("files", []):
+		if String(row.get("path", "")) in TURNS_EXCLUDED:
+			total += int(row.get("turns", 0))
+	return total
 
 
 ## Files that build a bout, read from the profile rather than from a directory glob.

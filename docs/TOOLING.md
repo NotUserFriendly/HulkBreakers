@@ -24,8 +24,9 @@ Every script honours `GODOT=/path/to/godot` if `godot` isn't on `PATH`.
 
 | Script | Screen? | What it is |
 |---|---|---|
-| `run_tests.sh` | headless | The full gate. Lint → import → GUT, bouts included. |
-| `run_tests.sh fast` | headless | The per-change gate. Everything that does not build a bout. |
+| `run_tests.sh <file.gd>` | headless | One file (or directory) — the edit loop, ~3.7 s floor. |
+| `run_tests.sh fast` | headless | Everything that does not build a bout. |
+| `run_tests.sh` | headless | The full gate. Green before a pass commits. |
 | `run_game.sh` | **on-screen** | The actual game. Press `B` at `battle_scene` for Simulate Bout. |
 | `run_resource_editor.sh` | **on-screen** | The Resource Editor as its own process. |
 | `checkpoint.sh N` | **on-screen** | Runs visual checkpoint `N`. |
@@ -37,12 +38,28 @@ Every script honours `GODOT=/path/to/godot` if `godot` isn't on `PATH`.
 commit, and the on-screen tools exist because `--headless` has a no-op renderer and therefore cannot
 answer "does this *look* right." Both stay.
 
-### Two gates
+### Three rungs
 
 ```bash
-./run_tests.sh fast   # the per-change loop — ~119 s
-./run_tests.sh        # the per-pass loop — everything, ~1300 s
+./run_tests.sh test_foo.gd   # one file — the edit loop, ~3.7 s + the file itself
+./run_tests.sh fast          # everything that does not build a bout — ~126 s
+./run_tests.sh               # everything. Green before a pass commits.
 ```
+
+**A targeted run is never what a pass is green on.** It cannot see that a change broke
+a different file, which is the entire reason the full suite exists.
+
+A bare filename resolves by search — no `res://` paths to type. Two files sharing a
+name prints both and exits 2: a repo mistake to fix, not a case to disambiguate
+cleverly. A directory argument works too.
+
+**The fixed floor, measured rather than assumed:** `gdlint src test` 6.14 s, import
+2.32 s, parse guard 0.82 s, GUT startup ~1.2 s. On a sub-second file that floor *is*
+the cost, so a targeted run narrows what it honestly can — gdlint over the target only
+(0.21 s), and the checkpoint parse guard skipped, since it guards checkpoint scenarios
+rather than anything under test. **The import step stays**: it registers a
+`class_name`, and skipping it makes a newly added script invisible in a way that looks
+like a broken test.
 
 The full gate is a strict superset; the fast one is the full one minus the twelve
 files that build bouts. **Green on the full gate before a pass commits** — that rule
@@ -122,13 +139,23 @@ binary conversion produced `.res` and `.tres.remap` files that the loader's `.tr
 every downstream path died on a division by zero, as a bare `SIGFPE` with no message. Export **debug
 and release**: the debug export is what makes such a crash legible; release alone is a silent trap.
 
-### Profiling the suite
+### The runner, and the profile
+
+**`tools/run_suite.gd` is how every rung runs**, not just how the profile is taken.
+taskblock-48 Pass A2 collapsed two entry points into one: work counts exist only
+in-process and only a runner hosting `GutRunner` can collect them, so a normal run
+through `gut_cmdln.gd` produced none — and **only one of the two failed the build**.
+
+**Every run prints what it cost**, and a targeted run also prints its delta against
+the committed profile (`+3 tests, +47 turns in test_utility_planner` — a vetoable
+statement, where "+47 turns somewhere" is not).
 
 ```bash
-godot --headless --path . -s res://tools/profile_suite.gd
+WRITE_PROFILE=1 ./run_tests.sh      # regenerate the committed artifacts
 ```
 
-Runs the whole suite once and writes two files, both committed:
+Artifacts are **opt-in**: they are committed, so rewriting them on every run would
+churn the tree and put noise into unrelated diffs. That run writes two files:
 
 - **`test/SUITE-PROFILE.md`** — for reading. Totals, then the top 20 files by wall-clock, the top 20
   by turns resolved, and the top 20 tests by wall-clock. The two file lists are separate on purpose:
