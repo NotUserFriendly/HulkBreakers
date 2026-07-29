@@ -44,18 +44,32 @@ func _rng(seed_value: int) -> RandomNumberGenerator:
 ## **The seed list is the artifact.** A sample that cannot say which maps it asked
 ## about reports a number nobody can reproduce — BR45.03's whole lesson was that
 ## the aggregate hid which seeds mattered.
+## taskblock-47 Pass E1: **retargeted from `sample()` to a two-seed `run_seeds`.**
+##
+## It played a full sample — 8 bouts, 93 s — for a property that is about the report,
+## not about how many rows are in it: "every row names a seed that was drawn" is
+## exactly as checkable with two.
+##
+## The two halves it used to bundle are each covered better elsewhere. How many seeds
+## a sample draws is `draw_seeds`, asserted below without playing anything. And that
+## `sample` really is `run_seeds(draw_seeds(rng))` is asserted by the in-window verb
+## test, which invokes the verb and compares it against exactly that composition —
+## so the end-to-end path still has a test, and this one stops paying for it twice.
 func test_a_sample_reports_every_seed_it_drew() -> void:
-	# The one test here that plays a full sample — everything else about drawing is
-	# answered by `draw_seeds` without a bout.
-	var result: Dictionary = await CompletionSampler.sample(_rng(12345))
+	var drawn: Array[int] = [4, 9] as Array[int]
+
+	var result: Dictionary = await CompletionSampler.run_seeds(drawn)
 
 	var seeds: Array = result["seeds"]
-	assert_eq(
-		seeds.size(), CompletionSampler.SAMPLE_SEEDS, "one seed per bout the sample intends to run"
-	)
+	assert_eq(seeds, drawn, "the report names the seeds it was given")
 	assert_eq(int(result["counted"]), seeds.size(), "and every one of them actually ran")
 	for row: Dictionary in result["rows"] as Array[Dictionary]:
 		assert_has(seeds, row["seed"], "every reported row names a seed that was drawn")
+	assert_eq(
+		CompletionSampler.draw_seeds(_rng(12345)).size(),
+		CompletionSampler.SAMPLE_SEEDS,
+		"and a real sample draws one seed per bout it intends to run — without playing any"
+	)
 
 
 ## Ten draws must be ten distinct maps. With replacement, a "ten-seed sample" could
@@ -89,7 +103,10 @@ func test_different_rng_seeds_draw_different_samples() -> void:
 ## is that a fixed seed list yields identical results twice, and that is exactly as
 ## true of three seeds as of a hundred — while costing about a minute less.
 func test_a_fixed_seed_list_yields_identical_results_twice() -> void:
-	var seeds: Array[int] = [0, 1, 2]
+	# taskblock-47 Pass E1: two, not three. This test's own comment already argued
+	# that the property is as true of three seeds as of a hundred; the same sentence
+	# makes three one seed more than it needs.
+	var seeds: Array[int] = [0, 1]
 
 	var first: Dictionary = await CompletionSampler.run_seeds(seeds)
 	var second: Dictionary = await CompletionSampler.run_seeds(seeds)
@@ -198,46 +215,42 @@ func test_describe_carries_the_seed_list_and_one_line_per_bout() -> void:
 # --- the in-window path reports the same numbers as the headless one ---------
 
 
-## taskblock-46 Pass B's own acceptance. The debug verb and the integration test
-## must not be able to disagree about the same sample, which is guaranteed here by
-## construction: both format through `CompletionSampler.describe`, so this asserts
-## the guarantee actually holds rather than assuming it.
-func test_the_in_window_verb_reports_the_same_lines_as_the_headless_path() -> void:
+## taskblock-46 Pass B's own acceptance, **merged with the non-mutation check at
+## taskblock-47 Pass E2.**
+##
+## They invoked the verb separately and each paid for a full sample — 16 bouts and 8
+## bouts, 295 s between them, to make two assertions about **one** invocation. For a
+## bout test the fixture *is* the cost, so merging the pair is close to halving it.
+##
+## The assertion messages stay distinct so a failure still names which fact broke: a
+## merged test that reports "something in here is wrong" has traded time for
+## diagnosis, which is a worse deal than the time was worth.
+func test_the_in_window_verb_reports_the_same_sample_and_changes_nothing() -> void:
 	var grid: Grid = GridFixture.flat(8, 8)
 	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(1, 1), 0)
 	var state := CombatState.new(grid, [unit])
 	var injector := BoutInjector.new(state)
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
+	var cell_before: Vector2i = unit.cell
+	var round_before: int = state.round_number
 
 	await DebugVerbs._apply_sample_completion(injector, {}, {"rng_seed": 4242})
 	state.combat_log.remove_sink(sink)
 
+	# --- it reports what the headless path reports ---
 	var logged: Array[String] = []
 	for event: LogEvent in sink.events_of_kind(&"completion_sample"):
 		logged.append(event.text)
 	# Re-run the same draw through the headless path. Same RNG seed, so the same
-	# ten maps — this compares two renderings of one sample, not two samples.
+	# maps — this compares two renderings of one sample, not two samples.
 	var headless: Array[String] = CompletionSampler.describe(
 		await CompletionSampler.run_seeds(CompletionSampler.draw_seeds(_rng(4242)))
 	)
-
 	assert_gt(logged.size(), 0, "the verb wrote its report into the combat log")
 	assert_eq(logged, headless, "the window and the suite report the same sample")
 
-
-## The verb reports and changes nothing — it is the one row in that table which is
-## not a mutation, so "it did not touch the bout" is worth pinning.
-func test_the_in_window_verb_mutates_nothing() -> void:
-	var grid: Grid = GridFixture.flat(8, 8)
-	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(1, 1), 0)
-	var state := CombatState.new(grid, [unit])
-	var injector := BoutInjector.new(state)
-	var cell_before: Vector2i = unit.cell
-	var round_before: int = state.round_number
-
-	await DebugVerbs._apply_sample_completion(injector, {}, {"rng_seed": 7})
-
-	assert_eq(unit.cell, cell_before)
-	assert_eq(state.round_number, round_before)
+	# --- and it is the one row in that table which mutates nothing ---
+	assert_eq(unit.cell, cell_before, "the verb moved nothing")
+	assert_eq(state.round_number, round_before, "and advanced nothing")
 	assert_false(state.was_injected, "reporting is not an injection")

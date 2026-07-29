@@ -67,12 +67,20 @@ func test_a_yielding_batch_produces_the_identical_bout() -> void:
 
 ## The yield itself: frames actually pass while the batch runs, which is what
 ## keeps input alive and the board drawing.
+##
+## taskblock-47 Pass E1: **squad 0 is HUMAN here, and that is the scenario the
+## function is for.** `advance_ai_turns` exits on `wants_turn_for`, so an all-AI bout
+## never hits that condition and plays the entire mission — this test was spending a
+## whole bout to prove that at least one frame passed. Handing over to a human is what
+## the game actually does, it exercises the same yield, and it costs a handful of
+## turns instead of hundreds.
 func test_frames_pass_during_the_batch() -> void:
 	var built: Dictionary = _bout(77)
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(built.state, built.mission)
+	built.state.set_squad_controller(0, Enums.SquadController.HUMAN)
 
 	var frames_before: int = Engine.get_process_frames()
 	await (battle.overlay as ControlOverlay).advance_ai_turns(battle)
@@ -83,15 +91,14 @@ func test_frames_pass_during_the_batch() -> void:
 		"the batch no longer blocks the main thread end to end"
 	)
 
-
-## Running to completion still works — a yield must not strand the loop.
-func test_the_batch_still_runs_to_completion() -> void:
-	var built: Dictionary = _bout(99)
-	var battle := BattleScene.new()
-	add_child_autofree(battle)
-	battle.set_overlay(ControlOverlay.new())
-	battle.load_battle(built.state, built.mission)
-
-	await (battle.overlay as ControlOverlay).advance_ai_turns(battle)
-
-	assert_gt(built.state.round_number, 0, "turns were actually taken")
+## taskblock-47 Pass E3: **`test_the_batch_still_runs_to_completion` was cut here**,
+## and the covering test is `test_a_yielding_batch_produces_the_identical_bout` above.
+##
+## It played a whole 400-turn bout — 178 s, the second most expensive test in the
+## suite — to assert `round_number > 0`. Demonstrated rather than assumed, per
+## `PLAN.md`'s rule that deleting a redundant test and deleting the only test of a
+## real rule look identical in the diff: `advance_ai_turns` was sabotaged to break
+## out of its loop after two steps, and the fingerprint test went red on its own
+## ("yielding must not change the sim at all"). A loop that strands cannot produce
+## the same end state as the tight loop it is compared against, so completion is
+## already guarded — by a test that also says *how* it differed.
