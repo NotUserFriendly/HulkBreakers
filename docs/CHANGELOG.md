@@ -20,7 +20,7 @@ don't silently leave a description that has stopped being true. A stale entry in
 snapshot is worse than a missing one, because it still reads as authoritative.
 
 *Current as of taskblock-47 Passes A–E landed — the suite is profiled, budgeted on deterministic work
-counts, split into a 118 s fast gate and a 537 s full gate, and audited down from 4545 turns to 1578.
+counts, split into a 119 s fast gate and a 537 s full gate, and audited down from 4545 turns to 1578.
 **The block's biggest finding was not about the suite**: `CompletionSampler` had been naming a retired
 playstyle as its profile id since taskblock-46 Pass E, so every completion rate measured in between ran
 with the AI's profile weights switched off — the real figure is **72%**, not 56%, and `BR45.03`'s gap to
@@ -1645,7 +1645,7 @@ turns budget goes red on the commit that did it where a seconds budget goes red 
 planner scores rather than with how much the suite asks of it, and an AI change failing a suite-cost
 test is the false positive that gets budgets deleted.
 
-**Pass C — two gates.** `./run_tests.sh fast` (118 s) skips the bout-building files; `./run_tests.sh`
+**Pass C — two gates.** `./run_tests.sh fast` (119 s) skips the bout-building files; `./run_tests.sh`
 (537 s) is everything and remains the rule before a pass commits. **The tier is a file list, not a
 directory**: ten of eleven bout files live outside `test/integration/`, so a directory rule would have
 declared the fast gate bout-free while it played most of the bouts. `SAMPLE_SEEDS` re-derived 20 → 8.

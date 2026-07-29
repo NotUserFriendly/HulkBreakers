@@ -145,6 +145,8 @@ every fire**
 
 ### BR45.03 — Active — owner: `SUPERVISOR`
 **The utility planner completes 54.2% of missions where the planner it replaced completed 87.5%**
+*(headline superseded — see the 2026-07-29 entry below: 54.2% and every figure after it were measured
+with the profile weights switched off. Re-measured, it is **72%**, and the gap is 3 points.)*
 - **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
 - **`SUPERVISOR`-owned at CC's request**, not by default. CC found it and would ordinarily own it, but
   the decision to land the planner with this regression open was the supervisor's, made on this

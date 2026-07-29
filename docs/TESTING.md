@@ -106,6 +106,32 @@ would be.
 
 Use this half to *force the exact condition* you want to study, instead of waiting for it.
 
+### Watching the bouts a number was talking about (tb47 Pass D)
+
+Two rows in that table mutate nothing at all, and they are a pair:
+
+- **`Sample Completion`** — plays a sample of throwaway missions and writes the per-seed result into
+  the combat log. Says *how many* finished.
+- **`Watch Seeds`** — takes a seed list (`3, 7, 11`) and plays each one as a real, rendered bout, in
+  order, with the same controls any bout has. Shows you *the ones that did not*.
+
+**There is no recording and no replay format**, deliberately. `CompletionSampler.build_for_seed`
+needs nothing but the seed — rosters and presets are constants — so **a seed is already a complete
+reproduction handle** and a failing seed replays exactly. Anything captured would be a second source
+of truth about what a bout was, and it would drift.
+
+The run says on screen what it is checking (the completion condition, the turn cap, and what
+`EXTRACTED` / `TERMINATED` / `STRANDED` each mean), and fills its table in as it goes rather than at
+the end — the 15-of-20 case is one where the pattern is obvious by seed 5 and the run should be
+killed there. Stop, skip and re-watch without restarting.
+
+**Watched and headless cannot disagree**: both build through the same function, and
+`test_watched_run.gd` asserts a watched seed ends the way the headless run said it did. If they ever
+diverge, one of them is lying and everything resting on the sampler is suspect.
+
+This is why the 100-seed escalation could leave the gate — watching answers the question escalating
+only sharpens.
+
 ---
 
 ## Determinism — read this before trusting a reproduction
