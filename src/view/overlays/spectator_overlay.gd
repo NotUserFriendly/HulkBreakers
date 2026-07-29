@@ -298,6 +298,22 @@ func _run_while_playing() -> void:
 		if not playing or runner == null or runner.finished:
 			break
 		await get_tree().create_timer(BASE_STEP_INTERVAL / speed).timeout
+	# taskblock-48 Pass B2: a replayed bout reaching its end advances the run to the
+	# next handle. Without this the panel loaded one fixture and stopped, which reads
+	# as "the replay does not work" rather than as "nobody told it the bout was over".
+	if runner != null and runner.finished:
+		_report_bout_finished()
+
+
+## Tells the replay panel, if one is watching, that the bout on screen has ended.
+## Turns come from `runner`, which is the only thing that counts them.
+func _report_bout_finished() -> void:
+	if watched_run_panel == null or watched_run_panel.run == null:
+		return
+	if watched_run_panel.run.is_done():
+		return
+	watched_run_panel.turns_taken = runner.turns_taken
+	watched_run_panel.on_bout_finished()
 
 
 ## taskblock-17 Pass C2: "stop auto-snapping — let the spectator drive
@@ -449,6 +465,14 @@ func _build_ui() -> void:
 		watched_run_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 		watched_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		theme_root.add_child(watched_run_panel)
+		# **The wiring, which is the part that was missing.** Both panels existed and
+		# both were tested, and nothing in the running game called either of them — the
+		# replay path was reachable only from its own tests. `docs/11`'s failure mode
+		# exactly: the mechanism passed every test asserting it worked when called, and
+		# nothing asserted it got called.
+		watched_run_panel.bind(self.battle, null)
+		suite_run_panel.run_completed.connect(_on_suite_run_completed)
+		watched_run_panel.seed_loaded.connect(_on_replay_loaded)
 	# Flush into the bottom-left corner, matching the player view exactly — that
 	# one is the last child of a full-rect column, so it sits hard against both
 	# edges. A margin here made the two views' logs sit in visibly different
@@ -567,4 +591,47 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 	if DebugVerbs.affects_board(verb_id):
 		battle.sync_board_view()
 	battle.refresh_unit_views()
+	_refresh_status()
+
+
+## taskblock-48 Pass B2: a finished run offers its replayable failures. Doing nothing
+## when there are none is the common case and is deliberately silent — a green run
+## should not put anything on screen.
+func _on_suite_run_completed(finished_run: SuiteRun) -> void:
+	if watched_run_panel == null or finished_run.passed():
+		return
+	watched_run_panel.bind(battle, null)
+	var offered: int = watched_run_panel.offer_failures(finished_run)
+	if offered == 0:
+		return
+	var total: int = watched_run_panel.replayable_total(finished_run)
+	set_thinking_label("replaying %d of %d replayable failure(s)" % [offered, total])
+
+
+## A replayed fixture has been loaded into the board. **Rebind, then play** — a loaded
+## board with nothing driving it is a still image, which is what the supervisor saw:
+## the bout was there and nothing moved it.
+##
+## **Rebind, emphatically not `setup()`.** `setup` calls `_build_ui`, which constructs
+## a fresh `theme_root` and fresh panels — including the replay panel that is *in the
+## middle of iterating*. Calling it here destroyed the run it was advancing and left
+## `suite_run_panel.run` null, so the second seed never loaded and the first bout's
+## result went nowhere. What a new board actually needs is a new runner and a
+## re-pointed log; the UI is already correct.
+func _on_replay_loaded(_map_seed: int) -> void:
+	rebind_to_battle()
+	play()
+
+
+## Points this overlay at whatever `battle` currently holds, without rebuilding the UI.
+## The half of `setup` that is about the bout rather than about the controls.
+func rebind_to_battle() -> void:
+	playing = false
+	runner = BoutRunner.new(battle.combat_state, battle.mission)
+	runner.pacer = PlanPacer.new()
+	runner.pacer.frame_signal = get_tree().process_frame
+	if resolution_player != null:
+		resolution_player.setup(battle)
+	bout_injector = battle.bout_injector
+	attach_log_sink(battle.combat_state.combat_log)
 	_refresh_status()

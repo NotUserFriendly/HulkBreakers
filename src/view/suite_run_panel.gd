@@ -24,6 +24,11 @@ extends VBoxContainer
 ## so it cannot drift from what actually happened — which is why `_filter` narrows
 ## what is drawn and never what is stored.
 
+## Emitted once a launched run reaches its exit marker. **The panel does not reach
+## into the replay panel** — the overlay owns both and wires them, which is what keeps
+## this a status surface rather than a coordinator.
+signal run_completed(finished_run: SuiteRun)
+
 ## How many lines the feed shows. A tail, not a scrollback: the interesting part of a
 ## running suite is always the end, and keeping the whole thing on screen would make
 ## the panel a log viewer instead of a status light.
@@ -126,6 +131,8 @@ func _process(delta: float) -> void:
 	_since_poll = 0.0
 	run.poll()
 	_refresh()
+	if run.finished:
+		run_completed.emit(run)
 
 
 func _start(rung: StringName) -> void:
@@ -142,6 +149,7 @@ func _stop() -> void:
 	run.kill()
 	run.poll()
 	_refresh()
+	run_completed.emit(run)
 
 
 ## Narrows what is **drawn**, never what is held. `run.lines` stays the unedited feed,

@@ -322,6 +322,14 @@ func _build_ui() -> void:
 		watched_run_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 		watched_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		theme_root.add_child(watched_run_panel)
+		# **The wiring, which is the part that was missing.** Both panels existed and
+		# both were tested, and nothing in the running game called either of them — the
+		# replay path was reachable only from its own tests. `docs/11`'s failure mode
+		# exactly: the mechanism passed every test asserting it worked when called, and
+		# nothing asserted it got called.
+		watched_run_panel.bind(self.battle, null)
+		suite_run_panel.run_completed.connect(_on_suite_run_completed)
+		watched_run_panel.seed_loaded.connect(_on_replay_loaded)
 	left_layout.add_child(log_panel)
 	log_sink = HierarchicalUiSink.new(log_panel.log_label)
 
@@ -847,3 +855,30 @@ func _update_readout_header() -> void:
 	else:
 		_readout_header.text = "COMBAT READOUT — idle"
 		_readout_header.add_theme_color_override("font_color", HulkTheme.DIM)
+
+
+## taskblock-48 Pass B2: a finished run offers its replayable failures. Doing nothing
+## when there are none is the common case and is deliberately silent — a green run
+## should not put anything on screen.
+func _on_suite_run_completed(finished_run: SuiteRun) -> void:
+	if watched_run_panel == null or finished_run.passed():
+		return
+	watched_run_panel.bind(battle, null)
+	var offered: int = watched_run_panel.offer_failures(finished_run)
+	if offered == 0:
+		return
+	var total: int = watched_run_panel.replayable_total(finished_run)
+	set_thinking_label("replaying %d of %d replayable failure(s)" % [offered, total])
+
+
+## A replayed fixture has been loaded into the board.
+##
+## **This overlay has no playback loop** — it is the human's control surface, and a
+## replayed bout here is a board to look at and drive by hand rather than one that
+## plays itself.
+##
+## Deliberately does **not** call `setup()`: that rebuilds the UI, including the replay
+## panel mid-iteration. `BattleScene.load_battle` has already emitted `battle_loaded`,
+## which this overlay reacts to, so the controls are pointed at the new state already.
+func _on_replay_loaded(_map_seed: int) -> void:
+	pass
