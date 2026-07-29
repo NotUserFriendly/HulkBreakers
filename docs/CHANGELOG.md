@@ -19,7 +19,7 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-46 Passes A–E landed — AI v2 part three: raised rooms no longer punch pits
+*Current as of taskblock-46 Passes A–F landed — AI v2 part three: raised rooms no longer punch pits
 under cover and spawn tiles (BR40.03/BR40.04), the completion number is a random sample with a
 deterministic escalation behind it rather than a pinned pessimistic window, four search verbs give a
 unit with nothing in sight something to do, `Panic` names the give-up instead of shrugging silently, and
@@ -507,7 +507,7 @@ hit; gated on `state.is_preview` now that the outcome is RNG-driven, matching `A
 **AI** (tb25 F) — PSYCHOTIC (prefers melee, closes to minimize distance, never flees) and TURTLE
 (flees rather than melee — `Suppression.is_suppressed`-gated, otherwise an ordinary
 cover-weighting planner) fold into `UnitAI`'s existing dispatch; `_preferred_firing_action_id` now
-also recognizes `&"stab"` (purely additive), so playstyle weapon choice reads the same
+also recognizes `&"stab"` (purely additive), so AI weapon choice reads the same
 `ActionCatalog` seam every other firing pick already does. The baseline "punch" (a POWER-capable
 part providing its own `&"stab"`, no weapon needed) is proven at the engine level; authoring it
 onto shipped content (and a real `shell_reach` per shell template) is unauthored balance work, not
@@ -846,10 +846,12 @@ needed for the identical reason.
 
 **Bouts** (tb14) — watchable AI-vs-AI with pacing controls, a seed, a bout-setup menu. The
 verification rig. **Bout roster as an expanding list** (tb16 E, tb17 D) — no count field, list
-length *is* the count; each row is `[Bot ▾][AI ▾][D][-]` — a per-bot playstyle dropdown (moved from
-per-team to per-bot), a `[D]` duplicate (copies profile+playstyle, inserted below its source), `[-]`
-to remove; `BoutSetup.build_bout` takes an `Array[BoutRosterEntry]` (profile+playstyle pair) per
-team. **Map generation** (tb16 C, grid-size fix tb17 A) — BSP room/hallway split with tunable knobs
+length *is* the count; each row is `[Bot ▾][AI ▾][D][-]` — a per-bot AI dropdown (moved from
+per-team to per-bot), a `[D]` duplicate (copies preset + AI choice, inserted below its source), `[-]`
+to remove; `BoutSetup.build_bout` takes an `Array[BoutRosterEntry]` (preset + AI choice) per
+team. **The `[AI ▾]` menu listed playstyles until taskblock-46 Pass E below, which retired that
+vocabulary — it now lists the `UtilityProfile` `.tres` files themselves, so a new profile is a file
+and no code edit.** **Map generation** (tb16 C, grid-size fix tb17 A) — BSP room/hallway split with tunable knobs
 (`MIN_ROOM_SIZE`, `MIN_LEAF_SIZE`/`MIN_CHILD_SIZE`, `CORRIDOR_WIDTH_MIN`/`MAX`, grid width/height);
 rooms ≥ 7 on their min dimension, hallways 3–5 wide, deterministic per seed. `BattleScene`/
 `BoutSetup` grid sizes (40×30 / 32×24) are derived off `MapGen.MIN_LEAF_SIZE` so the BSP reliably
@@ -1588,7 +1590,8 @@ one commit, where the two were indistinguishable, and a test now keeps them apar
 `StepOutPlanner` and `TacticsController` for the player's own step-out affordance),
 `ActionCatalog.preferred_firing_action_id`/`provided_firing_action_id` (a question about the weapon,
 not the plan), and `AiPlanner.PLAYSTYLES` (the vocabulary outlives the planner; retiring it is still
-`PLAN.md`'s). `EngagementRect` survived untouched — it was always pure candidate-set geometry with no
+`PLAN.md`'s). **~~`AiPlanner.PLAYSTYLES`~~ — overwritten by taskblock-46 Pass E below: the vocabulary
+is deleted outright and a bout names a `UtilityProfile` id directly.** `EngagementRect` survived untouched — it was always pure candidate-set geometry with no
 planner state in it, which is why it separated cleanly in taskblock-43 and cost nothing here.
 
 **Found and fixed on the way: the AI planning bench had been unable to compile since taskblock-44**
@@ -1607,7 +1610,7 @@ an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comme
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
 
-### AI v2, part three: the tier table filled, and the playstyle vocabulary retired (tb46 Passes A–E, docs/11)
+### AI v2, part three: the tier table filled, and the playstyle vocabulary retired (tb46 Passes A–F, docs/11)
 
 **Pass A — nothing sinks into a raised room's floor (BR40.03/BR40.04).** One cause, two entries.
 `MapGen._repair_stranded_elevation` floods with a real `Pathfinder` and flattens every unreached `OPEN`
@@ -1727,5 +1730,6 @@ socket, barrel_pallet) — on-board resource/cover, block movement, project into
 ## Matrices
 
 **Matrices & surrogates** (docs/04) — logic vs intelligence; base/link split; docks into `MATRIX`
-socket; surrogates dock like parts (tier DAG); matrices never lost; `Matrix.playstyle` carries AI
-personality. *Frozen — no more depth.*
+socket; surrogates dock like parts (tier DAG); matrices never lost; `Matrix.ai_profile` carries AI
+personality (**was `Matrix.playstyle` — renamed by taskblock-46 Pass E, which retired the playstyle
+vocabulary; it now names a `UtilityProfile` id**). *Frozen — no more depth.*

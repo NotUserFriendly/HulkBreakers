@@ -33,7 +33,7 @@ The whole point: a bug no longer has to *randomly occur* in a bout to be studied
 ## The two halves
 
 ### Realistic bouts (tb28) — variants, kits, presets
-- **Presets** (already existed) — a saved bot: template, loadout, playstyle. Save/load/list; the bout
+- **Presets** (already existed) — a saved bot: template and loadout. Save/load/list; the bout
   menu loads them into teams.
 - **Variants** — a preset family generates *structural variation* deterministically (a junk_bot spawns
   with armor in random spots; a combat_tester stays uniform). Same seed → same bot. So a test roster
