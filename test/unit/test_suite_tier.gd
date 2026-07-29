@@ -158,12 +158,14 @@ func test_the_skip_reason_says_what_to_run_instead() -> void:
 func test_every_listed_file_implements_the_skip_hook() -> void:
 	var missing: Array[String] = []
 	for path: String in SuiteTier.BOUT_FILES:
-		var script: GDScript = load(path)
-		if script == null:
-			missing.append("%s (did not load)" % path)
+		# **Read as text, not `load()`ed.** Compiling each script re-emits every warning
+		# it and its dependencies carry, and GUT counts those as unexpected errors — so
+		# this failed on shadowed variables in files it was not even asking about. The
+		# question here is whether a line of source exists, which needs no compiler.
+		if not FileAccess.file_exists(path):
+			missing.append("%s (missing)" % path)
 			continue
-		var source: String = script.source_code
-		if not source.contains("func should_skip_script()"):
+		if not FileAccess.get_file_as_string(path).contains("func should_skip_script()"):
 			missing.append(path)
 
 	assert_eq(missing, [] as Array[String], "listed but not hooked: %s" % [missing])

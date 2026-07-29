@@ -248,6 +248,35 @@ func tallies() -> Dictionary:
 	return result
 
 
+## Which tests failed, as `[{"script": String, "test": String}, ...]`, in the order
+## GUT reported them.
+##
+## Read from the **Run Summary**, not from the inline `[Failed]` lines scattered
+## through the feed: the summary is GUT's own deduplicated list, so a test that failed
+## three assertions appears once rather than three times. Replaying the same fixture
+## three times would be exactly the noise the cap exists to avoid.
+##
+## Parsed rather than tracked, for the same reason everything else here is: the feed is
+## the real output, and anything derived from a second source could disagree with what
+## the terminal showed.
+func failures() -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	var in_summary := false
+	var script := ""
+	for line: String in lines:
+		var trimmed: String = line.strip_edges()
+		if trimmed.contains("Run Summary"):
+			in_summary = true
+			continue
+		if not in_summary:
+			continue
+		if trimmed.begins_with("res://") and trimmed.ends_with(".gd"):
+			script = trimmed
+		elif trimmed.begins_with("- test_") and script != "":
+			found.append({"script": script, "test": trimmed.substr(2).strip_edges()})
+	return found
+
+
 ## One line for the panel's header. **States what is happening, not just a spinner** —
 ## a progress indicator that cannot say what it is doing is something to interpret.
 func status_line() -> String:

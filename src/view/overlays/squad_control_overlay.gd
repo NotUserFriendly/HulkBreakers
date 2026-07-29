@@ -307,10 +307,21 @@ func _build_ui() -> void:
 	# reason — a debug surface that both overlays need is a panel, not a subclass.
 	# Debug-gated: these drive a real subprocess and a real bout sequence.
 	if OS.is_debug_build():
+		# taskblock-48 Pass B2.5: **parented to `theme_root`, not to the overlay.**
+		# The overlay is a `Node3D`; a `Control` under one gets no layout at all and
+		# every panel piled up at the origin, on top of `TopLeftControls`. Anchored
+		# right, away from that corner — the third full-rect container to have a
+		# placement problem there, which is why it is asserted in
+		# `test_debug_panel_layout.gd` rather than eyeballed once.
 		suite_run_panel = SuiteRunPanel.new()
-		add_child(suite_run_panel)
+		suite_run_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		suite_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		suite_run_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		theme_root.add_child(suite_run_panel)
 		watched_run_panel = WatchedRunPanel.new()
-		add_child(watched_run_panel)
+		watched_run_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+		watched_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		theme_root.add_child(watched_run_panel)
 	left_layout.add_child(log_panel)
 	log_sink = HierarchicalUiSink.new(log_panel.log_label)
 
