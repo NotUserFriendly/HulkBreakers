@@ -53,12 +53,12 @@ const HEADROOM := 0.15
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
-	"bouts": 79,
-	"turns": 2651,
-	"plans": 2532,
-	"candidates": 3685544,
-	"shot_planes": 31695,
-	"floods": 8408,
+	"bouts": 62,
+	"turns": 1578,
+	"plans": 1456,
+	"candidates": 2068318,
+	"shot_planes": 19599,
+	"floods": 6032,
 }
 
 ## Which counters are actually gated. **`candidates` and `shot_planes` are measured
@@ -75,13 +75,14 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## entry — everything else is noise against these.
 ##
 ## Values are the current measurement with the same headroom applied, rounded up.
-## **Re-ratcheted at Pass C**, where `SAMPLE_SEEDS` 20 → 8 took the sampler file from
-## 88 bouts to 40 and the integration test from 20 to 8. Leaving the old numbers would
-## have left ~60% slack in the two files that matter most.
+## **Re-ratcheted twice**: at Pass C, where `SAMPLE_SEEDS` 20 → 8 took the sampler file
+## from 88 bouts to 40, and again at Pass E, where retargeting and merging took it to
+## 24. Leaving either set of old numbers behind would have left most of the budget as
+## slack in the two files that matter most — a ratchet that only goes up is a ceiling.
 const PER_FILE: Dictionary = {
-	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 46, "turns": 1720},
-	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 340},
-	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 5, "turns": 596},
+	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 28, "turns": 873},
+	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 412},
+	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 4, "turns": 136},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
 }
 
