@@ -755,6 +755,19 @@ consolidation as the full-mission-test replacement. Small, but it removes a stal
 out of sync with the real generation path.
 
 
+### Cut `test_completion_sampler.gd` further, or decide it is right
+**Needs:** nothing. **Unblocks:** nothing; a judgement call left open rather than made under a
+suite-cost pass.
+
+taskblock-47 Pass E took this file 437 s → 207 s and it is still the most expensive in the suite. What
+remains is genuine — it plays real missions to check the sampler reports them correctly, and the bouts
+left are the ones its properties actually need.
+
+**Cutting further means deciding the sampler does not need an end-to-end test**, which is a bigger call
+than a pass about suite cost should make on its own. The options, if it is ever worth taking: assert the
+report shape against a hand-built result dictionary and keep exactly one real sample; or accept the
+cost as the price of the one number that says whether the AI can finish a mission.
+
 ### The utility actions with no executor behind them
 **Needs:** an executor each; `call-for-help` needs a mechanism that does not exist. **Unblocks:**
 the four table cells `docs/11` still lists as unbuilt.
