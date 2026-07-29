@@ -13,6 +13,9 @@ change happen against a baseline they took themselves, rather than being handed 
 
 ---
 
+> **Passes A and B have landed.** Pass B2 below was added mid-block, after the launcher worked and
+> proved to be a terminal in a window. Read B2, then continue at the supervisor checkpoint.
+
 # PASS A — Three rungs, and every run reports what it cost
 
 ## A1. A targeted run
@@ -121,6 +124,79 @@ asks for it.
 window and the terminal ever disagree, the window is worthless**); kill actually terminates the child;
 the panel mounts under both overlays; `WatchedRun`'s existing headless coverage still passes after the
 panel move.
+
+---
+
+# PASS B2 — Replay the failures, in the game
+
+## B2.1 Why B alone could not do this
+
+**The suite runs as a subprocess.** Its maps and bouts are built in *that* process's memory, so the
+running game has nothing to show — not an oversight, a consequence. A subprocess launcher can only
+ever be a terminal in a window.
+
+The fix is a second execution model, not a display filter: **things worth looking at get rebuilt
+inside the game.**
+
+## B2.2 Failures choose themselves
+
+No curated list. The headless run reports which tests failed; the panel offers to replay **the first
+few of them that have a visual form**, with an option to sit through all of them.
+
+**The reason and the result are already known from the headless run.** What is missing is *what the
+test built*. So a replay does not re-execute the test — it **rebuilds the fixture and presents it**.
+That avoids hosting `GutRunner` inside the live scene tree, which manages its own root and would
+fight the running game for it.
+
+## B2.3 The replay handle
+
+A test declares a visual form by exposing enough to rebuild what it built — a seed, or a callable that
+returns `{state, mission}`. Everything else falls out:
+
+- **A test with no handle has no visual form** and is skipped by the replay. A failed assertion about a
+  dictionary has nothing to show, and the filter is self-declaring rather than a registry someone has
+  to maintain.
+- **`BattleScene.load_battle(state, mission)` already takes exactly what a fixture produces.**
+  `checkpoint_9.gd` drives it that way today from `GridFixture`. The path is proven; this pass gives it
+  a caller.
+- **Headless, presenting is a no-op or the ASCII dump `CLAUDE.md` already asks for.** Same test, same
+  fixture, two observers — the shape the docs already use for spatial systems.
+
+## B2.4 `WatchedRun` is the first instance, not a separate system
+
+`WatchedRun` replays completion-sampler seeds as real bouts. That is exactly a replay handle whose
+value is a seed. **Fold it in rather than running two replayers** — *"if two code paths decide the same
+thing, that's the bug to fix."* Its sequencing, skip, rewatch and stop are the general controls; its
+criteria text is one handle's description of itself.
+
+The map-generation sweeps are the other obvious early member: a rendered map answers in a second what a
+boolean cannot.
+
+**On checkpoints:** `checkpoint_8` and `checkpoint_9` are one-off renders of past questions, kept
+compiling by the parse guard. Once a visual test can be replayed on demand, a checkpoint is just "a
+visual test whose assertion is a human." **Do not converge them in this pass** — but say in the report
+whether the new mechanism makes them redundant, because keeping a third renderer alive by inertia is
+how this gets expensive.
+
+## B2.5 Layout, and where output goes
+
+- **The panel collides with `TopLeftControls`.** Straight layout fix; it is the third full-rect
+  container to have a placement or input problem in that corner.
+- **Test progress stays out of the combat log.** That stream is canonical for bout events and progress
+  lines are not bout events. **A replayed bout emits into the combat log naturally**, which is the tie-in
+  that was actually wanted — the log fills up because a real bout is running, not because it was told
+  about one.
+- Everything eventually routing to one log with per-audience filters is worth a revisit; tests are
+  outside that today and this pass does not change it.
+
+**TESTS:** a handle rebuilds a fixture identical to the one its test built (**this is the pass's real
+acceptance** — a replay showing something other than what failed is worse than no replay); a test
+without a handle is skipped rather than erroring; replay is bounded by the requested count and the
+"show all" path is not the default; `WatchedRun`'s existing headless coverage passes after the fold;
+the panel does not overlap `TopLeftControls` at any supported resolution.
+
+**Not this pass:** re-running assertions in-process, converging checkpoints, or routing test progress
+into the combat log.
 
 ---
 

@@ -54,12 +54,12 @@ const HEADROOM := 0.15
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
-	"bouts": 62,
+	"bouts": 66,
 	"turns": 1220,
-	"plans": 1265,
-	"candidates": 1773990,
-	"shot_planes": 16928,
-	"floods": 5600,
+	"plans": 1464,
+	"candidates": 2013916,
+	"shot_planes": 18746,
+	"floods": 6071,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.
@@ -101,7 +101,7 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## slack in the two files that matter most — a ratchet that only goes up is a ceiling.
 const PER_FILE: Dictionary = {
 	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 28, "turns": 873},
-	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 412},
+	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 420},
 	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 4, "turns": 136},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
 }

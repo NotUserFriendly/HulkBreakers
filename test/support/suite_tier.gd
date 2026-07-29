@@ -42,6 +42,7 @@ const BOUT_FILES: Array[String] = [
 	"res://test/unit/logic/ai/test_plan_pacer.gd",
 	"res://test/unit/logic/ai/test_utility_planner.gd",
 	"res://test/unit/logic/test_completion_sampler.gd",
+	"res://test/unit/logic/test_replay_handle.gd",
 	"res://test/unit/logic/test_watched_run.gd",
 	"res://test/unit/logic/test_work_counters.gd",
 	"res://test/unit/logic/test_world_view_seam.gd",

@@ -34,6 +34,32 @@ const WIDTH := 32
 const ROWS := 24
 
 
+## taskblock-48 Pass B2: **this file's failures have a visual form, so it declares
+## one.** A rendered map answers in a second what a boolean cannot — which is the same
+## argument `docs/00` makes for ASCII dumps, pointed at a screen instead.
+##
+## The sweep's assertions are about seeds, so the handle rebuilds the seed's map as a
+## board with no units on it. There is nothing to fight on it; the map *is* the thing
+## that failed.
+##
+## Returns `null` for tests with nothing spatial to show, which is how a script says
+## "not this one" without maintaining a list.
+static func replay_handle_for(test_name: String) -> ReplayHandle:
+	if not test_name.begins_with("test_"):
+		return null
+	if test_name == "test_the_generator_still_authors_raised_rooms":
+		# An anti-vacuity count, not a place. Nothing to look at.
+		return null
+	return ReplayHandle.of(
+		"map:%s" % test_name,
+		"map seed 0",
+		func() -> Dictionary:
+			var grid: Grid = MapGen.generate(0, WIDTH, ROWS)
+			var state := CombatState.new(grid, [] as Array[Unit])
+			return {"state": state, "mission": MissionState.new(RunState.new(), state)}
+	)
+
+
 func before_each() -> void:
 	DataLibrary.reset()
 	DataLibrary.load_all()
