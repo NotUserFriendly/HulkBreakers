@@ -113,6 +113,16 @@ static func all() -> Array[DebugVerbSpec]:
 		# thing you can do from the game window" into a form with typed parameters,
 		# and rebuilding that for one button would be the duplication this table
 		# exists to avoid.
+		# taskblock-47 Pass D: the other non-mutating row, and the reason the 100-seed
+		# escalation could leave the gate. `sample_completion` says how many finished;
+		# this shows you the ones that did not. A seed is already a complete
+		# reproduction handle, so it takes a seed list and nothing else.
+		DebugVerbSpec.new(
+			&"watch_seeds",
+			"Watch Seeds",
+			[DebugVerbSpec.param(&"seeds", P.STRING_NAME)],
+			Callable(DebugVerbs, &"_apply_watch_seeds")
+		),
 		DebugVerbSpec.new(
 			&"sample_completion",
 			"Sample Completion",
@@ -360,6 +370,40 @@ static func _apply_force_hop_down(inj: BoutInjector, _pool: Dictionary, a: Dicti
 ##
 ## `rng_seed` is a parameter rather than a clock read so a sample is reproducible:
 ## the log records which seeds were drawn, and the same `rng_seed` draws them again.
+## taskblock-47 Pass D: play `seeds` as real, rendered bouts, in the order given.
+##
+## **Writes the criteria and the table into the combat log as well as the overlay.**
+## The overlay is where you watch; the log is where it stays after you have stopped
+## watching, and the two cannot disagree because both render through `WatchedRun`.
+##
+## Mutates nothing about the bout it was invoked from — it replaces it. That is worth
+## saying plainly: this row swaps the board for a different one, which no other verb
+## in this table does.
+static func _apply_watch_seeds(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	var seeds: Array[int] = WatchedRun.parse_seeds(String(a.seeds))
+	if seeds.is_empty():
+		return false
+	var run: WatchedRun = WatchedRun.of(seeds)
+	for line: String in WatchedRun.describe_criteria(CompletionSampler.TURN_CAP, 0.35):
+		inj.state.combat_log.emit(
+			LogEvent.new(
+				inj.state.round_number,
+				Enums.Phase.RESOLUTION,
+				-1,
+				&"watched_run",
+				{"seeds": seeds},
+				line
+			)
+		)
+	for line: String in run.describe_table():
+		inj.state.combat_log.emit(
+			LogEvent.new(
+				inj.state.round_number, Enums.Phase.RESOLUTION, -1, &"watched_run", {}, line
+			)
+		)
+	return true
+
+
 static func _apply_sample_completion(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(a.rng_seed)

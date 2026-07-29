@@ -451,6 +451,25 @@ func test_every_authored_default_names_a_profile_that_exists() -> void:
 	for pair: Array in GenerateBoutOverlay.DEFAULT_ROSTER:
 		assert_has(authored, pair[1] as StringName, "the bout maker's default roster")
 
+	# **The one this test did not cover, and it was wrong for a whole taskblock.**
+	# `CompletionSampler` names the profile its bouts fight under, and it was still
+	# passing `&"AGGRESSIVE"` — a playstyle taskblock-46 Pass E retired. An unknown id
+	# does not throw; the scorer falls back to unweighted, so every completion rate
+	# measured after that pass was measured with **no profile weights applied at all**
+	# and nothing anywhere said so.
+	#
+	# Asserted against the built bout rather than against the constant, because the
+	# constant is exactly what was already being read and believed.
+	var sampled: Dictionary = CompletionSampler.build_for_seed(0)
+	assert_eq(sampled.get("error", ""), "", "sanity: the sampler's bout builds")
+	var sampled_state: CombatState = sampled["state"]
+	for unit: Unit in sampled_state.units:
+		assert_has(
+			authored,
+			unit.matrix.ai_profile,
+			"the completion sampler fights under a profile that exists"
+		)
+
 	assert_false(
 		"profile_id_for" in AiPlanner, "the playstyle bridge must be deleted, not merely unused"
 	)

@@ -246,6 +246,32 @@ every fire**
   sample and the escalation were checked against each other on disjoint windows — seeds 0–99 gave 54%
   and seeds 1000–1099 gave 55% — so the two are measuring the same population and a future comparison
   across them is legitimate.
+- **2026-07-29 (taskblock-47 Pass D) — 72%, and most of the "regression" was a broken
+  profile id.** [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`]
+
+  `CompletionSampler` names the profile its bouts fight under. It was still passing
+  `&"AGGRESSIVE"` — a playstyle **taskblock-46 Pass E retired**. `get_utility_profile`
+  returns null for an unknown id and `UtilityScorer` falls back to unweighted scoring
+  without complaint, so **every completion rate measured after that pass was measured
+  with no profile weights applied at all.**
+
+  | measurement | rate | mean turns |
+  |---|---|---|
+  | before the fix (unweighted) | 56/100 | 26.8 |
+  | after the fix (weighted) | **72/100** | **13.5** |
+
+  Against the retired planner's 87.5% on fixed ground — and its 75% on level ground —
+  **the gap is now 3 points, not 19.** `MIN_COMPLETION_RATE` is still 0.35 and this
+  entry's closure condition is 0.5; the measured rate is comfortably above both.
+  **Deliberately not raised here** — taskblock-47's own scope excludes that constant,
+  and moving a floor on the same day the number moved is how this project got into
+  trouble with it before. It is the supervisor's call and it now has room.
+- **What let it through, since the guard existed and was one line short.**
+  `test_every_authored_default_names_a_profile_that_exists` checked `Matrix`,
+  `BoutRosterEntry` and the bout maker's default roster. It did not check the
+  sampler, which is the one that decides what every measured number means. It does
+  now, asserted against the built bout rather than against the constant — the
+  constant is exactly what was being read and believed.
 - **A caveat that applies to every number in this entry, old and new.** `Unit.intelligence_tier`
   defaults to `TRAINED` and nothing authors it, so all of these are all-Trained rates. The old
   planner's 87.5% is an all-Trained rate too, so the comparison is fair — but "the AI" here means one
