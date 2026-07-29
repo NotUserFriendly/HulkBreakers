@@ -106,6 +106,31 @@ would be.
 
 Use this half to *force the exact condition* you want to study, instead of waiting for it.
 
+### Watching the suite run (tb48 Pass B)
+
+`SuiteRunPanel` launches `run_tests.sh` from inside the game and tails it live —
+which rung, what file it is in, elapsed, pass/fail as they land, and the work counts
+the runner prints. **`kill` stops it**, because chopping a run early once you have
+seen the pattern is the point rather than a garnish.
+
+**Unmediated on purpose.** The feed is the real output of the real script. A curated
+list would be CC's own selection of what is worth watching, which makes it the wrong
+instrument for checking CC's work — so filtering narrows what is *drawn* and never
+what is stored, and cannot drift from what happened.
+
+Two properties are load-bearing and tested rather than assumed:
+
+- **The window and the terminal agree.** The same rung run through `OS.execute` and
+  through the panel's launcher reach the same exit code and the same tallies. If they
+  ever disagree the window is worthless, because it is the thing that gets believed.
+- **Completion is the exit marker, not the process disappearing.** A process can
+  vanish without the script having finished, and a run reported as passed because its
+  PID went away is exactly that lie.
+
+Sized as a calibration instrument: no run history, no charting, nothing persisted past
+the current run. The first few watched runs carry the value; after that it is a review
+step.
+
 ### Watching the bouts a number was talking about (tb47 Pass D)
 
 Two rows in that table mutate nothing at all, and they are a pair:
