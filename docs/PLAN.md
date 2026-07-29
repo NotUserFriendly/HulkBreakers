@@ -164,6 +164,65 @@ these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defec
 
 # QUEUED
 
+### The suite's remaining cost — a shared bout corpus, and stubs where bouts aren't the point
+**Needs:** nothing; taskblock-47 landed the profile this reads from. **Unblocks:** the edit-run-edit
+loop staying cheap as the AI keeps growing.
+
+taskblock-47 took the full gate 1493 s → 537 s and turns 4545 → 1578. **The tail is gone** — 93% of
+what remains is 16 files and 57% is two:
+
+| file | sec | % of suite | bouts |
+|---|---|---|---|
+| `test_completion_sampler.gd` | 207 | 37 | 24 |
+| `test_full_mission.gd` | 112 | 20 | 8 |
+| `test_ai_batch_yield.gd` | 48 | 9 | 3 |
+
+**A shared bout corpus, played once per suite run.** Both expensive files drive `CompletionSampler`
+with the same kind of bout and each pays separately. Play N bouts once, cache the outcome records, and
+let every test that needs *outcomes* read from that corpus instead of generating its own. Bouts are
+deterministic — same seed, same result — so caching is sound by construction rather than by
+convention.
+
+- **Draw the random seeds once, at corpus construction.** `test_full_mission` samples randomly on
+  purpose; sharing a *fixed* set would quietly retire that property. One random draw per suite run,
+  played once, read by everyone, keeps the sampling and shares the cost.
+- **Hand out records, never live state.** A test that mutates a cached `CombatState` corrupts every
+  later reader, and the failure would surface somewhere unrelated. Outcome records, or a `dup()` at the
+  boundary.
+- **The other eight bout-building files are not candidates.** They construct a specific board through
+  `BoutSetup.build_bout` + `GridFixture` to exercise one rule, and that board *is* the test. Sharing
+  would mean testing something else.
+
+**Stub what isn't about bouts.** Most of `test_completion_sampler.gd`'s thirteen tests assert pure
+functions over outcomes — escalation thresholds, the `ceil`-driven non-monotonicity, seed drawing, rate
+arithmetic. Those run against canned results in microseconds. **Keep one real end-to-end bout to prove
+the wiring**; the rest need no engine at all. Once they are stubbed, `test_full_mission` is the only
+place bouts genuinely have to run — which is where the cost belongs, because it is the number anyone
+actually reads.
+
+**Two things the work budgets cannot see.** `test_spectator_overlay.gd` costs 32 s with **zero bouts
+and zero turns**, and it is the largest non-bout file in the suite. The counters gate what the suite
+asks of the *AI*, not what it costs — deliberately, but it means a purely-view regression is invisible
+to them. Worth knowing before anyone reads a green budget as "the suite didn't get slower."
+`test_ai_batch_yield.gd` is the other: ~16 s per bout against the sampler's ~8.6, the worst ratio in
+the file list. Understand why before cutting it; it may be paying for the pacer's frame yields in a way
+nothing else does.
+
+### The supervisor-runnable test surface, finished
+**Needs:** taskblock-47 Pass D (the watched run). **Unblocks:** the supervisor re-taking any number
+without a CC session.
+
+Pass D built the watched run for the completion sampler: a live per-seed table, a seed list played in
+sequence as real bouts, and on-screen statements of what is being checked. **Finish it into something
+used by default rather than something available.**
+
+- Reachable without knowing a verb name — it is a surface the supervisor opens, not an incantation.
+- Whatever else is worth watching rather than reading gets a row: the map-generation sweeps and the
+  determinism checks are both currently green-or-red text about spatial things.
+- **Watched and headless must keep agreeing.** That equivalence is the whole foundation — if a watched
+  seed and its headless counterpart ever disagree, every number the sampler has produced is suspect.
+  It is asserted once in Pass D; it should stay asserted as this grows.
+
 ### Player view and sim view — render a snapshot, stay responsive
 **Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the
 snapshot half. **Unblocks:** the hitch stops being a freeze even where it is still slow; safe
