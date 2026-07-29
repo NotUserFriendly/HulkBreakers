@@ -41,6 +41,9 @@ static func build_bout(
 	if roster_a.any(_entry_missing_profile) or roster_b.any(_entry_missing_profile):
 		return {"error": "every roster entry needs a chosen profile"}
 
+	# taskblock-47 Pass A: counted after the validation gates, so a rejected roster
+	# is not reported as a bout that was played.
+	CombatState.bouts_built += 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)

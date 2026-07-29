@@ -23,6 +23,16 @@ const MAX_CLIMB_LEVELS: float = 1.0
 ## pass (fall damage/knockdown are later work, explicitly out of scope).
 const MAX_HOP_DOWN_LEVELS: float = 2.0
 
+## taskblock-47 Pass A: how many floods and A* searches have run since the last
+## reset. **Diagnostics only, never read by a decision** — the standing posture for
+## counters in this codebase.
+##
+## Counted here rather than at the call sites because a flood is the unit of work
+## that actually costs: `reachable`, `reachable_costs`, `astar` and everything built
+## on them all bottom out in one, and a counter per caller would drift the moment a
+## new caller appeared.
+static var floods: int = 0
+
 var _grid: Grid
 ## taskblock-37 Pass C: whether THIS pathfinding request's own mover can
 ## climb (`Shell.can_climb()`) — a property of the unit doing the moving,
@@ -31,6 +41,10 @@ var _grid: Grid
 ## updated to pass a real unit's capability keeps its exact prior
 ## behaviour (never silently grants climbing).
 var _can_climb: bool
+
+
+static func reset_diagnostics() -> void:
+	floods = 0
 
 
 func _init(grid: Grid, can_climb: bool = false) -> void:
@@ -182,6 +196,7 @@ static func _smoother(
 ## walkability — the mover already stands there, occupying its own cell, so
 ## gating on that would make every real in-game path request fail.
 func astar(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+	floods += 1
 	if a == b:
 		return [a]
 	if not is_walkable(b):
@@ -283,6 +298,7 @@ func reachable(origin: Vector2i, mp: float) -> Array[Vector2i]:
 ## unit" about a cell the unit is standing in. Edges are still gated normally
 ## (`move_cost` reads the destination), so nothing walks through anything.
 func reachable_costs(origin: Vector2i, mp: float) -> Dictionary:
+	floods += 1
 	var dist: Dictionary = {origin: 0.0}
 	var frontier: Array[Vector2i] = [origin]
 
