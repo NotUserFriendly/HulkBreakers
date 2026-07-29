@@ -7,6 +7,17 @@ extends RefCounted
 ## below.
 const SIMULTANEOUS_BAND_TOLERANCE := 1.0
 
+## taskblock-47 Pass A: turns handed out since the last reset, across every
+## `CombatState` in the process. **Diagnostics only, never read by a decision.**
+##
+## Counted at `advance_turn` rather than in `BoutRunner` on purpose: a turn is a
+## turn whether a bout runner drove it or a test drove it by hand, and counting it
+## in the runner would report zero for exactly the scripted tests taskblock-47 Pass
+## E is trying to move work toward.
+static var turns_resolved: int = 0
+## Bouts built since the last reset — the coarse counterpart to `turns_resolved`.
+static var bouts_built: int = 0
+
 var grid: Grid
 var units: Array[Unit] = []  # the roster — no longer literally turn order, see below
 var squads: Dictionary = {}  # squad_id(int) -> Array[Unit]
@@ -96,6 +107,11 @@ var _hold_ready: bool = false
 
 ## `combat_seed` seeds all rolls made during this fight (Appendix A: hit
 ## resolution must be reproducible from a seed).
+static func reset_diagnostics() -> void:
+	turns_resolved = 0
+	bouts_built = 0
+
+
 func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) -> void:
 	grid = p_grid
 	rng = RandomNumberGenerator.new()
@@ -525,6 +541,7 @@ func _start_turn(unit: Unit) -> void:
 ## forward untouched rather than regenerating. A held unit that died in
 ## the meantime is simply dropped; normal selection falls through.
 func advance_turn() -> void:
+	turns_resolved += 1
 	if _held_unit_id != -1 and _hold_ready:
 		var held: Unit = find_unit(_held_unit_id)
 		_held_unit_id = -1
