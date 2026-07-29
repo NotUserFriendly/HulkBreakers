@@ -114,6 +114,39 @@ on this game has been an all-Trained rate.
 rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
 combat log.
 
+### 3. Multi-level: AI climb/hop-down and interruptible vertical movement
+**Needs:** taskblock-37 Passes A–D (landed — `ClimbAction`/`HopDownAction` exist, capability-gated
+and cost-correct on their own). **Unblocks:** trusting any AI completion measurement — a unit that
+walks into ground it cannot leave is out of the mission while still alive and still taking turns,
+which is indistinguishable from the planner failing.
+
+**Promoted from QUEUED to NEXT by CC, on `BR46.02`'s measurement rather than on judgement**: 16 of 40
+generated maps at the real bout size contain one-way ground, worst seed 216 cells. It was filed as "a
+follow-on refinement, not a dependency of anything else" and that is no longer true — reorder if you
+disagree, but the old placement was made before anyone had counted.
+
+Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAction`:
+- **No AI path ever queues either action.** The planner still only ever moves via ordinary `MoveAction`
+  — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
+  in a real bout today.
+- **No part anywhere authors `CLIMBER`, so nothing that exists can climb out of anything.**
+  `Shell.can_climb()` reads the tag (`shell.gd:105`) and no `.tres` carries it. A **content gap, not a
+  pathfinding bug** — the pathfinder correctly reports that a unit which hopped down a ledge cannot get
+  back up, and BR40.04 measured the consequence: a unit spawned in a sunk cell has exactly one reachable
+  cell. Authoring one `CLIMBER` part closes a whole class of stranding in one file.
+  **`BR46.02` measured the wider consequence and it is much bigger than the spawn case:** 16 of 40
+  generated maps at the real bout size contain ground a unit can walk INTO and never leave — worst
+  seed, 216 such cells. Spawn zones are mutually reachable on 60 of 60 seeds, so a symmetric
+  connectivity check reports these maps as fine; the defect only shows under asymmetric reachability —
+  flood out from a spawn, then flood back from each cell reached and ask whether the spawn is still in
+  the set.
+- **Until it exists, the planner must treat a hop-down as one-way.** A unit that drops off a ledge to
+  reach something strands itself for the rest of the bout. "Can I get back?" belongs in the decision
+  rather than being discovered afterwards.
+- **Neither action integrates with `MoveAction`'s own mid-move overwatch-trigger hook.** An ordinary
+  move can be interrupted mid-flight; a climb or hop-down currently can't be, which is inconsistent
+  with "every real exposure the same" once a raised area is common enough to matter tactically.
+
 # QUEUED
 
 ### Player view and sim view — render a snapshot, stay responsive
@@ -186,32 +219,6 @@ team, a patrol, everything sharing a spawn point — which is a design question,
 **Worth weighing against item 2 in NEXT before building:** batching one squad of three measured
 ~671ms → ~646ms per AI step, so as a *performance* argument this is weak; if it earns its place it
 will be as squad behaviour that reads better, not as a speed-up.
-
-### Multi-level: AI climb/hop-down and interruptible vertical movement
-**Needs:** taskblock-37 Passes A–D (landed — `ClimbAction`/`HopDownAction` exist, capability-gated
-and cost-correct on their own). **Unblocks:** nothing; a follow-on refinement, not a dependency of
-anything else.
-
-Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAction`:
-- **No AI path ever queues either action.** The planner still only ever moves via ordinary `MoveAction`
-  — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
-  in a real bout today.
-- **No part anywhere authors `CLIMBER`, so nothing that exists can climb out of anything.**
-  `Shell.can_climb()` reads the tag (`shell.gd:105`) and no `.tres` carries it. A **content gap, not a
-  pathfinding bug** — the pathfinder correctly reports that a unit which hopped down a ledge cannot get
-  back up, and BR40.04 measured the consequence: a unit spawned in a sunk cell has exactly one reachable
-  cell. Authoring one `CLIMBER` part closes a whole class of stranding in one file.
-  **`BR46.02` measured the wider consequence and it is much bigger than the spawn case:** 16 of 40
-  generated maps at the real bout size contain ground a unit can walk INTO and never leave — worst
-  seed, 216 such cells. Spawn zones are mutually reachable on 60 of 60 seeds, so a symmetric
-  connectivity check reports these maps as fine; the defect only shows under asymmetric reachability.
-  This item is no longer "a follow-on refinement" in practice, whatever its Unblocks line says.
-- **Until it exists, the planner must treat a hop-down as one-way.** A unit that drops off a ledge to
-  reach something strands itself for the rest of the bout. "Can I get back?" belongs in the decision
-  rather than being discovered afterwards.
-- **Neither action integrates with `MoveAction`'s own mid-move overwatch-trigger hook.** An ordinary
-  move can be interrupted mid-flight; a climb or hop-down currently can't be, which is inconsistent
-  with "every real exposure the same" once a raised area is common enough to matter tactically.
 
 ### Status effects and boosts
 **Needs:** nothing. **Unblocks:** perks, power and therms, wound thresholds.

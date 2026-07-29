@@ -1,7 +1,13 @@
 # Taskblock 46 Report — Fix the ground, then fix the AI
 
 **Passes A–F landed in order; suite green.** The supervisor cleared the block's own HARD PAUSE
-("Send it, ready for E") on a 54% → 60% completion recovery against the old planner's 75%.
+("Send it, ready for E") on a completion recovery measured at the time as 54% → 60%.
+
+**Then the supervisor watched a real bout and the block's most important findings arrived after it
+closed** — a search bug this block shipped (`BR46.01`, fixed) and a map-generation trap nobody had
+looked for (`BR46.02`, open, needs a call). Both are in *Open questions*. **The current completion
+figure is 56% over 100 seeds**; the 60% above predates Pass E and is kept only because it is what the
+pause was cleared on.
 
 ## Decisions made without asking
 
@@ -176,7 +182,9 @@ checked the symptom separately and it does not reproduce.
   one this block fixed — it wants combat quality, not another gate — and it is the reason the remaining
   15 points to the old planner will not come from the same lever twice.
 
-- **The suite is ~1370 s and roughly quadrupled across this block** (~355 s before it). Two causes, both
+- **The suite is ~1370 s and roughly quadrupled across this block** (~355 s before it), and the
+  escalation has since grown past the 900 s I had been allowing it — the search-memory fix makes units
+  actually travel, so mean turns to complete went 19.1 → 26.8 and every bout-running test pays for it. Two causes, both
   deliberate: the completion gate genuinely plays 20 bouts where the pinned window played 12, and the
   search verbs make each bout longer (mean 9.8 → 12.0 turns). I already cut ~230 s by splitting
   `draw_seeds` from `run_seeds`, and moving the escalation out of `run_tests.sh` was your call and
