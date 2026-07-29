@@ -35,31 +35,35 @@ func _run(args: Array[String]) -> Dictionary:
 ## **The pass's real acceptance.** A deliberately failing test, run through the real
 ## script, must fail the process.
 ##
-## The temporary file is written into `test/unit/` because that is where the runner
-## looks; it is removed in the same test rather than in `after_each`, so a failure
-## here cannot leave a permanently-red file behind for every later run.
+## Uses `test_exit_code_probe.gd`, a permanent file that fails only when asked. The
+## first version wrote a throwaway test and deleted it, which broke the full gate for
+## the supervisor: the subprocess's import step writes a `.uid` on its own schedule,
+## so deleting the pair can orphan it, and the next run dies trying to open a script
+## that is not there. See that file's header — the race cannot be cleaned up around.
 func test_the_runner_fails_the_process_when_a_test_fails() -> void:
-	var path := "res://test/unit/test_temporary_deliberate_failure.gd"
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	assert_not_null(file, "could not write the temporary failing test")
-	if file == null:
-		return
-	file.store_string(
-		(
-			"extends GutTest\n\n\nfunc test_fails() -> void:\n"
-			+ '\tassert_eq(1, 2, "deliberate — taskblock-48 A2 exit-code check")\n'
-		)
-	)
-	file.close()
+	var probe: String = TestExitCodeProbe.FORCE_FAILURE_ENV
+	var restore: String = OS.get_environment(probe)
+	# Restored rather than cleared: `OS.set_environment` is process-wide, and clearing
+	# it to "" once switched the fast gate off for every file GUT had not yet reached
+	# (taskblock-47 Pass C).
+	OS.set_environment(probe, "1")
 
-	var result: Dictionary = _run(["test_temporary_deliberate_failure.gd"] as Array[String])
+	var result: Dictionary = _run(["test_exit_code_probe.gd"] as Array[String])
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(path + ".uid"))
+	OS.set_environment(probe, restore)
 
-	gut.p(String(result["out"]).substr(maxi(0, String(result["out"]).length() - 400)))
+	gut.p(String(result["out"]).substr(maxi(0, String(result["out"]).length() - 300)))
 	assert_eq(int(result["code"]), 1, "a failing test must fail the process")
 	assert_true(String(result["out"]).contains("1 failure(s)"), "and the count says so")
+
+
+## The other direction on the same probe: with nothing asking it to fail, the identical
+## invocation passes. Without this, a runner that always returned 1 would look correct.
+func test_the_same_probe_passes_when_nothing_asks_it_to_fail() -> void:
+	var result: Dictionary = _run(["test_exit_code_probe.gd"] as Array[String])
+
+	assert_eq(int(result["code"]), 0, "the probe is green unless asked otherwise")
+	assert_true(String(result["out"]).contains("0 failure(s)"))
 
 
 ## **Five facts about one invocation, and one subprocess to establish them.**
@@ -117,29 +121,44 @@ func test_a_passing_targeted_run_exits_zero_reports_its_cost_and_writes_nothing(
 ## **Two files sharing a name is a repo mistake to fix, not a case to disambiguate
 ## cleverly.** It prints both and stops, so the fix is obvious and nobody ends up
 ## running the wrong one because a resolver picked a winner.
+##
+## Exercised against a throwaway directory via `HULK_TEST_ROOT` rather than by writing
+## a duplicate into `test/`. Same reason as the probe above: a `.gd` written and
+## deleted inside the project races Godot's importer, and the orphaned `.uid` breaks
+## the next run rather than this one.
 func test_an_ambiguous_name_fails_and_prints_every_match() -> void:
-	var dir := "res://test/unit/tmp_ambiguity_check"
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-	var clone := FileAccess.open(dir + "/test_grid.gd", FileAccess.WRITE)
-	assert_not_null(clone)
-	if clone == null:
-		return
-	clone.store_string("extends GutTest\n\n\nfunc test_nothing() -> void:\n\tassert_true(true)\n")
-	clone.close()
+	var root: String = OS.get_environment("TMPDIR")
+	if root == "":
+		root = "/tmp"
+	root += "/hulk_ambiguity_check"
+	var output: Array = []
+	OS.execute(
+		"bash",
+		(
+			[
+				"-c",
+				(
+					"rm -rf %s && mkdir -p %s/a %s/b && touch %s/a/test_grid.gd %s/b/test_grid.gd"
+					% [root, root, root, root, root]
+				)
+			]
+			as Array[String]
+		),
+		output,
+		true
+	)
 
+	var restore: String = OS.get_environment("HULK_TEST_ROOT")
+	OS.set_environment("HULK_TEST_ROOT", root)
 	var result: Dictionary = _run(["test_grid.gd"] as Array[String])
-
-	var real_dir: String = ProjectSettings.globalize_path(dir)
-	DirAccess.remove_absolute(real_dir + "/test_grid.gd")
-	DirAccess.remove_absolute(real_dir + "/test_grid.gd.uid")
-	DirAccess.remove_absolute(real_dir)
+	OS.set_environment("HULK_TEST_ROOT", restore)
+	OS.execute("bash", ["-c", "rm -rf %s" % root] as Array[String], [], true)
 
 	gut.p(result["out"])
 	assert_eq(int(result["code"]), 2, "ambiguity is a usage error, not a test failure")
 	assert_true(String(result["out"]).contains("ambiguous"), "and it says so")
-	assert_true(
-		String(result["out"]).contains("tmp_ambiguity_check"), "naming every match, not just one"
-	)
+	assert_true(String(result["out"]).contains("/a/"), "naming every match, not just one")
+	assert_true(String(result["out"]).contains("/b/"), "including the second")
 
 
 func test_an_unknown_target_is_a_usage_error() -> void:
