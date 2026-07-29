@@ -66,7 +66,12 @@ func _squad(grid: Grid) -> Dictionary:
 	state.force_current_unit(leader.id)
 	for unit: Unit in state.units:
 		unit.ap = unit.max_ap
-		unit.intelligence_tier = &"TRAINED"
+		# taskblock-46 Pass E: **setting** a batch objective is Elite-only, where
+		# reading one is Trained-and-above. These units lead, so they have to be the
+		# tier that may lead — a Trained batch is a real configuration, it just has
+		# nobody in it who makes the call, which is what the two Mindless tests below
+		# assert from the other side.
+		unit.intelligence_tier = &"ELITE"
 	return {"state": state, "leader": leader, "follower": follower, "enemy": enemy}
 
 
@@ -362,7 +367,7 @@ func test_the_objective_is_computed_once_and_reused() -> void:
 	var grid: Grid = GridFixture.flat(24, 16)
 	var bout: Dictionary = _squad(grid)
 	var third: Unit = _armed_unit(&"third", Vector2i(3, 12), 0)
-	third.intelligence_tier = &"TRAINED"
+	third.intelligence_tier = &"ELITE"
 	third.ap = third.max_ap
 	bout.state.units.append(third)
 	for unit: Unit in [bout.leader, bout.follower, third]:

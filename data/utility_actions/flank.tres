@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_sb0oo"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_t3tt0"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_wv3uc"]
+
+[sub_resource type="Resource" id="Resource_dpqui"]
+script = ExtResource("2_t3tt0")
+
+[sub_resource type="Resource" id="Resource_uqlwa"]
+script = ExtResource("1_sb0oo")
+input_id = &"flank_angle"
+curve = SubResource("Resource_dpqui")
+
+[sub_resource type="Resource" id="Resource_cgpbf"]
+script = ExtResource("2_t3tt0")
+
+[sub_resource type="Resource" id="Resource_nuwtq"]
+script = ExtResource("1_sb0oo")
+input_id = &"line_of_fire"
+curve = SubResource("Resource_cgpbf")
+
+[sub_resource type="Resource" id="Resource_8y5j6"]
+script = ExtResource("2_t3tt0")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_bk6kq"]
+script = ExtResource("1_sb0oo")
+input_id = &"standoff_match"
+curve = SubResource("Resource_8y5j6")
+
+[sub_resource type="Resource" id="Resource_y8xv8"]
+script = ExtResource("2_t3tt0")
+slope = 0.4
+offset = 0.6
+invert = true
+
+[sub_resource type="Resource" id="Resource_7otwx"]
+script = ExtResource("1_sb0oo")
+input_id = &"predicted_threat"
+curve = SubResource("Resource_y8xv8")
+
+[resource]
+script = ExtResource("3_wv3uc")
+id = &"flank"
+display_name = "Flank"
+executor_id = &"move"
+preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere", &"lof_possible"])
+considerations = Array[ExtResource("1_sb0oo")]([SubResource("Resource_uqlwa"), SubResource("Resource_nuwtq"), SubResource("Resource_bk6kq"), SubResource("Resource_7otwx")])
+base_weight = 1.1
+tiers = Array[StringName]([&"TRAINED", &"ELITE"])

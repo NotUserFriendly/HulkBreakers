@@ -174,9 +174,7 @@ func test_a_unit_holding_its_extraction_tile_is_never_shut_down() -> void:
 	mission.objectives = []
 	mission.extraction_cells = [Vector2i(0, 0)]
 
-	assert_true(
-		EndTurnAction.is_holding_position(unit, mission), "sanity: it is on its own tile"
-	)
+	assert_true(EndTurnAction.is_holding_position(unit, mission), "sanity: it is on its own tile")
 	assert_true(
 		Panic.action_for(unit, mission, state) is EndTurnAction,
 		"holding must mature into an extraction, not a shutdown"

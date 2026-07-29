@@ -43,6 +43,17 @@ const BLACKBOARD_TIERS: Array[StringName] = [&"TRAINED", &"ELITE"]
 ## membership is.
 const MEMORY_TIERS: Array[StringName] = [&"GRUNT", &"TRAINED", &"ELITE"]
 
+## taskblock-46 Pass E: tiers that may SET a batch objective, as opposed to merely
+## reading one (`BLACKBOARD_TIERS`).
+##
+## **`docs/11`'s tier table gives "set batch objective" to Elite alone**, and
+## splitting the write from the read is what makes Elite behaviourally distinct
+## without inventing an executor for it. A Trained unit follows a plan; an Elite
+## unit is the one that makes one. A batch whose fastest member is merely Trained
+## therefore coordinates on nothing and every member plans for itself — correct for
+## that table row rather than a gap.
+const OBJECTIVE_SETTING_TIERS: Array[StringName] = [&"ELITE"]
+
 ## Free side — geometry, gated by nothing, the same for every observer.
 var grid: Grid
 var round_number: int = 0
@@ -171,6 +182,8 @@ func claim_batch_lead(
 ) -> void:
 	if not has_blackboard(observer):
 		return
+	if not may_set_objective(observer):
+		return
 	_state.batch_plans.claim(observer, round_number, destination, objective)
 
 
@@ -185,6 +198,16 @@ func has_blackboard(observer: Unit) -> bool:
 	if observer == null:
 		return false
 	return not restricted or observer.intelligence_tier in BLACKBOARD_TIERS
+
+
+## Whether `observer` may set the batch's objective, not merely read it — Elite
+## only. Asked separately from `has_blackboard` because reading and writing are
+## different capabilities in the tier table, and collapsing them would make Elite
+## indistinguishable from Trained.
+func may_set_objective(observer: Unit) -> bool:
+	if observer == null:
+		return false
+	return not restricted or observer.intelligence_tier in OBJECTIVE_SETTING_TIERS
 
 
 ## Deliberately `LoS`, not `LineOfFire`: this answers "can this unit SEE that

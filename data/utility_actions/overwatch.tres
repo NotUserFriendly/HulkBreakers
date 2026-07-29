@@ -43,3 +43,4 @@ executor_id = &"overwatch"
 preconditions = Array[StringName]([&"has_weapon", &"enemy_known", &"cell_is_current"])
 considerations = Array[ExtResource("1_utg3s")]([SubResource("Resource_blr3i"), SubResource("Resource_a504m"), SubResource("Resource_tjr5o")])
 base_weight = 0.9
+tiers = Array[StringName]([&"TRAINED", &"ELITE"])

@@ -95,137 +95,24 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. The AI action pool — close the regression, then fill the table
-**Needs:** nothing; the utility framework landed as taskblock-45. **Unblocks:** a
-`MIN_COMPLETION_RATE` that means something, intelligence reading as character rather than as
-difficulty, and trusting any later AI measurement.
+### 2. Author the intelligence tiers onto units
+**Needs:** the tier table, which landed as taskblock-46. **Unblocks:** intelligence reading as
+character rather than as difficulty; any completion measurement that includes a tier other than Trained.
 
-Six items were folded into this one because they are the same shape of work: **the utility framework
-takes new behaviour as a `.tres` plus a published input**, so almost everything below is authoring
-against machinery that already exists. Ordered — instrument, bug, fix, measure, then the table.
+`Unit.intelligence_tier` defaults to `TRAINED` and **nothing sets it** — no preset, no matrix, no roster
+entry. So the Mindless, Grunt and Elite rows of `docs/11`'s table, the memory and blackboard gates, and
+the whole Elite lookahead are reachable from tests and by hand only. Every completion rate ever measured
+on this game has been an all-Trained rate.
 
-#### First: make the number re-takeable
+- **Author it where a unit is authored** — `BotPreset`, so a generated bout has a spread of tiers rather
+  than one.
+- **Then re-measure completion per tier.** The current number describes one row of a four-row table.
+- **Tier should derive from Attributes** by the time this lands, rather than staying authored — which is
+  why this sits behind item 1 rather than in front of it.
 
-`test_full_mission.gd` samples seeds 0–11, which is the pessimistic window — the planner scores 41.7%
-there against 66.7% on seeds 12–23 — and at a 0.35 floor the test sits **less than one seed from red**.
-A threshold between two adjacent integers is a tripwire, not a canary, and the usual answer to a
-flapping test is to lower the constant again.
-
-- **Ten random seeds per run, printing the seeds it drew.** The sample moves across the space over time
-  instead of re-asking the same twelve questions.
-- **On failure, escalate to a fixed 100-seed run.** The sampler only has to notice; the escalation is
-  the measurement, and it is deterministic where the sampler is not.
-- **The escalation rate is itself the metric.** At a healthy rate the sampler almost never escalates; at
-  54% it would escalate roughly one run in nine. Frequent escalation says the planner is marginal
-  regardless of what any single run concluded.
-- **Runnable from the game window**, showing per-seed outcomes and the seed list rather than a bare
-  rate. This closes the last gap where the supervisor and CC read different evidence, and it makes the
-  number re-takeable without a session.
-
-#### The regression itself
-
-taskblock-45 replaced the engagement-score planner and completion fell from **87.5% to 54.2%** over 24
-seeds, both planners measured against the same fixture and probe. `MIN_COMPLETION_RATE` sits at 0.35,
-below the 0.5 it held before. **It is a bug, not a feature**, and until it closes the project's one
-automated check on "can the AI finish a mission at all" is calibrated to a planner that finishes barely
-half of them.
-
-The planner is **much faster at the missions it does finish** — 10.6 turns against 23.6. It finishes
-decisively or not at all, which is the shape of a defect rather than of bad weights.
-
-**Leading hypothesis (BR45.03), found in a real bout's combat log: a non-player squad with no enemy in
-sight has no action available at all.** The eight authored actions partition into two gates with
-nothing in neither —
-
-| gate | actions |
-|---|---|
-| `enemy_known` | approach, shoot, take_cover, overwatch, hold_position |
-| `is_player_squad` | seek_objective, gather, seek_extraction |
-
-— so a squad-1 unit that cannot see an enemy is offered nothing. Observed directly: `nothing over 488
-candidates` on turns 0 and 1, then a shot the moment the other squad came into view. A squad that never
-moves never closes, and the bout runs to the cap. **Try this first.**
-
-**Already ruled out, so nobody re-derives it:** the information gating (identical 33.3% with the view
-forced unrestricted), the candidate-set cull (no change), and the four defects taskblock-45 fixed — the
-54.2% is post-fix. **Seeds 1, 2 and 6 `TERMINATE` under both planners**, so the incremental regression is
-8 seeds, not 11; diagnose on 5, 10, 14, 20, 22 or 23. **The decision log is the instrument** — every
-defect that block found came out of reading `ai_utility_decision`, not the code.
-
-**Do not chase this by adjusting profile weights.** Hand-tuning a completion rate is inventing balance
-numbers (CLAUDE.md).
-
-#### The fix: search and idle behaviour
-
-Fills the hole above. Four behaviours, each an Action with its own considerations rather than a mode
-flag:
-
-- **Roam** — cover ground steadily, below top speed. The default "I have seen nobody" behaviour, and the
-  minimal fix for the regression on its own.
-- **Hunt** — roam at speed. Weighted up by a recent sighting, noise, or a squadmate's contact.
-- **Putter** — stay local without being idle. For a unit posted somewhere it has reason to hold.
-- **Patrol** — generate two or three points and move between them. **Pick the next point by oldest visit
-  time**, which cycles all of them with no authored order, never bounces between two while a third goes
-  unvisited, and lets an unreachable point simply age out.
-
-**These are load-bearing for completion, not flavour.** Gated player vision means nobody watches an
-enemy roam — but a unit that never moves never closes with anyone, and the bout hits the cap. The AI
-has to act whether or not it is being observed. Tier-gated like everything else: roam suits `MINDLESS`,
-patrol and hunt want memory and a blackboard.
-
-#### Panic — the stuck-unit escape hatch, made player-visible
-
-Also an action: the case where the scorer returns **no positive-utility action at all**, which the
-previous planner could not even express. The approach-fallback was the first narrow instance.
-
-**Label it visibly so the player sees it fire.** Some escapes are necessarily cheats — teleporting,
-extracting off an extraction tile, shutting down — and a player who sees them unlabelled learns the
-wrong rules. An escape hatch nobody can see is indistinguishable from a bug, and the same signal doubles
-as a debugging tell. **A hard turn budget belongs here**: whatever the planner is doing, the turn ends
-rather than the plan running longer, which is what makes "Unit 2 is thinking…" a promise instead of a
-hope.
-
-#### ⏸ Measure before continuing
-
-**If roam does not recover completion, stop here.** Filling the tier table on a planner that cannot
-finish a mission buries the regression under a hundred new decisions, and every later measurement
-inherits the doubt. Re-take the rate, then continue or divert.
-
-#### Then: fill in the tier table
-
-The framework stood up against a deliberately small set — four actions, two tiers at opposite ends, two
-profiles — because a tier that silently does nothing is the failure this design is most exposed to, and
-that is far easier to catch on a small surface.
-
-- **The middle tiers.** Grunt adds cover, ranged and regroup against last-known positions; Elite adds
-  bait, ambush and setting the batch objective, with full team knowledge and predicted enemy moves at
-  depth 2–3. **Elite's lookahead is the one piece with real structural weight** — it tests the
-  resumability constraint hardest, since a recursive search is the hard thing to suspend and resume.
-- **The rest of the action pool.** The executors already exist in `src/logic/actions/` — twenty of them,
-  tested. Each addition needs preconditions and a consideration set, not new machinery: flank, suppress,
-  use-item, call-for-help, and the melee entries once *Momentum* lands.
-- **The rest of the profile table**, as weight vectors over shared considerations (`own_hp_ratio`,
-  `local_threat`, `ally_proximity`, `objective_value`).
-- **Tier should derive from Attributes** by the time this lands, rather than staying authored.
-
-**Retire the playstyle enum here**, not separately. `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER`
-mixes profile with role and range; standoff and cover-seeking both become consideration weights. Every
-test keyed to those playstyles migrates with it — doing it as its own item means touching the same tests
-twice.
-
-#### Riding along, because they are the same authoring
-
-- **Three of the four bullets in *AI target selection and behaviour*** are action-pool content: target
-  selection becomes a consideration, nearest-weapon and per-archetype item behaviour become Actions with
-  preconditions.
-- **No AI path ever queues `ClimbAction` or `HopDownAction`** (see *Multi-level* below). Two more actions
-  in the same pool.
-
-**Acceptance:** completion above 0.5 on the escalated sample; `MIN_COMPLETION_RATE` raised to match with
-its measurement recorded; each tier and each profile decides *differently* from its neighbours on the
-same seed — a table where two rows play identically has a bug in it, and the completion floor will not
-catch it; the cause of the regression written into `CHANGELOG.md` whether or not it is what anyone
-expected.
+**Acceptance:** a generated bout contains units of at least three tiers; the completion sample reports a
+rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
+combat log.
 
 # QUEUED
 
@@ -286,22 +173,6 @@ and the tracer-drawing path:
 **The rename-only fence is lifted for this work.** taskblock-40 Pass A renamed `void_range` to
 `miss_range` under an explicit fence because the supervisor believed the area held a live bug.
 **BR34.05 and BR35.04 are that bug.**
-
-### Raised rooms generate at level 0
-**Needs:** nothing. **Unblocks:** nothing directly, but it cleans the surface every other
-generated-map test runs on.
-
-*Was taskblock-42 Pass G, carried inline for the same reason as the item above.*
-
-- **BR40.03** — scattered cover generates at level 0 inside raised rooms.
-- **BR40.04** — extraction and spawn tiles recessed to level 0 inside raised rooms.
-
-Two entries, one cause: `MapGen` places objects without reading the room's level. Almost certainly a
-single fix. Cheap, and it removes a class of nonsense from every generated multi-level map — which
-matters because generated maps are the test surface for everything else.
-
-**Acceptance:** across a seed sweep, no cover, extraction tile, or spawn tile sits at a level below
-the room containing it.
 
 ### Automatic batch assignment in generated missions
 **Needs:** taskblock-43 Pass C/D (landed — `Unit.batch_id`, `BatchPlan`, the leader/follower split all
@@ -833,6 +704,25 @@ freshly generated bout via the live bout builder — the same "starter battle fo
 consolidation as the full-mission-test replacement. Small, but it removes a stale entry point that can drift
 out of sync with the real generation path.
 
+
+### The utility actions with no executor behind them
+**Needs:** an executor each; `call-for-help` needs a mechanism that does not exist. **Unblocks:**
+the four table cells `docs/11` still lists as unbuilt.
+
+taskblock-46 filled every row of the tier table that could be filled by authoring a `.tres` against
+machinery that already existed. These four could not, and the distinction is worth keeping straight —
+the rest of that work was authoring, and this is building.
+
+- **`use-item`.** `RepairAction` and `PickUpAction` exist and are the player's, so this is the closest to
+  ready: it needs preconditions and a consideration set over an input that says whether the unit is
+  carrying something worth using, which is not published yet.
+- **`bait` and `ambush`.** No executor. Both are also *multi-turn intents* rather than actions — "move
+  somewhere visible and wait to be shot at" is not a thing the one-turn scorer can express, so these
+  probably need the batch objective to carry them rather than the action pool.
+- **`call-for-help`.** **No mechanism at all.** A unit cannot influence another unit's plan today; the
+  batch objective is the only thing in the codebase that comes close, and it is set by the leader rather
+  than requested by a follower. Authoring an action for this would mean inventing the mechanism it needs,
+  which is the thing not to do.
 
 ### AI target selection and behaviour
 **Needs:** nothing, but read against *AI v2, part two* first — **three of the four bullets below become

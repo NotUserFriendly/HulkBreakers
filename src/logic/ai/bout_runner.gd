@@ -151,14 +151,14 @@ func step() -> bool:
 	if someone_else_wants_it:
 		return false
 
-	var playstyle: StringName = unit.matrix.playstyle if unit.matrix != null else &"AGGRESSIVE"
+	var profile: StringName = unit.matrix.ai_profile if unit.matrix != null else &"aggressive"
 	# tb44 Pass C: the planner is handed a WorldView, never the state — the
 	# chokepoint part two's tiers gate information at.
 	# tb45 Pass B/E: `AiPlanner` is the one seam every AI turn is planned through.
 	# It restricts the view itself, so this hands in the unrestricted one and the
 	# tier gating applies regardless of what any caller remembered to set.
 	var queue: ActionQueue = await AiPlanner.plan_turn(
-		unit, WorldView.full(state), mission, playstyle, pacer
+		unit, WorldView.full(state), mission, profile, pacer
 	)
 	last_unit = unit
 	var sink := MemorySink.new()

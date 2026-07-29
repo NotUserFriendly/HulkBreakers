@@ -1358,3 +1358,56 @@ same relative order this ledger has always kept them in, oldest work first. All 
   apart.
 - **`Resolved`:** both halves are verified — the bench runs and produced taskblock-45 Pass D's numbers,
   and the guard demonstrably fails on a broken tool. `CC`-owned, closed by CC.
+
+### BR35.06 — Obsolete — owner: `CC`
+**A unit with a real available shot elsewhere can still get stuck holding a covered, blind position**
+- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
+- **Found:** 2026-07-23, same log read as BR35.05. Unit 7 logs `repositioned (held: no_clear_lof)` on
+  three consecutive turns (1, 2, 3) — `repositioned` means `_any_reachable_has_lof` found SOME
+  reachable cell with a real shot this turn, yet the unit still resolves to a blocked position and
+  holds anyway, turn after turn, making no progress. Unit 6 shows a compound case of the same family
+  (`no_lof_no_route (held: ally_in_line)`, repeated across all three turns too).
+- **Suspected mechanism, not confirmed:** `_engagement_score`'s own `COVER_SCORE_BONUS` can outscore
+  the distance/LOF terms for a cell that's covered but blind, and `cell == self_unit.cell` is exempt
+  from `NO_LOF_PENALTY` ("staying put is free") — so a unit already sitting somewhere covered has no
+  scoring pressure to ever step into the open for the shot a `repositioned` branch says exists
+  elsewhere. Consistent with, but not yet proven against, the actual per-candidate scores.
+- **Not fixed yet.** Needs the actual `_engagement_score` breakdown for unit 7's own candidate set on
+  one of these turns before concluding this is really the cover-bonus/self-exemption interaction and
+  not something else — flagged rather than guessed at further.
+
+- **2026-07-28 (review session `HBPaR3`) — description predates the planner it describes.** This was
+  written against the engagement-score planner's hold branch, and taskblock-45 deleted that planner. It
+  is being kept `Active` rather than closed because the *symptom* may well survive — but if it
+  reproduces, it reproduces through the utility scorer returning `hold_position` as its best-scoring
+  action, which is a different mechanism with a different fix. **Re-verify against the new planner and
+  then either rewrite this entry or close it `Obsolete`;** do not fix it from the description above.
+- **The decision log answers this directly.** `ai_utility_decision` records every candidate and its
+  score, so "why did it hold when a shot existed" is now a question with a printed answer rather than
+  an inference — check whether `shoot` was scored and lost, or never offered at all. If it was never
+  offered, this is BR45.03 and not a separate defect.
+- **The gates as currently authored (CC, 2026-07-28), so re-verification is cheap.**
+  `data/utility_actions/hold_position.tres` requires **all four** of `enemy_known`, `cell_is_current`,
+  `can_defer_turn` and `lof_blocked`, carries `base_weight` 0.3 — well below `shoot`'s 1.5 — and is
+  marked `ends_turn`. The planner additionally refuses to offer any `ends_turn` action once the turn
+  has already committed to something.
+- **So a hold while a shot existed should now be impossible by construction**, since `lof_blocked` is
+  the exact negation of the line-of-fire gate `shoot` requires. If it reproduces anyway, the
+  interesting question is which of those two predicates disagreed with reality — not why the weights
+  came out that way. Three of taskblock-45's own defects were holds winning for reasons that had
+  nothing to do with weights.
+
+- **2026-07-28 (taskblock-46 Pass F) — `Obsolete`, closed by CC (CC-owned) [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].**
+  **`Obsolete`, not `Resolved`, and the distinction is the point:** nobody verified the described
+  defect was fixed, because the code it describes — `_engagement_score`, `COVER_SCORE_BONUS`, the
+  `cell == self_unit.cell` exemption from `NO_LOF_PENALTY`, the `repositioned (held: no_clear_lof)`
+  log line — was deleted wholesale by taskblock-45. There is nothing left to reproduce against.
+- **The symptom was checked anyway, and does not reproduce.**
+  `test_utility_planner.gd::test_a_unit_in_blind_cover_takes_an_available_shot_rather_than_holding`
+  builds the exact situation this entry describes — a unit whose own cell has no line, with reachable
+  cells that do — and the planner moves and shoots rather than holding. The construction argument
+  above holds up: `hold_position` requires `lof_blocked`, which is the exact negation of `shoot`'s own
+  gate, so the two can never be offered for the same cell.
+- **If this symptom is ever seen again it is a new entry**, not this one, and the first thing to read
+  is the `ai_utility_decision` log for the turn: whether `shoot` was scored and lost, or never offered
+  at all. Those are different defects and only one of them is about weights.

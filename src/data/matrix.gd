@@ -17,14 +17,14 @@ extends Resource
 @export var recovery_state: Enums.RecoveryState = Enums.RecoveryState.PILOTING
 ## taskblock-14 Pass B2: "baked-in personality" — travels with the matrix,
 ## not the shell, so the same mind reads the same way across bodies.
-## Open StringName (`AiPlanner.PLAYSTYLES` — AGGRESSIVE,
-## COVER_SEEKER today), never an enum: a third playstyle is new data, not
+## Open StringName — the **id of a `UtilityProfile`** under
+## `res://data/utility_profiles/`, never an enum: a fifth profile is new data, not
 ## a code change. A player matrix carries one too, as a fallback only —
 ## no selection UI beyond the bout menu (taskblock-14 Pass D) is built
 ## for it.
-@export var playstyle: StringName = &"AGGRESSIVE"
+@export var ai_profile: StringName = &"aggressive"
 ## taskblock-18 Pass A1: "reflexes are the pilot's, not the chassis's" — on
-## the matrix, not the shell, same reasoning as `playstyle` above; a fast
+## the matrix, not the shell, same reasoning as `ai_profile` above; a fast
 ## matrix in a slow body is still quick, and swapping bodies carries your
 ## speed. A flat bonus `ResolutionSpeed.resolve()` subtracts from every
 ## action's own resolution speed everywhere that axis is read (taskblock-18

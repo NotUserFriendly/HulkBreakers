@@ -91,6 +91,9 @@ static func plan_turn(
 	# scoring. Dormant — and therefore fully neutral — for every `batch_id == 0`
 	# unit, which is every unit until one is assigned by hand.
 	context.set_batch_objective(_batch_objective(unit, view, context, profile))
+	# taskblock-46 Pass E: an Elite unit looks a turn ahead before it decides
+	# anything. A no-op — and free — for every other tier.
+	await _apply_lookahead(context, pool, profile, pacer)
 	var chosen_ids: Array[StringName] = []
 	# Actions the scorer picked and the executor then refused. **Refusal is not the
 	# end of the turn, it is the removal of one option.**
@@ -150,6 +153,64 @@ static func plan_turn(
 	return queue
 
 
+## taskblock-46 Pass E: runs the Elite lookahead and publishes its result onto the
+## context, so the real selection loop below scores with the prediction in hand.
+##
+## ## Why this costs a whole extra scoring pass
+##
+## The lookahead's expensive ply is paid per candidate, so it can only run over a
+## shortlist — and a shortlist is only worth having if it holds the cells that
+## actually matter. Ordering by anything cheaper (distance to the enemy, say) would
+## search the cells a unit is most likely to reject.
+##
+## So the pass below is a **throwaway scoring run with no prediction in it**, used
+## for nothing except ranking cells. Its cost falls on Elite units alone; every
+## other tier returns before the first candidate is scored. That is the whole trade:
+## the tier that thinks hardest is the tier that thinks slowest, which is the tell
+## `PlanPacer.thinking_label` was built to make legible rather than hide.
+##
+## **The throwaway scores are never reused.** They were taken against a context that
+## did not know about threat, so keeping them would mean deciding partly on numbers
+## the prediction was supposed to correct — the subtle version of scoring the same
+## thing twice and believing the wrong copy.
+static func _apply_lookahead(
+	context: UtilityContext,
+	pool: Array[UtilityActionDef],
+	profile: UtilityProfile,
+	pacer: PlanPacer
+) -> void:
+	if not UtilityLookahead.searches(context.unit):
+		return
+	var ranking: Array = await _score_all(
+		context, pool, profile, [] as Array[StringName], [] as Array[StringName], pacer
+	)
+	# Best score per cell, then cells in descending order of it. Per CELL rather than
+	# per candidate because the lookahead answers a question about a place, and a
+	# cell that is good for three actions must not crowd two others off the list.
+	var best_per_cell: Dictionary = {}
+	for candidate: Dictionary in ranking:
+		var cell: Vector2i = candidate["cell"]
+		var score: float = float(candidate["score"])
+		if score > float(best_per_cell.get(cell, -1.0)):
+			best_per_cell[cell] = score
+	var ordered: Array[Vector2i] = []
+	for cell: Vector2i in best_per_cell:
+		ordered.append(cell)
+	ordered.sort_custom(
+		func(a: Vector2i, b: Vector2i) -> bool:
+			var left: float = float(best_per_cell[a])
+			var right: float = float(best_per_cell[b])
+			# Ties break on the cell itself, never on Dictionary iteration order —
+			# same reason `SearchRoute` sorts before choosing. A search whose
+			# shortlist depended on hash order would be reproducible today and
+			# quietly not tomorrow.
+			if left == right:
+				return (a.x * 100000 + a.y) < (b.x * 100000 + b.y)
+			return left > right
+	)
+	context.set_threats(await UtilityLookahead.threat_map(context, ordered, pacer))
+
+
 ## The objective this unit plans under (`docs/11`: batches amortize).
 ##
 ## **The branch below is not "am I the leader" but "has anyone led yet"** — the
@@ -164,6 +225,10 @@ static func _batch_objective(
 	var following: Dictionary = view.batch_plan_for(unit)
 	if not following.is_empty():
 		return following.get("objective", BatchPlan.NO_OBJECTIVE)
+	# taskblock-46 Pass E: reading a plan and MAKING one are different tier
+	# capabilities. A Trained unit acting first follows nothing and sets nothing.
+	if not view.may_set_objective(unit):
+		return BatchPlan.NO_OBJECTIVE
 	var chosen: StringName = BatchObjective.choose(context, profile)
 	# The destination recorded alongside it is the leader's own cell and is NOT
 	# what followers consume — that was taskblock-43 Pass D's model and this pass

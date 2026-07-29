@@ -172,7 +172,7 @@ func test_the_cull_actually_discards_cells_off_to_the_side() -> void:
 	# applies: y is kept within +/-2 of the shared row, and x within [18, 28].
 	#
 	# taskblock-45 Pass E: passed in explicitly rather than derived from a
-	# playstyle's preferred range, which is what this used to do. The per-playstyle
+	# profile's preferred range, which is what this used to do. The per-playstyle
 	# ranges dissolved into the profile weights; `cull` always took a bare float and
 	# this test is about the PAD, not about where the number comes from.
 	var sideways := Vector2i(20, 30)
@@ -190,7 +190,8 @@ func test_the_cull_actually_discards_cells_off_to_the_side() -> void:
 ## the same place with different standoffs get different rectangles.
 ##
 ## taskblock-45 Pass E: this used to read the numbers off the retired planner's
-## per-playstyle preferred ranges (AGGRESSIVE 0, MARKSMAN 7). Those dissolved into the profile
+## per-playstyle preferred ranges (AGGRESSIVE 0, MARKSMAN 7), a vocabulary taskblock-46
+## Pass E retired outright. Those dissolved into the profile
 ## weights; the two distances are now stated by the test as its own fixture, which
 ## is what CLAUDE.md asks for anyway — the property under test is that the pad
 ## SCALES, and reading the numbers out of production code made the test agree with

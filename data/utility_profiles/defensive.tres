@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UtilityProfile" format=3]
+
+[ext_resource type="Script" path="res://src/data/utility_profile.gd" id="1_i4n7v"]
+
+[resource]
+script = ExtResource("1_i4n7v")
+id = &"defensive"
+display_name = "Defensive"
+action_weights = {
+&"approach": 0.3,
+&"flank": 0.4,
+&"hold_position": 1.4,
+&"overwatch": 2.0,
+&"seek_extraction": 0.4,
+&"shoot": 1.0,
+&"suppress": 1.1,
+&"take_cover": 1.5
+}
+consideration_weights = {
+&"cover": 1.0
+}

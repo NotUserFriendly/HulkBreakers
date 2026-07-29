@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="UtilityProfile" format=3]
+
+[ext_resource type="Script" path="res://src/data/utility_profile.gd" id="1_uik8m"]
+
+[resource]
+script = ExtResource("1_uik8m")
+id = &"cowardly"
+display_name = "Cowardly"
+action_weights = {
+&"approach": 0.1,
+&"flank": 0.15,
+&"hold_position": 1.2,
+&"overwatch": 0.8,
+&"seek_extraction": 2.0,
+&"shoot": 0.6,
+&"suppress": 0.5,
+&"take_cover": 2.2
+}
+consideration_weights = {
+&"closes_distance": 0.3,
+&"cover": 1.0
+}

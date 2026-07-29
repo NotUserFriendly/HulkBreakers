@@ -20,35 +20,35 @@ extends ControlOverlay
 ## all, "add/remove IS the count."
 ##
 ## taskblock-17 Pass D: each entry row widened from `[Bot ▾][-]` to
-## `[Bot ▾][AI ▾][D][-]` — playstyle moved from one shared per-team
+## `[Bot ▾][AI ▾][D][-]` — the AI choice moved from one shared per-team
 ## dropdown to a per-bot one on each row (`BoutSetup.build_bout` already
-## takes a `BoutRosterEntry` per bot, profile + that bot's own
-## playstyle), and `[D]` duplicates the row (same profile + playstyle)
+## takes a `BoutRosterEntry` per bot, preset + that bot's own AI
+## profile), and `[D]` duplicates the row (same preset + same profile)
 ## right below itself, the fast way to build "4 of these, 1 of those."
 
-## taskblock-26 Pass C1: reads `AiPlanner.PLAYSTYLES` — the same list the real
-## planner dispatches on — instead of its own, independently-maintained
-## copy; a new playstyle added there now appears here automatically, no
-## second edit required.
-const PLAYSTYLES: Array[StringName] = AiPlanner.PLAYSTYLES
 ## Flagged UX default, not a spec literal: a completely empty menu would
 ## still work (Start Bout is rejected-not-crashed on an empty roster,
 ## same as always), but starting both teams pre-populated keeps "open the
 ## menu, hit Start Bout" a one-click smoke test — add/remove is still the
 ## ONLY way to change the roster afterward, this only seeds its starting
 ## contents. One of each armed "Combat Tester" variant, each paired with
-## whichever AI its own weapon's range best fits: MARKSMAN's own long
-## standoff matches the sniper rifle's 20-tile range; SKIRMISHER's
-## mid standoff (~5) sits comfortably inside the chaingun's own 8-tile
-## envelope — sustained fire without walking into melee; AGGRESSIVE suits
-## the pump shotgun (range 4) best — it has to close all the way to be
-## useful at all. Both teams start identical — a full weapon spread on
-## each side is the point here, not "two playstyles facing off" the way
-## the old default was.
+## a different AI profile.
+##
+## **The pairing rationale changed with taskblock-46 Pass E and is worth
+## recording.** These used to be range-matched — MARKSMAN on the sniper,
+## SKIRMISHER on the chaingun, AGGRESSIVE on the shotgun — because the
+## playstyle carried a preferred range. It does not any more: standoff is
+## a consideration scored against the unit's OWN weapon range, so every
+## profile now holds the range its gun wants without being told. Pairing
+## by weapon would be pairing on a property the profile no longer has.
+## What is left to spread is temperament, so the default spreads that
+## instead. Both teams start identical — a full spread on each side is
+## the point, not "two temperaments facing off" the way the oldest
+## default was.
 const DEFAULT_ROSTER: Array[Array] = [
-	[&"combat_tester_chaingun", &"SKIRMISHER"],
-	[&"combat_tester_sniper_rifle", &"MARKSMAN"],
-	[&"combat_tester_pump_shotgun", &"AGGRESSIVE"],
+	[&"combat_tester_chaingun", &"cautious"],
+	[&"combat_tester_sniper_rifle", &"defensive"],
+	[&"combat_tester_pump_shotgun", &"aggressive"],
 ]
 ## "min 5 rows shown for readability" — real entries plus the trailing
 ## Add row plus blank spacer rows, never fewer than this many rows tall.
@@ -197,15 +197,32 @@ func _roster(squad_id: int) -> Array[BoutRosterEntry]:
 	return _roster_a if squad_id == 0 else _roster_b
 
 
+## taskblock-26 Pass C1 held the same list the planner dispatched on, so a
+## new entry appeared here without a second edit. taskblock-46 Pass E goes
+## one further: the playstyle vocabulary is retired and the `[AI ▾]` menu
+## reads `DataLibrary.utility_profiles_pool()` — **the profile `.tres`
+## files themselves**. Dropping a new profile into
+## `res://data/utility_profiles/` now puts it in this menu with no code
+## edit anywhere, which is the open-vocabulary rule applied to the UI.
+func _profile_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
+		ids.append(profile.id)
+	return ids
+
+
 func _rows(squad_id: int) -> VBoxContainer:
 	return _rows_a if squad_id == 0 else _rows_b
 
 
 ## "Adding appends a unit" — always to the end of that team's own list,
-## starting on the default playstyle (its own row's [AI ▾] can change it
+## starting on the first profile (its own row's [AI ▾] can change it
 ## afterward, same as any other entry's).
 func _add_to_squad(squad_id: int, preset: BotPreset) -> void:
-	_roster(squad_id).append(BoutRosterEntry.new(preset, PLAYSTYLES[0]))
+	var ids: Array[StringName] = _profile_ids()
+	_roster(squad_id).append(
+		BoutRosterEntry.new(preset, ids[0] if not ids.is_empty() else &"aggressive")
+	)
 	_rebuild_team(squad_id)
 
 
@@ -217,25 +234,25 @@ func _remove_from_squad(squad_id: int, index: int) -> void:
 
 
 ## "Clicking a name replaces it" — same slot, new profile; that entry's
-## own already-chosen playstyle is untouched.
+## own already-chosen AI profile is untouched.
 func _replace_profile_in_squad(squad_id: int, index: int, preset: BotPreset) -> void:
 	_roster(squad_id)[index].profile = preset
 	_rebuild_team(squad_id)
 
 
-## The `[AI ▾]` half of a row: same slot, new playstyle, profile untouched.
-func _replace_playstyle_in_squad(squad_id: int, index: int, playstyle: StringName) -> void:
-	_roster(squad_id)[index].playstyle = playstyle
+## The `[AI ▾]` half of a row: same slot, new AI profile, preset untouched.
+func _replace_ai_profile_in_squad(squad_id: int, index: int, profile_id: StringName) -> void:
+	_roster(squad_id)[index].ai_profile = profile_id
 	_rebuild_team(squad_id)
 
 
-## "`[D]` — duplicate. Appends a copy of that entry (same profile + same
-## playstyle) below it." — inserted right after its own index, not just
+## "`[D]` — duplicate. Appends a copy of that entry (same preset + same
+## AI profile) below it." — inserted right after its own index, not just
 ## tacked onto the end of the list, so "duplicate" reads as literally
 ## "one more row like this one, right here."
 func _duplicate_in_squad(squad_id: int, index: int) -> void:
 	var source: BoutRosterEntry = _roster(squad_id)[index]
-	_roster(squad_id).insert(index + 1, BoutRosterEntry.new(source.profile, source.playstyle))
+	_roster(squad_id).insert(index + 1, BoutRosterEntry.new(source.profile, source.ai_profile))
 	_rebuild_team(squad_id)
 
 
@@ -249,7 +266,7 @@ func _preset_label(preset: BotPreset) -> String:
 
 ## One row per already-added roster entry: `[Bot ▾]` (pre-selected to the
 ## entry's own current profile — picking a different item REPLACES it),
-## `[AI ▾]` (same, for playstyle), `[D]` to duplicate, `[-]` to remove.
+## `[AI ▾]` (same, for the AI profile), `[D]` to duplicate, `[-]` to remove.
 func _entry_row(squad_id: int, index: int) -> HBoxContainer:
 	var entry: BoutRosterEntry = _roster(squad_id)[index]
 	var row := HBoxContainer.new()
@@ -272,15 +289,16 @@ func _entry_row(squad_id: int, index: int) -> HBoxContainer:
 	)
 	row.add_child(profile_dropdown)
 
-	var playstyle_dropdown := OptionButton.new()
-	for playstyle: StringName in PLAYSTYLES:
-		playstyle_dropdown.add_item(String(playstyle))
-	playstyle_dropdown.selected = PLAYSTYLES.find(entry.playstyle)
-	playstyle_dropdown.item_selected.connect(
+	var profile_ids: Array[StringName] = _profile_ids()
+	var ai_dropdown := OptionButton.new()
+	for profile_id: StringName in profile_ids:
+		ai_dropdown.add_item(String(profile_id))
+	ai_dropdown.selected = profile_ids.find(entry.ai_profile)
+	ai_dropdown.item_selected.connect(
 		func(item_index: int) -> void:
-			_replace_playstyle_in_squad(squad_id, index, PLAYSTYLES[item_index])
+			_replace_ai_profile_in_squad(squad_id, index, profile_ids[item_index])
 	)
-	row.add_child(playstyle_dropdown)
+	row.add_child(ai_dropdown)
 
 	var duplicate_button := Button.new()
 	duplicate_button.text = "D"

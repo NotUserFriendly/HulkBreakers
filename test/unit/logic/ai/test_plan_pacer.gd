@@ -50,7 +50,7 @@ func _armed_unit(id: StringName, cell: Vector2i, squad_id: int) -> Unit:
 	return Unit.new(Matrix.new(), Shell.new(torso), cell, squad_id)
 
 
-## Open ground with the enemy inside MARKSMAN's standoff, so the unit takes the
+## Open ground with the enemy inside the defensive profile's reach, so the unit takes the
 ## repositioning path and there is a real candidate scan to slice.
 func _field() -> Dictionary:
 	var grid: Grid = GridFixture.flat(30, 24)
@@ -80,7 +80,7 @@ func test_a_single_units_plan_yields_more_than_once_while_it_runs() -> void:
 	pacer.budget_msec = 1000 * 60
 
 	await AiPlanner.plan_turn(
-		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+		field["actor"], WorldView.full(field["state"]), null, &"defensive", pacer
 	)
 
 	assert_gt(pacer.yields, 1, "the main thread was handed back repeatedly DURING one plan")
@@ -103,7 +103,7 @@ func test_real_frames_pass_while_one_unit_plans() -> void:
 	get_tree().process_frame.connect(tick)
 
 	await AiPlanner.plan_turn(
-		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+		field["actor"], WorldView.full(field["state"]), null, &"defensive", pacer
 	)
 	get_tree().process_frame.disconnect(tick)
 
@@ -118,7 +118,7 @@ func test_a_headless_plan_never_suspends() -> void:
 	pacer.chunk = 1
 
 	await AiPlanner.plan_turn(
-		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+		field["actor"], WorldView.full(field["state"]), null, &"defensive", pacer
 	)
 
 	assert_eq(pacer.yields, 0, "nobody is watching, so nothing yields")
@@ -135,7 +135,7 @@ func test_an_overrun_budget_ends_the_scan_rather_than_extending_it() -> void:
 	pacer.budget_msec = 0  # already overrun on the first candidate
 
 	var queue: ActionQueue = await AiPlanner.plan_turn(
-		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+		field["actor"], WorldView.full(field["state"]), null, &"defensive", pacer
 	)
 
 	assert_true(pacer.aborted, "the budget fired")
@@ -157,7 +157,7 @@ func test_an_aborted_scan_still_returns_a_usable_turn() -> void:
 	pacer.frame_signal = get_tree().process_frame
 
 	var queue: ActionQueue = await AiPlanner.plan_turn(
-		field["actor"], WorldView.full(field["state"]), null, &"MARKSMAN", pacer
+		field["actor"], WorldView.full(field["state"]), null, &"defensive", pacer
 	)
 
 	assert_true(pacer.aborted, "cut off on the first candidate")

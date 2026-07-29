@@ -15,7 +15,7 @@ extends GutTest
 ## click simulation is for gameplay tests like test_battle_scene_input.gd).
 ##
 ## taskblock-17 Pass D: playstyle moved from one per-team dropdown to a
-## per-bot one on each row (`_replace_playstyle_in_squad`), and each row
+## per-bot one on each row (`_replace_ai_profile_in_squad`), and each row
 ## gained a duplicate handler (`_duplicate_in_squad`) — rosters are
 ## `Array[BoutRosterEntry]` now, not `Array[BotPreset]`.
 
@@ -62,17 +62,24 @@ func test_a_variant_is_listed_under_its_own_family_label() -> void:
 ## — see the overlay's own doc comment) rather than empty, so a fresh
 ## Start Bout is still a one-click smoke test: one of each armed "Combat
 ## Tester" variant, identical on both sides — a full weapon spread on
-## each team, each bot paired with the AI its own weapon range fits
-## (MARKSMAN for the long-range sniper rifle, SKIRMISHER for the
-## mid-range chaingun, AGGRESSIVE for the point-blank pump shotgun).
+## each team, each bot paired with a different AI profile. taskblock-46
+## Pass E changed WHY they differ: the pairing used to be range-matched
+## because a playstyle carried a preferred range, and now standoff is
+## scored against the unit's own weapon, so what the default spreads is
+## temperament. Asserted as the exact pairing rather than "three distinct
+## profiles" because the pairing is the flagged UX default, and a silent
+## drift in it is a change to what a one-click Start Bout demonstrates.
 func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 
 	var expected: Dictionary = {
-		&"combat_tester_chaingun": &"SKIRMISHER",
-		&"combat_tester_sniper_rifle": &"MARKSMAN",
-		&"combat_tester_pump_shotgun": &"AGGRESSIVE",
+		&"combat_tester_chaingun": &"cautious",
+		&"combat_tester_sniper_rifle": &"defensive",
+		&"combat_tester_pump_shotgun": &"aggressive",
 	}
+	var authored: Array[StringName] = []
+	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
+		authored.append(profile.id)
 	for roster: Array[BoutRosterEntry] in [overlay._roster_a, overlay._roster_b]:
 		assert_eq(roster.size(), expected.size())
 		for entry: BoutRosterEntry in roster:
@@ -80,7 +87,11 @@ func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> v
 				expected.has(entry.profile.preset_name),
 				"unexpected default roster entry: %s" % entry.profile.preset_name
 			)
-			assert_eq(entry.playstyle, expected[entry.profile.preset_name])
+			assert_eq(entry.ai_profile, expected[entry.profile.preset_name])
+			# A default naming a profile that is not on disk does not throw — the
+			# scorer just falls back to unweighted. This is the assertion that
+			# would notice.
+			assert_has(authored, entry.ai_profile, "and it is a profile that exists")
 
 
 ## Every DataLibrary accessor hands back a fresh `.duplicate(true)` on
@@ -122,9 +133,9 @@ func test_add_to_squad_appends_to_the_end_of_the_roster() -> void:
 func test_remove_from_squad_drops_exactly_that_entry() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 	overlay._roster_a = [
-		BoutRosterEntry.new(overlay._ordered_presets[0], &"AGGRESSIVE"),
-		BoutRosterEntry.new(overlay._ordered_presets[1], &"AGGRESSIVE"),
-		BoutRosterEntry.new(overlay._ordered_presets[0], &"AGGRESSIVE"),
+		BoutRosterEntry.new(overlay._ordered_presets[0], &"aggressive"),
+		BoutRosterEntry.new(overlay._ordered_presets[1], &"aggressive"),
+		BoutRosterEntry.new(overlay._ordered_presets[0], &"aggressive"),
 	]
 	var kept_middle: BoutRosterEntry = overlay._roster_a[1]
 
@@ -135,10 +146,10 @@ func test_remove_from_squad_drops_exactly_that_entry() -> void:
 
 
 ## "Clicking a name replaces it" — same slot, new profile, its own
-## playstyle untouched, roster size unchanged.
+## AI profile untouched, roster size unchanged.
 func test_replace_profile_in_squad_swaps_the_profile_at_that_index() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
-	overlay._roster_a = [BoutRosterEntry.new(overlay._ordered_presets[0], &"MARKSMAN")]
+	overlay._roster_a = [BoutRosterEntry.new(overlay._ordered_presets[0], &"defensive")]
 	var replacement: BotPreset = overlay._ordered_presets[1]
 
 	overlay._replace_profile_in_squad(0, 0, replacement)
@@ -146,43 +157,43 @@ func test_replace_profile_in_squad_swaps_the_profile_at_that_index() -> void:
 	assert_eq(overlay._roster_a.size(), 1)
 	assert_eq(overlay._roster_a[0].profile, replacement)
 	assert_eq(
-		overlay._roster_a[0].playstyle, &"MARKSMAN", "replacing the profile must not touch AI"
+		overlay._roster_a[0].ai_profile, &"defensive", "replacing the preset must not touch AI"
 	)
 
 
-## taskblock-17 Pass D: "`[AI ▾]` — per-bot playstyle" — same slot, new
-## playstyle, profile untouched.
-func test_replace_playstyle_in_squad_swaps_the_playstyle_at_that_index() -> void:
+## taskblock-17 Pass D: "`[AI ▾]` — per-bot AI" — same slot, new profile,
+## preset untouched.
+func test_replace_ai_profile_in_squad_swaps_the_profile_at_that_index() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 	var preset: BotPreset = overlay._ordered_presets[0]
-	overlay._roster_a = [BoutRosterEntry.new(preset, &"AGGRESSIVE")]
+	overlay._roster_a = [BoutRosterEntry.new(preset, &"aggressive")]
 
-	overlay._replace_playstyle_in_squad(0, 0, &"SKIRMISHER")
+	overlay._replace_ai_profile_in_squad(0, 0, &"cautious")
 
 	assert_eq(overlay._roster_a.size(), 1)
-	assert_eq(overlay._roster_a[0].playstyle, &"SKIRMISHER")
-	assert_eq(overlay._roster_a[0].profile, preset, "changing AI must not touch the profile")
+	assert_eq(overlay._roster_a[0].ai_profile, &"cautious")
+	assert_eq(overlay._roster_a[0].profile, preset, "changing AI must not touch the preset")
 
 
 ## taskblock-17 Pass D: "`[D]` — duplicate. Appends a copy of that entry
-## (same profile + same playstyle) below it."
+## (same preset + same AI profile) below it."
 func test_duplicate_in_squad_inserts_an_identical_entry_right_below() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 	var preset: BotPreset = overlay._ordered_presets[0]
 	var other: BotPreset = overlay._ordered_presets[1]
 	overlay._roster_a = [
-		BoutRosterEntry.new(preset, &"MARKSMAN"), BoutRosterEntry.new(other, &"AGGRESSIVE")
+		BoutRosterEntry.new(preset, &"defensive"), BoutRosterEntry.new(other, &"aggressive")
 	]
 
 	overlay._duplicate_in_squad(0, 0)
 
 	assert_eq(overlay._roster_a.size(), 3)
 	assert_eq(overlay._roster_a[0].profile, preset)
-	assert_eq(overlay._roster_a[0].playstyle, &"MARKSMAN")
+	assert_eq(overlay._roster_a[0].ai_profile, &"defensive")
 	assert_eq(
 		overlay._roster_a[1].profile, preset, "the duplicate must land directly below its source"
 	)
-	assert_eq(overlay._roster_a[1].playstyle, &"MARKSMAN")
+	assert_eq(overlay._roster_a[1].ai_profile, &"defensive")
 	assert_eq(overlay._roster_a[2].profile, other, "every later entry keeps its own position")
 
 
@@ -194,17 +205,13 @@ func test_no_count_field_exists_on_the_overlay() -> void:
 	assert_false("_count_b_field" in overlay, "the old count SpinBox must be fully retired")
 
 
-## taskblock-17 Pass D: the old per-team playstyle dropdowns are fully
-## retired, not just unused — playstyle lives per-row now.
-func test_no_per_team_playstyle_dropdown_exists_on_the_overlay() -> void:
+## taskblock-17 Pass D: the old per-team AI dropdowns are fully
+## retired, not just unused — the AI choice lives per-row now.
+func test_no_per_team_ai_dropdown_exists_on_the_overlay() -> void:
 	var overlay: GenerateBoutOverlay = _menu().overlay
 
-	assert_false(
-		"_playstyle_a_dropdown" in overlay, "the old per-team playstyle dropdown must be retired"
-	)
-	assert_false(
-		"_playstyle_b_dropdown" in overlay, "the old per-team playstyle dropdown must be retired"
-	)
+	assert_false("_playstyle_a_dropdown" in overlay, "the old per-team AI dropdown must be retired")
+	assert_false("_playstyle_b_dropdown" in overlay, "the old per-team AI dropdown must be retired")
 
 
 ## "An empty team is refused, not crashed."
@@ -236,37 +243,47 @@ func test_a_valid_start_bout_hands_off_to_a_live_spectator_overlay() -> void:
 	assert_eq(spectator.runner.state, battle.combat_state, "the same bout, not a stale reference")
 
 
-## taskblock-17 Pass D: "each bot entry carries its own playstyle into
-## the built bout" — end to end, through the real Start Bout path.
-func test_start_bout_threads_each_entrys_own_playstyle_into_the_built_units() -> void:
+## taskblock-17 Pass D: "each bot entry carries its own AI into the built
+## bout" — end to end, through the real Start Bout path.
+func test_start_bout_threads_each_entrys_own_profile_into_the_built_units() -> void:
 	var wired: Dictionary = _menu()
 	var overlay: GenerateBoutOverlay = wired.overlay
 	var preset: BotPreset = overlay._ordered_presets[0]
 	overlay._roster_a = [
-		BoutRosterEntry.new(preset, &"MARKSMAN"), BoutRosterEntry.new(preset, &"SKIRMISHER")
+		BoutRosterEntry.new(preset, &"defensive"), BoutRosterEntry.new(preset, &"cautious")
 	]
-	overlay._roster_b = [BoutRosterEntry.new(preset, &"COVER_SEEKER")]
+	overlay._roster_b = [BoutRosterEntry.new(preset, &"cowardly")]
 
 	overlay._on_start_bout_pressed()
 
 	var state: CombatState = wired.battle.combat_state
 	var squad_a: Array[Unit] = state.units.filter(func(u: Unit) -> bool: return u.squad_id == 0)
-	assert_eq(squad_a[0].matrix.playstyle, &"MARKSMAN")
-	assert_eq(squad_a[1].matrix.playstyle, &"SKIRMISHER")
+	assert_eq(squad_a[0].matrix.ai_profile, &"defensive")
+	assert_eq(squad_a[1].matrix.ai_profile, &"cautious")
 	var squad_b: Array[Unit] = state.units.filter(func(u: Unit) -> bool: return u.squad_id == 1)
-	assert_eq(squad_b[0].matrix.playstyle, &"COVER_SEEKER")
+	assert_eq(squad_b[0].matrix.ai_profile, &"cowardly")
 
 
-## taskblock-26 Pass C1: "populate the bout maker's AI dropdown from the
-## actual playstyle set... so new playstyles appear automatically, not a
-## hardcoded menu list." A direct reference to `AiPlanner.PLAYSTYLES`, not a
-## hand-copied list — a playstyle added there (PSYCHOTIC/TURTLE, tb25 F)
-## is already present here with no menu edit of its own, and any FUTURE
-## addition is too, by construction.
-func test_the_menus_own_playstyle_list_is_the_real_planners_list() -> void:
-	assert_eq(GenerateBoutOverlay.PLAYSTYLES, AiPlanner.PLAYSTYLES)
-	assert_true(&"PSYCHOTIC" in GenerateBoutOverlay.PLAYSTYLES)
-	assert_true(&"TURTLE" in GenerateBoutOverlay.PLAYSTYLES)
+## taskblock-26 Pass C1 wanted the menu populated from the real AI set
+## rather than a hand-copied list. taskblock-46 Pass E deleted the list
+## it copied from: the menu now reads the profile `.tres` files
+## themselves, so **dropping a file into `res://data/utility_profiles/`
+## is the whole of adding a menu entry.**
+##
+## Asserted against `DataLibrary`, which is what the overlay reads —
+## comparing it to a second hardcoded list here would just move the
+## hand-copy into the test.
+func test_the_menu_lists_exactly_the_profiles_on_disk() -> void:
+	var overlay: GenerateBoutOverlay = _menu().overlay
+	var authored: Array[StringName] = []
+	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
+		authored.append(profile.id)
+
+	assert_eq(overlay._profile_ids(), authored)
+	assert_gt(authored.size(), 1, "sanity: the menu is not a single fixed entry")
+	assert_false(
+		"PLAYSTYLES" in GenerateBoutOverlay, "the playstyle vocabulary must be gone, not unused"
+	)
 
 
 ## taskblock-26 Pass C2: "adding/duplicating an entry shouldn't reflow

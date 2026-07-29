@@ -116,6 +116,15 @@ const INPUT_TRAVEL_FRACTION := &"travel_fraction"
 ## Progress toward the patrol point visited longest ago. Same 0.5-is-no-change shape
 ## as the other closing inputs.
 const INPUT_CLOSES_TO_PATROL := &"closes_to_patrol"
+## taskblock-46 Pass E: how far this cell is off the target's own facing. 0.0 is
+## squarely in front of it, 1.0 is directly behind.
+##
+## **Real geometry, not a proxy.** `Unit.orientation` is a continuous ground-plane
+## angle (`docs/02` — facings were deleted, not refactored), so this is the angle
+## between where the target is looking and where the candidate cell actually is.
+## It is the whole content of `flank`: a shot from behind is the same shot, taken
+## from somewhere the target is not attending to.
+const INPUT_FLANK_ANGLE := &"flank_angle"
 ## The unit is NOT standing where the mission wants it — so searching is allowed.
 ##
 ## **Without this a unit wanders off its own extraction tile.** Once it has arrived,
@@ -163,6 +172,26 @@ const PRED_IS_PLAYER_SQUAD := &"is_player_squad"
 const INPUT_CLOSES_TO_OBJECTIVE := &"closes_to_objective"
 ## 0.5 for no change, 1.0 for standing on the extraction tile.
 const INPUT_CLOSES_TO_EXTRACTION := &"closes_to_extraction"
+
+## taskblock-46 Pass E: **how dangerous standing here will be NEXT turn** — the
+## share of known enemies that can bring fire on the cell, from `UtilityLookahead`.
+##
+## The one input that is not a reading of the board as it currently is, and the only
+## one that is **tier-gated at the input rather than at the action**: a unit that
+## does not search has no entry for a cell and gets `NO_PREDICTION`, which is
+## deliberately the SAFE reading rather than the neutral one — see below.
+const INPUT_PREDICTED_THREAT := &"predicted_threat"
+
+## What a unit that cannot see the future is told about it: **nothing threatens
+## anywhere.**
+##
+## The tempting default is 0.5, "unknown". That would be wrong in a way that is hard
+## to see: this input is authored inverted (danger is bad), so a mid value would
+## make every candidate mildly worse for a Trained unit and *change how it plays*
+## purely because a capability it does not have exists. A tier's own scoring must
+## not move when a higher tier's feature is added, so the absent prediction has to
+## be the value that multiplies out to no opinion at all.
+const NO_PREDICTION := 0.0
 
 # --- normalisation constants -------------------------------------------------
 
@@ -218,6 +247,11 @@ var _objective: StringName = BatchPlan.NO_OBJECTIVE
 ## or no extraction tile defined for this unit's squad.
 var _objective_cell: Variant = null
 var _extraction_cell: Variant = null
+
+## `cell -> predicted threat`, from `UtilityLookahead`. Empty for every tier that
+## does not search, and empty on the pass that PRODUCES it — the planner scores once
+## without it to find out which cells are worth searching.
+var _threats: Dictionary = {}
 
 
 ## Gathers everything that is per-TURN rather than per-candidate, so the
@@ -320,6 +354,19 @@ static func search_predicate_for(behaviour: StringName) -> StringName:
 
 ## Where the unit is standing for scoring purposes — its own cell, or the
 ## destination it has already committed to this turn.
+## Hands the lookahead's result to the scorer. Called once per turn by the planner,
+## after the pass that decided which cells were worth searching.
+func set_threats(threats: Dictionary) -> void:
+	_threats = threats
+
+
+## What the lookahead concluded about `cell`, or `NO_PREDICTION` when nothing looked
+## at it — which covers both "this tier does not search" and "this cell was outside
+## the shortlist", and those want the same answer: **no opinion, not a guess.**
+func predicted_threat(cell: Vector2i) -> float:
+	return float(_threats.get(cell, NO_PREDICTION))
+
+
 func origin() -> Vector2i:
 	return _origin
 
@@ -374,6 +421,8 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 			INPUT_MOVE_ECONOMY: _move_economy(cell),
 			INPUT_TRAVEL_FRACTION: _travel_fraction(cell),
 			INPUT_CLOSES_TO_PATROL: _closes_to(cell, _patrol_target),
+			INPUT_FLANK_ANGLE: 0.0,
+			INPUT_PREDICTED_THREAT: predicted_threat(cell),
 		}
 		idle.merge(_objective_inputs())
 		idle.merge(_mission_inputs(cell))
@@ -389,6 +438,8 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 		INPUT_OWN_INTEGRITY: _integrity,
 		INPUT_TRAVEL_FRACTION: _travel_fraction(cell),
 		INPUT_CLOSES_TO_PATROL: _closes_to(cell, _patrol_target),
+		INPUT_FLANK_ANGLE: _flank_angle(cell),
+		INPUT_PREDICTED_THREAT: predicted_threat(cell),
 	}
 	inputs.merge(_objective_inputs())
 	inputs.merge(_mission_inputs(cell))
@@ -567,6 +618,16 @@ func _move_economy(cell: Vector2i) -> float:
 	return clampf(1.0 - steps / _move_budget, 0.0, 1.0)
 
 
+## How far `cell` sits off the target's facing, 0.0 in front to 1.0 behind. Zero
+## with no target, which vetoes `flank` — correctly, since there is nobody to get
+## behind.
+func _flank_angle(cell: Vector2i) -> float:
+	if target == null or cell == target.cell:
+		return 0.0
+	var toward: float = FaceAction.orientation_toward(target.cell, cell)
+	return clampf(absf(angle_difference(target.orientation, toward)) / PI, 0.0, 1.0)
+
+
 func _is_covered(cell: Vector2i) -> bool:
 	return Cover.is_covered_from(cell, target.cell, view, unit)
 
@@ -691,6 +752,13 @@ static func _has_functional_weapon(unit: Unit) -> bool:
 		if row.active:
 			return true
 	return false
+
+
+## Which part is `unit`'s weapon. Public because the lookahead has to read an
+## ENEMY's weapon to predict its reach, and re-deriving "which part shoots" at a
+## second site is how two answers to one question get into a codebase.
+static func weapon_id_of(unit: Unit) -> StringName:
+	return _find_weapon_id(unit)
 
 
 static func _find_weapon_id(unit: Unit) -> StringName:

@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_qtf3i"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_4d0if"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_50mdn"]
+
+[sub_resource type="Resource" id="Resource_lxglb"]
+script = ExtResource("2_4d0if")
+
+[sub_resource type="Resource" id="Resource_yn61d"]
+script = ExtResource("1_qtf3i")
+input_id = &"line_of_fire"
+curve = SubResource("Resource_lxglb")
+
+[sub_resource type="Resource" id="Resource_keda7"]
+script = ExtResource("2_4d0if")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_h2kht"]
+script = ExtResource("1_qtf3i")
+input_id = &"standoff_match"
+curve = SubResource("Resource_keda7")
+
+[sub_resource type="Resource" id="Resource_3n08i"]
+script = ExtResource("2_4d0if")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_if4xh"]
+script = ExtResource("1_qtf3i")
+input_id = &"objective_hold"
+curve = SubResource("Resource_3n08i")
+
+[resource]
+script = ExtResource("3_50mdn")
+id = &"suppress"
+display_name = "Suppress"
+executor_id = &"burst"
+preconditions = Array[StringName]([&"has_weapon", &"enemy_known", &"weapon_reaches", &"lof_possible", &"cell_is_current"])
+considerations = Array[ExtResource("1_qtf3i")]([SubResource("Resource_yn61d"), SubResource("Resource_h2kht"), SubResource("Resource_if4xh")])
+base_weight = 1.3
+repeatable = true
+tiers = Array[StringName]([&"TRAINED", &"ELITE"])

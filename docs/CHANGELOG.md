@@ -19,7 +19,15 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-45 Passes A–E landed — AI v2 part two: the engagement-score planner is
+*Current as of taskblock-46 Passes A–E landed — AI v2 part three: raised rooms no longer punch pits
+under cover and spawn tiles (BR40.03/BR40.04), the completion number is a random sample with a
+deterministic escalation behind it rather than a pinned pessimistic window, four search verbs give a
+unit with nothing in sight something to do, `Panic` names the give-up instead of shrugging silently, and
+the `docs/11` tier table is filled in with an Elite depth 2–3 lookahead — **but nothing authors
+`intelligence_tier`, so every unit in every measured bout is `TRAINED` and most of that table is
+reachable from tests only.** Completion moved 54% → 60% across the block; `BR45.03` is narrowed, not
+closed. The playstyle vocabulary is deleted outright and a bout names a `UtilityProfile` id directly.
+taskblock-45 Passes A–E landed — AI v2 part two: the engagement-score planner is
 deleted and a utility scorer over data-authored actions replaces it. Per-candidate `ShotPlane` casts
 are gone outright (29.1 builds per turn → 0.0) and plan cost fell 485ms → 131ms, but **mission
 completion fell 87.5% → 54.2% over 24 seeds and `MIN_COMPLETION_RATE` sits at 0.35 rather than its
@@ -1598,6 +1606,116 @@ a deliberate break makes it fail, removing the break makes it pass. `tools/migra
 an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comment records that the
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
+
+### AI v2, part three: the tier table filled, and the playstyle vocabulary retired (tb46 Passes A–E, docs/11)
+
+**Pass A — nothing sinks into a raised room's floor (BR40.03/BR40.04).** One cause, two entries.
+`MapGen._repair_stranded_elevation` floods with a real `Pathfinder` and flattens every unreached `OPEN`
+cell to level 0, and `Pathfinder._base_cost` returns `-1.0` for any cell carrying a live blocker — so a
+cell a scattered crate had just landed on was **unreachable by construction** and got flattened
+regardless of whether anything about it was stranded. For spawn cells the flatten fired and then
+`_mark_zone` erased the blocker, leaving a correctly-marked tile a full `LEVEL_HEIGHT` below its own
+room; since no part in the repo carries `CLIMBER`, a unit spawned there had exactly one reachable cell
+and spent the battle in it. Blocker cells are now deferred out of the flatten and levelled against their
+neighbours afterwards.
+
+**The fix was wrong once first, and the miss is the useful part:** the deferred pass checked only
+orthogonal neighbours while the flood is 8-way, which left **1 sunk crate out of 9,279** — a single
+cell across a 40-seed sweep, invisible to anything but a total count.
+
+**And the tests were vacuous until they were told not to be.** Every assertion in the file is free on a
+flat map ("no cell sits in a pit" is trivially true if nothing is ever raised), so a change that quietly
+stopped generating elevation would have turned the whole file green while deleting the feature it
+guards. `test_the_generator_still_authors_raised_rooms` pins the other side: 30/40 maps still author a
+raised room, 3,996 of 22,938 floored cells sit above level 0.
+
+**Pass B — the completion number became re-takeable.** `test_full_mission.gd` sampled seeds 0–11 every
+run, which was the *pessimistic* window: 41.7% there against 66.7% on seeds 12–23 on the identical
+build, a 25-point spread the test could not see. `CompletionSampler` draws `SAMPLE_SEEDS` random seeds
+per run and prints every one, so a run is reproducible after the fact; on a dip it reports the exact
+command for the deterministic 100-seed escalation rather than running it automatically.
+
+`SAMPLE_SEEDS` is **sized from the measured escalation cost, not by feel** — at a 0.54 rate against a
+0.35 floor, n=10 escalates 1 run in 9 and n=20 escalates 1 in 38 for four seconds more in expectation.
+Note the non-monotonicity that makes intuition useless here: n=12 is *worse* than n=10 (0.126 vs 0.114),
+because the threshold is an integer count and `ceil(0.35 × 12) = 5` demands 41.7% where
+`ceil(0.35 × 10) = 4` demands 40%.
+
+**Pass C — the search verbs, and a bug fixed twice in the same place.** Four behaviours (`ROAM`,
+`PATROL`, `HUNT`, `PUTTER`) for a unit with nothing in sight, plus `SearchRoute` for the one verb with
+state. Routes are derived lazily from wherever the unit stands, deterministically and without an RNG,
+and scheduled by **oldest-visit-wins** — no authored order, no index to advance, so every point gets
+visited, it cannot ping-pong between two while a third is ignored, and an unreachable point ages out of
+contention on its own with no detect-and-remove step.
+
+`LineOfFire.approach_path`/`closing_path` were deleted here (see `SUPERSEDED.md`); what replaces them is
+not a branch at all but path distance from one flood rooted at the target.
+
+**The candidate-cell early-out was wrong for the second time.** `UtilityContext.build` gated computing
+candidate cells on having something to move toward, which taskblock-45 Pass D had already found wrong
+for the mission actions and this pass found wrong again for the search verbs — for which "nothing in
+sight" is the entire trigger. Whatever the list of reasons to move is, it is never complete, and a unit
+whose reason is missing from it silently gets a candidate set of one cell. The gate is gone rather than
+extended.
+
+**Pass D — `Panic`, the named give-up.** A utility planner can genuinely rate every option at or below
+the veto floor, which the branch cascade it replaced could not even express. Panic emits a named event
+with a **reason**: `nothing_offered` says the pool has a hole in it for this unit, `all_vetoed` says the
+pool covered it and every option scored zero, `budget_aborted` says the clock ran out. Those want
+different fixes and used to be the same silent shrug — "the AI just stood there" and "the AI panicked"
+look identical from outside.
+
+**It re-broke a guard the retired planner had carried with a comment saying it had been caught live:**
+a unit holding its own extraction tile looks identical to a stalled one from the scorer's side, and
+panicking it into a shutdown takes a unit that was about to extract cleanly out of the mission.
+`EndTurnAction.is_holding_position` is checked first now, and
+`test_a_winning_bout_runs_to_a_terminal_state` caught it again — which is the argument for that test
+existing rather than for trusting the reasoning.
+
+**Pass E — the tier table, and the playstyle enum retired.**
+
+- **Tier gates.** `shoot` and `take_cover` at Grunt-and-above; `overwatch`, `flank` and `suppress` at
+  Trained-and-above. `flank` and `suppress` were the only two tier-table rows whose executors already
+  existed — `item`, `call help`, `bait` and `ambush` are **not built**, and `call help` has no mechanism
+  at all (a unit cannot influence another unit's plan today). They are `PLAN.md` items, not authoring.
+- **Setting a batch objective is Elite-only**, where reading one stays Trained-and-above
+  (`WorldView.OBJECTIVE_SETTING_TIERS`). A Trained batch is a real configuration; it just has nobody in
+  it who makes the call.
+- **`UtilityLookahead` — Elite's depth 2–3 search.** Depth 2 is the enemy's shot from where it stands
+  (one visibility field per known enemy, reused across every cell); depth 3 is the enemy moving first
+  and then shooting (one field per cell, so it runs over a fixed shortlist of the best-scoring cells).
+  It is expressed as **one normalized input** rather than as a minimax beside the scorer, because a
+  utility AI has one place to put "this option is worse than it looks" and two ways to decide is the
+  no-parallel-systems rule broken. Measured on the reference board: a cell in a wall's shadow predicts
+  0.00 threat at depth 2 and 1.00 at depth 3, because the enemy can walk around the wall — cover that
+  can be stepped around is not cover, and that is the whole behavioural difference between Elite and
+  Trained.
+- **The playstyle vocabulary is deleted, bridge and all.** See `SUPERSEDED.md` for what it was; the
+  short version is that six names selected between two profiles, five of them landing on the same one.
+
+**Four rows of the table played identically before they were made not to, and both causes were
+methodological rather than mechanical.** Elite and Trained had the same action pool, so the comparison —
+which read only the pool — declared Elite decorative when its entire difference was in the world-model
+and depth columns. And `defensive` withdrew exactly as readily as `cowardly` because it had **no stated
+weight** for `seek_extraction`: an absent weight is a neutral opinion, and "defensive" is not neutral
+about retreat.
+
+**Two test boards were not the boards their comments described.** Both used `place_floor` plus a
+hand-assigned blocker, which is cover that everything can see straight through — sight is blocked by
+`Grid.opacity`, which only `GridFixture.place_wall` sets. Fixing that then exposed the opposite error:
+a wall drawn *across* the firing lane hid the enemy outright, every combat action fell out of the pool,
+and all four profiles returned the single verb they had left. **A board that cannot express a difference
+is not evidence that there is none.**
+
+**Completion across the block**, all measured after the fact rather than quoted from a prior pass:
+taskblock-45 end 54% → Pass A/B re-baseline 50% (24 seeds) / 54% (100 seeds) → Pass C 60% → Pass D 60%.
+The retired branch planner sat at 75% on 24 seeds of fixed ground, so `BR45.03` is narrowed, not closed.
+
+**The one thing this block did NOT establish, stated plainly:** `Unit.intelligence_tier` defaults to
+`TRAINED` and **nothing authors it** — not a preset, not a matrix, not a roster entry. Every rate above
+is an all-Trained rate, and the Mindless, Grunt and Elite rows, the memory and blackboard gates, and the
+entire Elite lookahead are reachable from tests and by hand only. The tier table is built and unshipped;
+authoring tiers onto units is `PLAN.md` NEXT item 2.
 
 ## Economy
 

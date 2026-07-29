@@ -324,16 +324,16 @@ func test_choosing_repair_queues_a_real_repair_action() -> void:
 
 ## A3: matrix info renders without any locally invented number — a raw
 ## field read straight off the real Matrix.
-func test_matrix_area_shows_personal_speed_and_playstyle() -> void:
+func test_matrix_area_shows_personal_speed_and_ai_profile() -> void:
 	var panel: InspectPanel = _panel()
 	var unit: Unit = _armed_unit()
 	unit.matrix.personal_speed = 3.5
-	unit.matrix.playstyle = &"MARKSMAN"
+	unit.matrix.ai_profile = &"defensive"
 
 	panel.open(unit)
 
 	assert_true(panel._matrix_label.text.contains("3.5"))
-	assert_true(panel._matrix_label.text.contains("MARKSMAN"))
+	assert_true(panel._matrix_label.text.contains("defensive"))
 
 
 ## taskblock-26 Pass C3: "show unit id + squad, not just variant" — the

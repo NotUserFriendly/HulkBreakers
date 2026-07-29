@@ -21,9 +21,9 @@ const GRID_WIDTH := 32
 const GRID_HEIGHT := 24
 
 
-## taskblock-17 Pass D: playstyle moved from per-team to per-bot — each
+## taskblock-17 Pass D: the AI choice moved from per-team to per-bot — each
 ## team is now a LIST of `BoutRosterEntry` (profile + that bot's own
-## playstyle), not a list of profiles plus one shared playstyle. "The
+## AI profile), not a list of presets plus one shared choice. "The
 ## list length IS the count" (taskblock-16 E) still holds. An empty list,
 ## or any entry within one carrying no profile (a slot the menu never
 ## actually produces — an [+ Add] row only appends once a profile is
@@ -92,7 +92,7 @@ static func _spawn_squad(
 		var entry: BoutRosterEntry = roster[i]
 		var matrix := Matrix.new()
 		matrix.id = StringName("%s_%d" % [entry.profile.preset_name, i])
-		matrix.playstyle = entry.playstyle
+		matrix.ai_profile = entry.ai_profile
 		var cell: Vector2i = (
 			spawn_cells[i % spawn_cells.size()]
 			if not spawn_cells.is_empty()

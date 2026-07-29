@@ -271,9 +271,7 @@ func test_a_mindless_unit_forgets_an_enemy_that_breaks_line_of_sight() -> void:
 	# instead of standing still. What matters for the tier is that it is no longer
 	# ENGAGING: nothing it does is aimed at an enemy it cannot know about.
 	assert_does_not_have(
-		_shape(blind_turn),
-		"AttackAction",
-		"out of sight is out of mind, which is the whole tier"
+		_shape(blind_turn), "AttackAction", "out of sight is out of mind, which is the whole tier"
 	)
 
 
@@ -325,11 +323,12 @@ func test_every_authored_action_declares_at_least_one_precondition() -> void:
 	var pool: Array[UtilityActionDef] = DataLibrary.utility_actions_pool()
 
 	# The pool has grown past Pass B's deliberate four: the mission actions (a
-	# combat-only pool completed 0% of bouts), overwatch, and taskblock-46's four
-	# search verbs (a unit matching no gate was offered nothing at all). The count is
-	# asserted so a `.tres` going missing is loud, not because any number was ever
-	# the target.
-	assert_eq(pool.size(), 12, "the authored pool is twelve rows")
+	# combat-only pool completed 0% of bouts), overwatch, taskblock-46's four search
+	# verbs (a unit matching no gate was offered nothing at all), and Pass E's
+	# `flank` and `suppress` — the only two tier-table rows whose executors already
+	# existed. The count is asserted so a `.tres` going missing is loud, not because
+	# any number was ever the target.
+	assert_eq(pool.size(), 14, "the authored pool is fourteen rows")
 	for action: UtilityActionDef in pool:
 		assert_false(
 			action.preconditions.is_empty(), "%s must state when it is even possible" % action.id
@@ -402,7 +401,7 @@ func test_the_seam_routes_to_the_utility_planner() -> void:
 	var grid: Grid = GridFixture.flat(24, 16)
 	var bout: Dictionary = _duel(grid, Vector2i(2, 8), Vector2i(16, 8))
 
-	await AiPlanner.plan_turn(bout.hunter, WorldView.full(bout.state), null, &"AGGRESSIVE")
+	await AiPlanner.plan_turn(bout.hunter, WorldView.full(bout.state), null, AGGRESSIVE_PROFILE)
 
 	assert_gt(UtilityPlanner.candidates_scored, 0, "the utility scorer did the deciding")
 
@@ -416,22 +415,34 @@ func test_the_seam_restricts_the_world_view_itself() -> void:
 	var view: WorldView = WorldView.full(bout.state)
 	assert_false(view.restricted, "sanity: it starts unrestricted")
 
-	await AiPlanner.plan_turn(bout.hunter, view, null, &"AGGRESSIVE")
+	await AiPlanner.plan_turn(bout.hunter, view, null, AGGRESSIVE_PROFILE)
 
 	assert_true(view.restricted)
 
 
-func test_the_playstyle_bridge_maps_onto_the_authored_profiles() -> void:
+## taskblock-46 Pass E: **the playstyle vocabulary is retired, and there is no
+## translation step left to test.**
+##
+## What replaces the bridge test is the property the bridge existed to fake — every
+## default anyone authors names a profile that is actually on disk. A dangling
+## default does not throw; the scorer falls back to unweighted scoring, so the unit
+## still acts and nothing anywhere says the profile was never found. That is exactly
+## the shape of the bug the retired six-name vocabulary hid for a block: five of its
+## six names resolved to the same profile and every test still passed.
+func test_every_authored_default_names_a_profile_that_exists() -> void:
 	var authored: Array[StringName] = []
 	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
 		authored.append(profile.id)
+	assert_gt(authored.size(), 1, "sanity: more than one profile is on disk")
 
-	for playstyle: StringName in AiPlanner.PLAYSTYLES:
-		assert_has(
-			authored,
-			AiPlanner.profile_id_for(playstyle),
-			"%s maps onto a profile that actually exists" % playstyle
-		)
+	assert_has(authored, Matrix.new().ai_profile, "a fresh matrix's default")
+	assert_has(authored, BoutRosterEntry.new().ai_profile, "a fresh roster entry's default")
+	for pair: Array in GenerateBoutOverlay.DEFAULT_ROSTER:
+		assert_has(authored, pair[1] as StringName, "the bout maker's default roster")
+
+	assert_false(
+		"profile_id_for" in AiPlanner, "the playstyle bridge must be deleted, not merely unused"
+	)
 
 
 # --- the decision log, and determinism ---------------------------------------
@@ -674,3 +685,47 @@ func test_closes_distance_reads_path_distance_not_straight_line() -> void:
 		wall_score,
 		"but the route around must score higher, or the unit walks into the wall"
 	)
+
+
+## **BR35.06, re-verified against the planner that replaced the one it describes.**
+##
+## The entry was written against the engagement-score planner's hold branch: a unit
+## sitting somewhere covered but blind, with a real shot available from a cell it
+## could reach, holding anyway turn after turn because `COVER_SCORE_BONUS` outscored
+## the distance and line-of-fire terms and staying put was exempt from the
+## no-line-of-fire penalty.
+##
+## That planner is deleted, so the entry cannot be confirmed as written. What can be
+## checked is whether the SYMPTOM survives, and the utility planner's gates say it
+## should not: `hold_position` requires `lof_blocked`, which is the exact negation of
+## the gate `shoot` requires, so the two can never be offered for the same cell —
+## and a unit that can reach a cell with a shot has that cell in its candidate set.
+##
+## "Should be impossible by construction" is exactly the claim that wants a test
+## rather than a paragraph, because three of taskblock-45's own defects were holds
+## winning for reasons that had nothing to do with weights.
+func test_a_unit_in_blind_cover_takes_an_available_shot_rather_than_holding() -> void:
+	var grid: Grid = GridFixture.flat(20, 12)
+	# A wall directly between the two, so the hunter's OWN cell has no shot — the
+	# blind-cover situation the entry describes — while a step to either side does.
+	for y in range(4, 8):
+		GridFixture.place_wall(grid, Vector2i(10, y))
+	var bout: Dictionary = _duel(grid, Vector2i(9, 6), Vector2i(13, 6))
+	var view: WorldView = _restricted_view(bout.state)
+	var context: UtilityContext = UtilityContext.build(bout.hunter, view)
+	assert_false(
+		context.predicates_for(bout.hunter.cell).get(UtilityContext.PRED_LOF_POSSIBLE, false),
+		"sanity: the unit really is blind where it stands"
+	)
+
+	var queue: ActionQueue = await UtilityPlanner.plan_turn(
+		bout.hunter, view, null, AGGRESSIVE_PROFILE
+	)
+
+	var held := false
+	for action: CombatAction in queue.actions:
+		if action is EndTurnAction and EndTurnAction.is_holding_position(bout.hunter, null):
+			held = true
+	gut.p("blind-cover turn queued %d action(s)" % queue.actions.size())
+	assert_false(held, "BR35.06's symptom: holding a blind position while a shot existed")
+	assert_gt(queue.actions.size(), 1, "the turn did something other than end itself")

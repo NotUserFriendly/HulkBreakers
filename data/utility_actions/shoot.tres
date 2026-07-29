@@ -51,3 +51,4 @@ preconditions = Array[StringName]([&"has_weapon", &"enemy_known", &"weapon_reach
 considerations = Array[ExtResource("1_a20ve")]([SubResource("Resource_poawr"), SubResource("Resource_b70pp"), SubResource("Resource_2wjnm"), SubResource("Resource_gjpc2")])
 base_weight = 1.5
 repeatable = true
+tiers = Array[StringName]([&"GRUNT", &"TRAINED", &"ELITE"])

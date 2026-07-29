@@ -13,7 +13,7 @@ extends GutTest
 ## silently skipping `BoutRunner.step()`'s own `Overwatch.check_trigger`
 ## wiring the whole time).
 ##
-## Measured baseline (this pass, two independent samples, 1-vs-1 AGGRESSIVE
+## Measured baseline (this pass, two independent samples, 1-vs-1 aggressive
 ## a_brand_laborer/a_brand_laborer_battery_mods bouts, `TURN_CAP` below):
 ## 10 seeds at a 150-turn cap and 15 seeds at a 100-turn cap each landed
 ## ~80% EXTRACTED, the rest split between TERMINATED (turn cap) and
@@ -78,10 +78,10 @@ func after_each() -> void:
 	DataLibrary.reset()
 
 
-func _roster(profile: BotPreset, playstyle: StringName, count: int) -> Array[BoutRosterEntry]:
+func _roster(profile: BotPreset, ai_profile: StringName, count: int) -> Array[BoutRosterEntry]:
 	var roster: Array[BoutRosterEntry] = []
 	for i in range(count):
-		roster.append(BoutRosterEntry.new(profile, playstyle))
+		roster.append(BoutRosterEntry.new(profile, ai_profile))
 	return roster
 
 
