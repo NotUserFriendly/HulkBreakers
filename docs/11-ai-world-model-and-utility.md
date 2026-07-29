@@ -133,11 +133,46 @@ so **cheap units are cheap because they are dumb, not despite it.**
 | Trained | flank, suppress, item, call help | + team blackboard, threat map | 1 |
 | Elite | bait, ambush, set batch objective | + full team knowledge, predicted moves | 2–3 |
 
-`MEMORY_TIERS` and `BLACKBOARD_TIERS` in `WorldView` are the authored gates. `Unit.intelligence_tier`
-is a `StringName`, authored per unit; it should derive from Attributes once those land.
+**What of that table is real, as of taskblock-46:**
+
+- **Actions.** `shoot` and `take_cover` are gated to Grunt-and-above, `overwatch`, `flank` and
+  `suppress` to Trained-and-above. `regroup` needs no action of its own — `hunt` is offered at every
+  tier and only *does* anything once the tier has memory to hunt toward, which is the information gate
+  doing the work the action gate would have duplicated. **`item`, `call help`, `bait` and `ambush` are
+  not built**: none of them has an executor, and `call help` additionally has no mechanism — a unit
+  cannot signal another unit's plan today, and the batch objective is the nearest thing that exists.
+- **World model.** `MEMORY_TIERS`, `BLACKBOARD_TIERS` and `OBJECTIVE_SETTING_TIERS` in `WorldView` are
+  the authored gates. Reading a batch objective and *setting* one are separate capabilities: Trained
+  follows a plan, Elite makes one.
+- **Depth.** `UtilityLookahead` is Elite's search. Depth 2 is the enemy's shot from where it stands;
+  depth 3 is the enemy moving first and then shooting. It is expressed as **one normalized input**
+  (`predicted_threat`, the share of known enemies that can bring fire on a cell) rather than as a
+  separate minimax beside the scorer — a utility AI has one place to put "this option is worse than it
+  looks", and giving a unit two ways to decide is the no-parallel-systems rule applied to the AI.
+  Cost is bounded before it is paid: depth 2 costs one visibility field per known enemy and answers
+  every cell; depth 3 costs one per cell and therefore runs over a fixed-size shortlist of the
+  best-scoring cells.
+
+`Unit.intelligence_tier` is a `StringName`, authored per unit; it should derive from Attributes once
+those land. **Nothing authors it yet** — every unit defaults to `TRAINED`, so the Mindless, Grunt and
+Elite rows (and therefore the whole lookahead) are exercised by tests and by hand only, and no measured
+completion rate has ever included them. A capability nothing reaches is not shipped.
 
 **Profiles are a separate axis** — weight vectors over shared considerations, never code paths.
 Intelligence says *what a unit can know and do*; profile says *what it wants*.
+
+A bout names a profile id directly (`Matrix.ai_profile`, `BoutRosterEntry.ai_profile`). The
+`AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER`/`PSYCHOTIC`/`TURTLE` playstyle vocabulary that used
+to sit in front of it is retired: it mixed a temperament, a role and a preferred range into one word,
+so it could not express "cautious but close-quarters" without a seventh name that would have mixed them
+again — and all three axes are weights over shared considerations now, with standoff scored against the
+unit's own weapon range. There is no list of profiles in code; the `.tres` files under
+`res://data/utility_profiles/` are the list, and the bout maker's menu reads them.
+
+**An unstated weight is a neutral opinion, and that is rarely what was meant.** `defensive` omitted
+`seek_extraction` and therefore withdrew exactly as readily as `cowardly`, whose entire character is
+wanting out — two rows of the table playing identically, which is the bug named below. A profile has to
+state what it does *not* want as well as what it does.
 
 **Every tier and every profile must decide differently from its neighbours on the same seed.** A table
 where two rows play identically has a bug in it, and no completion metric will catch it. This is the
@@ -187,3 +222,14 @@ ask what a unit that fails every gate does instead.**
 
 **A tier or restriction that does nothing passes every test that asserts what it should do.** The
 companion assertion — that turning it off changes the outcome — is the one that catches it.
+
+Two corollaries, both learned the hard way in taskblock-46:
+
+- **Compare the whole capability, not the column you happened to think of.** Elite and Trained were
+  briefly indistinguishable because the comparison read the action pool and Elite's entire difference
+  was in the other two columns. A tier is actions *plus* world model *plus* depth; comparing one third
+  of it declares two rows identical that are not.
+- **A board that cannot express a difference is not evidence there is none.** The profile comparison ran
+  on a board with no mission, so the profile that wants to leave had nowhere to go and read as identical
+  to one that merely likes cover. Before concluding two rows play the same, check that the fixture
+  offers both of them what they want.

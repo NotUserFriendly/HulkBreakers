@@ -594,7 +594,7 @@ func _add_wound_entry(wound_id: StringName) -> void:
 	_status_wound_column.add_child(label)
 
 
-## A3: "name, personal_speed, playstyle, perks, link/base state."
+## A3: "name, personal_speed, AI profile, perks, link/base state."
 func _refresh_matrix_area() -> void:
 	if _unit == null:
 		_matrix_label.text = ""
@@ -607,7 +607,7 @@ func _refresh_matrix_area() -> void:
 		var name: String = matrix.display_name if matrix.display_name != "" else String(matrix.id)
 		lines.append("[b]%s[/b]" % name)
 		lines.append("personal_speed: %.1f" % matrix.personal_speed)
-		lines.append("playstyle: %s" % String(matrix.playstyle))
+		lines.append("ai profile: %s" % String(matrix.ai_profile))
 		var perks: Array[StringName] = matrix.active_perks()
 		lines.append("perks: %s" % (", ".join(perks) if not perks.is_empty() else "none"))
 		lines.append("link: %s" % ("yes" if matrix.base != null else "no (base)"))

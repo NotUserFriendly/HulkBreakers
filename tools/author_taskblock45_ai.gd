@@ -53,6 +53,19 @@ const OBJECTIVES_DIR := "res://data/batch_objectives"
 ## batch axis instead. At 0.25 the three cases separate: dormant shoots, `advance`
 ## approaches, `withdraw` takes cover.
 const OBJECTIVE_FLOOR := 0.25
+## How far a maximum predicted threat may pull a score down. Flagged, not tuned —
+## see `_predicted_threat` for why it is deliberately gentle.
+const THREAT_FLOOR := 0.6
+
+## taskblock-46 Pass E: `docs/11`'s tier table, as the membership lists
+## `UtilityActionDef.tiers` takes. **Empty means every tier**, so a row absent from
+## both of these is available to `MINDLESS` too.
+##
+## Written as "and above" lists rather than a rank because `intelligence_tier` is an
+## open `StringName` with no defined ordering — the same reason `WorldView`'s own
+## gates are lists. A fifth tier joins the lists it belongs to.
+const GRUNT_AND_ABOVE: Array[StringName] = [&"GRUNT", &"TRAINED", &"ELITE"]
+const TRAINED_AND_ABOVE: Array[StringName] = [&"TRAINED", &"ELITE"]
 
 
 func _initialize() -> void:
@@ -146,6 +159,33 @@ func _progress_only() -> ResponseCurve:
 	return ResponseCurve.new(ResponseCurve.LINEAR, 2.0, -1.0)
 
 
+## taskblock-46 Pass E: the Elite lookahead's own consideration — **read inverted,
+## and floored hard.**
+##
+## `predicted_threat` is "share of known enemies that can put a shot on this cell
+## next turn", so it is inverted: more threat, lower score. The floor is what stops
+## it becoming a veto. An Elite unit that has walked into a crossfire predicts high
+## threat EVERYWHERE it can reach, and an unfloored inversion would take every
+## candidate to zero — the unit would score nothing above the floor and `Panic`,
+## which is the exact opposite of what a lookahead is for. The smartest tier must
+## not be the one that freezes.
+##
+## The floor is high (0.6) on purpose: a prediction is a guess about a turn that
+## has not happened, and it should tilt a choice between comparable options, never
+## overrule a good one. `docs/11`'s compensation factor already amplifies a
+## many-consideration action's sensitivity, so a small tilt here is not a small
+## effect on the final score.
+##
+## **Every non-Elite tier reads `NO_PREDICTION` (0.0) here, which inverts to 1.0 and
+## multiplies out to nothing.** Adding this consideration therefore cannot change how
+## any lower tier plays, which is the property that makes it safe to put on actions
+## every tier is offered. Asserted rather than assumed — a drift in `NO_PREDICTION`
+## would silently re-score every Grunt and Trained unit in the game because of a
+## capability they do not have, and nothing else would report it.
+func _predicted_threat() -> ConsiderationDef:
+	return _consideration(UtilityContext.INPUT_PREDICTED_THREAT, 1.0, _floored(THREAT_FLOOR, true))
+
+
 func _actions() -> Array[UtilityActionDef]:
 	# --- approach: close on a known enemy ------------------------------------
 	#
@@ -165,6 +205,9 @@ func _actions() -> Array[UtilityActionDef]:
 		# A hurt unit is less keen to charge — floored, so it damps rather than
 		# vetoes. See the FLOORS note at the bottom of this file.
 		_consideration(UtilityContext.INPUT_OWN_INTEGRITY, 1.0, _floored(0.3)),
+		# Charging into the one lane three guns cover is the classic AI blunder, and
+		# it is invisible without a lookahead: the cell scores perfectly on distance.
+		_predicted_threat(),
 		# tb45 Pass C: the batch's call, injected as a consideration rather than as
 		# a destination to copy. Floored, so an objective BIASES a follower rather
 		# than forbidding it anything — the follower keeps individual agency, which
@@ -175,6 +218,10 @@ func _actions() -> Array[UtilityActionDef]:
 	# --- shoot: fire on a known enemy from this cell --------------------------
 	var shoot := UtilityActionDef.new(&"shoot", &"shoot")
 	shoot.display_name = "Shoot"
+	# `docs/11`'s tier table gives ranged attack to Grunt and above. A MINDLESS unit
+	# closes and swings; it does not shoot. That is the tier reading as *dumb*
+	# rather than merely limited, which is the whole design.
+	shoot.tiers = GRUNT_AND_ABOVE
 	# The only repeatable entry in the pool: a turn spends its AP on as many shots
 	# as it can pay for, decided by re-scoring and by `ActionQueue.enqueue`
 	# refusing the one it cannot afford — never by a `MAX_SHOTS_PER_TURN` constant.
@@ -205,6 +252,8 @@ func _actions() -> Array[UtilityActionDef]:
 	# --- take_cover: move somewhere with something in the way -----------------
 	var take_cover := UtilityActionDef.new(&"take_cover", UtilityExecutors.MOVE)
 	take_cover.display_name = "Take cover"
+	# "Cover" is Grunt's row in the table. Using cover is a learned thing.
+	take_cover.tiers = GRUNT_AND_ABOVE
 	take_cover.base_weight = 1.0
 	take_cover.preconditions = [
 		UtilityContext.PRED_ENEMY_KNOWN,
@@ -213,6 +262,10 @@ func _actions() -> Array[UtilityActionDef]:
 	]
 	take_cover.considerations = [
 		_consideration(UtilityContext.INPUT_COVER, 1.0, ResponseCurve.new()),
+		# Cover that the enemy can walk around is not cover. This is the action the
+		# lookahead was worth building for: "is this cell safe" and "will this cell
+		# still be safe" are different questions, and only Elite asks the second.
+		_predicted_threat(),
 		# `invert` reads the SAME `own_integrity` input as "how hurt am I" — far
 		# clearer at the authoring site than a negative slope plus a compensating
 		# offset, and it keeps the vocabulary to one entry rather than two that
@@ -329,6 +382,8 @@ func _actions() -> Array[UtilityActionDef]:
 	# declared, so nothing here re-derives arc or range.
 	var overwatch := UtilityActionDef.new(&"overwatch", &"overwatch")
 	overwatch.display_name = "Overwatch"
+	# Holding a shot for someone who has not arrived yet is Trained's row.
+	overwatch.tiers = TRAINED_AND_ABOVE
 	# Below `shoot`: taking the shot now beats waiting for it, and a unit that can
 	# fire should. This wins when firing is not on offer. Flagged, not tuned.
 	overwatch.base_weight = 0.9
@@ -391,8 +446,58 @@ func _actions() -> Array[UtilityActionDef]:
 		_consideration(UtilityContext.INPUT_CLOSES_TO_PATROL, 1.0, _progress_only())
 	)
 
+	# --- flank and suppress (taskblock-46 Pass E) -----------------------------
+	#
+	# **The two rows of Trained's tier entry that map onto executors that already
+	# exist.** `flank` is a move, `suppress` is a burst. `call for help`, `use item`,
+	# and Elite's `bait`/`ambush` have no executor in `src/logic/actions/` and are
+	# NOT authored here — inventing one would be exactly the new machinery
+	# `PLAN.md` says the tier table does not need, and a `.tres` naming an executor
+	# that does not exist would silently never build.
+
+	var flank := UtilityActionDef.new(&"flank", UtilityExecutors.MOVE)
+	flank.display_name = "Flank"
+	flank.base_weight = 1.1
+	flank.tiers = TRAINED_AND_ABOVE
+	flank.preconditions = [
+		UtilityContext.PRED_ENEMY_KNOWN,
+		UtilityContext.PRED_CELL_IS_ELSEWHERE,
+		UtilityContext.PRED_LOF_POSSIBLE,
+	]
+	flank.considerations = [
+		# Unfloored on purpose: a cell squarely in front of the target is not a
+		# flank at all, and scoring it as a weak one would let `flank` win the
+		# ordinary approach it is supposed to be an alternative to.
+		_consideration(UtilityContext.INPUT_FLANK_ANGLE, 1.0, ResponseCurve.new()),
+		_consideration(UtilityContext.INPUT_LINE_OF_FIRE, 1.0, ResponseCurve.new()),
+		_consideration(UtilityContext.INPUT_STANDOFF_MATCH, 1.0, _floored(0.25)),
+		# A flank is a bet that the angle is worth the walk. The lookahead is what
+		# tells an Elite unit whether the flanking cell is also the cell that puts it
+		# in front of everyone else.
+		_predicted_threat(),
+	]
+
+	var suppress := UtilityActionDef.new(&"suppress", &"burst")
+	suppress.display_name = "Suppress"
+	suppress.base_weight = 1.3
+	suppress.repeatable = true
+	suppress.tiers = TRAINED_AND_ABOVE
+	suppress.preconditions = [
+		UtilityContext.PRED_HAS_WEAPON,
+		UtilityContext.PRED_ENEMY_KNOWN,
+		UtilityContext.PRED_WEAPON_REACHES,
+		UtilityContext.PRED_LOF_POSSIBLE,
+		UtilityContext.PRED_CELL_IS_CURRENT,
+	]
+	suppress.considerations = [
+		_consideration(UtilityContext.INPUT_LINE_OF_FIRE, 1.0, ResponseCurve.new()),
+		_consideration(UtilityContext.INPUT_STANDOFF_MATCH, 1.0, _floored(0.25)),
+		_consideration(BatchObjective.input_id_for(&"hold"), 1.0, _floored(OBJECTIVE_FLOOR)),
+	]
+
 	return [
 		approach,
+		flank,
 		gather,
 		hold,
 		hunt,
@@ -403,6 +508,7 @@ func _actions() -> Array[UtilityActionDef]:
 		seek_extraction,
 		seek_objective,
 		shoot,
+		suppress,
 		take_cover,
 	]
 
@@ -483,7 +589,9 @@ func _profiles() -> Array[UtilityProfile]:
 	var aggressive := UtilityProfile.new(&"aggressive", "Aggressive")
 	aggressive.action_weights = {
 		&"approach": 1.6,
+		&"flank": 0.9,
 		&"shoot": 1.4,
+		&"suppress": 1.2,
 		&"take_cover": 0.35,
 		&"hold_position": 0.2,
 		# The retired planner's "AGGRESSIVE never overwatches — closes and fires,
@@ -509,7 +617,9 @@ func _profiles() -> Array[UtilityProfile]:
 	var cautious := UtilityProfile.new(&"cautious", "Cautious")
 	cautious.action_weights = {
 		&"approach": 0.45,
+		&"flank": 1.4,
 		&"shoot": 1.0,
+		&"suppress": 1.0,
 		&"take_cover": 1.8,
 		&"hold_position": 0.9,
 		&"overwatch": 1.3,
@@ -519,4 +629,53 @@ func _profiles() -> Array[UtilityProfile]:
 		UtilityContext.INPUT_COVER: 1.0,
 	}
 
-	return [aggressive, cautious]
+	# taskblock-46 Pass E: two more rows, on the axis that can actually carry them.
+	#
+	# **All four differ in `action_weights` and barely at all in
+	# `consideration_weights`**, which is not laziness — it is the trap documented at
+	# the top of this file. A weight on an input two actions read in opposite
+	# directions says two contradictory things at once, and most of the interesting
+	# inputs (`own_integrity` above all) are read in both directions somewhere in the
+	# pool. Action weights are unambiguous, so that is where personality lives until
+	# `UtilityContext` publishes a harm input separate from a health one.
+
+	var defensive := UtilityProfile.new(&"defensive", "Defensive")
+	# Holds ground and makes the enemy come. The distinguishing move is overwatch:
+	# it is the only profile that would rather wait with a shot than take a worse
+	# one now.
+	defensive.action_weights = {
+		&"approach": 0.3,
+		&"flank": 0.4,
+		&"shoot": 1.0,
+		&"suppress": 1.1,
+		&"take_cover": 1.5,
+		&"overwatch": 2.0,
+		&"hold_position": 1.4,
+		# **Holding ground means not leaving it**, and that has to be said out loud.
+		# Left unstated this defaulted to 1.0, and a hurt defensive unit withdrew
+		# exactly as readily as a cowardly one — the two profiles came out
+		# indistinguishable, which the tier/profile table test caught. An absent
+		# weight is a neutral opinion, and "defensive" is not neutral about retreat.
+		&"seek_extraction": 0.4,
+	}
+	defensive.consideration_weights = {UtilityContext.INPUT_COVER: 1.0}
+
+	var cowardly := UtilityProfile.new(&"cowardly", "Cowardly")
+	# Wants out. Cover over everything, closing barely at all, and the only profile
+	# that weights leaving the map above fighting on it.
+	cowardly.action_weights = {
+		&"approach": 0.1,
+		&"flank": 0.15,
+		&"shoot": 0.6,
+		&"suppress": 0.5,
+		&"take_cover": 2.2,
+		&"overwatch": 0.8,
+		&"hold_position": 1.2,
+		&"seek_extraction": 2.0,
+	}
+	cowardly.consideration_weights = {
+		UtilityContext.INPUT_CLOSES_DISTANCE: 0.3,
+		UtilityContext.INPUT_COVER: 1.0,
+	}
+
+	return [aggressive, cautious, defensive, cowardly]

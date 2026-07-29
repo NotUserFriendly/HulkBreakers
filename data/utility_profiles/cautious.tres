@@ -8,9 +8,11 @@ id = &"cautious"
 display_name = "Cautious"
 action_weights = {
 &"approach": 0.45,
+&"flank": 1.4,
 &"hold_position": 0.9,
 &"overwatch": 1.3,
 &"shoot": 1.0,
+&"suppress": 1.0,
 &"take_cover": 1.8
 }
 consideration_weights = {

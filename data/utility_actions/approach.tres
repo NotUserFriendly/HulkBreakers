@@ -26,13 +26,24 @@ curve = SubResource("Resource_rrft0")
 
 [sub_resource type="Resource" id="Resource_agi0a"]
 script = ExtResource("2_uyq50")
-slope = 0.75
-offset = 0.25
+slope = 0.4
+offset = 0.6
+invert = true
 
 [sub_resource type="Resource" id="Resource_3dj6r"]
 script = ExtResource("1_otma3")
-input_id = &"objective_advance"
+input_id = &"predicted_threat"
 curve = SubResource("Resource_agi0a")
+
+[sub_resource type="Resource" id="Resource_qnh2b"]
+script = ExtResource("2_uyq50")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_16oxh"]
+script = ExtResource("1_otma3")
+input_id = &"objective_advance"
+curve = SubResource("Resource_qnh2b")
 
 [resource]
 script = ExtResource("3_krc6j")
@@ -40,4 +51,4 @@ id = &"approach"
 display_name = "Approach"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere"])
-considerations = Array[ExtResource("1_otma3")]([SubResource("Resource_2be1b"), SubResource("Resource_iwl4i"), SubResource("Resource_3dj6r")])
+considerations = Array[ExtResource("1_otma3")]([SubResource("Resource_2be1b"), SubResource("Resource_iwl4i"), SubResource("Resource_3dj6r"), SubResource("Resource_16oxh")])

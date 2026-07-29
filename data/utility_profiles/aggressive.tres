@@ -8,9 +8,11 @@ id = &"aggressive"
 display_name = "Aggressive"
 action_weights = {
 &"approach": 1.6,
+&"flank": 0.9,
 &"hold_position": 0.2,
 &"overwatch": 0.05,
 &"shoot": 1.4,
+&"suppress": 1.2,
 &"take_cover": 0.35
 }
 consideration_weights = {

@@ -1,34 +1,32 @@
 class_name AiPlanner
 extends RefCounted
 
-## **The one seam every AI turn is planned through**, and where the playstyle
+## **The one seam every AI turn is planned through**, and where the AI profile
 ## vocabulary meets the profile table.
 ##
 ## For one block it dispatched between two planners so a head-to-head could flip
 ## the default on evidence; the loser is deleted and `SUPERSEDED.md` holds the
 ## comparison. What is left is the seam itself, the plan-cost diagnostics taken
-## around it, and the playstyle bridge.
+## around it.
 ##
 ## **The view is restricted here, once, for everyone.** Callers hand in an
 ## unrestricted view and get the tier gating regardless, so "did this caller
 ## remember to set the flag" is not something anyone has to know.
 
-## taskblock-45 Pass E: the playstyle vocabulary, moved here from the retired
-## planner.
+## taskblock-46 Pass E: **the playstyle vocabulary is gone.** A bout now names a
+## `UtilityProfile` id directly.
 ##
-## **It outlives the planner that used to own it** — `Matrix.playstyle` authors it,
-## `BoutRosterEntry` carries it and the bout maker's dropdown reads it, none of
-## which the retirement touches. `PLAN.md` retires the vocabulary itself along with
-## the profile table; until then it lives beside `profile_id_for`, which is the one
-## thing that still interprets it.
-const PLAYSTYLES: Array[StringName] = [
-	&"AGGRESSIVE",
-	&"COVER_SEEKER",
-	&"SKIRMISHER",
-	&"MARKSMAN",
-	&"PSYCHOTIC",
-	&"TURTLE",
-]
+## `AGGRESSIVE`/`SKIRMISHER`/`MARKSMAN`/`COVER_SEEKER`/`PSYCHOTIC`/`TURTLE` mixed
+## three unrelated axes into one word — a temperament, a role, and a preferred range
+## — so it could not answer "cautious but close-quarters" without a seventh name, and
+## the seventh would have mixed them again. All three are weights over shared
+## considerations now: standoff and cover-seeking are inputs, not identities.
+##
+## Nothing replaces the list here **on purpose**: the profiles ARE the list, and
+## `DataLibrary.utility_profiles_pool()` is where anything that needs to enumerate
+## them reads it. A hardcoded copy is what let the old vocabulary drift from the
+## table it was supposed to select from — six playstyles selecting between two
+## profiles, five of them landing on the same one.
 
 ## The utility planner is the default and, since the retirement, the only one.
 ##
@@ -60,26 +58,28 @@ static func reset_diagnostics() -> void:
 	plans = 0
 	plan_usec = 0
 	plan_shot_planes = 0
+	# The lookahead's own counter resets with the rest, so a caller cannot end up
+	# comparing plan counts from this run against field counts from the last one.
+	UtilityLookahead.reset_diagnostics()
 
 
-## `(unit, view, mission, playstyle, pacer) -> ActionQueue`.
+## `(unit, view, mission, profile_id, pacer) -> ActionQueue`.
 ##
-## `playstyle` is still the caller's vocabulary; the mapping to a profile id lives
-## in `profile_id_for` below, in one place, built to be deleted rather than
-## untangled when `PLAN.md` retires the vocabulary.
+## `profile_id` names a `UtilityProfile` under `res://data/utility_profiles/`
+## directly — no translation step. An unknown id is not an error here; the scorer
+## falls back to unweighted scoring, the standing posture for an unrecognised
+## open-vocabulary value.
 static func plan_turn(
 	unit: Unit,
 	view: WorldView,
 	mission: MissionState,
-	playstyle: StringName = &"AGGRESSIVE",
+	profile_id: StringName = &"aggressive",
 	pacer: PlanPacer = null
 ) -> ActionQueue:
 	var started_usec: int = Time.get_ticks_usec()
 	var started_planes: int = ShotPlane.builds
 	view.restricted = true
-	var queue: ActionQueue = await UtilityPlanner.plan_turn(
-		unit, view, mission, profile_id_for(playstyle), pacer
-	)
+	var queue: ActionQueue = await UtilityPlanner.plan_turn(unit, view, mission, profile_id, pacer)
 	# A plan that SUSPENDED (a watching view supplied a pacer) spent wall-clock time
 	# waiting for frames that is not this planner's cost. Recorded anyway rather
 	# than corrected for, because the bench never supplies a pacer — and a
@@ -89,19 +89,3 @@ static func plan_turn(
 	plan_usec += Time.get_ticks_usec() - started_usec
 	plan_shot_planes += ShotPlane.builds - started_planes
 	return queue
-
-
-## The temporary bridge from the playstyle vocabulary to the profile table.
-##
-## **Both sides are content, not code** — playstyles are `Matrix.playstyle` values a
-## bout authors, profiles are `.tres` under `res://data/utility_profiles/`. Only the
-## MAPPING is temporary, and it is one function so it can be deleted whole.
-##
-## The split is what the names already imply: the two that close and press an attack
-## read as aggressive, everything that keeps its distance or weights cover reads as
-## cautious. An unrecognised value falls to cautious — the standing posture for an
-## unknown open-vocabulary value.
-static func profile_id_for(playstyle: StringName) -> StringName:
-	if playstyle in [&"AGGRESSIVE", &"PSYCHOTIC"]:
-		return &"aggressive"
-	return &"cautious"

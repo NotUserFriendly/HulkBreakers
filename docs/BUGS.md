@@ -197,6 +197,32 @@ every fire**
   planners is the first thing this item should take, because the table is the only reason the floor
   moved and it is no longer accurate.
 
+- **2026-07-28 (taskblock-46 Passes B–E) — narrowed, still `Active` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Not marked
+  `Pending`: this entry's own closure condition is `MIN_COMPLETION_RATE` back at 0.5, and it is not.
+
+  | when | completion | sample |
+  |---|---|---|
+  | taskblock-45 end | 54% | 24 seeds |
+  | Pass A/B re-baseline | 50% / 54% | 24 seeds / 100 seeds |
+  | Pass C (search verbs) | **60%** | 100 seeds |
+  | Pass E (tier table) | **60%** | 100 seeds |
+  | the retired branch planner | 87.5% | 24 seeds, fixed ground |
+
+- **The leading hypothesis above was right and is fixed.** The four search verbs (`ROAM`, `PATROL`,
+  `HUNT`, `PUTTER`) are the action a unit that fails both gates now has; `docs/11` carries the general
+  rule that produced the hole ("when adding a gated utility action, ask what a unit that fails every
+  gate does instead"). It bought 6 points, not 33 — **so the hole was real and was not the whole
+  regression**, which is worth knowing before the next lead is chased.
+- **The measurement itself is no longer a pinned window** (Pass B). `CompletionSampler` draws random
+  seeds and prints them; a dip reports the exact command for a deterministic 100-seed escalation. The
+  sample and the escalation were checked against each other on disjoint windows — seeds 0–99 gave 54%
+  and seeds 1000–1099 gave 55% — so the two are measuring the same population and a future comparison
+  across them is legitimate.
+- **A caveat that applies to every number in this entry, old and new.** `Unit.intelligence_tier`
+  defaults to `TRAINED` and nothing authors it, so all of these are all-Trained rates. The old
+  planner's 87.5% is an all-Trained rate too, so the comparison is fair — but "the AI" here means one
+  row of a four-row table, and neither the 87.5% nor the 60% describes what a mixed-tier bout does.
+
 
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
@@ -1071,7 +1097,7 @@ every fire**
   (`SquadControlOverlay._on_turn_ended()`), but the spectator path wasn't touched — its indicator
   still flips ahead of resolution. Apply the same defer-until-animation-finishes fix on the spectator
   overlay's turn-end handler.
-### BR32.10 — Active — owner: `SUPERVISOR`
+### BR32.10 — Pending — owner: `SUPERVISOR`
 **AI gets stuck on opposite sides of U-shaped / concave maps**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **2026-07-23 (supervisor check — BLOCKED, not verifiable).** Cannot be checked: **BR34.06** (AI
@@ -1142,6 +1168,26 @@ every fire**
 - **Do not diagnose this alongside BR45.03.** Both present as "the AI does nothing," and BR45.03 has a
   far better-evidenced mechanism (an action pool with a hole in it). Close that one first; if this
   survives it, it is genuinely separate.
+
+- **2026-07-28 (taskblock-46 Pass C) — re-tested on concave geometry, new mechanism named, `Pending`
+  [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** The tb33/tb35 fix cited above — `LineOfFire.approach_path`/`closing_path`, a
+  Dijkstra flood to the nearest cell with a real shot, invoked as an explicit BRANCH — **has been
+  deleted**, along with its own concave test. Anything reading this entry for the current mechanism
+  should stop at this line and not at the paragraph above.
+- **What replaces it is not a branch.** `UtilityContext._closes_distance` reads **path distance from
+  one flood rooted at the target** (`Pathfinder.reachable_costs`), so a cell on the far side of a wall
+  is correctly further than one that is spatially nearer, and routing around a pocket falls out of
+  ordinary scoring rather than out of a fallback that has to fire. That matters for this entry
+  specifically: a branch that fails to fire leaves a unit stuck with nothing in the log to say why,
+  where a scoring outcome is printed per candidate in `ai_utility_decision`.
+- **Re-tested as behaviour, not as a distance metric**
+  (`test_utility_planner.gd::test_a_unit_in_a_concave_pocket_works_its_way_to_a_cell_with_a_line`): a
+  unit inside a U-shaped pocket with its target outside the opening reaches a cell with a real line
+  within the turn budget, asserted as "it ends up somewhere with a line" rather than as a named cell,
+  because the route around a pocket is a property of the map. The mechanism underneath has its own
+  assertion — a cell nearer as the crow flies and further along a path must report the second.
+- **Still headless only.** This entry's blocker was always that a supervised bout was needed to see it;
+  that has not changed, and it is why this is `Pending` rather than anything stronger.
 
 ### BR33.01 — Suspected — owner: `SUPERVISOR`
 **Aim-view scroll cycles walls; layer labels read as part names**
@@ -1421,44 +1467,6 @@ every fire**
   or are heading toward, so a squad spreads out instead of stacking) is a genuine design question —
   how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
   not a one-line patch, and not guessed at here.
-### BR35.06 — Active — owner: `CC`
-**A unit with a real available shot elsewhere can still get stuck holding a covered, blind position**
-- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
-- **Found:** 2026-07-23, same log read as BR35.05. Unit 7 logs `repositioned (held: no_clear_lof)` on
-  three consecutive turns (1, 2, 3) — `repositioned` means `_any_reachable_has_lof` found SOME
-  reachable cell with a real shot this turn, yet the unit still resolves to a blocked position and
-  holds anyway, turn after turn, making no progress. Unit 6 shows a compound case of the same family
-  (`no_lof_no_route (held: ally_in_line)`, repeated across all three turns too).
-- **Suspected mechanism, not confirmed:** `_engagement_score`'s own `COVER_SCORE_BONUS` can outscore
-  the distance/LOF terms for a cell that's covered but blind, and `cell == self_unit.cell` is exempt
-  from `NO_LOF_PENALTY` ("staying put is free") — so a unit already sitting somewhere covered has no
-  scoring pressure to ever step into the open for the shot a `repositioned` branch says exists
-  elsewhere. Consistent with, but not yet proven against, the actual per-candidate scores.
-- **Not fixed yet.** Needs the actual `_engagement_score` breakdown for unit 7's own candidate set on
-  one of these turns before concluding this is really the cover-bonus/self-exemption interaction and
-  not something else — flagged rather than guessed at further.
-
-- **2026-07-28 (review session `HBPaR3`) — description predates the planner it describes.** This was
-  written against the engagement-score planner's hold branch, and taskblock-45 deleted that planner. It
-  is being kept `Active` rather than closed because the *symptom* may well survive — but if it
-  reproduces, it reproduces through the utility scorer returning `hold_position` as its best-scoring
-  action, which is a different mechanism with a different fix. **Re-verify against the new planner and
-  then either rewrite this entry or close it `Obsolete`;** do not fix it from the description above.
-- **The decision log answers this directly.** `ai_utility_decision` records every candidate and its
-  score, so "why did it hold when a shot existed" is now a question with a printed answer rather than
-  an inference — check whether `shoot` was scored and lost, or never offered at all. If it was never
-  offered, this is BR45.03 and not a separate defect.
-- **The gates as currently authored (CC, 2026-07-28), so re-verification is cheap.**
-  `data/utility_actions/hold_position.tres` requires **all four** of `enemy_known`, `cell_is_current`,
-  `can_defer_turn` and `lof_blocked`, carries `base_weight` 0.3 — well below `shoot`'s 1.5 — and is
-  marked `ends_turn`. The planner additionally refuses to offer any `ends_turn` action once the turn
-  has already committed to something.
-- **So a hold while a shot existed should now be impossible by construction**, since `lof_blocked` is
-  the exact negation of the line-of-fire gate `shoot` requires. If it reproduces anyway, the
-  interesting question is which of those two predicates disagreed with reality — not why the weights
-  came out that way. Three of taskblock-45's own defects were holds winning for reasons that had
-  nothing to do with weights.
-
 ### BR35.07 — Active — owner: `SUPERVISOR`
 **`STOP_DEAD` tracers are drawn past their own hit point, reading as a penetration that never happened**
 - **Source:** `SUPERVISOR`
@@ -1527,7 +1535,7 @@ shooter is elevated on a small platform and the target is below**
   where knowable), or a real occlusion check against `Grid.blockers`/placed `Surface`s alongside the
   angular fit — the same class of fix BR32.05 already wants for the wall cutout, possibly shareable.
 
-### BR40.03 — Active — owner: `SUPERVISOR`
+### BR40.03 — Pending — owner: `SUPERVISOR`
 **Scattered cover generates at level 0 inside raised rooms — each cover object sits at the bottom of
 its own one-tile pit punched through the raised floor**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
@@ -1569,8 +1577,23 @@ its own one-tile pit punched through the raised floor**
   never treated as a stranded island. Naïvely re-flooding without blockers is **not** a fix — it
   would report a cover-sealed raised room as reachable and defeat the pass's whole purpose.
   `docs/PLAN.md`'s queued "Review pass over map generation" item is the natural home.
+- **2026-07-28 (taskblock-46 Pass A) — fixed, `Pending` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Option (a) above, taken as
+  written: blocker cells are skipped by the flatten and levelled against their neighbours afterwards
+  (`_flatten_stranded_blocker_cells` / `_has_reachable_neighbour`), so a cover-sealed raised room still
+  flattens as a region while a crate's own tile no longer punches a hole through the floor it sits on.
+- **Measured over this entry's own 40-seed sweep:** 9,279 cover cells, **0** in a pit, against the
+  483-of-2,882 reported above. Also 0 floored cells anywhere in a pit, by the same
+  below-three-or-more-orthogonal-neighbours metric this entry was reported with.
+- **The fix was wrong once first, and the miss is worth recording.** The deferred pass checked only
+  orthogonal neighbours while the flood is 8-way, which left **1 sunk crate out of 9,279** — a single
+  cell across the whole sweep, invisible to anything but a total count. If a similar deferral is ever
+  added, matching the flood's adjacency is not a detail.
+- **The elevation itself survived the fix**, which is the half a "no pits" assertion cannot prove on
+  its own: 30/40 maps still author a raised room and 3,996 of 22,938 floored cells sit above level 0.
+  Pinned by `test_map_gen_raised_rooms.gd::test_the_generator_still_authors_raised_rooms`, because
+  every other assertion in that file passes trivially on a map with no elevation at all.
 
-### BR40.04 — Active — owner: `SUPERVISOR`
+### BR40.04 — Pending — owner: `SUPERVISOR`
 **Extraction/spawn tiles recessed to level 0 inside raised rooms — and a unit that spawns on one can
 be permanently immobilised**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
@@ -1607,4 +1630,9 @@ be permanently immobilised**
   blockers) *before* `_repair_stranded_elevation` would make spawn cells blocker-free at flood time —
   but that only addresses spawn cells, leaves `BR40.03` untouched, and reorders a sequence whose
   current order is itself load-bearing and documented, so it is not obviously the right lever.
-- **Not fixed** — no fix attempted; reported for a call on direction alongside `BR40.03`.
+- **2026-07-28 (taskblock-46 Pass A) — fixed, `Pending` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Closed by the `BR40.03` fix
+  as predicted, with no ordering change needed — `_place_spawn_zones` still runs where it did.
+- **The immobilisation half is asserted as gameplay**, with a real non-climbing `Pathfinder`, which is
+  every unit that exists. Over this entry's own 40-seed sweep: **0 spawn cells with only their own cell
+  reachable** (against seeds 17, 18 and 38 above), and **0 non-uniform spawn zones** against the 8 of 80
+  reported.

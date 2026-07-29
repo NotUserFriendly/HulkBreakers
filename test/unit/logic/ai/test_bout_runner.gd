@@ -301,16 +301,16 @@ func _overwatch_capable_unit(id: StringName, cell: Vector2i, squad_id: int) -> U
 	torso.sockets = [wrist]
 
 	var matrix := Matrix.new()
-	matrix.playstyle = &"MARKSMAN"
+	matrix.ai_profile = &"defensive"
 	return Unit.new(matrix, Shell.new(torso), cell, squad_id)
 
 
 ## taskblock-24 Pass C: "a bout now contains held overwatch that triggers
 ## on an advancing enemy (the dormant layer is live)" — a real, entirely
 ## AI-vs-AI bout, driven only through `BoutRunner.step()` (never a hand-
-## built resolve_until/Overwatch.check_trigger call): a MARKSMAN holds
+## built resolve_until/Overwatch.check_trigger call): a defensive unit holds
 ## overwatch (nothing better to do — its own shot is genuinely
-## unaffordable), then the enemy's own ordinary AGGRESSIVE advance (a
+## unaffordable), then the enemy's own ordinary aggressive advance (a
 ## straight, 1-wide corridor leaves no other route) walks it into the
 ## held arc and the trigger actually fires — proof `BoutRunner.step()`
 ## itself now wires `Overwatch.check_trigger` as its own resolve_until
@@ -348,7 +348,7 @@ func test_a_bout_contains_held_overwatch_that_triggers_on_an_advancing_enemy() -
 		if triggered:
 			break
 
-	assert_true(declared, "sanity: the MARKSMAN must actually hold overwatch first")
+	assert_true(declared, "sanity: the defensive unit must actually hold overwatch first")
 	assert_true(
 		triggered, "an advancing enemy must actually trigger the held overwatch in a real bout"
 	)

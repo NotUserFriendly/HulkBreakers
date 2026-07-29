@@ -107,7 +107,7 @@ func _full_report() -> void:
 	print("--- completion, over the mission-shaped bout ---")
 	print(
 		(
-			"%d seeds, 1v1 AGGRESSIVE, turn cap %d, completion == EXTRACTED"
+			"%d seeds, 1v1 aggressive, turn cap %d, completion == EXTRACTED"
 			% [MISSION_SEEDS, MISSION_TURN_CAP]
 		)
 	)
@@ -154,8 +154,8 @@ func _measure_mission() -> Dictionary:
 
 	for map_seed in range(MISSION_SEEDS):
 		var built: Dictionary = BoutSetup.build_bout(
-			[BoutRosterEntry.new(profile_a, &"AGGRESSIVE")] as Array[BoutRosterEntry],
-			[BoutRosterEntry.new(profile_b, &"AGGRESSIVE")] as Array[BoutRosterEntry],
+			[BoutRosterEntry.new(profile_a, &"aggressive")] as Array[BoutRosterEntry],
+			[BoutRosterEntry.new(profile_b, &"aggressive")] as Array[BoutRosterEntry],
 			map_seed
 		)
 		if built.get("error", "") != "":
@@ -176,7 +176,7 @@ func _measure_mission() -> Dictionary:
 	return summary
 
 
-## The cost question, over the heavier 3v3 mixed-playstyle bout the historical
+## The cost question, over the heavier 3v3 mixed-profile bout the historical
 ## series has always used. Runs a fixed number of steps rather than to a
 ## conclusion, so two runs are compared over the same amount of work.
 func _measure_combat() -> Dictionary:
@@ -219,15 +219,21 @@ func _outcomes_of(metrics: Dictionary) -> String:
 
 func _bout(map_seed: int) -> Dictionary:
 	var pool: Array[BotPreset] = DataLibrary.presets_pool()
+	# taskblock-46 Pass E: read straight off the authored profiles rather than a
+	# vocabulary that named them indirectly, so a new profile widens the mix here
+	# without a second edit.
+	var profile_ids: Array[StringName] = []
+	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
+		profile_ids.append(profile.id)
 	var roster_a: Array[BoutRosterEntry] = []
 	var roster_b: Array[BoutRosterEntry] = []
 	for i in range(SQUAD_SIZE):
 		var a := BoutRosterEntry.new()
 		a.profile = pool[i % pool.size()]
-		a.playstyle = AiPlanner.PLAYSTYLES[i % AiPlanner.PLAYSTYLES.size()]
+		a.ai_profile = profile_ids[i % profile_ids.size()]
 		roster_a.append(a)
 		var b := BoutRosterEntry.new()
 		b.profile = pool[(i + 1) % pool.size()]
-		b.playstyle = AiPlanner.PLAYSTYLES[(i + 2) % AiPlanner.PLAYSTYLES.size()]
+		b.ai_profile = profile_ids[(i + 2) % profile_ids.size()]
 		roster_b.append(b)
 	return BoutSetup.build_bout(roster_a, roster_b, map_seed)

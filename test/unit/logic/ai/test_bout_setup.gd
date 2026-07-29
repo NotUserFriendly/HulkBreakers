@@ -20,13 +20,13 @@ func _reference_profiles() -> Array:
 
 
 ## taskblock-17 Pass D: a squad is now a LIST of `BoutRosterEntry`
-## (profile + that bot's own playstyle) — this helper stands in for "add
-## the same profile/playstyle pair twice," the common case a list-of-2
+## (preset + that bot's own AI profile) — this helper stands in for "add
+## the same preset/profile pair twice," the common case a list-of-2
 ## covers for tests that don't care about mixed rosters.
-func _roster(profile: BotPreset, playstyle: StringName, count: int) -> Array[BoutRosterEntry]:
+func _roster(profile: BotPreset, ai_profile: StringName, count: int) -> Array[BoutRosterEntry]:
 	var roster: Array[BoutRosterEntry] = []
 	for i in range(count):
-		roster.append(BoutRosterEntry.new(profile, playstyle))
+		roster.append(BoutRosterEntry.new(profile, ai_profile))
 	return roster
 
 
@@ -58,7 +58,7 @@ func test_a_kitted_preset_spawns_armed_through_the_real_bout_setup_path() -> voi
 	var unarmed_reference: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
 
 	var result: Dictionary = BoutSetup.build_bout(
-		_roster(kitted, &"AGGRESSIVE", 1), _roster(unarmed_reference, &"COVER_SEEKER", 1), 42
+		_roster(kitted, &"aggressive", 1), _roster(unarmed_reference, &"defensive", 1), 42
 	)
 
 	assert_eq(result.error, "")
@@ -81,7 +81,7 @@ func test_a_valid_bout_builds_a_real_state_and_mission() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		_roster(profiles[0], &"AGGRESSIVE", 2), _roster(profiles[1], &"COVER_SEEKER", 2), 555
+		_roster(profiles[0], &"aggressive", 2), _roster(profiles[1], &"defensive", 2), 555
 	)
 
 	assert_eq(result.error, "")
@@ -102,12 +102,12 @@ func test_a_valid_bout_builds_a_real_state_and_mission() -> void:
 func test_the_built_roster_equals_a_mixed_list_of_distinct_profiles() -> void:
 	var profiles: Array = _reference_profiles()
 	var mixed: Array[BoutRosterEntry] = [
-		BoutRosterEntry.new(profiles[0], &"AGGRESSIVE"),
-		BoutRosterEntry.new(profiles[1], &"AGGRESSIVE")
+		BoutRosterEntry.new(profiles[0], &"aggressive"),
+		BoutRosterEntry.new(profiles[1], &"aggressive")
 	]
 
 	var result: Dictionary = BoutSetup.build_bout(
-		mixed, _roster(profiles[0], &"AGGRESSIVE", 1), 321
+		mixed, _roster(profiles[0], &"aggressive", 1), 321
 	)
 
 	assert_eq(result.error, "")
@@ -125,32 +125,32 @@ func test_the_built_roster_equals_a_mixed_list_of_distinct_profiles() -> void:
 		)
 
 
-## taskblock-17 Pass D: "playstyle moves from per-team to per-bot" — two
-## entries in the SAME squad, each carrying its own distinct playstyle,
+## taskblock-17 Pass D: "the AI choice moves from per-team to per-bot" — two
+## entries in the SAME squad, each carrying its own distinct AI profile,
 ## must both survive into the assembled units, not collapse to one
 ## shared value per team.
-func test_squad_units_carry_their_own_per_bot_playstyle() -> void:
+func test_squad_units_carry_their_own_per_bot_ai_profile() -> void:
 	var profiles: Array = _reference_profiles()
 	var mixed_squad: Array[BoutRosterEntry] = [
-		BoutRosterEntry.new(profiles[0], &"AGGRESSIVE"),
-		BoutRosterEntry.new(profiles[0], &"MARKSMAN")
+		BoutRosterEntry.new(profiles[0], &"aggressive"),
+		BoutRosterEntry.new(profiles[0], &"defensive")
 	]
 
 	var result: Dictionary = BoutSetup.build_bout(
-		mixed_squad, _roster(profiles[1], &"COVER_SEEKER", 1), 9
+		mixed_squad, _roster(profiles[1], &"defensive", 1), 9
 	)
 
 	var squad_a: Array[Unit] = result.state.units.filter(
 		func(u: Unit) -> bool: return u.squad_id == 0
 	)
 	assert_eq(squad_a.size(), 2)
-	assert_eq(squad_a[0].matrix.playstyle, &"AGGRESSIVE")
-	assert_eq(squad_a[1].matrix.playstyle, &"MARKSMAN")
+	assert_eq(squad_a[0].matrix.ai_profile, &"aggressive")
+	assert_eq(squad_a[1].matrix.ai_profile, &"defensive")
 
 	var squad_b: Array[Unit] = result.state.units.filter(
 		func(u: Unit) -> bool: return u.squad_id == 1
 	)
-	assert_eq(squad_b[0].matrix.playstyle, &"COVER_SEEKER")
+	assert_eq(squad_b[0].matrix.ai_profile, &"defensive")
 
 
 ## "An invalid setup (empty team) is rejected, not crashed" — no count
@@ -159,7 +159,7 @@ func test_an_empty_roster_is_rejected_not_crashed() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		[] as Array[BoutRosterEntry], _roster(profiles[1], &"AGGRESSIVE", 2), 1
+		[] as Array[BoutRosterEntry], _roster(profiles[1], &"aggressive", 2), 1
 	)
 
 	assert_ne(result.error, "")
@@ -170,8 +170,8 @@ func test_a_missing_profile_is_rejected_not_crashed() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		[BoutRosterEntry.new(null, &"AGGRESSIVE")] as Array[BoutRosterEntry],
-		_roster(profiles[1], &"AGGRESSIVE", 2),
+		[BoutRosterEntry.new(null, &"aggressive")] as Array[BoutRosterEntry],
+		_roster(profiles[1], &"aggressive", 2),
 		1
 	)
 
@@ -185,10 +185,10 @@ func test_the_same_profiles_counts_and_seed_produce_an_equivalent_bout() -> void
 	var profiles: Array = _reference_profiles()
 
 	var first: Dictionary = BoutSetup.build_bout(
-		_roster(profiles[0], &"AGGRESSIVE", 2), _roster(profiles[1], &"AGGRESSIVE", 2), 777
+		_roster(profiles[0], &"aggressive", 2), _roster(profiles[1], &"aggressive", 2), 777
 	)
 	var second: Dictionary = BoutSetup.build_bout(
-		_roster(profiles[0], &"AGGRESSIVE", 2), _roster(profiles[1], &"AGGRESSIVE", 2), 777
+		_roster(profiles[0], &"aggressive", 2), _roster(profiles[1], &"aggressive", 2), 777
 	)
 
 	var first_state: CombatState = first.state
@@ -209,7 +209,7 @@ func test_build_bout_populates_team_extraction_cells_for_both_squads() -> void:
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		_roster(profiles[0], &"AGGRESSIVE", 1), _roster(profiles[1], &"AGGRESSIVE", 1), 555
+		_roster(profiles[0], &"aggressive", 1), _roster(profiles[1], &"aggressive", 1), 555
 	)
 
 	var mission: MissionState = result.mission
@@ -238,7 +238,7 @@ func test_build_bout_places_each_squads_extraction_on_the_opposing_side() -> voi
 	var profiles: Array = _reference_profiles()
 
 	var result: Dictionary = BoutSetup.build_bout(
-		_roster(profiles[0], &"AGGRESSIVE", 1), _roster(profiles[1], &"AGGRESSIVE", 1), 555
+		_roster(profiles[0], &"aggressive", 1), _roster(profiles[1], &"aggressive", 1), 555
 	)
 
 	var mission: MissionState = result.mission
