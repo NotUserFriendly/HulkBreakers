@@ -29,6 +29,7 @@ extends GutTest
 ## seeds hit a genuinely expensive AI decision path, not just "more turns."
 ## Not this pass's job to fix; `SEED_COUNT`/`TURN_CAP` are kept modest
 ## specifically because of it.
+
 const SEED_COUNT := 12
 const TURN_CAP := 100
 ## **taskblock-45 lowered this from 0.5, and that is a recorded regression rather
@@ -67,6 +68,17 @@ const TURN_CAP := 100
 ## `BR45.03` closes — it is the one automated check standing between this project
 ## and an AI that cannot finish a mission.
 const MIN_COMPLETION_RATE := 0.35
+
+
+## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
+## is on is checked against the profile's own bout counter every run — see `SuiteTier`.
+##
+## **Untyped on purpose, against this project's static-typing rule.** GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that
+## adds `-> Variant` as a signature mismatch — the script then fails to parse and GUT
+## reports it as "does not extend GutTest", which is a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
 
 
 func before_each() -> void:

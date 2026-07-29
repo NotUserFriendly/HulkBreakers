@@ -12,6 +12,17 @@ extends GutTest
 ## below is the one place every test below reaches through it.
 
 
+## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
+## is on is checked against the profile's own bout counter every run — see `SuiteTier`.
+##
+## **Untyped on purpose, against this project's static-typing rule.** GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that
+## adds `-> Variant` as a signature mismatch — the script then fails to parse and GUT
+## reports it as "does not extend GutTest", which is a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
+
+
 func _overlay(scene: BattleScene) -> SquadControlOverlay:
 	return scene.overlay as SquadControlOverlay
 

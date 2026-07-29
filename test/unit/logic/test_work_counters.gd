@@ -20,6 +20,7 @@ extends GutTest
 ## Kept to two short bouts. This file measures the measuring apparatus; it has no
 ## business being expensive itself, and a determinism property is exactly as true of
 ## one seed as of fifty.
+
 const SEED := 4242
 const TURN_CAP := 6
 
@@ -27,6 +28,17 @@ const TURN_CAP := 6
 ## imported from the tool, so adding a counter to the profiler without teaching it to
 ## anyone shows up as a failure here rather than as a silently unmeasured field.
 const COUNTERS: Array[String] = ["bouts", "turns", "plans", "candidates", "shot_planes", "floods"]
+
+
+## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
+## is on is checked against the profile's own bout counter every run — see `SuiteTier`.
+##
+## **Untyped on purpose, against this project's static-typing rule.** GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that
+## adds `-> Variant` as a signature mismatch — the script then fails to parse and GUT
+## reports it as "does not extend GutTest", which is a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
 
 
 func before_each() -> void:

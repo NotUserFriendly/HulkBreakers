@@ -12,6 +12,17 @@ extends GutTest
 ## points the right way is a test nobody will keep.
 
 
+## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
+## is on is checked against the profile's own bout counter every run — see `SuiteTier`.
+##
+## **Untyped on purpose, against this project's static-typing rule.** GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that
+## adds `-> Variant` as a signature mismatch — the script then fails to parse and GUT
+## reports it as "does not extend GutTest", which is a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
+
+
 func before_each() -> void:
 	DataLibrary.reset()
 	DataLibrary.load_all()
@@ -123,19 +134,28 @@ func test_escalation_probability_is_the_exact_binomial_tail() -> void:
 	assert_almost_eq(CompletionSampler.escalation_probability(1.0, 0.35), 0.0, 0.0001)
 	assert_almost_eq(CompletionSampler.escalation_probability(0.0, 0.35), 1.0, 0.0001)
 
-	# At the rate taskblock-46 measured (0.54) against the shipped floor. The
-	# taskblock estimated ~1 run in 9, which was right for a 10-seed sample;
-	# `SAMPLE_SEEDS` was then raised to 20 on the measured escalation cost, which
-	# takes it to roughly 1 in 38.
-	var measured: float = CompletionSampler.escalation_probability(0.54, 0.35)
+	# **At 0.56, the rate re-measured after taskblock-46's search-memory fix** — the
+	# 0.54 this used to quote predates that change and is no longer what the planner
+	# does.
+	var measured: float = CompletionSampler.escalation_probability(0.56, 0.35)
 	gut.p(
 		(
-			"escalation probability at the measured 0.54 with n=%d: %.3f (~1 run in %d)"
+			"escalation probability at the measured 0.56 with n=%d: %.3f (~1 run in %d)"
 			% [CompletionSampler.SAMPLE_SEEDS, measured, int(round(1.0 / maxf(0.0001, measured)))]
 		)
 	)
 	assert_gt(measured, 0.0, "a marginal planner must still escalate sometimes")
-	assert_lt(measured, 0.06, "but rarely enough that the suite stays predictable")
+	# **This was 0.06 and the bar moved because what it costs moved, not because it
+	# flapped.** Under taskblock-46 the escalation ran inside `run_tests.sh`, so an
+	# escalation silently added ~330 s to a gate someone was waiting on and rarity was
+	# worth paying for. taskblock-47 Pass C took it out of every gate: escalating now
+	# costs a person deciding to run `tools/probe_seeds.gd`, so a sample that dips is
+	# information rather than a tax, and the gate gets to be cheap instead.
+	#
+	# Recorded here rather than quietly edited because this project's documented habit
+	# is raising a threshold when it goes red — the difference is that the *premise*
+	# changed, and if it had not, the right move would have been a bigger `n`.
+	assert_lt(measured, 0.15, "but rarely enough that a dip still means something")
 
 
 ## **A bigger sample must escalate LESS at the same true rate** — that is the whole

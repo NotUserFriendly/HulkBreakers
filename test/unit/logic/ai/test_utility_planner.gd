@@ -24,6 +24,17 @@ const AGGRESSIVE_PROFILE := &"aggressive"
 const CAUTIOUS_PROFILE := &"cautious"
 
 
+## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
+## is on is checked against the profile's own bout counter every run — see `SuiteTier`.
+##
+## **Untyped on purpose, against this project's static-typing rule.** GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that
+## adds `-> Variant` as a signature mismatch — the script then fails to parse and GUT
+## reports it as "does not extend GutTest", which is a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
+
+
 func before_each() -> void:
 	UtilityPlanner.candidates_scored = 0
 	UtilityPlanner.empty_decisions = 0
