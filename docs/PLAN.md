@@ -823,8 +823,11 @@ all three rather than three times.
 ### Remaining melee pieces
 **Needs:** nothing.
 
-- **Protector playstyle** — positions between enemies and allies, preferring covered spots (a COVER_SEEKER
-  variant scoring on *ally* protection). Not melee-gated; can land whenever.
+- **Protector profile** — positions between enemies and allies, preferring covered spots. Now a
+  `UtilityProfile` weighting a not-yet-published *ally protection* input, rather than the
+  "COVER_SEEKER variant" this was written as — taskblock-46 retired the playstyle vocabulary, and the
+  cover-seeking half is already `take_cover`'s weight in the `defensive` profile. What is actually
+  missing is the input. Not melee-gated; can land whenever.
 - **Weapon distinctions — saw versus sword versus fist** (the `POWER`/`TRIGGER` capability split). A saw-hand
   can't add power to a sword swing.
 
