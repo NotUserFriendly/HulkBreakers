@@ -196,7 +196,12 @@ func process_group() -> int:
 	return text.to_int() if text.is_valid_int() else -1
 
 
+## Zero for a run that was never started — one handed its output directly has no start
+## time, and reporting the process's whole uptime as its duration put "FAILED in 365s"
+## in a header describing a run that took no time at all.
 func elapsed_seconds() -> float:
+	if started_msec == 0:
+		return 0.0
 	return float(Time.get_ticks_msec() - started_msec) / 1000.0
 
 

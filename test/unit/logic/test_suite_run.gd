@@ -106,16 +106,28 @@ func test_a_clean_exit_marker_reads_as_passed() -> void:
 ## **Completion is the exit marker, not the PID.** A process can vanish without the
 ## script having finished; a run reported as passed because its PID went away is
 ## exactly the lie that makes this window worthless.
+##
+## **Killed rather than waited out.** The first version waited for a real
+## `test_grid.gd` run to finish — nominally 4 s, but it timed out at 180 s inside a
+## loaded full gate, because a suite running a suite competes with itself for the
+## machine. The claim here is about the *states before* completion, and the marker
+## actually ending a run is established without a subprocess at all by
+## `test_a_failing_run_reads_as_failed`. Waiting bought nothing and cost a flake.
 func test_an_unfinished_run_never_reads_as_passed() -> void:
 	var run := SuiteRun.new()
 	assert_false(run.passed(), "a run that never started has not passed")
-
-	run.start(&"full", "test_grid.gd")
-	assert_false(run.passed(), "and neither has one still going")
 	assert_false(run.finished)
 
-	await _await_finish(run)
-	assert_true(run.finished, "only the exit marker ends it")
+	run.start(&"full", "test_map_gen.gd")
+	run.poll()
+
+	assert_false(run.passed(), "and neither has one still going")
+	assert_false(run.finished, "no marker yet, so not finished")
+	assert_true(run.is_running(), "but it is running")
+
+	run.kill()
+	assert_true(run.finished, "killing ends it")
+	assert_false(run.passed(), "without ever reading as passed")
 
 
 ## **Killing must reach the Godot the shell launched, not just the shell.**

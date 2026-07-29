@@ -32,8 +32,21 @@ const VISIBLE_LINES := 18
 ## enough that it is not doing a file seek every frame for a ten-minute run.
 const POLL_INTERVAL := 0.25
 
+## **Pinned, because a test feed's line lengths are wild.** GUT prints everything from
+## `* test_x` to a full `res://` path to a wrapped assertion message, so a panel that
+## sized itself to its content jumped about on every poll — unreadable while the thing
+## you are watching is the text. Flagged, not derived; it is wide enough for the
+## longest ordinary line (a `res://test/unit/...` path) without crowding the board.
+const PANEL_WIDTH := 560.0
+## Height reserved for the feed. Flagged: `VISIBLE_LINES` rows at roughly a monospace
+## line's height, so the panel does not resize vertically as the tail fills either.
+const FEED_HEIGHT := 260.0
+## Matches `CombatLogPanel`'s own alpha so the two read as the same kind of surface.
+const BACKGROUND_ALPHA := 0.82
+
 var run: SuiteRun = null
 
+var _body: PanelContainer = null
 var _status: Label = null
 var _feed: Label = null
 var _counts: Label = null
@@ -42,11 +55,29 @@ var _since_poll: float = 0.0
 
 
 func _ready() -> void:
+	# The container itself draws nothing; the background lives on `_body`, the same
+	# split `CombatLogPanel` uses so the two surfaces match rather than merely
+	# resemble each other.
+	custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	_body = PanelContainer.new()
+	_body.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, BACKGROUND_ALPHA
+	)
+	_body.add_theme_stylebox_override("panel", style)
+	add_child(_body)
+
+	var column := VBoxContainer.new()
+	_body.add_child(column)
+
 	_status = Label.new()
-	add_child(_status)
+	_status.clip_text = true
+	_status.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	column.add_child(_status)
 
 	var buttons := HBoxContainer.new()
-	add_child(buttons)
+	column.add_child(buttons)
 	for rung: StringName in SuiteRun.RUNGS:
 		var button := Button.new()
 		button.text = String(rung)
@@ -58,9 +89,29 @@ func _ready() -> void:
 	buttons.add_child(stop)
 
 	_counts = Label.new()
-	add_child(_counts)
+	_counts.clip_text = true
+	_counts.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	column.add_child(_counts)
+
+	# **The feed is clipped by its parent, not by itself.**
+	#
+	# `Label.clip_text` clips what is *drawn* and does not stop the label reporting a
+	# minimum size as wide as its longest line — a 400-character assertion message
+	# pushed the panel from 560 to 699, which the layout test caught. A plain `Control`
+	# ignores its children's minimum sizes entirely, so the label can be any width it
+	# likes inside one and the panel stays put.
+	var feed_clip := Control.new()
+	feed_clip.clip_contents = true
+	feed_clip.custom_minimum_size = Vector2(PANEL_WIDTH, FEED_HEIGHT)
+	feed_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(feed_clip)
+
 	_feed = Label.new()
-	add_child(_feed)
+	_feed.clip_text = true
+	_feed.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_feed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	feed_clip.add_child(_feed)
 	_refresh()
 
 
