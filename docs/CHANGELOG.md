@@ -19,7 +19,12 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of the post-taskblock-46 search-memory fix — `ROAM`/`HUNT` no longer oscillate between two
+*Current as of taskblock-47 Passes A–E landed — the suite is profiled, budgeted on deterministic work
+counts, split into a 118 s fast gate and a 537 s full gate, and audited down from 4545 turns to 1578.
+**The block's biggest finding was not about the suite**: `CompletionSampler` had been naming a retired
+playstyle as its profile id since taskblock-46 Pass E, so every completion rate measured in between ran
+with the AI's profile weights switched off — the real figure is **72%**, not 56%, and `BR45.03`'s gap to
+the old planner is 3 points rather than 19. Previously current as of the post-taskblock-46 search-memory fix — `ROAM`/`HUNT` no longer oscillate between two
 cells (`BR46.01`, completion 56% over 100 seeds, unchanged within noise — the fix moved the failure
 mode, not the rate), and the hunt for the other half of that report found that **16 of 40 generated maps
 contain ground a unit can walk into and never leave** (`BR46.02`, open, a design call). taskblock-46
@@ -1613,6 +1618,66 @@ a deliberate break makes it fail, removing the break makes it pass. `tools/migra
 an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comment records that the
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
+
+### The suite: measured, budgeted, tiered, watched, cut (tb47 Passes A–E, docs/TOOLING.md)
+
+Tooling debt, raised because taskblock-46 was ~45 minutes of coding and ~2 hours of testing. The suite
+had gone ~355 s → ~1370 s across one block and had never been profiled, tiered or audited.
+
+**Pass A — profiled, changed nothing.** `tools/profile_suite.gd` drives `GutRunner` directly and
+snapshots deterministic work counters at each script and test boundary, writing a committed
+`test/SUITE-PROFILE.md` (for reading) and `test/suite_profile.json` (for the budget). New counters where
+nothing was counting: `Pathfinder.floods`, `CombatState.turns_resolved` and `CombatState.bouts_built`.
+**Turns are counted at `advance_turn`, not in `BoutRunner`** — a turn is a turn whether a runner drove
+it or a test did, and a runner-side counter would have reported Pass E's scripted rewrites as free.
+
+The findings contradicted the framing twice: **11 of 242 files build a bout, not 23**, and
+`test_full_mission.gd` was not the expensive one — `test_completion_sampler.gd` was, at 730 s and 88
+bouts, three times the integration test. Its own header, written the previous block, called it
+"deliberately cheap … at most a handful of bouts, and most run none at all". Four tests were 995 s of
+1493 s; the worst spent **252 s and 20 full missions asserting that a unit had not moved.**
+
+**Pass B — budgets on counts, not seconds.** Measured justification rather than assertion: two runs of
+identical work came out at **1286 s and 1493 s** while the work counts were identical to the integer.
+Counts also name the cause — taskblock-46's search-memory fix took turns per bout 19.1 → 26.8, so a
+turns budget goes red on the commit that did it where a seconds budget goes red three commits later.
+`candidates` and `shot_planes` are reported but deliberately **not** gated: they move with how the
+planner scores rather than with how much the suite asks of it, and an AI change failing a suite-cost
+test is the false positive that gets budgets deleted.
+
+**Pass C — two gates.** `./run_tests.sh fast` (118 s) skips the bout-building files; `./run_tests.sh`
+(537 s) is everything and remains the rule before a pass commits. **The tier is a file list, not a
+directory**: ten of eleven bout files live outside `test/integration/`, so a directory rule would have
+declared the fast gate bout-free while it played most of the bouts. `SAMPLE_SEEDS` re-derived 20 → 8.
+
+**Pass D — the watched run.** `WatchedRun` sequences a seed list; `WatchedRunOverlay` extends
+`SpectatorOverlay` so a watched bout has exactly the controls a normal bout has. **No artifact**: a
+seed is already a complete reproduction handle, so bouts are rebuilt rather than replayed.
+`CompletionSampler.build_for_seed` was split out so the watched and headless paths cannot build
+different bouts from the same seed — asserted, not assumed.
+
+**And that split surfaced the block's most important finding.** `CompletionSampler` was still passing
+`&"AGGRESSIVE"` as its profile id, a playstyle taskblock-46 Pass E retired. An unknown id does not
+throw — the scorer falls back to unweighted — so **every completion rate measured since that pass ran
+with no profile weights at all**: 56/100 unweighted against **72/100** weighted, mean turns 26.8
+against 13.5. Against the retired planner's 75% on level ground the gap is **3 points, not 19**, which
+re-frames most of `BR45.03`. `MIN_COMPLETION_RATE` deliberately left at 0.35 — out of this block's
+scope, and moving a floor the day the number moves is how this project got into trouble with that
+constant before.
+
+**Pass E — retarget, merge, cut, in that order.** Turns 2651 → 1578, bouts 79 → 62, gate 930 s → 537 s,
+**with the assertion count unchanged** (103192 → 103187 against two fewer test functions), which was
+the acceptance: a large drop in assertions would have meant coverage left with the redundancy.
+
+- *Retarget*: `test_frames_pass_during_the_batch` played an entire mission to prove one frame passed —
+  and was not even exercising the case `advance_ai_turns` exists for, since an all-AI bout never
+  reaches its `wants_turn_for` exit. Squad 0 is HUMAN now.
+- *Merge*: the two in-window verb tests each paid for a full sample to make two assertions about one
+  invocation. For a bout test the fixture is the cost.
+- *Cut*: `test_the_batch_still_runs_to_completion` — 178 s and a 400-turn bout to assert
+  `round_number > 0`. **Covering test: `test_a_yielding_batch_produces_the_identical_bout`**,
+  demonstrated by sabotaging `advance_ai_turns` to strand its loop and confirming the fingerprint test
+  went red on its own. Sabotage reverted before the cut.
 
 ### Search verbs get a memory; one-way ground found underneath them (post-tb46, BR46.01/BR46.02)
 
