@@ -81,18 +81,29 @@ const TURN_CAP := 100
 static var escalations: int = 0
 
 
-## One bout. Returns the outcome name and the turns it took, or an empty dictionary
-## when the bout could not even be built.
-static func run_seed(map_seed: int) -> Dictionary:
+## **The bout a seed names.** Rosters and presets are constants, so the seed alone is
+## a complete reproduction handle — which is what taskblock-47 Pass D's watched run is
+## built on rather than any recorded artifact.
+##
+## Split out of `run_seed` for exactly that reason: the watched path and the headless
+## path must build the *same* bout from the same seed, and two call sites assembling
+## the same roster by hand is how they would stop doing that.
+static func build_for_seed(map_seed: int) -> Dictionary:
 	var profile_a: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
 	var profile_b: BotPreset = DataLibrary.get_preset(&"a_brand_laborer_battery_mods")
 	if profile_a == null or profile_b == null:
-		return {}
-	var built: Dictionary = BoutSetup.build_bout(
-		[BoutRosterEntry.new(profile_a, &"AGGRESSIVE")] as Array[BoutRosterEntry],
-		[BoutRosterEntry.new(profile_b, &"AGGRESSIVE")] as Array[BoutRosterEntry],
+		return {"error": "presets not loaded"}
+	return BoutSetup.build_bout(
+		[BoutRosterEntry.new(profile_a, &"aggressive")] as Array[BoutRosterEntry],
+		[BoutRosterEntry.new(profile_b, &"aggressive")] as Array[BoutRosterEntry],
 		map_seed
 	)
+
+
+## One bout. Returns the outcome name and the turns it took, or an empty dictionary
+## when the bout could not even be built.
+static func run_seed(map_seed: int) -> Dictionary:
+	var built: Dictionary = build_for_seed(map_seed)
 	if built.get("error", "") != "":
 		return {}
 	var runner := BoutRunner.new(built["state"], built["mission"], TURN_CAP)

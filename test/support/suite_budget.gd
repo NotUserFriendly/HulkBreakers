@@ -53,12 +53,12 @@ const HEADROOM := 0.15
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
-	"bouts": 76,
-	"turns": 2171,
-	"plans": 2056,
-	"candidates": 3108725,
-	"shot_planes": 24380,
-	"floods": 7640,
+	"bouts": 79,
+	"turns": 2651,
+	"plans": 2532,
+	"candidates": 3685544,
+	"shot_planes": 31695,
+	"floods": 8408,
 }
 
 ## Which counters are actually gated. **`candidates` and `shot_planes` are measured
@@ -79,8 +79,8 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## 88 bouts to 40 and the integration test from 20 to 8. Leaving the old numbers would
 ## have left ~60% slack in the two files that matter most.
 const PER_FILE: Dictionary = {
-	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 46, "turns": 1409},
-	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 163},
+	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 46, "turns": 1720},
+	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 340},
 	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 5, "turns": 596},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
 }
