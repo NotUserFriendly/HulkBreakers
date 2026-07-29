@@ -201,6 +201,11 @@ Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAct
   pathfinding bug** — the pathfinder correctly reports that a unit which hopped down a ledge cannot get
   back up, and BR40.04 measured the consequence: a unit spawned in a sunk cell has exactly one reachable
   cell. Authoring one `CLIMBER` part closes a whole class of stranding in one file.
+  **`BR46.02` measured the wider consequence and it is much bigger than the spawn case:** 16 of 40
+  generated maps at the real bout size contain ground a unit can walk INTO and never leave — worst
+  seed, 216 such cells. Spawn zones are mutually reachable on 60 of 60 seeds, so a symmetric
+  connectivity check reports these maps as fine; the defect only shows under asymmetric reachability.
+  This item is no longer "a follow-on refinement" in practice, whatever its Unblocks line says.
 - **Until it exists, the planner must treat a hop-down as one-way.** A unit that drops off a ledge to
   reach something strands itself for the rest of the bout. "Can I get back?" belongs in the decision
   rather than being discovered afterwards.

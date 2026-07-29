@@ -223,6 +223,14 @@ ask what a unit that fails every gate does instead.**
 **A tier or restriction that does nothing passes every test that asserts what it should do.** The
 companion assertion — that turning it off changes the outcome — is the one that catches it.
 
+**A scorer with no memory oscillates, and it looks like a pathing bug.** An action scored purely on
+distance-from-here has no way to prefer somewhere new: the farthest cell from A is B and the farthest
+from B is A, so a unit with nothing better to do shuttles between two tiles until the turn cap. This
+shipped — `ROAM` and `HUNT` had it for a whole block while `PATROL`, whose route already tracked visit
+times, did not. **The fix belongs in a published input rather than in the verb**, because a
+verb-shaped fix leaves every future verb with the same hole. When adding an action that scores where
+to *go*, ask what stops it going back.
+
 Two corollaries, both learned the hard way in taskblock-46:
 
 - **Compare the whole capability, not the column you happened to think of.** Elite and Trained were

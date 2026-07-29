@@ -148,6 +148,28 @@ checked the symptom separately and it does not reproduce.
   chasing a 20-seed reading against a 100-seed one is exactly how last block's mid-change 37.5% got
   reported as fact.
 
+- **A post-block finding that matters more than anything in the block: `ROAM` and `HUNT` had no
+  memory, and shipped oscillating.** You spotted it in a live bout; the combat log made it
+  unambiguous — every unit on both squads decided `roam` every turn and covered two or three cells for
+  the whole bout. Distance-from-here is memoryless: the farthest cell from A is B and the farthest from
+  B is A. taskblock-46 Pass C had **already written the fix down** in `SearchRoute`'s own comment and
+  applied it to `PATROL` alone, because that was the only verb with a route to hang it on. Now a
+  published input (`BR46.01`, fixed and `Pending`).
+
+  **It did not move completion**: 56/100 after the fix, against a stale 60/100 that predates Pass E, so
+  there is no clean before/after. What it did move is the failure mode — `TERMINATED` 27 → 20,
+  `STRANDED` 13 → 24. A 20-seed run showed 70% and I am recording that it was a lucky draw rather than
+  the result, because this project has now reported three numbers early.
+
+- **`BR46.02` is open and needs a design call from you.** Chasing the other half of your report —
+  "Squad 1 is trapped in a lowered section" — found that **16 of 40 generated maps contain ground a
+  unit can walk into and never leave**, worst seed 216 cells. Descent is free; climbing reads a
+  `CLIMBER` tag no part carries. A symmetric connectivity check reports these maps as fine (spawn zones
+  are mutually reachable on 60 of 60 seeds), which is why it survived this long. Three options, none
+  obviously right — author a `CLIMBER` part, constrain `MapGen` to two-way connectivity, or have the
+  planner refuse a one-way step. Evidence points at the second as the floor and the first as the
+  feature; the third is a mitigation. **Not picked, because it is a balance-and-content call.**
+
 - **What is left in the 40 failures, for whoever picks up `BR45.03`.** 27 `TERMINATED` and 13
   `STRANDED`. The `STRANDED` count **rose** (9 → 13) as a direct consequence of the search verbs: units
   that search find each other, and some of those fights are lost. That is a different problem from the

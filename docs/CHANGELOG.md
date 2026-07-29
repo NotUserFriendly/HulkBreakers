@@ -19,7 +19,11 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-46 Passes A–F landed — AI v2 part three: raised rooms no longer punch pits
+*Current as of the post-taskblock-46 search-memory fix — `ROAM`/`HUNT` no longer oscillate between two
+cells (`BR46.01`, completion 56% over 100 seeds, unchanged within noise — the fix moved the failure
+mode, not the rate), and the hunt for the other half of that report found that **16 of 40 generated maps
+contain ground a unit can walk into and never leave** (`BR46.02`, open, a design call). taskblock-46
+Passes A–F landed — AI v2 part three: raised rooms no longer punch pits
 under cover and spawn tiles (BR40.03/BR40.04), the completion number is a random sample with a
 deterministic escalation behind it rather than a pinned pessimistic window, four search verbs give a
 unit with nothing in sight something to do, `Panic` names the give-up instead of shrugging silently, and
@@ -1609,6 +1613,65 @@ a deliberate break makes it fail, removing the break makes it pass. `tools/migra
 an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comment records that the
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
+
+### Search verbs get a memory; one-way ground found underneath them (post-tb46, BR46.01/BR46.02)
+
+**`ROAM` and `HUNT` oscillated between two cells for a whole mission, and it shipped.** Both score
+`travel_fraction` — go as far as you can — which is memoryless: the farthest reachable cell from A is
+B, and the farthest from B is A. A unit with no enemy in sight walked to the edge of its reach and then
+shuttled between two tiles until the turn cap. Found in a supervisor's real combat log, where **every
+unit on both squads decided `roam` on every turn and covered two or three distinct cells for the entire
+bout**; reproduced on an open board as 6 distinct cells in 14 turns with ten of those turns spent
+alternating between `(19,23)` and `(31,23)`.
+
+**taskblock-46 Pass C had already written the fix down and applied it to one verb only.**
+`SearchRoute`'s own comment says oldest-visit-wins "cannot ping-pong between two while a third is
+ignored" — true, and `PATROL` was the only verb with a route to hang that on. `Unit.recent_cells` now
+generalises it: a bounded trail (`RECENT_CELLS` = 8, flagged) written for **every** unit every turn,
+not only while searching, because a unit that fought across a room and then lost its target must not
+treat that room as unexplored. `UtilityContext.INPUT_UNVISITED` grades it by recency rather than as a
+binary visited/not — a binary makes every cell outside the trail identical and permits the same
+oscillation with a longer period.
+
+`roam` and `hunt` score it unfloored, so ground just left can reach zero; **`putter` scores it floored
+(0.5) on purpose**, because puttering is meant to stay local and an unfloored memory would quietly turn
+it into a slow roam. After the fix the same probe covers 15 distinct cells in 14 turns. Regression-
+tested as ground covered *and* as an explicit A-B-A-B alternation count, since "it moved a lot" and "it
+stopped looping" are different claims and only the second is the defect.
+
+**It did not improve completion, and the 20-seed reading that suggested it had was a lucky draw.** The
+deterministic 100-seed escalation after the fix returns **56/100 (56.0%)**; a sample run had shown
+14/20 (70%). There is no clean before/after at this sample size — the last 100-seed reading was 60% and
+predates Pass E, so it measures a different action pool, and comparing the two would be comparing
+builds rather than behaviours. **What the fix demonstrably changed is the failure mode:** `TERMINATED`
+— bouts that simply never end, the oscillation's own signature — fell **27 → 20**, while `STRANDED`
+rose **13 → 24**. Units that cover ground find each other and some of those fights are lost. The fix is
+justified by the behaviour being correct, not by the completion rate, and the remaining gap points at
+combat quality rather than at another search gate.
+
+**The escalation also got slower**: it now exceeds 900 s where it used to fit, because bouts run longer
+when units actually travel. Mean turns to complete went 19.1 → 26.8.
+
+**Chasing the other half of the same report turned up a bigger, separate problem: 16 of 40 generated
+maps contain ground a unit can walk into and never leave** (`BR46.02`, open). Descent is free; climbing
+reads a `CLIMBER` part tag that **no part in the repo carries**, so every lowered region is a one-way
+door for every unit that exists. Worst seed has 216 such cells.
+
+**A symmetric connectivity check cannot see this, which is why it was never caught** — spawn zones are
+mutually reachable on 60 of 60 seeds, so the maps read as fine. The defect only appears under
+*asymmetric* reachability: flood out from a spawn, then flood back from each cell reached and ask
+whether the spawn is still in the set. Deliberately not fixed here: the direction is a design call
+between authoring a `CLIMBER` part, constraining `MapGen` to guarantee two-way connectivity, and having
+the planner refuse a one-way step. Recorded with the measurement and the options rather than picked.
+
+**BR32.10 had been misattributed twice and is now split.** "The AI is stuck on a concave map" is a
+symptom with at least three unrelated causes: no path to a firing cell (the original, fixed in tb46
+Pass C), no memory of where it has been (`BR46.01`), and no way back out of where it went
+(`BR46.02`). The combat log distinguishes them; the screen does not.
+
+**BR40.03 and BR40.04 closed `Resolved` by the supervisor.** Worth stating what that does *not* cover:
+the sweep behind them measured pit *depth*, not *escapability*. No pits, and still somewhere to get
+stuck.
 
 ### AI v2, part three: the tier table filled, and the playstyle vocabulary retired (tb46 Passes A–F, docs/11)
 

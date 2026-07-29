@@ -420,6 +420,15 @@ func _actions() -> Array[UtilityActionDef]:
 	roam.considerations.append(
 		_consideration(UtilityContext.INPUT_TRAVEL_FRACTION, 1.0, _floored(0.3))
 	)
+	# **Distance alone is memoryless, and memoryless search oscillates.** The farthest
+	# cell from A is B and the farthest from B is A, so a unit with nothing in sight
+	# walks to the edge of its reach and then bounces between two cells until the turn
+	# cap — seen live across a whole bout, both squads. Unfloored on purpose: ground
+	# it just left must be able to score zero, or the oscillation survives at reduced
+	# amplitude and looks like indecision instead of a loop.
+	roam.considerations.append(
+		_consideration(UtilityContext.INPUT_UNVISITED, 1.0, ResponseCurve.new())
+	)
 
 	var hunt := _search_verb(&"hunt", &"HUNT", "Hunt")
 	# Roam at speed: quadratic, so the far cells pull much harder than the near ones.
@@ -431,11 +440,23 @@ func _actions() -> Array[UtilityActionDef]:
 			ResponseCurve.new(ResponseCurve.QUADRATIC, 0.85, 0.15)
 		)
 	)
+	# Same memory as roam, and needed harder: a steeper distance curve pulls to the
+	# extremes more strongly, which is exactly what makes the two-cell loop tighter.
+	hunt.considerations.append(
+		_consideration(UtilityContext.INPUT_UNVISITED, 1.0, ResponseCurve.new())
+	)
 
 	var putter := _search_verb(&"putter", &"PUTTER", "Putter")
 	# Stay local without idling — the same input read backwards.
 	putter.considerations.append(
 		_consideration(UtilityContext.INPUT_TRAVEL_FRACTION, 1.0, _floored(0.25, true))
+	)
+	# **Floored, where roam and hunt read it raw.** Puttering is *supposed* to stay
+	# in one place, so an unfloored memory would fight the verb's whole purpose and
+	# turn it into a slow roam. It only needs enough pressure to stop the unit
+	# standing on one tile forever, not enough to send it anywhere.
+	putter.considerations.append(
+		_consideration(UtilityContext.INPUT_UNVISITED, 1.0, _floored(0.5))
 	)
 
 	var patrol := _search_verb(&"patrol", &"PATROL", "Patrol")

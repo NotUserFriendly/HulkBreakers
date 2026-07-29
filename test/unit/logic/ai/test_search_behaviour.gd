@@ -255,3 +255,111 @@ func test_a_unit_with_nowhere_to_go_gets_an_empty_route() -> void:
 		GridFixture.place_wall(grid, cell)
 
 	assert_eq(SearchRoute.generate(grid, Vector2i(0, 0)), [] as Array[Vector2i])
+
+
+# --- the memoryless-search oscillation ---------------------------------------
+
+
+## **`PATROL` was given a memory and the other three verbs were not.**
+##
+## The test above asserts patrol does not alternate between two points while a third
+## waits. `ROAM` and `HUNT` score distance-from-here, which is the same problem with
+## nothing to solve it: the farthest reachable cell from A is B, and the farthest
+## from B is A. A unit with no enemy in sight walks to the edge of its reach and then
+## bounces between two cells for the rest of the mission.
+##
+## Found in a real bout's combat log — every unit on both squads, every turn, two or
+## three distinct cells apiece for the whole bout — which is why the fix is a
+## published input the verbs score rather than something private to one of them.
+##
+## Asserted as ground covered rather than as a named route, because where a roaming
+## unit *should* go is not a thing this codebase has an opinion about. What it must
+## not do is visit the same two cells forever.
+func test_a_roaming_unit_covers_ground_instead_of_bouncing_between_two_cells() -> void:
+	var grid: Grid = GridFixture.flat(32, 24)
+	var walker: Unit = _armed_unit(&"walker", Vector2i(4, 4), 0)
+	# A second unit so the board is not degenerate; both are the same squad, so
+	# neither is ever a target and `roam` stays the only verb on offer.
+	var ally: Unit = _armed_unit(&"ally", Vector2i(5, 4), 0)
+	var state := CombatState.new(grid, [walker, ally])
+	var view: WorldView = WorldView.full(state)
+	view.restricted = true
+
+	var visited: Array[Vector2i] = [walker.cell]
+	for turn in range(14):
+		walker.ap = walker.max_ap
+		state.force_current_unit(walker.id)
+		var queue: ActionQueue = await UtilityPlanner.plan_turn(
+			walker, view, null, AGGRESSIVE_PROFILE
+		)
+		state.resolve_until(queue)
+		visited.append(walker.cell)
+
+	var distinct: Dictionary = {}
+	for cell: Vector2i in visited:
+		distinct[cell] = true
+	gut.p("roam over 14 turns: %d distinct cells — %s" % [distinct.size(), visited])
+	# Before the fix this was 6 of 15, with ten turns spent alternating between two
+	# cells. The bar is deliberately well below "every turn is new" — a roamer that
+	# doubles back occasionally is fine; one that only ever doubles back is the bug.
+	assert_gt(distinct.size(), 10, "a roaming unit that revisits this much is looping")
+	# The specific shape of the defect, named rather than inferred from the count.
+	var alternations := 0
+	for i in range(2, visited.size()):
+		if visited[i] == visited[i - 2] and visited[i] != visited[i - 1]:
+			alternations += 1
+	assert_lt(alternations, 3, "A-B-A-B alternation is the oscillation itself")
+
+
+## The trail is written for **every** unit on every turn, not only while searching.
+## A unit that fought its way across a room and then lost its target must not treat
+## that room as unexplored — and gating the record on "am I searching right now" is
+## exactly how it would.
+func test_the_trail_is_recorded_even_when_the_unit_is_not_searching() -> void:
+	var bout: Dictionary = _blind_enemy(&"ROAM")
+	var hunter: Unit = bout.hunter
+	# An enemy in plain sight, so no search verb is on offer at all.
+	var view: WorldView = bout.view
+	view.restricted = false
+	assert_true(hunter.recent_cells.is_empty(), "sanity: nothing recorded yet")
+
+	UtilityContext.build(hunter, view)
+
+	assert_has(hunter.recent_cells, hunter.cell, "the unit's own cell went into the trail")
+
+
+## The trail is bounded, or a long mission turns every cell into "recently visited"
+## and the unit runs out of anywhere worth going — the oscillation's opposite number.
+func test_the_trail_is_bounded_and_drops_the_oldest_first() -> void:
+	var grid: Grid = GridFixture.flat(32, 24)
+	var walker: Unit = _armed_unit(&"walker", Vector2i(2, 2), 0)
+	var ally: Unit = _armed_unit(&"ally", Vector2i(3, 2), 0)
+	var state := CombatState.new(grid, [walker, ally])
+	var view: WorldView = WorldView.full(state)
+
+	for x in range(2, 2 + Unit.RECENT_CELLS + 4):
+		walker.cell = Vector2i(x, 2)
+		UtilityContext.build(walker, view)
+
+	assert_eq(walker.recent_cells.size(), Unit.RECENT_CELLS, "the trail is capped")
+	assert_false(walker.recent_cells.has(Vector2i(2, 2)), "and the oldest entry aged out")
+	assert_true(walker.recent_cells.has(walker.cell), "while the newest is still there")
+
+
+## Standing still must not fill the trail with one cell and erase the memory of
+## everywhere else — that would reintroduce the oscillation from the other side.
+func test_standing_still_does_not_flood_the_trail() -> void:
+	var grid: Grid = GridFixture.flat(32, 24)
+	var walker: Unit = _armed_unit(&"walker", Vector2i(2, 2), 0)
+	var ally: Unit = _armed_unit(&"ally", Vector2i(3, 2), 0)
+	var state := CombatState.new(grid, [walker, ally])
+	var view: WorldView = WorldView.full(state)
+	walker.cell = Vector2i(10, 10)
+	UtilityContext.build(walker, view)
+	walker.cell = Vector2i(2, 2)
+
+	for repeat in range(Unit.RECENT_CELLS + 5):
+		UtilityContext.build(walker, view)
+
+	assert_eq(walker.recent_cells.size(), 2, "one entry per distinct cell, not per turn")
+	assert_has(walker.recent_cells, Vector2i(10, 10), "the earlier ground is still remembered")

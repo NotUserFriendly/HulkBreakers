@@ -13,6 +13,12 @@ const AGILITY_STAT_KEY: StringName = &"agility"
 ## placeholder, not a design decision.
 const DECAY_TURNS := 3
 
+## How far back the trail reaches. Long enough that a unit cannot oscillate through
+## it, short enough that ground stops being "recent" and can be swept again — a
+## searcher that remembers everything eventually finds nowhere worth going. Flagged,
+## not tuned.
+const RECENT_CELLS := 8
+
 var id: int = -1  # assigned by CombatState.add_unit; matches Grid.occupant_id
 var matrix: Matrix
 var shell: Shell
@@ -94,6 +100,21 @@ var patrol_points: Array[Vector2i] = []
 ## `Vector2i -> int` round number. An absent point has never been visited, which
 ## sorts oldest and therefore wins.
 var patrol_visits: Dictionary = {}
+
+## Where this unit has been lately, oldest first, capped at `RECENT_CELLS`.
+##
+## **`PATROL` was given a memory and the other three verbs were not, and that was
+## the bug.** `ROAM` and `HUNT` score pure distance-from-here, which is memoryless:
+## from A the farthest reachable cell is B, and from B the farthest is A again. A
+## unit with no enemy in sight therefore walks to the edge of its reach and then
+## alternates between two cells for the rest of the mission — observed live, both
+## squads, every turn of the bout, and reproduced on an open board as ten of
+## fourteen turns spent bouncing between `(19,23)` and `(31,23)`.
+##
+## The same fact `patrol_visits` records, generalised: `PATROL` avoided this by
+## picking the point it had neglected longest, and the reasoning in that comment
+## applies word for word to the verbs that had no route to hang it on.
+var recent_cells: Array[Vector2i] = []
 
 var ap: int = 0
 var max_ap: int = DEFAULT_MAX_AP
@@ -295,6 +316,7 @@ func dup() -> Unit:
 	cloned.search_behaviour = search_behaviour
 	cloned.patrol_points = patrol_points.duplicate()
 	cloned.patrol_visits = patrol_visits.duplicate()
+	cloned.recent_cells = recent_cells.duplicate()
 	cloned.ap = ap
 	cloned.max_ap = max_ap
 	cloned.mp = mp

@@ -116,6 +116,18 @@ const INPUT_TRAVEL_FRACTION := &"travel_fraction"
 ## Progress toward the patrol point visited longest ago. Same 0.5-is-no-change shape
 ## as the other closing inputs.
 const INPUT_CLOSES_TO_PATROL := &"closes_to_patrol"
+
+## taskblock-46 follow-up: **how long since this unit was last near this cell** —
+## 1.0 for ground it has no recent memory of, falling toward 0.0 for where it just
+## came from.
+##
+## The fix for the memoryless-search oscillation. `ROAM` and `HUNT` score distance
+## from where the unit stands, which says nothing about whether it has *been* there:
+## the farthest cell from A is B and the farthest from B is A, so a unit with
+## nothing in sight bounces between two cells for the rest of the mission. This is
+## the same fact `patrol_visits` records, published for the verbs that have no route
+## to hang it on.
+const INPUT_UNVISITED := &"unvisited"
 ## taskblock-46 Pass E: how far this cell is off the target's own facing. 0.0 is
 ## squarely in front of it, 1.0 is directly behind.
 ##
@@ -287,6 +299,11 @@ static func build(
 	# has neglected longest. Done here rather than in the planner because it is
 	# per-turn context exactly like the visibility field is, and doing it before
 	# scoring is what stops a unit being drawn back to the point it is stood on.
+	# The trail is written every turn, for every unit, before anything is scored —
+	# not only while searching. A unit that fought its way across a room and then
+	# lost its target must not treat that room as unexplored, and gating the record
+	# on "am I searching right now" is exactly how it would.
+	_record_recent(p_unit)
 	if p_unit.search_behaviour == &"PATROL":
 		if p_unit.patrol_points.is_empty():
 			p_unit.patrol_points = SearchRoute.generate(
@@ -367,6 +384,43 @@ func predicted_threat(cell: Vector2i) -> float:
 	return float(_threats.get(cell, NO_PREDICTION))
 
 
+## Adds `unit`'s current cell to its trail, oldest dropped first. Idempotent within
+## a turn — standing still does not fill the trail with one cell and erase the
+## memory of everywhere else, which would reintroduce the oscillation from the other
+## direction.
+static func _record_recent(unit: Unit) -> void:
+	if unit == null:
+		return
+	if (
+		not unit.recent_cells.is_empty()
+		and unit.recent_cells[unit.recent_cells.size() - 1] == unit.cell
+	):
+		return
+	unit.recent_cells.append(unit.cell)
+	while unit.recent_cells.size() > Unit.RECENT_CELLS:
+		unit.recent_cells.remove_at(0)
+
+
+## 1.0 for ground with no recent memory attached, scaling down toward 0.0 for the
+## cell the unit is standing on and the ones it just came from.
+##
+## **Graded by recency rather than a flat visited/not**, because a binary would make
+## every cell outside the trail identical and leave the unit free to bounce between
+## two cells eight steps apart — the same oscillation with a longer period. Distance
+## to the nearest trail entry is what makes it a gradient rather than a wall.
+func _unvisited(cell: Vector2i) -> float:
+	if unit == null or unit.recent_cells.is_empty():
+		return 1.0
+	var freshest := 0.0
+	for i in range(unit.recent_cells.size()):
+		# Later entries are more recent and weigh more heavily.
+		var recency: float = float(i + 1) / float(unit.recent_cells.size())
+		var steps: int = Grid.distance_chebyshev(cell, unit.recent_cells[i])
+		var closeness: float = clampf(1.0 - float(steps) / float(Unit.RECENT_CELLS), 0.0, 1.0)
+		freshest = maxf(freshest, recency * closeness)
+	return clampf(1.0 - freshest, 0.0, 1.0)
+
+
 func origin() -> Vector2i:
 	return _origin
 
@@ -421,6 +475,7 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 			INPUT_MOVE_ECONOMY: _move_economy(cell),
 			INPUT_TRAVEL_FRACTION: _travel_fraction(cell),
 			INPUT_CLOSES_TO_PATROL: _closes_to(cell, _patrol_target),
+			INPUT_UNVISITED: _unvisited(cell),
 			INPUT_FLANK_ANGLE: 0.0,
 			INPUT_PREDICTED_THREAT: predicted_threat(cell),
 		}
@@ -438,6 +493,7 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 		INPUT_OWN_INTEGRITY: _integrity,
 		INPUT_TRAVEL_FRACTION: _travel_fraction(cell),
 		INPUT_CLOSES_TO_PATROL: _closes_to(cell, _patrol_target),
+		INPUT_UNVISITED: _unvisited(cell),
 		INPUT_FLANK_ANGLE: _flank_angle(cell),
 		INPUT_PREDICTED_THREAT: predicted_threat(cell),
 	}
