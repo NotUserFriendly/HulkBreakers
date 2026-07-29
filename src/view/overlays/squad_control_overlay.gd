@@ -78,6 +78,8 @@ var debug_panel: DebugControlPanel = null
 ## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
 ## HIGHLIGHT the instant either half of it actually has something to show.
+var suite_run_panel: SuiteRunPanel = null
+var watched_run_panel: WatchedRunPanel = null
 var _readout_header: Label
 ## taskblock-22 Pass E3: the repair picker's own PopupMenu instance —
 ## rebuilt fresh on every `_on_repair_pressed` call, same "queue_free the
@@ -301,6 +303,14 @@ func _build_ui() -> void:
 	# bare RichTextLabel here moved into `CombatLogPanel` verbatim (RTL layout
 	# so the scrollbar never overlaps the text, autowrap off, scroll-following).
 	var log_panel := CombatLogPanel.new()
+	# taskblock-48 Pass B1: hosted the same way `CombatLogPanel` is, and for the same
+	# reason — a debug surface that both overlays need is a panel, not a subclass.
+	# Debug-gated: these drive a real subprocess and a real bout sequence.
+	if OS.is_debug_build():
+		suite_run_panel = SuiteRunPanel.new()
+		add_child(suite_run_panel)
+		watched_run_panel = WatchedRunPanel.new()
+		add_child(watched_run_panel)
 	left_layout.add_child(log_panel)
 	log_sink = HierarchicalUiSink.new(log_panel.log_label)
 

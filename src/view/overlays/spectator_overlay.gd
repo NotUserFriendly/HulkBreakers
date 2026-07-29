@@ -48,6 +48,8 @@ var resolution_player: ResolutionPlayer
 ## readout) — the same class the player view uses. `log_label` below is its own
 ## label, kept as a field because this file and its tests already reach for it
 ## by that name.
+var suite_run_panel: SuiteRunPanel = null
+var watched_run_panel: WatchedRunPanel = null
 var log_panel: CombatLogPanel
 var log_label: RichTextLabel
 var log_sink: HierarchicalUiSink
@@ -428,6 +430,14 @@ func _build_ui() -> void:
 	# own one-line fix, the RTL scrollbar placement) lives inside the panel now,
 	# which is the point: there is one combat log, configured once.
 	log_panel = CombatLogPanel.new()
+	# taskblock-48 Pass B1: hosted the same way `CombatLogPanel` is, and for the same
+	# reason — a debug surface that both overlays need is a panel, not a subclass.
+	# Debug-gated: these drive a real subprocess and a real bout sequence.
+	if OS.is_debug_build():
+		suite_run_panel = SuiteRunPanel.new()
+		add_child(suite_run_panel)
+		watched_run_panel = WatchedRunPanel.new()
+		add_child(watched_run_panel)
 	# Flush into the bottom-left corner, matching the player view exactly — that
 	# one is the last child of a full-rect column, so it sits hard against both
 	# edges. A margin here made the two views' logs sit in visibly different
