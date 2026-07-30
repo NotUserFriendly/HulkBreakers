@@ -54,12 +54,12 @@ const HEADROOM := 0.15
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
-	"bouts": 66,
-	"turns": 1220,
-	"plans": 1464,
-	"candidates": 2013916,
-	"shot_planes": 18746,
-	"floods": 6071,
+	"bouts": 55,
+	"turns": 766,
+	"plans": 977,
+	"candidates": 1526244,
+	"shot_planes": 13859,
+	"floods": 4992,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.
@@ -95,13 +95,14 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## Values are the current measurement with the same headroom applied, rounded up.
 ## A `turns` entry for a file in `TURNS_EXCLUDED` is ignored — kept in the table as a
 ## record of what it measured, not as a limit.
-## **Re-ratcheted twice**: at Pass C, where `SAMPLE_SEEDS` 20 → 8 took the sampler file
-## from 88 bouts to 40, and again at Pass E, where retargeting and merging took it to
-## 24. Leaving either set of old numbers behind would have left most of the budget as
-## slack in the two files that matter most — a ratchet that only goes up is a ceiling.
+## **Re-ratcheted at every pass that moved the numbers**: taskblock-47 Pass C took the
+## sampler file from 88 bouts to 40 via `SAMPLE_SEEDS` 20 → 8, Pass E took it to 24 by
+## retargeting and merging, and taskblock-48 Pass C took it to 10 with the shared corpus
+## and canned records. Leaving any of those old numbers behind would have left most of
+## the budget as slack — a ratchet that only goes up is a ceiling.
 const PER_FILE: Dictionary = {
-	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 28, "turns": 873},
-	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 420},
+	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 12, "turns": 351},
+	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 381},
 	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 4, "turns": 136},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
 }

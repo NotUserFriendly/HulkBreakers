@@ -41,6 +41,7 @@ const BOUT_FILES: Array[String] = [
 	"res://test/unit/logic/ai/test_bout_setup.gd",
 	"res://test/unit/logic/ai/test_plan_pacer.gd",
 	"res://test/unit/logic/ai/test_utility_planner.gd",
+	"res://test/unit/logic/test_bout_corpus.gd",
 	"res://test/unit/logic/test_completion_sampler.gd",
 	"res://test/unit/logic/test_replay_handle.gd",
 	"res://test/unit/logic/test_watched_run.gd",
@@ -49,6 +50,21 @@ const BOUT_FILES: Array[String] = [
 	"res://test/unit/view/overlays/test_ai_batch_yield.gd",
 	"res://test/unit/view/overlays/test_generate_bout_overlay.gd",
 	"res://test/unit/view/test_battle_scene.gd",
+	"res://test/unit/view/test_replay_wiring.gd",
+]
+
+## Files that read `BoutCorpus` rather than building their own bouts.
+##
+## **Their measured bout count depends on run order**, which is why they need naming.
+## The corpus plays on first touch, so in the full gate `test_full_mission.gd` runs
+## first and is charged all eight; `test_bout_corpus.gd` then measures zero. In the fast
+## gate the integration file is skipped and the corpus file would pay instead.
+##
+## So they must be in `BOUT_FILES` — a fast gate that ran one of them would build bouts
+## — while the profile will sometimes show them at zero. That is a correct measurement of
+## who paid, not a stale entry, and `test_suite_tier.gd` has to tell those apart.
+const CORPUS_READERS: Array[String] = [
+	"res://test/unit/logic/test_bout_corpus.gd",
 ]
 
 
