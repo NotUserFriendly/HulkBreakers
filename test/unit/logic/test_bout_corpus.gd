@@ -40,7 +40,13 @@ func after_each() -> void:
 func test_reading_the_corpus_twice_plays_no_extra_bouts() -> void:
 	var first: Array[Dictionary] = await BoutCorpus.rows()
 	assert_true(BoutCorpus.is_played(), "the first read played it")
-	assert_eq(first.size(), CompletionSampler.SAMPLE_SEEDS, "one record per drawn seed")
+	# taskblock-50 Pass D: **one record per seed actually played**, which is no longer a
+	# fixed eight — the corpus stops at the first completion, so a healthy run records
+	# one. Asserted against the sample's own count rather than a constant, because the
+	# whole point of the change is that the count varies with the AI's health.
+	assert_eq(
+		first.size(), int((await BoutCorpus.sample())["seeds_played"]), "one record per seed played"
+	)
 	var after_first: int = CombatState.bouts_built
 
 	var second: Array[Dictionary] = await BoutCorpus.rows()
@@ -54,15 +60,20 @@ func test_reading_the_corpus_twice_plays_no_extra_bouts() -> void:
 	)
 	assert_eq(CombatState.bouts_built, after_first, "re-reading the corpus played nothing")
 	assert_eq(second.size(), first.size(), "and returned the same records")
-	assert_eq(int(third["counted"]), first.size())
+	assert_eq(int(third["seeds_played"]), first.size())
 
 
-## The draw keeps the property taskblock-46 spent a pass establishing: `SAMPLE_SEEDS`
-## distinct seeds, not a pinned window wearing a new name.
+## The draw keeps the property taskblock-46 spent a pass establishing: distinct seeds,
+## drawn at random, not a pinned window wearing a new name.
+##
+## taskblock-50 Pass D: it draws lazily now — a seed is only drawn once the previous one
+## has lost — so the count is however many it took, capped. Distinctness is the property
+## that matters and it is unchanged; a fixed size never was the point.
 func test_the_corpus_draws_distinct_seeds() -> void:
 	var seeds: Array[int] = await BoutCorpus.seeds()
 
-	assert_eq(seeds.size(), CompletionSampler.SAMPLE_SEEDS)
+	assert_gt(seeds.size(), 0, "it drew something")
+	assert_true(seeds.size() <= CompletionSampler.FIRST_WIN_CAP, "and never past the cap")
 	var seen: Dictionary = {}
 	for map_seed: int in seeds:
 		assert_false(seen.has(map_seed), "seed %d drawn twice" % map_seed)
@@ -85,7 +96,7 @@ func test_one_reader_cannot_mutate_another_readers_records() -> void:
 	mine.clear()
 
 	var theirs: Array[Dictionary] = await BoutCorpus.rows()
-	assert_eq(theirs.size(), CompletionSampler.SAMPLE_SEEDS, "the array was a copy")
+	assert_gt(theirs.size(), 0, "the array was a copy")
 	assert_eq(
 		StringName(theirs[0]["outcome_name"]), original_outcome, "and so were the records in it"
 	)
@@ -96,14 +107,14 @@ func test_one_reader_cannot_mutate_another_readers_records() -> void:
 ## than the rows.
 func test_the_sample_dictionary_is_a_copy_too() -> void:
 	var mine: Dictionary = await BoutCorpus.sample()
-	var original_rate: float = float(mine["rate"])
+	var original_played: int = int(mine["seeds_played"])
 
-	mine["rate"] = -1.0
+	mine["seeds_played"] = -1
 	(mine["rows"] as Array).clear()
 
 	var theirs: Dictionary = await BoutCorpus.sample()
-	assert_eq(float(theirs["rate"]), original_rate, "the rate survived")
-	assert_eq((theirs["rows"] as Array).size(), CompletionSampler.SAMPLE_SEEDS, "so did the rows")
+	assert_eq(int(theirs["seeds_played"]), original_played, "the count survived")
+	assert_gt((theirs["rows"] as Array).size(), 0, "so did the rows")
 
 
 # --- the canned records ------------------------------------------------------------

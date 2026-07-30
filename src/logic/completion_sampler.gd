@@ -76,6 +76,20 @@ const ESCALATION_SEEDS := 100
 ## checked against are answers to the same question.
 const TURN_CAP := 100
 
+## **The cap on `seeds_to_first_win`, derived rather than picked.**
+##
+## No win inside this many seeds is the failure. At the measured 0.72 completion rate a
+## run of nine straight losses has probability 0.28^9 — about **one run in 180 000**, so
+## the gate is not going to cry wolf. It is deliberately a *collapse* detector: at a rate
+## of 0.20 it fails about one run in seven, at 0.10 about one in three, and a mild
+## regression it will not fail at all.
+##
+## **That is the design, not a gap.** The reported number is the signal — 1 is healthy, 4
+## is worth a look, 9 is a problem — and a threshold on a small integer count is exactly
+## what put `MIN_COMPLETION_RATE` a fraction of one seed from red and got it lowered
+## twice. The cap only catches an AI that has stopped finishing missions at all.
+const FIRST_WIN_CAP := 9
+
 ## How many times `sample()` has fallen below its floor since the process started.
 ## Diagnostics only; never read by a decision.
 static var escalations: int = 0
@@ -102,11 +116,16 @@ static func build_for_seed(map_seed: int) -> Dictionary:
 
 ## One bout. Returns the outcome name and the turns it took, or an empty dictionary
 ## when the bout could not even be built.
-static func run_seed(map_seed: int) -> Dictionary:
+## **`cap` bounds the horizon, it does not change the seed.** A caller asking a question
+## that is true at any horizon — "does this replay identically?" — can bound it and pay
+## for a few turns instead of a whole mission. That is not the same move as picking a
+## seed whose map happens to be cheap, which would quietly make the fixture
+## unrepresentative; the map is whatever the seed says, the run just stops earlier.
+static func run_seed(map_seed: int, cap: int = TURN_CAP) -> Dictionary:
 	var built: Dictionary = build_for_seed(map_seed)
 	if built.get("error", "") != "":
 		return {}
-	var runner := BoutRunner.new(built["state"], built["mission"], TURN_CAP)
+	var runner := BoutRunner.new(built["state"], built["mission"], cap)
 	await runner.run_to_completion()
 	var outcome: int = built["mission"].outcome
 	return {
@@ -120,13 +139,13 @@ static func run_seed(map_seed: int) -> Dictionary:
 
 ## Runs `seeds` and summarises. `rows` carries every per-seed outcome, because the
 ## aggregate is what hid which seeds mattered — `BR45.03`'s whole lesson.
-static func run_seeds(seeds: Array[int]) -> Dictionary:
+static func run_seeds(seeds: Array[int], cap: int = TURN_CAP) -> Dictionary:
 	var rows: Array[Dictionary] = []
 	var completed := 0
 	var turns_when_completed := 0
 	var tally: Dictionary = {}
 	for map_seed: int in seeds:
-		var row: Dictionary = await run_seed(map_seed)
+		var row: Dictionary = await run_seed(map_seed, cap)
 		if row.is_empty():
 			continue
 		rows.append(row)
@@ -145,6 +164,70 @@ static func run_seeds(seeds: Array[int]) -> Dictionary:
 		"mean_turns": float(turns_when_completed) / float(completed) if completed > 0 else 0.0,
 		"tally": tally,
 	}
+
+
+## **Play seeds until one of them completes, and report how many it took.**
+##
+## taskblock-50 Pass D. This replaces a fixed-size sample as the suite's completion
+## check, and the shape is the point: **cost scales inversely with health.** At a healthy
+## rate the common case stops on the first or second seed — one bout instead of eight —
+## and when the AI regresses the measurement gets more expensive, so the suite spends
+## time exactly when something is wrong.
+##
+## Draws lazily: a seed is only drawn once the previous one has lost, so a healthy run
+## never even generates the maps it did not need.
+static func seeds_to_first_win(
+	rng: RandomNumberGenerator, cap: int = FIRST_WIN_CAP, space: int = 10000
+) -> Dictionary:
+	var rows: Array[Dictionary] = []
+	var drawn: Array[int] = []
+	var tally: Dictionary = {}
+	while drawn.size() < cap:
+		var candidate: int = rng.randi_range(0, space - 1)
+		if drawn.has(candidate):
+			continue
+		drawn.append(candidate)
+		var row: Dictionary = await run_seed(candidate)
+		if row.is_empty():
+			continue
+		rows.append(row)
+		var outcome_name: String = row["outcome_name"]
+		tally[outcome_name] = int(tally.get(outcome_name, 0)) + 1
+		if bool(row["completed"]):
+			break
+	var won: bool = not rows.is_empty() and bool(rows[rows.size() - 1]["completed"])
+	return {
+		"seeds": drawn,
+		"rows": rows,
+		"seeds_played": rows.size(),
+		"won": won,
+		"winning_seed": int(rows[rows.size() - 1]["seed"]) if won else -1,
+		"cap": cap,
+		"tally": tally,
+	}
+
+
+## One line per seed played, then the verdict. Same shape as `describe` — a header, a row
+## each, a summary — so a reader of either report is reading the same thing.
+static func describe_first_win(result: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	lines.append("seeds drawn: %s" % [result.get("seeds", [])])
+	for row: Dictionary in result.get("rows", []):
+		lines.append(
+			"  seed %d: %s in %d turns" % [int(row["seed"]), row["outcome_name"], int(row["turns"])]
+		)
+	if bool(result.get("won", false)):
+		lines.append(
+			(
+				"first completion on seed %d after %d seed(s) — cap %d"
+				% [int(result["winning_seed"]), int(result["seeds_played"]), int(result["cap"])]
+			)
+		)
+	else:
+		lines.append(
+			"no completion in %d seed(s) — at the cap" % [int(result.get("seeds_played", 0))]
+		)
+	return lines
 
 
 ## `SAMPLE_SEEDS` seeds drawn from `rng`. **The caller owns the RNG** — logic never

@@ -42,14 +42,25 @@ static var _seeds: Array[int] = []
 
 ## The sample, played on first call and cached after. **A deep copy every time**, so no
 ## caller can reach the cache.
+## taskblock-50 Pass D: **it stops at the first completion instead of playing a fixed
+## eight.** The draw is still clock-seeded, still random, still printed — what changed is
+## how many of those seeds get played. At the measured rate that is usually one bout, and
+## it is why every reader of this corpus became cheap at once rather than one file at a
+## time.
+##
+## It also removed the reason the suite could not measure itself. The fixed sample made
+## total turns swing 657 to 1305 between runs with no code change (`BR49.01`), which both
+## flapped the work budget and made any other saving unmeasurable underneath it.
 static func sample() -> Dictionary:
 	if _sample.is_empty():
 		var rng := RandomNumberGenerator.new()
 		# From the clock, deliberately — see the note above. A fixed seed here would
 		# rebuild the pinned window under a new name.
 		rng.seed = int(Time.get_unix_time_from_system())
-		_seeds = CompletionSampler.draw_seeds(rng)
-		_sample = await CompletionSampler.run_seeds(_seeds)
+		_sample = await CompletionSampler.seeds_to_first_win(rng)
+		_seeds = []
+		for drawn: int in _sample.get("seeds", []):
+			_seeds.append(int(drawn))
 	return _sample.duplicate(true)
 
 

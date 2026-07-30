@@ -105,9 +105,16 @@ func test_a_fixed_seed_list_yields_identical_results_twice() -> void:
 	# playing bouts, and canned records cannot make it. One seed is as good a witness
 	# as fifty for a determinism property.
 	var seeds: Array[int] = [0]
+	# taskblock-50 Pass D: **bounded to twelve turns, on the same seed.** Determinism is
+	# a step-by-step property — two runs that agree for twelve turns agree because the
+	# mechanism is deterministic, not because they got lucky — so the horizon is the one
+	# thing here that can be shortened without weakening the claim. Shortening it by
+	# hunting for a seed with a cheap map would be the move that *does* weaken it, and is
+	# why taskblock-48 declined to do that.
+	var cap := 12
 
-	var first: Dictionary = await CompletionSampler.run_seeds(seeds)
-	var second: Dictionary = await CompletionSampler.run_seeds(seeds)
+	var first: Dictionary = await CompletionSampler.run_seeds(seeds, cap)
+	var second: Dictionary = await CompletionSampler.run_seeds(seeds, cap)
 
 	assert_eq(first["completed"], second["completed"])
 	assert_eq(first["rate"], second["rate"])
