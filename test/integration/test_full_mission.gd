@@ -138,40 +138,48 @@ func _roster(profile: BotPreset, ai_profile: StringName, count: int) -> Array[Bo
 ## does it, for the reason above — so nothing about what this measures has changed. What
 ## has changed is that `test_completion_sampler.gd` no longer plays its own copy of the
 ## same bouts.
-func test_bout_completion_rate_meets_the_measured_floor() -> void:
+## taskblock-50 Pass D: **`seeds_to_first_win` replaces the completion rate.**
+##
+## The question is unchanged — can this AI finish a mission — and the answer is now a
+## number instead of a ratio against a threshold. **1 is healthy, 4 is worth a look, 9 is
+## the cap and a failure.** Reported every run, pass or fail, because the count is the
+## signal; a green boolean throws away the thing that made this worth measuring.
+##
+## **Why this is a better shape than the rate it replaces.** `MIN_COMPLETION_RATE` is a
+## threshold on a small integer count, so it sat less than one seed from red and was
+## lowered twice rather than investigated. A count to first win has no constant on a
+## knife edge: it degrades continuously, and the only tuning it has is the cap.
+##
+## **And it costs what the answer is worth.** A healthy run stops on the first or second
+## seed; a sick one plays up to nine. The old fixed sample paid for eight every time and
+## made the suite's own runtime swing by 40% between runs, which is `BR49.01`.
+##
+## **`MIN_COMPLETION_RATE` is left in place and unused by this test.** It is the
+## supervisor's constant — retiring it is proposed in the block's report, not done here.
+func test_seeds_to_first_completion_stays_low() -> void:
 	var sampled: Dictionary = await BoutCorpus.sample()
 	print("\n--- completion sample ---")
-	for line: String in CompletionSampler.describe(sampled):
+	for line: String in CompletionSampler.describe_first_win(sampled):
 		print(line)
 
-	var rate: float = float(sampled["rate"])
-	# Reported every run, pass or fail. With the escalation moved out of the suite
-	# this is the probability of a SPURIOUS failure, which is the number that says
-	# whether sampling is still a fair gate.
-	var spurious: float = CompletionSampler.escalation_probability(rate, MIN_COMPLETION_RATE)
+	var played: int = int(sampled["seeds_played"])
+	assert_gt(played, 0, "sanity: the sample actually ran a bout")
 	print(
 		(
-			"spurious-failure probability at this rate: %.1f%% (~1 run in %d)"
-			% [spurious * 100.0, int(round(1.0 / maxf(0.0001, spurious)))]
+			"seeds to first completion: %d (cap %d) — 1 is healthy, 4 is worth a look"
+			% [played, int(sampled["cap"])]
 		)
 	)
-	assert_gt(int(sampled["counted"]), 0, "sanity: the sample actually ran bouts")
 
-	assert_false(
-		CompletionSampler.should_escalate(rate, MIN_COMPLETION_RATE),
+	assert_true(
+		bool(sampled["won"]),
 		(
 			(
-				"sample %.1f%% is below the %.1f%% floor over %d seeds. Confirm with the "
-				+ "deterministic %d-seed run before treating this as real:\n"
+				"no mission completed in %d seeds. That is a collapse, not a dip — confirm "
+				+ "with the deterministic %d-seed run before treating it as real:\n"
 				+ "    godot --headless --path . -s res://tools/probe_seeds.gd\n"
 				+ "seeds drawn: %s"
 			)
-			% [
-				rate * 100.0,
-				MIN_COMPLETION_RATE * 100.0,
-				int(sampled["counted"]),
-				CompletionSampler.ESCALATION_SEEDS,
-				str(sampled["seeds"])
-			]
+			% [played, CompletionSampler.ESCALATION_SEEDS, str(sampled["seeds"])]
 		)
 	)
