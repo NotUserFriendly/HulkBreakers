@@ -1742,59 +1742,59 @@ unit/view/overlays/test_generate_bout_overlay.gd,test_start_bout_threads_each_en
 unit/view/overlays/test_generate_bout_overlay.gd,test_the_menu_lists_exactly_the_profiles_on_disk,,187694,0,0,0,2,0,0,content is an open StringName vocabulary a designer can extend without code
 unit/view/overlays/test_generate_bout_overlay.gd,test_every_row_shape_reserves_the_same_minimum_height,,185717,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
 unit/view/overlays/test_generate_bout_overlay.gd,test_the_menu_layout_stays_centered_regardless_of_its_own_size,,214098,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
-unit/view/overlays/test_single_unit_overlay.gd,test_wants_turn_for_is_true_only_for_the_controlled_unit,,189274,0,1,14,4,1,0,
-unit/view/overlays/test_single_unit_overlay.gd,test_a_non_controlled_units_turn_auto_resolves_and_the_controlled_unit_auto_selects,,185281,0,1,14,4,1,0,
-unit/view/overlays/test_single_unit_overlay.gd,test_an_unconfigured_overlay_never_auto_drives_anything,,165173,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_setup_wires_a_bout_runner_against_the_loaded_battle,,183955,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_log_label_never_word_wraps,,194873,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_play_sets_playing_and_pause_clears_it,,174737,0,0,125,4,1,2,
-unit/view/overlays/test_spectator_overlay.gd,test_step_once_advances_exactly_one_turn_and_stays_paused,,1948010,0,0,125,4,1,2,
-unit/view/overlays/test_spectator_overlay.gd,test_speed_cycles_through_the_three_fixed_steps,,187053,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_a_faster_speed_never_skips_or_repeats_a_single_step,,1457491,0,2,153,6,3,2,
-unit/view/overlays/test_spectator_overlay.gd,test_the_bout_finishing_stops_playback,,6090041,0,2,153,6,3,2,
-unit/view/overlays/test_spectator_overlay.gd,test_the_dev_tunable_fields_write_directly_into_resolution_player,,177833,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value,,182090,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_clicking_a_unit_pauses_the_bout_and_opens_the_inspect_panel,,178618,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before,,214317,0,0,125,4,1,2,
-unit/view/overlays/test_spectator_overlay.gd,test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel,,210520,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_clicking_empty_space_does_nothing,,186439,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_hovering_a_unit_highlights_its_view_and_clears_the_other,,185437,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_hovering_off_every_unit_clears_the_previous_highlight,,177118,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_the_camera_never_moves_on_its_own_while_stepping,,5961017,0,2,153,6,3,2,
-unit/view/overlays/test_spectator_overlay.gd,test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed,,6076150,0,4,306,10,6,4,
-unit/view/overlays/test_spectator_overlay.gd,test_setup_wires_a_bout_injector_against_the_same_live_state,,167419,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_top_left_cluster_has_no_new_battle_and_labels_the_toggle_assume_control,,162943,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_toggles_the_debug_panels_own_visibility,,168255,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_wires_the_panel_against_the_real_bout_injector_and_self,,170402,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_force_current_unit_calls_the_real_bout_injector_api,,174825,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_set_part_hp_calls_the_real_bout_injector_api,,170224,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_force_overwatch_arm_calls_the_real_bout_injector_api,,173503,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout,,175016,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api,,170098,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it,,170712,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_an_injection_applied_while_paused_is_visible_on_the_next_step,,1921517,0,1,50,4,1,0,
-unit/view/overlays/test_spectator_overlay.gd,test_playback_proceeds_normally_after_an_injection,,4396656,0,1,175,6,2,10,
-unit/view/overlays/test_spectator_overlay.gd,test_capture_mode_intercepts_a_real_click_and_never_opens_the_inspect_panel,,195601,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_capture_mode_off_behaves_exactly_as_before,,181507,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_the_spectator_log_is_the_shared_combat_log_panel,,198611,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_resizing_the_spectator_log_actually_changes_its_size,,218217,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_resizing_keeps_the_bottom_edge_pinned_and_grows_upward,,186153,0,0,0,2,0,0,
-unit/view/overlays/test_spectator_overlay.gd,test_the_spectator_log_sits_flush_in_the_bottom_left_corner,,182048,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_ai_turns_do_not_advance_until_the_players_own_animation_finishes,,212694,0,1,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_ai_turns_advance_once_the_players_own_animation_finishes,,1985068,0,2,601,4,1,12,
-unit/view/overlays/test_squad_control_overlay.gd,test_the_real_production_wiring_enters_step_out_on_a_covered_enemy,,298496,0,0,0,5,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_button_and_panel_exist_exactly_when_this_is_a_debug_build,,175343,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_toggles_the_debug_panels_own_visibility,,166207,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_wires_the_panel_against_the_real_bout_injector_and_tactics,,162965,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster,,160711,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_top_left_cluster_never_overlaps_the_centered_debug_panel,,172565,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does,,156527,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_clicking_the_repair_slot_on_the_action_bar_opens_the_same_picker,,166096,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_force_current_unit_calls_the_real_bout_injector_api,,166705,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_sets_was_injected_through_the_player_view_path,,159667,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout,,156833,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api,,167418,0,0,0,2,0,0,
-unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it,,158064,0,0,0,2,0,0,
+unit/view/overlays/test_single_unit_overlay.gd,test_wants_turn_for_is_true_only_for_the_controlled_unit,,189274,0,1,14,4,1,0,the AI drives only the squads it was given
+unit/view/overlays/test_single_unit_overlay.gd,test_a_non_controlled_units_turn_auto_resolves_and_the_controlled_unit_auto_selects,,185281,0,1,14,4,1,0,the AI drives only the squads it was given
+unit/view/overlays/test_single_unit_overlay.gd,test_an_unconfigured_overlay_never_auto_drives_anything,,165173,0,0,0,2,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/overlays/test_spectator_overlay.gd,test_setup_wires_a_bout_runner_against_the_loaded_battle,,183955,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/overlays/test_spectator_overlay.gd,test_log_label_never_word_wraps,,194873,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/overlays/test_spectator_overlay.gd,test_play_sets_playing_and_pause_clears_it,,174737,0,0,125,4,1,2,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_step_once_advances_exactly_one_turn_and_stays_paused,,1948010,0,0,125,4,1,2,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_speed_cycles_through_the_three_fixed_steps,,187053,0,0,0,2,0,0,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_a_faster_speed_never_skips_or_repeats_a_single_step,,1457491,0,2,153,6,3,2,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_the_bout_finishing_stops_playback,,6090041,0,2,153,6,3,2,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_the_dev_tunable_fields_write_directly_into_resolution_player,,177833,0,0,0,2,0,0,"a balance number is a data tunable, not a literal in code"
+unit/view/overlays/test_spectator_overlay.gd,test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value,,182090,0,0,0,2,0,0,"a balance number is a data tunable, not a literal in code"
+unit/view/overlays/test_spectator_overlay.gd,test_clicking_a_unit_pauses_the_bout_and_opens_the_inspect_panel,,178618,0,0,0,2,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/overlays/test_spectator_overlay.gd,test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before,,214317,0,0,125,4,1,2,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel,,210520,0,0,0,2,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/overlays/test_spectator_overlay.gd,test_clicking_empty_space_does_nothing,,186439,0,0,0,2,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/overlays/test_spectator_overlay.gd,test_hovering_a_unit_highlights_its_view_and_clears_the_other,,185437,0,0,0,2,0,0,a highlight marks exactly the part it names
+unit/view/overlays/test_spectator_overlay.gd,test_hovering_off_every_unit_clears_the_previous_highlight,,177118,0,0,0,2,0,0,a highlight marks exactly the part it names
+unit/view/overlays/test_spectator_overlay.gd,test_the_camera_never_moves_on_its_own_while_stepping,,5961017,0,2,153,6,3,2,a camera move eases through a tween a later input can cancel
+unit/view/overlays/test_spectator_overlay.gd,test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed,,6076150,0,4,306,10,6,4,the same seed produces the same battle
+unit/view/overlays/test_spectator_overlay.gd,test_setup_wires_a_bout_injector_against_the_same_live_state,,167419,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/overlays/test_spectator_overlay.gd,test_top_left_cluster_has_no_new_battle_and_labels_the_toggle_assume_control,,162943,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/overlays/test_spectator_overlay.gd,test_inject_toggles_the_debug_panels_own_visibility,,168255,0,0,0,2,0,0,the debug injector is reachable only from a debug surface
+unit/view/overlays/test_spectator_overlay.gd,test_inject_wires_the_panel_against_the_real_bout_injector_and_self,,170402,0,0,0,2,0,0,the debug injector is reachable only from a debug surface
+unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_force_current_unit_calls_the_real_bout_injector_api,,174825,0,0,0,2,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_set_part_hp_calls_the_real_bout_injector_api,,170224,0,0,0,2,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_force_overwatch_arm_calls_the_real_bout_injector_api,,173503,0,0,0,2,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/overlays/test_spectator_overlay.gd,test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout,,175016,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api,,170098,0,0,0,2,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/overlays/test_spectator_overlay.gd,test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it,,170712,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/overlays/test_spectator_overlay.gd,test_an_injection_applied_while_paused_is_visible_on_the_next_step,,1921517,0,1,50,4,1,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/view/overlays/test_spectator_overlay.gd,test_playback_proceeds_normally_after_an_injection,,4396656,0,1,175,6,2,10,"playback plays, pauses and steps without the bout diverging"
+unit/view/overlays/test_spectator_overlay.gd,test_capture_mode_intercepts_a_real_click_and_never_opens_the_inspect_panel,,195601,0,0,0,2,0,0,a real input event reaches the control it lands on
+unit/view/overlays/test_spectator_overlay.gd,test_capture_mode_off_behaves_exactly_as_before,,181507,0,0,0,2,0,0,a feature switched off leaves behaviour exactly as it was
+unit/view/overlays/test_spectator_overlay.gd,test_the_spectator_log_is_the_shared_combat_log_panel,,198611,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/overlays/test_spectator_overlay.gd,test_resizing_the_spectator_log_actually_changes_its_size,,218217,0,0,0,2,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/overlays/test_spectator_overlay.gd,test_resizing_keeps_the_bottom_edge_pinned_and_grows_upward,,186153,0,0,0,2,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/overlays/test_spectator_overlay.gd,test_the_spectator_log_sits_flush_in_the_bottom_left_corner,,182048,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/overlays/test_squad_control_overlay.gd,test_ai_turns_do_not_advance_until_the_players_own_animation_finishes,,212694,0,1,0,2,0,0,an AI turn waits for the player's own animation to finish
+unit/view/overlays/test_squad_control_overlay.gd,test_ai_turns_advance_once_the_players_own_animation_finishes,,1985068,0,2,601,4,1,12,an AI turn waits for the player's own animation to finish
+unit/view/overlays/test_squad_control_overlay.gd,test_the_real_production_wiring_enters_step_out_on_a_covered_enemy,,298496,0,0,0,5,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_button_and_panel_exist_exactly_when_this_is_a_debug_build,,175343,0,0,0,2,0,0,the debug injector is reachable only from a debug surface
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_toggles_the_debug_panels_own_visibility,,166207,0,0,0,2,0,0,the debug injector is reachable only from a debug surface
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_wires_the_panel_against_the_real_bout_injector_and_tactics,,162965,0,0,0,2,0,0,the debug injector is reachable only from a debug surface
+unit/view/overlays/test_squad_control_overlay.gd,test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster,,160711,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/overlays/test_squad_control_overlay.gd,test_top_left_cluster_never_overlaps_the_centered_debug_panel,,172565,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/overlays/test_squad_control_overlay.gd,test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does,,156527,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/overlays/test_squad_control_overlay.gd,test_clicking_the_repair_slot_on_the_action_bar_opens_the_same_picker,,166096,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_force_current_unit_calls_the_real_bout_injector_api,,166705,0,0,0,2,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_sets_was_injected_through_the_player_view_path,,159667,0,0,0,2,0,0,an injected bout is flagged so its results are not read as clean
+unit/view/overlays/test_squad_control_overlay.gd,test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout,,156833,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api,,167418,0,0,0,2,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it,,158064,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
 unit/view/test_action_bar.gd,test_slot_count_is_ten,,949,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
 unit/view/test_action_bar.gd,test_box_size_is_square,,230,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
 unit/view/test_action_bar.gd,test_setup_builds_ten_square_panels,,5443,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
@@ -2124,302 +2124,302 @@ unit/view/test_queue_panel.gd,test_queuing_actions_creates_one_row_per_entry,,86
 unit/view/test_queue_panel.gd,test_a_real_click_on_a_rows_resolve_button_resolves_through_it,,95856,0,0,0,6,0,0,a real input event reaches the control it lands on
 unit/view/test_queue_panel.gd,test_a_real_click_on_the_second_rows_resolve_button_resolves_through_both,,87925,0,0,0,6,0,0,a real input event reaches the control it lands on
 unit/view/test_queue_panel.gd,test_refresh_rebuilds_rows_so_a_later_click_targets_the_fresh_queue,,106511,0,0,0,7,0,0,the view rebuilds only when the board actually changed
-unit/view/test_replay_wiring.gd,test_failures_are_parsed_from_coloured_output_and_deduplicated,,3301,0,0,0,0,0,0,
-unit/view/test_replay_wiring.gd,test_the_overlay_binds_the_replay_panel_to_the_battle,,151857,0,0,0,2,0,0,
-unit/view/test_replay_wiring.gd,test_a_failed_run_offers_its_replayable_failures,,240757,1,0,210,5,0,0,
-unit/view/test_replay_wiring.gd,test_a_passing_run_offers_nothing,,158473,0,0,0,2,0,0,
-unit/view/test_replay_wiring.gd,test_a_finished_bout_advances_the_replay_run,,236511,1,0,210,5,0,0,
-unit/view/test_replay_wiring.gd,test_the_spectator_starts_a_replayed_bout_playing,,180196,0,0,210,3,0,0,
-unit/view/test_replay_wiring.gd,test_launching_a_run_clears_the_board,,197748,0,0,0,2,0,0,
-unit/view/test_replay_wiring.gd,test_forcing_a_failure_does_not_touch_this_process_environment,,2311907,0,0,1008,1,1,0,
-unit/view/test_replay_wiring.gd,test_the_toggle_produces_a_failing_run_with_something_to_replay,,4160052,0,0,0,0,0,0,
-unit/view/test_replay_wiring.gd,test_forcing_a_failure_yields_a_replayable_bout,,4382011,1,0,0,2,0,0,
-unit/view/test_replay_wiring.gd,test_the_force_failure_checkbox_reaches_the_launched_run,,1290206,0,0,0,2,0,0,
-unit/view/test_replay_wiring.gd,test_a_forced_run_prefixes_the_variable_onto_the_child_command,,1359508,0,0,0,0,0,0,
-unit/view/test_replay_wiring.gd,test_a_forced_run_says_so_and_shows_its_command,,704580,0,0,0,2,0,0,
-unit/view/test_replay_wiring.gd,test_an_ordinary_run_does_not_claim_to_be_forced,,701224,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_setup_shows_the_tactics_banner,,164741,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_setup_with_no_banner_never_crashes,,141882,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_immediately_switches_to_the_resolution_banner,,139306,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_impact_spawns_a_tracer_for_an_impact_event,,148608,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_a_live_tracer_is_drawn_at_the_live_render_priority,,153750,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_a_retired_tracer_is_translucent_red_and_drops_to_the_retired_priority,,149456,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_event_ignores_non_impact_events,,160076,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_the_tracer_spans_from_the_attackers_cell_to_the_targets_cell,,148913,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_impact_draws_at_the_shots_own_real_logged_heights,,162700,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_impact_with_no_target_unit_still_draws_a_tracer_to_the_hit_point,,149975,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_impact_draws_a_ricochet_hop_from_its_own_real_origin_not_the_shooter,,148744,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_impact_draws_a_second_tracer_for_a_deflect_outcome,,144730,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_deflect_tracer_count_matches_deflect_count_logged,,155592,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_the_deflect_tracer_uses_a_visually_distinct_color,,152083,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_deflect_tracer_waits_a_beat_after_the_primary_impact,,158005,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_miss_spawns_a_tracer_along_its_own_logged_endpoint,,138044,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_miss_draws_at_its_own_real_logged_heights,,141996,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_event_dispatches_a_miss_event_to_play_miss,,148223,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_play_miss_with_an_unknown_attacker_does_not_crash_or_spawn_a_tracer,,149850,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_inter_shot_break_separates_a_miss_from_a_following_impact,,147671,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_a_zero_duration_slide_visits_every_path_cell_and_ends_at_zero_offset,,150629,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_playback_never_mutates_the_real_combat_states_own_unit_fields,,169565,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_slide_segment_duration_derives_from_slide_ms_and_pacing_speed,,144044,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_facing_duration_derives_from_slide_ms_and_pacing_speed,,148951,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_a_zero_duration_facing_change_snaps_and_remembers_the_new_orientation,,139634,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_prime_never_uses_a_facing_events_own_target_as_its_fallback_default,,139818,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_prime_derives_a_moves_own_direction_when_no_facing_event_preceded_it,,135843,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_a_facing_change_pivots_on_the_units_own_cell_not_the_map_origin,,162488,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_prime_shows_the_old_state_immediately_so_nothing_flashes_at_the_destination,,167732,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_bullet_fade_duration_derives_from_bullet_ms_and_pacing_speed,,166836,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_a_zero_duration_shot_retires_synchronously_into_the_ring,,142259,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_the_ring_never_exceeds_tracer_count_the_oldest_is_evicted,,147173,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_tracer_count_zero_leaves_no_history,,143953,0,0,0,2,0,0,
-unit/view/test_resolution_player.gd,test_inter_shot_break_separates_consecutive_impacts,,159665,0,0,0,2,0,0,
-unit/view/test_resolution_player_elevation.gd,test_world_anchor_reads_the_cells_own_real_height,,147907,0,0,0,2,0,0,
-unit/view/test_resolution_player_elevation.gd,test_a_zero_duration_climb_event_plays_as_a_real_slide,,138225,0,0,0,2,0,0,
-unit/view/test_resolution_player_elevation.gd,test_a_zero_duration_hop_down_event_plays_as_a_real_slide,,153541,0,0,0,2,0,0,
-unit/view/test_resolution_player_elevation.gd,test_priming_a_climb_shows_the_old_height_not_the_already_baked_final_one,,153148,0,0,0,2,0,0,
-unit/view/test_resource_editor_column_widths.gd,test_id_column_shrinks_below_the_shared_default_for_a_short_id,,20423,0,0,0,0,0,0,
-unit/view/test_resource_editor_column_widths.gd,test_id_column_still_fits_its_own_longest_value,,31023,0,0,0,0,0,0,
-unit/view/test_resource_editor_column_widths.gd,test_display_name_column_is_at_least_the_floor_width_when_empty,,16741,0,0,0,0,0,0,
-unit/view/test_resource_editor_column_widths.gd,test_switching_to_a_type_with_no_display_name_column_is_safe,,25976,0,0,0,0,0,0,
-unit/view/test_resource_editor_column_widths.gd,test_a_long_display_name_widens_the_column_past_the_floor,,15983,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_vocabulary_columns_stay_plain_string_mode_with_a_dropdown_button,,25029,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_non_dropdown_columns_have_no_button,,23499,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_display_name_stays_plain_string_mode,,23424,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_material_dropdown_pulls_the_full_data_library_vocabulary,,24316,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_failure_mode_dropdown_is_the_full_closed_vocabulary,,22944,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_stack_type_dropdown_matches_the_ammo_vocabulary,,22342,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_a_column_with_no_closed_vocabulary_falls_back_to_column_values,,21924,0,0,0,0,0,0,
-unit/view/test_resource_editor_dropdown.gd,test_choosing_a_dropdown_option_applies_it,,26360,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_preview_never_expands_on_either_axis,,22522,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_metadata_expands_vertically_but_not_horizontally,,29537,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_table_expands_on_both_axes,,25825,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_left_column_never_expands_horizontally_the_right_column_does,,27888,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_preview_and_metadata_share_the_lefts_own_fixed_width,,21660,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_selecting_a_part_populates_the_preview,,23225,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_selecting_ammo_or_material_clears_the_preview,,27130,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_rotate_toggle_flips_the_rotating_flag,,21872,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_process_only_rotates_the_preview_pivot_while_rotating,,24471,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_type_bar_has_one_button_per_definition_type,,27421,0,0,0,0,0,0,
-unit/view/test_resource_editor_layout.gd,test_clicking_a_type_button_switches_current_type,,31917,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_a_parts_row_has_one_child_per_socket,,27157,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_socket_child_row_shows_type_id_and_joint_hp,,23180,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_editing_a_sockets_joint_hp_applies_to_the_socket,,21986,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_editing_a_sockets_type_applies_as_a_stringname,,22056,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_a_materials_row_has_one_child_per_curve_point,,24375,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_editing_a_curve_points_dt_applies_to_the_array,,24843,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_editing_a_curve_points_thickness_applies_to_the_array,,26329,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_part_lists_its_sockets,,22546,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_material_with_no_curve_is_empty,,21286,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_material_with_a_curve_lists_its_points,,21648,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_part_with_no_sockets_and_no_volume_is_empty,,20966,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_part_lists_its_volume_boxes,,22628,0,0,0,0,0,0,
-unit/view/test_resource_editor_nested_rows.gd,test_refresh_hover_metadata_falls_back_to_selection_off_a_nested_row,,27755,0,0,0,0,0,0,
-unit/view/test_resource_editor_scene.gd,test_ready_loads_data_via_data_library,,25112,0,0,0,0,0,0,
-unit/view/test_resource_editor_scene.gd,test_set_current_type_switches_which_definitions_load,,23718,0,0,0,0,0,0,
-unit/view/test_resource_editor_scene.gd,test_save_resource_round_trips_through_data_library,,21030,0,0,0,0,0,0,
-unit/view/test_resource_editor_scene.gd,test_save_resource_rejects_an_invalid_definition,,26090,0,0,0,0,0,0,
-unit/view/test_resource_editor_scene.gd,test_the_editor_never_touches_editor_only_apis,,3582,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_table_has_one_column_per_declared_column,,22685,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_table_starts_with_every_part_row_present,,23295,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_clicking_a_header_cycles_through_sort_modes,,36968,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_ascending_sort_actually_orders_the_rows,,32663,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_sorted_column_title_carries_a_direction_symbol,,32524,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_unsorted_columns_carry_the_placeholder_not_a_real_symbol,,29462,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_typing_a_filter_narrows_the_visible_rows,,23353,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_filters_combine_across_columns,,28642,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_clearing_a_filter_restores_the_rows,,26201,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_switching_type_rebuilds_filter_fields_and_clears_filters,,23231,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_selecting_a_row_populates_metadata,,22714,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_editing_an_int_cell_applies_to_the_resource,,21951,0,0,0,0,0,0,
-unit/view/test_resource_editor_table.gd,test_id_column_is_never_set_editable,,22302,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_undo_reverts_a_committed_cell_edit,,26549,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_redo_reapplies_after_undo,,31434,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_edits_survive_a_sort_and_undo_still_works_afterward,,32124,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_editing_a_socket_can_be_undone,,29928,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_ctrl_z_triggers_undo,,29406,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_ctrl_shift_z_triggers_redo,,33184,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_save_button_reports_a_named_error_for_an_invalid_edit,,23426,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_save_button_writes_a_valid_edit_and_it_round_trips,,22910,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_save_with_nothing_selected_reports_status_without_crashing,,22607,0,0,0,0,0,0,
-unit/view/test_resource_editor_undo_save.gd,test_type_bar_only_has_the_three_type_buttons,,21264,0,0,0,0,0,0,
-unit/view/test_stat_block_view.gd,test_to_bbcode_wraps_bracketed_changed_values,,2348,0,0,0,0,0,0,
-unit/view/test_stat_block_view.gd,test_to_bbcode_leaves_unbracketed_text_untouched,,2012,0,0,0,0,0,0,
-unit/view/test_stat_block_view.gd,test_render_marks_only_the_changed_entry_matching_docs_worked_example,,1598,0,0,0,0,0,0,
-unit/view/test_stat_block_view.gd,test_render_drill_down_lists_each_source,,1333,0,0,0,0,0,0,
-unit/view/test_stat_block_view.gd,test_render_drill_down_shows_unmodified_for_an_unchanged_stat,,1452,0,0,0,0,0,0,
-unit/view/test_stat_panel.gd,test_no_selection_clears_both_labels,,22061,0,0,0,0,0,0,
-unit/view/test_stat_panel.gd,test_an_unarmed_selected_unit_shows_unarmed,,19944,0,0,0,1,0,0,
-unit/view/test_stat_panel.gd,test_selecting_an_armed_unit_shows_the_resolved_damage_matching_weapon_resolver,,20077,0,0,0,1,0,0,
-unit/view/test_stat_panel.gd,test_a_stat_mod_shows_up_bracketed_and_in_the_drill_down,,19289,0,0,0,1,0,0,
-unit/view/test_stat_panel.gd,test_entering_aim_mode_keeps_the_shooters_stat_block_visible,,33424,0,0,0,2,0,0,
-unit/view/test_stat_panel.gd,test_end_turn_clears_the_panel,,22557,0,1,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_clicking_the_current_unit_selects_it_and_shows_its_reachable_cells,,19645,0,0,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_selecting_a_unit_inside_an_armed_overwatchers_arc_shows_the_threat_overlay,,333397,0,0,0,1,0,104,
-unit/view/test_tactics_controller.gd,test_selecting_the_overwatcher_itself_shows_no_threat_overlay,,19749,0,0,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_clicking_a_non_current_unit_does_not_select_it,,7067,0,0,0,0,0,0,
-unit/view/test_tactics_controller.gd,test_deselect_clears_selection_and_overlays,,19776,0,0,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_deselect_with_nothing_selected_is_a_no_op,,5985,0,0,0,0,0,0,
-unit/view/test_tactics_controller.gd,test_esc_deselects_when_not_aiming,,19956,0,0,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_clicking_a_reachable_cell_after_selecting_queues_a_move_and_shows_a_ghost,,41037,0,0,0,3,0,0,
-unit/view/test_tactics_controller.gd,test_end_turn_resolves_the_queue_and_clears_the_overlay,,46401,0,1,0,3,0,0,
-unit/view/test_tactics_controller.gd,test_end_turn_emits_turn_ended,,22501,0,1,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_hold_defers_the_selected_unit_to_after_the_next_ally,,23148,0,2,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_hold_emits_turn_ended,,24120,0,1,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_hold_is_a_no_op_with_nothing_selected,,5644,0,0,0,0,0,0,
-unit/view/test_tactics_controller.gd,test_turn_selected_queues_a_face_action_and_resolves_it_on_end_turn,,41696,0,1,0,2,0,0,
-unit/view/test_tactics_controller.gd,test_turn_selected_twice_composes_relative_to_the_already_queued_turn,,56613,0,0,0,3,0,0,
-unit/view/test_tactics_controller.gd,test_turn_selected_with_nothing_selected_is_a_no_op,,5997,0,0,0,0,0,0,
-unit/view/test_tactics_controller.gd,test_rmb_undoes_the_last_queued_action_without_aiming,,53536,0,0,0,4,0,0,
-unit/view/test_tactics_controller.gd,test_rmb_with_an_empty_queue_deselects,,18828,0,0,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_r_key_resets_the_turn_but_keeps_the_unit_selected,,54220,0,0,0,4,0,0,
-unit/view/test_tactics_controller.gd,test_reset_turn_with_nothing_selected_does_not_crash,,6387,0,0,0,0,0,0,
-unit/view/test_tactics_controller.gd,test_selecting_a_unit_with_nothing_queued_shows_no_end_position_ghost,,20040,0,0,0,1,0,0,
-unit/view/test_tactics_controller.gd,test_queuing_a_move_shows_an_end_position_ghost,,42613,0,0,0,3,0,0,
-unit/view/test_tactics_controller.gd,test_confirm_shot_with_burst_armed_queues_a_burst_action_not_an_attack_action,,60762,0,0,0,3,0,0,
-unit/view/test_tactics_controller.gd,test_arming_burst_and_clicking_a_wall_enters_aim_mode,,44064,0,0,0,2,0,1,
-unit/view/test_tactics_controller.gd,test_entering_aim_mode_dumps_fps_once_settled,,2073737,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_clicking_an_enemy_while_selected_enters_aim_mode,,47603,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_clicking_a_wall_while_armed_enters_aim_mode_with_a_part_target,,39577,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_confirming_a_shot_aimed_at_a_part_queues_an_attack_action_at_that_cell,,54060,0,0,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_clears_stale_hover_and_inspection_state,,44256,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_starts_easing_the_camera_to_attack_framing,,44675,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_locks_orbit,,46508,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_cancelling_aim_restores_orbit,,70907,0,0,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it,,65914,0,0,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_scroll_layer_only_changes_layer_index_while_aiming,,50078,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_move_reticle_only_changes_offset_while_aiming,,48114,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_confirm_shot_queues_an_attack_action_with_the_reticle_offset,,59406,0,0,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_clicking_anywhere_while_aiming_confirms_the_shot,,63836,0,0,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_arming_with_no_provider_is_a_no_op_and_enemy_click_stays_inert,,32926,0,0,0,2,0,0,
-unit/view/test_tactics_controller_aim.gd,test_end_turn_cancels_an_active_aim,,65532,0,1,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets,,72352,0,0,0,2,0,2,
-unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer,,60466,0,0,0,2,0,2,
-unit/view/test_tactics_controller_aim.gd,test_aim_plane_originates_from_the_queued_end_cell_not_the_current_one,,98716,0,0,0,4,0,2,
-unit/view/test_tactics_controller_aim.gd,test_aim_boards_range_follows_the_previewed_cell_not_the_turn_start_one,,125814,0,0,0,6,0,5,
-unit/view/test_tactics_controller_aim.gd,test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution,,126058,0,0,0,6,0,3,
-unit/view/test_tactics_controller_aim.gd,test_end_turn_locks_input_and_emits_exactly_the_events_it_resolved,,49607,0,1,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_input_locked_blocks_click_scroll_reticle_and_confirm,,61574,0,0,0,3,0,0,
-unit/view/test_tactics_controller_aim.gd,test_end_turn_is_a_no_op_while_already_locked,,19588,0,0,0,1,0,0,
-unit/view/test_tactics_controller_aim.gd,test_unlock_input_clears_the_lock,,5492,0,0,0,0,0,0,
-unit/view/test_tactics_controller_aim_facing.gd,test_entering_aim_orients_the_shooter_at_the_target_in_the_preview,,46128,0,0,0,2,0,1,
-unit/view/test_tactics_controller_aim_facing.gd,test_the_previewed_shooters_own_geometry_uses_the_corrected_facing,,46169,0,0,0,2,0,1,
-unit/view/test_tactics_controller_aim_facing.gd,test_the_free_face_costs_nothing_and_is_idempotent_across_enter_cancel_enter,,85717,0,0,0,4,0,2,
-unit/view/test_tactics_controller_arm.gd,test_enemy_click_with_no_action_armed_does_not_enter_aim,,35600,0,0,0,2,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arming_shoot_then_clicking_an_enemy_enters_aim_at_that_enemy,,59300,0,0,0,2,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arming_an_id_the_unit_cannot_provide_is_a_no_op,,19772,0,0,0,1,0,0,
-unit/view/test_tactics_controller_arm.gd,test_esc_disarms_an_armed_but_not_yet_aiming_action,,34105,0,0,0,2,0,0,
-unit/view/test_tactics_controller_arm.gd,test_rmb_disarms_an_armed_but_not_yet_aiming_action,,27529,0,0,0,1,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arming_saw_instead_of_shoot_picks_the_saw_not_the_gun,,62244,0,0,0,3,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arming_shoot_on_a_dual_armed_unit_picks_the_gun_not_the_saw,,68705,0,0,0,3,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arming_while_already_aiming_is_a_no_op,,56513,0,0,0,2,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arming_an_untargeted_action_is_a_no_op,,19757,0,0,0,1,0,0,
-unit/view/test_tactics_controller_arm.gd,test_arm_action_with_nothing_selected_is_a_no_op,,8798,0,0,0,0,0,0,
-unit/view/test_tactics_controller_arm.gd,test_reselecting_the_current_unit_clears_an_armed_action,,34702,0,0,0,2,0,0,
-unit/view/test_tactics_controller_camera.gd,test_attack_framing_reads_the_queued_end_cell_not_the_committed_one,,115118,0,0,0,4,0,2,
-unit/view/test_tactics_controller_camera.gd,test_attack_framing_falls_back_to_the_committed_cell_with_no_move_queued,,76314,0,0,0,2,0,0,
-unit/view/test_tactics_controller_camera.gd,test_framing_shooter_bounding_sphere_moves_with_the_queued_cell,,97717,0,0,0,4,0,1,
-unit/view/test_tactics_controller_click.gd,test_clicking_the_current_unit_selects_it_from_every_selection_state,,33379,0,0,0,2,0,0,
-unit/view/test_tactics_controller_click.gd,test_hitting_the_head_torso_or_foot_of_a_unit_all_resolve_to_that_unit,,5851,0,0,0,0,0,0,
-unit/view/test_tactics_controller_click.gd,test_cell_at_prefers_a_units_overhanging_body_over_the_ground_tile,,5873,0,0,0,0,0,0,
-unit/view/test_tactics_controller_click.gd,test_cell_at_falls_back_to_the_ground_tile_when_no_body_is_hit,,5592,0,0,0,0,0,0,
-unit/view/test_tactics_controller_click.gd,test_clicking_a_units_overhanging_body_selects_it_via_click_unit,,21126,0,0,0,1,0,0,
-unit/view/test_tactics_controller_click.gd,test_cell_at_resolves_a_blocker_to_the_new_part_kind,,5865,0,0,0,0,0,0,
-unit/view/test_tactics_controller_click.gd,test_cell_at_still_prefers_a_unit_over_a_blocker_behind_it,,6340,0,0,0,0,0,0,
-unit/view/test_tactics_controller_facing.gd,test_drag_face_queues_a_single_face_action_and_updates_it_continuously,,73470,0,0,0,4,0,0,
-unit/view/test_tactics_controller_facing.gd,test_drag_face_with_nothing_selected_is_a_no_op,,6089,0,0,0,0,0,0,
-unit/view/test_tactics_controller_facing.gd,test_pressing_lmb_on_the_selected_unit_starts_a_drag_not_a_reselect_click,,39703,0,0,0,2,0,0,
-unit/view/test_tactics_controller_facing.gd,test_rmb_undo_mid_drag_clears_the_drag_so_a_later_motion_queues_fresh,,69565,0,0,0,4,0,0,
-unit/view/test_tactics_controller_facing.gd,test_rmb_drag_does_not_undo_the_queued_action,,43003,0,0,0,3,0,0,
-unit/view/test_tactics_controller_facing.gd,test_rmb_click_with_nothing_queued_still_deselects,,19398,0,0,0,1,0,0,
-unit/view/test_tactics_controller_facing.gd,test_rmb_click_while_aiming_still_cancels,,58548,0,0,0,3,0,0,
-unit/view/test_tactics_controller_facing.gd,test_rmb_drag_while_aiming_does_not_cancel,,47175,0,0,0,2,0,1,
-unit/view/test_tactics_controller_facing.gd,test_aim_facing_points_the_shooter_at_the_target,,48190,0,0,0,2,0,1,
-unit/view/test_tactics_controller_facing.gd,test_aim_facing_goes_null_again_once_aim_is_cancelled,,65151,0,0,0,3,0,1,
-unit/view/test_tactics_controller_facing.gd,test_no_end_position_ghost_while_aiming_with_no_move_queued,,50387,0,0,0,2,0,1,
-unit/view/test_tactics_controller_facing.gd,test_end_position_ghost_faces_the_target_when_a_move_is_also_queued,,83977,0,0,0,4,0,2,
-unit/view/test_tactics_controller_facing.gd,test_end_position_ghost_stops_facing_the_target_once_aim_is_cancelled,,108745,0,0,0,5,0,2,
-unit/view/test_tactics_controller_facing.gd,test_has_queued_move_is_false_until_a_move_is_actually_queued,,71741,0,0,0,4,0,0,
-unit/view/test_tactics_controller_hover.gd,test_update_hover_resolves_a_screen_position_to_the_cell_underneath,,6115,0,0,0,0,0,0,
-unit/view/test_tactics_controller_hover.gd,test_update_hover_emits_hover_changed_only_on_an_actual_change,,6149,0,0,0,0,0,0,
-unit/view/test_tactics_controller_hover.gd,test_inspect_part_sets_the_field_and_emits_hover_changed,,6233,0,0,0,0,0,0,
-unit/view/test_tactics_controller_hover.gd,test_hovering_the_board_again_clears_a_previously_inspected_part,,7634,0,0,0,0,0,0,
-unit/view/test_tactics_controller_hover.gd,test_hovering_the_selected_units_own_body_highlights_its_part,,19578,0,0,0,1,0,0,
-unit/view/test_tactics_controller_hover.gd,test_hovering_a_different_units_body_never_highlights_a_part,,20986,0,0,0,1,0,0,
-unit/view/test_tactics_controller_hover.gd,test_hover_part_sets_the_field_and_emits_highlight_changed_only_on_change,,5953,0,0,0,0,0,0,
-unit/view/test_tactics_controller_hover.gd,test_update_hover_off_the_board_entirely_clears_hovered_cell,,5637,0,0,0,0,0,0,
-unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_intercepts_click_cell_on_a_unit_and_emits_its_hit,,5973,0,0,0,0,0,0,
-unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_intercepts_click_cell_on_bare_ground_and_emits_its_cell,,7088,0,0,0,0,0,0,
-unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_off_behaves_exactly_as_before,,19377,0,0,0,1,0,0,
-unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_intercepts_a_real_raycast_driven_click,,7649,0,0,0,0,0,0,
-unit/view/test_tactics_controller_resolve_to.gd,test_resolve_to_marker_applies_only_the_prefix_through_the_marker,,80061,0,0,0,6,0,0,
-unit/view/test_tactics_controller_resolve_to.gd,test_the_later_queued_leg_survives_a_partial_resolve,,111286,0,0,0,8,0,0,
-unit/view/test_tactics_controller_resolve_to.gd,test_previewed_unit_after_a_partial_resolve_reflects_the_moved_state_plus_the_kept_suffix,,92804,0,0,0,6,0,0,
-unit/view/test_tactics_controller_resolve_to.gd,test_reset_turn_after_a_partial_resolve_returns_to_the_resolve_point,,121410,0,0,0,9,0,0,
-unit/view/test_tactics_controller_resolve_to.gd,test_resolve_to_marker_with_an_out_of_range_index_is_a_no_op,,51546,0,0,0,3,0,0,
-unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_points_the_reticle_at_the_cursors_own_target,,54811,0,0,0,2,0,3,
-unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_does_nothing_outside_aim_mode,,21153,0,0,0,1,0,0,
-unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_does_nothing_while_input_locked,,44159,0,0,0,2,0,0,
-unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_finds_the_part_under_the_cursor,,57431,0,0,0,2,0,2,
-unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_over_empty_space_finds_nothing,,55415,0,0,0,2,0,2,
-unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_never_touches_the_reticle,,50321,0,0,0,2,0,2,
-unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_does_nothing_outside_aim_mode,,30119,0,0,0,1,0,0,
-unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_does_nothing_while_input_locked,,55204,0,0,0,2,0,1,
-unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_also_updates_the_hover,,60954,0,0,0,2,0,3,
-unit/view/test_tactics_controller_step_out.gd,test_clicking_a_covered_enemy_with_burst_armed_enters_step_out_mode_too,,55519,0,0,0,3,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_firing_burst_after_step_out_is_silently_rejected_with_insufficient_real_ap,,75669,0,0,0,5,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_a_real_mouse_click_on_a_covered_enemy_also_enters_step_out_mode,,55783,0,0,0,3,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_clicking_a_covered_enemy_enters_step_out_mode_not_aim_mode,,53623,0,0,0,3,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_a_directly_visible_enemy_still_enters_ordinary_aim_mode,,44305,0,0,0,2,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_moving_into_cover_then_shooting_still_enters_step_out_mode,,53327,0,0,0,4,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_confirming_a_step_out_cell_after_a_prior_queued_move_still_queues_the_out_leg,,69535,0,0,0,5,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_step_out_candidates_are_populated_safest_first,,59589,0,0,0,3,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_wheel_cycles_the_step_out_cell_and_wraps,,91336,0,0,0,6,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim,,65234,0,0,0,4,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_firing_after_a_step_out_completes_the_free_move_attack_move_triple,,85519,0,0,0,6,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_cancelling_aim_mid_step_out_undoes_the_free_outbound_leg,,78756,0,0,0,5,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_any_click_while_stepping_out_confirms_the_cell_choice,,64123,0,0,0,4,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_esc_cancels_a_pending_step_out_without_queuing_anything,,65994,0,0,0,4,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_rmb_also_cancels_a_pending_step_out,,64954,0,0,0,4,0,0,
-unit/view/test_tactics_controller_step_out.gd,test_step_out_exposure_reports_a_real_overwatcher_at_the_selected_cell,,1272674,0,0,0,4,0,162,
-unit/view/test_tooltip_controller.gd,test_nothing_hovered_or_inspected_hides_the_tooltip,,7118,0,0,0,0,0,0,
-unit/view/test_tooltip_controller.gd,test_hovering_a_cell_shows_its_terrain,,6220,0,0,0,0,0,0,
-unit/view/test_tooltip_controller.gd,test_hovering_an_enemy_shows_its_full_status,,6192,0,0,0,0,0,0,
-unit/view/test_tooltip_controller.gd,test_hovering_a_field_object_shows_its_own_detail,,6014,0,0,0,0,0,0,
-unit/view/test_tooltip_controller.gd,test_visible_from_selected_reflects_a_queued_not_yet_resolved_move,,32593,0,0,0,2,0,0,
-unit/view/test_tooltip_controller.gd,test_an_inspected_part_wins_over_a_hovered_cell,,6201,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_show_data_does_not_appear_before_the_delay_elapses,,2045,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_show_data_appears_once_the_delay_elapses,,1987,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_moving_off_before_the_delay_elapses_means_it_never_appears,,2389,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_hide_tooltip_makes_the_view_invisible,,3470,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_an_empty_tooltip_data_hides_rather_than_shows_an_empty_box,,2457,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_a_changed_row_gets_the_highlight_color_and_an_unchanged_one_does_not,,2784,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_the_tooltip_position_tracks_the_cursor_while_shown,,2135,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_repeated_calls_for_the_same_pending_hover_do_not_restart_the_delay,,1345,0,0,0,0,0,0,
-unit/view/test_tooltip_view.gd,test_a_new_hover_target_restarts_the_delay,,872,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_renders_once_no_matter_how_many_events_landed_in_the_frame,,1834,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_coalesced_output_is_identical_to_rendering_after_every_event,,2414,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_lines_are_current_before_any_render_happens,,1690,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_still_trims_to_max_lines_under_coalescing,,2332,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_hierarchical_sink_renders_once_no_matter_how_many_events_landed,,1580,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_hierarchical_coalesced_output_is_identical_to_rendering_after_every_event,,1608,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_hierarchical_lines_are_current_before_any_render_happens,,2958,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_expand_collapse_renders_immediately_without_waiting_for_a_frame_tick,,2903,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_a_click_in_the_same_frame_as_new_events_draws_both,,2124,0,0,0,0,0,0,
-unit/view/test_ui_log_sink_coalescing.gd,test_render_count_per_frame_is_flat_regardless_of_event_volume,,5623,0,0,0,0,0,0,
-unit/view/test_ui_sink.gd,test_emit_appends_rendered_lines,,2102,0,0,0,0,0,0,
-unit/view/test_ui_sink.gd,test_emit_caps_at_max_lines_dropping_the_oldest,,1944,0,0,0,0,0,0,
-unit/view/test_ui_sink.gd,test_emit_mirrors_into_an_attached_label,,1368,0,0,0,0,0,0,
-unit/view/test_ui_sink.gd,test_combat_log_can_use_it_as_a_normal_sink,,1449,0,0,0,0,0,0,
-unit/view/test_weapon_panel.gd,test_nothing_selected_shows_an_empty_label,,7552,0,0,0,0,0,0,
-unit/view/test_weapon_panel.gd,test_an_unarmed_unit_shows_no_weapons_attached,,19442,0,0,0,1,0,0,
-unit/view/test_weapon_panel.gd,test_an_operable_weapon_appears_without_dimming,,20393,0,0,0,1,0,0,
-unit/view/test_weapon_panel.gd,test_an_inactive_weapon_is_dimmed_and_shows_its_reason,,19079,0,0,0,1,0,0,
-unit/view/test_weapon_panel.gd,test_clicking_an_enemy_never_populates_the_weapons_panel,,7152,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_world_environment_uses_the_backdrop_color_and_a_neutral_ambient_fill,,1792,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_environment_matches_world_environments_own_settings_with_no_node,,847,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_backdrop_and_ground_are_distinct_so_the_board_is_actually_visible,,814,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_directional_light_is_angled_off_axis,,1044,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_team_color_maps_squad_zero_to_a_and_others_to_b,,1588,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_team_colors_are_distinct,,1434,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_lit_material_is_per_pixel_shaded,,1085,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_overlay_material_is_unshaded,,821,0,0,0,0,0,0,
-unit/view/test_world_palette.gd,test_rim_outline_material_is_grown_and_back_face_only,,825,0,0,0,0,0,0,
+unit/view/test_replay_wiring.gd,test_failures_are_parsed_from_coloured_output_and_deduplicated,,3301,0,0,0,0,0,0,a parsed input tolerates spacing and drops what it cannot read
+unit/view/test_replay_wiring.gd,test_the_overlay_binds_the_replay_panel_to_the_battle,,151857,0,0,0,2,0,0,a failed test replays as the fixture it built
+unit/view/test_replay_wiring.gd,test_a_failed_run_offers_its_replayable_failures,,240757,1,0,210,5,0,0,a failed test replays as the fixture it built
+unit/view/test_replay_wiring.gd,test_a_passing_run_offers_nothing,,158473,0,0,0,2,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_replay_wiring.gd,test_a_finished_bout_advances_the_replay_run,,236511,1,0,210,5,0,0,a failed test replays as the fixture it built
+unit/view/test_replay_wiring.gd,test_the_spectator_starts_a_replayed_bout_playing,,180196,0,0,210,3,0,0,a failed test replays as the fixture it built
+unit/view/test_replay_wiring.gd,test_launching_a_run_clears_the_board,,197748,0,0,0,2,0,0,the view rebuilds only when the board actually changed
+unit/view/test_replay_wiring.gd,test_forcing_a_failure_does_not_touch_this_process_environment,,2311907,0,0,1008,1,1,0,a child process's environment never leaks into this one
+unit/view/test_replay_wiring.gd,test_the_toggle_produces_a_failing_run_with_something_to_replay,,4160052,0,0,0,0,0,0,the gate's exit code reflects the run's real verdict
+unit/view/test_replay_wiring.gd,test_forcing_a_failure_yields_a_replayable_bout,,4382011,1,0,0,2,0,0,a failed test replays as the fixture it built
+unit/view/test_replay_wiring.gd,test_the_force_failure_checkbox_reaches_the_launched_run,,1290206,0,0,0,2,0,0,a child process's environment never leaks into this one
+unit/view/test_replay_wiring.gd,test_a_forced_run_prefixes_the_variable_onto_the_child_command,,1359508,0,0,0,0,0,0,a child process's environment never leaks into this one
+unit/view/test_replay_wiring.gd,test_a_forced_run_says_so_and_shows_its_command,,704580,0,0,0,2,0,0,the run panel reports the real rung and the real verdict
+unit/view/test_replay_wiring.gd,test_an_ordinary_run_does_not_claim_to_be_forced,,701224,0,0,0,2,0,0,the run panel reports the real rung and the real verdict
+unit/view/test_resolution_player.gd,test_setup_shows_the_tactics_banner,,164741,0,0,0,2,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/view/test_resolution_player.gd,test_setup_with_no_banner_never_crashes,,141882,0,0,0,2,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_resolution_player.gd,test_play_immediately_switches_to_the_resolution_banner,,139306,0,0,0,2,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/view/test_resolution_player.gd,test_play_impact_spawns_a_tracer_for_an_impact_event,,148608,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_a_live_tracer_is_drawn_at_the_live_render_priority,,153750,0,0,0,2,0,0,"presentation derives from authored data, never from code"
+unit/view/test_resolution_player.gd,test_a_retired_tracer_is_translucent_red_and_drops_to_the_retired_priority,,149456,0,0,0,2,0,0,"presentation derives from authored data, never from code"
+unit/view/test_resolution_player.gd,test_play_event_ignores_non_impact_events,,160076,0,0,0,2,0,0,"the event stream drives playback cues, one per event, in order"
+unit/view/test_resolution_player.gd,test_the_tracer_spans_from_the_attackers_cell_to_the_targets_cell,,148913,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_play_impact_draws_at_the_shots_own_real_logged_heights,,162700,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_play_impact_with_no_target_unit_still_draws_a_tracer_to_the_hit_point,,149975,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_play_impact_draws_a_ricochet_hop_from_its_own_real_origin_not_the_shooter,,148744,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_play_impact_draws_a_second_tracer_for_a_deflect_outcome,,144730,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_deflect_tracer_count_matches_deflect_count_logged,,155592,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_the_deflect_tracer_uses_a_visually_distinct_color,,152083,0,0,0,2,0,0,"presentation derives from authored data, never from code"
+unit/view/test_resolution_player.gd,test_deflect_tracer_waits_a_beat_after_the_primary_impact,,158005,0,0,0,2,0,0,playback timing derives from one pacing speed
+unit/view/test_resolution_player.gd,test_play_miss_spawns_a_tracer_along_its_own_logged_endpoint,,138044,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_play_miss_draws_at_its_own_real_logged_heights,,141996,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_play_event_dispatches_a_miss_event_to_play_miss,,148223,0,0,0,2,0,0,"the event stream drives playback cues, one per event, in order"
+unit/view/test_resolution_player.gd,test_play_miss_with_an_unknown_attacker_does_not_crash_or_spawn_a_tracer,,149850,0,0,0,2,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_resolution_player.gd,test_inter_shot_break_separates_a_miss_from_a_following_impact,,147671,0,0,0,2,0,0,playback timing derives from one pacing speed
+unit/view/test_resolution_player.gd,test_a_zero_duration_slide_visits_every_path_cell_and_ends_at_zero_offset,,150629,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_playback_never_mutates_the_real_combat_states_own_unit_fields,,169565,0,0,0,2,0,0,a preview mutates nothing
+unit/view/test_resolution_player.gd,test_slide_segment_duration_derives_from_slide_ms_and_pacing_speed,,144044,0,0,0,2,0,0,playback timing derives from one pacing speed
+unit/view/test_resolution_player.gd,test_facing_duration_derives_from_slide_ms_and_pacing_speed,,148951,0,0,0,2,0,0,playback timing derives from one pacing speed
+unit/view/test_resolution_player.gd,test_a_zero_duration_facing_change_snaps_and_remembers_the_new_orientation,,139634,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_prime_never_uses_a_facing_events_own_target_as_its_fallback_default,,139818,0,0,0,2,0,0,playback primes the old state so nothing flashes at the destination
+unit/view/test_resolution_player.gd,test_prime_derives_a_moves_own_direction_when_no_facing_event_preceded_it,,135843,0,0,0,2,0,0,playback primes the old state so nothing flashes at the destination
+unit/view/test_resolution_player.gd,test_a_facing_change_pivots_on_the_units_own_cell_not_the_map_origin,,162488,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player.gd,test_prime_shows_the_old_state_immediately_so_nothing_flashes_at_the_destination,,167732,0,0,0,2,0,0,playback primes the old state so nothing flashes at the destination
+unit/view/test_resolution_player.gd,test_bullet_fade_duration_derives_from_bullet_ms_and_pacing_speed,,166836,0,0,0,2,0,0,playback timing derives from one pacing speed
+unit/view/test_resolution_player.gd,test_a_zero_duration_shot_retires_synchronously_into_the_ring,,142259,0,0,0,2,0,0,a bounded history keeps its cap and drops the oldest
+unit/view/test_resolution_player.gd,test_the_ring_never_exceeds_tracer_count_the_oldest_is_evicted,,147173,0,0,0,2,0,0,a bounded history keeps its cap and drops the oldest
+unit/view/test_resolution_player.gd,test_tracer_count_zero_leaves_no_history,,143953,0,0,0,2,0,0,a bounded history keeps its cap and drops the oldest
+unit/view/test_resolution_player.gd,test_inter_shot_break_separates_consecutive_impacts,,159665,0,0,0,2,0,0,playback timing derives from one pacing speed
+unit/view/test_resolution_player_elevation.gd,test_world_anchor_reads_the_cells_own_real_height,,147907,0,0,0,2,0,0,a unit's height follows the cell it stands on
+unit/view/test_resolution_player_elevation.gd,test_a_zero_duration_climb_event_plays_as_a_real_slide,,138225,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player_elevation.gd,test_a_zero_duration_hop_down_event_plays_as_a_real_slide,,153541,0,0,0,2,0,0,playback draws each event at the geometry it logged
+unit/view/test_resolution_player_elevation.gd,test_priming_a_climb_shows_the_old_height_not_the_already_baked_final_one,,153148,0,0,0,2,0,0,playback primes the old state so nothing flashes at the destination
+unit/view/test_resource_editor_column_widths.gd,test_id_column_shrinks_below_the_shared_default_for_a_short_id,,20423,0,0,0,0,0,0,"an editor column sizes to its own content, within a floor"
+unit/view/test_resource_editor_column_widths.gd,test_id_column_still_fits_its_own_longest_value,,31023,0,0,0,0,0,0,"an editor column sizes to its own content, within a floor"
+unit/view/test_resource_editor_column_widths.gd,test_display_name_column_is_at_least_the_floor_width_when_empty,,16741,0,0,0,0,0,0,"an editor column sizes to its own content, within a floor"
+unit/view/test_resource_editor_column_widths.gd,test_switching_to_a_type_with_no_display_name_column_is_safe,,25976,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_resource_editor_column_widths.gd,test_a_long_display_name_widens_the_column_past_the_floor,,15983,0,0,0,0,0,0,"an editor column sizes to its own content, within a floor"
+unit/view/test_resource_editor_dropdown.gd,test_vocabulary_columns_stay_plain_string_mode_with_a_dropdown_button,,25029,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_dropdown.gd,test_non_dropdown_columns_have_no_button,,23499,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_dropdown.gd,test_display_name_stays_plain_string_mode,,23424,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_dropdown.gd,test_material_dropdown_pulls_the_full_data_library_vocabulary,,24316,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/view/test_resource_editor_dropdown.gd,test_failure_mode_dropdown_is_the_full_closed_vocabulary,,22944,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_dropdown.gd,test_stack_type_dropdown_matches_the_ammo_vocabulary,,22342,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_dropdown.gd,test_a_column_with_no_closed_vocabulary_falls_back_to_column_values,,21924,0,0,0,0,0,0,an unstated authored field takes its default
+unit/view/test_resource_editor_dropdown.gd,test_choosing_a_dropdown_option_applies_it,,26360,0,0,0,0,0,0,an editor edit applies to the real resource
+unit/view/test_resource_editor_layout.gd,test_preview_never_expands_on_either_axis,,22522,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_layout.gd,test_metadata_expands_vertically_but_not_horizontally,,29537,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_layout.gd,test_table_expands_on_both_axes,,25825,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_layout.gd,test_left_column_never_expands_horizontally_the_right_column_does,,27888,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_layout.gd,test_preview_and_metadata_share_the_lefts_own_fixed_width,,21660,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_layout.gd,test_selecting_a_part_populates_the_preview,,23225,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_resource_editor_layout.gd,test_selecting_ammo_or_material_clears_the_preview,,27130,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_resource_editor_layout.gd,test_rotate_toggle_flips_the_rotating_flag,,21872,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_resource_editor_layout.gd,test_process_only_rotates_the_preview_pivot_while_rotating,,24471,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_resource_editor_layout.gd,test_type_bar_has_one_button_per_definition_type,,27421,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_layout.gd,test_clicking_a_type_button_switches_current_type,,31917,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_resource_editor_nested_rows.gd,test_a_parts_row_has_one_child_per_socket,,27157,0,0,0,0,0,0,a nested editor row stands for the collection it edits
+unit/view/test_resource_editor_nested_rows.gd,test_socket_child_row_shows_type_id_and_joint_hp,,23180,0,0,0,0,0,0,a nested editor row stands for the collection it edits
+unit/view/test_resource_editor_nested_rows.gd,test_editing_a_sockets_joint_hp_applies_to_the_socket,,21986,0,0,0,0,0,0,an editor edit applies to the real resource
+unit/view/test_resource_editor_nested_rows.gd,test_editing_a_sockets_type_applies_as_a_stringname,,22056,0,0,0,0,0,0,an editor edit applies to the real resource
+unit/view/test_resource_editor_nested_rows.gd,test_a_materials_row_has_one_child_per_curve_point,,24375,0,0,0,0,0,0,a nested editor row stands for the collection it edits
+unit/view/test_resource_editor_nested_rows.gd,test_editing_a_curve_points_dt_applies_to_the_array,,24843,0,0,0,0,0,0,an editor edit applies to the real resource
+unit/view/test_resource_editor_nested_rows.gd,test_editing_a_curve_points_thickness_applies_to_the_array,,26329,0,0,0,0,0,0,an editor edit applies to the real resource
+unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_part_lists_its_sockets,,22546,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_material_with_no_curve_is_empty,,21286,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_material_with_a_curve_lists_its_points,,21648,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_part_with_no_sockets_and_no_volume_is_empty,,20966,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_resource_editor_nested_rows.gd,test_hover_summary_for_a_part_lists_its_volume_boxes,,22628,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_resource_editor_nested_rows.gd,test_refresh_hover_metadata_falls_back_to_selection_off_a_nested_row,,27755,0,0,0,0,0,0,an unstated authored field takes its default
+unit/view/test_resource_editor_scene.gd,test_ready_loads_data_via_data_library,,25112,0,0,0,0,0,0,user data overrides builtin data by id
+unit/view/test_resource_editor_scene.gd,test_set_current_type_switches_which_definitions_load,,23718,0,0,0,0,0,0,user data overrides builtin data by id
+unit/view/test_resource_editor_scene.gd,test_save_resource_round_trips_through_data_library,,21030,0,0,0,0,0,0,data round-trips through save and load
+unit/view/test_resource_editor_scene.gd,test_save_resource_rejects_an_invalid_definition,,26090,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/view/test_resource_editor_scene.gd,test_the_editor_never_touches_editor_only_apis,,3582,0,0,0,0,0,0,"the game's own editor runs in the game, not in the Godot editor"
+unit/view/test_resource_editor_table.gd,test_table_has_one_column_per_declared_column,,22685,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_table.gd,test_table_starts_with_every_part_row_present,,23295,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_clicking_a_header_cycles_through_sort_modes,,36968,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_ascending_sort_actually_orders_the_rows,,32663,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_sorted_column_title_carries_a_direction_symbol,,32524,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_unsorted_columns_carry_the_placeholder_not_a_real_symbol,,29462,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_typing_a_filter_narrows_the_visible_rows,,23353,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_filters_combine_across_columns,,28642,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_clearing_a_filter_restores_the_rows,,26201,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_switching_type_rebuilds_filter_fields_and_clears_filters,,23231,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/view/test_resource_editor_table.gd,test_selecting_a_row_populates_metadata,,22714,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_resource_editor_table.gd,test_editing_an_int_cell_applies_to_the_resource,,21951,0,0,0,0,0,0,an editor edit applies to the real resource
+unit/view/test_resource_editor_table.gd,test_id_column_is_never_set_editable,,22302,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/view/test_resource_editor_undo_save.gd,test_undo_reverts_a_committed_cell_edit,,26549,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/view/test_resource_editor_undo_save.gd,test_redo_reapplies_after_undo,,31434,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/view/test_resource_editor_undo_save.gd,test_edits_survive_a_sort_and_undo_still_works_afterward,,32124,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/view/test_resource_editor_undo_save.gd,test_editing_a_socket_can_be_undone,,29928,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/view/test_resource_editor_undo_save.gd,test_ctrl_z_triggers_undo,,29406,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_resource_editor_undo_save.gd,test_ctrl_shift_z_triggers_redo,,33184,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_resource_editor_undo_save.gd,test_save_button_reports_a_named_error_for_an_invalid_edit,,23426,0,0,0,0,0,0,"a refusal says why, by name"
+unit/view/test_resource_editor_undo_save.gd,test_save_button_writes_a_valid_edit_and_it_round_trips,,22910,0,0,0,0,0,0,data round-trips through save and load
+unit/view/test_resource_editor_undo_save.gd,test_save_with_nothing_selected_reports_status_without_crashing,,22607,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_resource_editor_undo_save.gd,test_type_bar_only_has_the_three_type_buttons,,21264,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_stat_block_view.gd,test_to_bbcode_wraps_bracketed_changed_values,,2348,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_stat_block_view.gd,test_to_bbcode_leaves_unbracketed_text_untouched,,2012,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_stat_block_view.gd,test_render_marks_only_the_changed_entry_matching_docs_worked_example,,1598,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_stat_block_view.gd,test_render_drill_down_lists_each_source,,1333,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_stat_block_view.gd,test_render_drill_down_shows_unmodified_for_an_unchanged_stat,,1452,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_stat_panel.gd,test_no_selection_clears_both_labels,,22061,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_stat_panel.gd,test_an_unarmed_selected_unit_shows_unarmed,,19944,0,0,0,1,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_stat_panel.gd,test_selecting_an_armed_unit_shows_the_resolved_damage_matching_weapon_resolver,,20077,0,0,0,1,0,0,the tooltip and the damage come from the same resolver call
+unit/view/test_stat_panel.gd,test_a_stat_mod_shows_up_bracketed_and_in_the_drill_down,,19289,0,0,0,1,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_stat_panel.gd,test_entering_aim_mode_keeps_the_shooters_stat_block_visible,,33424,0,0,0,2,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_stat_panel.gd,test_end_turn_clears_the_panel,,22557,0,1,0,1,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_tactics_controller.gd,test_clicking_the_current_unit_selects_it_and_shows_its_reachable_cells,,19645,0,0,0,1,0,0,only the current unit may act
+unit/view/test_tactics_controller.gd,test_selecting_a_unit_inside_an_armed_overwatchers_arc_shows_the_threat_overlay,,333397,0,0,0,1,0,104,overwatch only threatens cells inside its authored arc
+unit/view/test_tactics_controller.gd,test_selecting_the_overwatcher_itself_shows_no_threat_overlay,,19749,0,0,0,1,0,0,overwatch only threatens cells inside its authored arc
+unit/view/test_tactics_controller.gd,test_clicking_a_non_current_unit_does_not_select_it,,7067,0,0,0,0,0,0,only the current unit may act
+unit/view/test_tactics_controller.gd,test_deselect_clears_selection_and_overlays,,19776,0,0,0,1,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_tactics_controller.gd,test_deselect_with_nothing_selected_is_a_no_op,,5985,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller.gd,test_esc_deselects_when_not_aiming,,19956,0,0,0,1,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller.gd,test_clicking_a_reachable_cell_after_selecting_queues_a_move_and_shows_a_ghost,,41037,0,0,0,3,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller.gd,test_end_turn_resolves_the_queue_and_clears_the_overlay,,46401,0,1,0,3,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/view/test_tactics_controller.gd,test_end_turn_emits_turn_ended,,22501,0,1,0,1,0,0,turn order advances exactly once per end of turn
+unit/view/test_tactics_controller.gd,test_hold_defers_the_selected_unit_to_after_the_next_ally,,23148,0,2,0,1,0,0,holding defers a turn without regenerating anything
+unit/view/test_tactics_controller.gd,test_hold_emits_turn_ended,,24120,0,1,0,1,0,0,holding defers a turn without regenerating anything
+unit/view/test_tactics_controller.gd,test_hold_is_a_no_op_with_nothing_selected,,5644,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller.gd,test_turn_selected_queues_a_face_action_and_resolves_it_on_end_turn,,41696,0,1,0,2,0,0,facing is free with a move and paid for on its own
+unit/view/test_tactics_controller.gd,test_turn_selected_twice_composes_relative_to_the_already_queued_turn,,56613,0,0,0,3,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller.gd,test_turn_selected_with_nothing_selected_is_a_no_op,,5997,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller.gd,test_rmb_undoes_the_last_queued_action_without_aiming,,53536,0,0,0,4,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/view/test_tactics_controller.gd,test_rmb_with_an_empty_queue_deselects,,18828,0,0,0,1,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller.gd,test_r_key_resets_the_turn_but_keeps_the_unit_selected,,54220,0,0,0,4,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller.gd,test_reset_turn_with_nothing_selected_does_not_crash,,6387,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller.gd,test_selecting_a_unit_with_nothing_queued_shows_no_end_position_ghost,,20040,0,0,0,1,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller.gd,test_queuing_a_move_shows_an_end_position_ghost,,42613,0,0,0,3,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller.gd,test_confirm_shot_with_burst_armed_queues_a_burst_action_not_an_attack_action,,60762,0,0,0,3,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_tactics_controller.gd,test_arming_burst_and_clicking_a_wall_enters_aim_mode,,44064,0,0,0,2,0,1,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller.gd,test_entering_aim_mode_dumps_fps_once_settled,,2073737,0,0,0,2,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/view/test_tactics_controller_aim.gd,test_clicking_an_enemy_while_selected_enters_aim_mode,,47603,0,0,0,2,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_aim.gd,test_clicking_a_wall_while_armed_enters_aim_mode_with_a_part_target,,39577,0,0,0,2,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_aim.gd,test_confirming_a_shot_aimed_at_a_part_queues_an_attack_action_at_that_cell,,54060,0,0,0,3,0,0,an aimed shot targets a named internal part
+unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_clears_stale_hover_and_inspection_state,,44256,0,0,0,2,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_starts_easing_the_camera_to_attack_framing,,44675,0,0,0,2,0,0,a camera move eases through a tween a later input can cancel
+unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_locks_orbit,,46508,0,0,0,2,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_tactics_controller_aim.gd,test_cancelling_aim_restores_orbit,,70907,0,0,0,3,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it,,65914,0,0,0,3,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_tactics_controller_aim.gd,test_scroll_layer_only_changes_layer_index_while_aiming,,50078,0,0,0,2,0,0,the reticle reads a depth-sorted layer without changing what it resolves to
+unit/view/test_tactics_controller_aim.gd,test_move_reticle_only_changes_offset_while_aiming,,48114,0,0,0,2,0,0,the reticle reads a depth-sorted layer without changing what it resolves to
+unit/view/test_tactics_controller_aim.gd,test_confirm_shot_queues_an_attack_action_with_the_reticle_offset,,59406,0,0,0,3,0,0,an aimed shot targets a named internal part
+unit/view/test_tactics_controller_aim.gd,test_clicking_anywhere_while_aiming_confirms_the_shot,,63836,0,0,0,3,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_aim.gd,test_arming_with_no_provider_is_a_no_op_and_enemy_click_stays_inert,,32926,0,0,0,2,0,0,an action requires a part that provides it
+unit/view/test_tactics_controller_aim.gd,test_end_turn_cancels_an_active_aim,,65532,0,1,0,3,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_aim.gd,test_aim_plane_excludes_the_shooters_own_body_but_keeps_the_targets,,72352,0,0,0,2,0,2,a shot never obstructs on the shooter's own body
+unit/view/test_tactics_controller_aim.gd,test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer,,60466,0,0,0,2,0,2,a shot never obstructs on the shooter's own body
+unit/view/test_tactics_controller_aim.gd,test_aim_plane_originates_from_the_queued_end_cell_not_the_current_one,,98716,0,0,0,4,0,2,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_aim.gd,test_aim_boards_range_follows_the_previewed_cell_not_the_turn_start_one,,125814,0,0,0,6,0,5,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_aim.gd,test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution,,126058,0,0,0,6,0,3,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_aim.gd,test_end_turn_locks_input_and_emits_exactly_the_events_it_resolved,,49607,0,1,0,3,0,0,input is locked while resolution runs
+unit/view/test_tactics_controller_aim.gd,test_input_locked_blocks_click_scroll_reticle_and_confirm,,61574,0,0,0,3,0,0,input is locked while resolution runs
+unit/view/test_tactics_controller_aim.gd,test_end_turn_is_a_no_op_while_already_locked,,19588,0,0,0,1,0,0,input is locked while resolution runs
+unit/view/test_tactics_controller_aim.gd,test_unlock_input_clears_the_lock,,5492,0,0,0,0,0,0,input is locked while resolution runs
+unit/view/test_tactics_controller_aim_facing.gd,test_entering_aim_orients_the_shooter_at_the_target_in_the_preview,,46128,0,0,0,2,0,1,an attack faces the shooter at its target for free
+unit/view/test_tactics_controller_aim_facing.gd,test_the_previewed_shooters_own_geometry_uses_the_corrected_facing,,46169,0,0,0,2,0,1,an attack faces the shooter at its target for free
+unit/view/test_tactics_controller_aim_facing.gd,test_the_free_face_costs_nothing_and_is_idempotent_across_enter_cancel_enter,,85717,0,0,0,4,0,2,an attack faces the shooter at its target for free
+unit/view/test_tactics_controller_arm.gd,test_enemy_click_with_no_action_armed_does_not_enter_aim,,35600,0,0,0,2,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_tactics_controller_arm.gd,test_arming_shoot_then_clicking_an_enemy_enters_aim_at_that_enemy,,59300,0,0,0,2,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_arm.gd,test_arming_an_id_the_unit_cannot_provide_is_a_no_op,,19772,0,0,0,1,0,0,an action requires a part that provides it
+unit/view/test_tactics_controller_arm.gd,test_esc_disarms_an_armed_but_not_yet_aiming_action,,34105,0,0,0,2,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_arm.gd,test_rmb_disarms_an_armed_but_not_yet_aiming_action,,27529,0,0,0,1,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_arm.gd,test_arming_saw_instead_of_shoot_picks_the_saw_not_the_gun,,62244,0,0,0,3,0,0,an action requires a part that provides it
+unit/view/test_tactics_controller_arm.gd,test_arming_shoot_on_a_dual_armed_unit_picks_the_gun_not_the_saw,,68705,0,0,0,3,0,0,an action requires a part that provides it
+unit/view/test_tactics_controller_arm.gd,test_arming_while_already_aiming_is_a_no_op,,56513,0,0,0,2,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_tactics_controller_arm.gd,test_arming_an_untargeted_action_is_a_no_op,,19757,0,0,0,1,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_tactics_controller_arm.gd,test_arm_action_with_nothing_selected_is_a_no_op,,8798,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller_arm.gd,test_reselecting_the_current_unit_clears_an_armed_action,,34702,0,0,0,2,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_tactics_controller_camera.gd,test_attack_framing_reads_the_queued_end_cell_not_the_committed_one,,115118,0,0,0,4,0,2,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_camera.gd,test_attack_framing_falls_back_to_the_committed_cell_with_no_move_queued,,76314,0,0,0,2,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_camera.gd,test_framing_shooter_bounding_sphere_moves_with_the_queued_cell,,97717,0,0,0,4,0,1,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_click.gd,test_clicking_the_current_unit_selects_it_from_every_selection_state,,33379,0,0,0,2,0,0,only the current unit may act
+unit/view/test_tactics_controller_click.gd,test_hitting_the_head_torso_or_foot_of_a_unit_all_resolve_to_that_unit,,5851,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_click.gd,test_cell_at_prefers_a_units_overhanging_body_over_the_ground_tile,,5873,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_click.gd,test_cell_at_falls_back_to_the_ground_tile_when_no_body_is_hit,,5592,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_click.gd,test_clicking_a_units_overhanging_body_selects_it_via_click_unit,,21126,0,0,0,1,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_click.gd,test_cell_at_resolves_a_blocker_to_the_new_part_kind,,5865,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_click.gd,test_cell_at_still_prefers_a_unit_over_a_blocker_behind_it,,6340,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_facing.gd,test_drag_face_queues_a_single_face_action_and_updates_it_continuously,,73470,0,0,0,4,0,0,facing is free with a move and paid for on its own
+unit/view/test_tactics_controller_facing.gd,test_drag_face_with_nothing_selected_is_a_no_op,,6089,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller_facing.gd,test_pressing_lmb_on_the_selected_unit_starts_a_drag_not_a_reselect_click,,39703,0,0,0,2,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_facing.gd,test_rmb_undo_mid_drag_clears_the_drag_so_a_later_motion_queues_fresh,,69565,0,0,0,4,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_facing.gd,test_rmb_drag_does_not_undo_the_queued_action,,43003,0,0,0,3,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_facing.gd,test_rmb_click_with_nothing_queued_still_deselects,,19398,0,0,0,1,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_facing.gd,test_rmb_click_while_aiming_still_cancels,,58548,0,0,0,3,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_facing.gd,test_rmb_drag_while_aiming_does_not_cancel,,47175,0,0,0,2,0,1,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_facing.gd,test_aim_facing_points_the_shooter_at_the_target,,48190,0,0,0,2,0,1,an attack faces the shooter at its target for free
+unit/view/test_tactics_controller_facing.gd,test_aim_facing_goes_null_again_once_aim_is_cancelled,,65151,0,0,0,3,0,1,an attack faces the shooter at its target for free
+unit/view/test_tactics_controller_facing.gd,test_no_end_position_ghost_while_aiming_with_no_move_queued,,50387,0,0,0,2,0,1,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_facing.gd,test_end_position_ghost_faces_the_target_when_a_move_is_also_queued,,83977,0,0,0,4,0,2,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_facing.gd,test_end_position_ghost_stops_facing_the_target_once_aim_is_cancelled,,108745,0,0,0,5,0,2,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_facing.gd,test_has_queued_move_is_false_until_a_move_is_actually_queued,,71741,0,0,0,4,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tactics_controller_hover.gd,test_update_hover_resolves_a_screen_position_to_the_cell_underneath,,6115,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_hover.gd,test_update_hover_emits_hover_changed_only_on_an_actual_change,,6149,0,0,0,0,0,0,a signal fires only when the value really changed
+unit/view/test_tactics_controller_hover.gd,test_inspect_part_sets_the_field_and_emits_hover_changed,,6233,0,0,0,0,0,0,a signal fires only when the value really changed
+unit/view/test_tactics_controller_hover.gd,test_hovering_the_board_again_clears_a_previously_inspected_part,,7634,0,0,0,0,0,0,a highlight marks exactly the part it names
+unit/view/test_tactics_controller_hover.gd,test_hovering_the_selected_units_own_body_highlights_its_part,,19578,0,0,0,1,0,0,a highlight marks exactly the part it names
+unit/view/test_tactics_controller_hover.gd,test_hovering_a_different_units_body_never_highlights_a_part,,20986,0,0,0,1,0,0,a highlight marks exactly the part it names
+unit/view/test_tactics_controller_hover.gd,test_hover_part_sets_the_field_and_emits_highlight_changed_only_on_change,,5953,0,0,0,0,0,0,a signal fires only when the value really changed
+unit/view/test_tactics_controller_hover.gd,test_update_hover_off_the_board_entirely_clears_hovered_cell,,5637,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_intercepts_click_cell_on_a_unit_and_emits_its_hit,,5973,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_intercepts_click_cell_on_bare_ground_and_emits_its_cell,,7088,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_off_behaves_exactly_as_before,,19377,0,0,0,1,0,0,a feature switched off leaves behaviour exactly as it was
+unit/view/test_tactics_controller_input_capture.gd,test_capture_mode_intercepts_a_real_raycast_driven_click,,7649,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_resolve_to.gd,test_resolve_to_marker_applies_only_the_prefix_through_the_marker,,80061,0,0,0,6,0,0,resolving to a marker applies only the prefix and keeps the rest queued
+unit/view/test_tactics_controller_resolve_to.gd,test_the_later_queued_leg_survives_a_partial_resolve,,111286,0,0,0,8,0,0,resolving to a marker applies only the prefix and keeps the rest queued
+unit/view/test_tactics_controller_resolve_to.gd,test_previewed_unit_after_a_partial_resolve_reflects_the_moved_state_plus_the_kept_suffix,,92804,0,0,0,6,0,0,resolving to a marker applies only the prefix and keeps the rest queued
+unit/view/test_tactics_controller_resolve_to.gd,test_reset_turn_after_a_partial_resolve_returns_to_the_resolve_point,,121410,0,0,0,9,0,0,resolving to a marker applies only the prefix and keeps the rest queued
+unit/view/test_tactics_controller_resolve_to.gd,test_resolve_to_marker_with_an_out_of_range_index_is_a_no_op,,51546,0,0,0,3,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_points_the_reticle_at_the_cursors_own_target,,54811,0,0,0,2,0,3,the reticle reads a depth-sorted layer without changing what it resolves to
+unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_does_nothing_outside_aim_mode,,21153,0,0,0,1,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_does_nothing_while_input_locked,,44159,0,0,0,2,0,0,input is locked while resolution runs
+unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_finds_the_part_under_the_cursor,,57431,0,0,0,2,0,2,a picking ray returns the nearest thing along it
+unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_over_empty_space_finds_nothing,,55415,0,0,0,2,0,2,"a degenerate input yields an empty result, never an error"
+unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_never_touches_the_reticle,,50321,0,0,0,2,0,2,the reticle reads a depth-sorted layer without changing what it resolves to
+unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_does_nothing_outside_aim_mode,,30119,0,0,0,1,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_reticle.gd,test_update_aim_hover_does_nothing_while_input_locked,,55204,0,0,0,2,0,1,input is locked while resolution runs
+unit/view/test_tactics_controller_reticle.gd,test_aim_reticle_at_screen_also_updates_the_hover,,60954,0,0,0,2,0,3,the reticle reads a depth-sorted layer without changing what it resolves to
+unit/view/test_tactics_controller_step_out.gd,test_clicking_a_covered_enemy_with_burst_armed_enters_step_out_mode_too,,55519,0,0,0,3,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_firing_burst_after_step_out_is_silently_rejected_with_insufficient_real_ap,,75669,0,0,0,5,0,0,an action is illegal without the AP it costs
+unit/view/test_tactics_controller_step_out.gd,test_a_real_mouse_click_on_a_covered_enemy_also_enters_step_out_mode,,55783,0,0,0,3,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_step_out.gd,test_clicking_a_covered_enemy_enters_step_out_mode_not_aim_mode,,53623,0,0,0,3,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_a_directly_visible_enemy_still_enters_ordinary_aim_mode,,44305,0,0,0,2,0,0,aim mode opens on the target the click resolved to
+unit/view/test_tactics_controller_step_out.gd,test_moving_into_cover_then_shooting_still_enters_step_out_mode,,53327,0,0,0,4,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_confirming_a_step_out_cell_after_a_prior_queued_move_still_queues_the_out_leg,,69535,0,0,0,5,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_step_out_candidates_are_populated_safest_first,,59589,0,0,0,3,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_wheel_cycles_the_step_out_cell_and_wraps,,91336,0,0,0,6,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_step_out.gd,test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim,,65234,0,0,0,4,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_firing_after_a_step_out_completes_the_free_move_attack_move_triple,,85519,0,0,0,6,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_cancelling_aim_mid_step_out_undoes_the_free_outbound_leg,,78756,0,0,0,5,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/view/test_tactics_controller_step_out.gd,test_any_click_while_stepping_out_confirms_the_cell_choice,,64123,0,0,0,4,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_step_out.gd,test_esc_cancels_a_pending_step_out_without_queuing_anything,,65994,0,0,0,4,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_step_out.gd,test_rmb_also_cancels_a_pending_step_out,,64954,0,0,0,4,0,0,a real input event reaches the control it lands on
+unit/view/test_tactics_controller_step_out.gd,test_step_out_exposure_reports_a_real_overwatcher_at_the_selected_cell,,1272674,0,0,0,4,0,162,overwatch only threatens cells inside its authored arc
+unit/view/test_tooltip_controller.gd,test_nothing_hovered_or_inspected_hides_the_tooltip,,7118,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_tooltip_controller.gd,test_hovering_a_cell_shows_its_terrain,,6220,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_tooltip_controller.gd,test_hovering_an_enemy_shows_its_full_status,,6192,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_tooltip_controller.gd,test_hovering_a_field_object_shows_its_own_detail,,6014,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_tooltip_controller.gd,test_visible_from_selected_reflects_a_queued_not_yet_resolved_move,,32593,0,0,0,2,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_tooltip_controller.gd,test_an_inspected_part_wins_over_a_hovered_cell,,6201,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_tooltip_view.gd,test_show_data_does_not_appear_before_the_delay_elapses,,2045,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_tooltip_view.gd,test_show_data_appears_once_the_delay_elapses,,1987,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_tooltip_view.gd,test_moving_off_before_the_delay_elapses_means_it_never_appears,,2389,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_tooltip_view.gd,test_hide_tooltip_makes_the_view_invisible,,3470,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_tooltip_view.gd,test_an_empty_tooltip_data_hides_rather_than_shows_an_empty_box,,2457,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_tooltip_view.gd,test_a_changed_row_gets_the_highlight_color_and_an_unchanged_one_does_not,,2784,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/view/test_tooltip_view.gd,test_the_tooltip_position_tracks_the_cursor_while_shown,,2135,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_tooltip_view.gd,test_repeated_calls_for_the_same_pending_hover_do_not_restart_the_delay,,1345,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_tooltip_view.gd,test_a_new_hover_target_restarts_the_delay,,872,0,0,0,0,0,0,a tooltip appears only after its delay and then tracks the cursor
+unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_renders_once_no_matter_how_many_events_landed_in_the_frame,,1834,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_coalesced_output_is_identical_to_rendering_after_every_event,,2414,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_lines_are_current_before_any_render_happens,,1690,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_log_sink_coalescing.gd,test_ui_sink_still_trims_to_max_lines_under_coalescing,,2332,0,0,0,0,0,0,a bounded history keeps its cap and drops the oldest
+unit/view/test_ui_log_sink_coalescing.gd,test_hierarchical_sink_renders_once_no_matter_how_many_events_landed,,1580,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_log_sink_coalescing.gd,test_hierarchical_coalesced_output_is_identical_to_rendering_after_every_event,,1608,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_ui_log_sink_coalescing.gd,test_hierarchical_lines_are_current_before_any_render_happens,,2958,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_log_sink_coalescing.gd,test_expand_collapse_renders_immediately_without_waiting_for_a_frame_tick,,2903,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_log_sink_coalescing.gd,test_a_click_in_the_same_frame_as_new_events_draws_both,,2124,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_log_sink_coalescing.gd,test_render_count_per_frame_is_flat_regardless_of_event_volume,,5623,0,0,0,0,0,0,"the UI sink renders once a frame, whatever the event volume"
+unit/view/test_ui_sink.gd,test_emit_appends_rendered_lines,,2102,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/view/test_ui_sink.gd,test_emit_caps_at_max_lines_dropping_the_oldest,,1944,0,0,0,0,0,0,a bounded history keeps its cap and drops the oldest
+unit/view/test_ui_sink.gd,test_emit_mirrors_into_an_attached_label,,1368,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/view/test_ui_sink.gd,test_combat_log_can_use_it_as_a_normal_sink,,1449,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/view/test_weapon_panel.gd,test_nothing_selected_shows_an_empty_label,,7552,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_weapon_panel.gd,test_an_unarmed_unit_shows_no_weapons_attached,,19442,0,0,0,1,0,0,"a weapon row says active or inactive, with the reason"
+unit/view/test_weapon_panel.gd,test_an_operable_weapon_appears_without_dimming,,20393,0,0,0,1,0,0,"a weapon row says active or inactive, with the reason"
+unit/view/test_weapon_panel.gd,test_an_inactive_weapon_is_dimmed_and_shows_its_reason,,19079,0,0,0,1,0,0,"a weapon row says active or inactive, with the reason"
+unit/view/test_weapon_panel.gd,test_clicking_an_enemy_never_populates_the_weapons_panel,,7152,0,0,0,0,0,0,"a weapon row says active or inactive, with the reason"
+unit/view/test_world_palette.gd,test_world_environment_uses_the_backdrop_color_and_a_neutral_ambient_fill,,1792,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_environment_matches_world_environments_own_settings_with_no_node,,847,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_backdrop_and_ground_are_distinct_so_the_board_is_actually_visible,,814,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_directional_light_is_angled_off_axis,,1044,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_team_color_maps_squad_zero_to_a_and_others_to_b,,1588,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_team_colors_are_distinct,,1434,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_lit_material_is_per_pixel_shaded,,1085,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_overlay_material_is_unshaded,,821,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_world_palette.gd,test_rim_outline_material_is_grown_and_back_face_only,,825,0,0,0,0,0,0,"presentation derives from authored data, never from code"
