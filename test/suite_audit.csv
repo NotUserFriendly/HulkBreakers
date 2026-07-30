@@ -1260,227 +1260,227 @@ unit/logic/test_range_model.gd,test_an_unauthored_weapon_def_is_uncapped_and_ful
 unit/logic/test_range_model.gd,test_a_weapon_with_no_weapon_def_at_all_is_uncapped_and_full_accuracy,,75,0,0,0,0,0,0,an unstated authored field takes its default
 unit/logic/test_range_model.gd,test_min_range_blocks_a_non_dud_weapon,,75,0,0,0,0,0,0,a weapon's range bounds where it can fire
 unit/logic/test_range_model.gd,test_min_range_dud_weapon_is_never_blocked_but_flagged_as_dud,,67,0,0,0,0,0,0,a weapon's range bounds where it can fire
-unit/logic/test_reaction_window.gd,test_available_reactions_is_empty_with_no_perk_system,,189,0,0,0,0,0,0,
-unit/logic/test_reaction_window.gd,test_ignore_reaction_is_a_no_op,,16576,0,0,0,0,0,0,
-unit/logic/test_reaction_window.gd,test_dive_prone_reaction_sets_the_prone_pose,,737,0,0,0,0,0,0,
-unit/logic/test_reaction_window.gd,test_turn_shield_reaction_faces_the_defender_toward_the_threat,,458,0,0,0,0,0,0,
-unit/logic/test_reaction_window.gd,test_an_unrecognized_reaction_id_is_also_a_no_op,,417,0,0,0,0,0,0,
-unit/logic/test_reaction_window.gd,test_every_reaction_is_logged_including_ignore,,430,0,0,0,0,0,0,
-unit/logic/test_reaction_window.gd,test_resolve_reaction_window_applies_the_reaction_before_firing,,895,0,0,0,0,0,2,
-unit/logic/test_reaction_window.gd,test_check_trigger_still_fires_immediately_with_no_reaction_available,,743,0,0,0,0,0,4,
-unit/logic/test_recoil_resolver.gd,test_higher_damage_produces_more_recoil,,108,0,0,0,0,0,0,
-unit/logic/test_recoil_resolver.gd,test_longer_barrel_reduces_recoil,,93,0,0,0,0,0,0,
-unit/logic/test_recoil_resolver.gd,test_zero_barrel_length_does_not_crash_or_produce_nan_or_infinity,,202,0,0,0,0,0,0,
-unit/logic/test_recoil_resolver.gd,test_widen_at_step_zero_returns_an_unchanged_copy,,85,0,0,0,0,0,0,
-unit/logic/test_recoil_resolver.gd,test_widen_never_mutates_the_input_scatter,,72,0,0,0,0,0,0,
-unit/logic/test_recoil_resolver.gd,test_each_successive_step_widens_further_than_the_last,,73,0,0,0,0,0,0,
-unit/logic/test_recoil_resolver.gd,test_widen_never_touches_ring_weight,,68,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_no_living_part_extends_below_the_floor,,5349,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_feet_touch_the_floor,,4692,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_head_is_the_highest_part_a_leg_is_the_lowest,,5301,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_arms_are_lateral_a_left_and_a_right_both_exist,,4448,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_the_composed_body_fits_inside_one_cell_footprint,,4581,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_a_plates_rect_overlaps_its_parents_and_sits_at_lower_depth_from_the_front,,6413,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_the_flank_test,,6925,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_ammo_rack_is_occluded_from_the_front_but_frontmost_from_behind,,5507,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_half_cover_masks_the_legs_but_not_the_head,,5308,0,0,0,0,0,1,
-unit/logic/test_reference_humanoid.gd,test_full_cover_masks_the_torso_but_not_the_head,,6129,0,0,0,0,0,1,
-unit/logic/test_reference_humanoid.gd,test_destroying_layers_progressively_exposes_cladding_then_the_bare_part,,10990,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate,,8129,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_the_plate_cladding_bare_dt_gradient_is_6_3_2,,4801,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_no_pool_part_has_an_empty_material,,3154,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_the_pool_yields_at_least_three_distinct_colors,,2332,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_validate_assembly_flags_an_empty_material_same_as_a_missing_volume,,6097,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_both_legs_own_armor_socket_is_independently_addressable_from_arms,,6571,0,0,0,0,0,0,
-unit/logic/test_reference_humanoid.gd,test_a_loadout_can_arm_both_legs_without_touching_the_arms,,4849,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_find_operable_welder_returns_the_welder_with_a_real_manipulator,,272,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_find_operable_welder_null_without_a_manipulator,,188,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_find_operable_welder_null_with_no_welder_at_all,,105,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_welder_battery_returns_the_docked_tool_battery,,189,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_welder_battery_null_with_an_empty_socket,,180,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_can_repair_with_true_when_welder_and_charge_both_present,,144,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_can_repair_with_false_once_the_battery_is_drained,,244,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_can_repair_with_false_once_the_battery_is_destroyed,,137,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_heal_amount_capped_at_three,,243,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_heal_amount_never_exceeds_whats_actually_missing,,70,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_scrap_cost_matches_heal_amount_one_to_one,,65,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_scrap_resource_id_is_the_targets_own_material,,80,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_repairable_parts_lists_only_damaged_living_parts,,200,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_repairable_parts_excludes_a_fully_destroyed_part,,147,0,0,0,0,0,0,
-unit/logic/test_repair_resolver.gd,test_repairable_parts_excludes_a_fully_healed_part,,136,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_a_handle_rebuilds_the_fixture_its_test_built,,182432,2,0,0,4,0,0,
-unit/logic/test_replay_handle.gd,test_a_different_seed_rebuilds_a_different_fixture,,187113,2,0,0,4,0,0,
-unit/logic/test_replay_handle.gd,test_a_test_without_a_handle_is_skipped_rather_than_erroring,,976,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_a_declared_script_still_answers_null_for_its_unhandled_tests,,1068,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_a_missing_script_is_skipped_rather_than_erroring,,1676,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_the_offer_is_capped_and_show_all_is_opt_in,,1261,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_unreplayable_failures_do_not_consume_the_cap,,1326,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_a_handle_that_cannot_build_returns_nothing,,1051,0,0,0,0,0,0,
-unit/logic/test_replay_handle.gd,test_seed_and_non_seed_handles_share_one_run,,1623,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_personal_speed_subtracts_from_the_actions_own_base_speed,,15770,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_a_higher_personal_speed_unit_resolves_an_identical_action_sooner,,468,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_zero_personal_speed_contributes_no_source,,294,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_action_family_bonus_hook_is_present_and_returns_zero,,301,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_resolves_through_stat_resolver_with_real_provenance,,337,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_an_action_with_no_resolvable_unit_still_resolves_the_base_speed,,207,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_a_bare_units_face_resolves_after_an_overwatchers_shot,,318,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_a_high_personal_speed_units_face_resolves_before_an_overwatchers_shot,,334,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_overwatch_resolves_before_a_fresh_attack_at_equal_personal_speed,,354,0,0,0,0,0,0,
-unit/logic/test_resolution_speed.gd,test_default_ordering_is_overwatch_then_attack_then_face,,317,0,0,0,0,0,0,
-unit/logic/test_resolve_ray.gd,test_resolve_ray_matches_the_plane_it_builds_internally_for_a_corpus_of_cases,,983,0,0,0,0,0,6,
-unit/logic/test_resolve_ray.gd,test_the_rays_hit_part_always_equals_the_frontmost_region_at_the_corresponding_point,,541,0,0,0,0,0,2,
-unit/logic/test_resolve_ray.gd,test_resolve_ray_returns_null_when_nothing_is_hit,,501,0,0,0,0,0,1,
-unit/logic/test_resolve_ray.gd,test_resolve_ray_is_deterministic,,596,0,0,0,0,0,2,
-unit/logic/test_resolve_ray.gd,test_resolve_ray_reports_a_hit_point_that_lies_on_the_ray,,342,0,0,0,0,0,1,
-unit/logic/test_resolve_ray.gd,test_a_non_zero_dir_y_no_longer_errors,,526,0,0,0,0,0,1,
-unit/logic/test_resolve_ray.gd,test_a_level_shot_passes_over_a_short_part_and_hits_a_taller_one_behind_it,,395,0,0,0,0,0,1,
-unit/logic/test_resolve_ray.gd,test_a_tilted_ray_hits_a_part_a_level_ray_from_the_same_muzzle_would_miss,,402,0,0,0,0,0,2,
-unit/logic/test_resolve_ray.gd,test_a_tilted_rays_hit_point_lies_on_the_real_3d_ray,,311,0,0,0,0,0,1,
-unit/logic/test_resolve_ray.gd,test_muzzle_height_is_real_not_a_hardcoded_constant,,398,0,0,0,0,0,3,
-unit/logic/test_resolve_ray.gd,test_a_zero_horizontal_direction_returns_null_without_erroring,,253,0,0,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_a_leg_lost_mid_move_stops_resolution_and_refunds_mp_but_not_ap,,30398,0,0,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_a_hand_lost_mid_move_does_not_stop_the_move_but_stops_at_the_now_illegal_shot,,44290,0,0,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_a_minor_scratch_mid_move_stops_nothing,,44713,0,1,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_only_the_interrupted_units_own_state_is_touched,,30452,0,0,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_the_outcome_and_refund_are_logged,,31386,0,0,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_a_stopped_units_turn_still_reaches_turn_end_afterward,,46176,0,1,0,0,0,0,
-unit/logic/test_resolve_until.gd,test_the_same_seed_and_setup_stops_at_the_same_interrupt_point,,60729,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_undo_reverts_the_field_and_returns_the_edit,,240,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_redo_reapplies_after_an_undo,,95,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_a_new_edit_after_undo_clears_the_redo_branch,,69,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_undo_with_nothing_to_undo_returns_null,,54,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_undo_reverts_edits_in_reverse_order_across_resources_and_fields,,116,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_undo_is_independent_of_any_row_or_column_position,,92,0,0,0,0,0,0,
-unit/logic/test_resource_edit_stack.gd,test_undo_redo_via_a_custom_setter_for_non_field_edits,,118,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_id_is_the_first_column_for_every_type,,1394,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_id_is_never_editable,,2081,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_every_other_declared_column_is_editable,,1278,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_is_numeric_matches_the_fields_own_type,,1775,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_material_vocabulary_pulls_from_data_library,,1167,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_failure_mode_vocabulary_matches_the_validators_own_closed_list,,1814,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_stack_type_vocabulary_matches_the_validators_own_closed_list,,1262,0,0,0,0,0,0,
-unit/logic/test_resource_editor_columns.gd,test_a_column_with_no_closed_vocabulary_returns_empty,,1686,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_no_filter_no_sort_returns_every_row_in_load_order,,187,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_filter_matches_a_substring_case_insensitively,,145,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_filters_combine_with_and_across_columns,,115,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_an_empty_filter_value_is_ignored,,94,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_sort_ascending_by_numeric_column,,251,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_sort_descending_by_numeric_column,,190,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_sort_is_stable_on_ties,,164,0,0,0,0,0,0,
-unit/logic/test_resource_editor_rows.gd,test_distinct_values_deduplicates_and_sorts,,151,0,0,0,0,0,0,
-unit/logic/test_ricochet_stress.gd,test_a_half_cylinder_plates_own_facets_produce_a_wide_spread_of_surface_normals,,2217,0,0,0,0,0,0,
-unit/logic/test_ricochet_stress.gd,test_a_wedge_plates_own_two_faces_deflect_the_same_shot_in_different_directions,,1336,0,0,0,0,0,0,
-unit/logic/test_ricochet_stress.gd,test_a_seeded_burst_into_the_rig_is_deterministic_and_terminates,,16257,0,0,0,0,0,26,
-unit/logic/test_selection_controller.gd,test_select_accepts_only_the_current_units_turn,,19155,0,0,0,0,0,0,
-unit/logic/test_selection_controller.gd,test_reachable_cells_matches_pathfinder_exactly,,15885,0,0,0,2,0,0,
-unit/logic/test_selection_controller.gd,test_queue_move_to_an_unreachable_cell_fails,,51680,0,0,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_queuing_two_moves_shows_two_ghosts_the_second_starting_where_the_first_left_off,,30133,0,0,0,2,0,0,
-unit/logic/test_selection_controller.gd,test_queuing_never_mutates_the_real_state,,30786,0,0,0,3,0,0,
-unit/logic/test_selection_controller.gd,test_leg_costs_matches_pathfinders_own_cost_per_queued_leg,,21583,0,0,0,2,0,0,
-unit/logic/test_selection_controller.gd,test_undo_last_pops_the_most_recently_queued_action,,16581,0,0,0,2,0,0,
-unit/logic/test_selection_controller.gd,test_undo_last_with_an_empty_queue_returns_false,,3696,0,0,0,0,0,0,
-unit/logic/test_selection_controller.gd,test_undo_last_refunds_the_popped_actions_cost_against_the_speculative_state,,27622,0,0,0,3,0,0,
-unit/logic/test_selection_controller.gd,test_reset_turn_clears_the_queue_but_keeps_the_unit_selected,,18954,0,0,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_reset_turn_with_nothing_selected_is_a_no_op,,4151,0,0,0,0,0,0,
-unit/logic/test_selection_controller.gd,test_previewed_unit_reflects_the_queued_end_cell,,13412,0,0,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_nothing_selected_yields_no_preview_and_no_queue_entries,,4557,0,0,0,0,0,0,
-unit/logic/test_selection_controller.gd,test_reset_clears_selection_and_queues,,11175,0,0,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action,,24293,0,0,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_queue_entries_never_mutates_the_real_state,,18095,0,0,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly,,14808,0,1,0,1,0,0,
-unit/logic/test_selection_controller.gd,test_queue_end_turn_threads_mission_through_for_the_extraction_hold,,10928,0,1,0,0,0,0,
-unit/logic/test_selection_controller.gd,test_queue_repair_appends_a_repair_action_that_resolves_cleanly,,9156,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_plate_over_part_returns_the_plate_and_uncovered_point_returns_the_part_beneath,,357,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_point_with_nothing_in_the_plane_returns_null,,476,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_disc_overlaps_rect_zero_radius_is_exactly_has_point,,158,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_disc_overlaps_rect_reaches_a_point_outside_the_rect_within_its_radius,,108,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_a_point_shot_falls_through_a_narrow_gap,,231,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_a_wide_disc_cannot_thread_the_same_gap_a_point_shot_passes_through,,247,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_a_narrow_disc_still_threads_a_gap_a_wide_one_cannot,,311,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_a_disc_still_hits_a_region_it_overlaps_even_off_center,,223,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_shield_authored_as_boxes_around_a_hole_lets_a_point_in_the_hole_hit_the_part_behind,,429,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_layered_targets_a_gap_in_the_near_unit_falls_through_to_the_far_unit,,879,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_units_along_lists_every_layered_target_nearest_first,,792,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_units_along_excludes_a_dead_unit_with_no_region_in_the_plane,,680,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_destroying_cover_removes_its_region_from_the_plane,,565,0,0,0,0,0,2,
-unit/logic/test_shot_plane.gd,test_a_multi_part_blocker_projects_every_box_not_just_the_root,,574,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_a_dead_root_blockers_living_child_still_projects,,499,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_build_tags_every_region_with_its_owning_body,,684,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_center_of_returns_the_frontmost_regions_rect_center,,800,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_center_of_falls_back_to_the_targets_cell_with_no_regions,,839,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_center_of_part_returns_the_frontmost_regions_rect_center,,755,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_center_of_part_falls_back_to_the_given_cell_with_no_matching_region,,225,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_self_obstruction_excludes_the_shooters_own_body,,712,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_self_obstruction_returns_null_with_nothing_in_the_way,,382,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter,,662,0,0,0,0,0,2,
-unit/logic/test_shot_plane.gd,test_self_obstruction_excludes_the_shooters_own_joint_regions,,540,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_resolve_projectile_floor_at_zero_is_opt_in,,96,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_a_wall_part_between_shooter_and_target_blocks_the_shot,,394,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_destroying_a_wall_removes_its_region_from_the_plane,,689,0,0,0,0,0,2,
-unit/logic/test_shot_plane.gd,test_resolve_projectile_is_called_only_from_shot_plane_itself,,4517,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_build_with_a_flat_direction_matches_a_bare_project_assembly_call,,527,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_elevation_for_reflects_the_level_delta_not_flat_zero,,3331,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_elevation_for_is_flat_when_origin_and_target_share_a_level,,3916,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_elevation_for_uses_the_given_origin_height_verbatim,,163,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_depth_of_returns_the_frontmost_regions_own_depth,,441,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_depth_of_falls_back_to_zero_with_no_regions,,176,0,0,0,0,0,0,
-unit/logic/test_shot_plane.gd,test_depth_of_part_returns_the_frontmost_regions_own_depth,,286,0,0,0,0,0,1,
-unit/logic/test_shot_plane.gd,test_depth_of_part_falls_back_to_zero_with_no_matching_region,,79,0,0,0,0,0,0,
-unit/logic/test_shot_scatter.gd,test_for_shot_matches_full_accuracy_at_or_under_effective_range,,162,0,0,0,0,0,0,
-unit/logic/test_shot_scatter.gd,test_for_shot_widens_past_effective_range_matching_one_over_accuracy_multiplier,,130,0,0,0,0,0,0,
-unit/logic/test_shot_scatter.gd,test_for_shot_gives_the_same_answer_regardless_of_which_consumer_asks,,178,0,0,0,0,0,0,
-unit/logic/test_shot_scatter.gd,test_for_shot_with_an_unauthored_weapon_def_never_widens,,117,0,0,0,0,0,0,
-unit/logic/test_socket.gd,test_current_transform_returns_the_authored_transform,,115,0,0,0,0,0,0,
-unit/logic/test_socket.gd,test_current_transform_reflects_a_transform_changed_after_construction,,105,0,0,0,0,0,0,
-unit/logic/test_spread_pattern.gd,test_no_ammo_or_a_single_projectile_round_collapses_to_the_center,,235,0,0,0,0,0,0,
-unit/logic/test_spread_pattern.gd,test_a_multi_projectile_round_samples_exactly_projectile_num_points,,100,0,0,0,0,0,0,
-unit/logic/test_spread_pattern.gd,test_longer_barrel_yields_a_tighter_pattern,,169,0,0,0,0,0,0,
-unit/logic/test_spread_pattern.gd,test_barrel_length_never_changes_the_dartboard_rings,,226,0,0,0,0,0,0,
-unit/logic/test_spread_pattern.gd,test_a_single_projectile_weapon_is_unaffected_by_pattern_scaling,,357,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_resolve_combines_part_perk_and_ammo_sources_and_names_all_three,,405,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_resolve_is_pure_and_deterministic,,220,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_multiply_op,,154,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_override_op,,155,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_ops_apply_in_order,,155,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_stat_value_changed_is_false_with_no_sources,,133,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_stat_value_changed_is_false_when_sources_net_to_zero_change,,137,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_gather_part_sources_ignores_parts_without_the_stat,,213,0,0,0,0,0,0,
-unit/logic/test_stat_resolver.gd,test_stat_mods_is_only_read_by_the_resolver,,10518,0,0,0,0,0,0,
-unit/logic/test_step_out_interrupt.gd,test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_returns,,27015,0,0,0,2,0,6,
-unit/logic/test_step_out_interrupt.gd,test_a_stepper_who_survives_the_trigger_still_freezes_and_never_returns,,23728,0,0,0,2,0,4,
-unit/logic/test_step_out_planner.gd,test_a_step_out_is_legal_when_origin_covered_firing_cell_exposed_and_orthogonal,,6730,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_an_uncovered_origin_makes_the_step_out_illegal,,7446,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_a_firing_cell_that_is_itself_covered_is_illegal,,7002,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_a_diagonal_neighbor_is_never_a_legal_step_out_cell,,4804,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_candidate_step_out_cells_lists_every_legal_orthogonal_neighbor,,3524,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_sort_by_safety_prefers_the_cell_with_no_known_overwatch,,18804,0,0,0,0,0,4,
-unit/logic/test_step_out_planner.gd,test_build_triple_assembles_a_real_move_attack_move_queue,,19440,0,0,0,2,0,0,
-unit/logic/test_step_out_planner.gd,test_the_triple_costs_no_mp_for_either_leg,,22892,0,0,0,2,0,0,
-unit/logic/test_step_out_planner.gd,test_assemble_for_shoot_returns_null_when_already_directly_attackable,,5182,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_assemble_for_shoot_returns_null_when_no_legal_step_out_exists,,3434,0,0,0,0,0,0,
-unit/logic/test_step_out_planner.gd,test_assemble_for_shoot_builds_the_triple_via_the_safest_candidate,,33943,0,0,0,2,0,0,
-unit/logic/test_suite_run.gd,test_the_launcher_agrees_with_the_shell_about_the_same_rung,,8129317,0,0,0,0,0,0,
-unit/logic/test_suite_run.gd,test_a_failing_run_reads_as_failed,,889,0,0,0,0,0,0,
-unit/logic/test_suite_run.gd,test_a_clean_exit_marker_reads_as_passed,,194,0,0,0,0,0,0,
-unit/logic/test_suite_run.gd,test_an_unfinished_run_never_reads_as_passed,,12309,0,0,0,0,0,0,
-unit/logic/test_suite_run.gd,test_kill_terminates_the_whole_process_group_not_just_the_shell,,9405020,0,0,0,0,0,0,
-unit/logic/test_suite_run.gd,test_the_status_line_states_the_rung_and_the_elapsed_time,,1479286,0,0,0,0,0,0,
-unit/logic/test_suite_run.gd,test_every_offered_rung_is_a_real_argument,,150,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_adjacent_living_enemies_includes_orthogonal_and_diagonal,,8901,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_adjacent_living_enemies_excludes_the_dead_and_same_squad,,5927,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_is_suppressed_true_only_when_adjacent_to_a_living_enemy,,11258,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_blocks_weapon_true_for_a_long_gun_adjacent_to_an_enemy,,3888,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_blocks_weapon_false_for_a_short_gun_adjacent_to_an_enemy,,4334,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_blocks_weapon_false_for_a_long_gun_when_not_adjacent,,4534,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_would_trigger_opportunity_attack_when_genuinely_leaving_adjacency,,3449,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_no_opportunity_attack_when_still_adjacent_to_the_same_enemy,,4572,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_no_opportunity_attack_when_never_adjacent_in_the_first_place,,3682,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_would_trigger_opportunity_attack_is_empty_for_a_zero_length_step,,3928,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_resolves_a_real_melee_strike,,7126,0,0,0,0,0,2,
-unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_still_lands_against_a_mover_one_level_up,,6136,0,0,0,0,0,2,
-unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_is_a_no_op_without_a_melee_weapon,,4591,0,0,0,0,0,0,
-unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_can_kill_a_unit_with_no_other_parts,,4921,0,0,0,0,0,2,
-unit/logic/test_suppression.gd,test_move_hooks_combined_applies_an_opportunity_attack_on_a_real_move,,10941,0,0,0,0,0,2,
+unit/logic/test_reaction_window.gd,test_available_reactions_is_empty_with_no_perk_system,,189,0,0,0,0,0,0,"an unimplemented hook is flagged, not silently inert"
+unit/logic/test_reaction_window.gd,test_ignore_reaction_is_a_no_op,,16576,0,0,0,0,0,0,a defensive reaction applies before the shot it answers
+unit/logic/test_reaction_window.gd,test_dive_prone_reaction_sets_the_prone_pose,,737,0,0,0,0,0,0,a defensive reaction applies before the shot it answers
+unit/logic/test_reaction_window.gd,test_turn_shield_reaction_faces_the_defender_toward_the_threat,,458,0,0,0,0,0,0,a defensive reaction applies before the shot it answers
+unit/logic/test_reaction_window.gd,test_an_unrecognized_reaction_id_is_also_a_no_op,,417,0,0,0,0,0,0,an unknown open-vocabulary id falls back rather than failing
+unit/logic/test_reaction_window.gd,test_every_reaction_is_logged_including_ignore,,430,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/test_reaction_window.gd,test_resolve_reaction_window_applies_the_reaction_before_firing,,895,0,0,0,0,0,2,a defensive reaction applies before the shot it answers
+unit/logic/test_reaction_window.gd,test_check_trigger_still_fires_immediately_with_no_reaction_available,,743,0,0,0,0,0,4,overwatch fires on a trigger inside its own window
+unit/logic/test_recoil_resolver.gd,test_higher_damage_produces_more_recoil,,108,0,0,0,0,0,0,recoil scales with damage and against barrel length
+unit/logic/test_recoil_resolver.gd,test_longer_barrel_reduces_recoil,,93,0,0,0,0,0,0,recoil scales with damage and against barrel length
+unit/logic/test_recoil_resolver.gd,test_zero_barrel_length_does_not_crash_or_produce_nan_or_infinity,,202,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_recoil_resolver.gd,test_widen_at_step_zero_returns_an_unchanged_copy,,85,0,0,0,0,0,0,recoil accumulates within a burst and resets between them
+unit/logic/test_recoil_resolver.gd,test_widen_never_mutates_the_input_scatter,,72,0,0,0,0,0,0,"a data read hands back a copy, never the cached resource"
+unit/logic/test_recoil_resolver.gd,test_each_successive_step_widens_further_than_the_last,,73,0,0,0,0,0,0,recoil accumulates within a burst and resets between them
+unit/logic/test_recoil_resolver.gd,test_widen_never_touches_ring_weight,,68,0,0,0,0,0,0,scatter lands in a ring at the weight its data authors
+unit/logic/test_reference_humanoid.gd,test_no_living_part_extends_below_the_floor,,5349,0,0,0,0,0,0,the reference body stands on the floor inside one cell
+unit/logic/test_reference_humanoid.gd,test_feet_touch_the_floor,,4692,0,0,0,0,0,0,the reference body stands on the floor inside one cell
+unit/logic/test_reference_humanoid.gd,test_head_is_the_highest_part_a_leg_is_the_lowest,,5301,0,0,0,0,0,0,the reference body stands on the floor inside one cell
+unit/logic/test_reference_humanoid.gd,test_arms_are_lateral_a_left_and_a_right_both_exist,,4448,0,0,0,0,0,0,the reference body stands on the floor inside one cell
+unit/logic/test_reference_humanoid.gd,test_the_composed_body_fits_inside_one_cell_footprint,,4581,0,0,0,0,0,0,the reference body stands on the floor inside one cell
+unit/logic/test_reference_humanoid.gd,test_a_plates_rect_overlaps_its_parents_and_sits_at_lower_depth_from_the_front,,6413,0,0,0,0,0,0,internals sit behind cladding and become hittable once it is stripped
+unit/logic/test_reference_humanoid.gd,test_the_flank_test,"name is a label, not a sentence — it says nothing about what flanking is expected to do. Every other test in this file names its own assertion.",6925,0,0,0,0,0,0,"a hit resolves spatially against the shot plane, never a facing table"
+unit/logic/test_reference_humanoid.gd,test_ammo_rack_is_occluded_from_the_front_but_frontmost_from_behind,,5507,0,0,0,0,0,0,the frontmost region in the shot plane wins
+unit/logic/test_reference_humanoid.gd,test_half_cover_masks_the_legs_but_not_the_head,,5308,0,0,0,0,0,1,cover between muzzle and target stops the shot
+unit/logic/test_reference_humanoid.gd,test_full_cover_masks_the_torso_but_not_the_head,,6129,0,0,0,0,0,1,cover between muzzle and target stops the shot
+unit/logic/test_reference_humanoid.gd,test_destroying_layers_progressively_exposes_cladding_then_the_bare_part,,10990,0,0,0,0,0,0,internals sit behind cladding and become hittable once it is stripped
+unit/logic/test_reference_humanoid.gd,test_a_shot_on_an_unplated_face_resolves_to_cladding_never_a_plate,,8129,0,0,0,0,0,0,internals sit behind cladding and become hittable once it is stripped
+unit/logic/test_reference_humanoid.gd,test_the_plate_cladding_bare_dt_gradient_is_6_3_2,,4801,0,0,0,0,0,0,"DT comes from the material's authored curve, interpolated and clamped"
+unit/logic/test_reference_humanoid.gd,test_no_pool_part_has_an_empty_material,,3154,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_reference_humanoid.gd,test_the_pool_yields_at_least_three_distinct_colors,,2332,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/logic/test_reference_humanoid.gd,test_validate_assembly_flags_an_empty_material_same_as_a_missing_volume,,6097,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_reference_humanoid.gd,test_both_legs_own_armor_socket_is_independently_addressable_from_arms,,6571,0,0,0,0,0,0,"a part attaches to any matching socket, with no parent-specific code"
+unit/logic/test_reference_humanoid.gd,test_a_loadout_can_arm_both_legs_without_touching_the_arms,,4849,0,0,0,0,0,0,"a part attaches to any matching socket, with no parent-specific code"
+unit/logic/test_repair_resolver.gd,test_find_operable_welder_returns_the_welder_with_a_real_manipulator,,272,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_repair_resolver.gd,test_find_operable_welder_null_without_a_manipulator,,188,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_repair_resolver.gd,test_find_operable_welder_null_with_no_welder_at_all,,105,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_repair_resolver.gd,test_welder_battery_returns_the_docked_tool_battery,,189,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_welder_battery_null_with_an_empty_socket,,180,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_repair_resolver.gd,test_can_repair_with_true_when_welder_and_charge_both_present,,144,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_can_repair_with_false_once_the_battery_is_drained,,244,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_can_repair_with_false_once_the_battery_is_destroyed,,137,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_repair_resolver.gd,test_heal_amount_capped_at_three,,243,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_heal_amount_never_exceeds_whats_actually_missing,,70,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_scrap_cost_matches_heal_amount_one_to_one,,65,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_scrap_resource_id_is_the_targets_own_material,,80,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_repairable_parts_lists_only_damaged_living_parts,,200,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_repair_resolver.gd,test_repairable_parts_excludes_a_fully_destroyed_part,,147,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_repair_resolver.gd,test_repairable_parts_excludes_a_fully_healed_part,,136,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/test_replay_handle.gd,test_a_handle_rebuilds_the_fixture_its_test_built,,182432,2,0,0,4,0,0,a failed test replays as the fixture it built
+unit/logic/test_replay_handle.gd,test_a_different_seed_rebuilds_a_different_fixture,,187113,2,0,0,4,0,0,a failed test replays as the fixture it built
+unit/logic/test_replay_handle.gd,test_a_test_without_a_handle_is_skipped_rather_than_erroring,,976,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_replay_handle.gd,test_a_declared_script_still_answers_null_for_its_unhandled_tests,,1068,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_replay_handle.gd,test_a_missing_script_is_skipped_rather_than_erroring,,1676,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_replay_handle.gd,test_the_offer_is_capped_and_show_all_is_opt_in,,1261,0,0,0,0,0,0,"a replay offer is capped, and the cap counts only replayable failures"
+unit/logic/test_replay_handle.gd,test_unreplayable_failures_do_not_consume_the_cap,,1326,0,0,0,0,0,0,"a replay offer is capped, and the cap counts only replayable failures"
+unit/logic/test_replay_handle.gd,test_a_handle_that_cannot_build_returns_nothing,,1051,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_replay_handle.gd,test_seed_and_non_seed_handles_share_one_run,,1623,0,0,0,0,0,0,a failed test replays as the fixture it built
+unit/logic/test_resolution_speed.gd,test_personal_speed_subtracts_from_the_actions_own_base_speed,,15770,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_resolution_speed.gd,test_a_higher_personal_speed_unit_resolves_an_identical_action_sooner,,468,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_resolution_speed.gd,test_zero_personal_speed_contributes_no_source,,294,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_resolution_speed.gd,test_action_family_bonus_hook_is_present_and_returns_zero,,301,0,0,0,0,0,0,"an unimplemented hook is flagged, not silently inert"
+unit/logic/test_resolution_speed.gd,test_resolves_through_stat_resolver_with_real_provenance,,337,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_resolution_speed.gd,test_an_action_with_no_resolvable_unit_still_resolves_the_base_speed,,207,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_resolution_speed.gd,test_a_bare_units_face_resolves_after_an_overwatchers_shot,,318,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_resolution_speed.gd,test_a_high_personal_speed_units_face_resolves_before_an_overwatchers_shot,,334,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_resolution_speed.gd,test_overwatch_resolves_before_a_fresh_attack_at_equal_personal_speed,,354,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_resolution_speed.gd,test_default_ordering_is_overwatch_then_attack_then_face,,317,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_resolve_ray.gd,test_resolve_ray_matches_the_plane_it_builds_internally_for_a_corpus_of_cases,,983,0,0,0,0,0,6,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_resolve_ray.gd,test_the_rays_hit_part_always_equals_the_frontmost_region_at_the_corresponding_point,,541,0,0,0,0,0,2,the frontmost region in the shot plane wins
+unit/logic/test_resolve_ray.gd,test_resolve_ray_returns_null_when_nothing_is_hit,,501,0,0,0,0,0,1,"a degenerate input yields an empty result, never an error"
+unit/logic/test_resolve_ray.gd,test_resolve_ray_is_deterministic,,596,0,0,0,0,0,2,a build is reproducible from the same inputs
+unit/logic/test_resolve_ray.gd,test_resolve_ray_reports_a_hit_point_that_lies_on_the_ray,,342,0,0,0,0,0,1,a shot's logged geometry is the geometry it fired
+unit/logic/test_resolve_ray.gd,test_a_non_zero_dir_y_no_longer_errors,,526,0,0,0,0,0,1,"elevation changes the shot geometry, not the rules"
+unit/logic/test_resolve_ray.gd,test_a_level_shot_passes_over_a_short_part_and_hits_a_taller_one_behind_it,,395,0,0,0,0,0,1,ray height follows the surface it passes over
+unit/logic/test_resolve_ray.gd,test_a_tilted_ray_hits_a_part_a_level_ray_from_the_same_muzzle_would_miss,,402,0,0,0,0,0,2,"elevation changes the shot geometry, not the rules"
+unit/logic/test_resolve_ray.gd,test_a_tilted_rays_hit_point_lies_on_the_real_3d_ray,,311,0,0,0,0,0,1,a shot's logged geometry is the geometry it fired
+unit/logic/test_resolve_ray.gd,test_muzzle_height_is_real_not_a_hardcoded_constant,,398,0,0,0,0,0,3,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/test_resolve_ray.gd,test_a_zero_horizontal_direction_returns_null_without_erroring,,253,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_resolve_until.gd,test_a_leg_lost_mid_move_stops_resolution_and_refunds_mp_but_not_ap,,30398,0,0,0,0,0,0,an interrupt stops resolution and refunds only what went unspent
+unit/logic/test_resolve_until.gd,test_a_hand_lost_mid_move_does_not_stop_the_move_but_stops_at_the_now_illegal_shot,,44290,0,0,0,0,0,0,a queued intent revalidates at resolution time
+unit/logic/test_resolve_until.gd,test_a_minor_scratch_mid_move_stops_nothing,,44713,0,1,0,0,0,0,an interrupt stops resolution and refunds only what went unspent
+unit/logic/test_resolve_until.gd,test_only_the_interrupted_units_own_state_is_touched,,30452,0,0,0,0,0,0,an interrupt stops resolution and refunds only what went unspent
+unit/logic/test_resolve_until.gd,test_the_outcome_and_refund_are_logged,,31386,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/test_resolve_until.gd,test_a_stopped_units_turn_still_reaches_turn_end_afterward,,46176,0,1,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/test_resolve_until.gd,test_the_same_seed_and_setup_stops_at_the_same_interrupt_point,,60729,0,0,0,0,0,0,the same seed produces the same battle
+unit/logic/test_resource_edit_stack.gd,test_undo_reverts_the_field_and_returns_the_edit,,240,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_resource_edit_stack.gd,test_redo_reapplies_after_an_undo,,95,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_resource_edit_stack.gd,test_a_new_edit_after_undo_clears_the_redo_branch,,69,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_resource_edit_stack.gd,test_undo_with_nothing_to_undo_returns_null,,54,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_resource_edit_stack.gd,test_undo_reverts_edits_in_reverse_order_across_resources_and_fields,,116,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_resource_edit_stack.gd,test_undo_is_independent_of_any_row_or_column_position,,92,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_resource_edit_stack.gd,test_undo_redo_via_a_custom_setter_for_non_field_edits,,118,0,0,0,0,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_resource_editor_columns.gd,test_id_is_the_first_column_for_every_type,,1394,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/logic/test_resource_editor_columns.gd,test_id_is_never_editable,,2081,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/logic/test_resource_editor_columns.gd,test_every_other_declared_column_is_editable,,1278,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/logic/test_resource_editor_columns.gd,test_is_numeric_matches_the_fields_own_type,,1775,0,0,0,0,0,0,an editor column's type and vocabulary come from the field it edits
+unit/logic/test_resource_editor_columns.gd,test_material_vocabulary_pulls_from_data_library,,1167,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_resource_editor_columns.gd,test_failure_mode_vocabulary_matches_the_validators_own_closed_list,,1814,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_resource_editor_columns.gd,test_stack_type_vocabulary_matches_the_validators_own_closed_list,,1262,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_resource_editor_columns.gd,test_a_column_with_no_closed_vocabulary_returns_empty,,1686,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_resource_editor_rows.gd,test_no_filter_no_sort_returns_every_row_in_load_order,,187,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/logic/test_resource_editor_rows.gd,test_filter_matches_a_substring_case_insensitively,,145,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/logic/test_resource_editor_rows.gd,test_filters_combine_with_and_across_columns,,115,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/logic/test_resource_editor_rows.gd,test_an_empty_filter_value_is_ignored,,94,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_resource_editor_rows.gd,test_sort_ascending_by_numeric_column,,251,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/logic/test_resource_editor_rows.gd,test_sort_descending_by_numeric_column,,190,0,0,0,0,0,0,editor rows filter and sort without losing a row or reordering a tie
+unit/logic/test_resource_editor_rows.gd,test_sort_is_stable_on_ties,,164,0,0,0,0,0,0,a list built from data comes out in a stable order
+unit/logic/test_resource_editor_rows.gd,test_distinct_values_deduplicates_and_sorts,,151,0,0,0,0,0,0,a list built from data comes out in a stable order
+unit/logic/test_ricochet_stress.gd,test_a_half_cylinder_plates_own_facets_produce_a_wide_spread_of_surface_normals,,2217,0,0,0,0,0,0,the surface normal is the face actually hit
+unit/logic/test_ricochet_stress.gd,test_a_wedge_plates_own_two_faces_deflect_the_same_shot_in_different_directions,,1336,0,0,0,0,0,0,the surface normal is the face actually hit
+unit/logic/test_ricochet_stress.gd,test_a_seeded_burst_into_the_rig_is_deterministic_and_terminates,,16257,0,0,0,0,0,26,ricochet depth caps bound deflection chains
+unit/logic/test_selection_controller.gd,test_select_accepts_only_the_current_units_turn,,19155,0,0,0,0,0,0,only the current unit may act
+unit/logic/test_selection_controller.gd,test_reachable_cells_matches_pathfinder_exactly,,15885,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_selection_controller.gd,test_queue_move_to_an_unreachable_cell_fails,,51680,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_selection_controller.gd,test_queuing_two_moves_shows_two_ghosts_the_second_starting_where_the_first_left_off,,30133,0,0,0,2,0,0,"a queued action previews against the queue before it, not the real state"
+unit/logic/test_selection_controller.gd,test_queuing_never_mutates_the_real_state,,30786,0,0,0,3,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_selection_controller.gd,test_leg_costs_matches_pathfinders_own_cost_per_queued_leg,,21583,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_selection_controller.gd,test_undo_last_pops_the_most_recently_queued_action,,16581,0,0,0,2,0,0,"an undo stack reverts in reverse order, and a new edit clears the redo branch"
+unit/logic/test_selection_controller.gd,test_undo_last_with_an_empty_queue_returns_false,,3696,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_selection_controller.gd,test_undo_last_refunds_the_popped_actions_cost_against_the_speculative_state,,27622,0,0,0,3,0,0,"a queued action previews against the queue before it, not the real state"
+unit/logic/test_selection_controller.gd,test_reset_turn_clears_the_queue_but_keeps_the_unit_selected,,18954,0,0,0,1,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_selection_controller.gd,test_reset_turn_with_nothing_selected_is_a_no_op,,4151,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_selection_controller.gd,test_previewed_unit_reflects_the_queued_end_cell,,13412,0,0,0,1,0,0,"a queued action previews against the queue before it, not the real state"
+unit/logic/test_selection_controller.gd,test_nothing_selected_yields_no_preview_and_no_queue_entries,,4557,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_selection_controller.gd,test_reset_clears_selection_and_queues,,11175,0,0,0,1,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_selection_controller.gd,test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action,,24293,0,0,0,1,0,0,"a queued action previews against the queue before it, not the real state"
+unit/logic/test_selection_controller.gd,test_queue_entries_never_mutates_the_real_state,,18095,0,0,0,1,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_selection_controller.gd,test_queue_end_turn_appends_an_end_turn_action_that_resolves_cleanly,,14808,0,1,0,1,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_selection_controller.gd,test_queue_end_turn_threads_mission_through_for_the_extraction_hold,,10928,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/test_selection_controller.gd,test_queue_repair_appends_a_repair_action_that_resolves_cleanly,,9156,0,0,0,0,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_shot_plane.gd,test_plate_over_part_returns_the_plate_and_uncovered_point_returns_the_part_beneath,,357,0,0,0,0,0,0,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_point_with_nothing_in_the_plane_returns_null,,476,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_shot_plane.gd,test_disc_overlaps_rect_zero_radius_is_exactly_has_point,,158,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_disc_overlaps_rect_reaches_a_point_outside_the_rect_within_its_radius,,108,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_a_point_shot_falls_through_a_narrow_gap,,231,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_a_wide_disc_cannot_thread_the_same_gap_a_point_shot_passes_through,,247,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_a_narrow_disc_still_threads_a_gap_a_wide_one_cannot,,311,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_a_disc_still_hits_a_region_it_overlaps_even_off_center,,223,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_shield_authored_as_boxes_around_a_hole_lets_a_point_in_the_hole_hit_the_part_behind,,429,0,0,0,0,0,0,a thrust's own width decides which gaps it can thread
+unit/logic/test_shot_plane.gd,test_layered_targets_a_gap_in_the_near_unit_falls_through_to_the_far_unit,,879,0,0,0,0,0,1,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_units_along_lists_every_layered_target_nearest_first,,792,0,0,0,0,0,1,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_units_along_excludes_a_dead_unit_with_no_region_in_the_plane,,680,0,0,0,0,0,1,the dead take no part in resolution
+unit/logic/test_shot_plane.gd,test_destroying_cover_removes_its_region_from_the_plane,,565,0,0,0,0,0,2,a destroyed part stops contributing
+unit/logic/test_shot_plane.gd,test_a_multi_part_blocker_projects_every_box_not_just_the_root,,574,0,0,0,0,0,1,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_shot_plane.gd,test_a_dead_root_blockers_living_child_still_projects,,499,0,0,0,0,0,1,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_shot_plane.gd,test_build_tags_every_region_with_its_owning_body,,684,0,0,0,0,0,1,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_shot_plane.gd,test_center_of_returns_the_frontmost_regions_rect_center,,800,0,0,0,0,0,1,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_center_of_falls_back_to_the_targets_cell_with_no_regions,,839,0,0,0,0,0,1,"a degenerate input yields an empty result, never an error"
+unit/logic/test_shot_plane.gd,test_center_of_part_returns_the_frontmost_regions_rect_center,,755,0,0,0,0,0,1,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_center_of_part_falls_back_to_the_given_cell_with_no_matching_region,,225,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_shot_plane.gd,test_self_obstruction_excludes_the_shooters_own_body,,712,0,0,0,0,0,1,a shot never obstructs on the shooter's own body
+unit/logic/test_shot_plane.gd,test_self_obstruction_returns_null_with_nothing_in_the_way,,382,0,0,0,0,0,1,a shot never obstructs on the shooter's own body
+unit/logic/test_shot_plane.gd,test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter,,662,0,0,0,0,0,2,a shot never obstructs on the shooter's own body
+unit/logic/test_shot_plane.gd,test_self_obstruction_excludes_the_shooters_own_joint_regions,,540,0,0,0,0,0,1,a shot never obstructs on the shooter's own body
+unit/logic/test_shot_plane.gd,test_resolve_projectile_floor_at_zero_is_opt_in,,96,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
+unit/logic/test_shot_plane.gd,test_a_wall_part_between_shooter_and_target_blocks_the_shot,,394,0,0,0,0,0,1,cover between muzzle and target stops the shot
+unit/logic/test_shot_plane.gd,test_destroying_a_wall_removes_its_region_from_the_plane,,689,0,0,0,0,0,2,a destroyed part stops contributing
+unit/logic/test_shot_plane.gd,test_resolve_projectile_is_called_only_from_shot_plane_itself,,4517,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_shot_plane.gd,test_build_with_a_flat_direction_matches_a_bare_project_assembly_call,,527,0,0,0,0,0,1,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_shot_plane.gd,test_elevation_for_reflects_the_level_delta_not_flat_zero,,3331,0,0,0,0,0,0,"elevation changes the shot geometry, not the rules"
+unit/logic/test_shot_plane.gd,test_elevation_for_is_flat_when_origin_and_target_share_a_level,,3916,0,0,0,0,0,0,"elevation changes the shot geometry, not the rules"
+unit/logic/test_shot_plane.gd,test_elevation_for_uses_the_given_origin_height_verbatim,,163,0,0,0,0,0,0,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/test_shot_plane.gd,test_depth_of_returns_the_frontmost_regions_own_depth,,441,0,0,0,0,0,1,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_depth_of_falls_back_to_zero_with_no_regions,,176,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_shot_plane.gd,test_depth_of_part_returns_the_frontmost_regions_own_depth,,286,0,0,0,0,0,1,the frontmost region in the shot plane wins
+unit/logic/test_shot_plane.gd,test_depth_of_part_falls_back_to_zero_with_no_matching_region,,79,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_shot_scatter.gd,test_for_shot_matches_full_accuracy_at_or_under_effective_range,,162,0,0,0,0,0,0,scatter widens with range
+unit/logic/test_shot_scatter.gd,test_for_shot_widens_past_effective_range_matching_one_over_accuracy_multiplier,,130,0,0,0,0,0,0,scatter widens with range
+unit/logic/test_shot_scatter.gd,test_for_shot_gives_the_same_answer_regardless_of_which_consumer_asks,,178,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_shot_scatter.gd,test_for_shot_with_an_unauthored_weapon_def_never_widens,,117,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_socket.gd,test_current_transform_returns_the_authored_transform,,115,0,0,0,0,0,0,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_socket.gd,test_current_transform_reflects_a_transform_changed_after_construction,,105,0,0,0,0,0,0,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_spread_pattern.gd,test_no_ammo_or_a_single_projectile_round_collapses_to_the_center,,235,0,0,0,0,0,0,a multi-projectile round samples one point per projectile
+unit/logic/test_spread_pattern.gd,test_a_multi_projectile_round_samples_exactly_projectile_num_points,,100,0,0,0,0,0,0,a multi-projectile round samples one point per projectile
+unit/logic/test_spread_pattern.gd,test_longer_barrel_yields_a_tighter_pattern,,169,0,0,0,0,0,0,recoil scales with damage and against barrel length
+unit/logic/test_spread_pattern.gd,test_barrel_length_never_changes_the_dartboard_rings,,226,0,0,0,0,0,0,scatter lands in a ring at the weight its data authors
+unit/logic/test_spread_pattern.gd,test_a_single_projectile_weapon_is_unaffected_by_pattern_scaling,,357,0,0,0,0,0,0,a multi-projectile round samples one point per projectile
+unit/logic/test_stat_resolver.gd,test_resolve_combines_part_perk_and_ammo_sources_and_names_all_three,,405,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_resolve_is_pure_and_deterministic,,220,0,0,0,0,0,0,a build is reproducible from the same inputs
+unit/logic/test_stat_resolver.gd,test_multiply_op,,154,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_override_op,,155,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_ops_apply_in_order,,155,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_stat_value_changed_is_false_with_no_sources,,133,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_stat_value_changed_is_false_when_sources_net_to_zero_change,,137,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_gather_part_sources_ignores_parts_without_the_stat,,213,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_stat_resolver.gd,test_stat_mods_is_only_read_by_the_resolver,,10518,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_step_out_interrupt.gd,test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_returns,,27015,0,0,0,2,0,6,a step-out interrupted mid-move freezes where it stands
+unit/logic/test_step_out_interrupt.gd,test_a_stepper_who_survives_the_trigger_still_freezes_and_never_returns,,23728,0,0,0,2,0,4,a step-out interrupted mid-move freezes where it stands
+unit/logic/test_step_out_planner.gd,test_a_step_out_is_legal_when_origin_covered_firing_cell_exposed_and_orthogonal,,6730,0,0,0,0,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_an_uncovered_origin_makes_the_step_out_illegal,,7446,0,0,0,0,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_a_firing_cell_that_is_itself_covered_is_illegal,,7002,0,0,0,0,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_a_diagonal_neighbor_is_never_a_legal_step_out_cell,,4804,0,0,0,0,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_candidate_step_out_cells_lists_every_legal_orthogonal_neighbor,,3524,0,0,0,0,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_sort_by_safety_prefers_the_cell_with_no_known_overwatch,,18804,0,0,0,0,0,4,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_build_triple_assembles_a_real_move_attack_move_queue,,19440,0,0,0,2,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_the_triple_costs_no_mp_for_either_leg,,22892,0,0,0,2,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_step_out_planner.gd,test_assemble_for_shoot_returns_null_when_already_directly_attackable,,5182,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_step_out_planner.gd,test_assemble_for_shoot_returns_null_when_no_legal_step_out_exists,,3434,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_step_out_planner.gd,test_assemble_for_shoot_builds_the_triple_via_the_safest_candidate,,33943,0,0,0,2,0,0,a step-out fires from an exposed orthogonal neighbour and returns to cover
+unit/logic/test_suite_run.gd,test_the_launcher_agrees_with_the_shell_about_the_same_rung,,8129317,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_suite_run.gd,test_a_failing_run_reads_as_failed,,889,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_suite_run.gd,test_a_clean_exit_marker_reads_as_passed,,194,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_suite_run.gd,test_an_unfinished_run_never_reads_as_passed,,12309,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_suite_run.gd,test_kill_terminates_the_whole_process_group_not_just_the_shell,,9405020,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_suite_run.gd,test_the_status_line_states_the_rung_and_the_elapsed_time,,1479286,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_suite_run.gd,test_every_offered_rung_is_a_real_argument,,150,0,0,0,0,0,0,an open-vocabulary id is checked against the real vocabulary
+unit/logic/test_suppression.gd,test_adjacent_living_enemies_includes_orthogonal_and_diagonal,,8901,0,0,0,0,0,0,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_adjacent_living_enemies_excludes_the_dead_and_same_squad,,5927,0,0,0,0,0,0,the dead take no part in resolution
+unit/logic/test_suppression.gd,test_is_suppressed_true_only_when_adjacent_to_a_living_enemy,,11258,0,0,0,0,0,0,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_blocks_weapon_true_for_a_long_gun_adjacent_to_an_enemy,,3888,0,0,0,0,0,0,a two-handed weapon cannot be brought to bear at contact range
+unit/logic/test_suppression.gd,test_blocks_weapon_false_for_a_short_gun_adjacent_to_an_enemy,,4334,0,0,0,0,0,0,a two-handed weapon cannot be brought to bear at contact range
+unit/logic/test_suppression.gd,test_blocks_weapon_false_for_a_long_gun_when_not_adjacent,,4534,0,0,0,0,0,0,a two-handed weapon cannot be brought to bear at contact range
+unit/logic/test_suppression.gd,test_would_trigger_opportunity_attack_when_genuinely_leaving_adjacency,,3449,0,0,0,0,0,0,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_no_opportunity_attack_when_still_adjacent_to_the_same_enemy,,4572,0,0,0,0,0,0,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_no_opportunity_attack_when_never_adjacent_in_the_first_place,,3682,0,0,0,0,0,0,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_would_trigger_opportunity_attack_is_empty_for_a_zero_length_step,,3928,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_resolves_a_real_melee_strike,,7126,0,0,0,0,0,2,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_still_lands_against_a_mover_one_level_up,,6136,0,0,0,0,0,2,"elevation changes the shot geometry, not the rules"
+unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_is_a_no_op_without_a_melee_weapon,,4591,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_can_kill_a_unit_with_no_other_parts,,4921,0,0,0,0,0,2,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
+unit/logic/test_suppression.gd,test_move_hooks_combined_applies_an_opportunity_attack_on_a_real_move,,10941,0,0,0,0,0,2,"one mechanism, distinctly logged — no parallel systems"
 unit/logic/test_surrogate.gd,test_a_bare_matrix_cannot_dock_where_only_a_surrogate_socket_exists,,446,0,0,0,0,0,0,
 unit/logic/test_surrogate.gd,test_a_full_surrogate_cannot_dock_in_a_spinal_only_socket_unreachable,,312,0,0,0,0,0,0,
 unit/logic/test_surrogate.gd,test_a_spinal_surrogate_can_dock_in_its_own_socket,,256,0,0,0,0,0,0,
