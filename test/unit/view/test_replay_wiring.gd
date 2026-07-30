@@ -376,3 +376,39 @@ func test_an_ordinary_run_does_not_claim_to_be_forced() -> void:
 
 	assert_false(header.contains("forced"), "no note on an ordinary run")
 	assert_false(command.contains("HB_FORCE_TEST_FAILURE"), "and no prefix either")
+
+
+# --- taskblock-50 Pass F: the finish chime -------------------------------------------
+
+
+## **A courtesy must never be able to fail a run.** Headless has no audio device, which is
+## exactly the environment the whole suite runs in — so the guard is asserted here rather
+## than assumed, against the real panel and the real call.
+func test_the_finish_chime_never_breaks_a_run_without_an_audio_device() -> void:
+	var panel := SuiteRunPanel.new()
+	add_child_autofree(panel)
+
+	panel._chime(true)
+	panel._chime(false)
+
+	assert_true(is_instance_valid(panel), "the panel survived sounding both verdicts")
+
+
+## Pass and fail must be distinguishable without looking, or the chime only says "go and
+## look" — which the progress feed already does.
+func test_pass_and_fail_do_not_sound_the_same() -> void:
+	assert_ne(
+		SuiteRunPanel.CHIME_PASS_HZ,
+		SuiteRunPanel.CHIME_FAIL_HZ,
+		"a verdict you cannot hear the shape of is not a verdict"
+	)
+	assert_gt(
+		SuiteRunPanel.CHIME_PASS_HZ[1],
+		SuiteRunPanel.CHIME_PASS_HZ[0],
+		"green rises",
+	)
+	assert_lt(
+		SuiteRunPanel.CHIME_FAIL_HZ[1],
+		SuiteRunPanel.CHIME_FAIL_HZ[0],
+		"red falls",
+	)

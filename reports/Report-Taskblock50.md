@@ -163,3 +163,50 @@ worth, rather than reported as nearly-there.
   exists because that file seeded from the clock; it now plays one bout in the healthy case and its
   turn count is small and stable. Removing the exclusion would put the file back under the budget it
   was carved out of — worth doing once a few runs confirm the new spread, not on one measurement.
+
+## Pass F — the deck, cleared for taskblock-51
+
+**The ledger triage lives here, not in `docs/BUGS.md`.** That file's own header argues against exactly
+what the taskblock asks for: *"a single `grep '^### BR'` is the whole open-bug index and nothing
+derived needs maintaining"*, one flat list, no category sections. A subsystem grouping is a derived
+view that would need maintaining, and adding one would have traded a durable convention for a
+convenience. **No status was changed and nothing was closed**, verified by diffing the 31 `### BR`
+heading lines before and after: identical.
+
+**31 open entries — 28 `Active`, 2 `Suspected`, 1 `Pending`. Seven clusters:**
+
+| cluster | entries | shared suspected cause |
+|---|---|---|
+| **Tracers and impact drawing** | BR27.03, BR34.01, BR35.04, BR35.07, BR35.08 | one drawing path that projects a decorative fixed-range line instead of replaying the resolved geometry. BR35.04 and BR35.07 are almost certainly one defect stated twice. |
+| **Wall cutout / occlusion** | BR32.04, BR32.05, BR32.08, BR35.02 | the cutout's coarse screen-space heuristic, which taskblock-49's audit classified under *a wall fades only when it is near the focal point on screen and in front of it*. BR32.08 is `Suspected` and would be confirmed or dropped by the same session. |
+| **Spectator vs player divergence** | BR27.04, BR27.07, BR32.09 | two overlays reaching different conclusions about the same state — the "no parallel systems" rule, which the audit found 50 tests already defend. |
+| **Aim and camera framing** | BR26.02, BR33.01, BR34.04, BR40.01 | the aim view's layer model and the framing solver. BR26.02 (framerate while aiming) may be a symptom of BR35.01's per-hover scan rather than its own defect. |
+| **Map generation and movement** | BR46.02, BR35.05 | one-way ground the AI walks into; ally-blind approach paths. Both are pathing questions about generated terrain. |
+| **Queue and action legality** | BR27.01, BR30.04, BR32.07, BR34.03 | the step-out/queue path — BR27.01 is itself four bugs in one entry and should be split before the hunt, not during it. |
+| **Performance, no shared cause** | BR27.09, BR35.01, BR35.03 | independent hot paths; BR35.03 was already closed structurally by the `DebugVerbs.affects_board` work and may only need confirming. |
+
+Two entries sit outside any cluster: **BR45.01** (surrogate DAG demotion placeholder) and **BR45.03**
+(the planner's completion rate, `SUPERVISOR`-owned and the one automated check standing between this
+project and an AI that cannot finish a mission). **BR48.01** is its own thing and visual.
+
+**Repro paths: 10 of 31 carry one.** The other 21 are descriptions without a stated route back to the
+symptom, and **that is the single biggest tax on the hunt** — an entry that cannot be reproduced is a
+bug to re-observe, not a bug to fix, and finding out which is which costs more during a hunt than
+before one. I did not manufacture repro steps for entries I have not reproduced; inventing a plausible
+route would be worse than the gap, because it would read as verified. The honest split:
+
+- **Has a repro:** BR27.01, BR30.02, BR30.04, BR32.04, BR32.07, BR34.05, BR40.01, BR45.03, BR46.02, BR48.01.
+- **No repro path, and most are `SUPERVISOR`-sourced visual observations** — which is *why* they lack
+  one, and is a reason to start those sessions with the supervisor watching rather than to treat the
+  gap as neglect.
+
+**The replay queue now has a baseline.** `ReplayCatalog.handles_with_baselines` queues each failure
+with its script's own known-good fixture directly after it, opted in through the existing
+`replay_handle_for` hook via a `BASELINE_TEST` sentinel — so nothing changes for the ~250 scripts that
+expose no handles. **It is not the default**, and the cap counts *failures* rather than entries, so
+asking for context never costs coverage. One baseline per script however many of its tests failed.
+
+**A finish chime.** Two synthesised tones — rising for green, falling for red, so the verdict is
+audible without looking. Guarded so it can never fail a run: a machine with no audio device, and the
+headless suite itself, finish exactly as before. Asserted headlessly against the real panel, because
+"a courtesy that can fail a run is a defect" is the kind of claim worth a test rather than a comment.
