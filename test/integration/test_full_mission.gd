@@ -133,11 +133,13 @@ func _roster(profile: BotPreset, ai_profile: StringName, count: int) -> Array[Bo
 ## pinned window under a new name — the point is that the sample walks the space
 ## over runs, and the printed seed list is what makes any individual run
 ## reproducible afterwards.
+## taskblock-48 Pass C1: **the sample comes from `BoutCorpus` now, played once per
+## suite run and shared.** The draw is still random and still clock-seeded — the corpus
+## does it, for the reason above — so nothing about what this measures has changed. What
+## has changed is that `test_completion_sampler.gd` no longer plays its own copy of the
+## same bouts.
 func test_bout_completion_rate_meets_the_measured_floor() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(Time.get_unix_time_from_system())
-
-	var sampled: Dictionary = await CompletionSampler.sample(rng)
+	var sampled: Dictionary = await BoutCorpus.sample()
 	print("\n--- completion sample ---")
 	for line: String in CompletionSampler.describe(sampled):
 		print(line)

@@ -20,6 +20,12 @@ extends GutTest
 const PROBE_ENV := "HULK_FORCE_TEST_FAILURE"
 
 
+## taskblock-47 Pass C: this file builds bouts — replaying a handle rebuilds a real
+## fixture — so the fast gate skips it. Untyped to match GUT's own signature.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
+
+
 func before_each() -> void:
 	DataLibrary.reset()
 	DataLibrary.load_all()

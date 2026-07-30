@@ -46,8 +46,13 @@ func test_the_fast_gate_skips_exactly_the_files_that_build_bouts() -> void:
 			unlisted.append(path)
 	var stale: Array[String] = []
 	for path: String in declared:
-		if not measured.has(path):
-			stale.append(path)
+		if measured.has(path) or SuiteTier.CORPUS_READERS.has(path):
+			# A corpus reader measures zero bouts whenever another reader touched the
+			# corpus first, which in the full gate it always does. Zero there is a true
+			# statement about who paid, not evidence the entry is stale — and the file
+			# still has to be skipped in fast, where it would pay.
+			continue
+		stale.append(path)
 
 	gut.p("%d bout-building file(s) measured, %d declared" % [measured.size(), declared.size()])
 	assert_eq(
