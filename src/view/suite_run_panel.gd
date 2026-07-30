@@ -154,9 +154,20 @@ func _process(delta: float) -> void:
 		run_completed.emit(run)
 
 
+## Whether the "force a failure" box is ticked. A named reader rather than a poke at
+## the control, so a test can drive the real path instead of the flag behind it.
+func set_force_failure(pressed: bool) -> void:
+	if _force_failure != null:
+		_force_failure.button_pressed = pressed
+
+
+func force_failure_requested() -> bool:
+	return _force_failure != null and _force_failure.button_pressed
+
+
 func _start(rung: StringName) -> void:
 	run = SuiteRun.new()
-	run.force_failure = _force_failure != null and _force_failure.button_pressed
+	run.force_failure = force_failure_requested()
 	if not run.start(rung):
 		_status.text = "could not launch — is run_tests.sh executable?"
 		return
@@ -166,6 +177,9 @@ func _start(rung: StringName) -> void:
 	# which is exactly what the supervisor was unable to tell apart. An empty board is
 	# an unambiguous "this is not the old bout".
 	clear_board()
+	# The exact command, first line of the feed. A mis-resolved path or a missing
+	# prefix is then visible rather than something to deduce from the verdict.
+	run.lines.append("$ %s" % run.launched_command)
 	_refresh()
 
 
