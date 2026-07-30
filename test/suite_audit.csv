@@ -905,147 +905,147 @@ unit/logic/test_fps_meter.gd,test_a_zero_or_negative_delta_is_dropped_not_clampe
 unit/logic/test_fps_meter.gd,test_a_meter_with_no_samples_reports_zero_rather_than_dividing_by_zero,,115,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
 unit/logic/test_fps_meter.gd,test_the_readout_always_shows_both_numbers,,100,0,0,0,0,0,0,a diagnostic's data form and its prose carry the same facts
 unit/logic/test_fps_meter.gd,test_reset_clears_the_window,,198,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
-unit/logic/test_grid.gd,test_in_bounds,,86,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_default_cell_values,,117,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_set_get_cell_data_roundtrip,,199,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_surfaces_at_defaults_empty,,115,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_add_surface_appends_in_order,,234,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_dup_copies_surfaces_independently,,290,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_neighbors_center_cell_has_eight,,169,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_neighbors_corner_cell_excludes_out_of_bounds,,100,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_distance_chebyshev,,94,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_distance_manhattan,,85,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_line_handles_the_same_cell_horizontal_and_vertical_cases,,318,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_line_exact_diagonal_includes_both_bordering_cells,,230,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_line_endpoints_are_first_and_last,,125,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_line_is_symmetric,,308,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_line_symmetric_on_exact_diagonal,,233,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_grid_height_no_longer_exists_anywhere,,12552,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_shootable_part_at_returns_the_blocker_when_present,,306,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_shootable_part_at_falls_back_to_the_first_loose_part_field_item,,152,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_shootable_part_at_returns_null_for_a_loose_matrix_only,,57,0,0,0,0,0,0,
-unit/logic/test_grid.gd,test_shootable_part_at_returns_null_with_nothing_at_the_cell,,45,0,0,0,0,0,0,
-unit/logic/test_grid_placement.gd,test_a_cell_holds_two_surfaces_at_different_heights,,371,0,0,0,0,0,0,
-unit/logic/test_grid_placement.gd,test_downward_attaching_surface_is_legal_on_an_empty_cell,,96,0,0,0,0,0,0,
-unit/logic/test_grid_placement.gd,test_side_attaching_surface_is_rejected_on_an_empty_cell,,66,0,0,0,0,0,0,
-unit/logic/test_grid_placement.gd,test_side_attaching_surface_is_accepted_against_a_compatible_neighbour,,206,0,0,0,0,0,0,
-unit/logic/test_grid_placement.gd,test_side_attaching_surface_does_not_count_a_diagonal_neighbour,,99,0,0,0,0,0,0,
-unit/logic/test_grid_placement.gd,test_side_attaching_surface_is_rejected_once_the_matching_socket_is_full,,156,0,0,0,0,0,0,
-unit/logic/test_inspect_rows.gd,test_weapons_come_before_containers_before_body_parts,,16402,0,0,0,0,0,0,
-unit/logic/test_inspect_rows.gd,test_a_weapon_carried_inside_a_container_still_groups_as_a_weapon,,415,0,0,0,0,0,0,
-unit/logic/test_inspect_rows.gd,test_order_within_a_group_matches_inventory_rows_own_depth_first_order,,337,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_contenders_resolve_fastest_first,,680,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_a_resolution_that_kills_a_contender_drops_that_contenders_own_queued_action,,608,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_a_tied_resolution_speed_breaks_by_the_higher_personal_speed,,463,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_a_full_tie_breaks_deterministically_by_unit_id,,441,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_the_instant_is_deterministic_across_independent_runs,,835,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_a_lone_contender_resolves_unchanged,,444,0,0,0,0,0,0,
-unit/logic/test_instant_resolver.gd,test_an_already_illegal_contender_is_dropped_without_resolving,,552,0,0,0,0,0,0,
-unit/logic/test_internal_targeting.gd,test_a_default_center_mass_shot_never_reaches_the_occluded_reactor,,2490,0,0,0,0,0,2,
-unit/logic/test_internal_targeting.gd,test_a_known_position_aim_reaches_the_reactor_through_the_same_cascade,,1834,0,0,0,0,0,2,
-unit/logic/test_internal_targeting.gd,test_stripping_cladding_makes_the_reactor_directly_targetable,,1706,0,0,0,0,0,1,
-unit/logic/test_internal_targeting.gd,test_a_part_absent_from_the_plane_has_no_aim_offset,,2222,0,0,0,0,0,1,
-unit/logic/test_inventory.gd,test_attach_succeeds_within_bulk_limit,,139,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_attach_rejects_over_bulk,,90,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_nested_container_occupies_parent_by_own_bulk_not_contents,,86,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_external_bulk_of_a_soft_container_grows_with_its_contents,,110,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_external_bulk_of_a_rigid_container_ignores_its_contents,,127,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_an_empty_soft_backpack_nests_in_a_barrel_a_full_one_may_not,,98,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_attach_rejects_cycle_when_target_already_contains_source,,75,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_attach_rejects_self_attachment,,51,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_attach_rejects_non_container_target,,59,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_attach_respects_shell_max_mass,,118,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_a_weightless_drone_swarm_fails_on_ram_while_passing_mass,,89,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_detach_removes_part_and_returns_true,,65,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_detach_returns_false_when_not_present,,56,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_walk_visits_root_and_all_descendants,,197,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_flatten_excludes_root_but_includes_all_depths,,161,0,0,0,0,0,0,
-unit/logic/test_inventory.gd,test_carried_mass_appendix_d_worked_example,,180,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_the_root_part_is_row_zero_at_depth_zero,,16848,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_a_socketed_child_shows_the_sockets_own_id,,415,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_a_socket_with_no_authored_id_falls_back_to_its_socket_type,,226,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_a_backpack_is_both_socketed_and_shows_its_contents_distinctly,,318,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_a_destroyed_part_and_its_whole_subtree_are_omitted,,228,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_dt_is_resolved_from_the_material_table,,180,0,0,0,0,0,0,
-unit/logic/test_inventory_rows.gd,test_a_part_requiring_an_unmet_capability_is_flagged_inert,,189,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_attach_copies_joint_hp_from_the_child_not_the_parent,,241,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_the_same_heavy_arm_severs_just_as_hard_on_any_frame,,215,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_depleting_joint_hp_severs_and_drops_the_intact_subtree_sockets_still_populated,,500,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_depleting_part_hp_runs_failure_mode_and_never_touches_the_joint,,418,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_apply_damage_to_joint_floors_at_zero_and_severs_exactly_there,,103,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_sever_joint_is_a_no_op_for_an_empty_socket,,273,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_resolve_shot_on_a_joint_hit_depletes_joint_hp_never_part_hp,,658,0,0,0,0,0,2,
-unit/logic/test_joints.gd,test_resolve_shot_severs_the_joint_and_drops_the_subtree_when_depleted,,720,0,0,0,0,0,2,
-unit/logic/test_joints.gd,test_a_fresh_joint_defaults_to_3_hp,,131,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_a_default_joint_takes_3_points_across_hits_before_severing,,220,0,0,0,0,0,0,
-unit/logic/test_joints.gd,test_joint_cladding_absorbs_a_hit_before_the_joint_takes_any_damage,,597,0,0,0,0,0,2,
-unit/logic/test_joints.gd,test_an_uncladded_joint_behaves_as_before_just_with_the_new_hp_default,,585,0,0,0,0,0,2,
-unit/logic/test_kit_equipper.gd,test_stock_is_a_noop_when_kit_is_null,,921,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_stock_fills_the_kits_own_container_with_its_own_items,,1140,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_stock_errors_by_name_on_an_unknown_pool_id,,1706,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_stock_errors_when_the_container_socket_does_not_exist,,1397,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_equip_instant_moves_the_weapon_from_its_container_into_its_socket,,1338,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_equip_is_a_noop_when_kit_is_null,,1875,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_equip_defaults_to_instant_mode,,1377,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_an_unimplemented_equip_mode_fails_named_never_crashes,,2104,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_equip_instant_chambers_the_kits_own_ammo,,1266,0,0,0,0,0,0,
-unit/logic/test_kit_equipper.gd,test_equip_fails_named_when_the_weapon_never_made_it_into_the_kit,,1128,0,0,0,0,0,0,
-unit/logic/test_knowledge.gd,test_knows_internal_defaults_to_true_with_no_sensor_system_to_gate_on,,1843,0,0,0,0,0,0,
-unit/logic/test_life_support.gd,test_decay_advances_when_exposed_and_unpowered,,183,0,0,0,0,0,0,
-unit/logic/test_life_support.gd,test_holds_with_power_and_no_organics,,222,0,0,0,0,0,0,
-unit/logic/test_life_support.gd,test_winds_back_and_consumes_organics_when_powered_and_carried,,163,0,0,0,0,0,0,
-unit/logic/test_life_support.gd,test_regen_floors_at_zero_and_never_fires_once_nothing_is_exposed,,145,0,0,0,0,0,0,
-unit/logic/test_life_support.gd,test_killing_the_reactor_stops_power_and_detonates,,16548,0,0,0,0,0,0,
-unit/logic/test_life_support.gd,test_killing_the_reactor_resumes_decay_on_the_next_tick,,425,0,0,0,0,0,0,
-unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_is_true_with_nothing_in_the_way,,455,0,0,0,0,0,1,
-unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_is_false_when_a_wall_blocks_the_shot,,400,0,0,0,0,0,1,
-unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit,,444,0,0,0,0,0,2,
-unit/logic/test_line_of_fire.gd,test_open_field_line_of_fire_matches_line_of_sight,,353,0,0,0,0,0,1,
-unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_is_true_against_an_elevated_target,,3132,0,0,0,0,0,1,
-unit/logic/test_line_of_fire.gd,test_first_hit_never_resolves_to_a_wall_behind_the_shooter,,582,0,0,0,0,0,2,
-unit/logic/test_line_of_fire.gd,test_cached_first_hit_agrees_with_the_uncached_resolution,,499,0,0,0,0,0,2,
-unit/logic/test_line_of_fire.gd,test_cached_first_hit_reuses_the_same_region_on_a_repeat_lookup,,413,0,0,0,0,0,1,
-unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_agrees_with_and_without_a_cache,,1359,0,0,0,0,0,2,
-unit/logic/test_log_fold.gd,test_attack_summary_has_the_correct_hit_and_miss_count,,313,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_identical_adjacent_results_fold_with_a_count,,264,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_non_adjacent_identical_results_do_not_fold_together,,235,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_a_curved_move_folds_every_leg_into_one_group,,227,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_expanding_a_group_shows_every_underlying_event,,449,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_a_cascade_event_appends_to_its_own_hit_line_not_a_new_one,,217,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_a_standalone_face_action_is_its_own_group,,202,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_an_unrecognized_event_kind_still_gets_its_own_row,,181,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_burst_fired_names_the_weapon_a_plain_attack_does_not,,150,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_unit_down_suffix_only_appears_with_a_live_state_and_a_dead_target,,1977,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_folding_never_changes_what_other_sinks_on_the_same_log_receive,,5180,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_a_run_of_plumbing_events_folds_into_one_counted_row,,265,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_a_mixed_plumbing_run_does_not_claim_to_be_one_kind,,178,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing,,201,0,0,0,0,0,0,
-unit/logic/test_log_fold.gd,test_folding_plumbing_never_drops_an_event,,223,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_a_known_event_stream_maps_to_the_expected_cue_list_with_expected_offsets,,1270,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_replaying_the_same_stream_twice_produces_an_identical_cue_list,,622,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_total_duration_covers_lead_in_every_cue_and_the_tail,,169,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_total_duration_of_an_empty_stream_is_still_lead_in_plus_tail,,147,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_affected_unit_ids_collects_actors_and_impact_targets,,208,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_affected_unit_ids_never_includes_the_no_unit_sentinel,,255,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_affected_unit_ids_deduplicates,,271,0,0,0,0,0,0,
-unit/logic/test_log_playback.gd,test_affected_unit_ids_of_an_empty_stream_is_empty,,200,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_pools_are_mostly_exclusive,,301,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_overlap_designs_appear_in_both_full_pools,,297,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_the_overlap_stays_small_relative_to_each_pool,,233,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_draw_from_merchant_tags_an_overlap_item_standard,,1326,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_draw_from_hulk_tags_an_overlap_item_original_pattern_or_prototype,,930,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_draw_leaves_non_overlap_items_untagged,,473,0,0,0,0,0,0,
-unit/logic/test_loot_table.gd,test_draw_is_deterministic_from_the_same_seed,,2733,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_los_symmetric_on_open_ground,,148,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_wall_blocks_los_both_directions,,80,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_los_clear_when_no_wall_in_path,,71,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_los_ignores_opacity_of_endpoint_cells,,68,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_corner_blocking_rule_on_exact_diagonal,,69,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_corner_blocking_rule_other_bordering_cell,,64,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_cover_does_not_block_los,,79,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_visible_cells_open_ground_matches_chebyshev_disc,,181,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_visible_cells_excludes_cells_behind_wall,,183,0,0,0,0,0,0,
-unit/logic/test_los.gd,test_destroying_a_wall_with_a_real_shot_clears_los_through_it,,387,0,0,0,0,0,1,
+unit/logic/test_grid.gd,test_in_bounds,,86,0,0,0,0,0,0,"the grid answers bounds, neighbours and distance consistently"
+unit/logic/test_grid.gd,test_default_cell_values,,117,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_grid.gd,test_set_get_cell_data_roundtrip,,199,0,0,0,0,0,0,"the grid answers bounds, neighbours and distance consistently"
+unit/logic/test_grid.gd,test_surfaces_at_defaults_empty,,115,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_grid.gd,test_add_surface_appends_in_order,,234,0,0,0,0,0,0,a list built from data comes out in a stable order
+unit/logic/test_grid.gd,test_dup_copies_surfaces_independently,,290,0,0,0,0,0,0,a preview copy carries the state it must and none of the state it must not
+unit/logic/test_grid.gd,test_neighbors_center_cell_has_eight,,169,0,0,0,0,0,0,"the grid answers bounds, neighbours and distance consistently"
+unit/logic/test_grid.gd,test_neighbors_corner_cell_excludes_out_of_bounds,,100,0,0,0,0,0,0,"the grid answers bounds, neighbours and distance consistently"
+unit/logic/test_grid.gd,test_distance_chebyshev,,94,0,0,0,0,0,0,"the grid answers bounds, neighbours and distance consistently"
+unit/logic/test_grid.gd,test_distance_manhattan,,85,0,0,0,0,0,0,"the grid answers bounds, neighbours and distance consistently"
+unit/logic/test_grid.gd,test_line_handles_the_same_cell_horizontal_and_vertical_cases,,318,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_grid.gd,test_line_exact_diagonal_includes_both_bordering_cells,,230,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_grid.gd,test_line_endpoints_are_first_and_last,,125,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_grid.gd,test_line_is_symmetric,,308,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_grid.gd,test_line_symmetric_on_exact_diagonal,,233,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_grid.gd,test_grid_height_no_longer_exists_anywhere,,12552,0,0,0,0,0,0,a retired mechanism leaves no trace in the code
+unit/logic/test_grid.gd,test_shootable_part_at_returns_the_blocker_when_present,,306,0,0,0,0,0,0,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/test_grid.gd,test_shootable_part_at_falls_back_to_the_first_loose_part_field_item,,152,0,0,0,0,0,0,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/test_grid.gd,test_shootable_part_at_returns_null_for_a_loose_matrix_only,,57,0,0,0,0,0,0,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/test_grid.gd,test_shootable_part_at_returns_null_with_nothing_at_the_cell,,45,0,0,0,0,0,0,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/test_grid_placement.gd,test_a_cell_holds_two_surfaces_at_different_heights,,371,0,0,0,0,0,0,a surface attaches only where its own attach rule allows
+unit/logic/test_grid_placement.gd,test_downward_attaching_surface_is_legal_on_an_empty_cell,,96,0,0,0,0,0,0,a surface attaches only where its own attach rule allows
+unit/logic/test_grid_placement.gd,test_side_attaching_surface_is_rejected_on_an_empty_cell,,66,0,0,0,0,0,0,a surface attaches only where its own attach rule allows
+unit/logic/test_grid_placement.gd,test_side_attaching_surface_is_accepted_against_a_compatible_neighbour,,206,0,0,0,0,0,0,a surface attaches only where its own attach rule allows
+unit/logic/test_grid_placement.gd,test_side_attaching_surface_does_not_count_a_diagonal_neighbour,,99,0,0,0,0,0,0,a surface attaches only where its own attach rule allows
+unit/logic/test_grid_placement.gd,test_side_attaching_surface_is_rejected_once_the_matching_socket_is_full,,156,0,0,0,0,0,0,a surface attaches only where its own attach rule allows
+unit/logic/test_inspect_rows.gd,test_weapons_come_before_containers_before_body_parts,,16402,0,0,0,0,0,0,"inspect rows group by kind, then follow the inventory's own order"
+unit/logic/test_inspect_rows.gd,test_a_weapon_carried_inside_a_container_still_groups_as_a_weapon,,415,0,0,0,0,0,0,"inspect rows group by kind, then follow the inventory's own order"
+unit/logic/test_inspect_rows.gd,test_order_within_a_group_matches_inventory_rows_own_depth_first_order,,337,0,0,0,0,0,0,"inspect rows group by kind, then follow the inventory's own order"
+unit/logic/test_instant_resolver.gd,test_contenders_resolve_fastest_first,,680,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_instant_resolver.gd,test_a_resolution_that_kills_a_contender_drops_that_contenders_own_queued_action,,608,0,0,0,0,0,0,a queued intent revalidates at resolution time
+unit/logic/test_instant_resolver.gd,test_a_tied_resolution_speed_breaks_by_the_higher_personal_speed,,463,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_instant_resolver.gd,test_a_full_tie_breaks_deterministically_by_unit_id,,441,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_instant_resolver.gd,test_the_instant_is_deterministic_across_independent_runs,,835,0,0,0,0,0,0,a build is reproducible from the same inputs
+unit/logic/test_instant_resolver.gd,test_a_lone_contender_resolves_unchanged,,444,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_instant_resolver.gd,test_an_already_illegal_contender_is_dropped_without_resolving,,552,0,0,0,0,0,0,a queued intent revalidates at resolution time
+unit/logic/test_internal_targeting.gd,test_a_default_center_mass_shot_never_reaches_the_occluded_reactor,,2490,0,0,0,0,0,2,internals sit behind cladding and become hittable once it is stripped
+unit/logic/test_internal_targeting.gd,test_a_known_position_aim_reaches_the_reactor_through_the_same_cascade,,1834,0,0,0,0,0,2,an aimed shot targets a named internal part
+unit/logic/test_internal_targeting.gd,test_stripping_cladding_makes_the_reactor_directly_targetable,,1706,0,0,0,0,0,1,internals sit behind cladding and become hittable once it is stripped
+unit/logic/test_internal_targeting.gd,test_a_part_absent_from_the_plane_has_no_aim_offset,,2222,0,0,0,0,0,1,"a degenerate input yields an empty result, never an error"
+unit/logic/test_inventory.gd,test_attach_succeeds_within_bulk_limit,,139,0,0,0,0,0,0,"a container holds by bulk, and nesting counts the container not its contents"
+unit/logic/test_inventory.gd,test_attach_rejects_over_bulk,,90,0,0,0,0,0,0,"a container holds by bulk, and nesting counts the container not its contents"
+unit/logic/test_inventory.gd,test_nested_container_occupies_parent_by_own_bulk_not_contents,,86,0,0,0,0,0,0,"a container holds by bulk, and nesting counts the container not its contents"
+unit/logic/test_inventory.gd,test_external_bulk_of_a_soft_container_grows_with_its_contents,,110,0,0,0,0,0,0,"a container holds by bulk, and nesting counts the container not its contents"
+unit/logic/test_inventory.gd,test_external_bulk_of_a_rigid_container_ignores_its_contents,,127,0,0,0,0,0,0,"a container holds by bulk, and nesting counts the container not its contents"
+unit/logic/test_inventory.gd,test_an_empty_soft_backpack_nests_in_a_barrel_a_full_one_may_not,,98,0,0,0,0,0,0,"a container holds by bulk, and nesting counts the container not its contents"
+unit/logic/test_inventory.gd,test_attach_rejects_cycle_when_target_already_contains_source,,75,0,0,0,0,0,0,an assembly can never contain itself
+unit/logic/test_inventory.gd,test_attach_rejects_self_attachment,,51,0,0,0,0,0,0,an assembly can never contain itself
+unit/logic/test_inventory.gd,test_attach_rejects_non_container_target,,59,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_inventory.gd,test_attach_respects_shell_max_mass,,118,0,0,0,0,0,0,a shell's mass and RAM budgets are both hard limits
+unit/logic/test_inventory.gd,test_a_weightless_drone_swarm_fails_on_ram_while_passing_mass,,89,0,0,0,0,0,0,a shell's mass and RAM budgets are both hard limits
+unit/logic/test_inventory.gd,test_detach_removes_part_and_returns_true,,65,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/test_inventory.gd,test_detach_returns_false_when_not_present,,56,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/test_inventory.gd,test_walk_visits_root_and_all_descendants,,197,0,0,0,0,0,0,assembly traversal reaches every part
+unit/logic/test_inventory.gd,test_flatten_excludes_root_but_includes_all_depths,,161,0,0,0,0,0,0,assembly traversal reaches every part
+unit/logic/test_inventory.gd,test_carried_mass_appendix_d_worked_example,"name points at ""appendix D"" of an unnamed document rather than saying what is being worked through; a reader cannot tell which example or which rule without opening the body.",180,0,0,0,0,0,0,"the worn-layer mass discount applies once, at a floor"
+unit/logic/test_inventory_rows.gd,test_the_root_part_is_row_zero_at_depth_zero,,16848,0,0,0,0,0,0,"inventory rows mirror the real assembly tree, depth first"
+unit/logic/test_inventory_rows.gd,test_a_socketed_child_shows_the_sockets_own_id,,415,0,0,0,0,0,0,"inventory rows mirror the real assembly tree, depth first"
+unit/logic/test_inventory_rows.gd,test_a_socket_with_no_authored_id_falls_back_to_its_socket_type,,226,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_inventory_rows.gd,test_a_backpack_is_both_socketed_and_shows_its_contents_distinctly,,318,0,0,0,0,0,0,"inventory rows mirror the real assembly tree, depth first"
+unit/logic/test_inventory_rows.gd,test_a_destroyed_part_and_its_whole_subtree_are_omitted,,228,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_inventory_rows.gd,test_dt_is_resolved_from_the_material_table,,180,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_inventory_rows.gd,test_a_part_requiring_an_unmet_capability_is_flagged_inert,,189,0,0,0,0,0,0,a part whose required capability is unmet is inert
+unit/logic/test_joints.gd,test_attach_copies_joint_hp_from_the_child_not_the_parent,,241,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_the_same_heavy_arm_severs_just_as_hard_on_any_frame,,215,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_depleting_joint_hp_severs_and_drops_the_intact_subtree_sockets_still_populated,,500,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_depleting_part_hp_runs_failure_mode_and_never_touches_the_joint,,418,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_apply_damage_to_joint_floors_at_zero_and_severs_exactly_there,,103,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_sever_joint_is_a_no_op_for_an_empty_socket,,273,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_joints.gd,test_resolve_shot_on_a_joint_hit_depletes_joint_hp_never_part_hp,,658,0,0,0,0,0,2,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_resolve_shot_severs_the_joint_and_drops_the_subtree_when_depleted,,720,0,0,0,0,0,2,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_a_fresh_joint_defaults_to_3_hp,,131,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_joints.gd,test_a_default_joint_takes_3_points_across_hits_before_severing,,220,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_joints.gd,test_joint_cladding_absorbs_a_hit_before_the_joint_takes_any_damage,,597,0,0,0,0,0,2,internals sit behind cladding and become hittable once it is stripped
+unit/logic/test_joints.gd,test_an_uncladded_joint_behaves_as_before_just_with_the_new_hp_default,"""as before"" and ""the new default"" are relative to an unstated moment; the name says nothing about which behaviour is being held constant, and will read as noise once the change it references is old.",585,0,0,0,0,0,2,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_kit_equipper.gd,test_stock_is_a_noop_when_kit_is_null,,921,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_kit_equipper.gd,test_stock_fills_the_kits_own_container_with_its_own_items,,1140,0,0,0,0,0,0,"a kit stocks and equips through the real attach path, or fails by name"
+unit/logic/test_kit_equipper.gd,test_stock_errors_by_name_on_an_unknown_pool_id,,1706,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_kit_equipper.gd,test_stock_errors_when_the_container_socket_does_not_exist,,1397,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_kit_equipper.gd,test_equip_instant_moves_the_weapon_from_its_container_into_its_socket,,1338,0,0,0,0,0,0,"a kit stocks and equips through the real attach path, or fails by name"
+unit/logic/test_kit_equipper.gd,test_equip_is_a_noop_when_kit_is_null,,1875,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_kit_equipper.gd,test_equip_defaults_to_instant_mode,,1377,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_kit_equipper.gd,test_an_unimplemented_equip_mode_fails_named_never_crashes,,2104,0,0,0,0,0,0,"an unimplemented hook is flagged, not silently inert"
+unit/logic/test_kit_equipper.gd,test_equip_instant_chambers_the_kits_own_ammo,,1266,0,0,0,0,0,0,"a kit stocks and equips through the real attach path, or fails by name"
+unit/logic/test_kit_equipper.gd,test_equip_fails_named_when_the_weapon_never_made_it_into_the_kit,,1128,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_knowledge.gd,test_knows_internal_defaults_to_true_with_no_sensor_system_to_gate_on,,1843,0,0,0,0,0,0,"an unimplemented hook is flagged, not silently inert"
+unit/logic/test_life_support.gd,test_decay_advances_when_exposed_and_unpowered,,183,0,0,0,0,0,0,an exposed surrogate decays unless powered life support holds it
+unit/logic/test_life_support.gd,test_holds_with_power_and_no_organics,,222,0,0,0,0,0,0,an exposed surrogate decays unless powered life support holds it
+unit/logic/test_life_support.gd,test_winds_back_and_consumes_organics_when_powered_and_carried,,163,0,0,0,0,0,0,an exposed surrogate decays unless powered life support holds it
+unit/logic/test_life_support.gd,test_regen_floors_at_zero_and_never_fires_once_nothing_is_exposed,,145,0,0,0,0,0,0,an exposed surrogate decays unless powered life support holds it
+unit/logic/test_life_support.gd,test_killing_the_reactor_stops_power_and_detonates,,16548,0,0,0,0,0,0,a volatile part detonates on destruction and hits only what is in radius
+unit/logic/test_life_support.gd,test_killing_the_reactor_resumes_decay_on_the_next_tick,,425,0,0,0,0,0,0,an exposed surrogate decays unless powered life support holds it
+unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_is_true_with_nothing_in_the_way,,455,0,0,0,0,0,1,a shot needs line of sight
+unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_is_false_when_a_wall_blocks_the_shot,,400,0,0,0,0,0,1,a shot needs line of sight
+unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit,,444,0,0,0,0,0,2,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_line_of_fire.gd,test_open_field_line_of_fire_matches_line_of_sight,,353,0,0,0,0,0,1,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_is_true_against_an_elevated_target,,3132,0,0,0,0,0,1,"elevation changes the shot geometry, not the rules"
+unit/logic/test_line_of_fire.gd,test_first_hit_never_resolves_to_a_wall_behind_the_shooter,,582,0,0,0,0,0,2,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/test_line_of_fire.gd,test_cached_first_hit_agrees_with_the_uncached_resolution,,499,0,0,0,0,0,2,a cache returns exactly what the uncached path would
+unit/logic/test_line_of_fire.gd,test_cached_first_hit_reuses_the_same_region_on_a_repeat_lookup,,413,0,0,0,0,0,1,a cache returns exactly what the uncached path would
+unit/logic/test_line_of_fire.gd,test_has_clear_line_of_fire_agrees_with_and_without_a_cache,,1359,0,0,0,0,0,2,a cache returns exactly what the uncached path would
+unit/logic/test_log_fold.gd,test_attack_summary_has_the_correct_hit_and_miss_count,,313,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_identical_adjacent_results_fold_with_a_count,,264,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_non_adjacent_identical_results_do_not_fold_together,,235,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_a_curved_move_folds_every_leg_into_one_group,,227,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_expanding_a_group_shows_every_underlying_event,,449,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_a_cascade_event_appends_to_its_own_hit_line_not_a_new_one,,217,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_a_standalone_face_action_is_its_own_group,,202,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_an_unrecognized_event_kind_still_gets_its_own_row,,181,0,0,0,0,0,0,an unknown open-vocabulary id falls back rather than failing
+unit/logic/test_log_fold.gd,test_burst_fired_names_the_weapon_a_plain_attack_does_not,,150,0,0,0,0,0,0,"a log line is readable prose, not a struct dump"
+unit/logic/test_log_fold.gd,test_unit_down_suffix_only_appears_with_a_live_state_and_a_dead_target,,1977,0,0,0,0,0,0,"a log line is readable prose, not a struct dump"
+unit/logic/test_log_fold.gd,test_folding_never_changes_what_other_sinks_on_the_same_log_receive,,5180,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_log_fold.gd,test_a_run_of_plumbing_events_folds_into_one_counted_row,,265,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_a_mixed_plumbing_run_does_not_claim_to_be_one_kind,,178,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_fold.gd,test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing,,201,0,0,0,0,0,0,an engine diagnostic joins the combat log stream in order
+unit/logic/test_log_fold.gd,test_folding_plumbing_never_drops_an_event,,223,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/logic/test_log_playback.gd,test_a_known_event_stream_maps_to_the_expected_cue_list_with_expected_offsets,,1270,0,0,0,0,0,0,"the event stream drives playback cues, one per event, in order"
+unit/logic/test_log_playback.gd,test_replaying_the_same_stream_twice_produces_an_identical_cue_list,,622,0,0,0,0,0,0,a build is reproducible from the same inputs
+unit/logic/test_log_playback.gd,test_total_duration_covers_lead_in_every_cue_and_the_tail,,169,0,0,0,0,0,0,"the event stream drives playback cues, one per event, in order"
+unit/logic/test_log_playback.gd,test_total_duration_of_an_empty_stream_is_still_lead_in_plus_tail,,147,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_log_playback.gd,test_affected_unit_ids_collects_actors_and_impact_targets,,208,0,0,0,0,0,0,"the event stream drives playback cues, one per event, in order"
+unit/logic/test_log_playback.gd,test_affected_unit_ids_never_includes_the_no_unit_sentinel,,255,0,0,0,0,0,0,"the event stream drives playback cues, one per event, in order"
+unit/logic/test_log_playback.gd,test_affected_unit_ids_deduplicates,,271,0,0,0,0,0,0,"the event stream drives playback cues, one per event, in order"
+unit/logic/test_log_playback.gd,test_affected_unit_ids_of_an_empty_stream_is_empty,,200,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_loot_table.gd,test_pools_are_mostly_exclusive,,301,0,0,0,0,0,0,"loot pools stay mostly exclusive, and an overlap item is tagged by its source"
+unit/logic/test_loot_table.gd,test_overlap_designs_appear_in_both_full_pools,,297,0,0,0,0,0,0,"loot pools stay mostly exclusive, and an overlap item is tagged by its source"
+unit/logic/test_loot_table.gd,test_the_overlap_stays_small_relative_to_each_pool,,233,0,0,0,0,0,0,"loot pools stay mostly exclusive, and an overlap item is tagged by its source"
+unit/logic/test_loot_table.gd,test_draw_from_merchant_tags_an_overlap_item_standard,,1326,0,0,0,0,0,0,"loot pools stay mostly exclusive, and an overlap item is tagged by its source"
+unit/logic/test_loot_table.gd,test_draw_from_hulk_tags_an_overlap_item_original_pattern_or_prototype,,930,0,0,0,0,0,0,"loot pools stay mostly exclusive, and an overlap item is tagged by its source"
+unit/logic/test_loot_table.gd,test_draw_leaves_non_overlap_items_untagged,,473,0,0,0,0,0,0,"loot pools stay mostly exclusive, and an overlap item is tagged by its source"
+unit/logic/test_loot_table.gd,test_draw_is_deterministic_from_the_same_seed,,2733,0,0,0,0,0,0,the same seed produces the same world
+unit/logic/test_los.gd,test_los_symmetric_on_open_ground,,148,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_wall_blocks_los_both_directions,,80,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_los_clear_when_no_wall_in_path,,71,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_los_ignores_opacity_of_endpoint_cells,,68,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_corner_blocking_rule_on_exact_diagonal,,69,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_los.gd,test_corner_blocking_rule_other_bordering_cell,,64,0,0,0,0,0,0,a grid line is symmetric and includes both bordering cells on a diagonal
+unit/logic/test_los.gd,test_cover_does_not_block_los,,79,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_visible_cells_open_ground_matches_chebyshev_disc,,181,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_visible_cells_excludes_cells_behind_wall,,183,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_los.gd,test_destroying_a_wall_with_a_real_shot_clears_los_through_it,,387,0,0,0,0,0,1,line of sight is symmetric and blocked only by opacity
 unit/logic/test_map_gen.gd,test_a_generated_map_contains_more_than_one_level,,65757,0,0,0,2,0,0,
 unit/logic/test_map_gen.gd,test_every_raised_area_is_ramp_reachable_across_many_seeds,,3736110,0,0,0,150,0,0,
 unit/logic/test_map_gen.gd,test_generate_is_seed_deterministic,,262987,0,0,0,8,0,0,
