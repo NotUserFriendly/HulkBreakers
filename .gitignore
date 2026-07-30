@@ -24,3 +24,8 @@ export_presets.cfg
 
 # Regenerated every run.
 /out/combat.log
+
+# Failure-ordering history (taskblock-50 Pass E1) — a LOCAL learning cache.
+# Written on every ordered run so it can learn; committing it would put churn in
+# every diff and make one machine's flakes everyone else's run order.
+out/suite_failures.json

@@ -108,6 +108,11 @@ var _run_usec: int = 0
 var _dirs: Array[String] = []
 var _tests: Array[String] = []
 var _write_artifacts: bool = false
+var _history: Dictionary = {}
+var _run_number: int = 0
+var _ordered_run: bool = false
+var _script_fail_mark: int = 0
+var _script_failures: Dictionary = {}
 
 
 func _init() -> void:
@@ -134,7 +139,17 @@ func _init() -> void:
 	config.options.should_exit = false
 	config.options.log_level = 0
 	if _tests.is_empty():
-		config.options.dirs = _dirs if not _dirs.is_empty() else ["res://test"]
+		# **taskblock-50 Pass E1: ordered, never filtered.** GUT is handed the same set of
+		# scripts it would have discovered from the directory, in failure-first order, so
+		# a red run goes red early. Nothing is dropped — see `SuiteOrder`.
+		var roots: Array[String] = _dirs if not _dirs.is_empty() else ["res://test"]
+		var discovered: Array[String] = _discover_scripts(roots)
+		_history = SuiteOrder.load_history()
+		_run_number = SuiteOrder.next_run_number(_history)
+		var ordered: Array[String] = SuiteOrder.rank(discovered, _history)
+		_ordered_run = true
+		config.options.tests = ordered
+		_print_order(discovered, ordered)
 	else:
 		config.options.tests = _tests
 
@@ -272,10 +287,76 @@ func _delta(before: Dictionary, after: Dictionary) -> Dictionary:
 	return out
 
 
+## Every `test_*.gd` under `roots`, in directory-walk order — GUT's own discovery order,
+## so an empty history reproduces exactly the run this replaced.
+##
+## **Test scripts only.** `test/support/` holds fixtures and helpers; handing those to GUT
+## as tests would have it load each one looking for `test_` functions and report an empty
+## script, which is why the name prefix is required rather than just the extension.
+func _discover_scripts(roots: Array[String]) -> Array[String]:
+	var found: Array[String] = []
+	var pending: Array[String] = roots.duplicate()
+	while not pending.is_empty():
+		var path: String = pending.pop_front()
+		var dir := DirAccess.open(path)
+		if dir == null:
+			continue
+		var entries: Array[String] = []
+		dir.list_dir_begin()
+		var entry: String = dir.get_next()
+		while entry != "":
+			entries.append(entry)
+			entry = dir.get_next()
+		dir.list_dir_end()
+		entries.sort()
+		for entry_name: String in entries:
+			var full: String = path.path_join(entry_name)
+			if DirAccess.dir_exists_absolute(full):
+				if not entry_name.begins_with("."):
+					pending.append(full)
+			elif entry_name.begins_with("test_") and entry_name.ends_with(".gd"):
+				found.append(full)
+	return found
+
+
+## **The order is logged so a failure can be replayed exactly.** That is the pass's whole
+## reproducibility requirement: without it "it failed on the ninth file" is not a
+## reproduction, because which file is ninth moves with the history.
+func _print_order(discovered: Array[String], ordered: Array[String]) -> void:
+	if discovered.size() != ordered.size():
+		# Ordering is a permutation. If this trips, something filtered — which the pass
+		# forbids outright.
+		push_error(
+			(
+				"suite order changed the script count: %d in, %d out"
+				% [discovered.size(), ordered.size()]
+			)
+		)
+	var moved := 0
+	for i in range(ordered.size()):
+		if i < discovered.size() and ordered[i] != discovered[i]:
+			moved += 1
+	print(
+		(
+			"run %d: %d script(s), %d reordered by failure history"
+			% [_run_number, ordered.size(), moved]
+		)
+	)
+	if moved > 0:
+		var head: Array[String] = []
+		for i in range(mini(5, ordered.size())):
+			var record: Dictionary = _history.get(ordered[i], {})
+			head.append("%s(%d)" % [String(ordered[i]).get_file(), int(record.get("fails", 0))])
+		print("  first up: %s" % ", ".join(head))
+
+
 func _on_start_script(script_obj: Object) -> void:
 	_script_path = String(script_obj.path)
 	_script_mark = _snapshot()
 	_script_usec = Time.get_ticks_usec()
+	# taskblock-50 Pass E1: `get_fail_count()` is cumulative across the run, so this
+	# script's own failures are the delta across its window, not the count at its end.
+	_script_fail_mark = int(_runner.gut.get_fail_count())
 
 
 ## **A script's counts are the sum of its tests', not its own start-to-end delta.**
@@ -305,6 +386,9 @@ func _on_end_script() -> void:
 	row["path"] = _script_path
 	row["usec"] = Time.get_ticks_usec() - _script_usec
 	_script_rows.append(row)
+	# taskblock-50 Pass E1: this script's own failures, as a delta — `get_fail_count()` is
+	# cumulative across the run, so the count at the end is everyone's.
+	_script_failures[_script_path] = int(_runner.gut.get_fail_count()) - _script_fail_mark
 	_script_path = ""
 
 
@@ -332,6 +416,11 @@ func _on_end_test() -> void:
 func _on_end_run() -> void:
 	var total_usec: int = Time.get_ticks_usec() - _run_usec
 	var failures: int = int(_runner.gut.get_fail_count())
+	# **Written on every ordered run, not only when artifacts are.** A learning cache that
+	# only updated behind an explicit flag would never learn; it is local and gitignored
+	# precisely so it can be written this often without putting churn in a diff.
+	if _ordered_run:
+		SuiteOrder.save_history(SuiteOrder.fold(_history, _script_failures, _run_number))
 	_print_summary(total_usec, failures)
 	if not _write_artifacts:
 		# **A clean run leaves the committed artifacts alone.** They are in git; a
