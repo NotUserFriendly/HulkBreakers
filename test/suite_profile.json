@@ -12,7 +12,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4019
+      "usec": 2817
     },
     {
       "bouts": 0,
@@ -26,7 +26,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 73819
+      "usec": 63036
     },
     {
       "bouts": 0,
@@ -40,7 +40,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 195227
+      "usec": 210465
     },
     {
       "bouts": 0,
@@ -54,7 +54,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1070
+      "usec": 1463
     },
     {
       "bouts": 0,
@@ -68,21 +68,21 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 57777
+      "usec": 72992
     },
     {
       "bouts": 8,
-      "candidates": 386640,
-      "floods": 637,
+      "candidates": 252770,
+      "floods": 437,
       "lookahead_fields": 0,
       "order": 8,
       "path": "res://test/integration/test_full_mission.gd",
-      "plans": 300,
-      "shot_planes": 2986,
+      "plans": 202,
+      "shot_planes": 2501,
       "test": 0,
-      "turns": 297,
+      "turns": 202,
       "ui_builds": 0,
-      "usec": 97909777
+      "usec": 71535639
     },
     {
       "bouts": 0,
@@ -96,7 +96,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91657
+      "usec": 72523
     },
     {
       "bouts": 0,
@@ -110,7 +110,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1505
+      "usec": 1003
     },
     {
       "bouts": 0,
@@ -124,7 +124,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 788
+      "usec": 806
     },
     {
       "bouts": 0,
@@ -138,7 +138,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2013
+      "usec": 2216
     },
     {
       "bouts": 0,
@@ -152,7 +152,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 867
+      "usec": 842
     },
     {
       "bouts": 0,
@@ -166,7 +166,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2132
+      "usec": 1792
     },
     {
       "bouts": 0,
@@ -180,7 +180,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70404
+      "usec": 80227
     },
     {
       "bouts": 0,
@@ -194,7 +194,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17317
+      "usec": 16568
     },
     {
       "bouts": 0,
@@ -208,7 +208,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 96387
+      "usec": 98773
     },
     {
       "bouts": 0,
@@ -222,7 +222,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 15914
+      "usec": 16118
     },
     {
       "bouts": 0,
@@ -236,7 +236,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 638895
+      "usec": 722535
     },
     {
       "bouts": 0,
@@ -250,7 +250,7 @@
       "test": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 25937
+      "usec": 27641
     },
     {
       "bouts": 0,
@@ -264,7 +264,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4094
+      "usec": 4150
     },
     {
       "bouts": 0,
@@ -278,7 +278,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1638
+      "usec": 2280
     },
     {
       "bouts": 0,
@@ -292,7 +292,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3525
+      "usec": 4184
     },
     {
       "bouts": 0,
@@ -306,7 +306,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2663
+      "usec": 2670
     },
     {
       "bouts": 0,
@@ -320,7 +320,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 7105
+      "usec": 6636
     },
     {
       "bouts": 0,
@@ -334,7 +334,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 7375
+      "usec": 7554
     },
     {
       "bouts": 0,
@@ -348,7 +348,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 736
+      "usec": 923
     },
     {
       "bouts": 0,
@@ -362,7 +362,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 487
+      "usec": 696
     },
     {
       "bouts": 0,
@@ -376,7 +376,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 171888
+      "usec": 165917
     },
     {
       "bouts": 0,
@@ -390,7 +390,7 @@
       "test": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 189185
+      "usec": 218587
     },
     {
       "bouts": 0,
@@ -404,7 +404,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3577
+      "usec": 3327
     },
     {
       "bouts": 0,
@@ -418,7 +418,7 @@
       "test": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3124
+      "usec": 4123
     },
     {
       "bouts": 0,
@@ -432,7 +432,7 @@
       "test": 0,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 6194
+      "usec": 6572
     },
     {
       "bouts": 0,
@@ -446,7 +446,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3090
+      "usec": 3020
     },
     {
       "bouts": 0,
@@ -460,7 +460,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4533
+      "usec": 4753
     },
     {
       "bouts": 0,
@@ -474,7 +474,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2639
+      "usec": 2763
     },
     {
       "bouts": 0,
@@ -488,7 +488,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2979
+      "usec": 3070
     },
     {
       "bouts": 0,
@@ -502,7 +502,7 @@
       "test": 0,
       "turns": 18,
       "ui_builds": 0,
-      "usec": 5766
+      "usec": 4944
     },
     {
       "bouts": 0,
@@ -516,7 +516,7 @@
       "test": 25,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2869
+      "usec": 3086
     },
     {
       "bouts": 0,
@@ -530,7 +530,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2638
+      "usec": 2000
     },
     {
       "bouts": 0,
@@ -544,7 +544,7 @@
       "test": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 61078
+      "usec": 82957
     },
     {
       "bouts": 0,
@@ -558,7 +558,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2943
+      "usec": 2930
     },
     {
       "bouts": 0,
@@ -572,7 +572,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4877
+      "usec": 5762
     },
     {
       "bouts": 0,
@@ -586,7 +586,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5399
+      "usec": 6418
     },
     {
       "bouts": 0,
@@ -600,7 +600,7 @@
       "test": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 3301
+      "usec": 3425
     },
     {
       "bouts": 0,
@@ -614,7 +614,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3955
+      "usec": 4486
     },
     {
       "bouts": 0,
@@ -628,7 +628,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4689
+      "usec": 6050
     },
     {
       "bouts": 0,
@@ -642,7 +642,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1625
+      "usec": 1755
     },
     {
       "bouts": 0,
@@ -656,7 +656,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3429298
+      "usec": 3509494
     },
     {
       "bouts": 5,
@@ -670,7 +670,7 @@
       "test": 0,
       "turns": 32,
       "ui_builds": 0,
-      "usec": 10432601
+      "usec": 10753496
     },
     {
       "bouts": 0,
@@ -684,7 +684,7 @@
       "test": 0,
       "turns": 29,
       "ui_builds": 0,
-      "usec": 637004
+      "usec": 657749
     },
     {
       "bouts": 8,
@@ -698,7 +698,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 824991
+      "usec": 799379
     },
     {
       "bouts": 0,
@@ -712,7 +712,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 323251
+      "usec": 295433
     },
     {
       "bouts": 0,
@@ -726,7 +726,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 209643
+      "usec": 213719
     },
     {
       "bouts": 2,
@@ -740,7 +740,7 @@
       "test": 0,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 7650707
+      "usec": 8313723
     },
     {
       "bouts": 0,
@@ -754,7 +754,7 @@
       "test": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 2070144
+      "usec": 2150566
     },
     {
       "bouts": 0,
@@ -768,7 +768,7 @@
       "test": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 1011882
+      "usec": 1142401
     },
     {
       "bouts": 0,
@@ -782,7 +782,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1320406
+      "usec": 1404524
     },
     {
       "bouts": 3,
@@ -796,7 +796,7 @@
       "test": 0,
       "turns": 19,
       "ui_builds": 0,
-      "usec": 7977371
+      "usec": 8721480
     },
     {
       "bouts": 0,
@@ -810,7 +810,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 35186
+      "usec": 37266
     },
     {
       "bouts": 0,
@@ -824,7 +824,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3825
+      "usec": 4163
     },
     {
       "bouts": 0,
@@ -838,7 +838,7 @@
       "test": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 51420
+      "usec": 57369
     },
     {
       "bouts": 0,
@@ -852,7 +852,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 12644
+      "usec": 11872
     },
     {
       "bouts": 0,
@@ -866,7 +866,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 992
+      "usec": 574
     },
     {
       "bouts": 0,
@@ -880,7 +880,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1499
+      "usec": 1528
     },
     {
       "bouts": 0,
@@ -894,7 +894,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63549
+      "usec": 71507
     },
     {
       "bouts": 0,
@@ -908,7 +908,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19289
+      "usec": 23022
     },
     {
       "bouts": 0,
@@ -922,7 +922,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2279
+      "usec": 2818
     },
     {
       "bouts": 0,
@@ -936,7 +936,7 @@
       "test": 121212,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4685
+      "usec": 5247
     },
     {
       "bouts": 0,
@@ -950,7 +950,7 @@
       "test": 45,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 18394
+      "usec": 15210
     },
     {
       "bouts": 0,
@@ -964,7 +964,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 116758
+      "usec": 128342
     },
     {
       "bouts": 0,
@@ -978,7 +978,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 940
+      "usec": 1135
     },
     {
       "bouts": 0,
@@ -992,7 +992,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 152143
+      "usec": 161360
     },
     {
       "bouts": 0,
@@ -1006,7 +1006,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 97129
+      "usec": 104047
     },
     {
       "bouts": 0,
@@ -1020,7 +1020,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 73366
+      "usec": 83200
     },
     {
       "bouts": 0,
@@ -1034,7 +1034,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3242
+      "usec": 3853
     },
     {
       "bouts": 0,
@@ -1048,7 +1048,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2370
+      "usec": 2838
     },
     {
       "bouts": 0,
@@ -1062,7 +1062,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1425
+      "usec": 1272
     },
     {
       "bouts": 0,
@@ -1076,7 +1076,7 @@
       "test": 0,
       "turns": 20,
       "ui_builds": 0,
-      "usec": 34259
+      "usec": 39376
     },
     {
       "bouts": 0,
@@ -1090,7 +1090,7 @@
       "test": 0,
       "turns": 21,
       "ui_builds": 0,
-      "usec": 5273
+      "usec": 5206
     },
     {
       "bouts": 0,
@@ -1104,7 +1104,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 156434
+      "usec": 169917
     },
     {
       "bouts": 0,
@@ -1118,7 +1118,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 169949
+      "usec": 181643
     },
     {
       "bouts": 10,
@@ -1132,7 +1132,7 @@
       "test": 0,
       "turns": 305,
       "ui_builds": 0,
-      "usec": 105266596
+      "usec": 107943358
     },
     {
       "bouts": 0,
@@ -1146,7 +1146,7 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 845
+      "usec": 834
     },
     {
       "bouts": 0,
@@ -1160,141 +1160,15 @@
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 809
+      "usec": 743
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 19300,
-      "path": "res://test/unit/logic/test_damage_resolver.gd",
-      "plans": 0,
-      "shot_planes": 30,
-      "test": 9128,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 33349
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 8690,
-      "path": "res://test/unit/logic/test_damage_resolver_consequences.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 3792
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 2391,
-      "path": "res://test/unit/logic/test_damage_resolver_deflect_modes.gd",
-      "plans": 0,
-      "shot_planes": 6,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1799
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 2400,
-      "path": "res://test/unit/logic/test_damage_resolver_spherecast.gd",
-      "plans": 0,
-      "shot_planes": 3,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1557
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 2409,
-      "path": "res://test/unit/logic/test_damage_source_of_truth.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 910
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 7281,
-      "path": "res://test/unit/logic/test_dartboard.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 3,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 11056
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10660,
-      "path": "res://test/unit/logic/test_dartboard_texture.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 126743
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 14195,
-      "path": "res://test/unit/logic/test_data_library.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 13978
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 3382,
-      "path": "res://test/unit/logic/test_data_migration_losslessness.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 31042
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 5103,
-      "path": "res://test/unit/logic/test_data_validator.gd",
+      "order": 4575,
+      "path": "res://test/unit/logic/test_csv_line.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
@@ -1307,274 +1181,1086 @@
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 10314,
+      "order": 19450,
+      "path": "res://test/unit/logic/test_damage_resolver.gd",
+      "plans": 0,
+      "shot_planes": 30,
+      "test": 9128,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 31003
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 8756,
+      "path": "res://test/unit/logic/test_damage_resolver_consequences.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3849
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 2409,
+      "path": "res://test/unit/logic/test_damage_resolver_deflect_modes.gd",
+      "plans": 0,
+      "shot_planes": 6,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1933
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 2418,
+      "path": "res://test/unit/logic/test_damage_resolver_spherecast.gd",
+      "plans": 0,
+      "shot_planes": 3,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1712
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 2427,
+      "path": "res://test/unit/logic/test_damage_source_of_truth.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1106
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 7335,
+      "path": "res://test/unit/logic/test_dartboard.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 3,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 11440
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10738,
+      "path": "res://test/unit/logic/test_dartboard_texture.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 128377
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 14297,
+      "path": "res://test/unit/logic/test_data_library.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 14010
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 3406,
+      "path": "res://test/unit/logic/test_data_migration_losslessness.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 31262
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 5139,
+      "path": "res://test/unit/logic/test_data_validator.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1324
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10386,
       "path": "res://test/unit/logic/test_deep_strike.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 580663
+      "usec": 597258
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 4340,
+      "order": 4370,
       "path": "res://test/unit/logic/test_deflect_resistance_scales_with_penetration.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82745
+      "usec": 83019
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 3490,
+      "order": 3514,
       "path": "res://test/unit/logic/test_description_builder.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 980
+      "usec": 844
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 7911,
+      "order": 7965,
       "path": "res://test/unit/logic/test_engine_error_tap.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 23924
+      "usec": 23237
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9779,
+      "order": 9845,
       "path": "res://test/unit/logic/test_field_objects.gd",
       "plans": 0,
       "shot_planes": 1,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 186709
+      "usec": 187704
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 2688,
+      "order": 2706,
       "path": "res://test/unit/logic/test_file_sink.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1271
+      "usec": 1588
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 7212,
+      "order": 7260,
       "path": "res://test/unit/logic/test_fps_meter.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2345
+      "usec": 1682
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 18310,
+      "order": 18430,
       "path": "res://test/unit/logic/test_grid.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16900
+      "usec": 16635
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 5571,
+      "order": 5607,
       "path": "res://test/unit/logic/test_grid_placement.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1781
+      "usec": 1820
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 2799,
+      "order": 2817,
       "path": "res://test/unit/logic/test_inspect_rows.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17757
+      "usec": 17458
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 6566,
+      "order": 6608,
       "path": "res://test/unit/logic/test_instant_resolver.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4858
+      "usec": 4684
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 3774,
+      "order": 3798,
       "path": "res://test/unit/logic/test_internal_targeting.gd",
       "plans": 0,
       "shot_planes": 6,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 76917
+      "usec": 71828
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 15256,
+      "order": 15352,
       "path": "res://test/unit/logic/test_inventory.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2401
+      "usec": 3575
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 6755,
+      "order": 6797,
       "path": "res://test/unit/logic/test_inventory_rows.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19052
+      "usec": 17459
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 11694,
+      "order": 11766,
       "path": "res://test/unit/logic/test_joints.gd",
       "plans": 0,
       "shot_planes": 8,
       "test": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5380
+      "usec": 5249
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9855,
+      "order": 9915,
       "path": "res://test/unit/logic/test_kit_equipper.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 191201
+      "usec": 161982
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 991,
+      "order": 997,
       "path": "res://test/unit/logic/test_knowledge.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17780
+      "usec": 17546
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 5967,
+      "order": 6003,
       "path": "res://test/unit/logic/test_life_support.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 18427
+      "usec": 17725
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9018,
+      "order": 9072,
       "path": "res://test/unit/logic/test_line_of_fire.gd",
       "plans": 0,
       "shot_planes": 13,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 9068
+      "usec": 8655
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 15210,
+      "order": 15300,
       "path": "res://test/unit/logic/test_log_fold.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 7973
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 8252,
+      "path": "res://test/unit/logic/test_log_playback.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2109
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 7273,
+      "path": "res://test/unit/logic/test_loot_table.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3558
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10475,
+      "path": "res://test/unit/logic/test_los.gd",
+      "plans": 0,
+      "shot_planes": 1,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2275
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 918,
+      "lookahead_fields": 0,
+      "order": 21250,
+      "path": "res://test/unit/logic/test_map_gen.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 25884451
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 720,
+      "lookahead_fields": 0,
+      "order": 5375,
+      "path": "res://test/unit/logic/test_map_gen_raised_rooms.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 18771716
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 5400,
+      "path": "res://test/unit/logic/test_material_entry.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1349
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 4,
+      "lookahead_fields": 0,
+      "order": 11968,
+      "path": "res://test/unit/logic/test_melee_delivery.gd",
+      "plans": 0,
+      "shot_planes": 12,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 66858
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 6579,
+      "path": "res://test/unit/logic/test_melee_line.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1188
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 13266,
+      "path": "res://test/unit/logic/test_melee_reach.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 118,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2103
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 22430,
+      "path": "res://test/unit/logic/test_mission_state.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 7763
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 3399,
+      "path": "res://test/unit/logic/test_multi_level_geometry.gd",
+      "plans": 0,
+      "shot_planes": 4,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 15788
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 26358,
+      "path": "res://test/unit/logic/test_overwatch.gd",
+      "plans": 0,
+      "shot_planes": 1398,
+      "test": 3105,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3484805
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 23350,
+      "path": "res://test/unit/logic/test_part_graph.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 1212,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3907
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 8267,
+      "path": "res://test/unit/logic/test_part_picker.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1557
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 34,
+      "lookahead_fields": 0,
+      "order": 44511,
+      "path": "res://test/unit/logic/test_pathfinder.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 39,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 56061
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 9804,
+      "path": "res://test/unit/logic/test_penetration_traverses_body.gd",
+      "plans": 0,
+      "shot_planes": 14,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 133647
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 6160,
+      "path": "res://test/unit/logic/test_plate_geometry.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 84079
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 22383,
+      "path": "res://test/unit/logic/test_power_drives_ap.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 7,
+      "ui_builds": 0,
+      "usec": 298603
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 5018,
+      "path": "res://test/unit/logic/test_ramp_geometry.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1334
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 2515,
+      "path": "res://test/unit/logic/test_range_gives_internals_meaning.gd",
+      "plans": 0,
+      "shot_planes": 3,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 35696
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10100,
+      "path": "res://test/unit/logic/test_range_model.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1309
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10164,
+      "path": "res://test/unit/logic/test_reaction_window.gd",
+      "plans": 0,
+      "shot_planes": 6,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 20713
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 8946,
+      "path": "res://test/unit/logic/test_recoil_resolver.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1169
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 23229,
+      "path": "res://test/unit/logic/test_reference_humanoid.gd",
+      "plans": 0,
+      "shot_planes": 2,
+      "test": 632,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 95676
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 19605,
+      "path": "res://test/unit/logic/test_repair_resolver.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3153
+    },
+    {
+      "bouts": 4,
+      "candidates": 0,
+      "floods": 8,
+      "lookahead_fields": 0,
+      "order": 11871,
+      "path": "res://test/unit/logic/test_replay_handle.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 499296
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 13285,
+      "path": "res://test/unit/logic/test_resolution_speed.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 21641
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 14729,
+      "path": "res://test/unit/logic/test_resolve_ray.gd",
+      "plans": 0,
+      "shot_planes": 20,
+      "test": 3,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 5221
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 9436,
+      "path": "res://test/unit/logic/test_resolve_until.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 2,
+      "ui_builds": 0,
+      "usec": 282527
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 9485,
+      "path": "res://test/unit/logic/test_resource_edit_stack.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1573
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10900,
+      "path": "res://test/unit/logic/test_resource_editor_columns.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 131293
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10964,
+      "path": "res://test/unit/logic/test_resource_editor_rows.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2407
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 4128,
+      "path": "res://test/unit/logic/test_ricochet_stress.gd",
+      "plans": 0,
+      "shot_planes": 26,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 68379
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 21,
+      "lookahead_fields": 0,
+      "order": 26353,
+      "path": "res://test/unit/logic/test_selection_controller.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 2,
+      "ui_builds": 0,
+      "usec": 320867
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 50922,
+      "path": "res://test/unit/logic/test_shot_plane.gd",
+      "plans": 0,
+      "shot_planes": 22,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 26136
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 5738,
+      "path": "res://test/unit/logic/test_shot_scatter.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1293
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 2875,
+      "path": "res://test/unit/logic/test_socket.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 684
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 7205,
+      "path": "res://test/unit/logic/test_spread_pattern.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1479
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 13032,
+      "path": "res://test/unit/logic/test_stat_resolver.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 6809
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 4,
+      "lookahead_fields": 0,
+      "order": 2907,
+      "path": "res://test/unit/logic/test_step_out_interrupt.gd",
+      "plans": 0,
+      "shot_planes": 10,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 50459
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 6,
+      "lookahead_fields": 0,
+      "order": 16060,
+      "path": "res://test/unit/logic/test_step_out_planner.gd",
+      "plans": 0,
+      "shot_planes": 4,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 112101
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 10283,
+      "path": "res://test/unit/logic/test_suite_run.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 19320135
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 22200,
+      "path": "res://test/unit/logic/test_suppression.gd",
+      "plans": 0,
+      "shot_planes": 8,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 76201
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 16423,
+      "path": "res://test/unit/logic/test_surrogate.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 4997
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 15035,
+      "path": "res://test/unit/logic/test_surrogate_ladder.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2302
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 24,
+      "lookahead_fields": 0,
+      "order": 4530,
+      "path": "res://test/unit/logic/test_tb38_flat_bout_guard.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 24,
+      "ui_builds": 0,
+      "usec": 157244
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 3025,
+      "path": "res://test/unit/logic/test_the_punch.gd",
+      "plans": 0,
+      "shot_planes": 2,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2350
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 13662,
+      "path": "res://test/unit/logic/test_tile_inspection.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
@@ -1587,714 +2273,14 @@
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 8204,
-      "path": "res://test/unit/logic/test_log_playback.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 4155
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 7231,
-      "path": "res://test/unit/logic/test_loot_table.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 7335
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10415,
-      "path": "res://test/unit/logic/test_los.gd",
-      "plans": 0,
-      "shot_planes": 1,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1840
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 918,
-      "lookahead_fields": 0,
-      "order": 21130,
-      "path": "res://test/unit/logic/test_map_gen.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 25417213
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 720,
-      "lookahead_fields": 0,
-      "order": 5345,
-      "path": "res://test/unit/logic/test_map_gen_raised_rooms.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 18522065
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 5370,
-      "path": "res://test/unit/logic/test_material_entry.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1091
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 4,
-      "lookahead_fields": 0,
-      "order": 11902,
-      "path": "res://test/unit/logic/test_melee_delivery.gd",
-      "plans": 0,
-      "shot_planes": 12,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 63176
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 6543,
-      "path": "res://test/unit/logic/test_melee_line.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1199
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 13194,
-      "path": "res://test/unit/logic/test_melee_reach.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 118,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1981
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 22310,
-      "path": "res://test/unit/logic/test_mission_state.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 7452
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 3381,
-      "path": "res://test/unit/logic/test_multi_level_geometry.gd",
-      "plans": 0,
-      "shot_planes": 4,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 15648
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 26220,
-      "path": "res://test/unit/logic/test_overwatch.gd",
-      "plans": 0,
-      "shot_planes": 1398,
-      "test": 3105,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 3744149
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 23230,
-      "path": "res://test/unit/logic/test_part_graph.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 1212,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 7264
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 8225,
-      "path": "res://test/unit/logic/test_part_picker.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 2818
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 34,
-      "lookahead_fields": 0,
-      "order": 44289,
-      "path": "res://test/unit/logic/test_pathfinder.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 39,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 65045
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 9756,
-      "path": "res://test/unit/logic/test_penetration_traverses_body.gd",
-      "plans": 0,
-      "shot_planes": 14,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 167737
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 6130,
-      "path": "res://test/unit/logic/test_plate_geometry.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 89928
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 22275,
-      "path": "res://test/unit/logic/test_power_drives_ap.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 7,
-      "ui_builds": 0,
-      "usec": 352762
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 4994,
-      "path": "res://test/unit/logic/test_ramp_geometry.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1302
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 2503,
-      "path": "res://test/unit/logic/test_range_gives_internals_meaning.gd",
-      "plans": 0,
-      "shot_planes": 3,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 36234
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10052,
-      "path": "res://test/unit/logic/test_range_model.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1343
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10116,
-      "path": "res://test/unit/logic/test_reaction_window.gd",
-      "plans": 0,
-      "shot_planes": 6,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 21301
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 8904,
-      "path": "res://test/unit/logic/test_recoil_resolver.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1556
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 23121,
-      "path": "res://test/unit/logic/test_reference_humanoid.gd",
-      "plans": 0,
-      "shot_planes": 2,
-      "test": 632,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 102779
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 19515,
-      "path": "res://test/unit/logic/test_repair_resolver.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 3199
-    },
-    {
-      "bouts": 4,
-      "candidates": 0,
-      "floods": 8,
-      "lookahead_fields": 0,
-      "order": 11817,
-      "path": "res://test/unit/logic/test_replay_handle.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 531073
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 13225,
-      "path": "res://test/unit/logic/test_resolution_speed.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 19542
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 14663,
-      "path": "res://test/unit/logic/test_resolve_ray.gd",
-      "plans": 0,
-      "shot_planes": 20,
-      "test": 3,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 6086
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 9394,
-      "path": "res://test/unit/logic/test_resolve_until.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 2,
-      "ui_builds": 0,
-      "usec": 289434
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 9443,
-      "path": "res://test/unit/logic/test_resource_edit_stack.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1442
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10852,
-      "path": "res://test/unit/logic/test_resource_editor_columns.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 139543
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10916,
-      "path": "res://test/unit/logic/test_resource_editor_rows.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1984
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 4110,
-      "path": "res://test/unit/logic/test_ricochet_stress.gd",
-      "plans": 0,
-      "shot_planes": 26,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 65252
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 21,
-      "lookahead_fields": 0,
-      "order": 26239,
-      "path": "res://test/unit/logic/test_selection_controller.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 2,
-      "ui_builds": 0,
-      "usec": 348483
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 50706,
-      "path": "res://test/unit/logic/test_shot_plane.gd",
-      "plans": 0,
-      "shot_planes": 22,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 28191
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 5714,
-      "path": "res://test/unit/logic/test_shot_scatter.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1248
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 2863,
-      "path": "res://test/unit/logic/test_socket.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 669
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 7175,
-      "path": "res://test/unit/logic/test_spread_pattern.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1874
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 12978,
-      "path": "res://test/unit/logic/test_stat_resolver.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 13245
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 4,
-      "lookahead_fields": 0,
-      "order": 2895,
-      "path": "res://test/unit/logic/test_step_out_interrupt.gd",
-      "plans": 0,
-      "shot_planes": 10,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 51841
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 6,
-      "lookahead_fields": 0,
-      "order": 15994,
-      "path": "res://test/unit/logic/test_step_out_planner.gd",
-      "plans": 0,
-      "shot_planes": 4,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 134775
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 10241,
-      "path": "res://test/unit/logic/test_suite_run.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 19035703
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 22110,
-      "path": "res://test/unit/logic/test_suppression.gd",
-      "plans": 0,
-      "shot_planes": 8,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 90695
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 16357,
-      "path": "res://test/unit/logic/test_surrogate.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 4778
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 14975,
-      "path": "res://test/unit/logic/test_surrogate_ladder.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 2767
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 24,
-      "lookahead_fields": 0,
-      "order": 4512,
-      "path": "res://test/unit/logic/test_tb38_flat_bout_guard.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 24,
-      "ui_builds": 0,
-      "usec": 157993
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 3013,
-      "path": "res://test/unit/logic/test_the_punch.gd",
-      "plans": 0,
-      "shot_planes": 2,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1719
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 13608,
-      "path": "res://test/unit/logic/test_tile_inspection.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 13890
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 24392,
+      "order": 24488,
       "path": "res://test/unit/logic/test_tooltip_builder.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3032
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 6138,
-      "path": "res://test/unit/logic/test_tracer_geometry.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 1516
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "order": 3075,
-      "path": "res://test/unit/logic/test_transparency_proof.gd",
-      "plans": 0,
-      "shot_planes": 62,
-      "test": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 21196
+      "usec": 3746
     },
     {
       "bouts": 0,
@@ -2302,1273 +2288,1301 @@
       "floods": 0,
       "lookahead_fields": 0,
       "order": 6162,
+      "path": "res://test/unit/logic/test_tracer_geometry.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1068
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 3087,
+      "path": "res://test/unit/logic/test_transparency_proof.gd",
+      "plans": 0,
+      "shot_planes": 62,
+      "test": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 20427
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "order": 6186,
       "path": "res://test/unit/logic/test_turn_start_power_walks.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31571
+      "usec": 30575
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 13923,
+      "order": 13977,
       "path": "res://test/unit/logic/test_unit.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3960
+      "usec": 2391
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 37524,
+      "order": 37668,
       "path": "res://test/unit/logic/test_unit_geometry.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10634
+      "usec": 10590
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9471,
+      "order": 9507,
       "path": "res://test/unit/logic/test_unit_picker.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2486
+      "usec": 1797
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 19050,
+      "order": 19122,
       "path": "res://test/unit/logic/test_variant_generator.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 469931
+      "usec": 459793
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 2,
       "lookahead_fields": 0,
-      "order": 14382,
+      "order": 14436,
       "path": "res://test/unit/logic/test_visibility_field.gd",
       "plans": 0,
       "shot_planes": 299,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 246133
+      "usec": 237833
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 16075,
+      "order": 16135,
       "path": "res://test/unit/logic/test_wall_legibility.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1467
+      "usec": 1511
     },
     {
       "bouts": 2,
-      "candidates": 67360,
+      "candidates": 67420,
       "floods": 134,
       "lookahead_fields": 0,
-      "order": 17798,
+      "order": 17864,
       "path": "res://test/unit/logic/test_watched_run.gd",
       "plans": 58,
       "shot_planes": 468,
       "test": 0,
       "turns": 56,
       "ui_builds": 0,
-      "usec": 22500407
+      "usec": 21043744
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 16285,
+      "order": 16345,
       "path": "res://test/unit/logic/test_weapon_chambering.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 18473
+      "usec": 19406
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 13100,
+      "order": 13148,
       "path": "res://test/unit/logic/test_weapon_resolver.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1699
+      "usec": 1872
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 11515,
+      "order": 11557,
       "path": "res://test/unit/logic/test_weapon_rows.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1722
+      "usec": 2241
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 16535,
+      "order": 16595,
       "path": "res://test/unit/logic/test_weapon_sim_hardening.gd",
       "plans": 0,
       "shot_planes": 1248,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 343569
+      "usec": 339890
     },
     {
       "bouts": 3,
       "candidates": 31896,
       "floods": 44,
       "lookahead_fields": 0,
-      "order": 11634,
+      "order": 11676,
       "path": "res://test/unit/logic/test_work_counters.gd",
       "plans": 18,
       "shot_planes": 171,
       "test": 0,
       "turns": 19,
       "ui_builds": 2,
-      "usec": 13781738
+      "usec": 13990478
     },
     {
       "bouts": 2,
       "candidates": 23776,
       "floods": 39,
       "lookahead_fields": 0,
-      "order": 18381,
+      "order": 18447,
       "path": "res://test/unit/logic/test_world_view_seam.gd",
       "plans": 16,
       "shot_planes": 174,
       "test": 0,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 6550974
+      "usec": 6697181
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 18502,
+      "order": 18568,
       "path": "res://test/unit/logic/test_wounds.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 188295
+      "usec": 194312
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 1688,
+      "order": 1694,
       "path": "res://test/unit/test_exit_code_probe.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1450
+      "usec": 816
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 1689,
+      "order": 1695,
       "path": "res://test/unit/test_no_orphaned_uids.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3012
+      "usec": 3367
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 5073,
+      "order": 5091,
       "path": "res://test/unit/test_retired_planner_sweep.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31911
+      "usec": 34082
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 10173,
+      "order": 10209,
       "path": "res://test/unit/test_run_suite.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16613033
+      "usec": 16032347
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 1699,
+      "order": 1705,
       "path": "res://test/unit/test_smoke.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 784
+      "usec": 1290
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 10215,
+      "order": 11963,
       "path": "res://test/unit/test_suite_audit_csv.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 106950
+      "usec": 492980
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 18821,
+      "order": 18898,
       "path": "res://test/unit/test_suite_budget.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 13649
+      "usec": 8529
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 10317,
+      "order": 10359,
       "path": "res://test/unit/test_suite_tier.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4755
+      "usec": 3251
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 1723,
+      "order": 1730,
       "path": "res://test/unit/test_void_vocabulary_guard.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 227226
+      "usec": 203281
     },
     {
       "bouts": 3,
-      "candidates": 180864,
+      "candidates": 180851,
       "floods": 256,
       "lookahead_fields": 0,
-      "order": 3449,
+      "order": 3463,
       "path": "res://test/unit/view/overlays/test_ai_batch_yield.gd",
       "plans": 118,
       "shot_planes": 1182,
       "test": 0,
       "turns": 118,
       "ui_builds": 2,
-      "usec": 58797694
+      "usec": 56391195
     },
     {
       "bouts": 2,
       "candidates": 0,
       "floods": 38,
       "lookahead_fields": 0,
-      "order": 29478,
+      "order": 29597,
       "path": "res://test/unit/view/overlays/test_generate_bout_overlay.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 3842287
+      "usec": 3739942
     },
     {
       "bouts": 0,
       "candidates": 28,
       "floods": 10,
       "lookahead_fields": 0,
-      "order": 5232,
+      "order": 5253,
       "path": "res://test/unit/view/overlays/test_single_unit_overlay.gd",
       "plans": 2,
       "shot_planes": 0,
       "test": 0,
       "turns": 2,
       "ui_builds": 6,
-      "usec": 581222
+      "usec": 590596
     },
     {
       "bouts": 0,
       "candidates": 1365,
       "floods": 102,
       "lookahead_fields": 0,
-      "order": 61705,
+      "order": 61950,
       "path": "res://test/unit/view/overlays/test_spectator_overlay.gd",
       "plans": 21,
       "shot_planes": 26,
       "test": 0,
       "turns": 12,
       "ui_builds": 70,
-      "usec": 33379010
+      "usec": 33553760
     },
     {
       "bouts": 0,
       "candidates": 601,
       "floods": 35,
       "lookahead_fields": 0,
-      "order": 26820,
+      "order": 26925,
       "path": "res://test/unit/view/overlays/test_squad_control_overlay.gd",
       "plans": 1,
       "shot_planes": 12,
       "test": 0,
       "turns": 3,
       "ui_builds": 30,
-      "usec": 4636306
+      "usec": 4776412
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 1,
       "lookahead_fields": 0,
-      "order": 19811,
+      "order": 19888,
       "path": "res://test/unit/view/test_action_bar.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 139903
+      "usec": 154757
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 16299,
+      "order": 16362,
       "path": "res://test/unit/view/test_aim_view_dartboard_cache.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 89175
+      "usec": 82955
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 5451,
+      "order": 5472,
       "path": "res://test/unit/view/test_aim_view_decal_axis.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1750
+      "usec": 1614
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 6,
       "lookahead_fields": 0,
-      "order": 5460,
+      "order": 5481,
       "path": "res://test/unit/view/test_aim_view_part_label.gd",
       "plans": 0,
       "shot_planes": 24,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 259488
+      "usec": 263789
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 3,
       "lookahead_fields": 0,
-      "order": 7294,
+      "order": 7322,
       "path": "res://test/unit/view/test_ap_mp_pip_row.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91569
+      "usec": 93139
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 2,
       "lookahead_fields": 0,
-      "order": 12803,
+      "order": 12852,
       "path": "res://test/unit/view/test_batch_badge_view.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 1,
-      "usec": 150035
+      "usec": 193500
     },
     {
       "bouts": 1,
       "candidates": 0,
       "floods": 152,
       "lookahead_fields": 0,
-      "order": 64750,
+      "order": 64995,
       "path": "res://test/unit/view/test_battle_scene.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 200,
       "turns": 2,
       "ui_builds": 40,
-      "usec": 13050392
+      "usec": 13581804
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 22,
       "lookahead_fields": 0,
-      "order": 13097,
+      "order": 13146,
       "path": "res://test/unit/view/test_battle_scene_input.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 7,
-      "usec": 2603153
+      "usec": 2671707
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 25,
       "lookahead_fields": 0,
-      "order": 11265,
+      "order": 11307,
       "path": "res://test/unit/view/test_battle_scene_occlusion_fade.gd",
       "plans": 0,
       "shot_planes": 24,
       "test": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 1127794
+      "usec": 1233183
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 66430,
+      "order": 66675,
       "path": "res://test/unit/view/test_board_view.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91937
+      "usec": 120756
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 13433,
+      "order": 13482,
       "path": "res://test/unit/view/test_board_view_occlusion.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46747
+      "usec": 47756
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 11553,
+      "order": 11595,
       "path": "res://test/unit/view/test_bout_build_log.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 30908
+      "usec": 40120
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9655,
+      "order": 9690,
       "path": "res://test/unit/view/test_builder_scene.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 83239
+      "usec": 97575
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 34965,
+      "order": 35091,
       "path": "res://test/unit/view/test_camera_rig.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 34733
+      "usec": 35610
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 15644,
+      "order": 15700,
       "path": "res://test/unit/view/test_camera_rig_aim.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 13436
+      "usec": 18622
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 23586,
+      "order": 23670,
       "path": "res://test/unit/view/test_combat_log_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 201519
+      "usec": 202058
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9870,
+      "order": 9905,
       "path": "res://test/unit/view/test_controls_overlay.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14928
+      "usec": 21835
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 39730,
+      "order": 39870,
       "path": "res://test/unit/view/test_debug_control_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 197164
+      "usec": 220363
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 8,
       "lookahead_fields": 0,
-      "order": 7994,
+      "order": 8022,
       "path": "res://test/unit/view/test_debug_panel_layout.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 684043
+      "usec": 790127
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 10015,
+      "order": 10050,
       "path": "res://test/unit/view/test_hierarchical_ui_sink.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17885
+      "usec": 20787
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 62651,
+      "order": 62868,
       "path": "res://test/unit/view/test_hit_volume_view.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 88225
+      "usec": 122486
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 8154,
+      "order": 8182,
       "path": "res://test/unit/view/test_hit_volume_view_mesh_scene.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 12681
+      "usec": 18606
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 16356,
+      "order": 16412,
       "path": "res://test/unit/view/test_hit_volume_view_refresh.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 68641
+      "usec": 88931
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 14364,
+      "order": 14413,
       "path": "res://test/unit/view/test_hit_volume_view_render_primitive.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 24626
+      "usec": 26011
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 12351,
+      "order": 12393,
       "path": "res://test/unit/view/test_hit_volume_view_show_assembly.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16050
+      "usec": 24430
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 22737,
+      "order": 22814,
       "path": "res://test/unit/view/test_hit_volume_view_weapon_labels.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 27702
+      "usec": 44145
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 12453,
+      "order": 12495,
       "path": "res://test/unit/view/test_hulk_theme.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 16958
+      "usec": 21360
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 77589,
+      "order": 77848,
       "path": "res://test/unit/view/test_inspect_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 190488
+      "usec": 261260
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 3,
       "lookahead_fields": 0,
-      "order": 6351,
+      "order": 6372,
       "path": "res://test/unit/view/test_part_highlight_bidirectional.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 76738
+      "usec": 84025
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 3,
       "lookahead_fields": 0,
-      "order": 2119,
+      "order": 2126,
       "path": "res://test/unit/view/test_phase12_transparency.gd",
       "plans": 0,
       "shot_planes": 2,
       "test": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 77827
+      "usec": 85742
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 25,
       "lookahead_fields": 0,
-      "order": 10610,
+      "order": 10645,
       "path": "res://test/unit/view/test_queue_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 408244
+      "usec": 450103
     },
     {
       "bouts": 3,
-      "candidates": 1638,
+      "candidates": 1664,
       "floods": 28,
       "lookahead_fields": 0,
-      "order": 29841,
+      "order": 29939,
       "path": "res://test/unit/view/test_replay_wiring.gd",
       "plans": 1,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 18,
-      "usec": 16647938
+      "usec": 17117166
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 68,
       "lookahead_fields": 0,
-      "order": 73287,
+      "order": 73525,
       "path": "res://test/unit/view/test_resolution_player.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 34,
-      "usec": 5404770
+      "usec": 5641013
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 8,
       "lookahead_fields": 0,
-      "order": 8698,
+      "order": 8726,
       "path": "res://test/unit/view/test_resolution_player_elevation.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 637420
+      "usec": 706257
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 10895,
+      "order": 10930,
       "path": "res://test/unit/view/test_resource_editor_column_widths.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 203700
+      "usec": 218831
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 17484,
+      "order": 17540,
       "path": "res://test/unit/view/test_resource_editor_dropdown.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 334347
+      "usec": 354391
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 24145,
+      "order": 24222,
       "path": "res://test/unit/view/test_resource_editor_layout.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 11,
-      "usec": 502303
+      "usec": 458373
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 28691,
+      "order": 28782,
       "path": "res://test/unit/view/test_resource_editor_nested_rows.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 545088
+      "usec": 554661
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 11080,
+      "order": 11115,
       "path": "res://test/unit/view/test_resource_editor_scene.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 191701
+      "usec": 194196
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 28925,
+      "order": 29016,
       "path": "res://test/unit/view/test_resource_editor_table.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 572535
+      "usec": 593520
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 22365,
+      "order": 22435,
       "path": "res://test/unit/view/test_resource_editor_undo_save.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 10,
-      "usec": 441088
+      "usec": 466677
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 11220,
+      "order": 11255,
       "path": "res://test/unit/view/test_stat_block_view.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14780
+      "usec": 11722
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 6,
       "lookahead_fields": 0,
-      "order": 13497,
+      "order": 13539,
       "path": "res://test/unit/view/test_stat_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 142705
+      "usec": 154311
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 39,
       "lookahead_fields": 0,
-      "order": 56625,
+      "order": 56800,
       "path": "res://test/unit/view/test_tactics_controller.gd",
       "plans": 0,
       "shot_planes": 105,
       "test": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 3084754
+      "usec": 3164112
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 61,
       "lookahead_fields": 0,
-      "order": 52647,
+      "order": 52808,
       "path": "res://test/unit/view/test_tactics_controller_aim.gd",
       "plans": 0,
       "shot_planes": 14,
       "test": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 1376549
+      "usec": 1585175
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 8,
       "lookahead_fields": 0,
-      "order": 6906,
+      "order": 6927,
       "path": "res://test/unit/view/test_tactics_controller_aim_facing.gd",
       "plans": 0,
       "shot_planes": 4,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 185341
+      "usec": 227415
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 19,
       "lookahead_fields": 0,
-      "order": 25399,
+      "order": 25476,
       "path": "res://test/unit/view/test_tactics_controller_arm.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 437954
+      "usec": 500261
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 10,
       "lookahead_fields": 0,
-      "order": 6948,
+      "order": 6969,
       "path": "res://test/unit/view/test_tactics_controller_camera.gd",
       "plans": 0,
       "shot_planes": 3,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 297605
+      "usec": 277319
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 3,
       "lookahead_fields": 0,
-      "order": 16247,
+      "order": 16296,
       "path": "res://test/unit/view/test_tactics_controller_click.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 90342
+      "usec": 105417
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 39,
       "lookahead_fields": 0,
-      "order": 32641,
+      "order": 32739,
       "path": "res://test/unit/view/test_tactics_controller_facing.gd",
       "plans": 0,
       "shot_planes": 8,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 801235
+      "usec": 888243
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 2,
       "lookahead_fields": 0,
-      "order": 18740,
+      "order": 18796,
       "path": "res://test/unit/view/test_tactics_controller_hover.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 87805
+      "usec": 89837
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 1,
       "lookahead_fields": 0,
-      "order": 9394,
+      "order": 9422,
       "path": "res://test/unit/view/test_tactics_controller_input_capture.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46029
+      "usec": 49030
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 32,
       "lookahead_fields": 0,
-      "order": 11765,
+      "order": 11800,
       "path": "res://test/unit/view/test_tactics_controller_resolve_to.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 469093
+      "usec": 474909
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 16,
       "lookahead_fields": 0,
-      "order": 21240,
+      "order": 21303,
       "path": "res://test/unit/view/test_tactics_controller_reticle.gd",
       "plans": 0,
       "shot_planes": 13,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 440990
+      "usec": 453505
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 65,
       "lookahead_fields": 0,
-      "order": 37960,
+      "order": 38072,
       "path": "res://test/unit/view/test_tactics_controller_step_out.gd",
       "plans": 0,
       "shot_planes": 162,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2274192
+      "usec": 2574336
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 2,
       "lookahead_fields": 0,
-      "order": 14301,
+      "order": 14343,
       "path": "res://test/unit/view/test_tooltip_controller.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 69869
+      "usec": 73790
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 21519,
+      "order": 21582,
       "path": "res://test/unit/view/test_tooltip_view.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 23104
+      "usec": 22435
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 24005,
+      "order": 24075,
       "path": "res://test/unit/view/test_ui_log_sink_coalescing.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 29992
+      "usec": 28085
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 9630,
+      "order": 9658,
       "path": "res://test/unit/view/test_ui_sink.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11273
+      "usec": 14619
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 3,
       "lookahead_fields": 0,
-      "order": 12060,
+      "order": 12095,
       "path": "res://test/unit/view/test_weapon_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 79435
+      "usec": 94542
     },
     {
       "bouts": 0,
       "candidates": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "order": 21771,
+      "order": 21834,
       "path": "res://test/unit/view/test_world_palette.gd",
       "plans": 0,
       "shot_planes": 0,
       "test": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14558
+      "usec": 16249
     }
   ],
   "totals": {
     "bouts": 56,
-    "candidates": 1420573,
-    "floods": 4902,
+    "candidates": 1286776,
+    "floods": 4702,
     "lookahead_fields": 150,
-    "order": 2936676,
-    "plans": 950,
-    "shot_planes": 13659,
+    "order": 2953665,
+    "plans": 852,
+    "shot_planes": 13174,
     "test": 135744,
-    "turns": 1069,
+    "turns": 974,
     "ui_builds": 344,
-    "usec": 530796453
+    "usec": 509195241
   },
-  "wall_clock_usec": 534010053
+  "wall_clock_usec": 512388129
 }
