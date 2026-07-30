@@ -237,7 +237,12 @@ func test_the_in_window_verb_reports_the_same_sample_and_changes_nothing() -> vo
 	var cell_before: Vector2i = unit.cell
 	var round_before: int = state.round_number
 
-	await DebugVerbs._apply_sample_completion(injector, {}, {"rng_seed": 4242})
+	# taskblock-50 Pass B: **one seed, not eight.** Every assertion below is about the
+	# *shape* of what the verb logs — a header, one row per bout, a summary — and about
+	# the board being untouched afterwards. Neither is more true of eight missions than
+	# of one, and this file already reasons exactly that way about its determinism test.
+	# It was 94 s, the single most expensive file in the suite, to check a report format.
+	await DebugVerbs._apply_sample_completion(injector, {}, {"rng_seed": 4242, "seeds": 1})
 	state.combat_log.remove_sink(sink)
 
 	# --- it reports in exactly the shape `describe` produces ---
@@ -259,7 +264,7 @@ func test_the_in_window_verb_reports_the_same_sample_and_changes_nothing() -> vo
 	assert_gt(logged.size(), 0, "the verb wrote its report into the combat log")
 	assert_eq(
 		logged.size(),
-		CompletionSampler.SAMPLE_SEEDS + 2,
+		1 + 2,
 		"header, one line per bout it played, and a summary — describe's own shape"
 	)
 	assert_true(logged[0].begins_with("seeds drawn:"), "the draw is stated first")
@@ -272,8 +277,13 @@ func test_the_in_window_verb_reports_the_same_sample_and_changes_nothing() -> vo
 	for i in range(1, logged.size() - 1):
 		if logged[i].contains("EXTRACTED"):
 			completed += 1
+	# **Against the rows, not against the constant.** This read `SAMPLE_SEEDS` as the
+	# denominator while its own message claimed to check "the rows it printed" — so it
+	# would have passed a formatter that printed a different number of rows than it
+	# summarised, which is exactly the defect it is here to catch.
+	var rows_printed: int = logged.size() - 2
 	assert_true(
-		logged[logged.size() - 1].contains("%d/%d" % [completed, CompletionSampler.SAMPLE_SEEDS]),
+		logged[logged.size() - 1].contains("%d/%d" % [completed, rows_printed]),
 		"the summary counts the rows it printed: %s" % logged[logged.size() - 1]
 	)
 

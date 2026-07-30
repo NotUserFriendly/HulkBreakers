@@ -126,7 +126,7 @@ static func all() -> Array[DebugVerbSpec]:
 		DebugVerbSpec.new(
 			&"sample_completion",
 			"Sample Completion",
-			[DebugVerbSpec.param(&"rng_seed", P.INT)],
+			[DebugVerbSpec.param(&"rng_seed", P.INT), DebugVerbSpec.param(&"seeds", P.INT)],
 			Callable(DebugVerbs, &"_apply_sample_completion")
 		),
 		DebugVerbSpec.new(
@@ -407,7 +407,13 @@ static func _apply_watch_seeds(inj: BoutInjector, _pool: Dictionary, a: Dictiona
 static func _apply_sample_completion(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(a.rng_seed)
-	var result: Dictionary = await CompletionSampler.sample(rng)
+	# **Sample size is a parameter, defaulting to the real one.** A spot check from the
+	# panel, or a test of the reporting path, does not need eight full missions to see
+	# whether the report comes out in the right shape.
+	var seeds: int = int(a.get("seeds", CompletionSampler.SAMPLE_SEEDS))
+	if seeds <= 0:
+		seeds = CompletionSampler.SAMPLE_SEEDS
+	var result: Dictionary = await CompletionSampler.sample(rng, 10000, seeds)
 	for line: String in CompletionSampler.describe(result):
 		inj.state.combat_log.emit(
 			LogEvent.new(
