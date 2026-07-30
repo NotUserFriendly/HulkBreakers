@@ -154,8 +154,15 @@ static func run_seeds(seeds: Array[int]) -> Dictionary:
 ##
 ## Draws without replacement, so a sample of ten is ten distinct maps rather than
 ## eight maps and a coincidence.
-static func sample(rng: RandomNumberGenerator, space: int = 10000) -> Dictionary:
-	return await run_seeds(draw_seeds(rng, space))
+## **`count` is a tunable, not a rule.** It defaults to `SAMPLE_SEEDS`, which is what a
+## real measurement wants; a caller that only needs to see the *shape* of a report — a
+## test of the reporting path, or an in-game spot check — passes a smaller number and
+## pays for one mission instead of eight. The seed count never changes what `describe`
+## emits, only how many rows it emits.
+static func sample(
+	rng: RandomNumberGenerator, space: int = 10000, count: int = SAMPLE_SEEDS
+) -> Dictionary:
+	return await run_seeds(draw_seeds(rng, space, count))
 
 
 ## The draw on its own, without playing anything.
@@ -164,9 +171,11 @@ static func sample(rng: RandomNumberGenerator, space: int = 10000) -> Dictionary
 ## Whether a sample repeats a seed, or replays identically for a given RNG, is a
 ## question about this function alone — running ten missions to answer it made the
 ## suite twice as slow for no extra confidence.
-static func draw_seeds(rng: RandomNumberGenerator, space: int = 10000) -> Array[int]:
+static func draw_seeds(
+	rng: RandomNumberGenerator, space: int = 10000, count: int = SAMPLE_SEEDS
+) -> Array[int]:
 	var drawn: Array[int] = []
-	while drawn.size() < SAMPLE_SEEDS:
+	while drawn.size() < count:
 		var candidate: int = rng.randi_range(0, space - 1)
 		if not drawn.has(candidate):
 			drawn.append(candidate)
