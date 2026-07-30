@@ -29,12 +29,23 @@ extends RefCounted
 ## Where a run's output lands. Under `user://` because it is scratch — the run is the
 ## artifact, not the log of it, and nothing here is meant to outlive the session.
 ##
-## **One file per instance, not one file per project.** A fixed path was the first
-## version and it was wrong in a way that only showed up under test: two `SuiteRun`s
-## alive at once — or one killed run whose log outlived it — read and wrote the same
-## bytes, and the feed became a splice of two suites. It surfaced as tests failing
-## differently on every invocation, which is the worst possible symptom because it
-## reads as an engine problem rather than as shared state.
+## **One file per instance AND per process**, which took two goes to get right.
+##
+## A single fixed path was the first version: two `SuiteRun`s alive at once read and
+## wrote the same bytes and the feed became a splice of two suites. Adding a
+## per-instance counter fixed that within one process and left the real case open —
+## the counter is `static`, so it restarts at 0 in **every** process.
+##
+## That matters because the suite contains tests that launch suites.
+## `test_suite_run.gd` runs inside the gate, creates its own `SuiteRun` in its own
+## process, numbers it 1, and truncates the very file the game's panel is tailing. The
+## panel then read the nested run's output as its own: a fast gate under a forced
+## failure reported **"PASSED — 20 passing, 0 failing"**, which is `test_grid.gd`'s
+## count, and appeared to stall on whichever file was on screen when the file was
+## rewound. Both symptoms, one shared path.
+##
+## The pid makes the name unique across processes; the counter keeps it unique within
+## one.
 const LOG_PREFIX := "user://suite_run_"
 ## Written by the shell wrapper after the script exits, because `OS.create_process`
 ## reports a PID and never an exit status. **The marker is how the window knows
@@ -79,14 +90,14 @@ var _pgid_path: String = ""
 func start(rung: StringName, target: String = "") -> bool:
 	var argument: String = target if target != "" else String(RUNGS.get(rung, ""))
 	_next_id += 1
-	_log_path = "%s%d.log" % [LOG_PREFIX, _next_id]
+	_log_path = "%s%d_%d.log" % [LOG_PREFIX, OS.get_process_id(), _next_id]
 	var log_file: String = ProjectSettings.globalize_path(_log_path)
 	# Truncated up front rather than appended to: a panel showing the tail of two runs
 	# spliced together is worse than one showing nothing.
 	var truncate := FileAccess.open(_log_path, FileAccess.WRITE)
 	if truncate != null:
 		truncate.close()
-	_pgid_path = "%s%d.pgid" % [LOG_PREFIX, _next_id]
+	_pgid_path = "%s%d_%d.pgid" % [LOG_PREFIX, OS.get_process_id(), _next_id]
 	var pgid_file: String = ProjectSettings.globalize_path(_pgid_path)
 	DirAccess.remove_absolute(pgid_file)
 	# `$$` inside the `setsid`-ed shell is the new session leader, which is also the

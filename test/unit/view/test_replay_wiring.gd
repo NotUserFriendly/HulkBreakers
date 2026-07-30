@@ -311,6 +311,7 @@ func test_the_force_failure_checkbox_reaches_the_launched_run() -> void:
 ## nothing reads. Asserted through the command `start` builds, since that is the only
 ## thing the child ever sees.
 func test_a_forced_run_prefixes_the_variable_onto_the_child_command() -> void:
+	var ambient: String = OS.get_environment(PROBE_ENV)
 	var forced := SuiteRun.new()
 	forced.force_failure = true
 	forced.start(&"full", "test_exit_code_probe.gd")
@@ -319,10 +320,12 @@ func test_a_forced_run_prefixes_the_variable_onto_the_child_command() -> void:
 	forced.kill()
 
 	assert_gt(group, 0, "the forced run launched")
-	# The child's own command line is the only place the variable exists; this process
-	# must be untouched, which `test_forcing_a_failure_does_not_touch_this_process...`
-	# above asserts from the other side.
-	assert_eq(OS.get_environment(PROBE_ENV), "", "and nothing leaked into this process")
+	# **Unchanged, not empty.** Asserting empty assumed nobody was exercising this
+	# feature while the suite ran — and the panel's own toggle runs the whole gate
+	# under the variable, so it failed exactly when someone used the thing it tests.
+	# The claim is that `start()` does not touch the environment, and that is true
+	# whatever the ambient value happens to be.
+	assert_eq(OS.get_environment(PROBE_ENV), ambient, "start() left the environment alone")
 
 
 ## **The panel says whether the flag was applied.** "The checkbox does not work" and
