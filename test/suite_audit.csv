@@ -1046,220 +1046,220 @@ unit/logic/test_los.gd,test_cover_does_not_block_los,,79,0,0,0,0,0,0,line of sig
 unit/logic/test_los.gd,test_visible_cells_open_ground_matches_chebyshev_disc,,181,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
 unit/logic/test_los.gd,test_visible_cells_excludes_cells_behind_wall,,183,0,0,0,0,0,0,line of sight is symmetric and blocked only by opacity
 unit/logic/test_los.gd,test_destroying_a_wall_with_a_real_shot_clears_los_through_it,,387,0,0,0,0,0,1,line of sight is symmetric and blocked only by opacity
-unit/logic/test_map_gen.gd,test_a_generated_map_contains_more_than_one_level,,65757,0,0,0,2,0,0,
-unit/logic/test_map_gen.gd,test_every_raised_area_is_ramp_reachable_across_many_seeds,,3736110,0,0,0,150,0,0,
-unit/logic/test_map_gen.gd,test_generate_is_seed_deterministic,,262987,0,0,0,8,0,0,
-unit/logic/test_map_gen.gd,test_spawn_zones_reachable_across_many_seeds,,3452723,0,0,0,150,0,0,
-unit/logic/test_map_gen.gd,test_cover_density_within_target_band,,3269598,0,0,0,100,0,0,
-unit/logic/test_map_gen.gd,test_generate_resolves_every_cell_into_a_destructible_wall_part_or_empty_space,,3414515,0,0,0,100,0,0,
-unit/logic/test_map_gen.gd,test_barrel_pallet_barrel_count_is_deterministic_and_in_range,,6469740,0,0,0,200,0,0,
-unit/logic/test_map_gen.gd,test_carved_rooms_are_at_least_seven_on_their_min_dimension,,3261,0,0,0,0,0,0,
-unit/logic/test_map_gen.gd,test_carved_corridors_are_three_to_five_wide,,4417,0,0,0,0,0,0,
-unit/logic/test_map_gen.gd,test_default_size_map_splits_into_multiple_rooms_with_hallways,,34266,0,0,0,0,0,0,
-unit/logic/test_map_gen.gd,test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else,,65195,0,0,0,2,0,0,
-unit/logic/test_map_gen.gd,test_spawn_zones_are_distinct_even_in_a_single_room_grid,,540392,0,0,0,100,0,0,
-unit/logic/test_map_gen.gd,test_generated_map_cells_carry_at_most_one_correctly_typed_floor_surface,,4026350,0,0,0,100,0,0,
-unit/logic/test_map_gen.gd,test_carving_the_same_cell_twice_leaves_exactly_one_surface,,701,0,0,0,0,0,0,
-unit/logic/test_map_gen.gd,test_ensure_spawns_connected_fallback_connects_disconnected_spawns,,2564,0,0,0,3,0,0,
-unit/logic/test_map_gen.gd,test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_levels,,187,0,0,0,0,0,0,
-unit/logic/test_map_gen.gd,test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_ground,,213,0,0,0,1,0,0,
-unit/logic/test_map_gen.gd,test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_tiles,,126,0,0,0,0,0,0,
-unit/logic/test_map_gen.gd,test_spawn_zones_are_walkable,,64312,0,0,0,2,0,0,
-unit/logic/test_map_gen.gd,test_map_gen_touches_grids_spawn_marker_api_only_in_spawn_marking,,1972,0,0,0,0,0,0,
-unit/logic/test_map_gen_raised_rooms.gd,test_the_generator_still_authors_raised_rooms,,2707097,0,0,0,80,0,0,
-unit/logic/test_map_gen_raised_rooms.gd,test_no_cover_object_sits_in_a_pit_of_its_own,,3473411,0,0,0,80,0,0,
-unit/logic/test_map_gen_raised_rooms.gd,test_no_floored_cell_anywhere_sits_in_a_pit,,3317328,0,0,0,80,0,0,
-unit/logic/test_map_gen_raised_rooms.gd,test_every_spawn_zone_has_a_uniform_floor_height,,3028354,0,0,0,80,0,0,
-unit/logic/test_map_gen_raised_rooms.gd,test_a_unit_on_any_spawn_cell_can_reach_more_than_its_own_cell,,5907360,0,0,0,400,0,0,
-unit/logic/test_material_entry.gd,test_dt_at_interpolates_linearly_between_authored_points,,163,0,0,0,0,0,0,
-unit/logic/test_material_entry.gd,test_dt_at_clamps_below_the_first_and_above_the_last_point,,92,0,0,0,0,0,0,
-unit/logic/test_material_entry.gd,test_a_thicker_plate_of_the_same_material_yields_higher_dt,,58,0,0,0,0,0,0,
-unit/logic/test_material_entry.gd,test_editing_a_curve_row_changes_dt_with_no_code_change,,86,0,0,0,0,0,0,
-unit/logic/test_material_entry.gd,test_dt_at_falls_back_to_the_flat_dt_field_when_no_curve_is_authored,,76,0,0,0,0,0,0,
-unit/logic/test_melee_delivery.gd,test_apply_lean_leaves_pose_idle_when_weapon_alone_covers_the_distance,,173,0,0,0,0,0,0,
-unit/logic/test_melee_delivery.gd,test_apply_lean_sets_a_root_override_proportional_to_the_shortfall,,122,0,0,0,0,0,0,
-unit/logic/test_melee_delivery.gd,test_reset_pose_snaps_back_to_idle,,102,0,0,0,0,0,0,
-unit/logic/test_melee_delivery.gd,test_a_small_lean_still_masked_by_cover_does_not_trigger,,19670,0,0,0,0,0,2,
-unit/logic/test_melee_delivery.gd,test_a_large_lean_clears_cover_and_triggers,,4656,0,0,0,0,0,4,
-unit/logic/test_melee_delivery.gd,test_a_larger_required_lean_exposes_more_than_a_smaller_one,,8103,0,0,0,0,0,6,
-unit/logic/test_melee_delivery.gd,test_an_unexposed_striker_cannot_be_interrupted,,3965,0,0,0,0,0,0,
-unit/logic/test_melee_delivery.gd,test_find_step_in_cell_returns_null_when_already_in_reach,,4080,0,0,0,0,0,0,
-unit/logic/test_melee_delivery.gd,test_find_step_in_cell_finds_a_reachable_cell_within_reach_of_the_target,,7098,0,0,0,1,0,0,
-unit/logic/test_melee_delivery.gd,test_find_step_in_cell_is_a_legal_destination_for_a_real_move_action,,10500,0,0,0,2,0,0,
-unit/logic/test_melee_delivery.gd,test_find_step_in_cell_returns_null_when_nothing_reachable_is_in_range,,3953,0,0,0,1,0,0,
-unit/logic/test_melee_line.gd,test_zero_length_is_a_single_point_at_the_aim_point,,196,0,0,0,0,0,0,
-unit/logic/test_melee_line.gd,test_horizontal_line_spans_the_lateral_axis_centered_on_the_aim_point,,107,0,0,0,0,0,0,
-unit/logic/test_melee_line.gd,test_vertical_line_spans_the_real_height_axis_centered_on_the_aim_point,,78,0,0,0,0,0,0,
-unit/logic/test_melee_line.gd,test_diagonal_line_moves_both_axes_equally,,81,0,0,0,0,0,0,
-unit/logic/test_melee_line.gd,test_the_lines_own_span_matches_slash_length_exactly,,62,0,0,0,0,0,0,
-unit/logic/test_melee_line.gd,test_an_unrecognized_orientation_falls_back_to_horizontal_never_crashes,,80,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_weapon_length_is_zero_for_an_unarmed_strike,,99,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_weapon_length_is_zero_for_a_weapon_with_no_weapon_def,,91,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_total_reach_is_shell_reach_plus_weapon_length,,105,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_lean_needed_is_zero_when_weapon_alone_covers_the_distance,,88,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_lean_needed_is_the_shortfall_after_weapon_length,,78,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_the_knife_and_spear_worked_example,,105,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_in_reach_is_true_within_total_reach,,78,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_in_reach_is_false_beyond_total_reach,,76,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_a_weapon_with_no_authored_length_leans_on_shell_reach_alone,,85,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_distance_3d_matches_flat_distance_at_the_same_height,,158,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_distance_3d_is_the_worked_example_square_root_of_two_when_one_up,,164,0,0,0,0,0,0,
-unit/logic/test_melee_reach.gd,test_a_reach_1_sword_cannot_hit_someone_1_up_but_a_reach_2_polearm_can,,218,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_banks_gathered_resources_and_items,,628,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_terminate_discards_gathered_loot,,259,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_returns_every_matrix_to_the_roster,,381,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_terminate_still_returns_every_matrix_even_though_loot_is_lost,,312,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_a_carried_matrix_that_was_never_reimplanted_still_comes_home,,321,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_sets_the_extracted_outcome,,228,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_terminate_sets_the_terminated_outcome,,233,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_strand_sets_the_stranded_outcome_and_still_returns_every_matrix,,350,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_is_stranded_false_while_a_player_unit_is_alive,,311,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_is_stranded_true_once_no_player_unit_remains_alive,,553,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_squad_ready_to_extract_false_while_any_unit_is_still_active,,369,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_squad_ready_to_extract_true_once_every_unit_has_extracted,,301,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_squad_ready_to_extract_false_when_everyone_simply_died,,241,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_squad_ready_to_extract_true_with_a_mix_of_extracted_and_dead,,263,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_unit_marks_the_unit_and_clears_its_grid_occupancy,,309,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_unit_emits_a_per_unit_extract_event,,334,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_unit_triggers_the_full_mission_extract_once_the_squad_is_out,,312,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_unit_never_triggers_the_mission_for_a_non_player_squad,,294,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_extract_unit_does_not_trigger_the_mission_while_a_squadmate_is_still_active,,338,0,0,0,0,0,0,
-unit/logic/test_mission_state.gd,test_complete_objective_only_tracks_known_ids_once,,289,0,0,0,0,0,0,
-unit/logic/test_multi_level_geometry.gd,test_a_shot_between_units_on_different_levels_carries_a_real_vertical_component,,4414,0,0,0,0,0,1,
-unit/logic/test_multi_level_geometry.gd,test_a_shooter_above_a_target_resolves_against_its_top_face,,3472,0,0,0,0,0,1,
-unit/logic/test_multi_level_geometry.gd,test_a_shot_from_higher_ground_resolves_against_more_of_the_target,,7051,0,0,0,0,0,2,
-unit/logic/test_overwatch.gd,test_a_mover_whose_torso_stays_masked_by_cover_does_not_trigger,,4066,0,0,0,0,0,2,
-unit/logic/test_overwatch.gd,test_a_mover_whose_torso_clears_cover_does_trigger,,4401,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_a_real_bodied_overwatcher_still_triggers_against_its_own_body,,3848,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_the_trigger_fires_at_the_first_qualifying_cell_not_the_nearest,,29399,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_out_of_arc_movement_does_not_trigger,,3963,0,0,0,0,0,0,
-unit/logic/test_overwatch.gd,test_overwatch_fires_only_once,,5423,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_the_exchange_is_logged,,5020,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_the_exchanges_own_impact_carries_real_origin_and_hit_geometry,,3894,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_the_exchange_is_deterministic_from_the_same_seed,,8002,0,0,0,0,0,8,
-unit/logic/test_overwatch.gd,test_the_exchange_still_lands_against_an_elevated_mover,,4402,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_torso_visible_agrees_with_an_independently_built_resolve_ray_call,,3785,0,0,0,0,0,4,
-unit/logic/test_overwatch.gd,test_would_trigger_at_reports_the_same_overwatcher_check_trigger_would_actually_fire,,4824,0,0,0,0,0,2,
-unit/logic/test_overwatch.gd,test_would_trigger_at_is_empty_when_out_of_arc,,5967,0,0,0,0,0,0,
-unit/logic/test_overwatch.gd,test_would_trigger_at_evaluates_a_hypothetical_cell_not_the_movers_real_one,,8357,0,0,0,0,0,2,
-unit/logic/test_overwatch.gd,test_would_trigger_at_never_mutates_the_real_state,,8087,0,0,0,0,0,2,
-unit/logic/test_overwatch.gd,test_would_trigger_at_ignores_the_dead,,4102,0,0,0,0,0,0,
-unit/logic/test_overwatch.gd,test_arc_deg_is_reconciled_to_30,,114,0,0,0,0,0,0,
-unit/logic/test_overwatch.gd,test_a_cell_between_30_and_45_degrees_no_longer_triggers,,3821,0,0,0,0,0,0,
-unit/logic/test_overwatch.gd,test_a_cell_well_inside_30_degrees_still_triggers,,4461,0,0,0,0,0,2,
-unit/logic/test_overwatch.gd,test_arc_cells_matches_would_trigger_at_exhaustively,,1082056,0,0,0,0,0,68,
-unit/logic/test_overwatch.gd,test_arc_cells_is_empty_when_the_overwatcher_is_unarmed,,4373,0,0,0,0,0,0,
-unit/logic/test_overwatch.gd,test_all_threatened_cells_unions_across_every_armed_overwatcher,,2532920,0,0,0,0,0,1280,
-unit/logic/test_overwatch.gd,test_all_threatened_cells_never_includes_the_mover_threatening_itself,,7031,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_torso_with_12_shoulder_sockets_hosts_12_arms,,941,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_part_mounts_on_any_shoulder_any_shell_no_parent_specific_code,,290,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_deep_tree_sibling_parts_do_not_block_each_other,,746,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_drill_on_wrist_exposes_no_grip_so_pistol_attach_fails,,315,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_attach_rejects_type_mismatch,,141,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_attach_rejects_occupied_socket,,263,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_attach_rejects_cycle,,162,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_attach_rejects_self_attachment,,123,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_attach_rejects_socket_not_owned_by_target,,140,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_destroying_a_part_drops_its_subtree_intact,,342,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_drop_returns_false_when_part_not_in_assembly,,136,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_rifle_usable_by_hand_and_saw_together,,168,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_pistol_not_usable_by_saw_alone,,133,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_saw_adds_no_power_to_melee_swing,,130,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_single_versatile_hand_cannot_alone_satisfy_a_two_slot_weapon,,133,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_part_with_no_requirements_is_always_operable,,113,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_find_socket_returns_the_socket_with_that_id_regardless_of_declaration_order,,575,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_find_socket_returns_null_for_an_unknown_id,,165,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_walk_with_joints_adds_one_joint_per_occupied_socket_at_every_depth,,295,0,0,0,0,0,0,
-unit/logic/test_part_graph.gd,test_walk_with_joints_matches_walk_with_nothing_attached,,402,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_a_straight_down_ray_through_a_units_box_still_hits_that_unit,,411,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_a_ray_through_a_blocker_reports_the_blocker_part_with_a_null_unit,,285,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_a_ray_through_a_loose_field_part_reports_it_with_a_null_unit,,274,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_a_loose_matrix_field_item_is_never_a_candidate,,146,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_the_nearer_of_a_unit_and_a_blocker_along_the_same_ray_wins,,365,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_the_nearer_blocker_wins_over_a_farther_unit,,243,0,0,0,0,0,0,
-unit/logic/test_part_picker.gd,test_a_ray_that_misses_everything_returns_nothing,,90,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_astar_straight_line_uniform_cost,,1843,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_is_unaffected_by_a_uniform_level_shift,,3338,0,0,0,2,0,0,
-unit/logic/test_pathfinder.gd,test_astar_now_reacts_to_a_genuine_ledge,,422,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_climb_capable_unit_routes_over_a_1_level_ledge_at_4_mp,,274,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_non_climb_capable_unit_has_no_path_over_a_ledge,,216,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing,,446,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_a_ramp_tile_costs_1_mp_and_changes_height,,270,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_a_2_level_drop_is_a_legal_1_mp_edge,,252,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_a_3_level_drop_is_not_a_legal_edge,,210,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_routes_around_single_blocked_cell,,1292,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_prefers_the_smoother_of_two_equal_cost_paths,,9540,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_total_cost_is_unchanged_across_a_corpus_of_open_ground_paths,,20615,0,0,0,8,0,0,
-unit/logic/test_pathfinder.gd,test_astar_with_no_diagonal_shortcut_is_unchanged,,1996,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_is_deterministic,,10635,0,0,0,2,0,0,
-unit/logic/test_pathfinder.gd,test_astar_returns_empty_when_unreachable,,788,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_same_cell_returns_single_cell_path,,468,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_succeeds_when_origin_cell_is_occupied_by_the_mover_itself,,1434,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_astar_rejects_occupied_destination,,1135,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_reachable_respects_mp_budget_exactly,,418,0,0,0,3,0,0,
-unit/logic/test_pathfinder.gd,test_reachable_excludes_blocked_cells,,1523,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_reachable_includes_origin_at_zero_cost,,438,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_move_cost_treats_occupied_cell_as_blocked,,354,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_move_cost_treats_a_field_object_cell_as_blocked,,358,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_move_cost_treats_a_destroyed_field_object_as_passable,,389,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_an_intact_wall_blocks_movement_a_destroyed_one_does_not,,402,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_astar_routes_around_a_field_object,,508,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_nearest_matching_returns_the_nearest_match_by_path_cost_not_discovery_order,,598,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_nearest_matching_respects_the_radius_cap,,648,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_nearest_matching_returns_null_when_nothing_matches,,301,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_nearest_matching_never_crosses_a_blocked_cell,,353,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_truncate_to_budget_stops_at_the_affordable_prefix,,359,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_truncate_to_budget_stops_before_a_cell_it_cannot_afford_even_partially,,332,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_truncate_to_budget_on_an_empty_path_returns_empty,,202,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_placement_mode_an_unfloored_cell_has_no_inbound_edge,,303,0,0,0,1,0,0,
-unit/logic/test_pathfinder.gd,test_placement_mode_rejects_a_surface_missing_the_walkable_tag,,148,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_placement_mode_partial_climb_cost_rounds_up,,172,0,0,0,0,0,0,
-unit/logic/test_pathfinder.gd,test_placement_mode_ramp_surface_edge_is_free_regardless_of_height_delta,,170,0,0,0,0,0,0,
-unit/logic/test_penetration_traverses_body.gd,test_effective_dt_is_the_same_material_regardless_of_box_thickness,,1912,0,0,0,0,0,0,
-unit/logic/test_penetration_traverses_body.gd,test_a_high_dt_material_stops_what_a_soft_one_lets_through,,1892,0,0,0,0,0,0,
-unit/logic/test_penetration_traverses_body.gd,test_a_through_shot_exits_the_front_unit_and_hits_the_unit_behind,,1788,0,0,0,0,0,2,
-unit/logic/test_penetration_traverses_body.gd,test_a_hollow_part_with_enough_damage_is_struck_entering_and_exiting,,1916,0,0,0,0,0,2,
-unit/logic/test_penetration_traverses_body.gd,test_a_round_that_floors_inside_a_hollow_shell_inflicts_a_lodged_wound,,1616,0,0,0,0,0,2,
-unit/logic/test_penetration_traverses_body.gd,test_a_lodged_wound_is_logged_independent_of_part_destruction,,1753,0,0,0,0,0,2,
-unit/logic/test_penetration_traverses_body.gd,test_a_round_stopped_on_a_solid_part_never_lodges_a_wound,,1632,0,0,0,0,0,2,
-unit/logic/test_penetration_traverses_body.gd,test_multi_layer_traversal_is_deterministic_across_runs_with_the_same_seed,,2045,0,0,0,0,0,4,
-unit/logic/test_plate_geometry.gd,test_a_torso_sized_wedge_exists_and_assembles,,1880,0,0,0,0,0,0,
-unit/logic/test_plate_geometry.gd,test_wedge_plates_point_their_apex_toward_incoming_fire,,2986,0,0,0,0,0,0,
-unit/logic/test_plate_geometry.gd,test_thigh_exists_between_torso_and_limb_size_and_assembles_a_plate,,1950,0,0,0,0,0,0,
-unit/logic/test_plate_geometry.gd,test_half_cylinder_plate_sits_flush_with_its_host_never_inside_it,,1809,0,0,0,0,0,0,
-unit/logic/test_plate_geometry.gd,test_half_cylinder_plate_is_half_the_old_width_and_depth_and_thigh_tall,,2062,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_ap_derives_from_reactor_power_alone,,1484,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_ap_derives_from_battery_power_alone,,1502,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_ap_derives_from_reactor_and_battery_combined,,1606,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_destroying_the_only_reactor_crumbles_ap_to_zero_next_turn,,2408,0,1,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_a_battery_only_shells_ap_falls_as_the_battery_drains,,2306,0,3,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_a_consumer_lowers_ap_below_what_the_reactor_alone_would_give,,2270,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_a_consumer_that_eats_the_whole_output_floors_ap_at_zero_not_negative,,1859,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_a_destroyed_consumer_stops_drawing_power,,2002,0,1,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_the_curve_bends_down_past_the_flat_baseline,,1740,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_the_curve_is_one_to_one_up_to_the_flat_baseline,,1151,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_the_curve_clamps_at_its_own_outer_ends,,1048,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_the_curve_keeps_diminishing_past_its_second_bend,,981,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_batteries_recharge_from_reactor_power,,1178,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_recharge_never_exceeds_capacity,,1014,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_recharge_is_a_no_op_with_no_reactor_power,,1054,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_reactor_and_battery_power_stats_are_authored_data,,2074,0,0,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_a_shell_with_no_power_system_is_unaffected_by_a_turn_cycle,,1390,0,1,0,0,0,0,
-unit/logic/test_power_drives_ap.gd,test_a_tool_battery_never_contributes_to_the_whole_shell_ap_economy,,1662,0,1,0,0,0,0,
-unit/logic/test_ramp_geometry.gd,test_edge_heights_match_the_settled_profile,,139,0,0,0,0,0,0,
-unit/logic/test_ramp_geometry.gd,test_edge_heights_are_unaffected_by_facing,,237,0,0,0,0,0,0,
-unit/logic/test_ramp_geometry.gd,test_edge_heights_offset_by_base_height,,85,0,0,0,0,0,0,
-unit/logic/test_ramp_geometry.gd,test_standing_offset_matches_the_lateral_edge_offset,,107,0,0,0,0,0,0,
-unit/logic/test_range_gives_internals_meaning.gd,test_a_known_position_aim_scatters_wider_beyond_effective_range,,1857,0,0,0,0,0,1,
-unit/logic/test_range_gives_internals_meaning.gd,test_a_known_position_aim_offset_never_changes_the_range_band_a_shot_is_judged_against,,2777,0,0,0,0,0,2,
-unit/logic/test_range_model.gd,test_full_accuracy_at_or_under_effective_range,,134,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_accuracy_degrades_linearly_between_effective_and_max,,93,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_accuracy_floor_at_max_range,,85,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_is_in_max_range_blocks_beyond_max_but_not_at_or_under_it,,75,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_an_unauthored_weapon_def_is_uncapped_and_full_accuracy,,81,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_a_weapon_with_no_weapon_def_at_all_is_uncapped_and_full_accuracy,,75,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_min_range_blocks_a_non_dud_weapon,,75,0,0,0,0,0,0,
-unit/logic/test_range_model.gd,test_min_range_dud_weapon_is_never_blocked_but_flagged_as_dud,,67,0,0,0,0,0,0,
+unit/logic/test_map_gen.gd,test_a_generated_map_contains_more_than_one_level,,65757,0,0,0,2,0,0,a generated map is multi-level and every raised area is reachable
+unit/logic/test_map_gen.gd,test_every_raised_area_is_ramp_reachable_across_many_seeds,,3736110,0,0,0,150,0,0,a generated map is multi-level and every raised area is reachable
+unit/logic/test_map_gen.gd,test_generate_is_seed_deterministic,,262987,0,0,0,8,0,0,the same seed produces the same world
+unit/logic/test_map_gen.gd,test_spawn_zones_reachable_across_many_seeds,,3452723,0,0,0,150,0,0,every spawn zone is walkable and reachable
+unit/logic/test_map_gen.gd,test_cover_density_within_target_band,,3269598,0,0,0,100,0,0,cover density lands inside its authored band
+unit/logic/test_map_gen.gd,test_generate_resolves_every_cell_into_a_destructible_wall_part_or_empty_space,,3414515,0,0,0,100,0,0,every generated cell resolves to a real part or to empty space
+unit/logic/test_map_gen.gd,test_barrel_pallet_barrel_count_is_deterministic_and_in_range,,6469740,0,0,0,200,0,0,the same seed produces the same world
+unit/logic/test_map_gen.gd,test_carved_rooms_are_at_least_seven_on_their_min_dimension,,3261,0,0,0,0,0,0,carved rooms and corridors match their authored dimensions
+unit/logic/test_map_gen.gd,test_carved_corridors_are_three_to_five_wide,,4417,0,0,0,0,0,0,carved rooms and corridors match their authored dimensions
+unit/logic/test_map_gen.gd,test_default_size_map_splits_into_multiple_rooms_with_hallways,,34266,0,0,0,0,0,0,carved rooms and corridors match their authored dimensions
+unit/logic/test_map_gen.gd,test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else,,65195,0,0,0,2,0,0,line of sight is symmetric and blocked only by opacity
+unit/logic/test_map_gen.gd,test_spawn_zones_are_distinct_even_in_a_single_room_grid,,540392,0,0,0,100,0,0,every spawn zone is walkable and reachable
+unit/logic/test_map_gen.gd,test_generated_map_cells_carry_at_most_one_correctly_typed_floor_surface,,4026350,0,0,0,100,0,0,every generated cell resolves to a real part or to empty space
+unit/logic/test_map_gen.gd,test_carving_the_same_cell_twice_leaves_exactly_one_surface,,701,0,0,0,0,0,0,every generated cell resolves to a real part or to empty space
+unit/logic/test_map_gen.gd,test_ensure_spawns_connected_fallback_connects_disconnected_spawns,,2564,0,0,0,3,0,0,every spawn zone is walkable and reachable
+unit/logic/test_map_gen.gd,test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_levels,,187,0,0,0,0,0,0,a generated map is multi-level and every raised area is reachable
+unit/logic/test_map_gen.gd,test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_ground,,213,0,0,0,1,0,0,a generated map is multi-level and every raised area is reachable
+unit/logic/test_map_gen.gd,test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_tiles,,126,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_map_gen.gd,test_spawn_zones_are_walkable,,64312,0,0,0,2,0,0,every spawn zone is walkable and reachable
+unit/logic/test_map_gen.gd,test_map_gen_touches_grids_spawn_marker_api_only_in_spawn_marking,,1972,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_map_gen_raised_rooms.gd,test_the_generator_still_authors_raised_rooms,,2707097,0,0,0,80,0,0,a generated map is multi-level and every raised area is reachable
+unit/logic/test_map_gen_raised_rooms.gd,test_no_cover_object_sits_in_a_pit_of_its_own,,3473411,0,0,0,80,0,0,nothing the generator places sits in a pit it cannot leave
+unit/logic/test_map_gen_raised_rooms.gd,test_no_floored_cell_anywhere_sits_in_a_pit,,3317328,0,0,0,80,0,0,nothing the generator places sits in a pit it cannot leave
+unit/logic/test_map_gen_raised_rooms.gd,test_every_spawn_zone_has_a_uniform_floor_height,,3028354,0,0,0,80,0,0,every spawn zone is walkable and reachable
+unit/logic/test_map_gen_raised_rooms.gd,test_a_unit_on_any_spawn_cell_can_reach_more_than_its_own_cell,,5907360,0,0,0,400,0,0,every spawn zone is walkable and reachable
+unit/logic/test_material_entry.gd,test_dt_at_interpolates_linearly_between_authored_points,,163,0,0,0,0,0,0,"DT comes from the material's authored curve, interpolated and clamped"
+unit/logic/test_material_entry.gd,test_dt_at_clamps_below_the_first_and_above_the_last_point,,92,0,0,0,0,0,0,"DT comes from the material's authored curve, interpolated and clamped"
+unit/logic/test_material_entry.gd,test_a_thicker_plate_of_the_same_material_yields_higher_dt,,58,0,0,0,0,0,0,"DT comes from the material's authored curve, interpolated and clamped"
+unit/logic/test_material_entry.gd,test_editing_a_curve_row_changes_dt_with_no_code_change,,86,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
+unit/logic/test_material_entry.gd,test_dt_at_falls_back_to_the_flat_dt_field_when_no_curve_is_authored,,76,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_melee_delivery.gd,test_apply_lean_leaves_pose_idle_when_weapon_alone_covers_the_distance,,173,0,0,0,0,0,0,a lean covers the reach shortfall and exposes the striker
+unit/logic/test_melee_delivery.gd,test_apply_lean_sets_a_root_override_proportional_to_the_shortfall,,122,0,0,0,0,0,0,a lean covers the reach shortfall and exposes the striker
+unit/logic/test_melee_delivery.gd,test_reset_pose_snaps_back_to_idle,,102,0,0,0,0,0,0,a lean covers the reach shortfall and exposes the striker
+unit/logic/test_melee_delivery.gd,test_a_small_lean_still_masked_by_cover_does_not_trigger,,19670,0,0,0,0,0,2,overwatch fires on a trigger inside its own window
+unit/logic/test_melee_delivery.gd,test_a_large_lean_clears_cover_and_triggers,,4656,0,0,0,0,0,4,overwatch fires on a trigger inside its own window
+unit/logic/test_melee_delivery.gd,test_a_larger_required_lean_exposes_more_than_a_smaller_one,,8103,0,0,0,0,0,6,a lean covers the reach shortfall and exposes the striker
+unit/logic/test_melee_delivery.gd,test_an_unexposed_striker_cannot_be_interrupted,,3965,0,0,0,0,0,0,overwatch fires on a trigger inside its own window
+unit/logic/test_melee_delivery.gd,test_find_step_in_cell_returns_null_when_already_in_reach,,4080,0,0,0,0,0,0,"a step-in cell is a reachable cell inside reach, or none at all"
+unit/logic/test_melee_delivery.gd,test_find_step_in_cell_finds_a_reachable_cell_within_reach_of_the_target,,7098,0,0,0,1,0,0,"a step-in cell is a reachable cell inside reach, or none at all"
+unit/logic/test_melee_delivery.gd,test_find_step_in_cell_is_a_legal_destination_for_a_real_move_action,,10500,0,0,0,2,0,0,"a step-in cell is a reachable cell inside reach, or none at all"
+unit/logic/test_melee_delivery.gd,test_find_step_in_cell_returns_null_when_nothing_reachable_is_in_range,,3953,0,0,0,1,0,0,"a step-in cell is a reachable cell inside reach, or none at all"
+unit/logic/test_melee_line.gd,test_zero_length_is_a_single_point_at_the_aim_point,,196,0,0,0,0,0,0,a melee line hits every part it crosses
+unit/logic/test_melee_line.gd,test_horizontal_line_spans_the_lateral_axis_centered_on_the_aim_point,,107,0,0,0,0,0,0,a melee line hits every part it crosses
+unit/logic/test_melee_line.gd,test_vertical_line_spans_the_real_height_axis_centered_on_the_aim_point,,78,0,0,0,0,0,0,a melee line hits every part it crosses
+unit/logic/test_melee_line.gd,test_diagonal_line_moves_both_axes_equally,,81,0,0,0,0,0,0,a melee line hits every part it crosses
+unit/logic/test_melee_line.gd,test_the_lines_own_span_matches_slash_length_exactly,,62,0,0,0,0,0,0,a melee line hits every part it crosses
+unit/logic/test_melee_line.gd,test_an_unrecognized_orientation_falls_back_to_horizontal_never_crashes,,80,0,0,0,0,0,0,an unknown open-vocabulary id falls back rather than failing
+unit/logic/test_melee_reach.gd,test_weapon_length_is_zero_for_an_unarmed_strike,,99,0,0,0,0,0,0,total reach is shell reach plus weapon length
+unit/logic/test_melee_reach.gd,test_weapon_length_is_zero_for_a_weapon_with_no_weapon_def,,91,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_melee_reach.gd,test_total_reach_is_shell_reach_plus_weapon_length,,105,0,0,0,0,0,0,total reach is shell reach plus weapon length
+unit/logic/test_melee_reach.gd,test_lean_needed_is_zero_when_weapon_alone_covers_the_distance,,88,0,0,0,0,0,0,a lean covers the reach shortfall and exposes the striker
+unit/logic/test_melee_reach.gd,test_lean_needed_is_the_shortfall_after_weapon_length,,78,0,0,0,0,0,0,a lean covers the reach shortfall and exposes the striker
+unit/logic/test_melee_reach.gd,test_the_knife_and_spear_worked_example,,105,0,0,0,0,0,0,total reach is shell reach plus weapon length
+unit/logic/test_melee_reach.gd,test_in_reach_is_true_within_total_reach,,78,0,0,0,0,0,0,melee reach bounds where a blade can land
+unit/logic/test_melee_reach.gd,test_in_reach_is_false_beyond_total_reach,,76,0,0,0,0,0,0,melee reach bounds where a blade can land
+unit/logic/test_melee_reach.gd,test_a_weapon_with_no_authored_length_leans_on_shell_reach_alone,,85,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_melee_reach.gd,test_distance_3d_matches_flat_distance_at_the_same_height,,158,0,0,0,0,0,0,"distance is measured in three dimensions, height included"
+unit/logic/test_melee_reach.gd,test_distance_3d_is_the_worked_example_square_root_of_two_when_one_up,,164,0,0,0,0,0,0,"distance is measured in three dimensions, height included"
+unit/logic/test_melee_reach.gd,test_a_reach_1_sword_cannot_hit_someone_1_up_but_a_reach_2_polearm_can,,218,0,0,0,0,0,0,"distance is measured in three dimensions, height included"
+unit/logic/test_mission_state.gd,test_extract_banks_gathered_resources_and_items,,628,0,0,0,0,0,0,extraction banks the run's loot; termination loses it
+unit/logic/test_mission_state.gd,test_terminate_discards_gathered_loot,,259,0,0,0,0,0,0,extraction banks the run's loot; termination loses it
+unit/logic/test_mission_state.gd,test_extract_returns_every_matrix_to_the_roster,,381,0,0,0,0,0,0,every matrix comes home whatever the outcome
+unit/logic/test_mission_state.gd,test_terminate_still_returns_every_matrix_even_though_loot_is_lost,,312,0,0,0,0,0,0,every matrix comes home whatever the outcome
+unit/logic/test_mission_state.gd,test_a_carried_matrix_that_was_never_reimplanted_still_comes_home,,321,0,0,0,0,0,0,every matrix comes home whatever the outcome
+unit/logic/test_mission_state.gd,test_extract_sets_the_extracted_outcome,,228,0,0,0,0,0,0,a mission ends in exactly one outcome
+unit/logic/test_mission_state.gd,test_terminate_sets_the_terminated_outcome,,233,0,0,0,0,0,0,a mission ends in exactly one outcome
+unit/logic/test_mission_state.gd,test_strand_sets_the_stranded_outcome_and_still_returns_every_matrix,,350,0,0,0,0,0,0,a mission ends in exactly one outcome
+unit/logic/test_mission_state.gd,test_is_stranded_false_while_a_player_unit_is_alive,,311,0,0,0,0,0,0,a mission ends in exactly one outcome
+unit/logic/test_mission_state.gd,test_is_stranded_true_once_no_player_unit_remains_alive,,553,0,0,0,0,0,0,a mission ends in exactly one outcome
+unit/logic/test_mission_state.gd,test_squad_ready_to_extract_false_while_any_unit_is_still_active,,369,0,0,0,0,0,0,the squad extracts once every unit is out or dead
+unit/logic/test_mission_state.gd,test_squad_ready_to_extract_true_once_every_unit_has_extracted,,301,0,0,0,0,0,0,the squad extracts once every unit is out or dead
+unit/logic/test_mission_state.gd,test_squad_ready_to_extract_false_when_everyone_simply_died,,241,0,0,0,0,0,0,the squad extracts once every unit is out or dead
+unit/logic/test_mission_state.gd,test_squad_ready_to_extract_true_with_a_mix_of_extracted_and_dead,,263,0,0,0,0,0,0,the squad extracts once every unit is out or dead
+unit/logic/test_mission_state.gd,test_extract_unit_marks_the_unit_and_clears_its_grid_occupancy,,309,0,0,0,0,0,0,extraction happens only at the zone
+unit/logic/test_mission_state.gd,test_extract_unit_emits_a_per_unit_extract_event,,334,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/test_mission_state.gd,test_extract_unit_triggers_the_full_mission_extract_once_the_squad_is_out,,312,0,0,0,0,0,0,the squad extracts once every unit is out or dead
+unit/logic/test_mission_state.gd,test_extract_unit_never_triggers_the_mission_for_a_non_player_squad,,294,0,0,0,0,0,0,player advantage is asymmetric on purpose
+unit/logic/test_mission_state.gd,test_extract_unit_does_not_trigger_the_mission_while_a_squadmate_is_still_active,,338,0,0,0,0,0,0,the squad extracts once every unit is out or dead
+unit/logic/test_mission_state.gd,test_complete_objective_only_tracks_known_ids_once,,289,0,0,0,0,0,0,an objective completes when the thing it names is done
+unit/logic/test_multi_level_geometry.gd,test_a_shot_between_units_on_different_levels_carries_a_real_vertical_component,,4414,0,0,0,0,0,1,"elevation changes the shot geometry, not the rules"
+unit/logic/test_multi_level_geometry.gd,test_a_shooter_above_a_target_resolves_against_its_top_face,,3472,0,0,0,0,0,1,"elevation changes the shot geometry, not the rules"
+unit/logic/test_multi_level_geometry.gd,test_a_shot_from_higher_ground_resolves_against_more_of_the_target,,7051,0,0,0,0,0,2,"elevation changes the shot geometry, not the rules"
+unit/logic/test_overwatch.gd,test_a_mover_whose_torso_stays_masked_by_cover_does_not_trigger,,4066,0,0,0,0,0,2,overwatch fires on a trigger inside its own window
+unit/logic/test_overwatch.gd,test_a_mover_whose_torso_clears_cover_does_trigger,,4401,0,0,0,0,0,4,overwatch fires on a trigger inside its own window
+unit/logic/test_overwatch.gd,test_a_real_bodied_overwatcher_still_triggers_against_its_own_body,,3848,0,0,0,0,0,4,overwatch fires on a trigger inside its own window
+unit/logic/test_overwatch.gd,test_the_trigger_fires_at_the_first_qualifying_cell_not_the_nearest,,29399,0,0,0,0,0,4,overwatch fires on a trigger inside its own window
+unit/logic/test_overwatch.gd,test_out_of_arc_movement_does_not_trigger,,3963,0,0,0,0,0,0,overwatch only threatens cells inside its authored arc
+unit/logic/test_overwatch.gd,test_overwatch_fires_only_once,,5423,0,0,0,0,0,4,overwatch fires on a trigger inside its own window
+unit/logic/test_overwatch.gd,test_the_exchange_is_logged,,5020,0,0,0,0,0,4,every mutation emits a combat log event
+unit/logic/test_overwatch.gd,test_the_exchanges_own_impact_carries_real_origin_and_hit_geometry,,3894,0,0,0,0,0,4,a shot's logged geometry is the geometry it fired
+unit/logic/test_overwatch.gd,test_the_exchange_is_deterministic_from_the_same_seed,,8002,0,0,0,0,0,8,the same seed produces the same battle
+unit/logic/test_overwatch.gd,test_the_exchange_still_lands_against_an_elevated_mover,,4402,0,0,0,0,0,4,"elevation changes the shot geometry, not the rules"
+unit/logic/test_overwatch.gd,test_torso_visible_agrees_with_an_independently_built_resolve_ray_call,,3785,0,0,0,0,0,4,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_overwatch.gd,test_would_trigger_at_reports_the_same_overwatcher_check_trigger_would_actually_fire,,4824,0,0,0,0,0,2,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_overwatch.gd,test_would_trigger_at_is_empty_when_out_of_arc,,5967,0,0,0,0,0,0,overwatch only threatens cells inside its authored arc
+unit/logic/test_overwatch.gd,test_would_trigger_at_evaluates_a_hypothetical_cell_not_the_movers_real_one,,8357,0,0,0,0,0,2,a preview mutates nothing
+unit/logic/test_overwatch.gd,test_would_trigger_at_never_mutates_the_real_state,,8087,0,0,0,0,0,2,a preview mutates nothing
+unit/logic/test_overwatch.gd,test_would_trigger_at_ignores_the_dead,,4102,0,0,0,0,0,0,the dead take no part in resolution
+unit/logic/test_overwatch.gd,test_arc_deg_is_reconciled_to_30,,114,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
+unit/logic/test_overwatch.gd,test_a_cell_between_30_and_45_degrees_no_longer_triggers,,3821,0,0,0,0,0,0,overwatch only threatens cells inside its authored arc
+unit/logic/test_overwatch.gd,test_a_cell_well_inside_30_degrees_still_triggers,,4461,0,0,0,0,0,2,overwatch only threatens cells inside its authored arc
+unit/logic/test_overwatch.gd,test_arc_cells_matches_would_trigger_at_exhaustively,,1082056,0,0,0,0,0,68,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_overwatch.gd,test_arc_cells_is_empty_when_the_overwatcher_is_unarmed,,4373,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_overwatch.gd,test_all_threatened_cells_unions_across_every_armed_overwatcher,,2532920,0,0,0,0,0,1280,overwatch only threatens cells inside its authored arc
+unit/logic/test_overwatch.gd,test_all_threatened_cells_never_includes_the_mover_threatening_itself,,7031,0,0,0,0,0,0,overwatch only threatens cells inside its authored arc
+unit/logic/test_part_graph.gd,test_torso_with_12_shoulder_sockets_hosts_12_arms,,941,0,0,0,0,0,0,"a part attaches to any matching socket, with no parent-specific code"
+unit/logic/test_part_graph.gd,test_part_mounts_on_any_shoulder_any_shell_no_parent_specific_code,,290,0,0,0,0,0,0,"a part attaches to any matching socket, with no parent-specific code"
+unit/logic/test_part_graph.gd,test_deep_tree_sibling_parts_do_not_block_each_other,,746,0,0,0,0,0,0,"a part attaches to any matching socket, with no parent-specific code"
+unit/logic/test_part_graph.gd,test_drill_on_wrist_exposes_no_grip_so_pistol_attach_fails,,315,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_part_graph.gd,test_attach_rejects_type_mismatch,,141,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_part_graph.gd,test_attach_rejects_occupied_socket,,263,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_part_graph.gd,test_attach_rejects_cycle,,162,0,0,0,0,0,0,an assembly can never contain itself
+unit/logic/test_part_graph.gd,test_attach_rejects_self_attachment,,123,0,0,0,0,0,0,an assembly can never contain itself
+unit/logic/test_part_graph.gd,test_attach_rejects_socket_not_owned_by_target,,140,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_part_graph.gd,test_destroying_a_part_drops_its_subtree_intact,,342,0,0,0,0,0,0,"a joint has its own HP, and depleting it severs the subtree intact"
+unit/logic/test_part_graph.gd,test_drop_returns_false_when_part_not_in_assembly,,136,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/test_part_graph.gd,test_rifle_usable_by_hand_and_saw_together,,168,0,0,0,0,0,0,"a weapon needs its required manipulator capabilities, from whichever parts"
+unit/logic/test_part_graph.gd,test_pistol_not_usable_by_saw_alone,,133,0,0,0,0,0,0,"a weapon needs its required manipulator capabilities, from whichever parts"
+unit/logic/test_part_graph.gd,test_saw_adds_no_power_to_melee_swing,,130,0,0,0,0,0,0,"a weapon needs its required manipulator capabilities, from whichever parts"
+unit/logic/test_part_graph.gd,test_single_versatile_hand_cannot_alone_satisfy_a_two_slot_weapon,,133,0,0,0,0,0,0,"a weapon needs its required manipulator capabilities, from whichever parts"
+unit/logic/test_part_graph.gd,test_part_with_no_requirements_is_always_operable,,113,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_part_graph.gd,test_find_socket_returns_the_socket_with_that_id_regardless_of_declaration_order,,575,0,0,0,0,0,0,"a part attaches to any matching socket, with no parent-specific code"
+unit/logic/test_part_graph.gd,test_find_socket_returns_null_for_an_unknown_id,,165,0,0,0,0,0,0,an open-vocabulary id is checked against the real vocabulary
+unit/logic/test_part_graph.gd,test_walk_with_joints_adds_one_joint_per_occupied_socket_at_every_depth,,295,0,0,0,0,0,0,assembly traversal reaches every part
+unit/logic/test_part_graph.gd,test_walk_with_joints_matches_walk_with_nothing_attached,,402,0,0,0,0,0,0,assembly traversal reaches every part
+unit/logic/test_part_picker.gd,test_a_straight_down_ray_through_a_units_box_still_hits_that_unit,,411,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_part_picker.gd,test_a_ray_through_a_blocker_reports_the_blocker_part_with_a_null_unit,,285,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_part_picker.gd,test_a_ray_through_a_loose_field_part_reports_it_with_a_null_unit,,274,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_part_picker.gd,test_a_loose_matrix_field_item_is_never_a_candidate,,146,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_part_picker.gd,test_the_nearer_of_a_unit_and_a_blocker_along_the_same_ray_wins,,365,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_part_picker.gd,test_the_nearer_blocker_wins_over_a_farther_unit,,243,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_part_picker.gd,test_a_ray_that_misses_everything_returns_nothing,,90,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_pathfinder.gd,test_astar_straight_line_uniform_cost,,1843,0,0,0,1,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_astar_is_unaffected_by_a_uniform_level_shift,,3338,0,0,0,2,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/test_pathfinder.gd,test_astar_now_reacts_to_a_genuine_ledge,,422,0,0,0,1,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/test_pathfinder.gd,test_climb_capable_unit_routes_over_a_1_level_ledge_at_4_mp,,274,0,0,0,1,0,0,climbing and dropping cost MP by the height crossed
+unit/logic/test_pathfinder.gd,test_non_climb_capable_unit_has_no_path_over_a_ledge,,216,0,0,0,1,0,0,an action requires a part that provides it
+unit/logic/test_pathfinder.gd,test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing,,446,0,0,0,1,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_a_ramp_tile_costs_1_mp_and_changes_height,,270,0,0,0,1,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_a_2_level_drop_is_a_legal_1_mp_edge,,252,0,0,0,1,0,0,climbing and dropping cost MP by the height crossed
+unit/logic/test_pathfinder.gd,test_a_3_level_drop_is_not_a_legal_edge,,210,0,0,0,1,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/test_pathfinder.gd,test_astar_routes_around_single_blocked_cell,,1292,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_astar_prefers_the_smoother_of_two_equal_cost_paths,,9540,0,0,0,1,0,0,candidate selection is deterministic and stably tie-broken
+unit/logic/test_pathfinder.gd,test_astar_total_cost_is_unchanged_across_a_corpus_of_open_ground_paths,,20615,0,0,0,8,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_astar_with_no_diagonal_shortcut_is_unchanged,,1996,0,0,0,1,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_astar_is_deterministic,,10635,0,0,0,2,0,0,a build is reproducible from the same inputs
+unit/logic/test_pathfinder.gd,test_astar_returns_empty_when_unreachable,,788,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_astar_same_cell_returns_single_cell_path,,468,0,0,0,1,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_pathfinder.gd,test_astar_succeeds_when_origin_cell_is_occupied_by_the_mover_itself,,1434,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_astar_rejects_occupied_destination,,1135,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_reachable_respects_mp_budget_exactly,,418,0,0,0,3,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_reachable_excludes_blocked_cells,,1523,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_reachable_includes_origin_at_zero_cost,,438,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_move_cost_treats_occupied_cell_as_blocked,,354,0,0,0,0,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_move_cost_treats_a_field_object_cell_as_blocked,,358,0,0,0,0,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_move_cost_treats_a_destroyed_field_object_as_passable,,389,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_pathfinder.gd,test_an_intact_wall_blocks_movement_a_destroyed_one_does_not,,402,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_pathfinder.gd,test_astar_routes_around_a_field_object,,508,0,0,0,1,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_nearest_matching_returns_the_nearest_match_by_path_cost_not_discovery_order,,598,0,0,0,0,0,0,"distance means path distance, not straight line"
+unit/logic/test_pathfinder.gd,test_nearest_matching_respects_the_radius_cap,,648,0,0,0,0,0,0,"distance means path distance, not straight line"
+unit/logic/test_pathfinder.gd,test_nearest_matching_returns_null_when_nothing_matches,,301,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_pathfinder.gd,test_nearest_matching_never_crosses_a_blocked_cell,,353,0,0,0,0,0,0,"a path routes around what blocks it, or reports none"
+unit/logic/test_pathfinder.gd,test_truncate_to_budget_stops_at_the_affordable_prefix,,359,0,0,0,0,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_truncate_to_budget_stops_before_a_cell_it_cannot_afford_even_partially,,332,0,0,0,0,0,0,a path costs MP by the terrain it crosses
+unit/logic/test_pathfinder.gd,test_truncate_to_budget_on_an_empty_path_returns_empty,,202,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_pathfinder.gd,test_placement_mode_an_unfloored_cell_has_no_inbound_edge,,303,0,0,0,1,0,0,placement mode routes only over walkable authored surfaces
+unit/logic/test_pathfinder.gd,test_placement_mode_rejects_a_surface_missing_the_walkable_tag,,148,0,0,0,0,0,0,placement mode routes only over walkable authored surfaces
+unit/logic/test_pathfinder.gd,test_placement_mode_partial_climb_cost_rounds_up,,172,0,0,0,0,0,0,climbing and dropping cost MP by the height crossed
+unit/logic/test_pathfinder.gd,test_placement_mode_ramp_surface_edge_is_free_regardless_of_height_delta,,170,0,0,0,0,0,0,placement mode routes only over walkable authored surfaces
+unit/logic/test_penetration_traverses_body.gd,test_effective_dt_is_the_same_material_regardless_of_box_thickness,,1912,0,0,0,0,0,0,"DT comes from the material's authored curve, interpolated and clamped"
+unit/logic/test_penetration_traverses_body.gd,test_a_high_dt_material_stops_what_a_soft_one_lets_through,,1892,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_penetration_traverses_body.gd,test_a_through_shot_exits_the_front_unit_and_hits_the_unit_behind,,1788,0,0,0,0,0,2,penetration spill carries through to the part behind
+unit/logic/test_penetration_traverses_body.gd,test_a_hollow_part_with_enough_damage_is_struck_entering_and_exiting,,1916,0,0,0,0,0,2,penetration spill carries through to the part behind
+unit/logic/test_penetration_traverses_body.gd,test_a_round_that_floors_inside_a_hollow_shell_inflicts_a_lodged_wound,,1616,0,0,0,0,0,2,a round that stops inside a hollow part lodges a wound
+unit/logic/test_penetration_traverses_body.gd,test_a_lodged_wound_is_logged_independent_of_part_destruction,,1753,0,0,0,0,0,2,a round that stops inside a hollow part lodges a wound
+unit/logic/test_penetration_traverses_body.gd,test_a_round_stopped_on_a_solid_part_never_lodges_a_wound,,1632,0,0,0,0,0,2,a round that stops inside a hollow part lodges a wound
+unit/logic/test_penetration_traverses_body.gd,test_multi_layer_traversal_is_deterministic_across_runs_with_the_same_seed,,2045,0,0,0,0,0,4,the same seed produces the same battle
+unit/logic/test_plate_geometry.gd,test_a_torso_sized_wedge_exists_and_assembles,,1880,0,0,0,0,0,0,authored armour geometry sits flush with the host it clads
+unit/logic/test_plate_geometry.gd,test_wedge_plates_point_their_apex_toward_incoming_fire,,2986,0,0,0,0,0,0,the surface normal is the face actually hit
+unit/logic/test_plate_geometry.gd,test_thigh_exists_between_torso_and_limb_size_and_assembles_a_plate,,1950,0,0,0,0,0,0,authored armour geometry sits flush with the host it clads
+unit/logic/test_plate_geometry.gd,test_half_cylinder_plate_sits_flush_with_its_host_never_inside_it,,1809,0,0,0,0,0,0,authored armour geometry sits flush with the host it clads
+unit/logic/test_plate_geometry.gd,test_half_cylinder_plate_is_half_the_old_width_and_depth_and_thigh_tall,,2062,0,0,0,0,0,0,authored armour geometry sits flush with the host it clads
+unit/logic/test_power_drives_ap.gd,test_ap_derives_from_reactor_power_alone,,1484,0,0,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_ap_derives_from_battery_power_alone,,1502,0,0,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_ap_derives_from_reactor_and_battery_combined,,1606,0,0,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_destroying_the_only_reactor_crumbles_ap_to_zero_next_turn,,2408,0,1,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_a_battery_only_shells_ap_falls_as_the_battery_drains,,2306,0,3,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_a_consumer_lowers_ap_below_what_the_reactor_alone_would_give,,2270,0,0,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_a_consumer_that_eats_the_whole_output_floors_ap_at_zero_not_negative,,1859,0,0,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_power_drives_ap.gd,test_a_destroyed_consumer_stops_drawing_power,,2002,0,1,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_power_drives_ap.gd,test_the_curve_bends_down_past_the_flat_baseline,,1740,0,0,0,0,0,0,the power-to-AP curve diminishes and clamps at its own ends
+unit/logic/test_power_drives_ap.gd,test_the_curve_is_one_to_one_up_to_the_flat_baseline,,1151,0,0,0,0,0,0,the power-to-AP curve diminishes and clamps at its own ends
+unit/logic/test_power_drives_ap.gd,test_the_curve_clamps_at_its_own_outer_ends,,1048,0,0,0,0,0,0,the power-to-AP curve diminishes and clamps at its own ends
+unit/logic/test_power_drives_ap.gd,test_the_curve_keeps_diminishing_past_its_second_bend,,981,0,0,0,0,0,0,the power-to-AP curve diminishes and clamps at its own ends
+unit/logic/test_power_drives_ap.gd,test_batteries_recharge_from_reactor_power,,1178,0,0,0,0,0,0,"a battery recharges from spare reactor power, up to capacity"
+unit/logic/test_power_drives_ap.gd,test_recharge_never_exceeds_capacity,,1014,0,0,0,0,0,0,"a battery recharges from spare reactor power, up to capacity"
+unit/logic/test_power_drives_ap.gd,test_recharge_is_a_no_op_with_no_reactor_power,,1054,0,0,0,0,0,0,"a battery recharges from spare reactor power, up to capacity"
+unit/logic/test_power_drives_ap.gd,test_reactor_and_battery_power_stats_are_authored_data,,2074,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
+unit/logic/test_power_drives_ap.gd,test_a_shell_with_no_power_system_is_unaffected_by_a_turn_cycle,,1390,0,1,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_power_drives_ap.gd,test_a_tool_battery_never_contributes_to_the_whole_shell_ap_economy,,1662,0,1,0,0,0,0,AP derives from the shell's own power balance
+unit/logic/test_ramp_geometry.gd,test_edge_heights_match_the_settled_profile,,139,0,0,0,0,0,0,"a ramp's edge heights come from its own profile, not its facing"
+unit/logic/test_ramp_geometry.gd,test_edge_heights_are_unaffected_by_facing,,237,0,0,0,0,0,0,"a ramp's edge heights come from its own profile, not its facing"
+unit/logic/test_ramp_geometry.gd,test_edge_heights_offset_by_base_height,,85,0,0,0,0,0,0,"a ramp's edge heights come from its own profile, not its facing"
+unit/logic/test_ramp_geometry.gd,test_standing_offset_matches_the_lateral_edge_offset,,107,0,0,0,0,0,0,"a ramp's edge heights come from its own profile, not its facing"
+unit/logic/test_range_gives_internals_meaning.gd,test_a_known_position_aim_scatters_wider_beyond_effective_range,,1857,0,0,0,0,0,1,scatter widens with range
+unit/logic/test_range_gives_internals_meaning.gd,test_a_known_position_aim_offset_never_changes_the_range_band_a_shot_is_judged_against,,2777,0,0,0,0,0,2,a weapon's range bounds where it can fire
+unit/logic/test_range_model.gd,test_full_accuracy_at_or_under_effective_range,,134,0,0,0,0,0,0,accuracy degrades linearly between effective and max range
+unit/logic/test_range_model.gd,test_accuracy_degrades_linearly_between_effective_and_max,,93,0,0,0,0,0,0,accuracy degrades linearly between effective and max range
+unit/logic/test_range_model.gd,test_accuracy_floor_at_max_range,,85,0,0,0,0,0,0,accuracy degrades linearly between effective and max range
+unit/logic/test_range_model.gd,test_is_in_max_range_blocks_beyond_max_but_not_at_or_under_it,,75,0,0,0,0,0,0,a weapon's range bounds where it can fire
+unit/logic/test_range_model.gd,test_an_unauthored_weapon_def_is_uncapped_and_full_accuracy,,81,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_range_model.gd,test_a_weapon_with_no_weapon_def_at_all_is_uncapped_and_full_accuracy,,75,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_range_model.gd,test_min_range_blocks_a_non_dud_weapon,,75,0,0,0,0,0,0,a weapon's range bounds where it can fire
+unit/logic/test_range_model.gd,test_min_range_dud_weapon_is_never_blocked_but_flagged_as_dud,,67,0,0,0,0,0,0,a weapon's range bounds where it can fire
 unit/logic/test_reaction_window.gd,test_available_reactions_is_empty_with_no_perk_system,,189,0,0,0,0,0,0,
 unit/logic/test_reaction_window.gd,test_ignore_reaction_is_a_no_op,,16576,0,0,0,0,0,0,
 unit/logic/test_reaction_window.gd,test_dive_prone_reaction_sets_the_prone_pose,,737,0,0,0,0,0,0,
