@@ -729,32 +729,6 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
-### Finish taskblock-50 — the scripted corpus, ordering, and the deck-clearing
-**Needs:** nothing — taskblock-50 Passes A, B, C, D, E3 and E4 landed. **Unblocks:** the taskblock-51 bug hunt.
-
-**The five-minute acceptance was not met: the full gate is 321.6 s, down from 446.8 s.** E1, E2 and F
-are unbuilt, and the remaining cost is itemised in taskblock-50's report rather than guessed at here.
-
-- **Pass C — done (taskblock-50).** `ScriptedCorpus` exists and never plans. The migration it was for
-  does not: all 137 hand-built files assert against specific cells, and 117 of them already cost under
-  1 s with zero bouts. It is a fixture for new tests, not a saving.
-- **Pass E — E3 and E4 are done (taskblock-50); E1 and E2 remain.** E1 (run the most-frequently-failing
-  tests first) is independent, and needs a failure-history artifact plus control over GUT's discovery
-  order. **E2's subprocess half needs revising before it is attempted:** those clusters do not merge,
-  because the spawns differ by design — one test compares `OS.execute` against `SuiteRun` deliberately,
-  and the probe pair sets the force-failure variable in one process and clears it in another.
-  **E2's real opportunity is elsewhere and is worth ~34 s:** `test_map_gen.gd` and
-  `test_map_gen_raised_rooms.gd` run 14 independent seed sweeps regenerating ~650 maps for 38.9 s with
-  zero bouts. A shared map fixture, generated once per process and handed out as copies — the move
-  `BoutCorpus` already made — is what closes the gap to five minutes.
-- **Pass F — clear the deck.** A baseline success in the replay queue, a finish chime, ledger triage by
-  subsystem.
-
-**Two decisions left open for the supervisor**, both recorded in taskblock-50's report: retiring
-`MIN_COMPLETION_RATE`, which no longer gates anything, and whether to cache `HulkTheme.build()` — the
-biggest single remaining saving (32.4 s in one file) at the cost of collapsing the `ui_builds` counter
-the work budget reads.
-
 ### Act on the suite audit
 **Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
 under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.

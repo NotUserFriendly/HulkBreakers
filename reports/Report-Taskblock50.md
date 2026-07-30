@@ -210,3 +210,24 @@ asking for context never costs coverage. One baseline per script however many of
 audible without looking. Guarded so it can never fail a run: a machine with no audio device, and the
 headless suite itself, finish exactly as before. Asserted headlessly against the real panel, because
 "a courtesy that can fail a run is a defect" is the kind of claim worth a test rather than a comment.
+
+## Open questions
+
+- **The five-minute margin is thin.** ~290 s on an idle machine, 313 s sharing it. The next thing that
+  adds 10 s crosses back over, and there is no headroom left in the cheap levers — the remaining
+  expensive files each have a reason recorded above. If the bar matters, `HulkTheme.build()` caching
+  (32.4 s, one file) is the next lever and it costs the `ui_builds` counter.
+
+- **`MIN_COMPLETION_RATE` should be retired.** Nothing reads it as a gate since Pass D.
+  `should_escalate` and `escalation_probability` still take it as a parameter and still have their own
+  tests, so removing the constant is a one-line change whenever you want it. Left in place because the
+  taskblock says propose, not remove.
+
+- **21 of 31 open bugs have no repro path**, and most are `SUPERVISOR`-sourced visual observations —
+  which is *why* they lack one. The cheapest thing that would make taskblock-51 go faster is a session
+  with you driving, capturing routes back to the symptoms, before the hunt starts rather than during
+  it. I deliberately did not invent plausible-looking repro steps for bugs I have not reproduced.
+
+- **BR27.01 is four bugs in one entry** ("Player Step Out: four bugs, one system") and should be split
+  before the hunt. Splitting it changes nothing about status; it just stops one ID standing for four
+  independent outcomes.
