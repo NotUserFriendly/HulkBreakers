@@ -1723,8 +1723,8 @@ unit/test_suite_tier.gd,test_the_switch_agrees_with_the_environment,,72,0,0,0,0,
 unit/test_suite_tier.gd,test_the_skip_reason_says_what_to_run_instead,,120,0,0,0,0,0,0,"a refusal says why, by name"
 unit/test_suite_tier.gd,test_every_listed_file_implements_the_skip_hook,,499,0,0,0,0,0,0,the fast gate skips exactly the bout-building files and never adds any
 unit/test_void_vocabulary_guard.gd,test_no_gd_file_uses_void_for_anything_but_the_return_annotation,,226063,0,0,0,0,0,0,the codebase's own conventions are enforced by a test
-unit/view/overlays/test_ai_batch_yield.gd,test_a_yielding_batch_produces_the_identical_bout,,55338091,2,108,162708,232,108,1134,
-unit/view/overlays/test_ai_batch_yield.gd,test_frames_pass_during_the_batch,,3433705,1,10,18156,24,10,48,
+unit/view/overlays/test_ai_batch_yield.gd,test_a_yielding_batch_produces_the_identical_bout,,55338091,2,108,162708,232,108,1134,the same seed produces the same battle
+unit/view/overlays/test_ai_batch_yield.gd,test_frames_pass_during_the_batch,,3433705,1,10,18156,24,10,48,planning yields frames so the game never freezes
 unit/view/overlays/test_generate_bout_overlay.gd,test_setup_populates_ordered_presets_from_loaded_presets,,188243,0,0,0,2,0,0,
 unit/view/overlays/test_generate_bout_overlay.gd,test_a_variant_is_listed_under_its_own_family_label,,176214,0,0,0,2,0,0,
 unit/view/overlays/test_generate_bout_overlay.gd,test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant,,183689,0,0,0,2,0,0,
@@ -1795,144 +1795,144 @@ unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_sets_was_inje
 unit/view/overlays/test_squad_control_overlay.gd,test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout,,156833,0,0,0,2,0,0,
 unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api,,167418,0,0,0,2,0,0,
 unit/view/overlays/test_squad_control_overlay.gd,test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it,,158064,0,0,0,2,0,0,
-unit/view/test_action_bar.gd,test_slot_count_is_ten,,949,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_box_size_is_square,,230,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_setup_builds_ten_square_panels,,5443,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_an_unaffordable_action_dims_but_still_shows_its_initials,,13552,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_an_affordable_action_shows_at_full_foreground,,9259,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_clicking_an_unaffordable_action_does_not_arm_it,,16607,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_an_action_already_queued_this_turn_counts_against_a_later_affordability_check,,28870,0,0,0,1,0,0,
-unit/view/test_action_bar.gd,test_burst_dims_using_its_own_higher_ap_cost_not_the_weapons_plain_one,,16534,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_repair_dims_using_its_own_real_ap_cost_not_the_weapons_plain_one,,12266,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_clicking_an_affordable_action_still_arms_it,,17707,0,0,0,0,0,0,
-unit/view/test_action_bar.gd,test_clicking_a_none_mode_action_queues_immediately_never_arms,,16558,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_calling_with_the_same_ring_content_returns_the_cached_texture,,13730,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_a_pure_uniform_rescale_reuses_the_cached_texture,,11281,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_calling_with_different_ring_ratios_rebuilds,,24260,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_rings_match_compares_normalized_shape_not_identity,,331,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_rings_match_with_a_bound_reuses_across_a_pure_rescale,,155,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_rings_match_with_a_bound_rebuilds_when_the_bound_ratio_changes,,121,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_ring_texture_with_a_bound_reuses_across_a_pure_rescale,,7696,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_ring_texture_rebuilds_when_a_bound_appears_or_disappears,,18322,0,0,0,0,0,0,
-unit/view/test_aim_view_dartboard_cache.gd,test_a_realistic_range_sweep_builds_the_texture_at_most_once,,11440,0,0,0,0,0,0,
-unit/view/test_aim_view_decal_axis.gd,test_the_decal_basis_projects_along_the_exact_direction_given,,330,0,0,0,0,0,0,
-unit/view/test_aim_view_decal_axis.gd,test_the_decal_axis_equals_ray_from_muzzles_own_direction_for_an_offset_reticle,,194,0,0,0,0,0,0,
-unit/view/test_aim_view_decal_axis.gd,test_the_decal_basis_is_orthonormal,,169,0,0,0,0,0,0,
-unit/view/test_aim_view_part_label.gd,test_hovering_a_part_yields_that_parts_tooltip_content,,92652,0,0,0,2,0,8,
-unit/view/test_aim_view_part_label.gd,test_hovering_empty_space_shows_nothing,,84537,0,0,0,2,0,8,
-unit/view/test_aim_view_part_label.gd,test_the_part_labels_transform_is_coplanar_with_the_aim_window,,79380,0,0,0,2,0,8,
-unit/view/test_ap_mp_pip_row.gd,test_nothing_selected_shows_no_pips_in_either_row,,4404,0,0,0,0,0,0,
-unit/view/test_ap_mp_pip_row.gd,test_selecting_a_unit_builds_max_ap_pips_and_mp_pips,,25863,0,0,0,1,0,0,
-unit/view/test_ap_mp_pip_row.gd,test_hovering_the_ap_row_shows_its_tooltip,,30911,0,0,0,1,0,0,
-unit/view/test_ap_mp_pip_row.gd,test_hovering_the_mp_row_shows_its_tooltip,,29199,0,0,0,1,0,0,
-unit/view/test_batch_badge_view.gd,test_an_unbatched_unit_draws_no_badge_node_at_all,,1258,0,0,0,0,0,0,
-unit/view/test_batch_badge_view.gd,test_a_badge_draws_the_text_it_was_handed,,1318,0,0,0,0,0,0,
-unit/view/test_batch_badge_view.gd,test_clearing_the_badge_removes_the_node,,1060,0,0,0,0,0,0,
-unit/view/test_batch_badge_view.gd,test_the_badge_survives_a_full_rebuild,,1164,0,0,0,0,0,0,
-unit/view/test_batch_badge_view.gd,test_the_badge_follows_the_unit_on_a_cheap_refresh,,496,0,0,0,0,0,0,
-unit/view/test_batch_badge_view.gd,test_both_refresh_paths_place_the_badge_at_the_same_index,,756,0,0,0,0,0,0,
-unit/view/test_batch_badge_view.gd,test_the_scene_pushes_badges_for_whatever_the_state_says,,141435,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_grid_size_clears_the_map_gen_split_threshold,,221,0,0,0,0,0,0,
-unit/view/test_battle_scene.gd,test_new_battle_spawns_a_board_and_one_unit_view_per_unit,,177469,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_load_battle_constructs_a_bout_injector_against_the_live_state,,139136,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_reloading_the_battle_rebuilds_the_bout_injector_against_the_new_state,,299239,0,0,0,4,0,0,
-unit/view/test_battle_scene.gd,test_load_battle_draws_the_missions_own_extraction_tiles,,153730,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_repair_button_queues_and_resolves_a_real_repair,,157529,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_refresh_unit_views_with_ids_only_rebuilds_those_views,,148748,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_load_battle_marks_the_current_units_own_view_as_active,,136062,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_refresh_unit_views_moves_the_active_turn_highlight_as_the_turn_advances,,140730,0,1,0,2,0,0,
-unit/view/test_battle_scene.gd,test_refresh_unit_views_with_null_still_rebuilds_every_view,,151681,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_sync_unit_views_builds_a_view_for_a_unit_added_after_load_battle,,141050,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_sync_unit_views_is_a_noop_when_every_unit_already_has_a_view,,148067,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_killing_a_unit_through_the_debug_injector_flips_its_view_to_downed,,135922,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_remove_unit_view_destroys_the_view_and_drops_it_from_unit_views,,135715,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_sync_unit_views_never_resurrects_a_deliberately_removed_unit,,136867,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_load_battle_resets_the_removed_unit_tracking,,289898,0,0,0,4,0,0,
-unit/view/test_battle_scene.gd,test_sync_board_view_picks_up_a_blocker_placed_after_load_battle,,171172,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_new_battle_wires_both_a_ui_sink_and_a_file_sink,,133854,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_new_battle_logs_the_seed_at_session_start_to_both_sinks,,132075,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_new_battle_is_deterministic_from_the_same_seed,,441854,0,0,0,6,0,0,
-unit/view/test_battle_scene.gd,test_calling_new_battle_again_does_not_leak_the_previous_units_views,,296112,0,0,0,4,0,0,
-unit/view/test_battle_scene.gd,test_every_rendered_mesh_matches_a_living_boxs_placement_exactly,,142651,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_seeded_units_always_land_on_navigable_terrain_across_many_seeds,,3785301,0,0,0,60,0,0,
-unit/view/test_battle_scene.gd,test_seeded_units_spawn_on_the_grids_own_spawn_a_and_spawn_b_cells,,254977,0,0,0,4,0,0,
-unit/view/test_battle_scene.gd,test_tactics_is_wired_to_the_real_camera_and_board,,134689,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_redraws_it,,903982,0,1,0,6,0,0,
-unit/view/test_battle_scene.gd,test_new_battle_is_not_among_the_turn_controls,,137709,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_the_action_bars_own_row_is_the_last_child_of_the_action_column,,146568,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched,,133947,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_toggle_blue_control_flips_squad_zero_and_swaps_the_overlay,,149801,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_toggle_blue_control_round_trips,,141512,0,0,0,2,0,0,
-unit/view/test_battle_scene.gd,test_generate_bout_overlay_assume_control_checkbox_lands_on_squad_control,,255262,1,0,0,4,0,0,
-unit/view/test_battle_scene.gd,test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode,,406669,0,0,0,6,0,0,
-unit/view/test_battle_scene.gd,test_turn_start_triggers_both_a_boundary_and_a_settled_fps_dump,,2276185,0,0,0,4,0,0,
-unit/view/test_battle_scene.gd,test_the_settled_dump_has_not_arrived_at_the_old_200ms_offset,,371865,0,0,0,4,0,0,
-unit/view/test_battle_scene_input.gd,test_a_real_click_over_the_board_selects_the_current_unit_through_every_panel,,456343,0,0,0,3,0,0,
-unit/view/test_battle_scene_input.gd,test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath,,143647,0,0,0,2,0,0,
-unit/view/test_battle_scene_input.gd,test_hovering_a_queue_row_never_updates_the_boards_own_hover_state,,590936,0,0,0,5,0,0,
-unit/view/test_battle_scene_input.gd,test_every_richtextlabel_panel_ignores_the_mouse_except_the_log,,143904,0,0,0,2,0,0,
-unit/view/test_battle_scene_input.gd,test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_covering_it,,138211,0,0,0,2,0,0,
-unit/view/test_battle_scene_input.gd,test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it,,991225,0,0,0,6,0,0,
-unit/view/test_battle_scene_input.gd,test_entering_a_turn_control_button_hides_a_stale_tooltip,,132278,0,0,0,2,0,0,
-unit/view/test_battle_scene_occlusion_fade.gd,test_occluding_friendly_gets_faded_on_the_real_hit_volume_view,,182479,0,0,0,4,0,4,
-unit/view/test_battle_scene_occlusion_fade.gd,test_the_active_shooter_never_fades_itself,,180235,0,0,0,4,0,4,
-unit/view/test_battle_scene_occlusion_fade.gd,test_an_enemy_in_the_same_spot_is_never_faded,,180823,0,0,0,4,0,4,
-unit/view/test_battle_scene_occlusion_fade.gd,test_leaving_aim_clears_the_fade,,188289,0,0,0,5,0,4,
-unit/view/test_battle_scene_occlusion_fade.gd,test_an_extracted_friendly_is_never_faded,,178607,0,0,0,4,0,4,
-unit/view/test_battle_scene_occlusion_fade.gd,test_removing_a_unit_view_excludes_it_from_occlusion,,181948,0,0,0,4,0,4,
-unit/view/test_board_view.gd,test_build_spawns_a_ground_plane_and_one_box_per_blocker,,4569,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_ground_and_grid_lines_carry_the_floor_layer,,5018,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_terrain_is_flat_when_no_level_is_set,,3592,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_terrain_reflects_a_raised_cells_own_height,,2903,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_marker_sits_on_a_raised_cells_own_real_height,,3277,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_spawn_blocker_sits_on_a_raised_cells_own_real_height,,2847,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_renders_every_box_in_a_blockers_whole_part_tree,,3078,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_a_destroyed_root_with_a_living_child_still_renders_the_child,,2724,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_a_dropped_blocker_lies_on_its_side,,2977,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_a_blockers_mesh_uses_its_own_material_color,,2489,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_draws_grid_lines_spanning_the_grids_own_footprint,,4386,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_grid_lines_reflect_a_raised_cells_own_height,,3668,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_grid_line_color_is_pushed_well_away_from_the_ground_color,,1771,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_clears_previous_children_on_rebuild,,3322,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_a_destroyed_blocker_spawns_no_mesh,,2052,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_renders_a_loose_part_field_item_the_same_as_a_blocker,,1654,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_renders_a_loose_matrix_field_item_as_a_flat_marker,,1730,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_renders_every_item_in_a_multi_item_pile,,2184,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call,,2078,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_a_plain_grid_adds_no_ground_overlay_markers,,2127,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_adds_a_border_and_fill_marker_per_empty_cell,,2200,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_a_grid_with_nothing_empty_adds_no_empty_indicators,,2071,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_build_adds_one_marker_per_extraction_tile,,2668,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_extraction_tiles_render_in_their_own_teams_color,,2194,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_no_team_extraction_cells_adds_no_tile_markers,,1331,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_reachable_spawns_one_marker_per_cell_and_replaces_the_last_call,,956,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_ghost_paths_spawns_a_marker_line_and_label_per_leg,,1384,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_ghost_paths_numbers_waypoints_and_shows_the_running_total,,1768,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_reachable_and_ghost_overlays_coexist,,1610,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_clear_overlays_removes_everything,,4336,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_overwatch_arc_spawns_one_translucent_marker_per_cell_and_replaces_the_last_call,,2461,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_unit_ghost_spawns_one_translucent_mesh_per_living_box,,2033,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_unit_ghost_with_null_clears_it_and_does_not_crash,,1066,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay,,1029,0,0,0,0,0,0,
-unit/view/test_board_view.gd,test_overlays_never_touch_the_static_board,,1688,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_feeds_the_focal_units_own_screen_position,,6617,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_feeds_zero_units_with_an_empty_list,,4853,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away,,8757,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_wall_material_shading_path_is_unchanged_lit,,5268,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_skips_an_extracted_unit,,4925,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_skips_a_unit_excluded_via_remove_unit_view,,4583,0,0,0,0,0,0,
-unit/view/test_board_view_occlusion.gd,test_build_clears_previously_excluded_units_for_a_fresh_battle,,6040,0,0,0,0,0,0,
-unit/view/test_bout_build_log.gd,test_the_build_log_records_every_step_in_construction_order,,4833,0,0,0,0,0,0,
-unit/view/test_bout_build_log.gd,test_each_step_carries_its_own_position_in_the_sequence,,3766,0,0,0,0,0,0,
-unit/view/test_bout_build_log.gd,test_a_rebuilt_board_restarts_its_own_numbering,,5027,0,0,0,0,0,0,
-unit/view/test_bout_build_log.gd,test_walls_and_cover_are_counted_separately_as_they_are_built,,4847,0,0,0,0,0,0,
-unit/view/test_bout_build_log.gd,test_extraction_tiles_are_counted_where_they_are_actually_drawn,,3810,0,0,0,0,0,0,
-unit/view/test_bout_build_log.gd,test_a_board_with_no_log_attached_builds_exactly_as_before,,3629,0,0,0,0,0,0,
-unit/view/test_builder_scene.gd,test_ready_assembles_a_unit_and_populates_the_socket_tree,,14023,0,0,0,0,0,0,
-unit/view/test_builder_scene.gd,test_ready_shows_validation_for_the_default_assembly,,12892,0,0,0,0,0,0,
-unit/view/test_builder_scene.gd,test_selecting_an_empty_socket_populates_the_picker,,15090,0,0,0,0,0,0,
-unit/view/test_builder_scene.gd,test_picking_a_legal_part_attaches_it_and_refreshes,,16677,0,0,0,0,0,0,
-unit/view/test_builder_scene.gd,test_load_unit_reassembles_from_the_given_unit,,19887,0,0,0,0,0,0,
+unit/view/test_action_bar.gd,test_slot_count_is_ten,,949,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
+unit/view/test_action_bar.gd,test_box_size_is_square,,230,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
+unit/view/test_action_bar.gd,test_setup_builds_ten_square_panels,,5443,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
+unit/view/test_action_bar.gd,test_an_unaffordable_action_dims_but_still_shows_its_initials,,13552,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
+unit/view/test_action_bar.gd,test_an_affordable_action_shows_at_full_foreground,,9259,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
+unit/view/test_action_bar.gd,test_clicking_an_unaffordable_action_does_not_arm_it,,16607,0,0,0,0,0,0,the action bar shows exactly what the unit can afford right now
+unit/view/test_action_bar.gd,test_an_action_already_queued_this_turn_counts_against_a_later_affordability_check,,28870,0,0,0,1,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_action_bar.gd,test_burst_dims_using_its_own_higher_ap_cost_not_the_weapons_plain_one,,16534,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/view/test_action_bar.gd,test_repair_dims_using_its_own_real_ap_cost_not_the_weapons_plain_one,,12266,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/view/test_action_bar.gd,test_clicking_an_affordable_action_still_arms_it,,17707,0,0,0,0,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_action_bar.gd,test_clicking_a_none_mode_action_queues_immediately_never_arms,,16558,0,0,0,0,0,0,arming an action is a mode; a targetless action queues immediately
+unit/view/test_aim_view_dartboard_cache.gd,test_calling_with_the_same_ring_content_returns_the_cached_texture,,13730,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_a_pure_uniform_rescale_reuses_the_cached_texture,,11281,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_calling_with_different_ring_ratios_rebuilds,,24260,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_rings_match_compares_normalized_shape_not_identity,,331,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_rings_match_with_a_bound_reuses_across_a_pure_rescale,,155,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_rings_match_with_a_bound_rebuilds_when_the_bound_ratio_changes,,121,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_ring_texture_with_a_bound_reuses_across_a_pure_rescale,,7696,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_ring_texture_rebuilds_when_a_bound_appears_or_disappears,,18322,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_dartboard_cache.gd,test_a_realistic_range_sweep_builds_the_texture_at_most_once,,11440,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/view/test_aim_view_decal_axis.gd,test_the_decal_basis_projects_along_the_exact_direction_given,,330,0,0,0,0,0,0,the drawn reticle and the fired shot come from the same call
+unit/view/test_aim_view_decal_axis.gd,test_the_decal_axis_equals_ray_from_muzzles_own_direction_for_an_offset_reticle,,194,0,0,0,0,0,0,the drawn reticle and the fired shot come from the same call
+unit/view/test_aim_view_decal_axis.gd,test_the_decal_basis_is_orthonormal,,169,0,0,0,0,0,0,the drawn reticle and the fired shot come from the same call
+unit/view/test_aim_view_part_label.gd,test_hovering_a_part_yields_that_parts_tooltip_content,,92652,0,0,0,2,0,8,a tooltip shows what is there and omits what is not
+unit/view/test_aim_view_part_label.gd,test_hovering_empty_space_shows_nothing,,84537,0,0,0,2,0,8,a tooltip shows what is there and omits what is not
+unit/view/test_aim_view_part_label.gd,test_the_part_labels_transform_is_coplanar_with_the_aim_window,,79380,0,0,0,2,0,8,the aim window sits in front of the muzzle at the target's own depth
+unit/view/test_ap_mp_pip_row.gd,test_nothing_selected_shows_no_pips_in_either_row,,4404,0,0,0,0,0,0,the pip row shows exactly the AP and MP the unit has
+unit/view/test_ap_mp_pip_row.gd,test_selecting_a_unit_builds_max_ap_pips_and_mp_pips,,25863,0,0,0,1,0,0,the pip row shows exactly the AP and MP the unit has
+unit/view/test_ap_mp_pip_row.gd,test_hovering_the_ap_row_shows_its_tooltip,,30911,0,0,0,1,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_ap_mp_pip_row.gd,test_hovering_the_mp_row_shows_its_tooltip,,29199,0,0,0,1,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_batch_badge_view.gd,test_an_unbatched_unit_draws_no_badge_node_at_all,,1258,0,0,0,0,0,0,"a badge is drawn only for the state that has one, and survives a rebuild"
+unit/view/test_batch_badge_view.gd,test_a_badge_draws_the_text_it_was_handed,,1318,0,0,0,0,0,0,"a badge is drawn only for the state that has one, and survives a rebuild"
+unit/view/test_batch_badge_view.gd,test_clearing_the_badge_removes_the_node,,1060,0,0,0,0,0,0,"a badge is drawn only for the state that has one, and survives a rebuild"
+unit/view/test_batch_badge_view.gd,test_the_badge_survives_a_full_rebuild,,1164,0,0,0,0,0,0,"a badge is drawn only for the state that has one, and survives a rebuild"
+unit/view/test_batch_badge_view.gd,test_the_badge_follows_the_unit_on_a_cheap_refresh,,496,0,0,0,0,0,0,"a badge is drawn only for the state that has one, and survives a rebuild"
+unit/view/test_batch_badge_view.gd,test_both_refresh_paths_place_the_badge_at_the_same_index,,756,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_batch_badge_view.gd,test_the_scene_pushes_badges_for_whatever_the_state_says,,141435,0,0,0,2,0,0,"a badge is drawn only for the state that has one, and survives a rebuild"
+unit/view/test_battle_scene.gd,test_grid_size_clears_the_map_gen_split_threshold,,221,0,0,0,0,0,0,a fixture's board is large enough for the generator to do its work
+unit/view/test_battle_scene.gd,test_new_battle_spawns_a_board_and_one_unit_view_per_unit,,177469,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_load_battle_constructs_a_bout_injector_against_the_live_state,,139136,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_reloading_the_battle_rebuilds_the_bout_injector_against_the_new_state,,299239,0,0,0,4,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_load_battle_draws_the_missions_own_extraction_tiles,,153730,0,0,0,2,0,0,extraction happens only at the zone
+unit/view/test_battle_scene.gd,test_repair_button_queues_and_resolves_a_real_repair,,157529,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_battle_scene.gd,test_refresh_unit_views_with_ids_only_rebuilds_those_views,,148748,0,0,0,2,0,0,the view rebuilds only when the board actually changed
+unit/view/test_battle_scene.gd,test_load_battle_marks_the_current_units_own_view_as_active,,136062,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_refresh_unit_views_moves_the_active_turn_highlight_as_the_turn_advances,,140730,0,1,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_refresh_unit_views_with_null_still_rebuilds_every_view,,151681,0,0,0,2,0,0,the view rebuilds only when the board actually changed
+unit/view/test_battle_scene.gd,test_sync_unit_views_builds_a_view_for_a_unit_added_after_load_battle,,141050,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_sync_unit_views_is_a_noop_when_every_unit_already_has_a_view,,148067,0,0,0,2,0,0,the view rebuilds only when the board actually changed
+unit/view/test_battle_scene.gd,test_killing_a_unit_through_the_debug_injector_flips_its_view_to_downed,,135922,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_remove_unit_view_destroys_the_view_and_drops_it_from_unit_views,,135715,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_sync_unit_views_never_resurrects_a_deliberately_removed_unit,,136867,0,0,0,2,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_load_battle_resets_the_removed_unit_tracking,,289898,0,0,0,4,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_sync_board_view_picks_up_a_blocker_placed_after_load_battle,,171172,0,0,0,2,0,0,the view rebuilds only when the board actually changed
+unit/view/test_battle_scene.gd,test_new_battle_wires_both_a_ui_sink_and_a_file_sink,,133854,0,0,0,2,0,0,the combat log dispatches every event to every attached sink
+unit/view/test_battle_scene.gd,test_new_battle_logs_the_seed_at_session_start_to_both_sinks,,132075,0,0,0,2,0,0,a sampled measurement reports the seeds it drew
+unit/view/test_battle_scene.gd,test_new_battle_is_deterministic_from_the_same_seed,,441854,0,0,0,6,0,0,the same seed produces the same battle
+unit/view/test_battle_scene.gd,test_calling_new_battle_again_does_not_leak_the_previous_units_views,,296112,0,0,0,4,0,0,"the scene keeps one view per unit, in step with the state"
+unit/view/test_battle_scene.gd,test_every_rendered_mesh_matches_a_living_boxs_placement_exactly,,142651,0,0,0,2,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_battle_scene.gd,test_seeded_units_always_land_on_navigable_terrain_across_many_seeds,,3785301,0,0,0,60,0,0,every spawn zone is walkable and reachable
+unit/view/test_battle_scene.gd,test_seeded_units_spawn_on_the_grids_own_spawn_a_and_spawn_b_cells,,254977,0,0,0,4,0,0,every spawn zone is walkable and reachable
+unit/view/test_battle_scene.gd,test_tactics_is_wired_to_the_real_camera_and_board,,134689,0,0,0,2,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_battle_scene.gd,test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_redraws_it,,903982,0,1,0,6,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene.gd,test_new_battle_is_not_among_the_turn_controls,,137709,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_battle_scene.gd,test_the_action_bars_own_row_is_the_last_child_of_the_action_column,,146568,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_battle_scene.gd,test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched,,133947,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_battle_scene.gd,test_toggle_blue_control_flips_squad_zero_and_swaps_the_overlay,,149801,0,0,0,2,0,0,"a squad is human or AI, never both and never neither once started"
+unit/view/test_battle_scene.gd,test_toggle_blue_control_round_trips,,141512,0,0,0,2,0,0,"a squad is human or AI, never both and never neither once started"
+unit/view/test_battle_scene.gd,test_generate_bout_overlay_assume_control_checkbox_lands_on_squad_control,,255262,1,0,0,4,0,0,"a squad is human or AI, never both and never neither once started"
+unit/view/test_battle_scene.gd,test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode,,406669,0,0,0,6,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/view/test_battle_scene.gd,test_turn_start_triggers_both_a_boundary_and_a_settled_fps_dump,,2276185,0,0,0,4,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/view/test_battle_scene.gd,test_the_settled_dump_has_not_arrived_at_the_old_200ms_offset,,371865,0,0,0,4,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/view/test_battle_scene_input.gd,test_a_real_click_over_the_board_selects_the_current_unit_through_every_panel,,456343,0,0,0,3,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene_input.gd,test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath,,143647,0,0,0,2,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene_input.gd,test_hovering_a_queue_row_never_updates_the_boards_own_hover_state,,590936,0,0,0,5,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene_input.gd,test_every_richtextlabel_panel_ignores_the_mouse_except_the_log,,143904,0,0,0,2,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene_input.gd,test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_covering_it,,138211,0,0,0,2,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene_input.gd,test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it,,991225,0,0,0,6,0,0,a real input event reaches the control it lands on
+unit/view/test_battle_scene_input.gd,test_entering_a_turn_control_button_hides_a_stale_tooltip,,132278,0,0,0,2,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_battle_scene_occlusion_fade.gd,test_occluding_friendly_gets_faded_on_the_real_hit_volume_view,,182479,0,0,0,4,0,4,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_battle_scene_occlusion_fade.gd,test_the_active_shooter_never_fades_itself,,180235,0,0,0,4,0,4,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_battle_scene_occlusion_fade.gd,test_an_enemy_in_the_same_spot_is_never_faded,,180823,0,0,0,4,0,4,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_battle_scene_occlusion_fade.gd,test_leaving_aim_clears_the_fade,,188289,0,0,0,5,0,4,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_battle_scene_occlusion_fade.gd,test_an_extracted_friendly_is_never_faded,,178607,0,0,0,4,0,4,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_battle_scene_occlusion_fade.gd,test_removing_a_unit_view_excludes_it_from_occlusion,,181948,0,0,0,4,0,4,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_board_view.gd,test_build_spawns_a_ground_plane_and_one_box_per_blocker,,4569,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_ground_and_grid_lines_carry_the_floor_layer,,5018,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_build_terrain_is_flat_when_no_level_is_set,,3592,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_board_view.gd,test_build_terrain_reflects_a_raised_cells_own_height,,2903,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_board_view.gd,test_marker_sits_on_a_raised_cells_own_real_height,,3277,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_board_view.gd,test_spawn_blocker_sits_on_a_raised_cells_own_real_height,,2847,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_board_view.gd,test_build_renders_every_box_in_a_blockers_whole_part_tree,,3078,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_a_destroyed_root_with_a_living_child_still_renders_the_child,,2724,0,0,0,0,0,0,a destroyed part stops contributing
+unit/view/test_board_view.gd,test_a_dropped_blocker_lies_on_its_side,,2977,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_a_blockers_mesh_uses_its_own_material_color,,2489,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_board_view.gd,test_build_draws_grid_lines_spanning_the_grids_own_footprint,,4386,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_grid_lines_reflect_a_raised_cells_own_height,,3668,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_board_view.gd,test_grid_line_color_is_pushed_well_away_from_the_ground_color,,1771,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_board_view.gd,test_build_clears_previous_children_on_rebuild,,3322,0,0,0,0,0,0,the view rebuilds only when the board actually changed
+unit/view/test_board_view.gd,test_a_destroyed_blocker_spawns_no_mesh,,2052,0,0,0,0,0,0,a destroyed part stops contributing
+unit/view/test_board_view.gd,test_build_renders_a_loose_part_field_item_the_same_as_a_blocker,,1654,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_build_renders_a_loose_matrix_field_item_as_a_flat_marker,,1730,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_board_view.gd,test_build_renders_every_item_in_a_multi_item_pile,,2184,0,0,0,0,0,0,loose field items pile up in a cell rather than replacing each other
+unit/view/test_board_view.gd,test_build_rebuild_picks_up_a_field_item_removed_since_the_last_call,,2078,0,0,0,0,0,0,the view rebuilds only when the board actually changed
+unit/view/test_board_view.gd,test_a_plain_grid_adds_no_ground_overlay_markers,,2127,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_build_adds_a_border_and_fill_marker_per_empty_cell,,2200,0,0,0,0,0,0,every generated cell resolves to a real part or to empty space
+unit/view/test_board_view.gd,test_a_grid_with_nothing_empty_adds_no_empty_indicators,,2071,0,0,0,0,0,0,every generated cell resolves to a real part or to empty space
+unit/view/test_board_view.gd,test_build_adds_one_marker_per_extraction_tile,,2668,0,0,0,0,0,0,extraction happens only at the zone
+unit/view/test_board_view.gd,test_extraction_tiles_render_in_their_own_teams_color,,2194,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_board_view.gd,test_no_team_extraction_cells_adds_no_tile_markers,,1331,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_board_view.gd,test_show_reachable_spawns_one_marker_per_cell_and_replaces_the_last_call,,956,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_show_ghost_paths_spawns_a_marker_line_and_label_per_leg,,1384,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_show_ghost_paths_numbers_waypoints_and_shows_the_running_total,,1768,0,0,0,0,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_board_view.gd,test_reachable_and_ghost_overlays_coexist,,1610,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_clear_overlays_removes_everything,,4336,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_show_overwatch_arc_spawns_one_translucent_marker_per_cell_and_replaces_the_last_call,,2461,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_show_unit_ghost_spawns_one_translucent_mesh_per_living_box,,2033,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_show_unit_ghost_with_null_clears_it_and_does_not_crash,,1066,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_board_view.gd,test_show_unit_ghost_never_touches_the_waypoint_ghost_overlay,,1029,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view.gd,test_overlays_never_touch_the_static_board,,1688,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_feeds_the_focal_units_own_screen_position,,6617,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_feeds_zero_units_with_an_empty_list,,4853,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away,,8757,0,0,0,0,0,0,a screen radius scales with depth and with the tiles it must cover
+unit/view/test_board_view_occlusion.gd,test_wall_material_shading_path_is_unchanged_lit,,5268,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_skips_an_extracted_unit,,4925,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/view/test_board_view_occlusion.gd,test_update_wall_cutout_skips_a_unit_excluded_via_remove_unit_view,,4583,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/view/test_board_view_occlusion.gd,test_build_clears_previously_excluded_units_for_a_fresh_battle,,6040,0,0,0,0,0,0,the view rebuilds only when the board actually changed
+unit/view/test_bout_build_log.gd,test_the_build_log_records_every_step_in_construction_order,,4833,0,0,0,0,0,0,"the board's construction is logged step by step, in order"
+unit/view/test_bout_build_log.gd,test_each_step_carries_its_own_position_in_the_sequence,,3766,0,0,0,0,0,0,"the board's construction is logged step by step, in order"
+unit/view/test_bout_build_log.gd,test_a_rebuilt_board_restarts_its_own_numbering,,5027,0,0,0,0,0,0,"the board's construction is logged step by step, in order"
+unit/view/test_bout_build_log.gd,test_walls_and_cover_are_counted_separately_as_they_are_built,,4847,0,0,0,0,0,0,"the board's construction is logged step by step, in order"
+unit/view/test_bout_build_log.gd,test_extraction_tiles_are_counted_where_they_are_actually_drawn,,3810,0,0,0,0,0,0,"the board's construction is logged step by step, in order"
+unit/view/test_bout_build_log.gd,test_a_board_with_no_log_attached_builds_exactly_as_before,,3629,0,0,0,0,0,0,a feature switched off leaves behaviour exactly as it was
+unit/view/test_builder_scene.gd,test_ready_assembles_a_unit_and_populates_the_socket_tree,,14023,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
+unit/view/test_builder_scene.gd,test_ready_shows_validation_for_the_default_assembly,,12892,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
+unit/view/test_builder_scene.gd,test_selecting_an_empty_socket_populates_the_picker,,15090,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
+unit/view/test_builder_scene.gd,test_picking_a_legal_part_attaches_it_and_refreshes,,16677,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
+unit/view/test_builder_scene.gd,test_load_unit_reassembles_from_the_given_unit,,19887,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
 unit/view/test_camera_rig.gd,test_ready_builds_a_two_pivot_rig_with_a_camera,,2067,0,0,0,0,0,0,
 unit/view/test_camera_rig.gd,test_ready_sets_the_cameras_fov_from_the_solvers_constant,,1598,0,0,0,0,0,0,
 unit/view/test_camera_rig.gd,test_applying_state_moves_the_camera_to_the_current_zoom,,1427,0,0,0,0,0,0,
