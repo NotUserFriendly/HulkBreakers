@@ -53,7 +53,7 @@ func _grids_equal(a: Grid, b: Grid) -> bool:
 func test_a_generated_map_contains_more_than_one_level() -> void:
 	var found_a_raised_cell := false
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		for y in range(grid.rows):
 			for x in range(grid.width):
 				if UnitGeometry.true_height_for_cell(Vector2i(x, y), grid) > 0.0:
@@ -80,7 +80,7 @@ func test_a_generated_map_contains_more_than_one_level() -> void:
 ## every raised region found here is expected to connect.
 func test_every_raised_area_is_ramp_reachable_across_many_seeds() -> void:
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.SpawnMarker.SPAWN_A)
 		var pf := Pathfinder.new(grid)
 		var reachable: Array[Vector2i] = pf.reachable(spawn_a[0], 9999.0)
@@ -138,6 +138,9 @@ func _raised_regions(grid: Grid) -> Array:
 
 
 func test_generate_is_seed_deterministic() -> void:
+	# **`MapGen.generate`, not `MapCorpus.read`.** The corpus caches by seed and would hand
+	# back the same object twice, making this assertion pass unconditionally — the suite
+	# would silently lose its only check that generation is reproducible.
 	var same_seed_a: Grid = MapGen.generate(12345, WIDTH, HEIGHT)
 	var same_seed_b: Grid = MapGen.generate(12345, WIDTH, HEIGHT)
 	assert_true(_grids_equal(same_seed_a, same_seed_b), "same seed must produce an identical grid")
@@ -149,7 +152,7 @@ func test_generate_is_seed_deterministic() -> void:
 
 func test_spawn_zones_reachable_across_many_seeds() -> void:
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.SpawnMarker.SPAWN_A)
 		var spawn_b: Array[Vector2i] = _find_cells(grid, Enums.SpawnMarker.SPAWN_B)
 		assert_true(spawn_a.size() > 0, "seed %d: spawn zone A must exist" % map_seed)
@@ -170,7 +173,7 @@ func test_cover_density_within_target_band() -> void:
 	# Target band: 8%-30% of open floor cells carry cover. Documented tunable
 	# (Appendix C notes exposure/cover weights are tune-later values).
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		var open_count := 0
 		var cover_count := 0
 		for y in range(grid.rows):
@@ -217,7 +220,7 @@ func test_generate_resolves_every_cell_into_a_destructible_wall_part_or_empty_sp
 	var saw_wall_part := false
 	var saw_empty := false
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		for y in range(grid.rows):
 			for x in range(grid.width):
 				var cell := Vector2i(x, y)
@@ -394,7 +397,7 @@ func test_default_size_map_splits_into_multiple_rooms_with_hallways() -> void:
 ## space, plain floored ground, scattered cover — cover has never set
 ## opacity).
 func test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else() -> void:
-	var grid: Grid = MapGen.generate(7, WIDTH, HEIGHT)
+	var grid: Grid = MapCorpus.read(7, WIDTH, HEIGHT)
 	var saw_wall := false
 	var saw_open := false
 	for y in range(grid.rows):
@@ -424,7 +427,7 @@ func test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else() ->
 ## inside carved-open ground.
 func test_spawn_zones_are_distinct_even_in_a_single_room_grid() -> void:
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, 12, 10)
+		var grid: Grid = MapCorpus.read(map_seed, 12, 10)
 		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.SpawnMarker.SPAWN_A)
 		var spawn_b: Array[Vector2i] = _find_cells(grid, Enums.SpawnMarker.SPAWN_B)
 		assert_true(spawn_a.size() > 0, "seed %d: spawn zone A must exist" % map_seed)
@@ -447,7 +450,7 @@ func test_spawn_zones_are_distinct_even_in_a_single_room_grid() -> void:
 ## reader already uses) stands in for it instead.
 func test_generated_map_cells_carry_at_most_one_correctly_typed_floor_surface() -> void:
 	for map_seed in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		for y in range(grid.rows):
 			for x in range(grid.width):
 				var cell := Vector2i(x, y)
@@ -606,7 +609,7 @@ func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_t
 
 
 func test_spawn_zones_are_walkable() -> void:
-	var grid: Grid = MapGen.generate(3, WIDTH, HEIGHT)
+	var grid: Grid = MapCorpus.read(3, WIDTH, HEIGHT)
 	var pf := Pathfinder.new(grid)
 	for cell: Vector2i in _find_cells(grid, Enums.SpawnMarker.SPAWN_A):
 		assert_true(pf.is_walkable(cell))
