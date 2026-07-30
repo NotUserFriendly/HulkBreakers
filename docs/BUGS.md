@@ -85,6 +85,23 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
+### BR48.01 — Active — owner: `SUPERVISOR`
+**Closing the inspect panel leaves the background permanently dimmed**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.
+- **Repro:** in the spectator view, click a tile or unit — the inspect panel opens as expected, with the
+  background dimmed behind it. Close the panel. **The dim stays.** It does not block input; controls,
+  camera and selection all keep working. It is purely visual and it persists for the rest of the
+  session.
+- **Reads as a dim layer whose visibility or `modulate` is set on open and never restored on close** —
+  the one-way half of a two-way transition. Check every close path, not just the button: `Esc`, clicking
+  away, and opening a second inspect while the first is up are three different exits and only one of
+  them is obviously covered.
+- **Cheap to confirm, and worth confirming rather than assuming:** if a second open/close cycle makes it
+  *darker*, the dim is being stacked rather than left on, which is a different bug with the same
+  symptom.
+- **`SUPERVISOR`-owned because the evidence is visual.** CC can assert that a node's visibility flips,
+  but "the screen still looks dark" is not something it can see.
+
 ### BR46.02 — Active — owner: `CC`
 **16 of 40 generated maps contain ground a unit can walk into and never leave**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
