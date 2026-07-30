@@ -1,354 +1,354 @@
 origin_file,test_name,description,usec,bouts,turns,candidates,floods,plans,shot_planes,rule_guarded
-baselines/test_armor_and_ricochet_baseline.gd,test_seeded_burst_into_armor,,3573,0,0,0,0,0,17,
-baselines/test_deep_strike_stress_baseline.gd,test_twenty_random_deep_strike_cyborgs,,73491,0,0,0,0,0,0,
-baselines/test_map_generation_baseline.gd,test_dump_ascii_maps_across_several_seeds,,194345,0,0,0,10,0,0,
-baselines/test_shot_plane_sweep_baseline.gd,test_shot_plane_sweeps_continuously_across_a_dozen_angles,,867,0,0,0,0,0,0,
-determinism/test_determinism_check.gd,test_check_passes_for_a_naturally_deterministic_generator,,125,0,0,0,0,0,0,
-determinism/test_determinism_check.gd,test_check_fails_when_generator_is_not_actually_seeded,,99,0,0,0,0,0,0,
-determinism/test_determinism_check.gd,test_check_supports_a_custom_compare_fn_for_reference_types,,57056,0,0,0,12,0,0,
-determinism/test_determinism_check.gd,test_check_reports_which_seeds_failed,,249,0,0,0,0,0,0,
-integration/test_full_mission.gd,test_bout_completion_rate_meets_the_measured_floor,,97893918,8,297,386640,637,300,2986,
-unit/data/test_hulk.gd,test_revisiting_a_hulk_yields_an_identical_map,,78295,0,0,0,4,0,0,
-unit/data/test_hulk.gd,test_population_seed_changes_every_visit_while_map_seed_does_not,,202,0,0,0,0,0,0,
-unit/data/test_hulk.gd,test_different_visit_counts_actually_repopulate_a_deep_strike_roster,,12723,0,0,0,0,0,0,
-unit/data/test_material_table.gd,test_color_for_returns_the_entrys_authored_color,,167,0,0,0,0,0,0,
-unit/data/test_material_table.gd,test_color_for_an_unknown_material_falls_back_to_the_default_entrys_color,,148,0,0,0,0,0,0,
-unit/data/test_material_table.gd,test_default_table_yields_a_distinct_color_per_material,,233,0,0,0,0,0,0,
-unit/data/test_material_table.gd,test_default_table_covers_the_reference_humanoids_materials_and_cover,,256,0,0,0,0,0,0,
-unit/data/test_material_table.gd,test_no_default_entry_uses_the_unknown_material_fallback_color,,312,0,0,0,0,0,0,
-unit/data/test_matrix.gd,test_unlinked_matrix_defers_to_its_own_fields,,154,0,0,0,0,0,0,
-unit/data/test_matrix.gd,test_link_effective_level_is_base_level_times_tier_ratio,,56,0,0,0,0,0,0,
-unit/data/test_matrix.gd,test_link_carries_the_players_chosen_subset_of_the_bases_perks,,124,0,0,0,0,0,0,
-unit/data/test_matrix.gd,test_destroying_a_link_flags_link_killed_on_the_base_and_docks_one_perk,,83,0,0,0,0,0,0,
-unit/data/test_matrix.gd,test_destroying_a_link_with_no_perks_left_is_a_harmless_no_op,,76,0,0,0,0,0,0,
-unit/data/test_matrix.gd,test_destroying_an_unlinked_matrix_is_a_no_op,,69,0,0,0,0,0,0,
-unit/data/test_part.gd,test_new_part_has_sane_defaults,,239,0,0,0,0,0,0,
-unit/data/test_part.gd,test_save_load_round_trips_a_full_socket_tree,,1194,0,0,0,0,0,0,
-unit/data/test_part.gd,test_hosts_matrix_is_false_without_a_matrix_socket,,68,0,0,0,0,0,0,
-unit/data/test_part.gd,test_hosts_matrix_is_true_with_a_matrix_socket,,56,0,0,0,0,0,0,
-unit/data/test_part.gd,test_dock_matrix_fails_on_a_part_with_no_matrix_socket,,70,0,0,0,0,0,0,
-unit/data/test_part.gd,test_dock_matrix_succeeds_on_a_part_with_a_free_matrix_socket,,114,0,0,0,0,0,0,
-unit/data/test_part.gd,test_dock_matrix_fails_when_already_hosting,,62,0,0,0,0,0,0,
-unit/data/test_run_state.gd,test_add_resource_accumulates_by_id,,94,0,0,0,0,0,0,
-unit/data/test_run_state.gd,test_save_load_round_trips_roster_stash_and_resources,,582,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_all_parts_walks_the_whole_assembly,,160,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_all_parts_with_joints_adds_one_joint_per_occupied_socket,,157,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_all_parts_with_joints_is_empty_with_a_null_root,,106,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_living_parts_excludes_destroyed,,264,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_stat_resolver_sums_a_stat_across_the_whole_tree,,131,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_total_ram_sums_ram_cost_across_the_whole_assembly,,94,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_total_ram_also_counts_items_carried_in_a_container,,96,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_carried_mass_applies_the_worn_discount_ceiling_even_with_no_authored_discount,,133,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_carried_mass_never_worsens_a_containers_own_better_discount,,96,0,0,0,0,0,0,
-unit/data/test_shell.gd,test_save_load_round_trips_a_shell,,630,0,0,0,0,0,0,
-unit/data/test_taskblock21_gun_data.gd,test_every_reference_gun_has_three_scatter_rings_middle_heaviest,,1311,0,0,0,0,0,0,
-unit/data/test_taskblock21_gun_data.gd,test_authored_ap_costs_match_the_taskblocks_own_numbers,,1066,0,0,0,0,0,0,
-unit/data/test_taskblock21_gun_data.gd,test_sniper_rifles_ap_cost_is_what_attack_action_actually_spends,,1607,0,0,0,0,0,2,
-unit/data/test_taskblock21_gun_data.gd,test_chainguns_burst_spends_burst_ap_cost,,2806,0,0,0,0,0,13,
-unit/data/test_tool_parts.gd,test_angle_grinder_costs_a_full_turn,,99,0,0,0,0,0,0,
-unit/data/test_tool_parts.gd,test_metal_saw_replaces_a_hand_and_costs_two_ap,,71,0,0,0,0,0,0,
-unit/data/test_tool_parts.gd,test_power_saw_requires_specialized_integration_and_costs_one_ap_per_limb,,63,0,0,0,0,0,0,
-unit/data/test_tool_parts.gd,test_a_swap_part_action_can_be_priced_directly_from_a_tools_ap_cost,,16742,0,0,0,0,0,0,
-unit/data/test_weapon_def.gd,test_a_non_weapon_part_has_no_weapon_def,,1094,0,0,0,0,0,0,
-unit/data/test_weapon_def.gd,test_chaingun_loads_with_its_table_values,,1076,0,0,0,0,0,0,
-unit/data/test_weapon_def.gd,test_pump_shotgun_loads_with_its_table_values,,1315,0,0,0,0,0,0,
-unit/data/test_weapon_def.gd,test_auto_shotgun_loads_with_its_table_values,,1141,0,0,0,0,0,0,
-unit/data/test_weapon_def.gd,test_sniper_rifle_loads_with_its_table_values,,1033,0,0,0,0,0,0,
-unit/data/test_weapon_def.gd,test_guns_with_no_burst_mode_keep_the_default_burst_size,,1852,0,0,0,0,0,0,
-unit/debug/test_ascii_render.gd,test_grid_to_text_renders_terrain_and_cover,,14937,0,0,0,0,0,0,
-unit/debug/test_ascii_render.gd,test_grid_to_text_occupant_overlay_overrides_terrain,,257,0,0,0,0,0,0,
-unit/debug/test_ascii_render.gd,test_plane_to_text_frontmost_region_wins,,111,0,0,0,0,0,0,
-unit/debug/test_ascii_render.gd,test_plane_to_text_gap_is_dot,,116,0,0,0,0,0,0,
-unit/debug/test_ascii_render.gd,test_overlay_impacts_marks_points,,76,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_can_inject_is_true_outside_resolution,,1827,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_can_inject_is_false_while_resolving,,3025,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_a_verb_mutates_and_logs_at_a_step_boundary,,2155,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_a_mid_resolution_injection_attempt_is_rejected,,2543,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_a_rejected_injection_is_a_true_noop_never_marks_the_bout_injected,,2415,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_a_successful_injection_marks_the_bout_as_injected,,1943,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_spawn_unit_adds_a_real_unit_through_the_real_assembly_path,,8651,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_spawn_unit_draws_its_matrix_id_from_the_bout_rng_not_a_global_one,,14416,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_position_moves_the_unit_and_updates_grid_occupancy,,4182,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_position_refuses_an_already_occupied_cell,,4094,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_hand_weapon_attaches_a_fresh_pool_copy_into_the_named_socket,,2339,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_equip_from_kit_runs_the_real_kit_equip_path,,2269,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_part_hp_forces_an_exact_value,,1923,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_part_hp_refuses_an_unknown_part_id,,3138,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_inflict_wound_reuses_wound_effects,,2126,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_inflict_wound_below_threshold_never_inflicts,,2005,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_ap_forces_an_exact_value,,1939,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_mp_forces_an_exact_value,,2826,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_facing_forces_an_exact_orientation,,2079,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_pose_forces_a_named_pose,,2265,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_therms_is_a_flagged_stub_that_never_mutates,,2041,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_force_overwatch_arm_sets_the_field_directly,,2796,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_force_action_reuses_try_apply_and_its_own_legality_check,,2046,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_force_action_applies_a_legal_action_for_real,,2214,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_place_cover_adds_a_real_blocker_and_blocks_movement,,2212,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_place_cover_refuses_an_already_blocked_cell,,2201,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_clear_cover_removes_the_blocker_and_restores_passage,,2270,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_clear_cover_refuses_a_cell_with_nothing_to_clear,,2205,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_passable_false_makes_a_cell_impassable,,2239,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_set_passable_true_restores_passage,,2123,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_attach_part_attaches_a_non_weapon_part_to_a_valid_socket,,2239,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_attach_part_refuses_an_illegal_attachment,,2160,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_hand_weapon_and_attach_part_share_the_same_mechanism_but_log_distinctly,,2291,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_a_debug_move_onto_a_raised_cell_updates_the_units_height,,7793,0,0,0,0,0,0,
-unit/debug/test_bout_injector.gd,test_move_object_onto_a_raised_cell_updates_height_too,,6975,0,0,0,0,0,0,
-unit/debug/test_bout_injector_determinism.gd,test_bout_injector_is_never_referenced_by_a_gameplay_input_class,,276,0,0,0,0,0,0,
-unit/debug/test_bout_injector_determinism.gd,test_bout_injector_is_referenced_by_both_overlays,,951,0,0,0,0,0,0,
-unit/debug/test_bout_injector_determinism.gd,test_inject_button_is_gated_behind_a_real_debug_check,,105,0,0,0,0,0,0,
-unit/debug/test_bout_injector_determinism.gd,test_the_same_injections_in_the_same_order_reproduce_the_same_result,,24212,0,6,84,12,6,0,
-unit/debug/test_bout_injector_force_climb.gd,test_force_climb_reuses_real_legality_a_non_climber_is_refused,,1260,0,0,0,0,0,0,
-unit/debug/test_bout_injector_force_climb.gd,test_force_climb_applies_a_legal_climb_for_real,,1390,0,0,0,0,0,0,
-unit/debug/test_bout_injector_force_climb.gd,test_force_hop_down_applies_a_legal_drop_for_real,,1106,0,0,0,0,0,0,
-unit/debug/test_bout_injector_kill.gd,test_kill_ejects_the_hosted_matrix_so_resolve_matrix_goes_null,,322,0,0,0,0,0,0,
-unit/debug/test_bout_injector_kill.gd,test_kill_drops_the_ejected_matrix_as_a_real_loose_field_item,,269,0,0,0,0,0,0,
-unit/debug/test_bout_injector_kill.gd,test_kill_still_kills_through_the_real_combat_state_path,,282,0,0,0,0,0,0,
-unit/debug/test_bout_injector_kill.gd,test_kill_on_a_matrixless_unit_still_kills_without_erroring,,244,0,0,0,0,0,0,
-unit/debug/test_bout_injector_kill.gd,test_kill_refuses_an_already_dead_unit,,237,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_moves_a_unit_the_same_as_set_position,,340,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_on_a_unit_logs_its_own_verb_name_not_set_positions,,329,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_a_unit_move_onto_an_occupied_cell,,465,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_moves_a_cover_blocker_preserving_its_own_state,,481,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_a_cover_move_onto_an_occupied_blocker_cell,,311,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_moves_loose_field_items_merging_into_an_occupied_destination,,341,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_a_cell_with_neither_a_blocker_nor_field_items,,257,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_when_source_and_destination_are_the_same_cell,,310,0,0,0,0,0,0,
-unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_mid_resolution,,385,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_unit_kills_it_through_the_real_combat_state_path,,307,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_unit_never_ejects_the_matrix_thats_kills_own_job,,284,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_unit_always_succeeds_even_if_already_dead,,254,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_cell_erases_the_blocker_there,,272,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_cell_erases_loose_field_items_there_too,,262,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_cell_erases_both_a_blocker_and_field_items_at_once,,268,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_refuses_a_cell_with_neither_a_blocker_nor_field_items,,343,0,0,0,0,0,0,
-unit/debug/test_bout_injector_remove_object.gd,test_remove_object_refuses_mid_resolution,,379,0,0,0,0,0,0,
-unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_forces_the_grid,,1349,0,0,0,0,0,0,
-unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_resyncs_a_unit_already_standing_there,,1151,0,0,0,0,0,0,
-unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_rejected_while_resolving,,979,0,0,0,0,0,0,
-unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_out_of_bounds_returns_false,,1293,0,0,0,0,0,0,
-unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_logs_the_injection,,1932,0,0,0,0,0,0,
-unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_cover_places_a_real_blocker,,1323,0,0,0,0,0,0,
-unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_cover_refuses_an_already_blocked_cell,,1395,0,0,0,0,0,0,
-unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers,,1159,0,0,0,0,0,0,
-unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_a_loose_item_appends_to_an_existing_pile,,1131,0,0,0,0,0,0,
-unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_refuses_an_unknown_pool_id,,946,0,0,0,0,0,0,
-unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_logs_whether_it_was_cover_or_a_loose_item,,1031,0,0,0,0,0,0,
-unit/debug/test_build_identity.gd,test_the_build_kind_is_one_of_the_three_known_builds,,86,0,0,0,0,0,0,
-unit/debug/test_build_identity.gd,test_the_test_suite_itself_reports_the_editor_debug_build,,88,0,0,0,0,0,0,
-unit/debug/test_build_identity.gd,test_only_an_exported_release_build_counts_as_representative,,84,0,0,0,0,0,0,
-unit/debug/test_build_identity.gd,test_the_description_names_the_build_the_version_and_the_platform,,84,0,0,0,0,0,0,
-unit/debug/test_build_identity.gd,test_the_data_form_carries_the_same_facts_as_the_prose,,114,0,0,0,0,0,0,
-unit/debug/test_debug_verbs.gd,test_only_board_changing_verbs_ask_for_a_board_rebuild,,80,0,0,0,0,0,0,
-unit/debug/test_debug_verbs.gd,test_the_two_ambiguous_verbs_always_rebuild,,65,0,0,0,0,0,0,
-unit/debug/test_debug_verbs.gd,test_every_board_changing_verb_is_a_real_verb,,133,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_true_in_the_baseline_case,,3495,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_without_enough_ap,,3139,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_beyond_weapon_range,,4727,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_for_a_two_handed_weapon_adjacent_to_an_enemy,,3880,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_true_for_a_short_weapon_adjacent_to_an_enemy,,4626,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_under_min_range_for_a_non_dud_weapon,,5478,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_a_dud_capable_weapon_still_fires_under_min_range_and_is_flagged,,4381,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_a_normal_shot_within_min_range_is_not_flagged_as_a_dud,,5491,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_a_shot_beyond_effective_range_scales_up_the_dartboard,,203,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_without_line_of_sight,,3778,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_without_a_capable_manipulator,,3568,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_for_a_weapon_that_only_provides_burst,,3210,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst,,3716,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_apply_deals_damage_and_spends_ap,,4119,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_impact_event_names_which_unit_actually_took_the_hit,,3817,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center,,3358,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_behind_the_ray,,3431,0,0,0,0,0,1,
-unit/logic/actions/test_attack_action.gd,test_a_queued_attack_on_a_target_that_dies_earlier_stops_resolution,,13090,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_flanking_exposes_a_rear_part_a_frontal_shot_cannot_reach,,28848,0,0,0,0,0,4,
-unit/logic/actions/test_attack_action.gd,test_destroying_the_head_logs_every_cascading_consequence,,14394,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_replays_identically_from_the_same_seed,,10723,0,0,0,0,0,20,
-unit/logic/actions/test_attack_action.gd,test_destroying_a_scrap_pile_along_the_shot_credits_its_salvage_to_the_mission,,5379,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_destroying_a_field_object_with_no_mission_context_does_not_crash,,3699,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_is_legal_true_with_a_blocker_but_no_unit_at_the_target_cell,,3113,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_is_legal_false_with_neither_a_unit_nor_a_blocker_at_the_target_cell,,3269,0,0,0,0,0,0,
-unit/logic/actions/test_attack_action.gd,test_apply_resolves_a_declared_shot_against_a_blocker_with_no_unit_there,,5329,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target,,4329,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_shouldering_clears_cover_the_unshouldered_position_would_not,,3509,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_cover_shorter_than_the_muzzle_does_not_obstruct_the_shot,,3641,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_a_shot_at_an_elevated_target_still_lands_inside_its_real_body,,3604,0,0,0,0,0,2,
-unit/logic/actions/test_attack_action.gd,test_a_steeply_elevated_shooter_still_hits_a_close_target,,3383,0,0,0,0,0,2,
-unit/logic/actions/test_burst_action.gd,test_chaingun_offers_burst_and_not_shoot,,192,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_auto_shotgun_offers_shoot_and_burst,,149,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_is_legal_true_in_the_baseline_case,,3309,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_is_legal_false_without_enough_ap_for_the_burst_ap_cost,,3044,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_is_legal_false_for_a_two_handed_burst_weapon_adjacent_to_an_enemy,,3150,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_is_legal_false_for_a_weapon_with_no_burst_mode,,3202,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_is_legal_false_for_a_weapon_that_can_burst_but_never_opted_in,,3261,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst,,4172,0,0,0,0,0,0,
-unit/logic/actions/test_burst_action.gd,test_a_burst_fires_exactly_burst_size_independent_pulls,,4600,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_burst_spends_its_own_higher_ap_cost,,4478,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_a_burst_emits_one_summary_event_plus_full_detail_per_impact,,4903,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_a_burst_of_buckshot_resolves_n_pulls_times_m_pellets,,25638,0,0,0,0,0,28,
-unit/logic/actions/test_burst_action.gd,test_replays_identically_from_the_same_seed,,24622,0,0,0,0,0,26,
-unit/logic/actions/test_burst_action.gd,test_recoil_resets_between_separate_burst_activations,,5841,0,0,0,0,0,26,
-unit/logic/actions/test_burst_action.gd,test_recoil_never_changes_the_pellet_count_per_pull,,21424,0,0,0,0,0,28,
-unit/logic/actions/test_burst_action.gd,test_apply_faces_the_shooter_toward_the_target,,19848,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_a_real_bursts_pull_events_always_total_burst_size_even_with_misses,,21618,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_burst_pull_events_are_indexed_0_to_burst_size_minus_1,,19874,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_landed_so_far_matches_the_actual_impact_count_at_the_end,,5393,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_apply_resolves_a_declared_burst_against_a_blocker_with_no_unit_there,,5024,0,0,0,0,0,13,
-unit/logic/actions/test_burst_action.gd,test_a_burst_still_lands_on_an_elevated_target,,4642,0,0,0,0,0,13,
-unit/logic/actions/test_carry_body_action.gd,test_carry_body_attaches_to_back_and_tags_inert,,417,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_carry_body_emits_a_carry_body_event,,366,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_carry_body_occupies_back_so_a_second_body_has_nowhere_to_go,,360,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_a_worn_trash_barrel_leaves_no_room_to_carry_a_body,,375,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_carry_body_illegal_for_something_not_shaped_for_a_back_socket,,249,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_carry_body_illegal_without_a_body_present,,239,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_carried_body_contributes_volume_to_the_carriers_projection,,321,0,0,0,0,0,0,
-unit/logic/actions/test_carry_body_action.gd,test_a_shot_from_behind_hits_the_carried_body_instead_of_the_carrier,,838,0,0,0,0,0,2,
-unit/logic/actions/test_climb_action.gd,test_climb_up_a_full_level_moves_the_unit_and_costs_4_mp,,556,0,0,0,0,0,0,
-unit/logic/actions/test_climb_action.gd,test_a_climb_from_a_ramp_costs_3_mp_at_the_corrected_standing_height,,490,0,0,0,0,0,0,
-unit/logic/actions/test_climb_action.gd,test_a_climb_beyond_1_level_is_illegal,,339,0,0,0,0,0,0,
-unit/logic/actions/test_climb_action.gd,test_a_non_climb_capable_unit_cannot_climb,,328,0,0,0,0,0,0,
-unit/logic/actions/test_climb_action.gd,test_climbing_onto_a_ramp_tile_is_illegal_thats_ordinary_movement,,318,0,0,0,0,0,0,
-unit/logic/actions/test_climb_action.gd,test_climbing_a_flat_cell_is_illegal_nothing_to_climb,,305,0,0,0,0,0,0,
-unit/logic/actions/test_climb_action.gd,test_climb_emits_a_climbed_event,,441,0,0,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_advances_turn_order,,539,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_emits_turn_end_for_the_ending_unit_then_turn_start_for_the_next,,456,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_is_legal_and_advances_even_if_the_current_unit_just_died,,428,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_rejects_when_not_units_turn,,306,0,0,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_starts_the_hold_on_the_players_own_tile,,337,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_cancels_the_hold_when_the_unit_is_off_the_tile,,336,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_does_not_complete_within_the_same_round,,311,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_extracts_once_a_later_round_has_begun,,321,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_requires_every_objective_complete,,320,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_never_applies_to_a_non_player_squad,,369,0,2,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_completion_triggers_the_mission_extract_once_the_squad_is_out,,394,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_end_turn_with_no_mission_skips_the_hold_check_entirely,,350,0,1,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_true_on_the_tile_with_objectives_complete,,308,0,0,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_off_the_tile,,353,0,0,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_with_an_incomplete_objective,,235,0,0,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_for_a_non_player_squad,,258,0,0,0,0,0,0,
-unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_with_no_mission,,72,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_illegal_off_the_extraction_cell,,345,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_illegal_for_the_player_squad_even_on_the_tile,,245,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_illegal_without_enough_ap,,245,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_legal_at_the_zone_regardless_of_incomplete_objectives,,242,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_spends_its_ap_cost,,256,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_removes_the_unit_and_marks_it_extracted,,266,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_emits_an_extract_event,,259,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_uses_team_coded_cells_when_present_for_this_squad,,235,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_falls_back_to_extraction_cells_when_this_squads_own_entry_is_absent,,234,0,0,0,0,0,0,
-unit/logic/actions/test_extract_action.gd,test_extract_on_a_preview_never_removes_the_real_unit,,417,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_manual_face_deducts_exactly_one_mp,,332,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_manual_face_burns_one_ap_for_mp_when_short,,309,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_facing_with_zero_mp_and_zero_ap_is_illegal,,281,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_manual_face_emits_faced_with_reason_manual_first,,401,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_the_first_manual_face_unlocks_free_refacing_for_the_rest_of_the_turn,,460,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_a_second_manual_face_logs_reason_manual_free,,392,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_a_face_is_always_legal_once_unlocked_even_with_no_mp_or_ap,,288,0,0,0,0,0,0,
-unit/logic/actions/test_face_action.gd,test_an_attack_faces_the_target_for_free,,950,0,0,0,0,0,2,
-unit/logic/actions/test_face_action.gd,test_an_attack_already_facing_the_target_does_not_re_log_faced,,750,0,0,0,0,0,2,
-unit/logic/actions/test_gather_action.gd,test_gather_consumes_the_node_and_banks_the_resource,,338,0,0,0,0,0,0,
-unit/logic/actions/test_gather_action.gd,test_gather_completes_the_tied_objective,,354,0,0,0,0,0,0,
-unit/logic/actions/test_gather_action.gd,test_gather_illegal_off_the_node_cell,,263,0,0,0,0,0,0,
-unit/logic/actions/test_gather_action.gd,test_gather_illegal_without_enough_ap,,252,0,0,0,0,0,0,
-unit/logic/actions/test_gather_action.gd,test_gather_emits_a_gather_event,,314,0,0,0,0,0,0,
-unit/logic/actions/test_gather_action.gd,test_gather_on_a_preview_spends_ap_but_never_touches_the_mission,,756,0,0,0,0,0,0,
-unit/logic/actions/test_grind_action.gd,test_is_legal_false_without_a_hold_provider,,482,0,0,0,0,0,0,
-unit/logic/actions/test_grind_action.gd,test_two_hits_never_accumulate_enough_bonus_pen_to_penetrate,,772,0,0,0,0,0,3,
-unit/logic/actions/test_grind_action.gd,test_a_third_hit_accumulates_enough_bonus_pen_to_penetrate_and_spill_through,,860,0,0,0,0,0,4,
-unit/logic/actions/test_grind_action.gd,test_a_hold_never_deflects,,566,0,0,0,0,0,2,
-unit/logic/actions/test_hold_action.gd,test_is_legal_true_for_the_current_unit_with_another_living_unit,,325,0,0,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_is_legal_false_when_no_other_living_unit_exists,,269,0,0,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_is_legal_false_for_a_non_current_unit,,335,0,0,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_holding_defers_the_units_turn_to_after_the_next_ally,,917,0,3,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_held_ap_and_mp_carry_forward_exactly,,549,0,2,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_no_regeneration_occurs_while_held_unlike_a_normal_turn,,608,0,2,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_a_held_unit_still_acts_within_the_same_round,,552,0,2,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_round_advances_normally_after_a_held_units_resumed_turn_ends,,582,0,3,0,0,0,0,
-unit/logic/actions/test_hold_action.gd,test_holding_is_deterministic_from_the_same_starting_state,,1026,0,6,0,0,0,0,
-unit/logic/actions/test_hop_down_action.gd,test_hop_down_2_levels_moves_the_unit_and_costs_1_mp,,558,0,0,0,0,0,0,
-unit/logic/actions/test_hop_down_action.gd,test_hop_down_1_level_is_legal,,402,0,0,0,0,0,0,
-unit/logic/actions/test_hop_down_action.gd,test_hop_down_3_levels_is_illegal,,363,0,0,0,0,0,0,
-unit/logic/actions/test_hop_down_action.gd,test_hopping_up_is_illegal_thats_a_climb_not_a_hop,,357,0,0,0,0,0,0,
-unit/logic/actions/test_hop_down_action.gd,test_hopping_onto_a_ramp_tile_is_illegal_thats_ordinary_movement,,390,0,0,0,0,0,0,
-unit/logic/actions/test_hop_down_action.gd,test_hop_down_emits_a_hopped_down_event,,443,0,0,0,0,0,0,
-unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_strips_a_sub_part_off_a_dropped_assembly,,472,0,0,0,0,0,0,
-unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_emits_a_strip_part_event,,929,0,0,0,0,0,0,
-unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_illegal_for_a_part_not_in_the_assembly,,503,0,0,0,0,0,0,
-unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_illegal_targeting_the_assembly_root_itself,,385,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_costs_right_mp_and_burns_ap_in_chunks,,3765,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_emits_a_move_event_to_the_destination,,3109,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_fails_when_ap_runs_out_mid_path,,3415,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_rejects_path_not_starting_at_units_cell,,3215,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_rejects_when_not_units_turn,,3274,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_rejects_blocked_destination,,4101,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_rejects_non_adjacent_step,,3699,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_rejects_trivial_single_cell_path,,2906,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_faces_the_unit_toward_the_overall_direction_of_travel,,4536,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_facing_costs_no_mp_and_does_not_consume_the_facing_unlock,,3473,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_move_facing_emits_a_faced_event_with_reason_free_with_move,,3141,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_a_curved_move_faces_each_tile_before_entering_it,,3409,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_a_curved_move_interleaves_faced_and_move_events_leg_by_leg,,3447,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_a_straight_move_still_emits_exactly_one_move_event,,3529,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_an_interrupted_move_leaves_the_unit_facing_its_direction_of_travel,,4246,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_per_tile_facing_on_a_curved_move_still_costs_no_extra_mp,,3476,0,0,0,0,0,0,
-unit/logic/actions/test_move_action.gd,test_leftover_mp_is_discarded_at_end_of_turn,,3213,0,2,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_matrix_goes_to_held_matrix,,390,0,0,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_emits_a_pick_up_event,,380,0,0,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_matrix_illegal_when_already_carrying_one,,347,0,0,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_part_attaches_into_the_named_container,,550,0,0,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_part_illegal_without_room_in_the_container,,293,0,0,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_part_illegal_with_no_container_worn_at_all,,282,0,0,0,0,0,0,
-unit/logic/actions/test_pick_up_action.gd,test_pick_up_illegal_off_the_units_own_cell,,285,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_true_with_a_charged_welder_and_enough_scrap,,352,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_false_without_enough_ap,,311,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_false_with_no_welder,,296,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_false_with_a_drained_battery,,294,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_false_on_a_fully_healed_target,,298,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_false_without_enough_matching_scrap,,293,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_is_legal_false_with_the_wrong_material_scrap,,301,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_apply_heals_the_target_spends_ap_scrap_and_battery_charge,,356,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_apply_never_heals_past_max_hp,,332,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_apply_erases_the_resource_entry_once_fully_spent,,312,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_apply_emits_a_repaired_event,,403,0,0,0,0,0,0,
-unit/logic/actions/test_repair_action.gd,test_apply_on_a_preview_spends_ap_but_never_touches_the_real_unit,,844,0,0,0,0,0,0,
-unit/logic/actions/test_shot_resolution.gd,test_a_genuine_miss_emits_a_miss_event,,492,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_hit_never_also_emits_a_miss_event,,417,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_miss_events_endpoint_continues_along_the_fired_direction,,347,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_miss_respects_the_weapons_own_authored_max_range,,355,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_miss_with_no_authored_max_range_falls_back_to_the_map_size,,327,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_hit_logs_its_own_origin_and_hit_point,,376,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_deflect_logs_its_own_reflected_miss_endpoint,,380,0,0,0,0,0,2,
-unit/logic/actions/test_shot_resolution.gd,test_a_hits_own_text_carries_its_real_origin_and_hit_geometry,,346,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_miss_own_text_carries_its_real_origin_and_end_geometry,,328,0,0,0,0,0,1,
-unit/logic/actions/test_shot_resolution.gd,test_a_backward_and_forward_shot_are_distinguishable_by_their_own_logged_geometry,,636,0,0,0,0,0,2,
-unit/logic/actions/test_shot_resolution.gd,test_the_same_shot_logs_identical_geometry_every_time,,998,0,0,0,0,0,2,
-unit/logic/actions/test_shutdown_action.gd,test_is_legal_true_for_the_current_unit_even_when_fully_healthy,,301,0,0,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_is_legal_false_for_a_non_current_unit,,280,0,0,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_is_legal_false_once_already_shut_down,,267,0,0,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_apply_marks_shutdown_but_stays_alive_and_on_its_cell,,411,0,1,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_apply_ends_the_turn,,345,0,1,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_apply_emits_a_shutdown_event,,282,0,1,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_apply_on_a_preview_never_touches_the_real_unit,,413,0,1,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_apply_triggers_a_primed_meltdown,,398,0,1,0,0,0,0,
-unit/logic/actions/test_shutdown_action.gd,test_apply_with_no_primed_meltdown_detonates_nothing,,262,0,1,0,0,0,0,
-unit/logic/actions/test_slash_action.gd,test_is_legal_true_within_reach,,409,0,0,0,0,0,0,
-unit/logic/actions/test_slash_action.gd,test_is_legal_false_without_a_slash_provider,,344,0,0,0,0,0,0,
-unit/logic/actions/test_slash_action.gd,test_apply_deals_damage_to_the_target,,687,0,0,0,0,0,2,
-unit/logic/actions/test_slash_action.gd,test_a_vertical_slash_hits_every_part_along_its_line,,1435,0,0,0,0,0,10,
-unit/logic/actions/test_slash_action.gd,test_a_short_vertical_slash_does_not_reach_unrelated_parts,,759,0,0,0,0,0,3,
-unit/logic/actions/test_stab_action.gd,test_is_legal_true_within_reach,,399,0,0,0,0,0,0,
-unit/logic/actions/test_stab_action.gd,test_is_legal_false_beyond_reach,,359,0,0,0,0,0,0,
-unit/logic/actions/test_stab_action.gd,test_is_legal_false_without_a_stab_provider,,332,0,0,0,0,0,0,
-unit/logic/actions/test_stab_action.gd,test_is_legal_false_without_enough_ap,,319,0,0,0,0,0,0,
-unit/logic/actions/test_stab_action.gd,test_apply_deals_damage_through_the_shot_plane,,617,0,0,0,0,0,2,
-unit/logic/actions/test_stab_action.gd,test_impact_event_matches_the_ordinary_shot_shape,,645,0,0,0,0,0,2,
-unit/logic/actions/test_stab_action.gd,test_dartboard_scatter_is_tighter_at_melee_range_than_at_range,,99,0,0,0,0,0,0,
-unit/logic/actions/test_stab_action.gd,test_a_stab_can_aim_at_an_internal_part_via_the_existing_aimed_targeting,,855,0,0,0,0,0,3,
-unit/logic/actions/test_stab_action.gd,test_a_wide_stab_still_hits_its_target_normally,,636,0,0,0,0,0,2,
-unit/logic/actions/test_swap_part_action.gd,test_swap_part_detaches_old_and_attaches_replacement,,402,0,0,0,0,0,0,
-unit/logic/actions/test_swap_part_action.gd,test_swap_part_emits_a_swap_part_event,,357,0,0,0,0,0,0,
-unit/logic/actions/test_swap_part_action.gd,test_swap_part_illegal_when_replacement_does_not_fit_the_socket_type,,283,0,0,0,0,0,0,
-unit/logic/actions/test_swap_part_action.gd,test_swap_part_illegal_without_enough_ap,,275,0,0,0,0,0,0,
+baselines/test_armor_and_ricochet_baseline.gd,test_seeded_burst_into_armor,,3573,0,0,0,0,0,17,recorded baseline output does not drift
+baselines/test_deep_strike_stress_baseline.gd,test_twenty_random_deep_strike_cyborgs,,73491,0,0,0,0,0,0,recorded baseline output does not drift
+baselines/test_map_generation_baseline.gd,test_dump_ascii_maps_across_several_seeds,,194345,0,0,0,10,0,0,recorded baseline output does not drift
+baselines/test_shot_plane_sweep_baseline.gd,test_shot_plane_sweeps_continuously_across_a_dozen_angles,,867,0,0,0,0,0,0,the shot plane varies continuously with the shooter's angle
+determinism/test_determinism_check.gd,test_check_passes_for_a_naturally_deterministic_generator,,125,0,0,0,0,0,0,the determinism harness detects unseeded randomness
+determinism/test_determinism_check.gd,test_check_fails_when_generator_is_not_actually_seeded,,99,0,0,0,0,0,0,the determinism harness detects unseeded randomness
+determinism/test_determinism_check.gd,test_check_supports_a_custom_compare_fn_for_reference_types,,57056,0,0,0,12,0,0,the determinism harness detects unseeded randomness
+determinism/test_determinism_check.gd,test_check_reports_which_seeds_failed,,249,0,0,0,0,0,0,the determinism harness detects unseeded randomness
+integration/test_full_mission.gd,test_bout_completion_rate_meets_the_measured_floor,,97893918,8,297,386640,637,300,2986,the AI finishes missions at or above the measured floor
+unit/data/test_hulk.gd,test_revisiting_a_hulk_yields_an_identical_map,,78295,0,0,0,4,0,0,the same seed produces the same world
+unit/data/test_hulk.gd,test_population_seed_changes_every_visit_while_map_seed_does_not,,202,0,0,0,0,0,0,a hulk's map is stable across visits while its population is not
+unit/data/test_hulk.gd,test_different_visit_counts_actually_repopulate_a_deep_strike_roster,,12723,0,0,0,0,0,0,a hulk's map is stable across visits while its population is not
+unit/data/test_material_table.gd,test_color_for_returns_the_entrys_authored_color,,167,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/data/test_material_table.gd,test_color_for_an_unknown_material_falls_back_to_the_default_entrys_color,,148,0,0,0,0,0,0,an unknown open-vocabulary id falls back rather than failing
+unit/data/test_material_table.gd,test_default_table_yields_a_distinct_color_per_material,,233,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/data/test_material_table.gd,test_default_table_covers_the_reference_humanoids_materials_and_cover,,256,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/data/test_material_table.gd,test_no_default_entry_uses_the_unknown_material_fallback_color,,312,0,0,0,0,0,0,an unknown open-vocabulary id falls back rather than failing
+unit/data/test_matrix.gd,test_unlinked_matrix_defers_to_its_own_fields,,154,0,0,0,0,0,0,a matrix link derives from its base rather than copying it
+unit/data/test_matrix.gd,test_link_effective_level_is_base_level_times_tier_ratio,,56,0,0,0,0,0,0,a matrix link derives from its base rather than copying it
+unit/data/test_matrix.gd,test_link_carries_the_players_chosen_subset_of_the_bases_perks,,124,0,0,0,0,0,0,a matrix link derives from its base rather than copying it
+unit/data/test_matrix.gd,test_destroying_a_link_flags_link_killed_on_the_base_and_docks_one_perk,,83,0,0,0,0,0,0,destroying a link costs the base a perk
+unit/data/test_matrix.gd,test_destroying_a_link_with_no_perks_left_is_a_harmless_no_op,,76,0,0,0,0,0,0,destroying a link costs the base a perk
+unit/data/test_matrix.gd,test_destroying_an_unlinked_matrix_is_a_no_op,,69,0,0,0,0,0,0,destroying a link costs the base a perk
+unit/data/test_part.gd,test_new_part_has_sane_defaults,,239,0,0,0,0,0,0,an unstated authored field takes its default
+unit/data/test_part.gd,test_save_load_round_trips_a_full_socket_tree,,1194,0,0,0,0,0,0,data round-trips through save and load
+unit/data/test_part.gd,test_hosts_matrix_is_false_without_a_matrix_socket,,68,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/data/test_part.gd,test_hosts_matrix_is_true_with_a_matrix_socket,,56,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/data/test_part.gd,test_dock_matrix_fails_on_a_part_with_no_matrix_socket,,70,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/data/test_part.gd,test_dock_matrix_succeeds_on_a_part_with_a_free_matrix_socket,,114,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/data/test_part.gd,test_dock_matrix_fails_when_already_hosting,,62,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/data/test_run_state.gd,test_add_resource_accumulates_by_id,,94,0,0,0,0,0,0,resources accumulate by id
+unit/data/test_run_state.gd,test_save_load_round_trips_roster_stash_and_resources,,582,0,0,0,0,0,0,data round-trips through save and load
+unit/data/test_shell.gd,test_all_parts_walks_the_whole_assembly,,160,0,0,0,0,0,0,assembly traversal reaches every part
+unit/data/test_shell.gd,test_all_parts_with_joints_adds_one_joint_per_occupied_socket,,157,0,0,0,0,0,0,assembly traversal reaches every part
+unit/data/test_shell.gd,test_all_parts_with_joints_is_empty_with_a_null_root,,106,0,0,0,0,0,0,assembly traversal reaches every part
+unit/data/test_shell.gd,test_living_parts_excludes_destroyed,,264,0,0,0,0,0,0,a destroyed part stops contributing
+unit/data/test_shell.gd,test_stat_resolver_sums_a_stat_across_the_whole_tree,,131,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/data/test_shell.gd,test_total_ram_sums_ram_cost_across_the_whole_assembly,,94,0,0,0,0,0,0,assembly totals sum across the whole tree
+unit/data/test_shell.gd,test_total_ram_also_counts_items_carried_in_a_container,,96,0,0,0,0,0,0,assembly totals sum across the whole tree
+unit/data/test_shell.gd,test_carried_mass_applies_the_worn_discount_ceiling_even_with_no_authored_discount,,133,0,0,0,0,0,0,"the worn-layer mass discount applies once, at a floor"
+unit/data/test_shell.gd,test_carried_mass_never_worsens_a_containers_own_better_discount,,96,0,0,0,0,0,0,"the worn-layer mass discount applies once, at a floor"
+unit/data/test_shell.gd,test_save_load_round_trips_a_shell,,630,0,0,0,0,0,0,data round-trips through save and load
+unit/data/test_taskblock21_gun_data.gd,test_every_reference_gun_has_three_scatter_rings_middle_heaviest,"name asserts ""three scatter rings"" as though ring count were a rule; docs/00 says N rings never 3. The data authors three — the test pins a content choice and the name reads as a system constraint.",1311,0,0,0,0,0,0,authored weapon data matches its table
+unit/data/test_taskblock21_gun_data.gd,test_authored_ap_costs_match_the_taskblocks_own_numbers,"name cites ""the taskblock's own numbers"" — taskblock files are archived and deleted, so it points at a document a reader cannot open.",1066,0,0,0,0,0,0,authored weapon data matches its table
+unit/data/test_taskblock21_gun_data.gd,test_sniper_rifles_ap_cost_is_what_attack_action_actually_spends,,1607,0,0,0,0,0,2,an action spends the AP its provider authors
+unit/data/test_taskblock21_gun_data.gd,test_chainguns_burst_spends_burst_ap_cost,,2806,0,0,0,0,0,13,an action spends the AP its provider authors
+unit/data/test_tool_parts.gd,test_angle_grinder_costs_a_full_turn,,99,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/data/test_tool_parts.gd,test_metal_saw_replaces_a_hand_and_costs_two_ap,,71,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/data/test_tool_parts.gd,test_power_saw_requires_specialized_integration_and_costs_one_ap_per_limb,,63,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/data/test_tool_parts.gd,test_a_swap_part_action_can_be_priced_directly_from_a_tools_ap_cost,,16742,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/data/test_weapon_def.gd,test_a_non_weapon_part_has_no_weapon_def,,1094,0,0,0,0,0,0,a part carries weapon data only when it is a weapon
+unit/data/test_weapon_def.gd,test_chaingun_loads_with_its_table_values,,1076,0,0,0,0,0,0,authored weapon data matches its table
+unit/data/test_weapon_def.gd,test_pump_shotgun_loads_with_its_table_values,,1315,0,0,0,0,0,0,authored weapon data matches its table
+unit/data/test_weapon_def.gd,test_auto_shotgun_loads_with_its_table_values,,1141,0,0,0,0,0,0,authored weapon data matches its table
+unit/data/test_weapon_def.gd,test_sniper_rifle_loads_with_its_table_values,,1033,0,0,0,0,0,0,authored weapon data matches its table
+unit/data/test_weapon_def.gd,test_guns_with_no_burst_mode_keep_the_default_burst_size,,1852,0,0,0,0,0,0,an unstated authored field takes its default
+unit/debug/test_ascii_render.gd,test_grid_to_text_renders_terrain_and_cover,,14937,0,0,0,0,0,0,a spatial system has an ASCII dump a test can read
+unit/debug/test_ascii_render.gd,test_grid_to_text_occupant_overlay_overrides_terrain,,257,0,0,0,0,0,0,a spatial system has an ASCII dump a test can read
+unit/debug/test_ascii_render.gd,test_plane_to_text_frontmost_region_wins,,111,0,0,0,0,0,0,a spatial system has an ASCII dump a test can read
+unit/debug/test_ascii_render.gd,test_plane_to_text_gap_is_dot,,116,0,0,0,0,0,0,a spatial system has an ASCII dump a test can read
+unit/debug/test_ascii_render.gd,test_overlay_impacts_marks_points,,76,0,0,0,0,0,0,a spatial system has an ASCII dump a test can read
+unit/debug/test_bout_injector.gd,test_can_inject_is_true_outside_resolution,,1827,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector.gd,test_can_inject_is_false_while_resolving,,3025,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector.gd,test_a_verb_mutates_and_logs_at_a_step_boundary,,2155,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector.gd,test_a_mid_resolution_injection_attempt_is_rejected,,2543,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector.gd,test_a_rejected_injection_is_a_true_noop_never_marks_the_bout_injected,,2415,0,0,0,0,0,0,a refused injection changes nothing
+unit/debug/test_bout_injector.gd,test_a_successful_injection_marks_the_bout_as_injected,,1943,0,0,0,0,0,0,an injected bout is flagged so its results are not read as clean
+unit/debug/test_bout_injector.gd,test_spawn_unit_adds_a_real_unit_through_the_real_assembly_path,,8651,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_spawn_unit_draws_its_matrix_id_from_the_bout_rng_not_a_global_one,,14416,0,0,0,0,0,0,randomness comes from the passed-in seeded RNG
+unit/debug/test_bout_injector.gd,test_set_position_moves_the_unit_and_updates_grid_occupancy,,4182,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_set_position_refuses_an_already_occupied_cell,,4094,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector.gd,test_hand_weapon_attaches_a_fresh_pool_copy_into_the_named_socket,,2339,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_equip_from_kit_runs_the_real_kit_equip_path,,2269,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_set_part_hp_forces_an_exact_value,,1923,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_set_part_hp_refuses_an_unknown_part_id,,3138,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector.gd,test_inflict_wound_reuses_wound_effects,,2126,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_inflict_wound_below_threshold_never_inflicts,,2005,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_set_ap_forces_an_exact_value,,1939,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_set_mp_forces_an_exact_value,,2826,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_set_facing_forces_an_exact_orientation,,2079,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_set_pose_forces_a_named_pose,,2265,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_set_therms_is_a_flagged_stub_that_never_mutates,,2041,0,0,0,0,0,0,"an unimplemented hook is flagged, not silently inert"
+unit/debug/test_bout_injector.gd,test_force_overwatch_arm_sets_the_field_directly,,2796,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_force_action_reuses_try_apply_and_its_own_legality_check,,2046,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_force_action_applies_a_legal_action_for_real,,2214,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_place_cover_adds_a_real_blocker_and_blocks_movement,,2212,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_place_cover_refuses_an_already_blocked_cell,,2201,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector.gd,test_clear_cover_removes_the_blocker_and_restores_passage,,2270,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_clear_cover_refuses_a_cell_with_nothing_to_clear,,2205,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector.gd,test_set_passable_false_makes_a_cell_impassable,,2239,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_set_passable_true_restores_passage,,2123,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector.gd,test_attach_part_attaches_a_non_weapon_part_to_a_valid_socket,,2239,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector.gd,test_attach_part_refuses_an_illegal_attachment,,2160,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/debug/test_bout_injector.gd,test_hand_weapon_and_attach_part_share_the_same_mechanism_but_log_distinctly,,2291,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/debug/test_bout_injector.gd,test_a_debug_move_onto_a_raised_cell_updates_the_units_height,,7793,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/debug/test_bout_injector.gd,test_move_object_onto_a_raised_cell_updates_height_too,,6975,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/debug/test_bout_injector_determinism.gd,test_bout_injector_is_never_referenced_by_a_gameplay_input_class,,276,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/debug/test_bout_injector_determinism.gd,test_bout_injector_is_referenced_by_both_overlays,,951,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/debug/test_bout_injector_determinism.gd,test_inject_button_is_gated_behind_a_real_debug_check,,105,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/debug/test_bout_injector_determinism.gd,test_the_same_injections_in_the_same_order_reproduce_the_same_result,,24212,0,6,84,12,6,0,the same seed produces the same battle
+unit/debug/test_bout_injector_force_climb.gd,test_force_climb_reuses_real_legality_a_non_climber_is_refused,,1260,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_force_climb.gd,test_force_climb_applies_a_legal_climb_for_real,,1390,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_force_climb.gd,test_force_hop_down_applies_a_legal_drop_for_real,,1106,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_kill.gd,test_kill_ejects_the_hosted_matrix_so_resolve_matrix_goes_null,,322,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/debug/test_bout_injector_kill.gd,test_kill_drops_the_ejected_matrix_as_a_real_loose_field_item,,269,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/debug/test_bout_injector_kill.gd,test_kill_still_kills_through_the_real_combat_state_path,,282,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_kill.gd,test_kill_on_a_matrixless_unit_still_kills_without_erroring,,244,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_kill.gd,test_kill_refuses_an_already_dead_unit,,237,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_move_object.gd,test_move_object_moves_a_unit_the_same_as_set_position,,340,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/debug/test_bout_injector_move_object.gd,test_move_object_on_a_unit_logs_its_own_verb_name_not_set_positions,,329,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_a_unit_move_onto_an_occupied_cell,,465,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_move_object.gd,test_move_object_moves_a_cover_blocker_preserving_its_own_state,,481,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_a_cover_move_onto_an_occupied_blocker_cell,,311,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_move_object.gd,test_move_object_moves_loose_field_items_merging_into_an_occupied_destination,,341,0,0,0,0,0,0,loose field items pile up in a cell rather than replacing each other
+unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_a_cell_with_neither_a_blocker_nor_field_items,,257,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_when_source_and_destination_are_the_same_cell,,310,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_move_object.gd,test_move_object_refuses_mid_resolution,,385,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_unit_kills_it_through_the_real_combat_state_path,,307,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_unit_never_ejects_the_matrix_thats_kills_own_job,,284,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_unit_always_succeeds_even_if_already_dead,,254,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_cell_erases_the_blocker_there,,272,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_cell_erases_loose_field_items_there_too,,262,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_on_a_cell_erases_both_a_blocker_and_field_items_at_once,,268,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_refuses_a_cell_with_neither_a_blocker_nor_field_items,,343,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_remove_object.gd,test_remove_object_refuses_mid_resolution,,379,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_forces_the_grid,,1349,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_resyncs_a_unit_already_standing_there,,1151,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_rejected_while_resolving,,979,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_out_of_bounds_returns_false,,1293,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_set_cell_level.gd,test_set_cell_level_logs_the_injection,,1932,0,0,0,0,0,0,every mutation emits a combat log event
+unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_cover_places_a_real_blocker,,1323,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_cover_refuses_an_already_blocked_cell,,1395,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers,,1159,0,0,0,0,0,0,loose field items pile up in a cell rather than replacing each other
+unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_as_a_loose_item_appends_to_an_existing_pile,,1131,0,0,0,0,0,0,loose field items pile up in a cell rather than replacing each other
+unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_refuses_an_unknown_pool_id,,946,0,0,0,0,0,0,an open-vocabulary id is checked against the real vocabulary
+unit/debug/test_bout_injector_spawn_object.gd,test_spawn_object_logs_whether_it_was_cover_or_a_loose_item,,1031,0,0,0,0,0,0,every mutation emits a combat log event
+unit/debug/test_build_identity.gd,test_the_build_kind_is_one_of_the_three_known_builds,,86,0,0,0,0,0,0,a measurement records which build produced it
+unit/debug/test_build_identity.gd,test_the_test_suite_itself_reports_the_editor_debug_build,,88,0,0,0,0,0,0,a measurement records which build produced it
+unit/debug/test_build_identity.gd,test_only_an_exported_release_build_counts_as_representative,,84,0,0,0,0,0,0,a measurement records which build produced it
+unit/debug/test_build_identity.gd,test_the_description_names_the_build_the_version_and_the_platform,,84,0,0,0,0,0,0,a measurement records which build produced it
+unit/debug/test_build_identity.gd,test_the_data_form_carries_the_same_facts_as_the_prose,,114,0,0,0,0,0,0,a diagnostic's data form and its prose carry the same facts
+unit/debug/test_debug_verbs.gd,test_only_board_changing_verbs_ask_for_a_board_rebuild,,80,0,0,0,0,0,0,the view rebuilds only when the board actually changed
+unit/debug/test_debug_verbs.gd,test_the_two_ambiguous_verbs_always_rebuild,"name says ""the two ambiguous verbs"" without naming them or the ambiguity; the docstring has to supply that it is move_object/remove_object, either of which can target a cell or a unit.",65,0,0,0,0,0,0,the view rebuilds only when the board actually changed
+unit/debug/test_debug_verbs.gd,test_every_board_changing_verb_is_a_real_verb,,133,0,0,0,0,0,0,an open-vocabulary id is checked against the real vocabulary
+unit/logic/actions/test_attack_action.gd,test_is_legal_true_in_the_baseline_case,,3495,0,0,0,0,0,0,"an action is legal only when its provider, AP and geometry all permit it"
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_without_enough_ap,,3139,0,0,0,0,0,0,an action is illegal without the AP it costs
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_beyond_weapon_range,,4727,0,0,0,0,0,0,a weapon's range bounds where it can fire
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_for_a_two_handed_weapon_adjacent_to_an_enemy,,3880,0,0,0,0,0,0,a two-handed weapon cannot be brought to bear at contact range
+unit/logic/actions/test_attack_action.gd,test_is_legal_true_for_a_short_weapon_adjacent_to_an_enemy,,4626,0,0,0,0,0,0,a two-handed weapon cannot be brought to bear at contact range
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_under_min_range_for_a_non_dud_weapon,,5478,0,0,0,0,0,0,a weapon's range bounds where it can fire
+unit/logic/actions/test_attack_action.gd,test_a_dud_capable_weapon_still_fires_under_min_range_and_is_flagged,,4381,0,0,0,0,0,2,a weapon's range bounds where it can fire
+unit/logic/actions/test_attack_action.gd,test_a_normal_shot_within_min_range_is_not_flagged_as_a_dud,,5491,0,0,0,0,0,2,a weapon's range bounds where it can fire
+unit/logic/actions/test_attack_action.gd,test_a_shot_beyond_effective_range_scales_up_the_dartboard,,203,0,0,0,0,0,0,scatter widens with range
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_without_line_of_sight,,3778,0,0,0,0,0,0,a shot needs line of sight
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_without_a_capable_manipulator,,3568,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_for_a_weapon_that_only_provides_burst,,3210,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_attack_action.gd,test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst,,3716,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_attack_action.gd,test_apply_deals_damage_and_spends_ap,,4119,0,0,0,0,0,2,an action spends the AP its provider authors
+unit/logic/actions/test_attack_action.gd,test_impact_event_names_which_unit_actually_took_the_hit,,3817,0,0,0,0,0,2,every mutation emits a combat log event
+unit/logic/actions/test_attack_action.gd,test_impact_origin_comes_from_the_real_muzzle_not_the_bare_cell_center,,3358,0,0,0,0,0,2,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/actions/test_attack_action.gd,test_direction_shares_the_muzzle_anchor_so_a_close_target_never_resolves_behind_the_ray,,3431,0,0,0,0,0,1,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/actions/test_attack_action.gd,test_a_queued_attack_on_a_target_that_dies_earlier_stops_resolution,,13090,0,0,0,0,0,2,a queued intent revalidates at resolution time
+unit/logic/actions/test_attack_action.gd,test_flanking_exposes_a_rear_part_a_frontal_shot_cannot_reach,,28848,0,0,0,0,0,4,"a hit resolves spatially against the shot plane, never a facing table"
+unit/logic/actions/test_attack_action.gd,test_destroying_the_head_logs_every_cascading_consequence,,14394,0,0,0,0,0,2,destroying a part cascades to what it carried
+unit/logic/actions/test_attack_action.gd,test_replays_identically_from_the_same_seed,,10723,0,0,0,0,0,20,the same seed produces the same battle
+unit/logic/actions/test_attack_action.gd,test_destroying_a_scrap_pile_along_the_shot_credits_its_salvage_to_the_mission,,5379,0,0,0,0,0,2,destroying a field object yields its salvage to the mission
+unit/logic/actions/test_attack_action.gd,test_destroying_a_field_object_with_no_mission_context_does_not_crash,,3699,0,0,0,0,0,2,destroying a field object yields its salvage to the mission
+unit/logic/actions/test_attack_action.gd,test_is_legal_true_with_a_blocker_but_no_unit_at_the_target_cell,,3113,0,0,0,0,0,0,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/actions/test_attack_action.gd,test_is_legal_false_with_neither_a_unit_nor_a_blocker_at_the_target_cell,,3269,0,0,0,0,0,0,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/actions/test_attack_action.gd,test_apply_resolves_a_declared_shot_against_a_blocker_with_no_unit_there,,5329,0,0,0,0,0,2,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/actions/test_attack_action.gd,test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target,,4329,0,0,0,0,0,2,cover between muzzle and target stops the shot
+unit/logic/actions/test_attack_action.gd,test_shouldering_clears_cover_the_unshouldered_position_would_not,,3509,0,0,0,0,0,2,cover between muzzle and target stops the shot
+unit/logic/actions/test_attack_action.gd,test_cover_shorter_than_the_muzzle_does_not_obstruct_the_shot,,3641,0,0,0,0,0,2,cover between muzzle and target stops the shot
+unit/logic/actions/test_attack_action.gd,test_a_shot_at_an_elevated_target_still_lands_inside_its_real_body,,3604,0,0,0,0,0,2,"elevation changes the shot geometry, not the rules"
+unit/logic/actions/test_attack_action.gd,test_a_steeply_elevated_shooter_still_hits_a_close_target,,3383,0,0,0,0,0,2,"elevation changes the shot geometry, not the rules"
+unit/logic/actions/test_burst_action.gd,test_chaingun_offers_burst_and_not_shoot,,192,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_burst_action.gd,test_auto_shotgun_offers_shoot_and_burst,,149,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_burst_action.gd,test_is_legal_true_in_the_baseline_case,,3309,0,0,0,0,0,0,"an action is legal only when its provider, AP and geometry all permit it"
+unit/logic/actions/test_burst_action.gd,test_is_legal_false_without_enough_ap_for_the_burst_ap_cost,,3044,0,0,0,0,0,0,an action is illegal without the AP it costs
+unit/logic/actions/test_burst_action.gd,test_is_legal_false_for_a_two_handed_burst_weapon_adjacent_to_an_enemy,,3150,0,0,0,0,0,0,a two-handed weapon cannot be brought to bear at contact range
+unit/logic/actions/test_burst_action.gd,test_is_legal_false_for_a_weapon_with_no_burst_mode,,3202,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_burst_action.gd,test_is_legal_false_for_a_weapon_that_can_burst_but_never_opted_in,,3261,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_burst_action.gd,test_is_legal_true_for_a_weapon_that_provides_both_shoot_and_burst,,4172,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_burst_action.gd,test_a_burst_fires_exactly_burst_size_independent_pulls,,4600,0,0,0,0,0,13,a burst fires burst_size independent pulls
+unit/logic/actions/test_burst_action.gd,test_burst_spends_its_own_higher_ap_cost,,4478,0,0,0,0,0,13,an action spends the AP its provider authors
+unit/logic/actions/test_burst_action.gd,test_a_burst_emits_one_summary_event_plus_full_detail_per_impact,,4903,0,0,0,0,0,13,every mutation emits a combat log event
+unit/logic/actions/test_burst_action.gd,test_a_burst_of_buckshot_resolves_n_pulls_times_m_pellets,,25638,0,0,0,0,0,28,a burst fires burst_size independent pulls
+unit/logic/actions/test_burst_action.gd,test_replays_identically_from_the_same_seed,,24622,0,0,0,0,0,26,the same seed produces the same battle
+unit/logic/actions/test_burst_action.gd,test_recoil_resets_between_separate_burst_activations,,5841,0,0,0,0,0,26,recoil accumulates within a burst and resets between them
+unit/logic/actions/test_burst_action.gd,test_recoil_never_changes_the_pellet_count_per_pull,,21424,0,0,0,0,0,28,a burst fires burst_size independent pulls
+unit/logic/actions/test_burst_action.gd,test_apply_faces_the_shooter_toward_the_target,,19848,0,0,0,0,0,13,an attack faces the shooter at its target for free
+unit/logic/actions/test_burst_action.gd,test_a_real_bursts_pull_events_always_total_burst_size_even_with_misses,,21618,0,0,0,0,0,13,a burst fires burst_size independent pulls
+unit/logic/actions/test_burst_action.gd,test_burst_pull_events_are_indexed_0_to_burst_size_minus_1,,19874,0,0,0,0,0,13,every mutation emits a combat log event
+unit/logic/actions/test_burst_action.gd,test_landed_so_far_matches_the_actual_impact_count_at_the_end,,5393,0,0,0,0,0,13,every mutation emits a combat log event
+unit/logic/actions/test_burst_action.gd,test_apply_resolves_a_declared_burst_against_a_blocker_with_no_unit_there,,5024,0,0,0,0,0,13,"a shot resolves against whatever occupies the target cell, unit or not"
+unit/logic/actions/test_burst_action.gd,test_a_burst_still_lands_on_an_elevated_target,,4642,0,0,0,0,0,13,"elevation changes the shot geometry, not the rules"
+unit/logic/actions/test_carry_body_action.gd,test_carry_body_attaches_to_back_and_tags_inert,,417,0,0,0,0,0,0,a carried body occupies a socket and adds its volume
+unit/logic/actions/test_carry_body_action.gd,test_carry_body_emits_a_carry_body_event,,366,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_carry_body_action.gd,test_carry_body_occupies_back_so_a_second_body_has_nowhere_to_go,,360,0,0,0,0,0,0,a carried body occupies a socket and adds its volume
+unit/logic/actions/test_carry_body_action.gd,test_a_worn_trash_barrel_leaves_no_room_to_carry_a_body,,375,0,0,0,0,0,0,a carried body occupies a socket and adds its volume
+unit/logic/actions/test_carry_body_action.gd,test_carry_body_illegal_for_something_not_shaped_for_a_back_socket,,249,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/actions/test_carry_body_action.gd,test_carry_body_illegal_without_a_body_present,,239,0,0,0,0,0,0,"an action is legal only when its provider, AP and geometry all permit it"
+unit/logic/actions/test_carry_body_action.gd,test_carried_body_contributes_volume_to_the_carriers_projection,,321,0,0,0,0,0,0,a carried body occupies a socket and adds its volume
+unit/logic/actions/test_carry_body_action.gd,test_a_shot_from_behind_hits_the_carried_body_instead_of_the_carrier,,838,0,0,0,0,0,2,"a hit resolves spatially against the shot plane, never a facing table"
+unit/logic/actions/test_climb_action.gd,test_climb_up_a_full_level_moves_the_unit_and_costs_4_mp,,556,0,0,0,0,0,0,climbing and dropping cost MP by the height crossed
+unit/logic/actions/test_climb_action.gd,test_a_climb_from_a_ramp_costs_3_mp_at_the_corrected_standing_height,,490,0,0,0,0,0,0,climbing and dropping cost MP by the height crossed
+unit/logic/actions/test_climb_action.gd,test_a_climb_beyond_1_level_is_illegal,,339,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_climb_action.gd,test_a_non_climb_capable_unit_cannot_climb,,328,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_climb_action.gd,test_climbing_onto_a_ramp_tile_is_illegal_thats_ordinary_movement,,318,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_climb_action.gd,test_climbing_a_flat_cell_is_illegal_nothing_to_climb,,305,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_climb_action.gd,test_climb_emits_a_climbed_event,,441,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_advances_turn_order,,539,0,1,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_emits_turn_end_for_the_ending_unit_then_turn_start_for_the_next,,456,0,1,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_is_legal_and_advances_even_if_the_current_unit_just_died,,428,0,1,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_rejects_when_not_units_turn,,306,0,0,0,0,0,0,only the current unit may act
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_starts_the_hold_on_the_players_own_tile,,337,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_cancels_the_hold_when_the_unit_is_off_the_tile,,336,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_does_not_complete_within_the_same_round,,311,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_extracts_once_a_later_round_has_begun,,321,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_requires_every_objective_complete,,320,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_never_applies_to_a_non_player_squad,,369,0,2,0,0,0,0,player advantage is asymmetric on purpose
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_hold_completion_triggers_the_mission_extract_once_the_squad_is_out,,394,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_end_turn_with_no_mission_skips_the_hold_check_entirely,,350,0,1,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_true_on_the_tile_with_objectives_complete,,308,0,0,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_off_the_tile,,353,0,0,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_with_an_incomplete_objective,,235,0,0,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_for_a_non_player_squad,,258,0,0,0,0,0,0,player advantage is asymmetric on purpose
+unit/logic/actions/test_end_turn_action.gd,test_is_holding_position_false_with_no_mission,,72,0,0,0,0,0,0,the extraction hold completes only after a later round with every objective done
+unit/logic/actions/test_extract_action.gd,test_extract_illegal_off_the_extraction_cell,,345,0,0,0,0,0,0,extraction happens only at the zone
+unit/logic/actions/test_extract_action.gd,test_extract_illegal_for_the_player_squad_even_on_the_tile,,245,0,0,0,0,0,0,player advantage is asymmetric on purpose
+unit/logic/actions/test_extract_action.gd,test_extract_illegal_without_enough_ap,,245,0,0,0,0,0,0,an action is illegal without the AP it costs
+unit/logic/actions/test_extract_action.gd,test_extract_legal_at_the_zone_regardless_of_incomplete_objectives,,242,0,0,0,0,0,0,extraction happens only at the zone
+unit/logic/actions/test_extract_action.gd,test_extract_spends_its_ap_cost,,256,0,0,0,0,0,0,an action spends the AP its provider authors
+unit/logic/actions/test_extract_action.gd,test_extract_removes_the_unit_and_marks_it_extracted,,266,0,0,0,0,0,0,extraction happens only at the zone
+unit/logic/actions/test_extract_action.gd,test_extract_emits_an_extract_event,,259,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_extract_action.gd,test_extract_uses_team_coded_cells_when_present_for_this_squad,,235,0,0,0,0,0,0,extraction happens only at the zone
+unit/logic/actions/test_extract_action.gd,test_extract_falls_back_to_extraction_cells_when_this_squads_own_entry_is_absent,,234,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/actions/test_extract_action.gd,test_extract_on_a_preview_never_removes_the_real_unit,,417,0,0,0,0,0,0,a preview mutates nothing
+unit/logic/actions/test_face_action.gd,test_manual_face_deducts_exactly_one_mp,,332,0,0,0,0,0,0,facing is free with a move and paid for on its own
+unit/logic/actions/test_face_action.gd,test_manual_face_burns_one_ap_for_mp_when_short,,309,0,0,0,0,0,0,movement spends MP and converts AP when MP runs out
+unit/logic/actions/test_face_action.gd,test_facing_with_zero_mp_and_zero_ap_is_illegal,,281,0,0,0,0,0,0,movement spends MP and converts AP when MP runs out
+unit/logic/actions/test_face_action.gd,test_manual_face_emits_faced_with_reason_manual_first,,401,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_face_action.gd,test_the_first_manual_face_unlocks_free_refacing_for_the_rest_of_the_turn,,460,0,0,0,0,0,0,the first paid face unlocks free refacing for the turn
+unit/logic/actions/test_face_action.gd,test_a_second_manual_face_logs_reason_manual_free,,392,0,0,0,0,0,0,the first paid face unlocks free refacing for the turn
+unit/logic/actions/test_face_action.gd,test_a_face_is_always_legal_once_unlocked_even_with_no_mp_or_ap,,288,0,0,0,0,0,0,the first paid face unlocks free refacing for the turn
+unit/logic/actions/test_face_action.gd,test_an_attack_faces_the_target_for_free,,950,0,0,0,0,0,2,an attack faces the shooter at its target for free
+unit/logic/actions/test_face_action.gd,test_an_attack_already_facing_the_target_does_not_re_log_faced,,750,0,0,0,0,0,2,every mutation emits a combat log event
+unit/logic/actions/test_gather_action.gd,test_gather_consumes_the_node_and_banks_the_resource,,338,0,0,0,0,0,0,resources accumulate by id
+unit/logic/actions/test_gather_action.gd,test_gather_completes_the_tied_objective,,354,0,0,0,0,0,0,an objective completes when the thing it names is done
+unit/logic/actions/test_gather_action.gd,test_gather_illegal_off_the_node_cell,,263,0,0,0,0,0,0,"an action is legal only when its provider, AP and geometry all permit it"
+unit/logic/actions/test_gather_action.gd,test_gather_illegal_without_enough_ap,,252,0,0,0,0,0,0,an action is illegal without the AP it costs
+unit/logic/actions/test_gather_action.gd,test_gather_emits_a_gather_event,,314,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_gather_action.gd,test_gather_on_a_preview_spends_ap_but_never_touches_the_mission,,756,0,0,0,0,0,0,a preview mutates nothing
+unit/logic/actions/test_grind_action.gd,test_is_legal_false_without_a_hold_provider,,482,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_grind_action.gd,test_two_hits_never_accumulate_enough_bonus_pen_to_penetrate,,772,0,0,0,0,0,3,accumulated bonus penetration eventually breaks through
+unit/logic/actions/test_grind_action.gd,test_a_third_hit_accumulates_enough_bonus_pen_to_penetrate_and_spill_through,,860,0,0,0,0,0,4,accumulated bonus penetration eventually breaks through
+unit/logic/actions/test_grind_action.gd,test_a_hold_never_deflects,,566,0,0,0,0,0,2,penetration decides whether a hit passes through or deflects
+unit/logic/actions/test_hold_action.gd,test_is_legal_true_for_the_current_unit_with_another_living_unit,,325,0,0,0,0,0,0,holding defers a turn without regenerating anything
+unit/logic/actions/test_hold_action.gd,test_is_legal_false_when_no_other_living_unit_exists,,269,0,0,0,0,0,0,holding defers a turn without regenerating anything
+unit/logic/actions/test_hold_action.gd,test_is_legal_false_for_a_non_current_unit,,335,0,0,0,0,0,0,only the current unit may act
+unit/logic/actions/test_hold_action.gd,test_holding_defers_the_units_turn_to_after_the_next_ally,,917,0,3,0,0,0,0,holding defers a turn without regenerating anything
+unit/logic/actions/test_hold_action.gd,test_held_ap_and_mp_carry_forward_exactly,,549,0,2,0,0,0,0,holding defers a turn without regenerating anything
+unit/logic/actions/test_hold_action.gd,test_no_regeneration_occurs_while_held_unlike_a_normal_turn,,608,0,2,0,0,0,0,holding defers a turn without regenerating anything
+unit/logic/actions/test_hold_action.gd,test_a_held_unit_still_acts_within_the_same_round,,552,0,2,0,0,0,0,holding defers a turn without regenerating anything
+unit/logic/actions/test_hold_action.gd,test_round_advances_normally_after_a_held_units_resumed_turn_ends,,582,0,3,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/actions/test_hold_action.gd,test_holding_is_deterministic_from_the_same_starting_state,,1026,0,6,0,0,0,0,the same seed produces the same battle
+unit/logic/actions/test_hop_down_action.gd,test_hop_down_2_levels_moves_the_unit_and_costs_1_mp,,558,0,0,0,0,0,0,climbing and dropping cost MP by the height crossed
+unit/logic/actions/test_hop_down_action.gd,test_hop_down_1_level_is_legal,,402,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_hop_down_action.gd,test_hop_down_3_levels_is_illegal,,363,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_hop_down_action.gd,test_hopping_up_is_illegal_thats_a_climb_not_a_hop,,357,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_hop_down_action.gd,test_hopping_onto_a_ramp_tile_is_illegal_thats_ordinary_movement,,390,0,0,0,0,0,0,"elevation change decides whether a move is a step, a climb or a drop"
+unit/logic/actions/test_hop_down_action.gd,test_hop_down_emits_a_hopped_down_event,,443,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_strips_a_sub_part_off_a_dropped_assembly,,472,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_emits_a_strip_part_event,,929,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_illegal_for_a_part_not_in_the_assembly,,503,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/actions/test_modify_assembly_action.gd,test_modify_assembly_illegal_targeting_the_assembly_root_itself,,385,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/actions/test_move_action.gd,test_move_costs_right_mp_and_burns_ap_in_chunks,,3765,0,0,0,0,0,0,movement spends MP and converts AP when MP runs out
+unit/logic/actions/test_move_action.gd,test_move_emits_a_move_event_to_the_destination,,3109,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_move_action.gd,test_move_fails_when_ap_runs_out_mid_path,,3415,0,0,0,0,0,0,movement spends MP and converts AP when MP runs out
+unit/logic/actions/test_move_action.gd,test_move_rejects_path_not_starting_at_units_cell,,3215,0,0,0,0,0,0,a move follows a contiguous path from the unit's own cell
+unit/logic/actions/test_move_action.gd,test_move_rejects_when_not_units_turn,,3274,0,0,0,0,0,0,only the current unit may act
+unit/logic/actions/test_move_action.gd,test_move_rejects_blocked_destination,,4101,0,0,0,0,0,0,a move follows a contiguous path from the unit's own cell
+unit/logic/actions/test_move_action.gd,test_move_rejects_non_adjacent_step,,3699,0,0,0,0,0,0,a move follows a contiguous path from the unit's own cell
+unit/logic/actions/test_move_action.gd,test_move_rejects_trivial_single_cell_path,,2906,0,0,0,0,0,0,a move follows a contiguous path from the unit's own cell
+unit/logic/actions/test_move_action.gd,test_move_faces_the_unit_toward_the_overall_direction_of_travel,,4536,0,0,0,0,0,0,facing is free with a move and paid for on its own
+unit/logic/actions/test_move_action.gd,test_move_facing_costs_no_mp_and_does_not_consume_the_facing_unlock,,3473,0,0,0,0,0,0,facing is free with a move and paid for on its own
+unit/logic/actions/test_move_action.gd,test_move_facing_emits_a_faced_event_with_reason_free_with_move,,3141,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_move_action.gd,test_a_curved_move_faces_each_tile_before_entering_it,,3409,0,0,0,0,0,0,facing is free with a move and paid for on its own
+unit/logic/actions/test_move_action.gd,test_a_curved_move_interleaves_faced_and_move_events_leg_by_leg,,3447,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_move_action.gd,test_a_straight_move_still_emits_exactly_one_move_event,,3529,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_move_action.gd,test_an_interrupted_move_leaves_the_unit_facing_its_direction_of_travel,,4246,0,0,0,0,0,0,facing is free with a move and paid for on its own
+unit/logic/actions/test_move_action.gd,test_per_tile_facing_on_a_curved_move_still_costs_no_extra_mp,,3476,0,0,0,0,0,0,facing is free with a move and paid for on its own
+unit/logic/actions/test_move_action.gd,test_leftover_mp_is_discarded_at_end_of_turn,,3213,0,2,0,0,0,0,movement spends MP and converts AP when MP runs out
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_matrix_goes_to_held_matrix,,390,0,0,0,0,0,0,a picked-up item goes into a container with room for it
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_emits_a_pick_up_event,,380,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_matrix_illegal_when_already_carrying_one,,347,0,0,0,0,0,0,a picked-up item goes into a container with room for it
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_part_attaches_into_the_named_container,,550,0,0,0,0,0,0,a picked-up item goes into a container with room for it
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_part_illegal_without_room_in_the_container,,293,0,0,0,0,0,0,a picked-up item goes into a container with room for it
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_part_illegal_with_no_container_worn_at_all,,282,0,0,0,0,0,0,a picked-up item goes into a container with room for it
+unit/logic/actions/test_pick_up_action.gd,test_pick_up_illegal_off_the_units_own_cell,,285,0,0,0,0,0,0,"an action is legal only when its provider, AP and geometry all permit it"
+unit/logic/actions/test_repair_action.gd,test_is_legal_true_with_a_charged_welder_and_enough_scrap,,352,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_is_legal_false_without_enough_ap,,311,0,0,0,0,0,0,an action is illegal without the AP it costs
+unit/logic/actions/test_repair_action.gd,test_is_legal_false_with_no_welder,,296,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_repair_action.gd,test_is_legal_false_with_a_drained_battery,,294,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_is_legal_false_on_a_fully_healed_target,,298,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_is_legal_false_without_enough_matching_scrap,,293,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_is_legal_false_with_the_wrong_material_scrap,,301,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_apply_heals_the_target_spends_ap_scrap_and_battery_charge,,356,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_apply_never_heals_past_max_hp,,332,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/logic/actions/test_repair_action.gd,test_apply_erases_the_resource_entry_once_fully_spent,,312,0,0,0,0,0,0,resources accumulate by id
+unit/logic/actions/test_repair_action.gd,test_apply_emits_a_repaired_event,,403,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_repair_action.gd,test_apply_on_a_preview_spends_ap_but_never_touches_the_real_unit,,844,0,0,0,0,0,0,a preview mutates nothing
+unit/logic/actions/test_shot_resolution.gd,test_a_genuine_miss_emits_a_miss_event,,492,0,0,0,0,0,1,every mutation emits a combat log event
+unit/logic/actions/test_shot_resolution.gd,test_a_hit_never_also_emits_a_miss_event,,417,0,0,0,0,0,1,every mutation emits a combat log event
+unit/logic/actions/test_shot_resolution.gd,test_a_miss_events_endpoint_continues_along_the_fired_direction,,347,0,0,0,0,0,1,a miss travels on to the weapon's own maximum range
+unit/logic/actions/test_shot_resolution.gd,test_a_miss_respects_the_weapons_own_authored_max_range,,355,0,0,0,0,0,1,a miss travels on to the weapon's own maximum range
+unit/logic/actions/test_shot_resolution.gd,test_a_miss_with_no_authored_max_range_falls_back_to_the_map_size,,327,0,0,0,0,0,1,an unstated authored field takes its default
+unit/logic/actions/test_shot_resolution.gd,test_a_hit_logs_its_own_origin_and_hit_point,,376,0,0,0,0,0,1,a shot's logged geometry is the geometry it fired
+unit/logic/actions/test_shot_resolution.gd,test_a_deflect_logs_its_own_reflected_miss_endpoint,,380,0,0,0,0,0,2,a shot's logged geometry is the geometry it fired
+unit/logic/actions/test_shot_resolution.gd,test_a_hits_own_text_carries_its_real_origin_and_hit_geometry,,346,0,0,0,0,0,1,a shot's logged geometry is the geometry it fired
+unit/logic/actions/test_shot_resolution.gd,test_a_miss_own_text_carries_its_real_origin_and_end_geometry,,328,0,0,0,0,0,1,a shot's logged geometry is the geometry it fired
+unit/logic/actions/test_shot_resolution.gd,test_a_backward_and_forward_shot_are_distinguishable_by_their_own_logged_geometry,,636,0,0,0,0,0,2,a shot's logged geometry is the geometry it fired
+unit/logic/actions/test_shot_resolution.gd,test_the_same_shot_logs_identical_geometry_every_time,,998,0,0,0,0,0,2,the same seed produces the same battle
+unit/logic/actions/test_shutdown_action.gd,test_is_legal_true_for_the_current_unit_even_when_fully_healthy,,301,0,0,0,0,0,0,shutdown ends the turn and leaves the unit inert but alive
+unit/logic/actions/test_shutdown_action.gd,test_is_legal_false_for_a_non_current_unit,,280,0,0,0,0,0,0,only the current unit may act
+unit/logic/actions/test_shutdown_action.gd,test_is_legal_false_once_already_shut_down,,267,0,0,0,0,0,0,shutdown ends the turn and leaves the unit inert but alive
+unit/logic/actions/test_shutdown_action.gd,test_apply_marks_shutdown_but_stays_alive_and_on_its_cell,,411,0,1,0,0,0,0,shutdown ends the turn and leaves the unit inert but alive
+unit/logic/actions/test_shutdown_action.gd,test_apply_ends_the_turn,,345,0,1,0,0,0,0,shutdown ends the turn and leaves the unit inert but alive
+unit/logic/actions/test_shutdown_action.gd,test_apply_emits_a_shutdown_event,,282,0,1,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_shutdown_action.gd,test_apply_on_a_preview_never_touches_the_real_unit,,413,0,1,0,0,0,0,a preview mutates nothing
+unit/logic/actions/test_shutdown_action.gd,test_apply_triggers_a_primed_meltdown,,398,0,1,0,0,0,0,a primed meltdown detonates when its trigger fires
+unit/logic/actions/test_shutdown_action.gd,test_apply_with_no_primed_meltdown_detonates_nothing,,262,0,1,0,0,0,0,a primed meltdown detonates when its trigger fires
+unit/logic/actions/test_slash_action.gd,test_is_legal_true_within_reach,,409,0,0,0,0,0,0,melee reach bounds where a blade can land
+unit/logic/actions/test_slash_action.gd,test_is_legal_false_without_a_slash_provider,,344,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_slash_action.gd,test_apply_deals_damage_to_the_target,,687,0,0,0,0,0,2,"a hit resolves spatially against the shot plane, never a facing table"
+unit/logic/actions/test_slash_action.gd,test_a_vertical_slash_hits_every_part_along_its_line,,1435,0,0,0,0,0,10,a melee line hits every part it crosses
+unit/logic/actions/test_slash_action.gd,test_a_short_vertical_slash_does_not_reach_unrelated_parts,,759,0,0,0,0,0,3,a melee line hits every part it crosses
+unit/logic/actions/test_stab_action.gd,test_is_legal_true_within_reach,,399,0,0,0,0,0,0,melee reach bounds where a blade can land
+unit/logic/actions/test_stab_action.gd,test_is_legal_false_beyond_reach,,359,0,0,0,0,0,0,melee reach bounds where a blade can land
+unit/logic/actions/test_stab_action.gd,test_is_legal_false_without_a_stab_provider,,332,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/actions/test_stab_action.gd,test_is_legal_false_without_enough_ap,,319,0,0,0,0,0,0,an action is illegal without the AP it costs
+unit/logic/actions/test_stab_action.gd,test_apply_deals_damage_through_the_shot_plane,,617,0,0,0,0,0,2,"a hit resolves spatially against the shot plane, never a facing table"
+unit/logic/actions/test_stab_action.gd,test_impact_event_matches_the_ordinary_shot_shape,,645,0,0,0,0,0,2,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/actions/test_stab_action.gd,test_dartboard_scatter_is_tighter_at_melee_range_than_at_range,,99,0,0,0,0,0,0,scatter widens with range
+unit/logic/actions/test_stab_action.gd,test_a_stab_can_aim_at_an_internal_part_via_the_existing_aimed_targeting,,855,0,0,0,0,0,3,an aimed shot targets a named internal part
+unit/logic/actions/test_stab_action.gd,test_a_wide_stab_still_hits_its_target_normally,,636,0,0,0,0,0,2,a melee line hits every part it crosses
+unit/logic/actions/test_swap_part_action.gd,test_swap_part_detaches_old_and_attaches_replacement,,402,0,0,0,0,0,0,a part detaches from an assembly without disturbing the rest
+unit/logic/actions/test_swap_part_action.gd,test_swap_part_emits_a_swap_part_event,,357,0,0,0,0,0,0,every mutation emits a combat log event
+unit/logic/actions/test_swap_part_action.gd,test_swap_part_illegal_when_replacement_does_not_fit_the_socket_type,,283,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/actions/test_swap_part_action.gd,test_swap_part_illegal_without_enough_ap,,275,0,0,0,0,0,0,an action is illegal without the AP it costs
 unit/logic/ai/test_batch_objective.gd,test_with_no_batch_assigned_no_objective_is_ever_recorded,,210259,0,0,2323,3,0,0,
 unit/logic/ai/test_batch_objective.gd,test_a_dormant_objective_vector_is_neutral_rather_than_vetoing,,39624,0,0,0,2,0,0,
 unit/logic/ai/test_batch_objective.gd,test_assigning_a_batch_through_the_injector_flows_an_objective,,177887,0,0,2266,4,0,0,
