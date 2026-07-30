@@ -1663,6 +1663,15 @@ shifting every numeric column one place right and reading `bouts` as **8697** ag
 alternative considered and rejected was a comma-free label vocabulary — letting the storage format
 dictate the classification. A second hand-rolled splitter is the same bug waiting again.
 
+**Two junk counters removed from the profile.** Pass A's per-test rows carry `test` (the name) and
+`order` (the declaration index), and file rows are the key-wise sum of their tests' — so both were
+summed as though they were work, into every file row and into `totals`, where the run reported
+`order: 2,953,665` and `test_smoke.gd` reported `order: 1705`. Nothing gated on them, which is why a
+green suite carried them for a whole block. The aggregation now excludes one named `IDENTITY_KEYS` set
+rather than three inline key checks that had drifted apart, and `test_suite_budget.gd` asserts the
+shape — every key in the profile is a non-negative count and no identity field reaches `totals` — so
+the next bookkeeping field added to a row cannot leak the same way.
+
 **Regeneration no longer erases the audit.** Pass A's writer emitted both judgement columns empty every
 time, so the next `WRITE_PROFILE=1` run destroyed 2424 hand-filled cells with a green suite either way;
 it now merges them forward on `(origin_file, test_name)`. The bug behind it appeared **twice, in two

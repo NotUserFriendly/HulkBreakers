@@ -245,3 +245,53 @@ func test_the_randomly_sampled_file_is_excluded_from_the_turns_budget() -> void:
 func test_the_exclusion_list_stays_small_and_gates_bouts_regardless() -> void:
 	assert_lt(SuiteBudget.TURNS_EXCLUDED.size(), 3, "exclusions are exceptional, not a habit")
 	assert_true(SuiteBudget.GATED.has("bouts"), "bouts are deterministic and stay gated")
+
+
+## **Every key in the profile measures work.** The profile is built by summing each row's
+## fields, so any field added to a row for bookkeeping is summed too unless it is
+## explicitly excluded — and taskblock-49 Pass A added `test` (the name) and `order` (the
+## declaration index) to per-test rows without excluding them. They aggregated into every
+## file row and into `totals`, where `test_smoke.gd` reported `order: 1705` and the run
+## total read `order: 2,953,665`, sitting in a committed artifact as though it were a
+## measurement.
+##
+## Nothing gated on them, so nothing went red — which is the reason to assert it here.
+## **This checks the shape, not the two names:** a counter is a non-negative integer that
+## an equal amount of work reproduces, and a row's identity fields are not counters. A
+## future bookkeeping field leaks the same way and this is what catches it.
+func test_the_profile_carries_only_counters_and_no_bookkeeping() -> void:
+	var profile: Dictionary = _profile()
+	if profile.is_empty():
+		return
+	var totals: Dictionary = profile.get("totals", {})
+	assert_gt(totals.size(), 0, "the profile has totals to check")
+
+	# The identity fields a row carries. `path` names the row; the rest were the leak.
+	for identity: String in ["path", "script", "test", "order"]:
+		assert_false(
+			totals.has(identity),
+			(
+				"'%s' identifies a row, it does not measure one — it must not be summed into totals"
+				% identity
+			)
+		)
+
+	var files: Array = profile.get("files", [])
+	assert_gt(files.size(), 0, "and files to check")
+	for row: Dictionary in files:
+		for key: String in row:
+			if key == "path":
+				continue
+			assert_true(
+				row[key] is float or row[key] is int,
+				"%s carries a numeric %s, not an identifier" % [row.get("path", "?"), key]
+			)
+			assert_true(int(row[key]) >= 0, "%s's %s is a count" % [row.get("path", "?"), key])
+
+	# Every summed key reaches the totals, and every total is a real counter — the two
+	# halves of "the file rows and the totals describe the same measurement".
+	for row: Dictionary in files:
+		for key: String in row:
+			if key == "path":
+				continue
+			assert_true(totals.has(key), "%s is measured per file, so it must reach totals" % key)

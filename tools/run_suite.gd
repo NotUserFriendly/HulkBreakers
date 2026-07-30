@@ -84,6 +84,14 @@ const DATA_PATH := "res://test/suite_profile.json"
 ## **Not committed and not maintained** — a snapshot taken to answer a question, acted
 ## on, and allowed to go stale.
 const AUDIT_PATH := "res://test/suite_audit.csv"
+
+## Row fields that identify a row rather than measure anything. **Everything not named
+## here is summed as a counter**, so the list is the one place that decides what counts as
+## a measurement — and adding a bookkeeping field without adding it here is what put
+## `order` (2,953,665) and `test` (135,744) into the committed profile's totals as though
+## they were work. Named as a set rather than as three inline `key == "..."` checks,
+## because the leak happened at the one site that had not been updated.
+const IDENTITY_KEYS: Array[String] = ["path", "script", "test", "order"]
 ## How many rows each of the two tables carries. The taskblock asks for 20.
 const TOP_N := 20
 
@@ -289,7 +297,9 @@ func _on_end_script() -> void:
 		if String(test_row["script"]) != _script_path:
 			continue
 		for key: String in test_row:
-			if key == "path" or key == "script" or key == "usec":
+			# `usec` too: the script's wall-clock is the outer window, set below, not the
+			# sum of its tests' — that sum deliberately excludes `before_all` and load.
+			if key in IDENTITY_KEYS or key == "usec":
 				continue
 			row[key] = int(row.get(key, 0)) + int(test_row[key])
 	row["path"] = _script_path
@@ -451,7 +461,7 @@ func _totals() -> Dictionary:
 	var total: Dictionary = {}
 	for row: Dictionary in _script_rows:
 		for key: String in row:
-			if key == "path" or key == "script":
+			if key in IDENTITY_KEYS:
 				continue
 			total[key] = int(total.get(key, 0)) + int(row[key])
 	return total
