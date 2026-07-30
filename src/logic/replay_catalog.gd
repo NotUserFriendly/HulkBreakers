@@ -33,6 +33,18 @@ const DEFAULT_LIMIT := 3
 ## The method a test script exposes to opt in.
 const HANDLE_METHOD := "replay_handle_for"
 
+## taskblock-50 Pass F: **the sentinel a script answers with its known-good fixture.**
+##
+## The replay queue showed failures only, and *an anomaly is not identifiable without a
+## reference for normal* — watching a broken bout tells you little if you have never
+## watched a working one from the same file. A script opts a baseline in through the same
+## `replay_handle_for` it already implements, by answering this name; one that does not
+## care returns `null` for it exactly as it does for any test it has no handle for.
+##
+## A sentinel rather than a second method, so nothing has to change in the ~250 scripts
+## that expose no handles at all.
+const BASELINE_TEST := &"__baseline__"
+
 
 ## The handle `test_name` in `script_path` declares, or `null`.
 ##
@@ -67,6 +79,50 @@ static func handles_for(failures: Array, limit: int = DEFAULT_LIMIT) -> Array[Re
 		if handle != null:
 			handles.append(handle)
 	return handles
+
+
+## The script's own known-good fixture, or `null` if it declares none.
+static func baseline_for(script_path: String) -> ReplayHandle:
+	return handle_for(script_path, BASELINE_TEST)
+
+
+## Failures with each one's baseline queued directly after it, so the pair can be watched
+## back to back.
+##
+## **Opt-in, and capped the same way.** `handles_for` stays the default — a queue that
+## silently doubled in length would make the common case slower to get through, and the
+## taskblock asks for this explicitly rather than by default. The cap counts *failures*,
+## not entries, so `limit` still means "how many broken things am I being shown"; a
+## baseline rides along with its failure rather than competing with the next one for a
+## slot.
+##
+## A script with no baseline yields its failure alone, which is the normal case and not
+## worth reporting.
+static func handles_with_baselines(
+	failures: Array, limit: int = DEFAULT_LIMIT
+) -> Array[ReplayHandle]:
+	var out: Array[ReplayHandle] = []
+	var shown := 0
+	var seen_baselines: Dictionary = {}
+	for failure: Dictionary in failures:
+		if limit > 0 and shown >= limit:
+			break
+		var script_path: String = String(failure.get("script", ""))
+		var handle: ReplayHandle = handle_for(script_path, String(failure.get("test", "")))
+		if handle == null:
+			continue
+		out.append(handle)
+		shown += 1
+		# One baseline per script, however many of its tests failed — the reference for
+		# "normal" is the same board every time, and queueing it five times would bury
+		# the failures it exists to contrast with.
+		if seen_baselines.has(script_path):
+			continue
+		seen_baselines[script_path] = true
+		var baseline: ReplayHandle = baseline_for(script_path)
+		if baseline != null:
+			out.append(baseline)
+	return out
 
 
 ## How many of `failures` have a visual form at all, ignoring the cap. Reported beside

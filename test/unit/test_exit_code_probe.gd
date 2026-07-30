@@ -37,6 +37,9 @@ const FORCE_FAILURE_ENV := "HB_FORCE_TEST_FAILURE"
 ## The seed the forced failure replays. Any real bout would do; this one is fixed so
 ## the demonstration is the same every time.
 const DEMO_SEED := 7
+## A seed with no forced failure attached — the reference for what a healthy bout from
+## this script looks like.
+const BASELINE_SEED := 21
 
 
 ## **This probe has a visual form on purpose.**
@@ -50,7 +53,15 @@ const DEMO_SEED := 7
 ## anything happening" in a way a static board cannot. The map-generation handles are
 ## unit-less by nature — the map *is* what failed there — so they render a board that
 ## correctly does not move.
+## taskblock-50 Pass F: **`BASELINE_TEST` answers with a known-good bout.**
+##
+## The forced failure replays `DEMO_SEED`; the baseline replays a different seed that is
+## not under suspicion, so the two can be watched back to back. Without a reference for
+## normal, a replayed failure is a bout you have no way to judge — which is the likeliest
+## reason the review layer had not paid off yet.
 static func replay_handle_for(test_name: String) -> ReplayHandle:
+	if test_name == ReplayCatalog.BASELINE_TEST:
+		return ReplayHandle.from_seed(BASELINE_SEED)
 	if test_name != "test_the_probe_fails_only_when_it_is_asked_to":
 		return null
 	return ReplayHandle.from_seed(DEMO_SEED)

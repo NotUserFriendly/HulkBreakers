@@ -29,6 +29,21 @@ extends VBoxContainer
 ## this a status surface rather than a coordinator.
 signal run_completed(finished_run: SuiteRun)
 
+## taskblock-50 Pass F: **a run finishes into a window nobody is looking at.**
+##
+## The panel is watched intermittently by definition — a full gate takes minutes and the
+## whole point of running it in the game is to do something else meanwhile. A finished run
+## that only announces itself visually is a finished run you notice late.
+##
+## Synthesised rather than shipped as an asset: two short tones, so pass and fail are
+## distinguishable without looking. A rising pair means green, a falling pair means red —
+## a chime that sounded the same either way would just say "go and look", which the
+## progress feed already does.
+const CHIME_PASS_HZ: Array[float] = [660.0, 990.0]
+const CHIME_FAIL_HZ: Array[float] = [440.0, 330.0]
+const CHIME_TONE_MSEC := 110
+const CHIME_VOLUME_DB := -12.0
+
 ## How many lines the feed shows. A tail, not a scrollback: the interesting part of a
 ## running suite is always the end, and keeping the whole thing on screen would make
 ## the panel a log viewer instead of a status light.
@@ -151,7 +166,49 @@ func _process(delta: float) -> void:
 	run.poll()
 	_refresh()
 	if run.finished:
+		_chime(run.passed())
 		run_completed.emit(run)
+
+
+## Sound the run's verdict.
+##
+## **Never fatal and never blocking.** A machine with no audio device, or a headless test
+## run, must finish a suite exactly as it would have otherwise — the chime is a courtesy,
+## and a courtesy that can fail a run is a defect. Everything here is guarded and the
+## whole thing is skipped when there is no audio server to speak to.
+func _chime(passed: bool) -> void:
+	if Engine.is_editor_hint() or AudioServer.get_bus_count() == 0:
+		return
+	var tones: Array[float] = CHIME_PASS_HZ if passed else CHIME_FAIL_HZ
+	for i in range(tones.size()):
+		var player := AudioStreamPlayer.new()
+		var generator := AudioStreamGenerator.new()
+		generator.mix_rate = 22050.0
+		generator.buffer_length = float(CHIME_TONE_MSEC) / 1000.0
+		player.stream = generator
+		player.volume_db = CHIME_VOLUME_DB
+		add_child(player)
+		player.play()
+		var playback: Variant = player.get_stream_playback()
+		if playback != null:
+			_fill_tone(playback, tones[i], generator.mix_rate)
+		# Freed on its own so a finished chime leaves no nodes behind on a panel that may
+		# run a hundred suites in a session.
+		get_tree().create_timer(float(CHIME_TONE_MSEC) / 1000.0 * float(i + 2)).timeout.connect(
+			player.queue_free
+		)
+
+
+## A short sine with a linear fade-out, so it reads as a chime rather than a click.
+func _fill_tone(playback: Variant, hz: float, mix_rate: float) -> void:
+	var frames: int = int(mix_rate * float(CHIME_TONE_MSEC) / 1000.0)
+	var available: int = playback.get_frames_available()
+	frames = mini(frames, available)
+	for i in range(frames):
+		var t: float = float(i) / mix_rate
+		var fade: float = 1.0 - float(i) / float(maxi(1, frames))
+		var value: float = sin(TAU * hz * t) * fade * 0.4
+		playback.push_frame(Vector2(value, value))
 
 
 ## Whether the "force a failure" box is ticked. A named reader rather than a poke at

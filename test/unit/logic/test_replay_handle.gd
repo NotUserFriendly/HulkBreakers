@@ -195,3 +195,65 @@ func test_seed_and_non_seed_handles_share_one_run() -> void:
 	assert_true(run.is_done())
 	assert_eq(run.results[4]["outcome"], &"EXTRACTED", "results key on the handle's key")
 	assert_eq(run.results["map:x"]["outcome"], WatchedRun.SKIPPED)
+
+
+# --- taskblock-50 Pass F: a baseline beside each failure ------------------------------
+
+
+func _probe_failure() -> Array:
+	return [
+		{
+			"script": "res://test/unit/test_exit_code_probe.gd",
+			"test": "test_the_probe_fails_only_when_it_is_asked_to",
+		}
+	]
+
+
+## **The baseline is opt-in, and the default queue is unchanged.** A queue that silently
+## doubled would make the common case slower to get through for a reference nobody asked
+## for — the taskblock asks for this explicitly and not by default.
+func test_the_default_queue_still_shows_failures_only() -> void:
+	var plain: Array[ReplayHandle] = ReplayCatalog.handles_for(_probe_failure())
+
+	assert_eq(plain.size(), 1, "one failure, one handle — no baseline unless asked")
+
+
+func test_asking_for_baselines_queues_one_beside_the_failure() -> void:
+	var paired: Array[ReplayHandle] = ReplayCatalog.handles_with_baselines(_probe_failure())
+
+	assert_eq(paired.size(), 2, "the failure and its reference for normal")
+	assert_ne(
+		paired[0].seed_value,
+		paired[1].seed_value,
+		"the baseline is a different bout, or it references nothing"
+	)
+
+
+## A script declaring no baseline is the ordinary case across the suite, and must yield
+## its failure alone rather than a gap or a warning.
+func test_a_script_without_a_baseline_yields_its_failure_alone() -> void:
+	var failure := [
+		{"script": "res://test/unit/logic/test_grid.gd", "test": "test_in_bounds"},
+	]
+
+	assert_eq(ReplayCatalog.handles_with_baselines(failure).size(), 0, "no handle, no rows")
+
+
+## **The cap counts failures, not entries.** Otherwise a baseline would compete with the
+## next failure for a slot and asking for context would cost you coverage.
+func test_the_cap_counts_failures_so_a_baseline_never_costs_a_slot() -> void:
+	var two: Array = _probe_failure() + _probe_failure()
+
+	var capped: Array[ReplayHandle] = ReplayCatalog.handles_with_baselines(two, 1)
+
+	assert_eq(capped.size(), 2, "one failure through the cap, plus its baseline")
+
+
+## One reference per script however many of its tests failed — five copies of the same
+## known-good board would bury the failures it exists to contrast with.
+func test_a_scripts_baseline_is_queued_once_however_many_of_its_tests_failed() -> void:
+	var two: Array = _probe_failure() + _probe_failure()
+
+	var paired: Array[ReplayHandle] = ReplayCatalog.handles_with_baselines(two, 0)
+
+	assert_eq(paired.size(), 3, "two failures, one shared baseline")
