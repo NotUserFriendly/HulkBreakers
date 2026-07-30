@@ -729,8 +729,44 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
-### Review pass over the test suite
+### Act on the suite audit
+**Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
+under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
+
+The index exists; **nothing has been cut, by design** — taskblock-49 was scoped to evidence. This item
+is the acting-on, under `docs/TEST-AUDIT.md`'s cut rule: *a test may only be cut if breaking the rule it
+guards makes a different test fail*, **demonstrated rather than asserted**, with the covering test
+recorded beside the cut.
+
+Three specific things the index put on the table, in value order:
+
+- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`
+  costs 102.3 s — 21% of the whole attributed suite.** Six other tests guard its rule (*a shared
+  fixture is played once and handed out as copies*) for 0.001 s each. taskblock-48 built `BoutCorpus`
+  so this window is played once; whether this test can read the corpus instead of playing its own is
+  the single biggest lever in the file, and it is a supervisor call.
+- **`test_full_mission::test_bout_completion_rate_meets_the_measured_floor` is a 62.6 s sole guard** —
+  the only test of *the AI finishes missions at or above the measured floor*. By the cut rule it stays
+  regardless of cost. Recorded because it is exactly the row someone proposes cutting on cost alone.
+- **Eight name defects** (the filled `description` column) — two cite deleted taskblock documents, one
+  asserts "three scatter rings" as though ring count were a system rule when `docs/00` says N rings
+  never 3, one has drifted from its body outright, four are vague. Renaming is cheap and independent of
+  any cut.
+
+**The audit's headline finding was not the predicted one, and that shapes this item.** `TEST-AUDIT.md`
+expects expensive rows sharing a rule with cheap ones to be the output. They exist — but in every case
+checked the cheap peer guards the rule at *unit* level and the expensive one guards it end-to-end
+through a real bout, so breaking bout-level determinism does not redden the cheap peer and the cut rule
+correctly refuses the cut. **The real question the index answers is per rule: does this rule need a
+bout-level rung at all?** Answering that for the ~10 rules that own a bout-playing test is the work.
+
+### Review pass over the test suite — *the survey half; the index landed in taskblock-49*
 **Needs:** nothing.
+
+**Superseded in part.** The per-test index and the rule classification this item asked for are built
+(taskblock-49; see `CHANGELOG.md`). What remains here is the *qualitative* half below — tests that pin a
+bug as though it were a rule — which the index does not answer, because a test asserting the wrong thing
+still classifies cleanly under the rule it claims to defend.
 
 2038 test functions across 214 files run on every change, and the suite has never been audited as a
 whole — only ever added to. The suspicion is that a meaningful share is redundant, exercises systems
