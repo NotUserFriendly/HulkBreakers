@@ -1725,23 +1725,23 @@ unit/test_suite_tier.gd,test_every_listed_file_implements_the_skip_hook,,499,0,0
 unit/test_void_vocabulary_guard.gd,test_no_gd_file_uses_void_for_anything_but_the_return_annotation,,226063,0,0,0,0,0,0,the codebase's own conventions are enforced by a test
 unit/view/overlays/test_ai_batch_yield.gd,test_a_yielding_batch_produces_the_identical_bout,,55338091,2,108,162708,232,108,1134,the same seed produces the same battle
 unit/view/overlays/test_ai_batch_yield.gd,test_frames_pass_during_the_batch,,3433705,1,10,18156,24,10,48,planning yields frames so the game never freezes
-unit/view/overlays/test_generate_bout_overlay.gd,test_setup_populates_ordered_presets_from_loaded_presets,,188243,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_a_variant_is_listed_under_its_own_family_label,,176214,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant,,183689,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_default_roster_rows_actually_render_a_selected_bot_name,,183886,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_add_to_squad_appends_to_the_end_of_the_roster,,182279,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_remove_from_squad_drops_exactly_that_entry,,177404,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_replace_profile_in_squad_swaps_the_profile_at_that_index,,198022,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_replace_ai_profile_in_squad_swaps_the_profile_at_that_index,,179150,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_duplicate_in_squad_inserts_an_identical_entry_right_below,,178234,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_no_count_field_exists_on_the_overlay,,169676,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_no_per_team_ai_dropdown_exists_on_the_overlay,,171207,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_start_bout_with_an_empty_roster_is_rejected_not_crashed,,180748,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_a_valid_start_bout_hands_off_to_a_live_spectator_overlay,,312473,1,0,0,4,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_start_bout_threads_each_entrys_own_profile_into_the_built_units,,290396,1,0,0,4,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_the_menu_lists_exactly_the_profiles_on_disk,,187694,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_every_row_shape_reserves_the_same_minimum_height,,185717,0,0,0,2,0,0,
-unit/view/overlays/test_generate_bout_overlay.gd,test_the_menu_layout_stays_centered_regardless_of_its_own_size,,214098,0,0,0,2,0,0,
+unit/view/overlays/test_generate_bout_overlay.gd,test_setup_populates_ordered_presets_from_loaded_presets,,188243,0,0,0,2,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/view/overlays/test_generate_bout_overlay.gd,test_a_variant_is_listed_under_its_own_family_label,,176214,0,0,0,2,0,0,a variant groups with the base it derives from
+unit/view/overlays/test_generate_bout_overlay.gd,test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant,,183689,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_default_roster_rows_actually_render_a_selected_bot_name,,183886,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_add_to_squad_appends_to_the_end_of_the_roster,,182279,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_remove_from_squad_drops_exactly_that_entry,,177404,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_replace_profile_in_squad_swaps_the_profile_at_that_index,,198022,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_replace_ai_profile_in_squad_swaps_the_profile_at_that_index,,179150,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_duplicate_in_squad_inserts_an_identical_entry_right_below,,178234,0,0,0,2,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_no_count_field_exists_on_the_overlay,,169676,0,0,0,2,0,0,a retired mechanism leaves no trace in the code
+unit/view/overlays/test_generate_bout_overlay.gd,test_no_per_team_ai_dropdown_exists_on_the_overlay,,171207,0,0,0,2,0,0,a retired mechanism leaves no trace in the code
+unit/view/overlays/test_generate_bout_overlay.gd,test_start_bout_with_an_empty_roster_is_rejected_not_crashed,,180748,0,0,0,2,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/view/overlays/test_generate_bout_overlay.gd,test_a_valid_start_bout_hands_off_to_a_live_spectator_overlay,,312473,1,0,0,4,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_start_bout_threads_each_entrys_own_profile_into_the_built_units,,290396,1,0,0,4,0,0,the roster editor edits the roster the bout is actually built from
+unit/view/overlays/test_generate_bout_overlay.gd,test_the_menu_lists_exactly_the_profiles_on_disk,,187694,0,0,0,2,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/view/overlays/test_generate_bout_overlay.gd,test_every_row_shape_reserves_the_same_minimum_height,,185717,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/overlays/test_generate_bout_overlay.gd,test_the_menu_layout_stays_centered_regardless_of_its_own_size,,214098,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
 unit/view/overlays/test_single_unit_overlay.gd,test_wants_turn_for_is_true_only_for_the_controlled_unit,,189274,0,1,14,4,1,0,
 unit/view/overlays/test_single_unit_overlay.gd,test_a_non_controlled_units_turn_auto_resolves_and_the_controlled_unit_auto_selects,,185281,0,1,14,4,1,0,
 unit/view/overlays/test_single_unit_overlay.gd,test_an_unconfigured_overlay_never_auto_drives_anything,,165173,0,0,0,2,0,0,
@@ -1933,197 +1933,197 @@ unit/view/test_builder_scene.gd,test_ready_shows_validation_for_the_default_asse
 unit/view/test_builder_scene.gd,test_selecting_an_empty_socket_populates_the_picker,,15090,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
 unit/view/test_builder_scene.gd,test_picking_a_legal_part_attaches_it_and_refreshes,,16677,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
 unit/view/test_builder_scene.gd,test_load_unit_reassembles_from_the_given_unit,,19887,0,0,0,0,0,0,the builder edits an assembly through the game's own legality rules
-unit/view/test_camera_rig.gd,test_ready_builds_a_two_pivot_rig_with_a_camera,,2067,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ready_sets_the_cameras_fov_from_the_solvers_constant,,1598,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_applying_state_moves_the_camera_to_the_current_zoom,,1427,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_applying_state_sets_yaw_and_pitch_on_their_own_pivots,,1426,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_wheel_zooms_when_zoom_enabled,,1477,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_wheel_does_nothing_when_zoom_disabled,,1272,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut,,1230,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_kill_active_tween_clears_an_active_attack_framing_tween,,1294,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_wheel_zoom_kills_an_active_attack_framing_tween,,1619,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ease_to_attack_framing_targets_the_solved_framing,,1538,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_stop_aiming_eases_the_camera_back_to_its_pre_aim_framing,,1603,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_stop_aiming_without_start_aiming_never_crashes_or_eases_anywhere,,1627,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ease_to_attack_framing_centers_the_target_on_screen,,1620,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_mid_tween_the_camera_never_gets_close_to_the_shooter,,1483,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ease_to_framing_beyond_the_threshold_centers_the_target_on_screen,,1450,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ease_to_framing_within_the_threshold_matches_attack_framing_unchanged,,3446,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_sniper_frame_distance_is_a_named_tunable,,2344,0,0,0,0,0,0,
-unit/view/test_camera_rig.gd,test_ease_to_framing_beyond_the_threshold_still_uses_the_shared_tween,,2049,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_start_aiming_locks_orbit_and_disables_zoom,,1829,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_stop_aiming_restores_orbit_and_zoom,,1419,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_locked_orbit_ignores_motion_events_state_never_changes,,999,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_stop_aiming_clears_a_stale_camera_lean,,1093,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_aim_at_with_reticle_on_centre_points_dead_on_with_no_lean,,1482,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_aim_at_caps_the_lean_toward_a_far_off_reticle,,1352,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_aim_at_is_a_pure_function_of_centre_and_reticle,,1132,0,0,0,0,0,0,
-unit/view/test_camera_rig_aim.gd,test_aim_at_never_touches_the_solved_pivot_state,,952,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_the_spy_does_see_a_wheel_that_misses_the_panel,,3831,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_scrolling_past_the_bottom_never_reaches_the_camera,,21934,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_scrolling_past_the_top_never_reaches_the_camera,,24269,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_a_log_shorter_than_its_viewport_still_blocks_the_wheel,,13210,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_the_title_bar_blocks_the_wheel_too,,15830,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_the_log_still_scrolls_mid_content,,26740,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_the_panel_asks_for_its_own_width_rather_than_inheriting_the_columns,,2466,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_dragging_the_title_bar_resizes_and_never_minimizes,,16467,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_the_minimize_button_collapses_to_the_bar_and_flips_to_plus,,16738,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_restoring_returns_to_the_height_it_was_dragged_to,,20218,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_pressing_the_minimize_button_does_not_start_a_drag,,14119,0,0,0,0,0,0,
-unit/view/test_combat_log_panel.gd,test_a_drag_is_clamped_at_both_ends,,13002,0,0,0,0,0,0,
-unit/view/test_controls_overlay.gd,test_setup_fills_the_label_with_every_binding_row,,1940,0,0,0,0,0,0,
-unit/view/test_controls_overlay.gd,test_setup_dims_the_label,,3740,0,0,0,0,0,0,
-unit/view/test_controls_overlay.gd,test_h_toggles_the_labels_visibility,,2953,0,0,0,0,0,0,
-unit/view/test_controls_overlay.gd,test_other_keys_do_not_toggle_visibility,,1935,0,0,0,0,0,0,
-unit/view/test_controls_overlay.gd,test_set_log_path_rebuilds_the_text_with_the_new_path,,986,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_center_top_pins_the_panel_to_a_fixed_top_margin,,7483,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_center_top_horizontally_centers_the_panel_in_the_real_viewport,,6998,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_viewport_resize_recenters_the_panel,,8152,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_verb_picker_is_a_real_scrolling_item_list,,7195,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_selecting_a_verb_in_the_list_populates_its_own_param_rows,,6982,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_active_label_starts_as_none,,6545,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_a_board_click_while_open_sets_the_active_target,,6620,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_a_missed_click_never_clears_an_existing_active_target,,6494,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_input_capture_mode_follows_the_panels_own_visibility,,7754,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_move_object_via_apply_uses_the_active_target_and_manual_cell_entry,,7354,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_move_object_via_apply_refuses_with_no_active_target,,7298,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_move_on_next_click_button_exists_only_for_move_object,,11759,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_move_on_next_click_applies_immediately_on_the_next_board_click,,10510,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_move_on_next_click_snapshots_the_object_before_the_destination_click_lands,,7829,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_move_on_next_click_refuses_with_no_active_target,,7918,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_the_panel_blocks_clicks_because_it_draws_a_real_background,,7862,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_the_spy_does_see_a_wheel_that_misses_the_panel,,7699,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_scrolling_the_verb_list_never_reaches_the_camera,,14496,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_the_verb_list_still_scrolls,,20177,0,0,0,0,0,0,
-unit/view/test_debug_control_panel.gd,test_a_spin_box_still_adjusts_on_the_wheel,,22724,0,0,0,0,0,0,
-unit/view/test_debug_panel_layout.gd,test_the_debug_panels_never_overlap_the_top_left_controls,,152915,0,0,0,2,0,0,
-unit/view/test_debug_panel_layout.gd,test_the_debug_panels_stay_inside_the_viewport,,149766,0,0,0,2,0,0,
-unit/view/test_debug_panel_layout.gd,test_the_run_panel_keeps_its_width_whatever_the_feed_says,,154937,0,0,0,2,0,0,
-unit/view/test_debug_panel_layout.gd,test_the_run_panel_draws_a_background_like_the_combat_log,,142524,0,0,0,2,0,0,
-unit/view/test_hierarchical_ui_sink.gd,test_lines_mirrors_one_summary_string_per_top_level_group,,3140,0,0,0,0,0,0,
-unit/view/test_hierarchical_ui_sink.gd,test_emit_mirrors_into_an_attached_label,,1879,0,0,0,0,0,0,
-unit/view/test_hierarchical_ui_sink.gd,test_a_single_event_admin_row_is_not_clickable,,3260,0,0,0,0,0,0,
-unit/view/test_hierarchical_ui_sink.gd,test_clicking_an_attack_summary_expands_its_detail_then_collapses_again,,2127,0,0,0,0,0,0,
-unit/view/test_hierarchical_ui_sink.gd,test_filesink_receives_every_event_regardless_of_folding,,2407,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box,,19191,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_refresh_after_a_part_is_destroyed_removes_its_mesh,,3710,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_mesh_transform_matches_unit_geometry_exactly,,3006,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_mesh_size_matches_the_box_size_exactly,,2311,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_part_material_is_lit_not_unshaded,,1505,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_part_material_carries_a_rim_outline_next_pass,,993,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_facing_wedge_sits_at_child_1_pointing_along_orientation,,1031,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_the_facing_wedges_position_and_rotation_agree_across_a_full_sweep,,5298,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_preview_orientation_moves_both_the_wedge_and_the_part_meshes,,2509,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_null_preview_orientation_renders_the_committed_orientation,,2398,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color,,1976,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_team_marker_sits_at_the_units_own_real_height_when_raised,,2055,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_facing_wedge_sits_at_the_units_own_real_height_when_raised,,1704,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_set_selected_brightens_the_team_marker,,3467,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit,,3037,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc,,2267,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker,,1211,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_set_active_turn_true_shows_the_whole_disk_and_wedge_assembly,,1229,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_set_active_turn_false_hides_the_whole_disk_and_wedge_assembly,,1318,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_set_active_turn_never_recolors_the_ground_marker,,1927,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_refresh_reapplies_the_last_active_turn_visibility,,1772,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_set_occlusion_faded_true_applies_a_translucent_gray_override,,1979,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_set_occlusion_faded_false_clears_the_override,,2249,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_occlusion_fade_never_touches_the_ground_marker_or_wedge,,1996,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_refresh_reapplies_a_live_occlusion_fade,,3248,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_a_downed_unit_kills_its_facing_wedge,,1806,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_a_downed_units_body_matches_its_own_posed_geometry_exactly,,1338,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units,,1479,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_highlight_part_chains_a_glow_onto_only_that_parts_own_mesh,,1848,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_clear_highlight_removes_the_glow,,1561,0,0,0,0,0,0,
-unit/view/test_hit_volume_view.gd,test_a_highlight_survives_a_refresh,,1778,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_mesh_scene.gd,test_a_part_with_mesh_scene_renders_the_commissioned_mesh,,3881,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_mesh_scene.gd,test_a_part_with_mesh_scene_does_not_also_draw_its_box_by_default,,2818,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_mesh_scene.gd,test_a_mixed_assembly_renders_the_mesh_and_the_box_together,,2192,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_mesh_scene.gd,test_show_hit_volumes_overlays_the_box_on_a_meshed_part_without_removing_the_mesh,,1248,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_a_transform_only_refresh_instantiates_no_new_nodes,,7227,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_a_cheap_refresh_produces_the_same_transforms_as_a_full_rebuild,,12488,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_an_orientation_change_takes_the_cheap_path,,8958,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_when_a_part_is_destroyed,,6667,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_when_the_unit_goes_down,,7202,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_when_the_hit_volume_overlay_is_toggled,,8521,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_before_the_first_full_refresh,,5601,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_refresh.gd,test_a_full_refresh_after_a_cheap_one_still_works,,8610,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_a_part_with_render_primitive_cylinder_renders_a_cylinder,,2385,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_mesh_scene_wins_over_render_primitive_when_both_are_set,,2100,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_render_primitive_never_changes_the_parts_own_volume,,1524,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_render_scale_scales_the_primitive_instance_only,,2837,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_render_primitive_box_is_the_existing_box_render_unchanged,,2787,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_render_color_override_replaces_the_material_colour,,3709,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_render_primitive.gd,test_default_render_color_override_falls_back_to_material_colour,,3143,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_show_assembly.gd,test_null_root_clears_the_view,,2824,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_show_assembly.gd,test_draws_exactly_a_marker_plus_one_mesh_per_box_no_wedge,,2153,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_show_assembly.gd,test_marker_sits_at_the_origin_in_the_passed_color_never_team_color,,1979,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_show_assembly.gd,test_geometry_is_recentered_onto_the_origin,,1726,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_show_assembly.gd,test_part_material_carries_no_rim_outline,,1600,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_show_assembly.gd,test_registers_meshes_by_part_for_hover_and_camera_framing,,1616,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_weapon_boxs_mesh_instance_carries_its_display_name_as_a_label,,2312,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_non_weapon_part_gets_no_label_at_all,,1893,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_weapon_with_no_display_name_gets_no_label,,1407,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_the_label_never_changes_the_views_own_top_level_child_count,,1557,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_non_box_primitive_weapon_also_carries_its_label,,3751,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_box_weapons_label_no_longer_billboards,,2810,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_non_box_primitive_weapons_label_still_billboards,,2962,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_bigger_weapon_box_produces_a_bigger_label,,2712,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_a_long_thin_weapons_label_sits_on_its_side_face,,1857,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_the_largest_face_pick_covers_all_three_axis_pairs,,1601,0,0,0,0,0,0,
-unit/view/test_hit_volume_view_weapon_labels.gd,test_show_assembly_also_labels_a_previewed_weapon,,1632,0,0,0,0,0,0,
-unit/view/test_hulk_theme.gd,test_exactly_six_named_colors,,1711,0,0,0,0,0,0,
-unit/view/test_hulk_theme.gd,test_build_returns_a_real_theme_resource,,2095,0,0,0,0,0,0,
-unit/view/test_hulk_theme.gd,test_build_styles_the_inventory_panels_tree,,1753,0,0,0,0,0,0,
-unit/view/test_hulk_theme.gd,test_build_styles_the_tooltip_with_a_solid_high_contrast_panel,,1801,0,0,0,0,0,0,
-unit/view/test_hulk_theme.gd,test_build_styles_scrollbars_with_an_always_visible_grabber,,1835,0,0,0,0,0,0,
-unit/view/test_hulk_theme.gd,test_build_sets_the_real_monospace_font,,2989,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_populates_the_tree_with_weapon_and_body_groups,,3594,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_shows_the_panel_and_close_hides_it_and_emits_closed,,3071,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_hovering_a_tree_row_fills_the_info_panel_and_a_dead_zone_leaves_it,,3367,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_wounds_on_any_part_populate_the_status_wound_column,,3407,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_debug_menu_reset_and_zero_health_mutate_the_real_part,,3362,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_debug_menu_set_ammo_sets_the_chosen_ammo_id,,3508,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_repair_menu_item_appears_for_a_single_damaged_part,,4744,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_repair_menu_item_absent_without_a_selection_controller,,4612,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_repair_menu_item_absent_for_more_than_one_part,,5873,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_repair_menu_item_absent_when_inspecting_a_non_selected_unit,,5478,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_repair_menu_item_disabled_without_enough_scrap,,4520,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_repair_menu_item_disabled_with_a_drained_battery,,4856,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_choosing_repair_queues_a_real_repair_action,,5484,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_matrix_area_shows_personal_speed_and_ai_profile,,3660,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_the_inspect_header_shows_unit_id_squad_and_variant,,4747,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_the_inspect_header_resets_on_close,,4564,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_clamp_to_viewport_shrinks_and_recenters_an_oversized_panel,,3106,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_with_many_wounds_still_fits_the_viewport_after_clamping,,11560,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_right_click_on_the_bot_viewer_opens_the_menu_at_the_cursor,,4354,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_right_click_on_a_tree_row_opens_the_menu_at_the_cursor,,5705,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_debug_items_are_marked_and_sorted_after_non_debug,,5811,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_burn_submenu_at_or_above_threshold_inflicts_the_wound,,3611,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_burn_submenu_below_threshold_does_not_inflict_the_wound,,3535,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_create_part_submenu_lists_only_legal_attachments,,13325,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_choosing_create_part_attaches_a_real_part_at_the_socket,,8921,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_set_isolated_toggles_the_render_layer_on_every_mesh_instance,,3429,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_calls_the_live_view_lookup_with_the_units_own_id,,5106,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy,,4167,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_opening_a_bare_tile_after_a_live_unit_leaves_the_preview_genuinely_empty,,4223,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_isolate_focus_also_includes_the_floor_layer,,5427,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_preview_camera_has_a_real_ambient_environment_override,,2603,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_closing_clears_isolation_on_the_previously_focused_view,,7304,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_the_fallback_path_still_works_and_is_its_own_isolated_world,,5152,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_fills_in_the_mass_and_ram_footer,,4334,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_closing_clears_the_footer_when_reopened_with_no_shell,,6437,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_tree_hover_and_close_never_crash_with_no_tactics_wired,,3795,0,0,0,0,0,0,
-unit/view/test_inspect_panel.gd,test_open_tile_reuses_the_existing_part_tree_inspector_for_objects_and_bare_floor,,3650,0,0,0,0,0,0,
-unit/view/test_part_highlight_bidirectional.gd,test_hovering_a_tree_row_highlights_exactly_that_part_in_3d,,22750,0,0,0,1,0,0,
-unit/view/test_part_highlight_bidirectional.gd,test_hovering_a_part_in_3d_highlights_exactly_that_row,,26717,0,0,0,1,0,0,
-unit/view/test_part_highlight_bidirectional.gd,test_clearing_the_world_hover_clears_the_row_too,,21626,0,0,0,1,0,0,
-unit/view/test_phase12_transparency.gd,test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage,,70972,0,1,0,3,0,2,
-unit/view/test_queue_panel.gd,test_empty_queue_has_no_rows,,24501,0,0,0,1,0,0,
-unit/view/test_queue_panel.gd,test_queuing_actions_creates_one_row_per_entry,,86465,0,0,0,5,0,0,
-unit/view/test_queue_panel.gd,test_a_real_click_on_a_rows_resolve_button_resolves_through_it,,95856,0,0,0,6,0,0,
-unit/view/test_queue_panel.gd,test_a_real_click_on_the_second_rows_resolve_button_resolves_through_both,,87925,0,0,0,6,0,0,
-unit/view/test_queue_panel.gd,test_refresh_rebuilds_rows_so_a_later_click_targets_the_fresh_queue,,106511,0,0,0,7,0,0,
+unit/view/test_camera_rig.gd,test_ready_builds_a_two_pivot_rig_with_a_camera,,2067,0,0,0,0,0,0,the camera rig applies its orbit state to real pivots
+unit/view/test_camera_rig.gd,test_ready_sets_the_cameras_fov_from_the_solvers_constant,,1598,0,0,0,0,0,0,the camera rig applies its orbit state to real pivots
+unit/view/test_camera_rig.gd,test_applying_state_moves_the_camera_to_the_current_zoom,,1427,0,0,0,0,0,0,the camera rig applies its orbit state to real pivots
+unit/view/test_camera_rig.gd,test_applying_state_sets_yaw_and_pitch_on_their_own_pivots,,1426,0,0,0,0,0,0,the camera rig applies its orbit state to real pivots
+unit/view/test_camera_rig.gd,test_wheel_zooms_when_zoom_enabled,,1477,0,0,0,0,0,0,camera orbit accumulates and clamps within its own bounds
+unit/view/test_camera_rig.gd,test_wheel_does_nothing_when_zoom_disabled,,1272,0,0,0,0,0,0,camera orbit accumulates and clamps within its own bounds
+unit/view/test_camera_rig.gd,test_ease_to_attack_framing_starts_a_tween_not_an_instant_cut,,1230,0,0,0,0,0,0,a camera move eases through a tween a later input can cancel
+unit/view/test_camera_rig.gd,test_kill_active_tween_clears_an_active_attack_framing_tween,,1294,0,0,0,0,0,0,a camera move eases through a tween a later input can cancel
+unit/view/test_camera_rig.gd,test_wheel_zoom_kills_an_active_attack_framing_tween,,1619,0,0,0,0,0,0,a camera move eases through a tween a later input can cancel
+unit/view/test_camera_rig.gd,test_ease_to_attack_framing_targets_the_solved_framing,,1538,0,0,0,0,0,0,"attack framing fits both bodies on screen, solved rather than hand-derived"
+unit/view/test_camera_rig.gd,test_stop_aiming_eases_the_camera_back_to_its_pre_aim_framing,,1603,0,0,0,0,0,0,a camera move eases through a tween a later input can cancel
+unit/view/test_camera_rig.gd,test_stop_aiming_without_start_aiming_never_crashes_or_eases_anywhere,,1627,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_camera_rig.gd,test_ease_to_attack_framing_centers_the_target_on_screen,,1620,0,0,0,0,0,0,"a view transform is read back off the real node, never re-derived"
+unit/view/test_camera_rig.gd,test_mid_tween_the_camera_never_gets_close_to_the_shooter,,1483,0,0,0,0,0,0,"a view transform is read back off the real node, never re-derived"
+unit/view/test_camera_rig.gd,test_ease_to_framing_beyond_the_threshold_centers_the_target_on_screen,,1450,0,0,0,0,0,0,"a view transform is read back off the real node, never re-derived"
+unit/view/test_camera_rig.gd,test_ease_to_framing_within_the_threshold_matches_attack_framing_unchanged,,3446,0,0,0,0,0,0,"attack framing fits both bodies on screen, solved rather than hand-derived"
+unit/view/test_camera_rig.gd,test_sniper_frame_distance_is_a_named_tunable,,2344,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
+unit/view/test_camera_rig.gd,test_ease_to_framing_beyond_the_threshold_still_uses_the_shared_tween,,2049,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_camera_rig_aim.gd,test_start_aiming_locks_orbit_and_disables_zoom,,1829,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_camera_rig_aim.gd,test_stop_aiming_restores_orbit_and_zoom,,1419,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_camera_rig_aim.gd,test_locked_orbit_ignores_motion_events_state_never_changes,,999,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_camera_rig_aim.gd,test_stop_aiming_clears_a_stale_camera_lean,,1093,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_camera_rig_aim.gd,test_aim_at_with_reticle_on_centre_points_dead_on_with_no_lean,,1482,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_camera_rig_aim.gd,test_aim_at_caps_the_lean_toward_a_far_off_reticle,,1352,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_camera_rig_aim.gd,test_aim_at_is_a_pure_function_of_centre_and_reticle,,1132,0,0,0,0,0,0,a build is reproducible from the same inputs
+unit/view/test_camera_rig_aim.gd,test_aim_at_never_touches_the_solved_pivot_state,,952,0,0,0,0,0,0,aiming locks the orbit and leans the camera without changing solved state
+unit/view/test_combat_log_panel.gd,test_the_spy_does_see_a_wheel_that_misses_the_panel,,3831,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_combat_log_panel.gd,test_scrolling_past_the_bottom_never_reaches_the_camera,,21934,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_combat_log_panel.gd,test_scrolling_past_the_top_never_reaches_the_camera,,24269,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_combat_log_panel.gd,test_a_log_shorter_than_its_viewport_still_blocks_the_wheel,,13210,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_combat_log_panel.gd,test_the_title_bar_blocks_the_wheel_too,,15830,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_combat_log_panel.gd,test_the_log_still_scrolls_mid_content,,26740,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_combat_log_panel.gd,test_the_panel_asks_for_its_own_width_rather_than_inheriting_the_columns,,2466,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_combat_log_panel.gd,test_dragging_the_title_bar_resizes_and_never_minimizes,,16467,0,0,0,0,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/test_combat_log_panel.gd,test_the_minimize_button_collapses_to_the_bar_and_flips_to_plus,,16738,0,0,0,0,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/test_combat_log_panel.gd,test_restoring_returns_to_the_height_it_was_dragged_to,,20218,0,0,0,0,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/test_combat_log_panel.gd,test_pressing_the_minimize_button_does_not_start_a_drag,,14119,0,0,0,0,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/test_combat_log_panel.gd,test_a_drag_is_clamped_at_both_ends,,13002,0,0,0,0,0,0,"a panel resizes by drag and minimises by button, never by accident"
+unit/view/test_controls_overlay.gd,test_setup_fills_the_label_with_every_binding_row,,1940,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/view/test_controls_overlay.gd,test_setup_dims_the_label,,3740,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/view/test_controls_overlay.gd,test_h_toggles_the_labels_visibility,,2953,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_controls_overlay.gd,test_other_keys_do_not_toggle_visibility,,1935,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_controls_overlay.gd,test_set_log_path_rebuilds_the_text_with_the_new_path,,986,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/view/test_debug_control_panel.gd,test_center_top_pins_the_panel_to_a_fixed_top_margin,,7483,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_debug_control_panel.gd,test_center_top_horizontally_centers_the_panel_in_the_real_viewport,,6998,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_debug_control_panel.gd,test_viewport_resize_recenters_the_panel,,8152,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_debug_control_panel.gd,test_verb_picker_is_a_real_scrolling_item_list,,7195,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/view/test_debug_control_panel.gd,test_selecting_a_verb_in_the_list_populates_its_own_param_rows,,6982,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/view/test_debug_control_panel.gd,test_active_label_starts_as_none,,6545,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/view/test_debug_control_panel.gd,test_a_board_click_while_open_sets_the_active_target,,6620,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_debug_control_panel.gd,test_a_missed_click_never_clears_an_existing_active_target,,6494,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_debug_control_panel.gd,test_input_capture_mode_follows_the_panels_own_visibility,,7754,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_debug_control_panel.gd,test_move_object_via_apply_uses_the_active_target_and_manual_cell_entry,,7354,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/view/test_debug_control_panel.gd,test_move_object_via_apply_refuses_with_no_active_target,,7298,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/view/test_debug_control_panel.gd,test_move_on_next_click_button_exists_only_for_move_object,,11759,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/view/test_debug_control_panel.gd,test_move_on_next_click_applies_immediately_on_the_next_board_click,,10510,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_debug_control_panel.gd,test_move_on_next_click_snapshots_the_object_before_the_destination_click_lands,,7829,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/view/test_debug_control_panel.gd,test_move_on_next_click_refuses_with_no_active_target,,7918,0,0,0,0,0,0,a debug verb refuses a board state the game could not reach
+unit/view/test_debug_control_panel.gd,test_the_panel_blocks_clicks_because_it_draws_a_real_background,,7862,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_debug_control_panel.gd,test_the_spy_does_see_a_wheel_that_misses_the_panel,,7699,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_debug_control_panel.gd,test_scrolling_the_verb_list_never_reaches_the_camera,,14496,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_debug_control_panel.gd,test_the_verb_list_still_scrolls,,20177,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_debug_control_panel.gd,test_a_spin_box_still_adjusts_on_the_wheel,,22724,0,0,0,0,0,0,a panel consumes the input that lands on it and never leaks it to the camera
+unit/view/test_debug_panel_layout.gd,test_the_debug_panels_never_overlap_the_top_left_controls,,152915,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_debug_panel_layout.gd,test_the_debug_panels_stay_inside_the_viewport,,149766,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_debug_panel_layout.gd,test_the_run_panel_keeps_its_width_whatever_the_feed_says,,154937,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_debug_panel_layout.gd,test_the_run_panel_draws_a_background_like_the_combat_log,,142524,0,0,0,2,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_hierarchical_ui_sink.gd,test_lines_mirrors_one_summary_string_per_top_level_group,,3140,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/view/test_hierarchical_ui_sink.gd,test_emit_mirrors_into_an_attached_label,,1879,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/view/test_hierarchical_ui_sink.gd,test_a_single_event_admin_row_is_not_clickable,,3260,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/view/test_hierarchical_ui_sink.gd,test_clicking_an_attack_summary_expands_its_detail_then_collapses_again,,2127,0,0,0,0,0,0,the log folds a run of identical adjacent events into one counted row
+unit/view/test_hierarchical_ui_sink.gd,test_filesink_receives_every_event_regardless_of_folding,,2407,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/view/test_hit_volume_view.gd,test_setup_spawns_the_team_marker_plus_one_mesh_per_living_box,,19191,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_hit_volume_view.gd,test_refresh_after_a_part_is_destroyed_removes_its_mesh,,3710,0,0,0,0,0,0,a destroyed part stops contributing
+unit/view/test_hit_volume_view.gd,test_mesh_transform_matches_unit_geometry_exactly,,3006,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_hit_volume_view.gd,test_mesh_size_matches_the_box_size_exactly,,2311,0,0,0,0,0,0,every rendered mesh matches the logic geometry it stands for
+unit/view/test_hit_volume_view.gd,test_part_material_is_lit_not_unshaded,,1505,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hit_volume_view.gd,test_part_material_carries_a_rim_outline_next_pass,,993,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hit_volume_view.gd,test_facing_wedge_sits_at_child_1_pointing_along_orientation,,1031,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_the_facing_wedges_position_and_rotation_agree_across_a_full_sweep,,5298,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_preview_orientation_moves_both_the_wedge_and_the_part_meshes,,2509,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_null_preview_orientation_renders_the_committed_orientation,,2398,0,0,0,0,0,0,an unstated authored field takes its default
+unit/view/test_hit_volume_view.gd,test_team_marker_sits_at_the_units_cell_and_matches_its_squad_color,,1976,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_team_marker_sits_at_the_units_own_real_height_when_raised,,2055,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_hit_volume_view.gd,test_facing_wedge_sits_at_the_units_own_real_height_when_raised,,1704,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/view/test_hit_volume_view.gd,test_set_selected_brightens_the_team_marker,,3467,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit,,3037,0,0,0,0,0,0,a downed unit renders as an inert shell
+unit/view/test_hit_volume_view.gd,test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwatch_arc,,2267,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_hit_volume_view.gd,test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker,,1211,0,0,0,0,0,0,an overlay is drawn on request and cleared without touching the static board
+unit/view/test_hit_volume_view.gd,test_set_active_turn_true_shows_the_whole_disk_and_wedge_assembly,,1229,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_set_active_turn_false_hides_the_whole_disk_and_wedge_assembly,,1318,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_set_active_turn_never_recolors_the_ground_marker,,1927,0,0,0,0,0,0,the facing wedge and team marker show the unit's own facing and squad
+unit/view/test_hit_volume_view.gd,test_refresh_reapplies_the_last_active_turn_visibility,,1772,0,0,0,0,0,0,a highlight survives a refresh
+unit/view/test_hit_volume_view.gd,test_set_occlusion_faded_true_applies_a_translucent_gray_override,,1979,0,0,0,0,0,0,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_hit_volume_view.gd,test_set_occlusion_faded_false_clears_the_override,,2249,0,0,0,0,0,0,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_hit_volume_view.gd,test_occlusion_fade_never_touches_the_ground_marker_or_wedge,,1996,0,0,0,0,0,0,"an occluding friendly fades, and only one that is really in the way"
+unit/view/test_hit_volume_view.gd,test_refresh_reapplies_a_live_occlusion_fade,,3248,0,0,0,0,0,0,a highlight survives a refresh
+unit/view/test_hit_volume_view.gd,test_a_downed_unit_kills_its_facing_wedge,,1806,0,0,0,0,0,0,a downed unit renders as an inert shell
+unit/view/test_hit_volume_view.gd,test_a_downed_units_body_matches_its_own_posed_geometry_exactly,,1338,0,0,0,0,0,0,a downed unit renders as an inert shell
+unit/view/test_hit_volume_view.gd,test_a_downed_units_team_marker_is_dimmer_than_a_piloted_units,,1479,0,0,0,0,0,0,a downed unit renders as an inert shell
+unit/view/test_hit_volume_view.gd,test_highlight_part_chains_a_glow_onto_only_that_parts_own_mesh,,1848,0,0,0,0,0,0,a highlight marks exactly the part it names
+unit/view/test_hit_volume_view.gd,test_clear_highlight_removes_the_glow,,1561,0,0,0,0,0,0,a highlight marks exactly the part it names
+unit/view/test_hit_volume_view.gd,test_a_highlight_survives_a_refresh,,1778,0,0,0,0,0,0,a highlight survives a refresh
+unit/view/test_hit_volume_view_mesh_scene.gd,test_a_part_with_mesh_scene_renders_the_commissioned_mesh,,3881,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_mesh_scene.gd,test_a_part_with_mesh_scene_does_not_also_draw_its_box_by_default,,2818,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_mesh_scene.gd,test_a_mixed_assembly_renders_the_mesh_and_the_box_together,,2192,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_mesh_scene.gd,test_show_hit_volumes_overlays_the_box_on_a_meshed_part_without_removing_the_mesh,,1248,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_refresh.gd,test_a_transform_only_refresh_instantiates_no_new_nodes,,7227,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_a_cheap_refresh_produces_the_same_transforms_as_a_full_rebuild,,12488,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_an_orientation_change_takes_the_cheap_path,,8958,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_when_a_part_is_destroyed,,6667,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_when_the_unit_goes_down,,7202,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_when_the_hit_volume_overlay_is_toggled,,8521,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_it_refuses_before_the_first_full_refresh,,5601,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_refresh.gd,test_a_full_refresh_after_a_cheap_one_still_works,,8610,0,0,0,0,0,0,"a cheap refresh moves transforms only, and refuses when structure changed"
+unit/view/test_hit_volume_view_render_primitive.gd,test_a_part_with_render_primitive_cylinder_renders_a_cylinder,,2385,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_render_primitive.gd,test_mesh_scene_wins_over_render_primitive_when_both_are_set,,2100,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_render_primitive.gd,test_render_primitive_never_changes_the_parts_own_volume,,1524,0,0,0,0,0,0,"the shot plane comes from body-space boxes, never from the mesh"
+unit/view/test_hit_volume_view_render_primitive.gd,test_render_scale_scales_the_primitive_instance_only,,2837,0,0,0,0,0,0,"the shot plane comes from body-space boxes, never from the mesh"
+unit/view/test_hit_volume_view_render_primitive.gd,test_render_primitive_box_is_the_existing_box_render_unchanged,,2787,0,0,0,0,0,0,an authored mesh renders in place of the box without changing the volume
+unit/view/test_hit_volume_view_render_primitive.gd,test_render_color_override_replaces_the_material_colour,,3709,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hit_volume_view_render_primitive.gd,test_default_render_color_override_falls_back_to_material_colour,,3143,0,0,0,0,0,0,an unstated authored field takes its default
+unit/view/test_hit_volume_view_show_assembly.gd,test_null_root_clears_the_view,,2824,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_hit_volume_view_show_assembly.gd,test_draws_exactly_a_marker_plus_one_mesh_per_box_no_wedge,,2153,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_hit_volume_view_show_assembly.gd,test_marker_sits_at_the_origin_in_the_passed_color_never_team_color,,1979,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_hit_volume_view_show_assembly.gd,test_geometry_is_recentered_onto_the_origin,,1726,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_hit_volume_view_show_assembly.gd,test_part_material_carries_no_rim_outline,,1600,0,0,0,0,0,0,"an assembly preview draws the parts alone, recentred and unteamed"
+unit/view/test_hit_volume_view_show_assembly.gd,test_registers_meshes_by_part_for_hover_and_camera_framing,,1616,0,0,0,0,0,0,a highlight marks exactly the part it names
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_weapon_boxs_mesh_instance_carries_its_display_name_as_a_label,,2312,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_non_weapon_part_gets_no_label_at_all,,1893,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_weapon_with_no_display_name_gets_no_label,,1407,0,0,0,0,0,0,an unstated authored field takes its default
+unit/view/test_hit_volume_view_weapon_labels.gd,test_the_label_never_changes_the_views_own_top_level_child_count,,1557,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_non_box_primitive_weapon_also_carries_its_label,,3751,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_box_weapons_label_no_longer_billboards,,2810,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_non_box_primitive_weapons_label_still_billboards,,2962,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_bigger_weapon_box_produces_a_bigger_label,,2712,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_a_long_thin_weapons_label_sits_on_its_side_face,,1857,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_the_largest_face_pick_covers_all_three_axis_pairs,,1601,0,0,0,0,0,0,"a weapon label sits on its own largest face, sized to the box"
+unit/view/test_hit_volume_view_weapon_labels.gd,test_show_assembly_also_labels_a_previewed_weapon,,1632,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_hulk_theme.gd,test_exactly_six_named_colors,,1711,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hulk_theme.gd,test_build_returns_a_real_theme_resource,,2095,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hulk_theme.gd,test_build_styles_the_inventory_panels_tree,,1753,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hulk_theme.gd,test_build_styles_the_tooltip_with_a_solid_high_contrast_panel,,1801,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hulk_theme.gd,test_build_styles_scrollbars_with_an_always_visible_grabber,,1835,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_hulk_theme.gd,test_build_sets_the_real_monospace_font,,2989,0,0,0,0,0,0,"presentation derives from authored data, never from code"
+unit/view/test_inspect_panel.gd,test_open_populates_the_tree_with_weapon_and_body_groups,,3594,0,0,0,0,0,0,"inspect rows group by kind, then follow the inventory's own order"
+unit/view/test_inspect_panel.gd,test_open_shows_the_panel_and_close_hides_it_and_emits_closed,,3071,0,0,0,0,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/test_inspect_panel.gd,test_hovering_a_tree_row_fills_the_info_panel_and_a_dead_zone_leaves_it,,3367,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/view/test_inspect_panel.gd,test_wounds_on_any_part_populate_the_status_wound_column,,3407,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/view/test_inspect_panel.gd,test_debug_menu_reset_and_zero_health_mutate_the_real_part,,3362,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/view/test_inspect_panel.gd,test_debug_menu_set_ammo_sets_the_chosen_ammo_id,,3508,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/view/test_inspect_panel.gd,test_repair_menu_item_appears_for_a_single_damaged_part,,4744,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/view/test_inspect_panel.gd,test_repair_menu_item_absent_without_a_selection_controller,,4612,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/view/test_inspect_panel.gd,test_repair_menu_item_absent_for_more_than_one_part,,5873,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/view/test_inspect_panel.gd,test_repair_menu_item_absent_when_inspecting_a_non_selected_unit,,5478,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/view/test_inspect_panel.gd,test_repair_menu_item_disabled_without_enough_scrap,,4520,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/view/test_inspect_panel.gd,test_repair_menu_item_disabled_with_a_drained_battery,,4856,0,0,0,0,0,0,repair consumes a charge and matching scrap
+unit/view/test_inspect_panel.gd,test_choosing_repair_queues_a_real_repair_action,,5484,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_inspect_panel.gd,test_matrix_area_shows_personal_speed_and_ai_profile,,3660,0,0,0,0,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/test_inspect_panel.gd,test_the_inspect_header_shows_unit_id_squad_and_variant,,4747,0,0,0,0,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/test_inspect_panel.gd,test_the_inspect_header_resets_on_close,,4564,0,0,0,0,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/test_inspect_panel.gd,test_clamp_to_viewport_shrinks_and_recenters_an_oversized_panel,,3106,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_inspect_panel.gd,test_open_with_many_wounds_still_fits_the_viewport_after_clamping,,11560,0,0,0,0,0,0,the layout puts each panel where it belongs and keeps it there
+unit/view/test_inspect_panel.gd,test_right_click_on_the_bot_viewer_opens_the_menu_at_the_cursor,,4354,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_inspect_panel.gd,test_right_click_on_a_tree_row_opens_the_menu_at_the_cursor,,5705,0,0,0,0,0,0,a real input event reaches the control it lands on
+unit/view/test_inspect_panel.gd,test_debug_items_are_marked_and_sorted_after_non_debug,,5811,0,0,0,0,0,0,the debug injector is reachable only from a debug surface
+unit/view/test_inspect_panel.gd,test_burn_submenu_at_or_above_threshold_inflicts_the_wound,,3611,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/view/test_inspect_panel.gd,test_burn_submenu_below_threshold_does_not_inflict_the_wound,,3535,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/view/test_inspect_panel.gd,test_create_part_submenu_lists_only_legal_attachments,,13325,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/view/test_inspect_panel.gd,test_choosing_create_part_attaches_a_real_part_at_the_socket,,8921,0,0,0,0,0,0,"a debug verb reuses the real gameplay path, never a shortcut"
+unit/view/test_inspect_panel.gd,test_set_isolated_toggles_the_render_layer_on_every_mesh_instance,,3429,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_open_calls_the_live_view_lookup_with_the_units_own_id,,5106,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy,,4167,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_opening_a_bare_tile_after_a_live_unit_leaves_the_preview_genuinely_empty,,4223,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_isolate_focus_also_includes_the_floor_layer,,5427,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_preview_camera_has_a_real_ambient_environment_override,,2603,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_closing_clears_isolation_on_the_previously_focused_view,,7304,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_the_fallback_path_still_works_and_is_its_own_isolated_world,,5152,0,0,0,0,0,0,"an isolated preview renders the real view, on its own layer"
+unit/view/test_inspect_panel.gd,test_open_fills_in_the_mass_and_ram_footer,,4334,0,0,0,0,0,0,a shell's mass and RAM budgets are both hard limits
+unit/view/test_inspect_panel.gd,test_closing_clears_the_footer_when_reopened_with_no_shell,,6437,0,0,0,0,0,0,the inspect panel shows what was asked for and clears on close
+unit/view/test_inspect_panel.gd,test_tree_hover_and_close_never_crash_with_no_tactics_wired,,3795,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_inspect_panel.gd,test_open_tile_reuses_the_existing_part_tree_inspector_for_objects_and_bare_floor,,3650,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/view/test_part_highlight_bidirectional.gd,test_hovering_a_tree_row_highlights_exactly_that_part_in_3d,,22750,0,0,0,1,0,0,a highlight marks exactly the part it names
+unit/view/test_part_highlight_bidirectional.gd,test_hovering_a_part_in_3d_highlights_exactly_that_row,,26717,0,0,0,1,0,0,a highlight marks exactly the part it names
+unit/view/test_part_highlight_bidirectional.gd,test_clearing_the_world_hover_clears_the_row_too,,21626,0,0,0,1,0,0,a highlight marks exactly the part it names
+unit/view/test_phase12_transparency.gd,test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage,,70972,0,1,0,3,0,2,the tooltip and the damage come from the same resolver call
+unit/view/test_queue_panel.gd,test_empty_queue_has_no_rows,,24501,0,0,0,1,0,0,"a degenerate input yields an empty result, never an error"
+unit/view/test_queue_panel.gd,test_queuing_actions_creates_one_row_per_entry,,86465,0,0,0,5,0,0,"a queued action previews against the queue before it, not the real state"
+unit/view/test_queue_panel.gd,test_a_real_click_on_a_rows_resolve_button_resolves_through_it,,95856,0,0,0,6,0,0,a real input event reaches the control it lands on
+unit/view/test_queue_panel.gd,test_a_real_click_on_the_second_rows_resolve_button_resolves_through_both,,87925,0,0,0,6,0,0,a real input event reaches the control it lands on
+unit/view/test_queue_panel.gd,test_refresh_rebuilds_rows_so_a_later_click_targets_the_fresh_queue,,106511,0,0,0,7,0,0,the view rebuilds only when the board actually changed
 unit/view/test_replay_wiring.gd,test_failures_are_parsed_from_coloured_output_and_deduplicated,,3301,0,0,0,0,0,0,
 unit/view/test_replay_wiring.gd,test_the_overlay_binds_the_replay_panel_to_the_battle,,151857,0,0,0,2,0,0,
 unit/view/test_replay_wiring.gd,test_a_failed_run_offers_its_replayable_failures,,240757,1,0,210,5,0,0,
