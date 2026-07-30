@@ -1622,10 +1622,42 @@ an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comme
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
 
-### seeds_to_first_win, and the HULK_ prefix retired (tb50 Passes A, B, D)
+### The suite under five minutes: seeds_to_first_win, two corpora, failure-first ordering (tb50)
 
-**Full gate 446.8 s → 332.4 s.** Passes C, E and F are unbuilt; the block's five-minute acceptance is
-**not met** and the remaining costs are itemised in its report.
+**Full gate 446.8 s → 290.4 s (35%), 2462 tests.** The five-minute acceptance is met, and thinly:
+three clean runs measured 288.4 / 288.8 / 290.4 s, while a run sharing the machine measured 313.5 s.
+**~290 s on an idle machine** is the defensible number.
+
+**Pass E2 — a shared map corpus, and it is what closed the gap.** `test_map_gen.gd` and
+`test_map_gen_raised_rooms.gd` ran **14 independent seed sweeps** regenerating ~650 maps to ask 14
+questions about 50. Every sweep was checked first — **none mutates its grid** — so `MapCorpus.read()`
+returns the cached `Grid` with no copy at all, and `copy()` is there for anyone who needs to mutate.
+**22.7 s → 11.2 s** and **16.2 s → 5.6 s**, more again across the full gate since both want the same
+maps.
+
+**The corpus sets a trap, and it caught its own author.** Two tests compare *two independent
+generations of one seed*; through `read()` they receive the same object twice and pass
+unconditionally — silently deleting the suite's only check that generation is reproducible. The bulk
+conversion did exactly that and was caught by reading the diff. Those two sites keep calling
+`MapGen.generate`, and a test now pins that `read()` returns identity.
+
+**Pass E1 — failure-first ordering, and nothing is ever skipped.** `SuiteOrder` ranks scripts by how
+often and how recently they have failed; the runner enumerates the scripts itself and hands GUT an
+ordered list. **It is a permutation, asserted as one** — the pass forbids skipping, because an
+indicator that passes while the thing it indicates is broken makes the suite greener than the code,
+which this project has hit four blocks running. The order is printed each run so a failure can be
+replayed exactly. History lives in `out/suite_failures.json`, **gitignored**: it must update on
+ordinary runs to learn anything, and committing it would churn every diff and make one machine's
+flakes everyone else's run order.
+
+**Pass F — a baseline beside each failure, a chime, and a triaged ledger.**
+`ReplayCatalog.handles_with_baselines` queues each failure with its script's own known-good fixture,
+opted in through the existing `replay_handle_for` hook via a `BASELINE_TEST` sentinel — so nothing
+changes for the ~250 scripts exposing no handles. Not the default, and the cap counts *failures* so
+context never costs coverage. The finish chime is two synthesised tones, rising for green and falling
+for red, guarded so no audio device can fail a run. **The ledger triage went in the block's report,
+not `docs/BUGS.md`** — that file's header argues against derived indexes and category sections, and
+31 headings were diffed before and after to prove no status moved.
 
 **Passes E3/E4 — the eight name defects renamed, and the seed-list trim found already done.** Eleven
 renames rather than eight: the `pass_b_` prefix cited an anonymous taskblock pass on four names in one
