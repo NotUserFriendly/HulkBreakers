@@ -673,238 +673,238 @@ unit/logic/test_camera_orbit_state.gd,test_pass_b_height_delta_matrix_always_fit
 unit/logic/test_camera_orbit_state.gd,test_pass_b_same_level_solve_is_pinned_as_a_regression_guard,"name says only that something is ""pinned as a regression guard"" — not which solve, which value, or which regression; and the ""pass_b"" prefix cites an anonymous taskblock pass, which four names in this file share.",107,0,0,0,0,0,0,"attack framing fits both bodies on screen, solved rather than hand-derived"
 unit/logic/test_camera_orbit_state.gd,test_pass_b_sniper_framing_centers_the_target_at_any_height,,240,0,0,0,0,0,0,sniper framing centres the target at the current yaw and pitch
 unit/logic/test_camera_orbit_state.gd,test_pass_b_solved_framing_is_continuous_across_the_zero_height_crossing,,402,0,0,0,0,0,0,"attack framing fits both bodies on screen, solved rather than hand-derived"
-unit/logic/test_combat_action_speed.gd,test_lower_speed_resolves_first_regardless_of_queue_order,,561,0,0,0,0,0,0,
-unit/logic/test_combat_action_speed.gd,test_a_weapon_with_a_lower_speed_out_paces_a_face_action,,420,0,0,0,0,0,0,
-unit/logic/test_combat_action_speed.gd,test_attack_actions_speed_reads_the_weapons_own_field_live,,299,0,0,0,0,0,0,
-unit/logic/test_combat_action_speed.gd,test_tied_speed_breaks_deterministically_by_unit_id,,411,0,0,0,0,0,0,
-unit/logic/test_combat_action_speed.gd,test_face_actions_speed_and_unit_id_are_fixed_and_correct,,289,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_memory_sink_collects_events,,196,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_events_of_kind_filters,,114,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_log_dispatches_to_multiple_sinks,,98,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_remove_sink_stops_further_dispatch_to_it,,80,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_remove_sink_is_a_no_op_for_a_sink_never_added,,52,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_log_event_to_string_is_readable,,66,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_file_sink_writes_and_appends_line,,269,0,0,0,0,0,0,
-unit/logic/test_combat_log.gd,test_file_sink_default_path_produces_out_combat_log,,139,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_add_unit_assigns_sequential_ids_and_occupies_cell,,1591,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_initial_units_get_first_turn_started,,1492,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_advance_turn_cycles_and_resets_ap,,1213,0,2,0,0,0,0,
-unit/logic/test_combat_state.gd,test_the_free_mp_grant_renews_every_turn_not_just_the_first,,1097,0,2,0,0,0,0,
-unit/logic/test_combat_state.gd,test_spending_the_free_starting_mp_never_touches_ap,,3047,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_burning_an_ap_adds_another_mp_per_ap_on_top_of_the_free_grant,,3349,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_advance_turn_skips_dead_units,,1126,0,1,0,0,0,0,
-unit/logic/test_combat_state.gd,test_advance_turn_skips_shut_down_units,,1051,0,1,0,0,0,0,
-unit/logic/test_combat_state.gd,test_round_number_increments_once_per_full_cycle_not_per_unit_turn,,1415,0,6,0,0,0,0,
-unit/logic/test_combat_state.gd,test_round_number_increments_every_turn_with_a_single_unit,,1056,0,2,0,0,0,0,
-unit/logic/test_combat_state.gd,test_round_number_wraps_correctly_around_a_dead_unit,,1342,0,2,0,0,0,0,
-unit/logic/test_combat_state.gd,test_advance_turn_emits_turn_start_for_the_incoming_unit,,1055,0,1,0,0,0,0,
-unit/logic/test_combat_state.gd,test_organics_decay_demotion_emits_surrogate_demoted,,1222,0,3,0,0,0,0,
-unit/logic/test_combat_state.gd,test_try_apply_rejects_illegal_action_without_mutating,,1145,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_every_squad_defaults_to_unassigned_control,,984,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_a_squad_can_be_set_to_ai_control,,936,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_assign_all_to_human_sets_every_present_squad_human,,932,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_assign_rest_to_ai_sets_named_squads_human_and_the_rest_ai,,942,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_all_squads_assigned_is_false_until_every_present_squad_has_a_real_controller,,928,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_dup_carries_squad_controllers_into_the_preview,,1828,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_is_resolving_is_true_only_during_an_active_resolve_until_call,,983,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_dup_never_copies_is_resolving,,1697,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_dup_carries_was_injected_into_the_preview,,1786,0,0,0,0,0,0,
-unit/logic/test_combat_state.gd,test_force_current_unit_sets_current_unit_without_resetting_resources,,1198,0,0,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_turn_order_is_by_resolution_speed_fastest_first,,552,0,2,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_a_faster_unit_acts_before_a_slower_one,,330,0,0,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_tied_resolution_speed_breaks_by_unit_id_ascending,,328,0,0,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_initiative_order_is_deterministic,,822,0,6,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_advance_turn_still_skips_dead_units_under_initiative_order,,398,0,1,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_a_pack_of_equal_speed_units_forms_one_simultaneous_group,,596,0,0,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_simultaneous_group_excludes_units_outside_the_band_tolerance,,474,0,0,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_simultaneous_group_excludes_the_dead,,457,0,0,0,0,0,0,
-unit/logic/test_combat_state_initiative.gd,test_a_mixed_speed_multi_squad_roster_keeps_cycling_fairly,,746,0,12,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_all_three_variants_load_and_assemble_with_no_violations,,14308,0,0,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_all_three_variants_share_the_same_profile_family,,992,0,0,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_group_by_family_lists_all_three_variants_together,,2180,0,0,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_the_body_has_every_part_and_cladding_everywhere,,5444,0,0,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_the_chest_wears_the_torso_sized_wedge,,6371,0,0,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_both_legs_wear_the_half_cylinder_plate_and_arms_do_not,,5660,0,0,0,0,0,0,
-unit/logic/test_combat_tester_presets.gd,test_each_variant_carries_its_own_named_weapon,,15487,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_a_refused_injection_produces_a_paired_command_and_outcome_with_a_reason,,25049,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_an_accepted_injection_also_produces_the_pair,,9930,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_the_command_half_records_the_arguments_that_were_sent,,11028,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_clear_cover_on_an_empty_cell_now_says_why,,10004,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_place_cover_with_an_unknown_part_now_says_why,,10063,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_set_passable_off_the_grid_now_says_why,,11085,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_set_cell_level_off_the_grid_now_says_why,,9461,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_remove_object_on_an_empty_cell_now_says_why,,9422,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_move_object_from_an_empty_cell_now_says_why,,11078,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_attach_part_distinguishes_an_unknown_part_from_an_unknown_socket,,20958,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_killing_an_already_dead_unit_now_says_why,,9681,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_a_tactics_refusal_and_a_resolution_refusal_read_differently,,11052,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_try_apply_no_longer_refuses_silently,,9549,0,0,0,0,0,0,
-unit/logic/test_command_log.gd,test_the_pairing_survives_a_resolve_until_stop,,10528,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_a_sample_reports_every_seed_it_drew,,1306,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_a_sample_draws_without_replacement,,1193,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_the_same_rng_seed_replays_the_same_draw,,1207,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_different_rng_seeds_draw_different_samples,,1270,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_a_fixed_seed_list_yields_identical_results_twice,,2391807,2,10,20284,24,10,60,
-unit/logic/test_completion_sampler.gd,test_the_escalation_seed_list_is_fixed_and_starts_at_zero,,975,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_a_sample_below_the_floor_escalates_and_one_above_it_does_not,,872,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_escalation_probability_is_the_exact_binomial_tail,,968,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_a_larger_sample_is_steadier_than_a_smaller_one,,870,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_a_healthy_rate_almost_never_escalates,,886,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_describe_carries_the_seed_list_and_one_line_per_bout,,1608,0,0,0,0,0,0,
-unit/logic/test_completion_sampler.gd,test_the_in_window_verb_reports_the_same_sample_and_changes_nothing,,102684509,8,295,396810,635,295,3883,
-unit/logic/test_containers.gd,test_backpack_is_soft_with_the_better_mass_discount_but_less_capacity,,168,0,0,0,0,0,0,
-unit/logic/test_containers.gd,test_trash_barrel_is_rigid_with_the_floor_discount_but_more_capacity,,89,0,0,0,0,0,0,
-unit/logic/test_containers.gd,test_neither_container_dominates_the_other,,90,0,0,0,0,0,0,
-unit/logic/test_control_bindings.gd,test_all_returns_a_non_empty_list_of_trigger_action_pairs,,181,0,0,0,0,0,0,
-unit/logic/test_control_bindings.gd,test_the_log_path_is_folded_into_one_of_the_rows,,70,0,0,0,0,0,0,
-unit/logic/test_control_bindings.gd,test_reset_turn_row_shows_the_real_reset_turn_keys_own_letter,,67,0,0,0,0,0,0,
-unit/logic/test_control_bindings.gd,test_toggle_key_is_h,,64,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_chaingun_burst_under_dt_fails_to_penetrate_steel,,16968,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_rifle_round_over_dt_damages_the_plate_and_the_part_behind,,811,0,0,0,0,0,1,
-unit/logic/test_damage_resolver.gd,test_penetration_spill_is_reduced_by_effective_dt_not_reapplied_in_full,,476,0,0,0,0,0,1,
-unit/logic/test_damage_resolver.gd,test_a_bare_margin_penetration_spills_zero_and_stops_at_the_plate,,447,0,0,0,0,0,1,
-unit/logic/test_damage_resolver.gd,test_stop_dead_damages_the_plate_deflect_does_not,,209,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_a_graze_retains_about_90_percent_a_near_right_angle_bounce_about_25_percent,,192,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_a_burst_across_a_wide_surface_retains_a_spread_not_one_repeated_value,,601,0,0,0,0,0,6,
-unit/logic/test_damage_resolver.gd,test_depth_cap_of_zero_stops_a_deflection_from_spawning_any_ricochet,,439,0,0,0,0,0,2,
-unit/logic/test_damage_resolver.gd,test_damage_floor_stops_a_deflection_from_spawning_a_ricochet,,352,0,0,0,0,0,2,
-unit/logic/test_damage_resolver.gd,test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identically,,1360,0,0,0,0,0,5,
-unit/logic/test_damage_resolver.gd,test_each_ricochet_hop_stamps_its_own_real_origin_and_hit_point,,850,0,0,0,0,0,3,
-unit/logic/test_damage_resolver.gd,test_crit_chance_over_100_percent_always_crits_and_the_excess_is_the_double_crit_chance,,3027,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_crit_effects_bypass_armor_when_armored_bonus_damage_when_not,,71,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_double_crit_end_to_end_bypasses_armor_and_applies_bonus_damage,,519,0,0,0,0,0,1,
-unit/logic/test_damage_resolver.gd,test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only,,656,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_the_goo_barrel_field_object_detonates,,1066,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_detonate_is_a_no_op_without_real_detonate_damage,,799,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_fragment_sprays_rays_that_hit_and_terminate,,515,0,0,0,0,0,4,
-unit/logic/test_damage_resolver.gd,test_meltdown_counts_down_then_detonates,,517,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_trigger_primed_meltdowns_detonates_a_live_countdown_immediately,,459,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_trigger_primed_meltdowns_is_a_no_op_with_nothing_armed,,375,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_meltdown_detonates_early_if_re_killed_mid_countdown,,391,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_resolve_impact_incidence_uses_the_regions_real_3d_normal_not_a_flattened_one,,165,0,0,0,0,0,0,
-unit/logic/test_damage_resolver.gd,test_a_tilted_flight_vertical_slope_changes_which_region_resolve_shot_hits,,442,0,0,0,0,0,2,
-unit/logic/test_damage_resolver.gd,test_a_deflection_off_a_real_tilted_body_part_gains_a_genuine_vertical_component,,552,0,0,0,0,0,2,
-unit/logic/test_damage_resolver_consequences.gd,test_destroying_the_matrix_hosting_part_ejects_it_demotes_and_disables,,641,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_eject_matrix_if_needed_is_a_no_op_for_a_part_that_hosts_none,,250,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_destroying_a_head_that_hosts_the_matrix_ejects_it,,452,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_destroying_an_arm_never_ejects_a_matrix,,318,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_a_torso_chewed_to_spinal_still_functions_it_only_stops_at_matrix_ejection,,294,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_a_mangling_part_stays_attached_and_flips_is_mangled,,331,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_a_disabled_part_stays_attached_and_flips_is_disabled,,298,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_a_broken_pistol_is_still_identifiably_a_pistol,,313,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_wreckage_yields_its_own_salvage,,96,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_a_mangling_parts_own_id_carries_no_salvage_the_wreckage_does,,99,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_consequences.gd,test_mangle_residual_dt_is_exactly_a_quarter_of_the_resolved_value,,160,0,0,0,0,0,0,
-unit/logic/test_damage_resolver_deflect_modes.gd,test_slide_deflect_mode_resolves_an_adjacent_point_not_a_ricochet,,407,0,0,0,0,0,2,
-unit/logic/test_damage_resolver_deflect_modes.gd,test_none_deflect_mode_never_bounces_or_slides,,345,0,0,0,0,0,2,
-unit/logic/test_damage_resolver_deflect_modes.gd,test_slide_deflect_never_lands_back_on_the_shooters_own_excluded_body,,572,0,0,0,0,0,2,
-unit/logic/test_damage_resolver_spherecast.gd,test_a_point_stab_falls_through_the_gap_and_hits_nothing,,394,0,0,0,0,0,1,
-unit/logic/test_damage_resolver_spherecast.gd,test_a_wide_stab_cannot_thread_the_same_gap,,325,0,0,0,0,0,1,
-unit/logic/test_damage_resolver_spherecast.gd,test_a_narrow_stab_still_threads_the_same_gap,,316,0,0,0,0,0,1,
-unit/logic/test_damage_source_of_truth.gd,test_weapon_resolver_is_the_only_reader_of_part_damage,,112,0,0,0,0,0,0,
-unit/logic/test_damage_source_of_truth.gd,test_reference_weapons_still_carry_damage_on_the_part_not_an_ammo_ref,,235,0,0,0,0,0,0,
-unit/logic/test_damage_source_of_truth.gd,test_ammo_def_damage_is_authored_but_the_reference_pistol_has_none_chambered,,151,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_same_seed_produces_identical_impact_points,,866,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_works_with_one_two_three_or_five_rings,,1233,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_ring_weights_hold_over_many_samples,,2729,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_tight_inner_ring_sniper_hits_a_small_region_a_chaingun_cannot,,661,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_spin_up_shrinks_a_ring_through_the_resolver_and_names_itself_in_sources,,230,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_a_spread_burst_varies_in_height_not_just_lateral_position,,189,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_vertical_spread_reaches_the_same_ring_radius_as_lateral_spread,,3639,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_a_single_projectile_still_lands_within_the_ring_in_both_axes,,84,0,0,0,0,0,0,
-unit/logic/test_dartboard.gd,test_same_seed_produces_identical_3d_scatter,,873,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_center_pixel_is_the_aiming_dot_at_full_opacity,,2594,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_pixel_beyond_the_outer_ring_is_fully_transparent,,2502,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_the_majority_ring_renders_more_opaque_than_a_lighter_one,,11397,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_adjacent_equal_weight_rings_still_show_a_crisp_boundary,,10542,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_empty_rings_produces_a_fully_transparent_image,,167,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_the_output_size_matches_the_requested_size,,1024,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_a_one_ring_weapon_draws_exactly_one_band,,9734,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_a_five_ring_weapon_draws_exactly_five_bands,,12574,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_output_is_byte_identical_for_rings_scaled_by_a_uniform_factor,,20549,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_a_bound_beyond_the_rings_draws_a_visible_ring_there,,5489,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_no_bound_ring_drawn_when_bound_radius_is_within_the_weighted_rings,,32503,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_output_with_a_bound_is_still_byte_identical_under_a_uniform_rescale,,15802,0,0,0,0,0,0,
-unit/logic/test_dartboard_texture.gd,test_build_solid_dot_is_fully_opaque_inside_and_transparent_outside,,327,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_a_builtin_part_loads,,1099,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_a_user_file_with_the_same_id_overrides_the_builtin,,1256,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_a_user_only_id_loads,,1025,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_an_invalid_file_is_rejected_by_name_not_silently_dropped,,800,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_an_unknown_id_returns_null_not_a_crash,,364,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_parts_pool_returns_every_loaded_part,,954,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_material_table_aggregates_every_loaded_material,,601,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_resources_of_type_returns_every_loaded_definition_of_that_type,,945,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_resources_of_type_returns_fresh_duplicates,,1019,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_source_of_reports_builtin_and_user_and_override_correctly,,1703,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_source_of_an_overridden_id_reports_user,,1066,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_save_writes_a_valid_tres_to_the_user_root,,798,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_save_rejects_an_invalid_resource_without_writing_a_file,,471,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_an_exported_remap_entry_resolves_to_its_authored_name,,84,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_an_ordinary_editor_entry_is_unchanged,,74,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_both_exported_forms_of_one_resource_agree_on_the_authored_name,,71,0,0,0,0,0,0,
-unit/logic/test_data_library.gd,test_non_resource_entries_are_ignored,,96,0,0,0,0,0,0,
-unit/logic/test_data_migration_losslessness.gd,test_every_expected_part_id_is_present_exactly_once,,18808,0,0,0,0,0,0,
-unit/logic/test_data_migration_losslessness.gd,test_every_part_matches_its_pre_migration_snapshot,,10753,0,0,0,0,0,0,
-unit/logic/test_data_migration_losslessness.gd,test_every_expected_material_id_is_present_exactly_once,,281,0,0,0,0,0,0,
-unit/logic/test_data_migration_losslessness.gd,test_every_material_matches_its_pre_migration_snapshot,,506,0,0,0,0,0,0,
-unit/logic/test_data_validator.gd,test_a_valid_part_produces_no_errors,,144,0,0,0,0,0,0,
-unit/logic/test_data_validator.gd,test_a_bad_failure_mode_produces_a_named_error,,122,0,0,0,0,0,0,
-unit/logic/test_data_validator.gd,test_a_valid_ammo_row_produces_no_errors,,102,0,0,0,0,0,0,
-unit/logic/test_data_validator.gd,test_a_bad_stack_type_produces_a_named_error_with_the_rows_id,,98,0,0,0,0,0,0,
-unit/logic/test_data_validator.gd,test_a_dt_curve_out_of_order_is_caught,,94,0,0,0,0,0,0,
-unit/logic/test_data_validator.gd,test_an_ascending_dt_curve_produces_no_errors,,92,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_assemble_random_hosts_the_matrix_on_the_root_part,,4364,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_assemble_random_is_deterministic_from_the_same_seed,,4903,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_validate_assembly_passes_a_normal_random_cyborg,,4331,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_validate_assembly_catches_a_mass_violation,,4779,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_is_armed_true_when_a_weapon_has_its_required_manipulators,,436,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_is_armed_false_with_no_weapon_at_all,,114,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_is_armed_false_when_the_weapon_has_no_capable_manipulator,,101,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root,,7835,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_leg_cladding_cannot_attach_to_a_heads_cladding_socket,,4669,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_a_keyed_cladding_part_attaches_only_to_its_own_kind,,12468,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_any_plate_attaches_to_any_armor_socket,,63429,0,0,0,0,0,0,
-unit/logic/test_deep_strike.gd,test_fuzz_many_random_cyborgs_never_crash_and_always_validate,,472149,0,0,0,0,0,0,
-unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_bonus_pen_converts_an_oblique_deflect_into_a_stop_dead,,1078,0,0,0,0,0,0,
-unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_enough_bonus_pen_closes_the_deflect_door_at_the_most_grazing_angle,,1472,0,0,0,0,0,0,
-unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_zero_bonus_pen_leaves_the_original_fixed_threshold_unchanged,,999,0,0,0,0,0,0,
-unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_negative_bonus_pen_narrows_the_stop_dead_window,,995,0,0,0,0,0,0,
-unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_the_deflect_threshold_bonus_pen_scale_is_a_real_table_tunable,,1032,0,0,0,0,0,0,
-unit/logic/test_description_builder.gd,test_render_marks_only_changed_values,,141,0,0,0,0,0,0,
-unit/logic/test_description_builder.gd,test_render_appends_a_new_effect_line_from_ammo,,117,0,0,0,0,0,0,
-unit/logic/test_description_builder.gd,test_drill_down_lists_each_source_with_its_operation,,87,0,0,0,0,0,0,
-unit/logic/test_description_builder.gd,test_drill_down_is_empty_for_an_unmodified_stat,,123,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_a_diagnostic_lands_in_the_stream_ordered_against_surrounding_events,,180,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_every_logger_error_type_maps_to_its_own_severity,,155,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_text_prefers_the_rationale_but_data_keeps_both_halves,,241,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_a_diagnostic_is_stamped_with_the_watched_battles_turn_and_phase,,21001,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_with_no_state_it_still_logs_just_without_the_stamping,,249,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_a_sink_can_decline_diagnostics_while_still_taking_combat_events,,153,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_memory_file_and_stdout_sinks_all_carry_diagnostics_without_special_casing,,474,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_an_error_raised_while_emitting_does_not_recurse,,253,0,0,0,0,0,0,
-unit/logic/test_engine_error_tap.gd,test_a_real_push_error_is_captured_once_installed_and_never_after_removal,,256,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_no_field_objects_factory_file_remains,,1210,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_scrap_pile_has_real_geometry_material_and_salvage,,1371,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_goo_barrel_is_volatile_and_detonates,,1534,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_goo_barrel_can_attach_to_a_barrel_slot,,1185,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_crate_has_real_geometry_material_and_salvage,,1254,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_every_starter_field_object_is_destructible_by_default,,1465,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_pillar_exists_and_masks_torso_height,,1091,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_forklift_exists_hosts_no_matrix_and_carries_a_power_socket,,1572,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_barrel_pallet_exists_with_four_empty_barrel_slots,,1446,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_a_goo_barrel_can_actually_attach_into_a_barrel_pallet_slot,,1171,0,0,0,0,0,0,
-unit/logic/test_field_objects.gd,test_an_attached_barrel_projects_into_the_shot_plane_as_its_own_hittable_region,,1743,0,0,0,0,0,1,
-unit/logic/test_file_sink.gd,test_uisink_and_filesink_receive_an_equal_line_count_event_for_event,,406,0,0,0,0,0,0,
-unit/logic/test_file_sink.gd,test_removing_one_sink_does_not_change_what_the_other_receives,,175,0,0,0,0,0,0,
-unit/logic/test_file_sink.gd,test_removing_the_other_sink_does_not_change_what_filesink_receives,,185,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_instantaneous_is_the_last_frames_own_rate,,126,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_the_average_is_a_real_frame_rate_not_a_mean_of_rates,,146,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_samples_older_than_the_window_fall_out,,135,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_the_window_is_time_bounded_at_wildly_different_frame_rates,,598,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_a_zero_or_negative_delta_is_dropped_not_clamped,,135,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_a_meter_with_no_samples_reports_zero_rather_than_dividing_by_zero,,115,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_the_readout_always_shows_both_numbers,,100,0,0,0,0,0,0,
-unit/logic/test_fps_meter.gd,test_reset_clears_the_window,,198,0,0,0,0,0,0,
+unit/logic/test_combat_action_speed.gd,test_lower_speed_resolves_first_regardless_of_queue_order,,561,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_action_speed.gd,test_a_weapon_with_a_lower_speed_out_paces_a_face_action,,420,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_action_speed.gd,test_attack_actions_speed_reads_the_weapons_own_field_live,,299,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_action_speed.gd,test_tied_speed_breaks_deterministically_by_unit_id,,411,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_action_speed.gd,test_face_actions_speed_and_unit_id_are_fixed_and_correct,,289,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_log.gd,test_memory_sink_collects_events,,196,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_combat_log.gd,test_events_of_kind_filters,,114,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_combat_log.gd,test_log_dispatches_to_multiple_sinks,,98,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_combat_log.gd,test_remove_sink_stops_further_dispatch_to_it,,80,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_combat_log.gd,test_remove_sink_is_a_no_op_for_a_sink_never_added,,52,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_combat_log.gd,test_log_event_to_string_is_readable,,66,0,0,0,0,0,0,"a log line is readable prose, not a struct dump"
+unit/logic/test_combat_log.gd,test_file_sink_writes_and_appends_line,,269,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_combat_log.gd,test_file_sink_default_path_produces_out_combat_log,,139,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_combat_state.gd,test_add_unit_assigns_sequential_ids_and_occupies_cell,,1591,0,0,0,0,0,0,the combat state owns unit ids and cell occupancy
+unit/logic/test_combat_state.gd,test_initial_units_get_first_turn_started,,1492,0,0,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/test_combat_state.gd,test_advance_turn_cycles_and_resets_ap,,1213,0,2,0,0,0,0,a turn restores AP and renews the free MP grant
+unit/logic/test_combat_state.gd,test_the_free_mp_grant_renews_every_turn_not_just_the_first,,1097,0,2,0,0,0,0,a turn restores AP and renews the free MP grant
+unit/logic/test_combat_state.gd,test_spending_the_free_starting_mp_never_touches_ap,,3047,0,0,0,0,0,0,a turn restores AP and renews the free MP grant
+unit/logic/test_combat_state.gd,test_burning_an_ap_adds_another_mp_per_ap_on_top_of_the_free_grant,,3349,0,0,0,0,0,0,movement spends MP and converts AP when MP runs out
+unit/logic/test_combat_state.gd,test_advance_turn_skips_dead_units,,1126,0,1,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/test_combat_state.gd,test_advance_turn_skips_shut_down_units,,1051,0,1,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/test_combat_state.gd,test_round_number_increments_once_per_full_cycle_not_per_unit_turn,,1415,0,6,0,0,0,0,a round is one full cycle of the turn order
+unit/logic/test_combat_state.gd,test_round_number_increments_every_turn_with_a_single_unit,,1056,0,2,0,0,0,0,a round is one full cycle of the turn order
+unit/logic/test_combat_state.gd,test_round_number_wraps_correctly_around_a_dead_unit,,1342,0,2,0,0,0,0,a round is one full cycle of the turn order
+unit/logic/test_combat_state.gd,test_advance_turn_emits_turn_start_for_the_incoming_unit,,1055,0,1,0,0,0,0,every mutation emits a combat log event
+unit/logic/test_combat_state.gd,test_organics_decay_demotion_emits_surrogate_demoted,,1222,0,3,0,0,0,0,a surrogate decays down its authored tiers
+unit/logic/test_combat_state.gd,test_try_apply_rejects_illegal_action_without_mutating,,1145,0,0,0,0,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_combat_state.gd,test_every_squad_defaults_to_unassigned_control,,984,0,0,0,0,0,0,"a squad is human or AI, never both and never neither once started"
+unit/logic/test_combat_state.gd,test_a_squad_can_be_set_to_ai_control,,936,0,0,0,0,0,0,"a squad is human or AI, never both and never neither once started"
+unit/logic/test_combat_state.gd,test_assign_all_to_human_sets_every_present_squad_human,,932,0,0,0,0,0,0,"a squad is human or AI, never both and never neither once started"
+unit/logic/test_combat_state.gd,test_assign_rest_to_ai_sets_named_squads_human_and_the_rest_ai,,942,0,0,0,0,0,0,"a squad is human or AI, never both and never neither once started"
+unit/logic/test_combat_state.gd,test_all_squads_assigned_is_false_until_every_present_squad_has_a_real_controller,,928,0,0,0,0,0,0,"a squad is human or AI, never both and never neither once started"
+unit/logic/test_combat_state.gd,test_dup_carries_squad_controllers_into_the_preview,,1828,0,0,0,0,0,0,a preview copy carries the state it must and none of the state it must not
+unit/logic/test_combat_state.gd,test_is_resolving_is_true_only_during_an_active_resolve_until_call,,983,0,0,0,0,0,0,"a debug injection lands at a step boundary, never mid-resolution"
+unit/logic/test_combat_state.gd,test_dup_never_copies_is_resolving,,1697,0,0,0,0,0,0,a preview copy carries the state it must and none of the state it must not
+unit/logic/test_combat_state.gd,test_dup_carries_was_injected_into_the_preview,,1786,0,0,0,0,0,0,a preview copy carries the state it must and none of the state it must not
+unit/logic/test_combat_state.gd,test_force_current_unit_sets_current_unit_without_resetting_resources,,1198,0,0,0,0,0,0,a debug verb forces the exact state it names
+unit/logic/test_combat_state_initiative.gd,test_turn_order_is_by_resolution_speed_fastest_first,,552,0,2,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_state_initiative.gd,test_a_faster_unit_acts_before_a_slower_one,,330,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_state_initiative.gd,test_tied_resolution_speed_breaks_by_unit_id_ascending,,328,0,0,0,0,0,0,"resolution order is by action speed, tie-broken by unit id"
+unit/logic/test_combat_state_initiative.gd,test_initiative_order_is_deterministic,,822,0,6,0,0,0,0,a build is reproducible from the same inputs
+unit/logic/test_combat_state_initiative.gd,test_advance_turn_still_skips_dead_units_under_initiative_order,,398,0,1,0,0,0,0,turn order advances exactly once per end of turn
+unit/logic/test_combat_state_initiative.gd,test_a_pack_of_equal_speed_units_forms_one_simultaneous_group,,596,0,0,0,0,0,0,equal-speed units resolve as one simultaneous group
+unit/logic/test_combat_state_initiative.gd,test_simultaneous_group_excludes_units_outside_the_band_tolerance,,474,0,0,0,0,0,0,equal-speed units resolve as one simultaneous group
+unit/logic/test_combat_state_initiative.gd,test_simultaneous_group_excludes_the_dead,,457,0,0,0,0,0,0,equal-speed units resolve as one simultaneous group
+unit/logic/test_combat_state_initiative.gd,test_a_mixed_speed_multi_squad_roster_keeps_cycling_fairly,,746,0,12,0,0,0,0,a round is one full cycle of the turn order
+unit/logic/test_combat_tester_presets.gd,test_all_three_variants_load_and_assemble_with_no_violations,,14308,0,0,0,0,0,0,"an assembly builds from a template and a loadout, or fails by name"
+unit/logic/test_combat_tester_presets.gd,test_all_three_variants_share_the_same_profile_family,,992,0,0,0,0,0,0,a variant groups with the base it derives from
+unit/logic/test_combat_tester_presets.gd,test_group_by_family_lists_all_three_variants_together,,2180,0,0,0,0,0,0,a variant groups with the base it derives from
+unit/logic/test_combat_tester_presets.gd,test_the_body_has_every_part_and_cladding_everywhere,,5444,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_combat_tester_presets.gd,test_the_chest_wears_the_torso_sized_wedge,,6371,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_combat_tester_presets.gd,test_both_legs_wear_the_half_cylinder_plate_and_arms_do_not,,5660,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_combat_tester_presets.gd,test_each_variant_carries_its_own_named_weapon,,15487,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_command_log.gd,test_a_refused_injection_produces_a_paired_command_and_outcome_with_a_reason,,25049,0,0,0,0,0,0,"every command logs a paired outcome, refused or not"
+unit/logic/test_command_log.gd,test_an_accepted_injection_also_produces_the_pair,,9930,0,0,0,0,0,0,"every command logs a paired outcome, refused or not"
+unit/logic/test_command_log.gd,test_the_command_half_records_the_arguments_that_were_sent,,11028,0,0,0,0,0,0,"every command logs a paired outcome, refused or not"
+unit/logic/test_command_log.gd,test_clear_cover_on_an_empty_cell_now_says_why,,10004,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_place_cover_with_an_unknown_part_now_says_why,,10063,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_set_passable_off_the_grid_now_says_why,,11085,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_set_cell_level_off_the_grid_now_says_why,,9461,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_remove_object_on_an_empty_cell_now_says_why,,9422,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_move_object_from_an_empty_cell_now_says_why,,11078,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_attach_part_distinguishes_an_unknown_part_from_an_unknown_socket,,20958,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_killing_an_already_dead_unit_now_says_why,,9681,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_a_tactics_refusal_and_a_resolution_refusal_read_differently,,11052,0,0,0,0,0,0,TACTICS queues intents and mutates nothing; RESOLUTION owns every mutation
+unit/logic/test_command_log.gd,test_try_apply_no_longer_refuses_silently,,9549,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_command_log.gd,test_the_pairing_survives_a_resolve_until_stop,,10528,0,0,0,0,0,0,"every command logs a paired outcome, refused or not"
+unit/logic/test_completion_sampler.gd,test_a_sample_reports_every_seed_it_drew,,1306,0,0,0,0,0,0,a sampled measurement reports the seeds it drew
+unit/logic/test_completion_sampler.gd,test_a_sample_draws_without_replacement,,1193,0,0,0,0,0,0,a sampled measurement reports the seeds it drew
+unit/logic/test_completion_sampler.gd,test_the_same_rng_seed_replays_the_same_draw,,1207,0,0,0,0,0,0,the same seed produces the same battle
+unit/logic/test_completion_sampler.gd,test_different_rng_seeds_draw_different_samples,,1270,0,0,0,0,0,0,a sampled measurement reports the seeds it drew
+unit/logic/test_completion_sampler.gd,test_a_fixed_seed_list_yields_identical_results_twice,,2391807,2,10,20284,24,10,60,the same seed produces the same battle
+unit/logic/test_completion_sampler.gd,test_the_escalation_seed_list_is_fixed_and_starts_at_zero,,975,0,0,0,0,0,0,a sampled measurement reports the seeds it drew
+unit/logic/test_completion_sampler.gd,test_a_sample_below_the_floor_escalates_and_one_above_it_does_not,,872,0,0,0,0,0,0,a completion rate below the floor escalates on the binomial tail
+unit/logic/test_completion_sampler.gd,test_escalation_probability_is_the_exact_binomial_tail,,968,0,0,0,0,0,0,a completion rate below the floor escalates on the binomial tail
+unit/logic/test_completion_sampler.gd,test_a_larger_sample_is_steadier_than_a_smaller_one,,870,0,0,0,0,0,0,a completion rate below the floor escalates on the binomial tail
+unit/logic/test_completion_sampler.gd,test_a_healthy_rate_almost_never_escalates,,886,0,0,0,0,0,0,a completion rate below the floor escalates on the binomial tail
+unit/logic/test_completion_sampler.gd,test_describe_carries_the_seed_list_and_one_line_per_bout,,1608,0,0,0,0,0,0,a sampled measurement reports the seeds it drew
+unit/logic/test_completion_sampler.gd,test_the_in_window_verb_reports_the_same_sample_and_changes_nothing,,102684509,8,295,396810,635,295,3883,a shared fixture is played once and handed out as copies
+unit/logic/test_containers.gd,test_backpack_is_soft_with_the_better_mass_discount_but_less_capacity,,168,0,0,0,0,0,0,no container dominates another — each trades capacity against mass
+unit/logic/test_containers.gd,test_trash_barrel_is_rigid_with_the_floor_discount_but_more_capacity,,89,0,0,0,0,0,0,no container dominates another — each trades capacity against mass
+unit/logic/test_containers.gd,test_neither_container_dominates_the_other,,90,0,0,0,0,0,0,no container dominates another — each trades capacity against mass
+unit/logic/test_control_bindings.gd,test_all_returns_a_non_empty_list_of_trigger_action_pairs,,181,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/logic/test_control_bindings.gd,test_the_log_path_is_folded_into_one_of_the_rows,,70,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/logic/test_control_bindings.gd,test_reset_turn_row_shows_the_real_reset_turn_keys_own_letter,,67,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/logic/test_control_bindings.gd,test_toggle_key_is_h,,64,0,0,0,0,0,0,"the controls overlay reads the real bindings, never a second copy"
+unit/logic/test_damage_resolver.gd,test_chaingun_burst_under_dt_fails_to_penetrate_steel,,16968,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_damage_resolver.gd,test_rifle_round_over_dt_damages_the_plate_and_the_part_behind,,811,0,0,0,0,0,1,penetration spill carries through to the part behind
+unit/logic/test_damage_resolver.gd,test_penetration_spill_is_reduced_by_effective_dt_not_reapplied_in_full,,476,0,0,0,0,0,1,penetration spill carries through to the part behind
+unit/logic/test_damage_resolver.gd,test_a_bare_margin_penetration_spills_zero_and_stops_at_the_plate,,447,0,0,0,0,0,1,penetration spill carries through to the part behind
+unit/logic/test_damage_resolver.gd,test_stop_dead_damages_the_plate_deflect_does_not,,209,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_damage_resolver.gd,test_a_graze_retains_about_90_percent_a_near_right_angle_bounce_about_25_percent,,192,0,0,0,0,0,0,a deflection retains energy by its incidence angle
+unit/logic/test_damage_resolver.gd,test_a_burst_across_a_wide_surface_retains_a_spread_not_one_repeated_value,,601,0,0,0,0,0,6,a deflection retains energy by its incidence angle
+unit/logic/test_damage_resolver.gd,test_depth_cap_of_zero_stops_a_deflection_from_spawning_any_ricochet,,439,0,0,0,0,0,2,ricochet depth caps bound deflection chains
+unit/logic/test_damage_resolver.gd,test_damage_floor_stops_a_deflection_from_spawning_a_ricochet,,352,0,0,0,0,0,2,ricochet depth caps bound deflection chains
+unit/logic/test_damage_resolver.gd,test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identically,,1360,0,0,0,0,0,5,the same seed produces the same battle
+unit/logic/test_damage_resolver.gd,test_each_ricochet_hop_stamps_its_own_real_origin_and_hit_point,,850,0,0,0,0,0,3,a shot's logged geometry is the geometry it fired
+unit/logic/test_damage_resolver.gd,test_crit_chance_over_100_percent_always_crits_and_the_excess_is_the_double_crit_chance,,3027,0,0,0,0,0,0,crit chance past 100% rolls over into a double crit
+unit/logic/test_damage_resolver.gd,test_crit_effects_bypass_armor_when_armored_bonus_damage_when_not,,71,0,0,0,0,0,0,crit chance past 100% rolls over into a double crit
+unit/logic/test_damage_resolver.gd,test_double_crit_end_to_end_bypasses_armor_and_applies_bonus_damage,,519,0,0,0,0,0,1,crit chance past 100% rolls over into a double crit
+unit/logic/test_damage_resolver.gd,test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only,,656,0,0,0,0,0,0,a volatile part detonates on destruction and hits only what is in radius
+unit/logic/test_damage_resolver.gd,test_the_goo_barrel_field_object_detonates,,1066,0,0,0,0,0,0,a volatile part detonates on destruction and hits only what is in radius
+unit/logic/test_damage_resolver.gd,test_detonate_is_a_no_op_without_real_detonate_damage,,799,0,0,0,0,0,0,a volatile part detonates on destruction and hits only what is in radius
+unit/logic/test_damage_resolver.gd,test_fragment_sprays_rays_that_hit_and_terminate,,515,0,0,0,0,0,4,a volatile part detonates on destruction and hits only what is in radius
+unit/logic/test_damage_resolver.gd,test_meltdown_counts_down_then_detonates,,517,0,0,0,0,0,0,a primed meltdown detonates when its trigger fires
+unit/logic/test_damage_resolver.gd,test_trigger_primed_meltdowns_detonates_a_live_countdown_immediately,,459,0,0,0,0,0,0,a primed meltdown detonates when its trigger fires
+unit/logic/test_damage_resolver.gd,test_trigger_primed_meltdowns_is_a_no_op_with_nothing_armed,,375,0,0,0,0,0,0,a primed meltdown detonates when its trigger fires
+unit/logic/test_damage_resolver.gd,test_meltdown_detonates_early_if_re_killed_mid_countdown,,391,0,0,0,0,0,0,a primed meltdown detonates when its trigger fires
+unit/logic/test_damage_resolver.gd,test_resolve_impact_incidence_uses_the_regions_real_3d_normal_not_a_flattened_one,,165,0,0,0,0,0,0,the surface normal is the face actually hit
+unit/logic/test_damage_resolver.gd,test_a_tilted_flight_vertical_slope_changes_which_region_resolve_shot_hits,,442,0,0,0,0,0,2,"elevation changes the shot geometry, not the rules"
+unit/logic/test_damage_resolver.gd,test_a_deflection_off_a_real_tilted_body_part_gains_a_genuine_vertical_component,,552,0,0,0,0,0,2,a deflection retains energy by its incidence angle
+unit/logic/test_damage_resolver_consequences.gd,test_destroying_the_matrix_hosting_part_ejects_it_demotes_and_disables,,641,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/logic/test_damage_resolver_consequences.gd,test_eject_matrix_if_needed_is_a_no_op_for_a_part_that_hosts_none,,250,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/logic/test_damage_resolver_consequences.gd,test_destroying_a_head_that_hosts_the_matrix_ejects_it,,452,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/logic/test_damage_resolver_consequences.gd,test_destroying_an_arm_never_ejects_a_matrix,,318,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/logic/test_damage_resolver_consequences.gd,test_a_torso_chewed_to_spinal_still_functions_it_only_stops_at_matrix_ejection,,294,0,0,0,0,0,0,a part at zero HP still occupies space unless it was destroyed outright
+unit/logic/test_damage_resolver_consequences.gd,test_a_mangling_part_stays_attached_and_flips_is_mangled,,331,0,0,0,0,0,0,a part at zero HP still occupies space unless it was destroyed outright
+unit/logic/test_damage_resolver_consequences.gd,test_a_disabled_part_stays_attached_and_flips_is_disabled,,298,0,0,0,0,0,0,a part at zero HP still occupies space unless it was destroyed outright
+unit/logic/test_damage_resolver_consequences.gd,test_a_broken_pistol_is_still_identifiably_a_pistol,,313,0,0,0,0,0,0,a part at zero HP still occupies space unless it was destroyed outright
+unit/logic/test_damage_resolver_consequences.gd,test_wreckage_yields_its_own_salvage,,96,0,0,0,0,0,0,destroying a field object yields its salvage to the mission
+unit/logic/test_damage_resolver_consequences.gd,test_a_mangling_parts_own_id_carries_no_salvage_the_wreckage_does,,99,0,0,0,0,0,0,destroying a field object yields its salvage to the mission
+unit/logic/test_damage_resolver_consequences.gd,test_mangle_residual_dt_is_exactly_a_quarter_of_the_resolved_value,,160,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_damage_resolver_deflect_modes.gd,test_slide_deflect_mode_resolves_an_adjacent_point_not_a_ricochet,,407,0,0,0,0,0,2,"a deflect mode decides whether a hit bounces, slides or stops"
+unit/logic/test_damage_resolver_deflect_modes.gd,test_none_deflect_mode_never_bounces_or_slides,,345,0,0,0,0,0,2,"a deflect mode decides whether a hit bounces, slides or stops"
+unit/logic/test_damage_resolver_deflect_modes.gd,test_slide_deflect_never_lands_back_on_the_shooters_own_excluded_body,,572,0,0,0,0,0,2,"a deflect mode decides whether a hit bounces, slides or stops"
+unit/logic/test_damage_resolver_spherecast.gd,test_a_point_stab_falls_through_the_gap_and_hits_nothing,,394,0,0,0,0,0,1,a thrust's own width decides which gaps it can thread
+unit/logic/test_damage_resolver_spherecast.gd,test_a_wide_stab_cannot_thread_the_same_gap,,325,0,0,0,0,0,1,a thrust's own width decides which gaps it can thread
+unit/logic/test_damage_resolver_spherecast.gd,test_a_narrow_stab_still_threads_the_same_gap,,316,0,0,0,0,0,1,a thrust's own width decides which gaps it can thread
+unit/logic/test_damage_source_of_truth.gd,test_weapon_resolver_is_the_only_reader_of_part_damage,,112,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_damage_source_of_truth.gd,test_reference_weapons_still_carry_damage_on_the_part_not_an_ammo_ref,,235,0,0,0,0,0,0,authored weapon data matches its table
+unit/logic/test_damage_source_of_truth.gd,test_ammo_def_damage_is_authored_but_the_reference_pistol_has_none_chambered,,151,0,0,0,0,0,0,authored weapon data matches its table
+unit/logic/test_dartboard.gd,test_same_seed_produces_identical_impact_points,,866,0,0,0,0,0,0,the same seed produces the same battle
+unit/logic/test_dartboard.gd,test_works_with_one_two_three_or_five_rings,,1233,0,0,0,0,0,0,"a weapon has N scatter rings, whatever its data authors"
+unit/logic/test_dartboard.gd,test_ring_weights_hold_over_many_samples,,2729,0,0,0,0,0,0,scatter lands in a ring at the weight its data authors
+unit/logic/test_dartboard.gd,test_tight_inner_ring_sniper_hits_a_small_region_a_chaingun_cannot,,661,0,0,0,0,0,0,scatter lands in a ring at the weight its data authors
+unit/logic/test_dartboard.gd,test_spin_up_shrinks_a_ring_through_the_resolver_and_names_itself_in_sources,,230,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_dartboard.gd,test_a_spread_burst_varies_in_height_not_just_lateral_position,,189,0,0,0,0,0,0,"scatter is two-dimensional, vertical as well as lateral"
+unit/logic/test_dartboard.gd,test_vertical_spread_reaches_the_same_ring_radius_as_lateral_spread,,3639,0,0,0,0,0,0,"scatter is two-dimensional, vertical as well as lateral"
+unit/logic/test_dartboard.gd,test_a_single_projectile_still_lands_within_the_ring_in_both_axes,,84,0,0,0,0,0,0,"scatter is two-dimensional, vertical as well as lateral"
+unit/logic/test_dartboard.gd,test_same_seed_produces_identical_3d_scatter,,873,0,0,0,0,0,0,the same seed produces the same battle
+unit/logic/test_dartboard_texture.gd,test_center_pixel_is_the_aiming_dot_at_full_opacity,,2594,0,0,0,0,0,0,the drawn dartboard renders the same rings the weapon fires
+unit/logic/test_dartboard_texture.gd,test_pixel_beyond_the_outer_ring_is_fully_transparent,,2502,0,0,0,0,0,0,the drawn dartboard renders the same rings the weapon fires
+unit/logic/test_dartboard_texture.gd,test_the_majority_ring_renders_more_opaque_than_a_lighter_one,,11397,0,0,0,0,0,0,the drawn dartboard renders the same rings the weapon fires
+unit/logic/test_dartboard_texture.gd,test_adjacent_equal_weight_rings_still_show_a_crisp_boundary,,10542,0,0,0,0,0,0,the drawn dartboard renders the same rings the weapon fires
+unit/logic/test_dartboard_texture.gd,test_empty_rings_produces_a_fully_transparent_image,,167,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_dartboard_texture.gd,test_the_output_size_matches_the_requested_size,,1024,0,0,0,0,0,0,the drawn dartboard renders the same rings the weapon fires
+unit/logic/test_dartboard_texture.gd,test_a_one_ring_weapon_draws_exactly_one_band,,9734,0,0,0,0,0,0,"a weapon has N scatter rings, whatever its data authors"
+unit/logic/test_dartboard_texture.gd,test_a_five_ring_weapon_draws_exactly_five_bands,,12574,0,0,0,0,0,0,"a weapon has N scatter rings, whatever its data authors"
+unit/logic/test_dartboard_texture.gd,test_output_is_byte_identical_for_rings_scaled_by_a_uniform_factor,,20549,0,0,0,0,0,0,a build is reproducible from the same inputs
+unit/logic/test_dartboard_texture.gd,test_a_bound_beyond_the_rings_draws_a_visible_ring_there,,5489,0,0,0,0,0,0,the drawn reticle and the fired shot come from the same call
+unit/logic/test_dartboard_texture.gd,test_no_bound_ring_drawn_when_bound_radius_is_within_the_weighted_rings,,32503,0,0,0,0,0,0,the drawn reticle and the fired shot come from the same call
+unit/logic/test_dartboard_texture.gd,test_output_with_a_bound_is_still_byte_identical_under_a_uniform_rescale,,15802,0,0,0,0,0,0,a build is reproducible from the same inputs
+unit/logic/test_dartboard_texture.gd,test_build_solid_dot_is_fully_opaque_inside_and_transparent_outside,,327,0,0,0,0,0,0,the drawn dartboard renders the same rings the weapon fires
+unit/logic/test_data_library.gd,test_a_builtin_part_loads,,1099,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_a_user_file_with_the_same_id_overrides_the_builtin,,1256,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_a_user_only_id_loads,,1025,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_an_invalid_file_is_rejected_by_name_not_silently_dropped,,800,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_data_library.gd,test_an_unknown_id_returns_null_not_a_crash,,364,0,0,0,0,0,0,an open-vocabulary id is checked against the real vocabulary
+unit/logic/test_data_library.gd,test_parts_pool_returns_every_loaded_part,,954,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_material_table_aggregates_every_loaded_material,,601,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_resources_of_type_returns_every_loaded_definition_of_that_type,,945,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_resources_of_type_returns_fresh_duplicates,,1019,0,0,0,0,0,0,"a data read hands back a copy, never the cached resource"
+unit/logic/test_data_library.gd,test_source_of_reports_builtin_and_user_and_override_correctly,,1703,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_source_of_an_overridden_id_reports_user,,1066,0,0,0,0,0,0,user data overrides builtin data by id
+unit/logic/test_data_library.gd,test_save_writes_a_valid_tres_to_the_user_root,,798,0,0,0,0,0,0,data round-trips through save and load
+unit/logic/test_data_library.gd,test_save_rejects_an_invalid_resource_without_writing_a_file,,471,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_data_library.gd,test_an_exported_remap_entry_resolves_to_its_authored_name,,84,0,0,0,0,0,0,an exported build's remapped paths resolve to the same authored ids
+unit/logic/test_data_library.gd,test_an_ordinary_editor_entry_is_unchanged,,74,0,0,0,0,0,0,an exported build's remapped paths resolve to the same authored ids
+unit/logic/test_data_library.gd,test_both_exported_forms_of_one_resource_agree_on_the_authored_name,,71,0,0,0,0,0,0,an exported build's remapped paths resolve to the same authored ids
+unit/logic/test_data_library.gd,test_non_resource_entries_are_ignored,,96,0,0,0,0,0,0,an exported build's remapped paths resolve to the same authored ids
+unit/logic/test_data_migration_losslessness.gd,test_every_expected_part_id_is_present_exactly_once,,18808,0,0,0,0,0,0,a data migration loses nothing against its pre-migration snapshot
+unit/logic/test_data_migration_losslessness.gd,test_every_part_matches_its_pre_migration_snapshot,,10753,0,0,0,0,0,0,a data migration loses nothing against its pre-migration snapshot
+unit/logic/test_data_migration_losslessness.gd,test_every_expected_material_id_is_present_exactly_once,,281,0,0,0,0,0,0,a data migration loses nothing against its pre-migration snapshot
+unit/logic/test_data_migration_losslessness.gd,test_every_material_matches_its_pre_migration_snapshot,,506,0,0,0,0,0,0,a data migration loses nothing against its pre-migration snapshot
+unit/logic/test_data_validator.gd,test_a_valid_part_produces_no_errors,,144,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_data_validator.gd,test_a_bad_failure_mode_produces_a_named_error,,122,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_data_validator.gd,test_a_valid_ammo_row_produces_no_errors,,102,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_data_validator.gd,test_a_bad_stack_type_produces_a_named_error_with_the_rows_id,,98,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_data_validator.gd,test_a_dt_curve_out_of_order_is_caught,,94,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_data_validator.gd,test_an_ascending_dt_curve_produces_no_errors,,92,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_deep_strike.gd,test_assemble_random_hosts_the_matrix_on_the_root_part,,4364,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/logic/test_deep_strike.gd,test_assemble_random_is_deterministic_from_the_same_seed,,4903,0,0,0,0,0,0,the same seed produces the same world
+unit/logic/test_deep_strike.gd,test_validate_assembly_passes_a_normal_random_cyborg,,4331,0,0,0,0,0,0,"an assembly builds from a template and a loadout, or fails by name"
+unit/logic/test_deep_strike.gd,test_validate_assembly_catches_a_mass_violation,,4779,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_deep_strike.gd,test_is_armed_true_when_a_weapon_has_its_required_manipulators,,436,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_deep_strike.gd,test_is_armed_false_with_no_weapon_at_all,,114,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_deep_strike.gd,test_is_armed_false_when_the_weapon_has_no_capable_manipulator,,101,0,0,0,0,0,0,an action requires a part that provides it
+unit/logic/test_deep_strike.gd,test_a_burst_into_a_deep_struck_cyborg_can_hit_a_limb_not_just_the_root,,7835,0,0,0,0,0,0,"a hit resolves spatially against the shot plane, never a facing table"
+unit/logic/test_deep_strike.gd,test_leg_cladding_cannot_attach_to_a_heads_cladding_socket,,4669,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_deep_strike.gd,test_a_keyed_cladding_part_attaches_only_to_its_own_kind,,12468,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_deep_strike.gd,test_any_plate_attaches_to_any_armor_socket,,63429,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_deep_strike.gd,test_fuzz_many_random_cyborgs_never_crash_and_always_validate,,472149,0,0,0,0,0,0,"an assembly builds from a template and a loadout, or fails by name"
+unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_bonus_pen_converts_an_oblique_deflect_into_a_stop_dead,,1078,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_enough_bonus_pen_closes_the_deflect_door_at_the_most_grazing_angle,,1472,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_zero_bonus_pen_leaves_the_original_fixed_threshold_unchanged,,999,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_negative_bonus_pen_narrows_the_stop_dead_window,,995,0,0,0,0,0,0,penetration decides whether a hit passes through or deflects
+unit/logic/test_deflect_resistance_scales_with_penetration.gd,test_the_deflect_threshold_bonus_pen_scale_is_a_real_table_tunable,,1032,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
+unit/logic/test_description_builder.gd,test_render_marks_only_changed_values,,141,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/logic/test_description_builder.gd,test_render_appends_a_new_effect_line_from_ammo,,117,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/logic/test_description_builder.gd,test_drill_down_lists_each_source_with_its_operation,,87,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/logic/test_description_builder.gd,test_drill_down_is_empty_for_an_unmodified_stat,,123,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/logic/test_engine_error_tap.gd,test_a_diagnostic_lands_in_the_stream_ordered_against_surrounding_events,,180,0,0,0,0,0,0,an engine diagnostic joins the combat log stream in order
+unit/logic/test_engine_error_tap.gd,test_every_logger_error_type_maps_to_its_own_severity,,155,0,0,0,0,0,0,an engine diagnostic joins the combat log stream in order
+unit/logic/test_engine_error_tap.gd,test_text_prefers_the_rationale_but_data_keeps_both_halves,,241,0,0,0,0,0,0,a diagnostic's data form and its prose carry the same facts
+unit/logic/test_engine_error_tap.gd,test_a_diagnostic_is_stamped_with_the_watched_battles_turn_and_phase,,21001,0,0,0,0,0,0,an engine diagnostic joins the combat log stream in order
+unit/logic/test_engine_error_tap.gd,test_with_no_state_it_still_logs_just_without_the_stamping,,249,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_engine_error_tap.gd,test_a_sink_can_decline_diagnostics_while_still_taking_combat_events,,153,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_engine_error_tap.gd,test_memory_file_and_stdout_sinks_all_carry_diagnostics_without_special_casing,,474,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_engine_error_tap.gd,test_an_error_raised_while_emitting_does_not_recurse,,253,0,0,0,0,0,0,an error raised inside the logger never recurses
+unit/logic/test_engine_error_tap.gd,test_a_real_push_error_is_captured_once_installed_and_never_after_removal,,256,0,0,0,0,0,0,an engine diagnostic joins the combat log stream in order
+unit/logic/test_field_objects.gd,test_no_field_objects_factory_file_remains,,1210,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_field_objects.gd,test_scrap_pile_has_real_geometry_material_and_salvage,,1371,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_field_objects.gd,test_goo_barrel_is_volatile_and_detonates,,1534,0,0,0,0,0,0,a volatile part detonates on destruction and hits only what is in radius
+unit/logic/test_field_objects.gd,test_goo_barrel_can_attach_to_a_barrel_slot,,1185,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_field_objects.gd,test_crate_has_real_geometry_material_and_salvage,,1254,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_field_objects.gd,test_every_starter_field_object_is_destructible_by_default,,1465,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_field_objects.gd,test_pillar_exists_and_masks_torso_height,,1091,0,0,0,0,0,0,cover between muzzle and target stops the shot
+unit/logic/test_field_objects.gd,test_forklift_exists_hosts_no_matrix_and_carries_a_power_socket,,1572,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_field_objects.gd,test_barrel_pallet_exists_with_four_empty_barrel_slots,,1446,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_field_objects.gd,test_a_goo_barrel_can_actually_attach_into_a_barrel_pallet_slot,,1171,0,0,0,0,0,0,an action refuses an illegal socket attachment
+unit/logic/test_field_objects.gd,test_an_attached_barrel_projects_into_the_shot_plane_as_its_own_hittable_region,,1743,0,0,0,0,0,1,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_file_sink.gd,test_uisink_and_filesink_receive_an_equal_line_count_event_for_event,,406,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_file_sink.gd,test_removing_one_sink_does_not_change_what_the_other_receives,,175,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_file_sink.gd,test_removing_the_other_sink_does_not_change_what_filesink_receives,,185,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_fps_meter.gd,test_instantaneous_is_the_last_frames_own_rate,,126,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/logic/test_fps_meter.gd,test_the_average_is_a_real_frame_rate_not_a_mean_of_rates,,146,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/logic/test_fps_meter.gd,test_samples_older_than_the_window_fall_out,,135,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/logic/test_fps_meter.gd,test_the_window_is_time_bounded_at_wildly_different_frame_rates,,598,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
+unit/logic/test_fps_meter.gd,test_a_zero_or_negative_delta_is_dropped_not_clamped,,135,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_fps_meter.gd,test_a_meter_with_no_samples_reports_zero_rather_than_dividing_by_zero,,115,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_fps_meter.gd,test_the_readout_always_shows_both_numbers,,100,0,0,0,0,0,0,a diagnostic's data form and its prose carry the same facts
+unit/logic/test_fps_meter.gd,test_reset_clears_the_window,,198,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
 unit/logic/test_grid.gd,test_in_bounds,,86,0,0,0,0,0,0,
 unit/logic/test_grid.gd,test_default_cell_values,,117,0,0,0,0,0,0,
 unit/logic/test_grid.gd,test_set_get_cell_data_roundtrip,,199,0,0,0,0,0,0,
