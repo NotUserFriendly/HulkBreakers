@@ -176,9 +176,15 @@ func test_the_table_shows_seeds_that_have_not_played_yet() -> void:
 ## One seed, deliberately: the property is either true or it is not, and checking it
 ## twenty times would put this file in the expensive tier for no extra confidence.
 func test_a_watched_seed_matches_what_the_headless_path_reported() -> void:
-	var map_seed := 7
-
-	var headless: Dictionary = await CompletionSampler.run_seed(map_seed)
+	# taskblock-50 Pass B: **the headless half comes from the corpus.** This played the
+	# seed twice — once headless, once watched — to compare them, and the headless run is
+	# precisely what `BoutCorpus` already played and recorded for the whole suite. Taking
+	# its record instead of re-deriving it halves the test, and the comparison is
+	# unchanged: it is still one headless result against one watched one, on one seed.
+	var recorded: Array[Dictionary] = await BoutCorpus.rows()
+	assert_gt(recorded.size(), 0, "sanity: the corpus played something to compare against")
+	var headless: Dictionary = recorded[0]
+	var map_seed: int = int(headless["seed"])
 
 	var built: Dictionary = CompletionSampler.build_for_seed(map_seed)
 	assert_eq(built.get("error", ""), "", "sanity: the watched path builds the same bout")
