@@ -137,6 +137,13 @@ these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defec
 - **Ramps where they are missing** is the cheap generator fix — any region whose only exits are
   descents gets a ramp — and it should ride along with other map-gen work rather than justifying a
   block.
+- **Prefer access routes: penalise ungated descent, exempt ramps.** The cheapest fix and probably the
+  right one. Weight a candidate cell *slightly* worse when reaching it means dropping a level, and do
+  **not** apply that penalty when the descent is via a ramp. Units then route through ramps by
+  preference without any rule naming ramps, and a ramp is two-way — so a unit that takes one can come
+  back. **Slightly is doing real work in that sentence:** a hop-down to reach an otherwise unreachable
+  target must still win when the reason is good enough, so this is a thumb on the scale, not a
+  prohibition. It is a consideration weight, which means it is data.
 - **A short-term behavioural mitigation, worth more than it sounds:** a unit that finds itself confined
   escalates to an **agitated roam** or **pace** — visibly restless rather than idle — and after a few
   turns of no progress, **shuts down**. That converts a unit silently absent from the mission into a
@@ -185,6 +192,59 @@ watchable when they break.
 - **Watched and headless must keep agreeing.** That equivalence is the foundation — if a watched seed and
   its headless counterpart ever disagree, every number the sampler has produced is suspect. Asserted
   once; it should stay asserted as this grows.
+
+### The scripted bout, and why 133 files build state by hand
+**Needs:** nothing. **Unblocks:** most of the remaining suite cost, and combat tests that exercise the
+real path instead of an approximation of it.
+
+**133 test files construct state directly** through `CombatState.new` or `GridFixture` rather than
+playing a bout. Some of that is correct and some of it is a workaround, and nobody has drawn the line —
+*"they have always been that way"* is not a reason.
+
+**A scripted bout removes the thing they were avoiding.** Preset seed, every action predetermined, no
+planner in the loop. That gives a combat or movement test the real resolution path — two-phase turns,
+the action queue, the log — without the AI as a failure point. The precedent is in the tree:
+`test_work_counters.gd` drives a turn by hand through `CombatState.advance_turn` and asserts that a
+scripted turn counts while building no bout, and taskblock-47 Pass E retargeted the tb38 flat-bout guard
+from a planner-driven bout to a scripted queue with no loss of coverage.
+
+**Two corpora, for two different questions:**
+- **Sampled** — the AI's behaviour *is* the subject. Random seeds, real planning, `test_full_mission`.
+- **Scripted** — everything else. One preset playthrough, predetermined actions, many tests asserting
+  against it.
+
+**The audit is the valuable half, and it has three outcomes per file**, not two:
+- **Hand-built is right.** A test of a pure function over a grid and two positions needs no bout, and
+  forcing one on it would be slower and less focused. Leave it and say so.
+- **Hand-built was avoiding the AI.** Move it onto the scripted bout — more realistic, and it stops
+  every file re-authoring its own setup.
+- **Hand-built is quietly wrong** — the fixture has drifted from what the game actually produces, and
+  the test passes against a board that could not occur. This is the outcome worth finding.
+
+### The review layer earns its keep
+**Needs:** taskblock-48 Pass B2 (replay of failures). **Unblocks:** the supervisor being able to spot
+anomalies at all.
+
+The replay currently shows **only failures**, and an anomaly is not identifiable without a reference for
+normal. That is the likeliest reason the human-review layer has not yet paid off — it has been showing
+exceptions with nothing to compare them against.
+
+- **Queue one representative success per test, not every success.** A passing test contributes one
+  arbitrary replay; a failing one contributes its failure. The queue then teaches what right looks like
+  in the same sitting as what wrong looks like. Cap it — a representative sample, with an option to sit
+  through everything.
+- **A chime when the run finishes.** The window is watched intermittently by definition; a run that ends
+  silently wastes the gap.
+- **Order tests by observed failure frequency.** Most-frequently-failing first, so a red suite goes red
+  early instead of at minute nine. Needs a small persisted history of which tests failed how often —
+  new data, and the only genuinely new machinery in this item.
+- **A failure must not stall the queue.** GUT already runs past a failing test; the gap is on CC's side,
+  where a failure at minute two is not actionable until the run ends. Surface failures as they land so
+  the fix can start while the rest continues.
+
+**A caution on reordering:** a suite whose order depends on recorded history is a suite whose order is
+not reproducible across machines or checkouts. Keep the *ordering* advisory and the *set* fixed — the
+same tests always run, only the sequence adapts — or a green run stops meaning the same thing twice.
 
 ### Player view and sim view — render a snapshot, stay responsive
 **Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the
