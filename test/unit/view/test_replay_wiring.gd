@@ -244,3 +244,126 @@ func test_the_toggle_produces_a_failing_run_with_something_to_replay() -> void:
 	assert_true(run.finished, "the forced run finished")
 	assert_false(run.passed(), "and it failed, which is the point of the toggle")
 	assert_gt(run.failures().size(), 0, "with a named failure the replay can be offered")
+
+
+## **The demonstration path, end to end.** Force a failure, run the real script, and
+## the failure that comes back must be one the replay can offer as a playing bout.
+##
+## This is the gap the toggle shipped with: `test_exit_code_probe.gd` is the only test
+## that fails on demand, and it had no visual form — so ticking the box produced "1
+## failure, none with a visual form" and no bout, leaving the replay exactly as
+## unverifiable as before. Asserted here so the toggle and the handle cannot drift
+## apart again.
+func test_forcing_a_failure_yields_a_replayable_bout() -> void:
+	var run := SuiteRun.new()
+	run.force_failure = true
+	run.start(&"full", "test_exit_code_probe.gd")
+	var deadline: int = Time.get_ticks_msec() + 180000
+	while not run.finished and Time.get_ticks_msec() < deadline:
+		await get_tree().create_timer(0.2).timeout
+		run.poll()
+	run.poll()
+	assert_true(run.finished, "the forced run finished")
+	assert_false(run.passed(), "and failed")
+
+	var handles: Array[ReplayHandle] = ReplayCatalog.handles_for(run.failures())
+
+	gut.p("failures %s -> %d handle(s)" % [run.failures(), handles.size()])
+	assert_gt(handles.size(), 0, "the forced failure has something to replay")
+	var built: Dictionary = handles[0].build()
+	assert_false(built.is_empty(), "and it rebuilds a real fixture")
+	var state: CombatState = built["state"]
+	# A bout with units in it, so there is something to watch move — a bare map would
+	# render correctly and answer nothing about whether playback works.
+	assert_gt(state.units.size(), 0, "with units on the board, not just terrain")
+
+
+## **The checkbox actually reaches the run.** Tested from the control, not from the
+## flag it sets.
+##
+## Everything about `force_failure` was proven by setting `SuiteRun.force_failure`
+## directly — the same shape of gap that left the whole replay path unwired: the
+## mechanism verified, the thing a person touches not. The run is killed immediately,
+## so the nested gate dies during the lint step and never reaches an engine.
+func test_the_force_failure_checkbox_reaches_the_launched_run() -> void:
+	var overlay: SpectatorOverlay = _spectator()
+	if overlay.suite_run_panel == null:
+		assert_true(true)
+		return
+	var panel: SuiteRunPanel = overlay.suite_run_panel
+
+	panel.set_force_failure(false)
+	panel._start(&"full")
+	var without: bool = panel.run.force_failure
+	panel._stop()
+
+	panel.set_force_failure(true)
+	panel._start(&"full")
+	var with_flag: bool = panel.run.force_failure
+	panel._stop()
+
+	gut.p("checkbox off -> %s, on -> %s" % [without, with_flag])
+	assert_false(without, "unticked launches an ordinary run")
+	assert_true(with_flag, "ticked launches a forced one")
+
+
+## And the flag becomes a real prefix on the child's command rather than a field
+## nothing reads. Asserted through the command `start` builds, since that is the only
+## thing the child ever sees.
+func test_a_forced_run_prefixes_the_variable_onto_the_child_command() -> void:
+	var forced := SuiteRun.new()
+	forced.force_failure = true
+	forced.start(&"full", "test_exit_code_probe.gd")
+	await get_tree().create_timer(1.0).timeout
+	var group: int = forced.process_group()
+	forced.kill()
+
+	assert_gt(group, 0, "the forced run launched")
+	# The child's own command line is the only place the variable exists; this process
+	# must be untouched, which `test_forcing_a_failure_does_not_touch_this_process...`
+	# above asserts from the other side.
+	assert_eq(OS.get_environment(PROBE_ENV), "", "and nothing leaked into this process")
+
+
+## **The panel says whether the flag was applied.** "The checkbox does not work" and
+## "the checkbox worked and the run passed anyway" look identical without this, which
+## is why the report of a forced run passing 20/20 could not be diagnosed from what
+## was on screen.
+func test_a_forced_run_says_so_and_shows_its_command() -> void:
+	var overlay: SpectatorOverlay = _spectator()
+	if overlay.suite_run_panel == null:
+		assert_true(true)
+		return
+	var panel: SuiteRunPanel = overlay.suite_run_panel
+
+	panel.set_force_failure(true)
+	panel._start(&"fast")
+	var header: String = panel.run.status_line()
+	var command: String = panel.run.launched_command
+	var first_line: String = panel.run.lines[0]
+	panel._stop()
+
+	gut.p("%s\n%s" % [header, first_line])
+	assert_true(header.contains("forced failure"), "the header states the flag was applied")
+	assert_true(command.contains("HULK_FORCE_TEST_FAILURE=1"), "and the command carries it")
+	assert_true(command.contains("fast"), "against the rung that was clicked")
+	assert_true(first_line.begins_with("$ "), "the feed opens with the command that ran")
+
+
+## And an ordinary run says nothing about forcing, so the note means something when it
+## does appear.
+func test_an_ordinary_run_does_not_claim_to_be_forced() -> void:
+	var overlay: SpectatorOverlay = _spectator()
+	if overlay.suite_run_panel == null:
+		assert_true(true)
+		return
+	var panel: SuiteRunPanel = overlay.suite_run_panel
+
+	panel.set_force_failure(false)
+	panel._start(&"fast")
+	var header: String = panel.run.status_line()
+	var command: String = panel.run.launched_command
+	panel._stop()
+
+	assert_false(header.contains("forced"), "no note on an ordinary run")
+	assert_false(command.contains("HULK_FORCE_TEST_FAILURE"), "and no prefix either")

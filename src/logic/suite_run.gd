@@ -60,6 +60,8 @@ static var _next_id: int = 0
 ## the fast gate off for every file GUT had not reached by clearing a variable it had
 ## set. A prefix cannot leak.
 var force_failure: bool = false
+## The command as launched, for display. Not used to run anything.
+var launched_command: String = ""
 
 var pid: int = -1
 var lines: Array[String] = []
@@ -94,6 +96,10 @@ func start(rung: StringName, target: String = "") -> bool:
 		'echo $$ > %s; %s./run_tests.sh %s > %s 2>&1; echo "%s=$?" >> %s'
 		% [pgid_file, forced, argument, log_file, EXIT_MARKER, log_file]
 	)
+	# **Recorded so the panel can show what it actually ran.** "The checkbox does not
+	# work" and "the checkbox worked and the run passed anyway" are different problems
+	# with the same appearance, and nothing on screen distinguished them.
+	launched_command = "%s./run_tests.sh %s" % [forced, argument]
 	pid = OS.create_process("/usr/bin/env", ["setsid", "bash", "-c", command])
 	if pid <= 0:
 		return false
@@ -323,19 +329,21 @@ func status_line() -> String:
 	# fields beside it.
 	if pid <= 0 and lines.is_empty() and not finished:
 		return "no run started"
+	var forced_note: String = " [forced failure]" if force_failure else ""
 	if not finished:
 		var where: String = current_script()
 		return (
-			"running %s — %.0fs%s"
-			% [_rung, elapsed_seconds(), "" if where == "" else " — " + where]
+			"running %s%s — %.0fs%s"
+			% [_rung, forced_note, elapsed_seconds(), "" if where == "" else " — " + where]
 		)
 	if exit_code == -2:
 		return "killed after %.0fs" % elapsed_seconds()
 	var counts: Dictionary = tallies()
 	return (
-		"%s in %.0fs — %d passing, %d failing (exit %d)"
+		"%s%s in %.0fs — %d passing, %d failing (exit %d)"
 		% [
 			"PASSED" if passed() else "FAILED",
+			forced_note,
 			elapsed_seconds(),
 			int(counts["passing"]),
 			int(counts["failing"]),

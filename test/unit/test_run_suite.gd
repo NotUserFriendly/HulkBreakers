@@ -59,9 +59,20 @@ func test_the_runner_fails_the_process_when_a_test_fails() -> void:
 
 ## The other direction on the same probe: with nothing asking it to fail, the identical
 ## invocation passes. Without this, a runner that always returned 1 would look correct.
+##
+## **The variable is cleared for the child, not assumed absent.** `OS.execute` hands
+## the child this process's environment, so running the whole gate under
+## `HULK_FORCE_TEST_FAILURE=1` — which is exactly what the panel's toggle does — made
+## this test's subprocess inherit it and fail. A test that only passes when nobody is
+## exercising the feature it belongs to is not a test.
 func test_the_same_probe_passes_when_nothing_asks_it_to_fail() -> void:
+	var probe: String = TestExitCodeProbe.FORCE_FAILURE_ENV
+	var restore: String = OS.get_environment(probe)
+	OS.set_environment(probe, "")
+
 	var result: Dictionary = _run(["test_exit_code_probe.gd"] as Array[String])
 
+	OS.set_environment(probe, restore)
 	assert_eq(int(result["code"]), 0, "the probe is green unless asked otherwise")
 	assert_true(String(result["out"]).contains("0 failure(s)"))
 

@@ -34,6 +34,27 @@ extends GutTest
 ## reason nobody could find.
 const FORCE_FAILURE_ENV := "HULK_FORCE_TEST_FAILURE"
 
+## The seed the forced failure replays. Any real bout would do; this one is fixed so
+## the demonstration is the same every time.
+const DEMO_SEED := 7
+
+
+## **This probe has a visual form on purpose.**
+##
+## It is the one test that fails on demand, so it is the one that demonstrates the
+## whole path — run, fail, offer, replay, play. Without a handle the "force a failure"
+## toggle produced a failure with nothing to show, which proved the failure half and
+## left the replay half exactly as unverifiable as before.
+##
+## A seed bout rather than a bare map: two units that move and shoot answers "is
+## anything happening" in a way a static board cannot. The map-generation handles are
+## unit-less by nature — the map *is* what failed there — so they render a board that
+## correctly does not move.
+static func replay_handle_for(test_name: String) -> ReplayHandle:
+	if test_name != "test_the_probe_fails_only_when_it_is_asked_to":
+		return null
+	return ReplayHandle.from_seed(DEMO_SEED)
+
 
 func test_the_probe_fails_only_when_it_is_asked_to() -> void:
 	if OS.get_environment(FORCE_FAILURE_ENV) == "":
