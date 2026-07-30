@@ -64,8 +64,8 @@ func test_the_probe_fails_only_when_it_is_asked_to() -> void:
 		false,
 		(
 			(
-				"deliberate failure, requested via %s — if you are seeing this outside "
-				+ "test_run_suite.gd or test_suite_run.gd, that variable leaked"
+				"deliberate failure, requested via %s. This is what the run panel's"
+				+ " 'force a failure' toggle does; unset it for an ordinary run"
 			)
 			% FORCE_FAILURE_ENV
 		)
