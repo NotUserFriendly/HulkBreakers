@@ -1627,6 +1627,16 @@ reporting it every build would be noise.
 **Full gate 446.8 s → 332.4 s.** Passes C, E and F are unbuilt; the block's five-minute acceptance is
 **not met** and the remaining costs are itemised in its report.
 
+**Passes E3/E4 — the eight name defects renamed, and the seed-list trim found already done.** Eleven
+renames rather than eight: the `pass_b_` prefix cited an anonymous taskblock pass on four names in one
+file. `test_the_flank_test` became
+`test_a_shot_from_behind_reaches_the_thin_rear_plate_a_frontal_shot_cannot`;
+`test_the_unbuilt_tier_table_rows_are_still_unbuilt`, which reads the utility *action pool* and never
+touches the tier table, became `test_the_four_utility_actions_with_no_executor_are_still_unauthored`.
+The audit CSV's keys moved with them, so the classification survived. **`description` is now empty
+across all 2441 rows** — the defect list is closed. E4 needed nothing: Pass D had already taken
+`test_full_mission` from eight bouts to one, so there was no fixed seed list left to trim.
+
 **Pass A — `HULK_` retired from tooling identifiers.** `HB_FAST_GATE`, `HB_TEST_ROOT`,
 `HB_FORCE_TEST_FAILURE`. `LootTable.HULK_SOURCE` keeps the prefix and is allow-listed by name — loot
 sourced from the hulk is the word meaning what it means. The guard bans the **screaming-case prefix**,

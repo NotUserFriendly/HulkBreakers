@@ -289,7 +289,7 @@ func test_sniper_framing_is_deterministic() -> void:
 	assert_eq(a.pan_offset, b.pan_offset)
 
 
-func test_pass_b_height_delta_matrix_always_fits_and_never_drops_below_the_lower_body() -> void:
+func test_framing_across_height_deltas_fits_and_never_drops_below_the_lower_body() -> void:
 	var state := CameraOrbitState.new()
 	var to_target := Vector2(3.0, 0.0)
 	var dir: Vector2 = to_target.normalized()
@@ -349,7 +349,7 @@ func test_pass_b_height_delta_matrix_always_fits_and_never_drops_below_the_lower
 ## no-op when shooter and target share a level — most of the game is
 ## still played on one level. Values captured from the real solver, not
 ## hand-derived.
-func test_pass_b_same_level_solve_is_pinned_as_a_regression_guard() -> void:
+func test_same_level_attack_framing_is_pinned_against_regression() -> void:
 	var state := CameraOrbitState.new()
 	var shooter: Dictionary = _sphere(Vector3.ZERO, 0.4)
 	var target: Dictionary = _sphere(Vector3(3.0, 0.0, 0.0), 0.4)
@@ -367,7 +367,7 @@ func test_pass_b_same_level_solve_is_pinned_as_a_regression_guard() -> void:
 ## construction, not by height-specific logic -- checked across the same
 ## matrix anyway since it's explicitly named in the taskblock's own
 ## acceptance, not assumed from the structural argument alone.
-func test_pass_b_sniper_framing_centers_the_target_at_any_height() -> void:
+func test_sniper_framing_centers_the_target_at_any_height() -> void:
 	var state := CameraOrbitState.new()
 	for delta: float in HEIGHT_DELTAS:
 		var target: Dictionary = _sphere(Vector3(3.0, delta, 0.0), 0.4)
@@ -381,7 +381,7 @@ func test_pass_b_sniper_framing_centers_the_target_at_any_height() -> void:
 ## fine-grained sampling either side of zero must show no jump, since
 ## `attack_framing` has no explicit height branch (the whole solve is
 ## uniform 3D algebra) and shouldn't accidentally grow one.
-func test_pass_b_solved_framing_is_continuous_across_the_zero_height_crossing() -> void:
+func test_solved_framing_is_continuous_across_the_zero_height_crossing() -> void:
 	var state := CameraOrbitState.new()
 	var shooter: Dictionary = _sphere(Vector3.ZERO, 0.4)
 	var previous: Dictionary = {}

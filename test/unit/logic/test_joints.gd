@@ -339,7 +339,7 @@ func test_joint_cladding_absorbs_a_hit_before_the_joint_takes_any_damage() -> vo
 	assert_eq(shoulder.joint_hp, joint_hp_before, "the joint underneath never took damage")
 
 
-func test_an_uncladded_joint_behaves_as_before_just_with_the_new_hp_default() -> void:
+func test_an_uncladded_joint_takes_hits_directly_at_the_default_joint_hp() -> void:
 	var built: Dictionary = _make_joint_reachable_fixture(Vector2i(2, 2))
 	var unit: Unit = built.unit
 	var arm: Part = built.arm

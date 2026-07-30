@@ -21,7 +21,7 @@ func test_only_board_changing_verbs_ask_for_a_board_rebuild() -> void:
 ## Either can target a cell OR a unit, decided at call time by its own target
 ## dict — so both stay in the list unconditionally. A missed board rebuild is an
 ## invisible-until-noticed bug; an extra one is merely slow.
-func test_the_two_ambiguous_verbs_always_rebuild() -> void:
+func test_move_object_and_remove_object_always_rebuild_either_can_target_a_cell() -> void:
 	assert_true(DebugVerbs.affects_board(&"move_object"))
 	assert_true(DebugVerbs.affects_board(&"remove_object"))
 

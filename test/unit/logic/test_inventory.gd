@@ -193,7 +193,7 @@ func test_flatten_excludes_root_but_includes_all_depths() -> void:
 	assert_has(flat, leaf)
 
 
-func test_carried_mass_appendix_d_worked_example() -> void:
+func test_carried_mass_of_a_worn_backpack_discounts_its_contents_once() -> void:
 	# Shell's carried_mass sums the whole assembly; a bare root plus a
 	# directly-worn backpack (attached via PartGraph in real use, but here we
 	# only need Inventory's contents relationship) matches Appendix D.
