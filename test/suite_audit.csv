@@ -7,7 +7,7 @@ determinism/test_determinism_check.gd,test_check_passes_for_a_naturally_determin
 determinism/test_determinism_check.gd,test_check_fails_when_generator_is_not_actually_seeded,,99,0,0,0,0,0,0,the determinism harness detects unseeded randomness
 determinism/test_determinism_check.gd,test_check_supports_a_custom_compare_fn_for_reference_types,,55988,0,0,0,12,0,0,the determinism harness detects unseeded randomness
 determinism/test_determinism_check.gd,test_check_reports_which_seeds_failed,,271,0,0,0,0,0,0,the determinism harness detects unseeded randomness
-integration/test_full_mission.gd,test_seeds_to_first_completion_stays_low,,7373839,1,47,67123,102,47,202,
+integration/test_full_mission.gd,test_seeds_to_first_completion_stays_low,,7373839,1,47,67123,102,47,202,the AI finishes missions at or above the measured floor
 unit/data/test_hulk.gd,test_revisiting_a_hulk_yields_an_identical_map,,57838,0,0,0,4,0,0,the same seed produces the same world
 unit/data/test_hulk.gd,test_population_seed_changes_every_visit_while_map_seed_does_not,,193,0,0,0,0,0,0,a hulk's map is stable across visits while its population is not
 unit/data/test_hulk.gd,test_different_visit_counts_actually_repopulate_a_deep_strike_roster,,5976,0,0,0,0,0,0,a hulk's map is stable across visits while its population is not

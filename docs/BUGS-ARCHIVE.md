@@ -10,6 +10,38 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR49.01 — Resolved — owner: `CC`
+**The turns budget still gates on luck — a second clock-seeded file was never excluded**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-30, taskblock-49. A full gate went red on the work budget, and re-running it
+  passed. **The retry is the symptom, not the fix** — three consecutive runs measured total turns of
+  **970, 1305 and 961** with no code change between them.
+- **taskblock-48 excluded `test_full_mission.gd`'s turns** because that file seeds from the clock on
+  purpose, and gating on it is gating on luck. That exclusion is correct and incomplete:
+  **`test_completion_sampler.gd` also runs a clock-seeded window** — 305 turns across 10 bouts in the
+  committed profile, ~30 turns a bout — and it is not in `TURNS_EXCLUDED`.
+- **The arithmetic, so the margin is visible rather than asserted:** baseline 772 turns × 1.15 headroom
+  → limit **888**. A calm run counts 961 − 198 (excluded) = **763**, comfortably under. The 1305 run
+  leaves roughly 1100 counted, which is over. The budget is therefore passing on the median draw and
+  failing on an unlucky one, which is precisely the failure mode taskblock-48 set out to remove.
+- **Do not simply add the file to `TURNS_EXCLUDED`.** Two of the four gated counters would then be
+  measured over a shrinking slice of the suite, and an exclusion list that grows whenever it fires
+  stops being a budget. The real question is whether that window needs its own clock-seeded sample at
+  all now that `BoutCorpus` exists — which is the same 102.3 s row the taskblock-49 audit flagged as
+  the suite's single biggest cut candidate. **Fixing the cost and fixing the flake are probably one
+  change**, and it is queued in `PLAN.md` under acting on the audit.
+- **Resolved (taskblock-50 Pass D), on a structural argument plus one measurement — stated so the
+  evidence is not overread.** `BoutCorpus` no longer plays a fixed eight-seed sample; it stops
+  at the first completion, so the healthy case plays one bout and the variance that caused this is gone
+  at source rather than excluded from the budget: eight bouts became one, so whatever spread a single
+  bout still has is about an eighth of what it was. Confirmed by one post-fix full gate (615 turns
+  against a pre-fix 657/846/970/1305), not by a repeated series. The exclusion list was deliberately **not** grown —
+  `SuiteBudget.TURNS_EXCLUDED` still names only `test_full_mission.gd`, and whether even that can now be
+  removed is noted in the taskblock-50 report as wanting a few runs of evidence first.
+- **Not the same as the tb48 finding, and worth keeping distinct:** that one was about which file the
+  variance came from, this one is about the exclusion having been written against a file rather than
+  against the property (*this test samples rather than pins*).
+
 ### BR26.01 — Resolved — owner: `SUPERVISOR`
 **Opposing team teleports before the player's own attack lands**
 - **Source:** `SUPERVISOR`

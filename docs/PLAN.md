@@ -729,6 +729,30 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
+### Finish taskblock-50 — the scripted corpus, ordering, and the deck-clearing
+**Needs:** nothing — taskblock-50 Passes A, B and D landed. **Unblocks:** the taskblock-51 bug hunt.
+
+**The five-minute acceptance was not met: the full gate is 332.4 s, down from 446.8 s.** Three passes
+are unbuilt, and the remaining cost is itemised in taskblock-50's report rather than guessed at here.
+
+- **Pass C — a scripted corpus.** A preset seed with predetermined actions and no planner in the loop,
+  for the 133 files that build state by hand precisely to keep the AI out. **This is the one likeliest
+  to find defects rather than seconds**: its third outcome is *hand-built is quietly wrong* — a fixture
+  that drifted from what the game actually produces, so the test passes against a board that could not
+  occur.
+- **Pass E — order by failure, merge, rename.** E1 (run the most-frequently-failing tests first) is
+  free and independent. **E2's premise needs revising before it is attempted:** the two subprocess
+  clusters do not merge, because the spawns differ by design — one test compares `OS.execute` against
+  `SuiteRun` deliberately, and the probe pair sets the force-failure variable in one process and clears
+  it in another. E3 (the eight name defects) is worth zero seconds and still worth doing.
+- **Pass F — clear the deck.** A baseline success in the replay queue, a finish chime, ledger triage by
+  subsystem.
+
+**Two decisions left open for the supervisor**, both recorded in taskblock-50's report: retiring
+`MIN_COMPLETION_RATE`, which no longer gates anything, and whether to cache `HulkTheme.build()` — the
+biggest single remaining saving (32.4 s in one file) at the cost of collapsing the `ui_builds` counter
+the work budget reads.
+
 ### Act on the suite audit
 **Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
 under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
