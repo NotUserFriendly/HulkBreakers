@@ -85,30 +85,6 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
-### BR49.01 — Active — owner: `CC`
-**The turns budget still gates on luck — a second clock-seeded file was never excluded**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-30, taskblock-49. A full gate went red on the work budget, and re-running it
-  passed. **The retry is the symptom, not the fix** — three consecutive runs measured total turns of
-  **970, 1305 and 961** with no code change between them.
-- **taskblock-48 excluded `test_full_mission.gd`'s turns** because that file seeds from the clock on
-  purpose, and gating on it is gating on luck. That exclusion is correct and incomplete:
-  **`test_completion_sampler.gd` also runs a clock-seeded window** — 305 turns across 10 bouts in the
-  committed profile, ~30 turns a bout — and it is not in `TURNS_EXCLUDED`.
-- **The arithmetic, so the margin is visible rather than asserted:** baseline 772 turns × 1.15 headroom
-  → limit **888**. A calm run counts 961 − 198 (excluded) = **763**, comfortably under. The 1305 run
-  leaves roughly 1100 counted, which is over. The budget is therefore passing on the median draw and
-  failing on an unlucky one, which is precisely the failure mode taskblock-48 set out to remove.
-- **Do not simply add the file to `TURNS_EXCLUDED`.** Two of the four gated counters would then be
-  measured over a shrinking slice of the suite, and an exclusion list that grows whenever it fires
-  stops being a budget. The real question is whether that window needs its own clock-seeded sample at
-  all now that `BoutCorpus` exists — which is the same 102.3 s row the taskblock-49 audit flagged as
-  the suite's single biggest cut candidate. **Fixing the cost and fixing the flake are probably one
-  change**, and it is queued in `PLAN.md` under acting on the audit.
-- **Not the same as the tb48 finding, and worth keeping distinct:** that one was about which file the
-  variance came from, this one is about the exclusion having been written against a file rather than
-  against the property (*this test samples rather than pins*).
-
 ### BR48.01 — Active — owner: `SUPERVISOR`
 **Closing the inspect panel leaves the background permanently dimmed**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.

@@ -1622,6 +1622,57 @@ an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comme
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
 
+### seeds_to_first_win, and the HULK_ prefix retired (tb50 Passes A, B, D)
+
+**Full gate 446.8 s → 332.4 s.** Passes C, E and F are unbuilt; the block's five-minute acceptance is
+**not met** and the remaining costs are itemised in its report.
+
+**Pass A — `HULK_` retired from tooling identifiers.** `HB_FAST_GATE`, `HB_TEST_ROOT`,
+`HB_FORCE_TEST_FAILURE`. `LootTable.HULK_SOURCE` keeps the prefix and is allow-listed by name — loot
+sourced from the hulk is the word meaning what it means. The guard bans the **screaming-case prefix**,
+not the word: `Hulk`, `HulkTheme`, `hulk_seed` are the domain vocabulary and a case-insensitive sweep
+would have flagged hundreds of correct uses. It scans `.sh` as well as `.gd`, because the retired names
+were environment variables and `run_tests.sh` is where they were read.
+
+**Pass D — `seeds_to_first_win` replaces the completion rate**, and this is the change that mattered.
+`CompletionSampler.seeds_to_first_win` plays seeds until one completes, capped at `FIRST_WIN_CAP = 9`,
+drawing lazily so a healthy run never generates the maps it did not need. **`test_full_mission.gd` went
+15.2 s → 1.5 s, 8 bouts → 1.** Cost now scales *inversely* with health: a regressing AI makes the
+measurement more expensive, which is the right shape.
+
+The cap is derived, not picked: at the measured 0.72 rate, nine straight losses is 0.28⁹ ≈ one run in
+180 000. It is a **collapse detector by design** — at 0.20 it fails about one run in seven, at 0.10
+about one in three, and a mild regression not at all. The reported count is the signal (1 healthy, 4
+worth a look, 9 a failure), because a threshold on a small integer count is exactly what put
+`MIN_COMPLETION_RATE` a fraction of a seed from red and got it lowered twice. **That constant is left
+in place and unused by the test that read it**; retiring it is proposed, not done.
+
+**This closes `BR49.01` as a side effect.** The fixed eight-seed sample made total turns swing 970 /
+1305 / 961 across three runs with no code change, flapping the work budget and making every other
+saving unmeasurable underneath it. The corpus now plays one bout in the healthy case.
+
+**Pass B — partial, and its premise was wrong.** The pass expects thirteen bout-building files to move
+onto `BoutCorpus` for ~200–250 s. The corpus hands out **outcome records**; those files need **live
+boards** — which `BoutCorpus`'s own header has said since taskblock-48 built it: *"a test that needs one
+builds its own, which is what the eight other bout-building files already do and why they are not
+candidates for this."* Two files moved:
+
+- **`test_completion_sampler.gd` 94 s → 41 s** — not by adopting the corpus, but by making **sample
+  size a parameter** on `CompletionSampler.sample`/`draw_seeds` and on the `sample_completion` verb.
+  The test drives a verb that samples for itself, and every assertion in it is about the *shape* of the
+  report. One seed witnesses that exactly as eight do.
+- **`test_watched_run.gd`** — the one genuine corpus adoption. It played a seed headless *and* watched
+  to compare them; the headless half is what the corpus already recorded.
+
+**`run_seed`/`run_seeds` take a turn cap.** Bounding the horizon is not the move taskblock-48 refused:
+that was seed-shopping for a cheap map, which makes the fixture unrepresentative. Here the seed is
+unchanged and the run stops earlier, which is sound for any property true at any horizon.
+
+**Recorded because it shaped the ordering:** adopting the corpus makes a *targeted* run of a corpus
+reader slower — `./run_tests.sh test_watched_run.gd` went 18.2 s → 49.3 s, since in isolation that file
+becomes the corpus's first toucher. Pass D then shrank the corpus and the regression vanished. Corpus
+adoption before Pass D would have degraded the edit loop for every file it touched.
+
 ### The suite indexed per test, and classified by the rule each test defends (tb49 Passes A–B)
 
 **Full gate 487.5 s, 2431 tests, 255 files.** The artifact is `test/suite_audit.csv`, one row per test,
