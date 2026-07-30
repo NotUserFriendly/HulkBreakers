@@ -168,6 +168,17 @@ churn the tree and put noise into unrelated diffs. That run writes two files:
 1286 s and 1493 s on the same machine; the work counts were identical to the integer. Compare counts
 across commits and seconds only against themselves.
 
+**`ui_builds` is the one gated counter that is not AI work** (tb48 Pass D). Every overlay's `_build_ui`
+calls `HulkTheme.build()` and nothing in `src/logic/` does, so it moves for a view test and stays put for
+a headless bout — which is what the budget was missing: `test_spectator_overlay.gd` costs 32.5 s with
+zero bouts, and no AI counter could see it.
+
+**`test/support/bout_corpus.gd` plays one random sample per suite run** and hands out deep copies, so
+`test_full_mission.gd` and `test_completion_sampler.gd` stop paying separately for the same kind of bout.
+The draw stays clock-seeded on purpose — sharing a fixed set would rebuild the pinned window taskblock-46
+removed. There is deliberately no way to clear the cache: any caller makes the next reader re-play eight
+missions.
+
 `test/support/suite_budget.gd` holds the budget those counts are gated against, and
 `test/unit/test_suite_budget.gd` is the gate. **It is a ratchet, not a ceiling** — going over is a
 decision, not a crime: raise the number and say why in the same commit. It ratchets *down* too, so a

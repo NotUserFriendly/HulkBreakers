@@ -19,7 +19,10 @@ that are easy to leave out, and all three are worth more than another success li
 don't silently leave a description that has stopped being true. A stale entry in a current-state
 snapshot is worse than a missing one, because it still reads as authoritative.
 
-*Current as of taskblock-47 Passes A–E landed — the suite is profiled, budgeted on deterministic work
+*Current as of taskblock-48 Passes A–D landed — the suite has three rungs (a ~3.7 s targeted run, a
+~126 s fast gate, a ~450 s full gate), one runner that both counts and fails, a run window in the game
+that replays failing tests as real bouts, a shared bout corpus, and a budget that can finally see
+view-only cost. taskblock-47 Passes A–E landed — the suite is profiled, budgeted on deterministic work
 counts, split into a 119 s fast gate and a 537 s full gate, and audited down from 4545 turns to 1578.
 **The block's biggest finding was not about the suite**: `CompletionSampler` had been naming a retired
 playstyle as its profile id since taskblock-46 Pass E, so every completion rate measured in between ran
@@ -1618,6 +1621,90 @@ a deliberate break makes it fail, removing the break makes it pass. `tools/migra
 an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comment records that the
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
+
+### Three rungs, a window on the run, and the collapse (tb48 Passes A–D, docs/TOOLING.md)
+
+**Full gate 1493 s → 450 s across taskblocks 47–48**; fast gate ~126 s; a targeted run ~3.7 s.
+
+**Pass A — three rungs, one runner.** `./run_tests.sh <file.gd>` joins `fast` and the full gate; a bare
+filename resolves by search, and two files sharing a name prints both and exits 2, because that is a
+repo mistake to fix rather than a case to disambiguate. The fixed floor was measured before deciding
+what to skip: `gdlint src test` 6.14 s, import 2.32 s, parse guard 0.82 s, GUT startup ~1.2 s. A
+targeted run lints only its target and skips the checkpoint parse guard; **the import step stays**,
+because it registers a `class_name` and skipping it makes a new script invisible in a way that looks
+like a broken test.
+
+`tools/profile_suite.gd` became `tools/run_suite.gd` and is the **only** entry point. There had been two
+into one suite and **only one of them failed the build** — `gut_cmdln.gd` passed `-gexit` while the
+profiler called `quit(0)` unconditionally after writing its JSON. Artifacts are opt-in via
+`WRITE_PROFILE`; counts print on every run, and a targeted run also prints its delta against the
+committed profile.
+
+**The turns budget was gating on luck**, found here rather than assumed: three full runs measured 1680,
+1578 and 1385 turns — a 19% spread against 15% headroom — and all of it comes from
+`test_full_mission.gd`, which seeds from the clock *on purpose*. Its turns are excluded now, in
+aggregate and per-file; its bouts stay gated because that count is exactly `SAMPLE_SEEDS`.
+
+**Pass B — a window on the run.** `SuiteRun` launches `run_tests.sh`, tails it live and can kill it;
+`SuiteRunPanel` is the surface, mounted under both overlays beside the combat log. The feed is the real
+output of the real script: filtering narrows what is *drawn*, never what is stored. Completion is
+decided by an exit marker rather than by a process disappearing.
+
+`WatchedRunOverlay` was **deleted** — it had been a fifth `SpectatorOverlay` subclass, and the reasoning
+that produced it is the reasoning that produced the hierarchy `PLAN.md` exists to dissolve. It is a
+panel now, so the block ended with one fewer subclass.
+
+**Killing had to reach the grandchild.** `run_tests.sh` spawns Godot, and killing the shell left it
+running: a full-gate run started by a test left **79 orphaned Godot processes**. Runs go under `setsid`
+and the whole process group is signalled — through bash, because `kill` is a builtin and `OS.execute`
+fails *silently* when it cannot find a binary, which is how the first fix appeared to work and did
+nothing. Separately, `test_suite_run.gd` launched the full gate, which runs `test_suite_run.gd`:
+unbounded recursion that reached **107 concurrent Godot processes** before it was obvious.
+
+**Pass B2 — replay failures in the game.** The suite runs as a subprocess, so its maps live in that
+process's memory and the launcher could only ever be a terminal in a window. `ReplayHandle` is a seed or
+a callable returning `{state, mission}` — exactly what `BattleScene.load_battle` already takes — and
+`ReplayCatalog` asks a failed test's script for one via a static `replay_handle_for`. A script without
+the method has no visual form and is skipped; **"nothing to show" is the right answer for most of the
+suite** rather than a fault. `WatchedRun` was folded onto handles, so a failed map sweep and a failed
+completion seed queue in one list with one set of controls.
+
+**And none of it was wired.** `offer_failures`, `bind` and `on_bout_finished` had zero callers in `src/`;
+the panels sat holding `run = null`. Every piece was tested and proven to work *when called* and nothing
+asserted it got called — `docs/11`'s named failure mode. Two further reasons nothing appeared: the panel
+kept whatever bout was already on screen, so a working replay and a dead one looked identical (the board
+is purged on launch now); and **`failures()` could not read a single real run**, because GUT colours its
+output and every prefix check missed an escape sequence. That went unnoticed because the tests fed it
+hand-written lines with no escapes — **input tidier than reality is worse than no test.**
+
+**One shared path caused two more symptoms.** `SuiteRun`'s log name carried a `static` counter, which
+restarts at 0 in every process — so the nested `SuiteRun` inside `test_suite_run.gd` truncated the file
+the game's panel was tailing. A forced fast gate reported *"PASSED — 20 passing, 0 failing"* (that is
+`test_grid.gd`'s count) and appeared to stall on whichever file was on screen when the log rewound. The
+pid is in the name now.
+
+**Pass C — a shared bout corpus.** `BoutCorpus` draws one random sample per suite run, plays it once and
+hands out deep copies. **The draw stays clock-seeded**, which is the whole constraint: taskblock-46
+established that a pinned window measures the pessimistic corner of the seed space, so sharing fixed
+seeds would have undone that while the test kept passing. Records only, never live state — a mutated
+cached `CombatState` would surface as a failure with no connection to its cause.
+
+`test_completion_sampler.gd` went **24 bouts → 10**: three of its four bout-playing tests run on canned
+records, because the shape of a report is a pure function of the records behind it. The end-to-end test
+lost its duplicate sample — it had replayed the same eight seeds purely to compare two renderings of one
+formatter. `test_full_mission.gd` plays none of its own.
+
+**Pass D — both outliers diagnosed, and the budget grew eyes.** `test_ai_batch_yield.gd` measured 18.4 s
+per bout and the guess was that the pacer's frame yields paid for it. **Measured false:** same seed,
+tight 18485 ms against paced 19660 ms, 54 turns either way, 344 yields — the pacer is **6%**, about
+3.4 ms a yield. The cost is bout *length*, 54 turns against the sampler's ~13. Nothing incidental, so
+nothing cut.
+
+`test_spectator_overlay.gd` costs 32.5 s with **zero bouts**, which no budget could see because every
+gated counter measured AI work. `HulkTheme.ui_builds` closes that: every overlay's `_build_ui` calls
+`HulkTheme.build()` and nothing in `src/logic/` does, so it moves for a view test and stays put for a
+headless bout — asserted both ways. It measured **344**, and immediately named the file the pass was
+about: `test_spectator_overlay.gd` tops it at 70 builds across 35 tests.
 
 ### The suite: measured, budgeted, tiered, watched, cut (tb47 Passes A–E, docs/TOOLING.md)
 

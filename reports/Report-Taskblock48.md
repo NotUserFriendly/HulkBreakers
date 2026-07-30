@@ -1,10 +1,10 @@
 # Taskblock 48 Report — Three rungs, a window on the run, then the collapse
 
-**Passes A, B and B2 landed; suite green.** The supervisor cleared the mid-block checkpoint after
-running the suite from the game window and watching a forced failure replay as a real bout. Passes C
-and D follow.
+**Passes A–D landed; suite green, 2418 tests.** The supervisor cleared the mid-block checkpoint after
+running the suite from the game window and watching a forced failure replay as a real bout.
 
-Full gate ~585 s, fast gate ~126 s, a targeted run ~3.7 s.
+**Full gate 1493 s → 450 s across taskblocks 47–48**; fast gate ~126 s; a targeted run ~3.7 s. Bouts 136
+→ 56, turns 4545 → 982.
 
 ## Decisions made without asking
 
@@ -38,9 +38,33 @@ Full gate ~585 s, fast gate ~126 s, a targeted run ~3.7 s.
 - **The panel purges the board on launch.** The supervisor's suggestion, taken as given: with the old
   bout still on screen, a working replay and a dead one look identical.
 
+- **The shared corpus keeps a clock-seeded draw, which was the whole constraint.** taskblock-46
+  established that the pinned window it replaced measured the pessimistic corner of the seed space and
+  reported it as *the* completion rate. Sharing a fixed set of seeds would have undone that **while the
+  test kept passing** — a measurement quietly becoming wrong, not a red run. One random draw per run,
+  played once, read by everyone.
+
+- **There is deliberately no way to clear the corpus cache.** An early draft had `forget()` for testing,
+  but any caller makes the *next* reader re-play eight missions — reintroducing the cost while appearing
+  to guard against it. Caching is asserted by measuring that a second read adds zero bouts.
+
+- **Nothing was cut from `test_ai_batch_yield.gd`, against the taskblock's expectation.** It asked for
+  diagnosis first and guessed the pacer's frame yields were the cost. Measured on the same seed: tight
+  18 485 ms against paced 19 660 ms, 54 turns either way, 344 yields — **the pacer is 6%**, ~3.4 ms a
+  yield. The cost is bout *length*, 54 turns against the sampler's ~13 at roughly 340 ms a turn either
+  way. The pass says cut only if the cost is incidental, and it is not: the determinism test needs a
+  whole bout twice, and choosing a shorter seed would be seed-shopping for a cheap map and calling it a
+  saving.
+
+- **`ui_builds` is gated alongside the AI counters**, which makes it the first gated measure that is not
+  AI work. Counted at `HulkTheme.build()` because every overlay's `_build_ui` calls it and nothing in
+  `src/logic/` does — so it moves for a view test and stays put for a headless bout, asserted both ways
+  rather than assumed. It measured 344 and immediately named the file Pass D was about:
+  `test_spectator_overlay.gd`, 70 builds across 35 tests, 32.5 s, zero bouts.
+
 ## Tests that failed, then were corrected
 
-**Roughly twenty distinct defects before commit across the three passes.** Five below, chosen because
+**Roughly two dozen distinct defects before commit across the four passes.** Five below, chosen because
 each names a different way to be wrong.
 
 1. **One log file for every process, so a suite that runs suites overwrote its own feed.** The path was
@@ -101,6 +125,17 @@ None this block.
   `root.size` nor `content_scale_size` changes any reported rect with no real window, so a loop over
   four resolutions measures one layout four times. It checks the single viewport headless has, and says
   so. A visual checkpoint is the tool for the rest.
+
+- **Adding a gated counter without a baseline hangs the run rather than failing it.** Putting
+  `ui_builds` in `GATED` and forgetting `BASELINE` raised a missing-key error, and under `-d` that is a
+  debugger break: the run stopped at a `debug>` prompt with no verdict. `limit_for` returns `-1` for that
+  case and `violations()` reports it by name now. **Worth knowing generally** — any runtime error in a
+  test hangs the gate instead of reddening it, which is why a missing dictionary key is more expensive
+  here than it looks.
+
+- **`test_spectator_overlay.gd` is now measurable but not yet cheaper.** 70 UI builds across 35 tests is
+  the cost, and the obvious lever is merging tests that share a fixture — the same move that halved
+  `test_run_suite.gd`. Pass D was scoped to diagnosis, so this is a named target rather than a change.
 
 - **The panel's numbers are flagged starting points, not derived ones**: 560 wide, 260 tall for the
   feed, 18 visible lines, a 0.25 s poll. Sized for a `res://test/unit/...` path without crowding the
