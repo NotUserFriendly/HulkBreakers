@@ -103,7 +103,7 @@ func _ready() -> void:
 	buttons.add_child(stop)
 
 	# **Reachable without knowing a variable name.** Proving the replay path end to end
-	# needs a failing run, and requiring `HULK_FORCE_TEST_FAILURE=1` on the shell that
+	# needs a failing run, and requiring `HB_FORCE_TEST_FAILURE=1` on the shell that
 	# launched the game is exactly the "incantation" this surface exists to avoid.
 	_force_failure = CheckBox.new()
 	_force_failure.text = "force a failure"

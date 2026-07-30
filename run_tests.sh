@@ -44,7 +44,7 @@ TARGET=""
 case "$GATE" in
   full) ;;
   fast)
-    export HULK_FAST_GATE=1
+    export HB_FAST_GATE=1
     echo "== fast gate: skipping bout-building files =="
     ;;
   *)
@@ -54,17 +54,17 @@ case "$GATE" in
     if [[ -e "$GATE" ]]; then
       TARGET="$GATE"
     else
-      # HULK_TEST_ROOT is a test-only seam. `test_run_suite.gd` has to prove that two
+      # HB_TEST_ROOT is a test-only seam. `test_run_suite.gd` has to prove that two
       # same-named files are reported rather than silently disambiguated, and doing
       # that against the real tree meant writing a duplicate .gd into test/ — which
       # races Godot's importer and orphans a .uid, the exact failure that broke the
       # full gate once already. Pointed at a throwaway directory, the resolver can be
       # exercised without touching the project at all.
-      SEARCH_ROOT="${HULK_TEST_ROOT:-test}"
+      SEARCH_ROOT="${HB_TEST_ROOT:-test}"
       MATCHES=$(find "$SEARCH_ROOT" -name "$GATE" -o -type d -name "$GATE" | sort)
       COUNT=$(printf '%s' "$MATCHES" | grep -c . || true)
       if [[ "$COUNT" -eq 0 ]]; then
-        echo "no test file or directory named '$GATE' under ${HULK_TEST_ROOT:-test}/" >&2
+        echo "no test file or directory named '$GATE' under ${HB_TEST_ROOT:-test}/" >&2
         echo "usage: $0 [fast|full|<file.gd>|<directory>]" >&2
         exit 2
       elif [[ "$COUNT" -gt 1 ]]; then

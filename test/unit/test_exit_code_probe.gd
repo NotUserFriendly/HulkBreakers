@@ -32,7 +32,7 @@ extends GutTest
 ## Set by the tests that need a failing run. Deliberately specific: a vague name like
 ## `FAIL` would eventually be set by something else and turn the suite red for a
 ## reason nobody could find.
-const FORCE_FAILURE_ENV := "HULK_FORCE_TEST_FAILURE"
+const FORCE_FAILURE_ENV := "HB_FORCE_TEST_FAILURE"
 
 ## The seed the forced failure replays. Any real bout would do; this one is fixed so
 ## the demonstration is the same every time.
