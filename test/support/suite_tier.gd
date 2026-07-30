@@ -65,6 +65,7 @@ const BOUT_FILES: Array[String] = [
 ## who paid, not a stale entry, and `test_suite_tier.gd` has to tell those apart.
 const CORPUS_READERS: Array[String] = [
 	"res://test/unit/logic/test_bout_corpus.gd",
+	"res://test/unit/logic/test_watched_run.gd",
 ]
 
 
