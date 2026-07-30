@@ -54,7 +54,7 @@ static func replay_handle_for(test_name: String) -> ReplayHandle:
 		"map:%s" % test_name,
 		"map seed 0",
 		func() -> Dictionary:
-			var grid: Grid = MapGen.generate(0, WIDTH, ROWS)
+			var grid: Grid = MapCorpus.read(0, WIDTH, ROWS)
 			var state := CombatState.new(grid, [] as Array[Unit])
 			return {"state": state, "mission": MissionState.new(RunState.new(), state)}
 	)
@@ -134,7 +134,7 @@ func test_the_generator_still_authors_raised_rooms() -> void:
 	var raised_cells := 0
 	var floored_cells := 0
 	for map_seed in range(SEEDS):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, ROWS)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, ROWS)
 		var any := false
 		for cell: Vector2i in _cells(grid):
 			if not _is_floored(grid, cell):
@@ -175,7 +175,7 @@ func test_no_cover_object_sits_in_a_pit_of_its_own() -> void:
 	var sunk: Array[String] = []
 	var cover_cells := 0
 	for map_seed in range(SEEDS):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, ROWS)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, ROWS)
 		for cell: Vector2i in grid.blockers.keys():
 			cover_cells += 1
 			if _is_pit(grid, cell):
@@ -195,7 +195,7 @@ func test_no_cover_object_sits_in_a_pit_of_its_own() -> void:
 func test_no_floored_cell_anywhere_sits_in_a_pit() -> void:
 	var sunk: Array[String] = []
 	for map_seed in range(SEEDS):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, ROWS)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, ROWS)
 		for cell: Vector2i in _cells(grid):
 			if _is_pit(grid, cell):
 				sunk.append("seed %d %s" % [map_seed, cell])
@@ -212,7 +212,7 @@ func test_every_spawn_zone_has_a_uniform_floor_height() -> void:
 	var broken: Array[String] = []
 	var zones_seen := 0
 	for map_seed in range(SEEDS):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, ROWS)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, ROWS)
 		for marker: int in _spawn_zones(grid):
 			var cells: Array[Vector2i] = _spawn_zones(grid)[marker]
 			zones_seen += 1
@@ -239,7 +239,7 @@ func test_every_spawn_zone_has_a_uniform_floor_height() -> void:
 func test_a_unit_on_any_spawn_cell_can_reach_more_than_its_own_cell() -> void:
 	var trapped: Array[String] = []
 	for map_seed in range(SEEDS):
-		var grid: Grid = MapGen.generate(map_seed, WIDTH, ROWS)
+		var grid: Grid = MapCorpus.read(map_seed, WIDTH, ROWS)
 		var pathfinder := Pathfinder.new(grid, false)
 		for marker: int in _spawn_zones(grid):
 			for cell: Vector2i in _spawn_zones(grid)[marker] as Array[Vector2i]:
