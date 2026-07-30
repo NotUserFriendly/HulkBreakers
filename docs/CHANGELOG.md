@@ -1651,6 +1651,20 @@ in place and unused by the test that read it**; retiring it is proposed, not don
 1305 / 961 across three runs with no code change, flapping the work budget and making every other
 saving unmeasurable underneath it. The corpus now plays one bout in the healthy case.
 
+**Pass C — `ScriptedCorpus`, and a measured finding that there is nothing to migrate onto it.** A board
+built through `BoutSetup` (real presets, real assembly, a real generated map) with both squads `HUMAN`,
+driven by an authored queue through the same `CombatState.resolve_until` the AI's own output uses. It
+**provably never plans** — asserted on `AiPlanner.plans`, the counter the profile reports — with a
+companion test proving that counter does move when something really plans.
+
+**The migration it was built for does not exist, and the survey says why.** All **137** hand-built test
+files reference specific `Vector2i` cells, so none can take a shared generated board without changing
+what they assert; and **117 of the 137 are already under 1 s with zero bouts**, so there was no cost
+there to recover. `test_work_counters.gd`, the obvious candidate, asserts that a hand-driven turn builds
+*no* bout — migrating it would build one and delete the assertion. **The corpus is therefore a fixture
+for new tests and for the `test_tb38_flat_bout_guard.gd` pattern, not a saving.** The audit outcome the
+pass was hunting — *hand-built is quietly wrong* — went unfound, which is a result rather than a gap.
+
 **Pass B — partial, and its premise was wrong.** The pass expects thirteen bout-building files to move
 onto `BoutCorpus` for ~200–250 s. The corpus hands out **outcome records**; those files need **live
 boards** — which `BoutCorpus`'s own header has said since taskblock-48 built it: *"a test that needs one
