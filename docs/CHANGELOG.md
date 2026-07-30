@@ -1622,6 +1622,54 @@ an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comme
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
 
+### The suite indexed per test, and classified by the rule each test defends (tb49 Passes A–B)
+
+**Full gate 487.5 s, 2431 tests, 255 files.** The artifact is `test/suite_audit.csv`, one row per test,
+produced by the procedure in `docs/TEST-AUDIT.md`. **Nothing was cut** — the block produces evidence;
+acting on it is a later block under the cut rule.
+
+**Pass A — per-test granularity.** `run_suite.gd` already snapshotted the work counters at script
+boundaries; it now does the same one level down and emits `origin_file,test_name,description,usec,bouts,
+turns,candidates,floods,plans,shot_planes,rule_guarded`, sorted by file then declaration order because
+the procedure fills the judgement columns file by file. **Where setup lands is stated rather than
+assumed:** GUT fires `start_test` *before* `before_each`, so a shared fixture is charged to the test that
+triggers it, and `before_all`/script load are charged to nobody. That unattributed remainder was measured
+at **8.4 s of 496 s — 1.6%**.
+
+The acceptance the taskblock names — per-test counts summing to the file-level counts — is **arithmetic,
+not corroboration**, and the test says so: taskblock-47 made a file's counters the sum of its tests'
+precisely because the outer window was corrupted by `before_each` resets. The independent check is the
+row count against `func test_` read off disk.
+
+**Pass B — 2431 rows classified, 328 distinct rules (13.5%).** `description` is filled on 8 rows (0.33%),
+each a name defect: two cite deleted taskblock documents, one asserts "three scatter rings" as though
+ring count were a rule (`docs/00`: **N rings, never 3**), one is drifted outright
+(`test_the_unbuilt_tier_table_rows_are_still_unbuilt` reads the *action pool*, not the tier table), and
+four are vague. The full list is in the block's report.
+
+**What the classification shows, stated plainly because it is not what the procedure predicted.** The
+largest clusters are cross-cutting invariants rather than redundancy — *"a degenerate input yields an
+empty result, never an error"* is 89 tests across 60 files and costs **1.1 s in total**. Cost concentrates
+in individual rows instead: the four most expensive (**102.3 s**, **62.6 s**, **49.8 s**, **20.0 s**) are
+49% of the 476 s attributed to tests. Each has cheap clustermates, and in every case checked **the cheap
+peer does not cover the expensive one** — the cheap one guards the rule at unit level, the expensive one
+guards it end-to-end through a real bout. That is a coverage ladder, not duplication, so the cut rule
+would not license the cuts the procedure expected to find. The lever the data does offer is per-rule:
+whether a given rule needs a bout-level rung at all.
+
+**`CsvLine` (`src/logic/`) — one CSV codec for the writer and the reader.** Rules are written as full
+sentences, so 711 of them contain a comma; the writer quoted correctly and the reader split on `,`,
+shifting every numeric column one place right and reading `bouts` as **8697** against a true **56**. The
+alternative considered and rejected was a comma-free label vocabulary — letting the storage format
+dictate the classification. A second hand-rolled splitter is the same bug waiting again.
+
+**Regeneration no longer erases the audit.** Pass A's writer emitted both judgement columns empty every
+time, so the next `WRITE_PROFILE=1` run destroyed 2424 hand-filled cells with a green suite either way;
+it now merges them forward on `(origin_file, test_name)`. The bug behind it appeared **twice, in two
+languages** — `FileAccess.open(path, WRITE)` truncates before the renderer reads the old file back,
+exactly as `open(path, "w")` did in the Python helper an hour earlier. The carry-forward is demonstrated
+rather than asserted: a full `WRITE_PROFILE=1` gate ran and the file came back 2431/2431 classified.
+
 ### Three rungs, a window on the run, and the collapse (tb48 Passes A–D, docs/TOOLING.md)
 
 **Full gate 1493 s → 450 s across taskblocks 47–48**; fast gate ~126 s; a targeted run ~3.7 s.
