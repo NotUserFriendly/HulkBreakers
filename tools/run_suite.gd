@@ -45,6 +45,23 @@ extends SceneTree
 ## reads — the profiler is close to free, which is the standing requirement for
 ## instrumentation that ships. Nothing here changes what any test does.
 ##
+## ## Where setup is charged, stated because it changes who looks expensive
+##
+## **GUT fires `start_test` BEFORE `before_each`**, so a fixture built there lands
+## *inside* the measuring test's window and is charged to it. That is the useful
+## attribution — a test that needs an expensive board pays for the board — and it is why
+## the two most expensive files in the suite read as expensive rather than as forty cheap
+## tests beside an invisible cost.
+##
+## What it also means: **`before_all` and script load are charged to nobody.** They fall
+## in the script's wall-clock window but in no test's, so the per-test seconds sum to
+## slightly less than the file's. The counters agree exactly, because a file's counts ARE
+## the sum of its tests' — that is how taskblock-47 fixed a reset-corrupted attribution —
+## so the only gap is wall-clock, and it is the honest size of per-file setup.
+##
+## Either choice is defensible. An unstated one is not, because it silently decides which
+## tests look expensive.
+##
 ## ## Artifacts are opt-in
 ##
 ## `SUITE-PROFILE.md` and `suite_profile.json` are committed, so rewriting them on
@@ -63,6 +80,10 @@ const OUTPUT_PATH := "res://test/SUITE-PROFILE.md"
 ## having it re-parse a table that was formatted for reading would make the gate
 ## depend on column alignment.
 const DATA_PATH := "res://test/suite_profile.json"
+## taskblock-49 Pass A: one row per test, for the audit `docs/TEST-AUDIT.md` describes.
+## **Not committed and not maintained** — a snapshot taken to answer a question, acted
+## on, and allowed to go stale.
+const AUDIT_PATH := "res://test/suite_audit.csv"
 ## How many rows each of the two tables carries. The taskblock asks for 20.
 const TOP_N := 20
 
@@ -289,6 +310,10 @@ func _on_end_test() -> void:
 	var row: Dictionary = _delta(_test_mark, _snapshot())
 	row["path"] = "%s::%s" % [_script_path.get_file(), _test_name]
 	row["script"] = _script_path
+	row["test"] = _test_name
+	# Declaration order within the file, so the CSV can be grouped the way the audit is
+	# filled in without a second sort key that means nothing to a reader.
+	row["order"] = _test_rows.size()
 	row["usec"] = Time.get_ticks_usec() - _test_usec
 	_test_rows.append(row)
 	_test_name = ""
@@ -313,6 +338,12 @@ func _on_end_run() -> void:
 		file.store_line(line)
 	file.close()
 
+	var audit := FileAccess.open(AUDIT_PATH, FileAccess.WRITE)
+	if audit != null:
+		for line: String in _render_audit_csv():
+			audit.store_line(line)
+		audit.close()
+
 	var data := FileAccess.open(DATA_PATH, FileAccess.WRITE)
 	if data == null:
 		push_error("could not write %s" % DATA_PATH)
@@ -328,10 +359,57 @@ func _on_end_run() -> void:
 		JSON.stringify({"totals": _totals(), "wall_clock_usec": total_usec, "files": by_path}, "  ")
 	)
 	data.close()
-	print("wrote %s and %s" % [OUTPUT_PATH, DATA_PATH])
+	print("wrote %s, %s and %s" % [OUTPUT_PATH, DATA_PATH, AUDIT_PATH])
 	# **The exit code is the point of taskblock-48 Pass A2.** This used to be an
 	# unconditional `quit(0)`.
 	quit(1 if failures > 0 else 0)
+
+
+## The audit CSV: one row per test, mechanical columns filled, judgement columns present
+## and empty.
+##
+## **The two judgement columns are emitted empty rather than omitted.** `TEST-AUDIT.md`'s
+## procedure says never hand-transcribe a number a tool can emit; the corollary is that
+## the tool should leave the judgement cells where a reader will fill them, so the file
+## needs no reshaping between generating it and using it.
+func _render_audit_csv() -> Array[String]:
+	var lines: Array[String] = [
+		(
+			"origin_file,test_name,description,usec,bouts,turns,candidates,floods,plans,"
+			+ "shot_planes,rule_guarded"
+		)
+	]
+	var sorted: Array[Dictionary] = _test_rows.duplicate()
+	# By file then by declaration order, because the procedure fills `rule_guarded` file
+	# by file — sorting by cost here would scatter related tests and make reuse harder,
+	# which is the opposite of what the column is for.
+	sorted.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			if String(a["script"]) == String(b["script"]):
+				return int(a["order"]) < int(b["order"])
+			return String(a["script"]) < String(b["script"])
+	)
+	for row: Dictionary in sorted:
+		(
+			lines
+			. append(
+				(
+					"%s,%s,,%d,%d,%d,%d,%d,%d,%d,"
+					% [
+						String(row["script"]).replace("res://test/", ""),
+						String(row["test"]),
+						int(row["usec"]),
+						int(row.get("bouts", 0)),
+						int(row.get("turns", 0)),
+						int(row.get("candidates", 0)),
+						int(row.get("floods", 0)),
+						int(row.get("plans", 0)),
+						int(row.get("shot_planes", 0)),
+					]
+				)
+			)
+		)
+	return lines
 
 
 func _totals() -> Dictionary:
