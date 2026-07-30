@@ -1,10 +1,10 @@
 # Taskblock 50 Report — Under the clock, but not under five minutes
 
-**Passes A, B, C and D landed; suite green — 2441 tests, 0 failures.** Pass D was taken **out of order,
-before C**, for a reason recorded below. **Passes E and F are not done.**
+**Passes A, B, C, D and E3/E4 landed; suite green — 2441 tests, 0 failures.** Pass D was taken **out of
+order, before C**, for a reason recorded below. **E1, E2 and F are not done.**
 
-**Full gate 446.8 s → 334.6 s (25%).** The block's acceptance is *under five minutes*, and that is
-**not met** — 334.6 s against a 300 s bar. What remains is named at the end with what each piece is
+**Full gate 446.8 s → 321.6 s (28%).** The block's acceptance is *under five minutes*, and that is
+**not met** — 321.6 s against a 300 s bar. What remains is named at the end with what each piece is
 worth, rather than reported as nearly-there.
 
 ## Decisions made without asking
@@ -79,6 +79,20 @@ worth, rather than reported as nearly-there.
   had to invent for itself. The pass's third outcome — *hand-built is quietly wrong* — went unfound,
   which is a real result and not a skipped search.
 
+- **E3 done: all eight name defects renamed, and the `description` column is now empty.** The two
+  citing deleted taskblock documents, the one asserting "three scatter rings" as though ring count were
+  a rule, the drifted one (`test_the_unbuilt_tier_table_rows_are_still_unbuilt`, which reads the *action
+  pool*), and `test_the_flank_test` — now
+  `test_a_shot_from_behind_reaches_the_thin_rear_plate_a_frontal_shot_cannot`. **Eleven renames, not
+  eight:** the `pass_b_` prefix cited an anonymous taskblock pass on four names in one file, and fixing
+  one while leaving three would have been half a fix. The audit CSV's keys were updated alongside, so
+  the classification survived the rename rather than silently losing eleven rows.
+
+- **E4 needs nothing: Pass D absorbed it.** The pass asks to trim the seed lists in
+  `test_completion_sampler` and `test_full_mission`, and says to re-measure before trimming rather than
+  doing both blind. Re-measured: `test_full_mission` plays **one** bout now instead of eight, and
+  `test_completion_sampler` is down to three. There is no fixed list left to trim.
+
 ## Tests that failed, then were corrected
 
 1. **A hidden assertion was checking a constant against itself.** `test_the_in_window_verb_reports_the_
@@ -124,7 +138,15 @@ worth, rather than reported as nearly-there.
   Reaching 300 s needs ~33 s from that list. **Every entry has a reason it costs what it does**, and
   three of them are guarded by decisions taken deliberately in earlier blocks.
 
-- **Pass E2's premise does not survive contact, and I stopped rather than force it.** It expects the
+- **E2's one remaining opportunity is a shared map fixture, and it is pass-sized.**
+  `test_map_gen.gd` and `test_map_gen_raised_rooms.gd` together run **14 independent seed sweeps** and
+  regenerate roughly **650 maps** between them — 38.9 s, zero bouts. Generating that set once per
+  process and handing out copies is the same move `BoutCorpus` made, and it is most of the ~34 s still
+  needed to reach five minutes. I did not start it here: it touches 14 call sites across two files and
+  the grids get mutated by some tests, so it wants deep copies and its own test rather than a rushed
+  edit at the end of a block.
+
+- **Pass E2's subprocess half does not survive contact, and I stopped rather than force it.** It expects the
   two subprocess clusters to merge — "several of these spawn a real subprocess each; one spawn serves
   the cluster". They do not: the spawns differ *by design*. `test_the_launcher_agrees_with_the_shell_
   about_the_same_rung` runs the same file through `OS.execute` **and** through `SuiteRun` precisely

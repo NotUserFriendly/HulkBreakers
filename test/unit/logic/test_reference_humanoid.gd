@@ -140,7 +140,7 @@ func test_a_plates_rect_overlaps_its_parents_and_sits_at_lower_depth_from_the_fr
 ## though its own back face can still legitimately appear as an occluded
 ## region (BodyProjector projects per visible face, docs/02/03) rather than
 ## vanishing from the array outright.
-func test_the_flank_test() -> void:
+func test_a_shot_from_behind_reaches_the_thin_rear_plate_a_frontal_shot_cannot() -> void:
 	var unit := _reference_unit()
 
 	var front: Array[Region] = _sorted(BodyProjector.project(unit, Vector3(0, 0.0, -1)))

@@ -249,7 +249,7 @@ func test_an_unknown_profile_is_neutral_rather_than_broken() -> void:
 ##
 ## This asserts the CURRENT truth so that authoring one of them makes this test go
 ## red and its author has to come and delete the line.
-func test_the_unbuilt_tier_table_rows_are_still_unbuilt() -> void:
+func test_the_four_utility_actions_with_no_executor_are_still_unauthored() -> void:
 	var authored: Array[StringName] = []
 	for action: UtilityActionDef in DataLibrary.utility_actions_pool():
 		authored.append(action.id)

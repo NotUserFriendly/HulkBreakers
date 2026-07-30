@@ -20,7 +20,7 @@ func after_each() -> void:
 ## H1: "the reference guns are authored with two rings... re-author each
 ## gun's scatter as three: outer (few, low weight), middle (most, high
 ## weight), inner (few, low weight)."
-func test_every_reference_gun_has_three_scatter_rings_middle_heaviest() -> void:
+func test_every_reference_gun_authors_its_own_rings_with_the_middle_heaviest() -> void:
 	for gun_id: StringName in [
 		&"sniper_rifle", &"chaingun", &"pump_shotgun", &"auto_shotgun", &"rifle"
 	]:
@@ -40,7 +40,7 @@ func test_every_reference_gun_has_three_scatter_rings_middle_heaviest() -> void:
 
 
 ## H2: "sniper 3 AP/shot, chaingun 4 AP/burst, shotgun 2 AP/shot."
-func test_authored_ap_costs_match_the_taskblocks_own_numbers() -> void:
+func test_authored_ap_costs_match_the_reference_weapon_table() -> void:
 	var sniper: Part = DataLibrary.get_part(&"sniper_rifle")
 	assert_eq(sniper.ap_cost, 3)
 
