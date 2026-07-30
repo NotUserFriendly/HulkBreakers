@@ -730,16 +730,14 @@ Two small items that compound, because bouts are the testing surface for everyth
 
 
 ### Finish taskblock-50 — the scripted corpus, ordering, and the deck-clearing
-**Needs:** nothing — taskblock-50 Passes A, B and D landed. **Unblocks:** the taskblock-51 bug hunt.
+**Needs:** nothing — taskblock-50 Passes A, B, C and D landed. **Unblocks:** the taskblock-51 bug hunt.
 
-**The five-minute acceptance was not met: the full gate is 332.4 s, down from 446.8 s.** Three passes
+**The five-minute acceptance was not met: the full gate is 334.6 s, down from 446.8 s.** Two passes
 are unbuilt, and the remaining cost is itemised in taskblock-50's report rather than guessed at here.
 
-- **Pass C — a scripted corpus.** A preset seed with predetermined actions and no planner in the loop,
-  for the 133 files that build state by hand precisely to keep the AI out. **This is the one likeliest
-  to find defects rather than seconds**: its third outcome is *hand-built is quietly wrong* — a fixture
-  that drifted from what the game actually produces, so the test passes against a board that could not
-  occur.
+- **Pass C — done (taskblock-50).** `ScriptedCorpus` exists and never plans. The migration it was for
+  does not: all 137 hand-built files assert against specific cells, and 117 of them already cost under
+  1 s with zero bouts. It is a fixture for new tests, not a saving.
 - **Pass E — order by failure, merge, rename.** E1 (run the most-frequently-failing tests first) is
   free and independent. **E2's premise needs revising before it is attempted:** the two subprocess
   clusters do not merge, because the spawns differ by design — one test compares `OS.execute` against

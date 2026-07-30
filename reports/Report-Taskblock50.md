@@ -1,10 +1,10 @@
 # Taskblock 50 Report — Under the clock, but not under five minutes
 
-**Passes A, B and D landed; suite green — 2435 tests, 0 failures.** Pass D was taken **out of order,
-before C**, for a reason recorded below. **Passes C, E and F are not done.**
+**Passes A, B, C and D landed; suite green — 2441 tests, 0 failures.** Pass D was taken **out of order,
+before C**, for a reason recorded below. **Passes E and F are not done.**
 
-**Full gate 446.8 s → 332.4 s (26%).** The block's acceptance is *under five minutes*, and that is
-**not met** — 332.4 s against a 300 s bar. What remains is named at the end with what each piece is
+**Full gate 446.8 s → 334.6 s (25%).** The block's acceptance is *under five minutes*, and that is
+**not met** — 334.6 s against a 300 s bar. What remains is named at the end with what each piece is
 worth, rather than reported as nearly-there.
 
 ## Decisions made without asking
@@ -61,6 +61,24 @@ worth, rather than reported as nearly-there.
   view-only cost visible — from 344 to about 1. That is trading a measurement away for seconds, and
   it is a supervisor call rather than mine.
 
+- **Pass C shipped the corpus and found there is nothing to migrate onto it — measured, not
+  assumed.** `ScriptedCorpus` builds a board through `BoutSetup` (real presets, real assembly, a real
+  generated map), sets both squads to `HUMAN`, and drives it with an authored queue through the same
+  `CombatState.resolve_until` the AI's output goes through. It provably never plans, and the companion
+  assertion proves the counter would notice if it did.
+
+  Then the migration survey: **all 137 hand-built files reference specific `Vector2i` cells**, so none
+  can take a shared generated board without changing what they assert — which the pass's own rule
+  forbids (*migrated tests assert what they asserted before*). And **117 of those 137 are already under
+  1 s with zero bouts**, so there was no saving there to collect. The one file that looked like an
+  obvious candidate, `test_work_counters.gd`, asserts that a hand-driven turn builds **no** bout;
+  migrating it would build one and delete the assertion.
+
+  **So the corpus's value is prospective rather than a saving**, and I have recorded it as that: it is
+  the fixture for new combat and movement tests, and the pattern `test_tb38_flat_bout_guard.gd` already
+  had to invent for itself. The pass's third outcome — *hand-built is quietly wrong* — went unfound,
+  which is a real result and not a skipped search.
+
 ## Tests that failed, then were corrected
 
 1. **A hidden assertion was checking a constant against itself.** `test_the_in_window_verb_reports_the_
@@ -76,7 +94,18 @@ worth, rather than reported as nearly-there.
    sat there until it was killed. Taskblock-48 recorded this hazard; this is the first time it cost me
    a full timeout, and it is worth restating because the symptom looks nothing like the cause.
 
-3. **`gdlint` caught a constant declared below the functions** (`class-definitions-order`) — the full
+3. **A companion assertion was green by vacuity, in the very test written to prevent that.**
+   `test_the_planner_counter_would_notice_if_it_did_plan` handed squad 1 to the AI and stepped the
+   runner — but `BoutRunner.step()` is a no-op while the *current* unit belongs to a human squad, and
+   the current unit was squad 0's. It asserted the planner counter moves and the counter never moved,
+   so it failed honestly rather than passing; had the default current unit been the other squad's it
+   would have passed for the wrong reason. Both squads are handed over now.
+
+4. **A file was added to `BOUT_FILES` without its skip hook**, and `test_suite_tier.gd` caught it —
+   listed as a bout builder, no `should_skip_script()`, so the fast gate would have run it and quietly
+   built bouts. That test exists for exactly this and it worked.
+
+5. **`gdlint` caught a constant declared below the functions** (`class-definitions-order`) — the full
    gate refuses to run at all on a lint failure, so this presented as an empty gate rather than a
    message. Moved up with the other constants.
 
