@@ -155,7 +155,9 @@ func _print_summary(total_usec: int, failures: int) -> void:
 		)
 	)
 	var parts: Array[String] = []
-	for key: String in ["bouts", "turns", "plans", "candidates", "shot_planes", "floods"]:
+	for key: String in [
+		"bouts", "turns", "plans", "candidates", "shot_planes", "floods", "ui_builds"
+	]:
 		parts.append("%s %d" % [key, int(total.get(key, 0))])
 	print("  ".join(parts))
 	if _script_rows.size() == 1:
@@ -187,7 +189,7 @@ func _print_delta(row: Dictionary) -> void:
 		print("delta: %s is new — no previous numbers to compare against" % short)
 		return
 	var moved: Array[String] = []
-	for key: String in ["turns", "bouts", "floods", "candidates"]:
+	for key: String in ["turns", "bouts", "floods", "ui_builds", "candidates"]:
 		var change: int = int(row.get(key, 0)) - int(previous.get(key, 0))
 		if change != 0:
 			moved.append("%+d %s" % [change, key])
@@ -209,6 +211,9 @@ func _snapshot() -> Dictionary:
 		"shot_planes": ShotPlane.builds,
 		"floods": Pathfinder.floods,
 		"lookahead_fields": UtilityLookahead.fields_built,
+		# taskblock-48 Pass D: the one counter here that is not AI work. Without it a
+		# view-only regression is invisible to every budget.
+		"ui_builds": HulkTheme.ui_builds,
 	}
 
 
@@ -381,7 +386,9 @@ func _render(total_usec: int) -> Array[String]:
 	lines.append("| scripts | %d |" % _script_rows.size())
 	lines.append("| tests | %d |" % _test_rows.size())
 	lines.append("| wall-clock | %.1f s |" % (float(total_usec) / 1_000_000.0))
-	for key: String in ["bouts", "turns", "plans", "candidates", "shot_planes", "floods"]:
+	for key: String in [
+		"bouts", "turns", "plans", "candidates", "shot_planes", "floods", "ui_builds"
+	]:
 		lines.append("| %s | %d |" % [key, int(total.get(key, 0))])
 	lines.append("")
 	# Derived, never quoted. The taskblock's framing says "23 of 241 files run bouts";

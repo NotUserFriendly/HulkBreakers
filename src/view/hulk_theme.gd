@@ -41,8 +41,30 @@ const MP_PIP := Color(0.4, 0.9, 0.2)
 ## legible over the 3D board behind it.
 const PANEL_ALPHA := 0.75
 
+## taskblock-48 Pass D: **how many times a UI has been built, since the last reset.**
+##
+## The work budget gates bouts, turns and floods — everything the suite asks of the
+## *AI*. That is deliberate, and it means a purely-view regression cannot fail it:
+## `test_spectator_overlay.gd` costs 33 s with **zero bouts and 12 turns**, its four
+## most expensive tests spending ~6 s each to resolve two turns. The sim is nothing
+## there; the fixture is everything, and a green budget could be read as "the suite did
+## not get slower" while that file doubled.
+##
+## Counted here because every overlay's `_build_ui` calls this and **nothing in
+## `src/logic/` does** — so it moves when a view test is added and stays put when a
+## headless bout test is, which is exactly the discrimination the budget was missing.
+## Verified in both directions by `test_work_counters.gd` rather than assumed.
+##
+## Diagnostics only, never read by a decision.
+static var ui_builds: int = 0
+
+
+static func reset_diagnostics() -> void:
+	ui_builds = 0
+
 
 static func build() -> Theme:
+	ui_builds += 1
 	var theme := Theme.new()
 
 	var panel_style := StyleBoxFlat.new()

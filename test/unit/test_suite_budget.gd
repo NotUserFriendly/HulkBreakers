@@ -63,6 +63,15 @@ func test_the_recorded_baseline_still_resembles_the_measured_suite() -> void:
 
 	var profile: Dictionary = _profile()
 	for counter: String in SuiteBudget.GATED:
+		# **Checked, not indexed.** Gating a counter with no baseline used to raise a
+		# runtime error here, and under `-d` that is a debugger break: the run hung at a
+		# `debug>` prompt instead of reporting anything. Adding `ui_builds` to `GATED`
+		# without a baseline is exactly how it happened.
+		assert_true(
+			SuiteBudget.BASELINE.has(counter), "%s is gated but has no BASELINE entry" % counter
+		)
+		if not SuiteBudget.BASELINE.has(counter):
+			continue
 		var baseline: int = int(SuiteBudget.BASELINE[counter])
 		var observed: int = int(totals.get(counter, 0))
 		# The `turns` baseline is the total minus the randomly-sampled file, so the

@@ -53,6 +53,7 @@ func after_each() -> void:
 
 func _reset_all() -> void:
 	CombatState.reset_diagnostics()
+	HulkTheme.reset_diagnostics()
 	Pathfinder.reset_diagnostics()
 	AiPlanner.reset_diagnostics()
 	UtilityPlanner.candidates_scored = 0
@@ -161,3 +162,51 @@ func test_a_rejected_roster_does_not_count_as_a_bout() -> void:
 
 	assert_ne(built.get("error", ""), "", "sanity: this roster is rejected")
 	assert_eq(CombatState.bouts_built, 0)
+
+
+# --- the one counter that is not AI work ------------------------------------------
+
+
+## **`ui_builds` must move for a view test and not for a bout test**, which is the whole
+## reason it exists: every other counter here measures what the suite asks of the AI, so
+## `test_spectator_overlay.gd` — 33 s, zero bouts — could double without failing any
+## budget.
+##
+## Asserted in both directions. One direction alone would pass for a counter wired to
+## something that merely happens to correlate.
+func test_ui_builds_moves_for_a_view_fixture_and_not_for_a_bout() -> void:
+	_reset_all()
+
+	# A bout, played headlessly: plenty of AI work, no UI anywhere.
+	await _play()
+
+	var after_bout: int = HulkTheme.ui_builds
+	gut.p("after a bout: ui_builds %d, turns %d" % [after_bout, CombatState.turns_resolved])
+	assert_gt(CombatState.turns_resolved, 0, "sanity: the bout did real work")
+	assert_eq(after_bout, 0, "a headless bout builds no UI")
+
+	# A view fixture: an overlay, and therefore a theme.
+	var grid: Grid = GridFixture.flat(8, 8)
+	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(1, 1), 0)
+	var state := CombatState.new(grid, [unit])
+	state.assign_rest_to_ai([] as Array[int])
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.load_battle(state, MissionState.new(RunState.new(), state))
+	battle.set_overlay(SpectatorOverlay.new())
+	await get_tree().process_frame
+
+	gut.p("after an overlay: ui_builds %d" % HulkTheme.ui_builds)
+	assert_gt(HulkTheme.ui_builds, after_bout, "building an overlay moves it")
+
+
+## And it resets, like every other counter, or a profile charges one file for another's
+## fixtures.
+func test_resetting_clears_the_ui_counter() -> void:
+	HulkTheme.build()
+	assert_gt(HulkTheme.ui_builds, 0, "sanity: it counted")
+
+	HulkTheme.reset_diagnostics()
+
+	assert_eq(HulkTheme.ui_builds, 0)
