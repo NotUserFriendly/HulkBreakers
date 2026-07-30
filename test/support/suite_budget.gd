@@ -54,12 +54,13 @@ const HEADROOM := 0.15
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
 const BASELINE: Dictionary = {
-	"bouts": 55,
-	"turns": 766,
-	"plans": 977,
-	"candidates": 1526244,
-	"shot_planes": 13859,
-	"floods": 4992,
+	"bouts": 56,
+	"turns": 772,
+	"plans": 1006,
+	"candidates": 1556808,
+	"shot_planes": 13932,
+	"floods": 5018,
+	"ui_builds": 344,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.
@@ -85,7 +86,12 @@ const TURNS_EXCLUDED: Array[String] = ["res://test/integration/test_full_mission
 ## scores differently would fail a test about suite cost — a false positive that
 ## teaches people to raise the number, which is the failure mode this whole file is
 ## written against. Bouts and turns are the ones the suite controls.
-const GATED: Array[String] = ["bouts", "turns", "floods"]
+## `ui_builds` joins them at taskblock-48 Pass D: it is the only gated counter that is
+## **not** AI work, and it exists because a view-only regression could not fail a budget
+## before. `test_spectator_overlay.gd` costs 33 s with zero bouts, so the suite's most
+## expensive non-bout file was invisible to the thing meant to notice files getting
+## expensive.
+const GATED: Array[String] = ["bouts", "turns", "floods", "ui_builds"]
 
 ## Per-file caps for the files that dominate. **The suite total alone is not enough**:
 ## a file could double while another halved and the total would sit still, which is
@@ -102,15 +108,22 @@ const GATED: Array[String] = ["bouts", "turns", "floods"]
 ## the budget as slack — a ratchet that only goes up is a ceiling.
 const PER_FILE: Dictionary = {
 	"res://test/unit/logic/test_completion_sampler.gd": {"bouts": 12, "turns": 351},
-	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 381},
+	"res://test/integration/test_full_mission.gd": {"bouts": 10, "turns": 409},
 	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 4, "turns": 136},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
 }
 
 
 ## The budget for `counter`, as a whole number — the baseline plus headroom.
+##
+## **`-1` for a gated counter with no baseline**, rather than silently treating it as a
+## budget of zero. Adding `ui_builds` to `GATED` without adding it here crashed the whole
+## run: the missing key raised a runtime error, and under `-d` that is a debugger break
+## which hangs rather than fails. A sentinel makes it a named failure instead.
 static func limit_for(counter: String) -> int:
-	return int(ceil(float(int(BASELINE.get(counter, 0))) * (1.0 + HEADROOM)))
+	if not BASELINE.has(counter):
+		return -1
+	return int(ceil(float(int(BASELINE[counter])) * (1.0 + HEADROOM)))
 
 
 ## Every way `profile` exceeds its budget, as messages ready to print.
@@ -128,6 +141,11 @@ static func violations(profile: Dictionary) -> Array[String]:
 		if counter == "turns":
 			observed -= _excluded_turns(profile)
 		var limit: int = limit_for(counter)
+		if limit < 0:
+			found.append(
+				"%s is gated but has no BASELINE entry — add one, measured not guessed" % counter
+			)
+			continue
 		if observed > limit:
 			(
 				found

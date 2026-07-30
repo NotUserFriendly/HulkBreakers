@@ -7,6 +7,26 @@ extends GutTest
 ##
 ## **Determinism is this pass's real acceptance, not the speed.** A faster
 ## non-deterministic sim would be a strictly worse outcome than the hitch.
+##
+## ## taskblock-48 Pass D: why this file is the worst seconds-per-bout in the suite
+##
+## It measured **18.4 s per bout** against the completion sampler's 10.7, and
+## taskblock-48 guessed the pacer's frame yields were paying for it. **Measured, they are
+## not.** The same seed, played tight and paced:
+##
+## | | wall | turns | frame yields |
+## |---|---|---|---|
+## | no pacer | 18 485 ms | 54 | — |
+## | with pacer | 19 660 ms | 54 | 344 |
+##
+## **The pacer is 6% — 1175 ms, about 3.4 ms a yield.** The cost is bout *length*: 54
+## turns against the sampler's mean of ~13 under the same AI, at roughly 340 ms a turn
+## either way. Nothing here is incidental, so nothing was cut: the determinism test needs
+## a whole bout twice, and comparing a shorter one would mean seed-shopping for a cheap
+## map and calling it a saving.
+##
+## Worth knowing if this ever looks like the place to optimise: **the yield is nearly
+## free, and the turns are the bill.**
 
 
 ## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
