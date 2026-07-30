@@ -1481,248 +1481,248 @@ unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_still_lands_agai
 unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_is_a_no_op_without_a_melee_weapon,,4591,0,0,0,0,0,0,an action requires a part that provides it
 unit/logic/test_suppression.gd,test_resolve_opportunity_attacks_can_kill_a_unit_with_no_other_parts,,4921,0,0,0,0,0,2,"adjacency suppresses a long gun, and leaving it draws an opportunity attack"
 unit/logic/test_suppression.gd,test_move_hooks_combined_applies_an_opportunity_attack_on_a_real_move,,10941,0,0,0,0,0,2,"one mechanism, distinctly logged — no parallel systems"
-unit/logic/test_surrogate.gd,test_a_bare_matrix_cannot_dock_where_only_a_surrogate_socket_exists,,446,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_a_full_surrogate_cannot_dock_in_a_spinal_only_socket_unreachable,,312,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_a_spinal_surrogate_can_dock_in_its_own_socket,,256,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_a_brain_only_surrogate_also_fits_a_spinal_socket_smaller_fits_bigger,,218,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_attaches_to_is_derived_so_a_new_ladder_rung_updates_every_surrogate,,242,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_the_matrix_docks_inside_the_surrogate_and_unit_resolves_it_through_two_levels,,327,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_destroying_the_torso_drops_the_surrogate_with_the_matrix_in_it,,683,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_destroying_the_surrogate_itself_ejects_a_bare_matrix,,548,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_a_part_needing_a_capability_the_surrogate_lacks_is_inert_but_still_shootable,,215,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_a_part_needing_a_capability_the_surrogate_has_is_usable,,200,0,0,0,0,0,0,
-unit/logic/test_surrogate.gd,test_a_part_with_no_body_requires_is_always_usable_even_unpiloted,,164,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_default_ladder_has_the_expected_ids,,241,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_peripheral_and_torsic_are_mutually_exclusive_branches,,121,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_both_branches_fit_the_full_cavity,,111,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_spinal_docks_in_either_branch_and_full,,126,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_brain_only_reaches_every_socket_type,,94,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_full_only_fits_its_own_cavity,,155,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_demote_from_spinal_and_below_is_unambiguous,,115,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_demote_holds_at_the_bottom_a_bare_matrix_is_the_floor,,138,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_demote_from_full_is_deterministic_and_flags_the_ambiguity,,260,0,0,0,0,0,0,
-unit/logic/test_surrogate_ladder.gd,test_a_ladder_with_an_inserted_branch_needs_no_code_change,,606,0,0,0,0,0,0,
-unit/logic/test_tb38_flat_bout_guard.gd,test_flat_bout_event_stream_matches_golden_hash,,39364,0,6,0,6,0,0,
-unit/logic/test_tb38_flat_bout_guard.gd,test_flat_bout_is_itself_seed_deterministic,,78740,0,12,0,12,0,0,
-unit/logic/test_tb38_flat_bout_guard.gd,test_the_scripted_bout_actually_produces_a_stream,,38479,0,6,0,6,0,0,
-unit/logic/test_the_punch.gd,test_an_unarmed_unit_can_punch,,857,0,0,0,0,0,2,
-unit/logic/test_the_punch.gd,test_the_punch_appears_on_the_action_bar_for_an_unarmed_unit,,180,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_out_of_bounds_returns_empty,,2143,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_reports_terrain_and_the_real_field_object,,2194,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_reports_empty_for_an_unfloored_cell,,1602,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_reports_ramp_for_a_ramp_tagged_surface,,1100,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_reports_any_unit_at_the_cell_regardless_of_squad,,1600,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_ignores_a_dead_unit_at_the_cell,,1361,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_inspect_reports_a_field_object_at_the_cell,,1103,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_visible_from_selected_is_null_with_nothing_selected,,921,0,0,0,0,0,0,
-unit/logic/test_tile_inspection.gd,test_visible_from_selected_reflects_line_of_sight_to_the_hovered_cell,,1062,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_part_shows_raw_fields_with_no_local_arithmetic,,204,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_part_flags_condition_as_changed_only_when_damaged,,190,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_part_includes_salvage_yield_when_present,,152,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_part_with_a_row_shows_socket_and_inert_state,,144,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_unit_shows_full_status_regardless_of_squad,,227,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_unit_omits_destroyed_parts,,179,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_action_shows_requires_and_requires_action,,94,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_queue_entry_shows_describe_ap_and_mp,,101,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_queue_entry_shows_an_extra_detail_row_when_present,,91,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_queue_entry_omits_the_detail_row_when_absent,,64,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_tile_shows_terrain_when_nothing_else_is_present,,140,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_tile_with_a_unit_delegates_to_the_units_own_status,,173,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_tile_with_a_field_object_shows_its_own_detail,,195,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_tile_on_an_empty_cell_returns_an_empty_tooltip_data,,118,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_wound_shows_description_disables_and_repair_difficulty,,118,0,0,0,0,0,0,
-unit/logic/test_tooltip_builder.gd,test_for_wound_on_an_unauthored_id_still_returns_a_titled_tooltip,,75,0,0,0,0,0,0,
-unit/logic/test_tracer_geometry.gd,test_segment_size_is_square_and_as_long_as_the_segment,,122,0,0,0,0,0,0,
-unit/logic/test_tracer_geometry.gd,test_segment_transform_centers_on_the_segments_midpoint,,108,0,0,0,0,0,0,
-unit/logic/test_tracer_geometry.gd,test_segment_transform_orients_local_z_along_the_segment,,85,0,0,0,0,0,0,
-unit/logic/test_tracer_geometry.gd,test_a_degenerate_segment_returns_identity_at_from_rather_than_crash,,86,0,0,0,0,0,0,
-unit/logic/test_transparency_proof.gd,test_headline_property_tooltip_predicted_damage_equals_actual_damage,,19621,0,0,0,0,0,60,
-unit/logic/test_transparency_proof.gd,test_a_damage_modifier_changes_both_the_tooltip_and_the_actual_damage_together,,851,0,0,0,0,0,2,
-unit/logic/test_turn_start_power_walks.gd,test_threading_a_prewalked_list_gives_identical_power_numbers,,4614,0,0,0,0,0,0,
-unit/logic/test_turn_start_power_walks.gd,test_operable_from_agrees_with_operable_parts,,6539,0,0,0,0,0,0,
-unit/logic/test_turn_start_power_walks.gd,test_operable_from_drops_destroyed_parts,,5568,0,0,0,0,0,0,
-unit/logic/test_turn_start_power_walks.gd,test_a_structural_change_between_turns_is_seen_immediately,,13887,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_mp_per_ap_uses_base_plus_agility,,229,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_mp_per_ap_defaults_to_base_with_no_agility_stat,,144,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_mp_per_ap_reflects_live_part_swaps,,154,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_new_unit_starts_alive_with_no_held_matrix,,525,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_new_unit_starts_at_the_top_of_the_surrogate_ladder,,152,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_demote_surrogate_steps_one_rung_and_starts_the_exposure_clock,,249,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_tick_organics_decay_demotes_further_every_decay_turns,,311,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_tick_organics_decay_is_a_no_op_while_never_exposed,,155,0,0,0,0,0,0,
-unit/logic/test_unit.gd,test_pose_at_returns_the_same_pose_regardless_of_progress,,304,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_no_root_produces_no_placements,,192,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_a_single_box_root_places_at_the_units_cell,,175,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_a_units_true_y_accounts_for_its_own_level,,229,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_orientation_override_replaces_the_units_own_orientation,,138,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_a_null_orientation_override_is_the_same_as_omitting_it,,295,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_dead_parts_produce_no_placements,,295,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_a_destroyed_child_part_disappears_but_its_living_siblings_remain,,207,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_bounding_sphere_of_a_single_box_is_the_boxs_own_half_diagonal,,168,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_bounding_sphere_for_part_of_a_single_box_is_the_boxs_own_half_diagonal,,118,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_bounding_sphere_grows_to_cover_every_living_box,,176,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_bounding_sphere_ignores_destroyed_parts,,134,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_bounding_sphere_with_no_root_falls_back_to_the_units_own_cell,,114,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_a_pose_changes_a_parts_composed_world_transform,,140,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_an_arbitrary_pose_never_seen_in_poses_gd_still_works,,141,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_down_puts_every_box_below_standing_height,,4769,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_a_socket_transform_offsets_the_child_from_the_root,,304,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_muzzle_point_returns_the_weapons_own_composed_forward_tip,,655,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_muzzle_point_falls_back_to_the_units_own_cell_when_the_weapon_has_no_placement,,148,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_shoulder_height_returns_the_real_shoulder_socket_world_height,,122,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_shoulder_height_is_negative_one_with_no_shoulder_socket_anywhere,,130,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_shouldered_muzzle_point_keeps_lateral_depth_but_overrides_height,,464,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_shouldered_muzzle_point_falls_back_to_natural_with_no_shoulder_socket,,148,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_true_height_for_cell_reads_the_placed_surface_once_placement_exists,,173,0,0,0,0,0,0,
-unit/logic/test_unit_geometry.gd,test_true_height_for_cell_is_zero_for_an_unfloored_cell_on_a_real_grid,,156,0,0,0,0,0,0,
-unit/logic/test_unit_picker.gd,test_a_straight_down_ray_through_a_units_box_hits_that_unit,,329,0,0,0,0,0,0,
-unit/logic/test_unit_picker.gd,test_hit_reports_the_specific_part_whose_box_was_struck,,262,0,0,0,0,0,0,
-unit/logic/test_unit_picker.gd,test_a_ray_that_misses_every_box_returns_nothing,,137,0,0,0,0,0,0,
-unit/logic/test_unit_picker.gd,test_the_nearer_of_two_units_along_the_same_ray_wins,,373,0,0,0,0,0,0,
-unit/logic/test_unit_picker.gd,test_dead_units_are_never_hit,,214,0,0,0,0,0,0,
-unit/logic/test_unit_picker.gd,test_hit_t_is_comparable_to_board_pickers_plane_hit_t_on_the_same_ray,,224,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_zero_variation_amount_always_returns_the_base_loadout_unchanged,,2815,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_no_authored_family_falls_back_to_uniform_generation,,1164,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_an_omittable_socket_is_sometimes_bare_and_sometimes_not_across_seeds,,1179,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_a_swap_pool_socket_sometimes_picks_an_alternate,,2427,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_the_same_seed_reproduces_the_same_variant_exactly,,1133,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_a_brand_new_family_needs_no_generator_code_change,,2156,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_editing_the_base_after_generating_never_touches_the_variant,,1026,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_junk_bot_family_generates_structurally_different_bots_across_seeds,,126866,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_junk_bot_family_is_deterministic_from_the_same_seed,,1575,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_combat_tester_family_produces_uniform_bots,,4813,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_every_generated_junk_bot_variant_passes_assembly_validation,,120610,0,0,0,0,0,0,
-unit/logic/test_variant_generator.gd,test_the_junk_bot_variant_family_is_loaded_from_real_data,,1063,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_every_cell_shot_plane_calls_clear_is_set_in_the_field,,182582,0,0,0,0,0,299,
-unit/logic/test_visibility_field.gd,test_a_destroyed_wall_stops_occluding_even_though_it_stays_opaque,,5114,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_cover_does_not_occlude_the_field,,4699,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_a_walled_off_target_costs_exactly_zero_shot_plane_builds,,20106,0,0,0,2,0,0,
-unit/logic/test_visibility_field.gd,test_the_field_actually_eliminates_candidates,,10898,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_a_cell_one_level_up_is_always_allowed,,6499,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_a_cell_one_level_down_is_always_allowed,,6533,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_the_targets_own_cell_is_allowed,,3643,0,0,0,0,0,0,
-unit/logic/test_visibility_field.gd,test_out_of_bounds_is_allowed_rather_than_rejected,,4684,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_a_wall_near_the_focal_points_own_screen_position_and_nearer_occludes,,147,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_a_wall_far_from_the_focal_points_screen_position_does_not_occlude,,110,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_a_wall_behind_the_focal_point_does_not_occlude_even_at_the_same_screen_position,,54,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_a_wall_at_the_exact_same_depth_as_the_focal_point_does_not_occlude,,48,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_a_wall_just_inside_the_screen_radius_occludes,,45,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_a_wall_just_outside_the_screen_radius_does_not_occlude,,45,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_is_positive_for_a_unit_on_screen,,70,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_shrinks_as_depth_increases,,52,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_grows_with_more_tiles,,50,0,0,0,0,0,0,
-unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_is_zero_at_zero_depth,,72,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_seeds_play_in_the_order_given,,1662,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_parsing_a_seed_list_is_tolerant_of_spacing,,1291,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_a_nonsense_entry_is_dropped_rather_than_read_as_zero,,2035,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_stopping_mid_run_keeps_the_results_so_far,,1074,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_killing_a_run_leaves_nothing_behind,,1354,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_a_skipped_seed_is_recorded_rather_than_dropped,,1127,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_rewatching_clears_the_row_it_replaces,,3038,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_rewatching_before_the_first_seed_does_nothing,,1831,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_the_criteria_explain_every_outcome_by_name,,1679,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_the_table_shows_seeds_that_have_not_played_yet,,1695,0,0,0,0,0,0,
-unit/logic/test_watched_run.gd,test_a_watched_seed_matches_what_the_headless_path_reported,,22294194,2,56,67360,134,58,468,
-unit/logic/test_weapon_chambering.gd,test_same_family_under_max_length_chambers,,196,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_same_family_over_max_length_is_rejected_by_name,,157,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_different_family_is_rejected_regardless_of_length,,110,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_two_different_diameter_rounds_in_one_family_both_chamber,,108,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_a_mini_grenade_chambers_in_a_normal_gun_by_family_alone,,81,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_long_shell_fits_the_long_chamber_but_not_the_short_one,,154,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_cross_compatible_rounds_share_one_family,,97,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_try_chamber_loads_on_success_and_leaves_the_weapon_untouched_on_failure,,138,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_a_non_weapon_part_cannot_chamber_anything,,78,0,0,0,0,0,0,
-unit/logic/test_weapon_chambering.gd,test_the_real_reference_guns_chamber_their_own_reference_ammo,,16126,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_resolve_damage_with_no_modifiers_matches_the_base,,157,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_resolve_damage_applies_a_part_stat_mod,,147,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_resolve_damage_applies_an_extra_source_eg_a_perk,,115,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_resolve_crit_chance_matches_the_base_with_no_modifiers,,93,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_damage_multiplier_scales_the_resolved_damage,,124,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_no_weapon_def_means_no_multiplier_source_at_all,,135,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_resolve_recoil_step_matches_the_pure_formula_with_no_modifiers,,83,0,0,0,0,0,0,
-unit/logic/test_weapon_resolver.gd,test_resolve_recoil_step_applies_a_part_stat_mod,,77,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_a_shell_with_no_weapons_builds_no_rows,,163,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_an_operable_weapon_is_active_with_no_reason,,198,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_a_weapon_with_no_capable_manipulator_is_inactive_with_a_reason,,139,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_a_destroyed_weapon_is_inactive_and_says_destroyed,,155,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_a_two_handed_weapon_with_only_one_manipulator_is_inactive,,146,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_dual_wielded_operable_pistols_are_both_active,,189,0,0,0,0,0,0,
-unit/logic/test_weapon_rows.gd,test_a_carried_but_unattached_weapon_is_not_listed,,132,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_burst_size_of_one_is_cleanly_rejected_as_illegal,,1930,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_a_very_large_burst_size_still_terminates_and_replays_identically,,37858,0,0,0,0,0,402,
-unit/logic/test_weapon_sim_hardening.gd,test_projectile_num_of_one_and_of_many_both_terminate_cleanly,,15320,0,0,0,0,0,155,
-unit/logic/test_weapon_sim_hardening.gd,test_a_large_burst_of_a_high_pellet_round_terminates,,51773,0,0,0,0,0,601,
-unit/logic/test_weapon_sim_hardening.gd,test_mechanical_accuracy_at_zero_and_one_both_produce_finite_points,,1136,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_perfect_mechanical_accuracy_collapses_the_pattern_to_the_center,,1199,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_zero_and_very_long_barrel_length_produce_finite_recoil_and_spread,,1154,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_a_cartridge_exactly_at_max_case_length_chambers,,1164,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_recoil_does_not_diverge_across_a_long_burst,,1082,0,0,0,0,0,0,
-unit/logic/test_weapon_sim_hardening.gd,test_ricochet_depth_cap_holds_under_a_burst_of_many_simultaneous_deflections,,70366,0,0,0,0,0,90,
-unit/logic/test_work_counters.gd,test_the_same_bout_does_identical_work_twice,,5425934,1,6,10632,14,6,57,
-unit/logic/test_work_counters.gd,test_every_counter_actually_counts,,2600594,1,6,10632,14,6,57,
-unit/logic/test_work_counters.gd,test_resetting_clears_every_counter,,2681512,0,0,0,0,0,0,
-unit/logic/test_work_counters.gd,test_a_scripted_turn_counts_without_any_bout_being_built,,15319,0,1,0,0,0,0,
-unit/logic/test_work_counters.gd,test_a_rejected_roster_does_not_count_as_a_bout,,1129,0,0,0,0,0,0,
-unit/logic/test_work_counters.gd,test_ui_builds_moves_for_a_view_fixture_and_not_for_a_bout,,2937178,1,6,10632,16,6,57,
-unit/logic/test_work_counters.gd,test_resetting_clears_the_ui_counter,,1772,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_the_planner_never_reads_occupancy_off_the_grid,,3009,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_the_planner_never_reads_unit_knowledge_off_a_combat_state,,5516,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_the_resolver_door_is_never_dereferenced,,2136,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_the_guard_is_reading_a_real_planner_that_uses_the_view,,235,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_a_restricted_view_makes_the_unit_decide_differently,,69755,0,0,0,3,0,0,
-unit/logic/test_world_view_seam.gd,test_a_remembered_sighting_expires_by_comparison_not_by_a_hook,,19276,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_the_team_blackboard_is_gated_on_tier,,6130,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_a_unit_without_blackboard_access_cannot_write_one_either,,5355,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_the_unrestricted_view_is_byte_identical_across_a_seeded_bout,,6426668,2,16,23776,36,16,174,
-unit/logic/test_world_view_seam.gd,test_a_preview_clone_starts_with_no_batch_plans,,10916,0,0,0,0,0,0,
-unit/logic/test_world_view_seam.gd,test_intelligence_tier_rides_through_dup,,579,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_the_three_named_wounds_are_authored_and_loadable,,1038,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_burnt_electronics_carries_higher_repair_difficulty,,1091,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_short_label_is_at_most_five_characters,,1285,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_a_severed_controls_wound_disables_a_manipulator_without_0_hp,,1651,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_a_severed_controls_wound_on_the_weapon_itself_disables_it,,1662,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_burnt_electronics_does_not_disable_anything,,1537,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_direct_infliction_adds_the_named_wound_exactly_once,,1096,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_removing_a_wounded_part_clears_its_effect_on_the_unit,,1517,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_a_wound_disabled_parts_stat_contribution_drops_out_of_the_resolver_sources,,1275,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_status_threshold_hook_inflicts_the_wound_once_the_threshold_is_crossed,,1270,0,0,0,0,0,0,
-unit/logic/test_wounds.gd,test_weapon_rows_reports_a_wound_disabled_weapon_with_its_reason,,1546,0,0,0,0,0,0,
-unit/test_exit_code_probe.gd,test_the_probe_fails_only_when_it_is_asked_to,,322,0,0,0,0,0,0,
-unit/test_no_orphaned_uids.gd,test_no_uid_file_is_missing_its_script,,2339,0,0,0,0,0,0,
-unit/test_retired_planner_sweep.gd,test_nothing_in_the_tree_names_the_retired_planner,,30648,0,0,0,0,0,0,
-unit/test_retired_planner_sweep.gd,test_the_sweep_would_actually_catch_a_reintroduction,,212,0,0,0,0,0,0,
-unit/test_retired_planner_sweep.gd,test_the_linter_file_cap_came_back_down,,105,0,0,0,0,0,0,
-unit/test_run_suite.gd,test_the_runner_fails_the_process_when_a_test_fails,,3964527,0,0,0,0,0,0,
-unit/test_run_suite.gd,test_the_same_probe_passes_when_nothing_asks_it_to_fail,,4155835,0,0,0,0,0,0,
-unit/test_run_suite.gd,test_a_passing_targeted_run_exits_zero_reports_its_cost_and_writes_nothing,,4331235,0,0,0,0,0,0,
-unit/test_run_suite.gd,test_an_ambiguous_name_fails_and_prints_every_match,,16580,0,0,0,0,0,0,
-unit/test_run_suite.gd,test_an_unknown_target_is_a_usage_error,,13024,0,0,0,0,0,0,
-unit/test_run_suite.gd,test_a_targeted_run_refuses_to_write_the_profile_even_when_asked,,4130148,0,0,0,0,0,0,
-unit/test_smoke.gd,test_smoke,,146,0,0,0,0,0,0,
-unit/test_suite_audit_csv.gd,test_the_csv_has_one_row_per_declared_test,,32258,0,0,0,0,0,0,
-unit/test_suite_audit_csv.gd,test_the_csv_carries_the_columns_the_audit_expects,,1257,0,0,0,0,0,0,
-unit/test_suite_audit_csv.gd,test_the_judgement_columns_are_emitted_empty,,22087,0,0,0,0,0,0,
-unit/test_suite_audit_csv.gd,test_per_test_counters_sum_to_the_file_level_profile,,20763,0,0,0,0,0,0,
-unit/test_suite_audit_csv.gd,test_a_test_that_builds_no_bout_reports_zero_bouts,,14525,0,0,0,0,0,0,
-unit/test_suite_audit_csv.gd,test_unattributed_setup_is_a_small_share_of_wall_clock,,14893,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_the_suite_is_within_its_work_budget,,2028,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_the_recorded_baseline_still_resembles_the_measured_suite,,3265,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_a_profile_at_the_baseline_passes,,266,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_the_boundary_is_inclusive,,193,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_going_over_names_the_file_and_the_delta,,225,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_every_violation_is_reported_not_just_the_first,,162,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_an_ungated_counter_does_not_fail_the_build,,151,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_a_file_without_its_own_budget_is_ignored_per_file,,153,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_bout_building_files_come_from_the_counter,,5126,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_the_randomly_sampled_file_is_excluded_from_the_turns_budget,,310,0,0,0,0,0,0,
-unit/test_suite_budget.gd,test_the_exclusion_list_stays_small_and_gates_bouts_regardless,,168,0,0,0,0,0,0,
-unit/test_suite_tier.gd,test_the_fast_gate_skips_exactly_the_files_that_build_bouts,,2858,0,0,0,0,0,0,
-unit/test_suite_tier.gd,test_bout_files_are_not_confined_to_one_directory,,215,0,0,0,0,0,0,
-unit/test_suite_tier.gd,test_the_skip_only_ever_subtracts,,96,0,0,0,0,0,0,
-unit/test_suite_tier.gd,test_the_switch_agrees_with_the_environment,,72,0,0,0,0,0,0,
-unit/test_suite_tier.gd,test_the_skip_reason_says_what_to_run_instead,,120,0,0,0,0,0,0,
-unit/test_suite_tier.gd,test_every_listed_file_implements_the_skip_hook,,499,0,0,0,0,0,0,
-unit/test_void_vocabulary_guard.gd,test_no_gd_file_uses_void_for_anything_but_the_return_annotation,,226063,0,0,0,0,0,0,
+unit/logic/test_surrogate.gd,test_a_bare_matrix_cannot_dock_where_only_a_surrogate_socket_exists,,446,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate.gd,test_a_full_surrogate_cannot_dock_in_a_spinal_only_socket_unreachable,,312,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate.gd,test_a_spinal_surrogate_can_dock_in_its_own_socket,,256,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate.gd,test_a_brain_only_surrogate_also_fits_a_spinal_socket_smaller_fits_bigger,,218,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate.gd,test_attaches_to_is_derived_so_a_new_ladder_rung_updates_every_surrogate,,242,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_surrogate.gd,test_the_matrix_docks_inside_the_surrogate_and_unit_resolves_it_through_two_levels,,327,0,0,0,0,0,0,a matrix docks only into a free MATRIX socket
+unit/logic/test_surrogate.gd,test_destroying_the_torso_drops_the_surrogate_with_the_matrix_in_it,,683,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/logic/test_surrogate.gd,test_destroying_the_surrogate_itself_ejects_a_bare_matrix,,548,0,0,0,0,0,0,"a destroyed shell ejects its matrix, which survives as a field item"
+unit/logic/test_surrogate.gd,test_a_part_needing_a_capability_the_surrogate_lacks_is_inert_but_still_shootable,,215,0,0,0,0,0,0,a part whose required capability is unmet is inert
+unit/logic/test_surrogate.gd,test_a_part_needing_a_capability_the_surrogate_has_is_usable,,200,0,0,0,0,0,0,a part whose required capability is unmet is inert
+unit/logic/test_surrogate.gd,test_a_part_with_no_body_requires_is_always_usable_even_unpiloted,,164,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_surrogate_ladder.gd,test_default_ladder_has_the_expected_ids,,241,0,0,0,0,0,0,"the surrogate ladder is authored data: rungs, branches and demotion order"
+unit/logic/test_surrogate_ladder.gd,test_peripheral_and_torsic_are_mutually_exclusive_branches,,121,0,0,0,0,0,0,"the surrogate ladder is authored data: rungs, branches and demotion order"
+unit/logic/test_surrogate_ladder.gd,test_both_branches_fit_the_full_cavity,,111,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate_ladder.gd,test_spinal_docks_in_either_branch_and_full,,126,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate_ladder.gd,test_brain_only_reaches_every_socket_type,,94,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate_ladder.gd,test_full_only_fits_its_own_cavity,,155,0,0,0,0,0,0,"a surrogate docks into a socket its rung fits, smaller into bigger"
+unit/logic/test_surrogate_ladder.gd,test_demote_from_spinal_and_below_is_unambiguous,,115,0,0,0,0,0,0,a surrogate decays down its authored tiers
+unit/logic/test_surrogate_ladder.gd,test_demote_holds_at_the_bottom_a_bare_matrix_is_the_floor,,138,0,0,0,0,0,0,a surrogate decays down its authored tiers
+unit/logic/test_surrogate_ladder.gd,test_demote_from_full_is_deterministic_and_flags_the_ambiguity,,260,0,0,0,0,0,0,a surrogate decays down its authored tiers
+unit/logic/test_surrogate_ladder.gd,test_a_ladder_with_an_inserted_branch_needs_no_code_change,,606,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_tb38_flat_bout_guard.gd,test_flat_bout_event_stream_matches_golden_hash,,39364,0,6,0,6,0,0,recorded baseline output does not drift
+unit/logic/test_tb38_flat_bout_guard.gd,test_flat_bout_is_itself_seed_deterministic,,78740,0,12,0,12,0,0,the same seed produces the same battle
+unit/logic/test_tb38_flat_bout_guard.gd,test_the_scripted_bout_actually_produces_a_stream,,38479,0,6,0,6,0,0,recorded baseline output does not drift
+unit/logic/test_the_punch.gd,test_an_unarmed_unit_can_punch,,857,0,0,0,0,0,2,"an action is offered by the parts that provide it, never a hardcoded list"
+unit/logic/test_the_punch.gd,test_the_punch_appears_on_the_action_bar_for_an_unarmed_unit,,180,0,0,0,0,0,0,"an action is offered by the parts that provide it, never a hardcoded list"
+unit/logic/test_tile_inspection.gd,test_inspect_out_of_bounds_returns_empty,,2143,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_tile_inspection.gd,test_inspect_reports_terrain_and_the_real_field_object,,2194,0,0,0,0,0,0,tile inspection reports what is really at the cell
+unit/logic/test_tile_inspection.gd,test_inspect_reports_empty_for_an_unfloored_cell,,1602,0,0,0,0,0,0,tile inspection reports what is really at the cell
+unit/logic/test_tile_inspection.gd,test_inspect_reports_ramp_for_a_ramp_tagged_surface,,1100,0,0,0,0,0,0,tile inspection reports what is really at the cell
+unit/logic/test_tile_inspection.gd,test_inspect_reports_any_unit_at_the_cell_regardless_of_squad,,1600,0,0,0,0,0,0,tile inspection reports what is really at the cell
+unit/logic/test_tile_inspection.gd,test_inspect_ignores_a_dead_unit_at_the_cell,,1361,0,0,0,0,0,0,the dead take no part in resolution
+unit/logic/test_tile_inspection.gd,test_inspect_reports_a_field_object_at_the_cell,,1103,0,0,0,0,0,0,tile inspection reports what is really at the cell
+unit/logic/test_tile_inspection.gd,test_visible_from_selected_is_null_with_nothing_selected,,921,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_tile_inspection.gd,test_visible_from_selected_reflects_line_of_sight_to_the_hovered_cell,,1062,0,0,0,0,0,0,a shot needs line of sight
+unit/logic/test_tooltip_builder.gd,test_for_part_shows_raw_fields_with_no_local_arithmetic,,204,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_tooltip_builder.gd,test_for_part_flags_condition_as_changed_only_when_damaged,,190,0,0,0,0,0,0,a tooltip names which sources changed a stat and how
+unit/logic/test_tooltip_builder.gd,test_for_part_includes_salvage_yield_when_present,,152,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_part_with_a_row_shows_socket_and_inert_state,,144,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_unit_shows_full_status_regardless_of_squad,,227,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_unit_omits_destroyed_parts,,179,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_tooltip_builder.gd,test_for_action_shows_requires_and_requires_action,,94,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_queue_entry_shows_describe_ap_and_mp,,101,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_queue_entry_shows_an_extra_detail_row_when_present,,91,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_queue_entry_omits_the_detail_row_when_absent,,64,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_tile_shows_terrain_when_nothing_else_is_present,,140,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_tile_with_a_unit_delegates_to_the_units_own_status,,173,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_tooltip_builder.gd,test_for_tile_with_a_field_object_shows_its_own_detail,,195,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_tile_on_an_empty_cell_returns_an_empty_tooltip_data,,118,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_tooltip_builder.gd,test_for_wound_shows_description_disables_and_repair_difficulty,,118,0,0,0,0,0,0,a tooltip shows what is there and omits what is not
+unit/logic/test_tooltip_builder.gd,test_for_wound_on_an_unauthored_id_still_returns_a_titled_tooltip,,75,0,0,0,0,0,0,an unknown open-vocabulary id falls back rather than failing
+unit/logic/test_tracer_geometry.gd,test_segment_size_is_square_and_as_long_as_the_segment,,122,0,0,0,0,0,0,a tracer segment spans and orients along the shot it draws
+unit/logic/test_tracer_geometry.gd,test_segment_transform_centers_on_the_segments_midpoint,,108,0,0,0,0,0,0,a tracer segment spans and orients along the shot it draws
+unit/logic/test_tracer_geometry.gd,test_segment_transform_orients_local_z_along_the_segment,,85,0,0,0,0,0,0,a tracer segment spans and orients along the shot it draws
+unit/logic/test_tracer_geometry.gd,test_a_degenerate_segment_returns_identity_at_from_rather_than_crash,,86,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_transparency_proof.gd,test_headline_property_tooltip_predicted_damage_equals_actual_damage,,19621,0,0,0,0,0,60,the tooltip and the damage come from the same resolver call
+unit/logic/test_transparency_proof.gd,test_a_damage_modifier_changes_both_the_tooltip_and_the_actual_damage_together,,851,0,0,0,0,0,2,the tooltip and the damage come from the same resolver call
+unit/logic/test_turn_start_power_walks.gd,test_threading_a_prewalked_list_gives_identical_power_numbers,,4614,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_turn_start_power_walks.gd,test_operable_from_agrees_with_operable_parts,,6539,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_turn_start_power_walks.gd,test_operable_from_drops_destroyed_parts,,5568,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_turn_start_power_walks.gd,test_a_structural_change_between_turns_is_seen_immediately,,13887,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/logic/test_unit.gd,test_mp_per_ap_uses_base_plus_agility,,229,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_unit.gd,test_mp_per_ap_defaults_to_base_with_no_agility_stat,,144,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_unit.gd,test_mp_per_ap_reflects_live_part_swaps,,154,0,0,0,0,0,0,a cache returns exactly what the uncached path would
+unit/logic/test_unit.gd,test_new_unit_starts_alive_with_no_held_matrix,,525,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_unit.gd,test_new_unit_starts_at_the_top_of_the_surrogate_ladder,,152,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_unit.gd,test_demote_surrogate_steps_one_rung_and_starts_the_exposure_clock,,249,0,0,0,0,0,0,a surrogate decays down its authored tiers
+unit/logic/test_unit.gd,test_tick_organics_decay_demotes_further_every_decay_turns,,311,0,0,0,0,0,0,a surrogate decays down its authored tiers
+unit/logic/test_unit.gd,test_tick_organics_decay_is_a_no_op_while_never_exposed,,155,0,0,0,0,0,0,an exposed surrogate decays unless powered life support holds it
+unit/logic/test_unit.gd,test_pose_at_returns_the_same_pose_regardless_of_progress,,304,0,0,0,0,0,0,a pose changes the projected shot plane
+unit/logic/test_unit_geometry.gd,test_no_root_produces_no_placements,,192,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_unit_geometry.gd,test_a_single_box_root_places_at_the_units_cell,,175,0,0,0,0,0,0,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_unit_geometry.gd,test_a_units_true_y_accounts_for_its_own_level,,229,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/logic/test_unit_geometry.gd,test_orientation_override_replaces_the_units_own_orientation,,138,0,0,0,0,0,0,orientation and forward vector round-trip in every quadrant
+unit/logic/test_unit_geometry.gd,test_a_null_orientation_override_is_the_same_as_omitting_it,,295,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_unit_geometry.gd,test_dead_parts_produce_no_placements,,295,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_unit_geometry.gd,test_a_destroyed_child_part_disappears_but_its_living_siblings_remain,,207,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_unit_geometry.gd,test_bounding_sphere_of_a_single_box_is_the_boxs_own_half_diagonal,,168,0,0,0,0,0,0,a bounding sphere covers every living box and nothing more
+unit/logic/test_unit_geometry.gd,test_bounding_sphere_for_part_of_a_single_box_is_the_boxs_own_half_diagonal,,118,0,0,0,0,0,0,a bounding sphere covers every living box and nothing more
+unit/logic/test_unit_geometry.gd,test_bounding_sphere_grows_to_cover_every_living_box,,176,0,0,0,0,0,0,a bounding sphere covers every living box and nothing more
+unit/logic/test_unit_geometry.gd,test_bounding_sphere_ignores_destroyed_parts,,134,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_unit_geometry.gd,test_bounding_sphere_with_no_root_falls_back_to_the_units_own_cell,,114,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_unit_geometry.gd,test_a_pose_changes_a_parts_composed_world_transform,,140,0,0,0,0,0,0,a pose changes the projected shot plane
+unit/logic/test_unit_geometry.gd,test_an_arbitrary_pose_never_seen_in_poses_gd_still_works,,141,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_unit_geometry.gd,test_down_puts_every_box_below_standing_height,,4769,0,0,0,0,0,0,a pose changes the projected shot plane
+unit/logic/test_unit_geometry.gd,test_a_socket_transform_offsets_the_child_from_the_root,,304,0,0,0,0,0,0,a part's socket transform decides where it projects in the shot plane
+unit/logic/test_unit_geometry.gd,test_muzzle_point_returns_the_weapons_own_composed_forward_tip,,655,0,0,0,0,0,0,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/test_unit_geometry.gd,test_muzzle_point_falls_back_to_the_units_own_cell_when_the_weapon_has_no_placement,,148,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_unit_geometry.gd,test_shoulder_height_returns_the_real_shoulder_socket_world_height,,122,0,0,0,0,0,0,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/test_unit_geometry.gd,test_shoulder_height_is_negative_one_with_no_shoulder_socket_anywhere,,130,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_unit_geometry.gd,test_shouldered_muzzle_point_keeps_lateral_depth_but_overrides_height,,464,0,0,0,0,0,0,"a shot originates at the real muzzle, not the cell centre"
+unit/logic/test_unit_geometry.gd,test_shouldered_muzzle_point_falls_back_to_natural_with_no_shoulder_socket,,148,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_unit_geometry.gd,test_true_height_for_cell_reads_the_placed_surface_once_placement_exists,,173,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/logic/test_unit_geometry.gd,test_true_height_for_cell_is_zero_for_an_unfloored_cell_on_a_real_grid,,156,0,0,0,0,0,0,a unit's height follows the cell it stands on
+unit/logic/test_unit_picker.gd,test_a_straight_down_ray_through_a_units_box_hits_that_unit,,329,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_unit_picker.gd,test_hit_reports_the_specific_part_whose_box_was_struck,,262,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_unit_picker.gd,test_a_ray_that_misses_every_box_returns_nothing,,137,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_unit_picker.gd,test_the_nearer_of_two_units_along_the_same_ray_wins,,373,0,0,0,0,0,0,a picking ray returns the nearest thing along it
+unit/logic/test_unit_picker.gd,test_dead_units_are_never_hit,,214,0,0,0,0,0,0,the dead take no part in resolution
+unit/logic/test_unit_picker.gd,test_hit_t_is_comparable_to_board_pickers_plane_hit_t_on_the_same_ray,,224,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_variant_generator.gd,test_zero_variation_amount_always_returns_the_base_loadout_unchanged,,2815,0,0,0,0,0,0,a feature switched off leaves behaviour exactly as it was
+unit/logic/test_variant_generator.gd,test_no_authored_family_falls_back_to_uniform_generation,,1164,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_variant_generator.gd,test_an_omittable_socket_is_sometimes_bare_and_sometimes_not_across_seeds,,1179,0,0,0,0,0,0,a variant is generated from its family's own authored pools
+unit/logic/test_variant_generator.gd,test_a_swap_pool_socket_sometimes_picks_an_alternate,,2427,0,0,0,0,0,0,a variant is generated from its family's own authored pools
+unit/logic/test_variant_generator.gd,test_the_same_seed_reproduces_the_same_variant_exactly,,1133,0,0,0,0,0,0,the same seed produces the same world
+unit/logic/test_variant_generator.gd,test_a_brand_new_family_needs_no_generator_code_change,,2156,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_variant_generator.gd,test_editing_the_base_after_generating_never_touches_the_variant,,1026,0,0,0,0,0,0,a variant groups with the base it derives from
+unit/logic/test_variant_generator.gd,test_junk_bot_family_generates_structurally_different_bots_across_seeds,,126866,0,0,0,0,0,0,a variant is generated from its family's own authored pools
+unit/logic/test_variant_generator.gd,test_junk_bot_family_is_deterministic_from_the_same_seed,,1575,0,0,0,0,0,0,the same seed produces the same world
+unit/logic/test_variant_generator.gd,test_combat_tester_family_produces_uniform_bots,,4813,0,0,0,0,0,0,a variant is generated from its family's own authored pools
+unit/logic/test_variant_generator.gd,test_every_generated_junk_bot_variant_passes_assembly_validation,,120610,0,0,0,0,0,0,"an assembly builds from a template and a loadout, or fails by name"
+unit/logic/test_variant_generator.gd,test_the_junk_bot_variant_family_is_loaded_from_real_data,,1063,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_visibility_field.gd,test_every_cell_shot_plane_calls_clear_is_set_in_the_field,,182582,0,0,0,0,0,299,the visibility field never rules out a cell the shot plane would allow
+unit/logic/test_visibility_field.gd,test_a_destroyed_wall_stops_occluding_even_though_it_stays_opaque,,5114,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_visibility_field.gd,test_cover_does_not_occlude_the_field,,4699,0,0,0,0,0,0,the visibility field never rules out a cell the shot plane would allow
+unit/logic/test_visibility_field.gd,test_a_walled_off_target_costs_exactly_zero_shot_plane_builds,,20106,0,0,0,2,0,0,a field is computed once per round and read many times
+unit/logic/test_visibility_field.gd,test_the_field_actually_eliminates_candidates,,10898,0,0,0,0,0,0,turning a tier or restriction off changes the decision
+unit/logic/test_visibility_field.gd,test_a_cell_one_level_up_is_always_allowed,,6499,0,0,0,0,0,0,the visibility field never rules out a cell the shot plane would allow
+unit/logic/test_visibility_field.gd,test_a_cell_one_level_down_is_always_allowed,,6533,0,0,0,0,0,0,the visibility field never rules out a cell the shot plane would allow
+unit/logic/test_visibility_field.gd,test_the_targets_own_cell_is_allowed,,3643,0,0,0,0,0,0,the visibility field never rules out a cell the shot plane would allow
+unit/logic/test_visibility_field.gd,test_out_of_bounds_is_allowed_rather_than_rejected,,4684,0,0,0,0,0,0,the visibility field never rules out a cell the shot plane would allow
+unit/logic/test_wall_legibility.gd,test_a_wall_near_the_focal_points_own_screen_position_and_nearer_occludes,,147,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/logic/test_wall_legibility.gd,test_a_wall_far_from_the_focal_points_screen_position_does_not_occlude,,110,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/logic/test_wall_legibility.gd,test_a_wall_behind_the_focal_point_does_not_occlude_even_at_the_same_screen_position,,54,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/logic/test_wall_legibility.gd,test_a_wall_at_the_exact_same_depth_as_the_focal_point_does_not_occlude,,48,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/logic/test_wall_legibility.gd,test_a_wall_just_inside_the_screen_radius_occludes,,45,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/logic/test_wall_legibility.gd,test_a_wall_just_outside_the_screen_radius_does_not_occlude,,45,0,0,0,0,0,0,a wall fades only when it is near the focal point on screen and in front of it
+unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_is_positive_for_a_unit_on_screen,,70,0,0,0,0,0,0,a screen radius scales with depth and with the tiles it must cover
+unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_shrinks_as_depth_increases,,52,0,0,0,0,0,0,a screen radius scales with depth and with the tiles it must cover
+unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_grows_with_more_tiles,,50,0,0,0,0,0,0,a screen radius scales with depth and with the tiles it must cover
+unit/logic/test_wall_legibility.gd,test_pixel_radius_for_tiles_is_zero_at_zero_depth,,72,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_watched_run.gd,test_seeds_play_in_the_order_given,,1662,0,0,0,0,0,0,"a watched run records every seed's outcome, including the ones it skipped"
+unit/logic/test_watched_run.gd,test_parsing_a_seed_list_is_tolerant_of_spacing,,1291,0,0,0,0,0,0,a parsed input tolerates spacing and drops what it cannot read
+unit/logic/test_watched_run.gd,test_a_nonsense_entry_is_dropped_rather_than_read_as_zero,,2035,0,0,0,0,0,0,a parsed input tolerates spacing and drops what it cannot read
+unit/logic/test_watched_run.gd,test_stopping_mid_run_keeps_the_results_so_far,,1074,0,0,0,0,0,0,"a watched run records every seed's outcome, including the ones it skipped"
+unit/logic/test_watched_run.gd,test_killing_a_run_leaves_nothing_behind,,1354,0,0,0,0,0,0,the run panel reports the real rung and the real verdict
+unit/logic/test_watched_run.gd,test_a_skipped_seed_is_recorded_rather_than_dropped,,1127,0,0,0,0,0,0,"a watched run records every seed's outcome, including the ones it skipped"
+unit/logic/test_watched_run.gd,test_rewatching_clears_the_row_it_replaces,,3038,0,0,0,0,0,0,"a watched run records every seed's outcome, including the ones it skipped"
+unit/logic/test_watched_run.gd,test_rewatching_before_the_first_seed_does_nothing,,1831,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_watched_run.gd,test_the_criteria_explain_every_outcome_by_name,,1679,0,0,0,0,0,0,"a refusal says why, by name"
+unit/logic/test_watched_run.gd,test_the_table_shows_seeds_that_have_not_played_yet,,1695,0,0,0,0,0,0,"a watched run records every seed's outcome, including the ones it skipped"
+unit/logic/test_watched_run.gd,test_a_watched_seed_matches_what_the_headless_path_reported,,22294194,2,56,67360,134,58,468,"one mechanism, distinctly logged — no parallel systems"
+unit/logic/test_weapon_chambering.gd,test_same_family_under_max_length_chambers,,196,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_same_family_over_max_length_is_rejected_by_name,,157,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_different_family_is_rejected_regardless_of_length,,110,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_two_different_diameter_rounds_in_one_family_both_chamber,,108,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_a_mini_grenade_chambers_in_a_normal_gun_by_family_alone,,81,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_long_shell_fits_the_long_chamber_but_not_the_short_one,,154,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_cross_compatible_rounds_share_one_family,,97,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_chambering.gd,test_try_chamber_loads_on_success_and_leaves_the_weapon_untouched_on_failure,,138,0,0,0,0,0,0,a refused injection changes nothing
+unit/logic/test_weapon_chambering.gd,test_a_non_weapon_part_cannot_chamber_anything,,78,0,0,0,0,0,0,a part carries weapon data only when it is a weapon
+unit/logic/test_weapon_chambering.gd,test_the_real_reference_guns_chamber_their_own_reference_ammo,,16126,0,0,0,0,0,0,authored weapon data matches its table
+unit/logic/test_weapon_resolver.gd,test_resolve_damage_with_no_modifiers_matches_the_base,,157,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_resolver.gd,test_resolve_damage_applies_a_part_stat_mod,,147,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_resolver.gd,test_resolve_damage_applies_an_extra_source_eg_a_perk,,115,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_resolver.gd,test_resolve_crit_chance_matches_the_base_with_no_modifiers,,93,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_resolver.gd,test_damage_multiplier_scales_the_resolved_damage,,124,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_resolver.gd,test_no_weapon_def_means_no_multiplier_source_at_all,,135,0,0,0,0,0,0,an unstated authored field takes its default
+unit/logic/test_weapon_resolver.gd,test_resolve_recoil_step_matches_the_pure_formula_with_no_modifiers,,83,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_resolver.gd,test_resolve_recoil_step_applies_a_part_stat_mod,,77,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_weapon_rows.gd,test_a_shell_with_no_weapons_builds_no_rows,,163,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
+unit/logic/test_weapon_rows.gd,test_an_operable_weapon_is_active_with_no_reason,,198,0,0,0,0,0,0,"a weapon row says active or inactive, with the reason"
+unit/logic/test_weapon_rows.gd,test_a_weapon_with_no_capable_manipulator_is_inactive_with_a_reason,,139,0,0,0,0,0,0,"a weapon needs its required manipulator capabilities, from whichever parts"
+unit/logic/test_weapon_rows.gd,test_a_destroyed_weapon_is_inactive_and_says_destroyed,,155,0,0,0,0,0,0,a destroyed part stops contributing
+unit/logic/test_weapon_rows.gd,test_a_two_handed_weapon_with_only_one_manipulator_is_inactive,,146,0,0,0,0,0,0,"a weapon needs its required manipulator capabilities, from whichever parts"
+unit/logic/test_weapon_rows.gd,test_dual_wielded_operable_pistols_are_both_active,,189,0,0,0,0,0,0,"a weapon row says active or inactive, with the reason"
+unit/logic/test_weapon_rows.gd,test_a_carried_but_unattached_weapon_is_not_listed,,132,0,0,0,0,0,0,"a weapon row says active or inactive, with the reason"
+unit/logic/test_weapon_sim_hardening.gd,test_burst_size_of_one_is_cleanly_rejected_as_illegal,,1930,0,0,0,0,0,0,"a misconfiguration is rejected, not silently absorbed"
+unit/logic/test_weapon_sim_hardening.gd,test_a_very_large_burst_size_still_terminates_and_replays_identically,,37858,0,0,0,0,0,402,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_projectile_num_of_one_and_of_many_both_terminate_cleanly,,15320,0,0,0,0,0,155,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_a_large_burst_of_a_high_pellet_round_terminates,,51773,0,0,0,0,0,601,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_mechanical_accuracy_at_zero_and_one_both_produce_finite_points,,1136,0,0,0,0,0,0,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_perfect_mechanical_accuracy_collapses_the_pattern_to_the_center,,1199,0,0,0,0,0,0,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_zero_and_very_long_barrel_length_produce_finite_recoil_and_spread,,1154,0,0,0,0,0,0,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_a_cartridge_exactly_at_max_case_length_chambers,,1164,0,0,0,0,0,0,"a round chambers by family and case length, or is rejected by name"
+unit/logic/test_weapon_sim_hardening.gd,test_recoil_does_not_diverge_across_a_long_burst,,1082,0,0,0,0,0,0,an extreme authored value still terminates and stays finite
+unit/logic/test_weapon_sim_hardening.gd,test_ricochet_depth_cap_holds_under_a_burst_of_many_simultaneous_deflections,,70366,0,0,0,0,0,90,ricochet depth caps bound deflection chains
+unit/logic/test_work_counters.gd,test_the_same_bout_does_identical_work_twice,,5425934,1,6,10632,14,6,57,the same seed produces the same battle
+unit/logic/test_work_counters.gd,test_every_counter_actually_counts,,2600594,1,6,10632,14,6,57,"the work counters count real work, and reset to nothing"
+unit/logic/test_work_counters.gd,test_resetting_clears_every_counter,,2681512,0,0,0,0,0,0,"the work counters count real work, and reset to nothing"
+unit/logic/test_work_counters.gd,test_a_scripted_turn_counts_without_any_bout_being_built,,15319,0,1,0,0,0,0,"the work counters count real work, and reset to nothing"
+unit/logic/test_work_counters.gd,test_a_rejected_roster_does_not_count_as_a_bout,,1129,0,0,0,0,0,0,"the work counters count real work, and reset to nothing"
+unit/logic/test_work_counters.gd,test_ui_builds_moves_for_a_view_fixture_and_not_for_a_bout,,2937178,1,6,10632,16,6,57,"the work counters count real work, and reset to nothing"
+unit/logic/test_work_counters.gd,test_resetting_clears_the_ui_counter,,1772,0,0,0,0,0,0,"the work counters count real work, and reset to nothing"
+unit/logic/test_world_view_seam.gd,test_the_planner_never_reads_occupancy_off_the_grid,,3009,0,0,0,0,0,0,the planner reads the world only through the restricted view
+unit/logic/test_world_view_seam.gd,test_the_planner_never_reads_unit_knowledge_off_a_combat_state,,5516,0,0,0,0,0,0,the planner reads the world only through the restricted view
+unit/logic/test_world_view_seam.gd,test_the_resolver_door_is_never_dereferenced,,2136,0,0,0,0,0,0,the planner reads the world only through the restricted view
+unit/logic/test_world_view_seam.gd,test_the_guard_is_reading_a_real_planner_that_uses_the_view,,235,0,0,0,0,0,0,turning a tier or restriction off changes the decision
+unit/logic/test_world_view_seam.gd,test_a_restricted_view_makes_the_unit_decide_differently,,69755,0,0,0,3,0,0,turning a tier or restriction off changes the decision
+unit/logic/test_world_view_seam.gd,test_a_remembered_sighting_expires_by_comparison_not_by_a_hook,,19276,0,0,0,0,0,0,an AI unit reasons only from what its tier remembers seeing
+unit/logic/test_world_view_seam.gd,test_the_team_blackboard_is_gated_on_tier,,6130,0,0,0,0,0,0,an AI capability belongs to the tier that authors it
+unit/logic/test_world_view_seam.gd,test_a_unit_without_blackboard_access_cannot_write_one_either,,5355,0,0,0,0,0,0,an AI capability belongs to the tier that authors it
+unit/logic/test_world_view_seam.gd,test_the_unrestricted_view_is_byte_identical_across_a_seeded_bout,,6426668,2,16,23776,36,16,174,the same seed produces the same battle
+unit/logic/test_world_view_seam.gd,test_a_preview_clone_starts_with_no_batch_plans,,10916,0,0,0,0,0,0,a preview copy carries the state it must and none of the state it must not
+unit/logic/test_world_view_seam.gd,test_intelligence_tier_rides_through_dup,,579,0,0,0,0,0,0,a preview copy carries the state it must and none of the state it must not
+unit/logic/test_wounds.gd,test_the_three_named_wounds_are_authored_and_loadable,,1038,0,0,0,0,0,0,content is an open StringName vocabulary a designer can extend without code
+unit/logic/test_wounds.gd,test_burnt_electronics_carries_higher_repair_difficulty,,1091,0,0,0,0,0,0,an authored preset's content matches what it claims to be
+unit/logic/test_wounds.gd,test_short_label_is_at_most_five_characters,,1285,0,0,0,0,0,0,"a log line is readable prose, not a struct dump"
+unit/logic/test_wounds.gd,test_a_severed_controls_wound_disables_a_manipulator_without_0_hp,,1651,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/logic/test_wounds.gd,test_a_severed_controls_wound_on_the_weapon_itself_disables_it,,1662,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/logic/test_wounds.gd,test_burnt_electronics_does_not_disable_anything,,1537,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/logic/test_wounds.gd,test_direct_infliction_adds_the_named_wound_exactly_once,,1096,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/logic/test_wounds.gd,test_removing_a_wounded_part_clears_its_effect_on_the_unit,,1517,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/logic/test_wounds.gd,test_a_wound_disabled_parts_stat_contribution_drops_out_of_the_resolver_sources,,1275,0,0,0,0,0,0,every final stat goes through StatResolver
+unit/logic/test_wounds.gd,test_status_threshold_hook_inflicts_the_wound_once_the_threshold_is_crossed,,1270,0,0,0,0,0,0,a wound disables what it names without destroying the part
+unit/logic/test_wounds.gd,test_weapon_rows_reports_a_wound_disabled_weapon_with_its_reason,,1546,0,0,0,0,0,0,"a weapon row says active or inactive, with the reason"
+unit/test_exit_code_probe.gd,test_the_probe_fails_only_when_it_is_asked_to,,322,0,0,0,0,0,0,the gate's exit code reflects the run's real verdict
+unit/test_no_orphaned_uids.gd,test_no_uid_file_is_missing_its_script,,2339,0,0,0,0,0,0,a retired mechanism leaves no trace in the code
+unit/test_retired_planner_sweep.gd,test_nothing_in_the_tree_names_the_retired_planner,,30648,0,0,0,0,0,0,a retired mechanism leaves no trace in the code
+unit/test_retired_planner_sweep.gd,test_the_sweep_would_actually_catch_a_reintroduction,,212,0,0,0,0,0,0,turning a tier or restriction off changes the decision
+unit/test_retired_planner_sweep.gd,test_the_linter_file_cap_came_back_down,,105,0,0,0,0,0,0,the codebase's own conventions are enforced by a test
+unit/test_run_suite.gd,test_the_runner_fails_the_process_when_a_test_fails,,3964527,0,0,0,0,0,0,the gate's exit code reflects the run's real verdict
+unit/test_run_suite.gd,test_the_same_probe_passes_when_nothing_asks_it_to_fail,,4155835,0,0,0,0,0,0,the gate's exit code reflects the run's real verdict
+unit/test_run_suite.gd,test_a_passing_targeted_run_exits_zero_reports_its_cost_and_writes_nothing,,4331235,0,0,0,0,0,0,only a full run may write an artifact describing the whole suite
+unit/test_run_suite.gd,test_an_ambiguous_name_fails_and_prints_every_match,,16580,0,0,0,0,0,0,"a refusal says why, by name"
+unit/test_run_suite.gd,test_an_unknown_target_is_a_usage_error,,13024,0,0,0,0,0,0,"a refusal says why, by name"
+unit/test_run_suite.gd,test_a_targeted_run_refuses_to_write_the_profile_even_when_asked,,4130148,0,0,0,0,0,0,only a full run may write an artifact describing the whole suite
+unit/test_smoke.gd,test_smoke,,146,0,0,0,0,0,0,the suite runs at all
+unit/test_suite_audit_csv.gd,test_the_csv_has_one_row_per_declared_test,,32258,0,0,0,0,0,0,the audit CSV has one row per declared test
+unit/test_suite_audit_csv.gd,test_the_csv_carries_the_columns_the_audit_expects,,1257,0,0,0,0,0,0,the audit CSV has one row per declared test
+unit/test_suite_audit_csv.gd,test_the_judgement_columns_are_emitted_empty,,22087,0,0,0,0,0,0,the audit CSV has one row per declared test
+unit/test_suite_audit_csv.gd,test_per_test_counters_sum_to_the_file_level_profile,,20763,0,0,0,0,0,0,per-test counters sum to the file-level profile
+unit/test_suite_audit_csv.gd,test_a_test_that_builds_no_bout_reports_zero_bouts,,14525,0,0,0,0,0,0,per-test counters sum to the file-level profile
+unit/test_suite_audit_csv.gd,test_unattributed_setup_is_a_small_share_of_wall_clock,,14893,0,0,0,0,0,0,per-test counters sum to the file-level profile
+unit/test_suite_budget.gd,test_the_suite_is_within_its_work_budget,,2028,0,0,0,0,0,0,the work budget ratchets: no file may cost more than its baseline
+unit/test_suite_budget.gd,test_the_recorded_baseline_still_resembles_the_measured_suite,,3265,0,0,0,0,0,0,the work budget ratchets: no file may cost more than its baseline
+unit/test_suite_budget.gd,test_a_profile_at_the_baseline_passes,,266,0,0,0,0,0,0,the work budget ratchets: no file may cost more than its baseline
+unit/test_suite_budget.gd,test_the_boundary_is_inclusive,,193,0,0,0,0,0,0,the work budget ratchets: no file may cost more than its baseline
+unit/test_suite_budget.gd,test_going_over_names_the_file_and_the_delta,,225,0,0,0,0,0,0,"a refusal says why, by name"
+unit/test_suite_budget.gd,test_every_violation_is_reported_not_just_the_first,,162,0,0,0,0,0,0,"a refusal says why, by name"
+unit/test_suite_budget.gd,test_an_ungated_counter_does_not_fail_the_build,,151,0,0,0,0,0,0,the work budget ratchets: no file may cost more than its baseline
+unit/test_suite_budget.gd,test_a_file_without_its_own_budget_is_ignored_per_file,,153,0,0,0,0,0,0,the work budget ratchets: no file may cost more than its baseline
+unit/test_suite_budget.gd,test_bout_building_files_come_from_the_counter,,5126,0,0,0,0,0,0,"one mechanism, distinctly logged — no parallel systems"
+unit/test_suite_budget.gd,test_the_randomly_sampled_file_is_excluded_from_the_turns_budget,,310,0,0,0,0,0,0,a randomly sampled measurement is excluded from a ratcheted budget
+unit/test_suite_budget.gd,test_the_exclusion_list_stays_small_and_gates_bouts_regardless,,168,0,0,0,0,0,0,a randomly sampled measurement is excluded from a ratcheted budget
+unit/test_suite_tier.gd,test_the_fast_gate_skips_exactly_the_files_that_build_bouts,,2858,0,0,0,0,0,0,the fast gate skips exactly the bout-building files and never adds any
+unit/test_suite_tier.gd,test_bout_files_are_not_confined_to_one_directory,,215,0,0,0,0,0,0,the fast gate skips exactly the bout-building files and never adds any
+unit/test_suite_tier.gd,test_the_skip_only_ever_subtracts,,96,0,0,0,0,0,0,the fast gate skips exactly the bout-building files and never adds any
+unit/test_suite_tier.gd,test_the_switch_agrees_with_the_environment,,72,0,0,0,0,0,0,the fast gate skips exactly the bout-building files and never adds any
+unit/test_suite_tier.gd,test_the_skip_reason_says_what_to_run_instead,,120,0,0,0,0,0,0,"a refusal says why, by name"
+unit/test_suite_tier.gd,test_every_listed_file_implements_the_skip_hook,,499,0,0,0,0,0,0,the fast gate skips exactly the bout-building files and never adds any
+unit/test_void_vocabulary_guard.gd,test_no_gd_file_uses_void_for_anything_but_the_return_annotation,,226063,0,0,0,0,0,0,the codebase's own conventions are enforced by a test
 unit/view/overlays/test_ai_batch_yield.gd,test_a_yielding_batch_produces_the_identical_bout,,55338091,2,108,162708,232,108,1134,
 unit/view/overlays/test_ai_batch_yield.gd,test_frames_pass_during_the_batch,,3433705,1,10,18156,24,10,48,
 unit/view/overlays/test_generate_bout_overlay.gd,test_setup_populates_ordered_presets_from_loaded_presets,,188243,0,0,0,2,0,0,
