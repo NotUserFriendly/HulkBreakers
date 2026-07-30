@@ -31,20 +31,29 @@ func _lines() -> Array[String]:
 	if not FileAccess.file_exists(CSV_PATH):
 		return []
 	var out: Array[String] = []
-	for line: String in FileAccess.get_file_as_string(CSV_PATH).split("\n"):
+	# A trailing `\r` is dropped rather than trusted: a CRLF writer put one on the last
+	# column, so its header key read `rule_guarded\r` and every lookup of the real name
+	# raised — which under `-d` is a debugger break, not a red test.
+	for line: String in FileAccess.get_file_as_string(CSV_PATH).replace("\r\n", "\n").split("\n"):
 		if line.strip_edges() != "":
 			out.append(line)
 	return out
 
 
+## Parsed through `CsvLine`, not a bare `split(",")`.
+##
+## Pass B's `rule_guarded` values are sentences, and sentences contain commas, so the
+## writer quotes them. A naive split shifted every numeric column one place right and this
+## file read `bouts` as 8697 against a true 56 — a red run that looked like a profiler bug
+## and was a parser bug. One codec now writes and reads these fields.
 func _rows() -> Array[Dictionary]:
 	var lines: Array[String] = _lines()
 	var rows: Array[Dictionary] = []
 	if lines.is_empty():
 		return rows
-	var header: PackedStringArray = lines[0].split(",")
+	var header: PackedStringArray = CsvLine.split(lines[0])
 	for i in range(1, lines.size()):
-		var cells: PackedStringArray = lines[i].split(",")
+		var cells: PackedStringArray = CsvLine.split(lines[i])
 		var row: Dictionary = {}
 		for c in range(header.size()):
 			row[header[c]] = cells[c] if c < cells.size() else ""
@@ -155,23 +164,73 @@ func test_the_csv_carries_the_columns_the_audit_expects() -> void:
 	assert_eq(lines[0], EXPECTED_HEADER, "the header matches TEST-AUDIT.md's schema")
 
 
-## **The judgement columns ship present and empty.** `TEST-AUDIT.md`'s procedure fills
-## them by hand; a generator that omitted them would make the file need reshaping before
-## it could be used, and a generator that guessed at them would be inventing the audit.
-func test_the_judgement_columns_are_emitted_empty() -> void:
+## **`rule_guarded` is filled everywhere; `description` is a defect list and stays sparse.**
+##
+## `TEST-AUDIT.md` is explicit about the shape of a useful classification: a rule per row,
+## a small number of distinct rules, and a `description` column that is mostly empty
+## because "the test names in this repo are already sentences". If `description` ever comes
+## back mostly full it is being used to restate names, and the rows are worthless — so the
+## sparseness is asserted rather than hoped for.
+##
+## The distinct-rule ratio is the one that catches a paraphrased column: if every row had
+## its own rule, sorting by it would surface no clusters and the audit would have produced
+## nothing. Bounded loosely, because the right number is a judgement, not a target.
+func test_the_judgement_columns_carry_a_real_classification() -> void:
 	var rows: Array[Dictionary] = _rows()
 	if rows.is_empty():
 		return
-	var filled := 0
-	for row: Dictionary in rows:
-		if String(row["description"]).strip_edges() != "":
-			filled += 1
-		if String(row["rule_guarded"]).strip_edges() != "":
-			filled += 1
-	# Non-zero once Pass B has filled them; the columns existing is what this pins.
 	assert_true(rows[0].has("description"), "description is a column")
 	assert_true(rows[0].has("rule_guarded"), "rule_guarded is a column")
-	gut.p("%d judgement cells filled" % filled)
+
+	var described := 0
+	var ruled := 0
+	var distinct: Dictionary = {}
+	for row: Dictionary in rows:
+		if String(row["description"]).strip_edges() != "":
+			described += 1
+		var rule: String = String(row["rule_guarded"]).strip_edges()
+		if rule != "":
+			ruled += 1
+			distinct[rule] = true
+
+	gut.p(
+		(
+			"%d/%d rows ruled over %d distinct rules; %d descriptions filled"
+			% [ruled, rows.size(), distinct.size(), described]
+		)
+	)
+	assert_eq(ruled, rows.size(), "every row carries a rule")
+	assert_lt(
+		float(distinct.size()) / float(rows.size()),
+		0.25,
+		"and the rules cluster rather than paraphrasing one test each"
+	)
+	assert_lt(
+		float(described) / float(rows.size()),
+		0.05,
+		"description stays a defect list, not a second copy of the test names"
+	)
+
+
+## **A rule is a sentence, and sentences contain commas.** The classification must survive
+## a round trip through the file, which is the bug this pins: the writer quoted correctly,
+## the reader split on `,`, and every numeric column shifted one place right.
+func test_a_rule_containing_a_comma_survives_the_file() -> void:
+	var rows: Array[Dictionary] = _rows()
+	if rows.is_empty():
+		return
+	var with_comma := 0
+	for row: Dictionary in rows:
+		if String(row["rule_guarded"]).contains(","):
+			with_comma += 1
+			# The shifted-column failure showed up here first: a quoted rule ate the
+			# following field, so the last column read back as a fragment of the rule.
+			assert_false(
+				String(row["usec"]).contains(" "),
+				"usec stays numeric beside a quoted rule: %s" % row["test_name"]
+			)
+	gut.p("%d rows carry a rule containing a comma" % with_comma)
+	assert_gt(with_comma, 0, "the vocabulary is sentences, not comma-free labels")
 
 
 # --- the sums --------------------------------------------------------------------

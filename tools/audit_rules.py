@@ -27,7 +27,9 @@ def save(data, names):
     # reading the header inside this function returned None from an empty file and
     # destroyed the CSV — restored from git. Read before you truncate.
     with open(PATH, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=names)
+        # LF, not csv's default CRLF: the GDScript reader splits on "\n" and a stray
+        # \r rode along on the last column, so its header key read "rule_guarded\r".
+        w = csv.DictWriter(f, fieldnames=names, lineterminator="\n")
         w.writeheader()
         w.writerows(data)
 

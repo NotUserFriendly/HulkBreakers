@@ -338,9 +338,13 @@ func _on_end_run() -> void:
 		file.store_line(line)
 	file.close()
 
+	# **Rendered before the file is opened for writing.** `FileAccess.WRITE` truncates, and
+	# the renderer reads the old file to carry the judgement columns forward — so opening
+	# first handed it an empty file and wiped 2424 hand-filled cells. Read, then truncate.
+	var audit_lines: Array[String] = _render_audit_csv()
 	var audit := FileAccess.open(AUDIT_PATH, FileAccess.WRITE)
 	if audit != null:
-		for line: String in _render_audit_csv():
+		for line: String in audit_lines:
 			audit.store_line(line)
 		audit.close()
 
@@ -365,14 +369,45 @@ func _on_end_run() -> void:
 	quit(1 if failures > 0 else 0)
 
 
-## The audit CSV: one row per test, mechanical columns filled, judgement columns present
-## and empty.
+## Every judgement cell already in the committed CSV, keyed `origin_file\ttest_name`.
 ##
-## **The two judgement columns are emitted empty rather than omitted.** `TEST-AUDIT.md`'s
+## **Regenerating the mechanical columns must not erase the hand-filled ones.** The
+## procedure in `TEST-AUDIT.md` is "regenerate the mechanical columns, then fill the two
+## judgement columns" — and taskblock-49 Pass B filled 2424 of them by hand. A writer that
+## always emitted them blank meant the next `WRITE_PROFILE=1` run silently destroyed the
+## audit, with a green suite either way. A test whose row vanished simply drops its cells.
+func _existing_judgements() -> Dictionary:
+	var kept: Dictionary = {}
+	if not FileAccess.file_exists(AUDIT_PATH):
+		return kept
+	var text: String = FileAccess.get_file_as_string(AUDIT_PATH)
+	var first := true
+	for line: String in text.split("\n"):
+		if line.strip_edges() == "":
+			continue
+		if first:
+			first = false
+			continue
+		var cells: PackedStringArray = CsvLine.split(line)
+		if cells.size() < 11:
+			continue
+		var description: String = cells[2]
+		var rule: String = cells[10]
+		if description == "" and rule == "":
+			continue
+		kept["%s\t%s" % [cells[0], cells[1]]] = [description, rule]
+	return kept
+
+
+## The audit CSV: one row per test, mechanical columns filled, judgement columns carried
+## forward from the committed file.
+##
+## **The two judgement columns are emitted rather than omitted.** `TEST-AUDIT.md`'s
 ## procedure says never hand-transcribe a number a tool can emit; the corollary is that
 ## the tool should leave the judgement cells where a reader will fill them, so the file
 ## needs no reshaping between generating it and using it.
 func _render_audit_csv() -> Array[String]:
+	var kept: Dictionary = _existing_judgements()
 	var lines: Array[String] = [
 		(
 			"origin_file,test_name,description,usec,bouts,turns,candidates,floods,plans,"
@@ -390,25 +425,25 @@ func _render_audit_csv() -> Array[String]:
 			return String(a["script"]) < String(b["script"])
 	)
 	for row: Dictionary in sorted:
-		(
-			lines
-			. append(
-				(
-					"%s,%s,,%d,%d,%d,%d,%d,%d,%d,"
-					% [
-						String(row["script"]).replace("res://test/", ""),
-						String(row["test"]),
-						int(row["usec"]),
-						int(row.get("bouts", 0)),
-						int(row.get("turns", 0)),
-						int(row.get("candidates", 0)),
-						int(row.get("floods", 0)),
-						int(row.get("plans", 0)),
-						int(row.get("shot_planes", 0)),
-					]
-				)
-			)
+		var origin: String = String(row["script"]).replace("res://test/", "")
+		var test_name: String = String(row["test"])
+		var judgement: Array = kept.get("%s\t%s" % [origin, test_name], ["", ""])
+		var fields := PackedStringArray(
+			[
+				origin,
+				test_name,
+				String(judgement[0]),
+				str(int(row["usec"])),
+				str(int(row.get("bouts", 0))),
+				str(int(row.get("turns", 0))),
+				str(int(row.get("candidates", 0))),
+				str(int(row.get("floods", 0))),
+				str(int(row.get("plans", 0))),
+				str(int(row.get("shot_planes", 0))),
+				String(judgement[1]),
+			]
 		)
+		lines.append(CsvLine.join(fields))
 	return lines
 
 
