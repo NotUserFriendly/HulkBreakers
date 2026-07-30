@@ -63,7 +63,7 @@ const RUNGS: Dictionary = {
 ## in the same millisecond are exactly the case this has to survive.
 static var _next_id: int = 0
 
-## When true the child is given `HULK_FORCE_TEST_FAILURE=1`, which makes
+## When true the child is given `HB_FORCE_TEST_FAILURE=1`, which makes
 ## `test_exit_code_probe.gd` fail on purpose.
 ##
 ## **The variable is put on the child's command line, never set on this process.**
@@ -102,7 +102,7 @@ func start(rung: StringName, target: String = "") -> bool:
 	DirAccess.remove_absolute(pgid_file)
 	# `$$` inside the `setsid`-ed shell is the new session leader, which is also the
 	# process group every descendant inherits — the handle `kill()` needs.
-	var forced: String = "HULK_FORCE_TEST_FAILURE=1 " if force_failure else ""
+	var forced: String = "HB_FORCE_TEST_FAILURE=1 " if force_failure else ""
 	var command: String = (
 		'echo $$ > %s; %s./run_tests.sh %s > %s 2>&1; echo "%s=$?" >> %s'
 		% [pgid_file, forced, argument, log_file, EXIT_MARKER, log_file]

@@ -62,7 +62,7 @@ func test_the_runner_fails_the_process_when_a_test_fails() -> void:
 ##
 ## **The variable is cleared for the child, not assumed absent.** `OS.execute` hands
 ## the child this process's environment, so running the whole gate under
-## `HULK_FORCE_TEST_FAILURE=1` — which is exactly what the panel's toggle does — made
+## `HB_FORCE_TEST_FAILURE=1` — which is exactly what the panel's toggle does — made
 ## this test's subprocess inherit it and fail. A test that only passes when nobody is
 ## exercising the feature it belongs to is not a test.
 func test_the_same_probe_passes_when_nothing_asks_it_to_fail() -> void:
@@ -133,7 +133,7 @@ func test_a_passing_targeted_run_exits_zero_reports_its_cost_and_writes_nothing(
 ## cleverly.** It prints both and stops, so the fix is obvious and nobody ends up
 ## running the wrong one because a resolver picked a winner.
 ##
-## Exercised against a throwaway directory via `HULK_TEST_ROOT` rather than by writing
+## Exercised against a throwaway directory via `HB_TEST_ROOT` rather than by writing
 ## a duplicate into `test/`. Same reason as the probe above: a `.gd` written and
 ## deleted inside the project races Godot's importer, and the orphaned `.uid` breaks
 ## the next run rather than this one.
@@ -159,10 +159,10 @@ func test_an_ambiguous_name_fails_and_prints_every_match() -> void:
 		true
 	)
 
-	var restore: String = OS.get_environment("HULK_TEST_ROOT")
-	OS.set_environment("HULK_TEST_ROOT", root)
+	var restore: String = OS.get_environment("HB_TEST_ROOT")
+	OS.set_environment("HB_TEST_ROOT", root)
 	var result: Dictionary = _run(["test_grid.gd"] as Array[String])
-	OS.set_environment("HULK_TEST_ROOT", restore)
+	OS.set_environment("HB_TEST_ROOT", restore)
 	OS.execute("bash", ["-c", "rm -rf %s" % root] as Array[String], [], true)
 
 	gut.p(result["out"])

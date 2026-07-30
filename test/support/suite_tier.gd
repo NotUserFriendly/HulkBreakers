@@ -29,7 +29,7 @@ extends RefCounted
 ## Set by `run_tests.sh fast`. An environment variable rather than a command-line
 ## flag because GUT owns the command line and this has to be readable from inside a
 ## test script's `should_skip_script()`.
-const FAST_GATE_ENV := "HULK_FAST_GATE"
+const FAST_GATE_ENV := "HB_FAST_GATE"
 
 ## Files skipped by the fast gate — **every file that builds a bout, and nothing
 ## else.** Kept as a fixture rather than derived at runtime: the profile is a

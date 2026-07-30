@@ -17,7 +17,7 @@ extends GutTest
 ## a finished run reaches it, that a loaded fixture reaches the board, and that a
 ## finished bout advances the run. The mechanism is already covered elsewhere.
 
-const PROBE_ENV := "HULK_FORCE_TEST_FAILURE"
+const PROBE_ENV := "HB_FORCE_TEST_FAILURE"
 
 
 ## taskblock-47 Pass C: this file builds bouts — replaying a handle rebuilds a real
@@ -354,7 +354,7 @@ func test_a_forced_run_says_so_and_shows_its_command() -> void:
 
 	gut.p("%s\n%s" % [header, first_line])
 	assert_true(header.contains("forced failure"), "the header states the flag was applied")
-	assert_true(command.contains("HULK_FORCE_TEST_FAILURE=1"), "and the command carries it")
+	assert_true(command.contains("HB_FORCE_TEST_FAILURE=1"), "and the command carries it")
 	assert_true(command.contains("fast"), "against the rung that was clicked")
 	assert_true(first_line.begins_with("$ "), "the feed opens with the command that ran")
 
@@ -375,4 +375,4 @@ func test_an_ordinary_run_does_not_claim_to_be_forced() -> void:
 	panel._stop()
 
 	assert_false(header.contains("forced"), "no note on an ordinary run")
-	assert_false(command.contains("HULK_FORCE_TEST_FAILURE"), "and no prefix either")
+	assert_false(command.contains("HB_FORCE_TEST_FAILURE"), "and no prefix either")
