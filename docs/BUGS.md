@@ -135,31 +135,15 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Likely one defect with `BR51.02`:** both are about what a click on cover or a bare tile resolves
   to. If cover resolves to the tile beneath and a tile selection dims the screen, one wrong resolution
   produces both symptoms.
-
-### BR51.07 — Active — owner: `SUPERVISOR`
-**Framerate collapses from 160+ to under 10 fps in the aim view**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
-- **Repro:** enter the aim view / dartboard. Framerate drops from **over 160 fps** (the monitor's
-  maximum) to **under 10**.
-- **This is a number, not a feeling, and it is far worse than `BR26.02` recorded.** That entry says
-  "low framerate while aiming"; a 16× collapse is a different class of problem and almost certainly the
-  same one. **Treat `BR26.02` as this entry's vaguer ancestor** and confirm before working either.
-- **It blocks the `BR51.01` investigation.** The supervisor has asked that this be addressed before
-  they spend more time fighting the aim view to troubleshoot the left-bias — reasonable, since every
-  aim-view experiment currently costs them a slideshow.
-- **`fps_dump` already fires on entering aim** (taskblock-50), so the drop should be visible in
-  `out/combat.log` without any new instrumentation. **Read it before changing anything** — `BR35.01`
-  has already absorbed three fixes that were reasoned rather than measured.
-
-### BR51.08 — Active — owner: `SUPERVISOR`
-**Selecting a bare tile or cover dims the screen**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
-- **Repro:** click a bare floor tile, or a piece of cover. The screen dims.
-- Filed separately from `BR48.01` rather than folded into it, because `BR48.01` is `SUPERVISOR`-owned
-  and describes a *persisting* dim after closing the inspect panel, while this is a dim *appearing* on
-  a selection that should not open anything. They may be one defect; **that is a finding to make, not
-  an assumption to file under.**
-
+- **taskblock-51 third hunt — CC mis-filed the re-diagnosis as a new entry (`BR51.08`), now folded
+  back here.** The supervisor was correcting *this* entry's trigger, not reporting a second bug:
+  *"The dimming on selecting unit bug is not unit related, it's cover/tile related. Selecting a bare
+  tile or cover causes the screen to dim."*
+- **So the trigger is a selection, not a close.** The heading still says "closing the inspect panel"
+  and is now the least reliable line in the entry — work from the note above it. The two-way-transition
+  theory recorded earlier was built on the wrong trigger.
+- **Likely one defect with `BR51.02`:** both concern what a click on cover or a bare tile resolves to,
+  and `BR51.02` has already turned up one real mis-resolution there (cover reading as its own tile).
 ### BR51.09 — Active — owner: `CC`
 **A unit killed during its turn stays selected, leaving its movement overlay on screen**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -267,25 +251,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `Active: Cell`. Then `set_part_hp` with an empty `part_id` and 0.
 - **Tested against the click shape this time**, not a hand-built dict — that omission is what let the
   first fix ship broken.
-
-### BR51.03 — Active — owner: `SUPERVISOR`
-**Shots miss when there is something in the way that should have been hit**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
-- **Repro:** fire at a target with a body or object along the line; the shot resolves as a miss rather
-  than striking anything.
-- **The supervisor states the intended rule, and it is a design statement rather than a bug report:**
-  *damage should drop outside of range, but the bullet should still hit something.* Range should
-  attenuate damage, not delete the projectile. Today `RangeModel` gates legality and scales accuracy,
-  and a shot outside its band can resolve to nothing at all.
-- **Related to `BR34.05`** ("misses vanish instead of striking anything") and possibly the same defect
-  seen from the shooter's side rather than the drawing side. **Confirm against that entry before
-  treating them separately** — taskblock-50's triage put `BR34.05` in the tracer cluster.
-
-- **taskblock-51 third hunt — the supervisor has ruled: this is a bug, not a design change.** *"Leave
-  it as a bug, I tried to have this changed before so if it's still occurring it's a bug."* So the rule
-  — damage attenuates with range, the projectile still strikes something — is **already the intended
-  behaviour** and the code has regressed from or never implemented it. Treat `BR34.05` as the same
-  defect seen from the drawing side until proven otherwise.
 
 ### BR46.02 — Active — owner: `CC`
 **16 of 40 generated maps contain ground a unit can walk into and never leave**
@@ -585,6 +550,16 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   running client, so the actual before/after numbers still need a live session and `out/combat.log`.
   This closes this entry's own instrumentation ask; the underlying "is aiming actually fast now"
   question stays open pending that live read.
+- **taskblock-51 third hunt — now a measured number, not a feeling.** *"It drops from over 160 (my
+  monitor's max) down to less than 10 fps."* A **16× collapse**, which is a far more serious statement
+  than "low framerate" and should be read as this entry's real severity.
+- **CC mis-filed this as a new entry (`BR51.07`) and has folded it back here.** The measurement is the
+  new information; the bug is the one reported in taskblock-26.
+- **It blocks the `BR51.01` investigation** — the supervisor has asked this be addressed before they
+  spend more time in the aim view, which is reasonable when every experiment costs them a slideshow.
+- **`fps_dump` already fires on entering aim** (taskblock-50), so the drop should be readable from
+  `out/combat.log` with no new instrumentation. **Read it before changing anything:** `BR35.01` has
+  absorbed three fixes that were reasoned rather than measured, and it is a suspected cause here.
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
 - **Source:** `SUPERVISOR`
@@ -716,7 +691,13 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   the last resolved state cannot show a highlight for a turn whose animation has not played. The narrow
   fix is deferring the highlight until playback drains; the narrow fix is worth taking now, but it is an
   instance of the class that item dissolves.
-
+- **taskblock-51 duplicate check — suspected the same defect as `BR32.09`, NOT merged.** The supervisor
+  answered both with one observation: *"Indicator moves to next unit before animation completes when AI
+  is controlling. Indicator moves with unit correctly when player is controlling."* That is one
+  behaviour, and it is the *timing* description in `BR32.09` rather than the *wrong unit* this entry's
+  title claims — so this heading may also be stale.
+- **Both are `SUPERVISOR`-owned, so CC has flagged rather than combined them.** Merging is the owner's
+  call; the useful finding is that the AI-driven path does not defer and the player-driven one does.
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
 - **Source:** `SUPERVISOR`
@@ -1322,7 +1303,14 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   angle; **tilt that projection to vertical and align it with the grid tiles** and the problem is
   bypassed rather than tuned. This is a different shape from taskblock-51's own suggestion of a ray or
   angle test in the shader, and it is cheaper — worth trying first.
-
+- **taskblock-51 duplicate check — not a duplicate, but the cutout has been "fixed" three times
+  already.** `BR31.03` (*wall fading never visibly occluded anything*, `Obsolete`), `BR32.01` (*stray
+  hole at a cell with no unit*, `Resolved`) and `BR32.02` (*never visibly appears near real units*,
+  `Resolved`) are all archived against this same shader path.
+- **That history is the finding.** Three closures and the subsystem still misbehaves suggests the
+  heuristic itself is the defect rather than each symptom — which is what the supervisor's own proposed
+  fix says: stop projecting at the camera angle, tilt to vertical and align to grid tiles. **Check the
+  archived three before starting**, so a fourth symptom-level fix is not attempted.
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **Source:** `SUPERVISOR`
@@ -1541,6 +1529,16 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
     coverage — a real balance number, not this session's to invent; (c) add a genuine floor Region so
     at least the "hits the floor" half of the design rule has something to resolve against. Flagging
     for supervisor/design input rather than guessing.
+- **taskblock-51 third hunt — the supervisor re-reported this and CC mis-filed it as a new entry
+  (`BR51.03`), now folded back here.** Their words: *"Misses still happening when there is something for
+  a bullet to hit; damage should drop outside of range but the bullet should still hit something"*, and
+  on being asked whether it was a design change rather than a defect: *"Leave it as a bug, I tried to
+  have this changed before so if it's still occurring it's a bug."* — which is this entry, reported
+  2026-07-23.
+- **One nuance the re-report adds:** range should **attenuate damage**, not delete the projectile. That
+  sharpens the fix: the termination is happening at the range gate, not only at the resolution.
+- **Still open, still `SUPERVISOR`-owned. Nothing was closed by the merge** — a duplicate record was
+  removed, not a bug.
 ### BR35.01 — Active — owner: `CC`
 **`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
