@@ -1,5 +1,37 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 Pass L — death mid-turn, and an indicator fixed on one call site out of two
+
+**`BR51.09`: the selection invalidates on read, not on an event.** `SelectionController` never
+referenced `alive` anywhere, so `selected_unit` was a raw reference that outlived the unit it pointed
+at — kill the acting unit and its reachable-cell overlay kept drawing into the next unit's turn.
+Notifying the selection from `kill_unit` would have put a TACTICS-time concern inside a RESOLUTION-time
+mutation and still missed every *other* route by which a unit stops being valid, so `selected_target`
+now guards on read. **A call site cannot forget to subscribe to something it does not subscribe to** —
+asserted by killing a unit behind the controller's back and never telling it. The unit's queued plan
+goes with it, since `_queues` is keyed by unit id.
+
+**`BR27.07`/`BR32.09`: the same bug, unfixed on the second call site.** tb32 Pass D deferred the
+active-turn flip until after playback in `SquadControlOverlay`, with a comment calling it "a real
+confirmed bug" — and changed only that one caller. `SpectatorOverlay._advance()` went on applying the
+highlight *before* `resolution_player.play()` drew the previous unit's move. That is exactly the
+supervisor's controlled comparison — *"the indicator moves to the next unit before the animation
+completes when the AI is controlling; it moves with the unit correctly when the player is
+controlling"* — and the reason the player path passes today is that a human turn ends *after* its own
+animation, so it never exposes the gap. The AI path now defers and applies identically.
+
+**Coverage gap, stated rather than papered over.** The deferral primitive is tested directly:
+`apply_highlight = false` genuinely withholds the flip, `apply_active_turn_highlight()` genuinely
+performs it, and the default still applies. **Driving `_advance()` end-to-end headlessly is not
+covered** — a spy standing in for `ResolutionPlayer` hangs the runner rather than failing it, since a
+runtime error under `-d` becomes a debugger break. The ordering inside `_advance` is verified by
+reading it against the player path it now matches.
+
+**Not decided, deliberately: whether a dead unit is selectable.** The addendum asks for that to be a
+decision rather than a consequence, and Pass K made "select the wreck" expressible. It is a design
+question and is left to the supervisor — what Pass L fixes is the stale pointer, which is not the same
+question.
+
 ### taskblock-51 — `BR48.01`: the board was accidentally double-lit, and inspecting took the second light away
 
 **Found by dumping the battle world rather than by reading the code** — two confident diagnoses had

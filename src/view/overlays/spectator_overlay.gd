@@ -356,8 +356,19 @@ func _advance() -> void:
 	set_thinking_label("")
 	# taskblock-19 Pass I2: only the units this step's own events named —
 	# see BattleScene.refresh_unit_views()'s own doc comment.
-	battle.refresh_unit_views(LogPlayback.affected_unit_ids(runner.last_events))
+	#
+	# taskblock-51 Pass L (`BR27.07`/`BR32.09`): **the highlight flip is deferred until after
+	# the animation**, exactly as `SquadControlOverlay` already does.
+	#
+	# tb32 Pass D fixed this on the player path and its comment there calls it "a real
+	# confirmed bug" — but only that one call site was changed. This one kept flipping the
+	# indicator to the next unit *before* `play()` drew the previous unit's move. That is the
+	# supervisor's controlled comparison, and it is why the report reads as "correct when the
+	# player is controlling, wrong when the AI is": a human turn ends after its own animation,
+	# so the player path never exposes the gap.
+	battle.refresh_unit_views(LogPlayback.affected_unit_ids(runner.last_events), false)
 	await resolution_player.play(runner.last_events)
+	battle.apply_active_turn_highlight()
 	_refresh_status()
 	if runner.finished:
 		pause()

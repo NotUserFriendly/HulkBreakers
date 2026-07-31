@@ -1863,3 +1863,17 @@ be permanently immobilised**
   value captured once at build time, never re-derived, asserted across two open/close cycles and across
   opening a second inspect over the first. **To see it:** click empty ground in spectator — the bout
   should keep playing and no panel should appear; then click a barrel, which should open on the barrel.
+
+### BR51.09 — Resolved — owner: `CC`
+**A unit killed during its turn stays selected, leaving its movement overlay on screen**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 third hunt, immediately after `BR51.04` was fixed.
+- **Repro:** kill a unit during its own turn. The turn now advances correctly (`BR51.04`), but the dead
+  unit remains *selected* and its reachable-cell overlay stays drawn through the next unit's turn.
+- **This is the other half of the fix I made and did not finish.** `kill_unit` advances the turn; it
+  does not tell the selection to let go, and `SelectionController` holds its `selected_unit` reference
+  independently of whose turn it is. Fixing the pointer without clearing the selection moved the
+  symptom rather than removing it.
+- **Resolved (taskblock-51 Pass L).** `SelectionController.selected_target` invalidates on read when the
+  selected unit is not alive, and drops that unit's queue with it. Read-time rather than event-driven so
+  no call site can forget to subscribe; asserted by killing a unit behind the controller's back.
