@@ -605,3 +605,58 @@ func test_unlock_input_clears_the_lock() -> void:
 	controller.unlock_input()
 
 	assert_false(controller.input_locked)
+
+
+# --- taskblock-51 (BR26.02): the aim plane is built once, not per mouse motion ---------
+
+
+func _aiming_controller() -> TacticsController:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var controller: TacticsController = _setup([a, b]).controller
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	return controller
+
+
+## **Measured before it was changed.** On a board the size the supervisor was playing
+## (32x24, 214 wall and cover blockers) one `ShotPlane.build` costs ~10 900 usec against a
+## 6 250 usec budget at 160 fps — and `aim_state()` was called at least twice per mouse
+## motion, each time doing a full state clone and a fresh build. Counted on
+## `ShotPlane.builds`, the same counter the suite profile reports.
+func test_moving_the_reticle_does_not_rebuild_the_shot_plane() -> void:
+	var controller: TacticsController = _aiming_controller()
+	assert_false(controller.aim_state().is_empty(), "sanity: aiming")
+
+	var before: int = ShotPlane.builds
+	for i in range(8):
+		controller.reticle_offset = Vector2(float(i) * 0.1, 0.0)
+		controller.aim_state()
+
+	assert_eq(
+		ShotPlane.builds,
+		before,
+		(
+			"the reticle moved eight times and the plane was rebuilt %d time(s)"
+			% (ShotPlane.builds - before)
+		)
+	)
+
+
+## **The companion, and the one that stops the cache being a lie.** A memoised plane that
+## never refreshed would pass the test above perfectly while showing the player a plane
+## built before they moved — so a real dependency change must still rebuild.
+func test_a_queued_move_still_rebuilds_the_plane_it_changes() -> void:
+	var controller: TacticsController = _aiming_controller()
+	controller.aim_state()
+
+	var before: int = ShotPlane.builds
+	controller.cancel_aim()
+	controller.click_cell(Vector2i(0, 0))
+	controller.click_cell(Vector2i(1, 1))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	assert_false(controller.aim_state().is_empty(), "aiming again from a new cell")
+
+	assert_gt(ShotPlane.builds, before, "a shooter that moved gets a fresh plane")

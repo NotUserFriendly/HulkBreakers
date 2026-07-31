@@ -153,6 +153,11 @@ var input_capture_mode: bool = false
 
 ## docs/10 taskblock03 E1: press-and-hold on the already-selected unit's own
 ## body starts a facing drag; live for as long as LMB stays down.
+## taskblock-51 (`BR26.02`): the memoised `aim_state()` and the dependency fingerprint it
+## was computed for. Cleared whenever aim ends, so a stale plane can never outlive the aim
+## that built it.
+var _aim_state_cache: Dictionary = {}
+var _aim_state_key: String = ""
 var _facing_drag_active: bool = false
 ## The one FaceAction this drag gesture owns, so every subsequent motion
 ## event mutates it in place instead of queuing a fresh one per pixel of
@@ -721,6 +726,8 @@ func _enter_aim_mode(target: AimTarget) -> void:
 	aiming_at = target
 	layer_index = 0
 	reticle_offset = Vector2.ZERO
+	_aim_state_cache = {}
+	_aim_state_key = ""
 	aim_hovered_part = null
 	# Aiming routes every subsequent mouse motion to aim_reticle_at_screen()
 	# instead of update_hover() (below) — the only two call sites that ever
@@ -962,7 +969,59 @@ func update_aim_hover(screen_pos: Vector2) -> void:
 ## exactly as true in the preview as in `selection.state`; only a Unit
 ## target gets the `preview.find_unit()` re-lookup, same reason the
 ## shooter itself always has.
+## taskblock-51 (`BR26.02`): **memoised, because this is where the aim view's frames went.**
+##
+## Measured on a board the size the supervisor was playing (32×24, 214 wall and cover
+## blockers, 6 units): a single `ShotPlane.build` costs **10 889 usec**. A frame at 160 fps
+## is 6 250 usec, so **one rebuild alone overruns the whole budget** — and this function was
+## called at least twice per mouse motion (`aim_reticle_at_screen`, then `update_aim_hover`
+## from the same screen position) plus once per aim-view redraw, each doing a full state
+## clone *and* a plane build.
+##
+## **What the plane actually depends on**: the shooter, the target, and the queue that
+## previews them. It does **not** depend on `reticle_offset` — moving the reticle is the
+## one thing the aim view does constantly and the one thing that cannot change the plane.
+## So the cache is keyed on that dependency set and the reticle is deliberately absent from
+## it.
+##
+## For scale, `PartPicker.hit` measured **1 559 usec** on the same board — `BR35.01`'s
+## long-standing suspect is real but **seven times cheaper than this**, and it is recorded
+## there so a fourth reasoned-not-measured fix is not attempted on the wrong thing.
 func aim_state() -> Dictionary:
+	if aiming_at == null or selection.selected_unit == null:
+		_aim_state_key = ""
+		return {}
+	var key: String = _aim_state_fingerprint()
+	if key != "" and key == _aim_state_key:
+		return _aim_state_cache
+	var computed: Dictionary = _build_aim_state()
+	_aim_state_key = key if not computed.is_empty() else ""
+	_aim_state_cache = computed
+	return computed
+
+
+## Everything the plane is derived from, and nothing else.
+##
+## **`reticle_offset` is deliberately not in here.** It is the value that changes on every
+## mouse motion and the only one that cannot affect the plane; including it would make the
+## cache miss on exactly the input it exists to absorb.
+func _aim_state_fingerprint() -> String:
+	var queue: ActionQueue = selection.current_queue()
+	var previewed: Unit = selection.previewed_unit()
+	return (
+		"%d|%s|%s|%d|%s|%d"
+		% [
+			selection.selected_unit.id,
+			previewed.cell if previewed != null else selection.selected_unit.cell,
+			previewed.orientation if previewed != null else selection.selected_unit.orientation,
+			aiming_at.unit.id if aiming_at.unit != null else -1,
+			aiming_at.cell,
+			queue.actions.size() if queue != null else 0,
+		]
+	)
+
+
+func _build_aim_state() -> Dictionary:
 	if aiming_at == null or selection.selected_unit == null:
 		return {}
 	var preview: CombatState = selection.current_queue().preview(selection.state)
