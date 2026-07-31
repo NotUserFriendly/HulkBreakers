@@ -709,6 +709,22 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   reticle, so it is not obviously cacheable — and at 113 fps it is **not being chased on
   speculation**. If the supervisor still feels it, that is the next and last known cost.
 - **Still `Pending`:** the numbers are CC's; the confirmation is the supervisor's.
+- **Ninth pass — the supervisor reframed it again, correctly: "the dartboard almost seems to lazily
+  follow the cursor, not be attached to it."** That is **input latency**, not framerate, and it has a
+  different cause from everything above.
+- **`aim_reticle_at_screen` ran once per motion EVENT.** A mouse polls at 500–1000 Hz against a game
+  drawing at 60–160 fps, so `_unhandled_input` ran the full reticle update many times per frame — each
+  ~8 800 usec after the earlier fixes — and **every one but the last was immediately overwritten**. The
+  queue backed up and the reticle drew cursor positions from several events ago.
+- **Coalesced: the newest position is stored and applied once in `_process`.** Safe because this is an
+  absolute raycast through the literal cursor rather than an accumulated delta, so the intermediate
+  positions carry no information — asserted in the test rather than assumed, since if it ever became
+  relative the optimisation would start silently losing movement.
+- **The eighth pass's numbers, confirmed live by the supervisor:** 2 s aim samples now **116** and
+  **160** (were 8 and 6); session averages **32.8** and **46.2** (was 22.8). **`BR27.09` improved with
+  it** — turn-start FPS **93** and **147**, against the **38.0** recorded earlier in this block.
+- **The session minimum is still ~7.1–7.8**, so one stall per session survives. That is the next thread
+  if the supervisor still feels it: a single slow frame, not a sustained cost.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
@@ -1214,6 +1230,9 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **taskblock-51 — measured for the first time.** A live session recorded
   `fps_dump: Turn FPS (at turn start): 38.0`, recovering to **153.0** two seconds later. So the hitch
   is real, is roughly a 4x drop, and lasts on the order of a second — no longer a feeling.
+- **taskblock-51 — improved as a side effect of `BR26.02`'s fixes, measured:** turn-start FPS went
+  **38.0** to **93** and **147** across two later sessions, recovering to 134–157 after two seconds.
+  **Not closed** — a hitch remains and it has never been the subject of its own investigation.
 
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**

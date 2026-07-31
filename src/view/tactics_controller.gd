@@ -176,6 +176,9 @@ var _aim_state_key: String = ""
 ## reported 161 fps for a session the supervisor experienced as 8 — because the drop
 ## happens while the mouse is moving and the sample was taken while it was still. A single
 ## reading cannot answer "is aiming smooth"; the minimum over the whole session can.
+## taskblock-51 (`BR26.02`): the newest un-applied cursor position — see `_unhandled_input`.
+var _pending_reticle_screen: Vector2 = Vector2.ZERO
+var _has_pending_reticle: bool = false
 var _aim_fps_min: float = 0.0
 var _aim_fps_seconds: float = 0.0
 var _aim_fps_frames: int = 0
@@ -248,7 +251,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			# runNotes.md: "isn't following the cursor exactly instead being
 			# offset" — a raycast onto the dartboard's own plane through the
 			# literal cursor position, not an accumulated relative delta.
-			aim_reticle_at_screen(motion.position)
+			#
+			# taskblock-51 (`BR26.02`): **coalesced to the latest position, applied once in
+			# `_process`.** A mouse polls far faster than the game draws — 500 to 1000 Hz
+			# against 60 to 160 fps — so this ran the whole reticle update many times per
+			# frame, each one ~8 800 usec, and every one but the last was immediately
+			# overwritten. The backlog is what the supervisor saw: *"the dartboard almost
+			# seems to lazily follow the cursor, not be attached to it"* — the reticle was
+			# rendering cursor positions from several events ago.
+			#
+			# Only the newest position can matter: this is an absolute raycast through the
+			# literal cursor, not an accumulated delta, so dropping the intermediate
+			# positions loses nothing at all.
+			_pending_reticle_screen = motion.position
+			_has_pending_reticle = true
 		elif _facing_drag_active:
 			drag_face(motion.relative.x)
 		else:
@@ -1261,6 +1277,12 @@ func _confirm_step_out() -> void:
 func _process(delta: float) -> void:
 	if aiming_at == null or delta <= 0.0:
 		return
+	# The coalesced reticle update: at most one per drawn frame, at the newest position the
+	# mouse reported. Applied before the frame is sampled so the cost lands in this frame's
+	# own measurement rather than the next one's.
+	if _has_pending_reticle:
+		_has_pending_reticle = false
+		aim_reticle_at_screen(_pending_reticle_screen)
 	_aim_fps_seconds += delta
 	_aim_fps_frames += 1
 	var instant: float = 1.0 / delta
