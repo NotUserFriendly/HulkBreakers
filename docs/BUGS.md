@@ -85,6 +85,67 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
+### BR51.01 — Active — owner: `SUPERVISOR`
+**Sniper rifle and chaingun consistently shoot wide left of the aim point**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** aim a sniper rifle or a chaingun at a goo barrel and fire. The shot lands
+  **consistently left** of where the reticle sits. Reported first for the sniper rifle alone, then
+  confirmed on the chaingun — so it is not one weapon's authored geometry.
+- **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
+  left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
+  `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
+  or the aim camera's own lean applying to the view but not to the resolved ray.
+- **Possibly one defect with `BR34.04`** (sniper camera frames the target from an odd angle) and
+  `BR33.01` (aim-view scroll/layer labels). If the aim camera is off-axis, everything mapped through
+  it inherits the offset. **Check the camera before the weapon.**
+- **Blocks reproducing `BR35.08`** — the supervisor could not reliably hit a goo barrel to detonate it.
+
+### BR51.02 — Active — owner: `CC`
+**`set_part_hp` cannot target a part that is not on a unit**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
+- **Repro:** open Inject, choose `set_part_hp`, and try to target a goo barrel or any other field
+  object or blocker. There is no way to name it — the verb's target is a unit part.
+- **A tooling gap, not a game defect, and it is currently blocking the hunt.** Forcing a detonation is
+  the deterministic route to `BR35.08`; without it that entry can only be reached by landing a shot on
+  a barrel, which `BR51.01` and `BR51.03` are both interfering with. **Fix this first** — it unblocks
+  two other entries and costs nothing to verify.
+- `CC`-owned: it is debug tooling, headless-testable, and was found rather than observed.
+
+### BR51.03 — Active — owner: `SUPERVISOR`
+**Shots miss when there is something in the way that should have been hit**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** fire at a target with a body or object along the line; the shot resolves as a miss rather
+  than striking anything.
+- **The supervisor states the intended rule, and it is a design statement rather than a bug report:**
+  *damage should drop outside of range, but the bullet should still hit something.* Range should
+  attenuate damage, not delete the projectile. Today `RangeModel` gates legality and scales accuracy,
+  and a shot outside its band can resolve to nothing at all.
+- **Related to `BR34.05`** ("misses vanish instead of striking anything") and possibly the same defect
+  seen from the shooter's side rather than the drawing side. **Confirm against that entry before
+  treating them separately** — taskblock-50's triage put `BR34.05` in the tracer cluster.
+
+### BR51.04 — Active — owner: `SUPERVISOR`
+**Killing a unit during its own turn does not end that turn**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** while a unit is the current unit, kill it (Inject `kill`, or in play). The turn does not
+  advance.
+- `EndTurnAction` is documented as legal and advancing *"even if the current unit just died"*, and
+  `CombatState.advance_turn` skips the dead — so the rule exists and something is not reaching it.
+  The likely gap is that nothing *invokes* the advance when the death happens outside an action's own
+  resolution.
+- **Probably one defect with `BR51.05`**, which the supervisor flagged as possibly related.
+
+### BR51.05 — Active — owner: `SUPERVISOR`
+**A dead or prone unit cannot be selected**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** attempt to click a downed or prone unit. Selection does not take.
+- **Suspected same root as `BR51.04`:** if a dead unit is still the current unit, and selection is
+  gated on *being* the current unit, then both symptoms follow from one stuck turn pointer. Check them
+  together; fixing one blind may move the other without explaining it.
+- **Worth separating deliberately:** *dead* and *prone* are different states, and it is not yet
+  established that both fail. Confirm which.
+
 ### BR48.01 — Active — owner: `SUPERVISOR`
 **Closing the inspect panel leaves the background permanently dimmed**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.
@@ -1145,6 +1206,15 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
     gating on the angle between camera→wall and camera→unit, both already named above as candidate
     fixes) is the same fix this entry already wants; elevation just adds one more concrete geometry
     that motivates it, worth having on record for whoever picks the candidate fixes.
+- **taskblock-51 Pass A — elevation is not the variable.** The supervisor set cell levels to vary the
+  vertical separation and the misbehaviour was unchanged, which rules out the "cannot distinguish
+  vertical from horizontal separation" half of the suspected cause and leaves the screen-space
+  heuristic itself.
+- **Supervisor's proposed fix, recorded as theirs:** the cutout is a 2D projection taken at the camera
+  angle; **tilt that projection to vertical and align it with the grid tiles** and the problem is
+  bypassed rather than tuned. This is a different shape from taskblock-51's own suggestion of a ray or
+  angle test in the shader, and it is cheaper — worth trying first.
+
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **Source:** `SUPERVISOR`
@@ -1195,6 +1265,14 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   BR32.01?).
 - **Suspected, not confirmed** — logged so it isn't lost; confirm/describe at a review pass. Shares
   the unit-feed edge-case family with BR32.01 (extracted/removed) and BR32.03 (carryover).
+- **taskblock-51 Pass A — did not reproduce, and the attempt is recorded rather than the conclusion.**
+  The supervisor fired shots near a dead body in the spectator view and saw **no obvious cutout
+  behaviour** around it. That is not a clearance: this entry is `Suspected` precisely because the
+  original observation was vague, and one session that did not see it does not establish it never
+  happens. **What was tried:** shots resolving near a downed shell, watched from the spectator view.
+  **What was not:** a shell downed *between* camera and a living unit, which is the geometry the
+  cutout actually keys on.
+
 ### BR32.09 — Active — owner: `SUPERVISOR`
 **Spectator: current-unit indicator jumps to the next unit before the active turn resolves**
 - **Source:** `SUPERVISOR`
@@ -1518,6 +1596,12 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   that the sphere teaches the player the real blast extent; a separately-authored visual radius that
   drifts from the mechanical one would be BR35.04's mistake again in a new place — a drawn thing that
   looks authoritative and isn't.
+
+- **taskblock-51 Pass A — blocked, not attempted.** The deterministic route (spawn a goo barrel, zero
+  its HP) is unavailable because `set_part_hp` cannot target a non-unit part (`BR51.02`), and the
+  fallback of shooting one is unreliable because of `BR51.01` and `BR51.03`. **Three bugs deep before
+  this one can be looked at** — which is the argument for fixing `BR51.02` before anything else in the
+  block.
 
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
