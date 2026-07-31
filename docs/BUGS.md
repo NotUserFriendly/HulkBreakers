@@ -664,6 +664,27 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   step-out tests), and a per-frame memo (state changes *within* a frame when a resolution spends AP,
   caught by four action-bar and pip tests). **The preview clone is correct; calling it per mouse motion
   was not.**
+- **Seventh pass — one mouse motion measured end to end, and it is the whole answer.** Driven through
+  a real `SquadControlOverlay` on a 214-blocker board:
+
+  | per mouse motion | usec |
+  |---|---|
+  | `aim_reticle_at_screen` | **60 824** |
+  | `update_aim_hover` | **52 681** |
+  | **one motion total** | **113 504** — which is **8.8 fps** |
+
+  That is the supervisor's 8 fps exactly, and it confirms their reading over every instrument that
+  disagreed with it.
+- **The `aim_state()` memo is NOT holding in the real path.** Over 60 calls the probe counted **120
+  state clones and 90 shot-plane builds** — roughly **two clones and one and a half planes per call**,
+  when a cache hit should produce zero of each. The memo works in the unit test and does not work here,
+  so something in the live path is changing the fingerprint (or bypassing `aim_state()` entirely).
+  **That is the next thing to find, and it is now a two-line measurement rather than a theory.**
+- **`wall_cutout` confirmed innocent by the supervisor twice** — session average 22.8 with it on, 24.0
+  with it off.
+- **Session average is ~23 fps, not 8**: `min 6.8, avg 22.8 (231 frames in 10.1s)`. The live readout and
+  the 2 s sample both catch the bad moments; the honest description is "8 while moving, 160 while
+  still, averaging 23 over a session that mixes both".
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
