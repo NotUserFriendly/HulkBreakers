@@ -1,5 +1,29 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — `BR51.11` (the long way round), corpses as wrecks, and the catch-up theory disproved
+
+**`BR51.11`: `tween_method` interpolates plain numbers.** `ResolutionPlayer` handed it raw orientations,
+so 0.1 -> 6.0 ran 336 degrees left instead of 24 right. It now tweens towards
+`from + angle_difference(from, to)` — the same facing, numerically adjacent to the start. **The test
+asserts the arc, not the endpoint**, because the broken version arrives in the right place too; verified
+by reverting, where four of six angle pairs take the long way. Squad 1 and not squad 0 is a
+distribution of starting facings, not a squad rule, and that is pinned so the fix is not read as a
+squad-specific patch.
+
+**Corpses are selectable as wrecks** (supervisor's decision): *"Dead units should not be selectable as
+units. They should be selectable in the same way parts on the ground or cover is."* Pass K is what made
+this a one-line answer — a `PART` target already describes "a thing on the board with parts on it", so
+a wreck needs no fourth kind. **Nothing can be commanded through one**, because only a `UNIT` target
+reaches the queue; a wreck is inspectable and nothing else. Both click dict shapes resolve it.
+
+**The catch-up hypothesis is disproved by the instrument built to test it.** Eight dumps all read
+`fastest 3915.8 (prev 116.2, next 260.0)` — the frame *before* the spike was 116 fps, not a stall, so
+the 0.255 ms frame is not paying back an overrun. The proposed `BR51.15`/`BR51.17` merge is withdrawn.
+The maximum is still an artifact (a frame that did no drawing), so `BR51.17` stays open with the
+catch-up remedy removed from its options. **Also visible: the game is not capped at 160** — `avg less
+top 1%` reads 177-185, above the monitor's refresh, exactly the uncapped condition the supervisor
+predicted when they specified these figures.
+
 ### taskblock-51 — the performance readout reports the fastest frame's neighbours
 
 **The supervisor's question, made answerable:** *"Is it queuing frames for some reason, and when those

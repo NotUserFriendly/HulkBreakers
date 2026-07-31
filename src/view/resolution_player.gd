@@ -417,11 +417,32 @@ func _play_facing(event: LogEvent) -> void:
 		return
 	var tween := create_tween()
 	tween.tween_method(
-		_set_facing_angle.bind(view, unit), from_orientation, target_orientation, duration
+		_set_facing_angle.bind(view, unit),
+		from_orientation,
+		shortest_arc_target(from_orientation, target_orientation),
+		duration
 	)
 	await tween.finished
+	# **The canonical orientation, not the arc's endpoint.** The two are equal as angles but
+	# can differ by a full turn as numbers, and storing the wound-up one would make the next
+	# turn start from a value no longer near any real facing.
 	_display_orientation[event.unit_id] = target_orientation
 	_redraw(event.unit_id)
+
+
+## **`BR51.11`: the angle to tween *towards*, so the unit turns the short way.**
+##
+## `tween_method` interpolates its two arguments as plain numbers. Handed raw orientations it
+## will happily run 0.1 -> 6.0 the long way round — 336 degrees left instead of 24 right — which
+## is the supervisor's *"sometimes units spin the long way around to reface. Turning left 270
+## degrees instead of turning right 90."*
+##
+## `angle_difference` returns the shortest signed step in `[-PI, PI]`, so adding it to `from`
+## gives an angle equal to `to` but numerically adjacent to `from`. **Only the path changes**:
+## the arrival is the same facing either way, which is why the supervisor saw units "end up
+## facing in reasonable directions" and why the point-to-point animation looked right.
+static func shortest_arc_target(from_orientation: float, to_orientation: float) -> float:
+	return from_orientation + angle_difference(from_orientation, to_orientation)
 
 
 func _set_facing_angle(angle: float, view: HitVolumeView, unit: Unit) -> void:

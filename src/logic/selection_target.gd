@@ -69,6 +69,22 @@ static func for_part(p_part: Part, p_cell: Vector2i) -> SelectionTarget:
 	return target
 
 
+## **A dead unit is selectable, but not as a unit** — the supervisor's decision, taskblock-51:
+## *"Dead units should not be selectable as units. They should be selectable in the same way
+## parts on the ground or cover is."*
+##
+## That is the right shape and it is why Pass K came first: a wreck is a thing on the board
+## with parts on it, which is exactly what a `PART` target already describes. Nothing
+## downstream needs a fourth kind, and nothing can accidentally queue an action against a
+## corpse, because only a `UNIT` target can be commanded.
+##
+## Returns `none()` for a unit with no shell root — there is no wreck to select.
+static func for_wreck(p_unit: Unit) -> SelectionTarget:
+	if p_unit == null or p_unit.shell == null or p_unit.shell.root == null:
+		return none()
+	return for_part(p_unit.shell.root, p_unit.cell)
+
+
 static func for_cell(p_cell: Vector2i) -> SelectionTarget:
 	var target := SelectionTarget.new()
 	target.kind = Enums.HitKind.CELL
@@ -84,7 +100,10 @@ static func from_hit(hit: Dictionary) -> SelectionTarget:
 	match hit.get("kind"):
 		Enums.HitKind.UNIT:
 			var hit_unit: Unit = hit.get("unit")
-			return for_unit(hit_unit) if hit_unit != null else none()
+			if hit_unit == null:
+				return none()
+			# A corpse resolves to its wreck, not to a unit — see `for_wreck`.
+			return for_unit(hit_unit) if hit_unit.alive else for_wreck(hit_unit)
 		Enums.HitKind.PART:
 			var hit_part: Part = hit.get("part")
 			if hit_part == null:
@@ -104,7 +123,7 @@ static func from_pick(pick: Dictionary) -> SelectionTarget:
 		return none()
 	var picked_unit: Unit = pick.get("unit")
 	if picked_unit != null:
-		return for_unit(picked_unit)
+		return for_unit(picked_unit) if picked_unit.alive else for_wreck(picked_unit)
 	var picked_part: Part = pick.get("part")
 	if picked_part == null:
 		return none()
