@@ -96,11 +96,22 @@ func test_where_the_aim_frame_budget_goes() -> void:
 			)
 	)
 
+	var state_clone: float = _usec_per_call(func() -> void: state.dup())
+	var grid_clone: float = _usec_per_call(func() -> void: state.grid.dup())
+
 	gut.p("--- per call, on the supervisor's board size ---")
+	gut.p("  CombatState.dup             %8.0f usec   (every ActionQueue.preview)" % state_clone)
+	gut.p("  Grid.dup                    %8.0f usec   (the bulk of it)" % grid_clone)
 	gut.p("  PartPicker.hit              %8.0f usec   (BR35.01's suspect)" % part_picker)
 	gut.p("  bounding_sphere x6 units    %8.0f usec   (update_wall_cutout, per frame)" % bounding)
 	gut.p("  ShotPlane.build             %8.0f usec" % shot_plane)
 	gut.p("  --- a frame at 8 fps is 125000 usec; at 160 fps it is 6250 ---")
+	gut.p(
+		(
+			"  aim_state() BEFORE taskblock-51 = dup + build = %.0f usec, x2 per mouse motion"
+			% (state_clone + shot_plane)
+		)
+	)
 
 	assert_gt(part_picker, 0.0, "the probe measured something")
 	assert_gt(bounding, 0.0)

@@ -584,6 +584,22 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   aimed at it.
 - **To see it work:** enter the aim view and move the mouse. `fps_dump` still fires 2 s after entering
   aim, so `out/combat.log` will carry the new number — that reading is the confirmation, not my word.
+- **Second pass, after the supervisor tested it: the first fix was half a fix, and the measurement said
+  so.** They reported it *"chunkier and more erratic … sometimes 30, sometimes 70, sometimes 3"*, with
+  `fps_dump` recording **80.0** while still and **3.0** while panning.
+- **Cause: my own cache key cloned the state.** The fingerprint asked
+  `SelectionController.previewed_unit()` for the shooter's previewed cell, which calls
+  `ActionQueue.preview()` → `CombatState.dup()`. Measured: **26 083 usec**, of which `Grid.dup` is
+  **19 668** — it deep-copies all 214 blocker parts and 768 surfaces. So the memo removed the 9 175 usec
+  plane build and kept the larger cost.
+- **`aim_state()` before taskblock-51 cost dup + build = 35 258 usec, called twice per mouse motion** —
+  70 ms a frame, which is the reported 8 fps almost exactly.
+- **Fixed with `ActionQueue.revision`**, a counter bumped on every queue change, so "has this changed?"
+  is answerable without previewing anything. A cache hit now clones nothing, asserted on the new
+  `CombatState.dups` counter.
+- **`CombatState.dups` is now a profiled work counter.** A 26 ms call reached several times per mouse
+  motion was invisible to every budget because nothing counted it; the full suite reports **7 155**
+  clones. That number is worth its own look — see the note added to `BR35.01`'s cluster.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**

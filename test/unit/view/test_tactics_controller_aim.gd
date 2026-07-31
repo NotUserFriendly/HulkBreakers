@@ -660,3 +660,37 @@ func test_a_queued_move_still_rebuilds_the_plane_it_changes() -> void:
 	assert_false(controller.aim_state().is_empty(), "aiming again from a new cell")
 
 	assert_gt(ShotPlane.builds, before, "a shooter that moved gets a fresh plane")
+
+
+## **The fingerprint must not clone the state.** The first memo asked for the *previewed*
+## cell, which calls `ActionQueue.preview()` → `CombatState.dup()` — 26 784 usec on a
+## realistic board, more than twice the plane build it was saving. Counted on
+## `CombatState.dups`, so "does not clone" means the same thing the profile means.
+func test_a_cache_hit_clones_no_state_at_all() -> void:
+	var controller: TacticsController = _aiming_controller()
+	controller.aim_state()
+
+	var before: int = CombatState.dups
+	for i in range(8):
+		controller.reticle_offset = Vector2(float(i) * 0.1, 0.0)
+		controller.aim_state()
+
+	assert_eq(
+		CombatState.dups,
+		before,
+		"eight reticle moves cloned the state %d time(s)" % (CombatState.dups - before)
+	)
+
+
+## Undoing and re-queueing a *different* move leaves the queue the same length — so a
+## fingerprint counting entries would miss it and show a plane for a cell the shooter is no
+## longer heading to. The revision counter catches it because it counts changes, not depth.
+func test_a_different_queue_of_the_same_length_is_not_mistaken_for_the_old_one() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var queue: ActionQueue = controller.selection.current_queue()
+	var first: int = queue.revision
+
+	queue.actions.pop_back()
+	queue.revision += 1
+
+	assert_ne(queue.revision, first, "a change is a change, whatever the length")

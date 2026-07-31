@@ -1005,18 +1005,28 @@ func aim_state() -> Dictionary:
 ## **`reticle_offset` is deliberately not in here.** It is the value that changes on every
 ## mouse motion and the only one that cannot affect the plane; including it would make the
 ## cache miss on exactly the input it exists to absorb.
+## **Nothing in here may clone the state.** The first version of this asked
+## `selection.previewed_unit()` for the shooter's previewed cell — which calls
+## `ActionQueue.preview()`, which calls `CombatState.dup()`, measured at **26 784 usec** on
+## a 214-blocker board. That reintroduced on every call the exact cost the memo existed to
+## remove, and the supervisor felt it immediately: "chunkier and more erratic … sometimes
+## 30, sometimes 70, sometimes 3".
+##
+## `ActionQueue.revision` answers "has the queue changed" for free, and the raw unit's own
+## cell and orientation cover a change made outside the queue. Together they cover every
+## input to the plane without previewing anything.
 func _aim_state_fingerprint() -> String:
 	var queue: ActionQueue = selection.current_queue()
-	var previewed: Unit = selection.previewed_unit()
+	var shooter: Unit = selection.selected_unit
 	return (
 		"%d|%s|%s|%d|%s|%d"
 		% [
-			selection.selected_unit.id,
-			previewed.cell if previewed != null else selection.selected_unit.cell,
-			previewed.orientation if previewed != null else selection.selected_unit.orientation,
+			shooter.id,
+			shooter.cell,
+			shooter.orientation,
 			aiming_at.unit.id if aiming_at.unit != null else -1,
 			aiming_at.cell,
-			queue.actions.size() if queue != null else 0,
+			queue.revision if queue != null else -1,
 		]
 	)
 
