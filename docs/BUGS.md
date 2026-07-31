@@ -110,6 +110,87 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Establish which before changing anything** — "no parallel systems" says a duplicate gesture is the
   bug to fix, not a behaviour to tune.
 
+### BR48.01 — Active — owner: `SUPERVISOR`
+**Closing the inspect panel leaves the background permanently dimmed**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.
+- **Repro:** in the spectator view, click a tile or unit — the inspect panel opens as expected, with the
+  background dimmed behind it. Close the panel. **The dim stays.** It does not block input; controls,
+  camera and selection all keep working. It is purely visual and it persists for the rest of the
+  session.
+- **Reads as a dim layer whose visibility or `modulate` is set on open and never restored on close** —
+  the one-way half of a two-way transition. Check every close path, not just the button: `Esc`, clicking
+  away, and opening a second inspect while the first is up are three different exits and only one of
+  them is obviously covered.
+- **Cheap to confirm, and worth confirming rather than assuming:** if a second open/close cycle makes it
+  *darker*, the dim is being stacked rather than left on, which is a different bug with the same
+  symptom.
+- **`SUPERVISOR`-owned because the evidence is visual.** CC can assert that a node's visibility flips,
+  but "the screen still looks dark" is not something it can see.
+- **taskblock-51 third hunt — RE-DIAGNOSED, and the title is now wrong.** *"The dimming on selecting
+  unit bug is not unit related, it's cover/tile related. Selecting a bare tile or cover causes the
+  screen to dim."*
+- **That moves the suspect.** It is not the inspect panel failing to restore a dim on close; it is
+  selecting a **non-unit** — bare tile or cover — dimming the screen in the first place. The two-way
+  transition theory in the notes above was built on the wrong trigger and should not be worked from.
+- **Likely one defect with `BR51.02`:** both are about what a click on cover or a bare tile resolves
+  to. If cover resolves to the tile beneath and a tile selection dims the screen, one wrong resolution
+  produces both symptoms.
+
+### BR51.07 — Active — owner: `SUPERVISOR`
+**Framerate collapses from 160+ to under 10 fps in the aim view**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
+- **Repro:** enter the aim view / dartboard. Framerate drops from **over 160 fps** (the monitor's
+  maximum) to **under 10**.
+- **This is a number, not a feeling, and it is far worse than `BR26.02` recorded.** That entry says
+  "low framerate while aiming"; a 16× collapse is a different class of problem and almost certainly the
+  same one. **Treat `BR26.02` as this entry's vaguer ancestor** and confirm before working either.
+- **It blocks the `BR51.01` investigation.** The supervisor has asked that this be addressed before
+  they spend more time fighting the aim view to troubleshoot the left-bias — reasonable, since every
+  aim-view experiment currently costs them a slideshow.
+- **`fps_dump` already fires on entering aim** (taskblock-50), so the drop should be visible in
+  `out/combat.log` without any new instrumentation. **Read it before changing anything** — `BR35.01`
+  has already absorbed three fixes that were reasoned rather than measured.
+
+### BR51.08 — Active — owner: `SUPERVISOR`
+**Selecting a bare tile or cover dims the screen**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
+- **Repro:** click a bare floor tile, or a piece of cover. The screen dims.
+- Filed separately from `BR48.01` rather than folded into it, because `BR48.01` is `SUPERVISOR`-owned
+  and describes a *persisting* dim after closing the inspect panel, while this is a dim *appearing* on
+  a selection that should not open anything. They may be one defect; **that is a finding to make, not
+  an assumption to file under.**
+
+### BR51.09 — Active — owner: `CC`
+**A unit killed during its turn stays selected, leaving its movement overlay on screen**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 third hunt, immediately after `BR51.04` was fixed.
+- **Repro:** kill a unit during its own turn. The turn now advances correctly (`BR51.04`), but the dead
+  unit remains *selected* and its reachable-cell overlay stays drawn through the next unit's turn.
+- **This is the other half of the fix I made and did not finish.** `kill_unit` advances the turn; it
+  does not tell the selection to let go, and `SelectionController` holds its `selected_unit` reference
+  independently of whose turn it is. Fixing the pointer without clearing the selection moved the
+  symptom rather than removing it.
+
+### BR51.10 — Active — owner: `CC`
+**Inspect is offered when there is nothing to inspect**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 third hunt.
+- The supervisor first reported inspect as doing nothing under the player view, then diagnosed it
+  themselves: *"Inspect should be disabled when it can't be selected, like when a unit isn't selected."*
+- **So the defect is an affordance that lies**, not a broken action: the control is live when the thing
+  it acts on does not exist, so pressing it correctly does nothing and reads as broken.
+
+### BR51.11 — Active — owner: `SUPERVISOR`
+**A unit refacing mid-move sometimes turns the long way around**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
+- **Repro:** watch a unit move along a path that changes direction. It sometimes rotates **270° one way
+  rather than 90° the other**.
+- **Visual only, as far as is known** — the facing it arrives at is presumably correct, so this is the
+  interpolation choosing the wrong arc rather than the logic choosing the wrong facing. **Confirm that
+  before touching the resolver:** if the *final* facing is ever wrong too, this is a different and much
+  more serious entry.
+- Suspect the shortest-arc handling where an orientation crosses the wrap point.
+
 ### BR51.01 — Active — owner: `SUPERVISOR`
 **Sniper rifle and chaingun consistently shoot wide left of the aim point**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
@@ -144,7 +225,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
   frame mismatch if a later change introduces the thing that was suspected here.
 
-### BR51.02 — Resolved — owner: `CC`
+### BR51.02 — Active — owner: `CC`
 **`set_part_hp` cannot target a part that is not on a unit**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
@@ -162,6 +243,18 @@ confirm" roll-up — so pending items surface at a natural review point without 
   still works unchanged — widening a target must not narrow an existing one, which is asserted.
 - **Your detonation route is open:** spawn a goo barrel, click it, `set_part_hp` → 0.
 
+- **REOPENED (taskblock-51, third hunt). The fix was real and insufficient, and the gap is upstream of
+  it.** The injector now resolves a cell target to the blocker there — that part works and is tested.
+  But the supervisor cannot *give* it that target: *"barrels aren't clickable. Selecting a barrel (or
+  any cover) actually selects the tile beneath."*
+- **So the defect is in what a board click resolves cover to**, not in the verb. `set_part_hp` was the
+  visible symptom; the real entry is that cover cannot be made the panel's active target at all, which
+  means every OBJECT-target verb has the same hole.
+- **My error worth recording:** I tested the injector against a hand-built `{kind: CELL, cell: X}` dict
+  and called the bug fixed without once driving the click that produces that dict. A test that
+  constructs its own input cannot tell you the caller never produces it — the same shape as
+  taskblock-48's "input tidier than reality is worse than no test".
+
 ### BR51.03 — Active — owner: `SUPERVISOR`
 **Shots miss when there is something in the way that should have been hit**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
@@ -175,53 +268,11 @@ confirm" roll-up — so pending items surface at a natural review point without 
   seen from the shooter's side rather than the drawing side. **Confirm against that entry before
   treating them separately** — taskblock-50's triage put `BR34.05` in the tracer cluster.
 
-### BR51.04 — Pending — owner: `SUPERVISOR`
-**Killing a unit during its own turn does not end that turn**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
-- **Repro:** while a unit is the current unit, kill it (Inject `kill`, or in play). The turn does not
-  advance.
-- `EndTurnAction` is documented as legal and advancing *"even if the current unit just died"*, and
-  `CombatState.advance_turn` skips the dead — so the rule exists and something is not reaching it.
-  The likely gap is that nothing *invokes* the advance when the death happens outside an action's own
-  resolution.
-- **Probably one defect with `BR51.05`**, which the supervisor flagged as possibly related.
-
-- **`Pending` (taskblock-51) — CC believes this fixed; the owner has not seen it work.**
-  `CombatState.kill_unit` now advances the turn when the unit it kills is the current one. It was
-  marking the unit dead and stopping, leaving `_current_unit_id` on a corpse.
-- **Guarded against reordering the round for an incidental death:** killing a *non-current* unit leaves
-  the turn exactly where it was, and the advance is suppressed while `is_resolving`, so a shot that
-  kills the acting unit mid-queue still ends its turn through the ordinary path rather than through a
-  second mechanism racing the first.
-- **To see it work:** during a unit's own turn, Inject → `kill` on that unit. The turn should pass to
-  the next living unit instead of sticking.
-
-### BR51.05 — Pending — owner: `SUPERVISOR`
-**A dead or prone unit cannot be selected**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
-- **Repro:** attempt to click a downed or prone unit. Selection does not take.
-- **Suspected same root as `BR51.04`:** if a dead unit is still the current unit, and selection is
-  gated on *being* the current unit, then both symptoms follow from one stuck turn pointer. Check them
-  together; fixing one blind may move the other without explaining it.
-- **Worth separating deliberately:** *dead* and *prone* are different states, and it is not yet
-  established that both fail. Confirm which.
-
-### BR48.01 — Active — owner: `SUPERVISOR`
-**Closing the inspect panel leaves the background permanently dimmed**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.
-- **Repro:** in the spectator view, click a tile or unit — the inspect panel opens as expected, with the
-  background dimmed behind it. Close the panel. **The dim stays.** It does not block input; controls,
-  camera and selection all keep working. It is purely visual and it persists for the rest of the
-  session.
-- **Reads as a dim layer whose visibility or `modulate` is set on open and never restored on close** —
-  the one-way half of a two-way transition. Check every close path, not just the button: `Esc`, clicking
-  away, and opening a second inspect while the first is up are three different exits and only one of
-  them is obviously covered.
-- **Cheap to confirm, and worth confirming rather than assuming:** if a second open/close cycle makes it
-  *darker*, the dim is being stacked rather than left on, which is a different bug with the same
-  symptom.
-- **`SUPERVISOR`-owned because the evidence is visual.** CC can assert that a node's visibility flips,
-  but "the screen still looks dark" is not something it can see.
+- **taskblock-51 third hunt — the supervisor has ruled: this is a bug, not a design change.** *"Leave
+  it as a bug, I tried to have this changed before so if it's still occurring it's a bug."* So the rule
+  — damage attenuates with range, the projectile still strikes something — is **already the intended
+  behaviour** and the code has regressed from or never implemented it. Treat `BR34.05` as the same
+  defect seen from the drawing side until proven otherwise.
 
 ### BR46.02 — Active — owner: `CC`
 **16 of 40 generated maps contain ground a unit can walk into and never leave**
