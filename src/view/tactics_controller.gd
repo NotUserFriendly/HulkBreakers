@@ -179,6 +179,9 @@ var _aim_state_key: String = ""
 ## taskblock-51 (`BR26.02`): the newest un-applied cursor position — see `_unhandled_input`.
 var _pending_reticle_screen: Vector2 = Vector2.ZERO
 var _has_pending_reticle: bool = false
+## `BR51.14`: the same coalescing for the non-aim hover — see `_process`.
+var _pending_hover_screen: Vector2 = Vector2.ZERO
+var _has_pending_hover: bool = false
 ## taskblock-51: **one measurement, not two.** The aim session used to keep its own min,
 ## frame count and elapsed time — a second implementation of what `PerfStats` now does, and
 ## the reason the two disagreed for three passes while the supervisor reported 8 fps and the
@@ -276,7 +279,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			# shows. Only reached here, never while aiming/dragging: the
 			# reticle and the facing drag are both a more specific, more
 			# urgent read of the same motion event.
-			update_hover(motion.position)
+			#
+			# `BR51.14`: **coalesced to one update per drawn frame**, exactly as the reticle
+			# above. A 500-1000 Hz mouse against a 60-160 fps game means the queue backs up and
+			# the board answers positions from several events ago. Safe for the same reason:
+			# this is an absolute raycast through the literal cursor, not an accumulated
+			# delta, so the intermediate positions carry nothing.
+			_pending_hover_screen = motion.position
+			_has_pending_hover = true
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
 		if not key_event.pressed:
@@ -1305,6 +1315,11 @@ func _confirm_step_out() -> void:
 ## Sampled every frame while aiming. Cheap on purpose — three float operations — because
 ## an instrument that costs framerate cannot measure framerate.
 func _process(delta: float) -> void:
+	# `BR51.14`: **above the aim guard**, because hovering is the non-aim path — this is the
+	# whole point of it and putting it below would coalesce nothing.
+	if _has_pending_hover:
+		_has_pending_hover = false
+		update_hover(_pending_hover_screen)
 	if aiming_at == null or delta <= 0.0:
 		return
 	# The coalesced reticle update: at most one per drawn frame, at the newest position the

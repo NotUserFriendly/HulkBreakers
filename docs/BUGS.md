@@ -97,6 +97,23 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.16 — Active — owner: `SUPERVISOR`
+**The in-game combat log empties itself while the file on disk keeps everything**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 fifth hunt. *"Combat log is resetting to nothing displayed in
+  game, while the out of game file seems to stay un-cleared."*
+- **The divergence is the whole finding.** Folding is presentation-only (tb22 F2) and `out/combat.log`
+  is written by a separate sink, so the panel and the file read the same stream through different
+  paths. One of them losing everything while the other keeps it means the loss is in the panel's own
+  state, not in the log.
+- **Suspects, in order:** `LogFold.MAX_GROUPS` discarding from the front (it pops oldest groups, which
+  would thin the panel but never empty it); the panel rebuilding its list from a fold that was reset;
+  or an overlay swap re-creating the panel without replaying what the log already holds — the
+  spectator/player overlay switch re-creates panels, and taskblock-51 Pass I's divergence cluster is
+  the same neighbourhood.
+- **Reproduce with a count before touching it.** "Nothing displayed" versus "the first N lines are
+  gone" are different bugs, and the panel's own row count against the sink's event count says which.
+
 ### BR51.12 — Suspected — owner: `SUPERVISOR`
 **Ramps may generate on top of other ramps facing the other way**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
@@ -108,7 +125,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
   name** — which is the more interesting finding of the two.
 
-### BR51.14 — Active — owner: `CC`
+### BR51.14 — Pending — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, taskblock-51 fourth hunt.
@@ -120,6 +137,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
   one update per drawn frame, and check whether the signal's listeners are doing preview-scale work.
 - **Do not assume it is identical** — measure it the same way, with the per-function clone and plane
   counts, before changing anything.
+- **`Pending` (taskblock-51). Measured first, and it was not what triage assumed.** 42 527 -> 18 454
+  usec per motion (23 -> 54 fps), clones 48 -> 19 per 30 calls. The cost was `TooltipController.refresh`
+  being wired to `mouse_moved` as well as `hover_changed`: every motion rebuilt the tooltip, and
+  building one calls `previewed_unit()`, a `CombatState.dup()`. Motion now repositions only. The hover
+  is also coalesced to one update per drawn frame, which the reticle already had.
+- **`Pending` rather than closed** even though it is CC-owned: the fix is a framerate the supervisor can
+  feel and CC cannot see. **To check:** select a unit and sweep the mouse across tiles without aiming.
 
 ### BR51.15 — Active — owner: `SUPERVISOR`
 **A distinct hitch as the over-the-shoulder camera swings behind the unit**
@@ -132,19 +156,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Suspects, in order:** the camera passing through wall geometry (which the supervisor separately
   proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
   triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
-
-### BR51.06 — Active — owner: `CC`
-**The debug panel's `pick` button also sets the active target**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-30, taskblock-51 Pass A.
-- **Repro:** open Inject, choose a verb with a `pick` button, and use it. Picking a parameter target
-  *also* reassigns the panel's active item, so a pick meant to fill one field silently changes what
-  the verb will act on.
-- **The supervisor named the two acceptable outcomes**, and which applies is the actual question:
-  suspend active-target selection while a pick is in flight, **or**, if pick and active-selection do
-  the same thing, **remove `pick` entirely** rather than keep two names for one gesture.
-- **Establish which before changing anything** — "no parallel systems" says a duplicate gesture is the
-  bug to fix, not a behaviour to tune.
 
 ### BR51.11 — Active — owner: `SUPERVISOR`
 **A unit refacing mid-move sometimes turns the long way around**
