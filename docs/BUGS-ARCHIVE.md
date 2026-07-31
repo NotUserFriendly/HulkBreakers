@@ -1965,3 +1965,28 @@ be permanently immobilised**
   afterwards — the same shape tb32 Pass D gave the player path, which was the only call site it
   changed. The supervisor's AI-vs-player comparison was the diagnosis.
 
+### BR51.11 — Resolved — owner: `SUPERVISOR`
+**A unit refacing mid-move sometimes turns the long way around**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
+- **Repro:** watch a unit move along a path that changes direction. It sometimes rotates **270° one way
+  rather than 90° the other**.
+- **Visual only, as far as is known** — the facing it arrives at is presumably correct, so this is the
+  interpolation choosing the wrong arc rather than the logic choosing the wrong facing. **Confirm that
+  before touching the resolver:** if the *final* facing is ever wrong too, this is a different and much
+  more serious entry.
+- Suspect the shortest-arc handling where an orientation crosses the wrap point.
+
+- **`PENDING` (taskblock-51) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. Confirmed, and it was
+  exactly that.** `ResolutionPlayer` tweened the facing with `tween_method`, which interpolates its two
+  arguments as **plain numbers** — handed raw orientations it runs 0.1 -> 6.0 the long way, 336 degrees
+  left instead of 24 right. It now tweens towards `from + angle_difference(from, to)`, an angle equal to
+  the target but numerically adjacent to the start.
+- **Your two observations were both diagnostic.** *"They end up facing in reasonable directions"* is why
+  this was visual-only: only the path was wrong, never the arrival — so the regression test asserts the
+  **arc**, because an endpoint test passes on the broken version too. *"The point to point animation has
+  them facing the right way"* separates the facing tween from the slide, which is the other half.
+- **Squad 1 and not squad 0 is a distribution of starting facings, not a squad rule.** The arithmetic has
+  no idea whose unit it is turning; squad 1 simply starts facing the other way and so crosses the wrap
+  point more often. Pinned in a test so the fix is not mistaken for a squad-specific patch.
+- **To see it:** watch a path that changes direction. Every turn should now take the short way.
+- **Resolved — confirmed by the owner:** *"Confirmed rotating is going the correct way now."*
