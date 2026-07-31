@@ -167,9 +167,20 @@ func test_a_deflect_logs_its_own_reflected_miss_endpoint() -> void:
 	assert_eq(
 		deflect.data.get("outcome"), Enums.Outcome.DEFLECT, "sanity: the fixture must deflect"
 	)
-	assert_true(deflect.data.has("deflect_end_x"))
-	assert_true(deflect.data.has("deflect_end_y"))
-	assert_true(deflect.data.has("deflect_end_height"))
+	# **`BR35.04` (taskblock-51 Pass C): a DEFLECT no longer carries a projected endpoint.**
+	#
+	# This asserted the opposite until now. `deflect_end_*` was the reflection direction pushed
+	# out to `max_range` and stamped unconditionally, "so the reflected direction is always
+	# drawable regardless of whether a real ricochet hop follows it" — a line to an arbitrary
+	# distance, corresponding to nothing that resolved, and indistinguishable on screen from a
+	# real hit. The supervisor's call was to delete it rather than reconcile it.
+	#
+	# The resolver still computes `reflected_dir`/`reflected_vertical`; it needs them to
+	# recurse. Only the projection into the log is gone, and a ricochet that finds a target
+	# still logs its own `impact` with a real origin and hit point.
+	assert_false(deflect.data.has("deflect_end_x"), "no invented endpoint reaches the log")
+	assert_false(deflect.data.has("deflect_end_y"))
+	assert_false(deflect.data.has("deflect_end_height"))
 
 
 ## taskblock-28 Pass C: BR27.02 (the backward-burst report) was

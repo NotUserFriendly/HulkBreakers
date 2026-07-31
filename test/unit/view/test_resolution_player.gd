@@ -368,67 +368,63 @@ func _deflect_impact_event(
 	)
 
 
-## docs/PLAN.md / taskblock-26 Pass A1: "a bounced tracer per DEFLECT
-## outcome" — a DEFLECT event draws its ordinary incoming segment PLUS a
-## second, distinct segment along the reflected direction.
-func test_play_impact_draws_a_second_tracer_for_a_deflect_outcome() -> void:
+## **`BR35.04` (taskblock-51 Pass C): a DEFLECT draws ONE segment, not two.**
+##
+## These three tests used to assert the opposite — that a deflect draws a second, visually
+## distinct segment, that N deflects draw 2N segments, and that the second one is blue. They
+## were not wrong about the code; they were wrong about what the code should do, and they held
+## the defect in place. The second segment was projected to an arbitrary range from the
+## reflection direction whether or not a ricochet resolved, which is what made invented lines
+## indistinguishable from real hits.
+##
+## **The supervisor's call was to remove it rather than reconcile it.** A ricochet that hits
+## something logs its own `impact` with a real origin and hit point and draws through the
+## ordinary path; one that hits nothing draws nothing, which is the truthful answer.
+func test_a_deflect_draws_only_the_segment_that_actually_resolved() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
-	player.bullet_ms = 10.0
-	player.speed = 1000.0
 
-	await player._play_impact(
-		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
+	await player.play(
+		[_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))]
 	)
 
-	assert_eq(player._tracers.get_child_count(), 2, "the clean segment plus the bounced one")
+	assert_eq(player._tracers.get_child_count(), 1, "one hop, one segment")
 
 
-## "Deflect count drawn == deflect count logged" — N deflect-outcome
-## events must draw exactly N extra bounced segments, on top of the
-## ordinary one each impact always gets.
-func test_deflect_tracer_count_matches_deflect_count_logged() -> void:
+## N deflects draw N segments. The old assertion here was `2N` — the count that made the
+## decorative projection look deliberate.
+func test_deflect_segment_count_matches_the_hops_that_resolved() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
-	player.bullet_ms = 10.0
-	player.speed = 1000.0
 
-	await player._play_impact(
-		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
-	)
-	await player._play_impact(
-		_deflect_impact_event(built.attacker, built.target, &"pillar", Vector2(7.0, 1.0))
-	)
-	await player._play_impact(_impact_event(built.attacker, built.target, &"root"))
-
-	assert_eq(
-		player._tracers.get_child_count(),
-		5,
-		"2 deflects x 2 segments each + 1 ordinary hit x 1 segment"
+	await (
+		player
+		. play(
+			[
+				_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0)),
+				_deflect_impact_event(built.attacker, built.target, &"pillar", Vector2(7.0, 1.0)),
+				_impact_event(built.attacker, built.target, &"torso"),
+			]
+		)
 	)
 
+	assert_eq(player._tracers.get_child_count(), 3, "three resolved hops, three segments")
 
-## A DEFLECT's own bounced segment must actually be visually distinct
-## from an ordinary clean-hit tracer, not just a second copy of it.
-func test_the_deflect_tracer_uses_a_visually_distinct_color() -> void:
+
+## **A stale `deflect_end_*` in an old log is ignored rather than drawn.** The fixture still
+## stamps those fields deliberately: a log written before this change should replay without
+## inventing geometry, and the view no longer reads them at all.
+func test_a_legacy_deflect_endpoint_in_the_log_draws_nothing_extra() -> void:
 	var built: Dictionary = _setup_player()
 	var player: ResolutionPlayer = built.player
-	player.bullet_ms = 0.0
-	# taskblock-27 Pass A2: the primary->deflect pair now has a real beat
-	# between them (`DEFLECT_BEAT_MS`) — the deflect tracer no longer
-	# exists synchronously in the same call, so this must actually await.
-	player.speed = 1000.0
-
-	await player._play_impact(
-		_deflect_impact_event(built.attacker, built.target, &"crate", Vector2(6.0, 3.0))
+	var event: LogEvent = _deflect_impact_event(
+		built.attacker, built.target, &"crate", Vector2(9.0, 9.0)
 	)
+	assert_true(event.data.has("deflect_end_x"), "sanity: the fixture still carries the old field")
 
-	var clean_tracer: MeshInstance3D = player._tracers.get_child(0)
-	var deflect_tracer: MeshInstance3D = player._tracers.get_child(1)
-	var clean_material: StandardMaterial3D = (clean_tracer.mesh as BoxMesh).material
-	var deflect_material: StandardMaterial3D = (deflect_tracer.mesh as BoxMesh).material
-	assert_eq(deflect_material.albedo_color, ResolutionPlayer.TRACER_DEFLECT_COLOR)
-	assert_ne(deflect_material.albedo_color, clean_material.albedo_color)
+	await player.play([event])
+
+	assert_eq(player._tracers.get_child_count(), 1, "the old field is data the view has retired")
 
 
 ## taskblock-27 Pass A2: "shot -> (pause) -> its deflect -> (delay) -> next

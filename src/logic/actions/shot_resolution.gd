@@ -229,24 +229,22 @@ static func log_impact_result(
 		"hit_y": result.hit_point.y,
 		"hit_height": result.hit_height,
 	}
-	# taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
-	# never drawn." `ImpactResult.reflected_dir`/`reflected_vertical` were
-	# always computed by `resolve_impact` for a DEFLECT, but never made it
-	# into the log data — a ricochet that then finds nothing to hit (an
-	# empty `resolve_shot` recursion) produces NO further event at all, so
-	# the view had nothing to draw even when it wanted to. Stamped here,
-	# unconditionally on every DEFLECT, the same "miss" convention
-	# `log_miss_result` already uses for a shot that never hits anything — so the
-	# reflected direction is always drawable regardless of whether a real
-	# ricochet hop follows it.
-	if result.outcome == Enums.Outcome.DEFLECT:
-		var miss_range: float = (
-			max_range if max_range > 0.0 else maxf(state.grid.width, state.grid.rows)
-		)
-		var deflect_end: Vector2 = result.hit_point + result.reflected_dir * miss_range
-		data["deflect_end_x"] = deflect_end.x
-		data["deflect_end_y"] = deflect_end.y
-		data["deflect_end_height"] = result.hit_height + result.reflected_vertical * miss_range
+	# taskblock-51 Pass C (`BR35.04`): **the decorative deflect endpoint is gone.**
+	#
+	# taskblock-26 Pass A1 stamped `deflect_end_*` here on every DEFLECT — the reflection
+	# direction projected out to `max_range`, "so the reflected direction is always drawable
+	# regardless of whether a real ricochet hop follows it". That is precisely the defect: a
+	# line drawn to an arbitrary distance, corresponding to nothing that resolved, and
+	# indistinguishable on screen from a real hit. It invented the wall impacts the supervisor
+	# spent a review session investigating.
+	#
+	# **The supervisor's call was to remove it, not to make it agree** — draw only geometry that
+	# comes from something that actually resolved. A ricochet that finds a target logs its own
+	# `impact` with its own real origin and hit point, and that draws correctly. A ricochet that
+	# finds nothing now draws nothing, which is the honest answer: nothing happened.
+	#
+	# `ImpactResult.reflected_dir`/`reflected_vertical` are untouched — the resolver still needs
+	# them to recurse. Only the projection into the log is deleted.
 	var event := LogEvent.new(
 		state.round_number, Enums.Phase.RESOLUTION, attacker.id, &"impact", data, text
 	)

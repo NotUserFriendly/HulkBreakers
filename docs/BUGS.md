@@ -1777,7 +1777,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   Returned to `Active` so it is picked up in the next bug hunt rather than sitting in a status that
   nobody can discharge.
 
-### BR35.04 — Active — owner: `SUPERVISOR`
+### BR35.04 — Pending — owner: `SUPERVISOR`
 **A DEFLECT's drawn "bounce" tracer is a decorative fixed-range projection, not the real continuation**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **2026-07-23 (supervisor observation — independently seen, and a decision made).** Observed live as
@@ -1789,6 +1789,15 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   A tracer nobody can distinguish from a real hit, drawn to an arbitrary distance, is worse than no
   tracer: it invented the "wall impacts" the supervisor spent a whole review session investigating.
   **Owner promoted to `SUPERVISOR`** — the fix is visual, so closure needs a live look.
+
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** Deleted, as
+  instructed, rather than reconciled. `ShotResolution.log_impact_result` no longer stamps
+  `deflect_end_*`, and `ResolutionPlayer._play_impact` no longer draws a second segment. A ricochet that
+  hits something logs its own `impact` and draws through the ordinary path; one that hits nothing draws
+  nothing. **Four tests asserted the old behaviour and were rewritten** — they were not wrong about the
+  code, only about what it should do.
+- **To see it:** fire until a deflect resolves. There should be **no blue segment**, and no line running
+  off to an arbitrary distance from the deflection point.
 - **See also BR35.07**, the same class of defect on the `STOP_DEAD` tracer (drawn past its own hit
   point). Filed separately per the supervisor's own rule that one entry tracks one observed symptom.
 - **Found:** 2026-07-23, reading a real chaingun burst out of `out/combat.log` at the supervisor's own
