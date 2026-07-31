@@ -216,6 +216,24 @@ func _build_bot_viewer(parent: Control) -> void:
 	parent.add_child(_preview_container)
 
 	_preview_viewport = SubViewport.new()
+	# **`BR48.01`'s actual root: `SubViewport.own_world_3d` defaults to FALSE**, and this is
+	# set **before the viewport enters the tree** so no scenario attach/detach ever runs.
+	#
+	# On the default, this panel's private `WorldEnvironment` and `DirectionalLight3D` sit in
+	# the **battle's** `World3D` from the moment it is built — the board has been lit by the
+	# inspector as well as by itself, without anything asking for it. Nothing looked wrong,
+	# because the extra light only ever made the board brighter.
+	#
+	# It becomes visible the first time a subject takes the fallback path (`open()` with no
+	# live view — cover, a loose item, a bare tile), which sets `own_world_3d = true` and takes
+	# that lighting **out** of the battle world. The board drops to its real, single-light
+	# level and stays there, because `_isolate_clear()` never restores the flag. A new bout
+	# rebuilds the panel and the accidental second light returns — which is precisely the
+	# supervisor's *"starting a new bout does fix it"*.
+	#
+	# The flag itself is left at its default — **assigning it runs Godot's scenario
+	# attach/detach and errors where no scenario exists yet** — so the leak is closed by
+	# withdrawing the lighting instead, below, which needs no transition at all.
 	_preview_viewport.size = Vector2i(VIEWER_WIDTH, VIEWER_HEIGHT)
 	_preview_container.add_child(_preview_viewport)
 	_preview_environment = WorldPalette.world_environment()
@@ -223,6 +241,9 @@ func _build_bot_viewer(parent: Control) -> void:
 	_preview_own_environment = _preview_environment.environment
 	_preview_viewport.add_child(_preview_environment)
 	_preview_viewport.add_child(_preview_light)
+	# The world is shared at birth (Godot's default), so the preview's lighting starts
+	# withdrawn — it is restored only by a path that gives this viewport a world of its own.
+	_apply_preview_lighting(_preview_viewport.own_world_3d)
 
 	_preview_camera = Camera3D.new()
 	_preview_viewport.add_child(_preview_camera)
@@ -427,10 +448,17 @@ func close() -> void:
 func _set_preview_world_shared(shared: bool) -> void:
 	if _preview_viewport.own_world_3d == shared:
 		_preview_viewport.own_world_3d = not shared
+	_apply_preview_lighting(not shared)
+
+
+## Lit only when this viewport owns its world. **In a shared world the board supplies the
+## light** — the subject is a real unit standing on the real board — and anything this panel
+## added there would be lighting the whole battle.
+func _apply_preview_lighting(owns_world: bool) -> void:
 	if _preview_light != null:
-		_preview_light.visible = not shared
+		_preview_light.visible = owns_world
 	if _preview_environment != null:
-		_preview_environment.environment = null if shared else _preview_own_environment
+		_preview_environment.environment = _preview_own_environment if owns_world else null
 
 
 ## taskblock-26 Pass E: "objects and tiles don't [have a click inspector].
