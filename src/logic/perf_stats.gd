@@ -67,6 +67,9 @@ var _instant: float = 0.0
 var _rolling: float = UNAVAILABLE
 var _window_seconds: float = 0.0
 var _window_frames: int = 0
+## Index of the fastest frame in `_fps`, so its neighbours can be read back — see
+## `fastest_neighbourhood()`. Kept in step with the `MAX_SAMPLES` trim below.
+var _fastest_index: int = -1
 
 
 ## Feed one frame. **Returns `true` on the frame that completes a rolling window**, so a
@@ -81,9 +84,12 @@ func sample(delta: float) -> bool:
 	_instant = fps
 	if _fps.size() >= MAX_SAMPLES:
 		_fps.remove_at(0)
+		# Every index shifted down by one; -1 stays -1 and an evicted fastest goes to -1.
+		_fastest_index = maxi(-1, _fastest_index - 1)
 	_fps.append(fps)
 	if fps > _fastest:
 		_fastest = fps
+		_fastest_index = _fps.size() - 1
 	if _slowest <= 0.0 or fps < _slowest:
 		_slowest = fps
 	_window_seconds += delta
@@ -173,8 +179,34 @@ func slowest() -> float:
 	return _slowest if _slowest > 0.0 else UNAVAILABLE
 
 
+## **Is the fastest frame a real frame, or the engine catching up after a stall?**
+##
+## The supervisor's question, and it is the right one: *"Is it queuing frames for some reason,
+## and when those finally get to hit, they run over?"* A frame that takes almost no time
+## because the previous one overran reports a huge `1 / delta` — it is bookkeeping, not
+## throughput, and it should not be mistaken for the machine running well.
+##
+## The signature is **adjacency**: a catch-up frame lands immediately after a slow one. So this
+## hands back the fastest frame together with the frames either side of it, and the pattern
+## reads directly — `prev 7.9 -> 2013.4 -> next 148.0` is a stall being paid back, while
+## `prev 158.0 -> 161.2 -> next 159.4` is simply the fastest of a healthy run.
+##
+## `UNAVAILABLE` for a neighbour that does not exist (the fastest frame was first or last).
+## **This decides `BR51.17`**: if the maximum is an artifact, anchoring the top-1% cut to it is
+## anchoring it to noise.
+func fastest_neighbourhood() -> Dictionary:
+	if _fastest_index < 0 or _fps.is_empty():
+		return {"previous": UNAVAILABLE, "value": UNAVAILABLE, "next": UNAVAILABLE}
+	return {
+		"previous": _fps[_fastest_index - 1] if _fastest_index > 0 else UNAVAILABLE,
+		"value": _fps[_fastest_index],
+		"next": _fps[_fastest_index + 1] if _fastest_index + 1 < _fps.size() else UNAVAILABLE,
+	}
+
+
 func reset() -> void:
 	_fps = PackedFloat32Array()
+	_fastest_index = -1
 	_fastest = 0.0
 	_slowest = 0.0
 	_instant = 0.0
@@ -186,6 +218,7 @@ func reset() -> void:
 ## One line per figure, in the order the panel shows them — shared so the panel and the
 ## combat-log dump cannot drift into two different descriptions of one measurement.
 func describe() -> Array[String]:
+	var neighbourhood: Dictionary = fastest_neighbourhood()
 	return [
 		"instant %s" % _format(_instant),
 		"rolling %ds %s" % [int(ROLLING_WINDOW_SECONDS), _format(_rolling)],
@@ -197,6 +230,16 @@ func describe() -> Array[String]:
 				_format(average_dropping_top()),
 				int(round(reporting_fraction() * 100.0)),
 				_fps.size(),
+			]
+		),
+		# Sixth line, added for the supervisor's catch-up-frame question — see
+		# `fastest_neighbourhood()`. Cheap to read, cheap to remove once it has answered.
+		(
+			"fastest %s (prev %s, next %s)"
+			% [
+				_format(neighbourhood["value"]),
+				_format(neighbourhood["previous"]),
+				_format(neighbourhood["next"]),
 			]
 		),
 	]
@@ -214,6 +257,7 @@ func snapshot() -> Dictionary:
 		"reporting": reporting_fraction(),
 		"frames": _fps.size(),
 		"fastest": _fastest,
+		"fastest_neighbourhood": fastest_neighbourhood(),
 	}
 
 

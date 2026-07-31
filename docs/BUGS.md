@@ -113,6 +113,15 @@ confirm" roll-up — so pending items surface at a natural review point without 
   **The supervisor's worked example does not expose this** because its fast frames are clustered
   (159/160 against a 160 max), and that example is asserted in `test_perf_stats.gd` and still passes.
   A test built from a specified example cannot tell you the specification omitted a case.
+- **The supervisor's counter-reading, and it reframes this entry:** *"Arguably that's good. It caught a
+  random framerate spike even though everything up to this point has been locked at 160. Is it queuing
+  frames for some reason, and when those finally get to hit, they run over?"* The readout now reports
+  the fastest frame's immediate neighbours (`PerfStats.fastest_neighbourhood`, sixth line of the dump),
+  because a catch-up frame is identified by **adjacency** — it lands right after a stall. **If the
+  maximum is an artifact, the fix here is excluding frames that are not real frames, not choosing a
+  different percentile.** Waiting on one dump to say which.
+- **Possibly one defect with `BR51.15`.** `min` has read 7.4 in every dump this session; if the fastest
+  frame sits immediately after a ~7 fps frame, the stall and the bogus maximum are one event.
 - **Not fixed, and deliberately not redesigned unasked.** *Which* rule replaces it is a design decision:
   a percentile cut, a cut anchored to the median rather than the max, or discarding the statistic in
   favour of the 1% low, which is doing its job perfectly. The supervisor was explicit about what this

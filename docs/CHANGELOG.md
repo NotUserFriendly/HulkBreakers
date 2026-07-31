@@ -1,5 +1,29 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — the performance readout reports the fastest frame's neighbours
+
+**The supervisor's question, made answerable:** *"Is it queuing frames for some reason, and when those
+finally get to hit, they run over?"* A frame that takes almost no time because the previous one overran
+reports a huge `1 / delta` — bookkeeping, not throughput.
+
+Two readings in their live dumps support it. `instant` hit **212.6** against a 160 Hz cap, so
+above-refresh frames are genuinely being produced; and the reporting fraction bounds the spike exactly
+— **one frame in 4 585** sits within 1% of the maximum, an isolated outlier rather than the top of a
+cluster.
+
+The signature of catch-up is **adjacency**, so `PerfStats.fastest_neighbourhood()` returns the fastest
+frame together with the frames either side of it, and `describe()` carries a sixth line:
+`fastest 2013.4 (prev 7.9, next 148.0)` reads as a stall being paid back, while
+`fastest 161.2 (prev 158.0, next 159.4)` is simply the fastest of a healthy run. **Both cases are
+tested** — without the contrast case the figure could not tell them apart and would be decoration.
+
+**This is what should decide `BR51.17`.** If the maximum is a catch-up artifact then anchoring the
+top-1% cut to it is anchoring it to noise, and the fix is excluding frames that are not real frames —
+not a different percentile. That is a better answer than any of the three CC offered, and it came from
+the supervisor's observation. **Possibly one defect with `BR51.15`**: `min` has read 7.4 in every dump
+this session, so if the fastest frame sits immediately after a ~7 fps frame, the stall and the bogus
+maximum are the same event seen from both ends.
+
 ### taskblock-51 — `BR51.14`: hovering tiles cost a `CombatState` clone per mouse motion
 
 **Measured before it was touched**, per the entry's own instruction not to assume it was `BR26.02`

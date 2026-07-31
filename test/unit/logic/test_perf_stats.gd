@@ -148,7 +148,72 @@ func test_the_readout_and_the_snapshot_agree() -> void:
 	var snapshot: Dictionary = stats.snapshot()
 	var lines: Array[String] = stats.describe()
 
-	assert_eq(lines.size(), 5, "one line per figure")
+	assert_eq(lines.size(), 6, "one line per figure, plus the catch-up read")
 	assert_eq(int(snapshot["frames"]), 150)
 	assert_true(lines[4].contains("150 frames"), "the readout states its own sample size")
 	assert_almost_eq(float(snapshot["slowest"]), 20.0, 0.05, "the worst frame is carried too")
+
+
+## **The supervisor's catch-up hypothesis, made answerable.**
+##
+## > *"Is it queuing frames for some reason, and when those finally get to hit, they run over?"*
+##
+## A frame that takes almost no time because the previous one overran reports a huge
+## `1 / delta`. That is bookkeeping, not throughput — and it is the reading that anchors the
+## top-1% cut in `BR51.17`. The signature is adjacency, so the fastest frame is reported with
+## the frames either side of it and the pattern reads straight off the dump.
+func test_a_catch_up_frame_is_visible_by_what_precedes_it() -> void:
+	var stats := PerfStats.new()
+	_feed(stats, 160.0, 50)
+	stats.sample(1.0 / 8.0)  # the stall
+	stats.sample(1.0 / 2000.0)  # the frame that pays it back
+	_feed(stats, 160.0, 50)
+
+	var neighbourhood: Dictionary = stats.fastest_neighbourhood()
+
+	gut.p(
+		(
+			"fastest %.1f, preceded by %.1f, followed by %.1f"
+			% [neighbourhood["value"], neighbourhood["previous"], neighbourhood["next"]]
+		)
+	)
+	assert_almost_eq(float(neighbourhood["value"]), 2000.0, 1.0)
+	assert_almost_eq(float(neighbourhood["previous"]), 8.0, 0.1, "a stall sits right before it")
+	assert_almost_eq(float(neighbourhood["next"]), 160.0, 1.0, "and normal service resumes")
+
+
+## **The contrast case, so the reading means something.** The fastest frame of a healthy run is
+## surrounded by frames like itself — that is what distinguishes it from a payback spike, and
+## without this case the figure above could not tell the two apart.
+func test_the_fastest_frame_of_a_steady_run_has_ordinary_neighbours() -> void:
+	var stats := PerfStats.new()
+	_feed(stats, 158.0, 40)
+	stats.sample(1.0 / 161.0)
+	_feed(stats, 159.0, 40)
+
+	var neighbourhood: Dictionary = stats.fastest_neighbourhood()
+
+	assert_almost_eq(float(neighbourhood["value"]), 161.0, 0.5)
+	assert_almost_eq(float(neighbourhood["previous"]), 158.0, 0.5, "nothing stalled before it")
+
+
+## A neighbour that does not exist reads as unavailable rather than as a zero-fps frame, which
+## would be indistinguishable from a real stall.
+func test_a_fastest_frame_at_the_edge_reports_no_neighbour() -> void:
+	var stats := PerfStats.new()
+	stats.sample(1.0 / 500.0)
+	_feed(stats, 60.0, 5)
+
+	var neighbourhood: Dictionary = stats.fastest_neighbourhood()
+
+	assert_eq(float(neighbourhood["previous"]), PerfStats.UNAVAILABLE, "nothing came before it")
+	assert_almost_eq(float(neighbourhood["next"]), 60.0, 0.5)
+
+
+func test_the_readout_carries_the_fastest_frames_neighbourhood() -> void:
+	var stats := PerfStats.new()
+	_feed(stats, 60.0, 10)
+	var lines: Array[String] = stats.describe()
+
+	assert_eq(lines.size(), 6, "the sixth line is the catch-up read")
+	assert_true(lines[5].contains("fastest"), lines[5])
