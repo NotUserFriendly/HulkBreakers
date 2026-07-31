@@ -663,6 +663,13 @@ func _object_target(target: Variant) -> Dictionary:
 				"root": (hit_unit as Unit).shell.root,
 				"describe": "unit %d" % (hit_unit as Unit).id,
 			}
+		# **The hit already knows which part it struck — use it rather than re-deriving.**
+		# A click on cover resolves to a `PART` hit carrying the exact `Part`; looking the
+		# cell up again in `blockers` is a second computation that can disagree with the
+		# first, which is the substitution `docs/02` exists to forbid.
+		if dict.get("kind") == Enums.HitKind.PART and dict.get("part") != null:
+			var struck: Part = dict.get("part")
+			return {"root": struck, "describe": "%s at %s" % [struck.id, dict.get("cell")]}
 		var cell: Variant = dict.get("cell")
 		if cell == null:
 			return {"refusal": &"target_names_no_cell"}

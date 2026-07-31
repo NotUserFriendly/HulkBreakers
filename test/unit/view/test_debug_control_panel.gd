@@ -407,3 +407,33 @@ func _first_spin_box(node: Node) -> SpinBox:
 		if found != null:
 			return found
 	return null
+
+
+## **Cover must not read as the tile beneath it.** The label special-cased units and called
+## everything else a cell, so clicking a barrel showed "Active: Cell (2, 2)" and there was
+## no way to tell whether the panel held the barrel or the floor — which is how `BR51.02`
+## looked like a broken verb rather than a mislabelled target.
+func test_a_cover_click_is_named_by_its_part_not_by_its_cell() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	var cover := Part.new()
+	cover.id = &"goo_barrel"
+
+	panel._on_active_target_clicked(
+		{"kind": Enums.HitKind.PART, "unit": null, "part": cover, "cell": Vector2i(2, 2)}
+	)
+
+	var label: String = panel._active_label.text
+	assert_true(label.contains("goo_barrel"), "the label names the part: %s" % label)
+	assert_false(label.begins_with("Active: Cell"), "and does not read as the bare tile")
+
+
+## A genuinely bare tile still reads as a cell — widening what the label recognises must
+## not make every click claim to have hit something.
+func test_a_bare_tile_click_still_reads_as_a_cell() -> void:
+	var panel: DebugControlPanel = _open_panel()
+
+	panel._on_active_target_clicked(
+		{"kind": Enums.HitKind.CELL, "unit": null, "cell": Vector2i(4, 4)}
+	)
+
+	assert_true(panel._active_label.text.begins_with("Active: Cell"))

@@ -225,7 +225,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
   frame mismatch if a later change introduces the thing that was suspected here.
 
-### BR51.02 — Active — owner: `CC`
+### BR51.02 — Pending — owner: `CC`
 **`set_part_hp` cannot target a part that is not on a unit**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
@@ -254,6 +254,19 @@ confirm" roll-up — so pending items surface at a natural review point without 
   and called the bug fixed without once driving the click that produces that dict. A test that
   constructs its own input cannot tell you the caller never produces it — the same shape as
   taskblock-48's "input tidier than reality is worse than no test".
+
+- **`Pending` (taskblock-51, after the reopen) — two defects, one symptom.**
+  1. **The panel labelled cover as its tile.** `_refresh_active_label` special-cased units and called
+     everything else "Active: Cell (x, y)", so a barrel click was indistinguishable from a floor click.
+     It names the part now.
+  2. **The injector re-derived what the click already knew.** A cover click resolves to a `PART` hit
+     carrying the exact `Part` struck; `_object_target` ignored it and looked the cell up in `blockers`
+     a second time. It uses the struck part directly — the same "never compute it twice" rule
+     `docs/02` applies to shots.
+- **To see it work:** click a barrel — the panel should read `Active: goo_barrel @ (x, y)`, not
+  `Active: Cell`. Then `set_part_hp` with an empty `part_id` and 0.
+- **Tested against the click shape this time**, not a hand-built dict — that omission is what let the
+  first fix ship broken.
 
 ### BR51.03 — Active — owner: `SUPERVISOR`
 **Shots miss when there is something in the way that should have been hit**
