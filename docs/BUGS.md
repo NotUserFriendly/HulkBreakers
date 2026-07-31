@@ -85,6 +85,19 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
+### BR51.06 — Active — owner: `CC`
+**The debug panel's `pick` button also sets the active target**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** open Inject, choose a verb with a `pick` button, and use it. Picking a parameter target
+  *also* reassigns the panel's active item, so a pick meant to fill one field silently changes what
+  the verb will act on.
+- **The supervisor named the two acceptable outcomes**, and which applies is the actual question:
+  suspend active-target selection while a pick is in flight, **or**, if pick and active-selection do
+  the same thing, **remove `pick` entirely** rather than keep two names for one gesture.
+- **Establish which before changing anything** — "no parallel systems" says a duplicate gesture is the
+  bug to fix, not a behaviour to tune.
+
 ### BR51.01 — Active — owner: `SUPERVISOR`
 **Sniper rifle and chaingun consistently shoot wide left of the aim point**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
@@ -533,22 +546,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
   `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
   returning.
-### BR27.04 — Active — owner: `SUPERVISOR`
-**Lighting differs between spectator and player view**
-- **Source:** `SUPERVISOR`
-- **Reported:** taskblock-27 D1b: spectator and player view are said to light the board
-  differently.
-- **Investigated, no code fix applied:** `BattleScene._ready()` already builds
-  `WorldPalette.world_environment()` and `WorldPalette.directional_light()` exactly once, as
-  children of the shared `BattleScene` itself — strictly before either overlay
-  (`SquadControlOverlay`/`SpectatorOverlay`) is installed via `set_overlay()`. Neither overlay
-  constructs its own lighting anywhere; both render the same lights on the same world. The code
-  does not support the premise of a divergence as currently written.
-- **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
-  comparison) rather than a code claim, since no divergent lighting path was found to remove.
-- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** re-confirms the prior
-  pass's conclusion — no new code path found. Genuinely needs the supervisor's own visual/screenshot
-  re-check, not further code digging.
 ### BR27.07 — Active — owner: `SUPERVISOR`
 **Active-turn highlight lands on the wrong unit; change to facing-marker-only**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
@@ -1305,6 +1302,11 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   **Options when decided:** skip walls by default (cover still reachable), rank enemies ahead of cover
   regardless of depth, or collapse contiguous walls into a single layer; plus player-facing names
   instead of `unit_3` / raw part ids.
+- **taskblock-51 Pass A — still reproduces, no new information.** The supervisor adds that **this
+  feature is not what they originally intended** and is *"more likely to be obsoleted than fixed"* —
+  the aim-view scroll cycling walls is a symptom of a design they no longer want, so effort spent
+  fixing it may be spent on something due for removal. **Do not fix ahead of that decision.**
+
 ### BR34.01 — Active — owner: `SUPERVISOR`
 **Every penetration/deflection hop replays the full bright hit-flash, not just the first**
 - **Source:** `SUPERVISOR`
@@ -1363,6 +1365,18 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - Camera math — verify by reading the built node's `global_transform`/`unproject_position` back, per
   `docs/10` rule 2, including a diagonal case (the yaw bug that rule exists for survived a full suite
   of row/column-aligned cases).
+- **taskblock-51 Pass A — the aim camera is a fixed rig, and that is the lead.** The supervisor reports
+  it sits **back and right of the shooter** while shots land **left** — *"a possibly matching angle"*.
+  A fixed offset producing a fixed error in the opposite lateral direction is a transform that has not
+  been undone, not a roll. See `BR51.01`, which this may be one defect with.
+- **The camera cannot be orbited to test this**, so the screen-relative/world-relative split proposed in
+  taskblock-51 is not available. Diagnose it headlessly against the resolved ray instead.
+
+- **taskblock-51 Pass A — the supervisor's own framing of the fix:** the sniper camera *"should
+  probably be a short distance from the target, in line between shooter and target"*. Today it frames
+  from a high angle. That is a solvable framing constraint rather than a bug in the solver, and it is
+  the shape to aim at.
+
 ### BR34.05 — Active — owner: `SUPERVISOR`
 **Misses vanish instead of striking anything**
 - **Source:** `SUPERVISOR`
