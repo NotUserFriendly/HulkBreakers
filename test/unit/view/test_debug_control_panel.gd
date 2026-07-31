@@ -437,3 +437,41 @@ func test_a_bare_tile_click_still_reads_as_a_cell() -> void:
 	)
 
 	assert_true(panel._active_label.text.begins_with("Active: Cell"))
+
+
+## **The performance toggle is panel chrome, not a verb's caption.**
+##
+## It was first added beside the active-target label, inside the right-hand pane that shows
+## the selected verb's controls. That pane belongs to whichever verb is picked, so a
+## panel-scope toggle living in it captioned *every* entry in the list: the supervisor
+## selected `Make Current` and saw "Performance Monitor" heading it.
+##
+## Asserting the **parentage** is what catches this. The checkbox existed, was labelled
+## correctly and emitted correctly in the broken version — it was merely in the wrong column,
+## which no test of its behaviour can see.
+func test_the_performance_toggle_is_not_inside_the_verb_pane() -> void:
+	var panel: DebugControlPanel = _open_panel()
+
+	var pane: Node = panel._param_container.get_parent()
+	var walker: Node = panel._perf_checkbox
+	assert_not_null(walker, "the panel offers the toggle")
+	while walker != null:
+		assert_ne(walker, pane, "the toggle sits outside the per-verb control pane")
+		walker = walker.get_parent()
+
+	# Both rows are children of the panel root, so the indices are comparable.
+	assert_true(
+		panel._perf_checkbox.get_parent().get_index() < pane.get_parent().get_index(),
+		"and above the verb split, in the panel's own chrome"
+	)
+
+
+## Selecting a verb rebuilds the per-verb pane; the toggle must not be caught in the rebuild.
+func test_the_toggle_survives_switching_verbs() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	panel._perf_checkbox.button_pressed = true
+
+	panel._select_verb(_verb_index(&"force_current_unit"))
+
+	assert_true(is_instance_valid(panel._perf_checkbox), "the toggle is not rebuilt with the pane")
+	assert_true(panel._perf_checkbox.button_pressed, "and it keeps its state across verbs")

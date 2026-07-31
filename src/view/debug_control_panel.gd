@@ -216,6 +216,26 @@ func _build_ui() -> void:
 	close_button.pressed.connect(_on_close_pressed)
 	title_row.add_child(close_button)
 
+	# taskblock-51: the performance readout's own switch, and it belongs **here** rather than
+	# in the right-hand column.
+	#
+	# It was first put beside `_active_label`, inside the pane that shows the selected verb's
+	# controls. That pane is per-verb, so a panel-scope toggle sitting in it read as the
+	# heading of *every* verb — the supervisor saw "Performance Monitor" captioning `Make
+	# Current` and every other entry in the list. The toggle does not belong to a verb; it
+	# belongs to the panel, so it sits in the panel's own chrome above the split.
+	#
+	# A checkbox rather than a button because it reports state as well as changing it — "is
+	# the readout up" is worth being able to answer by looking.
+	var chrome := HBoxContainer.new()
+	root.add_child(chrome)
+	_perf_checkbox = CheckBox.new()
+	# Named for what it opens, not for what it is internally — "Perf readout" named the
+	# implementation and told a reader nothing about which readout or why they would want it.
+	_perf_checkbox.text = "Performance Monitor"
+	_perf_checkbox.toggled.connect(func(pressed: bool) -> void: perf_panel_toggled.emit(pressed))
+	chrome.add_child(_perf_checkbox)
+
 	var body := HBoxContainer.new()
 	root.add_child(body)
 
@@ -240,16 +260,6 @@ func _build_ui() -> void:
 
 	_active_label = Label.new()
 	right.add_child(_active_label)
-
-	# taskblock-51: the performance readout's own switch. A checkbox rather than a button
-	# because it reports state as well as changing it — "is the readout up" is a question
-	# worth being able to answer by looking.
-	_perf_checkbox = CheckBox.new()
-	# Named for what it opens, not for what it is internally — "Perf readout" told a reader
-	# nothing about which readout or why they would want it.
-	_perf_checkbox.text = "Performance Monitor"
-	_perf_checkbox.toggled.connect(func(pressed: bool) -> void: perf_panel_toggled.emit(pressed))
-	right.add_child(_perf_checkbox)
 
 	_param_container = VBoxContainer.new()
 	right.add_child(_param_container)

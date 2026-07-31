@@ -1646,6 +1646,14 @@ the mean overstates by 6×, not 4×. Both numbers are pinned in the test.
 `>= 2.0` window check never fired and six seconds reported two ticks instead of three. Fixed with an
 epsilon, and the remainder now carries rather than being discarded so the cadence cannot drift.
 
+**The toggle was in the wrong column, and captioned every verb.** It was first added beside the
+active-target label, inside the pane that shows the *selected verb's* controls — so a panel-scope
+checkbox read as the heading of every entry in the list, and the supervisor saw "Performance Monitor"
+captioning `Make Current`. It now sits in the panel's own chrome above the verb split. The regression
+test asserts **parentage**, because the checkbox was labelled correctly and emitted correctly while
+broken; no test of its behaviour could see it. Verified by re-breaking the layout and watching the test
+fail.
+
 **Two placement bugs, and the second one passed a test.** Anchoring right and setting `position` put the
 panel at x = -16 — hard against the left edge with only its right sliver showing. Replacing that with a
 lone `offset_right` left `offset_left` at the anchor, so it resolved to the **full 1904-pixel screen
