@@ -1,7 +1,7 @@
 # Taskblock 51 Report — The bug hunt, and one bug that was four
 
 **Passes A and B partially landed; the framerate deep-dive took the block, then the addendum's perf
-suite, then both addendum passes.** Suite green — **2567 tests, ~316 s**. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
+suite, then both addendum passes.** Suite green — **2582 tests, ~309 s**. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
 
 Four supervisor hunting sessions. **Ledger 31 → 40 open**, which is the honest shape of a hunt: five
 entries closed, fourteen filed, several re-diagnosed.
@@ -131,6 +131,28 @@ same right-hand pane every verb uses, and `DebugUiElements` is the table behind 
 element is a row, not UI code, the same shape `DebugVerbs` already had. Apply is **disabled** while the
 category is selected rather than pressable-and-inert.
 
+## What the block actually executed, said plainly
+
+**Four of ten original passes are untouched and a fifth is barely started.** The block went where the
+evidence went — the framerate deep-dive, then the performance monitor, then both addendum clusters —
+and each of those was a supervisor decision at the time. But tb51 as written is roughly half executed
+and that should not be buried:
+
+| pass | state |
+|---|---|
+| A — repro session | **done** (five hunts, fourteen entries filed) |
+| B — ledger repairs, caching | **B1 done**; B2 and B3 untouched (B3 left unmerged on supervisor instruction) |
+| C — tracers and impact drawing | **untouched** — six entries, the largest remaining cluster |
+| D — wall cutout and occlusion | **untouched** |
+| E — queue and action legality | **untouched** |
+| F — aim and camera framing | `BR26.02` `Pending`, paused by supervisor; three others untouched |
+| G — map generation and movement | **untouched** |
+| H — performance | **untouched**; `BR27.09` may be closeable on a fresh number |
+| I — spectator vs player | **done** — all three closed, two of them via addendum Pass L |
+| J — loners and digest | `BR48.01` closed; four untouched |
+| addendum K — selection | **done** |
+| addendum L — death mid-turn | **done** |
+
 ## The addendum's two passes
 
 **Pass K — selection only understood units.** A missing type, not a broken rule: `SelectionController`
@@ -192,6 +214,33 @@ were not additive, so it never changed.
 5. **Widening `set_part_hp`'s target dropped `hp` from the command log**, breaking the pairing
    `test_command_log.gd` requires — the log has to reconstruct the call, and I had removed an argument
    from it while adding one.
+
+## `BR51.11` — the long way round
+
+`ResolutionPlayer` tweened facing with `tween_method`, which interpolates its two arguments as **plain
+numbers**: handed raw orientations it runs 0.1 -> 6.0 the long way, 336 degrees left instead of 24
+right. Fixed by tweening towards `from + angle_difference(from, to)`.
+
+**Both of the supervisor's observations were diagnostic.** *"They end up facing in reasonable
+directions"* is why this was visual-only — only the path was wrong, never the arrival — so **the test
+asserts the arc, not the endpoint**, because an endpoint test passes on the broken version. *"Squad 1
+and not squad 0"* is a distribution of starting facings rather than a squad rule, and that is pinned in
+a test so the fix is not later read as a squad-specific patch.
+
+## The catch-up hypothesis, proposed and disproved in one session
+
+The supervisor read the perf monitor's spike and asked: *"Is it queuing frames for some reason, and when
+those finally get to hit, they run over?"* A catch-up frame is identified by **adjacency**, so
+`PerfStats` was extended to report the fastest frame with the frames either side of it.
+
+**Eight dumps answered it: `fastest 3915.8 (prev 116.2, next 260.0)`.** The frame before the spike was
+116 fps — nothing stalled — so the hypothesis is disproved and the proposed `BR51.15`/`BR51.17` merge
+was withdrawn. The instrument the block built answered a question about itself in one session, which is
+the return on having built it.
+
+**And a shared assumption was wrong:** `avg less top 1%` reads 177-185, above the monitor's refresh.
+**The game is not capped at 160 — the display is.** Exactly the uncapped condition the supervisor
+predicted when specifying these figures.
 
 ## Narrower than its name — three times in one block
 
