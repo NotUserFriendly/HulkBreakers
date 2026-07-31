@@ -160,3 +160,50 @@ func test_the_run_panel_draws_a_background_like_the_combat_log() -> void:
 	assert_almost_eq(
 		flat.bg_color.a, CombatLogPanel.BACKGROUND_ALPHA, 0.001, "same alpha as the combat log"
 	)
+
+
+# --- taskblock-51: the run panels are spectator-only for the hunt ---------------------
+
+
+func _player_overlay() -> SquadControlOverlay:
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.new_battle(1)
+	battle.set_overlay(SquadControlOverlay.new())
+	return battle.overlay as SquadControlOverlay
+
+
+## **Asserted in both directions, because one direction is vacuous on its own.**
+##
+## "The player view has no run panel" passes just as well if the panels stopped mounting
+## anywhere at all — which would silently remove the whole run surface rather than move
+## it. So the spectator's is checked in the same test, and the flag that decides is read
+## rather than assumed: flipping `SHOW_IN_PLAYER_VIEW` back without touching this fails
+## loudly instead of quietly restoring a panel nobody asked back yet.
+func test_the_run_panels_are_spectator_only_while_the_hunt_runs() -> void:
+	if not OS.is_debug_build():
+		assert_true(true, "the panels are debug-gated; nothing to split in a release build")
+		return
+
+	var spectator: SpectatorOverlay = _overlay()
+	var player: SquadControlOverlay = _player_overlay()
+
+	assert_eq(
+		SuiteRunPanel.SHOW_IN_PLAYER_VIEW,
+		false,
+		"the hunt wants the player view clear — flip this and this test with it"
+	)
+	assert_null(player.suite_run_panel, "the player view carries no run panel during the hunt")
+	assert_null(player.watched_run_panel, "nor a replay panel")
+	assert_not_null(spectator.suite_run_panel, "and the spectator still has one to run from")
+
+
+## The inject panel is a hunting tool, not a test surface, and must survive the split —
+## it is how the supervisor forces a detonation or kills a shell to reproduce with.
+func test_the_player_views_inject_panel_survives_the_split() -> void:
+	if not OS.is_debug_build():
+		assert_true(true)
+		return
+
+	assert_not_null(_player_overlay().debug_panel, "the player view keeps its inject panel")
