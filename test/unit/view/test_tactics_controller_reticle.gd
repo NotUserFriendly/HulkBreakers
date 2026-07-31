@@ -240,3 +240,47 @@ func test_aim_reticle_at_screen_also_updates_the_hover() -> void:
 
 	assert_not_null(controller.aim_hovered_part)
 	assert_eq(controller.aim_hovered_part.id, &"torso")
+
+
+func _aiming_controller() -> TacticsController:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var controller: TacticsController = _setup([a, b]).controller
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	return controller
+
+
+## **Hovering reads; it never re-aims.** That was this function's stated contract from
+## taskblock-34 Pass C, and it emitted `aim_changed` anyway — the signal
+## `SquadControlOverlay._on_selection_changed` listens to, which previews twice, and a
+## preview is a `CombatState.dup()` at ~26 ms on a real board.
+##
+## Measured before and after, driven through a real overlay on a 214-blocker board: **one
+## mouse motion went from 113 504 usec to 8 878 usec** — 8.8 fps to 113 — and per-motion
+## state clones went from 2 to 0.
+func test_hovering_emits_the_cheap_signal_not_the_aim_state_one() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var aim_emits: Array[int] = [0]
+	var reticle_emits: Array[int] = [0]
+	controller.aim_changed.connect(func() -> void: aim_emits[0] += 1)
+	controller.reticle_changed.connect(func() -> void: reticle_emits[0] += 1)
+
+	controller.aim_hovered_part = null
+	controller.update_aim_hover(Vector2(400.0, 300.0))
+
+	assert_eq(aim_emits[0], 0, "a hover is not an aim-state change")
+
+
+## And it stays quiet when the hovered part has not changed — a signal that fires on every
+## motion regardless is a signal every listener has to defend itself against.
+func test_hovering_the_same_part_twice_emits_nothing_the_second_time() -> void:
+	var controller: TacticsController = _aiming_controller()
+	controller.update_aim_hover(Vector2(400.0, 300.0))
+	var emits: Array[int] = [0]
+	controller.reticle_changed.connect(func() -> void: emits[0] += 1)
+
+	controller.update_aim_hover(Vector2(400.0, 300.0))
+
+	assert_eq(emits[0], 0, "the same hover twice is one change, not two")

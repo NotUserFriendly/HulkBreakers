@@ -145,15 +145,46 @@ func test_what_one_mouse_motion_while_aiming_costs() -> void:
 	var clones_before: int = CombatState.dups
 	var planes_before: int = ShotPlane.builds
 
+	# Counted per function, not just in total: the memo should make both free, and knowing
+	# WHICH one still clones is the difference between a theory and a fix.
+	var r_dups: int = CombatState.dups
+	var r_planes: int = ShotPlane.builds
 	var reticle_start: int = Time.get_ticks_usec()
 	for i in range(FRAMES):
 		tactics.aim_reticle_at_screen(screen + Vector2(float(i), 0.0))
 	var reticle_usec: float = float(Time.get_ticks_usec() - reticle_start) / float(FRAMES)
+	var reticle_dups: int = CombatState.dups - r_dups
+	var reticle_planes: int = ShotPlane.builds - r_planes
 
+	var h_dups: int = CombatState.dups
+	var h_planes: int = ShotPlane.builds
 	var hover_start: int = Time.get_ticks_usec()
 	for i in range(FRAMES):
 		tactics.update_aim_hover(screen + Vector2(float(i), 0.0))
 	var hover_usec: float = float(Time.get_ticks_usec() - hover_start) / float(FRAMES)
+	var hover_dups: int = CombatState.dups - h_dups
+	var hover_planes: int = ShotPlane.builds - h_planes
+
+	# And what a bare `aim_state()` costs with nothing else in the way — the memo's own
+	# hit rate, isolated from both handlers.
+	var a_dups: int = CombatState.dups
+	var a_planes: int = ShotPlane.builds
+	var aim_start: int = Time.get_ticks_usec()
+	for i in range(FRAMES):
+		tactics.aim_state()
+	var aim_usec: float = float(Time.get_ticks_usec() - aim_start) / float(FRAMES)
+	gut.p(
+		(
+			"  aim_state() alone      %8.0f usec  (%d clones, %d planes over %d calls)"
+			% [aim_usec, CombatState.dups - a_dups, ShotPlane.builds - a_planes, FRAMES]
+		)
+	)
+	gut.p(
+		(
+			"  reticle: %d clones %d planes | hover: %d clones %d planes (over %d calls each)"
+			% [reticle_dups, reticle_planes, hover_dups, hover_planes, FRAMES]
+		)
+	)
 
 	gut.p("--- per mouse motion while aiming, %d blockers ---" % grid.blockers.size())
 	gut.p("  aim_reticle_at_screen  %8.0f usec" % reticle_usec)
