@@ -1646,6 +1646,15 @@ the mean overstates by 6×, not 4×. Both numbers are pinned in the test.
 `>= 2.0` window check never fired and six seconds reported two ticks instead of three. Fixed with an
 epsilon, and the remainder now carries rather than being discarded so the cadence cannot drift.
 
+**Two placement bugs, and the second one passed a test.** Anchoring right and setting `position` put the
+panel at x = -16 — hard against the left edge with only its right sliver showing. Replacing that with a
+lone `offset_right` left `offset_left` at the anchor, so it resolved to the **full 1904-pixel screen
+width at x = 0** — and an assertion checking "left edge on screen, right edge on screen" was satisfied
+by a panel covering the whole display. All four anchors and offsets are pinned now, and the layout test
+asserts **the width**, which is the property both broken versions actually violated. The toggle is
+labelled **"Performance Monitor"** rather than "Perf readout", which named the implementation instead of
+the thing.
+
 **The panel is offered by the debug panel and outlives it.** Toggled from inside `DebugControlPanel`,
 owned by the overlay — closing the debug panel does not take the readout down, which is what was asked
 for. Present in both player and spectator views, since it is tied to debug rather than to a mode. It
