@@ -191,15 +191,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   independently of whose turn it is. Fixing the pointer without clearing the selection moved the
   symptom rather than removing it.
 
-### BR51.10 — Pending — owner: `CC`
-**Inspect is offered when there is nothing to inspect**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, taskblock-51 third hunt.
-- The supervisor first reported inspect as doing nothing under the player view, then diagnosed it
-  themselves: *"Inspect should be disabled when it can't be selected, like when a unit isn't selected."*
-- **So the defect is an affordance that lies**, not a broken action: the control is live when the thing
-  it acts on does not exist, so pressing it correctly does nothing and reads as broken.
-
 ### BR51.11 — Active — owner: `SUPERVISOR`
 **A unit refacing mid-move sometimes turns the long way around**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.

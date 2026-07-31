@@ -1780,3 +1780,15 @@ be permanently immobilised**
   testing something narrower than its name claims, which is exactly the failure taskblock-49's audit
   was built to find.
 - Confirmed visible in `out/combat.log` across every session this block.
+
+### BR51.10 — Resolved — owner: `CC`
+**Inspect is offered when there is nothing to inspect**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 third hunt.
+- The supervisor first reported inspect as doing nothing under the player view, then diagnosed it
+  themselves: *"Inspect should be disabled when it can't be selected, like when a unit isn't selected."*
+- **So the defect is an affordance that lies**, not a broken action: the control is live when the thing
+  it acts on does not exist, so pressing it correctly does nothing and reads as broken.
+- **Resolved (taskblock-51 Pass K).** Enablement is driven by `SelectionController.can_inspect()` — whether the
+  target has a body to describe — rather than by whether anything has been clicked. **Confirmed greying
+  out correctly by the supervisor.**
