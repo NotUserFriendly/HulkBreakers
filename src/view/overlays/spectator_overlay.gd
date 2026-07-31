@@ -206,9 +206,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	# OPEN+blocker or empty space before this ever runs), and a wall's real
 	# blocker Part is already handled correctly below like any other
 	# field object.
+	# **`BR48.01`: a bare tile opens nothing.**
+	#
+	# This branch passed `blockers.get(cell)` straight through, and that is **null for a bare
+	# tile** — `open_tile`'s own doc says so. The panel then rendered its matrixless shape with
+	# no root, which every `_refresh_*` no-ops on gracefully, so a 900x600 modal opened over
+	# the board containing nothing and paused the bout. That is the supervisor's *"selecting a
+	# bare tile causes the screen to dim"*, and it reads as a stuck dim because there is
+	# nothing in the panel to explain what happened.
+	#
+	# Pass K's rule, applied: **only open what can be described.** A cell whose blocker the
+	# ray missed but whose ground position was hit still opens — that is a real object, just
+	# picked coarsely.
+	var tile_root: Part = battle.combat_state.grid.blockers.get(cell)
+	if tile_root == null:
+		return
 	_was_playing_before_inspect = playing
 	pause()
-	inspect_panel.open_tile(cell as Vector2i, battle.combat_state.grid.blockers.get(cell))
+	inspect_panel.open_tile(cell as Vector2i, tile_root)
 
 
 ## taskblock-27 Pass D1c: the same `UnitPicker.hit()` ray-pick the click
