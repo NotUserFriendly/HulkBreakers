@@ -54,6 +54,10 @@ func _init(p_state: CombatState, p_mission: MissionState = null) -> void:
 func select(unit: Unit) -> void:
 	if unit != null and unit.alive and unit == state.current_unit():
 		select_target(SelectionTarget.for_unit(unit))
+	elif unit != null and not unit.alive:
+		# taskblock-51: the supervisor's decision — a corpse is selectable **as a wreck**, the
+		# same way cover is, never as a unit. Inspection, not command.
+		select_target(SelectionTarget.for_wreck(unit))
 	else:
 		select_target(SelectionTarget.none())
 

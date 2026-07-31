@@ -112,3 +112,83 @@ func test_a_death_during_resolution_does_not_advance_the_turn_underneath_it() ->
 
 	assert_eq(state.current_unit(), acting, "the resolve finishes on its own terms")
 	assert_false(acting.alive, "though the unit is certainly dead")
+
+
+# --- taskblock-51: a corpse is a wreck, not a unit -----------------------------------------
+
+
+## **The supervisor's decision, stated and implemented:** *"Dead units should not be selectable
+## as units. They should be selectable in the same way parts on the ground or cover is."*
+##
+## Pass K is what made this expressible — a `PART` target already describes "a thing on the
+## board with parts on it", so a wreck needs no fourth kind and nothing downstream changes.
+func test_a_dead_unit_selects_as_a_wreck_not_as_a_unit() -> void:
+	var state: CombatState = _bout()
+	var selection := SelectionController.new(state)
+	var acting: Unit = state.current_unit()
+	state.kill_unit(acting)
+
+	selection.select(acting)
+
+	assert_null(selection.selected_unit, "not as a unit")
+	assert_true(selection.selected_target.is_part(), "as a wreck")
+	assert_eq(selection.selected_target.part, acting.shell.root, "and it is that unit's own shell")
+	assert_eq(selection.selected_target.cell, acting.cell, "lying where it fell")
+
+
+## **Nothing can be commanded through a wreck.** This is the property that makes the decision
+## safe: only a `UNIT` target reaches the queue, so a corpse cannot be given orders however it
+## was selected.
+func test_a_wreck_cannot_be_given_orders() -> void:
+	var state: CombatState = _bout()
+	var selection := SelectionController.new(state)
+	var acting: Unit = state.current_unit()
+	state.kill_unit(acting)
+	selection.select(acting)
+
+	assert_null(selection.current_queue(), "no queue for a thing that is not a unit")
+	assert_false(selection.queue_move(acting.cell + Vector2i(1, 0)), "and no move can be queued")
+	assert_true(selection.reachable_cells().is_empty(), "nor is any reachability drawn")
+
+
+## **And it is inspectable**, which is the point of selecting it at all — the same path cover
+## already takes.
+func test_a_wreck_can_be_inspected() -> void:
+	var state: CombatState = _bout()
+	var selection := SelectionController.new(state)
+	var acting: Unit = state.current_unit()
+	state.kill_unit(acting)
+
+	selection.select(acting)
+
+	assert_true(selection.can_inspect(), "a wreck has a body to describe")
+
+
+## **A click resolves it the same way**, so the board and the debug panel agree without either
+## special-casing death. Both dict shapes are covered because they are read by different
+## constructors and one of them classified everything as a cell earlier in this block.
+func test_both_click_shapes_resolve_a_corpse_to_its_wreck() -> void:
+	var state: CombatState = _bout()
+	var dead: Unit = state.current_unit()
+	state.kill_unit(dead)
+
+	var from_hit: SelectionTarget = SelectionTarget.from_hit(
+		{"kind": Enums.HitKind.UNIT, "unit": dead, "cell": dead.cell}
+	)
+	var from_pick: SelectionTarget = SelectionTarget.from_pick(
+		{"unit": dead, "part": dead.shell.root, "cell": dead.cell, "t": 1.0}
+	)
+
+	assert_true(from_hit.is_part(), "the board_clicked shape")
+	assert_true(from_pick.is_part(), "and PartPicker's raw shape")
+
+
+## A living unit is untouched by any of this.
+func test_a_living_unit_still_selects_as_a_unit() -> void:
+	var state: CombatState = _bout()
+	var selection := SelectionController.new(state)
+
+	selection.select(state.current_unit())
+
+	assert_eq(selection.selected_unit, state.current_unit())
+	assert_true(selection.selected_target.is_unit())

@@ -97,6 +97,23 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.18 — Suspected — owner: `SUPERVISOR`
+**A unit slid sideways during a bout watched from both spectator and player control**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, in the same bout that confirmed `BR51.11`. *"This run in particular had unit 0
+  on squad 0 slide sideways, but I think that was an unrelated interaction between spectator and player
+  control."*
+- **`Suspected`, and filed on the supervisor's own hedge** rather than as a confirmed defect: it was seen
+  once, in a session that switched control modes, and the reporter's own reading is that the mode switch
+  caused it. Logged so a second sighting has something to attach to instead of being rediscovered.
+- **What "sideways" would mean mechanically:** the slide tween moves a view between two world anchors,
+  while the facing tween rotates it (`BR51.11`, same function). A unit translating without its facing
+  following is those two coming apart — most likely a view whose display cell and real cell disagree
+  after an overlay swap re-created it mid-playback.
+- **Do not work this before it is reproduced.** Taskblock-51 Pass I's spectator/player divergence
+  cluster is the same neighbourhood, and `PLAN.md`'s *One view, toggleable modules* would discard an
+  instance fix here.
+
 ### BR51.17 — Active — owner: `CC`
 **`avg less top 1%` degenerates into the plain mean it was built to replace**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -120,8 +137,21 @@ confirm" roll-up — so pending items surface at a natural review point without 
   because a catch-up frame is identified by **adjacency** — it lands right after a stall. **If the
   maximum is an artifact, the fix here is excluding frames that are not real frames, not choosing a
   different percentile.** Waiting on one dump to say which.
-- **Possibly one defect with `BR51.15`.** `min` has read 7.4 in every dump this session; if the fastest
-  frame sits immediately after a ~7 fps frame, the stall and the bogus maximum are one event.
+- **The catch-up hypothesis is DISPROVED, by the instrument built to test it.** Eight fresh dumps all
+  read `fastest 3915.8 (prev 116.2, next 260.0)`. **The frame before the spike was 116 fps** — an
+  entirely healthy frame — and the one after was 260. Nothing stalled, so the 0.255 ms frame is not
+  paying back an overrun. It is **not** one defect with `BR51.15`; that merge is withdrawn.
+- **The maximum is still an artifact, for a different reason.** A single near-zero-cost frame between an
+  8.6 ms frame and a 3.8 ms one looks like a frame that did no drawing at all — a lost/regained window
+  focus, or a processed-but-not-presented frame. Whatever it is, it is not a rendering rate.
+- **Also visible in the same dumps: the game is not capped at 160.** `avg less top 1%` reads **177-185**,
+  above the monitor's refresh, and `instant` routinely shows 176-258. The 160 the supervisor sees is the
+  display, not the engine — which is exactly the condition their original design note predicted
+  ("uncapped, framerate even in debug could easily be in the 1000s").
+- **So the remedy is still open and still the supervisor's**, but the catch-up option is off the table.
+  What remains: a percentile cut, a cut anchored to the median rather than the maximum, or dropping the
+  statistic in favour of the 1% low — which is doing its job precisely (20.3-22.7 across eight dumps,
+  pinning `BR51.14`).
 - **Not fixed, and deliberately not redesigned unasked.** *Which* rule replaces it is a design decision:
   a percentile cut, a cut anchored to the median rather than the max, or discarding the statistic in
   favour of the 1% low, which is doing its job perfectly. The supervisor was explicit about what this
@@ -197,7 +227,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
   triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
 
-### BR51.11 — Active — owner: `SUPERVISOR`
+### BR51.11 — Pending — owner: `SUPERVISOR`
 **A unit refacing mid-move sometimes turns the long way around**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
 - **Repro:** watch a unit move along a path that changes direction. It sometimes rotates **270° one way
@@ -207,6 +237,20 @@ confirm" roll-up — so pending items surface at a natural review point without 
   before touching the resolver:** if the *final* facing is ever wrong too, this is a different and much
   more serious entry.
 - Suspect the shortest-arc handling where an orientation crosses the wrap point.
+
+- **`PENDING` (taskblock-51) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. Confirmed, and it was
+  exactly that.** `ResolutionPlayer` tweened the facing with `tween_method`, which interpolates its two
+  arguments as **plain numbers** — handed raw orientations it runs 0.1 -> 6.0 the long way, 336 degrees
+  left instead of 24 right. It now tweens towards `from + angle_difference(from, to)`, an angle equal to
+  the target but numerically adjacent to the start.
+- **Your two observations were both diagnostic.** *"They end up facing in reasonable directions"* is why
+  this was visual-only: only the path was wrong, never the arrival — so the regression test asserts the
+  **arc**, because an endpoint test passes on the broken version too. *"The point to point animation has
+  them facing the right way"* separates the facing tween from the slide, which is the other half.
+- **Squad 1 and not squad 0 is a distribution of starting facings, not a squad rule.** The arithmetic has
+  no idea whose unit it is turning; squad 1 simply starts facing the other way and so crosses the wrap
+  point more often. Pinned in a test so the fix is not mistaken for a squad-specific patch.
+- **To see it:** watch a path that changes direction. Every turn should now take the short way.
 
 ### BR51.01 — Active — owner: `SUPERVISOR`
 **Sniper rifle and chaingun consistently shoot wide left of the aim point**
