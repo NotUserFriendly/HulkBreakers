@@ -284,3 +284,51 @@ func test_hovering_the_same_part_twice_emits_nothing_the_second_time() -> void:
 	controller.update_aim_hover(Vector2(400.0, 300.0))
 
 	assert_eq(emits[0], 0, "the same hover twice is one change, not two")
+
+
+## **A mouse polls faster than the game draws, and only the newest position matters.**
+##
+## At 500–1000 Hz against 60–160 fps, `_unhandled_input` ran the whole reticle update many
+## times per frame — each ~8 800 usec — and every one but the last was immediately
+## overwritten. The backlog is what the supervisor saw: *"the dartboard almost seems to
+## lazily follow the cursor, not be attached to it."* The reticle was drawing positions from
+## several events ago.
+##
+## Safe to drop the intermediate positions because this is an absolute raycast through the
+## literal cursor, not an accumulated delta — asserted below rather than assumed, since if
+## it ever became relative this optimisation would silently start losing movement.
+func test_many_motions_in_one_frame_apply_once_at_the_newest_position() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var applied: Array[int] = [0]
+	controller.reticle_changed.connect(func() -> void: applied[0] += 1)
+
+	for i in range(10):
+		var motion := InputEventMouseMotion.new()
+		motion.position = Vector2(400.0 + float(i) * 10.0, 300.0)
+		controller._unhandled_input(motion)
+
+	assert_eq(applied[0], 0, "no reticle work happens during the input burst itself")
+
+	controller._process(1.0 / 60.0)
+
+	assert_eq(
+		controller._pending_reticle_screen,
+		Vector2(490.0, 300.0),
+		"the frame applies the NEWEST position, not the first or an average"
+	)
+
+
+## The companion: a frame with no motion must do no reticle work at all, or the coalescing
+## has simply moved a per-event cost into a per-frame one.
+func test_a_frame_with_no_motion_applies_nothing() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(400.0, 300.0)
+	controller._unhandled_input(motion)
+	controller._process(1.0 / 60.0)
+
+	var planes_before: int = ShotPlane.builds
+	controller._process(1.0 / 60.0)
+	controller._process(1.0 / 60.0)
+
+	assert_eq(ShotPlane.builds, planes_before, "idle frames while aiming cost nothing")
