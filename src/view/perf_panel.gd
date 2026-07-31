@@ -54,9 +54,28 @@ var _dump_checkbox: CheckBox
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	# **All four anchors and all four offsets, set explicitly.**
+	#
+	# Two attempts got this wrong and the second one *passed a test*. Setting `position`
+	# with right-edge anchors placed it at x = -16 — the supervisor saw it hard against the
+	# left edge with only its right sliver visible. Replacing that with a lone
+	# `offset_right` left `offset_left` at the anchor, so the panel resolved to the full
+	# 1904-pixel width starting at x = 0, and an assertion checking "left edge on screen,
+	# right edge on screen" was satisfied by a panel covering the entire screen.
+	#
+	# Pinning both horizontal offsets against the right anchor makes the width arithmetic
+	# rather than a negotiation, and `test_debug_panel_layout.gd` now asserts the width
+	# itself — which is the property both broken versions actually violated.
+	anchor_left = 1.0
+	anchor_right = 1.0
+	anchor_top = 0.0
+	anchor_bottom = 0.0
+	offset_left = -(PANEL_WIDTH + RIGHT_MARGIN)
+	offset_right = -RIGHT_MARGIN
+	offset_top = TOP_MARGIN
+	offset_bottom = TOP_MARGIN
 	grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	position = Vector2(-RIGHT_MARGIN, TOP_MARGIN)
+	grow_vertical = Control.GROW_DIRECTION_END
 	custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 

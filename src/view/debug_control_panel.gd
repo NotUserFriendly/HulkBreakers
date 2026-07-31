@@ -245,7 +245,9 @@ func _build_ui() -> void:
 	# because it reports state as well as changing it — "is the readout up" is a question
 	# worth being able to answer by looking.
 	_perf_checkbox = CheckBox.new()
-	_perf_checkbox.text = "Perf readout"
+	# Named for what it opens, not for what it is internally — "Perf readout" told a reader
+	# nothing about which readout or why they would want it.
+	_perf_checkbox.text = "Performance Monitor"
 	_perf_checkbox.toggled.connect(func(pressed: bool) -> void: perf_panel_toggled.emit(pressed))
 	right.add_child(_perf_checkbox)
 

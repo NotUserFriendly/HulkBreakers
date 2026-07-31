@@ -73,7 +73,13 @@ func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
 	# clears every obstacle by not existing, which is how the first version of this
 	# passed while the panels were parented to a `Node3D` and had no layout at all.
 	assert_gt(row.size.x, 0.0, "sanity: the controls row has a real rect")
-	for panel: Control in [overlay.suite_run_panel, overlay.watched_run_panel]:
+	# taskblock-51: the performance readout is checked here too. It shipped anchored to the
+	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
+	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
+	# not a panel, and nothing here would have caught it.
+	overlay.perf_panel.visible = true
+	await get_tree().process_frame
+	for panel: Control in [overlay.suite_run_panel, overlay.watched_run_panel, overlay.perf_panel]:
 		var rect: Rect2 = panel.get_global_rect()
 		gut.p("%s — controls %s, panel %s" % [panel.name, row, rect])
 		assert_gt(rect.size.x, 0.0, "%s has a real rect" % panel.name)
@@ -95,7 +101,13 @@ func test_the_debug_panels_stay_inside_the_viewport() -> void:
 	await get_tree().process_frame
 
 	var screen := Rect2(Vector2.ZERO, get_tree().root.get_visible_rect().size)
-	for panel: Control in [overlay.suite_run_panel, overlay.watched_run_panel]:
+	# taskblock-51: the performance readout is checked here too. It shipped anchored to the
+	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
+	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
+	# not a panel, and nothing here would have caught it.
+	overlay.perf_panel.visible = true
+	await get_tree().process_frame
+	for panel: Control in [overlay.suite_run_panel, overlay.watched_run_panel, overlay.perf_panel]:
 		assert_true(
 			screen.intersects(panel.get_global_rect()),
 			(
@@ -207,3 +219,61 @@ func test_the_player_views_inject_panel_survives_the_split() -> void:
 		return
 
 	assert_not_null(_player_overlay().debug_panel, "the player view keeps its inject panel")
+
+
+## **`intersects` is too weak to catch what actually shipped.** The readout was anchored to
+## the right edge but *positioned* in parent space, which placed it at x = -16 — the
+## supervisor saw it "on the left edge of the display, with only a bit of the right side
+## visible". A rect at x = -16 still intersects the screen, so the existing check would
+## have passed it.
+##
+## This asserts the readout is wholly on screen, which is the property that was violated.
+func test_the_performance_readout_is_wholly_on_screen() -> void:
+	var overlay: SpectatorOverlay = _overlay()
+	if overlay.perf_panel == null:
+		assert_true(true, "debug-gated; nothing to place in a release build")
+		return
+	overlay.perf_panel.visible = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var screen: Vector2 = get_tree().root.get_visible_rect().size
+	var rect: Rect2 = overlay.perf_panel.get_global_rect()
+
+	gut.p("readout at %s in a %s viewport" % [rect, screen])
+	# **The width is the assertion that matters.** The first broken version sat at x = -16;
+	# the second spanned the whole 1904-pixel screen from x = 0 — and "left edge on screen,
+	# right edge on screen" passed for that one. A readout the width of the display is not
+	# a panel.
+	assert_almost_eq(
+		rect.size.x,
+		PerfPanel.PANEL_WIDTH,
+		2.0,
+		"the readout is its own width, not the width of the screen"
+	)
+	assert_true(rect.position.x >= 0.0, "its left edge is on screen, not off to the left")
+	assert_true(rect.position.y >= 0.0, "and its top edge is too")
+	assert_true(
+		rect.position.x + rect.size.x <= screen.x + 1.0, "and it does not run off the right either"
+	)
+
+
+## It belongs to the right of the centred debug panel, which is where the supervisor asked
+## for it — not overlapping it.
+func test_the_readout_sits_clear_of_the_debug_panel() -> void:
+	var overlay: SpectatorOverlay = _overlay()
+	if overlay.perf_panel == null or overlay.debug_panel == null:
+		assert_true(true)
+		return
+	overlay.perf_panel.visible = true
+	overlay.debug_panel.visible = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var readout: Rect2 = overlay.perf_panel.get_global_rect()
+	var debug: Rect2 = overlay.debug_panel.get_global_rect()
+
+	assert_true(
+		readout.position.x >= debug.position.x,
+		"the readout is to the right of the debug panel: readout %s, debug %s" % [readout, debug]
+	)
