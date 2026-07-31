@@ -17,6 +17,17 @@ const SIMULTANEOUS_BAND_TOLERANCE := 1.0
 static var turns_resolved: int = 0
 ## Bouts built since the last reset — the coarse counterpart to `turns_resolved`.
 static var bouts_built: int = 0
+## taskblock-51 (`BR26.02`): **speculative state clones.**
+##
+## `ActionQueue.preview()` clones the whole state, and `Grid.dup()` deep-copies every
+## blocker part and every surface with it — measured at **26 784 usec** on a 214-blocker
+## board, more than twice a `ShotPlane.build`. That cost was invisible because nothing
+## counted it, and it was reached from the aim view several times per mouse motion.
+##
+## Counted here for the same reason `bouts` and `turns` are: a cost nobody can see is a
+## cost nobody can budget, and this one was large enough to take the framerate to 8 fps
+## without ever appearing in a profile.
+static var dups: int = 0
 
 var grid: Grid
 var units: Array[Unit] = []  # the roster — no longer literally turn order, see below
@@ -110,6 +121,7 @@ var _hold_ready: bool = false
 static func reset_diagnostics() -> void:
 	turns_resolved = 0
 	bouts_built = 0
+	dups = 0
 
 
 func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) -> void:
@@ -309,6 +321,7 @@ func log_action(text: String) -> void:
 ## probabilistic. `action_log`/`combat_log` start empty — a preview's own
 ## log noise is never worth keeping.
 func dup() -> CombatState:
+	dups += 1
 	var cloned_units: Array[Unit] = []
 	for unit: Unit in units:
 		cloned_units.append(unit.dup())

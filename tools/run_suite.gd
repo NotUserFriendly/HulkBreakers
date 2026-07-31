@@ -258,6 +258,11 @@ func _snapshot() -> Dictionary:
 		# taskblock-48 Pass D: the one counter here that is not AI work. Without it a
 		# view-only regression is invisible to every budget.
 		"ui_builds": HulkTheme.ui_builds,
+		# taskblock-51 (`BR26.02`): speculative state clones. `ActionQueue.preview()` costs
+		# ~26 ms on a real board and the aim view was reaching it several times per mouse
+		# motion — a cost large enough to take the framerate to 8 fps while appearing in no
+		# profile at all, because nothing counted it.
+		"dups": CombatState.dups,
 	}
 
 

@@ -168,6 +168,7 @@ func undo_last() -> bool:
 	if queue == null or queue.actions.is_empty():
 		return false
 	queue.actions.pop_back()
+	queue.revision += 1
 	return true
 
 
