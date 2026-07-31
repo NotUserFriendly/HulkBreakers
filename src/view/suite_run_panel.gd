@@ -29,6 +29,19 @@ extends VBoxContainer
 ## this a status surface rather than a coordinator.
 signal run_completed(finished_run: SuiteRun)
 
+## taskblock-51: **the run panels are spectator-only for the duration of the bug hunt.**
+##
+## They mount identically under both overlays, and under the player view they sit on top
+## of the surfaces the hunt is actually looking at — the supervisor reported them
+## interfering while reproducing. Spectating is where a run is watched from anyway; the
+## player view is where the bugs are.
+##
+## **A flag rather than a deletion, and read from one place**, so putting them back is
+## this constant and nothing else. `test_debug_panel_layout.gd` asserts the split in both
+## directions, so flipping this without updating the test fails loudly rather than
+## quietly restoring a panel nobody wanted back yet.
+const SHOW_IN_PLAYER_VIEW := false
+
 ## taskblock-50 Pass F: **a run finishes into a window nobody is looking at.**
 ##
 ## The panel is watched intermittently by definition — a full gate takes minutes and the

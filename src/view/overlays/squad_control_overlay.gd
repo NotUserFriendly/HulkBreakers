@@ -306,7 +306,11 @@ func _build_ui() -> void:
 	# taskblock-48 Pass B1: hosted the same way `CombatLogPanel` is, and for the same
 	# reason — a debug surface that both overlays need is a panel, not a subclass.
 	# Debug-gated: these drive a real subprocess and a real bout sequence.
-	if OS.is_debug_build():
+	# taskblock-51: spectator-only while the bug hunt runs — see
+	# `SuiteRunPanel.SHOW_IN_PLAYER_VIEW`. These crowd the surfaces the hunt is
+	# reproducing against, and a run is watched from the spectator view regardless.
+	# The inject panel above is untouched: it is a hunting tool, not a test surface.
+	if OS.is_debug_build() and SuiteRunPanel.SHOW_IN_PLAYER_VIEW:
 		# taskblock-48 Pass B2.5: **parented to `theme_root`, not to the overlay.**
 		# The overlay is a `Node3D`; a `Control` under one gets no layout at all and
 		# every panel piled up at the origin, on top of `TopLeftControls`. Anchored
