@@ -291,6 +291,13 @@ func _refresh_active_label() -> void:
 	if _active.get("kind") == Enums.HitKind.UNIT and _active.get("unit") != null:
 		var unit: Unit = _active.get("unit")
 		_active_label.text = "Active: Unit #%d @ %s" % [unit.id, unit.cell]
+	elif _active.get("kind") == Enums.HitKind.PART and _active.get("part") != null:
+		# taskblock-51 (`BR51.02`): **cover said "Cell".** A click on a barrel resolves to a
+		# `PART` hit carrying the exact part struck, and this labelled everything that was
+		# not a unit by its cell — so selecting cover read as selecting the tile beneath it,
+		# and there was no way to tell whether the panel had the barrel or the floor.
+		var part: Part = _active.get("part")
+		_active_label.text = "Active: %s @ %s" % [part.id, _active.get("cell")]
 	else:
 		_active_label.text = "Active: Cell %s" % [_active.get("cell")]
 

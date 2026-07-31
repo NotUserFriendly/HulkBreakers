@@ -624,3 +624,25 @@ func test_a_cell_with_nothing_on_it_is_refused_by_name() -> void:
 	)
 
 	assert_false(ok, "there is nothing there to give an HP to")
+
+
+## **The click a player actually makes, not a dict I built by hand.** `BR51.02` was closed
+## once already on a hand-written `{kind: CELL, ...}` target and reopened immediately,
+## because clicking cover produces a `PART` hit and nothing tested that shape. A test that
+## constructs its own input cannot tell you the caller never produces it.
+func test_the_part_hit_a_cover_click_produces_is_a_usable_target() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
+	var injector := BoutInjector.new(state)
+	var cell := Vector2i(2, 2)
+	assert_true(injector.place_cover(cell, &"scrap_pile", pool))
+	var cover: Part = state.grid.blockers[cell]
+
+	# The shape `TacticsController._cell_at` emits for a click that lands on cover: kind
+	# PART, no unit, and the struck part carried through.
+	var hit := {"kind": Enums.HitKind.PART, "unit": null, "part": cover, "cell": cell}
+	var ok: bool = injector.set_part_hp(hit, &"", 0)
+
+	assert_true(ok, "a cover click is a usable target")
+	assert_eq(cover.hp, 0, "and it reached the cover, not the floor under it")
