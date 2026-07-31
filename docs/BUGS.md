@@ -97,6 +97,55 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.12 — Suspected — owner: `SUPERVISOR`
+**Ramps may generate on top of other ramps facing the other way**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- Reported as a suspicion rather than a confirmed defect: ramps appearing stacked on one cell facing
+  opposite directions. **`Suspected` deliberately** — it has not been reproduced deliberately and no
+  route back to it is recorded.
+- Cheap to test headlessly once described: `MapGen` places ramps through `connect_with_a_ramp`, and
+  "at most one correctly typed floor surface per cell" is already asserted by
+  `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
+  name** — which is the more interesting finding of the two.
+
+### BR51.13 — Active — owner: `CC`
+**The combat log folds `fps_dump` into `wall_cutout` runs**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 fourth hunt. *"Combat log is collapsing things that shouldn't
+  collapse together. Notably, `fps_dump` lands inside `wall_cutout` reports."*
+- **This contradicts a test that passes.** `test_log_fold.gd` asserts
+  `test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing` — so either `fps_dump` is not
+  classified as a diagnostic, or the plumbing fold swallows neighbours the test never feeds it.
+  **Read the test before the code:** a green assertion beside a live defect means the assertion is
+  testing something narrower than its name claims, which is exactly the failure taskblock-49's audit
+  was built to find.
+- Confirmed visible in `out/combat.log` across every session this block.
+
+### BR51.14 — Active — owner: `CC`
+**Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- **Repro:** select a unit, move the mouse over tiles **without aiming**. Framerate falls from 160 to
+  about 20. Holding still over a tile costs nothing; only motion does.
+- **Almost certainly the same shape as `BR26.02` on the non-aim path.** That bug was per-motion-event
+  work on the aim hover; this is the board hover, which runs `update_hover` → `PartPicker.hit` and
+  emits `hover_changed`. **The two fixes that worked there apply here unmodified:** coalesce motion to
+  one update per drawn frame, and check whether the signal's listeners are doing preview-scale work.
+- **Do not assume it is identical** — measure it the same way, with the per-function clone and plane
+  counts, before changing anything.
+
+### BR51.15 — Active — owner: `SUPERVISOR`
+**A distinct hitch as the over-the-shoulder camera swings behind the unit**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- **Repro:** enter aim with the over-the-shoulder camera and watch the moment it arrives behind the
+  shooter. A distinct hitch lands exactly there, separate from the general aim-view cost.
+- **This is the ~7.5 fps session minimum, and it now has a cause to look at.** Every session this block
+  recorded a minimum of **7.1–8.1** regardless of what else changed — one slow frame, not a sustained
+  load. A hitch tied to a specific camera position is a much better lead than a stray stall.
+- **Suspects, in order:** the camera passing through wall geometry (which the supervisor separately
+  proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
+  triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
+
 ### BR51.06 — Active — owner: `CC`
 **The debug panel's `pick` button also sets the active target**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
