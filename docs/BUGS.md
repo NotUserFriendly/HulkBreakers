@@ -447,7 +447,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   row of a four-row table, and neither the 87.5% nor the 60% describes what a mixed-tier bout does.
 
 
-### BR26.02 — Active — owner: `SUPERVISOR`
+### BR26.02 — Pending — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **2026-07-23 (supervisor revision to the instrumentation spec — supersedes the offsets below).**
@@ -560,6 +560,31 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **`fps_dump` already fires on entering aim** (taskblock-50), so the drop should be readable from
   `out/combat.log` with no new instrumentation. **Read it before changing anything:** `BR35.01` has
   absorbed three fixes that were reasoned rather than measured, and it is a suspected cause here.
+- **`Pending` (taskblock-51) — measured, then fixed, and the long-standing suspect was wrong.**
+  `test_aim_cost_probe.gd` timed the candidates on a board the size you were playing (32×24, **214**
+  wall and cover blockers, 6 units):
+
+  | call | usec | note |
+  |---|---|---|
+  | `ShotPlane.build` | **10 889** | one call overruns a 160 fps frame (6 250 usec) on its own |
+  | `PartPicker.hit` | 1 559 | `BR35.01`'s suspect — real, but **7× cheaper** |
+  | `bounding_sphere` × 6 units | 773 | `update_wall_cutout`, per frame |
+
+- **The defect: `TacticsController.aim_state()` rebuilt the whole shot plane, plus a full state clone,
+  on every call — and it was called at least twice per mouse motion** (`aim_reticle_at_screen`, then
+  `update_aim_hover` from the same screen position) plus once per aim-view redraw. Moving the mouse
+  therefore cost 20–30 ms of plane building for a plane that had not changed.
+- **The fix is a memo keyed on what the plane actually depends on** — shooter, previewed cell and
+  facing, target, queue depth — and **deliberately not on `reticle_offset`**, which is the one value
+  that changes constantly and cannot affect the plane. Both directions are tested against
+  `ShotPlane.builds`: eight reticle moves rebuild nothing, and a shooter that has moved gets a fresh
+  plane.
+- **This does not close `BR35.01`.** That scan is genuinely wasteful and still worth fixing; it is
+  simply not what took the framerate, and the entry has been corrected so a fourth reasoned fix is not
+  aimed at it.
+- **To see it work:** enter the aim view and move the mouse. `fps_dump` still fires 2 s after entering
+  aim, so `out/combat.log` will carry the new number — that reading is the confirmation, not my word.
+
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
 - **Source:** `SUPERVISOR`
@@ -1560,6 +1585,13 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   the pass as a companion item and deliberately left: `PartPicker.hit` still scans every
   `grid.blockers`/`field_items` entry per call. Stated rather than quietly dropped — it is `CC`-owned
   and small, and belongs to whoever picks this up next.
+- **taskblock-51 — measured, and it is NOT the aim-view framerate cause.** `PartPicker.hit` costs
+  **1 559 usec** on a 214-blocker board against `ShotPlane.build`'s **10 889**. `BR26.02` was caused by
+  the aim plane being rebuilt per mouse motion, not by this scan.
+- **Still worth fixing on its own merits** — it is real waste on every hover — but this entry has now
+  absorbed three reasoned-not-measured fixes, and the standing instruction to measure first applies
+  with more force, not less, now that the obvious theory has been falsified once.
+
 ### BR35.02 — Active — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
