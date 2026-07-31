@@ -28,6 +28,12 @@ readers still mean it, and a second stored field would drift from the target.
   opening it for an unrenderable target left the dim over the board with nothing on top (`BR48.01`'s
   shape).
 
+**A refusal names what it refused.** The `"refused"` status path already existed, so this was smaller
+than triage assumed — what was missing is that it did not say *which* target it declined, which starts
+mattering once a bare tile or a barrel can be the active one. It reads `Set Part HP: refused (cell
+(4, 4))`. **Only OBJECT-param verbs name the target**: for the rest the active item is not what they
+acted on, and naming it would report the wrong cause for their own failure.
+
 **A bug found while building it:** `PartPicker.hit` returns `{unit, part, cell, t}` with **no `kind`**;
 `board_clicked` emits `{kind, unit, part, cell}`. Routing a raw pick through `from_hit()` classified
 every hit as a bare cell and stopped spectator unit clicks pausing the bout. Each shape now has its own

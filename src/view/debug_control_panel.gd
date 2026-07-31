@@ -607,6 +607,20 @@ func _on_apply_pressed() -> void:
 			return
 		args[p.name] = value
 	var ok: bool = verb.apply.call(bout_injector, pool, args)
-	_status_label.text = "%s: %s" % [verb.label, "applied" if ok else "refused"]
 	if ok:
+		_status_label.text = "%s: applied" % verb.label
 		applied.emit(verb.id, args)
+		return
+	# taskblock-51 Pass K: **a refusal names what was refused.** Now that cover and bare tiles
+	# can be the active target, "refused" on its own leaves the operator guessing whether the
+	# verb rejected the target or never saw it — and half of Pass K's reported symptoms were
+	# things silently doing nothing. Only OBJECT-param verbs name the target, because for the
+	# rest the active item is not what they acted on and naming it would mislead.
+	_status_label.text = "%s: refused%s" % [verb.label, _refused_target_suffix(verb)]
+
+
+func _refused_target_suffix(verb: DebugVerbSpec) -> String:
+	for p: Dictionary in verb.params:
+		if p.type == DebugVerbSpec.ParamType.OBJECT:
+			return " (%s)" % SelectionTarget.from_hit(_active).describe()
+	return ""
