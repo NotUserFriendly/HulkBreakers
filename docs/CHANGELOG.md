@@ -1622,6 +1622,44 @@ an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comme
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
 
+### A performance readout, because the mean was the number that lied (tb51)
+
+**`PerfStats` (logic) and `PerfPanel` (view), to the supervisor's own specification.** The reason is
+taskblock-51's own record: one session read **min 7.5, avg 140.1**, and four framerate defects were
+found in that block without the mean ever pointing at one of them. Uncapped, this game tops out the
+monitor, so a session mixing 8 fps stalls with 160 fps idling reports a healthy average and feels
+terrible.
+
+**Five figures:** instant; rolling (a true rate — frames ÷ seconds over 2 s, republished on that
+cadence, never a mean of rates); the single worst frame; **1% low** as the mean of the slowest 1% of
+frames, which is the hardware-review reading the supervisor confirmed; and **the average with the
+fastest 1% of *speeds* removed** — the cut sits at **0.99 × the fastest frame seen**, chosen by the
+supervisor over a proportion-of-range reading because the two diverge on narrow spreads. That last
+figure reports **what fraction of frames survived the cut**, because a number computed after
+discarding data should say how much it discarded.
+
+**Arithmetic correction, recorded because it strengthens the case:** the supervisor's worked example
+said the plain mean would read "~40fps" — it is **59.9**. The figure they asked for reads **10**, so
+the mean overstates by 6×, not 4×. Both numbers are pinned in the test.
+
+**A bug the tests caught while building it:** 120 frames of `1.0/60.0` sum to 1.999999…, so a bare
+`>= 2.0` window check never fired and six seconds reported two ticks instead of three. Fixed with an
+epsilon, and the remainder now carries rather than being discarded so the cadence cannot drift.
+
+**The panel is offered by the debug panel and outlives it.** Toggled from inside `DebugControlPanel`,
+owned by the overlay — closing the debug panel does not take the readout down, which is what was asked
+for. Present in both player and spectator views, since it is tied to debug rather than to a mode. It
+samples every frame and **redraws only on the rolling tick**; a profiler that costs frames measures its
+own overhead. An opt-in checkbox dumps the figures to the combat log on that same cadence, emitted by
+the panel and *written by the overlay*, so no view reaches into a `CombatState` to log.
+
+**The aim-session dump now reads `PerfStats` rather than its own min/frames/seconds.** That second
+implementation is how the log came to report 161 fps for a session the supervisor experienced as 8 —
+one measurement now, and the session dump gained the 1% low and the trimmed average, since a bare min
+and mean were exactly the pair that hid four defects. **The single worst frame was kept** alongside the
+1% low rather than replaced by it: the supervisor has been reading a session minimum all block and it
+is the figure that matched what they were feeling.
+
 ### The aim view's framerate: four defects, one symptom (tb51)
 
 **113 504 usec per mouse motion → 8 878.** 8.8 fps to 113, measured through a real `SquadControlOverlay`

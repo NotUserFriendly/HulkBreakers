@@ -75,6 +75,7 @@ var log_sink: HierarchicalUiSink
 ## old flat 3-item `InjectMenu` popup — built once (inside `_build_ui()`,
 ## only when `OS.is_debug_build()`), toggled by `inject_button`.
 var debug_panel: DebugControlPanel = null
+var perf_panel: PerfPanel = null
 ## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
 ## banner/aim-readout/stat-block cluster's own header, DIM when idle and
 ## HIGHLIGHT the instant either half of it actually has something to show.
@@ -266,6 +267,15 @@ func _build_ui() -> void:
 		debug_panel.visible = false
 		debug_panel.applied.connect(_on_debug_panel_applied)
 		theme_root.add_child(debug_panel)
+		# taskblock-51: the performance readout. Offered by the debug panel, owned here —
+		# closing the debug panel must not take the readout down with it, which is the
+		# whole point of the supervisor's "if the debug panel is closed the perf panel
+		# stays open".
+		perf_panel = PerfPanel.new()
+		perf_panel.visible = false
+		perf_panel.stats_ticked.connect(_on_perf_stats_ticked)
+		debug_panel.perf_panel_toggled.connect(_on_perf_panel_toggled)
+		theme_root.add_child(perf_panel)
 
 	# tb31 Pass A: the shared Inject/New Battle/Watch cluster — one
 	# construction path (`TopLeftControls`), not a per-overlay copy. Added
@@ -887,3 +897,26 @@ func _on_suite_run_completed(finished_run: SuiteRun) -> void:
 ## which this overlay reacts to, so the controls are pointed at the new state already.
 func _on_replay_loaded(_map_seed: int) -> void:
 	pass
+
+
+## taskblock-51: the readout's own visibility, independent of the panel that offers it.
+func _on_perf_panel_toggled(shown: bool) -> void:
+	if perf_panel != null:
+		perf_panel.visible = shown
+
+
+## The panel emits; the overlay writes. A view reaching into a `CombatState` to log would
+## be the second logging path this project keeps deleting.
+func _on_perf_stats_ticked(snapshot: Dictionary) -> void:
+	if battle == null or battle.combat_state == null:
+		return
+	battle.combat_state.combat_log.emit(
+		LogEvent.new(
+			battle.combat_state.round_number,
+			Enums.Phase.RESOLUTION,
+			-1,
+			&"fps_dump",
+			snapshot,
+			"perf: %s" % " | ".join(perf_panel.stats.describe())
+		)
+	)

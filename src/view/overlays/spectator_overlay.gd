@@ -74,6 +74,7 @@ var input_capture_mode: bool = false
 ## via the same "Inject..." button, only inside `if OS.is_debug_build():`
 ## (never even constructed in a release export).
 var debug_panel: DebugControlPanel = null
+var perf_panel: PerfPanel = null
 ## tb31 Pass A: the shared top-left Inject/Assume-Control cluster —
 ## `inject_button`/`assume_control_button` below alias straight into it.
 var top_left_controls: TopLeftControls
@@ -403,6 +404,13 @@ func _build_ui() -> void:
 		debug_panel.visible = false
 		debug_panel.applied.connect(_on_debug_panel_applied)
 		theme_root.add_child(debug_panel)
+		# taskblock-51: the performance readout — see `SquadControlOverlay` for why the
+		# overlay owns its lifetime rather than the panel that offers the toggle.
+		perf_panel = PerfPanel.new()
+		perf_panel.visible = false
+		perf_panel.stats_ticked.connect(_on_perf_stats_ticked)
+		debug_panel.perf_panel_toggled.connect(_on_perf_panel_toggled)
+		theme_root.add_child(perf_panel)
 
 	# tb31 Pass A: the shared Inject/Assume-Control cluster — one
 	# construction path (`TopLeftControls`), not a per-overlay copy.
@@ -648,3 +656,25 @@ func rebind_to_battle() -> void:
 	bout_injector = battle.bout_injector
 	attach_log_sink(battle.combat_state.combat_log)
 	_refresh_status()
+
+
+## taskblock-51: the readout's own visibility, independent of the panel that offers it.
+func _on_perf_panel_toggled(shown: bool) -> void:
+	if perf_panel != null:
+		perf_panel.visible = shown
+
+
+## The panel emits; the overlay writes.
+func _on_perf_stats_ticked(snapshot: Dictionary) -> void:
+	if battle == null or battle.combat_state == null:
+		return
+	battle.combat_state.combat_log.emit(
+		LogEvent.new(
+			battle.combat_state.round_number,
+			Enums.Phase.RESOLUTION,
+			-1,
+			&"fps_dump",
+			snapshot,
+			"perf: %s" % " | ".join(perf_panel.stats.describe())
+		)
+	)

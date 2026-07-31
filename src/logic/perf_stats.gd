@@ -62,6 +62,7 @@ const UNAVAILABLE := -1.0
 
 var _fps: PackedFloat32Array = PackedFloat32Array()
 var _fastest: float = 0.0
+var _slowest: float = 0.0
 var _instant: float = 0.0
 var _rolling: float = UNAVAILABLE
 var _window_seconds: float = 0.0
@@ -83,6 +84,8 @@ func sample(delta: float) -> bool:
 	_fps.append(fps)
 	if fps > _fastest:
 		_fastest = fps
+	if _slowest <= 0.0 or fps < _slowest:
+		_slowest = fps
 	_window_seconds += delta
 	_window_frames += 1
 	# **Epsilon, and the remainder carries.** 120 frames of `1.0/60.0` sum to 1.999999…, so
@@ -162,9 +165,18 @@ func fastest() -> float:
 	return _fastest
 
 
+## The single worst frame. **Kept alongside the 1% low rather than replaced by it**: the
+## supervisor has been reading a session minimum all through taskblock-51 and it is the
+## figure that matched what they were feeling. The 1% low is the better statistic; the
+## minimum is the one that says "something stalled hard, once".
+func slowest() -> float:
+	return _slowest if _slowest > 0.0 else UNAVAILABLE
+
+
 func reset() -> void:
 	_fps = PackedFloat32Array()
 	_fastest = 0.0
+	_slowest = 0.0
 	_instant = 0.0
 	_rolling = UNAVAILABLE
 	_window_seconds = 0.0
@@ -177,6 +189,7 @@ func describe() -> Array[String]:
 	return [
 		"instant %s" % _format(_instant),
 		"rolling %ds %s" % [int(ROLLING_WINDOW_SECONDS), _format(_rolling)],
+		"min %s" % _format(slowest()),
 		"1%% low %s" % _format(one_percent_low()),
 		(
 			"avg less top 1%% %s (reporting %d%% of %d frames)"
@@ -195,6 +208,7 @@ func snapshot() -> Dictionary:
 	return {
 		"instant": _instant,
 		"rolling": _rolling,
+		"slowest": slowest(),
 		"one_percent_low": one_percent_low(),
 		"avg_less_top": average_dropping_top(),
 		"reporting": reporting_fraction(),

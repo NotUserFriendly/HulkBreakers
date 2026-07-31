@@ -148,6 +148,7 @@ func test_the_readout_and_the_snapshot_agree() -> void:
 	var snapshot: Dictionary = stats.snapshot()
 	var lines: Array[String] = stats.describe()
 
-	assert_eq(lines.size(), 4, "one line per figure")
+	assert_eq(lines.size(), 5, "one line per figure")
 	assert_eq(int(snapshot["frames"]), 150)
-	assert_true(lines[3].contains("150 frames"), "the readout states its own sample size")
+	assert_true(lines[4].contains("150 frames"), "the readout states its own sample size")
+	assert_almost_eq(float(snapshot["slowest"]), 20.0, 0.05, "the worst frame is carried too")
