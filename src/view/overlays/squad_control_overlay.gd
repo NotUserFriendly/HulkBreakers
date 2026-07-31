@@ -254,6 +254,9 @@ func _build_ui() -> void:
 	# framing); opened on demand for whatever's currently selected.
 	inspect_button = Button.new()
 	inspect_button.text = "Inspect"
+	# `BR51.10`: starts disabled, because nothing is selected yet. An affordance that lies
+	# about what it can do reads as a broken action when it correctly does nothing.
+	inspect_button.disabled = true
 	inspect_button.pressed.connect(_on_inspect_pressed)
 	left_layout.add_child(inspect_button)
 
@@ -716,13 +719,21 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 ## aim-facing with no move queued. The instant a move IS queued, the live
 ## model falls back to its plain committed orientation and the ghost alone
 ## carries the preview.
-## taskblock-21 Pass A: opens the inspect panel on whatever's currently
-## selected — a no-op with nothing selected, the same guard every other
-## selection-dependent action here already uses.
+## taskblock-21 Pass A: opens the inspect panel on whatever's currently selected.
+##
+## taskblock-51 Pass K: **and "whatever" now includes cover.** `InspectPanel.open_tile` has
+## always been able to describe a loose part — the selection simply could never hold one, so
+## the capability was unreachable from the board. `BR51.10`: the button is disabled rather
+## than live-and-inert when the target has no body, so this guard is a backstop, not the
+## affordance.
 func _on_inspect_pressed() -> void:
-	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	if selected != null:
-		inspect_panel.open(selected)
+	if tactics.selection == null:
+		return
+	var target: SelectionTarget = tactics.selection.selected_target
+	if target.is_unit():
+		inspect_panel.open(target.unit)
+	elif target.is_part():
+		inspect_panel.open_tile(target.cell, target.part)
 
 
 ## tb31 Pass D: the action bar's own PART_PICKER dispatch — `action_id`
@@ -820,6 +831,10 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 
 func _on_selection_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
+	# `BR51.10`: driven by whether the TARGET has something to describe, not by whether
+	# anything has been clicked. A bare tile is a real selection with nothing to inspect.
+	if inspect_button != null:
+		inspect_button.disabled = tactics.selection == null or not tactics.selection.can_inspect()
 	# tb32 Pass B: "in dartboard/aiming view only" — `aiming_at` (the
 	# TARGET) is what marks "the player is actually aiming right now,"
 	# not just having a unit selected; `aim_active_unit` is the shooter

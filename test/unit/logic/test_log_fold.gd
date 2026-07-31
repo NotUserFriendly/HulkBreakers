@@ -280,13 +280,53 @@ func test_a_run_of_plumbing_events_folds_into_one_counted_row() -> void:
 	assert_eq(fold.groups[0].detail_lines().size(), 7, "and all seven are still drillable")
 
 
-func test_a_mixed_plumbing_run_does_not_claim_to_be_one_kind() -> void:
+## **`BR51.13`: a plumbing run folds one kind, not any plumbing at all.**
+##
+## This test previously asserted the opposite — that two different plumbing kinds share a row
+## labelled "2 log events". That was the behaviour, and the behaviour was the bug: the
+## supervisor watched `fps_dump` measurements vanish inside `wall_cutout` reports. The old
+## assertion was not wrong about what the code did, it was wrong about what the code should
+## do, which is the harder kind to notice.
+func test_different_plumbing_kinds_do_not_share_a_row() -> void:
 	var fold := LogFold.new()
 	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"command", {}, "c"))
 	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"command_outcome", {}, "o"))
 
-	assert_eq(fold.groups.size(), 1)
-	assert_eq(fold.groups[0].summary, "2 log events", "a uniform label here would be a lie")
+	assert_eq(fold.groups.size(), 2, "two kinds, two rows")
+	assert_eq(fold.groups[0].summary, "1× command")
+	assert_eq(fold.groups[1].summary, "1× command_outcome")
+
+
+## **The reported defect, in its reported shape.** `fps_dump` sits between two `wall_cutout`
+## events — which is what a spectated bout actually emits — and must keep its own row.
+func test_an_fps_dump_is_not_swallowed_by_a_wall_cutout_run() -> void:
+	var fold := LogFold.new()
+	for i in range(3):
+		fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"wall_cutout", {}, "cut %d" % i))
+	fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"fps_dump", {}, "Turn FPS 74.0"))
+	for i in range(3):
+		fold.ingest(LogEvent.new(0, Enums.Phase.TACTICS, -1, &"wall_cutout", {}, "cut %d" % i))
+
+	var summaries: Array[String] = []
+	for group: LogFoldGroup in fold.groups:
+		summaries.append(group.summary)
+	gut.p("rows: %s" % str(summaries))
+	assert_eq(summaries, ["3× wall_cutout", "1× fps_dump", "3× wall_cutout"] as Array[String])
+
+
+## **And the anti-flooding purpose still holds.** `fps_dump` joined `PLUMBING_KINDS` because a
+## spectated bout emitted one per turn and eleven identical rows pushed real combat events out
+## of the panel. Breaking runs by kind must not undo that.
+func test_consecutive_fps_dumps_still_fold_together() -> void:
+	var fold := LogFold.new()
+	for i in range(11):
+		fold.ingest(
+			LogEvent.new(0, Enums.Phase.TACTICS, -1, &"fps_dump", {}, "Turn FPS %d.0" % (70 + i))
+		)
+
+	assert_eq(fold.groups.size(), 1, "eleven dumps, one row")
+	assert_eq(fold.groups[0].summary, "11× fps_dump")
+	assert_eq(fold.groups[0].detail_lines().size(), 11, "and every number is still drillable")
 
 
 ## An engine or script error is exactly what must NOT be quietly counted away.

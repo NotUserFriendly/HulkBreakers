@@ -108,7 +108,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
   name** — which is the more interesting finding of the two.
 
-### BR51.13 — Active — owner: `CC`
+### BR51.13 — Resolved — owner: `CC`
 **The combat log folds `fps_dump` into `wall_cutout` runs**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, taskblock-51 fourth hunt. *"Combat log is collapsing things that shouldn't
@@ -204,7 +204,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   independently of whose turn it is. Fixing the pointer without clearing the selection moved the
   symptom rather than removing it.
 
-### BR51.10 — Active — owner: `CC`
+### BR51.10 — Pending — owner: `CC`
 **Inspect is offered when there is nothing to inspect**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, taskblock-51 third hunt.

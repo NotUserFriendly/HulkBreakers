@@ -356,8 +356,13 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		elif hit_dict["kind"] == Enums.HitKind.PART:
 			_click_part(hit_dict["part"], hit_dict["cell"])
 		else:
+			# A cell click with a unit selected is a move order and stays one — Pass K adds
+			# tile selection where there was previously nothing, and takes nothing away.
 			if selection.selected_unit != null:
 				selection.queue_move(hit_dict["cell"])
+			else:
+				selection.select_target(SelectionTarget.from_hit(hit_dict))
+				selection_changed.emit()
 			_refresh_overlay()
 	elif button_event.button_index == MOUSE_BUTTON_RIGHT:
 		# runNotes.md: RMB also orbits the camera (CameraRig, independently)
@@ -525,17 +530,23 @@ func click_cell(cell: Vector2i) -> void:
 	if input_locked:
 		return
 	if input_capture_mode:
+		# `BR51.02`: this branch reported every non-unit click as a bare CELL, so cover could
+		# never become the debug panel's active target and every OBJECT-target verb inherited
+		# the hole. The ray path (`_handle_mouse_button`) has always resolved PART correctly;
+		# this cell-driven one did not, which is two code paths disagreeing about what a click
+		# means — the bug to fix, not a difference to tune.
 		var captured: Unit = _unit_at(cell)
-		(
-			board_clicked
-			. emit(
-				{
-					"kind": Enums.HitKind.UNIT if captured != null else Enums.HitKind.CELL,
-					"unit": captured,
-					"cell": cell,
-				}
-			)
+		var captured_part: Part = (
+			selection.state.grid.shootable_part_at(cell) if captured == null else null
 		)
+		var captured_target: SelectionTarget
+		if captured != null:
+			captured_target = SelectionTarget.for_unit(captured)
+		elif captured_part != null:
+			captured_target = SelectionTarget.for_part(captured_part, cell)
+		else:
+			captured_target = SelectionTarget.for_cell(cell)
+		board_clicked.emit(captured_target.to_hit())
 		return
 	if aiming_at != null or stepping_out_at != null:
 		confirm_shot()
@@ -756,9 +767,25 @@ func _enter_aim_or_step_out_mode(target: Unit) -> void:
 ## LOS from a live threat; there's no LOS-avoidance concept against inert
 ## cover) — armed, with a shooter already selected, goes straight into
 ## ordinary aim mode.
+## taskblock-51 Pass K: **a click on cover selects the cover.**
+##
+## With an action armed this still enters aim, unchanged. With nothing armed it used to do
+## nothing at all — `SelectionController` had only `selected_unit` and a barrel is not a unit,
+## so the click had nowhere to go and the supervisor read the result as "it selected the tile
+## beneath". It selects the prop now.
+##
+## **Selecting a prop drops the unit selection**, which is a real behaviour change: clicking a
+## barrel mid-plan clears the action bar. It is recoverable — `_queues` is keyed by unit id,
+## so reselecting the unit restores its queued actions untouched — and the alternative (two
+## simultaneous selections) is the parallel-state bug this pass exists to remove.
 func _click_part(part: Part, cell: Vector2i) -> void:
 	if armed_action != null and selection.selected_unit != null:
 		_enter_aim_mode(AimTarget.for_part(part, cell))
+		_refresh_overlay()
+		return
+	selection.select_target(SelectionTarget.for_part(part, cell))
+	armed_action = null
+	selection_changed.emit()
 	_refresh_overlay()
 
 
