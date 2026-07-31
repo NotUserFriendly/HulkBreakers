@@ -1,6 +1,37 @@
 # CHANGELOG.md — What's Been Built
 
-### taskblock-51 — `BR48.01`: the dim was an empty modal, not a dim that failed to lift
+### taskblock-51 — `BR48.01`: the dim is the inspector's lighting leaking into the board
+
+**The supervisor's own diagnosis, and it was right:** *"this may not be a UI issue, it may be lighting
+as the inspect panel draws the clicked item, and the lighting might be custom there, and then said
+lighting doesn't get reset to board style."*
+
+`InspectPanel._preview_viewport` carries a `WorldEnvironment` **and** a `DirectionalLight3D` for its
+fallback path, which renders a fresh copy in its own isolated world. The isolate-camera path — what a
+click on a live item takes, so the panel shows the *actual* unit on the field — needs the opposite,
+`own_world_3d = false`, and that puts **both nodes into the battle's `World3D`**: a second environment
+and an extra directional light over the whole board. The comment beside them already flagged that a
+second `WorldEnvironment` there "isn't a well-defined 'also applies' situation", and solved it only for
+the preview camera via a per-camera override; the main camera was left to whatever Godot resolved.
+
+It persists after closing because **`_isolate_clear()` deliberately never touches `own_world_3d`** — its
+own comment says so, written in taskblock-22 for an unrelated reason. Inspect one live subject and the
+viewport stays world-shared for the rest of the session.
+
+**The fix ties the preview's lighting to who owns the world**, not to open/close: while the world is
+shared, the light is hidden and the environment detached, so it is never in the battle world in either
+state. The preview camera's own `environment` override already gives it the right ambient regardless of
+which world it lands in, and the subject is lit correctly because it genuinely is on the board. The
+fallback path keeps its lighting, which is the only lighting in its isolated world.
+
+**Two approaches were tried and abandoned first, both recorded because each failed for its own reason.**
+Releasing the shared world in `close()` asks Godot to detach a viewport from a scenario it has already
+left — `Parameter "scenario" is null`, an error rather than a no-op — and reordering `close()` to
+release before hiding did not help, because the detach is invalid regardless of order. Making the
+assignment idempotent removed a redundant flip but not the genuine one. Tying the lighting to world
+ownership avoids the flip entirely.
+
+### taskblock-51 — `BR48.01`, first attempt: an empty modal on a bare tile
 
 **The trigger was the open path, not the close one**, exactly as the supervisor's re-diagnosis said.
 `Grid.blockers.get(cell)` is **null for a bare tile** — `open_tile`'s own doc says so — and the

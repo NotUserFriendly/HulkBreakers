@@ -101,6 +101,11 @@ var _isolate_center: Vector3 = Vector3.ZERO
 var _isolate_radius: float = 0.5
 var _isolate_yaw: float = 0.0
 var _default_cull_mask: int = 0
+## `BR48.01`: the preview's own lighting nodes, held so they can be **withdrawn while the
+## viewport shares the battle's World3D**. See `_set_preview_world_shared`.
+var _preview_environment: WorldEnvironment = null
+var _preview_light: DirectionalLight3D = null
+var _preview_own_environment: Environment = null
 
 var _status_wound_column: VBoxContainer
 var _matrix_label: RichTextLabel
@@ -213,8 +218,11 @@ func _build_bot_viewer(parent: Control) -> void:
 	_preview_viewport = SubViewport.new()
 	_preview_viewport.size = Vector2i(VIEWER_WIDTH, VIEWER_HEIGHT)
 	_preview_container.add_child(_preview_viewport)
-	_preview_viewport.add_child(WorldPalette.world_environment())
-	_preview_viewport.add_child(WorldPalette.directional_light())
+	_preview_environment = WorldPalette.world_environment()
+	_preview_light = WorldPalette.directional_light()
+	_preview_own_environment = _preview_environment.environment
+	_preview_viewport.add_child(_preview_environment)
+	_preview_viewport.add_child(_preview_light)
 
 	_preview_camera = Camera3D.new()
 	_preview_viewport.add_child(_preview_camera)
@@ -348,7 +356,7 @@ func open(unit: Unit) -> void:
 			# field" — a shared, never-overridden World3D is what let a
 			# fresh copy built at Vector2i.ZERO leak into the real board's
 			# own camera in the first place).
-			_preview_viewport.own_world_3d = true
+			_set_preview_world_shared(false)
 			_preview_view.show_assembly(
 				unit.shell.root, _material_table, WorldPalette.team_color(unit.squad_id)
 			)
@@ -365,7 +373,7 @@ func open(unit: Unit) -> void:
 		# slice of the actual board ("a garbage/random tile") instead of
 		# nothing. `show_assembly(null, ...)` already clears its own
 		# children and returns early — reused here, not re-derived.
-		_preview_viewport.own_world_3d = true
+		_set_preview_world_shared(false)
 		_preview_view.show_assembly(null, _material_table, Color.WHITE)
 	_refresh_title()
 	_refresh_status_wound_column()
@@ -378,13 +386,51 @@ func open(unit: Unit) -> void:
 	call_deferred(&"_clamp_to_viewport")
 
 
+## `_isolate_clear()` deliberately never touches `own_world_3d` — its own comment says so — so
+## the viewport stays world-SHARED after inspecting a live subject. **That is left alone.**
+## `BR48.01` is fixed by keeping the preview's own lighting out of a shared world entirely
+## (`_set_preview_world_shared`), which holds whether this panel is open or closed; flipping
+## the world back here instead asked Godot to detach a viewport from a scenario it had already
+## left, which errors rather than no-ops.
 func close() -> void:
+	_isolate_clear()
 	visible = false
 	_unit = null
 	_is_tile = false
 	_title_bar.text = "INSPECT"
-	_isolate_clear()
 	closed.emit()
+
+
+## **The preview's lighting must not leak into the board.**
+##
+## `BR48.01`, and the supervisor's own diagnosis: *"this may not be a UI issue, it may be
+## lighting as the inspect panel draws the clicked item, and then said lighting doesn't get
+## reset to board style."* It is exactly that.
+##
+## `_preview_viewport` holds a `WorldEnvironment` **and** a `DirectionalLight3D` for the
+## fallback path, where it renders a fresh copy in its own isolated world. The isolate-camera
+## path (taskblock-22 G2) needs the opposite — `own_world_3d = false`, so the preview camera
+## can see the real unit at its real board position — and that puts **both of those nodes into
+## the battle's World3D**, a second environment and an extra directional light over the whole
+## board. The existing comment beside them already flagged that a second `WorldEnvironment`
+## there "isn't a well-defined 'also applies' situation", and solved it only for the preview
+## camera via a per-camera override; the main camera was left to whatever Godot resolved.
+##
+## So while the world is shared, both are withdrawn: the preview camera's own `environment`
+## override already gives it the right ambient regardless of which world it ends up in, and
+## the subject is lit by the board's real lighting because it *is* on the board.
+## **The lighting state is a pure function of who owns the world**, which is what makes the fix
+## hold while the panel is closed as well as while it is open: the viewport goes on sharing the
+## battle's `World3D` after a live inspect, and the preview's own lighting simply never rejoins
+## it. Assigning `own_world_3d` re-runs Godot's scenario attach/detach even when unchanged, so
+## only a genuine change is written.
+func _set_preview_world_shared(shared: bool) -> void:
+	if _preview_viewport.own_world_3d == shared:
+		_preview_viewport.own_world_3d = not shared
+	if _preview_light != null:
+		_preview_light.visible = not shared
+	if _preview_environment != null:
+		_preview_environment.environment = null if shared else _preview_own_environment
 
 
 ## taskblock-26 Pass E: "objects and tiles don't [have a click inspector].
@@ -496,7 +542,7 @@ func _frame_camera() -> void:
 ## culling them, not a true alpha-fade — that needs a second
 ## render/compositing pass this doesn't build. Reversible follow-up.
 func _isolate_focus(view: HitVolumeView) -> void:
-	_preview_viewport.own_world_3d = false
+	_set_preview_world_shared(true)
 	_isolated_view = view
 	view.set_isolated(true)
 	_preview_camera.cull_mask = 0

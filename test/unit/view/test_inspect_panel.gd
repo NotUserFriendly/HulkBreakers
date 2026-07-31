@@ -849,3 +849,76 @@ func test_open_tile_reuses_the_existing_part_tree_inspector_for_objects_and_bare
 	assert_null(panel._inventory_tree.get_root(), "no parts to show")
 	assert_eq(panel._inventory_footer.text, "")
 	assert_true(panel._title_bar.text.contains("Tile"), "still names what's being inspected")
+
+
+## **`BR48.01`: the preview's lighting must not leak into the board.**
+##
+## The supervisor's own diagnosis, and it was right: *"this may not be a UI issue, it may be
+## lighting as the inspect panel draws the clicked item, and then said lighting doesn't get
+## reset to board style."*
+##
+## `_preview_viewport` carries a `WorldEnvironment` and a `DirectionalLight3D` for the
+## fallback path's own isolated world. The isolate-camera path needs `own_world_3d = false` so
+## the preview camera can see the real unit — which puts **both nodes into the battle's
+## World3D**: a second environment and an extra directional light over the entire board.
+func test_isolating_a_live_view_withdraws_the_previews_own_lighting() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var live_view := HitVolumeView.new()
+	add_child_autofree(live_view)
+	live_view.setup(unit, DataLibrary.material_table())
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
+	)
+
+	panel.open(unit)
+
+	assert_false(panel._preview_viewport.own_world_3d, "sanity: the world is shared here")
+	assert_false(panel._preview_light.visible, "the preview's light is not lighting the board")
+	assert_null(panel._preview_environment.environment, "nor is its environment governing it")
+
+
+## **And it stays withdrawn once closed**, which is the half the supervisor actually reported:
+## *"closing the inspector does not remove the dimming."*
+##
+## The viewport goes on sharing the battle's `World3D` after a live inspect — `_isolate_clear()`
+## deliberately never touches `own_world_3d` — so the fix cannot be "hand the world back on
+## close". Flipping it there asks Godot to detach a viewport from a scenario it has already
+## left, which errors rather than no-ops. Tying the lighting to **who owns the world** instead
+## holds in both states: while that world is shared, the preview's own lighting is simply never
+## in it, open or closed.
+func test_closing_leaves_the_previews_lighting_out_of_the_shared_world() -> void:
+	var unit: Unit = _unit_with_geometry()
+	var live_view := HitVolumeView.new()
+	add_child_autofree(live_view)
+	live_view.setup(unit, DataLibrary.material_table())
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(
+		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
+	)
+	panel.open(unit)
+
+	panel.close()
+
+	assert_false(
+		panel._preview_viewport.own_world_3d, "the world is still shared, and that is left alone"
+	)
+	assert_false(panel._preview_light.visible, "so the preview's light stays out of it")
+	assert_null(panel._preview_environment.environment, "and so does its environment")
+
+
+## The fallback path renders a fresh copy in its own world, where the preview's lighting is
+## the only lighting there is — withdrawing it there would leave the model unlit, which is the
+## defect taskblock-23 Pass E2 fixed.
+func test_the_fresh_copy_path_keeps_its_own_lighting() -> void:
+	var panel := InspectPanel.new()
+	add_child_autofree(panel)
+	panel.setup(DataLibrary.material_table(), null)
+
+	panel.open(_unit_with_geometry())
+
+	assert_true(panel._preview_viewport.own_world_3d, "sanity: its own isolated world")
+	assert_true(panel._preview_light.visible, "which nothing else lights")
+	assert_not_null(panel._preview_environment.environment)

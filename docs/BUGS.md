@@ -146,7 +146,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Establish which before changing anything** — "no parallel systems" says a duplicate gesture is the
   bug to fix, not a behaviour to tune.
 
-### BR48.01 — Pending — owner: `SUPERVISOR`
+### BR48.01 — Active — owner: `SUPERVISOR`
 **Closing the inspect panel leaves the background permanently dimmed**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.
 - **Repro:** in the spectator view, click a tile or unit — the inspect panel opens as expected, with the
@@ -187,7 +187,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   matrixless shape anyway — so clicking empty ground opened an empty 900x600 modal and paused the bout.
   Cover no longer reaches that branch at all (Pass K resolves it to a `PART`), and a bare tile now opens
   nothing.
-- **The stacking question is answered: it does not stack.** The isolate cull mask is restored from a
+- **CC's first diagnosis here was wrong and is retracted.** The bare-tile empty modal below is a real
+  defect and its fix stands, but it is **not** what dims the board: the supervisor is clicking an *item*,
+  which opens the inspector successfully and dims anyway.
+- **Second diagnosis, from the supervisor: it is lighting, not UI.** `_preview_viewport` holds a
+  `WorldEnvironment` and a `DirectionalLight3D`; the isolate path sets `own_world_3d = false` so the
+  preview camera can see the real unit, which puts both into the **battle's** `World3D`. `_isolate_clear()`
+  never touches `own_world_3d`, so it stays shared for the rest of the session — which is why closing
+  does not lift it. Both nodes are now withdrawn whenever the world is shared, open or closed.
+  **To see it:** click an item in spectator and watch the board's lighting while the panel is up, then
+  close it.
+- **The stacking question is answered: it does not stack** — independently confirmed by the supervisor. The isolate cull mask is restored from a
   value captured once at build time, never re-derived, asserted across two open/close cycles and across
   opening a second inspect over the first. **To see it:** click empty ground in spectator — the bout
   should keep playing and no panel should appear; then click a barrel, which should open on the barrel.
