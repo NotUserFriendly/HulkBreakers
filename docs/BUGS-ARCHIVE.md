@@ -10,6 +10,29 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR27.04 — Resolved — owner: `SUPERVISOR`
+**Lighting differs between spectator and player view**
+- **Source:** `SUPERVISOR`
+- **Reported:** taskblock-27 D1b: spectator and player view are said to light the board
+  differently.
+- **Investigated, no code fix applied:** `BattleScene._ready()` already builds
+  `WorldPalette.world_environment()` and `WorldPalette.directional_light()` exactly once, as
+  children of the shared `BattleScene` itself — strictly before either overlay
+  (`SquadControlOverlay`/`SpectatorOverlay`) is installed via `set_overlay()`. Neither overlay
+  constructs its own lighting anywhere; both render the same lights on the same world. The code
+  does not support the premise of a divergence as currently written.
+- **Status:** not resolved — needs the supervisor's own visual re-check (a real screenshot
+  comparison) rather than a code claim, since no divergent lighting path was found to remove.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** re-confirms the prior
+  pass's conclusion — no new code path found. Genuinely needs the supervisor's own visual/screenshot
+  re-check, not further code digging.
+- **Closed by the owner, taskblock-51 Pass A, on their instruction.** The supervisor re-checked and
+  does not see it: *"I don't see this happening, however I don't remember reporting this bug this way,
+  likely a misfile. Mark it resolved, if it shows again we'll move it back to active."*
+- **Recorded as owner-directed rather than CC-verified.** CC did not reproduce or fix anything here —
+  the entry closes because the person who owns it looked again and withdrew it, and the standing
+  agreement is that it returns to `Active` if it reappears.
+
 ### BR49.01 — Resolved — owner: `CC`
 **The turns budget still gates on luck — a second clock-seeded file was never excluded**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`

@@ -729,6 +729,21 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
+### Aiming detaches from unit lock; `Set Cell Level` steps by 0.5
+**Needs:** nothing. **Unblocks:** possibly obsoletes `BR33.01`.
+
+Two supervisor design notes from taskblock-51's hunt, recorded here rather than in `BUGS.md` because
+neither is a defect.
+
+- **The dartboard should stop being locked to one unit.** Clicking a unit opens the aim view as now,
+  but **mousing off it onto anything else targetable cycles the aim to that thing** — targets are
+  chosen by pointing rather than by re-entering aim mode. **This may obsolete `BR33.01`** (aim-view
+  scroll cycles walls, layer labels read as part names), which the supervisor says is *"not what I
+  originally intended, more likely to be obsoleted than fixed"* — so `BR33.01` should not be fixed
+  ahead of this decision.
+- **`Set Cell Level` should increment by 0.5**, not 1. A one-line step change on the debug panel's
+  spin box; noted here so it is not lost between hunts.
+
 ### Act on the suite audit
 **Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
 under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
