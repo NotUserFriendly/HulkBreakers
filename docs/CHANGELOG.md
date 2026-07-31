@@ -1,5 +1,28 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — `BR48.01`: the dim was an empty modal, not a dim that failed to lift
+
+**The trigger was the open path, not the close one**, exactly as the supervisor's re-diagnosis said.
+`Grid.blockers.get(cell)` is **null for a bare tile** — `open_tile`'s own doc says so — and the
+spectator's fallback passed that straight in. The panel renders its matrixless shape regardless (every
+`_refresh_*` no-ops gracefully on a null root, by design), so clicking empty ground opened a 900x600
+modal containing nothing and paused the bout. It reads as a dim that will not lift because there is
+nothing in the panel to explain what happened. A cell whose blocker the ray missed but whose ground
+position was hit still opens — that is a real object, coarsely picked.
+
+**"Does a second open/close make it darker" is now answered rather than eyeballed.** Stacking and
+persisting are indistinguishable from the chair, so the tests read the real nodes back: the preview
+camera's `cull_mask` is what `_isolate_focus` narrows, and `_isolate_clear` restores it from a value
+captured once at build time and never re-derived — so it cannot ratchet. Asserted across two full
+cycles and across opening a second inspect over the first, which is the close path that never presses
+a button. **It does not stack.**
+
+**The test that should have caught this was named for it.**
+`test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel` only ever places a crate —
+its name covers the empty case and its body does not, and the defect lived in that gap. Second instance
+of narrower-than-its-name in this block, after the log fold's diagnostic assertion. Verified by
+re-breaking the fix: both new assertions fail without it.
+
 ### taskblock-51 Pass K — selection understands more than units
 
 **The root was a missing type, not a broken rule.** `SelectionController` held one slot,

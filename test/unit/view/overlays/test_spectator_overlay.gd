@@ -325,6 +325,37 @@ func test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel() 
 	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the tile's own object shows")
 
 
+## **`BR48.01`: a genuinely bare tile opens nothing.**
+##
+## The test above is named "a bare tile or a tile's object" and only ever places a crate — its
+## name is broader than what it asserts, so the empty case was never covered and the defect
+## lived in the gap. `Grid.blockers.get(cell)` is **null** for a tile holding nothing, and the
+## fallback passed that straight into `open_tile`, which renders its matrixless shape
+## regardless: a 900x600 modal opened over the board containing nothing, and paused the bout.
+## That is the supervisor's *"selecting a bare tile causes the screen to dim"* — and it reads
+## as a dim that will not lift, because there is nothing in the panel to say what happened.
+func test_clicking_a_genuinely_bare_tile_opens_nothing_and_keeps_playing() -> void:
+	var built: Dictionary = await _bout()
+	var overlay: SpectatorOverlay = _spectate(built)
+	overlay.playing = true
+	var bare := Vector2i(4, 0)
+	assert_false(built.state.grid.blockers.has(bare), "nothing is standing on this tile")
+
+	# Ground-plane origin, for the same reason the test above documents.
+	var camera: Camera3D = overlay.battle.camera_rig.camera()
+	var screen_pos: Vector2 = camera.unproject_position(
+		Vector3(bare.x, 0.0, bare.y) * UnitGeometry.CELL_SIZE
+	)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = screen_pos
+	overlay._unhandled_input(click)
+
+	assert_false(overlay.inspect_panel.visible, "no modal over an empty tile")
+	assert_true(overlay.playing, "and the bout was never paused for it")
+
+
 ## taskblock-39 Pass C: this test used to pin taskblock-27 Pass D5's own
 ## "wall tiles aren't inspectable" WALL-terrain guard, on the claim that
 ## "a wall isn't a part assembly (Grid.blockers is never populated for

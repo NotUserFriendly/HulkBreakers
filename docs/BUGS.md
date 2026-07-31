@@ -146,7 +146,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Establish which before changing anything** — "no parallel systems" says a duplicate gesture is the
   bug to fix, not a behaviour to tune.
 
-### BR48.01 — Active — owner: `SUPERVISOR`
+### BR48.01 — Pending — owner: `SUPERVISOR`
 **Closing the inspect panel leaves the background permanently dimmed**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-29, while spectating.
 - **Repro:** in the spectator view, click a tile or unit — the inspect panel opens as expected, with the
@@ -180,6 +180,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   theory recorded earlier was built on the wrong trigger.
 - **Likely one defect with `BR51.02`:** both concern what a click on cover or a bare tile resolves to,
   and `BR51.02` has already turned up one real mis-resolution there (cover reading as its own tile).
+
+- **`PENDING` (taskblock-51 Pass K) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** Your
+  re-diagnosis was right and the heading is wrong: it is the **open** path. `Grid.blockers.get(cell)` is
+  null for a bare tile and the spectator fallback passed it straight to `open_tile`, which renders its
+  matrixless shape anyway — so clicking empty ground opened an empty 900x600 modal and paused the bout.
+  Cover no longer reaches that branch at all (Pass K resolves it to a `PART`), and a bare tile now opens
+  nothing.
+- **The stacking question is answered: it does not stack.** The isolate cull mask is restored from a
+  value captured once at build time, never re-derived, asserted across two open/close cycles and across
+  opening a second inspect over the first. **To see it:** click empty ground in spectator — the bout
+  should keep playing and no panel should appear; then click a barrel, which should open on the barrel.
 ### BR51.09 — Active — owner: `CC`
 **A unit killed during its turn stays selected, leaving its movement overlay on screen**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
