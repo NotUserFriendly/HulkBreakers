@@ -365,3 +365,44 @@ func test_queue_repair_appends_a_repair_action_that_resolves_cleanly() -> void:
 	state.resolve_turn(selection.current_queue())
 
 	assert_eq(target.hp, 8, "5 hp + 3 (capped heal), resolved for real")
+
+
+# --- taskblock-51 (BR26.02): what previewing costs, and why it is not cached -----------
+
+
+## **The measurement that drove the fix, kept as the record of it.**
+##
+## `previewed_unit()` clones the whole state every call — `CombatState.dup()` at **26 083
+## usec** on a 214-blocker board. That is correct and deliberate: two caches were tried and
+## both reverted (see `previewed_unit()`'s own comment), because callers mutate what they
+## are handed and state can change within a frame.
+##
+## **The fix was to stop calling it on every mouse motion**, not to make calling it cheap —
+## `SquadControlOverlay._on_selection_changed` listened to `aim_changed`, which the reticle
+## emitted. This pins the cost so a future reader knows it is a known price, not an
+## oversight.
+func test_previewing_clones_the_state_and_that_is_deliberate() -> void:
+	var a := _make_unit(Vector2i(1, 1), 0)
+	var state := CombatState.new(GridFixture.flat(8, 8), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+
+	var before: int = CombatState.dups
+	selection.previewed_unit()
+
+	assert_eq(CombatState.dups - before, 1, "one preview, one clone — uncached on purpose")
+
+
+## **The memo must not outlive what it describes.** Queueing another action changes the
+## answer, so the previewed cell must follow the newest queue.
+func test_changing_the_queue_changes_the_preview() -> void:
+	var a := _make_unit(Vector2i(1, 1), 0)
+	var state := CombatState.new(GridFixture.flat(8, 8), [a])
+	var selection := SelectionController.new(state)
+	selection.select(a)
+	selection.queue_move(Vector2i(3, 3))
+	assert_eq(selection.previewed_unit().cell, Vector2i(3, 3))
+
+	selection.queue_move(Vector2i(5, 3))
+
+	assert_eq(selection.previewed_unit().cell, Vector2i(5, 3), "the newer queue is reflected")

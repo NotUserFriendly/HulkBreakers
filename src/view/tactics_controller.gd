@@ -28,7 +28,19 @@ signal turn_ended(events: Array[LogEvent])
 ## itself has NOT ended (the unit stays selected, current_unit() is
 ## unchanged unless the resolved prefix itself contained an EndTurnAction).
 signal queue_partially_resolved(events: Array[LogEvent])
+## taskblock-51 (`BR26.02`): **the aim STATE changed** — a different shooter, target, layer
+## or the aim ending. Listeners may do expensive work here.
 signal aim_changed
+## taskblock-51 (`BR26.02`): **only the reticle moved.** Emitted on every mouse motion while
+## aiming, so a listener must be cheap.
+##
+## These were one signal, and `SquadControlOverlay._on_selection_changed` — which calls
+## `has_queued_move()`, and through it `CombatState.dup()` at **26 083 usec** on a real
+## board — was subscribed to it. Every mouse motion therefore cloned the whole world to
+## re-answer a question only the *queue* can change. That is the supervisor's "8 fps while
+## moving the mouse, rocksteady 160 when not moving", and it is why disabling every drawn
+## element changed nothing: the cost was never in the drawing.
+signal reticle_changed
 ## Fires whenever `selection.selected_unit` might have changed — the stat
 ## panel (docs/08/10 Phase 12.5) redraws from this rather than polling.
 signal selection_changed
@@ -867,7 +879,7 @@ func scroll_layer(delta: int) -> void:
 		return
 	if aiming_at != null:
 		layer_index += delta
-		aim_changed.emit()
+		reticle_changed.emit()
 
 
 ## A relative nudge, still used by anything that isn't a live cursor
@@ -878,7 +890,7 @@ func move_reticle(delta: Vector2) -> void:
 		return
 	if aiming_at != null:
 		reticle_offset += delta
-		aim_changed.emit()
+		reticle_changed.emit()
 
 
 ## runNotes.md: "Dartboard isn't following the cursor exactly instead being
@@ -914,7 +926,7 @@ func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 		else ShotPlane.center_of_part(plane, target.part, target.cell)
 	)
 	reticle_offset = (hit as Vector2) - center
-	aim_changed.emit()
+	reticle_changed.emit()
 	# tb34 Pass C: hover reads, never re-aims -- called AFTER reticle_offset
 	# is already set and its own aim_changed already emitted, from the same
 	# screen position, but a fully independent function: update_aim_hover()
