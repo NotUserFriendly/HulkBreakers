@@ -277,3 +277,17 @@ func test_the_readout_sits_clear_of_the_debug_panel() -> void:
 		readout.position.x >= debug.position.x,
 		"the readout is to the right of the debug panel: readout %s, debug %s" % [readout, debug]
 	)
+
+
+## **Read the readout's body back, not the outer Control.** The outer node is a bare
+## `Control` sized (420, 0) by design; if the panel inside it never took a height, nothing
+## renders and the toggle looks like it does nothing at all.
+func test_the_readout_body_has_a_real_height() -> void:
+	var readout := PerfPanel.new()
+	add_child_autofree(readout)
+	await get_tree().process_frame
+
+	var body: Control = readout._body
+	gut.p("readout body at %s" % body.get_global_rect())
+	assert_true(body.get_global_rect().size.y > 0.0, "the readout has drawn height")
+	assert_almost_eq(body.get_global_rect().size.x, PerfPanel.PANEL_WIDTH, 2.0)
