@@ -41,6 +41,13 @@ const GRID_HEIGHT := 30
 ## size; this is the actual resize floor.
 const MIN_WINDOW_SIZE := Vector2i(1920, 1080)
 
+## taskblock-51 (`BR26.02`): switched by the `set_aim_visual` debug verb so the supervisor
+## can bisect a GPU cost CC cannot measure. **Default on — the game behaves normally unless
+## someone is deliberately hunting.**
+## The occlusion pass gives faded friendlies a translucent `material_override`, and
+## transparency disables early-Z too — the same class of suspect as the cutout.
+static var show_occlusion_fade: bool = true
+
 var board_view: BoardView
 var camera_rig: CameraRig
 var unit_views: Array[HitVolumeView] = []
@@ -123,6 +130,8 @@ func _ready() -> void:
 ## continuously (drag-to-orbit) with no signal of its own to react to,
 ## same reasoning `BoardView.update_wall_cutout` already established.
 func _process(_delta: float) -> void:
+	if not show_occlusion_fade:
+		return
 	var camera: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
 	var occluding: Array[Unit] = _occluding_friendlies(camera)
 	for view: HitVolumeView in unit_views:

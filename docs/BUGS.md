@@ -632,6 +632,19 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   one off, read the session dump on leaving. Whichever one restores the framerate is the answer, and it
   takes three clicks rather than another round of CC theorising. Toggling is deliberately **not** an
   injection — it changes what is drawn, not the simulation, so it never sets `was_injected`.
+- **Fifth pass — the first bisection cleared every aim element.** Session minimum by configuration:
+  baseline **7.1**, decal off **6.8**, window off **6.9**, targeting_line off **6.7**, pellet_circle
+  off **6.9**, part_label off **6.9**. **The floor is the same with each one disabled and with all of
+  them on**, so no single aim visual is responsible. (The 2 s samples and session averages swing wildly
+  — 5 to 87, and 7.5 to 48.5 — over 2.6–3.5 s sessions, which says the rate is *spiky*, not uniformly
+  low.)
+- **Next suspects, and they are now switchable too:** `wall_cutout` and `occlusion_fade`. Both disable
+  early-Z — the cutout shader `discard`s per fragment across 166 wall meshes every frame, and the
+  occlusion pass hands faded friendlies a translucent `material_override`. Neither is aim-*specific*,
+  but the fade pass only does work while aiming, which fits "160 outside, 7 inside".
+- **The verb takes a dropdown now, not a typed name** (supervisor request), and its options are the
+  same `AimView.TOGGLEABLE` list the verb switches on — a test asserts the menu and the switch table
+  cannot drift apart, because an offered-but-refused name is a dead control and a wasted session.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**

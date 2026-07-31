@@ -155,6 +155,8 @@ func test_the_part_labels_transform_is_coplanar_with_the_aim_window() -> void:
 
 
 func after_each() -> void:
+	BoardView.show_wall_cutout = true
+	BattleScene.show_occlusion_fade = true
 	AimView.show_window = true
 	AimView.show_decal = true
 	AimView.show_targeting_line = true
@@ -199,3 +201,30 @@ func test_toggling_a_visual_never_marks_the_bout_injected() -> void:
 	DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"window", "on": false})
 
 	assert_false(state.was_injected, "a display toggle does not dirty the bout")
+
+
+## **The dropdown's options and the verb's own switch table must not drift apart.** A name
+## offered in the menu that the verb refuses is a dead control; a name the verb accepts but
+## the menu never offers is unreachable. Both are the kind of gap that costs a hunting
+## session before anyone notices.
+func test_every_offered_element_is_one_the_verb_accepts() -> void:
+	var injector := BoutInjector.new(CombatState.new(GridFixture.flat(5, 5), []))
+
+	for element: StringName in AimView.TOGGLEABLE:
+		assert_true(
+			DebugVerbs._apply_set_aim_visual(injector, {}, {"element": element, "on": false}),
+			"the dropdown offers %s, so the verb must accept it" % element
+		)
+		DebugVerbs._apply_set_aim_visual(injector, {}, {"element": element, "on": true})
+
+
+## The two non-`AimView` switches exist because the first bisection cleared every aim
+## element — so they have to actually reach the classes that own them.
+func test_the_gpu_switches_reach_their_own_classes() -> void:
+	var injector := BoutInjector.new(CombatState.new(GridFixture.flat(5, 5), []))
+
+	DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"wall_cutout", "on": false})
+	DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"occlusion_fade", "on": false})
+
+	assert_false(BoardView.show_wall_cutout, "the cutout switch reaches BoardView")
+	assert_false(BattleScene.show_occlusion_fade, "and the fade switch reaches BattleScene")

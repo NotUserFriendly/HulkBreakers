@@ -384,6 +384,12 @@ func _build_param_row(p: Dictionary) -> Control:
 				opt.add_item(preset.preset_name)
 			row.add_child(opt)
 			_param_controls[p.name] = opt
+		DebugVerbSpec.ParamType.CHOICE:
+			var choice := OptionButton.new()
+			for option: StringName in p.get("options", []) as Array:
+				choice.add_item(option)
+			row.add_child(choice)
+			_param_controls[p.name] = choice
 		DebugVerbSpec.ParamType.OBJECT:
 			var note := Label.new()
 			note.text = "(uses Active Target above)"
@@ -474,12 +480,13 @@ func _resolve_param(p: Dictionary) -> Variant:
 			return (control as CheckBox).button_pressed
 		DebugVerbSpec.ParamType.STRING_NAME:
 			return StringName((control as LineEdit).text)
-		DebugVerbSpec.ParamType.POSE:
-			var pose_option := control as OptionButton
+		# taskblock-51: one branch, because both are literally "the selected item's text".
+		# Splitting them cost a return and bought nothing — `POSE` is a `CHOICE` whose
+		# options happen to come from `Poses`.
+		DebugVerbSpec.ParamType.POSE, DebugVerbSpec.ParamType.CHOICE:
+			var option := control as OptionButton
 			return (
-				StringName(pose_option.get_item_text(pose_option.selected))
-				if pose_option.selected >= 0
-				else &""
+				StringName(option.get_item_text(option.selected)) if option.selected >= 0 else &""
 			)
 		DebugVerbSpec.ParamType.PRESET:
 			var preset_option := control as OptionButton
