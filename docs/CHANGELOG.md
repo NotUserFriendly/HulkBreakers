@@ -1622,6 +1622,50 @@ an `@retired-tool` marker — it is a taskblock-10 migration whose own doc comme
 generators it walks were deleted by the pass that landed its output, so it can never parse again and
 reporting it every build would be noise.
 
+### The aim view's framerate: four defects, one symptom (tb51)
+
+**113 504 usec per mouse motion → 8 878.** 8.8 fps to 113, measured through a real `SquadControlOverlay`
+on a 214-blocker board. `BR26.02` is **paused, not closed**, by supervisor decision.
+
+**What it actually was, in the order found — each fix revealed the next:**
+
+1. **`TacticsController.aim_state()` rebuilt the shot plane and cloned the state on every call**
+   (35 258 usec), and was called twice per motion plus once per aim-view redraw. Memoised on the
+   plane's real dependencies and **deliberately not on `reticle_offset`**, which is the one value that
+   changes constantly and cannot affect the plane.
+2. **The memo's own cache key cloned the state**, by asking `previewed_unit()` for the previewed cell.
+   `CombatState.dup()` measures **26 083 usec** — `Grid.dup` deep-copies 214 blocker parts and 768
+   surfaces. Replaced with `ActionQueue.revision`, a counter bumped on every queue change.
+3. **`update_aim_hover` still emitted `aim_changed`.** The signal split into `aim_changed` (state) and
+   `reticle_changed` (cheap) had converted three emit sites and missed the one that runs on every
+   motion — and which `aim_reticle_at_screen` calls internally, so both paths still reached
+   `SquadControlOverlay._on_selection_changed`, which previews twice.
+4. **The reticle ran per motion *event*, not per frame.** A 500–1000 Hz mouse against a 60–160 fps game
+   backed the queue up so the reticle drew stale positions — *"the dartboard almost seems to lazily
+   follow the cursor"*. Coalesced to the newest position, applied once in `_process`.
+
+**Two caches were tried and reverted, and the reasons are in the code:** an empty-queue fast path
+(callers mutate the previewed unit, so handing back the live one corrupted the board — three step-out
+tests), and a per-frame preview memo (state changes *within* a frame when a resolution spends AP — four
+action-bar tests).
+
+**`CombatState.dups` is now a profiled work counter**, because a 26 ms call reached several times per
+mouse motion was invisible to every budget. The suite reports ~7 155 clones a run.
+
+**Instrumentation was wrong for three passes, and that is the lesson worth keeping.** `fps_dump` took a
+single `Engine.get_frames_per_second()` reading two seconds after entering aim — while the mouse was
+still — and reported 161 fps for a session the supervisor experienced as 8. **Their report was correct
+throughout and was the evidence the instrument was broken.** It now samples every frame and reports
+min, average and frame count on leaving aim.
+
+**Side effect, measured: `BR27.09` improved** — turn-start FPS 38.0 → 91–147. Not closed.
+
+**Also landed:** `set_part_hp` takes an object target so it can reach blockers and field objects
+(`BR51.02`); `kill_unit` advances the turn when it kills the current unit (`BR51.04`/`BR51.05`, closed
+by the owner); a `CHOICE` param type so a debug verb can carry its own dropdown options as data; and
+per-element `set_aim_visual` switches that let the supervisor bisect a GPU cost CC cannot measure —
+which cleared every aim visual and the wall cutout as suspects.
+
 ### The suite under five minutes: seeds_to_first_win, two corpora, failure-first ordering (tb50)
 
 **Full gate 446.8 s → 290.4 s (35%), 2462 tests.** The five-minute acceptance is met, and thinly:

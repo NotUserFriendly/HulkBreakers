@@ -29,3 +29,6 @@ export_presets.cfg
 # Written on every ordered run so it can learn; committing it would put churn in
 # every diff and make one machine's flakes everyone else's run order.
 out/suite_failures.json
+
+# Supervisor scratch pad for the live bug hunts — deliberately untracked.
+temp.md
