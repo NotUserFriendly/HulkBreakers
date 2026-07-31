@@ -264,11 +264,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
 - **Repro:** open Inject, choose `set_part_hp`, and try to target a goo barrel or any other field
   object or blocker. There is no way to name it — the verb's target is a unit part.
-- **A tooling gap, not a game defect, and it is currently blocking the hunt.** Forcing a detonation is
-  the deterministic route to `BR35.08`; without it that entry can only be reached by landing a shot on
-  a barrel, which `BR51.01` and `BR51.03` are both interfering with. **Fix this first** — it unblocks
-  two other entries and costs nothing to verify.
-- `CC`-owned: it is debug tooling, headless-testable, and was found rather than observed.
+- **Filed as a bug, and half of it was not one.** "`set_part_hp` should accept things that are not unit
+  parts" is a capability that never existed — a **design change**, and the supervisor's standing rule is
+  that design changes live in the report and their notes until review, not in this ledger. That half
+  landed and is recorded in `reports/Report-Taskblock51.md`; it should not have been an entry.
+  **What remains below the reopen is a real defect** and is what this entry now means.
+- It was blocking the hunt either way: forcing a detonation is the deterministic route to `BR35.08`,
+  which otherwise needs a landed shot on a barrel that `BR51.01` is interfering with.
 
 - **Resolved (taskblock-51).** `set_part_hp` takes the same `{kind, unit, cell}` object target
   `move_object` and `remove_object` already use, so a blocker or field object can be named by clicking
@@ -287,6 +289,8 @@ confirm" roll-up — so pending items surface at a natural review point without 
   and called the bug fixed without once driving the click that produces that dict. A test that
   constructs its own input cannot tell you the caller never produces it — the same shape as
   taskblock-48's "input tidier than reality is worse than no test".
+- **Subsumed by the taskblock-51 addendum's Pass K**, which builds the selection target this needs.
+  Every OBJECT-target verb has the same hole, so it is fixed there rather than per-verb here.
 
 - **`Pending` (taskblock-51, after the reopen) — two defects, one symptom.**
   1. **The panel labelled cover as its tile.** `_refresh_active_label` special-cased units and called
