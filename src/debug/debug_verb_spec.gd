@@ -13,7 +13,13 @@ extends RefCounted
 ## `{kind, unit, cell}` dict `board_clicked` emits. A verb like
 ## `move_object` uses this instead of a UNIT param because its "object"
 ## can be a unit OR a cell's contents — one param type either way.
-enum ParamType { UNIT, CELL, INT, FLOAT, STRING_NAME, BOOL, POSE, PRESET, OBJECT }
+## taskblock-51: `CHOICE` is the generic dropdown — **the spec carries its own options**
+## rather than the panel hardcoding a vocabulary per type, which is how `POSE` and `PRESET`
+## work and why each of them needed a code edit in two places to exist.
+##
+## A verb with a fixed, closed set of valid values declares them as data and gets a
+## dropdown for free; a typo becomes unselectable rather than a refusal after the fact.
+enum ParamType { UNIT, CELL, INT, FLOAT, STRING_NAME, BOOL, POSE, PRESET, OBJECT, CHOICE }
 
 var id: StringName
 var label: String
@@ -42,3 +48,8 @@ func _init(
 
 static func param(name: StringName, type: ParamType) -> Dictionary:
 	return {"name": name, "type": type}
+
+
+## A `CHOICE` param and the options it offers, in the order they are shown.
+static func choice(name: StringName, options: Array[StringName]) -> Dictionary:
+	return {"name": name, "type": ParamType.CHOICE, "options": options}

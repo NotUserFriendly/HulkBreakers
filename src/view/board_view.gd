@@ -162,6 +162,13 @@ const WALL_CUTOUT_MAX_UNITS := 32
 ## (CLAUDE.md: never invent a final number).
 const CUTOUT_LOG_GRID := 64.0
 
+## taskblock-51 (`BR26.02`): switched by the `set_aim_visual` debug verb so the supervisor
+## can bisect a GPU cost CC cannot measure. **Default on — the game behaves normally unless
+## someone is deliberately hunting.**
+## The `discard`-based cutout shader runs over every wall mesh every frame; `discard`
+## disables early-Z, so this is a real fill-rate suspect on a board with 166 walls.
+static var show_wall_cutout: bool = true
+
 ## taskblock-41 Pass D: the bout-build log's destination, set by
 ## `BattleScene.load_battle()` before it calls `build()`. Optional and
 ## null-safe — every headless fixture builds a board with no battle around it
@@ -730,7 +737,7 @@ func _log_cutout(screen_positions: PackedVector2Array, count: int) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _wall_mesh_instances.is_empty():
+	if _wall_mesh_instances.is_empty() or not show_wall_cutout:
 		return
 	update_wall_cutout(get_viewport().get_camera_3d() if is_inside_tree() else null)
 

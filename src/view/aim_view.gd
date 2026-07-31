@@ -87,6 +87,23 @@ const PART_LABEL_COLOR := Color(0.95, 0.95, 0.9)
 ##
 ## Flipped at runtime through the `set_aim_visual` debug verb. Default all-on, so the game
 ## behaves normally unless someone is deliberately hunting.
+## Every element the `set_aim_visual` verb can switch, in the order the dropdown shows
+## them. **Data, so the panel needs no edit when one is added** — and a name that is not
+## here cannot be selected at all, which is better than being refused after the fact.
+##
+## The last two are not `AimView`'s, and are here deliberately: taskblock-51's first
+## bisection cleared every aim element (the ~6.8 fps floor survived all five) so the next
+## suspects are the GPU features that aim turns on around it.
+const TOGGLEABLE: Array[StringName] = [
+	&"window",
+	&"decal",
+	&"targeting_line",
+	&"pellet_circle",
+	&"part_label",
+	&"wall_cutout",
+	&"occlusion_fade",
+]
+
 static var show_window: bool = true
 static var show_decal: bool = true
 static var show_targeting_line: bool = true

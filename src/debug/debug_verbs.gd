@@ -135,7 +135,7 @@ static func all() -> Array[DebugVerbSpec]:
 				&"set_aim_visual",
 				"Aim Visual On/Off",
 				[
-					DebugVerbSpec.param(&"element", P.STRING_NAME),
+					DebugVerbSpec.choice(&"element", AimView.TOGGLEABLE),
 					DebugVerbSpec.param(&"on", P.BOOL),
 				],
 				Callable(DebugVerbs, &"_apply_set_aim_visual")
@@ -360,6 +360,10 @@ static func _apply_set_aim_visual(inj: BoutInjector, _pool: Dictionary, a: Dicti
 			AimView.show_pellet_circle = on
 		&"part_label":
 			AimView.show_part_label = on
+		&"wall_cutout":
+			BoardView.show_wall_cutout = on
+		&"occlusion_fade":
+			BattleScene.show_occlusion_fade = on
 		_:
 			_note_aim_visual(inj, "aim visual: unknown element %s" % element, element, on)
 			return false
