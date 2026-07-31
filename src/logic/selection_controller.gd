@@ -14,7 +14,17 @@ var state: CombatState
 ## controller's own `queue_end_turn()`. `null` (every existing caller/test)
 ## simply skips it, unchanged.
 var mission: MissionState = null
-var selected_unit: Unit = null
+## taskblock-51 Pass K: **what is selected, which is not necessarily a unit.** A barrel, a
+## wall, a loose field item or a bare tile are all selectable now; see `SelectionTarget`.
+var selected_target: SelectionTarget = SelectionTarget.none()
+## **Derived, not stored.** Eighty-one readers across the view ask "what unit is selected",
+## and every one of them still means it — so this stays, answering `null` whenever the
+## selection is a prop or a tile. Making it a property rather than a second field is what
+## keeps the two from drifting apart, which is the failure mode that would have made Pass K
+## worse than the gap it closes.
+var selected_unit: Unit:
+	get:
+		return selected_target.unit if selected_target.is_unit() else null
 var _queues: Dictionary = {}  # unit id (int) -> ActionQueue
 
 
@@ -27,11 +37,37 @@ func _init(p_state: CombatState, p_mission: MissionState = null) -> void:
 ## it is — the only unit any action can legally queue against right now
 ## (docs/09's two-phase turn resolves one unit's queue at a time). Anything
 ## else (an enemy, a dead unit, empty space) clears selection.
+##
+## taskblock-51 Pass K: a thin wrapper over `select_target` rather than a second path into
+## the same field — "no parallel systems" applies inside one class too.
 func select(unit: Unit) -> void:
 	if unit != null and unit.alive and unit == state.current_unit():
-		selected_unit = unit
+		select_target(SelectionTarget.for_unit(unit))
 	else:
-		selected_unit = null
+		select_target(SelectionTarget.none())
+
+
+## **The general entry: select anything the picker can return.**
+##
+## A `UNIT` target is gated exactly as before — only the current unit, only while alive — so
+## the rule that "you may only queue against whoever's turn it is" is unchanged. **A prop or
+## a tile has no such gate**: selecting a barrel is inspection, not command, and nothing
+## downstream can queue an action against one.
+func select_target(target: SelectionTarget) -> void:
+	if target == null:
+		selected_target = SelectionTarget.none()
+		return
+	if target.is_unit() and not (target.unit.alive and target.unit == state.current_unit()):
+		selected_target = SelectionTarget.none()
+		return
+	selected_target = target
+
+
+## Whether the current selection has a body the inspect panel can describe — `BR51.10`'s
+## "Inspect should be disabled when there is nothing to inspect", asked of the selection
+## rather than of "has anything been clicked".
+func can_inspect() -> bool:
+	return selected_target.can_inspect()
 
 
 func current_queue() -> ActionQueue:
@@ -211,7 +247,7 @@ func reset_turn() -> void:
 ## the mutation; TACTICS starts clean for whichever unit is current next).
 func reset() -> void:
 	_queues.clear()
-	selected_unit = null
+	selected_target = SelectionTarget.none()
 
 
 ## docs/10 taskblock06 G2: "each entry: what, its cost, the running AP/MP

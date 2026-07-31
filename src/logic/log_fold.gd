@@ -95,6 +95,9 @@ var _open: LogFoldGroup = null
 var _open_hit_line: int = -1
 var _open_targets_hit: Array[int] = []
 var _open_move_tiles: int = 0
+## `BR51.13`: which plumbing kind the open plumbing group is accumulating, so a run only ever
+## folds events of ONE kind together. `&""` whenever no plumbing group is open.
+var _open_plumbing_kind: StringName = &""
 
 
 func _init(p_state: CombatState = null) -> void:
@@ -203,18 +206,38 @@ func _ingest_move(event: LogEvent) -> LogFoldGroup:
 ## `diagnostic` (tb41 Pass B — a real engine or script error) is pointedly NOT
 ## in this set. Collapsing an error into a quiet counted row is the opposite of
 ## what an error is for; it keeps its own admin row and stays loud.
+## `BR51.13`: **a plumbing run folds one kind, not any plumbing at all.**
+##
+## The supervisor read `fps_dump` rows disappearing inside `wall_cutout` reports. Both kinds
+## are listed as plumbing, and this folded any consecutive stretch of *any* plumbing kinds
+## into a single group — so a framerate measurement landing between two wall-cutout events was
+## swallowed by their counted row and had to be drilled into to be seen at all.
+##
+## **A passing test sat right beside this the whole time.**
+## `test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing` protects the kind
+## literally named `diagnostic`, which is absent from `PLUMBING_KINDS` and therefore never
+## reached this function. Its name claims a general rule; it asserts a membership check. That
+## is the failure taskblock-49's audit was built to find, arriving from the other direction —
+## the assertion was narrower than its name, and the gap it left was a live defect.
+##
+## Breaking the run by kind keeps the anti-flooding purpose intact — eleven consecutive
+## `fps_dump` events still fold into one row — while a measurement never hides inside
+## something unrelated.
 func _ingest_plumbing(event: LogEvent) -> LogFoldGroup:
-	if _open == null or _open.kind != &"plumbing":
+	if _open == null or _open.kind != &"plumbing" or _open_plumbing_kind != event.kind:
 		_close()
 		_open = LogFoldGroup.new(&"plumbing", event.unit_id)
+		_open_plumbing_kind = event.kind
 		_add(_open)
 	_open.events.append(event)
 	_open.summary = _plumbing_summary(_open)
 	return _open
 
 
-## "12× command" when the run is uniform, "12 log events" when it is mixed —
-## a single label that lies about its contents is worse than a vaguer one.
+## "12× command". **Always uniform since `BR51.13`** — a group is broken whenever the plumbing
+## kind changes, so the old "12 log events" fallback for a mixed run can no longer be reached.
+## It is kept as the honest answer if a future edit ever lets kinds share a group again: a
+## single label that lies about its contents is worse than a vaguer one.
 static func _plumbing_summary(group: LogFoldGroup) -> String:
 	var kinds: Dictionary = {}
 	for event: LogEvent in group.events:
@@ -258,6 +281,7 @@ func _open_move(unit_id: int) -> LogFoldGroup:
 func _close() -> void:
 	_open = null
 	_open_hit_line = -1
+	_open_plumbing_kind = &""
 
 
 func _add(group: LogFoldGroup) -> void:

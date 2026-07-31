@@ -1,5 +1,52 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 Pass K — selection understands more than units
+
+**The root was a missing type, not a broken rule.** `SelectionController` held one slot,
+`selected_unit: Unit`, while `PartPicker.hit` had always scanned `grid.blockers` and
+`grid.field_items` — so the picker saw barrels, cover, walls and field items and selection had
+nowhere to put them. Four reported symptoms were that one gap from different directions.
+
+`SelectionTarget` (logic, headless) holds `UNIT` / `PART` / `CELL` plus an empty target that answers
+questions rather than being `null`. **It wraps the hit dict `board_clicked` already emits** rather than
+introducing a second vocabulary. `selected_unit` survives as a **derived property** — eighty-one
+readers still mean it, and a second stored field would drift from the target.
+
+- **Clicking cover selects the cover** (`TacticsController._click_part`), where it previously did
+  nothing unless an action was armed. **This drops the unit selection**, which is a real behaviour
+  change; the queue survives, being keyed by unit id.
+- **A cell click with a unit selected is still a move order.** Tile selection was added where there was
+  nothing, and nothing was taken away.
+- **`BR51.02`'s remaining defect is closed at the source.** `click_cell`'s capture branch reported
+  every non-unit click as a bare `CELL`, so cover could never become the debug panel's active target
+  and every OBJECT-target verb inherited the hole — while the ray path resolved `PART` correctly. Two
+  paths disagreeing about what a click means was the bug.
+- **`BR51.10`: Inspect is disabled when the target has no body**, driven by the selection rather than
+  by "has anything been clicked". `InspectPanel.open_tile` could always describe a loose part; the
+  capability was simply unreachable from the board.
+- **Spectator picks parts, not just units**, and **only opens the modal for what it can describe** —
+  opening it for an unrenderable target left the dim over the board with nothing on top (`BR48.01`'s
+  shape).
+
+**A bug found while building it:** `PartPicker.hit` returns `{unit, part, cell, t}` with **no `kind`**;
+`board_clicked` emits `{kind, unit, part, cell}`. Routing a raw pick through `from_hit()` classified
+every hit as a bare cell and stopped spectator unit clicks pausing the bout. Each shape now has its own
+named constructor, and the trap is asserted.
+
+### taskblock-51 — `BR51.13`: a plumbing run folds one kind, not any plumbing
+
+`fps_dump` and `wall_cutout` are both plumbing kinds, and the fold grouped any consecutive stretch of
+*any* plumbing kinds — so a framerate measurement between two wall-cutout events was swallowed by their
+counted row. Runs now break on a change of kind: eleven consecutive `fps_dump` events still fold into
+one row, so the anti-flooding purpose it was added for is intact.
+
+**A passing test sat beside this the whole time.**
+`test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing` protects the kind literally
+named `diagnostic`, which is absent from `PLUMBING_KINDS` and never reached the folding code. Its name
+claims a general rule; it asserts a membership check. **And an existing test asserted the defect** — it
+required a mixed run to be labelled "2 log events". That test was not wrong about what the code did,
+only about what it should do, which is the harder kind to catch.
+
 **The current-state snapshot**, by system, with the taskblock that landed each. Grows as work ships.
 For what changed shape along the way see `SUPERSEDED.md`; for what's next see `PLAN.md`.
 

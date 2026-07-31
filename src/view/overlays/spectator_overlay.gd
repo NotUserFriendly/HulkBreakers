@@ -166,29 +166,36 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var from: Vector3 = camera.project_ray_origin(mb.position)
 	var dir: Vector3 = camera.project_ray_normal(mb.position)
-	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
+	# taskblock-51 Pass K: `PartPicker`, not `UnitPicker`. This path saw units only, so a
+	# click on cover fell through to the cell branch below — the supervisor's "selecting a
+	# barrel selects the tile beneath", here in its literal form. `PartPicker` is the same
+	# ray-vs-box math plus the blockers and field items the board already draws.
+	var hit: Dictionary = PartPicker.hit(
+		battle.combat_state.units, battle.combat_state.grid, from, dir
+	)
+	var target: SelectionTarget = SelectionTarget.from_pick(hit)
 	if input_capture_mode:
-		var picked_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
 		var picked_cell: Variant = (
-			hit.unit.cell
-			if picked_unit != null
+			target.cell
+			if not target.empty
 			else BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 		)
-		(
-			board_clicked
-			. emit(
-				{
-					"kind": Enums.HitKind.UNIT if picked_unit != null else Enums.HitKind.CELL,
-					"unit": picked_unit,
-					"cell": picked_cell,
-				}
-			)
-		)
+		if target.empty:
+			if picked_cell == null:
+				return
+			target = SelectionTarget.for_cell(picked_cell as Vector2i)
+		board_clicked.emit(target.to_hit())
 		return
-	if not hit.is_empty():
+	# **Only open what the panel can describe.** `BR48.01`: opening the modal for a target it
+	# cannot render leaves the dim over the board with nothing on top of it, which reads as a
+	# stuck dim rather than a refused action.
+	if target.can_inspect():
 		_was_playing_before_inspect = playing
 		pause()
-		inspect_panel.open(hit.unit as Unit)
+		if target.is_unit():
+			inspect_panel.open(target.unit)
+		else:
+			inspect_panel.open_tile(target.cell, target.part)
 		return
 	var cell: Variant = BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
