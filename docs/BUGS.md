@@ -97,6 +97,29 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.17 — Active — owner: `CC`
+**`avg less top 1%` degenerates into the plain mean it was built to replace**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, reading the supervisor's five live `fps_dump` lines — the first real data the
+  performance monitor has produced.
+- **The evidence, from one dump:** `1% low 19.9 | avg less top 1% 162.1 (reporting 100% of 4585
+  frames)`. A figure of 162 beside a 1% low of 20 and a session minimum of 7.4.
+- **"Reporting 100%" is the tell, and it cannot literally be 100%.** The cut is `0.99 x fastest`, and
+  the fastest frame is never below it, so at least one frame always drops. 100% is `describe()`
+  rounding 4584/4585. **Exactly one frame was dropped** — so the statistic is the plain mean minus its
+  single fastest sample, which is the number the supervisor built this whole panel to get away from.
+- **The cause is that the cut is anchored to the maximum, and the maximum is an outlier.** Uncapped, one
+  frame can land in the thousands; the cut then sits far above every real frame and drops nothing.
+  **The supervisor's worked example does not expose this** because its fast frames are clustered
+  (159/160 against a 160 max), and that example is asserted in `test_perf_stats.gd` and still passes.
+  A test built from a specified example cannot tell you the specification omitted a case.
+- **Not fixed, and deliberately not redesigned unasked.** *Which* rule replaces it is a design decision:
+  a percentile cut, a cut anchored to the median rather than the max, or discarding the statistic in
+  favour of the 1% low, which is doing its job perfectly. The supervisor was explicit about what this
+  figure means when it was specified, so CC does not get to quietly change it.
+- **The other three figures are sound and this does not touch them.** `1% low` pinned ~19.7 across five
+  dumps, `min` held 7.4 (`BR51.15`), `rolling 2s` tracked 61-90.
+
 ### BR51.16 — Active — owner: `SUPERVISOR`
 **The in-game combat log empties itself while the file on disk keeps everything**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -125,7 +148,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
   name** — which is the more interesting finding of the two.
 
-### BR51.14 — Pending — owner: `CC`
+### BR51.14 — Active — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, taskblock-51 fourth hunt.
@@ -142,8 +165,16 @@ confirm" roll-up — so pending items surface at a natural review point without 
   being wired to `mouse_moved` as well as `hover_changed`: every motion rebuilt the tooltip, and
   building one calls `previewed_unit()`, a `CombatState.dup()`. Motion now repositions only. The hover
   is also coalesced to one update per drawn frame, which the reticle already had.
-- **`Pending` rather than closed** even though it is CC-owned: the fix is a framerate the supervisor can
-  feel and CC cannot see. **To check:** select a unit and sweep the mouse across tiles without aiming.
+- **Back to `Active` on the supervisor's reading of five live dumps.** *"I don't think the bug is gone,
+  but it's no longer a problem while panning, which takes out the majority of the bite."* The measurement
+  agrees and is unusually clean: **1% low reads 20.0 / 19.9 / 19.8 / 19.6 / 19.5** across the five dumps
+  — the same ~20 fps originally reported, pinned to a tenth, over 4 400-5 000 frames.
+- **So the tooltip clone was a real cost and not the whole cost.** Removing it doubled the per-motion
+  figure (42 527 -> 18 454 usec) and the remaining 19 clones per 30 calls are genuine rebuilds, one per
+  newly hovered tile. **The next lever is memoising `previewed_unit()`** — `BR26.02` records two
+  attempts at that, both reverted for concrete reasons (callers mutate the previewed unit; state changes
+  within a frame when a resolution spends AP), so it needs its own pass rather than a retry.
+- **Paused by the supervisor, not abandoned.**
 
 ### BR51.15 — Active — owner: `SUPERVISOR`
 **A distinct hitch as the over-the-shoulder camera swings behind the unit**
