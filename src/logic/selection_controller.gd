@@ -16,7 +16,17 @@ var state: CombatState
 var mission: MissionState = null
 ## taskblock-51 Pass K: **what is selected, which is not necessarily a unit.** A barrel, a
 ## wall, a loose field item or a bare tile are all selectable now; see `SelectionTarget`.
-var selected_target: SelectionTarget = SelectionTarget.none()
+##
+## taskblock-51 Pass L: **read through a guard, because death is not an event this listens
+## for.** `BR51.09` — killing a unit during its own turn advanced the turn but left the corpse
+## selected, so its reachable-cell overlay stayed drawn into the next unit's turn. Fixing that
+## by notifying the selection from `kill_unit` would put a TACTICS-time concern inside a
+## RESOLUTION-time mutation and leave every *other* way a unit can stop being valid unhandled.
+## Invalidating on read cannot be missed by a call site that forgot to subscribe.
+var selected_target: SelectionTarget:
+	get:
+		_release_invalid_selection()
+		return _selected_target
 ## **Derived, not stored.** Eighty-one readers across the view ask "what unit is selected",
 ## and every one of them still means it — so this stays, answering `null` whenever the
 ## selection is a prop or a tile. Making it a property rather than a second field is what
@@ -25,6 +35,7 @@ var selected_target: SelectionTarget = SelectionTarget.none()
 var selected_unit: Unit:
 	get:
 		return selected_target.unit if selected_target.is_unit() else null
+var _selected_target: SelectionTarget = SelectionTarget.none()
 var _queues: Dictionary = {}  # unit id (int) -> ActionQueue
 
 
@@ -55,12 +66,30 @@ func select(unit: Unit) -> void:
 ## downstream can queue an action against one.
 func select_target(target: SelectionTarget) -> void:
 	if target == null:
-		selected_target = SelectionTarget.none()
+		_selected_target = SelectionTarget.none()
 		return
 	if target.is_unit() and not (target.unit.alive and target.unit == state.current_unit()):
-		selected_target = SelectionTarget.none()
+		_selected_target = SelectionTarget.none()
 		return
-	selected_target = target
+	_selected_target = target
+
+
+## **A dead unit is not a selection**, and its plan dies with it.
+##
+## taskblock-51 Pass L / `BR51.09`. Selecting a corpse is a real design question the addendum
+## raises — a wreck is a thing on the board with parts on it, and Pass K made non-unit targets
+## expressible — but "the unit you were commanding is still selected and still drawing its
+## movement range" is not that question. It is a stale pointer, and it is cleared here.
+##
+## The queue goes too: `_queues` is keyed by unit id and would otherwise hand a dead unit's
+## plan back if its id were ever selected again.
+func _release_invalid_selection() -> void:
+	if not _selected_target.is_unit():
+		return
+	if _selected_target.unit.alive:
+		return
+	_queues.erase(_selected_target.unit.id)
+	_selected_target = SelectionTarget.none()
 
 
 ## Whether the current selection has a body the inspect panel can describe — `BR51.10`'s
@@ -247,7 +276,7 @@ func reset_turn() -> void:
 ## the mutation; TACTICS starts clean for whichever unit is current next).
 func reset() -> void:
 	_queues.clear()
-	selected_target = SelectionTarget.none()
+	_selected_target = SelectionTarget.none()
 
 
 ## docs/10 taskblock06 G2: "each entry: what, its cost, the running AP/MP

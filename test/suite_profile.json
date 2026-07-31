@@ -11,7 +11,7 @@
       "shot_planes": 17,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3533
+      "usec": 3741
     },
     {
       "bouts": 0,
@@ -24,7 +24,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 67849
+      "usec": 64290
     },
     {
       "bouts": 0,
@@ -37,7 +37,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 199395
+      "usec": 171923
     },
     {
       "bouts": 0,
@@ -50,7 +50,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2402
+      "usec": 2048
     },
     {
       "bouts": 0,
@@ -63,20 +63,20 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 59581
+      "usec": 57102
     },
     {
       "bouts": 1,
-      "candidates": 53055,
-      "dups": 169,
-      "floods": 60,
+      "candidates": 68389,
+      "dups": 318,
+      "floods": 92,
       "lookahead_fields": 0,
       "path": "res://test/integration/test_full_mission.gd",
-      "plans": 25,
-      "shot_planes": 161,
-      "turns": 25,
+      "plans": 43,
+      "shot_planes": 376,
+      "turns": 43,
       "ui_builds": 0,
-      "usec": 7883198
+      "usec": 12908516
     },
     {
       "bouts": 0,
@@ -89,7 +89,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 76234
+      "usec": 74087
     },
     {
       "bouts": 0,
@@ -102,7 +102,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3300
+      "usec": 2028
     },
     {
       "bouts": 0,
@@ -115,7 +115,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2845
+      "usec": 1551
     },
     {
       "bouts": 0,
@@ -128,7 +128,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5535
+      "usec": 2837
     },
     {
       "bouts": 0,
@@ -141,7 +141,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6217
+      "usec": 1629
     },
     {
       "bouts": 0,
@@ -154,7 +154,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5673
+      "usec": 3392
     },
     {
       "bouts": 0,
@@ -167,7 +167,7 @@
       "shot_planes": 15,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 71691
+      "usec": 74569
     },
     {
       "bouts": 0,
@@ -180,7 +180,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 30257
+      "usec": 16065
     },
     {
       "bouts": 0,
@@ -193,7 +193,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 111953
+      "usec": 107681
     },
     {
       "bouts": 0,
@@ -206,7 +206,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16580
+      "usec": 19740
     },
     {
       "bouts": 0,
@@ -219,7 +219,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 702570
+      "usec": 701139
     },
     {
       "bouts": 0,
@@ -232,7 +232,7 @@
       "shot_planes": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 30271
+      "usec": 25204
     },
     {
       "bouts": 0,
@@ -245,7 +245,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6615
+      "usec": 4731
     },
     {
       "bouts": 0,
@@ -258,7 +258,7 @@
       "shot_planes": 0,
       "turns": 5,
       "ui_builds": 0,
-      "usec": 3600
+      "usec": 2371
     },
     {
       "bouts": 0,
@@ -271,7 +271,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4382
+      "usec": 3855
     },
     {
       "bouts": 0,
@@ -284,7 +284,7 @@
       "shot_planes": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 4184
+      "usec": 4291
     },
     {
       "bouts": 0,
@@ -297,7 +297,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6424
+      "usec": 6586
     },
     {
       "bouts": 0,
@@ -310,7 +310,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 8162
+      "usec": 7339
     },
     {
       "bouts": 0,
@@ -323,7 +323,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1886
+      "usec": 1308
     },
     {
       "bouts": 0,
@@ -336,7 +336,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2871
+      "usec": 1945
     },
     {
       "bouts": 0,
@@ -349,7 +349,7 @@
       "shot_planes": 55,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 249946
+      "usec": 275594
     },
     {
       "bouts": 0,
@@ -362,7 +362,7 @@
       "shot_planes": 225,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 258776
+      "usec": 252243
     },
     {
       "bouts": 0,
@@ -375,7 +375,7 @@
       "shot_planes": 2,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 38485
+      "usec": 27213
     },
     {
       "bouts": 0,
@@ -388,7 +388,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 32747
+      "usec": 25552
     },
     {
       "bouts": 0,
@@ -401,7 +401,7 @@
       "shot_planes": 0,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 60788
+      "usec": 60676
     },
     {
       "bouts": 0,
@@ -414,7 +414,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 38932
+      "usec": 35753
     },
     {
       "bouts": 0,
@@ -427,7 +427,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 44318
+      "usec": 38944
     },
     {
       "bouts": 0,
@@ -440,7 +440,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 38943
+      "usec": 22445
     },
     {
       "bouts": 0,
@@ -453,7 +453,7 @@
       "shot_planes": 9,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 26129
+      "usec": 22236
     },
     {
       "bouts": 0,
@@ -466,7 +466,7 @@
       "shot_planes": 0,
       "turns": 18,
       "ui_builds": 0,
-      "usec": 48749
+      "usec": 33747
     },
     {
       "bouts": 0,
@@ -479,7 +479,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 35649
+      "usec": 27525
     },
     {
       "bouts": 0,
@@ -492,7 +492,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 25786
+      "usec": 16907
     },
     {
       "bouts": 0,
@@ -505,7 +505,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 131024
+      "usec": 114753
     },
     {
       "bouts": 0,
@@ -518,7 +518,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 36931
+      "usec": 33137
     },
     {
       "bouts": 0,
@@ -531,7 +531,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 59113
+      "usec": 57656
     },
     {
       "bouts": 0,
@@ -544,7 +544,7 @@
       "shot_planes": 14,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 42263
+      "usec": 53107
     },
     {
       "bouts": 0,
@@ -557,7 +557,7 @@
       "shot_planes": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 38484
+      "usec": 44594
     },
     {
       "bouts": 0,
@@ -570,7 +570,7 @@
       "shot_planes": 15,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 28617
+      "usec": 31178
     },
     {
       "bouts": 0,
@@ -583,7 +583,7 @@
       "shot_planes": 9,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 39390
+      "usec": 41774
     },
     {
       "bouts": 0,
@@ -596,7 +596,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 23866
+      "usec": 25224
     },
     {
       "bouts": 0,
@@ -609,7 +609,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3182008
+      "usec": 3281201
     },
     {
       "bouts": 5,
@@ -622,7 +622,7 @@
       "shot_planes": 348,
       "turns": 32,
       "ui_builds": 0,
-      "usec": 9740369
+      "usec": 9802550
     },
     {
       "bouts": 0,
@@ -635,7 +635,7 @@
       "shot_planes": 32,
       "turns": 29,
       "ui_builds": 0,
-      "usec": 637417
+      "usec": 600275
     },
     {
       "bouts": 8,
@@ -648,7 +648,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 819005
+      "usec": 780615
     },
     {
       "bouts": 0,
@@ -661,7 +661,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 305564
+      "usec": 293382
     },
     {
       "bouts": 0,
@@ -674,7 +674,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 230252
+      "usec": 220320
     },
     {
       "bouts": 2,
@@ -687,7 +687,7 @@
       "shot_planes": 130,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 7352494
+      "usec": 7351871
     },
     {
       "bouts": 0,
@@ -700,7 +700,7 @@
       "shot_planes": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 2093418
+      "usec": 2021785
     },
     {
       "bouts": 0,
@@ -713,7 +713,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 1022263
+      "usec": 996554
     },
     {
       "bouts": 0,
@@ -726,7 +726,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1341520
+      "usec": 1311920
     },
     {
       "bouts": 3,
@@ -739,7 +739,7 @@
       "shot_planes": 179,
       "turns": 19,
       "ui_builds": 0,
-      "usec": 7731164
+      "usec": 7581595
     },
     {
       "bouts": 0,
@@ -752,7 +752,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 113773
+      "usec": 103247
     },
     {
       "bouts": 0,
@@ -765,7 +765,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5759
+      "usec": 5930
     },
     {
       "bouts": 0,
@@ -778,7 +778,7 @@
       "shot_planes": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 58860
+      "usec": 50941
     },
     {
       "bouts": 0,
@@ -791,7 +791,7 @@
       "shot_planes": 71,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11543
+      "usec": 11367
     },
     {
       "bouts": 0,
@@ -804,7 +804,7 @@
       "shot_planes": 40,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2588353
+      "usec": 2460755
     },
     {
       "bouts": 0,
@@ -817,7 +817,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1552
+      "usec": 2322
     },
     {
       "bouts": 0,
@@ -830,7 +830,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 81740
+      "usec": 81987
     },
     {
       "bouts": 0,
@@ -843,7 +843,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3567
+      "usec": 2321
     },
     {
       "bouts": 0,
@@ -856,7 +856,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63993
+      "usec": 62604
     },
     {
       "bouts": 0,
@@ -869,7 +869,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19292
+      "usec": 21801
     },
     {
       "bouts": 0,
@@ -882,7 +882,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3376
+      "usec": 3578
     },
     {
       "bouts": 0,
@@ -895,7 +895,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5564
+      "usec": 5447
     },
     {
       "bouts": 0,
@@ -908,7 +908,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14840
+      "usec": 12288
     },
     {
       "bouts": 0,
@@ -921,7 +921,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 155650
+      "usec": 114297
     },
     {
       "bouts": 0,
@@ -934,7 +934,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2322
+      "usec": 2089
     },
     {
       "bouts": 0,
@@ -947,7 +947,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 160828
+      "usec": 137706
     },
     {
       "bouts": 0,
@@ -960,7 +960,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 94510
+      "usec": 92766
     },
     {
       "bouts": 0,
@@ -973,7 +973,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 74074
+      "usec": 84591
     },
     {
       "bouts": 0,
@@ -986,7 +986,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4411
+      "usec": 4184
     },
     {
       "bouts": 0,
@@ -999,7 +999,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3370
+      "usec": 3014
     },
     {
       "bouts": 0,
@@ -1012,7 +1012,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1931
+      "usec": 1772
     },
     {
       "bouts": 0,
@@ -1025,7 +1025,7 @@
       "shot_planes": 0,
       "turns": 22,
       "ui_builds": 0,
-      "usec": 40300
+      "usec": 36438
     },
     {
       "bouts": 0,
@@ -1038,7 +1038,7 @@
       "shot_planes": 0,
       "turns": 21,
       "ui_builds": 0,
-      "usec": 6768
+      "usec": 6044
     },
     {
       "bouts": 0,
@@ -1051,7 +1051,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 149974
+      "usec": 144129
     },
     {
       "bouts": 0,
@@ -1064,7 +1064,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 152755
+      "usec": 153904
     },
     {
       "bouts": 3,
@@ -1077,7 +1077,7 @@
       "shot_planes": 1978,
       "turns": 110,
       "ui_builds": 0,
-      "usec": 42435750
+      "usec": 41364238
     },
     {
       "bouts": 0,
@@ -1090,7 +1090,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1860
+      "usec": 1757
     },
     {
       "bouts": 0,
@@ -1103,7 +1103,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1269
+      "usec": 1209
     },
     {
       "bouts": 0,
@@ -1116,7 +1116,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1447
+      "usec": 1443
     },
     {
       "bouts": 0,
@@ -1129,7 +1129,7 @@
       "shot_planes": 30,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 28602
+      "usec": 28982
     },
     {
       "bouts": 0,
@@ -1142,7 +1142,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 4781
+      "usec": 4573
     },
     {
       "bouts": 0,
@@ -1155,7 +1155,7 @@
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2388
+      "usec": 2428
     },
     {
       "bouts": 0,
@@ -1168,7 +1168,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1966
+      "usec": 1838
     },
     {
       "bouts": 0,
@@ -1181,7 +1181,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1458
+      "usec": 1421
     },
     {
       "bouts": 0,
@@ -1194,7 +1194,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10994
+      "usec": 11145
     },
     {
       "bouts": 0,
@@ -1207,7 +1207,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 123181
+      "usec": 124311
     },
     {
       "bouts": 0,
@@ -1220,7 +1220,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 13831
+      "usec": 15472
     },
     {
       "bouts": 0,
@@ -1233,7 +1233,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 28999
+      "usec": 30042
     },
     {
       "bouts": 0,
@@ -1246,7 +1246,20 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2924
+      "usec": 2412
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 2,
+      "floods": 1,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_death_mid_turn.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 3,
+      "ui_builds": 0,
+      "usec": 162551
     },
     {
       "bouts": 0,
@@ -1259,7 +1272,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 528461
+      "usec": 547835
     },
     {
       "bouts": 0,
@@ -1272,7 +1285,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 76447
+      "usec": 74636
     },
     {
       "bouts": 0,
@@ -1285,7 +1298,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2090
+      "usec": 1848
     },
     {
       "bouts": 0,
@@ -1298,7 +1311,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 22181
+      "usec": 22437
     },
     {
       "bouts": 0,
@@ -1311,7 +1324,7 @@
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 164410
+      "usec": 163401
     },
     {
       "bouts": 0,
@@ -1324,7 +1337,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2055
+      "usec": 3068
     },
     {
       "bouts": 0,
@@ -1337,7 +1350,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2140
+      "usec": 2771
     },
     {
       "bouts": 0,
@@ -1350,7 +1363,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14542
+      "usec": 15196
     },
     {
       "bouts": 0,
@@ -1363,7 +1376,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2914
+      "usec": 2491
     },
     {
       "bouts": 0,
@@ -1376,7 +1389,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17020
+      "usec": 17036
     },
     {
       "bouts": 0,
@@ -1389,7 +1402,7 @@
       "shot_planes": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 5377
+      "usec": 5308
     },
     {
       "bouts": 0,
@@ -1402,7 +1415,7 @@
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63268
+      "usec": 62525
     },
     {
       "bouts": 0,
@@ -1415,7 +1428,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3416
+      "usec": 3562
     },
     {
       "bouts": 0,
@@ -1428,7 +1441,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17546
+      "usec": 17337
     },
     {
       "bouts": 0,
@@ -1441,7 +1454,7 @@
       "shot_planes": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6129
+      "usec": 6126
     },
     {
       "bouts": 0,
@@ -1454,7 +1467,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 147627
+      "usec": 148952
     },
     {
       "bouts": 0,
@@ -1467,7 +1480,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17869
+      "usec": 16513
     },
     {
       "bouts": 0,
@@ -1480,7 +1493,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16679
+      "usec": 17110
     },
     {
       "bouts": 0,
@@ -1493,7 +1506,7 @@
       "shot_planes": 13,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 8173
+      "usec": 9561
     },
     {
       "bouts": 0,
@@ -1506,7 +1519,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 7216
+      "usec": 7802
     },
     {
       "bouts": 0,
@@ -1519,7 +1532,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2870
+      "usec": 2792
     },
     {
       "bouts": 0,
@@ -1532,7 +1545,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3746
+      "usec": 3841
     },
     {
       "bouts": 0,
@@ -1545,7 +1558,7 @@
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2320
+      "usec": 2138
     },
     {
       "bouts": 0,
@@ -1558,7 +1571,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 529446
+      "usec": 546888
     },
     {
       "bouts": 0,
@@ -1571,7 +1584,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11112303
+      "usec": 10916560
     },
     {
       "bouts": 0,
@@ -1584,7 +1597,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3125107
+      "usec": 2956478
     },
     {
       "bouts": 0,
@@ -1597,7 +1610,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5505
+      "usec": 6152
     },
     {
       "bouts": 0,
@@ -1610,7 +1623,7 @@
       "shot_planes": 12,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 75748
+      "usec": 68567
     },
     {
       "bouts": 0,
@@ -1623,7 +1636,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10455
+      "usec": 5262
     },
     {
       "bouts": 0,
@@ -1636,7 +1649,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 8809
+      "usec": 6658
     },
     {
       "bouts": 0,
@@ -1649,7 +1662,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 30878
+      "usec": 17985
     },
     {
       "bouts": 0,
@@ -1662,7 +1675,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 25247
+      "usec": 21624
     },
     {
       "bouts": 0,
@@ -1675,7 +1688,7 @@
       "shot_planes": 1398,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3130033
+      "usec": 2937026
     },
     {
       "bouts": 0,
@@ -1688,7 +1701,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14308
+      "usec": 13919
     },
     {
       "bouts": 0,
@@ -1701,7 +1714,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10554
+      "usec": 5414
     },
     {
       "bouts": 0,
@@ -1714,7 +1727,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 85747
+      "usec": 83083
     },
     {
       "bouts": 0,
@@ -1727,7 +1740,7 @@
       "shot_planes": 14,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 143292
+      "usec": 135908
     },
     {
       "bouts": 0,
@@ -1740,7 +1753,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 12015
+      "usec": 8242
     },
     {
       "bouts": 0,
@@ -1753,7 +1766,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91031
+      "usec": 89151
     },
     {
       "bouts": 0,
@@ -1766,7 +1779,7 @@
       "shot_planes": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 308808
+      "usec": 298851
     },
     {
       "bouts": 0,
@@ -1779,7 +1792,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10506
+      "usec": 4957
     },
     {
       "bouts": 0,
@@ -1792,7 +1805,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40092
+      "usec": 40290
     },
     {
       "bouts": 0,
@@ -1805,7 +1818,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 7866
+      "usec": 9159
     },
     {
       "bouts": 0,
@@ -1818,7 +1831,7 @@
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31633
+      "usec": 28826
     },
     {
       "bouts": 0,
@@ -1831,7 +1844,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5788
+      "usec": 6913
     },
     {
       "bouts": 0,
@@ -1844,7 +1857,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 119144
+      "usec": 102963
     },
     {
       "bouts": 0,
@@ -1857,7 +1870,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11916
+      "usec": 9878
     },
     {
       "bouts": 4,
@@ -1870,7 +1883,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 563403
+      "usec": 548384
     },
     {
       "bouts": 0,
@@ -1883,7 +1896,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 27510
+      "usec": 29834
     },
     {
       "bouts": 0,
@@ -1896,7 +1909,7 @@
       "shot_planes": 20,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10416
+      "usec": 11334
     },
     {
       "bouts": 0,
@@ -1909,7 +1922,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 254357
+      "usec": 265203
     },
     {
       "bouts": 0,
@@ -1922,7 +1935,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5941
+      "usec": 5595
     },
     {
       "bouts": 0,
@@ -1935,7 +1948,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 133730
+      "usec": 136315
     },
     {
       "bouts": 0,
@@ -1948,7 +1961,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 8223
+      "usec": 15608
     },
     {
       "bouts": 0,
@@ -1961,7 +1974,7 @@
       "shot_planes": 26,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 66542
+      "usec": 71686
     },
     {
       "bouts": 8,
@@ -1974,7 +1987,7 @@
       "shot_planes": 0,
       "turns": 25,
       "ui_builds": 0,
-      "usec": 1726267
+      "usec": 1735536
     },
     {
       "bouts": 0,
@@ -1987,7 +2000,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 279059
+      "usec": 258873
     },
     {
       "bouts": 0,
@@ -2000,7 +2013,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 1031194
+      "usec": 992806
     },
     {
       "bouts": 0,
@@ -2013,7 +2026,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 26632
+      "usec": 22687
     },
     {
       "bouts": 0,
@@ -2026,7 +2039,7 @@
       "shot_planes": 22,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 48889
+      "usec": 40945
     },
     {
       "bouts": 0,
@@ -2039,7 +2052,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6990
+      "usec": 4694
     },
     {
       "bouts": 0,
@@ -2052,7 +2065,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5038
+      "usec": 2732
     },
     {
       "bouts": 0,
@@ -2065,7 +2078,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10088
+      "usec": 7381
     },
     {
       "bouts": 0,
@@ -2078,7 +2091,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 14006
+      "usec": 12122
     },
     {
       "bouts": 0,
@@ -2091,7 +2104,7 @@
       "shot_planes": 10,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 69035
+      "usec": 48962
     },
     {
       "bouts": 0,
@@ -2104,7 +2117,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 139227
+      "usec": 134620
     },
     {
       "bouts": 0,
@@ -2117,7 +2130,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11561
+      "usec": 7720
     },
     {
       "bouts": 0,
@@ -2130,7 +2143,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 18972585
+      "usec": 18555618
     },
     {
       "bouts": 0,
@@ -2143,7 +2156,7 @@
       "shot_planes": 8,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 84802
+      "usec": 81685
     },
     {
       "bouts": 0,
@@ -2156,7 +2169,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 11873
+      "usec": 15197
     },
     {
       "bouts": 0,
@@ -2169,7 +2182,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10747
+      "usec": 12379
     },
     {
       "bouts": 0,
@@ -2182,7 +2195,7 @@
       "shot_planes": 0,
       "turns": 24,
       "ui_builds": 0,
-      "usec": 149307
+      "usec": 171463
     },
     {
       "bouts": 0,
@@ -2195,7 +2208,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6530
+      "usec": 4272
     },
     {
       "bouts": 0,
@@ -2208,7 +2221,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 25196
+      "usec": 21176
     },
     {
       "bouts": 0,
@@ -2221,7 +2234,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 13050
+      "usec": 10663
     },
     {
       "bouts": 0,
@@ -2234,7 +2247,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10983
+      "usec": 4064
     },
     {
       "bouts": 0,
@@ -2247,7 +2260,7 @@
       "shot_planes": 62,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 27164
+      "usec": 23024
     },
     {
       "bouts": 0,
@@ -2260,7 +2273,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40547
+      "usec": 33837
     },
     {
       "bouts": 0,
@@ -2273,7 +2286,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10182
+      "usec": 8843
     },
     {
       "bouts": 0,
@@ -2286,7 +2299,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 32882
+      "usec": 23235
     },
     {
       "bouts": 0,
@@ -2299,7 +2312,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 15578
+      "usec": 7311
     },
     {
       "bouts": 0,
@@ -2312,7 +2325,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 427893
+      "usec": 412876
     },
     {
       "bouts": 0,
@@ -2325,7 +2338,7 @@
       "shot_planes": 299,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 217033
+      "usec": 211393
     },
     {
       "bouts": 0,
@@ -2338,20 +2351,20 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6811
+      "usec": 6937
     },
     {
       "bouts": 1,
-      "candidates": 53055,
-      "dups": 169,
-      "floods": 60,
+      "candidates": 68389,
+      "dups": 318,
+      "floods": 92,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_watched_run.gd",
-      "plans": 25,
-      "shot_planes": 161,
-      "turns": 25,
+      "plans": 43,
+      "shot_planes": 376,
+      "turns": 43,
       "ui_builds": 0,
-      "usec": 8203341
+      "usec": 14663214
     },
     {
       "bouts": 0,
@@ -2364,7 +2377,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 26655
+      "usec": 28254
     },
     {
       "bouts": 0,
@@ -2377,7 +2390,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 7339
+      "usec": 6773
     },
     {
       "bouts": 0,
@@ -2390,7 +2403,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6062
+      "usec": 5835
     },
     {
       "bouts": 0,
@@ -2403,7 +2416,7 @@
       "shot_planes": 1248,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 349878
+      "usec": 337276
     },
     {
       "bouts": 3,
@@ -2416,7 +2429,7 @@
       "shot_planes": 171,
       "turns": 19,
       "ui_builds": 2,
-      "usec": 12056113
+      "usec": 11347732
     },
     {
       "bouts": 2,
@@ -2429,7 +2442,7 @@
       "shot_planes": 174,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 5712518
+      "usec": 5414175
     },
     {
       "bouts": 0,
@@ -2442,7 +2455,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 203954
+      "usec": 195218
     },
     {
       "bouts": 0,
@@ -2455,7 +2468,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1235
+      "usec": 1277
     },
     {
       "bouts": 0,
@@ -2468,7 +2481,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 51238
+      "usec": 46978
     },
     {
       "bouts": 0,
@@ -2481,7 +2494,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3373
+      "usec": 3248
     },
     {
       "bouts": 0,
@@ -2494,7 +2507,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31993
+      "usec": 31034
     },
     {
       "bouts": 0,
@@ -2507,7 +2520,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 15934155
+      "usec": 15243276
     },
     {
       "bouts": 0,
@@ -2520,7 +2533,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1447
+      "usec": 1250
     },
     {
       "bouts": 0,
@@ -2533,7 +2546,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 410779
+      "usec": 386961
     },
     {
       "bouts": 0,
@@ -2546,7 +2559,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 23200
+      "usec": 38141
     },
     {
       "bouts": 0,
@@ -2559,7 +2572,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4183
+      "usec": 5554
     },
     {
       "bouts": 0,
@@ -2572,7 +2585,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 222560
+      "usec": 217744
     },
     {
       "bouts": 3,
@@ -2585,7 +2598,7 @@
       "shot_planes": 1182,
       "turns": 118,
       "ui_builds": 2,
-      "usec": 43145593
+      "usec": 42810962
     },
     {
       "bouts": 2,
@@ -2598,7 +2611,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 2969403
+      "usec": 2920050
     },
     {
       "bouts": 0,
@@ -2611,7 +2624,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 6,
-      "usec": 471641
+      "usec": 464560
     },
     {
       "bouts": 0,
@@ -2624,7 +2637,7 @@
       "shot_planes": 26,
       "turns": 13,
       "ui_builds": 72,
-      "usec": 31986479
+      "usec": 31739036
     },
     {
       "bouts": 0,
@@ -2637,7 +2650,7 @@
       "shot_planes": 12,
       "turns": 4,
       "ui_builds": 30,
-      "usec": 4165304
+      "usec": 4120355
     },
     {
       "bouts": 0,
@@ -2650,7 +2663,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 115557
+      "usec": 102148
     },
     {
       "bouts": 0,
@@ -2663,7 +2676,7 @@
       "shot_planes": 32,
       "turns": 0,
       "ui_builds": 3,
-      "usec": 1421135
+      "usec": 1429909
     },
     {
       "bouts": 0,
@@ -2676,7 +2689,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 90109
+      "usec": 89798
     },
     {
       "bouts": 0,
@@ -2689,7 +2702,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5765
+      "usec": 6695
     },
     {
       "bouts": 0,
@@ -2702,7 +2715,7 @@
       "shot_planes": 11,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 208004
+      "usec": 201003
     },
     {
       "bouts": 0,
@@ -2715,7 +2728,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 81938
+      "usec": 80009
     },
     {
       "bouts": 0,
@@ -2728,7 +2741,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 1,
-      "usec": 154718
+      "usec": 146485
     },
     {
       "bouts": 1,
@@ -2741,7 +2754,7 @@
       "shot_planes": 0,
       "turns": 3,
       "ui_builds": 40,
-      "usec": 12166926
+      "usec": 12084064
     },
     {
       "bouts": 0,
@@ -2754,7 +2767,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 7,
-      "usec": 2417112
+      "usec": 2327927
     },
     {
       "bouts": 0,
@@ -2767,7 +2780,7 @@
       "shot_planes": 12,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 1130121
+      "usec": 1049814
     },
     {
       "bouts": 0,
@@ -2780,7 +2793,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 125997
+      "usec": 125451
     },
     {
       "bouts": 0,
@@ -2793,7 +2806,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 50114
+      "usec": 47265
     },
     {
       "bouts": 0,
@@ -2806,7 +2819,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40515
+      "usec": 38836
     },
     {
       "bouts": 0,
@@ -2819,7 +2832,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 84328
+      "usec": 84965
     },
     {
       "bouts": 0,
@@ -2832,7 +2845,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 48923
+      "usec": 50865
     },
     {
       "bouts": 0,
@@ -2845,7 +2858,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 24333
+      "usec": 22834
     },
     {
       "bouts": 0,
@@ -2858,7 +2871,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 207961
+      "usec": 206646
     },
     {
       "bouts": 0,
@@ -2871,7 +2884,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 22011
+      "usec": 24766
     },
     {
       "bouts": 0,
@@ -2884,7 +2897,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 340500
+      "usec": 296509
     },
     {
       "bouts": 0,
@@ -2897,7 +2910,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 18,
-      "usec": 1738921
+      "usec": 1655206
     },
     {
       "bouts": 0,
@@ -2910,7 +2923,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19273
+      "usec": 21077
     },
     {
       "bouts": 0,
@@ -2923,7 +2936,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 161444
+      "usec": 121119
     },
     {
       "bouts": 0,
@@ -2936,7 +2949,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 24132
+      "usec": 16475
     },
     {
       "bouts": 0,
@@ -2949,7 +2962,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 99024
+      "usec": 78453
     },
     {
       "bouts": 0,
@@ -2962,7 +2975,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 42080
+      "usec": 25739
     },
     {
       "bouts": 0,
@@ -2975,7 +2988,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 55059
+      "usec": 26497
     },
     {
       "bouts": 0,
@@ -2988,7 +3001,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 58526
+      "usec": 47025
     },
     {
       "bouts": 0,
@@ -3001,7 +3014,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 32578
+      "usec": 23448
     },
     {
       "bouts": 0,
@@ -3014,7 +3027,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 665643
+      "usec": 649903
     },
     {
       "bouts": 0,
@@ -3027,7 +3040,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 264996
+      "usec": 246037
     },
     {
       "bouts": 0,
@@ -3040,7 +3053,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 347842
+      "usec": 329896
     },
     {
       "bouts": 0,
@@ -3053,7 +3066,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 92406
+      "usec": 85609
     },
     {
       "bouts": 0,
@@ -3066,7 +3079,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 6,
-      "usec": 787878
+      "usec": 751156
     },
     {
       "bouts": 0,
@@ -3079,7 +3092,7 @@
       "shot_planes": 2,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 74213
+      "usec": 68416
     },
     {
       "bouts": 0,
@@ -3092,7 +3105,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 403534
+      "usec": 374896
     },
     {
       "bouts": 3,
@@ -3105,7 +3118,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 18,
-      "usec": 14143430
+      "usec": 15850621
     },
     {
       "bouts": 0,
@@ -3118,7 +3131,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 34,
-      "usec": 4841016
+      "usec": 4874013
     },
     {
       "bouts": 0,
@@ -3131,7 +3144,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 570289
+      "usec": 583569
     },
     {
       "bouts": 0,
@@ -3144,7 +3157,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 184318
+      "usec": 185329
     },
     {
       "bouts": 0,
@@ -3157,7 +3170,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 330294
+      "usec": 318269
     },
     {
       "bouts": 0,
@@ -3170,7 +3183,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 11,
-      "usec": 414620
+      "usec": 417381
     },
     {
       "bouts": 0,
@@ -3183,7 +3196,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 493691
+      "usec": 489444
     },
     {
       "bouts": 0,
@@ -3196,7 +3209,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 186241
+      "usec": 174004
     },
     {
       "bouts": 0,
@@ -3209,7 +3222,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 545522
+      "usec": 525193
     },
     {
       "bouts": 0,
@@ -3222,7 +3235,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 10,
-      "usec": 421391
+      "usec": 421365
     },
     {
       "bouts": 0,
@@ -3235,7 +3248,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 21692
+      "usec": 24033
     },
     {
       "bouts": 0,
@@ -3248,7 +3261,7 @@
       "shot_planes": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 143007
+      "usec": 145559
     },
     {
       "bouts": 0,
@@ -3261,7 +3274,7 @@
       "shot_planes": 105,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 3096542
+      "usec": 3059123
     },
     {
       "bouts": 0,
@@ -3274,7 +3287,7 @@
       "shot_planes": 15,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 1740770
+      "usec": 1673502
     },
     {
       "bouts": 0,
@@ -3287,7 +3300,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 187826
+      "usec": 176361
     },
     {
       "bouts": 0,
@@ -3300,7 +3313,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 376467
+      "usec": 368495
     },
     {
       "bouts": 0,
@@ -3313,7 +3326,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 213480
+      "usec": 206871
     },
     {
       "bouts": 0,
@@ -3326,7 +3339,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 97405
+      "usec": 95356
     },
     {
       "bouts": 0,
@@ -3339,7 +3352,7 @@
       "shot_planes": 5,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 727544
+      "usec": 686989
     },
     {
       "bouts": 0,
@@ -3352,7 +3365,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 88345
+      "usec": 89265
     },
     {
       "bouts": 0,
@@ -3365,7 +3378,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 49364
+      "usec": 47200
     },
     {
       "bouts": 0,
@@ -3378,7 +3391,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 408664
+      "usec": 409721
     },
     {
       "bouts": 0,
@@ -3391,7 +3404,7 @@
       "shot_planes": 10,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 556904
+      "usec": 534859
     },
     {
       "bouts": 0,
@@ -3404,7 +3417,7 @@
       "shot_planes": 162,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2130942
+      "usec": 2094838
     },
     {
       "bouts": 0,
@@ -3417,7 +3430,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 75631
+      "usec": 73946
     },
     {
       "bouts": 0,
@@ -3430,7 +3443,20 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 43134
+      "usec": 34102
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "floods": 6,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/test_turn_indicator_timing.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 3,
+      "ui_builds": 3,
+      "usec": 505843
     },
     {
       "bouts": 0,
@@ -3443,7 +3469,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 51375
+      "usec": 52229
     },
     {
       "bouts": 0,
@@ -3456,7 +3482,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 26081
+      "usec": 20249
     },
     {
       "bouts": 0,
@@ -3469,7 +3495,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82023
+      "usec": 98765
     },
     {
       "bouts": 0,
@@ -3482,20 +3508,20 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 36347
+      "usec": 43849
     }
   ],
   "totals": {
     "bouts": 49,
-    "candidates": 829652,
-    "dups": 6827,
-    "floods": 3172,
+    "candidates": 860320,
+    "dups": 7127,
+    "floods": 3243,
     "lookahead_fields": 150,
-    "plans": 449,
-    "shot_planes": 8607,
-    "turns": 616,
-    "ui_builds": 385,
-    "usec": 318008585
+    "plans": 485,
+    "shot_planes": 9037,
+    "turns": 658,
+    "ui_builds": 388,
+    "usec": 325789875
   },
-  "wall_clock_usec": 321671359
+  "wall_clock_usec": 328998866
 }

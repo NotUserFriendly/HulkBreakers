@@ -146,17 +146,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Establish which before changing anything** — "no parallel systems" says a duplicate gesture is the
   bug to fix, not a behaviour to tune.
 
-### BR51.09 — Active — owner: `CC`
-**A unit killed during its turn stays selected, leaving its movement overlay on screen**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, taskblock-51 third hunt, immediately after `BR51.04` was fixed.
-- **Repro:** kill a unit during its own turn. The turn now advances correctly (`BR51.04`), but the dead
-  unit remains *selected* and its reachable-cell overlay stays drawn through the next unit's turn.
-- **This is the other half of the fix I made and did not finish.** `kill_unit` advances the turn; it
-  does not tell the selection to let go, and `SelectionController` holds its `selected_unit` reference
-  independently of whose turn it is. Fixing the pointer without clearing the selection moved the
-  symptom rather than removing it.
-
 ### BR51.11 — Active — owner: `SUPERVISOR`
 **A unit refacing mid-move sometimes turns the long way around**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 third hunt.
@@ -795,7 +784,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
   `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
   returning.
-### BR27.07 — Active — owner: `SUPERVISOR`
+### BR27.07 — Pending — owner: `SUPERVISOR`
 **Active-turn highlight lands on the wrong unit; change to facing-marker-only**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
 - **2026-07-23 (supervisor check — looks right, BLOCKED on full confirmation).** The change reads as
@@ -1538,7 +1527,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   **What was not:** a shell downed *between* camera and a living unit, which is the geometry the
   cutout actually keys on.
 
-### BR32.09 — Active — owner: `SUPERVISOR`
+### BR32.09 — Pending — owner: `SUPERVISOR`
 **Spectator: current-unit indicator jumps to the next unit before the active turn resolves**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-22 (tb32 review, direct note). In spectator, the current-unit indicator
