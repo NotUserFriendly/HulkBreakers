@@ -1,7 +1,7 @@
 # Taskblock 51 Report — The bug hunt, and one bug that was four
 
-**Passes A and B partially landed; the framerate deep-dive took the block.** Suite green — 2497 tests,
-~302 s. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
+**Passes A and B partially landed; the framerate deep-dive took the block, and the addendum's perf suite
+followed it.** Suite green — 2526 tests, ~360 s. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
 
 Four supervisor hunting sessions. **Ledger 31 → 40 open**, which is the honest shape of a hunt: five
 entries closed, fourteen filed, several re-diagnosed.
@@ -70,6 +70,42 @@ a frame when a resolution spends AP).
 **Side effect, measured: `BR27.09` improved** — turn-start FPS went **38.0 → 91–147** across later
 sessions. Not closed; it was never investigated and a hitch remains.
 
+## The performance monitor (addendum, supervisor-specified)
+
+The hunt's own instrument was the thing that failed it: a `fps_dump` sampled once, two seconds after
+entering aim, with the mouse still — structurally unable to see a defect that only appears while the
+mouse moves. It reported 161 fps against three separate reports of 8. **The supervisor's ruling, now
+recorded: their word is authoritative alongside measurements, and an instrument that disagrees with the
+chair is itself a suspect.**
+
+So the readout is a live panel rather than more log lines. `PerfStats` (logic, headless-testable) holds
+the four figures, and every case in `test_perf_stats.gd` is arithmetic that can be checked by hand —
+including the supervisor's own worked example, verbatim.
+
+- **1% low** is the mean of the slowest 1% of frames, the hardware-review reading — confirmed with the
+  supervisor, since the 99th-percentile *frame* is a different number.
+- **Average dropping the top 1%** cuts on **speed**, not on a count of entries: every frame below
+  `0.99 x fastest`. On the worked example (100 x 10 fps, 20 x 159, 30 x 160) it reads **10.0**.
+- The readout **states its own coverage** ("reporting 62% of 4210 frames"), because a figure computed
+  after discarding data should say how much it discarded.
+- It **samples every frame and redraws on the 2 s tick**. Nothing sorts per frame — a profiler that
+  costs frames measures its own overhead.
+
+**A number in the supervisor's own example was wrong and it strengthened their case.** They gave the
+plain mean of that distribution as "~40fps"; it is 59.9. The conclusion — that the mean is useless here
+— holds harder, not less: it overstates by 6x rather than 4x. Asserted in the test so the record stands.
+
+**The panel took three arrangements to place, and all three are in the changelog.** A chrome row and a
+verb-pane caption were different mistakes, and the second one *passed a test*: the checkbox was
+labelled correctly, emitted correctly, and toggled the right panel while sitting in the pane that
+belongs to the selected verb — so it captioned every entry in the list. **No test of its behaviour
+could see that**; the regression test asserts parentage, and was verified by re-breaking the layout.
+
+The landed shape is the supervisor's: **"UI Element Control" is a list entry**, its checkboxes fill the
+same right-hand pane every verb uses, and `DebugUiElements` is the table behind it — a new toggleable
+element is a row, not UI code, the same shape `DebugVerbs` already had. Apply is **disabled** while the
+category is selected rather than pressable-and-inert.
+
 ## Tests that failed, then were corrected
 
 1. **I closed `BR51.02` on a test I wrote against a dict I invented.** `set_part_hp` was fixed for a
@@ -105,9 +141,9 @@ sessions. Not closed; it was never investigated and a hitch remains.
   is a far better lead than a stray stall and is where this resumes.
 
 - **Averages are the wrong statistic and this block proved it.** One session read `min 7.5, avg 140.1`
-  — and the supervisor notes the averages are further tainted by alt-tabbing while observing. Their
-  proposed performance suite (1% lows, average excluding the top 1%, a "reporting 85% of frames" line)
-  is in `PLAN.md` and would have shortened this hunt considerably.
+  — and the supervisor notes the averages are further tainted by alt-tabbing while observing. **The
+  performance monitor above is the answer to this and it is built**; every framerate entry still open
+  (`BR51.14`, `BR51.15`, `BR27.09`) should be re-measured through it rather than through a `fps_dump`.
 
 - **`BR51.13` contradicts a passing test.** `test_log_fold.gd` asserts a diagnostic is never folded into
   plumbing, and `fps_dump` is being folded into `wall_cutout` runs in every log this block. Read the
