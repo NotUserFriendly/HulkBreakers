@@ -717,11 +717,17 @@ func test_the_aim_fps_dump_reports_the_worst_frame_not_one_sample() -> void:
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
 	assert_eq(dumps.size(), 1, "leaving aim reports the session")
 	var data: Dictionary = dumps[0].data
-	assert_almost_eq(float(data["fps_min"]), 8.0, 0.5, "the worst frame is reported")
+	assert_almost_eq(float(data["slowest"]), 8.0, 0.5, "the worst frame is reported")
 	assert_eq(int(data["frames"]), 4)
-	assert_true(
-		float(data["fps_avg"]) > float(data["fps_min"]),
-		"and the average is reported beside it, not instead of it"
+	# **The trimmed average lands ON the slow frame here, and that is the point.** Three
+	# frames at 160 and one at 8: the cut at 0.99 x 160 removes all three fast ones, so the
+	# figure reads 8.0 — where a plain mean would have read 122 and hidden the stall
+	# completely.
+	assert_almost_eq(
+		float(data["avg_less_top"]),
+		8.0,
+		0.5,
+		"the fast frames are dropped, so the trimmed average is the stall itself"
 	)
 
 
@@ -741,7 +747,7 @@ func test_each_aim_session_measures_only_itself() -> void:
 
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
 	assert_eq(dumps.size(), 2, "one dump per session")
-	assert_almost_eq(float(dumps[1].data["fps_min"]), 120.0, 1.0, "the second session is its own")
+	assert_almost_eq(float(dumps[1].data["slowest"]), 120.0, 1.0, "the second session is its own")
 
 
 ## **A reticle move is not an aim-state change, and the split is the fix.**

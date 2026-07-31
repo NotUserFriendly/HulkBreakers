@@ -179,9 +179,12 @@ var _aim_state_key: String = ""
 ## taskblock-51 (`BR26.02`): the newest un-applied cursor position — see `_unhandled_input`.
 var _pending_reticle_screen: Vector2 = Vector2.ZERO
 var _has_pending_reticle: bool = false
-var _aim_fps_min: float = 0.0
-var _aim_fps_seconds: float = 0.0
-var _aim_fps_frames: int = 0
+## taskblock-51: **one measurement, not two.** The aim session used to keep its own min,
+## frame count and elapsed time — a second implementation of what `PerfStats` now does, and
+## the reason the two disagreed for three passes while the supervisor reported 8 fps and the
+## log reported 161. Same class as the panel's, so a figure means the same thing wherever it
+## is read.
+var _aim_stats := PerfStats.new()
 var _facing_drag_active: bool = false
 ## The one FaceAction this drag gesture owns, so every subsequent motion
 ## event mutates it in place instead of queuing a fresh one per pixel of
@@ -1283,49 +1286,33 @@ func _process(delta: float) -> void:
 	if _has_pending_reticle:
 		_has_pending_reticle = false
 		aim_reticle_at_screen(_pending_reticle_screen)
-	_aim_fps_seconds += delta
-	_aim_fps_frames += 1
-	var instant: float = 1.0 / delta
-	if _aim_fps_min <= 0.0 or instant < _aim_fps_min:
-		_aim_fps_min = instant
+	_aim_stats.sample(delta)
 
 
 ## Emitted when aim ends, so the number covers the whole session including the mouse
 ## movement that the fixed 2 s sample kept missing.
+##
+## taskblock-51: **reads `PerfStats`, and reports its figures.** This used to keep its own
+## min/frames/seconds — a second implementation of the same measurement, which is how the
+## log came to report 161 fps for a session the supervisor experienced as 8. The session
+## now carries the 1% low and the top-trimmed average too, because a bare min and mean were
+## exactly the pair that hid four defects.
 func _dump_aim_session_fps() -> void:
-	if _aim_fps_frames <= 0 or selection == null:
+	if _aim_stats.sample_count() <= 0 or selection == null:
 		return
-	var average: float = float(_aim_fps_frames) / maxf(0.0001, _aim_fps_seconds)
-	(
-		selection
-		. state
-		. combat_log
-		. emit(
-			(
-				LogEvent
-				. new(
-					selection.state.round_number,
-					Enums.Phase.RESOLUTION,
-					selection.selected_unit.id if selection.selected_unit != null else -1,
-					&"fps_dump",
-					{
-						"context": "aim_session",
-						"fps_min": _aim_fps_min,
-						"fps_avg": average,
-						"frames": _aim_fps_frames,
-						"seconds": _aim_fps_seconds,
-					},
-					(
-						"Aim FPS over the whole session: min %.1f, avg %.1f (%d frames in %.1fs)"
-						% [_aim_fps_min, average, _aim_fps_frames, _aim_fps_seconds]
-					)
-				)
-			)
+	var snapshot: Dictionary = _aim_stats.snapshot()
+	snapshot["context"] = "aim_session"
+	selection.state.combat_log.emit(
+		LogEvent.new(
+			selection.state.round_number,
+			Enums.Phase.RESOLUTION,
+			selection.selected_unit.id if selection.selected_unit != null else -1,
+			&"fps_dump",
+			snapshot,
+			"Aim session — %s" % " | ".join(_aim_stats.describe())
 		)
 	)
-	_aim_fps_min = 0.0
-	_aim_fps_seconds = 0.0
-	_aim_fps_frames = 0
+	_aim_stats.reset()
 
 
 func cancel_aim() -> void:

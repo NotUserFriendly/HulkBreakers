@@ -729,28 +729,17 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
-### A real performance suite, and the over-the-shoulder camera
-**Needs:** nothing. **Unblocks:** honest performance reporting for the taskblock-51 hunt's leftovers.
+### The over-the-shoulder camera
+**Needs:** nothing.
 
-**Averages are the wrong statistic and the supervisor has said why:** uncapped, this game tops out the
-monitor, so a session that spends most of its frames at 160 and a few at 8 reports a healthy mean while
-feeling terrible. Taskblock-51 hit this repeatedly — a session averaging 140 fps with a 7.5 fps minimum.
-
-Their proposed shape, recorded as theirs:
-
-- **Instant FPS** and **rolling FPS** (mean of the last 2 s, updated every 2 s).
-- **1% lows.**
-- **Average dropping the top 1%** — so 100 frames at 10 fps beside 50 at ~160 reports ~10, not ~40.
-- A coverage line: **"Reporting 85% of Frames"** rather than raw counts, which they judged unreadable
-  both ways.
-
-**Two camera items from the same session:**
+Two camera items from taskblock-51's fourth hunt. **The performance suite that shared this item is
+built** (taskblock-51; `PerfStats`/`PerfPanel` — see `CHANGELOG.md`).
 
 - **The over-the-shoulder camera needs a broader allowed angle and significantly more damping / edge
   resistance.**
 - **A wall cutout attached to the player's camera** would stop the view going solid grey when the
   over-the-shoulder camera ends up behind or inside a wall. Note this is a *different* cutout from the
-  unit-centred one that `BR32.05` is about, and may be the better shape for both.
+  unit-centred one `BR32.05` is about, and may be the better shape for both.
 
 ### Action-cost affordances, and camera keys
 **Needs:** nothing.

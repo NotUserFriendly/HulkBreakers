@@ -31,6 +31,14 @@ signal closed
 ## needing to know anything about view-refresh itself.
 signal applied(verb_id: StringName, args: Dictionary)
 
+## taskblock-51: **the performance readout is toggled from here and outlives this panel.**
+##
+## The supervisor asked for the readout to survive closing the debug panel — you open this
+## to switch it on, then get this out of the way and keep watching the numbers while you
+## play. So the two are tied only at the point of *offering* the toggle; the overlay owns
+## the panel's lifetime, not this.
+signal perf_panel_toggled(shown: bool)
+
 ## Supervisor report: with no anchor at all the panel defaulted to the
 ## top-left corner and sat directly on top of the existing top-left HUD
 ## (`controls`/`tunables` in both overlays). Horizontally centered,
@@ -51,6 +59,7 @@ var combat_state: CombatState
 var _verb_list: ItemList
 var _param_container: VBoxContainer
 var _active_label: Label
+var _perf_checkbox: CheckBox
 var _status_label: Label
 var _verbs: Array[DebugVerbSpec] = []
 ## param name (StringName) -> a single Control, or (CELL only) an
@@ -231,6 +240,14 @@ func _build_ui() -> void:
 
 	_active_label = Label.new()
 	right.add_child(_active_label)
+
+	# taskblock-51: the performance readout's own switch. A checkbox rather than a button
+	# because it reports state as well as changing it — "is the readout up" is a question
+	# worth being able to answer by looking.
+	_perf_checkbox = CheckBox.new()
+	_perf_checkbox.text = "Perf readout"
+	_perf_checkbox.toggled.connect(func(pressed: bool) -> void: perf_panel_toggled.emit(pressed))
+	right.add_child(_perf_checkbox)
 
 	_param_container = VBoxContainer.new()
 	right.add_child(_param_container)
