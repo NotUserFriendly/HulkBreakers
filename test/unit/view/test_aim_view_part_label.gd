@@ -149,3 +149,53 @@ func test_the_part_labels_transform_is_coplanar_with_the_aim_window() -> void:
 	)
 	var offset: Vector3 = label_xform.origin - window_xform.origin
 	assert_almost_eq(offset.length(), AimView.PART_LABEL_DEPTH_OFFSET, 0.001)
+
+
+# --- taskblock-51 (BR26.02): per-element switches for bisecting the GPU cost ----------
+
+
+func after_each() -> void:
+	AimView.show_window = true
+	AimView.show_decal = true
+	AimView.show_targeting_line = true
+	AimView.show_pellet_circle = true
+	AimView.show_part_label = true
+
+
+## **The switches must actually reach the nodes**, or the supervisor bisects against a
+## control that does nothing and concludes the wrong element is innocent — which is worse
+## than not having the tool.
+func test_turning_an_aim_visual_off_hides_exactly_that_node() -> void:
+	AimView.show_decal = false
+
+	var injector := BoutInjector.new(CombatState.new(GridFixture.flat(5, 5), []))
+	assert_true(
+		DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"decal", "on": false}),
+		"the verb accepts a real element"
+	)
+	assert_false(AimView.show_decal, "and the switch is off")
+
+	DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"decal", "on": true})
+	assert_true(AimView.show_decal, "and back on")
+
+
+## An unknown element is refused rather than quietly doing nothing — a typo that reads as
+## "that element costs nothing" would send the hunt down a false trail.
+func test_an_unknown_aim_visual_is_refused() -> void:
+	var injector := BoutInjector.new(CombatState.new(GridFixture.flat(5, 5), []))
+
+	assert_false(
+		DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"nonsense", "on": false})
+	)
+
+
+## **Toggling a visual is not an injection.** `was_injected` marks a bout whose results
+## cannot be trusted; hiding a decal changes nothing about the simulation, and flagging it
+## would make every framerate experiment look like a tainted bout.
+func test_toggling_a_visual_never_marks_the_bout_injected() -> void:
+	var state := CombatState.new(GridFixture.flat(5, 5), [])
+	var injector := BoutInjector.new(state)
+
+	DebugVerbs._apply_set_aim_visual(injector, {}, {"element": &"window", "on": false})
+
+	assert_false(state.was_injected, "a display toggle does not dirty the bout")

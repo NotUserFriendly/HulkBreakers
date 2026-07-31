@@ -615,6 +615,23 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **Also in that log, unrelated and worth its own look: `Turn FPS (at turn start): 38.0`**, recovering
   to 153 two seconds later. That is `BR27.09` ("major hitch on new-turn or end-turn") caught as a
   number for the first time.
+- **Fourth pass — the session meter works, and it clears the code.** `min 6.8, avg 18.4 (210 frames in
+  11.4s)`, and **6.0 fps at the idle two-second mark with the mouse still**. That last number is the
+  important one: the drop is **not input-driven**, so the two fixes already made (memoised plane,
+  clone-free cache key) were real but were never going to be sufficient.
+- **An idle aim frame, driven through the real nodes on a 214-blocker board:**
+  `BattleScene._process` **347 usec**, `BoardView._process` **712 usec**, **zero state clones, zero
+  shot planes**. About 1 ms against a 166 667 usec frame at 6 fps. **The per-frame logic is not where
+  the time goes.**
+- **Which puts it on the GPU, where CC is blind.** taskblock-32 established this for the cutout shader
+  and taskblock-51 restates it: shader and renderer costs only get cracked by the supervisor running
+  the real thing. **Prime suspect: `AimView._decal`** — a Godot `Decal` projects onto every mesh inside
+  its box, and this board has 166 wall meshes plus 768 terrain cells. **A suspect, not a conclusion.**
+- **A bisection tool instead of a guess:** the `set_aim_visual` debug verb switches each aim element
+  independently (`window`, `decal`, `targeting_line`, `pellet_circle`, `part_label`). Enter aim, turn
+  one off, read the session dump on leaving. Whichever one restores the framerate is the answer, and it
+  takes three clicks rather than another round of CC theorising. Toggling is deliberately **not** an
+  injection — it changes what is drawn, not the simulation, so it never sets `was_injected`.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
