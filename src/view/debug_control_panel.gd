@@ -31,13 +31,15 @@ signal closed
 ## needing to know anything about view-refresh itself.
 signal applied(verb_id: StringName, args: Dictionary)
 
-## taskblock-51: **the performance readout is toggled from here and outlives this panel.**
+## taskblock-51: **a debug UI element was switched on or off** — `DebugUiElements` ids, one
+## signal for the whole table rather than one signal per element.
 ##
-## The supervisor asked for the readout to survive closing the debug panel — you open this
-## to switch it on, then get this out of the way and keep watching the numbers while you
-## play. So the two are tied only at the point of *offering* the toggle; the overlay owns
-## the panel's lifetime, not this.
-signal perf_panel_toggled(shown: bool)
+## The overlay owns every element's lifetime, not this panel. That is what lets the
+## performance readout **survive closing this panel**, which is what the supervisor asked
+## for: you open this to switch the readout on, then get this out of the way and keep
+## watching the numbers while you play. The two are tied only at the point of *offering* the
+## toggle.
+signal ui_element_toggled(element: StringName, shown: bool)
 
 ## Supervisor report: with no anchor at all the panel defaulted to the
 ## top-left corner and sat directly on top of the existing top-left HUD
@@ -51,6 +53,17 @@ const TOP_MARGIN := 16.0
 ## page. Flagged and tunable, same as `CombatLogPanel`'s own.
 const VERB_LIST_SCROLL_PAGE_FRACTION := 0.25
 
+## taskblock-51: **the one list entry that is not a `BoutInjector` verb.**
+##
+## It sits after every verb, so `_on_apply_pressed`'s existing `index >= _verbs.size()` guard
+## already declines it and Apply is additionally disabled while it is selected — switching a
+## readout on is not an injection and must not look like one.
+##
+## Giving it a row of its own is the supervisor's call and it is the right shape: a two-column
+## panel has a list and a pane, and a control that belongs to neither a verb nor the panel
+## chrome has nowhere honest to go. It belongs to a *category*, so the category gets an entry.
+const UI_ELEMENT_ENTRY := "UI Element Control"
+
 var bout_injector: BoutInjector
 var pool: Dictionary
 var input_owner: Object
@@ -59,8 +72,8 @@ var combat_state: CombatState
 var _verb_list: ItemList
 var _param_container: VBoxContainer
 var _active_label: Label
-var _perf_checkbox: CheckBox
 var _status_label: Label
+var _apply_button: Button
 var _verbs: Array[DebugVerbSpec] = []
 ## param name (StringName) -> a single Control, or (CELL only) an
 ## `Array[SpinBox]` of the two X/Y fields. An OBJECT param has no entry
@@ -71,6 +84,12 @@ var _param_controls: Dictionary = {}
 ## Persists across verb switches; several verbs can read the same target.
 var _active: Dictionary = {}
 var _picking: bool = false
+## `DebugUiElements` id -> bool. **Held here, not in the checkboxes**, because the right-hand
+## pane is torn down and rebuilt on every verb switch — state living in a widget would reset
+## itself every time the operator looked at something else.
+var _ui_element_shown: Dictionary = {}
+## id -> `CheckBox`, valid only while the UI-element pane is the one on screen.
+var _ui_element_boxes: Dictionary = {}
 
 
 ## BR30.05: "clicking within the debug menu itself can also select a world
@@ -216,26 +235,6 @@ func _build_ui() -> void:
 	close_button.pressed.connect(_on_close_pressed)
 	title_row.add_child(close_button)
 
-	# taskblock-51: the performance readout's own switch, and it belongs **here** rather than
-	# in the right-hand column.
-	#
-	# It was first put beside `_active_label`, inside the pane that shows the selected verb's
-	# controls. That pane is per-verb, so a panel-scope toggle sitting in it read as the
-	# heading of *every* verb — the supervisor saw "Performance Monitor" captioning `Make
-	# Current` and every other entry in the list. The toggle does not belong to a verb; it
-	# belongs to the panel, so it sits in the panel's own chrome above the split.
-	#
-	# A checkbox rather than a button because it reports state as well as changing it — "is
-	# the readout up" is worth being able to answer by looking.
-	var chrome := HBoxContainer.new()
-	root.add_child(chrome)
-	_perf_checkbox = CheckBox.new()
-	# Named for what it opens, not for what it is internally — "Perf readout" named the
-	# implementation and told a reader nothing about which readout or why they would want it.
-	_perf_checkbox.text = "Performance Monitor"
-	_perf_checkbox.toggled.connect(func(pressed: bool) -> void: perf_panel_toggled.emit(pressed))
-	chrome.add_child(_perf_checkbox)
-
 	var body := HBoxContainer.new()
 	root.add_child(body)
 
@@ -247,6 +246,8 @@ func _build_ui() -> void:
 	_verb_list.custom_minimum_size = Vector2(150, 240)
 	for verb: DebugVerbSpec in _verbs:
 		_verb_list.add_item(verb.label)
+	# Last, so every index below `_verbs.size()` still means exactly what it meant before.
+	_verb_list.add_item(UI_ELEMENT_ENTRY)
 	_verb_list.item_selected.connect(_select_verb)
 	body.add_child(_verb_list)
 
@@ -264,10 +265,10 @@ func _build_ui() -> void:
 	_param_container = VBoxContainer.new()
 	right.add_child(_param_container)
 
-	var apply_button := Button.new()
-	apply_button.text = "Apply"
-	apply_button.pressed.connect(_on_apply_pressed)
-	right.add_child(apply_button)
+	_apply_button = Button.new()
+	_apply_button.text = "Apply"
+	_apply_button.pressed.connect(_on_apply_pressed)
+	right.add_child(_apply_button)
 
 	_status_label = Label.new()
 	right.add_child(_status_label)
@@ -336,10 +337,19 @@ func _select_verb(index: int) -> void:
 		_param_container.remove_child(child)
 		child.queue_free()
 	_param_controls.clear()
+	_ui_element_boxes.clear()
 	_status_label.text = ""
-	if index < 0 or index >= _verbs.size():
+	if index < 0 or index > _verbs.size():
 		return
 	_verb_list.select(index)
+	if index == _verbs.size():
+		# **Apply is disabled rather than silently inert.** A button that does nothing when
+		# pressed is the failure this project keeps filing bugs about; a verb that cannot act
+		# on the current selection says so by being unpressable.
+		_apply_button.disabled = true
+		_build_ui_element_pane()
+		return
+	_apply_button.disabled = false
 	var verb: DebugVerbSpec = _verbs[index]
 	for p: Dictionary in verb.params:
 		_param_container.add_child(_build_param_row(p))
@@ -353,6 +363,42 @@ func _select_verb(index: int) -> void:
 		move_on_click.text = "Move On Next Click"
 		move_on_click.pressed.connect(_begin_move_on_next_click)
 		_param_container.add_child(move_on_click)
+
+
+## One checkbox per `DebugUiElements` row, in table order. **No element is named here** — a
+## second element is a row in that table and needs no edit to this file.
+func _build_ui_element_pane() -> void:
+	for element: Dictionary in DebugUiElements.all():
+		var box := CheckBox.new()
+		box.text = element.label
+		box.tooltip_text = element.hint
+		box.set_pressed_no_signal(bool(_ui_element_shown.get(element.id, element.shown)))
+		box.toggled.connect(_on_ui_element_box_toggled.bind(element.id))
+		_param_container.add_child(box)
+		_ui_element_boxes[element.id] = box
+
+
+func _on_ui_element_box_toggled(pressed: bool, id: StringName) -> void:
+	_ui_element_shown[id] = pressed
+	ui_element_toggled.emit(id, pressed)
+
+
+## Whether an element is currently switched on, whichever pane happens to be showing.
+func is_ui_element_shown(id: StringName) -> bool:
+	var element: Dictionary = DebugUiElements.find(id)
+	var fallback: bool = bool(element.shown) if not element.is_empty() else false
+	return bool(_ui_element_shown.get(id, fallback))
+
+
+## Switches an element from code, driving the same path a click drives.
+func set_ui_element_shown(id: StringName, shown: bool) -> void:
+	if is_ui_element_shown(id) == shown:
+		return
+	_ui_element_shown[id] = shown
+	var box: CheckBox = _ui_element_boxes.get(id)
+	if box != null and is_instance_valid(box):
+		box.set_pressed_no_signal(shown)
+	ui_element_toggled.emit(id, shown)
 
 
 func _build_param_row(p: Dictionary) -> Control:

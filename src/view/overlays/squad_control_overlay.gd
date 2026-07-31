@@ -274,7 +274,7 @@ func _build_ui() -> void:
 		perf_panel = PerfPanel.new()
 		perf_panel.visible = false
 		perf_panel.stats_ticked.connect(_on_perf_stats_ticked)
-		debug_panel.perf_panel_toggled.connect(_on_perf_panel_toggled)
+		debug_panel.ui_element_toggled.connect(_on_ui_element_toggled)
 		theme_root.add_child(perf_panel)
 
 	# tb31 Pass A: the shared Inject/New Battle/Watch cluster — one
@@ -900,9 +900,14 @@ func _on_replay_loaded(_map_seed: int) -> void:
 
 
 ## taskblock-51: the readout's own visibility, independent of the panel that offers it.
-func _on_perf_panel_toggled(shown: bool) -> void:
-	if perf_panel != null:
-		perf_panel.visible = shown
+## The overlay owns the nodes; the debug panel only names them. A `match` here rather than a
+## lookup table because each element is a different node with a different way of being shown,
+## and an unknown id is ignored rather than crashing a debug surface.
+func _on_ui_element_toggled(element: StringName, shown: bool) -> void:
+	match element:
+		DebugUiElements.PERF_PANEL:
+			if perf_panel != null:
+				perf_panel.visible = shown
 
 
 ## The panel emits; the overlay writes. A view reaching into a `CombatState` to log would

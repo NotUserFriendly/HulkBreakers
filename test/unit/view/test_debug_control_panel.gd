@@ -110,7 +110,8 @@ func test_verb_picker_is_a_real_scrolling_item_list() -> void:
 	var panel := _open_panel()
 
 	assert_true(panel._verb_list is ItemList)
-	assert_eq(panel._verb_list.item_count, DebugVerbs.all().size())
+	# Every verb, plus taskblock-51's one non-verb category at the end.
+	assert_eq(panel._verb_list.item_count, DebugVerbs.all().size() + 1)
 
 
 ## "whatever is selected in the list ... populates what's in the control
@@ -439,39 +440,122 @@ func test_a_bare_tile_click_still_reads_as_a_cell() -> void:
 	assert_true(panel._active_label.text.begins_with("Active: Cell"))
 
 
-## **The performance toggle is panel chrome, not a verb's caption.**
-##
-## It was first added beside the active-target label, inside the right-hand pane that shows
-## the selected verb's controls. That pane belongs to whichever verb is picked, so a
-## panel-scope toggle living in it captioned *every* entry in the list: the supervisor
-## selected `Make Current` and saw "Performance Monitor" heading it.
-##
-## Asserting the **parentage** is what catches this. The checkbox existed, was labelled
-## correctly and emitted correctly in the broken version — it was merely in the wrong column,
-## which no test of its behaviour can see.
-func test_the_performance_toggle_is_not_inside_the_verb_pane() -> void:
+# --- taskblock-51: the UI element category ------------------------------------------
+
+
+func _ui_entry_index(panel: DebugControlPanel) -> int:
+	return panel._verbs.size()
+
+
+## **The category has its own entry in the list**, after every verb. The supervisor's call,
+## and it is the shape the panel already had: a two-column layout is a list and a pane, and a
+## control belonging to neither a verb nor the panel chrome has nowhere honest to go. A first
+## attempt put the checkbox in the pane directly, where it captioned every verb in the list.
+func test_the_ui_element_category_is_a_list_entry() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	var index: int = _ui_entry_index(panel)
+
+	assert_eq(panel._verb_list.item_count, panel._verbs.size() + 1, "one entry past the verbs")
+	assert_eq(panel._verb_list.get_item_text(index), DebugControlPanel.UI_ELEMENT_ENTRY)
+
+
+## Selecting it fills the same pane every verb uses — one checkbox per table row, no verb
+## parameters, and nothing from the previously selected verb left behind.
+func test_selecting_it_shows_a_box_per_registered_element() -> void:
 	var panel: DebugControlPanel = _open_panel()
 
-	var pane: Node = panel._param_container.get_parent()
-	var walker: Node = panel._perf_checkbox
-	assert_not_null(walker, "the panel offers the toggle")
-	while walker != null:
-		assert_ne(walker, pane, "the toggle sits outside the per-verb control pane")
-		walker = walker.get_parent()
+	panel._select_verb(_ui_entry_index(panel))
 
-	# Both rows are children of the panel root, so the indices are comparable.
-	assert_true(
-		panel._perf_checkbox.get_parent().get_index() < pane.get_parent().get_index(),
-		"and above the verb split, in the panel's own chrome"
+	var boxes: Array[Node] = []
+	for child: Node in panel._param_container.get_children():
+		if child is CheckBox:
+			boxes.append(child)
+	assert_eq(boxes.size(), DebugUiElements.all().size(), "one box per registered element")
+	assert_true(panel._param_controls.is_empty(), "and no verb parameters are left standing")
+	assert_eq(
+		(boxes[0] as CheckBox).text,
+		DebugUiElements.find(DebugUiElements.PERF_PANEL).label,
+		"labelled from the table, not from this file"
 	)
 
 
-## Selecting a verb rebuilds the per-verb pane; the toggle must not be caught in the rebuild.
-func test_the_toggle_survives_switching_verbs() -> void:
+## **Ticking a box emits the element's id, not a per-element signal.** The overlay owns the
+## node and maps the id to it; a signal per element would put the panel back in the business
+## of knowing what a performance readout is.
+func test_ticking_a_box_emits_the_element_id() -> void:
 	var panel: DebugControlPanel = _open_panel()
-	panel._perf_checkbox.button_pressed = true
+	panel._select_verb(_ui_entry_index(panel))
+	var seen: Array = []
+	panel.ui_element_toggled.connect(
+		func(element: StringName, shown: bool) -> void: seen.append([element, shown])
+	)
+
+	var box: CheckBox = panel._ui_element_boxes[DebugUiElements.PERF_PANEL]
+	box.button_pressed = true
+
+	assert_eq(seen.size(), 1, "one emission")
+	assert_eq(seen[0][0], DebugUiElements.PERF_PANEL)
+	assert_true(seen[0][1], "switched on")
+	assert_true(panel.is_ui_element_shown(DebugUiElements.PERF_PANEL))
+
+
+## **The state lives in the panel, not in the checkbox.** The right-hand pane is torn down and
+## rebuilt on every verb switch, so a box holding its own state would silently forget every
+## time the operator looked at another verb — and the readout would still be on screen,
+## disagreeing with its own switch.
+func test_the_switch_survives_looking_at_another_verb() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	panel._select_verb(_ui_entry_index(panel))
+	panel._ui_element_boxes[DebugUiElements.PERF_PANEL].button_pressed = true
 
 	panel._select_verb(_verb_index(&"force_current_unit"))
+	panel._select_verb(_ui_entry_index(panel))
 
-	assert_true(is_instance_valid(panel._perf_checkbox), "the toggle is not rebuilt with the pane")
-	assert_true(panel._perf_checkbox.button_pressed, "and it keeps its state across verbs")
+	assert_true(
+		panel.is_ui_element_shown(DebugUiElements.PERF_PANEL), "the panel still knows it is on"
+	)
+	assert_true(
+		panel._ui_element_boxes[DebugUiElements.PERF_PANEL].button_pressed,
+		"and the rebuilt box shows it",
+	)
+
+
+## Rebuilding the box must not re-announce a state nothing changed — an overlay listening for
+## the toggle would re-show an element the operator had already dismissed.
+func test_rebuilding_the_pane_emits_nothing() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	panel._select_verb(_ui_entry_index(panel))
+	panel._ui_element_boxes[DebugUiElements.PERF_PANEL].button_pressed = true
+	var emissions: Array[int] = [0]
+	panel.ui_element_toggled.connect(func(_e: StringName, _s: bool) -> void: emissions[0] += 1)
+
+	panel._select_verb(_verb_index(&"force_current_unit"))
+	panel._select_verb(_ui_entry_index(panel))
+
+	assert_eq(emissions[0], 0, "restoring a box's state is not a change")
+
+
+## **Apply is disabled here, not silently inert.** Switching a readout on is not an injection;
+## a button that does nothing when pressed is the exact failure this project keeps filing.
+func test_apply_is_disabled_for_the_ui_category() -> void:
+	var panel: DebugControlPanel = _open_panel()
+
+	panel._select_verb(_ui_entry_index(panel))
+	assert_true(panel._apply_button.disabled, "nothing to apply")
+
+	panel._select_verb(_verb_index(&"force_current_unit"))
+	assert_false(panel._apply_button.disabled, "and it comes back for a real verb")
+
+
+## Pressing Apply on the category cannot reach a verb — the index is past the end of the
+## table. Asserted directly because the guard is an inequality that a later insertion could
+## quietly invalidate.
+func test_apply_on_the_category_applies_no_verb() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	var applied: Array[int] = [0]
+	panel.applied.connect(func(_id: StringName, _args: Dictionary) -> void: applied[0] += 1)
+
+	panel._select_verb(_ui_entry_index(panel))
+	panel._on_apply_pressed()
+
+	assert_eq(applied[0], 0, "no verb ran")

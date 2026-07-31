@@ -1646,6 +1646,21 @@ the mean overstates by 6×, not 4×. Both numbers are pinned in the test.
 `>= 2.0` window check never fired and six seconds reported two ticks instead of three. Fixed with an
 epsilon, and the remainder now carries rather than being discarded so the cadence cannot drift.
 
+**"UI Element Control" is a list entry, and the toggles live under it** (supervisor). The readout's
+switch does not escape the two-column layout — it belongs to a *category*, so the category gets a row in
+the verb list and its checkboxes fill the same right-hand pane every verb uses. `DebugUiElements` is the
+table behind it: **a new toggleable element is a row there, not UI code**, the same shape `DebugVerbs`
+already had one layer down. Ids are open `StringName`s; the table names elements and the overlays own
+the nodes, so the panel never learns what a performance readout is. One `ui_element_toggled(element,
+shown)` signal replaced `perf_panel_toggled` — a signal per element would have re-created the coupling.
+The entry sits **after** every verb, so `_on_apply_pressed`'s existing index guard already declines it,
+and Apply is additionally **disabled** while it is selected rather than pressable-and-inert. Switch
+state is held on the panel, not in the checkbox: the pane is rebuilt on every verb switch, so a box
+holding its own state would forget while the readout stayed on screen.
+
+**Superseded twice before landing — both attempts are recorded below because each was a different
+mistake.**
+
 **The toggle was in the wrong column, and captioned every verb.** It was first added beside the
 active-target label, inside the pane that shows the *selected verb's* controls — so a panel-scope
 checkbox read as the heading of every entry in the list, and the supervisor saw "Performance Monitor"

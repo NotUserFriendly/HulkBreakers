@@ -100,7 +100,7 @@ func test_the_readout_survives_the_debug_panel_closing() -> void:
 	var overlay: SquadControlOverlay = _overlay_with_debug()
 	assert_not_null(overlay.perf_panel, "the overlay owns a readout")
 
-	overlay.debug_panel.perf_panel_toggled.emit(true)
+	overlay.debug_panel.set_ui_element_shown(DebugUiElements.PERF_PANEL, true)
 	assert_true(overlay.perf_panel.visible, "the toggle shows it")
 
 	overlay.debug_panel.visible = false
