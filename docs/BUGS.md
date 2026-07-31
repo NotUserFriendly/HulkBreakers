@@ -784,72 +784,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
   `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
   returning.
-### BR27.07 — Pending — owner: `SUPERVISOR`
-**Active-turn highlight lands on the wrong unit; change to facing-marker-only**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
-- **2026-07-23 (supervisor check — looks right, BLOCKED on full confirmation).** The change reads as
-  correct on inspection, but it cannot be properly verified while **BR34.06** (every AI unit passing
-  every turn) is live — there aren't enough real turn transitions to watch. Re-check after BR34.06.
-- **Reported:** 2026-07-20 (tb27 review). Two parts: (a) **design change** — instead of recoloring the
-  active unit's facing wedge + team marker (tb27 D2), the supervisor wants *only the current unit to
-  show a facing marker at all* (the marker's presence indicates whose turn it is, not a color). (b)
-  **bug** — the current-unit highlight sometimes lands on the *next* or *prior* unit, not the active
-  one.
-- **Status:** open. Note the design change supersedes part of D2 (which shipped as a feature in
-  CHANGELOG) — the "recolor" approach is being replaced by "only the active unit has a facing marker."
-  The wrong-unit bug may be independent (an off-by-one in whichever index drives the highlight) and
-  should be checked even after the design change, in case the change is built on the buggy selector.
-- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here) — concrete ordering bug,
-  confirmed:** `SquadControlOverlay._on_turn_ended()` (`squad_control_overlay.gd:573-582`) calls
-  `refresh_unit_views()` — which flips the highlight to the new current unit — at line 574, BEFORE
-  `await resolution_player.play(events)` at line 577 animates the unit whose turn just ended. The
-  marker visually jumps to the next unit while the previous unit is still animating its own queued
-  action. **Compounding bug:** `SingleUnitOverlay._on_turn_ended()` (`single_unit_overlay.gd:40-42`)
-  calls `super._on_turn_ended(events)` WITHOUT `await` — since the parent implementation contains an
-  internal `await`, this lets `_auto_select_if_current()` run immediately, racing ahead of the
-  parent's own animation/AI-batch completion. **Candidate fix (not yet applied):** reorder so
-  `refresh_unit_views()`'s highlight flip runs after the animation await completes; add the missing
-  `await` in `SingleUnitOverlay`.
-- **2026-07-22 (tb32 Pass D) — both parts done:** (a) design change — `HitVolumeView.set_active_turn()`
-  no longer recolors anything (`ACTIVE_TURN_COLOR` retired); it toggles the facing wedge's own
-  `.visible` instead, so only the current unit ever shows a facing marker at all, exactly as
-  requested. (b) ordering bug — `BattleScene.refresh_unit_views()` gained an `apply_highlight: bool =
-  true` parameter; `SquadControlOverlay._on_turn_ended()` now passes `false` and calls the (newly
-  public) `battle.apply_active_turn_highlight()` itself AFTER `await resolution_player.play(events)`
-  completes, so the marker no longer jumps to the next unit mid-animation. `SingleUnitOverlay._on_
-  turn_ended()` now `await`s its `super` call, closing the compounding race. Every other existing
-  caller (`advance_ai_turns`, `SpectatorOverlay`) keeps the old default (`apply_highlight` true, no
-  deferral) unchanged.
-- **2026-07-22 (supervisor tweak):** "facing marker" means the WHOLE disk/facing-pip assembly (the
-  ground marker AND the wedge together), not the wedge alone — the first pass only toggled the
-  wedge's own visibility, leaving every unit's ground disk always showing regardless of whose turn
-  it is. `set_active_turn()` now toggles both `_team_marker.visible` and `_facing_wedge.visible`
-  together.
-- **2026-07-28 (supervisor check — REOPENED from `Pending`).** Now checkable, since BR34.06 is
-  `Resolved`. Observed: **unit 1 holds the highlight, the highlight jumps to unit 2, and only then does
-  unit 1 move.** Reads as if a turn is being passed before its animation finishes.
-- **That symptom is consistent with the highlight reading live state rather than playback position.**
-  `BattleScene.apply_active_turn_highlight` sets it from `combat_state.current_unit()`, and RESOLUTION
-  advances `current_unit` when the *action* resolves — while `ResolutionPlayer` is still drawing the
-  previous unit's move. Two clocks, one signal. `battle_scene.gd:472-478` already names the hazard in
-  prose: the batch badge is unconditional in `refresh_unit_views` **unlike the active-turn highlight,
-  which "a caller might want to defer until an animation finishes."** The defer appears not to be
-  happening on every path — there are three call sites.
-- **Check whether this is the same defect the entry originally described.** The original was the
-  highlight landing on the *wrong* unit; this is the right unit at the *wrong time*. If the selector is
-  now correct and only the timing is off, say so and rewrite the entry rather than carrying both
-  descriptions forward.
-- **The general fix is `PLAN.md`'s *Player view and sim view — render a snapshot*.** A view that draws
-  the last resolved state cannot show a highlight for a turn whose animation has not played. The narrow
-  fix is deferring the highlight until playback drains; the narrow fix is worth taking now, but it is an
-  instance of the class that item dissolves.
-- **taskblock-51 duplicate check — suspected the same defect as `BR32.09`, NOT merged.** The supervisor
-  answered both with one observation: *"Indicator moves to next unit before animation completes when AI
-  is controlling. Indicator moves with unit correctly when player is controlling."* That is one
-  behaviour, and it is the *timing* description in `BR32.09` rather than the *wrong unit* this entry's
-  title claims — so this heading may also be stale.
-- **Both are `SUPERVISOR`-owned, so CC has flagged rather than combined them.** Merging is the owner's
-  call; the useful finding is that the AI-driven path does not defer and the player-driven one does.
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
 - **Source:** `SUPERVISOR`
@@ -1527,16 +1461,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   **What was not:** a shell downed *between* camera and a living unit, which is the geometry the
   cutout actually keys on.
 
-### BR32.09 — Pending — owner: `SUPERVISOR`
-**Spectator: current-unit indicator jumps to the next unit before the active turn resolves**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-22 (tb32 review, direct note). In spectator, the current-unit indicator
-  advances to the next unit before the active unit has finished resolving its entire turn.
-- **Likely the spectator-side sibling of BR27.07's ordering bug.** tb32 Pass D fixed the *player*-view
-  early-flip by deferring `apply_active_turn_highlight()` until after the resolution animation
-  (`SquadControlOverlay._on_turn_ended()`), but the spectator path wasn't touched — its indicator
-  still flips ahead of resolution. Apply the same defer-until-animation-finishes fix on the spectator
-  overlay's turn-end handler.
 ### BR33.01 — Suspected — owner: `SUPERVISOR`
 **Aim-view scroll cycles walls; layer labels read as part names**
 - **Source:** `SUPERVISOR`

@@ -1,7 +1,7 @@
 # Taskblock 51 Report — The bug hunt, and one bug that was four
 
-**Passes A and B partially landed; the framerate deep-dive took the block, and the addendum's perf suite
-followed it.** Suite green — 2526 tests, ~360 s. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
+**Passes A and B partially landed; the framerate deep-dive took the block, then the addendum's perf
+suite, then both addendum passes.** Suite green — **2567 tests, ~316 s**. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
 
 Four supervisor hunting sessions. **Ledger 31 → 40 open**, which is the honest shape of a hunt: five
 entries closed, fourteen filed, several re-diagnosed.
@@ -127,6 +127,46 @@ same right-hand pane every verb uses, and `DebugUiElements` is the table behind 
 element is a row, not UI code, the same shape `DebugVerbs` already had. Apply is **disabled** while the
 category is selected rather than pressable-and-inert.
 
+## The addendum's two passes
+
+**Pass K — selection only understood units.** A missing type, not a broken rule: `SelectionController`
+held one slot shaped `Unit`, while `PartPicker.hit` had always scanned blockers and field items. The
+picker saw barrels; selection had nowhere to put them. `SelectionTarget` (logic, headless) holds
+`UNIT`/`PART`/`CELL` plus an empty target that answers questions instead of being `null`, and wraps the
+hit dict `board_clicked` already emits rather than inventing a second vocabulary. `selected_unit`
+survives as a **derived property** — eighty-one readers still mean it, and a second stored field would
+drift. Closed `BR51.10` and the live half of `BR51.02`; `BR48.01` came out of the same cluster.
+
+**Pass L — death was not a lifecycle event anything listened for.** `SelectionController` never
+referenced `alive`, so `selected_unit` outlived the unit it pointed at. It invalidates on **read** now,
+not on a notification from `kill_unit`: that would have put a TACTICS concern inside a RESOLUTION
+mutation and still missed every other route by which a unit stops being valid. Closed `BR51.09`
+(mine), `BR27.07` and `BR32.09`.
+
+**`BR27.07` was the same bug fixed on one call site out of two.** tb32 Pass D deferred the active-turn
+flip until after playback in `SquadControlOverlay` and called it "a real confirmed bug" in its own
+comment — and changed only that caller. `SpectatorOverlay._advance()` kept applying the highlight before
+`play()` drew the previous unit's move. **The supervisor's controlled comparison is what found it**:
+correct under player control, wrong under AI. A human turn ends after its own animation, so the player
+path structurally cannot expose the gap.
+
+## `BR48.01` took three diagnoses, and the dump settled it
+
+Two confident readings of the code were wrong — an empty modal on bare tiles, then the preview's
+lighting nodes not being released on close. **Dumping the battle `World3D` answered it in one run:** at
+rest it had **four** lighting contributors, the board's environment and light plus `InspectPanel`'s,
+because `SubViewport.own_world_3d` defaults to false. After one inspect cycle it had two.
+
+The board had been accidentally double-lit its whole life. The first subject taking the fallback path —
+cover, a loose item, a bare tile — set `own_world_3d = true`, removed both, and nothing put them back.
+**The supervisor's *"starting a new bout does fix it"* is what proved it**; neither earlier theory
+predicted that, and this one requires it. The lesson is the block's own: two readings of the source lost
+to one dump, and the supervisor's incidental detail outweighed both.
+
+Brightness was then restored as a **measurement** — `BOARD_LIGHT_ENERGY = 2.0`, because two identical
+directional lights were additive. Ambient was deliberately not doubled: the two `WorldEnvironment` nodes
+were not additive, so it never changed.
+
 ## Tests that failed, then were corrected
 
 1. **I closed `BR51.02` on a test I wrote against a dict I invented.** `set_part_hp` was fixed for a
@@ -149,6 +189,21 @@ category is selected rather than pressable-and-inert.
    `test_command_log.gd` requires — the log has to reconstruct the call, and I had removed an argument
    from it while adding one.
 
+## Narrower than its name — three times in one block
+
+Three green assertions sat beside live defects, each testing something narrower than its name claimed:
+
+1. `test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing` protects the kind literally
+   called `diagnostic`, not diagnostics generally — so `fps_dump` folding into `wall_cutout` (`BR51.13`)
+   never registered.
+2. `test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel` only ever places a crate.
+   The empty case its name covers was never run.
+3. A test I wrote this block asserting the perf readout was "wholly on screen" passed on a panel
+   spanning the entire display, because left-edge and right-edge checks are both satisfied by one.
+
+This is the failure taskblock-49's audit exists to find, arriving three times from three directions. A
+name is not a specification, and the gap between them is where defects live.
+
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
 - **`BR26.02`** — the aim framerate. Per-motion cost 113 504 → 8 878 usec, confirmed live by the
@@ -166,12 +221,12 @@ category is selected rather than pressable-and-inert.
   performance monitor above is the answer to this and it is built**; every framerate entry still open
   (`BR51.14`, `BR51.15`, `BR27.09`) should be re-measured through it rather than through a `fps_dump`.
 
-- **`BR51.13` contradicts a passing test.** `test_log_fold.gd` asserts a diagnostic is never folded into
+- **RESOLVED. `BR51.13` contradicted a passing test**, and the assertion was the narrower thing. `test_log_fold.gd` asserts a diagnostic is never folded into
   plumbing, and `fps_dump` is being folded into `wall_cutout` runs in every log this block. Read the
   test before the code: a green assertion beside a live defect means the assertion is narrower than its
   name.
 
-- **`BR51.14` is very likely `BR26.02` on the non-aim path** — hovering tiles with a unit selected drops
+- **`BR51.14` is very likely `BR26.02` on the non-aim path** — and now has an instrument. — hovering tiles with a unit selected drops
   160 to ~20, motion only. The two fixes that worked should transfer, but it wants its own measurement
   first rather than an assumed diagnosis.
 
