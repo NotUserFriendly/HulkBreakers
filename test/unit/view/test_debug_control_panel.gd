@@ -559,3 +559,34 @@ func test_apply_on_the_category_applies_no_verb() -> void:
 	panel._on_apply_pressed()
 
 	assert_eq(applied[0], 0, "no verb ran")
+
+
+## **A verb given a target it cannot use reports a refusal, and names it.** Pass K's rule:
+## declining must be explicit and visible, because half the symptoms it was written for were
+## things silently doing nothing. Asserted rather than assumed — the "refused" path already
+## existed, but nothing proved it survived widening what a target can be.
+func test_a_verb_refusing_an_unsupported_target_says_what_it_refused() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	panel._select_verb(_verb_index(&"set_part_hp"))
+	# A bare tile with nothing standing on it — a legal target shape the verb cannot act on.
+	panel._active = SelectionTarget.for_cell(Vector2i(4, 4)).to_hit()
+
+	panel._on_apply_pressed()
+
+	gut.p("status: %s" % panel._status_label.text)
+	assert_true(panel._status_label.text.contains("refused"), "it declined out loud")
+	assert_true(panel._status_label.text.contains("cell (4, 4)"), "and named the target")
+
+
+## A verb that does not act on the active item must not name it — that would report the wrong
+## cause for its own failure.
+func test_a_non_object_verb_does_not_blame_the_active_target() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	panel._active = SelectionTarget.for_cell(Vector2i(4, 4)).to_hit()
+
+	panel._select_verb(_verb_index(&"force_current_unit"))
+	var suffix: String = panel._refused_target_suffix(
+		panel._verbs[_verb_index(&"force_current_unit")]
+	)
+
+	assert_eq(suffix, "", "it never touched the active item")
