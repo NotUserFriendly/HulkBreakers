@@ -129,6 +129,18 @@ static func all() -> Array[DebugVerbSpec]:
 			[DebugVerbSpec.param(&"rng_seed", P.INT), DebugVerbSpec.param(&"seeds", P.INT)],
 			Callable(DebugVerbs, &"_apply_sample_completion")
 		),
+		(
+			DebugVerbSpec
+			. new(
+				&"set_aim_visual",
+				"Aim Visual On/Off",
+				[
+					DebugVerbSpec.param(&"element", P.STRING_NAME),
+					DebugVerbSpec.param(&"on", P.BOOL),
+				],
+				Callable(DebugVerbs, &"_apply_set_aim_visual")
+			)
+		),
 		DebugVerbSpec.new(
 			&"force_current_unit",
 			"Make Current",
@@ -322,6 +334,56 @@ static func _apply_attach_part(inj: BoutInjector, pool: Dictionary, a: Dictionar
 
 static func _apply_hand_weapon(inj: BoutInjector, pool: Dictionary, a: Dictionary) -> bool:
 	return inj.hand_weapon(a.unit, a.weapon_id, a.socket_id, pool)
+
+
+## taskblock-51 (`BR26.02`): turn one aim visual off and see what the framerate does.
+##
+## CC measured the aim view's per-frame *logic* at ~1 ms with no clones and no plane
+## builds, against a reported 6 fps — so the cost is on the GPU, where CC is blind. This
+## exists so the supervisor can bisect it in three clicks instead of CC guessing which
+## draw is expensive.
+##
+## Element names are the `AimView` switches: `window`, `decal`, `targeting_line`,
+## `pellet_circle`, `part_label`. An unknown name is refused by name rather than silently
+## doing nothing, so a typo does not read as "that element is free".
+static func _apply_set_aim_visual(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	var element: StringName = StringName(String(a.element))
+	var on: bool = bool(a.on)
+	match element:
+		&"window":
+			AimView.show_window = on
+		&"decal":
+			AimView.show_decal = on
+		&"targeting_line":
+			AimView.show_targeting_line = on
+		&"pellet_circle":
+			AimView.show_pellet_circle = on
+		&"part_label":
+			AimView.show_part_label = on
+		_:
+			_note_aim_visual(inj, "aim visual: unknown element %s" % element, element, on)
+			return false
+	_note_aim_visual(inj, "aim visual %s -> %s" % [element, "on" if on else "off"], element, on)
+	return true
+
+
+## **Logged, but never as an injection.** This changes what is drawn and nothing about the
+## simulation, so it must not set `was_injected` — that flag exists to mark a bout whose
+## *results* cannot be trusted, and a hidden decal does not make a bout dirty. Same
+## reasoning `_apply_sample_completion` already follows.
+static func _note_aim_visual(
+	inj: BoutInjector, text: String, element: StringName, on: bool
+) -> void:
+	inj.state.combat_log.emit(
+		LogEvent.new(
+			inj.state.round_number,
+			Enums.Phase.RESOLUTION,
+			-1,
+			&"aim_visual",
+			{"element": element, "on": on},
+			text
+		)
+	)
 
 
 static func _apply_set_part_hp(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

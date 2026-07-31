@@ -72,6 +72,27 @@ const PART_LABEL_DEPTH_OFFSET := 0.04
 const PART_LABEL_PIXEL_SIZE := 0.01
 const PART_LABEL_COLOR := Color(0.95, 0.95, 0.9)
 
+## taskblock-51 (`BR26.02`): **per-element switches, so the framerate cost can be bisected
+## in the running game.**
+##
+## Headless measurement cleared the logic: an idle aim frame costs ~1 ms across
+## `BattleScene._process` and `BoardView._process`, with zero state clones and zero shot
+## planes — yet the supervisor sees **6 fps at idle** with the mouse still. That puts the
+## cost on the GPU, which CC cannot measure at all (taskblock-32 established this for the
+## cutout shader) and which only the supervisor can bisect by running the real thing.
+##
+## `_decal` is the prime suspect: a Godot `Decal` projects onto every mesh inside its box,
+## and this board has 166 wall meshes plus 768 terrain cells. **Suspect, not conclusion** —
+## that is exactly what these switches exist to settle.
+##
+## Flipped at runtime through the `set_aim_visual` debug verb. Default all-on, so the game
+## behaves normally unless someone is deliberately hunting.
+static var show_window: bool = true
+static var show_decal: bool = true
+static var show_targeting_line: bool = true
+static var show_pellet_circle: bool = true
+static var show_part_label: bool = true
+
 var tactics: TacticsController
 var readout: RichTextLabel
 ## tb34 Pass C: for building a hovered part's tooltip content
@@ -317,7 +338,7 @@ func _draw_window(
 	quad.material = WorldPalette.translucent_textured_material(_ring_texture(rings, bound_radius))
 	_window.mesh = quad
 	_window.transform = Transform3D(_window_basis(dir), world_point)
-	_window.visible = true
+	_window.visible = show_window
 
 
 ## docs/09 taskblock06 Pass H / taskblock07 Pass D: "the shadow" — a Decal
@@ -338,7 +359,7 @@ func _draw_decal(
 	_decal.texture_albedo = _ring_texture(rings, bound_radius)
 	_decal.size = Vector3(outer * 2.0, DECAL_PROJECTION_DEPTH, outer * 2.0)
 	_decal.transform = Transform3D(_decal_basis(dir), world_point)
-	_decal.visible = true
+	_decal.visible = show_decal
 
 
 ## tb34 Pass B: "grow the central aiming dot into a circle sized to the
@@ -357,7 +378,7 @@ func _draw_pellet_circle(world_point: Vector3, dir: Vector3, radius: float) -> v
 	_pellet_circle.mesh = quad
 	var nudged_point: Vector3 = world_point - dir.normalized() * PELLET_CIRCLE_DEPTH_OFFSET
 	_pellet_circle.transform = Transform3D(_window_basis(dir), nudged_point)
-	_pellet_circle.visible = true
+	_pellet_circle.visible = show_pellet_circle
 
 
 func _pellet_circle_texture() -> ImageTexture:
@@ -380,7 +401,7 @@ func _draw_part_label(world_point: Vector3, dir: Vector3, part: Part) -> void:
 	_part_label.text = TooltipView.to_plain_text(TooltipBuilder.for_part(part, material_table))
 	var nudged_point: Vector3 = world_point - dir.normalized() * PART_LABEL_DEPTH_OFFSET
 	_part_label.transform = Transform3D(_window_basis(dir), nudged_point)
-	_part_label.visible = true
+	_part_label.visible = show_part_label
 
 
 func _ring_texture(rings: Array[Ring], bound_radius: float = 0.0) -> ImageTexture:
@@ -477,4 +498,4 @@ func _draw_targeting_line(from: Vector3, to: Vector3) -> void:
 	box.material = WorldPalette.translucent_material(TARGETING_LINE_COLOR)
 	_targeting_line.mesh = box
 	_targeting_line.transform = TracerGeometry.segment_transform(from, to)
-	_targeting_line.visible = true
+	_targeting_line.visible = show_targeting_line
