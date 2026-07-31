@@ -600,6 +600,21 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **`CombatState.dups` is now a profiled work counter.** A 26 ms call reached several times per mouse
   motion was invisible to every budget because nothing counted it; the full suite reports **7 155**
   clones. That number is worth its own look — see the note added to `BR35.01`'s cluster.
+- **Third pass — the instrument was answering the wrong question, and that is why the reports keep
+  disagreeing.** The supervisor reported "back to consistently 8 fps" while the log for that same
+  session recorded **`Aim FPS (2000ms after entering aim): 161.0`**. Both are true: the dump takes a
+  single `Engine.get_frames_per_second()` reading two seconds after entering aim, which is *while the
+  mouse is still*. The drop happens while it moves, and nothing was recording then.
+- **A single sample cannot answer "is aiming smooth".** `_dump_aim_session_fps` now samples every frame
+  for the whole aim session and reports **min, average and frame count on leaving aim** — the minimum
+  being the number that matches the felt experience. The 2 s snapshot is kept, because "161 idle" is
+  itself informative: it says the per-frame baseline is fine and the cost is on input.
+- **Still `Pending`, and the next log will be the first one that can actually settle this.** The two
+  fixes so far (memoised plane, clone-free cache key) are real and measured; whether they are
+  *sufficient* is exactly what the old instrument could not tell us and the new one can.
+- **Also in that log, unrelated and worth its own look: `Turn FPS (at turn start): 38.0`**, recovering
+  to 153 two seconds later. That is `BR27.09` ("major hitch on new-turn or end-turn") caught as a
+  number for the first time.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
@@ -1102,6 +1117,9 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
     a supervisor observation, not something CC can assert — which is why this stays `Active`.
   - Numbers are `editor_debug`. `tools/bench_release.sh` takes the release figure, which is the one
     that describes the game.
+- **taskblock-51 — measured for the first time.** A live session recorded
+  `fps_dump: Turn FPS (at turn start): 38.0`, recovering to **153.0** two seconds later. So the hitch
+  is real, is roughly a 4x drop, and lasts on the order of a second — no longer a feeling.
 
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**

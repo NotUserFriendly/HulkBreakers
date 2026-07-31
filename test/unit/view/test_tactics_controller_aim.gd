@@ -694,3 +694,51 @@ func test_a_different_queue_of_the_same_length_is_not_mistaken_for_the_old_one()
 	queue.revision += 1
 
 	assert_ne(queue.revision, first, "a change is a change, whatever the length")
+
+
+## **The instrument was answering the wrong question.** A single
+## `Engine.get_frames_per_second()` read 2 s after entering aim reported **161 fps** for a
+## session the supervisor experienced as 8, because the drop happens while the mouse moves
+## and the sample was taken while it was still. The session minimum is what "is aiming
+## smooth" actually asks.
+func test_the_aim_fps_dump_reports_the_worst_frame_not_one_sample() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var sink := MemorySink.new()
+	controller.selection.state.combat_log.add_sink(sink)
+
+	# Three good frames and one bad one — a mean would hide the bad one, a single sample
+	# would very likely miss it.
+	controller._process(1.0 / 160.0)
+	controller._process(1.0 / 160.0)
+	controller._process(1.0 / 8.0)
+	controller._process(1.0 / 160.0)
+	controller.cancel_aim()
+
+	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
+	assert_eq(dumps.size(), 1, "leaving aim reports the session")
+	var data: Dictionary = dumps[0].data
+	assert_almost_eq(float(data["fps_min"]), 8.0, 0.5, "the worst frame is reported")
+	assert_eq(int(data["frames"]), 4)
+	assert_true(
+		float(data["fps_avg"]) > float(data["fps_min"]),
+		"and the average is reported beside it, not instead of it"
+	)
+
+
+## Entering aim again must not inherit the last session's worst frame.
+func test_each_aim_session_measures_only_itself() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var sink := MemorySink.new()
+	controller.selection.state.combat_log.add_sink(sink)
+	controller._process(1.0 / 4.0)
+	controller.cancel_aim()
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(5, 5))
+	controller._process(1.0 / 120.0)
+	controller.cancel_aim()
+
+	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
+	assert_eq(dumps.size(), 2, "one dump per session")
+	assert_almost_eq(float(dumps[1].data["fps_min"]), 120.0, 1.0, "the second session is its own")
