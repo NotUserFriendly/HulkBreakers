@@ -204,3 +204,57 @@ func test_what_one_mouse_motion_while_aiming_costs() -> void:
 		)
 	)
 	assert_gt(reticle_usec + hover_usec, 0.0, "the probe measured something")
+
+
+## **`BR51.14`: what one mouse motion costs while merely hovering, not aiming.**
+##
+## The supervisor reports 160 fps falling to ~20 while moving the mouse over tiles with a unit
+## selected, and nothing at all while holding still. That is the same signature `BR26.02` had
+## on the aim path, but the entry says to measure rather than assume — so this times the
+## non-aim handler on the same fixture the aim probe uses, and counts clones and shot-plane
+## builds per function so the answer is a cause and not a theory.
+func test_what_one_mouse_motion_while_only_hovering_costs() -> void:
+	var grid: Grid = MapCorpus.copy(11, WIDTH, ROWS)
+	var units: Array[Unit] = []
+	for i in range(2):
+		units.append(_armed(Vector2i(2 + i * 6, 4), i))
+	var state := CombatState.new(grid, units)
+	state.assign_rest_to_ai([0] as Array[int])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.objectives = []
+	mission.extraction_cells = [Vector2i(0, 0)]
+
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.load_battle(state, mission)
+	battle.set_overlay(SquadControlOverlay.new())
+	await get_tree().process_frame
+	var tactics: TacticsController = (battle.overlay as SquadControlOverlay).tactics
+	tactics.click_cell(units[0].cell)
+	if tactics.selection.selected_unit == null:
+		gut.p("could not select on this fixture — nothing measured")
+		assert_true(true)
+		return
+	await get_tree().process_frame
+
+	var clones_before: int = CombatState.dups
+	var planes_before: int = ShotPlane.builds
+	var start: int = Time.get_ticks_usec()
+	# Distinct positions, because a hover that lands on the same cell twice takes the cheap
+	# early-out and would measure the guard rather than the work.
+	for i in range(FRAMES):
+		tactics.update_hover(Vector2(300.0 + float(i % 40) * 8.0, 200.0 + float(i % 27) * 6.0))
+	var hover_usec: float = float(Time.get_ticks_usec() - start) / float(FRAMES)
+	var clones: int = CombatState.dups - clones_before
+	var planes: int = ShotPlane.builds - planes_before
+
+	gut.p("--- BR51.14: one mouse motion while hovering, %d blockers ---" % grid.blockers.size())
+	gut.p(
+		(
+			"  update_hover()  %8.0f usec  (%d clones, %d shot planes over %d calls)"
+			% [hover_usec, clones, planes, FRAMES]
+		)
+	)
+	gut.p("  160 fps is 6250 usec/frame; the supervisor's 20 fps is 50000")
+	assert_true(true, "a probe, not a threshold — the number is the deliverable")

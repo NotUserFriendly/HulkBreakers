@@ -87,6 +87,15 @@ func show_data(data: TooltipData, at_position: Vector2) -> void:
 	_pending_elapsed = 0.0
 
 
+## `BR51.14`: **move without rebuilding.** `show_data` repositions too, but only after its
+## caller has built a `TooltipData` — and building one for a tile calls
+## `SelectionController.previewed_unit()`, which clones the whole `CombatState`. Following the
+## cursor across one tile does not change a word of what the tooltip says, so a caller that
+## only needs it to keep up with the mouse comes here instead.
+func move_to(at_position: Vector2) -> void:
+	_reposition(at_position)
+
+
 func hide_tooltip() -> void:
 	visible = false
 	_has_pending = false

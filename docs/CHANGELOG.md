@@ -1,5 +1,36 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — `BR51.14`: hovering tiles cost a `CombatState` clone per mouse motion
+
+**Measured before it was touched**, per the entry's own instruction not to assume it was `BR26.02`
+again. On a 216-blocker board, one motion while merely hovering with a unit selected:
+
+| | usec/motion | clones per 30 calls |
+|---|---|---|
+| before | **42 527** (23 fps) | 48 |
+| after | **18 454** (54 fps) | 19 |
+
+The supervisor reported 160 fps falling to ~20, which the first number matches almost exactly.
+
+**The cause was not the per-event rate, it was a clone.** `TooltipController.refresh()` was connected
+to **both** `hover_changed` *and* `mouse_moved` — and `mouse_moved` fires unconditionally on every
+motion, while `refresh()` calls `SelectionController.previewed_unit()`, which is a `CombatState.dup()`.
+Following the cursor across one tile does not change a word of what the tooltip says, so `mouse_moved`
+now only **repositions** (`TooltipView.move_to`, which already existed privately) and rebuilds only when
+the hovered target changes or the queue's revision does — the latter because `TileInspection` runs from
+the *previewed* unit, so a queued move changes what a tile reads as without the hovered cell moving.
+
+**And the hover is coalesced to one update per drawn frame**, which the reticle got in `BR26.02` and
+this path did not. A 500-1000 Hz mouse against a 60-160 fps game ran it hundreds of times per frame.
+Safe for the same stated reason: it is an absolute raycast through the literal cursor, not an
+accumulated delta. The companion test asserts an idle frame still costs nothing, so the per-event cost
+was removed rather than moved.
+
+**The remaining 19 clones are real rebuilds** — one per genuinely new hovered tile. Memoising
+`previewed_unit()` is where the next win is, and `BR26.02` recorded two attempts at it that were
+reverted for concrete reasons (callers mutate the previewed unit; state changes within a frame), so it
+is left alone rather than retried blind.
+
 ### taskblock-51 Pass L — death mid-turn, and an indicator fixed on one call site out of two
 
 **`BR51.09`: the selection invalidates on read, not on an event.** `SelectionController` never

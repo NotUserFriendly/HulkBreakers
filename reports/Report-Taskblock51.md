@@ -50,7 +50,11 @@ The supervisor's rule is that design changes live in the report and their notes 
   blocker itself, and a bare `Unit` still works unchanged. The entry has been restated to cover only
   the genuine defect underneath it — that cover cannot be made the panel's active target at all — which
   Pass K subsumes.
-- **`BR51.10` and `BR51.06` are real defects with design-change remedies.** Inspect being live when
+- **`BR51.06` was withdrawn from the ledger by the supervisor as a design change**, not a defect: the
+  debug panel's `pick` button also setting the active target is a behaviour to decide on, not a fault to
+  repair, and *"if they do the same thing, pick should likely be removed"* is a design call. It lives
+  here and in the supervisor's notes until review. **Not acted on.**
+- **`BR51.10` was a real defect with a design-change remedy.** Inspect being live when
   nothing is selected is an affordance that lies whichever way it is fixed, so it stays a bug; but
   *"disable it"* is one choice among several and is the supervisor's. Likewise `BR51.06`'s second
   option — deleting `pick` outright because it duplicates active-target selection — is a design call,

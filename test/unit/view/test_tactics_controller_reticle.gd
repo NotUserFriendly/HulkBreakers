@@ -332,3 +332,52 @@ func test_a_frame_with_no_motion_applies_nothing() -> void:
 	controller._process(1.0 / 60.0)
 
 	assert_eq(ShotPlane.builds, planes_before, "idle frames while aiming cost nothing")
+
+
+## **`BR51.14`: the same coalescing on the non-aim hover path.**
+##
+## The reticle got this in `BR26.02` and the board hover did not, so a 500-1000 Hz mouse ran
+## `update_hover` — and through it a `CombatState.dup()` per motion — hundreds of times per
+## drawn frame. Measured at **42 527 usec per motion, 48 clones over 30 calls** on a
+## 216-blocker board, which is 23 fps against the supervisor's reported ~20.
+func test_many_hover_motions_in_one_frame_apply_once_at_the_newest_position() -> void:
+	var controller: TacticsController = _aiming_controller()
+	# Leave aim mode: this is the *hover* path, which is only reached when not aiming.
+	controller.cancel_aim()
+	var hovers: Array[int] = [0]
+	controller.mouse_moved.connect(func() -> void: hovers[0] += 1)
+
+	for i in range(10):
+		var motion := InputEventMouseMotion.new()
+		motion.position = Vector2(400.0 + float(i) * 10.0, 300.0)
+		controller._unhandled_input(motion)
+
+	assert_eq(hovers[0], 0, "no hover work happens during the input burst itself")
+
+	controller._process(1.0 / 60.0)
+
+	assert_eq(hovers[0], 1, "exactly one hover update for the whole burst")
+	assert_eq(
+		controller._pending_hover_screen,
+		Vector2(490.0, 300.0),
+		"and it used the NEWEST position, not the first"
+	)
+
+
+## **The coalescing must not become a per-frame cost of its own.** A frame with no motion has
+## nothing pending and must not hover at all — otherwise this has moved the work rather than
+## removed it, which is the trap the reticle's own companion test was written for.
+func test_a_frame_with_no_hover_motion_does_nothing() -> void:
+	var controller: TacticsController = _aiming_controller()
+	controller.cancel_aim()
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(400.0, 300.0)
+	controller._unhandled_input(motion)
+	controller._process(1.0 / 60.0)
+
+	var hovers: Array[int] = [0]
+	controller.mouse_moved.connect(func() -> void: hovers[0] += 1)
+	controller._process(1.0 / 60.0)
+	controller._process(1.0 / 60.0)
+
+	assert_eq(hovers[0], 0, "idle frames cost nothing")
