@@ -1,5 +1,34 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 Pass C — `BR35.04`: the decorative deflect projection is deleted
+
+**The cluster's suspected shared root, located.** `ShotResolution.log_impact_result` stamped
+`deflect_end_*` on **every** DEFLECT: the reflection direction pushed out to `max_range`, with its own
+comment stating the intent — *"so the reflected direction is always drawable regardless of whether a
+real ricochet hop follows it"*. `ResolutionPlayer._play_impact` then drew that as a second, blue
+segment. A line to an arbitrary distance, corresponding to nothing that resolved, and on screen
+indistinguishable from a real hit. It invented the wall impacts the supervisor spent a review session
+investigating.
+
+**Removed, not reconciled** — the supervisor's explicit call. A ricochet that finds a target logs its
+own `impact` with a real origin and hit point and draws through the ordinary path; one that finds
+nothing now draws nothing, which is the truthful answer. `ImpactResult.reflected_dir`/
+`reflected_vertical` are untouched; the resolver needs them to recurse.
+
+**Four existing tests asserted the defect** and had to be rewritten, not merely updated: "a deflect
+draws a second tracer", "N deflects draw 2N segments", "the second segment is blue", and the
+logic-side "a DEFLECT carries a deflect endpoint". None was wrong about what the code did; all four
+were wrong about what it should do, and together they held the defect in place. A fifth was added: a
+log written *before* this change still replays without inventing geometry, because the view no longer
+reads those fields at all.
+
+**What this does NOT yet fix, stated so the cluster is not assumed closed:** `BR35.07` (`STOP_DEAD`
+drawn past its hit point), `BR34.05` (misses vanish — which is a *logic* defect, "miss" being modelled
+as terminate-the-round rather than continue-until-something-stops-it), `BR34.01` (every hop replays the
+full hit flash), `BR27.03` (inter-event sequencing) and `BR35.08` (detonations draw nothing, which needs
+the supervisor's specified growing red sphere). The primary tracer was confirmed faithful — it draws
+real `origin_*` to real `hit_*` — so those four are not instances of this same substitution.
+
 ### taskblock-51 — `BR51.11` (the long way round), corpses as wrecks, and the catch-up theory disproved
 
 **`BR51.11`: `tween_method` interpolates plain numbers.** `ResolutionPlayer` handed it raw orientations,

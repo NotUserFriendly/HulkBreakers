@@ -493,28 +493,11 @@ func _play_impact(event: LogEvent) -> void:
 
 	await _spawn_tracer(from, to)
 
-	# taskblock-26 Pass A1: "the bounced secondary ray is computed, logged,
-	# never drawn." A DEFLECT outcome carries its own reflected endpoint
-	# (ShotResolution.log_impact_result's miss-ray convention, same shape
-	# `log_miss_result` already uses) — drawn as a second, visually distinct
-	# segment regardless of whether a real ricochet hop happens to follow
-	# it (a ricochet that finds nothing to hit produces no further event
-	# at all, so this is the only place that bounce is ever drawable).
-	if (
-		int(event.data.get("outcome", -1)) == Enums.Outcome.DEFLECT
-		and event.data.has("deflect_end_x")
-	):
-		# taskblock-27 Pass A2: a beat between the primary impact and its own
-		# deflect — "hit, then bounce," not both at once — distinct from
-		# `INTER_SHOT_BREAK_MS`'s own gap between separate impact/miss pairs.
-		await get_tree().create_timer((DEFLECT_BEAT_MS / 1000.0) / speed).timeout
-		var deflect_end_x: float = float(event.data.get("deflect_end_x", hit_x))
-		var deflect_end_y: float = float(event.data.get("deflect_end_y", hit_y))
-		var deflect_end_height: float = float(event.data.get("deflect_end_height", hit_height))
-		var deflect_to: Vector3 = (
-			Vector3(deflect_end_x, deflect_end_height, deflect_end_y) * UnitGeometry.CELL_SIZE
-		)
-		await _spawn_tracer(to, deflect_to, TRACER_DEFLECT_COLOR, TRACER_DEFLECT_DULL_COLOR)
+	# taskblock-51 Pass C (`BR35.04`): **the decorative bounce segment is gone**, along with the
+	# `deflect_end_*` fields it read — see `ShotResolution.log_impact_result`. It was drawn to an
+	# arbitrary range whether or not a ricochet resolved, which made an invented line
+	# indistinguishable from a real one. A ricochet that hits something logs its own `impact`
+	# and draws through the ordinary path above; one that hits nothing draws nothing.
 
 
 ## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss" —
