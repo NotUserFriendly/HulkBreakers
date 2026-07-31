@@ -80,3 +80,23 @@ func test_rim_outline_material_is_grown_and_back_face_only() -> void:
 	assert_true(material.grow)
 	assert_true(material.grow_amount > 0.0)
 	assert_eq(material.albedo_color, WorldPalette.TEAM_A)
+
+
+## **`BR48.01`: the board's key light is doubled on purpose, and the number is a restoration.**
+##
+## The battle world ran with two identical directional lights — its own, plus one `InspectPanel`
+## contributed by accident through a shared `SubViewport` world. Identical rotation and energy
+## made them additive, so the board was lit at 2.0 the whole time. Closing the leak dropped it
+## to 1.0 and the supervisor preferred the old look, so this restores exactly what was on
+## screen rather than picking a new value.
+func test_the_board_light_restores_the_energy_the_leak_was_supplying() -> void:
+	assert_almost_eq(WorldPalette.BOARD_LIGHT_ENERGY, 2.0, 0.001, "two lights' worth, as measured")
+	assert_almost_eq(
+		WorldPalette.directional_light(WorldPalette.BOARD_LIGHT_ENERGY).light_energy, 2.0, 0.001
+	)
+
+
+## **Every other caller is untouched.** `BuilderScene` has no second viewport and was never
+## double-lit, so brightening it would be an unrequested change to a surface nobody reported on.
+func test_the_default_light_is_unchanged_for_every_other_caller() -> void:
+	assert_almost_eq(WorldPalette.directional_light().light_energy, 1.0, 0.001)
