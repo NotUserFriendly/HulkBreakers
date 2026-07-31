@@ -742,3 +742,40 @@ func test_each_aim_session_measures_only_itself() -> void:
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
 	assert_eq(dumps.size(), 2, "one dump per session")
 	assert_almost_eq(float(dumps[1].data["fps_min"]), 120.0, 1.0, "the second session is its own")
+
+
+## **A reticle move is not an aim-state change, and the split is the fix.**
+##
+## `SquadControlOverlay._on_selection_changed` calls `has_queued_move()`, which previews,
+## which clones — **26 083 usec on a real board**. It was subscribed to `aim_changed`, and
+## `aim_reticle_at_screen` emitted that on every mouse motion, so every motion cloned the
+## whole world to re-answer a question only the queue can change.
+##
+## Asserted on the signals rather than on a clone count, because the clone is still correct
+## behaviour *when the aim state really changes* — what must never happen again is a
+## reticle move being mistaken for one.
+func test_moving_the_reticle_emits_only_the_cheap_signal() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var aim_emits: Array[int] = [0]
+	var reticle_emits: Array[int] = [0]
+	controller.aim_changed.connect(func() -> void: aim_emits[0] += 1)
+	controller.reticle_changed.connect(func() -> void: reticle_emits[0] += 1)
+
+	controller.move_reticle(Vector2(0.1, 0.0))
+	controller.move_reticle(Vector2(0.1, 0.0))
+	controller.scroll_layer(1)
+
+	assert_eq(reticle_emits[0], 3, "reticle and layer moves report as reticle changes")
+	assert_eq(aim_emits[0], 0, "and never as an aim-state change")
+
+
+## The companion: a real aim-state change must still reach the expensive listeners, or the
+## split has simply stopped the overlay updating.
+func test_a_real_aim_state_change_still_emits_aim_changed() -> void:
+	var controller: TacticsController = _aiming_controller()
+	var aim_emits: Array[int] = [0]
+	controller.aim_changed.connect(func() -> void: aim_emits[0] += 1)
+
+	controller.cancel_aim()
+
+	assert_gt(aim_emits[0], 0, "ending aim is an aim-state change")

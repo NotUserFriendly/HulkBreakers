@@ -197,6 +197,10 @@ func setup(
 	readout = p_readout
 	material_table = p_material_table
 	tactics.aim_changed.connect(refresh)
+	# taskblock-51 (`BR26.02`): the aim view is the ONE listener that must redraw when only
+	# the reticle moved — everything else on `aim_changed` is answering questions a reticle
+	# move cannot change, and one of them cloned the whole board to do it.
+	tactics.reticle_changed.connect(refresh)
 	refresh()
 
 

@@ -645,6 +645,25 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **The verb takes a dropdown now, not a typed name** (supervisor request), and its options are the
   same `AimView.TOGGLEABLE` list the verb switches on — a test asserts the menu and the switch table
   cannot drift apart, because an offered-but-refused name is a dead control and a wasted session.
+- **Sixth pass — the supervisor's correction found it: "8 fps when moving the mouse/camera, rocksteady
+  160 when not moving."** That is the opposite of what CC concluded from a 6.0 fps reading at the
+  "idle" 2 s mark, and it immediately explains why disabling every drawn element changed nothing: **the
+  cost was never in the drawing.**
+- **`SquadControlOverlay._on_selection_changed` was subscribed to `aim_changed`, and
+  `aim_reticle_at_screen` emitted that on every mouse motion.** The handler calls
+  `has_queued_move()` — and, when no aim facing applies, `previewed_orientation()` — each of which
+  calls `previewed_unit()` → `ActionQueue.preview()` → `CombatState.dup()` at **26 083 usec**. So every
+  mouse motion cloned the entire board, with its 214 blocker parts and 768 surfaces, to re-answer a
+  question that only the *queue* can change.
+- **Fixed by splitting the signal**, not by caching: `reticle_changed` now carries "only the reticle
+  moved" and `aim_changed` keeps "the aim state changed". `AimView` listens to both, because it is the
+  one thing that genuinely must redraw; the overlay and the action bar stay on `aim_changed` alone.
+- **Two caches were tried first and both reverted, recorded in `SelectionController.previewed_unit()`
+  so they are not retried blind:** an empty-queue fast path (callers mutate the previewed unit —
+  `StepOutPlanner` does — so handing back the live unit corrupted the real board, caught by three
+  step-out tests), and a per-frame memo (state changes *within* a frame when a resolution spends AP,
+  caught by four action-bar and pip tests). **The preview clone is correct; calling it per mouse motion
+  was not.**
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
