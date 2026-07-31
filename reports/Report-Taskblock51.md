@@ -38,6 +38,27 @@ entries closed, fourteen filed, several re-diagnosed.
 - **The two pairs flagged as possible duplicates — `BR27.07`/`BR32.09` and `BR35.04`/`BR35.07` — were
   left unmerged** on the supervisor's explicit instruction.
 
+## Design changes I filed as bugs
+
+The supervisor's rule is that design changes live in the report and their notes until review, not in
+`BUGS.md`. One entry broke it and two more are worth flagging.
+
+- **`BR51.02` was half a feature request.** "`set_part_hp` should accept targets that are not unit
+  parts" is a capability that never existed, and the entry said so in its own text — *"a tooling gap,
+  not a game defect"* — while sitting in the ledger anyway. **The widening landed**: the verb now takes
+  the same `{kind, unit, cell}` object target `move_object` already used, an empty `part_id` means the
+  blocker itself, and a bare `Unit` still works unchanged. The entry has been restated to cover only
+  the genuine defect underneath it — that cover cannot be made the panel's active target at all — which
+  Pass K subsumes.
+- **`BR51.10` and `BR51.06` are real defects with design-change remedies.** Inspect being live when
+  nothing is selected is an affordance that lies whichever way it is fixed, so it stays a bug; but
+  *"disable it"* is one choice among several and is the supervisor's. Likewise `BR51.06`'s second
+  option — deleting `pick` outright because it duplicates active-target selection — is a design call,
+  not a repair.
+
+Nothing else in the BR51 series is a design change; the rest describe behaviour contradicting its own
+specification.
+
 ## The framerate bug was four bugs wearing one symptom
 
 Measured through a real `SquadControlOverlay` on a 214-blocker board, per mouse motion:
