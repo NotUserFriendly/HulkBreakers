@@ -100,3 +100,76 @@ func test_where_an_idle_aim_frame_goes() -> void:
 		"an idle aim frame cloned the state — that is 26ms each on a real board"
 	)
 	assert_eq(ShotPlane.builds - planes_before, 0, "and it must not rebuild the shot plane either")
+
+
+## **What one mouse motion costs, end to end.**
+##
+## The supervisor reports ~8 fps live while moving and a session average of 23, with the
+## clone fix in place and `wall_cutout` confirmed innocent. A motion event runs exactly two
+## handlers — `aim_reticle_at_screen` then `update_aim_hover` from the same position — so
+## this times those two against a real controller on a real board.
+func test_what_one_mouse_motion_while_aiming_costs() -> void:
+	var grid: Grid = MapCorpus.copy(11, WIDTH, ROWS)
+	# A clear lane between the two, so the shot is actually legal — the point of the probe
+	# is the cost of aiming, not whether this particular generated map allows it.
+	for x in range(1, 10):
+		grid.blockers.erase(Vector2i(x, 4))
+	var units: Array[Unit] = []
+	for i in range(2):
+		units.append(_armed(Vector2i(2 + i * 6, 4), i))
+	var state := CombatState.new(grid, units)
+	# The player overlay drives a bout runner for the AI squads; without controllers it
+	# refuses to run and the probe's own noise drowns the measurement.
+	state.assign_rest_to_ai([0] as Array[int])
+	var mission := MissionState.new(RunState.new(), state)
+	mission.objectives = []
+	mission.extraction_cells = [Vector2i(0, 0)]
+
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.load_battle(state, mission)
+	battle.set_overlay(SquadControlOverlay.new())
+	await get_tree().process_frame
+	var tactics: TacticsController = (battle.overlay as SquadControlOverlay).tactics
+	tactics.click_cell(units[0].cell)
+	tactics.arm_action(&"shoot")
+	tactics.click_cell(units[1].cell)
+	if tactics.aiming_at == null:
+		gut.p("could not enter aim on this fixture — nothing measured")
+		assert_true(true)
+		return
+	await get_tree().process_frame
+
+	var screen := Vector2(640.0, 360.0)
+	var clones_before: int = CombatState.dups
+	var planes_before: int = ShotPlane.builds
+
+	var reticle_start: int = Time.get_ticks_usec()
+	for i in range(FRAMES):
+		tactics.aim_reticle_at_screen(screen + Vector2(float(i), 0.0))
+	var reticle_usec: float = float(Time.get_ticks_usec() - reticle_start) / float(FRAMES)
+
+	var hover_start: int = Time.get_ticks_usec()
+	for i in range(FRAMES):
+		tactics.update_aim_hover(screen + Vector2(float(i), 0.0))
+	var hover_usec: float = float(Time.get_ticks_usec() - hover_start) / float(FRAMES)
+
+	gut.p("--- per mouse motion while aiming, %d blockers ---" % grid.blockers.size())
+	gut.p("  aim_reticle_at_screen  %8.0f usec" % reticle_usec)
+	gut.p("  update_aim_hover       %8.0f usec" % hover_usec)
+	gut.p("  one motion total       %8.0f usec" % (reticle_usec + hover_usec))
+	(
+		gut
+		. p(
+			(
+				"  clones: %d   shot planes: %d   (over %d motions)"
+				% [
+					CombatState.dups - clones_before,
+					ShotPlane.builds - planes_before,
+					FRAMES * 2,
+				]
+			)
+		)
+	)
+	assert_gt(reticle_usec + hover_usec, 0.0, "the probe measured something")
