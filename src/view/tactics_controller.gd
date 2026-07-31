@@ -963,8 +963,24 @@ func update_aim_hover(screen_pos: Vector2) -> void:
 	if hit == null:
 		return
 	var hovered_region: Region = ShotPlane.region_at(plane, hit as Vector2)
-	aim_hovered_part = hovered_region.part if hovered_region != null else null
-	aim_changed.emit()
+	var hovered: Part = hovered_region.part if hovered_region != null else null
+	# taskblock-51 (`BR26.02`): **only emit when the hovered part actually changed, and emit
+	# the cheap signal.**
+	#
+	# This ran on every mouse motion — and `aim_reticle_at_screen` calls it internally, so
+	# both motion paths reached it — while emitting `aim_changed`, which
+	# `SquadControlOverlay._on_selection_changed` listens to. That handler previews twice,
+	# and a preview is a `CombatState.dup()` at ~26 ms on a real board. Measured: **2 clones
+	# and 1 shot-plane build per hover call, 113 ms for one mouse motion, 8.8 fps** — the
+	# supervisor's number exactly.
+	#
+	# Hovering "reads, it never re-aims" was already this function's stated contract
+	# (taskblock-34 Pass C); emitting the aim-state signal from it contradicted that in the
+	# one place it was most expensive to contradict.
+	if hovered == aim_hovered_part:
+		return
+	aim_hovered_part = hovered
+	reticle_changed.emit()
 
 
 ## docs/10 taskblock03 D5: "aim from where the unit WILL BE." Everything the

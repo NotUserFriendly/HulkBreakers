@@ -685,6 +685,30 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **Session average is ~23 fps, not 8**: `min 6.8, avg 22.8 (231 frames in 10.1s)`. The live readout and
   the 2 s sample both catch the bad moments; the honest description is "8 while moving, 160 while
   still, averaging 23 over a session that mixes both".
+- **Eighth pass — FOUND AND FIXED, and it was a site my own previous fix missed.**
+  `update_aim_hover` still emitted `aim_changed`. The signal split converted `scroll_layer`,
+  `move_reticle` and `aim_reticle_at_screen`, but not the one handler that runs on **every** motion —
+  and `aim_reticle_at_screen` calls it internally, so **both** motion paths still reached the expensive
+  listener.
+- **Measured through a real `SquadControlOverlay` on a 214-blocker board:**
+
+  | per mouse motion | before | after |
+  |---|---|---|
+  | `aim_reticle_at_screen` | 62 179 usec | **8 777** |
+  | `update_aim_hover` | 54 429 usec | **101** |
+  | **one motion** | **116 608 usec (8.6 fps)** | **8 878 usec (113 fps)** |
+  | state clones | 2 per call | **0** |
+
+- **Two changes, both small:** emit `reticle_changed` rather than `aim_changed`, and **only when the
+  hovered part actually changed** — a signal that fires on every motion regardless is one every
+  listener has to defend itself against. Hovering "reads, it never re-aims" was already this
+  function's contract from taskblock-34 Pass C; it was contradicting that in the most expensive place
+  available.
+- **What remains: one `ShotPlane.build` per motion, ~8 800 usec.** `AimController._resolve_hit` calls
+  `ShotPlane.resolve_ray`, which builds its own plane to cast one ray. That genuinely varies with the
+  reticle, so it is not obviously cacheable — and at 113 fps it is **not being chased on
+  speculation**. If the supervisor still feels it, that is the next and last known cost.
+- **Still `Pending`:** the numbers are CC's; the confirmation is the supervisor's.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
