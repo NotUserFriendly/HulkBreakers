@@ -102,7 +102,7 @@ func _ready() -> void:
 		get_window().min_size = MIN_WINDOW_SIZE
 
 	add_child(WorldPalette.world_environment())
-	add_child(WorldPalette.directional_light())
+	add_child(WorldPalette.directional_light(WorldPalette.BOARD_LIGHT_ENERGY))
 
 	camera_rig = CameraRig.new()
 	add_child(camera_rig)

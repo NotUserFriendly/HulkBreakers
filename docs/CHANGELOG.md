@@ -23,10 +23,17 @@ assigning `own_world_3d` runs Godot's scenario attach/detach and errors with `Pa
 null` where no scenario exists yet — which is why "release the world on close" and "claim our own world
 at build" were both tried and both abandoned.
 
-**Consequence the supervisor must judge:** the board now renders at its *intended* single-light level
-all the time. That is dimmer than the doubled state a fresh bout used to start in. `WorldPalette`'s
-`LIGHT_ENERGY`/`AMBIENT_ENERGY` are the tunables if it now reads too dark — **not changed here**, because
-picking a new value would be inventing a balance number.
+**And the brightness is restored, as a measurement rather than a new number.** The supervisor preferred
+the old look, so `WorldPalette.BOARD_LIGHT_ENERGY = 2.0` puts the board back at exactly what was on
+screen: the two lights were identical in rotation and energy, therefore additive, therefore 2 x 1.0.
+**Ambient is deliberately not doubled** — the two `WorldEnvironment` nodes were *not* additive (Godot
+resolves one winner) and both carried the same `AMBIENT_COLOR`/`AMBIENT_ENERGY`, so ambient never
+changed. `directional_light()` takes an optional energy defaulting to 1.0, so `BuilderScene` — which has
+no second viewport and was never doubled — is untouched.
+
+**Correction to this entry as first written:** it named `WorldPalette.LIGHT_ENERGY` as the tunable.
+**No such constant existed** — `directional_light()` never set `light_energy` at all, so the board ran
+on Godot's default 1.0. `BOARD_LIGHT_ENERGY` is new.
 
 ### taskblock-51 — `BR48.01`, second attempt (superseded by the entry above): the preview's lighting nodes
 

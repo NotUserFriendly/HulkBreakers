@@ -35,6 +35,24 @@ const LIGHT_AZIMUTH_DEG := 35.0
 const AMBIENT_COLOR := Color("#8A93A0")
 const AMBIENT_ENERGY := 0.35
 
+## taskblock-51 `BR48.01`: **the battle board's key-light energy, and why it is 2.0.**
+##
+## The board ran for its whole life with **two** identical directional lights in its `World3D`:
+## its own, and one `InspectPanel` contributed by accident (`SubViewport.own_world_3d` defaults
+## to false, so the panel's private lighting landed in the shared world). Identical rotation and
+## identical energy means they were **additive** — the board was lit at exactly 2.0 and nobody
+## knew. Closing that leak dropped it to 1.0, and the supervisor preferred what they had.
+##
+## So this is a measured restoration, not a new balance number: **2 x 1.0**, matching what was
+## actually on screen before. It applies to the battle board only — `BuilderScene` has no
+## second viewport and was never doubled, so raising it globally would brighten a surface
+## nobody asked about.
+##
+## **Ambient is deliberately NOT doubled.** The two `WorldEnvironment` nodes were not additive:
+## Godot resolves one winner, and both carried this file's identical `AMBIENT_COLOR`/
+## `AMBIENT_ENERGY`, so the ambient contribution was the same before the fix as after it.
+const BOARD_LIGHT_ENERGY := 2.0
+
 
 ## A flat dark backdrop plus soft ambient — otherwise Godot's default
 ## procedural sky paints a stock light grey with no relation to the theme,
@@ -60,9 +78,12 @@ static func world_environment() -> WorldEnvironment:
 
 ## The one real light in the scene (docs/10: "why nothing was legible" —
 ## unshaded same-colour boxes have no edges without one).
-static func directional_light() -> DirectionalLight3D:
+## `energy` defaults to Godot's own 1.0, so every existing caller is unchanged; the battle
+## board passes `BOARD_LIGHT_ENERGY` — see that constant for why it is what it is.
+static func directional_light(energy: float = 1.0) -> DirectionalLight3D:
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-LIGHT_ELEVATION_DEG, LIGHT_AZIMUTH_DEG, 0.0)
+	light.light_energy = energy
 	return light
 
 
