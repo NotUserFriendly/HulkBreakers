@@ -188,11 +188,30 @@ func _log_unit_assembled(unit: Unit) -> void:
 ## `grid.field_items`/`blockers` (loot, dropped subtrees, cover) are a
 ## separate overlay untouched by this — a cell can be walkable and still
 ## hold something to pick up.
+## taskblock-51 (`BR51.04`/`BR51.05`): **killing the current unit advances the turn.**
+##
+## This marked the unit dead and cleared its cell and stopped, leaving `_current_unit_id`
+## pointing at a corpse. Two symptoms followed from that one stranded pointer: the turn
+## never ended, and — because `SelectionController.select` requires `unit ==
+## current_unit()` — **nothing else could be selected either**, which is why the supervisor
+## reported "cannot select a unit" alongside "the turn does not end".
+##
+## `EndTurnAction` was already documented as advancing *"even if the current unit just
+## died"*, so the rule existed; what was missing was anything invoking it when the death
+## happened outside an action's own resolution, which is exactly what a debug `kill` or a
+## meltdown does.
+##
+## **Not while resolving.** A shot that kills the current unit mid-queue must not reorder
+## the turn under the resolver's feet — `resolve_until` already stops on the death and the
+## turn ends through the ordinary path. The guard is what keeps this a fix for the
+## outside-an-action case rather than a second turn-advancing mechanism racing the first.
 func kill_unit(unit: Unit) -> void:
 	if not unit.alive:
 		return
 	unit.alive = false
 	grid.set_occupant_id(unit.cell, -1)
+	if not is_resolving and unit.id == _current_unit_id:
+		advance_turn()
 
 
 func current_unit() -> Unit:
