@@ -1,6 +1,34 @@
 # CHANGELOG.md — What's Been Built
 
-### taskblock-51 — `BR48.01`: the dim is the inspector's lighting leaking into the board
+### taskblock-51 — `BR48.01`: the board was accidentally double-lit, and inspecting took the second light away
+
+**Found by dumping the battle world rather than by reading the code** — two confident diagnoses had
+already been wrong, and the dump settled it in one run. At rest, before anything is inspected, the
+battle `World3D` had **four** lighting contributors: the board's own `WorldEnvironment` and
+`DirectionalLight3D`, **plus the inspect panel's**. After one inspect cycle it had two.
+
+`SubViewport.own_world_3d` **defaults to false**, so `InspectPanel`'s private `WorldEnvironment` and
+`DirectionalLight3D` have been in the battle's world since the panel was built. Nothing looked wrong,
+because the extra light only ever made the board brighter. It becomes visible the first time a subject
+takes the **fallback path** — `open()` with no live view, which is what cover, a loose item or a bare
+tile resolves to — because that sets `own_world_3d = true` and takes both nodes **out** of the battle
+world. The board drops to its real single-light level and stays there, since `_isolate_clear()` never
+restores the flag. **A new bout rebuilds the panel and the accidental second light comes back**, which
+is the supervisor's own *"starting a new bout does fix it"* — the detail that proved it, and that
+neither earlier theory could explain.
+
+**The preview's lighting is now withdrawn whenever the viewport shares a world**, applied at build time
+as well as on every transition, so the battle's lighting is constant. The flag itself is left alone:
+assigning `own_world_3d` runs Godot's scenario attach/detach and errors with `Parameter "scenario" is
+null` where no scenario exists yet — which is why "release the world on close" and "claim our own world
+at build" were both tried and both abandoned.
+
+**Consequence the supervisor must judge:** the board now renders at its *intended* single-light level
+all the time. That is dimmer than the doubled state a fresh bout used to start in. `WorldPalette`'s
+`LIGHT_ENERGY`/`AMBIENT_ENERGY` are the tunables if it now reads too dark — **not changed here**, because
+picking a new value would be inventing a balance number.
+
+### taskblock-51 — `BR48.01`, second attempt (superseded by the entry above): the preview's lighting nodes
 
 **The supervisor's own diagnosis, and it was right:** *"this may not be a UI issue, it may be lighting
 as the inspect panel draws the clicked item, and the lighting might be custom there, and then said

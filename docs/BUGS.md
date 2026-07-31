@@ -197,7 +197,19 @@ confirm" roll-up — so pending items surface at a natural review point without 
   does not lift it. Both nodes are now withdrawn whenever the world is shared, open or closed.
   **To see it:** click an item in spectator and watch the board's lighting while the panel is up, then
   close it.
-- **The stacking question is answered: it does not stack** — independently confirmed by the supervisor. The isolate cull mask is restored from a
+- **The stacking question is answered: it does not stack** — independently confirmed by the supervisor.
+- **THIRD diagnosis, and this one is evidenced by a dump rather than by reading code.** At rest the
+  battle `World3D` had **four** lighting contributors — the board's environment and light, **plus the
+  inspect panel's**, because `SubViewport.own_world_3d` defaults to false. After one inspect cycle it
+  had two. The panel's lighting has been lighting the board all along; the first subject that takes the
+  fallback path (cover, a loose item, a bare tile — anything with no live view) sets `own_world_3d =
+  true`, removes both, and nothing puts them back. **`"starting a new bout does fix it"` is what proves
+  it** — a rebuilt panel restores the accidental light, and neither earlier theory predicted that.
+- The preview's lighting is now withdrawn whenever its viewport shares a world, so the battle's lighting
+  is constant. **The board therefore renders at its intended single-light level, which is dimmer than
+  the doubled state a fresh bout used to start in.** If it now reads too dark that is
+  `WorldPalette.LIGHT_ENERGY`/`AMBIENT_ENERGY`, deliberately left alone — a new value would be an
+  invented balance number, not a fix. The isolate cull mask is restored from a
   value captured once at build time, never re-derived, asserted across two open/close cycles and across
   opening a second inspect over the first. **To see it:** click empty ground in spectator — the bout
   should keep playing and no panel should appear; then click a barrel, which should open on the barrel.
