@@ -729,6 +729,19 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
+### Action-cost affordances, and camera keys
+**Needs:** nothing.
+
+Supervisor design notes from taskblock-51's third hunt — neither is a defect, so neither is in
+`BUGS.md`.
+
+- **Hovering a hotbar action shows its AP or MP cost**, and *selecting* one makes the matching pips
+  pulse: an action costing 3 AP slow-pulses the 4th–6th pip orange; one costing 3 MP pulses 2 MP teal
+  and one AP orange, because that is how the conversion actually spends. The cost model already exists
+  — `ActionCatalog` knows what a provider authors and `test_ap_mp_pips.gd` already pins that the pip
+  row shows exactly what the unit has. This is presentation over facts the game already holds.
+- **`WASD` pans the camera in the player view; `Spacebar` toggles play/pause in the spectator.**
+
 ### Aiming detaches from unit lock; `Set Cell Level` steps by 0.5
 **Needs:** nothing. **Unblocks:** possibly obsoletes `BR33.01`.
 

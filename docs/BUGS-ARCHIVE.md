@@ -10,6 +10,44 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR51.05 — Resolved — owner: `SUPERVISOR`
+**A dead or prone unit cannot be selected**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** attempt to click a downed or prone unit. Selection does not take.
+- **Suspected same root as `BR51.04`:** if a dead unit is still the current unit, and selection is
+  gated on *being* the current unit, then both symptoms follow from one stuck turn pointer. Check them
+  together; fixing one blind may move the other without explaining it.
+- **Worth separating deliberately:** *dead* and *prone* are different states, and it is not yet
+  established that both fail. Confirm which.
+- **Resolved by the owner (taskblock-51, third hunt):** *"Can't seem to force it, consider it resolved
+  along with 51.04."* Recorded as owner-directed on a failure to re-provoke, not as a CC verification —
+  the underlying `select()` rule that refuses dead units is unchanged and was never the thing fixed.
+
+### BR51.04 — Resolved — owner: `SUPERVISOR`
+**Killing a unit during its own turn does not end that turn**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** while a unit is the current unit, kill it (Inject `kill`, or in play). The turn does not
+  advance.
+- `EndTurnAction` is documented as legal and advancing *"even if the current unit just died"*, and
+  `CombatState.advance_turn` skips the dead — so the rule exists and something is not reaching it.
+  The likely gap is that nothing *invokes* the advance when the death happens outside an action's own
+  resolution.
+- **Probably one defect with `BR51.05`**, which the supervisor flagged as possibly related.
+
+- **`Pending` (taskblock-51) — CC believes this fixed; the owner has not seen it work.**
+  `CombatState.kill_unit` now advances the turn when the unit it kills is the current one. It was
+  marking the unit dead and stopping, leaving `_current_unit_id` on a corpse.
+- **Guarded against reordering the round for an incidental death:** killing a *non-current* unit leaves
+  the turn exactly where it was, and the advance is suppressed while `is_resolving`, so a shot that
+  kills the acting unit mid-queue still ends its turn through the ordinary path rather than through a
+  second mechanism racing the first.
+- **To see it work:** during a unit's own turn, Inject → `kill` on that unit. The turn should pass to
+  the next living unit instead of sticking.
+- **Resolved by the owner (taskblock-51, third hunt):** *"Bug as written resolved."* Killing the acting
+  unit now passes the turn on. **A related defect was found in the same session and is filed separately
+  as `BR51.09`** — the dead unit is no longer current, but it is still *selected*, so its movement
+  overlay lingers into the next unit's turn.
+
 ### BR27.04 — Resolved — owner: `SUPERVISOR`
 **Lighting differs between spectator and player view**
 - **Source:** `SUPERVISOR`
