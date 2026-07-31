@@ -108,19 +108,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
   name** — which is the more interesting finding of the two.
 
-### BR51.13 — Resolved — owner: `CC`
-**The combat log folds `fps_dump` into `wall_cutout` runs**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, taskblock-51 fourth hunt. *"Combat log is collapsing things that shouldn't
-  collapse together. Notably, `fps_dump` lands inside `wall_cutout` reports."*
-- **This contradicts a test that passes.** `test_log_fold.gd` asserts
-  `test_a_diagnostic_keeps_its_own_row_and_is_never_folded_into_plumbing` — so either `fps_dump` is not
-  classified as a diagnostic, or the plumbing fold swallows neighbours the test never feeds it.
-  **Read the test before the code:** a green assertion beside a live defect means the assertion is
-  testing something narrower than its name claims, which is exactly the failure taskblock-49's audit
-  was built to find.
-- Confirmed visible in `out/combat.log` across every session this block.
-
 ### BR51.14 — Active — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
