@@ -562,3 +562,65 @@ func test_move_object_onto_a_raised_cell_updates_height_too() -> void:
 	assert_true(injector.move_object({"kind": Enums.HitKind.UNIT, "unit": unit}, Vector2i(6, 2)))
 
 	assert_eq(unit.height, UnitGeometry.true_height_for_cell(Vector2i(6, 2), grid))
+
+
+# --- taskblock-51 (BR51.02): set_part_hp reaches parts that are not on a unit ---------
+
+
+## **The bug this fixes was a blocker, not an inconvenience.** Zeroing a barrel's HP is the
+## deterministic route to forcing a detonation, and without it three open entries could
+## only be reached by landing a shot on a barrel — which two other open bugs interfere
+## with. Reproduced here as the cell target that used to be impossible to name.
+func test_set_part_hp_reaches_a_blocker_at_a_cell() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	var pool := {&"goo_barrel": _cover_part(&"goo_barrel")}
+	var injector := BoutInjector.new(state)
+	var cell := Vector2i(3, 3)
+	assert_true(injector.place_cover(cell, &"goo_barrel", pool), "sanity: a barrel is on the board")
+	var barrel: Part = state.grid.blockers[cell]
+
+	var ok: bool = injector.set_part_hp({"kind": Enums.HitKind.CELL, "cell": cell}, &"", 0)
+
+	assert_true(ok, "a cell target names the blocker there")
+	assert_eq(barrel.hp, 0, "and its HP was forced")
+
+
+## An empty `part_id` means the blocker itself — you should not have to type an id to kill
+## a barrel. A named one still resolves against the same tree.
+func test_a_named_part_in_a_blockers_tree_is_reachable_and_an_unknown_one_is_refused() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
+	var injector := BoutInjector.new(state)
+	var cell := Vector2i(2, 2)
+	assert_true(injector.place_cover(cell, &"scrap_pile", pool))
+	var target := {"kind": Enums.HitKind.CELL, "cell": cell}
+
+	assert_true(injector.set_part_hp(target, &"scrap_pile", 3), "named by its own id")
+	assert_eq((state.grid.blockers[cell] as Part).hp, 3)
+	assert_false(injector.set_part_hp(target, &"not_a_part", 1), "an unknown id is refused")
+
+
+## **The unit path is unchanged**, including the bare-`Unit` call this file already makes
+## elsewhere — widening a target must not narrow an existing one.
+func test_a_bare_unit_target_still_works_exactly_as_before() -> void:
+	var built: Dictionary = _armable_unit()
+	var unit: Unit = built.unit
+	var state := CombatState.new(GridFixture.flat(5, 5), [unit])
+	var injector := BoutInjector.new(state)
+
+	assert_true(injector.set_part_hp(unit, &"torso", 4), "the old call shape still resolves")
+	assert_eq(unit.shell.root.hp, 4)
+
+
+func test_a_cell_with_nothing_on_it_is_refused_by_name() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	var injector := BoutInjector.new(state)
+
+	var ok: bool = injector.set_part_hp(
+		{"kind": Enums.HitKind.CELL, "cell": Vector2i(4, 4)}, &"", 0
+	)
+
+	assert_false(ok, "there is nothing there to give an HP to")

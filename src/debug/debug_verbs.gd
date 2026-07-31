@@ -197,7 +197,7 @@ static func all() -> Array[DebugVerbSpec]:
 				&"set_part_hp",
 				"Set Part HP",
 				[
-					DebugVerbSpec.param(&"unit", P.UNIT),
+					DebugVerbSpec.param(&"target", P.OBJECT),
 					DebugVerbSpec.param(&"part_id", P.STRING_NAME),
 					DebugVerbSpec.param(&"hp", P.INT),
 				],
@@ -325,7 +325,7 @@ static func _apply_hand_weapon(inj: BoutInjector, pool: Dictionary, a: Dictionar
 
 
 static func _apply_set_part_hp(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
-	return inj.set_part_hp(a.unit, a.part_id, a.hp)
+	return inj.set_part_hp(a.target, a.part_id, a.hp)
 
 
 static func _apply_inflict_wound(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

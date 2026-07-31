@@ -85,6 +85,18 @@ it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I thin
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
+- **`Pending` (taskblock-51), and it was the same defect — but only partly.** `SelectionController.select`
+  requires `unit == state.current_unit()`, so while the pointer sat on a corpse **nothing was
+  selectable at all**. Fixing `BR51.04` restores selection of the living, which is almost certainly the
+  symptom you hit.
+- **What is NOT fixed, deliberately: a dead unit still cannot be *selected*.** `select()` refuses
+  `unit.alive == false` by design — selection is for control, and controlling a corpse is not a thing
+  the game allows. If what you want is to *inspect* a downed shell, that is the inspect panel's path
+  and a different question; if you want dead units genuinely selectable, that is a **design change** and
+  I am not making it unasked.
+- **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
+  is current — worth confirming which of the two states you actually saw fail.
+
 ### BR51.06 — Active — owner: `CC`
 **The debug panel's `pick` button also sets the active target**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -113,7 +125,26 @@ confirm" roll-up — so pending items surface at a natural review point without 
   it inherits the offset. **Check the camera before the weapon.**
 - **Blocks reproducing `BR35.08`** — the supervisor could not reliably hit a goo barrel to detonate it.
 
-### BR51.02 — Active — owner: `CC`
+- **taskblock-51 — the frame-mismatch theory is measured and WRONG. Ruled out, not deprioritised.**
+  The strongest hypothesis was that the reticle and the resolver work in different planes: the
+  reticle places `reticle_offset` against a plane anchored on the shooter and target **cells**
+  (`AimPlaneGeometry.perp_axis`), while `AttackAction` builds its plane anchored on the real
+  **muzzle** — and taskblock-27 Pass A1 fixed exactly that class of mismatch *inside* the action,
+  leaving the reticle still on cells. A constant lateral offset equal to the muzzle's lateral
+  displacement would explain "consistently left" perfectly.
+  **It does not happen.** `test_aim_offset_bias.gd` aims a ray at the resolver's own dead centre and
+  asks what offset the reticle maths records: **0.0000 cells across four geometries** (axis-aligned
+  both ways, and both diagonals). The two frames agree.
+- **What that leaves, in order.** The reticle is placed from `camera.project_ray_origin/normal`, so the
+  remaining suspects are all on the camera side rather than the geometry side: the aim lean applied to
+  the rendered view but not to the camera the projection reads; a rendered dartboard whose lateral axis
+  disagrees in sign with the plane it represents; or the drawn reticle sitting somewhere other than
+  where `reticle_offset` says. **The next attempt should instrument what the player sees against what
+  is fired**, not re-derive the geometry — that half is now measured and clean.
+- **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
+  frame mismatch if a later change introduces the thing that was suspected here.
+
+### BR51.02 — Resolved — owner: `CC`
 **`set_part_hp` cannot target a part that is not on a unit**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
@@ -124,6 +155,12 @@ confirm" roll-up — so pending items surface at a natural review point without 
   a barrel, which `BR51.01` and `BR51.03` are both interfering with. **Fix this first** — it unblocks
   two other entries and costs nothing to verify.
 - `CC`-owned: it is debug tooling, headless-testable, and was found rather than observed.
+
+- **Resolved (taskblock-51).** `set_part_hp` takes the same `{kind, unit, cell}` object target
+  `move_object` and `remove_object` already use, so a blocker or field object can be named by clicking
+  it. An empty `part_id` means the blocker itself, so killing a barrel needs no id typed. A bare `Unit`
+  still works unchanged — widening a target must not narrow an existing one, which is asserted.
+- **Your detonation route is open:** spawn a goo barrel, click it, `set_part_hp` → 0.
 
 ### BR51.03 — Active — owner: `SUPERVISOR`
 **Shots miss when there is something in the way that should have been hit**
@@ -138,7 +175,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
   seen from the shooter's side rather than the drawing side. **Confirm against that entry before
   treating them separately** — taskblock-50's triage put `BR34.05` in the tracer cluster.
 
-### BR51.04 — Active — owner: `SUPERVISOR`
+### BR51.04 — Pending — owner: `SUPERVISOR`
 **Killing a unit during its own turn does not end that turn**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
 - **Repro:** while a unit is the current unit, kill it (Inject `kill`, or in play). The turn does not
@@ -149,7 +186,17 @@ confirm" roll-up — so pending items surface at a natural review point without 
   resolution.
 - **Probably one defect with `BR51.05`**, which the supervisor flagged as possibly related.
 
-### BR51.05 — Active — owner: `SUPERVISOR`
+- **`Pending` (taskblock-51) — CC believes this fixed; the owner has not seen it work.**
+  `CombatState.kill_unit` now advances the turn when the unit it kills is the current one. It was
+  marking the unit dead and stopping, leaving `_current_unit_id` on a corpse.
+- **Guarded against reordering the round for an incidental death:** killing a *non-current* unit leaves
+  the turn exactly where it was, and the advance is suppressed while `is_resolving`, so a shot that
+  kills the acting unit mid-queue still ends its turn through the ordinary path rather than through a
+  second mechanism racing the first.
+- **To see it work:** during a unit's own turn, Inject → `kill` on that unit. The turn should pass to
+  the next living unit instead of sticking.
+
+### BR51.05 — Pending — owner: `SUPERVISOR`
 **A dead or prone unit cannot be selected**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
 - **Repro:** attempt to click a downed or prone unit. Selection does not take.

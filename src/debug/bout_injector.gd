@@ -601,19 +601,94 @@ func equip_from_kit(unit: Unit, kit: Kit, pool: Dictionary) -> bool:
 ## whole point of injection is forcing states a UI wouldn't let you reach,
 ## not re-guarding against them. Refuses (no mutation) if `unit` has no
 ## part by that id.
-func set_part_hp(unit: Unit, part_id: StringName, hp: int) -> bool:
-	if not _guard(&"set_part_hp", {"unit": unit.id, "part": part_id, "hp": hp}):
+## taskblock-51 (`BR51.02`): **takes an object target, so it reaches parts that are not on a
+## unit.**
+##
+## It required a `Unit`, which meant a goo barrel, a wall or any other field object could
+## not be given an HP — and zeroing a barrel's HP is the deterministic route to forcing a
+## detonation. Three open entries were unreachable behind that gap.
+##
+## The target is the same `{kind, unit, cell}` dict `move_object` and `remove_object`
+## already take, resolved by the panel's own active-target memory. **Reused rather than
+## given a new cell parameter**, because a second way to name the same thing is the
+## duplicate-gesture problem `BR51.06` is already open about.
+##
+## `part_id` is optional for a cell target: empty means the blocker itself, which is what
+## you want nine times in ten and saves typing an id to kill a barrel.
+func set_part_hp(target: Variant, part_id: StringName, hp: int) -> bool:
+	var resolved: Dictionary = _object_target(target)
+	# `hp` stays in the recorded arguments: `test_command_log.gd` requires the call to be
+	# reconstructable from the log alone, and dropping it while widening the target made
+	# the command half of the pair incomplete.
+	if not _guard(
+		&"set_part_hp",
+		{"target": resolved.get("describe", ""), "part": part_id, "hp": hp},
+	):
 		return false
-	var part: Part = unit.shell.find_part(part_id)
+	if resolved.has("refusal"):
+		return _refuse(&"set_part_hp", resolved["refusal"], {"part": part_id})
+
+	var part: Part = _find_part_in(resolved["root"], part_id)
 	if part == null:
-		return _refuse(&"set_part_hp", &"no_such_part", {"unit": unit.id, "part": part_id})
+		return _refuse(
+			&"set_part_hp",
+			&"no_such_part",
+			{"target": resolved.get("describe", ""), "part": part_id}
+		)
 	part.hp = hp
 	_log_injection(
 		&"set_part_hp",
-		{"unit": unit.id, "part": part_id, "hp": hp},
-		"unit %d: %s hp -> %d" % [unit.id, part_id, hp]
+		{"target": resolved.get("describe", ""), "part": part.id, "hp": hp},
+		"%s: %s hp -> %d" % [resolved.get("describe", "?"), part.id, hp]
 	)
 	return true
+
+
+## Resolve an object target to the part tree it names.
+##
+## Accepts a bare `Unit` as well as the `{kind, unit, cell}` dict, because the injector's
+## own tests and the inspect panel call these methods directly with a unit and there is no
+## reason to make them build a dict to do it.
+func _object_target(target: Variant) -> Dictionary:
+	if target is Unit:
+		var unit := target as Unit
+		return {"root": unit.shell.root, "describe": "unit %d" % unit.id}
+	if target is Dictionary:
+		var dict := target as Dictionary
+		if dict.get("kind") == Enums.HitKind.UNIT:
+			var hit_unit: Variant = dict.get("unit")
+			if hit_unit == null:
+				return {"refusal": &"target_names_no_unit"}
+			return {
+				"root": (hit_unit as Unit).shell.root,
+				"describe": "unit %d" % (hit_unit as Unit).id,
+			}
+		var cell: Variant = dict.get("cell")
+		if cell == null:
+			return {"refusal": &"target_names_no_cell"}
+		if state.grid.blockers.has(cell):
+			return {
+				"root": state.grid.blockers[cell] as Part,
+				"describe": "blocker at %s" % [cell],
+			}
+		var items: Array = state.grid.field_items.get(cell, [])
+		for item: Variant in items:
+			if item is Part:
+				return {"root": item as Part, "describe": "field item at %s" % [cell]}
+		return {"refusal": &"nothing_at_cell"}
+	return {"refusal": &"target_names_nothing"}
+
+
+## The named part inside `root`'s own tree, or `root` itself when no id is given.
+func _find_part_in(root: Part, part_id: StringName) -> Part:
+	if root == null:
+		return null
+	if part_id == &"":
+		return root
+	for part: Part in PartGraph.walk(root):
+		if part.id == part_id:
+			return part
+	return null
 
 
 ## Forces a status stack onto `part_id` on `unit`, through the SAME

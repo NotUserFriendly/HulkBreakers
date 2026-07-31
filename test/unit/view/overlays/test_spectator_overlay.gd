@@ -549,11 +549,14 @@ func test_inject_panel_set_part_hp_calls_the_real_bout_injector_api() -> void:
 	assert_gt(enemy.shell.root.hp, 0, "sanity: the target starts alive")
 	overlay._on_inject_pressed()
 
-	_apply_via_panel(
-		overlay.debug_panel,
-		&"set_part_hp",
-		{"unit": enemy.id, "part_id": enemy.shell.root.id, "hp": 0}
+	# taskblock-51 (`BR51.02`): `set_part_hp` takes an OBJECT target now, so it can reach a
+	# blocker or a field object and not only a unit. An OBJECT param is filled from the
+	# panel's own active-target memory rather than from a form field, which is why this
+	# drives a board click instead of typing a unit id.
+	overlay.debug_panel._on_active_target_clicked(
+		{"kind": Enums.HitKind.UNIT, "unit": enemy, "cell": enemy.cell}
 	)
+	_apply_via_panel(overlay.debug_panel, &"set_part_hp", {"part_id": enemy.shell.root.id, "hp": 0})
 
 	assert_eq(enemy.shell.root.hp, 0)
 	assert_true(built.state.was_injected)

@@ -377,3 +377,53 @@ func test_force_current_unit_sets_current_unit_without_resetting_resources() -> 
 
 	assert_eq(state.current_unit(), b)
 	assert_eq(b.ap, 0, "force_current_unit must never refill AP the way _begin_turn would")
+
+
+# --- taskblock-51 (BR51.04/BR51.05): a dead current unit must not strand the turn ------
+
+
+## **The repro, and the reason two bug reports were one defect.** Killing the acting unit
+## outside an action left `_current_unit_id` on a corpse: the turn never ended, and since
+## selection requires `unit == current_unit()`, nothing else could be selected either.
+func test_killing_the_current_unit_advances_the_turn() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(2, 2), 1)
+	var state := CombatState.new(GridFixture.flat(6, 6), [a, b])
+	var acting: Unit = state.current_unit()
+	assert_not_null(acting, "sanity: somebody is up")
+
+	state.kill_unit(acting)
+
+	assert_false(acting.alive)
+	assert_ne(state.current_unit(), acting, "the turn moved off the corpse")
+	assert_true(state.current_unit() == null or state.current_unit().alive, "onto a living unit")
+
+
+## The other half of the same stranding: with the pointer freed, the survivor becomes
+## selectable again. This is the symptom the supervisor actually hit.
+func test_the_survivor_is_selectable_once_the_dead_unit_stops_being_current() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(2, 2), 1)
+	var state := CombatState.new(GridFixture.flat(6, 6), [a, b])
+	var acting: Unit = state.current_unit()
+	var survivor: Unit = b if acting == a else a
+
+	state.kill_unit(acting)
+	var selection := SelectionController.new(state)
+	selection.select(survivor)
+
+	assert_eq(selection.selected_unit, survivor, "the living unit can be selected again")
+
+
+## **Killing a unit that is not the current one must change nothing about the turn** — the
+## fix has to be narrow, or every incidental death reorders the round.
+func test_killing_a_non_current_unit_leaves_the_turn_where_it_was() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var b := _make_unit(Vector2i(2, 2), 1)
+	var state := CombatState.new(GridFixture.flat(6, 6), [a, b])
+	var acting: Unit = state.current_unit()
+	var bystander: Unit = b if acting == a else a
+
+	state.kill_unit(bystander)
+
+	assert_eq(state.current_unit(), acting, "the acting unit is still acting")
