@@ -1,5 +1,34 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — detonations reach cover, chain in waves, and go off where they actually are
+
+**Cover takes the blast.** `detonate()` iterated `state.units` and nothing else, so a barrel beside a
+barrel could not chain and an explosion beside a wall left it untouched — the same units-only assumption
+that had hidden the drawing gate. Blockers in radius now take the damage.
+
+**Chaining is the supervisor's stated shape:** *"chain react simultaneously, then in order, they should
+never re-explode something that's already exploded."* Everything in one wave goes off together and its
+damage lands before the next wave is decided. **Termination is the exploded set, not a depth cap** — a
+bound that says "this cannot go on forever" is not the same as one that says "nothing goes off twice",
+and only the second was asked for. Two barrels in range of each other are the case that loops without it.
+
+**And a blast is centred on the exploding part, not its owner's cell** — the supervisor's catch:
+*"an ammo rack on a unit's back may be higher up or offset."* `_locate_cell` returns the unit's cell, so
+a mounted part detonated at its wearer's feet. `UnitGeometry.assembly_placements` already composes each
+part's real world transform — what renders the box and what `PartPicker` hits — so that is asked rather
+than a second answer derived. Measured: a mounted plate logs `(5.00, 1.25, 5.15)` where it used to log
+`(5, 0, 5)`. **The test uses a sub-part deliberately**: the shell root legitimately sits at the unit's
+base, so a root-part fixture passes on the broken version too.
+
+**`Detonation` is now its own file**, split from `DamageResolver` when chaining pushed that past its
+1000-line cap. `DamageResolver.locate_cell` became public rather than copied, since a second "where is
+this part" would be the parallel system this project keeps deleting.
+
+**Filing correction (supervisor):** defects in a system actively being built are not bugs, they are
+symptoms of work in progress, and belong in the report until the system settles. Three entries CC had
+filed were withdrawn on that basis; the session's one real defect — a part destroyed by an explosion
+vanishing from inspect while staying on the model — is filed as `BR51.24`.
+
 ### taskblock-51 — `set_part_hp` is a board-changing verb
 
 One line, and it explains a paired symptom the supervisor reported: a barrel forced to 0 hp stayed drawn

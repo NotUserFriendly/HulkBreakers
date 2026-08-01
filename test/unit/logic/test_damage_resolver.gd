@@ -570,7 +570,7 @@ func test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only() -
 	var destroyed := DamageResolver.apply_damage_to_part(rack, 10.0)
 	assert_true(destroyed)
 
-	var affected: Array[Unit] = DamageResolver.detonate(rack, state)
+	var affected: Array[Unit] = Detonation.resolve(rack, state, DamageResolver.locate_cell)
 	assert_eq(affected.size(), 1)
 	assert_eq(affected[0], near_unit)
 	assert_eq(near_root.hp, 5)
@@ -594,7 +594,7 @@ func test_the_goo_barrel_field_object_detonates() -> void:
 	var state := CombatState.new(grid, [near_unit])
 
 	assert_true(DamageResolver.apply_damage_to_part(barrel, 999.0))
-	var affected: Array[Unit] = DamageResolver.detonate(barrel, state)
+	var affected: Array[Unit] = Detonation.resolve(barrel, state, DamageResolver.locate_cell)
 
 	assert_eq(affected, [near_unit])
 	assert_lt(near_root.hp, 20, "the goo barrel's own detonate_damage must actually have landed")
@@ -608,12 +608,12 @@ func test_detonate_is_a_no_op_without_real_detonate_damage() -> void:
 	var grid := Grid.new(5, 5)
 	grid.blockers[Vector2i(2, 2)] = inert
 	var state := CombatState.new(grid)
-	assert_eq(DamageResolver.detonate(inert, state), [] as Array[Unit])
+	assert_eq(Detonation.resolve(inert, state, DamageResolver.locate_cell), [] as Array[Unit])
 
 	inert.tags = [&"VOLATILE"]
 	inert.failure_mode = &"DETONATE"
 	assert_eq(
-		DamageResolver.detonate(inert, state),
+		Detonation.resolve(inert, state, DamageResolver.locate_cell),
 		[] as Array[Unit],
 		"DETONATE with detonate_damage 0 must still be inert"
 	)

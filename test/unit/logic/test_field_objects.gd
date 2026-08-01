@@ -145,5 +145,5 @@ func test_an_attached_barrel_projects_into_the_shot_plane_as_its_own_hittable_re
 	# hp (VOLATILE + failure_mode DETONATE) is proven generically in
 	# test_damage_resolver.gd::test_the_goo_barrel_field_object_detonates —
 	# what's new here is only that an ATTACHED barrel is reachable at all.
-	var affected: Array[Unit] = DamageResolver.detonate(barrel, state)
+	var affected: Array[Unit] = Detonation.resolve(barrel, state, DamageResolver.locate_cell)
 	assert_eq(affected, [] as Array[Unit], "no units in radius: cooking off must still run cleanly")
