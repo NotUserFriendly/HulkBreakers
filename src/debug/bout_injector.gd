@@ -636,10 +636,29 @@ func set_part_hp(target: Variant, part_id: StringName, hp: int) -> bool:
 			{"target": resolved.get("describe", ""), "part": part_id}
 		)
 	part.hp = hp
+	# `BR51.20`: **zeroing a part must actually fail it.** This set the number and stopped, so a
+	# goo barrel forced to 0 hp sat there intact — `DamageResolver.resolve_part_failure` is the
+	# only thing that runs MANGLE / DISABLE / DETONATE / FRAGMENT / MELTDOWN, and it had exactly
+	# one caller, inside impact resolution. Forcing a detonation was the entire point of being
+	# able to target a barrel (`BR51.02`), and it never worked.
+	#
+	# **No `ImpactResult` is invented for it.** `resolve_part_failure` takes a nullable one and
+	# writes results only when there is one; a hollow stand-in built here would be a second
+	# failure path beside the resolver's.
+	#
+	# **This is a synthetic failure and not the real interaction** — the supervisor's own point:
+	# the thing being tested is a barrel getting shot, and this forces the consequence without
+	# the cause. It makes the consequence observable; it does not verify the shot path.
+	var failed: bool = hp <= 0
+	if failed:
+		DamageResolver.resolve_part_failure(part, state, null)
 	_log_injection(
 		&"set_part_hp",
 		{"target": resolved.get("describe", ""), "part": part.id, "hp": hp},
-		"%s: %s hp -> %d" % [resolved.get("describe", "?"), part.id, hp]
+		(
+			"%s: %s hp -> %d%s"
+			% [resolved.get("describe", "?"), part.id, hp, " (failed)" if failed else ""]
+		)
 	)
 	return true
 
