@@ -2182,3 +2182,75 @@ be permanently immobilised**
   entry's own triage predicted this ("may only need confirming"), and reading both handlers confirms it.
   `set_part_hp` was added to `BOARD_CHANGING_VERBS` in taskblock-51 once it could destroy things.
 
+### BR51.02 — Resolved — owner: `CC`
+**`set_part_hp` cannot target a part that is not on a unit**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
+- **Repro:** open Inject, choose `set_part_hp`, and try to target a goo barrel or any other field
+  object or blocker. There is no way to name it — the verb's target is a unit part.
+- **Filed as a bug, and half of it was not one.** "`set_part_hp` should accept things that are not unit
+  parts" is a capability that never existed — a **design change**, and the supervisor's standing rule is
+  that design changes live in the report and their notes until review, not in this ledger. That half
+  landed and is recorded in `reports/Report-Taskblock51.md`; it should not have been an entry.
+  **What remains below the reopen is a real defect** and is what this entry now means.
+- It was blocking the hunt either way: forcing a detonation is the deterministic route to `BR35.08`,
+  which otherwise needs a landed shot on a barrel that `BR51.01` is interfering with.
+
+- **Resolved (taskblock-51).** `set_part_hp` takes the same `{kind, unit, cell}` object target
+  `move_object` and `remove_object` already use, so a blocker or field object can be named by clicking
+  it. An empty `part_id` means the blocker itself, so killing a barrel needs no id typed. A bare `Unit`
+  still works unchanged — widening a target must not narrow an existing one, which is asserted.
+- **Your detonation route is open:** spawn a goo barrel, click it, `set_part_hp` → 0.
+
+- **REOPENED (taskblock-51, third hunt). The fix was real and insufficient, and the gap is upstream of
+  it.** The injector now resolves a cell target to the blocker there — that part works and is tested.
+  But the supervisor cannot *give* it that target: *"barrels aren't clickable. Selecting a barrel (or
+  any cover) actually selects the tile beneath."*
+- **So the defect is in what a board click resolves cover to**, not in the verb. `set_part_hp` was the
+  visible symptom; the real entry is that cover cannot be made the panel's active target at all, which
+  means every OBJECT-target verb has the same hole.
+- **My error worth recording:** I tested the injector against a hand-built `{kind: CELL, cell: X}` dict
+  and called the bug fixed without once driving the click that produces that dict. A test that
+  constructs its own input cannot tell you the caller never produces it — the same shape as
+  taskblock-48's "input tidier than reality is worse than no test".
+- **Subsumed by the taskblock-51 addendum's Pass K**, which builds the selection target this needs.
+  Every OBJECT-target verb has the same hole, so it is fixed there rather than per-verb here.
+
+- **`Pending` (taskblock-51, after the reopen) — two defects, one symptom.**
+  1. **The panel labelled cover as its tile.** `_refresh_active_label` special-cased units and called
+     everything else "Active: Cell (x, y)", so a barrel click was indistinguishable from a floor click.
+     It names the part now.
+  2. **The injector re-derived what the click already knew.** A cover click resolves to a `PART` hit
+     carrying the exact `Part` struck; `_object_target` ignored it and looked the cell up in `blockers`
+     a second time. It uses the struck part directly — the same "never compute it twice" rule
+     `docs/02` applies to shots.
+- **To see it work:** click a barrel — the panel should read `Active: goo_barrel @ (x, y)`, not
+  `Active: Cell`. Then `set_part_hp` with an empty `part_id` and 0.
+- **Tested against the click shape this time**, not a hand-built dict — that omission is what let the
+  first fix ship broken.
+- **2026-07-31 (supervisor check — RESOLVED).** `set_part_hp` now reaches non-unit targets.
+
+### BR51.20 — Resolved — owner: `CC`
+**`set_part_hp` to zero never triggers the part's failure mode**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Setting part HP on a goo barrel to zero doesn't seem
+  to cause a detonation."*
+- **Confirmed by reading, not guessed:** `BoutInjector.set_part_hp` does `part.hp = hp` and nothing else.
+  `DamageResolver.resolve_part_failure` — the only thing that runs MANGLE / DISABLE / DETONATE / FRAGMENT
+  / MELTDOWN — has exactly one caller, inside impact resolution. So a part zeroed by the debug verb is at
+  0 hp and has not *failed*.
+- **This is the whole point of the verb.** `BR51.02` existed to make forcing a detonation possible; the
+  targeting half landed in Pass K and this half was never there. Nothing in the block has actually forced
+  a detonation.
+- **Do not simply call `resolve_part_failure` from the injector without deciding what it needs.** It takes
+  an `ImpactResult` and writes fragment/detonation results into it, so a debug-triggered failure needs a
+  real impact to hang off or a deliberate answer for what to pass — inventing a hollow one would put a
+  second failure path beside the resolver's.
+
+- **`Pending` (taskblock-51).** `set_part_hp` now runs `resolve_part_failure` when hp reaches 0, with a
+  nullable `ImpactResult` so no hollow stand-in is invented. The detonation event moved to
+  `DamageResolver`, where the failure happens — one emitter for both the shot path and the forced one.
+- **`Pending` rather than closed although CC owns it:** the deliverable is a sphere CC cannot see.
+  **To check:** click a goo barrel, `Set Part HP` -> 0, and it should explode with a red sphere sized to
+  its real radius.
+- **2026-07-31 (supervisor check — RESOLVED).** Zeroing a part runs its failure mode.

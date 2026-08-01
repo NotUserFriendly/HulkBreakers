@@ -97,6 +97,24 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.25 — Active — owner: `SUPERVISOR`
+**Non-unit objects render untransformed in the inspect preview**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first
+  reported as barrels intersecting their tile base on the board; the supervisor clarified that **the
+  world map places them correctly across levels** and the fault is in the **inspect preview**.
+- **`InspectPanel` frames its subject two different ways.** A unit goes through `_isolate_focus`
+  (`inspect_panel.gd:544-558`), which merges every mesh's world AABB and puts the camera at
+  `center + CAMERA_DIRECTION * radius * CAMERA_DISTANCE_FACTOR`. **Everything else takes the fixed
+  path at `:265`** — `_preview_camera.position = CAMERA_TARGET + CAMERA_DIRECTION`, aimed at a
+  constant rather than at the object. A barrel or support therefore renders against a camera that has
+  no idea where it is, which reads exactly as "no transform."
+- **This is the same fallback path `BR48.01` came out of** — the non-unit branch that set
+  `own_world_3d` and stripped the board's lighting. Second defect found in it, which is itself the
+  finding: **the non-unit path has never been exercised as carefully as the unit path.**
+- **The fix is probably to give it the AABB treatment**, not to add an offset — `_isolate_focus`
+  already does the right thing generically and the fallback predates it. Confirm which meshes a
+  blocker actually exposes before assuming they merge the same way.
+
 ### BR51.24 — Active — owner: `SUPERVISOR`
 **A part destroyed by an explosion disappears from inspect but stays on the model**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -131,29 +149,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
   is the shape of a zone that runs out of distinct cells and then stops advancing.
 
-### BR51.20 — Pending — owner: `CC`
-**`set_part_hp` to zero never triggers the part's failure mode**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Setting part HP on a goo barrel to zero doesn't seem
-  to cause a detonation."*
-- **Confirmed by reading, not guessed:** `BoutInjector.set_part_hp` does `part.hp = hp` and nothing else.
-  `DamageResolver.resolve_part_failure` — the only thing that runs MANGLE / DISABLE / DETONATE / FRAGMENT
-  / MELTDOWN — has exactly one caller, inside impact resolution. So a part zeroed by the debug verb is at
-  0 hp and has not *failed*.
-- **This is the whole point of the verb.** `BR51.02` existed to make forcing a detonation possible; the
-  targeting half landed in Pass K and this half was never there. Nothing in the block has actually forced
-  a detonation.
-- **Do not simply call `resolve_part_failure` from the injector without deciding what it needs.** It takes
-  an `ImpactResult` and writes fragment/detonation results into it, so a debug-triggered failure needs a
-  real impact to hang off or a deliberate answer for what to pass — inventing a hollow one would put a
-  second failure path beside the resolver's.
-
-- **`Pending` (taskblock-51).** `set_part_hp` now runs `resolve_part_failure` when hp reaches 0, with a
-  nullable `ImpactResult` so no hollow stand-in is invented. The detonation event moved to
-  `DamageResolver`, where the failure happens — one emitter for both the shot path and the forced one.
-- **`Pending` rather than closed although CC owns it:** the deliverable is a sphere CC cannot see.
-  **To check:** click a goo barrel, `Set Part HP` -> 0, and it should explode with a red sphere sized to
-  its real radius.
 ### BR51.18 — Suspected — owner: `SUPERVISOR`
 **A unit slid sideways during a bout watched from both spectator and player control**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -170,51 +165,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Do not work this before it is reproduced.** Taskblock-51 Pass I's spectator/player divergence
   cluster is the same neighbourhood, and `PLAN.md`'s *One view, toggleable modules* would discard an
   instance fix here.
-
-### BR51.17 — Active — owner: `CC`
-**`avg less top 1%` degenerates into the plain mean it was built to replace**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, reading the supervisor's five live `fps_dump` lines — the first real data the
-  performance monitor has produced.
-- **The evidence, from one dump:** `1% low 19.9 | avg less top 1% 162.1 (reporting 100% of 4585
-  frames)`. A figure of 162 beside a 1% low of 20 and a session minimum of 7.4.
-- **"Reporting 100%" is the tell, and it cannot literally be 100%.** The cut is `0.99 x fastest`, and
-  the fastest frame is never below it, so at least one frame always drops. 100% is `describe()`
-  rounding 4584/4585. **Exactly one frame was dropped** — so the statistic is the plain mean minus its
-  single fastest sample, which is the number the supervisor built this whole panel to get away from.
-- **The cause is that the cut is anchored to the maximum, and the maximum is an outlier.** Uncapped, one
-  frame can land in the thousands; the cut then sits far above every real frame and drops nothing.
-  **The supervisor's worked example does not expose this** because its fast frames are clustered
-  (159/160 against a 160 max), and that example is asserted in `test_perf_stats.gd` and still passes.
-  A test built from a specified example cannot tell you the specification omitted a case.
-- **The supervisor's counter-reading, and it reframes this entry:** *"Arguably that's good. It caught a
-  random framerate spike even though everything up to this point has been locked at 160. Is it queuing
-  frames for some reason, and when those finally get to hit, they run over?"* The readout now reports
-  the fastest frame's immediate neighbours (`PerfStats.fastest_neighbourhood`, sixth line of the dump),
-  because a catch-up frame is identified by **adjacency** — it lands right after a stall. **If the
-  maximum is an artifact, the fix here is excluding frames that are not real frames, not choosing a
-  different percentile.** Waiting on one dump to say which.
-- **The catch-up hypothesis is DISPROVED, by the instrument built to test it.** Eight fresh dumps all
-  read `fastest 3915.8 (prev 116.2, next 260.0)`. **The frame before the spike was 116 fps** — an
-  entirely healthy frame — and the one after was 260. Nothing stalled, so the 0.255 ms frame is not
-  paying back an overrun. It is **not** one defect with `BR51.15`; that merge is withdrawn.
-- **The maximum is still an artifact, for a different reason.** A single near-zero-cost frame between an
-  8.6 ms frame and a 3.8 ms one looks like a frame that did no drawing at all — a lost/regained window
-  focus, or a processed-but-not-presented frame. Whatever it is, it is not a rendering rate.
-- **Also visible in the same dumps: the game is not capped at 160.** `avg less top 1%` reads **177-185**,
-  above the monitor's refresh, and `instant` routinely shows 176-258. The 160 the supervisor sees is the
-  display, not the engine — which is exactly the condition their original design note predicted
-  ("uncapped, framerate even in debug could easily be in the 1000s").
-- **So the remedy is still open and still the supervisor's**, but the catch-up option is off the table.
-  What remains: a percentile cut, a cut anchored to the median rather than the maximum, or dropping the
-  statistic in favour of the 1% low — which is doing its job precisely (20.3-22.7 across eight dumps,
-  pinning `BR51.14`).
-- **Not fixed, and deliberately not redesigned unasked.** *Which* rule replaces it is a design decision:
-  a percentile cut, a cut anchored to the median rather than the max, or discarding the statistic in
-  favour of the 1% low, which is doing its job perfectly. The supervisor was explicit about what this
-  figure means when it was specified, so CC does not get to quietly change it.
-- **The other three figures are sound and this does not touch them.** `1% low` pinned ~19.7 across five
-  dumps, `min` held 7.4 (`BR51.15`), `rolling 2s` tracked 61-90.
 
 ### BR51.16 — Active — owner: `SUPERVISOR`
 **The in-game combat log empties itself while the file on disk keeps everything**
@@ -363,53 +313,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   is fired**, not re-derive the geometry — that half is now measured and clean.
 - **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
   frame mismatch if a later change introduces the thing that was suspected here.
-
-### BR51.02 — Pending — owner: `CC`
-**`set_part_hp` cannot target a part that is not on a unit**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-30, taskblock-51 Pass A, while trying to force a detonation.
-- **Repro:** open Inject, choose `set_part_hp`, and try to target a goo barrel or any other field
-  object or blocker. There is no way to name it — the verb's target is a unit part.
-- **Filed as a bug, and half of it was not one.** "`set_part_hp` should accept things that are not unit
-  parts" is a capability that never existed — a **design change**, and the supervisor's standing rule is
-  that design changes live in the report and their notes until review, not in this ledger. That half
-  landed and is recorded in `reports/Report-Taskblock51.md`; it should not have been an entry.
-  **What remains below the reopen is a real defect** and is what this entry now means.
-- It was blocking the hunt either way: forcing a detonation is the deterministic route to `BR35.08`,
-  which otherwise needs a landed shot on a barrel that `BR51.01` is interfering with.
-
-- **Resolved (taskblock-51).** `set_part_hp` takes the same `{kind, unit, cell}` object target
-  `move_object` and `remove_object` already use, so a blocker or field object can be named by clicking
-  it. An empty `part_id` means the blocker itself, so killing a barrel needs no id typed. A bare `Unit`
-  still works unchanged — widening a target must not narrow an existing one, which is asserted.
-- **Your detonation route is open:** spawn a goo barrel, click it, `set_part_hp` → 0.
-
-- **REOPENED (taskblock-51, third hunt). The fix was real and insufficient, and the gap is upstream of
-  it.** The injector now resolves a cell target to the blocker there — that part works and is tested.
-  But the supervisor cannot *give* it that target: *"barrels aren't clickable. Selecting a barrel (or
-  any cover) actually selects the tile beneath."*
-- **So the defect is in what a board click resolves cover to**, not in the verb. `set_part_hp` was the
-  visible symptom; the real entry is that cover cannot be made the panel's active target at all, which
-  means every OBJECT-target verb has the same hole.
-- **My error worth recording:** I tested the injector against a hand-built `{kind: CELL, cell: X}` dict
-  and called the bug fixed without once driving the click that produces that dict. A test that
-  constructs its own input cannot tell you the caller never produces it — the same shape as
-  taskblock-48's "input tidier than reality is worse than no test".
-- **Subsumed by the taskblock-51 addendum's Pass K**, which builds the selection target this needs.
-  Every OBJECT-target verb has the same hole, so it is fixed there rather than per-verb here.
-
-- **`Pending` (taskblock-51, after the reopen) — two defects, one symptom.**
-  1. **The panel labelled cover as its tile.** `_refresh_active_label` special-cased units and called
-     everything else "Active: Cell (x, y)", so a barrel click was indistinguishable from a floor click.
-     It names the part now.
-  2. **The injector re-derived what the click already knew.** A cover click resolves to a `PART` hit
-     carrying the exact `Part` struck; `_object_target` ignored it and looked the cell up in `blockers`
-     a second time. It uses the struck part directly — the same "never compute it twice" rule
-     `docs/02` applies to shots.
-- **To see it work:** click a barrel — the panel should read `Active: goo_barrel @ (x, y)`, not
-  `Active: Cell`. Then `set_part_hp` with an empty `part_id` and 0.
-- **Tested against the click shape this time**, not a hand-built dict — that omission is what let the
-  first fix ship broken.
 
 ### BR46.02 — Active — owner: `CC`
 **16 of 40 generated maps contain ground a unit can walk into and never leave**
@@ -606,7 +509,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   row of a four-row table, and neither the 87.5% nor the 60% describes what a mixed-tier bout does.
 
 
-### BR26.02 — Pending — owner: `SUPERVISOR`
+### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **2026-07-23 (supervisor revision to the instrumentation spec — supersedes the offsets below).**
@@ -884,6 +787,19 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   it** — turn-start FPS **93** and **147**, against the **38.0** recorded earlier in this block.
 - **The session minimum is still ~7.1–7.8**, so one stall per session survives. That is the next thread
   if the supervisor still feels it: a single slow frame, not a sustained cost.
+
+- **2026-07-31 (supervisor — REOPENED from `Pending`, with an acceptance bar).** Framerate is much better
+  and is **not good enough**: *"I have a beefy PC. If I can't run an aiming sequence, with static actors,
+  no background thinking, at 160 steady, then there is still something wrong."*
+- **That is the closure condition, and it is testable rather than a feeling:** aim view, actors static,
+  no AI planning, **a steady 160 with no dips** — judged on the perf panel's *1% low* and *worst frame*,
+  never on an average. taskblock-51 measured `min 7.5, avg 140.1` in one session; the average is the
+  statistic that hid this for five blocks.
+- **The named lead is `BR51.15`** — a distinct hitch as the over-the-shoulder camera swings behind the
+  unit. The remaining session minimum is one stall, not a load: `PerfStats` reported the fastest frame's
+  neighbours as `prev 116.2, next 260.0`, which disproved the queued-frames theory.
+- **Per-motion cost is 113 504 → 8 878 usec** across four distinct fixes. What remains is not the same
+  bug at lower amplitude; treat the residue as its own investigation.
 
 ### BR27.01 — Active — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
@@ -1798,6 +1714,15 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   attempted here.
 - **`Pending` rather than closed:** the win is a framerate the supervisor can feel and CC cannot see, and
   `BR51.14` is still open on the same path.
+- **What to look for (supervisor asked).** This one is **measured, not seen**: move the mouse across a
+  board with many wall cells while a unit is selected and read the perf panel. The claim is
+  **42 527 → 14 390 usec per mouse motion**, so it should feel like a partial recovery of the
+  hover stutter, not a fix. **`BR51.14` is the entry for what you still feel** — it is the same symptom
+  on the non-aim path and is still open, so if hovering still stutters that is expected and belongs
+  there rather than here.
+- **This is a mitigation, not the structural fix.** The scan is still linear with a cheap reject in
+  front of it; a spatial index is the real answer and is not done.
+
 ### BR35.02 — Active — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
@@ -1843,7 +1768,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   or are heading toward, so a squad spreads out instead of stacking) is a genuine design question —
   how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
   not a one-line patch, and not guessed at here.
-### BR35.08 — Pending — owner: `SUPERVISOR`
+### BR35.08 — Active — owner: `SUPERVISOR`
 **Detonations are invisible — nothing is drawn when an explosion resolves**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (tb35 review, live). A detonation resolves mechanically but draws nothing
@@ -1875,6 +1800,11 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   resolver returns no separate "it detonated" fact. Same shape as `BR34.05`.
 - **To see it:** detonate a goo barrel. `Set Part HP` can target one now (Pass K), so it no longer needs
   a landed shot.
+- **2026-07-31 (supervisor check — REOPENED from `Pending`).** Detonations are still not being seen. Note
+  `BR51.21`: **no injection ever animates** — `_on_debug_panel_applied` never calls
+  `ResolutionPlayer.play()`, so a debug-forced blast cannot draw on that path at all. Until that is
+  settled, this entry can only be judged from a **shot-driven** detonation, which needs `BR51.01`.
+
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 shooter is elevated on a small platform and the target is below**
