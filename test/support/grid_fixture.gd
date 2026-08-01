@@ -52,6 +52,27 @@ static func place_ramp(grid: Grid, cell: Vector2i, level: float, facing: float =
 	GridPlacement.place(grid, cell, DataLibrary.get_part(&"ramp"), height, facing)
 
 
+## taskblock-52 Pass A: a fully enclosed room — every cell floored, the whole
+## perimeter carrying a real `wall` blocker. The geometry `BR34.05`'s standing
+## rule is stated against ("a shot fired in here must hit something"), and the
+## room `SeamSweep` measures, so the plane and the ray chain are always swept
+## through the identical board rather than through two hand-built ones.
+##
+## The walls tile exactly: `wall`'s own box is a full 1.0-wide cell cube, so
+## adjacent perimeter cells' boxes share a face with no gap between them. **Any
+## empty this room produces is a defect in the resolver, never a hole in the
+## fixture** — which is what makes it a usable measuring instrument at all.
+static func enclosed_room(width: int, rows: int, level: float = 0.0) -> Grid:
+	var grid: Grid = flat(width, rows, level)
+	for x in range(width):
+		place_wall(grid, Vector2i(x, 0), level)
+		place_wall(grid, Vector2i(x, rows - 1), level)
+	for y in range(rows):
+		place_wall(grid, Vector2i(0, y), level)
+		place_wall(grid, Vector2i(width - 1, y), level)
+	return grid
+
+
 ## tb31 Pass C's settled wall model, verbatim (`MapGen._finalize_walls_
 ## and_void`'s own "exposed wall" branch): ordinary floored ground
 ## carrying a real, destructible `wall` Part blocker, with opacity raised

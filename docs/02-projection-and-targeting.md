@@ -88,6 +88,73 @@ any other dead cover, via the shared Pathfinder fix every blocker benefits from 
 blocker no longer blocks movement). What's actually indestructible is the **void** past a wall's
 own ring — non-navigable, no Part, nothing for a shot to hit either.
 
+## Two models, and the boundary between them
+
+**The plane answers *where is the player pointing*. The ray answers *what
+happens*.** Until taskblock-52 the plane did both, and the second badly. This
+section exists because the plane had never been written down as a *model* — only
+accumulated as per-taskblock comments inside the file being reasoned about, which
+is how two confident readings of it came out wrong in one block.
+
+| | shot plane | ray chain |
+|---|---|---|
+| consumes | every candidate, enumerated | whatever the ray meets |
+| cost driver | scene size, per rebuild | ray length |
+| deflection | needs a **whole new plane** for the new direction | the same call, recursed |
+| angle at impact | discarded — a `Region` is an axis-aligned box of projected corners with a `body` | native; it is what you solve on |
+| membership | hand-enumerated per collection | one query |
+
+**Three open bugs were consequences of the model, not oversights.** A bounce
+tracer drawn to a fixed range, and a `STOP_DEAD` drawn past its own hit point,
+both existed because there is no plane for a post-deflection direction and
+building one is the expensive path — so the continuation was faked. `BR34.05`
+(misses vanish) exists because floors were never enumerated. None needs special
+handling in a ray march: **C-becomes-B is the same call again, and a ray in a
+closed room cannot fail to hit.**
+
+### The chain
+
+```
+A = muzzle point          (not the unit's cell centre)
+B = the aimed point       (from the dartboard, or a raycast if nothing was clicked)
+march A → B, first hit wins
+solve the angle of incidence against the struck surface
+→ deflect / penetrate / stop_dead   (docs/03, unchanged)
+if it continues:  C = march from B along the solved direction
+                  then C becomes B, B becomes A, repeat
+```
+
+- **The angle of incidence is native here**, where the plane discarded it.
+  `docs/03`'s deflect/penetrate/stop maths is described against a real surface
+  angle and, under the plane, got an approximation of one.
+- **A penetration continues the same ray; a deflection starts a new one.** Both
+  are the same call with a different direction — no branch that only one of them
+  exercises.
+- **The chain is capped, and the cap logs when it is hit.** An unbounded
+  recursion between two parallel walls is the obvious pathology.
+- **The outcome vocabulary is unchanged.** The ray changes *how* an outcome is
+  determined, never what the outcomes are.
+
+### Why the boundary sits there
+
+`docs/08`'s pillar — the number shown is the number computed — survives the
+split because the thing shown and the thing computed are still **one**
+computation. The dartboard picks the **B point**; the ray resolves from A to B
+onward. Two systems would only violate the pillar if both *resolved*, and only
+one does.
+
+The aim view already renders the real target and `PartPicker` already resolves a
+screen ray against it, so picking a point on the dartboard **is** a ray query the
+codebase already performs on every mouse move. Recoil and scatter offset B before
+the march; determinism is unaffected, because that is a seeded offset on a point
+followed by a closed-form march — no integrator, no accumulated simulation.
+
+**Analytic ray-vs-box only.** `PartPicker.hit(units, grid, from, dir)` delegates
+to `UnitPicker.ray_box_t` — a slab test in each box's own local frame, no scene
+tree and no physics server. A `PhysicsDirectSpaceState` raycast needs a live
+scene tree and would move shot resolution into the view layer, breaking the
+golden rule outright. It is not the swap-in it was once described as.
+
 ## The dartboard
 Aiming picks an **aim point** on the shot plane, never a body part. There is no "aiming for
 the neck" checkbox — you pick a spot and live with the scatter.
@@ -111,10 +178,19 @@ Modifiers change **radii and weights**, never outcomes, and always through the r
 (`08`). "Spin Up" shrinks a ring; a bipod shrinks all of them; suppression inflates them.
 Radii scale with range — start linear, it's a tunable.
 
-## Open question (do not decide in code — ask)
-A projectile that hits nothing in the plane: does it stop at max range, or keep travelling
-into the world to hit whatever's beyond? **Default: it keeps travelling**, reusing the
-ricochet travel path from `03`. Feeds the chaos pillar.
+## Answered: what a projectile that hits nothing does
+This was an open question here for a long time ("stop at max range, or keep travelling?").
+**The supervisor answered it while `BR34.05` was being triaged, and the answer is stronger
+than either option:** a shot should **nearly always hit something** — the floor, or one of
+the many walls surrounding the arena. The only legitimate ways for a round to hit nothing
+are **through an already-broken wall** or **out through the ceiling**.
+
+Range **attenuates damage; it never deletes the projectile.** A round past its effective
+range still travels and still strikes; it just arrives with less behind it.
+
+That makes "miss" a resolution outcome that should be rare rather than a branch the
+resolver takes whenever its lookup comes up empty — and it is the rule the ray chain is
+built to satisfy, since a ray in a closed room cannot fail to hit.
 
 ## Testing without rendering
 CC must build an **ASCII plane dump** (Phase 0): print the shot plane as a text grid — a
