@@ -65,6 +65,11 @@ const BOARD_CHANGING_VERBS: Array[StringName] = [
 	&"move_object",
 	&"set_passable",
 	&"set_cell_level",
+	# taskblock-51 `BR51.21`: added once `set_part_hp` could destroy things. Zeroing a part now
+	# runs its failure mode (`BR51.20`), so a barrel forced to 0 hp leaves `grid.blockers` — and
+	# without a board rebuild it stayed drawn while inspect showed an empty tile, which is
+	# exactly what the supervisor saw.
+	&"set_part_hp",
 ]
 
 

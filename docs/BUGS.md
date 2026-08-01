@@ -97,6 +97,51 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.21 — Active — owner: `SUPERVISOR`
+**A debug injection never animates — the board snaps, nothing plays**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt, forcing a detonation. *"There is no visible explosion animation."*
+- **Confirmed by reading, and the log agrees.** `out/combat.log` carries
+  `detonation: goo_barrel detonated at (18, 2), radius 2.0, 0 caught` — the mechanics fired and logged
+  correctly. `SquadControlOverlay._on_debug_panel_applied` then calls `sync_unit_views`,
+  `sync_board_view` and `refresh_unit_views` and **never calls `ResolutionPlayer.play()`**, so no
+  injected event is ever animated. The explosion sphere `BR35.08` built cannot appear on this path at
+  all.
+- **This is wider than detonations.** No injection animates: a forced move snaps, a forced kill snaps.
+  It has simply never been visible before because the verbs that existed changed state a refresh could
+  express.
+- **The fix is a design call, not a patch.** Playing an injection's own events would make the debug panel
+  drive the resolution player, which is a real coupling; the alternative is that injections are
+  deliberately instantaneous and detonations are verified by shooting a barrel instead (`BR51.01`).
+- **`set_part_hp` was also missing from `BOARD_CHANGING_VERBS`** — fixed in taskblock-51, and it explains
+  the paired symptom: the destroyed barrel stayed drawn because the board was never rebuilt.
+
+### BR51.22 — Active — owner: `CC`
+**A detonation damages units only, never cover or other blockers**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt. *"Only seems to damage units, not cover."*
+- **Confirmed in `DamageResolver.detonate`:** it iterates `state.units` and nothing else. Blockers and
+  field items are never considered, so a barrel next to a barrel cannot chain, and an explosion beside a
+  wall leaves it untouched.
+- **Same root as `BR35.08`'s drawing gate**, which was fixed by recording that a part detonated rather
+  than reading its casualty list: the blast list only ever contained `Unit`s. This is the mechanical half
+  of that same assumption.
+- **Chain reactions are the thing to decide before writing it:** a barrel that detonates a neighbouring
+  barrel needs a recursion bound, and that is a design call, not an implementation detail.
+
+### BR51.23 — Active — owner: `CC`
+**A detonation is centred on the owning unit's cell, not on the exploding part**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt, reviewing CC's own choice. *"Centered on the cell, or centered on the
+  exploding part? For a barrel, cell center works, but an ammo rack on a unit's back may be higher up or
+  offset."*
+- **The supervisor is right and CC chose wrong.** `DamageResolver._locate_cell` returns the *unit's* cell
+  for any part mounted on one, and the logged height is the cell's floor. So an ammo rack detonates at
+  its wearer's feet — the drawn sphere is centred somewhere the exploding object is not.
+- **A barrel is the case that hides it**, because a blocker's cell genuinely is its position.
+- **The part's real world position already exists** — `UnitGeometry.assembly_placements` composes exactly
+  this for rendering and for `PartPicker`, so the fix is to ask it rather than to derive a second answer.
+
 ### BR51.19 — Active — owner: `SUPERVISOR`
 **More than four units on a side spawn stacked on top of each other**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
