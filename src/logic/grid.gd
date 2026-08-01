@@ -121,7 +121,7 @@ func dup() -> Grid:
 ## tb35 Pass C: reverse lookup — the cell holding `part` as its own
 ## `blockers` entry, or null if it isn't (or is no longer) one. O(blocker
 ## count); only meant for a destroyed-blocker's own rare cleanup (see
-## `DamageResolver._resolve_destruction_consequences`'s own doc comment),
+## `DamageResolver.resolve_destruction_consequences`'s own doc comment),
 ## never a per-frame path.
 func cell_of_blocker(part: Part) -> Variant:
 	for cell: Vector2i in blockers:

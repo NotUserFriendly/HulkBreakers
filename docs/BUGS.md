@@ -97,6 +97,26 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR52.02 — Active — owner: `CC`
+**A test file that fails to parse is dropped from the run and the suite still exits 0**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-52 Pass B, by walking into it. Renaming `PartPicker._near_ray`
+  to `near_ray` left four stale calls in `test_selection_target.gd`. The run printed
+  `Failed to load script "res://test/unit/logic/test_selection_target.gd" with error "Parse error"`
+  — **and exited 0.** All ten of that file's tests simply did not run, and nothing said so in the
+  summary.
+- **Observed, not inferred:** the error text and the zero exit code came out of the same run.
+- **Why this matters more than the typo that exposed it.** The whole feedback loop rests on "green
+  before a pass commits". A green run that silently covers fewer files than the last one is the
+  strongest possible version of the failure this project keeps finding — a passing assertion beside
+  a live defect — because here there is no assertion at all.
+- **`test_suite_audit_csv.gd` does not catch it.** It compares the CSV snapshot against the files on
+  disk, so a file that is present but unloadable looks completely normal to it; it reported
+  "2598 rows against 2631 declared tests in 277 files" and passed in the same run.
+- **The fix is a count, not a parser.** GUT knows how many scripts it was asked to collect and how
+  many it actually collected; failing the run when those differ is the whole of it. Not attempted
+  in this taskblock — it is harness work and taskblock-52 is a resolver block.
+
 ### BR52.01 — Active — owner: `CC`
 **`PartPicker` hit-tests blockers and field items at world height 0, while `BoardView` draws them at
 the cell's real height**

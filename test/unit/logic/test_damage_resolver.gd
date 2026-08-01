@@ -471,7 +471,7 @@ func test_crit_chance_over_100_percent_always_crits_and_the_excess_is_the_double
 	const SAMPLES := 2000
 	var double_crits := 0
 	for i in range(SAMPLES):
-		var roll: Dictionary = DamageResolver._roll_crit(1.25, rng)
+		var roll: Dictionary = DamageResolver.roll_crit(1.25, rng)
 		assert_true(roll.is_crit, "125%% crit chance must always crit")
 		if roll.is_double_crit:
 			double_crits += 1
@@ -479,19 +479,19 @@ func test_crit_chance_over_100_percent_always_crits_and_the_excess_is_the_double
 
 
 func test_crit_effects_bypass_armor_when_armored_bonus_damage_when_not() -> void:
-	var crit_on_armor: Dictionary = DamageResolver._crit_effects(true, false, true)
+	var crit_on_armor: Dictionary = DamageResolver.crit_effects(true, false, true)
 	assert_true(crit_on_armor.bypass)
 	assert_false(crit_on_armor.bonus)
 
-	var crit_on_bare: Dictionary = DamageResolver._crit_effects(true, false, false)
+	var crit_on_bare: Dictionary = DamageResolver.crit_effects(true, false, false)
 	assert_false(crit_on_bare.bypass)
 	assert_true(crit_on_bare.bonus)
 
-	var double_on_armor: Dictionary = DamageResolver._crit_effects(true, true, true)
+	var double_on_armor: Dictionary = DamageResolver.crit_effects(true, true, true)
 	assert_true(double_on_armor.bypass)
 	assert_true(double_on_armor.bonus)
 
-	var double_on_bare: Dictionary = DamageResolver._crit_effects(true, true, false)
+	var double_on_bare: Dictionary = DamageResolver.crit_effects(true, true, false)
 	assert_false(double_on_bare.bypass)
 	assert_true(double_on_bare.bonus)
 

@@ -65,8 +65,18 @@ static func true_height_for_cell(cell: Vector2i, grid: Grid) -> float:
 ## does, based on Unit.is_downed()) — plenty of headless fixtures never
 ## bother docking a matrix for reasons unrelated to piloting status, and
 ## must not silently start rendering sideways because of it.
+## taskblock-52 Pass B: `include_joints` — default `false`, which is every
+## caller that existed before it — additionally emits one small synthetic box
+## per occupied socket, at that socket's own composed transform, carrying the
+## socket on the placement. Exactly what `BodyProjector._project_joint` already
+## projects into the plane, so a joint is the same target to a ray march as it
+## is to a projection rather than a second, nearby one. The view layer never
+## asks for them: a joint is aimable, not drawn.
 static func placements(
-	unit: Unit, orientation_override: Variant = null, pose_override: Variant = null
+	unit: Unit,
+	orientation_override: Variant = null,
+	pose_override: Variant = null,
+	include_joints: bool = false
 ) -> Array[BoxPlacement]:
 	if unit.shell.root == null:
 		return []
@@ -74,7 +84,9 @@ static func placements(
 		orientation_override if orientation_override != null else unit.orientation
 	)
 	var pose: Pose = pose_override if pose_override != null else unit.pose
-	return assembly_placements(unit.shell.root, unit.cell, orientation, pose, unit.height)
+	return assembly_placements(
+		unit.shell.root, unit.cell, orientation, pose, unit.height, include_joints
+	)
 
 
 ## docs/10 taskblock04 C1: the same tree-walk `placements()` gives a real
@@ -96,7 +108,12 @@ static func placements(
 ## is no longer a whole multiple of `LEVEL_HEIGHT` (`Unit.height`/
 ## `true_height_for_cell`'s own doc comment).
 static func assembly_placements(
-	root: Part, cell: Vector2i, orientation: float = 0.0, pose: Pose = null, height: float = 0.0
+	root: Part,
+	cell: Vector2i,
+	orientation: float = 0.0,
+	pose: Pose = null,
+	height: float = 0.0,
+	include_joints: bool = false
 ) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
 	var unit_transform := Transform3D(
@@ -104,7 +121,7 @@ static func assembly_placements(
 	)
 	if pose != null and pose.overrides.has(Poses.ROOT_SOCKET_ID):
 		unit_transform = unit_transform * (pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D)
-	_walk(root, Transform3D.IDENTITY, unit_transform, result, pose)
+	_walk(root, Transform3D.IDENTITY, unit_transform, result, pose, include_joints)
 	return result
 
 
@@ -113,7 +130,8 @@ static func _walk(
 	part_transform: Transform3D,
 	unit_transform: Transform3D,
 	result: Array[BoxPlacement],
-	pose: Pose
+	pose: Pose,
+	include_joints: bool = false
 ) -> void:
 	if part.hp > 0:
 		for box: Box in part.volume:
@@ -126,7 +144,22 @@ static func _walk(
 		var socket_transform: Transform3D = socket.current_transform()
 		if pose != null and pose.overrides.has(socket.id):
 			socket_transform = socket_transform * (pose.overrides[socket.id] as Transform3D)
-		_walk(socket.occupant, part_transform * socket_transform, unit_transform, result, pose)
+		var child_transform: Transform3D = part_transform * socket_transform
+		if include_joints:
+			# taskblock-09 D's own placement, in world space: the joint sits
+			# exactly where the child's local origin composes to — the same
+			# transform the child's own boxes use, with a small synthetic box
+			# instead of real volume. `part` is the socket's `joint_handle()`
+			# placeholder, never the occupant, matching `BodyProjector`.
+			result.append(
+				BoxPlacement.new(
+					socket.joint_handle(),
+					Box.new(Vector3.ZERO, BodyProjector.JOINT_BOX_SIZE),
+					unit_transform * child_transform,
+					socket
+				)
+			)
+		_walk(socket.occupant, child_transform, unit_transform, result, pose, include_joints)
 
 
 ## docs/10 taskblock04 A2: "compute each unit's bounding sphere from its
