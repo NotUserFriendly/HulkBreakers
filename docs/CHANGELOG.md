@@ -1,5 +1,22 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 Pass C — continuations are dull orange and flash with their own hit
+
+Both supervisor-specified. A penetration or a ricochet is the **same round still travelling**, so it now
+draws in a dull orange (`TRACER_CONTINUATION_COLOR`) rather than sharing the primary's bright flash —
+the blue it replaces was chosen for the decorative projection deleted in `BR35.04` and made a
+continuation look like a second, unrelated shot.
+
+**And a pull's hops flash together rather than in sequence.** An event whose successor continues it is
+started without being awaited, so only the final hop of a pull is waited on: one trigger pull is one
+visual event, a bright primary with its dull-orange continuations alongside. `BR27.03` records that
+these were always supposed to resolve simultaneously; taskblock-27 Pass A2's `DEFLECT_BEAT_MS` was a
+deliberate pause built on the opposite assumption and is now unused rather than merely reclassified.
+
+**Guarded against the obvious over-reach:** a *new* pull is never folded into the one before it, and
+only an `impact` can continue a pull — a `move` or `faced` between hops ends it, so a tracer is never
+drawn concurrently with an unrelated animation.
+
 ### taskblock-51 Pass C — a hop is not a new shot (`BR27.03` / `BR34.01` pacing)
 
 **The supervisor's correction to the previous entry:** deflects should be *visible*, the blue lines were
