@@ -23,6 +23,13 @@ extends RefCounted
 ## A loose Matrix field item has no volume/boxes to hit — never a
 ## candidate. Pure math, no SceneTree, same as `UnitPicker`.
 
+## `BR35.01`: the bound for the cheap reject in `_near_ray` — the perpendicular distance from a
+## cell's centre to the ray, beyond which the full assembly test is skipped. Deliberately
+## generous: a cell is one unit across and a part's boxes can overhang it, so this has to clear
+## the largest assembly that could still be struck. **A conservative reject, not a tight one** —
+## it may admit a cell the real test then rejects, and must never do the reverse.
+const SKIP_RADIUS := 3.0
+
 
 static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> Dictionary:
 	var nearest_unit: Unit = null
@@ -38,6 +45,8 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 		nearest_t = unit_hit["t"]
 
 	for cell: Vector2i in grid.blockers:
+		if not _near_ray(cell, from, dir):
+			continue
 		var t: Variant = _nearest_t(grid.blockers[cell], cell, from, dir)
 		if t != null and (t as float) < nearest_t:
 			nearest_t = t as float
@@ -46,6 +55,8 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 			nearest_cell = cell
 
 	for cell: Vector2i in grid.field_items:
+		if not _near_ray(cell, from, dir):
+			continue
 		for item: Variant in grid.field_items[cell]:
 			if item is Part:
 				var t: Variant = _nearest_t(item, cell, from, dir)
@@ -58,6 +69,23 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 	if nearest_part == null:
 		return {}
 	return {"unit": nearest_unit, "part": nearest_part, "cell": nearest_cell, "t": nearest_t}
+
+
+## `BR35.01`: **a cheap reject before the per-box test.** `hit` ran a full assembly ray test
+## against every entry in `blockers` and `field_items` regardless of where the ray went — fine
+## when those held a handful of scattered props, and 200+ wall cells on a real generated map
+## since tb31 C. This runs on every mouse motion.
+##
+## Behind the ray counts as far: a `t` below zero is discarded downstream anyway, so a blocker
+## the shooter has walked past is not a candidate.
+static func _near_ray(cell: Vector2i, from: Vector3, dir: Vector3) -> bool:
+	var centre := Vector3(float(cell.x), 0.0, float(cell.y)) * UnitGeometry.CELL_SIZE
+	var to_centre: Vector3 = centre - from
+	var along: float = to_centre.dot(dir)
+	if along < -SKIP_RADIUS * UnitGeometry.CELL_SIZE:
+		return false
+	var perpendicular: Vector3 = to_centre - dir * along
+	return perpendicular.length() <= SKIP_RADIUS * UnitGeometry.CELL_SIZE
 
 
 ## The nearest ray-t across every box in `part`'s own assembly tree at

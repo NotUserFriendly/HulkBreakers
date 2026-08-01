@@ -1759,7 +1759,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   same-material blocker cells addresses the seam, a floor Region addresses the absent backstop, and capping
   scatter radius papers over both with a balance number. **Supervisor's call, and it is queued as a design
   call rather than a code fix.**
-### BR35.01 — Active — owner: `CC`
+### BR35.01 — Pending — owner: `CC`
 **`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **Found:** 2026-07-23 (tb35 Pass C, `Grid.blockers` audit sweep). `PartPicker.hit()`
@@ -1787,6 +1787,17 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   absorbed three reasoned-not-measured fixes, and the standing instruction to measure first applies
   with more force, not less, now that the obvious theory has been falsified once.
 
+- **`Pending` (taskblock-51).** `hit` now rejects a cell whose perpendicular distance from the ray
+  exceeds `SKIP_RADIUS`, before the per-box assembly test. **Measured on the same 216-blocker probe the
+  rest of this block used: 18 454 -> 14 390 usec per mouse motion (54 -> 69 fps).**
+- **The reject is deliberately conservative** — admitting a cell the real test then rejects costs a
+  little time; rejecting one that would have been hit is a shot passing through a wall. `SKIP_RADIUS` is
+  3 cells because a part's boxes can overhang the cell it sits in.
+- **This is a mitigation, not the structural fix** the entry describes: the scan is still linear in the
+  blocker count, just with a cheap reject in front. A spatial index is the real answer and is not
+  attempted here.
+- **`Pending` rather than closed:** the win is a framerate the supervisor can feel and CC cannot see, and
+  `BR51.14` is still open on the same path.
 ### BR35.02 — Active — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
@@ -1810,40 +1821,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   because it cannot inherit them without dragging in `TacticsController` and the whole unit-input path.
   `PLAN.md`'s *One view, toggleable modules* dissolves the class. Fixing an instance is work that
   refactor discards.
-
-### BR35.03 — Active — owner: `CC`
-**Every debug-panel verb rebuilds the entire board view, not just ones that touch blockers/field items**
-- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
-- **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay.
-  _on_debug_panel_applied()` calls `battle.sync_board_view()` (a full teardown/rebuild of every
-  static mesh — walls, field items, indicators) after **every** debug verb, including ones with no
-  possible effect on board geometry (`set_ap`, `set_mp`, `force_current_unit`, ...). Before tb31 C
-  this rebuilt a handful of props each time; now it rebuilds hundreds of wall meshes on every single
-  debug action regardless of relevance. Debug-build-only (`OS.is_debug_build()`), so the blast radius
-  is limited, but it's a real, newly-heavier cost every time.
-- **Not fixed this pass.** The fix is straightforward in shape (gate the rebuild to verbs that can
-  actually touch `grid.blockers`/`field_items` — `move_object`/`spawn_object`/`remove_object`) but
-  getting the verb-id list exactly right (not missing one that can add/move/remove a blocker or field
-  item) wants a careful pass of its own rather than a rushed guess at the end of an already-long one.
-- **2026-07-26 — `Pending` (tb42 Pass E)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Both overlays'
-  `_on_debug_panel_applied` called `sync_board_view()` — a full `BoardView.build()` of terrain, grid
-  lines, every blocker and every field item — after **every** verb, including the ~20 that only ever
-  touch one unit's AP, facing, pose or parts. `DebugVerbs.affects_board()` is now the one authority
-  both overlays read; the same question answered separately in two files is how they drift.
-  `move_object`/`remove_object` stay in the list unconditionally: either can target a cell or a unit,
-  decided at call time, and a missed board rebuild is invisible-until-noticed while an extra one is
-  merely slow.
-  - A test checks the list against `DebugVerbs.all()`, and immediately earned it: my first draft
-    listed `place_cover`/`clear_cover`, which are **not** panel verbs (the panel exposes
-    `spawn_object`/`remove_object`, which front both). They matched nothing and would have quietly
-    misled the next reader.
-  - **To confirm:** open `Inject...`, apply a unit-only verb (Set AP, Set Facing), and check the board
-    does not visibly rebuild; then apply Set Cell Level or Spawn Object and check it does.
-- **2026-07-28 (review session `HBPaR3`) — moved from `Pending` back to `Active`.** A `CC`-owned
-  `Pending` is not a stable state: `Pending` means the *owner* has not seen the fix work, and CC is the
-  owner here. Either it is verifiable and should be closed, or it is not and CC is the wrong owner.
-  Returned to `Active` so it is picked up in the next bug hunt rather than sitting in a status that
-  nobody can discharge.
 
 ### BR35.05 — Active — owner: `CC`
 **`approach_path`/`closing_path` have no ally-awareness — squadmates converge into each other's own line of fire**

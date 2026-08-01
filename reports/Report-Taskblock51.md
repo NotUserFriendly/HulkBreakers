@@ -1,7 +1,7 @@
 # Taskblock 51 Report — The bug hunt, and one bug that was four
 
 **Passes A and B partially landed; the framerate deep-dive took the block, then the addendum's perf
-suite, then both addendum passes.** Suite green — **2582 tests, ~309 s**. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
+suite, then both addendum passes.** Suite green — **2596 tests, ~304 s**. **`BR26.02` is paused by supervisor decision while it is "decent", not closed.**
 
 Four supervisor hunting sessions. **Ledger 31 → 40 open**, which is the honest shape of a hunt: five
 entries closed, fourteen filed, several re-diagnosed.
@@ -311,6 +311,27 @@ system settles. CC had filed three, and only one of the session's reports was a 
 on an exploded set, never re-exploding — the supervisor's stated shape), and a mounted part detonates at
 its own composed position rather than its wearer's cell. `Detonation` was split out of `DamageResolver`
 when chaining pushed that file past its line cap.
+
+## The CC-owned sweep, and what a single attempt each actually reached
+
+The supervisor asked for one attempt at every CC-owned entry that is headless-verifiable. **Two were
+reached; the rest were not, and the reasons are specific rather than "ran out of room":**
+
+- **`BR35.03` — closed on a reading, no change made.** taskblock-42 Pass E had already gated the board
+  rebuild on `DebugVerbs.affects_board`, in both overlays. Its own triage predicted exactly this.
+- **`BR35.01` — mitigated and measured.** A cheap perpendicular-distance reject before the per-box test:
+  **18 454 -> 14 390 usec per mouse motion**. With the `BR51.14` tooltip fix that is **42 527 -> 14 390**
+  across the block, a third of the original. **Not the structural fix** — the scan is still linear with a
+  reject in front, and a spatial index is the real answer.
+- **`BR51.14`** — paused by the supervisor, and its remaining cost is the `previewed_unit()` memo that
+  `BR26.02` recorded two reverted attempts at. Not a single-attempt item.
+- **`BR51.17`** — blocked on a design decision, not on work: which rule replaces the top-1% cut is the
+  supervisor's, and the catch-up option was ruled out by their own dumps.
+- **`BR46.02`** — the fix is a `CLIMBER` part, which taskblock-51 explicitly names as **not this block's
+  job** ("using it to paper over BR46.02 hides both").
+- **`BR35.05`, `BR40.01`, `BR45.01`** — untouched. Each is a real piece of work rather than a check, and
+  starting one at the end of a block is how half-fixes get left behind.
+- **`BR51.02`, `BR51.20`** — already `Pending`, awaiting a live look rather than more work.
 
 ## Open questions
 
