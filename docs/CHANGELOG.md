@@ -1,5 +1,22 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 Pass C — `BR35.08`: detonations are visible, at their real size
+
+Built to the supervisor's spec: a translucent red sphere from the detonation point, growing outward to
+the **actual explosion radius**, then fading. **Grow : fade is 1 : 3**, and the total is a tunable beside
+the other bullet timing (`DETONATION_MS`, 1000 ms).
+
+**The radius travels in the log rather than being chosen in the view**, which is the whole point — a
+drawn extent computed view-side would be `BR35.04`'s decorative tracer wearing different clothes. A new
+`detonation` event carries the centre and `part.detonate_radius`, and is emitted **once per explosion**;
+the existing `detonate` events are one *per affected unit*, which is right for damage bookkeeping and
+would have stacked one sphere per victim.
+
+**Known gap, stated rather than hidden:** a detonation that harms nobody produces an empty
+`detonated_units` and so draws nothing. Reaching it needs a "this part detonated" fact the resolver does
+not currently return, distinct from "these units were hurt" — the same shape as `BR34.05`, where absence
+of a thing to hit is indistinguishable from nothing having happened.
+
 ### taskblock-51 Pass C — continuations are dull orange and flash with their own hit
 
 Both supervisor-specified. A penetration or a ricochet is the **same round still travelling**, so it now

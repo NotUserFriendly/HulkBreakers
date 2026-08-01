@@ -1848,7 +1848,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - Filed separately from BR35.04 per the supervisor's own convention — one entry per observed symptom,
   cross-linked, rather than bundling by shared root.
 
-### BR35.08 — Active — owner: `SUPERVISOR`
+### BR35.08 — Pending — owner: `SUPERVISOR`
 **Detonations are invisible — nothing is drawn when an explosion resolves**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (tb35 review, live). A detonation resolves mechanically but draws nothing
@@ -1871,6 +1871,15 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   this one can be looked at** — which is the argument for fixing `BR51.02` before anything else in the
   block.
 
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** Built to the
+  stated spec: translucent red sphere, grows to the real `detonate_radius`, fades, grow : fade 1 : 3,
+  `ResolutionPlayer.DETONATION_MS` defaulting to 1000 ms. A new `detonation` log event carries the centre
+  and radius, emitted **once per explosion** rather than once per victim, so the drawn extent is a readout
+  of the mechanical one.
+- **Gap:** a detonation that harms nobody still draws nothing — `detonated_units` is empty and the
+  resolver returns no separate "it detonated" fact. Same shape as `BR34.05`.
+- **To see it:** detonate a goo barrel. `Set Part HP` can target one now (Pass K), so it no longer needs
+  a landed shot.
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 shooter is elevated on a small platform and the target is below**
