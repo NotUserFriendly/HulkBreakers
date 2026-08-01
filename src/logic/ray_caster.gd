@@ -52,7 +52,7 @@ static func cast(
 		return null
 	if tied.size() == 1:
 		return tied[0]
-	return RayTiebreak.resolve(tied, from, log)
+	return RayTiebreak.resolve(tied, from, dir.normalized(), log)
 
 
 ## Every hit sharing the nearest `t`, nearest-first-and-only. Usually one; more
@@ -218,6 +218,7 @@ static func _consider(
 	hit.exit_normal = raw["exit_normal"]
 	hit.thickness = minf(placement.box.size.x, minf(placement.box.size.y, placement.box.size.z))
 	hit.root_origin = root_origin
+	hit.placement = placement
 
 	if t < best_t - TIE_EPSILON:
 		best.clear()

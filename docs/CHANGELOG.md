@@ -1,5 +1,42 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass C — ties resolve, log the stage that did it, and one stage turns out never to fire
+
+**`RayTiebreak` has all three stages and every tie writes a `ray_tie` line naming the one that
+resolved it.** The log was specified precisely because nobody knew the tie rate; measured now, from a
+point source in a walled 21x21 room: **4 ties in 720 rays (0.56%)**, and 4 in 1440 — the extra angles
+add none, because the ties are exactly the four axis-aligned directions.
+
+**Stage 2, the box cast, earns its place: 9 of 9 angled ties.** The probe is a box aligned to the
+ray, swept along it, represented by its four cross-section corner rays; each candidate is scored by
+the earliest `t` any corner reaches it. For a ray at angle theta the cross-section basis tilts with
+it, so one corner sits fractionally further downrange and reaches the shared face plane first — and
+it favours the side the ray is angling away from, which is a fact about the approach rather than a
+coin flip. **It iterates the tied set alone and returns one of its members**, so it is structurally
+incapable of reporting a body the raycast did not find; asserted, as the taskblock asks by name.
+
+**`PROBE_RADIUS` is 0.05 and is not a projectile width.** Box casting as a weapon property is
+explicitly a later design lever, and letting a tiebreak dictate the weapon model would be the wrong
+reason to build it. Flagged and tunable.
+
+**Stage 3, closest root, has never fired — and the reason is structural, not a sampling accident.**
+The design's argument was that "the gun is offset from the unit's centreline and the two cells'
+centres differ, so root-to-root distance separates them." **The condition that creates an
+axis-aligned tie defeats exactly that:** to meet two side-by-side cells at one `t` with an
+axis-aligned ray, the ray must lie on their shared plane, and every point on that plane is
+equidistant from both roots whatever the muzzle offset. Measured directly — both roots at
+7.08872365951538 — so stage 3 is symmetric in precisely the case stage 2 defers to it in.
+
+What actually catches those is the **geometric stable order** (cell, then part id), which is a
+stronger determinism guarantee than the plane ever had: the plane sorted with `sort_custom` over
+`Dictionary` iteration, which is insertion order and therefore a property of the map generator
+rather than of the resolver.
+
+**Closest root is kept rather than deleted**, because removing a stage the taskblock specified is a
+design call and not CC's. It is recorded as measured-dead in
+`test_closest_root_does_not_fire_in_any_tie_that_can_currently_be_constructed`, whose own doc
+comment says to update it rather than delete it if a later change makes the stage fire.
+
 ### taskblock-52 Pass B — the ray chain: A to B, then C becomes B
 
 **`RayChain` marches a projectile through the actual world.** A is the muzzle, B is the aimed point,
