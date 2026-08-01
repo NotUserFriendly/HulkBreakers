@@ -1,5 +1,19 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — `set_part_hp` is a board-changing verb
+
+One line, and it explains a paired symptom the supervisor reported: a barrel forced to 0 hp stayed drawn
+while inspect showed an empty tile. `set_part_hp` was absent from `BOARD_CHANGING_VERBS`, so
+`sync_board_view()` never ran after it — correct while the verb only changed a number, wrong the moment
+`BR51.20` let it destroy things.
+
+**The remaining reports from that session are filed rather than fixed**, because each is a decision:
+`BR51.21` (no injection ever animates — the overlay never calls `ResolutionPlayer.play()`, which is why
+the explosion sphere cannot appear on this path), `BR51.22` (detonations damage units only, never cover —
+`detonate()` iterates `state.units` and nothing else), and `BR51.23` (a detonation is centred on the
+owning unit's cell, so an ammo rack explodes at its wearer's feet — the supervisor's own catch, and CC
+chose wrong).
+
 ### taskblock-51 — `BR51.20`: zeroing a part now runs its failure mode, and one place emits a detonation
 
 `BoutInjector.set_part_hp` set the number and stopped. `DamageResolver.resolve_part_failure` — the only
