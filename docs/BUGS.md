@@ -1691,6 +1691,23 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   sharpens the fix: the termination is happening at the range gate, not only at the resolution.
 - **Still open, still `SUPERVISOR`-owned. Nothing was closed by the merge** — a duplicate record was
   removed, not a bug.
+
+- **taskblock-51 Pass C — investigated, not fixed, and it is bigger than the miss branch.** `ShotPlane.build`
+  iterates units, `grid.blockers` and field items. **There is no floor in it**, so a round angled slightly
+  down, or passing over and between everything, has nothing to intersect: "miss" is not a wrong branch
+  being taken, it is the only branch that exists.
+- **`Surface` already carries a `Part` (tb38 made floor and terrain into parts)**, so a floor Region needs
+  no stand-in Part and no new outcome type — `ImpactResult.region.part` works with `surface.part` as it
+  stands. That removes the design question CC raised about what a floor hit would *mean*.
+- **There is a SECOND cause, recorded in `PLAN.md` under *Wide scatter passing through a wall seam*.**
+  Wall cells are projected as independent rects that are **not guaranteed to tile edge-to-edge** from an
+  arbitrary shooter angle, so a dartboard point can thread a real gap in an enclosed room — reproduced at
+  56/200 empties at a lateral offset of ~8. **A floor Region alone would not fix this**; it would convert
+  "vanishes" into "hits the floor behind the wall", which is visible but still wrong.
+- **So this entry and that `PLAN.md` item are one decision.** Of its three candidates, merging contiguous
+  same-material blocker cells addresses the seam, a floor Region addresses the absent backstop, and capping
+  scatter radius papers over both with a balance number. **Supervisor's call, and it is queued as a design
+  call rather than a code fix.**
 ### BR35.01 — Active — owner: `CC`
 **`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`

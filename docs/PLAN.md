@@ -1272,6 +1272,15 @@ one projected rect at the source; cap dartboard scatter radius at a bound guaran
 balance number); or add a genuine floor Region. A design call waiting to be made, not a code fix waiting to be
 written.
 
+**taskblock-51: this item and `BR34.05` (misses vanish instead of striking anything) are one decision, not
+two.** Investigating that entry arrived here from the other direction — the supervisor's rule is that a shot
+should nearly always hit something, and both causes stand between the code and that rule. **The first and
+third candidates are complementary rather than alternatives:** a floor Region gives a round something to stop
+against, and merging contiguous blocker cells stops a round threading a wall it should have hit. A floor
+Region alone converts "vanishes" into "hits the floor behind the wall" — visible, still wrong. **`Surface`
+already carries a `Part`** (tb38 made floor and terrain into parts), so a floor Region needs no stand-in and
+no new outcome type; the cost is the plane's own build, which is `BR26.02`'s hot path and wants measuring.
+
 
 ### Commission real art
 **Needs:** a vocabulary freeze — a stretch of taskblocks in which **no socket type or part kind is
