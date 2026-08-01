@@ -210,7 +210,29 @@ static func _resolve_slide(
 
 ## Subtracts `amount` (rounded up, so any positive damage always registers)
 ## from `part.hp`. Returns true if this destroyed the part.
+##
+## taskblock-52 Pass D: **`Part.is_destructible` finally does something.** The
+## flag was declared in `part.gd` ("False marks permanent terrain... that can
+## never be destroyed, docs/02") and set on `ship_floor` and `ramp`, and **no
+## logic anywhere read it** — a dead field. That was harmless only because
+## nothing could shoot a floor. The moment the ray march made surfaces real
+## geometry it stopped being harmless: `ship_floor` carries `hp = 1`, so the
+## first round to strike a deck plate would have destroyed it, `BodyProjector.
+## projects()` would have stopped projecting it, and the room would have started
+## developing holes in its floor.
+##
+## An indestructible part still **takes** the round — it stops it, it is a real
+## surface — it simply never reaches zero and never reports destruction, so no
+## failure mode, ejection or salvage fires for it. Floors at 1 hp therefore stay
+## at 1 hp rather than being given an invented hit-point total, which would be a
+## balance number dressed as a fix.
+##
+## Narrow blast radius, checked rather than assumed: only `ship_floor` and `ramp`
+## ship with the flag false. Walls are explicitly destructible (tb31 Pass C: "a
+## wall is just high-DT destructible cover"), and `test_map_gen.gd` asserts it.
 static func apply_damage_to_part(part: Part, amount: float) -> bool:
+	if not part.is_destructible:
+		return false
 	part.hp = maxi(0, part.hp - int(ceil(amount)))
 	return part.hp <= 0
 

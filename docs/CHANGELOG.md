@@ -1,5 +1,72 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass D — membership dissolves: floors are ordinary geometry, and a dead flag wakes up
+
+**The ray marches all four collections.** `ShotPlane.build` looped `state.units` and
+`grid.blockers`; `PartPicker` looped those plus `grid.field_items`; **neither looked at
+`grid.surfaces`**. That absence is the whole of `BR34.05`'s "or the floor" half — a round angled
+slightly down had nothing to intersect, so "miss" was not a wrong branch being taken, it was the only
+branch that existed. Measured: **59/59 shallow downward shots land** inside a closed room.
+
+**Floors got geometry as data, not as code.** `ship_floor` and `ramp` now carry a `volume` — a
+full-cell box whose **top face sits exactly at the surface height**, matching the flat quad
+`BoardView._build_terrain` draws there. A designer adding a new walkable surface adds a Part with a
+volume; no code edit, and no synthesised stand-in box in the caster.
+
+**The 0.2 thickness is flagged, and it is not a balance number today.** No shipped material authors a
+`dt_curve`, so `MaterialEntry.dt_at` returns the flat `dt` regardless of thickness — the floor's box
+depth has no DT effect at all right now. Nothing on screen contradicts any value under the level
+step either, since the renderer draws a zero-thickness quad. **Worth a real decision the moment a
+`dt_curve` is authored**, and flagged as such rather than presented as settled.
+
+**`Part.is_destructible` finally does something, and it had to.** The flag is declared in `part.gd`
+("False marks permanent terrain... that can never be destroyed") and set on `ship_floor` and `ramp`,
+and **no logic anywhere read it** — a dead field, harmless only because nothing could shoot a floor.
+`ship_floor` carries `hp = 1`, so the first round to strike a deck plate would have destroyed it,
+`BodyProjector.projects()` would have stopped projecting it, and rooms would have developed holes in
+their floors. `apply_damage_to_part` now refuses to damage or destroy an indestructible part — it
+still stops the round, it simply never reaches zero. Floors stay at 1 hp rather than being given an
+invented hit-point total. Blast radius checked rather than assumed: only `ship_floor` and `ramp` ship
+with the flag false; walls are explicitly destructible (tb31 Pass C) and `test_map_gen.gd` asserts it.
+
+**Surfaces are placed at their own height, not the cell's.** `_consider_surface` reads
+`surface.height` and `surface.facing` directly rather than going through
+`UnitGeometry.true_height_for_cell`, which resolves to a cell's *first walkable* surface — a catwalk
+over a floor would otherwise place both at the lower one's height. Asserted with two stacked surfaces
+at one cell.
+
+**Every remaining miss has a named reason, asserted rather than waved at.** On an open, unwalled
+board a shallow enough round genuinely leaves the map, which `docs/02` counts as legitimate. The test
+asserts a shot misses **exactly when** its own flight would run past the board before reaching the
+deck — 3 of 59, each shallower than the board is long. The first version of that test asserted 29/29
+on an open board, got 26, and was wrong.
+
+### taskblock-52 Pass D — reported, not built: should membership be derived?
+
+The taskblock asks whether the four collections should be replaced by one "everything occupying
+space" query that the ray, the picker and the inspect preview all consume, and explicitly asks for a
+report rather than a build.
+
+**Yes, and the evidence is that the same gap has now been found three times from three directions.**
+`PartPicker` scanned two collections while the plane scanned two different ones; `InspectPanel`'s
+non-unit path was a third instance (`BR51.25`); and `BR52.01` was a fourth — the picker and the
+renderer disagreeing about the *height* of the collection they did share.
+
+**The next absent collection is not prevented structurally.** Nothing in the code says "these are the
+things that occupy space"; each consumer writes its own `for cell in grid.<something>` loop, so a
+fifth collection is found the same way these were — by someone noticing a shot passing through
+something. `RayCaster.tied_candidates` is now the closest thing to a single answer, but it is one
+consumer's private list rather than a shared query.
+
+**What a derived query should be, when it is built:** `Grid` exposing occupancy, so the collections
+become an implementation detail of the grid rather than a vocabulary every caller must know. The
+tell that it is right will be `PartPicker` becoming a thin filter over it — the picker deliberately
+should *not* return floors (clicking a floor selects the tile, which `BoardPicker` handles), so the
+query must be filterable rather than one-size-fits-all.
+
+**Not built here, deliberately.** It would touch every consumer in the same block that replaced the
+resolver, which is exactly the attribution problem Pass F exists to avoid.
+
 ### taskblock-52 Pass C — ties resolve, log the stage that did it, and one stage turns out never to fire
 
 **`RayTiebreak` has all three stages and every tie writes a `ray_tie` line naming the one that

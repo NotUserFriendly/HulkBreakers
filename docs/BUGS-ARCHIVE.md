@@ -2254,3 +2254,45 @@ be permanently immobilised**
   **To check:** click a goo barrel, `Set Part HP` -> 0, and it should explode with a red sphere sized to
   its real radius.
 - **2026-07-31 (supervisor check — RESOLVED).** Zeroing a part runs its failure mode.
+
+### BR52.01 — Resolved — owner: `CC`
+**`PartPicker` hit-tests blockers and field items at world height 0, while `BoardView` draws them at
+the cell's real height**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-52 Pass A, reading the four collections the ray march has to cover.
+- **Two callers, one geometry call, different arguments.** `UnitGeometry.assembly_placements(root,
+  cell, orientation, pose, height)` defaults `height` to `0.0`.
+  - `BoardView._spawn_blocker` passes `_height_for(cell)` — and its own comment says why: *"a cover
+    object or wall on a raised cell now needs to actually sit ON that cell's own real ground, not
+    float at world level 0"* (taskblock-37 Pass E).
+  - `PartPicker._nearest_t` calls `UnitGeometry.assembly_placements(part, cell)` — no height at all.
+- **So on any raised cell the clickable/aimable volume is not where the mesh is**, which contradicts
+  `docs/10`'s "render is hitbox" directly. `ShotPlane.build` gets this right for the same objects
+  (`UnitGeometry.true_height_for_cell`), so the picker is the odd one out of three.
+- **Blast radius:** every hover, every aim reticle, every click that resolves to cover — the paths
+  `BR51.02`/`BR51.25` were both found in. A flat map hides it completely, which is why it has survived.
+- **Filed on a reading, not yet on a measurement.** taskblock-52 Pass D marches the same collections
+  at their true heights and is where the proof and the fix land together; recorded here first so it is
+  not lost between passes.
+
+- **Resolved (taskblock-52 Pass D), and it was two defects rather than one.**
+  1. **`PartPicker._nearest_t` took `assembly_placements`' default height of 0.0.** It passes
+     `UnitGeometry.true_height_for_cell` now, the same value `BoardView._spawn_blocker` and
+     `ShotPlane.build` already used.
+  2. **`near_ray`'s cheap reject was height-blind too**, and this half was worse. It measured the
+     perpendicular distance from the ray to a point on the **ground**, so a blocker on a cell raised
+     by 2.0 was **rejected outright** for any ray passing above ~3.0 — never reaching the per-box
+     test at all. That is exactly the failure the reject's own doc comment says must never happen
+     ("it may admit a cell the real test then rejects, and must never do the reverse"). It takes the
+     cell's real height now.
+- **Found by a test, not by reading.** The second half only surfaced because
+  `test_a_blocker_on_a_raised_cell_is_hit_where_it_is_drawn` fired at a raised wall *at the height
+  `BoardView` draws it* and got nothing back. The reading alone had found only the first half.
+- **Proved against the renderer's own placement call** — the test asks
+  `UnitGeometry.assembly_placements(wall, cell, 0.0, null, true_height_for_cell(...))` where the box
+  actually is and fires at that, rather than re-deriving an expected height. A second copy of the
+  formula would have agreed with the broken code.
+- `test_the_picker_and_the_march_agree_about_a_raised_blocker` pins the two answers together, since
+  the aim UI and resolution asking the same question and getting different answers is the shape this
+  entry was.
+
