@@ -106,8 +106,14 @@ confirm" roll-up — so pending items surface at a natural review point without 
   every unit past the fourth on one cell — so look at how many cells the zone actually offers before
   looking at the placement loop.
 - **`Grid.set_occupant_id` holds one occupant per cell**, so this is not two units legally sharing a
-  tile; it is placement writing over itself. Whether the *logic* also believes they are stacked, or only
-  the view draws them so, is the first thing to establish — those are very different defects.
+  tile; it is placement writing over itself.
+- **Supervisor's clarification: it is logic-level, not a drawing artefact.** *"It looks to be logic level
+  as units moved from plausible positions."* Units that begin stacked and then move apart to sensible
+  cells means the *state* had them on one cell — the view was drawing the truth. So the defect is in
+  placement, and `set_occupant_id` holding one occupant per cell means the earlier arrivals' occupancy is
+  being overwritten rather than the placement being refused.
+- **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
+  is the shape of a zone that runs out of distinct cells and then stops advancing.
 
 ### BR51.20 — Active — owner: `CC`
 **`set_part_hp` to zero never triggers the part's failure mode**
