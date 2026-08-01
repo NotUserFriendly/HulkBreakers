@@ -108,7 +108,7 @@ func test_killing_the_reactor_stops_power_and_detonates() -> void:
 	assert_true(unit.shell.is_powered())
 
 	reactor.hp = 0
-	var detonated: Array[Unit] = DamageResolver.detonate(reactor, state)
+	var detonated: Array[Unit] = Detonation.resolve(reactor, state, DamageResolver.locate_cell)
 
 	assert_false(unit.shell.is_powered(), "a destroyed reactor no longer counts as living")
 	assert_has(detonated, unit, "a real detonate_damage: it detonates")

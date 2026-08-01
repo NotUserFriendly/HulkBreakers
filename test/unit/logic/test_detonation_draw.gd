@@ -126,3 +126,76 @@ func test_setting_a_barrel_above_zero_does_not_detonate_it() -> void:
 	)
 
 	assert_eq(sink.events_of_kind(&"detonation").size(), 0, "wounded, not destroyed")
+
+
+## **`BR51.22`: cover takes the blast, and a chain never re-explodes anything.**
+##
+## Supervisor-specified: *"Chain reactions chain react simultaneously, then in order, they should
+## never re-explode something that's already exploded."* `detonate` iterated `state.units` and
+## nothing else, so a barrel beside a barrel could not chain at all.
+func test_a_barrel_detonates_its_neighbour_exactly_once() -> void:
+	var grid := Grid.new(12, 12)
+	grid.blockers[Vector2i(4, 4)] = _barrel()
+	grid.blockers[Vector2i(6, 4)] = _barrel()
+	var state := CombatState.new(grid, [] as Array[Unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	BoutInjector.new(state).set_part_hp(
+		{"kind": Enums.HitKind.CELL, "unit": null, "cell": Vector2i(4, 4)}, &"", 0
+	)
+
+	var blasts: Array[LogEvent] = sink.events_of_kind(&"detonation")
+	for blast: LogEvent in blasts:
+		gut.p("chain: %s" % blast.text)
+	assert_eq(blasts.size(), 2, "the first set off the second — and neither went off twice")
+
+
+## **Termination is the exploded set, not a depth cap.** Two barrels in range of each other are
+## the case that loops forever without it, and a depth limit would merely bound the loop rather
+## than honour "never re-explode something that's already exploded".
+func test_two_barrels_in_range_of_each_other_do_not_loop() -> void:
+	var grid := Grid.new(12, 12)
+	grid.blockers[Vector2i(4, 4)] = _barrel()
+	grid.blockers[Vector2i(5, 4)] = _barrel()
+	var state := CombatState.new(grid, [] as Array[Unit])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	BoutInjector.new(state).set_part_hp(
+		{"kind": Enums.HitKind.CELL, "unit": null, "cell": Vector2i(4, 4)}, &"", 0
+	)
+
+	assert_eq(sink.events_of_kind(&"detonation").size(), 2, "each barrel went off exactly once")
+
+
+## **`BR51.23`: a mounted part explodes where it is, not at its wearer's feet.**
+func test_a_part_on_a_unit_detonates_at_its_own_position() -> void:
+	var grid: Grid = GridFixture.flat(12, 12)
+	var carrier: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(5, 5), 0)
+	# **A sub-part, not the root.** The shell root legitimately sits at the unit's base, so using
+	# it would have passed on the broken version too — the defect only shows on a part mounted
+	# somewhere up the socket chain, which is exactly the ammo-rack case reported.
+	var rack: Part = null
+	for candidate: Part in carrier.shell.all_parts():
+		if candidate != carrier.shell.root and not candidate.volume.is_empty():
+			rack = candidate
+			break
+	assert_not_null(rack, "the reference humanoid has a mounted part to use")
+	rack.detonate_damage = 5.0
+	rack.detonate_radius = 1.0
+	rack.failure_mode = &"DETONATE"
+	var state := CombatState.new(grid, [carrier])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	DamageResolver.resolve_part_failure(rack, state, null)
+
+	var blasts: Array[LogEvent] = sink.events_of_kind(&"detonation")
+	assert_eq(blasts.size(), 1)
+	gut.p("mounted: %s" % blasts[0].text)
+	assert_gt(
+		float(blasts[0].data["center_height"]),
+		0.0,
+		"a part carried on a body is above the floor it stands on"
+	)

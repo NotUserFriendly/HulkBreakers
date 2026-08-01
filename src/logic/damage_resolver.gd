@@ -283,27 +283,6 @@ static func _resolve_joint_hit(
 	return impact
 
 
-## taskblock-09 A3 (docs/03): renamed from "cook-off," same mechanic. A
-## failed DETONATE part with detonate_damage > 0 explodes: every living
-## unit within detonate_radius (Chebyshev) of its cell takes that damage
-## to their shell's root part. Returns the units it hit. No longer gated
-## by the VOLATILE tag — that's a descriptor now, open vocabulary; the
-## trigger is failure_mode == DETONATE, enforced by this file's own single
-## caller, `resolve_part_failure`.
-static func detonate(part: Part, state: CombatState) -> Array[Unit]:
-	var affected: Array[Unit] = []
-	if part.detonate_damage <= 0.0:
-		return affected
-	var center: Vector2i = _locate_cell(part, state)
-	if center.x < 0:
-		return affected
-	for unit: Unit in state.units:
-		if unit.alive and Grid.distance_chebyshev(unit.cell, center) <= int(part.detonate_radius):
-			apply_damage_to_part(unit.shell.root, part.detonate_damage)
-			affected.append(unit)
-	return affected
-
-
 ## taskblock-09 A4: a failed FRAGMENT part sprays `fragment_count` rays in
 ## even directions from its own cell, each one a full resolve_shot flight
 ## (so a fragment can itself penetrate/deflect/ricochet, terminating the
@@ -315,7 +294,7 @@ static func _fragment(part: Part, state: CombatState) -> Array[ImpactResult]:
 	var hits: Array[ImpactResult] = []
 	if part.fragment_count <= 0 or part.fragment_damage <= 0.0:
 		return hits
-	var center: Vector2i = _locate_cell(part, state)
+	var center: Vector2i = locate_cell(part, state)
 	if center.x < 0:
 		return hits
 	var origin := Vector2(center.x, center.y)
@@ -349,11 +328,7 @@ static func _fragment(part: Part, state: CombatState) -> Array[ImpactResult]:
 ## inventing a hollow `ImpactResult` for it would put a second failure path beside this one — the
 ## thing this project keeps deleting. Results are written into it only when there is one.
 ##
-## `attacker_id` attributes the detonation in the log; `-1` is an unattributed failure, which is
-## exactly what a debug-forced one is.
-static func resolve_part_failure(
-	part: Part, state: CombatState, impact: ImpactResult, attacker_id: int = -1
-) -> void:
+static func resolve_part_failure(part: Part, state: CombatState, impact: ImpactResult) -> void:
 	match part.failure_mode:
 		&"MANGLE":
 			part.is_mangled = true
@@ -363,17 +338,12 @@ static func resolve_part_failure(
 			# `BR35.08`: record that it went off, separately from whom it caught — a barrel is a
 			# blocker, never a `Unit`, so it is never in its own blast list.
 			var went_off: bool = part.detonate_damage > 0.0
-			var caught: Array[Unit] = detonate(part, state)
+			var caught: Array[Unit] = Detonation.resolve(part, state, locate_cell)
 			if impact != null:
 				impact.detonated = went_off
 				impact.detonated_units = caught
-			# **One emitter, both callers** (`BR51.20`). This used to be logged by
-			# `ShotResolution.log_impact_result` off the impact, which meant a failure with no
-			# impact — a debug-forced one — resolved mechanically and logged nothing, so nothing
-			# was drawn. Emitting where the failure actually happens is the only place both
-			# paths pass through.
-			if went_off:
-				_log_detonation(state, attacker_id, part, caught)
+			# `BR51.22`: `detonate()` logs every blast in the chain itself, including this first
+			# one — a chained explosion is as real as the one that started it.
 		&"FRAGMENT":
 			impact.fragment_hits = _fragment(part, state)
 		&"MELTDOWN":
@@ -382,10 +352,10 @@ static func resolve_part_failure(
 				# A4): detonate now rather than waiting out the rest of the
 				# clock.
 				part.meltdown_countdown = -1
-				impact.detonated_units = detonate(part, state)
+				impact.detonated_units = Detonation.resolve(part, state, locate_cell)
 			elif part.meltdown_turns <= 0:
 				# No countdown authored: behaves like an instant DETONATE.
-				impact.detonated_units = detonate(part, state)
+				impact.detonated_units = Detonation.resolve(part, state, locate_cell)
 			else:
 				part.meltdown_countdown = part.meltdown_turns
 				impact.meltdown_armed = true
@@ -407,7 +377,7 @@ static func tick_meltdowns(unit: Unit, state: CombatState) -> Array[Dictionary]:
 		part.meltdown_countdown -= 1
 		if part.meltdown_countdown <= 0:
 			part.meltdown_countdown = -1
-			events.append({"part": part, "units": detonate(part, state)})
+			events.append({"part": part, "units": Detonation.resolve(part, state, locate_cell)})
 	return events
 
 
@@ -426,50 +396,13 @@ static func trigger_primed_meltdowns(unit: Unit, state: CombatState) -> Array[Di
 		if part.meltdown_countdown < 0:
 			continue
 		part.meltdown_countdown = -1
-		events.append({"part": part, "units": detonate(part, state)})
+		events.append({"part": part, "units": Detonation.resolve(part, state, locate_cell)})
 	return events
 
 
-## `BR35.08`/`BR51.20`: the detonation event, carrying **where it went off and how far it
-## reached**, so the drawn sphere is a readout of the real mechanical extent. Centred on the
-## exploding object's own cell rather than on wherever a bullet happened to strike it — an
-## explosion is centred on the thing, not on the wound.
-static func _log_detonation(
-	state: CombatState, attacker_id: int, part: Part, caught: Array[Unit]
-) -> void:
-	var centre: Vector2i = _locate_cell(part, state)
-	if centre.x < 0:
-		return
-	(
-		state
-		. combat_log
-		. emit(
-			(
-				LogEvent
-				. new(
-					state.round_number,
-					Enums.Phase.RESOLUTION,
-					attacker_id,
-					&"detonation",
-					{
-						"source_part": part.id,
-						"center_x": float(centre.x),
-						"center_y": float(centre.y),
-						"center_height": UnitGeometry.true_height_for_cell(centre, state.grid),
-						"radius": part.detonate_radius,
-						"units": caught.size(),
-					},
-					(
-						"%s detonated at %s, radius %.1f, %d caught"
-						% [part.id, centre, part.detonate_radius, caught.size()]
-					)
-				)
-			)
-		)
-	)
-
-
-static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
+## Public since taskblock-51: `Detonation` needs it to measure a blast radius, and a second
+## copy of "where is this part" would be exactly the parallel system this project keeps deleting.
+static func locate_cell(part: Part, state: CombatState) -> Vector2i:
 	for unit: Unit in state.units:
 		if part in unit.shell.all_parts():
 			return unit.cell

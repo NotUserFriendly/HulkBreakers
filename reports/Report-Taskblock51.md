@@ -292,6 +292,26 @@ flagged that as the open decision in the more-correct option; it had been closed
 and stop shots correctly. They are in the plane — as rects with seams between them. A round can pass
 through a wall it should have hit, and the plan item had that measured already.
 
+## Needed, not bugs: the detonation system is still being built
+
+**A supervisor correction to CC's filing, and it is a rule worth keeping:** defects in a system that is
+actively being built are not bugs, they are symptoms of the work in progress. They belong here until the
+system settles. CC had filed three, and only one of the session's reports was a real defect.
+
+- **No injection ever animates.** `SquadControlOverlay._on_debug_panel_applied` calls `sync_unit_views`,
+  `sync_board_view` and `refresh_unit_views` and **never calls `ResolutionPlayer.play()`**, so the
+  explosion sphere cannot appear on the debug path at all — nor can any other forced change; a forced
+  move snaps, a forced kill snaps. **This is a design call**: playing an injection's events makes the
+  debug panel drive the resolution player, which is real coupling. The alternative is that injections
+  stay instantaneous and detonations are verified by shooting a barrel, which needs `BR51.01`.
+- **Detonation attribution.** The event logs unattributed (`Detonation.UNATTRIBUTED`) because
+  `ImpactResult` carries no attacker. Fine for a debug-forced blast, a real loss for a shot-driven one.
+
+**Fixed in the same session rather than filed:** cover now takes the blast and chains (waves, terminating
+on an exploded set, never re-exploding — the supervisor's stated shape), and a mounted part detonates at
+its own composed position rather than its wearer's cell. `Detonation` was split out of `DamageResolver`
+when chaining pushed that file past its line cap.
+
 ## Open questions
 
 - **The ~7.5 fps session minimum is one stall, not a load**, and the supervisor has located it: *"a
