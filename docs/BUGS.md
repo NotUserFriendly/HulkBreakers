@@ -97,6 +97,25 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR52.03 — Active — owner: `CC`
+**Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-52 Pass D, while giving surfaces real volume.
+- **`BoardView._build_terrain` draws two things.** A flat quad per cell at that cell's own height,
+  **and** a vertical riser quad along every edge where two orthogonally-adjacent cells differ in
+  height — "a stepped, XCOM-style terrace". The quad now has a Part behind it (`ship_floor`'s
+  authored `volume`). **The riser has nothing behind it at all**: no `Surface`, no blocker, no Part.
+- **So a round fired horizontally into the step passes straight through it** and travels on into the
+  empty space beneath the higher cell's floor box, which is only 0.2 thick. That is a real hole in
+  "render is hitbox" (`docs/10`) — visible geometry a shot ignores.
+- **Only reachable on multi-level maps**, which is why it has never been seen: the riser is drawn
+  only where adjacent heights differ.
+- **Not fixed in taskblock-52.** The fix is a decision rather than a patch: a riser is either its own
+  placed `Surface` (which makes it destructible terrain with a material, and needs a Part authored
+  for it), or the floor box grows downward to meet the level below (cheap, but then "floor thickness"
+  stops being a free parameter and starts being load-bearing). **Do not pick one without deciding
+  what a shot into a step should do** — a round burrowing under a raised deck is arguably a feature.
+
 ### BR52.02 — Active — owner: `CC`
 **A test file that fails to parse is dropped from the run and the suite still exits 0**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -116,26 +135,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The fix is a count, not a parser.** GUT knows how many scripts it was asked to collect and how
   many it actually collected; failing the run when those differ is the whole of it. Not attempted
   in this taskblock — it is harness work and taskblock-52 is a resolver block.
-
-### BR52.01 — Active — owner: `CC`
-**`PartPicker` hit-tests blockers and field items at world height 0, while `BoardView` draws them at
-the cell's real height**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, taskblock-52 Pass A, reading the four collections the ray march has to cover.
-- **Two callers, one geometry call, different arguments.** `UnitGeometry.assembly_placements(root,
-  cell, orientation, pose, height)` defaults `height` to `0.0`.
-  - `BoardView._spawn_blocker` passes `_height_for(cell)` — and its own comment says why: *"a cover
-    object or wall on a raised cell now needs to actually sit ON that cell's own real ground, not
-    float at world level 0"* (taskblock-37 Pass E).
-  - `PartPicker._nearest_t` calls `UnitGeometry.assembly_placements(part, cell)` — no height at all.
-- **So on any raised cell the clickable/aimable volume is not where the mesh is**, which contradicts
-  `docs/10`'s "render is hitbox" directly. `ShotPlane.build` gets this right for the same objects
-  (`UnitGeometry.true_height_for_cell`), so the picker is the odd one out of three.
-- **Blast radius:** every hover, every aim reticle, every click that resolves to cover — the paths
-  `BR51.02`/`BR51.25` were both found in. A flat map hides it completely, which is why it has survived.
-- **Filed on a reading, not yet on a measurement.** taskblock-52 Pass D marches the same collections
-  at their true heights and is where the proof and the fix land together; recorded here first so it is
-  not lost between passes.
 
 ### BR51.25 — Active — owner: `SUPERVISOR`
 **Non-unit objects render untransformed in the inspect preview**

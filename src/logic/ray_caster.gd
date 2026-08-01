@@ -112,6 +112,23 @@ static func tied_candidates(
 			RayHit.KIND_BLOCKER
 		)
 
+	# taskblock-52 Pass D: **floors.** `ShotPlane.build` never looked at
+	# `grid.surfaces`, which is the whole of `BR34.05`'s "or the floor" half —
+	# a round angled slightly down had nothing to intersect, so "miss" was not a
+	# wrong branch being taken, it was the only branch that existed. `Surface`
+	# already carries a real `Part` (taskblock-38 made floor and terrain into
+	# parts), so this needs no stand-in type and no new outcome.
+	#
+	# **A cell can hold several surfaces** — a catwalk over a floor is the stated
+	# case — so every one is marched, not just the first walkable.
+	for cell: Vector2i in state.grid.surfaces:
+		for surface: Surface in state.grid.surfaces_at(cell):
+			if not PartPicker.near_ray(cell, from, dir_n, surface.height):
+				continue
+			best_t = _consider_surface(
+				best, best_t, surface, cell, from, dir_n, exclude_parts, max_distance
+			)
+
 	for cell: Vector2i in state.grid.field_items:
 		if not PartPicker.near_ray(
 			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, state.grid)
@@ -135,6 +152,51 @@ static func tied_candidates(
 				)
 
 	return best
+
+
+## One placed surface, at **its own** height and facing.
+##
+## Not routed through `_consider_assembly`, and the difference is real: that one
+## reads `true_height_for_cell`, which resolves to the cell's *first walkable*
+## surface. A cell with two surfaces stacked would then place both at the lower
+## one's height. A `Surface` knows where it is; it is asked.
+##
+## `surface.facing` is passed as the orientation — the same radians convention
+## `Unit.orientation` uses, which is what makes a `ramp` directional (taskblock-38
+## Pass C) and composes through the identical transform chain with no translation
+## step.
+static func _consider_surface(
+	best: Array[RayHit],
+	best_t: float,
+	surface: Surface,
+	cell: Vector2i,
+	from: Vector3,
+	dir_n: Vector3,
+	exclude_parts: Array[Part],
+	max_distance: float
+) -> float:
+	var root_origin := Vector3(
+		cell.x * UnitGeometry.CELL_SIZE, surface.height, cell.y * UnitGeometry.CELL_SIZE
+	)
+	var result: float = best_t
+	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
+		surface.part, cell, surface.facing, null, surface.height
+	)
+	for placement: BoxPlacement in placements:
+		result = _consider(
+			best,
+			result,
+			placement,
+			from,
+			dir_n,
+			exclude_parts,
+			max_distance,
+			surface.part,
+			cell,
+			root_origin,
+			RayHit.KIND_SURFACE
+		)
+	return result
 
 
 ## One object's whole assembly tree, at its cell's **real** height.

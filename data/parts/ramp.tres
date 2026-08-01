@@ -1,6 +1,12 @@
 [gd_resource type="Resource" script_class="Part" format=3]
 
 [ext_resource type="Script" path="res://src/data/part.gd" id="1_ramppt"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_rampbx"]
+
+[sub_resource type="Resource" id="Resource_rampvol"]
+script = ExtResource("2_rampbx")
+center = Vector3(0, -0.1, 0)
+size = Vector3(1.0, 0.2, 1.0)
 
 [resource]
 script = ExtResource("1_ramppt")
@@ -9,6 +15,7 @@ display_name = "Ramp"
 material = &"steel"
 attaches_to = Array[StringName]([&"GROUND"])
 tags = Array[StringName]([&"walkable", &"ramp"])
+volume = Array[ExtResource("2_rampbx")]([SubResource("Resource_rampvol")])
 is_destructible = false
 hp = 1
 max_hp = 1
