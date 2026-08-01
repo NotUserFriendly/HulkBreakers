@@ -313,10 +313,29 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **And it is a feedback loop:** the lean is computed *from* the reticle point, and the reticle is
   computed by projecting *through* the leaned camera. Worth establishing whether the offset is stable or
   compounds across frames before choosing a fix.
-- **Fix direction, not yet taken:** aiming needs an un-leaned basis to project through — the lean is a
-  presentation flourish (taskblock-08 B3c) and should not move the sighting ray. That is a real change to
-  how `CameraRig` exposes itself and wants the supervisor's eye, since the lean exists because they asked
-  for it.
+- **SUPERVISOR'S SPECIFICATION, and it is stronger than CC's proposed fix.** CC suggested projecting
+  through an un-leaned basis. The supervisor rejected the framing:
+
+  > *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a flourish,
+  > so why is it affecting aim? The purpose is for the camera to give a better view of the target. The
+  > mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at. The player
+  > camera should not be involved in drawing a line from the shooter's gun to that clicked point."*
+
+  **Un-leaning the projection would keep the camera in the loop and merely change its pose.** The stated
+  model removes it: the camera converts a cursor pixel into **a world point on a part**, and the shot is
+  then a line from the **muzzle to that point**. After the pick, the camera has no further part in it —
+  so no camera pose, leaned or not, can move a shot.
+- **Also stated, and it rules out the obvious shortcut:** *"Without the lean, the camera is behind the
+  shooter, making it impossible to aim at a further target."* Simply removing `MAX_LEAN_DEG` is not
+  available — the lean is what makes the over-the-shoulder view usable.
+- **What that means for the code, concretely.** The click currently produces a `reticle_offset` **in an
+  aim plane anchored on shooter and target cells**, and the shot is built from that offset — which is how
+  a camera pose reaches shot geometry at all. Under the stated model the click produces a **world point**
+  (`PartPicker` already returns exactly this: a part plus a real hit position), and the shot is built from
+  muzzle-to-point. **The shot plane stays** — `docs/02`'s depth-sorted resolution is untouched; what
+  changes is where the aim point comes from, not how a hit is resolved against it.
+- **Not started.** This is an aim-system change, not a patch, and tb51 is a bug hunt — flagged for
+  sequencing rather than begun at the end of a block.
 - **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
   left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
   `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
