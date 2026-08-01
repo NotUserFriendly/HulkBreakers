@@ -832,7 +832,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **2026-07-22 (tb32 review — still reproduces):** unchanged — step-out after shooting still does not
   open the dartboard immediately on the step-out; a second click is required. tb32 didn't touch this.
   The one open piece (part 1) persists exactly as the 2026-07-21 repro describes.
-### BR27.03 — Active — owner: `SUPERVISOR`
+### BR27.03 — Pending — owner: `SUPERVISOR`
 **Other shots appear to resolve before an earlier shot's own deflect finishes**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis: Pass A2 had assumed a shot and
@@ -854,6 +854,13 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
   `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
   returning.
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** `ResolutionPlayer`
+  inserted `INTER_SHOT_BREAK_MS` between **every** consecutive impact, so a single trigger pull that hit and
+  then deflected played as two gunshots a tenth of a second apart, and a later shot could begin while the
+  earlier one's continuation was still to come. Impacts now carry a `hop_index`; only hop 0 takes the break,
+  and a pull's hops are drawn without awaiting each other so they flash together. taskblock-27 Pass A2's
+  `DEFLECT_BEAT_MS` — a deliberate pause built on the opposite assumption — is now unused.
+- **To see it:** fire until a shot penetrates or deflects. It should read as one event, not two.
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
 - **Source:** `SUPERVISOR`
@@ -1558,7 +1565,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   the aim-view scroll cycling walls is a symptom of a design they no longer want, so effort spent
   fixing it may be spent on something due for removal. **Do not fix ahead of that decision.**
 
-### BR34.01 — Active — owner: `SUPERVISOR`
+### BR34.01 — Pending — owner: `SUPERVISOR`
 **Every penetration/deflection hop replays the full bright hit-flash, not just the first**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (live playtest). A single queued shot that penetrates or deflects through
@@ -1588,6 +1595,13 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   here.
 
 ---
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** The entry's own
+  diagnosis was right: playback reused the resolver's per-hop granularity as if each hop were a separate
+  shot. **Hop 0 keeps the bright flash; every hop after it now draws in a dull orange** and appears at the
+  same time as its own initial hit, so one trigger pull reads as one event with a tail rather than as
+  several shots firing.
+- **To see it:** a shot that penetrates several objects should flash bright once, with dull orange
+  continuations alongside it.
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **Source:** `SUPERVISOR`
