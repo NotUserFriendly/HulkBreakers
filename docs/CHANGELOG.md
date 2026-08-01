@@ -1,5 +1,65 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass A — the seam baseline, re-taken, and the recorded cause overturned
+
+**The 56/200 figure reproduces exactly, and it does not mean what both living documents said it
+meant.** `SeamSweep` (`src/logic/seam_sweep.gd`) is taskblock-35's uncommitted harness rebuilt and
+committed: a shooter in a fully enclosed room, shots swept over angles x lateral offsets, counting how
+many resolve against nothing. Parameterised by the thing that fires, so the plane and the ray chain are
+measured by one instrument rather than two.
+
+**Reproduced at 56/200 in an 11x11 room** — and only in an 11x11 room. Sweeping room size showed the
+count tracking the room, not the walls: 9-room 80/200, 11-room 56/200, 13-room 24/200, and **17, 21 and
+31-rooms zero**. That is the shape of a measurement of the *room*, not of a projection artifact.
+
+**Three measurements say the recorded diagnosis is wrong.** `BUGS.md` (`BR34.05`) and `PLAN.md`
+(*Wide scatter passing through a wall seam*) both record the cause as adjacent wall cells' projected
+rects failing to tile edge-to-edge, letting a wide dartboard point thread a real gap.
+
+1. **The threshold is the wall's own face.** Swept in 0.25 steps along one axis: every offset to **5.25**
+   hits, every offset from **5.50** misses. The perimeter wall box's outer face is at exactly 5.50. A
+   seam would scatter empties across offsets and angles; this is one clean edge sitting on the geometry.
+2. **The vanishing rounds start outside the building.** `DamageResolver` tests every region at a
+   *constant* lateral offset, so a scattered round is modelled as a ray **parallel** to the
+   shooter-to-target line, translated sideways by the whole dartboard displacement. At lateral 6.0 in an
+   11-room the flight begins at (5.00, 11.00) — `in_bounds` false. It never reaches the wall to thread it.
+3. **No seam is measurable.** A 41x41 room, 90 angles x 41 offsets out to 15, every offset well inside
+   the walls: **0/3690 empty.**
+
+**So the defect is in how scatter is modelled, not in how walls are projected** — and the ray chain
+fixes it structurally rather than by patching, since a march from the real muzzle to the aimed point
+diverges from the gun the way a real round does.
+
+### taskblock-52 Pass A — the plane does not amortise across a burst, and the cost case rested on it
+
+**A 12-round chaingun burst builds 20 shot planes.** `DamageResolver.resolve_shot` builds its own plane
+on entry — every pull, every pellet, every ricochet hop — so the plane `BurstAction` builds up front is
+used only to pick the aim point. The stated trade ("one build serves a whole burst, then N cheap
+point-in-rect tests, where a ray chain pays per round") describes something the code does not do.
+
+Measured on a real 217-blocker board (`tools/shot_cost_bench.gd`, debug build):
+
+| | usec |
+|---|---|
+| plane build (1291 regions) | **8 509** |
+| one shot (build + walk) | **8 549** |
+| of which the walk | **~260** (noise; one run measured -52) |
+| one 12-round burst | **183 000** |
+| planes per burst | **20** |
+
+**~97% of a shot's cost is building a plane it then barely uses** — 2.44% of regions contain the aim
+point in the test fixture. `test_shot_plane_amortisation.gd` pins the counts (deterministic and
+machine-independent) rather than the timings.
+
+**A number that informed the decision turned out to be stale.** `BR26.02` recorded `ShotPlane.build` at
+**35 258 usec**; a bare build on a comparable board now measures **8 509**. The two were taken through
+different call paths — the historical figure came off `aim_state()`, which also cloned the state before
+taskblock-51 memoised it — so this is not a claimed 4x win, it is a warning that the figure the trade
+was being argued from no longer describes the thing it names.
+
+**`tools/bench_release.sh` takes a `BENCH` env var** (`ai_planning` default, `shot_cost` new) and
+`bench_main.gd` takes `--bench=`; every existing invocation is unchanged.
+
 ### taskblock-51 — a CC-owned sweep: `BR35.03` confirmed closed, `BR35.01` mitigated
 
 **`BR35.03` was already fixed and only needed confirming**, exactly as its triage predicted. taskblock-42

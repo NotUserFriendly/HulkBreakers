@@ -97,6 +97,26 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR52.01 — Active — owner: `CC`
+**`PartPicker` hit-tests blockers and field items at world height 0, while `BoardView` draws them at
+the cell's real height**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-52 Pass A, reading the four collections the ray march has to cover.
+- **Two callers, one geometry call, different arguments.** `UnitGeometry.assembly_placements(root,
+  cell, orientation, pose, height)` defaults `height` to `0.0`.
+  - `BoardView._spawn_blocker` passes `_height_for(cell)` — and its own comment says why: *"a cover
+    object or wall on a raised cell now needs to actually sit ON that cell's own real ground, not
+    float at world level 0"* (taskblock-37 Pass E).
+  - `PartPicker._nearest_t` calls `UnitGeometry.assembly_placements(part, cell)` — no height at all.
+- **So on any raised cell the clickable/aimable volume is not where the mesh is**, which contradicts
+  `docs/10`'s "render is hitbox" directly. `ShotPlane.build` gets this right for the same objects
+  (`UnitGeometry.true_height_for_cell`), so the picker is the odd one out of three.
+- **Blast radius:** every hover, every aim reticle, every click that resolves to cover — the paths
+  `BR51.02`/`BR51.25` were both found in. A flat map hides it completely, which is why it has survived.
+- **Filed on a reading, not yet on a measurement.** taskblock-52 Pass D marches the same collections
+  at their true heights and is where the proof and the fix land together; recorded here first so it is
+  not lost between passes.
+
 ### BR51.25 — Active — owner: `SUPERVISOR`
 **Non-unit objects render untransformed in the inspect preview**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first
@@ -1675,6 +1695,33 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   same-material blocker cells addresses the seam, a floor Region addresses the absent backstop, and capping
   scatter radius papers over both with a balance number. **Supervisor's call, and it is queued as a design
   call rather than a code fix.**
+
+- **2026-08-01 (taskblock-52 Pass A — the 56/200 reproduces exactly, and the seam explanation attached to
+  it is wrong).** CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. The harness is committed now
+  (`SeamSweep`, `test_seam_sweep.gd`), so this is re-takeable rather than remembered.
+  - **The number is real and the room is what produces it.** 56/200 reproduces to the shot — in an
+    **11x11** room and no other. Room size sweep: 9-room **80/200**, 11-room **56/200**, 13-room
+    **24/200**, and 17-, 21- and 31-rooms **0/200**. A count that tracks the room rather than the walls is
+    not measuring a projection artifact.
+  - **The threshold is the wall's own face, to the sample.** Along one axis in 0.25 steps, the last hit is
+    at lateral **5.25** and the first miss at **5.50**; the perimeter wall box's outer face is at exactly
+    **5.50**. A rect-tiling seam scatters empties across offsets and angles — this is one clean edge
+    sitting precisely on the geometry.
+  - **The real mechanism: a scattered round is modelled as a *parallel* ray.** `DamageResolver._find_next`
+    tests every region at a **constant** lateral offset, so the modelled flight is
+    `origin + perp * point.x + dir * t` — the whole round, muzzle included, translated sideways by the
+    full dartboard displacement rather than diverging from the gun. At lateral 6.0 in an 11-room the
+    flight begins at `(5.00, 11.00)`, **off the board**. It does not thread the wall; it never reaches it.
+    Asserted directly: a round vanishes exactly when its own start point is out of bounds.
+  - **And there is no measurable seam.** A 41x41 room swept at 90 angles x 41 offsets out to 15, every
+    offset well inside the walls: **0/3690 empty.** If adjacent wall cells failed to tile edge-to-edge
+    from an arbitrary angle, that is where it would show.
+  - **What this changes:** the fix is not "merge contiguous blocker cells" (there is no gap to close) and
+    not "cap scatter radius" (that would hide a modelling error behind a balance number). It is that
+    resolution should march from the real muzzle to the aimed point, which is what taskblock-52 builds.
+    The floor half of this entry is untouched and still real — there is still no floor to hit.
+  - **Still `SUPERVISOR`-owned and still open.** Nothing is claimed fixed here; this is a corrected
+    diagnosis with the measurements behind it.
 ### BR35.01 — Pending — owner: `CC`
 **`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`

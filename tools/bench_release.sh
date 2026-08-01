@@ -29,9 +29,41 @@ set -euo pipefail
 # instead. project.godot overrides run/main_scene for the `bench` feature, which
 # the preset declares, so the exported build boots straight into the bench.
 
+# taskblock-52 Pass A2: WHICH bench, selected by env var rather than by a
+# positional argument, so every existing invocation of this script keeps its
+# exact meaning. `ai_planning` (default) is taskblock-44's; `shot_cost` is the
+# shot-plane cost measurement the ray chain is judged against.
+#
+#   ./tools/bench_release.sh
+#   BENCH=shot_cost ./tools/bench_release.sh
 GODOT="${GODOT:-godot}"
 PRESET="${PRESET:-Linux Bench Release}"
-BENCH_ARGS=("${@:---no-compare}")
+BENCH="${BENCH:-ai_planning}"
+
+case "$BENCH" in
+  ai_planning)
+    DEBUG_SCRIPT="res://tools/bench_ai_planning.gd"
+    METRIC_PREFIX="ms per"
+    METRIC_LABEL="ms per AI step"
+    DEFAULT_ARGS=("--no-compare")
+    ;;
+  shot_cost)
+    DEBUG_SCRIPT="res://tools/bench_shot_cost.gd"
+    METRIC_PREFIX="ms per shot"
+    METRIC_LABEL="ms per shot"
+    DEFAULT_ARGS=()
+    ;;
+  *)
+    echo "unknown BENCH='$BENCH' — expected ai_planning or shot_cost" >&2
+    exit 2
+    ;;
+esac
+
+# The release build is driven through its main scene, which needs to be told
+# which bench to run; the debug build reaches its bench through `-s` and does
+# not. Passed to both regardless so the two runs receive identical arguments.
+BENCH_ARGS=("${@:-${DEFAULT_ARGS[@]:-}}")
+BENCH_ARGS+=("--bench=$BENCH")
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -53,10 +85,10 @@ require_build() {
 	fi
 }
 
-ms_of() { grep '^ms per' <<<"$1" | awk '{print $NF}'; }
+ms_of() { grep "^$METRIC_PREFIX" <<<"$1" | awk '{print $NF}'; }
 
 say "debug (editor/tools binary — how every historical number was taken)"
-DEBUG_OUT="$("$GODOT" --headless --path . -s res://tools/bench_ai_planning.gd -- "${BENCH_ARGS[@]}" 2>/dev/null)"
+DEBUG_OUT="$("$GODOT" --headless --path . -s "$DEBUG_SCRIPT" -- "${BENCH_ARGS[@]}" 2>/dev/null)"
 require_build "$DEBUG_OUT" "editor_debug"
 echo "$DEBUG_OUT"
 
@@ -75,8 +107,8 @@ echo "$RELEASE_OUT"
 DEBUG_MS="$(ms_of "$DEBUG_OUT")"
 RELEASE_MS="$(ms_of "$RELEASE_OUT")"
 say "ratio"
-printf 'debug   : %s ms per AI step\n' "$DEBUG_MS"
-printf 'release : %s ms per AI step\n' "$RELEASE_MS"
+printf 'debug   : %s %s\n' "$DEBUG_MS" "$METRIC_LABEL"
+printf 'release : %s %s\n' "$RELEASE_MS" "$METRIC_LABEL"
 awk -v d="$DEBUG_MS" -v r="$RELEASE_MS" 'BEGIN {
 	if (r > 0) printf "release is %.2fx faster (%.0f%% of debug cost)\n", d/r, 100*r/d
 }'
