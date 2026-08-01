@@ -315,6 +315,52 @@ static func log_impact_result(
 					"%s" % result.region.part.id
 				)
 			)
+	# taskblock-51 Pass C (`BR35.08`): **one event for the explosion itself**, carrying where it
+	# happened and how far it reached.
+	#
+	# The `detonate` events below are one *per affected unit* — the right granularity for damage
+	# bookkeeping and the wrong one for drawing, since an explosion that catches three units
+	# would stack three spheres. This is emitted once, before them, and carries the real
+	# geometry so the drawn radius is a readout of the actual mechanical extent rather than a
+	# decorative guess. That distinction is what `BR35.04` was filed for one layer up.
+	#
+	# **Known gap, stated rather than hidden:** a detonation that harms nobody produces an empty
+	# `detonated_units` and so draws nothing. Reaching it needs a "this part detonated" fact the
+	# resolver does not currently return, distinct from "these units were hurt".
+	if not result.detonated_units.is_empty():
+		(
+			state
+			. combat_log
+			. emit(
+				(
+					LogEvent
+					. new(
+						state.round_number,
+						Enums.Phase.RESOLUTION,
+						attacker.id,
+						&"detonation",
+						{
+							"source_part": result.region.part.id,
+							"center_x": result.hit_point.x,
+							"center_y": result.hit_point.y,
+							"center_height": result.hit_height,
+							"radius": result.region.part.detonate_radius,
+							"units": result.detonated_units.size(),
+						},
+						(
+							"%s detonated at (%.2f, %.2f), radius %.1f, %d caught"
+							% [
+								result.region.part.id,
+								result.hit_point.x,
+								result.hit_point.y,
+								result.region.part.detonate_radius,
+								result.detonated_units.size(),
+							]
+						)
+					)
+				)
+			)
+		)
 	# taskblock-09 A3: renamed from "cook_off" — DETONATE, not cook-off.
 	for detonated: Unit in result.detonated_units:
 		state.combat_log.emit(

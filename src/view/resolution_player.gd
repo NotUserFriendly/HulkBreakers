@@ -70,6 +70,14 @@ const TRACER_DULL_COLOR := Color(0.5, 0.0, 0.0, 0.3)
 ## quieter relative of the bright flash rather than as a different event. The blue this replaces
 ## was chosen for the decorative projection that has since been deleted (`BR35.04`), and it made
 ## a continuation look like a second, unrelated shot.
+## taskblock-51 Pass C (`BR35.08`), supervisor-specified: a detonation draws a **translucent red
+## sphere** from the detonation point that **grows outward to the real explosion radius** — so the
+## visual is a readout of the actual mechanical extent, not decoration — and then **fades out**.
+## **Grow : fade is 1 : 3**, and the total is a tunable living beside the other bullet timing,
+## defaulting to 1000 ms.
+const DETONATION_MS := 1000.0
+const DETONATION_GROW_FRACTION := 0.25
+const DETONATION_COLOR := Color(0.9, 0.15, 0.08, 0.45)
 const TRACER_CONTINUATION_COLOR := Color(0.85, 0.45, 0.12)
 const TRACER_CONTINUATION_DULL_COLOR := Color(0.34, 0.16, 0.03, 0.3)
 const TRACER_DEFLECT_COLOR := Color(0.3, 0.75, 1.0)
@@ -236,6 +244,8 @@ func _play_event(event: LogEvent) -> void:
 			await _play_impact(event)
 		&"miss":
 			await _play_miss(event)
+		&"detonation":
+			await _play_detonation(event)
 		_:
 			pass
 
@@ -588,6 +598,50 @@ func _play_miss(event: LogEvent) -> void:
 ## shot pair — a DEFLECT's own bounced continuation passes the distinct
 ## `TRACER_DEFLECT_COLOR`/`TRACER_DEFLECT_DULL_COLOR` pair instead, same
 ## draw/fade/retire mechanics either way.
+## `BR35.08`: the sphere. **Radius comes from the log**, never from a constant here — a drawn
+## extent that disagreed with the mechanical one would be the same defect as `BR35.04`'s
+## decorative tracer, dressed differently.
+func _play_detonation(event: LogEvent) -> void:
+	var radius_cells: float = float(event.data.get("radius", 0.0))
+	if radius_cells <= 0.0:
+		return
+	var centre := (
+		Vector3(
+			float(event.data.get("center_x", 0.0)),
+			float(event.data.get("center_height", 0.0)),
+			float(event.data.get("center_y", 0.0))
+		)
+		* UnitGeometry.CELL_SIZE
+	)
+	var radius: float = radius_cells * UnitGeometry.CELL_SIZE
+
+	var sphere := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = 1.0
+	mesh.height = 2.0
+	var material := StandardMaterial3D.new()
+	material.albedo_color = DETONATION_COLOR
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Both faces, so standing inside the blast still shows it rather than seeing through it.
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh.material = material
+	sphere.mesh = mesh
+	sphere.position = centre
+	sphere.scale = Vector3.ONE * 0.001
+	_tracers.add_child(sphere)
+
+	var total: float = (DETONATION_MS / 1000.0) / speed
+	var grow: float = total * DETONATION_GROW_FRACTION
+	var tween := create_tween()
+	tween.tween_property(sphere, "scale", Vector3.ONE * radius, grow)
+	tween.parallel().tween_property(material, "albedo_color:a", DETONATION_COLOR.a, grow)
+	tween.tween_property(material, "albedo_color:a", 0.0, total - grow)
+	await tween.finished
+	if is_instance_valid(sphere):
+		sphere.queue_free()
+
+
 func _spawn_tracer(
 	from: Vector3,
 	to: Vector3,
