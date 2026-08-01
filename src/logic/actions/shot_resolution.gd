@@ -88,8 +88,14 @@ static func resolve_and_log_point(
 		radius,
 		point_depth
 	)
-	for result: ImpactResult in results:
-		log_impact_result(state, attacker, result, mission, is_dud, max_range)
+	# taskblock-51 Pass C: **the hop index travels with the event.** One trigger pull produces
+	# one `ImpactResult` per hop — wall, then cover, then the target — and playback needs to
+	# know which of those started a new pull, because pacing a hop like a separate shot is what
+	# made a deflect read as a second, later gunshot (`BR27.03`, `BR34.01`).
+	for hop_index: int in range(results.size()):
+		log_impact_result(
+			state, attacker, results[hop_index], mission, is_dud, max_range, hop_index
+		)
 	if results.is_empty():
 		log_miss_result(state, attacker, origin, direction, point, max_range, origin_height)
 	return not results.is_empty()
@@ -171,13 +177,17 @@ static func log_miss_result(
 
 ## taskblock-28 Pass C: made public (was `_log_impact`) — see
 ## `log_miss_result`'s own doc comment for why.
+## `hop_index` is which hop of one trigger pull this is: **0 is the shot itself**, anything
+## higher is a continuation of it (a penetration, a ricochet). Defaulted so callers that
+## produce a standalone impact — a fragment, say — need not pass one.
 static func log_impact_result(
 	state: CombatState,
 	attacker: Unit,
 	result: ImpactResult,
 	mission: MissionState,
 	is_dud: bool = false,
-	max_range: float = 0.0
+	max_range: float = 0.0,
+	hop_index: int = 0
 ) -> void:
 	var outcome_name: String = (
 		"BYPASS" if result.bypassed_armor else Enums.Outcome.keys()[result.outcome]
@@ -228,6 +238,7 @@ static func log_impact_result(
 		"hit_x": result.hit_point.x,
 		"hit_y": result.hit_point.y,
 		"hit_height": result.hit_height,
+		"hop_index": hop_index,
 	}
 	# taskblock-51 Pass C (`BR35.04`): **the decorative deflect endpoint is gone.**
 	#

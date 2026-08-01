@@ -1,5 +1,28 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 Pass C — a hop is not a new shot (`BR27.03` / `BR34.01` pacing)
+
+**The supervisor's correction to the previous entry:** deflects should be *visible*, the blue lines were
+simply reporting something that did not happen. *"When a bullet is fired, I want to be able to see what
+it hit, and then where it went."* That is what removing the decorative projection leaves — the real
+continuation. `resolve_shot` returns one `ImpactResult` per hop and `resolve_and_log_point` logs them
+adjacently, so a ricochet that finds a target already draws from the deflection point to its real hit.
+
+**And the pacing was the other half.** *"All shots would land and tracers flash, THEN the deflections
+would flash, even though logically a shot would land and deflect right after each other."*
+`ResolutionPlayer.play()` inserted `INTER_SHOT_BREAK_MS` between **every** consecutive impact, so a
+single trigger pull that hit a wall and carried on read as two gunshots a tenth of a second apart.
+
+Impacts now carry a **`hop_index`** — 0 is the shot, anything higher continues it — and only hop 0 takes
+the between-shots break. A round reads as one object travelling rather than as a reply to itself. The
+decision is a named static (`starts_a_new_pull`) so it can be asserted directly instead of by measuring
+wall-clock gaps, and an event with no `hop_index` defaults to starting a pull, so fragments, misses and
+pre-existing logs are never silently glued together.
+
+**Still open in this cluster:** `BR35.07` (`STOP_DEAD` overshoot), `BR34.05` (misses vanish — a logic
+defect, not a drawing one), `BR35.08` (detonations draw nothing), and `BR34.01`'s other half, the bright
+flash replaying per hop rather than once per pull.
+
 ### taskblock-51 Pass C — `BR35.04`: the decorative deflect projection is deleted
 
 **The cluster's suspected shared root, located.** `ShotResolution.log_impact_result` stamped

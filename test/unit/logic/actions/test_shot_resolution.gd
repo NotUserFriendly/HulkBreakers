@@ -295,3 +295,37 @@ func test_the_same_shot_logs_identical_geometry_every_time() -> void:
 		runs.append(impact.data)
 
 	assert_eq(runs[0], runs[1])
+
+
+## **`BR27.03` / `BR34.01`: the hops of one trigger pull are numbered in the log.**
+##
+## Playback needs to know which impacts continue a shot and which start one; without it every
+## hop was paced as its own gunshot. Asserted on a real resolve rather than a hand-built event,
+## because the numbering is only useful if `resolve_and_log_point` actually produces it.
+func test_the_hops_of_one_shot_are_numbered_from_zero() -> void:
+	var shooter := _make_unit(Vector2i(2, 0))
+	var cover := Part.new()
+	cover.id = &"cover"
+	cover.material = &"steel"
+	cover.hp = 20
+	cover.max_hp = 20
+	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
+	var grid := Grid.new(6, 6)
+	grid.blockers[Vector2i(2, 2)] = cover
+	var state := CombatState.new(grid, [shooter])
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	ShotResolution.resolve_and_log_point(
+		state, shooter, Vector2(2, 0), Vector2(3, 4), Vector2(2.0, 0.5), 3.0, 0.0, 0.0, null
+	)
+
+	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
+	assert_gt(impacts.size(), 0, "sanity: the fixture must hit something")
+	for i in range(impacts.size()):
+		assert_eq(
+			int(impacts[i].data.get("hop_index", -1)),
+			i,
+			"hop %d carries its own index, in log order" % i
+		)
+	assert_eq(int(impacts[0].data["hop_index"]), 0, "and the shot itself is hop zero")
