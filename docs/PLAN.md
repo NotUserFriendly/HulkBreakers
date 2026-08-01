@@ -246,6 +246,38 @@ exceptions with nothing to compare them against.
 not reproducible across machines or checkouts. Keep the *ordering* advisory and the *set* fixed — the
 same tests always run, only the sequence adapts — or a green run stops meaning the same thing twice.
 
+### Plan the next AI turn while the current one is playing
+**Needs:** a resumable planner (part of *AI v2, part two* — landed taskblock-45) and *Player view and sim
+view* below, which is the same architectural idea one layer down. **Unblocks:** the turn-boundary hitch
+stops being visible at all rather than merely being survivable.
+
+**Resolution takes longer than planning does.** A resolution is animation time — a unit walking, a shot
+resolving, a deflection playing out — and it is dead time for the simulation. A plan is milliseconds.
+**So the next AI unit should think during the current unit's resolution**, and by the time the animation
+finishes its decision is already made.
+
+The player never waits for planning; they wait for *watching*, which they were going to do anyway.
+
+- **This depends on the two-phase rule being true in practice, not just on paper.** TACTICS queues
+  intents and mutates nothing; RESOLUTION executes and owns every mutation (`docs/09`). If nothing in a
+  resolution mutates the state a planner reads mid-play, planning against it is safe by construction.
+  **Verify that rather than assume it** — the taskblock-51 finding that killing a unit mid-turn left
+  selection, overlay and turn state stale is exactly the shape of thing that would break this.
+- **Standing rule 5 is untouched.** Units still act one at a time in initiative order. Thinking early is
+  not acting early: the plan is computed ahead and *executed* in turn, so nothing resolves concurrently.
+- **The unit planning ahead must plan against the state as it will be**, which is the real design
+  question. A resolution in flight is about to change the board. Planning against the pre-resolution
+  state produces a decision made on stale information — a unit routing through a cell the moving unit is
+  about to occupy. Options: plan against the *post*-resolution state (which the queue already knows,
+  since intents are queued before they execute), or accept a re-plan when the assumption breaks.
+  **Decide this before building it**; it is the difference between a latency trick and a correctness
+  bug.
+- **Determinism must hold exactly.** A plan computed early and a plan computed on time must be the same
+  plan for the same seed. If overlapping ever changes a decision, the overlap is wrong, not the test.
+- **It composes with the snapshot split below.** That item lets the view draw from a resolved snapshot
+  while the sim works; this one gives the sim something useful to do while the view draws. Same seam,
+  opposite direction.
+
 ### Player view and sim view — render a snapshot, stay responsive
 **Needs:** a resumable planner (*AI v2, part two*) for the responsiveness half; nothing for the
 snapshot half. **Unblocks:** the hitch stops being a freeze even where it is still slow; safe
@@ -507,6 +539,45 @@ announce itself when *triggered*: a notification saying, calmly, "Nuclear Runawa
 delayed-lethal consequence — signal the cause, not just the death.
 
 
+### Explosions: three types on one substrate
+**Needs:** `Detonation` (built, taskblock-51); *Power and therms* for the reactor case. **Unblocks:**
+`Weak points`' reactor payoff; napalm and hazard content; a reason for DT to matter against blasts.
+
+**Raised as a bug (`BR51.26`) and withdrawn — this is a design change.** What exists today is one blast
+that calls `DamageResolver.apply_damage_to_part`, bare subtraction with **no DT, no armor, no material**
+(`damage_resolver.gd:213`). That is not a defect to repair in isolation; it is one of three types not
+yet built, and it happens to be the one that *should* respect DT.
+
+**Three types. Most exploding things produce more than one.**
+
+| type | what it does | mitigation |
+|---|---|---|
+| **HE** | concussive shockwave, everything in radius — today's blast | **mitigated by DT** |
+| **Fragmentation** | throws raycast projectiles out of the object | as bullets: damage, deflect, penetrate |
+| **Hazard** | throws blobs of floor effects | whatever the effect does on landing |
+
+**They modify each other, and that is the design rather than a flourish.** Higher HE gives fragments
+**bonus penetration**; higher HE throws hazard blobs **flatter**, since a blob is a ballistic
+projectile. So an explosion is a *vector* of three magnitudes, not a type tag — and the interactions
+fall out of magnitudes rather than needing a rules table.
+
+**Three examples, deliberately not three tiers:**
+- **A reactor meltdown.** Weak HE, heavy fragmentation — it turns its own casing, and whatever of the
+  unit surrounds it, into fragments.
+- **A napalm barrel.** Weak HE, no fragments, heavy hazard — blobs of napalm everywhere.
+- **A rocket.** Delivers its initial damage as a bullet, then **pure HE**: no fragments, no blobs, very
+  high force.
+
+Each example is a different combination, which is what shows the three axes are independent.
+
+**Two things it already leans on:**
+- **Fragments are bullets, so they use the shot resolver** — `ShotPlane`, deflection, penetration,
+  material. Not a second projectile system. `docs/02` and the one-resolver rule both apply.
+- **Hazard blobs are floor effects**, so they want whatever `Status effects and boosts` lands.
+
+**And one it exposes:** `BR34.05` (misses vanish) matters more here, because a fragment that finds
+nothing to hit is the same defect multiplied by however many fragments an explosion throws.
+
 ### Weak points
 **Needs:** *Power and therms* for the trigger math; `02`/`03` (landed). **Unblocks:** the reactor vent
 window; per-part weaknesses generally; the Cutter and Demolitionist fantasies having something to aim at.
@@ -766,8 +837,61 @@ neither is a defect.
   scroll cycles walls, layer labels read as part names), which the supervisor says is *"not what I
   originally intended, more likely to be obsoleted than fixed"* — so `BR33.01` should not be fixed
   ahead of this decision.
+- **Tabs on the debug panel.** Split the existing menu into `Part Manipulation` and `Other` to start.
+  More categories are welcome; **do not filter it down too far** — a panel with twelve tabs is a panel
+  nobody can find anything in.
+- **The panel drags anywhere on screen.** Currently fixed, and it covers exactly the things being
+  inspected.
+- **Cut the clicks-to-goal on several verbs.** Redundant cells in memory, a button *and* a checkbox
+  doing what two buttons would do. These are per-verb ergonomics, not one change — worth a pass through
+  `DebugVerbs` with "how many clicks to the common case" as the only question.
+- **`UI Element Control` landed in taskblock-51** as a `DebugVerbs`-shaped list entry, so a new
+  toggleable element is a table row rather than UI code. The three notes above are what is left of that
+  same session's list.
 - **`Set Cell Level` should increment by 0.5**, not 1. A one-line step change on the debug panel's
   spin box; noted here so it is not lost between hunts.
+
+### The framerate reads above the display's cap, and the `avg less top 1%` rule
+**Needs:** nothing; `PerfStats` is built (taskblock-51). **Unblocks:** trusting the perf panel's fourth
+figure.
+
+**Raised as `BR51.17` and withdrawn from the ledger — this is a decision, not a defect.** The metric is
+doing exactly what it was specified to do on a distribution the specification did not anticipate.
+
+`avg less top 1%` cuts on **speed**, not on a count of frames: every frame below `0.99 × fastest`. That
+is correct and it is what makes the supervisor's worked example read 10.0. It degenerates into the plain
+mean when the fast cluster is *wide* — if idle frames spread 200–2000, the cut line sits at 1980 and
+trims almost nothing.
+
+**And the fast cluster is wide, which nobody expected:** taskblock-51 measured `avg less top 1%` at
+**177–185**, above the display's 160. **The game is not capped at 160 — the monitor is.** Why a
+vsynced-looking session reports frames well above the refresh rate is unexplained and is very likely a
+Godot presentation behaviour (a frame counted on submission rather than on present), not a game defect.
+
+- **Not urgent.** Too many frames is rarely a problem, and the supervisor's play sessions sit at a
+  consistent 160 with dips being the anomalies worth chasing. The 1% low and worst-frame figures are
+  unaffected by any of this and are the ones being read.
+- **Two things to settle when it is picked up:** what Godot is actually counting, and what rule replaces
+  the top-1%-of-speed cut once that is known. Answering the first probably determines the second.
+- **Do not tune the constant to make the number look right.** A cut line chosen to produce a pleasing
+  figure is a balance number invented to hide a measurement.
+
+### Two aim questions from the seventh hunt
+**Needs:** nothing. **Unblocks:** `BR51.01`'s diagnosis, possibly.
+
+Neither is a filed defect; both are conformance questions with short answers that nobody has written
+down, and the first bears directly on an open bug.
+
+- **Where does a shot actually aim — the dartboard's centre point on the target, or the target's own
+  centre? And does the answer differ between player control and AI control?** `docs/02` says the shot
+  plane is projected from the shooter's real angle, so both paths should resolve identically; **if they
+  do not, that is a second aiming implementation** and the hard rule against parallel systems applies.
+  Worth answering before more work on `BR51.01` (shots land wide left), because "the player aims
+  somewhere the AI does not" would be a strong lead and "they agree" removes a suspect.
+- ~~**Is explosion damage affected by DT?**~~ **Answered: no.** `Detonation` calls
+  `DamageResolver.apply_damage_to_part` — bare subtraction, no threshold or armor. Not filed as a
+  defect: it is the HE type not being built yet, and it belongs to *Explosions: three types on one
+  substrate*.
 
 ### Act on the suite audit
 **Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
