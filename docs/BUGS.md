@@ -296,6 +296,27 @@ confirm" roll-up — so pending items surface at a natural review point without 
   left *and* down together is a single rotational offset applied to the whole ray, which points at the
   transform the ray is built from rather than at either axis on its own. The fixed camera sitting back
   and right of the shooter is the supervisor's own candidate for that rotation.
+- **taskblock-51 — MECHANISM FOUND, and the suspect list had it backwards.** The note above reads *"the
+  aim lean applied to the rendered view but not to the camera the projection reads"*. There is **one**
+  `Camera3D` (`CameraRig._camera`), and `TacticsController.camera` caches it once — so the lean is applied
+  to **both**, and that is the defect rather than the exemption.
+- **`CameraRig.aim_at` rotates the real camera by up to `MAX_LEAN_DEG` (5 degrees) toward the reticle
+  point**, via `look_at(centre)` then a second `look_at` along a leaned forward vector. Every subsequent
+  `project_ray_origin`/`project_ray_normal` therefore casts through a camera that has been turned away
+  from where the player believes they are sighting. **A rotational offset on the whole ray** — which is
+  exactly the shape the supervisor's widened symptom describes: left *and* down together, not a sign flip
+  on one axis.
+- **It also explains why the frame-mismatch measurement came back clean at 0.0000 cells.** The reticle and
+  the resolver agree because they are handed the same ray; the ray itself is the thing that is wrong, and
+  a test comparing those two can never see it. **Any new test must compare against the camera pose the
+  player is looking through, not against the other consumer of the same ray.**
+- **And it is a feedback loop:** the lean is computed *from* the reticle point, and the reticle is
+  computed by projecting *through* the leaned camera. Worth establishing whether the offset is stable or
+  compounds across frames before choosing a fix.
+- **Fix direction, not yet taken:** aiming needs an un-leaned basis to project through — the lean is a
+  presentation flourish (taskblock-08 B3c) and should not move the sighting ray. That is a real change to
+  how `CameraRig` exposes itself and wants the supervisor's eye, since the lean exists because they asked
+  for it.
 - **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
   left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
   `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
