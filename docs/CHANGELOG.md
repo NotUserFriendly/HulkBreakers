@@ -1,5 +1,53 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass B — the ray chain: A to B, then C becomes B
+
+**`RayChain` marches a projectile through the actual world.** A is the muzzle, B is the aimed point,
+first hit wins; the angle of incidence is solved against the struck face; a penetration continues
+the same ray and a deflection starts a new one, both through the same call. **0/360 empty** across a
+72-angle x 5-offset sweep inside a closed room — the supervisor's standing rule from `BR34.05` is
+satisfied and, for the first time, runnable.
+
+**Three new logic classes, all headless.** `RayHit` (one struck surface: part, body, socket, real
+face normal, thickness, cell, root origin, entry and exit) with `to_region()` so
+`DamageResolver.resolve_impact` and every `ShotResolution` log consumer stay byte-for-byte unchanged;
+`RayCaster` (the one "what does this ray meet" query, over units, joints, blockers and field items);
+`RayTiebreak` (stage 3 today, closest root; the box cast is Pass C's).
+
+**`UnitPicker.ray_box_hit` is the one slab test now**, and `ray_box_t` is a thin read of it. It
+reports the face the ray clipped against, carried out through the placement's orthonormal basis —
+which is what makes incidence native. **No `PhysicsDirectSpaceState`**: that needs a live scene tree
+and would move shot resolution into the view layer.
+
+**Six `DamageResolver` helpers became public rather than being copied** — `roll_crit`,
+`crit_effects`, `resolve_joint_hit`, `resolve_destruction_consequences`,
+`inflict_lodged_wound_if_inside`, `body_of`. The chain decides *where* a round goes; what happens
+when it arrives is still the one resolver.
+
+**Joints are in the march.** `UnitGeometry.assembly_placements` takes `include_joints` (default
+false, so every existing caller and the whole view layer is unchanged) and emits one
+`BodyProjector.JOINT_BOX_SIZE` box per occupied socket, carrying the socket on the `BoxPlacement`.
+Without it every joint hit would have read as a ray-versus-plane disagreement for no reason other
+than one model not knowing joints exist.
+
+**A real bug the tests caught, and it was found by reading a log rather than by an assertion.** The
+first chain advanced past the struck box's *entry* face, which leaves the round inside it — one
+500-damage round logged **six impacts on one plate**. `ray_box_hit` now reports the exit face too,
+and a penetration resumes past it. There is an assertion for it now, and a second for `hollow`
+parts, whose entering-and-exiting pair is the one case that legitimately strikes one box twice
+(nothing in shipped data sets `hollow`, so that branch had no coverage at all).
+
+**`BR52.01` fixed, and it was two defects.** `PartPicker` hit-tested blockers and field items at
+world height 0 while `BoardView._spawn_blocker` draws them at the cell's real height — and
+`near_ray`'s cheap reject measured distance to a point on the *ground*, so a blocker on a cell
+raised by 2.0 was **rejected outright** for any ray passing above ~3.0, the exact failure that
+reject's own doc comment says must never happen. Both now read `true_height_for_cell`. Proved
+against `BoardView`'s own placement call rather than a re-derived expectation.
+
+**`BR52.02` filed, not fixed:** a test file that fails to parse is dropped from the run and the
+suite still exits 0. Walked into it while renaming `_near_ray` — ten tests vanished and the gate
+stayed green.
+
 ### taskblock-52 Pass A — the seam baseline, re-taken, and the recorded cause overturned
 
 **The 56/200 figure reproduces exactly, and it does not mean what both living documents said it

@@ -203,7 +203,7 @@ static func _resolve_slide(
 				slid_region.part, slid_impact.part_damage
 			)
 			if slid_impact.destroyed_part:
-				_resolve_destruction_consequences(slid_impact, slid_region, state)
+				resolve_destruction_consequences(slid_impact, slid_region, state)
 		_:
 			pass  # a second DEFLECT (or anything else) — one slide only, ends here.
 
@@ -265,7 +265,7 @@ static func _cell_of_body(body: Variant, state: CombatState) -> Vector2i:
 ## connection, so the cascade stops here regardless of outcome (the
 ## default `Enums.Outcome.STOP_DEAD` ImpactResult already carries — the
 ## shot stopped here, whether or not the joint gave way).
-static func _resolve_joint_hit(
+static func resolve_joint_hit(
 	region: Region, damage: float, shot_dir: Vector2, crit: Dictionary, state: CombatState
 ) -> ImpactResult:
 	var impact := ImpactResult.new()
@@ -321,7 +321,7 @@ static func _fragment(part: Part, state: CombatState) -> Array[ImpactResult]:
 ## `part` (is_mangled/is_disabled/meltdown_countdown) and populates
 ## `impact` with whatever that mode's own consequences were, for logging
 ## (docs/09: "if it changed the world, it's in the log"). The one caller,
-## `_resolve_destruction_consequences`, only ever reaches this once per
+## `resolve_destruction_consequences`, only ever reaches this once per
 ## actual destroying hit, so DETONATE/FRAGMENT firing exactly once is a
 ## property of the call site, not a guard here.
 ## `impact` may be **null**: a failure forced by the debug injector has no impact to hang off, and
@@ -517,7 +517,7 @@ static func _register_dropped(part: Part, cell: Vector2i, state: CombatState) ->
 ## destroyed PART never detaches on its own hp reaching 0 — only a
 ## severed JOINT does, a wholly separate hit (Pass D), never reached from
 ## this function.
-static func _resolve_destruction_consequences(
+static func resolve_destruction_consequences(
 	impact: ImpactResult, region: Region, state: CombatState
 ) -> void:
 	# **Attribution, stated:** `ImpactResult` carries no attacker, so a detonation logs as
@@ -553,14 +553,14 @@ static func _resolve_destruction_consequences(
 ## BR36.01: `all_parts_with_joints()`, not `all_parts()` — a bounced shot
 ## can otherwise immediately re-hit one of its own body's joint regions at
 ## point-blank range, same gap as the shooter's own first-hop exclusion.
-static func _body_of(part: Part, state: CombatState) -> Array[Part]:
+static func body_of(part: Part, state: CombatState) -> Array[Part]:
 	for unit: Unit in state.units:
 		if part in unit.shell.all_parts():
 			return unit.shell.all_parts_with_joints()
 	return [part]
 
 
-static func _roll_crit(crit_chance: float, rng: RandomNumberGenerator) -> Dictionary:
+static func roll_crit(crit_chance: float, rng: RandomNumberGenerator) -> Dictionary:
 	var is_crit: bool = rng.randf() < crit_chance
 	var is_double_crit := false
 	if is_crit:
@@ -571,7 +571,7 @@ static func _roll_crit(crit_chance: float, rng: RandomNumberGenerator) -> Dictio
 ## docs/03: armored + crit -> bypass DT and resolve against whatever's
 ## behind; unarmored + crit -> bonus damage instead. A double crit always
 ## applies both — bypassing if armored, and bonus damage regardless.
-static func _crit_effects(is_crit: bool, is_double_crit: bool, armored: bool) -> Dictionary:
+static func crit_effects(is_crit: bool, is_double_crit: bool, armored: bool) -> Dictionary:
 	if is_double_crit:
 		return {"bypass": armored, "bonus": true}
 	if is_crit:
@@ -587,7 +587,7 @@ static func _crit_effects(is_crit: bool, is_double_crit: bool, armored: bool) ->
 ##
 ## `exclude_parts` skips those parts on this call's very first lookup only —
 ## set on a ricochet's recursive call to the whole body it just deflected
-## off of (see _body_of), since a ricochet's new origin sits right where it
+## off of (see body_of), since a ricochet's new origin sits right where it
 ## bounced and would otherwise immediately re-resolve to a sibling part of
 ## that same body at point-blank range.
 ##
@@ -653,7 +653,7 @@ static func resolve_shot(
 	# however many layers this same round penetrates or bypasses. A
 	# ricochet is a new projectile (docs/03) and rolls its own on the
 	# recursive call below.
-	var crit: Dictionary = _roll_crit(crit_chance, rng)
+	var crit: Dictionary = roll_crit(crit_chance, rng)
 
 	var start: int = 0
 	var skip_parts: Array[Part] = exclude_parts
@@ -711,7 +711,7 @@ static func resolve_shot(
 		var region_height: float = point.y + vertical_slope * (region.depth - point_depth)
 
 		if region.socket != null:
-			var joint_hit: ImpactResult = _resolve_joint_hit(
+			var joint_hit: ImpactResult = resolve_joint_hit(
 				region, current_damage, shot_dir, crit, state
 			)
 			joint_hit.origin = origin
@@ -722,7 +722,7 @@ static func resolve_shot(
 			return results
 
 		var material: MaterialEntry = table.get_entry(region.part.material)
-		var effects: Dictionary = _crit_effects(
+		var effects: Dictionary = crit_effects(
 			crit.is_crit,
 			crit.is_double_crit,
 			maxf(0.0, material.dt_at(region.thickness) - bonus_pen) > 0.0
@@ -765,7 +765,7 @@ static func resolve_shot(
 			Enums.Outcome.PENETRATE:
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
-					_resolve_destruction_consequences(impact, region, state)
+					resolve_destruction_consequences(impact, region, state)
 				if region.part.hollow:
 					if inside_hollow_part == region.part:
 						inside_hollow_part = null  # cleared the far face: exited
@@ -777,15 +777,15 @@ static func resolve_shot(
 				# same as if nothing were left of the plane to check.
 				var spill: float = maxf(0.0, impact.part_damage - impact.effective_dt)
 				if spill <= 0.0:
-					_inflict_lodged_wound_if_inside(inside_hollow_part, impact)
+					inflict_lodged_wound_if_inside(inside_hollow_part, impact)
 					return results
 				current_damage = spill
 				continue
 			Enums.Outcome.STOP_DEAD:
 				impact.destroyed_part = apply_damage_to_part(region.part, impact.part_damage)
 				if impact.destroyed_part:
-					_resolve_destruction_consequences(impact, region, state)
-				_inflict_lodged_wound_if_inside(inside_hollow_part, impact)
+					resolve_destruction_consequences(impact, region, state)
+				inflict_lodged_wound_if_inside(inside_hollow_part, impact)
 				return results
 			Enums.Outcome.DEFLECT:
 				if deflect_mode == DEFLECT_MODE_NONE:
@@ -831,7 +831,7 @@ static func resolve_shot(
 							max_ricochet_depth,
 							damage_floor,
 							crit_bonus_multiplier,
-							_body_of(region.part, state),
+							body_of(region.part, state),
 							bonus_pen,
 							impact.reflected_vertical,
 							region_height,
@@ -844,7 +844,7 @@ static func resolve_shot(
 	# point) while still inside a hollow part's own shell — as good as
 	# flooring there; the round has nowhere left to go either way.
 	if inside_hollow_part != null and not results.is_empty():
-		_inflict_lodged_wound_if_inside(inside_hollow_part, results[-1])
+		inflict_lodged_wound_if_inside(inside_hollow_part, results[-1])
 	return results
 
 
@@ -853,7 +853,7 @@ static func resolve_shot(
 ## was actually resolving against when it ran out of steam, a no-op when
 ## the round was never inside a hollow shell to begin with (the ordinary
 ## "just stopped" case) or already carries this exact wound.
-static func _inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: ImpactResult) -> void:
+static func inflict_lodged_wound_if_inside(inside_hollow_part: Part, impact: ImpactResult) -> void:
 	if inside_hollow_part == null:
 		return
 	var part: Part = impact.region.part

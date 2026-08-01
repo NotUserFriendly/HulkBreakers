@@ -123,10 +123,23 @@ func test_the_picker_rejects_cells_the_ray_goes_nowhere_near() -> void:
 	var from := Vector3.ZERO
 	var dir := Vector3(1.0, 0.0, 0.0)
 
-	assert_true(PartPicker._near_ray(Vector2i(5, 0), from, dir), "straight down the ray")
-	assert_true(PartPicker._near_ray(Vector2i(5, 1), from, dir), "and just off it")
-	assert_false(PartPicker._near_ray(Vector2i(5, 40), from, dir), "far to the side")
-	assert_false(PartPicker._near_ray(Vector2i(-40, 0), from, dir), "and well behind it")
+	assert_true(PartPicker.near_ray(Vector2i(5, 0), from, dir), "straight down the ray")
+	assert_true(PartPicker.near_ray(Vector2i(5, 1), from, dir), "and just off it")
+	assert_false(PartPicker.near_ray(Vector2i(5, 40), from, dir), "far to the side")
+	assert_false(PartPicker.near_ray(Vector2i(-40, 0), from, dir), "and well behind it")
+
+	# `BR52.01`, second half: the reject measures distance to the cell's own
+	# elevation, not to a point on the ground. It used to hard-code zero, so a
+	# blocker on a raised cell was rejected outright for any ray passing above it
+	# — the one thing this reject's own contract says must never happen.
+	assert_false(
+		PartPicker.near_ray(Vector2i(5, 0), Vector3(0.0, 4.0, 0.0), dir),
+		"a ray four units up is genuinely nowhere near a ground-level cell"
+	)
+	assert_true(
+		PartPicker.near_ray(Vector2i(5, 0), Vector3(0.0, 4.0, 0.0), dir, 4.0),
+		"but it is right beside the same cell raised to meet it"
+	)
 
 
 ## The bound has to clear a part whose boxes overhang its own cell, so it is checked against the

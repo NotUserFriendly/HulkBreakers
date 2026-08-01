@@ -73,7 +73,11 @@ const _FACE_CORNERS: Array[Array] = [
 ## hitting it takes a placed shot, not a stray one (docs/03: "a stray shot
 ## hits the big arm, a placed shot hits the elbow"), big enough to project
 ## a real, non-degenerate rect at ordinary combat ranges.
-const _JOINT_BOX_SIZE := Vector3(0.12, 0.12, 0.12)
+##
+## taskblock-52 Pass B: public. `UnitGeometry.assembly_placements` emits the
+## same box for a ray march, and a joint that is one size to the plane and
+## another to the ray would be two different targets wearing one name.
+const JOINT_BOX_SIZE := Vector3(0.12, 0.12, 0.12)
 
 ## taskblock-09 D: pushes a joint's own depth a hair behind its
 ## attachment point, so a part whose own box sits at that exact same
@@ -230,7 +234,7 @@ static func _project_tree(
 ## other region. `region.part` is the socket's own `joint_handle()` — a
 ## placeholder identity, deliberately NOT the occupant part itself, so
 ## code that filters "every region belonging to part X" (existing tests,
-## `_body_of`) never silently picks up a joint alongside that part's real
+## `body_of`) never silently picks up a joint alongside that part's real
 ## geometry. `region.socket` is the actual discriminator resolve_shot
 ## reads to know this is a joint at all.
 ##
@@ -258,7 +262,7 @@ static func _project_joint(
 		regions.append_array(
 			project_part(socket.joint_cladding, view_dir, orientation, world_transform)
 		)
-	var box := Box.new(Vector3.ZERO, _JOINT_BOX_SIZE)
+	var box := Box.new(Vector3.ZERO, JOINT_BOX_SIZE)
 	var joint_regions: Array[Region] = _project_box(
 		box, view_dir, orientation, socket.joint_handle(), world_transform
 	)
