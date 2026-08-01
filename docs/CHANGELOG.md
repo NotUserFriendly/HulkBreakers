@@ -1,5 +1,18 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — a detonation draws because it detonated, not because it hurt someone
+
+**The supervisor's argument closed a gap CC had merely documented:** *"if something is exploding, isn't
+it a part? Shouldn't it always draw because it catches itself in the explosion?"*
+
+`DamageResolver.detonate()` iterates `state.units` only, and a goo barrel is a **blocker** — so it is
+never in its own blast list. Gating the drawn sphere on `detonated_units` therefore hid every explosion
+that caught nobody, which is most of them. `ImpactResult` now carries **`detonated`**: that it went off,
+which is a different fact from whom it hurt, and it is what the event is emitted on.
+
+CC had recorded this as a known gap needing "a fact the resolver does not currently return". The fact was
+one line; the reason it stayed a gap is that CC treated a documented limitation as a resolved question.
+
 ### taskblock-51 Pass C — `BR35.08`: detonations are visible, at their real size
 
 Built to the supervisor's spec: a translucent red sphere from the detonation point, growing outward to

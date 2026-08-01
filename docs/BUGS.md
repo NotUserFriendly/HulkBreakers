@@ -97,6 +97,35 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR51.19 — Active — owner: `SUPERVISOR`
+**More than four units on a side spawn stacked on top of each other**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Starting a bout with more than 4 units on a side
+  causes them to overlay each other at the start."*
+- **Four is the tell.** A spawn zone that runs out of distinct cells and then stops advancing would put
+  every unit past the fourth on one cell — so look at how many cells the zone actually offers before
+  looking at the placement loop.
+- **`Grid.set_occupant_id` holds one occupant per cell**, so this is not two units legally sharing a
+  tile; it is placement writing over itself. Whether the *logic* also believes they are stacked, or only
+  the view draws them so, is the first thing to establish — those are very different defects.
+
+### BR51.20 — Active — owner: `CC`
+**`set_part_hp` to zero never triggers the part's failure mode**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Setting part HP on a goo barrel to zero doesn't seem
+  to cause a detonation."*
+- **Confirmed by reading, not guessed:** `BoutInjector.set_part_hp` does `part.hp = hp` and nothing else.
+  `DamageResolver.resolve_part_failure` — the only thing that runs MANGLE / DISABLE / DETONATE / FRAGMENT
+  / MELTDOWN — has exactly one caller, inside impact resolution. So a part zeroed by the debug verb is at
+  0 hp and has not *failed*.
+- **This is the whole point of the verb.** `BR51.02` existed to make forcing a detonation possible; the
+  targeting half landed in Pass K and this half was never there. Nothing in the block has actually forced
+  a detonation.
+- **Do not simply call `resolve_part_failure` from the injector without deciding what it needs.** It takes
+  an `ImpactResult` and writes fragment/detonation results into it, so a debug-triggered failure needs a
+  real impact to hang off or a deliberate answer for what to pass — inventing a hollow one would put a
+  second failure path beside the resolver's.
+
 ### BR51.18 — Suspected — owner: `SUPERVISOR`
 **A unit slid sideways during a bout watched from both spectator and player control**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -233,6 +262,12 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Repro:** aim a sniper rifle or a chaingun at a goo barrel and fire. The shot lands
   **consistently left** of where the reticle sits. Reported first for the sniper rifle alone, then
   confirmed on the chaingun — so it is not one weapon's authored geometry.
+- **taskblock-51 sixth hunt — the supervisor widened the symptom, and it is no longer lateral-only:**
+  *"Firing to the left bug is also a 'fire down into the floor bug' — shots go left AND down at a steep
+  angle."* **That changes the shape of the suspect.** A lateral-only error can be a sign flip on one axis;
+  left *and* down together is a single rotational offset applied to the whole ray, which points at the
+  transform the ray is built from rather than at either axis on its own. The fixed camera sitting back
+  and right of the shooter is the supervisor's own candidate for that rotation.
 - **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
   left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
   `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
@@ -832,35 +867,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **2026-07-22 (tb32 review — still reproduces):** unchanged — step-out after shooting still does not
   open the dartboard immediately on the step-out; a second click is required. tb32 didn't touch this.
   The one open piece (part 1) persists exactly as the 2026-07-21 repro describes.
-### BR27.03 — Pending — owner: `SUPERVISOR`
-**Other shots appear to resolve before an earlier shot's own deflect finishes**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis: Pass A2 had assumed a shot and
-  its own deflect were wrongly paused apart and inserted a fix for that — but they're SUPPOSED to
-  resolve simultaneously, that was never broken. The real, still-open defect is different: a
-  DIFFERENT, later shot can appear to resolve/animate before an EARLIER shot's own deflect segment
-  has finished.
-- **Status:** not yet investigated. taskblock-27 Pass A2's own `DEFLECT_BEAT_MS` fix (a deliberate
-  pause between a primary hit and its own deflect) does not address this bug and is itself now a
-  wrong implementation of the intended simultaneous behavior — not reverted, only reclassified.
-  Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between separate impact events,
-  not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
-- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** confirmed not an
-  intra-event bug — each `ResolutionPlayer.play()` call is fully await-serialized internally,
-  primary+deflect included. The gap is a missing reentrancy guard: `play()` has no busy-flag, and
-  `SpectatorOverlay.step_once()` (`spectator_overlay.gd:249-251`) calls `pause()` (only flips a bool,
-  doesn't cancel anything in flight) then immediately awaits `_advance()` — so a Step/Play issued
-  right after Pause can start a SECOND concurrent `play()` while an earlier turn's own deflect tracer
-  is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
-  `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
-  returning.
-- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** `ResolutionPlayer`
-  inserted `INTER_SHOT_BREAK_MS` between **every** consecutive impact, so a single trigger pull that hit and
-  then deflected played as two gunshots a tenth of a second apart, and a later shot could begin while the
-  earlier one's continuation was still to come. Impacts now carry a `hop_index`; only hop 0 takes the break,
-  and a pull's hops are drawn without awaiting each other so they flash together. taskblock-27 Pass A2's
-  `DEFLECT_BEAT_MS` — a deliberate pause built on the opposite assumption — is now unused.
-- **To see it:** fire until a shot penetrates or deflects. It should read as one event, not two.
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
 - **Source:** `SUPERVISOR`
@@ -1565,43 +1571,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   the aim-view scroll cycling walls is a symptom of a design they no longer want, so effort spent
   fixing it may be spent on something due for removal. **Do not fix ahead of that decision.**
 
-### BR34.01 — Pending — owner: `SUPERVISOR`
-**Every penetration/deflection hop replays the full bright hit-flash, not just the first**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (live playtest). A single queued shot that penetrates or deflects through
-  several objects visually reads as multiple separate shots firing — "the bright raycast flashing
-  should only play for the first hit," not for every subsequent hop of the same trigger pull.
-- **Root cause, read-only investigation (quick look, not a fix):** `DamageResolver.resolve_shot`
-  correctly returns one `Array[ImpactResult]` per trigger pull, one entry per hop (wall, then cover,
-  then the target, say) — that's the right granularity for damage/consequence bookkeeping.
-  `ResolutionPlayer.play()` (`resolution_player.gd:148`) reuses that SAME granularity directly for
-  PLAYBACK: its own loop treats every `&"impact"`/`&"miss"` `LogEvent` as an independent "shot"
-  (`is_shot := event.kind == &"impact" or event.kind == &"miss"`), inserting `INTER_SHOT_BREAK_MS`
-  between them, and `_play_impact()` (`resolution_player.gd:440`) unconditionally calls
-  `_spawn_tracer()` — the full bright-live-to-dull-fade flash — for every one of them. Nothing in
-  `LogEvent.data`/`ImpactResult` distinguishes "the first hop of this trigger pull" from "hop 2+,
-  the same round continuing forward" — the log's own per-hop granularity (correct for its own job) is
-  being read as the playback's own per-shot granularity (wrong for this job), conflating two different
-  concerns. A 3-hop PENETRATE chain from one queued attack currently plays THREE full bright flashes
-  with pacing gaps between them, reading as three separate trigger pulls.
-- **Distinct from BR27.02** (the backward-tracer-direction ticket) — this is about flash/pacing
-  REPETITION per hop, not the direction of any single segment. Both live in the same playback/
-  resolution-geometry neighborhood but are separate defects.
-- **Not investigated further, no fix attempted** — logged per instruction. A real fix needs a design
-  call on what SHOULD distinguish "first hit of a pull" from "continuation," which doesn't exist in
-  the data today (candidate: thread a hop index/continuation flag through `ImpactResult`/`LogEvent`,
-  then have `ResolutionPlayer` skip the live flash — or use a dimmer one — and skip the inter-shot gap
-  for hop index > 0). That's a design/implementation question for whoever picks this up, not answered
-  here.
-
----
-- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** The entry's own
-  diagnosis was right: playback reused the resolver's per-hop granularity as if each hop were a separate
-  shot. **Hop 0 keeps the bright flash; every hop after it now draws in a dull orange** and appears at the
-  same time as its own initial hit, so one trigger pull reads as one event with a tail rather than as
-  several shots firing.
-- **To see it:** a shot that penetrates several objects should flash bright once, with dull orange
-  continuations alongside it.
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **Source:** `SUPERVISOR`
@@ -1829,25 +1798,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   or are heading toward, so a squad spreads out instead of stacking) is a genuine design question —
   how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
   not a one-line patch, and not guessed at here.
-### BR35.07 — Active — owner: `SUPERVISOR`
-**`STOP_DEAD` tracers are drawn past their own hit point, reading as a penetration that never happened**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (tb35 review, live). A drawn `STOP_DEAD` ray continues visibly *beyond* the
-  point where it actually stopped, so a round that was halted dead reads on screen as though it
-  punched through and carried on.
-- **Same class as BR35.04, different outcome type:** tracer geometry drawn from something other than
-  what the resolver actually produced. Where BR35.04 is a deliberately decorative fixed-range
-  projection on `DEFLECT`, this is a `STOP_DEAD` segment overshooting its own resolved endpoint —
-  worth confirming whether it shares the same drawing path (`ResolutionPlayer._play_impact`) and the
-  same "draw to a distance, not to the hit" habit, or is a separate length/endpoint error.
-- **The reason this matters beyond looks:** it makes the two outcomes visually indistinguishable.
-  `STOP_DEAD` and `PENETRATE` are mechanically different results, and if a stopped round is drawn
-  like a penetrating one, the player cannot read what their weapon actually did — the same class of
-  harm as the dartboard understating spread (tb34): the display teaching a rule the sim doesn't
-  follow.
-- Filed separately from BR35.04 per the supervisor's own convention — one entry per observed symptom,
-  cross-linked, rather than bundling by shared root.
-
 ### BR35.08 — Pending — owner: `SUPERVISOR`
 **Detonations are invisible — nothing is drawn when an explosion resolves**
 - **Source:** `SUPERVISOR`

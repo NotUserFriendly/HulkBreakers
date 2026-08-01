@@ -60,6 +60,13 @@ var bypassed_armor: bool = false
 var destroyed_part: bool = false
 ## taskblock-09 A3: renamed from cooked_off_units — DETONATE, not "cook-off."
 var detonated_units: Array[Unit] = []
+## taskblock-51 `BR35.08`: **that the part detonated at all**, which is a different fact from
+## whom it hurt. The supervisor's argument: *"if something is exploding, isn't it a part?
+## Shouldn't it always draw because it catches itself in the explosion?"* — and `detonate()`
+## only iterates `state.units`, so a blocker barrel never appears in its own blast list. Gating
+## the drawing on `detonated_units` therefore hid every explosion that caught nobody, which is
+## most of them.
+var detonated: bool = false
 ## taskblock-09 A4: the K fragment rays' own results, when this impact
 ## destroyed a failure_mode == FRAGMENT part — each one a full nested
 ## resolve_shot flight (penetration/deflect/ricochet, all of it), never
