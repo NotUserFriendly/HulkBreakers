@@ -160,7 +160,18 @@ func play(events: Array[LogEvent]) -> void:
 	var previous_was_shot := false
 	for event: LogEvent in events:
 		var is_shot: bool = event.kind == &"impact" or event.kind == &"miss"
-		if previous_was_shot and is_shot:
+		# taskblock-51 Pass C (`BR27.03` / `BR34.01`): **a hop is not a new shot.**
+		#
+		# This inserted `INTER_SHOT_BREAK_MS` between every consecutive impact, so a single
+		# trigger pull that hit a wall and carried on read as two gunshots a tenth of a second
+		# apart. The supervisor's description is exact: *"all shots would land and tracers
+		# flash, THEN the deflections would flash, even though logically a shot would land and
+		# deflect right after each other."*
+		#
+		# `hop_index` says which: 0 starts a new pull, anything higher continues the one before
+		# it. A continuation follows immediately, so the round reads as one object travelling —
+		# hit here, went there — rather than as a second shot fired at the first one's wall.
+		if previous_was_shot and is_shot and starts_a_new_pull(event):
 			await get_tree().create_timer((INTER_SHOT_BREAK_MS / 1000.0) / speed).timeout
 		await _play_event(event)
 		previous_was_shot = is_shot
@@ -170,6 +181,14 @@ func play(events: Array[LogEvent]) -> void:
 		banner.text = TACTICS_BANNER
 	if _on_finished.is_valid():
 		_on_finished.call()
+
+
+## **Whether this event begins a new trigger pull**, rather than continuing the one before it.
+## Named and static so the pacing rule can be asserted directly — testing it through the
+## playback loop would mean measuring wall-clock gaps, which is a flaky way to pin a decision
+## that is really just "is this hop 0".
+static func starts_a_new_pull(event: LogEvent) -> bool:
+	return int(event.data.get("hop_index", 0)) == 0
 
 
 func _play_event(event: LogEvent) -> void:
