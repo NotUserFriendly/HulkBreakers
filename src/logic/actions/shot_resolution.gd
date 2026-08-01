@@ -324,45 +324,10 @@ static func log_impact_result(
 	# geometry so the drawn radius is a readout of the actual mechanical extent rather than a
 	# decorative guess. That distinction is what `BR35.04` was filed for one layer up.
 	#
-	# **Gated on the explosion, not on its casualties.** This first read `detonated_units`, which
-	# only ever contains `Unit`s — and a barrel is a blocker, so it is never in its own blast
-	# list. The supervisor's own argument closed it: *"if something is exploding, isn't it a
-	# part? Shouldn't it always draw because it catches itself in the explosion?"* An explosion
-	# that harms nobody is still an explosion, and hiding it made most of them invisible.
-	if result.detonated:
-		(
-			state
-			. combat_log
-			. emit(
-				(
-					LogEvent
-					. new(
-						state.round_number,
-						Enums.Phase.RESOLUTION,
-						attacker.id,
-						&"detonation",
-						{
-							"source_part": result.region.part.id,
-							"center_x": result.hit_point.x,
-							"center_y": result.hit_point.y,
-							"center_height": result.hit_height,
-							"radius": result.region.part.detonate_radius,
-							"units": result.detonated_units.size(),
-						},
-						(
-							"%s detonated at (%.2f, %.2f), radius %.1f, %d caught"
-							% [
-								result.region.part.id,
-								result.hit_point.x,
-								result.hit_point.y,
-								result.region.part.detonate_radius,
-								result.detonated_units.size(),
-							]
-						)
-					)
-				)
-			)
-		)
+	# taskblock-51 `BR51.20`: **the detonation event is emitted by `DamageResolver`**, where the
+	# failure actually happens — the only place both a shot-driven failure and a debug-forced one
+	# pass through. It used to be emitted here off the `ImpactResult`, which meant a failure with
+	# no impact resolved mechanically and logged nothing at all.
 	# taskblock-09 A3: renamed from "cook_off" — DETONATE, not cook-off.
 	for detonated: Unit in result.detonated_units:
 		state.combat_log.emit(

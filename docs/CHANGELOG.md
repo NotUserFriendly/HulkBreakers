@@ -1,5 +1,29 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — `BR51.20`: zeroing a part now runs its failure mode, and one place emits a detonation
+
+`BoutInjector.set_part_hp` set the number and stopped. `DamageResolver.resolve_part_failure` — the only
+thing that runs MANGLE / DISABLE / DETONATE / FRAGMENT / MELTDOWN — had exactly one caller, inside impact
+resolution. So a goo barrel forced to 0 hp sat there intact, and **forcing a detonation, the entire point
+of being able to target a barrel (`BR51.02`), never worked**. Nothing in this block had ever set one off.
+
+**`resolve_part_failure` takes a nullable `ImpactResult`** and writes results only when there is one, so
+the injector invents no hollow stand-in — that would have been a second failure path beside the
+resolver's.
+
+**And the detonation event moved to where the failure happens.** It was emitted by
+`ShotResolution.log_impact_result` off the impact, which meant a failure with no impact resolved
+mechanically and logged nothing. `DamageResolver` emits it now: one emitter, both callers.
+
+**Two costs, recorded rather than glossed:** the event is centred on the exploding object's own cell
+rather than the bullet's strike point (more correct for an explosion, but it is a change), and it logs
+**unattributed** — `ImpactResult` carries no attacker, and threading one through three layers for a
+visual fix was not worth it. That is a real loss against the previous emission site.
+
+**This is a synthetic failure, and the supervisor's caveat stands:** what matters is a barrel getting
+shot, and this forces the consequence without the cause. It makes the consequence observable; it does
+not verify the shot path, which is `BR51.01`'s job.
+
 ### taskblock-51 — a detonation draws because it detonated, not because it hurt someone
 
 **The supervisor's argument closed a gap CC had merely documented:** *"if something is exploding, isn't

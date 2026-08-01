@@ -345,7 +345,15 @@ static func _fragment(part: Part, state: CombatState) -> Array[ImpactResult]:
 ## `_resolve_destruction_consequences`, only ever reaches this once per
 ## actual destroying hit, so DETONATE/FRAGMENT firing exactly once is a
 ## property of the call site, not a guard here.
-static func resolve_part_failure(part: Part, state: CombatState, impact: ImpactResult) -> void:
+## `impact` may be **null**: a failure forced by the debug injector has no impact to hang off, and
+## inventing a hollow `ImpactResult` for it would put a second failure path beside this one — the
+## thing this project keeps deleting. Results are written into it only when there is one.
+##
+## `attacker_id` attributes the detonation in the log; `-1` is an unattributed failure, which is
+## exactly what a debug-forced one is.
+static func resolve_part_failure(
+	part: Part, state: CombatState, impact: ImpactResult, attacker_id: int = -1
+) -> void:
 	match part.failure_mode:
 		&"MANGLE":
 			part.is_mangled = true
@@ -354,8 +362,18 @@ static func resolve_part_failure(part: Part, state: CombatState, impact: ImpactR
 		&"DETONATE":
 			# `BR35.08`: record that it went off, separately from whom it caught — a barrel is a
 			# blocker, never a `Unit`, so it is never in its own blast list.
-			impact.detonated = part.detonate_damage > 0.0
-			impact.detonated_units = detonate(part, state)
+			var went_off: bool = part.detonate_damage > 0.0
+			var caught: Array[Unit] = detonate(part, state)
+			if impact != null:
+				impact.detonated = went_off
+				impact.detonated_units = caught
+			# **One emitter, both callers** (`BR51.20`). This used to be logged by
+			# `ShotResolution.log_impact_result` off the impact, which meant a failure with no
+			# impact — a debug-forced one — resolved mechanically and logged nothing, so nothing
+			# was drawn. Emitting where the failure actually happens is the only place both
+			# paths pass through.
+			if went_off:
+				_log_detonation(state, attacker_id, part, caught)
 		&"FRAGMENT":
 			impact.fragment_hits = _fragment(part, state)
 		&"MELTDOWN":
@@ -410,6 +428,45 @@ static func trigger_primed_meltdowns(unit: Unit, state: CombatState) -> Array[Di
 		part.meltdown_countdown = -1
 		events.append({"part": part, "units": detonate(part, state)})
 	return events
+
+
+## `BR35.08`/`BR51.20`: the detonation event, carrying **where it went off and how far it
+## reached**, so the drawn sphere is a readout of the real mechanical extent. Centred on the
+## exploding object's own cell rather than on wherever a bullet happened to strike it — an
+## explosion is centred on the thing, not on the wound.
+static func _log_detonation(
+	state: CombatState, attacker_id: int, part: Part, caught: Array[Unit]
+) -> void:
+	var centre: Vector2i = _locate_cell(part, state)
+	if centre.x < 0:
+		return
+	(
+		state
+		. combat_log
+		. emit(
+			(
+				LogEvent
+				. new(
+					state.round_number,
+					Enums.Phase.RESOLUTION,
+					attacker_id,
+					&"detonation",
+					{
+						"source_part": part.id,
+						"center_x": float(centre.x),
+						"center_y": float(centre.y),
+						"center_height": UnitGeometry.true_height_for_cell(centre, state.grid),
+						"radius": part.detonate_radius,
+						"units": caught.size(),
+					},
+					(
+						"%s detonated at %s, radius %.1f, %d caught"
+						% [part.id, centre, part.detonate_radius, caught.size()]
+					)
+				)
+			)
+		)
+	)
 
 
 static func _locate_cell(part: Part, state: CombatState) -> Vector2i:
@@ -530,6 +587,10 @@ static func _register_dropped(part: Part, cell: Vector2i, state: CombatState) ->
 static func _resolve_destruction_consequences(
 	impact: ImpactResult, region: Region, state: CombatState
 ) -> void:
+	# **Attribution, stated:** `ImpactResult` carries no attacker, so a detonation logs as
+	# unattributed (`-1`) rather than naming whoever's round set it off. That is a real loss
+	# against the previous emission site and is recorded rather than threaded through three
+	# layers on the way to a visual fix.
 	resolve_part_failure(region.part, state, impact)
 	var owner: Unit = _owning_unit(region.part, state)
 	var tier_before: SurrogateTier = owner.surrogate_tier if owner != null else null

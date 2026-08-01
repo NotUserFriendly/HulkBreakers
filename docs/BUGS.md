@@ -115,7 +115,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
   is the shape of a zone that runs out of distinct cells and then stops advancing.
 
-### BR51.20 — Active — owner: `CC`
+### BR51.20 — Pending — owner: `CC`
 **`set_part_hp` to zero never triggers the part's failure mode**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Setting part HP on a goo barrel to zero doesn't seem
@@ -132,6 +132,12 @@ confirm" roll-up — so pending items surface at a natural review point without 
   real impact to hang off or a deliberate answer for what to pass — inventing a hollow one would put a
   second failure path beside the resolver's.
 
+- **`Pending` (taskblock-51).** `set_part_hp` now runs `resolve_part_failure` when hp reaches 0, with a
+  nullable `ImpactResult` so no hollow stand-in is invented. The detonation event moved to
+  `DamageResolver`, where the failure happens — one emitter for both the shot path and the forced one.
+- **`Pending` rather than closed although CC owns it:** the deliverable is a sphere CC cannot see.
+  **To check:** click a goo barrel, `Set Part HP` -> 0, and it should explode with a red sphere sized to
+  its real radius.
 ### BR51.18 — Suspected — owner: `SUPERVISOR`
 **A unit slid sideways during a bout watched from both spectator and player control**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
