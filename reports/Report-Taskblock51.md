@@ -263,6 +263,35 @@ name is not a specification, and the gap between them is where defects live.
   supervisor's own dumps (2 s samples 8 → 116/160). **Paused, not closed, at their instruction.** The
   session minimum of ~7.5 survives and now has a named lead: `BR51.15`.
 
+## `BR34.05` is one decision with a `PLAN.md` item, and was skipped on that basis
+
+**Investigated, not fixed — the supervisor's call, and the right one:** it diverges from what tb51 set
+out to do.
+
+`ShotPlane.build` iterates units, `grid.blockers` and field items. **There is no floor in it**, so a
+round angled slightly down, or passing over and between everything, has nothing to intersect. "Miss" is
+not a wrong branch being taken; it is the only branch that exists. That much is a straightforward
+absence.
+
+**The correlation is the finding.** `PLAN.md`'s *Wide scatter passing through a wall seam* describes the
+same territory from the other side: wall cells are projected as **independent rects that are not
+guaranteed to tile edge-to-edge** from an arbitrary shooter angle, so a dartboard point can thread a real
+gap in an enclosed room — measured at **56/200 empties at a lateral offset of ~8**. So `BR34.05` has two
+causes, and **a floor Region alone would convert "vanishes" into "hits the floor behind the wall"** —
+visible, still wrong.
+
+That item's three candidates are not three alternatives: **merging contiguous blocker cells and adding a
+floor Region are complementary**, and capping scatter radius papers over both with a balance number.
+Whichever is chosen resolves the bug and the plan item together, and both documents now say so.
+
+**One design question CC raised turned out to be already answered:** `Surface` carries a `Part` (tb38
+made floor and terrain into parts), so a floor Region needs no stand-in and no new outcome type. CC had
+flagged that as the open decision in the more-correct option; it had been closed for thirteen blocks.
+
+**And one thing CC said was wrong.** Reading `ShotPlane.build`, CC reported that walls are in the plane
+and stop shots correctly. They are in the plane — as rects with seams between them. A round can pass
+through a wall it should have hit, and the plan item had that measured already.
+
 ## Open questions
 
 - **The ~7.5 fps session minimum is one stall, not a load**, and the supervisor has located it: *"a
