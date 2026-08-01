@@ -1,5 +1,66 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 hard pause — both models alive behind a flag, the plane still the default
+
+**`CombatState.shot_resolver` chooses the model**, per bout rather than as a global static so a
+differential can put one board through both without mutating shared state, and so a test switching
+resolvers cannot leak into the next. `dup()` carries it — a preview must resolve the way the real
+bout will, or `docs/08`'s pillar breaks. `ShotResolution.resolve_point` is the dispatch;
+`ShotPlane` is untouched and still the default.
+
+**`_aim_point_world` is the single conversion between the two aiming vocabularies.** The plane takes
+`(origin, direction, lateral offset)` and tests every candidate at a constant lateral; the chain takes
+a muzzle and an aimed point. One conversion means the differential compares one shot rather than two
+similar ones.
+
+**Seam sweep, both models, same room:** plane **56/200 empty**, ray chain **0/200**. On a room large
+enough to hold every offset both are 0/945, so the ray chain's zero is not merely the absence of the
+plane's own defect.
+
+**Differential, 216 seeded shots, 11-room:**
+
+| | count |
+|---|---|
+| agree | 33 |
+| ray hit, plane missed | 64 |
+| different part struck | 113 |
+| different outcome | 6 |
+| **plane hit, ray missed** | **0** |
+
+The direction that would be a defect is empty. **And the disagreements are explicable, measured
+rather than asserted:** of the plane's 152 hits, only **100 (65.8%) report a hit point that actually
+lies on the surface they say they struck**; the ray chain is **216/216 (100%)**. The plane
+reconstructs a hit coordinate from `(depth, lateral)` where `depth` is the struck cell's *centre*
+projected on the shooter-to-target line rather than the face the round met, so a third of its
+reported impacts name a place that is nowhere near the thing they hit. That is the `different_part`
+bucket. The 6 `different_outcome` cases are STOP_DEAD versus DEFLECT on the same surface — the
+incidence angle, which the plane approximates and the chain solves.
+
+**Cost, release build, and it inverts the concern:**
+
+| | plane | ray chain |
+|---|---|---|
+| one shot | **6 715 usec** | **2 021 usec** (3.32x faster) |
+| a 12-round burst | **148 829 usec** | **~24 256 usec** (6.1x faster) |
+| builds per burst | 20 | — |
+
+Debug figures track (8 368 → 2 424, 3.45x). The taskblock named the burst cost as "the one number
+that could sink this"; it does the opposite, because the amortisation the plane was credited with is
+not something it performs.
+
+**Determinism holds on both paths**, and traversal is **geometric rather than dictionary order** —
+asserted by building the same room with its blockers inserted in reverse and checking 52 headings
+give identical answers. The plane's `sort_custom` over `Dictionary` iteration is stable only because
+map generation is seeded; the march never consults insertion order.
+
+**A comparator bug in the differential, caught before it was believed.** The first version compared
+`region.part` by object identity across two independently built boards and reported 152 of 216 shots
+as `different_part` while its own printed detail showed both models striking `wall/STOP_DEAD`. It
+compares part id plus landing cell now. A second measurement bug in the same session: an attribution
+check that rounded hit coordinates to cells scored the ray chain at 51%, because a hit lands exactly
+on a box face and a coordinate at 0.5 rounds into the neighbouring cell — replaced with a real
+point-to-box distance, which is where 100% came from.
+
 ### taskblock-52 Pass D — membership dissolves: floors are ordinary geometry, and a dead flag wakes up
 
 **The ray marches all four collections.** `ShotPlane.build` looped `state.units` and

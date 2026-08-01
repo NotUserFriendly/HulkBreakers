@@ -1,6 +1,23 @@
 class_name ShotResolution
 extends RefCounted
 
+## taskblock-52: **the seam where a shot chooses its resolver.**
+##
+## Both models are alive behind `CombatState.shot_resolver`, and **the plane is
+## still the default** until the parity report is accepted. `ShotPlane` is
+## referenced at 133 sites across 76 files; deleting it in the same block that
+## replaces it would make any regression impossible to attribute, so this block
+## does not delete anything.
+##
+## The two resolvers take different inputs and that difference is the whole
+## design: the plane wants `(origin, direction, lateral_offset)` and tests every
+## candidate at a **constant** lateral offset, while the chain wants a muzzle and
+## an aimed **point** and diverges from the gun. `_aim_point_world` below is the
+## one conversion between them, so the two paths resolve the same shot rather
+## than two nearby ones.
+const RESOLVER_PLANE: StringName = &"plane"
+const RESOLVER_RAY: StringName = &"ray"
+
 ## taskblock-13 Pass C: the impact-resolve-and-log loop `AttackAction`
 ## originally owned alone (one `DamageResolver.resolve_shot` call, then a
 ## ~160-line cascade of part_destroyed/detonate/fragment/matrix_ejected/
@@ -67,7 +84,71 @@ static func resolve_and_log_point(
 	vertical_slope: float = 0.0,
 	point_depth: float = 0.0
 ) -> bool:
-	var results: Array[ImpactResult] = DamageResolver.resolve_shot(
+	var results: Array[ImpactResult] = resolve_point(
+		state,
+		attacker,
+		origin,
+		direction,
+		point,
+		damage,
+		crit_chance,
+		bonus_pen,
+		origin_height,
+		deflect_mode,
+		radius,
+		vertical_slope,
+		point_depth
+	)
+	# taskblock-51 Pass C: **the hop index travels with the event.** One trigger pull produces
+	# one `ImpactResult` per hop — wall, then cover, then the target — and playback needs to
+	# know which of those started a new pull, because pacing a hop like a separate shot is what
+	# made a deflect read as a second, later gunshot (`BR27.03`, `BR34.01`).
+	for hop_index: int in range(results.size()):
+		log_impact_result(
+			state, attacker, results[hop_index], mission, is_dud, max_range, hop_index
+		)
+	if results.is_empty():
+		log_miss_result(state, attacker, origin, direction, point, max_range, origin_height)
+	return not results.is_empty()
+
+
+## The resolver dispatch, split out of `resolve_and_log_point` so the differential
+## harness can run one shot through **both** models without also logging it twice.
+## Side-effect-free with respect to the log; it still mutates the board, exactly
+## as resolution is supposed to (docs/09: RESOLUTION owns every mutation).
+static func resolve_point(
+	state: CombatState,
+	attacker: Unit,
+	origin: Vector2,
+	direction: Vector2,
+	point: Vector2,
+	damage: float,
+	crit_chance: float,
+	bonus_pen: float,
+	origin_height: float,
+	deflect_mode: StringName,
+	radius: float,
+	vertical_slope: float,
+	point_depth: float,
+	resolver: StringName = &""
+) -> Array[ImpactResult]:
+	var chosen: StringName = resolver if resolver != &"" else state.shot_resolver
+	if chosen == RESOLVER_RAY:
+		return RayChain.resolve(
+			state,
+			Vector3(
+				origin.x * UnitGeometry.CELL_SIZE, origin_height, origin.y * UnitGeometry.CELL_SIZE
+			),
+			_aim_point_world(origin, direction, point, point_depth),
+			damage,
+			crit_chance,
+			state.material_table,
+			state.rng,
+			attacker.shell.all_parts_with_joints(),
+			bonus_pen,
+			deflect_mode
+		)
+	return DamageResolver.resolve_shot(
 		origin,
 		direction,
 		point,
@@ -88,17 +169,32 @@ static func resolve_and_log_point(
 		radius,
 		point_depth
 	)
-	# taskblock-51 Pass C: **the hop index travels with the event.** One trigger pull produces
-	# one `ImpactResult` per hop — wall, then cover, then the target — and playback needs to
-	# know which of those started a new pull, because pacing a hop like a separate shot is what
-	# made a deflect read as a second, later gunshot (`BR27.03`, `BR34.01`).
-	for hop_index: int in range(results.size()):
-		log_impact_result(
-			state, attacker, results[hop_index], mission, is_dud, max_range, hop_index
-		)
-	if results.is_empty():
-		log_miss_result(state, attacker, origin, direction, point, max_range, origin_height)
-	return not results.is_empty()
+
+
+## **The one conversion between the two aiming vocabularies**, and the reason the
+## differential compares one shot rather than two similar ones.
+##
+## The plane expresses an aim point as `(lateral offset, real world height)` at
+## some depth along the shooter-to-target line. The chain wants that same place as
+## a world point — B. So B is the origin, advanced downrange by the aim point's own
+## depth and displaced sideways by its lateral offset, at the height the dartboard
+## chose.
+##
+## **`point_depth` of zero is not "at the muzzle", it is "nobody computed one".**
+## Most callers leave it at the default. Falling back to `direction.length()` is
+## exact rather than approximate: `direction` is `target_cell - origin`, so its
+## length *is* the ground distance to the target, which is where an aim point with
+## no depth of its own was always implicitly anchored.
+static func _aim_point_world(
+	origin: Vector2, direction: Vector2, point: Vector2, point_depth: float
+) -> Vector3:
+	var dir: Vector2 = direction.normalized()
+	var perp := Vector2(-dir.y, dir.x)
+	var depth: float = point_depth if point_depth > 0.0 else direction.length()
+	if depth <= 0.0:
+		depth = 1.0  # degenerate: shooter and target share a cell
+	var flat: Vector2 = origin + dir * depth + perp * point.x
+	return Vector3(flat.x * UnitGeometry.CELL_SIZE, point.y, flat.y * UnitGeometry.CELL_SIZE)
 
 
 ## taskblock-21 Pass F: "every fired shot draws its ray, hit or miss — the

@@ -87,6 +87,7 @@ func run(_argv: PackedStringArray) -> void:
 	var build: Dictionary = _time_plane_build(state, geometry)
 	var build_usec: float = build["usec"]
 	var shot_usec: float = _time_one_shot(state, shooter, geometry)
+	var ray_usec: float = _time_one_ray_shot(state, shooter, geometry)
 	var burst: Dictionary = _one_real_burst(state, shooter, target)
 
 	print("")
@@ -117,7 +118,30 @@ func run(_argv: PackedStringArray) -> void:
 	else:
 		print("burst            : not measured — %s" % burst.get("why", "no burst weapon found"))
 	print("")
+	print("--- ray chain (taskblock-52) ---")
+	print("one shot         : %10.1f usec  (x%d, march + resolve)" % [ray_usec, SHOT_REPEATS])
+	if ray_usec > 0.0:
+		print(
+			(
+				"vs plane         : %10.2fx  (%.0f%% of the plane's per-shot cost)"
+				% [shot_usec / ray_usec, 100.0 * ray_usec / shot_usec]
+			)
+		)
+	if burst.get("ok", false):
+		print(
+			(
+				"a %d-round burst : %10.1f usec plane  ->  %10.1f usec ray (est., %d x one shot)"
+				% [
+					int(burst["rounds"]),
+					float(burst["usec"]),
+					ray_usec * float(burst["rounds"]),
+					int(burst["rounds"]),
+				]
+			)
+		)
+	print("")
 	print("ms per shot      : %.3f" % (shot_usec / 1000.0))
+	print("ms per ray shot  : %.3f" % (ray_usec / 1000.0))
 
 
 ## A real generated board with real assembled bodies — never a synthetic room.
@@ -215,6 +239,33 @@ func _time_one_shot(state: CombatState, shooter: Unit, geometry: Dictionary) -> 
 			vertical_slope,
 			AIM_HEIGHT
 		)
+	fire.call()  # warm
+	var started: int = Time.get_ticks_usec()
+	for _i in range(SHOT_REPEATS):
+		fire.call()
+	return float(Time.get_ticks_usec() - started) / float(SHOT_REPEATS)
+
+
+## The same shot through the ray chain, for the like-for-like per-shot figure the
+## hard pause is judged on. Zero damage for the same reason the plane's timed shot
+## carries none: a repeated real shot would chew the board being measured.
+##
+## **The burst figure for the ray chain is an estimate and is labelled as one.** A
+## chain has nothing to amortise across a burst by construction, so N rounds cost N
+## shots — which is exactly the property the plane was credited with beating and,
+## measured, does not.
+func _time_one_ray_shot(state: CombatState, shooter: Unit, geometry: Dictionary) -> float:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 52
+	var excluded: Array[Part] = shooter.shell.all_parts_with_joints()
+	var origin: Vector2 = geometry["flat_origin"]
+	var from := Vector3(
+		origin.x * UnitGeometry.CELL_SIZE, AIM_HEIGHT, origin.y * UnitGeometry.CELL_SIZE
+	)
+	var direction: Vector3 = geometry["build_direction"]
+	var toward: Vector3 = from + direction * 20.0
+	var fire: Callable = func() -> void:
+		RayChain.resolve(state, from, toward, 0.0, 0.0, state.material_table, rng, excluded)
 	fire.call()  # warm
 	var started: int = Time.get_ticks_usec()
 	for _i in range(SHOT_REPEATS):

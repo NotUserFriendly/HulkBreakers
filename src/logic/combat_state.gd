@@ -61,6 +61,18 @@ var batch_plans: BatchPlan = BatchPlan.new()
 ## Shared across the whole battle (docs/03) so every attack resolves DT and
 ## ricochet against the same tuning, not a fresh default per shot.
 var material_table: MaterialTable = DataLibrary.material_table()
+
+## taskblock-52: which model resolves this bout's shots — `ShotResolution.
+## RESOLVER_PLANE` (the default, and the shot plane) or `RESOLVER_RAY` (the ray
+## chain). Per-bout rather than a global static so a differential run can put the
+## same board through both without mutating shared state, and so a test that
+## switches resolvers cannot leak into the next one.
+##
+## Spelled as a literal rather than as `ShotResolution.RESOLVER_PLANE` only to
+## keep a class-level default free of a cross-class static read;
+## `test_shot_resolver_flag.gd` asserts the two spellings are the same value, so
+## they cannot drift.
+var shot_resolver: StringName = &"plane"
 ## docs/10 taskblock05 E1: what a mangling Part.mangles_into resolves
 ## against — shared across the whole battle, same convention as
 ## material_table above. taskblock-16 Pass B: FieldObjects (hardcoded
@@ -331,6 +343,10 @@ func dup() -> CombatState:
 	cloned.squad_controllers = squad_controllers.duplicate()
 	cloned.material_table = material_table
 	cloned.wreckage_pool = wreckage_pool
+	# taskblock-52: a preview must resolve shots the same way the real bout will,
+	# or the number the UI shows and the number resolution produces come from two
+	# different models — which is exactly the pillar docs/08 is built on.
+	cloned.shot_resolver = shot_resolver
 	for unit: Unit in cloned_units:
 		cloned.add_unit(unit)
 	cloned._current_unit_id = _current_unit_id
