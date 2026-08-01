@@ -324,10 +324,12 @@ static func log_impact_result(
 	# geometry so the drawn radius is a readout of the actual mechanical extent rather than a
 	# decorative guess. That distinction is what `BR35.04` was filed for one layer up.
 	#
-	# **Known gap, stated rather than hidden:** a detonation that harms nobody produces an empty
-	# `detonated_units` and so draws nothing. Reaching it needs a "this part detonated" fact the
-	# resolver does not currently return, distinct from "these units were hurt".
-	if not result.detonated_units.is_empty():
+	# **Gated on the explosion, not on its casualties.** This first read `detonated_units`, which
+	# only ever contains `Unit`s — and a barrel is a blocker, so it is never in its own blast
+	# list. The supervisor's own argument closed it: *"if something is exploding, isn't it a
+	# part? Shouldn't it always draw because it catches itself in the explosion?"* An explosion
+	# that harms nobody is still an explosion, and hiding it made most of them invisible.
+	if result.detonated:
 		(
 			state
 			. combat_log

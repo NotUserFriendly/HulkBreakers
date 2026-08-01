@@ -352,6 +352,9 @@ static func resolve_part_failure(part: Part, state: CombatState, impact: ImpactR
 		&"DISABLE":
 			part.is_disabled = true
 		&"DETONATE":
+			# `BR35.08`: record that it went off, separately from whom it caught — a barrel is a
+			# blocker, never a `Unit`, so it is never in its own blast list.
+			impact.detonated = part.detonate_damage > 0.0
 			impact.detonated_units = detonate(part, state)
 		&"FRAGMENT":
 			impact.fragment_hits = _fragment(part, state)

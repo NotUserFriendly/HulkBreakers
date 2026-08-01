@@ -2047,3 +2047,100 @@ be permanently immobilised**
   exactly, not a separate always-drawn distance regardless of a real hit existing.
 - **Resolved — confirmed by the owner**, together with the continuation-tracer work that replaced it:
   dull orange rather than blue, and flashing with its own initial hit rather than after it.
+
+### BR27.03 — Resolved — owner: `SUPERVISOR`
+**Other shots appear to resolve before an earlier shot's own deflect finishes**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-20, correcting a taskblock-27 misdiagnosis: Pass A2 had assumed a shot and
+  its own deflect were wrongly paused apart and inserted a fix for that — but they're SUPPOSED to
+  resolve simultaneously, that was never broken. The real, still-open defect is different: a
+  DIFFERENT, later shot can appear to resolve/animate before an EARLIER shot's own deflect segment
+  has finished.
+- **Status:** not yet investigated. taskblock-27 Pass A2's own `DEFLECT_BEAT_MS` fix (a deliberate
+  pause between a primary hit and its own deflect) does not address this bug and is itself now a
+  wrong implementation of the intended simultaneous behavior — not reverted, only reclassified.
+  Likely candidate: `ResolutionPlayer`'s own inter-event sequencing between separate impact events,
+  not the intra-event primary/deflect pairing `DEFLECT_BEAT_MS` targeted.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here):** confirmed not an
+  intra-event bug — each `ResolutionPlayer.play()` call is fully await-serialized internally,
+  primary+deflect included. The gap is a missing reentrancy guard: `play()` has no busy-flag, and
+  `SpectatorOverlay.step_once()` (`spectator_overlay.gd:249-251`) calls `pause()` (only flips a bool,
+  doesn't cancel anything in flight) then immediately awaits `_advance()` — so a Step/Play issued
+  right after Pause can start a SECOND concurrent `play()` while an earlier turn's own deflect tracer
+  is still animating. **Candidate fix (not yet applied):** add a busy/in-flight guard to
+  `ResolutionPlayer.play()`, or have `pause()` actually await the in-flight `_advance()` before
+  returning.
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** `ResolutionPlayer`
+  inserted `INTER_SHOT_BREAK_MS` between **every** consecutive impact, so a single trigger pull that hit and
+  then deflected played as two gunshots a tenth of a second apart, and a later shot could begin while the
+  earlier one's continuation was still to come. Impacts now carry a `hop_index`; only hop 0 takes the break,
+  and a pull's hops are drawn without awaiting each other so they flash together. taskblock-27 Pass A2's
+  `DEFLECT_BEAT_MS` — a deliberate pause built on the opposite assumption — is now unused.
+- **To see it:** fire until a shot penetrates or deflects. It should read as one event, not two.
+- **Resolved — the supervisor's instruction after seeing it in play.**
+
+
+### BR34.01 — Resolved — owner: `SUPERVISOR`
+**Every penetration/deflection hop replays the full bright hit-flash, not just the first**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (live playtest). A single queued shot that penetrates or deflects through
+  several objects visually reads as multiple separate shots firing — "the bright raycast flashing
+  should only play for the first hit," not for every subsequent hop of the same trigger pull.
+- **Root cause, read-only investigation (quick look, not a fix):** `DamageResolver.resolve_shot`
+  correctly returns one `Array[ImpactResult]` per trigger pull, one entry per hop (wall, then cover,
+  then the target, say) — that's the right granularity for damage/consequence bookkeeping.
+  `ResolutionPlayer.play()` (`resolution_player.gd:148`) reuses that SAME granularity directly for
+  PLAYBACK: its own loop treats every `&"impact"`/`&"miss"` `LogEvent` as an independent "shot"
+  (`is_shot := event.kind == &"impact" or event.kind == &"miss"`), inserting `INTER_SHOT_BREAK_MS`
+  between them, and `_play_impact()` (`resolution_player.gd:440`) unconditionally calls
+  `_spawn_tracer()` — the full bright-live-to-dull-fade flash — for every one of them. Nothing in
+  `LogEvent.data`/`ImpactResult` distinguishes "the first hop of this trigger pull" from "hop 2+,
+  the same round continuing forward" — the log's own per-hop granularity (correct for its own job) is
+  being read as the playback's own per-shot granularity (wrong for this job), conflating two different
+  concerns. A 3-hop PENETRATE chain from one queued attack currently plays THREE full bright flashes
+  with pacing gaps between them, reading as three separate trigger pulls.
+- **Distinct from BR27.02** (the backward-tracer-direction ticket) — this is about flash/pacing
+  REPETITION per hop, not the direction of any single segment. Both live in the same playback/
+  resolution-geometry neighborhood but are separate defects.
+- **Not investigated further, no fix attempted** — logged per instruction. A real fix needs a design
+  call on what SHOULD distinguish "first hit of a pull" from "continuation," which doesn't exist in
+  the data today (candidate: thread a hop index/continuation flag through `ImpactResult`/`LogEvent`,
+  then have `ResolutionPlayer` skip the live flash — or use a dimmer one — and skip the inter-shot gap
+  for hop index > 0). That's a design/implementation question for whoever picks this up, not answered
+  here.
+
+---
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** The entry's own
+  diagnosis was right: playback reused the resolver's per-hop granularity as if each hop were a separate
+  shot. **Hop 0 keeps the bright flash; every hop after it now draws in a dull orange** and appears at the
+  same time as its own initial hit, so one trigger pull reads as one event with a tail rather than as
+  several shots firing.
+- **To see it:** a shot that penetrates several objects should flash bright once, with dull orange
+  continuations alongside it.
+- **Resolved — the supervisor's instruction after seeing it in play.**
+
+
+### BR35.07 — Resolved — owner: `SUPERVISOR`
+**`STOP_DEAD` tracers are drawn past their own hit point, reading as a penetration that never happened**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb35 review, live). A drawn `STOP_DEAD` ray continues visibly *beyond* the
+  point where it actually stopped, so a round that was halted dead reads on screen as though it
+  punched through and carried on.
+- **Same class as BR35.04, different outcome type:** tracer geometry drawn from something other than
+  what the resolver actually produced. Where BR35.04 is a deliberately decorative fixed-range
+  projection on `DEFLECT`, this is a `STOP_DEAD` segment overshooting its own resolved endpoint —
+  worth confirming whether it shares the same drawing path (`ResolutionPlayer._play_impact`) and the
+  same "draw to a distance, not to the hit" habit, or is a separate length/endpoint error.
+- **The reason this matters beyond looks:** it makes the two outcomes visually indistinguishable.
+  `STOP_DEAD` and `PENETRATE` are mechanically different results, and if a stopped round is drawn
+  like a penetrating one, the player cannot read what their weapon actually did — the same class of
+  harm as the dartboard understating spread (tb34): the display teaching a rule the sim doesn't
+  follow.
+- Filed separately from BR35.04 per the supervisor's own convention — one entry per observed symptom,
+  cross-linked, rather than bundling by shared root.
+- **Resolved on the supervisor's report, and CC did not fix it directly.** No change was made
+  targeting this entry. The most likely cause of its disappearance is Pass C's continuation work:
+  a `STOP_DEAD` round's *next* hop used to be drawn as a separate bright flash a tenth of a
+  second later, which reads exactly like one ray continuing past its own stopping point. That is
+  a plausible explanation, **not a verified one** — recorded as such rather than claimed.
+
