@@ -65,6 +65,13 @@ const TRACER_DULL_COLOR := Color(0.5, 0.0, 0.0, 0.3)
 ## second identical-looking tracer. A flagged first pass at the exact
 ## hue (a cool blue against the warm yellow/red of an ordinary shot), not
 ## a final art decision — only "visually distinguishable" is specified.
+## taskblock-51 Pass C: **the colour a continuation hop draws in** — a dull orange, supervisor-
+## specified. A penetration or a ricochet is the *same round still travelling*, so it reads as a
+## quieter relative of the bright flash rather than as a different event. The blue this replaces
+## was chosen for the decorative projection that has since been deleted (`BR35.04`), and it made
+## a continuation look like a second, unrelated shot.
+const TRACER_CONTINUATION_COLOR := Color(0.85, 0.45, 0.12)
+const TRACER_CONTINUATION_DULL_COLOR := Color(0.34, 0.16, 0.03, 0.3)
 const TRACER_DEFLECT_COLOR := Color(0.3, 0.75, 1.0)
 const TRACER_DEFLECT_DULL_COLOR := Color(0.0, 0.15, 0.4, 0.3)
 ## Render priority split (docs/10: transparent geometry sorts by camera
@@ -158,7 +165,8 @@ func play(events: Array[LogEvent]) -> void:
 	# impacts, or a miss right after a hit (or another miss) would play
 	# with no break at all.
 	var previous_was_shot := false
-	for event: LogEvent in events:
+	for index: int in range(events.size()):
+		var event: LogEvent = events[index]
 		var is_shot: bool = event.kind == &"impact" or event.kind == &"miss"
 		# taskblock-51 Pass C (`BR27.03` / `BR34.01`): **a hop is not a new shot.**
 		#
@@ -173,7 +181,16 @@ func play(events: Array[LogEvent]) -> void:
 		# hit here, went there — rather than as a second shot fired at the first one's wall.
 		if previous_was_shot and is_shot and starts_a_new_pull(event):
 			await get_tree().create_timer((INTER_SHOT_BREAK_MS / 1000.0) / speed).timeout
-		await _play_event(event)
+		# taskblock-51 Pass C: **a pull's hops flash together, not in sequence.** The supervisor
+		# asked for the continuation to appear *"at the same time as their initial hit"* — one
+		# trigger pull is one visual event, a bright primary with its dull-orange continuations
+		# alongside it, rather than a stutter of separate flashes. So an event whose successor
+		# continues it is started without being awaited, and only the final hop of a pull is
+		# waited on. `BR27.03` records that these were always supposed to resolve simultaneously.
+		if _next_event_continues_this_pull(events, index):
+			_play_event(event)
+		else:
+			await _play_event(event)
 		previous_was_shot = is_shot
 
 	await get_tree().create_timer(LogPlayback.RESOLVE_TAIL / speed).timeout
@@ -189,6 +206,17 @@ func play(events: Array[LogEvent]) -> void:
 ## that is really just "is this hop 0".
 static func starts_a_new_pull(event: LogEvent) -> bool:
 	return int(event.data.get("hop_index", 0)) == 0
+
+
+## Whether the event after `index` is a continuation of the same trigger pull — which is what
+## decides that this one is drawn without being awaited, so the two flash together.
+static func _next_event_continues_this_pull(events: Array[LogEvent], index: int) -> bool:
+	if index + 1 >= events.size():
+		return false
+	var next_event: LogEvent = events[index + 1]
+	if next_event.kind != &"impact":
+		return false
+	return not starts_a_new_pull(next_event)
 
 
 func _play_event(event: LogEvent) -> void:
@@ -510,7 +538,12 @@ func _play_impact(event: LogEvent) -> void:
 	var hit_height: float = float(event.data.get("hit_height", TRACER_MUZZLE_HEIGHT))
 	var to := Vector3(hit_x, hit_height, hit_y) * UnitGeometry.CELL_SIZE
 
-	await _spawn_tracer(from, to)
+	# taskblock-51 Pass C: hop 0 is the shot and flashes bright; every hop after it is the same
+	# round still going, and draws dull orange.
+	if starts_a_new_pull(event):
+		await _spawn_tracer(from, to)
+	else:
+		await _spawn_tracer(from, to, TRACER_CONTINUATION_COLOR, TRACER_CONTINUATION_DULL_COLOR)
 
 	# taskblock-51 Pass C (`BR35.04`): **the decorative bounce segment is gone**, along with the
 	# `deflect_end_*` fields it read — see `ShotResolution.log_impact_result`. It was drawn to an
