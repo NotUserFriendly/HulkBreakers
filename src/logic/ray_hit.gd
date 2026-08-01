@@ -70,6 +70,11 @@ var inside: bool = false
 var exit_t: float = 0.0
 var exit_point: Vector3 = Vector3.ZERO
 var exit_normal: Vector3 = Vector3.ZERO
+## The exact box this hit came from. Carried so `RayTiebreak`'s box-cast stage can
+## re-probe **the boxes the raycast already found** rather than re-deriving a
+## candidate set of its own — which is what keeps that stage an arbiter over a tie
+## instead of a second, wider cast.
+var placement: BoxPlacement = null
 
 
 ## The same hit expressed as a `Region`, so it flows through

@@ -49,23 +49,99 @@ const STAGE_STABLE_ORDER: StringName = &"stable_order"
 ## the same reason: below any real geometry, above float noise.
 const SEPARATION_EPSILON := 0.0001
 
+## The arbiter probe's half-width, in world units.
+##
+## **This is not a projectile width and must not become one.** The taskblock is
+## explicit that box casting as a weapon property — a shotgun pellet and a sniper
+## round wanting different thicknesses — is a design lever for later, and that
+## letting a tiebreak dictate the weapon model would be the wrong reason to build
+## it. This exists only to give the probe a corner that can lead, so it is
+## deliberately tiny against a 1.0 cell: big enough to separate two cells at any
+## real angle, small enough that it could never reach anything the ray did not.
+## A flagged, tunable constant, not a balance number.
+const PROBE_RADIUS := 0.05
+
 
 ## Picks one hit from a genuine tie and logs which stage did it. `candidates`
 ## must hold at least two entries; `RayCaster` never calls this otherwise.
-##
-## **Stage 2 (the swept box) is not wired in yet** — taskblock-52 Pass C builds it,
-## with the log below as its evidence that it ever runs. Until then a tie the
-## raycast cannot split goes straight to closest root, which is the stage that has
-## to be right regardless, since the axis-aligned case falls through to it by
-## design even once the box cast exists.
-static func resolve(candidates: Array[RayHit], from: Vector3, log: CombatLog = null) -> RayHit:
-	var winner: RayHit = _by_closest_root(candidates, from)
-	var stage: StringName = STAGE_CLOSEST_ROOT
+static func resolve(
+	candidates: Array[RayHit], from: Vector3, dir_n: Vector3, log: CombatLog = null
+) -> RayHit:
+	var winner: RayHit = _by_box_cast(candidates, from, dir_n)
+	var stage: StringName = STAGE_BOX_CAST
+	if winner == null:
+		winner = _by_closest_root(candidates, from)
+		stage = STAGE_CLOSEST_ROOT
 	if winner == null:
 		winner = _by_stable_order(candidates)
 		stage = STAGE_STABLE_ORDER
 	_log(candidates, winner, stage, log)
 	return winner
+
+
+## Stage 2. **An arbiter over the tied set, never a second cast.** It iterates
+## `candidates` alone and returns one of them, so it is structurally incapable of
+## reporting a body the raycast did not already find — the property the taskblock
+## asks to be asserted, and it is, in `test_ray_tiebreak.gd`.
+##
+## The probe is a box **aligned to the ray**, swept along it, represented by the
+## four corner rays of its cross-section. Each candidate is scored by the earliest
+## `t` any corner reaches it; the lowest score wins.
+##
+## **Why a corner leads, and why an axis-aligned ray has none.** For a ray at
+## angle theta to the world axes, the cross-section basis is tilted with it, so
+## the corner on one side sits fractionally further downrange than the corner on
+## the other and reaches the shared face plane first — and the side it favours is
+## the one the ray is angling away from, which is a real geometric fact about the
+## approach rather than a coin flip. At theta = 0 the tilt vanishes, both corners
+## sit at the same distance, and the scores come out equal: **that subcase falls
+## through to stage 3 by design.** Null is returned then, not a guess.
+static func _by_box_cast(candidates: Array[RayHit], from: Vector3, dir_n: Vector3) -> RayHit:
+	var best: RayHit = null
+	var best_score: float = INF
+	var contested := false
+	for hit: RayHit in candidates:
+		if hit.placement == null:
+			return null  # nothing to re-probe against; leave it to the next stage
+		var score: float = _earliest_corner_t(hit, from, dir_n)
+		if score == INF:
+			continue
+		if score < best_score - SEPARATION_EPSILON:
+			best = hit
+			best_score = score
+			contested = false
+		elif absf(score - best_score) <= SEPARATION_EPSILON:
+			contested = true
+	return null if contested else best
+
+
+## The earliest `t` at which any of the swept probe's four corners reaches this
+## candidate's own box, or INF if none of them do.
+static func _earliest_corner_t(hit: RayHit, from: Vector3, dir_n: Vector3) -> float:
+	var earliest: float = INF
+	for corner: Vector3 in _corner_offsets(dir_n):
+		var raw: Dictionary = UnitPicker.ray_box_hit(hit.placement, from + corner, dir_n)
+		if raw.is_empty():
+			continue
+		earliest = minf(earliest, float(raw["t"]))
+	return earliest
+
+
+## The probe's cross-section corners, in the plane perpendicular to the ray.
+##
+## The reference axis swaps for a near-vertical ray, where `UP` would be
+## degenerate — a shot fired straight down is exactly the case a floor makes
+## ordinary, so it cannot be left to produce a zero-length cross product.
+static func _corner_offsets(dir_n: Vector3) -> Array[Vector3]:
+	var reference: Vector3 = Vector3.RIGHT if absf(dir_n.dot(Vector3.UP)) > 0.9 else Vector3.UP
+	var right: Vector3 = dir_n.cross(reference).normalized()
+	var up: Vector3 = right.cross(dir_n).normalized()
+	return [
+		right * PROBE_RADIUS + up * PROBE_RADIUS,
+		right * PROBE_RADIUS - up * PROBE_RADIUS,
+		-right * PROBE_RADIUS + up * PROBE_RADIUS,
+		-right * PROBE_RADIUS - up * PROBE_RADIUS,
+	]
 
 
 ## Stage 3. Null when two candidates' roots are equidistant, which sends the
