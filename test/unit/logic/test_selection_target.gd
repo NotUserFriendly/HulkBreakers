@@ -111,3 +111,25 @@ func test_two_things_in_one_cell_are_not_the_same_selection() -> void:
 	assert_false(SelectionTarget.for_unit(unit).same_as(SelectionTarget.for_part(_barrel(), cell)))
 	assert_false(SelectionTarget.for_part(_barrel(), cell).same_as(SelectionTarget.for_cell(cell)))
 	assert_true(SelectionTarget.for_cell(cell).same_as(SelectionTarget.for_cell(cell)))
+
+
+## **`BR35.01`: a distant cell is rejected before the per-box test, and a near one never is.**
+##
+## `PartPicker.hit` ran a full assembly ray test against every blocker and field item regardless
+## of the ray's direction — fine for a handful of props, 200+ wall cells on a real map, on every
+## mouse motion. The reject must be **conservative**: admitting a cell the real test then rejects
+## costs a little time; rejecting one that would have been hit is a shot passing through a wall.
+func test_the_picker_rejects_cells_the_ray_goes_nowhere_near() -> void:
+	var from := Vector3.ZERO
+	var dir := Vector3(1.0, 0.0, 0.0)
+
+	assert_true(PartPicker._near_ray(Vector2i(5, 0), from, dir), "straight down the ray")
+	assert_true(PartPicker._near_ray(Vector2i(5, 1), from, dir), "and just off it")
+	assert_false(PartPicker._near_ray(Vector2i(5, 40), from, dir), "far to the side")
+	assert_false(PartPicker._near_ray(Vector2i(-40, 0), from, dir), "and well behind it")
+
+
+## The bound has to clear a part whose boxes overhang its own cell, so it is checked against the
+## cell size rather than assumed — a tight bound here would clip real hits.
+func test_the_reject_radius_clears_more_than_one_cell() -> void:
+	assert_gt(PartPicker.SKIP_RADIUS, 1.0, "a part's boxes can overhang its cell")

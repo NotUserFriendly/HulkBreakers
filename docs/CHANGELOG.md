@@ -1,5 +1,23 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-51 — a CC-owned sweep: `BR35.03` confirmed closed, `BR35.01` mitigated
+
+**`BR35.03` was already fixed and only needed confirming**, exactly as its triage predicted. taskblock-42
+Pass E gated the board rebuild on `DebugVerbs.affects_board(verb_id)` and **both** overlays carry it.
+Closed on a reading, with no change made — recorded that way rather than as a fix.
+
+**`BR35.01`: a cheap reject before the per-box test.** `PartPicker.hit` ran a full assembly ray test
+against every blocker and field item regardless of the ray's direction — a handful of props when it was
+written, 200+ wall cells since tb31 C, on every mouse motion. It now skips a cell whose perpendicular
+distance from the ray exceeds `SKIP_RADIUS`. **18 454 -> 14 390 usec per motion (54 -> 69 fps)** on the
+same probe this block has used throughout; with the earlier tooltip fix that is **42 527 -> 14 390**, a
+third of the original.
+
+**Stated plainly: this is a mitigation, not the structural fix.** The scan is still linear in blocker
+count with a cheap reject in front; a spatial index is the real answer and was not attempted. The reject
+is conservative by design — admitting a cell the real test rejects costs time, rejecting one that would
+have been hit is a shot through a wall.
+
 ### taskblock-51 — detonations reach cover, chain in waves, and go off where they actually are
 
 **Cover takes the blast.** `detonate()` iterated `state.units` and nothing else, so a barrel beside a
