@@ -10,6 +10,56 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR46.02 — Resolved — owner: `CC`
+**16 of 40 generated maps contain ground a unit can walk into and never leave**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-28, while checking the supervisor's report that "Squad 1 is trapped in a lowered
+  section" during a real bout. It is a real and separate defect from `BR46.01`.
+- **Descent is free and ascent is capability-gated.** Dropping to a lower level is legal for everyone;
+  climbing back needs `Shell.can_climb()`, which reads a `CLIMBER` part tag, and **no part in the repo
+  carries it.** So every lowered region is a one-way door for every unit that currently exists.
+- **A symmetric connectivity check cannot see this, which is why it was missed.** Spawn zones are
+  mutually reachable on **60 of 60** seeds — the map is connected in the ordinary sense. The defect
+  only appears under *asymmetric* reachability: flood out from a spawn cell, then flood back from each
+  cell reached and ask whether the spawn is still reachable.
+- **Measured over 40 seeds at the real 32x24 bout size: 16 seeds contain at least one one-way cell,
+  worst case seed 16 with 216 of them** (e.g. `(11,10)`). A unit that wanders in is out of the mission
+  while still alive and still taking turns — which reads as `TERMINATED`, and is a plausible
+  contributor to `BR45.03`'s dominant failure mode.
+- **Not fixed, and deliberately not fixed by me: the direction is a design call.** Three options, none
+  obviously right:
+  (a) **author a `CLIMBER` part** — `PLAN.md` already carries this as its own item, and it makes the
+  gate real rather than removing it, but it changes what every shell can do;
+  (b) **make `MapGen` guarantee two-way connectivity** — ramp or raise any region whose only exits are
+  descents, which keeps the movement rules alone and constrains the generator;
+  (c) **make the planner refuse a one-way step** — cheapest, and wrong on its own, since a player can
+  still walk in and the AI would be avoiding terrain rather than the terrain being fixed.
+  The evidence points at (b) as the floor and (a) as the feature; (c) is a mitigation, not a fix.
+- **Reproduction is `tools/`-free and cheap:** flood from any spawn cell with a non-climbing
+  `Pathfinder`, then flood back from each reached cell and check the spawn is still in the set.
+- **Resolved (`CC`, 2026-08-02, taskblock-53 Pass D) via option (b), the generator guarantee** —
+  the direction the entry itself called "the floor". `MapGen.guarantee_navigability` runs last, on
+  the finished `Grid`, and opens an upward edge out of every stranded cell.
+- **Re-measured either side of the fix with the entry's own reproduction, at the same 32x24 bout
+  size and the same 40 seeds: 16 of 40 -> 0 of 40.** The worst case the entry records, seed 16 with
+  216 one-way cells, is among them and comes back clean.
+- **The check is `MapNavigability`**, and it runs the flood the entry prescribed with one change
+  that is worth stating: the naive form floods back from *every* reached cell, which is O(cells^2)
+  and unusable across a sweep. The return flood runs **once** from the origin over reversed edges —
+  a cell can reach the origin exactly when the origin can reach it backwards. Same answer, two
+  floods instead of thousands, and it reproduces the recorded 16/40 exactly, which is what confirms
+  the shortcut is equivalent rather than merely faster.
+- **A finding that came out of the fix: the rule's ladder half is measured-dead.** taskblock-53
+  specifies "rise <= 2 gets a ramp; anything higher gets a ladder", and nothing generated can reach
+  the second half. A cell is one-way only if you can *fall into* it, capping the drop at
+  `MAX_HOP_DOWN_LEVELS` (2.0); the way out is the same face, so the repair's rise never exceeds
+  `RAMP_MAX_RISE` (2.0). Every stranded cell is ramp work. **The branch is kept rather than
+  deleted** — it costs nothing and is one constant away from live — with a test that fails if the
+  constants stop making it dead, and says to update rather than delete it.
+- **Options (a) and (c) are untouched and still open on their own merits.** A `CLIMBER` part stays
+  `PLAN.md`'s item, and the planner refusing a one-way step was never a fix — a player can still
+  walk in.
+
 ### BR52.11 — Resolved — owner: `SUPERVISOR`
 **A bout started from the Generate Bout overlay logs no seed at all, and the file's one seed line
 misattributes it**

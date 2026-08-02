@@ -579,34 +579,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
   frame mismatch if a later change introduces the thing that was suspected here.
 
-### BR46.02 — Active — owner: `CC`
-**16 of 40 generated maps contain ground a unit can walk into and never leave**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-28, while checking the supervisor's report that "Squad 1 is trapped in a lowered
-  section" during a real bout. It is a real and separate defect from `BR46.01`.
-- **Descent is free and ascent is capability-gated.** Dropping to a lower level is legal for everyone;
-  climbing back needs `Shell.can_climb()`, which reads a `CLIMBER` part tag, and **no part in the repo
-  carries it.** So every lowered region is a one-way door for every unit that currently exists.
-- **A symmetric connectivity check cannot see this, which is why it was missed.** Spawn zones are
-  mutually reachable on **60 of 60** seeds — the map is connected in the ordinary sense. The defect
-  only appears under *asymmetric* reachability: flood out from a spawn cell, then flood back from each
-  cell reached and ask whether the spawn is still reachable.
-- **Measured over 40 seeds at the real 32x24 bout size: 16 seeds contain at least one one-way cell,
-  worst case seed 16 with 216 of them** (e.g. `(11,10)`). A unit that wanders in is out of the mission
-  while still alive and still taking turns — which reads as `TERMINATED`, and is a plausible
-  contributor to `BR45.03`'s dominant failure mode.
-- **Not fixed, and deliberately not fixed by me: the direction is a design call.** Three options, none
-  obviously right:
-  (a) **author a `CLIMBER` part** — `PLAN.md` already carries this as its own item, and it makes the
-  gate real rather than removing it, but it changes what every shell can do;
-  (b) **make `MapGen` guarantee two-way connectivity** — ramp or raise any region whose only exits are
-  descents, which keeps the movement rules alone and constrains the generator;
-  (c) **make the planner refuse a one-way step** — cheapest, and wrong on its own, since a player can
-  still walk in and the AI would be avoiding terrain rather than the terrain being fixed.
-  The evidence points at (b) as the floor and (a) as the feature; (c) is a mitigation, not a fix.
-- **Reproduction is `tools/`-free and cheap:** flood from any spawn cell with a non-climbing
-  `Pathfinder`, then flood back from each reached cell and check the spawn is still in the set.
-
 ### BR45.01 — Active — owner: `CC`
 **Surrogate demotion from an ambiguous DAG node is an unresolved placeholder, and says so loudly on
 every fire**
