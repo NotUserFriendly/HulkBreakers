@@ -34,6 +34,27 @@ honestly reports seed 0 instead of pretending to be unset.
 one scene, through the two-argument call, and demands its own distinct four-digit seed — the thing
 that was silently absent. Suite green.
 
+**A second half, found in play: the seed reached the file but not the top of the in-game panel.**
+`load_battle()` emits the header into whichever panel is up, and `GenerateBoutOverlay` *then* swaps the
+overlay — so the panel that received it is torn down and the fresh one starts empty. The file sink
+survives because `BattleScene` owns it; a panel does not. **The first fix made this visible rather than
+causing it** — that path previously emitted no header for the swap to lose. `BattleScene` now keeps the
+bout's header and hands it to a newly installed overlay's sink after `setup()`, **pushed straight into
+the sink rather than re-emitted through `CombatLog`**, because a second `emit()` would also reach the
+file and write two `bout_start` lines for one bout. Scoped to the header on purpose: replaying arbitrary
+history to late-attaching sinks would change what "one stream, many sinks" means. Verified by
+re-breaking it — with the call removed, exactly the two panel assertions fail.
+
+**`test/suite_audit.csv` and `test/suite_profile.json` were regenerated together, and the previous
+session's deliberate exclusion of eight taskblock-52 files could not be preserved.** The exclusion was
+not a filter but deliberate *staleness*: both files were left un-regenerated, so they agreed with each
+other. `test_per_test_counters_sum_to_the_file_level_profile` checks per-test counters against the
+profile's **global** totals, so a fresh profile and a stale CSV cannot both hold. Adding tests to
+`test_battle_scene.gd` — a file the snapshot already covered — forced the regeneration. Dropping the
+eight files back out was tried and fails that sum assertion (`shot_planes` 3 127 against 9 043). All
+2 668 rows carry a rule, reusing the existing vocabulary, so the distinct-rule count is unchanged at
+351.
+
 ### taskblock-52 Pass F — the flip lands: the ray chain resolves every shot
 
 `CombatState.shot_resolver` defaults to `&"ray"`. **Full suite green with the flag inverted** — 281
