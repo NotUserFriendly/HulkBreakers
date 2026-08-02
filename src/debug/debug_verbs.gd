@@ -70,6 +70,8 @@ const BOARD_CHANGING_VERBS: Array[StringName] = [
 	# without a board rebuild it stayed drawn while inspect showed an empty tile, which is
 	# exactly what the supervisor saw.
 	&"set_part_hp",
+	# taskblock-53 Pass B: replaces the entire board, so nothing is more board-changing.
+	&"load_map",
 ]
 
 
@@ -97,6 +99,12 @@ static func all() -> Array[DebugVerbSpec]:
 				],
 				Callable(DebugVerbs, &"_apply_spawn_unit")
 			)
+		),
+		DebugVerbSpec.new(
+			&"load_map",
+			"Load Map",
+			[DebugVerbSpec.param(&"map_path", P.STRING_NAME)],
+			Callable(DebugVerbs, &"_apply_load_map")
 		),
 		DebugVerbSpec.new(
 			&"remove_object",
@@ -295,6 +303,13 @@ static func all() -> Array[DebugVerbSpec]:
 
 static func _apply_move_object(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.move_object(a.object, a.to_cell)
+
+
+## taskblock-53 Pass B: the placeholder map loader. `map_path` is a `res://` path to a
+## `MapFile` `.tres` — typed in rather than picked from a list, which is the crude part and
+## is what `PLAN.md`'s map-menu item replaces.
+static func _apply_load_map(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.load_map(String(a.map_path))
 
 
 static func _apply_spawn_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:

@@ -860,3 +860,95 @@ func force_climb(unit: Unit, target_cell: Vector2i) -> bool:
 ## The mirror of `force_climb`, for `HopDownAction`.
 func force_hop_down(unit: Unit, target_cell: Vector2i) -> bool:
 	return force_action(HopDownAction.new(unit, target_cell))
+
+
+## taskblock-53 Pass B: **the placeholder map loader.** Swaps the live board for
+## `map_path`'s, then relocates every living unit onto that map's own spawn markers.
+##
+## **Cheesy on purpose, and the taskblock says so** — *"a debug verb or a crude list is
+## enough... a cheesy placeholder is explicitly acceptable"*, because `PLAN.md` sequences the
+## real menu after the map editors. What it must not be is *wrong*: a loader that left units
+## standing inside a wall or off the edge of a smaller board would make every map look broken.
+##
+## **Units are relocated, never destroyed.** Squad membership picks the marker (`SPAWN_A` for
+## squad 0, `SPAWN_B` for anything else) and a unit that finds no free marked cell falls back
+## to the first free walkable cell anywhere. A unit that finds nothing at all is left where it
+## is and named in the log — refusing the whole load because one unit could not be placed
+## would be worse than a board you can see the problem on.
+##
+## Refuses (no mutation) if the path does not resolve to a `MapFile`, or if the file is
+## malformed — `MapSerializer.to_grid`'s own readable error is passed straight through.
+func load_map(map_path: String) -> bool:
+	if not _guard(&"load_map", {"path": map_path}):
+		return false
+	var resource: Resource = load(map_path) if ResourceLoader.exists(map_path) else null
+	var map := resource as MapFile
+	if map == null:
+		return _refuse(&"load_map", &"path_is_not_a_map_file", {"path": map_path})
+	var result: Dictionary = MapSerializer.to_grid(map)
+	if not result.has("grid"):
+		return _refuse(&"load_map", &"malformed_map", {"path": map_path, "why": result["error"]})
+
+	var grid: Grid = result["grid"]
+	state.grid = grid
+	var stranded: Array[int] = []
+	for unit: Unit in state.units:
+		if not unit.alive:
+			continue
+		var destination: Variant = _first_free_spawn(grid, unit.squad_id)
+		if destination == null:
+			destination = _first_free_walkable(grid)
+		if destination == null:
+			stranded.append(unit.id)
+			continue
+		unit.cell = destination
+		grid.set_occupant_id(destination, unit.id)
+		unit.height = UnitGeometry.true_height_for_cell(destination, grid)
+		unit.level = unit.height / UnitGeometry.LEVEL_HEIGHT
+
+	_log_injection(
+		&"load_map",
+		{
+			"path": map_path,
+			"name": map.map_name,
+			"width": grid.width,
+			"rows": grid.rows,
+			"stranded": stranded,
+		},
+		(
+			"loaded '%s' (%dx%d)%s"
+			% [
+				map.map_name,
+				grid.width,
+				grid.rows,
+				"" if stranded.is_empty() else " — could not place unit(s) %s" % str(stranded),
+			]
+		)
+	)
+	return true
+
+
+## The first cell carrying this squad's own spawn marker and nobody standing on it.
+func _first_free_spawn(grid: Grid, squad_id: int) -> Variant:
+	var wanted: int = Enums.SpawnMarker.SPAWN_A if squad_id == 0 else Enums.SpawnMarker.SPAWN_B
+	for y: int in range(grid.rows):
+		for x: int in range(grid.width):
+			var cell := Vector2i(x, y)
+			if grid.get_spawn_marker(cell) != wanted:
+				continue
+			if grid.get_occupant_id(cell) == -1 and _is_standable(grid, cell):
+				return cell
+	return null
+
+
+func _first_free_walkable(grid: Grid) -> Variant:
+	for y: int in range(grid.rows):
+		for x: int in range(grid.width):
+			var cell := Vector2i(x, y)
+			if grid.get_occupant_id(cell) == -1 and _is_standable(grid, cell):
+				return cell
+	return null
+
+
+func _is_standable(grid: Grid, cell: Vector2i) -> bool:
+	return not grid.blockers.has(cell) and Surface.first_walkable(grid.surfaces_at(cell)) != null
