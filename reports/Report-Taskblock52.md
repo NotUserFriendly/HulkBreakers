@@ -1,10 +1,11 @@
 # Taskblock 52 Report — The ray chain
 
 Passes A-E landed in order, with a supervised stop at the block's own **HARD PAUSE** between D and E.
-Suite green. **Pass F is incomplete and deliberately so: adoption was approved, and the flag flip is
-not landed**, because inverting `CombatState.shot_resolver` red-lights 14 tests and Pass F's
-acceptance is a green suite with the flag inverted. The ray chain is fully built, tested and
-selectable by one field; the plane still resolves shots.
+Suite green throughout. **Pass F is incomplete and deliberately so.** Adoption was approved and
+`self_obstruction` was cut on instruction; 15 of the 16 blocking fixtures are updated. **The flag flip
+is one fixture short** — `test_shot_resolution.gd`'s deflect fixture no longer deflects under a
+muzzle-to-aim march — and finishing it needs that plus `BR52.08`. The ray chain is fully built,
+tested and selectable by one field; the plane still resolves shots.
 
 ## Decisions made without asking
 
@@ -44,7 +45,13 @@ selectable by one field; the plane still resolves shots.
 
 ## Tests that failed, then were corrected
 
-Four failed and were corrected; two of those were defects in the code and two in the tests.
+Four failed and were corrected during A-E; two were defects in the code and two in the tests. Pass F
+then updated a further 15 blocking fixtures, and the pattern there is worth stating once: **each was
+restated in terms of the rule it protected rather than bumped to match new output.** Impact counts had
+been standing in for pull counts, for "one attack fired", and for "the round reached its target"; none
+of those survive a round that continues past what it hit. Where a premise died outright — a burst test
+requiring *"at least one real miss"* on a board where nothing can miss any more — the fixture was
+rebuilt on an unfloored grid rather than the assertion weakened.
 
 1. **A penetrating round struck the same plate six times.** Found by *reading a printed log*, not by
    an assertion — the chain resumed past the struck box's **entry** face, which leaves the round
@@ -85,6 +92,19 @@ what surfaced that closest-root cannot fire (see Open questions).
   geometry at all. Every round should now leave a mark on something.
   **Its recorded diagnosis was also wrong and has been corrected in the entry**; the cause is the
   plane's parallel-ray scatter model, not wall rects failing to tile.
+
+## What the flip still needs
+
+Two bounded jobs, neither a diagnosis:
+
+1. **`BR52.08` — the fixture weapon has no `volume`**, so every "muzzle height" test in
+   `test_attack_action.gd` fires from `DEFAULT_MUZZLE_HEIGHT` (1.25) regardless of what it asks for.
+   Fixing it first is what keeps the flip readable, because
+   `test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` **inverts when the
+   resolver flips and that is not a regression**. Marked in place so it cannot ambush anyone.
+2. **A deflecting geometry for `test_shot_resolution.gd`.** Its fixture stopped deflecting. Sweeping
+   for an angle and keeping whichever one makes the assertion pass is how a suite starts describing
+   itself, so it is left red-flagged rather than green and hollow.
 
 ## Withdrawn from the ledger by the supervisor
 
