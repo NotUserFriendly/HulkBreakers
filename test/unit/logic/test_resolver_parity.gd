@@ -60,24 +60,34 @@ func _fire(state: CombatState) -> Callable:
 		)
 
 
-## **The plane is still the default: 15 of the 16 blocking fixtures are updated and
-## one is not.** `test_shot_resolution.gd`'s deflect fixture no longer deflects
-## under a muzzle-to-aim march and needs a geometry that does — the last thing
-## between here and the flip.
-func test_the_plane_is_still_the_default_and_the_ray_chain_is_selectable() -> void:
+## **The ray chain is the default. The flip landed in taskblock-52 Pass F.**
+##
+## This test asserted the opposite for the length of the block — it is the guard that
+## records which model a shot resolves through, so it inverts exactly once, here.
+## The two fixtures that gated the flip were both fixture defects, not resolver ones:
+## `BR52.08` (the fixture weapon authored no `volume`, so no muzzle-height test in
+## `test_attack_action.gd` fired from the height it asked for) and this file's own
+## sibling `test_shot_resolution.gd` deflect geometry, whose lateral aim offset
+## rotated the real flight to 16 degrees while its comment claimed 37.
+##
+## **The plane is still selectable and still tested** — every parity experiment below
+## runs both models on the identical board, which is the whole point of keeping it.
+## `ShotPlane` is referenced at 133 sites across 76 files and deleting it belongs to
+## its own block, not to the one that changed the default.
+func test_the_ray_chain_is_the_default_and_the_plane_is_still_selectable() -> void:
 	var state := CombatState.new(GridFixture.flat(5, 5), [])
 	assert_eq(
 		state.shot_resolver,
-		ShotResolution.RESOLVER_PLANE,
-		"one fixture short of the flip — see this test's own doc comment"
+		ShotResolution.RESOLVER_RAY,
+		"the flip landed — a shot resolves through the ray chain unless told otherwise"
 	)
-	assert_eq(state.dup().shot_resolver, ShotResolution.RESOLVER_PLANE, "and a preview carries it")
+	assert_eq(state.dup().shot_resolver, ShotResolution.RESOLVER_RAY, "and a preview carries it")
 
-	state.shot_resolver = ShotResolution.RESOLVER_RAY
+	state.shot_resolver = ShotResolution.RESOLVER_PLANE
 	assert_eq(
 		state.dup().shot_resolver,
-		ShotResolution.RESOLVER_RAY,
-		"the ray chain is fully built and selectable by one field"
+		ShotResolution.RESOLVER_PLANE,
+		"the plane remains reachable by one field, for the differential and for a rollback"
 	)
 
 

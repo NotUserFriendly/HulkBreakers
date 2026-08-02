@@ -1404,47 +1404,6 @@ ready-made primitive to drive an enemy-side draw. The real work is *when* the be
 and how it interacts with other AI units resolving in the same batch.
 
 
-### Wide scatter passing through a wall seam
-**Needs:** a design call among three options.
-
-`ShotPlane.build` projects each wall cell as its own independent rect; adjacent cells' projections aren't
-guaranteed to tile edge-to-edge from an arbitrary shooter angle, so a dartboard point far enough off-centre —
-a late pull of a long burst, recoil-widened, at range, reproduced at 56/200 empties at a lateral offset of ~8
-— threads a real gap in an otherwise enclosed room. There's also **no modelled floor Region anywhere**, so "or
-the floor" has nothing to resolve against. Three candidates: merge contiguous same-material blocker cells into
-one projected rect at the source; cap dartboard scatter radius at a bound guaranteeing plane coverage (a real
-balance number); or add a genuine floor Region. A design call waiting to be made, not a code fix waiting to be
-written.
-
-**taskblock-52 Pass A: the seam described above is not measurable, and the number cited for it measures
-something else.** The harness is committed now (`SeamSweep`), so this is checkable rather than recalled.
-The 56/200 reproduces exactly — **in an 11x11 room and no other** (9-room 80/200, 13-room 24/200, 17-room
-and larger 0/200). The miss threshold sits on the perimeter wall's own outer face to the sample (last hit
-5.25, first miss 5.50, face at 5.50). And a 41x41 room swept at 90 angles x 41 offsets, every offset well
-inside the walls, comes back **0/3690**.
-
-**The real cause is the scatter model, not the projection.** `DamageResolver` tests every region at a
-*constant* lateral offset, so a scattered round is a ray **parallel** to the shooter-to-target line,
-translated sideways by the whole dartboard displacement — muzzle and all. A wide offset relocates the
-entire flight outside the building (at lateral 6.0 in an 11-room it starts off the board) rather than
-threading a gap between wall rects.
-
-**So two of the three candidates below are answered:** merging contiguous blocker cells closes a gap that
-does not exist, and capping scatter radius would hide a modelling error behind a balance number. The
-floor Region remains genuinely absent and genuinely needed. What actually fixes this is resolving from
-the real muzzle to the aimed point — taskblock-52's ray chain — which diverges from the gun by
-construction.
-
-**taskblock-51: this item and `BR34.05` (misses vanish instead of striking anything) are one decision, not
-two.** Investigating that entry arrived here from the other direction — the supervisor's rule is that a shot
-should nearly always hit something, and both causes stand between the code and that rule. **The first and
-third candidates are complementary rather than alternatives:** a floor Region gives a round something to stop
-against, and merging contiguous blocker cells stops a round threading a wall it should have hit. A floor
-Region alone converts "vanishes" into "hits the floor behind the wall" — visible, still wrong. **`Surface`
-already carries a `Part`** (tb38 made floor and terrain into parts), so a floor Region needs no stand-in and
-no new outcome type; the cost is the plane's own build, which is `BR26.02`'s hot path and wants measuring.
-
-
 ### Commission real art
 **Needs:** a vocabulary freeze — a stretch of taskblocks in which **no socket type or part kind is
 added or renamed**.

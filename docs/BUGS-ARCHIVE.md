@@ -10,6 +10,42 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR52.08 — Resolved — owner: `CC`
+**Every "muzzle height" test in `test_attack_action.gd` fires from 1.25 regardless of the height it
+passes in**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, taskblock-52 Pass F, while updating fixtures for the flag flip.
+- **`_make_weapon` authors no `volume`.** So `UnitGeometry.muzzle_point` finds no placement for the
+  weapon and falls back to `DEFAULT_MUZZLE_HEIGHT` (1.25). **`_make_shooter_with_grip_height`'s own
+  `grip_y` argument therefore reaches nothing** — a test asking for a hip-height 0.3 muzzle gets a
+  1.25 one.
+- **Why it went unnoticed for five blocks, and this is the interesting half:** the shot plane resolves
+  at the **aim point's** height rather than along the muzzle-to-aim line, so where the muzzle actually
+  sat never affected the outcome. The fixture could be wrong and the test still green.
+- **It stops being harmless under the ray chain**, which marches muzzle-to-aim: a round from 1.25 down
+  to a 0.5 chest is at ~0.87 where 0.6 cover stands and correctly clears it. So
+  `test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` will invert the moment the
+  resolver flips — and it is **not** a regression when it does.
+- **Fix: give the fixture weapon a real `volume`.** Attempted in this pass and reverted: it moves the
+  muzzle for every test in the file at once and cascaded into three further failures that wanted their
+  own judgement. It is a contained job, just not a five-minute one, and doing it *before* the flip is
+  what keeps that flip readable.
+- **The affected tests are marked in place** rather than left to surprise whoever flips the flag.
+- **Resolved (`CC`, 2026-08-02, taskblock-52 Pass F), and the entry above was wrong twice.**
+  - **It was two cancelling defects, not one.** `_make_shooter`'s HAND socket was *also* an identity
+    transform, putting the hand — and so the muzzle — at world Y=0, on the deck. The missing `volume`
+    was hiding it, because `muzzle_point` returned its fallback before the socket chain was ever
+    consulted. **That is why the first attempt cascaded**: fixing only the volume makes every test in
+    the file fire from the floor. Fixing both is behaviour-preserving by construction — the weapon
+    carries `data/parts/pistol.tres`'s own box verbatim, the HAND socket carries
+    `DEFAULT_MUZZLE_HEIGHT`, so the baseline shooter genuinely produces the 1.25 it was accidentally
+    producing before, and `grip_y` finally reaches the muzzle.
+  - **The prediction that the hip-height cover test would invert was wrong.** It passes under both
+    resolvers. The ~0.87 figure measured the *broken* fixture; at the real 0.3 grip height the round
+    is at **0.4** where the 0.6 cover stands, and strikes it. The test now asserts what its name
+    claims for the first time in five blocks. Verified with the full suite green under the flipped
+    flag.
+
 ### BR51.05 — Resolved — owner: `SUPERVISOR`
 **A dead or prone unit cannot be selected**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.

@@ -63,53 +63,46 @@ var batch_plans: BatchPlan = BatchPlan.new()
 var material_table: MaterialTable = DataLibrary.material_table()
 
 ## taskblock-52: which model resolves this bout's shots — `ShotResolution.
-## RESOLVER_PLANE` (still the default — see below) or `RESOLVER_RAY` (the ray
-## chain, built, tested and selectable by this one field). Per-bout rather than a global
-## static so a differential run can put the same board through both without
-## mutating shared state, and so a test that switches resolvers cannot leak into
-## the next one.
+## RESOLVER_RAY` (the ray chain, **the default since Pass F**) or `RESOLVER_PLANE`
+## (the shot plane, still built and still selectable by this one field). Per-bout
+## rather than a global static so a differential run can put the same board through
+## both without mutating shared state, and so a test that switches resolvers cannot
+## leak into the next one.
 ##
-## **Adoption is approved and the inversion is NOT landed** (taskblock-52 Pass F).
-## The parity case is measured and holds — over 216 seeded shots, zero cases where
-## the plane hit and the ray missed against 64 the other way; hit points lying on
-## the surface they claim to strike 100/152 against 216/216; release build
-## 6 715 -> 2 021 usec per shot. **But flipping this default red-lights 14 tests**,
-## and the acceptance for Pass F is a green suite with the flag inverted. Flipping
-## it anyway would be hacking around a failure rather than fixing it.
+## **The inversion landed in taskblock-52 Pass F.** The parity case it rests on:
+## over 216 seeded shots, zero cases where the plane hit and the ray missed against
+## 64 the other way; hit points lying on the surface they claim to strike 100/152
+## against 216/216; release build 6 715 -> 2 021 usec per shot, and a 12-round burst
+## 148 829 -> ~24 256 usec, because the amortisation the plane was credited with is
+## not something it performs (a 12-round burst builds 20 planes).
 ##
-## **The 14 failures are diagnosed, and every one is a fixture assumption rather
-## than a defect in the chain.** They fall into exactly two shapes.
+## **The two model differences that moved fixtures, kept here because they are what a
+## reader hits first when a shot behaves differently than an old comment claims:**
 ##
-## **1. More impacts than expected** — a burst of 12 logging 36, "3 pulls x 9
-## pellets" logging 61 rather than 27. A round continues while it still has damage,
-## and floors are real geometry now, so it punches through its target and goes on to
-## strike the deck. The supervisor settled this: a pellet penetrating that
-## effectively is a **balance** problem for when ammo types land, not a resolver one.
+## **1. A round continues while it still has damage.** Floors are real geometry now,
+## so a round punches through its target and goes on to strike the deck — a burst of
+## 12 logs 36 impacts, not 12. It does **not** march forever: `RayChain` returns the
+## moment `spill <= 0.0`. A pellet that penetrates that effectively is a **balance**
+## question for when ammo types land, not a resolver one. The consequence for tests
+## is that an impact **count** is no longer a proxy for "one attack fired" or "the
+## round reached its target"; assert on which surface was met first.
 ##
-## **2. A shot is no longer level.** This is the interesting one and it explains
-## every cover and muzzle-height failure at once. **The plane models a shot as
-## travelling at a constant height** — `_find_next` tests every region at the aim
-## point's own `y`, so a round fired from a 1.25 muzzle at a 0.5 chest sits at 0.5
-## the whole way and clips anything 0.6 tall in between. **The chain marches
-## muzzle-to-aim-point, which slopes**: probed on that exact geometry, the ray is at
-## **0.845** where the 0.6 cover stands and correctly passes over it. A real round
-## does slope, so the chain is right and the fixtures encode the level-shot
-## approximation.
+## **2. A shot is no longer level.** **The plane modelled a shot as travelling at a
+## constant height** — `_find_next` tested every region at the aim point's own `y`,
+## so a round fired from a 1.25 muzzle at a 0.5 chest sat at 0.5 the whole way and
+## clipped anything 0.6 tall in between. **The chain marches muzzle-to-aim-point,
+## which slopes.** A real round does slope, so the chain is right and the old
+## fixtures encoded the level-shot approximation.
 ##
-## **A consequence worth deciding before the flip:** `ShotPlane.self_obstruction`
-## (tb22 H2, "the shot originates and immediately hits the cover if the muzzle is
-## below the cover's height") exists to hand-model a case the chain gets from
-## geometry for free. It may be redundant, and leaving both is two answers to one
-## question.
+## `ShotPlane.self_obstruction` (tb22 H2) was deleted rather than kept alongside the
+## chain's geometric answer to the same question — two answers to one question is the
+## parallel system this project keeps removing. `docs/SUPERSEDED.md` records both.
 ##
-## `docs/SUPERSEDED.md` records the model change; the flag flip is the one part of
-## it still outstanding.
-##
-## Spelled as a literal rather than as `ShotResolution.RESOLVER_PLANE` only to keep
+## Spelled as a literal rather than as `ShotResolution.RESOLVER_RAY` only to keep
 ## a class-level default free of a cross-class static read;
 ## `test_resolver_parity.gd` asserts the two spellings are the same value, so they
 ## cannot drift.
-var shot_resolver: StringName = &"plane"
+var shot_resolver: StringName = &"ray"
 ## docs/10 taskblock05 E1: what a mangling Part.mangles_into resolves
 ## against — shared across the whole battle, same convention as
 ## material_table above. taskblock-16 Pass B: FieldObjects (hardcoded
