@@ -98,6 +98,88 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR52.12 — Active — owner: `SUPERVISOR`
+**Overwatch is declared constantly and never once fires, and a declined trigger logs nothing**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"Log the failed overwatch as a bug, I can't really see what's happening with
+  it until I can see its pie slice but that IS a bug either way."*
+- **Measured** in `out/logs/combat-20260802-164344.log`: **12 `overwatch_declared` events, zero
+  overwatch fire events of any kind.** Every unit on both squads ends every turn holding, and it never
+  resolves once in three rounds.
+- **`Overwatch.check_trigger` only runs on movement** — it is called per cell step of a queued
+  `MoveAction`. That battle contains **14 `move` events: 13 in Turn 0, and exactly one afterwards**
+  (unit 0, Turn 2, line 692). So there was almost nothing for an overwatcher to trigger on: after the
+  opening turn both squads stand still and trade bursts. **Whether that is an overwatch defect or an
+  AI-never-moves defect is not decidable from this log**, which is the actual problem below.
+- **The real defect is that a declined trigger is silent.** `_qualifying_overwatchers` /
+  `_qualifying_weapon` reject on armed-state, `LoS.has_los`, `_in_arc`, range and torso visibility, and
+  **none of those rejections emit anything.** So "never armed", "arc missed", "LoS failed", "out of
+  range" and "never evaluated at all" are indistinguishable in the log — including for the one move in
+  Turn 2 that *should* have been evaluated against two armed enemies with a firing line good enough to
+  burst through moments earlier.
+- **This is squarely the `CLAUDE.md` rule about a supervisor-reported feeling**: *"the AI does
+  nothing"* has to become a number or a named decision in the combat log or it stays an adjudication.
+  `arc_cells` and `would_trigger_at` already exist and already compute exactly the per-cell answer the
+  pie slice would draw — so the decision is derivable today and simply is not emitted.
+- **Not fixed.** The instrument (a logged decline carrying which gate rejected it) is the part that
+  makes everything after it checkable, and it should land before anyone tunes the mechanic.
+
+### BR52.11 — Active — owner: `SUPERVISOR`
+**A bout started from the Generate Bout overlay logs no seed at all, and the file's one seed line
+misattributes it**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"The game starts on 2, but the bout I ran was a four digit seed. Bouts
+  aren't printing their seed into the combat log."*
+- **Confirmed, with the mechanism.** `BattleScene.load_battle(state, mission, header_event = null)`
+  takes the `session_start` event as an **optional third argument**. `new_battle()` (the launch path)
+  passes `_session_start_event(seed_value)` with `DEFAULT_SEED = 2`.
+  **`GenerateBoutOverlay._on_start_bout_pressed` calls `battle.load_battle(result.state,
+  result.mission)` with no header at all** — so the `map_seed` it read out of `_seed_field` and handed
+  to `BoutSetup.build_bout` is used to generate the entire bout and then dropped.
+- **It is worse than a missing line, because the file is per-session and a new bout appends**
+  (`FileSink`, supervisor's call 2026-08-02, `BR52.04`). So the log opens with `session_start: seed=2`
+  from the launch bout, and every later bout appends underneath it **with no seed of its own**. A
+  reader takes line 1 as the seed for everything in the file.
+- **It already caused exactly that error.** `out/logs/combat-20260802-164344.log` contains **two full
+  board builds** — 1200 cells / 236 walls / 118 cover / 0 extraction tiles, then 768 cells / 154 walls
+  / 66 cover / 8 extraction tiles — and **one `session_start`**. CC read seed 2 off line 1 and reported
+  a whole play-by-play under it; the bout analysed was the second one, generated from a different,
+  four-digit seed that appears nowhere.
+- **`docs/09`'s stated contract is what is broken:** *"a `session_start` event carries the seed as the
+  file's FIRST line, so a human session is a regression fixture too."* A session containing bouts whose
+  seeds were never written is not replayable from its own log, which is the whole point of the rule.
+- **The shape of the fix, not built:** the header should not be an optional argument a caller can
+  forget. Either `load_battle` requires a seed, or the bout carries its own and emits it structurally —
+  the same argument `load_battle`'s own comment already makes about emitting the header *"structurally,
+  between attaching the sinks and building anything, rather than by whoever happens to call this and
+  remembers to do it afterwards."* **The comment describes the right rule and the signature does not
+  enforce it.** A per-bout event rather than a per-session one, since a file now holds several.
+
+### BR52.09 — Active — owner: `SUPERVISOR`
+**A destroyed cover object's model stays on the board**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"forklift was obviously destroyed, I was flagging that the model stayed
+  visible after destruction."*
+- **CC's first write-up of this entry was wrong and is withdrawn.** It answered a question that was not
+  asked — treating the report as "the forklift is not dying" and filing an analysis of deflect angles
+  and penetration thresholds. The forklift dies correctly; **this is a view bug, not a resolver or
+  balance one.**
+- **Confirmed in code.** `BoardView._spawn_blocker` is called once per `grid.blockers` entry inside
+  `build()`, creating a `MeshInstance3D` per box. **No handle to it is kept and nothing ever removes
+  it.** The only `queue_free` in the file is `_clear(container)`, which tears down *everything* and is
+  only reached from a full `build()`. There is no per-part teardown path and nothing in `src/view/`
+  listens for `part_destroyed` at all.
+- **So a destroyed blocker's mesh persists until the whole board is rebuilt** — i.e. until the next
+  bout. The mechanical state is correct underneath it: the part is destroyed, salvage is credited, and
+  the resolver stops treating it as an obstacle. Only the picture is stale.
+- **Visible in the same battle**: three forklifts are destroyed
+  (`out/logs/combat-20260802-164344.log`), and units keep firing into the board afterwards with the
+  models still standing.
+- **Worth deciding rather than assuming, which is why this is not fixed here:** a destroyed cover
+  object should probably not simply vanish. `DamageResolver.DROPPED_TAG` and `part.mangles_into`
+  (`wreckage_pool`) already exist, and `_spawn_blocker` already reads `DROPPED_TAG`, so "replace with
+  wreckage" is a real option alongside "remove". Picking one is a design call.
+
 ### BR52.10 — Active — owner: `SUPERVISOR`
 **An AI unit fires a full burst through the ally standing directly in front of it, killing them**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -131,32 +213,25 @@ confirm" roll-up — so pending items surface at a natural review point without 
   resolver bug and is not one. Anything that resolves at zero distance should probably be a named,
   greppable condition rather than something a reader has to notice by comparing two coordinate pairs.
 
-### BR52.09 — Active — owner: `SUPERVISOR`
-**Cover objects survive a great many hits — the mechanism is a knife-edge deflect angle, not a failure
-to take damage**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02. *"some forklift cover items aren't being destroyed after taking shots. Check
-  combat log to see some specific items."*
-- **The specific item.** `out/combat.log` (seed 2): the forklift at ~`(18.55, 6.4)` **took 18 impacts
-  before it was destroyed** — 14 `DEFLECT`, 4 `STOP_DEAD`. It died on the fourth solid hit. Three
-  forklifts are destroyed in the battle overall, out of 28 forklift impacts.
-- **So it is not indestructible, and the damage path is working:** `forklift.tres` is hp 8, and four
-  `STOP_DEAD` hits killed it — about 2 damage each, which is coherent. **The symptom is the deflect
-  rate, not a destruction failure.**
-- **The mechanism, measured.** `steel.tres` authors no `deflect_threshold_deg`, so it takes
-  `MaterialEntry`'s default of **30.0 degrees**. The engagement geometry — shooter muzzle at
-  `(12.98, 3.08)@1.53`, forklift `-X` face at x=18.55 — puts the incidence at **~31 degrees**. The
-  whole burst sits roughly one degree over the threshold, so nearly every round in it glances off.
-  A knife-edge, and it will read as "that thing is invulnerable" whenever an engagement lands on the
-  wrong side of it.
-- **A second, larger fact found while checking this: nothing penetrated anything all battle.** 78
-  `DEFLECT` and 78 `STOP_DEAD`, **zero `PENETRATE`**. `chaingun.tres` is `damage 2.0` with
-  `damage_multiplier 0.8` — **1.6 effective** — against steel's `dt` of **6.0**. No chaingun round can
-  penetrate steel by design, so every steel object on the board can only ever be worn down by
-  accumulated `STOP_DEAD` damage, and only by the rounds that do not glance.
-- **Filed as a balance question, not a resolver one**, and left for a decision rather than tuned:
-  the numbers involved (a 30-degree default nobody authored per-material, 1.6 damage against dt 6.0)
-  are exactly the kind this project does not invent. **The observation is the deliverable.**
+### BR52.13 — Suspected — owner: `CC`
+**Nothing penetrated anything across an entire battle**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, while investigating `BR52.09`. **Not reported by the supervisor**, and filed
+  `Suspected` rather than `Active` because it may be entirely by design — it is a measurement looking
+  for a decision, not a described defect.
+- **Measured** in `out/logs/combat-20260802-164344.log`: **78 `DEFLECT`, 78 `STOP_DEAD`, zero
+  `PENETRATE`** across 156 impacts and nine full chaingun bursts.
+- **The arithmetic explains it and may simply be correct.** `chaingun.tres` is `damage 2.0` with
+  `damage_multiplier 0.8` — **1.6 effective** — against `steel.tres`'s `dt` of **6.0**. A chaingun
+  round cannot penetrate steel, so every steel object on the board can only ever be worn down by
+  accumulated `STOP_DEAD` damage. An anti-personnel weapon failing to punch armour plate is a
+  reasonable thing for the model to say.
+- **What makes it worth recording anyway:** `steel.tres` authors no `deflect_threshold_deg`, so it
+  takes `MaterialEntry`'s **30.0** default, and a representative engagement in that battle sat at
+  **~31 degrees** incidence — one degree over. Combined with a damage figure that can never penetrate,
+  a shipped material is relying entirely on two unauthored defaults for its whole feel. **The numbers
+  are not invented here and no tuning is proposed**; this exists so the first person to touch weapon
+  or armour balance sees the measurement rather than rediscovering it.
 
 ### BR52.07 — Active — owner: `SUPERVISOR`
 **One shot in a burst flies off at roughly 90 degrees from the gun's facing**
