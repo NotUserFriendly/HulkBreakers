@@ -472,6 +472,73 @@ func test_a_second_bout_logs_its_own_seed_not_the_first_bouts() -> void:
 	scene.file_sink.close()
 
 
+## **`BR52.11`'s second half, reported from play: the seed reached the file but not
+## the top of the in-game panel.**
+##
+## The order is the whole bug. `load_battle()` emits the header into whichever panel
+## is up; `GenerateBoutOverlay` then swaps the overlay, so that panel is torn down
+## and the fresh one starts empty. The file sink survives because `BattleScene` owns
+## it — a panel does not.
+##
+## So this asserts through the **real handoff shape**: load the bout, then swap the
+## overlay, exactly as `_on_start_bout_pressed` does. Asserting on the panel that was
+## up during `load_battle()` would pass while the bug was fully present, which is why
+## the first version of this coverage missed it.
+func test_an_overlay_installed_after_the_bout_still_shows_the_bout_header() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	const SEED := 6042
+	var built: Dictionary = CompletionSampler.build_for_seed(SEED)
+	scene.load_battle(built["state"], built["mission"])
+	# The handoff `GenerateBoutOverlay._on_start_bout_pressed` performs: load first,
+	# then replace the overlay that just received the header.
+	scene.set_overlay(SpectatorOverlay.new())
+
+	var panel: UiLogSink = scene.overlay.ui_log_sink()
+	assert_not_null(panel, "sanity: the spectator overlay owns a log panel")
+	assert_true(panel.lines.size() > 0, "the fresh panel is not empty")
+	assert_true(
+		panel.lines[0].contains("bout_start"),
+		"the bout header must be the first line the new panel shows"
+	)
+	assert_true(panel.lines[0].contains(str(SEED)), "and carry this bout's own seed")
+	scene.file_sink.close()
+
+
+## The companion to the test above: **the fix must not write the header twice.**
+##
+## The tempting repair is to re-emit through `CombatLog` after the swap, which also
+## reaches the file sink and puts two `bout_start` lines in the log for one bout —
+## inventing a duplicate event to close a display gap. The header is pushed straight
+## into the late panel's sink instead, so the file is untouched by the swap.
+##
+## **The seed is unique to this test on purpose.** `FileSink` appends and the path is
+## per-process (`BR52.04`, supervisor's call), so the log accumulates every bout every
+## test in this file started — counting "headers in the file" would count the previous
+## test's too. Counting headers carrying *this* seed is what isolates this scene's own
+## writes. Getting that wrong is what made this test fail on its first run.
+func test_seeding_a_late_overlays_panel_does_not_write_a_second_header_to_the_file() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+
+	const SEED := 60423
+	var built: Dictionary = CompletionSampler.build_for_seed(SEED)
+	scene.load_battle(built["state"], built["mission"])
+	scene.set_overlay(SpectatorOverlay.new())
+
+	var file := FileAccess.open(scene.file_sink.path, FileAccess.READ)
+	var contents: String = file.get_as_text()
+	file.close()
+	scene.file_sink.close()
+
+	var headers := 0
+	for line: String in contents.split("\n", false):
+		if line.contains("bout_start") and line.contains(str(SEED)):
+			headers += 1
+	assert_eq(headers, 1, "one bout, one header in the file — the overlay swap adds none")
+
+
 ## The derived-versus-origin distinction has its own test because getting it wrong
 ## produces a log line that looks perfectly correct and replays nothing.
 func test_the_logged_seed_regenerates_the_map_and_the_derived_rng_seed_would_not() -> void:

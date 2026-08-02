@@ -166,6 +166,31 @@ misattributes it**
   - **The ORIGIN seed is what is carried, not `rng.seed`.** Both generators seed a local RNG with the
     origin number and hand `rng.randi()` to `CombatState.new`, so `rng.seed` is derived and would not
     regenerate the map. Logging it would have looked right and replayed nothing.
+- **A second half, reported from play (2026-08-02): *"Seeds are showing in the file log, but not at the
+  top of the combat log within the new bout. Looks like it's adding the new seed note, THEN clearing
+  the ingame combat log."*** Correct diagnosis, and it is an ordering problem.
+  - `load_battle()` emits the header into whichever panel is up. `GenerateBoutOverlay` **then** swaps
+    the overlay (`load_battle()` first, then `set_overlay(SpectatorOverlay.new())` or
+    `toggle_blue_control()`), so the panel that received the header is torn down and the fresh one
+    starts empty. The **file** sink survives because `BattleScene` owns it; a **panel** does not,
+    because the overlay owns it.
+  - **The first fix made this visible rather than causing it.** Before it, that path emitted no header
+    at all, so there was nothing for the swap to lose. `_ready()`'s own comment already warned about
+    this exact hazard from the other direction — *"Reversing this order drops that first line silently
+    — nothing was listening yet when it fired."*
+  - **Fixed:** `BattleScene` keeps the current bout's header (`_bout_start`) and
+    `_seed_overlay_log_with_the_bout_header()` hands it to a newly installed overlay's sink after
+    `setup()`. **Pushed straight into the sink, not re-emitted through `CombatLog`** — a second
+    `emit()` would reach the file sink too and write two `bout_start` lines for one bout, inventing a
+    duplicate event to close a display gap. `wants()` is still honoured. Scoped to the header
+    deliberately: replaying arbitrary history to any late-attaching sink would change what "one
+    stream, many sinks" means and would hand a `MemorySink` capturing one turn a `bout_start` it never
+    asked for.
+  - **Both halves are covered, and the panel test was verified by re-breaking it**: with the call
+    removed, `test_an_overlay_installed_after_the_bout_still_shows_the_bout_header` fails on exactly
+    the two panel assertions while the duplicate-header test stays green. The test asserts through the
+    real handoff — load, *then* swap — because asserting on the panel that was up during
+    `load_battle()` passes while the bug is fully present.
 - **To see it:** start a bout from Generate Bout with a seed you choose, then read `out/combat.log` —
   that bout's own `bout_start: seed=<yours>` should sit directly above its build steps, underneath the
   launch bout's header rather than replacing it. Starting a third bout should add a third header.
@@ -232,6 +257,22 @@ misattributes it**
 - **Why the log made it findable at all** is worth keeping: `hit == origin` is a shape that reads as a
   resolver bug and is not one. Anything that resolves at zero distance should probably be a named,
   greppable condition rather than something a reader has to notice by comparing two coordinate pairs.
+
+### BR52.14 — Suspected — owner: `CC`
+**`test_suite_run.gd` fails intermittently in the full gate and passes standalone**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, during the `BR52.11` gate. One full run reported 1 failure; the same file
+  passed **7/7 standalone**, and the immediately following full gate passed **2668/2668, exit 0**.
+- **It is not a new break.** `out/suite_failures.json` — the ordered-run learning cache — records
+  **3 fails in 138 runs** for this file, so it predates this session's changes.
+- **A plausible mechanism, unverified.** This file **shells out to run a nested suite**, and
+  `run_tests.sh` already carries a guard for that shape (*"`WRITE_PROFILE=1` leaks it into every
+  subprocess"*, and only the full gate may write whole-suite artifacts). A nested run competing with
+  the outer one over a shared path is the family the guard exists for; whether this is another member
+  of it is **not established**, and the failure detail was lost because the run's output was piped
+  through `tail`.
+- **What it needs is a captured failure**, not a theory: the next full-gate run of this file that goes
+  red should have its complete output kept. Filed so the ~2% flake is not rediscovered from scratch.
 
 ### BR52.13 — Suspected — owner: `CC`
 **Nothing penetrated anything across an entire battle**

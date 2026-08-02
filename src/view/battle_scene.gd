@@ -95,6 +95,11 @@ var bout_injector: BoutInjector
 ## just removed. Reset on every `load_battle()` — a fresh bout starts with
 ## nothing removed, regardless of what a previous bout's ids meant.
 var _removed_unit_ids: Dictionary = {}
+## taskblock-52 `BR52.11`: **the current bout's own header event, kept so an overlay
+## installed after `load_battle()` can still be shown which bout it is looking at.**
+## Owned here for exactly the reason `file_sink` is: it has to outlive the overlay
+## swap that loses it. See `_seed_overlay_log_with_the_bout_header()`.
+var _bout_start: LogEvent = null
 
 
 func _ready() -> void:
@@ -229,12 +234,45 @@ func set_overlay(new_overlay: ControlOverlay) -> void:
 	overlay = new_overlay
 	add_child(overlay)
 	overlay.setup(self)
+	_seed_overlay_log_with_the_bout_header()
 	var active: String = overlay.get_class()
 	_log_overlay(
 		&"overlay_activated",
 		active,
 		"overlay %s active%s" % [active, "" if previous == "" else " (was %s)" % previous]
 	)
+
+
+## **A newly installed overlay is told which bout it is looking at.**
+##
+## taskblock-52 (`BR52.11`, the second half): the seed reached `out/combat.log` but
+## **not the top of the in-game panel**, for every bout started from
+## `GenerateBoutOverlay`. The order is the whole story: `load_battle()` emits the
+## header into whichever panel is up, and the caller *then* swaps the overlay — so
+## the panel that received it is torn down and the fresh one starts empty. The file
+## sink survives the swap because `BattleScene` owns it; a panel does not, because
+## the overlay owns it. Nothing was lost before this block only because that path
+## emitted no header at all.
+##
+## **Pushed straight into the sink, deliberately not re-emitted through
+## `CombatLog`.** A second `emit()` would reach the file sink too and write two
+## `bout_start` lines for one bout — inventing a duplicate event to fix a display
+## gap, which is the shape of defect `BR35.04` was filed for one layer up. This is
+## the same single event, handed to a panel that came up too late to see it.
+##
+## `wants()` is honoured rather than bypassed, so a sink that declines a kind still
+## declines it here — `CombatLog.emit`'s own rule, not a second policy.
+##
+## **Scoped to the bout header on purpose.** Replaying arbitrary history to any
+## late-attaching sink is a real change to what "one stream, many sinks" means, and
+## would hand a `MemorySink` capturing one turn a `bout_start` it never asked for.
+## Which bout a panel is showing is a fact about the panel, not about the stream.
+func _seed_overlay_log_with_the_bout_header() -> void:
+	if _bout_start == null or overlay == null:
+		return
+	var sink: UiLogSink = overlay.ui_log_sink()
+	if sink != null and sink.wants(_bout_start):
+		sink.emit(_bout_start)
 
 
 ## Null-safe: `set_overlay` runs before the first `load_battle()` on a fresh
@@ -333,7 +371,8 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	# with none of its own — a reader takes line 1 as the seed for the whole file
 	# and is wrong. The argument is gone; the seed now rides on the state, and this
 	# is the only place a header is emitted.
-	combat_state.combat_log.emit(_bout_start_event(combat_state.bout_seed))
+	_bout_start = _bout_start_event(combat_state.bout_seed)
+	combat_state.combat_log.emit(_bout_start)
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	# tb35 Pass D (BR32.01/BR32.03): the wall-cutout feed must be re-pointed
