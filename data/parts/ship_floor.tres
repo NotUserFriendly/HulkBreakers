@@ -2,11 +2,36 @@
 
 [ext_resource type="Script" path="res://src/data/part.gd" id="1_floorpt"]
 [ext_resource type="Script" path="res://src/data/box.gd" id="2_floorbx"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_floorsk"]
 
 [sub_resource type="Resource" id="Resource_floorvol"]
 script = ExtResource("2_floorbx")
 center = Vector3(0, -0.1, 0)
 size = Vector3(1.0, 0.2, 1.0)
+
+[sub_resource type="Resource" id="Resource_ledge_n"]
+script = ExtResource("3_floorsk")
+socket_type = &"LEDGE"
+id = &"LEDGE_N"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.5)
+
+[sub_resource type="Resource" id="Resource_ledge_s"]
+script = ExtResource("3_floorsk")
+socket_type = &"LEDGE"
+id = &"LEDGE_S"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.5)
+
+[sub_resource type="Resource" id="Resource_ledge_e"]
+script = ExtResource("3_floorsk")
+socket_type = &"LEDGE"
+id = &"LEDGE_E"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0)
+
+[sub_resource type="Resource" id="Resource_ledge_w"]
+script = ExtResource("3_floorsk")
+socket_type = &"LEDGE"
+id = &"LEDGE_W"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0, 0)
 
 [resource]
 script = ExtResource("1_floorpt")
@@ -14,6 +39,7 @@ id = &"ship_floor"
 display_name = "Ship Floor"
 material = &"steel"
 attaches_to = Array[StringName]([&"GROUND"])
+sockets = Array[ExtResource("3_floorsk")]([SubResource("Resource_ledge_n"), SubResource("Resource_ledge_s"), SubResource("Resource_ledge_e"), SubResource("Resource_ledge_w")])
 tags = Array[StringName]([&"walkable"])
 volume = Array[ExtResource("2_floorbx")]([SubResource("Resource_floorvol")])
 is_destructible = false

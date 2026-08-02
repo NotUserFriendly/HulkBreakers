@@ -19,6 +19,19 @@ const HOP_DOWN_COST: float = 1.0
 ## can be any real rise up to this many level-equivalents (still 1.0
 ## world unit at `UnitGeometry.LEVEL_HEIGHT`'s own default).
 const MAX_CLIMB_LEVELS: float = 1.0
+## taskblock-53 Pass C4: what a ladder edge multiplies the ordinary climb cost by.
+##
+## **Flagged, not designed**, and the first value here was backwards. The taskblock asks
+## that a ladder cost *more than a ramp*; it should also cost **less than free-climbing**,
+## or nobody would ever build one — a ladder exists to make a face easier, not harder.
+## At 0.5 a ladder level costs 2.0 against a ramp's 1.0 and a bare climb's 4.0, which
+## orders the three the way the fiction does.
+##
+## The first attempt used 1.5, making a ladder the most expensive way up. It also made
+## tall ladders unusable: `ClimbAction` charges the whole rise as one action, so a
+## four-level ladder cost 16 and simply failed its affordability check. Recorded because
+## the number looked defensible right up until a test climbed something tall.
+const LADDER_COST_SCALE: float = 0.5
 ## Hop-down is safe up to two levels; a deeper drop isn't a legal edge this
 ## pass (fall damage/knockdown are later work, explicitly out of scope).
 const MAX_HOP_DOWN_LEVELS: float = 2.0
@@ -147,9 +160,19 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 	if is_zero_approx(level_delta):
 		return base
 	if level_delta > 0.0:
-		if not _can_climb or level_delta > MAX_CLIMB_LEVELS:
+		# taskblock-53 Pass C4: **one term, not a second branch.** A ladder standing at
+		# `from` makes this edge crossable for a shell with no climbing capability at
+		# all, and replaces the bare-face rise cap with the ladder's own reach — the
+		# same rule `ClimbAction.is_legal` applies, read from the one shared formula so
+		# the planner's idea of a legal edge and the action's cannot drift.
+		var on_ladder: bool = Surface.ladder_serves_climb(_grid, from, to)
+		if not on_ladder and (not _can_climb or level_delta > MAX_CLIMB_LEVELS):
 			return -1.0
-		return ceil(CLIMB_COST * level_delta)
+		# **Flagged, not designed** (CLAUDE.md): "ladder traversal should cost more than
+		# a ramp. That number is flagged, not designed." A ladder edge costs the ordinary
+		# climb, which already exceeds a ramp's `base`, times `LADDER_COST_SCALE`.
+		var climb: float = CLIMB_COST * level_delta
+		return ceil(climb * LADDER_COST_SCALE) if on_ladder else ceil(climb)
 	if -level_delta > MAX_HOP_DOWN_LEVELS:
 		return -1.0
 	return HOP_DOWN_COST

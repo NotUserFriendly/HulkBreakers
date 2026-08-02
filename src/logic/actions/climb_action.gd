@@ -38,19 +38,34 @@ func is_legal(state: CombatState) -> bool:
 	var pf := Pathfinder.new(state.grid)
 	if not pf.is_walkable(target_cell):
 		return false
-	if not actual.shell.can_climb():
+	# taskblock-53 Pass C4: **a ladder is a second source of legality for an action
+	# that already exists** — `can_climb() or ladder_present`. No new action, no new
+	# cost model. The point of the block is that maps must be navigable by a unit
+	# with no climbing capability, so the ladder is what a plain shell uses.
+	var on_ladder: bool = Surface.ladder_serves_climb(state.grid, actual.cell, target_cell)
+	if not actual.shell.can_climb() and not on_ladder:
 		return false
 	var rise: float = _rise(state, actual)
-	if rise <= 0.0 or rise > Pathfinder.MAX_CLIMB_LEVELS * UnitGeometry.LEVEL_HEIGHT + 0.001:
+	if rise <= 0.0:
 		return false
-	return _can_afford(actual, _cost(rise))
+	# **A ladder replaces the rise cap with its own reach, rather than raising it.**
+	# `MAX_CLIMB_LEVELS` exists because a bare face is only climbable so far; a ladder
+	# removes that limit by construction, and `ladder_serves_climb` has already
+	# checked the destination is within the ladder's actual height. Keeping the cap
+	# here as well would make a three-segment ladder unusable, which is the exact
+	# thing "tileable to arbitrary height" is for.
+	if not on_ladder and rise > Pathfinder.MAX_CLIMB_LEVELS * UnitGeometry.LEVEL_HEIGHT + 0.001:
+		return false
+	return _can_afford(actual, _cost(rise, on_ladder))
 
 
 func apply(state: CombatState) -> void:
 	var actual: Unit = state.find_unit(unit.id)
 	var origin_cell: Vector2i = actual.cell
 	var rise: float = _rise(state, actual)
-	var cost: float = _cost(rise)
+	# The same discount `is_legal` cleared the climb against. Charging full price here
+	# would let a unit be told a climb was affordable and then be unable to pay for it.
+	var cost: float = _cost(rise, Surface.ladder_serves_climb(state.grid, origin_cell, target_cell))
 	var per_ap: float = actual.mp_per_ap()
 	while actual.mp < cost:
 		actual.ap -= 1
@@ -73,8 +88,14 @@ func _rise(state: CombatState, actual: Unit) -> float:
 	return UnitGeometry.true_height_for_cell(target_cell, state.grid) - actual.height
 
 
-func _cost(rise: float) -> float:
-	return Pathfinder.CLIMB_COST * (rise / UnitGeometry.LEVEL_HEIGHT)
+## taskblock-53 Pass C4: **the action charges what `Pathfinder.move_cost` quotes.** A
+## ladder edge is discounted there, and an action that ignored the discount would refuse
+## climbs the planner had already costed and committed to — the planner's idea of an edge
+## and the action's must be one formula, which is why `LADDER_COST_SCALE` is read here
+## rather than duplicated.
+func _cost(rise: float, on_ladder: bool = false) -> float:
+	var climb: float = Pathfinder.CLIMB_COST * (rise / UnitGeometry.LEVEL_HEIGHT)
+	return climb * Pathfinder.LADDER_COST_SCALE if on_ladder else climb
 
 
 func _can_afford(actual: Unit, cost: float) -> bool:

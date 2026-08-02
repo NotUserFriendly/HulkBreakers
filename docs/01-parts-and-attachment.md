@@ -305,3 +305,42 @@ the "base parts are soft" tier gap, finally expressed.
 Nothing above is privileged in code. A six-legged shell declares six `HIP` sockets at its own
 transforms; a turret declares no `HIP` at all. This is one row in a template table, and the
 projector, cover, flanking, and armour rules never learn it happened.
+
+## Grid placement uses the same grammar, and needed no orientation concept (tb53 C)
+
+`GridPlacement` checks the **same** `attaches_to`/`Socket` vocabulary against the grid instead
+of against a parent part. Two shapes, unchanged since tb38: `GROUND` attaches downward onto an
+empty cell; anything else side-attaches to a real, free, matching socket.
+
+**The grammar had never once succeeded.** No shipped surface part authored a single socket, so
+`_find_attach_point` could not match anything — every side attachment was structurally
+impossible, and the only recorded behaviour of the rule was it *refusing* a second `GROUND`
+placement. tb38 predicted this exactly: *"the first catwalk discovers the grammar doesn't
+hold."* The first catwalk was the ladder.
+
+**The design question the ladder posed** was whether orientation has to enter the attachment
+vocabulary. A ladder's top attaches horizontally to the surface above; its bottom rests on the
+one below. **The answer is no**, and the reasoning is worth keeping:
+
+- **Direction is geometry, and geometry is already on the socket.** A part authors one socket
+  per edge with a real transform, and a placement takes the socket physically facing it.
+  `ship_floor` authors four `LEDGE` sockets, so a platform cell can be laddered on any side and
+  the transforms do real work rather than being decorative.
+- **Putting direction in the type would double the vocabulary** — `LEDGE_N`/`LEDGE_S`/... — and
+  is the "one word carrying unrelated axes" mistake `docs/SUPERSEDED.md` records against the
+  retired playstyle names.
+- **`Surface.facing` already exists** and already makes a ramp directional. Facing plus attach
+  points is enough.
+
+**What the grammar did need is height.** A side attachment binds to the **nearest surface at a
+different height**. One comparison does two jobs: a ladder cannot bind to the floor it is
+standing on (same height), so it binds to the ledge it climbs; and a stacked segment binds to
+the segment below it (one level away) rather than to something further up. *"A segment
+side-attaches to the segment below it"* therefore needs no stacking rule of its own — the same
+cell is simply included in the search.
+
+**Still open, and deliberately:** a placed part occupies a socket via `PartGraph.attach`, so the
+attachment graph is real and walkable, but nothing yet *reads* it — reach is computed from
+placed heights instead. Those two can disagree if a map authors a segment at a height its host
+does not support, which is a map an editor should warn about rather than a rule the grammar
+enforces.

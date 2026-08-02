@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_ladderpt"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_ladderbx"]
+[ext_resource type="Script" path="res://src/data/socket.gd" id="3_laddersk"]
+
+[sub_resource type="Resource" id="Resource_laddervol"]
+script = ExtResource("2_ladderbx")
+center = Vector3(0, 1, 0.45)
+size = Vector3(0.6, 2, 0.1)
+
+[sub_resource type="Resource" id="Resource_ladderstack"]
+script = ExtResource("3_laddersk")
+socket_type = &"LADDER_STACK"
+id = &"STACK"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[resource]
+script = ExtResource("1_ladderpt")
+id = &"ladder"
+display_name = "Ladder"
+material = &"steel"
+attaches_to = Array[StringName]([&"LEDGE", &"LADDER_STACK"])
+sockets = Array[ExtResource("3_laddersk")]([SubResource("Resource_ladderstack")])
+tags = Array[StringName]([&"ladder"])
+volume = Array[ExtResource("2_ladderbx")]([SubResource("Resource_laddervol")])
+hp = 6
+max_hp = 6
+mass = 8.0
