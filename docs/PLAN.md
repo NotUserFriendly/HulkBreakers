@@ -171,6 +171,34 @@ these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defec
 
 # QUEUED
 
+### Derive plane/picker membership instead of answering it in four places
+**Needs:** taskblock-52's ray chain (landed — it is the default resolver now). **Unblocks:** deleting
+`ShotPlane` as a resolver, and closing `BR35.01`'s successors honestly.
+
+**The same gap has been found four times from four directions** — `PartPicker` and the plane scanning
+different pairs of collections; `InspectPanel`'s non-unit path (`BR51.25`); and `BR52.01`, where the
+picker and the renderer disagreed about the *height* of a collection they shared. Nothing structurally
+prevents a fifth.
+
+**The shape, worked out in taskblock-52 Pass D and deliberately not built there:** not a new container
+and not a per-box `Callable` visitor — the first duplicates state, the second costs an invocation
+across ~1300 boxes on the hover hot path, which is the sin the plane was committing. Instead: drop
+`RayCaster`'s `CombatState` dependency (it only touches `units`, `grid` and the log) so it takes what
+`PartPicker` is already handed; add a `kinds` filter over the open `RayHit.KIND_*` vocabulary, applied
+at the source so a caller that must not see floors never pays to test them; then `PartPicker.hit`
+becomes a thin call into it, mapping `RayHit` to the dict its callers already expect. `InspectPanel`'s
+non-unit path consumes the same.
+
+**Two behaviour changes that want a decision, not an assumption:** the picker would inherit **tie
+resolution** (it has none today), and **joints would become pickable** unless filtered off — tb09 D
+says a joint is aimable, so the aim UI may want them, but hovering highlighting a joint handle is
+visible. Default it off.
+
+**Its own block, because attribution needs it to be.** `PartPicker.hit` runs on every mouse motion and
+carries an open perf entry (`BR51.14`); `BR35.01` closed on a re-measured 774 usec against a 214-blocker
+board, and that figure needs re-taking either side of this change. Folding it into the block that
+replaced the resolver would have made a regression impossible to attribute.
+
 ### Replay a handle on demand, and decide the checkpoints' future
 **Needs:** taskblock-48 Pass B2 (the replay panel and `ReplayHandle`). **Unblocks:** retiring a third
 renderer instead of keeping it alive by inertia.

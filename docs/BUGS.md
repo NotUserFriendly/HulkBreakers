@@ -123,82 +123,13 @@ confirm" roll-up — so pending items surface at a natural review point without 
   pie slice would draw — so the decision is derivable today and simply is not emitted.
 - **Not fixed.** The instrument (a logged decline carrying which gate rejected it) is the part that
   makes everything after it checkable, and it should land before anyone tunes the mechanic.
-
-### BR52.11 — Pending — owner: `SUPERVISOR`
-**A bout started from the Generate Bout overlay logs no seed at all, and the file's one seed line
-misattributes it**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02. *"The game starts on 2, but the bout I ran was a four digit seed. Bouts
-  aren't printing their seed into the combat log."*
-- **Confirmed, with the mechanism.** `BattleScene.load_battle(state, mission, header_event = null)`
-  takes the `session_start` event as an **optional third argument**. `new_battle()` (the launch path)
-  passes `_session_start_event(seed_value)` with `DEFAULT_SEED = 2`.
-  **`GenerateBoutOverlay._on_start_bout_pressed` calls `battle.load_battle(result.state,
-  result.mission)` with no header at all** — so the `map_seed` it read out of `_seed_field` and handed
-  to `BoutSetup.build_bout` is used to generate the entire bout and then dropped.
-- **It is worse than a missing line, because the file is per-session and a new bout appends**
-  (`FileSink`, supervisor's call 2026-08-02, `BR52.04`). So the log opens with `session_start: seed=2`
-  from the launch bout, and every later bout appends underneath it **with no seed of its own**. A
-  reader takes line 1 as the seed for everything in the file.
-- **It already caused exactly that error.** `out/logs/combat-20260802-164344.log` contains **two full
-  board builds** — 1200 cells / 236 walls / 118 cover / 0 extraction tiles, then 768 cells / 154 walls
-  / 66 cover / 8 extraction tiles — and **one `session_start`**. CC read seed 2 off line 1 and reported
-  a whole play-by-play under it; the bout analysed was the second one, generated from a different,
-  four-digit seed that appears nowhere.
-- **`docs/09`'s stated contract is what is broken:** *"a `session_start` event carries the seed as the
-  file's FIRST line, so a human session is a regression fixture too."* A session containing bouts whose
-  seeds were never written is not replayable from its own log, which is the whole point of the rule.
-- **The shape of the fix, not built:** the header should not be an optional argument a caller can
-  forget. Either `load_battle` requires a seed, or the bout carries its own and emits it structurally —
-  the same argument `load_battle`'s own comment already makes about emitting the header *"structurally,
-  between attaching the sinks and building anything, rather than by whoever happens to call this and
-  remembers to do it afterwards."* **The comment describes the right rule and the signature does not
-  enforce it.** A per-bout event rather than a per-session one, since a file now holds several.
-- **`Pending` (2026-08-02).** CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. Fixed exactly as
-  described above, both halves:
-  - **The optional argument is gone.** `load_battle(state, mission)` is the only signature, and it
-    emits the header itself from `CombatState.bout_seed` — the field is stamped by the two things that
-    generate a playable bout (`BoutSetup.build_bout`, which covers the Generate Bout overlay,
-    `CompletionSampler.build_for_seed`, `ReplayHandle.from_seed`, the watched-run panel and checkpoint
-    9; and `BattleScene._seed_battle` for the launch path).
-  - **`session_start` is now `bout_start`**, one per bout. Recorded in `docs/SUPERSEDED.md` and
-    `docs/09`.
-  - **The ORIGIN seed is what is carried, not `rng.seed`.** Both generators seed a local RNG with the
-    origin number and hand `rng.randi()` to `CombatState.new`, so `rng.seed` is derived and would not
-    regenerate the map. Logging it would have looked right and replayed nothing.
-- **A second half, reported from play (2026-08-02): *"Seeds are showing in the file log, but not at the
-  top of the combat log within the new bout. Looks like it's adding the new seed note, THEN clearing
-  the ingame combat log."*** Correct diagnosis, and it is an ordering problem.
-  - `load_battle()` emits the header into whichever panel is up. `GenerateBoutOverlay` **then** swaps
-    the overlay (`load_battle()` first, then `set_overlay(SpectatorOverlay.new())` or
-    `toggle_blue_control()`), so the panel that received the header is torn down and the fresh one
-    starts empty. The **file** sink survives because `BattleScene` owns it; a **panel** does not,
-    because the overlay owns it.
-  - **The first fix made this visible rather than causing it.** Before it, that path emitted no header
-    at all, so there was nothing for the swap to lose. `_ready()`'s own comment already warned about
-    this exact hazard from the other direction — *"Reversing this order drops that first line silently
-    — nothing was listening yet when it fired."*
-  - **Fixed:** `BattleScene` keeps the current bout's header (`_bout_start`) and
-    `_seed_overlay_log_with_the_bout_header()` hands it to a newly installed overlay's sink after
-    `setup()`. **Pushed straight into the sink, not re-emitted through `CombatLog`** — a second
-    `emit()` would reach the file sink too and write two `bout_start` lines for one bout, inventing a
-    duplicate event to close a display gap. `wants()` is still honoured. Scoped to the header
-    deliberately: replaying arbitrary history to any late-attaching sink would change what "one
-    stream, many sinks" means and would hand a `MemorySink` capturing one turn a `bout_start` it never
-    asked for.
-  - **Both halves are covered, and the panel test was verified by re-breaking it**: with the call
-    removed, `test_an_overlay_installed_after_the_bout_still_shows_the_bout_header` fails on exactly
-    the two panel assertions while the duplicate-header test stays green. The test asserts through the
-    real handoff — load, *then* swap — because asserting on the panel that was up during
-    `load_battle()` passes while the bug is fully present.
-- **To see it:** start a bout from Generate Bout with a seed you choose, then read `out/combat.log` —
-  that bout's own `bout_start: seed=<yours>` should sit directly above its build steps, underneath the
-  launch bout's header rather than replacing it. Starting a third bout should add a third header.
-- **The regression test is the one the old shape could not have had**
-  (`test_a_second_bout_logs_its_own_seed_not_the_first_bouts`): it asserts on the **second** bout in a
-  scene, through the two-argument call, and demands its own distinct four-digit seed. A companion test
-  rebuilds the board from the carried seed and asserts `rng.seed != bout_seed`, so the derived-versus-
-  origin distinction cannot quietly regress.
+- **Checked against the two closed overwatch entries and it is not a re-opening of either.**
+  `BR24.02` (overwatch structurally unable to trigger for a volumed torso) was fixed with
+  `exclude_parts` and has a regression test. `BR24.03` (no `mid_move_hook` in `BoutRunner.step()`, so
+  overwatch never ran in an AI-vs-AI bout) is the closest match to this symptom and is **still
+  fixed** — verified in source, not assumed: `bout_runner.gd` calls
+  `state.resolve_until(queue, Overwatch.check_trigger)`. The hook is wired; there was simply almost
+  nothing to trigger on.
 
 ### BR52.09 — Active — owner: `SUPERVISOR`
 **A destroyed cover object's model stays on the board**
@@ -224,6 +155,12 @@ misattributes it**
   object should probably not simply vanish. `DamageResolver.DROPPED_TAG` and `part.mangles_into`
   (`wreckage_pool`) already exist, and `_spawn_blocker` already reads `DROPPED_TAG`, so "replace with
   wreckage" is a real option alongside "remove". Picking one is a design call.
+- **Checked against two entries it resembles and is neither.** `BR51.24` (a part destroyed by an
+  explosion stays on the model) is the same *appearance* in a different subsystem — a **unit's** part
+  under `HitVolumeView`, where `refresh_unit_views` does run; this is a **blocker** under
+  `BoardView`, which has no per-part path at all. `BR35.03` (Resolved) is the opposite problem, debug
+  verbs rebuilding the whole board too often; its fix gates rebuilds to `DebugVerbs.affects_board()`,
+  which is why the board *can* be rebuilt — **nothing triggers one when combat destroys a blocker.**
 
 ### BR52.10 — Active — owner: `SUPERVISOR`
 **An AI unit fires a full burst through the ally standing directly in front of it, killing them**
@@ -244,12 +181,28 @@ misattributes it**
   `(20,5)` that puts the muzzle tip at x=19.02, and unit 3's body boxes at cell `(19,5)` span
   x[18.5,19.5]. The ray legitimately starts inside the ally and hits at t=0. **The geometry is right;
   the decision to fire is what is wrong.**
-- **Root cause in the AI, located.** `UtilityContext._lof_possible(cell)` is
-  `field == null or field.allows(cell)` — a **visibility-field** test, i.e. terrain and opacity only.
-  `_nearest_known_enemy` correctly skips allies as *targets*
-  (`candidate.squad_id == unit.squad_id ... continue`), but **nothing anywhere scores whether a
-  friendly unit occupies the firing line.** `INPUT_LINE_OF_FIRE` and `PRED_LOF_BLOCKED` both read that
-  same terrain-only check, so a squadmate at point-blank range is invisible to the decision.
+- **Root cause in the AI, located — and it is a regression, not a gap that was always there.**
+  `UtilityContext._lof_possible(cell)` is `field == null or field.allows(cell)` — a
+  **visibility-field** test, i.e. terrain and opacity only. `_nearest_known_enemy` correctly skips
+  allies as *targets* (`candidate.squad_id == unit.squad_id ... continue`), but **nothing scores
+  whether a friendly unit occupies the firing line.** `INPUT_LINE_OF_FIRE` and `PRED_LOF_BLOCKED` both
+  read that same terrain-only check, so a squadmate at point-blank range is invisible to the decision.
+- **The check used to exist and was lost with the planner rewrite.** `docs/SUPERSEDED.md` records the
+  engagement-score planner retiring in tb45 Pass E and `LineOfFire.approach_path`/`closing_path` being
+  deleted in tb46 Pass C; `BR35.05` describes a real bout in which units logged **`held:
+  ally_in_line`**, so the old branch planner did refuse a shot through a squadmate. `UtilityPlanner`
+  replaced the branches with scored weights and **no consideration carries that rule**.
+- **Two vestiges confirm it rather than a reading of intent**, and both will mislead the next reader:
+  - `LineOfFire`'s own doc comment still advertises `first_hit` as *"Shared by
+    `has_clear_line_of_fire` and **the planner's ally-in-line check**"* — that check has no caller in
+    `src/` any more, and `first_hit`/`has_clear_line_of_fire` are now reached only from tests.
+  - `AiDecisionLog.emit` — the branch log that carried `hold_reason`, i.e. the thing that *printed*
+    `ally_in_line` — is still in the tree with **zero callers**; only `emit_utility_decision` is
+    called. `docs/SUPERSEDED.md` says it was "deleted with the branches it named", which is not quite
+    true: it was orphaned.
+- **`BR35.05` is the same defect described against the deleted implementation** and is closed
+  `Obsolete` in favour of this entry — see `docs/BUGS-ARCHIVE.md`. **Not a duplicate filing: one entry
+  survives, and it is this one**, because it describes the code that exists.
 - **Not fixed, and deliberately not designed unasked.** The fix is a real design call, not a patch:
   whether friendly-fire risk should **veto** a shot (a precondition) or **penalise** it (an input),
   and whether a player unit gets the same treatment or the asymmetry in `docs/06` applies. Both
@@ -1834,27 +1787,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   `PLAN.md`'s *One view, toggleable modules* dissolves the class. Fixing an instance is work that
   refactor discards.
 
-### BR35.05 — Active — owner: `CC`
-**`approach_path`/`closing_path` have no ally-awareness — squadmates converge into each other's own line of fire**
-- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
-- **Found:** 2026-07-23, reading a real bout's own `out/combat.log` at the supervisor's own request
-  ("units that are close all holding action"). On turn 0, units 1/2/3 (all sharing a similar start
-  position and the same target) independently compute nearly identical `closing_fallback` paths —
-  unit 1 and unit 3's own move sequences share the corridor `(6,14)→(7,13)→(7,11)→(11,7)` cell for
-  cell — and end up bunched close together: unit 1 at (13,7), unit 3 at (13,8), **directly adjacent**.
-  Unit 0's and unit 2's own `ai_decision` lines log `held: ally_in_line` — a squadmate is standing
-  in their own intended shot.
-- **Root cause:** `LineOfFire.approach_path` (tb33) and `LineOfFire.closing_path` (tb35 Pass A, this
-  session) both compute "the nearest cell that gets a shot" (or "the nearest cell that closes
-  distance") purely from grid/LOF geometry — **neither has any notion of where other allies already
-  are or are heading.** `closing_path` inherited this blind spot from `approach_path` rather than
-  fixing it. When several squadmates share a similar starting position and target, they independently
-  converge on the same corridor/destination and end up close enough to block each other's own shots,
-  which then makes every one of them hold.
-- **Not fixed yet.** A real fix (giving the fallback pathing awareness of cells allies already occupy
-  or are heading toward, so a squad spreads out instead of stacking) is a genuine design question —
-  how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
-  not a one-line patch, and not guessed at here.
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 shooter is elevated on a small platform and the target is below**
