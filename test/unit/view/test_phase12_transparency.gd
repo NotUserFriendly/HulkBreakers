@@ -82,7 +82,11 @@ func test_the_stat_panels_predicted_damage_equals_the_logs_actual_damage() -> vo
 	for event: LogEvent in captured:
 		if event.kind == &"impact":
 			impacts.append(event)
-	assert_eq(impacts.size(), 1, "the tight scatter must land exactly one impact")
+	# taskblock-52: a tight scatter still lands one shot, but that shot now logs an
+	# impact for whatever it goes on to strike after the target. The pillar under
+	# test is that the panel's predicted damage equals what the log reports **for
+	# that shot**, which is its first impact.
+	assert_gt(impacts.size(), 0, "the tight scatter must land")
 	assert_eq(
 		float(impacts[0].data.get("damage")),
 		predicted,

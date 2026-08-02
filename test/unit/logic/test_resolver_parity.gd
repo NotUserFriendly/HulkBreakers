@@ -60,23 +60,24 @@ func _fire(state: CombatState) -> Callable:
 		)
 
 
-## **The plane is still the default, and that is a stated outcome rather than an
-## oversight.** Adoption is approved and the parity case below holds, but flipping
-## the default red-lights 14 tests, and Pass F's acceptance is a green suite with
-## the flag inverted — see `CombatState.shot_resolver`'s own doc comment for what
-## those failures are.
+## **The plane is still the default: 15 of the 16 blocking fixtures are updated and
+## one is not.** `test_shot_resolution.gd`'s deflect fixture no longer deflects
+## under a muzzle-to-aim march and needs a geometry that does — the last thing
+## between here and the flip.
 func test_the_plane_is_still_the_default_and_the_ray_chain_is_selectable() -> void:
 	var state := CombatState.new(GridFixture.flat(5, 5), [])
 	assert_eq(
 		state.shot_resolver,
 		ShotResolution.RESOLVER_PLANE,
-		"the inversion is not landed while flipping it fails the suite"
+		"one fixture short of the flip — see this test's own doc comment"
 	)
+	assert_eq(state.dup().shot_resolver, ShotResolution.RESOLVER_PLANE, "and a preview carries it")
+
 	state.shot_resolver = ShotResolution.RESOLVER_RAY
 	assert_eq(
 		state.dup().shot_resolver,
 		ShotResolution.RESOLVER_RAY,
-		"the ray chain is fully built and selectable by one field, and a preview carries it"
+		"the ray chain is fully built and selectable by one field"
 	)
 
 
