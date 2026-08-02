@@ -1,5 +1,49 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass F — 15 of 16 blocking fixtures updated; the flip is two bounded jobs away
+
+**Each blocking assertion was restated in terms of the rule it protected, not bumped to match new
+output.** Impact counts stopped being a proxy for anything once a round continues past its target
+into the deck, so:
+
+- burst tests count **pulls** (`burst_pull`), which is what "a burst fires `burst_size` independent
+  pulls" actually asserts;
+- pellet-per-pull is asserted on the spread pattern rather than inferred from impacts;
+- `landed_so_far` is checked against pulls that landed;
+- attack and suppression tests assert **who was hit** (`target_unit_id` / `part`), not how many
+  impacts followed;
+- "only the first attack fired" counts `AttackAction` log lines;
+- the deflect test **finds** its deflect rather than assuming index 0.
+
+**One premise died outright and was rebuilt rather than patched.** *"A real burst's pull events
+always total burst_size **even with misses**"* cannot produce a miss on a floored board any more,
+because nothing misses — which is the entire point of the block. It fires on an **unfloored** grid
+now, the "out through the ceiling" case `docs/02` names as the one legitimate way to hit nothing.
+
+**Not flipped, one fixture short.** `test_shot_resolution.gd`'s deflect fixture no longer deflects
+under a muzzle-to-aim march. Sweeping for a geometry that does, and keeping whichever one makes the
+assertion pass, is how a suite starts describing itself instead of asserting anything — so it is left
+honest and flagged rather than green and hollow.
+
+### taskblock-52 — `BR52.08`: every "muzzle height" test has been firing from 1.25
+
+**`_make_weapon` authors no `volume`**, so `UnitGeometry.muzzle_point` finds no placement and falls
+back to `DEFAULT_MUZZLE_HEIGHT`. `_make_shooter_with_grip_height`'s own `grip_y` argument **reaches
+nothing** — a test asking for a 0.3 hip-height muzzle gets a 1.25 one.
+
+**Why it survived five blocks is the interesting half:** the shot plane resolves at the **aim
+point's** height rather than along the muzzle-to-aim line, so where the muzzle actually sat never
+affected the outcome. The fixture could be wrong and the test still green — the same "narrower than
+its name" family this project keeps finding, arriving from a new direction: here the *fixture* cannot
+produce what the *name* claims.
+
+It stops being harmless under the ray chain, which marches muzzle-to-aim. A round from 1.25 down to a
+0.5 chest is at ~0.87 where 0.6 cover stands and correctly clears it, so
+`test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` **will invert when the
+resolver flips, and that is not a regression**. Marked in place so it does not ambush the flip. The
+fix (a real `volume` on the fixture weapon) was attempted and reverted: it moves the muzzle for every
+test in the file at once and cascaded into three further failures wanting their own judgement.
+
 ### taskblock-52 Pass F — `self_obstruction` deleted
 
 **`ShotPlane.self_obstruction` is gone** (supervisor's call). It hand-modelled tb22 H2's rule — *"the
