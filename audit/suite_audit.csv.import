@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dlk0xsyqb88sa"
+
+[deps]
+
+files=["res://audit/suite_audit.test.translation", "res://audit/suite_audit.usec.translation", "res://audit/suite_audit.bouts.translation", "res://audit/suite_audit.turns.translation", "res://audit/suite_audit.candidates.translation", "res://audit/suite_audit.floods.translation", "res://audit/suite_audit.plans.translation", "res://audit/suite_audit.shot.translation", "res://audit/suite_audit.rule.translation"]
+
+source_file="res://audit/suite_audit.csv"
+dest_files=["res://audit/suite_audit.test.translation", "res://audit/suite_audit.usec.translation", "res://audit/suite_audit.bouts.translation", "res://audit/suite_audit.turns.translation", "res://audit/suite_audit.candidates.translation", "res://audit/suite_audit.floods.translation", "res://audit/suite_audit.plans.translation", "res://audit/suite_audit.shot.translation", "res://audit/suite_audit.rule.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

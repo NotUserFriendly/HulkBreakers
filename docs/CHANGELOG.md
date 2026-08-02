@@ -1,5 +1,45 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-53 Pass A — the audit is disjoint from the suite
+
+**`res://audit/` is its own tree with its own entry point** — the CSV, its checks
+(`test_suite_audit_csv.gd`), and the `audit_rules.py` judgement-column helper. The ordinary suite runs
+`--dir=res://test` and never sees it; the audit runs
+`godot --headless --path . -s res://tools/run_suite.gd -- --dir=res://audit`.
+
+**The acceptance was performed, not reasoned about:** with `audit/` deleted outright, the suite passes
+**2665 tests, 0 failures, exit 0**, and the parse guard degrades to 19 scripts rather than erroring.
+Then restored.
+
+**The coupling that forced taskblock-52's churn is gone.** The audit CSV used to own the assertion that
+per-test counters sum to the file-level totals, which made a *committed snapshot an input to the
+ordinary suite* — add a test to a covered file and the gate went red until both were regenerated. A
+fresh `suite_profile.json` and a stale CSV cannot coexist, which is why that block could not preserve
+the CSV's deliberate staleness.
+
+**The assertion was kept and re-pointed rather than deleted**, since it is the load-bearing check *of
+the profiler*: `suite_profile.json` already carries a per-file `files` array and a `totals` dictionary,
+so summing the first must reproduce the second. Same wiring bug caught, no snapshot involved. Two
+companions cover what the sum alone cannot — that no total exists without a per-file source, and that
+identity fields never become totals, which is the exact leak that once put `order` (2 953 665) into a
+committed profile's totals as though it were work.
+
+**A guard keeps it disjoint.** `test_suite_profile_consistency.gd` scans every `.gd` under
+`res://test/` for a reference to the audit tree. **Comment lines are stripped**, because this rule's own
+explanation has to name the path it forbids — a path in prose is documentation, a path in code is a
+dependency. Excluding the scanning file by name would have been easier and would stop it policing
+itself.
+
+**The audit still has to compile**, and only that. `parse_guard.gd` covers `res://audit/` for the same
+reason it covers `tools/` — nothing runs it on a schedule, so nothing else would notice it rotting, and
+the next audit could be six months out. **A missing audit tree contributes zero paths rather than an
+error**, since deleting it is legitimate. Verified by re-breaking: a syntax error in the audit makes the
+guard name the file and fail.
+
+**Staleness is now the expected state.** The first run after separation reports 2668 rows against 2665
+declared tests — the drift from moving its own seven checks out and adding four. That failure is the
+tool reporting "regenerate before you trust this", and it gates nothing.
+
 ### taskblock-52 — supervisor bug-hunt pass: five closed, five filed, one duplicate found
 
 **Closed on the owner's instruction:** `BR52.04` (combat-log NUL corruption), `BR34.05` (misses

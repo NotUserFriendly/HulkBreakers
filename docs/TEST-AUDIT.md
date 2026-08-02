@@ -5,6 +5,53 @@ produce or update the CSV. It is a tool the supervisor reaches for when a questi
 up — run it deliberately, act on it, let it go stale. **If it ever appears in `CLAUDE.md`'s workflow
 steps or in a taskblock's standing acceptance, that is the mistake.**
 
+## Where it lives, and how the coupling was broken (taskblock-53 Pass A)
+
+**Everything the audit is lives in `res://audit/`** — the CSV, its checks
+(`test_suite_audit_csv.gd`), and the `audit_rules.py` helper that reads and writes the judgement
+columns. Nothing under `res://test/` reads any of it, and nothing in `src/` imports it.
+
+**Its own entry point.** The ordinary suite runs `--dir=res://test`, so the audit is never in scope.
+Run it deliberately, by pointing the same runner at its own directory:
+
+```
+godot --headless --path . -s res://tools/run_suite.gd -- --dir=res://audit
+```
+
+Regenerating the mechanical columns is still `WRITE_PROFILE=1 ./run_tests.sh`, which writes
+`res://audit/suite_audit.csv` alongside the profile. Then fill the judgement columns — see the
+procedure below.
+
+**It is deletable, and that is asserted rather than asserted-to-be-true.** `res://audit/` can be
+removed outright and the ordinary suite still passes; the acceptance for the pass that separated it was
+to remove it, run, and restore. `test_suite_profile_consistency.gd` keeps it that way by scanning every
+`.gd` under `res://test/` for a reference to the audit tree — comment lines stripped, because prose
+naming the path is documentation and only code is a dependency.
+
+**What used to couple them, and why it had to go.** The audit CSV owned the assertion that per-test
+counters sum to the file-level totals, which made a *committed snapshot an input to the ordinary
+suite*: add a test to a file the snapshot covered and the gate went red until someone regenerated both.
+taskblock-52 hit exactly that — a fresh `suite_profile.json` and a stale CSV cannot coexist, so the
+CSV's deliberate staleness could not be preserved.
+
+**The assertion was kept and re-pointed, not deleted.** It is the load-bearing check *of the profiler*,
+so it now gates the profiler against itself: `suite_profile.json` carries both a per-file `files` array
+and a `totals` dictionary, and summing the first must reproduce the second. Same failure caught, no
+snapshot involved. It lives in `test/unit/test_suite_profile_consistency.gd`, with two companions the
+sum alone cannot catch — that no total exists without a per-file source, and that identity fields
+(`path`, `script`, `test`, `order`) never become totals. That last one is the exact leak that once put
+`order` (2 953 665) into a committed profile's totals as though it were work.
+
+**A failing audit run is a report, not a broken build.** The first run after separation reports
+**2668 rows against 2665 declared tests** — the three-test drift from moving its own checks out of the
+suite. That is the tool working: `test_the_csv_has_one_row_per_declared_test` failing *is* the signal
+"regenerate before you trust this". It gates nothing, and no pass is obliged to make it green.
+
+**The audit still has to compile.** `tools/checkpoints/parse_guard.gd` covers `res://audit/` for the
+same reason it covers `tools/`: nothing runs it on a schedule, so nothing else would notice it rotting,
+and the next audit could be six months away. A **missing** audit tree contributes zero paths rather
+than an error — deleting it is legitimate, so it cannot be what breaks the guard.
+
 A **one-time, repeatable** procedure. Not a living document, and the CSV it produces is not maintained
 — it is a snapshot taken to answer a question, acted on, and allowed to go stale. Re-run it when the
 question comes back.

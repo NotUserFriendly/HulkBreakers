@@ -83,7 +83,7 @@ const DATA_PATH := "res://test/suite_profile.json"
 ## taskblock-49 Pass A: one row per test, for the audit `docs/TEST-AUDIT.md` describes.
 ## **Not committed and not maintained** — a snapshot taken to answer a question, acted
 ## on, and allowed to go stale.
-const AUDIT_PATH := "res://test/suite_audit.csv"
+const AUDIT_PATH := "res://audit/suite_audit.csv"
 
 ## Row fields that identify a row rather than measure anything. **Everything not named
 ## here is summed as a counter**, so the list is the one place that decides what counts as

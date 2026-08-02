@@ -19,7 +19,7 @@ extends GutTest
 ## no test's window, so the per-test seconds are less than the per-file seconds, and the
 ## size of that difference is the honest cost of per-file setup.
 
-const CSV_PATH := "res://test/suite_audit.csv"
+const CSV_PATH := "res://audit/suite_audit.csv"
 const PROFILE_PATH := "res://test/suite_profile.json"
 const EXPECTED_HEADER := (
 	"origin_file,test_name,description,usec,bouts,turns,candidates,floods,plans,"
