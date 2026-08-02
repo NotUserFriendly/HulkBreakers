@@ -1,5 +1,40 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 — supervisor bug-hunt pass: five closed, five filed, one duplicate found
+
+**Closed on the owner's instruction:** `BR52.04` (combat-log NUL corruption), `BR34.05` (misses
+vanish), `BR30.10` (shots resolve through walls, closed after the verification it asked for — 44 wall
+impacts in one battle, every hit on a wall *face plane*, zero `PENETRATE` outcomes anywhere), and
+`BR52.11` (the bout seed). `BR35.01` closed on a re-measurement: **774 usec against the 1 559 usec
+recorded in taskblock-51**, a 2.0x improvement from the `SKIP_RADIUS` reject.
+
+**`BR35.05` closed `Obsolete` and its symptom re-filed as `BR52.10`.** This is the duplicate the
+dedup pass was for. `BR35.05` described `LineOfFire.approach_path`/`closing_path`, both **deleted** in
+tb46 Pass C with the engagement-score planner that was their only caller — so the entry's subject no
+longer exists. **`Obsolete`, deliberately not `Resolved`:** nobody verified squads stopped blocking
+each other, the implementation was replaced underneath the report.
+
+**The defect survived the rewrite, and that is the finding.** The old branch planner logged
+`held: ally_in_line` — it genuinely refused a shot through a squadmate. `UtilityPlanner` carries no
+consideration for it, and an AI unit now fires through an ally: one put **eight point-blank rounds
+into the squadmate in front of it**, destroying the torso and ejecting the matrix on turn zero. Two
+vestiges confirm the loss rather than a reading of intent — `LineOfFire`'s doc comment still advertises
+*"the planner's ally-in-line check"* that has no caller, and `AiDecisionLog.emit` (which printed the
+`hold_reason`) is still in the tree with **zero callers**. `docs/SUPERSEDED.md` says that log was
+"deleted with the branches it named"; it was orphaned, not deleted.
+
+**Two other filings were checked against closed entries and are not re-openings.** `BR52.12`
+(overwatch never fires) resembles `BR24.03`, whose fix was **verified still present in source** —
+`bout_runner.gd` calls `state.resolve_until(queue, Overwatch.check_trigger)`. `BR52.09` (a destroyed
+cover object's model stays on the board) resembles `BR51.24` but is a different subsystem: a
+**blocker** under `BoardView`, which has no per-part teardown at all, against a **unit's** part under
+`HitVolumeView`, where `refresh_unit_views` does run.
+
+**One filing was withdrawn and rewritten.** `BR52.09` was first written up as a balance analysis of
+deflect angles — CC misread the report as "the forklift is not dying" when it was "the model stays
+visible after destruction". The measurement survives as `BR52.13` (`Suspected`/`CC`), where it is
+labelled as CC's own observation rather than the supervisor's report.
+
 ### taskblock-52 — every bout logs its own seed (`BR52.11`)
 
 **`BattleScene.load_battle`'s optional `header_event` argument is gone.** The seed rides on
