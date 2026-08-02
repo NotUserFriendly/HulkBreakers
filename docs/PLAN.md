@@ -893,6 +893,26 @@ down, and the first bears directly on an open bug.
   defect: it is the HE type not being built yet, and it belongs to *Explosions: three types on one
   substrate*.
 
+### Keep the rotated combat logs from ballooning
+**Needs:** per-session log rotation — **built** (taskblock-52, `FileSink.ARCHIVE_DIR`, `out/logs/`).
+**Unblocks:** nothing; this is housekeeping that will otherwise become a chore nobody scheduled.
+
+Every session now leaves a file in `out/logs/`. Nothing removes them, so the directory grows once per
+run forever. **The supervisor's own framing is the answer: "it'll probably be the same as the finished
+taskblocks."** That is the `reports/` rolling-window rule and the `taskblock_done/` archive — keep a
+fixed number of the most recent, delete the rest in the same commit that adds a new one.
+
+- **The obvious shape:** `FileSink` prunes `out/logs/` to the N most recent on rotation, N being a
+  flagged constant. Sortable names are already in place (`combat-YYYYMMDD-HHMMSS.log`), so "most
+  recent" is a directory listing and a slice, not a stat call per file.
+- **Two things to decide rather than assume.** What N is — `reports/` keeps five, which is a
+  precedent rather than a reason. And whether pruning belongs in `FileSink` at all: a logger that
+  deletes files is doing two jobs, and the alternative is a housekeeping call at startup that
+  `BattleScene` makes explicitly.
+- **Not urgent.** A session log is tens to hundreds of KB, so this is a real problem at hundreds of
+  sessions rather than at ten. Filed now because the growth was introduced deliberately and should not
+  be rediscovered later as a mystery.
+
 ### Act on the suite audit
 **Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
 under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.

@@ -24,6 +24,8 @@ export_presets.cfg
 
 # Regenerated every run.
 /out/combat.log
+# taskblock-52: rotated per-session logs (FileSink.ARCHIVE_DIR)
+/out/logs/
 
 # Failure-ordering history (taskblock-50 Pass E1) — a LOCAL learning cache.
 # Written on every ordered run so it can learn; committing it would put churn in

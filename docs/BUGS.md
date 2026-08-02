@@ -176,11 +176,18 @@ confirm" roll-up — so pending items surface at a natural review point without 
   the first NUL, so `test_battle_scene.gd` could not find the session header it had just written and
   went red until the poisoned `out/combat.log` was deleted. The blast radius was wider than "hard to
   read by hand".
-- **One consequence of appending, flagged rather than absorbed: the log now grows without bound.**
-  Truncation was, accidentally, the only thing bounding it — every run and every suite execution now
-  adds to the same file. That is fine at a session's scale and is not fine forever. **Left as the
-  supervisor's call**, since it is the same decision they already took a position on: rotation per
-  session, a size cap, or a per-session filename. Not invented here.
+- **Appending removed the only thing bounding the log's size, and the supervisor answered it the same
+  day: per-session files, old ones subfoldered.** So the two rules are now *a new bout appends, a new
+  session rotates* — several bouts in one run share a log, and the next run archives it into
+  `out/logs/combat-YYYYMMDD-HHMMSS.log` before starting clean. The **live path deliberately does not
+  move**: `tail -f`, `grep` and the startup "log: <path>" line all point at `out/combat.log`, and
+  there is only ever one live session, so it is the archive that needs distinct names.
+- **Rotation is per path and once per process**, not on every construction — otherwise a second sink
+  attaching mid-session would rotate the log out from under the first, which is the very case this
+  entry is about.
+- **The archive itself will balloon**, and that is filed rather than solved: `PLAN.md`'s *Keep the
+  rotated combat logs from ballooning*, to follow the same rolling-window rule `reports/` and
+  `taskblock_done/` already use, as the supervisor suggested.
 - **`Pending` rather than closed:** this entry is `SUPERVISOR`-owned. **To check:** play a session
   with more than one bout, then `grep` the log. It should match, `file out/combat.log` should say
   `ASCII text` rather than `data`, and the earlier bout should still be there above the later one.

@@ -14,8 +14,15 @@ silently declines to match it** while `tail` still renders fine — so it reads 
 and returns nothing to every tool. Several greps against that file came back empty during this
 session before the cause was found.
 
-**A new bout appends** (supervisor, 2026-08-02: *"That may not stay true, but it's the better option
-now."*). Two defences, answering different halves: open with `READ_WRITE` so nothing truncates
+**A new bout appends; a new session rotates** (supervisor, 2026-08-02). A bout is not a session:
+several bouts in one run share a log, and the next run archives it into
+`out/logs/combat-YYYYMMDD-HHMMSS.log` before starting clean. **The live path deliberately does not
+move** — `tail -f`, `grep` and the startup "log: <path>" line all point at `out/combat.log`, and
+there is only ever one live session, so it is the archive that needs distinct names. Rotation is
+**per path and once per process**, not per construction, or a second sink attaching mid-session would
+rotate the log out from under the first — the exact case this whole entry is about. The archive is
+named for **when that session ran** (the file's own modification time), so a name describes its
+contents, and the stamp is sortable so a directory listing is already in session order. Two defences, answering different halves: open with `READ_WRITE` so nothing truncates
 (`WRITE` survives only as a create-if-missing fallback), **and** `seek_end()` before every write,
 since two live handles each carry their own position and opening at the end would not survive the
 second one.
