@@ -339,6 +339,29 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
   headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
 
+### BR52.15 — Active — owner: `CC`
+**Overwatch can be declared repeatedly in one turn**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-01.
+- `OverwatchAction.is_legal` checks alive, current turn, AP, weapon health and manipulator capability —
+  and **never checks whether the unit is already on overwatch**. `apply` sets
+  `actual.overwatch_weapon_id` unconditionally, so a unit with AP to spare can declare it again, paying
+  `AP_COST` each time for no additional effect.
+- **Declaring overwatch should end the unit's turn.** Watching a firing lane and then acting again is
+  the contradiction — the design intent is that after declaring, the unit does nothing else.
+- **The AP question is a design change, not part of this fix** — see `PLAN.md`'s *Overwatch: declaring
+  it ends the turn, and spending buys quality*. Fix the double-declaration here; leave the scaling
+  alone.
+- **Filed as `BR52.01`, renumbered to `BR52.15` (`CC`, 2026-08-02).** That id was already taken by a
+  `Resolved` entry in `docs/BUGS-ARCHIVE.md` — the `PartPicker`/`BoardView` height disagreement — which
+  is cited from `ray_caster.gd`, `part_picker.gd`, `test_selection_target.gd`, `docs/PLAN.md` and
+  `docs/CHANGELOG.md`. Two entries sharing an id breaks `grep '^### BR'` as the index. **The entry was
+  also pasted twice**; the duplicate was dropped. `BR52.05` is deliberately not reused — it was
+  withdrawn, not unassigned.
+- **Related but distinct: `BR52.12`** (overwatch is declared constantly and never fires). This entry is
+  about declaring it *too often*; that one is about it never *resolving*. A battle logging 12
+  declarations and zero fires showed one declaration per unit per turn, so the double-declaration here
+  was not what produced those twelve.
+
 ### BR51.25 — Active — owner: `SUPERVISOR`
 **Non-unit objects render untransformed in the inspect preview**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first

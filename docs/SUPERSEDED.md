@@ -116,6 +116,38 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 
 ---
 
+## A surrogate could eject its matrix; now it can only decay off
+
+**Raised** taskblock-02/03 (`docs/04`). **Superseded** 2026-08-01 by supervisor design note.
+
+`docs/04` records three ejection shapes, the third being: *destroy the surrogate itself (its own hp
+reaches 0) → falls through to the first case: the surrogate hosts the matrix directly, so
+`eject_matrix_if_needed` already covers it.* That made a surrogate and a mechanical shell behave
+identically as matrix hosts.
+
+**They are no longer the same.** A **mechanical shell** has a matrix slot that can eject. A
+**surrogate** has a matrix slot that **cannot** — the matrix leaves only by the surrogate *decaying*
+off through the `LifeSupport` clock. Killing a surrogate does not pop its matrix free.
+
+The distinction is thematic and mechanical at once: a shell is hardware you are docked into and can be
+thrown clear of; grown tissue is not something a mind is ejected from. It also gives the surrogate
+ladder teeth — losing a surrogate is a slow, tracked decline rather than an event that resets to a bare
+matrix.
+
+**Settled: the destroyed-surrogate case is a plain drop, not an ejection.** *Eject* names a **motion**
+the game does not simulate yet — a matrix that ejects will one day be **thrown**, on the same ballistic
+path grenades will use. Nothing thrown exists, so nothing ejects yet either. **When a surrogate is
+destroyed the matrix simply drops**, exactly as any other part drops from a destroyed parent: it lands
+in the cell's `field_items` and is picked up like anything else.
+
+So the two paths differ in *motion*, not in *outcome* — matrices are still never lost. A shell throws;
+a surrogate releases. Once ballistic motion lands, `eject` becomes a real verb with a real arc, and it
+is the shell path that grows the arc rather than both.
+
+`docs/04`'s three-shape ejection list and `DamageResolver.eject_matrix_if_needed`'s surrogate branch
+both describe the retired behaviour and want rewriting: the surrogate branch is a drop, not an eject,
+and the naming should stop implying otherwise.
+
 ## The engagement-score planner, retired (tb45 Pass E)
 
 **What it was.** `src/logic/ai/unit_ai.gd`, 1369 lines at the end, the only decision-maker for a
