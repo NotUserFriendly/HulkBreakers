@@ -119,11 +119,15 @@ what surfaced that closest-root cannot fire (see Open questions).
   shotgun pellet penetrating that effectively is a *balance* problem, to be answered when ammo types
   land, not a resolver one. **That reclassifies the Pass F failures**: they are fixture expectations
   encoding the plane's old behaviour and want updating, not a decision.
-  **One failure is a different shape and is mine to fix:** `test_attack_action.gd`'s low-cover
-  obstruction case resolves to the target instead of the cover. The raw march handles it correctly in
-  isolation — probed, level shots from muzzle height 0.30 and 0.50 both strike the cover at t=1.50 and
-  0.80 clears it — so the fault is in how `AttackAction` composes the aim point, not in the chain. I
-  ran out of room to isolate it and did not guess at a fix.
+  **CORRECTION: the low-cover failure is not a chain defect and `AttackAction` is fine.** I reported
+  it as one on the strength of a probe that fired *level* rays and saw them strike the cover
+  correctly — the probe never reproduced the slope, which is the entire difference. Re-probed on the
+  real geometry: **the plane models a shot as travelling at a constant height** (`_find_next` tests
+  every region at the aim point's own `y`), so a round from a 1.25 muzzle at a 0.5 chest sits at 0.5
+  all the way and clips 0.6 cover. **The chain marches muzzle-to-aim-point, which slopes** — measured
+  at **0.845** where that cover stands, correctly clearing it. A real round slopes; the chain is
+  right and the fixture encodes the approximation. **So all 14 are fixture updates**, and the flip is
+  mechanical work rather than a diagnosis.
 - **The parity evidence adoption was approved on**, kept here because it is what the decision rests
   on. Seam: plane 56/200 empty, ray 0/200. Differential over 216 seeded shots:
   **zero cases where the plane hit and the ray missed**, 64 where the reverse is true. Attribution:

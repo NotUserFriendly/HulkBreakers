@@ -1,5 +1,34 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass F — the 14 blockers diagnosed: all fixture assumptions, none a chain defect
+
+The flag was inverted, the failures enumerated and root-caused, then reverted so the tree stays
+green. **Every one of the 14 is a fixture encoding the plane's behaviour**, and they fall into two
+shapes.
+
+**1. More impacts than expected** — a 12-round burst logging 36, "3 pulls x 9 pellets" logging 61
+rather than 27. A round continues while it still carries damage, and floors are real geometry now, so
+it punches through its target and goes on to strike the deck. Settled by the supervisor: a pellet
+penetrating that effectively is a **balance** problem for when ammo types land, not a resolver one.
+
+**2. A shot is no longer level, and this explains every cover and muzzle-height failure at once.**
+**The plane models a shot as travelling at a constant height** — `DamageResolver._find_next` tests
+every region at the aim point's own `y`, so a round fired from a 1.25 muzzle at a 0.5 chest sits at
+0.5 the whole way and clips anything 0.6 tall in between. **The chain marches muzzle-to-aim-point,
+which slopes.** Probed on that exact geometry: the ray is at **0.845** where the 0.6 cover stands, and
+correctly passes over it. A real round does slope, so the chain is right and the fixtures encode the
+level-shot approximation.
+
+**This retires CC's earlier reading of the low-cover failure.** It was reported as "the fault is in
+how `AttackAction` composes the aim point, not in the chain" on the strength of a probe that fired
+*level* rays and saw them strike the cover correctly. That probe was measuring the wrong thing: it
+never reproduced the slope, which is the whole difference. Nothing is wrong with `AttackAction`.
+
+**One decision to take before the flip, flagged not taken:** `ShotPlane.self_obstruction` (tb22 H2,
+"the shot originates and immediately hits the cover if the muzzle is below the cover's height")
+hand-models a case the chain now gets from geometry for free. Keeping both is two answers to one
+question.
+
 ### taskblock-52 — the combat log stops corrupting itself (`BR52.04`)
 
 **`FileSink`'s own doc comment said "Appends to a real file". The code opened with
