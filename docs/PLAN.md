@@ -217,6 +217,11 @@ watchable when they break.
   only partly hides.
 - **Declare handles more widely.** Three files have them. The determinism checks and the remaining
   spatial sweeps are the obvious next ones; a handle is a few lines and self-declaring.
+- **A `launch test` verb on the debug panel.** Any test that builds a room, fires shots or stages real
+  units should be launchable from a list: pick it, the view resets, the test runs under the ordinary
+  spectator view. **The general form of the replay work** — taskblock-51 made a *failing* test's fixture
+  watchable; this makes any staged test watchable on demand, which turns a test into a scenario the
+  supervisor can inspect rather than a result they are handed.
 - **Watched and headless must keep agreeing.** That equivalence is the foundation — if a watched seed and
   its headless counterpart ever disagree, every number the sampler has produced is suspect. Asserted
   once; it should stay asserted as this grows.
@@ -605,6 +610,59 @@ Each example is a different combination, which is what shows the three axes are 
 
 **And one it exposes:** `BR34.05` (misses vanish) matters more here, because a fragment that finds
 nothing to hit is the same defect multiplied by however many fragments an explosion throws.
+
+### `eject` becomes a real motion once things can be thrown
+**Needs:** ballistic motion (grenades, forced movement). **Unblocks:** `eject` meaning what its name
+says.
+
+**`eject` currently names a motion the game does not have.** A matrix leaving a destroyed shell is meant
+to be *thrown* — an arc, a landing cell some distance away, the same ballistic path grenades and thrown
+objects will use. Nothing is thrown yet, so today every ejection is a drop wearing the word.
+
+- **The distinction is shell versus surrogate.** A **shell throws** its matrix clear; a **surrogate just
+  drops** it, like any other part falling from a destroyed parent (see `SUPERSEDED.md`). Both keep
+  "matrices are never lost" — they differ in motion, not in outcome.
+- **When ballistics land, only the shell path grows an arc.** The surrogate path stays a drop
+  permanently, which is the point of the distinction rather than an unfinished half.
+- **Until then the naming should not lie.** `DamageResolver.eject_matrix_if_needed`'s surrogate branch is
+  a drop; calling it an ejection is how the retired design keeps looking current.
+- Shares its dependency with *Forced movement — flung, thrown, knocked prone*, and probably its
+  implementation: an arc from a cell to a cell, with something to do on landing.
+
+### Overwatch: declaring it ends the turn, and spending buys quality
+**Needs:** nothing. **Unblocks:** overwatch reading as a commitment rather than a cheap extra.
+
+**The bug half is `BR52.15`** — `is_legal` never checks whether the unit is already watching, so
+overwatch can be declared repeatedly for `AP_COST` each time. This item is the design half.
+
+- **Declaring overwatch ends the turn.** Watching a lane *and* acting is the contradiction; committing
+  to watch is the cost.
+- **Remaining AP buys a better watch** rather than being discarded. Declaring early spends more and
+  watches harder — wider arc, faster reaction, better shot, or more triggers; which axis it scales is
+  open. That turns "2 AP left and nothing worth doing" into a decision instead of a rounding error.
+- **The cone must be visible** — see *Visible combat artifacts*. An overwatch whose watched region is
+  undrawn is a threat the player cannot route around, and scaling its quality by AP means nothing if the
+  quality cannot be seen.
+
+### Manipulator variety, starting with the three-pronged claw
+**Needs:** nothing; the part framework and `ActionCatalog` already carry this shape. **Unblocks:**
+hand-type parts being a choice rather than a uniform prerequisite.
+
+**A three-pronged manipulator** — *trifinger* or *three-jaw gripper* in industrial usage; pick one short
+name and use it consistently.
+
+- **Grants a jab action**, with a **vicious jab** as a gated variant.
+- **Cannot fire guns, but can support them.** `PartGraph.can_operate` already separates operating a
+  weapon from supporting one, so this is a capability-tag combination rather than new code.
+
+**The gating on the second attack is the real question, and the two candidates are different mechanics:**
+- **Intelligence-gated** — the unit is smart enough to fight dirty. Ties to the tier table.
+- **Perk-gated, "Dirty Fighter"** — an alternate attack across *many* hand-type parts. Better fit for
+  `docs/06`'s framework: one perk, an action grant, applying to a class of parts rather than one part.
+  Also a natural **perk family** member.
+
+Whichever wins, the part is data and the action already has an executor shape. The point of the item is
+that hand-type parts should differ from each other; the claw is where that starts.
 
 ### Weak points
 **Needs:** *Power and therms* for the trigger math; `02`/`03` (landed). **Unblocks:** the reactor vent
@@ -1221,6 +1279,12 @@ all three rather than three times.
   "COVER_SEEKER variant" this was written as — taskblock-46 retired the playstyle vocabulary, and the
   cover-seeking half is already `take_cover`'s weight in the `defensive` profile. What is actually
   missing is the input. Not melee-gated; can land whenever.
+- **Preferred ally spacing.** Units with the same weapon and playstyle cluster too tightly — identical
+  inputs produce identical scores, so identical units converge on the same cells. `ally_proximity`
+  exists as a consideration input; what is missing is a **preferred distance** rather than a monotonic
+  pull or push, so that too close scores badly for the same reason too far does. Expect interaction with
+  cover-seeking, where several units legitimately want the one good cover spot and only one can have it.
+  Pairs with the Protector input above — both are ally-relative positioning.
 - **Weapon distinctions — saw versus sword versus fist** (the `POWER`/`TRIGGER` capability split). A saw-hand
   can't add power to a sword swing.
 

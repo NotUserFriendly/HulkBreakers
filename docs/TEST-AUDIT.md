@@ -1,5 +1,10 @@
 # TEST-AUDIT.md — How to audit the suite
 
+**Not part of the workflow.** Nothing in the taskblock cadence runs this, and no pass is expected to
+produce or update the CSV. It is a tool the supervisor reaches for when a question about the suite comes
+up — run it deliberately, act on it, let it go stale. **If it ever appears in `CLAUDE.md`'s workflow
+steps or in a taskblock's standing acceptance, that is the mistake.**
+
 A **one-time, repeatable** procedure. Not a living document, and the CSV it produces is not maintained
 — it is a snapshot taken to answer a question, acted on, and allowed to go stale. Re-run it when the
 question comes back.
