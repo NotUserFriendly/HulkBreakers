@@ -1,5 +1,26 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass F — `self_obstruction` deleted
+
+**`ShotPlane.self_obstruction` is gone** (supervisor's call). It hand-modelled tb22 H2's rule — *"the
+shot's ray originates and immediately hits the cover if the muzzle is below the cover's height"* — by
+redirecting the aim point onto the obstruction. A ray marched from the real muzzle to the aimed point
+produces that outcome from geometry, so keeping the rule too would be two answers to one question.
+
+**Confirmed redundant on the plane path as well, not just the ray path.** With the redirect removed
+and the flag still on the plane, the low-cover tests **still pass** — the plane's own level-shot model
+already caught the same cover, so the redirect was belt-and-braces there. That is a stronger reason to
+delete it than "the chain covers it".
+
+Removed from `AttackAction`, `BurstAction` and **`StabAction`**. **Melee is worth a note:** a stab
+still resolves through the plane (the chain returns early for the slide and none deflect modes), so if
+that redirect ever mattered for melee it now wants its own answer — flagged rather than assumed, since
+no test covers it and the plane catches the ordinary case anyway.
+
+Four `test_shot_plane.gd` tests for the deleted function went with it, and `suite_audit.csv` /
+`suite_profile.json` were reconciled by hand rather than regenerated — a full regeneration rewrites
+3 565 lines of machine-dependent timings for a one-number change.
+
 ### taskblock-52 Pass F — the 14 blockers diagnosed: all fixture assumptions, none a chain defect
 
 The flag was inverted, the failures enumerated and root-caused, then reverted so the tree stays

@@ -140,16 +140,6 @@ func apply(state: CombatState) -> void:
 		if target != null
 		else ShotPlane.depth_of_part(plane, target_part)
 	)
-	# taskblock-22 Pass H2: same self-obstruction check as AttackAction's
-	# own (see its doc comment) — computed once here too, since every
-	# pull in the burst reuses this same aim_point, a burst fired from
-	# behind low cover hits that cover on every pull, not just the first.
-	var muzzle_hit: Region = ShotPlane.self_obstruction(
-		plane, muzzle.y, actual.shell.all_parts_with_joints()
-	)
-	if muzzle_hit != null and not (muzzle_hit.body is Unit):
-		aim_point = Vector2(0.0, muzzle.y) + aim_offset
-		aim_depth = muzzle_hit.depth
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 

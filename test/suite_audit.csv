@@ -1509,10 +1509,6 @@ unit/logic/test_shot_plane.gd,test_center_of_returns_the_frontmost_regions_rect_
 unit/logic/test_shot_plane.gd,test_center_of_falls_back_to_the_targets_cell_with_no_regions,,1403,0,0,0,0,0,1,"a degenerate input yields an empty result, never an error"
 unit/logic/test_shot_plane.gd,test_center_of_part_returns_the_frontmost_regions_rect_center,,1162,0,0,0,0,0,1,the frontmost region in the shot plane wins
 unit/logic/test_shot_plane.gd,test_center_of_part_falls_back_to_the_given_cell_with_no_matching_region,,909,0,0,0,0,0,0,"a degenerate input yields an empty result, never an error"
-unit/logic/test_shot_plane.gd,test_self_obstruction_excludes_the_shooters_own_body,,1196,0,0,0,0,0,1,a shot never obstructs on the shooter's own body
-unit/logic/test_shot_plane.gd,test_self_obstruction_returns_null_with_nothing_in_the_way,,3429,0,0,0,0,0,1,a shot never obstructs on the shooter's own body
-unit/logic/test_shot_plane.gd,test_self_obstruction_never_resolves_to_a_wall_behind_the_shooter,,3475,0,0,0,0,0,2,a shot never obstructs on the shooter's own body
-unit/logic/test_shot_plane.gd,test_self_obstruction_excludes_the_shooters_own_joint_regions,,3056,0,0,0,0,0,1,a shot never obstructs on the shooter's own body
 unit/logic/test_shot_plane.gd,test_resolve_projectile_floor_at_zero_is_opt_in,,2109,0,0,0,0,0,0,"a balance number is a data tunable, not a literal in code"
 unit/logic/test_shot_plane.gd,test_a_wall_part_between_shooter_and_target_blocks_the_shot,,2077,0,0,0,0,0,1,cover between muzzle and target stops the shot
 unit/logic/test_shot_plane.gd,test_destroying_a_wall_removes_its_region_from_the_plane,,1746,0,0,0,0,0,2,a destroyed part stops contributing
