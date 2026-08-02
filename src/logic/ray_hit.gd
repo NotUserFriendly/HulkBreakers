@@ -106,6 +106,19 @@ func to_exit_region() -> Region:
 	return _region_at(exit_point, exit_t, exit_normal)
 
 
+## The same hit as a `HitResult` — what a *screen* ray cast answers with, and what
+## the aim UI consumes (`AimResult.resolves`).
+##
+## taskblock-52 Pass E: this is what lets the aim preview and resolution share one
+## query. `AimController._resolve_hit` used to call `ShotPlane.resolve_ray`, which
+## built a whole second plane and did its own point-in-rect lookup — a second
+## resolver sitting behind the number the UI shows, which is precisely what
+## `docs/08`'s pillar forbids ("the tooltip and the damage must come from the same
+## call").
+func to_hit_result() -> HitResult:
+	return HitResult.new(part, point, normal, t, body, socket)
+
+
 func _region_at(at: Vector3, distance: float, face_normal: Vector3) -> Region:
 	var region := Region.new(Rect2(0.0, at.y, 0.0, 0.0), distance, part, face_normal)
 	region.thickness = thickness

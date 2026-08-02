@@ -266,9 +266,13 @@ func test_the_tie_rate_across_a_dense_sweep_is_reported() -> void:
 ##
 ## This is exactly what the combat-log line was specified to reveal — the
 ## taskblock's own words are that a stage firing once in ten thousand shots is a
-## path nobody ever sees run. Asserted as a **measurement of the current state**,
-## not as a rule: if a later change makes closest root fire, this test should be
-## updated to say so rather than deleted.
+## path nobody ever sees run.
+##
+## **Supervisor's decision (2026-08-02): the stage stays, as cheap insurance.** So
+## this is a measurement of the current state, deliberately not a rule and
+## deliberately not an argument for deletion. If a later change makes closest root
+## fire, update this test to say so — it stops being dead code and that is good
+## news, not a regression.
 func test_closest_root_does_not_fire_in_any_tie_that_can_currently_be_constructed() -> void:
 	var grid: Grid = GridFixture.enclosed_room(21, 21)
 	var shooter: Unit = _shooter(Vector2i(10, 10))

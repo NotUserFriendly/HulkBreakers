@@ -136,6 +136,18 @@ confirm" roll-up — so pending items surface at a natural review point without 
   many it actually collected; failing the run when those differ is the whole of it. Not attempted
   in this taskblock — it is harness work and taskblock-52 is a resolver block.
 
+- **2026-08-02 (taskblock-52 Pass F): a second, worse half of the same gap.** A script error at
+  *runtime* — not a parse error — opens a **debugger break that halts the run waiting for input on
+  stdin**. Observed directly: a failing assertion raised `Out of bounds get index '0'`, GUT printed
+  `Debugger Break, Reason: ...` and `Enter "help" for assistance.`, and the run sat there until a
+  ten-minute timeout killed it.
+- **So the two failure modes are opposite and both bad:** a *parse* error silently drops a file and
+  the gate still passes; a *runtime* error hangs the gate forever. Neither reports what happened in
+  the summary, and the second is indistinguishable from an infinite loop in the code under test —
+  which is exactly what it looked like on first sight, since the change in flight was a new resolver.
+- **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
+  headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
+
 ### BR51.25 — Active — owner: `SUPERVISOR`
 **Non-unit objects render untransformed in the inspect preview**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first
@@ -1739,8 +1751,33 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
     not "cap scatter radius" (that would hide a modelling error behind a balance number). It is that
     resolution should march from the real muzzle to the aimed point, which is what taskblock-52 builds.
     The floor half of this entry is untouched and still real — there is still no floor to hit.
-  - **Still `SUPERVISOR`-owned and still open.** Nothing is claimed fixed here; this is a corrected
-    diagnosis with the measurements behind it.
+  - **Still `SUPERVISOR`-owned.** The corrected diagnosis above stands on its own measurements; what
+    follows is the fix built on it.
+
+- **NOT `Pending` — the fix is built and is not switched on** (taskblock-52, Passes A-F). CC session
+  `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. `RayChain` addresses both halves of this entry and is
+  approved for adoption, **but `CombatState.shot_resolver` still defaults to the plane**, because
+  flipping it red-lights 14 tests. Nothing a supervisor could look at has changed yet, so marking this
+  `Pending` would be claiming a fix nobody can see. Recorded here so the work is not re-derived:
+  - **The wide-offset half** — a round marches from the real muzzle to the aimed point, so it
+    diverges from the gun instead of being translated sideways with it. A wide dartboard offset can
+    no longer relocate the flight outside the building.
+  - **The "or the floor" half** — `grid.surfaces` is in the march, and `ship_floor`/`ramp` carry real
+    authored geometry. A round angled down finally has something to intersect; there was previously
+    no branch for it to take.
+  - **Measured:** the seam experiment **56/200 -> 0/200**; **0/360** empty across a 72-angle x
+    5-offset sweep inside a closed room; **59/59** shallow downward shots landing.
+- **To see it:** fire **wide** — a late pull of a long chaingun burst at range is exactly the shape
+  that used to vanish — and fire **down at the deck**, which previously had no geometry at all. Every
+  round should leave a mark on something.
+- **What is still legitimately a miss**, so it does not read as a regression: a round that leaves an
+  unenclosed board, or goes out through a broken wall or the ceiling. That is `docs/02`'s stated rule
+  and it is asserted — on an open board a shot misses *exactly when* its own flight would run past the
+  board before reaching the deck.
+- **What still stands between this and `Pending`:** the flag flip, and the 14 failures it exposes.
+  **Note `BR52.03`** too: terrain risers have no geometry behind them, so a round fired horizontally
+  into a *step* on a multi-level map still passes through it — a known remaining hole, filed
+  separately rather than folded in here.
 ### BR35.01 — Pending — owner: `CC`
 **`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`

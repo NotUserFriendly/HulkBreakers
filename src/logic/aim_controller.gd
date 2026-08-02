@@ -182,10 +182,35 @@ static func window_depth(
 ## `resolve_ray`'s own docstring calls for. `null` if the muzzle sits
 ## exactly on the shooter->target line already (no horizontal direction to
 ## fire along — the degenerate "shooting yourself" case).
+## taskblock-52 Pass E: **the preview resolves through whatever resolves the
+## shot.** This used to call `ShotPlane.resolve_ray` unconditionally — a second
+## plane built and walked purely to answer "what is under the reticle" — which is a
+## second resolver standing behind the number the UI shows. `docs/08`'s pillar is
+## that the tooltip and the damage come from the same call, and following
+## `world.shot_resolver` is what makes that true by construction rather than by two
+## implementations agreeing.
+##
+## **The ray path is the simpler of the two, and that is the point of the model
+## split.** The dartboard already produces a world point — `AimPlaneGeometry.
+## world_point` is what `AimView` draws the reticle at — so B exists before this
+## function is called and the shot is just muzzle-to-B. The plane path has to go
+## through `ray_from_muzzle`, whose own doc comment explains that vertical aim is
+## expressed by *moving the muzzle's height* while keeping `dir.y == 0`, because
+## the plane's coordinate system has no clean way to carry a tilted ray. A march
+## needs no such convention.
 static func _resolve_hit(
 	reticle: Vector2, weapon: Part, shooter: Unit, target_cell: Vector2i, world: CombatState
 ) -> HitResult:
 	var muzzle: Vector3 = UnitGeometry.muzzle_point(shooter, weapon)
+	if world.shot_resolver == ShotResolution.RESOLVER_RAY:
+		var aimed: Vector3 = AimPlaneGeometry.world_point(shooter.cell, target_cell, reticle)
+		var direction: Vector3 = aimed - muzzle
+		if direction.is_zero_approx():
+			return null
+		var hit: RayHit = RayCaster.cast(
+			world, muzzle, direction, shooter.shell.all_parts_with_joints()
+		)
+		return null if hit == null else hit.to_hit_result()
 	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
 		shooter.cell, target_cell, reticle, muzzle
 	)
