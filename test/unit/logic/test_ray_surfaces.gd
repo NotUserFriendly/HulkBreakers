@@ -272,3 +272,82 @@ func test_the_chain_resolves_a_shot_into_the_deck() -> void:
 	for result: ImpactResult in results:
 		if result.region.part.id == &"ship_floor":
 			assert_false(result.destroyed_part, "the deck survives being shot")
+
+
+## **Can a round deflect off the floor?** (Supervisor, 2026-08-02: *"they should be
+## able to."*) **Yes, and it falls out of the same incidence rule every other
+## surface obeys** — the floor is ordinary geometry, so nothing special was needed
+## to give it this.
+##
+## Fired low and shallow so the deck is reached before any wall: a grazing round
+## skips off it, a steep one bites in.
+func test_a_shallow_round_deflects_off_the_deck_and_a_steep_one_bites_in() -> void:
+	var grid: Grid = GridFixture.enclosed_room(11, 11)
+	var shooter: Unit = _shooter(Vector2i(2, 5))
+	var state := CombatState.new(grid, [shooter])
+	var excluded: Array[Part] = shooter.shell.all_parts_with_joints()
+	var from := Vector3(2.0, 0.3, 5.0)
+	var seen: Dictionary = {}
+
+	for degrees in [3, 75]:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 52
+		var direction: Vector3 = Vector3(1.0, -tan(deg_to_rad(float(degrees))), 0.0).normalized()
+		# 3.0 is under steel's DT, so this is the deflect-or-stop decision rather
+		# than a straight punch-through.
+		var results: Array[ImpactResult] = RayChain.resolve(
+			state, from, from + direction * 8.0, 3.0, 0.0, state.material_table, rng, excluded
+		)
+		for result: ImpactResult in results:
+			if result.region.part.id == &"ship_floor" and not seen.has(degrees):
+				seen[degrees] = Enums.Outcome.keys()[result.outcome]
+		print(
+			(
+				"  %2d deg -> deck outcome %s (%d hop(s))"
+				% [degrees, seen.get(degrees, "never reached it"), results.size()]
+			)
+		)
+
+	assert_eq(seen.get(3, ""), "DEFLECT", "a grazing round skips off the deck")
+	# **75, not 60.** At 60 degrees from horizontal the incidence against the deck's
+	# own up-normal is exactly 30 — steel's `deflect_threshold_deg` to the degree —
+	# so it lands on the boundary and float noise decides it. Picking the angle that
+	# happens to fall the way an assertion wants is how a test starts describing its
+	# own fixture; 75 sits at 15 degrees of incidence, unambiguously inside the
+	# bite-in half.
+	assert_eq(seen.get(75, ""), "STOP_DEAD", "and a steep one bites into it instead")
+
+
+## **Deflecting off the deck must not depend on the deck being indestructible** —
+## the supervisor's own note is that walls and ramps will not stay that way. The
+## decision is incidence and DT, exactly as for any other surface, and
+## `is_destructible` never enters it.
+func test_a_deck_deflection_is_unchanged_when_the_deck_is_made_destructible() -> void:
+	var outcomes: Array[String] = []
+	for destructible in [false, true]:
+		var grid: Grid = GridFixture.enclosed_room(11, 11)
+		for cell: Vector2i in grid.surfaces:
+			for surface: Surface in grid.surfaces_at(cell):
+				surface.part.is_destructible = destructible
+		var shooter: Unit = _shooter(Vector2i(2, 5))
+		var state := CombatState.new(grid, [shooter])
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 52
+		var direction: Vector3 = Vector3(1.0, -tan(deg_to_rad(3.0)), 0.0).normalized()
+		var results: Array[ImpactResult] = RayChain.resolve(
+			state,
+			Vector3(2.0, 0.3, 5.0),
+			Vector3(2.0, 0.3, 5.0) + direction * 8.0,
+			3.0,
+			0.0,
+			state.material_table,
+			rng,
+			shooter.shell.all_parts_with_joints()
+		)
+		for result: ImpactResult in results:
+			if result.region.part.id == &"ship_floor":
+				outcomes.append(Enums.Outcome.keys()[result.outcome])
+				break
+	print("  indestructible -> %s ; destructible -> %s" % [outcomes[0], outcomes[1]])
+	assert_eq(outcomes.size(), 2, "both runs struck the deck")
+	assert_eq(outcomes[0], outcomes[1], "destructibility does not decide a deflection")
