@@ -171,6 +171,27 @@ these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defec
 
 # QUEUED
 
+### The AI can queue a vertical move
+**Needs:** nothing — `ClimbAction`/`HopDownAction` exist, are interruptible, and ladders are
+authored and placed by the generator (tb53 C/D/E). **Unblocks:** vertical maps being played
+rather than merely built.
+
+**No AI path has ever queued either action.** The planner moves exclusively via `MoveAction`, so
+vertical movement has never happened in a real bout — a fact that survived taskblock-37 building
+both actions and taskblock-53 making them safe to be caught in. With ladders now authored and the
+generator placing routes, this is the difference between a usable map and a decorative one.
+
+- **The scoring already knows about height.** `UtilityContext._closes_distance` reads PATH
+  distance from a flood rooted at the target, and `Pathfinder.move_cost` already prices a climb
+  and a ladder edge. What is missing is the **executor**: the step that turns "the best cell is
+  up there" into a queued `ClimbAction` instead of a `MoveAction` that cannot make the step.
+- **Split from taskblock-53 Pass E deliberately.** The interruption half landed there and is
+  self-contained; this half touches `UtilityExecutors` and the planner's action construction,
+  which is where a regression would be hardest to attribute. Doing both in one pass would have
+  meant a planner change riding along with a movement change.
+- **The proving ground is the test surface** — a generated map may or may not produce the
+  geometry that exercises this; the authored one is built to.
+
 ### Derive plane/picker membership instead of answering it in four places
 **Needs:** taskblock-52's ray chain (landed — it is the default resolver now). **Unblocks:** deleting
 `ShotPlane` as a resolver, and closing `BR35.01`'s successors honestly.

@@ -481,6 +481,16 @@ func _resolve_until_body(queue: ActionQueue, mid_move_hook: Callable) -> Diction
 			var result: Dictionary = (action as MoveAction).apply_stepwise(self, mid_move_hook)
 			if result.stopped:
 				return _stopped(queue.unit, &"mid_move_interrupt", action)
+		# taskblock-53 Pass E: **a climb is interruptible on the same rule, not a parallel
+		# one.** `ClimbAction.apply_interruptible` returns the same `{"stopped": bool}` shape,
+		# so an overwatcher catching a unit on a ladder stops the queue exactly the way
+		# catching one in the open does — same reason, same refund, same log line. A unit
+		# mid-climb is the most exposed it will ever be, and it used to be the one thing
+		# that could not be interrupted at all.
+		elif action is ClimbAction:
+			var climb: Dictionary = (action as ClimbAction).apply_interruptible(self, mid_move_hook)
+			if climb.stopped:
+				return _stopped(queue.unit, &"mid_move_interrupt", action)
 		else:
 			action.apply(self)
 	return {"kind": Enums.ResolveOutcome.COMPLETED}

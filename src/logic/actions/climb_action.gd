@@ -60,6 +60,29 @@ func is_legal(state: CombatState) -> bool:
 
 
 func apply(state: CombatState) -> void:
+	apply_interruptible(state)
+
+
+## taskblock-53 Pass E: **a climb can be interrupted, the same way a move can.**
+##
+## Two gaps were flagged when `ClimbAction`/`HopDownAction` were built in taskblock-37 and
+## never closed; this is the second. An ordinary move checks `mid_move_hook` after every cell
+## it steps onto, so an overwatcher can catch a mover in the open. A climb checked nothing, so
+## **a unit on a ladder — slow, committed, and unable to take cover, the most exposed it will
+## ever be — was the one thing in the game that could not be shot at while moving.**
+## `docs/09`: "every real exposure the same."
+##
+## **The hook fires once, after the unit has committed and before the turn goes on.** A climb
+## is one transit, not a run of cells, so there is no per-cell cadence to borrow. It is called
+## with the climber already at the destination because that is where an overwatcher's own
+## line-of-fire check has to resolve against — a unit half-way up a ladder is not a position
+## the board can express, and inventing one would be a second movement model.
+##
+## Returns `{"stopped": bool}`, the same shape `MoveAction.apply_stepwise` returns, so
+## `CombatState._resolve_until_body` treats an interrupted climb and an interrupted move
+## identically rather than growing a second branch. **The climb itself always completes** —
+## being shot on a ladder ends your turn, it does not rewind the rungs.
+func apply_interruptible(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
 	var actual: Unit = state.find_unit(unit.id)
 	var origin_cell: Vector2i = actual.cell
 	var rise: float = _rise(state, actual)
@@ -82,6 +105,11 @@ func apply(state: CombatState) -> void:
 		state, actual, FaceAction.orientation_toward(origin_cell, target_cell), &"free_with_move"
 	)
 	_log(state, actual, origin_cell, rise, cost)
+
+	if not mid_move_hook.is_valid():
+		return {"stopped": false}
+	var hook_result: Variant = mid_move_hook.call(state, actual)
+	return {"stopped": hook_result is bool and hook_result}
 
 
 func _rise(state: CombatState, actual: Unit) -> float:

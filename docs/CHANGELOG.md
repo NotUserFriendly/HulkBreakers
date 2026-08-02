@@ -1,5 +1,31 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-53 Pass E (half) — a climb can be interrupted; the AI still cannot queue one
+
+**Landed: the interruption.** `ClimbAction.apply_interruptible` consults the mid-move hook and
+returns the same `{"stopped": bool}` shape `MoveAction.apply_stepwise` does, so
+`CombatState._resolve_until_body` treats an interrupted climb and an interrupted move
+identically — same reason (`mid_move_interrupt`), same refund, same log line. Not a parallel
+path.
+
+**Why it matters more than it sounds.** A unit on a ladder is the most exposed it will ever be —
+slow, committed, unable to take cover — and it was **the one thing in the game that could not be
+shot at while moving**, because `apply()` never consulted a hook. `docs/09`: "every real exposure
+the same."
+
+**The hook fires once, after the climber has committed.** A climb is one transit, not a run of
+cells, so there is no per-cell cadence to borrow; it is called with the unit already at the
+destination because that is where an overwatcher's line-of-fire has to resolve. **The climb
+always completes** — being shot on a ladder ends your turn, it does not rewind the rungs.
+
+**Not landed: no AI path queues a vertical move.** The planner still moves exclusively via
+`MoveAction`, so vertical movement has never happened in a real bout. The scoring already knows
+about height — `_closes_distance` reads path distance and `move_cost` prices a ladder edge —
+what is missing is the executor that turns "the best cell is up there" into a `ClimbAction`.
+**Split deliberately:** that half touches the planner's action construction, where a regression
+is hardest to attribute, and folding it in alongside a movement change would have made the two
+inseparable. Queued in `PLAN.md` as *The AI can queue a vertical move*.
+
 ### taskblock-53 Pass D — the generator owes navigability, and `BR46.02` closes
 
 **Re-measured either side of the fix with the entry's own reproduction, 40 seeds at the real
