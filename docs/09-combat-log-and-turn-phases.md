@@ -69,9 +69,19 @@ Rules:
 - **One stream, many sinks — never two streams** (taskblock03 Pass B). `BattleScene` registers
   both `UISink` and `FileSink` on the *same* `CombatLog`, so the on-screen panel and
   `out/combat.log` are the identical event stream by construction — they cannot drift, because
-  neither one renders anything the other doesn't also get. A `session_start` event carries the
-  seed as the file's first line, so a human session is a regression fixture too, not just a
+  neither one renders anything the other doesn't also get. A **`bout_start`** event carries the
+  seed as that bout's first line, so a human session is a regression fixture too, not just a
   headless test run: it's replayable from the log file alone.
+- **A log file holds several bouts, and every one of them logs its own seed** (taskblock-52,
+  `BR52.11`). A new bout **appends**; only a new process rotates the file. So the header is
+  per-**bout**, not per-file — it was called `session_start` back when one file meant one bout,
+  and a file's first seed line describes only the first bout in it.
+- **The seed logged is the ORIGIN seed** — the one number a whole bout derives from — carried on
+  `CombatState.bout_seed` and emitted by `BattleScene.load_battle` itself, unconditionally.
+  Deliberately not `rng.seed`, which is a *derived* `randi()` and would not regenerate the map:
+  it would look right in the log and replay nothing. And deliberately not an argument a caller
+  passes, because a caller that forgets produces a bout with no record of how to reproduce it —
+  which is precisely what `GenerateBoutOverlay` did for five blocks.
 
 ## Diagnostics ride the same stream (taskblock-41 Pass B)
 Engine and script errors are **combat-log events**, not a second log. `EngineErrorTap` is a real

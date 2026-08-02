@@ -1,5 +1,39 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 — every bout logs its own seed (`BR52.11`)
+
+**`BattleScene.load_battle`'s optional `header_event` argument is gone.** The seed rides on
+`CombatState.bout_seed` and `load_battle` emits it unconditionally, so a caller cannot produce a bout
+with no record of how to reproduce it. **`session_start` is renamed `bout_start`** — the old name was
+right when a log file held one bout, and since `FileSink` began appending it routinely holds several.
+
+**What was actually broken.** `GenerateBoutOverlay._on_start_bout_pressed` called the two-argument
+form — the form every caller in the codebase uses — so the seed a player typed was handed to
+`BoutSetup.build_bout`, generated the whole bout, and was then dropped. Because a new bout appends,
+the file opened with the launch bout's `seed=2` and every later bout ran underneath it carrying none
+of its own. **A reader takes line 1 as the seed for the file and is wrong**, which is exactly how a
+play-by-play got reported against seed 2 when the bout had a four-digit one.
+
+**The origin seed, not the derived one.** Both generators seed a local RNG with the origin number and
+hand `rng.randi()` to `CombatState.new`, so `state.rng.seed` is derived and **would not regenerate the
+map**. Logging it would have looked correct and replayed nothing — a worse failure than the missing
+line, because it is silent. `bout_seed` carries the origin, and a test proves the distinction by
+rebuilding the board from the carried value and by asserting `rng.seed != bout_seed`.
+
+**Two generators cover every path.** `BoutSetup.build_bout` stamps it, which reaches the Generate Bout
+overlay, `CompletionSampler.build_for_seed`, `ReplayHandle.from_seed`, the watched-run panel and
+checkpoint 9; `BattleScene._seed_battle` stamps the launch path. `_seed_battle` now takes the seed
+rather than a prebuilt RNG, because the origin number has to still be in hand to stamp.
+
+**The field sits on `CombatState` rather than in its constructor** — `CombatState.new` has 733 call
+sites and almost none of them are bouts anyone replays. **0 is a real seed, not a sentinel**
+(`GenerateBoutOverlay` uses it as the fallback for unparseable input), so a hand-built fixture state
+honestly reports seed 0 instead of pretending to be unset.
+
+**The regression test is the one the old shape could not have:** it asserts on the **second** bout in
+one scene, through the two-argument call, and demands its own distinct four-digit seed — the thing
+that was silently absent. Suite green.
+
 ### taskblock-52 Pass F — the flip lands: the ray chain resolves every shot
 
 `CombatState.shot_resolver` defaults to `&"ray"`. **Full suite green with the flag inverted** — 281

@@ -384,18 +384,19 @@ func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
 	scene.file_sink.close()
 
 
-## docs/09 taskblock03 Pass B2: a session must be replayable from its own
+## docs/09 taskblock03 Pass B2: a bout must be replayable from its own
 ## log file — the seed has to actually be in it, not just known to the
 ## process that generated it.
-func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
+## taskblock-52 `BR52.11`: `session_start` is `bout_start`, because a log file
+## holds several bouts now and only the first of them was ever a "session".
+func test_new_battle_logs_the_seed_at_bout_start_to_both_sinks() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var log_sink: HierarchicalUiSink = _overlay(scene).log_sink
 
 	assert_true(log_sink.lines.size() > 0)
 	assert_true(
-		log_sink.lines[0].contains("session_start"),
-		"the very first line must be the session header"
+		log_sink.lines[0].contains("bout_start"), "the very first line must be the bout header"
 	)
 	assert_true(log_sink.lines[0].contains(str(BattleScene.DEFAULT_SEED)))
 
@@ -412,11 +413,89 @@ func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
 
 	var header := ""
 	for line: String in contents:
-		if line.contains("session_start"):
+		if line.contains("bout_start"):
 			header = line
-	assert_false(header.is_empty(), "the session header reached the file")
+	assert_false(header.is_empty(), "the bout header reached the file")
 	assert_true(header.contains(str(BattleScene.DEFAULT_SEED)))
 	assert_eq(header, log_sink.lines[0], "the same event, not two independently-built ones")
+
+
+## **`BR52.11`'s actual regression, and the one the old shape could not catch.**
+##
+## `GenerateBoutOverlay` starts a bout by calling `load_battle(state, mission)` — the
+## form every caller in the codebase uses. When the header was an optional third
+## argument, that path logged **no seed at all**, and because a new bout appends to
+## the same file, the log opened with the launch bout's seed and every later bout ran
+## underneath it carrying none of its own. A reader takes line 1 as the seed for the
+## whole file and is wrong; that is exactly how a play-by-play got reported against
+## seed 2 when the bout had a four-digit one.
+##
+## So this asserts on the **second** bout in one scene, through the two-argument call,
+## and demands its own distinct seed — the thing that was silently absent.
+func test_a_second_bout_logs_its_own_seed_not_the_first_bouts() -> void:
+	var scene := BattleScene.new()
+	add_child_autofree(scene)
+	var log_sink: HierarchicalUiSink = _overlay(scene).log_sink
+
+	var first_header: String = log_sink.lines[0]
+	assert_true(
+		first_header.contains(str(BattleScene.DEFAULT_SEED)),
+		"sanity: bout one logged the launch seed"
+	)
+
+	# A seed that cannot be confused with the launch seed, and shaped like the
+	# four-digit one a player types into the Generate Bout field.
+	const SECOND_SEED := 8317
+	var built: Dictionary = CompletionSampler.build_for_seed(SECOND_SEED)
+	assert_true(built.has("state"), "sanity: the fixture bout actually built")
+	assert_eq(
+		(built["state"] as CombatState).bout_seed,
+		SECOND_SEED,
+		"BoutSetup must stamp the ORIGIN seed onto the bout, not the derived rng.seed"
+	)
+
+	scene.load_battle(built["state"], built["mission"])
+
+	var headers: Array[String] = []
+	for line: String in log_sink.lines:
+		if line.contains("bout_start"):
+			headers.append(line)
+	assert_eq(headers.size(), 2, "each bout logs its own header, not one per file")
+	assert_true(
+		headers[1].contains(str(SECOND_SEED)),
+		"the second bout must log the seed it was actually generated from"
+	)
+	assert_false(
+		headers[1].contains(str(BattleScene.DEFAULT_SEED)),
+		"and must not inherit the first bout's seed"
+	)
+	scene.file_sink.close()
+
+
+## The derived-versus-origin distinction has its own test because getting it wrong
+## produces a log line that looks perfectly correct and replays nothing.
+func test_the_logged_seed_regenerates_the_map_and_the_derived_rng_seed_would_not() -> void:
+	const SEED := 4471
+	var built: Dictionary = CompletionSampler.build_for_seed(SEED)
+	var state: CombatState = built["state"]
+
+	assert_eq(state.bout_seed, SEED, "the origin seed is what is carried")
+	assert_ne(
+		state.rng.seed,
+		SEED as int,
+		"sanity: rng.seed is a DERIVED randi() — this is why it must not be the logged value"
+	)
+
+	# The real proof: rebuilding from the carried seed reproduces the board.
+	var rebuilt: Dictionary = CompletionSampler.build_for_seed(state.bout_seed)
+	var rebuilt_state: CombatState = rebuilt["state"]
+	assert_eq(
+		rebuilt_state.grid.blockers.size(),
+		state.grid.blockers.size(),
+		"the carried seed regenerates the same map"
+	)
+	assert_eq(rebuilt_state.units.size(), state.units.size(), "and the same roster")
+	assert_eq(rebuilt_state.rng.seed, state.rng.seed, "and the same derived combat rng")
 
 
 func test_new_battle_is_deterministic_from_the_same_seed() -> void:

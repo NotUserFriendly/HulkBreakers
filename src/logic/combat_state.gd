@@ -62,6 +62,25 @@ var batch_plans: BatchPlan = BatchPlan.new()
 ## ricochet against the same tuning, not a fresh default per shot.
 var material_table: MaterialTable = DataLibrary.material_table()
 
+## taskblock-52 `BR52.11`: **the ONE origin seed this whole bout was generated
+## from** — map, spawns, loadouts and combat rolls all descend from it. Set by the
+## two things that generate a playable bout (`BoutSetup.build_bout` and
+## `BattleScene._seed_battle`); `BattleScene.load_battle` logs it unconditionally
+## as the bout's first line, so no caller can produce a bout that failed to record
+## how to reproduce it.
+##
+## **Deliberately not `rng.seed`.** Both generators seed a local RNG with the origin
+## number and then hand `rng.randi()` to `CombatState.new` — so `rng.seed` is a
+## *derived* value that cannot regenerate the map. Logging it would look correct and
+## replay nothing, which is a worse failure than the missing line this replaced.
+##
+## Lives here rather than in the constructor because `CombatState.new` has 733 call
+## sites and almost none of them are bouts anyone replays. **0 is a real seed**, not
+## a sentinel — `GenerateBoutOverlay` uses it as the fallback for unparseable input —
+## so a hand-built fixture state genuinely reports seed 0 rather than pretending to
+## be unset.
+var bout_seed: int = 0
+
 ## taskblock-52: which model resolves this bout's shots — `ShotResolution.
 ## RESOLVER_RAY` (the ray chain, **the default since Pass F**) or `RESOLVER_PLANE`
 ## (the shot plane, still built and still selectable by this one field). Per-bout
@@ -377,6 +396,7 @@ func dup() -> CombatState:
 	# or the number the UI shows and the number resolution produces come from two
 	# different models — which is exactly the pillar docs/08 is built on.
 	cloned.shot_resolver = shot_resolver
+	cloned.bout_seed = bout_seed
 	for unit: Unit in cloned_units:
 		cloned.add_unit(unit)
 	cloned._current_unit_id = _current_unit_id
