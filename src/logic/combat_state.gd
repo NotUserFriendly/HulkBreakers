@@ -77,18 +77,30 @@ var material_table: MaterialTable = DataLibrary.material_table()
 ## and the acceptance for Pass F is a green suite with the flag inverted. Flipping
 ## it anyway would be hacking around a failure rather than fixing it.
 ##
-## **What the failures are, so the next session starts with them rather than at the
-## beginning.** They cluster as *more impacts than expected* — a burst of 12
-## logging 36, "3 pulls x 9 pellets" logging 61 rather than 27 — which is what a
-## round continuing until its damage runs out looks like once floors are real
-## geometry: it punches through its target and goes on to strike the deck. That is
-## arguably correct under `BR34.05`'s own rule and it triples impact counts, log
-## volume and tracer draws, so it is a **design question, not a fixture update**.
-## At least one is not that shape: `test_attack_action.gd`'s low-cover obstruction
-## case resolves to the target rather than the cover. **The raw march handles that
-## case correctly in isolation** (probed: a level shot from muzzle height 0.3 and
-## 0.5 both strike the cover at t=1.50, and 0.8 clears it), so the fault is in how
-## `AttackAction` composes the aim point, not in the chain.
+## **The 14 failures are diagnosed, and every one is a fixture assumption rather
+## than a defect in the chain.** They fall into exactly two shapes.
+##
+## **1. More impacts than expected** — a burst of 12 logging 36, "3 pulls x 9
+## pellets" logging 61 rather than 27. A round continues while it still has damage,
+## and floors are real geometry now, so it punches through its target and goes on to
+## strike the deck. The supervisor settled this: a pellet penetrating that
+## effectively is a **balance** problem for when ammo types land, not a resolver one.
+##
+## **2. A shot is no longer level.** This is the interesting one and it explains
+## every cover and muzzle-height failure at once. **The plane models a shot as
+## travelling at a constant height** — `_find_next` tests every region at the aim
+## point's own `y`, so a round fired from a 1.25 muzzle at a 0.5 chest sits at 0.5
+## the whole way and clips anything 0.6 tall in between. **The chain marches
+## muzzle-to-aim-point, which slopes**: probed on that exact geometry, the ray is at
+## **0.845** where the 0.6 cover stands and correctly passes over it. A real round
+## does slope, so the chain is right and the fixtures encode the level-shot
+## approximation.
+##
+## **A consequence worth deciding before the flip:** `ShotPlane.self_obstruction`
+## (tb22 H2, "the shot originates and immediately hits the cover if the muzzle is
+## below the cover's height") exists to hand-model a case the chain gets from
+## geometry for free. It may be redundant, and leaving both is two answers to one
+## question.
 ##
 ## `docs/SUPERSEDED.md` records the model change; the flag flip is the one part of
 ## it still outstanding.
