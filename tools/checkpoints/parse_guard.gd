@@ -40,6 +40,20 @@ const CHECKPOINT_DIR := "res://tools/checkpoints"
 ## mind, not which ones can rot.** Tools are the whole class: nothing in
 ## `run_tests.sh` imports them, so nothing else will ever notice them breaking.
 const TOOLS_DIR := "res://tools"
+## taskblock-53 Pass A: **the audit tree, for exactly the reason `tools/` is here.**
+##
+## The audit is deliberately disjoint from the suite — nothing under `res://test/` reads
+## it, and it is not run by any rung of `run_tests.sh`. That is what makes it rot-prone in
+## precisely the way `ai_planning_bench.gd` did: the next audit could be six months away,
+## and finding out then that it stopped compiling turns a question into a debugging
+## session. **Compiling is the only obligation the audit keeps**, so it is the only one
+## worth guarding.
+##
+## **Absence is not a failure.** The block's own acceptance is that this directory can be
+## deleted outright and the ordinary suite still passes, so a missing audit tree
+## contributes zero paths rather than an error — the same way `_tool_paths()` already
+## treats an unopenable directory.
+const AUDIT_DIR := "res://audit"
 ## What a tool writes in its own doc comment to declare that it is expected never
 ## to compile again. See `_is_retired`.
 const RETIRED_MARKER := "@retired-tool"
@@ -73,6 +87,14 @@ func _initialize() -> void:
 		if _is_retired(path):
 			retired += 1
 			continue
+		checked += 1
+		if not _parses(path):
+			failures.append("%s — failed to parse" % path)
+
+	# taskblock-53 Pass A: the audit, parse-only for the same reason tools are. It extends
+	# GutTest rather than SceneTree — it is run by pointing the ordinary runner at its own
+	# directory — so there is no base type to demand here either.
+	for path: String in _gd_paths_in(AUDIT_DIR):
 		checked += 1
 		if not _parses(path):
 			failures.append("%s — failed to parse" % path)
@@ -132,6 +154,26 @@ func _is_retired(path: String) -> bool:
 ## Every `.gd` directly under `res://tools/`. Deliberately not recursive: the one
 ## subdirectory is `tools/checkpoints/`, which the scan above already covers with a
 ## stricter check, and parsing it twice would double-report a single break.
+## Every `.gd` directly under `dir_path`, or an empty list if the directory is not there
+## at all. **A missing directory is a legitimate state, not an error** — the audit tree is
+## removable by design (taskblock-53 Pass A), so this cannot be the thing that fails when
+## someone removes it.
+func _gd_paths_in(dir_path: String) -> Array[String]:
+	var paths: Array[String] = []
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return paths
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if entry.ends_with(".gd") and not dir.current_is_dir():
+			paths.append("%s/%s" % [dir_path, entry])
+		entry = dir.get_next()
+	dir.list_dir_end()
+	paths.sort()
+	return paths
+
+
 func _tool_paths() -> Array[String]:
 	var paths: Array[String] = []
 	var dir := DirAccess.open(TOOLS_DIR)

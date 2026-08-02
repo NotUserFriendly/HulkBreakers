@@ -9,7 +9,7 @@ column can be filled in completely and still be worthless.
 """
 import csv, sys, collections
 
-PATH = "test/suite_audit.csv"
+PATH = "audit/suite_audit.csv"
 
 
 def rows():
