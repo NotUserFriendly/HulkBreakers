@@ -399,14 +399,24 @@ func test_new_battle_logs_the_seed_at_session_start_to_both_sinks() -> void:
 	)
 	assert_true(log_sink.lines[0].contains(str(BattleScene.DEFAULT_SEED)))
 
+	# `BR52.04`: **the file's first line is no longer this session's first line.**
+	# `FileSink` appends now (supervisor's call), so a log carries every earlier
+	# bout and run above this one. The intent here is unchanged — the UI sink and
+	# the file sink must render *the same event*, never two independently-built
+	# ones — so this finds the header this scene actually wrote rather than
+	# assuming it sits at byte zero.
 	var file := FileAccess.open(scene.file_sink.path, FileAccess.READ)
-	var first_line: String = file.get_line()
+	var contents: PackedStringArray = file.get_as_text().split("\n", false)
 	file.close()
 	scene.file_sink.close()
 
-	assert_true(first_line.contains("session_start"))
-	assert_true(first_line.contains(str(BattleScene.DEFAULT_SEED)))
-	assert_eq(first_line, log_sink.lines[0], "the same event, not two independently-built ones")
+	var header := ""
+	for line: String in contents:
+		if line.contains("session_start"):
+			header = line
+	assert_false(header.is_empty(), "the session header reached the file")
+	assert_true(header.contains(str(BattleScene.DEFAULT_SEED)))
+	assert_eq(header, log_sink.lines[0], "the same event, not two independently-built ones")
 
 
 func test_new_battle_is_deterministic_from_the_same_seed() -> void:

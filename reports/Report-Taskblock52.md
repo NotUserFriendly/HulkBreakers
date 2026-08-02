@@ -86,6 +86,20 @@ what surfaced that closest-root cannot fire (see Open questions).
   **Its recorded diagnosis was also wrong and has been corrected in the entry**; the cause is the
   plane's parallel-ray scatter model, not wall rects failing to tile.
 
+## Withdrawn from the ledger by the supervisor
+
+- **The click hitch (filed as `BR52.05`, withdrawn same day).** *"52.05 isn't a bug as we're
+  investigating as part of the new build process immediately."* Per the standing rule that defects in
+  a system actively being built are symptoms of work in progress rather than ledger entries, it lives
+  here instead. **The observation is still worth keeping**, because the supervisor's own revision is
+  the useful part: it is not selection-specific — *"it seems to occur when clicking any unit for a
+  purpose... selecting the active unit... clicking a unit to aim at... clicking a unit to confirm
+  aim."* Three intents, three code paths, one symptom points at something they share rather than at
+  any one handler. And it is a **discrete** cost on a click, distinct from `BR51.14`/`BR26.02`, which
+  are motion costs. If it needs an instrument, `ShotPlane.builds` is the one to reach for first: one
+  build measured **~8 500 usec** on a 217-blocker board this block, and a twelve-round burst measured
+  **20 builds**, so a click that rebuilds a plane several times would produce exactly this shape.
+
 ## Open questions
 
 - **THE OPEN ITEM: the flag flip, and the 14 failures behind it.** Adoption was approved on the
