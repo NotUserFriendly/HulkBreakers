@@ -56,6 +56,15 @@ const SPAWN_ZONE_SIZE: int = 2
 const RAISED_ROOM_PROBABILITY: float = 0.35
 const RAISED_ROOM_LEVEL: int = 1
 
+## taskblock-53 Pass D: how many repair sweeps `guarantee_navigability` will make. One
+## repair can expose another, so a single pass is not enough; a bound stops a pathological
+## board hanging generation. **Flagged, not designed** — 6 clears every seed measured, and
+## the sweep test is what would notice it being too low.
+const NAVIGABILITY_REPAIR_PASSES: int = 6
+## The rise a ramp handles. Above it, a ladder. The taskblock's own rule, and the same
+## number the proving-ground map uses between tiers.
+const RAMP_MAX_RISE: float = 2.0
+
 
 static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rng := RandomNumberGenerator.new()
@@ -94,7 +103,101 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 
 	_emit(grid, scratch, ramp_facings)
 
+	# taskblock-53 Pass D: **the generator owes navigability.** Runs last, on the finished
+	# `Grid` rather than on the scratch, because that is where real surfaces, heights and
+	# ramp tags live — and it is what `MapNavigability` measures, so the repair and the
+	# check cannot disagree about what a legal step is.
+	guarantee_navigability(grid)
+
 	return grid
+
+
+## **`BR46.02`'s fix, as a generation rule.** Descent is free and ascent is
+## capability-gated, so every lowered region is a one-way door for a unit with no climbing
+## capability — 16 of 40 seeds at real bout size, worst 216 cells. A symmetric connectivity
+## check cannot see it: spawn zones stay mutually reachable on 60 of 60 seeds.
+##
+## Repairs by opening the cheapest edge out of each stranded cell: **rise <= 2 gets a ramp,
+## anything higher gets a ladder** (the taskblock's own rule). A generator rule only — the
+## editor will enforce nothing, because an authored map may be broken on purpose.
+##
+## **Iterates, because one repair can expose another.** Opening a pit's edge can reveal a
+## deeper shelf inside it that was never reachable to begin with. Bounded rather than
+## looped-until-stable so a pathological board cannot hang generation; the remaining cells
+## are left rather than forced, and the sweep test is what would notice a bound set too low.
+static func guarantee_navigability(grid: Grid) -> void:
+	for _attempt: int in range(NAVIGABILITY_REPAIR_PASSES):
+		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid)
+		if stranded.is_empty():
+			return
+		var opened := 0
+		for cell: Vector2i in stranded:
+			if _open_a_route_out(grid, cell):
+				opened += 1
+		# Nothing left that this rule knows how to fix. Stopping is honest; looping would
+		# spin.
+		if opened == 0:
+			return
+
+
+## Opens one upward edge out of `cell`, or false if it could not. The neighbour chosen is
+## the LOWEST one above `cell` — the smallest climb is the cheapest thing to build, and on a
+## terraced board it is also the one most likely to be reachable itself.
+static func _open_a_route_out(grid: Grid, cell: Vector2i) -> bool:
+	var here: float = UnitGeometry.true_height_for_cell(cell, grid)
+	var best_rise: float = INF
+	var best_neighbour := Vector2i.ZERO
+	for neighbour: Vector2i in grid.neighbors(cell):
+		if grid.blockers.has(neighbour):
+			continue
+		if Surface.first_walkable(grid.surfaces_at(neighbour)) == null:
+			continue
+		var rise: float = UnitGeometry.true_height_for_cell(neighbour, grid) - here
+		if rise <= 0.001 or rise >= best_rise:
+			continue
+		best_rise = rise
+		best_neighbour = neighbour
+	if is_inf(best_rise):
+		return false
+	if best_rise <= RAMP_MAX_RISE:
+		return _stamp_ramp(grid, cell, best_neighbour, here)
+	return _stamp_ladder(grid, cell, here, best_rise)
+
+
+## Replaces `cell`'s walkable surface with a ramp facing the neighbour it serves.
+## `Pathfinder.move_cost` treats an edge with a ramp at either end as ordinary movement, so
+## this opens the step in both directions at once — which is the whole point, since the
+## defect is that the way back up does not exist.
+static func _stamp_ramp(grid: Grid, cell: Vector2i, toward: Vector2i, height: float) -> bool:
+	var direction: Vector2i = toward - cell
+	var kept: Array[Surface] = []
+	for surface: Surface in grid.surfaces_at(cell):
+		if not (Surface.WALKABLE_TAG in surface.part.tags):
+			kept.append(surface)
+	grid.clear_surfaces(cell)
+	grid.add_surface(
+		cell,
+		Surface.new(
+			DataLibrary.get_part(&"ramp"), height, atan2(float(direction.x), float(direction.y))
+		)
+	)
+	for surface: Surface in kept:
+		grid.add_surface(cell, surface)
+	return true
+
+
+## Stands enough ladder segments at `cell` to reach `rise` above it. Placed through
+## `GridPlacement` rather than written straight into `Grid.surfaces`, so the generator is
+## held to the same attachment grammar an author would be — a ladder the grammar refuses is a
+## ladder that should not exist, and finding that out here is the point of having a grammar.
+static func _stamp_ladder(grid: Grid, cell: Vector2i, height: float, rise: float) -> bool:
+	var segments: int = int(ceil(rise / Surface.LADDER_SEGMENT_RISE))
+	var placed := 0
+	for i: int in range(segments):
+		var at: float = height + float(i) * Surface.LADDER_SEGMENT_RISE
+		if GridPlacement.place(grid, cell, DataLibrary.get_part(&"ladder"), at) != null:
+			placed += 1
+	return placed > 0
 
 
 static func _split_and_carve(

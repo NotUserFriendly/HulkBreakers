@@ -1,5 +1,39 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-53 Pass D — the generator owes navigability, and `BR46.02` closes
+
+**Re-measured either side of the fix with the entry's own reproduction, 40 seeds at the real
+32x24 bout size: 16 of 40 -> 0 of 40.** Seed 16, the worst case on record with 216 one-way
+cells, comes back clean.
+
+**`MapNavigability` is the invariant.** Flood out from a spawn, flood back, and any cell in the
+first set but not the second is ground a unit can walk into and never leave. It runs a
+**non-climbing** `Pathfinder` deliberately — checking with `can_climb` would pass maps only a
+part nothing in the repo carries could traverse.
+
+**One change to the prescribed method, and it matters.** The naive check floods back from every
+reached cell, which is O(cells^2) and unusable across a sweep. The return flood runs **once**
+from the origin over *reversed* edges — a cell can reach the origin exactly when the origin can
+reach it backwards. It reproduces the recorded 16/40 exactly, which is what makes the shortcut
+demonstrably equivalent rather than merely faster.
+
+**The repair runs last, on the finished `Grid`** rather than on the scratch, because that is
+where real surfaces, heights and ramp tags live — and it is what the check measures, so repair
+and check cannot disagree about what a legal step is. Ladders are placed through
+`GridPlacement`, so the generator is held to the same attachment grammar an author would be.
+
+**A finding: the rule's ladder half is measured-dead.** The spec is "rise <= 2 gets a ramp;
+anything higher gets a ladder", and nothing generated can reach the second half. A cell is
+one-way only if you can *fall into* it, which caps the drop at `MAX_HOP_DOWN_LEVELS` (2.0); the
+way out is the same face, so the repair's rise never exceeds `RAMP_MAX_RISE` (2.0). **The branch
+is kept rather than deleted** — the same call taskblock-52 made about its measured-dead tiebreak
+stage — with a test that fails if the constants stop making it dead and says to update rather
+than delete it.
+
+**Stranding stays a legitimate outcome.** The invariant belongs to generation and is consulted
+nowhere at runtime; an authored map that fails it still loads, which the committed proving
+ground relies on.
+
 ### taskblock-53 Pass C — the ladder, and the grammar's first real use (it did not hold)
 
 **C1's finding: the placement grammar had never once succeeded.** tb38 built it and warned
