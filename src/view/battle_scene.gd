@@ -282,9 +282,7 @@ func toggle_blue_control() -> void:
 ## whichever overlay is ALREADY active (e.g. "New Battle" pressed again
 ## under `SquadControlOverlay`) can re-wire itself without a full
 ## teardown/setup cycle.
-func load_battle(
-	state: CombatState, p_mission: MissionState, header_event: LogEvent = null
-) -> void:
+func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	for view: HitVolumeView in unit_views:
 		remove_child(view)
 		view.queue_free()
@@ -319,14 +317,23 @@ func load_battle(
 	# far too late — it fires after everything worth seeing has been emitted.)
 	if overlay != null:
 		overlay.attach_log_sink(combat_state.combat_log)
-	# docs/09: "A `session_start` event carries the seed as the file's FIRST
-	# line, so a human session is a regression fixture too." taskblock-41 Pass
-	# D's bout-build log would otherwise land ahead of it — the header is
-	# emitted here, structurally, between attaching the sinks and building
-	# anything, rather than by whoever happens to call this and remembers to do
-	# it afterwards.
-	if header_event != null:
-		combat_state.combat_log.emit(header_event)
+	# docs/09: a bout's seed is logged before anything else it does, so a bout is
+	# replayable from its own log. taskblock-41 Pass D's bout-build log would
+	# otherwise land ahead of it — the header is emitted here, structurally,
+	# between attaching the sinks and building anything.
+	#
+	# **`BR52.11`: this used to be an OPTIONAL `header_event` argument, and the
+	# comment above already argued it should not be** — *"rather than by whoever
+	# happens to call this and remembers to do it afterwards"*. The signature did
+	# not enforce what the comment asked for, and `GenerateBoutOverlay` did exactly
+	# the thing the comment warned about: it called the two-argument form, so the
+	# seed a player typed generated the whole bout and was then dropped. Because a
+	# new bout **appends** to the same file (`FileSink`, supervisor's call), the log
+	# then opened with the launch bout's seed and every later bout ran underneath it
+	# with none of its own — a reader takes line 1 as the seed for the whole file
+	# and is wrong. The argument is gone; the seed now rides on the state, and this
+	# is the only place a header is emitted.
+	combat_state.combat_log.emit(_bout_start_event(combat_state.bout_seed))
 
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	# tb35 Pass D (BR32.01/BR32.03): the wall-cutout feed must be re-pointed
@@ -506,21 +513,28 @@ func apply_batch_badges() -> void:
 ## two squads of deep-struck cyborgs, wrapped in an empty-objectives
 ## MissionState (see `mission`'s own doc comment above).
 func new_battle(seed_value: int) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value
-	var state: CombatState = _seed_battle(rng)
+	var state: CombatState = _seed_battle(seed_value)
 	var fresh_mission := MissionState.new(RunState.new(), state)
 	fresh_mission.objectives = []
-	# docs/09 taskblock03 Pass B2: the seed at session start, so a session
-	# is replayable from its own log file alone. This scene has no separate
+	# docs/09 taskblock03 Pass B2: the seed is logged before the bout does anything,
+	# so a bout is replayable from its own log alone. This scene has no separate
 	# loadout selection to log (assemble_random draws everything — geometry,
-	# loadout, the works — from this one seed already). Handed to
-	# `load_battle` rather than emitted after it, so it is genuinely the first
-	# line in the file — see that parameter's own comment.
-	load_battle(state, fresh_mission, _session_start_event(seed_value))
+	# loadout, the works — from this one seed already).
+	# taskblock-52 `BR52.11`: no longer handed to `load_battle`. It rides on
+	# `CombatState.bout_seed`, set in `_seed_battle` below, and `load_battle` emits
+	# it unconditionally — so this path and `GenerateBoutOverlay`'s cannot disagree
+	# about whether a bout logged its seed.
+	load_battle(state, fresh_mission)
 
 
-func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
+## `seed_value` is the ONE origin seed the whole bout derives from — map, loadouts
+## and combat rolls all descend from it. It is taken here rather than a prebuilt
+## `RandomNumberGenerator` precisely so the origin number is still in hand to stamp
+## onto the state; `state.rng.seed` is a *derived* `rng.randi()` and would not
+## regenerate this map (`BR52.11`).
+func _seed_battle(seed_value: int) -> CombatState:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
 	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)
 	var pool: Array[Part] = DataLibrary.parts_pool()
 	var spawn_a: Vector2i = _first_cell_of_marker(grid, Enums.SpawnMarker.SPAWN_A, Vector2i(2, 2))
@@ -530,6 +544,7 @@ func _seed_battle(rng: RandomNumberGenerator) -> CombatState:
 		DeepStrike.assemble_random(Matrix.new(), 1.0, pool, rng, spawn_b, 1),
 	]
 	var state := CombatState.new(grid, units, rng.randi())
+	state.bout_seed = seed_value
 	# tb31 Pass B: every squad must be assigned explicitly now — squad 0
 	# (the player's own squad, the same seam `toggle_blue_control()` already
 	# flips) HUMAN, squad 1 AI. BR30.09's own root cause was this path
@@ -553,13 +568,19 @@ func _first_cell_of_marker(grid: Grid, marker: int, fallback: Vector2i) -> Vecto
 	return fallback
 
 
-## docs/09 taskblock03 Pass B2: "log the seed... at session start, so a
-## session is replayable from its own log file." unit_id -1: no specific
-## unit caused this, same convention `log_impact_result` already uses for
-## cover/terrain.
-func _session_start_event(seed_value: int) -> LogEvent:
+## docs/09 taskblock03 Pass B2: "log the seed... so it is replayable from its own
+## log file." unit_id -1: no specific unit caused this, same convention
+## `log_impact_result` already uses for cover/terrain.
+##
+## **taskblock-52 `BR52.11`: `session_start` became `bout_start`.** The old name
+## was accurate when a log file held exactly one bout. It does not any more — a new
+## bout appends to the same file (`FileSink`, supervisor's call), so one file
+## routinely carries several, and a per-file "session" event could only ever
+## describe the first of them. Calling the second one `session_start` would be the
+## same misattribution the rename exists to fix. `docs/SUPERSEDED.md` records it.
+func _bout_start_event(seed_value: int) -> LogEvent:
 	return LogEvent.new(
-		0, Enums.Phase.TACTICS, -1, &"session_start", {"seed": seed_value}, "seed=%d" % seed_value
+		0, Enums.Phase.TACTICS, -1, &"bout_start", {"seed": seed_value}, "seed=%d" % seed_value
 	)
 
 

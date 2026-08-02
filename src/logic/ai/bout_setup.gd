@@ -57,6 +57,13 @@ static func build_bout(
 		return {"error": "neither roster could actually assemble (bad template_id?)"}
 
 	var state := CombatState.new(grid, units, rng.randi())
+	# taskblock-52 `BR52.11`: the origin seed travels with the bout, so
+	# `BattleScene.load_battle` can log it without its caller remembering to. This
+	# one line covers every path that builds a bout through here — the Generate Bout
+	# overlay, `CompletionSampler.build_for_seed`, `ReplayHandle.from_seed` and the
+	# watched-run panel. Note it is `map_seed`, NOT `state.rng.seed`: the latter is
+	# the derived `rng.randi()` above and would not regenerate this map.
+	state.bout_seed = map_seed
 	state.set_squad_controller(0, Enums.SquadController.AI)
 	state.set_squad_controller(1, Enums.SquadController.AI)
 

@@ -124,7 +124,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Not fixed.** The instrument (a logged decline carrying which gate rejected it) is the part that
   makes everything after it checkable, and it should land before anyone tunes the mechanic.
 
-### BR52.11 — Active — owner: `SUPERVISOR`
+### BR52.11 — Pending — owner: `SUPERVISOR`
 **A bout started from the Generate Bout overlay logs no seed at all, and the file's one seed line
 misattributes it**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -154,6 +154,26 @@ misattributes it**
   between attaching the sinks and building anything, rather than by whoever happens to call this and
   remembers to do it afterwards."* **The comment describes the right rule and the signature does not
   enforce it.** A per-bout event rather than a per-session one, since a file now holds several.
+- **`Pending` (2026-08-02).** CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. Fixed exactly as
+  described above, both halves:
+  - **The optional argument is gone.** `load_battle(state, mission)` is the only signature, and it
+    emits the header itself from `CombatState.bout_seed` — the field is stamped by the two things that
+    generate a playable bout (`BoutSetup.build_bout`, which covers the Generate Bout overlay,
+    `CompletionSampler.build_for_seed`, `ReplayHandle.from_seed`, the watched-run panel and checkpoint
+    9; and `BattleScene._seed_battle` for the launch path).
+  - **`session_start` is now `bout_start`**, one per bout. Recorded in `docs/SUPERSEDED.md` and
+    `docs/09`.
+  - **The ORIGIN seed is what is carried, not `rng.seed`.** Both generators seed a local RNG with the
+    origin number and hand `rng.randi()` to `CombatState.new`, so `rng.seed` is derived and would not
+    regenerate the map. Logging it would have looked right and replayed nothing.
+- **To see it:** start a bout from Generate Bout with a seed you choose, then read `out/combat.log` —
+  that bout's own `bout_start: seed=<yours>` should sit directly above its build steps, underneath the
+  launch bout's header rather than replacing it. Starting a third bout should add a third header.
+- **The regression test is the one the old shape could not have had**
+  (`test_a_second_bout_logs_its_own_seed_not_the_first_bouts`): it asserts on the **second** bout in a
+  scene, through the two-argument call, and demands its own distinct four-digit seed. A companion test
+  rebuilds the board from the carried seed and asserts `rng.seed != bout_seed`, so the derived-versus-
+  origin distinction cannot quietly regress.
 
 ### BR52.09 — Active — owner: `SUPERVISOR`
 **A destroyed cover object's model stays on the board**

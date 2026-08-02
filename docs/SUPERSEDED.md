@@ -10,6 +10,8 @@ For current state see `CHANGELOG.md`; for forward work see `PLAN.md`.
 
 | Was | Now | Changed in |
 |---|---|---|
+| A **`session_start`** event, carrying the seed as the log FILE's first line — one seed per file | **`bout_start`**, one per bout. The old name was accurate while a file meant a bout; since `FileSink` began appending (a new bout appends, only a new process rotates), one file routinely holds several bouts, and a per-file header can only ever describe the first of them. Calling the second one `session_start` would be the same misattribution the rename fixes | tb52 `BR52.11` |
+| The seed header passed **into** `BattleScene.load_battle` as an optional third argument (`header_event: LogEvent = null`) | carried on **`CombatState.bout_seed`** and emitted by `load_battle` itself, unconditionally. The old signature let a caller forget, and `GenerateBoutOverlay` did: it called the two-argument form, so a player's typed seed generated the entire bout and was then dropped, and every bout after the first ran under the launch bout's seed. `load_battle`'s own comment already argued the header should be emitted *"structurally... rather than by whoever happens to call this and remembers to do it afterwards"* — **the comment was right and the signature did not enforce it** | tb52 `BR52.11` |
 | Slot-keyed `SlotType` / `Part.slot_type` | inverted attachment — parts declare `attaches_to`, sockets declare `socket_type` | early (pre-audit) |
 | Exposure table / `exposure_weight` / `_weighted_choice` / `CoverInfo.profile` | continuous projection into the depth-sorted shot plane | early (pre-audit) |
 | "robot" / "chassis" / "Frame" vocabulary | "cyborg / bot / shell"; `Frame` → `Shell` | early (pre-audit) |
