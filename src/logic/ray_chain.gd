@@ -158,10 +158,21 @@ static func resolve(
 						crit_bonus_multiplier
 					)
 					results.append(exit_impact)
-					inside_hollow_part = null
 					spill = maxf(0.0, exit_impact.part_damage - exit_impact.effective_dt)
+					# **The C4 case: punched in, could not punch out.** The round is
+					# still inside the cavity, so it lodges — clearing
+					# `inside_hollow_part` before this check is what an earlier
+					# version did, and it silently deleted the lodged-bullet
+					# mechanic on this path. `test_penetration_traverses_body.gd`
+					# caught it the moment the ray chain became the default: the
+					# fixture held the right assumption and the new path was wrong.
 					if exit_impact.outcome != Enums.Outcome.PENETRATE or spill <= 0.0:
+						DamageResolver.inflict_lodged_wound_if_inside(
+							inside_hollow_part, exit_impact
+						)
 						return results
+					# It genuinely cleared the far face: out of the cavity.
+					inside_hollow_part = null
 				elif spill <= 0.0:
 					DamageResolver.inflict_lodged_wound_if_inside(inside_hollow_part, impact)
 					return results

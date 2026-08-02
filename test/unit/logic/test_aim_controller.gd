@@ -383,10 +383,16 @@ func test_layers_are_ordered_nearest_first() -> void:
 
 ## docs/09 taskblock07 Pass A/TESTS: "the aim UI's RESOLVES equals
 ## resolve_ray for a corpus of reticle positions" — resolve()'s own
-## `.resolves` must always agree with an independently-constructed
-## resolve_ray call built the exact same way (muzzle_point + ray_from_muzzle
-## + resolve_ray), never a second, drifted answer.
-func test_resolves_equals_resolve_ray_for_a_corpus_of_reticle_positions() -> void:
+## `.resolves` must always agree with an independently-constructed call built the
+## exact same way, never a second, drifted answer.
+##
+## **taskblock-52 Pass F: the intent is unchanged and the thing it must agree with
+## is not.** The aim preview follows `CombatState.shot_resolver` now, so pinning it
+## to `ShotPlane.resolve_ray` would assert that the preview disagrees with the
+## resolver — the exact drift this test exists to catch, inverted. It checks both
+## models against their own resolver instead, which is strictly more than it
+## checked before.
+func test_resolves_equals_the_active_resolver_for_a_corpus_of_reticle_positions() -> void:
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid)
 	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
@@ -400,24 +406,52 @@ func test_resolves_equals_resolve_ray_for_a_corpus_of_reticle_positions() -> voi
 	var reticles: Array[Vector2] = [
 		Vector2(0.0, 0.5), Vector2(0.2, 0.5), Vector2(-0.3, 0.5), Vector2(5.0, 0.5)
 	]
-	for reticle: Vector2 in reticles:
-		var result: AimResult = AimController.resolve(
-			plane, reticle, 0, weapon, shooter, far_unit.cell, state
-		)
+	for resolver: StringName in [ShotResolution.RESOLVER_PLANE, ShotResolution.RESOLVER_RAY]:
+		state.shot_resolver = resolver
+		for reticle: Vector2 in reticles:
+			var result: AimResult = AimController.resolve(
+				plane, reticle, 0, weapon, shooter, far_unit.cell, state
+			)
+			var muzzle: Vector3 = UnitGeometry.muzzle_point(shooter, weapon)
+			var expected: HitResult = _independently_resolved(
+				resolver, state, shooter, far_unit.cell, reticle, muzzle
+			)
 
-		var muzzle: Vector3 = UnitGeometry.muzzle_point(shooter, weapon)
-		var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
-			shooter.cell, far_unit.cell, reticle, muzzle
-		)
-		var expected: HitResult = ShotPlane.resolve_ray(ray["origin"], ray["dir"], state)
+			if expected == null:
+				assert_null(
+					result.resolves, "%s, reticle %s: expected a miss" % [resolver, reticle]
+				)
+			else:
+				assert_not_null(
+					result.resolves, "%s, reticle %s: expected a hit" % [resolver, reticle]
+				)
+				assert_eq(result.resolves.part, expected.part)
+				assert_eq(result.resolves.body, expected.body)
+				assert_eq(result.resolves.distance, expected.distance)
 
-		if expected == null:
-			assert_null(result.resolves, "reticle %s: expected a miss" % reticle)
-		else:
-			assert_not_null(result.resolves, "reticle %s: expected a hit" % reticle)
-			assert_eq(result.resolves.part, expected.part)
-			assert_eq(result.resolves.body, expected.body)
-			assert_eq(result.resolves.distance, expected.distance)
+
+## The same answer, built by hand through whichever model is selected — never read
+## back off `AimController`, which is the thing under test.
+func _independently_resolved(
+	resolver: StringName,
+	state: CombatState,
+	shooter: Unit,
+	target_cell: Vector2i,
+	reticle: Vector2,
+	muzzle: Vector3
+) -> HitResult:
+	if resolver == ShotResolution.RESOLVER_RAY:
+		var aimed: Vector3 = AimPlaneGeometry.world_point(shooter.cell, target_cell, reticle)
+		var hit: RayHit = RayCaster.cast(
+			state, muzzle, aimed - muzzle, shooter.shell.all_parts_with_joints()
+		)
+		return null if hit == null else hit.to_hit_result()
+	var ray: Dictionary = AimPlaneGeometry.ray_from_muzzle(
+		shooter.cell, target_cell, reticle, muzzle
+	)
+	if ray.is_empty():
+		return null
+	return ShotPlane.resolve_ray(ray["origin"], ray["dir"], state)
 
 
 ## taskblock-08 B2/TESTS: "the window's depth is within epsilon of the

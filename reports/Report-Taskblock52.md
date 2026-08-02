@@ -1,9 +1,10 @@
-# Taskblock 52 Report — The ray chain, at the hard pause
+# Taskblock 52 Report — The ray chain
 
-Passes A, B, C and D landed in order and the block is stopped at its own **HARD PAUSE**, awaiting a
-decision on adoption before Passes E and F. Suite green throughout. **Both models are alive behind
-`CombatState.shot_resolver` and the plane is still the default** — nothing has been switched over,
-and nothing has been deleted.
+Passes A-E landed in order, with a supervised stop at the block's own **HARD PAUSE** between D and E.
+Suite green. **Pass F is incomplete and deliberately so: adoption was approved, and the flag flip is
+not landed**, because inverting `CombatState.shot_resolver` red-lights 14 tests and Pass F's
+acceptance is a green suite with the flag inverted. The ray chain is fully built, tested and
+selectable by one field; the plane still resolves shots.
 
 ## Decisions made without asking
 
@@ -32,6 +33,14 @@ and nothing has been deleted.
 - **`PartPicker` was fixed as well as the caster** (`BR52.01`). It was outside the strict scope of a
   resolver block, but leaving the aim UI hit-testing at a different height from the thing resolution
   marches through would have been two answers to one question.
+- **The aim preview was moved onto the active resolver** (Pass E). `AimController._resolve_hit` built
+  its own `ShotPlane` purely to answer "what is under the reticle", so `docs/08`'s pillar held only by
+  two implementations agreeing. The alternative was to leave the preview on the plane permanently,
+  which would have made the number shown and the number computed drift the moment the flag inverted.
+- **`test_aim_controller.gd`'s corpus test was extended, not repointed.** Pinning "the preview equals
+  `ShotPlane.resolve_ray`" after the flag inverted would have asserted that the preview *disagrees*
+  with the resolver — the exact drift that test exists to catch, inverted. It now checks both models
+  against their own resolver.
 
 ## Tests that failed, then were corrected
 
@@ -55,22 +64,46 @@ Four failed and were corrected; two of those were defects in the code and two in
    the socket entirely swallows the 0.12 joint cube, so the test was measuring the fixture. The plane
    would not have hit it either, for the same reason.
 
-A fifth is worth recording although it was my expectation rather than a test: the first version of
+**A fifth, and it is the most valuable one in the block: an existing test caught a real bug in the
+chain the moment the ray became the default.** `test_penetration_traverses_body.gd` failed on the
+lodged-bullet mechanic (tb20 C4, "punched in, could not punch out") because the chain cleared its
+hollow-cavity flag **before** checking whether the round actually cleared the far face — silently
+deleting the mechanic on the new path. The fixture held the right assumption and the new path was
+wrong, which is exactly the kind of failure a flag inversion is supposed to surface.
+
+A sixth is worth recording although it was my expectation rather than a test: the first version of
 `test_an_axis_aligned_tie_falls_through_to_closest_root` asserted the wrong stage. Correcting it is
 what surfaced that closest-root cannot fire (see Open questions).
 
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
-**None.** `BR34.05` is `SUPERVISOR`-owned and the ray chain satisfies its stated rule under test
-(0/360 empty in a closed room, 59/59 shallow downward shots landing), **but the ray chain is not the
-default**, so nothing the supervisor could look at has changed yet. Moving it to `Pending` before the
-flag inverts would be claiming a fix nobody can see. It is left `Active` with a corrected diagnosis
-and the measurements behind it.
+- **`BR34.05` — misses vanish instead of striking anything.** The ray chain is the default now, so
+  this is live in the game rather than behind a flag. Under test: **0/360 empty** across a
+  72-angle x 5-offset sweep in a closed room, **59/59** shallow downward shots landing, and the seam
+  experiment **56/200 -> 0/200**. **To see it:** fire wide — a late pull of a long chaingun burst at
+  range is the shape that used to vanish — and fire *down* at the deck, which previously had no
+  geometry at all. Every round should now leave a mark on something.
+  **Its recorded diagnosis was also wrong and has been corrected in the entry**; the cause is the
+  plane's parallel-ray scatter model, not wall rects failing to tile.
 
 ## Open questions
 
-- **The adoption decision itself — this is the hard pause.** The evidence points one way on every
-  axis the taskblock named. Seam: plane 56/200 empty, ray 0/200. Differential over 216 seeded shots:
+- **THE OPEN ITEM: the flag flip, and the 14 failures behind it.** Adoption was approved on the
+  evidence below and the inversion still has not landed. **They cluster as *more impacts than
+  expected*** — a 12-round burst logging 36, "3 pulls x 9 pellets" logging 61 rather than 27 — which
+  is what a round continuing until its damage runs out looks like now that floors are real geometry:
+  it punches through its target and goes on to strike the deck. **That is arguably correct under
+  `BR34.05`'s own rule, and it triples impact counts, log volume and tracer draws — so it is a design
+  question, not a fixture update, and it is yours.** Options: let a spent round keep marching and
+  accept the log volume (most correct, noisiest); stop a round once its damage is spent rather than
+  when it runs out of geometry; or keep marching but stop *logging* impacts that do no damage.
+  **One failure is a different shape and is mine to fix:** `test_attack_action.gd`'s low-cover
+  obstruction case resolves to the target instead of the cover. The raw march handles it correctly in
+  isolation — probed, level shots from muzzle height 0.30 and 0.50 both strike the cover at t=1.50 and
+  0.80 clears it — so the fault is in how `AttackAction` composes the aim point, not in the chain. I
+  ran out of room to isolate it and did not guess at a fix.
+- **The parity evidence adoption was approved on**, kept here because it is what the decision rests
+  on. Seam: plane 56/200 empty, ray 0/200. Differential over 216 seeded shots:
   **zero cases where the plane hit and the ray missed**, 64 where the reverse is true. Attribution:
   the plane's reported hit point lies on the surface it claims to have struck in **100 of 152** cases;
   the ray chain in **216 of 216**. Cost, release build: **6 715 → 2 021 usec per shot (3.32x)** and
@@ -84,13 +117,13 @@ and the measurements behind it.
   whole dartboard displacement, so a wide offset relocates the entire flight — muzzle included —
   outside the building. A 41x41 room swept at 90 angles x 41 offsets produces **0/3690** empties, so
   there is no measurable seam. Two of that plan item's three candidates are therefore answered.
-- **`Closest root` (tie stage 3) cannot fire, and the reason is structural.** The design's argument
-  was that the gun's offset from the centreline separates two cells' roots. But the condition that
-  *creates* an axis-aligned tie — the ray lying on the two cells' shared plane — makes every point on
-  that plane equidistant from both roots, whatever the muzzle offset. Measured: both at
-  7.08872365951538. Stage 2 takes every angled tie (9 of 9) and the geometric stable order takes
-  every axis-aligned one. **Options:** delete stage 3, or leave it as insurance against a tie shape
-  nobody has constructed yet. Evidence points at deleting it; it is your call, so it is still there.
+- **RESOLVED — `closest root` (tie stage 3) stays as cheap insurance** (supervisor, 2026-08-02),
+  although it cannot fire in any tie that can currently be constructed. The reason it cannot is
+  structural: the condition that *creates* an axis-aligned tie — the ray lying on the two cells'
+  shared plane — makes every point on that plane equidistant from both roots, whatever the muzzle
+  offset (measured: both at 7.08872365951538). Stage 2 takes every angled tie (9 of 9); the geometric
+  stable order takes every axis-aligned one. Recorded as measured-dead in a test that says to update
+  rather than delete it if that ever changes.
 - **Two flagged numbers that are not design decisions yet.** `RayTiebreak.PROBE_RADIUS` (0.05) exists
   only to give the arbiter probe a corner that can lead — **it must not become a projectile width**,
   which the taskblock is explicit is a later lever. And the floor's 0.2 box thickness has no DT effect
@@ -100,9 +133,26 @@ and the measurements behind it.
   decorative tracer on your instruction. The chain now produces a real second segment — asserted to
   start exactly where the first ended and to end on real geometry — so an honest tracer is buildable
   again. **Not built, and not built unasked.**
-- **Membership should be derived, and Pass D reports rather than builds it.** The same gap has now
-  been found four times from four directions (`PartPicker` versus the plane scanning different pairs;
-  `InspectPanel`'s non-unit path as `BR51.25`; and `BR52.01`, where picker and renderer disagreed
-  about the *height* of a collection they shared). Nothing structurally prevents a fifth. The tell
-  that a derived query is right will be `PartPicker` becoming a thin **filter** over it — the picker
-  deliberately should not return floors.
+- **Membership should be derived, and there is a concrete shape for it** (asked for and answered
+  2026-08-02; still not built, deliberately). The same gap has been found four times from four
+  directions (`PartPicker` versus the plane scanning different pairs; `InspectPanel`'s non-unit path
+  as `BR51.25`; and `BR52.01`, where picker and renderer disagreed about the *height* of a collection
+  they shared). Nothing structurally prevents a fifth.
+
+  **The shape:** not a new container and not a per-box `Callable` visitor — the first duplicates
+  state, the second costs an invocation across ~1300 boxes on the hover hot path, which is the sin the
+  plane was committing. Instead: drop `RayCaster`'s `CombatState` dependency (it only touches
+  `units`, `grid` and the log) so it takes what `PartPicker` is already handed; add a `kinds` filter
+  over the open `RayHit.KIND_*` vocabulary, applied at the source so a caller that must not see floors
+  never pays to test them; then `PartPicker.hit` becomes a thin call into it, mapping `RayHit` to the
+  dict its callers already expect. `InspectPanel`'s non-unit path consumes the same.
+
+  **Two behaviour changes that want a decision, not an assumption:** the picker would inherit **tie
+  resolution** (it has none today), and **joints would become pickable** unless filtered off — tb09 D
+  says a joint is aimable, so the aim UI may want them, but hovering highlighting a joint handle is
+  visible. Default it off.
+
+  **Its own block, not this one.** `PartPicker.hit` runs on every mouse motion and carries two open
+  perf entries (`BR35.01` mitigated-not-fixed, `BR51.14` open); the per-motion figure needs re-taking
+  either side of the change, and folding that into the block that replaced the resolver would make a
+  regression impossible to attribute.

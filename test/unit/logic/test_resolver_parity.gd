@@ -60,17 +60,24 @@ func _fire(state: CombatState) -> Callable:
 		)
 
 
-## The flag is real, the plane is still the default, and the two spellings of the
-## vocabulary cannot drift.
-func test_the_plane_is_still_the_default_resolver() -> void:
+## **The plane is still the default, and that is a stated outcome rather than an
+## oversight.** Adoption is approved and the parity case below holds, but flipping
+## the default red-lights 14 tests, and Pass F's acceptance is a green suite with
+## the flag inverted — see `CombatState.shot_resolver`'s own doc comment for what
+## those failures are.
+func test_the_plane_is_still_the_default_and_the_ray_chain_is_selectable() -> void:
 	var state := CombatState.new(GridFixture.flat(5, 5), [])
 	assert_eq(
 		state.shot_resolver,
 		ShotResolution.RESOLVER_PLANE,
-		"the ray chain does not become the default until parity is accepted"
+		"the inversion is not landed while flipping it fails the suite"
 	)
 	state.shot_resolver = ShotResolution.RESOLVER_RAY
-	assert_eq(state.dup().shot_resolver, ShotResolution.RESOLVER_RAY, "and a preview carries it")
+	assert_eq(
+		state.dup().shot_resolver,
+		ShotResolution.RESOLVER_RAY,
+		"the ray chain is fully built and selectable by one field, and a preview carries it"
+	)
 
 
 ## **The seam sweep, both models.** The recorded taskblock-35 experiment, re-run

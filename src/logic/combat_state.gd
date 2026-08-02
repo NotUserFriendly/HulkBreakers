@@ -63,15 +63,40 @@ var batch_plans: BatchPlan = BatchPlan.new()
 var material_table: MaterialTable = DataLibrary.material_table()
 
 ## taskblock-52: which model resolves this bout's shots — `ShotResolution.
-## RESOLVER_PLANE` (the default, and the shot plane) or `RESOLVER_RAY` (the ray
-## chain). Per-bout rather than a global static so a differential run can put the
-## same board through both without mutating shared state, and so a test that
-## switches resolvers cannot leak into the next one.
+## RESOLVER_PLANE` (still the default — see below) or `RESOLVER_RAY` (the ray
+## chain, built, tested and selectable by this one field). Per-bout rather than a global
+## static so a differential run can put the same board through both without
+## mutating shared state, and so a test that switches resolvers cannot leak into
+## the next one.
 ##
-## Spelled as a literal rather than as `ShotResolution.RESOLVER_PLANE` only to
-## keep a class-level default free of a cross-class static read;
-## `test_shot_resolver_flag.gd` asserts the two spellings are the same value, so
-## they cannot drift.
+## **Adoption is approved and the inversion is NOT landed** (taskblock-52 Pass F).
+## The parity case is measured and holds — over 216 seeded shots, zero cases where
+## the plane hit and the ray missed against 64 the other way; hit points lying on
+## the surface they claim to strike 100/152 against 216/216; release build
+## 6 715 -> 2 021 usec per shot. **But flipping this default red-lights 14 tests**,
+## and the acceptance for Pass F is a green suite with the flag inverted. Flipping
+## it anyway would be hacking around a failure rather than fixing it.
+##
+## **What the failures are, so the next session starts with them rather than at the
+## beginning.** They cluster as *more impacts than expected* — a burst of 12
+## logging 36, "3 pulls x 9 pellets" logging 61 rather than 27 — which is what a
+## round continuing until its damage runs out looks like once floors are real
+## geometry: it punches through its target and goes on to strike the deck. That is
+## arguably correct under `BR34.05`'s own rule and it triples impact counts, log
+## volume and tracer draws, so it is a **design question, not a fixture update**.
+## At least one is not that shape: `test_attack_action.gd`'s low-cover obstruction
+## case resolves to the target rather than the cover. **The raw march handles that
+## case correctly in isolation** (probed: a level shot from muzzle height 0.3 and
+## 0.5 both strike the cover at t=1.50, and 0.8 clears it), so the fault is in how
+## `AttackAction` composes the aim point, not in the chain.
+##
+## `docs/SUPERSEDED.md` records the model change; the flag flip is the one part of
+## it still outstanding.
+##
+## Spelled as a literal rather than as `ShotResolution.RESOLVER_PLANE` only to keep
+## a class-level default free of a cross-class static read;
+## `test_resolver_parity.gd` asserts the two spellings are the same value, so they
+## cannot drift.
 var shot_resolver: StringName = &"plane"
 ## docs/10 taskblock05 E1: what a mangling Part.mangles_into resolves
 ## against — shared across the whole battle, same convention as

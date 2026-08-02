@@ -1,5 +1,60 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Passes E and F — the dartboard is an input device, and the flag inverts
+
+**The aim preview stopped being a second resolver.** `AimController._resolve_hit` built its own
+`ShotPlane` and walked it, purely to answer "what is under the reticle" — so `docs/08`'s pillar (the
+tooltip and the damage come from the same call) was true only by two implementations agreeing. It
+follows `CombatState.shot_resolver` now, so preview and shot go through **one** query by construction.
+`test_aim_controller.gd`'s corpus test was extended rather than repointed: it checks both models
+against their own resolver, which is strictly more than it checked before.
+
+**The ray path is the simpler of the two, which is the point of the split.** The dartboard already
+produces a world point — `AimPlaneGeometry.world_point` is where `AimView` draws the reticle — so B
+exists before resolution is asked for anything, and the shot is muzzle-to-B. The plane path has to go
+through `ray_from_muzzle`, whose own doc comment explains that vertical aim is expressed by *moving
+the muzzle's height* while keeping `dir.y == 0`, because the plane's coordinates cannot carry a tilted
+ray. A march needs no such convention. Asserted: a click at a screen position recovers the aim point
+the reticle was drawn from, and the impact sits on the muzzle-to-reticle line to 0.000000.
+
+**Pass F: adoption approved, and the flag flip is NOT landed.** The parity case holds and
+`ShotPlane` is neither deleted nor retired — but **inverting `CombatState.shot_resolver` red-lights
+14 tests**, and Pass F's acceptance is a green suite with the flag inverted. Flipping it anyway would
+be hacking around a failure. The plane still resolves shots; the ray chain is fully built, tested and
+selectable by one field.
+
+**What the 14 are, recorded so the next session starts with them.** They cluster as *more impacts
+than expected* — a 12-round burst logging 36, "3 pulls x 9 pellets" logging 61 rather than 27 — which
+is what a round continuing until its damage runs out looks like now that floors are real geometry: it
+punches through its target and goes on to strike the deck. **That is arguably correct under
+`BR34.05`'s own rule and it triples impact counts, log volume and tracer draws, so it is a design
+question rather than a fixture update.** At least one failure is a different shape:
+`test_attack_action.gd`'s low-cover obstruction case resolves to the target instead of the cover —
+and **the raw march handles that correctly in isolation** (probed: level shots from muzzle height
+0.30 and 0.50 both strike the cover at t=1.50; 0.80 clears it), so the fault is in how `AttackAction`
+composes the aim point, not in the chain.
+
+**What `ShotPlane` is still for, since Pass F asks:** its **aiming** job, and nothing else — centre
+mass (`center_of`/`depth_of` for the default aim point), aim-layer enumeration for the layered-target
+UI, muzzle self-obstruction, and the AI's line-of-fire and overwatch predicates. That is exactly the
+boundary `docs/02` states, so it is not left jobless and does not retire in a later block on current
+evidence.
+
+**A real bug in the chain, caught by an existing test the moment the ray became the default.**
+`test_penetration_traverses_body.gd` failed on the lodged-bullet mechanic (tb20 C4, "punched in,
+could not punch out"): the chain cleared its hollow-cavity flag **before** checking whether the round
+actually cleared the far face, which silently deleted the mechanic on the new path. The fixture held
+the right assumption and the new path was wrong.
+
+**And a second harness gap, beyond `BR52.02`.** That failure raised a script error, which opens a
+**debugger break that halts the run waiting for input** — a ten-minute timeout that looked exactly
+like a hang. Recorded on `BR52.02`, which is already about a test file's failure being invisible to
+the gate.
+
+**`docs/SUPERSEDED.md` carries six rows** for the reversal: the plane as resolver, the parallel-ray
+scatter model, the approximated incidence angle, floors being in no resolver at all, the dead
+`is_destructible` flag, and the aim preview's own second resolver.
+
 ### taskblock-52 hard pause — both models alive behind a flag, the plane still the default
 
 **`CombatState.shot_resolver` chooses the model**, per bout rather than as a global static so a
