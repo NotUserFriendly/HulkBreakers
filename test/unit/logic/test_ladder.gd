@@ -1,0 +1,251 @@
+extends GutTest
+
+## taskblock-53 Pass C: the ladder, and the first real use of the placement grammar.
+##
+## ## C1's finding, recorded as a test rather than as prose
+##
+## taskblock-38 built the attachment grammar and said *"build and test the rule now so the
+## model is proven, otherwise the first catwalk discovers the grammar doesn't hold."* The
+## first catwalk is this ladder, and **the grammar did not hold**, for a reason nothing had
+## reason to notice: no shipped surface part authored a single `Socket`. `_find_attach_point`
+## scans neighbours for a free matching socket, so with zero sockets anywhere on the board it
+## could never succeed — every side attachment was structurally impossible and the only
+## recorded behaviour of the grammar was it *refusing* things.
+##
+## Two changes made it hold, both small: `ship_floor` authors four directional `LEDGE`
+## sockets, and the grammar searches the placed cell itself as well as its neighbours so
+## segments can stack. `test_a_floor_authored_no_sockets_before_this_block` pins the first so
+## it cannot silently regress to unusable.
+
+const LADDER := &"ladder"
+const FLOOR := &"ship_floor"
+
+
+func _grid_with_step(lower_height: float, upper_height: float) -> Grid:
+	# Two cells side by side: (0,0) low, (1,0) high. The face between them is the thing a
+	# ladder spans.
+	var grid := Grid.new(4, 3)
+	grid.add_surface(Vector2i(0, 0), Surface.new(DataLibrary.get_part(FLOOR), lower_height))
+	grid.add_surface(Vector2i(1, 0), Surface.new(DataLibrary.get_part(FLOOR), upper_height))
+	return grid
+
+
+# --- the grammar ---------------------------------------------------------------------
+
+
+## The C1 finding, pinned. If this ever reads zero again, every side attachment on the board
+## is impossible again and the failure is silent — placements just stop happening.
+func test_a_floor_authors_ledge_sockets_for_anything_to_attach_to() -> void:
+	var floor_part: Part = DataLibrary.get_part(FLOOR)
+	var ledges := 0
+	for socket: Socket in floor_part.sockets:
+		if socket.socket_type == &"LEDGE":
+			ledges += 1
+	gut.p("ship_floor authors %d LEDGE sockets" % ledges)
+	assert_eq(ledges, 4, "one per edge, so a platform cell can host a ladder on any side")
+
+
+func test_a_ladder_side_attaches_to_a_raised_surface() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var placed: Surface = GridPlacement.place(
+		grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0
+	)
+	assert_not_null(placed, "the grammar accepts a ladder against a raised neighbour")
+	if placed == null:
+		return
+	assert_eq(placed.part.id, LADDER)
+	assert_true(Surface.has_ladder_at(grid, Vector2i(0, 0)), "and the cell reports a ladder")
+
+
+## **A ladder with nothing to attach to is rejected**, which is the half of the grammar that
+## makes it a grammar rather than free placement.
+func test_a_ladder_with_no_surface_to_attach_to_is_rejected() -> void:
+	var grid := Grid.new(4, 3)
+	assert_null(
+		GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0),
+		"a ladder in open space attaches to nothing"
+	)
+	assert_false(Surface.has_ladder_at(grid, Vector2i(0, 0)))
+
+
+## **Tileable to arbitrary height**, and the whole rule is that the same cell is searched.
+func test_three_stacked_segments_span_three_levels() -> void:
+	var grid: Grid = _grid_with_step(0.0, 6.0)
+	var heights: Array[float] = [0.0, 2.0, 4.0]
+	for height: float in heights:
+		var segment: Surface = GridPlacement.place(
+			grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), height
+		)
+		assert_not_null(segment, "segment at %.1f attaches" % height)
+	var ladders := 0
+	for surface: Surface in grid.surfaces_at(Vector2i(0, 0)):
+		if Surface.LADDER_TAG in surface.part.tags:
+			ladders += 1
+	assert_eq(ladders, 3, "three segments stand at one cell, above the floor already there")
+	assert_almost_eq(
+		Surface.ladder_reach_at(grid, Vector2i(0, 0)),
+		6.0,
+		0.001,
+		"three segments reach three levels"
+	)
+
+
+## **The socket taken is the one physically faced.** Four `LEDGE` sockets exist so a platform
+## can be laddered on any side; taking an arbitrary one would make the transforms decorative.
+func test_the_socket_taken_is_the_one_on_the_side_the_ladder_stands() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var host: Part = grid.surfaces_at(Vector2i(1, 0))[0].part
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+
+	var occupied: Array[StringName] = []
+	for socket: Socket in host.sockets:
+		if socket.occupant != null:
+			occupied.append(socket.id)
+	gut.p("occupied host sockets: %s" % str(occupied))
+	assert_eq(occupied.size(), 1, "exactly one socket is taken")
+	# The ladder sits at x=0 and the host at x=1, so the ladder is on the host's WEST side.
+	assert_eq(occupied[0], &"LEDGE_W", "and it is the west edge, the one the ladder is against")
+
+
+# --- climbing ------------------------------------------------------------------------
+
+
+func _climber(cell: Vector2i, grid: Grid) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.8, 1.0, 0.6))]
+	var unit := Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
+	unit.height = UnitGeometry.true_height_for_cell(cell, grid)
+	return unit
+
+
+## **The block's governing decision, tested directly:** a map must be navigable by a unit with
+## no climbing capability, so a ladder is what a plain shell uses.
+func test_a_unit_with_no_climbing_capability_climbs_a_ladder() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	var unit: Unit = _climber(Vector2i(0, 0), grid)
+	assert_false(unit.shell.can_climb(), "sanity: this shell cannot climb a bare face")
+
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+	assert_true(
+		ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state),
+		"a ladder makes the climb legal for a shell that could not otherwise"
+	)
+
+
+func test_the_same_unit_cannot_climb_a_bare_face() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var unit: Unit = _climber(Vector2i(0, 0), grid)
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+	assert_false(
+		ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state),
+		"without a ladder the same climb is illegal — the ladder is what changed"
+	)
+
+
+## **A ladder replaces the rise cap with its own reach.** A two-level rise is beyond
+## `MAX_CLIMB_LEVELS` for any shell; a two-segment ladder serves it, and one segment does not.
+func test_a_ladders_reach_is_what_bounds_the_climb_not_the_bare_face_cap() -> void:
+	var short_grid: Grid = _grid_with_step(0.0, 3.0)
+	GridPlacement.place(short_grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	assert_false(
+		Surface.ladder_serves_climb(short_grid, Vector2i(0, 0), Vector2i(1, 0)),
+		"one segment does not reach a two-level ledge"
+	)
+
+	var tall_grid: Grid = _grid_with_step(0.0, 3.0)
+	GridPlacement.place(tall_grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	GridPlacement.place(tall_grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 2.0)
+	assert_true(
+		Surface.ladder_serves_climb(tall_grid, Vector2i(0, 0), Vector2i(1, 0)), "two segments do"
+	)
+
+	var unit: Unit = _climber(Vector2i(0, 0), tall_grid)
+	var state := CombatState.new(tall_grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+	assert_true(
+		ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state),
+		"and the action agrees with the reach, not with MAX_CLIMB_LEVELS"
+	)
+
+
+# --- pathing -------------------------------------------------------------------------
+
+
+## **One term in `move_cost`**, and the planner's idea of a legal edge must match the action's.
+func test_move_cost_opens_a_ladder_edge_for_a_non_climber() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var bare := Pathfinder.new(grid)
+	assert_lt(
+		bare.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		0.0,
+		"sanity: a non-climber cannot cross a bare 2-high face"
+	)
+
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	var laddered := Pathfinder.new(grid)
+	var cost: float = laddered.move_cost(Vector2i(0, 0), Vector2i(1, 0))
+	gut.p("ladder edge costs %.1f" % cost)
+	assert_gt(cost, 0.0, "with a ladder the edge exists")
+
+
+## **A ramp is preferred over a ladder at equal distance**, which is the taskblock's own
+## stated ordering and the reason the ladder carries a cost scale at all.
+func test_move_cost_prefers_a_ramp_over_a_ladder() -> void:
+	var ramp_grid: Grid = _grid_with_step(0.0, 2.0)
+	ramp_grid.clear_surfaces(Vector2i(0, 0))
+	ramp_grid.add_surface(Vector2i(0, 0), Surface.new(DataLibrary.get_part(&"ramp"), 0.0))
+	var ramp_cost: float = Pathfinder.new(ramp_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
+
+	var ladder_grid: Grid = _grid_with_step(0.0, 2.0)
+	GridPlacement.place(ladder_grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	var ladder_cost: float = Pathfinder.new(ladder_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
+
+	gut.p("ramp %.1f against ladder %.1f" % [ramp_cost, ladder_cost])
+	assert_gt(ramp_cost, 0.0, "sanity: the ramp edge exists")
+	assert_lt(ramp_cost, ladder_cost, "a ramp is the cheaper way up")
+
+
+# --- it is a part, therefore shootable ------------------------------------------------
+
+
+## C3: "Destructible on purpose. `is_destructible` became real in taskblock-52; a ladder does
+## not use it. Cutting a ladder to cut a route is exactly the tactical texture
+## stranding-as-outcome is meant to enable."
+func test_a_ladder_is_destructible_unlike_the_floor_it_hangs_from() -> void:
+	var ladder: Part = DataLibrary.get_part(LADDER)
+	var floor_part: Part = DataLibrary.get_part(FLOOR)
+	assert_true(ladder.is_destructible, "a ladder can be cut")
+	assert_false(floor_part.is_destructible, "the deck it hangs from cannot")
+	assert_gt(ladder.hp, 0, "and it has hit points to lose")
+	assert_gt(ladder.volume.size(), 0, "and real geometry to be shot at")
+
+
+## **Cutting the ladder cuts the route** — the whole point of it being a part. Asserted
+## through `move_cost` rather than by inspecting the grid, because the route is what matters.
+func test_removing_a_ladder_closes_the_route_again() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	assert_gt(Pathfinder.new(grid).move_cost(Vector2i(0, 0), Vector2i(1, 0)), 0.0)
+
+	var kept: Array[Surface] = []
+	for surface: Surface in grid.surfaces_at(Vector2i(0, 0)):
+		if not (Surface.LADDER_TAG in surface.part.tags):
+			kept.append(surface)
+	grid.clear_surfaces(Vector2i(0, 0))
+	for surface: Surface in kept:
+		grid.add_surface(Vector2i(0, 0), surface)
+
+	assert_lt(
+		Pathfinder.new(grid).move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		0.0,
+		"with the ladder gone the ledge is unreachable again"
+	)

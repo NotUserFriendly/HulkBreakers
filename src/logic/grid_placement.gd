@@ -23,15 +23,23 @@ extends RefCounted
 
 const GROUND: StringName = &"GROUND"
 
-const _ORTHOGONAL_OFFSETS: Array[Vector2i] = [
-	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
+## taskblock-53 Pass C: `ZERO` first, then the four orthogonals. **A stack is
+## searched before a neighbour** so a ladder segment placed on a cell that
+## already holds one attaches to the segment below rather than to whatever
+## happens to be beside it — the nearer host is the more specific answer, and
+## order is the only thing expressing that.
+const _SIDE_OFFSETS: Array[Vector2i] = [
+	Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
 ]
 
 
-static func can_place(grid: Grid, cell: Vector2i, part: Part) -> bool:
+## `height` is where the part would sit, and a side attachment needs it: the host must
+## be at a DIFFERENT height (see `_find_attach_point`). Defaulted so every pre-existing
+## caller is unchanged, and passed through by `place` below.
+static func can_place(grid: Grid, cell: Vector2i, part: Part, height: float = 0.0) -> bool:
 	if GROUND in part.attaches_to:
 		return grid.surfaces_at(cell).is_empty()
-	return not _find_attach_point(grid, cell, part).is_empty()
+	return not _find_attach_point(grid, cell, part, height).is_empty()
 
 
 ## Places `part` at `cell` if `can_place` allows it, appending it to
@@ -49,7 +57,7 @@ static func place(
 		grid.add_surface(cell, surface)
 		return surface
 
-	var attach_point: Dictionary = _find_attach_point(grid, cell, part)
+	var attach_point: Dictionary = _find_attach_point(grid, cell, part, height)
 	if attach_point.is_empty():
 		return null
 	PartGraph.attach(part, attach_point.host, attach_point.socket)
@@ -58,15 +66,112 @@ static func place(
 	return side_surface
 
 
-## The first free, matching `{host, socket}` a side-attaching `part` could
-## occupy on an orthogonal neighbour of `cell`, or `{}` if none exists.
-static func _find_attach_point(grid: Grid, cell: Vector2i, part: Part) -> Dictionary:
-	for offset: Vector2i in _ORTHOGONAL_OFFSETS:
-		var neighbor: Vector2i = cell + offset
-		if not grid.in_bounds(neighbor):
+## The `{host, socket}` a side-attaching `part` at `height` should occupy: the
+## **nearest surface at a different height**, on an orthogonal neighbour of `cell`
+## or on `cell` itself. `{}` when nothing qualifies.
+##
+## ## Own cell first, then the nearest neighbour by height
+##
+## A surface in your own cell at your own height is skipped — that is the ground
+## under your feet. Anything else in your own cell wins outright, which is how "a
+## segment side-attaches to the segment below it" falls out with no stacking rule.
+## Failing that, the nearest neighbour by height. A neighbour at the SAME height is
+## still legal: a catwalk spanning horizontally is the case tb38 built this for.
+##
+## ## taskblock-53 Pass C: the same cell is searched, and that is the whole
+## ## stacking rule
+##
+## A ladder is *tileable to arbitrary height* — "a segment side-attaches to the
+## segment below it, so a run of three spans three levels with no new rule."
+## The segment below is in the **same cell**, not an orthogonal neighbour, so
+## searching only neighbours made stacking impossible to express. `ZERO` is
+## included in the offsets rather than special-cased, because a stack really is
+## the ordinary side attachment with a zero displacement, and writing it as a
+## second branch would be a second rule to keep in step with the first.
+##
+## ## Why the socket is direction-matched
+##
+## The grammar used to take the first free matching socket on any neighbour,
+## which meant a part bolted to a platform's **west** face could occupy the
+## socket authored on its **north** edge. Nothing read the socket transform, so
+## nothing noticed. `ship_floor` now authors one `LEDGE` per edge with a real
+## offset, so the socket a placement takes is the one it is physically against —
+## and a platform cell can host four ladders, one per side, which is the reason
+## to author four in the first place.
+##
+## **This is the answer to Pass C2's design question**, and it is the smaller of
+## the two available answers: *facing plus attach points is enough, orientation
+## does not need to enter the attachment vocabulary.* Adding a direction axis to
+## `attaches_to` would double every socket type (`LEDGE_N`/`LEDGE_S`/...) — the
+## same "one word carrying three unrelated axes" mistake `docs/SUPERSEDED.md`
+## records against the retired playstyle vocabulary. Direction is geometry, and
+## geometry is already on the socket.
+static func _find_attach_point(grid: Grid, cell: Vector2i, part: Part, height: float) -> Dictionary:
+	var same_cell: Dictionary = {}
+	var same_cell_rise: float = INF
+	var neighbour: Dictionary = {}
+	var neighbour_rise: float = INF
+	for offset: Vector2i in _SIDE_OFFSETS:
+		var host_cell: Vector2i = cell + offset
+		if not grid.in_bounds(host_cell):
 			continue
-		for surface: Surface in grid.surfaces_at(neighbor):
-			for socket: Socket in surface.part.sockets:
-				if PartGraph.is_legal_attachment(part, socket):
-					return {"host": surface.part, "socket": socket}
-	return {}
+		var is_same_cell: bool = offset == Vector2i.ZERO
+		for surface: Surface in grid.surfaces_at(host_cell):
+			var rise: float = absf(surface.height - height)
+			# **The one exclusion: a surface in your own cell at your own height.** That is
+			# the ground under your feet, not something to attach to — without this a ladder
+			# binds to the floor it stands on and never reaches the ledge beside it. A
+			# NEIGHBOUR at the same height stays perfectly legal: a catwalk spanning
+			# horizontally is the case side attachment was built for (tb38).
+			if is_same_cell and rise <= 0.001:
+				continue
+			if rise >= (same_cell_rise if is_same_cell else neighbour_rise):
+				continue
+			var socket: Socket = _best_socket_facing(part, surface.part, offset)
+			if socket == null:
+				continue
+			if is_same_cell:
+				same_cell_rise = rise
+				same_cell = {"host": surface.part, "socket": socket}
+			else:
+				neighbour_rise = rise
+				neighbour = {"host": surface.part, "socket": socket}
+	# **Your own cell wins when it qualifies** — it is what you are physically resting on.
+	# This is what makes "a segment side-attaches to the segment below it" fall out without a
+	# stacking rule: the segment below is in your cell, a ledge further off is not.
+	return same_cell if not same_cell.is_empty() else neighbour
+
+
+## The free, matching socket on `host` that physically faces back toward the
+## placing cell, or null. `offset` runs from the placed cell to the host, so the
+## placed part sits on the host's `-offset` side.
+##
+## Falls back to the first free match when no socket carries a meaningful offset
+## — a host authoring one central socket is not wrong, it simply has nothing to
+## discriminate on, and refusing it would break every part that never needed
+## edges.
+static func _best_socket_facing(part: Part, host: Part, offset: Vector2i) -> Socket:
+	var wanted := Vector3(-offset.x, 0.0, -offset.y)
+	var best: Socket = null
+	var best_score: float = -INF
+	var fallback: Socket = null
+	for socket: Socket in host.sockets:
+		if not PartGraph.is_legal_attachment(part, socket):
+			continue
+		if fallback == null:
+			fallback = socket
+		var origin: Vector3 = socket.current_transform().origin
+		var flat := Vector3(origin.x, 0.0, origin.z)
+		if flat.length() < 0.001:
+			continue
+		var score: float = (
+			flat.normalized().dot(wanted.normalized()) if wanted.length() > 0.001 else 0.0
+		)
+		if score > best_score:
+			best_score = score
+			best = socket
+	# A same-cell stack has no direction to match (`offset` is zero), so the
+	# fallback is the right answer there rather than a degenerate dot product.
+	if best != null and best_score > 0.5:
+		return best
+	return fallback

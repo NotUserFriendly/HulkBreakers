@@ -1,5 +1,48 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-53 Pass C — the ladder, and the grammar's first real use (it did not hold)
+
+**C1's finding: the placement grammar had never once succeeded.** tb38 built it and warned
+*"the first catwalk discovers the grammar doesn't hold."* It didn't. **No shipped surface part
+authored a single `Socket`**, so `_find_attach_point` could not match anything — every side
+attachment was structurally impossible, and the grammar's only recorded behaviour was
+*refusing* a second `GROUND` placement. A test pins the socket count so it cannot regress to
+unusable silently.
+
+**C2's design question is answered: orientation does not enter the attachment vocabulary.**
+Direction is geometry and geometry is already on the socket. `ship_floor` authors four `LEDGE`
+sockets with real per-edge transforms, and a placement takes the socket physically facing it —
+so a platform can be laddered on any side and the transforms do work instead of decorating.
+Putting direction in the type would double every socket name and repeat the "one word carrying
+unrelated axes" mistake `SUPERSEDED.md` records against the retired playstyles. Written into
+`docs/01`.
+
+**What the grammar did need was height, and the first rule was too strong.** A side attachment
+now skips a surface *in its own cell at its own height* — the ground under its feet — which is
+what stops a ladder binding to the floor it stands on instead of the ledge beside it. The first
+version excluded same-height hosts everywhere and **broke tb38's own tests**: a catwalk spanning
+horizontally from a neighbour at the same height is precisely the case side attachment exists
+for. Own cell wins when it qualifies, which is how *"a segment side-attaches to the segment
+below it"* falls out with no stacking rule of its own — the same cell is simply in the search.
+
+**A ladder is a second source of legality for an action that already exists** (`can_climb() or
+ladder`), and it **replaces the rise cap with its own reach** rather than raising it:
+`MAX_CLIMB_LEVELS` exists because a bare face is only climbable so far, and a ladder removes
+that by construction. Without this a three-segment ladder would be unusable, which defeats
+"tileable to arbitrary height".
+
+**`LADDER_COST_SCALE` was backwards on the first try, and the number is flagged.** 1.5 made a
+ladder the *most* expensive way up — nobody would build one — and made tall ladders fail their
+affordability check outright, because `ClimbAction` charges the whole rise as one action and a
+four-level ladder cost 16. At 0.5 a ladder level costs 2.0 against a ramp's 1.0 and a bare
+climb's 4.0, which orders the three the way the fiction does. `ClimbAction` reads the same
+constant, so the planner's quote and the action's charge cannot drift.
+
+**A correction to a comment I wrote in this pass:** `LADDER_SEGMENT_RISE = 2.0` was documented
+as "one level". `UnitGeometry.LEVEL_HEIGHT` is **1.0**, so it is two — deliberately more than a
+bare face, since a ladder reaching no further than free-climbing would have no reason to exist.
+
+
 ### taskblock-53 Pass A — the audit is disjoint from the suite
 
 **`res://audit/` is its own tree with its own entry point** — the CSV, its checks
