@@ -174,27 +174,6 @@ func apply(state: CombatState) -> void:
 		if target != null
 		else ShotPlane.depth_of_part(plane, target_part)
 	)
-	# taskblock-22 Pass H2: "low cover interrupts the covered unit's own
-	# shots... the shot's ray originates and immediately hits the cover
-	# if the muzzle is below the cover's height." The real shot-plane
-	# geometry, tested at the shooter's own (H1: shouldered) muzzle
-	# height straight down the centerline — same primitive
-	# ShotPlane.resolve_ray's own doc comment describes doing for a real
-	# muzzle ray, reusing the SAME plane this shot already built rather
-	# than constructing a second, independently-anchored one. A hit on
-	# anything that isn't a Unit (cover, never the target) this close
-	# means the shot never gets far enough to reach the target at all —
-	# the dartboard aims at the obstruction instead, so every downstream
-	# mechanic (penetration, destruction, salvage) still runs through the
-	# one real resolution path, just against a different point.
-	var muzzle_hit: Region = ShotPlane.self_obstruction(
-		plane, muzzle.y, actual.shell.all_parts_with_joints()
-	)
-	if muzzle_hit != null and not (muzzle_hit.body is Unit):
-		aim_point = Vector2(0.0, muzzle.y) + aim_offset
-		# taskblock-37 Pass A: the aim point moved to the obstruction's own
-		# position — its own real depth moves with it, not the target's.
-		aim_depth = muzzle_hit.depth
 	var resolved_scatter: Array[Ring] = ShotScatter.for_shot(
 		actual, weapon, target_cell, state, extra_sources
 	)

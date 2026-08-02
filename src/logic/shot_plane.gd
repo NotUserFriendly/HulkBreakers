@@ -260,27 +260,6 @@ static func region_at(plane: Array[Region], point: Vector2) -> Region:
 	return resolve_projectile(plane, point, [], 0.0, true)
 
 
-## taskblock-22 Pass H2: "the shot's ray originates and immediately hits
-## the cover if the muzzle is below the cover's height." Tests the
-## shooter's own real (H1: shouldered) muzzle height straight down the
-## plane's own centerline (lateral=0 — the muzzle sits ON the ray's own
-## line of travel) against this SAME already-built plane, rather than
-## constructing a second, independently-anchored one the way
-## `resolve_ray` does for the reticle/overwatch path. `shooter_parts`
-## excludes the shooter's own body — same convention
-## `DamageResolver.resolve_shot`'s own first `_find_next` call already
-## uses to keep a shooter's own arm/leg from self-intercepting a
-## collinear shot. Returns null if nothing at that height blocks the
-## centerline at all — the caller decides whether what comes back is
-## actually cover worth treating as an obstruction (e.g.
-## `not (region.body is Unit)`), same as `resolve_projectile` itself
-## doesn't know what a "unit" or "cover" is either.
-static func self_obstruction(
-	plane: Array[Region], muzzle_height: float, shooter_parts: Array[Part]
-) -> Region:
-	return resolve_projectile(plane, Vector2(0.0, muzzle_height), shooter_parts, 0.0, true)
-
-
 ## docs/09 taskblock06 Pass A / taskblock07 Pass A2: the ray-cast
 ## hit-resolution entry point, from `muzzle` — the shooter's own real
 ## muzzle position, an ordinary 3D world point, not a synthetic one built
