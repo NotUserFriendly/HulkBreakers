@@ -933,6 +933,8 @@ unit/logic/test_field_objects.gd,test_an_attached_barrel_projects_into_the_shot_
 unit/logic/test_file_sink.gd,test_uisink_and_filesink_receive_an_equal_line_count_event_for_event,,1586,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
 unit/logic/test_file_sink.gd,test_removing_one_sink_does_not_change_what_the_other_receives,,1172,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
 unit/logic/test_file_sink.gd,test_removing_the_other_sink_does_not_change_what_filesink_receives,,1017,0,0,0,0,0,0,the combat log dispatches every event to every attached sink
+unit/logic/test_file_sink.gd,test_a_second_sink_on_one_path_neither_truncates_nor_corrupts_the_log,,1200,0,0,0,0,0,0,a value round-trips through the file it is written to
+unit/logic/test_file_sink.gd,test_a_new_sink_appends_to_an_existing_log_rather_than_replacing_it,,1100,0,0,0,0,0,0,a value round-trips through the file it is written to
 unit/logic/test_fps_meter.gd,test_instantaneous_is_the_last_frames_own_rate,,1616,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
 unit/logic/test_fps_meter.gd,test_the_average_is_a_real_frame_rate_not_a_mean_of_rates,,720,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window
 unit/logic/test_fps_meter.gd,test_samples_older_than_the_window_fall_out,,542,0,0,0,0,0,0,the frame-rate readout is a real rate over a time-bounded window

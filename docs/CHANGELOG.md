@@ -1,5 +1,39 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 — the combat log stops corrupting itself (`BR52.04`)
+
+**`FileSink`'s own doc comment said "Appends to a real file". The code opened with
+`FileAccess.WRITE`, which truncates. The mismatch between the two was the bug.** Two sinks alive on
+one path — a new bout attaching one while the old is still open — meant the second reset the file to
+zero while the first still held a handle tens of kilobytes in; its next write landed at that stale
+offset and the kernel zero-filled the gap.
+
+**Measured on a real session log: 49 403 of 138 436 bytes were NUL**, one contiguous run starting at
+byte 1073. **Worse than it sounds**, because `file` then classifies the log as `data` and **`grep`
+silently declines to match it** while `tail` still renders fine — so it reads as healthy to a human
+and returns nothing to every tool. Several greps against that file came back empty during this
+session before the cause was found.
+
+**A new bout appends** (supervisor, 2026-08-02: *"That may not stay true, but it's the better option
+now."*). Two defences, answering different halves: open with `READ_WRITE` so nothing truncates
+(`WRITE` survives only as a create-if-missing fallback), **and** `seek_end()` before every write,
+since two live handles each carry their own position and opening at the end would not survive the
+second one.
+
+**The regression tests were verified by re-breaking the fix**, not merely by passing. Reverted to
+`FileAccess.WRITE`, both fail — and that also showed the corruption is not only the large-offset NUL
+case: at small scale the stale handle writes *mid-line*, producing
+`move: from the second sinkmove: the first sink is still alive`.
+
+**`BR35.08` (detonations are invisible) closed on the owner's instruction** after the supervisor saw
+an explosion trigger naturally. Recorded as owner-directed rather than CC-verified — no change in
+this block targeted it; what moved underneath it was taskblock-51's detonation work. `BR51.21` (no
+injection ever animates) is untouched, so a debug-forced blast still cannot draw.
+
+**`BR52.05` (the click hitch) withdrawn from the ledger by the supervisor** — actively being
+investigated as part of current work, so it belongs in the report rather than the bug list, per the
+standing rule about defects in systems still being built.
+
 ### taskblock-52 Passes E and F — the dartboard is an input device, and the flag inverts
 
 **The aim preview stopped being a second resolver.** `AimController._resolve_hit` built its own

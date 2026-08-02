@@ -139,23 +139,7 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
   missing model on one of them narrows quickly.
 
-### BR52.05 — Active — owner: `SUPERVISOR`
-**Massive hitch on any click that targets a unit**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-02, live. First reported as selecting a
-  player-controlled unit, then **revised by the supervisor to something broader and more useful:**
-  *"it seems to occur when clicking any unit for a purpose. Happens when selecting the active unit,
-  happens with clicking a unit to aim at, happens when clicking a unit to confirm aim."*
-- **That revision is the diagnosis's best lead.** Three different click intents on three different
-  code paths sharing one symptom points at something all three do — resolving a click to a unit, or
-  what they each rebuild afterwards — rather than at any one handler.
-- **Distinct from `BR51.14`/`BR26.02`**, which are *motion* costs (hover, aim tracking). This is a
-  discrete cost on a single click.
-- **`ShotPlane.builds` is the instrument to reach for first**, and it already exists: taskblock-52
-  measured one plane build at **~8 500 usec** on a 217-blocker board, and a twelve-round burst at
-  **20 builds**. A click that rebuilds a plane several times would produce exactly a "massive hitch"
-  and nothing on the motion path. Count builds per click before profiling anything.
-
-### BR52.04 — Active — owner: `SUPERVISOR`
+### BR52.04 — Pending — owner: `SUPERVISOR`
 **`out/combat.log` is corrupt — a third of the file is NUL bytes**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02. *"Bug: Garbage output in combat log."*
@@ -175,9 +159,31 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The boundary being a debug injection fits**: whatever a bout restart or re-setup does around
   `force_current_unit` is the likeliest place a second sink is attached without the first being
   closed.
-- **Confirmed by reading and by the byte pattern, not yet by a repro test.** The fix is either one
-  sink per path or an append-mode reopen, and which of those is right depends on whether a new bout
-  should start a fresh log — a question worth answering rather than assuming.
+- **`Pending` (2026-08-02).** CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.
+  **The supervisor answered the open question: a new bout appends.** *"New bout should append. That
+  may not stay true, but it's the better option now."* So a session's log is the whole session.
+- **Two defences, because they answer different halves.** `FileSink` opens with `READ_WRITE` (which
+  does not truncate; `WRITE` is kept only as a create-if-missing fallback), **and** seeks to the end
+  **before every write** — opening at the end alone would not survive a second sink, since each
+  handle carries its own position.
+- **The class's own doc comment already said "Appends to a real file".** The code truncated. The
+  mismatch between the two *was* the bug.
+- **The regression tests were verified by re-breaking the fix**, not just by passing: reverted to
+  `FileAccess.WRITE`, both new tests fail. That also showed the corruption is not only the
+  large-offset NUL case — at small scale the stale handle writes *mid-line*, producing
+  `move: from the second sinkmove: the first sink is still alive`.
+- **A corrupt log was also breaking the test suite, silently.** `FileAccess.get_as_text()` stops at
+  the first NUL, so `test_battle_scene.gd` could not find the session header it had just written and
+  went red until the poisoned `out/combat.log` was deleted. The blast radius was wider than "hard to
+  read by hand".
+- **One consequence of appending, flagged rather than absorbed: the log now grows without bound.**
+  Truncation was, accidentally, the only thing bounding it — every run and every suite execution now
+  adds to the same file. That is fine at a session's scale and is not fine forever. **Left as the
+  supervisor's call**, since it is the same decision they already took a position on: rotation per
+  session, a size cap, or a per-session filename. Not invented here.
+- **`Pending` rather than closed:** this entry is `SUPERVISOR`-owned. **To check:** play a session
+  with more than one bout, then `grep` the log. It should match, `file out/combat.log` should say
+  `ASCII text` rather than `data`, and the earlier bout should still be there above the later one.
 
 ### BR52.03 — Active — owner: `CC`
 **Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
@@ -1954,48 +1960,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   or are heading toward, so a squad spreads out instead of stacking) is a genuine design question —
   how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
   not a one-line patch, and not guessed at here.
-### BR35.08 — Active — owner: `SUPERVISOR`
-- **2026-08-02 (supervisor, live): *"I saw an explosion trigger naturally, that likely clears a
-  bug."*** Recorded, **not closed** — this entry is `SUPERVISOR`-owned and "likely" is the
-  supervisor's word, so promoting it is theirs to do. A naturally triggered detonation is exactly what
-  this entry has been waiting on: the previous blocker was that it could only be judged from a
-  shot-driven blast (`BR51.21`: no injection ever animates), which needed a shot that reliably lands.
-**Detonations are invisible — nothing is drawn when an explosion resolves**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (tb35 review, live). A detonation resolves mechanically but draws nothing
-  at all, so neither the fact of the explosion nor its extent is visible.
-- **Supervisor-specified presentation (a spec, not a suggestion):** draw a **translucent red sphere**
-  originating at the detonation point that **grows outward**, its **final radius matching the actual
-  explosion radius** — so the visual is a readout of the real mechanical extent, not decoration —
-  then **fades out**.
-  - **Grow : fade time ratio is 1 : 3.**
-  - **Total time is exposed as a tunable in the same place bullet timing lives**, defaulting to
-    **1000 ms**.
-- **Read the radius from the resolved detonation, never a parallel constant.** The whole value here is
-  that the sphere teaches the player the real blast extent; a separately-authored visual radius that
-  drifts from the mechanical one would be BR35.04's mistake again in a new place — a drawn thing that
-  looks authoritative and isn't.
-
-- **taskblock-51 Pass A — blocked, not attempted.** The deterministic route (spawn a goo barrel, zero
-  its HP) is unavailable because `set_part_hp` cannot target a non-unit part (`BR51.02`), and the
-  fallback of shooting one is unreliable because of `BR51.01` and `BR51.03`. **Three bugs deep before
-  this one can be looked at** — which is the argument for fixing `BR51.02` before anything else in the
-  block.
-
-- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** Built to the
-  stated spec: translucent red sphere, grows to the real `detonate_radius`, fades, grow : fade 1 : 3,
-  `ResolutionPlayer.DETONATION_MS` defaulting to 1000 ms. A new `detonation` log event carries the centre
-  and radius, emitted **once per explosion** rather than once per victim, so the drawn extent is a readout
-  of the mechanical one.
-- **Gap:** a detonation that harms nobody still draws nothing — `detonated_units` is empty and the
-  resolver returns no separate "it detonated" fact. Same shape as `BR34.05`.
-- **To see it:** detonate a goo barrel. `Set Part HP` can target one now (Pass K), so it no longer needs
-  a landed shot.
-- **2026-07-31 (supervisor check — REOPENED from `Pending`).** Detonations are still not being seen. Note
-  `BR51.21`: **no injection ever animates** — `_on_debug_panel_applied` never calls
-  `ResolutionPlayer.play()`, so a debug-forced blast cannot draw on that path at all. Until that is
-  settled, this entry can only be judged from a **shot-driven** detonation, which needs `BR51.01`.
-
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 shooter is elevated on a small platform and the target is below**

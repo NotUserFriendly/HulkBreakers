@@ -2296,3 +2296,56 @@ the cell's real height**
   the aim UI and resolution asking the same question and getting different answers is the shape this
   entry was.
 
+### BR35.08 — Resolved — owner: `SUPERVISOR`
+- **2026-08-02 (supervisor, live): *"I saw an explosion trigger naturally, that likely clears a
+  bug."*** Recorded, **not closed** — this entry is `SUPERVISOR`-owned and "likely" is the
+  supervisor's word, so promoting it is theirs to do. A naturally triggered detonation is exactly what
+  this entry has been waiting on: the previous blocker was that it could only be judged from a
+  shot-driven blast (`BR51.21`: no injection ever animates), which needed a shot that reliably lands.
+**Detonations are invisible — nothing is drawn when an explosion resolves**
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb35 review, live). A detonation resolves mechanically but draws nothing
+  at all, so neither the fact of the explosion nor its extent is visible.
+- **Supervisor-specified presentation (a spec, not a suggestion):** draw a **translucent red sphere**
+  originating at the detonation point that **grows outward**, its **final radius matching the actual
+  explosion radius** — so the visual is a readout of the real mechanical extent, not decoration —
+  then **fades out**.
+  - **Grow : fade time ratio is 1 : 3.**
+  - **Total time is exposed as a tunable in the same place bullet timing lives**, defaulting to
+    **1000 ms**.
+- **Read the radius from the resolved detonation, never a parallel constant.** The whole value here is
+  that the sphere teaches the player the real blast extent; a separately-authored visual radius that
+  drifts from the mechanical one would be BR35.04's mistake again in a new place — a drawn thing that
+  looks authoritative and isn't.
+
+- **taskblock-51 Pass A — blocked, not attempted.** The deterministic route (spawn a goo barrel, zero
+  its HP) is unavailable because `set_part_hp` cannot target a non-unit part (`BR51.02`), and the
+  fallback of shooting one is unreliable because of `BR51.01` and `BR51.03`. **Three bugs deep before
+  this one can be looked at** — which is the argument for fixing `BR51.02` before anything else in the
+  block.
+
+- **`PENDING` (taskblock-51 Pass C) — CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.** Built to the
+  stated spec: translucent red sphere, grows to the real `detonate_radius`, fades, grow : fade 1 : 3,
+  `ResolutionPlayer.DETONATION_MS` defaulting to 1000 ms. A new `detonation` log event carries the centre
+  and radius, emitted **once per explosion** rather than once per victim, so the drawn extent is a readout
+  of the mechanical one.
+- **Gap:** a detonation that harms nobody still draws nothing — `detonated_units` is empty and the
+  resolver returns no separate "it detonated" fact. Same shape as `BR34.05`.
+- **To see it:** detonate a goo barrel. `Set Part HP` can target one now (Pass K), so it no longer needs
+  a landed shot.
+- **2026-07-31 (supervisor check — REOPENED from `Pending`).** Detonations are still not being seen. Note
+  `BR51.21`: **no injection ever animates** — `_on_debug_panel_applied` never calls
+  `ResolutionPlayer.play()`, so a debug-forced blast cannot draw on that path at all. Until that is
+  settled, this entry can only be judged from a **shot-driven** detonation, which needs `BR51.01`.
+
+- **2026-08-02 — RESOLVED on the owner's instruction.** The supervisor saw an explosion trigger
+  naturally in play and directed closure: *"Also mark 35.08 as resolved."*
+- **Recorded as owner-directed rather than CC-verified**, the same way `BR27.04` was closed in
+  taskblock-51. CC never saw a sphere drawn and made no change targeting this entry in taskblock-52;
+  what changed underneath it was taskblock-51's work — the detonation event moved to `DamageResolver`
+  so one emitter serves both the shot-driven and the forced path, cover began taking the blast, and a
+  mounted part began detonating at its own composed position.
+- **What this does not close:** `BR51.21` (no injection ever animates) is untouched, so a
+  *debug-forced* detonation still cannot draw on that path. This entry closed on a **shot-driven**
+  blast, which is exactly the route its own last note said it would have to be judged from.
+
