@@ -37,7 +37,8 @@ closed. Owner is the gate; read it, not the source.
 - `Suspected` — a possible lead, not yet a confirmed or fully described bug. The reporter refines it
   into a real status at their review pass.
 - `Pending` — the fix is complete and CC believes it works, but the owner hasn't seen it
-  work yet. The only status CC may write toward closure on a `SUPERVISOR`-owned entry. (Pending *what*: the owner seeing it work.)
+  work yet. The only status CC may write toward closure on a `SUPERVISOR`-owned entry. 
+  (Pending *what*: the owner seeing it work.)
 - `Resolved` — confirmed fixed by the owner.
 - `Obsolete` — the entry can no longer be confirmed or reproduced because the code it describes was
   replaced or removed, not because anyone verified a fix. Closing an entry this way is an honest
@@ -96,6 +97,87 @@ confirm" roll-up — so pending items surface at a natural review point without 
   I am not making it unasked.
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
+
+### BR52.07 — Active — owner: `SUPERVISOR`
+**One shot in a burst flies off at roughly 90 degrees from the gun's facing**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, reading `out/combat.log` after a live burst. *"it had a strange 'one shot
+  flew off at 90 degrees from the gun facing' event."*
+- **Reproduced from the log, same burst, one origin `(19.54, 14.13)`:**
+
+  | pull | logged hit | displacement from origin |
+  |---|---|---|
+  | 7 | `crate (17.87, 11.37)` | (-1.67, -2.76) |
+  | 8 | `wall (20.57, 13.56)` | **(+1.03, -0.57)** |
+  | 9 | `goo_barrel (17.24, 6.00)` | (-2.30, -8.13) |
+  | 12 | `wall (16.46, 0.44)` | (-3.08, -13.69) |
+
+  Pull 8 goes **+x and almost no y** while the rest go steeply -y. As directions from one muzzle in
+  one burst those are near-perpendicular, which is exactly what the supervisor saw.
+- **Diagnosed, and it is the shot plane's lateral-offset artifact — the same family as `BR34.05`.**
+  `DamageResolver` reconstructs a logged hit as `origin + dir * region.depth + perp * point.x`.
+  `point.x` is the dartboard's lateral offset, and a late pull of a twelve-round burst is
+  recoil-widened (`RecoilResolver.widen`) and range-widened. Once `point.x` is large enough the
+  `perp` term dominates the `dir` term, so the *reported* impact swings toward perpendicular. The
+  round is not being fired sideways; it is being **drawn and logged** sideways.
+- **taskblock-52 Pass A measured the same mechanism from the other side:** the plane models a
+  scattered round as a ray *parallel* to the shooter-to-target line, displaced by the whole offset,
+  and only **100 of 152** of its reported hit points lie on the surface they claim to strike (the ray
+  chain: 216 of 216).
+- **So the fix already exists and is not switched on.** `RayChain` marches muzzle-to-aimed-point and
+  cannot express this. It becomes live when `CombatState.shot_resolver` inverts — see that field's own
+  doc comment for the 14 tests currently standing in the way.
+
+### BR52.06 — Active — owner: `SUPERVISOR`
+**A leg appears to have no model**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-02, live. *"leg doesn't seem to have a model."*
+- **Not yet investigated.** Recorded verbatim rather than guessed at — "no model" could be a missing
+  `Part.mesh_scene`, a part whose `volume` is empty (so `UnitGeometry.placements` emits no box for it
+  and `HitVolumeView` draws nothing), or a part sitting at a socket transform that puts it inside
+  another. **The middle one is worth checking first**, because taskblock-52 Pass D found exactly that
+  shape on `ship_floor`: a real, shipped Part carrying no `volume` at all.
+- **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
+  missing model on one of them narrows quickly.
+
+### BR52.05 — Active — owner: `SUPERVISOR`
+**Massive hitch on any click that targets a unit**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-02, live. First reported as selecting a
+  player-controlled unit, then **revised by the supervisor to something broader and more useful:**
+  *"it seems to occur when clicking any unit for a purpose. Happens when selecting the active unit,
+  happens with clicking a unit to aim at, happens when clicking a unit to confirm aim."*
+- **That revision is the diagnosis's best lead.** Three different click intents on three different
+  code paths sharing one symptom points at something all three do — resolving a click to a unit, or
+  what they each rebuild afterwards — rather than at any one handler.
+- **Distinct from `BR51.14`/`BR26.02`**, which are *motion* costs (hover, aim tracking). This is a
+  discrete cost on a single click.
+- **`ShotPlane.builds` is the instrument to reach for first**, and it already exists: taskblock-52
+  measured one plane build at **~8 500 usec** on a 217-blocker board, and a twelve-round burst at
+  **20 builds**. A click that rebuilds a plane several times would produce exactly a "massive hitch"
+  and nothing on the motion path. Count builds per click before profiling anything.
+
+### BR52.04 — Active — owner: `SUPERVISOR`
+**`out/combat.log` is corrupt — a third of the file is NUL bytes**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"Bug: Garbage output in combat log."*
+- **Measured, not impressionistic:** 138 436 bytes on disk, **49 403 of them NUL** — one contiguous
+  run starting at byte 1073, immediately after `command_outcome: accepted: force_current_unit`. `file`
+  reports the log as `data` rather than text.
+- **This is worse than cosmetic and it hid itself.** `grep` treats a file containing NULs as binary
+  and **silently declines to match**, while `tail` still renders the readable lines — so the log looks
+  fine to a human skimming it and returns nothing to every tool CC uses to read it. Several greps
+  against this file came back empty during this session before the cause was found.
+- **Root cause, from reading `file_sink.gd` (30 lines):** `_init` does
+  `FileAccess.open(path, FileAccess.WRITE)`, which **truncates the file to zero**. If two `FileSink`s
+  are ever alive on one path, the second truncates while the first still holds a handle positioned at
+  ~50 KB; the first's next `store_line` writes at that stale offset and the kernel zero-fills the gap.
+  That produces precisely this byte pattern — fresh content, one long NUL run, then the old writer's
+  output resuming.
+- **The boundary being a debug injection fits**: whatever a bout restart or re-setup does around
+  `force_current_unit` is the likeliest place a second sink is attached without the first being
+  closed.
+- **Confirmed by reading and by the byte pattern, not yet by a repro test.** The fix is either one
+  sink per path or an append-mode reopen, and which of those is right depends on whether a new bout
+  should start a fresh log — a question worth answering rather than assuming.
 
 ### BR52.03 — Active — owner: `CC`
 **Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
@@ -507,8 +589,9 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   planners is the first thing this item should take, because the table is the only reason the floor
   moved and it is no longer accurate.
 
-- **2026-07-28 (taskblock-46 Passes B–E) — narrowed, still `Active` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Not marked
-  `Pending`: this entry's own closure condition is `MIN_COMPLETION_RATE` back at 0.5, and it is not.
+- **2026-07-28 (taskblock-46 Passes B–E) — 
+  narrowed, still `Active` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Not marked `Pending`: this 
+  entry's own closure condition is `MIN_COMPLETION_RATE` back at 0.5, and it is not.
 
   | when | completion | sample |
   |---|---|---|
@@ -1872,6 +1955,11 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   how much to weight "don't stack with an ally" against "get to a real shot as fast as possible" —
   not a one-line patch, and not guessed at here.
 ### BR35.08 — Active — owner: `SUPERVISOR`
+- **2026-08-02 (supervisor, live): *"I saw an explosion trigger naturally, that likely clears a
+  bug."*** Recorded, **not closed** — this entry is `SUPERVISOR`-owned and "likely" is the
+  supervisor's word, so promoting it is theirs to do. A naturally triggered detonation is exactly what
+  this entry has been waiting on: the previous blocker was that it could only be judged from a
+  shot-driven blast (`BR51.21`: no injection ever animates), which needed a shot that reliably lands.
 **Detonations are invisible — nothing is drawn when an explosion resolves**
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (tb35 review, live). A detonation resolves mechanically but draws nothing

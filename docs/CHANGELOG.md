@@ -27,8 +27,14 @@ selectable by one field.
 than expected* — a 12-round burst logging 36, "3 pulls x 9 pellets" logging 61 rather than 27 — which
 is what a round continuing until its damage runs out looks like now that floors are real geometry: it
 punches through its target and goes on to strike the deck. **That is arguably correct under
-`BR34.05`'s own rule and it triples impact counts, log volume and tracer draws, so it is a design
-question rather than a fixture update.** At least one failure is a different shape:
+`BR34.05`'s own rule and it triples impact counts, log volume and tracer draws.**
+
+**Corrected 2026-08-02:** CC framed this as an open design question about whether a *spent* round
+keeps marching. It does not and never did — `RayChain` returns as soon as `spill <= 0.0`, so a round
+stops when its damage is exhausted. The extra impacts are rounds that still carry real damage. The
+supervisor's reading stands: a pellet penetrating that effectively is a **balance** problem for when
+ammo types land, not a resolver one — **so the Pass F failures are fixture expectations encoding the
+plane's behaviour, not a decision waiting on anyone.** At least one failure is a different shape:
 `test_attack_action.gd`'s low-cover obstruction case resolves to the target instead of the cover —
 and **the raw march handles that correctly in isolation** (probed: level shots from muzzle height
 0.30 and 0.50 both strike the cover at t=1.50; 0.80 clears it), so the fault is in how `AttackAction`

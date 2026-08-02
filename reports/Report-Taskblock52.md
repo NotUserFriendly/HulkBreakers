@@ -94,9 +94,17 @@ what surfaced that closest-root cannot fire (see Open questions).
   is what a round continuing until its damage runs out looks like now that floors are real geometry:
   it punches through its target and goes on to strike the deck. **That is arguably correct under
   `BR34.05`'s own rule, and it triples impact counts, log volume and tracer draws — so it is a design
-  question, not a fixture update, and it is yours.** Options: let a spent round keep marching and
-  accept the log volume (most correct, noisiest); stop a round once its damage is spent rather than
-  when it runs out of geometry; or keep marching but stop *logging* impacts that do no damage.
+  question, not a fixture update, and it is yours.**
+
+  **CORRECTION (2026-08-02): the three options I offered were wrong, and two of them described the
+  same thing.** I asked whether a spent round should keep marching. **It does not, and never did** —
+  `RayChain` returns the moment `spill <= 0.0`, so a round stops when its damage is exhausted rather
+  than when it runs out of geometry. That was "option 2", i.e. already the behaviour. The extra
+  impacts are rounds that genuinely still carry damage and punch onward because they can.
+  **So there is no design change here to make**, and the supervisor's read is the right one: a
+  shotgun pellet penetrating that effectively is a *balance* problem, to be answered when ammo types
+  land, not a resolver one. **That reclassifies the Pass F failures**: they are fixture expectations
+  encoding the plane's old behaviour and want updating, not a decision.
   **One failure is a different shape and is mine to fix:** `test_attack_action.gd`'s low-cover
   obstruction case resolves to the target instead of the cover. The raw march handles it correctly in
   isolation — probed, level shots from muzzle height 0.30 and 0.50 both strike the cover at t=1.50 and
