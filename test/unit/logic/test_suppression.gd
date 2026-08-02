@@ -205,9 +205,12 @@ func test_resolve_opportunity_attacks_resolves_a_real_melee_strike() -> void:
 	Suppression.resolve_opportunity_attacks(state, mover, [attacker])
 
 	assert_lt(mover.shell.root.hp, before_hp, "a real melee strike must deal real damage")
+	# taskblock-52: the strike is asserted on WHO it hit, not on how many impacts
+	# it produced — a round that reaches its target now continues into whatever is
+	# behind it, so a count of one stopped being the property under test.
 	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
-	assert_eq(impacts.size(), 1)
-	assert_eq(impacts[0].data.get("target_unit_id"), mover.id)
+	assert_gt(impacts.size(), 0, "the strike resolved against something")
+	assert_eq(impacts[0].data.get("target_unit_id"), mover.id, "and the mover took it first")
 
 
 ## taskblock-37 Pass A: the opportunity attack's own `resolve_and_log_point`

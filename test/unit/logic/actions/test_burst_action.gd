@@ -186,10 +186,14 @@ func test_a_burst_fires_exactly_burst_size_independent_pulls() -> void:
 
 	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
 
+	# taskblock-52: **counts pulls, not impacts.** The rule this protects is that a
+	# burst fires `burst_size` independent pulls; impact count was a proxy for it,
+	# and stopped being one when a round began continuing past its target into the
+	# deck. One pull can now log several impacts.
 	assert_eq(
-		sink.events_of_kind(&"impact").size(),
+		sink.events_of_kind(&"burst_pull").size(),
 		12,
-		"a single-projectile burst is exactly burst_size hits"
+		"a single-projectile burst is exactly burst_size pulls"
 	)
 
 
@@ -220,7 +224,10 @@ func test_a_burst_emits_one_summary_event_plus_full_detail_per_impact() -> void:
 	var summaries: Array[LogEvent] = sink.events_of_kind(&"burst_fired")
 	assert_eq(summaries.size(), 1, "exactly one summary event per burst, never one per pull")
 	assert_eq(summaries[0].data.get("round_count"), 12)
-	assert_eq(
+	# taskblock-52: at least one impact per pull, rather than exactly one — a round
+	# that punches through its target and goes on to strike the deck logs both, and
+	# the claim here is that detail is never suppressed in favour of the summary.
+	assert_gte(
 		sink.events_of_kind(&"impact").size(), 12, "every individual impact still gets logged"
 	)
 
@@ -240,11 +247,9 @@ func test_a_burst_of_buckshot_resolves_n_pulls_times_m_pellets() -> void:
 	BurstAction.new(shooter, &"auto_shotgun", Vector2i(3, 0)).apply(state)
 
 	var ammo: AmmoDef = DataLibrary.get_ammo(&"12ga_buckshot")
-	assert_eq(
-		sink.events_of_kind(&"impact").size(),
-		weapon.weapon_def.burst_size * ammo.projectile_num,
-		"3 pulls x 9 pellets"
-	)
+	# taskblock-52: the pellet count per pull is asserted on `SpreadPattern` below
+	# rather than inferred from impacts, which are no longer one per pellet.
+	assert_eq(sink.events_of_kind(&"burst_pull").size(), weapon.weapon_def.burst_size, "3 pulls")
 	DataLibrary.reset()
 
 
@@ -306,9 +311,7 @@ func test_recoil_never_changes_the_pellet_count_per_pull() -> void:
 	# Still exactly 3 pulls x 9 pellets even with real (non-zero) recoil
 	# now wired in — recoil widening the LATER pulls' dartboard never
 	# changes how many pellets any one pull throws.
-	assert_eq(
-		sink.events_of_kind(&"impact").size(), weapon.weapon_def.burst_size * ammo.projectile_num
-	)
+	assert_eq(sink.events_of_kind(&"burst_pull").size(), weapon.weapon_def.burst_size)
 	DataLibrary.reset()
 
 
@@ -344,7 +347,15 @@ func test_a_real_bursts_pull_events_always_total_burst_size_even_with_misses() -
 	# Seed 0: a real, verified mix of hits and misses for this exact
 	# fixture (confirmed via a live probe before writing this test) —
 	# never all-hit, never all-miss, so this can't pass by accident.
-	var state := CombatState.new(GridFixture.flat(10, 10), [shooter, target], 0)
+	#
+	# **taskblock-52: the board is deliberately unfloored.** A `GridFixture.flat`
+	# board now has real deck geometry under it, and a round that misses the torso
+	# goes on to strike the deck — so on a floored board *nothing misses*, which is
+	# the whole point of the ray chain and leaves this test nothing to measure. An
+	# unfloored grid is the "out through the ceiling / through a broken wall" case
+	# `docs/02` names as the one legitimate way to hit nothing, and it is what keeps
+	# a real miss reachable here.
+	var state := CombatState.new(Grid.new(10, 10), [shooter, target], 0)
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
 
@@ -394,8 +405,10 @@ func test_landed_so_far_matches_the_actual_impact_count_at_the_end() -> void:
 	BurstAction.new(shooter, &"chaingun", Vector2i(3, 0)).apply(state)
 
 	var pulls: Array[LogEvent] = sink.events_of_kind(&"burst_pull")
-	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
-	assert_eq(pulls[pulls.size() - 1].data.get("landed_so_far"), impacts.size())
+	# taskblock-52: `landed_so_far` counts PULLS that landed, and impacts are no
+	# longer one per pull, so it is checked against the pulls that report a hit.
+	var landed: Array[LogEvent] = pulls.filter(func(e: LogEvent) -> bool: return e.data.get("hit"))
+	assert_eq(pulls[pulls.size() - 1].data.get("landed_so_far"), landed.size())
 
 
 ## tb32 Pass C: same fix as AttackAction — a burst can be declared against

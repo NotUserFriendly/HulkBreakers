@@ -163,10 +163,18 @@ func test_a_deflect_logs_its_own_reflected_miss_endpoint() -> void:
 
 	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
 	assert_gt(impacts.size(), 0, "sanity: the fixture must actually hit something")
-	var deflect: LogEvent = impacts[0]
-	assert_eq(
-		deflect.data.get("outcome"), Enums.Outcome.DEFLECT, "sanity: the fixture must deflect"
-	)
+	# taskblock-52: the deflect is FOUND rather than assumed to be first — a round
+	# that deflects goes on to strike something else, so the chain logs more than one
+	# impact and the ordering is geometry's to decide, not the fixture's.
+	var deflect: LogEvent = null
+	for event: LogEvent in impacts:
+		if event.data.get("outcome") == Enums.Outcome.DEFLECT and deflect == null:
+			deflect = event
+	assert_not_null(deflect, "sanity: the fixture must deflect")
+	if deflect == null:
+		# Bail rather than dereference null: a runtime error opens a debugger break
+		# that HANGS the headless run (`BR52.02`), which is far worse than a red test.
+		return
 	# **`BR35.04` (taskblock-51 Pass C): a DEFLECT no longer carries a projected endpoint.**
 	#
 	# This asserted the opposite until now. `deflect_end_*` was the reflection direction pushed
