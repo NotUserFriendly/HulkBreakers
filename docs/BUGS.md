@@ -98,6 +98,66 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+### BR52.10 — Active — owner: `SUPERVISOR`
+**An AI unit fires a full burst through the ally standing directly in front of it, killing them**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"Can't tell for sure, but it looks like AI isn't trying to avoid shooting
+  allies in the back."* **Confirmed, and it is worse than the report supposed** — reproduced from
+  `out/combat.log` (seed 2), Turn 0.
+- **What happened, from the log.** Unit 4 (cell `(20,5)`) and unit 3 (cell `(19,5)`) are squadmates
+  standing in a line. Unit 4 fires a 12-round chaingun burst at `(12,3)`; unit 3 is directly between
+  them. **Eight consecutive pulls resolve on unit 3**, destroying `torso_cladding` then `torso`, and
+  ending with `matrix_ejected: combat_tester_chaingun_0 from torso` and
+  `surrogate_demoted: unit 3 FULL -> PERIPHERAL`. **Unit 3 takes no further turn in the battle.** One
+  AI unit removed a third of its own squad on turn zero.
+- **The muzzle is physically inside the ally.** Every one of those eight impacts logs
+  `origin (19.02, 5.08)@1.53 -> hit (19.02, 5.08)@1.53` — **hit point equal to origin, zero distance.**
+  That is not a resolver defect: `chaingun.tres`'s box is `center (0,0,0.4) size (0.15,0.15,0.9)`, so
+  `muzzle_point`'s tip (`center + (0,0,size.z/2)`) sits **0.85 forward of the grip**. From cell
+  `(20,5)` that puts the muzzle tip at x=19.02, and unit 3's body boxes at cell `(19,5)` span
+  x[18.5,19.5]. The ray legitimately starts inside the ally and hits at t=0. **The geometry is right;
+  the decision to fire is what is wrong.**
+- **Root cause in the AI, located.** `UtilityContext._lof_possible(cell)` is
+  `field == null or field.allows(cell)` — a **visibility-field** test, i.e. terrain and opacity only.
+  `_nearest_known_enemy` correctly skips allies as *targets*
+  (`candidate.squad_id == unit.squad_id ... continue`), but **nothing anywhere scores whether a
+  friendly unit occupies the firing line.** `INPUT_LINE_OF_FIRE` and `PRED_LOF_BLOCKED` both read that
+  same terrain-only check, so a squadmate at point-blank range is invisible to the decision.
+- **Not fixed, and deliberately not designed unasked.** The fix is a real design call, not a patch:
+  whether friendly-fire risk should **veto** a shot (a precondition) or **penalise** it (an input),
+  and whether a player unit gets the same treatment or the asymmetry in `docs/06` applies. Both
+  options are one-line in shape and very different in behaviour. **Flagged for a decision.**
+- **Why the log made it findable at all** is worth keeping: `hit == origin` is a shape that reads as a
+  resolver bug and is not one. Anything that resolves at zero distance should probably be a named,
+  greppable condition rather than something a reader has to notice by comparing two coordinate pairs.
+
+### BR52.09 — Active — owner: `SUPERVISOR`
+**Cover objects survive a great many hits — the mechanism is a knife-edge deflect angle, not a failure
+to take damage**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"some forklift cover items aren't being destroyed after taking shots. Check
+  combat log to see some specific items."*
+- **The specific item.** `out/combat.log` (seed 2): the forklift at ~`(18.55, 6.4)` **took 18 impacts
+  before it was destroyed** — 14 `DEFLECT`, 4 `STOP_DEAD`. It died on the fourth solid hit. Three
+  forklifts are destroyed in the battle overall, out of 28 forklift impacts.
+- **So it is not indestructible, and the damage path is working:** `forklift.tres` is hp 8, and four
+  `STOP_DEAD` hits killed it — about 2 damage each, which is coherent. **The symptom is the deflect
+  rate, not a destruction failure.**
+- **The mechanism, measured.** `steel.tres` authors no `deflect_threshold_deg`, so it takes
+  `MaterialEntry`'s default of **30.0 degrees**. The engagement geometry — shooter muzzle at
+  `(12.98, 3.08)@1.53`, forklift `-X` face at x=18.55 — puts the incidence at **~31 degrees**. The
+  whole burst sits roughly one degree over the threshold, so nearly every round in it glances off.
+  A knife-edge, and it will read as "that thing is invulnerable" whenever an engagement lands on the
+  wrong side of it.
+- **A second, larger fact found while checking this: nothing penetrated anything all battle.** 78
+  `DEFLECT` and 78 `STOP_DEAD`, **zero `PENETRATE`**. `chaingun.tres` is `damage 2.0` with
+  `damage_multiplier 0.8` — **1.6 effective** — against steel's `dt` of **6.0**. No chaingun round can
+  penetrate steel by design, so every steel object on the board can only ever be worn down by
+  accumulated `STOP_DEAD` damage, and only by the rounds that do not glance.
+- **Filed as a balance question, not a resolver one**, and left for a decision rather than tuned:
+  the numbers involved (a 30-degree default nobody authored per-material, 1.6 damage against dt 6.0)
+  are exactly the kind this project does not invent. **The observation is the deliverable.**
+
 ### BR52.07 — Active — owner: `SUPERVISOR`
 **One shot in a burst flies off at roughly 90 degrees from the gun's facing**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -138,59 +198,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   shape on `ship_floor`: a real, shipped Part carrying no `volume` at all.
 - **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
   missing model on one of them narrows quickly.
-
-### BR52.04 — Pending — owner: `SUPERVISOR`
-**`out/combat.log` is corrupt — a third of the file is NUL bytes**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02. *"Bug: Garbage output in combat log."*
-- **Measured, not impressionistic:** 138 436 bytes on disk, **49 403 of them NUL** — one contiguous
-  run starting at byte 1073, immediately after `command_outcome: accepted: force_current_unit`. `file`
-  reports the log as `data` rather than text.
-- **This is worse than cosmetic and it hid itself.** `grep` treats a file containing NULs as binary
-  and **silently declines to match**, while `tail` still renders the readable lines — so the log looks
-  fine to a human skimming it and returns nothing to every tool CC uses to read it. Several greps
-  against this file came back empty during this session before the cause was found.
-- **Root cause, from reading `file_sink.gd` (30 lines):** `_init` does
-  `FileAccess.open(path, FileAccess.WRITE)`, which **truncates the file to zero**. If two `FileSink`s
-  are ever alive on one path, the second truncates while the first still holds a handle positioned at
-  ~50 KB; the first's next `store_line` writes at that stale offset and the kernel zero-fills the gap.
-  That produces precisely this byte pattern — fresh content, one long NUL run, then the old writer's
-  output resuming.
-- **The boundary being a debug injection fits**: whatever a bout restart or re-setup does around
-  `force_current_unit` is the likeliest place a second sink is attached without the first being
-  closed.
-- **`Pending` (2026-08-02).** CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`.
-  **The supervisor answered the open question: a new bout appends.** *"New bout should append. That
-  may not stay true, but it's the better option now."* So a session's log is the whole session.
-- **Two defences, because they answer different halves.** `FileSink` opens with `READ_WRITE` (which
-  does not truncate; `WRITE` is kept only as a create-if-missing fallback), **and** seeks to the end
-  **before every write** — opening at the end alone would not survive a second sink, since each
-  handle carries its own position.
-- **The class's own doc comment already said "Appends to a real file".** The code truncated. The
-  mismatch between the two *was* the bug.
-- **The regression tests were verified by re-breaking the fix**, not just by passing: reverted to
-  `FileAccess.WRITE`, both new tests fail. That also showed the corruption is not only the
-  large-offset NUL case — at small scale the stale handle writes *mid-line*, producing
-  `move: from the second sinkmove: the first sink is still alive`.
-- **A corrupt log was also breaking the test suite, silently.** `FileAccess.get_as_text()` stops at
-  the first NUL, so `test_battle_scene.gd` could not find the session header it had just written and
-  went red until the poisoned `out/combat.log` was deleted. The blast radius was wider than "hard to
-  read by hand".
-- **Appending removed the only thing bounding the log's size, and the supervisor answered it the same
-  day: per-session files, old ones subfoldered.** So the two rules are now *a new bout appends, a new
-  session rotates* — several bouts in one run share a log, and the next run archives it into
-  `out/logs/combat-YYYYMMDD-HHMMSS.log` before starting clean. The **live path deliberately does not
-  move**: `tail -f`, `grep` and the startup "log: <path>" line all point at `out/combat.log`, and
-  there is only ever one live session, so it is the archive that needs distinct names.
-- **Rotation is per path and once per process**, not on every construction — otherwise a second sink
-  attaching mid-session would rotate the log out from under the first, which is the very case this
-  entry is about.
-- **The archive itself will balloon**, and that is filed rather than solved: `PLAN.md`'s *Keep the
-  rotated combat logs from ballooning*, to follow the same rolling-window rule `reports/` and
-  `taskblock_done/` already use, as the supervisor suggested.
-- **`Pending` rather than closed:** this entry is `SUPERVISOR`-owned. **To check:** play a session
-  with more than one bout, then `grep` the log. It should match, `file out/combat.log` should say
-  `ASCII text` rather than `data`, and the earlier bout should still be there above the later one.
 
 ### BR52.03 — Active — owner: `CC`
 **Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
@@ -1428,81 +1435,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   wraps, which is why the bug only shows on cover-item targeting. **Candidate fix (not yet applied):**
   either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
   only "real" queued legs consume a color slot.
-### BR30.10 — Pending — owner: `SUPERVISOR`
-**Shots resolve straight through walls**
-- **Source:** `SUPERVISOR`
-- **2026-07-23 (supervisor check — NOT confirmable yet).** Rounds are definitely striking walls now,
-  so the core of the fix is doing something — but there are enough remaining inconsistencies that the
-  fix can't be signed off. Three specific findings came out of this check and are filed separately:
-  **BR32.07** (burst can't engage a wall at all — symptom has since shifted, see that entry),
-  **BR34.05** (misses vanish instead of striking anything), and the depth-floor defect that tb35 Pass B
-  addresses. Leave `Pending Confirmation` until those are settled — several of them are probably the
-  "inconsistencies" observed here rather than separate phenomena.
-- **Reported:** 2026-07-21, live play testing BR27.01: an attack against an enemy on the opposite side
-  of a wall tile connects as if the wall isn't there. Confirmed by the supervisor as their very first
-  test case, deliberately, not an accidental cross-cover shot.
-- **Root cause, confirmed by code:** `LoS.has_los()` (`src/logic/los.gd`) and `ShotPlane.build()`
-  (`src/logic/shot_plane.gd:19-46`) read entirely disjoint data. `LoS` reads only `grid.opacity` (set
-  to `1.0` for wall cells by `MapGen.generate()`, `map_gen.gd:52-56`) — correctly treats walls as
-  opaque for TACTICAL gating (aim-mode/step-out decisions). `ShotPlane.build()` only ever projects
-  `state.units` and `state.grid.blockers` (`shot_plane.gd:24,33`) into the depth-sorted hit plane —
-  never `grid.opacity`. `MapGen` never writes a `blockers` entry for WALL cells — only
-  `_scatter_cover()` (`map_gen.gd:201-208`) populates `blockers`, and only for scattered cover props on
-  `OPEN` cells. So a real wall has an opacity flag but no Part, no mesh, nothing in `grid.blockers` —
-  it is entirely invisible to the actual damage-resolution path, which only ever sees shooter, target,
-  and scattered-cover Parts. `docs/02` (`docs/02-projection-and-targeting.md:82-84`) already documents
-  the intended fix: terrain should be "a Part flagged indestructible" living in the same plane as
-  everything else — never implemented for walls, only for scattered cover.
-- **View-layer confirmation:** walls have no 3D volume either — `BoardView._build_wall_indicators()`
-  (`src/view/board_view.gd:239-245`) only draws a flat floor decal (`WALL_INDICATOR_HEIGHT = 0.015`)
-  plus a thin decorative cross; no `CollisionShape`/`StaticBody` exists for walls anywhere in
-  `src/view/`. This matches the supervisor's own observation that walls are "visually nothing" beyond
-  the debug 'x' marker.
-- **Fix:** `MapGen._stamp_wall_geometry()` (new, runs last in `generate()`, after
-  `_ensure_spawns_connected` so it sees the grid's final layout) gives every WALL cell that borders at
-  least one non-WALL cell a real, indestructible `Part` in `grid.blockers` — `data/parts/wall.tres`
-  (new: a full-cell box, `is_destructible = false`, matching docs/02's own "terrain is a Part flagged
-  indestructible"). A WALL cell buried in solid, unreachable rock (no non-WALL neighbor) deliberately
-  gets no blocker — it can never be the nearest hit along any real ray, so skipping it is a pure perf
-  win (`ShotPlane.build`'s own per-shot scan is unculled), not a behavior change.
-  `LoS.has_los()` is unchanged (opacity-only) — it already correctly treated walls as opaque; only the
-  hit-resolution side was blind to them.
-- **Side effect, expected and not chased further this pass:** as a direct consequence of walls now
-  really blocking, this landed a follow-on discovery — a live seed-search on `test/integration/
-  test_full_mission.gd` (whose own hardcoded `SEED` now fails, same "a real mechanics fix reshuffles
-  the deterministic timeline" pattern that test's own header already documents five times over) showed
-  **81% of all impacts in one full mission (368/457) landing on a wall instead of the intended
-  target** — the AI appears to fire without ever verifying a genuinely clear line of fire, trusting
-  `ShotPlane` alone to arbitrate (harmless before this fix, since nothing ever blocked a shot). Likely
-  why missions now grind through more turns under the fix. Not filed as its own bug yet — flagged here
-  as the reason `test_full_mission.gd`'s current failure may need more than a seed re-pick, and as a
-  candidate follow-up investigation into AI engagement/target selection (taskblock-45 retired the
-  planner named here; the successor is `UtilityContext`/`UtilityScorer` — `UnitAI._pick_engagement_
-  position`/`_engagement_score`).
-- **Verified:** `test_shot_plane.gd::test_a_wall_part_between_shooter_and_target_blocks_the_shot` (a
-  wall Part between shooter and target intercepts the shot; the target is still there once the wall is
-  excluded) and `test_map_gen.gd::test_exposed_wall_cells_carry_a_blocking_part_interior_walls_do_not`
-  (every exposed wall cell across 50 seeds carries the blocker; every fully-interior one doesn't).
-  1868/1869 green — the one remaining failure is `test_full_mission.gd` itself, above, a known,
-  expected consequence, not chased this pass (supervisor's own call: "consider the full test failed
-  for the moment, we have a couple other things to check").
-- **RESOLVED-PENDING-CONFIRMATION** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit pending.
-- **2026-07-28 (supervisor check — still blocked, left `Pending` deliberately).** Cannot be confirmed
-  until the drawn beams are trustworthy: this entry's evidence is read off tracers, and
-  `PLAN.md`'s **Tracers and hit visuals** covers the defects that make them unreliable.
-- **Three of that cluster corrupt this entry's evidence specifically**, so it cannot be signed off
-  while any of them is open:
-  - **BR35.07** — `STOP_DEAD` tracers drawn *past* their own hit point. A round that correctly stops at
-    a wall is drawn continuing through it, which is this entry's exact symptom rendered by a different
-    bug.
-  - **BR34.05** — misses vanish instead of striking anything, so a round that *should* mark a wall
-    leaves no evidence either way.
-  - **BR35.04** — a DEFLECT's bounce tracer is a decorative fixed-range projection rather than the real
-    continuation, so a post-deflection path tells you nothing about what it actually hit.
-- **Re-check after that cluster lands**, not before. Watching for wall strikes against tracers that
-  misreport where rounds stopped is how this entry produced three spin-off findings and no closure last
-  time.
-
 ### BR32.04 — Active — owner: `SUPERVISOR`
 **Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up**
 - **Source:** `SUPERVISOR`
@@ -1741,186 +1673,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   probably be a short distance from the target, in line between shooter and target"*. Today it frames
   from a high angle. That is a solvable framing constraint rather than a bug in the solver, and it is
   the shape to aim at.
-
-### BR34.05 — Active — owner: `SUPERVISOR`
-**Misses vanish instead of striking anything**
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (post-tb34 check, during the BR30.10 verification). A missed shot appears
-  to travel into nothing — it strikes no obstacle at all on its way out, passing through an arena that
-  is enclosed on every side.
-- **Supervisor's stated rule for how this SHOULD work — a design statement, not just a repro:** a shot
-  should **nearly always hit something**. The floor, or one of the many walls surrounding the arena.
-  The only legitimate ways for a round to hit nothing are **through an already-broken wall** or **out
-  through the ceiling**. Anything else vanishing is wrong.
-- **Why this matters more than a visual nit:** it means "miss" is currently modelled as *terminate the
-  round*, rather than *continue until something stops it*. That has real consequences now that walls
-  are destructible and decompression is a planned hook — a missed burst that should be chewing a wall
-  behind the target is instead doing nothing, and the arena never accumulates the damage a firefight
-  should leave. It also interacts with **BR34.01** (per-hop playback): a miss that continues has hops,
-  and hops are what that entry is about.
-- Likely the same neighbourhood as tb35 Pass B's depth floor and the `&"miss"` handling in
-  `ResolutionPlayer`/`shot_resolution.gd` — check whether a miss even builds a continuation ray, or
-  simply stops.
-- **2026-07-23 (tb35 Pass B2 — root-caused and reproduced, not fixed)**
-  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. `resolve_shot` does build a real continuation — the
-  question was never "does it try," it genuinely finds nothing to hit in some cases. Reproduced
-  directly: fired hundreds of simulated shots (`DamageResolver.resolve_shot`) from a unit standing in
-  a fully-walled room (real `grid.blockers` Parts on every perimeter cell, both a hand-built room and
-  real `BoutSetup`-generated maps) with a wide range of aim points. At an ordinary/tight lateral
-  offset (|x| under ~1 unit — the range any single weapon's own authored scatter ring realistically
-  produces), **zero** shots vanished, before or after this taskblock's own depth-floor fix — so this
-  is a genuinely different defect from BR34.06/BR27.02, not the same one re-surfacing. Once the
-  lateral offset is pushed wide (|x| beyond ~4-5 units), misses start appearing reliably (56/200 at
-  |x| up to 8) — **`ShotPlane.build` projects each wall cell as its own independent rect; adjacent
-  cells' projected rects are not guaranteed to tile edge-to-edge from an arbitrary shooter angle, so a
-  sufficiently wide lateral offset can thread a real gap between them and pass clean through, even
-  though the room is genuinely enclosed.**
-  - **Why a real weapon can reach that range:** a burst's own scatter widens per pull
-    (`RecoilResolver.widen`, `factor = 1.0 + resolved_step * recoil_step`) — a late pull in a long
-    burst (the chaingun bursts logged elsewhere in this file routinely run 20-30 pulls) can multiply
-    the base outer ring (chaingun: `0.6`) several times over, and `RangeModel.dartboard_radius_scale`
-    widens it further at long range (up to `1.0 / ACCURACY_FLOOR ≈ 2.86x`). The two compound: a late
-    pull of a long burst fired at range is exactly the shape of shot most likely to reach the lateral
-    offsets that expose this gap — and exactly the shape of shot ("the most recent chaingun bursts")
-    this ledger already has several live reports about.
-  - **The supervisor's own "or the floor" half of the design rule has no geometry to hit at all** —
-    `ShotPlane.build` only ever projects `state.units` and `state.grid.blockers`; there is no modeled
-    floor/ground-plane Region anywhere in this system. That half of the fix is a real feature gap, not
-    a bug in existing code.
-  - **Not fixed this pass — needs a design call, not an invented number.** This touches `ShotPlane`/
-    `BodyProjector`, the shared geometry every single shot in the game resolves against; three
-    directions, not picked between: (a) make adjacent same-material blocker cells project as one
-    contiguous rect run instead of independent per-cell boxes, closing the seam at the source: (b) cap
-    dartboard scatter radius (post-recoil, post-range-widen) at some bound that guarantees plane
-    coverage — a real balance number, not this session's to invent; (c) add a genuine floor Region so
-    at least the "hits the floor" half of the design rule has something to resolve against. Flagging
-    for supervisor/design input rather than guessing.
-- **taskblock-51 third hunt — the supervisor re-reported this and CC mis-filed it as a new entry
-  (`BR51.03`), now folded back here.** Their words: *"Misses still happening when there is something for
-  a bullet to hit; damage should drop outside of range but the bullet should still hit something"*, and
-  on being asked whether it was a design change rather than a defect: *"Leave it as a bug, I tried to
-  have this changed before so if it's still occurring it's a bug."* — which is this entry, reported
-  2026-07-23.
-- **One nuance the re-report adds:** range should **attenuate damage**, not delete the projectile. That
-  sharpens the fix: the termination is happening at the range gate, not only at the resolution.
-- **Still open, still `SUPERVISOR`-owned. Nothing was closed by the merge** — a duplicate record was
-  removed, not a bug.
-
-- **taskblock-51 Pass C — investigated, not fixed, and it is bigger than the miss branch.** `ShotPlane.build`
-  iterates units, `grid.blockers` and field items. **There is no floor in it**, so a round angled slightly
-  down, or passing over and between everything, has nothing to intersect: "miss" is not a wrong branch
-  being taken, it is the only branch that exists.
-- **`Surface` already carries a `Part` (tb38 made floor and terrain into parts)**, so a floor Region needs
-  no stand-in Part and no new outcome type — `ImpactResult.region.part` works with `surface.part` as it
-  stands. That removes the design question CC raised about what a floor hit would *mean*.
-- **There is a SECOND cause, recorded in `PLAN.md` under *Wide scatter passing through a wall seam*.**
-  Wall cells are projected as independent rects that are **not guaranteed to tile edge-to-edge** from an
-  arbitrary shooter angle, so a dartboard point can thread a real gap in an enclosed room — reproduced at
-  56/200 empties at a lateral offset of ~8. **A floor Region alone would not fix this**; it would convert
-  "vanishes" into "hits the floor behind the wall", which is visible but still wrong.
-- **So this entry and that `PLAN.md` item are one decision.** Of its three candidates, merging contiguous
-  same-material blocker cells addresses the seam, a floor Region addresses the absent backstop, and capping
-  scatter radius papers over both with a balance number. **Supervisor's call, and it is queued as a design
-  call rather than a code fix.**
-
-- **2026-08-01 (taskblock-52 Pass A — the 56/200 reproduces exactly, and the seam explanation attached to
-  it is wrong).** CC session `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. The harness is committed now
-  (`SeamSweep`, `test_seam_sweep.gd`), so this is re-takeable rather than remembered.
-  - **The number is real and the room is what produces it.** 56/200 reproduces to the shot — in an
-    **11x11** room and no other. Room size sweep: 9-room **80/200**, 11-room **56/200**, 13-room
-    **24/200**, and 17-, 21- and 31-rooms **0/200**. A count that tracks the room rather than the walls is
-    not measuring a projection artifact.
-  - **The threshold is the wall's own face, to the sample.** Along one axis in 0.25 steps, the last hit is
-    at lateral **5.25** and the first miss at **5.50**; the perimeter wall box's outer face is at exactly
-    **5.50**. A rect-tiling seam scatters empties across offsets and angles — this is one clean edge
-    sitting precisely on the geometry.
-  - **The real mechanism: a scattered round is modelled as a *parallel* ray.** `DamageResolver._find_next`
-    tests every region at a **constant** lateral offset, so the modelled flight is
-    `origin + perp * point.x + dir * t` — the whole round, muzzle included, translated sideways by the
-    full dartboard displacement rather than diverging from the gun. At lateral 6.0 in an 11-room the
-    flight begins at `(5.00, 11.00)`, **off the board**. It does not thread the wall; it never reaches it.
-    Asserted directly: a round vanishes exactly when its own start point is out of bounds.
-  - **And there is no measurable seam.** A 41x41 room swept at 90 angles x 41 offsets out to 15, every
-    offset well inside the walls: **0/3690 empty.** If adjacent wall cells failed to tile edge-to-edge
-    from an arbitrary angle, that is where it would show.
-  - **What this changes:** the fix is not "merge contiguous blocker cells" (there is no gap to close) and
-    not "cap scatter radius" (that would hide a modelling error behind a balance number). It is that
-    resolution should march from the real muzzle to the aimed point, which is what taskblock-52 builds.
-    The floor half of this entry is untouched and still real — there is still no floor to hit.
-  - **Still `SUPERVISOR`-owned.** The corrected diagnosis above stands on its own measurements; what
-    follows is the fix built on it.
-
-- **NOT `Pending` — the fix is built and is not switched on** (taskblock-52, Passes A-F). CC session
-  `c0dfa479-2b43-4d9c-832d-12a7fd232bce`. `RayChain` addresses both halves of this entry and is
-  approved for adoption, **but `CombatState.shot_resolver` still defaults to the plane**, because
-  flipping it red-lights 14 tests. Nothing a supervisor could look at has changed yet, so marking this
-  `Pending` would be claiming a fix nobody can see. Recorded here so the work is not re-derived:
-  - **The wide-offset half** — a round marches from the real muzzle to the aimed point, so it
-    diverges from the gun instead of being translated sideways with it. A wide dartboard offset can
-    no longer relocate the flight outside the building.
-  - **The "or the floor" half** — `grid.surfaces` is in the march, and `ship_floor`/`ramp` carry real
-    authored geometry. A round angled down finally has something to intersect; there was previously
-    no branch for it to take.
-  - **Measured:** the seam experiment **56/200 -> 0/200**; **0/360** empty across a 72-angle x
-    5-offset sweep inside a closed room; **59/59** shallow downward shots landing.
-- **To see it:** fire **wide** — a late pull of a long chaingun burst at range is exactly the shape
-  that used to vanish — and fire **down at the deck**, which previously had no geometry at all. Every
-  round should leave a mark on something.
-- **What is still legitimately a miss**, so it does not read as a regression: a round that leaves an
-  unenclosed board, or goes out through a broken wall or the ceiling. That is `docs/02`'s stated rule
-  and it is asserted — on an open board a shot misses *exactly when* its own flight would run past the
-  board before reaching the deck.
-- **What still stands between this and `Pending`:** the flag flip, and the 14 failures it exposes.
-  **Note `BR52.03`** too: terrain risers have no geometry behind them, so a round fired horizontally
-  into a *step* on a multi-level map still passes through it — a known remaining hole, filed
-  separately rather than folded in here.
-### BR35.01 — Pending — owner: `CC`
-**`PartPicker.hit` scans every `grid.blockers`/`field_items` entry on every hover, not just ones near the ray**
-- **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
-- **Found:** 2026-07-23 (tb35 Pass C, `Grid.blockers` audit sweep). `PartPicker.hit()`
-  (`part_picker.gd:40,48`) iterates every entry in `grid.blockers` and `grid.field_items`
-  unconditionally, running a full per-box ray test (`_nearest_t`) against each one regardless of the
-  ray's own direction or distance from it. Before tb31 C, `blockers` held a handful of scattered cover
-  props — cheap to fully scan. Now it holds every wall cell on the map (confirmed: real generated
-  bouts run 200+ blocker entries), and this runs on **every mouse-move**, not just clicks
-  (`TacticsController.update_hover()` calls `_cell_at()` → `PartPicker.hit()` on hover, per its own
-  doc comment) — a real, newly-introduced per-frame cost, not hypothetical.
-- **Not fixed this pass.** The safe fix (march only cells the ray plausibly crosses — a bounded
-  grid-DDA walk along the ray's own 2D projection, the same shape `LoS.has_los` already bounds its own
-  opacity walk to) touches core picking geometry with a real risk of silently skipping a genuine hit
-  if the bound is gotten wrong, and this codebase has already been burned once by a plausible-looking
-  formula nobody could verify without a live client (docs/00's own attack-camera yaw story). Flagging
-  rather than guessing at a fix under time pressure.
-- **2026-07-26 — NOT addressed (tb42 Pass E)** [CC `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`]. Named in
-  the pass as a companion item and deliberately left: `PartPicker.hit` still scans every
-  `grid.blockers`/`field_items` entry per call. Stated rather than quietly dropped — it is `CC`-owned
-  and small, and belongs to whoever picks this up next.
-- **taskblock-51 — measured, and it is NOT the aim-view framerate cause.** `PartPicker.hit` costs
-  **1 559 usec** on a 214-blocker board against `ShotPlane.build`'s **10 889**. `BR26.02` was caused by
-  the aim plane being rebuilt per mouse motion, not by this scan.
-- **Still worth fixing on its own merits** — it is real waste on every hover — but this entry has now
-  absorbed three reasoned-not-measured fixes, and the standing instruction to measure first applies
-  with more force, not less, now that the obvious theory has been falsified once.
-
-- **`Pending` (taskblock-51).** `hit` now rejects a cell whose perpendicular distance from the ray
-  exceeds `SKIP_RADIUS`, before the per-box assembly test. **Measured on the same 216-blocker probe the
-  rest of this block used: 18 454 -> 14 390 usec per mouse motion (54 -> 69 fps).**
-- **The reject is deliberately conservative** — admitting a cell the real test then rejects costs a
-  little time; rejecting one that would have been hit is a shot passing through a wall. `SKIP_RADIUS` is
-  3 cells because a part's boxes can overhang the cell it sits in.
-- **This is a mitigation, not the structural fix** the entry describes: the scan is still linear in the
-  blocker count, just with a cheap reject in front. A spatial index is the real answer and is not
-  attempted here.
-- **`Pending` rather than closed:** the win is a framerate the supervisor can feel and CC cannot see, and
-  `BR51.14` is still open on the same path.
-- **What to look for (supervisor asked).** This one is **measured, not seen**: move the mouse across a
-  board with many wall cells while a unit is selected and read the perf panel. The claim is
-  **42 527 → 14 390 usec per mouse motion**, so it should feel like a partial recovery of the
-  hover stutter, not a fix. **`BR51.14` is the entry for what you still feel** — it is the same symptom
-  on the non-aim path and is still open, so if hovering still stutters that is expected and belongs
-  there rather than here.
-- **This is a mitigation, not the structural fix.** The scan is still linear with a cheap reject in
-  front of it; a spatial index is the real answer and is not done.
 
 ### BR35.02 — Active — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
