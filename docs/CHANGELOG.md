@@ -1,6 +1,62 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-52 Pass F — the flip lands: the ray chain resolves every shot
+
+`CombatState.shot_resolver` defaults to `&"ray"`. **Full suite green with the flag inverted** — 281
+scripts, 2664 tests, 0 failures. The plane is not deleted and stays selectable by the same one field,
+for the differential experiments and for a rollback; `ShotPlane` is referenced at 133 sites across 76
+files and removing it belongs to its own block.
+
+**Both gating jobs were fixture defects, and neither needed a resolver change.**
+
+**`BR52.08` closed, and it was two cancelling defects rather than one.** `_make_weapon` authored no
+`volume`, so `UnitGeometry.muzzle_point` never found a placement and fell back to
+`DEFAULT_MUZZLE_HEIGHT`. But `_make_shooter`'s HAND socket was *also* an identity transform, which
+puts the hand — and the muzzle — at world Y=0, on the deck. The missing volume was hiding the
+identity socket: fix only the volume, as the first attempt did, and every test in the file starts
+firing from the floor, which is what cascaded into three further failures. Fixing both is
+behaviour-preserving by construction — the weapon carries `data/parts/pistol.tres`'s own box verbatim
+and the HAND socket carries `DEFAULT_MUZZLE_HEIGHT`, so the baseline shooter now genuinely produces
+the 1.25 muzzle it was accidentally producing before, and `grip_y` finally reaches the muzzle.
+
+**A recorded prediction turned out to be wrong, and it is the useful part.**
+`test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` was marked in place as
+due to invert on the flip and **it does not invert** — it passes under both resolvers. The earlier
+reading measured the broken fixture: at the real 0.3 grip height the round is at 0.4 where the 0.6
+cover stands and strikes it, rather than at 0.87 clearing it. So the test now tests what its name
+says, for the first time in five blocks.
+
+**The deflect fixture: the comment was right and the geometry was not.** `test_shot_resolution.gd`
+aimed along direction (3, 4) but displaced the aim point sideways by 2.0. The plane treats that
+displacement as a **parallel translation** of the whole flight, so the round still travelled at the
+stated ~37 degrees; the chain aims at the displaced *point*, which **rotates** the flight instead —
+the real muzzle-to-aim vector was (1.4, 0.5, 5.2), meeting the face at **16 degrees**, inside steel's
+30-degree threshold. Removing the lateral offset makes the real flight equal the stated one under
+both models, and the cover then has to sit where that stated ray actually goes: cell (3, 2), not
+(2, 2). **Measured and printed into the run log rather than asserted on trust: 37.25 degrees.** No
+angle was swept for.
+
+**`docs/PLAN.md`'s *Wide scatter passing through a wall seam* is closed and removed from the plan.**
+It was a design call among three options, and the flip answers the last of them. Two were already
+answered in Pass A — merging contiguous blocker cells closes a gap that does not exist, and capping
+scatter radius would hide a modelling error behind a balance number — after the recorded 56/200
+turned out to reproduce in an 11x11 room and no other, with a 41x41 sweep at 90 angles x 41 offsets
+returning **0/3690**. The genuine cause was the plane's parallel-ray scatter model translating the
+whole flight, muzzle included, outside the building. The chain diverges from the gun by construction,
+which the item's own text named as what would actually fix it. Floors became real geometry in Pass D,
+so the third candidate landed too. **`BR34.05` is the same decision from the other direction and is
+`SUPERVISOR`-owned, so it stays `Pending` and is not closed here.**
+
+**The suite's own cost readout changed shape and is worth recording.** Both figures are re-taken from
+the final green run, not from the intermediate one that had only the first fixture fixed: `shot_planes`
+fell from **14 965 to 9 079** across the full run, and total suite time from **370.6 s to 288.1 s**.
+The remaining plane builds are the aiming job the plane keeps (centre mass, aim layers, AI
+line-of-fire) plus the parity experiments that deliberately run both models. Two orphaned
+`DirectionalLight3D` nodes in `test_world_palette.gd` are unchanged by this block and predate it.
+
 ### taskblock-52 Pass F — 15 of 16 blocking fixtures updated; the flip is two bounded jobs away
+
+**Superseded by the entry above** — the sixteenth fixture landed and the flag is flipped.
 
 **Each blocking assertion was restated in terms of the rule it protected, not bumped to match new
 output.** Impact counts stopped being a proxy for anything once a round continues past its target
@@ -26,6 +82,12 @@ assertion pass, is how a suite starts describing itself instead of asserting any
 honest and flagged rather than green and hollow.
 
 ### taskblock-52 — `BR52.08`: every "muzzle height" test has been firing from 1.25
+
+**Superseded by the flip entry above** on two counts, both worth reading rather than just the
+correction: the diagnosis was **half the defect** (`_make_shooter`'s identity HAND socket is the
+other half, and it is why the first fix attempt cascaded), and the prediction that
+`test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` **would invert was wrong** —
+it passes under both resolvers once the fixture is real.
 
 **`_make_weapon` authors no `volume`**, so `UnitGeometry.muzzle_point` finds no placement and falls
 back to `DEFAULT_MUZZLE_HEIGHT`. `_make_shooter_with_grip_height`'s own `grip_y` argument **reaches
@@ -197,6 +259,9 @@ scatter model, the approximated incidence angle, floors being in no resolver at 
 `is_destructible` flag, and the aim preview's own second resolver.
 
 ### taskblock-52 hard pause — both models alive behind a flag, the plane still the default
+
+**The default inverted in Pass F — see the flip entry above.** Everything else in this entry stands:
+the flag, its per-bout scope, `dup()` carrying it, and `_aim_point_world` as the one conversion.
 
 **`CombatState.shot_resolver` chooses the model**, per bout rather than as a global static so a
 differential can put one board through both without mutating shared state, and so a test switching

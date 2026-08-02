@@ -98,28 +98,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
-### BR52.08 — Active — owner: `CC`
-**Every "muzzle height" test in `test_attack_action.gd` fires from 1.25 regardless of the height it
-passes in**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02, taskblock-52 Pass F, while updating fixtures for the flag flip.
-- **`_make_weapon` authors no `volume`.** So `UnitGeometry.muzzle_point` finds no placement for the
-  weapon and falls back to `DEFAULT_MUZZLE_HEIGHT` (1.25). **`_make_shooter_with_grip_height`'s own
-  `grip_y` argument therefore reaches nothing** — a test asking for a hip-height 0.3 muzzle gets a
-  1.25 one.
-- **Why it went unnoticed for five blocks, and this is the interesting half:** the shot plane resolves
-  at the **aim point's** height rather than along the muzzle-to-aim line, so where the muzzle actually
-  sat never affected the outcome. The fixture could be wrong and the test still green.
-- **It stops being harmless under the ray chain**, which marches muzzle-to-aim: a round from 1.25 down
-  to a 0.5 chest is at ~0.87 where 0.6 cover stands and correctly clears it. So
-  `test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` will invert the moment the
-  resolver flips — and it is **not** a regression when it does.
-- **Fix: give the fixture weapon a real `volume`.** Attempted in this pass and reverted: it moves the
-  muzzle for every test in the file at once and cascaded into three further failures that wanted their
-  own judgement. It is a contained job, just not a five-minute one, and doing it *before* the flip is
-  what keeps that flip readable.
-- **The affected tests are marked in place** rather than left to surprise whoever flips the flag.
-
 ### BR52.07 — Active — owner: `SUPERVISOR`
 **One shot in a burst flies off at roughly 90 degrees from the gun's facing**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`

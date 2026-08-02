@@ -23,10 +23,38 @@ func _make_weapon(id: StringName, damage: float, ap_cost: int = 1, max_range: fl
 		weapon.weapon_def = WeaponDef.new()
 		weapon.weapon_def.max_range = max_range
 	weapon.scatter = [Ring.new(0.05, 1.0)]
+	# taskblock-52 (`BR52.08`): **the fixture weapon authors a real `volume`.**
+	# Without one, `UnitGeometry.muzzle_point` finds no placement for the weapon
+	# and falls back to `DEFAULT_MUZZLE_HEIGHT`, so every grip height this file
+	# passes in reached nothing and every "muzzle height" test in it fired from
+	# 1.25. That was invisible for five blocks because the shot plane resolves at
+	# the AIM point's height rather than along the muzzle-to-aim line — where the
+	# muzzle sat could not change an outcome. It stops being invisible the moment
+	# a resolver marches muzzle-to-aim.
+	#
+	# The box is `data/parts/pistol.tres`'s own, verbatim, so the fixture inherits
+	# the shipped emission geometry rather than a second invented one: center
+	# (0, 0, 0.2), size (0.1, 0.2, 0.4), whose tip along local +Z (`muzzle_point`'s
+	# own `center + (0, 0, size.z / 2)`) is 0.4 forward of the grip at grip height.
+	weapon.volume = [Box.new(Vector3(0.0, 0.0, 0.2), Vector3(0.1, 0.2, 0.4))]
 	return weapon
 
 
 ## A shooter whose torso holds a trigger-capable hand gripping `weapon`.
+##
+## taskblock-52 (`BR52.08`, the second half): **the HAND socket carries a real
+## height.** It used to be an identity transform, which puts the hand — and so
+## the muzzle — at world Y=0, on the deck. That never showed up either, because
+## the weapon authored no `volume` and `muzzle_point` fell back to
+## `DEFAULT_MUZZLE_HEIGHT` before the socket chain could be consulted at all. Two
+## fixture defects were cancelling: give the weapon a box without also fixing
+## this, and every test in the file starts firing from the floor.
+##
+## `DEFAULT_MUZZLE_HEIGHT` is used deliberately rather than a fresh number, so the
+## baseline shooter now genuinely produces the 1.25 muzzle it was accidentally
+## producing before. This is behaviour-preserving by construction, not by
+## coincidence, and it leaves `_make_shooter_with_grip_height` as the only place
+## in this file that varies the height.
 func _make_shooter(cell: Vector2i, weapon: Part) -> Unit:
 	var hand := Part.new()
 	hand.id = &"hand"
@@ -43,7 +71,9 @@ func _make_shooter(cell: Vector2i, weapon: Part) -> Unit:
 	torso.hp = 10
 	torso.max_hp = 10
 	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	var hand_socket := Socket.new(&"HAND")
+	var hand_socket := Socket.new(
+		&"HAND", Transform3D(Basis(), Vector3(0.0, UnitGeometry.DEFAULT_MUZZLE_HEIGHT, 0.0))
+	)
 	hand_socket.occupant = hand
 	torso.sockets = [hand_socket]
 
@@ -730,23 +760,23 @@ func test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target() -
 
 	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
 
-	# **taskblock-52: this test's premise does not survive a real muzzle-to-aim
-	# march, and the reason is a fixture defect rather than a resolver one.**
-	# `_make_weapon` authors no `volume`, so `UnitGeometry.muzzle_point` finds no
-	# placement and falls back to `DEFAULT_MUZZLE_HEIGHT` (1.25) — the `0.3` grip
-	# height this test passes in **never reaches the muzzle at all**. It passed for
-	# five blocks because the shot plane resolves at the AIM point's height rather
-	# than along the muzzle-to-aim line, so where the muzzle actually was never
-	# mattered to the outcome.
+	# **taskblock-52 (`BR52.08`, closed): this test now tests what its name says.**
+	# It was marked as due to invert on the resolver flip, and it does not. The
+	# earlier reading measured the *broken* fixture: `_make_weapon` authored no
+	# `volume`, so the `0.3` passed in here never reached the muzzle and the shot
+	# actually left a 1.25 fallback height. A round marched from 1.25 down to a 0.5
+	# chest is at ~0.87 where this 0.6 cover stands and clears it — which is correct
+	# for the geometry that fixture really built, and is not this test's premise.
 	#
-	# Marched for real, a round from 1.25 down to a 0.5 chest is at ~0.87 where this
-	# 0.6 cover stands, and correctly clears it. **That is right for the geometry the
-	# fixture actually builds**, and it is not what the test's name claims to be
-	# testing. Filed as `BR52.08`; asserted here as what genuinely happens rather
-	# than left green on a coincidence.
+	# With the weapon's box authored, the muzzle sits at the grip: 0.3. Marched to
+	# the target's 0.5 chest over 4 cells, the round is at 0.4 where the cover
+	# stands, which is inside it. **So the round strikes the cover under both
+	# resolvers, for two different but individually correct reasons** — the plane
+	# because it resolves at the 0.5 aim height, below the 0.6 top; the chain
+	# because the sloped path genuinely passes through the box.
 	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")
 	assert_gt(impacts.size(), 0, "the shot resolved against something")
-	assert_eq(impacts[0].data.get("part"), cover.id, "the plane resolves at the aim height")
+	assert_eq(impacts[0].data.get("part"), cover.id, "a hip-height muzzle meets the cover first")
 	assert_eq(target.shell.root.hp, 10, "so this cover blocks and the target is untouched")
 
 

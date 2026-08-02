@@ -3,11 +3,11 @@ extends RefCounted
 
 ## taskblock-52: **the seam where a shot chooses its resolver.**
 ##
-## Both models are alive behind `CombatState.shot_resolver`, and **the plane is
-## still the default** until the parity report is accepted. `ShotPlane` is
-## referenced at 133 sites across 76 files; deleting it in the same block that
-## replaces it would make any regression impossible to attribute, so this block
-## does not delete anything.
+## Both models are alive behind `CombatState.shot_resolver`, and **the ray chain is
+## the default** since Pass F — the parity report was accepted and the flag flipped.
+## `ShotPlane` is referenced at 133 sites across 76 files; deleting it in the same
+## block that replaced it as the default would make any regression impossible to
+## attribute, so this block does not delete anything.
 ##
 ## The two resolvers take different inputs and that difference is the whole
 ## design: the plane wants `(origin, direction, lateral_offset)` and tests every

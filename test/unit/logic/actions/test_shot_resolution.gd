@@ -149,7 +149,25 @@ func test_a_deflect_logs_its_own_reflected_miss_endpoint() -> void:
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	var grid := Grid.new(6, 6)
-	grid.blockers[Vector2i(2, 2)] = cover
+	# taskblock-52: **the cover moved from (2, 2) to (3, 2), and the aim point's
+	# lateral offset from 2.0 to 0.0.** Both changes exist to make one number true
+	# that the comment below always claimed and, under a real muzzle-to-aim march,
+	# was not.
+	#
+	# The old fixture aimed along direction (3, 4) but displaced the aim point
+	# sideways by 2.0. The plane treats that displacement as a parallel translation
+	# of the whole flight, so the round still travelled at the stated ~37 deg. The
+	# chain aims at the displaced *point*, which does not translate the flight — it
+	# **rotates** it: the real muzzle-to-aim vector became (1.4, 0.5, 5.2), meeting
+	# the cover's front face at **16 deg**, comfortably inside steel's 30-degree
+	# threshold, so it penetrated and the fixture stopped deflecting.
+	#
+	# **The fix is not a swept angle.** Removing the lateral offset makes the real
+	# flight equal the stated one under both models, and the cover then has to sit
+	# where that stated ray actually goes — cell (3, 2), not (2, 2). The incidence
+	# is printed below rather than asserted, so the number this fixture rests on is
+	# visible in the run log instead of being taken on trust.
+	grid.blockers[Vector2i(3, 2)] = cover
 	var state := CombatState.new(grid, [shooter])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -157,8 +175,19 @@ func test_a_deflect_logs_its_own_reflected_miss_endpoint() -> void:
 	# incidence ~37 deg: clears steel's default 30-degree deflect
 	# threshold — the exact fixture test_damage_resolver.gd's own DEFLECT
 	# tests already use and prove.
+	var muzzle := Vector3(2.0, 0.0, 0.0)
+	var aim := Vector3(5.0, 0.5, 4.0)
+	var face_normal := Vector3(0.0, 0.0, -1.0)
+	var incidence: float = rad_to_deg(acos(absf((aim - muzzle).normalized().dot(face_normal))))
+	print(
+		(
+			"deflect fixture: muzzle %s -> aim %s, front face z=1.7 of box x[2,4] y[0,1] z[1.7,2.3]"
+			% [muzzle, aim]
+		)
+	)
+	print("  incidence vs face normal: %.2f deg (steel deflects above 30)" % incidence)
 	ShotResolution.resolve_and_log_point(
-		state, shooter, Vector2(2, 0), Vector2(3, 4), Vector2(2.0, 0.5), 3.0, 0.0, 0.0, null
+		state, shooter, Vector2(2, 0), Vector2(3, 4), Vector2(0.0, 0.5), 3.0, 0.0, 0.0, null
 	)
 
 	var impacts: Array[LogEvent] = sink.events_of_kind(&"impact")

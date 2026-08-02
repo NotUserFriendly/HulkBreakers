@@ -1,11 +1,63 @@
 # Taskblock 52 Report — The ray chain
 
-Passes A-E landed in order, with a supervised stop at the block's own **HARD PAUSE** between D and E.
-Suite green throughout. **Pass F is incomplete and deliberately so.** Adoption was approved and
-`self_obstruction` was cut on instruction; 15 of the 16 blocking fixtures are updated. **The flag flip
-is one fixture short** — `test_shot_resolution.gd`'s deflect fixture no longer deflects under a
-muzzle-to-aim march — and finishing it needs that plus `BR52.08`. The ray chain is fully built,
-tested and selectable by one field; the plane still resolves shots.
+Passes A-F landed in order, with a supervised stop at the block's own **HARD PAUSE** between D and E.
+Suite green throughout. **The flip landed: `CombatState.shot_resolver` defaults to `&"ray"` and the
+ray chain resolves every shot.** Full suite green with the flag inverted — 281 scripts, 2664 tests,
+0 failures, 288.1 s. The plane is not deleted and stays selectable by the same one field, for the
+differential experiments and for a rollback.
+
+## The two gating jobs, and what they turned out to be
+
+Both were fixture defects. Neither needed a resolver change, and **both of my recorded diagnoses of
+them were partly wrong** — the corrections are the useful content here.
+
+**`BR52.08` was two cancelling defects, not one.** I recorded it as "`_make_weapon` authors no
+`volume`". True, but `_make_shooter`'s HAND socket was *also* an identity transform, which puts the
+hand — and so the muzzle — at world Y=0, on the deck. The missing volume was **hiding** the identity
+socket, because `muzzle_point` returned its fallback before the socket chain was ever consulted.
+**That is why my first attempt cascaded into three further failures**: fixing only the volume makes
+every test in the file fire from the floor. I recorded that cascade as "it moves the muzzle for every
+test at once", which described the symptom and missed the cause. Fixing both halves is
+behaviour-preserving by construction — the weapon carries `data/parts/pistol.tres`'s box verbatim,
+the HAND socket carries `DEFAULT_MUZZLE_HEIGHT` — so the baseline shooter now genuinely produces the
+1.25 muzzle it was accidentally producing before, and `grip_y` finally reaches the muzzle.
+
+**A prediction I marked in the test file was wrong.**
+`test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` was flagged as due to
+invert on the flip, with the note that inverting would not be a regression. **It does not invert.**
+It passes under both resolvers. The ~0.87 figure I measured was taken on the *broken* fixture; at the
+real 0.3 grip height the round is at **0.4** where the 0.6 cover stands and strikes it. The test now
+asserts what its name claims, for the first time in five blocks. Anyone reading the old marker would
+have been told to expect a failure that never comes.
+
+**The deflect fixture: the comment was right and the geometry was not.** It aimed along direction
+(3, 4) but displaced the aim point sideways by 2.0. The plane treats that displacement as a
+**parallel translation** of the whole flight, so the round still travelled at the stated ~37 degrees;
+the chain aims at the displaced *point*, which **rotates** the flight — the real muzzle-to-aim vector
+was (1.4, 0.5, 5.2), meeting the face at **16 degrees**, inside steel's 30-degree threshold.
+Removing the lateral offset makes the real flight equal the stated one under both models, and the
+cover then has to sit where that stated ray actually goes: cell (3, 2), not (2, 2). **No angle was
+swept for**, which the block was explicit about avoiding. The incidence is printed into the run log
+rather than asserted on trust: **37.25 degrees**.
+
+## Measurements re-taken after the final fixes
+
+Per the rule that a measure predating code updates is no longer trustworthy:
+
+- **Suite cost, plane default → ray default:** `shot_planes` **14 965 → 9 079**, wall time
+  **370.6 s → 288.1 s**. The remaining plane builds are the aiming job the plane keeps (centre mass,
+  aim layers, AI line-of-fire) plus the parity experiments that deliberately run both models.
+- **An intermediate figure I should not be quoted on:** a mid-work run reported 9 153 plane builds
+  and 305.8 s. That run had only the first fixture fixed and the deflect fixture still failing; the
+  numbers above are from the final green run.
+- Two orphaned `DirectionalLight3D` nodes in `test_world_palette.gd` are unchanged by this work and
+  predate it.
+
+## Plan item closed by the flip
+
+**`docs/PLAN.md`'s *Wide scatter passing through a wall seam* is answered and removed.** It was a
+design call among three candidates; Pass A answered two and the chain answers the third. `BR34.05` is
+the same decision from the other direction, is `SUPERVISOR`-owned, and stays `Pending`.
 
 ## Decisions made without asking
 
@@ -95,16 +147,9 @@ what surfaced that closest-root cannot fire (see Open questions).
 
 ## What the flip still needs
 
-Two bounded jobs, neither a diagnosis:
-
-1. **`BR52.08` — the fixture weapon has no `volume`**, so every "muzzle height" test in
-   `test_attack_action.gd` fires from `DEFAULT_MUZZLE_HEIGHT` (1.25) regardless of what it asks for.
-   Fixing it first is what keeps the flip readable, because
-   `test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target` **inverts when the
-   resolver flips and that is not a regression**. Marked in place so it cannot ambush anyone.
-2. **A deflecting geometry for `test_shot_resolution.gd`.** Its fixture stopped deflecting. Sweeping
-   for an angle and keeping whichever one makes the assertion pass is how a suite starts describing
-   itself, so it is left red-flagged rather than green and hollow.
+**Nothing. Both jobs are done and `BR52.08` is closed** (`CC`-owned, moved to
+`docs/BUGS-ARCHIVE.md`). This section is kept rather than deleted because the two items it listed are
+where the corrections above attach.
 
 ## Withdrawn from the ledger by the supervisor
 
@@ -122,13 +167,14 @@ Two bounded jobs, neither a diagnosis:
 
 ## Open questions
 
-- **THE OPEN ITEM: the flag flip, and the 14 failures behind it.** Adoption was approved on the
-  evidence below and the inversion still has not landed. **They cluster as *more impacts than
-  expected*** — a 12-round burst logging 36, "3 pulls x 9 pellets" logging 61 rather than 27 — which
-  is what a round continuing until its damage runs out looks like now that floors are real geometry:
-  it punches through its target and goes on to strike the deck. **That is arguably correct under
-  `BR34.05`'s own rule, and it triples impact counts, log volume and tracer draws — so it is a design
-  question, not a fixture update, and it is yours.**
+- **CLOSED — the flag flip and the 14 failures behind it.** All 14 were fixture updates and all are
+  landed; the suite is green with the ray chain as the default. The history is kept because two of my
+  framings of it were wrong and the corrections are recorded below rather than quietly dropped.
+  **They clustered as *more impacts than expected*** — a 12-round burst logging 36, "3 pulls x 9
+  pellets" logging 61 rather than 27 — which is what a round continuing until its damage runs out
+  looks like now that floors are real geometry: it punches through its target and goes on to strike
+  the deck. **The one live consequence for future work: an impact count is no longer a proxy for
+  "one attack fired" or "the round reached its target".** Assert on which surface was met first.
 
   **CORRECTION (2026-08-02): the three options I offered were wrong, and two of them described the
   same thing.** I asked whether a spent round should keep marching. **It does not, and never did** —
