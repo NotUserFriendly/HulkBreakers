@@ -74,7 +74,7 @@ static func enclosed_room(width: int, rows: int, level: float = 0.0) -> Grid:
 
 
 ## tb31 Pass C's settled wall model, verbatim (`MapGen._finalize_walls_
-## and_void`'s own "exposed wall" branch): ordinary floored ground
+## and_empty`'s own "exposed wall" branch): ordinary floored ground
 ## carrying a real, destructible `wall` Part blocker, with opacity raised
 ## to 1.0 — NOT an unfloored/unwalkable cell. A destroyed wall (hp <= 0)
 ## already reads as passable everywhere `Pathfinder`/`ShotPlane` check
