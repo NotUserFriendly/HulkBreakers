@@ -162,3 +162,63 @@ func test_a_name_that_matches_no_map_is_refused() -> void:
 	var before: int = state.grid.width
 	assert_false(BoutInjector.new(state).load_map("Nothing Called This"))
 	assert_eq(state.grid.width, before, "a refused load changes nothing")
+
+
+# --- sections preview the same way maps load -----------------------------------------------
+
+
+## taskblock-54 Pass D: previewing a section loads it **alone on an otherwise empty board**, so
+## its geometry and edges can be looked at directly. Mirrors `load_map` deliberately rather than
+## inventing a second shape.
+func test_the_section_catalogue_lists_the_authored_sections() -> void:
+	var names: Array[StringName] = SectionCatalog.names()
+	gut.p("sections: %s" % str(names))
+	assert_true(names.has(&"West Hall"), "the authored pair is listed")
+	assert_true(names.has(&"East Hall"))
+	assert_true(names.has(&"Sealed Bay"), "and the one that deliberately does not join")
+	assert_eq(
+		SectionCatalog.path_for(&"West Hall"),
+		"res://data/sections/west_hall.tres",
+		"a display name resolves to its file"
+	)
+
+
+func test_previewing_a_section_produces_a_board_containing_only_that_section() -> void:
+	var state: CombatState = _state()
+	var injector := BoutInjector.new(state)
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_true(injector.preview_section("West Hall"), "the section previews")
+	assert_eq(state.grid.width, 6, "the board is the section's own size")
+	assert_eq(state.grid.rows, 4)
+	for unit: Unit in state.units:
+		assert_true(state.grid.in_bounds(unit.cell), "unit %d is on the board" % unit.id)
+		assert_not_null(
+			Surface.first_walkable(state.grid.surfaces_at(unit.cell)),
+			"unit %d has something to stand on" % unit.id
+		)
+
+	var previews: Array[LogEvent] = []
+	for event: LogEvent in sink.events_of_kind(&"inject"):
+		if event.data.get("verb") == &"preview_section":
+			previews.append(event)
+	assert_eq(previews.size(), 1, "the preview is logged")
+	if previews.is_empty():
+		return
+	gut.p("logged: %s" % previews[0].text)
+
+
+func test_a_section_name_that_matches_nothing_is_refused() -> void:
+	var state: CombatState = _state()
+	var before: int = state.grid.width
+	assert_false(BoutInjector.new(state).preview_section("No Such Section"))
+	assert_eq(state.grid.width, before, "a refused preview changes nothing")
+
+
+func test_the_preview_verb_is_registered_and_rebuilds_the_board() -> void:
+	var ids: Array[StringName] = []
+	for spec: DebugVerbSpec in DebugVerbs.all():
+		ids.append(spec.id)
+	assert_true(ids.has(&"preview_section"), "the verb is on the panel")
+	assert_true(DebugVerbs.affects_board(&"preview_section"), "and it rebuilds the board")

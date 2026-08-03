@@ -899,21 +899,7 @@ func load_map(map_path: String) -> bool:
 		return _refuse(&"load_map", &"malformed_map", {"path": resolved, "why": result["error"]})
 
 	var grid: Grid = result["grid"]
-	state.grid = grid
-	var stranded: Array[int] = []
-	for unit: Unit in state.units:
-		if not unit.alive:
-			continue
-		var destination: Variant = _first_free_spawn(grid, unit.squad_id)
-		if destination == null:
-			destination = _first_free_walkable(grid)
-		if destination == null:
-			stranded.append(unit.id)
-			continue
-		unit.cell = destination
-		grid.set_occupant_id(destination, unit.id)
-		unit.height = UnitGeometry.true_height_for_cell(destination, grid)
-		unit.level = unit.height / UnitGeometry.LEVEL_HEIGHT
+	var stranded: Array[int] = BoardSwap.swap_board(state, grid, true)
 
 	_log_injection(
 		&"load_map",
@@ -937,27 +923,59 @@ func load_map(map_path: String) -> bool:
 	return true
 
 
-## The first cell carrying this squad's own spawn marker and nobody standing on it.
-func _first_free_spawn(grid: Grid, squad_id: int) -> Variant:
-	var wanted: int = Enums.SpawnMarker.SPAWN_A if squad_id == 0 else Enums.SpawnMarker.SPAWN_B
-	for y: int in range(grid.rows):
-		for x: int in range(grid.width):
-			var cell := Vector2i(x, y)
-			if grid.get_spawn_marker(cell) != wanted:
-				continue
-			if grid.get_occupant_id(cell) == -1 and _is_standable(grid, cell):
-				return cell
-	return null
+## taskblock-54 Pass D: **previews a section alone on an otherwise empty board**, so its geometry
+## and its edges can be looked at directly.
+##
+## Mirrors `load_map` rather than inventing a second entry point — a name *or* a `res://` path,
+## the same refusal shape, the same relocation of living units. A section previewed alone
+## genuinely is a tiny board, which is why `SectionSerializer.to_grid` delegates to
+## `MapSerializer` and why this delegates to the same placement machinery in turn.
+##
+## **Authoring problems are logged, not refused.** A section may be deliberately incomplete —
+## that is the whole difference between a section and a map — so `describe_problems` output rides
+## along in the event rather than blocking the preview. Refusing to show a fragment because it is
+## a fragment would make the preview useless for exactly the case it exists to serve.
+func preview_section(section_path: String) -> bool:
+	if not _guard(&"preview_section", {"path": section_path}):
+		return false
+	var resolved: String = section_path
+	if not resolved.begins_with("res://"):
+		resolved = SectionCatalog.path_for(StringName(section_path))
+		if resolved == "":
+			return _refuse(&"preview_section", &"no_section_by_that_name", {"path": section_path})
+	var resource: Resource = load(resolved) if ResourceLoader.exists(resolved) else null
+	var section := resource as SectionFile
+	if section == null:
+		return _refuse(&"preview_section", &"path_is_not_a_section_file", {"path": resolved})
+	var result: Dictionary = SectionSerializer.to_grid(section)
+	if not result.has("grid"):
+		return _refuse(
+			&"preview_section", &"malformed_section", {"path": resolved, "why": result["error"]}
+		)
 
+	var grid: Grid = result["grid"]
+	var stranded: Array[int] = BoardSwap.swap_board(state, grid, false)
 
-func _first_free_walkable(grid: Grid) -> Variant:
-	for y: int in range(grid.rows):
-		for x: int in range(grid.width):
-			var cell := Vector2i(x, y)
-			if grid.get_occupant_id(cell) == -1 and _is_standable(grid, cell):
-				return cell
-	return null
-
-
-func _is_standable(grid: Grid, cell: Vector2i) -> bool:
-	return not grid.blockers.has(cell) and Surface.first_walkable(grid.surfaces_at(cell)) != null
+	var problems: Array[String] = SectionSerializer.describe_problems(section)
+	_log_injection(
+		&"preview_section",
+		{
+			"path": resolved,
+			"name": section.section_name,
+			"width": grid.width,
+			"rows": grid.rows,
+			"problems": problems,
+			"stranded": stranded,
+		},
+		(
+			"previewing '%s' (%dx%d)%s%s"
+			% [
+				section.section_name,
+				grid.width,
+				grid.rows,
+				"" if problems.is_empty() else " — %d authoring warning(s)" % problems.size(),
+				"" if stranded.is_empty() else " — could not place unit(s) %s" % str(stranded),
+			]
+		)
+	)
+	return true

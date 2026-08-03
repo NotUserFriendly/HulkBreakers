@@ -1,5 +1,55 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-54 Passes C, D, E — the section format, authored sections, and a proven join
+
+**A section is defined by its edges, which is the whole reason it is a second format.**
+`SectionFile` carries `SectionEdge`s — which side, exterior or open, what `join_tag` a neighbour
+must offer, and which cells along the side a unit can walk through. A `MapFile` has nowhere to
+put any of that.
+
+**What it reuses, deliberately:** `MapPlacement` unchanged, parts by `DataLibrary` id, no runtime
+state, one open `kind`, a Resource per placement. `SectionSerializer.to_grid` **delegates to
+`MapSerializer`** — a section previewed alone genuinely is a tiny map, so a second placement loop
+would be two answers to one question.
+
+**What makes it a section and not a small map, tested as a contrast:** a square of empty cells
+with one exterior wall and no interior walls is **valid**, and the identical content is a
+**broken map** (`MapSerializer.describe_problems` rejects it — a map with nothing to stand on is
+broken). A format that could not express the edge-piece case would be a map format wearing a
+different name.
+
+**Where the socket analogy breaks, found by building it.** The attachment grammar is the
+precedent one scale up, and three things do not carry over: a socket is a *point* with a
+transform while an edge is a *span* with specific walkable openings; a socket has one host while
+two sections are **peers**, so `can_join` reads both sides and either can refuse; and
+`PartGraph.attach` mutates the socket to record an occupant, while a join is a fact about a
+*layout* rather than about either file.
+
+**Unsatisfiable joins are rejected with a reason, and the two that matter are:** an open edge
+with no `join_tag` (nothing could ever match it) and an opening where nothing is walkable (no
+neighbour could ever join through it). The second is what makes an edge mean something — you may
+declare a doorway anywhere, but not where there is no floor.
+
+**Three sections authored** into `data/sections/`: `West Hall` and `East Hall`, which join on a
+`corridor_4w` tag, and `Sealed Bay`, which is **the same size and the same shape** and still
+refuses — so the refusal is carried by the edge metadata rather than by geometry. The openings
+are rows 1–2 of 4 rather than the whole side, because two whole-side edges would match without
+the opening comparison ever doing work.
+
+**Preview mirrors `load_map` rather than inventing a second shape** — `SectionCatalog`, a
+disk-populated dropdown, and a name-or-path resolution. `BoardSwap` was extracted because both
+verbs replace the whole board and faced the same relocation problem, and `bout_injector.gd` was
+over its 1000-line limit besides.
+
+**Pass E proves a join and nothing more.** Two authored sections stitch into a 12x4 board, a
+flood confirms a unit can walk from one section into the other, taskblock-53's asymmetric
+navigability flood reports **zero** one-way cells across the seam, and a seeded bout on the
+stitched board replays exactly. **Not a generator:** no library selection, no layout algorithm,
+no whole-board assembly, and nothing here extends `MapGen`.
+
+**The edge metadata was sufficient.** That was the pass's real question — if it had not been,
+the format would have changed before anything was built on it.
+
 ### taskblock-54 Pass B — risers deleted, height still continuous, escapes counted
 
 **B1: the risers are gone and nothing replaces them.** `_build_terrain` no longer emits a

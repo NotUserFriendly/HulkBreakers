@@ -1,0 +1,150 @@
+[gd_resource type="Resource" script_class="SectionFile" format=3]
+
+[ext_resource type="Script" path="res://src/data/section_edge.gd" id="1_e1p5i"]
+[ext_resource type="Script" path="res://src/data/map_placement.gd" id="2_k4uy4"]
+[ext_resource type="Script" path="res://src/data/section_file.gd" id="3_m8k5f"]
+
+[sub_resource type="Resource" id="Resource_odvij"]
+script = ExtResource("1_e1p5i")
+side = &"west"
+kind = &"open"
+join_tag = &"corridor_4w"
+openings = Array[int]([1, 2])
+
+[sub_resource type="Resource" id="Resource_dmp8j"]
+script = ExtResource("1_e1p5i")
+side = &"east"
+
+[sub_resource type="Resource" id="Resource_3kpej"]
+script = ExtResource("1_e1p5i")
+
+[sub_resource type="Resource" id="Resource_owuhi"]
+script = ExtResource("1_e1p5i")
+side = &"south"
+
+[sub_resource type="Resource" id="Resource_pd2p4"]
+script = ExtResource("2_k4uy4")
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_pwkcr"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(1, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_ynwvu"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(2, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_l63mu"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(3, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_3tl41"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(4, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_hbtmh"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(5, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_3bruv"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(0, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_i6lv4"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(1, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_6e2ju"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(2, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_2febc"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(3, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_heqy8"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(4, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_7k8bq"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(5, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_7pjg8"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(0, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_jjqms"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(1, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_ecwpv"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(2, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_5fnk1"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(3, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_dtkii"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(4, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_jpvl2"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(5, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_ajv15"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(0, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_f7opp"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(1, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_xbt2o"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(2, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_pwgd3"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(3, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_lx2ny"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(4, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_731gb"]
+script = ExtResource("2_k4uy4")
+cell = Vector2i(5, 3)
+part_id = &"ship_floor"
+
+[resource]
+script = ExtResource("3_m8k5f")
+section_name = "East Hall"
+width = 6
+rows = 4
+placements = Array[ExtResource("2_k4uy4")]([SubResource("Resource_pd2p4"), SubResource("Resource_pwkcr"), SubResource("Resource_ynwvu"), SubResource("Resource_l63mu"), SubResource("Resource_3tl41"), SubResource("Resource_hbtmh"), SubResource("Resource_3bruv"), SubResource("Resource_i6lv4"), SubResource("Resource_6e2ju"), SubResource("Resource_2febc"), SubResource("Resource_heqy8"), SubResource("Resource_7k8bq"), SubResource("Resource_7pjg8"), SubResource("Resource_jjqms"), SubResource("Resource_ecwpv"), SubResource("Resource_5fnk1"), SubResource("Resource_dtkii"), SubResource("Resource_jpvl2"), SubResource("Resource_ajv15"), SubResource("Resource_f7opp"), SubResource("Resource_xbt2o"), SubResource("Resource_pwgd3"), SubResource("Resource_lx2ny"), SubResource("Resource_731gb")])
+edges = Array[ExtResource("1_e1p5i")]([SubResource("Resource_odvij"), SubResource("Resource_dmp8j"), SubResource("Resource_3kpej"), SubResource("Resource_owuhi")])

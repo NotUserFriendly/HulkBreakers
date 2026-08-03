@@ -1,0 +1,153 @@
+[gd_resource type="Resource" script_class="SectionFile" format=3]
+
+[ext_resource type="Script" path="res://src/data/section_edge.gd" id="1_vwrk3"]
+[ext_resource type="Script" path="res://src/data/map_placement.gd" id="2_p23a1"]
+[ext_resource type="Script" path="res://src/data/section_file.gd" id="3_fbvmw"]
+
+[sub_resource type="Resource" id="Resource_45i6v"]
+script = ExtResource("1_vwrk3")
+side = &"west"
+
+[sub_resource type="Resource" id="Resource_5cigm"]
+script = ExtResource("1_vwrk3")
+side = &"east"
+
+[sub_resource type="Resource" id="Resource_i8x07"]
+script = ExtResource("1_vwrk3")
+
+[sub_resource type="Resource" id="Resource_p8pp0"]
+script = ExtResource("1_vwrk3")
+side = &"south"
+
+[sub_resource type="Resource" id="Resource_kmg6y"]
+script = ExtResource("2_p23a1")
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_6yey3"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(1, 0)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_i2dtt"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(2, 0)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_jstki"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(3, 0)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_bvkqm"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(4, 0)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_l0fbv"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(5, 0)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_mn1t0"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(0, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_jt08g"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(1, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_1wilr"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(2, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_ucyf2"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(3, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_0ov1n"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(4, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_a105k"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(5, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_hp0pr"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(0, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_s47p2"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(1, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_hyoey"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(2, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_t4xt8"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(3, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_10y6m"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(4, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_n3bxj"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(5, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_i3js1"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(0, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_4nu4s"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(1, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_fyh2v"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(2, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_n8mq8"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(3, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_oeq88"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(4, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_bl4vh"]
+script = ExtResource("2_p23a1")
+cell = Vector2i(5, 3)
+part_id = &"ship_floor"
+
+[resource]
+script = ExtResource("3_fbvmw")
+section_name = "Sealed Bay"
+width = 6
+rows = 4
+placements = Array[ExtResource("2_p23a1")]([SubResource("Resource_kmg6y"), SubResource("Resource_6yey3"), SubResource("Resource_i2dtt"), SubResource("Resource_jstki"), SubResource("Resource_bvkqm"), SubResource("Resource_l0fbv"), SubResource("Resource_mn1t0"), SubResource("Resource_jt08g"), SubResource("Resource_1wilr"), SubResource("Resource_ucyf2"), SubResource("Resource_0ov1n"), SubResource("Resource_a105k"), SubResource("Resource_hp0pr"), SubResource("Resource_s47p2"), SubResource("Resource_hyoey"), SubResource("Resource_t4xt8"), SubResource("Resource_10y6m"), SubResource("Resource_n3bxj"), SubResource("Resource_i3js1"), SubResource("Resource_4nu4s"), SubResource("Resource_fyh2v"), SubResource("Resource_n8mq8"), SubResource("Resource_oeq88"), SubResource("Resource_bl4vh")])
+edges = Array[ExtResource("1_vwrk3")]([SubResource("Resource_45i6v"), SubResource("Resource_5cigm"), SubResource("Resource_i8x07"), SubResource("Resource_p8pp0")])

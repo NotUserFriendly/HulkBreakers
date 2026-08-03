@@ -72,6 +72,8 @@ const BOARD_CHANGING_VERBS: Array[StringName] = [
 	&"set_part_hp",
 	# taskblock-53 Pass B: replaces the entire board, so nothing is more board-changing.
 	&"load_map",
+	# taskblock-54 Pass D: replaces the board with one section.
+	&"preview_section",
 ]
 
 
@@ -110,6 +112,16 @@ static func all() -> Array[DebugVerbSpec]:
 				# `data/maps/` shows up with no code edit.
 				[DebugVerbSpec.choice(&"map_path", MapCatalog.names())],
 				Callable(DebugVerbs, &"_apply_load_map")
+			)
+		),
+		(
+			DebugVerbSpec
+			. new(
+				&"preview_section",
+				"Preview Section",
+				# taskblock-54 Pass D: the same disk-populated dropdown `load_map` uses.
+				[DebugVerbSpec.choice(&"section_name", SectionCatalog.names())],
+				Callable(DebugVerbs, &"_apply_preview_section")
 			)
 		),
 		DebugVerbSpec.new(
@@ -316,6 +328,12 @@ static func _apply_move_object(inj: BoutInjector, _pool: Dictionary, a: Dictiona
 ## test or a script can still name a file directly.
 static func _apply_load_map(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.load_map(String(a.map_path))
+
+
+## taskblock-54 Pass D: loads one authored section alone on an empty board, so its geometry and
+## edges can be looked at. Same name-or-path resolution `load_map` uses.
+static func _apply_preview_section(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
+	return inj.preview_section(String(a.section_name))
 
 
 static func _apply_spawn_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
