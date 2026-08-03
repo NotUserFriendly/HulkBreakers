@@ -320,6 +320,59 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
   headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
 
+### BR54.01 — Active — owner: `SUPERVISOR`
+**AI rounds leave the muzzle at up to 43 degrees off the unit's own facing**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-03. *"AI controlled units are firing at strange angles. Specifically the
+  sniper rifle and shotgun equipped unit, the chaingun unit seems to be firing predictably by
+  comparison."*
+- **Confirmed and measured** from `out/combat.log` (bout seed 2), 63 first-hop shots across six
+  AI units. Angle between each unit's logged `faced` orientation and the direction its round
+  actually travelled:
+
+  | unit | shots | range (cells) | worst off-facing |
+  |---|---|---|---|
+  | 0 (chaingun) | 24 | 4.8 – 18.6 | **6.1°** |
+  | 3 (chaingun) | 24 | 3.4 – 10.6 | **8.6°** |
+  | 2 | 3 | 1.7 – 1.8 | 11.1° |
+  | 4 | 2 | 1.3 | 11.8° |
+  | 1 | 4 | 2.1 – 4.5 | **35.3°** |
+  | 5 | 6 | 2.3 – 5.3 | **43.1°** |
+
+- **It is a range effect, not a weapon effect.** The chaingun looks predictable because those two
+  units were shooting from 7–18 cells; every badly-deviating shot is from under 5.3. The
+  supervisor's read — that it is the sniper/shotgun units — is the same observation seen through
+  who happened to be standing close.
+- **A worked example, decomposed.** Turn 1, unit 5 at cell `(12,5)`, muzzle `(12.51, 4.40)`,
+  facing **2.03 rad** — which from its cell points exactly at cell `(14,4)`, where **unit 2**
+  stood. Its three rounds struck bodies at `(14.75, 4.98)`, `(14.82, 4.90)`, `(14.99, 5.15)` —
+  which is **unit 1**, at `(15,5)`. Resolving the hit against the muzzle-to-target axis gives a
+  **lateral displacement of 1.14 cells at a depth of 2.01**, i.e. the ray left 29.5° off the axis
+  it was aimed along. **The unit targeted one enemy and its rounds went to another.**
+- **Two plausible causes were checked and eliminated**, which is most of this entry's value:
+  - **Not the dartboard scatter.** Authored maximum ring radii are **0.03** cells (sniper_rifle),
+    **0.1** (pump_shotgun) and **0.6** (chaingun); `RangeModel.accuracy_multiplier` returns 1.0
+    inside effective range, so no widening applies. The measured lateral displacement is **1.1 –
+    2.6 cells** — one to two orders of magnitude larger than the widest scatter any of these
+    weapons can produce.
+  - **Not a plane/aim frame mismatch.** `ShotPlane.elevation_for` builds the plane's axis as
+    `Vector2(target_cell) - origin_flat` with `origin_flat` being the **muzzle**, and
+    `ShotResolution._aim_point_world` rebuilds the same muzzle-to-target-cell axis. The two agree,
+    so the lateral value is not being applied in a rotated frame.
+- **The remaining suspect, unverified:** the aim point itself. `AttackAction` takes
+  `ShotPlane.center_of(plane, target)` as a lateral/height pair and
+  `ShotPlane.depth_of(plane, target)` as its depth. If `center_of` returns the centre of the
+  target's **projected region** rather than a point on the muzzle-to-target axis, a body whose
+  composed parts sit off its cell centre would pull the aim sideways — and at 2 cells that is
+  tens of degrees. **Not established**; it is where the next look should start.
+- **Why it is newly visible.** Before taskblock-52 the shot plane modelled a scattered round as a
+  ray **parallel** to the shooter-to-target line, so a round always appeared to leave along the
+  gun's facing however far off the aim point sat. The ray chain marches muzzle-to-aim-point, so
+  the same lateral offset now genuinely **rotates** the round. The resolver change is correct and
+  this is the appearance it exposed, not something it broke.
+- **To see it:** put two AI units within about three cells of a shooter and watch which one the
+  gun points at against which one takes the hit.
+
 ### BR52.15 — Active — owner: `CC`
 **Overwatch can be declared repeatedly in one turn**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-01.
