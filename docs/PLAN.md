@@ -36,7 +36,10 @@ place for the same fact to live, and therefore a second place for it to go stale
 
 **New items go as high as their dependencies allow.** A newly recorded item is placed at the earliest
 position its **Needs:** line permits — if that is the top of NEXT, that is where it goes, and NEXT's
-last item demotes to QUEUED to stay within the cap. **Recency is a signal**: a thing raised now is
+last item demotes to QUEUED to stay within the cap. **That demotion IS the re-evaluation the bucket
+rule above demands, not an exception to it** — the cap is exceeded, so the whole bucket is re-read and
+the item that comes out is the one that survives that reading. What the bucket rule forbids is dropping
+the bottom item *without* looking; arriving at the same item deliberately is the rule working. **Recency is a signal**: a thing raised now is
 usually the thing in view now, and an item that keeps being passed over is telling you something about
 its real priority. The consequence is deliberate — **long-standing NEXT items get pushed back by newer
 unblocked work**, and an item that has sat near the top for many blocks without being picked up should
