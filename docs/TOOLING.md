@@ -214,6 +214,15 @@ highlight, warn, damage.
 ---
 
 ## Known gotchas
+
+**A new `class_name` is invisible until the project is rescanned.** Add a script with a
+`class_name` and every other script referencing it fails with
+`Parse Error: Identifier "Foo" not declared in the current scope` — pointing at the *consumer*,
+naming nothing about registration, and looking exactly like a typo. `godot --headless --path .
+--import` rescans and it resolves. Cost two debugging detours in taskblock-53 (`MapNavigability`,
+then `MapCatalog`) before the pattern was obvious. `run_tests.sh` triggers a scan on its own, so
+this only bites when running a script directly with `-s`.
+
 - **Warm-up import is mandatory.** Without `--import --quit` first, `class_name` scripts
   aren't registered on a cold checkout and the run fails.
 - **Leak-check false negatives.** Godot prints `ERROR` lines and can exit non-zero even when
