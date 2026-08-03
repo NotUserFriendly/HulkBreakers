@@ -336,22 +336,30 @@ func _log_build_step(step: StringName, count: int, noun: String) -> void:
 
 ## taskblock-37 Pass E: the ground used to be one flat `PlaneMesh` for the
 ## whole grid — `Grid.level` had no way to become visible at all, since a
-## single flat plane has no per-cell height to move. Now one flat top
-## quad per cell, at THAT cell's own real height
-## (`UnitGeometry.true_height_for_cell`), plus a vertical riser quad
-## between any two orthogonally-adjacent cells whose heights differ — a
-## stepped, XCOM-style terrace rather than a smooth slope (supervisor's
-## own call; a genuinely sloped ramp mesh is a smaller, separate follow-
-## up — a ramp cell still renders as an ordinary flat step today, at its
-## own `+0.5` rest height). Checking only the `+X`/`+Z` neighbor from
-## every cell (never `-X`/`-Y` too) visits each shared edge exactly once —
-## the neighbor on the OTHER side of that same edge would otherwise draw
-## the identical riser a second time. Both winding orders are emitted for
-## every riser face (a real, deliberate double-sided quad, not a bug) —
-## simpler and more robust than reasoning about which single winding a
-## viewer standing on the lower side versus the higher side would each
-## need, for a strip of geometry nobody is meant to look at edge-on
-## anyway.
+## single flat plane has no per-cell height to move. Now one flat top quad per
+## cell, at THAT cell's own real height (`UnitGeometry.true_height_for_cell`).
+##
+## ## taskblock-54 Pass B1: the risers are gone, and nothing replaces them
+##
+## This used to also draw a **vertical riser quad** between any two orthogonally
+## adjacent cells whose heights differ — a stepped, XCOM-style terrace. It was
+## deleted rather than given geometry, and the deletion is the fix.
+##
+## **`BR52.03`: the riser had nothing behind it.** The flat quad has a `Part` (a
+## walkable surface's authored `volume`); the riser had no `Surface`, no blocker,
+## no Part at all — so a round fired horizontally into a step passed straight
+## through the visible face and travelled on under the raised floor. That is a
+## hole in *render is hitbox* (`docs/10`): drawn geometry a shot ignores.
+##
+## **Drawing nothing there is correct.** A step is one part at the height it needs
+## to be, not a stack and not a face; the vertical gap between two heights is
+## genuinely open space. The pillar is **restored by the deletion**, because the
+## drawing and the geometry now agree by both being absent.
+##
+## **Raised floors read as floating slabs, and that is not a regression.** Filling
+## a step's side is authored content — a wall, a strut, a bulkhead placed by a
+## section — not an automatic terrain feature. It will look wrong until sections
+## exist to author it into.
 func _build_terrain(p_grid: Grid) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()
@@ -372,48 +380,10 @@ func _build_terrain(p_grid: Grid) -> MeshInstance3D:
 				Vector3(cx + half, height, cz + half),
 				Vector3(cx - half, height, cz + half)
 			)
-			for offset: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
-				var neighbor: Vector2i = cell + offset
-				if not p_grid.in_bounds(neighbor):
-					continue
-				var neighbor_height: float = UnitGeometry.true_height_for_cell(neighbor, p_grid)
-				if is_equal_approx(height, neighbor_height):
-					continue
-				_add_riser(mesh, cx, cz, half, offset, height, neighbor_height)
 	mesh.surface_end()
 
 	instance.mesh = mesh
 	return instance
-
-
-## The vertical quad filling the gap along one shared cell edge — drawn
-## both windings so it's visible from either side without reasoning about
-## which single winding a given viewing direction needs.
-static func _add_riser(
-	mesh: ImmediateMesh,
-	cx: float,
-	cz: float,
-	half: float,
-	offset: Vector2i,
-	height: float,
-	neighbor_height: float
-) -> void:
-	var low: float = minf(height, neighbor_height)
-	var high: float = maxf(height, neighbor_height)
-	var a: Vector3
-	var b: Vector3
-	if offset == Vector2i(1, 0):
-		a = Vector3(cx + half, 0.0, cz - half)
-		b = Vector3(cx + half, 0.0, cz + half)
-	else:
-		a = Vector3(cx - half, 0.0, cz + half)
-		b = Vector3(cx + half, 0.0, cz + half)
-	var a_low := Vector3(a.x, low, a.z)
-	var a_high := Vector3(a.x, high, a.z)
-	var b_low := Vector3(b.x, low, b.z)
-	var b_high := Vector3(b.x, high, b.z)
-	_add_quad(mesh, a_low, b_low, b_high, a_high)
-	_add_quad(mesh, a_high, b_high, b_low, a_low)
 
 
 ## "Team-coded extraction cells, drawn in their team's color" — one flat
@@ -445,10 +415,13 @@ func _build_extraction_cells(team_extraction_cells: Dictionary) -> int:
 ## `_build_terrain` already has, closing the gap flagged when the ground
 ## itself first went per-cell. A shared edge between two same-height
 ## neighbors is simply drawn twice (perfectly overlapping geometry, no
-## visible difference) rather than deduplicated; a riser boundary between
-## two different-height cells is what makes that simplicity pay off — each
-## side's own border lands right at the edge of its own step, framing the
-## terrace instead of both tracing one flat plane through it.
+## visible difference) rather than deduplicated; a height CHANGE between two
+## neighbours is what makes that simplicity pay off — each side's own border
+## lands right at the edge of its own slab, framing the drop instead of both
+## tracing one flat plane through it. **The border is now the only thing marking
+## a height change at all**, since taskblock-54 Pass B1 deleted the riser face
+## that used to fill it; a grid line at each height is a legible edge, and unlike
+## a riser it never pretended to be something a shot could hit.
 func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()

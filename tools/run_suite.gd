@@ -263,6 +263,9 @@ func _snapshot() -> Dictionary:
 		# motion — a cost large enough to take the framerate to 8 fps while appearing in no
 		# profile at all, because nothing counted it.
 		"dups": CombatState.dups,
+		# taskblock-54 Pass B3: rounds that left the board without striking anything. A leaky
+		# board is a content problem, and this is the number that shows it.
+		"escaped": CombatState.shots_escaped,
 	}
 
 

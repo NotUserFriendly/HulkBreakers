@@ -28,6 +28,20 @@ static var bouts_built: int = 0
 ## cost nobody can budget, and this one was large enough to take the framerate to 8 fps
 ## without ever appearing in a profile.
 static var dups: int = 0
+## taskblock-54 Pass B3: **rounds that left the board without striking anything.**
+##
+## Gaps are legitimate now. Risers are gone, a step's side is authored content rather than an
+## automatic face, and a room is not necessarily closed — so taskblock-52's *"a shot in a closed
+## room nearly always hits something"* still holds while rooms stop always being closed.
+##
+## **So "missed everything and left the map" stops being a defect and becomes a metric: how leaky
+## is this board.** A section that leaks badly is a content problem this number surfaces long
+## before anyone notices by eye. Counted alongside the other work counters for exactly the reason
+## `dups` is — a cost or a symptom nobody counts is one nobody can budget.
+##
+## **Distinct from missing the target.** A round that misses its target and strikes a wall is not
+## counted here; it hit something. This is the chain terminating with nothing struck at all.
+static var shots_escaped: int = 0
 
 var grid: Grid
 var units: Array[Unit] = []  # the roster — no longer literally turn order, see below
@@ -183,6 +197,7 @@ static func reset_diagnostics() -> void:
 	turns_resolved = 0
 	bouts_built = 0
 	dups = 0
+	shots_escaped = 0
 
 
 func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) -> void:

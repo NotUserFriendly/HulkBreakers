@@ -288,25 +288,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
   missing model on one of them narrows quickly.
 
-### BR52.03 — Active — owner: `CC`
-**Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, taskblock-52 Pass D, while giving surfaces real volume.
-- **`BoardView._build_terrain` draws two things.** A flat quad per cell at that cell's own height,
-  **and** a vertical riser quad along every edge where two orthogonally-adjacent cells differ in
-  height — "a stepped, XCOM-style terrace". The quad now has a Part behind it (`ship_floor`'s
-  authored `volume`). **The riser has nothing behind it at all**: no `Surface`, no blocker, no Part.
-- **So a round fired horizontally into the step passes straight through it** and travels on into the
-  empty space beneath the higher cell's floor box, which is only 0.2 thick. That is a real hole in
-  "render is hitbox" (`docs/10`) — visible geometry a shot ignores.
-- **Only reachable on multi-level maps**, which is why it has never been seen: the riser is drawn
-  only where adjacent heights differ.
-- **Not fixed in taskblock-52.** The fix is a decision rather than a patch: a riser is either its own
-  placed `Surface` (which makes it destructible terrain with a material, and needs a Part authored
-  for it), or the floor box grows downward to meet the level below (cheap, but then "floor thickness"
-  stops being a free parameter and starts being load-bearing). **Do not pick one without deciding
-  what a shot into a step should do** — a round burrowing under a raised deck is arguably a feature.
-
 ### BR52.02 — Active — owner: `CC`
 **A test file that fails to parse is dropped from the run and the suite still exits 0**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
