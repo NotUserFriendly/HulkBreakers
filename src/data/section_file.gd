@@ -41,6 +41,58 @@ extends Resource
 ## are the same thing for a fragment nobody has joined yet.
 @export var edges: Array[SectionEdge] = []
 
+# --- taskblock-55 Pass C: declarations, consumed at assembly and never present in a board -----
+#
+# **This is where a section stops being a small map.** Everything above describes things that
+# are there; everything below describes what *may* be there, what *must not*, and how a
+# neighbour's content is allowed to meet this one's. A placed board has a barrel or it does not;
+# it has no "40% chance of a barrel."
+#
+# `SectionSerializer` delegates placement application to `MapSerializer` on the reasoning that a
+# previewed section genuinely is a tiny map. **That reasoning holds for placements and stops
+# holding here** — the delegation is now partial, and this vocabulary is owned by the section
+# format alone.
+
+## Volumes, each carrying one of the four co-occupancy verbs. See `SectionClaim`.
+@export var claims: Array[SectionClaim] = []
+
+## Per-cell "something may appear here" declarations — clutter and spawners. See `SectionSpawn`.
+@export var spawns: Array[SectionSpawn] = []
+
+## The cap on how many clutter items this section may actually spawn, however many of its
+## clutter cells roll true. A cavernous hold with forty candidate cells is not forty barrels.
+## Negative means uncapped.
+@export var maximum_clutter: int = -1
+
+## Clutter tags that must never appear here, whatever the cells say. The refusal a room needs
+## when its dressing would be wrong rather than merely unlikely — no goo barrels in the medbay.
+@export var banned_clutter: Array[StringName] = []
+
+## **All-or-nothing, not a minimum topped up.** If the garrison roll produces fewer than this,
+## the section spawns **none**. A cavernous room never contains one lonely guard: either it is
+## held or it is empty, and "held by one" reads as a bug in the room rather than a light patrol.
+@export var minimum_garrison: int = 0
+
+## `minimum_garrison`'s foil. Negative means uncapped.
+@export var maximum_garrison: int = -1
+
+## A whitelist of encounter types this section may host.
+##
+## **The encounter system does not exist.** The field is recorded now, authored and validated,
+## and consumed nowhere — so that sections authored today need not all be revisited when it
+## does. Open `StringName`, like every other content vocabulary here.
+@export var encounter_types: Array[StringName] = []
+
+## **Is this section a room on its own, or part of a larger one?** The load-bearing declaration
+## of the three, and the reason it cannot be inferred.
+##
+## Encounters roll **per room**, and a room may be several sections — so crossing an invisible
+## seam inside one large hold must not trigger anything. Nothing about a section's contents can
+## answer this: a square of empty cells with one exterior wall is a legitimate section (it is an
+## edge piece of a very large room) and is explicitly **not** a room, while a section of exactly
+## the same shape may be a cell block that is. Only the author knows which.
+@export var is_room: bool = true
+
 
 ## This section's edge for `side`, or null. Sides are a closed set of four in practice but an
 ## open vocabulary in the format, so this is a lookup rather than four fields.

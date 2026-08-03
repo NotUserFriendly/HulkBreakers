@@ -1,5 +1,82 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-55 Pass C — the section authoring vocabulary
+
+**A second class of section data: declarations consumed at assembly and never present in an
+assembled map.** A placed board has a barrel or it does not; it has no "40% chance of a barrel."
+This is where a section stops being a small map.
+
+**Claims are volumes, and a claim's extent IS its declaration.** `SectionClaim` carries a `Box`
+and a `kind` — a translucent shape that overlaps freely, is drawn only while authoring, and is
+gone by the time a board exists. That dissolves the whole-column-versus-interval question
+outright: **the shape is the interval.**
+
+**Same geometry, deliberately not a `Part`.** A claim has no hp, no material, no sockets, no
+destructibility, and must never reach a part picker, loot, or a shot plane. Subclassing `Part`
+would have inherited every one of those and then needed each suppressed — an exclusion list
+nobody could justify later.
+
+**The four verbs are all rules about co-occupancy**, resolved by `ClaimResolver`: `empty`
+forbids, `interior`/`exterior` require and are each other's only conflict partner, `entry`
+negotiates by intersection, `merge` permits and unifies.
+
+**Geometry decides and metadata does not get a vote.** A big entry meeting a small one yields the
+small one *because that is what an intersection is* — no comparison, no ranking, no priority
+field. Walls beside a door force a small-to-small connection for the same reason: the wall is
+simply not part of the shared region. The one genuine ranking left is `SectionClaim.face_area`,
+and it is measured rather than declared.
+
+**Unification, not deduplication.** Two same-type walls in a merge volume become **one part at
+one part's thickness** — the doubled wall is the invisible defect this verb exists to prevent.
+Differing types refuse with a reason naming both, because picking a winner would be worse than
+refusing. Merge applies to floors identically.
+
+**An entry connecting to nothing becomes a wall**, filled by `stitch` in both directions.
+Otherwise doors overwrite paintings and open into the back of an oven. A door auto-declares an
+entry over its own face (`ClaimResolver.entry_for_door`) and **deleting that claim is the
+authoring verb that makes the door furniture** — not a join point, not overwritable.
+
+**Clutter and spawners stay per cell**, as `SectionSpawn` with a per-cell chance and an open tag
+vocabulary. They name *a place something may appear* rather than a volume of space, and giving
+them box extents would have been a false economy — a barrel sits on the floor of a cell and the
+interval question never arises.
+
+**Whole-section declarations landed on `SectionFile`:** `maximum_clutter`, `banned_clutter`,
+`minimum_garrison` (**all-or-nothing — a roll below it spawns none, never a reduced number**),
+`maximum_garrison`, `encounter_types` (**authored, validated, consumed nowhere**, so sections
+written today need not be revisited), and `is_room`.
+
+**`is_room` is the load-bearing one and cannot be inferred.** Encounters roll per *room*, a room
+may be several sections, and crossing an invisible seam inside one large hold must not trigger
+anything. A square of empty cells with one exterior wall is a legitimate section and explicitly
+not a room; a section of identical shape may be a cell block that is. Only the author knows.
+
+**`SectionRoller` rolls the declarations against a seeded RNG**, and the hazard it defends
+against is **iteration order, not the RNG** — rolling over a Dictionary keyed by cell makes the
+draw order follow authoring order, so the board changes when someone moves a barrel. `spawns` is
+an ordered `Array`, and `_ordered` re-sorts by cell besides. Every candidate draws even when it
+cannot land, so adding a ban does not shift every later cell's result.
+
+**The `MapSerializer` delegation became partial, exactly as the block predicted.** Placements
+still route through it — a previewed section genuinely is a tiny map — but a co-occupancy verb is
+not, and a `MapFile` has nowhere to put one. `stitch` consumes claims before building anything.
+
+**Validation is warnings, never load failures**, the same posture the format already took. What
+the new checks catch is specifically the class of mistake that is *invisible in the result*: a
+zero-extent claim, a verb no rule consumes, a garrison minimum nothing could reach. Those look
+exactly like a section that chose to do nothing; a malformed placement already announces itself.
+
+**Flagged, not designed:** `SectionRoller.part_for_tag` resolves a clutter tag to a part of the
+same id and to nothing otherwise. Choosing which part a *kind* of thing resolves to is the
+content library's job, and there is no content library — the dullest possible rule was chosen so
+this does not quietly become where content selection lives.
+
+**Measured, and worth recording:** the shipped `wall` part is a **full-cell 1.0 x 2.4 x 1.0 box,
+not a 0.2-thick slab**, so the block's literal "two 0.2 walls merge to 0.2, not 0.4" case cannot
+be exercised with shipped content. The test asserts the invariant instead — merged thickness
+equals one part's own authored thickness, read from the part — which holds at any thickness and
+does not bake a number the content does not have.
+
 ### taskblock-55 Pass B — cells stop carrying height; tiles carry it
 
 **The per-cell ground quad is deleted, and nothing replaces it.** `BoardView` drew one flat quad
