@@ -73,12 +73,12 @@ func test_end_turn_rejects_when_not_units_turn() -> void:
 	assert_false(state.try_apply(EndTurnAction.new(b)))
 
 
-## taskblock-22 Pass A2: "enter the tile, and if still there at the end of
-## the next round, extracted." Standing on the player squad's own tile,
+## taskblock-22 Pass A2: "enter the cell, and if still there at the end of
+## the next round, extracted." Standing on the player squad's own cell,
 ## objectives already complete, with no prior hold — the first EndTurnAction
 ## just STARTS the hold (records the current round), never extracts on the
 ## same turn it arrived.
-func test_end_turn_starts_the_hold_on_the_players_own_tile() -> void:
+func test_end_turn_starts_the_hold_on_the_players_own_cell() -> void:
 	var grid := Grid.new(5, 5)
 	var a := _make_unit(Vector2i(4, 4), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
@@ -90,10 +90,10 @@ func test_end_turn_starts_the_hold_on_the_players_own_tile() -> void:
 	state.try_apply(EndTurnAction.new(a, mission))
 
 	assert_eq(a.extraction_hold_start_round, starting_round)
-	assert_true(a.alive, "one turn on the tile is not enough to extract yet")
+	assert_true(a.alive, "one turn on the cell is not enough to extract yet")
 
 
-func test_end_turn_cancels_the_hold_when_the_unit_is_off_the_tile() -> void:
+func test_end_turn_cancels_the_hold_when_the_unit_is_off_the_cell() -> void:
 	var grid := Grid.new(5, 5)
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var b := _make_unit(Vector2i(1, 0), 1)
@@ -104,7 +104,7 @@ func test_end_turn_cancels_the_hold_when_the_unit_is_off_the_tile() -> void:
 
 	state.try_apply(EndTurnAction.new(a, mission))
 
-	assert_eq(a.extraction_hold_start_round, -1, "leaving the tile cancels an in-progress hold")
+	assert_eq(a.extraction_hold_start_round, -1, "leaving the cell cancels an in-progress hold")
 
 
 ## The hold must survive into a LATER round, not just a later call — a
@@ -159,7 +159,7 @@ func test_end_turn_hold_requires_every_objective_complete() -> void:
 
 
 ## taskblock-22 Pass A2: the asymmetry itself — a non-player squad never
-## holds at all, regardless of how long it stands on ITS OWN tile (it uses
+## holds at all, regardless of how long it stands on ITS OWN cell (it uses
 ## ExtractAction's own fast path instead, never this one).
 func test_end_turn_hold_never_applies_to_a_non_player_squad() -> void:
 	var grid := Grid.new(5, 5)
@@ -210,7 +210,7 @@ func test_end_turn_with_no_mission_skips_the_hold_check_entirely() -> void:
 
 ## taskblock-22 Pass C: shared with the AI planner's own shutdown-swap — used
 ## there specifically to avoid hijacking a productive hold as "stalled."
-func test_is_holding_position_true_on_the_tile_with_objectives_complete() -> void:
+func test_is_holding_position_true_on_the_cell_with_objectives_complete() -> void:
 	var unit := _make_unit(Vector2i(4, 4), 0)
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 	var mission := MissionState.new(RunState.new(), state)
@@ -219,7 +219,7 @@ func test_is_holding_position_true_on_the_tile_with_objectives_complete() -> voi
 	assert_true(EndTurnAction.is_holding_position(unit, mission))
 
 
-func test_is_holding_position_false_off_the_tile() -> void:
+func test_is_holding_position_false_off_the_cell() -> void:
 	var unit := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 	var mission := MissionState.new(RunState.new(), state)

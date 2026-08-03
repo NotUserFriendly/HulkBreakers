@@ -2,12 +2,12 @@ class_name TooltipView
 extends PanelContainer
 
 ## taskblock-07 Pass F1/F2: THE one tooltip renderer — every hoverable
-## surface (inventory rows, action bar boxes, tiles, units, field objects,
+## surface (inventory rows, action bar boxes, cells, units, field objects,
 ## queue entries) shows through this single instance, replacing both
 ## InventoryPanel's old plain-text `set_tooltip_text` mechanism and the
 ## whole combat_readout_panel.gd (deleted, F2). Manually shown/positioned
 ## rather than Godot's native per-Control tooltip system: the 3D board
-## (tiles/units) has no Control to hang a native tooltip off at all, and a
+## (cells/units) has no Control to hang a native tooltip off at all, and a
 ## shared instance is simpler than overriding `_make_custom_tooltip` on
 ## every single hoverable Control separately — that's what "one renderer"
 ## means here. Parent this as the LAST child under `theme_root` so it
@@ -88,9 +88,9 @@ func show_data(data: TooltipData, at_position: Vector2) -> void:
 
 
 ## `BR51.14`: **move without rebuilding.** `show_data` repositions too, but only after its
-## caller has built a `TooltipData` — and building one for a tile calls
+## caller has built a `TooltipData` — and building one for a cell calls
 ## `SelectionController.previewed_unit()`, which clones the whole `CombatState`. Following the
-## cursor across one tile does not change a word of what the tooltip says, so a caller that
+## cursor across one cell does not change a word of what the tooltip says, so a caller that
 ## only needs it to keep up with the mouse comes here instead.
 func move_to(at_position: Vector2) -> void:
 	_reposition(at_position)

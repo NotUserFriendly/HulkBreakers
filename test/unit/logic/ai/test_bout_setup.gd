@@ -211,7 +211,7 @@ func test_the_same_profiles_counts_and_seed_produce_an_equivalent_bout() -> void
 
 
 ## taskblock-21 Pass D2 / taskblock-23 Pass E1: "team-coded extraction
-## tiles, placed at bout setup" — both squads get their OWN entry (now
+## cells, placed at bout setup" — both squads get their OWN entry (now
 ## the OPPOSING squad's own spawn, tb23 E1 — see the dedicated test
 ## below for that specific placement), never a shared zone, and never
 ## left unpopulated the way a plain single-player mission's
@@ -227,10 +227,10 @@ func test_build_bout_populates_team_extraction_cells_for_both_squads() -> void:
 	assert_true(mission.team_extraction_cells.has(0))
 	assert_true(mission.team_extraction_cells.has(1))
 	assert_false(
-		(mission.team_extraction_cells[0] as Array).is_empty(), "squad 0 must get at least one tile"
+		(mission.team_extraction_cells[0] as Array).is_empty(), "squad 0 must get at least one cell"
 	)
 	assert_false(
-		(mission.team_extraction_cells[1] as Array).is_empty(), "squad 1 must get at least one tile"
+		(mission.team_extraction_cells[1] as Array).is_empty(), "squad 1 must get at least one cell"
 	)
 	assert_ne(
 		mission.team_extraction_cells[0],

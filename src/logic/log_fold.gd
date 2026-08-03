@@ -94,7 +94,7 @@ var _open: LogFoldGroup = null
 ## finished Miss (or nothing has landed yet).
 var _open_hit_line: int = -1
 var _open_targets_hit: Array[int] = []
-var _open_move_tiles: int = 0
+var _open_move_cells: int = 0
 ## `BR51.13`: which plumbing kind the open plumbing group is accumulating, so a run only ever
 ## folds events of ONE kind together. `&""` whenever no plumbing group is open.
 var _open_plumbing_kind: StringName = &""
@@ -189,11 +189,11 @@ func _ingest_move(event: LogEvent) -> LogFoldGroup:
 	var group: LogFoldGroup = _open_move(event.unit_id)
 	group.events.append(event)
 	var path: Array = event.data.get("path", [])
-	_open_move_tiles += maxi(0, path.size() - 1)
+	_open_move_cells += maxi(0, path.size() - 1)
 	var dest: Vector2i = event.data.get("destination", Vector2i.ZERO)
 	group.summary = (
-		"Unit %d moved %d tile%s (→ %s)"
-		% [event.unit_id, _open_move_tiles, "" if _open_move_tiles == 1 else "s", dest]
+		"Unit %d moved %d cell%s (→ %s)"
+		% [event.unit_id, _open_move_cells, "" if _open_move_cells == 1 else "s", dest]
 	)
 	return group
 
@@ -273,7 +273,7 @@ func _open_move(unit_id: int) -> LogFoldGroup:
 		return _open
 	_close()
 	_open = LogFoldGroup.new(&"move", unit_id)
-	_open_move_tiles = 0
+	_open_move_cells = 0
 	_add(_open)
 	return _open
 

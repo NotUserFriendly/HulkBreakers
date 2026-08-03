@@ -155,7 +155,7 @@ func test_a_ramp_resolves_at_the_height_the_board_renders_it_at() -> void:
 	var state := CombatState.new(grid, [])
 	var drawn: float = UnitGeometry.true_height_for_cell(Vector2i(7, 5), grid)
 	print("  ramp at (7,5): BoardView draws its quad at y = %.3f" % drawn)
-	assert_gt(drawn, 1.0, "a ramp tile rests above its own lower endpoint")
+	assert_gt(drawn, 1.0, "a ramp cell rests above its own lower endpoint")
 
 	var hit: RayHit = RayCaster.cast(state, Vector3(7.0, drawn + 2.0, 5.0), Vector3(0, -1, 0))
 	assert_not_null(hit, "a round dropped onto the ramp meets it")

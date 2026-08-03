@@ -55,14 +55,14 @@ func test_the_empty_target_answers_rather_than_crashing() -> void:
 	assert_false(empty.is_cell())
 
 
-## **A bare tile has nothing to inspect; a prop does.** `BR51.10` — the button was live
+## **A bare cell has nothing to inspect; a prop does.** `BR51.10` — the button was live
 ## whenever anything had been clicked rather than when the thing clicked has a body.
 func test_only_things_with_a_body_can_be_inspected() -> void:
 	assert_true(SelectionTarget.for_unit(_unit()).can_inspect())
 	assert_true(
 		SelectionTarget.for_part(_barrel(), Vector2i.ZERO).can_inspect(), "a prop has parts"
 	)
-	assert_false(SelectionTarget.for_cell(Vector2i(1, 1)).can_inspect(), "a bare tile has none")
+	assert_false(SelectionTarget.for_cell(Vector2i(1, 1)).can_inspect(), "a bare cell has none")
 
 
 ## **The two dict shapes are different and each gets its own door.** `PartPicker.hit` returns

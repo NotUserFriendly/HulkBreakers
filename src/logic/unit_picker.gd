@@ -1,7 +1,7 @@
 class_name UnitPicker
 extends RefCounted
 
-## docs/10 taskblock03 D1: "click the body, not just the tile" — ray-vs-box
+## docs/10 taskblock03 D1: "click the body, not just the cell" — ray-vs-box
 ## hit testing against every living unit's own boxes
 ## (UnitGeometry.placements(), the exact boxes a HitVolumeView renders and
 ## docs/10 calls "render is hitbox"), not a per-unit bounding sphere or a

@@ -12,7 +12,7 @@ extends GutTest
 ## ## The number reproduces exactly. The explanation attached to it does not.
 ##
 ## Both living documents record the cause as a projection artifact: *"adjacent
-## cells' projected rects are not guaranteed to tile edge-to-edge from an
+## cells' projected rects are not guaranteed to cell edge-to-edge from an
 ## arbitrary shooter angle, so a sufficiently wide lateral offset can thread a
 ## real gap between them."* Three measurements below say otherwise.
 ##
@@ -211,7 +211,7 @@ func test_a_vanishing_round_begins_its_flight_outside_the_building() -> void:
 
 ## **Finding 3: there is no rect-tiling seam to find.** Every offset swept here
 ## stays well inside the walls, so nothing can vanish by being aimed outside the
-## building; if adjacent wall cells failed to tile edge-to-edge from an arbitrary
+## building; if adjacent wall cells failed to cell edge-to-edge from an arbitrary
 ## angle, 90 angles across several thousand samples is where it would show.
 func test_a_room_large_enough_to_hold_every_offset_produces_no_empties() -> void:
 	var state: CombatState = _state(BIG_ROOM)
@@ -237,7 +237,7 @@ func test_a_room_large_enough_to_hold_every_offset_produces_no_empties() -> void
 		0,
 		(
 			"no empties with every offset inside the walls — the recorded "
-			+ "'adjacent rects do not tile edge-to-edge' cause is not measurable"
+			+ "'adjacent rects do not cell edge-to-edge' cause is not measurable"
 		)
 	)
 

@@ -380,7 +380,7 @@ func test_turn_selected_with_nothing_selected_is_a_no_op() -> void:
 
 
 ## A unit with a wide torso box overhanging the neighboring cell — the case
-## docs/10 taskblock03 D1 calls out: a click on the mesh, not the tile.
+## docs/10 taskblock03 D1 calls out: a click on the mesh, not the cell.
 ## runNotes.md: "make undo last action only on click, while a drag doesn't
 ## cancel the action" — a click is a press immediately followed by a
 ## release, no motion event in between.

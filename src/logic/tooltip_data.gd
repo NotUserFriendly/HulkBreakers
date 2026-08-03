@@ -3,11 +3,11 @@ extends RefCounted
 
 ## taskblock-07 Pass F1: "the tooltip you get hovering a part in the
 ## inventory becomes THE detail mechanism." One shape, for every hoverable
-## surface (parts, action bar boxes, tiles, units, field objects, queue
+## surface (parts, action bar boxes, cells, units, field objects, queue
 ## entries, AP/MP pips) — TooltipBuilder is the "whatever provides detail
 ## implements this" the taskblock names; GDScript has no real interface to
 ## enforce polymorphism across such unrelated types (a Part Resource, a
-## tile's plain Dictionary, an ActionDef), so one builder module with one
+## cell's plain Dictionary, an ActionDef), so one builder module with one
 ## function per hoverable kind, uniformly returning TooltipData, is what
 ## actually delivers "everything hoverable provides it" here — not a
 ## method scattered across otherwise-unrelated data classes.

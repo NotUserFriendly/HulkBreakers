@@ -89,7 +89,7 @@ func _stepper(cell: Vector2i, squad_id: int, torso_hp: int) -> Unit:
 ## (3,9); (4,0) and (2,0) are both legal, exposed step-out cells. A hostile
 ## overwatcher at (8,0) — off the stepper-target sightline entirely, so it
 ## never itself reads as "cover" blocking either candidate — facing west
-## with a short 5-tile weapon range triggers on (4,0) specifically
+## with a short 5-cell weapon range triggers on (4,0) specifically
 ## (distance 4) but not (2,0) (distance 6, out of range). The step out is
 ## deliberately built against the UNSAFE cell, bypassing
 ## assemble_for_shoot's own safest-pick, to exercise the interrupt itself

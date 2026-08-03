@@ -303,7 +303,7 @@ func _disarm_active_tracking() -> void:
 
 
 ## A miss (off the board entirely, an empty hit dict) leaves `_active`
-## alone — "click a tile, it's in memory" means it STAYS in memory until
+## alone — "click a cell, it's in memory" means it STAYS in memory until
 ## the next real hit, not that a stray click into empty space wipes it.
 func _on_active_target_clicked(hit: Dictionary) -> void:
 	if hit.is_empty():
@@ -324,7 +324,7 @@ func _refresh_active_label() -> void:
 	elif _active.get("kind") == Enums.HitKind.PART and _active.get("part") != null:
 		# taskblock-51 (`BR51.02`): **cover said "Cell".** A click on a barrel resolves to a
 		# `PART` hit carrying the exact part struck, and this labelled everything that was
-		# not a unit by its cell — so selecting cover read as selecting the tile beneath it,
+		# not a unit by its cell — so selecting cover read as selecting the cell beneath it,
 		# and there was no way to tell whether the panel had the barrel or the floor.
 		var part: Part = _active.get("part")
 		_active_label.text = "Active: %s @ %s" % [part.id, _active.get("cell")]
@@ -354,7 +354,7 @@ func _select_verb(index: int) -> void:
 	for p: Dictionary in verb.params:
 		_param_container.add_child(_build_param_row(p))
 	# taskblock-30 follow-up: move_object's own accelerated path — "move to
-	# next tile clicked" applies the move on the very next board click, no
+	# next cell clicked" applies the move on the very next board click, no
 	# separate Apply press. Verb-specific (not a generic ParamType widget)
 	# because it side-effects immediately, unlike every other field, which
 	# only ever fills in a value for Apply to use later.
@@ -611,7 +611,7 @@ func _on_apply_pressed() -> void:
 		_status_label.text = "%s: applied" % verb.label
 		applied.emit(verb.id, args)
 		return
-	# taskblock-51 Pass K: **a refusal names what was refused.** Now that cover and bare tiles
+	# taskblock-51 Pass K: **a refusal names what was refused.** Now that cover and bare cells
 	# can be the active target, "refused" on its own leaves the operator guessing whether the
 	# verb rejected the target or never saw it — and half of Pass K's reported symptoms were
 	# things silently doing nothing. Only OBJECT-param verbs name the target, because for the

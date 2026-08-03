@@ -2,10 +2,10 @@ class_name ExtractAction
 extends CombatAction
 
 ## taskblock-22 Pass A2: the FAST, asymmetric half of extraction (docs/07:
-## "EXIT with loot") — "an Extract ACTION: reach a team extraction tile,
+## "EXIT with loot") — "an Extract ACTION: reach a team extraction cell,
 ## spend 1 AP, gone immediately." Deliberately restricted to a non-player
 ## squad: the player's own squad never gets this cheap button at all, it
-## has to hold the tile instead (`EndTurnAction`'s own hold-check) —
+## has to hold the cell instead (`EndTurnAction`'s own hold-check) —
 ## that's the whole asymmetry the taskblock calls for, not an oversight.
 ## No longer ends the mission by itself (taskblock-21's own single-call
 ## `mission.extract()` wiring was the taskblock-22 A1 bug: "ends the whole

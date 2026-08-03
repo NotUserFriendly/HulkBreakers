@@ -33,7 +33,7 @@ static func cell_at_ray(from: Vector3, dir: Vector3, grid: Grid = null) -> Varia
 ## board's own real terrain, or null if it never does — split out from
 ## cell_at_ray so a caller (TacticsController) can compare this distance
 ## against UnitPicker's own hit distance to decide "nearest hit wins"
-## between clicking a tile and clicking a unit's body.
+## between clicking a cell and clicking a unit's body.
 static func plane_hit_t(from: Vector3, dir: Vector3, grid: Grid = null) -> Variant:
 	var hit: Variant = _resolve(from, dir, grid)
 	return (hit as Dictionary)["t"] if hit != null else null

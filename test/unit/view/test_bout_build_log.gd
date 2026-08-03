@@ -14,8 +14,8 @@ extends GutTest
 const EXPECTED_ORDER: Array[StringName] = [
 	&"terrain",
 	&"grid_lines",
-	&"empty_tiles",
-	&"extraction_tiles",
+	&"empty_cells",
+	&"extraction_cells",
 	&"walls",
 	&"cover",
 	&"field_items",
@@ -100,17 +100,17 @@ func test_walls_and_cover_are_counted_separately_as_they_are_built() -> void:
 	assert_eq(by_step[&"cover"], 1, "a crate is cover, not a wall")
 
 
-func test_extraction_tiles_are_counted_where_they_are_actually_drawn() -> void:
+func test_extraction_cells_are_counted_where_they_are_actually_drawn() -> void:
 	var grid: Grid = GridFixture.flat(6, 6)
 	var extraction: Dictionary = {0: [Vector2i(0, 0), Vector2i(0, 1)], 1: [Vector2i(5, 5)]}
 
 	var memory: MemorySink = _board_with_log(grid, extraction)
 
 	for event: LogEvent in _steps(memory):
-		if event.data["step"] == &"extraction_tiles":
-			assert_eq(event.data["count"], 3, "both squads' tiles, counted as drawn")
+		if event.data["step"] == &"extraction_cells":
+			assert_eq(event.data["count"], 3, "both squads' cells, counted as drawn")
 			return
-	fail_test("no extraction_tiles step was logged at all")
+	fail_test("no extraction_cells step was logged at all")
 
 
 ## Every headless fixture in the suite builds a board with no battle around it.

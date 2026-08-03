@@ -3,7 +3,7 @@ extends CombatAction
 
 ## taskblock-22 Pass A2: `mission`, optional, threaded the same way
 ## AttackAction/GatherAction/ExtractAction already take one — every turn a
-## unit ends is exactly the once-per-round cadence "held the tile" needs
+## unit ends is exactly the once-per-round cadence "held the cell" needs
 ## to be checked at (each unit gets one turn per round), so this is where
 ## the player squad's own passive extraction hold lives, rather than a
 ## second, CombatState-side hook (CombatState never depends on
@@ -45,11 +45,11 @@ func apply(state: CombatState) -> void:
 	state.advance_turn()
 
 
-## taskblock-22 Pass A2: "enter the tile, and if still there at the end of
+## taskblock-22 Pass A2: "enter the cell, and if still there at the end of
 ## the next round, extracted. Leaving early cancels it." A flagged, simple
 ## approximation, not a true round-boundary event: since each unit gets
 ## exactly one turn per round, checking here — on THIS unit's own next
-## turn — after having first been seen on the tile a turn ago is "roughly
+## turn — after having first been seen on the cell a turn ago is "roughly
 ## one round held," close enough to "~1.something rounds" per the
 ## taskblock's own explicitly tunable framing, without CombatState needing
 ## to depend on MissionState just to watch for true round boundaries.
@@ -65,7 +65,7 @@ func _update_extraction_hold(state: CombatState, actual: Unit) -> void:
 
 
 ## taskblock-22 Pass C: shared with the AI planner's own shutdown-swap. A unit
-## standing on its own team's extraction tile with every objective
+## standing on its own team's extraction cell with every objective
 ## complete is ACTIVELY holding for extraction (this exact function is
 ## what matures that hold, one call at a time) — never "stalled" just
 ## because a turn ends up with nothing else queued. Player squad only —
@@ -76,8 +76,8 @@ func _update_extraction_hold(state: CombatState, actual: Unit) -> void:
 static func is_holding_position(unit: Unit, mission: MissionState) -> bool:
 	if mission == null or unit.squad_id != mission.player_squad_id:
 		return false
-	var tiles: Array = mission.team_extraction_cells.get(unit.squad_id, mission.extraction_cells)
-	if not tiles.has(unit.cell):
+	var cells: Array = mission.team_extraction_cells.get(unit.squad_id, mission.extraction_cells)
+	if not cells.has(unit.cell):
 		return false
 	return not mission.objectives.any(
 		func(o: StringName) -> bool: return o not in mission.completed_objectives

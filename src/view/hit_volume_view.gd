@@ -29,10 +29,10 @@ const TEAM_MARKER_RADIUS := 0.4
 const TEAM_MARKER_HEIGHT := 0.02
 ## taskblock-27 Pass C2: part of the one ordered ground-overlay height
 ## ladder (see `board_view.gd`'s own matching comment on
-## `EXTRACTION_TILE_HEIGHT` for the full enumeration) — was 0.01,
-## IDENTICAL to `EXTRACTION_TILE_HEIGHT` (0.010), a real, previously
+## `EXTRACTION_CELL_HEIGHT` for the full enumeration) — was 0.01,
+## IDENTICAL to `EXTRACTION_CELL_HEIGHT` (0.010), a real, previously
 ## unreported co-planar pair found while enumerating this set for the
-## first time (a unit standing on its own extraction tile, an ordinary
+## first time (a unit standing on its own extraction cell, an ordinary
 ## end-of-turn occurrence, always z-fought). Raised to clear
 ## `board_view.gd`'s own `GHOST_HEIGHT` (top face 0.04) with margin.
 const TEAM_MARKER_Y := 0.06
@@ -66,13 +66,13 @@ const FACING_WEDGE_SIZE := Vector3(0.16, 0.10, 0.30)
 const FACING_WEDGE_OFFSET := TEAM_MARKER_RADIUS * 0.85
 ## taskblock-27 Pass C2 (tb26 Pass A3's second re-fix — two prior single-
 ## marker bumps each missed a DIFFERENT co-planar element in turn: first
-## the extraction tile, then `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT`.
+## the extraction cell, then `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT`.
 ## Bumping one marker in isolation, over and over, was the actual bug —
 ## every ground overlay's own height was authored independently, in
 ## whichever file happened to need one, with no shared ordering at all.
 ## This is the last rung of ONE deliberately-ordered ladder now (see
-## `board_view.gd`'s own matching comment on `EXTRACTION_TILE_HEIGHT` for
-## the full enumeration: extraction tile -> team marker -> overwatch arc
+## `board_view.gd`'s own matching comment on `EXTRACTION_CELL_HEIGHT` for
+## the full enumeration: extraction cell -> team marker -> overwatch arc
 ## -> facing wedge, each with real clearance over the last). `
 ## FACING_WEDGE_SIZE.y` (0.10) is five times taller than every other rung
 ## in the ladder, so it needs real headroom above `OVERWATCH_ARC_HEIGHT`

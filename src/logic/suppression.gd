@@ -4,7 +4,7 @@ extends RefCounted
 ## taskblock-19 Pass E / taskblock-25 Pass E: "real tactics games gate
 ## face-to-face crowding with suppression." Adjacency to a living enemy
 ## disarms a two-handed weapon (real, enforced legality, stops the
-## crowding outright), and leaving an adjacent tile draws a free "attack
+## crowding outright), and leaving an adjacent cell draws a free "attack
 ## of opportunity" — now (docs/PLAN.md "Phase M — Melee") a real melee
 ## strike with the enemy's own default melee weapon, resolved through the
 ## same shot plane a queued stab uses, not the taskblock-19 stub. Both
@@ -40,7 +40,7 @@ static func blocks_weapon(state: CombatState, unit: Unit, weapon: Part) -> bool:
 	return is_long_gun(weapon) and is_suppressed(state, unit)
 
 
-## taskblock-19 Pass E: "moving OUT of a tile adjacent to an enemy lets
+## taskblock-19 Pass E: "moving OUT of a cell adjacent to an enemy lets
 ## that enemy make a free melee attack as you leave." Every living enemy
 ## adjacent to `from_cell` that is NOT also adjacent to `to_cell` — a
 ## sidestep that stays adjacent to the SAME enemy draws no attack, only a
@@ -60,7 +60,7 @@ static func would_trigger_opportunity_attack(
 	return leaving
 
 
-## taskblock-25 Pass E: "an opportunity attack — moving out of a tile
+## taskblock-25 Pass E: "an opportunity attack — moving out of a cell
 ## adjacent to an enemy — resolves as a real melee strike (the enemy's
 ## default melee, a stab/punch) instead of the stubbed penalty." Each
 ## `attacker`'s own melee weapon (`ActionCatalog.provider_for(attacker,

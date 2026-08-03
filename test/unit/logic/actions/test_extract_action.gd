@@ -1,10 +1,10 @@
 extends GutTest
 
 ## taskblock-22 Pass A2: ExtractAction is now the FAST, asymmetric half of
-## extraction only — "an Extract ACTION: reach a team extraction tile,
+## extraction only — "an Extract ACTION: reach a team extraction cell,
 ## spend 1 AP, gone immediately," restricted to a non-player squad. The
 ## player's own squad (squad 0, `MissionState.player_squad_id`'s own
-## default) has to hold the tile instead (EndTurnAction's own hold-check,
+## default) has to hold the cell instead (EndTurnAction's own hold-check,
 ## test_end_turn_action.gd) — every fixture here is squad 1 on purpose,
 ## never squad 0.
 
@@ -28,8 +28,8 @@ func test_extract_illegal_off_the_extraction_cell() -> void:
 
 ## taskblock-22 Pass A2: the player's own squad never gets the fast action
 ## at all, regardless of cell/AP — it's illegal even standing right on its
-## own tile with a full AP pool.
-func test_extract_illegal_for_the_player_squad_even_on_the_tile() -> void:
+## own cell with a full AP pool.
+func test_extract_illegal_for_the_player_squad_even_on_the_cell() -> void:
 	var unit := _make_unit(Vector2i(4, 4), 0)
 	var state := CombatState.new(Grid.new(5, 5), [unit])
 	var mission := MissionState.new(RunState.new(), state)
@@ -108,7 +108,7 @@ func test_extract_emits_an_extract_event() -> void:
 
 
 ## taskblock-21 Pass D2: "team-coded cells win when this unit's own squad
-## has any authored." A tile in `team_extraction_cells` legal, the SAME
+## has any authored." A cell in `team_extraction_cells` legal, the SAME
 ## cell absent from the old flat `extraction_cells` field entirely —
 ## proves the team-coded lookup is really consulted first, not just
 ## merged in.
@@ -124,7 +124,7 @@ func test_extract_uses_team_coded_cells_when_present_for_this_squad() -> void:
 
 ## The flat `extraction_cells` field stays the fallback for a squad with no
 ## team-coded entry of its own — a bout mission whose caller only populated
-## the OTHER squad's tiles must never fall through to a stray leftover
+## the OTHER squad's cells must never fall through to a stray leftover
 ## zone for this one.
 func test_extract_falls_back_to_extraction_cells_when_this_squads_own_entry_is_absent() -> void:
 	var unit := _make_unit(Vector2i(4, 4))

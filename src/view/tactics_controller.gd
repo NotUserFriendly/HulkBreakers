@@ -131,7 +131,7 @@ var stepping_out_at: Unit = null
 
 ## docs/10 taskblock04 E3: "hover, don't click" — the cell the combat
 ## readout currently reads (terrain, any unit regardless of squad, any
-## field object — TileInspection.inspect()). null off the board entirely
+## field object — CellInspection.inspect()). null off the board entirely
 ## (e.g. the cursor sitting over a UI panel, where board hover never
 ## fires). Superseded the old click-based `inspected_unit` (runNotes.md)
 ## once hover covered "any unit, full detail" more directly — cutting the
@@ -367,7 +367,7 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			_click_part(hit_dict["part"], hit_dict["cell"])
 		else:
 			# A cell click with a unit selected is a move order and stays one — Pass K adds
-			# tile selection where there was previously nothing, and takes nothing away.
+			# cell selection where there was previously nothing, and takes nothing away.
 			if selection.selected_unit != null:
 				selection.queue_move(hit_dict["cell"])
 			else:
@@ -420,11 +420,11 @@ func _handle_rmb_release() -> void:
 		_refresh_overlay()
 
 
-## docs/10 taskblock03 D1: "click the body, not just the tile" — nearest hit
+## docs/10 taskblock03 D1: "click the body, not just the cell" — nearest hit
 ## wins between a unit's own boxes and the ground plane, so a click square
-## on a unit's mesh selects it even when the ray would also cross the tile
+## on a unit's mesh selects it even when the ray would also cross the cell
 ## underneath at a farther distance (impossible here, but a mesh that
-## overhangs a neighboring tile is exactly the case this guards).
+## overhangs a neighboring cell is exactly the case this guards).
 ##
 ## docs/10 taskblock05 A1: returns what was actually hit — `{kind, unit,
 ## cell}` — never just a bare cell. A caller that collapsed a unit hit into
@@ -781,7 +781,7 @@ func _enter_aim_or_step_out_mode(target: Unit) -> void:
 ##
 ## With an action armed this still enters aim, unchanged. With nothing armed it used to do
 ## nothing at all — `SelectionController` had only `selected_unit` and a barrel is not a unit,
-## so the click had nowhere to go and the supervisor read the result as "it selected the tile
+## so the click had nowhere to go and the supervisor read the result as "it selected the cell
 ## beneath". It selects the prop now.
 ##
 ## **Selecting a prop drops the unit selection**, which is a real behaviour change: clicking a

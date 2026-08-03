@@ -144,9 +144,9 @@ func _process(_delta: float) -> void:
 
 
 ## Every OTHER unit sharing `board_view.aim_active_unit`'s own squad that
-## currently sits within `BoardView.OCCLUSION_RADIUS_TILES` of, and
+## currently sits within `BoardView.OCCLUSION_RADIUS_CELLS` of, and
 ## nearer the camera than, the active unit — reuses `WallLegibility.
-## occludes_on_screen`/`pixel_radius_for_tiles` unchanged, the same
+## occludes_on_screen`/`pixel_radius_for_cells` unchanged, the same
 ## screen-space-and-nearer test the wall cutout shader's own per-unit
 ## radius uses, just against `aim_active_unit` instead of a wall.
 func _occluding_friendlies(camera: Camera3D) -> Array[Unit]:
@@ -161,8 +161,8 @@ func _occluding_friendlies(camera: Camera3D) -> Array[Unit]:
 	var active_screen: Vector2 = camera.unproject_position(active_position)
 	var active_depth: float = camera_position.distance_to(active_position)
 	var viewport_height: float = float(get_viewport().size.y)
-	var radius: float = WallLegibility.pixel_radius_for_tiles(
-		BoardView.OCCLUSION_RADIUS_TILES, active_depth, camera.fov, viewport_height
+	var radius: float = WallLegibility.pixel_radius_for_cells(
+		BoardView.OCCLUSION_RADIUS_CELLS, active_depth, camera.fov, viewport_height
 	)
 	for unit: Unit in board_view.wall_cutout_units:
 		if unit == null or not is_instance_valid(unit) or unit == active:

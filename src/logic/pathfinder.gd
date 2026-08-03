@@ -95,7 +95,7 @@ func _init(grid: Grid, can_climb: bool = false) -> void:
 ## tb31 Pass C: reads the blocker's own `hp` now, not just its presence —
 ## a DESTROYED blocker (wall or cover) is passable. Before this, a dead
 ## crate (or, with BR30.10's wall geometry, a destroyed wall) still walled
-## off its own tile forever: `ShotPlane`/`BodyProjector` already skip a
+## off its own cell forever: `ShotPlane`/`BodyProjector` already skip a
 ## 0-hp Part when resolving a shot (`body_projector.gd`'s own hp<=0 check),
 ## but nothing ever told `Pathfinder` the blocker was gone. This is the
 ## shared fix both walls (Pass C's own destructibility) and every existing
@@ -123,7 +123,7 @@ func _base_cost(cell: Vector2i) -> float:
 ## taskblock-38 Pass C: `docs/PLAN.md`'s settled cost table, verbatim —
 ## - a RAMP edge (either endpoint carrying a `Surface.RAMP_TAG`-tagged
 ##   surface) is ordinary pathing at the plain terrain cost, whatever the
-##   level delta: "a sloped tile costs 1 MP like any other; the path just
+##   level delta: "a sloped cell costs 1 MP like any other; the path just
 ##   changes height as it goes." No special-casing beyond that check.
 ## - same height: unchanged, the plain terrain cost (the vast majority of
 ##   edges).

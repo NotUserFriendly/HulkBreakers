@@ -1,6 +1,6 @@
 extends GutTest
 
-## docs/10 taskblock04 E1/E3: "hovering a tile fills the readout... enemy
+## docs/10 taskblock04 E1/E3: "hovering a cell fills the readout... enemy
 ## parts, HP, materials and DT are fully visible this pass" — no knowledge
 ## gating, checked directly against an enemy-squad unit.
 
@@ -15,7 +15,7 @@ func _unit(cell: Vector2i, squad: int = 0) -> Unit:
 
 func test_inspect_out_of_bounds_returns_empty() -> void:
 	var state := CombatState.new(GridFixture.flat(5, 5))
-	assert_eq(TileInspection.inspect(state, Vector2i(-1, 0)), {})
+	assert_eq(CellInspection.inspect(state, Vector2i(-1, 0)), {})
 
 
 ## taskblock-16 Pass B2: `field_object` (a real Part), not a separate
@@ -31,8 +31,8 @@ func test_inspect_reports_terrain_and_the_real_field_object() -> void:
 	var wall: Part = GridFixture.place_wall(grid, Vector2i(2, 2))
 	var state := CombatState.new(grid)
 
-	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
-	assert_eq(info.terrain, TileInspection.PhysicalState.OPEN)
+	var info: Dictionary = CellInspection.inspect(state, Vector2i(2, 2))
+	assert_eq(info.terrain, CellInspection.PhysicalState.OPEN)
 	assert_eq(info.field_object, wall)
 	assert_null(info.unit)
 
@@ -45,19 +45,19 @@ func test_inspect_reports_empty_for_an_unfloored_cell() -> void:
 	grid.clear_surfaces(Vector2i(2, 2))
 	var state := CombatState.new(grid)
 
-	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
-	assert_eq(info.terrain, TileInspection.PhysicalState.EMPTY)
+	var info: Dictionary = CellInspection.inspect(state, Vector2i(2, 2))
+	assert_eq(info.terrain, CellInspection.PhysicalState.EMPTY)
 
 
 ## A ramp-tagged Surface reads back as RAMP, matching what a real
-## MapGen-authored ramp tile reports.
+## MapGen-authored ramp cell reports.
 func test_inspect_reports_ramp_for_a_ramp_tagged_surface() -> void:
 	var grid := GridFixture.flat(5, 5)
 	GridFixture.place_ramp(grid, Vector2i(2, 2), 1)
 	var state := CombatState.new(grid)
 
-	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
-	assert_eq(info.terrain, TileInspection.PhysicalState.RAMP)
+	var info: Dictionary = CellInspection.inspect(state, Vector2i(2, 2))
+	assert_eq(info.terrain, CellInspection.PhysicalState.RAMP)
 
 
 ## docs/10 taskblock04 E1: "enemy parts, HP, materials and DT are fully
@@ -68,7 +68,7 @@ func test_inspect_reports_any_unit_at_the_cell_regardless_of_squad() -> void:
 	var enemy := _unit(Vector2i(3, 3), 1)
 	var state := CombatState.new(grid, [enemy])
 
-	var info: Dictionary = TileInspection.inspect(state, Vector2i(3, 3))
+	var info: Dictionary = CellInspection.inspect(state, Vector2i(3, 3))
 	assert_eq(info.unit, enemy)
 	assert_eq((info.unit as Unit).shell.root.hp, 8)
 
@@ -79,7 +79,7 @@ func test_inspect_ignores_a_dead_unit_at_the_cell() -> void:
 	dead.alive = false
 	var state := CombatState.new(grid, [dead])
 
-	assert_null((TileInspection.inspect(state, Vector2i(3, 3)) as Dictionary).unit)
+	assert_null((CellInspection.inspect(state, Vector2i(3, 3)) as Dictionary).unit)
 
 
 func test_inspect_reports_a_field_object_at_the_cell() -> void:
@@ -88,13 +88,13 @@ func test_inspect_reports_a_field_object_at_the_cell() -> void:
 	grid.blockers[Vector2i(1, 1)] = scrap
 	var state := CombatState.new(grid)
 
-	var info: Dictionary = TileInspection.inspect(state, Vector2i(1, 1))
+	var info: Dictionary = CellInspection.inspect(state, Vector2i(1, 1))
 	assert_eq(info.field_object, scrap)
 
 
 func test_visible_from_selected_is_null_with_nothing_selected() -> void:
 	var state := CombatState.new(GridFixture.flat(5, 5))
-	var info: Dictionary = TileInspection.inspect(state, Vector2i(2, 2))
+	var info: Dictionary = CellInspection.inspect(state, Vector2i(2, 2))
 	assert_null(info.visible_from_selected)
 
 
@@ -103,9 +103,9 @@ func test_visible_from_selected_reflects_line_of_sight_to_the_hovered_cell() -> 
 	var selected := _unit(Vector2i(0, 2), 0)
 	var state := CombatState.new(grid, [selected])
 
-	var clear: Dictionary = TileInspection.inspect(state, Vector2i(4, 2), selected)
+	var clear: Dictionary = CellInspection.inspect(state, Vector2i(4, 2), selected)
 	assert_true(clear.visible_from_selected)
 
 	GridFixture.place_wall(grid, Vector2i(2, 2))
-	var blocked: Dictionary = TileInspection.inspect(state, Vector2i(4, 2), selected)
+	var blocked: Dictionary = CellInspection.inspect(state, Vector2i(4, 2), selected)
 	assert_false(blocked.visible_from_selected)

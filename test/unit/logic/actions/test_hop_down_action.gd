@@ -58,7 +58,7 @@ func test_hopping_up_is_illegal_thats_a_climb_not_a_hop() -> void:
 	assert_false(HopDownAction.new(unit, Vector2i(1, 0)).is_legal(state))
 
 
-func test_hopping_onto_a_ramp_tile_is_illegal_thats_ordinary_movement() -> void:
+func test_hopping_onto_a_ramp_cell_is_illegal_thats_ordinary_movement() -> void:
 	var grid := GridFixture.flat(2, 1)
 	GridFixture.place_ramp(grid, Vector2i(1, 0), 0)
 	GridFixture.place_floor(grid, Vector2i(0, 0), 1)

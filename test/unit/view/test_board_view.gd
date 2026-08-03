@@ -23,7 +23,7 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 
 
 ## taskblock-23 Pass E2: the inspect panel's isolate camera needs a real
-## board tile under the model instead of it floating in empty space — the
+## board cell under the model instead of it floating in empty space — the
 ## ground plane and grid lines both carry BoardView.FLOOR_LAYER, on top
 ## of (never instead of) whatever layer they already render on for the
 ## real board's own main camera.
@@ -79,7 +79,7 @@ func test_build_terrain_reflects_a_raised_cells_own_height() -> void:
 	)
 
 
-## A ground overlay marker (extraction tile, wall/empty-cell indicator,
+## A ground overlay marker (extraction cell, wall/empty-cell indicator,
 ## reachable highlight, ghost path, field-item marker — all built through
 ## `_marker`) must sit on the cell's OWN real ground, not float below (or
 ## get buried inside) the terraced terrain above.
@@ -90,9 +90,9 @@ func test_marker_sits_on_a_raised_cells_own_real_height() -> void:
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table(), {0: [Vector2i(2, 1)]})
 
-	var tile: MeshInstance3D = view._static.get_child(2)
+	var cell: MeshInstance3D = view._static.get_child(2)
 	assert_almost_eq(
-		tile.position.y, 3.0 * UnitGeometry.LEVEL_HEIGHT + BoardView.EXTRACTION_TILE_HEIGHT, 0.0001
+		cell.position.y, 3.0 * UnitGeometry.LEVEL_HEIGHT + BoardView.EXTRACTION_CELL_HEIGHT, 0.0001
 	)
 
 
@@ -414,7 +414,7 @@ func test_a_plain_grid_adds_no_ground_overlay_markers() -> void:
 	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
 
 
-## tb31 Pass C: make empty/unfloored tiles black with a dark gray border
+## tb31 Pass C: make empty/unfloored cells black with a dark gray border
 ## so they read as empty — a marker per non-navigable cell. taskblock-39
 ## Pass C: an empty cell is an unfloored one now (no placed Surface at
 ## all) rather than a direct write to the old terrain model's own
@@ -445,10 +445,10 @@ func test_a_grid_with_nothing_empty_adds_no_empty_indicators() -> void:
 	assert_eq(view._static.get_child_count(), 2, "ground plane + grid lines, nothing else")
 
 
-## taskblock-22 Pass A3: "team-coded extraction tiles, drawn in their
+## taskblock-22 Pass A3: "team-coded extraction cells, drawn in their
 ## team's color." `team_extraction_cells` is optional (defaults to `{}`)
 ## — every existing caller/test above this one draws none, unchanged.
-func test_build_adds_one_marker_per_extraction_tile() -> void:
+func test_build_adds_one_marker_per_extraction_cell() -> void:
 	var grid := GridFixture.flat(3, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -460,18 +460,18 @@ func test_build_adds_one_marker_per_extraction_tile() -> void:
 	)
 
 	assert_eq(
-		view._static.get_child_count(), 5, "ground plane + grid lines + 3 extraction tile markers"
+		view._static.get_child_count(), 5, "ground plane + grid lines + 3 extraction cell markers"
 	)
 
 
-func test_extraction_tiles_render_in_their_own_teams_color() -> void:
+func test_extraction_cells_render_in_their_own_teams_color() -> void:
 	var grid := GridFixture.flat(3, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
 	view.build(grid, DataLibrary.material_table(), {0: [Vector2i(0, 0)], 1: [Vector2i(2, 2)]})
 
-	# ground plane (0) + grid lines (1) precede the two tile markers.
+	# ground plane (0) + grid lines (1) precede the two cell markers.
 	var blue_mesh: MeshInstance3D = view._static.get_child(2)
 	var red_mesh: MeshInstance3D = view._static.get_child(3)
 	var blue_material: StandardMaterial3D = blue_mesh.mesh.material
@@ -480,7 +480,7 @@ func test_extraction_tiles_render_in_their_own_teams_color() -> void:
 	assert_eq(red_material.albedo_color, WorldPalette.team_color(1))
 
 
-func test_no_team_extraction_cells_adds_no_tile_markers() -> void:
+func test_no_team_extraction_cells_adds_no_cell_markers() -> void:
 	var grid := GridFixture.flat(2, 2)
 	var view := BoardView.new()
 	add_child_autofree(view)

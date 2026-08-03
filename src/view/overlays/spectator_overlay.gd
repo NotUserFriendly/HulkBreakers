@@ -140,12 +140,12 @@ func setup(p_battle: BattleScene) -> void:
 ## (orbit/pan/zoom) is untouched by any of this, exactly like every other
 ## overlay.
 ##
-## taskblock-26 Pass E: "objects and tiles don't [have a click inspector]."
+## taskblock-26 Pass E: "objects and cells don't [have a click inspector]."
 ## A miss against every unit's own body now falls through to
 ## `BoardPicker.cell_at_ray` (the same ground-plane pick move-target
 ## selection already uses) — a hit there opens the SAME `inspect_panel`
-## against `Grid.blockers.get(cell)` (`open_tile()`, InspectPanel's own
-## tile-shaped entry point; null for a bare tile is already its documented
+## against `Grid.blockers.get(cell)` (`open_cell()`, InspectPanel's own
+## cell-shaped entry point; null for a bare cell is already its documented
 ## "empty state" case, not a special case here). A miss against the board
 ## plane too (looking off into empty space) is still a real no-op.
 ##
@@ -168,7 +168,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var dir: Vector3 = camera.project_ray_normal(mb.position)
 	# taskblock-51 Pass K: `PartPicker`, not `UnitPicker`. This path saw units only, so a
 	# click on cover fell through to the cell branch below — the supervisor's "selecting a
-	# barrel selects the tile beneath", here in its literal form. `PartPicker` is the same
+	# barrel selects the cell beneath", here in its literal form. `PartPicker` is the same
 	# ray-vs-box math plus the blockers and field items the board already draws.
 	var hit: Dictionary = PartPicker.hit(
 		battle.combat_state.units, battle.combat_state.grid, from, dir
@@ -195,35 +195,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		if target.is_unit():
 			inspect_panel.open(target.unit)
 		else:
-			inspect_panel.open_tile(target.cell, target.part)
+			inspect_panel.open_cell(target.cell, target.part)
 		return
 	var cell: Variant = BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
 		return
-	# taskblock-39 Pass C: the old "wall tiles aren't inspectable" WALL-
+	# taskblock-39 Pass C: the old "wall cells aren't inspectable" WALL-
 	# terrain check retired here — it could only ever fire on an
 	# unfinalized/raw wall cell (real generation always resolves WALL to
 	# OPEN+blocker or empty space before this ever runs), and a wall's real
 	# blocker Part is already handled correctly below like any other
 	# field object.
-	# **`BR48.01`: a bare tile opens nothing.**
+	# **`BR48.01`: a bare cell opens nothing.**
 	#
 	# This branch passed `blockers.get(cell)` straight through, and that is **null for a bare
-	# tile** — `open_tile`'s own doc says so. The panel then rendered its matrixless shape with
+	# cell** — `open_cell`'s own doc says so. The panel then rendered its matrixless shape with
 	# no root, which every `_refresh_*` no-ops on gracefully, so a 900x600 modal opened over
 	# the board containing nothing and paused the bout. That is the supervisor's *"selecting a
-	# bare tile causes the screen to dim"*, and it reads as a stuck dim because there is
+	# bare cell causes the screen to dim"*, and it reads as a stuck dim because there is
 	# nothing in the panel to explain what happened.
 	#
 	# Pass K's rule, applied: **only open what can be described.** A cell whose blocker the
 	# ray missed but whose ground position was hit still opens — that is a real object, just
 	# picked coarsely.
-	var tile_root: Part = battle.combat_state.grid.blockers.get(cell)
-	if tile_root == null:
+	var cell_root: Part = battle.combat_state.grid.blockers.get(cell)
+	if cell_root == null:
 		return
 	_was_playing_before_inspect = playing
 	pause()
-	inspect_panel.open_tile(cell as Vector2i, tile_root)
+	inspect_panel.open_cell(cell as Vector2i, cell_root)
 
 
 ## taskblock-27 Pass D1c: the same `UnitPicker.hit()` ray-pick the click

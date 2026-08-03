@@ -80,7 +80,7 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	_split_and_carve(grid, scratch, Rect2i(Vector2i.ZERO, Vector2i(width, rows)), rng, rooms)
 
 	# Vector2i -> float (radians) — the facing `_connect_with_a_ramp`
-	# computes for each ramp tile it stamps, carried through to `_emit`
+	# computes for each ramp cell it stamps, carried through to `_emit`
 	# (surfaces are authored once, from the finished scratch, at the very
 	# end — see `_emit`'s own doc comment).
 	var ramp_facings: Dictionary = {}
@@ -90,7 +90,7 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 
 	# taskblock-37 Pass D: repairs AFTER cover scatter, not before — a
 	# scattered blocker can land squarely on a raised room's own single
-	# ramp APPROACH (the ramp tile itself is never coverable, but the
+	# ramp APPROACH (the ramp cell itself is never coverable, but the
 	# ordinary corridor cell leading into it still can be), sealing off
 	# the whole room with no redundant route. Checking before cover exists
 	# would miss exactly this failure mode.
@@ -326,19 +326,19 @@ static func _author_levels(
 ## `OPEN` cell it can't reach back to level 0 — "ramps couldn't fix it"
 ## becomes "don't raise it after all," never a silently broken island.
 ##
-## taskblock-38 Pass C: a stranded RAMP tile now needs the same treatment
+## taskblock-38 Pass C: a stranded RAMP cell now needs the same treatment
 ## as a stranded room interior, not just OPEN cells — the corrected
-## two-tile profile authors the tile BORDERING the room at a genuinely
+## two-cell profile authors the cell BORDERING the room at a genuinely
 ## non-zero level (`RAISED_ROOM_LEVEL - 0.5`), so an orphaned ramp (its
-## own room already flattened above, or its OTHER tile cut off by cover)
+## own room already flattened above, or its OTHER cell cut off by cover)
 ## would otherwise sit at that half-level forever, an isolated "raised"
-## island of one or two tiles this pass's own reachability test can
-## actually see (tb37's single-tile ramp was always authored at its LOWER
+## island of one or two cells this pass's own reachability test can
+## actually see (tb37's single-cell ramp was always authored at its LOWER
 ## endpoint, level 0 — the same latent gap existed there too, just never
-## observable, since a level-0 tile never read as "raised" to begin with).
+## observable, since a level-0 cell never read as "raised" to begin with).
 ## Reverting a stranded ramp fully to plain OPEN ground at level 0 is
 ## strictly correct: a ramp with nothing reachable on either end isn't a
-## ramp, it's just a dead-end tile.
+## ramp, it's just a dead-end cell.
 ##
 ## taskblock-39 Pass B: level/terrain reads run entirely in scratch now —
 ## `MapGenScratch.as_temporary_grid()` gives `Pathfinder` a real (if
@@ -367,7 +367,7 @@ static func _repair_stranded_elevation(
 			# unreachable BY CONSTRUCTION** — `Pathfinder._base_cost` returns -1.0 for
 			# any cell with a live blocker — so its absence from the flood says nothing
 			# about whether it is stranded. Flattening on that answer punched a
-			# one-tile pit through every raised floor a crate happened to land on, and
+			# one-cell pit through every raised floor a crate happened to land on, and
 			# for a spawn cell the pit outlived the blocker `_mark_zone` later erased.
 			# Deferred to the connectivity question below instead.
 			if grid.blockers.has(cell):
@@ -429,22 +429,22 @@ static func _has_reachable_neighbour(
 
 
 ## taskblock-38 Pass C: TWO already-OPEN, genuinely lower-level cells in a
-## straight line out from `room` become a two-tile RAMP — docs/PLAN.md's
-## corrected profile ("22.5 degrees, +0.5 level per tile, two tiles per
-## full level," replacing tb37's one-tile 45-degree rise). The tile
+## straight line out from `room` become a two-cell RAMP — docs/PLAN.md's
+## corrected profile ("22.5 degrees, +0.5 level per cell, two cells per
+## full level," replacing tb37's one-cell 45-degree rise). The cell
 ## bordering the room (`inner`) is the UPPER step, its own level authored
-## at `RAISED_ROOM_LEVEL - 0.5`; the tile one further out (`outer`),
+## at `RAISED_ROOM_LEVEL - 0.5`; the cell one further out (`outer`),
 ## continuing the same outward direction, is the LOWER step, at
 ## `RAISED_ROOM_LEVEL - 1.0` (== real ground level for a level-1 room) — a
 ## ramp's level is still authored at its own LOWER endpoint (docs/PLAN.md's
-## settled height model), just per-tile now instead of once for the whole
+## settled height model), just per-cell now instead of once for the whole
 ## approach. `facing` (the direction of ascent, `outer` -> `inner`) is
-## recorded into `ramp_facings` for both tiles, read back by `_emit`.
+## recorded into `ramp_facings` for both cells, read back by `_emit`.
 ##
 ## Requires BOTH cells `OPEN` and below `RAISED_ROOM_LEVEL` (same "a
 ## neighbour that's actually part of a DIFFERENT already-raised room still
 ## reads as plain OPEN too" reasoning tb37 already established) — a ring
-## position that can't support the full two-tile depth (an edge of the
+## position that can't support the full two-cell depth (an edge of the
 ## map, a wall, a corridor only one cell deep) simply isn't used; if NO
 ## ring position anywhere around the room supports it, the room gets no
 ## ramp at all and `_repair_stranded_elevation`'s own flood-and-flatten
@@ -728,11 +728,11 @@ static func _mark_zone(grid: Grid, room: Rect2i, marker: int) -> Vector2i:
 ## to OPEN makes it read as a non-UNCARVED neighbor for whatever UNCARVED
 ## cell is scanned next, so exposure cascades outward from every real
 ## opening through however much solid rock the scan order happens to
-## reach — walls many tiles thick instead of the intended single ring,
+## reach — walls many cells thick instead of the intended single ring,
 ## empty space reduced to whatever pocket a run of stale UNCARVED
 ## neighbors on every side never got swept into. Classifying against a
 ## frozen snapshot first (nothing mutated yet) is what actually keeps
-## this to one tile.
+## this to one cell.
 ##
 ## taskblock-39 Pass B: reads/writes scratch's own terrain; `grid.blockers`/
 ## `grid.set_opacity` stay direct `Grid` writes, same as everywhere else.

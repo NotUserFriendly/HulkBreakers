@@ -7,7 +7,7 @@ extends CombatAction
 ## manual face is distinct from a move's own free re-facing. Capability-
 ## gated (`Shell.can_climb()`); capped at one full level's worth of real
 ## rise, at the settled cost (4 MP per full level, 2 MP per half — the
-## HALF case is a real climb launched from a `RAMP` tile the mover is
+## HALF case is a real climb launched from a `RAMP` cell the mover is
 ## already resting on, `UnitGeometry.true_height_for_cell`'s own +0.5
 ## offset, not a whole-level ledge).
 ##

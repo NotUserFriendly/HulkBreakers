@@ -573,7 +573,7 @@ func _build_ui() -> void:
 	weapon_panel.setup(tactics, weapon_label)
 
 	# taskblock-07 Pass F2: replaces combat_readout_panel.gd — "hovering a
-	# tile or an enemy now produces a tooltip instead of filling a panel."
+	# cell or an enemy now produces a tooltip instead of filling a panel."
 	tooltip_controller = TooltipController.new()
 	add_child(tooltip_controller)
 	tooltip_controller.setup(tactics, tooltip_view, material_table)
@@ -721,7 +721,7 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 ## carries the preview.
 ## taskblock-21 Pass A: opens the inspect panel on whatever's currently selected.
 ##
-## taskblock-51 Pass K: **and "whatever" now includes cover.** `InspectPanel.open_tile` has
+## taskblock-51 Pass K: **and "whatever" now includes cover.** `InspectPanel.open_cell` has
 ## always been able to describe a loose part — the selection simply could never hold one, so
 ## the capability was unreachable from the board. `BR51.10`: the button is disabled rather
 ## than live-and-inert when the target has no body, so this guard is a backstop, not the
@@ -733,7 +733,7 @@ func _on_inspect_pressed() -> void:
 	if target.is_unit():
 		inspect_panel.open(target.unit)
 	elif target.is_part():
-		inspect_panel.open_tile(target.cell, target.part)
+		inspect_panel.open_cell(target.cell, target.part)
 
 
 ## tb31 Pass D: the action bar's own PART_PICKER dispatch — `action_id`
@@ -832,7 +832,7 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 func _on_selection_changed() -> void:
 	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
 	# `BR51.10`: driven by whether the TARGET has something to describe, not by whether
-	# anything has been clicked. A bare tile is a real selection with nothing to inspect.
+	# anything has been clicked. A bare cell is a real selection with nothing to inspect.
 	if inspect_button != null:
 		inspect_button.disabled = tactics.selection == null or not tactics.selection.can_inspect()
 	# tb32 Pass B: "in dartboard/aiming view only" — `aiming_at` (the

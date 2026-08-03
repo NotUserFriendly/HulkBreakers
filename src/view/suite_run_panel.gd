@@ -254,7 +254,7 @@ func _start(rung: StringName) -> void:
 
 
 ## Replaces whatever is on screen with an empty board. Unfloored cells, no units: it
-## renders as bare tiles, which reads as *cleared* rather than as a map that happens to
+## renders as bare cells, which reads as *cleared* rather than as a map that happens to
 ## be dull.
 func clear_board() -> void:
 	if battle == null:

@@ -157,14 +157,14 @@ func test_an_exhausted_turn_budget_still_ends_the_turn() -> void:
 	assert_gt(queue.actions.size(), 0, "the turn ends rather than extending")
 
 
-## **A unit holding its extraction tile is not stalled**, and shutting it down takes
+## **A unit holding its extraction cell is not stalled**, and shutting it down takes
 ## a unit that was about to extract cleanly out of the mission. It looks identical
 ## to a stalled unit from the scorer's side — nothing is offered, because there is
 ## nothing it should be doing except stand there.
 ##
 ## The retired planner carried this exact guard, with its own note that it had been
 ## caught live. Panic re-introduced the bug by preferring shutdown without it.
-func test_a_unit_holding_its_extraction_tile_is_never_shut_down() -> void:
+func test_a_unit_holding_its_extraction_cell_is_never_shut_down() -> void:
 	var unit: Unit = _bare_unit(&"extractor", Vector2i(0, 0))
 	var other: Unit = _bare_unit(&"mate", Vector2i(5, 5))
 	var grid: Grid = GridFixture.flat(12, 12)
@@ -174,7 +174,7 @@ func test_a_unit_holding_its_extraction_tile_is_never_shut_down() -> void:
 	mission.objectives = []
 	mission.extraction_cells = [Vector2i(0, 0)]
 
-	assert_true(EndTurnAction.is_holding_position(unit, mission), "sanity: it is on its own tile")
+	assert_true(EndTurnAction.is_holding_position(unit, mission), "sanity: it is on its own cell")
 	assert_true(
 		Panic.action_for(unit, mission, state) is EndTurnAction,
 		"holding must mature into an extraction, not a shutdown"

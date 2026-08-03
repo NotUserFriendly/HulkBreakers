@@ -117,15 +117,15 @@ var _inventory_footer: Label
 var _info_panel: RichTextLabel
 
 var _rows_by_part: Dictionary = {}  # Part -> InventoryRow, for the info panel's own hover
-## taskblock-26 Pass E: true while the current subject is a tile/object
-## rather than a real piloted Unit — set by `open_tile()`, cleared by
+## taskblock-26 Pass E: true while the current subject is a cell/object
+## rather than a real piloted Unit — set by `open_cell()`, cleared by
 ## `open()`/`close()`. `_unit` still carries a real (synthetic, matrixless)
-## Unit either way (see `open_tile()`'s own doc comment) so every other
+## Unit either way (see `open_cell()`'s own doc comment) so every other
 ## `_refresh_*`/`_open_debug_menu_for_unit` path below needs no separate
-## tile-shaped branch; this flag only gates the two things that are
+## cell-shaped branch; this flag only gates the two things that are
 ## genuinely unit-specific: the header text and the debug menu.
-var _is_tile: bool = false
-var _tile_cell: Vector2i = Vector2i.ZERO
+var _is_cell: bool = false
+var _inspected_cell: Vector2i = Vector2i.ZERO
 var _debug_menu: PopupMenu = null
 ## taskblock-22 Pass G1: the exact absolute position the last `popup()`
 ## call actually requested, BEFORE Godot's own "keep the window on
@@ -225,7 +225,7 @@ func _build_bot_viewer(parent: Control) -> void:
 	# because the extra light only ever made the board brighter.
 	#
 	# It becomes visible the first time a subject takes the fallback path (`open()` with no
-	# live view — cover, a loose item, a bare tile), which sets `own_world_3d = true` and takes
+	# live view — cover, a loose item, a bare cell), which sets `own_world_3d = true` and takes
 	# that lighting **out** of the battle world. The board drops to its real, single-light
 	# level and stays there, because `_isolate_clear()` never restores the flag. A new bout
 	# rebuilds the panel and the accidental second light returns — which is precisely the
@@ -358,7 +358,7 @@ func _build_info_panel(parent: Control) -> void:
 
 ## Populates every region for `unit` and shows the panel.
 func open(unit: Unit) -> void:
-	_is_tile = false
+	_is_cell = false
 	_unit = unit
 	visible = true
 	_rotating = true
@@ -383,15 +383,15 @@ func open(unit: Unit) -> void:
 			)
 			_frame_camera()
 	else:
-		# taskblock-27 Pass D5: a bare subject (nothing on this tile) must
+		# taskblock-27 Pass D5: a bare subject (nothing on this cell) must
 		# show a genuinely EMPTY preview, not whatever the previous open()
 		# call happened to leave behind. `_isolate_clear()` above only
 		# resets the camera's own cull mask/isolate tag — it never touches
 		# `own_world_3d` or the preview's own child meshes, so without this
-		# branch, inspecting a bare tile right after a live unit left the
+		# branch, inspecting a bare cell right after a live unit left the
 		# viewport still sharing the real battle World3D (`own_world_3d ==
 		# false`) with a now-unrestricted cull mask, rendering an arbitrary
-		# slice of the actual board ("a garbage/random tile") instead of
+		# slice of the actual board ("a garbage/random cell") instead of
 		# nothing. `show_assembly(null, ...)` already clears its own
 		# children and returns early — reused here, not re-derived.
 		_set_preview_world_shared(false)
@@ -417,7 +417,7 @@ func close() -> void:
 	_isolate_clear()
 	visible = false
 	_unit = null
-	_is_tile = false
+	_is_cell = false
 	_title_bar.text = "INSPECT"
 	closed.emit()
 
@@ -461,20 +461,20 @@ func _apply_preview_lighting(owns_world: bool) -> void:
 		_preview_environment.environment = _preview_own_environment if owns_world else null
 
 
-## taskblock-26 Pass E: "objects and tiles don't [have a click inspector].
-## Since tiles are assemblies of parts... the existing part-tree inspector
-## can display them directly." A tile/object has no Matrix and no combat
+## taskblock-26 Pass E: "objects and cells don't [have a click inspector].
+## Since cells are assemblies of parts... the existing part-tree inspector
+## can display them directly." A cell/object has no Matrix and no combat
 ## identity — rather than build a second display path, this wraps `root`
 ## (a cell's cover/clutter Part, `Grid.blockers.get(cell)` — null for a
-## bare tile) in the same matrixless-Unit shape `open()` already renders
+## bare cell) in the same matrixless-Unit shape `open()` already renders
 ## unchanged (every `_refresh_*` below already no-ops gracefully on a null
 ## `matrix`/`shell.root`, same as a docked-nothing shell today), then only
 ## overrides the header, since "INSPECT — Unit -1 (Squad 0)" would lie
 ## about what's actually being shown.
-func open_tile(cell: Vector2i, root: Part) -> void:
+func open_cell(cell: Vector2i, root: Part) -> void:
 	open(Unit.new(null, Shell.new(root), cell))
-	_is_tile = true
-	_tile_cell = cell
+	_is_cell = true
+	_inspected_cell = cell
 	_refresh_title()
 
 
@@ -485,8 +485,8 @@ func open_tile(cell: Vector2i, root: Part) -> void:
 ## Same fallback convention `_refresh_matrix_area` already uses (a real
 ## `display_name` wins, `matrix.id` otherwise) for the variant half.
 func _refresh_title() -> void:
-	if _is_tile:
-		_title_bar.text = "INSPECT — Tile (%d, %d)" % [_tile_cell.x, _tile_cell.y]
+	if _is_cell:
+		_title_bar.text = "INSPECT — Cell (%d, %d)" % [_inspected_cell.x, _inspected_cell.y]
 		return
 	if _unit == null:
 		_title_bar.text = "INSPECT"
@@ -522,7 +522,7 @@ func _on_preview_gui_input(event: InputEvent) -> void:
 			_dragging = mb.pressed
 			_rotating = not mb.pressed
 		elif (
-			mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _unit != null and not _is_tile
+			mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _unit != null and not _is_cell
 		):
 			# G1: `mb.position` is local to `_preview_container`, not to this
 			# panel — the popup needs an absolute screen position (see
@@ -576,7 +576,7 @@ func _isolate_focus(view: HitVolumeView) -> void:
 	_preview_camera.cull_mask = 0
 	_preview_camera.set_cull_mask_value(HitVolumeView.ISOLATE_LAYER, true)
 	# taskblock-23 Pass E2: the model was floating in empty space — cull_mask=0
-	# plus only the subject's own layer excluded the real board tile beneath it
+	# plus only the subject's own layer excluded the real board cell beneath it
 	# too. BoardView.FLOOR_LAYER is deliberately a SEPARATE layer from
 	# ISOLATE_LAYER (not the same bit) — other units/blockers never carry
 	# either, so they stay excluded exactly as G2 already fixed.

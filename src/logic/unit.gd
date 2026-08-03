@@ -38,7 +38,7 @@ var cell: Vector2i
 var level: float = 0.0
 ## taskblock-37 Pass D: the real, continuous world height `UnitGeometry`/
 ## `ShotPlane` actually place this unit at — `level * LEVEL_HEIGHT` for an
-## ordinary cell, plus a half-level offset while resting on a RAMP tile
+## ordinary cell, plus a half-level offset while resting on a RAMP cell
 ## (`UnitGeometry.true_height_for_cell`'s own doc comment). `level` alone
 ## gates discrete decisions (can I climb, is this drop legal); this is
 ## what drives position and the shot plane. Synced everywhere `level` is.
@@ -129,7 +129,7 @@ var alive: bool = true
 var extracted: bool = false
 ## taskblock-22 Pass A2: "sit in extract until the end of the next round."
 ## The round this unit was first found standing on its own team's
-## extraction tile, or -1 while not currently holding — reset the instant
+## extraction cell, or -1 while not currently holding — reset the instant
 ## it steps off (EndTurnAction's own hold-check, the only writer). A
 ## flagged, simple approximation of "held through the end of the next
 ## round" (checked at this unit's own next turn, not a true round-boundary

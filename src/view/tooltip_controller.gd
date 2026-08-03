@@ -2,9 +2,9 @@ class_name TooltipController
 extends Node
 
 ## taskblock-07 Pass F2: replaces combat_readout_panel.gd — "hovering a
-## tile or an enemy now produces a tooltip instead of filling a panel."
+## cell or an enemy now produces a tooltip instead of filling a panel."
 ## Same two live inputs combat_readout_panel.gd read (`tactics.hovered_cell`
-## via TileInspection, `tactics.inspected_part` — inspected wins, since a
+## via CellInspection, `tactics.inspected_part` — inspected wins, since a
 ## fresh board hover already clears it, TacticsController.update_hover()),
 ## now built into a TooltipData via TooltipBuilder and shown through the
 ## one shared TooltipView instead of filling a RichTextLabel. The
@@ -45,8 +45,8 @@ func setup(
 
 
 ## Follows the cursor. **Rebuilds only when what the tooltip would say has changed** — the
-## hovered target is `hover_changed`'s job, but a queued action changes what a tile reads as
-## (`TileInspection` runs from the *previewed* unit, not the raw one) without the hovered cell
+## hovered target is `hover_changed`'s job, but a queued action changes what a cell reads as
+## (`CellInspection` runs from the *previewed* unit, not the raw one) without the hovered cell
 ## moving at all, so the queue's revision is checked here too.
 func reposition() -> void:
 	if tactics == null or tooltip_view == null:
@@ -82,17 +82,17 @@ func refresh() -> void:
 
 	# Pass D audit (BR27.05/BR27.06 parent pattern): `visible_from_selected`
 	# is a real LOS check FROM the selected unit's own cell
-	# (`TileInspection.inspect`) — reading the raw `selected_unit` left it
+	# (`CellInspection.inspect`) — reading the raw `selected_unit` left it
 	# stuck showing visibility from wherever the unit started the turn,
 	# never updating once a move was queued (not yet resolved) toward
 	# somewhere with a different sightline.
-	var info: Dictionary = TileInspection.inspect(
+	var info: Dictionary = CellInspection.inspect(
 		tactics.selection.state, tactics.hovered_cell, tactics.selection.previewed_unit()
 	)
 	if info.is_empty():
 		tooltip_view.hide_tooltip()
 		return
 	tooltip_view.show_data(
-		TooltipBuilder.for_tile(info, material_table),
+		TooltipBuilder.for_cell(info, material_table),
 		tooltip_view.get_viewport().get_mouse_position()
 	)

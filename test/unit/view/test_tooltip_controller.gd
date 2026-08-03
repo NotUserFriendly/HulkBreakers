@@ -103,7 +103,7 @@ func test_hovering_a_field_object_shows_its_own_detail() -> void:
 
 
 ## Pass D audit (BR27.05/BR27.06 parent pattern): `refresh()` passed
-## `tactics.selection.selected_unit` (raw, stale) into `TileInspection.
+## `tactics.selection.selected_unit` (raw, stale) into `CellInspection.
 ## inspect`, whose `visible_from_selected` field reads `selected.cell`
 ## directly for a LOS check. A move already queued (not yet resolved)
 ## left the tooltip showing visibility from the unit's TURN-START cell

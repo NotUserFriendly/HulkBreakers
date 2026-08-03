@@ -147,7 +147,7 @@ static func build(
 			# taskblock-37 Pass D: reads `unit.height` directly (already the
 			# resolved, ramp-aware real height) rather than re-deriving it
 			# from `unit.level * LEVEL_HEIGHT` — a unit resting on a ramp
-			# tile is genuinely partway up, and "render is hitbox" means the
+			# cell is genuinely partway up, and "render is hitbox" means the
 			# shot plane must agree with `UnitGeometry`'s own placements.
 			region.rect.position.y += unit.height
 			if shear:
@@ -168,7 +168,7 @@ static func build(
 			# cell raises exactly like a unit standing there would.
 			# taskblock-37 Pass E follow-up (supervisor, found during the
 			# level-precision audit): was `grid.get_level(cell) *
-			# LEVEL_HEIGHT` directly, missing a RAMP tile's own +0.5 rest
+			# LEVEL_HEIGHT` directly, missing a RAMP cell's own +0.5 rest
 			# offset — `BoardView._spawn_blocker` already renders cover on a
 			# ramp at its true (ramp-aware) height, so the shot plane must
 			# resolve against that SAME real height, not a lower one, or a
@@ -229,7 +229,7 @@ static func disc_overlaps_rect(rect: Rect2, point: Vector2, radius: float) -> bo
 ## excluded body, which is exactly how a real fired shot (BR27.02: 12/12
 ## chaingun pulls) and the AI's own `LineOfFire.first_hit` predicate
 ## (BR34.06: the AI reading "no clear line" almost everywhere) both ended
-## up resolving against a wall many tiles behind the shooter instead of the
+## up resolving against a wall many cells behind the shooter instead of the
 ## real target ahead of it.
 static func resolve_projectile(
 	plane: Array[Region],

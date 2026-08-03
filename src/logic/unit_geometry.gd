@@ -13,7 +13,7 @@ extends RefCounted
 ## mesh and unit placement.
 const CELL_SIZE := 1.0
 ## taskblock-36 Pass D: world units per `Grid.level` step — docs/PLAN.md's
-## own multi-level math ("22.5 degree ramps rise 0.5/tile -> two ramps
+## own multi-level math ("22.5 degree ramps rise 0.5/cell -> two ramps
 ## make one full level") makes one level exactly 1.0 world unit, not a
 ## number invented for this pass.
 const LEVEL_HEIGHT := 1.0
@@ -104,7 +104,7 @@ static func placements(
 ## own scale, even though both happen to equal 1.0 today).
 ## taskblock-37 Pass D: renamed from `level: int` (always `level *
 ## LEVEL_HEIGHT` at the one call site that composed it) to `height: float`
-## — the resolved world height directly, since a ramp tile's real height
+## — the resolved world height directly, since a ramp cell's real height
 ## is no longer a whole multiple of `LEVEL_HEIGHT` (`Unit.height`/
 ## `true_height_for_cell`'s own doc comment).
 static func assembly_placements(

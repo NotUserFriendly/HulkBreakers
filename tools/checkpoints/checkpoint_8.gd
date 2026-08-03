@@ -148,7 +148,7 @@ func _save(file_name: String) -> void:
 
 ## A flat `GRID_WIDTH`x`GRID_ROWS` room at level 0, a real 3x3 floored
 ## platform at `ELEVATED_LEVEL` (x in [4,6], y in [2,4] — enough for a
-## unit's own footprint plus a margin, not a single tile), and a real
+## unit's own footprint plus a margin, not a single cell), and a real
 ## destructible wall on the level-0 floor at (3, 3), directly between the
 ## ground area and the platform. The same shape serves all three scenarios
 ## below; which cell each unit actually stands on is what changes.

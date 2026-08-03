@@ -72,7 +72,7 @@ func test_corner_blocking_rule_other_bordering_cell() -> void:
 func test_cover_does_not_block_los() -> void:
 	var grid := _open_grid(7)
 	# taskblock-16 Pass B2: cover is a real Part in `blockers` now — this
-	# cell's own opacity stays 0.0 (an open floor tile with a crate on
+	# cell's own opacity stays 0.0 (an open floor cell with a crate on
 	# it), the same "cover, but not opaque" case the old cover_value
 	# scalar used to set up directly.
 	var cover := Part.new()

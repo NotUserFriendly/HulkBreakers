@@ -82,11 +82,11 @@ func test_reloading_the_battle_rebuilds_the_bout_injector_against_the_new_state(
 	assert_eq(scene.bout_injector.state, scene.combat_state)
 
 
-## taskblock-22 Pass A3: "team-coded extraction tiles, drawn in their
+## taskblock-22 Pass A3: "team-coded extraction cells, drawn in their
 ## team's color" — load_battle must actually thread mission.
 ## team_extraction_cells through to board_view.build(), not just build
 ## the ground/blockers/grid-lines it already did before this pass.
-func test_load_battle_draws_the_missions_own_extraction_tiles() -> void:
+func test_load_battle_draws_the_missions_own_extraction_cells() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var before_count: int = scene.board_view._static.get_child_count()
@@ -303,7 +303,7 @@ func test_killing_a_unit_through_the_debug_injector_flips_its_view_to_downed() -
 
 
 ## taskblock-30 follow-up (supervisor): "remove can be generalized to
-## objects, covers, and things on tiles. Fully vanishing it." Distinct
+## objects, covers, and things on cells. Fully vanishing it." Distinct
 ## from `kill` above — this destroys the unit's own view ENTIRELY, no
 ## downed corpse left behind.
 func test_remove_unit_view_destroys_the_view_and_drops_it_from_unit_views() -> void:

@@ -139,7 +139,7 @@ const INPUT_UNVISITED := &"unvisited"
 const INPUT_FLANK_ANGLE := &"flank_angle"
 ## The unit is NOT standing where the mission wants it — so searching is allowed.
 ##
-## **Without this a unit wanders off its own extraction tile.** Once it has arrived,
+## **Without this a unit wanders off its own extraction cell.** Once it has arrived,
 ## `seek_extraction` stops being offered (no candidate makes progress toward a place
 ## it is already at), which leaves searching as the best-scoring thing available and
 ## walks it straight back off. Standing still and letting the hold mature is the
@@ -155,7 +155,7 @@ const PRED_FREE_TO_SEARCH := &"free_to_search"
 # **A combat-only action pool cannot finish a mission**, and measuring is what made
 # that concrete: the planner completed 0% of bouts on its first head-to-head,
 # because completion means EXTRACTED and nothing in a combat pool can gather an
-# objective or walk to an extraction tile. A missing action, not a worse planner.
+# objective or walk to an extraction cell. A missing action, not a worse planner.
 #
 # The retired planner answered this with a non-combat branch above the combat ones.
 # Here it is four `.tres` rows over the inputs below — the architecture's own claim
@@ -182,7 +182,7 @@ const PRED_CELL_IS_OBJECTIVE := &"cell_is_objective"
 const PRED_IS_PLAYER_SQUAD := &"is_player_squad"
 ## 0.5 for no change, 1.0 for standing on the resource node.
 const INPUT_CLOSES_TO_OBJECTIVE := &"closes_to_objective"
-## 0.5 for no change, 1.0 for standing on the extraction tile.
+## 0.5 for no change, 1.0 for standing on the extraction cell.
 const INPUT_CLOSES_TO_EXTRACTION := &"closes_to_extraction"
 
 ## taskblock-46 Pass E: **how dangerous standing here will be NEXT turn** — the
@@ -256,7 +256,7 @@ var _has_weapon: bool = false
 ## independent, unled, or of a tier with no blackboard.
 var _objective: StringName = BatchPlan.NO_OBJECTIVE
 ## Where the mission's work is. `null` when there is no mission, no open objective,
-## or no extraction tile defined for this unit's squad.
+## or no extraction cell defined for this unit's squad.
 var _objective_cell: Variant = null
 var _extraction_cell: Variant = null
 
@@ -313,7 +313,7 @@ static func build(
 		context._patrol_target = SearchRoute.next_point(p_unit)
 
 	# **Candidate cells are always computed.** This was gated on having something to
-	# move toward — a target, a resource node, an extraction tile — and the gate has
+	# move toward — a target, a resource node, an extraction cell — and the gate has
 	# now been wrong twice for the same reason: whatever the list of reasons to move
 	# is, it is never complete, and a unit whose reason is missing from it silently
 	# gets a candidate set of exactly one cell and cannot move at all.
@@ -352,7 +352,7 @@ static func build(
 	)
 	# **But the rectangle is drawn toward the ENEMY, and a unit has somewhere else
 	# to be.** Culled alone, a unit that can see an enemy could not consider a
-	# single cell toward its resource node or its extraction tile, because those sit
+	# single cell toward its resource node or its extraction cell, because those sit
 	# outside a box spanned by the unit and its target. It could fight or it could
 	# travel, never both — so a bout where the two squads could see each other ran
 	# to the turn cap with the objective untouched. Adding back only the cells that
@@ -523,8 +523,8 @@ func _closes_to(cell: Vector2i, destination: Variant) -> float:
 	#
 	# This returned a flat 1.0 for every candidate when `was == 0`, which read as
 	# "every cell on the board is a perfect approach" the moment a unit arrived. The
-	# unit walked off its own extraction tile, walked back the next turn, and did it
-	# again — two units alternating onto one tile for the whole turn cap, neither
+	# unit walked off its own extraction cell, walked back the next turn, and did it
+	# again — two units alternating onto one cell for the whole turn cap, neither
 	# ever standing still long enough for `EndTurnAction`'s hold to mature into an
 	# extraction. Found by dumping the per-turn queue rather than by reading the
 	# arithmetic, which had looked obviously right twice.
@@ -721,7 +721,7 @@ func _some_other_living_unit() -> bool:
 
 
 ## Whether the unit is already standing where its mission wants it — on the
-## resource node with something left to gather, or on its extraction tile with the
+## resource node with something left to gather, or on its extraction cell with the
 ## objectives done. **A fact about the unit, not about a candidate cell**, which is
 ## why it reads `_origin` rather than the cell being scored: the question is "does
 ## this unit have a post", not "would this cell be one".
@@ -752,10 +752,10 @@ func _resource_node_cell() -> Variant:
 	return mission.resource_nodes.keys()[0]
 
 
-## This unit's own extraction tile. `team_extraction_cells` first, falling back to
+## This unit's own extraction cell. `team_extraction_cells` first, falling back to
 ## the squad-agnostic `extraction_cells` for the player's own squad ONLY — the same
 ## asymmetry the retired planner's flee branch documented, and for the same reason: an enemy squad
-## with no team-coded entry has no defined extraction tile, and sending it to the
+## with no team-coded entry has no defined extraction cell, and sending it to the
 ## player's landing point would never be correct.
 func _own_extraction_cell() -> Variant:
 	if mission == null:
