@@ -34,6 +34,14 @@ places for it to go stale, and the one nobody edits is the one that gets read.
 that can't be picked up yet says so on its own **Needs:** line, and a bucket repeating that is a second
 place for the same fact to live, and therefore a second place for it to go stale.
 
+**New items go as high as their dependencies allow.** A newly recorded item is placed at the earliest
+position its **Needs:** line permits — if that is the top of NEXT, that is where it goes, and NEXT's
+last item demotes to QUEUED to stay within the cap. **Recency is a signal**: a thing raised now is
+usually the thing in view now, and an item that keeps being passed over is telling you something about
+its real priority. The consequence is deliberate — **long-standing NEXT items get pushed back by newer
+unblocked work**, and an item that has sat near the top for many blocks without being picked up should
+be re-read rather than defended.
+
 **One invariant makes the order self-checking:** nothing in NEXT has an unmet dependency. A violation
 means the ordering is wrong, not that the rule needs bending.
 
@@ -521,6 +529,13 @@ Hammer*, *Mag Dump* and *Pump It*, granting attacks to revolvers, rifles and sho
 - **It gives builds an identity.** "Rapid Fire" reads as a versatile shooter; taking only *Mag Dump*
   reads as a rifle specialist. Same underlying grants, different character.
 
+- **"It's High Noon"** — a *Gunslinger*-family action. **The unit cannot convert AP to MP this turn**,
+  and **the first shot fired at any given target is free for the rest of the turn.** Rooted in place,
+  spending nothing to acquire new targets — a duellist's stance rather than a burst of speed. Stresses
+  the framework in two useful ways: a **negative** grant (removing a conversion the unit normally has)
+  and a **per-target** cost exemption, which is state the action must carry for the duration of a turn
+  rather than a flat modifier. The perk it hangs off is not designed yet.
+
 **Named perks that stress the framework:**
 - ***First One's Always Perfect*** — the first shot of a burst or activation ignores all accuracy
   modifiers and lands dead centre, then normal scatter resumes. The inverse of recoil; binds to the
@@ -807,6 +822,27 @@ Recorded here only because this item was previously titled *"the tile format"*, 
 shipped as the **map** format and now collides with the vocabulary above. **A map is a complete
 playable board**: cells, surfaces with height and facing, blockers, field items, spawn zones.
 
+### Cells stop carrying height; only parts do
+**Needs:** nothing. **Unblocks:** the last of *only parts are real*; authored steps at arbitrary height
+reading correctly.
+
+taskblock-54 deleted risers, but **the per-cell ground quad still moves with the cell's height** —
+`board_view.gd:526` and `:871` both offset placement by `_height_for(cell)`. So a cell is still a thing
+with an elevation, drawn at that elevation, with nothing behind it. That is the same defect the risers
+had, one primitive down.
+
+- **Every cell is void.** The grid drops to a single flat plane — or nothing at all — and stops
+  expressing height.
+- **Height lives on the tile.** A walkable part is placed at the height it actually occupies; that part
+  is the only thing at that elevation and the only thing a shot or a foot can find.
+- **Temporary floor tile parts** to stand in until sections author real ones. Placed at the right
+  height, real geometry, hittable — the point is that the thing you see *is* the thing that is there.
+- **This is what makes a 0.3 step honest.** With the cell carrying the height, a sub-level rise is a
+  quad that moved; with the tile carrying it, it is a part at 0.3 that a round can strike and a unit can
+  stand on.
+
+Expect the board to look sparser before it looks better, exactly as the riser deletion did.
+
 ### The section format — landed, taskblock-54
 `SectionFile`, `SectionEdge`, `SectionSerializer`, `SectionCatalog`, three authored sections in
 `data/sections/`, and a debug preview. **The edge metadata proved sufficient** to decide a join and
@@ -840,6 +876,159 @@ and joining* authored fragments rather than carving rooms and corridors procedur
 - **Navigability stays the generator's obligation**, whatever it is generating. taskblock-53's
   asymmetric flood is the check and it does not care how the map was produced.
 - **Do not invest further in the current generator.** Fix invariants; do not extend it.
+
+### The section authoring vocabulary
+**Needs:** *The section format* (landed, taskblock-54). **Unblocks:** the section editor, and a
+generator that can assemble a board rather than only validate a seam.
+
+taskblock-54's format carries **placed content and edge openings**. Authoring real sections needs a
+second class of data: **declarations that are consumed at assembly time and never survive into the
+assembled map.** A placed board has a barrel or it does not; it has no "40% chance of a barrel."
+
+**This is what makes a section stop being a small map.** `SectionSerializer` currently delegates
+placement to `MapSerializer` on the reasoning that a section previewed alone genuinely *is* a tiny map.
+That holds for placements and stops holding here — **expect the delegation to become partial**, with the
+authoring vocabulary owned by the section format alone.
+
+#### Claims are volumes, not cell flags
+
+**A claim is a 3D shape, and its extent *is* its declaration.** A translucent box that overlaps freely
+with anything, resizable in the editor, drawn only while authoring and never present in an assembled
+board.
+
+**This dissolves the whole-column-versus-interval question** — the shape is the interval. It also
+collapses the authoring cost: a 200x200x2 claim is one object rather than 40 000 cell entries, and
+overlap becomes box intersection, the same slab primitive `RayCaster` and `UnitGeometry` already use.
+
+**Same geometry, not the same resource type.** A claim has no HP, no material, no sockets, and must
+never reach a part picker, loot, or a shot plane. Make it a resource carrying a box extent plus a
+`kind`; making it a `Part` inherits everything it must not have.
+
+**Four verbs, and every one is a rule about co-occupancy:**
+
+| | says |
+|---|---|
+| **Empty** | nothing may co-occupy — **forbid** |
+| **Interior** / **Exterior** | whatever co-occupies must be inside / outside the hulk — **require** |
+| **Entry** | an opening may exist here; overlapping entries **intersect** — **negotiate** |
+| **Merge** | identical content may co-occupy and collapses to one — **permit and unify** |
+
+Empty and the require-pair validate differently: Empty conflicts with any neighbour placement, Interior
+conflicts specifically with a neighbour asserting Exterior in the same volume.
+
+#### Generation cells stay per cell
+
+**Clutter of [tag]** and **Spawner of [tag]** remain per-cell with a per-cell chance — they name a
+*place something may appear*, not a volume of space, and the per-cell chance is the control an author
+wants. Tags are an open `StringName` vocabulary: `barrel`, `logistic`, `machine` today, more as data.
+
+#### Entry is permission; doors are content placed inside it
+
+**Only entry is negotiated.** An entry volume says *"an opening may exist here."* A door says *"an
+opening does exist here, this size."* Two sections meeting resolve their **entry volumes by
+intersection** — the shared opening is the region both permit — and doors then fill whatever is left.
+
+That makes most of the old ranking rule unnecessary: a big entry meeting a small entry yields the small
+one because that is what the intersection *is*, not because anything compared them.
+
+- **A door auto-declares an entry volume over its own face, and that volume is adjustable.** Expand it
+  and a neighbour's larger door may overwrite yours; leave it at face size and only a door that fits
+  can join there. **Adjust the door's own claim — do not add a second entry volume beside it.**
+- **A door with its entry volume deleted is furniture.** It cannot be a join point and nothing can
+  overwrite it. A useful third state, from the same mechanism.
+- **An entry that connects to nothing becomes a wall.** Otherwise doors overwrite paintings and open
+  into the back of an oven.
+- **Walls beside a door are how you force a small-to-small connection** — the denial is geometry, not
+  metadata.
+- **Where two entries must still be ranked, rank by face area.** A 5-tall 1-wide opening beats a 2x2
+  one. Face area rather than volume: thickness is meaningless for an opening.
+
+#### Whole-section declarations
+
+- **Maximum spawned clutter items**, and a **banned clutter list**.
+- **`minimum_garrison`** — if the roll produces fewer than this, the section spawns **none**, so a
+  cavernous room never contains one lonely guard. All-or-nothing rather than a minimum topped up.
+- **`maximum_garrison`** — its foil, and the pair reads better than either name alone.
+- **Encounter types** — a whitelist of random encounters permitted here. The encounter system does not
+  exist yet; the field is being recorded now so authored sections do not have to be revisited.
+- **Is this section a room on its own, or part of a larger one?** **This is the load-bearing one.**
+  Encounters roll **per room**, and a room may be several sections — so crossing an invisible seam inside
+  one large room must not trigger anything. It is also the same distinction that makes an edge piece
+  legal: a square of empty cells with one exterior wall is explicitly *not* a room, and its neighbours
+  complete it.
+
+#### Merge, and why walls need it
+
+**Two enclosed rooms generated side by side must share one wall, not stack two.** Same wall type, one
+part — which is also how flush-mounted entries mesh, since the walls they sit in overlap.
+
+**Merge is unification, not deduplication.** Two 0.2-thick walls merge to **0.2**, not 0.4. The result
+is one part both rooms treat as theirs, so damage, destruction and shot resolution all see a single
+thing.
+
+**It is the deliberate exception to the interval rule below.** Two sections may otherwise share a cell
+only if their vertical extents do not overlap; a merge volume is exactly where overlap is legal, and the
+stacking check must know that or it will refuse every shared wall.
+
+**Merge applies to floors too**, for the same reason — two sections each authoring floor at one cell and
+height is the same collision.
+
+**When the types differ, refuse the join and say so.** Two rooms wanting a shared wall in different
+materials is a real authoring case, and a silently doubled wall is exactly the invisible defect this
+system exists to prevent.
+
+### Wall coatings, and walls that are not cell-wide
+**Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
+that cross a room boundary meaningfully.
+
+**One wall part, two faces that can look nothing alike.** A wallpapered bedroom on one side, a
+strut-reinforced furnace room on the other, with a single part underneath. **Coatings** live atop the
+wall the way cladding lives atop a part — the noun is not settled (*veneer*, *lining*, *finish* and
+*revetment* are the alternatives; *facing* is taken by `Surface.facing` and *cladding* by parts).
+
+This is what makes merge work at the fiction level rather than only the geometry level: merging two
+rooms' walls into one part would otherwise mean one of them loses its look.
+
+**Bulkhead walls are centred on a cell and fill it. Interior walls need not be.** A thinner wall should
+be placeable **on a cell edge or on its centreline**, which matters more than it sounds:
+
+- A cell-wide wall makes every room boundary a full cell of dead space.
+- **A loose shot crossing a thin wall into the next room is a real outcome** — irritating whoever is in
+  there, or hitting an ally through it. That only exists if the wall is thin enough that the space
+  beyond it is reachable.
+
+#### Sections stack, and that means intervals — not voxels
+
+**A section must be able to sit above or below another.** An observation room attaches to the top of a
+staircase while a barracks attaches to its bottom; a second tall room cannot, because it would need the
+same space the staircase occupies.
+
+**The answer is a claimed vertical interval per cell, not a voxel grid.** A section declares that at
+cell (x,z) it occupies `y=0` to `y=3`. Two sections may share a cell **iff their intervals do not
+overlap** — staircase 0→3, observatory 3→5, and a 0→4 room refused. Exact, cheap, and it composes with
+the ordered `Array[Surface]` a cell already holds.
+
+**Voxels would cost the thing height was deliberately made to be.** taskblock-37 made height a
+continuous float and the collapse case reaffirmed it: a 0.3-high walkable part must be standable. A
+voxel grid quantizes to its resolution, so 0.5 voxels cannot express that step and 0.1 voxels are twenty
+mostly-empty layers per cell. **Intervals keep height continuous.**
+
+**The format is already shaped for this.** `SectionFile.edge_for(side)` takes an open `StringName` —
+*"sides are a closed set of four in practice"* — so **`up` and `down` are data, not a code change**.
+
+Two things that follow and want deciding together:
+
+- **Entry cells need a height.** A door at ground level and a door at the top of a staircase are
+  different joins once sections stack.
+- **Empty, Exterior and Interior need to say whether they claim the whole column or an interval.** "No
+  other section may place here" means one thing at `y=0–3` and another at every height, and the
+  observatory case requires the interval reading.
+
+#### Determinism
+
+Every per-cell chance draws from the seeded RNG, in a **stable iteration order**, or the same seed
+produces different boards. Same rule as everywhere else, and easier to get wrong here because the
+iteration is over a dictionary of cells.
 
 ### Map and section editors
 **Needs:** *The map format* (landed, tb53) and *The section format* (landed, tb54). **Unblocks:** *Main menu*.
