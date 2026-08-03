@@ -34,7 +34,13 @@ static func roll(section: SectionFile, rng: RandomNumberGenerator) -> Dictionary
 	for spawn: SectionSpawn in _ordered(section.spawns):
 		# **Every candidate draws, including ones that cannot possibly land.** A banned tag and a
 		# capped-out cell still consume their draw, so adding a ban to a section does not shift
-		# every later cell's result — the seed keeps meaning the same thing.
+		# every later cell's *draw* — the seed keeps meaning the same thing.
+		#
+		# **The cap is a budget, and that genuinely does couple cells**, which is a separate thing
+		# from the draw order and worth stating because it surprises: banning one tag frees a cap
+		# slot, so a later cell that had been capped out can now land. The draw sequence is
+		# unchanged; what changed is how much room was left. That is the cap doing its job, not the
+		# ordering drifting, and `test_section_preview_rolls.gd` measures the two separately.
 		var roll_value: float = rng.randf()
 		if roll_value >= spawn.chance:
 			continue

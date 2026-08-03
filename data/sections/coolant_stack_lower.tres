@@ -1,0 +1,78 @@
+[gd_resource type="Resource" script_class="SectionFile" format=3]
+
+[ext_resource type="Script" path="res://src/data/section_claim.gd" id="1_6duqd"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_usltd"]
+[ext_resource type="Script" path="res://src/data/section_edge.gd" id="3_i1h7k"]
+[ext_resource type="Script" path="res://src/data/map_placement.gd" id="4_586b3"]
+[ext_resource type="Script" path="res://src/data/section_file.gd" id="5_v2qsh"]
+[ext_resource type="Script" path="res://src/data/section_spawn.gd" id="6_wigoq"]
+
+[sub_resource type="Resource" id="Resource_7dv3a"]
+script = ExtResource("2_usltd")
+center = Vector3(1, 1.5, 1)
+size = Vector3(3, 3, 3)
+
+[sub_resource type="Resource" id="Resource_npadn"]
+script = ExtResource("1_6duqd")
+kind = &"interior"
+box = SubResource("Resource_7dv3a")
+
+[sub_resource type="Resource" id="Resource_i3ula"]
+script = ExtResource("3_i1h7k")
+side = &"up"
+kind = &"open"
+join_tag = &"coolant_shaft"
+
+[sub_resource type="Resource" id="Resource_n0jtf"]
+script = ExtResource("4_586b3")
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_fqyk1"]
+script = ExtResource("4_586b3")
+cell = Vector2i(1, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_bskqx"]
+script = ExtResource("4_586b3")
+cell = Vector2i(2, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_junf6"]
+script = ExtResource("4_586b3")
+cell = Vector2i(0, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_5jja8"]
+script = ExtResource("4_586b3")
+cell = Vector2i(1, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_simii"]
+script = ExtResource("4_586b3")
+cell = Vector2i(2, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_q0lsg"]
+script = ExtResource("4_586b3")
+cell = Vector2i(0, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_tf7c4"]
+script = ExtResource("4_586b3")
+cell = Vector2i(1, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_if03u"]
+script = ExtResource("4_586b3")
+cell = Vector2i(2, 2)
+part_id = &"ship_floor"
+
+[resource]
+script = ExtResource("5_v2qsh")
+section_name = "Coolant Stack, Lower"
+width = 3
+rows = 3
+placements = Array[ExtResource("4_586b3")]([SubResource("Resource_n0jtf"), SubResource("Resource_fqyk1"), SubResource("Resource_bskqx"), SubResource("Resource_junf6"), SubResource("Resource_5jja8"), SubResource("Resource_simii"), SubResource("Resource_q0lsg"), SubResource("Resource_tf7c4"), SubResource("Resource_if03u")])
+edges = Array[ExtResource("3_i1h7k")]([SubResource("Resource_i3ula")])
+claims = Array[ExtResource("1_6duqd")]([SubResource("Resource_npadn")])
+encounter_types = Array[StringName]([&"patrol"])

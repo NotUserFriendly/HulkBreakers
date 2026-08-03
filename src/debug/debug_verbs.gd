@@ -120,7 +120,13 @@ static func all() -> Array[DebugVerbSpec]:
 				&"preview_section",
 				"Preview Section",
 				# taskblock-54 Pass D: the same disk-populated dropdown `load_map` uses.
-				[DebugVerbSpec.choice(&"section_name", SectionCatalog.names())],
+				# taskblock-55 Pass E: plus a seed, because a section's declarations are rolled at
+				# preview time — re-previewing with a different seed is how an author sees the
+				# *range* a section produces rather than one arbitrary example of it.
+				[
+					DebugVerbSpec.choice(&"section_name", SectionCatalog.names()),
+					DebugVerbSpec.param(&"seed", DebugVerbSpec.ParamType.INT),
+				],
 				Callable(DebugVerbs, &"_apply_preview_section")
 			)
 		),
@@ -333,7 +339,7 @@ static func _apply_load_map(inj: BoutInjector, _pool: Dictionary, a: Dictionary)
 ## taskblock-54 Pass D: loads one authored section alone on an empty board, so its geometry and
 ## edges can be looked at. Same name-or-path resolution `load_map` uses.
 static func _apply_preview_section(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
-	return inj.preview_section(String(a.section_name))
+	return inj.preview_section(String(a.section_name), int(a.get("seed", 0)))
 
 
 static func _apply_spawn_unit(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
