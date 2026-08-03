@@ -878,104 +878,29 @@ and joining* authored fragments rather than carving rooms and corridors procedur
 - **Do not invest further in the current generator.** Fix invariants; do not extend it.
 
 ### The section authoring vocabulary — landed, taskblock-55 Passes C and E
-**Needs:** *The section format* (landed, taskblock-54). **Unblocks:** the section editor, and a
-generator that can assemble a board rather than only validate a seam.
+`SectionClaim` (a `Box` plus one of four co-occupancy verbs — `empty`, `interior`/`exterior`,
+`entry`, `merge`), `SectionSpawn` (per-cell clutter and spawners with a chance), and the
+whole-section declarations on `SectionFile`: `maximum_clutter`, `banned_clutter`,
+`minimum_garrison` (all-or-nothing), `maximum_garrison`, `encounter_types`, `is_room`.
+`ClaimResolver` applies the verbs; `SectionRoller` rolls the declarations against a seeded RNG;
+`SectionSerializer.stitch` consumes them. The `MapSerializer` delegation became partial, as
+predicted. Eleven named demo sections in `data/sections/` exercise the vocabulary, and the debug
+preview takes a seed so the same seed reproduces a section exactly.
 
-taskblock-54's format carries **placed content and edge openings**. Authoring real sections needs a
-second class of data: **declarations that are consumed at assembly time and never survive into the
-assembled map.** A placed board has a barrel or it does not; it has no "40% chance of a barrel."
+**Residue, carried forward rather than closed:**
+- **`is_room` grouping is order-based, not adjacency-based** — a section declaring `is_room` starts
+  a room and one that does not joins the room already open. Correct for a pair, and it wants a real
+  adjacency graph when the generator lands. **Needs:** *The generator*.
+- **`encounter_types` is consumed by nothing**, deliberately — authored and validated so sections
+  written today need not be revisited. **Needs:** an encounter system, which does not exist.
+- **`SectionRoller.part_for_tag` is a flagged hook**, resolving a clutter tag to a part of the same
+  id and to nothing otherwise. Choosing which part a *kind* of thing resolves to is a content
+  library's job. **Needs:** a content library.
+- **No thin wall part is shipped**, so the "two 0.2 walls merge to 0.2, not 0.4" case cannot be
+  exercised against real content — `wall` is a full-cell 1.0 x 2.4 x 1.0 box. The merge test asserts
+  the invariant (merged thickness equals one part's own) instead, which holds at any thickness.
+  **Needs:** nothing; it resolves itself when thin walls are authored.
 
-**This is what makes a section stop being a small map.** `SectionSerializer` currently delegates
-placement to `MapSerializer` on the reasoning that a section previewed alone genuinely *is* a tiny map.
-That holds for placements and stops holding here — **expect the delegation to become partial**, with the
-authoring vocabulary owned by the section format alone.
-
-#### Claims are volumes, not cell flags
-
-**A claim is a 3D shape, and its extent *is* its declaration.** A translucent box that overlaps freely
-with anything, resizable in the editor, drawn only while authoring and never present in an assembled
-board.
-
-**This dissolves the whole-column-versus-interval question** — the shape is the interval. It also
-collapses the authoring cost: a 200x200x2 claim is one object rather than 40 000 cell entries, and
-overlap becomes box intersection, the same slab primitive `RayCaster` and `UnitGeometry` already use.
-
-**Same geometry, not the same resource type.** A claim has no HP, no material, no sockets, and must
-never reach a part picker, loot, or a shot plane. Make it a resource carrying a box extent plus a
-`kind`; making it a `Part` inherits everything it must not have.
-
-**Four verbs, and every one is a rule about co-occupancy:**
-
-| | says |
-|---|---|
-| **Empty** | nothing may co-occupy — **forbid** |
-| **Interior** / **Exterior** | whatever co-occupies must be inside / outside the hulk — **require** |
-| **Entry** | an opening may exist here; overlapping entries **intersect** — **negotiate** |
-| **Merge** | identical content may co-occupy and collapses to one — **permit and unify** |
-
-Empty and the require-pair validate differently: Empty conflicts with any neighbour placement, Interior
-conflicts specifically with a neighbour asserting Exterior in the same volume.
-
-#### Generation cells stay per cell
-
-**Clutter of [tag]** and **Spawner of [tag]** remain per-cell with a per-cell chance — they name a
-*place something may appear*, not a volume of space, and the per-cell chance is the control an author
-wants. Tags are an open `StringName` vocabulary: `barrel`, `logistic`, `machine` today, more as data.
-
-#### Entry is permission; doors are content placed inside it
-
-**Only entry is negotiated.** An entry volume says *"an opening may exist here."* A door says *"an
-opening does exist here, this size."* Two sections meeting resolve their **entry volumes by
-intersection** — the shared opening is the region both permit — and doors then fill whatever is left.
-
-That makes most of the old ranking rule unnecessary: a big entry meeting a small entry yields the small
-one because that is what the intersection *is*, not because anything compared them.
-
-- **A door auto-declares an entry volume over its own face, and that volume is adjustable.** Expand it
-  and a neighbour's larger door may overwrite yours; leave it at face size and only a door that fits
-  can join there. **Adjust the door's own claim — do not add a second entry volume beside it.**
-- **A door with its entry volume deleted is furniture.** It cannot be a join point and nothing can
-  overwrite it. A useful third state, from the same mechanism.
-- **An entry that connects to nothing becomes a wall.** Otherwise doors overwrite paintings and open
-  into the back of an oven.
-- **Walls beside a door are how you force a small-to-small connection** — the denial is geometry, not
-  metadata.
-- **Where two entries must still be ranked, rank by face area.** A 5-tall 1-wide opening beats a 2x2
-  one. Face area rather than volume: thickness is meaningless for an opening.
-
-#### Whole-section declarations
-
-- **Maximum spawned clutter items**, and a **banned clutter list**.
-- **`minimum_garrison`** — if the roll produces fewer than this, the section spawns **none**, so a
-  cavernous room never contains one lonely guard. All-or-nothing rather than a minimum topped up.
-- **`maximum_garrison`** — its foil, and the pair reads better than either name alone.
-- **Encounter types** — a whitelist of random encounters permitted here. The encounter system does not
-  exist yet; the field is being recorded now so authored sections do not have to be revisited.
-- **Is this section a room on its own, or part of a larger one?** **This is the load-bearing one.**
-  Encounters roll **per room**, and a room may be several sections — so crossing an invisible seam inside
-  one large room must not trigger anything. It is also the same distinction that makes an edge piece
-  legal: a square of empty cells with one exterior wall is explicitly *not* a room, and its neighbours
-  complete it.
-
-#### Merge, and why walls need it
-
-**Two enclosed rooms generated side by side must share one wall, not stack two.** Same wall type, one
-part — which is also how flush-mounted entries mesh, since the walls they sit in overlap.
-
-**Merge is unification, not deduplication.** Two 0.2-thick walls merge to **0.2**, not 0.4. The result
-is one part both rooms treat as theirs, so damage, destruction and shot resolution all see a single
-thing.
-
-**It is the deliberate exception to the interval rule below.** Two sections may otherwise share a cell
-only if their vertical extents do not overlap; a merge volume is exactly where overlap is legal, and the
-stacking check must know that or it will refuse every shared wall.
-
-**Merge applies to floors too**, for the same reason — two sections each authoring floor at one cell and
-height is the same collision.
-
-**When the types differ, refuse the join and say so.** Two rooms wanting a shared wall in different
-materials is a real authoring case, and a silently doubled wall is exactly the invisible defect this
-system exists to prevent.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
@@ -998,31 +923,18 @@ be placeable **on a cell edge or on its centreline**, which matters more than it
   beyond it is reachable.
 
 #### Sections stack, and that means intervals — not voxels — landed, taskblock-55 Pass D
+`ClaimResolver.interval_of` reduces a section to the lowest and highest world Y it occupies, and
+`describe_interval_overlap` refuses two sections whose intervals overlap — **except where a `merge`
+volume spans the shared band**, which is the shared-wall case and is the common one, not a corner.
+`up`/`down` are ordinary sides (two constants and a row in `opposite`); `span_of` answers
+`width * rows` for them, since two stacked sections meet over their whole footprint.
+`SectionEdge.opening_height` distinguishes a door at ground level from one at the top of a
+staircase. Height stayed continuous — no voxels, no storey index.
 
-**A section must be able to sit above or below another.** An observation room attaches to the top of a
-staircase while a barracks attaches to its bottom; a second tall room cannot, because it would need the
-same space the staircase occupies.
+**Measured while building it:** `ship_floor` is a 0.2 slab hung *below* its placed height, so a deck
+resting on a 3.0 ceiling tops out at 3.2. The stacking lift accounts for the deck's own thickness,
+which is precisely what a quantized model could not express.
 
-**The answer is a claimed vertical interval per cell, not a voxel grid.** A section declares that at
-cell (x,z) it occupies `y=0` to `y=3`. Two sections may share a cell **iff their intervals do not
-overlap** — staircase 0→3, observatory 3→5, and a 0→4 room refused. Exact, cheap, and it composes with
-the ordered `Array[Surface]` a cell already holds.
-
-**Voxels would cost the thing height was deliberately made to be.** taskblock-37 made height a
-continuous float and the collapse case reaffirmed it: a 0.3-high walkable part must be standable. A
-voxel grid quantizes to its resolution, so 0.5 voxels cannot express that step and 0.1 voxels are twenty
-mostly-empty layers per cell. **Intervals keep height continuous.**
-
-**The format is already shaped for this.** `SectionFile.edge_for(side)` takes an open `StringName` —
-*"sides are a closed set of four in practice"* — so **`up` and `down` are data, not a code change**.
-
-Two things that follow and want deciding together:
-
-- **Entry cells need a height.** A door at ground level and a door at the top of a staircase are
-  different joins once sections stack.
-- **Empty, Exterior and Interior need to say whether they claim the whole column or an interval.** "No
-  other section may place here" means one thing at `y=0–3` and another at every height, and the
-  observatory case requires the interval reading.
 
 #### Determinism
 

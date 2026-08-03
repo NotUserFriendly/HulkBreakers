@@ -82,14 +82,26 @@ a missing volume.
 ### World colours
 | Role | Colour | Hex |
 |---|---|---|
-| Background / void | black | `#050506` |
-| Ground | green | `#2E4A32` |
+| Backdrop / empty space | black | `#050506` |
+| Ground (no longer drawn — see below) | green | `#2E4A32` |
 | Cover / blockers | brown | `#6B4A2F` |
 | Team A flag | blue | `#3A7BD5` |
 | Team B flag | red | `#D53A3A` |
 
 Cover is brown **as a material** (`hull_plate` or similar in the table) — not a special case in
-the renderer. The ground is a distinct value from the void so the board is actually visible.
+the renderer.
+
+**taskblock-55 Pass B: there is no ground, so nothing is drawn in the ground colour.** The board
+used to draw one flat quad per cell; a **cell** is a grid square and carries no elevation and no
+geometry, and a **tile** — the walkable `Part` — carries all of it. Tiles are drawn as their real
+authored boxes in their own part's *material* colour, exactly like cover and walls, from the same
+`UnitGeometry.assembly_placements` call the ray caster marches. **An unfloored cell draws nothing**,
+because nothing is there; `BoardView._build_empty_indicators` marks those.
+
+`WorldPalette.GROUND` survives only as the contrast anchor `BACKDROP` is calibrated against. The
+grid lines are one flat plane at a constant Y — a floor-plan reference saying where the cells are
+and nothing about how high anything is, since a line riding a tile's top face would be a second
+thing at that tile's elevation.
 
 ### Team flagging — an overlay
 Two cheap layers, neither touching albedo:

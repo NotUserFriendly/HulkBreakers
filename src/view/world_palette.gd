@@ -10,6 +10,15 @@ extends RefCounted
 ## any team, any unit, or lying on the floor as loot.
 
 const BACKDROP := Color("#050506")
+## taskblock-55 Pass B: **nothing draws in this any more.** It was the per-cell ground quad's
+## colour, and that quad is deleted — a cell is a grid square and carries nothing to draw. Tiles
+## are drawn in their own part's *material* colour via `MaterialTable`, like every other real
+## piece of geometry on the board.
+##
+## Kept rather than removed because it is still the contrast anchor `BACKDROP` is calibrated
+## against, and because a board-wide ground tone is the obvious thing a future backdrop or
+## empty-space treatment would reach for. Marked here so nobody reads its survival as "the ground
+## plane is still a thing".
 const GROUND := Color("#2E4A32")
 const TEAM_A := Color("#3A7BD5")
 const TEAM_B := Color("#D53A3A")
