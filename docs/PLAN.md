@@ -778,61 +778,29 @@ deliberately slowing the sense of progress. Usable both ways — diagonal to com
 orthogonal to build dread before an arrival. Costs nothing but a generation preference.
 
 
-### `tile` becomes the walkable part, and `cell` becomes the grid square
-**Needs:** nothing. **Unblocks:** the section format below, which cannot be named until this is settled.
-
-**Reserve `tile` for the walkable part itself** — `floor_bulkhead` inside a cell is a *tile*. Giving
-those parts their own word makes them distinct from every other placed part, which matters now that
-floors, walls, ramps and ladders are all `Part`s and only some of them are stood on.
-
-- **`cell` is the grid square.** Already the code's word — `Vector2i cell` everywhere — so this half is
-  a comment sweep, not a rename. `tile` currently appears in comments meaning "cell in the casual
-  sense" and each of those is now wrong.
-- **`tile` is unclaimed in code.** taskblock-53 named the map format `MapFile` / `MapPlacement` /
-  `MapSerializer`, so nothing has taken it. The only claim is this file's old item title, corrected
-  below.
-- Same shape and acceptance as taskblock-40's `void` sweep: **a grep for `tile` returns only
-  walkable-part uses**, comments included.
-
 ### The map format — landed, taskblock-53
 `MapFile`, `MapPlacement`, `MapSerializer`, `MapCatalog`, and `data/maps/proving_ground.tres`.
 Recorded here only because this item was previously titled *"the tile format"*, which described what
 shipped as the **map** format and now collides with the vocabulary above. **A map is a complete
 playable board**: cells, surfaces with height and facing, blockers, field items, spawn zones.
 
-### The section format — authored fragments the generator stitches
-**Needs:** the vocabulary decision above, and the map editor below for authoring at any volume.
-**Unblocks:** the generator rewrite; hand-designed encounters at scale.
+### The section format — landed, taskblock-54
+`SectionFile`, `SectionEdge`, `SectionSerializer`, `SectionCatalog`, three authored sections in
+`data/sections/`, and a debug preview. **The edge metadata proved sufficient** to decide a join and
+place the second section relative to the first — Pass E stitched two of them, walked a unit across
+the seam, and passed the navigability flood.
 
-**A second format, not the map format used smaller.** A map is a whole board. A **section** is a
-*fragment* — and it is defined by its **edges**, not its interior.
+Recorded here rather than deleted because the two items below both name it as a dependency, and
+because one finding belongs with them: **the socket analogy breaks in three places**, so an edge is
+not a socket and the editor should not assume it is. A socket is a point with a transform, an edge
+is a span with walkable openings; a socket has one host, two sections are peers and either may
+refuse; `PartGraph.attach` records an occupant, a join is a fact about a layout.
 
-**Named `section` — settled.** The constraint was that it must not imply an enclosed space: a
-legitimate section is a square of empty cells defining **one exterior wall and no interior walls**, an
-edge piece of a very large room, meaningless alone and only whole once its neighbours exist. That rules
-out *room* and *compartment*.
-
-**It is a work word, deliberately.** Sections are authoring vocabulary — a directory, a class name,
-something the supervisor and CC say to each other. No player ever sees one, so being generic is a
-virtue rather than a weakness. Rejected alternatives, with their reasons, so this is not relitigated:
-
-| | why not |
-|---|---|
-| **sector** | **reserved for the world map**, a player-facing term — *"the hulk is in the epsilon sector"* |
-| **prefab** | industry-standard for too many unrelated things (physics objects, ragdolls, anim rigs); generic *and* jargony |
-| **module** | already the UI work's word, and wanted later for shell parts — a *rampancy suppression module*, a *radar module* |
-| **room** / **compartment** | imply an enclosed space, which the edge-piece case is not |
-| **chunk** | Minecraft is an inspiration, not a template; borrowing its vocabulary invites copying its shape |
-
-- **Edge metadata is the part a map format has nowhere to put.** Where corridors attach, which walls are
-  exterior, what a neighbour must offer for a join to be legal. That is the whole reason this is a
-  separate format rather than a smaller `MapFile`.
-- **The attachment grammar is the obvious precedent.** Sections joining at compatible edges is
-  `attaches_to` semantics one scale up, and taskblock-53 proved that grammar holds against real content
-  for the first time.
+**Still unbuilt and deliberately so:** anything that *chooses* sections. Pass E proves one join
+between two named files. Selection, layout and whole-board assembly are the generator item below.
 
 ### The generator is stitching, not carving
-**Needs:** *The section format*, *Map and section editors*. **Unblocks:** retiring most of `MapGen`.
+**Needs:** *The section format* (landed, tb54), *Map and section editors*. **Unblocks:** retiring most of `MapGen`.
 
 **`MapGen` as written is on its way out.** Once sections can be authored, generation becomes *choosing
 and joining* authored fragments rather than carving rooms and corridors procedurally.
@@ -842,12 +810,16 @@ and joining* authored fragments rather than carving rooms and corridors procedur
   already knows. taskblock-53's rise≤2/ramp, higher/ladder rule is a stopgap for the generator that is
   being replaced, and its ladder branch is currently arithmetically dead anyway (`MAX_HOP_DOWN_LEVELS`
   and `RAMP_MAX_RISE` are both 2.0, so a repair's rise never exceeds what a ramp covers).
+- **Sections arrive with edges, not with navigability.** taskblock-54's `can_join` decides whether a
+  seam is legal; nothing yet decides whether a *board* assembled from legal seams is navigable. The
+  asymmetric flood is the check and it does not care how the board was produced, so the generator
+  owes it exactly as `MapGen` does today.
 - **Navigability stays the generator's obligation**, whatever it is generating. taskblock-53's
   asymmetric flood is the check and it does not care how the map was produced.
 - **Do not invest further in the current generator.** Fix invariants; do not extend it.
 
 ### Map and section editors
-**Needs:** *The map format* (landed) and *The section format*. **Unblocks:** *Main menu*.
+**Needs:** *The map format* (landed, tb53) and *The section format* (landed, tb54). **Unblocks:** *Main menu*.
 
 - **Section editor** — author a section and its edges, save it for the generator to stitch.
 - **Map editor** — author and save a full board, and **run a test bout on it**. The test-bout half is
