@@ -199,8 +199,11 @@ func _print_summary(total_usec: int, failures: int) -> void:
 		)
 	)
 	var parts: Array[String] = []
+	# taskblock-54 Pass B3: `escaped` joins the line. Collecting it in `_snapshot` was not
+	# enough — a counter nobody prints is a counter nobody reads, which is the whole reason it
+	# was added.
 	for key: String in [
-		"bouts", "turns", "plans", "candidates", "shot_planes", "floods", "ui_builds"
+		"bouts", "turns", "plans", "candidates", "shot_planes", "floods", "ui_builds", "escaped"
 	]:
 		parts.append("%s %d" % [key, int(total.get(key, 0))])
 	print("  ".join(parts))
