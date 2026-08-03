@@ -171,6 +171,30 @@ these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defec
 
 # QUEUED
 
+### A climb needs a position along it
+**Needs:** nothing. **Unblocks:** partial climbs, mid-action terrain destruction, and the
+destroyed-ladder fall — see the fourth bullet.
+
+**A climb needs a position along it, and that unlocks four things at once.** taskblock-53 made a climb
+interruptible, but a climb is still *atomic in cost*: `ClimbAction` charges the whole rise as one
+action, which is why a four-level ladder priced at 16 MP and was unaffordable outright until
+`LADDER_COST_SCALE` was corrected. **If a climb can be interrupted midway it should be payable midway
+too** — pay what this turn affords, finish next turn.
+
+- **That is the real fix for tall ladders**, not a cheaper scale factor. A tall climb costing several
+  turns is correct; a tall climb being unpurchasable is not.
+- **It sharpens the intended contrast.** A **ladder is direct but exposed**; a **ramp is indirect but
+  safe**. A four-level ladder may be the *only* way up, and paying for it across turns while standing on
+  it is exactly the exposure that should cost something. A ramp reaching the same height needs a long
+  circuitous route — slower, safer, and a real choice rather than a strictly-worse one.
+- **It is the missing piece under the destroyed-ladder fall.** That needs four things this project does
+  not have: **terrain destruction affecting whatever stands on or attaches to it**, **a unit occupying a
+  position partway up**, **interrupts firing mid-action** (landed, taskblock-53), and **falls / throws /
+  knockback as real movement**. Partial climb and mid-action destruction are the same "a climb has a
+  position along it" concept — build that and two of the four are one piece of work.
+- **Falls, throws and knockback share machinery with *Forced movement* and with `eject`**, which waits
+  on the same ballistic motion. Three items, one dependency.
+
 ### The AI can queue a vertical move
 **Needs:** nothing — `ClimbAction`/`HopDownAction` exist, are interruptible, and ladders are
 authored and placed by the generator (tb53 C/D/E). **Unblocks:** vertical maps being played
@@ -754,32 +778,89 @@ deliberately slowing the sense of progress. Usable both ways — diagonal to com
 orthogonal to build dread before an arrival. Costs nothing but a generation preference.
 
 
-### The tile format
-**Needs:** nothing — **multi-level landed in taskblock-40 and this item's old blocker is gone.**
-**Unblocks:** both editors below, and hand-authored maps as a diagnostic surface.
+### `tile` becomes the walkable part, and `cell` becomes the grid square
+**Needs:** nothing. **Unblocks:** the section format below, which cannot be named until this is settled.
 
-A saved, height-aware map tile that proc-gen assembles from. Everything else in the authoring chain sits
-on this, so it goes first and alone.
+**Reserve `tile` for the walkable part itself** — `floor_bulkhead` inside a cell is a *tile*. Giving
+those parts their own word makes them distinct from every other placed part, which matters now that
+floors, walls, ramps and ladders are all `Part`s and only some of them are stood on.
 
-**Worth more than it looks.** Every AI diagnosis for the last four blocks has been conducted by hunting
-seeds — reading a completion table to find which generated map exposed a defect. A hand-authored map
-turns "find a seed that reproduces this" into "build the situation." That is a permanent reduction in
-the cost of every future investigation, not a content feature.
+- **`cell` is the grid square.** Already the code's word — `Vector2i cell` everywhere — so this half is
+  a comment sweep, not a rename. `tile` currently appears in comments meaning "cell in the casual
+  sense" and each of those is now wrong.
+- **`tile` is unclaimed in code.** taskblock-53 named the map format `MapFile` / `MapPlacement` /
+  `MapSerializer`, so nothing has taken it. The only claim is this file's old item title, corrected
+  below.
+- Same shape and acceptance as taskblock-40's `void` sweep: **a grep for `tile` returns only
+  walkable-part uses**, comments included.
 
-### Map and tile editors
-**Needs:** *The tile format*. **Unblocks:** *Main menu*.
+### The map format — landed, taskblock-53
+`MapFile`, `MapPlacement`, `MapSerializer`, `MapCatalog`, and `data/maps/proving_ground.tres`.
+Recorded here only because this item was previously titled *"the tile format"*, which described what
+shipped as the **map** format and now collides with the vocabulary above. **A map is a complete
+playable board**: cells, surfaces with height and facing, blockers, field items, spawn zones.
 
-- **Tile editor** — author a tile, save it for proc-gen assembly.
-- **Map editor** — author and save a full map, and **run a test bout on it**. The test-bout half is the
-  part that matters; an editor that cannot launch what it authored is a file format with a GUI.
+### The section format — authored fragments the generator stitches
+**Needs:** the vocabulary decision above, and the map editor below for authoring at any volume.
+**Unblocks:** the generator rewrite; hand-designed encounters at scale.
 
-Built on the tile format, and on the bout builder that already exists rather than a second path into
-combat.
+**A second format, not the map format used smaller.** A map is a whole board. A **section** is a
+*fragment* — and it is defined by its **edges**, not its interior.
+
+**Named `section` — settled.** The constraint was that it must not imply an enclosed space: a
+legitimate section is a square of empty cells defining **one exterior wall and no interior walls**, an
+edge piece of a very large room, meaningless alone and only whole once its neighbours exist. That rules
+out *room* and *compartment*.
+
+**It is a work word, deliberately.** Sections are authoring vocabulary — a directory, a class name,
+something the supervisor and CC say to each other. No player ever sees one, so being generic is a
+virtue rather than a weakness. Rejected alternatives, with their reasons, so this is not relitigated:
+
+| | why not |
+|---|---|
+| **sector** | **reserved for the world map**, a player-facing term — *"the hulk is in the epsilon sector"* |
+| **prefab** | industry-standard for too many unrelated things (physics objects, ragdolls, anim rigs); generic *and* jargony |
+| **module** | already the UI work's word, and wanted later for shell parts — a *rampancy suppression module*, a *radar module* |
+| **room** / **compartment** | imply an enclosed space, which the edge-piece case is not |
+| **chunk** | Minecraft is an inspiration, not a template; borrowing its vocabulary invites copying its shape |
+
+- **Edge metadata is the part a map format has nowhere to put.** Where corridors attach, which walls are
+  exterior, what a neighbour must offer for a join to be legal. That is the whole reason this is a
+  separate format rather than a smaller `MapFile`.
+- **The attachment grammar is the obvious precedent.** Sections joining at compatible edges is
+  `attaches_to` semantics one scale up, and taskblock-53 proved that grammar holds against real content
+  for the first time.
+
+### The generator is stitching, not carving
+**Needs:** *The section format*, *Map and section editors*. **Unblocks:** retiring most of `MapGen`.
+
+**`MapGen` as written is on its way out.** Once sections can be authored, generation becomes *choosing
+and joining* authored fragments rather than carving rooms and corridors procedurally.
+
+- **Most of the ramp-versus-ladder decision becomes obsolete.** A section arrives with its vertical
+  routes already authored — the generator does not decide where a ladder goes because the section
+  already knows. taskblock-53's rise≤2/ramp, higher/ladder rule is a stopgap for the generator that is
+  being replaced, and its ladder branch is currently arithmetically dead anyway (`MAX_HOP_DOWN_LEVELS`
+  and `RAMP_MAX_RISE` are both 2.0, so a repair's rise never exceeds what a ramp covers).
+- **Navigability stays the generator's obligation**, whatever it is generating. taskblock-53's
+  asymmetric flood is the check and it does not care how the map was produced.
+- **Do not invest further in the current generator.** Fix invariants; do not extend it.
+
+### Map and section editors
+**Needs:** *The map format* (landed) and *The section format*. **Unblocks:** *Main menu*.
+
+- **Section editor** — author a section and its edges, save it for the generator to stitch.
+- **Map editor** — author and save a full board, and **run a test bout on it**. The test-bout half is
+  the part that matters; an editor that cannot launch what it authored is a file format with a GUI.
+- **Warn, never block.** An authored map that fails the navigability invariant still loads. Authoring a
+  deliberately broken board is legitimate; the editor's job is to say so, not to refuse.
+
+Built on the bout builder that already exists rather than a second path into combat.
 
 ### Main menu
-**Needs:** *Map and tile editors*. **Unblocks:** nothing.
+**Needs:** *Map and section editors*. **Unblocks:** nothing.
 
-Rolls the in-game tools into one reachable place — bot builder, bout sim, map and tile editors.
+Rolls the in-game tools into one reachable place — bot builder, bout sim, map and section editors.
 ***Resource Editor excepted*** — it stays standalone. Built last, once there is something to roll up.
 
 ### Moving heavy and multi-tile objects
