@@ -34,9 +34,13 @@ const ALLOWED: Array[String] = ["HULK_SOURCE"]
 const SELF_PATH := "res://test/unit/test_hulk_prefix_guard.gd"
 
 
+## taskblock-55 Pass A: the prefix now carries `VocabularySweep`'s **shared** left boundary
+## rather than none at all. This guard was never under-reporting the way the other two
+## vocabulary guards were — a prefix pattern with no lookbehind matches *more*, not less — but
+## all three read their boundary from one place now, so a future correction lands everywhere
+## instead of in whichever guard someone happened to be looking at.
 func _offenders_in(text: String, path: String) -> Array[String]:
-	var regex := RegEx.new()
-	regex.compile("HULK_[A-Z0-9_]+")
+	var regex: RegEx = _line_regex()
 	var found: Array[String] = []
 	var line_number := 0
 	for line: String in text.split("\n"):
@@ -48,12 +52,21 @@ func _offenders_in(text: String, path: String) -> Array[String]:
 
 
 func test_no_tooling_identifier_carries_the_hulk_prefix() -> void:
-	var offending: Array[String] = []
-	for root: String in SCAN_ROOTS:
-		_scan_dir(root, offending)
-	# The shell entry point sits outside those roots and is where the retired names were
-	# actually exported.
-	_scan_file("res://run_tests.sh", offending)
+	var offending: Array[String] = VocabularySweep.scan(
+		SCAN_EXTENSIONS,
+		SELF_PATH,
+		func(path: String, line_number: int, line: String) -> String:
+			for hit: RegExMatch in _line_regex().search_all(line):
+				if not ALLOWED.has(hit.get_string()):
+					return "%s:%d: %s" % [path, line_number, hit.get_string()]
+			return ""
+	)
+	# The shell entry point sits outside the shared roots and is where the retired names were
+	# actually exported — a sweep that only looked at the roots would call this clean while
+	# `run_tests.sh` still exported them.
+	offending.append_array(
+		_offenders_in(FileAccess.get_file_as_string("res://run_tests.sh"), "res://run_tests.sh")
+	)
 	assert_eq(
 		offending,
 		[] as Array[String],
@@ -99,26 +112,7 @@ func test_the_replacement_names_are_the_ones_in_use() -> void:
 	)
 
 
-func _scan_dir(path: String, offending: Array[String]) -> void:
-	var dir := DirAccess.open(path)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var entry: String = dir.get_next()
-	while entry != "":
-		var full_path: String = path + "/" + entry
-		if dir.current_is_dir():
-			_scan_dir(full_path, offending)
-		elif full_path != SELF_PATH:
-			for extension: String in SCAN_EXTENSIONS:
-				if entry.ends_with(extension):
-					_scan_file(full_path, offending)
-					break
-		entry = dir.get_next()
-	dir.list_dir_end()
-
-
-func _scan_file(path: String, offending: Array[String]) -> void:
-	if not FileAccess.file_exists(path):
-		return
-	offending.append_array(_offenders_in(FileAccess.get_file_as_string(path), path))
+func _line_regex() -> RegEx:
+	var regex := RegEx.new()
+	regex.compile("%sHULK_[A-Z0-9_]+" % VocabularySweep.boundary_before())
+	return regex

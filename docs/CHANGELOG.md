@@ -1,5 +1,36 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-55 Pass A — one word boundary, one walk, three guards
+
+**`VocabularySweep` owns the boundary rule and the directory scan.** All three vocabulary guards
+— taskblock-40's, taskblock-50's `HULK_` prefix and taskblock-54's — now read from it. Each keeps
+only its own **policy** (which allowlist applies, whether the return annotation is exempt, whether
+hits are checked per occurrence), because those genuinely differ and folding them in would be a
+worse coupling than the duplication removed.
+
+**The re-sweep found less than expected, and that is the result.** The corrected non-letter
+boundary caught **one** line for taskblock-40's retired word and **zero** for the `HULK_` prefix.
+The prefix guard was never vulnerable — a pattern with no lookbehind matches *more*, not less — so
+the block's premise that both earlier sweeps shared the flaw holds for one of the two.
+
+**The one hit was worth having.** `grid_fixture.gd` named `MapGen._finalize_walls_and_void`, which
+was both retired vocabulary **and a function that no longer exists** (`_finalize_walls_and_empty`).
+Fixed to name the real function; de-wording alone would have left a comment pointing at nothing.
+
+**Allowlists shrank, as the block predicted.** taskblock-40's guard now needs **none at all** —
+`avoid` and `devoid` are excluded by the boundary itself, each having a letter before the word.
+Only one entry survives in the `tile` guard and one domain constant in the prefix guard.
+
+**`VocabularySweep` is exempt from every sweep it runs**, stated once rather than added to three
+allowlists — the same exemption each guard already had for its own file, extended to the
+implementation the three were merged into. It is a permission for a *file that is part of the
+mechanism*, not for a word.
+
+**The guards caught each other again**, for the second block running: the shared helper names all
+three retired words, and the guards' new cross-references named each other's. Both reworded rather
+than exempted. Also `_scan_dir`/`_scan_file` were deleted from the prefix guard once the shared
+walk replaced them — dead code that still looked authoritative.
+
 ### taskblock-54 Passes C, D, E — the section format, authored sections, and a proven join
 
 **A section is defined by its edges, which is the whole reason it is a second format.**

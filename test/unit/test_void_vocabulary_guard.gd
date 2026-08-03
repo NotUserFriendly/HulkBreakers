@@ -1,59 +1,54 @@
 extends GutTest
 
-## taskblock-40 Pass A: enforces the taskblock's own acceptance grep —
-## `grep -rniE "\bvoid\b" --include=*.gd src test tools | grep -v -- "-> void"`
-## must return zero lines — as a real test rather than a one-off shell
-## command nobody re-runs. Modeled on `test_map_gen.gd`'s
-## `test_map_gen_touches_grids_spawn_marker_api_only_in_spawn_marking`
-## file-scan pattern, but repo-wide rather than single-file. GDScript's
-## own `-> void` return annotation is unavoidable and explicitly exempted
-## (filtered by literal substring, matching the acceptance grep exactly);
-## every other occurrence of the word is a live regression back toward
-## "void" meaning physical absence — retired taskblock-39 Pass D, made a
-## grep-clean rule taskblock-40 Pass A.
-const SCAN_ROOTS: Array[String] = ["res://src", "res://test", "res://tools"]
-## This file's own doc comment above necessarily spells out the banned
-## word to explain the rule — exempted from scanning itself, same as any
-## guard test is exempt from the rule it enforces.
+## taskblock-40 Pass A: enforces that the retired word for physical absence survives nowhere but
+## GDScript's own `-> void` return annotation. Every other occurrence is a live regression back
+## toward it meaning something — retired taskblock-39 Pass D, made a grep-clean rule taskblock-40
+## Pass A.
+##
+## ## taskblock-55 Pass A: the boundary was wrong, and it was hiding a real one
+##
+## This used `\b…\b`, and `_` is a **word character**, so the pattern did not match inside an
+## identifier. It reported clean while `grid_fixture.gd` still named
+## `MapGen._finalize_walls_and_void` — a function that had also been *renamed*, so the stale
+## vocabulary was sitting on top of a dangling reference.
+##
+## It now shares `VocabularySweep`'s non-letter boundary with the other two vocabulary guards: one
+## implementation, not three that drift apart. **Their reserved words are deliberately not
+## named here** — each guard scans the others, so spelling them makes these tests fail one
+## another. That boundary excludes `avoid` and `devoid` for
+## free, because each has a letter before the `v` — **no allowlist needed**.
+
 const SELF_PATH := "res://test/unit/test_void_vocabulary_guard.gd"
+## The one unavoidable use: GDScript's own return annotation. Matched as a literal substring,
+## exactly as taskblock-40's acceptance grep did.
+const RETURN_ANNOTATION := "-> void"
 
 
-func test_no_gd_file_uses_void_for_anything_but_the_return_annotation() -> void:
-	var regex := RegEx.new()
-	regex.compile("(?i)\\bvoid\\b")
-	var offending: Array[String] = []
-	for root: String in SCAN_ROOTS:
-		_scan_dir(root, regex, offending)
+func test_no_gd_file_uses_the_retired_word_outside_the_return_annotation() -> void:
+	var regex: RegEx = VocabularySweep.word_regex("void")
+	var offending: Array[String] = VocabularySweep.scan(
+		[".gd"],
+		SELF_PATH,
+		func(path: String, line_number: int, line: String) -> String:
+			if regex.search(line) == null or RETURN_ANNOTATION in line:
+				return ""
+			return "%s:%d: %s" % [path, line_number, line.strip_edges()]
+	)
 	assert_eq(
 		offending,
 		[] as Array[String],
-		'"void" survives outside `-> void` (lore-only from taskblock-39/40 on): %s' % [offending]
+		(
+			"the retired word survives outside `-> void` (lore-only from taskblock-39/40 on): %s"
+			% [offending]
+		)
 	)
 
 
-func _scan_dir(path: String, regex: RegEx, offending: Array[String]) -> void:
-	var dir := DirAccess.open(path)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var entry: String = dir.get_next()
-	while entry != "":
-		var full_path: String = path + "/" + entry
-		if dir.current_is_dir():
-			_scan_dir(full_path, regex, offending)
-		elif entry.ends_with(".gd") and full_path != SELF_PATH:
-			_scan_file(full_path, regex, offending)
-		entry = dir.get_next()
-	dir.list_dir_end()
-
-
-func _scan_file(path: String, regex: RegEx, offending: Array[String]) -> void:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return
-	var line_number := 0
-	while not file.eof_reached():
-		var line: String = file.get_line()
-		line_number += 1
-		if regex.search(line) != null and not ("-> void" in line):
-			offending.append("%s:%d: %s" % [path, line_number, line.strip_edges()])
+## The boundary's own property, pinned so a future "simplification" back to `\b` fails loudly
+## rather than quietly reporting clean. `avoid` must stay legal and `and_void` must not.
+func test_the_shared_boundary_catches_an_underscore_join_and_still_allows_avoid() -> void:
+	var regex: RegEx = VocabularySweep.word_regex("void")
+	assert_null(regex.search("var avoid_this := true"), "a letter before it is a different word")
+	assert_null(regex.search("## devoid of meaning"), "so is this one")
+	assert_not_null(regex.search("_finalize_walls_and_void"), "an underscore join is the word")
+	assert_not_null(regex.search("void_cells"), "and so is a trailing join")
