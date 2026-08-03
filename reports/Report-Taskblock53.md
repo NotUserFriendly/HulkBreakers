@@ -1,7 +1,9 @@
 # Taskblock 53 Report — Ladders, an authored map, and a suite that stops keeping score
 
 Passes A–D landed in order and are green. **Pass E landed one of its two halves** — a climb can
-now be interrupted; no AI path queues one yet. Suite green throughout, 2711 tests at the end.
+now be interrupted; no AI path queues one yet, and that half is queued in `PLAN.md`. Suite green
+throughout, **2715 tests** at the end (including a follow-up turning the debug map loader into an
+auto-populating dropdown).
 
 ## Decisions made without asking
 
@@ -43,6 +45,11 @@ now be interrupted; no AI path queues one yet. Suite green throughout, 2711 test
 - **Pass E was split.** The interruption half is self-contained; the planner half touches action
   construction where a regression is hardest to attribute. Landing both together would have made
   them inseparable.
+- **The map dropdown reads a directory rather than becoming a `DataLibrary` pool.** That loader
+  keys everything on a resource `id`, and a `MapFile` carries a human `map_name` because a map is
+  named for a person to pick out of a list — fitting it would have meant growing a second
+  identifier for the loader's benefit. `BoutInjector.load_map` resolves a name *or* a path, so
+  the panel and a script stay on one entry point.
 
 ## Tests that failed, then were corrected
 

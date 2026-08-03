@@ -81,6 +81,47 @@ than delete it.
 nowhere at runtime; an authored map that fails it still loads, which the committed proving
 ground relies on.
 
+### taskblock-53 Pass B — the tile format, and the first committed map
+
+**Nothing serialized before this.** A `Grid` existed only as something `MapGen` produced or a
+fixture hand-built, which is why eight blocks of AI diagnosis were done by hunting seeds.
+`MapFile`/`MapPlacement` are `Resource`s and `MapSerializer` converts both ways with no
+SceneTree.
+
+**One `MapPlacement` class with an open `kind`** (surface / blocker / field_item) rather than
+three near-identical Resources — kind is content, so it is an open vocabulary, and three classes
+would be three places to update. **A Resource per placement rather than parallel arrays**,
+because Pass B needs the `.tres` hand-authorable and parallel arrays are one transposed row from
+a silent hole in the floor.
+
+**Parts are stored by `DataLibrary` id, never embedded, and runtime state is excluded.** A map is
+the pristine authored board, not a savegame: embedding copies would freeze a balance number into
+every map ever saved, and `occupant_id` belongs to a bout. Tests pin both — a damaged blocker
+reloads intact, and a loaded map comes back unoccupied. `opacity` is stored rather than derived,
+because it correlates with wall blockers but is written independently.
+
+**Loading deliberately does not enforce the placement grammar.** The grammar gates the *act* of
+placing, and replaying it at load would reject a legitimate saved stack whose cell is no longer
+empty by the time the second surface loads. An authored map may also be broken on purpose, so
+`describe_problems()` warns instead. What load *does* reject is a file that does not describe a
+board — unknown part id, out-of-bounds cell, non-positive dimensions, two blockers on one cell,
+mismatched sparse arrays — each naming the offending value.
+
+**Acceptance met.** Round trip over a generated 40x30: **1237 placements, equivalent cell for
+cell**. Bout parity: the same seeded bout on generated and round-tripped geometry emits **159
+events, identical event for event** — compared as a full transcript rather than an outcome,
+because two bouts can reach one result down different paths.
+
+**`data/maps/proving_ground.tres` is the first committed map**, authored by
+`tools/author_taskblock53_map.gd` on the same convention every `tools/author_*` script uses.
+21x12, three elevations, one ramp as the only route up, and three stacked height-4 shelves
+deliberately unreachable until a ladder exists. Its test prints an ASCII dump, per the rule that
+a spatial system without one is unverifiable.
+
+**`BoutInjector.load_map` is the placeholder loader**, registered as a board-changing debug verb.
+It relocates living units onto the loaded map's own spawn markers by squad rather than leaving
+them inside walls, and names any it could not place rather than refusing the whole load.
+
 ### taskblock-53 Pass C — the ladder, and the grammar's first real use (it did not hold)
 
 **C1's finding: the placement grammar had never once succeeded.** tb38 built it and warned
