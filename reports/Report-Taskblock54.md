@@ -68,6 +68,21 @@ section format all follow from it.
 - **Nothing decides whether an assembled board is navigable.** `can_join` decides whether a *seam*
   is legal; the asymmetric flood is still the only navigability check and the generator will owe
   it exactly as `MapGen` does.
+- **A single shot emits no fire event at all, and that is a hole in `docs/09`'s own rule.**
+  Found while investigating `BR54.01`: **`BurstAction` is the only firing path that announces
+  itself** (`burst_fired`). `AttackAction`, `StabAction`, `SlashAction`, `GrindAction`,
+  `Suppression` and `Overwatch` all resolve shots and emit **impacts only** — so a shot that
+  strikes nothing leaves a bare `miss`, and a sniper firing is indistinguishable in the log from
+  a sniper doing nothing until something is hit. Every sniper and shotgun shot in `BR54.01` had
+  to be **inferred from its impacts**, which is why characterising that bug took measuring rather
+  than reading. *"If it changed the world, it's in the log"* — firing changes the world.
+
+  **The supervisor's shape for the fix, recorded rather than built:** a `single_shot_fired` event
+  plus a **framework the other firing methods tag into**, so a new way of putting a round in the
+  air announces itself by construction rather than by whoever adds it remembering. `burst_fired`
+  becomes one member of that vocabulary rather than the exception that happens to have one.
+  Queued in `PLAN.md`.
+
 - **The escape counter has a first baseline: 182 across a full suite run** (2744 tests, 61 bouts).
   That is a whole-suite figure and not a per-board one, so it is a starting point rather than a
   verdict — the number becomes useful the moment there is a section library to compare boards
