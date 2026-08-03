@@ -336,6 +336,33 @@ confirm" roll-up — so pending items surface at a natural review point without 
   tile, and leaves the geometry wrong for anything that later reads a normal — the wall cutout shader
   among them.
 
+**CC analysis, `e5393c3a-bd26-4668-8905-c50cf31e04cb`** — read from source, no code touched.
+
+- **It is `BoardView._add_box`, and nothing else.** It is called from exactly one place,
+  `_build_tiles`, and it is the **only hand-wound geometry in the file**. Every other box on the
+  board — blockers, cover, dropped assemblies, overlay markers, unit ghosts — is a Godot `BoxMesh`,
+  correct by construction. That is why fifty blocks of parts never showed this and the tiles do: the
+  shared box primitive was never involved, exactly as suspected above.
+- **On "check whether the normals disagree with the winding": there are no normals to disagree.**
+  `_add_quad` calls `surface_add_vertex` and nothing else, and there is no `surface_set_normal`
+  anywhere in `board_view.gd`. So this is **not** the reversed-winding-with-correct-normals case —
+  the mesh carries no normal data at all, and culling is decided by winding alone. Worth confirming
+  against a built mesh's `ARRAY_NORMAL` before fixing, since that is an engine-behaviour claim
+  rather than a source-level one.
+- **The vertex order, so nobody has to re-derive it.** Corners are built x-major then y then z, so
+  index = `4*x + 2*y + z` with 0 = negative: `0=(-,-,-) 1=(-,-,+) 2=(-,+,-) 3=(-,+,+) 4=(+,-,-)
+  5=(+,-,+) 6=(+,+,-) 7=(+,+,+)`. The top face is emitted as `c[2], c[3], c[7], c[6]`.
+- **Fix the doc comment in the same edit.** It asserts the quads are "wound counter-clockwise seen
+  from outside the box, so back-face culling keeps the faces that face the camera." That sentence is
+  the bug, written down as if it were true — a later reader who trusts it will look elsewhere.
+- **Do not assume the engine's front-face convention; check it.** Assuming it is what produced this.
+- **Why the tests did not catch it, which is the reusable part.** `test_no_risers.gd` asserts vertex
+  *counts* and `test_board_view.gd` asserts an *AABB* — both are winding-blind, and geometry in the
+  right place facing the wrong way satisfies every assertion written in Pass B. **A test that would
+  catch it reads the built mesh back and asserts an outward direction** (the top face resolving to
+  +Y), which is the "read the real node back, do not re-derive it" rule CLAUDE.md already sets for
+  view math. It was applied to placement in that pass and not to orientation.
+
 ### BR55.01 — Active — owner: `CC`
 **Intermittent engine abort in `LoS.has_los` — an out-of-bounds cell reaches `Grid.get_opacity`**
 - **Source:** `CC`  ·  **CC session:** `e5393c3a-bd26-4668-8905-c50cf31e04cb`
