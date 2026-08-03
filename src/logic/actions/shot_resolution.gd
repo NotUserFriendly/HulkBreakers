@@ -108,6 +108,12 @@ static func resolve_and_log_point(
 			state, attacker, results[hop_index], mission, is_dud, max_range, hop_index
 		)
 	if results.is_empty():
+		# taskblock-54 Pass B3: **an empty result is a round that left the board.** Under the ray
+		# chain (the default since tb52) the march continues until it exits, so nothing struck
+		# means nothing was there to strike — not a dropped shot. Counted rather than only
+		# drawn, because "how leaky is this board" is a content question a number answers and an
+		# eye does not.
+		CombatState.shots_escaped += 1
 		log_miss_result(state, attacker, origin, direction, point, max_range, origin_height)
 	return not results.is_empty()
 
@@ -257,6 +263,11 @@ static func log_miss_result(
 						"origin_x": origin.x,
 						"origin_y": origin.y,
 						"origin_height": origin_height,
+						# taskblock-54 Pass B3: names the outcome rather than leaving a reader to
+						# infer it from the absence of an impact. A `miss` has always meant
+						# "struck nothing at all"; saying so makes it greppable and keeps it
+						# distinct from missing the target and hitting a wall instead.
+						"escaped": true,
 						"end_x": end.x,
 						"end_y": end.y,
 						"end_height": point.y,

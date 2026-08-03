@@ -10,6 +10,42 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR52.03 — Obsolete — owner: `CC`
+**Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-52 Pass D, while giving surfaces real volume.
+- **`BoardView._build_terrain` draws two things.** A flat quad per cell at that cell's own height,
+  **and** a vertical riser quad along every edge where two orthogonally-adjacent cells differ in
+  height — "a stepped, XCOM-style terrace". The quad now has a Part behind it (`ship_floor`'s
+  authored `volume`). **The riser has nothing behind it at all**: no `Surface`, no blocker, no Part.
+- **So a round fired horizontally into the step passes straight through it** and travels on into the
+  empty space beneath the higher cell's floor box, which is only 0.2 thick. That is a real hole in
+  "render is hitbox" (`docs/10`) — visible geometry a shot ignores.
+- **Only reachable on multi-level maps**, which is why it has never been seen: the riser is drawn
+  only where adjacent heights differ.
+- **Not fixed in taskblock-52.** The fix is a decision rather than a patch: a riser is either its own
+  placed `Surface` (which makes it destructible terrain with a material, and needs a Part authored
+  for it), or the floor box grows downward to meet the level below (cheap, but then "floor thickness"
+  stops being a free parameter and starts being load-bearing). **Do not pick one without deciding
+  what a shot into a step should do** — a round burrowing under a raised deck is arguably a feature.
+- **`Obsolete` (`CC`, 2026-08-03, taskblock-54 Pass B1) — the code this entry describes is gone
+  rather than fixed.** `BoardView._build_terrain` no longer emits riser quads at all, and
+  `_add_riser` is deleted. There is nothing left to give geometry to.
+- **`Obsolete`, deliberately not `Resolved`.** The entry's own framing was that the fix is a
+  decision — either the riser becomes a placed `Surface` with a real material, or it stops being
+  drawn. **Neither branch was taken as a repair; the feature was retired.** Writing `Resolved`
+  would claim a riser now behaves, and there is no riser.
+- **The deletion is what restores the pillar.** The entry's complaint is visible geometry a shot
+  ignores; drawing nothing there makes the render and the geometry agree by both being absent. A
+  step is one part at the height it needs to be, and the vertical gap between two heights is
+  genuinely open space.
+- **Verified by vertex count, not by eye:** a terraced board and a flat board of the same size now
+  emit identical terrain (96 vertices each on a 4x4), so a height difference adds no geometry.
+- **Consequence, expected and recorded rather than treated as a regression:** raised floors read
+  as floating slabs. Filling a step's side is authored content — a wall, a strut, a bulkhead
+  placed by a section — and there is nothing to author it into until sections exist.
+- **`docs/SUPERSEDED.md` records the terrace model's retirement.**
+
 ### BR46.02 — Resolved — owner: `CC`
 **16 of 40 generated maps contain ground a unit can walk into and never leave**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`

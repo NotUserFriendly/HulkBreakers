@@ -1,5 +1,33 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-54 Pass B — risers deleted, height still continuous, escapes counted
+
+**B1: the risers are gone and nothing replaces them.** `_build_terrain` no longer emits a
+vertical quad between cells of differing height, and `_add_riser` is deleted. That face had no
+`Part` behind it (`BR52.03`), so a round fired horizontally into a step passed through the drawn
+geometry and travelled on under the raised floor. **The deletion is the fix**: drawing nothing
+there makes render and geometry agree by both being absent. Verified by vertex count rather than
+by eye — a terraced 4x4 and a flat 4x4 now emit identical terrain, 96 vertices each.
+**`BR52.03` closes `Obsolete`, not `Resolved`** — the code it describes is gone rather than
+repaired. Raised floors now read as floating slabs; filling a step's side is authored content and
+there is nothing to author it into until sections exist.
+
+**B2: height stays continuous, and an attempted "improvement" here was wrong.** A spread of
+awkward heights (0.1 … 4.75) round-trips exactly with none collapsing onto another, and a
+0.3-high part is standable. **A free-step threshold was added and then reverted**: making a
+sub-level rise cost ordinary movement contradicted *"partial MP costs round up"*, a settled
+`PLAN.md` decision pinned by `test_pathfinder.gd` — a 0.3 rise costs `ceil(4.0 × 0.3) = 2`, cheap
+rather than free. **Recorded rather than fixed:** a unit with no climbing capability still cannot
+cross a 0.3 lip, and no shipped part carries the tag. That is `BR46.02`'s residue, answered at the
+generator level in taskblock-53 rather than by loosening the movement rule.
+
+**B3: a round that leaves the board is counted.** `CombatState.shots_escaped` joins the per-bout
+work counters and the `miss` event carries `escaped: true`, so the outcome is greppable rather
+than inferred from the absence of an impact. **Distinct from missing the target** — a round that
+strikes a wall instead is an ordinary miss and is not counted. Gaps are legitimate now, so how
+leaky a board is becomes a number that surfaces a content problem long before anyone notices by
+eye.
+
 ### taskblock-54 Pass A — `tile` is the walkable part; `cell` is the grid square
 
 **303 word-uses swept across `src`, `test` and `tools`** — nearly four times taskblock-40's
