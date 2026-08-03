@@ -100,11 +100,17 @@ static func all() -> Array[DebugVerbSpec]:
 				Callable(DebugVerbs, &"_apply_spawn_unit")
 			)
 		),
-		DebugVerbSpec.new(
-			&"load_map",
-			"Load Map",
-			[DebugVerbSpec.param(&"map_path", P.STRING_NAME)],
-			Callable(DebugVerbs, &"_apply_load_map")
+		(
+			DebugVerbSpec
+			. new(
+				&"load_map",
+				"Load Map",
+				# taskblock-53: a **dropdown**, not a typed path. `MapCatalog.names()` is read
+				# here, and `all()` is rebuilt every time the panel opens, so a map dropped into
+				# `data/maps/` shows up with no code edit.
+				[DebugVerbSpec.choice(&"map_path", MapCatalog.names())],
+				Callable(DebugVerbs, &"_apply_load_map")
+			)
 		),
 		DebugVerbSpec.new(
 			&"remove_object",
@@ -305,9 +311,9 @@ static func _apply_move_object(inj: BoutInjector, _pool: Dictionary, a: Dictiona
 	return inj.move_object(a.object, a.to_cell)
 
 
-## taskblock-53 Pass B: the placeholder map loader. `map_path` is a `res://` path to a
-## `MapFile` `.tres` — typed in rather than picked from a list, which is the crude part and
-## is what `PLAN.md`'s map-menu item replaces.
+## taskblock-53 Pass B: the placeholder map loader. The panel passes a map's **display name**
+## from the dropdown; `BoutInjector.load_map` accepts either that or a `res://` path, so a
+## test or a script can still name a file directly.
 static func _apply_load_map(inj: BoutInjector, _pool: Dictionary, a: Dictionary) -> bool:
 	return inj.load_map(String(a.map_path))
 
