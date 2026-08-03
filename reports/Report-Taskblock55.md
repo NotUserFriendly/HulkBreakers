@@ -1,7 +1,8 @@
 # Taskblock 55 Report — Only parts carry height, and sections learn to declare
 
 All five passes landed in order and the suite is green at **2795 tests**. Pass A came from a prior
-session; B–E landed in this one, each committed green.
+session; B–E landed in this one, each committed green. A closing doc audit found one stale test and
+three living-doc gaps, all noted below.
 
 ## Decisions made without asking
 
@@ -60,15 +61,42 @@ session; B–E landed in this one, each committed green.
    defect the merge verb exists to prevent, not the merge case. Sharing a wall means the sections
    overlap by that column. Fixture geometry was wrong, not the resolver.
 
-3. **Three Pass E tests passed while proving nothing, and only showed it in their own printed
-   output.** The clutter cap was never reached (the fixture tagged clutter `barrel`, which no part
-   answers to, so every one was silently skipped); an assembly "reproduced" an empty board twice;
-   and a ban test banned a tag the section did not offer. All three now assert the positive case
-   first — cap reached, assembly non-empty, banned tag genuinely offered.
+3. **Four tests passed while proving nothing.** Three were in Pass E and only showed it in their
+   own printed output: the clutter cap was never reached (the fixture tagged clutter `barrel`,
+   which no part answers to, so every one was silently skipped); an assembly "reproduced" an empty
+   board twice; and a ban test banned a tag the section did not offer. All three now assert the
+   positive case first — cap reached, assembly non-empty, banned tag genuinely offered.
 
-4. **Two vocabulary guards caught my own new comments** — the third block running in which this has
-   happened. `void` is retired and I had written "every cell is void" (the taskblock's own phrasing)
-   in three files; `empty`/`unfloored` is the live word.
+   The fourth surfaced only in the closing audit: `test_grid_line_color_is_pushed_well_away_from_
+   the_ground_color` compared grid lines against `WorldPalette.GROUND` — **a colour nothing has
+   drawn since Pass B deleted the ground quad.** A contrast assertion against a colour that is
+   never rendered passes forever and means nothing. It now measures against the *material* colour a
+   floor tile is actually drawn in. Worth flagging as a class: deleting a thing does not fail the
+   tests that measured it, it just makes them vacuous, and only reading them catches that.
+
+4. **The retired-word guard caught my own new comments, twice.** First in three files during Pass
+   B — I had written "every cell is void", the taskblock's own phrasing, and `empty`/`unfloored` is
+   the live word — and again in the closing audit, in the very note explaining why
+   `WorldPalette.GROUND` is no longer drawn. **This is the third block running in which vocabulary
+   guards have caught the author writing about them**, which keeps being both a good sign the rule
+   is real and a standing hazard when documenting a retirement.
+
+## Living-doc gaps found in the closing audit
+
+Recorded because each was a real staleness rather than a formatting tidy:
+
+- **`PLAN.md` still carried the full specs for the vocabulary and stacking items** under "landed"
+  headers. `PLAN.md` is forward-only, so a landed item reading as an unbuilt spec is the one thing
+  it must not do. Both are collapsed to a landed summary, with the genuinely-still-open residue
+  kept as its own list (`is_room` adjacency, the unconsumed encounter whitelist, the
+  `part_for_tag` hook, and the absent thin wall part), each carrying its own **Needs:** line.
+- **`SUPERSEDED.md` had only Pass B's reversals.** Passes C, D and E each overturned a recorded
+  decision — the `MapSerializer` delegation becoming partial, `SectionEdge.side` no longer being
+  "a closed set of four", openings gaining a height, and `to_grid` gaining a roll. Five rows added,
+  including one for `WorldPalette.GROUND` no longer being drawn in.
+- **`docs/10` described a ground plane that no longer exists** ("the ground is a distinct value
+  from the void so the board is actually visible"), and used the retired absence word in its own
+  palette table. Corrected, and the tile/cell distinction stated where the palette is defined.
 
 ## Open questions
 

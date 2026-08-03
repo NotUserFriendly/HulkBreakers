@@ -294,10 +294,18 @@ func test_grid_lines_stay_flat_over_a_raised_tile() -> void:
 ## docs/10 taskblock03 I: the original color was "nearly the same value" as
 ## the ground — pushed far enough apart now that this margin is generous,
 ## not a rounding-error-sized gap.
-func test_grid_line_color_is_pushed_well_away_from_the_ground_color() -> void:
+##
+## **taskblock-55 Pass B: measured against the colour a tile is actually drawn in.** This compared
+## against `WorldPalette.GROUND`, which was the per-cell ground quad's colour — and that quad is
+## deleted, so nothing renders in it. A contrast assertion against a colour nothing draws still
+## passes and means nothing. What a grid line is now seen against is the **material** colour of the
+## walkable part beneath it, which is what is asked here.
+func test_grid_line_color_is_pushed_well_away_from_the_color_a_tile_is_drawn_in() -> void:
 	var line: Color = BoardView.GRID_LINE_COLOR
-	var ground: Color = WorldPalette.GROUND
-	var delta: float = absf(line.r - ground.r) + absf(line.g - ground.g) + absf(line.b - ground.b)
+	var floor_part: Part = DataLibrary.get_part(&"ship_floor")
+	var tile: Color = DataLibrary.material_table().color_for(floor_part.material)
+	var delta: float = absf(line.r - tile.r) + absf(line.g - tile.g) + absf(line.b - tile.b)
+	gut.p("grid line %s vs %s tile %s -> delta %.3f" % [line, floor_part.material, tile, delta])
 	assert_gt(delta, 0.3, "the two colors must read as clearly distinct values")
 
 

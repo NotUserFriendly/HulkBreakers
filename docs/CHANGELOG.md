@@ -1,5 +1,36 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-55 — closing doc audit
+
+**A fourth test was passing while proving nothing, and only a read found it.**
+`test_grid_line_color_is_pushed_well_away_from_the_ground_color` measured grid-line contrast
+against `WorldPalette.GROUND` — the per-cell ground quad's colour, which **nothing has drawn since
+Pass B deleted that quad**. A contrast assertion against a colour that is never rendered passes
+forever. It now measures against the *material* colour a floor tile is actually drawn in.
+
+Worth stating as a class: **deleting a thing does not fail the tests that measured it, it makes
+them vacuous.** Pass B's own suite went green immediately; nothing pointed at this.
+
+**`WorldPalette.GROUND` has no production consumer left** and is documented as such. Kept, because
+it is still the contrast anchor `BACKDROP` is calibrated against — but its survival is not evidence
+that a ground plane exists.
+
+**`docs/10` described a ground plane that no longer exists** and used the retired absence word in
+its own palette table. Corrected, with the cell/tile distinction stated where the palette is
+defined.
+
+**`PLAN.md`'s vocabulary and stacking items still carried their full unbuilt specs** under "landed"
+headers. `PLAN.md` is forward-only, so that is the one thing it must not do. Both collapsed to a
+landed summary, with the still-open residue kept as its own list — `is_room` grouping being
+order-based rather than adjacency-based, the unconsumed `encounter_types` whitelist,
+`SectionRoller.part_for_tag` as a content-library hook, and the absent thin wall part — each with
+its own **Needs:** line.
+
+**`SUPERSEDED.md` had only Pass B's reversals.** Five rows added for C, D and E: the
+`MapSerializer` delegation becoming partial, `SectionEdge.side` no longer being "a closed set of
+four", openings gaining a height, `to_grid` gaining a seeded roll, and `WorldPalette.GROUND` no
+longer being drawn in.
+
 ### taskblock-55 Pass E — demo sections, and a preview that rolls
 
 **Eleven named sections in `data/sections/`**, authored by `tools/author_taskblock55_sections.gd`
