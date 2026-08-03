@@ -320,6 +320,22 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
   headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
 
+### BR54.02 — Active — owner: `SUPERVISOR`
+**A destroyed part vanishes from the shell before the tracer that destroyed it draws**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-03.
+- The part disappears from the model at *resolution* time, while `ResolutionPlayer` has not yet drawn
+  the shot that killed it. The player sees the consequence before the cause.
+- **It should vanish when the tracer of the shot that destroyed it finishes playing**, not when the
+  action resolves.
+- **Same two-clocks shape as `BR27.07`** — RESOLUTION owns the mutation and completes immediately,
+  while playback is still catching up, so anything keyed to live state runs ahead of the animation. The
+  active-turn highlight was the first instance; this is the second, on the model rather than the
+  overlay.
+- **`PLAN.md`'s *Player view and sim view — render a snapshot* is the structural answer.** A view
+  drawing from the last *played* state cannot show a part removed by a shot that has not been drawn.
+  A narrow fix is deferring the removal until its impact plays; it is worth taking, and it is an
+  instance of a class rather than the class.
+
 ### BR54.01 — Active — owner: `SUPERVISOR`
 **AI rounds leave the muzzle at up to 43 degrees off the unit's own facing**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
