@@ -96,6 +96,108 @@ static func describe_problems(section: SectionFile) -> Array[String]:
 						% [edge.side, opening, cells[opening]]
 					)
 				)
+	problems.append_array(_declaration_problems(section))
+	return problems
+
+
+## taskblock-55 Pass C: the authoring vocabulary's own checks.
+##
+## **Still warnings, never load failures**, the same posture as everything above, and the same
+## reason: an authored fragment may be deliberately incomplete, and the editor's job is to say so
+## rather than refuse to open it.
+##
+## What these catch is specifically the class of mistake that is **invisible in the result** — a
+## claim that could never fire, a garrison minimum nothing could reach. Those look exactly like a
+## section that simply chose to do nothing, which is why they need saying out loud; a malformed
+## *placement* already announces itself by the board coming out wrong.
+static func _declaration_problems(section: SectionFile) -> Array[String]:
+	var problems: Array[String] = []
+	var known_kinds: Array[StringName] = [
+		SectionClaim.KIND_EMPTY,
+		SectionClaim.KIND_INTERIOR,
+		SectionClaim.KIND_EXTERIOR,
+		SectionClaim.KIND_ENTRY,
+		SectionClaim.KIND_MERGE,
+	]
+
+	for index: int in range(section.claims.size()):
+		var claim: SectionClaim = section.claims[index]
+		if claim == null:
+			problems.append("claim %d is empty" % index)
+			continue
+		if claim.box == null:
+			problems.append("claim %d ('%s') has no volume to declare with" % [index, claim.kind])
+			continue
+		# **A zero-extent claim is the silent one.** It validates, serialises, overlaps nothing and
+		# does nothing — indistinguishable in a finished board from never having been authored.
+		if claim.box.size.x <= 0.0 or claim.box.size.y <= 0.0 or claim.box.size.z <= 0.0:
+			problems.append(
+				(
+					"claim %d ('%s') has a non-positive extent %s; it could never claim anything"
+					% [index, claim.kind, claim.box.size]
+				)
+			)
+		if not known_kinds.has(claim.kind):
+			problems.append(
+				"claim %d names verb '%s', which no rule consumes" % [index, claim.kind]
+			)
+
+	for index: int in range(section.spawns.size()):
+		var spawn: SectionSpawn = section.spawns[index]
+		if spawn == null:
+			problems.append("spawn %d is empty" % index)
+			continue
+		if (
+			spawn.cell.x < 0
+			or spawn.cell.x >= section.width
+			or spawn.cell.y < 0
+			or spawn.cell.y >= section.rows
+		):
+			problems.append(
+				(
+					"spawn %d sits at %s, outside the section's own %dx%d"
+					% [index, spawn.cell, section.width, section.rows]
+				)
+			)
+		if spawn.chance < 0.0 or spawn.chance > 1.0:
+			problems.append(
+				(
+					"spawn %d at %s has a chance of %.2f, outside 0..1"
+					% [index, spawn.cell, spawn.chance]
+				)
+			)
+		if spawn.kind == SectionSpawn.KIND_CLUTTER and spawn.tag in section.banned_clutter:
+			problems.append(
+				(
+					"spawn %d offers clutter '%s' at %s, which this section also bans"
+					% [index, spawn.tag, spawn.cell]
+				)
+			)
+
+	# **A garrison minimum nothing could reach means the section always spawns none.** That is a
+	# legitimate thing to author deliberately and an easy thing to author by accident, and the two
+	# are indistinguishable in the finished board — so it is said out loud either way.
+	var spawner_cells := 0
+	for spawn: SectionSpawn in section.spawns:
+		if spawn != null and spawn.kind == SectionSpawn.KIND_SPAWNER:
+			spawner_cells += 1
+	if section.minimum_garrison > spawner_cells:
+		problems.append(
+			(
+				(
+					"minimum_garrison is %d but only %d cells could ever spawn one, so this section"
+					+ " always spawns none"
+				)
+				% [section.minimum_garrison, spawner_cells]
+			)
+		)
+	if section.maximum_garrison >= 0 and section.maximum_garrison < section.minimum_garrison:
+		problems.append(
+			(
+				"maximum_garrison %d is below minimum_garrison %d; nothing could satisfy both"
+				% [section.maximum_garrison, section.minimum_garrison]
+			)
+		)
 	return problems
 
 
@@ -201,15 +303,55 @@ static func stitch(a: SectionFile, side: StringName, b: SectionFile) -> Dictiona
 	var a_origin := Vector2i(maxi(0, -offset.x), maxi(0, -offset.y))
 	var b_origin: Vector2i = a_origin + offset
 
+	# taskblock-55 Pass C: **the claims are consumed here, and this is where the delegation to
+	# `MapSerializer` becomes partial.** Everything above and the placement loop below is still
+	# "a section is a tiny map"; a co-occupancy verb is not, and a `MapFile` has nowhere to put
+	# one. Refused *before* building anything, for the same reason `can_join` refuses before
+	# stitching: a board assembled over a conflict has defects that look like the format's fault.
+	var conflicts: Array[String] = ClaimResolver.describe_conflicts(a, a_origin, b, b_origin)
+	var merge_result: Dictionary = ClaimResolver.merges(a, a_origin, b, b_origin)
+	conflicts.append_array(merge_result["problems"] as Array[String])
+	if not conflicts.is_empty():
+		return {"error": "; ".join(conflicts)}
+
+	# **Unification, not deduplication.** The dropped half of each merged pair never reaches the
+	# map, so two 0.2-thick walls become one 0.2-thick wall — one part, which damage, destruction
+	# and shot resolution all see as one thing.
+	var dropped: Array[MapPlacement] = []
+	for pair: Dictionary in merge_result["pairs"]:
+		dropped.append(pair["drop"])
+
 	var map := MapFile.new()
 	map.map_name = "%s + %s" % [a.section_name, b.section_name]
 	map.width = maxi(a_origin.x + a.width, b_origin.x + b.width)
 	map.rows = maxi(a_origin.y + a.rows, b_origin.y + b.rows)
 	for placement: MapPlacement in a.placements:
-		map.placements.append(_shifted(placement, a_origin))
+		if placement not in dropped:
+			map.placements.append(_shifted(placement, a_origin))
 	for placement: MapPlacement in b.placements:
-		map.placements.append(_shifted(placement, b_origin))
+		if placement not in dropped:
+			map.placements.append(_shifted(placement, b_origin))
+
+	# **An entry connecting to nothing becomes a wall.** Otherwise doors overwrite paintings and
+	# open into the back of an oven. Filled in both directions, since either section can be the
+	# one whose opening found no partner.
+	for orphan: SectionClaim in ClaimResolver.entries_becoming_walls(a, a_origin, b, b_origin):
+		map.placements.append(_wall_filling(orphan, a_origin))
+	for orphan: SectionClaim in ClaimResolver.entries_becoming_walls(b, b_origin, a, a_origin):
+		map.placements.append(_wall_filling(orphan, b_origin))
+
 	return MapSerializer.to_grid(map)
+
+
+## The wall that fills an entry nobody met. Placed at the claim's own cell and its own base
+## height, so the fill lands where the opening was rather than at ground level under it.
+static func _wall_filling(claim: SectionClaim, origin: Vector2i) -> MapPlacement:
+	var volume: AABB = claim.aabb()
+	var cell := Vector2i(
+		int(roundf(volume.get_center().x / UnitGeometry.CELL_SIZE)),
+		int(roundf(volume.get_center().z / UnitGeometry.CELL_SIZE))
+	)
+	return MapPlacement.new(cell + origin, MapPlacement.KIND_BLOCKER, &"wall", volume.position.y)
 
 
 ## A copy of `placement` moved by `offset`. A copy rather than a mutation, because the sections
