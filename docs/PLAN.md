@@ -825,26 +825,23 @@ Recorded here only because this item was previously titled *"the tile format"*, 
 shipped as the **map** format and now collides with the vocabulary above. **A map is a complete
 playable board**: cells, surfaces with height and facing, blockers, field items, spawn zones.
 
-### Cells stop carrying height; only parts do
-**Needs:** nothing. **Unblocks:** the last of *only parts are real*; authored steps at arbitrary height
-reading correctly.
+### Cells stop carrying height; only parts do — landed, taskblock-55 Pass B
+The per-cell ground quad is deleted and nothing replaces it. `BoardView._build_tiles` draws the
+walkable `Part`s as their real authored boxes at their own height and facing, from the same
+`UnitGeometry.assembly_placements` call `RayCaster._consider_surface` marches; an unfloored cell draws
+nothing. Grid lines went back to one flat plane, since a line riding a tile's top face would be the
+same co-planar pairing the quad was deleted for. A 0.3 tile is standable, pathable, and struck from
+above, below and edge-on.
 
-taskblock-54 deleted risers, but **the per-cell ground quad still moves with the cell's height** —
-`board_view.gd:526` and `:871` both offset placement by `_height_for(cell)`. So a cell is still a thing
-with an elevation, drawn at that elevation, with nothing behind it. That is the same defect the risers
-had, one primitive down.
+**Two things settled here that the rest of the block builds on:**
+- **A tile is the walkable `Part`; a `Surface` is the record of one placed at a cell** (which part,
+  what height, what facing); a **cell** is the grid square and has no height of its own. Written into
+  `surface.gd`.
+- **The `tile` vocabulary guard is retired.** It banned the word outright and so failed the first code
+  that used it as intended. `void` and `HULK_` stay guarded — those words are retired, not reserved.
 
-- **Every cell is void.** The grid drops to a single flat plane — or nothing at all — and stops
-  expressing height.
-- **Height lives on the tile.** A walkable part is placed at the height it actually occupies; that part
-  is the only thing at that elevation and the only thing a shot or a foot can find.
-- **Temporary floor tile parts** to stand in until sections author real ones. Placed at the right
-  height, real geometry, hittable — the point is that the thing you see *is* the thing that is there.
-- **This is what makes a 0.3 step honest.** With the cell carrying the height, a sub-level rise is a
-  quad that moved; with the tile carrying it, it is a part at 0.3 that a round can strike and a unit can
-  stand on.
-
-Expect the board to look sparser before it looks better, exactly as the riser deletion did.
+**Still open, deliberately:** filling the side of a raised tile is authored content, so raised floors
+read as floating slabs until sections author their sides. Expected, not a regression.
 
 ### The section format — landed, taskblock-54
 `SectionFile`, `SectionEdge`, `SectionSerializer`, `SectionCatalog`, three authored sections in

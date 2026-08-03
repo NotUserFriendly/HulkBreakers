@@ -1,17 +1,24 @@
 class_name BoardView
 extends Node3D
 
-## docs/10 Phase 12.1/12.2: the board's own geometry — a flat ground plane
-## sized to the grid, plus a box mesh for every blocker (docs/02: cover is
-## just a region in the shot plane; here it's just a box sitting on the
-## board) — and, separately, the TACTICS overlay (reachable highlight,
-## queued-move ghost paths, each its own container so one never rebuilds
-## the other, and both can be visible at once). Pure presentation: BoardView
-## never mutates Grid, only reads it. Real geometry (ground, blockers) is
-## lit (WorldPalette.lit_material); only the transient overlay is unshaded
-## (WorldPalette.overlay_material) — docs/10: unshaded same-colour boxes
-## have no edges and merge into a blob, which is why real geometry must be
-## lit.
+## docs/10 Phase 12.1/12.2: the board's own geometry — a box mesh for every
+## placed **tile** and every blocker (docs/02: cover is just a region in the
+## shot plane; here it's just a box sitting on the board) — and, separately,
+## the TACTICS overlay (reachable highlight, queued-move ghost paths, each its
+## own container so one never rebuilds the other, and both can be visible at
+## once). Pure presentation: BoardView never mutates Grid, only reads it. Real
+## geometry (tiles, blockers) is lit (WorldPalette.lit_material); only the
+## transient overlay is unshaded (WorldPalette.overlay_material) — docs/10:
+## unshaded same-colour boxes have no edges and merge into a blob, which is why
+## real geometry must be lit.
+##
+## **taskblock-55 Pass B: there is no ground plane.** There was one — first a
+## single flat `PlaneMesh`, then one quad per cell at that cell's own height —
+## and it is gone rather than reshaped. A **cell** is a grid square and carries
+## no elevation; a **tile** is a walkable part and carries all of it. What gets
+## drawn is the tiles, from the same `UnitGeometry.assembly_placements` call the
+## ray caster marches, so an unfloored cell draws nothing because there is
+## nothing there. See `_build_tiles`.
 
 ## taskblock-23 Pass E2: a render layer the inspect panel's isolate camera
 ## (taskblock-22 G2, `HitVolumeView.ISOLATE_LAYER`) can ALSO include
@@ -282,8 +289,16 @@ func build(
 	# are not." Each step is emitted as it completes, so a board that comes out
 	# wrong can be read as a sequence — the step that produced nothing, or ran
 	# before something it depended on, is visible without a rebuild.
-	_log_build_step(&"terrain", grid.width * grid.rows, "cells")
-	var ground: MeshInstance3D = _build_terrain(grid)
+	# taskblock-55 Pass B: counted in **tiles placed**, not cells. The board no
+	# longer draws one thing per cell, so a per-cell count would report a number
+	# nothing in the scene corresponds to — and "how many walkable parts are
+	# actually on this board" is the more useful diagnostic anyway, since an
+	# unfloored cell is now genuinely empty rather than quietly floored.
+	var tile_count := 0
+	for cell: Vector2i in grid.surfaces:
+		tile_count += grid.surfaces_at(cell).size()
+	_log_build_step(&"tiles", tile_count, "walkable parts")
+	var ground: MeshInstance3D = _build_tiles(grid, material_table)
 	ground.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(ground)
 	var grid_lines: MeshInstance3D = _build_grid_lines(grid)
@@ -334,53 +349,67 @@ func _log_build_step(step: StringName, count: int, noun: String) -> void:
 	)
 
 
-## taskblock-37 Pass E: the ground used to be one flat `PlaneMesh` for the
-## whole grid — `Grid.level` had no way to become visible at all, since a
-## single flat plane has no per-cell height to move. Now one flat top quad per
-## cell, at THAT cell's own real height (`UnitGeometry.true_height_for_cell`).
+## taskblock-55 Pass B: **only parts carry height, so only parts are drawn.**
 ##
-## ## taskblock-54 Pass B1: the risers are gone, and nothing replaces them
+## This function used to draw one flat quad per *cell*, at that cell's own height
+## — and before taskblock-54 Pass B1, a vertical riser between neighbours that
+## differed. The riser went because it had no `Part` behind it (`BR52.03`). **The
+## per-cell quad had exactly the same defect, one primitive down**, and survived
+## the riser deletion only because it was the older of the two:
 ##
-## This used to also draw a **vertical riser quad** between any two orthogonally
-## adjacent cells whose heights differ — a stepped, XCOM-style terrace. It was
-## deleted rather than given geometry, and the deletion is the fix.
+## - On a cell with a floor, the quad was a *second* thing at that elevation,
+##   co-planar with the real `Surface` part's own top face and hiding it. Two
+##   drawings of one fact, and a shot only ever intersected the part.
+## - On a cell with **no** floor at all, the quad was ground you could see and
+##   walk your eye across with nothing behind it whatsoever.
 ##
-## **`BR52.03`: the riser had nothing behind it.** The flat quad has a `Part` (a
-## walkable surface's authored `volume`); the riser had no `Surface`, no blocker,
-## no Part at all — so a round fired horizontally into a step passed straight
-## through the visible face and travelled on under the raised floor. That is a
-## hole in *render is hitbox* (`docs/10`): drawn geometry a shot ignores.
+## **A cell is not a thing with an elevation.** It is a grid square, and empty.
+## A walkable part — a **tile** — sits at the height it occupies, and that part is
+## the only thing at that elevation, the only thing a shot can strike and the only
+## thing a foot can find. So the tiles are what gets drawn, as their **real
+## authored box geometry** rather than a stand-in quad.
 ##
-## **Drawing nothing there is correct.** A step is one part at the height it needs
-## to be, not a stack and not a face; the vertical gap between two heights is
-## genuinely open space. The pillar is **restored by the deletion**, because the
-## drawing and the geometry now agree by both being absent.
+## **The placements come from `UnitGeometry.assembly_placements`, which is the
+## same call `RayCaster._consider_surface` makes** — the same part, the same
+## height, the same `facing`. *Render is hitbox* (`docs/10`) stops being a
+## property this file has to remember and becomes one it cannot break: there is
+## no second formula here to drift away from the first.
 ##
-## **Raised floors read as floating slabs, and that is not a regression.** Filling
-## a step's side is authored content — a wall, a strut, a bulkhead placed by a
-## section — not an automatic terrain feature. It will look wrong until sections
-## exist to author it into.
-func _build_terrain(p_grid: Grid) -> MeshInstance3D:
+## **Expect the board to look sparser**, exactly as the riser deletion did, and
+## for the same reason. A raised floor reads as a floating slab; filling its side
+## is authored content — a wall, a strut, a bulkhead placed by a section — not an
+## automatic terrain feature. An unfloored cell now draws nothing at all, which is
+## what `_build_empty_indicators` is already there to mark.
+func _build_tiles(p_grid: Grid, material_table: MaterialTable) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()
-	var cell_size: float = UnitGeometry.CELL_SIZE
-	var half: float = cell_size * 0.5
 
-	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.lit_material(WorldPalette.GROUND))
-	for y in range(p_grid.rows):
-		for x in range(p_grid.width):
-			var cell := Vector2i(x, y)
-			var height: float = UnitGeometry.true_height_for_cell(cell, p_grid)
-			var cx: float = x * cell_size
-			var cz: float = y * cell_size
-			_add_quad(
-				mesh,
-				Vector3(cx - half, height, cz - half),
-				Vector3(cx + half, height, cz - half),
-				Vector3(cx + half, height, cz + half),
-				Vector3(cx - half, height, cz + half)
+	# Grouped by colour so the whole board's tiles cost one surface per material
+	# rather than one MeshInstance3D per cell. Iterated in a stable order — a
+	# Dictionary keyed by colour would leave surface order dependent on insertion,
+	# and a mesh that rebuilds differently between two identical grids is a
+	# needless source of "the board changed and nothing changed."
+	var by_color: Dictionary = {}
+	var color_order: Array[Color] = []
+	for cell: Vector2i in p_grid.surfaces:
+		for surface: Surface in p_grid.surfaces_at(cell):
+			var color: Color = material_table.color_for(surface.part.material)
+			if not by_color.has(color):
+				by_color[color] = [] as Array[BoxPlacement]
+				color_order.append(color)
+			(by_color[color] as Array[BoxPlacement]).append_array(
+				UnitGeometry.assembly_placements(
+					surface.part, cell, surface.facing, null, surface.height
+				)
 			)
-	mesh.surface_end()
+
+	for color: Color in color_order:
+		mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.lit_material(color))
+		for placement: BoxPlacement in by_color[color]:
+			_add_box(
+				mesh, placement.transform.translated_local(placement.box.center), placement.box.size
+			)
+		mesh.surface_end()
 
 	instance.mesh = mesh
 	return instance
@@ -409,31 +438,42 @@ func _build_extraction_cells(team_extraction_cells: Dictionary) -> int:
 ## wide quads, not 1px GPU line primitives (no shader/LOD trick — just
 ## actual geometry with a real width, drawn with the same real-width
 ## convention D2's leg lines / F2's targeting line already use).
-## taskblock-37 Pass E follow-up (supervisor): per-cell now, each cell
-## drawing its own complete 4-edge border at THAT cell's own real height
-## (`UnitGeometry.true_height_for_cell`) — the same per-cell treatment
-## `_build_terrain` already has, closing the gap flagged when the ground
-## itself first went per-cell. A shared edge between two same-height
-## neighbors is simply drawn twice (perfectly overlapping geometry, no
-## visible difference) rather than deduplicated; a height CHANGE between two
-## neighbours is what makes that simplicity pay off — each side's own border
-## lands right at the edge of its own slab, framing the drop instead of both
-## tracing one flat plane through it. **The border is now the only thing marking
-## a height change at all**, since taskblock-54 Pass B1 deleted the riser face
-## that used to fill it; a grid line at each height is a legible edge, and unlike
-## a riser it never pretended to be something a shot could hit.
+## taskblock-37 Pass E follow-up made this per-cell, each cell drawing its
+## border at THAT cell's own real height, to match the terraced ground quad.
+##
+## ## taskblock-55 Pass B: back to one flat plane, because the cell is empty
+##
+## The ground quad it was matching is gone, and with it the reason to climb.
+## Two rules from this pass settle it between them:
+##
+## - **"The grid stops expressing height — one flat plane, or nothing."** This
+##   mesh is now the flat plane: a floor-plan reference at a constant Y, saying
+##   where the cells are and nothing about how high anything is.
+## - **"That part is the only thing at that elevation."** A line riding a tile's
+##   own top face would be a second thing there — precisely the co-planar pairing
+##   the ground quad was deleted for, and the reason this could not simply keep
+##   reading the tile instead of the cell.
+##
+## A shared edge between two neighbours is drawn twice (perfectly overlapping
+## geometry, no visible difference) rather than deduplicated — with every line at
+## one height that is now always an exact overlap, where the per-cell version
+## relied on it only for equal-height pairs.
+##
+## **A raised tile hides the lines beneath it, and that is honest**: the tile is
+## solid and it is above them. The drop at its edge is marked by the tile's own
+## real sides now, which — unlike both the riser and the per-cell border — is
+## geometry a shot actually intersects.
 func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	var mesh := ImmediateMesh.new()
 	var cell_size: float = UnitGeometry.CELL_SIZE
 	var half: float = cell_size * 0.5
 	var half_width: float = GRID_LINE_WIDTH * 0.5
+	var wy: float = GRID_LINE_HEIGHT
 
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.overlay_material(GRID_LINE_COLOR))
 	for y in range(p_grid.rows):
 		for x in range(p_grid.width):
-			var cell := Vector2i(x, y)
-			var wy: float = UnitGeometry.true_height_for_cell(cell, p_grid) + GRID_LINE_HEIGHT
 			var cx: float = x * cell_size
 			var cz: float = y * cell_size
 			var x_min: float = cx - half - half_width
@@ -507,6 +547,37 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 	mesh.surface_add_vertex(d)
 
 
+## taskblock-55 Pass B: one authored `Box`, as six real faces at `xform`.
+##
+## `xform` is the placement transform with the box's own centre already composed
+## in — the identical expression `_spawn_blocker` hands to a `BoxMesh`
+## (`placement.transform.translated_local(placement.box.center)`), so a tile drawn
+## into this mesh and a blocker drawn as its own node agree about where a box is.
+##
+## **A box, not a top quad.** A tile has thickness — `ship_floor` is 0.2 — and a
+## shot fired at its edge intersects that thickness. Drawing only the top face
+## would put the *old* defect back at a smaller scale: visible geometry whose
+## sides a round passes through unseen.
+static func _add_box(mesh: ImmediateMesh, xform: Transform3D, size: Vector3) -> void:
+	var h: Vector3 = size * 0.5
+	# The eight corners, in the box's own local space, then placed by `xform`.
+	var c: Array[Vector3] = []
+	for sx: float in [-h.x, h.x]:
+		for sy: float in [-h.y, h.y]:
+			for sz: float in [-h.z, h.z]:
+				c.append(xform * Vector3(sx, sy, sz))
+	# Indices into `c`, whose order above is x-major then y then z: 0 = (-,-,-),
+	# 1 = (-,-,+), 2 = (-,+,-), 3 = (-,+,+), 4 = (+,-,-), 5 = (+,-,+),
+	# 6 = (+,+,-), 7 = (+,+,+). Each quad is wound counter-clockwise seen from
+	# outside the box, so back-face culling keeps the faces that face the camera.
+	_add_quad(mesh, c[2], c[3], c[7], c[6])  # +Y, the top face a unit stands on
+	_add_quad(mesh, c[0], c[4], c[5], c[1])  # -Y
+	_add_quad(mesh, c[3], c[1], c[5], c[7])  # +Z
+	_add_quad(mesh, c[2], c[6], c[4], c[0])  # -Z
+	_add_quad(mesh, c[6], c[7], c[5], c[4])  # +X
+	_add_quad(mesh, c[0], c[1], c[3], c[2])  # -X
+
+
 ## docs/10 taskblock04 C1/C2: a field object can be a whole part TREE (a
 ## dropped assembly — plate, weapon and all), the same "render is hitbox"
 ## contract HitVolumeView already honours — never just the root's own `volume`,
@@ -518,11 +589,16 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
 	var is_wall: bool = part.id == &"wall"
-	# taskblock-37 Pass E: the cell's own real height — `assembly_placements`
+	# taskblock-37 Pass E: the real height to sit at — `assembly_placements`
 	# defaults to a flat `height == 0.0`, which used to be harmless (nothing
-	# was ever raised); a cover object or wall on a raised cell now needs to
-	# actually sit ON that cell's own real ground, not float at world level
-	# 0 beneath the terraced terrain `_build_terrain` draws.
+	# was ever raised); a cover object or wall over a raised cell needs to
+	# actually rest ON the ground there, not float at world level 0 beneath it.
+	#
+	# taskblock-55 Pass B: that ground is **the tile**, which is what
+	# `_height_for` has always resolved to (`true_height_for_cell` reads the
+	# placed walkable `Surface`). A blocker standing on a tile is a part on a
+	# part — real geometry resting on real geometry — so this is the one height
+	# read the pass leaves exactly as it was.
 	var height: float = _height_for(cell)
 	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
 		var instance := MeshInstance3D.new()
@@ -864,9 +940,17 @@ func _marker(
 	# taskblock-37 Pass E: `UnitGeometry.true_height_for_cell` as a base —
 	# every caller (extraction cells, wall/empty-cell indicators, reachable/
 	# ghost overlays, the field-item marker) used to assume ground was always at
-	# world Y 0; a raised cell's own marker must sit on ITS OWN real ground,
-	# not float below (or get buried inside) the terraced terrain
-	# `_build_terrain` now draws.
+	# world Y 0; a marker over a raised cell must sit on ITS OWN real ground, not
+	# float below it or get buried inside it.
+	#
+	# taskblock-55 Pass B: unchanged, and deliberately so, though the ground it
+	# reads is now the **tile's** height rather than the cell's. That is what
+	# `_height_for` resolves to and always did — `true_height_for_cell` reads the
+	# walkable `Surface` placed there, so this was already asking the part where
+	# it is. An overlay marker is also not "a thing at that elevation" in the
+	# sense the pass forbids: it is a transient annotation about a cell, drawn
+	# above the tile on the ground-overlay height ladder, never geometry claiming
+	# to be solid.
 	instance.position = Vector3(
 		cell.x * UnitGeometry.CELL_SIZE, height + _height_for(cell), cell.y * UnitGeometry.CELL_SIZE
 	)

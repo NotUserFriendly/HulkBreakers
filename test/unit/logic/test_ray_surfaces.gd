@@ -147,8 +147,14 @@ func test_on_an_open_board_the_only_misses_are_rounds_that_leave_it() -> void:
 
 ## Ramp-standing geometry resolves at its true ramp-aware height, and that is
 ## checked **against what `BoardView` renders**, not against a second copy of the
-## height formula. `_build_terrain` draws its quad at
-## `UnitGeometry.true_height_for_cell`, so that is what is asked.
+## height formula.
+##
+## taskblock-55 Pass B: `BoardView` no longer draws a quad per cell at all — it
+## draws the placed `Surface` parts themselves, from the same
+## `UnitGeometry.assembly_placements` call this ray march uses. So the agreement
+## this test asserts is now structural rather than coincidental, and
+## `true_height_for_cell` is asked here as the walkable top face a unit stands
+## on, which is what a ramp cell's own height means.
 func test_a_ramp_resolves_at_the_height_the_board_renders_it_at() -> void:
 	var grid: Grid = GridFixture.flat(11, 11)
 	GridFixture.place_ramp(grid, Vector2i(7, 5), 1.0)

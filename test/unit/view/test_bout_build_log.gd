@@ -8,11 +8,16 @@ extends GutTest
 ## against a summary emitted in one lump at the end, which is precisely the
 ## thing this pass is not.
 
-## The order `BoardView.build()` actually constructs in. Terrain must precede
-## everything that sits on it; blockers must precede the loose items that can
+## The order `BoardView.build()` actually constructs in. Tiles must precede
+## everything that sits on them; blockers must precede the loose items that can
 ## be lying under them.
+##
+## taskblock-55 Pass B: the first step was `terrain`, counted in cells. The board
+## no longer draws anything per cell — it draws the tiles placed on it — so the
+## step is renamed and counted in walkable parts. A per-cell count would have
+## reported a number nothing in the scene corresponds to.
 const EXPECTED_ORDER: Array[StringName] = [
-	&"terrain",
+	&"tiles",
 	&"grid_lines",
 	&"empty_cells",
 	&"extraction_cells",

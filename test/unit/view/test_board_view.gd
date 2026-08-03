@@ -40,42 +40,56 @@ func test_ground_and_grid_lines_carry_the_floor_layer() -> void:
 	assert_true(ground.get_layer_mask_value(1), "still renders on the default layer too")
 
 
-## taskblock-37 Pass E: an all-level-0 grid must still terrace to a flat,
-## world-Y-0 ground — the inertness guard tb36/tb37's own regression
-## posture always uses, now proven against the real built mesh's own AABB
-## (docs/10 rule 2: read the real node back) instead of trusted by
-## construction.
-func test_build_terrain_is_flat_when_no_level_is_set() -> void:
+## taskblock-37 Pass E: an all-level-0 grid must still come out flat at world
+## Y 0 — the inertness guard tb36/tb37's own regression posture always uses,
+## proven against the real built mesh's own AABB (docs/10 rule 2: read the
+## real node back) instead of trusted by construction.
+##
+## taskblock-55 Pass B: the mesh is now the **tiles**, so the assertion is
+## about the walkable top face rather than about a quad. `ship_floor` is a
+## 0.2-thick slab hung below its placed height, so a flat board spans -0.2 to
+## 0.0 — the thickness read back from the authored part, not asserted as a
+## number this test invents.
+func test_build_tiles_is_flat_when_no_level_is_set() -> void:
 	var grid := GridFixture.flat(4, 3)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
 
-	var ground: MeshInstance3D = view._static.get_child(0)
-	var aabb: AABB = ground.mesh.get_aabb()
-	assert_almost_eq(aabb.position.y, 0.0, 0.0001)
-	assert_almost_eq(aabb.size.y, 0.0, 0.0001, "no cell differs from any other -- no riser at all")
+	var thickness: float = DataLibrary.get_part(&"ship_floor").volume[0].size.y
+	var tiles: MeshInstance3D = view._static.get_child(0)
+	var aabb: AABB = tiles.mesh.get_aabb()
+	assert_almost_eq(aabb.end.y, 0.0, 0.0001, "every tile's top face is the ground it is")
+	assert_almost_eq(
+		aabb.size.y, thickness, 0.0001, "no tile differs from any other -- only its own thickness"
+	)
 
 
-## taskblock-37 Pass E: the ground used to be one flat `PlaneMesh` with no
-## way to show a cell's own real elevation at all — a raised cell now
-## genuinely raises its own patch of terrain, read back from the built
-## mesh's own AABB rather than trusted from the source.
-func test_build_terrain_reflects_a_raised_cells_own_height() -> void:
+## taskblock-37 Pass E: a raised cell genuinely raises its own patch of the
+## board, read back from the built mesh's own AABB rather than trusted from
+## the source.
+##
+## taskblock-55 Pass B: the thing that rises is the **tile**, and it is the
+## tile's real authored box rather than a stand-in quad. The board no longer
+## draws anything at all for the cell itself.
+func test_build_tiles_reflects_a_raised_tiles_own_height() -> void:
 	var grid := GridFixture.flat(4, 3)
 	GridFixture.place_floor(grid, Vector2i(2, 1), 2)
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
 
-	var ground: MeshInstance3D = view._static.get_child(0)
-	var aabb: AABB = ground.mesh.get_aabb()
-	assert_almost_eq(aabb.position.y, 0.0, 0.0001, "the rest of the grid stays at ground level")
+	var thickness: float = DataLibrary.get_part(&"ship_floor").volume[0].size.y
+	var tiles: MeshInstance3D = view._static.get_child(0)
+	var aabb: AABB = tiles.mesh.get_aabb()
+	assert_almost_eq(
+		aabb.position.y, -thickness, 0.0001, "the rest of the board stays at ground level"
+	)
 	assert_almost_eq(
 		aabb.end.y,
 		2.0 * UnitGeometry.LEVEL_HEIGHT,
 		0.0001,
-		"the raised cell's own top face must reach its real height"
+		"the raised tile's own top face must reach its real height"
 	)
 
 
@@ -247,11 +261,19 @@ func test_build_draws_grid_lines_spanning_the_grids_own_footprint() -> void:
 	assert_almost_eq(aabb.end.z, (grid.rows - 1) * cell_size + half + half_width, 0.0001)
 
 
-## taskblock-37 Pass E follow-up (supervisor): grid lines used to be one
-## flat mesh at a single world height — a raised cell's own boundary now
-## reaches its real top face, the same per-cell treatment `_build_terrain`
-## already has, read back from the built mesh's own AABB.
-func test_grid_lines_reflect_a_raised_cells_own_height() -> void:
+## taskblock-37 Pass E follow-up made grid lines per-cell, each border rising
+## to its own cell's height to match the terraced ground quad.
+##
+## **taskblock-55 Pass B reverses that, and the reversal is the point.** The
+## quad it was matching is deleted, and the pass's rule is that a tile "is the
+## only thing at that elevation" — a border riding a tile's top face would be
+## a second thing there, the exact co-planar pairing the quad was deleted for.
+## The grid is one flat plane again: a floor-plan reference that says where the
+## cells are and nothing about how high anything is.
+##
+## Asserted against a board with a raised tile specifically, because that is
+## the only board on which a per-cell height could hide.
+func test_grid_lines_stay_flat_over_a_raised_tile() -> void:
 	var grid := GridFixture.flat(4, 3)
 	GridFixture.place_floor(grid, Vector2i(2, 1), 2)
 	var view := BoardView.new()
@@ -260,17 +282,12 @@ func test_grid_lines_reflect_a_raised_cells_own_height() -> void:
 
 	var grid_lines: MeshInstance3D = view._static.get_child(1)
 	var aabb: AABB = grid_lines.mesh.get_aabb()
+	assert_almost_eq(aabb.position.y, BoardView.GRID_LINE_HEIGHT, 0.0001, "one flat plane")
 	assert_almost_eq(
-		aabb.position.y,
-		BoardView.GRID_LINE_HEIGHT,
+		aabb.size.y,
+		0.0,
 		0.0001,
-		"the rest of the grid stays at ground level"
-	)
-	assert_almost_eq(
-		aabb.end.y,
-		2.0 * UnitGeometry.LEVEL_HEIGHT + BoardView.GRID_LINE_HEIGHT,
-		0.0001,
-		"the raised cell's own border must reach its real height"
+		"and it has no thickness in Y at all -- nothing rose with the tile"
 	)
 
 

@@ -12,7 +12,7 @@ extends GutTest
 ## `MapGen._finalize_walls_and_void` — a function that had also been *renamed*, so the stale
 ## vocabulary was sitting on top of a dangling reference.
 ##
-## It now shares `VocabularySweep`'s non-letter boundary with the other two vocabulary guards: one
+## It now shares `VocabularySweep`'s non-letter boundary with the other vocabulary guard: one
 ## implementation, not three that drift apart. **Their reserved words are deliberately not
 ## named here** — each guard scans the others, so spelling them makes these tests fail one
 ## another. That boundary excludes `avoid` and `devoid` for

@@ -9,6 +9,29 @@ extends RefCounted
 ## catwalk over a floor is one cell with two walkable surfaces at different
 ## heights, reusing the same `cell -> Array` shape `Grid.field_items`
 ## already established rather than inventing a parallel container.
+##
+## ## taskblock-55 Pass B: a `Surface` is not a tile, it is where a tile is
+##
+## Worth stating outright, because the two are easy to run together and the
+## distinction is what makes the placement model coherent:
+##
+## - A **tile** is the walkable `Part` itself — `ship_floor`, a discrete part
+##   with authored `volume`, material, sockets and hp, exactly like any other.
+##   It is a thing.
+## - A **`Surface`** is the *record of one being placed*: which part, at what
+##   `height`, at what `facing`. It is a fact about a cell.
+## - A **cell** is the grid square, and carries no elevation of its own at all.
+##
+## So "height lives on the tile" is served by `height` living here: this is the
+## only place that says where that part is, and `BoardView` and `RayCaster` both
+## read it through the same `UnitGeometry.assembly_placements` call. A cell has
+## a height only in the derived sense of `UnitGeometry.true_height_for_cell` —
+## "how high is the tile you would be standing on here" — never as a property of
+## its own.
+##
+## Not every `Surface` holds a tile: a ladder is placed the same way and is
+## explicitly **not** walkable (`LADDER_TAG` below). `Surface` is the general
+## placement; a tile is the walkable case.
 
 ## taskblock-38 Pass C: the open tag vocabulary a placed surface's own
 ## `Part.tags` is checked against — never a closed enum (CLAUDE.md): a
