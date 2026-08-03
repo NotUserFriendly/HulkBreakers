@@ -1,5 +1,26 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-53 — the debug map loader is a dropdown, populated from disk
+
+The `load_map` verb offered a typed text box, so loading a map meant knowing a `res://` path by
+heart. It is a `CHOICE` dropdown now, listing every authored map by its own `map_name`.
+
+**`MapCatalog` scans `data/maps/` on demand**, and `DebugVerbs.all()` rebuilds its spec list
+every time the panel opens — so **a map dropped into the folder appears with no code edit**, the
+same rule this project applies to socket types and profiles. Deliberately not a `DataLibrary`
+pool: that loader keys everything on a resource `id`, and a `MapFile` has a human `map_name`
+because a map is named for a person to pick out of a list, so fitting it would have meant
+growing a second identifier for the loader's benefit.
+
+**`BoutInjector.load_map` takes a name or a path.** Resolving the name inside the injector
+rather than in the panel keeps the dropdown and a script on one entry point, instead of the
+panel doing a lookup the injector would then have to trust. An unknown name is refused with
+`no_map_by_that_name` and changes nothing.
+
+Sorted by **filename**, not display name, for the reason `DataLibrary._load_dir` already is: a
+raw directory order is filesystem-dependent, so two machines could otherwise offer the same
+dropdown in different orders.
+
 ### taskblock-53 Pass E (half) — a climb can be interrupted; the AI still cannot queue one
 
 **Landed: the interruption.** `ClimbAction.apply_interruptible` consults the mid-move hook and

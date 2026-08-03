@@ -106,3 +106,59 @@ func test_the_verb_is_registered_and_rebuilds_the_board() -> void:
 		ids.append(spec.id)
 	assert_true(ids.has(&"load_map"), "the verb is on the panel")
 	assert_true(DebugVerbs.affects_board(&"load_map"), "and it rebuilds the board")
+
+
+# --- the dropdown ------------------------------------------------------------------------
+
+
+## taskblock-53: the panel offered a typed text box, so loading a map meant knowing a `res://`
+## path by heart. It is a `CHOICE` dropdown now, populated from disk.
+func test_the_verb_offers_a_dropdown_of_map_names_not_a_text_box() -> void:
+	var spec: DebugVerbSpec = null
+	for candidate: DebugVerbSpec in DebugVerbs.all():
+		if candidate.id == &"load_map":
+			spec = candidate
+	assert_not_null(spec, "the verb is registered")
+	if spec == null:
+		return
+
+	var param: Dictionary = spec.params[0]
+	assert_eq(param["type"], DebugVerbSpec.ParamType.CHOICE, "it is a dropdown, not free text")
+	var options: Array = param.get("options", [])
+	gut.p("map dropdown offers: %s" % str(options))
+	assert_gt(options.size(), 0, "and it is populated")
+	assert_true(options.has(&"Proving Ground"), "including the committed map, by its own name")
+
+
+## **Auto-populating is the point.** The catalogue is read when the panel builds its spec list,
+## so a map added to `data/maps/` needs no code edit — the same rule this project applies to
+## socket types and profiles.
+func test_the_catalogue_reads_maps_off_disk() -> void:
+	var entries: Array[Dictionary] = MapCatalog.entries()
+	assert_gt(entries.size(), 0, "at least the committed map is found")
+	for entry: Dictionary in entries:
+		assert_true(String(entry["path"]).begins_with("res://data/maps/"), "paths are real")
+		assert_ne(String(entry["name"]), "", "every entry is nameable in a dropdown")
+	assert_eq(
+		MapCatalog.path_for(&"Proving Ground"),
+		"res://data/maps/proving_ground.tres",
+		"a display name resolves to its file"
+	)
+	assert_eq(
+		MapCatalog.path_for(&"Nothing Called This"), "", "and an unknown name resolves to nothing"
+	)
+
+
+## The injector takes what the dropdown gives it — a display name — as well as a path, so the
+## panel and a script stay on one entry point.
+func test_load_map_accepts_a_display_name_from_the_dropdown() -> void:
+	var state: CombatState = _state()
+	assert_true(BoutInjector.new(state).load_map("Proving Ground"), "a name loads")
+	assert_eq(state.grid.width, 21, "and it is the right board")
+
+
+func test_a_name_that_matches_no_map_is_refused() -> void:
+	var state: CombatState = _state()
+	var before: int = state.grid.width
+	assert_false(BoutInjector.new(state).load_map("Nothing Called This"))
+	assert_eq(state.grid.width, before, "a refused load changes nothing")

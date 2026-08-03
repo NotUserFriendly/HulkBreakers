@@ -881,13 +881,22 @@ func force_hop_down(unit: Unit, target_cell: Vector2i) -> bool:
 func load_map(map_path: String) -> bool:
 	if not _guard(&"load_map", {"path": map_path}):
 		return false
-	var resource: Resource = load(map_path) if ResourceLoader.exists(map_path) else null
+	# taskblock-53: **a name or a path.** The debug panel offers a dropdown of authored map
+	# names, and a test or script is better off naming a file. Resolving a name here rather
+	# than in the panel keeps both callers on one entry point instead of the panel doing a
+	# lookup the injector would then have to trust.
+	var resolved: String = map_path
+	if not resolved.begins_with("res://"):
+		resolved = MapCatalog.path_for(StringName(map_path))
+		if resolved == "":
+			return _refuse(&"load_map", &"no_map_by_that_name", {"path": map_path})
+	var resource: Resource = load(resolved) if ResourceLoader.exists(resolved) else null
 	var map := resource as MapFile
 	if map == null:
-		return _refuse(&"load_map", &"path_is_not_a_map_file", {"path": map_path})
+		return _refuse(&"load_map", &"path_is_not_a_map_file", {"path": resolved})
 	var result: Dictionary = MapSerializer.to_grid(map)
 	if not result.has("grid"):
-		return _refuse(&"load_map", &"malformed_map", {"path": map_path, "why": result["error"]})
+		return _refuse(&"load_map", &"malformed_map", {"path": resolved, "why": result["error"]})
 
 	var grid: Grid = result["grid"]
 	state.grid = grid
@@ -909,7 +918,7 @@ func load_map(map_path: String) -> bool:
 	_log_injection(
 		&"load_map",
 		{
-			"path": map_path,
+			"path": resolved,
 			"name": map.map_name,
 			"width": grid.width,
 			"rows": grid.rows,
