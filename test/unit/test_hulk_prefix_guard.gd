@@ -35,7 +35,7 @@ const SELF_PATH := "res://test/unit/test_hulk_prefix_guard.gd"
 
 
 ## taskblock-55 Pass A: the prefix now carries `VocabularySweep`'s **shared** left boundary
-## rather than none at all. This guard was never under-reporting the way the other two
+## rather than none at all. This guard was never under-reporting the way the others
 ## vocabulary guards were — a prefix pattern with no lookbehind matches *more*, not less — but
 ## all three read their boundary from one place now, so a future correction lands everywhere
 ## instead of in whichever guard someone happened to be looking at.

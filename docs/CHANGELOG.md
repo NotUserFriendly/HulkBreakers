@@ -1,5 +1,53 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-55 Pass B — cells stop carrying height; tiles carry it
+
+**The per-cell ground quad is deleted, and nothing replaces it.** `BoardView` drew one flat quad
+per cell at that cell's own height. That is the same defect taskblock-54 deleted the risers for,
+one primitive down, and it survived that pass only because it was the older of the two: over a
+floored cell the quad was a *second* thing co-planar with the real `Surface` part's top face,
+and over an unfloored cell it was ground you could see with nothing behind it at all.
+
+**A cell is a grid square and carries no elevation.** Height lives on the **tile** — the walkable
+`Part` — and `BoardView._build_tiles` now draws those parts as their real authored boxes, six
+faces each, at their own height and facing. An unfloored cell draws nothing, which is what
+`_build_empty_indicators` already marks.
+
+**The drawing and the hitbox come from one call.** `_build_tiles` reads
+`UnitGeometry.assembly_placements`, which is exactly what `RayCaster._consider_surface` marches.
+*Render is hitbox* stops being a property this file has to remember and becomes one it cannot
+break — there is no second formula left to drift. Pinned by reading the built mesh's AABB back
+and comparing it against that call directly, not against a re-derivation.
+
+**Grid lines went back to one flat plane.** taskblock-37 had made them per-cell to match the
+terraced quad; with the quad gone the reason went too, and the pass's own rule — a tile "is the
+only thing at that elevation" — forbids a line riding a tile's top face, which would be the same
+co-planar pairing again. A raised tile now hides the lines beneath it, and the drop at its edge is
+marked by the tile's own real sides: geometry a shot actually intersects.
+
+**Blocker and overlay-marker heights are unchanged, deliberately.** Both read `_height_for`, which
+resolves through `true_height_for_cell` to the placed walkable `Surface` — so both were already
+asking the *tile* where it is, not the cell. A blocker resting on a tile is a part on a part.
+
+**The build-log step `terrain` (counted in cells) became `tiles` (counted in walkable parts).** A
+per-cell count would report a number nothing in the scene corresponds to.
+
+**Reverted mid-pass: nothing.** The one thing that changed shape under review was naming — see
+the guard note below.
+
+**The `tile` vocabulary guard is retired** (`test_cell_vocabulary_guard.gd` deleted). It banned
+the word outright, so it failed the first code that used the word *as intended* — 73 hits across
+the three files this pass touched. taskblock-54 swept the word out of its wrong sense specifically
+so this block could give it its right one, which makes the ban a finished migration rather than a
+live rule. `void` and `HULK_` guards stay: those words are **retired**, not reserved, so a total
+ban remains exactly the right instrument. Recorded in `SUPERSEDED.md`.
+
+**`Surface` is not a tile — it is where a tile is.** Stated in `surface.gd` because the two are
+easy to run together: a **tile** is the walkable `Part` itself (`ship_floor`, with volume,
+material, sockets, hp); a **`Surface`** is the record of one placed at a cell (which part, what
+height, what facing); a **cell** is the grid square and has no height of its own. Not every
+`Surface` holds a tile — a ladder is placed the same way and is explicitly not walkable.
+
 ### taskblock-55 Pass A — one word boundary, one walk, three guards
 
 **`VocabularySweep` owns the boundary rule and the directory scan.** All three vocabulary guards
@@ -20,6 +68,11 @@ Fixed to name the real function; de-wording alone would have left a comment poin
 **Allowlists shrank, as the block predicted.** taskblock-40's guard now needs **none at all** —
 `avoid` and `devoid` are excluded by the boundary itself, each having a letter before the word.
 Only one entry survives in the `tile` guard and one domain constant in the prefix guard.
+
+> **Overwritten by taskblock-55 Pass B (above): there are two guards now, not three.** The `tile`
+> guard was retired one pass later, when the word went live and the ban failed the first correct
+> use of it. Everything else here still holds — the shared boundary, the shared walk, and the
+> `VocabularySweep` exemption all stayed.
 
 **`VocabularySweep` is exempt from every sweep it runs**, stated once rather than added to three
 allowlists — the same exemption each guard already had for its own file, extended to the

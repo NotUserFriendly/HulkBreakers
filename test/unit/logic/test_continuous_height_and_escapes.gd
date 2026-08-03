@@ -63,6 +63,42 @@ func test_a_0_3_high_part_is_standable_and_pathable() -> void:
 	)
 
 
+## **taskblock-55 Pass B: and it is struck by a ray aimed at it.** Standable and pathable were
+## taskblock-54's half of the guarantee; this is the other half, and the pass that could break it
+## is exactly this one — the per-cell ground quad that used to be drawn at a cell's height is
+## deleted, so a 0.3 tile is now the only thing at 0.3 in either the render or the march.
+##
+## Struck from **three directions**, because a slab can be missing a face rather than missing
+## outright: down onto its top, up into its underside, and horizontally into its edge. The last is
+## the one that matters most — it is the shot that used to pass through a riser, and the tile's
+## real 0.2 thickness is what stops it now.
+func test_a_0_3_high_tile_is_struck_by_a_ray_aimed_at_it() -> void:
+	var grid := Grid.new(4, 4)
+	_floor_at(grid, Vector2i(1, 1), 0.3)
+	var state := CombatState.new(grid, [])
+	var thickness: float = DataLibrary.get_part(&"ship_floor").volume[0].size.y
+
+	var from_above: RayHit = RayCaster.cast(state, Vector3(1.0, 2.0, 1.0), Vector3(0, -1, 0))
+	assert_not_null(from_above, "a round dropped onto it meets it")
+	if from_above != null:
+		assert_almost_eq(from_above.point.y, 0.3, 0.0001, "at the height it was placed, unrounded")
+
+	var from_below: RayHit = RayCaster.cast(state, Vector3(1.0, -2.0, 1.0), Vector3(0, 1, 0))
+	assert_not_null(from_below, "and a round fired up into its underside meets it too")
+	if from_below != null:
+		assert_almost_eq(
+			from_below.point.y, 0.3 - thickness, 0.0001, "on the underside, a real thickness below"
+		)
+
+	# Horizontally, at mid-thickness — the shot that used to sail through a riser.
+	var edge_on: RayHit = RayCaster.cast(
+		state, Vector3(-2.0, 0.3 - thickness * 0.5, 1.0), Vector3(1, 0, 0)
+	)
+	assert_not_null(edge_on, "a horizontal round into the tile's edge is stopped by it")
+	if edge_on != null:
+		assert_eq(edge_on.part.id, &"ship_floor", "and it is the tile that stopped it")
+
+
 ## **A spread of awkward heights all survive a round trip through placement.** Pinned as a set
 ## rather than one value, because a quantizer would round some of these to the same number and a
 ## single-value test could miss by landing on a grid point.
@@ -152,6 +188,49 @@ func test_the_miss_event_says_it_escaped() -> void:
 	if misses.is_empty():
 		return
 	assert_true(misses[0].data.get("escaped", false), "and the event says so in as many words")
+
+
+## **taskblock-55 Pass B: the sweep must not open new holes in a board that had none.**
+##
+## Deleting the per-cell ground quad is a *view* change, and the escape counter is a *logic*
+## measurement — so the honest expectation is that it does not move at all. It is worth a test
+## anyway rather than an assumption, because "the drawn ground and the hittable ground were the
+## same thing" is precisely the belief this pass proved false in the other direction: there were
+## two, and only one of them was ever hittable. If the deletion had taken the hittable one, this
+## is where it would show.
+##
+## A **fully floored flat board**, swept with rounds angled down across its whole width: every one
+## of them meets a tile, and nothing leaves. A single shot could pass by luck; the sweep is what
+## makes a missing floor visible.
+func test_a_fully_floored_flat_board_leaks_nothing() -> void:
+	var grid := Grid.new(10, 10)
+	for y: int in range(10):
+		for x: int in range(10):
+			_floor_at(grid, Vector2i(x, y), 0.0)
+
+	var escapes := 0
+	var shots := 0
+	for step: int in range(12):
+		# Aimed progressively further out and progressively further down — every one of these
+		# meets the deck somewhere between the shooter and the far edge.
+		var aim := Vector2(float(step) * 0.5, -0.2 - float(step) * 0.05)
+		escapes += _escapes_for(grid, aim)
+		shots += 1
+	gut.p("%d downward shots over a fully floored board: %d escaped" % [shots, escapes])
+	assert_eq(escapes, 0, "a board with a floor under every cell leaks nothing downward")
+
+
+## The counterpart, and the reason the test above is not vacuous: strip the floor out and the
+## same sweep does leave. Without this, "0 escapes" would also be the result of a counter that
+## had quietly stopped counting.
+func test_the_same_sweep_over_an_unfloored_board_does_leak() -> void:
+	var grid := Grid.new(10, 10)
+	var escapes := 0
+	for step: int in range(12):
+		var aim := Vector2(float(step) * 0.5, -0.2 - float(step) * 0.05)
+		escapes += _escapes_for(grid, aim)
+	gut.p("the same 12 shots over a board with no tiles at all: %d escaped" % escapes)
+	assert_gt(escapes, 0, "with nothing placed, the rounds leave -- the counter is live")
 
 
 ## `reset_diagnostics` covers it, so a suite run reports per-run totals rather than a number that
