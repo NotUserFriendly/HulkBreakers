@@ -320,6 +320,22 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
   headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
 
+### BR55.02 — Active — owner: `CC`
+**Floor tile geometry is wound inside out — backfaces are what the camera sees**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-04.
+- The tile parts render with **inverted winding order**: the outward faces are culled and the interior
+  faces are drawn, so a tile reads as transparent from above and textured from beneath. Backface
+  culling doing its job against geometry built the wrong way round, not a material or shader fault.
+- **Introduced with the tile parts themselves** (taskblock-55 Pass B), which is the only geometry
+  built in that pass — so the winding is in whatever emits a tile's box, not in the shared box
+  primitive every other part has used for fifty blocks without this.
+- **Check whether the normals disagree with the winding**, not just the winding. A box built with
+  reversed vertex order *and* correct normals lights properly while culling backwards, which looks like
+  a culling setting and is not one.
+- **Do not fix it by disabling backface culling.** That hides it, doubles the fragment cost of every
+  tile, and leaves the geometry wrong for anything that later reads a normal — the wall cutout shader
+  among them.
+
 ### BR55.01 — Active — owner: `CC`
 **Intermittent engine abort in `LoS.has_los` — an out-of-bounds cell reaches `Grid.get_opacity`**
 - **Source:** `CC`  ·  **CC session:** `e5393c3a-bd26-4668-8905-c50cf31e04cb`

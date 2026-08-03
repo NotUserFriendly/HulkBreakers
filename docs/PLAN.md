@@ -902,6 +902,37 @@ preview takes a seed so the same seed reproduces a section exactly.
   **Needs:** nothing; it resolves itself when thin walls are authored.
 
 
+### Seeing what you authored — three view gaps in the section workflow
+**Needs:** nothing. **Unblocks:** authoring sections without guessing; the section editor, which
+inherits all three.
+
+Three things that make an authored section hard to look at. None is a defect in what was built; each is
+a piece of the view that was never asked for.
+
+- **Floor tiles go back to green while there are no models** — a **dark forest green**. They share a
+  material with walls and units today, so a board reads as one undifferentiated mass. **A temporary
+  distinct colour is worth more than a consistent one** until real materials exist; same reasoning that
+  made cover a darker grey earlier. Revert it when tiles have their own look.
+- **Preview should frame what it just built.** Loading a section or a map leaves the camera wherever the
+  last bout left it, and a section is small — coming from a bout, you hunt for it. **Point the camera at
+  the new content's bounds on load.** `CameraRig` already solves framing for a set of bodies; this is the
+  same solve against a placed board's extent.
+- **Claim volumes need to be visible, and they are the whole point of authoring.** A translucent box per
+  claim, drawn only in an authoring or preview context and never in play:
+
+  | claim | colour |
+  |---|---|
+  | Exterior | red |
+  | Interior | **vibrant lime** green |
+  | Empty | blue |
+  | Entry | orange |
+
+  **A claim is invisible today**, so the only way to know a section declares one is to read its `.tres`.
+  That makes the vocabulary unusable by eye, which is the one thing an editor cannot work around.
+  **The two greens are deliberately far apart** — tiles are a dark forest green and Interior is a vibrant
+  lime, so a claim reads clearly against the floor it sits on rather than washing into it. Keep that
+  separation if either colour is ever retuned.
+
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.
