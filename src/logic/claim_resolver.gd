@@ -258,6 +258,91 @@ static func entry_for_door(placement: MapPlacement, door: Part) -> SectionClaim:
 	)
 
 
+## taskblock-55 Pass D: **a section's own vertical interval** — the lowest and highest world Y
+## anything it declares or places occupies, as `Vector2(low, high)`.
+##
+## **Intervals, not voxels.** taskblock-37 made height continuous on purpose and the collapse case
+## reaffirmed it: a voxel grid quantizes to its resolution, so 0.5 voxels cannot express a 0.3 step
+## and 0.1 voxels are twenty mostly-empty layers per cell. An interval expresses any height
+## exactly and costs one comparison.
+##
+## Claims count toward it as much as placements do, because a claim's box *is* its vertical
+## extent — that is the whole reason the whole-column question needed no separate answer.
+static func interval_of(section: SectionFile, origin: Vector2i = Vector2i.ZERO) -> Vector2:
+	var low := INF
+	var high := -INF
+	for placement: MapPlacement in section.placements:
+		var volume: AABB = placement_aabb(placement, origin)
+		if volume == AABB():
+			continue
+		low = minf(low, volume.position.y)
+		high = maxf(high, volume.end.y)
+	for claim: SectionClaim in section.claims:
+		if claim == null or claim.box == null:
+			continue
+		var volume: AABB = claim.aabb()
+		low = minf(low, volume.position.y)
+		high = maxf(high, volume.end.y)
+	if low == INF:
+		return Vector2.ZERO
+	return Vector2(low, high)
+
+
+## **Whether two sections may occupy the same cells**, given each one's interval. Empty when they
+## may; a reason **naming both intervals** when they may not.
+##
+## Stacking is exactly this one comparison — an observation room on top of a staircase is legal
+## because their intervals are disjoint, and a second tall room is refused because it needs space
+## the staircase already occupies.
+##
+## **Except where a `merge` volume says overlap is legal**, which is the shared-wall case. That
+## exception is not a special case bolted on: `merge` *means* identical content may co-occupy, and
+## the stacking check has to know it or **every adjacent pair of rooms is refused** — two rooms
+## sharing a wall overlap by exactly that wall.
+static func describe_interval_overlap(
+	a: SectionFile, a_lift: float, b: SectionFile, b_lift: float
+) -> Array[String]:
+	var problems: Array[String] = []
+	var a_interval: Vector2 = interval_of(a) + Vector2(a_lift, a_lift)
+	var b_interval: Vector2 = interval_of(b) + Vector2(b_lift, b_lift)
+	var shared_low: float = maxf(a_interval.x, b_interval.x)
+	var shared_high: float = minf(a_interval.y, b_interval.y)
+	if shared_high - shared_low <= 0.0001:
+		return problems
+
+	# The merge exception, asked of the overlapping band specifically: a merge volume anywhere in
+	# the shared span is what makes the shared span legal.
+	for section: SectionFile in [a, b]:
+		var lift: float = a_lift if section == a else b_lift
+		for claim: SectionClaim in section.claims:
+			if claim == null or claim.box == null or claim.kind != SectionClaim.KIND_MERGE:
+				continue
+			var volume: AABB = claim.aabb(Vector3(0.0, lift, 0.0))
+			if volume.position.y <= shared_high and volume.end.y >= shared_low:
+				return problems
+
+	(
+		problems
+		. append(
+			(
+				(
+					"'%s' occupies %.2f..%.2f and '%s' occupies %.2f..%.2f; the intervals overlap and no"
+					+ " merge volume permits it"
+				)
+				% [
+					a.section_name,
+					a_interval.x,
+					a_interval.y,
+					b.section_name,
+					b_interval.x,
+					b_interval.y,
+				]
+			)
+		)
+	)
+	return problems
+
+
 ## One placement's real world volume, in the combined board's own space.
 ##
 ## **Built from `UnitGeometry.assembly_placements`**, which is the same call `RayCaster` marches

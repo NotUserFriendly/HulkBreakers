@@ -220,6 +220,19 @@ static func can_join(a: SectionFile, side: StringName, b: SectionFile) -> Dictio
 		return {"ok": false, "reason": "'%s' is not open on its %s side" % [a.section_name, side]}
 	if b_edge == null or b_edge.kind != SectionEdge.KIND_OPEN:
 		return {"ok": false, "reason": "'%s' is not open on its %s side" % [b.section_name, facing]}
+	# taskblock-55 Pass D: **an entry at height 3 does not match an entry at height 0.** A door at
+	# ground level and a door at the top of a staircase are different joins, and every other field
+	# here would happily call them the same one — `openings` says where *along* a wall an opening
+	# is and nothing about how far up it is.
+	if absf(a_edge.opening_height - b_edge.opening_height) > 0.001:
+		return {
+			"ok": false,
+			"reason":
+			(
+				"opening heights differ: '%s' opens at %.2f, '%s' opens at %.2f"
+				% [a.section_name, a_edge.opening_height, b.section_name, b_edge.opening_height]
+			)
+		}
 	if a_edge.join_tag != b_edge.join_tag:
 		return {
 			"ok": false,
@@ -296,6 +309,13 @@ static func stitch(a: SectionFile, side: StringName, b: SectionFile) -> Dictiona
 	if not verdict.ok:
 		return {"error": verdict.reason}
 
+	# taskblock-55 Pass D: **a vertical join shares the cells and separates in Y.** Everything below
+	# is written in cell offsets, which is the right shape for the four horizontal sides and says
+	# nothing at all about a section stacked on another — so the vertical case is lifted out rather
+	# than encoded as a cell offset of zero that happens to mean something else.
+	if side == SectionEdge.SIDE_UP or side == SectionEdge.SIDE_DOWN:
+		return _stack(a, side, b)
+
 	var offset: Vector2i = offset_for(a, side)
 	# A negative offset means `b` sits above or left of `a`, so the combined board's origin moves
 	# to `b` and `a` shifts instead. Handling both directions here keeps every caller from having
@@ -352,6 +372,53 @@ static func _wall_filling(claim: SectionClaim, origin: Vector2i) -> MapPlacement
 		int(roundf(volume.get_center().z / UnitGeometry.CELL_SIZE))
 	)
 	return MapPlacement.new(cell + origin, MapPlacement.KIND_BLOCKER, &"wall", volume.position.y)
+
+
+## taskblock-55 Pass D: `a` with `b` stacked above or below it, as one board.
+##
+## **The two share every cell and are separated in Y**, which is what makes stacking a different
+## operation from the four horizontal joins rather than a fifth direction of the same one. There
+## is no cell offset; there is a **lift**, and the interval check is what decides whether the lift
+## is enough.
+##
+## `b` is raised to sit on top of `a`'s own interval when joining through `a`'s `up` edge, and
+## dropped below it for `down`. That is the only arithmetic here: the format already carried the
+## vertical extents, so nothing new had to be declared to make sections stack.
+static func _stack(a: SectionFile, side: StringName, b: SectionFile) -> Dictionary:
+	var a_interval: Vector2 = ClaimResolver.interval_of(a)
+	var b_interval: Vector2 = ClaimResolver.interval_of(b)
+	var lift: float = (
+		a_interval.y - b_interval.x if side == SectionEdge.SIDE_UP else a_interval.x - b_interval.y
+	)
+
+	var problems: Array[String] = ClaimResolver.describe_interval_overlap(a, 0.0, b, lift)
+	problems.append_array(ClaimResolver.describe_conflicts(a, Vector2i.ZERO, b, Vector2i.ZERO))
+	if not problems.is_empty():
+		return {"error": "; ".join(problems)}
+
+	var map := MapFile.new()
+	map.map_name = (
+		"%s over %s"
+		% ([b, a] if side == SectionEdge.SIDE_UP else [a, b]).map(
+			func(section: SectionFile) -> String: return section.section_name
+		)
+	)
+	map.width = maxi(a.width, b.width)
+	map.rows = maxi(a.rows, b.rows)
+	for placement: MapPlacement in a.placements:
+		map.placements.append(placement)
+	for placement: MapPlacement in b.placements:
+		map.placements.append(_lifted(placement, lift))
+	return MapSerializer.to_grid(map)
+
+
+## A copy of `placement` moved in Y. A copy rather than a mutation, for the same reason `_shifted`
+## makes one: the sections are loaded resources and stacking one must not edit the file it came
+## from.
+static func _lifted(placement: MapPlacement, lift: float) -> MapPlacement:
+	return MapPlacement.new(
+		placement.cell, placement.kind, placement.part_id, placement.height + lift, placement.facing
+	)
 
 
 ## A copy of `placement` moved by `offset`. A copy rather than a mutation, because the sections

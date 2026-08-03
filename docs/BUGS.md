@@ -320,6 +320,43 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
   headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
 
+### BR55.01 — Active — owner: `CC`
+**Intermittent engine abort in `LoS.has_los` — an out-of-bounds cell reaches `Grid.get_opacity`**
+- **Source:** `CC`  ·  **CC session:** `e5393c3a-bd26-4668-8905-c50cf31e04cb`
+- **Seen once in a full-suite run during taskblock-55 Pass D**, and **not reproducible**: the same
+  file passed 12/12 in isolation immediately afterward, and the next full run was green at 2781
+  tests. Recorded because a hard abort is worth a ledger entry even at one sighting — nothing about
+  it was investigated away.
+- **Not caused by this block's changes, as far as the trace goes.** The crash is on the AI planning
+  path and taskblock-55 touched only the section format and the board view. Recorded rather than
+  attributed.
+- **The trace, most recent first:**
+  ```
+  [0] has_los            (src/logic/los.gd:18)
+  [1] _has_direct_sight  (src/logic/world_view.gd:217)
+  [2] units_visible_to   (src/logic/world_view.gd:118)
+  [3] is_covered_from    (src/logic/cover.gd:41)
+  [4] _is_covered        (src/logic/ai/utility_context.gd:688)
+  [5] predicates_for     (src/logic/ai/utility_context.gd:555)
+  [6] _score_all         (src/logic/ai/utility_planner.gd:262)
+  [7] _apply_lookahead   (src/logic/ai/utility_planner.gd:184)
+  [8] plan_turn          (src/logic/ai/utility_planner.gd:96)
+      test_batch_objective.gd::test_a_follower_decides_differently_with_and_without_an_objective
+  ```
+- **The leading hypothesis, from reading the line.** `los.gd:18` is
+  `grid.get_opacity(cells[i])` inside the `Grid.line(a, b)` walk, and `Grid.get_opacity` indexes a
+  flat array as `cell.y * width + cell.x` with **no bounds check**. An endpoint outside the grid —
+  or a cell the supercover line produces outside it — indexes past the array and aborts. `LoS`
+  never calls `in_bounds`, and neither does `Grid.get_opacity`.
+- **Why it would be intermittent.** The suite deliberately samples from the clock in
+  `test_full_mission.gd`, so the boards and unit positions the AI plans against differ run to run
+  (the suite's own note records a measured 19% spread in turn count across three runs). A rare
+  position is exactly the shape of thing that would surface at one run in several.
+- **What would settle it:** a bounds check in `LoS.has_los`, or in `Grid.get_opacity` itself, would
+  turn the abort into a diagnosable value. Neither is in taskblock-55's scope, and guessing at the
+  fix without a reproduction would be a change nobody could verify.
+
+
 ### BR54.02 — Active — owner: `SUPERVISOR`
 **A destroyed part vanishes from the shell before the tracer that destroyed it draws**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-03.
