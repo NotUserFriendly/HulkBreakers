@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="SectionFile" format=3]
+
+[ext_resource type="Script" path="res://src/data/section_claim.gd" id="1_bar3a"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_mme4p"]
+[ext_resource type="Script" path="res://src/data/section_edge.gd" id="3_8affl"]
+[ext_resource type="Script" path="res://src/data/map_placement.gd" id="4_pte1i"]
+[ext_resource type="Script" path="res://src/data/section_file.gd" id="5_cat4a"]
+[ext_resource type="Script" path="res://src/data/section_spawn.gd" id="6_13o4m"]
+
+[sub_resource type="Resource" id="Resource_t7mox"]
+script = ExtResource("2_mme4p")
+center = Vector3(1.5, 0.6, 0)
+size = Vector3(0.4, 1.2, 1)
+
+[sub_resource type="Resource" id="Resource_55k2b"]
+script = ExtResource("1_bar3a")
+kind = &"entry"
+box = SubResource("Resource_t7mox")
+
+[sub_resource type="Resource" id="Resource_jmt7x"]
+script = ExtResource("3_8affl")
+
+[sub_resource type="Resource" id="Resource_71jct"]
+script = ExtResource("3_8affl")
+side = &"south"
+
+[sub_resource type="Resource" id="Resource_anv4s"]
+script = ExtResource("3_8affl")
+side = &"east"
+kind = &"open"
+join_tag = &"corridor_4w"
+
+[sub_resource type="Resource" id="Resource_wytfq"]
+script = ExtResource("3_8affl")
+side = &"west"
+
+[sub_resource type="Resource" id="Resource_705t2"]
+script = ExtResource("4_pte1i")
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_7afg2"]
+script = ExtResource("4_pte1i")
+cell = Vector2i(1, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_w8fgu"]
+script = ExtResource("4_pte1i")
+cell = Vector2i(0, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_1cxnq"]
+script = ExtResource("4_pte1i")
+cell = Vector2i(1, 1)
+part_id = &"ship_floor"
+
+[resource]
+script = ExtResource("5_cat4a")
+section_name = "Service Crawl"
+width = 2
+rows = 2
+placements = Array[ExtResource("4_pte1i")]([SubResource("Resource_705t2"), SubResource("Resource_7afg2"), SubResource("Resource_w8fgu"), SubResource("Resource_1cxnq")])
+edges = Array[ExtResource("3_8affl")]([SubResource("Resource_jmt7x"), SubResource("Resource_71jct"), SubResource("Resource_anv4s"), SubResource("Resource_wytfq")])
+claims = Array[ExtResource("1_bar3a")]([SubResource("Resource_55k2b")])
+is_room = false

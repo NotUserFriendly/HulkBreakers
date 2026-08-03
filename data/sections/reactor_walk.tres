@@ -1,0 +1,157 @@
+[gd_resource type="Resource" script_class="SectionFile" format=3]
+
+[ext_resource type="Script" path="res://src/data/section_claim.gd" id="1_8he7t"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_micga"]
+[ext_resource type="Script" path="res://src/data/section_edge.gd" id="3_ehlfu"]
+[ext_resource type="Script" path="res://src/data/map_placement.gd" id="4_f65qr"]
+[ext_resource type="Script" path="res://src/data/section_file.gd" id="5_nv1dk"]
+[ext_resource type="Script" path="res://src/data/section_spawn.gd" id="6_0c7c4"]
+
+[sub_resource type="Resource" id="Resource_8o1fq"]
+script = ExtResource("2_micga")
+center = Vector3(0, 1.2, 1.5)
+size = Vector3(1, 2.4, 4)
+
+[sub_resource type="Resource" id="Resource_rceew"]
+script = ExtResource("1_8he7t")
+kind = &"merge"
+box = SubResource("Resource_8o1fq")
+
+[sub_resource type="Resource" id="Resource_hi55c"]
+script = ExtResource("2_micga")
+center = Vector3(1.5, 1.2, 1.5)
+size = Vector3(4, 2.4, 4)
+
+[sub_resource type="Resource" id="Resource_0rpo8"]
+script = ExtResource("1_8he7t")
+kind = &"interior"
+box = SubResource("Resource_hi55c")
+
+[sub_resource type="Resource" id="Resource_rvc4i"]
+script = ExtResource("3_ehlfu")
+
+[sub_resource type="Resource" id="Resource_22vhs"]
+script = ExtResource("3_ehlfu")
+side = &"south"
+
+[sub_resource type="Resource" id="Resource_3et3t"]
+script = ExtResource("3_ehlfu")
+side = &"east"
+
+[sub_resource type="Resource" id="Resource_6vlrw"]
+script = ExtResource("3_ehlfu")
+side = &"west"
+kind = &"open"
+join_tag = &"corridor_4w"
+
+[sub_resource type="Resource" id="Resource_1cbok"]
+script = ExtResource("4_f65qr")
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_t40wy"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(1, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_m7r87"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(2, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_gworq"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(3, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_gy8r6"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(0, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_1th4b"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(1, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_wed04"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(2, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_ts13i"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(3, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_4frkq"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(0, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_id1vi"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(1, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_mjjvb"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(2, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_1ylu4"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(3, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_usa55"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(0, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_c1lvw"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(1, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_3tab3"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(2, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_30hh3"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(3, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_b44rc"]
+script = ExtResource("4_f65qr")
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_ta51l"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(0, 1)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_365u4"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(0, 2)
+kind = &"blocker"
+part_id = &"wall"
+
+[sub_resource type="Resource" id="Resource_j268d"]
+script = ExtResource("4_f65qr")
+cell = Vector2i(0, 3)
+kind = &"blocker"
+part_id = &"wall"
+
+[resource]
+script = ExtResource("5_nv1dk")
+section_name = "Reactor Walk"
+width = 4
+rows = 4
+placements = Array[ExtResource("4_f65qr")]([SubResource("Resource_1cbok"), SubResource("Resource_t40wy"), SubResource("Resource_m7r87"), SubResource("Resource_gworq"), SubResource("Resource_gy8r6"), SubResource("Resource_1th4b"), SubResource("Resource_wed04"), SubResource("Resource_ts13i"), SubResource("Resource_4frkq"), SubResource("Resource_id1vi"), SubResource("Resource_mjjvb"), SubResource("Resource_1ylu4"), SubResource("Resource_usa55"), SubResource("Resource_c1lvw"), SubResource("Resource_3tab3"), SubResource("Resource_30hh3"), SubResource("Resource_b44rc"), SubResource("Resource_ta51l"), SubResource("Resource_365u4"), SubResource("Resource_j268d")])
+edges = Array[ExtResource("3_ehlfu")]([SubResource("Resource_rvc4i"), SubResource("Resource_22vhs"), SubResource("Resource_3et3t"), SubResource("Resource_6vlrw")])
+claims = Array[ExtResource("1_8he7t")]([SubResource("Resource_rceew"), SubResource("Resource_0rpo8")])
+encounter_types = Array[StringName]([&"patrol"])

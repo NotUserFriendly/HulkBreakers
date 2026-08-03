@@ -877,7 +877,7 @@ and joining* authored fragments rather than carving rooms and corridors procedur
   asymmetric flood is the check and it does not care how the map was produced.
 - **Do not invest further in the current generator.** Fix invariants; do not extend it.
 
-### The section authoring vocabulary
+### The section authoring vocabulary — landed, taskblock-55 Passes C and E
 **Needs:** *The section format* (landed, taskblock-54). **Unblocks:** the section editor, and a
 generator that can assemble a board rather than only validate a seam.
 

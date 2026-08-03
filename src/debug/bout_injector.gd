@@ -935,8 +935,17 @@ func load_map(map_path: String) -> bool:
 ## that is the whole difference between a section and a map — so `describe_problems` output rides
 ## along in the event rather than blocking the preview. Refusing to show a fragment because it is
 ## a fragment would make the preview useless for exactly the case it exists to serve.
-func preview_section(section_path: String) -> bool:
-	if not _guard(&"preview_section", {"path": section_path}):
+## taskblock-55 Pass E: `preview_seed` rolls the section's declarations. **Reloading with a
+## different seed produces a different example of the same section; reloading with the same seed
+## reproduces it exactly** — which makes the preview the determinism test as well as the authoring
+## tool. A drift in the roll order stops being something only a test could notice.
+##
+## The default of 0 is a real seed and rolls, rather than a sentinel meaning "do not roll": an
+## author opening a section wants to see what it produces, and a preview that showed only the
+## skeleton unless you knew to ask would hide the whole vocabulary. `SectionSerializer.to_grid`
+## still takes a null generator for callers that genuinely want the skeleton.
+func preview_section(section_path: String, preview_seed: int = 0) -> bool:
+	if not _guard(&"preview_section", {"path": section_path, "seed": preview_seed}):
 		return false
 	var resolved: String = section_path
 	if not resolved.begins_with("res://"):
@@ -947,7 +956,9 @@ func preview_section(section_path: String) -> bool:
 	var section := resource as SectionFile
 	if section == null:
 		return _refuse(&"preview_section", &"path_is_not_a_section_file", {"path": resolved})
-	var result: Dictionary = SectionSerializer.to_grid(section)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = preview_seed
+	var result: Dictionary = SectionSerializer.to_grid(section, rng)
 	if not result.has("grid"):
 		return _refuse(
 			&"preview_section", &"malformed_section", {"path": resolved, "why": result["error"]}
@@ -964,6 +975,9 @@ func preview_section(section_path: String) -> bool:
 			"name": section.section_name,
 			"width": grid.width,
 			"rows": grid.rows,
+			# Logged so a preview can be reproduced from its own record — an example nobody can
+			# get back to is an example nobody can report a defect against.
+			"seed": preview_seed,
 			"problems": problems,
 			"stranded": stranded,
 		},

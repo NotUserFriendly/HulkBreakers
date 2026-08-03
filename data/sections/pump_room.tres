@@ -1,0 +1,172 @@
+[gd_resource type="Resource" script_class="SectionFile" format=3]
+
+[ext_resource type="Script" path="res://src/data/section_claim.gd" id="1_creea"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_7r6kl"]
+[ext_resource type="Script" path="res://src/data/section_edge.gd" id="3_3nik0"]
+[ext_resource type="Script" path="res://src/data/map_placement.gd" id="4_pxxru"]
+[ext_resource type="Script" path="res://src/data/section_file.gd" id="5_ubc0f"]
+[ext_resource type="Script" path="res://src/data/section_spawn.gd" id="6_lwwtl"]
+
+[sub_resource type="Resource" id="Resource_gu1gi"]
+script = ExtResource("2_7r6kl")
+center = Vector3(1.5, 1.2, 1.5)
+size = Vector3(4, 2.4, 4)
+
+[sub_resource type="Resource" id="Resource_k84om"]
+script = ExtResource("1_creea")
+kind = &"interior"
+box = SubResource("Resource_gu1gi")
+
+[sub_resource type="Resource" id="Resource_36huq"]
+script = ExtResource("3_3nik0")
+
+[sub_resource type="Resource" id="Resource_j0qmu"]
+script = ExtResource("3_3nik0")
+side = &"south"
+
+[sub_resource type="Resource" id="Resource_ko3vd"]
+script = ExtResource("3_3nik0")
+side = &"east"
+kind = &"open"
+join_tag = &"corridor_4w"
+
+[sub_resource type="Resource" id="Resource_lwno1"]
+script = ExtResource("3_3nik0")
+side = &"west"
+
+[sub_resource type="Resource" id="Resource_xg5l8"]
+script = ExtResource("4_pxxru")
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_ni8u7"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(1, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_rtbfd"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(2, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_lsrwb"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(3, 0)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_56eht"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(0, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_tocma"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(1, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_soy02"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(2, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_wvskv"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(3, 1)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_22iei"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(0, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_xr7jn"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(1, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_nfabs"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(2, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_1uchq"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(3, 2)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_t0tcx"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(0, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_lbayw"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(1, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_1yna4"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(2, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_yxm4m"]
+script = ExtResource("4_pxxru")
+cell = Vector2i(3, 3)
+part_id = &"ship_floor"
+
+[sub_resource type="Resource" id="Resource_lfqmc"]
+script = ExtResource("6_lwwtl")
+tag = &"barrel_pallet"
+chance = 0.8
+
+[sub_resource type="Resource" id="Resource_8dpii"]
+script = ExtResource("6_lwwtl")
+cell = Vector2i(3, 0)
+tag = &"crate"
+chance = 0.8
+
+[sub_resource type="Resource" id="Resource_5f7m2"]
+script = ExtResource("6_lwwtl")
+cell = Vector2i(0, 3)
+tag = &"scrap_pile"
+chance = 0.8
+
+[sub_resource type="Resource" id="Resource_xcvmp"]
+script = ExtResource("6_lwwtl")
+cell = Vector2i(3, 3)
+tag = &"metal_scraps"
+chance = 0.8
+
+[sub_resource type="Resource" id="Resource_wwlou"]
+script = ExtResource("6_lwwtl")
+cell = Vector2i(1, 1)
+kind = &"spawner"
+tag = &"guard"
+chance = 0.6
+
+[sub_resource type="Resource" id="Resource_46h52"]
+script = ExtResource("6_lwwtl")
+cell = Vector2i(2, 1)
+kind = &"spawner"
+tag = &"guard"
+chance = 0.6
+
+[sub_resource type="Resource" id="Resource_oeyxc"]
+script = ExtResource("6_lwwtl")
+cell = Vector2i(1, 2)
+kind = &"spawner"
+tag = &"guard"
+chance = 0.6
+
+[resource]
+script = ExtResource("5_ubc0f")
+section_name = "Pump Room"
+width = 4
+rows = 4
+placements = Array[ExtResource("4_pxxru")]([SubResource("Resource_xg5l8"), SubResource("Resource_ni8u7"), SubResource("Resource_rtbfd"), SubResource("Resource_lsrwb"), SubResource("Resource_56eht"), SubResource("Resource_tocma"), SubResource("Resource_soy02"), SubResource("Resource_wvskv"), SubResource("Resource_22iei"), SubResource("Resource_xr7jn"), SubResource("Resource_nfabs"), SubResource("Resource_1uchq"), SubResource("Resource_t0tcx"), SubResource("Resource_lbayw"), SubResource("Resource_1yna4"), SubResource("Resource_yxm4m")])
+edges = Array[ExtResource("3_3nik0")]([SubResource("Resource_36huq"), SubResource("Resource_j0qmu"), SubResource("Resource_ko3vd"), SubResource("Resource_lwno1")])
+claims = Array[ExtResource("1_creea")]([SubResource("Resource_k84om")])
+spawns = Array[ExtResource("6_lwwtl")]([SubResource("Resource_lfqmc"), SubResource("Resource_8dpii"), SubResource("Resource_5f7m2"), SubResource("Resource_xcvmp"), SubResource("Resource_wwlou"), SubResource("Resource_46h52"), SubResource("Resource_oeyxc")])
+maximum_clutter = 2
+banned_clutter = Array[StringName]([&"goo_barrel"])
+minimum_garrison = 3
+encounter_types = Array[StringName]([&"patrol", &"maintenance_crew"])

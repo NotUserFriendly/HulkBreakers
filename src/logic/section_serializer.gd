@@ -15,15 +15,51 @@ extends RefCounted
 ## **Every "does not describe a board" rejection is `MapSerializer`'s**, unchanged: unknown part
 ## id, out-of-bounds cell, non-positive dimensions, two blockers on one cell. A section adds
 ## edge rules on top and takes none away.
-static func to_grid(section: SectionFile) -> Dictionary:
+## taskblock-55 Pass E: **`rng` rolls the declarations.** Null leaves them unrolled, which is
+## every caller that predates this and every caller that wants the authored skeleton alone.
+##
+## Passing a seeded generator produces **one example** of the section: clutter and garrison rolled
+## once, capped, filtered, and turned into ordinary placements. Reloading with the same seed
+## reproduces it exactly and reloading with a different one produces a different example of the
+## same section — **which makes the preview the determinism test as well as the authoring tool.**
+## A drift in the roll order stops being something only a test could notice and becomes something
+## the author sees.
+static func to_grid(section: SectionFile, rng: RandomNumberGenerator = null) -> Dictionary:
 	if section == null:
 		return {"error": "no section resource"}
 	var map := MapFile.new()
 	map.map_name = section.section_name
 	map.width = section.width
 	map.rows = section.rows
-	map.placements = section.placements
+	map.placements = section.placements.duplicate()
+	map.placements.append_array(rolled_placements(section, rng))
 	return MapSerializer.to_grid(map)
+
+
+## The placements one seeded roll of `section`'s declarations produces. Empty for a null `rng`.
+##
+## **Only clutter reaches the board here.** A rolled garrison names cells a unit *may start at*,
+## and placing units is a bout's business rather than a board's — `MapFile` deliberately carries
+## no runtime state. The roll is still performed, so the draw sequence is identical whether or not
+## anything consumes the garrison; making it conditional would mean a section's clutter changed
+## depending on who asked.
+static func rolled_placements(
+	section: SectionFile, rng: RandomNumberGenerator
+) -> Array[MapPlacement]:
+	var placements: Array[MapPlacement] = []
+	if section == null or rng == null:
+		return placements
+	var rolled: Dictionary = SectionRoller.roll(section, rng)
+	for item: Dictionary in rolled["clutter"]:
+		var part_id: StringName = SectionRoller.part_for_tag(item["tag"])
+		# A tag no part answers to is content that does not exist yet. Skipped rather than
+		# refused: the declaration is legitimate and the library will catch up with it.
+		if part_id == &"":
+			continue
+		placements.append(
+			MapPlacement.new(item["cell"], MapPlacement.KIND_FIELD_ITEM, part_id, 0.0)
+		)
+	return placements
 
 
 ## **Authoring warnings, never load failures** — the same posture `MapSerializer` takes, and the

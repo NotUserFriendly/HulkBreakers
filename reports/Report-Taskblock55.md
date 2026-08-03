@@ -1,58 +1,97 @@
 # Taskblock 55 Report — Only parts carry height, and sections learn to declare
 
-**Pass A landed and is green. Passes B–E are not started, and that was a deliberate hand-off**
-rather than a stall — see *Open questions*. Suite green with Pass A in.
+All five passes landed in order and the suite is green at **2795 tests**. Pass A came from a prior
+session; B–E landed in this one, each committed green.
 
 ## Decisions made without asking
 
-- **The shared helper owns the directory walk as well as the boundary.** The pass asked for "one
-  shared boundary helper"; all three guards had also grown their own copy of the same recursive
-  scan, which is the same drift risk one level down. `VocabularySweep` owns both, and each guard
-  keeps only its own **policy** — which allowlist applies, whether `-> void` is exempt, whether a
-  hit is checked per-occurrence. Those genuinely differ, and forcing them into the shared class
-  would have been a worse coupling than the duplication it replaced.
-- **`VocabularySweep` is exempt from every sweep it runs**, stated once in the class rather than
-  added to three allowlists. Each guard already exempts its own `SELF_PATH` for the same reason —
-  explaining a rule means naming the word it forbids — and this file explains three at once. It
-  is a permission for *a file that is part of the mechanism*, not for a word; conflating those is
-  how an allowlist grows entries nobody can justify later.
-- **The `HULK_` guard's own scanner was deleted rather than left beside the shared one.** Once the
-  shared walk replaced it, `_scan_dir`/`_scan_file` were dead code that still looked authoritative.
-- **The dangling reference was fixed, not just de-worded.** `grid_fixture.gd` named
-  `MapGen._finalize_walls_and_void`, which is both retired vocabulary *and* a function that no
-  longer exists — it is `_finalize_walls_and_empty`. Renaming the comment to match the real
-  function was the actual fix; removing the word alone would have left a comment pointing at
-  nothing.
+- **The `tile` vocabulary guard was retired, not weakened.** It banned the word outright, so the
+  first code that used it *as intended* failed 73 times across three files. The alternatives were
+  a path-scoped exemption (which would have exempted `board_view.gd` — the file with 21 of the
+  original 288 misuses, the highest-risk one) or an allowlist entry for `tile` itself (which is
+  the guard switched off). Neither is a guard. The distinction I settled on is that **a total ban
+  is the right instrument for a *retired* word and the wrong one for a *reserved* one**: `void`
+  and `HULK_` must never appear and keep their guards; `tile` was swept out of its wrong sense in
+  tb54 specifically so this block could give it its right one, which makes that ban a finished
+  migration. **This was raised with the supervisor before acting** and confirmed — recorded here
+  because the reasoning, not just the outcome, is what a later reader will need.
+
+- **Grid lines went back to one flat plane rather than following the tile.** The pass says the
+  grid may be "one flat plane, or nothing" and that a tile "is the only thing at that elevation."
+  Those two together rule out a border riding a tile's top face — it would be the same co-planar
+  pairing the ground quad was deleted for. The alternative (lines at tile height) is more legible
+  on a stepped board and I passed on it for that reason. A raised tile now hides the lines beneath
+  it, and its edge is marked by its own real sides instead.
+
+- **`Surface` was documented as *not* a tile rather than renamed.** A tile is the walkable `Part`;
+  a `Surface` is the record of one placed at a cell. Renaming `Surface` to `Tile` would have been
+  a ~30-file mechanical change well outside Pass B, and would have been wrong besides — not every
+  `Surface` holds a tile (a ladder is placed identically and is explicitly not walkable).
+
+- **A claim is a `Resource` carrying a `Box`, never a `Part` subclass.** Subclassing would have
+  inherited hp, material, sockets, `attaches_to` and destructibility — every one of which a claim
+  must not have — and each would then need suppressing somewhere. That is the kind of exclusion
+  list nobody can justify two blocks later.
+
+- **Vertical joins were lifted out of `stitch` into their own path** rather than encoded as a cell
+  offset of `(0,0)`. The horizontal path is written in cell offsets, which say nothing about a
+  stacked section; a zero offset that quietly meant "and also separated in Y" reads fine and is
+  wrong.
+
+- **Scope taken on: `BR55.01` was recorded rather than fixed.** An intermittent engine abort in
+  `LoS.has_los`, seen once in a full run and not reproducible. `Grid.get_opacity` indexes a flat
+  array with no bounds check and `LoS` never calls `in_bounds`. Guessing at a fix without a
+  reproduction would be a change nobody could verify, and it is on the AI path rather than this
+  block's.
 
 ## Tests that failed, then were corrected
 
-1. **The shared helper failed two of the three guards it serves.** Its doc comment necessarily
-   names all three retired words, and two of those guards scan it. Fixed by the exemption above
-   rather than by rewording, because naming all three in one place is precisely this file's job.
-2. **Then the guards failed *each other*.** My new comments in the `void` and `HULK_` guards
-   referred to the others by their reserved words. Reworded to "the other two vocabulary guards" —
-   the shared helper is the one place allowed to spell them. **This is the second block running in
-   which vocabulary guards have caught each other**, which is a good sign the rules are real and a
-   standing hazard when writing about them.
-3. **`gdlint` gates the build and rejected two comment lines over 100 characters** — introduced by
-   the rewording above. Worth noting only because the failure arrives as a build failure rather
-   than a test failure, and the suite output shows nothing else.
+**Ten failing before correction, across four episodes.**
+
+1. **Three stacking assertions assumed a deck sits at the ceiling height. It sits 0.2 above it.**
+   `ship_floor` is a 0.2-thick slab hung *below* the height it is placed at, so a deck resting its
+   underside on a 3.0 ceiling has its walkable top at **3.2**. The resolver was right and my
+   assertions were wrong. This is the most useful failure in the block: it is also the clearest
+   argument for the interval model, since a quantized grid at any usable resolution could not
+   express a 0.2 deck, let alone tell "resting on the ceiling" from "overlapping the room below."
+
+2. **Four merge tests placed the two sections flush, so their walls never overlapped.** Flush
+   placement puts two walls in *adjacent* cells — touching face to face, which is the doubled-wall
+   defect the merge verb exists to prevent, not the merge case. Sharing a wall means the sections
+   overlap by that column. Fixture geometry was wrong, not the resolver.
+
+3. **Three Pass E tests passed while proving nothing, and only showed it in their own printed
+   output.** The clutter cap was never reached (the fixture tagged clutter `barrel`, which no part
+   answers to, so every one was silently skipped); an assembly "reproduced" an empty board twice;
+   and a ban test banned a tag the section did not offer. All three now assert the positive case
+   first — cap reached, assembly non-empty, banned tag genuinely offered.
+
+4. **Two vocabulary guards caught my own new comments** — the third block running in which this has
+   happened. `void` is retired and I had written "every cell is void" (the taskblock's own phrasing)
+   in three files; `empty`/`unfloored` is the live word.
 
 ## Open questions
 
-- **Passes B–E are unstarted, by agreement.** The judgement was that this session did not have the
-  context left to do Pass C — the section authoring vocabulary — at the standard the format
-  deserves. It is the largest pass in the block, it is a *format* decision that D, E, the editor
-  and the generator all build on, and the taskblock itself flags that `SectionSerializer`'s
-  delegation to `MapSerializer` has to become partial there. Getting that shape wrong is expensive
-  in a way that Pass A's mechanical sweep is not.
-- **Pass A found less than expected, and that is itself a result.** The corrected boundary caught
-  **one** line for the retired absence word and **zero** for the `HULK_` prefix. The `HULK_` guard
-  was never vulnerable — a prefix pattern with no lookbehind matches *more*, not less — so the
-  taskblock's premise that "both earlier sweeps used the same pattern" holds for one of the two.
-  The sweep still earns its place: the one hit was a dangling function reference, and all three
-  guards now share a boundary that cannot drift.
-- **The allowlists did shrink, as predicted.** The retired-absence guard needs **no** allowlist at
-  all now — `avoid` and `devoid` are excluded by the boundary itself, because each has a letter
-  before the word. Only the `tile` guard keeps one entry (`tileable`), and the `HULK_` guard keeps
-  its one domain constant.
+- **The literal "0.2 merges to 0.2, not 0.4" case cannot be exercised with shipped content.** The
+  shipped `wall` is a full-cell **1.0 x 2.4 x 1.0** box, not a thin slab, so there is no 0.2-thick
+  wall to merge. The test asserts the *invariant* instead — merged thickness equals one part's own
+  authored thickness, read from the part — which holds at any thickness and does not bake in a
+  number the content does not have. If walls are meant to become thin slabs, that is content work
+  and the assertion already covers it; if the 0.2 in the spec was illustrative, nothing is owed.
+
+- **`is_room` grouping is order-based, not adjacency-based.** A section declaring `is_room` starts
+  a room; one that does not joins the room already open. With two sections there is only one
+  possible adjacency, so a real adjacency graph would be inventing the generator's job — but this
+  will need replacing when the generator lands, and it is the one place in the vocabulary where the
+  implementation is narrower than the concept.
+
+- **`SectionRoller.part_for_tag` is a flagged hook, not a design.** A clutter tag names a *kind* of
+  thing and choosing which part a kind resolves to is a content library's job. There is no content
+  library, so it resolves a tag to a part of the same id and to nothing otherwise — deliberately
+  the dullest possible rule, so it does not quietly become where content selection lives.
+
+- **The suite's `escaped`/`turns`/`floods` counters are not comparable run to run.** I chased an
+  apparent `escaped 190 → 181` regression before finding that `test_full_mission.gd` seeds from the
+  clock deliberately; three full runs gave 190, 181 and 183 on effectively identical code. **The
+  number that informed my initial concern was noise, and I am recording that plainly** — anyone
+  comparing these totals across runs is measuring the sampler.

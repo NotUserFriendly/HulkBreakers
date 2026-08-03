@@ -1,5 +1,45 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-55 Pass E — demo sections, and a preview that rolls
+
+**Eleven named sections in `data/sections/`**, authored by `tools/author_taskblock55_sections.gd`
+and named for **what each one is for**: `pump_room` (clutter, and a garrison that can fail),
+`reactor_walk` (the merge partner), `cutting_yard` (an `Empty` claim over a neighbour's floor),
+`hull_breach_lip` (the Interior/Exterior conflict), `coolant_stack_lower`/`_upper` (the stacked
+pair), `service_crawl` (an entry connecting to nothing), `grand_hold_north`/`_south` (one room in
+two sections — the south half declares `is_room = false`), and `blast_door_narrow`/`_wide` (a small
+door with an expanded entry claim, and the larger door that overwrites it).
+
+taskblock-54's `east_hall` and `west_hall` are identical and their names say nothing — fine as
+format fixtures, useless as vocabulary fixtures. These are read far more often than they are run.
+
+**The preview takes a seed and rolls the declarations**, so reloading with the same seed
+reproduces a section exactly and a different seed produces a different example of the same
+section. **That makes the preview the determinism test as well as the authoring tool** — a drift
+in roll order stops being something only a test could catch. `preview_section` gained a seed
+parameter, the debug verb gained the field, and the seed is logged so a preview can be reproduced
+from its own record.
+
+**A null generator still rolls nothing**, which is every caller predating this pass and anyone who
+wants the authored skeleton rather than one example of it.
+
+**Three tests that passed while proving nothing, and were rewritten:**
+- **The clutter cap was never reached.** The fixture tagged its clutter `barrel`, which no part
+  answers to, so `part_for_tag` skipped every one and the fullest preview across forty seeds held
+  one item against a cap of two. `assert_lte(most, cap)` passed on a section producing almost
+  nothing. Tags now name real parts, and the test asserts the cap is **reached** as well as not
+  exceeded.
+- **An assembly "reproduced" an empty board twice.** Two empty results match perfectly. It now
+  asserts non-empty before asserting reproducible.
+- **A ban test banned a tag nothing offered.** Satisfied by doing nothing. It now bans
+  `barrel_pallet`, which the section genuinely offers.
+
+**Found by that rewrite, and worth stating because it surprises: the clutter cap is a budget, and
+it does couple cells.** Banning one tag frees a cap slot, so a later cell that had been capped out
+now lands. The draw *order* is untouched — every candidate draws whether or not it can land — but
+the room's remaining budget is not. The two are separate properties and the tests now measure them
+separately rather than conflating them into one wrong claim.
+
 ### taskblock-55 Pass D — sections stack: intervals, and `up`/`down` edges
 
 **A section can sit above or below another.** An observation deck on top of a stairwell, and a
