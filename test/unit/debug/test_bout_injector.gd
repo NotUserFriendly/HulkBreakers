@@ -375,7 +375,7 @@ func test_force_action_applies_a_legal_action_for_real() -> void:
 	assert_true(state.was_injected)
 
 
-## taskblock-31 (rolled into tb30): tile verbs — cover and passability.
+## taskblock-31 (rolled into tb30): cell verbs — cover and passability.
 
 
 func _cover_part(id: StringName) -> Part:

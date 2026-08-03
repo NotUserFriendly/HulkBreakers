@@ -1,7 +1,7 @@
 extends GutTest
 
 ## taskblock-30 follow-up (supervisor): "remove can be generalized to
-## objects, covers, and things on tiles. Fully vanishing it." One
+## objects, covers, and things on cells. Fully vanishing it." One
 ## active-target-driven verb (`target` is the same hit-shaped `{kind,
 ## unit, cell}` dict `move_object` already consumes) covers all three —
 ## distinct from `kill` (test_bout_injector_kill.gd), a REAL, narratively

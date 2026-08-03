@@ -1,7 +1,7 @@
-class_name TileInspection
+class_name CellInspection
 extends RefCounted
 
-## docs/10 taskblock04 E3: "hovering a tile fills the readout with what's
+## docs/10 taskblock04 E3: "hovering a cell fills the readout with what's
 ## on it" — one pure lookup gathering everything the combat readout needs
 ## for a single cell: terrain, any unit (E1: full status, any squad — no
 ## knowledge gating yet), any field object (docs/10 taskblock04 C), and

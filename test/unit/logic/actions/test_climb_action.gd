@@ -31,7 +31,7 @@ func test_climb_up_a_full_level_moves_the_unit_and_costs_4_mp() -> void:
 	assert_almost_eq(unit.mp, 0.0, 0.0001)
 
 
-## A climb launched from a RAMP tile the mover is already resting on
+## A climb launched from a RAMP cell the mover is already resting on
 ## (`UnitGeometry.true_height_for_cell`'s own `RampGeometry.
 ## STANDING_OFFSET`), climbing onto an adjacent full ledge one level
 ## above the ramp's own lower-endpoint level.
@@ -93,7 +93,7 @@ func test_a_non_climb_capable_unit_cannot_climb() -> void:
 	assert_false(ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state))
 
 
-func test_climbing_onto_a_ramp_tile_is_illegal_thats_ordinary_movement() -> void:
+func test_climbing_onto_a_ramp_cell_is_illegal_thats_ordinary_movement() -> void:
 	var grid := GridFixture.flat(2, 1)
 	GridFixture.place_ramp(grid, Vector2i(1, 0), 1)
 	var unit := _make_unit(Vector2i(0, 0))

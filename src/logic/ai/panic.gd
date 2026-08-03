@@ -12,7 +12,7 @@ extends RefCounted
 ## ## The label is the point, not the escape
 ##
 ## Some escapes are necessarily cheats — shutting down, extracting off an
-## extraction tile, teleporting later. **A player who sees one of those unlabelled
+## extraction cell, teleporting later. **A player who sees one of those unlabelled
 ## learns the wrong rules about the game**, and starts planning around a mechanic
 ## that does not exist. An escape hatch nobody can see is also indistinguishable
 ## from a bug: "the AI just stood there" and "the AI panicked" look identical from
@@ -64,10 +64,10 @@ static func reason_for(offered_count: int, aborted: bool) -> StringName:
 ## empty queue, and an empty queue never calls `advance_turn`, which stalls the
 ## whole bout on the one unit that had the least to offer.
 ##
-## ## A unit holding its extraction tile is not stalled, and this was re-learned
+## ## A unit holding its extraction cell is not stalled, and this was re-learned
 ##
 ## `EndTurnAction.is_holding_position` is checked FIRST, because a unit standing on
-## its own extraction tile with the objectives done looks identical to a stalled one
+## its own extraction cell with the objectives done looks identical to a stalled one
 ## from the scorer's side — nothing is offered, because there is nothing it should
 ## be doing except stand there. Shutting it down instead takes a unit that was about
 ## to extract cleanly out of the mission.

@@ -86,8 +86,8 @@ func test_non_climb_capable_unit_has_no_path_over_a_ledge() -> void:
 ## ledge directly, with no tiebreaker needed beyond real edge costs. Reads
 ## the actual resolved path's own cost back rather than hand-picking an
 ## expected route: 8-directional movement can find a cheaper way through a
-## ramp tile than the route this test set out to build (a diagonal step
-## landing ON a ramp tile is itself ordinary cost, `move_cost`'s own rule,
+## ramp cell than the route this test set out to build (a diagonal step
+## landing ON a ramp cell is itself ordinary cost, `move_cost`'s own rule,
 ## whatever level it happens to cross) — asserting the real number is
 ## honest about that, asserting a specific path array would not be.
 func test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing() -> void:
@@ -112,10 +112,10 @@ func test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing() -> voi
 	)
 
 
-## "Ramps and ladders are ordinary pathing... a sloped tile costs 1 MP like
-## any other tile" — no climb capability needed at all, and the tile's own
+## "Ramps and ladders are ordinary pathing... a sloped cell costs 1 MP like
+## any other cell" — no climb capability needed at all, and the cell's own
 ## real height genuinely changes underneath the ordinary cost.
-func test_a_ramp_tile_costs_1_mp_and_changes_height() -> void:
+func test_a_ramp_cell_costs_1_mp_and_changes_height() -> void:
 	var grid := GridFixture.flat(2, 1)
 	GridFixture.place_ramp(grid, Vector2i(1, 0), 1)
 	var pf := Pathfinder.new(grid)  # no climb capability -- ramps are ordinary movement
@@ -128,7 +128,7 @@ func test_a_ramp_tile_costs_1_mp_and_changes_height() -> void:
 		UnitGeometry.true_height_for_cell(Vector2i(1, 0), grid),
 		1.0 * UnitGeometry.LEVEL_HEIGHT + RampGeometry.STANDING_OFFSET,
 		0.0001,
-		"the ramp tile's own height genuinely changes"
+		"the ramp cell's own height genuinely changes"
 	)
 
 
@@ -339,7 +339,7 @@ func test_move_cost_treats_a_field_object_cell_as_blocked() -> void:
 
 ## tb31 Pass C: a DESTROYED blocker must clear to fully passable — before
 ## this, a dead crate (or a destroyed wall, once walls became destructible
-## cover) still walled off its own tile forever, since `move_cost` only
+## cover) still walled off its own cell forever, since `move_cost` only
 ## ever checked whether `blockers` HAD an entry, never its `hp`.
 ## `ShotPlane`/`BodyProjector` already skip a 0-hp Part; this is the other
 ## half of the same fix.
@@ -493,7 +493,7 @@ func test_placement_mode_partial_climb_cost_rounds_up() -> void:
 
 ## A ramp-tagged surface edge stays ordinary movement cost regardless of
 ## how large the height delta is, and needs no climb capability — the
-## same "a sloped tile costs 1 MP like any other" rule tb37 already
+## same "a sloped cell costs 1 MP like any other" rule tb37 already
 ## established, now keyed off the surface's own tag instead of terrain.
 func test_placement_mode_ramp_surface_edge_is_free_regardless_of_height_delta() -> void:
 	var grid := GridFixture.flat(2, 1)

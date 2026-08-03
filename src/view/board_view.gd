@@ -15,7 +15,7 @@ extends Node3D
 
 ## taskblock-23 Pass E2: a render layer the inspect panel's isolate camera
 ## (taskblock-22 G2, `HitVolumeView.ISOLATE_LAYER`) can ALSO include
-## alongside the subject unit's own layer, so a real board tile renders
+## alongside the subject unit's own layer, so a real board cell renders
 ## under the model instead of it floating in empty space — never other units
 ## or blockers, which stay excluded exactly as G2 already fixed. Tagged
 ## onto the ground plane and grid lines in `build()` below, on top of
@@ -50,7 +50,7 @@ const UNIT_GHOST_ALPHA := 0.35
 ## overlays so it never fights them for z-order when both are live.
 const OVERWATCH_ARC_COLOR := Color(0.95, 0.55, 0.15, 0.30)
 ## taskblock-27 Pass C2: part of the one ordered ground-overlay height
-## ladder — see `EXTRACTION_TILE_HEIGHT`'s own comment below for the full
+## ladder — see `EXTRACTION_CELL_HEIGHT`'s own comment below for the full
 ## enumeration. Raised from 0.04 to clear `HitVolumeView.TEAM_MARKER_Y`'s
 ## own new top face (0.07) with margin.
 const OVERWATCH_ARC_HEIGHT := 0.09
@@ -65,14 +65,14 @@ const OVERWATCH_ARC_HEIGHT := 0.09
 const GRID_LINE_COLOR := Color("#16241A")
 const GRID_LINE_HEIGHT := 0.005
 const GRID_LINE_WIDTH := 0.04
-## runNotes.md: "Not all of the drawn boards are navigable... If a tile
+## runNotes.md: "Not all of the drawn boards are navigable... If a cell
 ## isn't navigable, it needs something to show that. Color it Dark Gray and
 ## draw a cross through it." WALL cells are permanent map geometry, not a
 ## TACTICS overlay, so these live in `_static` alongside the grid lines, not
 ## one of the ephemeral overlay containers.
 ## taskblock-22 Pass A3: "simple colored floor markers now" — its own
 ## height tier, between the grid lines and the wall indicators, so it never
-## z-fights with either (extraction tiles sit on open ground in practice,
+## z-fights with either (extraction cells sit on open ground in practice,
 ## but nothing here assumes that).
 ##
 ## taskblock-27 Pass C2: the anchor of ONE ordered ground-overlay height
@@ -81,7 +81,7 @@ const GRID_LINE_WIDTH := 0.04
 ## isolation, with no shared ordering, was the actual bug). Center
 ## heights, not top faces (`_marker()`'s own doc comment) — most rungs are
 ## 0.02-thick boxes/discs:
-##   `EXTRACTION_TILE_HEIGHT` (0.010, this constant)
+##   `EXTRACTION_CELL_HEIGHT` (0.010, this constant)
 ##   -> `HitVolumeView.TEAM_MARKER_Y` (0.06 — was IDENTICAL to this
 ##      constant, 0.01, a real unreported co-planar pair found while
 ##      enumerating this set for the first time)
@@ -90,7 +90,7 @@ const GRID_LINE_WIDTH := 0.04
 ##      rung, needs real headroom, not just the next small step)
 ## A future ground overlay takes the next rung in THIS ladder, not a
 ## value picked independently.
-const EXTRACTION_TILE_HEIGHT := 0.010
+const EXTRACTION_CELL_HEIGHT := 0.010
 ## taskblock-39 Pass C: the wall-indicator marker/cross these four
 ## constants used to feed is retired (never actually rendered on a real
 ## generated map — see `_build_empty_indicators`'s own doc comment). Kept,
@@ -98,19 +98,19 @@ const EXTRACTION_TILE_HEIGHT := 0.010
 ## `FIELD_ITEM_MARKER_HEIGHT` below are still calibrated against.
 const WALL_INDICATOR_COLOR := Color("#3A3A3A")
 ## runNotes.md follow-up: "fade it to a gray that's just slightly darker
-## than the tile gray" — a quiet reference mark, not a bold warning X.
+## than the cell gray" — a quiet reference mark, not a bold warning X.
 const WALL_CROSS_COLOR := Color("#2A2A2A")
 const WALL_INDICATOR_HEIGHT := 0.015
-## runNotes.md follow-up: "gray overlay for tiles is drawing overtop the
+## runNotes.md follow-up: "gray overlay for cells is drawing overtop the
 ## cross indicator, put the cross on top." `_marker()` draws a real BoxMesh
 ## with its own 0.02 Y-thickness, centered on `height` — the indicator
-## tile's top FACE therefore sits at WALL_INDICATOR_HEIGHT + 0.01 (0.025),
+## cell's top FACE therefore sits at WALL_INDICATOR_HEIGHT + 0.01 (0.025),
 ## above a same-magnitude flat cross at the old 0.02, which is exactly why
 ## the box was winning the depth test. Clearly above that top face, not
 ## just above the marker's own center height.
 const WALL_CROSS_HEIGHT := 0.03
 const WALL_CROSS_WIDTH := 0.06
-## tb31 Pass C: make empty/unfloored tiles black with a dark gray border
+## tb31 Pass C: make empty/unfloored cells black with a dark gray border
 ## so they read as empty (taskblock-39 Pass D retired the original spec
 ## language's own term for this — this file's own concept has always been
 ## empty/unfloored ground) — the same "non-navigable terrain needs a real
@@ -140,16 +140,16 @@ const EMPTY_FILL_SIZE := 0.8
 const FIELD_ITEM_MARKER_HEIGHT := 0.045
 const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
-## tb32 Pass A: how many tiles wide the wall-cutout porthole is, before
+## tb32 Pass A: how many cells wide the wall-cutout porthole is, before
 ## being projected to screen pixels at each unit's own depth
-## (`WallLegibility.pixel_radius_for_tiles`) — "~2.5 tiles, comfortably
+## (`WallLegibility.pixel_radius_for_cells`) — "~2.5 cells, comfortably
 ## clears ~three walls" per the taskblock's own starting point. Flagged,
 ## tunable (CLAUDE.md: never invent a "final" balance number). Because
-## it's tiles-at-that-unit's-own-depth, camera zoom scales the resulting
+## it's cells-at-that-unit's-own-depth, camera zoom scales the resulting
 ## pixel radius automatically — no separate distance logic. tb32 Pass B
 ## reuses this unchanged for the friendly-fade occlusion test too (same
 ## "how close counts as blocking" definition either way).
-const OCCLUSION_RADIUS_TILES := 2.5
+const OCCLUSION_RADIUS_CELLS := 2.5
 ## The shader's own fixed-size uniform arrays (`wall_cutout.gdshader`'s
 ## `MAX_UNITS`) — must match exactly; a battle fielding more units than
 ## this simply stops feeding the excess to the cutout (they'd still be
@@ -263,7 +263,7 @@ func _init() -> void:
 
 ## taskblock-22 Pass A3: `team_extraction_cells` (squad_id -> Array[Vector2i],
 ## the same shape `MissionState` already carries) is optional — an empty
-## Dictionary (every existing caller/test) simply draws no tiles at all,
+## Dictionary (every existing caller/test) simply draws no cells at all,
 ## unchanged.
 func build(
 	p_grid: Grid, material_table: MaterialTable, team_extraction_cells: Dictionary = {}
@@ -290,8 +290,8 @@ func build(
 	grid_lines.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(grid_lines)
 	_log_build_step(&"grid_lines", grid.width * grid.rows, "cell borders")
-	_log_build_step(&"empty_tiles", _build_empty_indicators(grid), "unfloored tiles")
-	_log_build_step(&"extraction_tiles", _build_extraction_tiles(team_extraction_cells), "tiles")
+	_log_build_step(&"empty_cells", _build_empty_indicators(grid), "unfloored cells")
+	_log_build_step(&"extraction_cells", _build_extraction_cells(team_extraction_cells), "cells")
 
 	var walls := 0
 	var cover := 0
@@ -342,7 +342,7 @@ func _log_build_step(step: StringName, count: int, noun: String) -> void:
 ## between any two orthogonally-adjacent cells whose heights differ — a
 ## stepped, XCOM-style terrace rather than a smooth slope (supervisor's
 ## own call; a genuinely sloped ramp mesh is a smaller, separate follow-
-## up — a ramp tile still renders as an ordinary flat step today, at its
+## up — a ramp cell still renders as an ordinary flat step today, at its
 ## own `+0.5` rest height). Checking only the `+X`/`+Z` neighbor from
 ## every cell (never `-X`/`-Y` too) visits each shared edge exactly once —
 ## the neighbor on the OTHER side of that same edge would otherwise draw
@@ -416,24 +416,24 @@ static func _add_riser(
 	_add_quad(mesh, a_high, b_high, b_low, a_low)
 
 
-## "Team-coded extraction tiles, drawn in their team's color" — one flat
-## marker per tile, `WorldPalette.team_color(squad_id)` same as every other
+## "Team-coded extraction cells, drawn in their team's color" — one flat
+## marker per cell, `WorldPalette.team_color(squad_id)` same as every other
 ## team-coded visual already reads (docs/10).
-## taskblock-41 Pass D: returns how many tiles it drew, same reasoning as
+## taskblock-41 Pass D: returns how many cells it drew, same reasoning as
 ## `_build_empty_indicators`.
-func _build_extraction_tiles(team_extraction_cells: Dictionary) -> int:
+func _build_extraction_cells(team_extraction_cells: Dictionary) -> int:
 	var count := 0
 	for squad_id: int in team_extraction_cells:
 		var color: Color = WorldPalette.team_color(squad_id)
 		var cells: Array = team_extraction_cells[squad_id]
 		for cell: Vector2i in cells:
-			_static.add_child(_marker(cell, color, EXTRACTION_TILE_HEIGHT))
+			_static.add_child(_marker(cell, color, EXTRACTION_CELL_HEIGHT))
 			count += 1
 	return count
 
 
 ## docs/10 taskblock02 G3 / taskblock03 I: "the ground is a flat green plane
-## and you can't tell where the tiles are." A line per cell boundary, just
+## and you can't tell where the cells are." A line per cell boundary, just
 ## above the ground to avoid z-fighting — a reference, not decoration, so it
 ## stays unshaded and dim rather than lit and bright. Real GRID_LINE_WIDTH-
 ## wide quads, not 1px GPU line primitives (no shader/LOD trick — just
@@ -493,7 +493,7 @@ func _build_grid_lines(p_grid: Grid) -> MeshInstance3D:
 ## own ring) gets a black fill inside a dark-gray border — "there's
 ## nothing here" read at a glance.
 ##
-## taskblock-39 Pass C: the sibling wall-indicator marker (gray tile plus
+## taskblock-39 Pass C: the sibling wall-indicator marker (gray cell plus
 ## a cross, "this is an obstruction") this comment used to contrast
 ## against is retired — it never actually rendered on any real generated
 ## map (`MapGen._finalize_walls_and_empty` always resolves an uncarved
@@ -681,8 +681,8 @@ func update_wall_cutout(camera: Camera3D) -> void:
 			# correct position) and has been removed.
 			screen_positions[count] = camera.unproject_position(position)
 			depths[count] = depth
-			radii[count] = WallLegibility.pixel_radius_for_tiles(
-				OCCLUSION_RADIUS_TILES, depth, camera.fov, viewport_height
+			radii[count] = WallLegibility.pixel_radius_for_cells(
+				OCCLUSION_RADIUS_CELLS, depth, camera.fov, viewport_height
 			)
 			count += 1
 	_wall_cutout_material.set_shader_parameter("unit_screen_positions", screen_positions)
@@ -877,7 +877,7 @@ func _waypoint_label(cell: Vector2i, number: int, leg_cost: float, running_total
 
 
 ## `size` defaults to `OVERLAY_SIZE` — every pre-existing call site (extraction
-## tiles, wall indicator, field item marker, reachable/ghost overlays) keeps
+## cells, wall indicator, field item marker, reachable/ghost overlays) keeps
 ## its own footprint unchanged; the empty-cell border/fill markers are the
 ## only callers that pass an explicit one.
 func _marker(
@@ -889,7 +889,7 @@ func _marker(
 	box_mesh.material = WorldPalette.overlay_material(color)
 	instance.mesh = box_mesh
 	# taskblock-37 Pass E: `UnitGeometry.true_height_for_cell` as a base —
-	# every caller (extraction tiles, wall/empty-cell indicators, reachable/
+	# every caller (extraction cells, wall/empty-cell indicators, reachable/
 	# ghost overlays, the field-item marker) used to assume ground was always at
 	# world Y 0; a raised cell's own marker must sit on ITS OWN real ground,
 	# not float below (or get buried inside) the terraced terrain

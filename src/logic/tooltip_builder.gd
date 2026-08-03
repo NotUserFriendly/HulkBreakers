@@ -125,14 +125,14 @@ static func for_queue_entry(entry: Dictionary) -> TooltipData:
 	return data
 
 
-## docs/10 taskblock04 E3/E1, taskblock-07 F1/TESTS: "hovering a tile fills
+## docs/10 taskblock04 E3/E1, taskblock-07 F1/TESTS: "hovering a cell fills
 ## the readout with what's on it" — a living unit's own status wins (its
 ## own tooltip, no gating by squad), then a field object's own detail,
 ## then terrain alone. Distinct branches rather than one merged blob:
 ## matches the three separate cases the taskblock's own TESTS name
 ## (terrain / enemy status / field object detail) rather than inventing a
 ## fourth "all three at once" shape nothing asks for.
-static func for_tile(info: Dictionary, material_table: MaterialTable) -> TooltipData:
+static func for_cell(info: Dictionary, material_table: MaterialTable) -> TooltipData:
 	if info.is_empty():
 		return TooltipData.new()
 	var unit: Variant = info.get("unit")
@@ -144,7 +144,7 @@ static func for_tile(info: Dictionary, material_table: MaterialTable) -> Tooltip
 
 	var cell: Vector2i = info.cell
 	var data := TooltipData.new("cell (%d, %d)" % [cell.x, cell.y])
-	data.add_row("terrain", TileInspection.PhysicalState.keys()[info.terrain])
+	data.add_row("terrain", CellInspection.PhysicalState.keys()[info.terrain])
 	# taskblock-16 Pass B2: no separate "cover" row here — a cell WITH
 	# cover always has a `field_object`, and the branch above already
 	# returns that object's own full tooltip (for_part) before this

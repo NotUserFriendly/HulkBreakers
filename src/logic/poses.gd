@@ -62,7 +62,7 @@ static func prone() -> Pose:
 
 
 ## taskblock-25 Pass A: the torso extended forward by `amount` (world
-## units) along the unit's own current facing — a sub-tile position
+## units) along the unit's own current facing — a sub-cell position
 ## change, no cell move. Composes onto `ROOT_SOCKET_ID` exactly like
 ## `down()`/`prone()`, so `BodyProjector.project()`'s existing pose-
 ## override seam moves the WHOLE assembly, and the ordinary depth-sort

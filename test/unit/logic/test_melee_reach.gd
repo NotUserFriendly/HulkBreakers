@@ -98,11 +98,11 @@ func test_distance_3d_matches_flat_distance_at_the_same_height() -> void:
 
 
 ## docs/PLAN.md Pass B's own worked example: "a sword (reach 1) can't hit
-## someone 1 up; a polearm (reach 2) hits at √2." One tile over, one tile
+## someone 1 up; a polearm (reach 2) hits at √2." One cell over, one cell
 ## up — a real, checked √2, not an assumed one.
 func test_distance_3d_is_the_worked_example_square_root_of_two_when_one_up() -> void:
 	var a := _unit_with_torso_at(Vector2i(0, 0), 1.0)
-	var b := _unit_with_torso_at(Vector2i(1, 0), 2.0)  # one tile over, one tile up
+	var b := _unit_with_torso_at(Vector2i(1, 0), 2.0)  # one cell over, one cell up
 	assert_almost_eq(MeleeReach.distance_3d(a, b), sqrt(2.0), 0.01)
 
 

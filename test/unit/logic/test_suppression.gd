@@ -136,7 +136,7 @@ func test_blocks_weapon_false_for_a_long_gun_when_not_adjacent() -> void:
 	assert_false(Suppression.blocks_weapon(state, self_unit, rifle))
 
 
-## taskblock-19 Pass E: "moving OUT of a tile adjacent to an enemy lets
+## taskblock-19 Pass E: "moving OUT of a cell adjacent to an enemy lets
 ## that enemy make a free melee attack as you leave."
 func test_would_trigger_opportunity_attack_when_genuinely_leaving_adjacency() -> void:
 	var self_unit := _torso_unit(Vector2i(1, 1), 0)

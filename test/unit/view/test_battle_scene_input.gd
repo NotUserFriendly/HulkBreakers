@@ -114,7 +114,7 @@ func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> v
 ## never marks the motion event handled, so it ALSO reached
 ## `TacticsController._unhandled_input`'s `update_hover()`, which re-
 ## raycasts the 3D board at that exact screen position regardless of what
-## UI is drawn there — showing whatever unit/tile sat behind the
+## UI is drawn there — showing whatever unit/cell sat behind the
 ## deliberately translucent readout panel instead of just the row's own
 ## tooltip. Fixed the same way the action bar was: STOP, not PASS.
 func test_hovering_a_queue_row_never_updates_the_boards_own_hover_state() -> void:

@@ -2,17 +2,17 @@ extends GutTest
 
 ## taskblock-46 Pass A: **nothing sinks into a raised room's floor.**
 ##
-## BR40.03 (scattered cover) and BR40.04 (spawn and extraction tiles) are one
+## BR40.03 (scattered cover) and BR40.04 (spawn and extraction cells) are one
 ## defect. `_repair_stranded_elevation` floods with a real `Pathfinder` and
 ## flattens every unreached `OPEN` cell to level 0 — and `Pathfinder._base_cost`
 ## returns `-1.0` for any cell carrying a live blocker, so **a cell that a
 ## `_scatter_cover` crate just landed on is unreachable by construction** and gets
 ## flattened regardless of whether anything about it is stranded. The result is a
-## one-tile pit punched through an otherwise flat raised floor, with the cover item
+## one-cell pit punched through an otherwise flat raised floor, with the cover item
 ## at the bottom of it.
 ##
 ## For spawn cells the same flatten fires and then `_mark_zone` erases the blocker,
-## leaving a clean, correctly-marked tile a full `LEVEL_HEIGHT` below its own room.
+## leaving a clean, correctly-marked cell a full `LEVEL_HEIGHT` below its own room.
 ## **That one is not cosmetic**: climbing is gated on `Shell.can_climb()` and no
 ## part in the repo carries `CLIMBER`, so a unit spawned in the pit has exactly one
 ## reachable cell and spends the battle in it.
@@ -78,7 +78,7 @@ func _is_floored(grid: Grid, cell: Vector2i) -> bool:
 
 
 ## A cell that sits below three or more of its orthogonal neighbours — BR40.03's
-## own metric for the symptom, and what a one-tile hole punched through a raised
+## own metric for the symptom, and what a one-cell hole punched through a raised
 ## floor looks like from the grid alone.
 func _is_pit(grid: Grid, cell: Vector2i) -> bool:
 	if not _is_floored(grid, cell):

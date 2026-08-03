@@ -288,13 +288,13 @@ func test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before() -> v
 	assert_true(overlay.playing, "was auto-playing — closing must resume it")
 
 
-## taskblock-26 Pass E: "objects and tiles don't [have a click inspector]."
+## taskblock-26 Pass E: "objects and cells don't [have a click inspector]."
 ## A click that misses every unit's own body now falls through to
 ## `BoardPicker.cell_at_ray` and opens the SAME `inspect_panel` on whatever
-## `Grid.blockers` holds at that cell — `open_tile()`, not a second
+## `Grid.blockers` holds at that cell — `open_cell()`, not a second
 ## inspector. `crate` sits at a cell with no unit on it, so this proves the
 ## fallback, not `UnitPicker.hit()`, is what found it.
-func test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel() -> void:
+func test_clicking_a_bare_cell_or_a_cells_object_opens_the_same_inspect_panel() -> void:
 	var built: Dictionary = await _bout()
 	var crate := Part.new()
 	crate.id = &"crate"
@@ -322,24 +322,24 @@ func test_clicking_a_bare_tile_or_a_tiles_object_opens_the_same_inspect_panel() 
 
 	assert_false(overlay.playing, "the click must pause the bout, same as clicking a unit")
 	assert_true(overlay.inspect_panel.visible)
-	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the tile's own object shows")
+	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the cell's own object shows")
 
 
-## **`BR48.01`: a genuinely bare tile opens nothing.**
+## **`BR48.01`: a genuinely bare cell opens nothing.**
 ##
-## The test above is named "a bare tile or a tile's object" and only ever places a crate — its
+## The test above is named "a bare cell or a cell's object" and only ever places a crate — its
 ## name is broader than what it asserts, so the empty case was never covered and the defect
-## lived in the gap. `Grid.blockers.get(cell)` is **null** for a tile holding nothing, and the
-## fallback passed that straight into `open_tile`, which renders its matrixless shape
+## lived in the gap. `Grid.blockers.get(cell)` is **null** for a cell holding nothing, and the
+## fallback passed that straight into `open_cell`, which renders its matrixless shape
 ## regardless: a 900x600 modal opened over the board containing nothing, and paused the bout.
-## That is the supervisor's *"selecting a bare tile causes the screen to dim"* — and it reads
+## That is the supervisor's *"selecting a bare cell causes the screen to dim"* — and it reads
 ## as a dim that will not lift, because there is nothing in the panel to say what happened.
-func test_clicking_a_genuinely_bare_tile_opens_nothing_and_keeps_playing() -> void:
+func test_clicking_a_genuinely_bare_cell_opens_nothing_and_keeps_playing() -> void:
 	var built: Dictionary = await _bout()
 	var overlay: SpectatorOverlay = _spectate(built)
 	overlay.playing = true
 	var bare := Vector2i(4, 0)
-	assert_false(built.state.grid.blockers.has(bare), "nothing is standing on this tile")
+	assert_false(built.state.grid.blockers.has(bare), "nothing is standing on this cell")
 
 	# Ground-plane origin, for the same reason the test above documents.
 	var camera: Camera3D = overlay.battle.camera_rig.camera()
@@ -352,21 +352,21 @@ func test_clicking_a_genuinely_bare_tile_opens_nothing_and_keeps_playing() -> vo
 	click.position = screen_pos
 	overlay._unhandled_input(click)
 
-	assert_false(overlay.inspect_panel.visible, "no modal over an empty tile")
+	assert_false(overlay.inspect_panel.visible, "no modal over an empty cell")
 	assert_true(overlay.playing, "and the bout was never paused for it")
 
 
 ## taskblock-39 Pass C: this test used to pin taskblock-27 Pass D5's own
-## "wall tiles aren't inspectable" WALL-terrain guard, on the claim that
+## "wall cells aren't inspectable" WALL-terrain guard, on the claim that
 ## "a wall isn't a part assembly (Grid.blockers is never populated for
 ## one)" — false since tb31 Pass C gave every real wall a genuine
 ## `Grid.blockers` Part, a fact `spectator_overlay.gd`'s own doc comment
 ## already flagged as corrected-but-left-in-place. The guard only ever
 ## fired on an unfinalized/raw wall cell no real generated map produces,
 ## so it never protected anything a player could actually click; retired
-## along with the check itself rather than migrated. A wall tile is now
+## along with the check itself rather than migrated. A wall cell is now
 ## inspectable exactly like any other field object, already covered by
-## `test_clicking_a_tile_with_a_field_object_shows_it_and_pauses` above.
+## `test_clicking_a_cell_with_a_field_object_shows_it_and_pauses` above.
 
 
 func test_clicking_empty_space_does_nothing() -> void:
@@ -655,7 +655,7 @@ func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() 
 
 
 ## taskblock-30 follow-up (supervisor): "remove can be generalized to
-## objects, covers, and things on tiles. Fully vanishing it." Proves the
+## objects, covers, and things on cells. Fully vanishing it." Proves the
 ## FULL real chain through the panel: pick the unit as the active target
 ## (a real click, not a shortcut), select Remove Object, Apply — the view
 ## must actually vanish, AND a later unrelated verb's own sync must never

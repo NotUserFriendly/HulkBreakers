@@ -31,7 +31,7 @@ func test_edge_heights_are_unaffected_by_facing() -> void:
 		assert_eq(edges.facing, facing)
 
 
-## The whole profile offsets cleanly with the tile's own base height —
+## The whole profile offsets cleanly with the cell's own base height —
 ## nothing hardcodes an absolute world height.
 func test_edge_heights_offset_by_base_height() -> void:
 	var edges: Dictionary = RampGeometry.edge_heights(2.0, 0.0)
@@ -40,7 +40,7 @@ func test_edge_heights_offset_by_base_height() -> void:
 	assert_almost_eq(edges.left, 2.25, 0.0001)
 
 
-## The unit-standing height (a ramp tile's own center) is the same value
+## The unit-standing height (a ramp cell's own center) is the same value
 ## as the lateral edges — the midpoint between low and high.
 func test_standing_offset_matches_the_lateral_edge_offset() -> void:
 	assert_almost_eq(RampGeometry.STANDING_OFFSET, RampGeometry.LATERAL_OFFSET, 0.0001)

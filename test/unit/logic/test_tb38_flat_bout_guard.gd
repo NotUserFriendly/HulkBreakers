@@ -32,7 +32,7 @@ extends GutTest
 ## **The bout is now a scripted action queue.** Fixed moves, fixed facings, fixed
 ## turn ends, applied through the same `CombatState.resolve_until` the AI's own
 ## output goes through. What it still guards is everything under the planner —
-## movement, per-tile facing, AP accounting, turn structure, the combat log's own
+## movement, per-cell facing, AP accounting, turn structure, the combat log's own
 ## shape and ordering — which is what a block with no business touching the AI would
 ## actually break. What it no longer guards is what the AI *decides*, and that was
 ## never something a hash could report usefully: a divergence said "the AI changed"

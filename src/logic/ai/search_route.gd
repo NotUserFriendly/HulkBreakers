@@ -38,7 +38,7 @@ extends RefCounted
 const POINT_COUNT := 3
 ## How far from its origin a unit will lay out a route, in MP. Flagged.
 const ROUTE_RADIUS := 10.0
-## How close counts as standing on a point. A patrol point is a place, not a tile.
+## How close counts as standing on a point. A patrol point is a place, not a cell.
 const ARRIVAL_RADIUS := 1
 
 

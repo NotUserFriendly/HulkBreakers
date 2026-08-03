@@ -100,7 +100,7 @@ static func has_clear_line_of_fire(
 ## second, parallel implementation of that exact rect-lookup (forced by
 ## `resolve_projectile`'s own single-file restriction, `shot_plane.gd`'s
 ## own doc comment), so it carried the identical unfloored-depth bug
-## independently. Unfloored, a wall many tiles behind the CANDIDATE cell
+## independently. Unfloored, a wall many cells behind the CANDIDATE cell
 ## (not the shooter's own body, so the identity exclusion above never
 ## catches it) sorted ahead of the real target and won on almost every
 ## candidate — which is why `has_clear_line_of_fire` read "no clear line"

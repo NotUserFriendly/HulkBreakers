@@ -28,7 +28,7 @@ func test_a_single_box_root_places_at_the_units_cell() -> void:
 
 ## taskblock-36 Pass D: "a unit on a level-1 cell has a true Y one level
 ## above one on level 0." taskblock-37 Pass D: `Unit.height` (not `level` —
-## `UnitGeometry` never touches the grid, and a ramp tile's real height is
+## `UnitGeometry` never touches the grid, and a ramp cell's real height is
 ## no longer a whole multiple of `LEVEL_HEIGHT`) drives the root
 ## transform's own Y translation now; `level` alone gates discrete
 ## decisions, `height` is what a real `CombatState.add_unit`/`MoveAction`
@@ -523,7 +523,7 @@ func test_shouldered_muzzle_point_falls_back_to_natural_with_no_shoulder_socket(
 
 
 ## taskblock-39 Pass C: two prior tests here (`..._is_level_times_level_
-## height` and `..._adds_a_half_level_on_a_ramp_tile`) pinned `true_height_
+## height` and `..._adds_a_half_level_on_a_ramp_cell`) pinned `true_height_
 ## for_cell`'s own OLD legacy-bridge fallback formula (raw `Grid.level`,
 ## and tb37's superseded flat +0.5 ramp offset) against a bare, unplaced
 ## fixture grid. That fallback is retired outright, not migrated — the

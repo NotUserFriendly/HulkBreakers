@@ -111,7 +111,7 @@ func test_non_adjacent_identical_results_do_not_fold_together() -> void:
 	assert_eq(lines[2], "Miss")
 
 
-## F1: "Unit 0 moved 4 tiles (-> 3,7) instead of four move-logs + four
+## F1: "Unit 0 moved 4 cells (-> 3,7) instead of four move-logs + four
 ## face-logs" — a curved path's interleaved faced/move/faced/move run
 ## (MoveAction.apply_stepwise's own documented shape) folds to ONE group.
 func test_a_curved_move_folds_every_leg_into_one_group() -> void:
@@ -125,7 +125,7 @@ func test_a_curved_move_folds_every_leg_into_one_group() -> void:
 
 	assert_eq(group.kind, &"move")
 	assert_eq(fold.groups.size(), 1, "one group, not four move/face lines")
-	assert_true(group.summary.contains("moved 3 tile"))
+	assert_true(group.summary.contains("moved 3 cell"))
 	assert_true(group.summary.contains("2, 1"))
 
 

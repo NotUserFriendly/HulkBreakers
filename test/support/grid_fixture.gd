@@ -40,12 +40,12 @@ static func place_floor(
 	GridPlacement.place(grid, cell, DataLibrary.get_part(&"ship_floor"), height, facing)
 
 
-## Places a single ramp TILE at `cell` — `level` is this tile's own LOWER
+## Places a single ramp CELL at `cell` — `level` is this cell's own LOWER
 ## endpoint (docs/PLAN.md's settled height model, same convention
 ## `MapGen._stamp_ramp_pair` uses), `facing` the direction of ascent. This
-## builds ONE tile's surface, the same primitive the real two-tile
+## builds ONE cell's surface, the same primitive the real two-cell
 ## MapGen profile is stamped from — a fixture wanting that full profile
-## calls this twice, once per tile, at the two levels it authors.
+## calls this twice, once per cell, at the two levels it authors.
 static func place_ramp(grid: Grid, cell: Vector2i, level: float, facing: float = 0.0) -> void:
 	grid.clear_surfaces(cell)
 	var height: float = level * UnitGeometry.LEVEL_HEIGHT + RampGeometry.STANDING_OFFSET
@@ -58,7 +58,7 @@ static func place_ramp(grid: Grid, cell: Vector2i, level: float, facing: float =
 ## room `SeamSweep` measures, so the plane and the ray chain are always swept
 ## through the identical board rather than through two hand-built ones.
 ##
-## The walls tile exactly: `wall`'s own box is a full 1.0-wide cell cube, so
+## The walls cell exactly: `wall`'s own box is a full 1.0-wide cell cube, so
 ## adjacent perimeter cells' boxes share a face with no gap between them. **Any
 ## empty this room produces is a defect in the resolver, never a hole in the
 ## fixture** — which is what makes it a usable measuring instrument at all.

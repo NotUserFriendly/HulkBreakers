@@ -15,7 +15,7 @@ var state: CombatState
 ## simply skips it, unchanged.
 var mission: MissionState = null
 ## taskblock-51 Pass K: **what is selected, which is not necessarily a unit.** A barrel, a
-## wall, a loose field item or a bare tile are all selectable now; see `SelectionTarget`.
+## wall, a loose field item or a bare cell are all selectable now; see `SelectionTarget`.
 ##
 ## taskblock-51 Pass L: **read through a guard, because death is not an event this listens
 ## for.** `BR51.09` — killing a unit during its own turn advanced the turn but left the corpse
@@ -29,7 +29,7 @@ var selected_target: SelectionTarget:
 		return _selected_target
 ## **Derived, not stored.** Eighty-one readers across the view ask "what unit is selected",
 ## and every one of them still means it — so this stays, answering `null` whenever the
-## selection is a prop or a tile. Making it a property rather than a second field is what
+## selection is a prop or a cell. Making it a property rather than a second field is what
 ## keeps the two from drifting apart, which is the failure mode that would have made Pass K
 ## worse than the gap it closes.
 var selected_unit: Unit:
@@ -66,7 +66,7 @@ func select(unit: Unit) -> void:
 ##
 ## A `UNIT` target is gated exactly as before — only the current unit, only while alive — so
 ## the rule that "you may only queue against whoever's turn it is" is unchanged. **A prop or
-## a tile has no such gate**: selecting a barrel is inspection, not command, and nothing
+## a cell has no such gate**: selecting a barrel is inspection, not command, and nothing
 ## downstream can queue an action against one.
 func select_target(target: SelectionTarget) -> void:
 	if target == null:

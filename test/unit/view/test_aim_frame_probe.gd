@@ -208,7 +208,7 @@ func test_what_one_mouse_motion_while_aiming_costs() -> void:
 
 ## **`BR51.14`: what one mouse motion costs while merely hovering, not aiming.**
 ##
-## The supervisor reports 160 fps falling to ~20 while moving the mouse over tiles with a unit
+## The supervisor reports 160 fps falling to ~20 while moving the mouse over cells with a unit
 ## selected, and nothing at all while holding still. That is the same signature `BR26.02` had
 ## on the aim path, but the entry says to measure rather than assume — so this times the
 ## non-aim handler on the same fixture the aim probe uses, and counts clones and shot-plane

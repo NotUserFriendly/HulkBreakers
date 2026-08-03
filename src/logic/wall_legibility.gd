@@ -43,7 +43,7 @@ static func occludes_on_screen(
 	return wall_screen_position.distance_to(focal_screen_position) <= screen_radius
 
 
-## tb32 Pass A: how many screen pixels a `tiles`-wide circle spans at
+## tb32 Pass A: how many screen pixels a `cells`-wide circle spans at
 ## `depth` from the camera — pure trig mirroring `Camera3D`'s own
 ## perspective projection, so the wall-cutout shader's per-unit radius
 ## (fed as a uniform every frame, `BoardView.update_wall_cutout`) can be
@@ -53,13 +53,13 @@ static func occludes_on_screen(
 ## `fov_deg` is `Camera3D.fov`, which this project's own camera treats as
 ## VERTICAL fov (`CameraOrbitState.CAMERA_FOV_DEG`'s own doc comment) — so
 ## `viewport_height_px` is the matching dimension, not width. Because the
-## radius is tiles-at-THAT-unit's-own-depth, zoom falls out for free: zoom
-## out (greater depth for the same tile count) shrinks the pixel radius
+## radius is cells-at-THAT-unit's-own-depth, zoom falls out for free: zoom
+## out (greater depth for the same cell count) shrinks the pixel radius
 ## automatically, no separate distance logic needed.
-static func pixel_radius_for_tiles(
-	tiles: float, depth: float, fov_deg: float, viewport_height_px: float
+static func pixel_radius_for_cells(
+	cells: float, depth: float, fov_deg: float, viewport_height_px: float
 ) -> float:
 	if depth <= 0.0:
 		return 0.0
-	var world_radius: float = tiles * UnitGeometry.CELL_SIZE
+	var world_radius: float = cells * UnitGeometry.CELL_SIZE
 	return world_radius / (2.0 * depth * tan(deg_to_rad(fov_deg) * 0.5)) * viewport_height_px

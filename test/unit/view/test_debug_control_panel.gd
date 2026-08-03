@@ -8,7 +8,7 @@ extends GutTest
 ## the test.
 ##
 ## taskblock-30 follow-up #2 (supervisor): "keep an active thing in
-## memory," "move needs the cell coords option AND a move-to-next-tile-
+## memory," "move needs the cell coords option AND a move-to-next-cell-
 ## clicked ability," "generalize move unit to move object," "the verb list
 ## should scroll, on the left, with the active target above the control
 ## panel." `FakeInputOwner` below is a minimal stand-in for whichever real
@@ -141,7 +141,7 @@ func test_active_label_starts_as_none() -> void:
 	assert_eq(panel._active_label.text, "Active: none")
 
 
-## "click a tile, and it has that tile in memory. Click a bot and it has
+## "click a cell, and it has that cell in memory. Click a bot and it has
 ## that bot in memory." Every board click while the panel is open updates
 ## `_active` — not just a field's own "Pick" press.
 func test_a_board_click_while_open_sets_the_active_target() -> void:
@@ -225,7 +225,7 @@ func test_move_object_via_apply_refuses_with_no_active_target() -> void:
 	assert_eq(panel._status_label.text, "Move Object: no object found")
 
 
-## "move needs ... a 'move to next tile clicked' ability." A dedicated
+## "move needs ... a 'move to next cell clicked' ability." A dedicated
 ## button, only shown for this verb, that applies the move the instant a
 ## destination cell lands — no separate Apply press.
 func test_move_on_next_click_button_exists_only_for_move_object() -> void:
@@ -410,7 +410,7 @@ func _first_spin_box(node: Node) -> SpinBox:
 	return null
 
 
-## **Cover must not read as the tile beneath it.** The label special-cased units and called
+## **Cover must not read as the cell beneath it.** The label special-cased units and called
 ## everything else a cell, so clicking a barrel showed "Active: Cell (2, 2)" and there was
 ## no way to tell whether the panel held the barrel or the floor — which is how `BR51.02`
 ## looked like a broken verb rather than a mislabelled target.
@@ -425,12 +425,12 @@ func test_a_cover_click_is_named_by_its_part_not_by_its_cell() -> void:
 
 	var label: String = panel._active_label.text
 	assert_true(label.contains("goo_barrel"), "the label names the part: %s" % label)
-	assert_false(label.begins_with("Active: Cell"), "and does not read as the bare tile")
+	assert_false(label.begins_with("Active: Cell"), "and does not read as the bare cell")
 
 
-## A genuinely bare tile still reads as a cell — widening what the label recognises must
+## A genuinely bare cell still reads as a cell — widening what the label recognises must
 ## not make every click claim to have hit something.
-func test_a_bare_tile_click_still_reads_as_a_cell() -> void:
+func test_a_bare_cell_click_still_reads_as_a_cell() -> void:
 	var panel: DebugControlPanel = _open_panel()
 
 	panel._on_active_target_clicked(
@@ -568,7 +568,7 @@ func test_apply_on_the_category_applies_no_verb() -> void:
 func test_a_verb_refusing_an_unsupported_target_says_what_it_refused() -> void:
 	var panel: DebugControlPanel = _open_panel()
 	panel._select_verb(_verb_index(&"set_part_hp"))
-	# A bare tile with nothing standing on it — a legal target shape the verb cannot act on.
+	# A bare cell with nothing standing on it — a legal target shape the verb cannot act on.
 	panel._active = SelectionTarget.for_cell(Vector2i(4, 4)).to_hit()
 
 	panel._on_apply_pressed()

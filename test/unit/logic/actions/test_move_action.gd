@@ -117,7 +117,7 @@ func test_move_rejects_trivial_single_cell_path() -> void:
 
 ## taskblock-16 Pass A: "a straight move looks identical to before (the
 ## common case is unchanged)" — every step of a straight line faces the
-## SAME direction, so per-tile facing degenerates to exactly the old
+## SAME direction, so per-cell facing degenerates to exactly the old
 ## once-at-the-end behavior.
 func test_move_faces_the_unit_toward_the_overall_direction_of_travel() -> void:
 	var grid := GridFixture.flat(10, 10)
@@ -161,13 +161,13 @@ func test_move_facing_emits_a_faced_event_with_reason_free_with_move() -> void:
 	assert_eq(faced[0].data.get("cost"), 0.0)
 
 
-## taskblock-16 Pass A: "a unit must face each tile before stepping onto
+## taskblock-16 Pass A: "a unit must face each cell before stepping onto
 ## it" — an L-shaped path (east, east, then north) must face east once
 ## (the second east-facing step is a no-op — same direction) and north
 ## once more for the turn, ending the move facing its LAST step, not the
 ## aggregate start->end direction (which for an L-shape is neither east
 ## nor north).
-func test_a_curved_move_faces_each_tile_before_entering_it() -> void:
+func test_a_curved_move_faces_each_cell_before_entering_it() -> void:
 	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
@@ -178,7 +178,7 @@ func test_a_curved_move_faces_each_tile_before_entering_it() -> void:
 	assert_true(state.try_apply(MoveAction.new(unit, path)))
 
 	var faced: Array[LogEvent] = sink.events_of_kind(&"faced")
-	assert_eq(faced.size(), 2, "one facing change per direction actually taken, not per tile")
+	assert_eq(faced.size(), 2, "one facing change per direction actually taken, not per cell")
 	var east: float = FaceAction.orientation_toward(Vector2i(0, 0), Vector2i(1, 0))
 	var north: float = FaceAction.orientation_toward(Vector2i(2, 0), Vector2i(2, 1))
 	assert_almost_eq(
@@ -253,7 +253,7 @@ func test_a_straight_move_still_emits_exactly_one_move_event() -> void:
 
 ## taskblock-16 Pass A: "an interrupted move leaves the unit facing its
 ## direction of travel at the interrupt point, not its original facing."
-## Falls out of per-tile facing for free: the step that triggers the
+## Falls out of per-cell facing for free: the step that triggers the
 ## interrupt has ALREADY faced its own direction before the hook is even
 ## consulted.
 func test_an_interrupted_move_leaves_the_unit_facing_its_direction_of_travel() -> void:
@@ -279,9 +279,9 @@ func test_an_interrupted_move_leaves_the_unit_facing_its_direction_of_travel() -
 
 
 ## taskblock-16 Pass A: "facing per step stays free (0 AP/MP)" — a curved,
-## multi-direction path costs no more MP than the plain per-tile move cost
+## multi-direction path costs no more MP than the plain per-cell move cost
 ## itself, regardless of how many times it turned along the way.
-func test_per_tile_facing_on_a_curved_move_still_costs_no_extra_mp() -> void:
+func test_per_cell_facing_on_a_curved_move_still_costs_no_extra_mp() -> void:
 	var grid := GridFixture.flat(10, 10)
 	var unit := _make_unit(Vector2i(0, 0))
 	unit.mp = 4.0
@@ -291,7 +291,7 @@ func test_per_tile_facing_on_a_curved_move_still_costs_no_extra_mp() -> void:
 	assert_true(state.try_apply(MoveAction.new(unit, path)))
 
 	assert_almost_eq(
-		unit.mp, 1.0, 0.0001, "3 tiles at 1 MP each — turning must not have spent extra"
+		unit.mp, 1.0, 0.0001, "3 cells at 1 MP each — turning must not have spent extra"
 	)
 
 

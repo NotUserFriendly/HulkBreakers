@@ -122,7 +122,7 @@ func test_the_previews_lighting_never_reaches_the_battle_world() -> void:
 
 	# The fallback path is what used to take the light away for good — a subject with no live
 	# view on the board, which is what a click on cover or a loose item resolves to.
-	panel.open_tile(Vector2i(5, 5), null)
+	panel.open_cell(Vector2i(5, 5), null)
 	assert_true(_lighting_is_out_of_the_battle_world(panel), "after a subject with no live view")
 
 	panel.close()
@@ -147,7 +147,7 @@ func test_the_boards_own_lighting_is_identical_before_and_after() -> void:
 	var before: Array[String] = _battle_lighting(battle)
 	panel.open(unit)
 	panel.close()
-	panel.open_tile(Vector2i(5, 5), null)
+	panel.open_cell(Vector2i(5, 5), null)
 	panel.close()
 	var after: Array[String] = _battle_lighting(battle)
 	gut.p("battle lighting before: %s" % str(before))

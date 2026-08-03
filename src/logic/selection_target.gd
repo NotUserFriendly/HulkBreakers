@@ -9,9 +9,9 @@ extends RefCounted
 ## and loose field items; selection simply had nowhere to put them. Every symptom the
 ## supervisor reported is that one gap from a different direction:
 ##
-## - selecting a barrel or any cover appeared to select the tile beneath it
+## - selecting a barrel or any cover appeared to select the cell beneath it
 ## - `set_part_hp` could not be given a part that is not on a unit (`BR51.02`)
-## - selecting a bare tile or cover dimmed the screen for something nothing could describe
+## - selecting a bare cell or cover dimmed the screen for something nothing could describe
 ## - `Inspect` stayed enabled with nothing selectable selected (`BR51.10`)
 ##
 ## ## This is the hit dict, not a second shape
@@ -152,7 +152,7 @@ func is_cell() -> bool:
 ## live whenever something had been clicked, rather than when the thing clicked has a body to
 ## describe — so pressing it correctly did nothing and read as broken.
 ##
-## A bare tile has no parts, so it answers false. A unit and a loose part both have a real
+## A bare cell has no parts, so it answers false. A unit and a loose part both have a real
 ## assembly tree behind them and answer true.
 func can_inspect() -> bool:
 	return is_unit() or is_part()

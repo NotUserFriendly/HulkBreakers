@@ -2,7 +2,7 @@ class_name MoveAction
 extends CombatAction
 
 ## A full path (inclusive of the unit's current cell). Movement spends MP per
-## tile; when MP runs short the unit burns 1 AP for +mp_per_ap MP, repeating
+## cell; when MP runs short the unit burns 1 AP for +mp_per_ap MP, repeating
 ## while AP remains (Appendix E). Fails (is_legal == false) if AP runs out
 ## before the path completes.
 
@@ -94,7 +94,7 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 	var actual: Unit = state.find_unit(unit.id)
 	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
 	# taskblock: "bots visibly spin through every facing, then move" — the
-	# STATE was already correct per-tile (taskblock-16 Pass A), but every
+	# STATE was already correct per-cell (taskblock-16 Pass A), but every
 	# `faced` LogEvent below fired DURING this loop while the single `move`
 	# event only ever fired once, at the very end, via `_finish()` — so a
 	# curved path's whole combat_log stream read as N `faced` events back
@@ -197,9 +197,9 @@ static func _can_still_complete(
 
 ## taskblock-16 Pass A: "the end-of-move facing is now just the last step's
 ## facing — no separate final face needed." The loop above already faced
-## toward every tile, `path[-1]` included, before ever stepping onto it —
+## toward every cell, `path[-1]` included, before ever stepping onto it —
 ## an interrupted move (traversed stops short of the full path) is left
-## facing whichever tile its OWN last completed step faced, i.e. its real
+## facing whichever cell its OWN last completed step faced, i.e. its real
 ## direction of travel at the interrupt point, never re-derived here.
 ## Known consequence, confirmed by direct A/B testing, not yet resolved
 ## (flagged rather than hacked around, CLAUDE.md's own rule): a unit that

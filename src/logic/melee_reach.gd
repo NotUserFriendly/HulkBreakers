@@ -48,9 +48,9 @@ static func in_reach(shell: Shell, weapon: Part, distance: float) -> bool:
 ## someone 1 up; a polearm (reach 2) hits at √2." Built on the SAME real
 ## composed geometry `UnitGeometry.bounding_sphere` already gives every
 ## other 3D-aware system (docs/10 taskblock04 A2), never a second,
-## hand-derived notion of "where a unit actually is" — in tiles
+## hand-derived notion of "where a unit actually is" — in cells
 ## (`UnitGeometry.CELL_SIZE`), so it compares directly against
-## `total_reach()`'s own tile-scaled numbers.
+## `total_reach()`'s own cell-scaled numbers.
 static func distance_3d(a: Unit, b: Unit) -> float:
 	var center_a: Vector3 = UnitGeometry.bounding_sphere(a).center
 	var center_b: Vector3 = UnitGeometry.bounding_sphere(b).center

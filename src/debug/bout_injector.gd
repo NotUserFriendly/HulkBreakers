@@ -393,7 +393,7 @@ func spawn_object(cell: Vector2i, part_id: StringName, pool: Dictionary, as_cove
 
 
 ## taskblock-30 follow-up (supervisor): "remove can be generalized to
-## objects, covers, and things on tiles — fully vanishing it." `target` is
+## objects, covers, and things on cells — fully vanishing it." `target` is
 ## the SAME hit-shaped `{kind, unit, cell}` dict `move_object` already
 ## consumes — one active-target-driven verb covers all three: a UNIT hit
 ## kills the unit through the real `CombatState.kill_unit` path (bare, no

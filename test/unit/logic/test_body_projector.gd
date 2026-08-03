@@ -92,7 +92,7 @@ func test_visible_face_rects_union_to_the_same_silhouette_as_the_whole_box() -> 
 	assert_almost_eq(union_min, whole_min, 0.0001)
 	assert_almost_eq(union_max, whole_max, 0.0001)
 
-	# Non-overlapping: the two faces tile the silhouette, they don't double it.
+	# Non-overlapping: the two faces cell the silhouette, they don't double it.
 	var total_face_width: float = 0.0
 	for region: Region in regions:
 		total_face_width += region.rect.size.x

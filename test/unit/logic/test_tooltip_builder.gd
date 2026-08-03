@@ -173,28 +173,28 @@ func test_for_queue_entry_omits_the_detail_row_when_absent() -> void:
 	assert_null(_row_value(data, "Detail"))
 
 
-func test_for_tile_shows_terrain_when_nothing_else_is_present() -> void:
+func test_for_cell_shows_terrain_when_nothing_else_is_present() -> void:
 	var info: Dictionary = {
 		"cell": Vector2i(3, 4),
-		"terrain": TileInspection.PhysicalState.OPEN,
+		"terrain": CellInspection.PhysicalState.OPEN,
 		"unit": null,
 		"field_object": null,
 		"visible_from_selected": null,
 	}
 
-	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
+	var data: TooltipData = TooltipBuilder.for_cell(info, DataLibrary.material_table())
 
 	assert_eq(data.title, "cell (3, 4)")
 	assert_eq(
 		_row_value(data, "terrain"),
-		TileInspection.PhysicalState.keys()[TileInspection.PhysicalState.OPEN]
+		CellInspection.PhysicalState.keys()[CellInspection.PhysicalState.OPEN]
 	)
 
 
-## taskblock-07 F1/TESTS: "hovering an enemy yields its status" — for_tile
+## taskblock-07 F1/TESTS: "hovering an enemy yields its status" — for_cell
 ## with a unit present hands back that unit's OWN tooltip, not a merged
 ## terrain+unit blob.
-func test_for_tile_with_a_unit_delegates_to_the_units_own_status() -> void:
+func test_for_cell_with_a_unit_delegates_to_the_units_own_status() -> void:
 	var torso := Part.new()
 	torso.id = &"torso"
 	torso.hp = 8
@@ -202,35 +202,35 @@ func test_for_tile_with_a_unit_delegates_to_the_units_own_status() -> void:
 	var enemy := _make_unit(torso, 1)
 	var info: Dictionary = {
 		"cell": Vector2i(1, 1),
-		"terrain": TileInspection.PhysicalState.OPEN,
+		"terrain": CellInspection.PhysicalState.OPEN,
 		"unit": enemy,
 		"field_object": null,
 		"visible_from_selected": true,
 	}
 
-	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
+	var data: TooltipData = TooltipBuilder.for_cell(info, DataLibrary.material_table())
 
 	assert_eq(data.title, "unit %d — squad %d" % [enemy.id, enemy.squad_id])
 
 
-func test_for_tile_with_a_field_object_shows_its_own_detail() -> void:
+func test_for_cell_with_a_field_object_shows_its_own_detail() -> void:
 	var crate := DataLibrary.get_part(&"crate")
 	var info: Dictionary = {
 		"cell": Vector2i(2, 2),
-		"terrain": TileInspection.PhysicalState.OPEN,
+		"terrain": CellInspection.PhysicalState.OPEN,
 		"unit": null,
 		"field_object": crate,
 		"visible_from_selected": null,
 	}
 
-	var data: TooltipData = TooltipBuilder.for_tile(info, DataLibrary.material_table())
+	var data: TooltipData = TooltipBuilder.for_cell(info, DataLibrary.material_table())
 
 	assert_eq(data.title, crate.display_name if crate.display_name != "" else String(crate.id))
 	assert_ne(_row_value(data, "condition"), null)
 
 
-func test_for_tile_on_an_empty_cell_returns_an_empty_tooltip_data() -> void:
-	var data: TooltipData = TooltipBuilder.for_tile({}, DataLibrary.material_table())
+func test_for_cell_on_an_empty_cell_returns_an_empty_tooltip_data() -> void:
+	var data: TooltipData = TooltipBuilder.for_cell({}, DataLibrary.material_table())
 
 	assert_eq(data.title, "")
 	assert_true(data.rows.is_empty())

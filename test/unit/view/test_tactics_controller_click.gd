@@ -86,7 +86,7 @@ func _make_wide_unit(cell: Vector2i, squad: int = 0) -> Unit:
 ## the board; nearest hit wins." A ray straight down through cell (1,0) hits
 ## the empty ground there — but a's wide torso overhangs that far enough
 ## that its box is nearer than the ground.
-func test_cell_at_prefers_a_units_overhanging_body_over_the_ground_tile() -> void:
+func test_cell_at_prefers_a_units_overhanging_body_over_the_ground_cell() -> void:
 	var a := _make_wide_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
@@ -96,13 +96,13 @@ func test_cell_at_prefers_a_units_overhanging_body_over_the_ground_tile() -> voi
 	assert_eq(
 		(hit as Dictionary)["kind"],
 		Enums.HitKind.UNIT,
-		"the overhanging body wins, not the ground tile beneath it"
+		"the overhanging body wins, not the ground cell beneath it"
 	)
 	assert_eq((hit as Dictionary)["unit"], a)
 	assert_eq((hit as Dictionary)["cell"], Vector2i(0, 0))
 
 
-func test_cell_at_falls_back_to_the_ground_tile_when_no_body_is_hit() -> void:
+func test_cell_at_falls_back_to_the_ground_cell_when_no_body_is_hit() -> void:
 	var a := _make_wide_unit(Vector2i(0, 0), 0)
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller

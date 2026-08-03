@@ -70,7 +70,7 @@ func test_a_generated_map_contains_more_than_one_level() -> void:
 
 ## Every raised region as a whole (not every individual raised CELL —
 ## scattered cover, exactly like it can on any ordinary room, can still
-## legitimately wall off an isolated tile or two inside one; that's the
+## legitimately wall off an isolated cell or two inside one; that's the
 ## same pre-existing "cover blocks movement" contract every other cell on
 ## the map is already held to, not a claim about ramps at all) must have
 ## at least one entry point reachable from spawn_a through a non-climbing
@@ -517,7 +517,7 @@ func test_ensure_spawns_connected_fallback_connects_disconnected_spawns() -> voi
 	)
 
 
-## taskblock-38 Pass C: docs/PLAN.md's corrected ramp profile — two tiles,
+## taskblock-38 Pass C: docs/PLAN.md's corrected ramp profile — two cells,
 ## not one. `inner` (bordering the room) is the upper step at
 ## `RAISED_ROOM_LEVEL - 0.5`; `outer`, one further out along the same
 ## approach, is the lower step at `RAISED_ROOM_LEVEL - 1.0` (real ground
@@ -525,7 +525,7 @@ func test_ensure_spawns_connected_fallback_connects_disconnected_spawns() -> voi
 ## taskblock-39 Pass B: `_connect_with_a_ramp` now carves scratch and
 ## records facing into `ramp_facings` again — surfaces aren't placed until
 ## `_emit` runs, at the very end.
-func test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_levels() -> void:
+func test_connect_with_a_ramp_places_two_cells_with_shared_facing_and_correct_levels() -> void:
 	var scratch := MapGenScratch.new(6, 3)
 	var room := Rect2i(Vector2i(3, 1), Vector2i(2, 1))
 	for y in range(room.position.y, room.position.y + room.size.y):
@@ -543,10 +543,10 @@ func test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_le
 	MapGen._connect_with_a_ramp(scratch, room, ramp_facings)
 
 	assert_eq(
-		scratch.get_terrain(Vector2i(2, 1)), MapGenScratch.CellKind.RAMP, "the room-bordering tile"
+		scratch.get_terrain(Vector2i(2, 1)), MapGenScratch.CellKind.RAMP, "the room-bordering cell"
 	)
 	assert_eq(
-		scratch.get_terrain(Vector2i(1, 1)), MapGenScratch.CellKind.RAMP, "one tile further out"
+		scratch.get_terrain(Vector2i(1, 1)), MapGenScratch.CellKind.RAMP, "one cell further out"
 	)
 	assert_almost_eq(scratch.get_level(Vector2i(2, 1)), MapGen.RAISED_ROOM_LEVEL - 0.5, 0.0001)
 	assert_almost_eq(scratch.get_level(Vector2i(1, 1)), MapGen.RAISED_ROOM_LEVEL - 1.0, 0.0001)
@@ -555,20 +555,20 @@ func test_connect_with_a_ramp_places_two_tiles_with_shared_facing_and_correct_le
 	assert_almost_eq(ramp_facings[Vector2i(2, 1)], ramp_facings[Vector2i(1, 1)], 0.0001)
 
 
-## taskblock-38 Pass C: a stranded RAMP tile (its own room already flooded
-## away, or its other tile cut off) must revert fully to plain OPEN ground
-## at level 0, the same as a stranded room interior — otherwise the tile
+## taskblock-38 Pass C: a stranded RAMP cell (its own room already flooded
+## away, or its other cell cut off) must revert fully to plain OPEN ground
+## at level 0, the same as a stranded room interior — otherwise the cell
 ## bordering a room sits at a genuinely non-zero level
 ## (`RAISED_ROOM_LEVEL - 0.5`) forever, an orphaned "raised" island of one
-## tile the reachability test can actually see (a real bug this pass's own
-## corrected profile exposed — tb37's single-tile ramp had the identical
+## cell the reachability test can actually see (a real bug this pass's own
+## corrected profile exposed — tb37's single-cell ramp had the identical
 ## gap, just never observable, since it was always authored at level 0).
-func test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_ground() -> void:
+func test_repair_stranded_elevation_reverts_an_unreachable_ramp_cell_to_plain_ground() -> void:
 	var grid := Grid.new(4, 1)
 	var scratch := MapGenScratch.new(4, 1)
 	var rooms: Array[Rect2i] = [Rect2i(Vector2i(0, 0), Vector2i(1, 1))]
 	# A wall seals the anchor at (0, 0) off from everything past it -- the
-	# ramp tile at (2, 0) has nothing reachable on either side.
+	# ramp cell at (2, 0) has nothing reachable on either side.
 	scratch.set_terrain(Vector2i(1, 0), MapGenScratch.CellKind.UNCARVED)
 	scratch.set_terrain(Vector2i(2, 0), MapGenScratch.CellKind.RAMP)
 	scratch.set_level(Vector2i(2, 0), MapGen.RAISED_ROOM_LEVEL - 0.5)
@@ -579,17 +579,17 @@ func test_repair_stranded_elevation_reverts_an_unreachable_ramp_tile_to_plain_gr
 	assert_almost_eq(scratch.get_level(Vector2i(2, 0)), 0.0, 0.0001)
 
 
-## A ring position with no room for a second tile behind it (map edge on
+## A ring position with no room for a second cell behind it (map edge on
 ## every side here) is never used — no ramp anywhere, not a malformed
-## single-tile one. `_repair_stranded_elevation`'s own flood-and-flatten
+## single-cell one. `_repair_stranded_elevation`'s own flood-and-flatten
 ## safety net is what catches the room this leaves stranded.
-func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_tiles() -> void:
+func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_cells() -> void:
 	var scratch := MapGenScratch.new(2, 3)
 	var room := Rect2i(Vector2i(1, 1), Vector2i(1, 1))
 	scratch.set_level(Vector2i(1, 1), MapGen.RAISED_ROOM_LEVEL)
 	# Every ring cell is carved OPEN (matching what a real carve would have
 	# done) so this genuinely tests "no ring position has room for a SECOND
-	# tile" — the map edge is one cell away on every side — rather than the
+	# cell" — the map edge is one cell away on every side — rather than the
 	# uninteresting "nothing here is open at all" (`MapGenScratch` defaults
 	# every cell to UNCARVED, unlike the old bare `Grid.new()`).
 	for cell: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, 2), Vector2i(1, 2)]:
@@ -603,7 +603,7 @@ func test_connect_with_a_ramp_places_nothing_when_no_approach_has_room_for_two_t
 			assert_ne(
 				scratch.get_terrain(Vector2i(x, y)),
 				MapGenScratch.CellKind.RAMP,
-				"no ring position here supports a two-tile ramp"
+				"no ring position here supports a two-cell ramp"
 			)
 	assert_true(ramp_facings.is_empty())
 

@@ -35,7 +35,7 @@ const SIMULATE_BOUT_KEY := KEY_B
 ## and no rebind risk for a fixed mouse convention.
 static func all(log_path: String) -> Array[Dictionary]:
 	return [
-		{"trigger": "Click unit or tile", "action": "select"},
+		{"trigger": "Click unit or cell", "action": "select"},
 		{"trigger": "Click cell", "action": "move"},
 		{"trigger": "RMB", "action": "undo last action"},
 		{"trigger": "%s / button" % _key(RESET_TURN_KEY), "action": "reset turn"},

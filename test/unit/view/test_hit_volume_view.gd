@@ -273,7 +273,7 @@ func test_is_downed_is_true_for_a_shell_and_false_for_a_piloted_unit() -> void:
 
 
 ## taskblock-26 Pass A3 (re-fix): the first fix only checked the wedge
-## against `EXTRACTION_TILE_HEIGHT`/`TEAM_MARKER_Y` — it genuinely
+## against `EXTRACTION_CELL_HEIGHT`/`TEAM_MARKER_Y` — it genuinely
 ## interpenetrated `board_view.gd`'s own `OVERWATCH_ARC_HEIGHT` box (top
 ## face 0.05), which the first fix never checked against. Read the real
 ## node back (CLAUDE.md's own rule): the wedge's bottom face must clear
@@ -297,7 +297,7 @@ func test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwat
 		BoardView.REACHABLE_HEIGHT + 0.01,
 		BoardView.GHOST_HEIGHT + 0.01,
 		BoardView.OVERWATCH_ARC_HEIGHT + 0.01,
-		BoardView.EXTRACTION_TILE_HEIGHT + 0.01,
+		BoardView.EXTRACTION_CELL_HEIGHT + 0.01,
 		BoardView.WALL_INDICATOR_HEIGHT + 0.01,
 	]
 	for top: float in marker_tops:
@@ -318,20 +318,20 @@ func test_the_facing_wedge_clears_every_ground_tier_marker_including_the_overwat
 
 ## taskblock-27 Pass C2: the tb26 A3 fix (and its own first re-fix) never
 ## checked the team marker at all — `TEAM_MARKER_Y` (0.01) was IDENTICAL
-## to `BoardView.EXTRACTION_TILE_HEIGHT` (0.010), a real co-planar pair
-## every unit standing on its own extraction tile hit, unreported until
+## to `BoardView.EXTRACTION_CELL_HEIGHT` (0.010), a real co-planar pair
+## every unit standing on its own extraction cell hit, unreported until
 ## this pass enumerated the whole ground-overlay height ladder. Both are
 ## 0.02-thick (disc/box), so this checks the two spans don't overlap at
 ## all, not just that the centers differ.
-func test_team_marker_no_longer_coplanar_with_the_extraction_tile_marker() -> void:
+func test_team_marker_no_longer_coplanar_with_the_extraction_cell_marker() -> void:
 	var team_marker_bottom: float = (
 		HitVolumeView.TEAM_MARKER_Y - HitVolumeView.TEAM_MARKER_HEIGHT / 2.0
 	)
-	var extraction_top: float = BoardView.EXTRACTION_TILE_HEIGHT + 0.01
+	var extraction_top: float = BoardView.EXTRACTION_CELL_HEIGHT + 0.01
 	assert_gt(
 		team_marker_bottom,
 		extraction_top,
-		"the team marker's own bottom face must clear the extraction tile's own top face"
+		"the team marker's own bottom face must clear the extraction cell's own top face"
 	)
 
 

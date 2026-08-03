@@ -36,7 +36,7 @@ func _state_with_cover(cover_cell: Vector2i = Vector2i(4, 2)) -> CombatState:
 	return state
 
 
-func test_selecting_cover_selects_the_prop_not_the_tile_beneath_it() -> void:
+func test_selecting_cover_selects_the_prop_not_the_cell_beneath_it() -> void:
 	var state: CombatState = _state_with_cover()
 	var selection := SelectionController.new(state)
 
@@ -79,7 +79,7 @@ func test_selected_unit_is_derived_from_the_target() -> void:
 	assert_eq(selection.selected_unit, state.current_unit())
 
 	selection.select_target(SelectionTarget.for_cell(Vector2i(7, 7)))
-	assert_null(selection.selected_unit, "a tile selection is not a unit selection")
+	assert_null(selection.selected_unit, "a cell selection is not a unit selection")
 	assert_true(selection.selected_target.is_cell(), "but it is still a selection")
 
 
@@ -94,7 +94,7 @@ func test_can_inspect_follows_what_is_selected() -> void:
 	assert_true(selection.can_inspect())
 
 	selection.select_target(SelectionTarget.for_cell(Vector2i(7, 7)))
-	assert_false(selection.can_inspect(), "a bare tile has no body to describe")
+	assert_false(selection.can_inspect(), "a bare cell has no body to describe")
 
 	selection.select_target(
 		SelectionTarget.for_part(state.grid.blockers[Vector2i(4, 2)], Vector2i(4, 2))
@@ -126,7 +126,7 @@ func test_a_board_click_on_cover_selects_it() -> void:
 	assert_null(tactics.selection.selected_unit, "and the unit selection gave way to it")
 
 
-## **A cell click with a unit selected is still a move order.** Pass K adds tile selection
+## **A cell click with a unit selected is still a move order.** Pass K adds cell selection
 ## where there was nothing; it must take nothing away.
 func test_clicking_a_reachable_cell_still_queues_a_move() -> void:
 	var state: CombatState = _state_with_cover()
@@ -163,7 +163,7 @@ func test_capture_mode_reports_cover_as_a_part() -> void:
 	assert_eq(captured[0]["cell"], Vector2i(4, 2))
 
 
-func test_capture_mode_still_reports_a_bare_tile_as_a_cell() -> void:
+func test_capture_mode_still_reports_a_bare_cell_as_a_cell() -> void:
 	var state: CombatState = _state_with_cover()
 	var tactics: TacticsController = _tactics(state)
 	var captured: Array[Dictionary] = []

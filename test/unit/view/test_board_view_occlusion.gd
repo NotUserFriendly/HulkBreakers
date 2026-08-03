@@ -95,7 +95,7 @@ func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
 
 
 ## "the hole scales with zoom" — a unit farther from the camera (same
-## tile-radius, greater depth) must project to a SMALLER pixel radius,
+## cell-radius, greater depth) must project to a SMALLER pixel radius,
 ## read back against a real `Camera3D`, not re-derived by hand.
 func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
 	var grid := GridFixture.flat(5, 20)

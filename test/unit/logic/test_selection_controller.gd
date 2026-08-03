@@ -299,7 +299,7 @@ func test_queue_end_turn_threads_mission_through_for_the_extraction_hold() -> vo
 	assert_eq(
 		a.extraction_hold_start_round,
 		0,
-		"standing on its own tile at end of turn must start the hold"
+		"standing on its own cell at end of turn must start the hold"
 	)
 
 

@@ -644,14 +644,14 @@ func test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy()
 			assert_true(mesh_instance.get_layer_mask_value(HitVolumeView.ISOLATE_LAYER))
 
 
-## taskblock-27 Pass D5: "wall tiles inspectable -> garbage inspector."
+## taskblock-27 Pass D5: "wall cells inspectable -> garbage inspector."
 ## Root-caused to `open()`'s own null-root branch never resetting
 ## `own_world_3d`/clearing the preview after a LIVE-unit isolate-focus —
 ## the viewport was left sharing the real battle World3D with an
 ## unrestricted cull mask and a stale camera position, rendering an
 ## arbitrary slice of the actual board instead of nothing. Opening a bare
-## tile right after a real unit must leave the preview genuinely empty.
-func test_opening_a_bare_tile_after_a_live_unit_leaves_the_preview_genuinely_empty() -> void:
+## cell right after a real unit must leave the preview genuinely empty.
+func test_opening_a_bare_cell_after_a_live_unit_leaves_the_preview_genuinely_empty() -> void:
 	var unit: Unit = _unit_with_geometry()
 	var live_view := HitVolumeView.new()
 	add_child_autofree(live_view)
@@ -665,15 +665,15 @@ func test_opening_a_bare_tile_after_a_live_unit_leaves_the_preview_genuinely_emp
 	panel.open(unit)
 	assert_false(panel._preview_viewport.own_world_3d, "sanity: isolating the live view first")
 
-	panel.open_tile(Vector2i(5, 5), null)
+	panel.open_cell(Vector2i(5, 5), null)
 
 	assert_true(
 		panel._preview_viewport.own_world_3d,
-		"a bare tile must never keep sharing the live battle World3D"
+		"a bare cell must never keep sharing the live battle World3D"
 	)
 	assert_true(
 		panel._preview_view._meshes_by_part.is_empty(),
-		"a bare tile must show no leftover assembly from the previous subject"
+		"a bare cell must show no leftover assembly from the previous subject"
 	)
 
 
@@ -799,10 +799,10 @@ func test_tree_hover_and_close_never_crash_with_no_tactics_wired() -> void:
 	pass_test("no _tactics reference never crashes on hover")
 
 
-## taskblock-26 Pass E: "a tile with a goo_barrel... shows those as its
+## taskblock-26 Pass E: "a cell with a goo_barrel... shows those as its
 ## part tree." A cover/clutter root Part with one attached child, the same
 ## socket-tree shape `_armed_unit`'s torso/weapon fixture already uses.
-func _tile_object() -> Part:
+func _cell_object() -> Part:
 	var valve := Part.new()
 	valve.id = &"valve"
 	valve.hp = 2
@@ -820,22 +820,22 @@ func _tile_object() -> Part:
 
 
 ## Bundled per this taskblock's own testing note ("one test pass per
-## section, not per change"): a tile WITH objects shows them in the
+## section, not per change"): a cell WITH objects shows them in the
 ## existing part-tree inspector, the SAME shared `_rows_by_part` lookup a
 ## real unit's `open()` fills (proof this isn't a second, parallel
-## display path — Pass E's own scope fence), and a bare tile (`root ==
+## display path — Pass E's own scope fence), and a bare cell (`root ==
 ## null`, `Grid.blockers.get(cell)`'s own miss value) shows a sane empty
 ## state rather than crashing — `root == null` reaches every `_refresh_*`
 ## exactly like a matrixless, shell-less Unit already does today.
-func test_open_tile_reuses_the_existing_part_tree_inspector_for_objects_and_bare_floor() -> void:
+func test_open_cell_reuses_the_existing_part_tree_inspector_for_objects_and_bare_floor() -> void:
 	var panel: InspectPanel = _panel()
-	var barrel: Part = _tile_object()
+	var barrel: Part = _cell_object()
 	var valve: Part = barrel.sockets[0].occupant
 
-	panel.open_tile(Vector2i(3, 4), barrel)
+	panel.open_cell(Vector2i(3, 4), barrel)
 
 	assert_true(panel.visible)
-	assert_not_null(_find_item(panel._inventory_tree, barrel), "the tile's own root part shows")
+	assert_not_null(_find_item(panel._inventory_tree, barrel), "the cell's own root part shows")
 	assert_not_null(_find_item(panel._inventory_tree, valve), "an attached part shows too")
 	assert_true(
 		panel._rows_by_part.has(barrel), "same shared row lookup a real unit's open() fills"
@@ -843,12 +843,12 @@ func test_open_tile_reuses_the_existing_part_tree_inspector_for_objects_and_bare
 	assert_true(panel._title_bar.text.contains("3"), "the header names the inspected cell")
 	assert_true(panel._title_bar.text.contains("4"))
 
-	panel.open_tile(Vector2i(1, 1), null)
+	panel.open_cell(Vector2i(1, 1), null)
 
-	assert_true(panel.visible, "a bare tile still opens the panel, never a crash")
+	assert_true(panel.visible, "a bare cell still opens the panel, never a crash")
 	assert_null(panel._inventory_tree.get_root(), "no parts to show")
 	assert_eq(panel._inventory_footer.text, "")
-	assert_true(panel._title_bar.text.contains("Tile"), "still names what's being inspected")
+	assert_true(panel._title_bar.text.contains("Cell"), "still names what's being inspected")
 
 
 ## **`BR48.01`: the preview's lighting must not leak into the board.**

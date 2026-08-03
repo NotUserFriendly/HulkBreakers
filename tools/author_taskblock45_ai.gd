@@ -148,7 +148,7 @@ func _floored(floor_value: float, invert: bool = false) -> ResponseCurve:
 ## every turn and never finished.
 ##
 ## That is not a hypothetical. `test_a_winning_bout_runs_to_a_terminal_state`
-## caught it — two units, one extraction tile, the second unit shuffling beside its
+## caught it — two units, one extraction cell, the second unit shuffling beside its
 ## occupied destination until the 200-turn cap — and it is the most likely
 ## explanation for the `TERMINATED` seeds behind taskblock-45 Pass D's completion
 ## drop, since those failed the same way: not dying, not finishing.
@@ -290,9 +290,9 @@ func _actions() -> Array[UtilityActionDef]:
 	# `enemy_known` matters more than it looks. Holding means "defer to the next
 	# ally, who may open a line for me" — a COMBAT reason. With no enemy known there
 	# is nothing to defer FOR, and offering it there actively broke extraction:
-	# `HoldAction` ends the turn itself, so a unit standing on its extraction tile
+	# `HoldAction` ends the turn itself, so a unit standing on its extraction cell
 	# that chose to hold never reached the trailing `EndTurnAction` whose own
-	# hold-check is what matures a hold into a real extraction. It sat on the tile
+	# hold-check is what matures a hold into a real extraction. It sat on the cell
 	# holding, correctly, forever.
 	# **`lof_blocked` is what stops holding being the default answer.** The retired
 	# planner only ever held when the shot was genuinely blocked (`final_blocked`);
@@ -319,7 +319,7 @@ func _actions() -> Array[UtilityActionDef]:
 	#
 	# taskblock-45 Pass D. The head-to-head found the combat-only pool completing
 	# 0% of bouts against the old planner's 75%, because completion means EXTRACTED
-	# and nothing in the pool could gather or walk to an extraction tile. These four
+	# and nothing in the pool could gather or walk to an extraction cell. These four
 	# rows are the whole fix — no new machinery, which is the claim `PLAN.md` makes
 	# about this architecture and the first time it has been tested.
 	#
@@ -355,7 +355,7 @@ func _actions() -> Array[UtilityActionDef]:
 	gather.considerations = [_consideration(UtilityContext.INPUT_OWN_INTEGRITY, 1.0, _floored(0.6))]
 
 	# Objectives done — leave. The player's own squad has no extract BUTTON: it
-	# walks onto its tile and ends its turn, and `EndTurnAction`'s own hold-check
+	# walks onto its cell and ends its turn, and `EndTurnAction`'s own hold-check
 	# matures that into an extraction. So there is deliberately no `extract` action
 	# for squad 0; walking there is the whole behaviour.
 	var seek_extraction := UtilityActionDef.new(&"seek_extraction", UtilityExecutors.MOVE)
@@ -454,10 +454,8 @@ func _actions() -> Array[UtilityActionDef]:
 	# **Floored, where roam and hunt read it raw.** Puttering is *supposed* to stay
 	# in one place, so an unfloored memory would fight the verb's whole purpose and
 	# turn it into a slow roam. It only needs enough pressure to stop the unit
-	# standing on one tile forever, not enough to send it anywhere.
-	putter.considerations.append(
-		_consideration(UtilityContext.INPUT_UNVISITED, 1.0, _floored(0.5))
-	)
+	# standing on one cell forever, not enough to send it anywhere.
+	putter.considerations.append(_consideration(UtilityContext.INPUT_UNVISITED, 1.0, _floored(0.5)))
 
 	var patrol := _search_verb(&"patrol", &"PATROL", "Patrol")
 	# Progress-only: a step that does not close on the point it is heading for is

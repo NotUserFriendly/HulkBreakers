@@ -548,7 +548,7 @@ func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() 
 
 
 ## taskblock-30 follow-up (supervisor): "remove can be generalized to
-## objects, covers, and things on tiles. Fully vanishing it." Same
+## objects, covers, and things on cells. Fully vanishing it." Same
 ## real-chain proof as SpectatorOverlay's own version, in the
 ## player-controlled view too.
 func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it() -> void:

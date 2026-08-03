@@ -14,7 +14,7 @@ extends RefCounted
 ## `BoutCorpus` plays AI-driven missions, which is right where the AI is the subject and
 ## wrong for the ~133 files that build a board by hand *precisely to keep the planner
 ## out*. Those files get the real resolution path here — two-phase turns, the action
-## queue, the combat log, per-tile facing, AP accounting — with the AI removed as a
+## queue, the combat log, per-cell facing, AP accounting — with the AI removed as a
 ## failure mode rather than worked around.
 ##
 ## ## Why a real board rather than a hand-placed one

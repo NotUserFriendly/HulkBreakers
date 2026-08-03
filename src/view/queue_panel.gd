@@ -76,7 +76,7 @@ func refresh() -> void:
 ## motion ALSO reaches `TacticsController._unhandled_input`'s
 ## `update_hover()` and re-raycasts the 3D board at that same screen
 ## position — confirmed live: hovering anywhere on a queue row showed
-## whatever unit/tile sat behind the (deliberately translucent) readout
+## whatever unit/cell sat behind the (deliberately translucent) readout
 ## panel instead of just this row's own tooltip.
 func _entry_row(entry: Dictionary, index: int) -> HBoxContainer:
 	var row := HBoxContainer.new()

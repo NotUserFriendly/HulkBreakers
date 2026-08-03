@@ -21,8 +21,8 @@ var resource_nodes: Dictionary = {}
 ## Cells ExtractAction requires a unit stand on to call the mission (docs/07:
 ## "EXTRACT with loot").
 var extraction_cells: Array[Vector2i] = []
-## taskblock-21 Pass D: "team-coded extraction tiles — blue extracts at
-## blue's tiles, red at red's." squad_id -> Array[Vector2i], a NEW, purely
+## taskblock-21 Pass D: "team-coded extraction cells — blue extracts at
+## blue's cells, red at red's." squad_id -> Array[Vector2i], a NEW, purely
 ## additive field — `extraction_cells` above stays exactly what it always
 ## was (the single-player, squad-0-only mission path; nothing here changes
 ## its own meaning). Empty ({}) for every mission that isn't a two-team

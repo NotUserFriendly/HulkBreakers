@@ -1,5 +1,35 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-54 Pass A — `tile` is the walkable part; `cell` is the grid square
+
+**303 word-uses swept across `src`, `test` and `tools`** — nearly four times taskblock-40's
+sweep. `cell` was already the code's word for the grid square (`Vector2i cell` everywhere), so
+the work was renaming everything that used `tile` to mean it: twelve identifiers, one class, two
+files, and the comment bulk.
+
+**Renamed:** `TileInspection` → `CellInspection` (it gathers "everything the readout needs for a
+single cell", so the old name described the wrong thing), `open_tile` → `open_cell`,
+`_open_move_tiles`, `pixel_radius_for_tiles`, `for_tile`, `_is_tile`, `_tile_cell` →
+`_inspected_cell`, `tile_root`, `_tile_object`, `extraction_tiles`, `_build_extraction_tiles`,
+`empty_tiles`. Two of those are `build_step` log names, so bout-build log output changes.
+
+**The word-boundary sweep was not enough, and that is worth recording.** `\btiles?\b` treats
+`_` as a boundary, so it reported clean while `test_..._extraction_tiles` and
+`EXTRACTION_TILE_HEIGHT` still plainly contained the word. The rule that works is **a non-letter
+on each side**, which catches those and gets every genuine substring right for free —
+`hostile`, `percentile`, `volatile`, `versatile`, `projectile` and `stiletto` all have a letter
+on one side, so **no exception list is needed**. Only `tileable` is allowlisted, as ordinary
+English.
+
+**`tile` is now unused in code**, held in reserve for the walkable part itself — a
+`floor_bulkhead` inside a cell. `test_cell_vocabulary_guard.gd` keeps it that way, verified by
+re-breaking: a bare `tile` anywhere under the scanned roots fails it by file and line.
+
+**The two vocabulary guards police each other.** The new guard's doc comment named taskblock-40's
+guard and its retired word, which failed *that* guard — correctly, since the word really was in a
+scanned file. Reworded rather than adding a second exemption, because exempting files is how a
+sweep quietly stops sweeping.
+
 ### taskblock-53 — the debug map loader is a dropdown, populated from disk
 
 The `load_map` verb offered a typed text box, so loading a map meant knowing a `res://` path by

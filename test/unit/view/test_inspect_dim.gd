@@ -4,7 +4,7 @@ extends GutTest
 ##
 ## The entry's heading — "closing the inspect panel leaves the background dimmed" — is the
 ## least reliable line in it. The supervisor re-diagnosed the trigger twice, landing on
-## *"selecting a bare tile or cover causes the screen to dim"*, and that is a defect on the
+## *"selecting a bare cell or cover causes the screen to dim"*, and that is a defect on the
 ## **open** path, not the close one. The two-way-transition theory recorded earlier was built
 ## on the wrong trigger.
 ##
@@ -52,14 +52,14 @@ func _overlay(cover_cell: Vector2i = Vector2i(5, 5)) -> SpectatorOverlay:
 	return battle.overlay as SpectatorOverlay
 
 
-## A tile that really does hold something still opens — the fix must not make cover
+## A cell that really does hold something still opens — the fix must not make cover
 ## uninspectable while stopping the empty case.
-func test_a_tile_holding_cover_still_opens() -> void:
+func test_a_cell_holding_cover_still_opens() -> void:
 	var overlay: SpectatorOverlay = _overlay()
 	var root: Part = overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5))
 	assert_not_null(root, "the fixture put a barrel there")
 
-	overlay.inspect_panel.open_tile(Vector2i(5, 5), root)
+	overlay.inspect_panel.open_cell(Vector2i(5, 5), root)
 
 	assert_true(overlay.inspect_panel.visible, "a real object is inspectable")
 
@@ -76,7 +76,7 @@ func test_opening_and_closing_twice_leaves_no_residue() -> void:
 	var rest_mask: int = panel._preview_camera.cull_mask
 
 	for cycle in range(2):
-		panel.open_tile(Vector2i(5, 5), root)
+		panel.open_cell(Vector2i(5, 5), root)
 		assert_true(panel.visible, "cycle %d opened" % cycle)
 		panel.close()
 		assert_false(panel.visible, "cycle %d closed" % cycle)
@@ -100,8 +100,8 @@ func test_opening_a_second_inspect_over_the_first_leaves_no_residue() -> void:
 	var rest_mask: int = panel._preview_camera.cull_mask
 
 	var blockers: Dictionary = overlay.battle.combat_state.grid.blockers
-	panel.open_tile(Vector2i(5, 5), blockers.get(Vector2i(5, 5)))
-	panel.open_tile(Vector2i(7, 7), blockers.get(Vector2i(7, 7)))
+	panel.open_cell(Vector2i(5, 5), blockers.get(Vector2i(5, 5)))
+	panel.open_cell(Vector2i(7, 7), blockers.get(Vector2i(7, 7)))
 	panel.close()
 
 	assert_false(panel.visible)
@@ -114,9 +114,9 @@ func test_close_resets_the_panel_whatever_it_was_showing() -> void:
 	var overlay: SpectatorOverlay = _overlay()
 	var panel: InspectPanel = overlay.inspect_panel
 
-	panel.open_tile(Vector2i(5, 5), overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5)))
+	panel.open_cell(Vector2i(5, 5), overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5)))
 	panel.close()
 
 	assert_false(panel.visible)
 	assert_null(panel._unit, "and it is not still holding what it was showing")
-	assert_false(panel._is_tile, "nor that it was showing a tile")
+	assert_false(panel._is_cell, "nor that it was showing a cell")

@@ -1,6 +1,6 @@
 extends GutTest
 
-## taskblock-53 Pass B: the tile format's own acceptance — round-trip equivalence, a bout on
+## taskblock-53 Pass B: the cell format's own acceptance — round-trip equivalence, a bout on
 ## a loaded map resolving identically to the same bout on the generated original, and a
 ## malformed file producing a readable error rather than a crash.
 
