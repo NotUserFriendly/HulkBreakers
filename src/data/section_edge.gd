@@ -33,6 +33,16 @@ const SIDE_SOUTH: StringName = &"south"
 const SIDE_EAST: StringName = &"east"
 const SIDE_WEST: StringName = &"west"
 
+## taskblock-55 Pass D: **a section must be able to sit above or below another** — an observation
+## room on top of a staircase, a barracks at the bottom.
+##
+## These are **data, not code**, which is why adding them costs two constants and a row in
+## `opposite`. `edge_for(side)` already took an open `StringName`, and the note that "sides are a
+## closed set of four in practice" was a statement about the shipped content rather than about the
+## format. It stopped being true here and nothing had to be restructured for it.
+const SIDE_UP: StringName = &"up"
+const SIDE_DOWN: StringName = &"down"
+
 ## Nothing may attach here — the outside of the hulk, or a wall the author means to be final.
 const KIND_EXTERIOR: StringName = &"exterior"
 ## A neighbour may attach, if it offers a matching `join_tag`.
@@ -54,21 +64,36 @@ const KIND_OPEN: StringName = &"open"
 ## otherwise solid wall is what the explicit list is for.
 @export var openings: Array[int] = []
 
+## taskblock-55 Pass D: **the height this edge's openings sit at.**
+##
+## A door at ground level and a door at the top of a staircase are **different joins**, and
+## nothing else on this resource could tell them apart — `openings` indexes along the side, which
+## says where along a wall an opening is and nothing about how far up it is. Once sections can
+## stack, two edges can agree on tag, span and openings and still be at different storeys.
+##
+## Continuous, like every other height in this project (taskblock-37). A staircase landing at 2.4
+## is a legal join height; nothing quantizes it to a storey index.
+@export var opening_height: float = 0.0
+
 
 func _init(
 	p_side: StringName = SIDE_NORTH,
 	p_kind: StringName = KIND_EXTERIOR,
 	p_join_tag: StringName = &"",
-	p_openings: Array[int] = []
+	p_openings: Array[int] = [],
+	p_opening_height: float = 0.0
 ) -> void:
 	side = p_side
 	kind = p_kind
 	join_tag = p_join_tag
 	openings = p_openings
+	opening_height = p_opening_height
 
 
 ## The side that would face this one across a join. A section's east edge meets its neighbour's
-## west edge; there is no such thing as an east edge meeting an east edge.
+## west edge; there is no such thing as an east edge meeting an east edge. taskblock-55 Pass D
+## added the vertical pair on exactly the same footing — `up` meets `down`, and a section's own
+## `up` edge is the ceiling a neighbour stands on.
 static func opposite(p_side: StringName) -> StringName:
 	match p_side:
 		SIDE_NORTH:
@@ -79,5 +104,9 @@ static func opposite(p_side: StringName) -> StringName:
 			return SIDE_WEST
 		SIDE_WEST:
 			return SIDE_EAST
+		SIDE_UP:
+			return SIDE_DOWN
+		SIDE_DOWN:
+			return SIDE_UP
 		_:
 			return &""

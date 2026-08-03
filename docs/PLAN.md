@@ -997,7 +997,7 @@ be placeable **on a cell edge or on its centreline**, which matters more than it
   there, or hitting an ally through it. That only exists if the wall is thin enough that the space
   beyond it is reachable.
 
-#### Sections stack, and that means intervals — not voxels
+#### Sections stack, and that means intervals — not voxels — landed, taskblock-55 Pass D
 
 **A section must be able to sit above or below another.** An observation room attaches to the top of a
 staircase while a barracks attaches to its bottom; a second tall room cannot, because it would need the

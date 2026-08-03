@@ -1,5 +1,58 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-55 Pass D — sections stack: intervals, and `up`/`down` edges
+
+**A section can sit above or below another.** An observation deck on top of a stairwell, and a
+second tall room refused because it needs space the stairwell occupies.
+
+**Intervals, deliberately not voxels.** `ClaimResolver.interval_of` reduces a section to the
+lowest and highest world Y anything it places or claims occupies, and stacking is one comparison
+against another such pair. taskblock-37 made height continuous on purpose: a voxel grid quantizes
+to its resolution, so 0.5 voxels cannot express a 0.3 step and 0.1 voxels are twenty mostly-empty
+layers per cell.
+
+**Claims already carried the vertical extent**, so nothing new had to be declared to make sections
+stack — a claim's box *is* its interval, which is the same property that answered the
+whole-column question in Pass C.
+
+**The merge exception is honoured, and it is the common case rather than a corner one.**
+`describe_interval_overlap` permits an overlap that any merge volume spans, because two rooms
+sharing a wall overlap by exactly that wall — without it **every adjacent pair of rooms would be
+refused.**
+
+**`up` and `down` are data, and adding them cost two constants and a row in `opposite`.**
+`edge_for` already took an open `StringName`; the note that "sides are a closed set of four in
+practice" was a statement about shipped content, not about the format, and it stopped being true
+here without anything being restructured.
+
+**`SectionEdge.opening_height`: an entry at height 3 does not match an entry at height 0.** A door
+at ground level and a door at the top of a staircase are different joins, and every other field on
+an edge would have called them the same one — `openings` says where *along* a wall an opening sits
+and nothing about how far up it is. Continuous, like every other height here.
+
+**`span_of` answers `width * rows` for a vertical side.** Two stacked sections meet over their
+whole footprint, so that is what must match; answering `rows` would have let a 6x4 section stack
+on a 2x4 one because both happen to be four rows deep.
+
+**A vertical join is lifted out of `stitch` rather than encoded as a zero cell offset.** The
+horizontal path is written in cell offsets, which say nothing about a section stacked on another;
+a zero offset that quietly meant something else would be the kind of overload that reads fine and
+is wrong.
+
+**Measured, and the finding that corrected three of this pass's own tests:** `ship_floor` is a
+0.2-thick slab hung **below** the height it is placed at, so a deck resting its underside on a
+3.0 ceiling has its walkable top at **3.2**, not 3.0. The stacking lift is computed from both
+sections' real extents and accounts for the deck's own thickness. My first three assertions
+assumed 3.0 and were wrong; the resolver was right. This is also the clearest argument for the
+interval model in the whole pass — a quantized grid at any usable resolution could not express a
+0.2 deck, let alone tell "resting on the ceiling" from "overlapping the room below."
+
+**Found, not fixed: `BR55.01`**, an intermittent engine abort in `LoS.has_los` seen once during a
+full-suite run and not reproducible (the same file passed in isolation; the next full run was
+green at 2781 tests). `Grid.get_opacity` indexes a flat array with no bounds check and `LoS` never
+calls `in_bounds`. On the AI path, unrelated to this block's changes as far as the trace goes.
+Recorded rather than guessed at.
+
 ### taskblock-55 Pass C — the section authoring vocabulary
 
 **A second class of section data: declarations consumed at assembly and never present in an

@@ -107,6 +107,11 @@ func edge_for(side: StringName) -> SectionEdge:
 func span_of(side: StringName) -> int:
 	if side == SectionEdge.SIDE_NORTH or side == SectionEdge.SIDE_SOUTH:
 		return width
+	# taskblock-55 Pass D: a vertical join has no *side* to run along — two stacked sections meet
+	# over their whole footprint, so that is what has to match. Answering `rows` here would let a
+	# 6x4 section stack on a 2x4 one because both happen to be four rows deep.
+	if side == SectionEdge.SIDE_UP or side == SectionEdge.SIDE_DOWN:
+		return width * rows
 	return rows
 
 
