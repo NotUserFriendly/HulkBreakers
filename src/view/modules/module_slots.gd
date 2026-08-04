@@ -29,3 +29,5 @@ const ACTION_ROW := &"action_row"
 const TOP_LEFT := &"top_left"
 ## A second top-left row under the first — the spectator's tunable timing fields.
 const TUNABLES := &"tunables"
+## A single centred column owning the whole screen — a menu's own layout.
+const MENU_COLUMN := &"menu_column"

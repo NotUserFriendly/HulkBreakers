@@ -1,0 +1,155 @@
+class_name ViewModes
+extends RefCounted
+
+## taskblock-56 Pass D: **the table.** Every mode the game has, as data.
+##
+## | before | after |
+## |---|---|
+## | `SpectatorOverlay`, 718 lines | `spectator` — display modules, no unit input |
+## | `SquadControlOverlay`, 942 lines | `player` — display + full unit input |
+## | `SingleUnitOverlay`, 54 lines | `single_unit` — the above, scoped to one unit |
+## | `GenerateBoutOverlay`, 373 lines | `bout_setup` — the roster menu, no board input |
+##
+## **`single_unit` is the entry that proves the point.** It was 54 lines only because inheritance
+## happened to be available to it — it wanted everything `SquadControlOverlay` had. Here it is
+## literally `player`'s module list with one field changed, which is what "a mode is a declaration"
+## means when the declaration is honest.
+##
+## **Each mode is built by assigning fields rather than by one long constructor call**, so a comment
+## can sit with the option it explains. That is not cosmetic: the options carry the *reasons* a mode
+## differs from its neighbours, and those reasons are the only thing here that is not obvious from
+## reading the names.
+##
+## **The module orders are load-bearing**, and each list says why above it. A module that reads
+## another must be declared after it.
+
+## Ordered: `unit_input` publishes the `TacticsController` every display module reads at its own
+## mount time, so it is first; `tooltip` before the three modules that share its `TooltipView`;
+## `stat_panels` before `resolution` (the resolution banner is the readout cluster's own label);
+## `debug_panel` before `top_left_controls` (the Inject button routes into it). Not alphabetical.
+const PLAYER_MODULES: Array[StringName] = [
+	&"unit_input",
+	&"tooltip",
+	&"stat_panels",
+	&"resolution",
+	&"inspect",
+	&"queue_panel",
+	&"action_bar",
+	&"turn_controls",
+	&"controls_legend",
+	&"combat_log",
+	&"debug_panel",
+	&"replay",
+	&"top_left_controls",
+]
+
+## Ordered: `resolution` before `playback` (the tunables write into `ResolutionPlayer`'s own fields
+## and the pacing loop awaits its playback); `inspect` before `board_inspect` (a click opens the
+## panel); `debug_panel` before `top_left_controls`.
+##
+## **No input module appears here, and that IS the contract.** Before this pass the same fact was
+## expressed by *not inheriting* the player overlay, which cost a 718-line copy of everything both
+## views wanted.
+const SPECTATOR_MODULES: Array[StringName] = [
+	&"combat_log",
+	&"resolution",
+	&"debug_panel",
+	&"replay",
+	&"inspect",
+	&"playback",
+	&"board_inspect",
+	&"top_left_controls",
+]
+
+## Pre-battle setup: the roster menu and nothing else. It never drives a unit's turn — Start Bout
+## builds the matchup, installs it into the shared world and swaps to `spectator`. A transition, not
+## a persistent mode.
+const BOUT_SETUP_MODULES: Array[StringName] = [&"bout_setup"]
+
+
+static func player() -> ViewMode:
+	var mode := ViewMode.new()
+	mode.id = &"player"
+	mode.display_name = "Player"
+	mode.chrome = ModeChrome.PLAYER_COLUMNS
+	mode.modules = PLAYER_MODULES
+	mode.turn_policy = ViewMode.TurnPolicy.HUMAN_SQUADS
+	# The one inventory surface in the player view, opened on demand for whatever is selected.
+	mode.options[&"inspect"] = {&"with_button": true}
+	mode.options[&"top_left_controls"] = {&"include_new_battle": true, &"watch_label": "Watch"}
+	# **Spectator-only while the bug hunt runs.** The replay panels crowd the surfaces the hunt
+	# reproduces against, and a run is watched from the spectator view regardless. The Inject panel
+	# is deliberately NOT gated this way: it is a hunting tool, not a test surface.
+	mode.options[&"replay"] = {&"enabled": SuiteRunPanel.SHOW_IN_PLAYER_VIEW}
+	return mode
+
+
+static func spectator() -> ViewMode:
+	var mode := ViewMode.new()
+	mode.id = &"spectator"
+	mode.display_name = "Spectator"
+	mode.chrome = ModeChrome.TOP_LEFT_ROWS
+	mode.modules = SPECTATOR_MODULES
+	mode.turn_policy = ViewMode.TurnPolicy.NONE
+	# A spectated bout has no "New Battle" concept of its own; the toggle goes the other way.
+	mode.options[&"top_left_controls"] = {
+		&"include_new_battle": false, &"watch_label": "Assume Control"
+	}
+	# **Every outcome says something here.** Silence after a run is indistinguishable from a broken
+	# replay, which is exactly what the supervisor could not tell apart.
+	mode.options[&"replay"] = {&"announce_passes": true}
+	return mode
+
+
+## `player`'s modules and chrome, with the turn policy narrowed. **One field.** That is the whole
+## of what used to be a subclass, and the reason it is worth pointing at: the 54-line file was not
+## small because the mode was small, it was small because inheritance let it take everything.
+static func single_unit() -> ViewMode:
+	var mode: ViewMode = player()
+	mode.id = &"single_unit"
+	mode.display_name = "Single Unit"
+	mode.turn_policy = ViewMode.TurnPolicy.SINGLE_UNIT
+	return mode
+
+
+static func bout_setup() -> ViewMode:
+	var mode := ViewMode.new()
+	mode.id = &"bout_setup"
+	mode.display_name = "Generate Bout"
+	mode.chrome = ModeChrome.CENTERED_MENU
+	mode.modules = BOUT_SETUP_MODULES
+	mode.turn_policy = ViewMode.TurnPolicy.NONE
+	return mode
+
+
+## **The empty surface: no modules, no chrome, no turn policy.**
+##
+## This is what a bare `ControlOverlay` used to be before Pass D — the base class built nothing and
+## `wants_turn_for` was unconditionally false — and it is a real mode rather than a null check,
+## because several fixtures install one deliberately to neutralise `BattleScene._ready()`'s own
+## default before loading a battle of their own.
+##
+## **Defaulting a modeless surface to `player()` instead would be actively wrong**, and was,
+## briefly: the player mode has unit input, so `_on_battle_loaded` drives the AI batch, and a
+## fixture that installed a placeholder found its bout one turn further on than it expected, with
+## units standing somewhere else.
+static func empty() -> ViewMode:
+	var mode := ViewMode.new()
+	mode.id = &"empty"
+	mode.display_name = "Empty"
+	mode.turn_policy = ViewMode.TurnPolicy.NONE
+	return mode
+
+
+## Every mode, for tests and for anything that wants to enumerate them.
+static func all() -> Array[ViewMode]:
+	return [player(), spectator(), single_unit(), bout_setup(), empty()]
+
+
+## The mode named `id`, or null. **Null rather than a default**, so a caller naming a mode that does
+## not exist gets a refusal it can see instead of silently landing in the player view.
+static func by_id(id: StringName) -> ViewMode:
+	for mode: ViewMode in all():
+		if mode.id == id:
+			return mode
+	return null

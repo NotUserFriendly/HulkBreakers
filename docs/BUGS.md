@@ -1151,6 +1151,31 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   `PLAN.md`'s *One view, toggleable modules* dissolves the class. Fixing an instance is work that
   refactor discards.
 
+**taskblock-56 Pass D — the refactor landed, and this one did NOT evaporate. Still `Active`, and
+deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
+
+- **The class it blamed is gone.** `SpectatorOverlay` no longer exists; the click path is
+  `BoardInspectModule.handle_input`, a module any mode can mount. The other two members of the set
+  were already `Resolved` and archived before this block — so the "third of a set" framing is spent,
+  and this is now a lone entry.
+- **But the defect is unchanged, because it was never a duplication bug.** The note above says the
+  set's shared root is Spectator re-implementing Squad's panels. That is true of `BR27.04` and
+  `BR32.09` — two implementations of one panel cannot disagree once there is one panel — and it is
+  **not** true of this one: the blind `y == 0` plane math was not a second copy of anything the
+  player view did better. There was nothing to converge on. Moving it into a module moved it.
+- **What did improve, and it is not nothing.** taskblock-51 Pass K had already made the primary pick
+  `PartPicker` — real ray-vs-box against bodies, blockers and field items — so `BoardPicker.cell_at_ray`
+  is now only the **fallback** for a ray that missed every piece of geometry. The reported symptom
+  needs that fallback to fire and to land on an occluded open tile. Narrower than when this was
+  written; not closed by it.
+- **And the fix now lands once.** Whatever geometry check this eventually gets goes into one module
+  rather than into whichever overlay happened to own the click, which is the part of the refactor's
+  promise that does apply here.
+- **`Pending` would be a false claim** — nothing was fixed, so the honest status is the one it
+  already has. Recorded here rather than silently left alone, because taskblock-56 asked for all
+  three to be re-checked after the collapse and "checked, still open, and here is why the stated
+  cause was wrong" is the answer for this one.
+
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 shooter is elevated on a small platform and the target is below**

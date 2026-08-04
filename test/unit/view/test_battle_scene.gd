@@ -23,8 +23,8 @@ func should_skip_script():
 	return SuiteTier.skip_if_fast()
 
 
-func _overlay(scene: BattleScene) -> SquadControlOverlay:
-	return scene.overlay as SquadControlOverlay
+func _overlay(scene: BattleScene) -> ControlOverlay:
+	return scene.overlay as ControlOverlay
 
 
 ## taskblock-17 Pass A: the exact regression, pinned directly against the
@@ -160,12 +160,12 @@ func test_repair_button_queues_and_resolves_a_real_repair() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	scene.load_battle(state, mission)
-	var overlay: SquadControlOverlay = _overlay(scene)
-	overlay.tactics.selection.select(unit)
+	var overlay: ControlOverlay = _overlay(scene)
+	overlay.tactics().selection.select(unit)
 
-	overlay._on_repair_pressed()
-	overlay._on_repair_menu_id_pressed(0, [target], RepairResolver.find_operable_welder(unit))
-	state.resolve_turn(overlay.tactics.selection.current_queue())
+	overlay.unit_input().open_repair_picker()
+	overlay.unit_input().pick_repair(0, [target], RepairResolver.find_operable_welder(unit))
+	state.resolve_turn(overlay.tactics().selection.current_queue())
 
 	assert_eq(target.hp, 8, "5 hp + 3 (capped heal), resolved for real")
 	assert_eq(mission.gathered_resources.get(&"steel", 0), 2, "5 scrap - 3 spent")
@@ -378,7 +378,7 @@ func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 
-	assert_not_null(_overlay(scene).log_sink)
+	assert_not_null(_overlay(scene).ui_log_sink())
 	assert_not_null(scene.file_sink)
 	assert_true(FileAccess.file_exists(scene.file_sink.path), "the log must actually hit disk")
 	scene.file_sink.close()
@@ -392,7 +392,7 @@ func test_new_battle_wires_both_a_ui_sink_and_a_file_sink() -> void:
 func test_new_battle_logs_the_seed_at_bout_start_to_both_sinks() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var log_sink: HierarchicalUiSink = _overlay(scene).log_sink
+	var log_sink: HierarchicalUiSink = _overlay(scene).ui_log_sink()
 
 	assert_true(log_sink.lines.size() > 0)
 	assert_true(
@@ -435,7 +435,7 @@ func test_new_battle_logs_the_seed_at_bout_start_to_both_sinks() -> void:
 func test_a_second_bout_logs_its_own_seed_not_the_first_bouts() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var log_sink: HierarchicalUiSink = _overlay(scene).log_sink
+	var log_sink: HierarchicalUiSink = _overlay(scene).ui_log_sink()
 
 	var first_header: String = log_sink.lines[0]
 	assert_true(
@@ -491,9 +491,9 @@ func test_an_overlay_installed_after_the_bout_still_shows_the_bout_header() -> v
 	const SEED := 6042
 	var built: Dictionary = CompletionSampler.build_for_seed(SEED)
 	scene.load_battle(built["state"], built["mission"])
-	# The handoff `GenerateBoutOverlay._on_start_bout_pressed` performs: load first,
+	# The handoff `BoutSetupModule.start_bout` performs: load first,
 	# then replace the overlay that just received the header.
-	scene.set_overlay(SpectatorOverlay.new())
+	scene.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 
 	var panel: UiLogSink = scene.overlay.ui_log_sink()
 	assert_not_null(panel, "sanity: the spectator overlay owns a log panel")
@@ -525,7 +525,7 @@ func test_seeding_a_late_overlays_panel_does_not_write_a_second_header_to_the_fi
 	const SEED := 60423
 	var built: Dictionary = CompletionSampler.build_for_seed(SEED)
 	scene.load_battle(built["state"], built["mission"])
-	scene.set_overlay(SpectatorOverlay.new())
+	scene.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 
 	var file := FileAccess.open(scene.file_sink.path, FileAccess.READ)
 	var contents: String = file.get_as_text()
@@ -593,7 +593,7 @@ func test_calling_new_battle_again_does_not_leak_the_previous_units_views() -> v
 
 	assert_eq(scene.unit_views.size(), scene.combat_state.units.size())
 	# world_environment + directional_light + camera_rig + board_view +
-	# the overlay Node (SquadControlOverlay itself, everything ELSE it
+	# the overlay Node (ControlOverlay itself, everything ELSE it
 	# owns lives under that one child) + one HitVolumeView per unit.
 	assert_eq(scene.get_child_count(), 5 + scene.combat_state.units.size())
 	assert_eq(scene.combat_state.units.size(), unit_count, "the seeded roster size is stable")
@@ -677,7 +677,7 @@ func test_seeded_units_spawn_on_the_grids_own_spawn_a_and_spawn_b_cells() -> voi
 func test_tactics_is_wired_to_the_real_camera_and_board() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var tactics: TacticsController = _overlay(scene).tactics
+	var tactics: TacticsController = _overlay(scene).tactics()
 
 	assert_eq(tactics.selection.state, scene.combat_state)
 	assert_eq(tactics.board_view, scene.board_view)
@@ -688,7 +688,7 @@ func test_tactics_is_wired_to_the_real_camera_and_board() -> void:
 func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_redraws_it() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var tactics: TacticsController = _overlay(scene).tactics
+	var tactics: TacticsController = _overlay(scene).tactics()
 
 	var current: Unit = scene.combat_state.current_unit()
 	var start_cell: Vector2i = current.cell
@@ -733,12 +733,15 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 func test_new_battle_is_not_among_the_turn_controls() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var overlay: SquadControlOverlay = _overlay(scene)
+	var overlay: ControlOverlay = _overlay(scene)
 
-	for child: Node in overlay.turn_controls_column.get_children():
+	for child: Node in overlay.module(&"turn_controls").column.get_children():
 		if child is Button:
 			assert_ne((child as Button).text, "New Battle")
-	assert_not_null(overlay.new_battle_button, "it must still exist somewhere — just not there")
+	assert_not_null(
+		overlay.module(&"top_left_controls").new_battle_button(),
+		"it must still exist somewhere — just not there"
+	)
 
 
 ## taskblock-08 E1: "action bar on the LEFT... AP and MP pips render on
@@ -748,7 +751,7 @@ func test_new_battle_is_not_among_the_turn_controls() -> void:
 func test_the_action_bars_own_row_is_the_last_child_of_the_action_column() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var action_column: VBoxContainer = _overlay(scene).action_column
+	var action_column: VBoxContainer = _overlay(scene).module(&"action_bar").action_column
 
 	assert_eq(action_column.get_child_count(), 2, "pips above, the action row below")
 	var last: Node = action_column.get_child(action_column.get_child_count() - 1)
@@ -762,7 +765,7 @@ func test_the_action_bars_own_row_is_the_last_child_of_the_action_column() -> vo
 func test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var turn_controls_column: VBoxContainer = _overlay(scene).turn_controls_column
+	var turn_controls_column: VBoxContainer = _overlay(scene).module(&"turn_controls").column
 
 	for child: Node in turn_controls_column.get_children():
 		var button := child as Button
@@ -788,9 +791,9 @@ func test_toggle_blue_control_flips_squad_zero_and_swaps_the_overlay() -> void:
 		scene.combat_state.controller_for(1), Enums.SquadController.AI, "red is never touched"
 	)
 	if after == Enums.SquadController.HUMAN:
-		assert_true(scene.overlay is SquadControlOverlay)
+		assert_true(scene.overlay is ControlOverlay)
 	else:
-		assert_true(scene.overlay is SpectatorOverlay)
+		assert_true(scene.overlay is ControlOverlay)
 
 
 func test_toggle_blue_control_round_trips() -> void:
@@ -810,13 +813,13 @@ func test_toggle_blue_control_round_trips() -> void:
 func test_generate_bout_overlay_assume_control_checkbox_lands_on_squad_control() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	scene.set_overlay(GenerateBoutOverlay.new())
-	var menu: GenerateBoutOverlay = scene.overlay as GenerateBoutOverlay
-	menu._assume_control_checkbox.button_pressed = true
+	scene.set_overlay(ControlOverlay.for_mode(ViewModes.bout_setup()))
+	var menu: ControlOverlay = scene.overlay as ControlOverlay
+	menu.bout_setup().assume_control_checkbox.button_pressed = true
 
-	menu._on_start_bout_pressed()
+	menu.bout_setup().start_bout()
 
-	assert_true(scene.overlay is SquadControlOverlay)
+	assert_true(scene.overlay is ControlOverlay)
 	assert_eq(scene.combat_state.controller_for(0), Enums.SquadController.HUMAN)
 	assert_eq(scene.combat_state.controller_for(1), Enums.SquadController.AI)
 
@@ -830,7 +833,7 @@ func test_generate_bout_overlay_assume_control_checkbox_lands_on_squad_control()
 func test_load_battle_repoints_the_wall_cutout_feed_even_in_spectator_mode() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	scene.set_overlay(SpectatorOverlay.new())
+	scene.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 
 	scene.new_battle(1)
 	var first_units: Array[Unit] = scene.combat_state.units

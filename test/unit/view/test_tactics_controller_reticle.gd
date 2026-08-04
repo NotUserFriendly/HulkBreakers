@@ -254,7 +254,7 @@ func _aiming_controller() -> TacticsController:
 
 ## **Hovering reads; it never re-aims.** That was this function's stated contract from
 ## taskblock-34 Pass C, and it emitted `aim_changed` anyway — the signal
-## `SquadControlOverlay._on_selection_changed` listens to, which previews twice, and a
+## `UnitInputModule._on_selection_changed` listens to, which previews twice, and a
 ## preview is a `CombatState.dup()` at ~26 ms on a real board.
 ##
 ## Measured before and after, driven through a real overlay on a 214-blocker board: **one

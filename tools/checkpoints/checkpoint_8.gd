@@ -186,7 +186,7 @@ func _load_scenario(shooter_cell: Vector2i, target_cell: Vector2i) -> void:
 	# turn -- `assign_all_to_human()` is the real "Control All Squads"
 	# authoring shortcut (tb31 Pass B), not a hand-set fallback, and avoids
 	# `BoutRunner`'s own "squad controller(s) never assigned" refusal that
-	# `SquadControlOverlay.battle_loaded` triggers on load otherwise.
+	# the player mode's own `battle_loaded` reaction triggers on load otherwise.
 	state.assign_all_to_human()
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []

@@ -41,6 +41,22 @@ var host: Node = null
 ## The unit-input path, or null in a display-only mode. See the class note above.
 var tactics: TacticsController = null
 
+## The host's "auto-advance every AI turn from here" capability, or an invalid `Callable` in a mode
+## that has no such loop.
+##
+## **A published capability, not a back-door to the parent.** `UnitInputModule` has to trigger the
+## AI
+## batch once a human turn has finished animating, and only the host owns that loop; handing over
+## the
+## overlay itself would undo the whole reason there is no `overlay` field. A `Callable` gives the
+## module exactly the one thing it needs and nothing else.
+var advance_ai_turns: Callable = Callable()
+
+## The host's "re-point every module at whatever battle is current" capability. Same reasoning as
+## `advance_ai_turns`: `PlaybackModule` has to rebind the whole surface when a replayed fixture
+## loads, and it must do that without holding the surface.
+var rebind_all: Callable = Callable()
+
 ## Named places a module may put its `Control`s, `StringName` -> `Control`.
 ##
 ## **Layout belongs to the mode; behaviour belongs to the module.** `SquadControlOverlay._build_ui`

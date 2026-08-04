@@ -66,10 +66,14 @@ func test_bout_injector_is_referenced_only_by_the_debug_module() -> void:
 ## `battle.bout_injector` read would rebuild the duplication this pass removed, and nothing about
 ## the running game would look different.
 func test_no_overlay_reaches_for_the_injector_directly() -> void:
+	# taskblock-56 Pass D: there is one surface class now, plus the modules it mounts. The list is
+	# the surface and the two modules that would most plausibly grow their own injector read — the
+	# board-picking one, because injection borrows a click from it, and the unit-input one, because
+	# it is the closest thing to a player path.
 	var overlay_paths: Array[String] = [
-		"res://src/view/overlays/squad_control_overlay.gd",
-		"res://src/view/overlays/single_unit_overlay.gd",
-		"res://src/view/overlays/generate_bout_overlay.gd",
+		"res://src/view/overlays/control_overlay.gd",
+		"res://src/view/modules/board_inspect_module.gd",
+		"res://src/view/modules/unit_input_module.gd",
 	]
 	for path: String in overlay_paths:
 		var file := FileAccess.open(path, FileAccess.READ)

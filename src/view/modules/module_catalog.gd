@@ -31,6 +31,7 @@ const IDS: Array[StringName] = [
 	&"top_left_controls",
 	&"playback",
 	&"board_inspect",
+	&"bout_setup",
 ]
 
 
@@ -69,4 +70,6 @@ static func build(id: StringName) -> ViewModule:
 			return PlaybackModule.new()
 		&"board_inspect":
 			return BoardInspectModule.new()
+		&"bout_setup":
+			return BoutSetupModule.new()
 	return null

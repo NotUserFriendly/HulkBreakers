@@ -16,7 +16,7 @@ extends GutTest
 ## for not being registered.
 ##
 ## **Why an empty context is the right torture and not an unrealistic one.** Three of the four modes
-## genuinely hit pieces of it: `SquadControlOverlay._build_ui` has always had to run before a battle
+## genuinely hit pieces of it: the player mode's own build has always had to run before a battle
 ## exists, because the session-start log line needs a live sink the instant it is emitted; a
 ## display-only mode really does have `tactics == null`; and Pass F's editor mounts display modules
 ## against a board with no `CombatState` behind it. A module that needs its parent would have needed

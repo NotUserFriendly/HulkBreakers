@@ -36,11 +36,11 @@ func after_each() -> void:
 	DataLibrary.reset()
 
 
-func _overlay() -> SpectatorOverlay:
+func _overlay() -> ControlOverlay:
 	var grid: Grid = GridFixture.flat(12, 10)
 	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(2, 2), 0)
 	var state := CombatState.new(grid, [unit])
-	# `BoutRunner` refuses a state with unassigned squads, and `SpectatorOverlay.setup`
+	# `BoutRunner` refuses a state with unassigned squads, and the spectator mode's setup
 	# builds one — a layout fixture still has to be a legal bout.
 	state.assign_rest_to_ai([] as Array[int])
 	var mission := MissionState.new(RunState.new(), state)
@@ -48,13 +48,13 @@ func _overlay() -> SpectatorOverlay:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, mission)
-	battle.set_overlay(SpectatorOverlay.new())
-	return battle.overlay as SpectatorOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	return battle.overlay as ControlOverlay
 
 
 func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _overlay()
+	if overlay.replay().suite_run_panel == null:
 		# The panels are gated on `OS.is_debug_build()`. In a release run there is
 		# nothing to collide, and saying so beats a silent pass.
 		gut.p("debug panels not built (release build) — nothing to check")
@@ -63,8 +63,8 @@ func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
 
 	# Bound so the panel has content and therefore a real rect — an empty container
 	# collapses to zero size and would clear every obstacle by not existing.
-	overlay.watched_run_panel.bind(overlay.battle, WatchedRun.of([1, 2] as Array[int]))
-	var controls: Control = overlay.top_left_controls
+	overlay.replay().watched_run_panel.bind(overlay.battle, WatchedRun.of([1, 2] as Array[int]))
+	var controls: Control = overlay.module(&"top_left_controls").controls
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -77,9 +77,13 @@ func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
 	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
 	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
 	# not a panel, and nothing here would have caught it.
-	overlay.perf_panel.visible = true
+	overlay.debug_panel_module().perf_panel.visible = true
 	await get_tree().process_frame
-	for panel: Control in [overlay.suite_run_panel, overlay.watched_run_panel, overlay.perf_panel]:
+	for panel: Control in [
+		overlay.replay().suite_run_panel,
+		overlay.replay().watched_run_panel,
+		overlay.debug_panel_module().perf_panel
+	]:
 		var rect: Rect2 = panel.get_global_rect()
 		gut.p("%s — controls %s, panel %s" % [panel.name, row, rect])
 		assert_gt(rect.size.x, 0.0, "%s has a real rect" % panel.name)
@@ -92,11 +96,11 @@ func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
 ## The panels must still be **on screen**. Moving them out of the way by pushing them
 ## off the viewport would pass the test above and help nobody.
 func test_the_debug_panels_stay_inside_the_viewport() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _overlay()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
-	overlay.watched_run_panel.bind(overlay.battle, WatchedRun.of([1, 2] as Array[int]))
+	overlay.replay().watched_run_panel.bind(overlay.battle, WatchedRun.of([1, 2] as Array[int]))
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -105,9 +109,13 @@ func test_the_debug_panels_stay_inside_the_viewport() -> void:
 	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
 	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
 	# not a panel, and nothing here would have caught it.
-	overlay.perf_panel.visible = true
+	overlay.debug_panel_module().perf_panel.visible = true
 	await get_tree().process_frame
-	for panel: Control in [overlay.suite_run_panel, overlay.watched_run_panel, overlay.perf_panel]:
+	for panel: Control in [
+		overlay.replay().suite_run_panel,
+		overlay.replay().watched_run_panel,
+		overlay.debug_panel_module().perf_panel
+	]:
 		assert_true(
 			screen.intersects(panel.get_global_rect()),
 			(
@@ -124,11 +132,11 @@ func test_the_debug_panels_stay_inside_the_viewport() -> void:
 ## far longer than the panel, the width must not move — which is a claim about
 ## `clip_text` and `custom_minimum_size` together, and neither alone would hold it.
 func test_the_run_panel_keeps_its_width_whatever_the_feed_says() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _overlay()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
-	var panel: SuiteRunPanel = overlay.suite_run_panel
+	var panel: SuiteRunPanel = overlay.replay().suite_run_panel
 	await get_tree().process_frame
 	var empty_width: float = panel.get_global_rect().size.x
 
@@ -157,12 +165,12 @@ func test_the_run_panel_keeps_its_width_whatever_the_feed_says() -> void:
 ## against the same alpha `CombatLogPanel` uses, so the two cannot silently diverge
 ## into "one has a background and one does not".
 func test_the_run_panel_draws_a_background_like_the_combat_log() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _overlay()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
 
-	var body: PanelContainer = overlay.suite_run_panel._body
+	var body: PanelContainer = overlay.replay().suite_run_panel._body
 	assert_not_null(body, "the panel has a body to draw on")
 	var style: StyleBox = body.get_theme_stylebox("panel")
 	assert_true(style is StyleBoxFlat, "and a real stylebox rather than the default")
@@ -177,13 +185,13 @@ func test_the_run_panel_draws_a_background_like_the_combat_log() -> void:
 # --- taskblock-51: the run panels are spectator-only for the hunt ---------------------
 
 
-func _player_overlay() -> SquadControlOverlay:
+func _player_overlay() -> ControlOverlay:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.new_battle(1)
-	battle.set_overlay(SquadControlOverlay.new())
-	return battle.overlay as SquadControlOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	return battle.overlay as ControlOverlay
 
 
 ## **Asserted in both directions, because one direction is vacuous on its own.**
@@ -198,17 +206,21 @@ func test_the_run_panels_are_spectator_only_while_the_hunt_runs() -> void:
 		assert_true(true, "the panels are debug-gated; nothing to split in a release build")
 		return
 
-	var spectator: SpectatorOverlay = _overlay()
-	var player: SquadControlOverlay = _player_overlay()
+	var spectator: ControlOverlay = _overlay()
+	var player: ControlOverlay = _player_overlay()
 
 	assert_eq(
 		SuiteRunPanel.SHOW_IN_PLAYER_VIEW,
 		false,
 		"the hunt wants the player view clear — flip this and this test with it"
 	)
-	assert_null(player.suite_run_panel, "the player view carries no run panel during the hunt")
-	assert_null(player.watched_run_panel, "nor a replay panel")
-	assert_not_null(spectator.suite_run_panel, "and the spectator still has one to run from")
+	assert_null(
+		player.replay().suite_run_panel, "the player view carries no run panel during the hunt"
+	)
+	assert_null(player.replay().watched_run_panel, "nor a replay panel")
+	assert_not_null(
+		spectator.replay().suite_run_panel, "and the spectator still has one to run from"
+	)
 
 
 ## The inject panel is a hunting tool, not a test surface, and must survive the split —
@@ -218,7 +230,9 @@ func test_the_player_views_inject_panel_survives_the_split() -> void:
 		assert_true(true)
 		return
 
-	assert_not_null(_player_overlay().debug_panel, "the player view keeps its inject panel")
+	assert_not_null(
+		_player_overlay().debug_panel_module().panel, "the player view keeps its inject panel"
+	)
 
 
 ## **`intersects` is too weak to catch what actually shipped.** The readout was anchored to
@@ -229,16 +243,16 @@ func test_the_player_views_inject_panel_survives_the_split() -> void:
 ##
 ## This asserts the readout is wholly on screen, which is the property that was violated.
 func test_the_performance_readout_is_wholly_on_screen() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	if overlay.perf_panel == null:
+	var overlay: ControlOverlay = _overlay()
+	if overlay.debug_panel_module().perf_panel == null:
 		assert_true(true, "debug-gated; nothing to place in a release build")
 		return
-	overlay.perf_panel.visible = true
+	overlay.debug_panel_module().perf_panel.visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 
 	var screen: Vector2 = get_tree().root.get_visible_rect().size
-	var rect: Rect2 = overlay.perf_panel.get_global_rect()
+	var rect: Rect2 = overlay.debug_panel_module().perf_panel.get_global_rect()
 
 	gut.p("readout at %s in a %s viewport" % [rect, screen])
 	# **The width is the assertion that matters.** The first broken version sat at x = -16;
@@ -261,17 +275,20 @@ func test_the_performance_readout_is_wholly_on_screen() -> void:
 ## It belongs to the right of the centred debug panel, which is where the supervisor asked
 ## for it — not overlapping it.
 func test_the_readout_sits_clear_of_the_debug_panel() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	if overlay.perf_panel == null or overlay.debug_panel == null:
+	var overlay: ControlOverlay = _overlay()
+	if (
+		overlay.debug_panel_module().perf_panel == null
+		or overlay.debug_panel_module().panel == null
+	):
 		assert_true(true)
 		return
-	overlay.perf_panel.visible = true
-	overlay.debug_panel.visible = true
+	overlay.debug_panel_module().perf_panel.visible = true
+	overlay.debug_panel_module().panel.visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var readout: Rect2 = overlay.perf_panel.get_global_rect()
-	var debug: Rect2 = overlay.debug_panel.get_global_rect()
+	var readout: Rect2 = overlay.debug_panel_module().perf_panel.get_global_rect()
+	var debug: Rect2 = overlay.debug_panel_module().panel.get_global_rect()
 
 	assert_true(
 		readout.position.x >= debug.position.x,

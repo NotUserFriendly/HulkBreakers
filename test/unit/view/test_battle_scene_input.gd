@@ -15,10 +15,10 @@ extends GutTest
 
 
 ## taskblock-15 Pass A: TacticsController/ActionBar moved from BattleScene
-## itself into SquadControlOverlay (its default overlay) — every test
+## itself into the player mode (its default surface) — every test
 ## below reaches through this instead.
-func _overlay(scene: BattleScene) -> SquadControlOverlay:
-	return scene.overlay as SquadControlOverlay
+func _overlay(scene: BattleScene) -> ControlOverlay:
+	return scene.overlay as ControlOverlay
 
 
 func _click_at(scene: BattleScene, screen_pos: Vector2) -> void:
@@ -74,7 +74,7 @@ func test_a_real_click_over_the_board_selects_the_current_unit_through_every_pan
 	_click_at(scene, screen_pos)
 
 	assert_eq(
-		_overlay(scene).tactics.selection.selected_unit,
+		_overlay(scene).tactics().selection.selected_unit,
 		current,
 		"a real click at the current unit's own screen position must select it, not be swallowed"
 	)
@@ -91,16 +91,16 @@ func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> v
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 
-	var overlay: SquadControlOverlay = _overlay(scene)
+	var overlay: ControlOverlay = _overlay(scene)
 	var current: Unit = scene.combat_state.current_unit()
-	overlay.tactics.selection.select(current)
+	overlay.tactics().selection.select(current)
 
-	var box: PanelContainer = overlay.action_bar._panels[0]
+	var box: PanelContainer = overlay.module(&"action_bar").action_bar._panels[0]
 	var screen_pos: Vector2 = box.get_global_rect().get_center()
 	_click_at(scene, screen_pos)
 
 	assert_eq(
-		overlay.tactics.selection.selected_unit,
+		overlay.tactics().selection.selected_unit,
 		current,
 		"a click on the action bar must never also deselect/reselect through the board underneath"
 	)
@@ -120,21 +120,21 @@ func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> v
 func test_hovering_a_queue_row_never_updates_the_boards_own_hover_state() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var overlay: SquadControlOverlay = _overlay(scene)
+	var overlay: ControlOverlay = _overlay(scene)
 	var current: Unit = scene.combat_state.current_unit()
-	overlay.tactics.selection.select(current)
-	var reachable: Array[Vector2i] = overlay.tactics.selection.reachable_cells()
+	overlay.tactics().selection.select(current)
+	var reachable: Array[Vector2i] = overlay.tactics().selection.reachable_cells()
 	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
-	overlay.tactics.click_cell(reachable[0])
+	overlay.tactics().click_cell(reachable[0])
 
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var row: HBoxContainer = overlay.queue_panel.rows_container.get_child(0)
+	var row: HBoxContainer = overlay.module(&"queue_panel").panel.rows_container.get_child(0)
 	var screen_pos: Vector2 = row.get_global_rect().get_center()
 
 	var fired: Array[bool] = [false]
-	overlay.tactics.mouse_moved.connect(func() -> void: fired[0] = true)
+	overlay.tactics().mouse_moved.connect(func() -> void: fired[0] = true)
 	var entered: Array[bool] = [false]
 	row.mouse_entered.connect(func() -> void: entered[0] = true)
 
@@ -264,21 +264,21 @@ func _scan_for_stop_filters(node: Node, offenders: Array[String]) -> void:
 func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_covering_it() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var overlay: SquadControlOverlay = _overlay(scene)
+	var overlay: ControlOverlay = _overlay(scene)
 	# Anchored Controls (turn_controls_column included) only resolve their
 	# real, laid-out `global_rect` after a live frame actually runs —
 	# reading it on the same frame the scene was built returns a garbage
 	# (viewport_size, 0x0) rect, off-screen by construction.
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var end_turn_button: Button = overlay.end_turn_button
+	var end_turn_button: Button = overlay.module(&"turn_controls").end_turn_button
 	var screen_pos: Vector2 = end_turn_button.get_global_rect().get_center()
 
-	overlay.tooltip_view.show_data(
+	overlay.module(&"tooltip").view.show_data(
 		TooltipData.new("test", [{"label": "a", "value": "b", "changed": false}]), screen_pos
 	)
-	overlay.tooltip_view._process(TooltipView.HOVER_DELAY_SEC)
-	assert_true(overlay.tooltip_view.visible, "sanity: the tooltip is actually showing")
+	overlay.module(&"tooltip").view._process(TooltipView.HOVER_DELAY_SEC)
+	assert_true(overlay.module(&"tooltip").view.visible, "sanity: the tooltip is actually showing")
 
 	var fired: Array[bool] = [false]
 	end_turn_button.pressed.connect(func() -> void: fired[0] = true)
@@ -296,7 +296,7 @@ func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_cov
 ## `tactics.resolve_to_marker(index)`. This pushes a genuine
 ## `InputEventMouseButton` at that button's own real, laid-out screen rect
 ## through the real Viewport, inside the FULL real `BattleScene`/
-## `SquadControlOverlay` construction — proving the whole path end to end,
+## player-mode construction — proving the whole path end to end,
 ## not a shortcut. (This is also what caught a real layout bug while this
 ## was being built: the row's own expanding label had no width bound
 ## inside its `ScrollContainer`, landing the button hundreds of pixels
@@ -305,17 +305,21 @@ func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_cov
 func test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var overlay: SquadControlOverlay = _overlay(scene)
+	var overlay: ControlOverlay = _overlay(scene)
 	var current: Unit = scene.combat_state.current_unit()
-	overlay.tactics.selection.select(current)
+	overlay.tactics().selection.select(current)
 
-	var reachable: Array[Vector2i] = overlay.tactics.selection.reachable_cells()
+	var reachable: Array[Vector2i] = overlay.tactics().selection.reachable_cells()
 	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
 	assert_gt(reachable.size(), 0, "sanity: the current unit must have somewhere to move")
-	overlay.tactics.click_cell(reachable[0])
+	overlay.tactics().click_cell(reachable[0])
 	var start_cell: Vector2i = current.cell
 
-	assert_eq(overlay.queue_panel.rows_container.get_child_count(), 1, "sanity: one row now queued")
+	assert_eq(
+		overlay.module(&"queue_panel").panel.rows_container.get_child_count(),
+		1,
+		"sanity: one row now queued"
+	)
 
 	# Anchored/laid-out Controls only resolve a real global_rect after a
 	# live frame runs (tb32 Pass D's own diagnostic note) — read too early
@@ -323,7 +327,7 @@ func test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it() -> v
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var row: HBoxContainer = overlay.queue_panel.rows_container.get_child(0)
+	var row: HBoxContainer = overlay.module(&"queue_panel").panel.rows_container.get_child(0)
 	var resolve_button: Button = row.get_child(row.get_child_count() - 1) as Button
 	_click_at(scene, resolve_button.get_global_rect().get_center())
 
@@ -333,7 +337,7 @@ func test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it() -> v
 		"a real click on the row's own Resolve button must actually resolve the move"
 	)
 	assert_eq(
-		overlay.queue_panel.rows_container.get_child_count(),
+		overlay.module(&"queue_panel").panel.rows_container.get_child_count(),
 		0,
 		"the resolved queue is empty — no rows left"
 	)
@@ -345,18 +349,18 @@ func test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it() -> v
 func test_entering_a_turn_control_button_hides_a_stale_tooltip() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var overlay: SquadControlOverlay = _overlay(scene)
-	var end_turn_button: Button = overlay.end_turn_button
+	var overlay: ControlOverlay = _overlay(scene)
+	var end_turn_button: Button = overlay.module(&"turn_controls").end_turn_button
 
-	overlay.tooltip_view.show_data(
+	overlay.module(&"tooltip").view.show_data(
 		TooltipData.new("test", [{"label": "a", "value": "b", "changed": false}]), Vector2(10, 10)
 	)
-	overlay.tooltip_view._process(TooltipView.HOVER_DELAY_SEC)
-	assert_true(overlay.tooltip_view.visible, "sanity: the tooltip is actually showing")
+	overlay.module(&"tooltip").view._process(TooltipView.HOVER_DELAY_SEC)
+	assert_true(overlay.module(&"tooltip").view.visible, "sanity: the tooltip is actually showing")
 
 	end_turn_button.mouse_entered.emit()
 
 	assert_false(
-		overlay.tooltip_view.visible,
+		overlay.module(&"tooltip").view.visible,
 		"a stale board tooltip must not linger over a turn-control button"
 	)

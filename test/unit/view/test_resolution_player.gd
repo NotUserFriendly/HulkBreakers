@@ -22,7 +22,7 @@ func _make_unit(cell: Vector2i) -> Unit:
 	return Unit.new(Matrix.new(), Shell.new(root), cell)
 
 
-## Neutralizes _ready()'s own default SquadControlOverlay first (same
+## Neutralizes _ready()'s own default player mode first (same
 ## reasoning as test_spectator_overlay.gd's own helper) before loading a
 ## custom two-unit fixture — ResolutionPlayer itself is standalone, wired
 ## directly against the resulting `battle`, no overlay needed at all.
@@ -59,7 +59,7 @@ func test_setup_shows_the_tactics_banner() -> void:
 	assert_eq((built.banner as Label).text, ResolutionPlayer.TACTICS_BANNER)
 
 
-## B: "p_banner is optional" — SpectatorOverlay never supplies one.
+## B: "p_banner is optional" — a display-only mode never supplies one.
 func test_setup_with_no_banner_never_crashes() -> void:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)

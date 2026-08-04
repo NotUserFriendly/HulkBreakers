@@ -57,14 +57,14 @@ var combat_state: CombatState
 ## default battle, which has none of its own yet (Phase 12 scope: "no
 ## mission loop"). An empty-objectives MissionState is inert for that
 ## case (the AI just walks to extraction) and
-## costs nothing; a squad later set to AI under SquadControlOverlay
+## costs nothing; a squad later set to AI under the player mode
 ## auto-resolves through this same object, for free.
 var mission: MissionState
 ## docs/09 taskblock03 Pass B: "one stream, many sinks — never two
 ## streams." A fresh file per `load_battle()` call — one session, one
 ## replayable log. World-level (every overlay's own combat_state writes to
 ## disk, regardless of which one is watching); the on-screen log widget
-## itself is overlay-owned (SquadControlOverlay/SpectatorOverlay each
+## itself is surface-owned (`CombatLogModule`, mounted by whichever mode wants it,
 ## place and size it differently).
 var file_sink: FileSink
 ## tb35 Pass A1: world-level like `file_sink` above, same reason — every
@@ -80,7 +80,7 @@ var overlay: ControlOverlay
 ## `BoutInjector` itself only ever held a bare `CombatState` reference
 ## (never anything overlay-specific), so owning it at the world level
 ## (rebuilt alongside `file_sink` on every `load_battle()`) is what lets
-## it survive a `SpectatorOverlay` <-> `SquadControlOverlay` swap
+## it survive a spectator <-> player mode swap
 ## (`toggle_blue_control()`) instead of being torn down with whichever
 ## overlay first constructed it. Each overlay's own debug-gated UI
 ## affordance (see `spectator_overlay.gd`/`squad_control_overlay.gd`) just
@@ -115,13 +115,13 @@ func _ready() -> void:
 	board_view = BoardView.new()
 	add_child(board_view)
 
-	# set_overlay() BEFORE the first new_battle() call — SquadControlOverlay
+	# set_overlay() BEFORE the first new_battle() call — the player mode
 	# connects to battle_loaded here with combat_state still null, so its
 	# log_sink is already attached by the time load_battle() (inside
 	# new_battle(), below) emits that signal, strictly before new_battle()
 	# goes on to emit the session-start event. Reversing this order drops
 	# that first line silently — nothing was listening yet when it fired.
-	set_overlay(SquadControlOverlay.new())
+	set_overlay(ControlOverlay.for_mode(ViewModes.player()))
 	new_battle(DEFAULT_SEED)
 
 
@@ -203,7 +203,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not key_event.pressed:
 		return
 	if key_event.keycode == ControlBindings.SIMULATE_BOUT_KEY:
-		set_overlay(GenerateBoutOverlay.new())
+		set_overlay(ControlOverlay.for_mode(ViewModes.bout_setup()))
 		return
 	if key_event.keycode != ControlBindings.TOGGLE_HIT_VOLUMES_KEY:
 		return
@@ -214,18 +214,27 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## taskblock-15 Pass A: the ONE place a `ControlOverlay` swap happens —
-## `GenerateBoutOverlay` hands off to `SpectatorOverlay` (A2) exactly this
-## way, and `_ready()`'s own default (`SquadControlOverlay`) goes through
+## The bout-setup mode hands off to the spectator mode exactly this
+## way, and `_ready()`'s own default (the player mode) goes through
 ## it too, so there is only ever one code path that installs an overlay.
 ## Tears the old one down first (its own UI/connections), then wires the
 ## new one against the world already built.
+## taskblock-56 Pass D: the overlay-activated/deactivated log lines used to print
+## `overlay.get_class()`, which stops carrying any information once every surface is
+## the same class. A mode's own `display_name` is what those lines are actually about.
+static func _mode_name(of_overlay: ControlOverlay) -> String:
+	if of_overlay == null:
+		return ""
+	return of_overlay.mode.display_name if of_overlay.mode != null else "ControlOverlay"
+
+
 func set_overlay(new_overlay: ControlOverlay) -> void:
 	# taskblock-41 Pass D: "which overlay is active and when it turns off."
 	# Emitted around the swap rather than after it, so the log distinguishes
 	# "the old one tore down" from "the new one came up" — a teardown that
 	# leaves something behind (a sink still attached, a paused runner) shows as
 	# a missing pair, not as silence.
-	var previous: String = overlay.get_class() if overlay != null else ""
+	var previous: String = _mode_name(overlay)
 	if overlay != null:
 		_log_overlay(&"overlay_deactivated", previous, "overlay %s torn down" % previous)
 		overlay.teardown()
@@ -235,7 +244,7 @@ func set_overlay(new_overlay: ControlOverlay) -> void:
 	add_child(overlay)
 	overlay.setup(self)
 	_seed_overlay_log_with_the_bout_header()
-	var active: String = overlay.get_class()
+	var active: String = _mode_name(overlay)
 	_log_overlay(
 		&"overlay_activated",
 		active,
@@ -247,7 +256,7 @@ func set_overlay(new_overlay: ControlOverlay) -> void:
 ##
 ## taskblock-52 (`BR52.11`, the second half): the seed reached `out/combat.log` but
 ## **not the top of the in-game panel**, for every bout started from
-## `GenerateBoutOverlay`. The order is the whole story: `load_battle()` emits the
+## the bout-setup mode. The order is the whole story: `load_battle()` emits the
 ## header into whichever panel is up, and the caller *then* swaps the overlay — so
 ## the panel that received it is torn down and the fresh one starts empty. The file
 ## sink survives the swap because `BattleScene` owns it; a panel does not, because
@@ -297,7 +306,7 @@ func _log_overlay(kind: StringName, overlay_name: String, text: String) -> void:
 ## Squad 0 is "blue" (the same convention `WorldPalette.team_color`/
 ## `MissionState.player_squad_id` already use); squad 1 ("red") is never
 ## touched here, so it stays AI regardless of which way this flips.
-## `set_overlay`'s own teardown (which SpectatorOverlay's `teardown()`
+## `set_overlay`'s own teardown (which the spectator mode's playback
 ## already routes through `pause()`) is what makes toggling safe mid
 ## auto-play — nothing new to guard here either.
 func toggle_blue_control() -> void:
@@ -308,17 +317,17 @@ func toggle_blue_control() -> void:
 	)
 	combat_state.set_squad_controller(0, next_controller)
 	if next_controller == Enums.SquadController.HUMAN:
-		set_overlay(SquadControlOverlay.new())
+		set_overlay(ControlOverlay.for_mode(ViewModes.player()))
 	else:
-		set_overlay(SpectatorOverlay.new())
+		set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 
 
 ## Rebuilds the world (board, camera framing, one HitVolumeView per unit)
 ## from an already-built `CombatState`/`MissionState` — `new_battle()`
-## below is the hand-seeded default path through this; `GenerateBoutOverlay`
+## below is the hand-seeded default path through this; the bout-setup mode
 ## (taskblock-14's `BoutSetup`) is the other. Emits `battle_loaded` so
 ## whichever overlay is ALREADY active (e.g. "New Battle" pressed again
-## under `SquadControlOverlay`) can re-wire itself without a full
+## under the player mode) can re-wire itself without a full
 ## teardown/setup cycle.
 func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	for view: HitVolumeView in unit_views:
@@ -363,7 +372,7 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	# **`BR52.11`: this used to be an OPTIONAL `header_event` argument, and the
 	# comment above already argued it should not be** — *"rather than by whoever
 	# happens to call this and remembers to do it afterwards"*. The signature did
-	# not enforce what the comment asked for, and `GenerateBoutOverlay` did exactly
+	# not enforce what the comment asked for, and the bout-setup path did exactly
 	# the thing the comment warned about: it called the two-argument form, so the
 	# seed a player typed generated the whole bout and was then dropped. Because a
 	# new bout **appends** to the same file (`FileSink`, supervisor's call), the log
@@ -377,9 +386,9 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	board_view.build(combat_state.grid, combat_state.material_table, mission.team_extraction_cells)
 	# tb35 Pass D (BR32.01/BR32.03): the wall-cutout feed must be re-pointed
 	# for every bout, regardless of which overlay ends up active —
-	# previously this only happened inside SquadControlOverlay's own
+	# previously this only happened inside the player surface's own
 	# battle_loaded handler, so starting/reloading a bout while staying in
-	# SpectatorOverlay (the default) left it pointing at whatever it held
+	# the spectator surface (the default) left it pointing at whatever it held
 	# before: null on first launch, or the PREVIOUS bout's own now-stale
 	# units on a later one — a cutout at a cell with no unit there anymore,
 	# carried over from a bout that no longer exists. Set once, here, the
@@ -490,13 +499,13 @@ func sync_board_view() -> void:
 ## work that a normal turn has no reason to repeat for every OTHER unit
 ## on the board that this turn never touched.
 ## tb32 Pass D (BR27.07): `apply_highlight` lets a caller defer the
-## active-turn flip separately — `SquadControlOverlay._on_turn_ended()`
+## active-turn flip separately — `UnitInputModule._on_turn_ended()`
 ## does, until the previous unit's own action has actually finished
 ## animating (`await resolution_player.play(events)`); calling this with
 ## the flip still bundled in used to flip the indicator to the NEXT unit
 ## before that animation ever played, a real confirmed bug (docs/
 ## Bugs-add.md's own investigation). True by default so every other
-## existing caller (`advance_ai_turns`, `SpectatorOverlay._advance()`)
+## existing caller (`advance_ai_turns`, `PlaybackModule.advance()`)
 ## keeps its current "always stays in sync, no deferral" behavior
 ## unchanged.
 ## taskblock-42 Pass B (BR27.09 cost #2): tries the cheap transform-only path
@@ -561,7 +570,7 @@ func new_battle(seed_value: int) -> void:
 	# loadout, the works — from this one seed already).
 	# taskblock-52 `BR52.11`: no longer handed to `load_battle`. It rides on
 	# `CombatState.bout_seed`, set in `_seed_battle` below, and `load_battle` emits
-	# it unconditionally — so this path and `GenerateBoutOverlay`'s cannot disagree
+	# it unconditionally — so this path and the bout-setup mode's cannot disagree
 	# about whether a bout logged its seed.
 	load_battle(state, fresh_mission)
 

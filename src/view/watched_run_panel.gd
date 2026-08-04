@@ -3,14 +3,14 @@ extends VBoxContainer
 
 ## taskblock-48 Pass B1: **what `WatchedRunOverlay` was, as a panel.**
 ##
-## taskblock-47 Pass D made it a fifth `SpectatorOverlay` subclass. The reasoning was
+## taskblock-47 Pass D made it a fifth spectator-overlay subclass. The reasoning was
 ## sound in isolation — a watched bout should have every control a normal bout has —
 ## and it is the same reasoning that produced the hierarchy `PLAN.md`'s *One view,
 ## toggleable modules* exists to dissolve. Subclassing to reuse a toolbar is how you
 ## get five overlays.
 ##
 ## **The precedent was already in the tree**: `CombatLogPanel` is a `VBoxContainer`
-## that both `SpectatorOverlay` and `SquadControlOverlay` instantiate, and it survives
+## that `ReplayModule` instantiates for whichever mode wants it, and it survives
 ## every overlay argument untouched because it never joined the hierarchy. This does
 ## the same, so a watched bout gets its controls by being hosted *by* an overlay
 ## rather than by being one.

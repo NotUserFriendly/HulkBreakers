@@ -35,7 +35,7 @@ func after_each() -> void:
 	DataLibrary.reset()
 
 
-func _spectator() -> SpectatorOverlay:
+func _spectator() -> ControlOverlay:
 	var grid: Grid = GridFixture.flat(12, 10)
 	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(2, 2), 0)
 	var state := CombatState.new(grid, [unit])
@@ -45,8 +45,8 @@ func _spectator() -> SpectatorOverlay:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, mission)
-	battle.set_overlay(SpectatorOverlay.new())
-	return battle.overlay as SpectatorOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	return battle.overlay as ControlOverlay
 
 
 ## A `SuiteRun` that has "finished" with one replayable failure, without running
@@ -94,29 +94,31 @@ func test_failures_are_parsed_from_coloured_output_and_deduplicated() -> void:
 ## **The panel is bound to the battle at setup.** Unbound it can never load anything,
 ## which is precisely the state it shipped in.
 func test_the_overlay_binds_the_replay_panel_to_the_battle() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.watched_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().watched_run_panel == null:
 		gut.p("debug panels not built (release build)")
 		assert_true(true)
 		return
 
-	assert_not_null(overlay.watched_run_panel.battle, "the panel knows which battle to load into")
-	assert_eq(overlay.watched_run_panel.battle, overlay.battle, "and it is this overlay's")
+	assert_not_null(
+		overlay.replay().watched_run_panel.battle, "the panel knows which battle to load into"
+	)
+	assert_eq(overlay.replay().watched_run_panel.battle, overlay.battle, "and it is this overlay's")
 
 
 ## **A finished run reaches the replay panel.** The connection is the thing that was
 ## missing; the offer itself is covered by `test_replay_handle.gd`.
 func test_a_failed_run_offers_its_replayable_failures() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.watched_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().watched_run_panel == null:
 		assert_true(true)
 		return
 	var before: Grid = overlay.battle.combat_state.grid
 
-	overlay.suite_run_panel.run = _failed_run()
-	overlay.suite_run_panel.run_completed.emit(overlay.suite_run_panel.run)
+	overlay.replay().suite_run_panel.run = _failed_run()
+	overlay.replay().suite_run_panel.run_completed.emit(overlay.replay().suite_run_panel.run)
 
-	var run: WatchedRun = overlay.watched_run_panel.run
+	var run: WatchedRun = overlay.replay().watched_run_panel.run
 	assert_not_null(run, "the replay panel was handed a run")
 	assert_gt(run.items.size(), 0, "with at least one handle in it")
 	# **The board actually changed.** This is what the supervisor could not see: a
@@ -127,20 +129,23 @@ func test_a_failed_run_offers_its_replayable_failures() -> void:
 ## A green run must put nothing on screen. An offer after every passing run would be
 ## noise, and noise is what gets a debug surface switched off.
 func test_a_passing_run_offers_nothing() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.watched_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().watched_run_panel == null:
 		assert_true(true)
 		return
 	var passing := SuiteRun.new()
 	passing.ingest("Passing Tests      10\nFailing Tests         0\n%s=0\n" % SuiteRun.EXIT_MARKER)
 
-	overlay.suite_run_panel.run = passing
-	overlay.suite_run_panel.run_completed.emit(passing)
+	overlay.replay().suite_run_panel.run = passing
+	overlay.replay().suite_run_panel.run_completed.emit(passing)
 
 	# The panel is bound at setup and therefore always holds a run object; what a green
 	# run must not do is put anything IN it.
 	assert_true(
-		overlay.watched_run_panel.run == null or overlay.watched_run_panel.run.items.is_empty(),
+		(
+			overlay.replay().watched_run_panel.run == null
+			or overlay.replay().watched_run_panel.run.items.is_empty()
+		),
 		"nothing queued for a green run"
 	)
 
@@ -149,17 +154,17 @@ func test_a_passing_run_offers_nothing() -> void:
 ## stops, which reads as "the replay is broken" rather than "nobody told it the bout
 ## ended".
 func test_a_finished_bout_advances_the_replay_run() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.watched_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().watched_run_panel == null:
 		assert_true(true)
 		return
-	overlay.watched_run_panel.bind(overlay.battle, WatchedRun.of([4, 9] as Array[int]))
-	overlay.watched_run_panel.turns_taken = 7
-	var first: int = overlay.watched_run_panel.run.current_seed()
+	overlay.replay().watched_run_panel.bind(overlay.battle, WatchedRun.of([4, 9] as Array[int]))
+	overlay.replay().watched_run_panel.turns_taken = 7
+	var first: int = overlay.replay().watched_run_panel.run.current_seed()
 
-	overlay.watched_run_panel.on_bout_finished()
+	overlay.replay().watched_run_panel.on_bout_finished()
 
-	var run: WatchedRun = overlay.watched_run_panel.run
+	var run: WatchedRun = overlay.replay().watched_run_panel.run
 	assert_eq(run.results.size(), 1, "the finished bout was recorded")
 	assert_eq(int(run.results[first]["turns"]), 7, "with the runner's own turn count")
 	assert_ne(run.current_seed(), first, "and the run moved on")
@@ -169,18 +174,18 @@ func test_a_finished_bout_advances_the_replay_run() -> void:
 ## it is a still image — which, with the missing wiring above, is exactly what there
 ## was to look at.
 func test_the_spectator_starts_a_replayed_bout_playing() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.watched_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().watched_run_panel == null:
 		assert_true(true)
 		return
-	overlay.resolution_player.slide_ms = 0.0
-	overlay.resolution_player.bullet_ms = 0.0
-	overlay.resolution_player.tracer_count = 0
+	overlay.module(&"resolution").player.slide_ms = 0.0
+	overlay.module(&"resolution").player.bullet_ms = 0.0
+	overlay.module(&"resolution").player.tracer_count = 0
 
-	overlay._on_replay_loaded(0)
+	overlay.playback()._on_replay_loaded(0)
 
-	assert_true(overlay.playing, "the replayed bout is running, not sitting there")
-	overlay.pause()
+	assert_true(overlay.playback().playing, "the replayed bout is running, not sitting there")
+	overlay.playback().pause()
 
 
 ## **Launching a run clears the board, and that is the visible connection.**
@@ -190,8 +195,8 @@ func test_the_spectator_starts_a_replayed_bout_playing() -> void:
 ## could not be told apart from the window. An empty board is an unambiguous "this is
 ## not the old bout".
 func test_launching_a_run_clears_the_board() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
 	var before: Grid = overlay.battle.combat_state.grid
@@ -202,7 +207,7 @@ func test_launching_a_run_clears_the_board() -> void:
 				floored_before += 1
 	assert_gt(floored_before, 0, "sanity: the board started with floor on it")
 
-	overlay.suite_run_panel.clear_board()
+	overlay.replay().suite_run_panel.clear_board()
 
 	var after: Grid = overlay.battle.combat_state.grid
 	var floored_after := 0
@@ -292,11 +297,11 @@ func test_forcing_a_failure_yields_a_replayable_bout() -> void:
 ## mechanism verified, the thing a person touches not. The run is killed immediately,
 ## so the nested gate dies during the lint step and never reaches an engine.
 func test_the_force_failure_checkbox_reaches_the_launched_run() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
-	var panel: SuiteRunPanel = overlay.suite_run_panel
+	var panel: SuiteRunPanel = overlay.replay().suite_run_panel
 
 	panel.set_force_failure(false)
 	panel._start(&"full")
@@ -339,11 +344,11 @@ func test_a_forced_run_prefixes_the_variable_onto_the_child_command() -> void:
 ## is why the report of a forced run passing 20/20 could not be diagnosed from what
 ## was on screen.
 func test_a_forced_run_says_so_and_shows_its_command() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
-	var panel: SuiteRunPanel = overlay.suite_run_panel
+	var panel: SuiteRunPanel = overlay.replay().suite_run_panel
 
 	panel.set_force_failure(true)
 	panel._start(&"fast")
@@ -362,11 +367,11 @@ func test_a_forced_run_says_so_and_shows_its_command() -> void:
 ## And an ordinary run says nothing about forcing, so the note means something when it
 ## does appear.
 func test_an_ordinary_run_does_not_claim_to_be_forced() -> void:
-	var overlay: SpectatorOverlay = _spectator()
-	if overlay.suite_run_panel == null:
+	var overlay: ControlOverlay = _spectator()
+	if overlay.replay().suite_run_panel == null:
 		assert_true(true)
 		return
-	var panel: SuiteRunPanel = overlay.suite_run_panel
+	var panel: SuiteRunPanel = overlay.replay().suite_run_panel
 
 	panel.set_force_failure(false)
 	panel._start(&"fast")

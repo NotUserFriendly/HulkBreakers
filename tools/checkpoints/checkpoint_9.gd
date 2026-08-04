@@ -11,12 +11,12 @@ extends SceneTree
 
 const README := """# Checkpoint 9 — the spectator combat log
 
-The same `CombatLogPanel` the player view uses, now in `SpectatorOverlay`, which positions it
+The same `CombatLogPanel` the player view uses, now in the spectator mode, which positions it
 absolutely against the bottom-left corner instead of in a column. Every combat-log defect this
 session has been a layout or event-routing bug invisible to headless assertions, so this frame is
 the check that the conversion actually looks right in its new home.
 
-- **`spectator_log.png`** — a real bout under `SpectatorOverlay`.
+- **`spectator_log.png`** — a real bout under the spectator mode.
 
 Look for:
 1. Is the panel there at all, bottom-left, at roughly half the screen width?
@@ -54,13 +54,15 @@ func _process(delta: float) -> bool:
 	match _step:
 		0:
 			# The real spectator path: a generated bout, then the overlay swap
-			# `GenerateBoutOverlay` performs.
+			# `BoutSetupModule.start_bout` performs.
 			var built: Dictionary = BoutSetup.build_bout(_roster(), _roster(), 11)
 			if built.get("error", "") != "":
 				push_error("checkpoint_9: %s" % built["error"])
 				return true
 			(_battle_scene as BattleScene).load_battle(built["state"], built["mission"])
-			(_battle_scene as BattleScene).set_overlay(SpectatorOverlay.new())
+			(_battle_scene as BattleScene).set_overlay(
+				ControlOverlay.for_mode(ViewModes.spectator())
+			)
 		1:
 			var image: Image = root.get_texture().get_image()
 			image.save_png("%s/spectator_log.png" % _out_dir)

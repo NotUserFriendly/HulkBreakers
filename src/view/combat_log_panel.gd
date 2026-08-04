@@ -215,9 +215,9 @@ func _on_title_bar_input(event: InputEvent) -> void:
 ## Sets the panel's height through BOTH routes, because this panel is used in
 ## two different layout situations and only one of them respects each.
 ##
-## Inside a container (`SquadControlOverlay`'s left column) the container sizes
+## Inside a container (the player mode's left column) the container sizes
 ## its children from `custom_minimum_size` and overwrites `size` every layout
-## pass. Absolutely positioned (`SpectatorOverlay` anchors it to the bottom-left
+## pass. Absolutely positioned (the spectator mode anchors it to the bottom-left
 ## corner) nothing reads `custom_minimum_size` at all and only `size` does
 ## anything. Writing one and not the other silently breaks resize in whichever
 ## situation the author wasn't looking at — so write both, and let each layout

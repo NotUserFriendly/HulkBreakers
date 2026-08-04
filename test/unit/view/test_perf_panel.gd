@@ -82,13 +82,13 @@ func test_it_never_takes_the_mouse() -> void:
 # --- the wiring, which is where the supervisor's requirement lives -------------------
 
 
-func _overlay_with_debug() -> SquadControlOverlay:
+func _overlay_with_debug() -> ControlOverlay:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.new_battle(1)
-	battle.set_overlay(SquadControlOverlay.new())
-	return battle.overlay as SquadControlOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	return battle.overlay as ControlOverlay
 
 
 ## **Closing the debug panel must not close the readout.** Stated plainly by the supervisor
@@ -97,15 +97,18 @@ func test_the_readout_survives_the_debug_panel_closing() -> void:
 	if not OS.is_debug_build():
 		assert_true(true, "the panels are debug-gated; nothing to check in a release build")
 		return
-	var overlay: SquadControlOverlay = _overlay_with_debug()
-	assert_not_null(overlay.perf_panel, "the overlay owns a readout")
+	var overlay: ControlOverlay = _overlay_with_debug()
+	assert_not_null(overlay.debug_panel_module().perf_panel, "the overlay owns a readout")
 
-	overlay.debug_panel.set_ui_element_shown(DebugUiElements.PERF_PANEL, true)
-	assert_true(overlay.perf_panel.visible, "the toggle shows it")
+	overlay.debug_panel_module().panel.set_ui_element_shown(DebugUiElements.PERF_PANEL, true)
+	assert_true(overlay.debug_panel_module().perf_panel.visible, "the toggle shows it")
 
-	overlay.debug_panel.visible = false
+	overlay.debug_panel_module().panel.visible = false
 
-	assert_true(overlay.perf_panel.visible, "and it stays up when the debug panel goes away")
+	assert_true(
+		overlay.debug_panel_module().perf_panel.visible,
+		"and it stays up when the debug panel goes away"
+	)
 
 
 ## It is offered wherever the debug panel is — the supervisor's "it's under debug, it should
@@ -118,9 +121,9 @@ func test_the_spectator_view_has_one_too() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.new_battle(1)
-	battle.set_overlay(SpectatorOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 
-	assert_not_null((battle.overlay as SpectatorOverlay).perf_panel)
+	assert_not_null((battle.overlay as ControlOverlay).debug_panel_module().perf_panel)
 
 
 ## The panel emits, the overlay writes — so the dump lands in the real combat log rather
@@ -129,12 +132,12 @@ func test_a_tick_reaches_the_real_combat_log() -> void:
 	if not OS.is_debug_build():
 		assert_true(true)
 		return
-	var overlay: SquadControlOverlay = _overlay_with_debug()
+	var overlay: ControlOverlay = _overlay_with_debug()
 	var sink := MemorySink.new()
 	overlay.battle.combat_state.combat_log.add_sink(sink)
 
-	overlay.perf_panel.set_log_dumps(true)
-	_feed(overlay.perf_panel, 60.0, PerfStats.ROLLING_WINDOW_SECONDS + 0.1)
+	overlay.debug_panel_module().perf_panel.set_log_dumps(true)
+	_feed(overlay.debug_panel_module().perf_panel, 60.0, PerfStats.ROLLING_WINDOW_SECONDS + 0.1)
 
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
 	assert_eq(dumps.size(), 1, "one dump reached the log")

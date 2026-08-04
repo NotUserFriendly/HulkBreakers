@@ -29,9 +29,41 @@ signal inspect_opened
 ## `DebugControlPanel` sets this through `input_owner`.
 var input_capture_mode: bool = false
 
+## Whether the bout was actually auto-playing when a click opened the inspect panel. **"Closing it
+## resumes" must never START auto-play** for someone who had already paused by hand before clicking.
+var _was_playing_before_inspect: bool = false
+
 
 func module_id() -> StringName:
 	return &"board_inspect"
+
+
+## Clicking a body pauses the bout and opens the panel; closing it resumes, but only if it was
+## running. Both halves live here because both are consequences of this module's own click.
+func link() -> void:
+	inspect_opened.connect(_on_inspect_opened)
+	var inspect: ViewModule = context.module(&"inspect")
+	if inspect != null:
+		(inspect as InspectModule).closed.connect(_on_inspect_closed)
+
+
+func _on_inspect_opened() -> void:
+	var pacing: PlaybackModule = _playback()
+	if pacing == null:
+		return
+	_was_playing_before_inspect = pacing.playing
+	pacing.pause()
+
+
+func _on_inspect_closed() -> void:
+	var pacing: PlaybackModule = _playback()
+	if pacing != null and _was_playing_before_inspect:
+		pacing.play()
+
+
+func _playback() -> PlaybackModule:
+	var module: ViewModule = context.module(&"playback") if context != null else null
+	return module as PlaybackModule
 
 
 ## **Called by the host, not by the engine.** A module defining `_unhandled_input` would receive

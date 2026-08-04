@@ -194,7 +194,7 @@ func test_ui_builds_moves_for_a_view_fixture_and_not_for_a_bout() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, MissionState.new(RunState.new(), state))
-	battle.set_overlay(SpectatorOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 	await get_tree().process_frame
 
 	gut.p("after an overlay: ui_builds %d" % HulkTheme.ui_builds)

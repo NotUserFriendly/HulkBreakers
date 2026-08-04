@@ -13,12 +13,12 @@ extends GutTest
 ## should scroll, on the left, with the active target above the control
 ## panel." `FakeInputOwner` below is a minimal stand-in for whichever real
 ## `board_clicked`/`input_capture_mode` owner (`TacticsController`/
-## `SpectatorOverlay`) is live — the panel is duck-typed against that
+## `BoardInspectModule`) is live — the panel is duck-typed against that
 ## shape on purpose (its own header comment), so a fake with the same two
 ## members drives it exactly the same way the real ones do.
 
 
-## Minimal duck-typed stand-in for `TacticsController`/`SpectatorOverlay`'s
+## Minimal duck-typed stand-in for `TacticsController`/`BoardInspectModule`'s
 ## own `board_clicked`/`input_capture_mode` — see this file's own header.
 class FakeInputOwner:
 	extends RefCounted

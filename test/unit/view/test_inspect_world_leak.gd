@@ -106,9 +106,9 @@ func test_the_previews_lighting_never_reaches_the_battle_world() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, MissionState.new(RunState.new(), state))
-	battle.set_overlay(SpectatorOverlay.new())
-	var overlay: SpectatorOverlay = battle.overlay as SpectatorOverlay
-	var panel: InspectPanel = overlay.inspect_panel
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	var overlay: ControlOverlay = battle.overlay as ControlOverlay
+	var panel: InspectPanel = overlay.inspect().panel
 
 	for line: String in _inventory(battle):
 		gut.p("at rest: %s" % line)
@@ -141,8 +141,8 @@ func test_the_boards_own_lighting_is_identical_before_and_after() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, MissionState.new(RunState.new(), state))
-	battle.set_overlay(SpectatorOverlay.new())
-	var panel: InspectPanel = (battle.overlay as SpectatorOverlay).inspect_panel
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	var panel: InspectPanel = (battle.overlay as ControlOverlay).inspect().panel
 
 	var before: Array[String] = _battle_lighting(battle)
 	panel.open(unit)

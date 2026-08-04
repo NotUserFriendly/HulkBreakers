@@ -1,91 +1,105 @@
 class_name ControlOverlay
 extends Node3D
 
-## taskblock-15 Pass A: base for the four swappable control overlays
-## (`SquadControlOverlay`, `SingleUnitOverlay`, `SpectatorOverlay`,
-## `GenerateBoutOverlay`). `BattleScene` builds the world — `CameraRig`,
-## `BoardView`, one `HitVolumeView` per unit, the combat-log sinks — exactly
-## once; an overlay only ever decides HOW input maps to units and WHICH
-## units a human drives. It never rebuilds the world, and it's the only
-## thing that changes when the same battle is watched instead of played.
+## **The one view.** `BattleScene` builds the world — `CameraRig`, `BoardView`, one `HitVolumeView`
+## per unit, the combat-log sinks — exactly once; this decides which control surface sits over it.
+## Swapping surfaces never rebuilds the world.
 ##
-## The shared turn driver (`BoutRunner`, generalized this pass) never
-## branches on which overlay is active: it only ever asks
-## `wants_turn_for(unit)`. `wants_turn_for` true for the CURRENT unit means
-## this overlay's own UI drives that turn (already wired in `setup()`, the
-## same way `TacticsController`'s End Turn button already resolves a turn
-## today); false means `AiPlanner.plan_turn` drives it instead
-## (taskblock-14).
+## ## taskblock-56 Pass D: there are no overlay subclasses left
 ##
-## ## taskblock-56 Pass C: this is a module host now
+## | was | is |
+## |---|---|
+## | `SquadControlOverlay`, 942 lines | `ViewModes.player()` |
+## | `SpectatorOverlay`, 718 lines | `ViewModes.spectator()` |
+## | `SingleUnitOverlay`, 54 lines | `ViewModes.single_unit()` |
+## | `GenerateBoutOverlay`, 373 lines | `ViewModes.bout_setup()` |
 ##
-## The surface an overlay used to build by hand is a set of `ViewModule`s
-## (`src/view/modules/`), and this base owns the machinery every host needs:
-## the themed `CanvasLayer`/`Control` root, the `ModuleContext`, mounting in
-## declaration order, re-pointing everything on a battle load, the per-frame
-## tick, and unmounting on teardown. A subclass supplies **which** modules and
-## **what chrome** to hang them in — never how any of them work.
+## A **mode** is a declaration (`ViewMode`): which modules, in what layout, with what options, under
+## which turn policy. **Adding one is a table entry, not a file** — which is the property
+## `test_view_modes.gd` tests by building a mode nothing in `src/` declares and mounting it.
+##
+## What is left in this class is the four things a *host* owns and a module cannot: building the
+## themed root, mounting the declared modules in order, publishing the capabilities modules need
+## (`advance_ai_turns`, `rebind_all`), and routing the engine's own input and frame ticks to exactly
+## one place each.
+##
+## ## The turn driver never branches on which mode is active
+##
+## `BoutRunner` only ever asks `wants_turn_for(unit)`. True for the current unit means this
+## surface's own UI drives that turn; false means the AI planner does. That was true when there were
+## four subclasses and it is true with one class and a policy field — the difference is that the
+## policy is now readable as data rather than as an override.
 
-## The themed root every module's `Control`s live under. One `CanvasLayer` and
-## one `HulkTheme.build()` per host, never one per module — two overlays each
-## building their own is how the same theme came to be applied twice with
-## subtly different anchor presets.
+## The generic capture concept `TacticsController` also has — a "borrow the next real click"
+## mechanism a debug panel's board-picking mode can use, emitting the normalized `{"kind", "unit",
+## "cell"}` shape either source produces. Forwarded from `BoardInspectModule` so a listener can wire
+## against the overlay exactly as it always has.
+signal board_clicked(hit: Dictionary)
+
+## Which modules are on, in what layout, under which turn policy. Set before
+## `BattleScene.set_overlay` installs this — the same "configure, then hand off" convention every
+## overlay already followed for its own fields, and for the same reason: `setup()` may drive several
+## units' worth of turns before a caller gets another chance to touch anything.
+var mode: ViewMode = null
+## The one unit a `SINGLE_UNIT` mode drives. **Unset never means "drive everything"** — see
+## `ViewMode.TurnPolicy`.
+var controlled_unit: Unit = null
+
+var battle: BattleScene = null
+## The themed root every module's `Control`s live under. One `CanvasLayer` and one
+## `HulkTheme.build()` per surface, never one per module.
 var ui_root: Control = null
-## The mounted modules, in declaration order. Order matters: a module that
-## reads another (`ActionBarModule` wants the shared `TooltipView`) must be
-## declared after it.
+## The mounted modules, in declaration order.
 var modules: Array[ViewModule] = []
-## What every mounted module was handed. Public so a test can read back which
-## modules a mode actually produced, which is Pass D's own acceptance.
+## What every mounted module was handed. Public so a test can read back which modules a mode
+## actually produced, which is Pass D's own acceptance.
 var module_context: ModuleContext = null
 
 
-## Wires this overlay's own UI onto the already-built world. Called once,
-## right after `BattleScene.set_overlay()` swaps this overlay in.
-func setup(_battle: BattleScene) -> void:
-	pass
+static func for_mode(p_mode: ViewMode) -> ControlOverlay:
+	var overlay := ControlOverlay.new()
+	overlay.mode = p_mode
+	return overlay
 
 
-## Builds the themed root and an empty context against `battle`. A subclass
-## calls this first, then adds whatever chrome it wants as slots, then mounts.
-func build_root(battle: BattleScene) -> ModuleContext:
-	var layer := CanvasLayer.new()
-	add_child(layer)
-	ui_root = Control.new()
-	ui_root.theme = HulkTheme.build()
-	ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# Load-bearing: a bare `Control` defaults to `MOUSE_FILTER_STOP`, and this
-	# one spans the screen — it would swallow every RMB/MMB drag that started
-	# over it before `CameraRig._unhandled_input` ever saw the event.
-	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(ui_root)
-
-	module_context = ModuleContext.new()
-	module_context.battle = battle
-	module_context.ui_root = ui_root
-	module_context.host = self
-	return module_context
-
-
-## Mounts `ids` in order, through `ModuleCatalog`. `configure`, if given, is
-## called with each freshly built module BEFORE it mounts — that is where a
-## mode sets the handful of pre-mount fields modules expose (`with_button`,
-## `include_new_battle`, `announce_passes`), which is the whole reason those
-## are fields rather than constructor arguments.
+## Wires this surface onto the already-built world. Called once, right after
+## `BattleScene.set_overlay()` swaps it in.
 ##
-## **An unknown id is skipped, not fatal.** A mode listing something the
-## catalog does not know gets a mode without it, the same "no further action,
-## no silent rollback" posture `ActionCatalog.build_firing_action` has.
-func mount_modules(ids: Array[StringName], configure: Callable = Callable()) -> void:
-	for id: StringName in ids:
-		var module: ViewModule = ModuleCatalog.build(id)
-		if module == null:
-			continue
-		add_child(module)
-		if configure.is_valid():
-			configure.call(module)
-		module.mount(module_context)
-		modules.append(module)
+## **`battle.combat_state` may still be null here.** `BattleScene._ready()` installs a surface
+## BEFORE its own first `new_battle()` call, exactly so the session-start log line has a live sink
+## to land in the instant it is emitted. Nothing built here may depend on a battle existing yet,
+## which is the same requirement that makes every `ModuleContext` field nullable.
+func setup(p_battle: BattleScene) -> void:
+	battle = p_battle
+	# **An empty surface, not the player one.** A modeless overlay is a deliberate placeholder — see
+	# `ViewModes.empty()` for why defaulting to `player()` here is actively wrong.
+	if mode == null:
+		mode = ViewModes.empty()
+	_build_root()
+	ModeChrome.build(mode.chrome, ui_root, module_context)
+	_mount_declared_modules()
+	# **After every module has mounted**, so the connections a module wants do not constrain the
+	# declaration order the way its mount-time reads do.
+	for mounted: ViewModule in modules:
+		mounted.link()
+	var tips: TooltipModule = module(&"tooltip") as TooltipModule
+	if tips != null:
+		tips.raise()
+	_wire_host_signals()
+	battle.battle_loaded.connect(_on_battle_loaded)
+	if battle.combat_state != null:
+		await _on_battle_loaded()
+
+
+func teardown() -> void:
+	if battle != null and battle.battle_loaded.is_connected(_on_battle_loaded):
+		battle.battle_loaded.disconnect(_on_battle_loaded)
+	var pacing: PlaybackModule = module(&"playback") as PlaybackModule
+	if pacing != null:
+		pacing.pause()
+	for mounted: ViewModule in modules:
+		mounted.unmount()
+	modules.clear()
 
 
 ## The mounted module for `id`, or null.
@@ -93,10 +107,57 @@ func module(id: StringName) -> ViewModule:
 	return module_context.module(id) if module_context != null else null
 
 
-## True if any mounted module accepts unit input. **This is the assertion
-## Spectator's contract rests on** — a mode with no input modules has no
-## `TacticsController` and therefore no path from a click to
-## `ActionQueue.enqueue`.
+## Typed accessors for the modules that have callers outside their own file.
+##
+## **These are the surface's public API, not shims.** Before Pass D each overlay held a field per
+## panel (`tactics`, `inspect_panel`, `log_sink`, twenty more) and everything reached through those.
+## Naming the *module* instead is what makes "which panels exist" a property of the mode rather than
+## of the class — a caller that wants the queue panel in a mode that has none gets null and can say
+## so, where a field would have been silently null with no way to tell "absent" from "not built
+## yet".
+func unit_input() -> UnitInputModule:
+	return module(&"unit_input") as UnitInputModule
+
+
+func playback() -> PlaybackModule:
+	return module(&"playback") as PlaybackModule
+
+
+func board_inspect() -> BoardInspectModule:
+	return module(&"board_inspect") as BoardInspectModule
+
+
+func inspect() -> InspectModule:
+	return module(&"inspect") as InspectModule
+
+
+func stat_panels() -> StatPanelsModule:
+	return module(&"stat_panels") as StatPanelsModule
+
+
+func debug_panel_module() -> DebugPanelModule:
+	return module(&"debug_panel") as DebugPanelModule
+
+
+func replay() -> ReplayModule:
+	return module(&"replay") as ReplayModule
+
+
+func bout_setup() -> BoutSetupModule:
+	return module(&"bout_setup") as BoutSetupModule
+
+
+## The `TacticsController` this surface's input module published, or null in a display-only mode.
+## Named because it is by far the most-reached-for thing on the surface and
+## `unit_input().tactics` at every call site is noise.
+func tactics() -> TacticsController:
+	var input: UnitInputModule = unit_input()
+	return input.tactics if input != null else null
+
+
+## True if any mounted module accepts unit input. **This is the assertion the spectator's contract
+## rests on** — a mode with no input modules has no `TacticsController`, and therefore no path from
+## a click to `ActionQueue.enqueue`.
 func has_unit_input() -> bool:
 	for mounted: ViewModule in modules:
 		if mounted.is_input():
@@ -104,167 +165,252 @@ func has_unit_input() -> bool:
 	return false
 
 
-## Re-points every module at whatever `battle` now holds.
-func rebind_modules() -> void:
-	for mounted: ViewModule in modules:
-		mounted.rebind()
-
-
-func unmount_modules() -> void:
-	for mounted: ViewModule in modules:
-		mounted.unmount()
-	modules.clear()
-
-
-## True if a HUMAN drives `unit`'s turn under this overlay — the one
-## question the shared turn driver (`BoutRunner`) ever asks. False means
-## `AiPlanner.plan_turn` drives it instead. The base default (false, always
-## AI) is exactly `SpectatorOverlay`'s and `GenerateBoutOverlay`'s own
-## answer — neither overrides this.
-func wants_turn_for(_unit: Unit) -> bool:
+## True if a HUMAN drives `unit`'s turn under this mode — the one question `BoutRunner` ever asks.
+##
+## `HUMAN_SQUADS` reads `controller_for` exactly as it always has: there is no silent HUMAN default
+## to fall back on, and a bout cannot run with an `UNASSIGNED` squad on the board at all
+## (`BoutRunner._init()`'s own hard error), so this reads what was assigned and nothing implied.
+func wants_turn_for(unit: Unit) -> bool:
+	match mode.turn_policy if mode != null else ViewMode.TurnPolicy.NONE:
+		ViewMode.TurnPolicy.HUMAN_SQUADS:
+			return battle.combat_state.controller_for(unit.squad_id) == Enums.SquadController.HUMAN
+		ViewMode.TurnPolicy.SINGLE_UNIT:
+			return true if controlled_unit == null else unit == controlled_unit
 	return false
 
 
-## Whatever this overlay's own UI has ALREADY assembled for `unit` — a
-## trailing `EndTurnAction` included — never blocks waiting for more
-## input: by the time anything calls this, a human has already pressed
-## whatever control (End Turn, today) triggered it. Exists for contract
-## completeness and headless verification ("what would this overlay
-## submit") — the two interactive overlays' own real submission path
-## stays their existing, already-proven UI flow
-## (`TacticsController.end_turn()`), not a second copy of it routed
-## through here. Only ever meaningful when `wants_turn_for(unit)` was
-## true for it; the base default (null) matches every overlay that never
-## drives a human turn at all.
+## Whatever this surface's UI has ALREADY assembled for `unit`. Never blocks waiting for more input:
+## by the time anything calls this, a human has already pressed whatever control triggered it.
+## Exists for contract completeness and headless verification; the real submission path stays the
+## proven UI flow (`TacticsController.end_turn()`), not a second copy routed through here.
 func build_queue(_unit: Unit, _state: CombatState, _mission: MissionState) -> ActionQueue:
 	return null
 
 
-## Cleans up this overlay's own UI/connections before `BattleScene` swaps
-## to a different one (A2: generate-bout -> spectator) or frees it.
-## taskblock-44 Pass D3: shows (or clears, on "") which unit is currently
-## planning. **Named, never a bare "Thinking…"** — once named enemies exist, the
-## difference between a mook's turn and a boss's turn reads as *character* rather
-## than as lag, because the intelligence tiers make a smarter unit genuinely
-## think longer. What the label SAYS is `PlanPacer.thinking_label`'s decision, in
-## logic, so it is answerable in a headless test; this is the render half only.
+## Shows (or clears, on "") which unit is currently planning. **Named, never a bare "Thinking…"** —
+## once named enemies exist, the difference between a mook's turn and a boss's reads as *character*
+## rather than as lag, because the intelligence tiers make a smarter unit genuinely think longer.
+## What the label SAYS is `PlanPacer.thinking_label`'s decision, in logic, so it is answerable in a
+## headless test; this is the render half only.
 ##
-## A no-op on the base overlay: not every control surface has somewhere sensible
-## to put it, and an overlay that does overrides this. `advance_ai_turns` above
-## calls it unconditionally regardless, so adding the display to a new overlay is
-## one override and nothing else.
-func set_thinking_label(_text: String) -> void:
-	pass
+## A no-op in a mode with no status line, which is every mode but the spectator's.
+func set_thinking_label(text: String) -> void:
+	var pacing: PlaybackModule = module(&"playback") as PlaybackModule
+	if pacing != null:
+		pacing.set_thinking_label(text)
 
 
-func teardown() -> void:
-	pass
+## Re-points this surface's log sink at `log`. Called by `BattleScene.load_battle()` BEFORE anything
+## is built or emitted, because the session header (docs/09: "carries the seed as the file's FIRST
+## line") and the bout-build log both fire during the load — a sink that only attaches at the end of
+## it misses all of it. Must be idempotent; `remove_sink` is a documented no-op on a sink that was
+## never added.
+func attach_log_sink(log: CombatLog) -> void:
+	var logs: CombatLogModule = module(&"combat_log") as CombatLogModule
+	if logs != null and battle != null:
+		logs.attach_to(log, battle.combat_state)
 
 
-## taskblock-41 Pass D: re-points this overlay's own log sink at `log`, the
-## stream of whichever battle is being loaded. Called by
-## `BattleScene.load_battle()` BEFORE anything is built or emitted, because
-## the session header (docs/09: "carries the seed as the file's FIRST line")
-## and the bout-build log both fire during the load — a sink that only
-## attaches on `battle_loaded`, at the END of the load, misses all of it.
-##
-## Must be idempotent: `_on_battle_loaded` calls it again for the overlays
-## that re-wire themselves on a "New Battle" press under an already-active
-## overlay.
-func attach_log_sink(_log: CombatLog) -> void:
-	pass
-
-
-## taskblock-41 Pass A: whichever `RichTextLabel`-backed combat-log sink
-## this overlay owns, or null. A `UiLogSink` only marks itself dirty on
-## `emit()` now — a `RefCounted` has no frame of its own — so something
-## with a real frame has to draw it, and the overlay that built the label
-## is the one thing that always outlives it. Overlays with no log panel
-## (`SingleUnitOverlay`, `GenerateBoutOverlay`) keep the null default and
-## never pay for the tick at all.
+## Whichever `RichTextLabel`-backed combat-log sink this surface owns, or null. A `UiLogSink` only
+## marks itself dirty on `emit()` — a `RefCounted` has no frame of its own — so something with a
+## real frame has to draw it.
 func ui_log_sink() -> UiLogSink:
-	return null
+	var logs: CombatLogModule = module(&"combat_log") as CombatLogModule
+	return logs.sink if logs != null else null
 
 
-## The one per-frame render tick. At most one `label.text` reassignment per
-## frame regardless of how many events landed in it — which is the whole
-## point: render cost stops scaling with event count, so taskblock-41 Pass D's
-## deliberate verbosity is affordable rather than a regression (BR27.09 cost
-## #1).
+## Points every module at whatever `battle` currently holds, without rebuilding anything.
 ##
-## taskblock-56 Pass C: the tick is driven from here rather than from each
-## module's own `_process`, so "exactly one draw per frame" stays visible in
-## one place instead of being a property of however many modules happen to be
-## mounted.
+## **Rebind, emphatically not a rebuild.** Calling `setup` on a replay constructs a fresh root and
+## fresh panels — including the replay panel that is *in the middle of iterating* — which destroyed
+## the run it was advancing and left the second seed unloaded. A new board needs a new runner and a
+## re-pointed log; the UI is already correct.
+func rebind_to_battle() -> void:
+	for mounted: ViewModule in modules:
+		mounted.rebind()
+
+
+## The one per-frame render tick. At most one `label.text` reassignment per frame regardless of how
+## many events landed — render cost stops scaling with event count, which is what makes the log's
+## deliberate verbosity affordable rather than a regression (`BR27.09` cost #1).
+##
+## Driven from here rather than from each module's own `_process`, so "exactly one draw per frame"
+## stays visible in one place instead of being a property of however many modules are mounted.
 func _process(delta: float) -> void:
-	var sink: UiLogSink = ui_log_sink()
-	if sink != null:
-		sink.render_if_dirty()
 	for mounted: ViewModule in modules:
 		mounted.tick(delta)
 
 
-## The ONE shared "auto-advance AI turns" loop every interactive overlay
-## (`SquadControlOverlay`, `SingleUnitOverlay`) drives after its own human
-## turn resolves — auto-resolves consecutive units this overlay does NOT
-## want (`AiPlanner.plan_turn`, taskblock-14) starting at the current unit,
-## stopping the instant either the mission reaches a real outcome or a
-## unit this overlay DOES want control of comes up. `SpectatorOverlay`
-## never calls this — it drives its own `BoutRunner` directly, at its own
-## paced cadence, since `wants_turn_for` is unconditionally false there
-## anyway. This is the literal, single turn-driver the taskblock asks for:
-## every overlay that needs AI auto-advancement shares this one method,
-## never a per-overlay reimplementation of it.
-## taskblock-42 Pass D (BR27.09 cost #4): this was a bare `while` loop with no
-## `await` anywhere in it. Each `step()` runs a full `AiPlanner.plan_turn` —
-## pathfinding, LOS, cover scoring — so the main thread was blocked for the
-## entire batch: nothing rendered, no input was processed, the window was
-## unresponsive, and every opposing unit appeared to move at once at the end.
+## The one engine input entry point, routed into whichever module owns board picking.
 ##
-## **The coalescing fork, decided before implementing (the pass required it).**
-## taskblock-19 Pass I2 deliberately made this refresh ONCE at the end, having
-## measured a full-board refresh per batch as waste. Yielding reopens that: yield
-## without refreshing and the player watches a frozen board for several seconds,
-## merely an interactive one; refresh the whole board per step and I2's finding
-## is undone.
+## **Deliberately the only `_unhandled_input` in the module system.** A module defining one would
+## receive events wherever its host happened to parent it, and a host that also forwarded would
+## dispatch the same click twice. `CameraRig`'s independent handler (orbit/pan/zoom) is untouched.
+func _unhandled_input(event: InputEvent) -> void:
+	var picking: BoardInspectModule = module(&"board_inspect") as BoardInspectModule
+	if picking != null:
+		picking.handle_input(event)
+
+
+## The ONE shared "auto-advance AI turns" loop. Auto-resolves consecutive units this surface does
+## NOT want, starting at the current unit, stopping the instant either the mission reaches a real
+## outcome or a unit this surface DOES want comes up. A spectator mode never reaches this — it
+## drives its own `BoutRunner` at its own paced cadence, and `wants_turn_for` is unconditionally
+## false there anyway.
 ##
-## Neither. **Refresh only the units THAT step actually touched, after that
-## step.** I2's waste was refreshing every unit on the board repeatedly; this is
-## proportional to what changed, which is usually one unit — and taskblock-42
-## Pass B made each of those ~2.4× cheaper. The accumulated set still gets a
-## final pass so the active-turn highlight lands once, on the real end state.
+## **It yields, and the reason is `BR27.09`.** This was a bare `while` loop with no `await` anywhere
+## in it. Each `step()` runs a full plan — pathfinding, LOS, cover scoring — so the main thread was
+## blocked for the whole batch: nothing rendered, no input was processed, and every opposing unit
+## appeared to move at once at the end.
 ##
-## **Determinism is unaffected and that is the load-bearing property, not the
-## speed.** `BoutRunner.step()` draws only from `state.rng`, and nothing on the
-## frame path draws from it, so yielding cannot reorder the sim. The test asserts
-## a seeded bout is identical whether driven through here or through a tight
-## `BoutRunner` loop with no yielding at all.
-func advance_ai_turns(battle: BattleScene) -> void:
+## **The coalescing fork, decided rather than stumbled into.** taskblock-19 I2 deliberately made
+## this refresh ONCE at the end, having measured a full-board refresh per batch as waste. Yielding
+## reopens that: yield without refreshing and the player watches a frozen board; refresh the whole
+## board per step and I2's finding is undone. Neither — **refresh only the units THAT step actually
+## touched**, which is proportional to what changed and is usually one unit. The accumulated set
+## still gets a final pass so the active-turn highlight lands once, on the real end state.
+##
+## **Determinism is unaffected, and that is the load-bearing property rather than the speed.**
+## `BoutRunner.step()` draws only from `state.rng` and nothing on the frame path draws from it, so
+## yielding cannot reorder the sim. The test asserts a seeded bout is identical whether driven
+## through here or through a tight loop with no yielding at all.
+func advance_ai_turns(p_battle: BattleScene) -> void:
 	var runner := BoutRunner.new(
-		battle.combat_state, battle.mission, BoutRunner.DEFAULT_TURN_CAP, wants_turn_for
+		p_battle.combat_state, p_battle.mission, BoutRunner.DEFAULT_TURN_CAP, wants_turn_for
 	)
-	# tb44 Pass D: the pacer is what makes a unit's turn watchable rather than a
-	# freeze. It carries the frame signal the planner suspends on — supplied here
-	# because only the view knows what a tree is — and the hard budget that
-	# guarantees the turn ends, which is what makes the label below a promise
-	# instead of a hope. Headless drivers build no pacer and never suspend.
+	# tb44 Pass D: the pacer is what makes a unit's turn watchable rather than a freeze. It carries
+	# the frame signal the planner suspends on — supplied here because only the view knows what a
+	# tree is — and the hard budget that guarantees the turn ends, which is what makes the label a
+	# promise instead of a hope. Headless drivers build no pacer and never suspend.
 	if is_inside_tree():
 		runner.pacer = PlanPacer.new()
 		runner.pacer.frame_signal = get_tree().process_frame
 	var touched_ids: Dictionary = {}
-	while not runner.finished and not wants_turn_for(battle.combat_state.current_unit()):
-		set_thinking_label(PlanPacer.thinking_label(battle.combat_state.current_unit()))
+	while not runner.finished and not wants_turn_for(p_battle.combat_state.current_unit()):
+		set_thinking_label(PlanPacer.thinking_label(p_battle.combat_state.current_unit()))
 		var run_finished: bool = await runner.step()
 		var stepped: Array[int] = LogPlayback.affected_unit_ids(runner.last_events)
 		for id: int in stepped:
 			touched_ids[id] = true
-		# This step's own units only — never the whole board (taskblock-19 I2).
-		battle.refresh_unit_views(stepped, false)
+		p_battle.refresh_unit_views(stepped, false)
+		# **Selected the moment it becomes true, not after the batch drains.** A `SINGLE_UNIT` mode
+		# promises "no selection step", and the unit becomes current partway through this loop —
+		# waiting for the loop to finish means waiting for its trailing frame yield, by which time a
+		# caller that did not await `setup()` has already looked and found nothing selected. That is
+		# how the old fire-and-forget version happened to be right: it auto-selected at the first
+		# suspension. Doing it here is the same timing without depending on where a suspension lands.
+		_auto_select_controlled_unit()
 		if run_finished:
 			break
-		# The yield. One frame between units, so input is processed and the
-		# board draws while the batch is still running.
+		# The yield. One frame between units, so input is processed and the board draws while the
+		# batch is still running.
 		if is_inside_tree():
 			await get_tree().process_frame
 	set_thinking_label("")
-	battle.refresh_unit_views(touched_ids.keys())
+	_auto_select_controlled_unit()
+	p_battle.refresh_unit_views(touched_ids.keys())
+
+
+func _build_root() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	ui_root = Control.new()
+	ui_root.theme = HulkTheme.build()
+	ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Load-bearing: a bare `Control` defaults to `MOUSE_FILTER_STOP`, and this one spans the screen —
+	# it would swallow every RMB/MMB drag that started over it before `CameraRig._unhandled_input`
+	# ever saw the event.
+	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(ui_root)
+
+	module_context = ModuleContext.new()
+	module_context.battle = battle
+	module_context.ui_root = ui_root
+	module_context.host = self
+	# Published capabilities, not a back-door to the parent. A module gets exactly the one thing it
+	# needs — see `ModuleContext.advance_ai_turns`.
+	module_context.advance_ai_turns = _advance_ai_turns_here
+	module_context.rebind_all = rebind_to_battle
+
+
+## An unknown module id is skipped, not fatal: a mode listing something the catalog does not know
+## gets a mode without it, the same "no further action, no silent rollback" posture
+## `ActionCatalog.build_firing_action` has.
+func _mount_declared_modules() -> void:
+	for id: StringName in mode.modules:
+		var mounted: ViewModule = ModuleCatalog.build(id)
+		if mounted == null:
+			continue
+		add_child(mounted)
+		mounted.configure(mode.options_for(id))
+		mounted.mount(module_context)
+		modules.append(mounted)
+
+
+func _wire_host_signals() -> void:
+	var picking: BoardInspectModule = module(&"board_inspect") as BoardInspectModule
+	if picking != null:
+		picking.board_clicked.connect(_forward_board_click)
+	var setup_menu: BoutSetupModule = module(&"bout_setup") as BoutSetupModule
+	if setup_menu != null:
+		setup_menu.bout_started.connect(_on_bout_started)
+	var replay: ReplayModule = module(&"replay") as ReplayModule
+	if replay != null:
+		replay.notice.connect(set_thinking_label)
+
+
+func _forward_board_click(hit: Dictionary) -> void:
+	board_clicked.emit(hit)
+
+
+## Start Bout has built and loaded the matchup; the mode swap is the host's business.
+##
+## `BoutSetup.build_bout` always starts both squads AI, so `toggle_blue_control()` is what flips
+## squad 0 to HUMAN and swaps to the player mode — never the spectator mode at all in that branch.
+func _on_bout_started(assume_control: bool) -> void:
+	if assume_control:
+		battle.toggle_blue_control()
+	else:
+		battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+
+
+## Re-wires against whichever `CombatState`/`MissionState` is now current — fired once from
+## `setup()` and again every time `battle.load_battle()` reruns under an already-active surface (the
+## New Battle button, which never swaps surfaces, only rebuilds the world).
+func _on_battle_loaded() -> void:
+	rebind_to_battle()
+	# The PREVIOUS combat_state has already been replaced by the time this fires; its now-orphaned
+	# log simply stops being written to, with nothing left to detach from.
+	attach_log_sink(battle.combat_state.combat_log)
+	# **Awaited**, and the reason is that `advance_ai_turns` is a coroutine: fire-and-forget returned
+	# the instant the planner first suspended, so the batch ran after whatever came next had already
+	# read the turn state.
+	#
+	# **The auto-select comes after, not before.** A `SINGLE_UNIT` mode's controlled unit is usually
+	# not the one whose turn it is at load; the batch has to resolve every unit ahead of it first,
+	# and only then is there anything to select. Selecting first and advancing second lands on
+	# whoever happened to be current at load, which is the "no click should be needed" promise
+	# quietly broken.
+	if has_unit_input():
+		await advance_ai_turns(battle)
+	_auto_select_controlled_unit()
+
+
+## A `SINGLE_UNIT` mode selects its own unit the instant that unit becomes the current one, so a
+## player never has to click their own body first.
+func _auto_select_controlled_unit() -> void:
+	if controlled_unit == null or battle.combat_state == null:
+		return
+	var input: UnitInputModule = module(&"unit_input") as UnitInputModule
+	if input == null or input.tactics == null or input.tactics.selection == null:
+		return
+	if battle.combat_state.current_unit() == controlled_unit:
+		input.tactics.selection.select(controlled_unit)
+
+
+## The capability handed to modules. Bound to this surface's own `battle`, so a module never has to
+## hold one.
+func _advance_ai_turns_here() -> void:
+	if battle != null:
+		await advance_ai_turns(battle)
+	_auto_select_controlled_unit()

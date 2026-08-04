@@ -100,6 +100,21 @@ func _mount() -> void:
 	refresh_header()
 
 
+## The header follows the selection and the aim, and a debug verb can kill a part the header needs
+## to know about — the same three triggers the player overlay wired by hand.
+func link() -> void:
+	var input: ViewModule = context.module(&"unit_input")
+	if input != null:
+		(input as UnitInputModule).selection_changed.connect(refresh_header)
+	var debug: ViewModule = context.module(&"debug_panel")
+	if debug != null:
+		(debug as DebugPanelModule).verb_applied.connect(_on_verb_applied)
+
+
+func _on_verb_applied(_verb_id: StringName) -> void:
+	refresh_header()
+
+
 ## Flips the header between its two faces. Called by the mode on selection and aim changes, and
 ## after a debug verb applies — the same three triggers `SquadControlOverlay` used.
 func refresh_header() -> void:
