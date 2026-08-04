@@ -129,9 +129,9 @@ func test_what_one_mouse_motion_while_aiming_costs() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, mission)
-	battle.set_overlay(SquadControlOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
 	await get_tree().process_frame
-	var tactics: TacticsController = (battle.overlay as SquadControlOverlay).tactics
+	var tactics: TacticsController = (battle.overlay as ControlOverlay).tactics()
 	tactics.click_cell(units[0].cell)
 	tactics.arm_action(&"shoot")
 	tactics.click_cell(units[1].cell)
@@ -228,9 +228,9 @@ func test_what_one_mouse_motion_while_only_hovering_costs() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, mission)
-	battle.set_overlay(SquadControlOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
 	await get_tree().process_frame
-	var tactics: TacticsController = (battle.overlay as SquadControlOverlay).tactics
+	var tactics: TacticsController = (battle.overlay as ControlOverlay).tactics()
 	tactics.click_cell(units[0].cell)
 	if tactics.selection.selected_unit == null:
 		gut.p("could not select on this fixture — nothing measured")

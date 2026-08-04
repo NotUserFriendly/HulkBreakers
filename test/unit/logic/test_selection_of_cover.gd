@@ -110,8 +110,8 @@ func _tactics(state: CombatState) -> TacticsController:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, MissionState.new(RunState.new(), state))
-	battle.set_overlay(SquadControlOverlay.new())
-	return (battle.overlay as SquadControlOverlay).tactics
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	return (battle.overlay as ControlOverlay).tactics()
 
 
 ## **Driven through `click_cell`, the caller's own entry**, not by calling `select_target`.

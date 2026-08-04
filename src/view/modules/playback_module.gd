@@ -61,6 +61,31 @@ func _mount() -> void:
 	rebind()
 
 
+## The replay panel wants to know when a bout ends, a loaded fixture wants to be played, and a debug
+## verb changes what the status line should say.
+func link() -> void:
+	var replay: ViewModule = context.module(&"replay")
+	if replay != null:
+		bout_finished.connect((replay as ReplayModule).report_bout_finished)
+		(replay as ReplayModule).replay_loaded.connect(_on_replay_loaded)
+	var debug: ViewModule = context.module(&"debug_panel")
+	if debug != null:
+		(debug as DebugPanelModule).verb_applied.connect(_on_verb_applied)
+
+
+func _on_verb_applied(_verb_id: StringName) -> void:
+	refresh_status()
+
+
+## A replayed fixture has been loaded into the board. **Rebind, then play** — a loaded board with
+## nothing driving it is a still image, which is what the supervisor saw: the bout was there and
+## nothing moved it.
+func _on_replay_loaded(_map_seed: int) -> void:
+	if context != null and context.rebind_all.is_valid():
+		context.rebind_all.call()
+	play()
+
+
 ## Points this module at whatever `context.battle` currently holds, without rebuilding the UI.
 ##
 ## **Rebind, emphatically not a rebuild.** The spectator learned this the hard way: calling `setup`

@@ -12,7 +12,7 @@ extends PanelContainer
 ##
 ## `input_owner` is whichever object exposes the generic
 ## `board_clicked`/`input_capture_mode` hook (`TacticsController` for a
-## player bout, the `SpectatorOverlay` itself for spectator) — duck-typed
+## player bout, `BoardInspectModule` for spectator) — duck-typed
 ## on purpose, this file never imports either concretely, so "Pick on
 ## Board" works identically against both.
 ##

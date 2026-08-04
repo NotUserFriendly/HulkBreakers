@@ -752,7 +752,7 @@ func test_each_aim_session_measures_only_itself() -> void:
 
 ## **A reticle move is not an aim-state change, and the split is the fix.**
 ##
-## `SquadControlOverlay._on_selection_changed` calls `has_queued_move()`, which previews,
+## `UnitInputModule._on_selection_changed` calls `has_queued_move()`, which previews,
 ## which clones — **26 083 usec on a real board**. It was subscribed to `aim_changed`, and
 ## `aim_reticle_at_screen` emitted that on every mouse motion, so every motion cloned the
 ## whole world to re-answer a question only the queue can change.

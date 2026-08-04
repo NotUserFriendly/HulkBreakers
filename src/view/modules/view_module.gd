@@ -65,6 +65,17 @@ func is_input() -> bool:
 	return kind() == Kind.INPUT
 
 
+## Applies a mode's pre-mount `options` for this module by setting properties directly.
+##
+## **Deliberately generic.** A mode is data, so adding an option must be a table entry rather than a
+## branch here — the same standing rule that keeps socket types and AP costs out of code. The keys
+## are the module's own public field names; an unknown key sets nothing, which is the same
+## degrade-quietly posture the rest of the module system has.
+func configure(options: Dictionary) -> void:
+	for key: StringName in options:
+		set(key, options[key])
+
+
 ## Builds this module against `p_context` and registers it there. Idempotent guard included: a
 ## double mount is a host bug, and returning quietly beats building a second copy of every panel.
 func mount(p_context: ModuleContext) -> void:
@@ -95,6 +106,18 @@ func _mount() -> void:
 
 ## The teardown. Override this only if `_mount` reached outside the module.
 func _unmount() -> void:
+	pass
+
+
+## Wires this module to the other modules in its mode. Called on every module **after all of them
+## have mounted**, so the connections a module wants do not constrain the declaration order the way
+## its mount-time reads do.
+##
+## Before this pass the equivalent wiring lived in each overlay's own `_wire_modules`, which is the
+## last thing that would have had to be written per-mode. A module knowing how to link to whatever
+## it
+## finds is what makes a new mode a table entry.
+func link() -> void:
 	pass
 
 

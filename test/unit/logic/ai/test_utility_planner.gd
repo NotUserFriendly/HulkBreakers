@@ -448,7 +448,7 @@ func test_every_authored_default_names_a_profile_that_exists() -> void:
 
 	assert_has(authored, Matrix.new().ai_profile, "a fresh matrix's default")
 	assert_has(authored, BoutRosterEntry.new().ai_profile, "a fresh roster entry's default")
-	for pair: Array in GenerateBoutOverlay.DEFAULT_ROSTER:
+	for pair: Array in BoutSetupModule.DEFAULT_ROSTER:
 		assert_has(authored, pair[1] as StringName, "the bout maker's default roster")
 
 	# **The one this test did not cover, and it was wrong for a whole taskblock.**

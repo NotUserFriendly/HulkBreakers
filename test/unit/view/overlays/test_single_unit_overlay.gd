@@ -1,6 +1,6 @@
 extends GutTest
 
-## taskblock-15 Pass A: SingleUnitOverlay — a thin SquadControlOverlay
+## taskblock-15 Pass A: ControlOverlay — a thin SquadControlOverlay
 ## variant that drives exactly one unit, auto-selecting it (no click) the
 ## instant it's its turn, and auto-resolving every other unit via AI.
 
@@ -26,7 +26,7 @@ func _plain_unit(id: StringName, cell: Vector2i, squad_id: int) -> Unit:
 func _wire(units: Array[Unit], controlled: Unit) -> Dictionary:
 	var state := CombatState.new(Grid.new(10, 5), units, 7)
 	# tb31 Pass B: every squad needs a real (non-UNASSIGNED) controller
-	# before a bout can run at all — SingleUnitOverlay's own wants_turn_for
+	# before a bout can run at all — the single-unit mode's own wants_turn_for
 	# never consults it (pure unit-identity), but BoutRunner._init() still
 	# validates it regardless of which control paradigm is actually driving.
 	state.assign_all_to_human()
@@ -38,7 +38,7 @@ func _wire(units: Array[Unit], controlled: Unit) -> Dictionary:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, mission)
-	var overlay := SingleUnitOverlay.new()
+	var overlay := ControlOverlay.for_mode(ViewModes.single_unit())
 	overlay.controlled_unit = controlled
 	battle.set_overlay(overlay)
 	return {"battle": battle, "overlay": overlay, "state": state}
@@ -48,7 +48,7 @@ func test_wants_turn_for_is_true_only_for_the_controlled_unit() -> void:
 	var unit_a := _plain_unit(&"a", Vector2i(0, 0), 0)
 	var unit_b := _plain_unit(&"b", Vector2i(5, 0), 1)
 	var wired: Dictionary = _wire([unit_b, unit_a], unit_a)
-	var overlay: SingleUnitOverlay = wired.overlay
+	var overlay: ControlOverlay = wired.overlay
 
 	assert_true(overlay.wants_turn_for(unit_a))
 	assert_false(overlay.wants_turn_for(unit_b))
@@ -61,11 +61,11 @@ func test_a_non_controlled_units_turn_auto_resolves_and_the_controlled_unit_auto
 	var unit_a := _plain_unit(&"a", Vector2i(0, 0), 0)
 	var unit_b := _plain_unit(&"b", Vector2i(5, 0), 1)
 	var wired: Dictionary = _wire([unit_b, unit_a], unit_a)
-	var overlay: SingleUnitOverlay = wired.overlay
+	var overlay: ControlOverlay = wired.overlay
 	var state: CombatState = wired.state
 
 	assert_eq(state.current_unit(), unit_a, "unit_b's own turn must have auto-resolved already")
-	assert_eq(overlay.tactics.selection.selected_unit, unit_a, "no click should be needed")
+	assert_eq(overlay.tactics().selection.selected_unit, unit_a, "no click should be needed")
 
 
 ## Safety guard: an overlay installed with no `controlled_unit` assigned
@@ -85,7 +85,7 @@ func test_an_unconfigured_overlay_never_auto_drives_anything() -> void:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, mission)
-	battle.set_overlay(SingleUnitOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.single_unit()))
 
 	assert_eq(
 		state.current_unit(), unit_b, "an unconfigured overlay must never auto-resolve anyone"

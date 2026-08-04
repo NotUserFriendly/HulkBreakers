@@ -65,6 +65,13 @@ func _mount() -> void:
 			add_child(button)
 
 
+## The button's enabled state follows the selection.
+func link() -> void:
+	var input: ViewModule = context.module(&"unit_input")
+	if input != null:
+		(input as UnitInputModule).selection_changed.connect(refresh_button)
+
+
 ## Opens on whatever the selection currently holds. Since taskblock-51 Pass K that includes cover:
 ## `open_cell` could always describe a loose part, the selection simply could never hold one.
 func open_selected() -> void:

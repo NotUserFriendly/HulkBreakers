@@ -17,7 +17,7 @@ extends Node
 ## every child mesh at the true final cell/orientation; this class only
 ## ever nudges the view's own root Node3D transform away from identity and
 ## eases it back — never touches UnitGeometry/resolution-critical geometry
-## at all). Decoupled from TacticsController entirely (SpectatorOverlay has
+## at all). Decoupled from TacticsController entirely (a display-only mode has
 ## none) — reads `battle.combat_state`/`battle.unit_views` directly.
 ##
 ## Two real visual bugs, fixed here:
@@ -99,7 +99,7 @@ const INTER_SHOT_BREAK_MS := 100.0
 const DEFLECT_BEAT_MS := 100.0
 
 ## taskblock-15 Pass B4: "editable fields at the top of the spectator
-## overlay... temporary debug knobs." Public, mutable — SpectatorOverlay's
+## overlay... temporary debug knobs." Public, mutable — `PlaybackModule`'s
 ## own UI writes into these directly; not baked constants.
 var slide_ms: float = 100.0
 var bullet_ms: float = 250.0
@@ -137,11 +137,12 @@ func _init() -> void:
 
 
 ## `p_banner` is optional (null skips every banner text flip) — a
-## TACTICS/RESOLUTION phase banner is meaningful for SquadControlOverlay's
+## TACTICS/RESOLUTION phase banner is meaningful for the player mode's
 ## own human-played turn, not for an all-AI spectated bout, which has no
 ## "tactics phase" of its own to announce. `p_on_finished` is called once
 ## the whole playback (lead-in, every event, tail) completes —
-## SquadControlOverlay passes `tactics.unlock_input`; SpectatorOverlay
+## `ResolutionModule` passes `tactics.unlock_input` where a mode has input;
+## a display-only mode
 ## passes nothing (its own step loop just awaits `play()` returning).
 func setup(
 	p_battle: BattleScene, p_on_finished: Callable = Callable(), p_banner: Label = null

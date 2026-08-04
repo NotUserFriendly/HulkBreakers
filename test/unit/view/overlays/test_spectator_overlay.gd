@@ -1,6 +1,6 @@
 extends GutTest
 
-## taskblock-14 Pass C / taskblock-15 Pass A/B: SpectatorOverlay — the
+## taskblock-14 Pass C / taskblock-15 Pass A/B: ControlOverlay — the
 ## structural/state-machine half of the watch loop that can actually be
 ## asserted headlessly (play/pause/step/speed transitions). The
 ## moment-to-moment visual result (camera framing, board mesh, real
@@ -11,8 +11,8 @@ extends GutTest
 ##
 ## taskblock-15 Pass A: this overlay no longer builds its own world
 ## (BoutView used to) — every test below builds a real BattleScene,
-## loads a bout into it, then swaps to SpectatorOverlay, exactly the path
-## GenerateBoutOverlay itself uses.
+## loads a bout into it, then swaps to the spectator mode, exactly the path
+## the bout-setup mode itself uses.
 ##
 ## taskblock-15 Pass B: step_once()/play() now await a real (if brief)
 ## ResolutionPlayer.play() call per turn — `_spectate()` zeroes every
@@ -79,8 +79,8 @@ func _bout(map_seed: int = 11) -> Dictionary:
 
 
 ## Every test's own real path: a real BattleScene, a bout loaded into it,
-## then swapped to SpectatorOverlay — the exact sequence
-## GenerateBoutOverlay itself drives (A2). Neutralizes _ready()'s own
+## then swapped to the spectator mode — the exact sequence
+## the bout-setup mode itself drives (A2). Neutralizes _ready()'s own
 ## default SquadControlOverlay FIRST (a bare ControlOverlay — the base
 ## class's every method is already a real, working no-op) — loading an
 ## all-AI bout straight into a STILL-ATTACHED SquadControlOverlay would
@@ -90,71 +90,71 @@ func _bout(map_seed: int = 11) -> Dictionary:
 ## by never being the SquadControlOverlay in the first place. Every
 ## animation duration is zeroed (taskblock-15 Pass B) so step_once()/play()
 ## await near-instantly — this file tests PACING, not playback timing.
-func _spectate(built: Dictionary) -> SpectatorOverlay:
+func _spectate(built: Dictionary) -> ControlOverlay:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(built.state, built.mission)
-	battle.set_overlay(SpectatorOverlay.new())
-	var overlay: SpectatorOverlay = battle.overlay as SpectatorOverlay
-	overlay.resolution_player.slide_ms = 0.0
-	overlay.resolution_player.bullet_ms = 0.0
-	overlay.resolution_player.tracer_count = 0
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	var overlay: ControlOverlay = battle.overlay as ControlOverlay
+	overlay.module(&"resolution").player.slide_ms = 0.0
+	overlay.module(&"resolution").player.bullet_ms = 0.0
+	overlay.module(&"resolution").player.tracer_count = 0
 	return overlay
 
 
 func test_setup_wires_a_bout_runner_against_the_loaded_battle() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_not_null(overlay.runner)
-	assert_eq(overlay.runner.state, overlay.battle.combat_state)
+	assert_not_null(overlay.playback().runner)
+	assert_eq(overlay.playback().runner.state, overlay.battle.combat_state)
 
 
 ## taskblock-27 Pass D1a: "spectator combat log word-wraps — it shouldn't."
 ## `SquadControlOverlay`'s own log label already had this fix; this
 ## overlay's own log label never got it.
 func test_log_label_never_word_wraps() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_eq(overlay.log_label.autowrap_mode, TextServer.AUTOWRAP_OFF)
+	assert_eq(overlay.module(&"combat_log").panel.log_label.autowrap_mode, TextServer.AUTOWRAP_OFF)
 
 
 func test_play_sets_playing_and_pause_clears_it() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	overlay.play()
-	assert_true(overlay.playing)
+	overlay.playback().play()
+	assert_true(overlay.playback().playing)
 
-	overlay.pause()
-	assert_false(overlay.playing)
+	overlay.playback().pause()
+	assert_false(overlay.playback().playing)
 
 
 ## "Step-one-action" (this bout's own granularity: one unit's whole
 ## turn) advances exactly one turn and leaves the bout paused, never
 ## auto-continuing.
 func test_step_once_advances_exactly_one_turn_and_stays_paused() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	await overlay.step_once()
+	await overlay.playback().step_once()
 
-	assert_eq(overlay.runner.turns_taken, 1)
-	assert_false(overlay.playing)
+	assert_eq(overlay.playback().runner.turns_taken, 1)
+	assert_false(overlay.playback().playing)
 
 
 ## "Speed (1x, 2x, 4x)" — three fixed steps, cycling back to 1x. Also
 ## keeps ResolutionPlayer's own `speed` field in sync (B2: "pacing speed
 ## multiplies all durations").
 func test_speed_cycles_through_the_three_fixed_steps() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_almost_eq(overlay.speed, 1.0, 0.0001)
-	overlay._on_speed_button_pressed()
-	assert_almost_eq(overlay.speed, 2.0, 0.0001)
-	assert_almost_eq(overlay.resolution_player.speed, 2.0, 0.0001)
-	overlay._on_speed_button_pressed()
-	assert_almost_eq(overlay.speed, 4.0, 0.0001)
-	overlay._on_speed_button_pressed()
-	assert_almost_eq(overlay.speed, 1.0, 0.0001)
+	assert_almost_eq(overlay.playback().speed, 1.0, 0.0001)
+	overlay.playback().cycle_speed()
+	assert_almost_eq(overlay.playback().speed, 2.0, 0.0001)
+	assert_almost_eq(overlay.module(&"resolution").player.speed, 2.0, 0.0001)
+	overlay.playback().cycle_speed()
+	assert_almost_eq(overlay.playback().speed, 4.0, 0.0001)
+	overlay.playback().cycle_speed()
+	assert_almost_eq(overlay.playback().speed, 1.0, 0.0001)
 
 
 ## "Pause/step/speed don't alter the outcome, only its pacing" —
@@ -165,44 +165,46 @@ func test_speed_cycles_through_the_three_fixed_steps() -> void:
 ## speed (this fixture's own combat can finish before 3 calls — set_speed
 ## must not change THAT either).
 func test_a_faster_speed_never_skips_or_repeats_a_single_step() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
-	overlay.set_speed(4.0)
+	var overlay: ControlOverlay = _spectate(await _bout())
+	overlay.playback().set_speed(4.0)
 
 	for i in range(3):
-		if overlay.runner.finished:
+		if overlay.playback().runner.finished:
 			break
-		var before: int = overlay.runner.turns_taken
-		await overlay.step_once()
+		var before: int = overlay.playback().runner.turns_taken
+		await overlay.playback().step_once()
 		assert_eq(
-			overlay.runner.turns_taken, before + 1, "step %d must advance by exactly one turn" % i
+			overlay.playback().runner.turns_taken,
+			before + 1,
+			"step %d must advance by exactly one turn" % i
 		)
 
 
 func test_the_bout_finishing_stops_playback() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
 	var guard := 0
-	while not overlay.runner.finished and guard < 500:
-		await overlay.step_once()
+	while not overlay.playback().runner.finished and guard < 500:
+		await overlay.playback().step_once()
 		guard += 1
 
-	assert_true(overlay.runner.finished)
-	assert_false(overlay.playing)
+	assert_true(overlay.playback().runner.finished)
+	assert_false(overlay.playback().playing)
 
 
 ## taskblock-15 Pass B4: "editable fields at the top of the spectator
 ## overlay" — writing into the SpinBox fields must reach
 ## resolution_player's own real fields, not a local copy.
 func test_the_dev_tunable_fields_write_directly_into_resolution_player() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	overlay._slide_ms_field.value = 50.0
-	overlay._bullet_ms_field.value = 400.0
-	overlay._tracer_count_field.value = 5.0
+	overlay.playback().slide_ms_field.value = 50.0
+	overlay.playback().bullet_ms_field.value = 400.0
+	overlay.playback().tracer_count_field.value = 5.0
 
-	assert_almost_eq(overlay.resolution_player.slide_ms, 50.0, 0.0001)
-	assert_almost_eq(overlay.resolution_player.bullet_ms, 400.0, 0.0001)
-	assert_eq(overlay.resolution_player.tracer_count, 5)
+	assert_almost_eq(overlay.module(&"resolution").player.slide_ms, 50.0, 0.0001)
+	assert_almost_eq(overlay.module(&"resolution").player.bullet_ms, 400.0, 0.0001)
+	assert_eq(overlay.module(&"resolution").player.tracer_count, 5)
 
 
 ## "Timing arrows can go by 10ms, not 1ms — clicking into it lets you get
@@ -214,15 +216,15 @@ func test_the_dev_tunable_fields_write_directly_into_resolution_player() -> void
 ## to a multiple of the arrow step. `tracer_count` is a plain count, not a
 ## timing field, and never sets a custom arrow step at all.
 func test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_almost_eq(overlay._slide_ms_field.custom_arrow_step, 10.0, 0.0001)
-	assert_almost_eq(overlay._bullet_ms_field.custom_arrow_step, 10.0, 0.0001)
-	assert_almost_eq(overlay._tracer_count_field.custom_arrow_step, 0.0, 0.0001)
+	assert_almost_eq(overlay.playback().slide_ms_field.custom_arrow_step, 10.0, 0.0001)
+	assert_almost_eq(overlay.playback().bullet_ms_field.custom_arrow_step, 10.0, 0.0001)
+	assert_almost_eq(overlay.playback().tracer_count_field.custom_arrow_step, 0.0, 0.0001)
 
-	overlay._slide_ms_field.value = 137.0
+	overlay.playback().slide_ms_field.value = 137.0
 	assert_almost_eq(
-		overlay.resolution_player.slide_ms,
+		overlay.module(&"resolution").player.slide_ms,
 		137.0,
 		0.0001,
 		"a typed/assigned value must not snap to the arrow step"
@@ -243,9 +245,9 @@ func test_timing_fields_step_by_ten_ms_but_still_accept_an_exact_typed_value() -
 ## stale cell or dead — an unrelated confound this test has no interest in.
 func test_clicking_a_unit_pauses_the_bout_and_opens_the_inspect_panel() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.units[1]
-	overlay.playing = true
+	overlay.playback().playing = true
 
 	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
 	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
@@ -253,10 +255,10 @@ func test_clicking_a_unit_pauses_the_bout_and_opens_the_inspect_panel() -> void:
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	click.position = screen_pos
-	overlay._unhandled_input(click)
+	overlay.board_inspect().handle_input(click)
 
-	assert_false(overlay.playing, "the click must pause the bout")
-	assert_true(overlay.inspect_panel.visible)
+	assert_false(overlay.playback().playing, "the click must pause the bout")
+	assert_true(overlay.inspect().panel.visible)
 
 
 ## "Closing it resumes" — but only if the bout was actually auto-playing
@@ -267,7 +269,7 @@ func test_clicking_a_unit_pauses_the_bout_and_opens_the_inspect_panel() -> void:
 ## exactly what "closing it resumes" needs to prove.
 func test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.units[1]
 	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
 	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
@@ -277,15 +279,17 @@ func test_closing_the_inspect_panel_resumes_only_if_it_was_playing_before() -> v
 	click.position = screen_pos
 
 	# Already paused before clicking: closing must NOT start auto-play.
-	overlay._unhandled_input(click)
-	overlay.inspect_panel.close()
-	assert_false(overlay.playing, "was already paused — closing must not start auto-play")
+	overlay.board_inspect().handle_input(click)
+	overlay.inspect().panel.close()
+	assert_false(
+		overlay.playback().playing, "was already paused — closing must not start auto-play"
+	)
 
 	# Was auto-playing before clicking: closing must resume it.
-	overlay.playing = true
-	overlay._unhandled_input(click)
-	overlay.inspect_panel.close()
-	assert_true(overlay.playing, "was auto-playing — closing must resume it")
+	overlay.playback().playing = true
+	overlay.board_inspect().handle_input(click)
+	overlay.inspect().panel.close()
+	assert_true(overlay.playback().playing, "was auto-playing — closing must resume it")
 
 
 ## taskblock-26 Pass E: "objects and cells don't [have a click inspector]."
@@ -301,8 +305,8 @@ func test_clicking_a_bare_cell_or_a_cells_object_opens_the_same_inspect_panel() 
 	crate.hp = 4
 	crate.max_hp = 4
 	built.state.grid.blockers[Vector2i(4, 0)] = crate
-	var overlay: SpectatorOverlay = _spectate(built)
-	overlay.playing = true
+	var overlay: ControlOverlay = _spectate(built)
+	overlay.playback().playing = true
 
 	# taskblock-26 Pass E: unlike the unit-click tests above (which project a
 	# point at body HEIGHT, since `UnitPicker.hit` tests a real 3D box, not
@@ -318,11 +322,13 @@ func test_clicking_a_bare_cell_or_a_cells_object_opens_the_same_inspect_panel() 
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	click.position = screen_pos
-	overlay._unhandled_input(click)
+	overlay.board_inspect().handle_input(click)
 
-	assert_false(overlay.playing, "the click must pause the bout, same as clicking a unit")
-	assert_true(overlay.inspect_panel.visible)
-	assert_true(overlay.inspect_panel._rows_by_part.has(crate), "the cell's own object shows")
+	assert_false(
+		overlay.playback().playing, "the click must pause the bout, same as clicking a unit"
+	)
+	assert_true(overlay.inspect().panel.visible)
+	assert_true(overlay.inspect().panel._rows_by_part.has(crate), "the cell's own object shows")
 
 
 ## **`BR48.01`: a genuinely bare cell opens nothing.**
@@ -336,8 +342,8 @@ func test_clicking_a_bare_cell_or_a_cells_object_opens_the_same_inspect_panel() 
 ## as a dim that will not lift, because there is nothing in the panel to say what happened.
 func test_clicking_a_genuinely_bare_cell_opens_nothing_and_keeps_playing() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
-	overlay.playing = true
+	var overlay: ControlOverlay = _spectate(built)
+	overlay.playback().playing = true
 	var bare := Vector2i(4, 0)
 	assert_false(built.state.grid.blockers.has(bare), "nothing is standing on this cell")
 
@@ -350,10 +356,10 @@ func test_clicking_a_genuinely_bare_cell_opens_nothing_and_keeps_playing() -> vo
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	click.position = screen_pos
-	overlay._unhandled_input(click)
+	overlay.board_inspect().handle_input(click)
 
-	assert_false(overlay.inspect_panel.visible, "no modal over an empty cell")
-	assert_true(overlay.playing, "and the bout was never paused for it")
+	assert_false(overlay.inspect().panel.visible, "no modal over an empty cell")
+	assert_true(overlay.playback().playing, "and the bout was never paused for it")
 
 
 ## taskblock-39 Pass C: this test used to pin taskblock-27 Pass D5's own
@@ -370,17 +376,17 @@ func test_clicking_a_genuinely_bare_cell_opens_nothing_and_keeps_playing() -> vo
 
 
 func test_clicking_empty_space_does_nothing() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
-	overlay.playing = true
+	var overlay: ControlOverlay = _spectate(await _bout())
+	overlay.playback().playing = true
 
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	click.position = Vector2(-9999, -9999)  # off the board entirely
-	overlay._unhandled_input(click)
+	overlay.board_inspect().handle_input(click)
 
-	assert_true(overlay.playing, "a click that hits nothing must not pause the bout")
-	assert_false(overlay.inspect_panel.visible)
+	assert_true(overlay.playback().playing, "a click that hits nothing must not pause the bout")
+	assert_false(overlay.inspect().panel.visible)
 
 
 ## taskblock-27 Pass D1c: "inspect-on-hover... ensure it's on the shared
@@ -391,7 +397,7 @@ func test_clicking_empty_space_does_nothing() -> void:
 ## unit's own view highlights while the other unit's view stays clear.
 func test_hovering_a_unit_highlights_its_view_and_clears_the_other() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.units[1]
 	var jerry: Unit = built.state.units[0]
 
@@ -399,7 +405,7 @@ func test_hovering_a_unit_highlights_its_view_and_clears_the_other() -> void:
 	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
 	var motion := InputEventMouseMotion.new()
 	motion.position = screen_pos
-	overlay._unhandled_input(motion)
+	overlay.board_inspect().handle_input(motion)
 
 	var enemy_view: HitVolumeView = overlay.battle.find_unit_view(enemy.id)
 	var jerry_view: HitVolumeView = overlay.battle.find_unit_view(jerry.id)
@@ -411,18 +417,18 @@ func test_hovering_a_unit_highlights_its_view_and_clears_the_other() -> void:
 ## was previously highlighted, not leave a stale highlight behind.
 func test_hovering_off_every_unit_clears_the_previous_highlight() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.units[1]
 
 	var world_point := Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
 	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
 	var hover_motion := InputEventMouseMotion.new()
 	hover_motion.position = screen_pos
-	overlay._unhandled_input(hover_motion)
+	overlay.board_inspect().handle_input(hover_motion)
 
 	var miss_motion := InputEventMouseMotion.new()
 	miss_motion.position = Vector2(-9999, -9999)
-	overlay._unhandled_input(miss_motion)
+	overlay.board_inspect().handle_input(miss_motion)
 
 	var enemy_view: HitVolumeView = overlay.battle.find_unit_view(enemy.id)
 	assert_null(enemy_view._highlighted_part, "moving off the unit must clear its highlight")
@@ -433,13 +439,13 @@ func test_hovering_off_every_unit_clears_the_previous_highlight() -> void:
 ## before and after stepping through several turns — CameraRig is never
 ## told to move by anything in this overlay anymore.
 func test_the_camera_never_moves_on_its_own_while_stepping() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 	var camera: Camera3D = overlay.battle.camera_rig.camera()
 	var transform_before: Transform3D = camera.global_transform
 
 	var guard := 0
-	while not overlay.runner.finished and guard < 10:
-		await overlay.step_once()
+	while not overlay.playback().runner.finished and guard < 10:
+		await overlay.playback().step_once()
 		guard += 1
 
 	assert_eq(
@@ -463,14 +469,14 @@ func test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed() -> voi
 	await bare_runner.run_to_completion()
 
 	var spectated: Dictionary = await _bout(42)
-	var overlay: SpectatorOverlay = _spectate(spectated)
+	var overlay: ControlOverlay = _spectate(spectated)
 	var guard := 0
-	while not overlay.runner.finished and guard < 500:
-		await overlay.step_once()
+	while not overlay.playback().runner.finished and guard < 500:
+		await overlay.playback().step_once()
 		guard += 1
 
 	assert_eq(spectated.mission.outcome, bare.mission.outcome)
-	assert_eq(overlay.runner.turns_taken, bare_runner.turns_taken)
+	assert_eq(overlay.playback().runner.turns_taken, bare_runner.turns_taken)
 
 
 ## taskblock-29 Pass D: the spectator injection hook. "Programmatic
@@ -479,10 +485,10 @@ func test_a_spectated_bout_matches_a_bare_bout_runner_for_the_same_seed() -> voi
 
 
 func test_setup_wires_a_bout_injector_against_the_same_live_state() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_not_null(overlay.bout_injector)
-	assert_eq(overlay.bout_injector.state, overlay.battle.combat_state)
+	assert_not_null(overlay.battle.bout_injector)
+	assert_eq(overlay.battle.bout_injector.state, overlay.battle.combat_state)
 
 
 ## tb31 Pass A: same shared `TopLeftControls` class SquadControlOverlay
@@ -491,23 +497,28 @@ func test_setup_wires_a_bout_injector_against_the_same_live_state() -> void:
 ## Control" — the exact same `toggle_blue_control()` call, just the
 ## opposite direction's own wording.
 func test_top_left_cluster_has_no_new_battle_and_labels_the_toggle_assume_control() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_not_null(overlay.top_left_controls)
-	assert_null(overlay.top_left_controls.new_battle_button, "a spectated bout has no New Battle")
-	assert_eq(overlay.top_left_controls.watch_button.text, "Assume Control")
-	assert_eq(overlay.top_left_controls.inject_button != null, OS.is_debug_build())
+	assert_not_null(overlay.module(&"top_left_controls").controls)
+	assert_null(
+		overlay.module(&"top_left_controls").controls.new_battle_button,
+		"a spectated bout has no New Battle"
+	)
+	assert_eq(overlay.module(&"top_left_controls").controls.watch_button.text, "Assume Control")
+	assert_eq(
+		overlay.module(&"top_left_controls").controls.inject_button != null, OS.is_debug_build()
+	)
 
 
 func test_inject_toggles_the_debug_panels_own_visibility() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
-	assert_false(overlay.debug_panel.visible, "sanity: starts hidden")
+	var overlay: ControlOverlay = _spectate(await _bout())
+	assert_false(overlay.debug_panel_module().panel.visible, "sanity: starts hidden")
 
-	overlay._on_inject_pressed()
-	assert_true(overlay.debug_panel.visible)
+	overlay.debug_panel_module().toggle()
+	assert_true(overlay.debug_panel_module().panel.visible)
 
-	overlay._on_inject_pressed()
-	assert_false(overlay.debug_panel.visible)
+	overlay.debug_panel_module().toggle()
+	assert_false(overlay.debug_panel_module().panel.visible)
 
 
 ## taskblock-56 Pass C: **the input owner is the board module, not the overlay**, and that is a
@@ -518,12 +529,12 @@ func test_inject_toggles_the_debug_panels_own_visibility() -> void:
 ## still emitted, so a listener wired against the overlay is unaffected; this asserts the borrow
 ## lands on the module that actually owns the click.
 func test_inject_wires_the_panel_against_the_real_bout_injector_and_the_board_module() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	overlay._on_inject_pressed()
+	overlay.debug_panel_module().toggle()
 
-	assert_eq(overlay.debug_panel.bout_injector, overlay.bout_injector)
-	assert_eq(overlay.debug_panel.input_owner, overlay.board_inspect())
+	assert_eq(overlay.debug_panel_module().panel.bout_injector, overlay.battle.bout_injector)
+	assert_eq(overlay.debug_panel_module().panel.input_owner, overlay.board_inspect())
 
 
 ## Finds `verb_id`'s own row in the panel's live verb table by index —
@@ -566,13 +577,13 @@ func _apply_via_panel(panel: DebugControlPanel, verb_id: StringName, args: Dicti
 ## so this can never be a UI-only bypass of the real channel.
 func test_inject_panel_force_current_unit_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
 	var sink := MemorySink.new()
 	built.state.combat_log.add_sink(sink)
-	overlay._on_inject_pressed()
+	overlay.debug_panel_module().toggle()
 
-	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": enemy.id})
+	_apply_via_panel(overlay.debug_panel_module().panel, &"force_current_unit", {"unit": enemy.id})
 
 	assert_eq(built.state.current_unit(), enemy)
 	var events: Array[LogEvent] = sink.events_of_kind(&"inject")
@@ -582,19 +593,23 @@ func test_inject_panel_force_current_unit_calls_the_real_bout_injector_api() -> 
 
 func test_inject_panel_set_part_hp_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
 	assert_gt(enemy.shell.root.hp, 0, "sanity: the target starts alive")
-	overlay._on_inject_pressed()
+	overlay.debug_panel_module().toggle()
 
 	# taskblock-51 (`BR51.02`): `set_part_hp` takes an OBJECT target now, so it can reach a
 	# blocker or a field object and not only a unit. An OBJECT param is filled from the
 	# panel's own active-target memory rather than from a form field, which is why this
 	# drives a board click instead of typing a unit id.
-	overlay.debug_panel._on_active_target_clicked(
+	overlay.debug_panel_module().panel._on_active_target_clicked(
 		{"kind": Enums.HitKind.UNIT, "unit": enemy, "cell": enemy.cell}
 	)
-	_apply_via_panel(overlay.debug_panel, &"set_part_hp", {"part_id": enemy.shell.root.id, "hp": 0})
+	_apply_via_panel(
+		overlay.debug_panel_module().panel,
+		&"set_part_hp",
+		{"part_id": enemy.shell.root.id, "hp": 0}
+	)
 
 	assert_eq(enemy.shell.root.hp, 0)
 	assert_true(built.state.was_injected)
@@ -602,13 +617,15 @@ func test_inject_panel_set_part_hp_calls_the_real_bout_injector_api() -> void:
 
 func test_inject_panel_force_overwatch_arm_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var jerry: Unit = built.state.find_unit(0)
 	assert_eq(jerry.overwatch_weapon_id, &"")
-	overlay._on_inject_pressed()
+	overlay.debug_panel_module().toggle()
 
 	_apply_via_panel(
-		overlay.debug_panel, &"force_overwatch_arm", {"unit": jerry.id, "weapon_id": "rifle"}
+		overlay.debug_panel_module().panel,
+		&"force_overwatch_arm",
+		{"unit": jerry.id, "weapon_id": "rifle"}
 	)
 
 	assert_eq(jerry.overwatch_weapon_id, &"rifle")
@@ -626,8 +643,8 @@ func test_inject_panel_force_overwatch_arm_calls_the_real_bout_injector_api() ->
 ## the HANDLER ITSELF calls `sync_unit_views()` before `refresh_unit_views()`.
 func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
-	overlay._on_inject_pressed()
+	var overlay: ControlOverlay = _spectate(built)
+	overlay.debug_panel_module().toggle()
 	var root := Part.new()
 	root.hp = 5
 	root.max_hp = 5
@@ -635,7 +652,7 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 	built.state.add_unit(spawned)
 	assert_null(overlay.battle.find_unit_view(spawned.id), "sanity: no view yet")
 
-	overlay.debug_panel.applied.emit(&"spawn_unit", {})
+	overlay.debug_panel_module().panel.applied.emit(&"spawn_unit", {})
 
 	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
 	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")
@@ -649,11 +666,11 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 ## real UI resolution.
 func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
-	overlay._on_inject_pressed()
+	var overlay: ControlOverlay = _spectate(built)
+	overlay.debug_panel_module().toggle()
 
 	_apply_via_panel(
-		overlay.debug_panel,
+		overlay.debug_panel_module().panel,
 		&"spawn_object",
 		{"cell": Vector2i(3, 3), "part_id": "scrap_pile", "as_cover": true}
 	)
@@ -669,19 +686,23 @@ func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() 
 ## bring it back.
 func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var jerry: Unit = built.state.find_unit(0)
-	overlay._on_inject_pressed()
-	overlay.debug_panel._active = {"kind": Enums.HitKind.UNIT, "unit": jerry, "cell": jerry.cell}
+	overlay.debug_panel_module().toggle()
+	overlay.debug_panel_module().panel._active = {
+		"kind": Enums.HitKind.UNIT, "unit": jerry, "cell": jerry.cell
+	}
 
-	_apply_via_panel(overlay.debug_panel, &"remove_object", {})
+	_apply_via_panel(overlay.debug_panel_module().panel, &"remove_object", {})
 
 	assert_false(jerry.alive)
 	assert_null(overlay.battle.find_unit_view(jerry.id), "the view must be gone entirely")
 
 	# A later, unrelated verb's own applied handler must not resurrect it.
 	_apply_via_panel(
-		overlay.debug_panel, &"force_current_unit", {"unit": built.state.find_unit(1).id}
+		overlay.debug_panel_module().panel,
+		&"force_current_unit",
+		{"unit": built.state.find_unit(1).id}
 	)
 
 	assert_null(overlay.battle.find_unit_view(jerry.id), "still gone after an unrelated Apply")
@@ -691,14 +712,16 @@ func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resur
 ## spectator is paused is visible on the next step."
 func test_an_injection_applied_while_paused_is_visible_on_the_next_step() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
-	assert_false(overlay.playing, "sanity: a fresh overlay starts paused")
+	assert_false(overlay.playback().playing, "sanity: a fresh overlay starts paused")
 
-	overlay.bout_injector.force_current_unit(enemy)
-	await overlay.step_once()
+	overlay.battle.bout_injector.force_current_unit(enemy)
+	await overlay.playback().step_once()
 
-	assert_eq(overlay.runner.last_unit, enemy, "the forced current unit must be who acted")
+	assert_eq(
+		overlay.playback().runner.last_unit, enemy, "the forced current unit must be who acted"
+	)
 
 
 ## "Playback after injection proceeds normally" — the bout keeps running
@@ -706,14 +729,14 @@ func test_an_injection_applied_while_paused_is_visible_on_the_next_step() -> voi
 ## applied.
 func test_playback_proceeds_normally_after_an_injection() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 
-	overlay.bout_injector.set_ap(built.state.find_unit(0), 0)
-	await overlay.step_once()
-	assert_eq(overlay.runner.turns_taken, 1)
+	overlay.battle.bout_injector.set_ap(built.state.find_unit(0), 0)
+	await overlay.playback().step_once()
+	assert_eq(overlay.playback().runner.turns_taken, 1)
 
-	await overlay.step_once()
-	assert_eq(overlay.runner.turns_taken, 2)
+	await overlay.playback().step_once()
+	assert_eq(overlay.playback().runner.turns_taken, 2)
 
 
 ## taskblock-30/31: the same generic `input_capture_mode`/`board_clicked`
@@ -721,11 +744,11 @@ func test_playback_proceeds_normally_after_an_injection() -> void:
 ## `TacticsController` of its own to lean on.
 func test_capture_mode_intercepts_a_real_click_and_never_opens_the_inspect_panel() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
 	var captured := [{}]
 	overlay.board_clicked.connect(func(hit: Dictionary) -> void: captured[0] = hit)
-	overlay.input_capture_mode = true
+	overlay.board_inspect().input_capture_mode = true
 
 	var world_point: Vector3 = Vector3(enemy.cell.x, 0.5, enemy.cell.y) * UnitGeometry.CELL_SIZE
 	var screen_pos: Vector2 = overlay.battle.camera_rig.camera().unproject_position(world_point)
@@ -733,18 +756,18 @@ func test_capture_mode_intercepts_a_real_click_and_never_opens_the_inspect_panel
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	click.position = screen_pos
-	overlay._unhandled_input(click)
+	overlay.board_inspect().handle_input(click)
 
 	assert_eq(captured[0].get("kind"), Enums.HitKind.UNIT)
 	assert_eq(captured[0].get("unit"), enemy)
 	assert_false(
-		overlay.inspect_panel.visible, "capture must never fall through to open the inspector"
+		overlay.inspect().panel.visible, "capture must never fall through to open the inspector"
 	)
 
 
 func test_capture_mode_off_behaves_exactly_as_before() -> void:
 	var built: Dictionary = await _bout()
-	var overlay: SpectatorOverlay = _spectate(built)
+	var overlay: ControlOverlay = _spectate(built)
 	var enemy: Unit = built.state.find_unit(1)
 	var captured := [false]
 	overlay.board_clicked.connect(func(_hit: Dictionary) -> void: captured[0] = true)
@@ -755,34 +778,36 @@ func test_capture_mode_off_behaves_exactly_as_before() -> void:
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	click.position = screen_pos
-	overlay._unhandled_input(click)
+	overlay.board_inspect().handle_input(click)
 
 	assert_false(captured[0], "board_clicked must never fire outside capture mode")
-	assert_true(overlay.inspect_panel.visible, "the ordinary click behavior must be untouched")
+	assert_true(overlay.inspect().panel.visible, "the ordinary click behavior must be untouched")
 
 
 ## Supervisor, post-tb41: the bare `RichTextLabel` this overlay used to build is
 ## obsolete — both views use the same `CombatLogPanel` now, so neither can
 ## quietly keep the worse widget while the other is improved.
 func test_the_spectator_log_is_the_shared_combat_log_panel() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 
-	assert_not_null(overlay.log_panel, "not a hand-built label any more")
+	assert_not_null(overlay.module(&"combat_log").panel, "not a hand-built label any more")
 	assert_eq(
-		overlay.log_label, overlay.log_panel.log_label, "the sink writes into the panel's own"
+		overlay.module(&"combat_log").panel.log_label,
+		overlay.module(&"combat_log").panel.log_label,
+		"the sink writes into the panel's own"
 	)
-	assert_not_null(overlay.log_panel.minimize_button)
-	assert_not_null(overlay.log_panel.title_bar)
+	assert_not_null(overlay.module(&"combat_log").panel.minimize_button)
+	assert_not_null(overlay.module(&"combat_log").panel.title_bar)
 
 
 ## The panel is absolutely positioned here rather than sitting in a column, and
 ## only `size` means anything in that situation — `custom_minimum_size` alone
 ## would leave resize silently inert in this overlay while working in the other.
 func test_resizing_the_spectator_log_actually_changes_its_size() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var panel: CombatLogPanel = overlay.log_panel
+	var panel: CombatLogPanel = overlay.module(&"combat_log").panel
 	var before: float = panel.size.y
 
 	panel._apply_height(before + 90.0)
@@ -796,10 +821,10 @@ func test_resizing_the_spectator_log_actually_changes_its_size() -> void:
 ## `size.y` alone pins the top and pushes the bottom down off the corner, which
 ## is what the supervisor saw as "the bottom of the panel changes shape".
 func test_resizing_keeps_the_bottom_edge_pinned_and_grows_upward() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var panel: CombatLogPanel = overlay.log_panel
+	var panel: CombatLogPanel = overlay.module(&"combat_log").panel
 	var bottom_before: float = panel.position.y + panel.size.y
 	var top_before: float = panel.position.y
 
@@ -815,10 +840,10 @@ func test_resizing_keeps_the_bottom_edge_pinned_and_grows_upward() -> void:
 ## Both views put the log hard into the bottom-left corner; a margin in one and
 ## not the other made them sit in visibly different places for no reason.
 func test_the_spectator_log_sits_flush_in_the_bottom_left_corner() -> void:
-	var overlay: SpectatorOverlay = _spectate(await _bout())
+	var overlay: ControlOverlay = _spectate(await _bout())
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var panel: CombatLogPanel = overlay.log_panel
+	var panel: CombatLogPanel = overlay.module(&"combat_log").panel
 
 	# `position` is in PARENT coordinates, not relative to the anchor it hangs
 	# from — so "flush to the bottom" means the panel's bottom edge equals the

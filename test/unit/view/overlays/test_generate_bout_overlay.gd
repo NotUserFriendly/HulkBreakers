@@ -1,11 +1,11 @@
 extends GutTest
 
-## taskblock-14 Pass D / taskblock-15 Pass A: GenerateBoutOverlay — the
+## taskblock-14 Pass D / taskblock-15 Pass A: ControlOverlay — the
 ## thin UI wrapper around BoutSetup (already covered headlessly by
 ## test_bout_setup.gd). This checks the overlay actually wires up (profile
 ## dropdowns list the loaded profiles), Start Bout is rejected-not-crashed
 ## on a bad setup, and — A2's own requirement — a valid Start Bout hands
-## off to a live SpectatorOverlay, never leaving this one installed.
+## off to a live spectator surface, never leaving this one installed.
 ##
 ## taskblock-16 Pass E: teams are expanding lists now, no count field —
 ## these tests drive the same `_add_to_squad`/`_remove_from_squad`/
@@ -40,31 +40,31 @@ func after_each() -> void:
 	DataLibrary.reset()
 
 
-## Neutralizes _ready()'s own default SquadControlOverlay first — same
+## Neutralizes _ready()'s own default player mode first — same
 ## reasoning as test_spectator_overlay.gd's own `_spectate()` helper,
-## though GenerateBoutOverlay itself never touches battle_loaded, so this
+## though the bout-setup mode itself never touches battle_loaded, so this
 ## is only for symmetry/hygiene here, not a hazard this overlay has.
 func _menu() -> Dictionary:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
-	battle.set_overlay(GenerateBoutOverlay.new())
-	return {"battle": battle, "overlay": battle.overlay as GenerateBoutOverlay}
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.bout_setup()))
+	return {"battle": battle, "overlay": battle.overlay as ControlOverlay}
 
 
 ## "The menu lists loaded profiles" — both reference profiles from
 ## taskblock-14 Pass A are available to add to a roster.
 func test_setup_populates_ordered_presets_from_loaded_presets() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 
-	assert_gt(overlay._ordered_presets.size(), 0)
+	assert_gt(overlay.bout_setup()._ordered_presets.size(), 0)
 
 
 func test_a_variant_is_listed_under_its_own_family_label() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 
 	var found_variant := false
-	for preset: BotPreset in overlay._ordered_presets:
-		if overlay._preset_label(preset).contains("Battery Mods"):
+	for preset: BotPreset in overlay.bout_setup()._ordered_presets:
+		if overlay.bout_setup()._preset_label(preset).contains("Battery Mods"):
 			found_variant = true
 	assert_true(found_variant, "the a_brand_laborer_battery_mods variant must appear in the list")
 
@@ -81,7 +81,7 @@ func test_a_variant_is_listed_under_its_own_family_label() -> void:
 ## profiles" because the pairing is the flagged UX default, and a silent
 ## drift in it is a change to what a one-click Start Bout demonstrates.
 func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 
 	var expected: Dictionary = {
 		&"combat_tester_chaingun": &"cautious",
@@ -91,7 +91,9 @@ func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> v
 	var authored: Array[StringName] = []
 	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
 		authored.append(profile.id)
-	for roster: Array[BoutRosterEntry] in [overlay._roster_a, overlay._roster_b]:
+	for roster: Array[BoutRosterEntry] in [
+		overlay.bout_setup().roster(0), overlay.bout_setup().roster(1)
+	]:
 		assert_eq(roster.size(), expected.size())
 		for entry: BoutRosterEntry in roster:
 			assert_true(
@@ -115,10 +117,12 @@ func test_setup_seeds_both_rosters_with_one_of_each_combat_tester_variant() -> v
 ## `OptionButton` node back (CLAUDE.md: verify against the real node,
 ## never a re-derived formula that would just agree with the same bug).
 func test_default_roster_rows_actually_render_a_selected_bot_name() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 
-	for rows: VBoxContainer in [overlay._rows_a, overlay._rows_b]:
-		for i in range(overlay._roster(0 if rows == overlay._rows_a else 1).size()):
+	for rows: VBoxContainer in [overlay.bout_setup()._rows(0), overlay.bout_setup()._rows(1)]:
+		for i in range(
+			overlay.bout_setup().roster(0 if rows == overlay.bout_setup()._rows(0) else 1).size()
+		):
 			var row: HBoxContainer = rows.get_child(i) as HBoxContainer
 			var profile_dropdown: OptionButton = row.get_child(0) as OptionButton
 			assert_ne(
@@ -129,88 +133,111 @@ func test_default_roster_rows_actually_render_a_selected_bot_name() -> void:
 
 ## "Adding appends a unit."
 func test_add_to_squad_appends_to_the_end_of_the_roster() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	var starting_size: int = overlay._roster_a.size()
-	var preset: BotPreset = overlay._ordered_presets[0]
+	var overlay: ControlOverlay = _menu().overlay
+	var starting_size: int = overlay.bout_setup().roster(0).size()
+	var preset: BotPreset = overlay.bout_setup()._ordered_presets[0]
 
-	overlay._add_to_squad(0, preset)
+	overlay.bout_setup()._add_to_squad(0, preset)
 
-	assert_eq(overlay._roster_a.size(), starting_size + 1)
-	assert_eq(overlay._roster_a[overlay._roster_a.size() - 1].profile, preset)
+	assert_eq(overlay.bout_setup().roster(0).size(), starting_size + 1)
+	assert_eq(
+		overlay.bout_setup().roster(0)[overlay.bout_setup().roster(0).size() - 1].profile, preset
+	)
 
 
 ## "Removing drops exactly that entry" — every other entry keeps its own
 ## profile, only the removed one's gone.
 func test_remove_from_squad_drops_exactly_that_entry() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	overlay._roster_a = [
-		BoutRosterEntry.new(overlay._ordered_presets[0], &"aggressive"),
-		BoutRosterEntry.new(overlay._ordered_presets[1], &"aggressive"),
-		BoutRosterEntry.new(overlay._ordered_presets[0], &"aggressive"),
-	]
-	var kept_middle: BoutRosterEntry = overlay._roster_a[1]
+	var overlay: ControlOverlay = _menu().overlay
+	(
+		overlay
+		. bout_setup()
+		. set_roster(
+			0,
+			[
+				BoutRosterEntry.new(overlay.bout_setup()._ordered_presets[0], &"aggressive"),
+				BoutRosterEntry.new(overlay.bout_setup()._ordered_presets[1], &"aggressive"),
+				BoutRosterEntry.new(overlay.bout_setup()._ordered_presets[0], &"aggressive"),
+			]
+		)
+	)
+	var kept_middle: BoutRosterEntry = overlay.bout_setup().roster(0)[1]
 
-	overlay._remove_from_squad(0, 0)
+	overlay.bout_setup()._remove_from_squad(0, 0)
 
-	assert_eq(overlay._roster_a.size(), 2)
-	assert_eq(overlay._roster_a[0], kept_middle, "the surviving entries must not shift identity")
+	assert_eq(overlay.bout_setup().roster(0).size(), 2)
+	assert_eq(
+		overlay.bout_setup().roster(0)[0],
+		kept_middle,
+		"the surviving entries must not shift identity"
+	)
 
 
 ## "Clicking a name replaces it" — same slot, new profile, its own
 ## AI profile untouched, roster size unchanged.
 func test_replace_profile_in_squad_swaps_the_profile_at_that_index() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	overlay._roster_a = [BoutRosterEntry.new(overlay._ordered_presets[0], &"defensive")]
-	var replacement: BotPreset = overlay._ordered_presets[1]
+	var overlay: ControlOverlay = _menu().overlay
+	overlay.bout_setup().set_roster(
+		0, [BoutRosterEntry.new(overlay.bout_setup()._ordered_presets[0], &"defensive")]
+	)
+	var replacement: BotPreset = overlay.bout_setup()._ordered_presets[1]
 
-	overlay._replace_profile_in_squad(0, 0, replacement)
+	overlay.bout_setup()._replace_profile_in_squad(0, 0, replacement)
 
-	assert_eq(overlay._roster_a.size(), 1)
-	assert_eq(overlay._roster_a[0].profile, replacement)
+	assert_eq(overlay.bout_setup().roster(0).size(), 1)
+	assert_eq(overlay.bout_setup().roster(0)[0].profile, replacement)
 	assert_eq(
-		overlay._roster_a[0].ai_profile, &"defensive", "replacing the preset must not touch AI"
+		overlay.bout_setup().roster(0)[0].ai_profile,
+		&"defensive",
+		"replacing the preset must not touch AI"
 	)
 
 
 ## taskblock-17 Pass D: "`[AI ▾]` — per-bot AI" — same slot, new profile,
 ## preset untouched.
 func test_replace_ai_profile_in_squad_swaps_the_profile_at_that_index() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	var preset: BotPreset = overlay._ordered_presets[0]
-	overlay._roster_a = [BoutRosterEntry.new(preset, &"aggressive")]
+	var overlay: ControlOverlay = _menu().overlay
+	var preset: BotPreset = overlay.bout_setup()._ordered_presets[0]
+	overlay.bout_setup().set_roster(0, [BoutRosterEntry.new(preset, &"aggressive")])
 
-	overlay._replace_ai_profile_in_squad(0, 0, &"cautious")
+	overlay.bout_setup()._replace_ai_profile_in_squad(0, 0, &"cautious")
 
-	assert_eq(overlay._roster_a.size(), 1)
-	assert_eq(overlay._roster_a[0].ai_profile, &"cautious")
-	assert_eq(overlay._roster_a[0].profile, preset, "changing AI must not touch the preset")
+	assert_eq(overlay.bout_setup().roster(0).size(), 1)
+	assert_eq(overlay.bout_setup().roster(0)[0].ai_profile, &"cautious")
+	assert_eq(
+		overlay.bout_setup().roster(0)[0].profile, preset, "changing AI must not touch the preset"
+	)
 
 
 ## taskblock-17 Pass D: "`[D]` — duplicate. Appends a copy of that entry
 ## (same preset + same AI profile) below it."
 func test_duplicate_in_squad_inserts_an_identical_entry_right_below() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	var preset: BotPreset = overlay._ordered_presets[0]
-	var other: BotPreset = overlay._ordered_presets[1]
-	overlay._roster_a = [
-		BoutRosterEntry.new(preset, &"defensive"), BoutRosterEntry.new(other, &"aggressive")
-	]
-
-	overlay._duplicate_in_squad(0, 0)
-
-	assert_eq(overlay._roster_a.size(), 3)
-	assert_eq(overlay._roster_a[0].profile, preset)
-	assert_eq(overlay._roster_a[0].ai_profile, &"defensive")
-	assert_eq(
-		overlay._roster_a[1].profile, preset, "the duplicate must land directly below its source"
+	var overlay: ControlOverlay = _menu().overlay
+	var preset: BotPreset = overlay.bout_setup()._ordered_presets[0]
+	var other: BotPreset = overlay.bout_setup()._ordered_presets[1]
+	overlay.bout_setup().set_roster(
+		0, [BoutRosterEntry.new(preset, &"defensive"), BoutRosterEntry.new(other, &"aggressive")]
 	)
-	assert_eq(overlay._roster_a[1].ai_profile, &"defensive")
-	assert_eq(overlay._roster_a[2].profile, other, "every later entry keeps its own position")
+
+	overlay.bout_setup()._duplicate_in_squad(0, 0)
+
+	assert_eq(overlay.bout_setup().roster(0).size(), 3)
+	assert_eq(overlay.bout_setup().roster(0)[0].profile, preset)
+	assert_eq(overlay.bout_setup().roster(0)[0].ai_profile, &"defensive")
+	assert_eq(
+		overlay.bout_setup().roster(0)[1].profile,
+		preset,
+		"the duplicate must land directly below its source"
+	)
+	assert_eq(overlay.bout_setup().roster(0)[1].ai_profile, &"defensive")
+	assert_eq(
+		overlay.bout_setup().roster(0)[2].profile, other, "every later entry keeps its own position"
+	)
 
 
 ## "No count field remains" — SpinBox is gone outright, not just unused.
 func test_no_count_field_exists_on_the_overlay() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 
 	assert_false("_count_a_field" in overlay, "the old count SpinBox must be fully retired")
 	assert_false("_count_b_field" in overlay, "the old count SpinBox must be fully retired")
@@ -219,7 +246,7 @@ func test_no_count_field_exists_on_the_overlay() -> void:
 ## taskblock-17 Pass D: the old per-team AI dropdowns are fully
 ## retired, not just unused — the AI choice lives per-row now.
 func test_no_per_team_ai_dropdown_exists_on_the_overlay() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 
 	assert_false("_playstyle_a_dropdown" in overlay, "the old per-team AI dropdown must be retired")
 	assert_false("_playstyle_b_dropdown" in overlay, "the old per-team AI dropdown must be retired")
@@ -228,44 +255,48 @@ func test_no_per_team_ai_dropdown_exists_on_the_overlay() -> void:
 ## "An empty team is refused, not crashed."
 func test_start_bout_with_an_empty_roster_is_rejected_not_crashed() -> void:
 	var wired: Dictionary = _menu()
-	var overlay: GenerateBoutOverlay = wired.overlay
+	var overlay: ControlOverlay = wired.overlay
 	var battle: BattleScene = wired.battle
-	overlay._roster_a = []
+	overlay.bout_setup().set_roster(0, [])
 
-	overlay._on_start_bout_pressed()
+	overlay.bout_setup().start_bout()
 
-	assert_ne(overlay._error_label.text, "")
+	assert_ne(overlay.bout_setup().error_label.text, "")
 	assert_eq(battle.overlay, overlay, "a rejected setup must never swap the overlay")
 
 
 ## taskblock-15 Pass A2: "generate-bout hands off to spectator cleanly."
 func test_a_valid_start_bout_hands_off_to_a_live_spectator_overlay() -> void:
 	var wired: Dictionary = _menu()
-	var overlay: GenerateBoutOverlay = wired.overlay
+	var overlay: ControlOverlay = wired.overlay
 	var battle: BattleScene = wired.battle
 
-	overlay._on_start_bout_pressed()
+	overlay.bout_setup().start_bout()
 
 	assert_true(
-		battle.overlay is SpectatorOverlay, "Start Bout must swap to a real SpectatorOverlay"
+		battle.overlay is ControlOverlay, "Start Bout must swap to a real spectator surface"
 	)
-	var spectator: SpectatorOverlay = battle.overlay as SpectatorOverlay
-	assert_not_null(spectator.runner)
-	assert_eq(spectator.runner.state, battle.combat_state, "the same bout, not a stale reference")
+	var spectator: ControlOverlay = battle.overlay as ControlOverlay
+	assert_not_null(spectator.playback().runner)
+	assert_eq(
+		spectator.playback().runner.state,
+		battle.combat_state,
+		"the same bout, not a stale reference"
+	)
 
 
 ## taskblock-17 Pass D: "each bot entry carries its own AI into the built
 ## bout" — end to end, through the real Start Bout path.
 func test_start_bout_threads_each_entrys_own_profile_into_the_built_units() -> void:
 	var wired: Dictionary = _menu()
-	var overlay: GenerateBoutOverlay = wired.overlay
-	var preset: BotPreset = overlay._ordered_presets[0]
-	overlay._roster_a = [
-		BoutRosterEntry.new(preset, &"defensive"), BoutRosterEntry.new(preset, &"cautious")
-	]
-	overlay._roster_b = [BoutRosterEntry.new(preset, &"cowardly")]
+	var overlay: ControlOverlay = wired.overlay
+	var preset: BotPreset = overlay.bout_setup()._ordered_presets[0]
+	overlay.bout_setup().set_roster(
+		0, [BoutRosterEntry.new(preset, &"defensive"), BoutRosterEntry.new(preset, &"cautious")]
+	)
+	overlay.bout_setup().set_roster(1, [BoutRosterEntry.new(preset, &"cowardly")])
 
-	overlay._on_start_bout_pressed()
+	overlay.bout_setup().start_bout()
 
 	var state: CombatState = wired.battle.combat_state
 	var squad_a: Array[Unit] = state.units.filter(func(u: Unit) -> bool: return u.squad_id == 0)
@@ -285,15 +316,15 @@ func test_start_bout_threads_each_entrys_own_profile_into_the_built_units() -> v
 ## comparing it to a second hardcoded list here would just move the
 ## hand-copy into the test.
 func test_the_menu_lists_exactly_the_profiles_on_disk() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
+	var overlay: ControlOverlay = _menu().overlay
 	var authored: Array[StringName] = []
 	for profile: UtilityProfile in DataLibrary.utility_profiles_pool():
 		authored.append(profile.id)
 
-	assert_eq(overlay._profile_ids(), authored)
+	assert_eq(overlay.bout_setup()._profile_ids(), authored)
 	assert_gt(authored.size(), 1, "sanity: the menu is not a single fixed entry")
 	assert_false(
-		"PLAYSTYLES" in GenerateBoutOverlay, "the playstyle vocabulary must be gone, not unused"
+		"PLAYSTYLES" in BoutSetupModule, "the playstyle vocabulary must be gone, not unused"
 	)
 
 
@@ -305,15 +336,15 @@ func test_the_menu_lists_exactly_the_profiles_on_disk() -> void:
 ## total layout height jump unpredictably as the roster crossed the
 ## MIN_VISIBLE_ROWS threshold.
 func test_every_row_shape_reserves_the_same_minimum_height() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	overlay._add_to_squad(0, overlay._ordered_presets[0])
+	var overlay: ControlOverlay = _menu().overlay
+	overlay.bout_setup()._add_to_squad(0, overlay.bout_setup()._ordered_presets[0])
 
-	var rows: VBoxContainer = overlay._rows(0)
+	var rows: VBoxContainer = overlay.bout_setup()._rows(0)
 	assert_gt(rows.get_child_count(), 0, "sanity: at least the real entry + the add row exist")
 	for row: Control in rows.get_children():
 		assert_almost_eq(
 			row.custom_minimum_size.y,
-			GenerateBoutOverlay.ROW_MIN_HEIGHT,
+			BoutSetupModule.ROW_MIN_HEIGHT,
 			0.01,
 			"every row shape (entry, add, spacer) must reserve the same height"
 		)
@@ -327,8 +358,8 @@ func test_every_row_shape_reserves_the_same_minimum_height() -> void:
 ## GROW_BOTH and no baked offset keeps the control's own center pinned to
 ## the parent's midpoint regardless of how its size changes afterward.
 func test_the_menu_layout_stays_centered_regardless_of_its_own_size() -> void:
-	var overlay: GenerateBoutOverlay = _menu().overlay
-	var layout: VBoxContainer = overlay._layout
+	var overlay: ControlOverlay = _menu().overlay
+	var layout: VBoxContainer = overlay.bout_setup().layout
 
 	assert_almost_eq(layout.anchor_left, 0.5, 0.001)
 	assert_almost_eq(layout.anchor_right, 0.5, 0.001)

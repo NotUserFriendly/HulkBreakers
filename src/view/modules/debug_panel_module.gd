@@ -29,16 +29,17 @@ extends ViewModule
 ## closed the perf panel stays open". Both overlays already did this; the reason is preserved with
 ## the code.
 
-## Called after a verb applies, once the module has done the view resync both overlays shared.
-## `SquadControlOverlay` refreshed its readout header here and `SpectatorOverlay` its status line —
-## the one genuine difference between the two copies, and the only thing that had to become a
-## parameter.
-var on_applied: Callable = Callable()
+## Emitted after a verb applies, once this module has done the view resync both overlays shared.
+## The player view refreshed its readout header here and the spectator its status line — the one
+## genuine difference between the two copies, and now a signal each of them subscribes to rather
+## than a callback the host had to thread through.
+signal verb_applied(verb_id: StringName)
 
 ## The object `DebugControlPanel` borrows a board click from: anything carrying a `board_clicked`
-## signal and an `input_capture_mode` property. `SquadControlOverlay` passed its
-## `TacticsController`; `SpectatorOverlay` passed itself. A mode supplies whichever of its modules
-## owns board picking, which is why this is set rather than derived.
+## signal and an `input_capture_mode` property. **Resolved in `link()`, not set by the host** — the
+## board module if the mode has one, otherwise the `TacticsController` the unit-input module
+## published. One place decides, so two modules cannot each set it and let declaration order pick
+## the winner.
 var input_owner: Object = null
 
 var panel: DebugControlPanel = null
@@ -66,6 +67,19 @@ func _mount() -> void:
 	perf_panel.visible = false
 	perf_panel.stats_ticked.connect(_on_perf_stats_ticked)
 	root.add_child(perf_panel)
+
+
+## Board picking if the mode has it, the unit-input path otherwise, and null in a mode with
+## neither — in which case `DebugControlPanel`'s own picking mode simply has nothing to borrow
+## from, which is the honest answer for a surface with no board.
+func link() -> void:
+	var picking: ViewModule = context.module(&"board_inspect")
+	if picking != null:
+		input_owner = picking
+		return
+	var input: ViewModule = context.module(&"unit_input")
+	if input != null:
+		input_owner = (input as UnitInputModule).tactics
 
 
 ## Toggles the panel. A silent no-op outside a debug build, where `panel` was never constructed —
@@ -107,8 +121,7 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 	if DebugVerbs.affects_board(verb_id):
 		battle.sync_board_view()
 	battle.refresh_unit_views()
-	if on_applied.is_valid():
-		on_applied.call()
+	verb_applied.emit(verb_id)
 
 
 ## The readout's own visibility, independent of the panel that offers it. The module owns the nodes;

@@ -222,7 +222,7 @@ func test_debug_menu_set_ammo_sets_the_chosen_ammo_id() -> void:
 
 ## taskblock-22 Pass E3/G: "Repair with Scrap" is the first non-debug
 ## option, shown for a single damaged part when a selection controller is
-## actually wired (SquadControlOverlay's own usage).
+## actually wired (the player mode's own usage).
 func test_repair_menu_item_appears_for_a_single_damaged_part() -> void:
 	var built: Dictionary = _welder_unit()
 	var wired: Dictionary = _panel_with_selection(built.unit)
@@ -614,7 +614,7 @@ func test_open_calls_the_live_view_lookup_with_the_units_own_id() -> void:
 	assert_eq(received, [unit.id])
 
 
-## A live-view lookup (real hosts, SquadControlOverlay/SpectatorOverlay)
+## A live-view lookup (real hosts, the player and spectator modes)
 ## must isolate the ACTUAL live view — never build a disconnected copy —
 ## restricting the preview camera's own cull_mask to just that layer.
 func test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy() -> void:
@@ -781,7 +781,7 @@ func test_closing_clears_the_footer_when_reopened_with_no_shell() -> void:
 ## taskblock-22 Pass I: bidirectional hover-highlight parity with the now-
 ## retired InventoryPanel (full end-to-end coverage lives in
 ## test_part_highlight_bidirectional.gd) — this just confirms a null
-## `tactics` (SpectatorOverlay's own posture, no player TacticsController)
+## `tactics` (a display-only mode's own posture, no player TacticsController)
 ## never crashes either direction.
 func test_tree_hover_and_close_never_crash_with_no_tactics_wired() -> void:
 	var panel: InspectPanel = _panel()

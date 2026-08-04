@@ -10,15 +10,15 @@ extends GutTest
 ## > controlling. It moves with the unit correctly when the player is controlling."*
 ##
 ## A human turn ends *after* its own animation, so the player path never exposes the gap.
-## tb32 Pass D fixed exactly this and its comment on `SquadControlOverlay` calls it "a real
-## confirmed bug" — but only that one call site was changed. `SpectatorOverlay._advance()` went
+## tb32 Pass D fixed exactly this and its comment on the player path calls it "a real
+## confirmed bug" — but only that one call site was changed. `PlaybackModule.advance()` went
 ## on applying the highlight *before* `resolution_player.play()`, which is the AI path.
 ##
 ## ## What these cover, and what they do not
 ##
 ## They pin the **deferral primitive**: that `apply_highlight = false` genuinely withholds the
 ## flip, and that `apply_active_turn_highlight()` genuinely performs it. The fix itself is
-## reordering two lines in `SpectatorOverlay._advance()` to use them the way the player path
+## reordering two lines in `PlaybackModule.advance()` to use them the way the player path
 ## already does.
 ##
 ## **Driving `_advance()` end-to-end headlessly is not covered here, and that is a real gap,

@@ -72,15 +72,15 @@ func _bout() -> Dictionary:
 ## queue resolution already did before ever emitting `turn_ended` in
 ## production — the turn has moved on to the AI unit by the time `_on_
 ## turn_ended` is called, in the test exactly as it is for real.
-func _squad_control(built: Dictionary) -> SquadControlOverlay:
+func _squad_control(built: Dictionary) -> ControlOverlay:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(built.state, built.mission)
-	battle.set_overlay(SquadControlOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
 	built.state.advance_turn()
 	assert_eq(built.state.current_unit(), built.ai_unit, "sanity: setup left this turn untouched")
-	return battle.overlay as SquadControlOverlay
+	return battle.overlay as ControlOverlay
 
 
 func _move_event(unit: Unit) -> LogEvent:
@@ -99,14 +99,14 @@ func _move_event(unit: Unit) -> LogEvent:
 ## AI unit `advance_ai_turns` would otherwise have already resolved past.
 func test_ai_turns_do_not_advance_until_the_players_own_animation_finishes() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control(built)
+	var overlay: ControlOverlay = _squad_control(built)
 	# Slow enough that play() genuinely suspends instead of completing
 	# inline — the whole point of this test is to observe the MIDDLE of
 	# an in-flight animation.
-	overlay.resolution_player.slide_ms = 10000.0
-	overlay.resolution_player.bullet_ms = 10000.0
+	overlay.module(&"resolution").player.slide_ms = 10000.0
+	overlay.module(&"resolution").player.bullet_ms = 10000.0
 
-	overlay._on_turn_ended([_move_event(built.player_unit)])  # deliberately not awaited
+	overlay.unit_input()._on_turn_ended([_move_event(built.player_unit)])  # deliberately not awaited
 
 	assert_eq(
 		built.state.current_unit(),
@@ -119,11 +119,11 @@ func test_ai_turns_do_not_advance_until_the_players_own_animation_finishes() -> 
 ## does run — this isn't "AI turns never happen," only "not yet."
 func test_ai_turns_advance_once_the_players_own_animation_finishes() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control(built)
-	overlay.resolution_player.slide_ms = 0.0
-	overlay.resolution_player.bullet_ms = 0.0
+	var overlay: ControlOverlay = _squad_control(built)
+	overlay.module(&"resolution").player.slide_ms = 0.0
+	overlay.module(&"resolution").player.bullet_ms = 0.0
 
-	await overlay._on_turn_ended([_move_event(built.player_unit)])
+	await overlay.unit_input()._on_turn_ended([_move_event(built.player_unit)])
 
 	assert_ne(
 		built.state.current_unit(),
@@ -222,14 +222,14 @@ func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> voi
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(built.state, built.mission)
-	battle.set_overlay(SquadControlOverlay.new())
-	var overlay: SquadControlOverlay = battle.overlay as SquadControlOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	var overlay: ControlOverlay = battle.overlay as ControlOverlay
 	assert_eq(
 		built.state.current_unit(), built.shooter, "sanity: the shooter's own turn is current"
 	)
 
 	# 1) select the shooter — a real board click, same raycast path as step 3.
-	var camera: Camera3D = overlay.tactics.camera
+	var camera: Camera3D = overlay.tactics().camera
 	var shooter_screen: Vector2 = camera.unproject_position(
 		Vector3(built.shooter.cell.x, 0.5, built.shooter.cell.y) * UnitGeometry.CELL_SIZE
 	)
@@ -237,8 +237,8 @@ func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> voi
 	select_click.button_index = MOUSE_BUTTON_LEFT
 	select_click.pressed = true
 	select_click.position = shooter_screen
-	overlay.tactics._unhandled_input(select_click)
-	assert_eq(overlay.tactics.selection.selected_unit, built.shooter, "sanity: selection took")
+	overlay.tactics()._unhandled_input(select_click)
+	assert_eq(overlay.tactics().selection.selected_unit, built.shooter, "sanity: selection took")
 
 	# 2) arm SHOOT via a real ActionBar slot click — never tactics.arm_action().
 	var shoot_index := -1
@@ -246,13 +246,13 @@ func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> voi
 		if ActionCatalog.actions_for(built.shooter)[i].id == &"shoot":
 			shoot_index = i
 	assert_true(shoot_index >= 0, "sanity: shoot must be a real slot on this unit")
-	var panel: PanelContainer = overlay.action_bar._panels[shoot_index]
+	var panel: PanelContainer = overlay.module(&"action_bar").action_bar._panels[shoot_index]
 	var arm_click := InputEventMouseButton.new()
 	arm_click.button_index = MOUSE_BUTTON_LEFT
 	arm_click.pressed = true
 	panel.gui_input.emit(arm_click)
-	assert_not_null(overlay.tactics.armed_action, "sanity: the real action-bar click armed it")
-	assert_eq(overlay.tactics.armed_action.id, &"shoot")
+	assert_not_null(overlay.tactics().armed_action, "sanity: the real action-bar click armed it")
+	assert_eq(overlay.tactics().armed_action.id, &"shoot")
 
 	# 3) click the covered enemy — a real raycast-driven click, same as
 	# production. This is the actual claim under test.
@@ -263,25 +263,25 @@ func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> voi
 	enemy_click.button_index = MOUSE_BUTTON_LEFT
 	enemy_click.pressed = true
 	enemy_click.position = enemy_screen
-	overlay.tactics._unhandled_input(enemy_click)
+	overlay.tactics()._unhandled_input(enemy_click)
 
-	assert_eq(overlay.tactics.stepping_out_at, built.enemy, "the full real wiring must step out")
-	assert_null(overlay.tactics.aiming_at, "a step out never also enters ordinary aim mode")
+	assert_eq(overlay.tactics().stepping_out_at, built.enemy, "the full real wiring must step out")
+	assert_null(overlay.tactics().aiming_at, "a step out never also enters ordinary aim mode")
 
 
-## taskblock-30: SquadControlOverlay's own debug-gated Inject affordance
+## taskblock-30: ControlOverlay's own debug-gated Inject affordance
 ## — the "surface a potential method for injection to also work on a
 ## player-controlled bout" follow-up. Same neutralize-then-swap sequence
 ## `_squad_control` uses, but WITHOUT its own `advance_turn()` call (that
 ## belongs only to the ordering tests above — this needs the player's own
 ## unit reachable as the live current/selectable unit).
-func _squad_control_fresh(built: Dictionary) -> SquadControlOverlay:
+func _squad_control_fresh(built: Dictionary) -> ControlOverlay:
 	var battle := BattleScene.new()
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(built.state, built.mission)
-	battle.set_overlay(SquadControlOverlay.new())
-	return battle.overlay as SquadControlOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	return battle.overlay as ControlOverlay
 
 
 ## This harness only ever runs as a debug build (Godot's own editor/CLI
@@ -291,46 +291,58 @@ func _squad_control_fresh(built: Dictionary) -> SquadControlOverlay:
 ## structurally instead, by test_bout_injector_determinism.gd's own
 ## source-level gate check.
 func test_inject_button_and_panel_exist_exactly_when_this_is_a_debug_build() -> void:
-	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+	var overlay: ControlOverlay = _squad_control_fresh(_bout())
 
-	assert_eq(overlay.inject_button != null, OS.is_debug_build())
-	assert_eq(overlay.debug_panel != null, OS.is_debug_build())
+	assert_eq(overlay.module(&"top_left_controls").inject_button() != null, OS.is_debug_build())
+	assert_eq(overlay.debug_panel_module().panel != null, OS.is_debug_build())
 
 
 func test_inject_toggles_the_debug_panels_own_visibility() -> void:
-	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
-	assert_false(overlay.debug_panel.visible, "sanity: starts hidden")
+	var overlay: ControlOverlay = _squad_control_fresh(_bout())
+	assert_false(overlay.debug_panel_module().panel.visible, "sanity: starts hidden")
 
-	overlay._on_inject_pressed()
-	assert_true(overlay.debug_panel.visible)
+	overlay.debug_panel_module().toggle()
+	assert_true(overlay.debug_panel_module().panel.visible)
 
-	overlay._on_inject_pressed()
-	assert_false(overlay.debug_panel.visible)
+	overlay.debug_panel_module().toggle()
+	assert_false(overlay.debug_panel_module().panel.visible)
 
 
 func test_inject_wires_the_panel_against_the_real_bout_injector_and_tactics() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	var overlay: ControlOverlay = _squad_control_fresh(built)
 
-	overlay._on_inject_pressed()
+	overlay.debug_panel_module().toggle()
 
-	assert_eq(overlay.debug_panel.bout_injector, overlay.battle.bout_injector)
-	assert_eq(overlay.debug_panel.combat_state, built.state)
-	assert_eq(overlay.debug_panel.input_owner, overlay.tactics)
+	assert_eq(overlay.debug_panel_module().panel.bout_injector, overlay.battle.bout_injector)
+	assert_eq(overlay.debug_panel_module().panel.combat_state, built.state)
+	assert_eq(overlay.debug_panel_module().panel.input_owner, overlay.tactics())
 
 
 ## tb31 Pass A: New Battle/Watch/Inject share ONE construction path
 ## (`TopLeftControls`) now — this overlay's own field aliases must point
 ## straight into the SAME instance it built, not a second copy.
 func test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster() -> void:
-	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
+	var overlay: ControlOverlay = _squad_control_fresh(_bout())
 
-	assert_not_null(overlay.top_left_controls)
-	assert_eq(overlay.new_battle_button, overlay.top_left_controls.new_battle_button)
-	assert_eq(overlay.watch_button, overlay.top_left_controls.watch_button)
-	assert_eq(overlay.inject_button, overlay.top_left_controls.inject_button)
-	assert_eq(overlay.watch_button.text, "Watch")
-	assert_not_null(overlay.new_battle_button, "SquadControlOverlay opts INTO New Battle")
+	assert_not_null(overlay.module(&"top_left_controls").controls)
+	assert_eq(
+		overlay.module(&"top_left_controls").new_battle_button(),
+		overlay.module(&"top_left_controls").controls.new_battle_button
+	)
+	assert_eq(
+		overlay.module(&"top_left_controls").watch_button(),
+		overlay.module(&"top_left_controls").controls.watch_button
+	)
+	assert_eq(
+		overlay.module(&"top_left_controls").inject_button(),
+		overlay.module(&"top_left_controls").controls.inject_button
+	)
+	assert_eq(overlay.module(&"top_left_controls").watch_button().text, "Watch")
+	assert_not_null(
+		overlay.module(&"top_left_controls").new_battle_button(),
+		"the player mode opts INTO New Battle"
+	)
 
 
 ## tb31 Pass A: the top-left cluster's real rect must never overlap the
@@ -339,14 +351,19 @@ func test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster() -> 
 ## all used to spawn right on top of this exact corner. Read both real
 ## nodes back (docs/10 standing rule 2), never re-derive either position.
 func test_top_left_cluster_never_overlaps_the_centered_debug_panel() -> void:
-	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
-	overlay.debug_panel.visible = true
-	overlay.debug_panel.size = Vector2(600.0, 200.0)
-	overlay.debug_panel._center_top()
+	var overlay: ControlOverlay = _squad_control_fresh(_bout())
+	overlay.debug_panel_module().panel.visible = true
+	overlay.debug_panel_module().panel.size = Vector2(600.0, 200.0)
+	overlay.debug_panel_module().panel._center_top()
 	await get_tree().process_frame
 
-	var cluster_rect := Rect2(overlay.top_left_controls.position, overlay.top_left_controls.size)
-	var panel_rect := Rect2(overlay.debug_panel.position, overlay.debug_panel.size)
+	var cluster_rect := Rect2(
+		overlay.module(&"top_left_controls").controls.position,
+		overlay.module(&"top_left_controls").controls.size
+	)
+	var panel_rect := Rect2(
+		overlay.debug_panel_module().panel.position, overlay.debug_panel_module().panel.size
+	)
 	assert_false(
 		cluster_rect.intersects(panel_rect),
 		"cluster %s must not overlap the centered debug panel %s" % [cluster_rect, panel_rect]
@@ -357,14 +374,17 @@ func test_top_left_cluster_never_overlaps_the_centered_debug_panel() -> void:
 ## button is the SAME toggle the H-key already drives (ControlsOverlay's
 ## own `label.visible`), never a second mechanism.
 func test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does() -> void:
-	var overlay: SquadControlOverlay = _squad_control_fresh(_bout())
-	assert_false(overlay.controls_overlay.label.visible, "sanity: hidden by default")
+	var overlay: ControlOverlay = _squad_control_fresh(_bout())
+	assert_false(
+		overlay.module(&"controls_legend").controls_overlay.label.visible,
+		"sanity: hidden by default"
+	)
 
-	overlay._on_keybindings_pressed()
-	assert_true(overlay.controls_overlay.label.visible)
+	overlay.module(&"controls_legend").toggle()
+	assert_true(overlay.module(&"controls_legend").controls_overlay.label.visible)
 
-	overlay._on_keybindings_pressed()
-	assert_false(overlay.controls_overlay.label.visible)
+	overlay.module(&"controls_legend").toggle()
+	assert_false(overlay.module(&"controls_legend").controls_overlay.label.visible)
 
 
 ## tb31 Pass D: "a PART_PICKER action opens the picker... one path, no
@@ -431,12 +451,12 @@ func _repair_capable_bout() -> Dictionary:
 
 
 func test_clicking_the_repair_slot_on_the_action_bar_opens_the_same_picker() -> void:
-	var overlay: SquadControlOverlay = _squad_control_fresh(_repair_capable_bout())
-	overlay.tactics.selection.select(overlay.battle.combat_state.units[0])
-	overlay.action_bar.refresh()
+	var overlay: ControlOverlay = _squad_control_fresh(_repair_capable_bout())
+	overlay.tactics().selection.select(overlay.battle.combat_state.units[0])
+	overlay.module(&"action_bar").action_bar.refresh()
 	assert_null(overlay.unit_input().repair_menu, "sanity: no picker open yet")
 
-	var panel: PanelContainer = overlay.action_bar._panels[0]
+	var panel: PanelContainer = overlay.module(&"action_bar").action_bar._panels[0]
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
@@ -481,16 +501,16 @@ func _apply_via_panel(panel: DebugControlPanel, verb_id: StringName, args: Dicti
 	panel._on_apply_pressed()
 
 
-## The actual claim: SquadControlOverlay's own panel calls the exact same
+## The actual claim: ControlOverlay's own panel calls the exact same
 ## BoutInjector API programmatic use (and SpectatorOverlay) already
 ## calls — never a bespoke, player-view-only mutation.
 func test_inject_panel_force_current_unit_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control_fresh(built)
-	overlay._on_inject_pressed()
+	var overlay: ControlOverlay = _squad_control_fresh(built)
+	overlay.debug_panel_module().toggle()
 	var target: Unit = built.ai_unit
 
-	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": target.id})
+	_apply_via_panel(overlay.debug_panel_module().panel, &"force_current_unit", {"unit": target.id})
 
 	assert_eq(built.state.current_unit(), target)
 
@@ -500,11 +520,13 @@ func test_inject_panel_force_current_unit_calls_the_real_bout_injector_api() -> 
 ## easy to drop when the injection moves overlays." Pinned directly.
 func test_inject_panel_sets_was_injected_through_the_player_view_path() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control_fresh(built)
-	overlay._on_inject_pressed()
+	var overlay: ControlOverlay = _squad_control_fresh(built)
+	overlay.debug_panel_module().toggle()
 	assert_false(built.state.was_injected, "sanity: a fresh bout is never pre-marked")
 
-	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": built.player_unit.id})
+	_apply_via_panel(
+		overlay.debug_panel_module().panel, &"force_current_unit", {"unit": built.player_unit.id}
+	)
 
 	assert_true(built.state.was_injected)
 
@@ -516,8 +538,8 @@ func test_inject_panel_sets_was_injected_through_the_player_view_path() -> void:
 ## in the player-controlled view too.
 func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control_fresh(built)
-	overlay._on_inject_pressed()
+	var overlay: ControlOverlay = _squad_control_fresh(built)
+	overlay.debug_panel_module().toggle()
 	var root := Part.new()
 	root.hp = 5
 	root.max_hp = 5
@@ -525,7 +547,7 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 	built.state.add_unit(spawned)
 	assert_null(overlay.battle.find_unit_view(spawned.id), "sanity: no view yet")
 
-	overlay.debug_panel.applied.emit(&"spawn_unit", {})
+	overlay.debug_panel_module().panel.applied.emit(&"spawn_unit", {})
 
 	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
 	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")
@@ -537,11 +559,11 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 ## SpectatorOverlay's own version, in the player-controlled view too.
 func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control_fresh(built)
-	overlay._on_inject_pressed()
+	var overlay: ControlOverlay = _squad_control_fresh(built)
+	overlay.debug_panel_module().toggle()
 
 	_apply_via_panel(
-		overlay.debug_panel,
+		overlay.debug_panel_module().panel,
 		&"spawn_object",
 		{"cell": Vector2i(3, 3), "part_id": "scrap_pile", "as_cover": true}
 	)
@@ -551,23 +573,25 @@ func test_inject_panel_spawn_object_as_cover_calls_the_real_bout_injector_api() 
 
 ## taskblock-30 follow-up (supervisor): "remove can be generalized to
 ## objects, covers, and things on cells. Fully vanishing it." Same
-## real-chain proof as SpectatorOverlay's own version, in the
+## real-chain proof as ControlOverlay's own version, in the
 ## player-controlled view too.
 func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resurrects_it() -> void:
 	var built: Dictionary = _bout()
-	var overlay: SquadControlOverlay = _squad_control_fresh(built)
+	var overlay: ControlOverlay = _squad_control_fresh(built)
 	var player_unit: Unit = built.player_unit
-	overlay._on_inject_pressed()
-	overlay.debug_panel._active = {
+	overlay.debug_panel_module().toggle()
+	overlay.debug_panel_module().panel._active = {
 		"kind": Enums.HitKind.UNIT, "unit": player_unit, "cell": player_unit.cell
 	}
 
-	_apply_via_panel(overlay.debug_panel, &"remove_object", {})
+	_apply_via_panel(overlay.debug_panel_module().panel, &"remove_object", {})
 
 	assert_false(player_unit.alive)
 	assert_null(overlay.battle.find_unit_view(player_unit.id), "the view must be gone entirely")
 
-	_apply_via_panel(overlay.debug_panel, &"force_current_unit", {"unit": built.ai_unit.id})
+	_apply_via_panel(
+		overlay.debug_panel_module().panel, &"force_current_unit", {"unit": built.ai_unit.id}
+	)
 
 	assert_null(
 		overlay.battle.find_unit_view(player_unit.id), "still gone after an unrelated Apply"

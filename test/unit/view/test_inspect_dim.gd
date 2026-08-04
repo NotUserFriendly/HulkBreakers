@@ -34,7 +34,7 @@ func _barrel() -> Part:
 	return barrel
 
 
-func _overlay(cover_cell: Vector2i = Vector2i(5, 5)) -> SpectatorOverlay:
+func _overlay(cover_cell: Vector2i = Vector2i(5, 5)) -> ControlOverlay:
 	var grid: Grid = GridFixture.flat(12, 12)
 	grid.blockers[cover_cell] = _barrel()
 	# A second object, so "open a second inspect over the first" can be driven without a unit:
@@ -48,20 +48,20 @@ func _overlay(cover_cell: Vector2i = Vector2i(5, 5)) -> SpectatorOverlay:
 	add_child_autofree(battle)
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(state, MissionState.new(RunState.new(), state))
-	battle.set_overlay(SpectatorOverlay.new())
-	return battle.overlay as SpectatorOverlay
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	return battle.overlay as ControlOverlay
 
 
 ## A cell that really does hold something still opens — the fix must not make cover
 ## uninspectable while stopping the empty case.
 func test_a_cell_holding_cover_still_opens() -> void:
-	var overlay: SpectatorOverlay = _overlay()
+	var overlay: ControlOverlay = _overlay()
 	var root: Part = overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5))
 	assert_not_null(root, "the fixture put a barrel there")
 
-	overlay.inspect_panel.open_cell(Vector2i(5, 5), root)
+	overlay.inspect().panel.open_cell(Vector2i(5, 5), root)
 
-	assert_true(overlay.inspect_panel.visible, "a real object is inspectable")
+	assert_true(overlay.inspect().panel.visible, "a real object is inspectable")
 
 
 ## **Does a second open/close make it darker?** Read the state back rather than judging by
@@ -70,8 +70,8 @@ func test_a_cell_holding_cover_still_opens() -> void:
 ## ratchet. Asserted across two full cycles because "it stacks" and "it never lifts" are
 ## indistinguishable from the chair.
 func test_opening_and_closing_twice_leaves_no_residue() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	var panel: InspectPanel = overlay.inspect_panel
+	var overlay: ControlOverlay = _overlay()
+	var panel: InspectPanel = overlay.inspect().panel
 	var root: Part = overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5))
 	var rest_mask: int = panel._preview_camera.cull_mask
 
@@ -95,8 +95,8 @@ func test_opening_and_closing_twice_leaves_no_residue() -> void:
 ## that never presses a close button. `open()` clears the isolate before focusing, so the
 ## first target's narrowing cannot survive into the second.
 func test_opening_a_second_inspect_over_the_first_leaves_no_residue() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	var panel: InspectPanel = overlay.inspect_panel
+	var overlay: ControlOverlay = _overlay()
+	var panel: InspectPanel = overlay.inspect().panel
 	var rest_mask: int = panel._preview_camera.cull_mask
 
 	var blockers: Dictionary = overlay.battle.combat_state.grid.blockers
@@ -111,8 +111,8 @@ func test_opening_a_second_inspect_over_the_first_leaves_no_residue() -> void:
 ## `close()` is the single restore path, so every caller that closes reaches the same code —
 ## which is what makes "all three close paths" one assertion rather than three guesses.
 func test_close_resets_the_panel_whatever_it_was_showing() -> void:
-	var overlay: SpectatorOverlay = _overlay()
-	var panel: InspectPanel = overlay.inspect_panel
+	var overlay: ControlOverlay = _overlay()
+	var panel: InspectPanel = overlay.inspect().panel
 
 	panel.open_cell(Vector2i(5, 5), overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5)))
 	panel.close()

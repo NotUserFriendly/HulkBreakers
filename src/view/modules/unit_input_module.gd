@@ -96,6 +96,17 @@ func _on_turn_ended(events: Array[LogEvent]) -> void:
 		await (resolution as ResolutionModule).play(events)
 	battle.apply_active_turn_highlight()
 	turn_resolved.emit(events)
+	# **Awaited here rather than connected to `turn_resolved`, and the difference is not cosmetic.**
+	# `emit` does not await a coroutine handler: it runs the handler to its first `await` and then
+	# detaches, so a caller awaiting this function would return with the AI batch still in flight.
+	# That is exactly the bug tb45 Pass E fixed by adding an `await` to the old fire-and-forget call,
+	# and routing it through a signal would have reintroduced it wearing a nicer shape.
+	#
+	# **And it must come after the playback above**, not before: `advance_ai_turns` fast-forwards
+	# every AI turn with no animation at all, so triggering it earlier made the AI squad visibly snap
+	# to its new positions while the human's own tracer had not fired yet.
+	if context.advance_ai_turns.is_valid():
+		await context.advance_ai_turns.call()
 
 
 ## docs/10 team flagging: the selected unit's ground marker brightens and no other unit's does — a

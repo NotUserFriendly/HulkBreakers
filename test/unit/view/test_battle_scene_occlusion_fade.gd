@@ -64,11 +64,11 @@ func _occlusion_scene() -> Dictionary:
 	var mission := MissionState.new(RunState.new(), state)
 	mission.objectives = []
 	scene.load_battle(state, mission)
-	scene.set_overlay(SquadControlOverlay.new())
-	var overlay: SquadControlOverlay = scene.overlay as SquadControlOverlay
-	overlay.tactics.click_cell(shooter.cell)
-	overlay.tactics.arm_action(&"shoot")
-	overlay.tactics.click_cell(enemy.cell)
+	scene.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	var overlay: ControlOverlay = scene.overlay as ControlOverlay
+	overlay.tactics().click_cell(shooter.cell)
+	overlay.tactics().arm_action(&"shoot")
+	overlay.tactics().click_cell(enemy.cell)
 	scene.camera_rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
 	return {"scene": scene, "shooter": shooter, "friendly": friendly, "enemy": enemy}
 
@@ -115,7 +115,7 @@ func test_leaving_aim_clears_the_fade() -> void:
 	var friendly_view: HitVolumeView = scene.find_unit_view(built.friendly.id)
 	assert_true(friendly_view._occlusion_faded, "sanity: fade fired while aiming")
 
-	(scene.overlay as SquadControlOverlay).tactics.cancel_aim()
+	(scene.overlay as ControlOverlay).tactics().cancel_aim()
 	scene._process(0.016)
 
 	assert_false(friendly_view._occlusion_faded, "leaving aim must restore full opacity")

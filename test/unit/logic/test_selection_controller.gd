@@ -378,7 +378,7 @@ func test_queue_repair_appends_a_repair_action_that_resolves_cleanly() -> void:
 ## are handed and state can change within a frame.
 ##
 ## **The fix was to stop calling it on every mouse motion**, not to make calling it cheap —
-## `SquadControlOverlay._on_selection_changed` listened to `aim_changed`, which the reticle
+## `UnitInputModule._on_selection_changed` listened to `aim_changed`, which the reticle
 ## emitted. This pins the cost so a future reader knows it is a known price, not an
 ## oversight.
 func test_previewing_clones_the_state_and_that_is_deliberate() -> void:
