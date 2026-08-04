@@ -198,6 +198,52 @@ gated overlays, and the bout-injector wiring test reads `battle.bout_injector` d
 
 Full gate green, 2822/2822.
 
+### taskblock-56 Pass E — the three view gaps, as modules
+
+All three are `PLAN.md`'s *Seeing what you authored*, and all three are asserted on the boxes rather
+than on a render.
+
+**Floor tiles go dark forest green** (`WorldPalette.TILE_TEMP`, `#2E4A32`) while there are no models.
+They shared a material with walls and units, so a board read as one undifferentiated mass. **The
+whole revert is `WorldPalette.TEMPORARY_TILE_TINT = false`** — `BoardView._build_tiles` calls
+`WorldPalette.tile_color()` and does not know which branch it got, which keeps the temporary thing
+genuinely one edit from gone. The material branch is tested directly so it cannot rot while unused.
+
+**Loading frames what it built.** `CameraRig.frame_bounds()` eases through the same `_ease_to` every
+other framing uses — a load that snapped would be the only camera move in the game that jumps.
+`CameraFramingModule` supplies the bounds, computed from the same `UnitGeometry.assembly_placements`
+call `BoardView` draws from and `RayCaster` marches, so "what is framed" and "what is drawn" cannot
+drift. **Yaw and pitch are deliberately untouched**: the complaint is "the camera is pointing
+somewhere else after a load", not "the camera is at the wrong angle".
+
+**The framing test reads the rig back rather than re-deriving it**, per CLAUDE.md — the tween is
+stepped to completion and the question asked is *does the content's bounding sphere fit inside the
+frustum at the zoom the rig ended up at*. Measured on an 8x6 board with a wall: **content radius
+5.166, rig zoom 9.759, visible radius 5.941.** A first version of this test compared the target zoom
+to the target zoom and passed while proving nothing; it was rewritten before landing.
+
+**Claim volumes get drawn** — one translucent box per claim, `ClaimVolumeModule`. Exterior red,
+interior **vibrant lime**, empty blue, entry orange. **The two greens are deliberately far apart** —
+dark forest floor, vibrant lime claim — and that separation is asserted as an RGB distance rather
+than as two literals, so retuning either keeps the constraint that matters. Measured: **0.662**.
+
+**Never in play, and enforced rather than intended.** A claim is consumed at assembly and does not
+exist on an assembled board, so drawing one during a bout would be drawing something that is not
+there — the exact defect the riser and ground-quad deletions were about. `no_play_mode_declares_the_claim_module`
+checks that against `ViewModes.all()` rather than trusting the table to stay right.
+
+**A claim whose `kind` has no colour still draws**, in a fifth colour nobody uses. `kind` is an open
+`StringName`; **visible-but-unstyled beats invisible** — an author who invents a verb should see
+their claim in the wrong colour rather than wonder why nothing appeared. A claim with no `box` is
+skipped rather than crashed on, matching `SectionClaim`'s own stated posture.
+
+**`board_view.gd` hit the 1000-line limit during this pass**, which is why the tint switch lives on
+`WorldPalette` rather than in `BoardView`. That turned out to be the better home anyway — one place
+owns the override and its rationale — but the constraint is what prompted it, and the file being at
+its ceiling is worth knowing.
+
+Full gate green, 2837/2837.
+
 ### taskblock-55 — closing doc audit
 
 **A fourth test was passing while proving nothing, and only a read found it.**

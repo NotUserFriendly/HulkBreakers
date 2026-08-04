@@ -185,6 +185,25 @@ func _ease_to(
 	)
 
 
+## taskblock-56 Pass E: eases to a framing that contains `bounds`, keeping the current yaw and
+## pitch. **The same `_ease_to` every other framing uses** — a load that snapped instead of eased
+## would be the only camera move in the game that jumps, and `ease_to_framing`'s own header already
+## says why there is exactly one easing path.
+##
+## Yaw and pitch are deliberately left alone: the complaint this answers is "the camera is pointing
+## somewhere else after a load", not "the camera is at the wrong angle". An authoring surface that
+## wants a specific angle sets one; framing does not get to overrule it.
+##
+## The solve is `CameraFramingModule`'s — see its header for the trigonometry. This is the node
+## half.
+func frame_bounds(bounds: AABB, margin: float = 1.0) -> void:
+	var radius: float = bounds.size.length() * 0.5
+	var half_fov: float = deg_to_rad(CameraOrbitState.CAMERA_FOV_DEG) * 0.5
+	var needed: float = (radius / sin(half_fov)) * margin if radius > 0.0 else state.zoom
+	var target_zoom: float = clampf(needed, CameraOrbitState.MIN_ZOOM, CameraOrbitState.MAX_ZOOM)
+	_ease_to(state.yaw, state.pitch, target_zoom, bounds.get_center())
+
+
 ## taskblock-08 B3a: locks orbit/pan/zoom the instant an action is armed —
 ## called once, from TacticsController.arm_action(), before the shooter's
 ## own attack framing starts easing in, so there's never a frame where the

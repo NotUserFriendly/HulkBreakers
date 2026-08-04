@@ -393,7 +393,7 @@ func _build_tiles(p_grid: Grid, material_table: MaterialTable) -> MeshInstance3D
 	var color_order: Array[Color] = []
 	for cell: Vector2i in p_grid.surfaces:
 		for surface: Surface in p_grid.surfaces_at(cell):
-			var color: Color = material_table.color_for(surface.part.material)
+			var color: Color = WorldPalette.tile_color(material_table, surface.part.material)
 			if not by_color.has(color):
 				by_color[color] = [] as Array[BoxPlacement]
 				color_order.append(color)
