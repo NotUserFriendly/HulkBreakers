@@ -83,9 +83,9 @@ func _battle_lighting(root: Node) -> Array[String]:
 ## **The invariant, stated once and checked at every stage:** the preview's private lighting
 ## is either in its own world, or withdrawn — never contributing to the battle's.
 func _lighting_is_out_of_the_battle_world(panel: InspectPanel) -> bool:
-	if panel._preview_viewport.own_world_3d:
+	if panel.viewer.viewport.own_world_3d:
 		return true
-	return not panel._preview_light.visible and panel._preview_environment.environment == null
+	return not panel.viewer._light.visible and panel.viewer._environment.environment == null
 
 
 ## **The dump is the point.** Two confident diagnoses were wrong before this — an empty modal,

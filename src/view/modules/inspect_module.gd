@@ -50,6 +50,13 @@ func preferred_slot() -> StringName:
 
 func _mount() -> void:
 	panel = InspectPanel.new()
+	# taskblock-57 Pass C3: **the 3D view may be somewhere else on the screen.** If this mode
+	# declared `inspect_viewer` before this module, take its `BotViewer`; otherwise the panel builds
+	# one inside its own body, exactly as it always did. Set BEFORE the panel is added to the tree,
+	# because `setup()` builds against it.
+	var supplied: ViewModule = context.module(&"inspect_viewer")
+	if supplied != null:
+		panel.viewer = (supplied as InspectViewerModule).viewer
 	_place(panel)
 	panel.closed.connect(_on_panel_closed)
 

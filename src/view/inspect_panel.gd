@@ -24,15 +24,6 @@ extends PanelContainer
 
 signal closed
 
-const VIEWER_WIDTH := 260
-const VIEWER_HEIGHT := 420
-const ROTATE_SPEED := 0.5
-const DRAG_SENSITIVITY := 0.01
-const CAMERA_TARGET := Vector3(0.0, 0.8, 0.0)
-const CAMERA_DIRECTION := Vector3(0.0, 0.25, 1.0)
-const CAMERA_DISTANCE_FACTOR := 2.2
-const CAMERA_MIN_RADIUS := 0.4
-const PIVOT_Y_OFFSET := 0.0
 const COL_PART := 0
 ## taskblock-22 Pass E3/G: "Repair with Scrap" is the first NON-debug
 ## option in the right-click menu, added before Reset/Zero/Ammo — a real,
@@ -60,6 +51,17 @@ const BURN_THRESHOLD := 1.0
 ## `_clamp_to_viewport`.
 var placed_by_host: bool = false
 
+## taskblock-57 Pass C3: **the 3D view, which is no longer this panel's to build.**
+##
+## Set before `setup()` by a host that has its own — `InspectViewerModule`, when the mode publishes
+## the placement table's `inspect_viewer` slot, which is top-LEFT while this panel is top-right.
+## Left null, this panel builds one inside its own body exactly as it always did, which is what
+## every existing test and every mode without that slot still gets.
+##
+## **Two placements, one class**, rather than two 3D preview paths — the shape this project has had
+## to delete twice already.
+var viewer: BotViewer = null
+
 var _material_table: MaterialTable
 var _unit: Unit = null
 ## taskblock-26 Pass C3: "the panel shows the bot's variant (good) but the
@@ -72,7 +74,7 @@ var _title_bar: Label
 ## (SquadControlOverlay/SpectatorOverlay, both backed by a real
 ## BattleScene) passes `battle.find_unit_view` (Callable(int) ->
 ## HitVolumeView, the unit's own id — see open()'s call site), letting the
-## isolate camera (see `_isolate_focus`) render the ACTUAL unit already
+## isolate camera (see `BotViewer.show_live`) render the ACTUAL unit already
 ## on the field instead of rebuilding a disconnected copy. A caller with
 ## no live board at all (every existing test, a hypothetical standalone
 ## viewer) leaves this unset and gets the old isolated-fresh-copy
@@ -86,32 +88,6 @@ var _live_view_lookup: Callable = Callable()
 ## the world highlights its row. `null` just skips both directions —
 ## same "optional, degrades gracefully" posture as `_selection`.
 var _tactics: TacticsController = null
-
-var _preview_container: SubViewportContainer
-var _preview_viewport: SubViewport
-var _preview_camera: Camera3D
-var _preview_pivot: Node3D
-var _preview_view: HitVolumeView
-var _rotating: bool = true
-var _dragging: bool = false
-## taskblock-22 Pass G2: the live HitVolumeView currently isolated (see
-## `_isolate_focus`/`_isolate_clear`), or null when the panel is showing
-## its own fallback fresh-copy assembly instead. `_isolate_center`/
-## `_isolate_radius`/`_isolate_yaw` are the isolate camera's own orbit
-## state — set once per `_isolate_focus` call, advanced by `_process`/
-## drag exactly like `_preview_pivot.rotate_y` already does for the
-## fallback path, just orbiting the CAMERA instead of spinning the mesh
-## (the live unit's own transform isn't this panel's to rotate).
-var _isolated_view: HitVolumeView = null
-var _isolate_center: Vector3 = Vector3.ZERO
-var _isolate_radius: float = 0.5
-var _isolate_yaw: float = 0.0
-var _default_cull_mask: int = 0
-## `BR48.01`: the preview's own lighting nodes, held so they can be **withdrawn while the
-## viewport shares the battle's World3D**. See `_set_preview_world_shared`.
-var _preview_environment: WorldEnvironment = null
-var _preview_light: DirectionalLight3D = null
-var _preview_own_environment: Environment = null
 
 var _status_wound_column: VBoxContainer
 var _matrix_label: RichTextLabel
@@ -195,7 +171,7 @@ func setup(
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
 
-	_build_bot_viewer(body)
+	_adopt_or_build_viewer(body)
 	_build_status_wound_column(body)
 
 	var right_column := VBoxContainer.new()
@@ -209,74 +185,30 @@ func setup(
 	_build_info_panel(right_column)
 
 
-## docs/10 "a bot's whole assembly, rotates, drag to spin" — the Resource
-## Editor's own preview scaffold, ported (not shared — see file header).
-func _build_bot_viewer(parent: Control) -> void:
-	_preview_container = SubViewportContainer.new()
-	_preview_container.custom_minimum_size = Vector2(VIEWER_WIDTH, VIEWER_HEIGHT)
-	_preview_container.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_preview_container.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_preview_container.stretch = true
-	_preview_container.mouse_filter = Control.MOUSE_FILTER_STOP
-	_preview_container.gui_input.connect(_on_preview_gui_input)
-	parent.add_child(_preview_container)
+## taskblock-57 Pass C3: **uses the host's viewer if it was given one, and builds its own if not.**
+##
+## The placement table puts the 3D view in its own top-left slot while this panel is top-right, so
+## a host that publishes that slot supplies the viewer and this panel only drives it. With no host —
+## every existing test, and any mode without that slot — the viewer is built inside this body
+## exactly where it has always been.
+##
+## Either way there is **one** `BotViewer` class and one set of camera paths. The alternative was a
+## second preview implementation for the docked case, which is the shape this project has had to
+## delete twice.
+func _adopt_or_build_viewer(parent: Control) -> void:
+	if viewer != null:
+		viewer.debug_menu_requested.connect(_on_viewer_debug_menu_requested)
+		return
+	viewer = BotViewer.new()
+	viewer.debug_menu_requested.connect(_on_viewer_debug_menu_requested)
+	parent.add_child(viewer)
 
-	_preview_viewport = SubViewport.new()
-	# **`BR48.01`'s actual root: `SubViewport.own_world_3d` defaults to FALSE**, and this is
-	# set **before the viewport enters the tree** so no scenario attach/detach ever runs.
-	#
-	# On the default, this panel's private `WorldEnvironment` and `DirectionalLight3D` sit in
-	# the **battle's** `World3D` from the moment it is built — the board has been lit by the
-	# inspector as well as by itself, without anything asking for it. Nothing looked wrong,
-	# because the extra light only ever made the board brighter.
-	#
-	# It becomes visible the first time a subject takes the fallback path (`open()` with no
-	# live view — cover, a loose item, a bare cell), which sets `own_world_3d = true` and takes
-	# that lighting **out** of the battle world. The board drops to its real, single-light
-	# level and stays there, because `_isolate_clear()` never restores the flag. A new bout
-	# rebuilds the panel and the accidental second light returns — which is precisely the
-	# supervisor's *"starting a new bout does fix it"*.
-	#
-	# The flag itself is left at its default — **assigning it runs Godot's scenario
-	# attach/detach and errors where no scenario exists yet** — so the leak is closed by
-	# withdrawing the lighting instead, below, which needs no transition at all.
-	_preview_viewport.size = Vector2i(VIEWER_WIDTH, VIEWER_HEIGHT)
-	_preview_container.add_child(_preview_viewport)
-	_preview_environment = WorldPalette.world_environment()
-	_preview_light = WorldPalette.directional_light()
-	_preview_own_environment = _preview_environment.environment
-	_preview_viewport.add_child(_preview_environment)
-	_preview_viewport.add_child(_preview_light)
-	# The world is shared at birth (Godot's default), so the preview's lighting starts
-	# withdrawn — it is restored only by a path that gives this viewport a world of its own.
-	_apply_preview_lighting(_preview_viewport.own_world_3d)
 
-	_preview_camera = Camera3D.new()
-	_preview_viewport.add_child(_preview_camera)
-	# taskblock-23 Pass E2: "reads unlit... a directional light alone with
-	# no ambient leaves the shadowed side black." This viewport's own
-	# WorldEnvironment above (real ambient, WorldPalette.AMBIENT_COLOR/
-	# ENERGY) is correct for the fallback path (its own isolated World3D,
-	# see open()) — but the isolate-camera path (G2) shares the REAL
-	# battle's own World3D, where a second WorldEnvironment node isn't a
-	# well-defined "also applies" situation. A per-camera `environment`
-	# override is unconditional regardless of which WorldEnvironment (if
-	# any) actually governs whatever World3D this camera ends up in —
-	# same ambient/background either way, no guessing about Godot's own
-	# multi-WorldEnvironment resolution.
-	_preview_camera.environment = WorldPalette.environment()
-	# G2: captured BEFORE _isolate_focus ever narrows it — _isolate_clear()
-	# restores exactly this, never a re-derived/guessed "everything" mask.
-	_default_cull_mask = _preview_camera.cull_mask
-	_preview_camera.position = CAMERA_TARGET + CAMERA_DIRECTION
-	_preview_camera.look_at(CAMERA_TARGET, Vector3.UP)
-
-	_preview_pivot = Node3D.new()
-	_preview_pivot.position.y = PIVOT_Y_OFFSET
-	_preview_viewport.add_child(_preview_pivot)
-
-	_preview_view = HitVolumeView.new()
-	_preview_pivot.add_child(_preview_view)
+## The viewer knows a right-click happened; **which unit that is about is this panel's business**,
+## which is why it emits rather than opening the menu itself.
+func _on_viewer_debug_menu_requested(at_position: Vector2) -> void:
+	if _unit != null and not _is_cell:
+		_open_debug_menu_for_unit(at_position)
 
 
 ## taskblock-22 Pass G1: "falls off the bottom of the screen" traced back
@@ -294,7 +226,7 @@ func _build_status_wound_column(parent: Control) -> void:
 	# scrolling axis — a bare 0 (this constant's own prior value) falls
 	# through to sizing off the child's full content instead, discovered
 	# empirically (200 synthetic wounds still demanded ~5400px tall
-	# before this fix). VIEWER_HEIGHT-scaled, not a design number.
+	# before this fix). Viewer-height-scaled, not a design number.
 	scroll.custom_minimum_size = Vector2(48, 120)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -314,13 +246,13 @@ func _build_status_wound_column(parent: Control) -> void:
 ## near-zero width — six short lines of plain matrix info were reporting
 ## a combined minimum height of ~2000px (confirmed: the same text against
 ## a real width computes ~140px). A real minimum width fixes the wrap
-## computation at the source; VIEWER_WIDTH-matched (this column sits
+## computation at the source; `BotViewer.VIEWER_WIDTH`-matched (this column sits
 ## beside the bot viewer), not a tuned design number.
 func _build_matrix_area(parent: Control) -> void:
 	_matrix_label = RichTextLabel.new()
 	_matrix_label.bbcode_enabled = true
 	_matrix_label.fit_content = true
-	_matrix_label.custom_minimum_size = Vector2(VIEWER_WIDTH, 90)
+	_matrix_label.custom_minimum_size = Vector2(BotViewer.VIEWER_WIDTH, 90)
 	_matrix_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
 	_matrix_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(_matrix_label)
@@ -367,41 +299,29 @@ func open(unit: Unit) -> void:
 	_is_cell = false
 	_unit = unit
 	visible = true
-	_rotating = true
-	_dragging = false
-	_isolate_clear()
+	viewer.visible = true
+	viewer.allow_debug_menu = true
+	viewer.begin()
 	if unit.shell.root != null:
 		var live_view: HitVolumeView = (
 			_live_view_lookup.call(unit.id) if _live_view_lookup.is_valid() else null
 		)
 		if live_view != null:
-			_isolate_focus(live_view)
+			viewer.show_live(live_view)
 		else:
-			# No live board to isolate against (a bare/standalone panel) —
-			# the old fresh-copy path, now in its OWN isolated World3D (G2:
-			# this is what actually fixes "renders at ~0,0 on the actual
-			# field" — a shared, never-overridden World3D is what let a
-			# fresh copy built at Vector2i.ZERO leak into the real board's
-			# own camera in the first place).
-			_set_preview_world_shared(false)
-			_preview_view.show_assembly(
+			# No live board to isolate against (a bare/standalone panel) — the fresh-copy path,
+			# in its OWN isolated World3D.
+			viewer.show_copy(
 				unit.shell.root, _material_table, WorldPalette.team_color(unit.squad_id)
 			)
-			_frame_camera()
 	else:
-		# taskblock-27 Pass D5: a bare subject (nothing on this cell) must
-		# show a genuinely EMPTY preview, not whatever the previous open()
-		# call happened to leave behind. `_isolate_clear()` above only
-		# resets the camera's own cull mask/isolate tag — it never touches
-		# `own_world_3d` or the preview's own child meshes, so without this
-		# branch, inspecting a bare cell right after a live unit left the
-		# viewport still sharing the real battle World3D (`own_world_3d ==
-		# false`) with a now-unrestricted cull mask, rendering an arbitrary
-		# slice of the actual board ("a garbage/random cell") instead of
-		# nothing. `show_assembly(null, ...)` already clears its own
-		# children and returns early — reused here, not re-derived.
-		_set_preview_world_shared(false)
-		_preview_view.show_assembly(null, _material_table, Color.WHITE)
+		# taskblock-27 Pass D5: a bare subject (nothing on this cell) must show a genuinely EMPTY
+		# preview, not whatever the previous `open()` left behind. `begin()` only resets the
+		# camera's cull mask and isolate tag — it never touches `own_world_3d` or the preview's own
+		# child meshes, so without this branch, inspecting a bare cell right after a live unit left
+		# the viewport still sharing the real battle World3D with a now-unrestricted cull mask,
+		# rendering an arbitrary slice of the actual board instead of nothing.
+		viewer.show_copy(null, _material_table, Color.WHITE)
 	_refresh_title()
 	_refresh_status_wound_column()
 	_refresh_matrix_area()
@@ -413,58 +333,23 @@ func open(unit: Unit) -> void:
 	call_deferred(&"_clamp_to_viewport")
 
 
-## `_isolate_clear()` deliberately never touches `own_world_3d` — its own comment says so — so
-## the viewport stays world-SHARED after inspecting a live subject. **That is left alone.**
-## `BR48.01` is fixed by keeping the preview's own lighting out of a shared world entirely
-## (`_set_preview_world_shared`), which holds whether this panel is open or closed; flipping
-## the world back here instead asked Godot to detach a viewport from a scenario it had already
-## left, which errors rather than no-ops.
+## `BotViewer.clear_subject()` deliberately never touches `own_world_3d` — its own comment says so —
+## so the viewport stays world-SHARED after inspecting a live subject. **That is left alone.**
+## `BR48.01` is fixed by keeping the preview's own lighting out of a shared world entirely, which
+## holds whether this panel is open or closed; flipping the world back here instead asked Godot to
+## detach a viewport from a scenario it had already left, which errors rather than no-ops.
+##
+## **The viewer is hidden explicitly**, because taskblock-57 Pass C3 may have put it in its own slot
+## on the other side of the screen, where hiding this panel would not hide it.
 func close() -> void:
-	_isolate_clear()
+	viewer.clear_subject()
+	viewer.visible = false
+	viewer.allow_debug_menu = false
 	visible = false
 	_unit = null
 	_is_cell = false
 	_title_bar.text = "INSPECT"
 	closed.emit()
-
-
-## **The preview's lighting must not leak into the board.**
-##
-## `BR48.01`, and the supervisor's own diagnosis: *"this may not be a UI issue, it may be
-## lighting as the inspect panel draws the clicked item, and then said lighting doesn't get
-## reset to board style."* It is exactly that.
-##
-## `_preview_viewport` holds a `WorldEnvironment` **and** a `DirectionalLight3D` for the
-## fallback path, where it renders a fresh copy in its own isolated world. The isolate-camera
-## path (taskblock-22 G2) needs the opposite — `own_world_3d = false`, so the preview camera
-## can see the real unit at its real board position — and that puts **both of those nodes into
-## the battle's World3D**, a second environment and an extra directional light over the whole
-## board. The existing comment beside them already flagged that a second `WorldEnvironment`
-## there "isn't a well-defined 'also applies' situation", and solved it only for the preview
-## camera via a per-camera override; the main camera was left to whatever Godot resolved.
-##
-## So while the world is shared, both are withdrawn: the preview camera's own `environment`
-## override already gives it the right ambient regardless of which world it ends up in, and
-## the subject is lit by the board's real lighting because it *is* on the board.
-## **The lighting state is a pure function of who owns the world**, which is what makes the fix
-## hold while the panel is closed as well as while it is open: the viewport goes on sharing the
-## battle's `World3D` after a live inspect, and the preview's own lighting simply never rejoins
-## it. Assigning `own_world_3d` re-runs Godot's scenario attach/detach even when unchanged, so
-## only a genuine change is written.
-func _set_preview_world_shared(shared: bool) -> void:
-	if _preview_viewport.own_world_3d == shared:
-		_preview_viewport.own_world_3d = not shared
-	_apply_preview_lighting(not shared)
-
-
-## Lit only when this viewport owns its world. **In a shared world the board supplies the
-## light** — the subject is a real unit standing on the real board — and anything this panel
-## added there would be lighting the whole battle.
-func _apply_preview_lighting(owns_world: bool) -> void:
-	if _preview_light != null:
-		_preview_light.visible = owns_world
-	if _preview_environment != null:
-		_preview_environment.environment = _preview_own_environment if owns_world else null
 
 
 ## taskblock-26 Pass E: "objects and cells don't [have a click inspector].
@@ -506,128 +391,6 @@ func _refresh_title() -> void:
 		if variant != ""
 		else "INSPECT — Unit %d (Squad %d)" % [_unit.id, _unit.squad_id]
 	)
-
-
-func _process(delta: float) -> void:
-	if not visible or not _rotating or _dragging:
-		return
-	if _isolated_view != null:
-		_isolate_yaw += ROTATE_SPEED * delta
-		_update_isolate_camera_position()
-	elif _preview_pivot != null:
-		_preview_pivot.rotate_y(ROTATE_SPEED * delta)
-
-
-## "click-drag interrupts the auto-rotate to inspect, releases back to
-## rotating" — the same interaction the Resource Editor's own toggle button
-## approximates with a manual switch; this reads the drag directly.
-func _on_preview_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
-			_dragging = mb.pressed
-			_rotating = not mb.pressed
-		elif (
-			mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _unit != null and not _is_cell
-		):
-			# G1: `mb.position` is local to `_preview_container`, not to this
-			# panel — the popup needs an absolute screen position (see
-			# `_open_debug_menu`'s own doc comment for why the old
-			# `get_screen_position() + at_position` math was wrong).
-			_open_debug_menu_for_unit(_preview_container.get_screen_position() + mb.position)
-	elif event is InputEventMouseMotion and _dragging:
-		var mm := event as InputEventMouseMotion
-		if _isolated_view != null:
-			_isolate_yaw += mm.relative.x * DRAG_SENSITIVITY
-			_update_isolate_camera_position()
-		else:
-			_preview_pivot.rotate_y(mm.relative.x * DRAG_SENSITIVITY)
-
-
-## docs/02 "read the real node back": the same AABB-readback framing the
-## Resource Editor's own `_frame_preview_camera` uses (not shared code —
-## see file header), reading `HitVolumeView`'s own composed mesh geometry
-## instead of re-deriving a bounding box from Part volumes by hand.
-## Fallback-path only (the isolated-fresh-copy case) — see
-## `_frame_isolated_camera` for G2's real-unit equivalent.
-func _frame_camera() -> void:
-	var combined: AABB
-	var has_any := false
-	for meshes: Array in _preview_view._meshes_by_part.values():
-		for mesh_instance: MeshInstance3D in meshes:
-			var world_aabb: AABB = mesh_instance.global_transform * mesh_instance.get_aabb()
-			combined = world_aabb if not has_any else combined.merge(world_aabb)
-			has_any = true
-	var center: Vector3 = combined.get_center() if has_any else CAMERA_TARGET
-	var radius: float = maxf(combined.size.length() / 2.0, CAMERA_MIN_RADIUS) if has_any else 0.5
-	_preview_camera.position = center + CAMERA_DIRECTION * radius * CAMERA_DISTANCE_FACTOR
-	_preview_camera.look_at(center, Vector3.UP)
-
-
-## taskblock-22 Pass G2: the real isolate-camera path — `_preview_viewport`
-## stays world-SHARED (own_world_3d left false, Godot's default) so
-## `_preview_camera` can see the SAME live `view` CameraRig does, at its
-## real board position; `HitVolumeView.ISOLATE_LAYER` + a matching
-## cull_mask are what keep everything ELSE sharing that world (terrain,
-## cover, other units) from drawing through it — "culling anything
-## between the camera and the subject," the strongest form: not rendered
-## at all, rather than occluding normally the way the main camera would.
-## Simplification, flagged: "fading other models" is implemented as fully
-## culling them, not a true alpha-fade — that needs a second
-## render/compositing pass this doesn't build. Reversible follow-up.
-func _isolate_focus(view: HitVolumeView) -> void:
-	_set_preview_world_shared(true)
-	_isolated_view = view
-	view.set_isolated(true)
-	_preview_camera.cull_mask = 0
-	_preview_camera.set_cull_mask_value(HitVolumeView.ISOLATE_LAYER, true)
-	# taskblock-23 Pass E2: the model was floating in empty space — cull_mask=0
-	# plus only the subject's own layer excluded the real board cell beneath it
-	# too. BoardView.FLOOR_LAYER is deliberately a SEPARATE layer from
-	# ISOLATE_LAYER (not the same bit) — other units/blockers never carry
-	# either, so they stay excluded exactly as G2 already fixed.
-	_preview_camera.set_cull_mask_value(BoardView.FLOOR_LAYER, true)
-	_frame_isolated_camera(view)
-
-
-## Always safe to call even when nothing is focused (open()/close() both
-## call it unconditionally) — clearing BEFORE a new focus is what stops a
-## previous unit's own isolate-layer tag from bleeding into whatever's
-## framed next.
-func _isolate_clear() -> void:
-	if _isolated_view != null:
-		_isolated_view.set_isolated(false)
-	_isolated_view = null
-	_preview_camera.cull_mask = _default_cull_mask
-
-
-## Same AABB-readback convention as `_frame_camera`, against the LIVE
-## view's own real mesh instances (real board position) instead of the
-## isolated fallback copy's recentered-to-origin ones.
-func _frame_isolated_camera(view: HitVolumeView) -> void:
-	var combined: AABB
-	var has_any := false
-	for meshes: Array in view._meshes_by_part.values():
-		for mesh_instance: MeshInstance3D in meshes:
-			var world_aabb: AABB = mesh_instance.global_transform * mesh_instance.get_aabb()
-			combined = world_aabb if not has_any else combined.merge(world_aabb)
-			has_any = true
-	_isolate_center = combined.get_center() if has_any else view.global_transform.origin
-	_isolate_radius = maxf(combined.size.length() / 2.0, CAMERA_MIN_RADIUS) if has_any else 0.5
-	_isolate_yaw = 0.0
-	_update_isolate_camera_position()
-
-
-## The isolate camera orbits `_isolate_center` (the mesh itself, a LIVE
-## node this panel doesn't own, never rotates) — `_preview_pivot.rotate_y`
-## is the fallback path's own equivalent, spinning the mesh instead since
-## that copy genuinely is this panel's to spin.
-func _update_isolate_camera_position() -> void:
-	var direction: Vector3 = CAMERA_DIRECTION.rotated(Vector3.UP, _isolate_yaw)
-	_preview_camera.position = (
-		_isolate_center + direction * _isolate_radius * CAMERA_DISTANCE_FACTOR
-	)
-	_preview_camera.look_at(_isolate_center, Vector3.UP)
 
 
 ## taskblock-22 Pass G1: "constrain it to the viewport (anchor/clamp so it
@@ -823,7 +586,7 @@ func _open_debug_menu_for_unit(at_position: Vector2) -> void:
 ## click-local coordinate before calling this) — the old
 ## `get_screen_position() + at_position` here mixed THIS panel's own
 ## screen origin with a coordinate local to a CHILD control
-## (`_preview_container`/`_inventory_tree`, never this panel directly),
+## (the bot viewer / `_inventory_tree`, never this panel directly),
 ## landing the menu wherever the panel's own corner plus a small local
 ## offset happened to fall instead of the actual cursor. G3: non-debug
 ## items (Repair with Scrap) are added first, `[*]`-marked debug items
@@ -990,9 +753,4 @@ func _on_create_part_submenu_id_pressed(
 func _refresh_bot_viewer() -> void:
 	if _unit == null or _unit.shell.root == null:
 		return
-	if _isolated_view != null:
-		_isolated_view.refresh()
-	else:
-		_preview_view.show_assembly(
-			_unit.shell.root, _material_table, WorldPalette.team_color(_unit.squad_id)
-		)
+	viewer.refresh(_unit.shell.root, _material_table, WorldPalette.team_color(_unit.squad_id))

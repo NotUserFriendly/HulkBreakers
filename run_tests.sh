@@ -159,8 +159,44 @@ if [[ -n "${WRITE_PROFILE:-}" ]]; then
   fi
 fi
 
+# 5. **The completion guard, and it is not belt-and-braces.**
+#
+#    The suite runs under `-d`, which GUT needs to notice unexpected engine errors. A
+#    runtime script error therefore raises a Debugger Break, and a Debugger Break ENDS
+#    THE RUN — `run_suite.gd` never reaches `_on_end_run`, never computes an exit code,
+#    and the process exits 0. **A green gate that saw three quarters of the suite is
+#    worse than a red one**, and this is not hypothetical: taskblock-57 Pass C3 moved
+#    some fields, two test files still reached for them, and the full gate reported
+#    success from a log with no totals in it at all.
+#
+#    A runner that has vanished cannot report its own absence, so the caller checks for
+#    the summary line the runner prints last. Missing marker, failed build.
+#
+#    **The other shape is a hang, and it is deliberately not handled here.** `-d` opens
+#    an interactive debugger on stdin; with a long queue of scripts behind it the break
+#    is stepped past and the run truncates (the case above), but a break in the LAST
+#    script sits at a `debug>` prompt waiting for input that never comes. A hang is
+#    loud — it never returns — where a truncated green run is silent, so the silent one
+#    is what needs a guard. Adding a timeout here would put a wall-clock number on a
+#    suite whose runtime is the thing being measured.
+SUITE_LOG="$(mktemp)"
+trap 'rm -f "$SUITE_LOG"' EXIT
+set +e
 GODOT_DISABLE_LEAK_CHECKS=1 "$GODOT" --headless -d \
   --display-driver headless --audio-driver Dummy \
   --path . \
   -s res://tools/run_suite.gd \
-  -- "$SCOPE" $WRITE_FLAG
+  -- "$SCOPE" $WRITE_FLAG 2>&1 | tee "$SUITE_LOG"
+SUITE_STATUS=${PIPESTATUS[0]}
+set -e
+
+if ! grep -q -- "--- suite cost ---" "$SUITE_LOG"; then
+  echo "" >&2
+  echo "the suite did not finish — no '--- suite cost ---' summary was printed." >&2
+  echo "a Debugger Break (a runtime script error under -d) ends the run before" >&2
+  echo "run_suite.gd can compute an exit code, so the process would otherwise" >&2
+  echo "report success having skipped everything after the error." >&2
+  exit 1
+fi
+
+exit "$SUITE_STATUS"

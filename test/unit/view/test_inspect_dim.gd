@@ -73,7 +73,7 @@ func test_opening_and_closing_twice_leaves_no_residue() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var panel: InspectPanel = overlay.inspect().panel
 	var root: Part = overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5))
-	var rest_mask: int = panel._preview_camera.cull_mask
+	var rest_mask: int = panel.viewer.camera.cull_mask
 
 	for cycle in range(2):
 		panel.open_cell(Vector2i(5, 5), root)
@@ -83,11 +83,11 @@ func test_opening_and_closing_twice_leaves_no_residue() -> void:
 		gut.p(
 			(
 				"cycle %d: cull_mask back to %d (rest %d)"
-				% [cycle, panel._preview_camera.cull_mask, rest_mask]
+				% [cycle, panel.viewer.camera.cull_mask, rest_mask]
 			)
 		)
 		assert_eq(
-			panel._preview_camera.cull_mask, rest_mask, "cycle %d left no narrowing behind" % cycle
+			panel.viewer.camera.cull_mask, rest_mask, "cycle %d left no narrowing behind" % cycle
 		)
 
 
@@ -97,7 +97,7 @@ func test_opening_and_closing_twice_leaves_no_residue() -> void:
 func test_opening_a_second_inspect_over_the_first_leaves_no_residue() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var panel: InspectPanel = overlay.inspect().panel
-	var rest_mask: int = panel._preview_camera.cull_mask
+	var rest_mask: int = panel.viewer.camera.cull_mask
 
 	var blockers: Dictionary = overlay.battle.combat_state.grid.blockers
 	panel.open_cell(Vector2i(5, 5), blockers.get(Vector2i(5, 5)))
@@ -105,7 +105,7 @@ func test_opening_a_second_inspect_over_the_first_leaves_no_residue() -> void:
 	panel.close()
 
 	assert_false(panel.visible)
-	assert_eq(panel._preview_camera.cull_mask, rest_mask, "the first target left nothing behind")
+	assert_eq(panel.viewer.camera.cull_mask, rest_mask, "the first target left nothing behind")
 
 
 ## `close()` is the single restore path, so every caller that closes reaches the same code —
