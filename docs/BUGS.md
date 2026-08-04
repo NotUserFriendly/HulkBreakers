@@ -28,7 +28,7 @@ the format.)
 **`owner` = who is allowed to close it.** Distinct from `source` (who *found* it), which stays
 recorded but no longer governs anything. Owner defaults to the source — a `CC`-found bug is
 `CC`-owned and CC may resolve it directly; a `SUPERVISOR`-found bug is `SUPERVISOR`-owned and CC may
-only ever write `Pending Confirmation`. **The supervisor may promote any entry to `SUPERVISOR`
+only ever write `Pending`. **The supervisor may promote any entry to `SUPERVISOR`
 ownership at any time**, including CC-found ones, so that anything worth watching cannot be silently
 closed. Owner is the gate; read it, not the source.
 
@@ -49,10 +49,10 @@ Closed entries (`Resolved`, `Obsolete`) move verbatim to `docs/BUGS-ARCHIVE.md`.
 
 **Convention:** one flat list, sorted by BR number ascending (`BR26.xx` before `BR27.xx` before
 `BR30.xx`, lowest sequence first within a taskblock) — no category sections. **Status is inline in the
-entry heading** (`Active` / `Pending Confirmation` / `Resolved`), right after the ID, so status and ID
-are both visible while scanning. Entries reported before the `BR<taskblock>.<seq>` convention existed
+entry heading** (`Active` / `Suspected` / `Pending` / `Resolved` / `Obsolete`), right after the ID,
+so status and ID are both visible while scanning. Entries reported before the `BR<taskblock>.<seq>` convention existed
 have no ID to sort by — they follow at the end, in their own legacy block, oldest work first. Recent
-entries get a timecode + taskblock; older migrated ones get a rough date. `RESOLVED` entries name the
+entries get a timecode + taskblock; older migrated ones get a rough date. `Resolved` entries name the
 fixing commit(s)/taskblock so the closure is verifiable.
 
 **Every bug carries an ID:** `BR<taskblock>.<seq>` — e.g. `BR27.01` (Bug Report, reported during
@@ -60,29 +60,34 @@ taskblock 27, first of that block). **The ID is assigned at report time and neve
 reported in tb27 stays `BR27.xx` even if fixed in tb30, so the handle is stable across its whole life
 between supervisor, CC, and the reviewer. Put the ID in the entry heading.
 
-**Every bug carries a `source`:**
-- **`CC`** — found by CC during its own work (usually a pure-code bug). CC owns the whole loop
-  (sees it, fixes it, tests it), so **CC may mark a `CC`-sourced bug `RESOLVED` directly.**
+**Every bug carries a `source`**, recording who found it:
+- **`CC`** — found by CC during its own work, usually a pure-code bug.
 - **`SUPERVISOR`** — reported by the supervisor (the human overseeing the project). CC often
   *can't see* what was reported (a visual glitch, a "feels wrong" behavior), so it may have fixed
-  the wrong thing. **CC may NEVER write plain `RESOLVED` on a `SUPERVISOR`-sourced bug.** The most
-  it may write is **`RESOLVED-PENDING-CONFIRMATION`** (fix committed, CC believes it's done,
-  awaiting the supervisor's verification). Only the supervisor promotes `PENDING-CONFIRMATION` →
-  `RESOLVED`, and only after seeing the fix work.
+  the wrong thing.
+
+**But `owner` is what gates closure, not `source`** — see the `owner` paragraph above. Owner defaults
+to the source and the supervisor may promote any entry to `SUPERVISOR` ownership at any time, so the
+two can differ and **only `owner` decides what you may write**:
+- On a **`CC`-owned** entry, CC owns the whole loop (sees it, fixes it, tests it) and **may write
+  `Resolved` directly.**
+- On a **`SUPERVISOR`-owned** entry, **CC may NEVER write `Resolved` or `Obsolete`.** The most it may
+  write is **`Pending`** (fix complete, CC believes it works, awaiting the supervisor seeing it work).
+  Only the supervisor promotes `Pending` → `Resolved`.
 
 **Session stamps.** CC has no sequential session counter — what it *does* have is a **session
 UUID** embedded in its scratchpad directory path (e.g. `.../83fb8082-732a-4a4f-a726-04186087ef69/
 scratchpad`). CC stamps its closure marks with the **full UUID**, not a shortened prefix — a prefix
 is one collision away from misattributing a stamp to the wrong session on a long-lived machine, and
 the full string costs nothing to write (e.g.
-`RESOLVED-PENDING-CONFIRMATION [CC 83fb8082-732a-4a4f-a726-04186087ef69]`). If CC is refreshed it
-gets a *new* UUID, so a later session reading an earlier session's `PENDING-CONFIRMATION` sees a
+`Pending [CC 83fb8082-732a-4a4f-a726-04186087ef69]`). If CC is refreshed it
+gets a *new* UUID, so a later session reading an earlier session's `Pending` mark sees a
 **different** stamp than its own — that's the signal it's *another instance's* unverified claim. It
-must NOT promote it to `RESOLVED` on the strength of a prior CC's word, only on the supervisor's. A
+must NOT promote it to `Resolved` on the strength of a prior CC's word, only on the supervisor's. A
 pending mark whose UUID isn't your current one is a claim to re-check, not a closure to trust.
 
-**End-of-taskblock digest.** At the end of each taskblock, CC lists every `SUPERVISOR`-sourced bug
-it moved to `RESOLVED-PENDING-CONFIRMATION` this block — a "here's what I think I fixed, please
+**End-of-taskblock digest.** At the end of each taskblock, CC lists every `SUPERVISOR`-owned entry
+it moved to `Pending` this block — a "here's what I think I fixed, please
 confirm" roll-up — so pending items surface at a natural review point without interrupting mid-work.
 
 ---
@@ -97,806 +102,6 @@ confirm" roll-up — so pending items surface at a natural review point without 
   I am not making it unasked.
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
-
-### BR52.12 — Active — owner: `SUPERVISOR`
-**Overwatch is declared constantly and never once fires, and a declined trigger logs nothing**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02. *"Log the failed overwatch as a bug, I can't really see what's happening with
-  it until I can see its pie slice but that IS a bug either way."*
-- **Measured** in `out/logs/combat-20260802-164344.log`: **12 `overwatch_declared` events, zero
-  overwatch fire events of any kind.** Every unit on both squads ends every turn holding, and it never
-  resolves once in three rounds.
-- **`Overwatch.check_trigger` only runs on movement** — it is called per cell step of a queued
-  `MoveAction`. That battle contains **14 `move` events: 13 in Turn 0, and exactly one afterwards**
-  (unit 0, Turn 2, line 692). So there was almost nothing for an overwatcher to trigger on: after the
-  opening turn both squads stand still and trade bursts. **Whether that is an overwatch defect or an
-  AI-never-moves defect is not decidable from this log**, which is the actual problem below.
-- **The real defect is that a declined trigger is silent.** `_qualifying_overwatchers` /
-  `_qualifying_weapon` reject on armed-state, `LoS.has_los`, `_in_arc`, range and torso visibility, and
-  **none of those rejections emit anything.** So "never armed", "arc missed", "LoS failed", "out of
-  range" and "never evaluated at all" are indistinguishable in the log — including for the one move in
-  Turn 2 that *should* have been evaluated against two armed enemies with a firing line good enough to
-  burst through moments earlier.
-- **This is squarely the `CLAUDE.md` rule about a supervisor-reported feeling**: *"the AI does
-  nothing"* has to become a number or a named decision in the combat log or it stays an adjudication.
-  `arc_cells` and `would_trigger_at` already exist and already compute exactly the per-cell answer the
-  pie slice would draw — so the decision is derivable today and simply is not emitted.
-- **Not fixed.** The instrument (a logged decline carrying which gate rejected it) is the part that
-  makes everything after it checkable, and it should land before anyone tunes the mechanic.
-- **Checked against the two closed overwatch entries and it is not a re-opening of either.**
-  `BR24.02` (overwatch structurally unable to trigger for a volumed torso) was fixed with
-  `exclude_parts` and has a regression test. `BR24.03` (no `mid_move_hook` in `BoutRunner.step()`, so
-  overwatch never ran in an AI-vs-AI bout) is the closest match to this symptom and is **still
-  fixed** — verified in source, not assumed: `bout_runner.gd` calls
-  `state.resolve_until(queue, Overwatch.check_trigger)`. The hook is wired; there was simply almost
-  nothing to trigger on.
-
-### BR52.09 — Active — owner: `SUPERVISOR`
-**A destroyed cover object's model stays on the board**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02. *"forklift was obviously destroyed, I was flagging that the model stayed
-  visible after destruction."*
-- **CC's first write-up of this entry was wrong and is withdrawn.** It answered a question that was not
-  asked — treating the report as "the forklift is not dying" and filing an analysis of deflect angles
-  and penetration thresholds. The forklift dies correctly; **this is a view bug, not a resolver or
-  balance one.**
-- **Confirmed in code.** `BoardView._spawn_blocker` is called once per `grid.blockers` entry inside
-  `build()`, creating a `MeshInstance3D` per box. **No handle to it is kept and nothing ever removes
-  it.** The only `queue_free` in the file is `_clear(container)`, which tears down *everything* and is
-  only reached from a full `build()`. There is no per-part teardown path and nothing in `src/view/`
-  listens for `part_destroyed` at all.
-- **So a destroyed blocker's mesh persists until the whole board is rebuilt** — i.e. until the next
-  bout. The mechanical state is correct underneath it: the part is destroyed, salvage is credited, and
-  the resolver stops treating it as an obstacle. Only the picture is stale.
-- **Visible in the same battle**: three forklifts are destroyed
-  (`out/logs/combat-20260802-164344.log`), and units keep firing into the board afterwards with the
-  models still standing.
-- **Worth deciding rather than assuming, which is why this is not fixed here:** a destroyed cover
-  object should probably not simply vanish. `DamageResolver.DROPPED_TAG` and `part.mangles_into`
-  (`wreckage_pool`) already exist, and `_spawn_blocker` already reads `DROPPED_TAG`, so "replace with
-  wreckage" is a real option alongside "remove". Picking one is a design call.
-- **Checked against two entries it resembles and is neither.** `BR51.24` (a part destroyed by an
-  explosion stays on the model) is the same *appearance* in a different subsystem — a **unit's** part
-  under `HitVolumeView`, where `refresh_unit_views` does run; this is a **blocker** under
-  `BoardView`, which has no per-part path at all. `BR35.03` (Resolved) is the opposite problem, debug
-  verbs rebuilding the whole board too often; its fix gates rebuilds to `DebugVerbs.affects_board()`,
-  which is why the board *can* be rebuilt — **nothing triggers one when combat destroys a blocker.**
-
-### BR52.10 — Active — owner: `SUPERVISOR`
-**An AI unit fires a full burst through the ally standing directly in front of it, killing them**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02. *"Can't tell for sure, but it looks like AI isn't trying to avoid shooting
-  allies in the back."* **Confirmed, and it is worse than the report supposed** — reproduced from
-  `out/combat.log` (seed 2), Turn 0.
-- **What happened, from the log.** Unit 4 (cell `(20,5)`) and unit 3 (cell `(19,5)`) are squadmates
-  standing in a line. Unit 4 fires a 12-round chaingun burst at `(12,3)`; unit 3 is directly between
-  them. **Eight consecutive pulls resolve on unit 3**, destroying `torso_cladding` then `torso`, and
-  ending with `matrix_ejected: combat_tester_chaingun_0 from torso` and
-  `surrogate_demoted: unit 3 FULL -> PERIPHERAL`. **Unit 3 takes no further turn in the battle.** One
-  AI unit removed a third of its own squad on turn zero.
-- **The muzzle is physically inside the ally.** Every one of those eight impacts logs
-  `origin (19.02, 5.08)@1.53 -> hit (19.02, 5.08)@1.53` — **hit point equal to origin, zero distance.**
-  That is not a resolver defect: `chaingun.tres`'s box is `center (0,0,0.4) size (0.15,0.15,0.9)`, so
-  `muzzle_point`'s tip (`center + (0,0,size.z/2)`) sits **0.85 forward of the grip**. From cell
-  `(20,5)` that puts the muzzle tip at x=19.02, and unit 3's body boxes at cell `(19,5)` span
-  x[18.5,19.5]. The ray legitimately starts inside the ally and hits at t=0. **The geometry is right;
-  the decision to fire is what is wrong.**
-- **Root cause in the AI, located — and it is a regression, not a gap that was always there.**
-  `UtilityContext._lof_possible(cell)` is `field == null or field.allows(cell)` — a
-  **visibility-field** test, i.e. terrain and opacity only. `_nearest_known_enemy` correctly skips
-  allies as *targets* (`candidate.squad_id == unit.squad_id ... continue`), but **nothing scores
-  whether a friendly unit occupies the firing line.** `INPUT_LINE_OF_FIRE` and `PRED_LOF_BLOCKED` both
-  read that same terrain-only check, so a squadmate at point-blank range is invisible to the decision.
-- **The check used to exist and was lost with the planner rewrite.** `docs/SUPERSEDED.md` records the
-  engagement-score planner retiring in tb45 Pass E and `LineOfFire.approach_path`/`closing_path` being
-  deleted in tb46 Pass C; `BR35.05` describes a real bout in which units logged **`held:
-  ally_in_line`**, so the old branch planner did refuse a shot through a squadmate. `UtilityPlanner`
-  replaced the branches with scored weights and **no consideration carries that rule**.
-- **Two vestiges confirm it rather than a reading of intent**, and both will mislead the next reader:
-  - `LineOfFire`'s own doc comment still advertises `first_hit` as *"Shared by
-    `has_clear_line_of_fire` and **the planner's ally-in-line check**"* — that check has no caller in
-    `src/` any more, and `first_hit`/`has_clear_line_of_fire` are now reached only from tests.
-  - `AiDecisionLog.emit` — the branch log that carried `hold_reason`, i.e. the thing that *printed*
-    `ally_in_line` — is still in the tree with **zero callers**; only `emit_utility_decision` is
-    called. `docs/SUPERSEDED.md` says it was "deleted with the branches it named", which is not quite
-    true: it was orphaned.
-- **`BR35.05` is the same defect described against the deleted implementation** and is closed
-  `Obsolete` in favour of this entry — see `docs/BUGS-ARCHIVE.md`. **Not a duplicate filing: one entry
-  survives, and it is this one**, because it describes the code that exists.
-- **Not fixed, and deliberately not designed unasked.** The fix is a real design call, not a patch:
-  whether friendly-fire risk should **veto** a shot (a precondition) or **penalise** it (an input),
-  and whether a player unit gets the same treatment or the asymmetry in `docs/06` applies. Both
-  options are one-line in shape and very different in behaviour. **Flagged for a decision.**
-- **Why the log made it findable at all** is worth keeping: `hit == origin` is a shape that reads as a
-  resolver bug and is not one. Anything that resolves at zero distance should probably be a named,
-  greppable condition rather than something a reader has to notice by comparing two coordinate pairs.
-
-### BR52.14 — Suspected — owner: `CC`
-**`test_suite_run.gd` fails intermittently in the full gate and passes standalone**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02, during the `BR52.11` gate. One full run reported 1 failure; the same file
-  passed **7/7 standalone**, and the immediately following full gate passed **2668/2668, exit 0**.
-- **It is not a new break.** `out/suite_failures.json` — the ordered-run learning cache — records
-  **3 fails in 138 runs** for this file, so it predates this session's changes.
-- **A plausible mechanism, unverified.** This file **shells out to run a nested suite**, and
-  `run_tests.sh` already carries a guard for that shape (*"`WRITE_PROFILE=1` leaks it into every
-  subprocess"*, and only the full gate may write whole-suite artifacts). A nested run competing with
-  the outer one over a shared path is the family the guard exists for; whether this is another member
-  of it is **not established**, and the failure detail was lost because the run's output was piped
-  through `tail`.
-- **What it needs is a captured failure**, not a theory: the next full-gate run of this file that goes
-  red should have its complete output kept. Filed so the ~2% flake is not rediscovered from scratch.
-
-### BR52.13 — Suspected — owner: `CC`
-**Nothing penetrated anything across an entire battle**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02, while investigating `BR52.09`. **Not reported by the supervisor**, and filed
-  `Suspected` rather than `Active` because it may be entirely by design — it is a measurement looking
-  for a decision, not a described defect.
-- **Measured** in `out/logs/combat-20260802-164344.log`: **78 `DEFLECT`, 78 `STOP_DEAD`, zero
-  `PENETRATE`** across 156 impacts and nine full chaingun bursts.
-- **The arithmetic explains it and may simply be correct.** `chaingun.tres` is `damage 2.0` with
-  `damage_multiplier 0.8` — **1.6 effective** — against `steel.tres`'s `dt` of **6.0**. A chaingun
-  round cannot penetrate steel, so every steel object on the board can only ever be worn down by
-  accumulated `STOP_DEAD` damage. An anti-personnel weapon failing to punch armour plate is a
-  reasonable thing for the model to say.
-- **What makes it worth recording anyway:** `steel.tres` authors no `deflect_threshold_deg`, so it
-  takes `MaterialEntry`'s **30.0** default, and a representative engagement in that battle sat at
-  **~31 degrees** incidence — one degree over. Combined with a damage figure that can never penetrate,
-  a shipped material is relying entirely on two unauthored defaults for its whole feel. **The numbers
-  are not invented here and no tuning is proposed**; this exists so the first person to touch weapon
-  or armour balance sees the measurement rather than rediscovering it.
-
-### BR52.07 — Active — owner: `SUPERVISOR`
-**One shot in a burst flies off at roughly 90 degrees from the gun's facing**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02, reading `out/combat.log` after a live burst. *"it had a strange 'one shot
-  flew off at 90 degrees from the gun facing' event."*
-- **Reproduced from the log, same burst, one origin `(19.54, 14.13)`:**
-
-  | pull | logged hit | displacement from origin |
-  |---|---|---|
-  | 7 | `crate (17.87, 11.37)` | (-1.67, -2.76) |
-  | 8 | `wall (20.57, 13.56)` | **(+1.03, -0.57)** |
-  | 9 | `goo_barrel (17.24, 6.00)` | (-2.30, -8.13) |
-  | 12 | `wall (16.46, 0.44)` | (-3.08, -13.69) |
-
-  Pull 8 goes **+x and almost no y** while the rest go steeply -y. As directions from one muzzle in
-  one burst those are near-perpendicular, which is exactly what the supervisor saw.
-- **Diagnosed, and it is the shot plane's lateral-offset artifact — the same family as `BR34.05`.**
-  `DamageResolver` reconstructs a logged hit as `origin + dir * region.depth + perp * point.x`.
-  `point.x` is the dartboard's lateral offset, and a late pull of a twelve-round burst is
-  recoil-widened (`RecoilResolver.widen`) and range-widened. Once `point.x` is large enough the
-  `perp` term dominates the `dir` term, so the *reported* impact swings toward perpendicular. The
-  round is not being fired sideways; it is being **drawn and logged** sideways.
-- **taskblock-52 Pass A measured the same mechanism from the other side:** the plane models a
-  scattered round as a ray *parallel* to the shooter-to-target line, displaced by the whole offset,
-  and only **100 of 152** of its reported hit points lie on the surface they claim to strike (the ray
-  chain: 216 of 216).
-- **So the fix already exists and is not switched on.** `RayChain` marches muzzle-to-aimed-point and
-  cannot express this. It becomes live when `CombatState.shot_resolver` inverts — see that field's own
-  doc comment for the 14 tests currently standing in the way.
-
-### BR52.06 — Active — owner: `SUPERVISOR`
-**A leg appears to have no model**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-02, live. *"leg doesn't seem to have a model."*
-- **Not yet investigated.** Recorded verbatim rather than guessed at — "no model" could be a missing
-  `Part.mesh_scene`, a part whose `volume` is empty (so `UnitGeometry.placements` emits no box for it
-  and `HitVolumeView` draws nothing), or a part sitting at a socket transform that puts it inside
-  another. **The middle one is worth checking first**, because taskblock-52 Pass D found exactly that
-  shape on `ship_floor`: a real, shipped Part carrying no `volume` at all.
-- **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
-  missing model on one of them narrows quickly.
-
-### BR52.02 — Active — owner: `CC`
-**A test file that fails to parse is dropped from the run and the suite still exits 0**
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, taskblock-52 Pass B, by walking into it. Renaming `PartPicker._near_ray`
-  to `near_ray` left four stale calls in `test_selection_target.gd`. The run printed
-  `Failed to load script "res://test/unit/logic/test_selection_target.gd" with error "Parse error"`
-  — **and exited 0.** All ten of that file's tests simply did not run, and nothing said so in the
-  summary.
-- **Observed, not inferred:** the error text and the zero exit code came out of the same run.
-- **Why this matters more than the typo that exposed it.** The whole feedback loop rests on "green
-  before a pass commits". A green run that silently covers fewer files than the last one is the
-  strongest possible version of the failure this project keeps finding — a passing assertion beside
-  a live defect — because here there is no assertion at all.
-- **`test_suite_audit_csv.gd` does not catch it.** It compares the CSV snapshot against the files on
-  disk, so a file that is present but unloadable looks completely normal to it; it reported
-  "2598 rows against 2631 declared tests in 277 files" and passed in the same run.
-- **The fix is a count, not a parser.** GUT knows how many scripts it was asked to collect and how
-  many it actually collected; failing the run when those differ is the whole of it. Not attempted
-  in this taskblock — it is harness work and taskblock-52 is a resolver block.
-
-- **2026-08-02 (taskblock-52 Pass F): a second, worse half of the same gap.** A script error at
-  *runtime* — not a parse error — opens a **debugger break that halts the run waiting for input on
-  stdin**. Observed directly: a failing assertion raised `Out of bounds get index '0'`, GUT printed
-  `Debugger Break, Reason: ...` and `Enter "help" for assistance.`, and the run sat there until a
-  ten-minute timeout killed it.
-- **So the two failure modes are opposite and both bad:** a *parse* error silently drops a file and
-  the gate still passes; a *runtime* error hangs the gate forever. Neither reports what happened in
-  the summary, and the second is indistinguishable from an infinite loop in the code under test —
-  which is exactly what it looked like on first sight, since the change in flight was a new resolver.
-- **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
-  headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
-
-### BR55.03 — Active — owner: `SUPERVISOR`
-**`HulkTheme.build()` caching was reported done and is absent from the code**
-- **Source:** review audit, 2026-08-04.  ·  **Spec:** `taskblock_done/taskblock51.md` Pass B1.
-  **Report:** `reports/Report-Taskblock51.md` — *"B1 done"*.
-- `src/view/hulk_theme.gd` builds a fresh `Theme` on **every** call and increments `ui_builds` on
-  every call. **There is no cache, no static holder, and no caching at any of the five call sites** —
-  `spectator_overlay`, `squad_control_overlay`, `generate_bout_overlay`, `builder_scene`,
-  `resource_editor`. `test/unit/logic/test_work_counters.gd` still asserts that building an overlay
-  moves `ui_builds`, which is precisely the assertion a cache would have had to change.
-- **The spec also required a `CHANGELOG.md` entry** recording that the counter's meaning had changed,
-  so a later reader would not read a low `ui_builds` as evidence the view got cheaper. **No such entry
-  exists either.**
-- **Either the pass never landed and the report is wrong, or it landed and was reverted with no
-  `SUPERSEDED.md` row.** Both are worth knowing and the second is worse. The absence of *any* trace —
-  no cache, no changelog line, no reversal row — points at the first.
-- **Assess the session before re-attempting.** The same report says *"B2 and B3 untouched"*, so
-  something was tracking that block at pass granularity and still recorded this one wrongly; a long
-  session is the likeliest explanation and is worth confirming rather than assuming.
-- **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
-  suite, across 37 real scene builds. Still available.
-
-### BR55.02 — Active — owner: `CC`
-**Floor tile geometry is wound inside out — backfaces are what the camera sees**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-04.
-- The tile parts render with **inverted winding order**: the outward faces are culled and the interior
-  faces are drawn, so a tile reads as transparent from above and textured from beneath. Backface
-  culling doing its job against geometry built the wrong way round, not a material or shader fault.
-- **Introduced with the tile parts themselves** (taskblock-55 Pass B), which is the only geometry
-  built in that pass — so the winding is in whatever emits a tile's box, not in the shared box
-  primitive every other part has used for fifty blocks without this.
-- **Check whether the normals disagree with the winding**, not just the winding. A box built with
-  reversed vertex order *and* correct normals lights properly while culling backwards, which looks like
-  a culling setting and is not one.
-- **Do not fix it by disabling backface culling.** That hides it, doubles the fragment cost of every
-  tile, and leaves the geometry wrong for anything that later reads a normal — the wall cutout shader
-  among them.
-
-**CC analysis, `e5393c3a-bd26-4668-8905-c50cf31e04cb`** — read from source, no code touched.
-
-- **It is `BoardView._add_box`, and nothing else.** It is called from exactly one place,
-  `_build_tiles`, and it is the **only hand-wound geometry in the file**. Every other box on the
-  board — blockers, cover, dropped assemblies, overlay markers, unit ghosts — is a Godot `BoxMesh`,
-  correct by construction. That is why fifty blocks of parts never showed this and the tiles do: the
-  shared box primitive was never involved, exactly as suspected above.
-- **On "check whether the normals disagree with the winding": there are no normals to disagree.**
-  `_add_quad` calls `surface_add_vertex` and nothing else, and there is no `surface_set_normal`
-  anywhere in `board_view.gd`. So this is **not** the reversed-winding-with-correct-normals case —
-  the mesh carries no normal data at all, and culling is decided by winding alone. Worth confirming
-  against a built mesh's `ARRAY_NORMAL` before fixing, since that is an engine-behaviour claim
-  rather than a source-level one.
-- **The vertex order, so nobody has to re-derive it.** Corners are built x-major then y then z, so
-  index = `4*x + 2*y + z` with 0 = negative: `0=(-,-,-) 1=(-,-,+) 2=(-,+,-) 3=(-,+,+) 4=(+,-,-)
-  5=(+,-,+) 6=(+,+,-) 7=(+,+,+)`. The top face is emitted as `c[2], c[3], c[7], c[6]`.
-- **Fix the doc comment in the same edit.** It asserts the quads are "wound counter-clockwise seen
-  from outside the box, so back-face culling keeps the faces that face the camera." That sentence is
-  the bug, written down as if it were true — a later reader who trusts it will look elsewhere.
-- **Do not assume the engine's front-face convention; check it.** Assuming it is what produced this.
-- **Why the tests did not catch it, which is the reusable part.** `test_no_risers.gd` asserts vertex
-  *counts* and `test_board_view.gd` asserts an *AABB* — both are winding-blind, and geometry in the
-  right place facing the wrong way satisfies every assertion written in Pass B. **A test that would
-  catch it reads the built mesh back and asserts an outward direction** (the top face resolving to
-  +Y), which is the "read the real node back, do not re-derive it" rule CLAUDE.md already sets for
-  view math. It was applied to placement in that pass and not to orientation.
-
-### BR55.01 — Active — owner: `CC`
-**Intermittent engine abort in `LoS.has_los` — an out-of-bounds cell reaches `Grid.get_opacity`**
-- **Source:** `CC`  ·  **CC session:** `e5393c3a-bd26-4668-8905-c50cf31e04cb`
-- **Seen once in a full-suite run during taskblock-55 Pass D**, and **not reproducible**: the same
-  file passed 12/12 in isolation immediately afterward, and the next full run was green at 2781
-  tests. Recorded because a hard abort is worth a ledger entry even at one sighting — nothing about
-  it was investigated away.
-- **Not caused by this block's changes, as far as the trace goes.** The crash is on the AI planning
-  path and taskblock-55 touched only the section format and the board view. Recorded rather than
-  attributed.
-- **The trace, most recent first:**
-  ```
-  [0] has_los            (src/logic/los.gd:18)
-  [1] _has_direct_sight  (src/logic/world_view.gd:217)
-  [2] units_visible_to   (src/logic/world_view.gd:118)
-  [3] is_covered_from    (src/logic/cover.gd:41)
-  [4] _is_covered        (src/logic/ai/utility_context.gd:688)
-  [5] predicates_for     (src/logic/ai/utility_context.gd:555)
-  [6] _score_all         (src/logic/ai/utility_planner.gd:262)
-  [7] _apply_lookahead   (src/logic/ai/utility_planner.gd:184)
-  [8] plan_turn          (src/logic/ai/utility_planner.gd:96)
-      test_batch_objective.gd::test_a_follower_decides_differently_with_and_without_an_objective
-  ```
-- **The leading hypothesis, from reading the line.** `los.gd:18` is
-  `grid.get_opacity(cells[i])` inside the `Grid.line(a, b)` walk, and `Grid.get_opacity` indexes a
-  flat array as `cell.y * width + cell.x` with **no bounds check**. An endpoint outside the grid —
-  or a cell the supercover line produces outside it — indexes past the array and aborts. `LoS`
-  never calls `in_bounds`, and neither does `Grid.get_opacity`.
-- **Why it would be intermittent.** The suite deliberately samples from the clock in
-  `test_full_mission.gd`, so the boards and unit positions the AI plans against differ run to run
-  (the suite's own note records a measured 19% spread in turn count across three runs). A rare
-  position is exactly the shape of thing that would surface at one run in several.
-- **What would settle it:** a bounds check in `LoS.has_los`, or in `Grid.get_opacity` itself, would
-  turn the abort into a diagnosable value. Neither is in taskblock-55's scope, and guessing at the
-  fix without a reproduction would be a change nobody could verify.
-
-
-### BR54.02 — Active — owner: `SUPERVISOR`
-**A destroyed part vanishes from the shell before the tracer that destroyed it draws**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-03.
-- The part disappears from the model at *resolution* time, while `ResolutionPlayer` has not yet drawn
-  the shot that killed it. The player sees the consequence before the cause.
-- **It should vanish when the tracer of the shot that destroyed it finishes playing**, not when the
-  action resolves.
-- **Same two-clocks shape as `BR27.07`** — RESOLUTION owns the mutation and completes immediately,
-  while playback is still catching up, so anything keyed to live state runs ahead of the animation. The
-  active-turn highlight was the first instance; this is the second, on the model rather than the
-  overlay.
-- **`PLAN.md`'s *Player view and sim view — render a snapshot* is the structural answer.** A view
-  drawing from the last *played* state cannot show a part removed by a shot that has not been drawn.
-  A narrow fix is deferring the removal until its impact plays; it is worth taking, and it is an
-  instance of a class rather than the class.
-
-### BR54.01 — Active — owner: `SUPERVISOR`
-**AI rounds leave the muzzle at up to 43 degrees off the unit's own facing**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-03. *"AI controlled units are firing at strange angles. Specifically the
-  sniper rifle and shotgun equipped unit, the chaingun unit seems to be firing predictably by
-  comparison."*
-- **Confirmed and measured** from `out/combat.log` (bout seed 2), 63 first-hop shots across six
-  AI units. Angle between each unit's logged `faced` orientation and the direction its round
-  actually travelled:
-
-  | unit | shots | range (cells) | worst off-facing |
-  |---|---|---|---|
-  | 0 (chaingun) | 24 | 4.8 – 18.6 | **6.1°** |
-  | 3 (chaingun) | 24 | 3.4 – 10.6 | **8.6°** |
-  | 2 | 3 | 1.7 – 1.8 | 11.1° |
-  | 4 | 2 | 1.3 | 11.8° |
-  | 1 | 4 | 2.1 – 4.5 | **35.3°** |
-  | 5 | 6 | 2.3 – 5.3 | **43.1°** |
-
-- **It is a range effect, not a weapon effect.** The chaingun looks predictable because those two
-  units were shooting from 7–18 cells; every badly-deviating shot is from under 5.3. The
-  supervisor's read — that it is the sniper/shotgun units — is the same observation seen through
-  who happened to be standing close.
-- **A worked example, decomposed.** Turn 1, unit 5 at cell `(12,5)`, muzzle `(12.51, 4.40)`,
-  facing **2.03 rad** — which from its cell points exactly at cell `(14,4)`, where **unit 2**
-  stood. Its three rounds struck bodies at `(14.75, 4.98)`, `(14.82, 4.90)`, `(14.99, 5.15)` —
-  which is **unit 1**, at `(15,5)`. Resolving the hit against the muzzle-to-target axis gives a
-  **lateral displacement of 1.14 cells at a depth of 2.01**, i.e. the ray left 29.5° off the axis
-  it was aimed along. **The unit targeted one enemy and its rounds went to another.**
-- **Two plausible causes were checked and eliminated**, which is most of this entry's value:
-  - **Not the dartboard scatter.** Authored maximum ring radii are **0.03** cells (sniper_rifle),
-    **0.1** (pump_shotgun) and **0.6** (chaingun); `RangeModel.accuracy_multiplier` returns 1.0
-    inside effective range, so no widening applies. The measured lateral displacement is **1.1 –
-    2.6 cells** — one to two orders of magnitude larger than the widest scatter any of these
-    weapons can produce.
-  - **Not a plane/aim frame mismatch.** `ShotPlane.elevation_for` builds the plane's axis as
-    `Vector2(target_cell) - origin_flat` with `origin_flat` being the **muzzle**, and
-    `ShotResolution._aim_point_world` rebuilds the same muzzle-to-target-cell axis. The two agree,
-    so the lateral value is not being applied in a rotated frame.
-- **The remaining suspect, unverified:** the aim point itself. `AttackAction` takes
-  `ShotPlane.center_of(plane, target)` as a lateral/height pair and
-  `ShotPlane.depth_of(plane, target)` as its depth. If `center_of` returns the centre of the
-  target's **projected region** rather than a point on the muzzle-to-target axis, a body whose
-  composed parts sit off its cell centre would pull the aim sideways — and at 2 cells that is
-  tens of degrees. **Not established**; it is where the next look should start.
-- **Why it is newly visible.** Before taskblock-52 the shot plane modelled a scattered round as a
-  ray **parallel** to the shooter-to-target line, so a round always appeared to leave along the
-  gun's facing however far off the aim point sat. The ray chain marches muzzle-to-aim-point, so
-  the same lateral offset now genuinely **rotates** the round. The resolver change is correct and
-  this is the appearance it exposed, not something it broke.
-- **To see it:** put two AI units within about three cells of a shooter and watch which one the
-  gun points at against which one takes the hit.
-
-### BR52.15 — Active — owner: `CC`
-**Overwatch can be declared repeatedly in one turn**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-01.
-- `OverwatchAction.is_legal` checks alive, current turn, AP, weapon health and manipulator capability —
-  and **never checks whether the unit is already on overwatch**. `apply` sets
-  `actual.overwatch_weapon_id` unconditionally, so a unit with AP to spare can declare it again, paying
-  `AP_COST` each time for no additional effect.
-- **Declaring overwatch should end the unit's turn.** Watching a firing lane and then acting again is
-  the contradiction — the design intent is that after declaring, the unit does nothing else.
-- **The AP question is a design change, not part of this fix** — see `PLAN.md`'s *Overwatch: declaring
-  it ends the turn, and spending buys quality*. Fix the double-declaration here; leave the scaling
-  alone.
-- **Filed as `BR52.01`, renumbered to `BR52.15` (`CC`, 2026-08-02).** That id was already taken by a
-  `Resolved` entry in `docs/BUGS-ARCHIVE.md` — the `PartPicker`/`BoardView` height disagreement — which
-  is cited from `ray_caster.gd`, `part_picker.gd`, `test_selection_target.gd`, `docs/PLAN.md` and
-  `docs/CHANGELOG.md`. Two entries sharing an id breaks `grep '^### BR'` as the index. **The entry was
-  also pasted twice**; the duplicate was dropped. `BR52.05` is deliberately not reused — it was
-  withdrawn, not unassigned.
-- **Related but distinct: `BR52.12`** (overwatch is declared constantly and never fires). This entry is
-  about declaring it *too often*; that one is about it never *resolving*. A battle logging 12
-  declarations and zero fires showed one declaration per unit per turn, so the double-declaration here
-  was not what produced those twelve.
-
-### BR51.25 — Active — owner: `SUPERVISOR`
-**Non-unit objects render untransformed in the inspect preview**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first
-  reported as barrels intersecting their tile base on the board; the supervisor clarified that **the
-  world map places them correctly across levels** and the fault is in the **inspect preview**.
-- **`InspectPanel` frames its subject two different ways.** A unit goes through `_isolate_focus`
-  (`inspect_panel.gd:544-558`), which merges every mesh's world AABB and puts the camera at
-  `center + CAMERA_DIRECTION * radius * CAMERA_DISTANCE_FACTOR`. **Everything else takes the fixed
-  path at `:265`** — `_preview_camera.position = CAMERA_TARGET + CAMERA_DIRECTION`, aimed at a
-  constant rather than at the object. A barrel or support therefore renders against a camera that has
-  no idea where it is, which reads exactly as "no transform."
-- **This is the same fallback path `BR48.01` came out of** — the non-unit branch that set
-  `own_world_3d` and stripped the board's lighting. Second defect found in it, which is itself the
-  finding: **the non-unit path has never been exercised as carefully as the unit path.**
-- **The fix is probably to give it the AABB treatment**, not to add an offset — `_isolate_focus`
-  already does the right thing generically and the fallback predates it. Confirm which meshes a
-  blocker actually exposes before assuming they merge the same way.
-
-### BR51.24 — Active — owner: `SUPERVISOR`
-**A part destroyed by an explosion disappears from inspect but stays on the model**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, sixth hunt. *"Bot parts destroyed by an explosion just seem to vanish from
-  inspect, but are still visually there."*
-- **This is the one real defect from that session** — the supervisor's own distinction: the rest were
-  symptoms of the detonation work in progress, not bugs. This one is about part destruction and the
-  inspect panel, systems that long predate it.
-- **Two readings, and they are opposite defects.** taskblock-09 C2 records that *"a destroyed PART never
-  detaches on its own hp reaching 0 — only a severed JOINT does"*. If that still holds, the **model is
-  right and inspect is wrong** to hide it. If destroyed parts are meant to leave the assembly, the model
-  is stale. **Establish which before touching either**, because the fix points in opposite directions.
-- **`refresh_unit_views` does run on this path**, so it is not the missing board rebuild that explained
-  the barrel staying drawn — that was a separate cause with the same appearance.
-- **Not reproduced by CC.** Reported from play; no headless repro is recorded yet.
-
-### BR51.19 — Active — owner: `SUPERVISOR`
-**More than four units on a side spawn stacked on top of each other**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Starting a bout with more than 4 units on a side
-  causes them to overlay each other at the start."*
-- **Four is the tell.** A spawn zone that runs out of distinct cells and then stops advancing would put
-  every unit past the fourth on one cell — so look at how many cells the zone actually offers before
-  looking at the placement loop.
-- **`Grid.set_occupant_id` holds one occupant per cell**, so this is not two units legally sharing a
-  tile; it is placement writing over itself.
-- **Supervisor's clarification: it is logic-level, not a drawing artefact.** *"It looks to be logic level
-  as units moved from plausible positions."* Units that begin stacked and then move apart to sensible
-  cells means the *state* had them on one cell — the view was drawing the truth. So the defect is in
-  placement, and `set_occupant_id` holding one occupant per cell means the earlier arrivals' occupancy is
-  being overwritten rather than the placement being refused.
-- **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
-  is the shape of a zone that runs out of distinct cells and then stops advancing.
-
-### BR51.18 — Suspected — owner: `SUPERVISOR`
-**A unit slid sideways during a bout watched from both spectator and player control**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, in the same bout that confirmed `BR51.11`. *"This run in particular had unit 0
-  on squad 0 slide sideways, but I think that was an unrelated interaction between spectator and player
-  control."*
-- **`Suspected`, and filed on the supervisor's own hedge** rather than as a confirmed defect: it was seen
-  once, in a session that switched control modes, and the reporter's own reading is that the mode switch
-  caused it. Logged so a second sighting has something to attach to instead of being rediscovered.
-- **What "sideways" would mean mechanically:** the slide tween moves a view between two world anchors,
-  while the facing tween rotates it (`BR51.11`, same function). A unit translating without its facing
-  following is those two coming apart — most likely a view whose display cell and real cell disagree
-  after an overlay swap re-created it mid-playback.
-- **Do not work this before it is reproduced.** Taskblock-51 Pass I's spectator/player divergence
-  cluster is the same neighbourhood, and `PLAN.md`'s *One view, toggleable modules* would discard an
-  instance fix here.
-
-### BR51.16 — Active — owner: `SUPERVISOR`
-**The in-game combat log empties itself while the file on disk keeps everything**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, taskblock-51 fifth hunt. *"Combat log is resetting to nothing displayed in
-  game, while the out of game file seems to stay un-cleared."*
-- **The divergence is the whole finding.** Folding is presentation-only (tb22 F2) and `out/combat.log`
-  is written by a separate sink, so the panel and the file read the same stream through different
-  paths. One of them losing everything while the other keeps it means the loss is in the panel's own
-  state, not in the log.
-- **Suspects, in order:** `LogFold.MAX_GROUPS` discarding from the front (it pops oldest groups, which
-  would thin the panel but never empty it); the panel rebuilding its list from a fold that was reset;
-  or an overlay swap re-creating the panel without replaying what the log already holds — the
-  spectator/player overlay switch re-creates panels, and taskblock-51 Pass I's divergence cluster is
-  the same neighbourhood.
-- **Reproduce with a count before touching it.** "Nothing displayed" versus "the first N lines are
-  gone" are different bugs, and the panel's own row count against the sink's event count says which.
-
-### BR51.12 — Suspected — owner: `SUPERVISOR`
-**Ramps may generate on top of other ramps facing the other way**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
-- Reported as a suspicion rather than a confirmed defect: ramps appearing stacked on one cell facing
-  opposite directions. **`Suspected` deliberately** — it has not been reproduced deliberately and no
-  route back to it is recorded.
-- Cheap to test headlessly once described: `MapGen` places ramps through `connect_with_a_ramp`, and
-  "at most one correctly typed floor surface per cell" is already asserted by
-  `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
-  name** — which is the more interesting finding of the two.
-
-### BR51.14 — Active — owner: `CC`
-**Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, taskblock-51 fourth hunt.
-- **Repro:** select a unit, move the mouse over tiles **without aiming**. Framerate falls from 160 to
-  about 20. Holding still over a tile costs nothing; only motion does.
-- **Almost certainly the same shape as `BR26.02` on the non-aim path.** That bug was per-motion-event
-  work on the aim hover; this is the board hover, which runs `update_hover` → `PartPicker.hit` and
-  emits `hover_changed`. **The two fixes that worked there apply here unmodified:** coalesce motion to
-  one update per drawn frame, and check whether the signal's listeners are doing preview-scale work.
-- **Do not assume it is identical** — measure it the same way, with the per-function clone and plane
-  counts, before changing anything.
-- **`Pending` (taskblock-51). Measured first, and it was not what triage assumed.** 42 527 -> 18 454
-  usec per motion (23 -> 54 fps), clones 48 -> 19 per 30 calls. The cost was `TooltipController.refresh`
-  being wired to `mouse_moved` as well as `hover_changed`: every motion rebuilt the tooltip, and
-  building one calls `previewed_unit()`, a `CombatState.dup()`. Motion now repositions only. The hover
-  is also coalesced to one update per drawn frame, which the reticle already had.
-- **Back to `Active` on the supervisor's reading of five live dumps.** *"I don't think the bug is gone,
-  but it's no longer a problem while panning, which takes out the majority of the bite."* The measurement
-  agrees and is unusually clean: **1% low reads 20.0 / 19.9 / 19.8 / 19.6 / 19.5** across the five dumps
-  — the same ~20 fps originally reported, pinned to a tenth, over 4 400-5 000 frames.
-- **So the tooltip clone was a real cost and not the whole cost.** Removing it doubled the per-motion
-  figure (42 527 -> 18 454 usec) and the remaining 19 clones per 30 calls are genuine rebuilds, one per
-  newly hovered tile. **The next lever is memoising `previewed_unit()`** — `BR26.02` records two
-  attempts at that, both reverted for concrete reasons (callers mutate the previewed unit; state changes
-  within a frame when a resolution spends AP), so it needs its own pass rather than a retry.
-- **Paused by the supervisor, not abandoned.**
-
-### BR51.15 — Active — owner: `SUPERVISOR`
-**A distinct hitch as the over-the-shoulder camera swings behind the unit**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
-- **Repro:** enter aim with the over-the-shoulder camera and watch the moment it arrives behind the
-  shooter. A distinct hitch lands exactly there, separate from the general aim-view cost.
-- **This is the ~7.5 fps session minimum, and it now has a cause to look at.** Every session this block
-  recorded a minimum of **7.1–8.1** regardless of what else changed — one slow frame, not a sustained
-  load. A hitch tied to a specific camera position is a much better lead than a stray stall.
-- **Suspects, in order:** the camera passing through wall geometry (which the supervisor separately
-  proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
-  triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
-
-### BR51.01 — Active — owner: `SUPERVISOR`
-**Sniper rifle and chaingun consistently shoot wide left of the aim point**
-- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
-- **Repro:** aim a sniper rifle or a chaingun at a goo barrel and fire. The shot lands
-  **consistently left** of where the reticle sits. Reported first for the sniper rifle alone, then
-  confirmed on the chaingun — so it is not one weapon's authored geometry.
-- **taskblock-51 sixth hunt — the supervisor widened the symptom, and it is no longer lateral-only:**
-  *"Firing to the left bug is also a 'fire down into the floor bug' — shots go left AND down at a steep
-  angle."* **That changes the shape of the suspect.** A lateral-only error can be a sign flip on one axis;
-  left *and* down together is a single rotational offset applied to the whole ray, which points at the
-  transform the ray is built from rather than at either axis on its own. The fixed camera sitting back
-  and right of the shooter is the supervisor's own candidate for that rotation.
-- **taskblock-51 — MECHANISM FOUND, and the suspect list had it backwards.** The note above reads *"the
-  aim lean applied to the rendered view but not to the camera the projection reads"*. There is **one**
-  `Camera3D` (`CameraRig._camera`), and `TacticsController.camera` caches it once — so the lean is applied
-  to **both**, and that is the defect rather than the exemption.
-- **`CameraRig.aim_at` rotates the real camera by up to `MAX_LEAN_DEG` (5 degrees) toward the reticle
-  point**, via `look_at(centre)` then a second `look_at` along a leaned forward vector. Every subsequent
-  `project_ray_origin`/`project_ray_normal` therefore casts through a camera that has been turned away
-  from where the player believes they are sighting. **A rotational offset on the whole ray** — which is
-  exactly the shape the supervisor's widened symptom describes: left *and* down together, not a sign flip
-  on one axis.
-- **It also explains why the frame-mismatch measurement came back clean at 0.0000 cells.** The reticle and
-  the resolver agree because they are handed the same ray; the ray itself is the thing that is wrong, and
-  a test comparing those two can never see it. **Any new test must compare against the camera pose the
-  player is looking through, not against the other consumer of the same ray.**
-- **And it is a feedback loop:** the lean is computed *from* the reticle point, and the reticle is
-  computed by projecting *through* the leaned camera. Worth establishing whether the offset is stable or
-  compounds across frames before choosing a fix.
-- **SUPERVISOR'S SPECIFICATION, and it is stronger than CC's proposed fix.** CC suggested projecting
-  through an un-leaned basis. The supervisor rejected the framing:
-
-  > *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a flourish,
-  > so why is it affecting aim? The purpose is for the camera to give a better view of the target. The
-  > mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at. The player
-  > camera should not be involved in drawing a line from the shooter's gun to that clicked point."*
-
-  **Un-leaning the projection would keep the camera in the loop and merely change its pose.** The stated
-  model removes it: the camera converts a cursor pixel into **a world point on a part**, and the shot is
-  then a line from the **muzzle to that point**. After the pick, the camera has no further part in it —
-  so no camera pose, leaned or not, can move a shot.
-- **Also stated, and it rules out the obvious shortcut:** *"Without the lean, the camera is behind the
-  shooter, making it impossible to aim at a further target."* Simply removing `MAX_LEAN_DEG` is not
-  available — the lean is what makes the over-the-shoulder view usable.
-- **What that means for the code, concretely.** The click currently produces a `reticle_offset` **in an
-  aim plane anchored on shooter and target cells**, and the shot is built from that offset — which is how
-  a camera pose reaches shot geometry at all. Under the stated model the click produces a **world point**
-  (`PartPicker` already returns exactly this: a part plus a real hit position), and the shot is built from
-  muzzle-to-point. **The shot plane stays** — `docs/02`'s depth-sorted resolution is untouched; what
-  changes is where the aim point comes from, not how a hit is resolved against it.
-- **Not started.** This is an aim-system change, not a patch, and tb51 is a bug hunt — flagged for
-  sequencing rather than begun at the end of a block.
-- **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
-  left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
-  `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
-  or the aim camera's own lean applying to the view but not to the resolved ray.
-- **Possibly one defect with `BR34.04`** (sniper camera frames the target from an odd angle) and
-  `BR33.01` (aim-view scroll/layer labels). If the aim camera is off-axis, everything mapped through
-  it inherits the offset. **Check the camera before the weapon.**
-- **Blocks reproducing `BR35.08`** — the supervisor could not reliably hit a goo barrel to detonate it.
-
-- **taskblock-51 — the frame-mismatch theory is measured and WRONG. Ruled out, not deprioritised.**
-  The strongest hypothesis was that the reticle and the resolver work in different planes: the
-  reticle places `reticle_offset` against a plane anchored on the shooter and target **cells**
-  (`AimPlaneGeometry.perp_axis`), while `AttackAction` builds its plane anchored on the real
-  **muzzle** — and taskblock-27 Pass A1 fixed exactly that class of mismatch *inside* the action,
-  leaving the reticle still on cells. A constant lateral offset equal to the muzzle's lateral
-  displacement would explain "consistently left" perfectly.
-  **It does not happen.** `test_aim_offset_bias.gd` aims a ray at the resolver's own dead centre and
-  asks what offset the reticle maths records: **0.0000 cells across four geometries** (axis-aligned
-  both ways, and both diagonals). The two frames agree.
-- **What that leaves, in order.** The reticle is placed from `camera.project_ray_origin/normal`, so the
-  remaining suspects are all on the camera side rather than the geometry side: the aim lean applied to
-  the rendered view but not to the camera the projection reads; a rendered dartboard whose lateral axis
-  disagrees in sign with the plane it represents; or the drawn reticle sitting somewhere other than
-  where `reticle_offset` says. **The next attempt should instrument what the player sees against what
-  is fired**, not re-derive the geometry — that half is now measured and clean.
-- **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
-  frame mismatch if a later change introduces the thing that was suspected here.
-
-### BR45.01 — Active — owner: `CC`
-**Surrogate demotion from an ambiguous DAG node is an unresolved placeholder, and says so loudly on
-every fire**
-- **Source:** `CC`  ·  **CC session:** `a56eac1a-eddb-4d30-946a-4c8e594ef198`
-- **Raised 2026-07-27 by the supervisor noticing the warning volume in `run_tests.sh`.** The warning
-  is not new and nothing in taskblock-44 caused it — `SurrogateLadder.demote` has emitted it since
-  taskblock-03 Pass A2 (`e82d35c`). What changed is that taskblock-44 added tests that run real
-  seeded bouts, so more combat resolves, more surrogates take damage, and the existing warning simply
-  fires more often. **It became audible rather than becoming a defect.**
-- **The actual gap.** `docs/04` makes the surrogate ladder a DAG, not a line. Demotion walks *upstream*
-  — the tiers whose `promotes_to` names the current one — and where a tier has **two or more**
-  upstream branches there is no rule for which one a damaged surrogate falls back to. taskblock-03
-  deliberately did not invent one. Today `demote()` takes `candidates[0]`, first in ladder
-  declaration order: deterministic (so it cannot break seeded replay) but arbitrary, and
-  `push_warning`'d every single time precisely so it could not be mistaken for a decision.
-- **Why it matters beyond noise.** The fallback is authoring-order-dependent. Reordering the tier
-  `.tres` files, or adding a new tier that promotes into an existing one, silently changes what a
-  damaged surrogate becomes — with no test that would notice, because every current test asserts
-  against whatever the first branch happens to be.
-- **What closing it needs is a DESIGN answer, not code.** Candidates, none chosen: pick by what was
-  destroyed (taskblock-03's own stated intent, and the reason it was left open); pick the branch
-  retaining the most capabilities; pick the cheapest to re-promote from; or author an explicit
-  `demotes_to` on the tier and make the DAG's reverse edges data rather than derived. **The last is
-  the only one that needs no new rule invented** — it makes the answer authorable per tier, which is
-  the same "content is data, not code" posture the rest of the project takes.
-- **`CC`-owned** per the supervisor. CC may close it once a rule is chosen and authored — but the
-  choice itself is a design call, so it wants stating before it is built rather than after.
-- **Do not silence the warning as the fix.** It is doing its job; the placeholder is what wants
-  resolving.
-
-### BR45.03 — Active — owner: `SUPERVISOR`
-**The utility planner completes 54.2% of missions where the planner it replaced completed 87.5%**
-*(headline superseded — see the 2026-07-29 entry below: 54.2% and every figure after it were measured
-with the profile weights switched off. Re-measured, it is **72%**, and the gap is 3 points.)*
-- **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
-- **`SUPERVISOR`-owned at CC's request**, not by default. CC found it and would ordinarily own it, but
-  the decision to land the planner with this regression open was the supervisor's, made on this
-  evidence, and this entry is the thing that must not be closed without them seeing a real completion
-  rate again.
-- **Re-measured 2026-07-28 after the block's final fixes**, both planners, same fixture, same probe,
-  24 seeds (`test_full_mission.gd`'s own harness, 1v1 AGGRESSIVE, turn cap 100, completion ==
-  `EXTRACTED`). The old planner was run from a worktree at `107af1e`:
-
-| | old | new |
-|---|---|---|
-| seeds 0–11 | 9/12 (75.0%) | 5/12 (41.7%) |
-| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
-| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
-| mean turns to complete | 23.6 | **10.6** |
-| failure modes | 3 `TERMINATED` | 9 `TERMINATED`, 2 `STRANDED` |
-
-- **Seeds 1, 2 and 6 `TERMINATE` under BOTH planners.** Three of the new planner's eleven failures are
-  not its doing — they are pre-existing on those maps and predate this block entirely. The incremental
-  regression is **8 seeds, not 11**, and anyone diagnosing this should start on a seed the old planner
-  actually completed (5, 10, 14, 20, 22, 23) rather than on one that was already broken.
-- **The first reading of this was 37.5% and was taken mid-block, before the last four fixes.** It is
-  superseded by the table above. `MIN_COMPLETION_RATE` had been dropped to 0.25 on the strength of it
-  and has been raised to 0.35 now that the real figure is known — still below the gated window's 41.7%
-  by one seed, which is the margin a deterministic 12-seed sample allows.
-- **The dominant failure is `TERMINATED`, not `STRANDED`** — 11 of 24 seeds simply never end. The
-  planner is **not losing fights; it is failing to finish**.
-- **Already ruled out, so nobody re-derives it:** the information restriction (identical 33.3% with
-  the view forced unrestricted), the candidate-set cull (no change), and the four planner defects
-  taskblock-45 found and fixed (the 54.2% is post-fix — every fix is in the number).
-- **`MIN_COMPLETION_RATE` went 0.5 → 0.25 → 0.35.** It was dropped to 0.25 to land the planner, on a
-  mid-change reading of 37.5%; the re-measurement above put the real figure at 54.2% and it came back
-  to 0.35 — one seed of margin below the 41.7% the test's own 12-seed window samples. That constant is
-  the project's one automated check on "can the AI finish a mission at all". **Getting it back to 0.5
-  is this entry's closure condition**, and it cannot be done by moving the number.
-- **Two earlier figures were reported and are wrong**: 58% (measured with a live defect, describing a
-  planner that never existed) and 37.5% (taken mid-block, before the last four fixes). Recorded
-  because the first reached a landing decision before it was corrected.
-- **2026-07-28 — leading hypothesis, found in a real bout's combat log: a NON-PLAYER squad with no
-  enemy in sight has no action available at all, and idles until someone walks into view.** This is
-  the strongest lead on the `TERMINATED` seeds and should be the first thing tried.
-
-  The eight authored actions partition into two groups with **nothing in neither**:
-
-  | gate | actions |
-  |---|---|
-  | `enemy_known` | approach, shoot, take_cover, overwatch, hold_position |
-  | `is_player_squad` | seek_objective, gather, seek_extraction |
-
-  A squad-1 unit that cannot see an enemy fails both gates, so every action is un-offered. Observed
-  directly — `AI unit 3 [TRAINED/cautious]: nothing over 488 candidates` on turns 0 and 1, then
-  `shoot@(22,14)` on turn 2 the moment squad 0 came into view — and reproduced by dumping the
-  predicates for a `BoutSetup` bout at seed 31337, where squad 0 is offered `seek_extraction` and
-  squad 1 is offered `[]`.
-
-  **Neither gate is wrong on its own; the combination is.** `is_player_squad` reproduces the retired
-  planner's own `_plan_non_combat_turn` early-return for other squads, and `enemy_known` is what makes
-  a combat action mean something. What changed is that the old planner ran **unrestricted**, so its
-  `_nearest_living_enemy` always found a target and every enemy unit advanced across the map;
-  taskblock-45 switched restriction on at the `AiPlanner` seam, and an enemy squad that cannot see
-  anyone now has nothing to do. **If the enemy squad never advances, contact depends entirely on the
-  player squad wandering into it** — which on a large map, with squad 0 heading for extraction, may
-  simply never happen before the turn cap.
-
-  **The fix is a design call and is deliberately not made here** (CLAUDE.md: ask, don't invent). The
-  options, roughly: give every squad an advance-to-contact action scored on closing with the enemy's
-  last known or likely position; let non-player squads use the mission actions against their own
-  team's extraction zone; or have units patrol toward map features. The first is closest to what the
-  old planner did by accident.
-
-- **Do not chase this with profile weights.** A ~33-point gap is structural; hand-tuning weights to
-  move a completion rate is inventing balance numbers. The decision log is the instrument — every
-  fixed defect was found by dumping `ai_utility_decision` per turn and reading it. Seeds 13 and 20
-  never finish.
-- **The figures above predate the last four fixes and are now pessimistic.** The head-to-head was
-  taken before the hold-gating and missing-`await` fixes; re-running `test_full_mission.gd` afterwards
-  puts seeds 0–11 at **5/12 (41.7%)** rather than 4/12 (33.3%). A fresh 24-seed measurement of BOTH
-  planners is the first thing this item should take, because the table is the only reason the floor
-  moved and it is no longer accurate.
-
-- **2026-07-28 (taskblock-46 Passes B–E) — 
-  narrowed, still `Active` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Not marked `Pending`: this 
-  entry's own closure condition is `MIN_COMPLETION_RATE` back at 0.5, and it is not.
-
-  | when | completion | sample |
-  |---|---|---|
-  | taskblock-45 end | 54% | 24 seeds |
-  | Pass A/B re-baseline | 50% / 54% | 24 seeds / 100 seeds |
-  | Pass C (search verbs) | **60%** | 100 seeds |
-  | Pass E (tier table) | **60%** | 100 seeds |
-  | the retired branch planner | 87.5% | 24 seeds, fixed ground |
-
-- **The leading hypothesis above was right and is fixed.** The four search verbs (`ROAM`, `PATROL`,
-  `HUNT`, `PUTTER`) are the action a unit that fails both gates now has; `docs/11` carries the general
-  rule that produced the hole ("when adding a gated utility action, ask what a unit that fails every
-  gate does instead"). It bought 6 points, not 33 — **so the hole was real and was not the whole
-  regression**, which is worth knowing before the next lead is chased.
-- **The measurement itself is no longer a pinned window** (Pass B). `CompletionSampler` draws random
-  seeds and prints them; a dip reports the exact command for a deterministic 100-seed escalation. The
-  sample and the escalation were checked against each other on disjoint windows — seeds 0–99 gave 54%
-  and seeds 1000–1099 gave 55% — so the two are measuring the same population and a future comparison
-  across them is legitimate.
-- **2026-07-29 (taskblock-47 Pass D) — 72%, and most of the "regression" was a broken
-  profile id.** [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`]
-
-  `CompletionSampler` names the profile its bouts fight under. It was still passing
-  `&"AGGRESSIVE"` — a playstyle **taskblock-46 Pass E retired**. `get_utility_profile`
-  returns null for an unknown id and `UtilityScorer` falls back to unweighted scoring
-  without complaint, so **every completion rate measured after that pass was measured
-  with no profile weights applied at all.**
-
-  | measurement | rate | mean turns |
-  |---|---|---|
-  | before the fix (unweighted) | 56/100 | 26.8 |
-  | after the fix (weighted) | **72/100** | **13.5** |
-
-  Against the retired planner's 87.5% on fixed ground — and its 75% on level ground —
-  **the gap is now 3 points, not 19.** `MIN_COMPLETION_RATE` is still 0.35 and this
-  entry's closure condition is 0.5; the measured rate is comfortably above both.
-  **Deliberately not raised here** — taskblock-47's own scope excludes that constant,
-  and moving a floor on the same day the number moved is how this project got into
-  trouble with it before. It is the supervisor's call and it now has room.
-- **What let it through, since the guard existed and was one line short.**
-  `test_every_authored_default_names_a_profile_that_exists` checked `Matrix`,
-  `BoutRosterEntry` and the bout maker's default roster. It did not check the
-  sampler, which is the one that decides what every measured number means. It does
-  now, asserted against the built bout rather than against the constant — the
-  constant is exactly what was being read and believed.
-- **A caveat that applies to every number in this entry, old and new.** `Unit.intelligence_tier`
-  defaults to `TRAINED` and nothing authors it, so all of these are all-Trained rates. The old
-  planner's 87.5% is an all-Trained rate too, so the comparison is fair — but "the AI" here means one
-  row of a four-row table, and neither the 87.5% nor the 60% describes what a mixed-tier bout does.
-
 
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
@@ -1078,6 +283,12 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   and taskblock-51 restates it: shader and renderer costs only get cracked by the supervisor running
   the real thing. **Prime suspect: `AimView._decal`** — a Godot `Decal` projects onto every mesh inside
   its box, and this board has 166 wall meshes plus 768 terrain cells. **A suspect, not a conclusion.**
+- **2026-08-04 — every number above predates taskblock-55 Pass B and the board it describes no longer
+  exists.** That pass deleted the per-cell ground quad and draws the walkable parts as real boxes, so
+  *"768 terrain cells"* is now 768 six-faced tiles: **1 536 terrain triangles became 9 216, a 6x
+  increase**, on an entry about framerate. **Not re-measured deliberately** — a number taken now would
+  likely be stale again by the time this is worked, and the point is only that the existing figures
+  cannot be trusted as a baseline. Re-take them when the work actually starts.
 - **A bisection tool instead of a guess:** the `set_aim_visual` debug verb switches each aim element
   independently (`window`, `decal`, `targeting_line`, `pellet_circle`, `part_label`). Enter aim, turn
   one off, read the session dump on leaving. Whichever one restores the framerate is the answer, and it
@@ -1189,53 +400,6 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   neighbours as `prev 116.2, next 260.0`, which disproved the queued-frames theory.
 - **Per-motion cost is 113 504 → 8 878 usec** across four distinct fixes. What remains is not the same
   bug at lower amplitude; treat the residue as its own investigation.
-
-### BR27.15 — Active — owner: `SUPERVISOR`
-**Step out: the dartboard does not open on the first click; a second click is required**
-- **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (1), 2026-08-04** — see that entry in
-  `docs/BUGS-ARCHIVE.md` for the original four-way framing and the full taskblock-27 Pass B history.
-- **Reported:** taskblock-27, as *"doesn't open the dartboard, always resolves a center-mass shot"*.
-  **Mutated rather than resolved** by the Pass B fix, and re-reported 2026-07-21 with a precise repro:
-  *"clicking shoot, then clicking an enemy, doesn't bring up the dartboard if the unit had to step
-  out; clicking again brings up the dartboard."*
-- **2026-07-22 (tb32 review):** still reproduces, unchanged. tb32 did not touch it.
-
-**CC investigation, `e5393c3a-bd26-4668-8905-c50cf31e04cb`, 2026-08-04 — read from source, no code
-touched.** The 2026-07-21 note guessed this was *"the two-step step-out flow itself... reading as
-'doesn't work' without a clear in-between visual cue — not yet investigated code-side."* **That guess
-is correct, and the cause is sharper than a missing cue: there is no cue at all.**
-
-- **The two-step flow is real and is by design.** `TacticsController.confirm_shot()` branches on
-  `stepping_out_at != null` and hands to `_confirm_step_out()`. So clicking a covered enemy enters
-  **step-out-cell-choice mode** (`_enter_aim_or_step_out_mode` → `_enter_step_out_mode`), and only a
-  *second* confirm queues the free outbound leg and opens ordinary aim. The dartboard not appearing on
-  the first click is the designed sequence, not a broken path.
-- **Nothing in the view layer reads step-out state.** A grep for `stepping_out_at` / `step_out` across
-  `src/view/` and `src/debug/` returns **only `tactics_controller.gd` itself**. No overlay, no panel,
-  no marker.
-- **`_enter_step_out_mode` emits `aim_changed` and calls `_refresh_overlay()`, and neither shows
-  anything about it.** `_refresh_overlay()` draws reachable cells, ghost paths, the end-position ghost
-  and the overwatch arc — the same four it draws in every other mode. `aim_changed`'s consumers are
-  `aim_view` (which reads `aiming_at`, still null here, so correctly draws no dartboard), the action
-  bar, and the squad control overlay. **None draws the candidate cells.**
-- **So the player is given nothing.** The candidate cells are chosen and sorted by safety
-  (`_step_out_candidates`, safest first), the mouse wheel cycles them (`cycle_step_out_cell`), and a
-  second click confirms — and **none of that is visible**. No highlight on the cell about to be
-  stepped to, no indication the wheel does anything, no prompt that a second click is expected. The
-  outbound leg is not queued until confirm, so even the ghost shows nothing new.
-- **This is therefore a missing view affordance, not a defect in the flow.** Worth deciding
-  explicitly, because the two available fixes are different in kind: **draw the mode** (highlight the
-  selected candidate and its alternatives, which also makes the wheel-cycling discoverable — it is
-  currently invisible too), or **collapse the flow** so the first click both picks the safest
-  candidate and opens aim, leaving the wheel to re-pick while aiming. The first preserves the
-  deliberate choice step taken in Pass B; the second removes it.
-- **What is NOT broken, confirmed:** the flow itself is fully guarded and green —
-  `test_tactics_controller_step_out.gd` holds
-  `test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim`,
-  `test_firing_after_a_step_out_completes_the_free_move_attack_move_triple`,
-  `test_cancelling_aim_mid_step_out_undoes_the_free_outbound_leg` and
-  `test_wheel_cycles_the_step_out_cell_and_wraps`. Every one passes. **They test the controller's
-  state, which is correct; nothing tests that a player can see it**, which is the gap.
 
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
@@ -1453,6 +617,10 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   empty and the project has no `export_presets.cfg` (it is gitignored), so `--export-release` refuses.
   The pass's own instruction on this is "say so and stop"; the exact procedure for the supervisor to
   run it locally is in `reports/Report-Taskblock44.md`.
+  - **2026-08-04 — that pointer is dangling.** `reports/` keeps a rolling five and Taskblock 44's
+    report is long gone, so the procedure survives only in git history. Recorded rather than
+    reconstructed: CLAUDE.md's rule is to carry the fact inline and never point at a report, and this
+    entry is what that rule is for.
   - **What the missing number means for this entry:** every figure above — the ~1672ms, the ~1498ms,
     tb35's 2023ms→974ms, tb43's whole bench series — was taken on an **editor/tools binary**, which
     carries GDScript's per-line debug overhead by a factor nobody has measured. **They may all be
@@ -1607,6 +775,53 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   **38.0** to **93** and **147** across two later sessions, recovering to 134–157 after two seconds.
   **Not closed** — a hitch remains and it has never been the subject of its own investigation.
 
+### BR27.15 — Active — owner: `SUPERVISOR`
+**Step out: the dartboard does not open on the first click; a second click is required**
+- **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (1), 2026-08-04** — see that entry in
+  `docs/BUGS-ARCHIVE.md` for the original four-way framing and the full taskblock-27 Pass B history.
+- **Reported:** taskblock-27, as *"doesn't open the dartboard, always resolves a center-mass shot"*.
+  **Mutated rather than resolved** by the Pass B fix, and re-reported 2026-07-21 with a precise repro:
+  *"clicking shoot, then clicking an enemy, doesn't bring up the dartboard if the unit had to step
+  out; clicking again brings up the dartboard."*
+- **2026-07-22 (tb32 review):** still reproduces, unchanged. tb32 did not touch it.
+
+**CC investigation, `e5393c3a-bd26-4668-8905-c50cf31e04cb`, 2026-08-04 — read from source, no code
+touched.** The 2026-07-21 note guessed this was *"the two-step step-out flow itself... reading as
+'doesn't work' without a clear in-between visual cue — not yet investigated code-side."* **That guess
+is correct, and the cause is sharper than a missing cue: there is no cue at all.**
+
+- **The two-step flow is real and is by design.** `TacticsController.confirm_shot()` branches on
+  `stepping_out_at != null` and hands to `_confirm_step_out()`. So clicking a covered enemy enters
+  **step-out-cell-choice mode** (`_enter_aim_or_step_out_mode` → `_enter_step_out_mode`), and only a
+  *second* confirm queues the free outbound leg and opens ordinary aim. The dartboard not appearing on
+  the first click is the designed sequence, not a broken path.
+- **Nothing in the view layer reads step-out state.** A grep for `stepping_out_at` / `step_out` across
+  `src/view/` and `src/debug/` returns **only `tactics_controller.gd` itself**. No overlay, no panel,
+  no marker.
+- **`_enter_step_out_mode` emits `aim_changed` and calls `_refresh_overlay()`, and neither shows
+  anything about it.** `_refresh_overlay()` draws reachable cells, ghost paths, the end-position ghost
+  and the overwatch arc — the same four it draws in every other mode. `aim_changed`'s consumers are
+  `aim_view` (which reads `aiming_at`, still null here, so correctly draws no dartboard), the action
+  bar, and the squad control overlay. **None draws the candidate cells.**
+- **So the player is given nothing.** The candidate cells are chosen and sorted by safety
+  (`_step_out_candidates`, safest first), the mouse wheel cycles them (`cycle_step_out_cell`), and a
+  second click confirms — and **none of that is visible**. No highlight on the cell about to be
+  stepped to, no indication the wheel does anything, no prompt that a second click is expected. The
+  outbound leg is not queued until confirm, so even the ghost shows nothing new.
+- **This is therefore a missing view affordance, not a defect in the flow.** Worth deciding
+  explicitly, because the two available fixes are different in kind: **draw the mode** (highlight the
+  selected candidate and its alternatives, which also makes the wheel-cycling discoverable — it is
+  currently invisible too), or **collapse the flow** so the first click both picks the safest
+  candidate and opens aim, leaving the wheel to re-pick while aiming. The first preserves the
+  deliberate choice step taken in Pass B; the second removes it.
+- **What is NOT broken, confirmed:** the flow itself is fully guarded and green —
+  `test_tactics_controller_step_out.gd` holds
+  `test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim`,
+  `test_firing_after_a_step_out_completes_the_free_move_attack_move_triple`,
+  `test_cancelling_aim_mid_step_out_undoes_the_free_outbound_leg` and
+  `test_wheel_cycles_the_step_out_cell_and_wraps`. Every one passes. **They test the controller's
+  state, which is correct; nothing tests that a player can see it**, which is the gap.
+
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**
 - **Source:** `SUPERVISOR`
@@ -1646,6 +861,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   own workflow used that field's "Pick" button rather than typing coordinates by hand. **Candidate fix
   (not yet applied):** give `_on_apply_pressed`'s OBJECT resolution the same snapshot-before-arming
   treatment `_begin_move_on_next_click` already uses.
+
 ### BR30.04 — Active — owner: `SUPERVISOR`
 **Waypoint colors shuffle when arming an attack and targeting a cover item**
 - **Source:** `SUPERVISOR`
@@ -1667,6 +883,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   wraps, which is why the bug only shows on cover-item targeting. **Candidate fix (not yet applied):**
   either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
   only "real" queued legs consume a color slot.
+
 ### BR32.04 — Active — owner: `SUPERVISOR`
 **Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up**
 - **Source:** `SUPERVISOR`
@@ -1710,6 +927,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     correctly scoping the override's own lifecycle (when it's cleared, so a stale display position
     can't itself become a new staleness bug) wants its own careful pass, not a rushed one at the tail
     of an already-long taskblock.
+
 ### BR32.05 — Active — owner: `SUPERVISOR`
 **Wall cutout cuts walls that aren't between camera and unit (coarse heuristic)**
 - **Source:** `SUPERVISOR`
@@ -1781,6 +999,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   heuristic itself is the defect rather than each symptom — which is what the supervisor's own proposed
   fix says: stop projecting at the camera angle, tilt to vertical and align to grid tiles. **Check the
   archived three before starting**, so a fourth symptom-level fix is not attempted.
+
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **Source:** `SUPERVISOR`
@@ -1822,6 +1041,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   live `BoardView` scene nodes — the same class of headless-vs-live gap BR27.08 hit) rather than in
   the targeting logic itself. Recommend a live re-check before further investigation here; stays
   Active, not Pending, since no fix was made.
+
 ### BR32.08 — Suspected — owner: `SUPERVISOR`
 **Dead or knocked-out shells may have strange cutout behavior**
 - **Source:** `SUPERVISOR`
@@ -1875,6 +1095,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   label (commit "keep the queued suffix on partial resolve, short Move label"). Apply the same
   treatment to `AttackAction` — and while in there, check the remaining action types (burst, overwatch,
   repair, the melee actions) rather than fixing one and leaving the next to be reported separately.
+
 ### BR34.04 — Active — owner: `SUPERVISOR`
 **Sniper camera frames the target from an odd angle**
 - **Source:** `SUPERVISOR`
@@ -1962,3 +1183,848 @@ shooter is elevated on a small platform and the target is below**
   where knowable), or a real occlusion check against `Grid.blockers`/placed `Surface`s alongside the
   angular fit — the same class of fix BR32.05 already wants for the wall cutout, possibly shareable.
 
+### BR45.01 — Active — owner: `CC`
+**Surrogate demotion from an ambiguous DAG node is an unresolved placeholder, and says so loudly on
+every fire**
+- **Source:** `CC`  ·  **CC session:** `a56eac1a-eddb-4d30-946a-4c8e594ef198`
+- **Raised 2026-07-27 by the supervisor noticing the warning volume in `run_tests.sh`.** The warning
+  is not new and nothing in taskblock-44 caused it — `SurrogateLadder.demote` has emitted it since
+  taskblock-03 Pass A2 (`e82d35c`). What changed is that taskblock-44 added tests that run real
+  seeded bouts, so more combat resolves, more surrogates take damage, and the existing warning simply
+  fires more often. **It became audible rather than becoming a defect.**
+- **The actual gap.** `docs/04` makes the surrogate ladder a DAG, not a line. Demotion walks *upstream*
+  — the tiers whose `promotes_to` names the current one — and where a tier has **two or more**
+  upstream branches there is no rule for which one a damaged surrogate falls back to. taskblock-03
+  deliberately did not invent one. Today `demote()` takes `candidates[0]`, first in ladder
+  declaration order: deterministic (so it cannot break seeded replay) but arbitrary, and
+  `push_warning`'d every single time precisely so it could not be mistaken for a decision.
+- **Why it matters beyond noise.** The fallback is authoring-order-dependent. Reordering the tier
+  `.tres` files, or adding a new tier that promotes into an existing one, silently changes what a
+  damaged surrogate becomes — with no test that would notice, because every current test asserts
+  against whatever the first branch happens to be.
+- **What closing it needs is a DESIGN answer, not code.** Candidates, none chosen: pick by what was
+  destroyed (taskblock-03's own stated intent, and the reason it was left open); pick the branch
+  retaining the most capabilities; pick the cheapest to re-promote from; or author an explicit
+  `demotes_to` on the tier and make the DAG's reverse edges data rather than derived. **The last is
+  the only one that needs no new rule invented** — it makes the answer authorable per tier, which is
+  the same "content is data, not code" posture the rest of the project takes.
+- **`CC`-owned** per the supervisor. CC may close it once a rule is chosen and authored — but the
+  choice itself is a design call, so it wants stating before it is built rather than after.
+- **Do not silence the warning as the fix.** It is doing its job; the placeholder is what wants
+  resolving.
+
+### BR45.03 — Active — owner: `SUPERVISOR`
+**The utility planner completes 54.2% of missions where the planner it replaced completed 87.5%**
+*(headline superseded — see the 2026-07-29 entry below: 54.2% and every figure after it were measured
+with the profile weights switched off. Re-measured, it is **72%**, and the gap is 3 points.)*
+- **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
+- **`SUPERVISOR`-owned at CC's request**, not by default. CC found it and would ordinarily own it, but
+  the decision to land the planner with this regression open was the supervisor's, made on this
+  evidence, and this entry is the thing that must not be closed without them seeing a real completion
+  rate again.
+- **Re-measured 2026-07-28 after the block's final fixes**, both planners, same fixture, same probe,
+  24 seeds (`test_full_mission.gd`'s own harness, 1v1 AGGRESSIVE, turn cap 100, completion ==
+  `EXTRACTED`). The old planner was run from a worktree at `107af1e`:
+
+| | old | new |
+|---|---|---|
+| seeds 0–11 | 9/12 (75.0%) | 5/12 (41.7%) |
+| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
+| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
+| mean turns to complete | 23.6 | **10.6** |
+| failure modes | 3 `TERMINATED` | 9 `TERMINATED`, 2 `STRANDED` |
+
+- **Seeds 1, 2 and 6 `TERMINATE` under BOTH planners.** Three of the new planner's eleven failures are
+  not its doing — they are pre-existing on those maps and predate this block entirely. The incremental
+  regression is **8 seeds, not 11**, and anyone diagnosing this should start on a seed the old planner
+  actually completed (5, 10, 14, 20, 22, 23) rather than on one that was already broken.
+- **The first reading of this was 37.5% and was taken mid-block, before the last four fixes.** It is
+  superseded by the table above. `MIN_COMPLETION_RATE` had been dropped to 0.25 on the strength of it
+  and has been raised to 0.35 now that the real figure is known — still below the gated window's 41.7%
+  by one seed, which is the margin a deterministic 12-seed sample allows.
+- **The dominant failure is `TERMINATED`, not `STRANDED`** — 11 of 24 seeds simply never end. The
+  planner is **not losing fights; it is failing to finish**.
+- **Already ruled out, so nobody re-derives it:** the information restriction (identical 33.3% with
+  the view forced unrestricted), the candidate-set cull (no change), and the four planner defects
+  taskblock-45 found and fixed (the 54.2% is post-fix — every fix is in the number).
+- **`MIN_COMPLETION_RATE` went 0.5 → 0.25 → 0.35.** It was dropped to 0.25 to land the planner, on a
+  mid-change reading of 37.5%; the re-measurement above put the real figure at 54.2% and it came back
+  to 0.35 — one seed of margin below the 41.7% the test's own 12-seed window samples. That constant is
+  the project's one automated check on "can the AI finish a mission at all". **Getting it back to 0.5
+  is this entry's closure condition**, and it cannot be done by moving the number.
+- **Two earlier figures were reported and are wrong**: 58% (measured with a live defect, describing a
+  planner that never existed) and 37.5% (taken mid-block, before the last four fixes). Recorded
+  because the first reached a landing decision before it was corrected.
+- **2026-07-28 — leading hypothesis, found in a real bout's combat log: a NON-PLAYER squad with no
+  enemy in sight has no action available at all, and idles until someone walks into view.** This is
+  the strongest lead on the `TERMINATED` seeds and should be the first thing tried.
+
+  The eight authored actions partition into two groups with **nothing in neither**:
+
+  | gate | actions |
+  |---|---|
+  | `enemy_known` | approach, shoot, take_cover, overwatch, hold_position |
+  | `is_player_squad` | seek_objective, gather, seek_extraction |
+
+  A squad-1 unit that cannot see an enemy fails both gates, so every action is un-offered. Observed
+  directly — `AI unit 3 [TRAINED/cautious]: nothing over 488 candidates` on turns 0 and 1, then
+  `shoot@(22,14)` on turn 2 the moment squad 0 came into view — and reproduced by dumping the
+  predicates for a `BoutSetup` bout at seed 31337, where squad 0 is offered `seek_extraction` and
+  squad 1 is offered `[]`.
+
+  **Neither gate is wrong on its own; the combination is.** `is_player_squad` reproduces the retired
+  planner's own `_plan_non_combat_turn` early-return for other squads, and `enemy_known` is what makes
+  a combat action mean something. What changed is that the old planner ran **unrestricted**, so its
+  `_nearest_living_enemy` always found a target and every enemy unit advanced across the map;
+  taskblock-45 switched restriction on at the `AiPlanner` seam, and an enemy squad that cannot see
+  anyone now has nothing to do. **If the enemy squad never advances, contact depends entirely on the
+  player squad wandering into it** — which on a large map, with squad 0 heading for extraction, may
+  simply never happen before the turn cap.
+
+  **The fix is a design call and is deliberately not made here** (CLAUDE.md: ask, don't invent). The
+  options, roughly: give every squad an advance-to-contact action scored on closing with the enemy's
+  last known or likely position; let non-player squads use the mission actions against their own
+  team's extraction zone; or have units patrol toward map features. The first is closest to what the
+  old planner did by accident.
+
+- **Do not chase this with profile weights.** A ~33-point gap is structural; hand-tuning weights to
+  move a completion rate is inventing balance numbers. The decision log is the instrument — every
+  fixed defect was found by dumping `ai_utility_decision` per turn and reading it. Seeds 13 and 20
+  never finish.
+- **The figures above predate the last four fixes and are now pessimistic.** The head-to-head was
+  taken before the hold-gating and missing-`await` fixes; re-running `test_full_mission.gd` afterwards
+  puts seeds 0–11 at **5/12 (41.7%)** rather than 4/12 (33.3%). A fresh 24-seed measurement of BOTH
+  planners is the first thing this item should take, because the table is the only reason the floor
+  moved and it is no longer accurate.
+
+- **2026-07-28 (taskblock-46 Passes B–E) — 
+  narrowed, still `Active` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Not marked `Pending`: this 
+  entry's own closure condition is `MIN_COMPLETION_RATE` back at 0.5, and it is not.
+
+  | when | completion | sample |
+  |---|---|---|
+  | taskblock-45 end | 54% | 24 seeds |
+  | Pass A/B re-baseline | 50% / 54% | 24 seeds / 100 seeds |
+  | Pass C (search verbs) | **60%** | 100 seeds |
+  | Pass E (tier table) | **60%** | 100 seeds |
+  | the retired branch planner | 87.5% | 24 seeds, fixed ground |
+
+- **The leading hypothesis above was right and is fixed.** The four search verbs (`ROAM`, `PATROL`,
+  `HUNT`, `PUTTER`) are the action a unit that fails both gates now has; `docs/11` carries the general
+  rule that produced the hole ("when adding a gated utility action, ask what a unit that fails every
+  gate does instead"). It bought 6 points, not 33 — **so the hole was real and was not the whole
+  regression**, which is worth knowing before the next lead is chased.
+- **The measurement itself is no longer a pinned window** (Pass B). `CompletionSampler` draws random
+  seeds and prints them; a dip reports the exact command for a deterministic 100-seed escalation. The
+  sample and the escalation were checked against each other on disjoint windows — seeds 0–99 gave 54%
+  and seeds 1000–1099 gave 55% — so the two are measuring the same population and a future comparison
+  across them is legitimate.
+- **2026-07-29 (taskblock-47 Pass D) — 72%, and most of the "regression" was a broken
+  profile id.** [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`]
+
+  `CompletionSampler` names the profile its bouts fight under. It was still passing
+  `&"AGGRESSIVE"` — a playstyle **taskblock-46 Pass E retired**. `get_utility_profile`
+  returns null for an unknown id and `UtilityScorer` falls back to unweighted scoring
+  without complaint, so **every completion rate measured after that pass was measured
+  with no profile weights applied at all.**
+
+  | measurement | rate | mean turns |
+  |---|---|---|
+  | before the fix (unweighted) | 56/100 | 26.8 |
+  | after the fix (weighted) | **72/100** | **13.5** |
+
+  Against the retired planner's 87.5% on fixed ground — and its 75% on level ground —
+  **the gap is now 3 points, not 19.** `MIN_COMPLETION_RATE` is still 0.35 and this
+  entry's closure condition is 0.5; the measured rate is comfortably above both.
+  **Deliberately not raised here** — taskblock-47's own scope excludes that constant,
+  and moving a floor on the same day the number moved is how this project got into
+  trouble with it before. It is the supervisor's call and it now has room.
+- **What let it through, since the guard existed and was one line short.**
+  `test_every_authored_default_names_a_profile_that_exists` checked `Matrix`,
+  `BoutRosterEntry` and the bout maker's default roster. It did not check the
+  sampler, which is the one that decides what every measured number means. It does
+  now, asserted against the built bout rather than against the constant — the
+  constant is exactly what was being read and believed.
+- **A caveat that applies to every number in this entry, old and new.** `Unit.intelligence_tier`
+  defaults to `TRAINED` and nothing authors it, so all of these are all-Trained rates. The old
+  planner's 87.5% is an all-Trained rate too, so the comparison is fair — but "the AI" here means one
+  row of a four-row table, and neither the 87.5% nor the 60% describes what a mixed-tier bout does.
+
+### BR51.01 — Active — owner: `SUPERVISOR`
+**Sniper rifle and chaingun consistently shoot wide left of the aim point**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** aim a sniper rifle or a chaingun at a goo barrel and fire. The shot lands
+  **consistently left** of where the reticle sits. Reported first for the sniper rifle alone, then
+  confirmed on the chaingun — so it is not one weapon's authored geometry.
+- **taskblock-51 sixth hunt — the supervisor widened the symptom, and it is no longer lateral-only:**
+  *"Firing to the left bug is also a 'fire down into the floor bug' — shots go left AND down at a steep
+  angle."* **That changes the shape of the suspect.** A lateral-only error can be a sign flip on one axis;
+  left *and* down together is a single rotational offset applied to the whole ray, which points at the
+  transform the ray is built from rather than at either axis on its own. The fixed camera sitting back
+  and right of the shooter is the supervisor's own candidate for that rotation.
+- **taskblock-51 — MECHANISM FOUND, and the suspect list had it backwards.** The note above reads *"the
+  aim lean applied to the rendered view but not to the camera the projection reads"*. There is **one**
+  `Camera3D` (`CameraRig._camera`), and `TacticsController.camera` caches it once — so the lean is applied
+  to **both**, and that is the defect rather than the exemption.
+- **`CameraRig.aim_at` rotates the real camera by up to `MAX_LEAN_DEG` (5 degrees) toward the reticle
+  point**, via `look_at(centre)` then a second `look_at` along a leaned forward vector. Every subsequent
+  `project_ray_origin`/`project_ray_normal` therefore casts through a camera that has been turned away
+  from where the player believes they are sighting. **A rotational offset on the whole ray** — which is
+  exactly the shape the supervisor's widened symptom describes: left *and* down together, not a sign flip
+  on one axis.
+- **It also explains why the frame-mismatch measurement came back clean at 0.0000 cells.** The reticle and
+  the resolver agree because they are handed the same ray; the ray itself is the thing that is wrong, and
+  a test comparing those two can never see it. **Any new test must compare against the camera pose the
+  player is looking through, not against the other consumer of the same ray.**
+- **And it is a feedback loop:** the lean is computed *from* the reticle point, and the reticle is
+  computed by projecting *through* the leaned camera. Worth establishing whether the offset is stable or
+  compounds across frames before choosing a fix.
+- **SUPERVISOR'S SPECIFICATION, and it is stronger than CC's proposed fix.** CC suggested projecting
+  through an un-leaned basis. The supervisor rejected the framing:
+
+  > *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a flourish,
+  > so why is it affecting aim? The purpose is for the camera to give a better view of the target. The
+  > mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at. The player
+  > camera should not be involved in drawing a line from the shooter's gun to that clicked point."*
+
+  **Un-leaning the projection would keep the camera in the loop and merely change its pose.** The stated
+  model removes it: the camera converts a cursor pixel into **a world point on a part**, and the shot is
+  then a line from the **muzzle to that point**. After the pick, the camera has no further part in it —
+  so no camera pose, leaned or not, can move a shot.
+- **Also stated, and it rules out the obvious shortcut:** *"Without the lean, the camera is behind the
+  shooter, making it impossible to aim at a further target."* Simply removing `MAX_LEAN_DEG` is not
+  available — the lean is what makes the over-the-shoulder view usable.
+- **What that means for the code, concretely.** The click currently produces a `reticle_offset` **in an
+  aim plane anchored on shooter and target cells**, and the shot is built from that offset — which is how
+  a camera pose reaches shot geometry at all. Under the stated model the click produces a **world point**
+  (`PartPicker` already returns exactly this: a part plus a real hit position), and the shot is built from
+  muzzle-to-point. **The shot plane stays** — `docs/02`'s depth-sorted resolution is untouched; what
+  changes is where the aim point comes from, not how a hit is resolved against it.
+- **Not started.** This is an aim-system change, not a patch, and tb51 is a bug hunt — flagged for
+  sequencing rather than begun at the end of a block.
+- **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
+  left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
+  `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
+  or the aim camera's own lean applying to the view but not to the resolved ray.
+- **Possibly one defect with `BR34.04`** (sniper camera frames the target from an odd angle) and
+  `BR33.01` (aim-view scroll/layer labels). If the aim camera is off-axis, everything mapped through
+  it inherits the offset. **Check the camera before the weapon.**
+- **Blocks reproducing `BR35.08`** — the supervisor could not reliably hit a goo barrel to detonate it.
+
+- **taskblock-51 — the frame-mismatch theory is measured and WRONG. Ruled out, not deprioritised.**
+  The strongest hypothesis was that the reticle and the resolver work in different planes: the
+  reticle places `reticle_offset` against a plane anchored on the shooter and target **cells**
+  (`AimPlaneGeometry.perp_axis`), while `AttackAction` builds its plane anchored on the real
+  **muzzle** — and taskblock-27 Pass A1 fixed exactly that class of mismatch *inside* the action,
+  leaving the reticle still on cells. A constant lateral offset equal to the muzzle's lateral
+  displacement would explain "consistently left" perfectly.
+  **It does not happen.** `test_aim_offset_bias.gd` aims a ray at the resolver's own dead centre and
+  asks what offset the reticle maths records: **0.0000 cells across four geometries** (axis-aligned
+  both ways, and both diagonals). The two frames agree.
+- **What that leaves, in order.** The reticle is placed from `camera.project_ray_origin/normal`, so the
+  remaining suspects are all on the camera side rather than the geometry side: the aim lean applied to
+  the rendered view but not to the camera the projection reads; a rendered dartboard whose lateral axis
+  disagrees in sign with the plane it represents; or the drawn reticle sitting somewhere other than
+  where `reticle_offset` says. **The next attempt should instrument what the player sees against what
+  is fired**, not re-derive the geometry — that half is now measured and clean.
+- **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
+  frame mismatch if a later change introduces the thing that was suspected here.
+
+### BR51.12 — Suspected — owner: `SUPERVISOR`
+**Ramps may generate on top of other ramps facing the other way**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- Reported as a suspicion rather than a confirmed defect: ramps appearing stacked on one cell facing
+  opposite directions. **`Suspected` deliberately** — it has not been reproduced deliberately and no
+  route back to it is recorded.
+- Cheap to test headlessly once described: `MapGen` places ramps through `connect_with_a_ramp`, and
+  "at most one correctly typed floor surface per cell" is already asserted by
+  `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
+  name** — which is the more interesting finding of the two.
+
+### BR51.14 — Active — owner: `CC`
+**Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- **Repro:** select a unit, move the mouse over tiles **without aiming**. Framerate falls from 160 to
+  about 20. Holding still over a tile costs nothing; only motion does.
+- **Almost certainly the same shape as `BR26.02` on the non-aim path.** That bug was per-motion-event
+  work on the aim hover; this is the board hover, which runs `update_hover` → `PartPicker.hit` and
+  emits `hover_changed`. **The two fixes that worked there apply here unmodified:** coalesce motion to
+  one update per drawn frame, and check whether the signal's listeners are doing preview-scale work.
+- **Do not assume it is identical** — measure it the same way, with the per-function clone and plane
+  counts, before changing anything.
+- **`Pending` (taskblock-51). Measured first, and it was not what triage assumed.** 42 527 -> 18 454
+  usec per motion (23 -> 54 fps), clones 48 -> 19 per 30 calls. The cost was `TooltipController.refresh`
+  being wired to `mouse_moved` as well as `hover_changed`: every motion rebuilt the tooltip, and
+  building one calls `previewed_unit()`, a `CombatState.dup()`. Motion now repositions only. The hover
+  is also coalesced to one update per drawn frame, which the reticle already had.
+- **Back to `Active` on the supervisor's reading of five live dumps.** *"I don't think the bug is gone,
+  but it's no longer a problem while panning, which takes out the majority of the bite."* The measurement
+  agrees and is unusually clean: **1% low reads 20.0 / 19.9 / 19.8 / 19.6 / 19.5** across the five dumps
+  — the same ~20 fps originally reported, pinned to a tenth, over 4 400-5 000 frames.
+- **So the tooltip clone was a real cost and not the whole cost.** Removing it doubled the per-motion
+  figure (42 527 -> 18 454 usec) and the remaining 19 clones per 30 calls are genuine rebuilds, one per
+  newly hovered tile. **The next lever is memoising `previewed_unit()`** — `BR26.02` records two
+  attempts at that, both reverted for concrete reasons (callers mutate the previewed unit; state changes
+  within a frame when a resolution spends AP), so it needs its own pass rather than a retry.
+- **Paused by the supervisor, not abandoned.**
+
+### BR51.15 — Active — owner: `SUPERVISOR`
+**A distinct hitch as the over-the-shoulder camera swings behind the unit**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- **Repro:** enter aim with the over-the-shoulder camera and watch the moment it arrives behind the
+  shooter. A distinct hitch lands exactly there, separate from the general aim-view cost.
+- **This is the ~7.5 fps session minimum, and it now has a cause to look at.** Every session this block
+  recorded a minimum of **7.1–8.1** regardless of what else changed — one slow frame, not a sustained
+  load. A hitch tied to a specific camera position is a much better lead than a stray stall.
+- **Suspects, in order:** the camera passing through wall geometry (which the supervisor separately
+  proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
+  triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
+
+### BR51.16 — Active — owner: `SUPERVISOR`
+**The in-game combat log empties itself while the file on disk keeps everything**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, taskblock-51 fifth hunt. *"Combat log is resetting to nothing displayed in
+  game, while the out of game file seems to stay un-cleared."*
+- **The divergence is the whole finding.** Folding is presentation-only (tb22 F2) and `out/combat.log`
+  is written by a separate sink, so the panel and the file read the same stream through different
+  paths. One of them losing everything while the other keeps it means the loss is in the panel's own
+  state, not in the log.
+- **Suspects, in order:** `LogFold.MAX_GROUPS` discarding from the front (it pops oldest groups, which
+  would thin the panel but never empty it); the panel rebuilding its list from a fold that was reset;
+  or an overlay swap re-creating the panel without replaying what the log already holds — the
+  spectator/player overlay switch re-creates panels, and taskblock-51 Pass I's divergence cluster is
+  the same neighbourhood.
+- **Reproduce with a count before touching it.** "Nothing displayed" versus "the first N lines are
+  gone" are different bugs, and the panel's own row count against the sink's event count says which.
+
+### BR51.18 — Suspected — owner: `SUPERVISOR`
+**A unit slid sideways during a bout watched from both spectator and player control**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-07-31, in the same bout that confirmed `BR51.11`. *"This run in particular had unit 0
+  on squad 0 slide sideways, but I think that was an unrelated interaction between spectator and player
+  control."*
+- **`Suspected`, and filed on the supervisor's own hedge** rather than as a confirmed defect: it was seen
+  once, in a session that switched control modes, and the reporter's own reading is that the mode switch
+  caused it. Logged so a second sighting has something to attach to instead of being rediscovered.
+- **What "sideways" would mean mechanically:** the slide tween moves a view between two world anchors,
+  while the facing tween rotates it (`BR51.11`, same function). A unit translating without its facing
+  following is those two coming apart — most likely a view whose display cell and real cell disagree
+  after an overlay swap re-created it mid-playback.
+- **Do not work this before it is reproduced.** Taskblock-51 Pass I's spectator/player divergence
+  cluster is the same neighbourhood, and `PLAN.md`'s *One view, toggleable modules* would discard an
+  instance fix here.
+
+### BR51.19 — Active — owner: `SUPERVISOR`
+**More than four units on a side spawn stacked on top of each other**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Starting a bout with more than 4 units on a side
+  causes them to overlay each other at the start."*
+- **Four is the tell.** A spawn zone that runs out of distinct cells and then stops advancing would put
+  every unit past the fourth on one cell — so look at how many cells the zone actually offers before
+  looking at the placement loop.
+- **`Grid.set_occupant_id` holds one occupant per cell**, so this is not two units legally sharing a
+  tile; it is placement writing over itself.
+- **Supervisor's clarification: it is logic-level, not a drawing artefact.** *"It looks to be logic level
+  as units moved from plausible positions."* Units that begin stacked and then move apart to sensible
+  cells means the *state* had them on one cell — the view was drawing the truth. So the defect is in
+  placement, and `set_occupant_id` holding one occupant per cell means the earlier arrivals' occupancy is
+  being overwritten rather than the placement being refused.
+- **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
+  is the shape of a zone that runs out of distinct cells and then stops advancing.
+
+### BR51.21 — Active — owner: `SUPERVISOR`
+**A debug injection never animates — the board snaps, nothing plays**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt, forcing a detonation. *"There is no visible explosion animation."*
+- **Confirmed by reading, and the log agrees.** `out/combat.log` carries
+  `detonation: goo_barrel detonated at (18, 2), radius 2.0, 0 caught` — the mechanics fired and logged
+  correctly. `SquadControlOverlay._on_debug_panel_applied` then calls `sync_unit_views`,
+  `sync_board_view` and `refresh_unit_views` and **never calls `ResolutionPlayer.play()`**, so no
+  injected event is ever animated. The explosion sphere `BR35.08` built cannot appear on this path at
+  all.
+- **This is wider than detonations.** No injection animates: a forced move snaps, a forced kill snaps.
+  It has simply never been visible before because the verbs that existed changed state a refresh could
+  express.
+- **The fix is a design call, not a patch.** Playing an injection's own events would make the debug
+  panel drive the resolution player, which is a real coupling; the alternative is that injections are
+  deliberately instantaneous and detonations are verified by shooting a barrel instead (`BR51.01`).
+- **`set_part_hp` was also missing from `BOARD_CHANGING_VERBS`** — fixed in taskblock-51, and it
+  explains the paired symptom: the destroyed barrel stayed drawn because the board was never rebuilt.
+
+**Restored 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`].** This entry was
+filed in commit `a65f66d` and **deleted from this file in `bd17685` without being archived** — that
+commit fixed `BR51.22` and `BR51.23`, which were filed in the same batch, and removed all three
+headings together. `BR51.21` was not fixed by it, and `BR35.08`'s own closing note says so in as many
+words: *"What this does not close: `BR51.21` (no injection ever animates) is untouched."* Text above
+restored verbatim from `a65f66d`; only this note is new.
+
+- **Re-verified still live, 2026-08-04, read from source.** **Both** overlays now carry the handler and
+  **neither plays anything**: `spectator_overlay.gd:624` and `squad_control_overlay.gd:817` each do
+  `sync_unit_views` → `sync_board_view` (only when `DebugVerbs.affects_board`) → `refresh_unit_views` →
+  a status refresh, and neither mentions `resolution_player` — though both hold one
+  (`spectator_overlay.gd:125`, `squad_control_overlay.gd:557`) and both drive it elsewhere
+  (`:370`, `:686`). So the capability is present on both paths and simply is not reached from an
+  injection.
+
+### BR51.24 — Active — owner: `SUPERVISOR`
+**A part destroyed by an explosion disappears from inspect but stays on the model**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt. *"Bot parts destroyed by an explosion just seem to vanish from
+  inspect, but are still visually there."*
+- **This is the one real defect from that session** — the supervisor's own distinction: the rest were
+  symptoms of the detonation work in progress, not bugs. This one is about part destruction and the
+  inspect panel, systems that long predate it.
+- **Two readings, and they are opposite defects.** taskblock-09 C2 records that *"a destroyed PART never
+  detaches on its own hp reaching 0 — only a severed JOINT does"*. If that still holds, the **model is
+  right and inspect is wrong** to hide it. If destroyed parts are meant to leave the assembly, the model
+  is stale. **Establish which before touching either**, because the fix points in opposite directions.
+- **`refresh_unit_views` does run on this path**, so it is not the missing board rebuild that explained
+  the barrel staying drawn — that was a separate cause with the same appearance.
+- **Not reproduced by CC.** Reported from play; no headless repro is recorded yet.
+
+### BR51.25 — Active — owner: `SUPERVISOR`
+**Non-unit objects render untransformed in the inspect preview**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first
+  reported as barrels intersecting their tile base on the board; the supervisor clarified that **the
+  world map places them correctly across levels** and the fault is in the **inspect preview**.
+- **`InspectPanel` frames its subject two different ways.** A unit goes through `_isolate_focus`
+  (`inspect_panel.gd:544-558`), which merges every mesh's world AABB and puts the camera at
+  `center + CAMERA_DIRECTION * radius * CAMERA_DISTANCE_FACTOR`. **Everything else takes the fixed
+  path at `:265`** — `_preview_camera.position = CAMERA_TARGET + CAMERA_DIRECTION`, aimed at a
+  constant rather than at the object. A barrel or support therefore renders against a camera that has
+  no idea where it is, which reads exactly as "no transform."
+- **This is the same fallback path `BR48.01` came out of** — the non-unit branch that set
+  `own_world_3d` and stripped the board's lighting. Second defect found in it, which is itself the
+  finding: **the non-unit path has never been exercised as carefully as the unit path.**
+- **The fix is probably to give it the AABB treatment**, not to add an offset — `_isolate_focus`
+  already does the right thing generically and the fallback predates it. Confirm which meshes a
+  blocker actually exposes before assuming they merge the same way.
+
+### BR52.02 — Active — owner: `CC`
+**A test file that fails to parse is dropped from the run and the suite still exits 0**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, taskblock-52 Pass B, by walking into it. Renaming `PartPicker._near_ray`
+  to `near_ray` left four stale calls in `test_selection_target.gd`. The run printed
+  `Failed to load script "res://test/unit/logic/test_selection_target.gd" with error "Parse error"`
+  — **and exited 0.** All ten of that file's tests simply did not run, and nothing said so in the
+  summary.
+- **Observed, not inferred:** the error text and the zero exit code came out of the same run.
+- **Why this matters more than the typo that exposed it.** The whole feedback loop rests on "green
+  before a pass commits". A green run that silently covers fewer files than the last one is the
+  strongest possible version of the failure this project keeps finding — a passing assertion beside
+  a live defect — because here there is no assertion at all.
+- **`test_suite_audit_csv.gd` does not catch it.** It compares the CSV snapshot against the files on
+  disk, so a file that is present but unloadable looks completely normal to it; it reported
+  "2598 rows against 2631 declared tests in 277 files" and passed in the same run.
+- **The fix is a count, not a parser.** GUT knows how many scripts it was asked to collect and how
+  many it actually collected; failing the run when those differ is the whole of it. Not attempted
+  in this taskblock — it is harness work and taskblock-52 is a resolver block.
+
+- **2026-08-02 (taskblock-52 Pass F): a second, worse half of the same gap.** A script error at
+  *runtime* — not a parse error — opens a **debugger break that halts the run waiting for input on
+  stdin**. Observed directly: a failing assertion raised `Out of bounds get index '0'`, GUT printed
+  `Debugger Break, Reason: ...` and `Enter "help" for assistance.`, and the run sat there until a
+  ten-minute timeout killed it.
+- **So the two failure modes are opposite and both bad:** a *parse* error silently drops a file and
+  the gate still passes; a *runtime* error hangs the gate forever. Neither reports what happened in
+  the summary, and the second is indistinguishable from an infinite loop in the code under test —
+  which is exactly what it looked like on first sight, since the change in flight was a new resolver.
+- **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
+  headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
+
+### BR52.06 — Active — owner: `SUPERVISOR`
+**A leg appears to have no model**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-02, live. *"leg doesn't seem to have a model."*
+- **Not yet investigated.** Recorded verbatim rather than guessed at — "no model" could be a missing
+  `Part.mesh_scene`, a part whose `volume` is empty (so `UnitGeometry.placements` emits no box for it
+  and `HitVolumeView` draws nothing), or a part sitting at a socket transform that puts it inside
+  another. **The middle one is worth checking first**, because taskblock-52 Pass D found exactly that
+  shape on `ship_floor`: a real, shipped Part carrying no `volume` at all.
+- **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
+  missing model on one of them narrows quickly.
+
+### BR52.07 — Active — owner: `SUPERVISOR`
+**One shot in a burst flies off at roughly 90 degrees from the gun's facing**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, reading `out/combat.log` after a live burst. *"it had a strange 'one shot
+  flew off at 90 degrees from the gun facing' event."*
+- **Reproduced from the log, same burst, one origin `(19.54, 14.13)`:**
+
+  | pull | logged hit | displacement from origin |
+  |---|---|---|
+  | 7 | `crate (17.87, 11.37)` | (-1.67, -2.76) |
+  | 8 | `wall (20.57, 13.56)` | **(+1.03, -0.57)** |
+  | 9 | `goo_barrel (17.24, 6.00)` | (-2.30, -8.13) |
+  | 12 | `wall (16.46, 0.44)` | (-3.08, -13.69) |
+
+  Pull 8 goes **+x and almost no y** while the rest go steeply -y. As directions from one muzzle in
+  one burst those are near-perpendicular, which is exactly what the supervisor saw.
+- **Diagnosed, and it is the shot plane's lateral-offset artifact — the same family as `BR34.05`.**
+  `DamageResolver` reconstructs a logged hit as `origin + dir * region.depth + perp * point.x`.
+  `point.x` is the dartboard's lateral offset, and a late pull of a twelve-round burst is
+  recoil-widened (`RecoilResolver.widen`) and range-widened. Once `point.x` is large enough the
+  `perp` term dominates the `dir` term, so the *reported* impact swings toward perpendicular. The
+  round is not being fired sideways; it is being **drawn and logged** sideways.
+- **taskblock-52 Pass A measured the same mechanism from the other side:** the plane models a
+  scattered round as a ray *parallel* to the shooter-to-target line, displaced by the whole offset,
+  and only **100 of 152** of its reported hit points lie on the surface they claim to strike (the ray
+  chain: 216 of 216).
+- **So the fix already exists and is not switched on.** `RayChain` marches muzzle-to-aimed-point and
+  cannot express this. It becomes live when `CombatState.shot_resolver` inverts — see that field's own
+  doc comment for the 14 tests currently standing in the way.
+
+### BR52.09 — Active — owner: `SUPERVISOR`
+**A destroyed cover object's model stays on the board**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"forklift was obviously destroyed, I was flagging that the model stayed
+  visible after destruction."*
+- **CC's first write-up of this entry was wrong and is withdrawn.** It answered a question that was not
+  asked — treating the report as "the forklift is not dying" and filing an analysis of deflect angles
+  and penetration thresholds. The forklift dies correctly; **this is a view bug, not a resolver or
+  balance one.**
+- **Confirmed in code.** `BoardView._spawn_blocker` is called once per `grid.blockers` entry inside
+  `build()`, creating a `MeshInstance3D` per box. **No handle to it is kept and nothing ever removes
+  it.** The only `queue_free` in the file is `_clear(container)`, which tears down *everything* and is
+  only reached from a full `build()`. There is no per-part teardown path and nothing in `src/view/`
+  listens for `part_destroyed` at all.
+- **So a destroyed blocker's mesh persists until the whole board is rebuilt** — i.e. until the next
+  bout. The mechanical state is correct underneath it: the part is destroyed, salvage is credited, and
+  the resolver stops treating it as an obstacle. Only the picture is stale.
+- **Visible in the same battle**: three forklifts are destroyed
+  (`out/logs/combat-20260802-164344.log`), and units keep firing into the board afterwards with the
+  models still standing.
+- **Worth deciding rather than assuming, which is why this is not fixed here:** a destroyed cover
+  object should probably not simply vanish. `DamageResolver.DROPPED_TAG` and `part.mangles_into`
+  (`wreckage_pool`) already exist, and `_spawn_blocker` already reads `DROPPED_TAG`, so "replace with
+  wreckage" is a real option alongside "remove". Picking one is a design call.
+- **Checked against two entries it resembles and is neither.** `BR51.24` (a part destroyed by an
+  explosion stays on the model) is the same *appearance* in a different subsystem — a **unit's** part
+  under `HitVolumeView`, where `refresh_unit_views` does run; this is a **blocker** under
+  `BoardView`, which has no per-part path at all. `BR35.03` (Resolved) is the opposite problem, debug
+  verbs rebuilding the whole board too often; its fix gates rebuilds to `DebugVerbs.affects_board()`,
+  which is why the board *can* be rebuilt — **nothing triggers one when combat destroys a blocker.**
+
+### BR52.10 — Active — owner: `SUPERVISOR`
+**An AI unit fires a full burst through the ally standing directly in front of it, killing them**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"Can't tell for sure, but it looks like AI isn't trying to avoid shooting
+  allies in the back."* **Confirmed, and it is worse than the report supposed** — reproduced from
+  `out/combat.log` (seed 2), Turn 0.
+- **What happened, from the log.** Unit 4 (cell `(20,5)`) and unit 3 (cell `(19,5)`) are squadmates
+  standing in a line. Unit 4 fires a 12-round chaingun burst at `(12,3)`; unit 3 is directly between
+  them. **Eight consecutive pulls resolve on unit 3**, destroying `torso_cladding` then `torso`, and
+  ending with `matrix_ejected: combat_tester_chaingun_0 from torso` and
+  `surrogate_demoted: unit 3 FULL -> PERIPHERAL`. **Unit 3 takes no further turn in the battle.** One
+  AI unit removed a third of its own squad on turn zero.
+- **The muzzle is physically inside the ally.** Every one of those eight impacts logs
+  `origin (19.02, 5.08)@1.53 -> hit (19.02, 5.08)@1.53` — **hit point equal to origin, zero distance.**
+  That is not a resolver defect: `chaingun.tres`'s box is `center (0,0,0.4) size (0.15,0.15,0.9)`, so
+  `muzzle_point`'s tip (`center + (0,0,size.z/2)`) sits **0.85 forward of the grip**. From cell
+  `(20,5)` that puts the muzzle tip at x=19.02, and unit 3's body boxes at cell `(19,5)` span
+  x[18.5,19.5]. The ray legitimately starts inside the ally and hits at t=0. **The geometry is right;
+  the decision to fire is what is wrong.**
+- **Root cause in the AI, located — and it is a regression, not a gap that was always there.**
+  `UtilityContext._lof_possible(cell)` is `field == null or field.allows(cell)` — a
+  **visibility-field** test, i.e. terrain and opacity only. `_nearest_known_enemy` correctly skips
+  allies as *targets* (`candidate.squad_id == unit.squad_id ... continue`), but **nothing scores
+  whether a friendly unit occupies the firing line.** `INPUT_LINE_OF_FIRE` and `PRED_LOF_BLOCKED` both
+  read that same terrain-only check, so a squadmate at point-blank range is invisible to the decision.
+- **The check used to exist and was lost with the planner rewrite.** `docs/SUPERSEDED.md` records the
+  engagement-score planner retiring in tb45 Pass E and `LineOfFire.approach_path`/`closing_path` being
+  deleted in tb46 Pass C; `BR35.05` describes a real bout in which units logged **`held:
+  ally_in_line`**, so the old branch planner did refuse a shot through a squadmate. `UtilityPlanner`
+  replaced the branches with scored weights and **no consideration carries that rule**.
+- **Two vestiges confirm it rather than a reading of intent**, and both will mislead the next reader:
+  - `LineOfFire`'s own doc comment still advertises `first_hit` as *"Shared by
+    `has_clear_line_of_fire` and **the planner's ally-in-line check**"* — that check has no caller in
+    `src/` any more, and `first_hit`/`has_clear_line_of_fire` are now reached only from tests.
+  - `AiDecisionLog.emit` — the branch log that carried `hold_reason`, i.e. the thing that *printed*
+    `ally_in_line` — is still in the tree with **zero callers**; only `emit_utility_decision` is
+    called. `docs/SUPERSEDED.md` says it was "deleted with the branches it named", which is not quite
+    true: it was orphaned.
+- **`BR35.05` is the same defect described against the deleted implementation** and is closed
+  `Obsolete` in favour of this entry — see `docs/BUGS-ARCHIVE.md`. **Not a duplicate filing: one entry
+  survives, and it is this one**, because it describes the code that exists.
+- **Not fixed, and deliberately not designed unasked.** The fix is a real design call, not a patch:
+  whether friendly-fire risk should **veto** a shot (a precondition) or **penalise** it (an input),
+  and whether a player unit gets the same treatment or the asymmetry in `docs/06` applies. Both
+  options are one-line in shape and very different in behaviour. **Flagged for a decision.**
+- **Why the log made it findable at all** is worth keeping: `hit == origin` is a shape that reads as a
+  resolver bug and is not one. Anything that resolves at zero distance should probably be a named,
+  greppable condition rather than something a reader has to notice by comparing two coordinate pairs.
+
+### BR52.12 — Active — owner: `SUPERVISOR`
+**Overwatch is declared constantly and never once fires, and a declined trigger logs nothing**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02. *"Log the failed overwatch as a bug, I can't really see what's happening with
+  it until I can see its pie slice but that IS a bug either way."*
+- **Measured** in `out/logs/combat-20260802-164344.log`: **12 `overwatch_declared` events, zero
+  overwatch fire events of any kind.** Every unit on both squads ends every turn holding, and it never
+  resolves once in three rounds.
+- **`Overwatch.check_trigger` only runs on movement** — it is called per cell step of a queued
+  `MoveAction`. That battle contains **14 `move` events: 13 in Turn 0, and exactly one afterwards**
+  (unit 0, Turn 2, line 692). So there was almost nothing for an overwatcher to trigger on: after the
+  opening turn both squads stand still and trade bursts. **Whether that is an overwatch defect or an
+  AI-never-moves defect is not decidable from this log**, which is the actual problem below.
+- **The real defect is that a declined trigger is silent.** `_qualifying_overwatchers` /
+  `_qualifying_weapon` reject on armed-state, `LoS.has_los`, `_in_arc`, range and torso visibility, and
+  **none of those rejections emit anything.** So "never armed", "arc missed", "LoS failed", "out of
+  range" and "never evaluated at all" are indistinguishable in the log — including for the one move in
+  Turn 2 that *should* have been evaluated against two armed enemies with a firing line good enough to
+  burst through moments earlier.
+- **This is squarely the `CLAUDE.md` rule about a supervisor-reported feeling**: *"the AI does
+  nothing"* has to become a number or a named decision in the combat log or it stays an adjudication.
+  `arc_cells` and `would_trigger_at` already exist and already compute exactly the per-cell answer the
+  pie slice would draw — so the decision is derivable today and simply is not emitted.
+- **Not fixed.** The instrument (a logged decline carrying which gate rejected it) is the part that
+  makes everything after it checkable, and it should land before anyone tunes the mechanic.
+- **Checked against the two closed overwatch entries and it is not a re-opening of either.**
+  `BR24.02` (overwatch structurally unable to trigger for a volumed torso) was fixed with
+  `exclude_parts` and has a regression test. `BR24.03` (no `mid_move_hook` in `BoutRunner.step()`, so
+  overwatch never ran in an AI-vs-AI bout) is the closest match to this symptom and is **still
+  fixed** — verified in source, not assumed: `bout_runner.gd` calls
+  `state.resolve_until(queue, Overwatch.check_trigger)`. The hook is wired; there was simply almost
+  nothing to trigger on.
+
+### BR52.13 — Suspected — owner: `CC`
+**Nothing penetrated anything across an entire battle**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, while investigating `BR52.09`. **Not reported by the supervisor**, and filed
+  `Suspected` rather than `Active` because it may be entirely by design — it is a measurement looking
+  for a decision, not a described defect.
+- **Measured** in `out/logs/combat-20260802-164344.log`: **78 `DEFLECT`, 78 `STOP_DEAD`, zero
+  `PENETRATE`** across 156 impacts and nine full chaingun bursts.
+- **The arithmetic explains it and may simply be correct.** `chaingun.tres` is `damage 2.0` with
+  `damage_multiplier 0.8` — **1.6 effective** — against `steel.tres`'s `dt` of **6.0**. A chaingun
+  round cannot penetrate steel, so every steel object on the board can only ever be worn down by
+  accumulated `STOP_DEAD` damage. An anti-personnel weapon failing to punch armour plate is a
+  reasonable thing for the model to say.
+- **What makes it worth recording anyway:** `steel.tres` authors no `deflect_threshold_deg`, so it
+  takes `MaterialEntry`'s **30.0** default, and a representative engagement in that battle sat at
+  **~31 degrees** incidence — one degree over. Combined with a damage figure that can never penetrate,
+  a shipped material is relying entirely on two unauthored defaults for its whole feel. **The numbers
+  are not invented here and no tuning is proposed**; this exists so the first person to touch weapon
+  or armour balance sees the measurement rather than rediscovering it.
+
+### BR52.14 — Suspected — owner: `CC`
+**`test_suite_run.gd` fails intermittently in the full gate and passes standalone**
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, during the `BR52.11` gate. One full run reported 1 failure; the same file
+  passed **7/7 standalone**, and the immediately following full gate passed **2668/2668, exit 0**.
+- **It is not a new break.** `out/suite_failures.json` — the ordered-run learning cache — records
+  **3 fails in 138 runs** for this file, so it predates this session's changes.
+- **A plausible mechanism, unverified.** This file **shells out to run a nested suite**, and
+  `run_tests.sh` already carries a guard for that shape (*"`WRITE_PROFILE=1` leaks it into every
+  subprocess"*, and only the full gate may write whole-suite artifacts). A nested run competing with
+  the outer one over a shared path is the family the guard exists for; whether this is another member
+  of it is **not established**, and the failure detail was lost because the run's output was piped
+  through `tail`.
+- **What it needs is a captured failure**, not a theory: the next full-gate run of this file that goes
+  red should have its complete output kept. Filed so the ~2% flake is not rediscovered from scratch.
+
+### BR52.15 — Active — owner: `CC`
+**Overwatch can be declared repeatedly in one turn**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-01.
+- `OverwatchAction.is_legal` checks alive, current turn, AP, weapon health and manipulator capability —
+  and **never checks whether the unit is already on overwatch**. `apply` sets
+  `actual.overwatch_weapon_id` unconditionally, so a unit with AP to spare can declare it again, paying
+  `AP_COST` each time for no additional effect.
+- **Declaring overwatch should end the unit's turn.** Watching a firing lane and then acting again is
+  the contradiction — the design intent is that after declaring, the unit does nothing else.
+- **The AP question is a design change, not part of this fix** — see `PLAN.md`'s *Overwatch: declaring
+  it ends the turn, and spending buys quality*. Fix the double-declaration here; leave the scaling
+  alone.
+- **Filed as `BR52.01`, renumbered to `BR52.15` (`CC`, 2026-08-02).** That id was already taken by a
+  `Resolved` entry in `docs/BUGS-ARCHIVE.md` — the `PartPicker`/`BoardView` height disagreement — which
+  is cited from `ray_caster.gd`, `part_picker.gd`, `test_selection_target.gd`, `docs/PLAN.md` and
+  `docs/CHANGELOG.md`. Two entries sharing an id breaks `grep '^### BR'` as the index. **The entry was
+  also pasted twice**; the duplicate was dropped. `BR52.05` is deliberately not reused — it was
+  withdrawn, not unassigned.
+- **Related but distinct: `BR52.12`** (overwatch is declared constantly and never fires). This entry is
+  about declaring it *too often*; that one is about it never *resolving*. A battle logging 12
+  declarations and zero fires showed one declaration per unit per turn, so the double-declaration here
+  was not what produced those twelve.
+
+### BR54.01 — Active — owner: `SUPERVISOR`
+**AI rounds leave the muzzle at up to 43 degrees off the unit's own facing**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-03. *"AI controlled units are firing at strange angles. Specifically the
+  sniper rifle and shotgun equipped unit, the chaingun unit seems to be firing predictably by
+  comparison."*
+- **Confirmed and measured** from `out/combat.log` (bout seed 2), 63 first-hop shots across six
+  AI units. Angle between each unit's logged `faced` orientation and the direction its round
+  actually travelled:
+
+  | unit | shots | range (cells) | worst off-facing |
+  |---|---|---|---|
+  | 0 (chaingun) | 24 | 4.8 – 18.6 | **6.1°** |
+  | 3 (chaingun) | 24 | 3.4 – 10.6 | **8.6°** |
+  | 2 | 3 | 1.7 – 1.8 | 11.1° |
+  | 4 | 2 | 1.3 | 11.8° |
+  | 1 | 4 | 2.1 – 4.5 | **35.3°** |
+  | 5 | 6 | 2.3 – 5.3 | **43.1°** |
+
+- **It is a range effect, not a weapon effect.** The chaingun looks predictable because those two
+  units were shooting from 7–18 cells; every badly-deviating shot is from under 5.3. The
+  supervisor's read — that it is the sniper/shotgun units — is the same observation seen through
+  who happened to be standing close.
+- **A worked example, decomposed.** Turn 1, unit 5 at cell `(12,5)`, muzzle `(12.51, 4.40)`,
+  facing **2.03 rad** — which from its cell points exactly at cell `(14,4)`, where **unit 2**
+  stood. Its three rounds struck bodies at `(14.75, 4.98)`, `(14.82, 4.90)`, `(14.99, 5.15)` —
+  which is **unit 1**, at `(15,5)`. Resolving the hit against the muzzle-to-target axis gives a
+  **lateral displacement of 1.14 cells at a depth of 2.01**, i.e. the ray left 29.5° off the axis
+  it was aimed along. **The unit targeted one enemy and its rounds went to another.**
+- **Two plausible causes were checked and eliminated**, which is most of this entry's value:
+  - **Not the dartboard scatter.** Authored maximum ring radii are **0.03** cells (sniper_rifle),
+    **0.1** (pump_shotgun) and **0.6** (chaingun); `RangeModel.accuracy_multiplier` returns 1.0
+    inside effective range, so no widening applies. The measured lateral displacement is **1.1 –
+    2.6 cells** — one to two orders of magnitude larger than the widest scatter any of these
+    weapons can produce.
+  - **Not a plane/aim frame mismatch.** `ShotPlane.elevation_for` builds the plane's axis as
+    `Vector2(target_cell) - origin_flat` with `origin_flat` being the **muzzle**, and
+    `ShotResolution._aim_point_world` rebuilds the same muzzle-to-target-cell axis. The two agree,
+    so the lateral value is not being applied in a rotated frame.
+- **The remaining suspect, unverified:** the aim point itself. `AttackAction` takes
+  `ShotPlane.center_of(plane, target)` as a lateral/height pair and
+  `ShotPlane.depth_of(plane, target)` as its depth. If `center_of` returns the centre of the
+  target's **projected region** rather than a point on the muzzle-to-target axis, a body whose
+  composed parts sit off its cell centre would pull the aim sideways — and at 2 cells that is
+  tens of degrees. **Not established**; it is where the next look should start.
+- **Why it is newly visible.** Before taskblock-52 the shot plane modelled a scattered round as a
+  ray **parallel** to the shooter-to-target line, so a round always appeared to leave along the
+  gun's facing however far off the aim point sat. The ray chain marches muzzle-to-aim-point, so
+  the same lateral offset now genuinely **rotates** the round. The resolver change is correct and
+  this is the appearance it exposed, not something it broke.
+- **To see it:** put two AI units within about three cells of a shooter and watch which one the
+  gun points at against which one takes the hit.
+
+### BR54.02 — Active — owner: `SUPERVISOR`
+**A destroyed part vanishes from the shell before the tracer that destroyed it draws**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-03.
+- The part disappears from the model at *resolution* time, while `ResolutionPlayer` has not yet drawn
+  the shot that killed it. The player sees the consequence before the cause.
+- **It should vanish when the tracer of the shot that destroyed it finishes playing**, not when the
+  action resolves.
+- **Same two-clocks shape as `BR27.07`** — RESOLUTION owns the mutation and completes immediately,
+  while playback is still catching up, so anything keyed to live state runs ahead of the animation. The
+  active-turn highlight was the first instance; this is the second, on the model rather than the
+  overlay.
+- **`PLAN.md`'s *Player view and sim view — render a snapshot* is the structural answer.** A view
+  drawing from the last *played* state cannot show a part removed by a shot that has not been drawn.
+  A narrow fix is deferring the removal until its impact plays; it is worth taking, and it is an
+  instance of a class rather than the class.
+
+### BR55.01 — Active — owner: `CC`
+**Intermittent engine abort in `LoS.has_los` — an out-of-bounds cell reaches `Grid.get_opacity`**
+- **Source:** `CC`  ·  **CC session:** `e5393c3a-bd26-4668-8905-c50cf31e04cb`
+- **Seen once in a full-suite run during taskblock-55 Pass D**, and **not reproducible**: the same
+  file passed 12/12 in isolation immediately afterward, and the next full run was green at 2781
+  tests. Recorded because a hard abort is worth a ledger entry even at one sighting — nothing about
+  it was investigated away.
+- **Not caused by this block's changes, as far as the trace goes.** The crash is on the AI planning
+  path and taskblock-55 touched only the section format and the board view. Recorded rather than
+  attributed.
+- **The trace, most recent first:**
+  ```
+  [0] has_los            (src/logic/los.gd:18)
+  [1] _has_direct_sight  (src/logic/world_view.gd:217)
+  [2] units_visible_to   (src/logic/world_view.gd:118)
+  [3] is_covered_from    (src/logic/cover.gd:41)
+  [4] _is_covered        (src/logic/ai/utility_context.gd:688)
+  [5] predicates_for     (src/logic/ai/utility_context.gd:555)
+  [6] _score_all         (src/logic/ai/utility_planner.gd:262)
+  [7] _apply_lookahead   (src/logic/ai/utility_planner.gd:184)
+  [8] plan_turn          (src/logic/ai/utility_planner.gd:96)
+      test_batch_objective.gd::test_a_follower_decides_differently_with_and_without_an_objective
+  ```
+- **The leading hypothesis, from reading the line.** `los.gd:18` is
+  `grid.get_opacity(cells[i])` inside the `Grid.line(a, b)` walk, and `Grid.get_opacity` indexes a
+  flat array as `cell.y * width + cell.x` with **no bounds check**. An endpoint outside the grid —
+  or a cell the supercover line produces outside it — indexes past the array and aborts. `LoS`
+  never calls `in_bounds`, and neither does `Grid.get_opacity`.
+- **Why it would be intermittent.** The suite deliberately samples from the clock in
+  `test_full_mission.gd`, so the boards and unit positions the AI plans against differ run to run
+  (the suite's own note records a measured 19% spread in turn count across three runs). A rare
+  position is exactly the shape of thing that would surface at one run in several.
+- **What would settle it:** a bounds check in `LoS.has_los`, or in `Grid.get_opacity` itself, would
+  turn the abort into a diagnosable value. Neither is in taskblock-55's scope, and guessing at the
+  fix without a reproduction would be a change nobody could verify.
+
+### BR55.02 — Active — owner: `CC`
+**Floor tile geometry is wound inside out — backfaces are what the camera sees**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-04.
+- The tile parts render with **inverted winding order**: the outward faces are culled and the interior
+  faces are drawn, so a tile reads as transparent from above and textured from beneath. Backface
+  culling doing its job against geometry built the wrong way round, not a material or shader fault.
+- **Introduced with the tile parts themselves** (taskblock-55 Pass B), which is the only geometry
+  built in that pass — so the winding is in whatever emits a tile's box, not in the shared box
+  primitive every other part has used for fifty blocks without this.
+- **Check whether the normals disagree with the winding**, not just the winding. A box built with
+  reversed vertex order *and* correct normals lights properly while culling backwards, which looks like
+  a culling setting and is not one.
+- **Do not fix it by disabling backface culling.** That hides it, doubles the fragment cost of every
+  tile, and leaves the geometry wrong for anything that later reads a normal — the wall cutout shader
+  among them.
+
+**CC analysis, `e5393c3a-bd26-4668-8905-c50cf31e04cb`** — read from source, no code touched.
+
+- **It is `BoardView._add_box`, and nothing else.** It is called from exactly one place,
+  `_build_tiles`, and it is the **only hand-wound geometry in the file**. Every other box on the
+  board — blockers, cover, dropped assemblies, overlay markers, unit ghosts — is a Godot `BoxMesh`,
+  correct by construction. That is why fifty blocks of parts never showed this and the tiles do: the
+  shared box primitive was never involved, exactly as suspected above.
+- **On "check whether the normals disagree with the winding": there are no normals to disagree.**
+  `_add_quad` calls `surface_add_vertex` and nothing else, and there is no `surface_set_normal`
+  anywhere in `board_view.gd`. So this is **not** the reversed-winding-with-correct-normals case —
+  the mesh carries no normal data at all, and culling is decided by winding alone. Worth confirming
+  against a built mesh's `ARRAY_NORMAL` before fixing, since that is an engine-behaviour claim
+  rather than a source-level one.
+- **The vertex order, so nobody has to re-derive it.** Corners are built x-major then y then z, so
+  index = `4*x + 2*y + z` with 0 = negative: `0=(-,-,-) 1=(-,-,+) 2=(-,+,-) 3=(-,+,+) 4=(+,-,-)
+  5=(+,-,+) 6=(+,+,-) 7=(+,+,+)`. The top face is emitted as `c[2], c[3], c[7], c[6]`.
+- **Fix the doc comment in the same edit.** It asserts the quads are "wound counter-clockwise seen
+  from outside the box, so back-face culling keeps the faces that face the camera." That sentence is
+  the bug, written down as if it were true — a later reader who trusts it will look elsewhere.
+- **Do not assume the engine's front-face convention; check it.** Assuming it is what produced this.
+- **Why the tests did not catch it, which is the reusable part.** `test_no_risers.gd` asserts vertex
+  *counts* and `test_board_view.gd` asserts an *AABB* — both are winding-blind, and geometry in the
+  right place facing the wrong way satisfies every assertion written in Pass B. **A test that would
+  catch it reads the built mesh back and asserts an outward direction** (the top face resolving to
+  +Y), which is the "read the real node back, do not re-derive it" rule CLAUDE.md already sets for
+  view math. It was applied to placement in that pass and not to orientation.
+
+### BR55.03 — Active — owner: `SUPERVISOR`
+**`HulkTheme.build()` caching was reported done and is absent from the code**
+- **Source:** review audit, 2026-08-04.  ·  Provenance: taskblock-51 Pass B1.
+- **The spec and the report are quoted inline below rather than pointed at.** Both files rotate —
+  `reports/` keeps a rolling five, so Taskblock 51's report is deleted at taskblock 56 — and CLAUDE.md's
+  rule is to carry the fact inline because a pointer at either will dangle. Copied here 2026-08-04
+  [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`] while both still existed:
+  - **What Pass B1 asked for, verbatim:** *"`test_spectator_overlay.gd` costs 32.4 s across 37 real
+    scene builds and zero bouts — the largest non-bout file in the suite. Caching the theme collapses
+    it. **It costs the `ui_builds` counter**, which taskblock-48 added specifically to make view-only
+    cost visible, dropping it from ~344 to ~1. **The supervisor has accepted that trade.** Record in
+    `CHANGELOG.md` that the counter's meaning changed, so a later reader does not take a low
+    `ui_builds` as evidence the view got cheaper."*
+  - **What the report claimed, verbatim:** the pass table row *"B — ledger repairs, caching | **B1
+    done**; B2 and B3 untouched (B3 left unmerged on supervisor instruction)"*.
+  - **Corroborating the "assess the session" note below:** Pass B2 of that same block was *"Split
+    `BR27.01`"*, recorded as untouched and in fact not done until 2026-08-04 — so the report tracked
+    two of the three sub-passes correctly and got only B1 wrong.
+- `src/view/hulk_theme.gd` builds a fresh `Theme` on **every** call and increments `ui_builds` on
+  every call. **There is no cache, no static holder, and no caching at any of the five call sites** —
+  `spectator_overlay`, `squad_control_overlay`, `generate_bout_overlay`, `builder_scene`,
+  `resource_editor`. `test/unit/logic/test_work_counters.gd` still asserts that building an overlay
+  moves `ui_builds`, which is precisely the assertion a cache would have had to change.
+- **The spec also required a `CHANGELOG.md` entry** recording that the counter's meaning had changed,
+  so a later reader would not read a low `ui_builds` as evidence the view got cheaper. **No such entry
+  exists either.**
+- **Either the pass never landed and the report is wrong, or it landed and was reverted with no
+  `SUPERSEDED.md` row.** Both are worth knowing and the second is worse. The absence of *any* trace —
+  no cache, no changelog line, no reversal row — points at the first.
+- **Assess the session before re-attempting.** The same report says *"B2 and B3 untouched"*, so
+  something was tracking that block at pass granularity and still recorded this one wrongly; a long
+  session is the likeliest explanation and is worth confirming rather than assuming.
+- **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
+  suite, across 37 real scene builds. Still available.
