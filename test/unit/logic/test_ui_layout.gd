@@ -129,20 +129,42 @@ func test_an_escaping_slot_resolves_against_the_screen_and_others_against_the_sa
 	)
 
 
-## The property is readable off a slot name, which is the half that makes it checkable rather than
-## conventional. **No slot escapes yet** — the three that will are placed in Pass C — so this pins
-## the default and the mechanism rather than a list.
-func test_no_slot_escapes_by_default_and_the_property_is_readable() -> void:
+## **Exactly three slots escape, and they are the three the table names.**
+##
+## Pass A shipped this as "nothing escapes yet, the three arrive in Pass C", and Pass C1 adding them
+## is what made that version fail — the ratchet working rather than a regression. Pinned as a list
+## so a fourth escaping surface has to be argued for in the commit that adds it: a surface escaping
+## by accident is one that walks off an ultrawide's edge, which is the failure the safe rect exists
+## to prevent.
+func test_exactly_the_three_declared_surfaces_escape_the_safe_rect() -> void:
+	var escaping: Array[StringName] = []
 	for slot: StringName in ModuleSlots.SLOT_EDGES:
-		assert_false(
-			ModuleSlots.escapes_safe_rect(slot),
-			"%s escapes, and nothing in Pass A should -- the escaping three arrive in Pass C" % slot
-		)
+		if ModuleSlots.escapes_safe_rect(slot):
+			escaping.append(slot)
+	# The perf monitor floats rather than pinning to an edge, so it is not in SLOT_EDGES.
+	assert_true(
+		ModuleSlots.escapes_safe_rect(ModuleSlots.PERF_MONITOR), "the corner readout escapes"
+	)
+	escaping.append(ModuleSlots.PERF_MONITOR)
+
+	gut.p("escaping: %s" % ", ".join(escaping))
+	assert_eq(
+		escaping,
+		(
+			[ModuleSlots.INSPECT_PANEL, ModuleSlots.INSPECT_VIEWER, ModuleSlots.PERF_MONITOR]
+			as Array[StringName]
+		),
+		"the escaping set moved -- say why in the same commit"
+	)
+
+
+func test_an_undeclared_slot_does_not_escape() -> void:
 	assert_eq(
 		ModuleSlots.rect_for(&"a_slot_nobody_declared", Vector2(1920, 1080)),
 		UiLayout.safe_rect(Vector2(1920, 1080)),
 		"an unknown slot does not escape -- a surface escaping by accident walks off an ultrawide"
 	)
+	assert_false(ModuleSlots.escapes_safe_rect(ModuleSlots.ACTION_ROW), "the bar stays inside")
 
 
 # ---------------------------------------------------------------- UI scale

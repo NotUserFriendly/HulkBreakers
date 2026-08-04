@@ -58,6 +58,20 @@ const ACTION_BAR_SLOTS: Array[StringName] = [
 	ACTION_BAR_TOP_RIGHT,
 ]
 
+# --- taskblock-57 Pass C: the screen-anchored positions -------------------------------------
+
+## Top-right, roughly two thirds of the screen tall and square. **Escapes the safe rect.**
+const INSPECT_PANEL := &"inspect_panel"
+## Top-left, two thirds tall and half as wide — the 3D view, split out so the centre stays clear.
+## **Escapes the safe rect.**
+const INSPECT_VIEWER := &"inspect_viewer"
+## Top edge, centred, a quarter of the 16:9 width. Budges left when Inspect crowds it.
+const DEBUG_MENU := &"debug_menu"
+## The true bottom-right corner, no padding. **Escapes the safe rect**, and is click-through.
+const PERF_MONITOR := &"perf_monitor"
+## Top, centred. Invisible and click-through — a position, not a panel.
+const ANNOUNCEMENTS := &"announcements"
+
 # --- taskblock-57 Pass A: what a slot is, beyond where it is ---------------------------------
 #
 # **Two properties, both declared here rather than known by the panels.** A convention lives in
@@ -77,7 +91,10 @@ const EDGE_BOTTOM := &"bottom"
 ## monitor — and taskblock-57 A1 asks for it as a property precisely because a comment in a panel
 ## cannot be asserted. A slot not named here does not escape, which is the safe default: a surface
 ## that escapes by accident is one that walks off an ultrawide's edge.
-const ESCAPING_SLOTS: Array[StringName] = []
+## taskblock-57 Pass C fills this with exactly the three the table names. **Nothing else may be
+## added without a reason in the same commit** — a surface that escapes by accident is one that
+## walks off an ultrawide's edge, which is the failure the safe rect exists to prevent.
+const ESCAPING_SLOTS: Array[StringName] = [INSPECT_PANEL, INSPECT_VIEWER, PERF_MONITOR]
 
 ## Slot -> which screen edge it is pinned to. A slot absent from here floats.
 ##
@@ -85,6 +102,10 @@ const ESCAPING_SLOTS: Array[StringName] = []
 ## that everything pinned to a side is collapsible or off by default, so a square-ratio player
 ## toggles rather than shrinking the whole UI — and a module can answer that about itself by asking
 ## which slot it wants instead of each one carrying its own flag.
+## **The action bar and its four satellites are deliberately absent.** The rule exists so a cramped
+## player can reclaim space, and the bar is centred at the bottom at half width — it crowds nothing,
+## and a control surface you can switch off is a game you cannot play. The panels that *do* crowd —
+## the inspector, its viewer, the debug menu — are here.
 const SLOT_EDGES: Dictionary = {
 	LEFT_COLUMN: EDGE_LEFT,
 	INVENTORY_ROW: EDGE_LEFT,
@@ -94,6 +115,9 @@ const SLOT_EDGES: Dictionary = {
 	ACTION_ROW: EDGE_BOTTOM,
 	TOP_LEFT: EDGE_TOP,
 	TUNABLES: EDGE_TOP,
+	INSPECT_PANEL: EDGE_RIGHT,
+	INSPECT_VIEWER: EDGE_LEFT,
+	DEBUG_MENU: EDGE_TOP,
 }
 
 
