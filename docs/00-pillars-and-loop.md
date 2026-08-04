@@ -66,4 +66,7 @@ stack, and anything malformed surfaces immediately instead of in month three.
 
 ## Prototype scope
 One hulk, both insertion modes, gather-and-extract, terminate as an alternative exit.
-Everything in `99` is out.
+
+`99` is not a scope boundary — it holds what is **unspecified and unqueued**, and an idea graduates
+out of it into `PLAN.md` when it grows a mechanism. What is in scope is what `PLAN.md` orders; this
+line describes the shape of the first playable slice, not a fence around the project.
