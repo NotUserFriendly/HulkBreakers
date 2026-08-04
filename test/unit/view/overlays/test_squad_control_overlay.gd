@@ -228,17 +228,20 @@ func test_the_real_production_wiring_enters_step_out_on_a_covered_enemy() -> voi
 		built.state.current_unit(), built.shooter, "sanity: the shooter's own turn is current"
 	)
 
-	# 1) select the shooter — a real board click, same raycast path as step 3.
+	# 1) the shooter is ALREADY selected, and no click is needed to make it so.
+	#
+	# **taskblock-57 Pass D deleted this step rather than fixing it.** The player mode now
+	# pre-selects the unit whose turn it is — *"clicking your own unit every turn is ungainly"* —
+	# so the board click this test used to open with is exactly the click the pass removed the need
+	# for. Worse, it is now actively wrong: `TacticsController` treats a press on the
+	# **already-selected** unit's own body as the start of a facing drag, not as a selection, so
+	# replaying it here armed nothing and this test found that first.
 	var camera: Camera3D = overlay.tactics().camera
-	var shooter_screen: Vector2 = camera.unproject_position(
-		Vector3(built.shooter.cell.x, 0.5, built.shooter.cell.y) * UnitGeometry.CELL_SIZE
+	assert_eq(
+		overlay.tactics().selection.selected_unit,
+		built.shooter,
+		"the shooter is pre-selected at turn start -- no click needed"
 	)
-	var select_click := InputEventMouseButton.new()
-	select_click.button_index = MOUSE_BUTTON_LEFT
-	select_click.pressed = true
-	select_click.position = shooter_screen
-	overlay.tactics()._unhandled_input(select_click)
-	assert_eq(overlay.tactics().selection.selected_unit, built.shooter, "sanity: selection took")
 
 	# 2) arm SHOOT via a real ActionBar slot click — never tactics.arm_action().
 	var shoot_index := -1

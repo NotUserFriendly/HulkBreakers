@@ -278,6 +278,27 @@ shell performs measurably differently under two different-attribute matrices.
 
 # QUEUED
 
+### "Resolve to Here" has logic and no UI
+
+**Needs:** nothing. **Unblocks:** partial resolution being reachable again.
+
+`BR27.08` moved *Resolve to Here* out of the turn-control column and onto a per-row button in the
+queue panel, which was the right shape while there was a queue panel. **taskblock-57 Pass D retired
+the panel**, so the rows went and the only way to reach the verb went with them.
+
+**The logic is untouched and still tested** — `SelectionController.keep_queue_suffix`,
+`TacticsController.queue_partially_resolved`, and `resolve_until` with a player-placed stop point.
+What is missing is an affordance.
+
+**Recorded rather than absorbed into the retirement**, because the taskblock's own stop-and-report
+rule names only `queue_panel`'s *confirmation* role as the coverage at risk, and this is a second
+thing that went with it. The replacement for confirmation landed (the combat log's queueing
+entries); this had no replacement and was not asked for one.
+
+**Where it might go:** waypoints and ghosts are what the taskblock says carry the queue's load now,
+so a stop marker on a ghost leg is the obvious home — that is also what `resolve_until` already
+takes. Not designed here.
+
 ### Player-facing labels for actions that have none
 
 **Needs:** nothing. **Unblocks:** any surface that names an action to a player rather than to a

@@ -11,7 +11,6 @@ extends Node3D
 ## |---|---|
 ## | `SquadControlOverlay`, 942 lines | `ViewModes.player()` |
 ## | `SpectatorOverlay`, 718 lines | `ViewModes.spectator()` |
-## | `SingleUnitOverlay`, 54 lines | `ViewModes.single_unit()` |
 ## | `GenerateBoutOverlay`, 373 lines | `ViewModes.bout_setup()` |
 ##
 ## A **mode** is a declaration (`ViewMode`): which modules, in what layout, with what options, under
@@ -41,9 +40,6 @@ signal board_clicked(hit: Dictionary)
 ## overlay already followed for its own fields, and for the same reason: `setup()` may drive several
 ## units' worth of turns before a caller gets another chance to touch anything.
 var mode: ViewMode = null
-## The one unit a `SINGLE_UNIT` mode drives. **Unset never means "drive everything"** — see
-## `ViewMode.TurnPolicy`.
-var controlled_unit: Unit = null
 
 var battle: BattleScene = null
 ## The themed root every module's `Control`s live under. One `CanvasLayer` and one
@@ -136,10 +132,6 @@ func inspect() -> InspectModule:
 	return module(&"inspect") as InspectModule
 
 
-func stat_panels() -> StatPanelsModule:
-	return module(&"stat_panels") as StatPanelsModule
-
-
 func debug_panel_module() -> DebugPanelModule:
 	return module(&"debug_panel") as DebugPanelModule
 
@@ -179,8 +171,6 @@ func wants_turn_for(unit: Unit) -> bool:
 	match mode.turn_policy if mode != null else ViewMode.TurnPolicy.NONE:
 		ViewMode.TurnPolicy.HUMAN_SQUADS:
 			return battle.combat_state.controller_for(unit.squad_id) == Enums.SquadController.HUMAN
-		ViewMode.TurnPolicy.SINGLE_UNIT:
-			return true if controlled_unit == null else unit == controlled_unit
 	return false
 
 
@@ -298,13 +288,13 @@ func advance_ai_turns(p_battle: BattleScene) -> void:
 		for id: int in stepped:
 			touched_ids[id] = true
 		p_battle.refresh_unit_views(stepped, false)
-		# **Selected the moment it becomes true, not after the batch drains.** A `SINGLE_UNIT` mode
+		# **Selected the moment it becomes true, not after the batch drains.** The player mode
 		# promises "no selection step", and the unit becomes current partway through this loop —
 		# waiting for the loop to finish means waiting for its trailing frame yield, by which time a
 		# caller that did not await `setup()` has already looked and found nothing selected. That is
 		# how the old fire-and-forget version happened to be right: it auto-selected at the first
 		# suspension. Doing it here is the same timing without depending on where a suspension lands.
-		_auto_select_controlled_unit()
+		_auto_select_current_unit()
 		if run_finished:
 			break
 		# The yield. One frame between units, so input is processed and the board draws while the
@@ -312,7 +302,7 @@ func advance_ai_turns(p_battle: BattleScene) -> void:
 		if is_inside_tree():
 			await get_tree().process_frame
 	set_thinking_label("")
-	_auto_select_controlled_unit()
+	_auto_select_current_unit()
 	p_battle.refresh_unit_views(touched_ids.keys())
 
 
@@ -544,26 +534,49 @@ func _on_battle_loaded() -> void:
 	# the instant the planner first suspended, so the batch ran after whatever came next had already
 	# read the turn state.
 	#
-	# **The auto-select comes after, not before.** A `SINGLE_UNIT` mode's controlled unit is usually
-	# not the one whose turn it is at load; the batch has to resolve every unit ahead of it first,
+	# **The auto-select comes after, not before.** The unit this surface drives is usually not the
+	# one whose turn it is at load; the batch has to resolve every unit ahead of it first,
 	# and only then is there anything to select. Selecting first and advancing second lands on
 	# whoever happened to be current at load, which is the "no click should be needed" promise
 	# quietly broken.
 	if has_unit_input():
 		await advance_ai_turns(battle)
-	_auto_select_controlled_unit()
+	_auto_select_current_unit()
 
 
-## A `SINGLE_UNIT` mode selects its own unit the instant that unit becomes the current one, so a
-## player never has to click their own body first.
-func _auto_select_controlled_unit() -> void:
-	if controlled_unit == null or battle.combat_state == null:
+## taskblock-57 Pass D: **pre-selects whichever unit this surface drives, the instant it becomes the
+## current one**, so a player never has to click their own body first.
+##
+## This is what `single_unit` used to be for, generalised. That mode auto-selected one named
+## `controlled_unit`; the taskblock collapses it into `player` — *"clicking your own unit every
+## turn is ungainly, and with one unit the behaviour was already identical"* — so the rule is asked
+## of whoever is current rather than of a unit named in advance.
+##
+## **Gated on `wants_turn_for`, which is the whole safety property.** Selecting during an AI
+## unit's turn would hand the player a selection they cannot act on and a queue that is not theirs;
+## the same question `BoutRunner` asks decides it here.
+func _auto_select_current_unit() -> void:
+	if battle == null or battle.combat_state == null:
 		return
 	var input: UnitInputModule = module(&"unit_input") as UnitInputModule
 	if input == null or input.tactics == null or input.tactics.selection == null:
 		return
-	if battle.combat_state.current_unit() == controlled_unit:
-		input.tactics.selection.select(controlled_unit)
+	# **Only when nothing is selected**, which is what makes this a pre-selection rather than a
+	# correction. The turn's own resolution calls `SelectionController.reset()`, so a new turn starts
+	# with an empty selection and this fills it; a player who has since clicked something has said
+	# what they want, and re-selecting the current unit over the top of that is a bug.
+	#
+	# Measured, not reasoned: the first version selected unconditionally and broke
+	# `test_the_real_production_wiring_enters_step_out_on_a_covered_enemy`, where the trailing
+	# auto-select of an awaited AI batch landed after the test's own selection and disarmed it.
+	if input.tactics.selection.selected_unit != null:
+		return
+	var current: Unit = battle.combat_state.current_unit()
+	if current != null and wants_turn_for(current):
+		# **Through the controller, not into the selection.** A selection nobody was told about
+		# leaves the action bar drawing its empty state over a unit that IS selected — see
+		# `TacticsController.select_and_announce`.
+		input.tactics.select_and_announce(current)
 
 
 ## The capability handed to modules. Bound to this surface's own `battle`, so a module never has to
@@ -571,4 +584,4 @@ func _auto_select_controlled_unit() -> void:
 func _advance_ai_turns_here() -> void:
 	if battle != null:
 		await advance_ai_turns(battle)
-	_auto_select_controlled_unit()
+	_auto_select_current_unit()

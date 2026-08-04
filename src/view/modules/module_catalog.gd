@@ -23,9 +23,7 @@ const IDS: Array[StringName] = [
 	&"debug_panel",
 	&"replay",
 	&"inspect",
-	&"stat_panels",
 	&"action_bar",
-	&"queue_panel",
 	&"turn_controls",
 	&"controls_legend",
 	&"top_left_controls",
@@ -43,6 +41,9 @@ const IDS: Array[StringName] = [
 	&"perf_monitor",
 	# taskblock-57 Pass C3: the 3D view, out of `InspectPanel` and into the table's own top-left row.
 	&"inspect_viewer",
+	# taskblock-57 Pass D2: the aim readout, which retired with `stat_panels` and had to keep
+	# existing somewhere. Only the aim mode declares it.
+	&"aim_readout",
 ]
 
 
@@ -65,12 +66,8 @@ static func build(id: StringName) -> ViewModule:
 			return ReplayModule.new()
 		&"inspect":
 			return InspectModule.new()
-		&"stat_panels":
-			return StatPanelsModule.new()
 		&"action_bar":
 			return ActionBarModule.new()
-		&"queue_panel":
-			return QueuePanelModule.new()
 		&"turn_controls":
 			return TurnControlsModule.new()
 		&"controls_legend":
@@ -97,4 +94,6 @@ static func build(id: StringName) -> ViewModule:
 			return PerfMonitorModule.new()
 		&"inspect_viewer":
 			return InspectViewerModule.new()
+		&"aim_readout":
+			return AimReadoutModule.new()
 	return null

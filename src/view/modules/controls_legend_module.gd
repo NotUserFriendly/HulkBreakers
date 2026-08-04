@@ -40,7 +40,18 @@ func _mount() -> void:
 	label = Label.new()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_parent_into(column, label)
+	# taskblock-57 Pass D: **the legend anchors itself when no column publishes one.** The battle
+	# layout has no `TOP_RIGHT` slot — that column existed for the readout cluster Pass D retires —
+	# and the placement table has no row for a wall of reference text. It is off by default (tb31
+	# Pass A: "reference, not chrome"), so a corner it shares with a closed Inspect costs nothing.
+	if column != null:
+		column.add_child(label)
+	elif context.ui_root != null:
+		context.ui_root.add_child(label)
+		label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	else:
+		add_child(label)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)

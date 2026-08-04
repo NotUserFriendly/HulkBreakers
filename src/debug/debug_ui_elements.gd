@@ -23,6 +23,19 @@ extends RefCounted
 ## The live framerate readout (`PerfPanel`), mounted by both overlays.
 const PERF_PANEL := &"perf_panel"
 
+## taskblock-57 Pass D: **whether a click can land on a floor tile.**
+##
+## `board_inspect` folded into Inspect, and *"everything is a part"* — so one inspector shows a
+## unit, a piece of cover, a part lying on a tile, **or the tile itself**. The taskblock's caveat is
+## why this is a toggle rather than simply on: *"rare targets — floor tiles especially — should need
+## enabling from the debug menu rather than being clickable by default, **or every misclick lands on
+## the floor**."*
+##
+## Off by default, which is the whole point. This is not a debug *readout* like the entry above; it
+## is a debug-gated **selection rule**, and the table is the right place for it precisely because it
+## is "which debug surfaces are up" one step further.
+const FLOOR_TILE_PICKING := &"floor_tile_picking"
+
 
 ## Every toggleable element, in the order the panel lists them.
 ##
@@ -34,7 +47,15 @@ static func all() -> Array[Dictionary]:
 		_element(
 			PERF_PANEL,
 			"Performance Monitor",
-			"Live framerate readout, top right. Stays up when this panel closes.",
+			# taskblock-57 Pass C moved it: the placement table puts the readout in the true
+			# bottom-right corner. A hint that names the wrong corner is worse than none.
+			"Live framerate readout, bottom right. Stays up when this panel closes.",
+			false
+		),
+		_element(
+			FLOOR_TILE_PICKING,
+			"Inspect Floor Tiles",
+			"Let a click that hits nothing else open the tile itself. Off: misclicks do nothing.",
 			false
 		),
 	]

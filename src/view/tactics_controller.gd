@@ -1429,6 +1429,25 @@ func _queue_final_action_and_resolve(queue_final_action: Callable) -> void:
 	turn_ended.emit(sink.events)
 
 
+## taskblock-57 Pass D: **selects `unit` and tells the surface about it.**
+##
+## The player mode pre-selects whichever unit's turn it is, and the first version of that reached
+## straight into `selection.select()`. The selection changed and **nothing was told** —
+## `ActionBar`, the pips and the overlays all refresh on `selection_changed`, so a turn began with a
+## unit selected and an action bar still drawing the empty state. Clicking a slot armed nothing.
+##
+## Measured, not reasoned: a probe on a clean fixture showed `selected=true` and the arm click doing
+## nothing at all. **A selection nobody was told about is not a selection**, so the announcement is
+## part of making one rather than something each caller remembers.
+func select_and_announce(unit: Unit) -> void:
+	if selection == null:
+		return
+	selection.select(unit)
+	# `_refresh_overlay` emits `selection_changed` itself — emitting it here too refreshed every
+	# listener twice for one selection, which a test caught by counting.
+	_refresh_overlay()
+
+
 ## docs/10 taskblock06 G1: "resolve_until with a player-placed stop marker
 ## instead of an interrupt — one mechanism, two triggers." `marker_index`
 ## is a caller-tracked index into the selected unit's own queue.actions

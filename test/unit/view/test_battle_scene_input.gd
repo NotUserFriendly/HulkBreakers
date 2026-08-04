@@ -106,47 +106,19 @@ func test_a_click_on_an_action_bar_box_never_reaches_the_board_underneath() -> v
 	)
 
 
-## BR27.08 (supervisor follow-up): "hovering anywhere in the combat
-## readout gives me the details of things behind it." The same class of
-## bug as the action-bar click case above, one signal over — a queue
-## row's own `mouse_entered`/`mouse_exited` fired correctly (its
-## `MOUSE_FILTER_PASS` was never the problem for ITS OWN tooltip), but PASS
-## never marks the motion event handled, so it ALSO reached
-## `TacticsController._unhandled_input`'s `update_hover()`, which re-
-## raycasts the 3D board at that exact screen position regardless of what
-## UI is drawn there — showing whatever unit/cell sat behind the
-## deliberately translucent readout panel instead of just the row's own
-## tooltip. Fixed the same way the action bar was: STOP, not PASS.
-func test_hovering_a_queue_row_never_updates_the_boards_own_hover_state() -> void:
-	var scene := BattleScene.new()
-	add_child_autofree(scene)
-	var overlay: ControlOverlay = _overlay(scene)
-	var current: Unit = scene.combat_state.current_unit()
-	overlay.tactics().selection.select(current)
-	var reachable: Array[Vector2i] = overlay.tactics().selection.reachable_cells()
-	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
-	overlay.tactics().click_cell(reachable[0])
-
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	var row: HBoxContainer = overlay.module(&"queue_panel").panel.rows_container.get_child(0)
-	var screen_pos: Vector2 = row.get_global_rect().get_center()
-
-	var fired: Array[bool] = [false]
-	overlay.tactics().mouse_moved.connect(func() -> void: fired[0] = true)
-	var entered: Array[bool] = [false]
-	row.mouse_entered.connect(func() -> void: entered[0] = true)
-
-	var motion := InputEventMouseMotion.new()
-	motion.position = screen_pos
-	scene.get_viewport().push_input(motion)
-	await get_tree().process_frame
-
-	assert_true(entered[0], "sanity: the row still gets its own hover, for its own tooltip")
-	assert_false(
-		fired[0], "hovering a queue row must never also re-raycast the board underneath it"
-	)
+## taskblock-57 Pass D retired `queue_panel`, and two tests went with it.
+##
+## The hover test and the Resolve-button click test both drove the queue panel's own rows. The rule
+## the first one protected — a hover-wired Control must not also re-raycast the board underneath
+## it — is still enforced for every surface by
+## `test_every_richtextlabel_panel_ignores_the_mouse_except_the_log` below, which is a sweep rather
+## than one panel's instance of it.
+##
+## **The second one covered a verb that is now gone**, which is recorded in `PLAN.md` rather than
+## quietly dropped: "Resolve to Here" (`BR27.08`) was a per-row button, so retiring the rows retired
+## the only way to reach it. `SelectionController.keep_queue_suffix` and
+## `TacticsController.queue_partially_resolved` are untouched and still tested — the logic survives
+## and has no UI.
 
 
 ## The negative-space check: a click over the readout cluster's own screen
@@ -285,62 +257,6 @@ func test_a_real_click_on_end_turn_reaches_it_even_with_the_tooltip_visually_cov
 	_click_at(scene, screen_pos)
 
 	assert_true(fired[0], "a click on End Turn must reach it, tooltip visually overlapping or not")
-
-
-## BR27.08 ("Resolve to Here" reported grayed out and unclickable in real
-## play — the reported symptom was never reproduced headlessly across an
-## extensive investigation, so the whole `Tree`+marker+global-button
-## mechanism was retired and rebuilt on plain `Button`/`Label`/`Container`
-## instead — see `docs/SUPERSEDED.md`). Each queued action is now its own
-## row with its own real "Resolve" button, wired directly to
-## `tactics.resolve_to_marker(index)`. This pushes a genuine
-## `InputEventMouseButton` at that button's own real, laid-out screen rect
-## through the real Viewport, inside the FULL real `BattleScene`/
-## player-mode construction — proving the whole path end to end,
-## not a shortcut. (This is also what caught a real layout bug while this
-## was being built: the row's own expanding label had no width bound
-## inside its `ScrollContainer`, landing the button hundreds of pixels
-## past the right edge of the viewport — fixed by disabling the scroll
-## container's own horizontal scrolling.)
-func test_a_real_click_on_a_queue_rows_resolve_button_resolves_through_it() -> void:
-	var scene := BattleScene.new()
-	add_child_autofree(scene)
-	var overlay: ControlOverlay = _overlay(scene)
-	var current: Unit = scene.combat_state.current_unit()
-	overlay.tactics().selection.select(current)
-
-	var reachable: Array[Vector2i] = overlay.tactics().selection.reachable_cells()
-	reachable = reachable.filter(func(c: Vector2i) -> bool: return c != current.cell)
-	assert_gt(reachable.size(), 0, "sanity: the current unit must have somewhere to move")
-	overlay.tactics().click_cell(reachable[0])
-	var start_cell: Vector2i = current.cell
-
-	assert_eq(
-		overlay.module(&"queue_panel").panel.rows_container.get_child_count(),
-		1,
-		"sanity: one row now queued"
-	)
-
-	# Anchored/laid-out Controls only resolve a real global_rect after a
-	# live frame runs (tb32 Pass D's own diagnostic note) — read too early
-	# and this returns a garbage pre-layout rect.
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	var row: HBoxContainer = overlay.module(&"queue_panel").panel.rows_container.get_child(0)
-	var resolve_button: Button = row.get_child(row.get_child_count() - 1) as Button
-	_click_at(scene, resolve_button.get_global_rect().get_center())
-
-	assert_ne(
-		current.cell,
-		start_cell,
-		"a real click on the row's own Resolve button must actually resolve the move"
-	)
-	assert_eq(
-		overlay.module(&"queue_panel").panel.rows_container.get_child_count(),
-		0,
-		"the resolved queue is empty — no rows left"
-	)
 
 
 ## The actual fix: entering ANY turn-control button must hide a stale

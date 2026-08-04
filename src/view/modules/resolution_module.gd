@@ -6,7 +6,7 @@ extends ViewModule
 ## Both overlays owned a `ResolutionPlayer` and differed only in what they handed it: the player
 ## view passed `TacticsController.unlock_input` and a banner `Label`, the spectator passed neither
 ## because it has no input to unlock and shows its state in a status line instead. Both are
-## preserved — the banner comes from `StatPanelsModule` if the mode declared one, and the unlock
+## preserved — the banner comes from whichever module offers a `banner` label, and the unlock
 ## callback from `context.tactics` if the mode has input.
 ##
 ## **The view replays the log; it does not drive the simulation** (docs/10). `resolve_turn()` is
@@ -50,4 +50,10 @@ func set_speed(multiplier: float) -> void:
 
 func _banner() -> Label:
 	var module: ViewModule = context.module(&"stat_panels")
-	return (module as StatPanelsModule).banner if module != null else null
+	# taskblock-57 Pass D retired `stat_panels`, which was the only module that ever offered one.
+	# Asked for by name rather than by type so a later module can offer a banner without this file
+	# learning its class — and null is a legal answer, which is what every mode gets today.
+	if module == null:
+		return null
+	var offered: Variant = module.get(&"banner")
+	return offered as Label if offered is Label else null
