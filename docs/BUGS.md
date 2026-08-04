@@ -320,6 +320,27 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **The likely fix is one flag**, not a redesign: Godot takes `--quit-on-error`-style handling for
   headless runs, and GUT can be told not to break. Worth confirming which knob rather than guessing.
 
+### BR55.03 — Active — owner: `SUPERVISOR`
+**`HulkTheme.build()` caching was reported done and is absent from the code**
+- **Source:** review audit, 2026-08-04.  ·  **Spec:** `taskblock_done/taskblock51.md` Pass B1.
+  **Report:** `reports/Report-Taskblock51.md` — *"B1 done"*.
+- `src/view/hulk_theme.gd` builds a fresh `Theme` on **every** call and increments `ui_builds` on
+  every call. **There is no cache, no static holder, and no caching at any of the five call sites** —
+  `spectator_overlay`, `squad_control_overlay`, `generate_bout_overlay`, `builder_scene`,
+  `resource_editor`. `test/unit/logic/test_work_counters.gd` still asserts that building an overlay
+  moves `ui_builds`, which is precisely the assertion a cache would have had to change.
+- **The spec also required a `CHANGELOG.md` entry** recording that the counter's meaning had changed,
+  so a later reader would not read a low `ui_builds` as evidence the view got cheaper. **No such entry
+  exists either.**
+- **Either the pass never landed and the report is wrong, or it landed and was reverted with no
+  `SUPERSEDED.md` row.** Both are worth knowing and the second is worse. The absence of *any* trace —
+  no cache, no changelog line, no reversal row — points at the first.
+- **Assess the session before re-attempting.** The same report says *"B2 and B3 untouched"*, so
+  something was tracking that block at pass granularity and still recorded this one wrongly; a long
+  session is the likeliest explanation and is worth confirming rather than assuming.
+- **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
+  suite, across 37 real scene builds. Still available.
+
 ### BR55.02 — Active — owner: `CC`
 **Floor tile geometry is wound inside out — backfaces are what the camera sees**
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-04.
@@ -1169,7 +1190,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **Per-motion cost is 113 504 → 8 878 usec** across four distinct fixes. What remains is not the same
   bug at lower amplitude; treat the residue as its own investigation.
 
-### BR27.01 — Active — owner: `SUPERVISOR`
+### BR27.01 — Obsolete — owner: `SUPERVISOR`
 **Player Step Out: four bugs, one system**
 - **Source:** `SUPERVISOR`
 - **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
@@ -1219,6 +1240,15 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **2026-07-22 (tb32 review — still reproduces):** unchanged — step-out after shooting still does not
   open the dartboard immediately on the step-out; a second click is required. tb32 didn't touch this.
   The one open piece (part 1) persists exactly as the 2026-07-21 repro describes.
+- **2026-08-04 — split into `BR27.10`–`BR27.13`, one per outcome, and closed `Obsolete` here.** One id
+  standing for four independent outcomes can never be closed honestly: three fixed and one open is
+  neither `Active` nor `Resolved`. The split changes no statuses and fixes nothing — **it makes closure
+  possible**, which is the whole argument for it.
+- **Kept as a pointer rather than deleted, deliberately.** The four share one system (player step-out)
+  and there was a reason at the time for holding them together, which nobody can now reconstruct. If
+  splitting turns out to be the mistake, this entry is where the original framing survives — the four
+  new entries each point back here.
+
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
 - **Source:** `SUPERVISOR`
