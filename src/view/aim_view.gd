@@ -204,6 +204,25 @@ func setup(
 	refresh()
 
 
+## taskblock-57 Pass F: **the text readout is optional.**
+##
+## This view is a `Node3D` — the dartboard window, its decal and the targeting line are world
+## geometry — and it moved to `UnitInputModule`, which owns the `TacticsController` it reads. The
+## READOUT is a UI `RichTextLabel` belonging to whichever surface currently has somewhere to put
+## one, and a mode may have nowhere: the aim mode turns most modules off, and Pass D retires the
+## panel that supplies it today.
+##
+## So a null readout is a legal state and the geometry still draws. **The alternative was for the
+## whole aim view to die with a text panel**, which is the coupling this pass exists to cut.
+func set_readout(p_readout: RichTextLabel) -> void:
+	readout = p_readout
+
+
+func _write_readout(text: String) -> void:
+	if readout != null:
+		readout.text = text
+
+
 func refresh() -> void:
 	_window.visible = false
 	_decal.visible = false
@@ -211,7 +230,7 @@ func refresh() -> void:
 	_pellet_circle.visible = false
 	_part_label.visible = false
 	if tactics == null or tactics.aiming_at == null:
-		readout.text = ""
+		_write_readout("")
 		return
 
 	# docs/10 taskblock03 D5: shooter/target/plane must all come from the
@@ -220,7 +239,7 @@ func refresh() -> void:
 	# object-match each other, breaking ShotPlane.center_of below.
 	var aim: Dictionary = tactics.aim_state()
 	if aim.is_empty():
-		readout.text = ""
+		_write_readout("")
 		return
 	var shooter: Unit = aim["shooter"]
 	var target: AimTarget = aim["target"]
@@ -236,7 +255,7 @@ func refresh() -> void:
 	if tactics.armed_action != null:
 		weapon = ActionCatalog.provider_for(shooter, tactics.armed_action.id)
 	if weapon == null:
-		readout.text = "[UNARMED]"
+		_write_readout("[UNARMED]")
 		return
 
 	var aim_point: Vector2 = (
@@ -267,7 +286,7 @@ func refresh() -> void:
 		shooter.cell, target.cell, aim_point, muzzle
 	)
 	if ray.is_empty():
-		readout.text = _readout_text(result)
+		_write_readout(_readout_text(result))
 		return
 	var dir: Vector3 = ray["dir"]
 
@@ -319,7 +338,7 @@ func refresh() -> void:
 	# the targeting line should come from the pistol," not a generic
 	# torso-height point.
 	_draw_targeting_line(muzzle, target_point)
-	readout.text = _readout_text(result)
+	_write_readout(_readout_text(result))
 
 
 func _readout_text(result: AimResult) -> String:

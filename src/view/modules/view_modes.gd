@@ -84,6 +84,35 @@ const SPECTATOR_MODULES: Array[StringName] = [
 	&"top_left_controls",
 ]
 
+## taskblock-57 Pass F: **what is visible while aiming, as a table entry someone can read.**
+##
+## The taskblock: *"Most modules turn off when the camera drops to over-the-shoulder or sniper
+## view. That is a module set, so it is a mode."* Thirteen of the player mode's seventeen modules
+## are absent here, which is the whole point — aiming is a committed framing, and the chrome around
+## it is in the way.
+##
+## **The four that stay are here for correctness, not taste.** Each would break something real if
+## the switch tore it down:
+##
+## - `unit_input` — owns the `TacticsController` that IS the aim, and the `AimView` dartboard you
+##   are aiming with. Unmounting it mid-aim would destroy the aim in order to render the aim.
+## - `stat_panels` — the aim readout. The one thing you are actually reading while aiming.
+## - `resolution` — the shot resolves the instant aim ends, and a playback torn down as it starts is
+##   a resolution nobody sees.
+## - `combat_log` — **not for looks.** Its sink attaches to the live `CombatLog` at mount and is
+##   rebuilt empty on remount, so turning it off and on would clear the visible log every time
+##   anyone aimed. The history is not the aim mode's to discard.
+##
+## **The aim view and the dartboard are not modules and did not become ones**, which the taskblock
+## says outright. They are `Node3D` world geometry owned by `unit_input`; this set is what stops
+## drawing over them.
+const AIM_MODULES: Array[StringName] = [
+	&"unit_input",
+	&"stat_panels",
+	&"resolution",
+	&"combat_log",
+]
+
 ## Pre-battle setup: the roster menu and nothing else. It never drives a unit's turn — Start Bout
 ## builds the matchup, installs it into the shared world and swaps to `spectator`. A transition, not
 ## a persistent mode.
@@ -125,6 +154,8 @@ static func player() -> ViewMode:
 	mode.chrome = ModeChrome.BATTLE_LAYOUT
 	mode.modules = PLAYER_MODULES
 	mode.turn_policy = ViewMode.TurnPolicy.HUMAN_SQUADS
+	# taskblock-57 Pass F: aim is a mode, and which mode is data rather than a branch in the host.
+	mode.aim_mode_id = &"aim"
 	# The one inventory surface in the player view, opened on demand for whatever is selected.
 	mode.options[&"inspect"] = {&"with_button": true}
 	mode.options[&"top_left_controls"] = {&"include_new_battle": true, &"watch_label": "Watch"}
@@ -149,6 +180,23 @@ static func spectator() -> ViewMode:
 	# **Every outcome says something here.** Silence after a run is indistinguishable from a broken
 	# replay, which is exactly what the supervisor could not tell apart.
 	mode.options[&"replay"] = {&"announce_passes": true}
+	return mode
+
+
+## **The aim surface.** Same chrome as the mode it is entered from, deliberately: the switch is a
+## change of module set, not of layout, and rebuilding the chrome would drop every published slot
+## under the modules that stayed mounted.
+##
+## `TurnPolicy.HUMAN_SQUADS` because the human is still driving this unit's turn — aiming is part
+## of taking it, and a policy change mid-turn would hand the unit to the AI planner while the
+## player was lining up a shot.
+static func aim() -> ViewMode:
+	var mode := ViewMode.new()
+	mode.id = &"aim"
+	mode.display_name = "Aim"
+	mode.chrome = ModeChrome.BATTLE_LAYOUT
+	mode.modules = AIM_MODULES
+	mode.turn_policy = ViewMode.TurnPolicy.HUMAN_SQUADS
 	return mode
 
 
@@ -213,7 +261,7 @@ static func empty() -> ViewMode:
 
 ## Every mode, for tests and for anything that wants to enumerate them.
 static func all() -> Array[ViewMode]:
-	return [player(), spectator(), single_unit(), bout_setup(), editor(), empty()]
+	return [player(), spectator(), single_unit(), bout_setup(), editor(), aim(), empty()]
 
 
 ## The mode named `id`, or null. **Null rather than a default**, so a caller naming a mode that does

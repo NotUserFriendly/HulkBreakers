@@ -54,6 +54,10 @@ var modules: Array[ViewModule] = []
 ## What every mounted module was handed. Public so a test can read back which modules a mode
 ## actually produced, which is Pass D's own acceptance.
 var module_context: ModuleContext = null
+## taskblock-57 Pass F: the mode to go back to when aiming ends, or `&""` when not aiming. **The id,
+## not the `ViewMode`** — modes are rebuilt from the table on demand, so holding an instance would
+## restore a stale copy of a declaration that may have been edited.
+var _mode_before_aim: StringName = &""
 
 
 static func for_mode(p_mode: ViewMode) -> ControlOverlay:
@@ -86,6 +90,7 @@ func setup(p_battle: BattleScene) -> void:
 	if tips != null:
 		tips.raise()
 	_wire_host_signals()
+	_wire_aim_mode()
 	battle.battle_loaded.connect(_on_battle_loaded)
 	if battle.combat_state != null:
 		await _on_battle_loaded()
@@ -352,27 +357,152 @@ func _on_ui_root_resized() -> void:
 		mounted.relaid_out()
 
 
+## taskblock-57 Pass F: **switches this surface to `new_mode` by DIFFING the module sets.**
+##
+## *"Enter aim, switch; leave, switch back. **No suspension mechanism**, and 'what is visible while
+## aiming' becomes a table entry someone can read."*
+##
+## ## Why a diff rather than a fresh surface
+##
+## Rebuilding the surface is what `set_overlay` already does, and it is exactly wrong here: it
+## constructs a new `UnitInputModule`, therefore a new `TacticsController`, therefore a new
+## `aiming_at`. **The mode switch that happens because the player started aiming would destroy the
+## aim.** So modules in both sets are left completely alone — not suspended, not rebuilt, not
+## touched at all — and only the difference is mounted and unmounted.
+##
+## That is not a suspension mechanism. A module leaving the set is genuinely unmounted and freed; a
+## module in both sets simply never learns a switch happened.
+##
+## ## The chrome is not rebuilt
+##
+## Every slot published by `ModeChrome` or by a still-mounted provider stays valid, which is what
+## lets the surviving modules keep their `Control`s. A switch between modes with **different**
+## chromes is therefore refused rather than half-done — see the guard below. The aim mode names the
+## same chrome as the mode it is entered from, deliberately.
+##
+## ## Ordering
+##
+## New modules mount in the new mode's declaration order, so a provider still precedes its
+## dependants. `link()` runs on the newly mounted modules only: re-linking one that never left would
+## connect its signals a second time, and this is a switch that can happen many times a turn.
+func switch_mode(new_mode: ViewMode) -> void:
+	if new_mode == null or mode == null or new_mode.id == mode.id:
+		return
+	if new_mode.chrome != mode.chrome:
+		push_error(
+			(
+				(
+					"switch_mode refused: %s uses chrome %s and %s uses %s. "
+					+ "A switch does not rebuild chrome, so the slots would not match."
+				)
+				% [mode.id, mode.chrome, new_mode.id, new_mode.chrome]
+			)
+		)
+		return
+	var wanted: Dictionary = {}
+	for id: StringName in new_mode.modules:
+		wanted[id] = true
+
+	for mounted: ViewModule in modules.duplicate():
+		if wanted.has(mounted.module_id()):
+			continue
+		_retire(mounted)
+
+	var arrived: Array[ViewModule] = []
+	for id: StringName in new_mode.modules:
+		if module_context.has_module(id):
+			continue
+		var built: ViewModule = _mount_module(id, new_mode)
+		if built != null:
+			arrived.append(built)
+	mode = new_mode
+	for module_node: ViewModule in arrived:
+		module_node.link()
+	var tips: TooltipModule = module(&"tooltip") as TooltipModule
+	if tips != null:
+		tips.raise()
+
+
+## Unmounts and frees one module, **and takes its published slots with it.**
+##
+## A provider's slots are real `Control`s it owns; freeing the module frees them, and a
+## `ModuleContext.slots` entry left behind would hand the next module a freed node. That is a crash
+## with no obvious cause, so the entries go when the module does.
+func _retire(mounted: ViewModule) -> void:
+	for slot_name: StringName in mounted.published_slots():
+		if module_context.slots.get(slot_name) != null:
+			module_context.slots.erase(slot_name)
+	mounted.unmount()
+	modules.erase(mounted)
+	mounted.queue_free()
+
+
 ## An unknown module id is skipped, not fatal: a mode listing something the catalog does not know
 ## gets a mode without it, the same "no further action, no silent rollback" posture
 ## `ActionCatalog.build_firing_action` has.
 func _mount_declared_modules() -> void:
 	for id: StringName in mode.modules:
-		var mounted: ViewModule = ModuleCatalog.build(id)
-		if mounted == null:
-			continue
-		add_child(mounted)
-		mounted.configure(mode.options_for(id))
-		mounted.mount(module_context)
-		# taskblock-57 Pass B: **a module may be a slot provider**, and its slots are published the
-		# instant it has mounted — so a later module in the same declaration finds them at its own
-		# mount time. That is the ordering rule the mode table already lives under (`unit_input`
-		# before every display module), applied to slots instead of to a controller.
-		#
-		# Generic on purpose: the host does not know which modules publish, and the action bar is
-		# simply the first one that does.
-		for slot_name: StringName in mounted.published_slots():
-			module_context.set_slot(slot_name, mounted.published_slots()[slot_name])
-		modules.append(mounted)
+		_mount_module(id, mode)
+
+
+## Builds, configures, mounts and registers one module, publishing whatever slots it offers.
+## **Extracted so `switch_mode` mounts exactly the way the initial build does** — two mounting paths
+## that drifted would be the second overlay-shaped bug this project has had.
+func _mount_module(id: StringName, for_mode: ViewMode) -> ViewModule:
+	var mounted: ViewModule = ModuleCatalog.build(id)
+	if mounted == null:
+		return null
+	add_child(mounted)
+	mounted.configure(for_mode.options_for(id))
+	mounted.mount(module_context)
+	# taskblock-57 Pass B: **a module may be a slot provider**, and its slots are published the
+	# instant it has mounted — so a later module in the same declaration finds them at its own
+	# mount time. That is the ordering rule the mode table already lives under (`unit_input`
+	# before every display module), applied to slots instead of to a controller.
+	#
+	# Generic on purpose: the host does not know which modules publish, and the action bar is
+	# simply the first one that does.
+	for slot_name: StringName in mounted.published_slots():
+		module_context.set_slot(slot_name, mounted.published_slots()[slot_name])
+	modules.append(mounted)
+	return mounted
+
+
+## taskblock-57 Pass F: **aim is a mode, and the host is what switches to it.**
+##
+## Mode policy has always been the host's business — `wants_turn_for`, the bout-setup handoff — so
+## this is where "the player started aiming" turns into a mode. **Which mode is data**
+## (`ViewMode.aim_mode_id`), so no branch here names the aim surface, and a mode that cannot aim
+## names nothing and never switches.
+##
+## Driven off `aim_changed` rather than polled: it fires on arm, disarm, enter-aim and cancel-aim,
+## and the transition is derived from `aiming_at` rather than remembered, so the two can never
+## disagree about whether aiming is happening.
+func _wire_aim_mode() -> void:
+	var input: UnitInputModule = unit_input()
+	if input != null and input.tactics != null:
+		input.tactics.aim_changed.connect(_on_aim_changed)
+
+
+func _on_aim_changed() -> void:
+	var input: UnitInputModule = unit_input()
+	if input == null or input.tactics == null or mode == null:
+		return
+	var aiming: bool = input.tactics.aiming_at != null
+	if aiming and _mode_before_aim == &"":
+		if mode.aim_mode_id == &"":
+			return
+		var aim_mode: ViewMode = ViewModes.by_id(mode.aim_mode_id)
+		if aim_mode == null:
+			return
+		# Remembered BEFORE the switch, because `switch_mode` reassigns `mode`.
+		_mode_before_aim = mode.id
+		switch_mode(aim_mode)
+	elif not aiming and _mode_before_aim != &"":
+		var restored: ViewMode = ViewModes.by_id(_mode_before_aim)
+		_mode_before_aim = &""
+		if restored != null:
+			switch_mode(restored)
 
 
 func _wire_host_signals() -> void:
