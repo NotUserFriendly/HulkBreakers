@@ -1313,6 +1313,121 @@ same relative order this ledger has always kept them in, oldest work first. All 
   null-root-resets-viewport-state test. CC-sourced: found, fixed, and tested entirely by CC in one
   pass, no supervisor confirmation gate applies.
 
+### BR27.16 — Resolved — owner: `SUPERVISOR`
+**Step out: MP charged for the automated legs**
+- **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (2), 2026-08-04** — see that entry below
+  for the original four-way framing and the full taskblock-27 Pass B history.
+- **Reported:** taskblock-27, as part of *"Player Step Out: four bugs, one system"* — the automated
+  outbound and return legs of a step-out charged MP like an ordinary move.
+- **Fix:** `MoveAction.free` (new in taskblock-27 Pass B), applied to both automated legs. This
+  reversed `StepOutPlanner`'s own original *"real MP/AP cost for both moves, no discount"* — recorded
+  in `docs/SUPERSEDED.md`. **`free` applies to the AI's usage too**, not only the player's: the same
+  shared maneuver, the same cost either way.
+- **RESOLVED** 2026-07-21 — **confirmed by the supervisor**, in the same session as `BR27.06`'s
+  confirmation: no more MP charged for the automated legs. *Status carried verbatim from `BR27.01`;
+  the split transcribed it and closed nothing.*
+- **CC note, `e5393c3a-bd26-4668-8905-c50cf31e04cb`, 2026-08-04 — the mechanism still exists.**
+  `MoveAction.free` is present and consumed at three points (`is_legal`, the per-step cost path, and
+  `_can_still_complete`), `StepOutPlanner` still passes it for both legs, and
+  `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg` still guards it. Checked
+  because a fix reported done and absent from the code is a live pattern in this ledger (`BR55.03`);
+  this one is genuinely there.
+
+### BR27.17 — Resolved — owner: `SUPERVISOR`
+**Step out: the ghost snaps back to the base cell instead of holding the step-out waypoint**
+- **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (3), 2026-08-04** — see that entry below
+  for the original four-way framing and the full taskblock-27 Pass B history.
+- **Reported:** taskblock-27, as part of *"Player Step Out: four bugs, one system"*.
+- **Root cause, and it was a symptom rather than its own bug:** `_confirm_step_out()` used to queue
+  the **whole** move+attack+move triple the instant a candidate cell was confirmed. The triple ends
+  back at the origin, so it was queued and previewed in the same instant — there was never a
+  sustained moment where the ghost held the stepped-out position for the player to see.
+- **Fix:** splitting the flow (the same change that fixed part (1)'s original form). Confirming a
+  cell now queues **only** the free outbound leg and hands into ordinary aim mode; the return leg is
+  appended only when a real shot queues. **The ghost snapping back is now correct rather than a bug**
+  — it happens once the return leg is genuinely queued, which is the truthful final resting position.
+  During the aim phase it holds the stepped-out cell through the same queued-move preview machinery
+  every other action already uses.
+- **RESOLVED** 2026-07-21 — **confirmed by the supervisor**, same session as `BR27.16`: the ghost no
+  longer snaps back. *Status carried verbatim from `BR27.01`; the split transcribed it and closed
+  nothing.*
+- **CC note, `e5393c3a-bd26-4668-8905-c50cf31e04cb`, 2026-08-04.** The split flow still stands:
+  `_confirm_step_out()` enqueues one `MoveAction(..., true)` and `_append_step_out_return_leg()` is
+  reached only from `confirm_shot()` after a firing action actually enqueues. Guarded by
+  `test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim` and
+  `test_firing_after_a_step_out_completes_the_free_move_attack_move_triple`.
+
+### BR27.01 — Obsolete — owner: `SUPERVISOR`
+**Player Step Out: four bugs, one system**
+- **Source:** `SUPERVISOR`
+- **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
+  ways — (1) doesn't open the dartboard, always resolves a center-mass shot; (2) charges MP for the
+  automated legs; (3) the ghost snaps back to the base cell instead of holding the step-out
+  waypoint; (4) the intended sequence (pick step-out → ghost holds the cell → dartboard opens there
+  → fire resolves the whole move/fire/return) wasn't followed.
+- **Root cause:** `TacticsController._confirm_step_out()` called `StepOutPlanner.build_triple()`
+  wholesale the instant the player confirmed a candidate cell — queuing the WHOLE move+attack+move
+  triple (an automated center-mass shot) in one click, never entering ordinary aim mode at all. The
+  ghost "snapping back" was a direct symptom of this: the entire triple (ending back at origin)
+  was queued and previewed in the same instant the step-out cell was chosen, so there was never a
+  sustained moment where the ghost held the stepped-out position for the player to see. `MoveAction`
+  had no discount mechanism at all — `StepOutPlanner`'s own doc comment stated "real MP/AP cost for
+  both legs, no discount" as a deliberate original design choice.
+- **Fix:** split the flow. Confirming a step-out cell now queues ONLY the free outbound leg
+  (`MoveAction.free`, new — no MP/AP either direction, docs/SUPERSEDED.md), then hands off into
+  ORDINARY aim mode from the stepped-out position (`_framing_shooter()`/`aim_state()` already read
+  the previewed unit, so the camera and dartboard follow the queued move for free). Firing
+  (confirm_shot() again, now in aim mode) appends the free return leg once a real shot actually
+  queues. Canceling aim mid-step-out (before firing) undoes the queued outbound leg. The ghost
+  "snapping back" is now correct, not a bug — it only happens once the return leg is genuinely
+  queued (after firing), the truthful final resting position; during the aim phase it holds the
+  stepped-out cell via the same queued-move preview machinery every other action already uses.
+  `free` applies to the AI's own `StepOutPlanner` usage too, not just the player's — the same shared
+  maneuver, same cost either way.
+- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — taskblock-27 Pass B,
+  proven via `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the
+  free out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg)
+  and `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
+- **2026-07-20:** supervisor could not verify — blocked by a new, separate bug (now logged as
+  **BR27.06 — Step Out no longer occurs at all**, a regression from this very restructure). Until
+  BR27.06 is fixed, BR27.01 can't be confirmed. **Verification deferred**; still pending, and now
+  gated behind BR27.06.
+- **2026-07-21:** BR27.06 now has a fix pending its own confirmation (commit `d42f744`). Worth
+  re-attempting BR27.01's own verification alongside BR27.06's — same play session either way.
+- **2026-07-21 (broken down by the supervisor, same session as BR27.06's confirmation):** parts (2)
+  and (3) confirmed **RESOLVED** — no more MP charged for the automated legs, ghost no longer snaps
+  back. Part (4) ("the intended sequence wasn't followed") was the supervisor's own original
+  rephrasing of (1)-(3) together, not a distinct fourth symptom — folded in, not tracked separately.
+  Part (1) has **mutated, not resolved** — reopened with a precise new repro: "clicking shoot, then
+  clicking an enemy, doesn't bring up the dartboard if the unit had to step out; clicking again brings
+  up the dartboard." Likely the two-step step-out flow itself (first click enters step-out-cell-choice
+  mode, a second click/`confirm_shot()` is what actually opens ordinary aim mode per the Pass B fix
+  above) reading as "doesn't work" without a clear in-between visual cue — not yet investigated
+  code-side. **BR27.01 stays open for this one remaining piece.**
+- **2026-07-22 (tb32 review — still reproduces):** unchanged — step-out after shooting still does not
+  open the dartboard immediately on the step-out; a second click is required. tb32 didn't touch this.
+  The one open piece (part 1) persists exactly as the 2026-07-21 repro describes.
+- **2026-08-04 — split into `BR27.15`–`BR27.17`, one per outcome, and closed `Obsolete` here.** One id
+  standing for several independent outcomes can never be closed honestly: some fixed and one open is
+  neither `Active` nor `Resolved`. The split changes no statuses and fixes nothing — **it makes closure
+  possible**, which is the whole argument for it.
+- **Two corrections made while performing the split, both recorded rather than silently applied.**
+  **The id range was `BR27.10`–`BR27.13`, which is already taken** — those four exist in this archive,
+  `Resolved`, from taskblock-27 Pass D, and describe the spectator log wrap, inspect-on-hover, the
+  wall-cell inspector and an `InspectPanel` viewport leak. `BR27.14` is used too, so the split took
+  `BR27.15` onward. **And it is three entries, not four**: the 2026-07-21 breakdown above records part
+  (4) as *"the supervisor's own original rephrasing of (1)-(3) together, not a distinct fourth
+  symptom — folded in, not tracked separately"*, so splitting it out would have created an entry for
+  something this ledger already says is not a separate thing.
+- **Kept as a pointer rather than deleted, deliberately.** They share one system (player step-out)
+  and there was a reason at the time for holding them together, which nobody can now reconstruct. If
+  splitting turns out to be the mistake, this entry is where the original framing survives — the
+  three new entries each point back here.
+- **Held in `BUGS.md` only for ease of transport, and moved here on 2026-08-04.** `Obsolete` is a
+  closing status, so the open ledger is not where it belongs; the pointer resolves from the archive
+  exactly as well.
+
+
 ### BR11.01 — Resolved — owner: `SUPERVISOR`
 **Resource Editor — four layout bugs (stale-report source)**
 - **Source:** `SUPERVISOR`
