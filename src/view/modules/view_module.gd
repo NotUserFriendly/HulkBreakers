@@ -47,6 +47,13 @@ enum Kind { DISPLAY, INPUT }
 ## The context this module was mounted against. Null before `mount`, and again after `unmount`.
 var context: ModuleContext = null
 
+## taskblock-57 Pass A: whether this module is currently hidden by its own collapse toggle.
+## Meaningless on a module that is not collapsible, and left false there. See `is_collapsible()`.
+var collapsed: bool = false:
+	set(value):
+		collapsed = value
+		_on_collapsed(value)
+
 
 ## Stable identity, used as the key in a mode's declaration and in `ModuleContext.modules`. Every
 ## concrete module overrides this; the base value is deliberately empty rather than a guessed
@@ -63,6 +70,38 @@ func kind() -> Kind:
 
 func is_input() -> bool:
 	return kind() == Kind.INPUT
+
+
+## taskblock-57 Pass A: **which `ModuleSlots` name this module wants to live in**, or `&""` for one
+## that anchors itself.
+##
+## Declared rather than only passed inline to `context.slot(...)` at mount time, because two things
+## need to know it *before* anything is built: whether the module is collapsible (below), and — from
+## Pass B — whether it pins against the action bar rather than the screen. A mount-time argument
+## cannot answer either without mounting.
+##
+## A module may still pass a different name to `context.slot()`; this is the declaration, and
+## `_mount` remains free. They agree for every module that has been through Pass C.
+func preferred_slot() -> StringName:
+	return &""
+
+
+## True if this module must offer a way to be turned off.
+##
+## **Derived from the slot, not carried per module.** taskblock-57 A2's rule is that everything
+## pinned to a side is collapsible or off by default, so a square-ratio player toggles a panel
+## instead of being forced to shrink the whole UI to play. That is a fact about *placement*, and
+## placement belongs to the slot — so a module answers it by asking which slot it wants rather than
+## by each one remembering a flag that can drift from where it actually sits.
+func is_collapsible() -> bool:
+	return ModuleSlots.is_side_pinned(preferred_slot())
+
+
+## Override to actually hide something. The default does nothing, so a module that declares itself
+## collapsible and has not implemented it yet degrades to "the toggle exists and does nothing
+## visible" rather than crashing — and the test for the toggle is about the flag, not the pixels.
+func _on_collapsed(_value: bool) -> void:
+	pass
 
 
 ## Applies a mode's pre-mount `options` for this module by setting properties directly.

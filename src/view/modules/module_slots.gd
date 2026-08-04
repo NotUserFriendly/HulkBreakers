@@ -31,3 +31,66 @@ const TOP_LEFT := &"top_left"
 const TUNABLES := &"tunables"
 ## A single centred column owning the whole screen — a menu's own layout.
 const MENU_COLUMN := &"menu_column"
+
+# --- taskblock-57 Pass A: what a slot is, beyond where it is ---------------------------------
+#
+# **Two properties, both declared here rather than known by the panels.** A convention lives in
+# whichever file remembers it; a property is checkable, and both of these have a test that reads
+# them back.
+
+## The edges a slot may pin to. Open `StringName`s like every slot name, and `&""` for a slot that
+## floats (a centred menu, the announcement position).
+const EDGE_LEFT := &"left"
+const EDGE_RIGHT := &"right"
+const EDGE_TOP := &"top"
+const EDGE_BOTTOM := &"bottom"
+
+## Slots that resolve against `screen_rect` rather than `safe_rect`.
+##
+## **Three surfaces do this deliberately** — Inspect, the Inspect Viewer and the performance
+## monitor — and taskblock-57 A1 asks for it as a property precisely because a comment in a panel
+## cannot be asserted. A slot not named here does not escape, which is the safe default: a surface
+## that escapes by accident is one that walks off an ultrawide's edge.
+const ESCAPING_SLOTS: Array[StringName] = []
+
+## Slot -> which screen edge it is pinned to. A slot absent from here floats.
+##
+## **This is what makes "collapsible" derivable rather than remembered.** taskblock-57 A2's rule is
+## that everything pinned to a side is collapsible or off by default, so a square-ratio player
+## toggles rather than shrinking the whole UI — and a module can answer that about itself by asking
+## which slot it wants instead of each one carrying its own flag.
+const SLOT_EDGES: Dictionary = {
+	LEFT_COLUMN: EDGE_LEFT,
+	INVENTORY_ROW: EDGE_LEFT,
+	TOP_RIGHT: EDGE_RIGHT,
+	BOTTOM_RIGHT: EDGE_RIGHT,
+	READOUT_COLUMN: EDGE_RIGHT,
+	ACTION_ROW: EDGE_BOTTOM,
+	TOP_LEFT: EDGE_TOP,
+	TUNABLES: EDGE_TOP,
+}
+
+
+## True if `slot` is drawn against the whole window rather than the 16:9 safe rect.
+static func escapes_safe_rect(slot: StringName) -> bool:
+	return ESCAPING_SLOTS.has(slot)
+
+
+## Which edge `slot` pins to, or `&""` for one that floats.
+static func edge_of(slot: StringName) -> StringName:
+	return SLOT_EDGES.get(slot, &"")
+
+
+## True if `slot` is pinned to any screen edge.
+##
+## **Every edge counts, not just left and right.** The rule exists so a player on a cramped ratio
+## can reclaim space, and a bottom-pinned bar costs vertical room exactly as a left-pinned column
+## costs horizontal room — which is the axis a square ratio is short of.
+static func is_side_pinned(slot: StringName) -> bool:
+	return edge_of(slot) != &""
+
+
+## The rect `slot` is placed within, given the current screen. Thin, and deliberately the only
+## place a caller has to look to find out which space a slot lives in.
+static func rect_for(slot: StringName, screen: Vector2) -> Rect2:
+	return UiLayout.rect_for(escapes_safe_rect(slot), screen)

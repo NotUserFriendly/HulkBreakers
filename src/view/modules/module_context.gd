@@ -97,3 +97,12 @@ func slot(name: StringName, fallback: Control = null) -> Control:
 
 func set_slot(name: StringName, control: Control) -> void:
 	slots[name] = control
+
+
+## taskblock-57 Pass A: the rect `name` is placed within at the current screen size — `screen_rect`
+## for a slot that escapes, `safe_rect` otherwise.
+##
+## Takes the screen explicitly rather than reading a viewport, so it stays answerable in a headless
+## test. A module that needs the live size passes `ui_root.size`.
+func slot_rect(name: StringName, screen: Vector2) -> Rect2:
+	return ModuleSlots.rect_for(name, screen)
