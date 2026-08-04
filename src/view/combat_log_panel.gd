@@ -33,6 +33,12 @@ extends VBoxContainer
 ## panel's own collapse without polling it.
 signal minimized_changed(is_minimized: bool)
 
+## taskblock-57 Pass C: the verbose checkbox changed. Emitted rather than
+## acted on, because folding belongs to the sink (`HierarchicalUiSink`) and
+## this panel deliberately knows nothing about a `LogFold` — tb22 F2's rule
+## that folding is presentation over an untouched event stream.
+signal verbose_changed(is_verbose: bool)
+
 ## Starting geometry. Flagged/tunable — resize is interactive anyway, so these
 ## only set where it opens.
 ## Supervisor, post-tb41: "the combat log should be ~2x as wide as it is
@@ -62,7 +68,24 @@ var log_label: RichTextLabel
 ## any more — see `_on_title_bar_input`.
 var title_bar: PanelContainer
 var minimize_button: Button
+## taskblock-57 Pass C: the table's two checkboxes. Public so a test drives
+## the real controls rather than the fields behind them.
+var wrap_checkbox: CheckBox
+var verbose_checkbox: CheckBox
 
+## taskblock-57 Pass C: the overflow preview — the *revealing* half of the
+## table's two hover behaviours. Public so a test reads what it says.
+var overflow_preview: Label
+
+## The title label, hidden while minimized — taskblock-57 Pass C's "minimises
+## to a BUTTON", not to a full-width strip with a title on it.
+var _title_label: Label
+var _controls_row: HBoxContainer
+## **The same clock the tooltip uses**, which is the taskblock's own
+## requirement: "two behaviours sharing one timer". The content models stay
+## apart — a tooltip says what a control will DO, this says what a line
+## already SAYS — and only the 1.5 s dwell is common.
+var _dwell := HoverDwell.new()
 var _body: PanelContainer
 var _minimized := false
 var _dragging := false
@@ -73,6 +96,10 @@ var _drag_start_height := 0.0
 ## dragged to — not to whatever it happened to be when some earlier drag began,
 ## which is what the first version restored to.
 var _restore_height := DEFAULT_HEIGHT
+## The width to come back to, captured at the same moment and for the same
+## reason as `_restore_height` — minimizing now narrows the panel to its
+## button, so a restore has a width to undo as well as a height.
+var _restore_width := DEFAULT_WIDTH
 
 
 func _init() -> void:
@@ -105,12 +132,12 @@ func _init() -> void:
 	bar_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_bar.add_child(bar_row)
 
-	var title_label := Label.new()
-	title_label.text = TITLE
-	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	bar_row.add_child(title_label)
+	_title_label = Label.new()
+	_title_label.text = TITLE
+	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bar_row.add_child(_title_label)
 
 	_body = PanelContainer.new()
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -129,7 +156,55 @@ func _init() -> void:
 	log_label.scroll_following = true
 	log_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	log_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	_body.add_child(log_label)
+	log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	# taskblock-57 Pass C: **"Word wrap and verbose as checkboxes."** They live inside the body
+	# rather than on the title bar, so minimizing takes them away with everything else and the
+	# minimized panel really is just a button.
+	var body_column := VBoxContainer.new()
+	body_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_child(body_column)
+	body_column.add_child(log_label)
+
+	_controls_row = HBoxContainer.new()
+	_controls_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body_column.add_child(_controls_row)
+
+	# **Off by default, and that is preserved rather than chosen.** `runNotes.md`, carried in this
+	# file's own comment since taskblock-41: "scrollable and not word wrapping". The checkbox makes
+	# it reachable; it does not change the default.
+	wrap_checkbox = CheckBox.new()
+	wrap_checkbox.text = "Wrap"
+	wrap_checkbox.focus_mode = Control.FOCUS_NONE
+	wrap_checkbox.toggled.connect(set_word_wrap)
+	_controls_row.add_child(wrap_checkbox)
+
+	verbose_checkbox = CheckBox.new()
+	verbose_checkbox.text = "Verbose"
+	verbose_checkbox.focus_mode = Control.FOCUS_NONE
+	verbose_checkbox.toggled.connect(set_verbose)
+	_controls_row.add_child(verbose_checkbox)
+
+	# **Shown in place, over the text** — the table's own words, and the reason this is a child of
+	# the body rather than a floating box near the cursor. A tooltip that appears beside the cursor
+	# is answering "what will this do"; this is answering "what does that line say", so it belongs
+	# on the line.
+	overflow_preview = Label.new()
+	overflow_preview.visible = false
+	overflow_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overflow_preview.top_level = true
+	overflow_preview.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
+	var preview_style := StyleBoxFlat.new()
+	preview_style.bg_color = Color(
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, 1.0
+	)
+	overflow_preview.add_theme_stylebox_override("normal", preview_style)
+	# Parented to this panel's own root, not to the body: `top_level` Controls are skipped by
+	# `Container`'s own child sorting, so this never fights the layout it draws over.
+	add_child(overflow_preview)
+
+	log_label.gui_input.connect(_on_log_hovered)
+	log_label.mouse_exited.connect(_on_log_exited)
 
 	# The minimize toggle. A real child Button, so it takes its own click and a
 	# press on it never starts a drag on the bar underneath — that separation is
@@ -150,25 +225,144 @@ func _ready() -> void:
 	log_label.add_theme_stylebox_override("normal", style)
 
 
+## Drives the dwell clock. **The second of the table's two hover behaviours, on the same timer as
+## the first** — `HoverDwell.DELAY_SEC` is the single 1.5 s, and neither this nor `TooltipView`
+## keeps its own count.
+func _process(delta: float) -> void:
+	if _dwell.tick(delta):
+		_reveal_hovered_line()
+
+
+## Tracks which line the cursor is over. Aiming at the line *index* rather than at the position is
+## what lets the cursor drift within one line without restarting the wait — the same rule
+## `TooltipView` follows by aiming at its rendered text.
+func _on_log_hovered(event: InputEvent) -> void:
+	if event is not InputEventMouseMotion:
+		return
+	# **No preview while wrapping.** With `AUTOWRAP_WORD_SMART` nothing is cut off, so there is
+	# nothing to reveal — and a wrapped line spans several visual rows, which would make the index
+	# arithmetic below wrong as well as pointless.
+	if is_word_wrapped():
+		_hide_preview()
+		return
+	var local_y: float = (event as InputEventMouseMotion).position.y
+	var line: int = LogLineProbe.line_at(_line_offsets(), local_y + _scroll_value())
+	if line < 0:
+		_hide_preview()
+		return
+	_dwell.aim_at(line)
+	if not _dwell.fired:
+		overflow_preview.visible = false
+
+
+func _on_log_exited() -> void:
+	_hide_preview()
+
+
+func _hide_preview() -> void:
+	_dwell.cancel()
+	overflow_preview.visible = false
+
+
+## Shows the hovered line's full text, in place over it, if it is actually cut off.
+func _reveal_hovered_line() -> void:
+	var aimed: Variant = _dwell.target()
+	if aimed == null:
+		overflow_preview.visible = false
+		return
+	var line: int = int(aimed)
+	var offsets: PackedFloat32Array = _line_offsets()
+	var text: String = LogLineProbe.text_of(log_label.get_parsed_text().split("\n"), line)
+	if text == "" or line >= offsets.size():
+		overflow_preview.visible = false
+		return
+	var font: Font = log_label.get_theme_font(&"normal_font")
+	var font_size: int = log_label.get_theme_font_size(&"normal_font_size")
+	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	if not LogLineProbe.overflows(width, log_label.size.x):
+		overflow_preview.visible = false
+		return
+	overflow_preview.text = text
+	# **On the line**, not beside the cursor. `top_level` means this is a global position, and the
+	# line's own content offset minus the scroll is where that line currently sits on screen.
+	overflow_preview.global_position = (
+		log_label.global_position + Vector2(0.0, offsets[line] - _scroll_value())
+	)
+	overflow_preview.reset_size()
+	overflow_preview.visible = true
+
+
+func _line_offsets() -> PackedFloat32Array:
+	var offsets := PackedFloat32Array()
+	for i in range(log_label.get_line_count()):
+		offsets.append(log_label.get_line_offset(i))
+	return offsets
+
+
+func _scroll_value() -> float:
+	var bar: VScrollBar = log_label.get_v_scroll_bar()
+	return bar.value if bar != null else 0.0
+
+
 func is_minimized() -> bool:
 	return _minimized
 
 
-## Collapses to just the title bar, so the log can be got out of the way
-## without losing where it is or what it says.
+## **Collapses to a BUTTON**, not to a full-width title strip.
+##
+## taskblock-57 Pass C: *"Minimises to a button flush against the bar, no padding."* The title text
+## goes with the body, so what is left is the toggle itself — which is the difference between "the
+## log is out of the way" and "the log is a 520-pixel bar with nothing in it". `CombatLogModule`
+## owns the *flush* half, because padding is a property of the slot, not of the panel.
+##
+## The restore width is captured at the moment of collapsing for the same reason the height already
+## was: a panel that was resized comes back to the size it was resized to.
 func toggle_minimized() -> void:
 	_minimized = not _minimized
 	if _minimized:
 		# Captured HERE, at the moment of collapsing, so whatever the panel had
 		# been dragged to is what comes back.
 		_restore_height = custom_minimum_size.y
+		_restore_width = custom_minimum_size.x
 		_apply_height(TITLE_BAR_HEIGHT)
+		custom_minimum_size.x = TITLE_BAR_HEIGHT
+		size.x = TITLE_BAR_HEIGHT
 	else:
 		_apply_height(_restore_height)
+		custom_minimum_size.x = _restore_width
+		size.x = _restore_width
 	_body.visible = not _minimized
+	_title_label.visible = not _minimized
 	minimize_button.text = RESTORE_LABEL if _minimized else MINIMIZE_LABEL
 	minimize_button.tooltip_text = "Restore" if _minimized else "Minimize"
 	minimized_changed.emit(_minimized)
+
+
+## taskblock-57 Pass C: the word-wrap checkbox. Named rather than poked, so a test drives the real
+## path. `AUTOWRAP_OFF` is the shipped default — see the checkbox's own comment.
+func set_word_wrap(enabled: bool) -> void:
+	log_label.autowrap_mode = (
+		TextServer.AUTOWRAP_WORD_SMART if enabled else TextServer.AUTOWRAP_OFF
+	)
+	if wrap_checkbox != null:
+		wrap_checkbox.set_pressed_no_signal(enabled)
+
+
+func is_word_wrapped() -> bool:
+	return log_label.autowrap_mode != TextServer.AUTOWRAP_OFF
+
+
+## taskblock-57 Pass C: the verbose checkbox. **Emitted, not applied** — what "verbose" means is the
+## sink's business (every fold group drawn open instead of summarised), and this panel deliberately
+## knows nothing about folding.
+func set_verbose(enabled: bool) -> void:
+	if verbose_checkbox != null:
+		verbose_checkbox.set_pressed_no_signal(enabled)
+	verbose_changed.emit(enabled)
+
+
+func is_verbose() -> bool:
+	return verbose_checkbox != null and verbose_checkbox.button_pressed
 
 
 ## Drag the title bar to resize vertically. Deliberately drag-on-the-bar rather

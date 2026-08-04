@@ -38,14 +38,25 @@ const EDGE_MARGIN := 4.0
 const MIN_WIDTH := 220.0
 ## taskblock-08 D2: "wait a beat before appearing" — the ONE hover-delay
 ## value, shared by every caller because there is only one tooltip
-## mechanism now. A flagged tuning number, not a design decision.
-const HOVER_DELAY_SEC := 0.4
+## mechanism now.
+##
+## **taskblock-57 Pass C: 1.5 s, and it is no longer a guess.** This shipped
+## at 0.4 s, flagged in its own comment as "a tuning number, not a design
+## decision". The placement table specifies 1.5 s and specifies that the
+## descriptive tooltip and the combat log's revealing overflow preview
+## **share one timer** — so the number and the clock both live in
+## `HoverDwell` now, and this is an alias so existing callers and tests keep
+## reading it from where they always did.
+const HOVER_DELAY_SEC := HoverDwell.DELAY_SEC
 
 var _label: RichTextLabel
 var _has_pending: bool = false
 var _pending_text: String = ""
 var _pending_position: Vector2 = Vector2.ZERO
-var _pending_elapsed: float = 0.0
+## taskblock-57 Pass C: the shared clock. **The content model stays here** — this view builds
+## BBCode from a `TooltipData` and the log's preview reveals a raw line; the taskblock is explicit
+## that those must not be merged. Only the timing is common.
+var _dwell := HoverDwell.new()
 
 
 func _init() -> void:
@@ -84,7 +95,7 @@ func show_data(data: TooltipData, at_position: Vector2) -> void:
 	_has_pending = true
 	_pending_text = text
 	_pending_position = at_position
-	_pending_elapsed = 0.0
+	_dwell.aim_at(text)
 
 
 ## `BR51.14`: **move without rebuilding.** `show_data` repositions too, but only after its
@@ -99,14 +110,13 @@ func move_to(at_position: Vector2) -> void:
 func hide_tooltip() -> void:
 	visible = false
 	_has_pending = false
-	_pending_elapsed = 0.0
+	_dwell.cancel()
 
 
 func _process(delta: float) -> void:
 	if not _has_pending:
 		return
-	_pending_elapsed += delta
-	if _pending_elapsed < HOVER_DELAY_SEC:
+	if not _dwell.tick(delta):
 		return
 	_label.text = _pending_text
 	visible = true
