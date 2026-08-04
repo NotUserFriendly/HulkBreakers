@@ -80,6 +80,13 @@ const PLUMBING_KINDS: Array[StringName] = [
 	# and `out/combat.log` is unaffected either way (folding is presentation
 	# only, tb22 F2).
 	&"fps_dump",
+	# taskblock-57 Pass D: **the queuing fold the taskblock asks for by name.** `queue_panel`
+	# retires this block and its confirmation role — "what I clicked registered" — moves here. A
+	# five-leg move plan is five events; folded, it is one counted row that opens into five, rather
+	# than five rows pushing the fight off the top of the panel. Reset Turn is the same shape in
+	# reverse. Drillable, never dropped, and `out/combat.log` is unaffected either way.
+	QueueLog.QUEUED,
+	QueueLog.CANCELLED,
 ]
 
 var groups: Array[LogFoldGroup] = []

@@ -651,7 +651,7 @@ func queue_untargeted_action(action_id: StringName) -> void:
 		return
 	var action: CombatAction = ActionCatalog.build_untargeted_action(action_id, shooter, weapon.id)
 	if action != null:
-		selection.current_queue().enqueue(action, selection.state)
+		selection.enqueue(action)
 
 
 ## taskblock-08 A1: "Esc / RMB disarms the action and returns to normal
@@ -1222,7 +1222,7 @@ func confirm_shot() -> void:
 			var action: CombatAction = ActionCatalog.build_firing_action(
 				armed_action.id, shooter, weapon.id, aiming_at.cell, reticle_offset
 			)
-			if action != null and selection.current_queue().enqueue(action, selection.state):
+			if action != null and selection.enqueue(action):
 				# taskblock-27 Pass B: a real shot just queued from a
 				# step-out's own firing cell — the free return leg (the
 				# triple's own third leg) only ever gets appended here, on
@@ -1250,7 +1250,7 @@ func _append_step_out_return_leg() -> void:
 	var back_path: Array[Vector2i] = back_pf.astar(previewed_shooter.cell, _step_out_origin_cell)
 	if back_path.size() < 2:
 		return
-	selection.current_queue().enqueue(MoveAction.new(shooter, back_path, true), selection.state)
+	selection.enqueue(MoveAction.new(shooter, back_path, true))
 
 
 ## taskblock-27 Pass B: commits to whichever candidate cell is CURRENTLY
@@ -1296,12 +1296,7 @@ func _confirm_step_out() -> void:
 		return
 	var pf := Pathfinder.new(preview.grid, shooter.shell.can_climb())
 	var out_path: Array[Vector2i] = pf.astar(previewed_shooter.cell, firing_cell)
-	if (
-		out_path.size() < 2
-		or not selection.current_queue().enqueue(
-			MoveAction.new(shooter, out_path, true), selection.state
-		)
-	):
+	if out_path.size() < 2 or not selection.enqueue(MoveAction.new(shooter, out_path, true)):
 		cancel_step_out()
 		return
 	_step_out_origin_cell = previewed_shooter.cell
@@ -1365,7 +1360,10 @@ func cancel_aim() -> void:
 	# the free outbound leg too — otherwise the unit is left standing at
 	# the firing cell with no shot fired and no return leg ever coming.
 	if _returning_from_step_out:
-		selection.current_queue().actions.pop_back()
+		# taskblock-57 Pass D: through `undo_last`, not a raw `pop_back`, so this cancellation
+		# reaches the combat log like every other one. The queue panel used to be where a player
+		# saw the outbound leg vanish; there is no panel now, so the line is the only evidence.
+		selection.undo_last()
 		_returning_from_step_out = false
 	aiming_at = null
 	armed_action = null
@@ -1409,9 +1407,18 @@ func _queue_final_action_and_resolve(queue_final_action: Callable) -> void:
 	armed_action = null
 
 	input_locked = true
+	# **The sink opens AFTER the final action is queued, and that ordering is load-bearing.**
+	# `turn_ended` promises "the events resolve_turn() actually emitted" — it is what `LogPlayback`
+	# replays as the animated resolution. Queueing is TACTICS, so anything emitted by it is not part
+	# of that stream.
+	#
+	# It never mattered while queueing was silent. taskblock-57 Pass D gave queueing a combat-log
+	# line (the confirmation `queue_panel` used to provide), and the very first full gate caught the
+	# `action_queued` event riding into the resolved-events list — where playback would have
+	# animated it as though something had resolved.
+	queue_final_action.call()
 	var sink := MemorySink.new()
 	selection.state.combat_log.add_sink(sink)
-	queue_final_action.call()
 	var move_hooks := MoveHooks.new(selection.selected_unit.cell)
 	selection.state.resolve_until(selection.current_queue(), move_hooks.check)
 	selection.state.combat_log.remove_sink(sink)

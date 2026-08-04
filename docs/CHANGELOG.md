@@ -1,10 +1,10 @@
 # CHANGELOG.md — What's Been Built
 
-### taskblock-57 Passes A, B and C1 — the layout's foundations (**block incomplete**)
+### taskblock-57 Passes A–D1 — the layout, live (**block incomplete**)
 
-**Three of eight passes. The block is open** — C2 through H are unstarted, and this entry describes
-capability that exists rather than a finished layout. No mode uses the new chrome yet, so **nothing
-visible has moved**: every surface still sits where taskblock-56 left it.
+**Six of eight-plus passes. The block is open** — the rest of Pass D, and E through H, are unstarted.
+**The layout is live**: `ViewModes.player()` uses `ModeChrome.BATTLE_LAYOUT`, so every surface in the
+block's placement table has moved to where that table puts it.
 
 **`UiLayout` (`src/logic/`, pure) owns the two coordinate spaces.** `safe_rect` is the largest 16:9
 rect fitting inside the screen, centred — 16:9 at every ratio and never larger than its screen.
@@ -42,14 +42,16 @@ place"* is answerable headlessly, where a chrome full of anchor presets is testa
 screenshot. Five new slots (`inspect_panel`, `inspect_viewer`, `debug_menu`, `perf_monitor`,
 `announcements`), with exactly three declared as escaping.
 
-**The debug-menu budge is not a constant, and that is a measurement rather than a preference.** With
-the table's own fractions the menu and Inspect **abut exactly at 1x**, by arithmetic and not by
-luck: the menu ends at `1/2 + 1/8 = 5/8` of the safe width and Inspect begins at
-`1 - (2/3)(9/16) = 5/8`. So a fixed distance is dead code at the shipped default — and the 220 px
-first written would not have cleared the overlap at any scale where one exists (480 px at 1.5x,
-960 px at 2.0x). `budged_debug_menu_rect` shifts by the overlap it measures, plus padding: still a
-one-off, correct at every scale, with no unverifiable number in it. **Consequence worth reading:
-budging only ever fires once UI scale moves, which is not settable until the options menu exists.**
+**The debug-menu budge takes a floor AND a measurement, because neither alone is right.** With the
+table's own fractions the menu and Inspect **abut exactly at 1x**, by arithmetic and not by luck:
+the menu ends at `1/2 + 1/8 = 5/8` of the safe width and Inspect begins at `1 - (2/3)(9/16) = 5/8`.
+So a purely measured budge is **zero at the only scale anyone can currently play at**, and a fixed
+distance is too small everywhere else — the 220 px first written clears neither the 480 px overlap
+at 1.5x nor the 960 px at 2.0x. C1 shipped the measured-only form and flagged that it could never
+fire; **the supervisor's call was to floor it**, given as `X + X*(SCALE-1)` — which is `X * SCALE`,
+i.e. exactly `UiLayout.scaled(X)`, so it goes through the one place that reads UI scale rather than
+adding a second scaling rule. `debug_menu_budge_distance` is `max(floor, overlap + padding)`. The
+floor's magnitude is eight of the table's own padding units and is **flagged tunable, not design**.
 
 **Two guards fired during the block, both by design.** Pass A's *"nothing escapes yet, the three
 arrive in Pass C"* failed when C1 added them — now pinned at exactly three. And GUT called the first
@@ -57,10 +59,112 @@ side-pinned sweep *risky — did not assert*, correctly: no module declares a sl
 ranged over an empty set. It now also asserts the set equals a pinned `EXPECTED_SIDE_PINNED`, which
 **C2 must update deliberately**.
 
-**The action bar and its satellites are deliberately absent from `SLOT_EDGES`**, so they are not
-collapsible. The rule exists so a cramped player can reclaim space; the bar is centred at the bottom
-at half width and crowds nothing, and a control surface you can switch off is a game you cannot
-play. One line to reverse if the supervisor disagrees.
+**REVERSED IN C2a — see the taskblock-57 Pass C entry below.** C1 recorded that the action bar and
+its satellites were "deliberately absent from `SLOT_EDGES`, so they are not collapsible". That was
+already inconsistent with the data shipped beside it (`SLOT_EDGES` carries `ACTION_ROW: EDGE_BOTTOM`,
+and `test_slot_properties.gd` pins "bottom is a side too"); nothing surfaced it while no module
+declared a slot. The action bar **is** collapsible.
+
+### taskblock-57 Pass C (C2a, C2b, C3) and D1 — the modules move, and queueing becomes a log line
+
+**The placement table is real on screen.** Every surface in it declares `preferred_slot()` and lands
+on `BattleLayout`'s own rect, asserted end to end by reading mounted panels' `get_global_rect()` back
+rather than re-deriving them (`test_battle_placements.gd`).
+
+**Three modules are new because three surfaces had no module of their own**, and a module declares
+one slot — so a surface welded inside another module could never be in its own declared place.
+`unit_resources` takes the AP/MP pips out of the action bar (G2 replaces that exact surface with a
+coordinate readout in editor mode — *"same slot, different module"*, which is impossible while it is
+welded inside a third). `perf_monitor` takes the readout out of `debug_panel` and takes the FPS
+figure off the combat log, so there is one framerate surface over one meter. `ui_buttons` is what
+makes A2's collapse rule **reachable** — the flag and its hook had existed since Pass A with no
+control that could reach them.
+
+**`ModeChrome.relayout` / `ViewModule.relaid_out` — a small new mechanism, named rather than built
+quietly.** The battle layout places absolutely, which is what makes it testable arithmetic; absolute
+positions do not follow a resized window where the anchor-preset chromes did. The hook exists rather
+than each module connecting to `resized` itself because the regions must move before anything
+re-derives from them, and two handlers on one signal would settle that by connection order.
+
+**`_legacy_readout` is a deliberately labelled temporary** carrying `queue_panel`, `stat_panels` and
+`controls_legend`, which the table does not place because Pass D retires or relocates all three.
+Without it, switching the chrome would strand all three at (0,0) on top of each other. **It is
+deleted with them.**
+
+**Pass C's behaviours.** End Turn asks first when AP or MP would be wasted (`TurnEndPrompt`, logic —
+it reads the PREVIEWED unit, since a queued move has not spent its AP yet and prompting off the raw
+unit would fire nearly every turn). The combat log minimises to a **button**, 520 px to 35, flush
+against the bar. Word wrap and verbose are checkboxes; verbose is emitted, not applied, because what
+it means is the sink's business (every fold group drawn open, still presentation-only, tb22 F2).
+
+**`HoverDwell` — one timer, two behaviours, which the taskblock asks for by name.** 1.5 s, up from a
+0.4 s that was flagged in its own comment as a guess. A shared *object* rather than a shared
+constant: a constant leaves each caller writing its own accumulate-and-compare, and this project has
+produced two visibility systems, two aiming paths and two overlay hierarchies from that shape. The
+**content models stay apart** — the tooltip renders `TooltipData` beside the cursor and says what a
+control will DO; the log's preview shows a line verbatim over that line and says what it already
+SAYS. `LogLineProbe` carries the decidable half so the preview is testable without a laid-out
+`RichTextLabel` in a live window.
+
+**`BotViewer` — the 3D view, out of `InspectPanel` and into the table's own top-left row.**
+Moved, not rewritten: both rendering paths, the isolate cull masks and the `BR48.01` lighting
+withdrawal are the same code. `inspect_panel.gd` goes **992 → 756 lines**, which was the other
+reason: the block's own first edits pushed it over the 1000-line limit. One class, two placements —
+the panel takes a viewer if its host supplies one and builds its own if not, so every existing test,
+the spectator and editor modes, and the stand-alone acceptance keep the docked layout unchanged.
+
+**D1: queueing is legible in the combat log**, which is the replacement the taskblock requires to
+land *before* `queue_panel` retires. `QueueLog` emits `unit N queued a move to (x,y)` /
+`unit N cancelled move`, folded by `LogFold` into one drillable counted row per run. **A move names
+its destination** because "queued a move" without a cell fails at the one thing the line exists for.
+
+**One path in, which is the reason one line covers everything.** Before this there were nine ways to
+enqueue — five `queue_*` methods on `SelectionController` and four direct
+`selection.current_queue().enqueue(...)` calls in `TacticsController` — and a confirmation at each
+would have been nine chances to forget one. `SelectionController.enqueue` is now the only one, and
+it logs only what the queue actually accepted. **The AI's queueing is deliberately not logged**: the
+entries exist to confirm a click, and a planner enqueues and discards while it evaluates.
+
+#### Defects found by tests that reading the code would not have caught
+
+- **The action bar's CLUSTER is 1740 px wide, not the 960 the table gives the bar.** Anchored at the
+  region's left edge it ran to x=2220 on a 1920 screen, putting End Turn at x=2142 — off the
+  display. It centres on the bar's band now.
+- **`context.slot()` falls back to `ui_root`**, so "was I placed?" came back true in every mode
+  *without* a battle layout: Inspect stretched over the whole screen in spectator and editor, and
+  the debug menu landed at (0,0) on the spectator's own cluster. Asked of `slots` directly now.
+- **`PerfPanel` is a plain `Control`**, so its outer rect never took its body's height. Harmless
+  hanging from the top; pinned to the bottom corner it drew its body from y=1080 *downward*.
+- **`set_anchors_preset` preserves the rect measured against a not-yet-laid-out parent**, which put
+  the readout at x=-420. All four anchors and all four offsets, explicitly — the third time that
+  lesson has been learned in that file's history.
+- **`Camera3D.look_at` needs a live tree.** `InspectPanel` got that for free by building the viewer
+  inside `setup()`; construction moved earlier, so the framing call is deferred to `_ready()`.
+- **The queue confirmation rode into the RESOLUTION event stream.** `TacticsController` opened its
+  `MemorySink` *before* queueing the final action, so `turn_ended` — which `LogPlayback` replays as
+  the animated resolution — carried a TACTICS `action_queued` event. Invisible while queueing was
+  silent; caught by the first full gate after it stopped being.
+
+#### The gate could report success on a run it did not finish
+
+**`run_tests.sh` now fails when the suite does not finish, and this is the most important fix in the
+stretch.** The suite runs under `-d`, which GUT needs to notice unexpected engine errors — so a
+runtime script error raises a Debugger Break, **the break ENDS THE RUN**, `run_suite.gd` never
+reaches `_on_end_run`, never computes an exit code, and the process exits **0**.
+
+Not hypothetical: Pass C3's first full gate reported `EXIT=0` from a log with no totals in it,
+having stopped three quarters of the way through because two test files still reached for fields
+that had moved. A runner that has vanished cannot report its own absence, so the caller checks for
+the summary line the runner prints last and fails the build without it. Verified against both real
+logs — the truncated one lacks the marker and fails, a good one passes — and it then caught a second
+real case within the hour.
+
+#### Reversed within the block
+
+`EXPECTED_SIDE_PINNED` went from empty to four (`debug_panel`, `inspect`, `action_bar`,
+`inspect_viewer`), which is the Pass A tripwire working exactly as built. Filling it forced the
+action-bar collapsibility call recorded above.
+
 
 ### taskblock-56 Pass F — the editor, and the collapse's own proof holds
 
