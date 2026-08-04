@@ -133,6 +133,71 @@ recorded on each: `UnitInputModule.repair_menu` (whether a picker opened and wha
 
 Full gate green, 2812/2812.
 
+### taskblock-56 Pass D — one view, and a mode is a table entry
+
+**The four overlay subclasses are deleted.** `SquadControlOverlay` (942), `SpectatorOverlay` (718),
+`GenerateBoutOverlay` (373) and `SingleUnitOverlay` (54) are four rows in `ViewModes`: which
+modules, in what chrome, with what options, under which turn policy. `ControlOverlay` is 416 lines
+and is the only surface class.
+
+**The acceptance holds.** `test_view_modes.gd` builds a mode that exists nowhere in `src/` — an odd
+combination no shipped mode uses, so it cannot be satisfied by a real mode's code path — mounts it
+against a real `BattleScene`, and asserts it produced exactly the modules it declared. Every shipped
+mode is separately asserted to compose its own declaration, in order.
+
+**`single_unit` is `player` plus one field**, asserted directly. That 54-line file was never small
+because the mode was small; it was small because inheritance let it take everything.
+
+**Spectator's contract became checkable rather than structural.** It used to be expressed by *not
+inheriting* the player overlay. It is now `has_unit_input() == false`, asserted twice — from the
+declaration alone (no battle needed) and against a mounted surface, where the concrete fact is that
+there is no `TacticsController` at all and therefore no path from a click to `ActionQueue.enqueue`.
+
+**Chrome is three named layouts** (`player_columns`, `top_left_rows`, `centered_menu`) publishing
+named slots a module asks for and degrades without. **Options are applied generically by property
+name**, so adding one is a table entry too and `ControlOverlay` knows what none of them mean.
+
+**Module-to-module wiring moved into a `link()` hook**, called after every module has mounted, so
+the connections a module wants do not constrain declaration order the way its mount-time reads do —
+and a new mode needs no wiring code. Two host capabilities, `advance_ai_turns` and `rebind_all`, are
+published on `ModuleContext` as `Callable`s rather than by handing a module the surface.
+
+**Two real bugs found while migrating, both caused by the migration and both instructive:**
+- **A modeless surface defaulted to the player mode**, which *has* unit input, so `_on_battle_loaded`
+  drove the AI batch. Every fixture that installs a bare placeholder to neutralise
+  `BattleScene._ready()` found its bout one turn further on with units standing somewhere else.
+  `ViewModes.empty()` is the faithful translation of the old inert base class.
+- **Routing the AI batch through a signal silently broke it.** `emit` does not await a coroutine
+  handler — it runs it to the first `await` and detaches — so a caller awaiting the turn returned
+  with the batch still in flight. That is exactly the defect tb45 Pass E fixed by adding an `await`
+  to a fire-and-forget call, and a signal would have reintroduced it wearing a nicer shape. The
+  advance is awaited inline in `UnitInputModule._on_turn_ended`.
+
+**A third, subtler timing fact worth recording:** the single-unit auto-select used to work *because*
+the old code did not await — it ran at the batch's first suspension. Awaiting properly moved it a
+frame later, past the point a caller looks. It now happens inside the batch loop, the moment the
+controlled unit becomes current, which is the same timing without depending on where a suspension
+lands.
+
+**The checkpoint parse guard earned its keep**, catching `checkpoint_9.gd`'s orphaned
+`SpectatorOverlay` reference — precisely the `BR40.02` failure mode it was added for, where a rename
+orphaned two scenario scripts for fifteen taskblocks because nothing re-ran them.
+
+**The deferred bugs, re-checked as the pass asked.** `BR27.04` and `BR32.09` were already `Resolved`
+and archived before this block, so the "three deferred to this refactor" framing was out of date.
+`BR35.02` **did not evaporate**, and the note appended to it says why: its stated shared cause —
+Spectator re-implementing Squad's panels — was true of the other two and never true of it. Blind
+`y == 0` plane math was not a second copy of anything the player view did better, so there was
+nothing to converge on. Left `Active`; **`Pending` would have been a false claim.**
+
+**Test migration: 0 deleted, all migrated.** Every view test that reached an overlay field now
+reaches the owning module through a typed accessor. Three tests changed what they assert rather than
+how: the debug panel's input owner is the board module rather than the surface (a correction — it is
+the thing that actually owns the click), the injector guard names one gated module rather than two
+gated overlays, and the bout-injector wiring test reads `battle.bout_injector` directly.
+
+Full gate green, 2822/2822.
+
 ### taskblock-55 — closing doc audit
 
 **A fourth test was passing while proving nothing, and only a read found it.**
