@@ -81,7 +81,8 @@ Rules:
   Deliberately not `rng.seed`, which is a *derived* `randi()` and would not regenerate the map:
   it would look right in the log and replay nothing. And deliberately not an argument a caller
   passes, because a caller that forgets produces a bout with no record of how to reproduce it —
-  which is precisely what `GenerateBoutOverlay` did for five blocks.
+  which is precisely what the Simulate Bout menu did for five blocks (then
+  `GenerateBoutOverlay`, now `BoutSetupModule` — taskblock-56 Pass D).
 
 ## Diagnostics ride the same stream (taskblock-41 Pass B)
 Engine and script errors are **combat-log events**, not a second log. `EngineErrorTap` is a real

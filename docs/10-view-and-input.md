@@ -15,6 +15,78 @@ a *view over* the simulation, never a second copy of it.
    the controller and sets properties. CC cannot see the screen — so the screen must contain
    nothing worth seeing.
 
+## The view is one surface and a set of modules (taskblock-56 Passes C, D)
+
+There is **one** `ControlOverlay`. There used to be four subclasses, and the reason they existed is
+the reason they no longer do.
+
+`SingleUnitOverlay` was 54 lines because it could inherit `SquadControlOverlay` wholesale.
+`SpectatorOverlay` was 718 because it *could not*: inheriting would have dragged in
+`TacticsController` and the entire unit-input path a spectator is specifically defined not to have.
+So it re-implemented the display half, and every shared panel existed twice. **Inheritance forced
+the fork** — it offers all-or-nothing, and the requirement was "all of the panels, none of the
+input."
+
+### A module
+
+A `ViewModule` (`src/view/modules/`) is one toggleable piece of the surface: the combat log, the
+stat readout, the action bar, the inspect modal, playback controls, the debug panel. It is
+constructed with no arguments, mounted once against a `ModuleContext`, and unmounted once.
+
+**The contract is that it must mount against a context whose every field is null.** No battle, no UI
+root, no host, no tactics, no slots. That is not defensive coding — the player surface has always
+had to build before a battle exists, because the session-start log line needs a live sink the
+instant it is emitted. **`ModuleContext` deliberately has no `overlay` field**: the cheapest way to
+make "a module cannot need its parent" true is to leave the parent out of the vocabulary. The two
+things a module genuinely needs from its host are published as `Callable` capabilities.
+
+### Two axes, not one
+
+| kind | means |
+|---|---|
+| `DISPLAY` | reads the simulation and draws it. May be interactive — the inspect panel opens on a click — but **cannot queue an action against a unit** |
+| `INPUT` | accepts player input that queues actions through `TacticsController`, i.e. the path ending in `ActionQueue.enqueue` |
+
+**The line is drawn at unit input specifically, not at "does anything happen when I click."** That
+is exactly the axis the spectator view needed and could not get from inheritance, and its contract
+is now `has_unit_input() == false` rather than the absence of an inheritance edge.
+
+**Debug injection sits outside this classification**, gated by `OS.is_debug_build()` rather than by
+mode — a spectator has carried it since taskblock-30. Classifying it as input would make the
+spectator an input mode and destroy the distinction.
+
+### A mode is a declaration
+
+A `ViewMode` says which modules, in what `ModeChrome` layout, with what options, under which turn
+policy. **Adding one is a table entry in `ViewModes`, not a file.**
+
+| mode | is |
+|---|---|
+| `player` | display + full unit input |
+| `spectator` | display modules, no unit input |
+| `single_unit` | `player` with one field changed |
+| `bout_setup` | the roster menu, no board input |
+| `empty` | nothing — a deliberate inert placeholder |
+
+**Layout belongs to the mode; behaviour belongs to the module.** A mode publishes named slots
+(`ModuleSlots`); a module asks for the one it wants and falls back to the UI root, or to itself,
+when the slot is absent. That fallback is what lets the same module appear in the player's
+four-region layout and the spectator's two top-left rows without knowing which it is in.
+
+**Ordering within a mode's module list is meaningful** — a module that reads another at mount time
+must be declared after it. Connections *between* modules are not subject to that: `link()` runs on
+every module after all of them have mounted.
+
+### Two things that bite, recorded so they bite once
+
+- **`emit` does not await a coroutine handler.** It runs the handler to its first `await` and
+  detaches. Routing the AI batch through a signal therefore returned control with the batch still in
+  flight; it is awaited inline instead.
+- **One engine input entry point.** A module defining `_unhandled_input` would receive events
+  wherever its host happened to parent it, and a host that also forwarded would dispatch the same
+  click twice. `ControlOverlay` owns the handler and routes into the board module. The per-frame
+  tick is on the host for the same reason.
+
 ## Why 3D
 Ragdolls, differing Y levels, and enemies much larger than a standard unit all have to be
 faked in 2D, badly. Build it in 3D now. The grid stays `Vector2i` for this phase (a flat
