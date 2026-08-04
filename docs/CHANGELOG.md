@@ -1,10 +1,11 @@
 # CHANGELOG.md — What's Been Built
 
-### taskblock-57 Passes A–D1 — the layout, live (**block incomplete**)
+### taskblock-57 Passes A–F — the layout, live; the retirements done (**block incomplete**)
 
-**Six of eight-plus passes. The block is open** — the rest of Pass D, and E through H, are unstarted.
-**The layout is live**: `ViewModes.player()` uses `ModeChrome.BATTLE_LAYOUT`, so every surface in the
-block's placement table has moved to where that table puts it.
+**Nine of eleven passes. The block is open** — G (the editor surface) and H (the gizmo) are
+unstarted. **The layout is live**: `ViewModes.player()` uses `ModeChrome.BATTLE_LAYOUT`, so every
+surface in the block's placement table has moved to where that table puts it, and the modules the
+table does not name have been retired.
 
 **`UiLayout` (`src/logic/`, pure) owns the two coordinate spaces.** `safe_rect` is the largest 16:9
 rect fitting inside the screen, centred — 16:9 at every ratio and never larger than its screen.
@@ -64,6 +65,77 @@ its satellites were "deliberately absent from `SLOT_EDGES`, so they are not coll
 already inconsistent with the data shipped beside it (`SLOT_EDGES` carries `ACTION_ROW: EDGE_BOTTOM`,
 and `test_slot_properties.gd` pins "bottom is a side too"); nothing surfaced it while no module
 declared a slot. The action bar **is** collapsible.
+
+### taskblock-57 Passes D2, E and F — aim is a mode, the retirements land, announcements view the log
+
+**Pass F ran before the rest of D, and the reason is a coupling the taskblock's ordering does not
+show.** `stat_panels_module` owned `AimView`; Pass D retires `stat_panels`; Pass F needs the aim view
+to survive. Running F first turned a collision into an ordinary move.
+
+**`AimView` belongs to `UnitInputModule` now** — it is `Node3D` world geometry (the window quad, the
+decal, the targeting line) driven entirely by that module's `TacticsController`, and the taskblock
+says outright that the aim view and dartboard **are not UI modules and do not become ones**. A module
+that turns off while aiming was the wrong owner for the thing you aim with. Its text readout is a UI
+panel and became `AimReadoutModule`; the two are joined at `link()` time and either end may be absent.
+
+**`ViewModes.AIM_MODULES` is the table entry**: five of the player mode's seventeen. **The ones that
+stay are there for correctness, not taste** — `combat_log` in particular, because its sink attaches
+at mount and is rebuilt *empty* on remount, so turning it off and on would clear the visible log
+every time anyone aimed.
+
+**`ControlOverlay.switch_mode` diffs the sets, and that is the design rather than an optimisation.**
+The switch is triggered *by* the aim, so rebuilding the surface would construct a new
+`UnitInputModule`, a new `TacticsController` and a new `aiming_at` — destroying the aim in order to
+render it. Modules in both sets are not suspended, not rebuilt, not touched at all. **This is not a
+suspension mechanism**, which the taskblock rules out: a module leaving the set is genuinely
+unmounted and freed, and a departing provider's published slots are erased with it.
+
+**Which mode to switch to is data** (`ViewMode.aim_mode_id`), so no branch in the host names the aim
+surface. The chrome is deliberately not rebuilt, so a switch between differing chromes is refused
+loudly rather than half-applied.
+
+**`queue_panel`, `stat_panels`, `QueuePanel` and the `_legacy_readout` chrome are deleted**, along
+with `single_unit`, `TurnPolicy.SINGLE_UNIT` and `ControlOverlay.controlled_unit`. The collapsed
+player mode pre-selects whichever unit it drives, which is the one thing `single_unit` actually did.
+
+**A retirement lost coverage twice, and only one loss was named.** The taskblock flags
+`queue_panel`'s confirmation role (Pass D1's combat-log entries). It does not mention that
+`stat_panels` also owned the **aim readout** — hence `AimReadoutModule` — nor that **"Resolve to
+Here" (`BR27.08`) was a per-row button on the queue panel**, so retiring the rows retired the only
+way to reach the verb. `keep_queue_suffix` and `queue_partially_resolved` are untouched and still
+tested: the logic survives with no UI, and it is queued in `PLAN.md` rather than absorbed silently.
+
+**Floor tiles are inspectable and gated**, as a row in `DebugUiElements` rather than a hardcoded
+checkbox — *"rare targets, floor tiles especially, should need enabling from the debug menu, or every
+misclick lands on the floor."* Off by default.
+
+**Announcements are a second VIEW of the combat-log stream, never a second message path.** One emit;
+`CombatLog` fans out to its sinks as it already does; `AnnouncementFeed` is one of them and carries
+**the only thing the log lacks — a lifetime, which belongs to the view.** *"In one and not the
+other"* is not a bug guarded against, it is a state nothing can reach because nothing chooses.
+Priority is a data table (duration, colour, `sound`); an unknown priority is **shown with the default
+treatment rather than dropped**; the `sound` field is authored and unread, with a test that greps
+`src/` for readers. Left-aligned always, which is the simpler option the taskblock explicitly permits.
+
+#### Defects these passes found in their own earlier work
+
+- **`AIM_MODULES` had no aim readout.** D2 built `AimReadoutModule` precisely so retiring
+  `stat_panels` would not take the READING/RESOLVES text with it, and the edit adding it to the set
+  silently did not apply. **The D2 gate stayed green because the only assertion was
+  `aim.modules == AIM_MODULES`** — true of any list whatsoever, a tautology dressed as coverage. The
+  set is pinned by name now.
+- **A selection nobody was told about.** The pre-selection reached straight into
+  `selection.select()`. `ActionBar`, the pips and the overlays all refresh on `selection_changed`, so
+  a turn began with a unit genuinely selected and an action bar still drawing the empty state —
+  clicking a slot armed nothing. `TacticsController.select_and_announce` makes the announcement part
+  of making a selection.
+- **The pre-selection stomped deliberate selections**, because the trailing auto-select of an awaited
+  AI batch could land after a player's own click and disarm it. It fills an EMPTY selection only.
+- **`select_and_announce` emitted twice** — it called `selection_changed.emit()` and then
+  `_refresh_overlay()`, which emits it too. Caught by a test that counted.
+- **The announcement feed reported a redraw only on expiry**, so a new announcement did not draw
+  until an unrelated one aged out. It would have read as "announcements are late".
+
 
 ### taskblock-57 Pass C (C2a, C2b, C3) and D1 — the modules move, and queueing becomes a log line
 

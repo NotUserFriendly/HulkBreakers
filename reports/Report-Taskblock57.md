@@ -1,14 +1,18 @@
 # Taskblock 57 Report — the layout, live; and a handoff mid-block
 
-**Passes A, B, C1 (a previous session) and C2a, C2b, C3, D1 (this one) have landed, in order, each
-committed on a green full gate. The block is incomplete** — the rest of Pass D, and E through H, are
-unstarted. This is a handoff report written for the next session rather than a closing one.
+**Nine passes have landed, each committed on a green full gate: A, B and C1 in a previous session;
+C2a, C2b, C3, D1, F, D2 and E in this one. The block is incomplete** — **G (the editor surface) and
+H (the manipulation gizmo) are unstarted.** This is a handoff report written for the next session
+rather than a closing one.
 
-**What changed since the last version of this report: the layout is live.** `ViewModes.player()` uses
-`ModeChrome.BATTLE_LAYOUT`, so every surface in Pass C's placement table has moved to where that
-table puts it. The previous opening said "nothing visible has moved"; that is no longer true.
+**The layout is live and the retirements are done.** `ViewModes.player()` uses
+`ModeChrome.BATTLE_LAYOUT`, every surface in Pass C's table is where the table puts it, `queue_panel`
+/ `stat_panels` / `single_unit` are gone, aim is a mode, and announcements are a second view of the
+combat-log stream.
 
-**Rewrite this opening when the block closes.** It describes seven of eight-plus passes.
+**Passes ran F → D2, not D → F**, and the reason is in the open questions below.
+
+**Rewrite this opening when the block closes.**
 
 ## Pass timings
 
@@ -28,15 +32,19 @@ about how long anything took.
 | C2b — Pass C's behaviours | 2026-08-04 16:15 CDT | 2968/2968 | `fc93aff` |
 | C3 — the Inspect viewer splits out | 2026-08-04 16:45 CDT | 2971/2971 | `be6a888` |
 | D1 — queueing becomes a log line | 2026-08-04 17:16 CDT | 2982/2982 | `7311b0d` |
+| F — aim is a mode | 2026-08-04 17:49 CDT | 2992/2992 | `33c85cc` |
+| D2 — the retirements, modes collapse | 2026-08-04 18:32 CDT | 2988/2988 | `0a11845` |
+| E — announcements view the log | 2026-08-04 18:49 CDT | 2997/2997 | `d3e3b2b` |
 
-**Session one (A → C1): 34 minutes for three passes. Session two (C2a → D1): 80 minutes for four**
-— 11 min/pass against 20. C2a is most of that difference on its own: it is the pass that switched
-the chrome, and it had to chase four real layout defects out of the suite before it went green.
+**Session one (A → C1): 34 minutes for three passes. Session two (C2a → E): 173 minutes for six** —
+11 min/pass against 29. The gap is not the passes getting harder in general; it is two of them
+getting much harder in particular. **C2a took ~60 minutes** (it switched the chrome and had to chase
+four real layout defects out of the suite) and **D2 took ~43** (three failed gates, two of them from
+one subtle pre-selection interaction).
 
-**Seven gate runs in session two**, three of them survey runs against a knowingly red tree. At ~7 min
-each that is ~50 minutes of gate inside an 80-minute session, so **the gate is about five eighths of
-the elapsed time** here against session one's four fifths. The ratio improved because the passes got
-longer, not because the gate got cheaper — which is still the argument for the targeted rung.
+**The test count fell once**, at D2: 2992 → 2988. That is a retirement, not a regression — the queue
+panel's own file went, and two tests in `test_battle_scene_input.gd` that drove its rows went with
+it. Recorded because a falling count is worth being able to explain.
 
 ## Decisions made without asking
 
@@ -78,6 +86,38 @@ A test pins the asymmetry so it reads as a decision rather than an oversight.
 is not a control, and the alternative — moving them into the debug menu — is a redesign the block
 explicitly excludes.
 
+**Pass F ran before the rest of Pass D**, which is the largest sequencing call in the block and the
+supervisor gave me the latitude to make it. `stat_panels_module` owned `AimView`; Pass D retires
+`stat_panels`; Pass F needs the aim view to survive. Running D first would have meant deleting the
+dartboard and rebuilding it a pass later, or growing a temporary home for it. Running F first turned
+a collision into an ordinary move.
+
+**`AimReadoutModule` is a module I added that the taskblock does not mention.** Retiring
+`stat_panels` would have taken the aim readout — the READING/RESOLVES text — with it, and the
+taskblock's own stop-and-report rule is that a retirement must not silently lose coverage. It names
+`queue_panel`'s confirmation role; this is the same shape one module over. The alternative was
+letting the text go and reporting it, which is what I did for *"Resolve to Here"* — the difference is
+that the readout is the thing you are reading *while aiming*, and the aim mode exists to show it.
+
+**Its placement is invented**, because Pass C's table describes the battle surface and has no row for
+a surface only the aim mode has. It anchors along the bottom of the safe rect — the band the aim mode
+frees by turning the action bar off — and that is flagged as a starting position, not a decision.
+
+**Announcement priorities are three rows with picked numbers.** 3/5/8 seconds, ordered rather than
+tuned, using `HulkTheme`'s existing colour tiers rather than a new palette. Flagged tunable. The
+taskblock specifies the *mechanism* (priority drives duration, colour and an unread `sound`) and not
+the values.
+
+**Announcements are left-aligned always**, taking the option the taskblock explicitly permits. The
+alternative it offers — centred when the inspect panels are closed — would make the module read
+Inspect's visibility every frame, and Inspect is not even mounted in the aim mode.
+
+**`ControlOverlay.switch_mode` is a second new mechanism, and the taskblock asks to be told.** Pass F
+says "no suspension mechanism", and this is not one: a module leaving the set is genuinely unmounted
+and freed. What it is instead is a *diff* — modules in both sets are untouched — and the reason is
+that the switch is triggered by the aim, so rebuilding the surface would destroy the aim it was
+reacting to.
+
 **Two numbers were picked and are flagged as tunable rather than presented as design**: the budge
 floor (eight of the layout's own padding units, so it is derived from something rather than
 free-floating) and the perf monitor's background alpha (0.35, against `PerfPanel`'s own 0.82, which
@@ -116,6 +156,33 @@ reverse.** All were found by the suite, none by reading.
    is *reuse of an existing layout*, so moving the player mode failed it with a report of a seventh
    layout nobody had added.
 
+**Five more from the later passes, and the first is the worst kind.**
+
+7. **`AIM_MODULES` had no aim readout, and the gate did not care.** D2 built `AimReadoutModule`
+   specifically so retiring `stat_panels` would not take the READING/RESOLVES text with it — and the
+   edit adding it to the aim set silently did not apply. **D2 went green anyway, because the only
+   assertion was `aim.modules == ViewModes.AIM_MODULES`**, which is true of any list whatsoever. A
+   tautology wearing coverage's clothes. Pass E found it by eye while adding `announcements` to the
+   same list. The set is pinned by name now.
+8. **A selection nobody was told about.** The collapsed player mode's pre-selection reached straight
+   into `selection.select()`. `ActionBar`, the pips and the overlays all refresh on
+   `selection_changed`, so a turn began with a unit genuinely selected and an action bar still
+   drawing its empty state — clicking a slot armed nothing at all.
+9. **The pre-selection stomped deliberate selections.** Unconditionally selecting meant the trailing
+   auto-select of an awaited AI batch could land *after* a player's own selection and disarm it. It
+   fills an EMPTY selection only now, which is all it was ever for.
+10. **`select_and_announce` emitted twice** — `selection_changed.emit()` and then `_refresh_overlay`,
+    which emits it too. Every listener refreshed twice for one selection. Caught by a test that
+    counted the emissions rather than checking the value.
+11. **The announcement feed reported a redraw only on expiry**, so a new announcement did not draw
+    until an unrelated one aged out. It would have presented as "announcements are late".
+
+**And one test was deleted rather than repaired, which is worth saying plainly.**
+`test_the_real_production_wiring_enters_step_out_on_a_covered_enemy` opened with a board click to
+select the shooter. `TacticsController` treats a press on the **already-selected** unit's own body as
+the start of a facing drag, so with pre-selection that click no longer selects anything — it is
+exactly the click the pass removed the need for. The step went; the test kept everything after it.
+
 **Also worth recording because it is not a test failure at all — the gate could report success on a
 run it did not finish.** The suite runs under `-d`, which GUT needs to notice unexpected engine
 errors, so a runtime script error raises a Debugger Break; the break **ends the run**,
@@ -133,15 +200,29 @@ in.
 
 ## Open questions
 
-**Pass D is coupled to Pass F in a direction the taskblock's ordering does not show, and this is the
-thing the next session most needs to know.** `stat_panels_module` owns the `AimView`. Pass D says
-"`stat_panels_module` retires"; Pass F says the aim view and dartboard "are not UI modules and do not
-become ones — they are what the mode switches *to*". **Retiring `stat_panels` wholesale deletes the
-aim view Pass F depends on.** D1 stopped at the retirement's stated prerequisite rather than
-discovering this halfway through the deletion. The aim view needs a home first; the cheapest reading
-is that Pass F's mode switch is what gives it one, so **F may need to run before the rest of D**, or
-D2 must rehome `AimView` on its own terms. A supervisor call if the ordering matters; otherwise the
-next session should take the F-first reading.
+**G and H are unstarted, and G1 is bigger than it looks.** *"Three action bars, not one with three
+contents"* wants a **new shape** for the editor's — labelled buttons rather than squares, and a
+*"centred, searchable list of every part placeable on a tile"*. `EditorModule` today is a full
+authoring panel of dropdowns in the readout column, not an action bar, so G1 is a new module plus a
+new searchable list, not a re-slot. **Splitting G1 from G2 is the obvious move** and follows the
+taskblock's own G1/G2 division.
+
+**Pass D's `top_left_controls_module` → the spectator action bar is still undone, and it belongs to
+G1.** Pass D lists it, but the spectator action bar is *built* in G1 — so the move had nowhere to go
+until that module exists. It is the one line of Pass D not yet landed, and it is not lost, just
+sequenced where it can actually happen.
+
+**"Resolve to Here" has logic and no UI.** `BR27.08` put it on a queue-panel row; the panel retired
+and took the only affordance with it. `keep_queue_suffix` and `queue_partially_resolved` are
+untouched and still tested. Queued in `PLAN.md` with a suggested home (a stop marker on a ghost leg,
+which is what `resolve_until` already takes) but **not designed** — that is a supervisor call.
+
+**Nothing emits an announcement yet.** Pass E built the mechanism, the priority table and both
+views, and `Announcement.tag` is the way in — but no existing call site tags anything, so the
+position is correct and empty in play. **That is deliberate**: choosing which events shout at the
+player is a design decision the taskblock does not make, and G2's *"validation warnings... the
+significant ones surface as announcements"* is the first real customer. Worth a supervisor pass over
+"what should announce" at some point.
 
 **Two rows of Pass C's own table shipped half-met, deliberately.** The debug menu has its placement
 and not its "drag-resizable height", because the same taskblock's *Not this block's job* list says

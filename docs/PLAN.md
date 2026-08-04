@@ -278,6 +278,25 @@ shell performs measurably differently under two different-attribute matrices.
 
 # QUEUED
 
+### Nothing emits an announcement yet
+
+**Needs:** nothing. **Unblocks:** the announcement position doing anything in play.
+
+taskblock-57 Pass E built the mechanism end to end — `Announcement`'s priority table,
+`AnnouncementFeed` as a `LogSink`, `AnnouncementsModule` at the table's own position, and
+`Announcement.tag` as the one way in. **No existing call site tags anything**, so the position is
+correct, tested, and empty during a bout.
+
+**That is deliberate, not an omission.** Choosing which events shout at the player is a design
+decision the taskblock does not make, and inventing a list would be exactly the "never invent balance
+numbers and present them as design" failure one category over. taskblock-57 G2's *"validation
+warnings go to the combat log, and the significant ones surface as announcements"* is the first real
+customer and will tag its own.
+
+**Worth a supervisor pass over "what should announce"** — unit down, mission outcome, a matrix
+ejected, an objective taken. Each is a `Announcement.tag(data, priority)` at an existing emit, with
+no new path.
+
 ### "Resolve to Here" has logic and no UI
 
 **Needs:** nothing. **Unblocks:** partial resolution being reachable again.
