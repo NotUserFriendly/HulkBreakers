@@ -30,7 +30,7 @@ know is who is behind them.
 
 ### The resolver door
 
-`canonical_state_for_resolvers()` hands the real state to `ShotPlane` and friends, because geometry
+`canonical_state_for_resolvers()` hands the real state to the shot resolver and friends, because geometry
 must resolve objectively no matter what a unit believes. **It may be passed as an argument and never
 dereferenced** — `view.canonical_state_for_resolvers().units` defeats the entire seam, and it is a hole
 rather than a door if nothing enforces that.
@@ -44,25 +44,28 @@ degraded geometry.**
 
 ---
 
-## `ShotPlane` is final; the visibility field is a prefilter
+## The resolver is final; the visibility field is a prefilter
 
-Line-of-fire is answered from **one symmetric shadowcast per target**, stored as `PackedInt64Array`
-bitboards over the volume, so a candidate cell's query is a bit test rather than a cast. One field
-serves every shooter, so cost stops scaling with unit count.
+**The canonical resolver is the ray chain** (`RayCaster`, taskblock-52), which marches a ray through the
+world from the muzzle, solves the real angle of incidence at each hit, and recurses on a deflection.
+`ShotPlane` no longer resolves shots — it survives as the aiming projection and is being reconciled.
+**Nothing in the planner may resolve a shot any other way.**
+
+Line-of-fire *screening* is answered from **one symmetric shadowcast per target**, stored as
+`PackedInt64Array` bitboards over the volume, so a candidate cell's query is a bit test rather than a
+cast. One field serves every shooter, so cost stops scaling with unit count.
 
 The field carries exactly one correctness obligation:
 
 > **It never reports "no line" for a cell that actually has one.**
 
-Over-inclusion is safe; under-inclusion is a bug. That is a far weaker burden than exactness, and it is
-what keeps the field from becoming a second visibility system able to disagree with the canonical
-resolver (`02`, `08`). The field narrows candidates; `ShotPlane` confirms the survivors.
+Over-inclusion is safe; under-inclusion is a bug. A far weaker burden than exactness, and it is what
+keeps the field from becoming a second visibility system able to disagree with the canonical resolver
+(`02`, `08`). **The field narrows candidates; the resolver confirms the survivors.**
 
 The payoff is asymmetric and deliberate: when *no* reachable cell has a line, `reachable & vis[target]
-== 0` settles it in one word operation with zero `ShotPlane` builds. Proving a negative used to cost
-more than finding a positive.
-
----
+== 0` settles it in one word operation with zero resolver calls. Proving a negative used to cost more
+than finding a positive.
 
 ## Scoring
 
@@ -179,6 +182,24 @@ where two rows play identically has a bug in it, and no completion metric will c
 acceptance that matters most whenever the table grows.
 
 ---
+
+## The planner cannot move vertically yet
+
+**No AI path queues `ClimbAction` or `HopDownAction`.** Both exist, are cost-correct, and are reachable
+only by a human or an injector — the planner moves exclusively via `MoveAction`. On a board with
+ladders and raised decks that is not a gap in polish; it is the planner being unable to reach part of
+the map.
+
+Two related facts, recorded so they are not rediscovered:
+
+- **A climb can be interrupted; a hop-down cannot.** taskblock-53 gave `ClimbAction` the same mid-move
+  overwatch check an ordinary move has — a unit on a ladder is the most exposed it will ever be.
+  `HopDownAction` still checks nothing.
+- **The planner does not know a hop-down is one-way.** Descent is free, ascent needs a ladder, a ramp,
+  or a capability no part authors. A unit that drops off a ledge to reach something can strand itself,
+  and *"can I get back?"* belongs in the decision rather than being discovered afterwards. **Stranding
+  is a legitimate outcome** — being knocked into a pit is the game working — but choosing it
+  unknowingly is not.
 
 ## Batches amortize; they never act together
 

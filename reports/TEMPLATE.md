@@ -9,6 +9,19 @@ test file's header, docs/BUGS.md). See reports/README.md.
 
 One or two lines: which passes landed, in what order, whether the suite is green.
 
+<!--
+REWRITE THIS OPENING when anything below it changes, including work appended after the report was
+first written. Reports are added to rather than revised, which is right for the body and wrong for
+the summary: an opening written after pass C describes a block that pass E has since changed.
+
+Two blocks have shipped reports whose headline contradicted their own ending — one gave two
+different figures for the same measurement and called an acceptance unmet that its last pass had
+met; another gave a failure breakdown that no longer summed. Both had the same shape: an early
+number, later work that moved it, an opening nobody re-read.
+
+A rewritten summary costs a minute. Take it as often as needed.
+-->
+
 ## Decisions made without asking
 Anything decided unilaterally that the supervisor might have decided differently — a design call the
 spec didn't cover, scope taken on or dropped, an approach chosen over a named alternative. What was
