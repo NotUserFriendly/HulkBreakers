@@ -510,13 +510,20 @@ func test_inject_toggles_the_debug_panels_own_visibility() -> void:
 	assert_false(overlay.debug_panel.visible)
 
 
-func test_inject_wires_the_panel_against_the_real_bout_injector_and_self() -> void:
+## taskblock-56 Pass C: **the input owner is the board module, not the overlay**, and that is a
+## correction rather than a regression. `DebugControlPanel` borrows a click through whatever carries
+## `board_clicked` and `input_capture_mode`; before the extraction the overlay carried both because
+## it was also the thing handling `_unhandled_input`. `BoardInspectModule` is now that thing, so it
+## is what gets borrowed from — the overlay merely forwards. The overlay's own `board_clicked` is
+## still emitted, so a listener wired against the overlay is unaffected; this asserts the borrow
+## lands on the module that actually owns the click.
+func test_inject_wires_the_panel_against_the_real_bout_injector_and_the_board_module() -> void:
 	var overlay: SpectatorOverlay = _spectate(await _bout())
 
 	overlay._on_inject_pressed()
 
 	assert_eq(overlay.debug_panel.bout_injector, overlay.bout_injector)
-	assert_eq(overlay.debug_panel.input_owner, overlay)
+	assert_eq(overlay.debug_panel.input_owner, overlay.board_inspect())
 
 
 ## Finds `verb_id`'s own row in the panel's live verb table by index —

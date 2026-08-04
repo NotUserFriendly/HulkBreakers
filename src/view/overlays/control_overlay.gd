@@ -16,12 +16,104 @@ extends Node3D
 ## same way `TacticsController`'s End Turn button already resolves a turn
 ## today); false means `AiPlanner.plan_turn` drives it instead
 ## (taskblock-14).
+##
+## ## taskblock-56 Pass C: this is a module host now
+##
+## The surface an overlay used to build by hand is a set of `ViewModule`s
+## (`src/view/modules/`), and this base owns the machinery every host needs:
+## the themed `CanvasLayer`/`Control` root, the `ModuleContext`, mounting in
+## declaration order, re-pointing everything on a battle load, the per-frame
+## tick, and unmounting on teardown. A subclass supplies **which** modules and
+## **what chrome** to hang them in — never how any of them work.
+
+## The themed root every module's `Control`s live under. One `CanvasLayer` and
+## one `HulkTheme.build()` per host, never one per module — two overlays each
+## building their own is how the same theme came to be applied twice with
+## subtly different anchor presets.
+var ui_root: Control = null
+## The mounted modules, in declaration order. Order matters: a module that
+## reads another (`ActionBarModule` wants the shared `TooltipView`) must be
+## declared after it.
+var modules: Array[ViewModule] = []
+## What every mounted module was handed. Public so a test can read back which
+## modules a mode actually produced, which is Pass D's own acceptance.
+var module_context: ModuleContext = null
 
 
 ## Wires this overlay's own UI onto the already-built world. Called once,
 ## right after `BattleScene.set_overlay()` swaps this overlay in.
 func setup(_battle: BattleScene) -> void:
 	pass
+
+
+## Builds the themed root and an empty context against `battle`. A subclass
+## calls this first, then adds whatever chrome it wants as slots, then mounts.
+func build_root(battle: BattleScene) -> ModuleContext:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	ui_root = Control.new()
+	ui_root.theme = HulkTheme.build()
+	ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Load-bearing: a bare `Control` defaults to `MOUSE_FILTER_STOP`, and this
+	# one spans the screen — it would swallow every RMB/MMB drag that started
+	# over it before `CameraRig._unhandled_input` ever saw the event.
+	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(ui_root)
+
+	module_context = ModuleContext.new()
+	module_context.battle = battle
+	module_context.ui_root = ui_root
+	module_context.host = self
+	return module_context
+
+
+## Mounts `ids` in order, through `ModuleCatalog`. `configure`, if given, is
+## called with each freshly built module BEFORE it mounts — that is where a
+## mode sets the handful of pre-mount fields modules expose (`with_button`,
+## `include_new_battle`, `announce_passes`), which is the whole reason those
+## are fields rather than constructor arguments.
+##
+## **An unknown id is skipped, not fatal.** A mode listing something the
+## catalog does not know gets a mode without it, the same "no further action,
+## no silent rollback" posture `ActionCatalog.build_firing_action` has.
+func mount_modules(ids: Array[StringName], configure: Callable = Callable()) -> void:
+	for id: StringName in ids:
+		var module: ViewModule = ModuleCatalog.build(id)
+		if module == null:
+			continue
+		add_child(module)
+		if configure.is_valid():
+			configure.call(module)
+		module.mount(module_context)
+		modules.append(module)
+
+
+## The mounted module for `id`, or null.
+func module(id: StringName) -> ViewModule:
+	return module_context.module(id) if module_context != null else null
+
+
+## True if any mounted module accepts unit input. **This is the assertion
+## Spectator's contract rests on** — a mode with no input modules has no
+## `TacticsController` and therefore no path from a click to
+## `ActionQueue.enqueue`.
+func has_unit_input() -> bool:
+	for mounted: ViewModule in modules:
+		if mounted.is_input():
+			return true
+	return false
+
+
+## Re-points every module at whatever `battle` now holds.
+func rebind_modules() -> void:
+	for mounted: ViewModule in modules:
+		mounted.rebind()
+
+
+func unmount_modules() -> void:
+	for mounted: ViewModule in modules:
+		mounted.unmount()
+	modules.clear()
 
 
 ## True if a HUMAN drives `unit`'s turn under this overlay — the one
@@ -94,15 +186,22 @@ func ui_log_sink() -> UiLogSink:
 	return null
 
 
-## The one per-frame render tick for this overlay's log panel. At most one
-## `label.text` reassignment per frame regardless of how many events landed
-## in it — which is the whole point: render cost stops scaling with event
-## count, so taskblock-41 Pass D's deliberate verbosity is affordable
-## rather than a regression (BR27.09 cost #1).
-func _process(_delta: float) -> void:
+## The one per-frame render tick. At most one `label.text` reassignment per
+## frame regardless of how many events landed in it — which is the whole
+## point: render cost stops scaling with event count, so taskblock-41 Pass D's
+## deliberate verbosity is affordable rather than a regression (BR27.09 cost
+## #1).
+##
+## taskblock-56 Pass C: the tick is driven from here rather than from each
+## module's own `_process`, so "exactly one draw per frame" stays visible in
+## one place instead of being a property of however many modules happen to be
+## mounted.
+func _process(delta: float) -> void:
 	var sink: UiLogSink = ui_log_sink()
 	if sink != null:
 		sink.render_if_dirty()
+	for mounted: ViewModule in modules:
+		mounted.tick(delta)
 
 
 ## The ONE shared "auto-advance AI turns" loop every interactive overlay

@@ -434,7 +434,7 @@ func test_clicking_the_repair_slot_on_the_action_bar_opens_the_same_picker() -> 
 	var overlay: SquadControlOverlay = _squad_control_fresh(_repair_capable_bout())
 	overlay.tactics.selection.select(overlay.battle.combat_state.units[0])
 	overlay.action_bar.refresh()
-	assert_null(overlay._repair_menu, "sanity: no picker open yet")
+	assert_null(overlay.unit_input().repair_menu, "sanity: no picker open yet")
 
 	var panel: PanelContainer = overlay.action_bar._panels[0]
 	var click := InputEventMouseButton.new()
@@ -442,8 +442,10 @@ func test_clicking_the_repair_slot_on_the_action_bar_opens_the_same_picker() -> 
 	click.pressed = true
 	panel.gui_input.emit(click)
 
-	assert_not_null(overlay._repair_menu, "the action bar's own repair slot must open the picker")
-	assert_eq(overlay._repair_menu.item_count, 1, "the one damaged part must be listed")
+	assert_not_null(
+		overlay.unit_input().repair_menu, "the action bar's own repair slot must open the picker"
+	)
+	assert_eq(overlay.unit_input().repair_menu.item_count, 1, "the one damaged part must be listed")
 
 
 ## Finds `verb_id`'s own row in the panel's live verb table by index —
