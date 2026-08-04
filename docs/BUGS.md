@@ -2077,3 +2077,60 @@ changed the aim path.
   session is the likeliest explanation and is worth confirming rather than assuming.
 - **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
   suite, across 37 real scene builds. Still available.
+
+### BR56.01 — Active — owner: `SUPERVISOR`
+**Navigability-repair ramps are stamped facing 45 degrees, across the corner of their own cell**
+- **Source:** `SUPERVISOR`, 2026-08-04, observed in-game across several bouts ("ramps are generating
+  rotated 45 degrees"), most clearly on `seed=339963260`.  ·  **CC session:**
+  `8b76a838-a998-436a-9e35-b74c4927f811`
+- **Confirmed, reproduced in isolation, and attributed to one of the two ramp-stamping paths.**
+
+**The mechanism.** `MapGen` stamps ramps from two places, and only one of them restricts itself to
+cardinal directions:
+- `_stamp_ramp_pair` (the ordinary room ramp) takes its direction from `_outward_ring_direction`,
+  which returns **only** N/S/E/W or `null`. Its own doc states the rule: *"a ramp only ever runs
+  along a single N/S/E/W approach, never a corner graft (the same orthogonal-only posture
+  `GridPlacement`'s own attachment grammar uses)."* These are always orthogonal.
+- `_open_a_route_out` (taskblock-53 Pass D's navigability repair) iterates **`Grid.neighbors()`,
+  which is 8-directional**, and hands whatever it picks to `_stamp_ramp`, which sets the facing to
+  `atan2(direction.x, direction.y)`. A diagonal neighbour therefore yields exactly ±45 or ±135
+  degrees. **The repair path violates the orthogonal-only posture the other path documents.**
+
+**The formula is not the defect.** `_stamp_ramp`'s inline `atan2(x, y)` is the same expression
+`BodyProjector.orientation_for` computes, and both paths point up-slope, so the two agree on every
+cardinal case. It is the *input* that differs — 8 neighbours against 4. (That the repair path
+open-codes the expression instead of calling the shared helper is a separate, smaller smell.)
+
+**Isolated reproduction**, a 5x5 plateau at 3.0 with one cell dropped to 1.0:
+- Wall off all four orthogonal neighbours, leaving only a diagonal escape → `guarantee_navigability`
+  stamps a ramp at `(2, 2)` facing **+45.0 deg**.
+- Leave the orthogonals open (control, same code path) → **+90.0 deg**, orthogonal.
+
+**Measured incidence — 20 of 44 ramp cells across the five seeds in `out/combat.log` are diagonal:**
+
+| seed | ramp cells | orthogonal | diagonal |
+|---|---|---|---|
+| 339963260 (the reported bout) | 12 | 5 | **7** |
+| 6930958 | 8 | 4 | **4** |
+| 208111853 | 15 | 7 | **8** |
+| 334004531 | 6 | 6 | 0 |
+| 2 | 3 | 2 | **1** |
+
+The orthogonal ones come in height pairs (0.25/0.75) — `_stamp_ramp_pair`'s inner/outer stamp. The
+diagonal ones are mostly lone cells at the stranded cell's own height, which is `_stamp_ramp`'s
+signature.
+
+**Why no test caught it.** The repair is judged on navigability alone, and a diagonal ramp *is*
+traversable — `Pathfinder.move_cost` treats an edge with a ramp at either end as ordinary movement,
+so `MapNavigability.stranding_cells` comes back clean and the sweep stays green. **Nothing anywhere
+asserts a ramp's facing.** The defect is visible only by looking at the board, which is what the
+supervisor did.
+
+**Not yet decided, and deliberately left open:** whether the fix is to restrict `_open_a_route_out`
+to the four orthogonals, or to keep the diagonal candidate and stamp the ramp along the nearest
+cardinal axis. The first is simpler and matches the stated posture; the second preserves repair
+coverage in topologies where the only uphill neighbour really is diagonal (the isolated repro above
+is exactly that case, and under the first option that pit would get a **ladder** or stay stranded).
+**Either way it changes generated boards for every seed**, so the map corpus, the navigability sweep
+and any recorded measurement taken against a current seed move with it — which is why this is filed
+rather than patched in place.
