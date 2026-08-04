@@ -10,6 +10,34 @@ table puts it. The previous opening said "nothing visible has moved"; that is no
 
 **Rewrite this opening when the block closes.** It describes seven of eight-plus passes.
 
+## Pass timings
+
+Recorded as each pass's full gate exited 0 and it committed — not when its code was written. Kept in
+the gitignored `tb57-pass-times.md` as the block runs; copied here because that file is local and
+this one is not.
+
+**Clock time, not just the date.** Several sessions can run in one day, so a date alone says nothing
+about how long anything took.
+
+| pass | completed | gate | commit |
+|---|---|---|---|
+| A — coordinate spaces, UI scale | 2026-08-04 14:18 CDT | 2910/2910 | `335045f` |
+| B — action bar publishes slots | 2026-08-04 14:28 CDT | 2917/2917 | `d153579` |
+| C1 — placement arithmetic | 2026-08-04 14:52 CDT | 2931/2931 | `dbc52d2` |
+| C2a — the placements | 2026-08-04 15:56 CDT | 2944/2944 | `d27698e` |
+| C2b — Pass C's behaviours | 2026-08-04 16:15 CDT | 2968/2968 | `fc93aff` |
+| C3 — the Inspect viewer splits out | 2026-08-04 16:45 CDT | 2971/2971 | `be6a888` |
+| D1 — queueing becomes a log line | 2026-08-04 17:16 CDT | 2982/2982 | `7311b0d` |
+
+**Session one (A → C1): 34 minutes for three passes. Session two (C2a → D1): 80 minutes for four**
+— 11 min/pass against 20. C2a is most of that difference on its own: it is the pass that switched
+the chrome, and it had to chase four real layout defects out of the suite before it went green.
+
+**Seven gate runs in session two**, three of them survey runs against a knowingly red tree. At ~7 min
+each that is ~50 minutes of gate inside an 80-minute session, so **the gate is about five eighths of
+the elapsed time** here against session one's four fifths. The ratio improved because the passes got
+longer, not because the gate got cheaper — which is still the argument for the targeted rung.
+
 ## Decisions made without asking
 
 **Pass C was split three ways, not two.** C1 (a previous session) was the arithmetic; C2a moved the
