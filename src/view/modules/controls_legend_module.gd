@@ -20,6 +20,14 @@ func module_id() -> StringName:
 	return &"controls_legend"
 
 
+## taskblock-57 Pass C: the button belongs to the UI buttons cluster above the bar's right edge —
+## the table's *"module toggles, Inspect, the debug menu"*, which is where every chrome control now
+## lives. **The legend itself is not a button and stays where it was**: it is a wall of reference
+## text, and the cluster is a row of controls.
+func preferred_slot() -> StringName:
+	return ModuleSlots.ACTION_BAR_TOP_RIGHT
+
+
 func _mount() -> void:
 	var column: Control = context.slot(ModuleSlots.TOP_RIGHT, null)
 
@@ -27,7 +35,7 @@ func _mount() -> void:
 	keybindings_button.text = "Keybindings"
 	keybindings_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	keybindings_button.pressed.connect(toggle)
-	_parent_into(column, keybindings_button)
+	_parent_into(context.slot(preferred_slot(), column), keybindings_button)
 
 	label = Label.new()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

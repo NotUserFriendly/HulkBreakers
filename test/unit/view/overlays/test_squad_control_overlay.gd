@@ -346,27 +346,36 @@ func test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster() -> 
 
 
 ## tb31 Pass A: the top-left cluster's real rect must never overlap the
-## debug panel's own real, centered rect — `DebugControlPanel`'s own
-## `_center_top` fix exists specifically because a panel with no anchor at
-## all used to spawn right on top of this exact corner. Read both real
-## nodes back (docs/10 standing rule 2), never re-derive either position.
-func test_top_left_cluster_never_overlaps_the_centered_debug_panel() -> void:
+## debug panel's own real rect — `DebugControlPanel`'s own `_center_top`
+## fix exists specifically because a panel with no anchor at all used to
+## spawn right on top of this exact corner.
+##
+## **taskblock-57 Pass C: the layout places the menu now**, so the
+## `_center_top()` call is gone (it is a deliberate no-op on a placed
+## panel) and the rects come from `get_global_rect()`. That second change
+## is a fix, not a port: the old version compared two `position` fields
+## that were local to different parents the moment the debug menu became a
+## child of its own slot region, and it read them as if they were screen
+## coordinates. Both rects were reported at (0,0) — overlapping by
+## arithmetic, wherever they actually were.
+func test_top_left_cluster_never_overlaps_the_debug_menu() -> void:
 	var overlay: ControlOverlay = _squad_control_fresh(_bout())
-	overlay.debug_panel_module().panel.visible = true
-	overlay.debug_panel_module().panel.size = Vector2(600.0, 200.0)
-	overlay.debug_panel_module().panel._center_top()
+	# **`toggle()`, not `visible = true`.** The panel builds its verb list in `setup()`, which only
+	# `toggle()` calls — shown directly it is a real node with a zero-size rect, and a zero-size rect
+	# clears every obstacle by not existing.
+	overlay.debug_panel_module().toggle()
+	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var cluster_rect := Rect2(
-		overlay.module(&"top_left_controls").controls.position,
-		overlay.module(&"top_left_controls").controls.size
-	)
-	var panel_rect := Rect2(
-		overlay.debug_panel_module().panel.position, overlay.debug_panel_module().panel.size
-	)
+	var cluster_rect: Rect2 = overlay.module(&"top_left_controls").controls.get_global_rect()
+	var panel_rect: Rect2 = overlay.debug_panel_module().panel.get_global_rect()
+	# Both have to be real, or "no overlap" is free — a zero-size rect clears every obstacle by
+	# not existing, which is how this class of test passes while the surface is broken.
+	assert_gt(cluster_rect.size.x, 0.0, "sanity: the cluster has a real rect")
+	assert_gt(panel_rect.size.x, 0.0, "sanity: the debug menu has a real rect")
 	assert_false(
 		cluster_rect.intersects(panel_rect),
-		"cluster %s must not overlap the centered debug panel %s" % [cluster_rect, panel_rect]
+		"cluster %s must not overlap the debug menu %s" % [cluster_rect, panel_rect]
 	)
 
 

@@ -17,11 +17,17 @@ extends Control
 ##
 ## ## Where it sits, and what closes it
 ##
-## To the right of `DebugControlPanel`, toggled from inside it. **Closing the debug panel
-## does not close this** — that is deliberate and was asked for: you open the debug panel to
-## turn the readout on, then get it out of the way and keep watching the numbers while you
-## play. The two are tied only at the point of *offering* the toggle, which is why this
-## exists wherever the debug panel does rather than in one overlay.
+## **taskblock-57 Pass C moved the placement out of this file.** It used to anchor itself
+## into the top-right corner clear of `DebugControlPanel`; the layout now owns every
+## position, so `PerfMonitorModule` puts it in the true bottom-right corner and this class
+## only says how big it wants to be. What survives from the old block is the width being
+## arithmetic rather than a negotiation — see `PANEL_WIDTH` — which is the property both
+## broken versions of the old anchoring actually violated.
+##
+## **Closing the debug panel does not close this** — that is deliberate and was asked for:
+## you open the debug panel to turn the readout on, then get it out of the way and keep
+## watching the numbers while you play. The two are tied only at the point of *offering* the
+## toggle, which is why the module that owns this is not the module that owns the panel.
 ##
 ## ## It must not cost what it measures
 ##
@@ -40,13 +46,15 @@ signal stats_ticked(snapshot: Dictionary)
 ## without the panel resizing as the numbers change width — a readout that jitters is one
 ## you stop being able to read at a glance.
 const PANEL_WIDTH := 420.0
+## The default opacity, kept for a caller that builds this panel bare. **Set before `_ready`** to
+## override it — `PerfMonitorModule` does, because a readout sitting over the board wants to be
+## more transparent than one that had an empty corner to itself.
 const BACKGROUND_ALPHA := 0.82
-## Clear of `DebugControlPanel`'s own centred position at any viewport width.
-const RIGHT_MARGIN := 16.0
-const TOP_MARGIN := 8.0
 
 var stats := PerfStats.new()
 var log_dumps_enabled: bool = false
+## Assigned before the panel enters the tree; read once, in `_ready`.
+var background_alpha: float = BACKGROUND_ALPHA
 
 var _body: PanelContainer
 var _lines: Label
@@ -54,52 +62,51 @@ var _dump_checkbox: CheckBox
 
 
 func _ready() -> void:
-	# **All four anchors and all four offsets, set explicitly.**
+	# **The width stays arithmetic; the position is the layout's business now.**
 	#
-	# Two attempts got this wrong and the second one *passed a test*. Setting `position`
-	# with right-edge anchors placed it at x = -16 — the supervisor saw it hard against the
-	# left edge with only its right sliver visible. Replacing that with a lone
+	# Two attempts at self-anchoring got this wrong and the second one *passed a test*. Setting
+	# `position` with right-edge anchors placed it at x = -16 — the supervisor saw it hard
+	# against the left edge with only its right sliver visible. Replacing that with a lone
 	# `offset_right` left `offset_left` at the anchor, so the panel resolved to the full
-	# 1904-pixel width starting at x = 0, and an assertion checking "left edge on screen,
-	# right edge on screen" was satisfied by a panel covering the entire screen.
+	# 1904-pixel width starting at x = 0, and an assertion checking "left edge on screen, right
+	# edge on screen" was satisfied by a panel covering the entire screen.
 	#
-	# Pinning both horizontal offsets against the right anchor makes the width arithmetic
-	# rather than a negotiation, and `test_debug_panel_layout.gd` now asserts the width
-	# itself — which is the property both broken versions actually violated.
-	anchor_left = 1.0
-	anchor_right = 1.0
-	anchor_top = 0.0
-	anchor_bottom = 0.0
-	offset_left = -(PANEL_WIDTH + RIGHT_MARGIN)
-	offset_right = -RIGHT_MARGIN
-	offset_top = TOP_MARGIN
-	offset_bottom = TOP_MARGIN
-	grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	grow_vertical = Control.GROW_DIRECTION_END
+	# taskblock-57 Pass C deletes the anchoring rather than fixing it a third time: `BattleLayout`
+	# owns where every surface sits, and `PerfMonitorModule` anchors this into the corner the
+	# table names. **What is kept is the width being stated rather than negotiated**, which is
+	# the property both broken versions actually violated and which
+	# `test_debug_panel_layout.gd` still asserts.
 	custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	# Click-through: a readout over the board's corner must never eat a camera drag. The two
+	# controls below take their own clicks; everything else here is text.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_body = PanelContainer.new()
 	_body.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(
-		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, BACKGROUND_ALPHA
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, background_alpha
 	)
 	_body.add_theme_stylebox_override("panel", style)
 	add_child(_body)
 
 	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_body.add_child(column)
 
 	var title := Label.new()
 	title.text = "Performance"
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(title)
 
 	_lines = Label.new()
 	_lines.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_lines)
 
 	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(row)
 
 	_dump_checkbox = CheckBox.new()
@@ -112,7 +119,26 @@ func _ready() -> void:
 	reset.pressed.connect(reset_stats)
 	row.add_child(reset)
 
+	# **The outer node has to carry the body's height, and that is new in taskblock-57 Pass C.**
+	#
+	# `PerfPanel` is a plain `Control`, not a container, so it never sized itself to its child —
+	# the outer rect stayed (420, 0) and the body simply drew downward from it. That was invisible
+	# while the panel hung from the TOP of the screen. Pinned to the BOTTOM-right corner it is not:
+	# a zero-height rect at y = 1080 draws its body from 1080 downward, entirely off screen. Found
+	# by reading the real rect back, not by looking at it.
+	#
+	# Tracking the body rather than hard-coding a height keeps the readout's own "no jitter" rule —
+	# `PANEL_WIDTH` exists so the numbers changing width cannot resize the panel, and a fixed height
+	# would break the moment `PerfStats.describe()` grows a line.
+	_body.resized.connect(_match_body_height)
+	_match_body_height()
 	_refresh()
+
+
+## The outer rect grows to whatever the body needs. With `grow_vertical = GROW_DIRECTION_BEGIN` set
+## by whoever placed this, that growth goes UP out of the corner rather than down off the screen.
+func _match_body_height() -> void:
+	custom_minimum_size.y = _body.size.y
 
 
 ## **Samples every frame; redraws only on the tick.** The split is the whole reason this is

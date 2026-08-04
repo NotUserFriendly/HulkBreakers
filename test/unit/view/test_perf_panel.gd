@@ -14,6 +14,15 @@ func _panel() -> PerfPanel:
 	return panel
 
 
+## taskblock-57 Pass C: the readout is `PerfMonitorModule`'s, not the debug panel's. It moved
+## because the placement table gives it its own slot and a module declares one `preferred_slot()`;
+## what did NOT change is the rule that closing the debug menu leaves the readout up — which is
+## what the tests below still assert.
+func _perf_panel(overlay: ControlOverlay) -> PerfPanel:
+	var module: ViewModule = overlay.module(&"perf_monitor")
+	return (module as PerfMonitorModule).panel if module != null else null
+
+
 func _feed(panel: PerfPanel, fps: float, seconds: float) -> void:
 	var frames: int = int(fps * seconds)
 	for i in range(frames):
@@ -98,17 +107,14 @@ func test_the_readout_survives_the_debug_panel_closing() -> void:
 		assert_true(true, "the panels are debug-gated; nothing to check in a release build")
 		return
 	var overlay: ControlOverlay = _overlay_with_debug()
-	assert_not_null(overlay.debug_panel_module().perf_panel, "the overlay owns a readout")
+	assert_not_null(_perf_panel(overlay), "the overlay owns a readout")
 
 	overlay.debug_panel_module().panel.set_ui_element_shown(DebugUiElements.PERF_PANEL, true)
-	assert_true(overlay.debug_panel_module().perf_panel.visible, "the toggle shows it")
+	assert_true(_perf_panel(overlay).visible, "the toggle shows it")
 
 	overlay.debug_panel_module().panel.visible = false
 
-	assert_true(
-		overlay.debug_panel_module().perf_panel.visible,
-		"and it stays up when the debug panel goes away"
-	)
+	assert_true(_perf_panel(overlay).visible, "and it stays up when the debug panel goes away")
 
 
 ## It is offered wherever the debug panel is — the supervisor's "it's under debug, it should
@@ -123,7 +129,7 @@ func test_the_spectator_view_has_one_too() -> void:
 	battle.new_battle(1)
 	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
 
-	assert_not_null((battle.overlay as ControlOverlay).debug_panel_module().perf_panel)
+	assert_not_null(_perf_panel(battle.overlay as ControlOverlay))
 
 
 ## The panel emits, the overlay writes — so the dump lands in the real combat log rather
@@ -136,8 +142,8 @@ func test_a_tick_reaches_the_real_combat_log() -> void:
 	var sink := MemorySink.new()
 	overlay.battle.combat_state.combat_log.add_sink(sink)
 
-	overlay.debug_panel_module().perf_panel.set_log_dumps(true)
-	_feed(overlay.debug_panel_module().perf_panel, 60.0, PerfStats.ROLLING_WINDOW_SECONDS + 0.1)
+	_perf_panel(overlay).set_log_dumps(true)
+	_feed(_perf_panel(overlay), 60.0, PerfStats.ROLLING_WINDOW_SECONDS + 0.1)
 
 	var dumps: Array[LogEvent] = sink.events_of_kind(&"fps_dump")
 	assert_eq(dumps.size(), 1, "one dump reached the log")

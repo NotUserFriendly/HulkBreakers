@@ -27,20 +27,35 @@ extends RefCounted
 ## mount time, so it is first; `tooltip` before the three modules that share its `TooltipView`;
 ## `stat_panels` before `resolution` (the resolution banner is the readout cluster's own label);
 ## `debug_panel` before `top_left_controls` (the Inject button routes into it). Not alphabetical.
+##
+## **taskblock-57 Pass C moved `action_bar` up to third**, and that is load-bearing rather than
+## tidy: the bar publishes four slots, and taskblock-56's rule is that a provider must be declared
+## before its dependants. The four surfaces that pin to it — unit resources, the UI buttons cluster,
+## turn controls, the combat log — and Inspect's button all resolve their slot at their own mount
+## time, so every one of them must come after it. Declared earlier, they would silently fall back to
+## `ui_root` and anchor themselves in a corner.
 const PLAYER_MODULES: Array[StringName] = [
 	&"unit_input",
 	&"tooltip",
+	&"action_bar",
+	&"unit_resources",
 	&"stat_panels",
 	&"resolution",
 	&"inspect",
 	&"queue_panel",
-	&"action_bar",
 	&"turn_controls",
 	&"controls_legend",
 	&"combat_log",
 	&"debug_panel",
+	# After `debug_panel`: it consumes the toggle that panel offers, and `link()` finds a module only
+	# if it mounted. The readout's own lifetime is still independent — closing the menu leaves it up.
+	&"perf_monitor",
 	&"replay",
 	&"top_left_controls",
+	# Last: `ui_buttons` builds one toggle per collapsible module, so it wants every module mounted.
+	# The sweep runs in `link()`, which is after all mounts, but declaring it last keeps the reason
+	# visible where the order is read.
+	&"ui_buttons",
 ]
 
 ## Ordered: `resolution` before `playback` (the tunables write into `ResolutionPlayer`'s own fields
@@ -50,10 +65,14 @@ const PLAYER_MODULES: Array[StringName] = [
 ## **No input module appears here, and that IS the contract.** Before this pass the same fact was
 ## expressed by *not inheriting* the player overlay, which cost a 718-line copy of everything both
 ## views wanted.
+## taskblock-57 Pass C adds `perf_monitor` after `debug_panel`. **Not a new surface here** — the
+## readout was already mounted in this mode, inside `debug_panel`; splitting it out would otherwise
+## have silently deleted it from the one view a framerate hunt is actually run in.
 const SPECTATOR_MODULES: Array[StringName] = [
 	&"combat_log",
 	&"resolution",
 	&"debug_panel",
+	&"perf_monitor",
 	&"replay",
 	&"inspect",
 	&"playback",
@@ -96,7 +115,10 @@ static func player() -> ViewMode:
 	var mode := ViewMode.new()
 	mode.id = &"player"
 	mode.display_name = "Player"
-	mode.chrome = ModeChrome.PLAYER_COLUMNS
+	# taskblock-57 Pass C: **the layout goes live here.** `BATTLE_LAYOUT` builds every rect in the
+	# block's placement table from `BattleLayout`, which is pure arithmetic over the screen size —
+	# where `PLAYER_COLUMNS` built four anchored regions whose only test was a screenshot.
+	mode.chrome = ModeChrome.BATTLE_LAYOUT
 	mode.modules = PLAYER_MODULES
 	mode.turn_policy = ViewMode.TurnPolicy.HUMAN_SQUADS
 	# The one inventory surface in the player view, opened on demand for whatever is selected.

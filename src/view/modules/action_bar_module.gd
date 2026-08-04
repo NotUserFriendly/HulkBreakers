@@ -1,24 +1,22 @@
 class_name ActionBarModule
 extends ViewModule
 
-## taskblock-56 Pass C: the action bar and the AP/MP pip rows above it — the left half of the
-## bottom-right `[actions][turn controls]` row.
+## taskblock-56 Pass C: the action bar — bottom, centred, half a 16:9 screen wide.
 ##
 ## **An INPUT module.** `ActionBar` arms an action and `TacticsController` turns the next click into
-## a queued `CombatAction`; the pips are display, but they belong to the same column and were built
-## in the same block, and splitting a two-line label row into its own module would be structure for
-## its own sake. The pair moves together, exactly as `SquadControlOverlay` had it.
+## a queued `CombatAction`.
 ##
-## **A label prefix on each pip row is what keeps a 0-pip row legible** as "AP"/"MP" rather than as
-## blank space — taskblock-07 Pass G's "a unit with 0 shows an empty row, not a missing one".
-## Preserved with the widths and colour overrides that make it read.
-
-const PIP_LABEL_WIDTH := 28.0
+## **taskblock-57 Pass C: the AP/MP pips left.** They were built here on the argument that splitting
+## a two-line label row into its own module would be structure for its own sake. Pass C's table
+## overrules that for a stated reason rather than a stylistic one: G2 replaces this exact surface
+## with a coordinate readout in editor mode — *"same slot, different module"* — and two modules
+## cannot share a slot if one of them is welded inside a third. They are `UnitResourcesModule` now,
+## mounted into `action_bar_top_left`, which is a slot this module publishes: the pips still sit
+## above the bar and still move with it.
 
 var action_bar: ActionBar = null
-var ap_mp_pip_row: ApMpPipRow = null
-## The column pairing the pip rows above the action bar. Exposed because a test confirms that
-## ordering structurally rather than by eye.
+## The column the bar's own row sits in. Exposed because a test confirms that ordering structurally
+## rather than by eye.
 var action_column: VBoxContainer = null
 
 ## taskblock-57 Pass B: the bar's own root, holding the four published slots and the bar itself.
@@ -43,6 +41,22 @@ func kind() -> Kind:
 	return Kind.INPUT
 
 
+## taskblock-57 Pass C: bottom, centred, half a 16:9 screen wide.
+##
+## **`ACTION_ROW` is bottom-pinned, so this module is collapsible**, and that reverses a call made
+## earlier in this same block ("the action bar and its four satellites are not collapsible"). The
+## reason is that the earlier decision was already inconsistent with the data shipped alongside it:
+## `ModuleSlots.SLOT_EDGES` carries `ACTION_ROW: EDGE_BOTTOM`, and `test_slot_properties.gd` pins
+## "bottom is a side too". Nothing surfaced the contradiction while no module declared a slot.
+##
+## Taking the consistent reading — every edge-pinned slot is collapsible, no exceptions — costs
+## nothing a player would notice: the bar is not collapsed by default, and being able to fold it
+## away to look at the board is a reasonable verb rather than "a game you cannot play". The
+## alternative was carving a named exception into a rule whose whole value is having none.
+func preferred_slot() -> StringName:
+	return ModuleSlots.ACTION_ROW
+
+
 ## taskblock-57 Pass B: **the first module to publish slots.** Nothing here is special-cased in the
 ## host — `ControlOverlay` publishes whatever any module returns from this hook.
 func published_slots() -> Dictionary:
@@ -63,6 +77,7 @@ func _mount() -> void:
 	bar_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if row != null:
 		row.add_child(bar_root)
+		_centre_on_the_bars_band(bar_root)
 	else:
 		add_child(bar_root)
 
@@ -83,27 +98,44 @@ func _mount() -> void:
 
 	right_slot = _slot_container(beside, false)
 
-	var pip_rows := VBoxContainer.new()
-	pip_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	action_column.add_child(pip_rows)
-
-	var ap_pips: HBoxContainer = _pip_row(pip_rows, "AP", HulkTheme.HIGHLIGHT)
-	var mp_pips: HBoxContainer = _pip_row(pip_rows, "MP", HulkTheme.MP_PIP)
-
 	# taskblock-08 E1: "action bar 3x its current size" — `ActionBar.BOX_SIZE` carries the actual
-	# number; this row only has to sit directly under the pips, both inside `action_column`.
+	# number; this row only has to sit inside `action_column`.
 	var action_row := HBoxContainer.new()
 	action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	action_column.add_child(action_row)
 
-	var tooltip: TooltipView = _tooltip_view()
 	action_bar = ActionBar.new()
 	add_child(action_bar)
-	ap_mp_pip_row = ApMpPipRow.new()
-	add_child(ap_mp_pip_row)
 	if context.tactics != null:
-		action_bar.setup(context.tactics, action_row, tooltip)
-		ap_mp_pip_row.setup(context.tactics, ap_pips, mp_pips, tooltip)
+		action_bar.setup(context.tactics, action_row, _tooltip_view())
+
+
+## **The bar's rect sizes the BAR; the cluster around it is wider, and has to grow both ways from
+## the bar's centre rather than rightward from its left edge.**
+##
+## Measured, not assumed. The table gives the action bar "half a 16:9 screen wide" — 960 px — but
+## the four surfaces published off it are outside that: the combat log alone asks for 520. The real
+## cluster came to **1740 px**, and anchored at the region's top-left it ran from x = 480 to x =
+## 2220 on a 1920 screen, putting the End Turn button at x = 2142 and the whole turn-control column
+## off the right of the display. A click test caught it; nothing about the code looked wrong.
+##
+## Centring on the region's own centre-bottom fixes it without touching the table's number: the bar
+## stays where `BattleLayout` puts it, and its satellites spread symmetrically around it and grow
+## upward out of the band instead of downward off the screen.
+##
+## A no-op when the slot is a real `Container` (the taskblock-56 layouts' `ACTION_ROW` is an
+## `HBoxContainer`), which positions its children itself and ignores their anchors.
+static func _centre_on_the_bars_band(target: Control) -> void:
+	target.anchor_left = 0.5
+	target.anchor_right = 0.5
+	target.anchor_top = 1.0
+	target.anchor_bottom = 1.0
+	target.offset_left = 0.0
+	target.offset_right = 0.0
+	target.offset_top = 0.0
+	target.offset_bottom = 0.0
+	target.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	target.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 
 ## One published slot container. `expanding` gives it the leftover width, which is what pushes the
@@ -122,23 +154,16 @@ func _slot_container(parent: HBoxContainer, expanding: bool) -> HBoxContainer:
 	return slot
 
 
-func _pip_row(parent: VBoxContainer, text: String, color: Color) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(row)
-	var label := Label.new()
-	label.text = text
-	label.custom_minimum_size = Vector2(PIP_LABEL_WIDTH, 0)
-	label.add_theme_color_override("font_color", color)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(label)
-	var pips := HBoxContainer.new()
-	row.add_child(pips)
-	return pips
+## Folds the bar and every surface published off it in one gesture — they are its children, which
+## is the whole reason the bar publishes slots rather than four modules anchoring themselves near
+## where they expect it to be.
+func _on_collapsed(value: bool) -> void:
+	if bar_root != null:
+		bar_root.visible = not value
 
 
 ## The one shared tooltip renderer, if this mode declared it before this module. Null is a legal
-## answer — `ActionBar`/`ApMpPipRow` both already accept it.
+## answer — `ActionBar` already accepts it.
 func _tooltip_view() -> TooltipView:
 	var module: ViewModule = context.module(&"tooltip")
 	return (module as TooltipModule).view if module != null else null

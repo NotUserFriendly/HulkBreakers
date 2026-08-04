@@ -68,6 +68,9 @@ var bout_injector: BoutInjector
 var pool: Dictionary
 var input_owner: Object
 var combat_state: CombatState
+## taskblock-57 Pass C: **the layout placed this panel, so it must not re-centre itself.**
+## Set by `DebugPanelModule` when its mode publishes a `debug_menu` slot. See `_center_top`.
+var placed_by_host: bool = false
 
 var _verb_list: ItemList
 var _param_container: VBoxContainer
@@ -120,8 +123,14 @@ func _ready() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 
 
+## **taskblock-57 Pass C: a host may place it instead.** The layout owns where every
+## surface sits, so a mode that mounts this into the `debug_menu` slot sets
+## `placed_by_host` and the self-centring stops — including the budge, which moves the
+## slot rather than the panel and would be undone by the next viewport resize otherwise.
+## Kept as a branch rather than deleted: centring is still right for a bare panel with no
+## layout around it, which is what the stand-alone acceptance builds.
 func _center_top() -> void:
-	if not is_inside_tree():
+	if not is_inside_tree() or placed_by_host:
 		return
 	var viewport_size: Vector2 = get_viewport_rect().size
 	position = Vector2((viewport_size.x - size.x) / 2.0, TOP_MARGIN)

@@ -193,6 +193,22 @@ func link() -> void:
 	pass
 
 
+## taskblock-57 Pass C: **the chrome's slots have been re-placed against a new screen size.**
+##
+## Called on every module after `ModeChrome.relayout`, and needed because the battle layout places
+## absolutely rather than by anchor preset. Almost every module ignores this — its panel is a child
+## of a slot region and moves with it for free. The exception is a module that read a *position* off
+## the layout and applied it somewhere: the debug menu's budge is the only one today, and it has to
+## re-derive itself or a resize while Inspect is open leaves the menu at its unbudged home.
+##
+## **Ordering is why this is a hook rather than each module connecting to `resized` itself.** The
+## regions must move before anything re-derives from them, and two independent handlers on one
+## signal would settle that by connection order — which is exactly the kind of implicit dependency
+## `link()` exists to remove.
+func relaid_out() -> void:
+	pass
+
+
 ## Re-points this module at whatever `context.battle` now holds, without rebuilding anything.
 ##
 ## **This is the half of `setup` that is about the bout rather than about the controls**, and it is

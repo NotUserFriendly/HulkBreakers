@@ -6,27 +6,39 @@ extends GutTest
 ## is never forced to shrink the UI to play.* A module answers that about itself by asking which
 ## slot it wants, rather than each one carrying a flag that can drift from where it actually sits.
 ##
-## ## The vacuity is stated rather than hidden
+## ## Written to be non-vacuous before it had anything to sweep
 ##
-## Pass A's own test reads "every side-pinned module reports itself collapsible". **No module
-## declares a `preferred_slot()` yet** — that lands in Pass C, when the modules are re-slotted — so
-## iterating `ModuleCatalog` today would range over an empty set and pass while proving nothing.
-## That is the failure shape `docs/TEST-AUDIT.md` keeps finding, so instead:
+## Pass A's own test reads "every side-pinned module reports itself collapsible", and at Pass A no
+## module declared a `preferred_slot()` at all — so iterating `ModuleCatalog` would have ranged over
+## an empty set and passed while proving nothing, which is the failure shape `docs/TEST-AUDIT.md`
+## keeps finding. So the file was built in three parts: the **derivation** tested against synthetic
+## modules, the **current state** pinned explicitly, and the **sweep** written but asserting against
+## that pin.
 ##
-## - the **derivation** is tested against synthetic modules, which is a real assertion today;
-## - the **current state** is asserted explicitly, so this file goes red the moment a module starts
-##   declaring a slot and the real sweep below stops being vacuous;
-## - the sweep itself is written and runs, so Pass C inherits it rather than having to remember it.
+## **It worked.** Pass C declared the first slots and this file went red on the pin rather than
+## quietly going green on an empty loop, which is the whole reason the pin exists.
 
-## Every module that declares an edge-pinned slot, as of this pass. **Empty, because Pass C is
-## where modules are re-slotted** — and pinned as a list rather than left implicit so the sweep
-## below always asserts something instead of ranging over nothing and reporting green.
+## Every module that declares an edge-pinned slot, in `ModuleCatalog.IDS` order. **Pinned as a list
+## rather than left implicit** so the sweep below always asserts something instead of ranging over
+## nothing and reporting green — GUT called the first version of that sweep *risky — did not
+## assert*, which was the right verdict.
 ##
-## GUT called the first version of that sweep *risky — did not assert*, which was the right verdict:
-## a loop over an empty catalog is the "passes while proving nothing" shape `docs/TEST-AUDIT.md`
-## keeps finding. **Pass C updates this list**, and until it does the test still has teeth: a module
-## that starts declaring a slot fails here immediately.
-const EXPECTED_SIDE_PINNED: Array[StringName] = []
+## **taskblock-57 Pass C filled it, and it fired to say so.** Three modules, and each is here for a
+## reason worth reading rather than because it happened to land on an edge:
+##
+## - `debug_panel` — `DEBUG_MENU`, top. Already off by default; the toggle is now explicit.
+## - `inspect` — `INSPECT_PANEL`, right. The largest surface on the screen and the one a cramped
+##   ratio most needs to reclaim.
+## - `action_bar` — `ACTION_ROW`, bottom. **This one reverses an earlier call in the same block**
+##   ("the action bar and its four satellites are not collapsible"). That decision was already
+##   inconsistent with the data shipped beside it: `SLOT_EDGES` carries `ACTION_ROW: EDGE_BOTTOM`,
+##   and the test below pins "bottom is a side too". Nothing surfaced the contradiction while no
+##   module declared a slot. The consistent reading — every edge-pinned slot, no exceptions — is
+##   taken, and it costs nothing: the bar is not collapsed by default.
+##
+## The four action-bar satellites are **absent and should stay absent**: they ride the bar, which is
+## centred, so they are not edge-pinned and fold with it rather than each carrying its own toggle.
+const EXPECTED_SIDE_PINNED: Array[StringName] = [&"debug_panel", &"inspect", &"action_bar"]
 
 
 ## A module that wants a named slot. Built here rather than picked from the catalog so the

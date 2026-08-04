@@ -744,21 +744,37 @@ func test_new_battle_is_not_among_the_turn_controls() -> void:
 	)
 
 
-## taskblock-08 E1: "action bar on the LEFT... AP and MP pips render on
-## TOP of the action bar" — the pip rows sit above the action bar's own
-## row, both inside the one left-hand column, never mixed into the
-## turn-control column.
-func test_the_action_bars_own_row_is_the_last_child_of_the_action_column() -> void:
+## taskblock-08 E1: "action bar on the LEFT... AP and MP pips render on TOP of the action bar."
+##
+## **taskblock-57 Pass C moved the pips into their own module** (`unit_resources`, mounted into the
+## bar's `action_bar_top_left` slot), so counting the action column's children no longer says
+## anything about where the pips are — the old version of this test would have passed with the pips
+## deleted entirely.
+##
+## So it asserts the rule itself instead of the structure that used to imply it: **the resources row
+## is above the action bar's row on screen**, read off the real global rects rather than re-derived,
+## and the action row still holds the ten boxes.
+func test_the_unit_resources_row_renders_above_the_action_bars_own_row() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
-	var action_column: VBoxContainer = _overlay(scene).module(&"action_bar").action_column
+	var overlay: ControlOverlay = _overlay(scene)
+	var action_column: VBoxContainer = overlay.module(&"action_bar").action_column
+	var resources: Control = (overlay.module(&"unit_resources") as UnitResourcesModule).column
+	assert_not_null(resources, "the player mode declares a unit-resources surface")
+	await get_tree().process_frame
+	await get_tree().process_frame
 
-	assert_eq(action_column.get_child_count(), 2, "pips above, the action row below")
-	var last: Node = action_column.get_child(action_column.get_child_count() - 1)
+	var row: Node = action_column.get_child(action_column.get_child_count() - 1)
 	assert_eq(
-		(last as Container).get_child_count(),
+		(row as Container).get_child_count(),
 		ActionBar.SLOT_COUNT,
-		"the LAST child must be the 10-box action row, the pips sit above it"
+		"the action column's last child must be the 10-box action row"
+	)
+	var pips_bottom: float = resources.get_global_rect().end.y
+	var row_top: float = (row as Control).get_global_rect().position.y
+	gut.p("resources end at y=%.1f, the action row starts at y=%.1f" % [pips_bottom, row_top])
+	assert_lt(
+		pips_bottom, row_top + 1.0, "the pips must render ON TOP of the action bar, not beside"
 	)
 
 

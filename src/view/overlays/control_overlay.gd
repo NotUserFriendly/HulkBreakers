@@ -321,6 +321,12 @@ func _build_root() -> void:
 	# it would swallow every RMB/MMB drag that started over it before `CameraRig._unhandled_input`
 	# ever saw the event.
 	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# taskblock-57 Pass C: **the battle layout places absolutely, so it has to be told to move.**
+	# The other chromes anchor with presets and follow a resize for free; this one is arithmetic over
+	# a screen size, and a screen size that changes has to re-run it or every surface stays where the
+	# window used to be. Connected on the root rather than on the viewport so it fires once, here,
+	# for whatever chrome the mode asked for.
+	ui_root.resized.connect(_on_ui_root_resized)
 	layer.add_child(ui_root)
 
 	module_context = ModuleContext.new()
@@ -331,6 +337,19 @@ func _build_root() -> void:
 	# needs — see `ModuleContext.advance_ai_turns`.
 	module_context.advance_ai_turns = _advance_ai_turns_here
 	module_context.rebind_all = rebind_to_battle
+
+
+## Re-places the chrome's slots, then lets every module re-derive whatever it read off them.
+##
+## **The two steps are ordered deliberately**: a module that budged a panel from a slot's rect has
+## to run after the slot has moved. Two independent handlers on `resized` would settle that by
+## connection order, which is the implicit dependency this avoids.
+func _on_ui_root_resized() -> void:
+	if mode == null:
+		return
+	ModeChrome.relayout(mode.chrome, ui_root, module_context)
+	for mounted: ViewModule in modules:
+		mounted.relaid_out()
 
 
 ## An unknown module id is skipped, not fatal: a mode listing something the catalog does not know

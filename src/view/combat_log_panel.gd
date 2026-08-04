@@ -10,11 +10,18 @@ extends VBoxContainer
 ## spec'd up front, so this is deliberately something concrete to react to. The
 ## numbers below are flagged starting positions, not decisions.
 ##
-## The one real rule left outside this class is `FpsMeter`'s arithmetic, which
-## is unit-tested headlessly. What remains here is plumbing, which is why there
-## are no acceptance tests on the chrome itself — the exception being the
-## wheel's behaviour, which has its own test because getting it wrong is
-## invisible until someone tries to zoom.
+## What remains here is plumbing, which is why there are no acceptance tests on
+## the chrome itself — the exception being the wheel's behaviour, which has its
+## own test because getting it wrong is invisible until someone tries to zoom.
+##
+## **taskblock-57 Pass C took the FPS readout off this panel.** taskblock-41 drew
+## a live figure on the title bar because at the time there was nowhere else for
+## it; the placement table now gives framerate its own surface in the corner and
+## says to use *"the existing perf stats from the debug menu rather than the
+## log's"*. So the meter is gone from here and `PerfMonitorModule` is the one
+## framerate surface. Two readouts over two different meters, disagreeing by a
+## frame, is the kind of thing that costs an afternoon. `FpsMeter` itself is
+## untouched and still unit-tested; nothing in the view reads it any more.
 ##
 ## **BR34.02 is answered structurally, not closed.** That entry (SUPERVISOR-
 ## owned) says one of two things must change: the log gets a visible background,
@@ -45,11 +52,6 @@ const RESTORE_LABEL := "[+]"
 ## than a text row's worth of height to be an easy target.
 const BACKGROUND_ALPHA := 0.82
 
-## Drawn ON the panel rather than emitted INTO the stream: a per-frame FPS
-## event would drown the log it sits on (tb35 A1 already established the log is
-## for greppable dumps, not a continuous readout).
-const FPS_MARGIN := Vector2(8.0, 4.0)
-
 ## How far one wheel notch scrolls, as a fraction of a visible page. Flagged and
 ## tunable (CLAUDE.md: never invent a final number); picked to feel close to the
 ## engine default rather than derived from anything.
@@ -60,9 +62,7 @@ var log_label: RichTextLabel
 ## any more — see `_on_title_bar_input`.
 var title_bar: PanelContainer
 var minimize_button: Button
-var fps_label: Label
 
-var _meter := FpsMeter.new()
 var _body: PanelContainer
 var _minimized := false
 var _dragging := false
@@ -131,18 +131,6 @@ func _init() -> void:
 	log_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	_body.add_child(log_label)
 
-	# In the TITLE BAR, not over the log body: at this panel's real width the
-	# body's top-right corner is exactly where the first log line sits, so a
-	# readout there printed straight through the text. Found by rendering.
-	# `MOUSE_FILTER_IGNORE` so it never interrupts a drag started on the bar.
-	# It is a row child now rather than an anchored overlay — the HBox handles
-	# the placement the old hand-rolled anchors were doing badly.
-	fps_label = Label.new()
-	fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	fps_label.add_theme_color_override("font_color", HulkTheme.DIM)
-	bar_row.add_child(fps_label)
-
 	# The minimize toggle. A real child Button, so it takes its own click and a
 	# press on it never starts a drag on the bar underneath — that separation is
 	# structural, not a flag either handler has to remember to check.
@@ -160,11 +148,6 @@ func _ready() -> void:
 	style.bg_color = Color.TRANSPARENT
 	style.content_margin_left = log_label.get_v_scroll_bar().get_combined_minimum_size().x
 	log_label.add_theme_stylebox_override("normal", style)
-
-
-func _process(delta: float) -> void:
-	_meter.sample(delta)
-	fps_label.text = _meter.readout_text()
 
 
 func is_minimized() -> bool:

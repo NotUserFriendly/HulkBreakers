@@ -20,17 +20,18 @@ extends ViewModule
 ##
 ## ## Placement
 ##
-## `slot` is set before `mount` by a host that wants the panel inside one of its own containers;
-## left null, the panel anchors itself hard into the bottom-left corner of `ui_root`.
+## **taskblock-57 Pass C: immediately left of the action bar**, which is a slot the bar publishes,
+## so the log travels with the bar instead of being anchored near where it expects to find one.
 ##
-## **Both existing overlays were aiming at the same corner by different means** —
-## `SquadControlOverlay` made it the last child of a full-height left column, `SpectatorOverlay`
-## anchored it explicitly, and that file's own comment records a margin being deleted so the two
-## views' logs would stop sitting in visibly different places. Preserving both placements rather
-## than picking one is what makes this pass an extraction: the choice belongs to the mode, in Pass
-## D, not to the module.
+## The older placements survive as fallbacks and that is deliberate. `slot` is still honoured for a
+## host that hands over a container directly, and with neither that nor an action bar the panel
+## anchors itself hard into the bottom-left corner of `ui_root` — which is where both pre-Pass-D
+## overlays put it by different means, and which is what taskblock-56 Pass C's stand-alone
+## acceptance mounts against. **Relative anchoring must not weaken that**, and the taskblock says
+## so in its own stop-and-report list.
 
-## Set before `mount` to place the panel inside an existing container. Null anchors it bottom-left.
+## Set before `mount` to place the panel inside an existing container. Overrides the declared slot;
+## null falls back to the action bar's, then to the bottom-left corner.
 var slot: Control = null
 
 var panel: CombatLogPanel = null
@@ -45,8 +46,19 @@ func module_id() -> StringName:
 	return &"combat_log"
 
 
+## Immediately left of the action bar. **Not edge-pinned** — it rides the bar, which is centred —
+## so this module is not collapsible by the `SLOT_EDGES` derivation. It has its own affordance
+## instead: the table's "minimises to a button flush against the bar", which is `CombatLogPanel`'s
+## own minimize toggle and predates the collapse rule.
+func preferred_slot() -> StringName:
+	return ModuleSlots.ACTION_BAR_LEFT
+
+
 func _mount() -> void:
 	panel = CombatLogPanel.new()
+	var declared: Control = context.slots.get(preferred_slot())
+	if slot == null and declared != null:
+		slot = declared
 	if slot != null:
 		slot.add_child(panel)
 	elif context.ui_root != null:

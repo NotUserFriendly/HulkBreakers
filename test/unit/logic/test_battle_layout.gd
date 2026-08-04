@@ -158,8 +158,9 @@ func test_no_surface_lands_outside_the_screen_at_any_ratio() -> void:
 ## sat, so calling it twice walked it across the screen. It is computed from the home rect every
 ## time instead.
 ##
-## Exercised at a scale where budging genuinely fires — at 1x it is a no-op, so asserting movement
-## there would assert the wrong thing (see the test below).
+## Exercised at 2x, where the measured overlap rather than the floor is what moves it — the two
+## paths into `debug_menu_budge_distance` must both be idempotent, and the floor's path is covered
+## at 1x by the test below.
 func test_budging_is_idempotent_and_reversible() -> void:
 	var screen := Vector2(1920, 1080)
 	UiLayout.scale = 2.0
@@ -179,24 +180,92 @@ func test_budging_is_idempotent_and_reversible() -> void:
 	)
 
 
-## **At 1x they abut exactly and budging is a no-op — measured, not assumed.**
+## **At 1x they abut exactly — measured, not assumed — and the floor is what makes budging fire
+## anyway.**
 ##
-## This is the pass's most useful finding. The menu ends at `1/2 + 1/8 = 5/8` of the safe width and
-## Inspect begins at `1 - (2/3)(9/16) = 5/8`, so with the table's own fractions they touch and never
-## overlap. A fixed budge distance would have been dead code at the shipped default.
-func test_at_one_x_inspect_abuts_the_debug_menu_rather_than_crowding_it() -> void:
+## The menu ends at `1/2 + 1/8 = 5/8` of the safe width and Inspect begins at `1 - (2/3)(9/16) =
+## 5/8`, so with the table's own fractions they touch and never overlap. That is why the budge is
+## `max(floor, measured overlap)` and not either alone: a purely measured budge is zero here, at the
+## one scale anyone can currently play at, so the one-off would never have fired in normal play.
+## Supervisor's call, taskblock-57: floor it at `X * SCALE`.
+func test_at_one_x_the_two_abut_exactly_and_the_budge_falls_back_to_its_floor() -> void:
 	var screen := Vector2(1920, 1080)
 	var menu: Rect2 = BattleLayout.debug_menu_rect(screen)
 	var inspect: Rect2 = BattleLayout.inspect_rect(screen)
 	gut.p("debug menu ends at %.1f, inspect starts at %.1f" % [menu.end.x, inspect.position.x])
 
 	assert_almost_eq(menu.end.x, inspect.position.x, 0.001, "they abut exactly at 1x")
-	assert_false(BattleLayout.inspect_crowds_debug_menu(screen), "so nothing crowds anything")
-	assert_eq(
-		BattleLayout.budged_debug_menu_rect(screen, true),
-		menu,
-		"and budging with nothing in the way must leave the menu exactly where it was"
+	assert_false(BattleLayout.inspect_crowds_debug_menu(screen), "so nothing OVERLAPS anything")
+	assert_almost_eq(
+		BattleLayout.debug_menu_budge_distance(screen),
+		BattleLayout.DEBUG_MENU_BUDGE_BASE,
+		0.001,
+		"with no overlap to measure, the floor is the whole distance"
 	)
+	assert_almost_eq(
+		BattleLayout.budged_debug_menu_rect(screen, true).position.x,
+		menu.position.x - BattleLayout.DEBUG_MENU_BUDGE_BASE,
+		0.001,
+		"so the menu still moves clear at the shipped default"
+	)
+
+
+## **The floor scales, and it is the same scaling every other size goes through.**
+##
+## The supervisor gave the rule as `X + X*(SCALE-1)`, which is `X * SCALE` — i.e. exactly
+## `UiLayout.scaled(X)`. Asserted against `UiLayout.scaled` rather than against a second copy of the
+## multiplication, so a change to how scaling works cannot leave this agreeing with nothing.
+func test_the_budge_floor_scales_with_the_ui() -> void:
+	# **Scales at and BELOW 1x, and the fixture is the point.** Inspect grows as `(2/3)*height*scale`
+	# while the menu grows as `(1/4)*width*scale`, so above 1x Inspect always catches the menu and
+	# the measured term takes over — a sweep over 1.5x/2.0x would skip every iteration and assert
+	# the floor exactly once, which is the "passes while proving nothing" shape this suite keeps
+	# finding. Shrinking the UI is a real setting and leaves the two clear at every step.
+	var screen := Vector2(1920, 1080)
+	for scale: float in [0.5, 0.75, 1.0]:
+		UiLayout.scale = scale
+		assert_false(
+			BattleLayout.inspect_crowds_debug_menu(screen),
+			"fixture broken: scale %.2f must leave nothing to measure" % scale
+		)
+		var distance: float = BattleLayout.debug_menu_budge_distance(screen)
+		gut.p("scale %.2f: floor-only budge %.1f" % [scale, distance])
+		assert_almost_eq(
+			distance,
+			UiLayout.scaled(BattleLayout.DEBUG_MENU_BUDGE_BASE),
+			0.001,
+			"scale %.2f: the floor must go through the one place that reads UI scale" % scale
+		)
+	# And the three answers really were different, or the loop proved nothing about scaling.
+	UiLayout.scale = 0.5
+	var half: float = BattleLayout.debug_menu_budge_distance(screen)
+	UiLayout.scale = 1.0
+	assert_almost_eq(
+		BattleLayout.debug_menu_budge_distance(screen), half * 2.0, 0.001, "and it really is linear"
+	)
+
+
+## **The measured term wins wherever it is larger, and the floor never shrinks it.**
+##
+## This is the half a fixed constant got wrong: at 1.5x the overlap is 480 px and at 2.0x it is 960,
+## against a floor of 64. A budge that took the floor at those scales would leave the menu sitting
+## on top of Inspect.
+func test_a_real_overlap_beats_the_floor_rather_than_being_capped_by_it() -> void:
+	var screen := Vector2(1920, 1080)
+	for scale: float in [1.5, 2.0]:
+		UiLayout.scale = scale
+		var overlap: float = (
+			BattleLayout.debug_menu_rect(screen).end.x
+			- BattleLayout.inspect_rect(screen).position.x
+		)
+		var distance: float = BattleLayout.debug_menu_budge_distance(screen)
+		gut.p("scale %.1f: overlap %.1f, budge %.1f" % [scale, overlap, distance])
+		assert_gt(distance, overlap, "scale %.1f: the budge must clear the overlap" % scale)
+		assert_gt(
+			distance,
+			UiLayout.scaled(BattleLayout.DEBUG_MENU_BUDGE_BASE),
+			"scale %.1f: and the floor must not have capped it" % scale
+		)
 
 
 ## **Where budging actually earns its keep: a scaled-up UI.** Both surfaces grow, the overlap is
