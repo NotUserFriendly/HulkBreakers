@@ -25,7 +25,6 @@ const HEADER_IDLE := "COMBAT READOUT — idle"
 
 var stat_panel: StatPanel = null
 var weapon_panel: WeaponPanel = null
-var aim_view: AimView = null
 var banner: Label = null
 var aim_readout: RichTextLabel = null
 var stat_label: RichTextLabel = null
@@ -86,14 +85,11 @@ func _mount() -> void:
 	var material_table: MaterialTable = DataLibrary.material_table()
 	var tactics: TacticsController = context.tactics
 
-	aim_view = AimView.new()
-	add_child(aim_view)
 	stat_panel = StatPanel.new()
 	add_child(stat_panel)
 	weapon_panel = WeaponPanel.new()
 	add_child(weapon_panel)
 	if tactics != null:
-		aim_view.setup(tactics, aim_readout, material_table)
 		stat_panel.setup(tactics, stat_label, stat_drill_down)
 		weapon_panel.setup(tactics, weapon_label)
 
@@ -102,10 +98,18 @@ func _mount() -> void:
 
 ## The header follows the selection and the aim, and a debug verb can kill a part the header needs
 ## to know about — the same three triggers the player overlay wired by hand.
+##
+## **taskblock-57 Pass F also hands the aim readout to whoever owns the dartboard.** `AimView` moved
+## to `UnitInputModule` — it is world geometry driven by the controller that module owns, and it has
+## to survive both this module's retirement in Pass D and the aim mode turning most surfaces off.
+## The text readout beside it is a UI panel and stayed here, so the two are joined at `link()` time
+## rather than by one owning the other. A mode missing either end simply skips it.
 func link() -> void:
 	var input: ViewModule = context.module(&"unit_input")
 	if input != null:
 		(input as UnitInputModule).selection_changed.connect(refresh_header)
+		if (input as UnitInputModule).aim_view != null:
+			(input as UnitInputModule).aim_view.set_readout(aim_readout)
 	var debug: ViewModule = context.module(&"debug_panel")
 	if debug != null:
 		(debug as DebugPanelModule).verb_applied.connect(_on_verb_applied)

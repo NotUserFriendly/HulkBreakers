@@ -27,6 +27,20 @@ signal turn_resolved(events: Array[LogEvent])
 signal selection_changed
 
 var tactics: TacticsController = null
+## taskblock-57 Pass F: **the dartboard, and it belongs here.**
+##
+## `AimView` is a `Node3D` — the window quad, its decal, the targeting line — driven entirely by
+## `TacticsController.aim_changed`. It lived in `stat_panels_module` because that module also built
+## the text readout beside it, which is a UI panel and a different kind of thing.
+##
+## Two reasons it moved. The taskblock is explicit that **the aim view and the dartboard are not UI
+## modules and do not become ones — they are what the aim mode switches *to***; a module that turns
+## off while aiming is exactly the wrong owner for the thing you aim with. And Pass D retires
+## `stat_panels`, which would have taken the dartboard with it.
+##
+## Owned by the module that owns the controller it reads, which is the only pairing that cannot come
+## apart.
+var aim_view: AimView = null
 ## The repair picker, or null when none is open. Rebuilt fresh on every open, the same "free the old
 ## one first" convention `InspectPanel`'s own debug menu already has. **Public**, because whether a
 ## picker opened and what it listed is exactly what a test needs to see and the only way to see it.
@@ -61,6 +75,16 @@ func _mount() -> void:
 	# tb31 Pass D: the action bar dispatches by action id, never a direct call, so a future
 	# PART_PICKER action routes through here too.
 	tactics.picker_action_requested.connect(_on_picker_action_requested)
+
+	# Parented to the HOST, not to this module: it is world geometry and has to sit in the 3D scene
+	# rather than under a `Node` hanging off the control surface. `context.host` is where every other
+	# non-`Control` helper goes.
+	aim_view = AimView.new()
+	var world: Node = context.host if context != null and context.host != null else self
+	world.add_child(aim_view)
+	# A null readout is legal — see `AimView.set_readout`. Whichever module currently owns a text
+	# panel hands one over in its own `link()`.
+	aim_view.setup(tactics, null, DataLibrary.material_table())
 
 
 func _unmount() -> void:

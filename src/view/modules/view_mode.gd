@@ -50,6 +50,18 @@ var modules: Array[StringName] = []
 var options: Dictionary = {}
 var turn_policy: TurnPolicy = TurnPolicy.NONE
 
+## taskblock-57 Pass F: **which mode to switch to while aiming**, or `&""` for a mode that does not
+## switch at all.
+##
+## *"Most modules turn off when the camera drops to over-the-shoulder or sniper view. That is a
+## module set, so **it is a mode** — enter aim, switch; leave, switch back. No suspension mechanism,
+## and 'what is visible while aiming' becomes a table entry someone can read."*
+##
+## **A field rather than a branch in the host**, so "what happens when this mode aims" is read off
+## the mode like everything else about it. A spectator cannot aim and names nothing here; the editor
+## has no aim path either. Only the player mode fills it in.
+var aim_mode_id: StringName = &""
+
 
 ## The pre-mount configuration for `module_id`, or an empty dictionary. A module with no entry gets
 ## its own defaults, which is what every module is written to work with.
