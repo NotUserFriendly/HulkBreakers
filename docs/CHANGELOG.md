@@ -31,6 +31,48 @@ right place facing exactly the wrong way satisfies every assertion taskblock-55 
 CLAUDE.md's "read the real node back, don't re-derive it" had been applied to placement and never to
 orientation.
 
+### taskblock-56 Pass B — where a shot aims, answered in writing
+
+**An investigation, not a fix.** No aim path changed in this pass.
+
+**The two paths agree, and structurally rather than luckily.**
+`ActionCatalog.build_firing_action` is the only place in `src/` that constructs a firing action,
+and every firing action resolves its aim point through one expression,
+`ShotPlane.center_of(plane, target) + aim_offset`. The player passes `reticle_offset`; the AI
+(`UtilityExecutors.build`) omits the argument and takes the same `Vector2.ZERO` default, as do
+overwatch and the step-out triple's middle leg. **A default left alone is not a second
+implementation.** `test_one_aim_path.gd` pins both halves: the two paths' actions compared field by
+field, plus a source sweep asserting nothing outside the catalog constructs a firing action.
+
+**Which removes a suspect from `BR51.01`** — a player/AI split is not what moves those shots.
+
+**But the aim point is not the target's centre.** `ShotPlane.center_of` returns the centre of the
+target's **frontmost region** — whichever single projected face of whichever single part sits
+nearest the shooter. An outstretched weapon *is* the aim point. Measured on a real assembled body:
+**20.1° off the muzzle-to-target axis at 1 cell**, 5.9° at 2, 0.6° at 3, −0.1° at 10 — and the
+winning part changes identity with range (pistol → plate → arm cladding) because depth ordering
+shifts with the projection angle. The aim point's *height* drops to that part's height too, 0.80 at
+a gun against 1.36 at the upper body, so the same mechanism aims down as well as sideways.
+
+**This confirms `BR54.01`'s stated unverified suspect** and reproduces its range effect from the
+geometry rather than from the log. **It does not account for the whole of it**: that entry measured
+43.1° at 2.3–5.3 cells and this mechanism tops out near 20° at *one* cell. Appended there as a
+confirmed contributor with residue, explicitly not as a closure.
+
+**Recorded in `docs/02` as a finding, not a specification.** Nothing chose the current behaviour;
+it is what "the frontmost region's centre" came to mean once bodies stopped being single boxes.
+
+**Two things found while looking, neither fixed here.** `ShotPlane.center_of`'s no-region fallback
+returns `Vector2(target.cell.x, target.cell.y)` — grid cell coordinates handed back where callers
+expect a `(lateral, world height)` plane point; it fires only when the target projects nothing at
+all, which is why nothing has seen it. And `InternalTargeting.aim_offset_for` — the knowledge-gated
+aim-at-a-named-internal path — **has no production caller**; nothing outside its own tests reaches
+it.
+
+**A note on the block's own text:** taskblock-56 Pass B names `BR51.01` while quoting `BR54.01`'s
+measurements. Findings were appended to both — the confirmation to `BR54.01`, the elimination to
+`BR51.01`.
+
 ### taskblock-55 — closing doc audit
 
 **A fourth test was passing while proving nothing, and only a read found it.**

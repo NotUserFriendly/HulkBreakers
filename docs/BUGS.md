@@ -1411,6 +1411,27 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
   it inherits the offset. **Check the camera before the weapon.**
 - **Blocks reproducing `BR35.08`** — the supervisor could not reliably hit a goo barrel to detonate it.
 
+- **taskblock-56 Pass B — the player/AI split is eliminated as a suspect.** CC session
+  `4ec878cf-1434-4676-8bd3-05c92eed071a`. Both paths were traced from origin to the resolver's
+  input: `ActionCatalog.build_firing_action` is the **only** construction site for a firing action
+  in `src/`, and every firing action resolves through the one expression
+  `ShotPlane.center_of(plane, target) + aim_offset`. The player passes `reticle_offset`; the AI
+  omits the argument and takes the same `Vector2.ZERO` default. **There is one aiming
+  implementation, so no player/AI divergence can be moving these shots.** Pinned by
+  `test_one_aim_path.gd` so a later change cannot separate them quietly.
+- **But a second, independent source of left-and-down was confirmed while looking** — see
+  `BR54.01`. The aim point is the centre of the target's **frontmost region**, so it carries both
+  a lateral offset (an outstretched weapon or arm) and a height drop (to that part's height, e.g.
+  0.80 at a gun rather than 1.36 at the upper body). That is the same *shape* as this entry's
+  widened symptom — *"shots go left AND down at a steep angle"* — arriving from geometry rather
+  than from the camera. **It does not replace the camera-lean mechanism this entry already
+  established**; both can be live at once, and the supervisor's specification (take the camera out
+  of shot processing entirely) is unaffected either way.
+- **Note on provenance:** taskblock-56's Pass B text names this entry while describing
+  `BR54.01`'s measurements (*"AI rounds up to 43° off facing, chaingun units within 8.6°"*). The
+  findings have been appended to **both** — the confirmation to `BR54.01`, whose stated suspect it
+  settles, and the elimination to this one.
+
 - **taskblock-51 — the frame-mismatch theory is measured and WRONG. Ruled out, not deprioritised.**
   The strongest hypothesis was that the reticle and the resolver work in different planes: the
   reticle places `reticle_offset` against a plane anchored on the shooter and target **cells**
@@ -1898,6 +1919,52 @@ restored verbatim from `a65f66d`; only this note is new.
   this is the appearance it exposed, not something it broke.
 - **To see it:** put two AI units within about three cells of a shooter and watch which one the
   gun points at against which one takes the hit.
+
+**taskblock-56 Pass B — the remaining suspect is CONFIRMED, and it is not the whole of the 43°.**
+CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`. An investigation, not a fix — nothing here
+changed the aim path.
+
+- **`ShotPlane.center_of` does exactly what this entry suspected.** It returns
+  `best.rect.get_center()` where `best` is the target's **frontmost region** — whichever single
+  projected face of whichever single part sits nearest the shooter. Not the body's centroid, and
+  not a point on the muzzle-to-target axis. Read off a real plane, not off the source: on an
+  assembled body the winner is the *pistol* at close range, a *plate_small_steel* at three cells,
+  and *arm_cladding* at ten, because depth ordering shifts as the projection angle does.
+- **The range effect this entry measured falls straight out of it.** The lateral error is a fixed
+  distance in the body, so the angle it subtends grows as range shrinks. Measured, level ground,
+  one assembled body:
+
+  | range (cells) | frontmost region | aim height | off-axis |
+  |---|---|---|---|
+  | 1 | pistol | 0.80 | **20.1°** |
+  | 2 | pistol | 0.80 | 5.9° |
+  | 3 | plate_small_steel | 1.36 | 0.6° |
+  | 10 | arm_cladding | 1.36 | −0.1° |
+
+  Swept across the target's eight facings, the worst at 1 cell was **20.1°** and the worst at 5
+  cells was **3.2°**. **This is the entry's own "it is a range effect, not a weapon effect",
+  reproduced from the geometry instead of from the log.**
+- **It does not account for the full deviation, and that matters.** This entry measured **43.1°**
+  at 2.3–5.3 cells for unit 5 and **35.3°** at 2.1–4.5 for unit 1. The mechanism above tops out
+  near **20°** at *one* cell and around **7°** at two. So it is a confirmed contributor of exactly
+  the right shape and range-dependence, and **something else is also in play** — do not close this
+  on the strength of the confirmation alone. Caveat on the comparison: the probe body carries a
+  pistol, and the logged units did not; a weapon mounted further off the centreline would widen
+  the lateral, though the chaingun units — the well-behaved ones — argue range dominates loadout.
+- **The aim point goes DOWN as well as sideways**, which was not in this entry's framing. Its
+  height is the winning part's height, dropping to the gun's **0.80** at close range from the upper
+  body's **1.36**. Worth carrying to `BR51.01`, whose widened symptom is *"shots go left AND down"*.
+- **`ShotPlane.center_of`'s no-region fallback is a latent second defect, unreported until now.**
+  It returns `Vector2(target.cell.x, target.cell.y)` — a grid cell coordinate pair handed back
+  where every caller expects a `(lateral, world height)` point in plane space. It fires only when
+  the target projects no region at all, which is why nothing has seen it. **Not fixed here** (this
+  pass is an investigation) and not given its own ID pending the supervisor's read, since it may
+  be unreachable in practice.
+- **Where this lands the design question.** Whether the aim point *should* be the frontmost
+  region's centre, the body's centroid, or a point on the muzzle-to-target axis is a decision
+  nobody has made — the current behaviour was never chosen, it is what "frontmost region" came to
+  mean once bodies stopped being single boxes. Recorded in `docs/02` as a finding, explicitly not
+  as intended behaviour. **Picking one is a design call, not a patch.**
 
 ### BR54.02 — Active — owner: `SUPERVISOR`
 **A destroyed part vanishes from the shell before the tracer that destroyed it draws**
