@@ -32,28 +32,51 @@ func test_bout_injector_is_never_referenced_by_a_gameplay_input_class() -> void:
 		)
 
 
-## taskblock-29 Pass D / taskblock-30: the two legitimate debug contexts
-## this ever gets constructed in — spectator (unconditionally, its own
-## whole purpose) and the player-controlled overlay (behind its own real
-## `OS.is_debug_build()` gate, taskblock-30's own extension) — never
-## `TacticsController`/`ActionBar` themselves (see the guard test above).
-## Case-insensitive: taskblock-30/31 Pass C's own doc comments moved to
-## naming the lowercase `bout_injector` FIELD rather than the class name
-## directly in places (both still legitimately touch the real channel,
-## via `battle.bout_injector`/`DebugControlPanel`) — the claim under test
-## is "this file has something to do with injection," not "the literal
-## class name string appears."
-func test_bout_injector_is_referenced_by_both_overlays() -> void:
+## taskblock-29 Pass D / taskblock-30: injection is constructed only in a legitimate debug context,
+## never in `TacticsController`/`ActionBar` themselves (see the guard test above).
+##
+## ## taskblock-56 Pass C: there is ONE such context now, not two
+##
+## This used to name both overlays, because each built its own debug panel and each reached for
+## `battle.bout_injector` in its own `_on_inject_pressed`. Both of those are `DebugPanelModule` now,
+## shared, and the overlays route into it — so `squad_control_overlay.gd` no longer contains the
+## string and this test correctly failed until it was pointed at the code.
+##
+## **That is a strictly stronger guarantee, not a weakened one.** The claim the file has always been
+## making is "injection is reachable from exactly the places that are supposed to have it, and
+## nowhere else"; going from two gated copies to one gated module removes the thing that could
+## drift. It is the same argument tb31 Pass A already made when `inject_button` construction
+## collapsed into `TopLeftControls`.
+##
+## Case-insensitive: the doc comments name the lowercase `bout_injector` FIELD rather than the class
+## in places, and the claim under test is "this file has something to do with injection", not "the
+## literal class name appears".
+func test_bout_injector_is_referenced_only_by_the_debug_module() -> void:
+	var path := "res://src/view/modules/debug_panel_module.gd"
+	var file := FileAccess.open(path, FileAccess.READ)
+	assert_not_null(file, "sanity: %s must exist to check at all" % path)
+	assert_true(
+		file.get_as_text().to_lower().contains("bout_injector"),
+		"%s is the one legitimate debug context for this, gated its own way" % path
+	)
+
+
+## The overlays route to the module rather than reaching for the injector themselves. Asserted from
+## source for the same reason the guard above is: a later overlay quietly growing its own
+## `battle.bout_injector` read would rebuild the duplication this pass removed, and nothing about
+## the running game would look different.
+func test_no_overlay_reaches_for_the_injector_directly() -> void:
 	var overlay_paths: Array[String] = [
-		"res://src/view/overlays/spectator_overlay.gd",
 		"res://src/view/overlays/squad_control_overlay.gd",
+		"res://src/view/overlays/single_unit_overlay.gd",
+		"res://src/view/overlays/generate_bout_overlay.gd",
 	]
 	for path: String in overlay_paths:
 		var file := FileAccess.open(path, FileAccess.READ)
 		assert_not_null(file, "sanity: %s must exist to check at all" % path)
-		assert_true(
-			file.get_as_text().to_lower().contains("bout_injector"),
-			"%s is a legitimate debug context for this, gated its own way" % path
+		assert_false(
+			file.get_as_text().contains("battle.bout_injector"),
+			"%s must route through DebugPanelModule, not read the injector itself" % path
 		)
 
 

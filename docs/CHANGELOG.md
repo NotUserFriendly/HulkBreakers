@@ -73,6 +73,66 @@ it.
 measurements. Findings were appended to both — the confirmation to `BR54.01`, the elimination to
 `BR51.01`.
 
+### taskblock-56 Pass C — the overlays became module lists
+
+**`SquadControlOverlay` 942 -> 338 lines, `SpectatorOverlay` 718 -> 316**, and what is left in each
+is chrome plus a declaration. Everything else is a `ViewModule` in `src/view/modules/`, shared
+between them rather than written twice.
+
+**The acceptance holds, and it was the pass's own stop condition.** *"A module can be instantiated
+with no overlay at all — if a module needs its parent, it is not a module."* All fifteen modules
+mount and unmount against a `ModuleContext` whose every field is null: no battle, no UI root, no
+host, no tactics, no slots. `test_view_modules_stand_alone.gd` iterates `ModuleCatalog` rather than
+hand-listing, so a module added later is covered the day it is added.
+
+**There is deliberately no `overlay` field in `ModuleContext`.** The cheapest way to make "a module
+cannot need its parent" true is to leave the parent out of the vocabulary. A module that wants the
+world asks for `battle`; one that wants somewhere to hang a `Control` asks for `ui_root`.
+
+**Two axes, not one.** `DISPLAY` reads the sim and draws; `INPUT` queues actions against a unit. The
+line is drawn at the `TacticsController` path specifically — the input set is exactly `unit_input`,
+`action_bar` and `turn_controls`, pinned as a list so a mode's "no input modules" claim cannot be
+quietly falsified. **Spectator's contract is now `has_unit_input() == false` rather than the absence
+of an inheritance edge.**
+
+**Recorded rather than quietly decided: `DebugPanelModule` is DISPLAY even though injection mutates
+the board.** It is a debug-build-only verb path that a spectator has carried since taskblock-30, and
+classifying it INPUT would make Spectator an input mode and destroy the distinction. Debug verbs sit
+outside the classification, gated by `OS.is_debug_build()` rather than by mode.
+
+**Layout belongs to the mode, behaviour to the module.** A mode publishes named `slots` and a module
+asks for the one it wants, falling back to `ui_root` or to itself. That fallback is what lets the
+same module appear in a mode with no such column — and what lets it mount against nothing at all.
+
+**What was duplicated and now is not:** the debug panel and perf readout (`_on_debug_panel_applied`,
+`_on_ui_element_toggled` and `_on_perf_stats_ticked` were byte-for-byte identical in both overlays,
+doc comments included), the combat log window and its sink lifecycle, the replay panels, the inspect
+modal, and resolution playback.
+
+**One genuine behaviour difference was found and both halves kept**, per "extract, do not rewrite":
+`SquadControlOverlay` re-pointed `sink.fold.state` at the new `CombatState` on a battle load and
+`SpectatorOverlay` did not. The module always re-points, which is a strict superset — pointing the
+fold at the current state cannot be wrong for a sink whose state has not changed.
+
+**A guard test moved with the code, and the move is a stronger guarantee.**
+`test_bout_injector_determinism.gd` asserted that *both* overlays reference `bout_injector`, because
+each built its own gated debug panel. There is one gated module now, so the assertion is that the
+module has it and that no overlay reaches for `battle.bout_injector` directly. Two gated copies
+became one, removing the thing that could drift — the same argument tb31 Pass A made when
+`inject_button` collapsed into `TopLeftControls`.
+
+**Input has exactly one engine entry point.** `BoardInspectModule` exposes `handle_input(event)` and
+deliberately does not define `_unhandled_input`: a module defining one would receive events wherever
+its host happened to parent it, and a host that also forwards would dispatch the same click twice.
+Same reasoning as the per-frame `tick` living on the host.
+
+**Three overlay members became public because a test needs to see them**, and the reasons are
+recorded on each: `UnitInputModule.repair_menu` (whether a picker opened and what it listed),
+`pick_repair` (a real `PopupMenu`'s `id_pressed` cannot be emitted headlessly), and
+`PlaybackModule.cycle_speed` (the wrap cannot be asserted through a click).
+
+Full gate green, 2812/2812.
+
 ### taskblock-55 — closing doc audit
 
 **A fourth test was passing while proving nothing, and only a read found it.**

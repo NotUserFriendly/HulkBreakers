@@ -1,95 +1,107 @@
 class_name SpectatorOverlay
 extends ControlOverlay
 
-## taskblock-15 Pass A: "nothing; no unit input; camera-follow + pacing
-## only. A bout is this." Everything `BoutView` (taskblock-14 Pass C) used
-## to own is folded in here, minus the world it used to build for
-## itself (`board_view`/`camera_rig`/`unit_views`) — `BattleScene` already
-## owns all of that now, shared with every other overlay. `wants_turn_for`
-## is never overridden: the base class's own default (always false) is
-## exactly right — no unit is ever human-driven under this overlay, which
-## is also why `BoutRunner` here needs no injected predicate at all (its
-## own default squad-controller check already matches, since
-## `GenerateBoutOverlay`/`BoutSetup` always sets every squad to AI before
-## handing off here). This is what makes "a spectator battle is identical
-## in outcome to today's BoutRunner bout for the same seed" true BY
-## CONSTRUCTION: this overlay IS a `BoutRunner`, paced by a view instead of
-## a tight loop.
+## "Nothing; no unit input; camera-follow + pacing only. A bout is this."
 ##
-## taskblock-15 Pass B1: "during spectated playback, the next cue waits
-## for the current animation to finish." A fixed-interval Timer can't give
-## that guarantee (a real animated ResolutionPlayer.play() can legitimately
-## outlast one tick, and a Timer keeps ticking underneath regardless,
-## risking an overlapping/reentrant step) — play() now drives a
-## self-chaining async loop instead: step, AWAIT that step's own full
-## animated playback, then wait the inter-turn gap, repeat. Pause/Step/
-## Speed still read exactly as before; only the internal driving mechanism
-## changed.
+## `wants_turn_for` is never overridden: the base class's own default (always false) is exactly
+## right — no unit is ever human-driven here, which is also why the `BoutRunner` inside
+## `PlaybackModule` needs no injected predicate. That is what makes "a spectated battle is identical
+## in outcome to a headless bout for the same seed" true BY CONSTRUCTION.
+##
+## ## taskblock-56 Pass C: 718 lines became a module list
+##
+## **This overlay is now a declaration.** Everything it used to own — the pacing loop, the combat
+## log window, the debug and perf panels, the replay panels, the inspect modal, the board click and
+## hover handling, the timing tunables — is a `ViewModule` in `src/view/modules/`, and every one of
+## them is shared with the player view rather than written twice.
+##
+## **`MODULES` contains no input module, and that is the whole contract**, checked by
+## `has_unit_input()` rather than asserted in prose. Before this pass the same fact was expressed by
+## *not inheriting* `SquadControlOverlay` — which cost a 718-line copy of everything Squad had that
+## a spectator also wanted. The two axes replace the fork: display modules are taken, the input ones
+## are simply not listed.
+##
+## Fields below are aliases into the mounted modules, kept because this file and its tests already
+## reach for them by name.
 
-## taskblock-30/31: the same generic capture concept `TacticsController`
-## gained — no `BoutInjector` reference here either, just a "borrow the
-## next real click" mechanism a debug panel's own board-picking mode can
-## use. Emits the same normalized `{"kind", "unit", "cell"}` shape
-## `TacticsController.board_clicked` does, so a panel can listen against
-## either overlay identically.
+## The same generic capture concept `TacticsController` has — a "borrow the next real click"
+## mechanism a debug panel's board-picking mode can use, emitting the normalized
+## `{"kind", "unit", "cell"}` shape either source produces. Forwarded from `BoardInspectModule` so a
+## panel can listen against this overlay exactly as it always has.
 signal board_clicked(hit: Dictionary)
 
-## Seconds between turns at 1x speed, on TOP of whatever that turn's own
-## ResolutionPlayer.play() call already took (its animation is real time,
-## not instant) — watching is the whole point (docs: "it must be
-## watchable, not a blur"), so this is deliberately paced. Flagged, not
-## tuned.
-const BASE_STEP_INTERVAL := 1.2
+## **Ordered, and the order is load-bearing.** `resolution` before `playback` (the tunables write
+## into `ResolutionPlayer`'s own fields and the pacing loop awaits its playback); `debug_panel`
+## before `top_left_controls` (the Inject button routes into it); `inspect` before `board_inspect`
+## (a click opens the panel). Nothing here is alphabetical.
+const MODULES: Array[StringName] = [
+	&"combat_log",
+	&"resolution",
+	&"debug_panel",
+	&"replay",
+	&"inspect",
+	&"playback",
+	&"board_inspect",
+	&"top_left_controls",
+]
 
 var battle: BattleScene
-var runner: BoutRunner
-var resolution_player: ResolutionPlayer
-## The shared combat-log window (title bar, drag-to-resize, minimize, FPS
-## readout) — the same class the player view uses. `log_label` below is its own
-## label, kept as a field because this file and its tests already reach for it
-## by that name.
-var suite_run_panel: SuiteRunPanel = null
-var watched_run_panel: WatchedRunPanel = null
+## taskblock-30: no longer constructed here — `BattleScene` owns the one instance (rebuilt per
+## `load_battle()`, so it survives an overlay swap); this just reads it.
+var bout_injector: BoutInjector
+
 var log_panel: CombatLogPanel
 var log_label: RichTextLabel
 var log_sink: HierarchicalUiSink
-
-## taskblock-29 Pass D / taskblock-30: every button below calls straight
-## into this, never a bespoke direct mutation of its own (CLAUDE.md "no
-## parallel systems"). taskblock-30: no longer constructed here —
-## `BattleScene` owns the one instance (rebuilt per `load_battle()`, so it
-## survives a spectator <-> player overlay swap); this just reads it.
-## `TacticsController`/`ActionBar` (the actual gameplay-INPUT classes,
-## never an overlay shell) still never reference `BoutInjector` at all
-## (test_bout_injector_determinism.gd's own routing/guard test proves it
-## from source) — that's the real safety property, and it's unchanged by
-## `SquadControlOverlay` gaining its own debug-gated Inject affordance.
-var bout_injector: BoutInjector
-## taskblock-30/31: paired with `board_clicked` (declared with this
-## file's other signals, above) — while true, the next real click is
-## captured instead of doing this overlay's own normal thing.
-var input_capture_mode: bool = false
-## taskblock-30/31 Pass C: the full click-to-force panel (`DebugVerbs.
-## all()`), superseding the old flat 3-item `InjectMenu` popup — reachable
-## via the same "Inject..." button, only inside `if OS.is_debug_build():`
-## (never even constructed in a release export).
+var resolution_player: ResolutionPlayer
+var inspect_panel: InspectPanel
 var debug_panel: DebugControlPanel = null
 var perf_panel: PerfPanel = null
-## tb31 Pass A: the shared top-left Inject/Assume-Control cluster —
-## `inject_button`/`assume_control_button` below alias straight into it.
+var suite_run_panel: SuiteRunPanel = null
+var watched_run_panel: WatchedRunPanel = null
 var top_left_controls: TopLeftControls
 
-## taskblock-21 Pass B: "clicking a bot during a bout pauses the bout and
-## opens the inspect panel on that bot. Closing it resumes." Supersedes
-## tb17 C's hover-tooltip entirely — `UnitPicker.hit()` (a plain static
-## ray-pick, the same one `TacticsController.update_hover()` used
-## internally) is all a click handler needs; no `TacticsController`/
-## `TooltipController`/`TooltipView` instance is wired here anymore.
-var inspect_panel: InspectPanel
+## **Forwarding properties, not copies.** `playing`, `speed` and `runner` live in `PlaybackModule`
+## and `input_capture_mode` in `BoardInspectModule`; storing a second copy here is precisely the
+## two-sources-of-truth problem the collapse exists to remove, so these read and write straight
+## through. Kept on the overlay because every existing caller reaches for them by these names.
+var playing: bool:
+	get:
+		var pacing: PlaybackModule = playback()
+		return pacing != null and pacing.playing
+	set(value):
+		var pacing: PlaybackModule = playback()
+		if pacing != null:
+			pacing.playing = value
 
-var playing: bool = false
-var speed: float = 1.0
+var speed: float:
+	get:
+		var pacing: PlaybackModule = playback()
+		return pacing.speed if pacing != null else 1.0
+	set(value):
+		var pacing: PlaybackModule = playback()
+		if pacing != null:
+			pacing.speed = value
 
+var runner: BoutRunner:
+	get:
+		var pacing: PlaybackModule = playback()
+		return pacing.runner if pacing != null else null
+	set(value):
+		var pacing: PlaybackModule = playback()
+		if pacing != null:
+			pacing.runner = value
+
+var input_capture_mode: bool:
+	get:
+		var picking: BoardInspectModule = board_inspect()
+		return picking != null and picking.input_capture_mode
+	set(value):
+		var picking: BoardInspectModule = board_inspect()
+		if picking != null:
+			picking.input_capture_mode = value
+
+## Aliases into `PlaybackModule`'s own controls, kept under their original names.
 var _play_button: Button
 var _step_button: Button
 var _speed_button: Button
@@ -97,159 +109,188 @@ var _status_label: Label
 var _slide_ms_field: SpinBox
 var _bullet_ms_field: SpinBox
 var _tracer_count_field: SpinBox
-## Whether the bout was actually auto-playing at the moment a click opened
-## the inspect panel — "closing it resumes" must never START auto-play for
-## someone who had already paused by hand before clicking a unit.
+
+## Whether the bout was actually auto-playing when a click opened the inspect panel — "closing it
+## resumes" must never START auto-play for someone who had already paused by hand.
 var _was_playing_before_inspect: bool = false
-## Whichever unit `_update_hover` last found under the cursor — the
-## injection menu's own implicit "target," the same "whichever unit the
-## cursor is actually over" concept `_update_hover` already tracks
-## visually (highlight), just also remembered here since the debug menu
-## needs to know WHO by the time it's actually clicked open.
-var _hovered_unit: Unit = null
 
 
-## `battle.combat_state`/`battle.mission` are already the freshly-built
-## bout by the time this runs — `GenerateBoutOverlay` always calls
-## `battle.load_battle()` before swapping to this overlay (A2), so unlike
-## `SquadControlOverlay` there is no "not loaded yet" case to guard here,
-## and no need to react to a later `battle_loaded` either: this overlay's
-## own lifetime is exactly one bout.
+## `battle.combat_state`/`battle.mission` are already the freshly-built bout by the time this runs —
+## `GenerateBoutOverlay` always calls `battle.load_battle()` before swapping here — so unlike the
+## player view there is no "not loaded yet" case to guard.
 func setup(p_battle: BattleScene) -> void:
 	battle = p_battle
-	runner = BoutRunner.new(battle.combat_state, battle.mission)
-	# tb44 Pass D: the spectator watches a bout play, so it is the surface that
-	# most needs a unit's think to stay navigable rather than freeze.
-	runner.pacer = PlanPacer.new()
-	runner.pacer.frame_signal = get_tree().process_frame
-	resolution_player = ResolutionPlayer.new()
-	add_child(resolution_player)
-	resolution_player.setup(battle)
 	bout_injector = battle.bout_injector
+	var context: ModuleContext = build_root(battle)
+	_build_chrome(context)
+	mount_modules(MODULES, _configure)
+	_alias_modules()
+	_wire_modules()
 
-	_build_ui()
-	attach_log_sink(battle.combat_state.combat_log)
-	_refresh_status()
+
+func teardown() -> void:
+	var pacing: PlaybackModule = playback()
+	if pacing != null:
+		pacing.pause()
+	unmount_modules()
 
 
-## taskblock-21 Pass B: a left click picks a real unit under the cursor
-## (`UnitPicker.hit()`, the same ray-pick `TacticsController.update_hover()`
-## used internally — no full TacticsController needed for a plain pick) and
-## opens the inspect panel on it, pausing the bout the same way the Pause
-## button already does. CameraRig's own independent `_unhandled_input`
-## (orbit/pan/zoom) is untouched by any of this, exactly like every other
-## overlay.
+## Reads the pacing module rather than holding a duplicate of its state, so "is this playing" has
+## one answer.
+func playback() -> PlaybackModule:
+	return module(&"playback") as PlaybackModule
+
+
+func board_inspect() -> BoardInspectModule:
+	return module(&"board_inspect") as BoardInspectModule
+
+
+## The pacing controls, forwarded. Kept as methods on the overlay because tests and the Step button
+## alike have always called them here.
+func play() -> void:
+	playback().play()
+
+
+func pause() -> void:
+	playback().pause()
+
+
+func step_once() -> void:
+	await playback().step_once()
+
+
+func set_speed(multiplier: float) -> void:
+	playback().set_speed(multiplier)
+
+
+## Toggles the full debug control panel. A silent no-op outside a debug build, where the panel was
+## never constructed at all — the same posture the button's own absence already gives it.
+func _on_inject_pressed() -> void:
+	var debug: DebugPanelModule = module(&"debug_panel") as DebugPanelModule
+	if debug != null:
+		debug.toggle()
+
+
+## Cycles 1x -> 2x -> 4x -> 1x.
+func _on_speed_button_pressed() -> void:
+	playback().cycle_speed()
+
+
+func _refresh_status() -> void:
+	playback().refresh_status()
+
+
+## One step, animated. Forwarded so the pacing loop's own granularity stays callable from here.
+func _advance() -> void:
+	await playback().advance()
+
+
+func set_thinking_label(text: String) -> void:
+	var pacing: PlaybackModule = playback()
+	if pacing != null:
+		pacing.set_thinking_label(text)
+
+
+## Points this overlay at whatever `battle` currently holds, without rebuilding the UI.
 ##
-## taskblock-26 Pass E: "objects and cells don't [have a click inspector]."
-## A miss against every unit's own body now falls through to
-## `BoardPicker.cell_at_ray` (the same ground-plane pick move-target
-## selection already uses) — a hit there opens the SAME `inspect_panel`
-## against `Grid.blockers.get(cell)` (`open_cell()`, InspectPanel's own
-## cell-shaped entry point; null for a bare cell is already its documented
-## "empty state" case, not a special case here). A miss against the board
-## plane too (looking off into empty space) is still a real no-op.
-##
-## taskblock-27 Pass D1c: mouse motion drives `_update_hover()` (below) so
-## this view gets the same inspect-on-hover feedback `SquadControlOverlay`
-## already has, instead of only reacting to clicks.
+## **Rebind, emphatically not `setup()`.** `setup` builds a fresh root and fresh panels — including
+## the replay panel that is *in the middle of iterating* — which destroyed the run it was advancing
+## and left the second seed unloaded. A new board needs a new runner and a re-pointed log; the UI is
+## already correct.
+func rebind_to_battle() -> void:
+	bout_injector = battle.bout_injector
+	rebind_modules()
+
+
+func attach_log_sink(log: CombatLog) -> void:
+	var logs: CombatLogModule = module(&"combat_log") as CombatLogModule
+	if logs != null:
+		logs.attach_to(log, battle.combat_state)
+
+
+func ui_log_sink() -> UiLogSink:
+	return log_sink
+
+
+## The one engine input entry point. Routed into `BoardInspectModule` rather than handled here, and
+## deliberately the only `_unhandled_input` in the pair — see that module's own note on why it does
+## not define one. `CameraRig`'s independent handler (orbit/pan/zoom) is untouched by any of this,
+## exactly as it always was.
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		_update_hover((event as InputEventMouseMotion).position)
-		return
-	if event is not InputEventMouseButton:
-		return
-	var mb := event as InputEventMouseButton
-	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
-		return
-	var camera: Camera3D = battle.camera_rig.camera() if battle != null else null
-	if camera == null:
-		return
-	var from: Vector3 = camera.project_ray_origin(mb.position)
-	var dir: Vector3 = camera.project_ray_normal(mb.position)
-	# taskblock-51 Pass K: `PartPicker`, not `UnitPicker`. This path saw units only, so a
-	# click on cover fell through to the cell branch below — the supervisor's "selecting a
-	# barrel selects the cell beneath", here in its literal form. `PartPicker` is the same
-	# ray-vs-box math plus the blockers and field items the board already draws.
-	var hit: Dictionary = PartPicker.hit(
-		battle.combat_state.units, battle.combat_state.grid, from, dir
-	)
-	var target: SelectionTarget = SelectionTarget.from_pick(hit)
-	if input_capture_mode:
-		var picked_cell: Variant = (
-			target.cell
-			if not target.empty
-			else BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
-		)
-		if target.empty:
-			if picked_cell == null:
-				return
-			target = SelectionTarget.for_cell(picked_cell as Vector2i)
-		board_clicked.emit(target.to_hit())
-		return
-	# **Only open what the panel can describe.** `BR48.01`: opening the modal for a target it
-	# cannot render leaves the dim over the board with nothing on top of it, which reads as a
-	# stuck dim rather than a refused action.
-	if target.can_inspect():
-		_was_playing_before_inspect = playing
-		pause()
-		if target.is_unit():
-			inspect_panel.open(target.unit)
-		else:
-			inspect_panel.open_cell(target.cell, target.part)
-		return
-	var cell: Variant = BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
-	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
-		return
-	# taskblock-39 Pass C: the old "wall cells aren't inspectable" WALL-
-	# terrain check retired here — it could only ever fire on an
-	# unfinalized/raw wall cell (real generation always resolves WALL to
-	# OPEN+blocker or empty space before this ever runs), and a wall's real
-	# blocker Part is already handled correctly below like any other
-	# field object.
-	# **`BR48.01`: a bare cell opens nothing.**
-	#
-	# This branch passed `blockers.get(cell)` straight through, and that is **null for a bare
-	# cell** — `open_cell`'s own doc says so. The panel then rendered its matrixless shape with
-	# no root, which every `_refresh_*` no-ops on gracefully, so a 900x600 modal opened over
-	# the board containing nothing and paused the bout. That is the supervisor's *"selecting a
-	# bare cell causes the screen to dim"*, and it reads as a stuck dim because there is
-	# nothing in the panel to explain what happened.
-	#
-	# Pass K's rule, applied: **only open what can be described.** A cell whose blocker the
-	# ray missed but whose ground position was hit still opens — that is a real object, just
-	# picked coarsely.
-	var cell_root: Part = battle.combat_state.grid.blockers.get(cell)
-	if cell_root == null:
-		return
-	_was_playing_before_inspect = playing
+	var picking: BoardInspectModule = board_inspect()
+	if picking != null:
+		picking.handle_input(event)
+
+
+## Two top-left rows: the pacing controls and the shared cluster on the first, the timing tunables
+## on the second. `MOUSE_FILTER_STOP` on both — these are real controls, not a pass-through gap.
+func _build_chrome(context: ModuleContext) -> void:
+	var controls := HBoxContainer.new()
+	controls.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	controls.position = Vector2(16, 16)
+	controls.mouse_filter = Control.MOUSE_FILTER_STOP
+	ui_root.add_child(controls)
+	context.set_slot(ModuleSlots.TOP_LEFT, controls)
+
+	var tunables := HBoxContainer.new()
+	tunables.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	tunables.position = Vector2(16, 48)
+	tunables.mouse_filter = Control.MOUSE_FILTER_STOP
+	ui_root.add_child(tunables)
+	context.set_slot(ModuleSlots.TUNABLES, tunables)
+
+
+## The handful of pre-mount fields this mode sets. **A spectated bout has no "New Battle" concept of
+## its own**, and it announces every run outcome because silence after a run is indistinguishable
+## from a broken replay.
+func _configure(mounted: ViewModule) -> void:
+	if mounted is TopLeftControlsModule:
+		(mounted as TopLeftControlsModule).include_new_battle = false
+		(mounted as TopLeftControlsModule).watch_label = "Assume Control"
+	elif mounted is ReplayModule:
+		(mounted as ReplayModule).announce_passes = true
+
+
+func _alias_modules() -> void:
+	var logs: CombatLogModule = module(&"combat_log") as CombatLogModule
+	log_panel = logs.panel
+	log_label = logs.panel.log_label
+	log_sink = logs.sink
+	resolution_player = (module(&"resolution") as ResolutionModule).player
+	inspect_panel = (module(&"inspect") as InspectModule).panel
+	top_left_controls = (module(&"top_left_controls") as TopLeftControlsModule).controls
+	var debug: DebugPanelModule = module(&"debug_panel") as DebugPanelModule
+	debug_panel = debug.panel
+	perf_panel = debug.perf_panel
+	var replay: ReplayModule = module(&"replay") as ReplayModule
+	suite_run_panel = replay.suite_run_panel
+	watched_run_panel = replay.watched_run_panel
+	var pacing: PlaybackModule = playback()
+	_slide_ms_field = pacing.slide_ms_field
+	_bullet_ms_field = pacing.bullet_ms_field
+	_tracer_count_field = pacing.tracer_count_field
+	_status_label = pacing.status_label
+	_play_button = pacing.play_button
+	_step_button = pacing.step_button
+	_speed_button = pacing.speed_button
+
+
+func _wire_modules() -> void:
+	var picking: BoardInspectModule = board_inspect()
+	picking.board_clicked.connect(func(hit: Dictionary) -> void: board_clicked.emit(hit))
+	picking.inspect_opened.connect(_on_inspect_opened)
+	(module(&"debug_panel") as DebugPanelModule).input_owner = picking
+	(module(&"debug_panel") as DebugPanelModule).on_applied = _on_debug_verb_applied
+	(module(&"inspect") as InspectModule).closed.connect(_on_inspect_panel_closed)
+	var pacing: PlaybackModule = playback()
+	pacing.bout_finished.connect(_on_bout_finished)
+	var replay: ReplayModule = module(&"replay") as ReplayModule
+	replay.replay_loaded.connect(_on_replay_loaded)
+
+
+func _on_inspect_opened() -> void:
+	_was_playing_before_inspect = playback().playing
 	pause()
-	inspect_panel.open_cell(cell as Vector2i, cell_root)
-
-
-## taskblock-27 Pass D1c: the same `UnitPicker.hit()` ray-pick the click
-## handler above already uses, run on every mouse-motion event instead of a
-## button press. Unlike `TacticsController.update_hover()` (which only
-## highlights the currently-selected unit's own parts — meaningful in
-## player view, where "selected" is a real concept), spectator view has no
-## selection at all, so whichever unit the cursor is actually over gets
-## highlighted; every other view's highlight clears the same way
-## `SquadControlOverlay._on_highlight_changed()` clears every
-## not-currently-selected view.
-func _update_hover(screen_pos: Vector2) -> void:
-	var camera: Camera3D = battle.camera_rig.camera() if battle != null else null
-	if camera == null:
-		return
-	var from: Vector3 = camera.project_ray_origin(screen_pos)
-	var dir: Vector3 = camera.project_ray_normal(screen_pos)
-	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
-	var hovered_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
-	var hovered_part: Part = hit.part as Part if not hit.is_empty() else null
-	_hovered_unit = hovered_unit
-	for view: HitVolumeView in battle.unit_views:
-		if view.unit == hovered_unit:
-			view.highlight_part(hovered_part)
-		else:
-			view.clear_highlight()
 
 
 func _on_inspect_panel_closed() -> void:
@@ -257,462 +298,19 @@ func _on_inspect_panel_closed() -> void:
 		play()
 
 
-func teardown() -> void:
-	pause()
-	if battle != null and battle.combat_state != null:
-		battle.combat_state.combat_log.remove_sink(log_sink)
+func _on_bout_finished(turns_taken: int) -> void:
+	var replay: ReplayModule = module(&"replay") as ReplayModule
+	if replay != null:
+		replay.report_bout_finished(turns_taken)
 
 
-## taskblock-41 Pass D: idempotent — `remove_sink` is a documented no-op on a
-## sink that was never added, so this is safe both on first setup and on a
-## re-load under an already-active overlay.
-func attach_log_sink(log: CombatLog) -> void:
-	if log_sink == null:
-		return
-	log.remove_sink(log_sink)
-	log.add_sink(log_sink)
+func _on_debug_verb_applied() -> void:
+	playback().refresh_status()
 
 
-## taskblock-41 Pass A: hands `ControlOverlay`'s own per-frame tick the log
-## panel to draw. Null until `_build_ui()` has run.
-func ui_log_sink() -> UiLogSink:
-	return log_sink
-
-
-## docs: "play / pause / step-one-action / speed (1x, 2x, 4x)."
-func play() -> void:
-	if runner == null or runner.finished or playing:
-		return
-	playing = true
-	_refresh_status()
-	_run_while_playing()
-
-
-func pause() -> void:
-	playing = false
-	_refresh_status()
-
-
-## "step-one-action" — this bout's own step granularity is one unit's
-## whole turn (BoutRunner's own header explains why finer isn't built
-## here); pausing first mirrors a real pacing control ("step" implies not
-## simultaneously auto-playing). Awaited, per B1: a caller (a test, or the
-## Step button's own handler) that cares when the animation has actually
-## finished can wait on it; one that doesn't (a plain button press) just
-## lets it run.
-func step_once() -> void:
-	pause()
-	await _advance()
-
-
-func set_speed(multiplier: float) -> void:
-	speed = multiplier
-	resolution_player.speed = multiplier
-	_refresh_status()
-
-
-## B1's own gating loop: step, await that step's FULL animated playback,
-## wait the inter-turn gap (scaled by speed, same as every other duration
-## here), repeat — until paused, the bout finishes, or this overlay is
-## torn down (`runner`/`battle` freed out from under it).
-func _run_while_playing() -> void:
-	while playing and runner != null and not runner.finished:
-		await _advance()
-		if not playing or runner == null or runner.finished:
-			break
-		await get_tree().create_timer(BASE_STEP_INTERVAL / speed).timeout
-	# taskblock-48 Pass B2: a replayed bout reaching its end advances the run to the
-	# next handle. Without this the panel loaded one fixture and stopped, which reads
-	# as "the replay does not work" rather than as "nobody told it the bout was over".
-	if runner != null and runner.finished:
-		_report_bout_finished()
-
-
-## Tells the replay panel, if one is watching, that the bout on screen has ended.
-## Turns come from `runner`, which is the only thing that counts them.
-func _report_bout_finished() -> void:
-	if watched_run_panel == null or watched_run_panel.run == null:
-		return
-	if watched_run_panel.run.is_done():
-		return
-	watched_run_panel.turns_taken = runner.turns_taken
-	watched_run_panel.on_bout_finished()
-
-
-## taskblock-17 Pass C2: "stop auto-snapping — let the spectator drive
-## their own camera." Used to hard-cut CameraRig to the newly-acting unit
-## every step here (`center_on`) — removed outright, not eased: the note
-## is "let spectator control their own camera," and the default for that
-## is simply no automatic camera movement at all, never a gentler version
-## of the same jump. CameraRig's own independent `_unhandled_input`
-## (orbit/pan/zoom) was never routed through this method and needs no
-## change to keep working.
-func _advance() -> void:
-	if runner == null or runner.finished:
-		pause()
-		return
-	set_thinking_label(PlanPacer.thinking_label(runner.state.current_unit()))
-	await runner.step()
-	set_thinking_label("")
-	# taskblock-19 Pass I2: only the units this step's own events named —
-	# see BattleScene.refresh_unit_views()'s own doc comment.
-	#
-	# taskblock-51 Pass L (`BR27.07`/`BR32.09`): **the highlight flip is deferred until after
-	# the animation**, exactly as `SquadControlOverlay` already does.
-	#
-	# tb32 Pass D fixed this on the player path and its comment there calls it "a real
-	# confirmed bug" — but only that one call site was changed. This one kept flipping the
-	# indicator to the next unit *before* `play()` drew the previous unit's move. That is the
-	# supervisor's controlled comparison, and it is why the report reads as "correct when the
-	# player is controlling, wrong when the AI is": a human turn ends after its own animation,
-	# so the player path never exposes the gap.
-	battle.refresh_unit_views(LogPlayback.affected_unit_ids(runner.last_events), false)
-	await resolution_player.play(runner.last_events)
-	battle.apply_active_turn_highlight()
-	_refresh_status()
-	if runner.finished:
-		pause()
-
-
-## taskblock-44 Pass D3: the spectator overlay has the one status line on screen,
-## so it is where a thinking unit is named. Set while a unit plans and cleared
-## when the batch finishes; `_refresh_status` restores the ordinary line.
-func set_thinking_label(text: String) -> void:
-	if _status_label == null:
-		return
-	if text == "":
-		_refresh_status()
-		return
-	_status_label.text = text
-
-
-func _refresh_status() -> void:
-	if _status_label == null:
-		return
-	var state_text: String = "playing" if playing else "paused"
-	var outcome_text: String = ""
-	if runner != null and runner.finished:
-		state_text = "finished"
-		outcome_text = " — %s" % Enums.MissionOutcome.keys()[runner.mission.outcome]
-	var turns_text: String = "%d turns" % (runner.turns_taken if runner != null else 0)
-	_status_label.text = "%s (%s, %.0fx)%s" % [turns_text, state_text, speed, outcome_text]
-	_play_button.text = "Pause" if playing else "Play"
-
-
-func _build_ui() -> void:
-	var ui := CanvasLayer.new()
-	add_child(ui)
-	var theme_root := Control.new()
-	theme_root.theme = HulkTheme.build()
-	theme_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui.add_child(theme_root)
-	theme_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-	var controls := HBoxContainer.new()
-	controls.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	controls.position = Vector2(16, 16)
-	controls.mouse_filter = Control.MOUSE_FILTER_STOP
-	theme_root.add_child(controls)
-
-	_play_button = Button.new()
-	_play_button.text = "Play"
-	_play_button.pressed.connect(_on_play_button_pressed)
-	controls.add_child(_play_button)
-
-	_step_button = Button.new()
-	_step_button.text = "Step"
-	_step_button.pressed.connect(step_once)
-	controls.add_child(_step_button)
-
-	_speed_button = Button.new()
-	_speed_button.text = "1x"
-	_speed_button.pressed.connect(_on_speed_button_pressed)
-	controls.add_child(_speed_button)
-
-	# taskblock-30/31 Pass C: `DebugControlPanel` stays a direct `theme_root`
-	# child (a floating, self-centering modal) — only the button that opens
-	# it moves into the shared cluster below.
-	if OS.is_debug_build():
-		debug_panel = DebugControlPanel.new()
-		debug_panel.visible = false
-		debug_panel.applied.connect(_on_debug_panel_applied)
-		theme_root.add_child(debug_panel)
-		# taskblock-51: the performance readout — see `SquadControlOverlay` for why the
-		# overlay owns its lifetime rather than the panel that offers the toggle.
-		perf_panel = PerfPanel.new()
-		perf_panel.visible = false
-		perf_panel.stats_ticked.connect(_on_perf_stats_ticked)
-		debug_panel.ui_element_toggled.connect(_on_ui_element_toggled)
-		theme_root.add_child(perf_panel)
-
-	# tb31 Pass A: the shared Inject/Assume-Control cluster — one
-	# construction path (`TopLeftControls`), not a per-overlay copy.
-	# taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
-	# mid-bout toggle is allowed." battle.toggle_blue_control() tears this
-	# whole overlay down as part of the swap — nothing further to do here
-	# after calling it. No New Battle here — a spectated bout has no
-	# "New Battle" concept of its own.
-	top_left_controls = TopLeftControls.new()
-	controls.add_child(top_left_controls)
-	top_left_controls.setup(battle, _on_inject_pressed, false, "Assume Control")
-
-	_status_label = Label.new()
-	controls.add_child(_status_label)
-
-	# taskblock-15 Pass B4: "editable fields at the top of the spectator
-	# overlay... temporary debug knobs" — write straight into
-	# resolution_player's own public fields, no intermediate state here.
-	var tunables := HBoxContainer.new()
-	tunables.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	tunables.position = Vector2(16, 48)
-	tunables.mouse_filter = Control.MOUSE_FILTER_STOP
-	theme_root.add_child(tunables)
-
-	_slide_ms_field = _tunable_field(
-		tunables, "Slide Speed (ms/cell):", resolution_player.slide_ms, _on_slide_ms_changed, 10.0
-	)
-	_bullet_ms_field = _tunable_field(
-		tunables, "Bullet Timing (ms):", resolution_player.bullet_ms, _on_bullet_ms_changed, 10.0
-	)
-	_tracer_count_field = _tunable_field(
-		tunables, "Tracers:", float(resolution_player.tracer_count), _on_tracer_count_changed
-	)
-
-	# Supervisor, post-tb41: the bare `RichTextLabel` this used to build is
-	# obsolete — the same `CombatLogPanel` the player view uses goes here too,
-	# so both views get the title bar, drag-to-resize, `[-]`/`[+]` minimize,
-	# real background, wheel absorption and live FPS readout rather than one
-	# view quietly keeping a worse widget. Everything that used to be set by
-	# hand here (scroll-following, `AUTOWRAP_OFF` per taskblock-27 Pass D1a's
-	# own one-line fix, the RTL scrollbar placement) lives inside the panel now,
-	# which is the point: there is one combat log, configured once.
-	log_panel = CombatLogPanel.new()
-	# taskblock-48 Pass B1: hosted the same way `CombatLogPanel` is, and for the same
-	# reason — a debug surface that both overlays need is a panel, not a subclass.
-	# Debug-gated: these drive a real subprocess and a real bout sequence.
-	if OS.is_debug_build():
-		# taskblock-48 Pass B2.5: **parented to `theme_root`, not to the overlay.**
-		# The overlay is a `Node3D`; a `Control` under one gets no layout at all and
-		# every panel piled up at the origin, on top of `TopLeftControls`. Anchored
-		# right, away from that corner — the third full-rect container to have a
-		# placement problem there, which is why it is asserted in
-		# `test_debug_panel_layout.gd` rather than eyeballed once.
-		suite_run_panel = SuiteRunPanel.new()
-		suite_run_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-		suite_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		suite_run_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		theme_root.add_child(suite_run_panel)
-		watched_run_panel = WatchedRunPanel.new()
-		watched_run_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-		watched_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		theme_root.add_child(watched_run_panel)
-		# **The wiring, which is the part that was missing.** Both panels existed and
-		# both were tested, and nothing in the running game called either of them — the
-		# replay path was reachable only from its own tests. `docs/11`'s failure mode
-		# exactly: the mechanism passed every test asserting it worked when called, and
-		# nothing asserted it got called.
-		suite_run_panel.battle = self.battle
-		watched_run_panel.bind(self.battle, null)
-		suite_run_panel.run_completed.connect(_on_suite_run_completed)
-		watched_run_panel.seed_loaded.connect(_on_replay_loaded)
-	# Flush into the bottom-left corner, matching the player view exactly — that
-	# one is the last child of a full-rect column, so it sits hard against both
-	# edges. A margin here made the two views' logs sit in visibly different
-	# places for no reason.
-	log_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	log_panel.position = Vector2(0.0, -CombatLogPanel.DEFAULT_HEIGHT)
-	log_panel.size = Vector2(CombatLogPanel.DEFAULT_WIDTH, CombatLogPanel.DEFAULT_HEIGHT)
-	theme_root.add_child(log_panel)
-	log_label = log_panel.log_label
-	log_sink = HierarchicalUiSink.new(log_label, battle.combat_state)
-
-	# taskblock-21 Pass B: THE inspect surface now, superseding tb17 C's
-	# hover-tooltip — created last so it draws above every other panel
-	# here too. Added to the tree BEFORE setup() (docs/02: setup()'s own
-	# bot-viewer build needs a live tree for Camera3D.look_at()).
-	inspect_panel = InspectPanel.new()
-	# taskblock-22 Pass G1: InspectPanel's own _clamp_to_viewport now owns
-	# fitting this to the real viewport — no anchors preset needed.
-	inspect_panel.custom_minimum_size = Vector2(900, 600)
-	theme_root.add_child(inspect_panel)
-	# taskblock-22 Pass G2: same live-view lookup SquadControlOverlay wires.
-	inspect_panel.setup(DataLibrary.material_table(), null, battle.find_unit_view)
-	inspect_panel.closed.connect(_on_inspect_panel_closed)
-
-	_refresh_status()
-
-
-## `arrow_step`, if given, sets `custom_arrow_step` — the up/down ARROW
-## button increment ONLY. `step` itself (which Godot's `Range` quantizes
-## every value assignment to, typed or not — `SpinBox.rounded` is a
-## display-formatting flag, not what governs this) stays at its default
-## fine granularity, so clicking into the field's own LineEdit and typing
-## an exact value is never snapped to a multiple of the arrow step. Timing
-## fields (slide/bullet ms) pass 10.0 so the arrows move at a pace that
-## actually matters at millisecond scale; `tracer_count` (a plain count,
-## not a duration) leaves the arrows at the default step of 1.
-func _tunable_field(
-	parent: HBoxContainer,
-	label_text: String,
-	initial: float,
-	on_changed: Callable,
-	arrow_step: float = 0.0
-) -> SpinBox:
-	var label := Label.new()
-	label.text = label_text
-	parent.add_child(label)
-	var field := SpinBox.new()
-	field.min_value = 0
-	field.max_value = 10000
-	if arrow_step > 0.0:
-		field.custom_arrow_step = arrow_step
-	field.value = initial
-	field.value_changed.connect(on_changed)
-	parent.add_child(field)
-	return field
-
-
-func _on_slide_ms_changed(value: float) -> void:
-	resolution_player.slide_ms = value
-
-
-func _on_bullet_ms_changed(value: float) -> void:
-	resolution_player.bullet_ms = value
-
-
-func _on_tracer_count_changed(value: float) -> void:
-	resolution_player.tracer_count = int(value)
-
-
-func _on_play_button_pressed() -> void:
-	if playing:
-		pause()
-	else:
-		play()
-
-
-## Cycles 1x -> 2x -> 4x -> 1x — three fixed steps (docs), not a free slider.
-func _on_speed_button_pressed() -> void:
-	var next_speed: float = 1.0
-	if speed == 1.0:
-		next_speed = 2.0
-	elif speed == 2.0:
-		next_speed = 4.0
-	set_speed(next_speed)
-	_speed_button.text = "%.0fx" % next_speed
-
-
-## taskblock-30/31 Pass C: toggles the full debug control panel —
-## `debug_panel` is null whenever this isn't a debug build (never
-## constructed at all in `_build_ui()`), so this is a silent no-op there
-## too, same posture the button's own absence already gives it.
-func _on_inject_pressed() -> void:
-	if debug_panel == null:
-		return
-	if debug_panel.visible:
-		debug_panel.visible = false
-		return
-	debug_panel.setup(bout_injector, DeepStrike.reference_humanoid_pool(), self)
-	debug_panel.visible = true
-
-
-## taskblock-30 follow-up (supervisor): `remove_object` on a unit is the
-## one verb that needs to REMOVE a view rather than add/refresh one — done
-## here, before `sync_unit_views()` runs, so the same call never
-## resurrects what it was just told to vanish (`sync_unit_views()`'s own
-## `_removed_unit_ids` check is what makes that permanent afterward too).
-func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
-	if verb_id == &"remove_object":
-		var object: Dictionary = args.get("object", {})
-		if object.get("kind") == Enums.HitKind.UNIT and object.get("unit") != null:
-			battle.remove_unit_view(object.unit)
-	battle.sync_unit_views()
-	# taskblock-42 Pass E (BR35.03): only when the verb actually changed the
-	# board. Rebuilding terrain, grid lines and every blocker to reflect a
-	# changed AP value was the whole of that entry.
-	if DebugVerbs.affects_board(verb_id):
-		battle.sync_board_view()
-	battle.refresh_unit_views()
-	_refresh_status()
-
-
-## taskblock-48 Pass B2: a finished run offers its replayable failures. Doing nothing
-## when there are none is the common case and is deliberately silent — a green run
-## should not put anything on screen.
-func _on_suite_run_completed(finished_run: SuiteRun) -> void:
-	if watched_run_panel == null:
-		return
-	# **Every outcome says something.** Silence after a run is indistinguishable from a
-	# broken replay, which is exactly what the supervisor could not tell apart — the
-	# board had been cleared and nothing said whether that was the end of the story.
-	if finished_run.passed():
-		watched_run_panel.set_notice("run passed — nothing to replay (board cleared)")
-		return
-	watched_run_panel.bind(battle, null)
-	var offered: int = watched_run_panel.offer_failures(finished_run)
-	var failed: int = finished_run.failures().size()
-	if offered == 0:
-		watched_run_panel.set_notice(
-			"%d failure(s), none with a visual form — nothing to replay" % failed
-		)
-		return
-	var total: int = watched_run_panel.replayable_total(finished_run)
-	watched_run_panel.set_notice(
-		"replaying %d of %d replayable failure(s), from %d total" % [offered, total, failed]
-	)
-
-
-## A replayed fixture has been loaded into the board. **Rebind, then play** — a loaded
-## board with nothing driving it is a still image, which is what the supervisor saw:
-## the bout was there and nothing moved it.
-##
-## **Rebind, emphatically not `setup()`.** `setup` calls `_build_ui`, which constructs
-## a fresh `theme_root` and fresh panels — including the replay panel that is *in the
-## middle of iterating*. Calling it here destroyed the run it was advancing and left
-## `suite_run_panel.run` null, so the second seed never loaded and the first bout's
-## result went nowhere. What a new board actually needs is a new runner and a
-## re-pointed log; the UI is already correct.
+## A replayed fixture has been loaded into the board. **Rebind, then play** — a loaded board with
+## nothing driving it is a still image, which is what the supervisor saw: the bout was there and
+## nothing moved it.
 func _on_replay_loaded(_map_seed: int) -> void:
 	rebind_to_battle()
 	play()
-
-
-## Points this overlay at whatever `battle` currently holds, without rebuilding the UI.
-## The half of `setup` that is about the bout rather than about the controls.
-func rebind_to_battle() -> void:
-	playing = false
-	runner = BoutRunner.new(battle.combat_state, battle.mission)
-	runner.pacer = PlanPacer.new()
-	runner.pacer.frame_signal = get_tree().process_frame
-	if resolution_player != null:
-		resolution_player.setup(battle)
-	bout_injector = battle.bout_injector
-	attach_log_sink(battle.combat_state.combat_log)
-	_refresh_status()
-
-
-## taskblock-51: the readout's own visibility, independent of the panel that offers it.
-## The overlay owns the nodes; the debug panel only names them. A `match` here rather than a
-## lookup table because each element is a different node with a different way of being shown,
-## and an unknown id is ignored rather than crashing a debug surface.
-func _on_ui_element_toggled(element: StringName, shown: bool) -> void:
-	match element:
-		DebugUiElements.PERF_PANEL:
-			if perf_panel != null:
-				perf_panel.visible = shown
-
-
-## The panel emits; the overlay writes.
-func _on_perf_stats_ticked(snapshot: Dictionary) -> void:
-	if battle == null or battle.combat_state == null:
-		return
-	battle.combat_state.combat_log.emit(
-		LogEvent.new(
-			battle.combat_state.round_number,
-			Enums.Phase.RESOLUTION,
-			-1,
-			&"fps_dump",
-			snapshot,
-			"perf: %s" % " | ".join(perf_panel.stats.describe())
-		)
-	)

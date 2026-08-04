@@ -1,19 +1,53 @@
 class_name SquadControlOverlay
 extends ControlOverlay
 
-## taskblock-15 Pass A: "a squad — today's select-then-command
-## (TacticsController) — the current experience." Everything
-## `BattleScene._ready()` used to build beyond the world itself (every
-## panel, TacticsController, the turn buttons) moves here verbatim —
-## behavior-preserving by construction, not a rewrite. `wants_turn_for`
-## reads `CombatState.controller_for` exactly as it already existed
-## (taskblock-02 F1's "Control All Squads" default is untouched); the one
-## genuinely new capability this pass adds is auto-resolving any squad a
-## designer/test DOES flip to AI (`ControlOverlay.advance_ai_turns`),
-## which was structurally impossible before this taskblock (nothing ever
-## consumed `Enums.SquadController.AI` outside a bout).
+## "A squad — select-then-command (`TacticsController`) — the current experience."
+##
+## `wants_turn_for` reads `CombatState.controller_for` exactly as it always has; the capability this
+## overlay adds over a bout is auto-resolving any squad a designer or test flips to AI
+## (`ControlOverlay.advance_ai_turns`).
+##
+## ## taskblock-56 Pass C: 942 lines became chrome plus a module list
+##
+## Everything this file used to build panel by panel is a `ViewModule` in `src/view/modules/`, and
+## every module here except the three input ones is **shared with the spectator view** rather than
+## written a second time. What is left is the two things a mode genuinely owns: the **chrome** (four
+## independently anchored regions and the containers inside them) and the **declaration** of which
+## modules hang in them.
+##
+## **The layout notes stayed with the layout, and they are load-bearing.** `mouse_filter = IGNORE`
+## on every wrapping container is not tidiness: a bare `Control` defaults to `STOP`, and these span
+## half the screen each — they would swallow every RMB/MMB camera drag that started over them before
+## `CameraRig._unhandled_input` ever saw it. The columns' anchoring is likewise deliberate: the left
+## one is full-height with **no right-anchor stretch**, so its width comes from its own content
+## rather than from half the screen.
+##
+## Fields below are aliases into the mounted modules, kept because this file's tests, `BattleScene`
+## and `SingleUnitOverlay` all reach for them by these names.
+
+## **Ordered, and the order is load-bearing.** `unit_input` first, because it publishes the
+## `TacticsController` every display module reads at its own mount time; `tooltip` next, because
+## three later modules ask for its shared `TooltipView`; `stat_panels` before `resolution` (the
+## banner is the readout cluster's); `debug_panel` before `top_left_controls` (the Inject button
+## routes into it). Nothing here is alphabetical.
+const MODULES: Array[StringName] = [
+	&"unit_input",
+	&"tooltip",
+	&"stat_panels",
+	&"resolution",
+	&"inspect",
+	&"queue_panel",
+	&"action_bar",
+	&"turn_controls",
+	&"controls_legend",
+	&"combat_log",
+	&"debug_panel",
+	&"replay",
+	&"top_left_controls",
+]
 
 var battle: BattleScene
+
 var tactics: TacticsController
 var aim_view: AimView
 var resolution_player: ResolutionPlayer
@@ -25,374 +59,119 @@ var queue_panel: QueuePanel
 var action_bar: ActionBar
 var ap_mp_pip_row: ApMpPipRow
 var controls_overlay: ControlsOverlay
-## tb31 Pass A: toggles `controls_overlay.label.visible` — the display
-## itself defaults OFF now (reference, not chrome); this is the second of
-## its two surfaces, the H-key (`ControlsOverlay._unhandled_input`) being
-## the first. Both flip the SAME state, never two mechanisms.
 var keybindings_button: Button
-## taskblock-21 Pass A: the inspect/status panel — a modal opened
-## on-demand for whatever's currently selected. taskblock-22 Pass I: now
-## THE inventory surface in player view — the old always-visible
-## `InventoryPanel`/`inventory_tree` it used to sit alongside is retired.
 var inspect_panel: InspectPanel
 var inspect_button: Button
-## taskblock-30/31 Pass C: `SquadControlOverlay`'s own debug-gated Inject
-## affordance — opens the full `DebugControlPanel` (`DebugVerbs.all()`),
-## targeting a unit id typed/picked directly in the panel rather than
-## `tactics.selection.selected_unit` implicitly (the panel's own "Pick"
-## buttons cover the common "target whatever's selected" case just as
-## well, and stay uniform with every other UNIT param). Null in a release
-## export — `OS.is_debug_build()` gates whether `_build_ui()` ever
-## constructs it at all, not just a `[*]`-style label.
 var inject_button: Button
-## taskblock-08 E1: the left column pairing the AP/MP pip rows above the
-## action bar — exposed so a test can confirm that ordering structurally,
-## the same way `action_bar`/`ap_mp_pip_row` are already exposed for their
-## own logic-level tests.
 var action_column: VBoxContainer
-## taskblock-08 E1/E3 (BR27.08: no longer includes Resolve to Here — that
-## moved to a per-queue-row button, `QueuePanel`) — End Turn / Reset Turn,
-## to the action bar's right — exposed so a test can confirm New Battle
-## (E3: "not a turn control") is never among its children.
 var turn_controls_column: VBoxContainer
-## BR27.08: named the same way `new_battle_button`/`watch_button`/
-## `inject_button` already are, so a test reaches these by name instead of
-## a `turn_controls_column.get_child(N)` index that shifted once Resolve
-## to Here (formerly child 0) was removed from this column.
 var end_turn_button: Button
 var reset_turn_button: Button
-## tb31 Pass A: the shared top-left cluster (`TopLeftControls`) — these
-## three fields alias straight into it (`new_battle_button`/`watch_button`/
-## `inject_button` below), so every existing reference to "this overlay's
-## own New Battle/Watch/Inject button" keeps working unchanged; the actual
-## construction/wiring lives in the ONE shared class now, not here.
 var top_left_controls: TopLeftControls
 var new_battle_button: Button
-## taskblock-21 Pass C: mid-bout toggle back to spectating.
 var watch_button: Button
 var log_sink: HierarchicalUiSink
-## taskblock-30/31 Pass C: the full click-to-force panel, superseding the
-## old flat 3-item `InjectMenu` popup — built once (inside `_build_ui()`,
-## only when `OS.is_debug_build()`), toggled by `inject_button`.
 var debug_panel: DebugControlPanel = null
 var perf_panel: PerfPanel = null
-## runNotes.md: "highlight what it's doing, and IF it's doing it" — the
-## banner/aim-readout/stat-block cluster's own header, DIM when idle and
-## HIGHLIGHT the instant either half of it actually has something to show.
 var suite_run_panel: SuiteRunPanel = null
 var watched_run_panel: WatchedRunPanel = null
-var _readout_header: Label
-## taskblock-22 Pass E3: the repair picker's own PopupMenu instance —
-## rebuilt fresh on every `_on_repair_pressed` call, same "queue_free the
-## old one first" convention InspectPanel's own debug menu already has.
-var _repair_menu: PopupMenu = null
 
 
-## `battle.combat_state` may still be null here — `BattleScene._ready()`
-## installs this overlay BEFORE its own first `new_battle()` call, exactly
-## so the session-start log line has a live log_sink to land in the
-## instant it's emitted (`_on_battle_loaded()` below re-attaches log_sink
-## synchronously, inside `load_battle()`'s own `battle_loaded.emit()`,
-## strictly before `new_battle()` goes on to emit that event). `_build_ui()`
-## itself must not depend on a battle actually being loaded yet.
+## `battle.combat_state` may still be null here — `BattleScene._ready()` installs this overlay
+## BEFORE its own first `new_battle()` call, exactly so the session-start log line has a live sink
+## to land in the instant it is emitted. **Nothing built here may depend on a battle existing yet**,
+## which is the same requirement that makes every `ModuleContext` field nullable.
 func setup(p_battle: BattleScene) -> void:
 	battle = p_battle
-	_build_ui()
+	var context: ModuleContext = build_root(battle)
+	_build_chrome(context)
+	mount_modules(MODULES, _configure)
+	(module(&"tooltip") as TooltipModule).raise()
+	_alias_modules()
+	_wire_modules()
 	battle.battle_loaded.connect(_on_battle_loaded)
 	if battle.combat_state != null:
-		_on_battle_loaded()
+		await _on_battle_loaded()
 
 
 func teardown() -> void:
 	if battle != null and battle.battle_loaded.is_connected(_on_battle_loaded):
 		battle.battle_loaded.disconnect(_on_battle_loaded)
-	if battle != null and battle.combat_state != null:
-		battle.combat_state.combat_log.remove_sink(log_sink)
+	unmount_modules()
 
 
-## taskblock-22 Pass F: "unit N down" in a folded attack summary is derived
-## from the live CombatState (`LogFold.state`), never a new LogEvent kind — so
-## the fold is re-pointed here alongside the sink itself, same reason: the
-## PREVIOUS CombatState it was reading is about to go stale.
+## The unit-input module, or null in a mode that declares none. Named because several callers want
+## it and `module(&"unit_input") as UnitInputModule` at each site is noise.
+func unit_input() -> UnitInputModule:
+	return module(&"unit_input") as UnitInputModule
+
+
 func attach_log_sink(log: CombatLog) -> void:
-	if log_sink == null:
-		return
-	log.remove_sink(log_sink)
-	log_sink.fold.state = battle.combat_state
-	log.add_sink(log_sink)
+	var logs: CombatLogModule = module(&"combat_log") as CombatLogModule
+	if logs != null and battle != null:
+		logs.attach_to(log, battle.combat_state)
 
 
-## taskblock-41 Pass A: hands `ControlOverlay`'s own per-frame tick the log
-## panel to draw. Null until `_build_ui()` has run.
 func ui_log_sink() -> UiLogSink:
 	return log_sink
 
 
-## docs/10 taskblock02 F1 (tb31 Pass B): true only for an explicitly
-## HUMAN squad — `controller_for` no longer has a silent HUMAN default to
-## fall back on (UNASSIGNED is the zero-default now, and a bout can't
-## actually be running with one of those left on the board at all,
-## `BoutRunner._init()`'s own hard error). Every real entry point assigns
-## explicitly (`CombatState.assign_all_to_human()`/`assign_rest_to_ai()`),
-## so this reads exactly what was assigned, nothing implied.
+## docs/10 taskblock02 F1 (tb31 Pass B): true only for an explicitly HUMAN squad —
+## `controller_for` has no silent HUMAN default to fall back on, and a bout cannot be running with
+## an `UNASSIGNED` squad on the board at all (`BoutRunner._init()`'s own hard error). Every real
+## entry point assigns explicitly, so this reads exactly what was assigned, nothing implied.
 func wants_turn_for(unit: Unit) -> bool:
 	return battle.combat_state.controller_for(unit.squad_id) == Enums.SquadController.HUMAN
 
 
-## Re-wires against whichever CombatState/MissionState is now current —
-## fired once from setup() and again every time `battle.load_battle()`
-## reruns under an ALREADY-active SquadControlOverlay (the New Battle
-## button, which never swaps overlays, only rebuilds the world).
+## Re-wires against whichever `CombatState`/`MissionState` is now current — fired once from
+## `setup()` and again every time `battle.load_battle()` reruns under an already-active overlay (the
+## New Battle button, which never swaps overlays, only rebuilds the world).
 func _on_battle_loaded() -> void:
-	tactics.setup(battle.combat_state, battle.board_view, battle.camera_rig, battle.mission)
-	# The PREVIOUS combat_state (if any) has already been replaced on
-	# `battle.combat_state` by the time this fires (load_battle() swaps it
-	# before emitting) — its own now-orphaned CombatLog simply stops being
-	# written to; nothing left to explicitly detach from. remove_sink() is a
-	# documented no-op on a sink that was never added, so this is safe on
-	# the very first call too (right after _build_ui() just created it).
-	# taskblock-41 Pass D: one place does the re-pointing now — `load_battle`
-	# calls it early (before the build) and this calls it again on a re-load.
+	rebind_modules()
+	# The PREVIOUS combat_state has already been replaced by the time this fires; its now-orphaned
+	# log simply stops being written to, with nothing left to detach from.
 	attach_log_sink(battle.combat_state.combat_log)
-	# tb35 Pass D (BR32.01/03): `wall_cutout_units` is now set once,
-	# canonically, in `BattleScene.load_battle()` itself — the one place
-	# that owns both `board_view` and `combat_state` for every overlay,
-	# not just this one. See that assignment's own doc comment.
-	if controls_overlay != null:
-		controls_overlay.set_log_path(battle.file_sink.path)
-	# Awaited for the same reason as the `_on_turn_ended` call site below.
+	# Awaited for the same reason as the `turn_resolved` call site below.
 	await advance_ai_turns(battle)
 
 
-func _build_ui() -> void:
-	tactics = TacticsController.new()
-	add_child(tactics)
-	tactics.turn_ended.connect(_on_turn_ended)
-	# docs/10 taskblock06 G1: "Resolve to Here" mutates authoritative state
-	# exactly like End Turn does (resolve_until against the real
-	# CombatState) — the same view resync (unit meshes + resolution replay)
-	# applies either way, and neither one deselects/clears overlays here
-	# (end_turn() and resolve_to_marker() each already own that decision).
-	tactics.queue_partially_resolved.connect(_on_turn_ended)
-	tactics.selection_changed.connect(_on_selection_changed)
-	# runNotes.md: entering/cancelling aim must refresh the previewed facing
-	# too (aim_facing() depends on `aiming_at`, not on anything
-	# selection_changed already covers) — aim_changed is what actually
-	# fires the instant that happens.
-	tactics.aim_changed.connect(_on_selection_changed)
-	tactics.highlight_changed.connect(_on_highlight_changed)
-	# tb31 Pass D: the action bar's own PART_PICKER dispatch — repair is the
-	# one picker action today; the bar emits by action id, never a direct
-	# call, so a future PART_PICKER action routes through here too.
-	tactics.picker_action_requested.connect(_on_picker_action_requested)
-
-	var ui := CanvasLayer.new()
-	add_child(ui)
-	var theme_root := Control.new()
-	theme_root.theme = HulkTheme.build()
-	theme_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	theme_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui.add_child(theme_root)
-
-	# runNotes.md: "most of the left half of the screen should be the
-	# inventory... the combat log should stay bottom left." A left column
-	# (inventory, tall, over the log, fixed-height, at its bottom) and a
-	# right column (controls overlay top-right; the readout cluster and
-	# stacked turn buttons bottom-right) — four independently anchored
-	# regions, not one long sidebar.
-	#
-	# runNotes.md follow-up: "only be as big as it needs to be" — anchored
-	# full-height on the left edge, but with NO right anchor stretch, so its
-	# actual width comes from its own content's combined minimum size
-	# below (taskblock-22 Pass I: the weapon_label row, now that the
-	# inventory tree that used to sit beside it is gone), not half the
-	# screen. mouse_filter = IGNORE is load-bearing:
-	# a bare Control defaults to MOUSE_FILTER_STOP, and this one used to
-	# span half the screen — swallowing every RMB/MMB drag that started
-	# over it before CameraRig's own _unhandled_input ever saw the event.
+## Four independently anchored regions, not one long sidebar: a left column (weapons list, Inspect,
+## the combat log at its bottom), a top-right column (keybindings), and a bottom-right stack (the
+## readout panel above the action bar / turn controls row).
+func _build_chrome(context: ModuleContext) -> void:
 	var left_half := Control.new()
 	left_half.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	left_half.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	theme_root.add_child(left_half)
+	ui_root.add_child(left_half)
 	var left_layout := VBoxContainer.new()
 	left_layout.set_anchors_preset(Control.PRESET_FULL_RECT)
 	left_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_half.add_child(left_layout)
+	context.set_slot(ModuleSlots.LEFT_COLUMN, left_layout)
 
-	# taskblock-22 Pass I: the old always-visible inventory tree (nested
-	# tree + mass/RAM footer, docs/10 taskblock03 H) lived here, right next
-	# to the weapons list. InspectPanel (taskblock-21 Pass A) now supersedes
-	# it everywhere, including a docs/05 mass/RAM footer of its own — see
-	# InspectPanel._build_inventory_footer/_footer_text — so it's gone,
-	# not just superseded-but-left-running-alongside. The weapons list
-	# (weapon_label/WeaponPanel) is a separate feature the taskblock never
-	# named for retirement; it keeps its own row, on its own now that the
-	# tree it used to sit beside is gone.
 	var inventory_row := HBoxContainer.new()
 	inventory_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inventory_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_layout.add_child(inventory_row)
+	context.set_slot(ModuleSlots.INVENTORY_ROW, inventory_row)
 
-	# docs/09 taskblock07 Pass B4: RichTextLabel's own mouse_filter DEFAULTS
-	# to STOP (not IGNORE — that's plain Label's default, not this class's),
-	# since it natively supports scrolling/text selection. A purely
-	# read-only label with no such feature swallowing clicks over its own
-	# rect is exactly the "class of bug" this pass audits for — every
-	# RichTextLabel below that isn't the log (log_label keeps STOP: it has
-	# a real, wanted scrollbar) gets IGNORE explicitly, same as the
-	# containers around it already do.
-	var weapon_label := RichTextLabel.new()
-	weapon_label.bbcode_enabled = true
-	weapon_label.custom_minimum_size = Vector2(260, 0)
-	weapon_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	weapon_label.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
-	weapon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	inventory_row.add_child(weapon_label)
-
-	# taskblock-22 Pass I: the ONE inventory surface in player view now —
-	# no more "additive alongside the always-visible tree" (A8's own old
-	# framing); opened on demand for whatever's currently selected.
-	inspect_button = Button.new()
-	inspect_button.text = "Inspect"
-	# `BR51.10`: starts disabled, because nothing is selected yet. An affordance that lies
-	# about what it can do reads as a broken action when it correctly does nothing.
-	inspect_button.disabled = true
-	inspect_button.pressed.connect(_on_inspect_pressed)
-	left_layout.add_child(inspect_button)
-
-	# taskblock-30/31 Pass C: `SquadControlOverlay`'s own debug-gated
-	# DebugControlPanel — the button that toggles it moved into the shared
-	# `TopLeftControls` cluster (tb31 Pass A); the panel itself stays a
-	# direct `theme_root` child (a floating, self-centering modal, never
-	# nested inside the top-left row it's opened from).
-	if OS.is_debug_build():
-		debug_panel = DebugControlPanel.new()
-		debug_panel.visible = false
-		debug_panel.applied.connect(_on_debug_panel_applied)
-		theme_root.add_child(debug_panel)
-		# taskblock-51: the performance readout. Offered by the debug panel, owned here —
-		# closing the debug panel must not take the readout down with it, which is the
-		# whole point of the supervisor's "if the debug panel is closed the perf panel
-		# stays open".
-		perf_panel = PerfPanel.new()
-		perf_panel.visible = false
-		perf_panel.stats_ticked.connect(_on_perf_stats_ticked)
-		debug_panel.ui_element_toggled.connect(_on_ui_element_toggled)
-		theme_root.add_child(perf_panel)
-
-	# tb31 Pass A: the shared Inject/New Battle/Watch cluster — one
-	# construction path (`TopLeftControls`), not a per-overlay copy. Added
-	# directly to `theme_root` (not nested under `left_layout`) so it sits
-	# at the fixed top-left corner regardless of the inventory column's own
-	# height.
-	top_left_controls = TopLeftControls.new()
-	# No pre-existing top-left row here (unlike SpectatorOverlay's own
-	# `controls`) — anchor it directly, the same top-left corner
-	# `DebugControlPanel`'s own `_center_top` fix already steers clear of.
-	top_left_controls.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	top_left_controls.position = Vector2(16, 16)
-	theme_root.add_child(top_left_controls)
-	top_left_controls.setup(battle, _on_inject_pressed, true, "Watch")
-	new_battle_button = top_left_controls.new_battle_button
-	watch_button = top_left_controls.watch_button
-	inject_button = top_left_controls.inject_button
-
-	# runNotes.md: "since we aren't truncating log entries, move the
-	# scrollbar to the left side so it doesn't overlay." Un-wrapped lines
-	# run right up to the panel's own right edge, where the scrollbar sits
-	# by default — silently eating the last character or two of every long
-	# line. `layout_direction = RTL` mirrors the CONTROL's own layout
-	# (scrollbar included) without touching `text_direction` (a separate
-	# property, still LTR/Auto) — verified against a live render that text
-	# order/alignment is completely unaffected. A first attempt fought the
-	# scrollbar's anchors every frame instead (RichTextLabel resets them
-	# internally each layout pass); this one-line flag does the same job
-	# natively, no per-frame re-assertion. The matching left content margin
-	# below (the scrollbar's own width) stops it from overlapping even the
-	# shared "[T0/TACTICS]" prefix every line starts with.
-	# taskblock-41 Pass F: the log is a real window now — title bar, minimize,
-	# drag-to-resize, a genuine background, scroll hand-off at the content's
-	# ends, and a live FPS readout over it. Everything that used to be set on a
-	# bare RichTextLabel here moved into `CombatLogPanel` verbatim (RTL layout
-	# so the scrollbar never overlaps the text, autowrap off, scroll-following).
-	var log_panel := CombatLogPanel.new()
-	# taskblock-48 Pass B1: hosted the same way `CombatLogPanel` is, and for the same
-	# reason — a debug surface that both overlays need is a panel, not a subclass.
-	# Debug-gated: these drive a real subprocess and a real bout sequence.
-	# taskblock-51: spectator-only while the bug hunt runs — see
-	# `SuiteRunPanel.SHOW_IN_PLAYER_VIEW`. These crowd the surfaces the hunt is
-	# reproducing against, and a run is watched from the spectator view regardless.
-	# The inject panel above is untouched: it is a hunting tool, not a test surface.
-	if OS.is_debug_build() and SuiteRunPanel.SHOW_IN_PLAYER_VIEW:
-		# taskblock-48 Pass B2.5: **parented to `theme_root`, not to the overlay.**
-		# The overlay is a `Node3D`; a `Control` under one gets no layout at all and
-		# every panel piled up at the origin, on top of `TopLeftControls`. Anchored
-		# right, away from that corner — the third full-rect container to have a
-		# placement problem there, which is why it is asserted in
-		# `test_debug_panel_layout.gd` rather than eyeballed once.
-		suite_run_panel = SuiteRunPanel.new()
-		suite_run_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-		suite_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		suite_run_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		theme_root.add_child(suite_run_panel)
-		watched_run_panel = WatchedRunPanel.new()
-		watched_run_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-		watched_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		theme_root.add_child(watched_run_panel)
-		# **The wiring, which is the part that was missing.** Both panels existed and
-		# both were tested, and nothing in the running game called either of them — the
-		# replay path was reachable only from its own tests. `docs/11`'s failure mode
-		# exactly: the mechanism passed every test asserting it worked when called, and
-		# nothing asserted it got called.
-		suite_run_panel.battle = self.battle
-		watched_run_panel.bind(self.battle, null)
-		suite_run_panel.run_completed.connect(_on_suite_run_completed)
-		watched_run_panel.seed_loaded.connect(_on_replay_loaded)
-	left_layout.add_child(log_panel)
-	log_sink = HierarchicalUiSink.new(log_panel.log_label)
-
-	# runNotes.md follow-up: same MOUSE_FILTER_IGNORE fix as left_half — this
-	# still spans the right half (controls_label and bottom_right anchor to
-	# two different corners within it), but must not itself swallow camera
-	# drags over that half of the board.
+	# Still spans the right half — the legend and the bottom-right stack anchor to two different
+	# corners within it — but must not itself swallow camera drags over that half of the board.
 	var right_half := Control.new()
 	right_half.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
 	right_half.anchor_left = 0.5
 	right_half.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	theme_root.add_child(right_half)
+	ui_root.add_child(right_half)
 
-	# docs/10 taskblock03 J: "corner-anchored," now specifically top-right
-	# (runNotes.md moved it off the turn-controls corner).
-	# taskblock-08 E3: "New Battle is a debug tool — split it out... place it
-	# above the controls list." One top-right-anchored column: the debug
-	# button first, the H-help legend directly under it.
 	var top_right := VBoxContainer.new()
 	top_right.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	top_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	top_right.alignment = BoxContainer.ALIGNMENT_BEGIN
 	top_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_half.add_child(top_right)
+	context.set_slot(ModuleSlots.TOP_RIGHT, top_right)
 
-	# tb31 Pass A: the keybindings display defaults off now (reference, not
-	# chrome) — this button is its second surface, alongside the existing
-	# H-key toggle (`ControlsOverlay._unhandled_input`), both flipping the
-	# same `label.visible`.
-	keybindings_button = Button.new()
-	keybindings_button.text = "Keybindings"
-	keybindings_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	keybindings_button.pressed.connect(_on_keybindings_pressed)
-	top_right.add_child(keybindings_button)
-
-	var controls_label := Label.new()
-	controls_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	controls_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top_right.add_child(controls_label)
-
-	# runNotes.md: "put the turn controls in the bottom right, stacked,
-	# with... [the readout cluster] above the turn controls." One
-	# bottom-right-anchored stack: the readout+queue panel, then the
-	# action bar/turn buttons row, in that order, growing upward from the
-	# corner.
 	var bottom_right := VBoxContainer.new()
 	bottom_right.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	bottom_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -400,13 +179,11 @@ func _build_ui() -> void:
 	bottom_right.alignment = BoxContainer.ALIGNMENT_END
 	bottom_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_half.add_child(bottom_right)
+	context.set_slot(ModuleSlots.BOTTOM_RIGHT, bottom_right)
 
-	# The combat readout (header/banner/aim/stat readouts) and the queued-
-	# actions list get their own boxed panel, sized to its own content —
-	# SHRINK_END keeps it from being stretched to the action bar's own
-	# (much wider) row below, which shared this same VBoxContainer used to
-	# force it to match, and right-aligns it within the column instead of
-	# spanning it.
+	# The readout and the queued-actions list get their own boxed panel, sized to its own content.
+	# `SHRINK_END` keeps it from being stretched to the action bar's much wider row below, which
+	# sharing one `VBoxContainer` used to force.
 	var readout_panel := PanelContainer.new()
 	readout_panel.size_flags_horizontal = Control.SIZE_SHRINK_END
 	readout_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -414,226 +191,131 @@ func _build_ui() -> void:
 	var readout_column := VBoxContainer.new()
 	readout_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	readout_panel.add_child(readout_column)
+	context.set_slot(ModuleSlots.READOUT_COLUMN, readout_column)
 
-	# runNotes.md: "I'm not entirely sure what the info... is. Highlight
-	# what it's doing, and IF it's doing it." A plain, named header —
-	# _update_readout_header() below flips its color/text with whether the
-	# cluster underneath actually has anything live to show.
-	_readout_header = Label.new()
-	_readout_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	readout_column.add_child(_readout_header)
-
-	var banner := Label.new()
-	banner.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
-	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	readout_column.add_child(banner)
-
-	var aim_readout := RichTextLabel.new()
-	aim_readout.bbcode_enabled = false
-	aim_readout.custom_minimum_size = Vector2(320, 60)
-	aim_readout.add_theme_color_override("default_color", HulkTheme.FOREGROUND)
-	aim_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	readout_column.add_child(aim_readout)
-
-	var stat_label := RichTextLabel.new()
-	stat_label.custom_minimum_size = Vector2(320, 40)
-	stat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	readout_column.add_child(stat_label)
-	var stat_drill_down := RichTextLabel.new()
-	stat_drill_down.custom_minimum_size = Vector2(320, 60)
-	stat_drill_down.add_theme_color_override("default_color", HulkTheme.DIM)
-	stat_drill_down.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	readout_column.add_child(stat_drill_down)
-
-	# docs/10 taskblock06 G2: "an in-turn, ordered list of the selected
-	# unit's queued actions." BR27.08: each row now carries its own
-	# "Resolve" button directly (`QueuePanel`) rather than a Tree row
-	# setting a marker for a separate button in the turn-control column —
-	# a `ScrollContainer` keeps the same bounded footprint the old Tree's
-	# own `custom_minimum_size` gave for free, so a long queue scrolls
-	# instead of pushing the rest of the readout cluster down.
-	var queue_scroll := ScrollContainer.new()
-	queue_scroll.custom_minimum_size = Vector2(320, 100)
-	# Vertical-only: a row's own "what" label uses SIZE_EXPAND_FILL to eat
-	# the row's slack width, which is only well-defined once something
-	# actually bounds that width. Disabling horizontal scroll is what
-	# makes a ScrollContainer clamp its child to its own real width
-	# instead of letting an unbounded EXPAND_FILL child claim an oversized
-	# natural size (found live: without this, the row landed hundreds of
-	# pixels past the right edge of a 1920-wide viewport, taking every
-	# button in it along with it).
-	queue_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	readout_column.add_child(queue_scroll)
-	var queue_rows_container := VBoxContainer.new()
-	queue_rows_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	queue_scroll.add_child(queue_rows_container)
-
-	# taskblock-08 E1: "action bar on the LEFT... the turn-control stack
-	# sits to its RIGHT" — one row, two columns, replacing the single
-	# vertical stack pips/action-bar/buttons used to share.
-	var action_and_turn_row := HBoxContainer.new()
-	action_and_turn_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_right.add_child(action_and_turn_row)
-
-	action_column = VBoxContainer.new()
-	action_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	action_and_turn_row.add_child(action_column)
-
-	# taskblock-07 Pass G: "above the action bar: pips, not numbers." A
-	# label prefix on each row (docs/08: terminal UI is text-first) is what
-	# keeps a 0-pip row legible as "AP" / "MP" rather than reading as blank
-	# space — "a unit with 0 shows an empty row, not a missing one."
-	var pip_rows := VBoxContainer.new()
-	pip_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	action_column.add_child(pip_rows)
-
-	var ap_row := HBoxContainer.new()
-	ap_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pip_rows.add_child(ap_row)
-	var ap_label := Label.new()
-	ap_label.text = "AP"
-	ap_label.custom_minimum_size = Vector2(28, 0)
-	ap_label.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
-	ap_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ap_row.add_child(ap_label)
-	var ap_pip_container := HBoxContainer.new()
-	ap_row.add_child(ap_pip_container)
-
-	var mp_row := HBoxContainer.new()
-	mp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pip_rows.add_child(mp_row)
-	var mp_label := Label.new()
-	mp_label.text = "MP"
-	mp_label.custom_minimum_size = Vector2(28, 0)
-	mp_label.add_theme_color_override("font_color", HulkTheme.MP_PIP)
-	mp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mp_row.add_child(mp_label)
-	var mp_pip_container := HBoxContainer.new()
-	mp_row.add_child(mp_pip_container)
-
-	# taskblock-08 E1: "action bar 3x its current size" — ActionBar.BOX_SIZE
-	# itself carries the actual number; this row just sits directly under
-	# the pips, both inside `action_column`.
+	# taskblock-08 E1: "action bar on the LEFT, the turn-control stack to its RIGHT" — one row, two
+	# columns, replacing the single vertical stack the pips, bar and buttons used to share.
 	var action_row := HBoxContainer.new()
 	action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	action_column.add_child(action_row)
-
-	# taskblock-08 E1/E2 (BR27.08: Resolve to Here moved to a per-queue-row
-	# button — see `queue_rows_container` below — so this column is just
-	# End Turn / Reset Turn now), sized to their own text (E2), nothing
-	# else in this column to stretch them wider.
-	turn_controls_column = VBoxContainer.new()
-	turn_controls_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	turn_controls_column.alignment = BoxContainer.ALIGNMENT_END
-	turn_controls_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	action_and_turn_row.add_child(turn_controls_column)
-
-	end_turn_button = Button.new()
-	end_turn_button.text = "End Turn"
-	end_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	end_turn_button.pressed.connect(_on_end_turn_pressed)
-	end_turn_button.mouse_entered.connect(_hide_stale_tooltip)
-	turn_controls_column.add_child(end_turn_button)
-	# docs/10 taskblock03 D4: "a single Reset Turn control (button + R)."
-	reset_turn_button = Button.new()
-	reset_turn_button.text = "Reset Turn"
-	reset_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	reset_turn_button.pressed.connect(_on_reset_turn_pressed)
-	reset_turn_button.mouse_entered.connect(_hide_stale_tooltip)
-	turn_controls_column.add_child(reset_turn_button)
-
-	# DataLibrary.material_table() directly, not battle.combat_state's own —
-	# _build_ui() must not depend on a battle already being loaded (see
-	# setup()'s own doc comment), and material_table's content is the same
-	# shared game data regardless of which CombatState instance holds it
-	# (today's pre-overlay code already only ever wired this ONCE, in
-	# _ready(), never refreshing it on a later New Battle either).
-	var material_table: MaterialTable = DataLibrary.material_table()
-
-	aim_view = AimView.new()
-	add_child(aim_view)
-	aim_view.setup(tactics, aim_readout, material_table)
-
-	resolution_player = ResolutionPlayer.new()
-	add_child(resolution_player)
-	resolution_player.setup(battle, tactics.unlock_input, banner)
-
-	stat_panel = StatPanel.new()
-	add_child(stat_panel)
-	stat_panel.setup(tactics, stat_label, stat_drill_down)
-
-	# taskblock-07 Pass F1/F2: THE one tooltip renderer — created before
-	# every panel below so each can be handed the same instance, but only
-	# added to the tree (theme_root's LAST child, so it draws above every
-	# other panel) once they're all wired.
-	tooltip_view = TooltipView.new()
-
-	weapon_panel = WeaponPanel.new()
-	add_child(weapon_panel)
-	weapon_panel.setup(tactics, weapon_label)
-
-	# taskblock-07 Pass F2: replaces combat_readout_panel.gd — "hovering a
-	# cell or an enemy now produces a tooltip instead of filling a panel."
-	tooltip_controller = TooltipController.new()
-	add_child(tooltip_controller)
-	tooltip_controller.setup(tactics, tooltip_view, material_table)
-
-	queue_panel = QueuePanel.new()
-	add_child(queue_panel)
-	queue_panel.setup(tactics, queue_rows_container, tooltip_view)
-
-	action_bar = ActionBar.new()
-	add_child(action_bar)
-	action_bar.setup(tactics, action_row, tooltip_view)
-
-	ap_mp_pip_row = ApMpPipRow.new()
-	add_child(ap_mp_pip_row)
-	ap_mp_pip_row.setup(tactics, ap_pip_container, mp_pip_container, tooltip_view)
-
-	inspect_panel = InspectPanel.new()
-	# taskblock-22 Pass G1: 900x600 is the PREFERRED size — InspectPanel's
-	# own _clamp_to_viewport shrinks/re-centers it against the real
-	# viewport (no anchors preset needed/wanted here anymore; a one-shot
-	# PRESET_CENTER never revisited was the "falls off the bottom" bug).
-	inspect_panel.custom_minimum_size = Vector2(900, 600)
-	# docs/02: `Camera3D.look_at()` (inside `setup()`'s own bot-viewer build)
-	# needs a live tree to resolve a Node3D's global transform against — add
-	# to the tree FIRST, setup() second, the same order the Resource
-	# Editor's own preview relies on (there, `_ready()` firing at all is
-	# what already guarantees it; here it has to be explicit).
-	theme_root.add_child(inspect_panel)
-	# taskblock-22 Pass G2: the isolate camera's own live-view lookup —
-	# battle is a real BattleScene by this point (its own unit_views may
-	# still be empty pre-battle-load; find_unit_view degrades to null
-	# gracefully, same as every other optional thread-through here).
-	inspect_panel.setup(material_table, tactics.selection, battle.find_unit_view, tactics)
-
-	controls_overlay = ControlsOverlay.new()
-	add_child(controls_overlay)
-	# "" placeholder: _build_ui() must not depend on a battle already being
-	# loaded — _on_battle_loaded() immediately corrects this via
-	# set_log_path() the instant a real battle (and its file_sink) exists.
-	controls_overlay.setup(controls_label, "")
-
-	theme_root.add_child(tooltip_view)
-
-	_update_readout_header()
+	bottom_right.add_child(action_row)
+	context.set_slot(ModuleSlots.ACTION_ROW, action_row)
 
 
-## BR31.01 (tb32 Pass D): "the tooltip's presence makes the controls hard
-## to click." A click already reached the button underneath regardless —
-## `TooltipView`/its label both carry MOUSE_FILTER_IGNORE — the real bug
-## is a STALE tooltip left over from hovering the 3D board right before
-## the cursor crossed onto a turn-control button: TacticsController's own
-## hover tracking lives in `_unhandled_input`, which never fires while the
-## cursor sits over a Control with the default STOP filter (every
-## Button), so nothing ever told the tooltip to go away. Same fix
-## QueuePanel's own rows (`mouse_exited`) and ApMpPipRow's containers
-## already needed for the identical reason — these three buttons just
-## never got it.
-func _hide_stale_tooltip() -> void:
-	if tooltip_view != null:
-		tooltip_view.hide_tooltip()
+## The handful of pre-mount fields this mode sets. The replay panels are **spectator-only while the
+## bug hunt runs** (`SuiteRunPanel.SHOW_IN_PLAYER_VIEW`) — they crowd the surfaces the hunt
+## reproduces against, and a run is watched from the spectator view regardless. The Inject panel is
+## deliberately untouched by that: it is a hunting tool, not a test surface.
+func _configure(mounted: ViewModule) -> void:
+	if mounted is InspectModule:
+		(mounted as InspectModule).with_button = true
+	elif mounted is TopLeftControlsModule:
+		(mounted as TopLeftControlsModule).include_new_battle = true
+		(mounted as TopLeftControlsModule).watch_label = "Watch"
+	elif mounted is ReplayModule:
+		(mounted as ReplayModule).enabled = SuiteRunPanel.SHOW_IN_PLAYER_VIEW
+
+
+func _alias_modules() -> void:
+	var input: UnitInputModule = module(&"unit_input") as UnitInputModule
+	tactics = input.tactics
+	var stats: StatPanelsModule = module(&"stat_panels") as StatPanelsModule
+	aim_view = stats.aim_view
+	stat_panel = stats.stat_panel
+	weapon_panel = stats.weapon_panel
+	var tips: TooltipModule = module(&"tooltip") as TooltipModule
+	tooltip_view = tips.view
+	tooltip_controller = tips.controller
+	resolution_player = (module(&"resolution") as ResolutionModule).player
+	queue_panel = (module(&"queue_panel") as QueuePanelModule).panel
+	var bar: ActionBarModule = module(&"action_bar") as ActionBarModule
+	action_bar = bar.action_bar
+	ap_mp_pip_row = bar.ap_mp_pip_row
+	action_column = bar.action_column
+	var turns: TurnControlsModule = module(&"turn_controls") as TurnControlsModule
+	turn_controls_column = turns.column
+	end_turn_button = turns.end_turn_button
+	reset_turn_button = turns.reset_turn_button
+	var legend: ControlsLegendModule = module(&"controls_legend") as ControlsLegendModule
+	controls_overlay = legend.controls_overlay
+	keybindings_button = legend.keybindings_button
+	var inspect: InspectModule = module(&"inspect") as InspectModule
+	inspect_panel = inspect.panel
+	inspect_button = inspect.button
+	var logs: CombatLogModule = module(&"combat_log") as CombatLogModule
+	log_sink = logs.sink
+	var debug: DebugPanelModule = module(&"debug_panel") as DebugPanelModule
+	debug_panel = debug.panel
+	perf_panel = debug.perf_panel
+	var replay: ReplayModule = module(&"replay") as ReplayModule
+	suite_run_panel = replay.suite_run_panel
+	watched_run_panel = replay.watched_run_panel
+	var cluster: TopLeftControlsModule = module(&"top_left_controls") as TopLeftControlsModule
+	top_left_controls = cluster.controls
+	new_battle_button = cluster.new_battle_button()
+	watch_button = cluster.watch_button()
+	inject_button = cluster.inject_button()
+
+
+func _wire_modules() -> void:
+	var input: UnitInputModule = module(&"unit_input") as UnitInputModule
+	input.turn_resolved.connect(_on_turn_ended)
+	input.selection_changed.connect(_on_selection_changed)
+	var debug: DebugPanelModule = module(&"debug_panel") as DebugPanelModule
+	debug.input_owner = tactics
+	debug.on_applied = _on_debug_verb_applied
+	var replay: ReplayModule = module(&"replay") as ReplayModule
+	replay.notice.connect(set_thinking_label)
+
+
+## Once the human's own turn has fully resolved AND animated, any squad flagged AI auto-advances
+## through the shared `advance_ai_turns`. Fired by `UnitInputModule.turn_resolved`, which is what
+## now owns the view resync and the playback that precede it.
+##
+## **Kept under its original name** because `SingleUnitOverlay` overrides it to auto-select after
+## the turn, and that override calls `super` — a rename here would have silently dropped that step.
+##
+## **Awaited, and both awaits matter.** `advance_ai_turns` fast-forwards every AI turn with no
+## animation at all, so calling it before this turn's own playback had started made the AI squad
+## visibly snap to its new positions while the human's tracer had not fired yet. And it is itself a
+## coroutine: fire-and-forget returned the instant the planner first suspended, so the batch ran
+## after whatever came next had already read the turn state.
+func _on_turn_ended(_events: Array[LogEvent]) -> void:
+	await advance_ai_turns(battle)
+
+
+func _on_selection_changed() -> void:
+	var inspect: InspectModule = module(&"inspect") as InspectModule
+	if inspect != null:
+		inspect.refresh_button()
+	var stats: StatPanelsModule = module(&"stat_panels") as StatPanelsModule
+	if stats != null:
+		stats.refresh_header()
+
+
+func _on_debug_verb_applied() -> void:
+	var stats: StatPanelsModule = module(&"stat_panels") as StatPanelsModule
+	if stats != null:
+		stats.refresh_header()
+
+
+## Toggles the full debug control panel. A silent no-op outside a debug build, where the panel was
+## never constructed at all.
+func _on_inject_pressed() -> void:
+	var debug: DebugPanelModule = module(&"debug_panel") as DebugPanelModule
+	if debug != null:
+		debug.toggle()
+
+
+func _on_inspect_pressed() -> void:
+	var inspect: InspectModule = module(&"inspect") as InspectModule
+	if inspect != null:
+		inspect.open_selected()
+
+
+func _on_keybindings_pressed() -> void:
+	var legend: ControlsLegendModule = module(&"controls_legend") as ControlsLegendModule
+	if legend != null:
+		legend.toggle()
 
 
 func _on_end_turn_pressed() -> void:
@@ -644,299 +326,13 @@ func _on_reset_turn_pressed() -> void:
 	tactics.reset_turn()
 
 
-func _on_keybindings_pressed() -> void:
-	controls_overlay.label.visible = not controls_overlay.label.visible
-
-
-## Resolution has already mutated combat_state for real (docs/09) — every
-## HitVolumeView rebuilds from the unit it already tracks, so a destroyed
-## part disappears and a moved unit redraws at its new cell. `events` is
-## then handed to ResolutionPlayer purely as a cosmetic replay (docs/10
-## Phase 12.4) — it never re-drives the sim, which has already finished.
-##
-## taskblock-15 Pass A: once the human's own turn has actually resolved,
-## any squad flagged AI auto-advances through the same shared
-## `advance_ai_turns` every overlay shares — a genuinely new capability
-## (no `CombatState.controller_for` value outside a bout was ever consumed
-## before this taskblock), inert (a single no-op check) for every existing
-## battle, which never sets a squad to AI.
-## taskblock-26 Pass B1: "the opposing team appeared to jump to new
-## positions before that unit's attack animation resolved." `advance_ai_
-## turns` fast-forwards every AI turn with NO animation at all (a single
-## instant `refresh_unit_views` at its own end, by design — see its own
-## doc comment) — calling it BEFORE this turn's own `resolution_player.
-## play()` had even started meant the AI squad visibly snapped to its new
-## positions while the human's own attack tracer hadn't fired yet. Now
-## AWAITED first, so the human's own turn finishes its full animated
-## playback before the AI batch is even resolved, let alone shown.
-func _on_turn_ended(events: Array[LogEvent]) -> void:
-	# taskblock-19 Pass I2: only the units THIS turn's own events actually
-	# named, not the whole board — advance_ai_turns() already does its
-	# own refresh at ITS OWN end (covering whatever it resolves), so a
-	# third, unconditional full-board refresh right after it used to be
-	# pure duplicate work, not a second, more-correct pass.
-	#
-	# tb32 Pass D (BR27.07): the active-turn flip is deferred (`false`)
-	# until AFTER the animation below actually finishes — bundled in here
-	# same as `refresh_unit_views()`'s own mesh rebuild, it used to flip
-	# the indicator to the NEXT unit while THIS unit's action was still
-	# visibly animating, a real confirmed bug.
-	battle.refresh_unit_views(LogPlayback.affected_unit_ids(events), false)
-	_on_selection_changed()
-	await resolution_player.play(events)
-	battle.apply_active_turn_highlight()
-	# tb45 Pass E: **awaited.** `advance_ai_turns` is a coroutine and this was
-	# fire-and-forget, so the handler returned the instant the planner first
-	# suspended and the AI batch finished some frames later, unobserved. It had no
-	# visible effect while the old planner happened not to suspend on small boards;
-	# the utility planner yields through `PlanPacer` on any real candidate set, and
-	# the batch then ran AFTER whatever came next had already read the turn state.
-	await advance_ai_turns(battle)
-
-
-## docs/10 team flagging: the selected unit's ground marker brightens, and
-## no other unit's does — a pure overlay, never touching a part's material.
-##
-## docs/10 taskblock03 E3: the selected unit's own view must also render
-## SelectionController.previewed_orientation() (queued-but-unresolved
-## facing), never the committed `unit.orientation` — every other view's
-## `preview_orientation` stays null. Only rebuilds a view when its preview
-## actually changes, since this fires on every drag_face() motion event
-## (and now, every aim_changed too).
-##
-## runNotes.md: while aiming, that preview is overridden to face the
-## target instead (TacticsController.aim_facing()) — cancelling aim just
-## makes aim_facing() start returning null again, so the preview falls
-## straight back to the queued orientation with no separate "unface" step.
-##
-## runNotes.md follow-up: "clicking while a move is highlighted faces both
-## the original position and the ghost" — once a move is actually queued,
-## the STILL-STATIONARY live model previewing its post-move facing read as
-## wrong (it hasn't gone anywhere yet) and duplicated what the end-position
-## ghost (TacticsController._end_position_ghost()) already shows. The live
-## model now only ever previews its own future while it hasn't queued
-## anywhere to go (has_queued_move() == false) — in-place rotation or
-## aim-facing with no move queued. The instant a move IS queued, the live
-## model falls back to its plain committed orientation and the ghost alone
-## carries the preview.
-## taskblock-21 Pass A: opens the inspect panel on whatever's currently selected.
-##
-## taskblock-51 Pass K: **and "whatever" now includes cover.** `InspectPanel.open_cell` has
-## always been able to describe a loose part — the selection simply could never hold one, so
-## the capability was unreachable from the board. `BR51.10`: the button is disabled rather
-## than live-and-inert when the target has no body, so this guard is a backstop, not the
-## affordance.
-func _on_inspect_pressed() -> void:
-	if tactics.selection == null:
-		return
-	var target: SelectionTarget = tactics.selection.selected_target
-	if target.is_unit():
-		inspect_panel.open(target.unit)
-	elif target.is_part():
-		inspect_panel.open_cell(target.cell, target.part)
-
-
-## tb31 Pass D: the action bar's own PART_PICKER dispatch — `action_id`
-## is whichever slot the player actually clicked; repair is the one
-## PART_PICKER action today, so this is a one-arm match, not overbuilt for
-## ids that don't exist yet.
-func _on_picker_action_requested(action_id: StringName) -> void:
-	if action_id == &"repair":
-		_on_repair_pressed()
-
-
-## taskblock-22 Pass E3 (tb31 Pass D): "prompts with all repairable damaged
-## parts, each with its own scrap cost." A no-op with nothing selected or
-## nothing damaged — same degenerate-case posture `_on_inspect_pressed`
-## above already has, never an empty popup. Reached from the action bar's
-## own `&"repair"` slot now (`picker_action_requested`), not a standalone
-## button — the popup anchors on the current mouse position instead of a
-## button's own screen rect, the same "at_position" convention
-## `InspectPanel`'s own debug menu already uses for a context popup.
-func _on_repair_pressed() -> void:
-	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	if selected == null:
-		return
-	var damaged: Array[Part] = RepairResolver.repairable_parts(selected)
-	if damaged.is_empty():
-		return
-
-	if _repair_menu != null:
-		_repair_menu.queue_free()
-	_repair_menu = PopupMenu.new()
-	add_child(_repair_menu)
-	var welder: Part = RepairResolver.find_operable_welder(selected)
-	var mission: MissionState = tactics.selection.mission
-	for i in range(damaged.size()):
-		var part: Part = damaged[i]
-		var cost: int = RepairResolver.scrap_cost_for(part)
-		var scrap_id: StringName = RepairResolver.scrap_resource_id_for(part)
-		var available: int = (
-			int(mission.gathered_resources.get(scrap_id, 0)) if mission != null else 0
-		)
-		_repair_menu.add_item("%s (%d %s)" % [part.id, cost, scrap_id], i)
-		if welder == null or available < cost:
-			_repair_menu.set_item_disabled(_repair_menu.get_item_index(i), true)
-	_repair_menu.id_pressed.connect(_on_repair_menu_id_pressed.bind(damaged, welder))
-	_repair_menu.close_requested.connect(_repair_menu.queue_free)
-	_repair_menu.id_pressed.connect(_repair_menu.queue_free, CONNECT_DEFERRED)
-	_repair_menu.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()), Vector2i.ZERO))
-
-
 func _on_repair_menu_id_pressed(id: int, damaged: Array[Part], welder: Part) -> void:
-	if welder == null or id < 0 or id >= damaged.size():
-		return
-	tactics.selection.queue_repair(welder.id, damaged[id].id)
+	var input: UnitInputModule = unit_input()
+	if input != null:
+		input.pick_repair(id, damaged, welder)
 
 
-## taskblock-30/31 Pass C: toggles the full debug control panel — `debug_
-## panel` is null whenever this isn't a debug build (never constructed at
-## all in `_build_ui()`), so this is a silent no-op there too, same
-## posture the button's own absence already gives it. `battle.bout_
-## injector` is read lazily, here, never cached at `_build_ui()` time
-## (which runs before any battle is loaded).
-func _on_inject_pressed() -> void:
-	if debug_panel == null:
-		return
-	if debug_panel.visible:
-		debug_panel.visible = false
-		return
-	debug_panel.setup(battle.bout_injector, DeepStrike.reference_humanoid_pool(), tactics)
-	debug_panel.visible = true
-
-
-## Refreshes the same way a debug HP/state mutation elsewhere in this
-## codebase already does (InspectPanel's own debug menu calls its own
-## view refresh) — a forced HP-to-0 can kill a part the header/views need
-## to know about.
-## taskblock-30 follow-up (supervisor): `remove_object` on a unit is the
-## one verb that needs to REMOVE a view rather than add/refresh one — done
-## here, before `sync_unit_views()` runs, so the same call never
-## resurrects what it was just told to vanish (`sync_unit_views()`'s own
-## `_removed_unit_ids` check is what makes that permanent afterward too).
-func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
-	if verb_id == &"remove_object":
-		var object: Dictionary = args.get("object", {})
-		if object.get("kind") == Enums.HitKind.UNIT and object.get("unit") != null:
-			battle.remove_unit_view(object.unit)
-	battle.sync_unit_views()
-	# taskblock-42 Pass E (BR35.03): only when the verb actually changed the
-	# board. Rebuilding terrain, grid lines and every blocker to reflect a
-	# changed AP value was the whole of that entry.
-	if DebugVerbs.affects_board(verb_id):
-		battle.sync_board_view()
-	battle.refresh_unit_views()
-	_update_readout_header()
-
-
-func _on_selection_changed() -> void:
-	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	# `BR51.10`: driven by whether the TARGET has something to describe, not by whether
-	# anything has been clicked. A bare cell is a real selection with nothing to inspect.
-	if inspect_button != null:
-		inspect_button.disabled = tactics.selection == null or not tactics.selection.can_inspect()
-	# tb32 Pass B: "in dartboard/aiming view only" — `aiming_at` (the
-	# TARGET) is what marks "the player is actually aiming right now,"
-	# not just having a unit selected; `aim_active_unit` is the shooter
-	# whose own read is worth protecting, so this is null the instant
-	# aiming ends even if a unit is still selected.
-	battle.board_view.aim_active_unit = selected if tactics.aiming_at != null else null
-	for view: HitVolumeView in battle.unit_views:
-		view.set_selected(view.unit == selected)
-		var target_preview: Variant = null
-		if view.unit == selected and not tactics.has_queued_move():
-			var facing: Variant = tactics.aim_facing()
-			target_preview = facing if facing != null else tactics.selection.previewed_orientation()
-		if view.preview_orientation != target_preview:
-			view.preview_orientation = target_preview
-			# taskblock-42 Pass B: this fires on EVERY orientation preview change
-			# while aiming, and an orientation change moves boxes without adding
-			# or removing any — the cheap path's best case. Sits squarely in
-			# BR26.02's aiming path; measured, not assumed.
-			if not view.refresh_transforms():
-				view.refresh()
-	_update_readout_header()
-
-
-## docs/10 taskblock05 C: bidirectional hover highlight — only the selected
-## unit's own view can ever have a matching part (that's the only body the
-## inventory tree, the other trigger for this signal, has rows for at all).
-func _on_highlight_changed() -> void:
-	var selected: Unit = tactics.selection.selected_unit if tactics.selection != null else null
-	for view: HitVolumeView in battle.unit_views:
-		if view.unit == selected:
-			view.highlight_part(tactics.highlighted_part)
-		else:
-			view.clear_highlight()
-
-
-## runNotes.md: "highlight what it's doing, and IF it's doing it." Active
-## exactly when there's a selected unit (the stat block has something to
-## resolve) or a live aim (the READING/RESOLVES readout has something to
-## show) — the same two conditions that already drive whether AimView/
-## StatPanel render anything at all, read here rather than re-derived.
-func _update_readout_header() -> void:
-	if _readout_header == null or tactics == null or tactics.selection == null:
-		return
-	var active: bool = tactics.aiming_at != null or tactics.selection.selected_unit != null
-	if active:
-		_readout_header.text = "COMBAT READOUT — active"
-		_readout_header.add_theme_color_override("font_color", HulkTheme.HIGHLIGHT)
-	else:
-		_readout_header.text = "COMBAT READOUT — idle"
-		_readout_header.add_theme_color_override("font_color", HulkTheme.DIM)
-
-
-## taskblock-48 Pass B2: a finished run offers its replayable failures. Doing nothing
-## when there are none is the common case and is deliberately silent — a green run
-## should not put anything on screen.
-func _on_suite_run_completed(finished_run: SuiteRun) -> void:
-	if watched_run_panel == null or finished_run.passed():
-		return
-	watched_run_panel.bind(battle, null)
-	var offered: int = watched_run_panel.offer_failures(finished_run)
-	if offered == 0:
-		return
-	var total: int = watched_run_panel.replayable_total(finished_run)
-	set_thinking_label("replaying %d of %d replayable failure(s)" % [offered, total])
-
-
-## A replayed fixture has been loaded into the board.
-##
-## **This overlay has no playback loop** — it is the human's control surface, and a
-## replayed bout here is a board to look at and drive by hand rather than one that
-## plays itself.
-##
-## Deliberately does **not** call `setup()`: that rebuilds the UI, including the replay
-## panel mid-iteration. `BattleScene.load_battle` has already emitted `battle_loaded`,
-## which this overlay reacts to, so the controls are pointed at the new state already.
-func _on_replay_loaded(_map_seed: int) -> void:
-	pass
-
-
-## taskblock-51: the readout's own visibility, independent of the panel that offers it.
-## The overlay owns the nodes; the debug panel only names them. A `match` here rather than a
-## lookup table because each element is a different node with a different way of being shown,
-## and an unknown id is ignored rather than crashing a debug surface.
-func _on_ui_element_toggled(element: StringName, shown: bool) -> void:
-	match element:
-		DebugUiElements.PERF_PANEL:
-			if perf_panel != null:
-				perf_panel.visible = shown
-
-
-## The panel emits; the overlay writes. A view reaching into a `CombatState` to log would
-## be the second logging path this project keeps deleting.
-func _on_perf_stats_ticked(snapshot: Dictionary) -> void:
-	if battle == null or battle.combat_state == null:
-		return
-	battle.combat_state.combat_log.emit(
-		LogEvent.new(
-			battle.combat_state.round_number,
-			Enums.Phase.RESOLUTION,
-			-1,
-			&"fps_dump",
-			snapshot,
-			"perf: %s" % " | ".join(perf_panel.stats.describe())
-		)
-	)
+func _on_repair_pressed() -> void:
+	var input: UnitInputModule = unit_input()
+	if input != null:
+		input.open_repair_picker()
