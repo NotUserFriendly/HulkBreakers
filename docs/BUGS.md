@@ -2126,7 +2126,13 @@ so `MapNavigability.stranding_cells` comes back clean and the sweep stays green.
 asserts a ramp's facing.** The defect is visible only by looking at the board, which is what the
 supervisor did.
 
-**Not yet decided, and deliberately left open:** whether the fix is to restrict `_open_a_route_out`
+**DO NOT FIX — supervisor instruction, 2026-08-04.** *"It's likely I'll make distinct ramp tiles
+obsolete in the next pass, so don't try and fix it."* The entry stays `Active` because the defect is
+real and confirmed, **not because it is waiting for someone to repair it**. If distinct ramp tiles do
+go away, this closes as `Obsolete` (the code it describes was replaced, and nobody verified a fix) —
+which is the supervisor's call to make, not CC's.
+
+**Not yet decided, and moot if the above lands:** whether the fix is to restrict `_open_a_route_out`
 to the four orthogonals, or to keep the diagonal candidate and stamp the ramp along the nearest
 cardinal axis. The first is simpler and matches the stated posture; the second preserves repair
 coverage in topologies where the only uphill neighbour really is diagonal (the isolated repro above
