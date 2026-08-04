@@ -9,8 +9,20 @@ extends RefCounted
 ## got wrong, and the injector was over its own file-length limit besides.
 ##
 ## **Logic, not debug policy.** Nothing here decides whether a swap is allowed or logs one; the
-## injector keeps both. This only answers "where does this unit stand now", which is a question
-## about a board and a roster.
+## injector keeps both. This answers "which file did they mean" and "where does this unit stand
+## now" — both questions about a board and a roster rather than about whether an injection may
+## happen.
+##
+## taskblock-56 Pass F3: **the file resolution moved here for the reason this class exists.** Adding
+## `load_map_file` put `BoutInjector` back over its 1000-line gate, which is the same pressure that
+## created this file — and "a catalog name or a `res://` path" is no more debug policy than "where
+## does this unit stand now" was. What stayed behind is exactly the injector's own protocol: the
+## guard, the refusal reason and the `inject` log line.
+
+## The `path` a board that never came from disk is logged under — see `BoutInjector.load_map_file`.
+## A sentinel nobody could mistake for a `res://` path, so a reader of the log is never sent looking
+## for a file that does not exist.
+const AUTHORED_SOURCE := "<authored>"
 
 
 ## Replaces the live board with `grid` and relocates every living unit onto it, returning the ids
@@ -71,3 +83,56 @@ static func _first_free_walkable(grid: Grid) -> Variant:
 
 static func _is_standable(grid: Grid, cell: Vector2i) -> bool:
 	return not grid.blockers.has(cell) and Surface.first_walkable(grid.surfaces_at(cell)) != null
+
+
+## `{"map": MapFile, "path": String, "error": StringName}` — the authored map a display name or a
+## `res://` path stands for.
+##
+## taskblock-53: **a name or a path.** The debug panel offers a dropdown of authored map names and a
+## test or script is better off naming a file; resolving both here keeps every caller on one entry
+## point instead of the panel doing a lookup the injector would then have to trust.
+##
+## The `error` is the injector's own refusal reason, unchanged, so moving this out did not change
+## what a refused load says.
+static func resolve_map(path_or_name: String) -> Dictionary:
+	var found: Dictionary = _resolve(path_or_name, MapCatalog.path_for(StringName(path_or_name)))
+	if found["path"] == "":
+		return {"error": &"no_map_by_that_name", "path": path_or_name}
+	var map := found["resource"] as MapFile
+	if map == null:
+		return {"error": &"path_is_not_a_map_file", "path": found["path"]}
+	return {"map": map, "path": found["path"], "error": &""}
+
+
+## The section mirror of `resolve_map`, with `SectionCatalog` and `SectionFile`'s own reasons.
+static func resolve_section(path_or_name: String) -> Dictionary:
+	var found: Dictionary = _resolve(
+		path_or_name, SectionCatalog.path_for(StringName(path_or_name))
+	)
+	if found["path"] == "":
+		return {"error": &"no_section_by_that_name", "path": path_or_name}
+	var section := found["resource"] as SectionFile
+	if section == null:
+		return {"error": &"path_is_not_a_section_file", "path": found["path"]}
+	return {"section": section, "path": found["path"], "error": &""}
+
+
+## taskblock-56 Pass F: keyed on `://` rather than on `res://` specifically, so a `user://` path is
+## a path too. The editor's own save-and-reopen is the caller that needs it, and no catalog display
+## name contains `://` — a name is a name and a URI is a URI.
+static func _resolve(path_or_name: String, catalog_path: String) -> Dictionary:
+	var path: String = path_or_name if path_or_name.contains("://") else catalog_path
+	if path == "":
+		return {"path": "", "resource": null}
+	return {"path": path, "resource": load(path) if ResourceLoader.exists(path) else null}
+
+
+## `{"grid": Grid, "stranded": Array[int], "error": String}` — `map` turned into a board and swapped
+## in. `error` carries `MapSerializer.to_grid`'s own readable sentence when the file does not
+## describe a board at all, and nothing is swapped in that case.
+static func swap_to_map(state: CombatState, map: MapFile, prefer_spawn_markers: bool) -> Dictionary:
+	var result: Dictionary = MapSerializer.to_grid(map)
+	if not result.has("grid"):
+		return {"error": result["error"]}
+	var grid: Grid = result["grid"]
+	return {"grid": grid, "stranded": swap_board(state, grid, prefer_spawn_markers), "error": ""}

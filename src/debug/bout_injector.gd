@@ -881,30 +881,39 @@ func force_hop_down(unit: Unit, target_cell: Vector2i) -> bool:
 func load_map(map_path: String) -> bool:
 	if not _guard(&"load_map", {"path": map_path}):
 		return false
-	# taskblock-53: **a name or a path.** The debug panel offers a dropdown of authored map
-	# names, and a test or script is better off naming a file. Resolving a name here rather
-	# than in the panel keeps both callers on one entry point instead of the panel doing a
-	# lookup the injector would then have to trust.
-	var resolved: String = map_path
-	if not resolved.begins_with("res://"):
-		resolved = MapCatalog.path_for(StringName(map_path))
-		if resolved == "":
-			return _refuse(&"load_map", &"no_map_by_that_name", {"path": map_path})
-	var resource: Resource = load(resolved) if ResourceLoader.exists(resolved) else null
-	var map := resource as MapFile
-	if map == null:
-		return _refuse(&"load_map", &"path_is_not_a_map_file", {"path": resolved})
-	var result: Dictionary = MapSerializer.to_grid(map)
-	if not result.has("grid"):
-		return _refuse(&"load_map", &"malformed_map", {"path": resolved, "why": result["error"]})
+	var found: Dictionary = BoardSwap.resolve_map(map_path)
+	if found["error"] != &"":
+		return _refuse(&"load_map", found["error"], {"path": found["path"]})
+	return _swap_to_map(found["map"] as MapFile, found["path"])
 
-	var grid: Grid = result["grid"]
-	var stranded: Array[int] = BoardSwap.swap_board(state, grid, true)
+
+## taskblock-56 Pass F3: **a `MapFile` that is not on disk yet** — the board an editor is holding.
+##
+## *"An editor that cannot launch what it authored is a file format with a GUI"*, and the launch has
+## to be **the same route a generated board takes, never a second one** — so this is `load_map` with
+## the resolve-a-file half taken off, sharing the swap, the logging and the unit relocation.
+func load_map_file(map: MapFile) -> bool:
+	var source: String = BoardSwap.AUTHORED_SOURCE
+	if not _guard(&"load_map", {"path": source}):
+		return false
+	if map == null:
+		return _refuse(&"load_map", &"path_is_not_a_map_file", {"path": source})
+	return _swap_to_map(map, source)
+
+
+## The half both share: board, swap, log. Neither guards nor resolves — each verb did its own.
+func _swap_to_map(map: MapFile, source: String) -> bool:
+	var swapped: Dictionary = BoardSwap.swap_to_map(state, map, true)
+	if swapped["error"] != "":
+		return _refuse(&"load_map", &"malformed_map", {"path": source, "why": swapped["error"]})
+
+	var grid: Grid = swapped["grid"]
+	var stranded: Array[int] = swapped["stranded"]
 
 	_log_injection(
 		&"load_map",
 		{
-			"path": resolved,
+			"path": source,
 			"name": map.map_name,
 			"width": grid.width,
 			"rows": grid.rows,
@@ -947,15 +956,11 @@ func load_map(map_path: String) -> bool:
 func preview_section(section_path: String, preview_seed: int = 0) -> bool:
 	if not _guard(&"preview_section", {"path": section_path, "seed": preview_seed}):
 		return false
-	var resolved: String = section_path
-	if not resolved.begins_with("res://"):
-		resolved = SectionCatalog.path_for(StringName(section_path))
-		if resolved == "":
-			return _refuse(&"preview_section", &"no_section_by_that_name", {"path": section_path})
-	var resource: Resource = load(resolved) if ResourceLoader.exists(resolved) else null
-	var section := resource as SectionFile
-	if section == null:
-		return _refuse(&"preview_section", &"path_is_not_a_section_file", {"path": resolved})
+	var found: Dictionary = BoardSwap.resolve_section(section_path)
+	if found["error"] != &"":
+		return _refuse(&"preview_section", found["error"], {"path": found["path"]})
+	var resolved: String = found["path"]
+	var section := found["section"] as SectionFile
 	var rng := RandomNumberGenerator.new()
 	rng.seed = preview_seed
 	var result: Dictionary = SectionSerializer.to_grid(section, rng)

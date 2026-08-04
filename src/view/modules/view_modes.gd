@@ -66,6 +66,31 @@ const SPECTATOR_MODULES: Array[StringName] = [
 ## a persistent mode.
 const BOUT_SETUP_MODULES: Array[StringName] = [&"bout_setup"]
 
+## taskblock-56 Pass F: **the editor, and the answer to the block's own question.**
+##
+## *"The editor mode should be a module set plus one new authoring module. If it is not — if it
+## needs to subclass, or reach into another mode, or duplicate a panel — say so plainly."* Six of
+## these seven rows already existed; `editor` is the one new module, and the chrome is the player
+## mode's own `PLAYER_COLUMNS` rather than a seventh layout. **No subclass, no new chrome, no
+## duplicated panel.**
+##
+## Ordered: `board_inspect` before `editor` (the editor arms its capture mode and connects to its
+## click at link time, and a module can only find one that mounted before it); `claim_volumes`
+## before `editor` for the same reason — the editor pushes its claims into it on every edit.
+##
+## **`claim_volumes` appears here and in no play mode**, which is exactly what Pass E built it for
+## and what `test_view_gap_modules.gd` asserts the other half of: a claim is consumed at assembly
+## and does not exist on an assembled board, so drawing one during a bout would be drawing
+## something that is not there.
+const EDITOR_MODULES: Array[StringName] = [
+	&"camera_framing",
+	&"claim_volumes",
+	&"inspect",
+	&"board_inspect",
+	&"combat_log",
+	&"editor",
+]
+
 
 static func player() -> ViewMode:
 	var mode := ViewMode.new()
@@ -122,6 +147,25 @@ static func bout_setup() -> ViewMode:
 	return mode
 
 
+## **The editor.** A `ViewMode` built exactly like the other four — which is the whole claim Pass F
+## had to make good on, and the reason this function is six lines rather than a file.
+##
+## `TurnPolicy.NONE`: an authoring surface drives no unit's turn. It is not a display-only *mode* in
+## the spectator's sense — it authors a board — but the axis `TurnPolicy` measures is who plays the
+## battle, and the answer here is nobody.
+static func editor() -> ViewMode:
+	var mode := ViewMode.new()
+	mode.id = &"editor"
+	mode.display_name = "Editor"
+	mode.chrome = ModeChrome.PLAYER_COLUMNS
+	mode.modules = EDITOR_MODULES
+	mode.turn_policy = ViewMode.TurnPolicy.NONE
+	# The board is the thing being authored, so a click on it must reach the editor rather than
+	# open a modal over it. The inspect panel stays mounted and reachable by its own button.
+	mode.options[&"inspect"] = {&"with_button": true}
+	return mode
+
+
 ## **The empty surface: no modules, no chrome, no turn policy.**
 ##
 ## This is what a bare `ControlOverlay` used to be before Pass D — the base class built nothing and
@@ -143,7 +187,7 @@ static func empty() -> ViewMode:
 
 ## Every mode, for tests and for anything that wants to enumerate them.
 static func all() -> Array[ViewMode]:
-	return [player(), spectator(), single_unit(), bout_setup(), empty()]
+	return [player(), spectator(), single_unit(), bout_setup(), editor(), empty()]
 
 
 ## The mode named `id`, or null. **Null rather than a default**, so a caller naming a mode that does

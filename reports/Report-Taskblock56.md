@@ -1,11 +1,23 @@
-# Taskblock 56 Report — One view of modules, and the editor that was not reached
+# Taskblock 56 Report — One view of modules, and the editor that proves it
 
-**Passes A, B, C, D and E landed, in order, each committed on a green full gate (2837/2837 at the
-end). Pass F — the editor — was not started.** The block's two structural acceptances both hold: every
-module mounts against a context with no overlay, and a mode is a table entry rather than a file. The
-editor was the one pass left, and it is the one the block called its own proof, so **the central
-question "is the editor a module set plus one authoring module?" is unanswered rather than answered
-either way.** It is specified in full in `PLAN.md` under *Map and section editors*.
+**All six passes landed, in order, each committed on a green full gate.** A–E landed first at
+2837/2837; Pass F followed in a later session and the block closes green.
+
+**The block's central question — "is the editor a module set plus one authoring module?" — is
+answered yes.** `ViewModes.editor()` is a six-line table entry: six modules that already existed
+plus one new `EditorModule`, in the player mode's own chrome. No subclass, no new chrome, no
+duplicated panel, nothing reached into another mode. The other two structural acceptances hold as
+before: every module mounts against a context with no overlay, and a mode is a table entry rather
+than a file.
+
+**One correction to how that is counted, because the naive measure gets it wrong.** Two of the
+editor's six existing modules — `claim_volumes` and `camera_framing` — are mounted by no *other*
+mode, so "modules unique to the editor" reads as three. They are not the editor bringing anything:
+Pass E built and tested both, and `PLAN.md` recorded `ClaimVolumeModule` as "correct and
+unreachable" pending exactly this surface. The test therefore counts against a pinned list of what
+existed before Pass F opened.
+
+*Sections below are in pass order; Pass F's are at the end.*
 
 ## Decisions made without asking
 
@@ -135,7 +147,187 @@ ID. **A supervisor call: real defect, or dead branch?**
 internal path exists, is tested, and nothing outside its own tests reaches it. Either it is unfinished
 work or it is dead code, and which one determines whether it belongs in `PLAN.md` or in a deletion.
 
-**Does the editor need a subclass?** The block's own most valuable possible finding, and it is
-unanswered because Pass F was not reached. Everything it needs is in place — seventeen modules, a mode
-table, a chrome layout system, and `ClaimVolumeModule` sitting tested and deliberately unmounted waiting
-for an authoring surface to turn it on.
+**Does the editor need a subclass?** ~~The block's own most valuable possible finding, and it is
+unanswered because Pass F was not reached.~~ **Answered by Pass F: no.** See that pass's sections
+below.
+
+---
+
+# Pass F — the editor
+
+## Decisions made without asking (Pass F)
+
+**The editor mode reuses `ModeChrome.PLAYER_COLUMNS` rather than declaring a layout of its own.**
+The alternative was an `EDITOR_COLUMNS` chrome sized to an authoring panel, which would have been
+defensible and would also have weakened the pass's own claim: a chrome is a named layout a mode asks
+for, so adding one is the closest thing to "the editor needed a surface of its own" that the module
+system still permits. Reusing an existing layout makes "no new chrome" a fact rather than a
+judgement call, and the authoring panel sits in the left column that already exists for panels.
+
+**Nothing validates on the way in; `GridPlacement.can_place` is replayed as a warning instead.** The
+alternative was to gate placement on the attachment grammar, which is what the generator does. F4
+says warn and never block, and `MapSerializer`'s header had already settled the same question for
+the load path — so the grammar is replayed over a board grown in authored order and reports "a
+catwalk with nothing to attach to" rather than refusing it. **A deliberately broken board is
+authorable**, which was the requirement.
+
+**Undo is a snapshot stack, not an inverse operation per verb.** The alternative is cheaper at
+runtime and more code: twelve inverses, of which the one nobody exercises is the one that is wrong.
+A board is a few hundred placements, so a full deep copy per edit is affordable and makes "undo
+restores the prior state exactly" true by construction. Two consequences chosen deliberately: every
+verb snapshots *even when it changes nothing measurable* (otherwise an author's third undo lands
+somewhere different depending on what their second edit hit), and addressing is by cell rather than
+by a held `MapPlacement` (a restore builds fresh resources, so a held reference would point at a
+placement the model no longer contains).
+
+**`BoutInjector.load_map_file` was added rather than having the editor save-then-load-by-path.** The
+path route works and needs no new code, and it would mean the only launchable board is one already
+written to disk. The factoring keeps one route into a bout: `load_map` and `load_map_file` share
+`_swap_to_map`, so an authored board is marked `was_injected` and logged exactly as any other board
+swap is — under `load_map`'s own verb name, with `<authored>` as its path, because a log line naming
+a file that does not exist is worse than one saying there was none.
+
+**When that put `BoutInjector` over its 1000-line gate, the file resolution moved to `BoardSwap`
+rather than the limit moving.** The alternative — raising `max-file-lines` — is precisely what
+taskblock-45 Pass E spent a pass undoing, and `test_retired_planner_sweep.gd` asserts the 1000
+directly. `BoardSwap` exists *because* the injector was over its limit once before, and its header
+says so; "which file did they mean" is no more debug policy than "where does this unit stand now"
+was. `resolve_map`/`resolve_section`/`swap_to_map` moved; the guard, the refusal reasons and the
+`inject` log line stayed, and the reasons a refused load gives are unchanged. **The injector now
+sits at exactly 1000 lines**, which is a thing to notice rather than to be comfortable about — the
+next verb added to it has to move something out first.
+
+**The board is swapped live on every edit, so units get relocated as you author.** The editor mode
+installs over whatever bout `BattleScene` already built. The alternatives were to clear the roster
+(inventing a bout concept this pass has no business inventing) or to draw the authored board without
+touching the live grid (a second rendering path for the same board — the parallel-system smell).
+Swapping through the same `BoardSwap` a map load uses means what you author *is* what a bout would
+get, and the relocation is stable rather than jumpy. It is visibly odd, and it is recorded in the
+module header and in `PLAN.md` against *Main menu*, which is where a no-bout entry point belongs.
+
+**The whole-section declarations are discovered from `SectionFile`, not listed.** A constant list
+would be simpler to read and would need editing every time the section format grows a field. The
+discovery reads the resource's own property list minus the properties the editor models explicitly,
+so a new `@export` becomes an editable field the day it is added — the standing open-vocabulary rule
+applied to an authoring surface rather than to content.
+
+**Adding the editor key was scope taken on, and taken on deliberately.** Nothing installed the mode:
+it was reachable only from tests. That is exactly the state Pass E left `ClaimVolumeModule` in and
+which `PLAN.md` then had to carry as an open item for a whole block, so shipping an unreachable
+authoring *surface* would have repeated the mistake one level up. `EDITOR_KEY` (N) mirrors
+`SIMULATE_BOUT_KEY` exactly — one constant, one legend row, two lines in
+`BattleScene._unhandled_input` — and that cost is itself the clearest measure of what the mode table
+bought.
+
+**`target` is an open `StringName`, not a two-value enum.** It has two answers today, which argues
+for an enum by CLAUDE.md's rule. It names a *file format*, and a third authored format is a schema
+plus a serializer rather than an engine state, so it is content vocabulary in the same sense
+`MapPlacement.kind` is. Reversible either way; flagged because the rule genuinely points both
+directions here.
+
+## Tests that failed, then were corrected (Pass F)
+
+**Seven, across four files.** `test_editor_controller.gd` passed 30/30 on its first run; the seven
+were four in `test_editor_mode.gd`, one caught only by the full gate, and two caught only by
+regenerating the suite profile. **The five most useful are below; the last two are covered in their
+own section under "the profile was four taskblocks stale", because they are not really about this
+pass.**
+
+Two were real defects in my code, two were my own fixtures holding wrong assumptions, and three were
+pre-existing debt that my work made visible.
+
+1. **`_save_into` wrote to `res://data/maps/user://test_editor_mode_saved.tres.tres`.** A real
+   defect. It keyed "is this already a path" on `res://` rather than on `://`, so any absolute path
+   that was not `res://` got the directory and the extension glued on anyway. **The test was right
+   and the code was wrong.** Fixed by keying on `://`, which is the honest question being asked.
+2. **`open()` then could not reopen what the editor had just written** — the same assumption in
+   reverse, and only visible once (1) was fixed. Rather than patch the second copy, `open()` now
+   goes through `BoardSwap.resolve_map`/`resolve_section`, so "a name or a path" is answered in one
+   place for the editor, `load_map` and `preview_section` alike. `BoardSwap`'s own path test widened
+   from `res://` to `://` in the same edit; no catalog display name contains `://`.
+3. **"exactly one module is new to the editor" failed, reporting three — and the test was wrong, not
+   the mode.** `claim_volumes` and `camera_framing` are declared by no other mode because Pass E
+   built them for exactly this surface and left them unmounted. Measuring "new" as "unique to the
+   editor" measures the wrong thing: **a claim about what a pass cost cannot be read off the tree
+   that pass already changed.** Rewritten to count against a pinned list of the eighteen modules
+   that existed before Pass F opened, with the reasoning in the constant's own comment. This is the
+   most useful failure of the four — the naive measure would have made an honest result look like a
+   failed one.
+4. **"sanity: the live board is not already the authored one" failed because it already was.** The
+   fixture authored a board and then asserted the live grid had not changed yet — but authoring
+   swaps the board live, which is the feature. The sanity check was rewritten to assert on
+   `was_injected` instead, which is what actually distinguishes *previewing* a board from
+   *launching* one. The behaviour was right; my assumption about it was a turn out of date.
+
+5. **The retired-word guard caught a doc comment, and only the full gate could.** I wrote "writing a
+   field into the void" in `editor_controller.gd`; "void" has been lore-only outside a `-> void`
+   annotation since taskblock-39/40. Reworded. **Worth recording because of where it was caught:**
+   both targeted runs and the whole view-modules directory were green, and this is structurally
+   invisible to them — the guard sweeps `src/`, so only a run that includes it can see a word I
+   introduced anywhere. It is the concrete case for CLAUDE.md's "widen before you commit" rather
+   than an argument for it.
+
+## The profile was four taskblocks stale, which is the other two failures
+
+**`test/suite_profile.json` was last regenerated at taskblock-52** (commit `303e1db`), so the
+per-taskblock regeneration was skipped for 53, 54, 55 and 56 A–E. Both remaining failures are that,
+surfacing at once when I regenerated it — and **neither guard could have reported earlier**, because
+both read the *committed* profile rather than the live run, a trade `test_suite_budget.gd`'s own
+header states outright.
+
+**`ui_builds` 344 → 627, of which this pass is 63.** Measured per file against the tb52 profile so
+the growth names its causes: `test_editor_mode.gd` +63 (mine), `test_view_modes.gd` +38,
+`test_spectator_overlay.gd` +36, `test_resolution_player.gd` +33, `test_squad_control_overlay.gd`
++15, eleven others +47. So **169 of the 232 landed before Pass F and were never recorded.** The
+baseline is raised to the honest current measurement with that table in `suite_budget.gd`. The
+lesson is about cadence rather than size: regenerated per taskblock, each of these would have been
+reported against the change that caused it, which is the argument that file's header already makes.
+
+**`test_map_serializer.gd` builds 2 bouts and was not in `SuiteTier.BOUT_FILES`.** It has carried
+`should_skip_script()` since taskblock-53 Pass B — the fast gate really was skipping it — but the
+list entry was missed, and the tier guard reads bout counts from the stale profile, so it never saw
+the two bouts that appeared at tb53. Added. **Nothing in Pass F caused it**: the file has not been
+touched since taskblock-54 Pass A, and a targeted run confirms the 2 bouts against the current tree.
+
+**A recommendation rather than a finding:** regenerate the profile with `WRITE_PROFILE=1` at the end
+of every taskblock, as the file's header assumes. Four blocks of drift arriving as one number is the
+failure mode the ratchet was built to prevent, and it very nearly cost more to attribute than it did
+to fix.
+
+**Also worth recording: the Pass E claim-module guard had to be narrowed, and that is the guard
+working.** `test_no_play_mode_declares_the_claim_module` asserted that *no* mode in `ViewModes.all()`
+declares `claim_volumes` — written as a total ban because there was no authoring surface for the
+exception to apply to. It now excludes a pinned one-entry `AUTHORING_MODES` list and additionally
+asserts that the set of modes drawing claims is *exactly* that list, so the exception cannot widen
+by accident. A total ban retired the day the thing it held empty went live.
+
+## `SUPERVISOR`-owned entries moved to `Pending` (Pass F)
+
+**None.** Pass F touched no entry in `docs/BUGS.md`. The two defects it fixed were introduced and
+corrected inside the pass and never landed, so neither is a ledger entry.
+
+**What the supervisor may want to look at anyway, since none of it is verifiable headlessly:** press
+**N** in a running game to open the editor. The claim boxes drawing in their four colours, the
+authoring panel's layout in the player mode's left column, and whether the live board preview reads
+as helpful or as distracting while units are shuffled around by it are all things a headless run
+cannot report on.
+
+## Open questions (Pass F)
+
+**Should the editor start on an empty world rather than on top of a bout?** Today it installs over
+whatever `BattleScene` built, so units are relocated onto the authored board on every edit. The board
+and the authoring are correct; the units are noise. The fix is an entry point that builds a world
+with no bout in it, which is *Main menu*'s work and is sequenced immediately after this. **The
+evidence points at leaving it** until that item is picked up, rather than growing a second
+world-construction path here — but if the noise makes the editor unpleasant to use in practice, that
+is a judgement only the supervisor can make from the running game.
+
+**A claim is authored one cell at a time.** `add_claim` places a one-cell volume from the deck to a
+flagged 2.4, and `resize_claim` takes an arbitrary `Box` and is fully tested — so every extent the
+format can express is reachable, and only the click-and-drag *affordance* is missing. Whether that
+affordance is worth a pass on its own, or should wait until someone has authored a real section and
+found out how much it hurts, is a scheduling call. Recorded in `PLAN.md` either way.
+
+**`DEFAULT_CLAIM_HEIGHT` is 2.4 and nothing chose it.** It is the height a full-cell wall stands at,
+which makes it a defensible default and not a designed one. Flagged in the constant rather than
+presented as a decision.

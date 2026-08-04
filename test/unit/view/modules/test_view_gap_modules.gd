@@ -14,6 +14,14 @@ extends GutTest
 ## 3. **Claim volumes get drawn**, one box per claim, in the right colour and at the right extent,
 ##    and **never in play**.
 
+## **taskblock-56 Pass F narrowed this from "no mode" to "no play mode", and that is the guard
+## working rather than being weakened.** Pass E wrote it as a total ban because there was no
+## authoring surface for the exception to apply to — the module was correct and unreachable, and
+## `PLAN.md` recorded it as waiting for the editor. The editor exists now, so the ban goes back to
+## the thing it was always about: a *play* surface must not draw claims. Widening the exception any
+## further would need a second authoring mode to be added to the list below, deliberately.
+const AUTHORING_MODES: Array[StringName] = [&"editor"]
+
 
 func before_each() -> void:
 	DataLibrary.reset()
@@ -290,9 +298,23 @@ func test_showing_again_replaces_rather_than_accumulates() -> void:
 ## **NEVER IN PLAY**, checked against the mode table rather than asserted in prose. A claim does not
 ## exist on an assembled board, so drawing one during a bout would be drawing something that is not
 ## there — the exact defect the riser and ground-quad deletions were about.
+##
+
+
 func test_no_play_mode_declares_the_claim_module() -> void:
+	var drawn_by: Array[StringName] = []
 	for mode: ViewMode in ViewModes.all():
+		if mode.modules.has(&"claim_volumes"):
+			drawn_by.append(mode.id)
+		if AUTHORING_MODES.has(mode.id):
+			continue
 		assert_false(
 			mode.modules.has(&"claim_volumes"),
 			"%s is a play surface and must not draw claims" % mode.id
 		)
+	gut.p("claims are drawn by: %s" % ", ".join(drawn_by))
+	assert_eq(
+		drawn_by,
+		AUTHORING_MODES,
+		"the authoring modes that draw claims must be exactly the ones declared above"
+	)
