@@ -7,12 +7,14 @@ defects → `BUGS.md`.
 because of how big it is, how interesting it is, or when it was written down. A one-line change and a
 whole system are peers here: work is single-threaded, so size never affects what comes first.
 
-**An item is roughly one taskblock.** Loosely — a block can be large because everything in it is
-related, or small because it is a standalone content add. The rule guards granularity in both
-directions: an item that would take three blocks is really three items with its dependencies hidden
-inside it, and six items that would all land in one block are one item pretending to be a sequence.
-When scope changes, resize the item rather than letting it drift. This is about *granularity*, not
-ordering — size still never affects what comes first.
+**Size means nothing here; position means everything.** An item may be a single pass, a whole taskblock,
+or several — that is what the flat structure is for, and sizing items to fit a block would just be a
+second bucket system wearing a different hat. **An item's position in this file is its schedule.** What
+an item owes is a coherent piece of work with its own dependencies, not a particular length.
+
+**Order carries the sequencing, so an item that would simply go better after another belongs after it**
+— with the reason in its body. There is no `Wants:` line; a soft preference recorded as a field becomes
+another thing to keep true.
 
 **Everything is levelled.** No phases, no keystones, no topical sections — a flat ordered list of things
 that could each be picked up next. Anything deferred, descoped, or spun off from a taskblock lands here
@@ -125,60 +127,38 @@ on this game has been an all-Trained rate.
 rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
 combat log.
 
-### 3. Multi-level: AI climb/hop-down and interruptible vertical movement
-**Needs:** taskblock-37 Passes A–D (landed — `ClimbAction`/`HopDownAction` exist, capability-gated
-and cost-correct on their own). **Unblocks:** trusting any AI completion measurement — a unit that
-walks into ground it cannot leave is out of the mission while still alive and still taking turns,
-which is indistinguishable from the planner failing.
+### 3. Multi-level cleanup
+**Needs:** nothing. **Unblocks:** vertical movement being as legible and as interruptible as
+horizontal movement.
 
-**Promoted from QUEUED to NEXT by CC, on `BR46.02`'s measurement rather than on judgement**: 16 of 40
-generated maps at the real bout size contain one-way ground, worst seed 216 cells. It was filed as "a
-follow-on refinement, not a dependency of anything else" and that is no longer true — reorder if you
-disagree, but the old placement was made before anyone had counted.
+**Most of this item has landed.** `BR46.02` (one-way ground) closed in taskblock-53 Pass D when the
+generator took on navigability; ramps-where-missing landed with it; a climb became interruptible in
+Pass E; ladders arrived as the route that does not need a capability. **What is left is the tail.**
 
-Two gaps flagged, not silently dropped, while building `ClimbAction`/`HopDownAction`:
-- **No AI path ever queues either action.** The planner still only ever moves via ordinary `MoveAction`
-  — a climb-capable unit (once any part ever authors the `CLIMBER` tag) has no way to actually climb
-  in a real bout today.
-**BR46.02 — 16 of 40 generated maps contain ground a unit can walk into and never leave.** Descent is
-free, ascent is `CLIMBER`-gated, and nothing carries the tag. A symmetric connectivity check reports
-these maps as fine (spawn zones mutually reachable on 60 of 60 seeds); the defect only appears under
-*asymmetric* reachability. Three directions, and the map-generator half is **low priority**:
+- **A hop-down cannot be interrupted.** taskblock-53 Pass E made `ClimbAction` check the overwatch hook
+  on the cell it steps onto — `HopDownAction` still checks nothing. Half a pass, and the inconsistency
+  is the argument: *every real exposure the same* (`docs/09`).
+- **The planner does not know a hop-down is one-way.** A unit that drops off a ledge to reach something
+  strands itself for the rest of the bout. "Can I get back?" belongs in the decision rather than being
+  discovered afterwards. **Stranding is a legitimate outcome** — a player knocking someone into a pit is
+  the game working — but a unit choosing it *unknowingly* is not.
+- **Prefer access routes: penalise ungated descent, exempt ramps.** Weight a candidate cell *slightly*
+  worse when reaching it means dropping a level, and not at all via a ramp. Units then route through
+  ramps without any rule naming ramps, and a ramp is two-way. **"Slightly" is load-bearing:** a hop-down
+  to reach an otherwise unreachable target must still win when the reason is good enough. It is a
+  consideration weight, so it is data. **Deliberately held until after the one-way awareness above** —
+  with the generator already guaranteeing a route out, this is a *preference*, and landing both at once
+  would hide which one did the work.
+- **A confined unit should be legible, not silent.** Escalate to an **agitated roam** or **pace** —
+  visibly restless rather than idle — and after a few turns of no progress, **shut down**. This does not
+  fix terrain and must not be logged as though it did; it stops a stranded unit from being
+  indistinguishable from a hang.
 
-- **Ramps where they are missing** is the cheap generator fix — any region whose only exits are
-  descents gets a ramp — and it should ride along with other map-gen work rather than justifying a
-  block.
-- **Prefer access routes: penalise ungated descent, exempt ramps.** The cheapest fix and probably the
-  right one. Weight a candidate cell *slightly* worse when reaching it means dropping a level, and do
-  **not** apply that penalty when the descent is via a ramp. Units then route through ramps by
-  preference without any rule naming ramps, and a ramp is two-way — so a unit that takes one can come
-  back. **Slightly is doing real work in that sentence:** a hop-down to reach an otherwise unreachable
-  target must still win when the reason is good enough, so this is a thumb on the scale, not a
-  prohibition. It is a consideration weight, which means it is data.
-- **A short-term behavioural mitigation, worth more than it sounds:** a unit that finds itself confined
-  escalates to an **agitated roam** or **pace** — visibly restless rather than idle — and after a few
-  turns of no progress, **shuts down**. That converts a unit silently absent from the mission into a
-  legible outcome the player can see and the log can record. It does not fix the terrain, and it should
-  not be mistaken for a fix; it stops a `TERMINATED` bout from being indistinguishable from a hang.
-- **Authoring a `CLIMBER` part** is the feature, below.
+**Not doing: authoring a `CLIMBER` part.** Climbing parts are the exception, not the rule, and **a map
+must be navigable without one** — which is what ladders are for. `Shell.can_climb()` reads a tag no part
+carries, and that is correct rather than a gap.
 
-- **No part anywhere authors `CLIMBER`, so nothing that exists can climb out of anything.**
-  `Shell.can_climb()` reads the tag (`shell.gd:105`) and no `.tres` carries it. A **content gap, not a
-  pathfinding bug** — the pathfinder correctly reports that a unit which hopped down a ledge cannot get
-  back up, and BR40.04 measured the consequence: a unit spawned in a sunk cell has exactly one reachable
-  cell. Authoring one `CLIMBER` part closes a whole class of stranding in one file.
-  **`BR46.02` measured the wider consequence and it is much bigger than the spawn case:** 16 of 40
-  generated maps at the real bout size contain ground a unit can walk INTO and never leave — worst
-  seed, 216 such cells. Spawn zones are mutually reachable on 60 of 60 seeds, so a symmetric
-  connectivity check reports these maps as fine; the defect only shows under asymmetric reachability —
-  flood out from a spawn, then flood back from each cell reached and ask whether the spawn is still in
-  the set.
-- **Until it exists, the planner must treat a hop-down as one-way.** A unit that drops off a ledge to
-  reach something strands itself for the rest of the bout. "Can I get back?" belongs in the decision
-  rather than being discovered afterwards.
-- **Neither action integrates with `MoveAction`'s own mid-move overwatch-trigger hook.** An ordinary
-  move can be interrupted mid-flight; a climb or hop-down currently can't be, which is inconsistent
-  with "every real exposure the same" once a raised area is common enough to matter tactically.
+**The AI queuing a vertical move is its own item** below, not part of this one.
 
 # QUEUED
 
@@ -421,35 +401,11 @@ number of milliseconds.
 worse than a freeze, because the player waits *longer* before concluding something is wrong. Panic (see
 below) is the exit strategy and should land with or before this.
 
-### Tracers and hit visuals
-**Needs:** nothing now. taskblock-44 brought an AI step to ~525ms debug / ~412ms release and made the
-wait navigable rather than frozen, so shots can be watched resolve. **Unblocks:** the six bugs it covers.
-
-*Was taskblock-42 Pass F, carried inline here because that spec file is archived and a pointer to it
-would dangle.*
-
-Verifying any of these means watching shots resolve, and the turn-boundary hitch is what makes that
-unverifiable by eye. taskblock-43 brought an AI step from ~745ms to ~646ms — real, and not enough.
-
-**Treat as one investigation, not six fixes.** The suspicion is that several share a root in how a
-shot's endpoint and hop sequence are turned into drawn geometry. All six live in `ResolutionPlayer`
-and the tracer-drawing path:
-
-- **BR34.05** — misses vanish instead of striking anything.
-- **BR35.04** — a DEFLECT's bounce tracer is a decorative fixed-range projection, not the real path.
-- **BR35.07** — `STOP_DEAD` tracers are drawn past their own hit point, reading as penetration.
-- **BR34.01** — every penetration/deflection hop replays the full bright hit-flash.
-- **BR35.08** — detonations are invisible; nothing is drawn when an explosion resolves.
-- **BR27.03** — other shots appear to resolve before an earlier shot's deflect finishes. Ordering
-  rather than geometry, but the same player-facing subsystem and worth holding in view while the rest
-  is open.
-
-**The rename-only fence is lifted for this work.** taskblock-40 Pass A renamed `void_range` to
-`miss_range` under an explicit fence because the supervisor believed the area held a live bug.
-**BR34.05 and BR35.04 are that bug.**
-
 ### Visible combat artifacts
-**Needs:** nothing. **Unblocks:** the supervisor being able to judge combat by watching it rather than
+**Needs:** nothing, but **placed after *Overwatch* and *Explosions*.** The overwatch cone is not worth
+drawing while overwatch can still be declared repeatedly (`BR52.15`) and fires only on movement
+(`BR52.12`) — you would be drawing a threat that does not behave like one. Explosion visuals want the
+HE / fragmentation / hazard split defined first, or they depict a system that is about to change. **Unblocks:** the supervisor being able to judge combat by watching it rather than
 by reading a log.
 
 **If a combat rule has a spatial extent, the player should be able to see that extent.** Several
@@ -819,45 +775,6 @@ deliberately slowing the sense of progress. Usable both ways — diagonal to com
 orthogonal to build dread before an arrival. Costs nothing but a generation preference.
 
 
-### The map format — landed, taskblock-53
-`MapFile`, `MapPlacement`, `MapSerializer`, `MapCatalog`, and `data/maps/proving_ground.tres`.
-Recorded here only because this item was previously titled *"the tile format"*, which described what
-shipped as the **map** format and now collides with the vocabulary above. **A map is a complete
-playable board**: cells, surfaces with height and facing, blockers, field items, spawn zones.
-
-### Cells stop carrying height; only parts do — landed, taskblock-55 Pass B
-The per-cell ground quad is deleted and nothing replaces it. `BoardView._build_tiles` draws the
-walkable `Part`s as their real authored boxes at their own height and facing, from the same
-`UnitGeometry.assembly_placements` call `RayCaster._consider_surface` marches; an unfloored cell draws
-nothing. Grid lines went back to one flat plane, since a line riding a tile's top face would be the
-same co-planar pairing the quad was deleted for. A 0.3 tile is standable, pathable, and struck from
-above, below and edge-on.
-
-**Two things settled here that the rest of the block builds on:**
-- **A tile is the walkable `Part`; a `Surface` is the record of one placed at a cell** (which part,
-  what height, what facing); a **cell** is the grid square and has no height of its own. Written into
-  `surface.gd`.
-- **The `tile` vocabulary guard is retired.** It banned the word outright and so failed the first code
-  that used it as intended. `void` and `HULK_` stay guarded — those words are retired, not reserved.
-
-**Still open, deliberately:** filling the side of a raised tile is authored content, so raised floors
-read as floating slabs until sections author their sides. Expected, not a regression.
-
-### The section format — landed, taskblock-54
-`SectionFile`, `SectionEdge`, `SectionSerializer`, `SectionCatalog`, three authored sections in
-`data/sections/`, and a debug preview. **The edge metadata proved sufficient** to decide a join and
-place the second section relative to the first — Pass E stitched two of them, walked a unit across
-the seam, and passed the navigability flood.
-
-Recorded here rather than deleted because the two items below both name it as a dependency, and
-because one finding belongs with them: **the socket analogy breaks in three places**, so an edge is
-not a socket and the editor should not assume it is. A socket is a point with a transform, an edge
-is a span with walkable openings; a socket has one host, two sections are peers and either may
-refuse; `PartGraph.attach` records an occupant, a join is a fact about a layout.
-
-**Still unbuilt and deliberately so:** anything that *chooses* sections. Pass E proves one join
-between two named files. Selection, layout and whole-board assembly are the generator item below.
-
 ### The generator is stitching, not carving
 **Needs:** *The section format* (landed, tb54), *Map and section editors*. **Unblocks:** retiring most of `MapGen`.
 
@@ -877,34 +794,34 @@ and joining* authored fragments rather than carving rooms and corridors procedur
   asymmetric flood is the check and it does not care how the map was produced.
 - **Do not invest further in the current generator.** Fix invariants; do not extend it.
 
-### The section authoring vocabulary — landed, taskblock-55 Passes C and E
-`SectionClaim` (a `Box` plus one of four co-occupancy verbs — `empty`, `interior`/`exterior`,
-`entry`, `merge`), `SectionSpawn` (per-cell clutter and spawners with a chance), and the
-whole-section declarations on `SectionFile`: `maximum_clutter`, `banned_clutter`,
-`minimum_garrison` (all-or-nothing), `maximum_garrison`, `encounter_types`, `is_room`.
-`ClaimResolver` applies the verbs; `SectionRoller` rolls the declarations against a seeded RNG;
-`SectionSerializer.stitch` consumes them. The `MapSerializer` delegation became partial, as
-predicted. Eleven named demo sections in `data/sections/` exercise the vocabulary, and the debug
-preview takes a seed so the same seed reproduces a section exactly.
+### Section vocabulary residue
+**Needs:** varies per bullet; none blocks the editor. **Unblocks:** nothing on its own.
 
-**Residue, carried forward rather than closed:**
-- **`is_room` grouping is order-based, not adjacency-based** — a section declaring `is_room` starts
-  a room and one that does not joins the room already open. Correct for a pair, and it wants a real
-  adjacency graph when the generator lands. **Needs:** *The generator*.
-- **`encounter_types` is consumed by nothing**, deliberately — authored and validated so sections
+Four things taskblock-55 landed narrower than the concept, kept because each is a place the
+implementation is knowingly smaller than what it models.
+
+- **`is_room` grouping is order-based, not adjacency-based.** A section declaring `is_room` starts a
+  room; one that does not joins the room already open. Correct for a pair — with two sections there is
+  only one possible adjacency — and it wants a real adjacency graph the moment three exist.
+  **Needs:** *The generator is stitching, not carving*.
+- **`encounter_types` is consumed by nothing**, deliberately. Authored and validated so sections
   written today need not be revisited. **Needs:** an encounter system, which does not exist.
-- **`SectionRoller.part_for_tag` is a flagged hook**, resolving a clutter tag to a part of the same
-  id and to nothing otherwise. Choosing which part a *kind* of thing resolves to is a content
-  library's job. **Needs:** a content library.
-- **No thin wall part is shipped**, so the "two 0.2 walls merge to 0.2, not 0.4" case cannot be
-  exercised against real content — `wall` is a full-cell 1.0 x 2.4 x 1.0 box. The merge test asserts
-  the invariant (merged thickness equals one part's own) instead, which holds at any thickness.
-  **Needs:** nothing; it resolves itself when thin walls are authored.
-
+- **`SectionRoller.part_for_tag` is a flagged hook** — a clutter tag resolves to a part of the same id
+  and to nothing otherwise. Choosing which part a *kind* resolves to is a content library's job, and
+  the dull rule exists so this does not quietly become where content selection lives.
+  **Needs:** a content library.
+- **No thin wall part is shipped**, so *two 0.2 walls merge to 0.2, not 0.4* cannot be exercised
+  against real content — `wall` is a full-cell 1.0 x 2.4 x 1.0 box. The merge test asserts the
+  invariant instead (merged thickness equals one part's own), which holds at any thickness.
+  **Resolves itself** when *Wall coatings, and walls that are not cell-wide* authors one.
 
 ### Seeing what you authored — three view gaps in the section workflow
-**Needs:** nothing. **Unblocks:** authoring sections without guessing; the section editor, which
-inherits all three.
+**Needs:** nothing. **Unblocks:** authoring sections without guessing.
+
+**Placed before *Map and section editors* on purpose.** The editor inherits all three gaps, so building
+it first means building it blind and then retrofitting camera framing and claim visualisation into a
+UI. Claim volumes in particular are invisible today — the only way to know a section declares one is to
+read its `.tres`, which is the one thing an editor cannot work around.
 
 Three things that make an authored section hard to look at. None is a defect in what was built; each is
 a piece of the view that was never asked for.
@@ -1012,7 +929,8 @@ decide how to reduce or extract it. Vehicles are a later solution layered on top
 
 
 ### Storage — you store THINGS, not resources
-**Needs:** nothing. **Unblocks:** stash UX, the meta economy, substance content.
+**Needs:** nothing, but **design it alongside *The meta layer***, which describes the same economy from
+the other end. Settled separately, one will contradict the other. **Unblocks:** stash UX, the meta economy, substance content.
 
 The backbone of the whole economy, and mostly *composition* of built systems (nested containers, mangle,
 salvage_yield, `StatResolver`).
@@ -1316,6 +1234,38 @@ diff** — so a test found genuinely load-bearing is a result worth recording, e
 correct-as-is findings in the tb35 wall audit. Runtime is a secondary benefit; correctness of what the
 suite *claims* is the point.
 
+---
+
+**Three small items folded in here**, because they are the same surface and none is worth its own entry:
+
+- **Retire `MIN_COMPLETION_RATE`.** **Nothing reads it.** taskblock-50 Pass D replaced the rate with
+  `seeds_to_first_win`, and every surviving mention across four files is a *comment about* the constant
+  — `test_full_mission.gd` says so in its own header. **It does not need a number picked; it needs
+  deleting.** Keep the cautionary story where `suite_budget.gd:10` and `completion_sampler.gd:89`
+  already tell it better: a threshold on a small integer count sat less than one seed from red and the
+  response was to lower it.
+- **The audit's Tier 2 merges** — three clusters that are same-rule *and* same-scope, so the cut rule
+  applies rather than correctly refusing. Roughly 35 s and ten tests. **Filed because the CSV they came
+  from is deliberately stale, so this finding does not regenerate itself.**
+
+  | rule | rows | cost |
+  |---|---:|---:|
+  | the run panel reports the real rung and the real verdict | 9 | 20.6 s |
+  | the gate's exit code reflects the run's real verdict | 4 | 12.3 s |
+  | every spawn zone is walkable and reachable | 8 | 17.0 s |
+
+  Costs are as-measured then and want re-taking; taskblock-50 moved a great deal underneath them.
+  **Merged tests keep distinct assertion messages** or a failure stops naming which fact broke.
+- **`test_completion_sampler.gd` is no longer the problem it was cited as.** taskblock-47 took it
+  437 s → 207 s and taskblock-50's corpus and stubbing work took it to **6.2 s**. What remains is
+  genuine — it plays real missions to check the sampler reports them correctly. **Confirm it is right
+  and close the question**, rather than cutting.
+
+**A note on cost figures in this file.** Three of the numbers above were stale enough to invert a
+conclusion — an item proposing a supervisor decision about a 102-second lever that had become a
+six-second one. **A cost recorded here should carry the taskblock that measured it**, or it reads as
+current forever.
+
 ### Review pass over map generation
 **Needs:** nothing further — multi-level's view-layer legibility landed in full (taskblock-40,
 `CHANGELOG.md`); the supervisor's own confirmation via `./checkpoint.sh 8` is independent of this
@@ -1373,54 +1323,6 @@ freshly generated bout via the live bout builder — the same "starter battle fo
 consolidation as the full-mission-test replacement. Small, but it removes a stale entry point that can drift
 out of sync with the real generation path.
 
-
-### Retire `MIN_COMPLETION_RATE`
-**Needs:** nothing. **Unblocks:** nothing.
-
-**Nothing reads it.** taskblock-50 Pass D replaced the rate with `seeds_to_first_win`, and every
-surviving mention across four files is a *comment about* the constant, not a use of it —
-`test_full_mission.gd` says so in its own header (*"left in place and unused by this test"*).
-
-**It does not need a number picked; it needs deleting.** A constant no test reads is exactly what the
-next reader takes as live.
-
-**Keep the story, drop the constant.** Its cautionary value — a threshold on a small integer count sat
-less than one seed from red and the response was to lower it — is already told better and in more
-useful places by `suite_budget.gd:10` and `completion_sampler.gd:89`. Those stay.
-
-### The test audit's Tier 2 merges
-**Needs:** nothing. **Unblocks:** nothing; ~35 s and about ten tests.
-
-Three clusters the 2026-07-30 pruning audit identified as **same-rule *and* same-scope**, so the cut
-rule genuinely applies rather than correctly refusing. Filed because **the CSV they came from is
-deliberately stale, so this finding does not regenerate itself** — if it is not recorded here it is
-lost.
-
-| rule | rows | cost | note |
-|---|---:|---:|---|
-| the run panel reports the real rung and the real verdict | 9 | 20.6 s | three at 9.41 / 8.27 / 1.49 s, all inside `test_suite_run.gd` — one process spawn, distinct assertion messages kept |
-| the gate's exit code reflects the run's real verdict | 4 | 12.3 s | each spawns a real subprocess; `test_exit_code_probe.gd` guards the same rule at 0.000 s |
-| every spawn zone is walkable and reachable | 8 | 17.0 s | six "across many seeds" sweeps across three files, differing only in seed count |
-
-**Costs are as-measured then and want re-taking** — taskblock-50 moved a great deal underneath them.
-**Merged tests keep distinct assertion messages**, or a failure stops naming which fact broke.
-
-Small enough to drop if it never rises to the top; recorded so that is a decision rather than an
-oversight.
-
-### Cut `test_completion_sampler.gd` further, or decide it is right
-**Needs:** nothing. **Unblocks:** nothing; a judgement call left open rather than made under a
-suite-cost pass.
-
-taskblock-47 Pass E took this file 437 s → 207 s, and taskblock-50's corpus and stubbing work took it
-to **6.2 s**. It is no longer the most expensive file in the suite and this item is close to answering
-itself. What remains is genuine — it plays real missions to check the sampler reports them correctly —
-and at 6.2 s the honest answer is probably *it is right*. **Confirm and close rather than cut.**
-
-**Cutting further means deciding the sampler does not need an end-to-end test**, which is a bigger call
-than a pass about suite cost should make on its own. The options, if it is ever worth taking: assert the
-report shape against a hand-built result dictionary and keep exactly one real sample; or accept the
-cost as the price of the one number that says whether the AI can finish a mission.
 
 ### The utility actions with no executor behind them
 **Needs:** an executor each; `call-for-help` needs a mechanism that does not exist. **Unblocks:**
@@ -1502,7 +1404,9 @@ and strike five times, the first carries it and the other four are normal.
   detail to fill in later.
 
 ### Forced movement — flung, thrown, knocked prone
-**Needs:** nothing mechanically; consequences pair with the deep-fall rules.
+**Needs:** nothing mechanically. **Three items wait on this one** — `eject` becoming a real motion, the
+destroyed-ladder fall, and knockback as a melee outcome — so doing it early collapses three waiting
+entries into one piece of work. Consequences: consequences pair with the deep-fall rules.
 
 **One family, not three features.** Being flung by decompression, thrown by an attack, and knocked
 prone by a fall are the same shape: **an outside actor applies movement and/or a pose to a unit that
@@ -1522,7 +1426,10 @@ all three rather than three times.
 - Standard CRPG vocabulary applies (thrown, knocked prone); no need to invent terms.
 
 ### Step-out refinements
-**Needs:** nothing.
+**Needs:** nothing, but **read `BR27.15` first.** That entry found step-out has *no view affordance at
+all* — nothing in `src/view` or `src/debug` reads step-out state, so the safest-first candidates and the
+wheel cycling are both invisible. Every controller-state test passes and nothing tests that a player can
+see it. The bug is the better-specified half of this item.
 
 - **Facing returns to its original heading, for free.** After a step-out resolves, facing should revert to
   whatever it was before, at no AP or MP cost — the same "the automation is in assembly, not in cost" logic
@@ -1682,7 +1589,10 @@ One interlocking spine (travel → time → fuel → heat → storage), not a li
 
 
 ### One view, toggleable modules
-**Needs:** nothing. **Unblocks:** closes a recurring bug class structurally, and makes every panel
+**Needs:** nothing. **Worth more than its position suggests:** three ledger entries are deliberately not
+being fixed because this refactor discards instance fixes — `BR27.04` (lighting differs between views),
+`BR32.09` (spectator's current-unit indicator jumps early) and `BR35.02` (spectator tile-inspect resolves
+to a hidden cell). Landing this closes them as a class. **Unblocks:** closes a recurring bug class structurally, and makes every panel
 verifiable in one context instead of several.
 
 `SingleUnitOverlay` is **54 lines** because it inherits `SquadControlOverlay` wholesale — sharing works
@@ -1715,7 +1625,8 @@ instead of being caught more reliably.
   one instance at a time, and both are cheap relative to what they prevent.
 
 ### The `mouse_filter` sweep
-**Needs:** nothing. **Unblocks:** closing a recurring class of UI bug instead of one instance at a time.
+**Needs:** nothing, but **best done with *One view, toggleable modules*** — same files, same class of
+defect, and both close a category of UI bug structurally rather than one instance at a time. **Unblocks:** closing a recurring class of UI bug instead of one instance at a time.
 
 Four separate bugs have now been the same defect: a full-rect `Control` whose `mouse_filter` doesn't match
 what it actually draws. `BR31.01` (turn controls vs. tooltip), the `TopLeftControls` fix, `BR34.02` (the log
