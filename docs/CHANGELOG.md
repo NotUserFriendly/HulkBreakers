@@ -1,5 +1,67 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-57 Passes A, B and C1 — the layout's foundations (**block incomplete**)
+
+**Three of eight passes. The block is open** — C2 through H are unstarted, and this entry describes
+capability that exists rather than a finished layout. No mode uses the new chrome yet, so **nothing
+visible has moved**: every surface still sits where taskblock-56 left it.
+
+**`UiLayout` (`src/logic/`, pure) owns the two coordinate spaces.** `safe_rect` is the largest 16:9
+rect fitting inside the screen, centred — 16:9 at every ratio and never larger than its screen.
+`screen_rect` is the window. `crush_factor` is how far a narrower-than-16:9 screen stretches back
+over the bars `safe_rect` would leave: **ultrawide letterboxes and narrow ratios crush**, because an
+ultrawide has more room than the layout was authored for while a 4:3 screen is short of exactly the
+axis the bars would waste.
+
+**A tension in the spec, resolved and flagged rather than papered over.** taskblock-57 A1 says
+narrower ratios "crush rather than clip"; its own test says `safe_rect` "is 16:9 inside any screen
+ratio and never exceeds it". One rect cannot do both. The rect keeps the guarantee the stated test
+names and the crush became a factor applied to what is drawn into it — reversible, since one
+function changes if the rect itself should fill.
+
+**Escaping the safe rect is a property of a slot**, not a comment in a panel:
+`ModuleSlots.escapes_safe_rect` / `edge_of` / `is_side_pinned` / `rect_for`, plus
+`ModuleContext.slot_rect`. **UI scale** is a `static var` defaulting to 1.0 with one place reading
+it, headed for an options menu that does not exist. `ViewModule` gained `preferred_slot()` and
+derives `is_collapsible()` from it, so a module answers "must I be toggleable" from where it sits
+rather than from a flag that can drift.
+
+**A module may be a slot provider — the block's one named new mechanism, built general.**
+`ViewModule.published_slots()` returns `StringName -> Control` and `ControlOverlay` publishes
+whatever any module returns, immediately after mounting it. **No branch anywhere names the action
+bar**; it is simply the first module to use the hook, publishing `action_bar_left`, `_right`,
+`_top_left` and `_top_right` as real children of its own subtree so the four surfaces that pin
+relative to it move with it for free. Ordering is the rule that already existed — a provider is
+declared before its dependants, as `unit_input` already is before every display module.
+**taskblock-56 Pass C's stand-alone acceptance is not weakened**: a mode declaring the combat log
+and no action bar mounts both, and an absent action-bar slot falls back to `ui_root`.
+
+**`BattleLayout` (`src/logic/`, pure) is the placement table as arithmetic**, with
+`ModeChrome.BATTLE_LAYOUT` a thin builder over it. That split is the point — *"is it in its declared
+place"* is answerable headlessly, where a chrome full of anchor presets is testable only by
+screenshot. Five new slots (`inspect_panel`, `inspect_viewer`, `debug_menu`, `perf_monitor`,
+`announcements`), with exactly three declared as escaping.
+
+**The debug-menu budge is not a constant, and that is a measurement rather than a preference.** With
+the table's own fractions the menu and Inspect **abut exactly at 1x**, by arithmetic and not by
+luck: the menu ends at `1/2 + 1/8 = 5/8` of the safe width and Inspect begins at
+`1 - (2/3)(9/16) = 5/8`. So a fixed distance is dead code at the shipped default — and the 220 px
+first written would not have cleared the overlap at any scale where one exists (480 px at 1.5x,
+960 px at 2.0x). `budged_debug_menu_rect` shifts by the overlap it measures, plus padding: still a
+one-off, correct at every scale, with no unverifiable number in it. **Consequence worth reading:
+budging only ever fires once UI scale moves, which is not settable until the options menu exists.**
+
+**Two guards fired during the block, both by design.** Pass A's *"nothing escapes yet, the three
+arrive in Pass C"* failed when C1 added them — now pinned at exactly three. And GUT called the first
+side-pinned sweep *risky — did not assert*, correctly: no module declares a slot until C2, so it
+ranged over an empty set. It now also asserts the set equals a pinned `EXPECTED_SIDE_PINNED`, which
+**C2 must update deliberately**.
+
+**The action bar and its satellites are deliberately absent from `SLOT_EDGES`**, so they are not
+collapsible. The rule exists so a cramped player can reclaim space; the bar is centred at the bottom
+at half width and crowds nothing, and a control surface you can switch off is a game you cannot
+play. One line to reverse if the supervisor disagrees.
+
 ### taskblock-56 Pass F — the editor, and the collapse's own proof holds
 
 **The block's central question was "is the editor a module set plus one authoring module?" and the
