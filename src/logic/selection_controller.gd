@@ -137,6 +137,24 @@ func reachable_cells() -> Array[Vector2i]:
 	return pf.reachable(actual.cell, budget)
 
 
+## taskblock-57 Pass D: **the one place a player-queued action enters a queue.**
+##
+## `queue_panel` retires this pass and its confirmation role moves to the combat log, so every
+## queued action has to announce itself. Before this there were nine ways in — five `queue_*`
+## methods here and four direct `selection.current_queue().enqueue(...)` calls in
+## `TacticsController` — and a log line at each would have been nine chances to forget one.
+##
+## **Only logs what actually landed.** `ActionQueue.enqueue` validates against a speculative
+## preview and refuses an illegal action; a confirmation for a click that was rejected is worse
+## than none, because it says the queue holds something it does not.
+func enqueue(action: CombatAction) -> bool:
+	var queue: ActionQueue = current_queue()
+	if queue == null or not queue.enqueue(action, state):
+		return false
+	QueueLog.queued(state, action)
+	return true
+
+
 ## Click a reachable cell: queues a MoveAction from wherever the selected
 ## unit's already-queued path leaves it to `cell`. Returns whether the
 ## queue actually accepted it.
@@ -148,7 +166,7 @@ func queue_move(cell: Vector2i) -> bool:
 	var path: Array[Vector2i] = pf.astar(actual.cell, cell)
 	if path.size() < 2:
 		return false
-	return current_queue().enqueue(MoveAction.new(selected_unit, path), state)
+	return enqueue(MoveAction.new(selected_unit, path))
 
 
 ## One path per queued MoveAction, in queue order — draw one ghost per
@@ -182,7 +200,7 @@ func leg_costs() -> Array[float]:
 func queue_end_turn() -> bool:
 	if selected_unit == null:
 		return false
-	return current_queue().enqueue(EndTurnAction.new(selected_unit, mission), state)
+	return enqueue(EndTurnAction.new(selected_unit, mission))
 
 
 ## taskblock-19 Pass F: "available to AI and player (same-queue
@@ -191,7 +209,7 @@ func queue_end_turn() -> bool:
 func queue_hold() -> bool:
 	if selected_unit == null:
 		return false
-	return current_queue().enqueue(HoldAction.new(selected_unit), state)
+	return enqueue(HoldAction.new(selected_unit))
 
 
 ## taskblock-22 Pass E: repair's own player-facing entry point — a mid-turn
@@ -203,9 +221,7 @@ func queue_hold() -> bool:
 func queue_repair(welder_id: StringName, target_part_id: StringName) -> bool:
 	if selected_unit == null:
 		return false
-	return current_queue().enqueue(
-		RepairAction.new(selected_unit, welder_id, target_part_id, mission), state
-	)
+	return enqueue(RepairAction.new(selected_unit, welder_id, target_part_id, mission))
 
 
 ## docs/10 taskblock02 F3: the selected unit's orientation as it would
@@ -223,7 +239,7 @@ func previewed_orientation() -> float:
 func queue_face(direction: float) -> bool:
 	if selected_unit == null:
 		return false
-	return current_queue().enqueue(FaceAction.new(selected_unit, direction), state)
+	return enqueue(FaceAction.new(selected_unit, direction))
 
 
 ## docs/10 taskblock03 D3: "RMB pops the last queued action and refunds its
@@ -236,8 +252,11 @@ func undo_last() -> bool:
 	var queue: ActionQueue = current_queue()
 	if queue == null or queue.actions.is_empty():
 		return false
-	queue.actions.pop_back()
+	var dropped: CombatAction = queue.actions.pop_back()
 	queue.revision += 1
+	# taskblock-57 Pass D: the other half of the queue panel's confirmation role. Emitted AFTER the
+	# pop, so a log line can never claim a cancellation the queue did not actually make.
+	QueueLog.cancelled(state, dropped)
 	return true
 
 
@@ -272,6 +291,13 @@ func keep_queue_suffix(from_index: int) -> void:
 func reset_turn() -> void:
 	if selected_unit == null:
 		return
+	# taskblock-57 Pass D: one cancellation line per action, newest first, so Reset Turn reads as
+	# the undo-everything it is rather than as the queue silently emptying. Folded into one counted
+	# row by `LogFold`, and still drillable — see `QueueLog`.
+	var queue: ActionQueue = _queues.get(selected_unit.id)
+	if queue != null:
+		for i in range(queue.actions.size() - 1, -1, -1):
+			QueueLog.cancelled(state, queue.actions[i])
 	_queues.erase(selected_unit.id)
 
 

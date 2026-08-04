@@ -278,6 +278,36 @@ shell performs measurably differently under two different-attribute matrices.
 
 # QUEUED
 
+### Player-facing labels for actions that have none
+
+**Needs:** nothing. **Unblocks:** any surface that names an action to a player rather than to a
+developer.
+
+`CombatAction.describe()` defaults to a debug shape — `EndTurnAction(unit=0)`, `HoldAction(unit=0)` —
+and only `MoveAction` overrides `short_describe()`. That was invisible while the only reader was the
+queue panel; **taskblock-57 Pass D moved the same text into the combat log**, where a player reads
+`unit 0 queued action: EndTurnAction(unit=0)`.
+
+**No regression** — the retired panel showed the identical string — but the log is a player-facing
+surface in a way a debug row was not. The taskblock's own example reads `unit 0 queued action:
+burst`, so the shape wanted is a short authored name per action. **Not invented here**: naming is a
+design call and `docs/08`'s rule is that the view never births a string.
+
+### The debug menu's drag-resizable height
+
+**Needs:** the debug-menu redesign, which taskblock-57 explicitly excluded (*"It gets a placement
+here and nothing more"*). **Unblocks:** nothing.
+
+taskblock-57's placement table says the debug menu has a *"drag-resizable height"*. The placement
+landed; the resize did not, because the same block's "Not this block's job" list rules out touching
+the menu beyond putting it somewhere. **Recorded so the unmet half of a shipped table row is not
+mistaken for an oversight.**
+
+**Also unresolved and worth a measurement rather than a guess:** the table gives the menu a quarter
+of the 16:9 safe width — 480 px at 1x — while `DebugControlPanel` carries a 520 px minimum, so it
+overhangs its slot by 40. Positioned by the slot and sized by its own content today; either number
+can move in the tuning pass.
+
 ### Author the intelligence tiers onto units
 **Needs:** the tier table, which landed as taskblock-46. **Unblocks:** intelligence reading as
 character rather than as difficulty; any completion measurement that includes a tier other than Trained.
