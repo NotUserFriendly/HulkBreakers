@@ -43,6 +43,13 @@ const BOUT_FILES: Array[String] = [
 	"res://test/unit/logic/ai/test_utility_planner.gd",
 	"res://test/unit/logic/test_bout_corpus.gd",
 	"res://test/unit/logic/test_completion_sampler.gd",
+	# taskblock-56 Pass F: **listed four blocks late, and the delay is the point.** The file has
+	# carried `should_skip_script()` since taskblock-53 Pass B — the fast gate really was skipping
+	# it — but it was never added here, so `test_suite_tier.gd` had it as a file that builds bouts
+	# and is not skipped. That guard reads the *committed* profile, which was last regenerated at
+	# taskblock-52, so it could not see the two bouts this file started building at tb53. The list
+	# entry is the fix; the stale profile is why nobody was told.
+	"res://test/unit/logic/test_map_serializer.gd",
 	"res://test/unit/logic/test_replay_handle.gd",
 	"res://test/unit/logic/test_scripted_corpus.gd",
 	"res://test/unit/logic/test_watched_run.gd",

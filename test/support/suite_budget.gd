@@ -53,6 +53,35 @@ const HEADROOM := 0.15
 ## re-ratchet can see what moved rather than only what the limit became.
 ##
 ## Regenerate with `godot --headless --path . -s res://tools/profile_suite.gd`.
+##
+## ## taskblock-56 Pass F: `ui_builds` 344 -> 627, and most of that is not this pass
+##
+## The ratchet says raise the number and say why in the same commit, so: **the committed
+## profile was last regenerated at taskblock-52** (commit `303e1db`), and the per-taskblock
+## regeneration was skipped for 53, 54, 55 and 56 A-E. Regenerating it here surfaced four
+## taskblocks of growth at once, which is exactly the drift the budget exists to catch and
+## exactly what a stale profile hides — the guard reads the committed file, not the live run.
+##
+## **Measured per file against the tb52 profile**, so the growth names its own causes rather
+## than arriving as one number:
+##
+## | file | +ui_builds | from |
+## |---|---|---|
+## | `test_editor_mode.gd` | **63** | **this pass** — the editor mode is a new mounted surface |
+## | `test_view_modes.gd` | 38 | tb56 D — mounts every mode in the table |
+## | `test_spectator_overlay.gd` | 36 | tb56 C/D |
+## | `test_resolution_player.gd` | 33 | tb56 C/D |
+## | `test_squad_control_overlay.gd` | 15 | tb56 C/D |
+## | eleven others | 47 | tb53-56, none over 9 |
+##
+## So Pass F is **63 of the 232**, and the other 169 landed before it and were never
+## reflected here. The number is raised to the honest current measurement rather than to
+## something that would have passed — and the lesson is about the *cadence*, not the size:
+## a profile regenerated per taskblock would have reported each of these against the change
+## that caused it, which is the whole argument in this file's own header.
+##
+## Nothing else moved past its limit: `bouts` 54 -> 57 against a 64 ceiling, and the gated
+## turn total is still inside its headroom.
 const BASELINE: Dictionary = {
 	"bouts": 56,
 	"turns": 772,
@@ -60,7 +89,7 @@ const BASELINE: Dictionary = {
 	"candidates": 1556808,
 	"shot_planes": 13932,
 	"floods": 5018,
-	"ui_builds": 344,
+	"ui_builds": 627,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.

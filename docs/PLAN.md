@@ -776,7 +776,8 @@ orthogonal to build dread before an arrival. Costs nothing but a generation pref
 
 
 ### The generator is stitching, not carving
-**Needs:** *The section format* (landed, tb54), *Map and section editors*. **Unblocks:** retiring most of `MapGen`.
+**Needs:** *The section format* (landed, tb54), *Map and section editors* (landed, tb56).
+**Unblocks:** retiring most of `MapGen`.
 
 **`MapGen` as written is on its way out.** Once sections can be authored, generation becomes *choosing
 and joining* authored fragments rather than carving rooms and corridors procedurally.
@@ -824,10 +825,10 @@ All three landed; detail in `CHANGELOG.md`. What remains open out of it:
   (`WorldPalette.TEMPORARY_TILE_TINT = false`). **Revert it when tiles have their own look** — that is
   a real outstanding action, not a note. It belongs with whatever gives tiles a material treatment.
   **Needs:** tiles having a look of their own.
-- **Claim volumes are drawn by a module no mode currently mounts.** `ClaimVolumeModule` exists, is
-  tested, and is asserted *not* to appear in any play mode — but the authoring surface that would turn
-  it on is *Map and section editors*, below. Until that lands, the module is correct and unreachable.
-  **Needs:** *Map and section editors*.
+- ~~**Claim volumes are drawn by a module no mode currently mounts.**~~ **Closed by taskblock-56
+  Pass F**: the editor mode mounts `ClaimVolumeModule` and authoring a claim draws it. The guard that
+  banned it from *every* mode is now "every play mode", with the authoring modes pinned in a
+  one-entry list.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
@@ -869,39 +870,31 @@ Every per-cell chance draws from the seeded RNG, in a **stable iteration order**
 produces different boards. Same rule as everywhere else, and easier to get wrong here because the
 iteration is over a dictionary of cells.
 
-### Map and section editors
-**Needs:** *The map format* (landed, tb53), *The section format* (landed, tb54), and *One view,
-toggleable modules* (landed, tb56). **Unblocks:** *Main menu*, and turning on `ClaimVolumeModule`.
+### Map and section editors — **LANDED (taskblock-56 Pass F)**
+**Needs:** nothing further. **Unblocks:** *Main menu*.
 
-**Specified as taskblock-56 Pass F and not started** — the block ran out of room after Pass E. The spec
-is reproduced below rather than pointed at, since the taskblock file rotates away.
+**The module system's own proof, and it held.** The editor is a `ViewModes` row declaring six
+existing modules plus one new `EditorModule` — no subclass, no new chrome, no duplicated panel.
+Detail in `CHANGELOG.md`. `ClaimVolumeModule` is mounted and reachable, which closes the second
+open item under *Seeing what you authored*.
 
-**This is the module system's own proof, which is why it was in that block.** A section is a small map;
-the map editor and the section editor differ by two buttons and one panel. If the collapse is right, a
-whole new surface is a `ViewModes` row plus one authoring module. If it is wrong, the editor becomes a
-sixth overlay in all but name, and **that finding is worth more than the editor** — it must be reported
-plainly rather than worked around.
+What remains open out of it:
 
-- **`EditorController`, pure and headless**, following `BuilderController` exactly: a `RefCounted` in
-  `src/logic/` holding the whole editing model, with the scene reading it and drawing. Place and remove
-  parts, set heights, add and resize claim volumes, author edges, set per-cell chances and whole-section
-  fields, undo. **Everything headless-testable and tested that way; the scene gets no logic.**
-- **Two save buttons.** Save as map through `MapSerializer`; save as section through `SectionSerializer`,
-  carrying claims, edges and the authoring vocabulary. **A map saved and reloaded is the map that was
-  authored** — round-trip is the test, as it was for both formats.
-- **Everything section-specific lives in one module** — claims, edges, per-cell chance, whole-section
-  fields.
-
-- **Section editor** — author a section and its edges, save it for the generator to stitch.
-- **Map editor** — author and save a full board, and **run a test bout on it**. The test-bout half is
-  the part that matters; an editor that cannot launch what it authored is a file format with a GUI.
-- **Warn, never block.** An authored map that fails the navigability invariant still loads. Authoring a
-  deliberately broken board is legitimate; the editor's job is to say so, not to refuse.
-
-Built on the bout builder that already exists rather than a second path into combat.
+- **An authoring session still starts on top of a bout.** The editor mode installs over whatever
+  `BattleScene` already built, so units already on the board are relocated onto the authored one by
+  the same `BoardSwap` a map load uses. Harmless and visibly odd. The fix is an entry point that
+  builds a world with no bout in it, which is *Main menu*'s job — so this is a note on that item
+  rather than a defect against the editor. **Needs:** *Main menu*.
+- **A claim is authored one cell at a time and resized only through the controller.** `add_claim`
+  places a one-cell volume from the deck to a flagged 2.4; `resize_claim` takes an arbitrary `Box`
+  and is fully tested, but no drag gesture reaches it. Every authored extent is therefore expressible
+  and only the rectangular-drag *affordance* is missing. **Needs:** nothing; it is UI work.
+- **No section-stitch preview.** The editor authors one section; seeing two joined is
+  `SectionSerializer.stitch`'s job and belongs with the generator item below. **Needs:** *The
+  generator is stitching, not carving*.
 
 ### Main menu
-**Needs:** *Map and section editors*. **Unblocks:** nothing.
+**Needs:** *Map and section editors* (landed, tb56). **Unblocks:** nothing.
 
 Rolls the in-game tools into one reachable place — bot builder, bout sim, map and section editors.
 ***Resource Editor excepted*** — it stays standalone. Built last, once there is something to roll up.

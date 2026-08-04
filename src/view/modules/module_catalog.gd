@@ -34,6 +34,7 @@ const IDS: Array[StringName] = [
 	&"bout_setup",
 	&"claim_volumes",
 	&"camera_framing",
+	&"editor",
 ]
 
 
@@ -78,4 +79,6 @@ static func build(id: StringName) -> ViewModule:
 			return ClaimVolumeModule.new()
 		&"camera_framing":
 			return CameraFramingModule.new()
+		&"editor":
+			return EditorModule.new()
 	return null

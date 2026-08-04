@@ -25,6 +25,11 @@ const TOGGLE_HIT_VOLUMES_KEY := KEY_V
 ## menu, same dev-tool status as TOGGLE_HIT_VOLUMES_KEY, own key so it never
 ## collides with a bound gameplay verb.
 const SIMULATE_BOUT_KEY := KEY_B
+## taskblock-56 Pass F: the map/section editor, on the same footing as the Simulate Bout menu
+## above — a dev tool with its own key. **Without this the editor is unreachable**, which is
+## exactly the state Pass E left `ClaimVolumeModule` in and which the editor was built to end;
+## shipping a surface nothing can open would have repeated it one level up.
+const EDITOR_KEY := KEY_N
 
 
 ## `{"trigger": String, "action": String}`, in the order docs/10 taskblock03
@@ -58,6 +63,7 @@ static func all(log_path: String) -> Array[Dictionary]:
 		{"trigger": _key(TOGGLE_KEY), "action": "toggle this help"},
 		{"trigger": _key(TOGGLE_HIT_VOLUMES_KEY), "action": "toggle hit volumes"},
 		{"trigger": _key(SIMULATE_BOUT_KEY), "action": "simulate bout"},
+		{"trigger": _key(EDITOR_KEY), "action": "map / section editor"},
 		{"trigger": "log", "action": log_path},
 	]
 

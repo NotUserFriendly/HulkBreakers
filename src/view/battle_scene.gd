@@ -205,6 +205,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key_event.keycode == ControlBindings.SIMULATE_BOUT_KEY:
 		set_overlay(ControlOverlay.for_mode(ViewModes.bout_setup()))
 		return
+	# taskblock-56 Pass F: **the same two lines the Simulate Bout menu costs**, which is the
+	# clearest statement of what the mode table bought. Opening a whole authoring surface is a
+	# `ViewModes` row and a keycode; there is nothing else to build or tear down, because
+	# `set_overlay` has always been the one place a surface swap happens.
+	if key_event.keycode == ControlBindings.EDITOR_KEY:
+		set_overlay(ControlOverlay.for_mode(ViewModes.editor()))
+		return
 	if key_event.keycode != ControlBindings.TOGGLE_HIT_VOLUMES_KEY:
 		return
 	var show: bool = not (unit_views[0].show_hit_volumes if not unit_views.is_empty() else false)
