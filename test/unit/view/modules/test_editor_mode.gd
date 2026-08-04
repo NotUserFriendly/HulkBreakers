@@ -124,11 +124,26 @@ func test_the_editor_declares_nothing_the_catalog_does_not_build_for_everyone() 
 
 ## **No new chrome.** Layout belongs to the mode, and the editor asked for one that already
 ## existed — which is a second, independent way of saying it did not need a surface of its own.
+##
+## **taskblock-57 Pass C: asserted against the declared layouts, not against the player mode.**
+## The original wrote this as "the editor's chrome equals the player's", which was true only because
+## both happened to name `PLAYER_COLUMNS`. Pass C moved the player mode to `BATTLE_LAYOUT` and the
+## editor stayed put — and the test failed, reporting a seventh layout that nobody had added. It was
+## measuring *sameness* when the claim is *reuse*. Pass G is where the editor's own surfaces land
+## and where its chrome is revisited; until then this asserts the thing that is actually meant.
 func test_the_editor_reuses_an_existing_layout_rather_than_declaring_one() -> void:
-	assert_eq(
-		ViewModes.editor().chrome,
-		ViewModes.player().chrome,
-		"the editor sits in the player mode's own columns; no seventh layout was added"
+	var declared: Array[StringName] = [
+		ModeChrome.PLAYER_COLUMNS,
+		ModeChrome.TOP_LEFT_ROWS,
+		ModeChrome.CENTERED_MENU,
+		ModeChrome.BATTLE_LAYOUT,
+	]
+	assert_true(
+		declared.has(ViewModes.editor().chrome),
+		(
+			"the editor named a layout of its own (%s); it must reuse one that already exists"
+			% ViewModes.editor().chrome
+		)
 	)
 
 

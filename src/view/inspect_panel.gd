@@ -54,6 +54,12 @@ const BURN_STACK_LABELS: Array[String] = ["0.5 Stacks", "1 Stack", "5 Stacks", "
 const BURN_WOUND_ID := &"burnt_electronics"
 const BURN_THRESHOLD := 1.0
 
+## taskblock-57 Pass C: **the layout placed this panel, so it must not re-centre itself.** Set by
+## `InspectModule` when its mode publishes an `inspect_panel` slot; false for a bare panel, which
+## keeps the clamp-and-centre behaviour every other caller was built against. See
+## `_clamp_to_viewport`.
+var placed_by_host: bool = false
+
 var _material_table: MaterialTable
 var _unit: Unit = null
 ## taskblock-26 Pass C3: "the panel shows the bot's variant (good) but the
@@ -625,12 +631,12 @@ func _update_isolate_camera_position() -> void:
 
 
 ## taskblock-22 Pass G1: "constrain it to the viewport (anchor/clamp so it
-## fits regardless of resolution)." No anchors preset is used for this
-## panel at all (see the two hosts' own `setup()` call sites) — position/
-## size are plain absolute values this function alone owns, re-centered
-## and shrunk to fit whenever they'd otherwise exceed the real viewport.
+## fits regardless of resolution)." Position/size are plain absolute values
+## this function alone owns, re-centered and shrunk to fit whenever they'd
+## otherwise exceed the real viewport. **taskblock-57 Pass C: a host may
+## place it instead** — see `placed_by_host`.
 func _clamp_to_viewport() -> void:
-	if not is_inside_tree():
+	if not is_inside_tree() or placed_by_host:
 		return
 	var viewport_size: Vector2 = get_viewport_rect().size
 	size = Vector2(minf(size.x, viewport_size.x), minf(size.y, viewport_size.y))

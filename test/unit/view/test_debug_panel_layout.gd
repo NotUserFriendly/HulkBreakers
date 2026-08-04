@@ -36,6 +36,14 @@ func after_each() -> void:
 	DataLibrary.reset()
 
 
+## taskblock-57 Pass C: the readout is `PerfMonitorModule`'s, not the debug panel's. It moved
+## because the placement table gives it its own slot and a module declares one `preferred_slot()`;
+## what did NOT change is the rule that closing the debug menu leaves the readout up.
+func _perf_panel(overlay: ControlOverlay) -> PerfPanel:
+	var module: ViewModule = overlay.module(&"perf_monitor")
+	return (module as PerfMonitorModule).panel if module != null else null
+
+
 func _overlay() -> ControlOverlay:
 	var grid: Grid = GridFixture.flat(12, 10)
 	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(2, 2), 0)
@@ -77,12 +85,10 @@ func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
 	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
 	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
 	# not a panel, and nothing here would have caught it.
-	overlay.debug_panel_module().perf_panel.visible = true
+	_perf_panel(overlay).visible = true
 	await get_tree().process_frame
 	for panel: Control in [
-		overlay.replay().suite_run_panel,
-		overlay.replay().watched_run_panel,
-		overlay.debug_panel_module().perf_panel
+		overlay.replay().suite_run_panel, overlay.replay().watched_run_panel, _perf_panel(overlay)
 	]:
 		var rect: Rect2 = panel.get_global_rect()
 		gut.p("%s — controls %s, panel %s" % [panel.name, row, rect])
@@ -109,12 +115,10 @@ func test_the_debug_panels_stay_inside_the_viewport() -> void:
 	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
 	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
 	# not a panel, and nothing here would have caught it.
-	overlay.debug_panel_module().perf_panel.visible = true
+	_perf_panel(overlay).visible = true
 	await get_tree().process_frame
 	for panel: Control in [
-		overlay.replay().suite_run_panel,
-		overlay.replay().watched_run_panel,
-		overlay.debug_panel_module().perf_panel
+		overlay.replay().suite_run_panel, overlay.replay().watched_run_panel, _perf_panel(overlay)
 	]:
 		assert_true(
 			screen.intersects(panel.get_global_rect()),
@@ -244,15 +248,15 @@ func test_the_player_views_inject_panel_survives_the_split() -> void:
 ## This asserts the readout is wholly on screen, which is the property that was violated.
 func test_the_performance_readout_is_wholly_on_screen() -> void:
 	var overlay: ControlOverlay = _overlay()
-	if overlay.debug_panel_module().perf_panel == null:
+	if _perf_panel(overlay) == null:
 		assert_true(true, "debug-gated; nothing to place in a release build")
 		return
-	overlay.debug_panel_module().perf_panel.visible = true
+	_perf_panel(overlay).visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 
 	var screen: Vector2 = get_tree().root.get_visible_rect().size
-	var rect: Rect2 = overlay.debug_panel_module().perf_panel.get_global_rect()
+	var rect: Rect2 = _perf_panel(overlay).get_global_rect()
 
 	gut.p("readout at %s in a %s viewport" % [rect, screen])
 	# **The width is the assertion that matters.** The first broken version sat at x = -16;
@@ -272,27 +276,36 @@ func test_the_performance_readout_is_wholly_on_screen() -> void:
 	)
 
 
-## It belongs to the right of the centred debug panel, which is where the supervisor asked
-## for it — not overlapping it.
+## It must not overlap the debug panel that offers its toggle.
+##
+## **taskblock-57 Pass C changed what "clear of" means, and the old assertion no longer says it.**
+## The readout used to be anchored to the right of the centred debug panel, so "readout.x >=
+## debug.x" was the rule. The placement table moved it to the true bottom-right corner, which is
+## clear of the menu by being nowhere near it — and the old comparison is now an accident of two
+## unrelated positions rather than a statement about either. So this asserts the thing that actually
+## matters and always did: **they do not overlap**, with both rects real.
 func test_the_readout_sits_clear_of_the_debug_panel() -> void:
 	var overlay: ControlOverlay = _overlay()
-	if (
-		overlay.debug_panel_module().perf_panel == null
-		or overlay.debug_panel_module().panel == null
-	):
+	if _perf_panel(overlay) == null or overlay.debug_panel_module().panel == null:
 		assert_true(true)
 		return
-	overlay.debug_panel_module().perf_panel.visible = true
-	overlay.debug_panel_module().panel.visible = true
+	_perf_panel(overlay).visible = true
+	# **`toggle()`, not `visible = true`.** The panel builds its verb list in `setup()`, which only
+	# `toggle()` calls — shown directly it is a real node with a zero-size rect, and a zero-size rect
+	# clears every obstacle by not existing.
+	overlay.debug_panel_module().toggle()
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var readout: Rect2 = overlay.debug_panel_module().perf_panel.get_global_rect()
+	var readout: Rect2 = _perf_panel(overlay).get_global_rect()
 	var debug: Rect2 = overlay.debug_panel_module().panel.get_global_rect()
 
-	assert_true(
-		readout.position.x >= debug.position.x,
-		"the readout is to the right of the debug panel: readout %s, debug %s" % [readout, debug]
+	gut.p("readout %s, debug menu %s" % [readout, debug])
+	assert_gt(readout.size.x, 0.0, "sanity: the readout has a real rect, or clearance is free")
+	assert_gt(debug.size.x, 0.0, "sanity: the debug menu has a real rect")
+	assert_false(
+		readout.intersects(debug),
+		"the readout overlaps the debug menu: readout %s, debug %s" % [readout, debug]
 	)
 
 

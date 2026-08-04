@@ -26,8 +26,16 @@ func kind() -> Kind:
 	return Kind.INPUT
 
 
+## taskblock-57 Pass C: **right of the action bar, padded** — a slot the bar publishes, so this
+## column travels with the bar. Falls back to the taskblock-56 `ACTION_ROW` for a mode whose chrome
+## still builds one, and to the module itself for a mode with neither.
+func preferred_slot() -> StringName:
+	return ModuleSlots.ACTION_BAR_RIGHT
+
+
 func _mount() -> void:
-	var row: Control = context.slot(ModuleSlots.ACTION_ROW, null)
+	var fallback: Control = context.slots.get(ModuleSlots.ACTION_ROW)
+	var row: Control = context.slot(preferred_slot(), fallback)
 	column = VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.alignment = BoxContainer.ALIGNMENT_END

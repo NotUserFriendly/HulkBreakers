@@ -1,0 +1,94 @@
+class_name UiButtonsModule
+extends ViewModule
+
+## taskblock-57 Pass C: **the UI buttons cluster, above the bar's right edge.**
+##
+## The table's row is *"module toggles, Inspect, the debug menu"*. Inspect brings its own button —
+## it owns the enabled state that follows the selection (`BR51.10`) and splitting the button from
+## the panel would be splitting a control from the thing it controls — so what this module builds is
+## the other two: one toggle per collapsible module, and the debug menu's.
+##
+## ## This is what makes A2's collapse rule reachable
+##
+## taskblock-57 A2: *every side-pinned surface is collapsible or off by default, so a square-ratio
+## player is never forced to shrink the UI to play. They lose nothing; they toggle.* Until now
+## `ViewModule.collapsed` was a flag with a hook and no way to reach it. **A rule whose affordance
+## does not exist is a rule nobody can use**, so the toggles are built here, from the modules that
+## report themselves collapsible, rather than from a list.
+##
+## ## Derived, never listed
+##
+## The toggles come from sweeping `context.modules` for `is_collapsible()`, and the label comes from
+## the module's own id. **No module is named in this file.** A module added later — or re-slotted
+## onto an edge later — grows a toggle the day it does, with no edit here, which is the standing
+## "content is data, not a code edit" rule applied to the control surface itself.
+##
+## Built in `link()`, not `_mount()`: the sweep needs every module mounted, and `link()` is the hook
+## that runs after all of them are.
+##
+## Display: it toggles panels. It never queues an action against a unit.
+
+## Shown when a debug build offers the menu. Absent entirely in a release export, where
+## `DebugPanelModule` never constructs a panel at all.
+const DEBUG_MENU_LABEL := "Debug"
+
+## The row every button lands in, so a test reads back what was built rather than re-deriving it.
+var row: HBoxContainer = null
+## Module id -> the `CheckButton` that folds it, for a test and for a later options menu.
+var toggles: Dictionary = {}
+var debug_button: Button = null
+
+
+func module_id() -> StringName:
+	return &"ui_buttons"
+
+
+## Above the bar, at its right edge — a slot the bar publishes, so the cluster travels with it.
+func preferred_slot() -> StringName:
+	return ModuleSlots.ACTION_BAR_TOP_RIGHT
+
+
+func _mount() -> void:
+	var slot: Control = context.slot(preferred_slot(), null)
+	row = HBoxContainer.new()
+	# The row itself is not a target; its buttons are. Same rule every wrapping container in the
+	# layout follows, so an empty cluster is never a dead patch of screen over the board.
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if slot != null:
+		slot.add_child(row)
+	else:
+		add_child(row)
+
+
+## One toggle per collapsible module, then the debug menu's button. **Order is the mode's own
+## declaration order**, which is stable and readable, rather than alphabetical or arbitrary.
+func link() -> void:
+	for id: StringName in context.modules:
+		var module: ViewModule = context.modules[id]
+		if module == self or not module.is_collapsible():
+			continue
+		toggles[id] = _toggle(id, module)
+	var debug: ViewModule = context.module(&"debug_panel")
+	if debug != null and (debug as DebugPanelModule).panel != null:
+		debug_button = Button.new()
+		debug_button.text = DEBUG_MENU_LABEL
+		debug_button.pressed.connect((debug as DebugPanelModule).toggle)
+		row.add_child(debug_button)
+
+
+## A readable label from the module's own id, so no module is named here. `unit_resources` reads as
+## "Unit Resources"; a module added later gets a sensible label without an entry in a table.
+static func label_for(id: StringName) -> String:
+	return String(id).replace("_", " ").capitalize()
+
+
+func _toggle(id: StringName, module: ViewModule) -> CheckButton:
+	var button := CheckButton.new()
+	button.text = label_for(id)
+	# **Pressed means shown**, which is the way round a player reads a toggle — `collapsed` is the
+	# inverse, and inverting it here rather than in the flag keeps the module's own field saying
+	# what it means.
+	button.button_pressed = not module.collapsed
+	button.toggled.connect(func(shown: bool) -> void: module.collapsed = not shown)
+	row.add_child(button)
+	return button

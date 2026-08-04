@@ -40,11 +40,10 @@ const ANNOUNCEMENT_HEIGHT := 120.0
 ## Ordinary breathing room between two pinned surfaces.
 const PADDING := 8.0
 
-## **There is no budge constant, and that is a measured decision rather than an omission.**
+## **The floor the budge never falls below, before UI scale.**
 ##
-## The taskblock specifies "budges left if Inspect crowds it — a one-off, not a mechanism", and a
-## fixed distance was the obvious reading. Measured against this table's own fractions, a fixed
-## distance is wrong at both ends:
+## The budge has a floor *and* a measured term, and neither alone is right. The history is worth
+## keeping because both wrong answers looked correct on paper:
 ##
 ## | UI scale | debug menu | Inspect starts | overlap |
 ## |---|---|---|---|
@@ -53,13 +52,23 @@ const PADDING := 8.0
 ## | 2.0 | 480 – 1440 | 480 | 960 |
 ##
 ## **At 1x they abut exactly, and it is arithmetic rather than luck**: the menu ends at
-## `1/2 + 1/8 = 5/8` of the safe width and Inspect begins at `1 - (2/3)(9/16) = 5/8`. So a fixed
-## budge is dead code at the shipped default — and at any scale where they *do* overlap, 220 px
-## would not have cleared it.
+## `1/2 + 1/8 = 5/8` of the safe width and Inspect begins at `1 - (2/3)(9/16) = 5/8`.
 ##
-## `budged_debug_menu_rect` therefore shifts by **the overlap it actually measures**, plus padding.
-## It stays a one-off — one function, one surface, one reason — while being correct at every scale,
-## and it removes a constant nobody could have verified.
+## - A **fixed distance alone** is dead code at the shipped default and too small everywhere else —
+##   the 220 px first written clears neither the 480 px overlap at 1.5x nor the 960 px at 2.0x.
+## - **The measured overlap alone** is zero at 1x, so the one scale anyone actually plays at is the
+##   one scale where budging never fires. That is a one-off nobody would remember the reason for.
+##
+## So the distance is `max(floor, overlap + padding)`. **The floor is the supervisor's call**,
+## given as `X + X*(SCALE-1)` — which is `X * SCALE`, i.e. exactly `UiLayout.scaled(X)`, so it goes
+## through the one place that reads UI scale rather than adding a second scaling rule.
+##
+## **The magnitude is a starting position, not a decision** (CLAUDE.md: never invent a balance
+## number and present it as design). It is expressed as eight of this table's own padding units so
+## it is derived from something rather than free-floating — at 1x that is 64 px against a 480 px
+## menu: visibly clear of Inspect without shoving the menu off centre. The supervisor's fine-tuning
+## pass owns the number.
+const DEBUG_MENU_BUDGE_BASE := 8.0 * PADDING
 
 
 ## Every slot this layout places, as `StringName` -> `Rect2`, for `screen`.
@@ -118,16 +127,22 @@ static func debug_menu_rect(screen: Vector2) -> Rect2:
 ## **Idempotent by construction**: it is computed from the home rect every time rather than nudged
 ## from wherever the menu currently is, so calling it twice with the same answer cannot drift the
 ## menu across the screen. The first version of this did exactly that.
+##
+## **Inspect being open is the whole trigger** — "budges left if Inspect crowds it", and nothing
+## else on the surface budges for anything. Closed, the menu is at home.
 static func budged_debug_menu_rect(screen: Vector2, inspect_open: bool) -> Rect2:
 	var home: Rect2 = debug_menu_rect(screen)
 	if not inspect_open:
 		return home
-	# **Shifted by what is actually in the way**, not by a constant — see the note above the table.
-	# A non-positive overlap means they do not crowd at this ratio and scale, and the menu stays put.
-	var overlap: float = home.end.x - inspect_rect(screen).position.x
-	if overlap <= 0.0:
-		return home
-	return Rect2(home.position - Vector2(overlap + UiLayout.scaled(PADDING), 0.0), home.size)
+	return Rect2(home.position - Vector2(debug_menu_budge_distance(screen), 0.0), home.size)
+
+
+## How far left the menu moves when Inspect opens: **the floor, or the overlap actually measured,
+## whichever is larger.** See `DEBUG_MENU_BUDGE_BASE` for why it takes both and not either.
+static func debug_menu_budge_distance(screen: Vector2) -> float:
+	var overlap: float = debug_menu_rect(screen).end.x - inspect_rect(screen).position.x
+	var measured: float = 0.0 if overlap <= 0.0 else overlap + UiLayout.scaled(PADDING)
+	return maxf(UiLayout.scaled(DEBUG_MENU_BUDGE_BASE), measured)
 
 
 ## True if the debug menu at its home position would overlap the Inspect panel. **This is the

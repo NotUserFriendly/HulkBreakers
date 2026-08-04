@@ -35,6 +35,12 @@ const IDS: Array[StringName] = [
 	&"claim_volumes",
 	&"camera_framing",
 	&"editor",
+	# taskblock-57 Pass C: three surfaces the placement table names that had no module of their own.
+	# `unit_resources` and `perf_monitor` were welded inside other modules and could not therefore be
+	# in their own declared slot; `ui_buttons` is new, and is what makes A2's collapse rule reachable.
+	&"unit_resources",
+	&"ui_buttons",
+	&"perf_monitor",
 ]
 
 
@@ -81,4 +87,10 @@ static func build(id: StringName) -> ViewModule:
 			return CameraFramingModule.new()
 		&"editor":
 			return EditorModule.new()
+		&"unit_resources":
+			return UnitResourcesModule.new()
+		&"ui_buttons":
+			return UiButtonsModule.new()
+		&"perf_monitor":
+			return PerfMonitorModule.new()
 	return null

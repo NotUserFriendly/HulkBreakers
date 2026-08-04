@@ -21,6 +21,11 @@ extends ViewModule
 
 ## Emitted when the panel closes, so a mode that paused something to open it can resume.
 signal closed
+## taskblock-57 Pass C: emitted when the panel actually opens — **the one thing the debug menu
+## budges for.** Paired with `closed` so a listener sees both edges rather than polling `visible`,
+## and emitted only when `open_target` really opened something (`BR48.01`: a refused open must not
+## look like an open).
+signal opened
 
 const PREFERRED_SIZE := Vector2(900, 600)
 
@@ -36,14 +41,16 @@ func module_id() -> StringName:
 	return &"inspect"
 
 
+## Top-right, two thirds of the screen tall and square. **Escapes the safe rect**
+## (`ModuleSlots.ESCAPING_SLOTS`) so it reaches the physical right edge on an ultrawide, and is
+## edge-pinned, so this module is collapsible by the derivation in `ViewModule.is_collapsible`.
+func preferred_slot() -> StringName:
+	return ModuleSlots.INSPECT_PANEL
+
+
 func _mount() -> void:
-	var root: Control = context.ui_root
 	panel = InspectPanel.new()
-	panel.custom_minimum_size = PREFERRED_SIZE
-	if root != null:
-		root.add_child(panel)
-	else:
-		add_child(panel)
+	_place(panel)
 	panel.closed.connect(_on_panel_closed)
 
 	var tactics: TacticsController = context.tactics
@@ -58,11 +65,42 @@ func _mount() -> void:
 		# what it can do reads as a broken action when it correctly does nothing.
 		button.disabled = true
 		button.pressed.connect(open_selected)
-		var column: Control = context.slot(ModuleSlots.LEFT_COLUMN, null)
-		if column != null:
-			column.add_child(button)
+		# taskblock-57 Pass C: **the UI buttons cluster, above the bar's right edge** — the table's
+		# "module toggles, Inspect, the debug menu". `LEFT_COLUMN` is the taskblock-56 fallback for
+		# a mode whose chrome still builds one; a mode with neither gets the button on the module
+		# itself, which is the stand-alone case.
+		var column: Control = context.slots.get(ModuleSlots.LEFT_COLUMN)
+		var host: Control = context.slot(ModuleSlots.ACTION_BAR_TOP_RIGHT, column)
+		if host != null:
+			host.add_child(button)
 		else:
 			add_child(button)
+
+
+## **The slot's rect IS the panel's rect** when the mode publishes one — the table's "~2/3 screen
+## tall, square" is the region's size, so filling it is the placement rather than an approximation
+## of it, and `placed_by_host` is what stops the panel re-centring itself on the next resize.
+##
+## **`PREFERRED_SIZE` is applied only in the unplaced case, and that was measured**: a 900 px
+## minimum width silently wins over a 720 px slot, so the panel read as placed while being 180 px
+## wider than the square the table asks for. A preferred size and a declared slot are two answers to
+## one question; this block made the slot the authoritative one.
+func _place(target: InspectPanel) -> void:
+	# **Asked of `slots` directly, NOT through `context.slot`**: that helper falls back to `ui_root`,
+	# so the spectator and editor modes — which publish no `inspect_panel` slot — would come back
+	# with a non-null answer and get a modal stretched over the entire screen. The fallback is right
+	# for a module looking for somewhere to hang a child; it is wrong for one asking "was I placed".
+	var slot: Control = context.slots.get(preferred_slot())
+	if slot != null:
+		target.placed_by_host = true
+		slot.add_child(target)
+		target.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
+	target.custom_minimum_size = PREFERRED_SIZE
+	if context.ui_root != null:
+		context.ui_root.add_child(target)
+	else:
+		add_child(target)
 
 
 ## The button's enabled state follows the selection.
@@ -92,6 +130,7 @@ func open_target(target: SelectionTarget) -> bool:
 		panel.open(target.unit)
 	else:
 		panel.open_cell(target.cell, target.part)
+	opened.emit()
 	return true
 
 
@@ -101,6 +140,7 @@ func open_cell(cell: Vector2i, part: Part) -> bool:
 	if panel == null or part == null:
 		return false
 	panel.open_cell(cell, part)
+	opened.emit()
 	return true
 
 
@@ -114,6 +154,13 @@ func refresh_button() -> void:
 	button.disabled = (
 		tactics == null or tactics.selection == null or not tactics.selection.can_inspect()
 	)
+
+
+## Closes rather than merely hides, so the debug menu un-budges and a paused bout resumes — a
+## collapse that left the surface believing Inspect was still open would strand the menu off centre.
+func _on_collapsed(value: bool) -> void:
+	if value and panel != null and panel.visible:
+		panel.close()
 
 
 func _on_panel_closed() -> void:
