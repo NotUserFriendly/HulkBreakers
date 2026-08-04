@@ -89,6 +89,12 @@ func _mount() -> void:
 
 	var beside := HBoxContainer.new()
 	beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# **No separation of its own, because padding belongs to the surfaces, not to the row.** The
+	# table gives each satellite its own rule — the combat log is "padded" open and "flush against
+	# the bar, no padding" minimised — and a container that inserts 4 px between every child makes
+	# "flush" unreachable no matter what the log does. Each satellite pads itself; measured, after
+	# the minimised log stopped 4 px short of the bar with its own margin already at zero.
+	beside.add_theme_constant_override("separation", 0)
 	bar_root.add_child(beside)
 	left_slot = _slot_container(beside, false)
 

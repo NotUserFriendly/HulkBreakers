@@ -40,6 +40,10 @@ var sink: HierarchicalUiSink = null
 ## it actually joined rather than from whatever `context.battle` happens to hold by then. A replay
 ## swaps `combat_state` underneath a live overlay, which is exactly when those two differ.
 var _attached_to: CombatLog = null
+## The margin between the panel and the action bar. **Zero while minimized** — the table's "flush
+## against the bar, no padding" — and `BattleLayout.PADDING` otherwise. Null in a mode that gave
+## this module no slot, where there is nothing to be flush against.
+var _pad: MarginContainer = null
 
 
 func module_id() -> StringName:
@@ -60,7 +64,15 @@ func _mount() -> void:
 	if slot == null and declared != null:
 		slot = declared
 	if slot != null:
-		slot.add_child(panel)
+		# taskblock-57 Pass C: **"left of the action bar, PADDED. Minimises to a button flush
+		# against the bar, NO padding."** Padding is a property of the placement, not of the panel,
+		# so it lives here — in a margin this module owns and flips.
+		_pad = MarginContainer.new()
+		_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(_pad)
+		_pad.add_child(panel)
+		panel.minimized_changed.connect(_on_minimized_changed)
+		_apply_padding(false)
 	elif context.ui_root != null:
 		# Flush into the bottom-left corner. `SpectatorOverlay`'s own version of this, verbatim —
 		# the offset is negative because `PRESET_BOTTOM_LEFT` puts the origin on the bottom edge.
@@ -75,6 +87,32 @@ func _mount() -> void:
 		add_child(panel)
 	sink = HierarchicalUiSink.new(panel.log_label, _current_state())
 	rebind()
+
+
+## Folding is the sink's business and the checkbox is the panel's, so this is the one line that
+## joins them — wired in `link()` rather than at mount so the sink exists either way.
+func link() -> void:
+	if panel != null:
+		panel.verbose_changed.connect(_on_verbose_changed)
+
+
+func _on_verbose_changed(is_verbose: bool) -> void:
+	if sink != null:
+		sink.verbose = is_verbose
+
+
+func _on_minimized_changed(is_minimized: bool) -> void:
+	_apply_padding(is_minimized)
+
+
+## **Right margin only.** The bar is to the right of this panel, so that is the one edge "flush
+## against the bar" is about; padding the other three would leave the panel floating away from the
+## thing it is supposed to be touching.
+func _apply_padding(is_minimized: bool) -> void:
+	if _pad == null:
+		return
+	var gap: int = 0 if is_minimized else int(UiLayout.scaled(BattleLayout.PADDING))
+	_pad.add_theme_constant_override("margin_right", gap)
 
 
 func _unmount() -> void:

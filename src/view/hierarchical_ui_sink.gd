@@ -25,6 +25,20 @@ extends UiLogSink
 ## event routinely rewrites an existing group's summary rather than
 ## appending a row, so there is no correct incremental append here.
 
+## taskblock-57 Pass C: **every group drawn open, without clicking each one.**
+##
+## The table asks for verbose as a checkbox on the log panel. What it means here is the only thing
+## it can mean for a folded view: the detail this sink already has, shown rather than waiting behind
+## a click. It is still **presentation only** — tb22 F2's rule — so `fold` is untouched, `lines`
+## is untouched, and `out/combat.log` is unaffected either way.
+##
+## Deliberately does NOT clear `_expanded`: turning verbose off puts every group back exactly as the
+## reader had left it, rather than collapsing the one they had opened by hand.
+var verbose: bool = false:
+	set(value):
+		verbose = value
+		render_now()
+
 var fold: LogFold
 ## One string per top-level group's current summary, in order — rebuilt on
 ## every emit(), same "always a real stored array" shape as UISink.lines,
@@ -74,7 +88,7 @@ func _render_label() -> void:
 		if detail.is_empty():
 			out.append(group.summary.xml_escape())
 			continue
-		var expanded: bool = _expanded.get(id, false)
+		var expanded: bool = verbose or _expanded.get(id, false)
 		var marker: String = "▾ " if expanded else "▸ "
 		out.append("[url=group_%d]%s%s[/url]" % [id, marker, group.summary.xml_escape()])
 		if expanded:
