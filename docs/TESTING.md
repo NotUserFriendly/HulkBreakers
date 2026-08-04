@@ -77,20 +77,23 @@ would be.
   nothing redrew it" gap `sync_unit_views()` already closed for units.
 - **Programmatic first** — CC's real use is scripting a scenario in code and injecting it; the
   spectator/player-view injection UIs are convenience wrappers over the same API.
-- **Owned by the bout, not the overlay (tb30)** — `BattleScene.bout_injector` is built once per
-  `load_battle()`, so it survives a spectator ↔ player-controlled overlay swap
+- **Owned by the bout, not the surface (tb30)** — `BattleScene.bout_injector` is built once per
+  `load_battle()`, so it survives a spectator ↔ player-controlled mode swap
   (`toggle_blue_control()`) instead of being torn down with whichever view first reached for it.
-  Both `SpectatorOverlay` (hover-targeted) and `SquadControlOverlay` (selection-targeted) expose the
-  same `[*]` Inject button opening a shared **`DebugControlPanel`** — a generic, data-driven
+  **Since taskblock-56 Pass C there is one gated construction site, `DebugPanelModule`**, mounted by
+  whichever mode declares it — the spectator mode (board-click targeted) and the player mode
+  (selection targeted) both do. It exposes the `[*]` Inject button opening a shared
+  **`DebugControlPanel`** — a generic, data-driven
   click-to-force UI built from `DebugVerbs.all()` (a table of `DebugVerbSpec` rows, each one real
   `BoutInjector` verb + its typed params); adding a verb is a new table row, never new panel code.
   The verb picker is a scrolling `ItemList` on the left; selecting one populates a "control panel"
   column on the right with that verb's own param rows, Apply, and a status line.
 - **Active target memory** — while the panel is open, every board click (not just a field's own
   "Pick" press) updates an "active target" shown in a label above the control panel column, via a
-  duck-typed `board_clicked`/`input_capture_mode` hook (`TacticsController` for a player bout,
-  `SpectatorOverlay` itself for spectator) — neither gameplay-input class references the panel or
-  `BoutInjector` itself. A verb's OBJECT-typed param (only `move_object` uses one so far) always
+  duck-typed `board_clicked`/`input_capture_mode` hook. **Which object gets borrowed from is
+  resolved in `DebugPanelModule.link()`, one place**: `BoardInspectModule` if the mode has board
+  picking, otherwise the `TacticsController` the unit-input module published. Neither
+  gameplay-input class references the panel or `BoutInjector` itself. A verb's OBJECT-typed param (only `move_object` uses one so far) always
   resolves from this active target, never a manual-entry widget. `input_capture_mode` is
   armed/disarmed against the panel's own visibility, not per-pick, so a field's own one-shot "Pick"
   and the always-on active-target tracker fire off the same click without conflicting.
@@ -98,11 +101,12 @@ would be.
   every CELL param has, plus a "Move On Next Click" button: snapshots the current active target,
   then applies the real `move_object` call the instant the next board click lands, no separate Apply
   press.
-- `SquadControlOverlay`'s own Inject button is real-gated behind `OS.is_debug_build()`, not just the
-  `[*]` label, so it structurally can't ship in a release export. The actual safety property this
-  always protected — no *ordinary* click/action can ever trigger injection — is drawn at
-  `TacticsController`/`ActionBar` (the real gameplay-input classes), not at "which overlay is
-  installed."
+- The Inject button is real-gated behind `OS.is_debug_build()`, not just the `[*]` label, so it
+  structurally can't ship in a release export — and since taskblock-56 that is **one gate rather
+  than one per overlay**, which is a stronger guarantee: there is nothing left to drift. The actual
+  safety property this always protected — no *ordinary* click/action can ever trigger injection — is
+  drawn at `TacticsController`/`ActionBar` (the real gameplay-input classes), not at "which surface
+  is installed."
 
 Use this half to *force the exact condition* you want to study, instead of waiting for it.
 
