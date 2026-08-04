@@ -178,6 +178,75 @@ Modifiers change **radii and weights**, never outcomes, and always through the r
 (`08`). "Spin Up" shrinks a ring; a bipod shrinks all of them; suppression inflates them.
 Radii scale with range — start linear, it's a tunable.
 
+## Answered: where a shot actually aims, and whether player and AI differ
+
+Asked in taskblock-56 Pass B: *does a shot aim at the dartboard point on the target, or at the
+target's centre — and does the answer differ between player control and AI control?* Traced from
+both origins to the resolver's input, and measured rather than read.
+
+### The two paths agree, and it is structural
+
+**There is one aiming implementation.** `ActionCatalog.build_firing_action` is the only place in
+`src/` that constructs a firing action, and every firing action resolves its aim point through the
+identical expression:
+
+```
+aim_point = ShotPlane.center_of(plane, target) + aim_offset
+```
+
+- **The player's path** (`TacticsController.confirm_shot`) passes its `reticle_offset` as
+  `aim_offset`. Clicking fire without touching the reticle passes `Vector2.ZERO`.
+- **The AI's path** (`UtilityExecutors.build`) omits the argument entirely, taking the same
+  `Vector2.ZERO` default. So does overwatch, and so does the step-out triple's middle leg.
+
+**A default left alone is not a second implementation.** The AI has no aiming rule of its own to
+drift from the player's; it has the player's rule with the one knob untouched. `no parallel
+systems` holds, and `test_one_aim_path.gd` pins it — both paths' actions compared field by field,
+plus a source sweep asserting no firing action is constructed outside the catalog.
+
+**So this removes a suspect from `BR51.01` rather than supplying a lead.** A player/AI split is not
+what is moving those shots.
+
+### But the aim point is not the target's centre — it is one part's centre
+
+`ShotPlane.center_of` returns `best.rect.get_center()`, where `best` is the target's **frontmost
+region**: whichever single projected face of whichever single part sits nearest the shooter. It is
+neither the body's centroid nor a point on the muzzle-to-target axis.
+
+**An outstretched weapon or a raised arm therefore *is* the aim point.** Measured on a real
+assembled body, shooter and target on level ground, the aim point and the angle it subtends off the
+muzzle-to-target-cell axis:
+
+| range (cells) | frontmost region | aim point height | off-axis |
+|---|---|---|---|
+| 1 | pistol | 0.80 | **20.1°** |
+| 2 | pistol | 0.80 | 5.9° |
+| 3 | plate_small_steel | 1.36 | 0.6° |
+| 10 | arm_cladding | 1.36 | −0.1° |
+
+Swept across the target's facing at 1 cell, the worst reading was **20.1°** and the same body at 5
+cells never exceeded **3.2°**.
+
+Three properties follow, and all three are consequences rather than decisions:
+
+1. **The lateral error is a fixed distance in the body, so the angle it subtends grows without
+   limit as range shrinks.** Half a metre of shoulder is nothing at fifteen cells and is tens of
+   degrees at one. **It is a range effect, not a weapon effect.**
+2. **The aim point's height is that part's height too** — dropping to the gun's 0.80 at close range
+   from the upper body's 1.36. So the same mechanism aims *down* as well as sideways.
+3. **Which part wins changes with range and facing**, because depth ordering shifts as the
+   projection angle does. The aim point is not stable across a unit walking toward you.
+
+**This is a finding, not a specification.** Nothing chose it; it is what "the frontmost region's
+centre" means once bodies stopped being single boxes. Whether the aim point *should* be the body's
+centroid, a point on the muzzle-to-target axis, or the frontmost region as today is an open design
+question — **see `BR54.01`, whose stated unverified suspect this confirms.** Do not treat the table
+above as intended behaviour.
+
+**Related but separate: `InternalTargeting.aim_offset_for` computes exactly this offset for a named
+internal part and has no production caller** — nothing outside its own tests reaches it. The
+knowledge-gated aim-at-a-specific-internal path exists and is not wired up.
+
 ## Answered: what a projectile that hits nothing does
 This was an open question here for a long time ("stop at max range, or keep travelling?").
 **The supervisor answered it while `BR34.05` was being triaged, and the answer is stronger
