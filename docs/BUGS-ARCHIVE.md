@@ -1313,6 +1313,48 @@ same relative order this ledger has always kept them in, oldest work first. All 
   null-root-resets-viewport-state test. CC-sourced: found, fixed, and tested entirely by CC in one
   pass, no supervisor confirmation gate applies.
 
+### BR51.22 — Resolved — owner: `CC`
+**A detonation damages units only, never cover or other blockers**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt. *"Only seems to damage units, not cover."*
+- **Confirmed in `DamageResolver.detonate`:** it iterates `state.units` and nothing else. Blockers and
+  field items are never considered, so a barrel next to a barrel cannot chain, and an explosion beside a
+  wall leaves it untouched.
+- **Same root as `BR35.08`'s drawing gate**, which was fixed by recording that a part detonated rather
+  than reading its casualty list: the blast list only ever contained `Unit`s. This is the mechanical half
+  of that same assumption.
+- **Chain reactions are the thing to decide before writing it:** a barrel that detonates a neighbouring
+  barrel needs a recursion bound, and that is a design call, not an implementation detail.
+- **RESOLVED** — commit `bd17685` (*"detonations reach cover, chain in waves, and centre on the
+  exploding part"*), with its own `CHANGELOG.md` entry. `Detonation` was split out of `DamageResolver`
+  when chaining pushed that file past its line cap; it resolves in **waves**, to the supervisor's
+  stated shape — *"chain react simultaneously, then in order, they should never re-explode"* — and
+  blockers and field items are in the blast now, not only `state.units`.
+- **Archived 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`].** The fix
+  landed but the entry was **deleted from `BUGS.md` rather than moved here**, so a genuinely closed
+  bug left no closure marker anywhere — exactly what this ledger exists to prevent. Text above
+  restored verbatim from `a65f66d`; the two notes are new.
+
+### BR51.23 — Resolved — owner: `CC`
+**A detonation is centred on the owning unit's cell, not on the exploding part**
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-01, sixth hunt, reviewing CC's own choice. *"Centered on the cell, or centered on the
+  exploding part? For a barrel, cell center works, but an ammo rack on a unit's back may be higher up or
+  offset."*
+- **The supervisor is right and CC chose wrong.** `DamageResolver._locate_cell` returns the *unit's* cell
+  for any part mounted on one, and the logged height is the cell's floor. So an ammo rack detonates at
+  its wearer's feet — the drawn sphere is centred somewhere the exploding object is not.
+- **A barrel is the case that hides it**, because a blocker's cell genuinely is its position.
+- **The part's real world position already exists** — `UnitGeometry.assembly_placements` composes exactly
+  this for rendering and for `PartPicker`, so the fix is to ask it rather than to derive a second answer.
+- **RESOLVED** — commit `bd17685`, same commit as `BR51.22`. `Detonation._origin` asks
+  `UnitGeometry.assembly_placements` for the exploding part's own composed world position rather than
+  deriving a second answer, and `detonation.gd:108` cites this entry by id — so the fix names the bug
+  it closes even though the entry had gone.
+- **Archived 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`]**, for the same
+  reason as `BR51.22`: fixed, then deleted from `BUGS.md` instead of moved here. Text above restored
+  verbatim from `a65f66d`; the two notes are new.
+
 ### BR27.16 — Resolved — owner: `SUPERVISOR`
 **Step out: MP charged for the automated legs**
 - **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (2), 2026-08-04** — see that entry below
