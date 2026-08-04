@@ -22,6 +22,11 @@ export_presets.cfg
 # Completed taskblock specs — local working notes, not published
 /taskblock_done/
 
+# Per-pass completion times, a scratch record for the session that is running the block.
+# LOCAL ONLY and deliberately ignored: pass commits use `git add -A`, so an untracked file in
+# the root would otherwise ride along into whichever pass happened to land next.
+/tb*-pass-times.md
+
 # Regenerated every run.
 /out/combat.log
 # taskblock-52: rotated per-session logs (FileSink.ARCHIVE_DIR)
