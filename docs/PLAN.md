@@ -1239,18 +1239,20 @@ recorded beside the cut.
 
 Three specific things the index put on the table, in value order:
 
-- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`
-  costs 102.3 s — 21% of the whole attributed suite.** Six other tests guard its rule (*a shared
-  fixture is played once and handed out as copies*) for 0.001 s each. taskblock-48 built `BoutCorpus`
-  so this window is played once; whether this test can read the corpus instead of playing its own is
-  the single biggest lever in the file, and it is a supervisor call.
-- **`test_full_mission::test_bout_completion_rate_meets_the_measured_floor` is a 62.6 s sole guard** —
-  the only test of *the AI finishes missions at or above the measured floor*. By the cut rule it stays
-  regardless of cost. Recorded because it is exactly the row someone proposes cutting on cost alone.
-- **Eight name defects** (the filled `description` column) — two cite deleted taskblock documents, one
-  asserts "three scatter rings" as though ring count were a system rule when `docs/00` says N rings
-  never 3, one has drifted from its body outright, four are vague. Renaming is cheap and independent of
-  any cut.
+**Two of the three findings below have since been acted on, and the third is no longer expensive.**
+Recorded corrected rather than deleted, because the *shape* of each is still the thing this item is for.
+
+- ~~**Eight name defects**~~ **— closed, taskblock-50 Pass E3.** The `description` column is empty
+  across all 2668 rows. The lesson stands: a filled description is a defect report, and the column
+  should stay empty.
+- ~~**`test_full_mission::test_bout_completion_rate_meets_the_measured_floor`, a 62.6 s sole guard**~~
+  **— retired, taskblock-50 Pass D.** Replaced by `test_seeds_to_first_completion_stays_low`, and
+  `test_full_mission.gd` now costs **1.2 s**. It was exactly the row someone proposes cutting on cost
+  alone, and it was retired by making the measurement cheaper rather than by cutting the guard.
+- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`**
+  still exists, but its file is **6.2 s**, not the 102.3 s recorded here. **The corpus lever is no
+  longer worth a supervisor call.** Six other tests guard the same rule for ~0.001 s each, so the
+  cut-rule question remains open on its merits, at a fraction of the stakes.
 
 **The audit's headline finding was not the predicted one, and that shapes this item.** `TEST-AUDIT.md`
 expects expensive rows sharing a rule with cheap ones to be the output. They exist — but in every case
@@ -1372,13 +1374,48 @@ consolidation as the full-mission-test replacement. Small, but it removes a stal
 out of sync with the real generation path.
 
 
+### Retire `MIN_COMPLETION_RATE`
+**Needs:** nothing. **Unblocks:** nothing.
+
+**Nothing reads it.** taskblock-50 Pass D replaced the rate with `seeds_to_first_win`, and every
+surviving mention across four files is a *comment about* the constant, not a use of it —
+`test_full_mission.gd` says so in its own header (*"left in place and unused by this test"*).
+
+**It does not need a number picked; it needs deleting.** A constant no test reads is exactly what the
+next reader takes as live.
+
+**Keep the story, drop the constant.** Its cautionary value — a threshold on a small integer count sat
+less than one seed from red and the response was to lower it — is already told better and in more
+useful places by `suite_budget.gd:10` and `completion_sampler.gd:89`. Those stay.
+
+### The test audit's Tier 2 merges
+**Needs:** nothing. **Unblocks:** nothing; ~35 s and about ten tests.
+
+Three clusters the 2026-07-30 pruning audit identified as **same-rule *and* same-scope**, so the cut
+rule genuinely applies rather than correctly refusing. Filed because **the CSV they came from is
+deliberately stale, so this finding does not regenerate itself** — if it is not recorded here it is
+lost.
+
+| rule | rows | cost | note |
+|---|---:|---:|---|
+| the run panel reports the real rung and the real verdict | 9 | 20.6 s | three at 9.41 / 8.27 / 1.49 s, all inside `test_suite_run.gd` — one process spawn, distinct assertion messages kept |
+| the gate's exit code reflects the run's real verdict | 4 | 12.3 s | each spawns a real subprocess; `test_exit_code_probe.gd` guards the same rule at 0.000 s |
+| every spawn zone is walkable and reachable | 8 | 17.0 s | six "across many seeds" sweeps across three files, differing only in seed count |
+
+**Costs are as-measured then and want re-taking** — taskblock-50 moved a great deal underneath them.
+**Merged tests keep distinct assertion messages**, or a failure stops naming which fact broke.
+
+Small enough to drop if it never rises to the top; recorded so that is a decision rather than an
+oversight.
+
 ### Cut `test_completion_sampler.gd` further, or decide it is right
 **Needs:** nothing. **Unblocks:** nothing; a judgement call left open rather than made under a
 suite-cost pass.
 
-taskblock-47 Pass E took this file 437 s → 207 s and it is still the most expensive in the suite. What
-remains is genuine — it plays real missions to check the sampler reports them correctly, and the bouts
-left are the ones its properties actually need.
+taskblock-47 Pass E took this file 437 s → 207 s, and taskblock-50's corpus and stubbing work took it
+to **6.2 s**. It is no longer the most expensive file in the suite and this item is close to answering
+itself. What remains is genuine — it plays real missions to check the sampler reports them correctly —
+and at 6.2 s the honest answer is probably *it is right*. **Confirm and close rather than cut.**
 
 **Cutting further means deciding the sampler does not need an end-to-end test**, which is a bigger call
 than a pass about suite cost should make on its own. The options, if it is ever worth taking: assert the
