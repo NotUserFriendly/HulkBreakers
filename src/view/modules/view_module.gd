@@ -148,6 +148,39 @@ func _unmount() -> void:
 	pass
 
 
+## taskblock-57 Pass B: **slots this module publishes for other modules to mount into**, as
+## `StringName` -> `Control`. Empty for the overwhelming majority.
+##
+## ## A module may be a slot provider, and that is deliberately general
+##
+## Four surfaces pin relative to the **action bar** rather than to the screen — the turn-order
+## panel to its right, the combat log to its left, unit resources and the UI buttons above it. Until
+## now every slot came from `ModeChrome`, which builds against the screen and knows nothing about
+## where a module ended up.
+##
+## **The action bar is not special-cased**, and the taskblock is explicit about that: *"Keep it
+## general; do not special-case the action bar. Anything else may want to publish later."* So this
+## is a hook on `ViewModule`, the host publishes whatever any module returns, and the action bar is
+## simply the first module to use it.
+##
+## ## Ordering is the existing rule, not a new one
+##
+## The host publishes a module's slots immediately after mounting it, so **a provider must be
+## declared before its dependants** — the same constraint that already governs `unit_input`
+## publishing the `TacticsController` every display module reads at its own mount time. Nothing new
+## to remember.
+##
+## ## A dependant must still stand alone
+##
+## `ModuleContext.slot` falls back to `ui_root`, or to the module itself, when a slot is absent — so
+## a mode that declares the combat log and no action bar gets a combat log that mounts somewhere
+## sensible rather than failing. **taskblock-56 Pass C's acceptance is not weakened by relative
+## anchoring**, and `test_view_modules_stand_alone.gd` still mounts every module against a context
+## with no slots at all.
+func published_slots() -> Dictionary:
+	return {}
+
+
 ## Wires this module to the other modules in its mode. Called on every module **after all of them
 ## have mounted**, so the connections a module wants do not constrain the declaration order the way
 ## its mount-time reads do.

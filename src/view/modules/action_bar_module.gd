@@ -21,6 +21,18 @@ var ap_mp_pip_row: ApMpPipRow = null
 ## ordering structurally rather than by eye.
 var action_column: VBoxContainer = null
 
+## taskblock-57 Pass B: the bar's own root, holding the four published slots and the bar itself.
+## **Moving this moves every dependant surface**, because they are its children rather than
+## separately anchored to a screen corner — which is the whole reason the bar publishes slots
+## instead of four modules each anchoring themselves near where they expect it to be.
+var bar_root: VBoxContainer = null
+## The four published slot containers. Public so a test reads back what was published rather than
+## re-deriving where the bar put them.
+var left_slot: HBoxContainer = null
+var right_slot: HBoxContainer = null
+var top_left_slot: HBoxContainer = null
+var top_right_slot: HBoxContainer = null
+
 
 func module_id() -> StringName:
 	return &"action_bar"
@@ -31,15 +43,45 @@ func kind() -> Kind:
 	return Kind.INPUT
 
 
+## taskblock-57 Pass B: **the first module to publish slots.** Nothing here is special-cased in the
+## host — `ControlOverlay` publishes whatever any module returns from this hook.
+func published_slots() -> Dictionary:
+	return {
+		ModuleSlots.ACTION_BAR_LEFT: left_slot,
+		ModuleSlots.ACTION_BAR_RIGHT: right_slot,
+		ModuleSlots.ACTION_BAR_TOP_LEFT: top_left_slot,
+		ModuleSlots.ACTION_BAR_TOP_RIGHT: top_right_slot,
+	}
+
+
 func _mount() -> void:
 	var row: Control = context.slot(ModuleSlots.ACTION_ROW, null)
 
+	# The bar and its four satellite slots, as one subtree. Two rows: the surfaces that sit *above*
+	# the bar, then the bar flanked by the surfaces beside it.
+	bar_root = VBoxContainer.new()
+	bar_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if row != null:
+		row.add_child(bar_root)
+	else:
+		add_child(bar_root)
+
+	var above := HBoxContainer.new()
+	above.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_root.add_child(above)
+	top_left_slot = _slot_container(above, true)
+	top_right_slot = _slot_container(above, false)
+
+	var beside := HBoxContainer.new()
+	beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_root.add_child(beside)
+	left_slot = _slot_container(beside, false)
+
 	action_column = VBoxContainer.new()
 	action_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if row != null:
-		row.add_child(action_column)
-	else:
-		add_child(action_column)
+	beside.add_child(action_column)
+
+	right_slot = _slot_container(beside, false)
 
 	var pip_rows := VBoxContainer.new()
 	pip_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -62,6 +104,22 @@ func _mount() -> void:
 	if context.tactics != null:
 		action_bar.setup(context.tactics, action_row, tooltip)
 		ap_mp_pip_row.setup(context.tactics, ap_pips, mp_pips, tooltip)
+
+
+## One published slot container. `expanding` gives it the leftover width, which is what pushes the
+## slot after it to the far edge — the "above the bar, right edge" placement in Pass C's table.
+##
+## `MOUSE_FILTER_IGNORE`, like every other wrapping container in the layout: these span real width
+## and would otherwise swallow camera drags that started over them before `CameraRig` ever saw the
+## event. **Whatever mounts INTO the slot sets its own filter**; an empty slot must never be a dead
+## patch of screen.
+func _slot_container(parent: HBoxContainer, expanding: bool) -> HBoxContainer:
+	var slot := HBoxContainer.new()
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if expanding:
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(slot)
+	return slot
 
 
 func _pip_row(parent: VBoxContainer, text: String, color: Color) -> HBoxContainer:

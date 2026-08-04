@@ -344,6 +344,15 @@ func _mount_declared_modules() -> void:
 		add_child(mounted)
 		mounted.configure(mode.options_for(id))
 		mounted.mount(module_context)
+		# taskblock-57 Pass B: **a module may be a slot provider**, and its slots are published the
+		# instant it has mounted — so a later module in the same declaration finds them at its own
+		# mount time. That is the ordering rule the mode table already lives under (`unit_input`
+		# before every display module), applied to slots instead of to a controller.
+		#
+		# Generic on purpose: the host does not know which modules publish, and the action bar is
+		# simply the first one that does.
+		for slot_name: StringName in mounted.published_slots():
+			module_context.set_slot(slot_name, mounted.published_slots()[slot_name])
 		modules.append(mounted)
 
 
