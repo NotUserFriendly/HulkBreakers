@@ -32,6 +32,32 @@ const TUNABLES := &"tunables"
 ## A single centred column owning the whole screen — a menu's own layout.
 const MENU_COLUMN := &"menu_column"
 
+# --- taskblock-57 Pass B: slots published by the action bar, not by a chrome ------------------
+#
+# **These resolve against the bar, not against the screen.** Four surfaces sit relative to it, so
+# when the bar moves — a different UI scale, a different safe rect — they move with it for free,
+# because they are its children rather than separately anchored to a corner.
+#
+# They are ordinary `ModuleSlots` names with nothing special about them: `ActionBarModule` returns
+# them from `ViewModule.published_slots()` and the host publishes whatever any module returns.
+
+## Immediately left of the bar. The combat log, which minimises to a button flush against it.
+const ACTION_BAR_LEFT := &"action_bar_left"
+## Immediately right of the bar. Turn-order management, in the player mode only.
+const ACTION_BAR_RIGHT := &"action_bar_right"
+## Above the bar, from its left edge. Unit resources — AP/MP pips, RAM, later resources.
+const ACTION_BAR_TOP_LEFT := &"action_bar_top_left"
+## Above the bar, at its right edge. Module toggles, Inspect, the debug menu.
+const ACTION_BAR_TOP_RIGHT := &"action_bar_top_right"
+
+## The four above, for a caller that wants to ask "is this an action-bar slot" without listing them.
+const ACTION_BAR_SLOTS: Array[StringName] = [
+	ACTION_BAR_LEFT,
+	ACTION_BAR_RIGHT,
+	ACTION_BAR_TOP_LEFT,
+	ACTION_BAR_TOP_RIGHT,
+]
+
 # --- taskblock-57 Pass A: what a slot is, beyond where it is ---------------------------------
 #
 # **Two properties, both declared here rather than known by the panels.** A convention lives in
