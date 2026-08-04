@@ -28,6 +28,9 @@ const PLAYER_COLUMNS := &"player_columns"
 const TOP_LEFT_ROWS := &"top_left_rows"
 ## A single centred column, for a menu that owns the whole screen.
 const CENTERED_MENU := &"centered_menu"
+## taskblock-57 Pass C: **the layout.** Every surface in the block's own placement table, built
+## against `UiLayout`'s safe rect rather than against raw screen anchors.
+const BATTLE_LAYOUT := &"battle_layout"
 
 const TOP_LEFT_MARGIN := Vector2(16, 16)
 const TUNABLES_MARGIN := Vector2(16, 48)
@@ -43,6 +46,8 @@ static func build(chrome: StringName, ui_root: Control, context: ModuleContext) 
 			_top_left_rows(ui_root, context)
 		CENTERED_MENU:
 			_centered_menu(ui_root, context)
+		BATTLE_LAYOUT:
+			_battle_layout(ui_root, context)
 
 
 static func _player_columns(ui_root: Control, context: ModuleContext) -> void:
@@ -114,6 +119,47 @@ static func _centered_menu(ui_root: Control, context: ModuleContext) -> void:
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	ui_root.add_child(column)
 	context.set_slot(ModuleSlots.MENU_COLUMN, column)
+
+
+## taskblock-57 Pass C: **the placement table, built.**
+##
+## Thin on purpose. Every rect comes from `BattleLayout`, which is pure logic and is where the
+## arithmetic is tested; this only turns answers into `Control`s. A chrome full of anchor presets
+## whose only test is a screenshot is what that split avoids.
+##
+## **The action bar is placed; its four satellites are not.** Those are published by the bar itself
+## (Pass B) and move with it, which is the entire reason that mechanism exists.
+static func _battle_layout(ui_root: Control, context: ModuleContext) -> void:
+	var rects: Dictionary = BattleLayout.slot_rects(ui_root.size)
+	for slot: StringName in rects:
+		context.set_slot(slot, _placed(ui_root, rects[slot] as Rect2))
+
+
+## A positioned, click-through region. **`MOUSE_FILTER_IGNORE` on every one**, like the wrapping
+## regions the other layouts build: these span real area and would otherwise swallow the camera
+## drags that start over them before `CameraRig._unhandled_input` ever sees the event. Whatever
+## mounts into the slot sets its own filter, so an empty slot is never a dead patch of screen.
+static func _placed(ui_root: Control, rect: Rect2) -> Control:
+	var region := Control.new()
+	region.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	region.position = rect.position
+	region.custom_minimum_size = rect.size
+	region.size = rect.size
+	region.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_root.add_child(region)
+	return region
+
+
+## **The one-off the taskblock names**: the debug menu shifts left when Inspect would overlap it,
+## and nothing else budges for anything.
+##
+## Re-placed from `BattleLayout`'s answer rather than nudged from where it currently sits, so
+## calling this repeatedly cannot walk the menu across the screen.
+static func budge_debug_menu(context: ModuleContext, screen: Vector2, inspect_open: bool) -> void:
+	var menu: Control = context.slots.get(ModuleSlots.DEBUG_MENU)
+	if menu == null:
+		return
+	menu.position = BattleLayout.budged_debug_menu_rect(screen, inspect_open).position
 
 
 static func _region(ui_root: Control, preset: int) -> Control:
