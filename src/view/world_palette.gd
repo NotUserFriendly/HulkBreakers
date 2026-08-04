@@ -20,6 +20,26 @@ const BACKDROP := Color("#050506")
 ## empty-space treatment would reach for. Marked here so nobody reads its survival as "the ground
 ## plane is still a thing".
 const GROUND := Color("#2E4A32")
+## taskblock-56 Pass E: **a temporary override, and it is temporary on purpose.**
+##
+## Floor tiles are drawn in their own part's *material* colour, like every other real piece of
+## geometry — which is correct and, with no models yet, unreadable: a tile, a wall and a unit made
+## of the same steel are the same colour, so a board reads as one undifferentiated mass. Until
+## tiles have a look of their own, they draw in this instead.
+##
+## **The same dark forest green `GROUND` used to be**, deliberately — it is the tone the board was
+## calibrated against and `BACKDROP` is still calibrated to it. Kept as its own constant rather than
+## reaching for `GROUND` so that deleting this override is a one-line change that cannot disturb the
+## contrast anchor.
+##
+## **Keep it far from `ClaimVolumeModule`'s interior lime.** The two greens are deliberately at
+## opposite ends of the range — dark forest floor, vibrant lime claim — so a claim reads against the
+## floor it sits on. If either is retuned, that separation is the constraint, not the individual
+## value.
+const TILE_TEMP := Color("#2E4A32")
+## The one switch. `false` restores the material read this override replaced, and a test asserts
+## both branches so turning it off cannot quietly break the path it falls back to.
+const TEMPORARY_TILE_TINT := true
 const TEAM_A := Color("#3A7BD5")
 const TEAM_B := Color("#D53A3A")
 ## docs/10 taskblock05 C: the hover-highlight rim (inventory row <-> 3D
@@ -101,6 +121,16 @@ static func directional_light(energy: float = 1.0) -> DirectionalLight3D:
 ## than that is a real design question, not an oversight to paper over here.
 static func team_color(squad_id: int) -> Color:
 	return TEAM_A if squad_id == 0 else TEAM_B
+
+
+## What a floor tile is drawn in: `TILE_TEMP` while the override stands, that tile's own material
+## colour otherwise. **The whole revert is `TEMPORARY_TILE_TINT = false`** — the caller in
+## `BoardView._build_tiles` is one line and does not know which branch it got, which is what keeps
+## the temporary thing genuinely one edit away from gone.
+static func tile_color(material_table: MaterialTable, material: StringName) -> Color:
+	if TEMPORARY_TILE_TINT:
+		return TILE_TEMP
+	return material_table.color_for(material)
 
 
 ## Lit material for real geometry — parts, blockers — so adjacent same-
