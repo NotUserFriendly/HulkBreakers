@@ -16,7 +16,7 @@ extends RefCounted
 ## - `options` — per-module pre-mount configuration, keyed by module id. The handful of fields a
 ##   module exposes for this (`with_button`, `include_new_battle`, `announce_passes`) are fields
 ##   rather than constructor arguments precisely so a mode can set them as data.
-## - `turn_policy` — who drives a unit's turn. Three closed answers, so this is the one `enum` here.
+## - `turn_policy` — who drives a unit's turn. Two closed answers, so this is the one `enum` here.
 ##
 ## **The acceptance is that adding a mode is a table entry, not a file** — asserted in
 ## `test_view_modes.gd` by building a mode nothing in `src/` declares and mounting it.
@@ -24,9 +24,9 @@ extends RefCounted
 ## ## Why `turn_policy` is an enum and everything else is an open `StringName`
 ##
 ## CLAUDE.md's rule: enums for closed engine states, open vocabularies for content. "Who drives this
-## turn" has exactly three answers and each one is a different code path in `ControlOverlay`
-## (`BoutRunner` asks `wants_turn_for` and gets AI, a squad check, or a single unit). Module ids,
-## chrome names and option keys are all things a later mode may invent, so none of them is closed.
+## turn" has exactly two answers and each is a different code path in `ControlOverlay` (`BoutRunner`
+## asks `wants_turn_for` and gets AI or a squad check). Module ids, chrome names and option keys are
+## all things a later mode may invent, so none of them is closed.
 
 ## Who drives a unit's turn under this mode.
 ##
@@ -35,11 +35,12 @@ extends RefCounted
 ## - `HUMAN_SQUADS` — whatever `CombatState.controller_for` says. There is no silent HUMAN
 ##   default to fall back on; every real entry point assigns explicitly, so this reads exactly
 ##   what was assigned.
-## - `SINGLE_UNIT` — exactly one named unit, `controlled_unit`. **Unset never means "drive
-##   everything"**: that would blow through the whole battle the instant the mode installs, before a
-##   caller got around to naming the unit. It means "nothing configured yet, drive nothing
-##   automatically", the same fail-safe direction every other unconfigured-input case takes.
-enum TurnPolicy { NONE, HUMAN_SQUADS, SINGLE_UNIT }
+##
+## **`SINGLE_UNIT` was a third answer and is gone** (taskblock-57 Pass D). It named one
+## `controlled_unit` so that unit could be auto-selected on its turn; the player mode now
+## pre-selects whichever unit it drives, so the policy had nothing left to decide that
+## `HUMAN_SQUADS` did not already decide.
+enum TurnPolicy { NONE, HUMAN_SQUADS }
 
 var id: StringName = &""
 ## Human-readable, for the overlay-activated/deactivated log lines. Before this pass those printed

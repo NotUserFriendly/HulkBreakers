@@ -7,13 +7,14 @@ extends RefCounted
 ## |---|---|
 ## | `SpectatorOverlay`, 718 lines | `spectator` — display modules, no unit input |
 ## | `SquadControlOverlay`, 942 lines | `player` — display + full unit input |
-## | `SingleUnitOverlay`, 54 lines | `single_unit` — the above, scoped to one unit |
 ## | `GenerateBoutOverlay`, 373 lines | `bout_setup` — the roster menu, no board input |
 ##
-## **`single_unit` is the entry that proves the point.** It was 54 lines only because inheritance
-## happened to be available to it — it wanted everything `SquadControlOverlay` had. Here it is
-## literally `player`'s module list with one field changed, which is what "a mode is a declaration"
-## means when the declaration is honest.
+## **`single_unit` was here and is gone.** taskblock-56 kept it as `player`'s list with one field
+## changed, which made the point that a mode is a declaration. taskblock-57 Pass D collapses it into
+## `player` outright: *"with one unit the behaviour was already identical"*, and the one thing it
+## really did — pre-select the unit whose turn it is — is now what the player mode does for
+## everybody. A mode that differs from another by nothing a player can see is a second name for one
+## thing.
 ##
 ## **Each mode is built by assigning fields rather than by one long constructor call**, so a comment
 ## can sit with the option it explains. That is not cosmetic: the options carry the *reasons* a mode
@@ -39,14 +40,12 @@ const PLAYER_MODULES: Array[StringName] = [
 	&"tooltip",
 	&"action_bar",
 	&"unit_resources",
-	&"stat_panels",
 	&"resolution",
 	# taskblock-57 Pass C3: before `inspect`, which takes this module's `BotViewer` at its own
 	# mount time. Declared after, Inspect builds its own inside its body and the table's top-left
 	# row stays empty — not broken, just the old layout.
 	&"inspect_viewer",
 	&"inspect",
-	&"queue_panel",
 	&"turn_controls",
 	&"controls_legend",
 	&"combat_log",
@@ -96,7 +95,9 @@ const SPECTATOR_MODULES: Array[StringName] = [
 ##
 ## - `unit_input` — owns the `TacticsController` that IS the aim, and the `AimView` dartboard you
 ##   are aiming with. Unmounting it mid-aim would destroy the aim in order to render the aim.
-## - `stat_panels` — the aim readout. The one thing you are actually reading while aiming.
+## - `aim_readout` — the READING/RESOLVES text. The one thing you are actually reading while
+##   aiming, and a surface only this mode has: `stat_panels` carried it until Pass D retired that
+##   module, so it is its own now.
 ## - `resolution` — the shot resolves the instant aim ends, and a playback torn down as it starts is
 ##   a resolution nobody sees.
 ## - `combat_log` — **not for looks.** Its sink attaches to the live `CombatLog` at mount and is
@@ -108,7 +109,6 @@ const SPECTATOR_MODULES: Array[StringName] = [
 ## drawing over them.
 const AIM_MODULES: Array[StringName] = [
 	&"unit_input",
-	&"stat_panels",
 	&"resolution",
 	&"combat_log",
 ]
@@ -200,17 +200,6 @@ static func aim() -> ViewMode:
 	return mode
 
 
-## `player`'s modules and chrome, with the turn policy narrowed. **One field.** That is the whole
-## of what used to be a subclass, and the reason it is worth pointing at: the 54-line file was not
-## small because the mode was small, it was small because inheritance let it take everything.
-static func single_unit() -> ViewMode:
-	var mode: ViewMode = player()
-	mode.id = &"single_unit"
-	mode.display_name = "Single Unit"
-	mode.turn_policy = ViewMode.TurnPolicy.SINGLE_UNIT
-	return mode
-
-
 static func bout_setup() -> ViewMode:
 	var mode := ViewMode.new()
 	mode.id = &"bout_setup"
@@ -261,7 +250,7 @@ static func empty() -> ViewMode:
 
 ## Every mode, for tests and for anything that wants to enumerate them.
 static func all() -> Array[ViewMode]:
-	return [player(), spectator(), single_unit(), bout_setup(), editor(), aim(), empty()]
+	return [player(), spectator(), bout_setup(), editor(), aim(), empty()]
 
 
 ## The mode named `id`, or null. **Null rather than a default**, so a caller naming a mode that does

@@ -89,7 +89,6 @@ func test_the_spectator_mode_declares_no_unit_input() -> void:
 	assert_false(ViewModes.bout_setup().has_unit_input(), "a pre-battle menu drives no unit")
 	assert_false(ViewModes.empty().has_unit_input(), "an empty surface drives nothing")
 	assert_true(ViewModes.player().has_unit_input(), "and the player mode does, or nothing works")
-	assert_true(ViewModes.single_unit().has_unit_input())
 
 
 ## The same contract against a **mounted** surface, because a declaration saying the right thing and
@@ -109,17 +108,21 @@ func test_a_mode_with_no_input_modules_has_no_tactics_controller() -> void:
 	assert_not_null(player.tactics(), "the player mode must have one, or the contrast is vacuous")
 
 
-## **`single_unit` is `player` plus one field.** Stated as a test because it is the clearest
-## evidence that the collapse worked: what used to be a 54-line subclass is now a difference of one
-## value.
-func test_the_single_unit_mode_differs_from_the_player_mode_by_exactly_one_field() -> void:
-	var player: ViewMode = ViewModes.player()
-	var single: ViewMode = ViewModes.single_unit()
-	assert_eq(single.modules, player.modules, "same modules")
-	assert_eq(single.chrome, player.chrome, "same chrome")
-	assert_eq(single.options, player.options, "same options")
-	assert_ne(single.turn_policy, player.turn_policy, "and exactly one thing different")
-	assert_eq(single.turn_policy, ViewMode.TurnPolicy.SINGLE_UNIT)
+## **`single_unit` is gone, and nothing may bring it back by accident.** taskblock-56 kept it as
+## `player` with one field changed, which made the point that a mode is a declaration. taskblock-57
+## Pass D collapsed it: *"with one unit the behaviour was already identical"*, and the one thing it
+## actually did — pre-select the unit whose turn it is — is what the player mode now does for
+## everybody.
+##
+## Asserted rather than simply deleted, because a mode that differs from another by nothing a player
+## can see is exactly the kind of thing that gets re-added.
+func test_the_single_unit_mode_is_gone_from_the_table() -> void:
+	assert_null(ViewModes.by_id(&"single_unit"), "the mode must not be reachable by id")
+	var ids: Array[StringName] = []
+	for mode: ViewMode in ViewModes.all():
+		ids.append(mode.id)
+	assert_false(ids.has(&"single_unit"), "nor listed by all(): %s" % ", ".join(ids))
+	gut.p("modes: %s" % ", ".join(ids))
 
 
 ## A mode listing an id the catalog does not know gets a surface without it, not a crash — the same

@@ -133,47 +133,6 @@ static func _battle_layout(ui_root: Control, context: ModuleContext) -> void:
 	var rects: Dictionary = BattleLayout.slot_rects(ui_root.size)
 	for slot: StringName in rects:
 		context.set_slot(slot, _placed(ui_root, rects[slot] as Rect2))
-	_legacy_readout(ui_root, context)
-
-
-## **A holding pen for the three surfaces Pass D deletes, and it goes with them.**
-##
-## `queue_panel`, `stat_panels` and `controls_legend` are not in the placement table because the
-## taskblock retires or relocates all three in the very next pass. Switching the player mode to this
-## layout without them would strand each one on `ui_root` at (0,0) — stacked on top of each other
-## and on top of the debug menu, which is not "unplaced", it is broken. **Two passes of churn on the
-## same files is the alternative**, and a deliberately labelled temporary beats a surface that does
-## not work for a pass.
-##
-## Pinned bottom-right, which is where all three sat under `PLAYER_COLUMNS`, so nothing moves that
-## Pass D is not about to remove anyway.
-##
-## **Delete this function when `queue_panel` and `stat_panels` retire.** Nothing else uses these
-## three slot names once `controls_legend` moves into the UI buttons cluster.
-static func _legacy_readout(ui_root: Control, context: ModuleContext) -> void:
-	var column := VBoxContainer.new()
-	column.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	column.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	column.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	column.alignment = BoxContainer.ALIGNMENT_END
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# **Raised clear of the action bar's band, and that is not cosmetic.** Under `PLAYER_COLUMNS`
-	# this column sat directly above the action row in one `VBoxContainer`, so they could not
-	# overlap. Anchored independently they can: the queue panel is wide, it grows leftward from the
-	# right edge, and it reached far enough left to cover the End Turn button — clicks landed on the
-	# panel instead of the button. Caught by `test_battle_scene_input.gd`, which pushes a real click
-	# at the button's real rect, not by looking at it.
-	column.offset_bottom = -UiLayout.scaled(BattleLayout.ACTION_BAR_HEIGHT + BattleLayout.PADDING)
-	ui_root.add_child(column)
-	context.set_slot(ModuleSlots.READOUT_COLUMN, column)
-	context.set_slot(ModuleSlots.INVENTORY_ROW, column)
-
-	var legend := VBoxContainer.new()
-	legend.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	legend.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_root.add_child(legend)
-	context.set_slot(ModuleSlots.TOP_RIGHT, legend)
 
 
 ## **Re-places an already-built layout against a new screen size.**

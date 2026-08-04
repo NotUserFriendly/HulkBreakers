@@ -28,6 +28,9 @@ signal inspect_opened
 ## While true, the next real click is captured and emitted instead of doing the normal thing.
 ## `DebugControlPanel` sets this through `input_owner`.
 var input_capture_mode: bool = false
+## taskblock-57 Pass D: whether a click that hit nothing else may open the floor tile.
+## **Off by default and driven by the debug menu** — see `DebugUiElements.FLOOR_TILE_PICKING`.
+var floor_tile_picking: bool = false
 
 ## Whether the bout was actually auto-playing when a click opened the inspect panel. **"Closing it
 ## resumes" must never START auto-play** for someone who had already paused by hand before clicking.
@@ -41,10 +44,20 @@ func module_id() -> StringName:
 ## Clicking a body pauses the bout and opens the panel; closing it resumes, but only if it was
 ## running. Both halves live here because both are consequences of this module's own click.
 func link() -> void:
+	# The floor-tile toggle is offered by the debug menu and consumed here, the same way the
+	# performance readout's is. A mode with no debug panel simply never turns it on.
+	var debug: ViewModule = context.module(&"debug_panel")
+	if debug != null:
+		(debug as DebugPanelModule).ui_element_toggled.connect(_on_ui_element_toggled)
 	inspect_opened.connect(_on_inspect_opened)
 	var inspect: ViewModule = context.module(&"inspect")
 	if inspect != null:
 		(inspect as InspectModule).closed.connect(_on_inspect_closed)
+
+
+func _on_ui_element_toggled(element: StringName, shown: bool) -> void:
+	if element == DebugUiElements.FLOOR_TILE_PICKING:
+		floor_tile_picking = shown
 
 
 func _on_inspect_opened() -> void:
@@ -105,9 +118,35 @@ func handle_input(event: InputEvent) -> void:
 		return
 	var cell_root: Part = battle.combat_state.grid.blockers.get(cell)
 	if cell_root == null:
-		return
+		# **taskblock-57 Pass D: the floor tile, and only when it has been asked for.**
+		#
+		# *"Everything is a part"*, so the tile under a cell is as inspectable as anything standing
+		# on it. But it is also under **every** cell, which is why the taskblock gates it: *"rare
+		# targets — floor tiles especially — should need enabling from the debug menu rather than
+		# being clickable by default, or every misclick lands on the floor."* Off, a click that hit
+		# nothing does nothing, which is what it did before this pass.
+		if not floor_tile_picking:
+			return
+		cell_root = _tile_at(cell as Vector2i, battle.combat_state.grid)
+		if cell_root == null:
+			return
 	if inspect != null and inspect.open_cell(cell as Vector2i, cell_root):
 		inspect_opened.emit()
+
+
+## The walkable part a unit would stand on at `cell`, or null for an unfloored one.
+##
+## **The topmost surface**, because that is the one you can see and the one you would stand on —
+## `UnitGeometry.true_height_for_cell` answers the same question about height and this is the part
+## that answers it.
+func _tile_at(cell: Vector2i, grid: Grid) -> Part:
+	var best: Part = null
+	var best_height: float = -INF
+	for surface: Surface in grid.surfaces_at(cell):
+		if surface.part != null and surface.height >= best_height:
+			best = surface.part
+			best_height = surface.height
+	return best
 
 
 func _capture(target: SelectionTarget, from: Vector3, dir: Vector3, battle: BattleScene) -> void:
