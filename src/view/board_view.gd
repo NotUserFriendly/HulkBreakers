@@ -558,6 +558,27 @@ static func _add_quad(mesh: ImmediateMesh, a: Vector3, b: Vector3, c: Vector3, d
 ## shot fired at its edge intersects that thickness. Drawing only the top face
 ## would put the *old* defect back at a smaller scale: visible geometry whose
 ## sides a round passes through unseen.
+##
+## ## taskblock-56 Pass A, `BR55.02`: the winding was reversed, and the comment said so
+##
+## This is the only hand-wound geometry on the board — every other box (blockers,
+## cover, dropped assemblies, markers, ghosts) is a Godot `BoxMesh`, correct by
+## construction. So the tiles were the only thing that could show this, and they did:
+## outward faces culled, interior faces drawn.
+##
+## **The convention, measured rather than assumed.** `BoxMesh` emits every triangle
+## with `(b - a).cross(c - a)` pointing **into** the solid — its dot with the stored
+## outward normal is `-1` on all twelve. That is Godot's front-face rule stated in the
+## only terms this file can check: **a face's vertices run clockwise seen from
+## outside**, and the cross product of the emitted order points *inward*. The previous
+## comment here asserted the opposite ("counter-clockwise seen from outside"), which is
+## the bug written down as if it were true. `test_board_view_winding.gd` reads a real
+## `BoxMesh` back and requires this mesh to agree with it, so the convention is never
+## restated from memory again.
+##
+## **No normals are emitted, and that is deliberate rather than an oversight.**
+## `_add_quad` calls `surface_add_vertex` only, so culling is decided by winding alone
+## — there is no normal to disagree with it and mask the fault as a material setting.
 static func _add_box(mesh: ImmediateMesh, xform: Transform3D, size: Vector3) -> void:
 	var h: Vector3 = size * 0.5
 	# The eight corners, in the box's own local space, then placed by `xform`.
@@ -568,14 +589,15 @@ static func _add_box(mesh: ImmediateMesh, xform: Transform3D, size: Vector3) -> 
 				c.append(xform * Vector3(sx, sy, sz))
 	# Indices into `c`, whose order above is x-major then y then z: 0 = (-,-,-),
 	# 1 = (-,-,+), 2 = (-,+,-), 3 = (-,+,+), 4 = (+,-,-), 5 = (+,-,+),
-	# 6 = (+,+,-), 7 = (+,+,+). Each quad is wound counter-clockwise seen from
-	# outside the box, so back-face culling keeps the faces that face the camera.
-	_add_quad(mesh, c[2], c[3], c[7], c[6])  # +Y, the top face a unit stands on
-	_add_quad(mesh, c[0], c[4], c[5], c[1])  # -Y
-	_add_quad(mesh, c[3], c[1], c[5], c[7])  # +Z
-	_add_quad(mesh, c[2], c[6], c[4], c[0])  # -Z
-	_add_quad(mesh, c[6], c[7], c[5], c[4])  # +X
-	_add_quad(mesh, c[0], c[1], c[3], c[2])  # -X
+	# 6 = (+,+,-), 7 = (+,+,+). Each quad runs CLOCKWISE seen from outside the box
+	# — Godot's front-face order, see the note above — so back-face culling keeps
+	# the faces pointing at the camera and discards the interior.
+	_add_quad(mesh, c[6], c[7], c[3], c[2])  # +Y, the top face a unit stands on
+	_add_quad(mesh, c[1], c[5], c[4], c[0])  # -Y
+	_add_quad(mesh, c[7], c[5], c[1], c[3])  # +Z
+	_add_quad(mesh, c[0], c[4], c[6], c[2])  # -Z
+	_add_quad(mesh, c[4], c[5], c[7], c[6])  # +X
+	_add_quad(mesh, c[2], c[3], c[1], c[0])  # -X
 
 
 ## docs/10 taskblock04 C1/C2: a field object can be a whole part TREE (a

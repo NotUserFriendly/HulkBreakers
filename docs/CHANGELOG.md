@@ -1,5 +1,36 @@
 # CHANGELOG.md — What's Been Built
 
+### taskblock-56 Pass A — the tiles are wound the way every other box is (`BR55.02`)
+
+**`BoardView._add_box` emitted all six faces inside out.** It is the only hand-wound geometry the
+project has — every other box on the board is a Godot `BoxMesh` — which is why fifty taskblocks of
+parts never showed this and the tile parts did the moment they existed. Back-face culling was doing
+its job against geometry built the wrong way round: outward faces discarded, interior faces drawn.
+
+**Fixed by reversing the six quads, not by disabling culling.** Culling stays on; no material
+changed. `_add_quad` is deliberately untouched — it is shared with `_build_grid_lines`, whose quads
+were already correct and would have been flipped face-down by a fix applied one level down.
+
+**The convention is now measured rather than asserted.** A real `BoxMesh` emits every triangle with
+`(b - a).cross(c - a)` pointing *into* the solid — dot with its own stored outward normal is `-1` on
+all twelve. A front face runs clockwise seen from outside. The old doc comment claimed the opposite
+in so many words, which is the bug recorded as truth; it is rewritten in the same edit.
+
+**`ImmediateMesh` carries no normals on this surface**, confirmed by reading `ARRAY_NORMAL` back off
+a built mesh rather than by reading the source. So this was never the reversed-winding-with-correct-
+normals case that looks like a culling setting — winding alone decided it.
+
+**`test_board_view_winding.gd` reads the engine's own box back to establish the convention** and
+requires the tile mesh to agree with *that*, so nobody restates the rule from memory again. It was
+checked against the bug: on the old winding it reports `12 of 12 tile faces wound inside out`; on
+the fix, 4/4. It also pins the grid lines as up-facing.
+
+**Why the existing tests missed it, which is the transferable part.** `test_no_risers.gd` counts
+vertices and `test_board_view.gd` asserts an AABB — both winding-blind. Geometry in exactly the
+right place facing exactly the wrong way satisfies every assertion taskblock-55 Pass B wrote.
+CLAUDE.md's "read the real node back, don't re-derive it" had been applied to placement and never to
+orientation.
+
 ### taskblock-55 — closing doc audit
 
 **A fourth test was passing while proving nothing, and only a read found it.**
