@@ -86,7 +86,175 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. Attributes
+### 1. The UI layout
+**Needs:** taskblock-56's module system (landed). **Unblocks:** the editor being usable; every later
+surface having somewhere to go.
+
+taskblock-56 made a mode a table entry and a slot an open `StringName`. **This is the layout those
+slots should describe** — a redesign of where things sit, not new machinery.
+
+#### Two coordinate spaces, both named
+
+**All sizing is against a 16:9 reference rect.** Ultrawide letterboxes to a 16:9 rect inside the
+screen; narrower ratios (4:3, 16:10) **crush** rather than clip. Call them `safe_rect` and
+`screen_rect` and make "escapes the safe rect" a **property of a slot**, not a comment — three surfaces
+do it deliberately (Inspect, the Inspect Viewer, the perf monitor).
+
+**Everything pinned to a side is collapsible or off by default**, so a square-ratio player is never
+forced to reduce UI scale to play. They lose nothing; they toggle.
+
+**UI scale is a multiplier on pixel sizes** — a settable variable replacing a constant, headed for an
+options menu that does not exist yet. Nearly a drop-in, and it is what makes the sentence above mean
+anything.
+
+#### The action bar is an anchor, not just a panel
+
+Four surfaces pin **relative to the action bar**, not to the screen. **The action bar publishes its own
+slots** (`action_bar_left`, `action_bar_right`, `action_bar_top_left`, `action_bar_top_right`) rather
+than a composite cluster module — that fits the existing vocabulary and keeps each surface its own
+module.
+
+| surface | placement |
+|---|---|
+| **Action bar** | bottom, centred, half a 16:9 screen wide at 1x |
+| **Turn order management** | pinned right of the action bar, padded. Player mode only |
+| **Combat log** | pinned left of the action bar, padded. Minimises to a button flush against it |
+| **Unit resources** | top of the action bar, centred — AP/MP pips, RAM, later resources |
+| **UI buttons** | top of the action bar, right edge — toggles, Inspect, debug menu |
+| **Inspect / Inventory** | top-right, ~2/3 screen tall, square. Escapes the safe rect |
+| **Inspect viewer** | top-left, ~2/3 tall and half as wide — the 3D view, split out so the centre stays clear |
+| **Debug menu** | top edge, centred, 1/4 of the 16:9 width, drag-resizable height |
+| **Performance monitor** | true bottom-right corner, no padding, **click-through and mostly transparent** |
+| **Announcements** | top, centred, invisible and click-through |
+
+#### Three action bars, not one with three contents
+
+Deliberately three modules sharing one slot, because they are shaped differently:
+
+- **Player** — square action items, left-aligned, two rows, small padding. Hover highlights; **1.5 s
+  motionless shows a tooltip.**
+- **Editor** — labelled buttons, not squares. **"Place Items" opens a centred, searchable list of every
+  part placeable on a tile**; tiles and claims get their own buttons. Also holds save, load, run-a-bout,
+  and undo.
+- **Spectator** — playback controls, and the old top-left cluster folds in here.
+
+#### Announcements are a view of the log, not a second renderer
+
+**One emit, two views.** Anything tagged as an announcement appears in the combat log *and* is shown
+here — sequential, so it can never appear in one and not the other. The log already folds and filters.
+
+**The only thing the log lacks is a lifetime**, and it is a property of the *view*: the announcement
+position shows tagged entries newer than N seconds; the log keeps them forever.
+
+**Announcements carry a priority**, which drives **duration, colour, and whether it makes a sound**.
+There is no audio system — the priority field carries `sound` and nothing consumes it yet, the same way
+`encounter_types` is authored and unread.
+
+Alignment: centred when the inspect panels are closed, left-aligned when open. **If that cross-module
+read proves awkward, left-align always** — the supervisor has said so.
+
+#### Modules retiring or moving
+
+- **`queue_panel_module` retires.** Waypoints and ghosts carry the visual load. **What is lost is
+  confirmation that a click registered**, which has confused people before — so it moves to the combat
+  log as its own fold: *unit 0 queued a move to (0,0,1)*, *unit 0 queued action: burst*, *unit 0
+  cancelled move*.
+- **`stat_panels_module` retires.** Never earned its space.
+- **`board_inspect_module` folds into Inspect.** **Everything is a part**, so one inspector shows a unit,
+  a piece of cover, a part lying on a tile, or the tile itself. Rare targets — floor tiles especially —
+  may need enabling from the debug menu rather than being clickable by default.
+- **`controls_legend_module` → UI buttons. `top_left_controls_module` → the spectator action bar.**
+- **`bout_setup_module` stays centred** and keeps turning everything else off; it is temporary.
+- **Player and single-unit modes collapse into one**, with the active unit pre-selected. Having to click
+  your own unit every turn is ungainly, and with one unit the behaviour is identical anyway.
+
+#### Aim is a mode
+
+Most modules turn off when the camera drops into over-the-shoulder or sniper view. **That is a module
+set, so it is a mode** — enter aim, switch; leave, switch back. No new machinery, and "what is visible
+while aiming" becomes a table entry someone can read.
+
+#### The editor's own additions
+
+- **A coordinate readout replaces Unit Resources in editor mode** — same slot, different module. Cell,
+  height, and a truncated name of what is there; the inspector carries detail.
+- **Validation warnings go to the combat log**, with the big ones surfacing as announcements. *Warn,
+  never block* needs somewhere to warn.
+- **Current tool shows on the cursor** — a small icon of what is being placed — or is carried by the
+  action bar's own highlight. Either; not neither.
+
+### 2. The manipulation gizmo
+**Needs:** *The UI layout*. **Unblocks:** authoring heights and claim volumes at all.
+
+**A 3D CAD-style handle set with a numeric readout**, used for two jobs.
+
+- **Placement height.** Click a placed item, drag the up arrow, watch the box read 0.3. **Snap to 0.1**,
+  which is the precision authored maps were always meant to have.
+- **Claim volumes.** **One click selects and gives translate arrows; a second click swaps to resize
+  handles.** Same gizmo, two handle sets.
+
+**The picking foundation exists.** `PartPicker.hit` and `UnitPicker.hit` are analytic ray-vs-box in
+`src/logic` — gizmo handles are boxes, so it is the same primitive rather than a new one. **Keep the
+drag math in logic**: screen delta to axis delta to snapped value is pure, and it is testable without a
+screen exactly as `EditorController` is.
+
+**Do not let this become a second selection system.** A gizmo is a tool over the existing selection, not
+its own notion of what is selected.
+
+### 3. Retire ramps; introduce `step_height`
+**Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
+repairing it. **Read before `BR56.01` is fixed.**
+
+**Settled: ramps as machinery go away, replaced by stairs plus a step height.** A "ramp" becomes two
+ordinary tiles at 0.3 and 0.6 — content, not a special traversal case.
+
+**`step_height` does not exist yet, and that is the work.** Today `MAX_CLIMB_LEVELS` is 1.0 and
+**capability-gated**: a non-climber cannot go up at all without a ramp or a ladder, so a 0.3 tile is not
+walkable-onto by anything in the game. Introducing a free step height is what makes stairs work, and
+that one number replaces five separate checks:
+
+| today | under `step_height` |
+|---|---|
+| `is_ramp_at` in `ClimbAction` — refuse, it is a walk | rise ≤ step height → walk |
+| `is_ramp_at` in `HopDownAction` — same on the way down | rise ≤ step height → walk |
+| `_is_ramp_surface` in `move_cost` | rise ≤ step height → flat cost |
+| `MapGen.RAMP_MAX_RISE` and its generator branch | place tiles at heights |
+| `CellKind.RAMP` in `MapGenScratch` | gone |
+
+**Five categorical checks become one continuous comparison**, and it is the better rule: *can this unit
+step up that far* rather than *is this thing labelled a ramp*.
+
+**`Surface.facing` never reaches the pathfinder**, so a ramp is already traversable from any direction —
+you can walk up its side. The directionality that would be the strongest argument for keeping ramps is
+not implemented, which also means **`BR56.01` is a visual defect on a field nothing reads.** Do not fix
+it first; it is a facing bug in a subsystem this deletes.
+
+**Step height becomes a per-unit stat**, which a ramp could never express — long legs step higher. Two
+consequences:
+
+- **The generator's navigability invariant must run against the lowest step height in play**, not a
+  constant. A 0.6 rise being free for some units and not others is the point, and the invariant has to
+  assume the worst case.
+- **A cosmetic ramp part is fine** — sloped geometry with no special traversal rules. If a two-tile
+  stair does not read well visually, the answer is content, not machinery.
+
+**Ramps return later as a genuinely distinct thing.** Once tracked and other legless chassis exist,
+"has no step height at all and needs a continuous slope" is a real mechanical category — and it will be
+*about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
+not this one.**
+
+### 4. Elevated tiles lost their line borders
+**Needs:** nothing. **Unblocks:** reading a stepped board by eye.
+
+Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
+deliberately at the time** — more legible on a stepped board, but co-planar with the tile top, which is
+the pairing the ground quad was deleted for. The supervisor now reports elevated tiles as unreadable
+without them, so **the judgement call is due for revisiting rather than being a regression.**
+
+If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
+primitive, or the tile's own edge geometry doing the work.
+
+### 5. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -108,7 +276,9 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 2. Author the intelligence tiers onto units
+# QUEUED
+
+### Author the intelligence tiers onto units
 **Needs:** the tier table, which landed as taskblock-46. **Unblocks:** intelligence reading as
 character rather than as difficulty; any completion measurement that includes a tier other than Trained.
 
@@ -127,7 +297,7 @@ on this game has been an all-Trained rate.
 rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
 combat log.
 
-### 3. Multi-level cleanup
+### Multi-level cleanup
 **Needs:** nothing. **Unblocks:** vertical movement being as legible and as interruptible as
 horizontal movement.
 
@@ -159,8 +329,6 @@ must be navigable without one** — which is what ladders are for. `Shell.can_cl
 carries, and that is correct rather than a gap.
 
 **The AI queuing a vertical move is its own item** below, not part of this one.
-
-# QUEUED
 
 ### Every way of firing announces itself
 **Needs:** nothing. **Unblocks:** reading a firefight out of the log without reconstructing it
@@ -846,59 +1014,6 @@ All three landed; detail in `CHANGELOG.md`. What remains open out of it:
   Pass F**: the editor mode mounts `ClaimVolumeModule` and authoring a claim draws it. The guard that
   banned it from *every* mode is now "every play mode", with the authoring modes pinned in a
   one-entry list.
-
-### Retire ramps; introduce `step_height`
-**Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
-repairing it. **Read before `BR56.01` is fixed.**
-
-**Settled: ramps as machinery go away, replaced by stairs plus a step height.** A "ramp" becomes two
-ordinary tiles at 0.3 and 0.6 — content, not a special traversal case.
-
-**`step_height` does not exist yet, and that is the work.** Today `MAX_CLIMB_LEVELS` is 1.0 and
-**capability-gated**: a non-climber cannot go up at all without a ramp or a ladder, so a 0.3 tile is not
-walkable-onto by anything in the game. Introducing a free step height is what makes stairs work, and
-that one number replaces five separate checks:
-
-| today | under `step_height` |
-|---|---|
-| `is_ramp_at` in `ClimbAction` — refuse, it is a walk | rise ≤ step height → walk |
-| `is_ramp_at` in `HopDownAction` — same on the way down | rise ≤ step height → walk |
-| `_is_ramp_surface` in `move_cost` | rise ≤ step height → flat cost |
-| `MapGen.RAMP_MAX_RISE` and its generator branch | place tiles at heights |
-| `CellKind.RAMP` in `MapGenScratch` | gone |
-
-**Five categorical checks become one continuous comparison**, and it is the better rule: *can this unit
-step up that far* rather than *is this thing labelled a ramp*.
-
-**`Surface.facing` never reaches the pathfinder**, so a ramp is already traversable from any direction —
-you can walk up its side. The directionality that would be the strongest argument for keeping ramps is
-not implemented, which also means **`BR56.01` is a visual defect on a field nothing reads.** Do not fix
-it first; it is a facing bug in a subsystem this deletes.
-
-**Step height becomes a per-unit stat**, which a ramp could never express — long legs step higher. Two
-consequences:
-
-- **The generator's navigability invariant must run against the lowest step height in play**, not a
-  constant. A 0.6 rise being free for some units and not others is the point, and the invariant has to
-  assume the worst case.
-- **A cosmetic ramp part is fine** — sloped geometry with no special traversal rules. If a two-tile
-  stair does not read well visually, the answer is content, not machinery.
-
-**Ramps return later as a genuinely distinct thing.** Once tracked and other legless chassis exist,
-"has no step height at all and needs a continuous slope" is a real mechanical category — and it will be
-*about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
-not this one.**
-
-### Elevated tiles lost their line borders
-**Needs:** nothing. **Unblocks:** reading a stepped board by eye.
-
-Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
-deliberately at the time** — more legible on a stepped board, but co-planar with the tile top, which is
-the pairing the ground quad was deleted for. The supervisor now reports elevated tiles as unreadable
-without them, so **the judgement call is due for revisiting rather than being a regression.**
-
-If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
-primitive, or the tile's own edge geometry doing the work.
 
 ### The bout launcher spans the screen
 **Needs:** nothing. **Unblocks:** nothing.
