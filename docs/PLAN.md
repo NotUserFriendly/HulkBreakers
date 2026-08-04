@@ -495,6 +495,23 @@ Hammer*, *Mag Dump* and *Pump It*, granting attacks to revolvers, rifles and sho
   and a **per-target** cost exemption, which is state the action must carry for the duration of a turn
   rather than a flat modifier. The perk it hangs off is not designed yet.
 
+**Four actions raised 2026-08-04, each stressing something different:**
+
+- **"Parry Protocol"** — disables AP-to-MP conversion and **ends the turn**. Deflects up to
+  `1 + (3 x remaining AP)` incoming rounds, at **100% damage retained** and up to **170 degrees**;
+  further deflections behave normally. Same shape as *Overwatch: declaring it ends the turn* — remaining
+  AP buys quality rather than being discarded — and it leans directly on the deflection machinery the
+  ray chain already owns.
+- **"Advanced Movement Protocol"** — converts **all** AP to MP at **2x** the normal ratio, and lets the
+  unit move *through* enemies by vaulting or slipping past. Grants automatic movement actions
+  (*Handspring*, *Slide*). Ending it converts MP back to AP at **half** rate, minimum 1. **The
+  round-trip loss is the cost**, which is a cleaner lever than a flat duration.
+- **"Donkey Kick"** (*Jitsu* perk) — kick backwards with both legs while **facing away**, knocking the
+  target away and prone. **High Dexterity recovers to standing; low Dex lands you prone too.** A rare
+  case of an attack whose *precondition* is facing the wrong way.
+- **Drop Prone / Dive Prone / Stand up** — see *Momentum*, which they are the first non-attack spender
+  of.
+
 **Named perks that stress the framework:**
 - ***First One's Always Perfect*** — the first shot of a burst or activation ignores all accuracy
   modifiers and lands dead centre, then normal scatter resumes. The inverse of recoil; binds to the
@@ -829,6 +846,65 @@ All three landed; detail in `CHANGELOG.md`. What remains open out of it:
   Pass F**: the editor mode mounts `ClaimVolumeModule` and authoring a claim draws it. The guard that
   banned it from *every* mode is now "every play mode", with the authoring modes pinned in a
   one-entry list.
+
+### Retire ramps; introduce `step_height`
+**Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
+repairing it. **Read before `BR56.01` is fixed.**
+
+**Settled: ramps as machinery go away, replaced by stairs plus a step height.** A "ramp" becomes two
+ordinary tiles at 0.3 and 0.6 — content, not a special traversal case.
+
+**`step_height` does not exist yet, and that is the work.** Today `MAX_CLIMB_LEVELS` is 1.0 and
+**capability-gated**: a non-climber cannot go up at all without a ramp or a ladder, so a 0.3 tile is not
+walkable-onto by anything in the game. Introducing a free step height is what makes stairs work, and
+that one number replaces five separate checks:
+
+| today | under `step_height` |
+|---|---|
+| `is_ramp_at` in `ClimbAction` — refuse, it is a walk | rise ≤ step height → walk |
+| `is_ramp_at` in `HopDownAction` — same on the way down | rise ≤ step height → walk |
+| `_is_ramp_surface` in `move_cost` | rise ≤ step height → flat cost |
+| `MapGen.RAMP_MAX_RISE` and its generator branch | place tiles at heights |
+| `CellKind.RAMP` in `MapGenScratch` | gone |
+
+**Five categorical checks become one continuous comparison**, and it is the better rule: *can this unit
+step up that far* rather than *is this thing labelled a ramp*.
+
+**`Surface.facing` never reaches the pathfinder**, so a ramp is already traversable from any direction —
+you can walk up its side. The directionality that would be the strongest argument for keeping ramps is
+not implemented, which also means **`BR56.01` is a visual defect on a field nothing reads.** Do not fix
+it first; it is a facing bug in a subsystem this deletes.
+
+**Step height becomes a per-unit stat**, which a ramp could never express — long legs step higher. Two
+consequences:
+
+- **The generator's navigability invariant must run against the lowest step height in play**, not a
+  constant. A 0.6 rise being free for some units and not others is the point, and the invariant has to
+  assume the worst case.
+- **A cosmetic ramp part is fine** — sloped geometry with no special traversal rules. If a two-tile
+  stair does not read well visually, the answer is content, not machinery.
+
+**Ramps return later as a genuinely distinct thing.** Once tracked and other legless chassis exist,
+"has no step height at all and needs a continuous slope" is a real mechanical category — and it will be
+*about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
+not this one.**
+
+### Elevated tiles lost their line borders
+**Needs:** nothing. **Unblocks:** reading a stepped board by eye.
+
+Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
+deliberately at the time** — more legible on a stepped board, but co-planar with the tile top, which is
+the pairing the ground quad was deleted for. The supervisor now reports elevated tiles as unreadable
+without them, so **the judgement call is due for revisiting rather than being a regression.**
+
+If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
+primitive, or the tile's own edge geometry doing the work.
+
+### The bout launcher spans the screen
+**Needs:** nothing. **Unblocks:** nothing.
+
+Full-screen-width after the module collapse. Cosmetic, and the supervisor has said it is **not worth a
+pass of its own** — fold it into whatever next touches that surface.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
@@ -1387,6 +1463,18 @@ and strike five times, the first carries it and the other four are normal.
   mid-move overwatch-trigger hook `MoveAction` already has.
 - **Preserved between turns.** A unit flung to the backline is out of the fight for a few turns, then
   arrives coming in hot. Persistence is what makes that arc exist at all.
+
+**Prone actions are the first thing that spends momentum on something other than an attack**, which
+widens the concept:
+
+- **Dive Prone** consumes momentum to lunge up to two cells and land prone. **Drop Prone** costs nothing
+  and simply puts the unit down — and *does* trigger overwatch and reactions, which is what makes the
+  free version a real choice rather than a strictly better one.
+- **Stand up resets momentum**, and costs MP (4 against the current allowances, so the number moves when
+  the economy is tuned). Going down is free; getting back up is the price.
+- **That makes momentum a resource with two sinks**, not just a damage multiplier — spend it on the next
+  attack, or spend it on distance. The spend-on-next-attack rule above still holds; this is a second
+  thing it can buy.
 
 **Two forks to settle when this is picked up:**
 - **Does forced movement generate momentum, or only self-directed movement?** If being flung builds it,
