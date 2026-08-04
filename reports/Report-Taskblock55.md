@@ -2,7 +2,9 @@
 
 All five passes landed in order and the suite is green at **2795 tests**. Pass A came from a prior
 session; B–E landed in this one, each committed green. A closing doc audit found one stale test and
-three living-doc gaps, all noted below.
+three living-doc gaps, all noted below. **The block was followed by a doc review in which no code was
+touched** — see the final section, which also records two defects of mine that surfaced only after
+this report first called the block green.
 
 ## Decisions made without asking
 
@@ -123,3 +125,60 @@ Recorded because each was a real staleness rather than a formatting tidy:
   clock deliberately; three full runs gave 190, 181 and 183 on effectively identical code. **The
   number that informed my initial concern was noise, and I am recording that plainly** — anyone
   comparing these totals across runs is measuring the sampler.
+
+## After the block — the post-55 doc review
+
+**No code was touched, by instruction.** Everything here is ledger and plan work, and the two code
+defects named below were investigated by reading and left unfixed.
+
+### Two of my own defects surfaced only after this report called the block green
+
+- **`BR55.02` — floor tiles render inside out.** The supervisor found it. It is `BoardView._add_box`,
+  which Pass B added and which is **the only hand-wound geometry in the file** — every other box on
+  the board is a Godot `BoxMesh`, correct by construction, which is why fifty blocks of parts never
+  showed this. On the ticket's own question, whether normals disagree with the winding: **there are
+  no normals to disagree.** `_add_quad` calls `surface_add_vertex` and nothing else, and no
+  `surface_set_normal` exists in the file. Worse, the doc comment I wrote there asserts the quads are
+  "wound counter-clockwise seen from outside" — **the bug written down as if it were true**, which
+  will send the next reader elsewhere.
+- **A test that measured a colour nothing draws.** `test_grid_line_color_…_ground_color` compared
+  grid lines against `WorldPalette.GROUND` after Pass B deleted the quad that was the only thing
+  drawn in it.
+
+**Both are the same shape, and it is the shape worth carrying forward.** Pass B's tests assert vertex
+*counts* and an *AABB*; geometry in the right place facing the wrong way satisfies every one of them,
+and deleting a thing does not fail the tests that measured it — it makes them vacuous. The suite went
+green on both and nothing pointed at either. CLAUDE.md's *read the real node back* rule was applied to
+**placement** and not to **orientation**, and that gap is mine rather than the rule's.
+
+### The `BR27.01` split was three entries, not four, and the id range was taken
+
+The taskblock-51 spec that ordered the split said four, written from the entry's title; the entry's
+own 2026-07-21 breakdown records part (4) as *"the supervisor's own original rephrasing of (1)-(3)
+together, not a distinct fourth symptom"*. And `BR27.10`–`BR27.13` already existed in the archive
+describing unrelated taskblock-27 bugs, so the split took `BR27.15` onward.
+
+**Investigating the one still-open piece changed what it is.** `BR27.15` is not a broken flow — every
+controller-state test on it passes. **Nothing in the view layer reads step-out state at all**, so the
+safety-sorted candidate cells and the mouse-wheel cycling are both invisible, and the player is given
+nothing between the two clicks the flow requires. It is a missing view affordance, and the two fixes
+(draw the mode, or collapse it to one click) differ in kind rather than in size.
+
+### The ledger had lost three entries outright
+
+`BR51.21`–`BR51.23` were filed together and **deleted from `BUGS.md` by a fix commit that never
+touched the archive**. Two of them were genuinely fixed and lost their closure markers — one is cited
+by id in `detonation.gd`, so the fix names a bug whose entry had gone. The third was never fixed, is
+live today, and had been referenced by a *closed* entry as the reason that entry could only be judged
+from a different path.
+
+**And `BUGS.md`'s own header taught vocabulary its legend contradicts** — the retired two-word
+statuses, and closure gated on `source` rather than `owner`. Since the supervisor may promote any
+entry to `SUPERVISOR` ownership, those two can differ, so the stale text would have authorised
+closing an owner-gated entry. It is instructional text a future session reads and follows.
+
+### Still open from this block
+
+`BR55.02` is mine and unfixed — the doc review was not the place for it. The winding fix is small; the
+comment correction has to ride with it, and a test that reads an outward direction off the built mesh
+is what stops it recurring.
