@@ -44,6 +44,9 @@ const IDS: Array[StringName] = [
 	# taskblock-57 Pass D2: the aim readout, which retired with `stat_panels` and had to keep
 	# existing somewhere. Only the aim mode declares it.
 	&"aim_readout",
+	# taskblock-57 Pass E: the announcement position — a second VIEW of the combat-log stream,
+	# never a second message path.
+	&"announcements",
 ]
 
 
@@ -96,4 +99,6 @@ static func build(id: StringName) -> ViewModule:
 			return InspectViewerModule.new()
 		&"aim_readout":
 			return AimReadoutModule.new()
+		&"announcements":
+			return AnnouncementsModule.new()
 	return null

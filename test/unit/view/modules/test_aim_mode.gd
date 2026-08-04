@@ -79,9 +79,16 @@ func test_the_aim_modes_module_set_is_a_table_entry() -> void:
 		"'most modules turn off' -- the aim set must be a small minority of the player set"
 	)
 	for id: StringName in aim.modules:
-		assert_true(
-			player.modules.has(id), "%s is in the aim set but not the mode it comes from" % id
-		)
+		assert_true(ModuleCatalog.IDS.has(id), "%s is in the aim set but is not a real module" % id)
+
+	# **The readout must actually be in the set**, which is not a formality: Pass D2 built
+	# `aim_readout` specifically so retiring `stat_panels` would not take the READING/RESOLVES text
+	# with it, and then left it out of every mode. The gate stayed green because the only assertion
+	# was `aim.modules == AIM_MODULES`, which is true of any list at all. Asserted by name now.
+	assert_true(
+		aim.modules.has(&"aim_readout"),
+		"aiming with nothing telling you what the reticle resolves to is the pass undone"
+	)
 
 
 ## The mode is reachable by id like every other, so `by_id` and `all()` are not a second registry.

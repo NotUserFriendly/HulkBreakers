@@ -49,6 +49,9 @@ const PLAYER_MODULES: Array[StringName] = [
 	&"turn_controls",
 	&"controls_legend",
 	&"combat_log",
+	# taskblock-57 Pass E: a second view of the same stream. Order does not matter — it reads the
+	# `CombatLog` directly rather than any module — but it sits beside the log it mirrors.
+	&"announcements",
 	&"debug_panel",
 	# After `debug_panel`: it consumes the toggle that panel offers, and `link()` finds a module only
 	# if it mounted. The readout's own lifetime is still independent — closing the menu leaves it up.
@@ -73,6 +76,7 @@ const PLAYER_MODULES: Array[StringName] = [
 ## have silently deleted it from the one view a framerate hunt is actually run in.
 const SPECTATOR_MODULES: Array[StringName] = [
 	&"combat_log",
+	&"announcements",
 	&"resolution",
 	&"debug_panel",
 	&"perf_monitor",
@@ -109,8 +113,12 @@ const SPECTATOR_MODULES: Array[StringName] = [
 ## drawing over them.
 const AIM_MODULES: Array[StringName] = [
 	&"unit_input",
+	&"aim_readout",
 	&"resolution",
 	&"combat_log",
+	# taskblock-57 Pass E: an announcement is what the game shouts, and aiming is exactly when you
+	# most want to be told that the thing you are aiming at has just died.
+	&"announcements",
 ]
 
 ## Pre-battle setup: the roster menu and nothing else. It never drives a unit's turn — Start Bout
