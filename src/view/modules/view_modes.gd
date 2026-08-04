@@ -41,6 +41,10 @@ const PLAYER_MODULES: Array[StringName] = [
 	&"unit_resources",
 	&"stat_panels",
 	&"resolution",
+	# taskblock-57 Pass C3: before `inspect`, which takes this module's `BotViewer` at its own
+	# mount time. Declared after, Inspect builds its own inside its body and the table's top-left
+	# row stays empty — not broken, just the old layout.
+	&"inspect_viewer",
 	&"inspect",
 	&"queue_panel",
 	&"turn_controls",

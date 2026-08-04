@@ -297,3 +297,54 @@ func _first_control_under(module: ViewModule) -> Control:
 		if found is Control:
 			return found as Control
 	return null
+
+
+# ---------------------------------------------------------------- the viewer, in its own corner
+
+
+## **THE ACCEPTANCE for Pass C3.** The table: *"top-left, ~2/3 tall, half as wide — the 3D view,
+## split out so the centre stays clear."* Split out means it is genuinely somewhere else, so the
+## assertion is that it lands on the layout's own viewer rect and that Inspect is not its ancestor.
+func test_the_inspect_viewer_sits_in_its_own_top_left_slot() -> void:
+	var overlay: ControlOverlay = await _overlay()
+	var module: InspectViewerModule = overlay.module(&"inspect_viewer") as InspectViewerModule
+	assert_not_null(module, "the player mode declares an inspect viewer")
+
+	module.viewer.visible = true
+	await get_tree().process_frame
+	_assert_at(module.viewer.get_global_rect(), BattleLayout.inspect_viewer_rect(SCREEN), "viewer")
+	assert_false(
+		overlay.inspect().panel.is_ancestor_of(module.viewer),
+		"the viewer is still inside the panel -- the centre of the screen is not clear"
+	)
+
+
+## **One viewer, driven by the panel** — not a second 3D preview path. This project has had to
+## delete a duplicated system three times; the whole reason `BotViewer` is one class with two
+## placements is that a docked-only second implementation is the shape that starts it.
+func test_inspect_drives_the_slotted_viewer_rather_than_building_a_second_one() -> void:
+	var overlay: ControlOverlay = await _overlay()
+	var module: InspectViewerModule = overlay.module(&"inspect_viewer") as InspectViewerModule
+
+	assert_eq(
+		overlay.inspect().panel.viewer,
+		module.viewer,
+		"the panel must drive the slotted viewer, not one of its own"
+	)
+
+
+## Opening and closing Inspect must take the viewer with it. It is no longer a child of the panel,
+## so hiding the panel no longer hides it — which would leave a spinning subject in the corner over
+## a closed inspector.
+func test_closing_inspect_hides_the_viewer_it_no_longer_contains() -> void:
+	var overlay: ControlOverlay = await _overlay()
+	var module: InspectViewerModule = overlay.module(&"inspect_viewer") as InspectViewerModule
+	var unit: Unit = overlay.battle.combat_state.current_unit()
+
+	overlay.inspect().panel.open(unit)
+	await get_tree().process_frame
+	assert_true(module.viewer.visible, "opening Inspect shows the viewer")
+
+	overlay.inspect().panel.close()
+	await get_tree().process_frame
+	assert_false(module.viewer.visible, "and closing it takes the viewer away too")

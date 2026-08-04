@@ -29,6 +29,9 @@ extends GutTest
 ## - `debug_panel` — `DEBUG_MENU`, top. Already off by default; the toggle is now explicit.
 ## - `inspect` — `INSPECT_PANEL`, right. The largest surface on the screen and the one a cramped
 ##   ratio most needs to reclaim.
+## - `inspect_viewer` — `INSPECT_VIEWER`, left. Added by Pass C3, which split the 3D view out of
+##   `InspectPanel` so it could sit in the table's own top-left row. The largest 3D surface on the
+##   screen, and the one a cramped ratio most wants to fold away.
 ## - `action_bar` — `ACTION_ROW`, bottom. **This one reverses an earlier call in the same block**
 ##   ("the action bar and its four satellites are not collapsible"). That decision was already
 ##   inconsistent with the data shipped beside it: `SLOT_EDGES` carries `ACTION_ROW: EDGE_BOTTOM`,
@@ -38,7 +41,9 @@ extends GutTest
 ##
 ## The four action-bar satellites are **absent and should stay absent**: they ride the bar, which is
 ## centred, so they are not edge-pinned and fold with it rather than each carrying its own toggle.
-const EXPECTED_SIDE_PINNED: Array[StringName] = [&"debug_panel", &"inspect", &"action_bar"]
+const EXPECTED_SIDE_PINNED: Array[StringName] = [
+	&"debug_panel", &"inspect", &"action_bar", &"inspect_viewer"
+]
 
 
 ## A module that wants a named slot. Built here rather than picked from the catalog so the

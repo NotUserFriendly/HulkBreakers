@@ -41,6 +41,8 @@ const IDS: Array[StringName] = [
 	&"unit_resources",
 	&"ui_buttons",
 	&"perf_monitor",
+	# taskblock-57 Pass C3: the 3D view, out of `InspectPanel` and into the table's own top-left row.
+	&"inspect_viewer",
 ]
 
 
@@ -93,4 +95,6 @@ static func build(id: StringName) -> ViewModule:
 			return UiButtonsModule.new()
 		&"perf_monitor":
 			return PerfMonitorModule.new()
+		&"inspect_viewer":
+			return InspectViewerModule.new()
 	return null

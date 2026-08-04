@@ -431,7 +431,7 @@ func test_right_click_on_the_bot_viewer_opens_the_menu_at_the_cursor() -> void:
 	mb.button_index = MOUSE_BUTTON_RIGHT
 	mb.pressed = true
 	mb.position = Vector2(40, 60)
-	panel._on_preview_gui_input(mb)
+	panel.viewer._on_gui_input(mb)
 
 	# Godot's own Popup clamps its FINAL on-screen position to stay inside
 	# the real screen — a tiny headless test screen clamps far more
@@ -439,7 +439,7 @@ func test_right_click_on_the_bot_viewer_opens_the_menu_at_the_cursor() -> void:
 	# exact value `popup()` was actually asked for (see
 	# `_last_requested_menu_position`'s own doc comment), not wherever it
 	# visually landed.
-	var expected: Vector2 = panel._preview_container.get_screen_position() + mb.position
+	var expected: Vector2 = panel.viewer.get_screen_position() + mb.position
 	assert_eq(panel._last_requested_menu_position, expected)
 
 
@@ -631,11 +631,9 @@ func test_open_with_a_live_view_lookup_isolates_the_real_view_not_a_fresh_copy()
 
 	panel.open(unit)
 
-	assert_eq(panel._isolated_view, live_view)
-	assert_false(
-		panel._preview_viewport.own_world_3d, "must share the live World3D, not isolate it"
-	)
-	assert_true(panel._preview_camera.get_cull_mask_value(HitVolumeView.ISOLATE_LAYER))
+	assert_eq(panel.viewer._isolated_view, live_view)
+	assert_false(panel.viewer.viewport.own_world_3d, "must share the live World3D, not isolate it")
+	assert_true(panel.viewer.camera.get_cull_mask_value(HitVolumeView.ISOLATE_LAYER))
 	assert_false(
 		live_view._meshes_by_part.is_empty(), "sanity: the torso must have produced a mesh"
 	)
@@ -663,16 +661,16 @@ func test_opening_a_bare_cell_after_a_live_unit_leaves_the_preview_genuinely_emp
 		DataLibrary.material_table(), null, func(_id: int) -> HitVolumeView: return live_view
 	)
 	panel.open(unit)
-	assert_false(panel._preview_viewport.own_world_3d, "sanity: isolating the live view first")
+	assert_false(panel.viewer.viewport.own_world_3d, "sanity: isolating the live view first")
 
 	panel.open_cell(Vector2i(5, 5), null)
 
 	assert_true(
-		panel._preview_viewport.own_world_3d,
+		panel.viewer.viewport.own_world_3d,
 		"a bare cell must never keep sharing the live battle World3D"
 	)
 	assert_true(
-		panel._preview_view._meshes_by_part.is_empty(),
+		panel.viewer.view._meshes_by_part.is_empty(),
 		"a bare cell must show no leftover assembly from the previous subject"
 	)
 
@@ -694,7 +692,7 @@ func test_isolate_focus_also_includes_the_floor_layer() -> void:
 
 	panel.open(unit)
 
-	assert_true(panel._preview_camera.get_cull_mask_value(BoardView.FLOOR_LAYER))
+	assert_true(panel.viewer.camera.get_cull_mask_value(BoardView.FLOOR_LAYER))
 
 
 ## taskblock-23 Pass E2: "reads unlit... a directional light alone with no
@@ -704,11 +702,11 @@ func test_isolate_focus_also_includes_the_floor_layer() -> void:
 func test_preview_camera_has_a_real_ambient_environment_override() -> void:
 	var panel: InspectPanel = _panel()
 
-	assert_not_null(panel._preview_camera.environment)
+	assert_not_null(panel.viewer.camera.environment)
 	assert_almost_eq(
-		panel._preview_camera.environment.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001
+		panel.viewer.camera.environment.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001
 	)
-	assert_eq(panel._preview_camera.environment.ambient_light_color, WorldPalette.AMBIENT_COLOR)
+	assert_eq(panel.viewer.camera.environment.ambient_light_color, WorldPalette.AMBIENT_COLOR)
 
 
 func test_closing_clears_isolation_on_the_previously_focused_view() -> void:
@@ -726,7 +724,7 @@ func test_closing_clears_isolation_on_the_previously_focused_view() -> void:
 
 	panel.close()
 
-	assert_null(panel._isolated_view)
+	assert_null(panel.viewer._isolated_view)
 	assert_false(
 		live_view._meshes_by_part.is_empty(), "sanity: the torso must have produced a mesh"
 	)
@@ -747,10 +745,8 @@ func test_the_fallback_path_still_works_and_is_its_own_isolated_world() -> void:
 
 	panel.open(unit)
 
-	assert_null(panel._isolated_view, "no lookup wired -> falls back to the fresh-copy path")
-	assert_true(
-		panel._preview_viewport.own_world_3d, "the fresh copy must be its OWN isolated world"
-	)
+	assert_null(panel.viewer._isolated_view, "no lookup wired -> falls back to the fresh-copy path")
+	assert_true(panel.viewer.viewport.own_world_3d, "the fresh copy must be its OWN isolated world")
 
 
 ## taskblock-22 Pass I: "the new inspect panel is the inventory surface in
@@ -857,7 +853,7 @@ func test_open_cell_reuses_the_existing_part_tree_inspector_for_objects_and_bare
 ## lighting as the inspect panel draws the clicked item, and then said lighting doesn't get
 ## reset to board style."*
 ##
-## `_preview_viewport` carries a `WorldEnvironment` and a `DirectionalLight3D` for the
+## `BotViewer`'s viewport carries a `WorldEnvironment` and a `DirectionalLight3D` for the
 ## fallback path's own isolated world. The isolate-camera path needs `own_world_3d = false` so
 ## the preview camera can see the real unit — which puts **both nodes into the battle's
 ## World3D**: a second environment and an extra directional light over the entire board.
@@ -874,16 +870,16 @@ func test_isolating_a_live_view_withdraws_the_previews_own_lighting() -> void:
 
 	panel.open(unit)
 
-	assert_false(panel._preview_viewport.own_world_3d, "sanity: the world is shared here")
-	assert_false(panel._preview_light.visible, "the preview's light is not lighting the board")
-	assert_null(panel._preview_environment.environment, "nor is its environment governing it")
+	assert_false(panel.viewer.viewport.own_world_3d, "sanity: the world is shared here")
+	assert_false(panel.viewer._light.visible, "the preview's light is not lighting the board")
+	assert_null(panel.viewer._environment.environment, "nor is its environment governing it")
 
 
 ## **And it stays withdrawn once closed**, which is the half the supervisor actually reported:
 ## *"closing the inspector does not remove the dimming."*
 ##
-## The viewport goes on sharing the battle's `World3D` after a live inspect — `_isolate_clear()`
-## deliberately never touches `own_world_3d` — so the fix cannot be "hand the world back on
+## The viewport goes on sharing the battle's `World3D` after a live inspect —
+## `BotViewer.clear_subject()` never touches `own_world_3d` — so the fix cannot be "hand it back on
 ## close". Flipping it there asks Godot to detach a viewport from a scenario it has already
 ## left, which errors rather than no-ops. Tying the lighting to **who owns the world** instead
 ## holds in both states: while that world is shared, the preview's own lighting is simply never
@@ -903,10 +899,10 @@ func test_closing_leaves_the_previews_lighting_out_of_the_shared_world() -> void
 	panel.close()
 
 	assert_false(
-		panel._preview_viewport.own_world_3d, "the world is still shared, and that is left alone"
+		panel.viewer.viewport.own_world_3d, "the world is still shared, and that is left alone"
 	)
-	assert_false(panel._preview_light.visible, "so the preview's light stays out of it")
-	assert_null(panel._preview_environment.environment, "and so does its environment")
+	assert_false(panel.viewer._light.visible, "so the preview's light stays out of it")
+	assert_null(panel.viewer._environment.environment, "and so does its environment")
 
 
 ## The fallback path renders a fresh copy in its own world, where the preview's lighting is
@@ -919,6 +915,6 @@ func test_the_fresh_copy_path_keeps_its_own_lighting() -> void:
 
 	panel.open(_unit_with_geometry())
 
-	assert_true(panel._preview_viewport.own_world_3d, "sanity: its own isolated world")
-	assert_true(panel._preview_light.visible, "which nothing else lights")
-	assert_not_null(panel._preview_environment.environment)
+	assert_true(panel.viewer.viewport.own_world_3d, "sanity: its own isolated world")
+	assert_true(panel.viewer._light.visible, "which nothing else lights")
+	assert_not_null(panel.viewer._environment.environment)
