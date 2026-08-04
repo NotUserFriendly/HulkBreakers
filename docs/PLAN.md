@@ -815,40 +815,19 @@ implementation is knowingly smaller than what it models.
   invariant instead (merged thickness equals one part's own), which holds at any thickness.
   **Resolves itself** when *Wall coatings, and walls that are not cell-wide* authors one.
 
-### Seeing what you authored — three view gaps in the section workflow
+### Seeing what you authored — three view gaps — **LANDED (taskblock-56 Pass E)**
 **Needs:** nothing. **Unblocks:** authoring sections without guessing.
 
-**Placed before *Map and section editors* on purpose.** The editor inherits all three gaps, so building
-it first means building it blind and then retrofitting camera framing and claim visualisation into a
-UI. Claim volumes in particular are invisible today — the only way to know a section declares one is to
-read its `.tres`, which is the one thing an editor cannot work around.
+All three landed; detail in `CHANGELOG.md`. What remains open out of it:
 
-Three things that make an authored section hard to look at. None is a defect in what was built; each is
-a piece of the view that was never asked for.
-
-- **Floor tiles go back to green while there are no models** — a **dark forest green**. They share a
-  material with walls and units today, so a board reads as one undifferentiated mass. **A temporary
-  distinct colour is worth more than a consistent one** until real materials exist; same reasoning that
-  made cover a darker grey earlier. Revert it when tiles have their own look.
-- **Preview should frame what it just built.** Loading a section or a map leaves the camera wherever the
-  last bout left it, and a section is small — coming from a bout, you hunt for it. **Point the camera at
-  the new content's bounds on load.** `CameraRig` already solves framing for a set of bodies; this is the
-  same solve against a placed board's extent.
-- **Claim volumes need to be visible, and they are the whole point of authoring.** A translucent box per
-  claim, drawn only in an authoring or preview context and never in play:
-
-  | claim | colour |
-  |---|---|
-  | Exterior | red |
-  | Interior | **vibrant lime** green |
-  | Empty | blue |
-  | Entry | orange |
-
-  **A claim is invisible today**, so the only way to know a section declares one is to read its `.tres`.
-  That makes the vocabulary unusable by eye, which is the one thing an editor cannot work around.
-  **The two greens are deliberately far apart** — tiles are a dark forest green and Interior is a vibrant
-  lime, so a claim reads clearly against the floor it sits on rather than washing into it. Keep that
-  separation if either colour is ever retuned.
+- **The dark forest green floor is temporary and its revert is one line**
+  (`WorldPalette.TEMPORARY_TILE_TINT = false`). **Revert it when tiles have their own look** — that is
+  a real outstanding action, not a note. It belongs with whatever gives tiles a material treatment.
+  **Needs:** tiles having a look of their own.
+- **Claim volumes are drawn by a module no mode currently mounts.** `ClaimVolumeModule` exists, is
+  tested, and is asserted *not* to appear in any play mode — but the authoring surface that would turn
+  it on is *Map and section editors*, below. Until that lands, the module is correct and unreachable.
+  **Needs:** *Map and section editors*.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
@@ -891,7 +870,27 @@ produces different boards. Same rule as everywhere else, and easier to get wrong
 iteration is over a dictionary of cells.
 
 ### Map and section editors
-**Needs:** *The map format* (landed, tb53) and *The section format* (landed, tb54). **Unblocks:** *Main menu*.
+**Needs:** *The map format* (landed, tb53), *The section format* (landed, tb54), and *One view,
+toggleable modules* (landed, tb56). **Unblocks:** *Main menu*, and turning on `ClaimVolumeModule`.
+
+**Specified as taskblock-56 Pass F and not started** — the block ran out of room after Pass E. The spec
+is reproduced below rather than pointed at, since the taskblock file rotates away.
+
+**This is the module system's own proof, which is why it was in that block.** A section is a small map;
+the map editor and the section editor differ by two buttons and one panel. If the collapse is right, a
+whole new surface is a `ViewModes` row plus one authoring module. If it is wrong, the editor becomes a
+sixth overlay in all but name, and **that finding is worth more than the editor** — it must be reported
+plainly rather than worked around.
+
+- **`EditorController`, pure and headless**, following `BuilderController` exactly: a `RefCounted` in
+  `src/logic/` holding the whole editing model, with the scene reading it and drawing. Place and remove
+  parts, set heights, add and resize claim volumes, author edges, set per-cell chances and whole-section
+  fields, undo. **Everything headless-testable and tested that way; the scene gets no logic.**
+- **Two save buttons.** Save as map through `MapSerializer`; save as section through `SectionSerializer`,
+  carrying claims, edges and the authoring vocabulary. **A map saved and reloaded is the map that was
+  authored** — round-trip is the test, as it was for both formats.
+- **Everything section-specific lives in one module** — claims, edges, per-cell chance, whole-section
+  fields.
 
 - **Section editor** — author a section and its edges, save it for the generator to stitch.
 - **Map editor** — author and save a full board, and **run a test bout on it**. The test-bout half is
@@ -1115,12 +1114,15 @@ Godot presentation behaviour (a frame counted on submission rather than on prese
 Neither is a filed defect; both are conformance questions with short answers that nobody has written
 down, and the first bears directly on an open bug.
 
-- **Where does a shot actually aim — the dartboard's centre point on the target, or the target's own
-  centre? And does the answer differ between player control and AI control?** `docs/02` says the shot
-  plane is projected from the shooter's real angle, so both paths should resolve identically; **if they
-  do not, that is a second aiming implementation** and the hard rule against parallel systems applies.
-  Worth answering before more work on `BR51.01` (shots land wide left), because "the player aims
-  somewhere the AI does not" would be a strong lead and "they agree" removes a suspect.
+- ~~**Where does a shot actually aim, and does player control differ from AI control?**~~ **Answered
+  (taskblock-56 Pass B), written into `docs/02`.** They agree, and structurally:
+  `ActionCatalog.build_firing_action` is the only firing-action construction site in `src/`, and every
+  firing action resolves through one expression. The AI leaves the offset at its default; the player has
+  a knob. **That removes a suspect from `BR51.01`.** It also turned up that the aim point is the centre
+  of the target's *frontmost region* — not the body's centre and not a point on the muzzle-to-target
+  axis — which **confirms `BR54.01`'s stated unverified suspect** without accounting for all of it. The
+  design question that finding opens (should the aim point be the frontmost region, the centroid, or a
+  point on the axis?) is a supervisor call and is recorded in `docs/02` as a finding, not a spec.
 - ~~**Is explosion damage affected by DT?**~~ **Answered: no.** `Detonation` calls
   `DamageResolver.apply_damage_to_part` — bare subtraction, no threshold or armor. Not filed as a
   defect: it is the HE type not being built yet, and it belongs to *Explosions: three types on one
@@ -1588,41 +1590,29 @@ One interlocking spine (travel → time → fuel → heat → storage), not a li
   gate); **mission selection**; claims; the mission → credits → upgrade loop; **captured-matrix value**.
 
 
-### One view, toggleable modules
-**Needs:** nothing. **Worth more than its position suggests:** three ledger entries are deliberately not
-being fixed because this refactor discards instance fixes — `BR27.04` (lighting differs between views),
-`BR32.09` (spectator's current-unit indicator jumps early) and `BR35.02` (spectator tile-inspect resolves
-to a hidden cell). Landing this closes them as a class. **Unblocks:** closes a recurring bug class structurally, and makes every panel
-verifiable in one context instead of several.
+### One view, toggleable modules — **LANDED (taskblock-56 Passes C and D)**
+**Needs:** nothing. **Unblocks:** the editor's claim that a whole new surface costs almost no view code.
 
-`SingleUnitOverlay` is **54 lines** because it inherits `SquadControlOverlay` wholesale — sharing works
-fine when inheritance is available. `SpectatorOverlay` is **527 lines** because it *cannot* inherit it:
-doing so would drag in `TacticsController` and the entire unit-input path the spectator view is
-specifically defined not to have. So it re-implemented the display half separately, and every shared
-panel now exists twice. **Inheritance forced the fork.**
+**Kept as a landed summary rather than deleted, because two things it predicted are now measured facts
+and one of its premises turned out to be wrong.** The build detail is in `CHANGELOG.md`.
 
-taskblock-41 paid for that six times in one block, and its own conclusion is the argument for this item:
+- **The four overlay subclasses are gone.** `SquadControlOverlay` (942), `SpectatorOverlay` (718),
+  `GenerateBoutOverlay` (373) and `SingleUnitOverlay` (54) are rows in `ViewModes`; `ControlOverlay` is
+  the one surface class. Seventeen `ViewModule`s in `src/view/modules/`.
+- **Display and input toggle on separate axes**, which is the axis the spectator view needed and could
+  not get from inheritance. Its contract is now `has_unit_input() == false` rather than the absence of
+  an inheritance edge.
+- **This item's own line counts were wrong**, and it is worth saying so since they were part of the
+  argument: it said 527 and 812 where the real figures at the time of the work were **718 and 942**. The
+  case was understated, not overstated, but the numbers had aged.
 
-> it is used in two layout situations and I kept verifying one … **None of them were logic errors; all
-> of them were verification-shape errors.**
-
-**Shape: one view whose modules toggle**, rather than N overlays each assembling their own subset. A
-module — combat log, stat block, turn controls, tooltips, unit inspector — is implemented once and
-behaves identically wherever it appears. An overlay becomes a *declaration of which modules are on*
-rather than a builder of panels. Composition where inheritance couldn't reach: display modules and input
-modules toggle on separate axes, which is exactly the axis `SpectatorOverlay` needed and couldn't get.
-
-**Why it earns real work rather than more diligence:** a module with one implementation has one context
-to verify. The whole class of defect tb41 hit — correct logic, wrong context — stops being *possible*
-instead of being caught more reliably.
-
-- **Inventory what's actually duplicated before designing the boundary.** The 527 and 812 line counts
-  include plenty that isn't panels; the module seam should follow real duplication, not the file split.
-- **The combat log is the worked example and is already half-converted** (tb41: "Both views share one
-  combat log"). That conversion is the template, and its leftover rough edges — bottom-edge pinning on
-  resize, flush-to-corner placement — are precisely the kind that stop recurring under this model.
-- **Pairs with the `mouse_filter` sweep.** Both close an entire class of UI bug structurally rather than
-  one instance at a time, and both are cheap relative to what they prevent.
+**What it claimed about the bug class did NOT fully hold, and that is the residue.** The item said
+landing this "closes them as a class" for `BR27.04`, `BR32.09` and `BR35.02`. The first two were already
+`Resolved` before taskblock-56 began. **`BR35.02` did not evaporate**, and the reason is instructive: the
+stated shared cause was the spectator re-implementing the player view's panels, which was true of the
+other two and never true of it. Its blind `y == 0` plane math was not a second copy of anything done
+better elsewhere, so there was nothing to converge on. It stays open, in one module rather than one
+overlay, so whatever geometry check it eventually gets lands once.
 
 ### The `mouse_filter` sweep
 **Needs:** nothing, but **best done with *One view, toggleable modules*** — same files, same class of
