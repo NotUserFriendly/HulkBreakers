@@ -1190,64 +1190,52 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **Per-motion cost is 113 504 → 8 878 usec** across four distinct fixes. What remains is not the same
   bug at lower amplitude; treat the residue as its own investigation.
 
-### BR27.01 — Obsolete — owner: `SUPERVISOR`
-**Player Step Out: four bugs, one system**
-- **Source:** `SUPERVISOR`
-- **Reported:** taskblock-27: Step Out works for the AI but the player's own path was broken four
-  ways — (1) doesn't open the dartboard, always resolves a center-mass shot; (2) charges MP for the
-  automated legs; (3) the ghost snaps back to the base cell instead of holding the step-out
-  waypoint; (4) the intended sequence (pick step-out → ghost holds the cell → dartboard opens there
-  → fire resolves the whole move/fire/return) wasn't followed.
-- **Root cause:** `TacticsController._confirm_step_out()` called `StepOutPlanner.build_triple()`
-  wholesale the instant the player confirmed a candidate cell — queuing the WHOLE move+attack+move
-  triple (an automated center-mass shot) in one click, never entering ordinary aim mode at all. The
-  ghost "snapping back" was a direct symptom of this: the entire triple (ending back at origin)
-  was queued and previewed in the same instant the step-out cell was chosen, so there was never a
-  sustained moment where the ghost held the stepped-out position for the player to see. `MoveAction`
-  had no discount mechanism at all — `StepOutPlanner`'s own doc comment stated "real MP/AP cost for
-  both legs, no discount" as a deliberate original design choice.
-- **Fix:** split the flow. Confirming a step-out cell now queues ONLY the free outbound leg
-  (`MoveAction.free`, new — no MP/AP either direction, docs/SUPERSEDED.md), then hands off into
-  ORDINARY aim mode from the stepped-out position (`_framing_shooter()`/`aim_state()` already read
-  the previewed unit, so the camera and dartboard follow the queued move for free). Firing
-  (confirm_shot() again, now in aim mode) appends the free return leg once a real shot actually
-  queues. Canceling aim mid-step-out (before firing) undoes the queued outbound leg. The ghost
-  "snapping back" is now correct, not a bug — it only happens once the return leg is genuinely
-  queued (after firing), the truthful final resting position; during the aim phase it holds the
-  stepped-out cell via the same queued-move preview machinery every other action already uses.
-  `free` applies to the AI's own `StepOutPlanner` usage too, not just the player's — the same shared
-  maneuver, same cost either way.
-- **RESOLVED-PENDING-CONFIRMATION** [CC 83fb8082-732a-4a4f-a726-04186087ef69] — taskblock-27 Pass B,
-  proven via `test_tactics_controller_step_out.gd`'s updated/new tests (cell-confirm queues only the
-  free out-leg and opens aim; firing completes the free triple; canceling aim undoes the out-leg)
-  and `test_step_out_planner.gd::test_the_triple_costs_no_mp_for_either_leg`.
-- **2026-07-20:** supervisor could not verify — blocked by a new, separate bug (now logged as
-  **BR27.06 — Step Out no longer occurs at all**, a regression from this very restructure). Until
-  BR27.06 is fixed, BR27.01 can't be confirmed. **Verification deferred**; still pending, and now
-  gated behind BR27.06.
-- **2026-07-21:** BR27.06 now has a fix pending its own confirmation (commit `d42f744`). Worth
-  re-attempting BR27.01's own verification alongside BR27.06's — same play session either way.
-- **2026-07-21 (broken down by the supervisor, same session as BR27.06's confirmation):** parts (2)
-  and (3) confirmed **RESOLVED** — no more MP charged for the automated legs, ghost no longer snaps
-  back. Part (4) ("the intended sequence wasn't followed") was the supervisor's own original
-  rephrasing of (1)-(3) together, not a distinct fourth symptom — folded in, not tracked separately.
-  Part (1) has **mutated, not resolved** — reopened with a precise new repro: "clicking shoot, then
-  clicking an enemy, doesn't bring up the dartboard if the unit had to step out; clicking again brings
-  up the dartboard." Likely the two-step step-out flow itself (first click enters step-out-cell-choice
-  mode, a second click/`confirm_shot()` is what actually opens ordinary aim mode per the Pass B fix
-  above) reading as "doesn't work" without a clear in-between visual cue — not yet investigated
-  code-side. **BR27.01 stays open for this one remaining piece.**
-- **2026-07-22 (tb32 review — still reproduces):** unchanged — step-out after shooting still does not
-  open the dartboard immediately on the step-out; a second click is required. tb32 didn't touch this.
-  The one open piece (part 1) persists exactly as the 2026-07-21 repro describes.
-- **2026-08-04 — split into `BR27.10`–`BR27.13`, one per outcome, and closed `Obsolete` here.** One id
-  standing for four independent outcomes can never be closed honestly: three fixed and one open is
-  neither `Active` nor `Resolved`. The split changes no statuses and fixes nothing — **it makes closure
-  possible**, which is the whole argument for it.
-- **Kept as a pointer rather than deleted, deliberately.** The four share one system (player step-out)
-  and there was a reason at the time for holding them together, which nobody can now reconstruct. If
-  splitting turns out to be the mistake, this entry is where the original framing survives — the four
-  new entries each point back here.
+### BR27.15 — Active — owner: `SUPERVISOR`
+**Step out: the dartboard does not open on the first click; a second click is required**
+- **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (1), 2026-08-04** — see that entry in
+  `docs/BUGS-ARCHIVE.md` for the original four-way framing and the full taskblock-27 Pass B history.
+- **Reported:** taskblock-27, as *"doesn't open the dartboard, always resolves a center-mass shot"*.
+  **Mutated rather than resolved** by the Pass B fix, and re-reported 2026-07-21 with a precise repro:
+  *"clicking shoot, then clicking an enemy, doesn't bring up the dartboard if the unit had to step
+  out; clicking again brings up the dartboard."*
+- **2026-07-22 (tb32 review):** still reproduces, unchanged. tb32 did not touch it.
+
+**CC investigation, `e5393c3a-bd26-4668-8905-c50cf31e04cb`, 2026-08-04 — read from source, no code
+touched.** The 2026-07-21 note guessed this was *"the two-step step-out flow itself... reading as
+'doesn't work' without a clear in-between visual cue — not yet investigated code-side."* **That guess
+is correct, and the cause is sharper than a missing cue: there is no cue at all.**
+
+- **The two-step flow is real and is by design.** `TacticsController.confirm_shot()` branches on
+  `stepping_out_at != null` and hands to `_confirm_step_out()`. So clicking a covered enemy enters
+  **step-out-cell-choice mode** (`_enter_aim_or_step_out_mode` → `_enter_step_out_mode`), and only a
+  *second* confirm queues the free outbound leg and opens ordinary aim. The dartboard not appearing on
+  the first click is the designed sequence, not a broken path.
+- **Nothing in the view layer reads step-out state.** A grep for `stepping_out_at` / `step_out` across
+  `src/view/` and `src/debug/` returns **only `tactics_controller.gd` itself**. No overlay, no panel,
+  no marker.
+- **`_enter_step_out_mode` emits `aim_changed` and calls `_refresh_overlay()`, and neither shows
+  anything about it.** `_refresh_overlay()` draws reachable cells, ghost paths, the end-position ghost
+  and the overwatch arc — the same four it draws in every other mode. `aim_changed`'s consumers are
+  `aim_view` (which reads `aiming_at`, still null here, so correctly draws no dartboard), the action
+  bar, and the squad control overlay. **None draws the candidate cells.**
+- **So the player is given nothing.** The candidate cells are chosen and sorted by safety
+  (`_step_out_candidates`, safest first), the mouse wheel cycles them (`cycle_step_out_cell`), and a
+  second click confirms — and **none of that is visible**. No highlight on the cell about to be
+  stepped to, no indication the wheel does anything, no prompt that a second click is expected. The
+  outbound leg is not queued until confirm, so even the ghost shows nothing new.
+- **This is therefore a missing view affordance, not a defect in the flow.** Worth deciding
+  explicitly, because the two available fixes are different in kind: **draw the mode** (highlight the
+  selected candidate and its alternatives, which also makes the wheel-cycling discoverable — it is
+  currently invisible too), or **collapse the flow** so the first click both picks the safest
+  candidate and opens aim, leaving the wheel to re-pick while aiming. The first preserves the
+  deliberate choice step taken in Pass B; the second removes it.
+- **What is NOT broken, confirmed:** the flow itself is fully guarded and green —
+  `test_tactics_controller_step_out.gd` holds
+  `test_confirming_a_step_out_cell_queues_only_the_free_outbound_leg_then_opens_aim`,
+  `test_firing_after_a_step_out_completes_the_free_move_attack_move_triple`,
+  `test_cancelling_aim_mid_step_out_undoes_the_free_outbound_leg` and
+  `test_wheel_cycles_the_step_out_cell_and_wraps`. Every one passes. **They test the controller's
+  state, which is correct; nothing tests that a player can see it**, which is the gap.
 
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
