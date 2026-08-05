@@ -561,11 +561,19 @@ func _grammar_warnings() -> Array[String]:
 		if placement.kind != MapPlacement.KIND_SURFACE:
 			continue
 		if not GridPlacement.can_place(grid, placement.cell, part, placement.height):
+			# **Two different refusals, and they used to read as one.** `GridPlacement.can_place`
+			# rejects a GROUND part when the cell already has a surface, and a side-attaching part
+			# when nothing is there to attach to — opposite problems. Reporting both as "has nothing
+			# to attach to" is what made a second floor on one cell read as a broken floor part; the
+			# UI review asked *"Shipfloor complaining that it doesn't have anything to attach to. Is
+			# that expected?"* and the answer was yes, about the wrong thing.
+			var reason: String = (
+				"the cell already has a surface"
+				if GridPlacement.GROUND in part.attaches_to
+				else "nothing to attach to at height %.2f" % placement.height
+			)
 			found.append(
-				(
-					"placement %d ('%s') at %s has nothing to attach to at height %.2f"
-					% [index, placement.part_id, placement.cell, placement.height]
-				)
+				"placement %d ('%s') at %s: %s" % [index, placement.part_id, placement.cell, reason]
 			)
 		grid.add_surface(placement.cell, Surface.new(part, placement.height, placement.facing))
 	return found

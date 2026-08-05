@@ -92,15 +92,13 @@ func _toggle(id: StringName, module: ViewModule) -> UiButton:
 	var button: UiButton = UiButton.build(
 		UiButton.abbreviate(id),
 		label_for(id),
-		"Toggles the %s module." % label_for(id),
-		_tooltip_view(),
-		true
+		"Summons and dismisses the %s module." % label_for(id),
+		_tooltip_view()
 	)
-	# **Pressed means shown**, which is the way round a player reads a toggle — `collapsed` is the
-	# inverse, and inverting it here rather than in the flag keeps the module's own field saying
-	# what it means.
-	button.button_pressed = not module.collapsed
-	button.toggled.connect(func(shown: bool) -> void: module.collapsed = not shown)
+	# **A press flips it**, which is the summon/dismiss feel the review asked every button in this
+	# row to share. `collapsed` stays the module's own inverse-sense field; nothing about what it
+	# means changed, only how it is reached.
+	button.pressed.connect(func() -> void: module.collapsed = not module.collapsed)
 	row.add_child(button)
 	return button
 

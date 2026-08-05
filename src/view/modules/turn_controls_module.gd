@@ -20,6 +20,10 @@ signal end_turn_confirmation_raised(message: String)
 var column: VBoxContainer = null
 var end_turn_button: Button = null
 var reset_turn_button: Button = null
+## Hands the squad to the AI and back. **Set before `mount`**, like every other mode option — the
+## player view reads "Watch" and a spectator that grew turn controls would read the other direction.
+var watch_button: Button = null
+var watch_label: String = "Watch"
 ## The confirmation the table asks for. Built lazily on the first press that needs it — a mode that
 ## never ends a turn with anything left never constructs one.
 var confirm_dialog: ConfirmationDialog = null
@@ -62,6 +66,11 @@ func _mount() -> void:
 	end_turn_button = _button("End Turn", _on_end_turn_pressed)
 	# docs/10 taskblock03 D4: "a single Reset Turn control (button + R)."
 	reset_turn_button = _button("Reset Turn", _on_reset_turn_pressed)
+	# **Watch moved here from the top-left cluster.** The UI review: *"'watch' can be moved in with
+	# 'end turn' and 'reset turn'."* It is a verb about whose turn this is, which is what this column
+	# already holds; it sat in the corner only because the cluster it shared with Inject and New
+	# Battle predated there being anywhere better.
+	watch_button = _button(watch_label, _on_watch_pressed)
 
 
 func _button(text: String, handler: Callable) -> Button:
@@ -139,3 +148,10 @@ func _dialog() -> ConfirmationDialog:
 func _on_reset_turn_pressed() -> void:
 	if context != null and context.tactics != null:
 		context.tactics.reset_turn()
+
+
+## Hands control of the blue squad over and takes it back — `BattleScene`'s own toggle, unchanged.
+## A mode with no battle simply has a button that does nothing, which is the stand-alone case.
+func _on_watch_pressed() -> void:
+	if context != null and context.battle != null:
+		context.battle.toggle_blue_control()

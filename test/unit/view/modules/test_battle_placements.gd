@@ -255,21 +255,44 @@ func test_every_collapsible_module_gets_a_toggle_in_the_ui_buttons_cluster() -> 
 		assert_true(buttons.toggles.has(id), "%s is collapsible with no way to collapse it" % id)
 
 
-## The toggle drives the flag, and the flag actually hides something. Asserted on the action bar
+## The button drives the flag, and the flag actually hides something. Asserted on the action bar
 ## because it is the one collapsible surface that is visible by default — the other two start off.
-func test_a_toggle_folds_its_module_away_and_unfolds_it() -> void:
+##
+## **A press, not a pressed state.** The UI review collapsed the cluster's two button feels into
+## one: every control there is summon/dismiss, so the same button both hides and restores.
+func test_a_button_dismisses_its_module_and_summons_it_back() -> void:
 	var overlay: ControlOverlay = await _overlay()
 	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
 	var bar: ActionBarModule = overlay.module(&"action_bar") as ActionBarModule
-	var toggle: UiButton = buttons.toggles[&"action_bar"]
+	var button: UiButton = buttons.toggles[&"action_bar"]
 
-	assert_true(bar.bar_root.visible, "the bar starts shown -- nothing is collapsed by default")
-	toggle.button_pressed = false
-	assert_true(bar.collapsed, "pressing the toggle collapses the module")
-	assert_false(bar.bar_root.visible, "and the surface is actually gone, not just flagged")
-	toggle.button_pressed = true
+	assert_true(bar.backing.visible, "the bar starts shown -- nothing is collapsed by default")
+	button.pressed.emit()
+	assert_true(bar.collapsed, "pressing the button dismissed the module")
+	assert_false(bar.backing.visible, "and the surface is actually gone, not just flagged")
+	button.pressed.emit()
 	assert_false(bar.collapsed)
-	assert_true(bar.bar_root.visible, "and it comes back")
+	assert_true(bar.backing.visible, "and the same button summons it back")
+
+
+## **THE REVIEW POINT**: *"Action Bar toggle button should dismiss the action bar only, and not the
+## UI buttons. Otherwise it dismisses itself and cannot be re-summoned."* The button that dismisses
+## the bar is published off the bar, so hiding the bar's whole subtree took the way back with it.
+func test_dismissing_the_bar_leaves_the_button_that_brings_it_back() -> void:
+	var overlay: ControlOverlay = await _overlay()
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+	var bar: ActionBarModule = overlay.module(&"action_bar") as ActionBarModule
+	var logs: CombatLogModule = overlay.module(&"combat_log") as CombatLogModule
+
+	(buttons.toggles[&"action_bar"] as UiButton).pressed.emit()
+	await get_tree().process_frame
+
+	assert_false(bar.backing.visible, "sanity: the bar is dismissed")
+	assert_true(
+		buttons.row.is_visible_in_tree(),
+		"the UI buttons went with the bar -- nothing can summon it back"
+	)
+	assert_true(logs.panel.is_visible_in_tree(), "and the log is not the bar's to hide either")
 
 
 # ---------------------------------------------------------------- what moved off the log

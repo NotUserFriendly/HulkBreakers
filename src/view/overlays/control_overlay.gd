@@ -252,6 +252,20 @@ func _process(delta: float) -> void:
 ## The first module to return true stops the walk. `ViewModule.handle_input` returns false by
 ## default, so every module that does not want input is unaffected.
 func _unhandled_input(event: InputEvent) -> void:
+	# **A press that reached here landed on the board, not on a control — so nothing should still
+	# hold keyboard focus.**
+	#
+	# The UI review: *"Sometimes pressing new bout does nothing. One of the modules seems to be
+	# intercepting 'b' key presses without typing anywhere."* A `LineEdit` keeps focus until
+	# something else takes it, and clicking the 3D board takes nothing: the editor's board-name field
+	# or the part list's search box stayed focused invisibly and swallowed every letter afterwards,
+	# including the keybindings.
+	#
+	# `_unhandled_input` is exactly the right place to notice: an event only arrives here when no
+	# `Control` consumed it, which is the definition of "the click was not for the UI".
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		if ui_root != null and ui_root.get_viewport() != null:
+			ui_root.get_viewport().gui_release_focus()
 	for mounted: ViewModule in modules:
 		if mounted.handle_input(event):
 			return

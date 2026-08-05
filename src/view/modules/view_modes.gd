@@ -57,7 +57,6 @@ const PLAYER_MODULES: Array[StringName] = [
 	# if it mounted. The readout's own lifetime is still independent — closing the menu leaves it up.
 	&"perf_monitor",
 	&"replay",
-	&"top_left_controls",
 	# Last: `ui_buttons` builds one toggle per collapsible module, so it wants every module mounted.
 	# The sweep runs in `link()`, which is after all mounts, but declaring it last keeps the reason
 	# visible where the order is read.
@@ -217,7 +216,12 @@ static func player() -> ViewMode:
 	mode.aim_mode_id = &"aim"
 	# The one inventory surface in the player view, opened on demand for whatever is selected.
 	mode.options[&"inspect"] = {&"with_button": true}
-	mode.options[&"top_left_controls"] = {&"include_new_battle": true, &"watch_label": "Watch"}
+	# **The top-left cluster is retired from this mode.** The UI review: *"Top left buttons need to
+	# be put somewhere. Inject is already in the UI BUTTONS as debug, new battle is an old method of
+	# doing things that can be retired, and 'watch' can be moved in with 'end turn' and 'reset
+	# turn'."* All three landed: Inject is the `DBG` button, New Battle is gone, and Watch is a row
+	# in the turn-control column.
+	mode.options[&"turn_controls"] = {&"watch_label": "Watch"}
 	# **Spectator-only while the bug hunt runs.** The replay panels crowd the surfaces the hunt
 	# reproduces against, and a run is watched from the spectator view regardless. The Inject panel
 	# is deliberately NOT gated this way: it is a hunting tool, not a test surface.

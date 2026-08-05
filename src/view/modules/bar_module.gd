@@ -3,38 +3,48 @@ extends ViewModule
 
 ## taskblock-57 Pass G1: **the bar — and there are three of them, not one with three contents.**
 ##
-## The taskblock's own title for the pass: *"Three action bars, not one with three contents. Shaped
+## The taskblock's own title for the pass: *"Three action bars, not one with three
+## contents. Shaped
 ## differently, so genuinely three modules sharing one slot."*
 ##
 ## | mode | bar | shape |
 ## |---|---|---|
 ## | player | `ActionBarModule` | square action items, left-aligned, two rows, small padding |
 ## | spectator | `SpectatorBarModule` | playback controls, plus the old top-left cluster |
-## | editor | `EditorBarModule` | labelled buttons — place, tiles, claims, save, load, run, undo |
+## | editor | `EditorBarModule` | labelled buttons — place, tiles, claims, save, load, undo |
 ##
 ## ## What is shared is the placement, and only the placement
 ##
-## All three occupy `ModuleSlots.ACTION_ROW`, and all three publish the four satellite slots Pass B
-## defined — because *"four surfaces pin relative to the action bar"* is a fact about **where the
-## bar is**, and every mode's bar is in the same place. The combat log sits left of whichever bar
-## the mode has; the UI buttons sit above its right edge. A mode that had a bar publishing nothing
-## would strand every one of those surfaces on `ui_root` at (0,0), which is exactly the defect Pass
+## All three occupy `ModuleSlots.ACTION_ROW`, and all three publish the four satellite
+## slots Pass B
+## defined — because *"four surfaces pin relative to the action bar"* is a fact about
+## **where the
+## bar is**, and every mode's bar is in the same place. The combat log sits left of
+## whichever bar
+## the mode has; the UI buttons sit above its right edge. A mode that had a bar publishing
+## nothing
+## would strand every one of those surfaces on `ui_root` at (0,0), which is exactly the
+## defect Pass
 ## C already had to chase out of the suite once.
 ##
-## **Content is what differs, and content is the hook.** `_fill_bar` is the only thing a concrete
+## **Content is what differs, and content is the hook.** `_fill_bar` is the only thing a
+## concrete
 ## bar overrides, and it is handed the column it should build into.
 ##
 ## ## Why three modules rather than one with a mode branch
 ##
-## A single bar module reading which mode it is in would be a fourth answer to "what is the surface
+## A single bar module reading which mode it is in would be a fourth answer to "what is the
+## surface
 ## right now", after `ViewMode`, `ModeChrome` and the module set — and it would put the editor's
 ## save/load buttons in the same file as the player's AP affordability check. This project has
-## deleted two visibility systems, two aiming paths and two overlay hierarchies; the taskblock names
+## deleted two visibility systems, two aiming paths and two overlay hierarchies; the
+## taskblock names
 ## the failure mode in the pass title, so the shape is three modules and a shared base that owns
 ## nothing but the scaffolding.
 ##
 ## **The base is not a mode subclass wearing a new hat.** What forced the overlay fork was
-## all-or-nothing inheritance of *behaviour* — Spectator wanted Squad's panels without its input.
+## all-or-nothing inheritance of *behaviour* — Spectator wanted Squad's panels without its
+## input.
 ## Nothing here has behaviour to inherit: it builds six containers and publishes four names.
 
 ## How solid the bar's own background is. A starting position, not a decision — matched to
@@ -46,14 +56,16 @@ const BACKGROUND_ALPHA := 0.82
 ## separately anchored to a screen corner — the whole reason a bar publishes slots.
 var bar_root: VBoxContainer = null
 
-## The four published slot containers. Public so a test reads back what was published rather than
+## The four published slot containers. Public so a test reads back what was published
+## rather than
 ## re-deriving where the bar put them.
 var left_slot: HBoxContainer = null
 var right_slot: HBoxContainer = null
 var top_left_slot: HBoxContainer = null
 var top_right_slot: HBoxContainer = null
 
-## The column a concrete bar builds into, between `left_slot` and `right_slot`. A `VBoxContainer`
+## The column a concrete bar builds into, between `left_slot` and `right_slot`. A
+## `VBoxContainer`
 ## so a bar wanting two rows stacks them rather than re-laying-out.
 var content_column: VBoxContainer = null
 
@@ -64,7 +76,8 @@ var backing: PanelContainer = null
 
 ## Bottom, centred, half a 16:9 screen wide — `BattleLayout.action_bar_rect`.
 ##
-## **`ACTION_ROW` is bottom-pinned, so every bar is collapsible.** That was decided in Pass C for
+## **`ACTION_ROW` is bottom-pinned, so every bar is collapsible.** That was decided in Pass
+## C for
 ## the player's bar (reversing a call made earlier in the same block) on the grounds that every
 ## edge-pinned slot is collapsible with no exceptions; the rule is not weakened by there being
 ## three bars in the slot rather than one.
@@ -72,10 +85,12 @@ func preferred_slot() -> StringName:
 	return ModuleSlots.ACTION_ROW
 
 
-## taskblock-57 Pass B's mechanism, now used by three modules rather than one. Nothing in the host
+## taskblock-57 Pass B's mechanism, now used by three modules rather than one. Nothing in
+## the host
 ## is special-cased: `ControlOverlay` publishes whatever any module returns from this hook.
 ##
-## A concrete bar with slots of its own overrides this and merges — `SpectatorBarModule` publishes
+## A concrete bar with slots of its own overrides this and merges — `SpectatorBarModule`
+## publishes
 ## the pacing row and the tunables row it folded in, and that is what lets `PlaybackModule` and
 ## `TopLeftControlsModule` land in the bar without either of them knowing a bar exists.
 func published_slots() -> Dictionary:
@@ -182,8 +197,10 @@ func relaid_out() -> void:
 
 ## A full-width row inside `bar_root` that its children anchor themselves within.
 ##
-## **A plain `Control`, deliberately** — a container would position its children by its own rules,
-## which is exactly the thing the wings got wrong. `height` is a floor: a child taller than it grows
+## **A plain `Control`, deliberately** — a container would position its children by its own
+## rules,
+## which is exactly the thing the wings got wrong. `height` is a floor: a child taller than
+## it grows
 ## upward out of the row, which is what the surfaces above the bar are supposed to do.
 func _anchored_row(parent: VBoxContainer, height: float) -> Control:
 	var strip := Control.new()
@@ -203,12 +220,16 @@ static func _pin_centred(target: Control, width: float) -> void:
 	_pin_to_the_bottom(target)
 
 
-## Pins `target`'s RIGHT edge to the right edge of a bar `width` wide, growing leftward — a surface
+## Pins `target`'s RIGHT edge to the right edge of a bar `width` wide, growing leftward — a
+## surface
 ## that sits *within* the bar's span rather than beside it.
 ##
-## The distinction from `_pin_beside` is which side of the bar's edge the surface lives on. The turn
-## controls hang off the outside of the right edge; the UI buttons sit above the bar and end at that
-## same edge. Pinning the UI buttons the way the turn controls are pinned put them 332 px past the
+## The distinction from `_pin_beside` is which side of the bar's edge the surface lives on.
+## The turn
+## controls hang off the outside of the right edge; the UI buttons sit above the bar and
+## end at that
+## same edge. Pinning the UI buttons the way the turn controls are pinned put them 332 px
+## past the
 ## bar's right edge, which is where the review's *"only some of the UI buttons are correct"* was
 ## looking.
 static func _pin_inside_right(target: Control, width: float) -> void:
@@ -220,7 +241,8 @@ static func _pin_inside_right(target: Control, width: float) -> void:
 	_pin_to_the_bottom(target)
 
 
-## Pins `target`'s inner edge to one edge of a bar `width` wide, growing away from it. `side` is +1
+## Pins `target`'s inner edge to one edge of a bar `width` wide, growing away from it.
+## `side` is +1
 ## for the surface on the bar's left and -1 for the one on its right.
 static func _pin_beside(target: Control, width: float, side: float) -> void:
 	var edge: float = width * 0.5 * -side
@@ -244,7 +266,8 @@ static func _pin_to_the_bottom(target: Control) -> void:
 	target.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 
-## The rect `BattleLayout` gives the bar at the current screen size, or a zero size with no host.
+## The rect `BattleLayout` gives the bar at the current screen size, or a zero size with no
+## host.
 func _band_size() -> Vector2:
 	var root: Control = context.ui_root if context != null else null
 	if root == null:
@@ -263,24 +286,39 @@ func _fill_bar(_column: VBoxContainer) -> void:
 	pass
 
 
-## Folds the bar and every surface published off it in one gesture — they are its children, which
-## is the whole reason a bar publishes slots rather than four modules anchoring themselves near
-## where they expect it to be.
+## Dismisses **the bar itself**, and nothing published off it.
+##
+## **This used to hide `bar_root`, which took the UI buttons with it — including the button that
+## would bring it back.** The UI review found the trap: *"Action Bar toggle button should
+## dismiss
+## the action bar only, and not the UI buttons. Otherwise it dismisses itself and cannot be
+## re-summoned."*
+##
+## So the collapse hides `backing`, which is the bar's own rect and its own content. The four
+## satellites are siblings of it rather than children, so the combat log, the turn controls, the
+## unit resources and the cluster all stay exactly where they are. **A control that can
+## turn itself off
+## and not on is not a toggle**, and the anchored-rows layout is what makes hiding one
+## piece of the
+## bar possible — under the old nesting, everything was inside the thing being hidden.
 func _on_collapsed(value: bool) -> void:
-	if bar_root != null:
-		bar_root.visible = not value
+	if backing != null:
+		backing.visible = not value
 
 
 ## **Spans the safe width, bottom-aligned on the band, so the wings inside it have room to be
 ## symmetrical.**
 ##
-## Measured, not assumed. The table gives the action bar "half a 16:9 screen wide" — 960 px — but
-## the surfaces published off it are outside that: the combat log alone asks for 520. A root sized
+## Measured, not assumed. The table gives the action bar "half a 16:9 screen wide" — 960 px
+## — but
+## the surfaces published off it are outside that: the combat log alone asks for 520. A
+## root sized
 ## to the band could not hold them, and a root centred on the band centred the *cluster* rather
 ## than the bar, which is the review point this pass is fixing.
 ##
 ## The band is centred in the safe rect, so anchoring at the region's own horizontal centre and
-## reaching half the safe width each way lands exactly on the safe rect — no second copy of where
+## reaching half the safe width each way lands exactly on the safe rect — no second copy of
+## where
 ## the band is.
 ##
 ## A no-op when the slot is a real `Container` (the taskblock-56 layouts' `ACTION_ROW` is an
@@ -304,9 +342,12 @@ static func _span_the_safe_width(target: Control, safe_width: float) -> void:
 ## children can anchor against the band's own arithmetic rather than being positioned by a
 ## container's rules — which is what made the first attempt at centring the bar miss by 48 px.
 ##
-## `MOUSE_FILTER_IGNORE`, like every other wrapping container in the layout: these span real width
-## and would otherwise swallow camera drags that started over them before `CameraRig` ever saw the
-## event. **Whatever mounts INTO the slot sets its own filter**; an empty slot must never be a dead
+## `MOUSE_FILTER_IGNORE`, like every other wrapping container in the layout: these span
+## real width
+## and would otherwise swallow camera drags that started over them before `CameraRig` ever
+## saw the
+## event. **Whatever mounts INTO the slot sets its own filter**; an empty slot must never
+## be a dead
 ## patch of screen.
 func _slot_container(parent: Control, _expanding: bool = false) -> HBoxContainer:
 	var slot := HBoxContainer.new()

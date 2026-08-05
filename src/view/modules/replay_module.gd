@@ -49,6 +49,32 @@ func module_id() -> StringName:
 	return &"replay"
 
 
+## **Collapsible, declared rather than derived.** `ViewModule.is_collapsible()` normally reads the
+## slot's edge, and these two panels anchor themselves rather than taking a slot — so the derivation
+## answers false and `UiButtonsModule` would build no button for them.
+##
+## The UI review asked for one outright: *"The run tests window needs to be a button within the UI
+## BUTTONS module, and default off."* Overriding is the honest way to say "this is toggleable for a
+## reason the slot cannot express", rather than inventing a slot so the derivation comes out right.
+func is_collapsible() -> bool:
+	return true
+
+
+## Hides both panels together. They are one debug surface from the player's point of view, and a
+## button that hid half of it would be worse than none.
+func _on_collapsed(value: bool) -> void:
+	if suite_run_panel != null:
+		suite_run_panel.visible = not value
+	if watched_run_panel != null:
+		watched_run_panel.visible = not value
+
+
+## The one shared tooltip renderer, if this mode declared it. Null means the `[?]` carries no text.
+func _tooltip_view() -> TooltipView:
+	var module: ViewModule = context.module(&"tooltip") if context != null else null
+	return (module as TooltipModule).view if module != null else null
+
+
 func _mount() -> void:
 	if not enabled or not OS.is_debug_build():
 		return
@@ -82,7 +108,13 @@ func _mount() -> void:
 	root.add_child(watched_run_panel)
 
 	suite_run_panel.battle = context.battle
+	watched_run_panel.tooltip_view = _tooltip_view()
 	watched_run_panel.bind(context.battle, null)
+	# **Off by default**, which the UI review asked for: *"The run tests window needs to be a button
+	# within the UI BUTTONS module, and default off."* A debug surface that is up before anyone asked
+	# for it is crowding the surfaces a hunt reproduces against — the same reasoning that made these
+	# spectator-only in taskblock-51.
+	collapsed = true
 	suite_run_panel.run_completed.connect(_on_suite_run_completed)
 	watched_run_panel.seed_loaded.connect(_on_replay_loaded)
 

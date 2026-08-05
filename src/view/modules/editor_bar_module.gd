@@ -181,7 +181,9 @@ func _on_place_kind_pressed(kind: StringName) -> void:
 	if editor == null:
 		return
 	_pending_kind = kind
-	list.open("%s — place on a tile" % _label_for_kind(kind), editor.placeable_part_ids())
+	# **Offered for this kind**, which the data can only narrow for surfaces — see
+	# `EditorModule.placeable_part_ids`.
+	list.open("%s — place on a tile" % _label_for_kind(kind), editor.placeable_part_ids(kind))
 
 
 func _on_tool_pressed(tool: StringName) -> void:
@@ -209,6 +211,8 @@ func _on_list_chosen(id: StringName) -> void:
 		return
 	editor.selected_part = id
 	editor.selected_kind = _pending_kind
+	if _pending_kind == MapPlacement.KIND_SURFACE:
+		editor.last_surface_part = id
 	editor.active_tool = &"place"
 	# **Refreshed explicitly, because the kind may have changed while the tool did not.** Picking a
 	# tile and then picking cover both leave `active_tool` at `place`, so the setter emits nothing

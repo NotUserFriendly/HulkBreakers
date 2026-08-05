@@ -4,8 +4,9 @@ extends Button
 ## **A square chrome control with a short abbreviation and a hover description.**
 ##
 ## The supervisor's review of the taskblock-57 layout: *"All toggles and descriptive text should be
-## replaced with square BUTTONS with an up-to three letter abbreviation on them. Hovering them for
-## 1.5 seconds should show a description of what they do (i.e. Toggles the Inspect Module)."*
+## replaced with square BUTTONS with an up-to three letter abbreviation on them... should show a
+## description of what they do (i.e. Toggles the Inspect Module)."* The follow-up review shortened
+## the wait and collapsed the two button feels into one — see `HOVER_SEC` and `build`.
 ##
 ## ## Why a class rather than a helper each module calls
 ##
@@ -17,11 +18,11 @@ extends Button
 ##
 ## ## The dwell is not implemented here
 ##
-## `TooltipView.show_data` already waits `HoverDwell.DELAY_SEC` before showing anything — the same
-## 1.5 s clock the combat log's overflow preview runs on, which taskblock-57 required them to share.
-## So this shows a tooltip the way every other hovering surface does and gets the delay for free.
-## **A second timer here would be the third clock**, which is exactly what that requirement existed
-## to prevent.
+## `TooltipView.show_data` runs the wait on the one `HoverDwell` clock the combat log's overflow
+## preview also uses, which taskblock-57 required them to share. This passes its own *duration*
+## (`HOVER_SEC`) and nothing else. **A second timer here would be the third clock**, which is what
+## that requirement existed to prevent — sharing the mechanism was the point, not sharing one
+## number for every surface that hovers.
 ##
 ## A null `TooltipView` is legal and means no description — a mode that declares no `tooltip` module
 ## gets working buttons and no hover text, which is the stand-alone posture every module takes.
@@ -29,6 +30,15 @@ extends Button
 ## The side of the square, in pixels before UI scale. **A starting position, not a decision** — big
 ## enough for three capital letters at `HulkTheme.FONT_SIZE` with room around them.
 const SIDE := 44.0
+
+## How long the cursor rests on a chrome button before it says what it does.
+##
+## **Shorter than the shared 1.5 s, and stated rather than inherited.** The UI review: *"Hover on UI
+## buttons is too long, should probably be 0.5 seconds. You'll almost always want this info."* A
+## three-letter abbreviation is not self-explanatory, so its description is closer to a label than
+## to a detail panel, and the 1.5 s wait is calibrated for the latter. Still the one `HoverDwell`
+## clock; only the duration is this caller's.
+const HOVER_SEC := 0.5
 
 ## What the button says when it is hovered: the full name, and a sentence under it.
 var description: String = ""
@@ -39,17 +49,18 @@ var tooltip_view: TooltipView = null
 
 ## A square button labelled `abbrev`, describing itself as `full` / `description` on hover.
 ##
-## `toggle` gives it a pressed state, which is what a module toggle needs and what a one-shot verb
-## like Inspect does not.
-static func build(
-	abbrev: String, full: String, description: String, view: TooltipView, toggle: bool = false
-) -> UiButton:
+## **There is one kind of button here and it is summon/dismiss.** The UI review: *"I seem to have
+## two different 'classes' of buttons, a 'summon/dismiss' style button and then a 'disable/enable'?
+## There should be one, and the 'summon/dismiss' seems to be the better feeling option."* The module
+## toggles used to be `toggle_mode` buttons carrying a stuck pressed state while Inspect, the debug
+## menu and the keybindings legend were plain presses — two feels in one row. Every one of them is a
+## plain press now: you press it to summon the thing and press it again to dismiss it.
+static func build(abbrev: String, full: String, description: String, view: TooltipView) -> UiButton:
 	var button := UiButton.new()
 	button.text = abbrev
 	button.full_name = full
 	button.description = description
 	button.tooltip_view = view
-	button.toggle_mode = toggle
 	# Square, and the same square whatever the label's own width would have been.
 	var side: float = UiLayout.scaled(SIDE)
 	button.custom_minimum_size = Vector2(side, side)
@@ -100,7 +111,7 @@ func _on_hover() -> void:
 	if tooltip_view == null or description == "":
 		return
 	var data := TooltipData.new(full_name, [] as Array[Dictionary], description)
-	tooltip_view.show_data(data, get_viewport().get_mouse_position())
+	tooltip_view.show_data(data, get_viewport().get_mouse_position(), HOVER_SEC)
 
 
 func _on_unhover() -> void:

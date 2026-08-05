@@ -208,11 +208,17 @@ func test_the_player_bars_boxes_start_at_its_left_edge_and_fit_inside_it() -> vo
 	)
 	gut.p("boxes %s inside the band %s" % [str(grid), str(band)])
 	assert_lt(grid.size.x, band.size.x, "the boxes are wider than the bar they sit in")
+	# **The bar's left edge plus its inset**, which the UI review asked for: *"the action bar buttons
+	# on the player view need some padding off the top left of the action bar."* Left-aligned still
+	# means "from the left", not "flush against it".
 	assert_almost_eq(
 		grid.position.x,
-		bar.content_column.get_global_rect().position.x,
+		(
+			bar.content_column.get_global_rect().position.x
+			+ UiLayout.scaled(ActionBarModule.BOX_INSET)
+		),
 		1.0,
-		"left-aligned: the boxes start at the bar's own left edge"
+		"left-aligned: the boxes start one inset in from the bar's own left edge"
 	)
 
 

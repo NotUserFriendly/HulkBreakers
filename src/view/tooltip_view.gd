@@ -80,7 +80,10 @@ func _init() -> void:
 ## a repeated call with the SAME content — the inventory tooltip's own
 ## per-motion-event pattern, and every other caller now matching it — just
 ## tracks the cursor (D1), never restarting the wait.
-func show_data(data: TooltipData, at_position: Vector2) -> void:
+## `wait` is how long the cursor must dwell before this particular content appears. **The default is
+## the shared 1.5 s**; the chrome buttons pass a shorter one, because the UI review found the long
+## wait wrong for information *"you'll almost always want"*. One clock, per-request duration.
+func show_data(data: TooltipData, at_position: Vector2, wait: float = HOVER_DELAY_SEC) -> void:
 	if data == null or (data.title == "" and data.rows.is_empty() and data.footer == ""):
 		hide_tooltip()
 		return
@@ -95,6 +98,7 @@ func show_data(data: TooltipData, at_position: Vector2) -> void:
 	_has_pending = true
 	_pending_text = text
 	_pending_position = at_position
+	_dwell.delay = wait
 	_dwell.aim_at(text)
 
 

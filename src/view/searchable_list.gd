@@ -91,8 +91,13 @@ func open(title: String, entries: Array[StringName]) -> void:
 		search_field.grab_focus()
 
 
+## Closes, and **gives keyboard focus back**. A hidden `LineEdit` keeps focus until something takes
+## it, so a closed list went on swallowing every letter the player typed at the board — half of the
+## review's *"intercepting 'b' key presses without typing anywhere"*.
 func close() -> void:
 	visible = false
+	if is_inside_tree() and search_field.has_focus():
+		search_field.release_focus()
 
 
 ## Rebuilds the rows from `SearchFilter`'s answer. Cheap enough per keystroke: the largest list

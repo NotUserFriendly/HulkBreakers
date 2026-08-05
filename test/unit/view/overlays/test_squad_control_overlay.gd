@@ -293,11 +293,17 @@ func _squad_control_fresh(built: Dictionary) -> ControlOverlay:
 ## release export) can't be exercised in this harness at all; it's proven
 ## structurally instead, by test_bout_injector_determinism.gd's own
 ## source-level gate check.
-func test_inject_button_and_panel_exist_exactly_when_this_is_a_debug_build() -> void:
+##
+## **The UI review moved the way in.** Inject was a button in the top-left cluster; the cluster is
+## retired from this mode and the debug menu is reached by the UI-buttons cluster's `DBG` square —
+## *"Inject is already in the UI BUTTONS as debug."* What is asserted is unchanged in substance: in
+## a debug build there is a panel and a way to open it, and in a release export there is neither.
+func test_the_debug_menu_and_its_button_exist_exactly_when_this_is_a_debug_build() -> void:
 	var overlay: ControlOverlay = _squad_control_fresh(_bout())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
 
-	assert_eq(overlay.module(&"top_left_controls").inject_button() != null, OS.is_debug_build())
 	assert_eq(overlay.debug_panel_module().panel != null, OS.is_debug_build())
+	assert_eq(buttons.debug_button != null, OS.is_debug_build())
 
 
 func test_inject_toggles_the_debug_panels_own_visibility() -> void:
@@ -322,69 +328,29 @@ func test_inject_wires_the_panel_against_the_real_bout_injector_and_tactics() ->
 	assert_eq(overlay.debug_panel_module().panel.input_owner, overlay.tactics())
 
 
-## tb31 Pass A: New Battle/Watch/Inject share ONE construction path
-## (`TopLeftControls`) now — this overlay's own field aliases must point
-## straight into the SAME instance it built, not a second copy.
-func test_new_battle_watch_and_inject_all_come_from_the_one_shared_cluster() -> void:
-	var overlay: ControlOverlay = _squad_control_fresh(_bout())
-
-	assert_not_null(overlay.module(&"top_left_controls").controls)
-	assert_eq(
-		overlay.module(&"top_left_controls").new_battle_button(),
-		overlay.module(&"top_left_controls").controls.new_battle_button
-	)
-	assert_eq(
-		overlay.module(&"top_left_controls").watch_button(),
-		overlay.module(&"top_left_controls").controls.watch_button
-	)
-	assert_eq(
-		overlay.module(&"top_left_controls").inject_button(),
-		overlay.module(&"top_left_controls").controls.inject_button
-	)
-	assert_eq(overlay.module(&"top_left_controls").watch_button().text, "Watch")
-	assert_not_null(
-		overlay.module(&"top_left_controls").new_battle_button(),
-		"the player mode opts INTO New Battle"
-	)
-
-
-## tb31 Pass A: the top-left cluster's real rect must never overlap the
-## debug panel's own real rect — `DebugControlPanel`'s own `_center_top`
-## fix exists specifically because a panel with no anchor at all used to
-## spawn right on top of this exact corner.
+## **The shared-cluster claim moved to the spectator, which is the only mode that still has one.**
 ##
-## **taskblock-57 Pass C: the layout places the menu now**, so the
-## `_center_top()` call is gone (it is a deliberate no-op on a placed
-## panel) and the rects come from `get_global_rect()`. That second change
-## is a fix, not a port: the old version compared two `position` fields
-## that were local to different parents the moment the debug menu became a
-## child of its own slot region, and it read them as if they were screen
-## coordinates. Both rects were reported at (0,0) — overlapping by
-## arithmetic, wherever they actually were.
-func test_top_left_cluster_never_overlaps_the_debug_menu() -> void:
+## tb31 Pass A made New Battle / Watch / Inject one construction path (`TopLeftControls`), and the
+## test read the player view's aliases into it. The UI review retired all three from this mode —
+## New Battle outright, Inject into the UI-buttons `DBG` square, Watch into the turn-control column
+## — so the claim has no subject here any more. `test_three_bars.gd` asserts the surviving cluster
+## is inside the spectator's bar, which is where tb57 G1 put it.
+func test_the_player_view_no_longer_carries_a_top_left_cluster() -> void:
 	var overlay: ControlOverlay = _squad_control_fresh(_bout())
-	# **`toggle()`, not `visible = true`.** The panel builds its verb list in `setup()`, which only
-	# `toggle()` calls — shown directly it is a real node with a zero-size rect, and a zero-size rect
-	# clears every obstacle by not existing.
-	overlay.debug_panel_module().toggle()
-	await get_tree().process_frame
-	await get_tree().process_frame
 
-	var cluster_rect: Rect2 = overlay.module(&"top_left_controls").controls.get_global_rect()
-	var panel_rect: Rect2 = overlay.debug_panel_module().panel.get_global_rect()
-	# Both have to be real, or "no overlap" is free — a zero-size rect clears every obstacle by
-	# not existing, which is how this class of test passes while the surface is broken.
-	assert_gt(cluster_rect.size.x, 0.0, "sanity: the cluster has a real rect")
-	assert_gt(panel_rect.size.x, 0.0, "sanity: the debug menu has a real rect")
-	assert_false(
-		cluster_rect.intersects(panel_rect),
-		"cluster %s must not overlap the debug menu %s" % [cluster_rect, panel_rect]
-	)
+	assert_null(overlay.module(&"top_left_controls"), "the cluster is retired from the player view")
+	var turns: TurnControlsModule = overlay.module(&"turn_controls") as TurnControlsModule
+	assert_not_null(turns.watch_button, "Watch is the one piece that moved rather than going")
+	assert_eq(turns.watch_button.text, "Watch")
 
 
-## tb31 Pass A: "reference, not chrome" — hidden by default, and the
-## button is the SAME toggle the H-key already drives (ControlsOverlay's
-## own `label.visible`), never a second mechanism.
+## **Retired with the cluster it measured.** tb31 Pass A asserted the top-left cluster's rect never
+## overlapped the debug menu's, because a panel with no anchor used to spawn on that exact corner.
+## The player view has no cluster now (the UI review retired it), and the spectator's lives inside
+## its bar — where `test_debug_panel_layout.gd` already checks the same non-overlap against the
+## surface that still has both. Deleted rather than left asserting against a null.
+
+
 func test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does() -> void:
 	var overlay: ControlOverlay = _squad_control_fresh(_bout())
 	assert_false(
