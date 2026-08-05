@@ -27,7 +27,7 @@ extends RefCounted
 ## Ordered: `unit_input` publishes the `TacticsController` every display module reads at its own
 ## mount time, so it is first; `tooltip` before the three modules that share its `TooltipView`;
 ## `stat_panels` before `resolution` (the resolution banner is the readout cluster's own label);
-## `debug_panel` before `top_left_controls` (the Inject button routes into it). Not alphabetical.
+## `debug_panel` before `ui_buttons` (the `DBG` square routes into it). Not alphabetical.
 ##
 ## **taskblock-57 Pass C moved `action_bar` up to third**, and that is load-bearing rather than
 ## tidy: the bar publishes four slots, and taskblock-56's rule is that a provider must be declared
@@ -47,6 +47,10 @@ const PLAYER_MODULES: Array[StringName] = [
 	&"inspect_viewer",
 	&"inspect",
 	&"turn_controls",
+	# **After** `turn_controls`: it puts its button at the top of that module's own column, and a
+	# module that reads another at mount time is declared after it. A mode without turn verbs — the
+	# spectator — gets a column of its own instead.
+	&"control_toggle",
 	&"controls_legend",
 	&"combat_log",
 	# taskblock-57 Pass E: a second view of the same stream. Order does not matter — it reads the
@@ -65,7 +69,7 @@ const PLAYER_MODULES: Array[StringName] = [
 
 ## Ordered: `resolution` before `playback` (the tunables write into `ResolutionPlayer`'s own fields
 ## and the pacing loop awaits its playback); `inspect` before `board_inspect` (a click opens the
-## panel); `debug_panel` before `top_left_controls`.
+## panel); `debug_panel` before `ui_buttons`.
 ##
 ## **No input module appears here, and that IS the contract.** Before this pass the same fact was
 ## expressed by *not inheriting* the player overlay, which cost a 718-line copy of everything both
@@ -76,10 +80,9 @@ const PLAYER_MODULES: Array[StringName] = [
 ##
 ## **taskblock-57 Pass G1: `spectator_bar` is first, and that is load-bearing.** It is this mode's
 ## bar, so it publishes the four satellite slots the combat log, Inspect's button and the UI buttons
-## resolve at their own mount time — plus `pacing_row` and `tunables`, which is how `playback` and
-## `top_left_controls` land in the bar rather than in a corner. Declared later, every one of them
-## would silently fall back to `ui_root` and stack at (0,0). `playback` still precedes
-## `top_left_controls` so the transport controls read left-to-right before the shared cluster.
+## resolve at their own mount time — plus `pacing_row` and `tunables`, which is how `playback` lands
+## in the bar rather than in a corner. Declared later, every one of them would silently fall back to
+## `ui_root` and stack at (0,0).
 ##
 ## `ui_buttons` is last and is new here: this mode now has edge-pinned surfaces (Inspect, the debug
 ## menu, its own bar), and A2's rule is that every one of them is collapsible — which needs the
@@ -99,7 +102,13 @@ const SPECTATOR_MODULES: Array[StringName] = [
 	&"inspect",
 	&"playback",
 	&"board_inspect",
-	&"top_left_controls",
+	# **Assume Control lives here now.** The UI review: *"Assume Control should move to the TURN
+	# ORDER MANAGEMENT section. Inject is obsolete, and can be removed."* With Watch moved and
+	# Inject gone, `top_left_controls` had nothing left in it and is retired outright.
+	#
+	# **`control_toggle`, not `turn_controls`** — the latter is an INPUT module, and a display-only
+	# mode declaring one would claim it can mutate state through the view. See that module's header.
+	&"control_toggle",
 	&"ui_buttons",
 ]
 
@@ -196,6 +205,10 @@ const EDITOR_MODULES: Array[StringName] = [
 	&"board_inspect",
 	&"combat_log",
 	&"announcements",
+	# **The debug menu, which the editor had no way to reach.** The UI review: *"Debug button
+	# missing in editor mode."* `ui_buttons` builds the `DBG` square from whichever mode declares a
+	# debug panel, so the button was absent because the panel was.
+	&"debug_panel",
 	&"editor",
 	&"editor_coords",
 	&"ui_buttons",
@@ -221,7 +234,7 @@ static func player() -> ViewMode:
 	# doing things that can be retired, and 'watch' can be moved in with 'end turn' and 'reset
 	# turn'."* All three landed: Inject is the `DBG` button, New Battle is gone, and Watch is a row
 	# in the turn-control column.
-	mode.options[&"turn_controls"] = {&"watch_label": "Watch"}
+	mode.options[&"control_toggle"] = {&"watch_label": "Watch"}
 	# **Spectator-only while the bug hunt runs.** The replay panels crowd the surfaces the hunt
 	# reproduces against, and a run is watched from the spectator view regardless. The Inject panel
 	# is deliberately NOT gated this way: it is a hunting tool, not a test surface.
@@ -241,10 +254,9 @@ static func spectator() -> ViewMode:
 	mode.chrome = ModeChrome.BATTLE_LAYOUT
 	mode.modules = SPECTATOR_MODULES
 	mode.turn_policy = ViewMode.TurnPolicy.NONE
-	# A spectated bout has no "New Battle" concept of its own; the toggle goes the other way.
-	mode.options[&"top_left_controls"] = {
-		&"include_new_battle": false, &"watch_label": "Assume Control"
-	}
+	# The same button as the player's Watch, pointing the other way — one control, one label per
+	# direction, which is what it has always been.
+	mode.options[&"control_toggle"] = {&"watch_label": "Assume Control"}
 	# **Every outcome says something here.** Silence after a run is indistinguishable from a broken
 	# replay, which is exactly what the supervisor could not tell apart.
 	mode.options[&"replay"] = {&"announce_passes": true}

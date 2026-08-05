@@ -48,6 +48,13 @@ func preferred_slot() -> StringName:
 	return ModuleSlots.INSPECT_PANEL
 
 
+## **This module builds its own control in the cluster**, so the cluster must not build a second.
+## Only when it was actually asked for one — a mode without `with_button` has no Inspect control at
+## all and wants the derived toggle.
+func provides_own_button() -> bool:
+	return with_button
+
+
 func _mount() -> void:
 	panel = InspectPanel.new()
 	# taskblock-57 Pass C3: **the 3D view may be somewhere else on the screen.** If this mode
@@ -80,7 +87,7 @@ func _mount() -> void:
 		# `BR51.10`: starts disabled, because nothing is selected yet. An affordance that lies about
 		# what it can do reads as a broken action when it correctly does nothing.
 		button.disabled = true
-		button.pressed.connect(open_selected)
+		button.pressed.connect(_on_button_pressed)
 		# taskblock-57 Pass C: **the UI buttons cluster, above the bar's right edge** — the table's
 		# "module toggles, Inspect, the debug menu". `LEFT_COLUMN` is the taskblock-56 fallback for
 		# a mode whose chrome still builds one; a mode with neither gets the button on the module
@@ -187,4 +194,27 @@ func _on_collapsed(value: bool) -> void:
 
 
 func _on_panel_closed() -> void:
+	# The panel closes from its own control and from a board click as well as from the button, so
+	# the border is refreshed on the close itself rather than at each of the places that cause one.
+	refresh_border()
 	closed.emit()
+
+
+## **Summon, then dismiss.** The UI review collapsed every control in the cluster to one feel:
+## *"Button 'on', button is highlighted and module is visible. Button 'off', button is
+## un-highlighted and module is disabled/hidden."* This button used to only ever open, which is why
+## it read as the one that "always does something" beside two collapse toggles that appeared to do
+## nothing.
+func _on_button_pressed() -> void:
+	if panel != null and panel.visible:
+		panel.close()
+	else:
+		open_selected()
+	refresh_border()
+
+
+## Lights the button while the panel is up. Public because the panel can close from its own `[x]`
+## and from a board click, and neither of those goes through the button.
+func refresh_border() -> void:
+	if button != null:
+		button.active = panel != null and panel.visible

@@ -14,15 +14,25 @@ extends Node
 ## mechanisms.
 
 var label: Label
+## The `Control` whose visibility IS the on/off state. Defaults to `label`, and is the surrounding
+## panel once there is one — **one state, whatever is wrapped around it**, which is the property
+## this class has had since tb31 and the reason the H key and the `KEY` button cannot disagree.
+var surface: Control = null
 var log_path: String = ""
 
 
-func setup(p_label: Label, p_log_path: String) -> void:
+func setup(p_label: Label, p_log_path: String, p_surface: Control = null) -> void:
 	label = p_label
+	surface = p_surface if p_surface != null else p_label
 	log_path = p_log_path
 	label.add_theme_color_override("font_color", HulkTheme.DIM)
-	label.visible = false
+	surface.visible = false
 	refresh()
+
+
+## True while the legend is up. Read by whatever draws the button's own border.
+func is_open() -> bool:
+	return surface != null and surface.visible
 
 
 ## Called whenever the session's log path changes (a fresh FileSink per
@@ -41,8 +51,8 @@ func refresh() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if label == null or not (event is InputEventKey):
+	if surface == null or not (event is InputEventKey):
 		return
 	var key_event := event as InputEventKey
 	if key_event.pressed and key_event.keycode == ControlBindings.TOGGLE_KEY:
-		label.visible = not label.visible
+		surface.visible = not surface.visible

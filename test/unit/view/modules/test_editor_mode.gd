@@ -45,7 +45,6 @@ const MODULES_BEFORE_PASS_F: Array[StringName] = [
 	&"action_bar",
 	&"turn_controls",
 	&"controls_legend",
-	&"top_left_controls",
 	&"playback",
 	&"board_inspect",
 	&"bout_setup",

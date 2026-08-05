@@ -24,7 +24,7 @@ const BOTTOM_RIGHT := &"bottom_right"
 const READOUT_COLUMN := &"readout_column"
 ## The horizontal row holding the action column on the left and the turn controls on the right.
 const ACTION_ROW := &"action_row"
-## Play/Step/Speed and the shared Inject/New Battle/Watch cluster.
+## Play/Step/Speed and the spectator's status line.
 ##
 ## **taskblock-57 Pass G1 renamed this from `top_left`, and the rename is the point.** The old name
 ## was a position, and Pass G1 moves the row into the spectator's own bar at the bottom of the
@@ -33,7 +33,7 @@ const ACTION_ROW := &"action_row"
 ## moved, and moving it is exactly what the module system exists to make cheap.
 ##
 ## `ModeChrome.TOP_LEFT_ROWS` still publishes it at the top-left corner; `SpectatorBarModule`
-## publishes it inside the bar. Neither `PlaybackModule` nor `TopLeftControlsModule` knows which.
+## publishes it inside the bar. `PlaybackModule` does not know which.
 const PACING_ROW := &"pacing_row"
 ## A second row under the pacing row — the spectator's tunable timing fields.
 const TUNABLES := &"tunables"

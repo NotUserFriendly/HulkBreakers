@@ -40,11 +40,27 @@ const SIDE := 44.0
 ## clock; only the duration is this caller's.
 const HOVER_SEC := 0.5
 
+## How thick the "this is open" border is, in pixels before UI scale.
+##
+## The UI review asked for the state to be visible: *"Buttons which have something open should be
+## highlighted with a border. Button 'on', button is highlighted and module is visible. Button
+## 'off', button is un-highlighted and module is disabled/hidden."* A summon/dismiss button with no
+## state is a button you have to press to find out what it did.
+const ACTIVE_BORDER := 2
+
 ## What the button says when it is hovered: the full name, and a sentence under it.
 var description: String = ""
 var full_name: String = ""
 
 var tooltip_view: TooltipView = null
+
+## Whether the thing this button summons is currently up. **Drawn as a border**, not as a pressed
+## state — `toggle_mode` is what the review collapsed away, and a `Button` that looks held down is
+## the disable/enable feel it asked to be rid of.
+var active: bool = false:
+	set(value):
+		active = value
+		_apply_border()
 
 
 ## A square button labelled `abbrev`, describing itself as `full` / `description` on hover.
@@ -117,3 +133,23 @@ func _on_hover() -> void:
 func _on_unhover() -> void:
 	if tooltip_view != null:
 		tooltip_view.hide_tooltip()
+
+
+## Draws (or clears) the "open" border. A `StyleBoxFlat` on all four button states, so the border
+## survives hovering and pressing rather than flickering off under the cursor.
+func _apply_border() -> void:
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		if not active:
+			remove_theme_stylebox_override(state)
+			continue
+		var box := StyleBoxFlat.new()
+		box.bg_color = (
+			Color(HulkTheme.BACKGROUND, 0.0) if state == "normal" else HulkTheme.BACKGROUND
+		)
+		var width: int = int(UiLayout.scaled(ACTIVE_BORDER))
+		box.border_width_left = width
+		box.border_width_right = width
+		box.border_width_top = width
+		box.border_width_bottom = width
+		box.border_color = HulkTheme.HIGHLIGHT
+		add_theme_stylebox_override(state, box)

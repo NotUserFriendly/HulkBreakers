@@ -21,7 +21,15 @@ extends ViewModule
 ##
 ## Display: it renders a subject. It queues nothing.
 
+## How the viewer's frame is drawn. Starting positions, not decisions.
+const FRAME_ALPHA := 0.82
+const FRAME_BORDER := 1
+const FRAME_PADDING := 8.0
+
 var viewer: BotViewer = null
+## The panel the viewer sits in, so it has an edge and can be padded off it. Its visibility follows
+## the viewer's — `InspectPanel` drives the viewer, and the frame is what the player actually sees.
+var frame: PanelContainer = null
 
 
 func module_id() -> StringName:
@@ -48,12 +56,48 @@ func _mount() -> void:
 		# the stand-alone case taskblock-56 Pass C's acceptance requires.
 		add_child(viewer)
 		return
-	slot.add_child(viewer)
-	# The slot's rect is the placement. The viewer's own `custom_minimum_size` is what it wants when
-	# nobody places it; filling the slot is what the table asks for when somebody does.
-	viewer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	# **A frame around it, not a bare subview.** The UI review: *"INSPECT VIEWER in Player view —
+	# Just a loose window, it needs a border of some sort, likely embedded in a panel so it can be
+	# padded."* A `SubViewportContainer` over the board with nothing around it reads as a hole in
+	# the screen rather than as a panel showing something.
+	frame = PanelContainer.new()
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, FRAME_ALPHA
+	)
+	style.border_color = HulkTheme.DIM
+	var border: int = int(UiLayout.scaled(FRAME_BORDER))
+	style.border_width_left = border
+	style.border_width_right = border
+	style.border_width_top = border
+	style.border_width_bottom = border
+	for side: String in [
+		"content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"
+	]:
+		style.set(side, UiLayout.scaled(FRAME_PADDING))
+	frame.add_theme_stylebox_override("panel", style)
+	slot.add_child(frame)
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.visible = false
+
+	frame.add_child(viewer)
+	# The frame's rect is the placement; the viewer fills what the frame's padding leaves.
+	viewer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	viewer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 
 func _on_collapsed(value: bool) -> void:
-	if viewer != null and value:
-		viewer.visible = false
+	if value:
+		if viewer != null:
+			viewer.visible = false
+		if frame != null:
+			frame.visible = false
+
+
+## The frame follows the viewer, which `InspectPanel` owns the flag for. Called on the host's frame
+## tick because the panel sets `viewer.visible` directly and has no reason to learn about a frame.
+func tick(_delta: float) -> void:
+	if frame != null and viewer != null and frame.visible != viewer.visible:
+		frame.visible = viewer.visible

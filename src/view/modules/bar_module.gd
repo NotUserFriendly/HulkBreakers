@@ -10,7 +10,7 @@ extends ViewModule
 ## | mode | bar | shape |
 ## |---|---|---|
 ## | player | `ActionBarModule` | square action items, left-aligned, two rows, small padding |
-## | spectator | `SpectatorBarModule` | playback controls, plus the old top-left cluster |
+## | spectator | `SpectatorBarModule` | the playback transport controls and timing knobs |
 ## | editor | `EditorBarModule` | labelled buttons — place, tiles, claims, save, load, undo |
 ##
 ## ## What is shared is the placement, and only the placement
@@ -91,8 +91,8 @@ func preferred_slot() -> StringName:
 ##
 ## A concrete bar with slots of its own overrides this and merges — `SpectatorBarModule`
 ## publishes
-## the pacing row and the tunables row it folded in, and that is what lets `PlaybackModule` and
-## `TopLeftControlsModule` land in the bar without either of them knowing a bar exists.
+## the pacing row and the tunables row it folded in, and that is what lets `PlaybackModule` land
+## in the bar without knowing a bar exists.
 func published_slots() -> Dictionary:
 	return {
 		ModuleSlots.ACTION_BAR_LEFT: left_slot,
@@ -302,8 +302,17 @@ func _fill_bar(_column: VBoxContainer) -> void:
 ## piece of the
 ## bar possible — under the old nesting, everything was inside the thing being hidden.
 func _on_collapsed(value: bool) -> void:
-	if backing != null:
-		backing.visible = not value
+	if backing == null:
+		return
+	backing.visible = not value
+	# **The row the bar sat in gives up its height too.** The UI review: *"When the action bar is
+	# dismissed by the UI Button, the UI BUTTONS shouldn't float in the middle, they should pin
+	# downward to the bottom edge of the screen. The UNIT RESOURCES should do the same."* Hiding the
+	# panel alone left its row still claiming a band's worth of height, so everything above it hung
+	# an eighth of the screen off the bottom with nothing under it.
+	var row: Control = backing.get_parent() as Control
+	if row != null:
+		row.custom_minimum_size.y = 0.0 if value else _band_size().y
 
 
 ## **Spans the safe width, bottom-aligned on the band, so the wings inside it have room to be

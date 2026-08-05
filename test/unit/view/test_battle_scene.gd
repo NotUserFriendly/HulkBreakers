@@ -748,7 +748,8 @@ func test_the_turn_controls_hold_turn_verbs_and_not_a_new_battle_button() -> voi
 	gut.p("turn controls: %s" % ", ".join(labels))
 	assert_false(labels.has("New Battle"), "New Battle is retired, not relocated")
 	assert_true(labels.has("End Turn"))
-	assert_true(labels.has("Watch"), "Watch moved in with the other turn verbs")
+	var toggle: ControlToggleModule = overlay.module(&"control_toggle") as ControlToggleModule
+	assert_eq(toggle.button.text, "Watch", "Watch moved into the same slot, above the turn verbs")
 	assert_null(
 		overlay.module(&"top_left_controls"), "and the cluster it came from is gone entirely"
 	)

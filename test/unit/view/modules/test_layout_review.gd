@@ -582,12 +582,13 @@ func test_the_player_view_has_no_top_left_cluster_and_watch_sits_with_the_turn_v
 	var overlay: ControlOverlay = await _overlay(ViewModes.player())
 
 	assert_null(overlay.module(&"top_left_controls"), "the cluster is retired from the player view")
-	var turns: TurnControlsModule = overlay.module(&"turn_controls") as TurnControlsModule
-	assert_not_null(turns.watch_button, "Watch went nowhere")
-	assert_eq(turns.watch_button.text, "Watch")
-	assert_true(
-		turns.column.is_ancestor_of(turns.watch_button),
-		"Watch must be in the same column as End Turn and Reset Turn"
+	var toggle: ControlToggleModule = overlay.module(&"control_toggle") as ControlToggleModule
+	assert_not_null(toggle.button, "Watch went nowhere")
+	assert_eq(toggle.button.text, "Watch")
+	assert_eq(
+		toggle.preferred_slot(),
+		(overlay.module(&"turn_controls") as TurnControlsModule).preferred_slot(),
+		"Watch must share the slot End Turn and Reset Turn are in"
 	)
 
 

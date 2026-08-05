@@ -9,11 +9,15 @@ extends BarModule
 ##
 ## ## It publishes two slots and builds nothing else
 ##
-## Play / Pause / Step / Speed and the status line belong to `PlaybackModule`; Inject / New Battle /
-## Watch belong to `TopLeftControlsModule`. Both already existed, both already mounted into a named
-## slot, and **neither is edited by this pass** — the bar publishes `PACING_ROW` and `TUNABLES` and
-## the two modules land in the bar instead of in a corner, without either of them learning that a
-## bar exists.
+## Play / Pause / Step / Speed and the status line belong to `PlaybackModule`, which already existed
+## and already mounted into a named slot: the bar publishes `PACING_ROW` and `TUNABLES` and that
+## module lands in the bar instead of in a corner, without learning that a bar exists.
+##
+## **The cluster this bar was built to hold is gone.** `top_left_controls` carried Inject, New
+## Battle and Watch; the UI review retired all three — Inject is the UI-buttons `DBG` square, New
+## Battle is retired outright, and *Assume Control* is a row in the turn-control column. The module
+## and `TopLeftControls` with it are deleted. What that leaves here is the transport controls, which
+## is the half of this bar's description that was ever really about the bar.
 ##
 ## That is the module system's own premise applied to the one case it was written for: *"where a
 ## panel sits is a property of the surface, not of the panel."* The spectator's controls moved

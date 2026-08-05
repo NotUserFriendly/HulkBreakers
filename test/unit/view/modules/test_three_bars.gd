@@ -132,19 +132,18 @@ func test_every_bar_publishes_the_four_satellite_slots() -> void:
 
 ## **Pass D's last unlanded line.** *"`top_left_controls_module` → the spectator action bar."* It
 ## had nowhere to go until this bar existed; this is the move, asserted by ancestry rather than by
-## a coordinate, because ancestry is what makes the cluster follow the bar.
-func test_the_spectators_transport_controls_and_cluster_are_in_its_bar() -> void:
+## a coordinate, because ancestry is what makes the transport controls follow the bar.
+##
+## **The cluster it was named for is gone.** The UI review retired `top_left_controls` outright —
+## Inject to the UI-buttons `DBG` square, New Battle deleted, Assume Control to the turn-order
+## column — so what this bar actually holds is the pacing controls and the timing knobs.
+func test_the_spectators_transport_controls_are_in_its_bar() -> void:
 	var overlay: ControlOverlay = _mount(ViewModes.spectator())
 	var bar: SpectatorBarModule = overlay.module(&"spectator_bar") as SpectatorBarModule
 	var pacing: PlaybackModule = overlay.module(&"playback") as PlaybackModule
-	var cluster: TopLeftControlsModule = (
-		overlay.module(&"top_left_controls") as TopLeftControlsModule
-	)
 
 	assert_true(bar.bar_root.is_ancestor_of(pacing.play_button), "Play is not in the bar")
-	assert_true(
-		bar.bar_root.is_ancestor_of(cluster.controls), "the shared cluster is not in the bar"
-	)
+	assert_true(bar.bar_root.is_ancestor_of(pacing.status_label), "nor is the status line")
 	assert_true(bar.bar_root.is_ancestor_of(pacing.slide_ms_field), "nor are the timing knobs")
 
 

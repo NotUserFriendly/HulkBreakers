@@ -491,23 +491,26 @@ func test_setup_wires_a_bout_injector_against_the_same_live_state() -> void:
 	assert_eq(overlay.battle.bout_injector.state, overlay.battle.combat_state)
 
 
-## tb31 Pass A: same shared `TopLeftControls` class SquadControlOverlay
-## uses, but this overlay opts OUT of New Battle (a spectated bout has no
-## "New Battle" concept of its own) and labels the shared toggle "Assume
-## Control" — the exact same `toggle_blue_control()` call, just the
-## opposite direction's own wording.
-func test_top_left_cluster_has_no_new_battle_and_labels_the_toggle_assume_control() -> void:
+## tb31 Pass A gave both views one shared cluster, with this one opting out of New Battle and
+## labelling the toggle "Assume Control".
+##
+## **The cluster is retired; the toggle is not.** The UI review moved the surviving control into the
+## turn-order column — *"Assume Control should move to the TURN ORDER MANAGEMENT section. Inject is
+## obsolete, and can be removed."* — and with New Battle already off here and Inject gone, the
+## cluster had nothing in it. What is still worth asserting is the part that was ever a rule: this
+## view labels the toggle the other way, and it calls the same `toggle_blue_control()`.
+func test_the_spectator_labels_the_control_toggle_assume_control() -> void:
 	var overlay: ControlOverlay = _spectate(await _bout())
+	var toggle: ControlToggleModule = overlay.module(&"control_toggle") as ControlToggleModule
 
-	assert_not_null(overlay.module(&"top_left_controls").controls)
-	assert_null(
-		overlay.module(&"top_left_controls").controls.new_battle_button,
-		"a spectated bout has no New Battle"
-	)
-	assert_eq(overlay.module(&"top_left_controls").controls.watch_button.text, "Assume Control")
-	assert_eq(
-		overlay.module(&"top_left_controls").controls.inject_button != null, OS.is_debug_build()
-	)
+	assert_null(overlay.module(&"top_left_controls"), "the cluster is retired outright")
+	assert_not_null(toggle, "the spectator carries the toggle in its turn-order column now")
+	assert_eq(toggle.button.text, "Assume Control")
+	# **And no turn verbs beside it**, because a spectator cannot end a turn. Handing control over
+	# is not unit input — it changes who plays the squad rather than queueing anything against one —
+	# which is exactly why it is its own `DISPLAY` module.
+	assert_null(overlay.module(&"turn_controls"), "a spectator must not be offered End Turn")
+	assert_false(overlay.has_unit_input(), "and the mode still claims no unit input")
 
 
 func test_inject_toggles_the_debug_panels_own_visibility() -> void:

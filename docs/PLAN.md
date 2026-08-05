@@ -86,7 +86,73 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. Retire ramps; introduce `step_height`
+### 1. Rename the terrain parts to sort together, and mark them as placeholders
+
+**Needs:** nothing. **Unblocks:** an author finding a floor in the part list; the tag work below
+having something coherent to tag.
+
+**A mechanical rename of the terrain parts**, asked for during the UI review and generalized here
+because it is not only the floor: *"`ship_floor` should become `floor_ship_placeholder` so that
+alphanumeric sorting puts all the floors together. This should also happen for all the other tile
+related items. And placeholder to tag them as needing later tuning or replacement."* **Wall is a
+placeholder too**, which is why this is *terrain parts* rather than *tiles*.
+
+**Two things the new name does at once**, and both are the point:
+
+- **A category prefix makes an alphabetical list group itself.** The editor's part list is sorted
+  alphabetically now, so `floor_ship_placeholder`, `floor_deck_placeholder` and so on land together
+  with no filter at all. That is a real substitute for the tag work while the tag work does not
+  exist.
+- **`placeholder` in the id says the content is provisional** where a comment in a `.tres` does not
+  travel. These are stand-ins for models nobody has made.
+
+**The shape is `<category>_<what>_placeholder`** — `floor_ship_placeholder`, `wall_ship_placeholder`
+— but the exact spelling is the supervisor's; what is settled is prefix-by-category and the
+placeholder suffix.
+
+**Size it honestly: this is a 524-hit sweep across 49 files**, measured, and it includes authored
+`.tres` maps and sections that carry part ids as data. So it is cheap to *do* and it must land on a
+full-suite gate rather than a targeted one — which is the only reason it was not done inside the UI
+review passes.
+
+**Not a rename of the `walkable` tag or of `GROUND`.** Those are vocabulary the rules read; this is
+content identity.
+
+### 2. Rework the gizmo as a real CAD tool
+
+**Needs:** nothing. **Unblocks:** authoring geometry by direct manipulation rather than by typing
+numbers into a panel.
+
+**The taskblock-57 Pass H gizmo is not what was wanted, and the supervisor's call is to rebuild it
+rather than adjust it.** What shipped satisfies the block's stated acceptance — drag an arrow, get a
+snapped 0.3 — but its *shape* is wrong: it is armed by a `gizmo` tool that must be selected before a
+click will focus anything, which the supervisor summarised as *"not intended to be a 'click button
+to place gizmo'"*.
+
+**What it should be instead:**
+
+- **A select tool, and tools as a real concept.** *"Likely need to put things under actual tools. A
+  select tool creates the gizmo on clicked items."* Selecting is the default mode of a CAD surface,
+  not one verb among nine — the editor's current `TOOLS` list treats "select something" as a peer of
+  "set sight blocking", which is what makes the gizmo feel bolted on.
+- **The gizmo appears on whatever was clicked**, and is adjusted there. No separate arming step.
+- **Auto-reparenting.** Moving a thing onto or off another changes what it is attached to, rather
+  than leaving a placement whose parent is wherever it was authored.
+- **A ghost of what is about to be placed.** *"Probably needs a 'ghost' of how something is about to
+  be placed."* The editor currently commits on click with no preview, so an author finds out where a
+  part went by looking at where it landed.
+
+**What survives the rebuild.** `GizmoDrag` is pure arithmetic — screen delta to axis delta to a
+snapped value — and is right regardless of how the gizmo is armed. `Gizmo.resized_box` and the
+ray-vs-box handle picking are likewise about geometry rather than about the interaction. **The part
+to throw away is the arming and the tool routing**, not the maths.
+
+**Do not let it become a second selection system**, which was taskblock-57 Pass H's own stop
+condition and is *more* at risk under this design rather than less: a select tool that creates a
+gizmo is very close to a selection of its own. Whatever the editor already treats as "the thing
+being pointed at" is what the gizmo must read.
+
+### 3. Retire ramps; introduce `step_height`
 **Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
 repairing it. **Read before `BR56.01` is fixed.**
 
@@ -128,7 +194,7 @@ consequences:
 *about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
 not this one.**
 
-### 2. Elevated tiles lost their line borders
+### 4. Elevated tiles lost their line borders
 **Needs:** nothing. **Unblocks:** reading a stepped board by eye.
 
 Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
@@ -139,7 +205,7 @@ without them, so **the judgement call is due for revisiting rather than being a 
 If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
 primitive, or the tile's own edge geometry doing the work.
 
-### 3. Attributes
+### 5. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
