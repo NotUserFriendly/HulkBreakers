@@ -86,122 +86,36 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. The UI layout
-**Needs:** taskblock-56's module system (landed). **Unblocks:** the editor being usable; every later
-surface having somewhere to go.
+### 1. The UI tuning pass
+**Needs:** taskblock-57 (landed). **Unblocks:** the layout reading well rather than merely being
+in the right places.
 
-taskblock-56 made a mode a table entry and a slot an open `StringName`. **This is the layout those
-slots should describe** — a redesign of where things sit, not new machinery.
+**taskblock-57 said this out loud and it is the one piece of that block deliberately left over:**
+*"The supervisor will fine-tune with CC after the bulk lands. So: get the structure right and the
+numbers approximately right. Padding, exact sizes and colour values are the cheap half and they are
+the half that wants a screen."* The structure landed; the numbers are starting positions.
 
-#### Two coordinate spaces, both named
+**Everything it touches is already in one file each**, which is why this is cheap and why the
+constants were written as constants:
 
-**All sizing is against a 16:9 reference rect.** Ultrawide letterboxes to a 16:9 rect inside the
-screen; narrower ratios (4:3, 16:10) **crush** rather than clip. Call them `safe_rect` and
-`screen_rect` and make "escapes the safe rect" a **property of a slot**, not a comment — three surfaces
-do it deliberately (Inspect, the Inspect Viewer, the perf monitor).
+- `BattleLayout` — every rect in the placement table, plus `PADDING` and the debug-menu budge floor
+  (eight padding units, explicitly flagged as tunable rather than design).
+- `ActionBarModule.BOX_SPACING` and `BOX_ROWS` — the player bar's own shape.
+- `Announcement.table()` — 3/5/8 seconds and three colour tiers, ordered rather than tuned.
+- `PerfMonitorModule`'s background alpha (0.35, against `PerfPanel`'s own 0.82, which was chosen
+  when the readout had an empty corner behind it rather than the board).
+- `SearchableList.PANEL_SIZE`, `EditorCoordsModule.NAME_WIDTH`, `GizmoModule.READOUT_SIZE` and
+  `Gizmo.ARM_LENGTH` / `ARM_THICKNESS` / `RESIZE_HANDLE_SIZE`.
 
-**Everything pinned to a side is collapsible or off by default**, so a square-ratio player is never
-forced to reduce UI scale to play. They lose nothing; they toggle.
+**Three placements are invented rather than specified, and want a look first**: the aim readout's
+band along the bottom of the safe rect, the gizmo readout above it, and the editor's section-details
+panel in the Inspect-viewer slot. Each is flagged in its own file as a starting position.
 
-**UI scale is a multiplier on pixel sizes** — a settable variable replacing a constant, headed for an
-options menu that does not exist yet. Nearly a drop-in, and it is what makes the sentence above mean
-anything.
+**It needs a screen, which is the whole reason it is its own item** — every one of these is a
+question a headless test cannot answer, and the suite already pins the *structure* so a number
+moving cannot quietly move a surface somewhere else.
 
-#### The action bar is an anchor, not just a panel
-
-Four surfaces pin **relative to the action bar**, not to the screen. **The action bar publishes its own
-slots** (`action_bar_left`, `action_bar_right`, `action_bar_top_left`, `action_bar_top_right`) rather
-than a composite cluster module — that fits the existing vocabulary and keeps each surface its own
-module.
-
-| surface | placement |
-|---|---|
-| **Action bar** | bottom, centred, half a 16:9 screen wide at 1x |
-| **Turn order management** | pinned right of the action bar, padded. Player mode only |
-| **Combat log** | pinned left of the action bar, padded. Minimises to a button flush against it |
-| **Unit resources** | top of the action bar, centred — AP/MP pips, RAM, later resources |
-| **UI buttons** | top of the action bar, right edge — toggles, Inspect, debug menu |
-| **Inspect / Inventory** | top-right, ~2/3 screen tall, square. Escapes the safe rect |
-| **Inspect viewer** | top-left, ~2/3 tall and half as wide — the 3D view, split out so the centre stays clear |
-| **Debug menu** | top edge, centred, 1/4 of the 16:9 width, drag-resizable height |
-| **Performance monitor** | true bottom-right corner, no padding, **click-through and mostly transparent** |
-| **Announcements** | top, centred, invisible and click-through |
-
-#### Three action bars, not one with three contents
-
-Deliberately three modules sharing one slot, because they are shaped differently:
-
-- **Player** — square action items, left-aligned, two rows, small padding. Hover highlights; **1.5 s
-  motionless shows a tooltip.**
-- **Editor** — labelled buttons, not squares. **"Place Items" opens a centred, searchable list of every
-  part placeable on a tile**; tiles and claims get their own buttons. Also holds save, load, run-a-bout,
-  and undo.
-- **Spectator** — playback controls, and the old top-left cluster folds in here.
-
-#### Announcements are a view of the log, not a second renderer
-
-**One emit, two views.** Anything tagged as an announcement appears in the combat log *and* is shown
-here — sequential, so it can never appear in one and not the other. The log already folds and filters.
-
-**The only thing the log lacks is a lifetime**, and it is a property of the *view*: the announcement
-position shows tagged entries newer than N seconds; the log keeps them forever.
-
-**Announcements carry a priority**, which drives **duration, colour, and whether it makes a sound**.
-There is no audio system — the priority field carries `sound` and nothing consumes it yet, the same way
-`encounter_types` is authored and unread.
-
-Alignment: centred when the inspect panels are closed, left-aligned when open. **If that cross-module
-read proves awkward, left-align always** — the supervisor has said so.
-
-#### Modules retiring or moving
-
-- **`queue_panel_module` retires.** Waypoints and ghosts carry the visual load. **What is lost is
-  confirmation that a click registered**, which has confused people before — so it moves to the combat
-  log as its own fold: *unit 0 queued a move to (0,0,1)*, *unit 0 queued action: burst*, *unit 0
-  cancelled move*.
-- **`stat_panels_module` retires.** Never earned its space.
-- **`board_inspect_module` folds into Inspect.** **Everything is a part**, so one inspector shows a unit,
-  a piece of cover, a part lying on a tile, or the tile itself. Rare targets — floor tiles especially —
-  may need enabling from the debug menu rather than being clickable by default.
-- **`controls_legend_module` → UI buttons. `top_left_controls_module` → the spectator action bar.**
-- **`bout_setup_module` stays centred** and keeps turning everything else off; it is temporary.
-- **Player and single-unit modes collapse into one**, with the active unit pre-selected. Having to click
-  your own unit every turn is ungainly, and with one unit the behaviour is identical anyway.
-
-#### Aim is a mode
-
-Most modules turn off when the camera drops into over-the-shoulder or sniper view. **That is a module
-set, so it is a mode** — enter aim, switch; leave, switch back. No new machinery, and "what is visible
-while aiming" becomes a table entry someone can read.
-
-#### The editor's own additions
-
-- **A coordinate readout replaces Unit Resources in editor mode** — same slot, different module. Cell,
-  height, and a truncated name of what is there; the inspector carries detail.
-- **Validation warnings go to the combat log**, with the big ones surfacing as announcements. *Warn,
-  never block* needs somewhere to warn.
-- **Current tool shows on the cursor** — a small icon of what is being placed — or is carried by the
-  action bar's own highlight. Either; not neither.
-
-### 2. The manipulation gizmo
-**Needs:** *The UI layout*. **Unblocks:** authoring heights and claim volumes at all.
-
-**A 3D CAD-style handle set with a numeric readout**, used for two jobs.
-
-- **Placement height.** Click a placed item, drag the up arrow, watch the box read 0.3. **Snap to 0.1**,
-  which is the precision authored maps were always meant to have.
-- **Claim volumes.** **One click selects and gives translate arrows; a second click swaps to resize
-  handles.** Same gizmo, two handle sets.
-
-**The picking foundation exists.** `PartPicker.hit` and `UnitPicker.hit` are analytic ray-vs-box in
-`src/logic` — gizmo handles are boxes, so it is the same primitive rather than a new one. **Keep the
-drag math in logic**: screen delta to axis delta to snapped value is pure, and it is testable without a
-screen exactly as `EditorController` is.
-
-**Do not let this become a second selection system.** A gizmo is a tool over the existing selection, not
-its own notion of what is selected.
-
-### 3. Retire ramps; introduce `step_height`
+### 2. Retire ramps; introduce `step_height`
 **Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
 repairing it. **Read before `BR56.01` is fixed.**
 
@@ -243,7 +157,7 @@ consequences:
 *about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
 not this one.**
 
-### 4. Elevated tiles lost their line borders
+### 3. Elevated tiles lost their line borders
 **Needs:** nothing. **Unblocks:** reading a stepped board by eye.
 
 Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
@@ -254,7 +168,7 @@ without them, so **the judgement call is due for revisiting rather than being a 
 If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
 primitive, or the tile's own edge geometry doing the work.
 
-### 5. Attributes
+### 4. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -278,24 +192,67 @@ shell performs measurably differently under two different-attribute matrices.
 
 # QUEUED
 
-### Nothing emits an announcement yet
+### Nothing in a BOUT emits an announcement yet
 
-**Needs:** nothing. **Unblocks:** the announcement position doing anything in play.
+**Needs:** nothing. **Unblocks:** the announcement position doing anything during a battle.
 
 taskblock-57 Pass E built the mechanism end to end — `Announcement`'s priority table,
 `AnnouncementFeed` as a `LogSink`, `AnnouncementsModule` at the table's own position, and
-`Announcement.tag` as the one way in. **No existing call site tags anything**, so the position is
-correct, tested, and empty during a bout.
+`Announcement.tag` as the one way in.
 
-**That is deliberate, not an omission.** Choosing which events shout at the player is a design
+**Pass G2 gave it its first customer, and the item narrowed rather than closing.** The editor's
+navigability warnings tag themselves `ALERT` (`EditorLog`), so the position is no longer correct and
+empty — it works, in the editor, with a test that drives one warning into both surfaces from one
+emit. **No call site in a bout tags anything**, which is the half that is still open.
+
+**That is deliberate, not an omission.** Choosing which battle events shout at the player is a design
 decision the taskblock does not make, and inventing a list would be exactly the "never invent balance
-numbers and present them as design" failure one category over. taskblock-57 G2's *"validation
-warnings go to the combat log, and the significant ones surface as announcements"* is the first real
-customer and will tag its own.
+numbers and present them as design" failure one category over.
 
 **Worth a supervisor pass over "what should announce"** — unit down, mission outcome, a matrix
-ejected, an objective taken. Each is a `Announcement.tag(data, priority)` at an existing emit, with
-no new path.
+ejected, an objective taken. Each is one `Announcement.tag(data, priority)` at an existing emit, with
+no new path, and G2's warnings are the worked example of what that costs.
+
+**The priority table's own numbers are the tuning pass's**, not this item's: 3/5/8 seconds and three
+`HulkTheme` tiers, ordered rather than tuned, and `EditorLog` picking `ALERT` over `CRITICAL` for an
+authoring warning on the grounds that the loudest tier is reserved for what ends a mission.
+
+### Two chromes no shipped mode uses
+
+**Needs:** nothing. **Unblocks:** nothing — this is a "is it dead or is it a spare" question, and it
+wants an answer rather than a sweep.
+
+taskblock-57 moved the last two modes off them: Pass C took the player mode to `BATTLE_LAYOUT`, and
+Pass G1 took the spectator and the editor there too, because the editor's bar and the spectator's bar
+both live in the placement table's action row. **`ModeChrome.PLAYER_COLUMNS` and
+`ModeChrome.TOP_LEFT_ROWS` are now named by no `ViewModes` entry.**
+
+**They are not obviously dead**, which is the whole reason this is recorded rather than actioned.
+A chrome is *data a mode names*, and both are still reachable, still built, and still exercised —
+`test_view_modes.gd` mounts an invented mode against `TOP_LEFT_ROWS`, and `test_three_bars.gd` asserts
+that the pacing row still resolves under it. The slot vocabulary they publish (`LEFT_COLUMN`,
+`INVENTORY_ROW`, `TOP_RIGHT`, `BOTTOM_RIGHT`, `READOUT_COLUMN`) is likewise named by nothing that
+mounts today.
+
+**The failure mode to avoid is the one this project has hit before**: `ClaimVolumeModule` sat correct
+and unreachable for a whole block. The difference is that a chrome nobody names costs nothing at
+runtime and deleting one is a real reduction in what a future mode can ask for. **Decide, do not
+drift** — either they are the spare layouts a fifth mode picks up, and say so in `ModeChrome`'s
+header, or they go with their slot names.
+
+### The cursor never shows what is being placed
+
+**Needs:** nothing. **Unblocks:** nothing — the requirement is met by its alternative.
+
+taskblock-57 G2: *"Current tool shows on the cursor — a small icon of what is being placed — **or**
+is carried by the action bar's own highlight. Either is fine; neither is not."* **The bar's highlight
+is what shipped**, for a stated reason: a cursor icon is a `Control` tracking the mouse over a 3D
+board, with its own z-order and hit-testing questions, where the buttons that set the tool are
+already on screen and already know which was pressed.
+
+**So this is not an unmet requirement**, and it is recorded only so a later reader does not find the
+sentence, look for the icon, and mistake a taken option for a missed one. If the highlight proves too
+quiet in practice, the icon is the other half of a specified either-or rather than a new idea.
 
 ### "Resolve to Here" has logic and no UI
 
@@ -361,7 +318,7 @@ on this game has been an all-Trained rate.
   than one.
 - **Then re-measure completion per tier.** The current number describes one row of a four-row table.
 - **Tier should derive from Attributes** by the time this lands, rather than staying authored — which is
-  why this sits behind item 1 rather than in front of it.
+  why this sits behind *Attributes* in NEXT rather than in front of it.
 
 **Acceptance:** a generated bout contains units of at least three tiers; the completion sample reports a
 rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
@@ -674,7 +631,7 @@ one, so `batch_id` is 0 everywhere in real play and the whole mechanism is curre
 tests and the debug panel. Turning it on means deciding what a batch *is* in mission terms — a fire
 team, a patrol, everything sharing a spawn point — which is a design question, not a follow-up chore.
 
-**Worth weighing against item 2 in NEXT before building:** batching one squad of three measured
+**Worth weighing against *Attributes* in NEXT before building:** batching one squad of three measured
 ~671ms → ~646ms per AI step, so as a *performance* argument this is weak; if it earns its place it
 will be as squad behaviour that reads better, not as a speed-up.
 

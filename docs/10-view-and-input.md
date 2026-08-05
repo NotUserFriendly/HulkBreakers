@@ -62,16 +62,29 @@ policy. **Adding one is a table entry in `ViewModes`, not a file.**
 
 | mode | is |
 |---|---|
-| `player` | display + full unit input |
+| `player` | display + full unit input, with the acting unit pre-selected |
 | `spectator` | display modules, no unit input |
-| `single_unit` | `player` with one field changed |
+| `aim` | what the player mode switches *to* while aiming — five modules, same chrome |
+| `editor` | an authoring surface; drives no unit's turn |
 | `bout_setup` | the roster menu, no board input |
 | `empty` | nothing — a deliberate inert placeholder |
 
+**`single_unit` was here and is gone** (tb57 D2). It was `player` with one field changed, and the one
+thing it really did — pre-select the unit whose turn it is — is what the player mode now does for
+everybody. A mode differing from another by nothing a player can see is a second name for one thing.
+
 **Layout belongs to the mode; behaviour belongs to the module.** A mode publishes named slots
 (`ModuleSlots`); a module asks for the one it wants and falls back to the UI root, or to itself,
-when the slot is absent. That fallback is what lets the same module appear in the player's
-four-region layout and the spectator's two top-left rows without knowing which it is in.
+when the slot is absent. That fallback is what lets the same module appear wherever a mode puts it
+without knowing which mode it is in — the combat log resolves `action_bar_left` in three different
+modes and anchors itself into a corner in a mode that has no bar at all.
+
+**A module may publish slots too** (tb57 B), not just a chrome. The three bars — player, spectator,
+editor — each occupy the placement table's one action row and each publish the four satellite slots
+that pin against it, so the surfaces beside the bar move when the bar moves rather than anchoring
+themselves near where they expect to find one. `SpectatorBarModule` also publishes `pacing_row` and
+`tunables`, which is how the transport controls sit in the bar without `PlaybackModule` knowing a bar
+exists.
 
 **Ordering within a mode's module list is meaningful** — a module that reads another at mount time
 must be declared after it. Connections *between* modules are not subject to that: `link()` runs on
@@ -84,8 +97,12 @@ every module after all of them have mounted.
   flight; it is awaited inline instead.
 - **One engine input entry point.** A module defining `_unhandled_input` would receive events
   wherever its host happened to parent it, and a host that also forwarded would dispatch the same
-  click twice. `ControlOverlay` owns the handler and routes into the board module. The per-frame
-  tick is on the host for the same reason.
+  click twice. `ControlOverlay` owns the handler; the per-frame tick is on the host for the same
+  reason. **It offers the event to modules in declaration order and stops at the first that consumes
+  it** (`ViewModule.handle_input`, false by default). That order is load-bearing where two modules
+  want raw input: the editor's gizmo is declared before the board picker, because a press that grabs
+  a handle drawn over the board must not also author on the cell underneath. `BoardInspectModule`
+  returns false always and never claims exclusivity.
 
 ## Why 3D
 Ragdolls, differing Y levels, and enemies much larger than a standard unit all have to be
