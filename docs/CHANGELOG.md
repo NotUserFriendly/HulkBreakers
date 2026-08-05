@@ -1,5 +1,72 @@
 # CHANGELOG.md — What's Been Built
 
+### UI review passes 4 and 5 — one control per surface, and the surfaces become windows
+
+**Two more supervisor passes**, plus the one review-chat note that produced the most durable thing
+in any of them.
+
+#### A general overlap check, which is the note worth reading
+
+> *Collision testing is per-case, not general... There is no test asserting that no two surfaces
+> overlap in a given mode. CC's own finding shows why that matters: `SuiteRunPanel` had reached into
+> the action bar's band for two passes, invisible until the spectator cluster moved into the same
+> space. That was caught by a test written for a different pair, by luck of adjacency.*
+
+`test_surfaces_do_not_overlap.gd` resolves **every mounted module's real rect** in each mode and
+asserts no two intersect except by declaration. **The exception list is the substance** — eight
+pairs, each with its reason, and an exception is a *pair* rather than a surface, so a module excused
+for sitting under the click-through announcement band is not thereby excused for landing on the
+combat log. Two self-checks keep it honest: every declared exception must name modules some mode
+mounts, and the comparison is exercised on rects it should reject.
+
+**It found something on its first run.** `control_toggle` and `turn_controls` reported identical
+rects — not a collision but a *shared node*, since Watch inserts into the turn column rather than
+building beside it. Declaring that pair as an exception would have hidden a real collision between
+them if they ever stopped sharing, so the check skips identical nodes instead.
+
+#### One control per surface
+
+`IV` is gone: Inspect's `INS` governs the panel and the viewer, which are one inspector as far as a
+player is concerned. `REP` no longer appears where the panels are not constructed — the player view
+never builds them, so a button was being offered for a surface that was not there.
+
+**Every border reads `ViewModule.is_showing()` per frame** rather than being set at press time. A
+border set by a press is a claim about the press; Inspect opens from a board click, the keybindings
+sheet from the H key, the debug menu from its own control. The bar's own toggle is built last and at
+70% size, and the border is a 50% grey rather than the alert tier.
+
+#### The surfaces become windows
+
+The test-suite box takes Inspect's own rect and draws over it — **draw order is child order**, so
+"over" is set by the mode declaring `replay` after `inspect` rather than by a z-index nobody would
+find. The watched run's table, previously a loose panel anchored centre-right, is adopted into its
+column. Its title bar is the combat log's shape with `[?]` and `[x]`.
+
+The keybindings legend is a centred panel that blocks scroll as well as clicks (it was `STOP` for
+clicks, but an unaccepted wheel event still reached `CameraRig`). The Inspect viewer's frame is
+oversized **as** the border rather than carrying a stroke. The combat log is padded off the screen
+edge as well as off the bar. The editor and spectator modes both gained the keybindings sheet, and
+the spectator gained `inspect_viewer` — it had none, so `InspectPanel` built its own docked one and
+the mode was still showing the pre-Pass-C3 layout.
+
+#### The editor inherits a world it did not build, and that is now three defects
+
+Extraction markers survived into the editor because `sync_board_view` passes
+`mission.team_extraction_cells`; an authored board has no mission, so it builds with none. **That is
+the third symptom of one cause**, after the units at their last cells (`BR57.01`) and the movement
+tiles. `EditorModule`'s header carries the table now: each fix is right on its own terms — do not
+draw what is not there — and none of them touches the cause. **Expect a fourth.** The entry point
+that builds a world with no bout in it is `PLAN.md`'s *Main menu*.
+
+#### The inspect viewer's darkness was structural
+
+`BR48.01` made the viewer share the battle's world so it can point at the *real* unit at its real
+board position — which means it withdraws its own light, because adding one there would light the
+whole battle. The subject is then lit by the board's single directional light, from the board's
+angle, seen from a camera at a different one. **The camera's own `environment` override is the one
+seam that cannot leak**, so `PREVIEW_AMBIENT_ENERGY` (0.9 against the board's 0.35) goes there, with
+a test pinning that the default stays the board's.
+
 ### UI review passes 2 and 3 — one control per thing, and the surfaces get edges
 
 **Two more supervisor passes over the layout**, worked the same way as the first: each item names

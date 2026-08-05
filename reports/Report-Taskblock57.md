@@ -1,17 +1,17 @@
 # Taskblock 57 Report — the layout, and an editor you can actually author in
 
-**The block is closed, and three supervisor review passes over the shipped surface have been worked
+**The block is closed, and five supervisor review passes over the shipped surface have been worked
 since.** This report covers both, in that order: the block first, then everything after it.
 
 **The taskblock's eight passes took thirteen commits** — A, B and C1 in session one; C2a, C2b, C3,
 D1, F, D2 and E in session two; G1, G2 and H in session three. Each ended on a green full gate and
 committed, and the closing gate was 3072/3072 with 0 failures.
 
-**The three review passes came after the block closed** and are *not* taskblock passes: the
+**The five review passes came after the block closed** and are *not* taskblock passes: the
 supervisor ran the game, wrote what they saw, and each pass worked that list. They ran on targeted
 gates at the supervisor's explicit instruction — *"I don't need a 20 minute test suite being run a
-dozen times for a UI tuning pass"* — with **one full gate at the end**, which is where this stands
-now: **3117/3117, 0 failures, 714.7 s**, pushed.
+dozen times for a UI tuning pass"* — with a full gate at the checkpoint after pass 3 (3117/3117) and
+another at the end of pass 5.
 
 Every line of the block's acceptance is met: `safe_rect` and `screen_rect` are real and escaping is a
 slot property; the action bar publishes slots and is not special-cased to do so; every surface in
@@ -294,7 +294,7 @@ look for the icon, and mistake a taken option for a missed one.
 
 ---
 
-# After the block — three UI review passes
+# After the block — five UI review passes
 
 **Not taskblock passes.** The supervisor ran the game and wrote up what they saw; each pass worked
 that list. There is no spec behind any of it, so every item below names what was reported.
@@ -308,11 +308,13 @@ passes."* That trade is examined honestly under *Tests that failed* below, becau
 | 1 | 2026-08-05 06:20 CDT | the bar is the centred item; square abbreviated buttons; four defects |
 | 2 | 2026-08-05 07:40 CDT | one button feel; tile filtering; six defects |
 | 3 | 2026-08-05 08:53 CDT | one control per thing; framed panels; the spectator contract |
+| 4 | 2026-08-05 10:31 CDT | one control per surface; borders that read the surface; the overlap check |
+| 5 | 2026-08-05 11:44 CDT | the test suite becomes a window; keybinds everywhere; the dark preview |
 
-**Closing gate 3117/3117, 0 failures, 714.7 s** — against 3072 at the block's close, so the three
-passes added 45 tests. **714.7 s against the 620–645 s range measured then**: the growth is real but
-the run-to-run variance recorded above (~25 s) is a third of it, so this is one more data point in a
-range rather than a step change.
+**The checkpoint gate after pass 3 was 3117/3117, 0 failures, 714.7 s** — against 3072 at the
+block's close. **714.7 s against the 620–645 s range measured then**: the growth is real, but the
+run-to-run variance recorded above (~25 s) is a third of it, so it is one more point in a range
+rather than a step change.
 
 ## Decisions made without asking
 
@@ -452,3 +454,71 @@ layouts a fifth mode picks up, and `ModeChrome`'s header should say so, or they 
 **Nothing in a *bout* announces yet.** The editor's navigability warnings are the mechanism's first
 real customer; no call site in a battle tags anything, and which events should shout at the player is
 a design decision.
+
+## Passes 4 and 5 — decisions made without asking
+
+**A general overlap check exists now, and its exception list is the design.** The review chat's note
+asked for one; what it does not settle is which overlaps are legal. Eight pairs are declared, each
+with the reason, and **an exception is a pair rather than a surface** — a module excused for sitting
+under the click-through announcement band is not thereby excused for landing on the combat log. That
+shape is mine, and it is the difference between a check and a mute button.
+
+**Identical nodes are skipped rather than declared.** The check's first run flagged `control_toggle`
+against `turn_controls`, which share one column. Excusing that as a *pair* would have hidden a real
+collision between them if they ever stopped sharing.
+
+**`is_showing()` is a new hook on `ViewModule`.** The review asked for the highlight to follow the
+window rather than the press, and doing that per-button would have meant each owner remembering to
+refresh on every route in. A hook the cluster reads per frame is one place.
+
+**`provides_own_button()` now covers `inspect_viewer`, whose control is another module's.** The hook
+was written for "I build my own"; the viewer builds none and is governed by Inspect's. That widens
+the hook's meaning to "the cluster must not build one for me", which is what it always did.
+
+**`SuiteRunPanel` was given `BattleLayout.inspect_rect` rather than a row of its own in the table.**
+It has now moved three times in four passes — bottom-right, top-left, Inspect's rect — and the
+reason is that it has never had a declared placement. Reusing Inspect's is the smallest honest fix
+and it is still not a table row. **If the placement table should grow a row for it, say so.**
+
+**The `[?]` on that box is a plain `Button`, not a `UiButton`.** The square-abbreviation shape
+belongs to the UI-buttons cluster; this is window chrome sized to a title bar beside `[x]`. Two
+buttons that look alike in different contexts would be the same mistake the cluster's own review
+found, inverted.
+
+**`WorldPalette.environment()` grew a parameter.** The preview needed more ambient than the board
+and the per-camera override is the only place that cannot leak — but that makes the default
+load-bearing, so a test pins that the no-argument call still returns the board's value.
+
+## Passes 4 and 5 — tests that failed, then were corrected
+
+**Four, and none of them was a product bug — every one was a test still asserting a decision the
+review had reversed.** That is worth saying plainly, because it is a different failure mode from the
+earlier passes and a healthier one.
+
+1. **The border test pressed a button and asserted the border immediately.** With borders re-read
+   per frame rather than set by the press, it had to let a tick happen — which is the change working,
+   not a regression.
+2. **The viewer-frame test asserted a border stroke** the review had asked to be removed in favour
+   of oversizing the panel. It asserts the padding and the fill now, and that the stroke is gone.
+3. **The run panel's "pinned width" was its own constant**, and the box is placed by the layout now.
+   The claim — a long feed line must not widen it — is unchanged.
+4. **Two tests pinned `SHRINK_END` on the turn buttons**, which is the opposite of the left-align
+   that was asked for.
+
+**And one deferral rather than a failure**, because it is the honest shape of the trade: the test
+suite's *"hover a line"* preview is **not done**. The combat log's is built on `RichTextLabel` line
+offsets and the suite feed is a plain `Label`, so it is an extraction plus a widget change rather
+than a reuse — and dropping that into the last pass unrun was worse than saying so.
+
+## Passes 4 and 5 — open questions
+
+**The editor inherits a world it did not build, and that is now three defects rather than one.**
+Units at their previous cells (`BR57.01`), movement tiles, and extraction markers — each found by
+eye, each fixed on its own terms, none of them touching the cause. `EditorModule`'s header carries
+the table. **Expect a fourth.** The real fix is `PLAN.md`'s *Main menu*: an entry point that builds
+a world with no bout in it.
+
+**The test suite's hover-line preview** is the one review item left undone, and it wants the combat
+log's overflow preview extracted into a shared class first.
+
+**`SuiteRunPanel` still has no row in the placement table** — see above.
