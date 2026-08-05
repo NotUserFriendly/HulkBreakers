@@ -41,6 +41,12 @@ extends ViewModule
 ## not a decision; the supervisor's fine-tuning pass owns it.
 const BACKGROUND_ALPHA := 0.35
 
+## Whether the readout was left up. **Static, so it survives the module being rebuilt** — see
+## `_mount`. Session-scoped rather than persisted: the debug menu is a per-session tool, and a
+## readout that came back on its own in a new session would be the annoyance `DebugUiElements`
+## already decided against.
+static var _shown_this_session: bool = false
+
 var panel: PerfPanel = null
 
 
@@ -57,7 +63,17 @@ func preferred_slot() -> StringName:
 
 func _mount() -> void:
 	panel = PerfPanel.new()
-	panel.visible = false
+	# **Whether the readout is up survives an overlay swap.** The UI review: *"Performance monitor
+	# doesn't stay open when switching overlays and it should."*
+	#
+	# `BattleScene.set_overlay` tears every module down and builds a fresh one, so a panel that
+	# always came back hidden lost the state on every swap — and swapping to the spectator is
+	# exactly what you do to watch the framerate you just turned on in the player view.
+	#
+	# A `static var` because the state belongs to the *session*, not to any one surface: it is the
+	# same readout over the same `PerfStats` whichever mode is mounted, which is the reasoning that
+	# made this its own module rather than the debug panel's child.
+	panel.visible = _shown_this_session
 	panel.background_alpha = BACKGROUND_ALPHA
 	panel.stats_ticked.connect(_on_stats_ticked)
 	var slot: Control = context.slot(preferred_slot(), null)
@@ -109,6 +125,7 @@ func link() -> void:
 func _on_ui_element_toggled(element: StringName, shown: bool) -> void:
 	if element == DebugUiElements.PERF_PANEL and panel != null:
 		panel.visible = shown
+		_shown_this_session = shown
 
 
 ## The panel emits; this writes. **A view reaching into a `CombatState` to log would be the second
