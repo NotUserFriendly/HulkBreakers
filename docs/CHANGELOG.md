@@ -1,9 +1,142 @@
 # CHANGELOG.md — What's Been Built
 
-### taskblock-57 Passes A–F — the layout, live; the retirements done (**block incomplete**)
+### taskblock-57 Passes G1, G2 and H — three bars, the editor's own surfaces, and the gizmo
 
-**Nine of eleven passes. The block is open** — G (the editor surface) and H (the gizmo) are
-unstarted. **The layout is live**: `ViewModes.player()` uses `ModeChrome.BATTLE_LAYOUT`, so every
+**The block closes here.** G1, G2 and H land the two `PLAN.md` NEXT items the block was opened for
+(*The UI layout*, *The manipulation gizmo*), and every line of the taskblock's acceptance is met.
+
+#### Three action bars, not one with three contents (G1)
+
+**`BarModule` owns the placement and nothing else.** All three bars occupy `ModuleSlots.ACTION_ROW`
+and publish the same four satellite slots Pass B defined — because *"four surfaces pin relative to
+the action bar"* is a fact about **where the bar is**, and every mode's bar is in the same place.
+`_fill_bar` is the only hook a concrete bar overrides.
+
+| mode | bar | shape |
+|---|---|---|
+| player | `ActionBarModule` | square items, **left-aligned, two rows**, small padding |
+| spectator | `SpectatorBarModule` | the transport controls and the old top-left cluster |
+| editor | `EditorBarModule` | labelled buttons — place/tiles/cover, claims, save, load, run, undo |
+
+**The pass title names the failure mode**, and the shape is the answer to it: one bar reading which
+mode it is in would be a fourth answer to "what is the surface right now", after `ViewMode`,
+`ModeChrome` and the module set. `test_three_bars.gd` asserts the three are distinct scripts *and*
+that all three resolve one slot, because either alone is satisfiable by the wrong design.
+
+**The player bar went to two rows and it fixes a measured overflow.** Ten 108 px boxes on one row
+are 1080 px against a bar the table gives 960 — it overhung its own bar at 1x and by more at any UI
+scale above it. Five columns over two rows is 540. `ActionBar.setup` now takes any `Container`; it
+never cared what arranged the boxes.
+
+**The spectator's controls moved across the screen and the two modules that draw them did not
+change a line.** `SpectatorBarModule` publishes `PACING_ROW` and `TUNABLES` inside itself, so
+`PlaybackModule` and `TopLeftControlsModule` land in the bar without either learning a bar exists —
+which is the module system's own premise (*"where a panel sits is a property of the surface, not of
+the panel"*) applied to the one case it was written for. **That is Pass D's last unlanded line**,
+which had nowhere to go until this bar existed.
+
+**`SearchableList` is one widget with two callers** — *Place Items* over the parts pool and *Load*
+over the map and section catalogs. `SearchFilter` (logic, pure) is the search rule: every
+whitespace-separated term must appear, `_` read as a space, empty query matches everything. **Load
+had no affordance at all before this pass**; `EditorModule.open` was reachable only from a test.
+
+**A third placement-kind button exists that the taskblock does not name.** It asks for *Place Items*
+and *Tiles*; the editor could author **blockers** before this pass, and naming two of three kinds
+would have deleted every wall and barrel an author can place. `PLACEMENT_LABELS` is an open table
+over `MapPlacement`'s own kinds with a derived fallback, so a fourth kind grows a button.
+
+#### The editor's own surfaces (G2)
+
+**The coordinate readout is what Pass C's split was for.** `EditorCoordsModule` declares
+`ACTION_BAR_TOP_LEFT` — the same slot `unit_resources` declares — and the editor mode declares one
+and the player the other. *"Same slot, different module"*, and it cost a `preferred_slot()`. It
+follows `board_inspect`'s new `hovered_cell` signal, emitted off the ray that handler already casts,
+rather than casting a second one per frame.
+
+**The section-details toggle cost a `preferred_slot()` too.** `EditorModule` declares
+`INSPECT_VIEWER`, which is left-edge-pinned, so `is_collapsible()` answers true from the slot alone
+and `UiButtonsModule` builds the checkbox by sweeping for exactly that. **No line in either file
+names the other** — the collapse rule from Pass A doing the job it was built for. Folding the panel
+leaves the authoring verbs working, because they are on the bar.
+
+**Validation warnings reach the combat log, and the significant ones announce.** `EditorLog` emits
+one `LogEvent` per warning and tags the significant ones — **one emit, two views**, Pass E's rule, so
+nothing can put a line in one and not the other. *"The significant ones"* is not invented here: it
+takes a distinction the code already draws, `EditorController.navigability_warnings()`, which is the
+category describing a board a bout cannot be played on. **Only what is new is said**, because
+`refresh()` runs after every edit against a list recomputed whole.
+
+**The current tool is carried by the bar's own highlight**, which is one of the two options the
+taskblock offers by name. `EditorModule.active_tool` became a setter emitting `tool_changed`, so a
+tool set from anywhere highlights identically — and the `place` tool lights the *kind* button that
+says what the next click will author, since there is no unqualified "Place" button on this bar.
+
+#### The manipulation gizmo (H)
+
+**The drag math is logic and the scene decides nothing.** `GizmoDrag` is screen delta → axis delta →
+snapped value, and the one thing it cannot work out for itself is `axis_on_screen` — the screen-space
+vector one world unit along the axis covers, which only a projection can answer. **A vector per
+axis, not a pixels-per-unit scalar**: a perspective camera foreshortens differently per axis and per
+position, and an arrow seen almost end-on covers almost no pixels at all.
+
+**The snap is applied to the resulting value, never to the delta.** Snapping the delta lets two
+drags of 0.04 accumulate to 0.0 while the handle has visibly moved, and lets a value that started
+off-grid stay off-grid forever. Every value the gizmo produces is a multiple of 0.1 by construction,
+swept across 501 pixel deltas rather than sampled.
+
+**Handles are boxes, so picking is `UnitPicker.ray_box_t`** — the project's one ray-vs-box test,
+which the taskblock names as the reuse to make. Translate is three arms; resize is **six** face
+cubes, because dragging the top up and the bottom down are different edits with the same axis and
+the same direction.
+
+**It is armed by a tool, and that is what keeps it from being a second selection system.**
+`EditorModule.apply_tool_at` — the one router every board click in the editor already goes through —
+hands the gizmo a cell when the `gizmo` tool is active. The gizmo is told; it does not look. The one
+event it consumes is a press **on its own handle**, because a handle is drawn over the board and a
+grab must not also author on the cell underneath.
+
+**A refused resize leaves the claim exactly as it was.** `Gizmo.resized_box` returns null for a drag
+that would collapse or invert the volume, and nothing is written — *"refused rather than clamped
+silently"*, because a clamp is indistinguishable from a laggy drag where a face that simply stops
+moving is unambiguous.
+
+**Input routing became a walk.** `ControlOverlay._unhandled_input` used to reach for `board_inspect`
+by name; it now offers the event to every mounted module in declaration order and stops at the first
+that consumes it. `ViewModule.handle_input` returns false by default, and `BoardInspectModule`
+returns false always — it never claims exclusivity, so ordering is what decides.
+
+#### Defects these passes found in their own work
+
+- **`Gizmo.resized_box` moved the face nobody dragged.** Snapping the extent and the centre
+  independently looks equivalent to snapping the face and is not: an odd number of steps moves the
+  centre by half a step, and snapping that shifts the box. Dragging the bottom of a 2.0-tall claim
+  down by 0.5 left its top at **2.05**. Caught by the test asserting the anchored face is an
+  invariant; it snaps the dragged face and derives the rest now.
+- **`SuiteRunPanel` overlapped the spectator's cluster the moment the cluster moved into the bar.**
+  A 560 x 331 panel anchored bottom-right reaches into the action bar's own band, and had always
+  done so; nothing showed it while the cluster was in the opposite corner. Moved to the top-left,
+  which is free in every mode that constructs it.
+- **Two tests were reading a coordinate space that had stopped meaning what they assumed.** The
+  spectator log's resize tests measured `position` against a margin container whose own origin moves,
+  and reported the bottom edge falling 100 px while the panel was in fact still hard against the
+  bottom of the bar. Read off `get_global_rect()` now — the same lesson the block already recorded
+  once, one container over.
+- **A test's own fixture, twice.** The warnings test authored a pit with no spawn marker, and
+  `navigability_warnings` floods from a spawn — so it got an empty log and read it as "the warnings
+  never reach the log". And the dedup test counted zero because the empty board's warnings are
+  reported by the `refresh()` inside `_mount`, before any test can attach a sink.
+- **`"%s" % an_empty_Array`** is *"not enough arguments for format string"* — `%` treats an Array as
+  the argument list. An engine error on the run that passes, which GUT counts as a failure. The same
+  shape as `%v` on a `Rect2`, one container over.
+
+### taskblock-57 Passes A–F — the layout, live; the retirements done
+
+**SUPERSEDED IN PART — see the taskblock-57 Passes G1, G2 and H entry above.** This entry was
+written while the block was open and said so; G (the editor surface) and H (the gizmo) have since
+landed and the block is closed. The spectator and editor chromes it describes have both moved to
+`BATTLE_LAYOUT`, and the action bar it describes is one of three.
+
+**The layout is live**: `ViewModes.player()` uses `ModeChrome.BATTLE_LAYOUT`, so every
 surface in the block's placement table has moved to where that table puts it, and the modules the
 table does not name have been retired.
 
