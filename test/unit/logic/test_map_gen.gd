@@ -30,7 +30,6 @@ func _grids_equal(a: Grid, b: Grid) -> bool:
 		b_blocker_ids[cell] = (b.blockers[cell] as Part).id
 	return (
 		a.spawn_marker == b.spawn_marker
-		and a.opacity == b.opacity
 		and a_blocker_ids == b_blocker_ids
 		and a.occupant_id == b.occupant_id
 	)
@@ -195,8 +194,8 @@ func test_cover_density_within_target_band() -> void:
 
 ## BR30.10: every uncarved cell that borders at least one carved cell must
 ## carry a real, indestructible blocker Part — otherwise `ShotPlane.build`
-## (which reads only `state.units`/`state.grid.blockers`, never
-## `grid.opacity`) has nothing standing in for that wall, and a shot
+## (which reads only `state.units`/`state.grid.blockers`) has nothing
+## standing in for that wall, and a shot
 ## resolves as if it wasn't there. An uncarved cell with no carved neighbor
 ## (buried in solid, unreachable rock) deliberately gets no blocker — it
 ## can never be the nearest hit along any real ray, so skipping it is a
@@ -230,11 +229,6 @@ func test_generate_resolves_every_cell_into_a_destructible_wall_part_or_empty_sp
 					assert_false(
 						grid.blockers.has(cell),
 						"seed %d: empty %s must carry no Part" % [map_seed, cell]
-					)
-					assert_eq(
-						grid.get_opacity(cell),
-						0.0,
-						"seed %d: empty %s must not block LoS" % [map_seed, cell]
 					)
 					continue
 				var blocker: Variant = grid.blockers.get(cell)
@@ -396,19 +390,28 @@ func test_default_size_map_splits_into_multiple_rooms_with_hallways() -> void:
 ## exactly where a wall Part sits, transparent everywhere else (empty
 ## space, plain floored ground, scattered cover — cover has never set
 ## opacity).
-func test_opaque_exactly_where_a_wall_part_sits_transparent_everywhere_else() -> void:
+## taskblock-58 Pass C: this asserted that `Grid.opacity` read 1.0 exactly where a `wall` Part sat
+## and 0.0 everywhere else — two parallel claims about the same cell, kept in step by the
+## generator remembering to write both. The array is retired, so the claim becomes the thing it
+## was standing in for: **a wall stops a sight line at eye height, and a cell with nothing on it
+## does not.**
+func test_sight_is_stopped_exactly_where_a_wall_part_sits() -> void:
 	var grid: Grid = MapCorpus.read(7, WIDTH, HEIGHT)
+	var spans: SightSpans = SightSpans.of(grid)
 	var saw_wall := false
 	var saw_open := false
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
+			var eye: float = UnitGeometry.true_height_for_cell(cell, grid) + LoS.SIGHT_HEIGHT
 			var blocker: Variant = grid.blockers.get(cell)
 			if blocker != null and (blocker as Part).id == &"wall":
-				assert_eq(grid.get_opacity(cell), 1.0)
+				assert_true(spans.blocks(cell, eye), "%s holds a wall and must stop sight" % cell)
 				saw_wall = true
-			else:
-				assert_eq(grid.get_opacity(cell), 0.0)
+			elif blocker == null:
+				assert_false(
+					spans.blocks(cell, eye), "%s holds nothing and must not stop sight" % cell
+				)
 				saw_open = true
 	assert_true(saw_wall)
 	assert_true(saw_open)

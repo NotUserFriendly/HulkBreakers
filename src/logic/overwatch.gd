@@ -169,8 +169,17 @@ static func _qualifying_weapon(state: CombatState, overwatcher: Unit, mover: Uni
 		return null
 	if RangeModel.blocks_min_range(weapon, range_cells):
 		return null
-	if not LoS.has_los(state.grid, overwatcher.cell, mover.cell):
-		return null
+	# taskblock-58 Pass C: **the `LoS.has_los` gate that used to sit here is gone.**
+	#
+	# It was cheap and harmless while sight was a flat opacity array that cover was never
+	# flagged in. With sight geometric, a full-height cover object between the two cells
+	# correctly blocks the cell-to-cell line — and then vetoed `_torso_visible`, which asks the
+	# *same question more precisely*, from the real muzzle, against the real body, allowing for
+	# a leaning striker whose torso now projects in front of that cover. Two checks deciding one
+	# thing with the coarser one holding the veto is the arrangement this pass exists to delete,
+	# and the finer one was already here.
+	#
+	# It is also the cheaper order now: a sight line stopped being an array lookup.
 	if not _torso_visible(state, overwatcher, mover, weapon):
 		return null
 	return weapon

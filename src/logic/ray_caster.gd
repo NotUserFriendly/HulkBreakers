@@ -28,6 +28,11 @@ extends RefCounted
 ## well above float noise on distances of tens of units.
 const TIE_EPSILON := 0.0001
 
+## How far short of the far endpoint a sight query stops. Sized like `TIE_EPSILON` — well below
+## any real geometry, well above float noise — and load-bearing for the same reason the endpoint
+## exemption is: the thing at the far end is what you are looking at, never what is in the way.
+const _ENDPOINT_MARGIN := 0.0001
+
 
 ## The nearest thing the ray meets, or null.
 ##
@@ -93,18 +98,202 @@ static func tied_candidates(
 				RayHit.KIND_JOINT if placement.socket != null else RayHit.KIND_UNIT
 			)
 
-	for cell: Vector2i in state.grid.blockers:
+	_geometry_into(best, best_t, state.grid, from, dir_n, exclude_parts, max_distance)
+	return best
+
+
+## Everything the ray meets that is **not a unit** — blockers, placed surfaces, loose field
+## items. taskblock-58 Pass C.
+##
+## Sight is a question about the world, not about who is standing in it: a body does not make a
+## cell opaque, and `LoS` asking the full march would have every unit blocking vision through
+## itself. This is the same march with the unit loop left off, **not a second one** — the reject,
+## the per-box slab test and the placement enumeration are literally the same calls, so the thing
+## `LoS` sees and the thing a round meets cannot drift apart.
+##
+## Takes a `Grid` rather than a `CombatState` for the same reason: a query with no units in it
+## has no business being handed the unit list.
+static func geometry_candidates(
+	grid: Grid,
+	from: Vector3,
+	dir: Vector3,
+	exclude_parts: Array[Part] = [],
+	max_distance: float = INF
+) -> Array[RayHit]:
+	var dir_n: Vector3 = dir.normalized()
+	if dir_n.is_zero_approx():
+		return []
+	var best: Array[RayHit] = []
+	_geometry_into(best, INF, grid, from, dir_n, exclude_parts, max_distance)
+	return best
+
+
+## The nearest piece of world geometry along the ray, or null. No tie stages: a tie between two
+## wall cells sharing a face plane is a real geometric case, but nothing asking *"is anything in
+## the way"* cares which of them it was.
+static func cast_geometry(
+	grid: Grid,
+	from: Vector3,
+	dir: Vector3,
+	exclude_parts: Array[Part] = [],
+	max_distance: float = INF
+) -> RayHit:
+	var candidates: Array[RayHit] = geometry_candidates(
+		grid, from, dir, exclude_parts, max_distance
+	)
+	return null if candidates.is_empty() else candidates[0]
+
+
+## True when world geometry stands between `from` and `to`. **The sight predicate**, and the one
+## thing `LoS` is built on.
+##
+## `exclude_parts` is how the endpoint exemption is expressed: a wall cell can always see out of
+## and be seen into, which used to be `LoS` skipping the first and last cell of its supercover
+## walk and is now the two endpoints' own parts being taken off the board for this one query.
+## Stating it as an exclusion rather than as an index range is what lets it survive a world where
+## a line is not a list of cells.
+## ## An any-hit loop, not the nearest-hit one
+##
+## `cast_geometry` builds a `RayHit` per candidate and tracks the nearest. **A boolean needs
+## neither**: a nearest hit exists exactly when any hit does, so stopping at the first one is the
+## same answer arrived at sooner. Measured on a generated board, the nearest-hit form cost
+## **999 usec** per sight line — a `RayHit` allocated per hit, every candidate tested even after a
+## wall had already been found, and `UnitGeometry.true_height_for_cell` paid for all 218 blockers
+## before any of them were rejected.
+##
+## **This is the same geometry, not a second model.** `PartPicker.near_ray`, `UnitGeometry.
+## assembly_placements` and `UnitPicker.ray_box_hit` are the identical calls `cast_geometry`
+## makes; only the bookkeeping differs.
+## `test_sight_geometry.gd::test_the_any_hit_loop_agrees_with_the_nearest_hit_march` sweeps the two
+## against each other, because "it is the same test with less bookkeeping" is exactly the kind of
+## claim that should be checked rather than asserted in a comment.
+static func obstructed(
+	grid: Grid, from: Vector3, to: Vector3, exclude_parts: Array[Part] = []
+) -> bool:
+	var span: Vector3 = to - from
+	var distance: float = span.length()
+	if distance <= 0.0001:
+		return false
+	var dir: Vector3 = span / distance
+	# **Short of the destination, not up to it.** A ray that ends exactly on the far endpoint
+	# meets whatever geometry sits at that endpoint, which is the thing being looked at rather
+	# than something in the way.
+	var limit: float = distance - _ENDPOINT_MARGIN
+
+	for cell: Vector2i in grid.blockers:
+		var part: Part = grid.blockers[cell]
+		# The cheap tests first, in cost order: an excluded or destroyed part costs a lookup, the
+		# ground-plane reject costs no height, and only what survives both pays for one.
+		if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
+			continue
+		if not PartPicker.near_ray_flat(cell, from, dir):
+			continue
+		var height: float = UnitGeometry.true_height_for_cell(cell, grid)
+		if not PartPicker.near_ray(cell, from, dir, height):
+			continue
+		if _any_box_hit(
+			UnitGeometry.assembly_placements(part, cell, 0.0, null, height), from, dir, limit
+		):
+			return true
+
+	var y_low: float = minf(from.y, to.y)
+	var y_high: float = maxf(from.y, to.y)
+	for surface: Surface in grid.placements():
+		if surface.part == null or exclude_parts.has(surface.part):
+			continue
+		if not BodyProjector.projects(surface.part):
+			continue
+		if not PartPicker.near_ray(surface.cell, from, dir, surface.height):
+			continue
+		if _below_or_above(surface, y_low, y_high):
+			continue
+		if _any_box_hit(
+			UnitGeometry.assembly_placements(
+				surface.part, surface.cell, surface.facing, null, surface.height
+			),
+			from,
+			dir,
+			limit
+		):
+			return true
+
+	for cell: Vector2i in grid.field_items:
+		if not PartPicker.near_ray_flat(cell, from, dir):
+			continue
+		var item_height: float = UnitGeometry.true_height_for_cell(cell, grid)
+		if not PartPicker.near_ray(cell, from, dir, item_height):
+			continue
+		for item: Variant in grid.field_items[cell]:
+			# A loose Matrix has no volume, so nothing for a sight line to meet either.
+			if item is Part and not exclude_parts.has(item) and BodyProjector.projects(item):
+				if _any_box_hit(
+					UnitGeometry.assembly_placements(item, cell, 0.0, null, item_height),
+					from,
+					dir,
+					limit
+				):
+					return true
+	return false
+
+
+## True when a placed surface sits entirely clear of the sight line's own vertical band, so there
+## is no need to build its box placements at all.
+##
+## **The cheapest reject there is for the commonest case.** A board is mostly floor, so a sight
+## line's `near_ray` filter admits a hundred-odd floor tiles it then builds placements for and
+## misses — measured at 1.82 usec of allocation each. A near-horizontal line at eye height clears
+## every one of them by more than a metre.
+##
+## **Only taken when it is exact.** The Y extent is read off the part's own `volume` boxes, which
+## is the whole story for a part with nothing socketed onto it — a yaw `facing` cannot change a Y
+## extent. A part with an occupied socket has geometry this does not account for, so it falls
+## through to the full test rather than guessing about it.
+static func _below_or_above(surface: Surface, y_low: float, y_high: float) -> bool:
+	for socket: Socket in surface.part.sockets:
+		if socket.occupant != null:
+			return false
+	var lowest: float = INF
+	var highest: float = -INF
+	for box: Box in surface.part.volume:
+		lowest = minf(lowest, box.center.y - box.size.y * 0.5)
+		highest = maxf(highest, box.center.y + box.size.y * 0.5)
+	if is_inf(lowest):
+		return true
+	return surface.height + highest < y_low or surface.height + lowest > y_high
+
+
+static func _any_box_hit(
+	placements: Array[BoxPlacement], from: Vector3, dir: Vector3, limit: float
+) -> bool:
+	for placement: BoxPlacement in placements:
+		var hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
+		if not hit.is_empty() and float(hit["t"]) <= limit:
+			return true
+	return false
+
+
+static func _geometry_into(
+	best: Array[RayHit],
+	best_t: float,
+	grid: Grid,
+	from: Vector3,
+	dir_n: Vector3,
+	exclude_parts: Array[Part],
+	max_distance: float
+) -> float:
+	var result: float = best_t
+	for cell: Vector2i in grid.blockers:
 		if not PartPicker.near_ray(
-			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, state.grid)
+			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, grid)
 		):
 			continue
-		var part: Part = state.grid.blockers[cell]
-		best_t = _consider_assembly(
+		var part: Part = grid.blockers[cell]
+		result = _consider_assembly(
 			best,
-			best_t,
+			result,
 			part,
 			cell,
-			state.grid,
+			grid,
 			from,
 			dir_n,
 			exclude_parts,
@@ -126,36 +315,35 @@ static func tied_candidates(
 	# its own cell. The old form asked the index for a cell list and then asked it again
 	# per cell for that cell's surfaces — a dictionary lookup per cell, per ray cast,
 	# to rebuild a list the store already holds in order.
-	for surface: Surface in state.grid.placements():
+	for surface: Surface in grid.placements():
 		if not PartPicker.near_ray(surface.cell, from, dir_n, surface.height):
 			continue
-		best_t = _consider_surface(
-			best, best_t, surface, surface.cell, from, dir_n, exclude_parts, max_distance
+		result = _consider_surface(
+			best, result, surface, surface.cell, from, dir_n, exclude_parts, max_distance
 		)
 
-	for cell: Vector2i in state.grid.field_items:
+	for cell: Vector2i in grid.field_items:
 		if not PartPicker.near_ray(
-			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, state.grid)
+			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, grid)
 		):
 			continue
-		for item: Variant in state.grid.field_items[cell]:
+		for item: Variant in grid.field_items[cell]:
 			# A loose Matrix has no volume to strike — never a candidate, the
 			# same rule `PartPicker` and `Grid.shootable_part_at` already apply.
 			if item is Part:
-				best_t = _consider_assembly(
+				result = _consider_assembly(
 					best,
-					best_t,
+					result,
 					item,
 					cell,
-					state.grid,
+					grid,
 					from,
 					dir_n,
 					exclude_parts,
 					max_distance,
 					RayHit.KIND_FIELD_ITEM
 				)
-
-	return best
+	return result
 
 
 ## One placed surface, at **its own** height and facing.

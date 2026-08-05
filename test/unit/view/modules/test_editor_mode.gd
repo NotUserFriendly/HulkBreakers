@@ -315,13 +315,13 @@ func test_the_spawn_tools_mark_and_unmark_a_cell() -> void:
 	assert_false(editor.controller.spawn_markers.has(Vector2i(1, 1)))
 
 
-func test_the_sight_blocking_tool_toggles_rather_than_only_setting() -> void:
-	var editor: EditorModule = _editor(_editor_overlay())
-	editor.active_tool = &"sight_blocking"
-	editor.apply_tool_at(Vector2i(1, 1))
-	assert_almost_eq(float(editor.controller.opacity.get(Vector2i(1, 1), 0.0)), 1.0, 0.0001)
-	editor.apply_tool_at(Vector2i(1, 1))
-	assert_false(editor.controller.opacity.has(Vector2i(1, 1)), "a second click takes it off again")
+## taskblock-58 Pass C retired the `sight_blocking` tool along with `Grid.opacity` — sight is
+## geometry, so a wall already says everything the tool used to author. What is left to pin is
+## that the verb is gone from the vocabulary, since the buttons are generated from it.
+func test_the_sight_blocking_tool_is_gone_from_the_vocabulary() -> void:
+	assert_does_not_have(
+		EditorModule.TOOLS, &"sight_blocking", "the verb retired with the array it authored"
+	)
 
 
 func test_the_edge_button_declares_the_selected_side() -> void:

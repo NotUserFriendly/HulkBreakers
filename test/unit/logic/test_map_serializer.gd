@@ -73,10 +73,6 @@ func _differences(a: Grid, b: Grid) -> Array[String]:
 						% [cell, a.get_spawn_marker(cell), b.get_spawn_marker(cell)]
 					)
 				)
-			if not is_equal_approx(a.get_opacity(cell), b.get_opacity(cell)):
-				diffs.append(
-					"%s opacity: %f against %f" % [cell, a.get_opacity(cell), b.get_opacity(cell)]
-				)
 	return diffs
 
 
@@ -90,12 +86,7 @@ func test_a_generated_map_round_trips_through_the_format() -> void:
 	if not loaded.has("grid"):
 		return
 	var diffs: Array[String] = _differences(original, loaded["grid"])
-	gut.p(
-		(
-			"%d placements, %d spawns, %d opacity cells"
-			% [map.placements.size(), map.spawn_cells.size(), map.opacity_cells.size()]
-		)
-	)
+	gut.p("%d placements, %d spawns" % [map.placements.size(), map.spawn_cells.size()])
 	assert_eq(diffs, [] as Array[String], "the loaded grid must be equivalent to the original")
 
 

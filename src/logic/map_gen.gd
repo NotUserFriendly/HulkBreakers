@@ -71,9 +71,6 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	rng.seed = map_seed
 
 	var grid := Grid.new(width, rows)
-	for y in range(rows):
-		for x in range(width):
-			grid.set_opacity(Vector2i(x, y), 1.0)
 	var scratch := MapGenScratch.new(width, rows)
 
 	var rooms: Array[Rect2i] = []
@@ -571,7 +568,6 @@ static func _set_open(grid: Grid, scratch: MapGenScratch, cell: Vector2i) -> voi
 	if not scratch.in_bounds(cell):
 		return
 	scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
-	grid.set_opacity(cell, 0.0)
 	grid.blockers.erase(cell)
 	scratch.set_level(cell, 0)
 
@@ -734,8 +730,10 @@ static func _mark_zone(grid: Grid, room: Rect2i, marker: int) -> Vector2i:
 ## frozen snapshot first (nothing mutated yet) is what actually keeps
 ## this to one cell.
 ##
-## taskblock-39 Pass B: reads/writes scratch's own terrain; `grid.blockers`/
-## `grid.set_opacity` stay direct `Grid` writes, same as everywhere else.
+## taskblock-39 Pass B: reads/writes scratch's own terrain; `grid.blockers` stays a direct `Grid`
+## write, same as everywhere else. taskblock-58 Pass C: the paired `grid.set_opacity` writes went
+## with the array — an EMPTY cell is see-through because there is no geometry in it, which is a
+## fact about the board rather than a flag the generator has to remember to set.
 static func _finalize_walls_and_empty(grid: Grid, scratch: MapGenScratch) -> void:
 	var wall_cells: Array[Vector2i] = []
 	for y in range(scratch.rows):
@@ -754,7 +752,6 @@ static func _finalize_walls_and_empty(grid: Grid, scratch: MapGenScratch) -> voi
 			grid.blockers[cell] = DataLibrary.get_part(&"wall")
 		else:
 			scratch.set_terrain(cell, MapGenScratch.CellKind.EMPTY)
-			grid.set_opacity(cell, 0.0)
 
 
 static func _is_exposed_wall(scratch: MapGenScratch, cell: Vector2i) -> bool:

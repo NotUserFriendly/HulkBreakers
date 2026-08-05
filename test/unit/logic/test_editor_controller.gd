@@ -50,7 +50,6 @@ func _authored() -> EditorController:
 	editor.set_facing(Vector2i(2, 2), 1.5)
 	editor.set_spawn_marker(Vector2i(0, 0), Enums.SpawnMarker.SPAWN_A)
 	editor.set_spawn_marker(Vector2i(0, 2), Enums.SpawnMarker.SPAWN_B)
-	editor.set_opacity(Vector2i(3, 0), 1.0)
 	editor.add_claim(SectionClaim.KIND_INTERIOR, Box.new(Vector3(1, 1.2, 1), Vector3(2, 2.4, 2)))
 	editor.set_edge(
 		SectionEdge.SIDE_EAST, SectionEdge.KIND_OPEN, &"corridor_2w", [0, 1] as Array[int]
@@ -146,14 +145,6 @@ func test_a_spawn_marker_of_none_clears_rather_than_records() -> void:
 	assert_false(
 		editor.spawn_markers.has(Vector2i(1, 1)), "cleared, so the saved file stays sparse"
 	)
-
-
-func test_zero_opacity_clears_rather_than_records() -> void:
-	var editor := EditorController.new()
-	editor.set_opacity(Vector2i(1, 1), 1.0)
-	assert_true(editor.opacity.has(Vector2i(1, 1)))
-	editor.set_opacity(Vector2i(1, 1), 0.0)
-	assert_false(editor.opacity.has(Vector2i(1, 1)))
 
 
 # ---------------------------------------------------------------- claims, edges, chance
@@ -364,7 +355,6 @@ func test_the_model_becomes_a_board_through_the_ordinary_serializer() -> void:
 	assert_eq(grid.rows, 3)
 	assert_true(grid.blockers.has(Vector2i(3, 0)), "the authored wall is on the board")
 	assert_eq(grid.get_spawn_marker(Vector2i(0, 0)), Enums.SpawnMarker.SPAWN_A)
-	assert_almost_eq(grid.get_opacity(Vector2i(3, 0)), 1.0, 0.0001)
 
 
 ## **F4, and the pass's own words: an authored board that fails the navigability invariant still
@@ -493,7 +483,6 @@ func _describe_map(map: MapFile) -> String:
 			)
 		)
 	lines.append("spawns %s %s" % [str(map.spawn_cells), str(map.spawn_markers)])
-	lines.append("opacity %s %s" % [str(map.opacity_cells), str(map.opacity_values)])
 	return "\n".join(lines)
 
 

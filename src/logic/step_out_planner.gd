@@ -24,14 +24,40 @@ const _ORTHOGONAL_OFFSETS: Array[Vector2i] = [
 ## shot from here" either way, so this is never a second, narrower cover
 ## check silently drifting from the one the AI's own cover-seeking
 ## already reads.
+## taskblock-58 Pass C1: the convenience door — builds the field this one question needs. A
+## caller asking about several firing cells against the **same** target wants
+## `is_legal_step_out_against` and one build; the same relationship `UnitPicker.ray_box_t` has
+## with `ray_box_hit`, and for the same reason: one implementation, two entry costs.
 static func is_legal_step_out(
 	state: CombatState, unit: Unit, origin_cell: Vector2i, firing_cell: Vector2i, target: Unit
 ) -> bool:
+	return is_legal_step_out_against(
+		state,
+		unit,
+		origin_cell,
+		firing_cell,
+		target,
+		VisibilityField.build(state.grid, target.cell)
+	)
+
+
+## **One field, both halves.** Both questions are about the same threat, so they are two reads of
+## one build rather than two builds — which is the whole reason `Cover` takes the field rather
+## than fetching one itself.
+static func is_legal_step_out_against(
+	state: CombatState,
+	unit: Unit,
+	origin_cell: Vector2i,
+	firing_cell: Vector2i,
+	target: Unit,
+	field: VisibilityField
+) -> bool:
 	if Grid.distance_manhattan(origin_cell, firing_cell) != 1:
 		return false
-	if not Cover.is_covered_from(origin_cell, target.cell, WorldView.full(state), unit):
+	var view: WorldView = WorldView.full(state)
+	if not Cover.is_covered_from(origin_cell, target.cell, view, unit, field):
 		return false
-	if Cover.is_covered_from(firing_cell, target.cell, WorldView.full(state), unit):
+	if Cover.is_covered_from(firing_cell, target.cell, view, unit, field):
 		return false
 	return true
 
@@ -44,11 +70,14 @@ static func candidate_step_out_cells(
 ) -> Array[Vector2i]:
 	var pf := Pathfinder.new(state.grid, unit.shell.can_climb())
 	var candidates: Array[Vector2i] = []
+	# taskblock-58 Pass C1: built once for the whole neighbourhood. Four neighbours asking the
+	# same target the same question is four reads, not four builds.
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
 	for offset: Vector2i in _ORTHOGONAL_OFFSETS:
 		var cell: Vector2i = origin_cell + offset
 		if not state.grid.in_bounds(cell) or not pf.is_walkable(cell):
 			continue
-		if is_legal_step_out(state, unit, origin_cell, cell, target):
+		if is_legal_step_out_against(state, unit, origin_cell, cell, target, field):
 			candidates.append(cell)
 	return candidates
 
@@ -157,7 +186,8 @@ static func build_triple(
 static func assemble_for_shoot(
 	state: CombatState, unit: Unit, action_id: StringName, weapon_id: StringName, target: Unit
 ) -> ActionQueue:
-	if not Cover.is_covered_from(unit.cell, target.cell, WorldView.full(state), unit):
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
+	if not Cover.is_covered_from(unit.cell, target.cell, WorldView.full(state), unit, field):
 		return null
 	var candidates: Array[Vector2i] = candidate_step_out_cells(state, unit, unit.cell, target)
 	if candidates.is_empty():

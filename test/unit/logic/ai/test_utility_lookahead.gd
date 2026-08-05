@@ -108,7 +108,7 @@ func test_the_shallow_ply_tells_the_open_lane_from_the_wall_s_shadow() -> void:
 	var exposed := Vector2i(10, 8)  # the open lane, straight down the prey's row
 	var sheltered := Vector2i(10, 6)  # tucked into the wall stub's shadow
 	var enemies: Array[Unit] = [bout.prey] as Array[Unit]
-	var fields: Array = [VisibilityField.build(bout.state, (bout.prey as Unit).cell)]
+	var fields: Array = [VisibilityField.build(bout.state.grid, (bout.prey as Unit).cell)]
 
 	var open: float = UtilityLookahead._threat_from_standing_enemies(exposed, enemies, fields)
 	var shadow: float = UtilityLookahead._threat_from_standing_enemies(sheltered, enemies, fields)
@@ -133,7 +133,7 @@ func test_the_deeper_ply_sees_the_enemy_walk_around_the_cover() -> void:
 	var exposed := Vector2i(10, 8)
 	var sheltered := Vector2i(10, 6)
 	var enemies: Array[Unit] = [bout.prey] as Array[Unit]
-	var fields: Array = [VisibilityField.build(bout.state, (bout.prey as Unit).cell)]
+	var fields: Array = [VisibilityField.build(bout.state.grid, (bout.prey as Unit).cell)]
 	var shallow: float = UtilityLookahead._threat_from_standing_enemies(sheltered, enemies, fields)
 
 	# A two-cell list, so both get the expensive ply rather than depending on where
@@ -176,7 +176,7 @@ func test_the_deeper_ply_never_predicts_less_threat_than_the_shallow_one() -> vo
 
 	var shallow_only: Dictionary = {}
 	var enemies: Array[Unit] = [bout.prey] as Array[Unit]
-	var fields: Array = [VisibilityField.build(bout.state, (bout.prey as Unit).cell)]
+	var fields: Array = [VisibilityField.build(bout.state.grid, (bout.prey as Unit).cell)]
 	for cell: Vector2i in cells:
 		shallow_only[cell] = UtilityLookahead._threat_from_standing_enemies(cell, enemies, fields)
 	var both: Dictionary = await UtilityLookahead.threat_map(context, cells)
