@@ -1085,6 +1085,142 @@ All three landed; detail in `CHANGELOG.md`. What remains open out of it:
 Full-screen-width after the module collapse. Cosmetic, and the supervisor has said it is **not worth a
 pass of its own** — fold it into whatever next touches that surface.
 
+### Floors reference a location; they do not belong to a cell
+**Needs:** nothing for the inversion; the support model wants it first. **Unblocks:** moving decks
+(vehicles), a hulk that can be cut apart, collapsing structure.
+
+**Today a cell owns its surfaces** — `Grid.surfaces` is `Dictionary[Vector2i, Array[Surface]]`, so a
+floor's position is its *key*. Moving one means deleting and re-adding, and a floor cannot exist except
+as something a cell holds.
+
+**Invert it: a placement has a position, and the cell lookup becomes an index.**
+
+**This is cheap, and the reason is that the accessor already exists.** `Grid.surfaces_at(cell)` and
+`add_surface()` are the interface; only **five** places touch the dictionary directly, and all five
+iterate *"every cell that has surfaces"* rather than looking one up. So the storage changes behind
+`surfaces_at()`, the iterators get a `placements()` to walk, and **every other reader is untouched.**
+
+**`GROUND` is the one rule that genuinely changes.** `ship_floor.attaches_to = ["GROUND"]` means *the
+cell*, and `GridPlacement.can_place` refuses a second `GROUND` part per cell — the rule taskblock-39
+had to re-architect `MapGenScratch` around. With no cell to attach to, `GROUND` either becomes "attaches
+to nothing, held up by neighbours" or retires in favour of a support requirement. **Decide it; do not
+let it drift.**
+
+#### Structure supports itself
+
+A separate and larger piece of work that the inversion enables.
+
+- **Support is a graph over placements, not cells.** Floor A holds floor B. That is what makes cutting a
+  hulk in half produce two *components* rather than a hole, and it is the same connected-component
+  question the navigability flood already answers, run over a different graph.
+- **There is no privileged component — the observer is the anchor.** A unit's own component is its rest
+  frame. Two halves of a severed hulk drifting apart both feel stationary to whoever is standing on
+  them, which is correct and cheaper than picking a winner: **a majority rule would have needed a
+  tiebreak for an even cut, and this needs none.** A unit on three loose plates in space walks them
+  normally, given mag boots or the equivalent.
+- **Cantilever is accumulated load, not a distance rule.** Each tile carries everything beyond it, so a
+  light catwalk reaching five cells and a heavy ship floor reaching two **falls out of weight** rather
+  than being authored per part. It also stays true when someone parks a heavy shell on the end, which a
+  distance rule would not.
+- **Units load the structure**, and a heavy shell can break the catwalk it is standing on. That makes
+  load *dynamic*, which is why it evaluates **every turn** — support cached at load means a weak
+  catwalk collapses at an arbitrary later moment rather than when someone steps on it. Cache per turn,
+  invalidate on movement.
+- **"Falls" implies a down, and whether there is one is a computed property** — see gravity below.
+  Inside-the-hull versus outside is not the distinction; a hull breach makes those the same place.
+
+#### Gravity is conducted through the ship's metal
+
+**A `Gravity Generator` is a real, damageable part**, and its field **propagates through the structure**
+— which is the *same graph* structural support already builds, flooded from a different source. A unit
+has gravity if a grav gen is connected to the plate it stands on, or is near enough (just above, or
+directly beside).
+
+Everything useful falls out of that rather than needing rules:
+
+- **Cut the ship, and the half without a generator loses gravity.** No special case for severance.
+- **Destroy the generator, and everything it fed loses gravity at once.** It is a part, so it is a
+  target.
+- **Any combination of gravity and atmosphere is reachable** — grav/no-grav crossed with atmo/no-atmo,
+  four states, none of them authored.
+
+**Gravity conducts through metal; atmosphere conducts through space.** Near-inverses sharing one shape:
+a sealed room holds air while its plating is irrelevant, and a severed plate loses gravity while its
+enclosure is irrelevant. Two fields, two media, one propagation model. **Worth building the first one so
+the second is a second source rather than a second system.**
+
+- **Walking without gravity is a capability**, not an impossibility — mag boots or the equivalent, the
+  same shape `CLIMBER` has. A unit without it in zero-g is in trouble; a unit with it is not.
+- **This is the project's first taste of zero-g**, which arrives properly later. Build it as a computed
+  field from the start rather than as an exterior special case, or zero-g becomes a retrofit.
+- **Two floods per turn** — support and gravity — over placements, both the shape the navigability
+  flood already runs. Budget accordingly; they are not free and they are not new machinery either.
+
+#### The AI knows if it is smart enough — or heavy enough
+
+**Structural awareness is gated twice**, and the second gate is the interesting one:
+
+- **By intelligence**, like everything else in `docs/11` — a Mindless unit does not reason about what it
+  is standing on.
+- **By weight.** *"I'm a big guy, so I know I'm heavy."* A large shell is inherently aware that things
+  give under it, regardless of tier. A genuinely different axis from intelligence and profile, and it
+  fits the existing frame: **intelligence gates information, and weight is a second thing that grants
+  it.**
+- **Whether a unit has gravity is information too.** A unit that does not know it is about to step off
+  the gravity field's edge is the same class of mistake as one that does not know the floor will give.
+
+A floor that will collapse under a unit is a **pathfinding cost**, not a walkability flag — the planner
+currently reads walkable as binary, and "walkable but it will give way" is the interesting middle.
+
+### Grids are not unbreakable
+**Needs:** *Floors reference a location*. **This is happening** — possibly first as an experimental
+setting, so it can ship and be played with before everything downstream of it is ready.
+
+**More than one grid.** A ship half is a grid, the other half is another, **and vacuum is a third.**
+They may be offset by partial tiles and need not share a rotation — **a 45-degree grid over the
+90-degree one** lets things a unit walks inside be placed prettily rather than snapped square.
+
+- **Movement between grids rounds up.** If two grids are within reach, jumping costs the rounded-up MP.
+  A simple rule that avoids exact partial-tile arithmetic entirely.
+- **Vacuum-as-a-grid pays twice.** Zero-g movement stops being *movement without a grid* and becomes
+  ordinary movement on a different one — so mag boots, drifting and jump jets reuse the pathfinder
+  rather than needing a parallel one.
+- **This is the L1 portal layer** the 2026-07-27 pathfinding consultation proposed, made spatial: a grid
+  boundary is a portal, a grid is a cluster. If it lands, it inherits an architecture that was already
+  worked out and deferred on measurement.
+
+#### What it is actually for
+
+- **Jump jets between ships.** A unit launches off one hull and lands on another — which is a grid jump,
+  not a special-cased animation.
+- **Being boarded at a compound angle.** An enemy ship docks skewed and above, and the fight stops being
+  a floor plan: **you shoot up, and you hide under roofs rather than behind walls.** That is a different
+  game inside the same rules, and it is the scenario that justifies the whole idea.
+
+#### Cover is flat, and that is the real dependency
+
+**`Cover.is_covered_from(candidate_cell, threat_cell, ...)` has no height in it at all.** It walks
+`Grid.line()` between two `Vector2i` and checks blockers along the way. A threat directly above is, to
+the AI, in the same cell — and therefore not something to take cover from.
+
+**The resolver is already ahead of the AI here.** The ray chain marches real 3D geometry, so *shooting*
+up works today; it is the AI's cover model that is a floor plan. **Cover has to become directional in
+three dimensions** — a roof is cover from above exactly as a wall is cover from the side — before a
+compound-angle boarding is playable rather than merely renderable.
+
+#### What keeps it cheap
+
+Mostly already true. Only **two** places in `src/` do inline cell arithmetic; **thirty-one** go through
+`Grid.neighbors()`, `in_bounds()` and `distance_chebyshev()`. **A second grid is a change inside those
+functions, not a sweep** — so the rule is to keep it that way:
+
+- **Ask a grid; never compute adjacency from coordinates inline.** That one habit is most of the
+  insurance.
+- **`Grid.distance_chebyshev(a, b)` is `static` and takes two bare `Vector2i`**, so it assumes a single
+  coordinate space in its signature. It is the one thing that needs a frame; worth knowing before it
+  acquires more callers.
+- **`CombatState.grid` is singular.** Fine today, and it is the field that becomes a collection.
+
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.
