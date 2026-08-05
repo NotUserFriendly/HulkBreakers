@@ -9,8 +9,8 @@ extends Resource
 ## ## What a map owns, and what it deliberately does not
 ##
 ## A map is the **pristine, authored board**. It carries geometry and authoring intent:
-## dimensions, placed surfaces with their heights and facings, blockers, field items, spawn
-## markers and sight-blocking.
+## dimensions, placed surfaces with their heights and facings, blockers, field items and spawn
+## markers.
 ##
 ## It does **not** carry runtime state. `Grid.occupant_id` is who is standing where, which
 ## belongs to a bout and not to a map — a saved map with a unit baked into it would load a
@@ -48,6 +48,7 @@ extends Resource
 @export var spawn_cells: Array[Vector2i] = []
 @export var spawn_markers: Array[int] = []
 
-## Sparse sight-blocking — only cells with a non-zero value appear.
-@export var opacity_cells: Array[Vector2i] = []
-@export var opacity_values: Array[float] = []
+## taskblock-58 Pass C: **sparse sight-blocking is gone.** A map carried `opacity_cells`/
+## `opacity_values` because sight was a flat per-cell array that had to be authored; sight is
+## geometry now, so a wall in `placements` already says everything a sight-blocking entry used to.
+## Nothing derives it, nothing writes it, and an older file's arrays are simply ignored on load.

@@ -85,11 +85,6 @@ var placements: Array[MapPlacement] = []
 ## same file.
 var spawn_markers: Dictionary = {}
 
-## `Vector2i` -> `float`. **Authored, never derived from the blockers.** `MapFile`'s own header
-## settles this: opacity correlates with walls but is written independently, so deriving it here
-## would invent a rule the engine does not follow.
-var opacity: Dictionary = {}
-
 var claims: Array[SectionClaim] = []
 var edges: Array[SectionEdge] = []
 ## Per-cell "something may appear here" declarations — the per-cell chance half of the authoring
@@ -208,15 +203,6 @@ func set_spawn_marker(cell: Vector2i, marker: int) -> void:
 		spawn_markers.erase(cell)
 	else:
 		spawn_markers[cell] = marker
-
-
-## Sight-blocking at `cell`. Zero clears it, so the saved file stays sparse.
-func set_opacity(cell: Vector2i, value: float) -> void:
-	_push_undo()
-	if is_zero_approx(value):
-		opacity.erase(cell)
-	else:
-		opacity[cell] = value
 
 
 ## Resizes the board. **Placements outside the new bounds are kept, not dropped** — dropping them
@@ -368,15 +354,12 @@ func to_map_file() -> MapFile:
 			if spawn_markers.has(cell):
 				map.spawn_cells.append(cell)
 				map.spawn_markers.append(int(spawn_markers[cell]))
-			if opacity.has(cell):
-				map.opacity_cells.append(cell)
-				map.opacity_values.append(float(opacity[cell]))
 	return map
 
 
 ## The authored board as a `SectionFile`, carrying claims, edges and the authoring vocabulary.
 ##
-## **Spawn markers and opacity are deliberately not written.** `SectionFile` has nowhere to put
+## **Spawn markers are deliberately not written.** `SectionFile` has nowhere to put
 ## either, and a section's "a unit may start here" is `SectionSpawn`'s spawner kind rather than a
 ## map's squad marker — writing one as the other would be a second meaning for the same authoring
 ## gesture.
@@ -412,8 +395,6 @@ func load_map(map: MapFile) -> bool:
 			placements.append(placement.duplicate(true))
 	for index: int in range(mini(map.spawn_cells.size(), map.spawn_markers.size())):
 		spawn_markers[map.spawn_cells[index]] = map.spawn_markers[index]
-	for index: int in range(mini(map.opacity_cells.size(), map.opacity_values.size())):
-		opacity[map.opacity_cells[index]] = map.opacity_values[index]
 	target = TARGET_MAP
 	return true
 
@@ -607,7 +588,6 @@ func _copied_placements() -> Array[MapPlacement]:
 func _reset() -> void:
 	placements = []
 	spawn_markers = {}
-	opacity = {}
 	claims = []
 	edges = []
 	spawns = []
@@ -634,7 +614,6 @@ func _snapshot() -> Dictionary:
 		"rows": rows,
 		"placements": _copied_placements(),
 		"spawn_markers": spawn_markers.duplicate(true),
-		"opacity": opacity.duplicate(true),
 		"claims": snapshot_claims,
 		"edges": snapshot_edges,
 		"spawns": snapshot_spawns,
@@ -649,7 +628,6 @@ func _restore(snapshot: Dictionary) -> void:
 	rows = snapshot["rows"]
 	placements = snapshot["placements"]
 	spawn_markers = snapshot["spawn_markers"]
-	opacity = snapshot["opacity"]
 	claims = snapshot["claims"]
 	edges = snapshot["edges"]
 	spawns = snapshot["spawns"]

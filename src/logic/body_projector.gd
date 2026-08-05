@@ -298,9 +298,9 @@ static func _project_joint(
 ## obligation is that it never reports "no line" where one exists, which means
 ## its occluder set must never be LARGER than what the shot plane actually
 ## resolves against. Re-deriving "is this blocker still real" there would be a
-## second answer free to drift from this one — and a destroyed wall is exactly
-## the case where the two would disagree, because `Grid.opacity` is not cleared
-## when a wall dies.
+## second answer free to drift from this one. taskblock-58 Pass C: this is now the *only*
+## answer — the flat `Grid.opacity` array that used to disagree with it about a destroyed
+## wall is retired, so "are this part's boxes still there" is decided here and nowhere else.
 static func projects(part: Part) -> bool:
 	return part != null and (part.hp > 0 or part.is_mangled or part.is_disabled)
 

@@ -75,14 +75,14 @@ static func enclosed_room(width: int, rows: int, level: float = 0.0) -> Grid:
 
 ## tb31 Pass C's settled wall model, verbatim (`MapGen._finalize_walls_
 ## and_empty`'s own "exposed wall" branch): ordinary floored ground
-## carrying a real, destructible `wall` Part blocker, with opacity raised
-## to 1.0 — NOT an unfloored/unwalkable cell. A destroyed wall (hp <= 0)
+## carrying a real, destructible `wall` Part blocker — NOT an unfloored/unwalkable cell.
+## taskblock-58 Pass C: it no longer also raises an opacity flag, because there is no longer one
+## to raise; the `wall` Part's own box is what stops sight. A destroyed wall (hp <= 0)
 ## already reads as passable everywhere `Pathfinder`/`ShotPlane` check
 ## hp, so this makes no separate "destroyed" variant; a test wanting one
 ## destroys the same Part this returns.
 static func place_wall(grid: Grid, cell: Vector2i, level: float = 0.0) -> Part:
 	place_floor(grid, cell, level)
-	grid.set_opacity(cell, 1.0)
 	var wall: Part = DataLibrary.get_part(&"wall")
 	grid.blockers[cell] = wall
 	return wall

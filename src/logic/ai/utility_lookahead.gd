@@ -106,8 +106,12 @@ static func threat_map(
 	# unit smarter than a Trained one rather than leaving it half-informed.
 	var enemy_fields: Array = []
 	var state: CombatState = context.view.canonical_state_for_resolvers()
+	# taskblock-58 Pass C: **the board's geometry, derived once for the whole ply.** Every field
+	# below is over the same grid and differs only in where it is cast from, and deriving the
+	# spans is half a build's cost.
+	var spans: SightSpans = SightSpans.of(state.grid)
 	for enemy: Unit in enemies:
-		enemy_fields.append(VisibilityField.build(state, enemy.cell))
+		enemy_fields.append(VisibilityField.build(state.grid, enemy.cell, spans))
 		fields_built += 1
 	for cell: Vector2i in ordered_cells:
 		threats[cell] = _threat_from_standing_enemies(cell, enemies, enemy_fields)
@@ -128,7 +132,7 @@ static func threat_map(
 				await pacer.frame_signal
 		var cell: Vector2i = ordered_cells[i]
 		threats[cell] = maxf(
-			float(threats[cell]), _threat_from_moving_enemies(context, cell, enemies, reach)
+			float(threats[cell]), _threat_from_moving_enemies(context, cell, enemies, reach, spans)
 		)
 	return threats
 
@@ -157,10 +161,12 @@ static func _threat_from_standing_enemies(
 ## there. One flood rooted at `cell`, tested against each enemy's own reachable set
 ## — which is why this is the expensive ply and why it is shortlisted.
 static func _threat_from_moving_enemies(
-	context: UtilityContext, cell: Vector2i, enemies: Array[Unit], reach: Array
+	context: UtilityContext, cell: Vector2i, enemies: Array[Unit], reach: Array, spans: SightSpans
 ) -> float:
 	var state: CombatState = context.view.canonical_state_for_resolvers()
-	var from_cell: VisibilityField = VisibilityField.build(state, cell)
+	# **This is the ply that pays per candidate**, so it is the one that most wants the board's
+	# geometry derived once by its caller rather than re-derived per shortlist entry.
+	var from_cell: VisibilityField = VisibilityField.build(state.grid, cell, spans)
 	fields_built += 1
 	var threatening := 0
 	for i in range(enemies.size()):

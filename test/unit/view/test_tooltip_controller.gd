@@ -117,7 +117,7 @@ func test_visible_from_selected_reflects_a_queued_not_yet_resolved_move() -> voi
 	var state: CombatState = built.state
 	var controller: TacticsController = built.controller
 	var tooltip_view: TooltipView = built.tooltip_view
-	state.grid.set_opacity(Vector2i(5, 3), 1.0)
+	GridFixture.place_wall(state.grid, Vector2i(5, 3))
 	mover.mp = 100.0
 
 	controller.click_cell(mover.cell)

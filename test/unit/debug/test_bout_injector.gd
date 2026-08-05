@@ -451,7 +451,7 @@ func test_set_passable_false_makes_a_cell_impassable() -> void:
 
 	assert_true(ok)
 	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"wall")
-	assert_almost_eq(state.grid.get_opacity(Vector2i(2, 2)), 1.0, 0.0001)
+	assert_true(state.grid.blockers.has(Vector2i(2, 2)), "the wall is what blocks sight")
 	assert_lt(Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0)
 
 
@@ -465,7 +465,7 @@ func test_set_passable_true_restores_passage() -> void:
 
 	assert_true(ok)
 	assert_false(state.grid.blockers.has(Vector2i(2, 2)))
-	assert_almost_eq(state.grid.get_opacity(Vector2i(2, 2)), 0.0, 0.0001)
+	assert_false(state.grid.blockers.has(Vector2i(2, 2)), "and its absence is what clears it")
 	assert_gt(Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0)
 
 

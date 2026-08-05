@@ -28,7 +28,6 @@ var rows: int
 ## field's own old name was `terrain`, with four retired values — see
 ## docs/SUPERSEDED.md) is retired outright, along with `Grid.level`.
 var spawn_marker: Array[int] = []
-var opacity: Array[float] = []
 var occupant_id: Array[int] = []
 ## Vector2i -> Part; a field object (cover, scrap, a barrel, ...) sitting
 ## at this cell. taskblock-16 Pass B2: the ONE source of truth for "is
@@ -67,10 +66,8 @@ func _init(p_width: int, p_rows: int) -> void:
 	rows = p_rows
 	var count := width * rows
 	spawn_marker.resize(count)
-	opacity.resize(count)
 	occupant_id.resize(count)
 	spawn_marker.fill(Enums.SpawnMarker.NONE)
-	opacity.fill(0.0)
 	occupant_id.fill(-1)
 
 
@@ -90,14 +87,6 @@ func set_spawn_marker(cell: Vector2i, value: int) -> void:
 	spawn_marker[_index(cell)] = value
 
 
-func get_opacity(cell: Vector2i) -> float:
-	return opacity[_index(cell)]
-
-
-func set_opacity(cell: Vector2i, value: float) -> void:
-	opacity[_index(cell)] = value
-
-
 func get_occupant_id(cell: Vector2i) -> int:
 	return occupant_id[_index(cell)]
 
@@ -114,7 +103,6 @@ func set_occupant_id(cell: Vector2i, value: int) -> void:
 func dup() -> Grid:
 	var cloned := Grid.new(width, rows)
 	cloned.spawn_marker = spawn_marker.duplicate()
-	cloned.opacity = opacity.duplicate()
 	cloned.occupant_id = occupant_id.duplicate()
 	for cell: Vector2i in blockers:
 		cloned.blockers[cell] = (blockers[cell] as Part).duplicate(true)

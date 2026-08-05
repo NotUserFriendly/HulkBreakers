@@ -1,5 +1,118 @@
 # CHANGELOG.md — What's Been Built
 
+### Sight is geometry, a placement has a position, and a pick reports its face
+
+Taskblock 58, passes A to C. Three prerequisites for the editor's real tools, each of which would
+otherwise have been built twice.
+
+#### `Grid.opacity` is retired, and geometry is the only answerer
+
+**Three things answered "can A see B".** `LoS.has_los` walked `Grid.line` reading a flat per-cell
+float array; `VisibilityField` shadowcast from that same array and recorded its own limit in its own
+doc comment (*occlusion data here is 2D, per cell, with no per-level*); `RayCaster` marched the real
+boxes. **Geometry already knew what blocks and a parallel flat array also claimed to.**
+
+`LoS.has_los` is a real march now — `RayCaster.geometry_candidates`, the same reject and the same
+slab test a round takes, with the unit loop left off. The array, its accessors, its `MapFile`
+serialization, the editor's `sight_blocking` tool and `DamageResolver`'s reach-in to clear the flag
+on a destroyed wall are all gone together. **Destroying the geometry is clearing the flag.**
+
+**What the array could not express, measured:** a wall standing at ground level no longer hides a
+unit two levels above it, and the same wall raised into the sight line still does. Same cell, same
+part — a per-cell float had nowhere to put the difference.
+
+**Two behaviour reversals came with it**, both recorded in `SUPERSEDED.md`. Cover now blocks sight
+when it stands in the line, because every 3D volume does; a crate you can see over is still cover.
+And `Overwatch`'s `LoS.has_los` gate is deleted — it was vetoing `_torso_visible`, which asks the
+same question more precisely from the real muzzle against the real body, and which is what lets a
+leaning striker be seen past full-height cover.
+
+#### The cost, taken rather than assumed
+
+`PLAN.md` asked for the number first. Measured on a 32x24 generated board, at the Pass B commit and
+again after:
+
+| | array-backed | geometry-backed |
+|---|---|---|
+| `VisibilityField.build` | 3 695 usec | 7 784 usec |
+| `field.allows` (per candidate) | 0.46 usec | 0.49 usec |
+| `LoS.has_los` | 3.8 usec | 662 usec |
+
+**The obvious shape — ask `LoS.has_los` per cell — measured 535 ms per field build and was rejected
+on the spot.** So the field is *built from* geometry rather than *cast per* query: `SightSpans`
+reduces every blocker, placed surface and field item to the vertical spans it occupies over the
+cells it fully covers, in one pass, and the line walk samples that. Roughly twice the old build cost,
+which is the half the taskblock calls affordable, and **the per-query cost stayed a bit test**,
+which is the half it does not.
+
+`SightSpans` is deliberately weaker than the march, in the safe direction the field's contract
+requires: a box only occupies a cell it *fully* covers, spans are never merged, and a grazing line
+passes. Swept on a real board, the entire gap between it and the march is scatter pillars, which are
+smaller than a cell. `test_sight_geometry.gd` asserts the containment rather than arguing it.
+
+#### And it costs planning time, which broke a test rather than being absorbed
+
+**Per-turn planning went from a 412 ms mean to 569 ms**, measured over twelve `BoutRunner` steps on
+the bout board at seed 4242, at the Pass B commit and again after. `PlanPacer`'s budget is 400 ms,
+**so it was already being exceeded before this pass** — Pass C made the aborts earlier and more
+frequent, and `test_ai_batch_yield.gd` went red because a budgeted run stopped matching an
+unbudgeted one.
+
+Three optimisations landed inside the pass and are counted in the numbers above: `RayCaster.
+obstructed` is an any-hit loop with early exit rather than the nearest-hit march (999 -> 152 usec),
+with a ground-plane reject in front of the per-cell height lookup and a vertical-band reject in
+front of building a surface's box placements; `Cover` hoists `units_visible_to` out of its per-cell
+walk; and `SightSpans` is derived once per planning ply and shared across every field that ply
+builds, which takes the AI's field cost back toward parity.
+
+**It is left red and reported rather than tuned away.** `BR58.01` carries the numbers, the four
+options considered, and why the most likely right answer — making the pacer count candidates
+instead of milliseconds, so a viewed bout is seed-reproducible again — is a decision about the AI's
+own guarantee rather than a taskblock-58 edit. Raising the budget or rewriting the test would both
+have hidden that the AI now searches less on real hardware.
+
+#### Cover reads the field instead of walking its own line
+
+`Cover.is_covered_from` called `LoS.has_los` **per candidate cell**, inside the scoring loop
+taskblock-43 measured at 98.3 ms — and that call was itself a duplicate, since a field for the same
+threat had already computed the answer for every cell that turn. It takes the field as a **required**
+argument now, because an optional one is two branches deciding the same thing differently depending
+on what the caller happened to be holding.
+
+**Cover's own flatness is untouched and still open.** The blocker/unit walk takes two `Vector2i` and
+has no height in it. This fixed *what cover sees*; making cover directional in 3D is `PLAN.md`'s own
+item.
+
+#### A placement has a position; a cell does not own it
+
+`Grid.surfaces` was `Dictionary[Vector2i, Array[Surface]]`, so a floor's position was its dictionary
+*key* — it could not exist except as something a cell held, and moving one meant delete-and-re-add.
+The store is a flat `Array[Surface]` now, each carrying its own `cell`, and the per-cell dictionary
+is an index over it. **`surfaces_at()` kept its exact contract**, which is what made the swap cheap:
+thirty-one call sites are untouched, and the five that walked the dictionary directly got
+`placements()`. `RayCaster` came out slightly *cheaper* — one flat walk instead of a dictionary
+lookup per cell per ray cast.
+
+**`GROUND` now means "attaches to nothing"** rather than "attaches to the cell", which stopped being
+expressible once a placement carried its own position. The alternative on the table — retire it for
+a support requirement — needs the support graph this pass explicitly does not build. The
+one-per-cell refusal survives restated as occupancy, **deliberately not loosened to per-height**:
+that is a behaviour change wearing a refactor's clothes, and it is queued instead.
+
+**No behavioural difference, checked rather than asserted.** A seeded bout on `proving_ground` was
+digested at the previous commit and again after: board hash 3747730889 over 190 cells, bout hash
+989906744, 46 turns, 752 events, all four units' end cells and hp identical.
+
+#### A pick reports the face it struck
+
+`UnitPicker.ray_box_hit` has reported the struck face since taskblock-52, and both search loops above
+it threw it away — so a caller that needed a face had to cast a second ray, which would have been
+free to disagree. `UnitPicker.hit` and `PartPicker.hit` carry `normal` out now, `SelectionTarget`
+keeps it across `from_pick` / `to_hit` / `from_hit`, and `TacticsController._cell_at` puts it in the
+hit dict. **Nothing new is computed.** A miss carries no `normal` key rather than `Vector3.ZERO`,
+because a zero vector survives a `dot` and reads as an answer.
+
+
 ### UI review, reserve items — two fixed, one handed back
 
 **The performance readout survives an overlay swap.** `BattleScene.set_overlay` tears every module

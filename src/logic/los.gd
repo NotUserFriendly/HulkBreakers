@@ -1,43 +1,92 @@
 class_name LoS
 extends RefCounted
 
-## Line of sight over a Grid's opacity field. Cover (Grid.blockers) never
-## blocks vision — only opacity does; cover is a hit-resolution concern (Phase 6).
+## **Can A see B — asked of the geometry, and of nothing else.** taskblock-58 Pass C.
+##
+## Three things used to answer this question. `LoS` walked `Grid.line` reading `Grid.opacity`, a
+## flat per-cell float array; `VisibilityField` shadowcast from that same array and recorded its
+## own limit in its own doc comment (*occlusion data here is 2D, per cell, with no per-level*);
+## and `RayCaster` marched the real 3D boxes. **Geometry already knew what blocks, and a parallel
+## flat array also claimed to** — which is the no-parallel-systems rule broken in the open.
+##
+## `Grid.opacity` is retired. A wall blocks sight because it is a wall, not because a cell was
+## flagged, and everything follows from that:
+##
+## - **Height comes for free.** A 1.0 wall stops blocking sight to a unit standing at 3.0, which
+##   it did not before, because the array had no height in it.
+## - **`DamageResolver` stops clearing a flag** when a wall dies. Destroying the geometry *is*
+##   clearing it, and the flag it used to clear was the one thing standing between a shot-out wall
+##   and the sight line through the hole.
+## - **The editor's `sight_blocking` tool retires with the array.** There is nothing left to author.
+## - **Gases and windows are the exception, not the rule.** They arrive later as volumes carrying
+##   a transmission property. Opaque by declaration is the wrong default; opaque by being there is
+##   the right one.
+##
+## ## What a sight line actually is
+##
+## Two points, cast through `RayCaster.obstructed` — the same march, the same reject and the same
+## slab test a round takes, with the unit loop left off (`RayCaster.geometry_candidates`). Units
+## do not block sight: a body standing in the way is a shot-resolution concern the shot plane
+## answers, and treating one as opaque would have every unit blind to everything behind itself.
 
-const OPAQUE_THRESHOLD: float = 1.0
+## How high above a cell's own walkable surface a sight line runs.
+##
+## **Flagged, not designed** (CLAUDE.md). It is `UnitGeometry.DEFAULT_MUZZLE_HEIGHT` because a
+## sight line and a shot line wanting the same height is the honest default — every production
+## caller of `has_los` is gating or scoring a *shot* — and inventing a second, differently-named
+## constant for the eye would be a balance number presented as design. The real answer arrives
+## with a per-shell sensor height, at which point this becomes the fallback rather than the rule.
+const SIGHT_HEIGHT: float = UnitGeometry.DEFAULT_MUZZLE_HEIGHT
 
 
-## True if nothing opaque sits strictly between a and b. The two endpoint
-## cells' own opacity never blocks sight to/from themselves. Because
-## Grid.line is a symmetric supercover (both cells bordering an exact corner
-## crossing are included), a single opaque cell at a corner is enough to
-## block a diagonal shot through that gap — the "corner-blocking rule".
+## True if no world geometry stands between `a` and `b`.
+##
+## **The two endpoint cells never block sight to or from themselves** — the same exemption the old
+## supercover walk expressed by skipping the first and last cell of its line, restated as the two
+## cells' own parts being excluded from this one query. A unit standing in a doorway can see out
+## of it; a wall cell can be seen into.
+##
+## The corner-blocking rule the supercover walk gave for free is now geometric rather than
+## stipulated: two wall cells meeting at a corner share a face plane, and a ray threading the
+## lattice point between them meets one of them, because the boxes are actually there.
 static func has_los(grid: Grid, a: Vector2i, b: Vector2i) -> bool:
-	var cells: Array[Vector2i] = Grid.line(a, b)
-	for i in range(1, cells.size() - 1):
-		if grid.get_opacity(cells[i]) >= OPAQUE_THRESHOLD:
-			return false
-	return true
+	if a == b:
+		return true
+	return not RayCaster.obstructed(
+		grid, sight_point(grid, a), sight_point(grid, b), _endpoints(grid, a, b)
+	)
 
 
-## taskblock-27 (CC, re-diagnosing tb26 B2 a second time — confirmed still
-## broken on a real bout's own combat log, every playstyle frozen from
-## Turn 2 onward): how many opaque cells sit between `a` and `b` — 0 means
-## `has_los` would return true. Unlike a boolean, this is a MONOTONIC
-## signal a scorer can climb even while no candidate cell has full LOS
-## yet: working around a corner reduces the obstruction count one wall at
-## a time, where raw Chebyshev distance-to-preferred-range can plateau or
-## even worsen mid-detour (the exact freeze this exists to fix — see
-## the retired engagement scorer's own use of it). Same `Grid.line` walk
-## `has_los` already does, just counting instead of early-exiting on the
-## first hit — never a second, differently-shaped visibility test.
-static func obstruction_count(grid: Grid, a: Vector2i, b: Vector2i) -> int:
-	var cells: Array[Vector2i] = Grid.line(a, b)
-	var count := 0
-	for i in range(1, cells.size() - 1):
-		if grid.get_opacity(cells[i]) >= OPAQUE_THRESHOLD:
-			count += 1
-	return count
+## Where a sight line starts and ends for a cell: `SIGHT_HEIGHT` above whatever that cell's own
+## walkable surface stands at. An unfloored cell reports 0.0 — the same answer
+## `UnitGeometry.true_height_for_cell` already gives every other caller, rather than a second
+## opinion about where a floor that is not there would be.
+static func sight_point(grid: Grid, cell: Vector2i) -> Vector3:
+	return Vector3(
+		float(cell.x) * UnitGeometry.CELL_SIZE,
+		UnitGeometry.true_height_for_cell(cell, grid) + SIGHT_HEIGHT,
+		float(cell.y) * UnitGeometry.CELL_SIZE
+	)
+
+
+## Every part standing at either endpoint cell — what the endpoint exemption excludes.
+##
+## Blockers, placed surfaces and loose field items alike: a unit on a catwalk is standing *on* a
+## surface whose box its own sight line begins inside, and a floor that blinded whoever stood on
+## it would be a spectacular way to fail this pass.
+static func _endpoints(grid: Grid, a: Vector2i, b: Vector2i) -> Array[Part]:
+	var parts: Array[Part] = []
+	for cell: Vector2i in [a, b]:
+		var blocker: Part = grid.blockers.get(cell)
+		if blocker != null:
+			parts.append(blocker)
+		for surface: Surface in grid.surfaces_at(cell):
+			if surface.part != null:
+				parts.append(surface.part)
+		for item: Variant in grid.field_items.get(cell, []):
+			if item is Part:
+				parts.append(item)
+	return parts
 
 
 ## All cells within Chebyshev `radius` of origin (inclusive) that have LoS
