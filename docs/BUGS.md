@@ -2294,6 +2294,38 @@ not change the sim at all"* — is comparing a **budgeted** run against an **unb
 was only ever going to hold while planning was fast enough. **That fragility predates this pass;
 this pass is what walked it off the edge.**
 
+- **2026-08-05 (taskblock-58 Pass C.2) — the entry stays `Active`, and the test stops carrying it.**
+  [CC `5b7ef20b-5059-45dd-bc08-da8dc537ad93`] `test_ai_batch_yield.gd` now raises the budget so it
+  cannot trip, with a companion assertion that the raise really was enough rather than a guess about
+  headroom. **That is not this defect being hidden** — it is refusing to let one test carry two
+  claims. The test was written to assert a seeded bout is identical driven through the yielding
+  overlay or through a tight loop; it was also, accidentally, asserting something about wall-clock,
+  because the yielding path aborts on a deadline and the tight loop has no pacer to abort.
+
+  **And the low budget is not the bug — the bug is that it is wall-clock at all.** A budget that
+  fires on ordinary turns is a governor rather than a backstop, and a wall-clock governor varies by
+  machine, so the same seed produces different bouts on different hardware. That contradicts the
+  standing determinism rule and has been latent since taskblock-44; nothing observed it while
+  planning cost stayed under the number. **Raising `DEFAULT_BUDGET_MSEC` would hide it until the
+  next cost increase**, at which point this repeats with worse numbers.
+
+  **The mechanism, so the next reader does not re-derive it:** `PlanPacer.should_abort()` compares
+  `Time.get_ticks_msec()` against a deadline set in `begin()`. Both candidate loops
+  (`utility_planner.gd`, `utility_lookahead.gd`) sit inside one `begin()` scope, so one per-turn
+  counter would cover both.
+
+  **A second test had the identical shape and was flaky rather than red.**
+  `test_watched_run.gd::test_a_watched_seed_matches_what_the_headless_path_reported` compares a
+  watched run (with a pacer) against `BoutCorpus`'s record (played with none), and **passed in
+  isolation while failing under full-suite load** — 39 turns against the corpus's 67. That is what a
+  wall-clock variable looks like from the outside, and it is the more alarming of the two, because a
+  test that fails only when the machine is busy reads as a flake rather than as a finding. Given the
+  same treatment and the same companion assertion. The addendum named only `test_ai_batch_yield`;
+  extending it to the second instance of the same pattern is recorded here rather than done quietly.
+
+  **The direction of the fix** — pace on candidates, keep wall-clock only as a pathological
+  backstop — is `PLAN.md`'s own item now, not this entry's to carry.
+
 **Deliberately not done, because each is a decision rather than a fix:**
 - Raising `DEFAULT_BUDGET_MSEC`. It is flagged in its own comment as "a guarantee that the turn
   ends, not a balance figure", and tuning a constant so a test passes is not a fix.

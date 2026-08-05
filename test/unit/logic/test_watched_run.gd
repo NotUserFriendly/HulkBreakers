@@ -1,5 +1,10 @@
 extends GutTest
 
+## taskblock-58 Pass C.2: the wall-clock budget the watched-vs-headless comparison raises so it
+## cannot trip. Ten minutes — far past any turn, so reaching it is a real defect rather than a busy
+## machine. `test_a_watched_seed_matches_what_the_headless_path_reported` has why.
+const UNREACHABLE_BUDGET_MSEC := 1000 * 60 * 10
+
 ## taskblock-47 Pass D: the watched run's sequencing and its report.
 ##
 ## The pass's real acceptance is the last test in this file: **a watched seed produces
@@ -173,6 +178,19 @@ func test_the_table_shows_seeds_that_have_not_played_yet() -> void:
 ## `PlanPacer`, since that is what a rendered bout does, so this also pins that
 ## suspending a plan does not change what the bout decides.
 ##
+## ## taskblock-58 Pass C.2: the budget is raised so it cannot trip
+##
+## **The same treatment, and the same reason, as `test_ai_batch_yield`.** The headless half of this
+## comparison is `BoutCorpus`'s record, which was played with no pacer at all; the watched half runs
+## with one. So the equality was quietly carrying a second claim — that planning fits inside
+## `PlanPacer`'s wall-clock deadline — and **this file went red under full-suite load while passing
+## in isolation**, which is what a wall-clock variable looks like from the outside.
+##
+## `BR58.01` owns the defect: the budget being wall-clock **at all** means the same seed produces
+## different bouts on different hardware, or on the same hardware under different load. Raising it
+## here restores what the test was built to assert — that *suspending* a plan changes nothing. The
+## companion assertion below checks the raise was genuinely enough rather than assuming headroom.
+##
 ## One seed, deliberately: the property is either true or it is not, and checking it
 ## twenty times would put this file in the expensive tier for no extra confidence.
 func test_a_watched_seed_matches_what_the_headless_path_reported() -> void:
@@ -191,6 +209,7 @@ func test_a_watched_seed_matches_what_the_headless_path_reported() -> void:
 	var runner := BoutRunner.new(built["state"], built["mission"], CompletionSampler.TURN_CAP)
 	# What a rendered bout does: slice the planning so the window keeps breathing.
 	runner.pacer = PlanPacer.new()
+	runner.pacer.budget_msec = UNREACHABLE_BUDGET_MSEC
 	await runner.run_to_completion()
 	var mission: MissionState = built["mission"]
 
@@ -212,3 +231,7 @@ func test_a_watched_seed_matches_what_the_headless_path_reported() -> void:
 		"a watched seed must end the way the headless run said it did"
 	)
 	assert_eq(runner.turns_taken, int(headless["turns"]), "and take the same number of turns")
+	assert_false(
+		(runner.pacer as PlanPacer).aborted,
+		"the raised budget must genuinely not be reached, or this is measuring wall-clock again"
+	)

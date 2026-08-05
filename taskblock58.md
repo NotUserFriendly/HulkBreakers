@@ -113,6 +113,118 @@ agreed; field build cost and per-query cost both reported.
 
 ---
 
+# PASS C.2 — Merge C, and stop the pacer being the variable
+
+*Rolled in from the `taskblock58-pass-c2.md` addendum, written after reviewing branch
+`tb58-pass-c`. Slots in after Pass C, before D.*
+
+**One correction to the addendum's own framing, since both numbers stay in play.** The
+**1.13x (682 s -> 770 s)** figure is the *whole suite*, and what it replaced was a wrong 2.2x —
+not the 1.38x. **1.38x is *per-turn planning*** (412 ms -> 569 ms), a different measurement,
+taken after the optimisations, and it stands. Both are true of the same branch.
+
+**Pass C merges.** It is functionally complete, every sight, cover, overwatch, field, picker and map
+test passes, and the re-taken suite cost is **1.13x (682 s → 770 s)** rather than the 1.38x first
+reported — the earlier "after" predated three optimisations that then landed. That is acceptable.
+
+**The defect Pass C exposed is older than Pass C.** `PlanPacer` measured **412 ms mean per turn at Pass
+B against a 400 ms budget**: the budget was already being exceeded before this block. C walked it far
+enough off the edge to be observed.
+
+**And the budget being low is not the bug.** The bug is that it is **wall-clock at all**. A budget that
+fires on ordinary turns is not a backstop, it is a governor — and a wall-clock governor varies by
+machine, so the same seed produces different bouts on different hardware. That has been latent since
+taskblock-44 and nothing observed it while planning cost stayed under the number. **Raising the budget
+hides it until the next cost increase**, at which point this conversation repeats with worse numbers.
+
+---
+
+## C2.1 — Make the budget stop being the variable in `test_ai_batch_yield`
+
+`test_a_yielding_batch_produces_the_identical_bout` was written to assert one thing: **the same seed
+through the yielding overlay path and through a tight `BoutRunner` loop lands in the identical state.**
+It is now accidentally asserting something about the budget instead, because the yielding path aborts
+on wall-clock and the tight loop does not.
+
+- **Set `budget_msec` high enough in this test that it cannot trip**, and say in the test why: the
+  budget is not this test's subject, and leaving it as the variable means a slower machine fails a test
+  about determinism for reasons that have nothing to do with determinism.
+- **Point the comment at `BR58.01`.** The regression lives in the ledger with its numbers; the test goes
+  back to testing what it was built to test.
+- **Do not weaken the fingerprint comparison.** The equality is the whole test.
+
+**This is not hiding the regression** — it is refusing to let one test carry two claims. The pacer's
+defect is recorded, owned and measured; this test is about yielding.
+
+**TESTS:** the fingerprint equality passes with the budget raised; a companion assertion that the
+raised budget is genuinely not reached during the run (**otherwise the fix is a guess about
+headroom**).
+
+## C2.2 — `BR58.01` carries the full picture, and stays open
+
+Append to the entry, do not close it:
+
+- **412 ms mean at Pass B, 569 ms at Pass C, against a 400 ms budget**, twelve steps at seed 4242.
+- **The budget was already exceeded before this block.**
+- **The mechanism**: `PlanPacer.should_abort()` compares `Time.get_ticks_msec()` to a deadline, so
+  whether a unit finishes planning depends on the machine. Viewed and headless paths therefore diverge,
+  which contradicts the standing determinism rule.
+- **The direction of the fix**, so the next reader does not re-derive it: pace on **candidates**, keep
+  wall-clock only as a genuinely pathological backstop.
+
+`SUPERSEDED.md` gets nothing yet — nothing has been reversed, and the fix is not built.
+
+## C2.3 — File the pacer fix as its own PLAN item
+
+**Not built here.** It is a behaviour change with test churn that cannot be sized without running it,
+and blocking the editor work on a taskblock-44 determinism bug is the wrong trade.
+
+The item carries:
+
+- **Pace on candidates, not milliseconds.** `note_candidate()` is already called once per scored
+  candidate at both sites and `should_abort()` is already called immediately before each, so **neither
+  call site changes.** Same seed → same candidates in the same order → both paths abort identically.
+- **The subtlety is the point of it.** `note_candidate()` returns early headless today, so a
+  deterministic budget must count **unconditionally** — which means headless bouts start aborting too.
+  That sounds like a regression and it is the fix: **determinism means both paths do the same thing,
+  not that neither aborts.**
+- **Keep wall-clock as a backstop at a pathological threshold** — seconds, not milliseconds. Set where
+  ordinary play cannot reach it, its nondeterminism is unreachable in practice while a runaway board
+  still terminates. Dropping the time stop entirely trades *thinking worse* for *freezing longer*,
+  which is the failure `PlanPacer` was built to prevent.
+- **The cap wants a measured distribution, not a number.** The suite reports a **~900 candidates/turn
+  mean over 1,063 turns**, and **a mean is not a cap** — the cap lives in the tail, the value that lets
+  ordinary turns finish and stops pathological ones. Same shape as taskblock-50's `SAMPLE_SEEDS`
+  derivation, and the cap is balance-adjacent so it must not be invented.
+- **Expect golden churn.** Every seeded bout that currently completes headlessly may begin aborting
+  mid-plan. Unsized deliberately; sizing it is the item's first task.
+
+## C2.4 — Merge, and reunite the docs
+
+The taskblock-58 docs for A through C are on the branch; `master` has A and B's code with their
+changelog entries pending. **Merging resolves that** — the split was correct while the branch stood
+apart and stops being correct on merge.
+
+---
+
+## Acceptance
+
+- Branch `tb58-pass-c` merges to `master`, suite green.
+- `test_ai_batch_yield` is green because the budget is no longer its variable, not because the
+  comparison was weakened.
+- `BR58.01` carries the numbers, the mechanism and the fix direction, and stays `Active`.
+- A PLAN item exists for the pacer, with the cap named as a measurement rather than a value.
+
+## Not this pass's job
+
+- **Building the candidate-paced budget.** Its own item.
+- **Raising `DEFAULT_BUDGET_MSEC`.** It would make the symptom go away and leave the machine-dependence
+  in place.
+- **`Cover.is_covered_from`'s flatness**, `SIGHT_HEIGHT` as a per-shell sensor, or
+  `VisibilityField`'s over-inclusion. All named in the Pass C report, all their own items.
+
+---
+
 # PASS D — Seven tools
 
 Ten become seven, grouped by what a click *means* rather than what it touches.

@@ -53,6 +53,22 @@ var module_context: ModuleContext = null
 ## taskblock-57 Pass F: the mode to go back to when aiming ends, or `&""` when not aiming. **The id,
 ## not the `ViewMode`** — modes are rebuilt from the table on demand, so holding an instance would
 ## restore a stale copy of a declaration that may have been edited.
+## taskblock-58 Pass C.2: **the pacer's budget, so it can stop being a test's hidden variable.**
+##
+## The view owns the pacer — only something in a tree can supply a frame signal — so the view
+## owning its budget follows. It defaults to `PlanPacer.DEFAULT_BUDGET_MSEC` and production never
+## sets it; what this exists for is `test_ai_batch_yield.gd`, which asserts a seeded bout is
+## identical driven through here or through a tight loop, and which was accidentally asserting
+## something about wall-clock instead. See `BR58.01` for why the budget is the wrong shape.
+var pacer_budget_msec: int = PlanPacer.DEFAULT_BUDGET_MSEC
+
+## The pacer `advance_ai_turns` last built, or null when it ran with none (outside a tree).
+##
+## **Diagnostics only, never read by planning** — the same standing that `PlanPacer.aborted` and
+## `yields` already have. A test that raises the budget has to be able to check the raise was
+## actually enough, or the fix is a guess about headroom rather than a fix.
+var last_pacer: PlanPacer = null
+
 var _mode_before_aim: StringName = &""
 
 
@@ -304,6 +320,8 @@ func advance_ai_turns(p_battle: BattleScene) -> void:
 	if is_inside_tree():
 		runner.pacer = PlanPacer.new()
 		runner.pacer.frame_signal = get_tree().process_frame
+		runner.pacer.budget_msec = pacer_budget_msec
+	last_pacer = runner.pacer
 	var touched_ids: Dictionary = {}
 	while not runner.finished and not wants_turn_for(p_battle.combat_state.current_unit()):
 		set_thinking_label(PlanPacer.thinking_label(p_battle.combat_state.current_unit()))
