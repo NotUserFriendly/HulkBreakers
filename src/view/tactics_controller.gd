@@ -454,13 +454,18 @@ func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 					"kind": Enums.HitKind.UNIT,
 					"unit": unit,
 					"part": part_hit["part"],
-					"cell": unit.cell
+					"cell": unit.cell,
+					# taskblock-58 Pass A: the struck face, carried for the same reason
+					# the struck Part is — the ray test already knows it and a caller
+					# that needs it must not have to cast a second ray to find out.
+					"normal": part_hit["normal"],
 				}
 			return {
 				"kind": Enums.HitKind.PART,
 				"unit": null,
 				"part": part_hit["part"],
-				"cell": part_hit["cell"]
+				"cell": part_hit["cell"],
+				"normal": part_hit["normal"],
 			}
 	if ground_t == null:
 		return null

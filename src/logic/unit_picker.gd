@@ -13,27 +13,40 @@ extends RefCounted
 ## The nearest living unit whose body the ray actually passes through, the
 ## specific Part whose own box was hit (docs/10 taskblock05 C: the same
 ## nearest-box search already knows this — exposing it is what lets a 3D
-## hover highlight one exact part rather than a whole unit), and the ray
-## parameter `t` of that hit — or an empty Dictionary if none. A caller with
+## hover highlight one exact part rather than a whole unit), the ray
+## parameter `t` of that hit, and **the world normal of the face it entered
+## through** — or an empty Dictionary if none. A caller with
 ## both this and BoardPicker.plane_hit_t compares the two `t` values
 ## directly: both parametrize the same (from, dir) ray, so whichever is
 ## smaller is nearer the camera and wins.
+##
+## taskblock-58 Pass A: `normal` is not new arithmetic. The slab test has
+## reported the struck face since taskblock-52 and this search threw it away on
+## the way out, so a caller that needed a face had to cast a second ray to get
+## one — which is the second computation this project keeps deleting. **A miss
+## carries no `normal` key at all**, rather than `Vector3.ZERO`, because a zero
+## vector is a direction a caller can dot with and get a plausible answer from.
 static func hit(units: Array[Unit], from: Vector3, dir: Vector3) -> Dictionary:
 	var nearest_unit: Unit = null
 	var nearest_part: Part = null
 	var nearest_t: float = INF
+	var nearest_normal := Vector3.ZERO
 	for unit: Unit in units:
 		if not unit.alive:
 			continue
 		for placement: BoxPlacement in UnitGeometry.placements(unit):
-			var t: Variant = ray_box_t(placement, from, dir)
-			if t != null and (t as float) < nearest_t:
-				nearest_t = t as float
+			var box_hit: Dictionary = ray_box_hit(placement, from, dir)
+			if box_hit.is_empty():
+				continue
+			var t: float = box_hit["t"]
+			if t < nearest_t:
+				nearest_t = t
 				nearest_unit = unit
 				nearest_part = placement.part
+				nearest_normal = box_hit["normal"]
 	if nearest_unit == null:
 		return {}
-	return {"unit": nearest_unit, "part": nearest_part, "t": nearest_t}
+	return {"unit": nearest_unit, "part": nearest_part, "t": nearest_t, "normal": nearest_normal}
 
 
 ## Ray-vs-oriented-box via the standard slab test, done in the box's own

@@ -146,3 +146,46 @@ func test_the_picker_rejects_cells_the_ray_goes_nowhere_near() -> void:
 ## cell size rather than assumed — a tight bound here would clip real hits.
 func test_the_reject_radius_clears_more_than_one_cell() -> void:
 	assert_gt(PartPicker.SKIP_RADIUS, 1.0, "a part's boxes can overhang its cell")
+
+
+## taskblock-58 Pass A: **the struck face survives the click path.** `PartPicker` reports it,
+## `from_pick` keeps it, and `to_hit()`/`from_hit()` carry it across the `board_clicked` signal —
+## which is the whole route between the ray test and an editor tool that places against a face.
+func test_the_struck_face_survives_a_pick_and_the_hit_dict_round_trip() -> void:
+	var barrel: Part = _barrel()
+	var raw_pick: Dictionary = {
+		"unit": null,
+		"part": barrel,
+		"cell": Vector2i(5, 5),
+		"t": 1.0,
+		"normal": Vector3.UP,
+	}
+
+	var picked: SelectionTarget = SelectionTarget.from_pick(raw_pick)
+	assert_eq(picked.normal, Vector3.UP, "the pick's own face")
+
+	var restored: SelectionTarget = SelectionTarget.from_hit(picked.to_hit())
+	assert_eq(restored.normal, Vector3.UP, "and it comes back across the signal")
+
+
+## A target built for something that was never resolved against geometry reports **no** face.
+## `Vector3.ZERO` would be a direction a caller could dot with and believe.
+func test_a_target_with_no_struck_face_reports_null_not_a_zero_vector() -> void:
+	assert_null(SelectionTarget.none().normal, "the empty selection struck nothing")
+	assert_null(SelectionTarget.for_cell(Vector2i(2, 2)).normal, "a ground-plane cell has no face")
+	assert_null(
+		SelectionTarget.for_part(_barrel(), Vector2i(1, 1)).normal,
+		"and a target built without a pick has not been told one"
+	)
+	assert_false(SelectionTarget.for_cell(Vector2i(2, 2)).to_hit().has("normal"))
+
+
+## **`none()` is a shared singleton.** A miss that wrote its normal onto it would leave that face
+## on the empty selection for every later caller — a stale answer with no way to notice.
+func test_a_miss_never_writes_a_face_onto_the_shared_empty_selection() -> void:
+	var missed: SelectionTarget = SelectionTarget.from_pick(
+		{"unit": null, "part": null, "cell": Vector2i(3, 3), "normal": Vector3.UP}
+	)
+
+	assert_true(missed.empty, "no part means nothing was selected")
+	assert_null(SelectionTarget.none().normal, "and the singleton is untouched")
