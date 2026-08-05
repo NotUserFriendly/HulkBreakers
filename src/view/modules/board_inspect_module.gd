@@ -22,6 +22,17 @@ extends ViewModule
 ## The same normalized `{"kind", "unit", "cell"}` shape `TacticsController.board_clicked` emits, so
 ## a debug panel can borrow a click against either module identically.
 signal board_clicked(hit: Dictionary)
+
+## taskblock-57 Pass G2: **the cell under the cursor**, emitted on every mouse motion that lands on
+## the board, and once with the board's own out-of-bounds answer when it leaves.
+##
+## The editor's coordinate readout needs "which cell is the cursor over" and this module already
+## owns the motion handler, the camera and the ray — a second module casting its own ray on every
+## mouse move would be a second answer to one question, computed twice a frame.
+##
+## `cell` is `null` when the cursor is off the board entirely, which the readout shows as blank
+## rather than as the last cell it saw.
+signal hovered_cell(cell: Variant)
 ## Emitted when a click opened the inspect panel, so a mode that paces a bout can pause it.
 signal inspect_opened
 
@@ -171,6 +182,10 @@ func _update_hover(screen_pos: Vector2) -> void:
 		return
 	var from: Vector3 = camera.project_ray_origin(screen_pos)
 	var dir: Vector3 = camera.project_ray_normal(screen_pos)
+	# taskblock-57 Pass G2: the cell under the cursor, off the ray this handler already cast. Emitted
+	# before the highlight so a listener sees the move even in a mode with no unit views at all —
+	# which the editor is, until a board is loaded into it.
+	_emit_hovered_cell(from, dir, battle.combat_state.grid)
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
 	var hovered_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
 	var hovered_part: Part = hit.part as Part if not hit.is_empty() else null
@@ -179,6 +194,17 @@ func _update_hover(screen_pos: Vector2) -> void:
 			view.highlight_part(hovered_part)
 		else:
 			view.clear_highlight()
+
+
+## Emits the cell the cursor is over, or null when the ray misses the board or lands off its edge.
+##
+## **Off-board is `null`, not the nearest cell.** The readout says what is under the cursor, and
+## "the last cell before you left" is a different claim that reads as the cursor being stuck.
+func _emit_hovered_cell(from: Vector3, dir: Vector3, grid: Grid) -> void:
+	var cell: Variant = BoardPicker.cell_at_ray(from, dir, grid)
+	if cell != null and not grid.in_bounds(cell as Vector2i):
+		cell = null
+	hovered_cell.emit(cell)
 
 
 func _inspect() -> InspectModule:

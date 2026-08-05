@@ -43,6 +43,12 @@ extends ViewModule
 ## authoring session that starts with no units at all wants an entry point that builds a world
 ## without a bout, which is *Main menu*'s job and is sequenced after this in `PLAN.md`.
 
+## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor — a small
+## icon of what is being placed — **or** is carried by the action bar's own highlight. Either is
+## fine; neither is not."* The bar's highlight is the option taken, and a signal is what lets the
+## bar follow a tool set from anywhere — its buttons, a pick from the parts list, or a test.
+signal tool_changed(tool: StringName)
+
 ## Every meaning a board click can carry. Open `StringName`s and generated into the dropdown from
 ## this list, so the panel and the router cannot disagree about which tools exist.
 const TOOLS: Array[StringName] = [
@@ -113,7 +119,16 @@ var last_cell: Variant = null
 # what it should have been doing through the dropdowns all along.
 
 ## What a board click does. One of `TOOLS`.
-var active_tool: StringName = &"place"
+##
+## A setter rather than a plain field so the highlight cannot fall out of step with the tool: every
+## route that changes it goes through here, which is the same "one emitter, not one per call site"
+## reasoning `QueueLog` is built on.
+var active_tool: StringName = &"place":
+	set(value):
+		if active_tool == value:
+			return
+		active_tool = value
+		tool_changed.emit(value)
 ## Which of `PLACEMENT_KINDS` a placed part becomes.
 var selected_kind: StringName = MapPlacement.KIND_SURFACE
 ## The part the `place` tool places. Defaulted at mount to the first placeable id, so a fresh editor
@@ -138,10 +153,25 @@ var status_label: Label = null
 var warnings_label: RichTextLabel = null
 
 var _part_ids: Array[StringName] = []
+## The warnings already put in the combat log, so a redraw does not repeat them. See
+## `_report_warnings`.
+var _reported_warnings: Array[String] = []
 
 
 func module_id() -> StringName:
 	return &"editor"
+
+
+## taskblock-57 Pass G2: *"Section details go where the Inspect Viewer sits, with a toggle in UI
+## buttons."*
+##
+## **Declaring the slot is the whole of the toggle.** `INSPECT_VIEWER` is left-edge-pinned, so
+## `ViewModule.is_collapsible()` answers true from the slot alone and `UiButtonsModule` builds the
+## checkbox by sweeping for exactly that — no module is named in either file. The taskblock asked
+## for a toggle and the answer was a `preferred_slot()`, which is the collapse rule doing the job
+## it was built for in Pass A.
+func preferred_slot() -> StringName:
+	return ModuleSlots.INSPECT_VIEWER
 
 
 func _mount() -> void:
@@ -393,15 +423,44 @@ func _refresh_readout() -> void:
 				controller.undo_depth(),
 			]
 		)
-	if warnings_label == null:
-		return
 	# **Warnings are a list the author reads, not a gate** (F4). Both save buttons stay enabled
 	# whatever is in here, and so does Run Test Bout.
 	var problems: Array[String] = controller.warnings()
+	_report_warnings(problems)
+	if warnings_label == null:
+		return
 	if problems.is_empty():
 		warnings_label.text = "no warnings"
 		return
 	warnings_label.text = "\n".join(problems)
+
+
+## taskblock-57 Pass G2: **the warnings reach the combat log, and the significant ones announce.**
+##
+## *"Validation warnings go to the combat log, and the significant ones surface as announcements.
+## Warn, never block needs somewhere to warn."*
+##
+## Only what is **new** is emitted. This runs after every edit against a list recomputed whole, so
+## reporting all of it every time would put the same line in the log once per click. `EditorLog`
+## owns the diff and the significance rule; this holds what was last said, and it shrinks as
+## warnings clear so a reintroduced problem is reported again.
+func _report_warnings(problems: Array[String]) -> void:
+	var state: CombatState = (
+		context.battle.combat_state if context != null and context.battle != null else null
+	)
+	var fresh: Array[String] = EditorLog.arrived(_reported_warnings, problems)
+	_reported_warnings = problems.duplicate()
+	if fresh.is_empty():
+		return
+	EditorLog.report(state, fresh, controller.navigability_warnings())
+
+
+## Folds the section details away. The panel is the whole of what this module draws, so hiding it
+## hides the module — and the authoring verbs, which live on the bar, keep working while it is
+## folded. That is the point of a collapsible details panel rather than a collapsible editor.
+func _on_collapsed(value: bool) -> void:
+	if panel != null:
+		panel.visible = not value
 
 
 func _frame_content() -> void:
