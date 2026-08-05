@@ -11,8 +11,15 @@ extends ViewModule
 ## `set_log_path` is re-pointed on every battle load, because the legend shows where the current
 ## bout's log is being written and `file_sink` is rebuilt per bout.
 
+## How solid the sheet is, and how far its text sits from its own edge. Starting positions.
+const PANEL_ALPHA := 0.92
+const PANEL_PADDING := 12.0
+
 var controls_overlay: ControlsOverlay = null
 var keybindings_button: UiButton = null
+## The centred sheet itself. Public so a test reads back what is actually shown.
+var panel: PanelContainer = null
+var close_button: Button = null
 var label: Label = null
 
 
@@ -38,27 +45,63 @@ func _mount() -> void:
 	keybindings_button.pressed.connect(toggle)
 	_parent_into(context.slot(preferred_slot(), column), keybindings_button)
 
+	# **A real panel, centred, with a way out.** The UI review: *"Keybindings pop up should have a
+	# panel with a background that appears in the center of the screen, along with a [x] at the top
+	# right to dismiss it."* It was a bare `Label` tinted `DIM` and anchored into whatever corner was
+	# free, which reads as text that has escaped rather than as a thing you opened.
+	panel = PanelContainer.new()
+	panel.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, PANEL_ALPHA
+	)
+	for side: String in [
+		"content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"
+	]:
+		style.set(side, UiLayout.scaled(PANEL_PADDING))
+	panel.add_theme_stylebox_override("panel", style)
+
+	var sheet := VBoxContainer.new()
+	panel.add_child(sheet)
+
+	var header := HBoxContainer.new()
+	sheet.add_child(header)
+	var title := Label.new()
+	title.text = "Keybindings"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	close_button = Button.new()
+	close_button.text = "[x]"
+	close_button.focus_mode = Control.FOCUS_NONE
+	close_button.pressed.connect(toggle)
+	header.add_child(close_button)
+
 	label = Label.new()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# taskblock-57 Pass D: **the legend anchors itself when no column publishes one.** The battle
-	# layout has no `TOP_RIGHT` slot — that column existed for the readout cluster Pass D retires —
-	# and the placement table has no row for a wall of reference text. It is off by default (tb31
-	# Pass A: "reference, not chrome"), so a corner it shares with a closed Inspect costs nothing.
-	if column != null:
-		column.add_child(label)
-	elif context.ui_root != null:
-		context.ui_root.add_child(label)
-		label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	sheet.add_child(label)
+
+	# Centred on the surface rather than anchored to a corner — a modal reference sheet, which is
+	# what the review asked for and what it always behaved like.
+	if context != null and context.ui_root != null:
+		context.ui_root.add_child(panel)
+		# **Re-centred whenever it changes size, not once at build time.** `set_anchors_preset` works
+		# off the rect the node has *now*, and a `PanelContainer` built this frame has no size yet —
+		# so the sheet anchored itself around (0,0) and opened in the top-left corner. Measured: its
+		# centre came out at (0,0) against a screen centre of (960,540).
+		panel.anchor_left = 0.5
+		panel.anchor_top = 0.5
+		panel.anchor_right = 0.5
+		panel.anchor_bottom = 0.5
+		panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+		panel.resized.connect(_recentre)
+		_recentre()
 	else:
-		add_child(label)
+		add_child(panel)
 
 	controls_overlay = ControlsOverlay.new()
 	add_child(controls_overlay)
-	# "" placeholder: a module must build before a battle exists. `rebind()` corrects it the instant
-	# a real battle (and its `file_sink`) does.
-	controls_overlay.setup(label, "")
+	controls_overlay.setup(label, "", panel)
 
 
 func rebind() -> void:
@@ -67,9 +110,26 @@ func rebind() -> void:
 	controls_overlay.set_log_path(context.battle.file_sink.path)
 
 
+## Pulls the sheet back onto the centre line. Its offsets are half its own size each way, which is
+## a different number every time its content changes — the keybinding list grows a row whenever a
+## binding is added.
+func _recentre() -> void:
+	if panel == null:
+		return
+	var half: Vector2 = panel.size * 0.5
+	panel.offset_left = -half.x
+	panel.offset_top = -half.y
+	panel.offset_right = half.x
+	panel.offset_bottom = half.y
+
+
+## Summons or dismisses the sheet, and lights the button while it is up.
 func toggle() -> void:
-	if controls_overlay != null and controls_overlay.label != null:
-		controls_overlay.label.visible = not controls_overlay.label.visible
+	if panel != null:
+		panel.visible = not panel.visible
+		_recentre()
+	if keybindings_button != null:
+		keybindings_button.active = panel != null and panel.visible
 
 
 func _parent_into(parent: Control, child: Control) -> void:

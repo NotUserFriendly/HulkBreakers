@@ -243,7 +243,11 @@ func test_every_collapsible_module_gets_a_toggle_in_the_ui_buttons_cluster() -> 
 	var collapsible: Array[StringName] = []
 	for id: StringName in overlay.module_context.modules:
 		var module: ViewModule = overlay.module_context.modules[id]
-		if module != buttons and module.is_collapsible():
+		# **A module that builds its own control is not swept.** The UI review found the duplication
+		# the sweep produced: Inspect and the debug menu each own a button in this row already, and
+		# a derived toggle beside it was a second control with the same three letters doing a
+		# different thing. `provides_own_button()` is how a module says so.
+		if module != buttons and module.is_collapsible() and not module.provides_own_button():
 			collapsible.append(id)
 
 	gut.p("collapsible: %s" % ", ".join(collapsible))
@@ -334,8 +338,12 @@ func test_the_inspect_viewer_sits_in_its_own_top_left_slot() -> void:
 	assert_not_null(module, "the player mode declares an inspect viewer")
 
 	module.viewer.visible = true
+	module.frame.visible = true
 	await get_tree().process_frame
-	_assert_at(module.viewer.get_global_rect(), BattleLayout.inspect_viewer_rect(SCREEN), "viewer")
+	# **The FRAME is the placement.** The UI review put the viewer inside a padded panel — *"it needs
+	# a border of some sort, likely embedded in a panel so it can be padded"* — so the slot's rect is
+	# the frame's and the viewer sits one padding inside it.
+	_assert_at(module.frame.get_global_rect(), BattleLayout.inspect_viewer_rect(SCREEN), "viewer")
 	assert_false(
 		overlay.inspect().panel.is_ancestor_of(module.viewer),
 		"the viewer is still inside the panel -- the centre of the screen is not clear"

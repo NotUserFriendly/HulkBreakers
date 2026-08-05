@@ -24,7 +24,7 @@ extends ViewModule
 ## nothing.
 ##
 ## **Parented to `ui_root`, not to the module.** An overlay is a `Node3D`; a `Control` under one
-## gets no layout at all and every panel piles up at the origin on top of `TopLeftControls`. Third
+## gets no layout at all and every panel piles up at the origin in the same corner. Third
 ## full-rect container to hit that, which is why `test_debug_panel_layout.gd` asserts it rather than
 ## anyone eyeballing it once.
 

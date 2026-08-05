@@ -63,6 +63,13 @@ func preferred_slot() -> StringName:
 	return ModuleSlots.DEBUG_MENU
 
 
+## **`UiButtonsModule` builds this module's control by name** (the `DBG` square), so the derived
+## collapse toggle would be a second debug button doing a subtly different thing — which is what the
+## UI review saw as *"two debug options as well"*.
+func provides_own_button() -> bool:
+	return true
+
+
 ## Never constructed at all in a release export — the same hard gate both overlays enforced
 ## independently, not a hidden label.
 func _mount() -> void:

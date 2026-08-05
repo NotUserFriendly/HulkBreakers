@@ -108,10 +108,15 @@ static func action_bar_rect(screen: Vector2) -> Rect2:
 
 ## Top-right and **square** — the table says "~2/3 screen tall, square", so the height drives both
 ## extents. Escapes the safe rect, so it reaches the physical right edge.
+## **Padded off the corner**, like its viewer — the UI review: *"Also the panel itself is not padded
+## off the corner."* It escapes the safe rect, so its corner is the physical top-right of the window
+## and a panel hard against it reads as having fallen out of the layout rather than as being placed
+## in it. The performance monitor is the one surface the table genuinely wants flush.
 static func inspect_rect(screen: Vector2) -> Rect2:
 	var against: Rect2 = ModuleSlots.rect_for(ModuleSlots.INSPECT_PANEL, screen)
 	var side: float = UiLayout.safe_height(screen, INSPECT_HEIGHT_FRACTION)
-	return Rect2(Vector2(against.end.x - side, against.position.y), Vector2(side, side))
+	var pad: float = UiLayout.scaled(PADDING)
+	return Rect2(Vector2(against.end.x - side - pad, against.position.y + pad), Vector2(side, side))
 
 
 ## Top-left, the same height, half as wide. Split out so the centre of the screen stays clear.

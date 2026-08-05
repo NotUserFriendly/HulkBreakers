@@ -1,0 +1,251 @@
+extends GutTest
+
+## **The supervisor's third review pass over the layout, as tests.**
+##
+## The first two passes live in `test_layout_review.gd`; this is a second file rather than a longer
+## one because that file reached the linter's own cap on how many cases belong in one script, and
+## "which review pass raised it" is the only axis these split cleanly on.
+##
+## Same discipline as its sibling: **each test names what was seen**, and every assertion reads a
+## real node rather than the flag or the formatter behind it.
+
+const SCREEN := Vector2(1920, 1080)
+const TOLERANCE := 2.0
+
+
+func before_each() -> void:
+	DataLibrary.reset()
+	DataLibrary.load_all()
+
+
+func after_each() -> void:
+	DataLibrary.reset()
+	UiLayout.scale = 1.0
+
+
+func _overlay(mode: ViewMode) -> ControlOverlay:
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	var overlay: ControlOverlay = ControlOverlay.for_mode(mode)
+	battle.set_overlay(overlay)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return overlay
+
+
+## **THE REVIEW POINT**: *"Still two 'Inspect' keys... Wait there are THREE inspect related buttons.
+## One of which always does something, the other two flaky."* Plus *"Two debug options as well."*
+##
+## The cluster swept every collapsible module into a toggle, including the two that already had a
+## control of their own — producing a second `INS` that collapsed the panel instead of opening it,
+## and a `DP` beside the `DBG`.
+func test_no_module_has_two_controls_in_the_cluster() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+
+	var labels: Array[String] = []
+	for child: Node in buttons.row.get_children():
+		labels.append((child as UiButton).text)
+	if overlay.inspect().button != null:
+		labels.append(overlay.inspect().button.text)
+	gut.p("cluster: %s" % ", ".join(labels))
+
+	var seen: Dictionary = {}
+	for label: String in labels:
+		assert_false(seen.has(label), "two controls in the cluster are both labelled '%s'" % label)
+		seen[label] = true
+
+
+## The rule behind it, asserted at the module level so a third module that grows its own button is
+## covered the day it does.
+func test_a_module_with_its_own_button_is_not_swept_into_a_second_one() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+
+	for id: StringName in overlay.module_context.modules:
+		var module: ViewModule = overlay.module_context.modules[id]
+		if module.provides_own_button():
+			assert_false(
+				buttons.toggles.has(id), "%s builds its own control and was given a second one" % id
+			)
+
+
+## **THE REVIEW POINT**: *"Buttons which have something open should be highlighted with a border.
+## Button 'on', button is highlighted and module is visible. Button 'off', button is un-highlighted
+## and module is disabled/hidden."*
+func test_a_buttons_border_follows_whether_its_module_is_up() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+	var bar: ActionBarModule = overlay.module(&"action_bar") as ActionBarModule
+	var button: UiButton = buttons.toggles[&"action_bar"]
+
+	assert_true(button.active, "the bar is up, so its button must be lit")
+	assert_not_null(button.get_theme_stylebox("normal"), "and lit means a real border")
+	button.pressed.emit()
+	assert_false(bar.backing.visible, "sanity: it dismissed the bar")
+	assert_false(button.active, "a dismissed module must leave its button unlit")
+
+
+## **THE REVIEW POINT**: *"When the action bar is dismissed by the UI Button, the UI BUTTONS
+## shouldn't float in the middle, they should pin downward to the bottom edge of the screen. The
+## UNIT RESOURCES should do the same."*
+func test_dismissing_the_bar_drops_its_satellites_to_the_bottom_edge() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+	var resources: UnitResourcesModule = overlay.module(&"unit_resources") as UnitResourcesModule
+	var before: float = buttons.row.get_global_rect().end.y
+
+	(buttons.toggles[&"action_bar"] as UiButton).pressed.emit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var after: float = buttons.row.get_global_rect().end.y
+	gut.p("UI buttons bottom %.1f -> %.1f" % [before, after])
+	assert_gt(after, before, "the buttons stayed where the bar had been holding them up")
+	assert_almost_eq(
+		after,
+		resources.column.get_global_rect().end.y,
+		TOLERANCE,
+		"and the unit resources must drop with them"
+	)
+
+
+## **THE REVIEW POINT**: *"Debug button missing in editor mode."*
+func test_the_editor_has_a_debug_button() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+	if overlay.debug_panel_module() == null or overlay.debug_panel_module().panel == null:
+		pass_test("release build: there is no debug menu to reach")
+		return
+	assert_not_null(buttons.debug_button, "the editor cannot reach the debug menu")
+
+
+## **THE REVIEW POINT**: *"Keybindings pop up should have a panel with a background that appears in
+## the center of the screen, along with a [x] at the top right to dismiss it."*
+func test_the_keybindings_sheet_is_a_centred_panel_with_a_way_out() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var legend: ControlsLegendModule = overlay.module(&"controls_legend") as ControlsLegendModule
+
+	assert_not_null(legend.panel, "the legend is still a bare label")
+	assert_not_null(legend.panel.get_theme_stylebox("panel"), "with no background")
+	assert_not_null(legend.close_button, "and no way to dismiss it")
+	assert_eq(legend.close_button.text, "[x]")
+	assert_false(legend.panel.visible, "reference, not chrome -- it starts closed")
+
+	legend.toggle()
+	await get_tree().process_frame
+	assert_true(legend.panel.visible)
+	assert_true(legend.keybindings_button.active, "and its button lights while it is up")
+	var centre: Vector2 = legend.panel.get_global_rect().get_center()
+	gut.p("sheet centred at %v against %v" % [centre, SCREEN * 0.5])
+	assert_almost_eq(centre.x, SCREEN.x * 0.5, TOLERANCE + 2.0, "it is not centred")
+
+	legend.close_button.pressed.emit()
+	assert_false(legend.panel.visible, "the [x] did not dismiss it")
+	assert_false(legend.keybindings_button.active)
+
+
+## The H key and the button still flip **one** piece of state, which is the property tb31 built and
+## the review did not change.
+func test_the_key_and_the_button_still_share_one_state() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var legend: ControlsLegendModule = overlay.module(&"controls_legend") as ControlsLegendModule
+
+	legend.toggle()
+	assert_true(
+		legend.controls_overlay.is_open(), "the overlay reads the same state the button set"
+	)
+	var pressed := InputEventKey.new()
+	pressed.keycode = ControlBindings.TOGGLE_KEY
+	pressed.pressed = true
+	legend.controls_overlay._unhandled_input(pressed)
+	assert_false(legend.controls_overlay.is_open(), "the key must flip what the button flipped")
+
+
+## **THE REVIEW POINT**: *"Watch should go above the other buttons, with an approximately button
+## height gap between it and the actual turn related buttons."*
+func test_watch_sits_above_the_turn_verbs_with_a_gap() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var toggle: ControlToggleModule = overlay.module(&"control_toggle") as ControlToggleModule
+	var turns: TurnControlsModule = overlay.module(&"turn_controls") as TurnControlsModule
+	await get_tree().process_frame
+
+	var watch: Rect2 = toggle.button.get_global_rect()
+	var end_turn: Rect2 = turns.end_turn_button.get_global_rect()
+	gut.p("watch ends at %.1f, end turn starts at %.1f" % [watch.end.y, end_turn.position.y])
+	assert_lt(watch.end.y, end_turn.position.y, "Watch must be above the turn verbs")
+	assert_gt(
+		end_turn.position.y - watch.end.y,
+		UiLayout.scaled(ControlToggleModule.GAP_HEIGHT) * 0.5,
+		"and separated from them by about a button's height"
+	)
+
+
+## **THE REVIEW POINT**: *"Assume Control should move to the TURN ORDER MANAGEMENT section. Inject
+## is obsolete, and can be removed."* With Watch moved and Inject gone the cluster was empty, so it
+## is retired rather than left as a container of nothing.
+func test_the_spectator_carries_assume_control_in_its_turn_column() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
+	var toggle: ControlToggleModule = overlay.module(&"control_toggle") as ControlToggleModule
+
+	assert_not_null(toggle, "the spectator carries the control toggle in its turn-order column")
+	assert_eq(toggle.button.text, "Assume Control")
+	# **And still no unit input**, which is the contract folding this into `turn_controls` broke.
+	assert_false(
+		ViewModes.spectator().has_unit_input(), "a spectator cannot mutate through the view"
+	)
+	assert_null(overlay.module(&"turn_controls"), "so it declares no turn verbs at all")
+	assert_null(overlay.module(&"top_left_controls"), "and the cluster is retired outright")
+
+
+## The retirement is real: nothing in the catalog builds it and no mode names it.
+func test_nothing_declares_the_retired_cluster_any_more() -> void:
+	assert_false(ModuleCatalog.IDS.has(&"top_left_controls"))
+	assert_null(ModuleCatalog.build(&"top_left_controls"))
+	for mode: ViewMode in ViewModes.all():
+		assert_false(mode.modules.has(&"top_left_controls"), "%s still declares it" % mode.id)
+
+
+## **THE REVIEW POINTS** on padding: *"INSPECT in Player view — No padding on any of the elements.
+## Also the panel itself is not padded off the corner."*
+func test_inspect_is_padded_off_its_corner_and_inside_itself() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var pad: float = UiLayout.scaled(BattleLayout.PADDING)
+
+	var rect: Rect2 = BattleLayout.inspect_rect(SCREEN)
+	gut.p("inspect at %s on a %s screen" % [str(rect), str(SCREEN)])
+	assert_almost_eq(SCREEN.x - rect.end.x, pad, 0.001, "flush into the physical corner")
+	assert_almost_eq(rect.position.y, pad, 0.001)
+
+	var style: StyleBox = overlay.inspect().panel.get_theme_stylebox("panel")
+	assert_gt(style.content_margin_left, 0.0, "its rows run into its own border")
+	assert_gt(style.content_margin_top, 0.0)
+
+
+## **THE REVIEW POINT**: *"INSPECT VIEWER in Player view — Just a loose window, it needs a border of
+## some sort, likely embedded in a panel so it can be padded."*
+func test_the_inspect_viewer_sits_in_a_padded_frame() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var module: InspectViewerModule = overlay.module(&"inspect_viewer") as InspectViewerModule
+
+	assert_not_null(module.frame, "the viewer is still a bare subview")
+	assert_true(module.frame.is_ancestor_of(module.viewer))
+	var style: StyleBoxFlat = module.frame.get_theme_stylebox("panel") as StyleBoxFlat
+	assert_gt(style.border_width_left, 0, "it has no border")
+	assert_gt(style.content_margin_left, 0.0, "and nothing to pad the view off it")
+
+
+## **THE REVIEW POINT**: *"EDIT INSPECT VIEWER — Panel needs some padding all around it."*
+func test_the_editors_details_panel_is_padded_all_round() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var style: StyleBox = editor.panel.get_theme_stylebox("panel")
+
+	for side: float in [
+		style.content_margin_left,
+		style.content_margin_right,
+		style.content_margin_top,
+		style.content_margin_bottom
+	]:
+		assert_gt(side, 0.0, "the details panel has an unpadded edge")

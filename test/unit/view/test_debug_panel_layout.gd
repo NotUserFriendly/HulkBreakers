@@ -1,6 +1,6 @@
 extends GutTest
 
-## taskblock-48 Pass B2.5: **the debug panels do not sit on top of `TopLeftControls`.**
+## taskblock-48 Pass B2.5: **the debug panels stay where a layout can see them.**
 ##
 ## They were added as plain children of a full-rect overlay, which puts them at (0,0)
 ## — directly over the Inject / New Battle / Watch row. `PLAN.md` notes this is the
@@ -60,43 +60,13 @@ func _overlay() -> ControlOverlay:
 	return battle.overlay as ControlOverlay
 
 
-func test_the_debug_panels_never_overlap_the_top_left_controls() -> void:
-	var overlay: ControlOverlay = _overlay()
-	if overlay.replay().suite_run_panel == null:
-		# The panels are gated on `OS.is_debug_build()`. In a release run there is
-		# nothing to collide, and saying so beats a silent pass.
-		gut.p("debug panels not built (release build) — nothing to check")
-		assert_true(true)
-		return
-
-	# Bound so the panel has content and therefore a real rect — an empty container
-	# collapses to zero size and would clear every obstacle by not existing.
-	overlay.replay().watched_run_panel.bind(overlay.battle, WatchedRun.of([1, 2] as Array[int]))
-	var controls: Control = overlay.module(&"top_left_controls").controls
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-	var row: Rect2 = controls.get_global_rect()
-	# **The rects have to be real, or "no overlap" is free.** A zero-size container
-	# clears every obstacle by not existing, which is how the first version of this
-	# passed while the panels were parented to a `Node3D` and had no layout at all.
-	assert_gt(row.size.x, 0.0, "sanity: the controls row has a real rect")
-	# taskblock-51: the performance readout is checked here too. It shipped anchored to the
-	# right edge but *positioned* in parent space, which put it at x = -16 — hard against
-	# the left edge with only its right-hand sliver on screen. A panel that is off screen is
-	# not a panel, and nothing here would have caught it.
-	_perf_panel(overlay).visible = true
-	await get_tree().process_frame
-	for panel: Control in [
-		overlay.replay().suite_run_panel, overlay.replay().watched_run_panel, _perf_panel(overlay)
-	]:
-		var rect: Rect2 = panel.get_global_rect()
-		gut.p("%s — controls %s, panel %s" % [panel.name, row, rect])
-		assert_gt(rect.size.x, 0.0, "%s has a real rect" % panel.name)
-		assert_false(
-			row.intersects(rect),
-			"%s overlaps TopLeftControls — controls %s, panel %s" % [panel.name, row, rect]
-		)
+## **Retired with the cluster it measured.** The UI review deleted `top_left_controls` outright —
+## Inject to the UI-buttons `DBG` square, New Battle dropped, Assume Control into the turn-order
+## column — so there is no corner cluster left for a debug panel to land on top of.
+##
+## What the test was really guarding is covered by the one below it: the panels stay inside the
+## viewport, and they are anchored rather than parented to a `Node3D` with no layout at all, which
+## was the original defect. `test_layout_review_3.gd` asserts the surviving controls' own placement.
 
 
 ## The panels must still be **on screen**. Moving them out of the way by pushing them

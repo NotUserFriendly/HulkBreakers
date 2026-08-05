@@ -109,6 +109,10 @@ const DEFAULT_CLAIM_HEIGHT := 2.4
 ## not a decision — see `_labelled`, which clips rather than widens.
 const LABEL_WIDTH := 96.0
 
+## How far the details panel's content sits inside its own border, before UI scale. A starting
+## position, from the UI review's *"Panel needs some padding all around it."*
+const PANEL_PADDING := 10.0
+
 ## The editing model. **Public and constructed here**, because the controller is the
 ## module's whole
 ## state and a test drives it directly rather than through widgets.
@@ -682,6 +686,20 @@ func _build_ui() -> void:
 	# Scrolling rather than shrinking the rows: the fields have to stay usable, and an authoring
 	# panel with more in it than fits is a scroll, not a squeeze.
 	panel.clip_contents = true
+	# **Padded all round**, which the UI review asked for: *"EDIT INSPECT VIEWER — Panel needs some
+	# padding all around it."* Same treatment `InspectPanel` gets, for the same reason: a
+	# `PanelContainer` hands its child the whole rect, so every labelled row ran into the border.
+	var style: StyleBox = panel.get_theme_stylebox("panel")
+	if style != null:
+		var padded: StyleBox = style.duplicate()
+		for side: String in [
+			"content_margin_left",
+			"content_margin_right",
+			"content_margin_top",
+			"content_margin_bottom"
+		]:
+			padded.set(side, UiLayout.scaled(PANEL_PADDING))
+		panel.add_theme_stylebox_override("panel", padded)
 	var scroll := ScrollContainer.new()
 	# **Horizontal scrolling ENABLED, which is what actually lets the panel be narrow.** A
 	# `ScrollContainer` reports its content's minimum size on any axis it cannot scroll, so with

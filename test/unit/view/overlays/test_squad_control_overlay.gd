@@ -339,9 +339,9 @@ func test_the_player_view_no_longer_carries_a_top_left_cluster() -> void:
 	var overlay: ControlOverlay = _squad_control_fresh(_bout())
 
 	assert_null(overlay.module(&"top_left_controls"), "the cluster is retired from the player view")
-	var turns: TurnControlsModule = overlay.module(&"turn_controls") as TurnControlsModule
-	assert_not_null(turns.watch_button, "Watch is the one piece that moved rather than going")
-	assert_eq(turns.watch_button.text, "Watch")
+	var toggle: ControlToggleModule = overlay.module(&"control_toggle") as ControlToggleModule
+	assert_not_null(toggle.button, "Watch is the one piece that moved rather than going")
+	assert_eq(toggle.button.text, "Watch")
 
 
 ## **Retired with the cluster it measured.** tb31 Pass A asserted the top-left cluster's rect never
@@ -351,18 +351,21 @@ func test_the_player_view_no_longer_carries_a_top_left_cluster() -> void:
 ## surface that still has both. Deleted rather than left asserting against a null.
 
 
-func test_keybindings_button_toggles_the_same_label_visibility_the_h_key_does() -> void:
-	var overlay: ControlOverlay = _squad_control_fresh(_bout())
-	assert_false(
-		overlay.module(&"controls_legend").controls_overlay.label.visible,
-		"sanity: hidden by default"
+## **The state moved from the label onto the sheet around it**, and that is the only change: the UI
+## review wrapped the legend in a centred panel with a background and an `[x]`, so what is shown or
+## hidden is the panel. `ControlsOverlay.is_open()` is the one place either surface reads it, which
+## is the property this test has always been about.
+func test_keybindings_button_toggles_the_same_state_the_h_key_does() -> void:
+	var legend: ControlsLegendModule = (
+		_squad_control_fresh(_bout()).module(&"controls_legend") as ControlsLegendModule
 	)
+	assert_false(legend.controls_overlay.is_open(), "sanity: hidden by default")
 
-	overlay.module(&"controls_legend").toggle()
-	assert_true(overlay.module(&"controls_legend").controls_overlay.label.visible)
+	legend.toggle()
+	assert_true(legend.controls_overlay.is_open())
 
-	overlay.module(&"controls_legend").toggle()
-	assert_false(overlay.module(&"controls_legend").controls_overlay.label.visible)
+	legend.toggle()
+	assert_false(legend.controls_overlay.is_open())
 
 
 ## tb31 Pass D: "a PART_PICKER action opens the picker... one path, no

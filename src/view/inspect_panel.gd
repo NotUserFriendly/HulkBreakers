@@ -24,6 +24,10 @@ extends PanelContainer
 
 signal closed
 
+## How far this panel's rows sit inside its own border, before UI scale. A starting position, not a
+## decision — from the UI review's *"No padding on any of the elements."*
+const CONTENT_PADDING := 10.0
+
 const COL_PART := 0
 ## taskblock-22 Pass E3/G: "Repair with Scrap" is the first NON-debug
 ## option in the right-click menu, added before Reset/Zero/Ammo — a real,
@@ -129,6 +133,24 @@ func _init() -> void:
 	# the inventory tree) each carry their own real gui_input/Tree handling
 	# and stay clickable regardless of this container's own filter.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# **Its content sits off its own edges.** The UI review: *"INSPECT in Player view — No padding on
+	# any of the elements."* A `PanelContainer` gives its child the whole rect by default, so every
+	# row ran into the border and the panel read as a wall of text with a line around it.
+	#
+	# A content margin on the panel's own `StyleBox` rather than a `MarginContainer` inside it: the
+	# theme already supplies the box, this only widens it, and there is no extra node for the layout
+	# to reason about.
+	var style: StyleBox = get_theme_stylebox("panel")
+	if style != null:
+		var padded: StyleBox = style.duplicate()
+		for side: String in [
+			"content_margin_left",
+			"content_margin_right",
+			"content_margin_top",
+			"content_margin_bottom"
+		]:
+			padded.set(side, UiLayout.scaled(CONTENT_PADDING))
+		add_theme_stylebox_override("panel", padded)
 
 
 ## taskblock-22 Pass G1: re-clamps on every viewport resize, not just at

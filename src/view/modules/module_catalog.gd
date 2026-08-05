@@ -25,8 +25,8 @@ const IDS: Array[StringName] = [
 	&"inspect",
 	&"action_bar",
 	&"turn_controls",
+	&"control_toggle",
 	&"controls_legend",
-	&"top_left_controls",
 	&"playback",
 	&"board_inspect",
 	&"bout_setup",
@@ -84,10 +84,10 @@ static func build(id: StringName) -> ViewModule:
 			return ActionBarModule.new()
 		&"turn_controls":
 			return TurnControlsModule.new()
+		&"control_toggle":
+			return ControlToggleModule.new()
 		&"controls_legend":
 			return ControlsLegendModule.new()
-		&"top_left_controls":
-			return TopLeftControlsModule.new()
 		&"playback":
 			return PlaybackModule.new()
 		&"board_inspect":

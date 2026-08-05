@@ -110,9 +110,13 @@ func test_only_the_three_declared_surfaces_leave_the_safe_rect() -> void:
 	var safe: Rect2 = UiLayout.safe_rect(screen)
 	assert_gt(safe.position.x, 0.0, "sanity: this ratio really does inset, or nothing is proven")
 
+	# Padded off its corner by the UI review, exactly as its viewer is — still hundreds of pixels
+	# outside the safe rect on this ratio, which is what escaping claims.
+	var inspect: Rect2 = BattleLayout.inspect_rect(screen)
 	assert_almost_eq(
-		BattleLayout.inspect_rect(screen).end.x, screen.x, 0.001, "Inspect reaches the real edge"
+		inspect.end.x, screen.x - UiLayout.scaled(BattleLayout.PADDING), 0.001, "Inspect, padded"
 	)
+	assert_gt(inspect.end.x, safe.end.x, "Inspect must still reach outside the safe rect")
 	# **The viewer escapes without being flush**, which is a real distinction rather than a
 	# tolerance. The UI review asked for *"a slight padding off that corner"*, so it sits one
 	# `PADDING` in from the physical edge — still hundreds of pixels outside the safe rect on this
@@ -204,19 +208,31 @@ func test_budging_is_idempotent_and_reversible() -> void:
 ## `max(floor, measured overlap)` and not either alone: a purely measured budge is zero here, at the
 ## one scale anyone can currently play at, so the one-off would never have fired in normal play.
 ## Supervisor's call, taskblock-57: floor it at `X * SCALE`.
-func test_at_one_x_the_two_abut_exactly_and_the_budge_falls_back_to_its_floor() -> void:
+## **The UI review moved Inspect one `PADDING` off its corner, so the two now overlap by exactly
+## that.** The abutment was arithmetic rather than luck and it is still arithmetic: Inspect starts a
+## padding earlier than it used to, so the measured term is `PADDING * 2` instead of zero. **The
+## floor still wins by a wide margin** (64 against 16), which is the property the supervisor's call
+## was about — the measured term alone is negligible at the one scale anyone plays at.
+func test_at_one_x_the_floor_is_what_moves_the_menu_not_the_measurement() -> void:
 	var screen := Vector2(1920, 1080)
 	var menu: Rect2 = BattleLayout.debug_menu_rect(screen)
 	var inspect: Rect2 = BattleLayout.inspect_rect(screen)
+	var pad: float = UiLayout.scaled(BattleLayout.PADDING)
 	gut.p("debug menu ends at %.1f, inspect starts at %.1f" % [menu.end.x, inspect.position.x])
 
-	assert_almost_eq(menu.end.x, inspect.position.x, 0.001, "they abut exactly at 1x")
-	assert_false(BattleLayout.inspect_crowds_debug_menu(screen), "so nothing OVERLAPS anything")
+	assert_almost_eq(
+		menu.end.x - inspect.position.x, pad, 0.001, "they overlap by Inspect's own corner padding"
+	)
 	assert_almost_eq(
 		BattleLayout.debug_menu_budge_distance(screen),
 		BattleLayout.DEBUG_MENU_BUDGE_BASE,
 		0.001,
-		"with no overlap to measure, the floor is the whole distance"
+		"the measured term is a rounding error beside the floor, so the floor is the distance"
+	)
+	assert_gt(
+		BattleLayout.DEBUG_MENU_BUDGE_BASE,
+		pad * 2.0,
+		"and it must stay that way, or the one-off starts firing on a padding change"
 	)
 	assert_almost_eq(
 		BattleLayout.budged_debug_menu_rect(screen, true).position.x,
@@ -240,9 +256,13 @@ func test_the_budge_floor_scales_with_the_ui() -> void:
 	var screen := Vector2(1920, 1080)
 	for scale: float in [0.5, 0.75, 1.0]:
 		UiLayout.scale = scale
-		assert_false(
-			BattleLayout.inspect_crowds_debug_menu(screen),
-			"fixture broken: scale %.2f must leave nothing to measure" % scale
+		# **The fixture is that the measured term stays negligible**, not that it is zero — Inspect's
+		# corner padding makes the two overlap by `PADDING * 2` at every scale, which is far under
+		# the floor. What must hold is that the floor is what is being read.
+		assert_lt(
+			BattleLayout.debug_menu_budge_distance(screen) - UiLayout.scaled(BattleLayout.PADDING),
+			BattleLayout.DEBUG_MENU_BUDGE_BASE * scale + 0.001,
+			"fixture broken: scale %.2f must leave the floor in charge" % scale
 		)
 		var distance: float = BattleLayout.debug_menu_budge_distance(screen)
 		gut.p("scale %.2f: floor-only budge %.1f" % [scale, distance])

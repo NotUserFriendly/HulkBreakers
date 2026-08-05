@@ -97,6 +97,22 @@ func is_collapsible() -> bool:
 	return ModuleSlots.is_side_pinned(preferred_slot())
 
 
+## True if this module puts its **own** control in the UI-buttons cluster, so the cluster must not
+## build a second one for it.
+##
+## The UI review found the duplication from the outside: *"Still two 'Inspect' keys... Wait there
+## are THREE inspect related buttons. One of which always does something, the other two flaky."*
+## `InspectModule` builds a button because it owns the enabled state that follows the selection, and
+## `DebugPanelModule`'s is built for it by name — and both of them were *also* being swept up by the
+## collapsible derivation, which produced a second button with the same three letters that collapsed
+## a panel instead of opening it.
+##
+## **Default false, because most collapsible modules have no control of their own** and the derived
+## toggle is the only way to reach them.
+func provides_own_button() -> bool:
+	return false
+
+
 ## Override to actually hide something. The default does nothing, so a module that declares itself
 ## collapsible and has not implemented it yet degrades to "the toggle exists and does nothing
 ## visible" rather than crashing — and the test for the toggle is about the flag, not the pixels.

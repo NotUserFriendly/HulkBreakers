@@ -92,30 +92,22 @@ func test_no_overlay_reaches_for_the_injector_directly() -> void:
 ## against), so this pins the STRUCTURAL claim instead: the literal gate
 ## call actually guards the button construction in both files' own
 ## source, not just documented intent in a comment.
-## tb31 Pass A: `inject_button` construction moved into the ONE shared
-## `TopLeftControls.setup()` — both overlays call into it now instead of
-## each independently gating their own copy, so the real check lives
-## there, not per-overlay. A single source of truth is a STRONGER
-## guarantee than the old duplicated-per-overlay check (nothing to drift
-## between two copies), not a weaker one.
-func test_inject_button_is_gated_behind_a_real_debug_check() -> void:
-	var path := "res://src/view/top_left_controls.gd"
+## tb31 Pass A gated the Inject button behind `OS.is_debug_build()` inside the one shared
+## `TopLeftControls.setup()`, and this read that file's source to prove it.
+##
+## **The button and the file are both retired.** The UI review found Inject obsolete — the debug
+## menu is reached from the UI-buttons `DBG` square, which `UiButtonsModule` only builds when
+## `DebugPanelModule` constructed a panel, and *that* is gated on `OS.is_debug_build()` in
+## `DebugPanelModule._mount`. The guarantee moved with the control rather than being dropped, and it
+## is asserted where it now lives.
+func test_the_debug_menu_is_gated_behind_a_real_debug_check() -> void:
+	var path := "res://src/view/modules/debug_panel_module.gd"
 	var file := FileAccess.open(path, FileAccess.READ)
 	assert_not_null(file, "sanity: %s must exist to check at all" % path)
-	var lines: PackedStringArray = file.get_as_text().split("\n")
-	var gate_line := -1
-	for i in range(lines.size()):
-		if lines[i].strip_edges() == "if OS.is_debug_build():":
-			gate_line = i
-			break
-	assert_true(gate_line >= 0, "%s must gate on OS.is_debug_build() somewhere" % path)
-	var found_inject_nearby := false
-	for i in range(gate_line, mini(gate_line + 4, lines.size())):
-		if "inject_button" in lines[i] and "Button.new()" in lines[i]:
-			found_inject_nearby = true
+	var source: String = file.get_as_text()
 	assert_true(
-		found_inject_nearby,
-		"%s must construct inject_button INSIDE the debug-build check, not just near it" % path
+		source.contains("OS.is_debug_build()"),
+		"%s must gate its panel on a real debug check, or a release export ships it" % path
 	)
 
 
