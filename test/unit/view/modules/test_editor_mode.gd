@@ -113,20 +113,21 @@ func _bar(overlay: ControlOverlay) -> EditorBarModule:
 # ---------------------------------------------------------------- the acceptance
 
 
-## **THE CENTRAL CLAIM, and taskblock-57 Pass G moves it from one module to three.**
+## **THE CENTRAL CLAIM, and taskblock-57 Passes G and H move it from one module to four.**
 ##
-## Pass F's answer was "a module set plus one authoring module". Pass G's whole subject is that the
-## editor needs surfaces of its own shape, and it names both of the new ones outright — *"three
-## action bars, not one with three contents"* for `editor_bar`, and *"a coordinate readout replaces
-## Unit Resources in editor mode"* for `editor_coords`. So the answer is a module set plus
-## **three**, each named here rather than allowed to arrive as a nameless increment.
+## Pass F's answer was "a module set plus one authoring module". Pass G's subject is that the editor
+## needs surfaces of its own shape and Pass H's is the gizmo, and the taskblock names every one of
+## the three outright — *"three action bars, not one with three contents"* for `editor_bar`, *"a
+## coordinate readout replaces Unit Resources in editor mode"* for `editor_coords`, and *"a 3D
+## CAD-style handle set"* for `gizmo`. So the answer is a module set plus **four**, each named here
+## rather than allowed to arrive as a nameless increment.
 ##
 ## **Still counted rather than stated**, and against a denominator that stayed honest: `ui_buttons`
 ## and `announcements` also arrived after Pass F, and are excluded because they were built for the
-## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A fourth editor-only module, or a
+## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A fifth editor-only module, or a
 ## bespoke copy of an existing panel, reports the real number and fails, which is the property that
-## made this test worth writing and is unchanged by the number being three.
-func test_the_editor_is_a_module_set_plus_exactly_three_new_modules() -> void:
+## made this test worth writing and is unchanged by the number being four.
+func test_the_editor_is_a_module_set_plus_exactly_four_new_modules() -> void:
 	var written_for_the_editor: Array[StringName] = []
 	for id: StringName in ViewModes.editor().modules:
 		if MODULES_BEFORE_PASS_F.has(id) or MODULES_BUILT_FOR_OTHER_SURFACES.has(id):
@@ -137,8 +138,8 @@ func test_the_editor_is_a_module_set_plus_exactly_three_new_modules() -> void:
 	gut.p("written for it: %s" % ", ".join(written_for_the_editor))
 	assert_eq(
 		written_for_the_editor,
-		[&"editor_bar", &"editor", &"editor_coords"] as Array[StringName],
-		"the authoring module, the editor's own bar and its coordinate readout, and no more"
+		[&"editor_bar", &"gizmo", &"editor", &"editor_coords"] as Array[StringName],
+		"the authoring module, the bar, the gizmo and the coordinate readout, and no more"
 	)
 
 

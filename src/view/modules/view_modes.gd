@@ -177,11 +177,17 @@ const BOUT_SETUP_MODULES: Array[StringName] = [&"bout_setup"]
 ## names cells from. Both reads happen in `link()` rather than at mount, so this order is for a
 ## reader rather than for the machine; `ui_buttons` last is not — it sweeps every mounted module for
 ## the toggles it builds.
+## **taskblock-57 Pass H puts `gizmo` before `board_inspect`, and that order is load-bearing.**
+## The host offers raw input to modules in this order and stops at the first that consumes it. A
+## press that grabs a handle must not also reach the board picker and author a placement on the cell
+## underneath — so the gizmo is offered the event first, and consumes only the presses it actually
+## grabbed something with.
 const EDITOR_MODULES: Array[StringName] = [
 	&"editor_bar",
 	&"camera_framing",
 	&"claim_volumes",
 	&"inspect",
+	&"gizmo",
 	&"board_inspect",
 	&"combat_log",
 	&"announcements",
