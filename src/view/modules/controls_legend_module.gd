@@ -33,7 +33,7 @@ func _mount() -> void:
 
 	# A `UiButton`, so the cluster is one row of squares rather than three shapes — see `UiButton`.
 	keybindings_button = UiButton.build(
-		"KEY", "Keybindings", "Shows and hides the list of bound keys.", _tooltip_view(), true
+		"KEY", "Keybindings", "Summons and dismisses the list of bound keys.", _tooltip_view()
 	)
 	keybindings_button.pressed.connect(toggle)
 	_parent_into(context.slot(preferred_slot(), column), keybindings_button)

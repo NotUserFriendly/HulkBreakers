@@ -71,6 +71,7 @@ func _mount() -> void:
 		_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(_pad)
 		_pad.add_child(panel)
+		_fit_beside_the_bar()
 		panel.minimized_changed.connect(_on_minimized_changed)
 		_apply_padding(false)
 	elif context.ui_root != null:
@@ -87,6 +88,37 @@ func _mount() -> void:
 		add_child(panel)
 	sink = HierarchicalUiSink.new(panel.log_label, _current_state())
 	rebind()
+
+
+## **Narrowed to the space the bar actually leaves**, which the UI review found it exceeding:
+## *"log is too wide, goes off screen on the left."*
+##
+## `CombatLogPanel.DEFAULT_WIDTH` is 520 and predates the bar being centred. With the bar on the
+## centre line at half the safe width, everything to its left is `(safe - band) / 2` — 480 px at
+## 1920 — so a 520 px log pinned to the bar's left edge ran to x = -40 and lost its first characters
+## off the screen.
+##
+## **Derived, not re-picked.** The width is whatever the layout leaves, less the padding the table
+## already gives the log, so it stays correct at any UI scale and any ratio rather than being a
+## second number to keep in step with the first. The panel's own default survives as the answer for
+## a mode with no bar to sit beside.
+func _fit_beside_the_bar() -> void:
+	var root: Control = context.ui_root if context != null else null
+	if root == null or panel == null:
+		return
+	var safe: float = UiLayout.safe_rect(root.size).size.x
+	var band: float = BattleLayout.action_bar_rect(root.size).size.x
+	var room: float = (safe - band) * 0.5 - UiLayout.scaled(BattleLayout.PADDING)
+	if room <= 0.0:
+		return
+	var width: float = minf(CombatLogPanel.DEFAULT_WIDTH, room)
+	panel.custom_minimum_size.x = width
+	panel.size.x = width
+
+
+## Re-fits when the screen changes shape — the space beside the bar is a function of the safe rect.
+func relaid_out() -> void:
+	_fit_beside_the_bar()
 
 
 ## Folding is the sink's business and the checkbox is the panel's, so this is the one line that

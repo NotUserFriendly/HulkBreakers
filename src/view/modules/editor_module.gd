@@ -3,25 +3,20 @@ extends ViewModule
 
 ## taskblock-56 Pass F: **the editor, as one module over a mode's worth of existing ones.**
 ##
-## The block called the editor its own proof: *"the editor mode should be a module set plus
-## one new
+## The block called the editor its own proof: *"the editor mode should be a module set plus one new
 ## authoring module. If it is not — if it needs to subclass, or reach into another mode, or
-## duplicate a panel — say so plainly."* This is that one module, and what it does **not**
-## contain
+## duplicate a panel — say so plainly."* This is that one module, and what it does **not** contain
 ## is the evidence:
 ##
 ## | the editor needs | it comes from |
 ## |---|---|
 ## | a board to look at | `BattleScene`'s own `BoardView`, unchanged |
-## | clicks on that board | `BoardInspectModule`, in the capture mode the debug panel
-## already uses |
-## | claims drawn | `ClaimVolumeModule`, which has been sitting tested and unmounted since
-## Pass E |
+## | clicks on that board | `BoardInspectModule`, in the capture mode the debug panel already uses |
+## | claims drawn | `ClaimVolumeModule`, which has been sitting tested and unmounted since Pass E |
 ## | the camera pointed at what loaded | `CameraFramingModule`, unchanged |
 ## | a place to read what happened | `CombatLogModule`, unchanged |
 ## | a layout to sit in | `ModeChrome.PLAYER_COLUMNS`, unchanged — **no new chrome** |
-## | a way to launch what was authored | `BoutInjector.load_map_file`, which is `load_map`
-## with the
+## | a way to launch what was authored | `BoutInjector.load_map_file`, which is `load_map` with the
 ##   file-reading half taken off |
 ##
 ## **The scene gets no logic.** Every verb below is a call into `EditorController`, which is a
@@ -33,35 +28,28 @@ extends ViewModule
 ##
 ## It authors a board; it queues nothing against a unit. `ViewModule`'s line is drawn at the
 ## `TacticsController` path ending in `ActionQueue.enqueue`, and nothing here goes near it — the
-## same reasoning that keeps `DebugPanelModule` on the display side even though injection
-## mutates.
+## same reasoning that keeps `DebugPanelModule` on the display side even though injection mutates.
 ##
 ## ## What a click does is the tool, and the tool is a table entry
 ##
-## One click gesture, several meanings, chosen by the tool dropdown. That is deliberate
-## rather than
-## a dozen modal buttons: the editor's whole interaction is *point at a cell and mean
-## something*,
+## One click gesture, several meanings, chosen by the tool dropdown. That is deliberate rather than
+## a dozen modal buttons: the editor's whole interaction is *point at a cell and mean something*,
 ## and `TOOLS` below is the list of things it can mean.
 ##
 ## ## A known limit, flagged rather than worked around
 ##
-## The editor mode installs over whatever bout `BattleScene` already built, so any units
-## already on
+## The editor mode installs over whatever bout `BattleScene` already built, so any units already on
 ## the board are relocated onto the authored one by the same `BoardSwap` a map load uses. An
 ## authoring session that starts with no units at all wants an entry point that builds a world
 ## without a bout, which is *Main menu*'s job and is sequenced after this in `PLAN.md`.
 
-## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor —
-## a small
+## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor — a small
 ## icon of what is being placed — **or** is carried by the action bar's own highlight. Either is
-## fine; neither is not."* The bar's highlight is the option taken, and a signal is what
-## lets the
+## fine; neither is not."* The bar's highlight is the option taken, and a signal is what lets the
 ## bar follow a tool set from anywhere — its buttons, a pick from the parts list, or a test.
 signal tool_changed(tool: StringName)
 
-## Every meaning a board click can carry. Open `StringName`s and generated into the
-## dropdown from
+## Every meaning a board click can carry. Open `StringName`s and generated into the dropdown from
 ## this list, so the panel and the router cannot disagree about which tools exist.
 const TOOLS: Array[StringName] = [
 	&"place",
@@ -117,6 +105,10 @@ const SECTION_DIR := "res://data/sections"
 ## tunable; resizing afterwards is `EditorController.resize_claim`'s job.
 const DEFAULT_CLAIM_HEIGHT := 2.4
 
+## How much of a row a field's own name takes before the control gets the rest. A starting position,
+## not a decision — see `_labelled`, which clips rather than widens.
+const LABEL_WIDTH := 96.0
+
 ## The editing model. **Public and constructed here**, because the controller is the
 ## module's whole
 ## state and a test drives it directly rather than through widgets.
@@ -159,6 +151,10 @@ var selected_part: StringName = &""
 ## Which of `CLAIM_KINDS` the `claim` tool authors.
 var selected_claim_kind: StringName = SectionClaim.KIND_INTERIOR
 
+## The last surface part the author placed, so a wall dropped on bare ground brings that floor with
+## it rather than a named default. See `_ensure_a_tile_under`.
+var last_surface_part: StringName = &""
+
 # Widgets, held as real references rather than re-found by node path — the same convention
 # `BoutSetupModule` uses and for the same reason: the tests read them back directly.
 var panel: PanelContainer = null
@@ -172,7 +168,6 @@ var join_tag_field: LineEdit = null
 var chance_tag_field: LineEdit = null
 var chance_field: SpinBox = null
 var status_label: Label = null
-var warnings_label: RichTextLabel = null
 
 var _part_ids: Array[StringName] = []
 ## The warnings already put in the combat log, so a redraw does not repeat them. See
@@ -200,11 +195,19 @@ func preferred_slot() -> StringName:
 
 
 func _mount() -> void:
+	# **The board arrives with the last bout's overlays still on it.** The UI review: *"Movement
+	# tiles show on screen if going to edit mode from an in progress player controlled bout."* The
+	# reachable tint and the queued-move ghosts belong to a TACTICS turn nobody is taking any more,
+	# and the editor never draws them, so nothing else would ever clear them.
+	if context != null and context.battle != null and context.battle.board_view != null:
+		context.battle.board_view.clear_overlays()
 	# **A default the author does not have to supply.** The part dropdown used to select its first
 	# entry automatically; with the list on the bar, an editor opened and clicked immediately would
 	# otherwise place nothing at all and look broken.
 	if selected_part == &"" and not placeable_part_ids().is_empty():
 		selected_part = placeable_part_ids()[0]
+	if last_surface_part == &"" and not surface_part_ids().is_empty():
+		last_surface_part = surface_part_ids()[0]
 	_build_ui()
 	refresh()
 
@@ -251,6 +254,7 @@ func apply_tool_at(cell: Vector2i) -> bool:
 	var applied: bool = false
 	match active_tool:
 		&"place":
+			_ensure_a_tile_under(cell)
 			applied = (
 				controller.place(cell, selected_part, selected_kind, height(), facing()) != null
 			)
@@ -288,6 +292,31 @@ func apply_tool_at(cell: Vector2i) -> bool:
 			)
 	refresh()
 	return applied
+
+
+## **A wall placed on bare ground brings its own floor.**
+##
+## The UI review: *"Wall pieces that require a tile beneath them should instantiate the tile."* A
+## blocker or a field item on a cell with no surface is a placement standing on nothing, and an
+## author who wanted a wall did not mean "and also a hole".
+##
+## **Which tile is the last one placed**, defaulting to the first surface part the data offers. That
+## is deliberately not a new authored default: the author's most recent floor is the one they are
+## building with, and a rule that reached for a named part would be inventing content.
+##
+## A no-op for a surface placement — a floor does not need a floor — and for a cell that already has
+## one.
+func _ensure_a_tile_under(cell: Vector2i) -> void:
+	if selected_kind == MapPlacement.KIND_SURFACE:
+		return
+	for placement: MapPlacement in controller.placements_at(cell):
+		if placement.kind == MapPlacement.KIND_SURFACE:
+			return
+	var floors: Array[StringName] = surface_part_ids()
+	if floors.is_empty():
+		return
+	var beneath: StringName = last_surface_part if last_surface_part != &"" else floors[0]
+	controller.place(cell, beneath, MapPlacement.KIND_SURFACE, height())
 
 
 ## Declares an edge on the selected side from the edge widgets.
@@ -503,14 +532,7 @@ func _refresh_readout() -> void:
 		)
 	# **Warnings are a list the author reads, not a gate** (F4). Both save buttons stay enabled
 	# whatever is in here, and so does Run Test Bout.
-	var problems: Array[String] = controller.warnings()
-	_report_warnings(problems)
-	if warnings_label == null:
-		return
-	if problems.is_empty():
-		warnings_label.text = "no warnings"
-		return
-	warnings_label.text = "\n".join(problems)
+	_report_warnings(controller.warnings())
 
 
 ## taskblock-57 Pass G2: **the warnings reach the combat log, and the significant ones
@@ -716,13 +738,9 @@ func _build_ui() -> void:
 	layout.add_child(_section_field_rows())
 
 	status_label = Label.new()
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_child(status_label)
-
-	warnings_label = RichTextLabel.new()
-	warnings_label.fit_content = true
-	warnings_label.custom_minimum_size = Vector2(240, 90)
-	warnings_label.modulate = HulkTheme.WARN
-	layout.add_child(warnings_label)
 
 
 ## One row per whole-section declaration, **discovered from `SectionFile` rather than
@@ -790,12 +808,52 @@ static func _tag_list(text: String) -> Array[StringName]:
 ## these now. Cached after the first call — the pool does not change while a board is being
 ## authored
 ## and the list is reopened on every placement.
-func placeable_part_ids() -> Array[StringName]:
+## The surface parts, which are the only kind the part data can currently tell apart. See
+## `placeable_part_ids`.
+func surface_part_ids() -> Array[StringName]:
+	var floors: Array[StringName] = []
+	for id: StringName in placeable_part_ids():
+		var part: Part = DataLibrary.get_part(id)
+		if part != null and GridPlacement.GROUND in part.attaches_to:
+			floors.append(id)
+	return floors
+
+
+## The parts offered for `kind`, or every placeable part when the data cannot narrow it.
+##
+## ## What the data can and cannot answer, stated rather than worked around
+##
+## The UI review: *"Filtering inside the tile picker still doesn't seem to be happening. If this
+## needs a whole 'tag' system built then let me know rather than just trying to make it work."*
+##
+## **It does need one, for two of the three kinds.** A *surface* is answerable today — a tile is a
+## part that attaches to `GROUND`, which is not a convention but the rule `GridPlacement.can_place`
+## enforces, so offering anything else as a tile produces a placement the loader refuses. That
+## filter is applied.
+##
+## **A blocker and a field item are not answerable.** `DataLibrary.parts_pool()` is *every* `Part` —
+## arms, heads, weapons, batteries — and nothing in the data says which of them belong on a board
+## rather than on a body. Separating them wants a tag on the part, which is a content decision and
+## is deliberately not invented here.
+func placeable_part_ids(kind: StringName = &"") -> Array[StringName]:
+	if kind == MapPlacement.KIND_SURFACE:
+		return surface_part_ids()
 	if not _part_ids.is_empty():
 		return _part_ids
+	var names: Array[String] = []
 	for part: Part in DataLibrary.parts_pool():
-		_part_ids.append(part.id)
-	_part_ids.sort()
+		names.append(String(part.id))
+	# **Sorted as Strings, and that is a real defect rather than a style choice.**
+	#
+	# `Array[StringName].sort()` orders by the engine's internal `StringName` ordering, which is not
+	# alphabetical — it is stable within a run and looks like insertion order or noise to a reader.
+	# The UI review saw exactly that: *"It's also showing items in what looks like 'add' order. I.e
+	# looks random, should be alphanumeric if possible."* Measured: `ramp, metal_scraps,
+	# twisted_sheet_metal, head, battery, ...` where alphabetical gives `ammo_rack, arc_welder, arm,
+	# arm_cladding, ...`.
+	names.sort()
+	for name: String in names:
+		_part_ids.append(StringName(name))
 	return _part_ids
 
 
@@ -817,11 +875,24 @@ func _number(value: float, minimum: float, maximum: float, step: float) -> SpinB
 	return box
 
 
+## One labelled field, sized to whatever width the panel currently has.
+##
+## **The row shrinks with the panel rather than setting its width**, which the UI review found it
+## doing: *"Looks like you just chopped the size of this panel, and the items within aren't set to
+## resize with panel size."* The label is given a clip and a fixed share so a long field name cannot
+## push the control it labels out of the panel, and the control expands into what is left.
 func _labelled(text: String, control: Control) -> HBoxContainer:
 	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var label := Label.new()
 	label.text = text
+	label.custom_minimum_size = Vector2(LABEL_WIDTH, 0.0)
+	label.size_flags_horizontal = Control.SIZE_FILL
+	# Clipped rather than allowed to widen the row — a `Label` reports its full text as its minimum
+	# width otherwise, which is what made the panel wider than the slot it was given.
+	label.clip_text = true
 	row.add_child(label)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.custom_minimum_size.x = 0.0
 	row.add_child(control)
 	return row

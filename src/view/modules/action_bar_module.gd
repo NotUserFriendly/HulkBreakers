@@ -43,6 +43,10 @@ const BOX_ROWS := 2
 ## surfaces rather than items within one.
 const BOX_SPACING := 4
 
+## How far the grid of boxes sits inside the bar's own panel, before UI scale. A starting position,
+## not a decision — from the UI review's *"need some padding off the top left of the action bar."*
+const BOX_INSET := 6
+
 var action_bar: ActionBar = null
 ## The grid the ten boxes sit in. Exposed because a test confirms the row/column split structurally
 ## rather than by eye.
@@ -59,7 +63,19 @@ func kind() -> Kind:
 
 
 ## Ten square boxes over two rows, left-aligned, with small padding.
+##
+## **Padded off the bar's own top-left corner**, which the UI review asked for: *"the action bar
+## buttons on the player view need some padding off the top left of the action bar."* A
+## `MarginContainer` rather than a position offset, so the padding is part of the layout and the
+## boxes cannot end up outside the panel they are drawn on.
 func _fill_bar(column: VBoxContainer) -> void:
+	var inset := MarginContainer.new()
+	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pad: int = int(UiLayout.scaled(BOX_INSET))
+	for side: String in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		inset.add_theme_constant_override(side, pad)
+	column.add_child(inset)
+
 	action_grid = GridContainer.new()
 	# **Columns, from the row count** — ten boxes over two rows is five columns, and a `SLOT_COUNT`
 	# that is not a multiple of `BOX_ROWS` rounds up so the last row is short rather than a third row
@@ -72,7 +88,7 @@ func _fill_bar(column: VBoxContainer) -> void:
 	var spacing: int = int(UiLayout.scaled(BOX_SPACING))
 	action_grid.add_theme_constant_override("h_separation", spacing)
 	action_grid.add_theme_constant_override("v_separation", spacing)
-	column.add_child(action_grid)
+	inset.add_child(action_grid)
 
 	action_bar = ActionBar.new()
 	add_child(action_bar)
@@ -96,5 +112,9 @@ func box_side() -> float:
 	if root == null:
 		return ActionBar.BOX_SIZE.x
 	var band: float = BattleLayout.action_bar_rect(root.size).size.y
-	var gaps: float = UiLayout.scaled(BOX_SPACING) * float(BOX_ROWS + 1)
+	# The inset eats into the band on both sides before the rows are dealt, so it is subtracted here
+	# rather than left to overflow the panel it was added to keep the boxes inside.
+	var gaps: float = (
+		UiLayout.scaled(BOX_SPACING) * float(BOX_ROWS - 1) + UiLayout.scaled(BOX_INSET) * 2.0
+	)
 	return maxf(1.0, (band - gaps) / float(BOX_ROWS))

@@ -232,7 +232,7 @@ func _init() -> void:
 	minimize_button = Button.new()
 	minimize_button.text = MINIMIZE_LABEL
 	minimize_button.focus_mode = Control.FOCUS_NONE
-	minimize_button.tooltip_text = "Minimize"
+	minimize_button.tooltip_text = "Minimize %s" % TITLE
 	minimize_button.custom_minimum_size = Vector2(TITLE_BAR_HEIGHT, 0)
 	minimize_button.pressed.connect(toggle_minimized)
 	bar_row.add_child(minimize_button)
@@ -358,7 +358,11 @@ func toggle_minimized() -> void:
 	_body.visible = not _minimized
 	_title_label.visible = not _minimized
 	minimize_button.text = RESTORE_LABEL if _minimized else MINIMIZE_LABEL
-	minimize_button.tooltip_text = "Restore" if _minimized else "Minimize"
+	# **Minimised, it says what it will restore.** The UI review: *"The [+] symbol you click to show
+	# the combat log should say 'Combat Log' when hovered, not just 'Restore'."* Collapsed to a
+	# button, `[+]` is the only thing on screen naming this panel — "Restore" answers "what does this
+	# control do" when the question is "what IS this".
+	minimize_button.tooltip_text = TITLE if _minimized else "Minimize %s" % TITLE
 	minimized_changed.emit(_minimized)
 
 

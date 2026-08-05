@@ -390,3 +390,225 @@ func test_a_unit_the_board_can_seat_is_drawn_again() -> void:
 		if view.visible:
 			visible_views += 1
 	assert_gt(visible_views, 0, "the authored floor seats them and they must be drawn again")
+
+
+# ================================================================ second review pass
+
+
+## **THE REVIEW POINT**: *"Hover on UI buttons is too long, should probably be 0.5 seconds."* One
+## clock still, with the duration stated by the caller rather than baked into it.
+func test_a_chrome_button_waits_half_a_second_not_the_full_dwell() -> void:
+	assert_almost_eq(UiButton.HOVER_SEC, 0.5, 0.001)
+	assert_lt(UiButton.HOVER_SEC, HoverDwell.DELAY_SEC, "the button must be quicker than the log")
+
+	var dwell := HoverDwell.new()
+	assert_almost_eq(dwell.delay, HoverDwell.DELAY_SEC, 0.001, "the default is the shared wait")
+	dwell.delay = UiButton.HOVER_SEC
+	dwell.aim_at("anything")
+	assert_false(dwell.tick(0.4), "not yet")
+	assert_true(dwell.tick(0.2), "and it fires at its own delay, not the shared one")
+
+
+## **THE REVIEW POINT**: *"I seem to have two different 'classes' of buttons... There should be one,
+## and the 'summon/dismiss' seems to be the better feeling option."*
+func test_no_control_in_the_cluster_carries_a_pressed_state() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+
+	for child: Node in buttons.row.get_children():
+		var button := child as UiButton
+		assert_not_null(button)
+		assert_false(
+			button.toggle_mode,
+			"'%s' is a disable/enable toggle; every control here is summon/dismiss" % button.text
+		)
+
+
+## **THE REVIEW POINT**: *"Filtering... It's also showing items in what looks like 'add' order. I.e
+## looks random, should be alphanumeric if possible."*
+##
+## `Array[StringName].sort()` is **not** alphabetical — it orders by the engine's internal
+## `StringName` ordering, which reads as noise. Measured before the fix: `ramp, metal_scraps,
+## twisted_sheet_metal, head, battery, ...`.
+func test_the_placeable_parts_are_offered_in_alphabetical_order() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var offered: Array[StringName] = editor.placeable_part_ids()
+	assert_gt(offered.size(), 3, "sanity: there is a list to order")
+
+	var expected: Array[String] = []
+	for id: StringName in offered:
+		expected.append(String(id))
+	expected.sort()
+	var actual: Array[String] = []
+	for id: StringName in offered:
+		actual.append(String(id))
+	gut.p("first offered: %s" % ", ".join(actual.slice(0, 6)))
+	assert_eq(actual, expected, "the list is not alphabetical")
+
+
+## **The tile picker offers only what can be a tile**, which is the half of the review's filtering
+## point the part data can actually answer — a surface must attach to `GROUND` or the loader refuses
+## it. Blockers and field items are deliberately unfiltered; see `EditorModule.placeable_part_ids`.
+func test_the_tiles_button_offers_only_ground_attaching_parts() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+
+	var tiles: Array[StringName] = editor.placeable_part_ids(MapPlacement.KIND_SURFACE)
+	assert_false(tiles.is_empty(), "no part can be a tile, which cannot be right")
+	assert_lt(tiles.size(), editor.placeable_part_ids().size(), "it did not narrow at all")
+	for id: StringName in tiles:
+		var part: Part = DataLibrary.get_part(id)
+		assert_true(
+			GridPlacement.GROUND in part.attaches_to, "'%s' cannot be placed as a tile" % id
+		)
+
+
+## **THE REVIEW POINT**: *"Wall pieces that require a tile beneath them should instantiate the
+## tile."*
+func test_placing_cover_on_bare_ground_brings_a_floor_with_it() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	editor.selected_kind = MapPlacement.KIND_BLOCKER
+	editor.selected_part = &"barrel"
+	editor.active_tool = &"place"
+
+	editor.apply_tool_at(Vector2i(2, 2))
+
+	var kinds: Array[StringName] = []
+	for placement: MapPlacement in editor.controller.placements_at(Vector2i(2, 2)):
+		kinds.append(placement.kind)
+	gut.p("placed at (2,2): %s" % ", ".join(kinds))
+	assert_true(kinds.has(MapPlacement.KIND_SURFACE), "the wall is standing on nothing")
+	assert_true(kinds.has(MapPlacement.KIND_BLOCKER), "and the wall itself is still there")
+
+
+## A tile does not need a tile under it, and a cell that already has one is left alone.
+func test_a_floor_is_not_doubled_up() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	editor.selected_kind = MapPlacement.KIND_SURFACE
+	editor.selected_part = editor.surface_part_ids()[0]
+	editor.active_tool = &"place"
+	editor.apply_tool_at(Vector2i(1, 1))
+
+	editor.selected_kind = MapPlacement.KIND_BLOCKER
+	editor.selected_part = &"barrel"
+	editor.apply_tool_at(Vector2i(1, 1))
+
+	var floors: int = 0
+	for placement: MapPlacement in editor.controller.placements_at(Vector2i(1, 1)):
+		if placement.kind == MapPlacement.KIND_SURFACE:
+			floors += 1
+	assert_eq(floors, 1, "the cell grew a second floor under its wall")
+
+
+## **THE REVIEW QUESTION**: *"Shipfloor complaining that it doesn't have anything to attach to. Is
+## that expected?"* Yes — and about the wrong thing. `GridPlacement.can_place` refuses a GROUND part
+## on a cell that already has a surface, which is the opposite problem to having nothing to attach
+## to, and both were reported with the same sentence.
+func test_a_doubled_floor_says_the_cell_is_taken_not_that_nothing_holds_it() -> void:
+	var controller := EditorController.new()
+	controller.set_size(4, 4)
+	controller.place(Vector2i(1, 1), &"ship_floor")
+	controller.place(Vector2i(1, 1), &"ship_floor")
+
+	var said: String = "\n".join(controller.warnings())
+	gut.p(said)
+	assert_true(said.contains("already has a surface"), "it must say what is actually wrong")
+	assert_false(said.contains("nothing to attach to"), "which is not this")
+
+
+## **THE REVIEW POINT**: *"log is too wide, goes off screen on the left."*
+func test_the_combat_log_fits_the_space_the_bar_leaves() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var logs: CombatLogModule = overlay.module(&"combat_log") as CombatLogModule
+
+	var drawn: Rect2 = logs.panel.get_global_rect()
+	gut.p("log at %s on a %s screen" % [str(drawn), str(SCREEN)])
+	assert_gt(drawn.position.x, -1.0, "the log runs off the left of the screen")
+	assert_lt(drawn.end.x, SCREEN.x + 1.0)
+
+
+## **THE REVIEW POINT**: *"The [+] symbol you click to show the combat log should say 'Combat Log'
+## when hovered, not just 'Restore'."*
+func test_the_minimised_log_names_itself_on_hover() -> void:
+	var panel := CombatLogPanel.new()
+	add_child_autofree(panel)
+	panel.toggle_minimized()
+	gut.p("minimised tooltip: '%s'" % panel.minimize_button.tooltip_text)
+	assert_eq(panel.minimize_button.tooltip_text, CombatLogPanel.TITLE)
+
+
+## **THE REVIEW POINT**: *"The run tests window needs to be a button within the UI BUTTONS module,
+## and default off."*
+func test_the_run_tests_panels_are_off_by_default_and_have_a_button() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
+	var replay: ReplayModule = overlay.module(&"replay") as ReplayModule
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+	if replay.suite_run_panel == null:
+		pass_test("release build: the run panels are not constructed")
+		return
+
+	assert_true(replay.collapsed, "the run panels are up before anyone asked for them")
+	assert_false(replay.suite_run_panel.visible)
+	assert_true(buttons.toggles.has(&"replay"), "and nothing can summon them")
+
+	(buttons.toggles[&"replay"] as UiButton).pressed.emit()
+	assert_true(replay.suite_run_panel.visible, "the button did not summon them")
+
+
+## **THE REVIEW POINT**: *"The white text... needs to be within a tooltip, on a [?] button, in the
+## existing run_tests module."* The words are unchanged and still come from logic.
+func test_the_completion_criteria_moved_onto_a_question_mark_button() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
+	var replay: ReplayModule = overlay.module(&"replay") as ReplayModule
+	if replay.watched_run_panel == null:
+		pass_test("release build: the run panels are not constructed")
+		return
+
+	var help: UiButton = replay.watched_run_panel.criteria_button
+	assert_not_null(help, "the criteria have no [?] to live on")
+	assert_eq(help.text, "?")
+	assert_true(
+		help.description.contains("completion over its sample"),
+		"the [?] does not carry the words it replaced"
+	)
+
+
+## **THE REVIEW POINT**: *"Top left buttons need to be put somewhere... 'watch' can be moved in with
+## 'end turn' and 'reset turn'."*
+func test_the_player_view_has_no_top_left_cluster_and_watch_sits_with_the_turn_verbs() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+
+	assert_null(overlay.module(&"top_left_controls"), "the cluster is retired from the player view")
+	var turns: TurnControlsModule = overlay.module(&"turn_controls") as TurnControlsModule
+	assert_not_null(turns.watch_button, "Watch went nowhere")
+	assert_eq(turns.watch_button.text, "Watch")
+	assert_true(
+		turns.column.is_ancestor_of(turns.watch_button),
+		"Watch must be in the same column as End Turn and Reset Turn"
+	)
+
+
+## **THE REVIEW POINT**: *"Movement tiles show on screen if going to edit mode from an in progress
+## player controlled bout."*
+func test_entering_the_editor_clears_the_previous_turns_overlays() -> void:
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	var player: ControlOverlay = ControlOverlay.for_mode(ViewModes.player())
+	battle.set_overlay(player)
+	await get_tree().process_frame
+	battle.board_view.show_reachable([Vector2i(1, 1), Vector2i(1, 2)] as Array[Vector2i])
+	var drawn: int = battle.board_view._reachable_overlay.get_child_count()
+	assert_gt(drawn, 0, "sanity: something is drawn")
+
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.editor()))
+	await get_tree().process_frame
+
+	assert_eq(
+		battle.board_view._reachable_overlay.get_child_count(),
+		0,
+		"the last turn's movement tiles are still on the authored board"
+	)

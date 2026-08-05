@@ -160,13 +160,13 @@ func test_the_section_details_sit_in_the_viewer_slot_and_fold_from_the_ui_button
 	assert_not_null(slot, "the editor mode publishes an inspect-viewer slot")
 	assert_true(slot.is_ancestor_of(editor.panel), "the details panel is somewhere else entirely")
 
-	assert_true(buttons.toggles.has(&"editor"), "the details panel has no toggle to fold it")
-	var toggle: UiButton = buttons.toggles[&"editor"]
-	assert_true(editor.panel.visible, "nothing is folded by default")
-	toggle.button_pressed = false
-	assert_false(editor.panel.visible, "the toggle did not actually hide it")
-	toggle.button_pressed = true
-	assert_true(editor.panel.visible, "and it comes back")
+	assert_true(buttons.toggles.has(&"editor"), "the details panel has no button to dismiss it")
+	var button: UiButton = buttons.toggles[&"editor"]
+	assert_true(editor.panel.visible, "nothing is dismissed by default")
+	button.pressed.emit()
+	assert_false(editor.panel.visible, "the button did not actually hide it")
+	button.pressed.emit()
+	assert_true(editor.panel.visible, "and the same button summons it back")
 
 
 ## **Folding the details must not disarm the editor.** The verbs are on the bar, so an author who

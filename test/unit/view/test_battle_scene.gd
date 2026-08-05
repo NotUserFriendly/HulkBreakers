@@ -730,17 +730,27 @@ func test_clicking_and_ending_a_turn_through_the_real_scene_moves_the_unit_and_r
 ## taskblock-08 E1/TESTS: "New Battle is not among the turn controls" —
 ## E3's whole point, checked directly against the real built scene rather
 ## than just trusting the layout code reads that way.
-func test_new_battle_is_not_among_the_turn_controls() -> void:
+##
+## **The UI review retired New Battle outright**, so the second half of the original claim ("it must
+## still exist somewhere — just not there") is gone with it: *"new battle is an old method of doing
+## things that can be retired."* What survives is the half that is still a rule — the turn-control
+## column holds turn verbs — and it now has a positive counterpart, since Watch moved into that
+## column and is the one addition the review asked for.
+func test_the_turn_controls_hold_turn_verbs_and_not_a_new_battle_button() -> void:
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var overlay: ControlOverlay = _overlay(scene)
 
+	var labels: Array[String] = []
 	for child: Node in overlay.module(&"turn_controls").column.get_children():
 		if child is Button:
-			assert_ne((child as Button).text, "New Battle")
-	assert_not_null(
-		overlay.module(&"top_left_controls").new_battle_button(),
-		"it must still exist somewhere — just not there"
+			labels.append((child as Button).text)
+	gut.p("turn controls: %s" % ", ".join(labels))
+	assert_false(labels.has("New Battle"), "New Battle is retired, not relocated")
+	assert_true(labels.has("End Turn"))
+	assert_true(labels.has("Watch"), "Watch moved in with the other turn verbs")
+	assert_null(
+		overlay.module(&"top_left_controls"), "and the cluster it came from is gone entirely"
 	)
 
 
@@ -764,11 +774,12 @@ func test_the_unit_resources_row_renders_above_the_action_bars_own_row() -> void
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var row: Node = action_column.get_child(action_column.get_child_count() - 1)
+	# **Asked of the grid itself rather than of the column's last child.** The UI review added a
+	# `MarginContainer` inset around the boxes, so "the last child" is now that wrapper — a structural
+	# reach that broke on a padding change is exactly what naming the node avoids.
+	var row: Control = (overlay.module(&"action_bar") as ActionBarModule).action_grid
 	assert_eq(
-		(row as Container).get_child_count(),
-		ActionBar.SLOT_COUNT,
-		"the action column's last child must be the 10-box action row"
+		row.get_child_count(), ActionBar.SLOT_COUNT, "the action grid must hold the ten boxes"
 	)
 	var pips_bottom: float = resources.get_global_rect().end.y
 	var row_top: float = (row as Control).get_global_rect().position.y

@@ -33,6 +33,13 @@ extends RefCounted
 const DELAY_SEC := 1.5
 
 ## How long the cursor has been still on the current target. Public so a caller can show progress.
+## How long THIS dwell waits, in seconds. **Per instance, not per class** — taskblock-57 required
+## the tooltip and the combat log's overflow preview to share one *timer*, meaning one mechanism
+## rather than one duration. The UI review then asked for a shorter wait on the chrome buttons
+## specifically: *"Hover on UI buttons is too long, should probably be 0.5 seconds. You'll almost
+## always want this info."* A caller states its own wait; there is still exactly one clock.
+var delay: float = DELAY_SEC
+
 var elapsed: float = 0.0
 ## True while a target is being dwelt on and the delay has not yet elapsed.
 var pending: bool = false
@@ -65,7 +72,7 @@ func tick(delta: float) -> bool:
 	if not pending:
 		return false
 	elapsed += delta
-	if elapsed < DELAY_SEC:
+	if elapsed < delay:
 		return false
 	pending = false
 	fired = true

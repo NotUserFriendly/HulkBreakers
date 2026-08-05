@@ -89,9 +89,13 @@ func test_an_illegal_placement_is_still_placed_and_only_warned_about() -> void:
 	assert_eq(editor.placements_at(Vector2i(1, 1)).size(), 2, "it placed what it was told to")
 	var warnings: Array[String] = editor.warnings()
 	gut.p("\n".join(warnings))
+	# **It says the cell is taken, not that nothing holds the floor up.** `GridPlacement.can_place`
+	# refuses a GROUND part when the cell already has a surface and a side-attaching part when there
+	# is nothing to attach to — opposite problems, reported with one sentence until the UI review
+	# asked *"Shipfloor complaining that it doesn't have anything to attach to. Is that expected?"*
 	var named: bool = false
 	for warning: String in warnings:
-		if warning.contains("nothing to attach to"):
+		if warning.contains("already has a surface"):
 			named = true
 	assert_true(named, "and the grammar violation is reported rather than enforced")
 

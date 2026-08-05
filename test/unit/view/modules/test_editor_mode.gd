@@ -470,6 +470,8 @@ func test_launching_puts_the_units_that_were_playing_onto_the_authored_board() -
 func test_a_board_that_fails_navigability_still_launches_and_still_warns() -> void:
 	var overlay: ControlOverlay = _editor_overlay()
 	var editor: EditorModule = _editor(overlay)
+	var sink := MemorySink.new()
+	overlay.battle.combat_state.combat_log.add_sink(sink)
 	editor.name_field.text = "Pit"
 	editor.controller.set_size(5, 5)
 	for y: int in range(5):
@@ -480,18 +482,17 @@ func test_a_board_that_fails_navigability_still_launches_and_still_warns() -> vo
 	editor.controller.set_spawn_marker(Vector2i(0, 0), Enums.SpawnMarker.SPAWN_A)
 	editor.refresh()
 
-	gut.p(editor.warnings_label.text)
-	assert_true(
-		editor.warnings_label.text.contains("walked into and not back out of"), "the author is told"
-	)
+	# **Told in the combat log, which is where G2 put the warnings and where the UI review left
+	# them.** The panel used to carry its own orange copy of the same list; the review asked what it
+	# was (*"It looks like repeated info from the combat log"*) and it was exactly that.
+	var told: Array[String] = []
+	for event: LogEvent in sink.events:
+		if event.kind == EditorLog.WARNING:
+			told.append(event.text)
+	gut.p("logged: %s" % ", ".join(told))
+	assert_true("".join(told).contains("walked into and not back out of"), "the author is told")
 	assert_false(_bar(overlay).file_buttons["Run Test Bout"].disabled, "and is not stopped")
 	assert_eq(editor.run_test_bout()["error"], "", "the broken board launches, as F4 requires")
-
-
-func test_a_clean_board_says_so_rather_than_showing_an_empty_list() -> void:
-	var editor: EditorModule = _editor(_editor_overlay())
-	_authored_board(editor)
-	assert_eq(editor.warnings_label.text, "no warnings")
 
 
 ## Editing the model redraws the live board, so the author sees what they authored rather than
