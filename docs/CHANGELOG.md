@@ -1,5 +1,32 @@
 # CHANGELOG.md — What's Been Built
 
+### UI review, reserve items — two fixed, one handed back
+
+**The performance readout survives an overlay swap.** `BattleScene.set_overlay` tears every module
+down and builds a fresh one, so a readout that always came back hidden lost the state on every
+swap — and swapping to the spectator is exactly what you do to watch a framerate you just turned on
+in the player view. A `static var` on the module, because **the state belongs to the session rather
+than to any one surface**: it is the same readout over the same `PerfStats` whichever mode is
+mounted, which is the reasoning that made it its own module rather than the debug panel's child.
+
+**The combat log stops rebuilding every line's offset on every mouse motion.**
+`_on_log_hovered` fires per `InputEventMouseMotion` and called `_line_offsets()`, which walked the
+whole label calling `get_line_offset(i)` once per line. Cached between text changes now, keyed on
+the line count so it cannot go stale and point the hover preview at the wrong line.
+
+**That is a removal of wasted work, not a framerate fix, and the entry says so.** `BR57.03` stays
+`Active`: CC cannot see a framerate, and a performance claim is a number rather than an
+adjudication. The next suspect is named there — `TacticsController.update_hover` ray-picks against
+every unit and blocker per motion event, and `BR35.01` already had to put a cheap reject in front of
+that test once.
+
+**The inspect viewer's flat unit shading is unresolved, and the earlier fix was symptomatic.**
+Raising the preview camera's ambient made it brighter and still flat; *every face identically
+shaded* means the directional light contributes nothing at all, which is a different fault from
+"lit from an awkward angle". `BR57.02` records the four suspects already ruled out and the asymmetry
+worth chasing — it reproduces only on units, and a live unit is the only subject that takes the
+isolate-camera path rather than the fresh-copy one.
+
 ### UI review passes 4 and 5 — one control per surface, and the surfaces become windows
 
 **Two more supervisor passes**, plus the one review-chat note that produced the most durable thing
