@@ -109,7 +109,7 @@ static func _player_columns(ui_root: Control, context: ModuleContext) -> void:
 
 
 static func _top_left_rows(ui_root: Control, context: ModuleContext) -> void:
-	context.set_slot(ModuleSlots.TOP_LEFT, _button_row(ui_root, TOP_LEFT_MARGIN))
+	context.set_slot(ModuleSlots.PACING_ROW, _button_row(ui_root, TOP_LEFT_MARGIN))
 	context.set_slot(ModuleSlots.TUNABLES, _button_row(ui_root, TUNABLES_MARGIN))
 
 

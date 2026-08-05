@@ -41,8 +41,19 @@ extends GutTest
 ##
 ## The four action-bar satellites are **absent and should stay absent**: they ride the bar, which is
 ## centred, so they are not edge-pinned and fold with it rather than each carrying its own toggle.
+##
+## **taskblock-57 Pass G1 adds `spectator_bar` and `editor_bar`**, and they are not two new
+## decisions. All three bars share `ACTION_ROW` — that is what "three action bars, not one with
+## three contents" means structurally — so the derivation that made the player's bar collapsible
+## makes theirs collapsible, from `BarModule.preferred_slot()`, with nothing declared per bar. A
+## fourth mode's bar joins this list the day it is written, which is the property worth having.
 const EXPECTED_SIDE_PINNED: Array[StringName] = [
-	&"debug_panel", &"inspect", &"action_bar", &"inspect_viewer"
+	&"debug_panel",
+	&"inspect",
+	&"action_bar",
+	&"inspect_viewer",
+	&"spectator_bar",
+	&"editor_bar",
 ]
 
 
@@ -82,9 +93,21 @@ func test_an_edge_pinned_slot_reports_its_edge_and_a_floating_one_does_not() -> 
 ## which is the axis a square ratio is short of.
 func test_side_pinned_covers_every_edge_rather_than_only_the_sides() -> void:
 	assert_true(ModuleSlots.is_side_pinned(ModuleSlots.LEFT_COLUMN))
-	assert_true(ModuleSlots.is_side_pinned(ModuleSlots.TOP_LEFT))
+	assert_true(ModuleSlots.is_side_pinned(ModuleSlots.DEBUG_MENU), "the top is a side too")
 	assert_true(ModuleSlots.is_side_pinned(ModuleSlots.ACTION_ROW), "bottom is a side too")
 	assert_false(ModuleSlots.is_side_pinned(ModuleSlots.MENU_COLUMN))
+
+
+## taskblock-57 Pass G1: **a slot two providers publish at two different edges has no edge**, and
+## the table says so by leaving it out rather than by picking one. `PACING_ROW` is top-left under
+## `TOP_LEFT_ROWS` and bottom-centre inside `SpectatorBarModule`'s bar; anything mounted into it
+## folds with whatever it is riding.
+func test_the_pacing_row_claims_no_edge_because_two_providers_place_it_differently() -> void:
+	assert_false(
+		ModuleSlots.is_side_pinned(ModuleSlots.PACING_ROW),
+		"the pacing row is published at two different edges -- it cannot claim one"
+	)
+	assert_false(ModuleSlots.is_side_pinned(ModuleSlots.TUNABLES))
 
 
 # ---------------------------------------------------------------- the derivation

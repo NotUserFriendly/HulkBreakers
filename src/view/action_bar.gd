@@ -29,8 +29,12 @@ var _panels: Array[PanelContainer] = []
 var _current_actions: Array[ActionDef] = []
 
 
+## taskblock-57 Pass G1: **`container` is any `Container`, not an `HBoxContainer`.** The taskblock
+## asks the player's bar for "two rows", which is a `GridContainer`, and this class never cared —
+## it fills whatever it is handed and the container decides the arrangement. Every existing caller
+## passes an `HBoxContainer`, which is still a `Container`, so nothing else changed.
 func setup(
-	p_tactics: TacticsController, container: HBoxContainer, p_tooltip_view: TooltipView
+	p_tactics: TacticsController, container: Container, p_tooltip_view: TooltipView
 ) -> void:
 	tactics = p_tactics
 	tooltip_view = p_tooltip_view

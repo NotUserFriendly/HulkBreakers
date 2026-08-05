@@ -118,7 +118,7 @@ func test_the_minimised_log_abuts_the_action_bar_with_no_padding() -> void:
 	var overlay: ControlOverlay = await _overlay()
 	var logs: CombatLogModule = overlay.module(&"combat_log") as CombatLogModule
 	var bar: ActionBarModule = overlay.module(&"action_bar") as ActionBarModule
-	var column: Control = bar.action_column
+	var column: Control = bar.content_column
 
 	await get_tree().process_frame
 	var padded_gap: float = column.get_global_rect().position.x - logs.panel.get_global_rect().end.x

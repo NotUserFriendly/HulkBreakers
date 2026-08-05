@@ -24,10 +24,18 @@ const BOTTOM_RIGHT := &"bottom_right"
 const READOUT_COLUMN := &"readout_column"
 ## The horizontal row holding the action column on the left and the turn controls on the right.
 const ACTION_ROW := &"action_row"
-## Top-left, the corner `DebugControlPanel`'s own centering already steers clear of. Play/Step/Speed
-## and the shared Inject/New Battle/Watch cluster.
-const TOP_LEFT := &"top_left"
-## A second top-left row under the first — the spectator's tunable timing fields.
+## Play/Step/Speed and the shared Inject/New Battle/Watch cluster.
+##
+## **taskblock-57 Pass G1 renamed this from `top_left`, and the rename is the point.** The old name
+## was a position, and Pass G1 moves the row into the spectator's own bar at the bottom of the
+## screen — where a slot called `top_left` would be a lie that only the file defining it could
+## catch. `pacing_row` says what the row is *for*, which is the only description that survives being
+## moved, and moving it is exactly what the module system exists to make cheap.
+##
+## `ModeChrome.TOP_LEFT_ROWS` still publishes it at the top-left corner; `SpectatorBarModule`
+## publishes it inside the bar. Neither `PlaybackModule` nor `TopLeftControlsModule` knows which.
+const PACING_ROW := &"pacing_row"
+## A second row under the pacing row — the spectator's tunable timing fields.
 const TUNABLES := &"tunables"
 ## A single centred column owning the whole screen — a menu's own layout.
 const MENU_COLUMN := &"menu_column"
@@ -102,10 +110,23 @@ const ESCAPING_SLOTS: Array[StringName] = [INSPECT_PANEL, INSPECT_VIEWER, PERF_M
 ## that everything pinned to a side is collapsible or off by default, so a square-ratio player
 ## toggles rather than shrinking the whole UI — and a module can answer that about itself by asking
 ## which slot it wants instead of each one carrying its own flag.
-## **The action bar and its four satellites are deliberately absent.** The rule exists so a cramped
-## player can reclaim space, and the bar is centred at the bottom at half width — it crowds nothing,
-## and a control surface you can switch off is a game you cannot play. The panels that *do* crowd —
-## the inspector, its viewer, the debug menu — are here.
+##
+## **`ACTION_ROW` is here, so every bar is collapsible**, and that reverses a call made earlier in
+## this same block ("the action bar and its four satellites are not collapsible"). The earlier
+## reading was already inconsistent with this table, which has carried `ACTION_ROW: EDGE_BOTTOM`
+## since Pass A; nothing surfaced the contradiction while no module declared a slot. Taking the
+## consistent reading — every edge-pinned slot is collapsible, no exceptions — costs nothing a
+## player notices, because no bar is collapsed by default.
+##
+## **The bar's four satellites are still absent, and for their own reason**: they ride a centred bar
+## and fold with it, so they are not pinned to anything.
+##
+## **`PACING_ROW` and `TUNABLES` left this table in Pass G1**, and their absence is a statement
+## rather than an omission. They used to be top-pinned because `TOP_LEFT_ROWS` was the only thing
+## that published them; `SpectatorBarModule` now publishes the same two names inside a bar at the
+## bottom. A slot published at two different edges by two different providers has no single edge,
+## and saying `top` here would be a claim no shipped mode makes true. Anything mounted into them
+## folds with the bar it rides.
 const SLOT_EDGES: Dictionary = {
 	LEFT_COLUMN: EDGE_LEFT,
 	INVENTORY_ROW: EDGE_LEFT,
@@ -113,8 +134,6 @@ const SLOT_EDGES: Dictionary = {
 	BOTTOM_RIGHT: EDGE_RIGHT,
 	READOUT_COLUMN: EDGE_RIGHT,
 	ACTION_ROW: EDGE_BOTTOM,
-	TOP_LEFT: EDGE_TOP,
-	TUNABLES: EDGE_TOP,
 	INSPECT_PANEL: EDGE_RIGHT,
 	INSPECT_VIEWER: EDGE_LEFT,
 	DEBUG_MENU: EDGE_TOP,

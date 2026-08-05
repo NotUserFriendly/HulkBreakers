@@ -101,17 +101,34 @@ var controller := EditorController.new()
 ## against, and what the readout names.
 var last_cell: Variant = null
 
+# --- what a click means, as state rather than as a widget's index -----------------------------
+#
+# **taskblock-57 Pass G1: these were four `OptionButton`s and are four fields.** The tool, the
+# placement kind, the part and the claim kind are chosen from the editor's own bar now, and a
+# dropdown in a panel plus a button on a bar would be two ways to answer one question — the
+# "no parallel systems" rule applied to an authoring surface. The bar writes these; `apply_tool_at`
+# reads them; the panel below owns only what the bar does not.
+#
+# They are public and plainly assignable on purpose: a test drives the model directly, which is
+# what it should have been doing through the dropdowns all along.
+
+## What a board click does. One of `TOOLS`.
+var active_tool: StringName = &"place"
+## Which of `PLACEMENT_KINDS` a placed part becomes.
+var selected_kind: StringName = MapPlacement.KIND_SURFACE
+## The part the `place` tool places. Defaulted at mount to the first placeable id, so a fresh editor
+## can place something without visiting the list first.
+var selected_part: StringName = &""
+## Which of `CLAIM_KINDS` the `claim` tool authors.
+var selected_claim_kind: StringName = SectionClaim.KIND_INTERIOR
+
 # Widgets, held as real references rather than re-found by node path — the same convention
 # `BoutSetupModule` uses and for the same reason: the tests read them back directly.
 var panel: PanelContainer = null
 var layout: VBoxContainer = null
 var name_field: LineEdit = null
-var tool_dropdown: OptionButton = null
-var kind_dropdown: OptionButton = null
-var part_dropdown: OptionButton = null
 var height_field: SpinBox = null
 var facing_field: SpinBox = null
-var claim_kind_dropdown: OptionButton = null
 var edge_side_dropdown: OptionButton = null
 var edge_kind_dropdown: OptionButton = null
 var join_tag_field: LineEdit = null
@@ -119,10 +136,6 @@ var chance_tag_field: LineEdit = null
 var chance_field: SpinBox = null
 var status_label: Label = null
 var warnings_label: RichTextLabel = null
-var save_map_button: Button = null
-var save_section_button: Button = null
-var run_bout_button: Button = null
-var undo_button: Button = null
 
 var _part_ids: Array[StringName] = []
 
@@ -132,6 +145,11 @@ func module_id() -> StringName:
 
 
 func _mount() -> void:
+	# **A default the author does not have to supply.** The part dropdown used to select its first
+	# entry automatically; with the list on the bar, an editor opened and clicked immediately would
+	# otherwise place nothing at all and look broken.
+	if selected_part == &"" and not placeable_part_ids().is_empty():
+		selected_part = placeable_part_ids()[0]
 	_build_ui()
 	refresh()
 
@@ -174,10 +192,10 @@ func rebind() -> void:
 func apply_tool_at(cell: Vector2i) -> bool:
 	last_cell = cell
 	var applied: bool = false
-	match active_tool():
+	match active_tool:
 		&"place":
 			applied = (
-				controller.place(cell, selected_part(), selected_kind(), height(), facing()) != null
+				controller.place(cell, selected_part, selected_kind, height(), facing()) != null
 			)
 		&"remove":
 			applied = controller.remove_top(cell)
@@ -196,7 +214,7 @@ func apply_tool_at(cell: Vector2i) -> bool:
 			controller.set_opacity(cell, 0.0 if controller.opacity.has(cell) else 1.0)
 			applied = true
 		&"claim":
-			controller.add_claim(selected_claim_kind(), _cell_claim_box(cell))
+			controller.add_claim(selected_claim_kind, _cell_claim_box(cell))
 			applied = true
 		&"chance":
 			applied = (
@@ -287,22 +305,6 @@ func _show_name() -> void:
 
 
 # --- what the widgets currently say ----------------------------------------------------------
-
-
-func active_tool() -> StringName:
-	return _selected_of(tool_dropdown, TOOLS, &"place")
-
-
-func selected_kind() -> StringName:
-	return _selected_of(kind_dropdown, PLACEMENT_KINDS, MapPlacement.KIND_SURFACE)
-
-
-func selected_part() -> StringName:
-	return _selected_of(part_dropdown, _part_ids, &"")
-
-
-func selected_claim_kind() -> StringName:
-	return _selected_of(claim_kind_dropdown, CLAIM_KINDS, SectionClaim.KIND_INTERIOR)
 
 
 func selected_edge_side() -> StringName:
@@ -471,14 +473,33 @@ func _selected_of(
 # --- the panel ---------------------------------------------------------------------------------
 
 
+## **taskblock-57 Pass G1: what is left after the bar took the verbs.**
+##
+## The tool, the placement kind, the part and the claim kind are the bar's buttons now; save, load,
+## run-a-bout and undo are its second row. What remains here is the *declarations* — the board's
+## name, the numbers a placement carries, the section's edges and chance rolls, and the readout —
+## which is what Pass G2 calls "section details".
+##
+## **It sits where the Inspect viewer sits**, which is G2's stated home for it. Landing it here in
+## G1 rather than a pass later is not scope creep: the editor mode moves to `BATTLE_LAYOUT` in this
+## pass, `LEFT_COLUMN` stops existing in it, and a panel asking for a slot no chrome publishes falls
+## back to `ui_root` at (0,0) — on top of the debug menu's region and under the announcement band.
+## The alternative was a temporary placement to be moved one pass later, which is churn on the same
+## file for no gain. **The toggle that folds it away is still G2's**, and until it lands the panel
+## is simply always shown.
 func _build_ui() -> void:
-	var host: Control = context.slot(ModuleSlots.LEFT_COLUMN, null) if context != null else null
+	var host: Control = context.slots.get(ModuleSlots.INSPECT_VIEWER) if context != null else null
 	panel = PanelContainer.new()
 	layout = VBoxContainer.new()
 	panel.add_child(layout)
 	if host != null:
 		host.add_child(panel)
+		panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	elif context != null and context.ui_root != null:
+		context.ui_root.add_child(panel)
 	else:
+		# The stand-alone case taskblock-56 Pass C's acceptance requires: every widget is real and
+		# every verb works; the panel simply has nowhere of its own to be drawn.
 		add_child(panel)
 
 	var title := Label.new()
@@ -490,22 +511,10 @@ func _build_ui() -> void:
 	name_field.text_changed.connect(func(text: String) -> void: controller.board_name = text)
 	layout.add_child(name_field)
 
-	tool_dropdown = _dropdown(TOOLS)
-	layout.add_child(_labelled("tool", tool_dropdown))
-	kind_dropdown = _dropdown(PLACEMENT_KINDS)
-	layout.add_child(_labelled("kind", kind_dropdown))
-
-	_part_ids = _placeable_part_ids()
-	part_dropdown = _dropdown(_part_ids)
-	layout.add_child(_labelled("part", part_dropdown))
-
 	height_field = _number(0.0, -32.0, 32.0, 0.1)
 	layout.add_child(_labelled("height", height_field))
 	facing_field = _number(0.0, -TAU, TAU, 0.01)
 	layout.add_child(_labelled("facing", facing_field))
-
-	claim_kind_dropdown = _dropdown(CLAIM_KINDS)
-	layout.add_child(_labelled("claim", claim_kind_dropdown))
 
 	edge_side_dropdown = _dropdown(EDGE_SIDES)
 	layout.add_child(_labelled("edge side", edge_side_dropdown))
@@ -526,26 +535,6 @@ func _build_ui() -> void:
 	layout.add_child(_labelled("chance", chance_field))
 
 	layout.add_child(_section_field_rows())
-
-	undo_button = Button.new()
-	undo_button.text = "Undo"
-	undo_button.pressed.connect(undo)
-	layout.add_child(undo_button)
-
-	save_map_button = Button.new()
-	save_map_button.text = "Save as Map"
-	save_map_button.pressed.connect(save_as_map)
-	layout.add_child(save_map_button)
-
-	save_section_button = Button.new()
-	save_section_button.text = "Save as Section"
-	save_section_button.pressed.connect(save_as_section)
-	layout.add_child(save_section_button)
-
-	run_bout_button = Button.new()
-	run_bout_button.text = "Run Test Bout"
-	run_bout_button.pressed.connect(run_test_bout)
-	layout.add_child(run_bout_button)
 
 	status_label = Label.new()
 	layout.add_child(status_label)
@@ -609,17 +598,22 @@ static func _tag_list(text: String) -> Array[StringName]:
 	return tags
 
 
-## Every part the board can hold, by id, sorted so the dropdown is the same on two machines.
+## Every part the board can hold, by id, sorted so the list is the same on two machines.
 ##
 ## **Not a curated list.** Any part can be a blocker or a loose field item, and which parts make
 ## sense as a surface is already answered by the data — a `walkable` tag or a `GROUND` attachment.
 ## Authoring a new floor type is a `.tres`, exactly as the standing rule requires.
-func _placeable_part_ids() -> Array[StringName]:
-	var ids: Array[StringName] = []
+##
+## taskblock-57 Pass G1: public, because the searchable list on the editor's bar is what offers
+## these now. Cached after the first call — the pool does not change while a board is being authored
+## and the list is reopened on every placement.
+func placeable_part_ids() -> Array[StringName]:
+	if not _part_ids.is_empty():
+		return _part_ids
 	for part: Part in DataLibrary.parts_pool():
-		ids.append(part.id)
-	ids.sort()
-	return ids
+		_part_ids.append(part.id)
+	_part_ids.sort()
+	return _part_ids
 
 
 func _dropdown(options: Array[StringName]) -> OptionButton:

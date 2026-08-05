@@ -56,9 +56,24 @@ func _mount() -> void:
 	if root == null:
 		return
 	suite_run_panel = SuiteRunPanel.new()
-	suite_run_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	suite_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	suite_run_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# **taskblock-57 Pass G1: top-left, not bottom-right, and it is a real collision that moved it.**
+	#
+	# This panel is 560 x 331 anchored into the bottom-right corner, so it reached left to x = 1360
+	# on a 1920 screen — inside the action bar's own band, which Pass C's table puts at 480 to 1440.
+	# That conflict was always there and was invisible while the only mode showing this panel put its
+	# controls in the opposite corner; G1 folds the spectator's cluster into the bar and the two
+	# landed on top of each other, which `test_debug_panel_layout.gd` caught the same day.
+	#
+	# The bottom-right corner is spoken for twice over — the table gives it to the performance
+	# monitor with no padding, and the band above it to the bar's satellites. The top-left is free in
+	# every mode that shows this panel: the player view never constructs it at all
+	# (`SuiteRunPanel.SHOW_IN_PLAYER_VIEW`), which is the one mode whose top-left holds the Inspect
+	# viewer.
+	#
+	# Offset below the announcement band rather than hard into the corner: announcements are drawn
+	# there and are click-through, so text would otherwise land over this panel's own rows.
+	suite_run_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	suite_run_panel.position = Vector2(0.0, UiLayout.scaled(BattleLayout.ANNOUNCEMENT_HEIGHT))
 	root.add_child(suite_run_panel)
 
 	watched_run_panel = WatchedRunPanel.new()

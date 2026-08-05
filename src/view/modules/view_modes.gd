@@ -74,7 +74,19 @@ const PLAYER_MODULES: Array[StringName] = [
 ## taskblock-57 Pass C adds `perf_monitor` after `debug_panel`. **Not a new surface here** — the
 ## readout was already mounted in this mode, inside `debug_panel`; splitting it out would otherwise
 ## have silently deleted it from the one view a framerate hunt is actually run in.
+##
+## **taskblock-57 Pass G1: `spectator_bar` is first, and that is load-bearing.** It is this mode's
+## bar, so it publishes the four satellite slots the combat log, Inspect's button and the UI buttons
+## resolve at their own mount time — plus `pacing_row` and `tunables`, which is how `playback` and
+## `top_left_controls` land in the bar rather than in a corner. Declared later, every one of them
+## would silently fall back to `ui_root` and stack at (0,0). `playback` still precedes
+## `top_left_controls` so the transport controls read left-to-right before the shared cluster.
+##
+## `ui_buttons` is last and is new here: this mode now has edge-pinned surfaces (Inspect, the debug
+## menu, its own bar), and A2's rule is that every one of them is collapsible — which needs the
+## toggle to exist.
 const SPECTATOR_MODULES: Array[StringName] = [
+	&"spectator_bar",
 	&"combat_log",
 	&"announcements",
 	&"resolution",
@@ -85,6 +97,7 @@ const SPECTATOR_MODULES: Array[StringName] = [
 	&"playback",
 	&"board_inspect",
 	&"top_left_controls",
+	&"ui_buttons",
 ]
 
 ## taskblock-57 Pass F: **what is visible while aiming, as a table entry someone can read.**
@@ -142,7 +155,16 @@ const BOUT_SETUP_MODULES: Array[StringName] = [&"bout_setup"]
 ## and what `test_view_gap_modules.gd` asserts the other half of: a claim is consumed at assembly
 ## and does not exist on an assembled board, so drawing one during a bout would be drawing
 ## something that is not there.
+## **taskblock-57 Pass G1 adds `editor_bar`, and it is first for the ordinary reason**: it is this
+## mode's bar, so it publishes the four satellite slots `combat_log` and Inspect's button resolve at
+## their own mount time.
+##
+## The claim above — *"exactly one module in the editor's set is new"* — is now two, and that is a
+## deliberate change rather than a drift. Pass G's whole subject is that the editor needs a surface
+## of its own shape, and *"three action bars, not one with three contents"* says outright that the
+## second one is a module. `test_editor_mode.gd` counts them and names both.
 const EDITOR_MODULES: Array[StringName] = [
+	&"editor_bar",
 	&"camera_framing",
 	&"claim_volumes",
 	&"inspect",
@@ -178,7 +200,12 @@ static func spectator() -> ViewMode:
 	var mode := ViewMode.new()
 	mode.id = &"spectator"
 	mode.display_name = "Spectator"
-	mode.chrome = ModeChrome.TOP_LEFT_ROWS
+	# taskblock-57 Pass G1: **the battle layout, because a spectated battle is a battle.** Pass C's
+	# table describes the battle surface — the log left of the bar, announcements at the top, the
+	# perf readout in the true corner — and none of that was reachable from `TOP_LEFT_ROWS`, which
+	# publishes two rows in a corner and lets everything else anchor itself. The spectator's bar is
+	# what makes the switch possible: the four satellite slots have a provider here now.
+	mode.chrome = ModeChrome.BATTLE_LAYOUT
 	mode.modules = SPECTATOR_MODULES
 	mode.turn_policy = ViewMode.TurnPolicy.NONE
 	# A spectated bout has no "New Battle" concept of its own; the toggle goes the other way.
@@ -228,7 +255,13 @@ static func editor() -> ViewMode:
 	var mode := ViewMode.new()
 	mode.id = &"editor"
 	mode.display_name = "Editor"
-	mode.chrome = ModeChrome.PLAYER_COLUMNS
+	# taskblock-57 Pass G1: **the battle layout, for the same reason the spectator took it.** Pass F
+	# reused `PLAYER_COLUMNS` because that was the player mode's layout at the time and the editor
+	# genuinely needed no chrome of its own; Pass C moved the player mode off it, and reusing an
+	# abandoned layout is not the same claim as reusing the one everything else is on. The editor's
+	# own surfaces land in the placement table's slots — its bar in the action row, the section
+	# details where the Inspect viewer sits — so it is the table it needs.
+	mode.chrome = ModeChrome.BATTLE_LAYOUT
 	mode.modules = EDITOR_MODULES
 	mode.turn_policy = ViewMode.TurnPolicy.NONE
 	# The board is the thing being authored, so a click on it must reach the editor rather than

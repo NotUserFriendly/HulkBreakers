@@ -758,7 +758,7 @@ func test_the_unit_resources_row_renders_above_the_action_bars_own_row() -> void
 	var scene := BattleScene.new()
 	add_child_autofree(scene)
 	var overlay: ControlOverlay = _overlay(scene)
-	var action_column: VBoxContainer = overlay.module(&"action_bar").action_column
+	var action_column: VBoxContainer = overlay.module(&"action_bar").content_column
 	var resources: Control = (overlay.module(&"unit_resources") as UnitResourcesModule).column
 	assert_not_null(resources, "the player mode declares a unit-resources surface")
 	await get_tree().process_frame

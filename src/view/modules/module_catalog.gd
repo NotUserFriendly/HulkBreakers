@@ -47,6 +47,12 @@ const IDS: Array[StringName] = [
 	# taskblock-57 Pass E: the announcement position — a second VIEW of the combat-log stream,
 	# never a second message path.
 	&"announcements",
+	# taskblock-57 Pass G1: **three bars, not one with three contents.** All three share
+	# `ACTION_ROW` and publish the same four satellite slots; what differs is what is in them.
+	# `action_bar` above is the player's, and keeps that id because it is what the mode table, the
+	# tests and the placement table have always named it.
+	&"spectator_bar",
+	&"editor_bar",
 ]
 
 
@@ -101,4 +107,8 @@ static func build(id: StringName) -> ViewModule:
 			return AimReadoutModule.new()
 		&"announcements":
 			return AnnouncementsModule.new()
+		&"spectator_bar":
+			return SpectatorBarModule.new()
+		&"editor_bar":
+			return EditorBarModule.new()
 	return null
