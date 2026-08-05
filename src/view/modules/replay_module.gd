@@ -56,8 +56,18 @@ func module_id() -> StringName:
 ## The UI review asked for one outright: *"The run tests window needs to be a button within the UI
 ## BUTTONS module, and default off."* Overriding is the honest way to say "this is toggleable for a
 ## reason the slot cannot express", rather than inventing a slot so the derivation comes out right.
+##
+## **Only where the panels exist**, which is the follow-up review's *"REP doesn't show or hide
+## anything."* The player view never constructs them (`SuiteRunPanel.SHOW_IN_PLAYER_VIEW`) and a
+## release export never constructs them at all — so a button was being built for a surface that was
+## not there, and pressing it flipped a flag nothing read.
 func is_collapsible() -> bool:
-	return true
+	return suite_run_panel != null
+
+
+## What the button's border reads. The panels are hidden together, so either answers for both.
+func is_showing() -> bool:
+	return suite_run_panel != null and suite_run_panel.visible
 
 
 ## Hides both panels together. They are one debug surface from the player's point of view, and a
@@ -108,7 +118,13 @@ func _mount() -> void:
 	root.add_child(watched_run_panel)
 
 	suite_run_panel.battle = context.battle
-	watched_run_panel.tooltip_view = _tooltip_view()
+	# **The criteria and the run box are one item**, which the UI review asked for: *"The white text
+	# and the [?] should be a single item with the run_test box."* They were two panels in two
+	# corners explaining each other.
+	suite_run_panel.set_criteria(
+		"\n".join(WatchedRun.describe_criteria(CompletionSampler.TURN_CAP, 0.35)), _tooltip_view()
+	)
+	suite_run_panel.dismissed.connect(func() -> void: collapsed = true)
 	watched_run_panel.bind(context.battle, null)
 	# **Off by default**, which the UI review asked for: *"The run tests window needs to be a button
 	# within the UI BUTTONS module, and default off."* A debug surface that is up before anyone asked

@@ -113,6 +113,20 @@ func provides_own_button() -> bool:
 	return false
 
 
+## True if whatever this module draws is on screen **right now**.
+##
+## The UI review: *"The button highlight should only appear if the window is visible, even if it's
+## launched some other way. This may need a pass on all buttons."* It did — a border set at the
+## moment its own button was pressed is a claim about the press, not about the panel, and Inspect in
+## particular opens from a board click that never touches the button.
+##
+## So the cluster reads this every frame rather than remembering what it did. The default is the
+## collapse flag; a module whose surface can be opened by something else overrides it to read the
+## surface.
+func is_showing() -> bool:
+	return not collapsed
+
+
 ## Override to actually hide something. The default does nothing, so a module that declares itself
 ## collapsible and has not implemented it yet degrades to "the toggle exists and does nothing
 ## visible" rather than crashing — and the test for the toggle is about the flag, not the pixels.

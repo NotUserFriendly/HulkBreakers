@@ -36,12 +36,26 @@ extends ViewModule
 ## a dozen modal buttons: the editor's whole interaction is *point at a cell and mean something*,
 ## and `TOOLS` below is the list of things it can mean.
 ##
-## ## A known limit, flagged rather than worked around
+## ## A known limit, and it has now produced three defects rather than one
 ##
 ## The editor mode installs over whatever bout `BattleScene` already built, so any units already on
 ## the board are relocated onto the authored one by the same `BoardSwap` a map load uses. An
 ## authoring session that starts with no units at all wants an entry point that builds a world
 ## without a bout, which is *Main menu*'s job and is sequenced after this in `PLAN.md`.
+##
+## **That limit is not theoretical, and the pattern is worth naming.** The editor inherits every
+## piece of view state the bout owned, and each one has had to be found by eye:
+##
+## | inherited | where it lived | cleared by |
+## |---|---|---|
+## | units at their last cells | `CombatState.units` | `_hide_stranded` (`BR57.01`) |
+## | movement tiles and ghosts | `BoardView`'s overlay layers | `clear_overlays` in `_mount` |
+## | extraction markers | `BoardView`'s statics, from `MissionState` | building with no mission |
+##
+## **Three symptoms, one cause**: the editor is a surface over a world it did not build. Each fix
+## above is right on its own terms — do not draw what is not there — and none of them touches the
+## cause, so expect a fourth. The entry point that builds a world with no bout in it is the fix;
+## clearing things one at a time is the interim.
 
 ## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor — a small
 ## icon of what is being placed — **or** is carried by the action bar's own highlight. Either is
@@ -208,10 +222,18 @@ func _mount() -> void:
 	# **A default the author does not have to supply.** The part dropdown used to select its first
 	# entry automatically; with the list on the bar, an editor opened and clicked immediately would
 	# otherwise place nothing at all and look broken.
-	if selected_part == &"" and not placeable_part_ids().is_empty():
-		selected_part = placeable_part_ids()[0]
+	# **A floor, not whatever sorts first.** The UI review: *"Default part is an ammo rack, it should
+	# probably be the `ship_floor` part."* It was `placeable_part_ids()[0]` — alphabetically first
+	# across the whole parts pool, which is `ammo_rack`. The first thing an author places on an empty
+	# board is ground, so the default is the first *surface* part and falls back to the pool only if
+	# the data has no floors at all.
 	if last_surface_part == &"" and not surface_part_ids().is_empty():
 		last_surface_part = surface_part_ids()[0]
+	if selected_part == &"":
+		if last_surface_part != &"":
+			selected_part = last_surface_part
+		elif not placeable_part_ids().is_empty():
+			selected_part = placeable_part_ids()[0]
 	_build_ui()
 	refresh()
 
@@ -473,7 +495,15 @@ func _refresh_board() -> void:
 	var stranded: Array[int] = BoardSwap.swap_board(
 		battle.combat_state, result["grid"] as Grid, true
 	)
-	battle.sync_board_view()
+	# **Built without the mission's decoration, not through `sync_board_view`.**
+	#
+	# That helper passes `mission.team_extraction_cells`, so every editor redraw re-stamped the
+	# previous bout's extraction markers onto the authored board — the UI review's *"Extract color
+	# indicators are not being cleared when going to edit mode from a bout."*
+	#
+	# **An authored board has no mission**, so it has no extraction cells. Passing an empty dictionary
+	# is not a workaround; it is the honest argument for a board nobody is playing.
+	battle.board_view.build(battle.combat_state.grid, battle.combat_state.material_table, {})
 	_hide_stranded(battle, stranded)
 
 

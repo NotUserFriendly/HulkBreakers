@@ -82,8 +82,14 @@ func test_a_buttons_border_follows_whether_its_module_is_up() -> void:
 
 	assert_true(button.active, "the bar is up, so its button must be lit")
 	assert_not_null(button.get_theme_stylebox("normal"), "and lit means a real border")
+
 	button.pressed.emit()
 	assert_false(bar.backing.visible, "sanity: it dismissed the bar")
+	# **The border is re-read on the next tick, not set by the press.** That is the point of the
+	# follow-up review's *"the highlight should only appear if the window is visible, even if it's
+	# launched some other way"* — the button reports the module rather than remembering its own
+	# click, so the test has to let a frame's worth of reading happen.
+	buttons.tick(0.0)
 	assert_false(button.active, "a dismissed module must leave its button unlit")
 
 
@@ -232,8 +238,12 @@ func test_the_inspect_viewer_sits_in_a_padded_frame() -> void:
 	assert_not_null(module.frame, "the viewer is still a bare subview")
 	assert_true(module.frame.is_ancestor_of(module.viewer))
 	var style: StyleBoxFlat = module.frame.get_theme_stylebox("panel") as StyleBoxFlat
-	assert_gt(style.border_width_left, 0, "it has no border")
-	assert_gt(style.content_margin_left, 0.0, "and nothing to pad the view off it")
+	# **The padding IS the border**, which is the review's own correction: *"I mean the panel needs
+	# to be oversized AS a border, not add a border. You can remove the thin gray line."* So the
+	# frame is a filled panel larger than the view it holds, and there is deliberately no stroke.
+	assert_gt(style.content_margin_left, 0.0, "nothing oversizes the panel around the view")
+	assert_gt(style.bg_color.a, 0.0, "and the band showing around it must actually be drawn")
+	assert_eq(style.border_width_left, 0, "the thin line was asked to go")
 
 
 ## **THE REVIEW POINT**: *"EDIT INSPECT VIEWER — Panel needs some padding all around it."*
