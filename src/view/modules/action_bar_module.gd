@@ -28,7 +28,8 @@ extends BarModule
 ## - **Two rows**, so ten 108 px boxes take 540 px rather than 1080 — against a bar the table gives
 ##   960 px. The single row overhung its own bar by 120 px at 1x, and by more at any UI scale above
 ##   it. Measured, not assumed: `ActionBar.BOX_SIZE` is 108 and `SLOT_COUNT` is 10.
-## - **Square items** are `ActionBar.BOX_SIZE`'s own business and are unchanged.
+## - **Square items**, at a side derived from the band rather than from `ActionBar.BOX_SIZE` — see
+##   `box_side()`, which is the supervisor's "the bar is a fixed size" review point.
 ## - **Left-aligned**, which is what `SHRINK_BEGIN` on the grid means here: the boxes start at the
 ##   bar's left edge instead of being centred in whatever width the row happens to have.
 ## - **Small padding**, as the grid's own separation.
@@ -76,4 +77,24 @@ func _fill_bar(column: VBoxContainer) -> void:
 	action_bar = ActionBar.new()
 	add_child(action_bar)
 	if context.tactics != null:
-		action_bar.setup(context.tactics, action_grid, _tooltip_view())
+		action_bar.setup(context.tactics, action_grid, _tooltip_view(), box_side())
+
+
+## **The box size is derived from the bar, not the other way round.**
+##
+## The supervisor's review: *"Action bar is too tall... Action bar should be ~1/8th of the screen
+## height tall. Action bar is not a fixed size."* `ActionBar.BOX_SIZE` was 108 px from tb08 E1's
+## *"3x its current size"*, which at two rows is 216 — taller than the band the placement table now
+## gives the whole bar. **A bar sized to its boxes cannot be a fixed fraction of the screen**, so
+## the boxes are fitted into the band instead: whatever height `BattleLayout` says the bar is,
+## minus the row separations, divided by the rows.
+##
+## Falls back to `ActionBar.BOX_SIZE` with no host to measure against, which is the stand-alone case
+## and keeps every existing caller of `setup` unchanged.
+func box_side() -> float:
+	var root: Control = context.ui_root if context != null else null
+	if root == null:
+		return ActionBar.BOX_SIZE.x
+	var band: float = BattleLayout.action_bar_rect(root.size).size.y
+	var gaps: float = UiLayout.scaled(BOX_SPACING) * float(BOX_ROWS + 1)
+	return maxf(1.0, (band - gaps) / float(BOX_ROWS))

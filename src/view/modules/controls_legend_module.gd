@@ -12,7 +12,7 @@ extends ViewModule
 ## bout's log is being written and `file_sink` is rebuilt per bout.
 
 var controls_overlay: ControlsOverlay = null
-var keybindings_button: Button = null
+var keybindings_button: UiButton = null
 var label: Label = null
 
 
@@ -31,9 +31,10 @@ func preferred_slot() -> StringName:
 func _mount() -> void:
 	var column: Control = context.slot(ModuleSlots.TOP_RIGHT, null)
 
-	keybindings_button = Button.new()
-	keybindings_button.text = "Keybindings"
-	keybindings_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	# A `UiButton`, so the cluster is one row of squares rather than three shapes — see `UiButton`.
+	keybindings_button = UiButton.build(
+		"KEY", "Keybindings", "Shows and hides the list of bound keys.", _tooltip_view(), true
+	)
 	keybindings_button.pressed.connect(toggle)
 	_parent_into(context.slot(preferred_slot(), column), keybindings_button)
 
@@ -76,3 +77,10 @@ func _parent_into(parent: Control, child: Control) -> void:
 		parent.add_child(child)
 	else:
 		add_child(child)
+
+
+## The one shared tooltip renderer, if this mode declared it. Null is legal and means the button
+## carries no hover description.
+func _tooltip_view() -> TooltipView:
+	var module: ViewModule = context.module(&"tooltip") if context != null else null
+	return (module as TooltipModule).view if module != null else null

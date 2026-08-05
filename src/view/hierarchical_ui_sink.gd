@@ -25,15 +25,23 @@ extends UiLogSink
 ## event routinely rewrites an existing group's summary rather than
 ## appending a row, so there is no correct incremental append here.
 
-## taskblock-57 Pass C: **every group drawn open, without clicking each one.**
+## taskblock-57 Pass C, **unhooked in the tuning pass: verbose no longer unfolds anything.**
 ##
-## The table asks for verbose as a checkbox on the log panel. What it means here is the only thing
-## it can mean for a folded view: the detail this sink already has, shown rather than waiting behind
-## a click. It is still **presentation only** — tb22 F2's rule — so `fold` is untouched, `lines`
-## is untouched, and `out/combat.log` is unaffected either way.
+## Pass C read the table's *"word wrap and verbose as checkboxes"* as meaning the only thing it
+## could mean for a folded view — every group drawn open without clicking each one. **The supervisor
+## reviewed it and that is not what verbose is for:** *"Verbose is currently unfolding elements
+## which is not its purpose. Unhook it from that, and leave it open for later."*
 ##
-## Deliberately does NOT clear `_expanded`: turning verbose off puts every group back exactly as the
-## reader had left it, rather than collapsing the one they had opened by hand.
+## So the flag, the checkbox and the signal all stay and **nothing reads this to decide what is
+## drawn**. Expanding a group is the reader's click and only the reader's click. That leaves the
+## affordance in place for whatever verbose turns out to mean — the obvious candidate is which
+## *kinds* reach the panel, which is a filter rather than a fold, but it is not invented here.
+##
+## **Authored and unread, deliberately** — the same shape as `Announcement`'s `sound` field, and a
+## test pins that nothing consumes it so a later reader cannot mistake it for wired.
+##
+## `render_now()` still fires on assignment: the flag is real state, and a surface that redraws when
+## a control is toggled is honest even when the redraw is currently identical.
 var verbose: bool = false:
 	set(value):
 		verbose = value
@@ -88,7 +96,9 @@ func _render_label() -> void:
 		if detail.is_empty():
 			out.append(group.summary.xml_escape())
 			continue
-		var expanded: bool = verbose or _expanded.get(id, false)
+		# **`verbose` is deliberately not consulted** — see its own declaration. A group is open
+		# because the reader opened it, and for no other reason.
+		var expanded: bool = _expanded.get(id, false)
 		var marker: String = "▾ " if expanded else "▸ "
 		out.append("[url=group_%d]%s%s[/url]" % [id, marker, group.summary.xml_escape()])
 		if expanded:

@@ -3,20 +3,25 @@ extends ViewModule
 
 ## taskblock-56 Pass F: **the editor, as one module over a mode's worth of existing ones.**
 ##
-## The block called the editor its own proof: *"the editor mode should be a module set plus one new
+## The block called the editor its own proof: *"the editor mode should be a module set plus
+## one new
 ## authoring module. If it is not — if it needs to subclass, or reach into another mode, or
-## duplicate a panel — say so plainly."* This is that one module, and what it does **not** contain
+## duplicate a panel — say so plainly."* This is that one module, and what it does **not**
+## contain
 ## is the evidence:
 ##
 ## | the editor needs | it comes from |
 ## |---|---|
 ## | a board to look at | `BattleScene`'s own `BoardView`, unchanged |
-## | clicks on that board | `BoardInspectModule`, in the capture mode the debug panel already uses |
-## | claims drawn | `ClaimVolumeModule`, which has been sitting tested and unmounted since Pass E |
+## | clicks on that board | `BoardInspectModule`, in the capture mode the debug panel
+## already uses |
+## | claims drawn | `ClaimVolumeModule`, which has been sitting tested and unmounted since
+## Pass E |
 ## | the camera pointed at what loaded | `CameraFramingModule`, unchanged |
 ## | a place to read what happened | `CombatLogModule`, unchanged |
 ## | a layout to sit in | `ModeChrome.PLAYER_COLUMNS`, unchanged — **no new chrome** |
-## | a way to launch what was authored | `BoutInjector.load_map_file`, which is `load_map` with the
+## | a way to launch what was authored | `BoutInjector.load_map_file`, which is `load_map`
+## with the
 ##   file-reading half taken off |
 ##
 ## **The scene gets no logic.** Every verb below is a call into `EditorController`, which is a
@@ -28,28 +33,35 @@ extends ViewModule
 ##
 ## It authors a board; it queues nothing against a unit. `ViewModule`'s line is drawn at the
 ## `TacticsController` path ending in `ActionQueue.enqueue`, and nothing here goes near it — the
-## same reasoning that keeps `DebugPanelModule` on the display side even though injection mutates.
+## same reasoning that keeps `DebugPanelModule` on the display side even though injection
+## mutates.
 ##
 ## ## What a click does is the tool, and the tool is a table entry
 ##
-## One click gesture, several meanings, chosen by the tool dropdown. That is deliberate rather than
-## a dozen modal buttons: the editor's whole interaction is *point at a cell and mean something*,
+## One click gesture, several meanings, chosen by the tool dropdown. That is deliberate
+## rather than
+## a dozen modal buttons: the editor's whole interaction is *point at a cell and mean
+## something*,
 ## and `TOOLS` below is the list of things it can mean.
 ##
 ## ## A known limit, flagged rather than worked around
 ##
-## The editor mode installs over whatever bout `BattleScene` already built, so any units already on
+## The editor mode installs over whatever bout `BattleScene` already built, so any units
+## already on
 ## the board are relocated onto the authored one by the same `BoardSwap` a map load uses. An
 ## authoring session that starts with no units at all wants an entry point that builds a world
 ## without a bout, which is *Main menu*'s job and is sequenced after this in `PLAN.md`.
 
-## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor — a small
+## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor —
+## a small
 ## icon of what is being placed — **or** is carried by the action bar's own highlight. Either is
-## fine; neither is not."* The bar's highlight is the option taken, and a signal is what lets the
+## fine; neither is not."* The bar's highlight is the option taken, and a signal is what
+## lets the
 ## bar follow a tool set from anywhere — its buttons, a pick from the parts list, or a test.
 signal tool_changed(tool: StringName)
 
-## Every meaning a board click can carry. Open `StringName`s and generated into the dropdown from
+## Every meaning a board click can carry. Open `StringName`s and generated into the
+## dropdown from
 ## this list, so the panel and the router cannot disagree about which tools exist.
 const TOOLS: Array[StringName] = [
 	&"place",
@@ -95,7 +107,8 @@ const EDGE_SIDES: Array[StringName] = [
 ]
 
 ## Where a save lands when the author names a file rather than a path. The two authored
-## directories the catalogs already scan, so a saved board appears in the load dropdown next time
+## directories the catalogs already scan, so a saved board appears in the load dropdown
+## next time
 ## the panel is built with no further wiring.
 const MAP_DIR := "res://data/maps"
 const SECTION_DIR := "res://data/sections"
@@ -104,7 +117,8 @@ const SECTION_DIR := "res://data/sections"
 ## tunable; resizing afterwards is `EditorController.resize_claim`'s job.
 const DEFAULT_CLAIM_HEIGHT := 2.4
 
-## The editing model. **Public and constructed here**, because the controller is the module's whole
+## The editing model. **Public and constructed here**, because the controller is the
+## module's whole
 ## state and a test drives it directly rather than through widgets.
 var controller := EditorController.new()
 
@@ -125,8 +139,10 @@ var last_cell: Variant = null
 
 ## What a board click does. One of `TOOLS`.
 ##
-## A setter rather than a plain field so the highlight cannot fall out of step with the tool: every
-## route that changes it goes through here, which is the same "one emitter, not one per call site"
+## A setter rather than a plain field so the highlight cannot fall out of step with the
+## tool: every
+## route that changes it goes through here, which is the same "one emitter, not one per
+## call site"
 ## reasoning `QueueLog` is built on.
 var active_tool: StringName = &"place":
 	set(value):
@@ -136,7 +152,8 @@ var active_tool: StringName = &"place":
 		tool_changed.emit(value)
 ## Which of `PLACEMENT_KINDS` a placed part becomes.
 var selected_kind: StringName = MapPlacement.KIND_SURFACE
-## The part the `place` tool places. Defaulted at mount to the first placeable id, so a fresh editor
+## The part the `place` tool places. Defaulted at mount to the first placeable id, so a
+## fresh editor
 ## can place something without visiting the list first.
 var selected_part: StringName = &""
 ## Which of `CLAIM_KINDS` the `claim` tool authors.
@@ -171,9 +188,12 @@ func module_id() -> StringName:
 ## buttons."*
 ##
 ## **Declaring the slot is the whole of the toggle.** `INSPECT_VIEWER` is left-edge-pinned, so
-## `ViewModule.is_collapsible()` answers true from the slot alone and `UiButtonsModule` builds the
-## checkbox by sweeping for exactly that — no module is named in either file. The taskblock asked
-## for a toggle and the answer was a `preferred_slot()`, which is the collapse rule doing the job
+## `ViewModule.is_collapsible()` answers true from the slot alone and `UiButtonsModule`
+## builds the
+## checkbox by sweeping for exactly that — no module is named in either file. The taskblock
+## asked
+## for a toggle and the answer was a `preferred_slot()`, which is the collapse rule doing
+## the job
 ## it was built for in Pass A.
 func preferred_slot() -> StringName:
 	return ModuleSlots.INSPECT_VIEWER
@@ -192,8 +212,10 @@ func _mount() -> void:
 ## Takes every board click for the whole session, and turns the claim drawing on.
 ##
 ## **Both are reads of modules this one does not own and does not require.** A context with no
-## `board_inspect` gets an editor that authors through its verbs and not through clicks; a context
-## with no `claim_volumes` gets one whose claims are invisible. Neither is an error, which is what
+## `board_inspect` gets an editor that authors through its verbs and not through clicks; a
+## context
+## with no `claim_volumes` gets one whose claims are invisible. Neither is an error, which
+## is what
 ## `link()` degrading rather than asserting is for — and it is why this module mounts against an
 ## empty context at all.
 func link() -> void:
@@ -297,10 +319,12 @@ func save_as_section() -> Dictionary:
 ##
 ## Goes through `BoutInjector.load_map_file`, which is the ordinary `load_map` verb with the
 ## file-reading half taken off, so the board reaches combat down the identical route a generated
-## one does. **Never a second entry into a bout**, which is what an editor is most likely to grow
+## one does. **Never a second entry into a bout**, which is what an editor is most likely
+## to grow
 ## by accident.
 ##
-## An authored board that fails the navigability invariant launches anyway and the warnings say so
+## An authored board that fails the navigability invariant launches anyway and the warnings
+## say so
 ## — F4, and the reason this returns a result rather than gating on `warnings()`.
 func run_test_bout() -> Dictionary:
 	var battle: BattleScene = context.battle if context != null else null
@@ -318,7 +342,8 @@ func run_test_bout() -> Dictionary:
 ## Loads an authored map or section into the editor, by catalog name or by path.
 ##
 ## **Through `BoardSwap`'s own resolution, not a second copy of it.** That is where "a name or a
-## path" is already answered for `load_map` and `preview_section`, and an editor with its own idea
+## path" is already answered for `load_map` and `preview_section`, and an editor with its
+## own idea
 ## of how to find a file would be the third answer to a question that has one.
 ##
 ## Tried as a map and then as a section, because the two formats share a name space from the
@@ -338,7 +363,8 @@ func open(path_or_name: String) -> Dictionary:
 	return {"error": ""}
 
 
-## Puts the model's own name into the field after a load. The other direction of the one-way pair
+## Puts the model's own name into the field after a load. The other direction of the
+## one-way pair
 ## `refresh()`'s note describes.
 func _show_name() -> void:
 	if name_field != null:
@@ -380,14 +406,17 @@ func chance_value() -> float:
 # --- redraw ------------------------------------------------------------------------------------
 
 
-## Pushes the model out to everything that shows it: the live board, the claim boxes, the warnings
+## Pushes the model out to everything that shows it: the live board, the claim boxes, the
+## warnings
 ## list and the readout. Cheap to call after every edit, and called after every edit — an editor
 ## whose display is refreshed on some verbs and not others is one where the author cannot tell a
 ## no-op from a missed redraw.
 ## **Deliberately does not write the name field back into the model.** It used to, and that made
-## `open()` lose the name of whatever it had just loaded: the load set `board_name` from the file
+## `open()` lose the name of whatever it had just loaded: the load set `board_name` from
+## the file
 ## and the very next `refresh()` overwrote it with whatever the field still had in it. The field
-## pushes into the controller on edit (`_build_ui`) and the controller pushes into the field on load
+## pushes into the controller on edit (`_build_ui`) and the controller pushes into the
+## field on load
 ## (`_show_name`) — one direction each way, rather than a write-back that fights a load.
 func refresh() -> void:
 	_refresh_board()
@@ -397,7 +426,8 @@ func refresh() -> void:
 
 ## Rebuilds the live board from the model, through `MapSerializer` exactly as a load would.
 ##
-## **A board that cannot be built is left standing and reported**, never half-applied: the author
+## **A board that cannot be built is left standing and reported**, never half-applied: the
+## author
 ## sees the last good board plus a warning naming the placement that broke it, which is far more
 ## use than an empty grid.
 func _refresh_board() -> void:
@@ -407,8 +437,45 @@ func _refresh_board() -> void:
 	var result: Dictionary = controller.to_grid()
 	if not result.has("grid"):
 		return
-	BoardSwap.swap_board(battle.combat_state, result["grid"] as Grid, true)
+	var stranded: Array[int] = BoardSwap.swap_board(
+		battle.combat_state, result["grid"] as Grid, true
+	)
 	battle.sync_board_view()
+	_hide_stranded(battle, stranded)
+
+
+## **A unit the authored board has nowhere to put is not drawn.**
+##
+## Reported by the supervisor as *"some units spawn in edit mode at the places they were in the
+## last bout"*, and that is exactly what it was. The editor installs over whatever bout
+## `BattleScene`
+## already built, and `BoardSwap.swap_board` relocates every living unit onto the authored
+## board —
+## but it **returns the ones it could not place** and this module was discarding that list.
+## A board
+## with no floor on it yet strands all of them, so every unit kept its cell from the
+## previous bout
+## and was still rendered there, standing on nothing.
+##
+## Hiding rather than moving, and that is deliberately not a design decision: a stranded
+## unit has
+## no cell on this board, so drawing it somewhere is the view inventing a fact. It is the
+## same rule
+## this project has applied to risers and to the ground quad — **do not draw what is not
+## there.** The
+## units are untouched and `run_test_bout` relocates them onto the finished board down the
+## ordinary
+## injector path, which is when they come back.
+##
+## **The real answer is an entry point that builds a world with no bout in it**, which is
+## `PLAN.md`'s
+## *Main menu* and is flagged in this module's own header as a known limit. This makes the
+## editor
+## honest in the meantime.
+func _hide_stranded(battle: BattleScene, stranded: Array[int]) -> void:
+	for view: HitVolumeView in battle.unit_views:
+		if view.unit != null:
+			view.visible = not stranded.has(view.unit.id)
 
 
 ## **This is what `ClaimVolumeModule` was built for.** Pass E left it tested and mounted by no
@@ -446,12 +513,15 @@ func _refresh_readout() -> void:
 	warnings_label.text = "\n".join(problems)
 
 
-## taskblock-57 Pass G2: **the warnings reach the combat log, and the significant ones announce.**
+## taskblock-57 Pass G2: **the warnings reach the combat log, and the significant ones
+## announce.**
 ##
-## *"Validation warnings go to the combat log, and the significant ones surface as announcements.
+## *"Validation warnings go to the combat log, and the significant ones surface as
+## announcements.
 ## Warn, never block needs somewhere to warn."*
 ##
-## Only what is **new** is emitted. This runs after every edit against a list recomputed whole, so
+## Only what is **new** is emitted. This runs after every edit against a list recomputed
+## whole, so
 ## reporting all of it every time would put the same line in the log once per click. `EditorLog`
 ## owns the diff and the significance rule; this holds what was last said, and it shrinks as
 ## warnings clear so a reintroduced problem is reported again.
@@ -466,7 +536,8 @@ func _report_warnings(problems: Array[String]) -> void:
 	EditorLog.report(state, fresh, controller.navigability_warnings())
 
 
-## Folds the section details away. The panel is the whole of what this module draws, so hiding it
+## Folds the section details away. The panel is the whole of what this module draws, so
+## hiding it
 ## hides the module — and the authoring verbs, which live on the bar, keep working while it is
 ## folded. That is the point of a collapsible details panel rather than a collapsible editor.
 func _on_collapsed(value: bool) -> void:
@@ -485,7 +556,8 @@ func _frame_content() -> void:
 # --- internals ---------------------------------------------------------------------------------
 
 
-## A one-cell claim standing on the deck. The extent is in the section's own local space, which is
+## A one-cell claim standing on the deck. The extent is in the section's own local space,
+## which is
 ## cells on X/Z and world units on Y — `SectionClaim`'s own convention, so a claim over cell
 ## `(2,1)` from the deck to 2.4 has centre `(2, 1.2, 1)`.
 func _cell_claim_box(cell: Vector2i) -> Box:
@@ -525,7 +597,8 @@ func _board_inspect() -> BoardInspectModule:
 
 ## Points the gizmo at whatever is at `cell`, or clears it when nothing there can be dragged.
 ##
-## **Focusing and clearing are both real answers** — *"a click elsewhere deselects"* — so both count
+## **Focusing and clearing are both real answers** — *"a click elsewhere deselects"* — so
+## both count
 ## as the tool having done something.
 func _focus_gizmo(cell: Vector2i) -> bool:
 	var handles: GizmoModule = context.module(&"gizmo") as GizmoModule if context != null else null
@@ -536,7 +609,8 @@ func _claim_volumes() -> ClaimVolumeModule:
 	return context.module(&"claim_volumes") as ClaimVolumeModule if context != null else null
 
 
-## The selected entry of `options`, or `fallback` when the dropdown is absent or unselected. Every
+## The selected entry of `options`, or `fallback` when the dropdown is absent or
+## unselected. Every
 ## dropdown here is populated from its own constant list in order, so index *is* identity.
 func _selected_of(
 	dropdown: OptionButton, options: Array[StringName], fallback: StringName
@@ -554,23 +628,49 @@ func _selected_of(
 
 ## **taskblock-57 Pass G1: what is left after the bar took the verbs.**
 ##
-## The tool, the placement kind, the part and the claim kind are the bar's buttons now; save, load,
+## The tool, the placement kind, the part and the claim kind are the bar's buttons now;
+## save, load,
 ## run-a-bout and undo are its second row. What remains here is the *declarations* — the board's
-## name, the numbers a placement carries, the section's edges and chance rolls, and the readout —
+## name, the numbers a placement carries, the section's edges and chance rolls, and the
+## readout —
 ## which is what Pass G2 calls "section details".
 ##
-## **It sits where the Inspect viewer sits**, which is G2's stated home for it. Landing it here in
-## G1 rather than a pass later is not scope creep: the editor mode moves to `BATTLE_LAYOUT` in this
-## pass, `LEFT_COLUMN` stops existing in it, and a panel asking for a slot no chrome publishes falls
-## back to `ui_root` at (0,0) — on top of the debug menu's region and under the announcement band.
-## The alternative was a temporary placement to be moved one pass later, which is churn on the same
-## file for no gain. **The toggle that folds it away is still G2's**, and until it lands the panel
+## **It sits where the Inspect viewer sits**, which is G2's stated home for it. Landing it
+## here in
+## G1 rather than a pass later is not scope creep: the editor mode moves to `BATTLE_LAYOUT`
+## in this
+## pass, `LEFT_COLUMN` stops existing in it, and a panel asking for a slot no chrome
+## publishes falls
+## back to `ui_root` at (0,0) — on top of the debug menu's region and under the
+## announcement band.
+## The alternative was a temporary placement to be moved one pass later, which is churn on
+## the same
+## file for no gain. **The toggle that folds it away is still G2's**, and until it lands
+## the panel
 ## is simply always shown.
 func _build_ui() -> void:
 	var host: Control = context.slots.get(ModuleSlots.INSPECT_VIEWER) if context != null else null
 	panel = PanelContainer.new()
+	# **Clipped and scrolled, so the slot's width is the panel's width.** The supervisor's review:
+	# *"it's too wide. Should be roughly half as wide as it is tall."* The slot already is — the
+	# layout gives it half the viewer's height in width — but a `PanelContainer` takes the largest
+	# minimum width of its content, and a column of labelled `SpinBox` rows asks for more than that.
+	# So the panel grew past its own slot and the rect the table describes was never what was drawn.
+	#
+	# Scrolling rather than shrinking the rows: the fields have to stay usable, and an authoring
+	# panel with more in it than fits is a scroll, not a squeeze.
+	panel.clip_contents = true
+	var scroll := ScrollContainer.new()
+	# **Horizontal scrolling ENABLED, which is what actually lets the panel be narrow.** A
+	# `ScrollContainer` reports its content's minimum size on any axis it cannot scroll, so with
+	# horizontal scrolling off the whole panel still grew to the widest labelled row it held — 516 px
+	# against a 360 px slot, measured. Allowing the axis to scroll drops that minimum to zero and the
+	# panel finally fits the rect the placement table gives it.
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	panel.add_child(scroll)
 	layout = VBoxContainer.new()
-	panel.add_child(layout)
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(layout)
 	if host != null:
 		host.add_child(panel)
 		panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -625,8 +725,10 @@ func _build_ui() -> void:
 	layout.add_child(warnings_label)
 
 
-## One row per whole-section declaration, **discovered from `SectionFile` rather than listed**. A
-## new `@export` on that resource becomes an editable field here the day it is added, which is the
+## One row per whole-section declaration, **discovered from `SectionFile` rather than
+## listed**. A
+## new `@export` on that resource becomes an editable field here the day it is added, which
+## is the
 ## open-vocabulary rule applied to an authoring surface.
 func _section_field_rows() -> VBoxContainer:
 	var rows := VBoxContainer.new()
@@ -680,11 +782,13 @@ static func _tag_list(text: String) -> Array[StringName]:
 ## Every part the board can hold, by id, sorted so the list is the same on two machines.
 ##
 ## **Not a curated list.** Any part can be a blocker or a loose field item, and which parts make
-## sense as a surface is already answered by the data — a `walkable` tag or a `GROUND` attachment.
+## sense as a surface is already answered by the data — a `walkable` tag or a `GROUND`
+## attachment.
 ## Authoring a new floor type is a `.tres`, exactly as the standing rule requires.
 ##
 ## taskblock-57 Pass G1: public, because the searchable list on the editor's bar is what offers
-## these now. Cached after the first call — the pool does not change while a board is being authored
+## these now. Cached after the first call — the pool does not change while a board is being
+## authored
 ## and the list is reopened on every placement.
 func placeable_part_ids() -> Array[StringName]:
 	if not _part_ids.is_empty():

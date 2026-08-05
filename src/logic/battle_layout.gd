@@ -24,9 +24,18 @@ extends RefCounted
 
 ## The action bar is half a 16:9 screen wide at 1x.
 const ACTION_BAR_WIDTH_FRACTION := 0.5
-## Its height is content-driven; this is the band reserved so the surfaces above it have somewhere
-## to sit when nothing is mounted yet.
-const ACTION_BAR_HEIGHT := 96.0
+## **The bar's own height, as a fraction of the safe rect rather than a pixel count.**
+##
+## The supervisor's review of the shipped layout: *"Action bar is too tall, and has no background on
+## any module. Action bar should be ~1/8th of the screen height tall. Action bar is not a fixed
+## size."* A pixel constant cannot be "an eighth of the screen" at more than one resolution, so the
+## number became a fraction — 135 px at 1080, against the 96 that shipped.
+##
+## **It is a real size now, not a reserve.** It used to be the band kept clear so the surfaces above
+## the bar had somewhere to sit while the bar sized itself to its content; `BarModule` gives its own
+## content this height as a floor, so the bar is a fixed rect that the boxes are fitted into rather
+## than a strip that grows to whatever is put in it.
+const ACTION_BAR_HEIGHT_FRACTION := 1.0 / 8.0
 ## Inspect and its viewer are about two thirds of the screen tall.
 const INSPECT_HEIGHT_FRACTION := 2.0 / 3.0
 ## The viewer is half as wide as Inspect is tall — Inspect itself is square.
@@ -90,7 +99,7 @@ static func slot_rects(screen: Vector2) -> Dictionary:
 static func action_bar_rect(screen: Vector2) -> Rect2:
 	var safe: Rect2 = UiLayout.safe_rect(screen)
 	var width: float = UiLayout.safe_width(screen, ACTION_BAR_WIDTH_FRACTION)
-	var height: float = UiLayout.scaled(ACTION_BAR_HEIGHT)
+	var height: float = UiLayout.safe_height(screen, ACTION_BAR_HEIGHT_FRACTION)
 	return Rect2(
 		Vector2(safe.position.x + (safe.size.x - width) * 0.5, safe.end.y - height),
 		Vector2(width, height)
@@ -106,10 +115,18 @@ static func inspect_rect(screen: Vector2) -> Rect2:
 
 
 ## Top-left, the same height, half as wide. Split out so the centre of the screen stays clear.
+##
+## **Padded off the corner rather than flush into it**, which is the supervisor's review point:
+## *"too wide... and given a slight padding off that corner."* It escapes the safe rect, so its
+## corner is the physical top-left of the window and a panel hard against it reads as having fallen
+## out of the layout. The perf monitor is the one surface the table genuinely wants flush.
 static func inspect_viewer_rect(screen: Vector2) -> Rect2:
 	var against: Rect2 = ModuleSlots.rect_for(ModuleSlots.INSPECT_VIEWER, screen)
 	var side: float = UiLayout.safe_height(screen, INSPECT_HEIGHT_FRACTION)
-	return Rect2(against.position, Vector2(side * INSPECT_VIEWER_WIDTH_FRACTION, side))
+	var pad: float = UiLayout.scaled(PADDING)
+	return Rect2(
+		against.position + Vector2(pad, pad), Vector2(side * INSPECT_VIEWER_WIDTH_FRACTION, side)
+	)
 
 
 ## Top edge, centred, a quarter of the 16:9 width.

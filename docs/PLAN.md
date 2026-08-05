@@ -86,36 +86,7 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. The UI tuning pass
-**Needs:** taskblock-57 (landed). **Unblocks:** the layout reading well rather than merely being
-in the right places.
-
-**taskblock-57 said this out loud and it is the one piece of that block deliberately left over:**
-*"The supervisor will fine-tune with CC after the bulk lands. So: get the structure right and the
-numbers approximately right. Padding, exact sizes and colour values are the cheap half and they are
-the half that wants a screen."* The structure landed; the numbers are starting positions.
-
-**Everything it touches is already in one file each**, which is why this is cheap and why the
-constants were written as constants:
-
-- `BattleLayout` — every rect in the placement table, plus `PADDING` and the debug-menu budge floor
-  (eight padding units, explicitly flagged as tunable rather than design).
-- `ActionBarModule.BOX_SPACING` and `BOX_ROWS` — the player bar's own shape.
-- `Announcement.table()` — 3/5/8 seconds and three colour tiers, ordered rather than tuned.
-- `PerfMonitorModule`'s background alpha (0.35, against `PerfPanel`'s own 0.82, which was chosen
-  when the readout had an empty corner behind it rather than the board).
-- `SearchableList.PANEL_SIZE`, `EditorCoordsModule.NAME_WIDTH`, `GizmoModule.READOUT_SIZE` and
-  `Gizmo.ARM_LENGTH` / `ARM_THICKNESS` / `RESIZE_HANDLE_SIZE`.
-
-**Three placements are invented rather than specified, and want a look first**: the aim readout's
-band along the bottom of the safe rect, the gizmo readout above it, and the editor's section-details
-panel in the Inspect-viewer slot. Each is flagged in its own file as a starting position.
-
-**It needs a screen, which is the whole reason it is its own item** — every one of these is a
-question a headless test cannot answer, and the suite already pins the *structure* so a number
-moving cannot quietly move a surface somewhere else.
-
-### 2. Retire ramps; introduce `step_height`
+### 1. Retire ramps; introduce `step_height`
 **Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
 repairing it. **Read before `BR56.01` is fixed.**
 
@@ -157,7 +128,7 @@ consequences:
 *about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
 not this one.**
 
-### 3. Elevated tiles lost their line borders
+### 2. Elevated tiles lost their line borders
 **Needs:** nothing. **Unblocks:** reading a stepped board by eye.
 
 Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
@@ -168,7 +139,7 @@ without them, so **the judgement call is due for revisiting rather than being a 
 If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
 primitive, or the tile's own edge geometry doing the work.
 
-### 4. Attributes
+### 3. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;

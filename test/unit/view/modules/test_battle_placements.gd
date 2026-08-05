@@ -261,7 +261,7 @@ func test_a_toggle_folds_its_module_away_and_unfolds_it() -> void:
 	var overlay: ControlOverlay = await _overlay()
 	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
 	var bar: ActionBarModule = overlay.module(&"action_bar") as ActionBarModule
-	var toggle: CheckButton = buttons.toggles[&"action_bar"]
+	var toggle: UiButton = buttons.toggles[&"action_bar"]
 
 	assert_true(bar.bar_root.visible, "the bar starts shown -- nothing is collapsed by default")
 	toggle.button_pressed = false

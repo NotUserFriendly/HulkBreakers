@@ -39,6 +39,14 @@ signal minimized_changed(is_minimized: bool)
 ## that folding is presentation over an untouched event stream.
 signal verbose_changed(is_verbose: bool)
 
+## How far the overflow preview's background extends past its own text, in pixels.
+##
+## **A background exactly the size of the glyphs is tangent to the lines above and below**, so the
+## revealed line reads as part of the log rather than as something lifted out of it — the
+## supervisor's review point. Vertical is the half that matters, since log lines stack with no gap.
+## A starting position, not a decision.
+const PREVIEW_MARGIN := Vector2(6.0, 3.0)
+
 ## Starting geometry. Flagged/tunable — resize is interactive anyway, so these
 ## only set where it opens.
 ## Supervisor, post-tb41: "the combat log should be ~2x as wide as it is
@@ -198,6 +206,18 @@ func _init() -> void:
 	preview_style.bg_color = Color(
 		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, 1.0
 	)
+	# **The background is bigger than the text it backs**, which is the supervisor's review point:
+	# *"the highlight needs to have a background slightly bigger than itself to make it not tangent
+	# other text."* Filled exactly to the glyphs, the revealed line touched the lines above and
+	# below and read as part of them rather than as something lifted off the log.
+	#
+	# The vertical margin is the one that matters — log lines are stacked with no gap — but the
+	# horizontal one is here too, so the right-hand edge does not end flush against the character it
+	# is revealing.
+	preview_style.content_margin_left = PREVIEW_MARGIN.x
+	preview_style.content_margin_right = PREVIEW_MARGIN.x
+	preview_style.content_margin_top = PREVIEW_MARGIN.y
+	preview_style.content_margin_bottom = PREVIEW_MARGIN.y
 	overflow_preview.add_theme_stylebox_override("normal", preview_style)
 	# Parented to this panel's own root, not to the body: `top_level` Controls are skipped by
 	# `Container`'s own child sorting, so this never fights the layout it draws over.
@@ -285,8 +305,12 @@ func _reveal_hovered_line() -> void:
 	overflow_preview.text = text
 	# **On the line**, not beside the cursor. `top_level` means this is a global position, and the
 	# line's own content offset minus the scroll is where that line currently sits on screen.
+	# **Offset by the margin so the TEXT lands on the line, not the background's corner.** The style
+	# box now extends past its own content, so positioning the Control at the line's origin would
+	# push the glyphs down and right by exactly the margin and the reveal would not line up with
+	# what it is revealing.
 	overflow_preview.global_position = (
-		log_label.global_position + Vector2(0.0, offsets[line] - _scroll_value())
+		log_label.global_position + Vector2(0.0, offsets[line] - _scroll_value()) - PREVIEW_MARGIN
 	)
 	overflow_preview.reset_size()
 	overflow_preview.visible = true
