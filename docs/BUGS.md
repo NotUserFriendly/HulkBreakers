@@ -2266,6 +2266,12 @@ same run of the suite harness:
 
 `PlanPacer.DEFAULT_BUDGET_MSEC` is **400**.
 
+**Whole-suite cost, re-taken after the optimisations below landed:** `master` at Pass B runs the
+full gate in **682 s** (3149 of 3149), the Pass C branch in **770 s** (3156 of 3157) — **1.13x**,
+with the single failure being the test this entry is about. An earlier mid-block figure of 2.2x was
+wrong in both directions: it compared a stale profile baseline from an older commit against a run
+taken before the optimisations.
+
 **So the budget was already being exceeded before this pass** — 412 ms mean against a 400 ms
 ceiling — and the test passed anyway, which means an abort alone did not change the outcome. Pass C
 made aborts earlier and more frequent, and that does.

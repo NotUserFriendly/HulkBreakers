@@ -65,6 +65,11 @@ front of building a surface's box placements; `Cover` hoists `units_visible_to` 
 walk; and `SightSpans` is derived once per planning ply and shared across every field that ply
 builds, which takes the AI's field cost back toward parity.
 
+Re-taken at the end of the block: the full gate is **682 s at Pass B and 770 s with Pass C**, a
+**1.13x** whole-suite cost with one failing test. **A mid-block figure of 2.2x was wrong** — it
+compared `SUITE-PROFILE.md`'s baseline, generated at an older commit, against a run taken before
+these optimisations existed.
+
 **It is left red and reported rather than tuned away.** `BR58.01` carries the numbers, the four
 options considered, and why the most likely right answer — making the pacer count candidates
 instead of milliseconds, so a viewed bout is seed-reproducible again — is a decision about the AI's
