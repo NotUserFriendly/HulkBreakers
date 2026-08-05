@@ -97,8 +97,19 @@ func close() -> void:
 
 ## Rebuilds the rows from `SearchFilter`'s answer. Cheap enough per keystroke: the largest list
 ## this serves is the parts pool, and rebuilding beats diffing a set that reorders.
+##
+## **`remove_child` before `queue_free`, and that is the whole of a real defect.** `queue_free` is
+## deferred to the end of the frame, so the old rows were still children — and still drawn — while
+## the filtered ones were appended after them. Typing `barrel` into a four-entry list left five rows
+## on screen: the whole unfiltered list, plus the match. **Reported as "filtered lists aren't
+## filtering", which is exactly what it looked like.**
+##
+## The test that should have caught it read `shown_ids()`, which reports the `rows` array — the
+## module's own bookkeeping, which was correct throughout. Nothing asked the container what it was
+## actually showing. It does now.
 func apply_filter(query: String) -> void:
 	for row: Button in rows:
+		results.remove_child(row)
 		row.queue_free()
 	rows.clear()
 	for id: StringName in SearchFilter.matching(_entries, query):

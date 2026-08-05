@@ -99,7 +99,12 @@ func test_the_debug_menu_is_a_quarter_width_and_centred_on_the_top_edge() -> voi
 
 
 ## **THE ACCEPTANCE that escaping is real.** On an ultrawide, exactly the three declared surfaces
-## reach the physical edge; everything else stays inside the 16:9 reference rect.
+## leave the 16:9 reference rect and reach the physical edges; everything else stays inside it.
+##
+## **"Leaves the safe rect" is the claim, not "is flush against the window".** Two of the three are
+## flush; the Inspect viewer is padded a little off its corner by the UI review, and is still far
+## outside the reference rect. A test that measured flushness would have failed on a change that
+## did not touch escaping at all — and did.
 func test_only_the_three_declared_surfaces_leave_the_safe_rect() -> void:
 	var screen := Vector2(3440, 1440)
 	var safe: Rect2 = UiLayout.safe_rect(screen)
@@ -108,8 +113,19 @@ func test_only_the_three_declared_surfaces_leave_the_safe_rect() -> void:
 	assert_almost_eq(
 		BattleLayout.inspect_rect(screen).end.x, screen.x, 0.001, "Inspect reaches the real edge"
 	)
+	# **The viewer escapes without being flush**, which is a real distinction rather than a
+	# tolerance. The UI review asked for *"a slight padding off that corner"*, so it sits one
+	# `PADDING` in from the physical edge — still hundreds of pixels outside the safe rect on this
+	# ratio, which is what "escaping" claims. Asserting flushness here would have been asserting the
+	# padding away.
+	var viewer: Rect2 = BattleLayout.inspect_viewer_rect(screen)
 	assert_almost_eq(
-		BattleLayout.inspect_viewer_rect(screen).position.x, 0.0, 0.001, "and so does its viewer"
+		viewer.position.x, UiLayout.scaled(BattleLayout.PADDING), 0.001, "its viewer, padded"
+	)
+	assert_lt(
+		viewer.position.x,
+		safe.position.x,
+		"the viewer must still be outside the safe rect, or it is not escaping at all"
 	)
 	assert_almost_eq(
 		BattleLayout.perf_monitor_rect(screen).position.x, screen.x, 0.001, "and the perf corner"

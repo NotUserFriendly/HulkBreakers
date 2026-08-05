@@ -34,7 +34,7 @@ const PREFERRED_SIZE := Vector2(900, 600)
 var with_button: bool = false
 
 var panel: InspectPanel = null
-var button: Button = null
+var button: UiButton = null
 
 
 func module_id() -> StringName:
@@ -66,8 +66,17 @@ func _mount() -> void:
 	panel.setup(DataLibrary.material_table(), selection, lookup, tactics)
 
 	if with_button:
-		button = Button.new()
-		button.text = "Inspect"
+		# **A `UiButton`, so it matches the cluster it sits in.** The supervisor's review of the
+		# layout asked for every control in the UI-buttons row to be a square abbreviation with a
+		# hover description; this one is built here rather than by `UiButtonsModule` because it owns
+		# the enabled state that follows the selection (`BR51.10`), and splitting a control from the
+		# thing that controls it is the split that rule exists to avoid.
+		button = UiButton.build(
+			UiButton.abbreviate(module_id()),
+			"Inspect",
+			"Opens the inspector on whatever is selected.",
+			_tooltip_view()
+		)
 		# `BR51.10`: starts disabled, because nothing is selected yet. An affordance that lies about
 		# what it can do reads as a broken action when it correctly does nothing.
 		button.disabled = true
@@ -82,6 +91,13 @@ func _mount() -> void:
 			host.add_child(button)
 		else:
 			add_child(button)
+
+
+## The one shared tooltip renderer, if this mode declared it before this module. Null is legal and
+## means the button carries no hover description.
+func _tooltip_view() -> TooltipView:
+	var module: ViewModule = context.module(&"tooltip") if context != null else null
+	return (module as TooltipModule).view if module != null else null
 
 
 ## **The slot's rect IS the panel's rect** when the mode publishes one — the table's "~2/3 screen

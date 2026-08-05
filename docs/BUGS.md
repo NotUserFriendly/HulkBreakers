@@ -2140,3 +2140,41 @@ is exactly that case, and under the first option that pit would get a **ladder**
 **Either way it changes generated boards for every seed**, so the map corpus, the navigability sweep
 and any recorded measurement taken against a current seed move with it — which is why this is filed
 rather than patched in place.
+
+### BR57.01 — Pending — owner: `SUPERVISOR`
+**Units stand at their previous bout's cells in editor mode**
+- **Source:** `SUPERVISOR`, 2026-08-05, observed in-game during the post-taskblock-57 UI review
+  ("some units spawn in edit mode at the places they were in the last bout").  ·  **CC session:**
+  `cb234571-515f-4b21-bfe1-1abb38912aa0`
+- **Reproduced, root-caused, and fixed at the view. Marked `Pending` because the entry is
+  `SUPERVISOR`-owned — CC may not close it.**
+
+**The mechanism, and the returned value nobody read.** The editor mode installs over whatever bout
+`BattleScene` has already built; `EditorModule._refresh_board` rebuilds the live grid from the
+authored model on every edit and calls `BoardSwap.swap_board(state, grid, true)` to relocate the
+units standing on it.
+
+`swap_board` places each living unit on the first free spawn marker, or failing that the first free
+walkable cell — and **returns the ids of the ones it could place nowhere.** `EditorModule`
+discarded that return value. A stranded unit keeps `unit.cell` from the previous bout, and its
+`HitVolumeView` is still in the tree, so it is drawn at that cell over the board being authored.
+
+**Why "some".** It is every unit the authored board cannot seat, which is all of them on a board
+with no floor yet and none once spawn markers exist — so the count changes as you author, which
+reads as an intermittent fault rather than a deterministic one.
+
+**The fix, and what it deliberately is not.** `_refresh_board` now hides the views of exactly the
+stranded ids. **Hiding rather than relocating is not a design choice** — a stranded unit has no cell
+on this board, so drawing it anywhere is the view asserting something untrue, which is the rule this
+project has already applied to risers (`tb54 B1`) and the ground quad (`tb55 B`). The units
+themselves are untouched, and `run_test_bout` relocates them onto the finished board down the
+ordinary injector path, which is when they reappear.
+
+**The real answer is upstream and is already queued.** An authoring session should not be carrying a
+bout's units at all; that wants an entry point which builds a world without a bout, which is
+`PLAN.md`'s *Main menu* item and is flagged as a known limit in `EditorModule`'s own header. This
+makes the editor honest in the meantime rather than closing that gap.
+
+**To see it work:** open the editor with a bout on screen (`E`). Before, the previous bout's units
+stood on the empty grid; now the board is empty until you author floor and spawn markers, and the
+units return when *Run Test Bout* seats them.

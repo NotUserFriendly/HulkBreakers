@@ -161,7 +161,7 @@ func test_the_section_details_sit_in_the_viewer_slot_and_fold_from_the_ui_button
 	assert_true(slot.is_ancestor_of(editor.panel), "the details panel is somewhere else entirely")
 
 	assert_true(buttons.toggles.has(&"editor"), "the details panel has no toggle to fold it")
-	var toggle: CheckButton = buttons.toggles[&"editor"]
+	var toggle: UiButton = buttons.toggles[&"editor"]
 	assert_true(editor.panel.visible, "nothing is folded by default")
 	toggle.button_pressed = false
 	assert_false(editor.panel.visible, "the toggle did not actually hide it")

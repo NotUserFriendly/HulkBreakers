@@ -1,5 +1,77 @@
 # CHANGELOG.md — What's Been Built
 
+### The first UI review pass over taskblock-57's layout
+
+**The supervisor's first look at the shipped surface**, worked as a review rather than as a
+taskblock. Each item below names what was seen, because none of them came from a spec.
+
+**The bar is the centred item now, not the cluster around it.** *"Action bar needs to be the
+centered item, with the combat log to the side of it."* `BarModule`'s rows are plain `Control`s and
+every piece anchors against `BattleLayout`'s own band — the bar on the centre line at the width the
+table gives it, each satellite pinning an edge to one of the bar's edges and growing away.
+**The first attempt used two equally-expanding wings and did not work**: an `HBoxContainer`
+distributes only the *leftover* width equally, on top of each child's own minimum, so a 520 px log
+on one side still pushed the bar 48 px right of centre. Measured at 1008 against a screen centre of
+960; it is 960.0 now and stays there when a 300 px surface is added to one side only.
+
+**The bar is a fixed eighth of the safe height, and it has a background.**
+`BattleLayout.ACTION_BAR_HEIGHT` was 96 px and is `ACTION_BAR_HEIGHT_FRACTION = 1/8` — a pixel
+constant cannot be a fraction of the screen at more than one resolution. **The boxes are fitted into
+the band rather than the band growing to the boxes**: `ActionBar.setup` takes a box side and
+`ActionBarModule.box_side()` derives it, because ten 108 px items over two rows is 216 and the whole
+bar is 135. The background is a real `StyleBoxFlat` on a panel the bar owns.
+
+**Unit resources are centred over the bar.** The slot spans the bar and centres its content;
+previously it sat at the slot's left edge, measured at x = 541 against a bar centre of 960. The UI
+buttons pin their *right* edge to the bar's right edge — a surface **within** the bar's span rather
+than beside it, which is a different pin from the one the turn controls use and was 332 px out.
+
+**The UI-buttons cluster is square abbreviated buttons with hover descriptions.** *"All toggles and
+descriptive text should be replaced with square BUTTONS with an up-to three letter abbreviation on
+them. Hovering them for 1.5 seconds should show a description."* `UiButton` is one class the three
+modules that put controls in that row all use — `UiButtonsModule`, `InspectModule` (which owns its
+own button because it owns the enabled state that follows the selection) and `ControlsLegendModule`.
+**A row of controls that do not agree on their own shape is what the review found**, and a helper
+each of them called is a shape three files can drift from. Abbreviations are derived from the id
+(`action_bar` → `AB`, `inspect` → `INS`), so no module is named. **The dwell is not implemented
+there**: `TooltipView.show_data` already waits on the shared `HoverDwell` clock, and a second timer
+would be the third. `tooltip` joined the spectator and editor module sets so their clusters can
+describe themselves.
+
+**The editor's section-details panel fits its slot.** *"Too wide. Should be roughly half as wide as
+it is tall, and given a slight padding off that corner."* The slot always was half as wide as tall;
+the panel was 516 px in a 360 px slot, because a `PanelContainer` takes its content's minimum width
+and **a `ScrollContainer` reports its content's minimum on any axis it cannot scroll**. Enabling
+horizontal scrolling drops that to zero. `inspect_viewer_rect` is padded off the physical corner —
+it escapes the safe rect, so its corner is the window's.
+
+**Verbose no longer unfolds anything.** *"Verbose is currently unfolding elements which is not its
+purpose. Unhook it from that, and leave it open for later."* Pass C read the table's checkbox as
+meaning "every group drawn open"; it does not. The flag, the checkbox and the signal all stay and
+**nothing reads the flag to decide what is drawn** — authored and unread, the same shape as
+`Announcement`'s `sound` field. A group is open because the reader opened it.
+
+**The combat log's overflow preview has a background bigger than its own text**, so a revealed line
+is not tangent to the lines above and below it, and the label is offset by the margin so the glyphs
+still land on the line they are revealing.
+
+#### Defects found
+
+- **`SearchableList` was not filtering at all, and the test that covered it passed.** `queue_free`
+  is deferred to the end of the frame, so the old rows were still children — and still drawn — while
+  the filtered ones were appended after them. Typing `barrel` into a four-entry list left **five**
+  rows on screen. `remove_child` before `queue_free` is the fix. **The test read `shown_ids()`,
+  which reports the module's own `rows` array — correct throughout. Nothing asked the container what
+  it was actually showing**, which is the failure this project keeps having to relearn: read the
+  real node back.
+- **`BR57.01` — units stood at their previous bout's cells in editor mode.**
+  `BoardSwap.swap_board` **returns** the ids of units it could place nowhere and `EditorModule`
+  discarded that value, so on a board with no floor yet every unit kept its cell from the last bout
+  and was still rendered there. The views of stranded units are hidden now — *do not draw what is
+  not there*, the same rule the risers and the ground quad went for. `SUPERVISOR`-owned and marked
+  `Pending`; the real answer is an entry point that builds a world with no bout in it, which is
+  `PLAN.md`'s *Main menu*.
+
 ### taskblock-57 Passes G1, G2 and H — three bars, the editor's own surfaces, and the gizmo
 
 **The block closes here.** G1, G2 and H land the two `PLAN.md` NEXT items the block was opened for

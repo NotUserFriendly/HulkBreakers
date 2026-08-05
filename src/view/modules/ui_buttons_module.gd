@@ -31,12 +31,13 @@ extends ViewModule
 ## Shown when a debug build offers the menu. Absent entirely in a release export, where
 ## `DebugPanelModule` never constructs a panel at all.
 const DEBUG_MENU_LABEL := "Debug"
+const DEBUG_MENU_ABBREV := "DBG"
 
 ## The row every button lands in, so a test reads back what was built rather than re-deriving it.
 var row: HBoxContainer = null
-## Module id -> the `CheckButton` that folds it, for a test and for a later options menu.
+## Module id -> the `UiButton` that folds it, for a test and for a later options menu.
 var toggles: Dictionary = {}
-var debug_button: Button = null
+var debug_button: UiButton = null
 
 
 func module_id() -> StringName:
@@ -70,8 +71,9 @@ func link() -> void:
 		toggles[id] = _toggle(id, module)
 	var debug: ViewModule = context.module(&"debug_panel")
 	if debug != null and (debug as DebugPanelModule).panel != null:
-		debug_button = Button.new()
-		debug_button.text = DEBUG_MENU_LABEL
+		debug_button = UiButton.build(
+			DEBUG_MENU_ABBREV, DEBUG_MENU_LABEL, "Opens and closes the debug menu.", _tooltip_view()
+		)
 		debug_button.pressed.connect((debug as DebugPanelModule).toggle)
 		row.add_child(debug_button)
 
@@ -82,9 +84,18 @@ static func label_for(id: StringName) -> String:
 	return String(id).replace("_", " ").capitalize()
 
 
-func _toggle(id: StringName, module: ViewModule) -> CheckButton:
-	var button := CheckButton.new()
-	button.text = label_for(id)
+## One square toggle for `module`. **A `UiButton`, not a `CheckButton` with a sentence on it** —
+## the supervisor's review: *"all toggles and descriptive text should be replaced with square
+## BUTTONS with an up-to three letter abbreviation on them."* The sentence did not disappear; it
+## moved into the hover description, which is where a row of controls can afford one.
+func _toggle(id: StringName, module: ViewModule) -> UiButton:
+	var button: UiButton = UiButton.build(
+		UiButton.abbreviate(id),
+		label_for(id),
+		"Toggles the %s module." % label_for(id),
+		_tooltip_view(),
+		true
+	)
 	# **Pressed means shown**, which is the way round a player reads a toggle — `collapsed` is the
 	# inverse, and inverting it here rather than in the flag keeps the module's own field saying
 	# what it means.
@@ -92,3 +103,10 @@ func _toggle(id: StringName, module: ViewModule) -> CheckButton:
 	button.toggled.connect(func(shown: bool) -> void: module.collapsed = not shown)
 	row.add_child(button)
 	return button
+
+
+## The one shared tooltip renderer, if this mode declared it. Null is a legal answer and means the
+## buttons carry no hover description — see `UiButton`.
+func _tooltip_view() -> TooltipView:
+	var module: ViewModule = context.module(&"tooltip") if context != null else null
+	return (module as TooltipModule).view if module != null else null

@@ -86,6 +86,10 @@ const PLAYER_MODULES: Array[StringName] = [
 ## menu, its own bar), and A2's rule is that every one of them is collapsible — which needs the
 ## toggle to exist.
 const SPECTATOR_MODULES: Array[StringName] = [
+	# Before every module that hovers: the UI buttons cluster describes itself on a 1.5 s dwell and
+	# reads the shared `TooltipView` at its own link time. A mode without it gets working buttons
+	# and no hover text, which is a worse surface rather than a broken one.
+	&"tooltip",
 	&"spectator_bar",
 	&"combat_log",
 	&"announcements",
@@ -183,6 +187,8 @@ const BOUT_SETUP_MODULES: Array[StringName] = [&"bout_setup"]
 ## underneath — so the gizmo is offered the event first, and consumes only the presses it actually
 ## grabbed something with.
 const EDITOR_MODULES: Array[StringName] = [
+	# As in the spectator's set: the cluster's hover descriptions need the shared renderer.
+	&"tooltip",
 	&"editor_bar",
 	&"camera_framing",
 	&"claim_volumes",

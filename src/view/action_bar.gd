@@ -34,7 +34,10 @@ var _current_actions: Array[ActionDef] = []
 ## it fills whatever it is handed and the container decides the arrangement. Every existing caller
 ## passes an `HBoxContainer`, which is still a `Container`, so nothing else changed.
 func setup(
-	p_tactics: TacticsController, container: Container, p_tooltip_view: TooltipView
+	p_tactics: TacticsController,
+	container: Container,
+	p_tooltip_view: TooltipView,
+	box_side: float = BOX_SIZE.x
 ) -> void:
 	tactics = p_tactics
 	tooltip_view = p_tooltip_view
@@ -44,7 +47,11 @@ func setup(
 		child.queue_free()
 	for i in range(SLOT_COUNT):
 		var panel := PanelContainer.new()
-		panel.custom_minimum_size = BOX_SIZE
+		# **Square, at whatever side the caller fitted to its bar.** `BOX_SIZE` is the default and
+		# the stand-alone answer; `ActionBarModule.box_side()` derives a real one from the band the
+		# placement table gives the bar, because a bar that is a fixed fraction of the screen cannot
+		# also be sized by its boxes.
+		panel.custom_minimum_size = Vector2(box_side, box_side)
 		# docs/09 taskblock07 Pass B4's own rule ("non-interactive Controls
 		# must not default to STOP") is for controls nothing ever clicks.
 		# These boxes are genuinely click-interactive since taskblock-08 A1
