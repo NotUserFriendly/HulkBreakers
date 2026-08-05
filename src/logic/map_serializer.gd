@@ -64,10 +64,6 @@ static func to_map_file(grid: Grid, map_name: String = "") -> MapFile:
 			if marker != Enums.SpawnMarker.NONE:
 				map.spawn_cells.append(cell)
 				map.spawn_markers.append(marker)
-			var opacity: float = grid.get_opacity(cell)
-			if not is_zero_approx(opacity):
-				map.opacity_cells.append(cell)
-				map.opacity_values.append(opacity)
 	return map
 
 
@@ -89,14 +85,6 @@ static func to_grid(map: MapFile) -> Dictionary:
 			(
 				"spawn arrays disagree: %d cells, %d markers"
 				% [map.spawn_cells.size(), map.spawn_markers.size()]
-			)
-		}
-	if map.opacity_cells.size() != map.opacity_values.size():
-		return {
-			"error":
-			(
-				"opacity arrays disagree: %d cells, %d values"
-				% [map.opacity_cells.size(), map.opacity_values.size()]
 			)
 		}
 
@@ -148,10 +136,6 @@ static func to_grid(map: MapFile) -> Dictionary:
 		if not grid.in_bounds(map.spawn_cells[i]):
 			return {"error": "spawn %d sits at %s, outside the map" % [i, map.spawn_cells[i]]}
 		grid.set_spawn_marker(map.spawn_cells[i], map.spawn_markers[i])
-	for i: int in range(map.opacity_cells.size()):
-		if not grid.in_bounds(map.opacity_cells[i]):
-			return {"error": "opacity %d sits at %s, outside the map" % [i, map.opacity_cells[i]]}
-		grid.set_opacity(map.opacity_cells[i], map.opacity_values[i])
 
 	return {"grid": grid, "error": ""}
 

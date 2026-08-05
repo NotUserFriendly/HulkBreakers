@@ -1085,30 +1085,12 @@ All three landed; detail in `CHANGELOG.md`. What remains open out of it:
 Full-screen-width after the module collapse. Cosmetic, and the supervisor has said it is **not worth a
 pass of its own** — fold it into whatever next touches that surface.
 
-### Floors reference a location; they do not belong to a cell
-**Needs:** nothing for the inversion; the support model wants it first. **Unblocks:** moving decks
+### Structure supports itself
+**Needs:** *Floors reference a location* — **the inversion landed in tb58 B**; a placement carries its
+own `cell` and the per-cell dictionary is an index over the store. **Unblocks:** moving decks
 (vehicles), a hulk that can be cut apart, collapsing structure.
 
-**Today a cell owns its surfaces** — `Grid.surfaces` is `Dictionary[Vector2i, Array[Surface]]`, so a
-floor's position is its *key*. Moving one means deleting and re-adding, and a floor cannot exist except
-as something a cell holds.
-
-**Invert it: a placement has a position, and the cell lookup becomes an index.**
-
-**This is cheap, and the reason is that the accessor already exists.** `Grid.surfaces_at(cell)` and
-`add_surface()` are the interface; only **five** places touch the dictionary directly, and all five
-iterate *"every cell that has surfaces"* rather than looking one up. So the storage changes behind
-`surfaces_at()`, the iterators get a `placements()` to walk, and **every other reader is untouched.**
-
-**`GROUND` is the one rule that genuinely changes.** `ship_floor.attaches_to = ["GROUND"]` means *the
-cell*, and `GridPlacement.can_place` refuses a second `GROUND` part per cell — the rule taskblock-39
-had to re-architect `MapGenScratch` around. With no cell to attach to, `GROUND` either becomes "attaches
-to nothing, held up by neighbours" or retires in favour of a support requirement. **Decide it; do not
-let it drift.**
-
-#### Structure supports itself
-
-A separate and larger piece of work that the inversion enables.
+The larger piece of work the inversion existed to make possible. **None of it is built.**
 
 - **Support is a graph over placements, not cells.** Floor A holds floor B. That is what makes cutting a
   hulk in half produce two *components* rather than a hole, and it is the same connected-component
@@ -1173,7 +1155,7 @@ A floor that will collapse under a unit is a **pathfinding cost**, not a walkabi
 currently reads walkable as binary, and "walkable but it will give way" is the interesting middle.
 
 ### Grids are not unbreakable
-**Needs:** *Floors reference a location*. **This is happening** — possibly first as an experimental
+**Needs:** the placement inversion (landed, tb58 B). **This is happening** — possibly first as an experimental
 setting, so it can ship and be played with before everything downstream of it is ready.
 
 **More than one grid.** A ship half is a grid, the other half is another, **and vacuum is a third.**
@@ -1221,34 +1203,42 @@ functions, not a sweep** — so the rule is to keep it that way:
   acquires more callers.
 - **`CombatState.grid` is singular.** Fine today, and it is the field that becomes a collection.
 
-### Sight-blocking is geometry, not a flat per-cell array
-**Needs:** nothing. **Unblocks:** the editor losing a tool it should not need; vertical cover; the
-3D-cover half of *Grids are not unbreakable*.
+### Vertical cover, and a sight line that shares the shot's origin
+**Needs:** *Sight-blocking is geometry* (landed, tb58 C). **Unblocks:** retiring the last
+over-inclusion in `VisibilityField`; cover that means something on a catwalk.
 
-**`Grid.opacity` is a second source of truth about what blocks vision.** `LoS.has_los` walks
-`grid.get_opacity(cell)` per cell and `VisibilityField` records its own limit plainly — *occlusion data
-here is 2D, per cell, with no per-level*. Meanwhile the ray chain marches real geometry. **Geometry
-already knows what blocks; a parallel flat array also claims to**, which is the two-paths-decide-one-
-thing rule being broken in the open.
+**The array is gone and geometry answers.** What is left are the two places the new model is still
+answering a flatter question than it could.
 
-**Every 3D volume should simply block sight.** A wall blocks because it is a wall, not because a cell
-was flagged. Then:
+- **`Cover.is_covered_from` is still flat.** Its sight half reads the geometry-backed field now, but
+  its own blocker/unit walk takes two `Vector2i` and has no height in it. **Same flatness, same
+  cause** — a per-cell question about a 3D world. Belongs with the multi-grid work.
+- **`VisibilityField` keeps over-inclusion 3 as a safety margin rather than a limit.** A cell at
+  another elevation is still reported visible wholesale. The occluder test could answer across bands
+  now; what stops it is that the field casts **eye-to-eye** while a shot runs **muzzle-to-aim-point**,
+  and a raised arm or a shot over a low wall is where those diverge. **Retire the margin when the
+  field and the shot share an origin** — not before, because narrowing it trades the one failure mode
+  that matters (under-inclusion) for casts on a once-per-turn build.
+- **`LoS.SIGHT_HEIGHT` is a flagged constant**, `UnitGeometry.DEFAULT_MUZZLE_HEIGHT`. The real answer
+  is a per-shell sensor height, at which point the constant becomes the fallback.
+- **Gases and windows** arrive as volumes carrying a transmission property. Opaque by being there,
+  transparent by declaration — the exception running the right way.
 
-- **The editor's `sight_blocking` tool becomes unnecessary** and retires with the array.
-- **Height comes for free.** A 1.0 wall stops blocking sight to a unit standing at 3.0, which it does
-  today because the array has no height.
-- **`DamageResolver` stops having to clear a flag** when a wall is destroyed (`:567`) — destroying the
-  geometry *is* clearing it.
-- **Gases and windows are the exceptions**, and they arrive as volumes with a transmission property
-  rather than as the rule. **That is the right direction of exception**: opaque by default, transparent
-  by declaration.
+### A GROUND placement may share a cell at another height
+**Needs:** *Floors reference a location* (landed, tb58 B). **Unblocks:** two decks in one cell without
+a catwalk's side-attachment grammar.
 
-**This is the same flatness as `Cover.is_covered_from`, from the same cause**, and worth fixing
-together — both walk a line between two `Vector2i` and ask a per-cell question about a 3D world.
+**One line, deliberately not taken in tb58 B.** `GROUND` now means "attaches to nothing", and the
+refusal it used to express survives as occupancy: `GridPlacement` refuses a second placement on a cell
+that already holds one. Loosening it to *"at this height"* is what lets a floor at 0.0 and a floor at
+2.0 share a cell.
 
-**Cost is the thing to measure first.** A per-cell array lookup is one index; asking geometry is a ray.
-`VisibilityField`'s bitboards exist precisely to make that affordable, so the shape is likely *build the
-field from geometry* rather than *cast per query* — but take the number before assuming it.
+**It was left alone because Pass B was a storage inversion with no intended behavioural effect**, and
+this is a behaviour change wearing a refactor's clothes. Nothing today depends on either reading —
+every `GROUND` caller clears the cell first — so it is reversible in both directions, which is exactly
+why it should be a decision rather than a side effect.
+`test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
+the current reading, so the change has to be a deliberate edit to a named test.
 
 ### The editor's tool set, reorganised
 **Needs:** *The UI layout* (landed). **Unblocks:** authoring without knowing which of ten verbs does
@@ -1283,7 +1273,7 @@ face-highlighting needs and what a grid-agnostic world needs anyway. `RayCaster`
 angle of incidence at each hit, so **which face was struck is derivable rather than new** — but it has
 to be *reported*, and nothing reads it today.
 
-This composes with *Floors reference a location* and *Grids are not unbreakable*: once a thing's
+This composes with the tb58 B placement inversion and *Grids are not unbreakable*: once a thing's
 position is its own and grids are plural, **a face is the only thing left that two placements can agree
 about.**
 

@@ -46,7 +46,6 @@ func test_check_supports_a_custom_compare_fn_for_reference_types() -> void:
 			a.width == b.width
 			and a.rows == b.rows
 			and a.spawn_marker == b.spawn_marker
-			and a.opacity == b.opacity
 			and a_blocker_ids == b_blocker_ids
 			and a.occupant_id == b.occupant_id
 		)

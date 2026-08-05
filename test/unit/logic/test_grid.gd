@@ -18,7 +18,6 @@ func test_in_bounds() -> void:
 func test_default_cell_values() -> void:
 	var cell := Vector2i(2, 2)
 	assert_eq(_grid.get_spawn_marker(cell), Enums.SpawnMarker.NONE)
-	assert_eq(_grid.get_opacity(cell), 0.0)
 	assert_eq(_grid.get_occupant_id(cell), -1)
 	assert_false(_grid.blockers.has(cell))
 
@@ -26,7 +25,6 @@ func test_default_cell_values() -> void:
 func test_set_get_cell_data_roundtrip() -> void:
 	var cell := Vector2i(1, 3)
 	_grid.set_spawn_marker(cell, Enums.SpawnMarker.SPAWN_A)
-	_grid.set_opacity(cell, 1.0)
 	_grid.set_occupant_id(cell, 7)
 	# taskblock-16 Pass B2: `blockers` (real Part objects) is the one
 	# source of truth for cover now — no separate scalar to round-trip.
@@ -34,7 +32,6 @@ func test_set_get_cell_data_roundtrip() -> void:
 	cover.id = &"test_cover"
 	_grid.blockers[cell] = cover
 	assert_eq(_grid.get_spawn_marker(cell), Enums.SpawnMarker.SPAWN_A)
-	assert_eq(_grid.get_opacity(cell), 1.0)
 	assert_eq(_grid.get_occupant_id(cell), 7)
 	assert_eq(_grid.blockers[cell], cover)
 	# Unrelated cell stays default.

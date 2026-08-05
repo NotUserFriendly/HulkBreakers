@@ -336,7 +336,7 @@ static func build(
 
 	context._standoff = standoff_for(context.weapon)
 	context._current_distance = Grid.distance_chebyshev(p_unit.cell, context.target.cell)
-	context.field = VisibilityField.build(state, context.target.cell)
+	context.field = VisibilityField.build(state.grid, context.target.cell)
 	# taskblock-46 Pass C (BR32.10): one flood rooted at the TARGET, giving every
 	# cell its real path distance to the enemy. Rooted there rather than at the unit
 	# because the enemy's own cell is what distance is measured to, and a flood from
@@ -685,7 +685,10 @@ func _flank_angle(cell: Vector2i) -> float:
 
 
 func _is_covered(cell: Vector2i) -> bool:
-	return Cover.is_covered_from(cell, target.cell, view, unit)
+	# taskblock-58 Pass C1: **the field this context already built for this same target.** The
+	# `LoS.has_los` this used to reach through was recomputing, per candidate cell, an answer
+	# sitting a field lookup away.
+	return Cover.is_covered_from(cell, target.cell, view, unit, field)
 
 
 # --- per-turn facts ----------------------------------------------------------

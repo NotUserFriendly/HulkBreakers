@@ -75,13 +75,24 @@ func _squad(grid: Grid) -> Dictionary:
 	return {"state": state, "leader": leader, "follower": follower, "enemy": enemy}
 
 
-## Ordinary cover: a blocker that stops a SHOT without stopping SIGHT. Opacity is
-## deliberately left alone — `GridFixture.place_wall` raises it, which would hide
-## the enemy from a restricted view entirely and there would be nothing left to
-## plan against (`VisibilityField`: "cover never occludes here").
+## Ordinary cover: a blocker that stops a SHOT without stopping SIGHT — otherwise the enemy is
+## hidden from a restricted view entirely and there is nothing left to plan against.
+##
+## **taskblock-58 Pass C changed what that takes.** This used to place a full `wall` Part and rely
+## on leaving `Grid.opacity` alone, because sight was a flat array that cover was never flagged
+## in. Sight is geometry now, and a `wall` box is 2.4 tall — it blocks, correctly. So cover has to
+## be cover: a crate you can genuinely see over, deliberately shorter than `LoS.SIGHT_HEIGHT`.
+## The fixture states the geometry it needs rather than depending on a flag nobody set.
 func _place_cover(grid: Grid, cell: Vector2i) -> void:
 	GridFixture.place_floor(grid, cell)
-	grid.blockers[cell] = DataLibrary.get_part(&"wall")
+	var crate := Part.new()
+	crate.id = &"crate"
+	crate.hp = 20
+	crate.max_hp = 20
+	crate.material = &"steel"
+	var top: float = LoS.SIGHT_HEIGHT * 0.6
+	crate.volume = [Box.new(Vector3(0.0, top * 0.5, 0.0), Vector3(1.0, top, 1.0))]
+	grid.blockers[cell] = crate
 
 
 func _restricted_view(state: CombatState) -> WorldView:
