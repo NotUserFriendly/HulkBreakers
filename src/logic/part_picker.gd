@@ -31,11 +31,22 @@ extends RefCounted
 const SKIP_RADIUS := 3.0
 
 
+## taskblock-58 Pass A: the returned dict carries **`normal`, the world normal of
+## the face the ray entered through**. Nothing new is computed — `UnitPicker.
+## ray_box_hit` has reported it since taskblock-52 and both search loops here
+## discarded it, so a caller wanting to know which face it clicked (the editor's
+## place-on-a-face tools) had to cast its own ray and would have been free to
+## disagree with this one. **There has only ever been one computation of a face
+## normal in this codebase**; this is that value reaching a caller.
+##
+## **A miss returns `{}` and therefore carries no normal**, rather than reporting
+## `Vector3.ZERO` — a zero vector survives a `dot` and reads as an answer.
 static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> Dictionary:
 	var nearest_unit: Unit = null
 	var nearest_part: Part = null
 	var nearest_cell: Vector2i = Vector2i.ZERO
 	var nearest_t: float = INF
+	var nearest_normal := Vector3.ZERO
 
 	var unit_hit: Dictionary = UnitPicker.hit(units, from, dir)
 	if not unit_hit.is_empty():
@@ -43,32 +54,41 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 		nearest_part = unit_hit["part"]
 		nearest_cell = (nearest_unit as Unit).cell
 		nearest_t = unit_hit["t"]
+		nearest_normal = unit_hit["normal"]
 
 	for cell: Vector2i in grid.blockers:
 		if not near_ray(cell, from, dir, UnitGeometry.true_height_for_cell(cell, grid)):
 			continue
-		var t: Variant = _nearest_t(grid.blockers[cell], cell, grid, from, dir)
-		if t != null and (t as float) < nearest_t:
-			nearest_t = t as float
+		var box_hit: Dictionary = _nearest_hit(grid.blockers[cell], cell, grid, from, dir)
+		if not box_hit.is_empty() and float(box_hit["t"]) < nearest_t:
+			nearest_t = box_hit["t"]
 			nearest_unit = null
 			nearest_part = grid.blockers[cell]
 			nearest_cell = cell
+			nearest_normal = box_hit["normal"]
 
 	for cell: Vector2i in grid.field_items:
 		if not near_ray(cell, from, dir, UnitGeometry.true_height_for_cell(cell, grid)):
 			continue
 		for item: Variant in grid.field_items[cell]:
 			if item is Part:
-				var t: Variant = _nearest_t(item, cell, grid, from, dir)
-				if t != null and (t as float) < nearest_t:
-					nearest_t = t as float
+				var box_hit: Dictionary = _nearest_hit(item, cell, grid, from, dir)
+				if not box_hit.is_empty() and float(box_hit["t"]) < nearest_t:
+					nearest_t = box_hit["t"]
 					nearest_unit = null
 					nearest_part = item
 					nearest_cell = cell
+					nearest_normal = box_hit["normal"]
 
 	if nearest_part == null:
 		return {}
-	return {"unit": nearest_unit, "part": nearest_part, "cell": nearest_cell, "t": nearest_t}
+	return {
+		"unit": nearest_unit,
+		"part": nearest_part,
+		"cell": nearest_cell,
+		"t": nearest_t,
+		"normal": nearest_normal,
+	}
 
 
 ## `BR35.01`: **a cheap reject before the per-box test.** `hit` ran a full assembly ray test
@@ -102,10 +122,15 @@ static func near_ray(cell: Vector2i, from: Vector3, dir: Vector3, height: float 
 	return perpendicular.length() <= SKIP_RADIUS * UnitGeometry.CELL_SIZE
 
 
-## The nearest ray-t across every box in `part`'s own assembly tree at
+## The nearest hit across every box in `part`'s own assembly tree at
 ## `cell` (`UnitGeometry.assembly_placements`, the same boxes
-## `BoardView._spawn_blocker` draws), or null if the ray misses all of
-## them.
+## `BoardView._spawn_blocker` draws) as `{t, normal}`, or an empty Dictionary if
+## the ray misses all of them.
+##
+## taskblock-58 Pass A: was `_nearest_t`, returning a bare `Variant` distance.
+## The normal belongs to **the specific box that won**, which is why it is
+## carried alongside `t` through the same comparison rather than looked up again
+## afterwards — a second lookup would have to re-decide which box was nearest.
 ##
 ## `BR52.01` (taskblock-52 Pass B): **at the cell's real height.**
 ## `assembly_placements` defaults `height` to 0.0, and this call took that
@@ -116,15 +141,22 @@ static func near_ray(cell: Vector2i, from: Vector3, dir: Vector3, height: float 
 ## stood above it, which contradicts `docs/10`'s "render is hitbox" and was
 ## invisible on a flat map. `ShotPlane.build` already used
 ## `true_height_for_cell` for the same objects, making this the odd one of three.
-static func _nearest_t(
+static func _nearest_hit(
 	part: Part, cell: Vector2i, grid: Grid, from: Vector3, dir: Vector3
-) -> Variant:
+) -> Dictionary:
 	var nearest_t: float = INF
+	var nearest_normal := Vector3.ZERO
 	var hit_something := false
 	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
 	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
-		var t: Variant = UnitPicker.ray_box_t(placement, from, dir)
-		if t != null and (t as float) < nearest_t:
-			nearest_t = t as float
+		var box_hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
+		if box_hit.is_empty():
+			continue
+		var t: float = box_hit["t"]
+		if t < nearest_t:
+			nearest_t = t
+			nearest_normal = box_hit["normal"]
 			hit_something = true
-	return nearest_t if hit_something else null
+	if not hit_something:
+		return {}
+	return {"t": nearest_t, "normal": nearest_normal}

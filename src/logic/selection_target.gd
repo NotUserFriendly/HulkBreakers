@@ -44,6 +44,16 @@ var part: Part = null
 var cell: Vector2i = Vector2i.ZERO
 ## True only for the empty selection.
 var empty: bool = false
+## taskblock-58 Pass A: **the world normal of the face the pick ray struck**, or `null` when the
+## pick did not strike a face at all — a bare cell picked off the ground plane, or the empty
+## selection. `null` rather than `Vector3.ZERO` deliberately: a zero vector survives every
+## direction test a caller might run on it and comes back with a plausible-looking answer, so the
+## absence has to be a value that cannot be mistaken for a face.
+##
+## This is `PartPicker.hit`'s own reported normal carried through unchanged. **The editor's
+## place-on-a-face tools read it rather than casting their own ray**, which is the whole reason
+## Pass A precedes them: a second ray test would be a second answer to "which face did I click".
+var normal: Variant = null
 
 
 static func none() -> SelectionTarget:
@@ -97,6 +107,11 @@ static func for_cell(p_cell: Vector2i) -> SelectionTarget:
 static func from_hit(hit: Dictionary) -> SelectionTarget:
 	if hit.is_empty():
 		return none()
+	var target: SelectionTarget = _classify_hit(hit)
+	return _with_normal(target, hit)
+
+
+static func _classify_hit(hit: Dictionary) -> SelectionTarget:
 	match hit.get("kind"):
 		Enums.HitKind.UNIT:
 			var hit_unit: Unit = hit.get("unit")
@@ -113,6 +128,21 @@ static func from_hit(hit: Dictionary) -> SelectionTarget:
 			return for_cell(hit.get("cell", Vector2i.ZERO))
 
 
+## taskblock-58 Pass A: attaches the struck face to a freshly built target.
+##
+## **`none()` is a shared singleton**, so it is never written to — writing a normal onto it would
+## make the empty selection carry whatever the last miss happened to be adjacent to, permanently
+## and for every caller. A `CELL` target is left alone too: a cell picked off the ground plane was
+## not resolved against a face, and `BoardPicker.cell_at_ray` does not report one.
+static func _with_normal(target: SelectionTarget, source: Dictionary) -> SelectionTarget:
+	if target.empty or target.is_cell():
+		return target
+	var struck: Variant = source.get("normal")
+	if struck is Vector3 and not (struck as Vector3).is_zero_approx():
+		target.normal = struck
+	return target
+
+
 ## **`PartPicker.hit`'s own raw shape**, which is `{unit, part, cell, t}` and carries **no
 ## `kind`** — that key is added downstream by `TacticsController._cell_at`. Routing a raw pick
 ## through `from_hit()` silently classified every hit as a bare cell, because the `kind`
@@ -121,6 +151,10 @@ static func from_hit(hit: Dictionary) -> SelectionTarget:
 static func from_pick(pick: Dictionary) -> SelectionTarget:
 	if pick.is_empty():
 		return none()
+	return _with_normal(_classify_pick(pick), pick)
+
+
+static func _classify_pick(pick: Dictionary) -> SelectionTarget:
 	var picked_unit: Unit = pick.get("unit")
 	if picked_unit != null:
 		return for_unit(picked_unit) if picked_unit.alive else for_wreck(picked_unit)
@@ -132,8 +166,16 @@ static func from_pick(pick: Dictionary) -> SelectionTarget:
 
 ## The same dict back, so the debug panel's active-target path takes this without learning a
 ## new vocabulary.
+##
+## taskblock-58 Pass A: **`normal` is only present when there is one.** `to_hit()` feeds
+## `from_hit()` across the `board_clicked` signal, so emitting the key unconditionally would put a
+## `null` normal into a dict that `_with_normal` then correctly ignores — same outcome, but it
+## would read as "this pick reported no face" when the truth is "this kind never has one".
 func to_hit() -> Dictionary:
-	return {"kind": kind, "unit": unit, "part": part, "cell": cell}
+	var hit := {"kind": kind, "unit": unit, "part": part, "cell": cell}
+	if normal != null:
+		hit["normal"] = normal
+	return hit
 
 
 func is_unit() -> bool:
