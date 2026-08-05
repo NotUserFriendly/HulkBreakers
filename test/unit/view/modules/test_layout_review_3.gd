@@ -415,6 +415,15 @@ func test_the_perf_readout_survives_an_overlay_swap() -> void:
 	battle.set_overlay(ControlOverlay.new())
 	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
 	var monitor: PerfMonitorModule = battle.overlay.module(&"perf_monitor") as PerfMonitorModule
+	# **Put the session state where this test needs it rather than assuming it.** The readout's
+	# "is it up" is a `static var` on purpose — that is what makes it survive a swap — which also
+	# means it survives from whatever ran before. `test_perf_panel.gd` turns it on through the real
+	# debug-menu path, so a run that reaches this file afterwards starts with it already on. Found by
+	# the full gate; a targeted run of this file alone passes either way, which is the whole reason
+	# session state and targeted runs do not mix.
+	monitor._on_ui_element_toggled(DebugUiElements.PERF_PANEL, false)
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	monitor = battle.overlay.module(&"perf_monitor") as PerfMonitorModule
 	assert_false(monitor.panel.visible, "sanity: it starts off")
 
 	# Through the real debug-menu signal, which is the only thing that turns it on.

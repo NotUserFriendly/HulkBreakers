@@ -1,6 +1,6 @@
 # Taskblock 57 Report — the layout, and an editor you can actually author in
 
-**The block is closed, and five supervisor review passes over the shipped surface have been worked
+**The block is closed, and five supervisor review passes plus a short reserve list have been worked
 since.** This report covers both, in that order: the block first, then everything after it.
 
 **The taskblock's eight passes took thirteen commits** — A, B and C1 in session one; C2a, C2b, C3,
@@ -11,7 +11,11 @@ committed, and the closing gate was 3072/3072 with 0 failures.
 supervisor ran the game, wrote what they saw, and each pass worked that list. They ran on targeted
 gates at the supervisor's explicit instruction — *"I don't need a 20 minute test suite being run a
 dozen times for a UI tuning pass"* — with a full gate at the checkpoint after pass 3 (3117/3117) and
-another at the end of pass 5.
+another at the end of pass 5 (3131/3131).
+
+**Two of the three reserve items landed; the third was handed back.** Both open reports are in
+`docs/BUGS.md` as `BR57.02` and `BR57.03` rather than described only here, because a report is spent
+after one reading and a defect that is still open needs a durable home.
 
 Every line of the block's acceptance is met: `safe_rect` and `screen_rect` are real and escaping is a
 slot property; the action bar publishes slots and is not special-cased to do so; every surface in
@@ -522,3 +526,40 @@ a world with no bout in it.
 log's overflow preview extracted into a shared class first.
 
 **`SuiteRunPanel` still has no row in the placement table** — see above.
+
+## The reserve items — decisions, and one thing said plainly
+
+**The performance readout's state is a `static var`, which is session-scoped global state and worth
+flagging as such.** The alternative was threading it through `ModuleContext`, which would make one
+debug readout's visibility a property of the world every module sees. The state genuinely belongs to
+the session — it is the same readout over the same `PerfStats` whichever surface is mounted — and a
+static is the honest expression of that. **It does mean the value persists across tests inside a
+run, and that is not hypothetical**: the full gate went red on it. `test_perf_panel.gd` turns the
+readout on through the real debug-menu path, so the test asserting "it starts off" started with it
+already on — and passed in isolation, which is exactly how a targeted rung hides session state. The
+test sets the state it needs now instead of assuming it. **This is the second time in these passes
+that the full gate caught something a targeted run could not**, and both times it was state or
+ordering rather than logic.
+
+**The combat log's offset cache invalidates on line count rather than on an explicit call.** A cache
+with a manual invalidate would have been faster to write and is the wrong trade here: a caller that
+forgot to invalidate produces a hover preview pointing at the *wrong line*, which is far harder to
+notice than a slow pan. The line count is the property that actually changes when the text does.
+
+**The FPS report is not claimed as fixed, and that is deliberate.** A real per-motion cost was found
+and removed — the supervisor's hunch pointed straight at it — but *"removed obviously wasted work"*
+and *"fixed the framerate"* are different claims, and only one of them is supported. CC cannot see a
+framerate. `BR57.03` stays `Active` with the next suspect named.
+
+**The inspect-viewer fix in pass 5 was symptomatic, and the changelog entry that presented it as an
+answer was wrong.** The follow-up observation — *every face identically shaded* — rules ambient out:
+that is what ambient-only looks like, so the directional light contributes nothing rather than
+contributing badly. The ambient raise is kept on its own merits and `BR57.02` carries the four
+suspects already eliminated, so the next session does not repeat them. **The asymmetry is the clue**:
+it reproduces only on units, and a live unit is the one subject that takes the isolate-camera path
+instead of the fresh-copy one.
+
+**Where this session stopped, and why.** The third reserve item is the one place the context ran
+out: the obvious causes were checked and cleared, and continuing would have meant guessing at a
+render path with no room left to trace it properly. Shipping a second symptomatic fix on the same
+bug would have been worse than handing it back.

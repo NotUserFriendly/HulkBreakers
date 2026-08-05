@@ -2178,3 +2178,60 @@ makes the editor honest in the meantime rather than closing that gap.
 **To see it work:** open the editor with a bout on screen (`E`). Before, the previous bout's units
 stood on the empty grid; now the board is empty until you author floor and spawn markers, and the
 units return when *Run Test Bout* seats them.
+
+### BR57.02 — Active — owner: `SUPERVISOR`
+**Units in the inspect viewer render with no directional contribution — every face identically lit**
+- **Source:** `SUPERVISOR`, 2026-08-05, observed in-game across the UI review passes ("Inspect
+  window darkness is still there, but more specifically it is just on units. It looks like there is
+  no light source when viewing units, and all of a unit's faces are identically shaded").  ·
+  **CC session:** `cb234571-515f-4b21-bfe1-1abb38912aa0`
+- **Not fixed. An earlier attempt treated the symptom and is recorded here so it is not repeated.**
+
+**What was tried and why it was wrong.** The first report was "lighting in the inspect viewer is
+very dark", and the fix raised the preview camera's own ambient
+(`WorldPalette.PREVIEW_AMBIENT_ENERGY`, 0.9 against the board's 0.35). That is defensible on its own
+terms — the viewer shares the battle's world so it withdraws its own light (`BR48.01`), leaving the
+subject lit from the board's angle — **but the follow-up observation rules it out as the cause**:
+*every face identically shaded* means the directional light is contributing **nothing**, not that it
+is contributing from an awkward angle. Ambient alone is exactly what flat shading looks like. The
+raise is kept because a preview does want more fill, but it is not the answer to this.
+
+**Suspects ruled out**, so the next session does not redo them:
+
+| checked | found |
+|---|---|
+| `HitVolumeView.set_isolated` replacing the render layer | it **adds** `ISOLATE_LAYER` and keeps layer 1 |
+| the board light not covering the isolate layer | `WorldPalette.directional_light` leaves `light_cull_mask` at its default, which covers every layer |
+| the meshes being unshaded | `WorldPalette.lit_material` is `SHADING_MODE_PER_PIXEL` |
+| the viewer's own light being left off | correct and deliberate — it would light the whole battle |
+
+**Where to look next.** Whether the shared-world `SubViewport` actually receives the board's
+`DirectionalLight3D` at all, and whether `Camera3D.cull_mask` narrowing interacts with light
+inclusion in this Godot version. **It reproduces only on units**, which is the strongest clue in the
+report: cover and loose parts go through the *fresh copy* path in its own world with its own light,
+and only a live unit takes the isolate-camera path. That asymmetry is the thing to chase.
+
+### BR57.03 — Active — owner: `SUPERVISOR`
+**Player view drops frames while panning the camera**
+- **Source:** `SUPERVISOR`, 2026-08-05, observed in-game ("Player view is dropping FPS when panning.
+  It might be in the current combat log").  ·  **CC session:**
+  `cb234571-515f-4b21-bfe1-1abb38912aa0`
+- **One real cost was found and removed. The report is NOT confirmed fixed** — see below.
+
+**What was removed.** `CombatLogPanel._on_log_hovered` runs on every `InputEventMouseMotion` over
+the log and called `_line_offsets()`, which walked the whole label calling `get_line_offset(i)` once
+per line. On a long log that is hundreds of engine calls per motion event, and a camera pan produces
+a motion event per frame. The offsets are cached between text changes now, keyed on the line count
+so they cannot go stale and point the hover preview at the wrong line.
+
+**Why this stays open.** *"Removed obviously wasted work"* is not *"fixed the framerate"*, and this
+project's own rule is that a performance claim is a number rather than an adjudication — CC cannot
+see a framerate. The supervisor's hunch was well aimed and the cost was real; whether it was **the**
+cost is unmeasured.
+
+**The next suspect, if it still drops.** `TacticsController.update_hover` also runs per motion event
+and ray-picks against every unit and every blocker. `BR35.01` already added a cheap reject in front
+of the per-box test for exactly this reason, which is evidence that this path has been expensive
+before. `PerfStats` and the perf monitor are the instruments; the readout now survives an overlay
+swap, so it can be turned on in one view and read in another.
+
