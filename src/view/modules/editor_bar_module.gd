@@ -87,6 +87,44 @@ func module_id() -> StringName:
 	return &"editor_bar"
 
 
+## taskblock-57 Pass G2: **the bar carries the current tool's highlight.**
+##
+## *"Current tool shows on the cursor — a small icon of what is being placed — **or** is carried by
+## the action bar's own highlight. Either is fine; neither is not."*
+##
+## The bar's highlight is the option taken, for a stated reason rather than a preference: a cursor
+## icon is a `Control` following the mouse over a 3D board, which is a new surface with its own
+## z-order and hit-testing questions, where the buttons that set the tool are already on screen and
+## already know which of them was pressed. **The player's bar already highlights its armed action
+## the same way** (`ActionBar.refresh` modulates the armed box), so this is one idiom, not two.
+##
+## Driven off `tool_changed` rather than polled, so a tool set by a pick from the parts list — or by
+## anything else — highlights identically to one set by pressing the button.
+func link() -> void:
+	var editor: EditorModule = _editor()
+	if editor != null:
+		editor.tool_changed.connect(_on_tool_changed)
+		_on_tool_changed(editor.active_tool)
+
+
+## Highlights whichever button arms `tool`, and dims the rest.
+##
+## **The `place` tool highlights its own kind's button**, not a "Place" button that does not exist —
+## the three kind buttons are what `place` is on this bar, so the one that is lit is the one that
+## says what the next click will author.
+func _on_tool_changed(tool: StringName) -> void:
+	var editor: EditorModule = _editor()
+	var kind: StringName = editor.selected_kind if editor != null else &""
+	for id: StringName in tool_buttons:
+		_light(tool_buttons[id] as Button, id == tool)
+	for placement_kind: StringName in kind_buttons:
+		_light(kind_buttons[placement_kind] as Button, tool == &"place" and placement_kind == kind)
+
+
+func _light(button: Button, lit: bool) -> void:
+	button.modulate = HulkTheme.HIGHLIGHT if lit else HulkTheme.FOREGROUND
+
+
 func _fill_bar(column: VBoxContainer) -> void:
 	var tools := HBoxContainer.new()
 	tools.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -172,6 +210,10 @@ func _on_list_chosen(id: StringName) -> void:
 	editor.selected_part = id
 	editor.selected_kind = _pending_kind
 	editor.active_tool = &"place"
+	# **Refreshed explicitly, because the kind may have changed while the tool did not.** Picking a
+	# tile and then picking cover both leave `active_tool` at `place`, so the setter emits nothing
+	# the second time and the highlight would still be on the previous kind's button.
+	_on_tool_changed(editor.active_tool)
 
 
 ## The file verbs, called by name. **Every one of them already existed on `EditorModule`** — this

@@ -47,10 +47,18 @@ extends GutTest
 ## three contents" means structurally — so the derivation that made the player's bar collapsible
 ## makes theirs collapsible, from `BarModule.preferred_slot()`, with nothing declared per bar. A
 ## fourth mode's bar joins this list the day it is written, which is the property worth having.
+##
+## **taskblock-57 Pass G2 adds `editor`**, for the same derivation and not a fourth decision. G2
+## puts the section-details panel in `INSPECT_VIEWER` — *"section details go where the Inspect
+## Viewer sits, with a toggle in UI buttons"* — and that slot is left-edge-pinned, so it reports
+## itself collapsible and `UiButtonsModule` builds the toggle by sweeping for exactly that. **The
+## taskblock asked for a toggle and the answer was a `preferred_slot()`**, with no line in either
+## file naming the other.
 const EXPECTED_SIDE_PINNED: Array[StringName] = [
 	&"debug_panel",
 	&"inspect",
 	&"action_bar",
+	&"editor",
 	&"inspect_viewer",
 	&"spectator_bar",
 	&"editor_bar",

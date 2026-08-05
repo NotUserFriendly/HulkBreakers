@@ -163,6 +163,20 @@ const BOUT_SETUP_MODULES: Array[StringName] = [&"bout_setup"]
 ## deliberate change rather than a drift. Pass G's whole subject is that the editor needs a surface
 ## of its own shape, and *"three action bars, not one with three contents"* says outright that the
 ## second one is a module. `test_editor_mode.gd` counts them and names both.
+##
+## **taskblock-57 Pass G2 adds three, and only one of them is new code.**
+##
+## - `announcements` and `ui_buttons` are the player mode's own modules, declared here because G2
+##   gives this mode something for each to do: *"the significant ones surface as announcements"*,
+##   and *"section details ... with a toggle in UI buttons"*.
+## - `editor_coords` is the coordinate readout, and it is the one module written for G2. It replaces
+##   `unit_resources` in the shared `action_bar_top_left` slot — *"same slot, different module"* —
+##   which is exactly the split Pass C made that slot for.
+##
+## `editor_coords` after `board_inspect`, whose hover it follows, and after `editor`, whose model it
+## names cells from. Both reads happen in `link()` rather than at mount, so this order is for a
+## reader rather than for the machine; `ui_buttons` last is not — it sweeps every mounted module for
+## the toggles it builds.
 const EDITOR_MODULES: Array[StringName] = [
 	&"editor_bar",
 	&"camera_framing",
@@ -170,7 +184,10 @@ const EDITOR_MODULES: Array[StringName] = [
 	&"inspect",
 	&"board_inspect",
 	&"combat_log",
+	&"announcements",
 	&"editor",
+	&"editor_coords",
+	&"ui_buttons",
 ]
 
 

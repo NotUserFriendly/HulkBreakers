@@ -53,6 +53,27 @@ const MODULES_BEFORE_PASS_F: Array[StringName] = [
 	&"camera_framing",
 ]
 
+## **taskblock-57's own modules, written for the battle surface and not for the editor.**
+##
+## The pin above is a snapshot of one moment, and the claim it serves is *"what did the editor
+## cost"* — so a module written for the **player's** surface during this block must not be counted
+## against the editor merely because the editor later found a use for it. `announcements` is Pass
+## E's, built for a bout; `ui_buttons` is Pass C's, built to make the collapse rule reachable. The
+## editor declaring them in G2 is reuse, which is the thing being measured, not an addition to the
+## bill.
+##
+## Kept as its own list rather than folded into the pin above, so the two claims stay separable: one
+## is "what existed before Pass F", the other is "what this block built for somebody else".
+const MODULES_BUILT_FOR_OTHER_SURFACES: Array[StringName] = [
+	&"unit_resources",
+	&"ui_buttons",
+	&"perf_monitor",
+	&"inspect_viewer",
+	&"aim_readout",
+	&"announcements",
+	&"spectator_bar",
+]
+
 
 func before_each() -> void:
 	DataLibrary.reset()
@@ -92,29 +113,49 @@ func _bar(overlay: ControlOverlay) -> EditorBarModule:
 # ---------------------------------------------------------------- the acceptance
 
 
-## **THE CENTRAL CLAIM, and taskblock-57 Pass G1 moves it by exactly one module.**
+## **THE CENTRAL CLAIM, and taskblock-57 Pass G moves it from one module to three.**
 ##
-## Pass F's answer was "a module set plus one authoring module". G1's whole subject is that the
-## editor needs a bar of its own shape — *"three action bars, not one with three contents"* — so the
-## answer is now a module set plus **two**, and the second one is named here rather than allowed to
-## arrive as a nameless increment.
+## Pass F's answer was "a module set plus one authoring module". Pass G's whole subject is that the
+## editor needs surfaces of its own shape, and it names both of the new ones outright — *"three
+## action bars, not one with three contents"* for `editor_bar`, and *"a coordinate readout replaces
+## Unit Resources in editor mode"* for `editor_coords`. So the answer is a module set plus
+## **three**, each named here rather than allowed to arrive as a nameless increment.
 ##
-## **Still counted rather than stated.** A third editor-only module, or a bespoke copy of an
-## existing panel, reports the real number and fails — which is the property that made this test
-## worth writing and is unchanged by the number being two.
-func test_the_editor_is_a_module_set_plus_exactly_two_new_modules() -> void:
+## **Still counted rather than stated**, and against a denominator that stayed honest: `ui_buttons`
+## and `announcements` also arrived after Pass F, and are excluded because they were built for the
+## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A fourth editor-only module, or a
+## bespoke copy of an existing panel, reports the real number and fails, which is the property that
+## made this test worth writing and is unchanged by the number being three.
+func test_the_editor_is_a_module_set_plus_exactly_three_new_modules() -> void:
 	var written_for_the_editor: Array[StringName] = []
 	for id: StringName in ViewModes.editor().modules:
-		if not MODULES_BEFORE_PASS_F.has(id):
-			written_for_the_editor.append(id)
+		if MODULES_BEFORE_PASS_F.has(id) or MODULES_BUILT_FOR_OTHER_SURFACES.has(id):
+			continue
+		written_for_the_editor.append(id)
 
 	gut.p("editor modules: %s" % ", ".join(ViewModes.editor().modules))
 	gut.p("written for it: %s" % ", ".join(written_for_the_editor))
 	assert_eq(
 		written_for_the_editor,
-		[&"editor_bar", &"editor"] as Array[StringName],
-		"the authoring module and the editor's own bar, and no more"
+		[&"editor_bar", &"editor", &"editor_coords"] as Array[StringName],
+		"the authoring module, the editor's own bar and its coordinate readout, and no more"
 	)
+
+
+## **The other half of that honesty: it stops the exclusion list above being a loophole.**
+## Every module named in `MODULES_BUILT_FOR_OTHER_SURFACES` must genuinely be declared by some mode
+## that is not the editor — otherwise "built for another surface" is just a place to hide an
+## editor-only module.
+func test_every_excluded_module_is_really_declared_by_another_mode() -> void:
+	for id: StringName in MODULES_BUILT_FOR_OTHER_SURFACES:
+		var declared_elsewhere: bool = false
+		for mode: ViewMode in ViewModes.all():
+			if mode.id != &"editor" and mode.modules.has(id):
+				declared_elsewhere = true
+		assert_true(
+			declared_elsewhere,
+			"%s is excluded as another surface's module and no other surface declares it" % id
+		)
 
 
 ## The other half of the same fact, and the one that keeps the pin above honest: every module the

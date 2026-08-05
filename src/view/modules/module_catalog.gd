@@ -53,6 +53,9 @@ const IDS: Array[StringName] = [
 	# tests and the placement table have always named it.
 	&"spectator_bar",
 	&"editor_bar",
+	# taskblock-57 Pass G2: the coordinate readout, which replaces `unit_resources` in the editor's
+	# copy of the `action_bar_top_left` slot — "same slot, different module".
+	&"editor_coords",
 ]
 
 
@@ -111,4 +114,6 @@ static func build(id: StringName) -> ViewModule:
 			return SpectatorBarModule.new()
 		&"editor_bar":
 			return EditorBarModule.new()
+		&"editor_coords":
+			return EditorCoordsModule.new()
 	return null
