@@ -1,5 +1,70 @@
 # CHANGELOG.md — What's Been Built
 
+### UI review passes 2 and 3 — one control per thing, and the surfaces get edges
+
+**Two more supervisor passes over the layout**, worked the same way as the first: each item names
+what was seen on screen.
+
+#### One kind of button, one control per thing
+
+**Every control in the UI-buttons cluster is summon/dismiss.** *"I seem to have two different
+'classes' of buttons, a 'summon/dismiss' style button and then a 'disable/enable'? There should be
+one."* The module toggles were `toggle_mode` buttons carrying a stuck pressed state while Inspect,
+the debug menu and the keybindings legend were plain presses. All of them are plain presses now, and
+**a border shows what is up** — *"Button 'on', button is highlighted and module is visible."*
+
+**A module that owns a control is no longer given a second one.** `ViewModule.provides_own_button()`
+— the cluster swept every collapsible module into a toggle, so Inspect had **three** buttons (its
+own `INS`, a derived `INS` that collapsed instead of opening, and the viewer's `IV`) and the debug
+menu had two. The abbreviation collision was predicted in `UiButton.abbreviate`'s own header and
+happened anyway.
+
+**Hover is 0.5 s on chrome buttons**, stated per caller rather than baked in: `HoverDwell.delay` is
+per instance and `TooltipView.show_data` takes a wait. **Still one clock** — taskblock-57 required
+the tooltip and the log's overflow preview to share a *mechanism*, not a duration.
+
+**Dismissing the action bar no longer takes the button that brings it back.** The collapse hid
+`bar_root`, and the UI buttons are published off it. It hides `backing` alone now, and the row gives
+up its height so the satellites drop to the bottom edge rather than floating an eighth of a screen
+above it.
+
+#### `top_left_controls` and `TopLeftControls` are deleted
+
+Inject is obsolete (the `DBG` square opens the debug menu), New Battle is retired outright, and
+Watch / Assume Control moved into the turn-order column. **With all three gone the cluster held
+nothing**, so the module and the class it wrapped are both deleted rather than left as a container
+of nothing.
+
+#### The surfaces get edges
+
+Inspect is padded off its corner **and inside itself**; the Inspect viewer sits in a bordered,
+padded frame instead of being a bare subview over the board; the editor's details panel is padded
+all round and its rows clip rather than setting the panel's width. The keybindings legend is a
+centred panel with a background and an `[x]` — it needed re-centring on `resized`, because
+`set_anchors_preset` works off the rect a panel built that frame does not have yet.
+
+The editor gained the debug menu it had no way to reach, the tile picker offers only `GROUND`-
+attaching parts, a wall placed on bare ground brings the last floor used with it, and the combat
+log's `[+]` names itself.
+
+#### The defect worth the most
+
+**Folding Assume Control into `TurnControlsModule` broke the spectator's central contract**, and the
+suite said so immediately: eight tests in `test_spectator_overlay.gd` went red at once, with bouts
+advancing two turns per step and clicks landing on a board that had moved.
+
+`TurnControlsModule` is `Kind.INPUT` — End Turn resolves against the authoritative `CombatState` —
+and **`ViewMode.has_unit_input()` answers by building each declared module *unmounted* and asking
+`kind()`**. A module cannot make that answer depend on finding a `TacticsController`, because at
+that point it has no context to look in. So a spectator declaring `turn_controls` claimed unit
+input, and `_on_battle_loaded` drove the AI batch itself.
+
+`ControlToggleModule` is the fix and the reasoning is the design: **handing control over is not unit
+input** — it changes who plays the squad rather than queueing anything against one — so it is
+`DISPLAY`, and both modes may have it. It inserts itself at the top of the turn column when one
+exists, because `ACTION_BAR_RIGHT` is an `HBoxContainer` and two modules each adding a column put
+Watch *beside* End Turn rather than above it (measured: y=1048 against 1026).
+
 ### The first UI review pass over taskblock-57's layout
 
 **The supervisor's first look at the shipped surface**, worked as a review rather than as a
