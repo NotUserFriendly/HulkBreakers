@@ -795,10 +795,18 @@ func test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched() -
 	add_child_autofree(scene)
 	var turn_controls_column: VBoxContainer = _overlay(scene).module(&"turn_controls").column
 
+	# **The column holds a spacer as well as buttons** — `ControlToggleModule` inserts Watch at the
+	# top with a gap under it, which is the review's "approximately button height gap between it and
+	# the actual turn related buttons". So this asks the buttons about their sizing and counts them,
+	# rather than asserting every child is one.
+	var buttons: int = 0
 	for child: Node in turn_controls_column.get_children():
 		var button := child as Button
-		assert_not_null(button)
+		if button == null:
+			continue
+		buttons += 1
 		assert_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_END)
+	assert_gt(buttons, 0, "no buttons in the turn-control column, so this proved nothing")
 
 
 ## taskblock-21 Pass C: "toggle assume-control of blue team <-> watch...
