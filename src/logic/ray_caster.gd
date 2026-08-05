@@ -121,13 +121,17 @@ static func tied_candidates(
 	#
 	# **A cell can hold several surfaces** — a catwalk over a floor is the stated
 	# case — so every one is marched, not just the first walkable.
-	for cell: Vector2i in state.grid.surfaces:
-		for surface: Surface in state.grid.surfaces_at(cell):
-			if not PartPicker.near_ray(cell, from, dir_n, surface.height):
-				continue
-			best_t = _consider_surface(
-				best, best_t, surface, cell, from, dir_n, exclude_parts, max_distance
-			)
+	#
+	# taskblock-58 Pass B: **one flat walk of the store**, since a placement now carries
+	# its own cell. The old form asked the index for a cell list and then asked it again
+	# per cell for that cell's surfaces — a dictionary lookup per cell, per ray cast,
+	# to rebuild a list the store already holds in order.
+	for surface: Surface in state.grid.placements():
+		if not PartPicker.near_ray(surface.cell, from, dir_n, surface.height):
+			continue
+		best_t = _consider_surface(
+			best, best_t, surface, surface.cell, from, dir_n, exclude_parts, max_distance
+		)
 
 	for cell: Vector2i in state.grid.field_items:
 		if not PartPicker.near_ray(

@@ -70,14 +70,13 @@ func frame_bounds(bounds: AABB) -> bool:
 ## Null when nothing is placed at all.
 static func content_bounds(grid: Grid) -> Variant:
 	var bounds: Variant = null
-	for cell: Vector2i in grid.surfaces:
-		for surface: Surface in grid.surfaces_at(cell):
-			bounds = _absorb(
-				bounds,
-				UnitGeometry.assembly_placements(
-					surface.part, cell, surface.facing, null, surface.height
-				)
+	for surface: Surface in grid.placements():
+		bounds = _absorb(
+			bounds,
+			UnitGeometry.assembly_placements(
+				surface.part, surface.cell, surface.facing, null, surface.height
 			)
+		)
 	for cell: Vector2i in grid.blockers:
 		var part: Part = grid.blockers[cell]
 		if part == null:

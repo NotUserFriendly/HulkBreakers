@@ -66,13 +66,13 @@ func run(_argv: PackedStringArray) -> void:
 	print("map seed         : %d" % MAP_SEED)
 	print(
 		(
-			"board            : %dx%d, %d blockers, %d field-item cells, %d surfaces"
+			"board            : %dx%d, %d blockers, %d field-item cells, %d placements"
 			% [
 				state.grid.width,
 				state.grid.rows,
 				state.grid.blockers.size(),
 				state.grid.field_items.size(),
-				state.grid.surfaces.size(),
+				state.grid.placements().size(),
 			]
 		)
 	)

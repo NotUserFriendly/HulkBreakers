@@ -294,10 +294,9 @@ func build(
 	# nothing in the scene corresponds to — and "how many walkable parts are
 	# actually on this board" is the more useful diagnostic anyway, since an
 	# unfloored cell is now genuinely empty rather than quietly floored.
-	var tile_count := 0
-	for cell: Vector2i in grid.surfaces:
-		tile_count += grid.surfaces_at(cell).size()
-	_log_build_step(&"tiles", tile_count, "walkable parts")
+	# taskblock-58 Pass B: one flat walk of the store rather than a cell-at-a-time
+	# reassembly of it. Same number — "tiles placed" is exactly what a placement is.
+	_log_build_step(&"tiles", grid.placements().size(), "walkable parts")
 	var ground: MeshInstance3D = _build_tiles(grid, material_table)
 	ground.set_layer_mask_value(FLOOR_LAYER, true)
 	_static.add_child(ground)
@@ -391,17 +390,16 @@ func _build_tiles(p_grid: Grid, material_table: MaterialTable) -> MeshInstance3D
 	# needless source of "the board changed and nothing changed."
 	var by_color: Dictionary = {}
 	var color_order: Array[Color] = []
-	for cell: Vector2i in p_grid.surfaces:
-		for surface: Surface in p_grid.surfaces_at(cell):
-			var color: Color = WorldPalette.tile_color(material_table, surface.part.material)
-			if not by_color.has(color):
-				by_color[color] = [] as Array[BoxPlacement]
-				color_order.append(color)
-			(by_color[color] as Array[BoxPlacement]).append_array(
-				UnitGeometry.assembly_placements(
-					surface.part, cell, surface.facing, null, surface.height
-				)
+	for surface: Surface in p_grid.placements():
+		var color: Color = WorldPalette.tile_color(material_table, surface.part.material)
+		if not by_color.has(color):
+			by_color[color] = [] as Array[BoxPlacement]
+			color_order.append(color)
+		(by_color[color] as Array[BoxPlacement]).append_array(
+			UnitGeometry.assembly_placements(
+				surface.part, surface.cell, surface.facing, null, surface.height
 			)
+		)
 
 	for color: Color in color_order:
 		mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, WorldPalette.lit_material(color))
