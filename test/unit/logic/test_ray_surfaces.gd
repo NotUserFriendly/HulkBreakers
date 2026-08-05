@@ -332,9 +332,8 @@ func test_a_deck_deflection_is_unchanged_when_the_deck_is_made_destructible() ->
 	var outcomes: Array[String] = []
 	for destructible in [false, true]:
 		var grid: Grid = GridFixture.enclosed_room(11, 11)
-		for cell: Vector2i in grid.surfaces:
-			for surface: Surface in grid.surfaces_at(cell):
-				surface.part.is_destructible = destructible
+		for surface: Surface in grid.placements():
+			surface.part.is_destructible = destructible
 		var shooter: Unit = _shooter(Vector2i(2, 5))
 		var state := CombatState.new(grid, [shooter])
 		var rng := RandomNumberGenerator.new()

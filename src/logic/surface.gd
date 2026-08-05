@@ -68,6 +68,18 @@ var height: float
 ## (Pass C).
 var facing: float
 
+## taskblock-58 Pass B: **the placement's own cell.** Until this pass a surface's position was
+## its dictionary *key* in `Grid.surfaces` — so a floor could not exist except as something a
+## cell held, and moving one meant delete-and-re-add. Now the placement carries where it is and
+## the per-cell dictionary is an index built from that.
+##
+## **`Grid.add_surface` is the only writer.** A `Surface` that has not been placed has no
+## meaningful cell, and letting a caller set one directly would put the placement and the index
+## in a position to disagree — which is the entire failure mode an index has. `Grid.
+## move_placement` is how a placed surface changes cells, because moving is an index update as
+## much as it is a position change.
+var cell: Vector2i = Vector2i.ZERO
+
 
 func _init(p_part: Part = null, p_height: float = 0.0, p_facing: float = 0.0) -> void:
 	part = p_part

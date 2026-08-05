@@ -6,9 +6,12 @@ extends RefCounted
 ## uses (docs/01), checked against the GRID instead of a parent part's own
 ## sockets. Two attachment shapes:
 ##
-## - DOWNWARD: `GROUND` in a part's own `attaches_to` is legal only on a
-##   cell with NO surfaces at all yet — the empty cell itself is the one
-##   implicit downward socket; nothing else on the grid ever offers it.
+## - UNATTACHED: `GROUND` in a part's own `attaches_to` means the part
+##   attaches to nothing and is legal only where nothing is placed yet.
+##   taskblock-58 Pass B restated this: it used to be described as attaching
+##   to the cell, which stopped being expressible once a placement carried
+##   its own position instead of being a dictionary key. See `GROUND` below
+##   for the decision and what was deliberately left alone.
 ## - SIDE: any OTHER socket type in `attaches_to` must find a real, free,
 ##   matching `Socket` on an ORTHOGONAL neighbour cell's own surface — the
 ##   same `PartGraph.is_legal_attachment` check body assembly already uses,
@@ -21,6 +24,29 @@ extends RefCounted
 ## rules, a construction grammar rather than free placement. Keep the rules
 ## strict — a permissive shortcut here is very hard to walk back.
 
+## taskblock-58 Pass B: **`GROUND` means "attaches to nothing".**
+##
+## It used to mean "attaches to *the cell*" — the empty cell was described here as "the one
+## implicit downward socket", which only worked while a cell owned its surfaces and a placement's
+## position was a dictionary key. With a placement carrying its own position there is no cell
+## object to be a socket, so the word had to come to mean one of two things (`PLAN.md`, *Floors
+## reference a location*): attaches to nothing and is held up by its neighbours, or retires
+## outright in favour of a support requirement.
+##
+## **Picked: attaches to nothing.** The other option needs the support graph, which this pass
+## explicitly does not build — retiring `GROUND` in favour of a requirement nothing can yet
+## evaluate would leave every floor on every map unplaceable.
+##
+## **The one-per-cell refusal survives, restated as occupancy rather than as attachment.** A part
+## that attaches to nothing still may not be placed where something already is. That keeps the
+## rule identical on every authored map, which is what makes this the reversible pick: it can be
+## loosened later to "not where something already is *at this height*" — the change vertical
+## stacking wants — in one line, and nothing today depends on either reading, because every
+## `GROUND` caller clears the cell first.
+##
+## **Deliberately not loosened here.** Pass B is a storage inversion with no intended behavioural
+## effect; letting two floors share a cell at different heights is a behaviour change wearing a
+## refactor's clothes. Queued in `PLAN.md` instead.
 const GROUND: StringName = &"GROUND"
 
 ## taskblock-53 Pass C: `ZERO` first, then the four orthogonals. **A stack is

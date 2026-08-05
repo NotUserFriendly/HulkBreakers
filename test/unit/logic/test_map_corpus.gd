@@ -83,5 +83,5 @@ func test_the_cached_map_is_a_real_generated_map() -> void:
 
 	assert_eq(grid.width, WIDTH)
 	assert_eq(grid.rows, ROWS)
-	assert_gt(grid.surfaces.size(), 0, "it has floor")
+	assert_gt(grid.placements().size(), 0, "it has floor")
 	assert_gt(grid.blockers.size(), 0, "and walls")

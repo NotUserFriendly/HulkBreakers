@@ -40,11 +40,26 @@ var occupant_id: Array[int] = []
 ## (`Pathfinder.move_cost`) — a unit can no longer stand inside cover.
 var blockers: Dictionary = {}
 var field_items: Dictionary = {}  # Vector2i -> Array[Part|Matrix]; loose items lying on the ground
-## taskblock-38 Pass A: Vector2i -> Array[Surface] — the placement model's
-## own store (a cell's ordered set of placed surfaces: floor, raised floor,
-## ramp, catwalk, ...) — the real, authoritative source for walkability
-## and height (see `GridPlacement`).
-var surfaces: Dictionary = {}
+
+## taskblock-58 Pass B: **the store.** Every placed surface, in placement order, each one
+## carrying its own `cell`.
+##
+## Until this pass the store was `surfaces: Dictionary[Vector2i, Array[Surface]]` and a
+## placement's position was its dictionary *key* — so a floor could not exist except as
+## something a cell held, and moving one meant delete-and-re-add. That is the inversion: a
+## placement has a position, and the cell lookup becomes an index over it.
+##
+## **Read it through `placements()`.** The five callers that used to walk `surfaces` all wanted
+## "every placed surface" and had to reach it a cell at a time; they now get a flat walk with no
+## per-cell dictionary lookup, which is why `RayCaster` came out of this pass slightly cheaper
+## rather than slightly dearer.
+var _placements: Array[Surface] = []
+
+## The index, `Vector2i -> Array[Surface]`, derived from `_placements` and never authored
+## directly. Kept because `surfaces_at()` is a per-query call on hot paths (`Pathfinder`,
+## `UnitGeometry.true_height_for_cell`) and a scan of the store would turn an O(1) lookup into
+## an O(placements) one. Per-cell order matches placement order, which `MapFile` relies on.
+var _by_cell: Dictionary = {}
 
 
 func _init(p_width: int, p_rows: int) -> void:
@@ -108,13 +123,13 @@ func dup() -> Grid:
 		for item: Variant in field_items[cell]:
 			cloned_items.append(item.duplicate(true))
 		cloned.field_items[cell] = cloned_items
-	for cell: Vector2i in surfaces:
-		var cloned_surfaces: Array[Surface] = []
-		for surface: Surface in surfaces[cell]:
-			cloned_surfaces.append(
-				Surface.new(surface.part.duplicate(true), surface.height, surface.facing)
-			)
-		cloned.surfaces[cell] = cloned_surfaces
+	# taskblock-58 Pass B: **walked in store order**, so the clone's own store and index come out
+	# in the same order this one is in — a preview whose surfaces_at() returned a cell's surfaces
+	# in a different order than the real grid would be a preview of a different board.
+	for surface: Surface in _placements:
+		cloned.add_surface(
+			surface.cell, Surface.new(surface.part.duplicate(true), surface.height, surface.facing)
+		)
 	return cloned
 
 
@@ -164,24 +179,94 @@ func shootable_part_at(cell: Vector2i) -> Part:
 ## taskblock-38 Pass A: `surfaces.get(cell, [])`, typed — every reader gets
 ## a real (possibly empty) `Array[Surface]` rather than checking `has()`
 ## itself first.
+##
+## taskblock-58 Pass B: an **index** lookup now rather than the store itself. The contract is
+## unchanged and deliberately so — this is the accessor thirty-one call sites already go
+## through, which is what made the inversion cheap.
 func surfaces_at(cell: Vector2i) -> Array[Surface]:
-	if surfaces.has(cell):
-		return surfaces[cell]
+	if _by_cell.has(cell):
+		return _by_cell[cell]
 	return []
 
 
+## **Every placement on this grid, in placement order.** taskblock-58 Pass B.
+##
+## The five callers that used to iterate `grid.surfaces` all wanted exactly this and had to
+## assemble it a cell at a time. Returned live rather than copied: `RayCaster` walks it on every
+## cast, and allocating a fresh array per ray is the kind of cost that only shows up in a
+## profile. Treat it as read-only — `add_surface`/`move_placement`/`clear_surfaces` are the
+## writers, because each of them has an index to keep in step.
+func placements() -> Array[Surface]:
+	return _placements
+
+
+## The cells holding at least one placement. For a caller that genuinely counts *cells* rather
+## than placements — one cell can hold several, so `placements().size()` is a different number
+## and quietly substituting it is how a stat starts meaning something else.
+func occupied_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	cells.assign(_by_cell.keys())
+	return cells
+
+
+## taskblock-58 Pass B: **the one writer of `Surface.cell`.** The grid places a surface, so the
+## grid is what says where it is; a caller setting the field itself could leave the placement and
+## the index disagreeing, which is the only way an index can be wrong.
 func add_surface(cell: Vector2i, surface: Surface) -> void:
-	if not surfaces.has(cell):
-		surfaces[cell] = [] as Array[Surface]
-	(surfaces[cell] as Array[Surface]).append(surface)
+	surface.cell = cell
+	_placements.append(surface)
+	if not _by_cell.has(cell):
+		_by_cell[cell] = [] as Array[Surface]
+	(_by_cell[cell] as Array[Surface]).append(surface)
+
+
+## Moves an already-placed surface to `to_cell`, updating the index.
+##
+## taskblock-58 Pass B: **the thing the old storage could not do.** A position that was a
+## dictionary key could only be changed by deleting the entry and adding it back, which is a
+## different object as far as anything holding a reference is concerned. Now the placement is the
+## same object at a new position and the index follows it. No-ops on a surface this grid does not
+## hold, rather than inserting one it never placed.
+func move_placement(surface: Surface, to_cell: Vector2i) -> bool:
+	if not _placements.has(surface):
+		return false
+	if surface.cell == to_cell:
+		return true
+	_erase_from_index(surface)
+	surface.cell = to_cell
+	if not _by_cell.has(to_cell):
+		_by_cell[to_cell] = [] as Array[Surface]
+	(_by_cell[to_cell] as Array[Surface]).append(surface)
+	return true
 
 
 ## taskblock-39 Pass B: the idempotent-carving seam — `MapGen._place_floor`
 ## clears a cell's own surfaces before re-placing, so a re-carved corridor
 ## or a repair pass can touch the same cell twice without `GridPlacement`'s
 ## attachment grammar correctly refusing a second `GROUND` placement.
+##
+## taskblock-58 Pass B: the early return is load-bearing rather than tidiness. `GridFixture.
+## flat()` clears every cell before placing it, so the overwhelmingly common call is against a
+## cell holding nothing — and without the guard each one would scan the whole store.
 func clear_surfaces(cell: Vector2i) -> void:
-	surfaces.erase(cell)
+	if not _by_cell.has(cell):
+		return
+	var removed: Array[Surface] = _by_cell[cell]
+	_by_cell.erase(cell)
+	var kept: Array[Surface] = []
+	for surface: Surface in _placements:
+		if not removed.has(surface):
+			kept.append(surface)
+	_placements = kept
+
+
+func _erase_from_index(surface: Surface) -> void:
+	if not _by_cell.has(surface.cell):
+		return
+	var at_cell: Array[Surface] = _by_cell[surface.cell]
+	at_cell.erase(surface)
+	if at_cell.is_empty():
+		_by_cell.erase(surface.cell)
 
 
 func neighbors(cell: Vector2i) -> Array[Vector2i]:
